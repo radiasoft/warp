@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.116 2004/05/10 18:01:02 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.117 2004/05/14 23:48:06 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -740,7 +740,10 @@ Note that either the x and y coordinates or the grid must be passed in.
       else:
         setgrid2dw(len(x),x,yms,weights,nx,ny,grid,xmin,xmax,ymin,ymax)
       # --- If parallel, do a reduction on the grid
-      grid = parallelsum(grid)
+      try:
+        parallelsumrealarray(grid,size(grid))
+      except:
+        grid = parallelsum(grid)
 
     else:
       densitygrid = 0
@@ -757,8 +760,12 @@ Note that either the x and y coordinates or the grid must be passed in.
         deposgrid2dw(1,len(x),x,yms,zz,weights,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
 
       # --- If parallel, do a reduction on the grid
-      grid = parallelsum(grid)
-      gridcount = parallelsum(gridcount)
+      try:
+        parallelsumrealarray(grid,size(grid))
+        parallelsumrealarray(gridcount,size(gridcount))
+      except:
+        grid = parallelsum(grid)
+        gridcount = parallelsum(gridcount)
 
       # --- Divide out the particle counts by hand.
       grid = grid/where(greater(gridcount,0.),gridcount,1.)
