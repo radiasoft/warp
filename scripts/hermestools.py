@@ -1,73 +1,71 @@
 from warp import *
-hermestools_version = "$Id: hermestools.py,v 1.3 2001/03/02 00:09:05 mdehoon Exp $"
 
-def hermestoolsdoc():
-  print """
-Routines needed to initialize a beam in Hermes.
-sethermesbeam: Initializes a beam.
-sethermescurrent: Sets up the charge in the longitudinal slices.
-setenvelope: Matches all slices of the beam.
-  """
-
-def sethermesbeam():
-  """Initializes a beam for Hermes. Before calling this routine, env.zl and env.zu should be set to cover exactly one half lattice period. Also env.dzenv should be preset."""
+def sethermesbeam(lsamecharge = false):
+  # Sets initial conditions
+  # Before calling this routine, env.zl and env.zu should be set to
+  # cover exactly one half lattice period. Also env.dzenv should be preset.
   print "Running sethermesbeam ..."
-  delzbeam = top.zimax - top.zimin
-  her.var[8,:] = arrayrange (her.niz) * delzbeam / (her.niz - 1)
-  if her.dther < 0.: her.var[8,:] = her.var[8,:] + her.zlher
-  else: her.var[8,:] = her.var[8,:] - her.var[8,-1] + her.zlher
-  her.var[9,:] = top.vbeam / top.clight
-  sethermescurrent()
+  sethermesprofile(lsamecharge)
   sethermesenvelope()
   print "done."
-
-def sethermescurrent():
-  """Sets up the charge in the longitudinal slices, based on top.straight, her.iprofile, top.ibeam and top.vbeam."""
+  
+def sethermesprofile(lsamecharge):
   delzbeam = top.zimax - top.zimin
-  currise = (1. - top.straight)/2.
-  curfall = (1. - top.straight)/2.
-  curmax = 0.
-  if her.iprofile <= 0:
-    part = (her.var[8,:] - her.var[8,0]) /  (her.var[8,-1] - her.var[8,0])
-    arg1 = part / currise
-    arg2 = (1. - part) / curfall
-    her.var[12,:] = tanh(arg1) * tanh(arg2)
-  elif her.iprofile < 4:
-    def f(x):
-      return x - power(x-1,her.iprofile+1.)/(her.iprofile+1.)
-    zrise = currise*delzbeam
-    zfall = curfall*delzbeam
-    z = 0.
-    for i in range (her.niz-1):
-      dz = her.var[8,i+1] - her.var[8,i]
-      if z <= zrise and z + dz <= zrise:
-        her.var[13,i] = zrise * (f((z+dz)/zrise) - f(z/zrise))
-      if z <= zrise and zrise < z + dz <= delzbeam - zfall:
-        her.var[13,i] = zrise * (1. - f(z/zrise)) + (z+dz-zrise)
-      if z <= zrise and delzbeam - zfall < z + dz:
-        her.var[13,i] = zrise * (1. - f(z/zrise)) + (delzbeam-zrise-zfall) + zfall * (1 - f((delzbeam-z-dz)/zfall))
-      if zrise < z <= delzbeam - zfall and z + dz <= delzbeam - zfall:
-        her.var[13,i] = dz
-      if zrise < z <= delzbeam - zfall and delzbeam - zfall < z + dz:
-        her.var[13,i] = (delzbeam-zfall-z) + zfall * (1. - f((delzbeam-z-dz)/zfall))
-      if delzbeam - zfall < z and delzbeam - zfall < z + dz:
-        her.var[13,i] = zfall * (f((delzbeam-z)/zfall) - f((delzbeam-z-dz)/zfall))
-      z = z + dz
-  her.var[13,:] = top.ibeam*her.var[13,:]/top.vbeam
-  gethertmp(her.var,her.niz)
+  def f(z):
+    fraction = (1.-top.straight)/2.
+    if z <= 0.: return 0.
+    if 0. < z <= fraction: return (1.-power(1.-z/fraction,her.iprofile))
+    if fraction < z <= 1.-fraction: return 1.
+    if 1.-fraction < z <= 1.: return (1.-power((z-1+fraction)/fraction,her.iprofile))
+    if z > 1.: return 0.
+  def fint(z):
+    fraction = (1.-top.straight)/2.
+    if z <= 0.:
+      return 0.
+    if 0. < z <= fraction:
+      return (z + (fraction/(her.iprofile+1.))*(power(1-z/fraction,her.iprofile+1.)) - fraction/(her.iprofile+1.))
+    if fraction < z <= 1.-fraction:
+      return (fraction*her.iprofile/(her.iprofile+1.)+z-fraction)
+    if 1. - fraction < z <= 1.:
+      return (z - (fraction/(her.iprofile+1.))*(1.+power((z-1.)/fraction+1.,her.iprofile+1.)))
+    if z > 1.: return (1.-2*fraction/(her.iprofile+1.))
+  if lsamecharge:
+    her.var[8,0] = 0.
+    her.var[8,-1] = 1.
+    for i in range (1,her.niz-1):
+      lower = 0.
+      upper = 1.
+      target = fint(1.)*i/(her.niz-1.)
+      while upper - lower > 1.e-12:
+        guess = (upper+lower)/2.
+        if fint(guess) > target: upper = guess
+        else: lower = guess
+      her.var[8,i] = (upper+lower)/2.
+    her.var[8,:] = delzbeam * her.var[8,:]
+    her.var[13,:-1] = top.ibeam*delzbeam*fint(1.)/(top.vbeam*(her.niz-1.))
+  else:
+    for i in range (her.niz):
+      her.var[8,i] = i / (her.niz - 1.)
+    if 0 < her.iprofile < 5:
+      for i in range (her.niz-1):
+        her.var[13,i] = fint(her.var[8,i+1])-fint(her.var[8,i])
+    her.var[13,:] = her.var[13,:]*top.ibeam*delzbeam/top.vbeam
+    her.var[8,:] = delzbeam * her.var[8,:]
+  her.var[9,:] = top.vbeam / top.clight
+  lfail = false
+  getappliedfield(0.,her.dther,her.var,her.niz)
+  gethertmp(her.var,her.niz,her.rpipe,her.icharge,lfail)
+  if lfail:
+    print "Error in sethermescurrent: Slice positions are not in increasing order"
   if top.emitn:
     her.var[10:12,:] = top.emitn * her.var[12,:] / top.ibeam
   else:
     gaminv = sqrt(1.-power(her.var[9,:],2))
     her.var[10:12,:] = (top.emit*gaminv/her.var[9,:]) * her.var[12,:] / top.ibeam
+  if her.dther < 0.: her.var[8,:] = her.var[8,:] + her.zlher
+  else: her.var[8,:] = her.var[8,:] - her.var[8,-1] + her.zlher
                         
 def sethermesenvelope (niter = 1000, errorlimit = 1.e-9):
-  """Matches all slices of the beam to a a given lattice half period.
-The envelope parameters env.zl and env.zu should be such that they cover one quadrupole, centered between env.zl and env.zu. Also env.dzenv should be preset.
-  - niter=1000:		Maximum number of iterations allowed to match the beam.
-  - errorlimit-1.e-9:	Once the error in the calculated a0,b0,ap0,bp0 becomes
-			less than errorlimit, the iteration has converged.
-  """
   # --- Finds the matched conditions. Assumes a cigar load.
   her.var[4:8,:] = 0.    # Centroid motion not implemented in HERMES
   her.var[:4,0]  = 0.    # First slice at zero (cigar load)
@@ -87,6 +85,7 @@ The envelope parameters env.zl and env.zu should be such that they cover one qua
   top.bp0 = - top.ap0
   # --- Calculate lattice half period
   lhp = env.zu - env.zl
+  # --- Start loop
   for i in range (1,her.niz-1):
     # --- Load variables for this slice
     top.emit_s = 0.
