@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.24 $, $Date: 2002/10/22 20:44:53 $
+c@(#) File WXY.M, version $Revision: 3.25 $, $Date: 2002/10/24 21:31:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1124,33 +1124,58 @@ c            --- Calculate current
              call setcurrxy(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                      sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)
           endif
-
-          if (center == "halfv") then
-c            --- Apply particle boundary conditions
-             if (periinz)
-     &          call periz(ip,zp(ipmin),zgrid,zmmax,zmmin)
-             if (stickyz)
-     &          call stckyz(ip,zp(ipmin),zmmax,zmmin,dz,uxp(ipmin),
-     &                      uyp(ipmin),uzp(ipmin),zgrid)
-             if (stickyxy)
-     &          call stckxy3d(ip,xp(ipmin),xmmax,xmmin,dx,yp(ipmin),ymmax,
-     &                        ymmin,dy,zp(ipmin),zmmin,dz,uxp(ipmin),
-     &                        uyp(ipmin),uzp(ipmin),zgrid,zbeam,
-     &                        nzzarr,prwallz,prwallxz,prwallyz,prwelips,
-     &                        l2symtry,l4symtry,lostpars,zzmin,dzzi)
-
-c            --- Collect charge density (xy) and current (1d)
-             call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                     uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
-
-             if (ifgap) 
-     &         call setcurrxy(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                        sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)
-          endif
         enddo
 
       enddo
 c     --- End loop over species
+
+      if (center == "halfv") then
+        do is=1,ns
+c         --- Apply particle boundary conditions
+          if (periinz)
+     &       call periz(nps(is),zp(ins(is)),zgrid,zmmax,zmmin)
+          if (stickyz)
+     &       call stckyz(nps(is),zp(ins(is)),zmmax,zmmin,dz,uxp(ins(is)),
+     &                   uyp(ins(is)),uzp(ins(is)),zgrid)
+          if (stickyxy)
+     &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,
+     &                     yp(ins(is)),ymmax,ymmin,dy,
+     &                     zp(ins(is)),zmmin,dz,uxp(ins(is)),
+     &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
+     &                     zgrid,zbeam,
+     &                     nzzarr,prwallz,prwallxz,prwallyz,prwelips,
+     &                     l2symtry,l4symtry,lostpars,zzmin,dzzi)
+          call processdeadpart(is,cleardeadpart)
+        enddo
+
+c       --- Collect charge density (xy) and current (1d)
+        call loadrhoxy(-1,-1,-1,.false.)
+
+c       --- Make rho periodic if periodic in z
+        call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
+
+        if (ifgap) then
+          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+            call setcurrxy(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                     sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)
+          enddo
+          call fixcurrxy(curr,nzzarr,periinz,lthick)
+        endif
+
+        if (lbeamcom) then
+c         --- Set zbeam so that it follows the center of mass of the beam.
+          call zbeamcom(zbeam)
+        else
+c         --- Advance beam frame location using the nominal beam frame velocity.
+          zbeam = zgrid
+        endif
+
+c       --- zgridprv needs to be updated for the "synchv" step
+c       --- Note that zgridprv is also set at the beginning of wxyexe
+        zgridprv = zgrid
+
+      endif
 
 c     ---  Do final stuff for moments calculation and fix current
       if (center == "synchv" .or. center == "gen") then
@@ -1166,27 +1191,6 @@ c         --- load rho diagnostic qtys
 
 c       --- Fix the current
         call fixcurrxy(curr,nzzarr,periinz,lthick)
-
-      endif
-
-      if (center == "halfv") then
-c       --- Make rho periodic if periodic in z
-        call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
-
-c       --- Fix the current if it was calculated
-        if (ifgap) call fixcurrxy(curr,nzzarr,periinz,lthick)
-
-        if (lbeamcom) then
-c         --- Set zbeam so that it follows the center of mass of the beam.
-          call zbeamcom(zbeam)
-        else
-c         --- Advance beam frame location using the nominal beam frame velocity.
-          zbeam = zgrid
-        endif
-
-c       --- zgridprv needs to be updated for the "synchv" step
-c       --- Note that zgridprv is also set at the beginning of wxyexe
-        zgridprv = zgrid
 
       endif
 
