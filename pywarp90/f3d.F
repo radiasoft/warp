@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.22 $, $Date: 2002/01/23 20:18:58 $
+c@(#) File F3D.M, version $Revision: 3.23 $, $Date: 2002/01/24 21:11:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4692,10 +4692,10 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
         call setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    l2symtry,l4symtry)
         return
-      else if(fstype==11) then
-        call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                    l2symtry,l4symtry)
-        return
+c     else if(fstype==11) then
+c       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+c    &                    l2symtry,l4symtry)
+c       return
       end if
 
       dxpsor = dx
@@ -5341,37 +5341,7 @@ c     --- end of dipoles
 
 c +++++++++++++++++++++++++++
 c Include injection source
-      if (inject > 0 .and. lvinject) then
-
-c       --- calculate points for injection source
-        do ij=1,ninject
-          nxinj = 2*int(ainject(ij)/dx)
-          nyinj = 2*int(binject(ij)/dy)
-          izmin = (zinject - zmmin)/dz
-          izmax = izmin + (rinject(ij) - sqrt(max(0.,
-     &                              min(rinject(ij)**2 - ainject(ij)**2,
-     &                                  rinject(ij)**2 - binject(ij)**2))))/dz
-
-c         --- make sure there is enough room
-          if ((ncond + nxinj*nyinj*(izmax - izmin)) > ncondmax) then
-            ncondmax = ncond + nxinj*nyinj*(izmax - izmin)
-            call gchange("PSOR3d",0)
-          endif
-
-c         --- find bounds of loop
-          ixmin = max(0,int((-ainject(ij)+xinject(ij))/dx+ix_axis-1))
-          ixmax = min(nx,int((+ainject(ij)+xinject(ij))/dx+ix_axis+1))
-          iymin = max(0,int((-binject(ij)+yinject(ij))/dy+iy_axis-1))
-          iymax = min(ny,int((+binject(ij)+yinject(ij))/dy+iy_axis+1))
-
-c         --- set axial location and call subroutine which does the work
-          call injctpnt(rinject(ij),ainject(ij),binject(ij),
-     &                  ainjmin(ij),binjmin(ij),
-     &                  xinject(ij),yinject(ij),ixmin,ixmax,iymin,iymax,
-     &                  dx,dy,dz,izmin,izmax,vinject(ij),ix_axis,iy_axis)
-
-        enddo
-      endif
+      call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
 
       return
       end
@@ -5969,78 +5939,156 @@ c     --- Print warning if conductor arrays filled up.
       return
       end
 c===========================================================================
-      subroutine injctpnt(rinject,ainject,binject,ainjmin,binjmin,
-     &                    xinject,yinject,
-     &                    ixmin,ixmax,iymin,iymax,dx,dy,dz,izmin,izmax,vvv,
-     &                    ix_axis,iy_axis)
+      subroutine injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
+      use Constant
       use PSOR3d
+      use InjectVars
+      use InjectVars3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
-      real(kind=8):: rinject,ainject,binject,ainjmin,binjmin
-      real(kind=8):: xinject,yinject,dx,dy,dz,vvv
-      integer(ISZ):: izmin,izmax,ixmin,ixmax,iymin,iymax,ix_axis,iy_axis
+      real(kind=8):: dx,dy,dz,zmmin
+      integer(ISZ):: ix_axis,iy_axis,nx,ny
 
 c Sets points on injection source.
 
+      integer(ISZ):: ij,ix,iy,iz,npoints,nsgpoints
+      integer(ISZ):: ixmin,ixmax,iymin,iymax
+      real(kind=8):: xx,yy,zz,rmaxsq,ao_dx,bo_dy,ai_dx,bi_dy
+      real(kind=8):: delmx,delpx,delmy,delpy,delmz,delpz,rrsq
+      real(kind=8):: fuzz
 
-      integer(ISZ):: ix,iy,iz,npoints,nsgpoints
-      real(kind=8):: xx,yy,rminsq,ao_dx,bo_dy,ai_dx,bi_dy
+c     --- Just return if injection is turned off or the source is not to be
+c     --- setup.
+      if (inject == 0 .or. .not. lvinject) return
 
-c      if(solvergeom==RZgeom) then
+c     if(solvergeom==RZgeom) then
 c        call injctpntrz(rinject,ainject,binject,ainjmin,binjmin,
 c     &                    xinject,yinject,
 c     &                    ixmin,ixmax,iymin,iymax,dx,dy,dz,izmin,izmax,vvv,
 c     &                    ix_axis,iy_axis)
 c        return
-c      end if
+c     end if
 
-      dxpsor = dx
+c     --- Set size of fuzz
+      fuzz = 1.e-5
 
-c     --- Make sure there is enough space. npoints is the maximum
-c     --- number of points that could be needed. nsgpoints is 
-c     --- big enough to always be larger than the number of subgrid
-c     --- points.
-      npoints = (ixmax-ixmin+1)*(iymax-iymin+1)
-      nsgpoints = npoints
-      if (ncond+npoints > ncondmax .or.
-     &    necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax) then
-        if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
-        if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
-     &    ncndmax = max(necndbdy,nocndbdy) + nsgpoints
+c     --- calculate points for injection source
+      do ij=1,ninject
+c       --- find bounds of loop
+        ixmin = max(1,   int((-ainject(ij)+xinject(ij))/dx+ix_axis-1))
+        ixmax = min(nx-1,int((+ainject(ij)+xinject(ij))/dx+ix_axis+1))
+        iymin = max(1,   int((-binject(ij)+yinject(ij))/dy+iy_axis-1))
+        iymax = min(ny-1,int((+binject(ij)+yinject(ij))/dy+iy_axis+1))
+
+c       --- Define maximum and minimum transverse extents of source
+        ao_dx = ainject(ij) + dx
+        bo_dy = binject(ij) + dy
+        ai_dx = ainjmin(ij)
+        bi_dy = binjmin(ij)
+
+c       --- Make sure there is enough space. npoints is the maximum
+c       --- number of points that could be needed. nsgpoints is 
+c       --- big enough to always be larger than the number of subgrid
+c       --- points.
+        npoints = pi*(ao_dx*bo_dy - ai_dx*bi_dy)/(dx*dy) + 1
+        nsgpoints = npoints
+        if (ncond+npoints > ncondmax .or.
+     &      necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax) then
+          if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
+          if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
+     &      ncndmax = max(necndbdy,nocndbdy) + nsgpoints
           call gchange("PSOR3d",0)
-      endif
+        endif
 
-      ao_dx = ainject + dx
-      bo_dy = binject + dy
-      ai_dx = ainjmin
-      bi_dy = binjmin
-      do iz=izmin,izmax
-        rminsq = rinject**2 - (rinject - (iz - izmin)*dz)**2
-        if (iz == izmin) rminsq = 0.
+c       --- Loop over transverse points
         do ix = ixmin,ixmax
           do iy = iymin,iymax
-            xx = (ix-ix_axis)*dx - xinject
-            yy = (iy-iy_axis)*dy - yinject
-            if (((xx*bo_dy)**2 + (yy*ao_dx)**2 - (ao_dx*bo_dy)**2 <= 0.) .and.
-     &          ((xx*bi_dy)**2 + (yy*ai_dx)**2 - (ai_dx*bi_dy)**2 >= 0.) .and.
-     &          (xx**2 + yy**2 - rminsq >= 0)) then
+            xx = (ix-ix_axis)*dx - xinject(ij)
+            yy = (iy-iy_axis)*dy - yinject(ij)
+c           --- skip points not on the surface
+            if (((xx*bo_dy)**2 + (yy*ao_dx)**2 > (ao_dx*bo_dy)**2) .or.
+     &          ((xx*bi_dy)**2 + (yy*ai_dx)**2 < (ai_dx*bi_dy)**2) .or.
+     &          ((xx**2 + yy**2) > rmaxsq)) cycle
+
+c           --- If rinject is not set by the user, rely on inj_grid (surface
+c           --- will be piecewise linear), otherwise make the surface spherical.
+            if (rinject(ij) == LARGEPOS) then
+              iz = int(inj_grid(ix,iy) + 1)
+              delmx = 2.
+              delpx = 2.
+              delmy = 2.
+              delpy = 2.
+              delmz = iz - inj_grid(ix,iy)
+              delpz = 2.
+              if (inj_grid(ix-1,iy) > iz)
+     &          delmx = delmz/(inj_grid(ix-1,iy)-inj_grid(ix,iy))
+              if (inj_grid(ix+1,iy) > iz)
+     &          delpx = delmz/(inj_grid(ix+1,iy)-inj_grid(ix,iy))
+              if (inj_grid(ix,iy-1) > iz)
+     &          delmy = delmz/(inj_grid(ix,iy-1)-inj_grid(ix,iy))
+              if (inj_grid(ix,iy+1) > iz)
+     &          delpy = delmz/(inj_grid(ix,iy+1)-inj_grid(ix,iy))
+            else
+              zz = (zinject - zmmin) + (xx**2 + yy**2)/
+     &             (rinject(ij) + sqrt(rinject(ij)**2 - (xx**2 + yy**2)))
+              iz = int(zz/dz + 1)
+              delmx = 2.
+              delpx = 2.
+              delmy = 2.
+              delpy = 2.
+              delmz = iz - zz/dz
+              delpz = 2.
+              if (rinject(ij) > 0.) then
+                rrsq = 2.*rinject(ij)*zz - zz**2
+                delpx = (sqrt(rrsq - yy**2) - xx)/dx
+                delpy = (sqrt(rrsq - xx**2) - yy)/dy
+              endif
+            endif
+c           --- Now add conductor point or subgrid point
+            if (delmx < fuzz .or. delpx < fuzz .or.
+     &          delmy < fuzz .or. delpy < fuzz .or.
+     &          delmz < fuzz) then
+c             --- If any del's are small, then all del's are small, so add
+c             --- a conductor point.
               ncond = ncond + 1
               ixcond(ncond) = ix
               iycond(ncond) = iy
               izcond(ncond) = iz
-              condvolt(ncond) = vvv
+              condvolt(ncond) = vinject(ij)
+            else if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
+     &               delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
+     &               delmz < 1.-fuzz) then
+c             --- Add subgrid point
+              if (mod(ix+iy+iz,2) == 0) then
+c               --- even
+                necndbdy = necndbdy + 1
+                iecndx(necndbdy) = ix
+                iecndy(necndbdy) = iy
+                iecndz(necndbdy) = iz
+                ecdelmx(necndbdy) = delmx
+                ecdelmy(necndbdy) = delmy
+                ecdelmz(necndbdy) = delmz
+                ecdelpx(necndbdy) = delpx
+                ecdelpy(necndbdy) = delpy
+                ecdelpz(necndbdy) = delpz
+                ecvolt(necndbdy) = vinject(ij)
+              else
+c               --- odd
+                nocndbdy = nocndbdy + 1
+                iocndx(nocndbdy) = ix
+                iocndy(nocndbdy) = iy
+                iocndz(nocndbdy) = iz
+                ocdelmx(nocndbdy) = delmx
+                ocdelmy(nocndbdy) = delmy
+                ocdelmz(nocndbdy) = delmz
+                ocdelpx(nocndbdy) = delpx
+                ocdelpy(nocndbdy) = delpy
+                ocdelpz(nocndbdy) = delpz
+                ocvolt(nocndbdy) = vinject(ij)
+              endif
             endif
           enddo
         enddo
       enddo
-
-c     --- Print warning if conductor arrays filled up.
-      if (necndbdy == ncndmax .or. nocndbdy == ncndmax .or.
-     &    ncond == ncondmax) then
-        call remark("WARNING: The arrays holding the conductor data have filled")
-        call remark("         up.  Increase size of arrays to ensure all of")
-        call remark("         the conductors have been generated.")
-        call remark("         In function injctpnt.")
-      endif
 
       return
       end
@@ -6116,12 +6164,12 @@ c Output is put directly into the conductor arrays of PSOR3d.
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
         return
-      else if(fstype==11) then
-        call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-     &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-       return
+c     else if(fstype==11) then
+c       call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+c    &                    xmin,xmax,ymin,ymax,lshell,
+c    &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+c    &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+c      return
       end if
 
 c Table-ize the data if srfrv_pernz > 0.
@@ -6184,11 +6232,13 @@ c within the conductor.
       izmax =    int((zmax-zgmin)*dzi+zfuzz)
 
 c Perform error checking, to make sure that izmin and izmax are within the
-c grid.  If after the check, izmax < izmin, the conductor is completely off
-c of the grid, so return.
+c grid.
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin) then
+     
+c If izmin > izbmax or izmax < izbmin then the conductor is completely off
+c of the grid, so return.
+      if (izmin > izbmax .or. izmax < izbmin) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
@@ -6355,7 +6405,7 @@ c             --- Calculate distance to conductor at lower z.
 c             --- If grid location is between rrr and rrrlower and between
 c             --- rmax and rrrlower, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrlower+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
+              if (rrrlower <= rad .and. rad < min(rrr,rmax)-rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -6373,15 +6423,12 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rofzfunc,0)
                   if (rnew > rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
+                  else if (rnew <= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rad < rrrlower+rfuzz .or.
-     &                rad > min(rrr,rmax)-rfuzz) then
+              elseif (rad < rrrlower .or. rad > min(rrr,rmax)-rfuzz) then
                 delmz = 2.
               endif
 
@@ -6391,7 +6438,7 @@ c             --- Calculate distance to conductor at higher z.
 c             --- If grid location is between rrr and rrrhigher and between
 c             --- rmax and rrrhigher, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrhigher+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
+              if (rrrhigher <= rad .and. rad < min(rrr,rmax)-rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -6407,17 +6454,14 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew < rad) then
+                  if (rnew <= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew > rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rad < rrrhigher+rfuzz .or.
-     &                rad > min(rrr,rmax)-rfuzz) then
+              elseif (rad < rrrhigher .or. rad > min(rrr,rmax)-rfuzz) then
                 delpz = 2.
               endif
 
@@ -6646,12 +6690,14 @@ c within the conductor.
       izmax = int((zmax-zgmin)*dzi+zfuzz)
 
 c Perform error checking, to make sure that izmin and izmax are within the
-c grid.  If after the check, izmax < izmin, the conductor is completely off
-c of the grid, so return.
+c grid.
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin) then
-        call remark("WARNING:srfrvin: conductor is completely off the grid.")
+     
+c If izmin > izbmax or izmax < izbmin then the conductor is completely off
+c of the grid, so return.
+      if (izmin > izbmax .or. izmax < izbmin) then
+        call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
 
@@ -6827,7 +6873,7 @@ c             --- Calculate distance to conductor at lower z.
 c             --- If grid location is between rrr and rrrlower and between
 c             --- rmin and rrrlower, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrlower-rfuzz > rad .and. rad > max(rrr,rmin)+rfuzz
+              if (rrrlower >= rad .and. rad > max(rrr,rmin)+rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &            xxmin <= xx .and. xx <= xxmax .and.
      &            yymin <= yy .and. yy <= yymax) then
@@ -6845,15 +6891,12 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rofzfunc,0)
                   if (rnew < rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
+                  else if (rnew >= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rad > rrrlower-rfuzz .or.
-     &                rad < max(rrr,rmin)+rfuzz) then
+              elseif (rad > rrrlower .or. rad < max(rrr,rmin)+rfuzz) then
                 delmz = 2.
               endif
 
@@ -6863,7 +6906,7 @@ c             --- Calculate distance to conductor at higher z.
 c             --- If grid location is between rrr and rrrhigher and between
 c             --- rmin and rrrhigher, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrhigher-rfuzz > rad .and. rad > max(rrr,rmin)+rfuzz
+              if (rrrhigher >= rad .and. rad > max(rrr,rmin)+rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &            xxmin <= xx .and. xx <= xxmax .and.
      &            yymin <= yy .and. yy <= yymax) then
@@ -6872,17 +6915,14 @@ c             --- ensures that a distance of zero is not calculated.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew > rad) then
+                  if (rnew >= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew < rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rad > rrrhigher-rfuzz .or.
-     &                rad < max(rrr,rmin)+rfuzz) then
+              elseif (rad > rrrhigher .or. rad < max(rrr,rmin)+rfuzz) then
                 delpz = 2.
               endif
 
@@ -7057,12 +7097,12 @@ c Output is put directly into the conductor arrays of PSOR3d.
      &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
         return
-      else if(fstype==11) then
-         call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                   lzend,xmin,xmax,ymin,ymax,lshell,
-     &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-        return
+c     else if(fstype==11) then
+c        call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+c    &                   lzend,xmin,xmax,ymin,ymax,lshell,
+c    &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+c    &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+c       return
       end if
 
 c Table-ize the data if srfrv_pernz > 0.
@@ -7134,11 +7174,13 @@ c within the conductor.
       izmax =    int((zmax-zgmin)*dzi+zfuzz)
 
 c Perform error checking, to make sure that izmin and izmax are within the
-c grid.  If after the check, izmax < izmin, the conductor is completely off
-c of the grid, so return.
+c grid.
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin) then
+     
+c If izmin > izbmax or izmax < izbmin then the conductor is completely off
+c of the grid, so return.
+      if (izmin > izbmax .or. izmax < izbmin) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
@@ -7261,7 +7303,7 @@ c             --- Calculate distance to conductor at lower z.
 c             --- If grid location is between rrr and rrrlower and between
 c             --- rmax and rrrlower, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrminlower+rfuzz < rad .and. rad < rmin-rfuzz
+              if (rrrminlower <= rad .and. rad < rmin-rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -7279,14 +7321,12 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rminofz,1)
                   if (rnew > rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
+                  else if (rnew <= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rrrmaxlower-rfuzz > rad .and. rad > rmax+rfuzz
+              elseif (rrrmaxlower >= rad .and. rad > rmax+rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -7304,15 +7344,13 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rmaxofz,2)
                   if (rnew < rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
+                  else if (rnew >= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rad < rrrminlower+rfuzz .or.
-     &                rad > rrrmaxlower-rfuzz) then
+              elseif (rad < rrrminlower .or.
+     &                rad > rrrmaxlower) then
                 delmz = 2.
               endif
 
@@ -7322,7 +7360,7 @@ c             --- Calculate distance to conductor at higher z.
 c             --- If grid location is between rrr and rrrhigher and between
 c             --- rmax and rrrhigher, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrminhigher+rfuzz < rad .and. rad < rmin-rfuzz
+              if (rrrminhigher <= rad .and. rad < rmin-rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -7338,16 +7376,14 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew < rad) then
+                  if (rnew <= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew > rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rrrmaxhigher-rfuzz > rad .and. rad > rmax+rfuzz
+              elseif (rrrmaxhigher >= rad .and. rad > rmax+rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -7363,17 +7399,15 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew > rad) then
+                  if (rnew >= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew < rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rad < rrrminhigher+rfuzz .or.
-     &                rad > rrrmaxhigher-rfuzz) then
+              elseif (rad < rrrminhigher .or.
+     &                rad > rrrmaxhigher) then
                 delpz = 2.
               endif
 
@@ -8232,36 +8266,7 @@ c     --- end of dipoles
 
 c +++++++++++++++++++++++++++
 c Include injection source
-      if (inject > 0 .and. lvinject) then
-
-c       --- calculate points for injection source
-        do ij=1,ninject
-          nxinj = 2*int(ainject(ij)/dx)
-          nyinj = 2*int(binject(ij)/dy)
-          izmin = (zinject - zmmin)/dz
-          izmax = izmin + (rinject(ij) - sqrt(max(0.,
-     &                              min(rinject(ij)**2 - ainject(ij)**2,
-     &                                  rinject(ij)**2 - binject(ij)**2))))/dz
-
-c         --- make sure there is enough room
-          if ((ncond + nxinj*nyinj*(izmax - izmin)) > ncondmax) then
-            ncondmax = ncond + nxinj*nyinj*(izmax - izmin)
-            call gchange("PSOR3d",0)
-          endif
-
-c         --- find bounds of loop
-          ixmin = max(0,int((-ainject(ij)+xinject(ij))/dx+ix_axis-1))
-          ixmax = min(nx,int((+ainject(ij)+xinject(ij))/dx+ix_axis+1))
-          iymin = max(0,int((-binject(ij)+yinject(ij))/dy+iy_axis-1))
-          iymax = min(ny,int((+binject(ij)+yinject(ij))/dy+iy_axis+1))
-
-c         --- set axial location and call subroutine which does the work
-          call injctpnt(rinject(ij),ainject(ij),binject(ij),
-     &                  ainjmin(ij),binjmin(ij),
-     &                  xinject(ij),yinject(ij),ixmin,ixmax,iymin,iymax,
-     &                  dx,dy,dz,izmin,izmax,vinject(ij),ix_axis,iy_axis)
-        enddo
-      endif
+      call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
 
       return
       end
@@ -8389,12 +8394,14 @@ c within the conductor.
       izmax =    int((zmax-zgmin)*dzi+zfuzz)
 
 c Perform error checking, to make sure that izmin and izmax are within the
-c grid.  If after the check, izmax < izmin, the conductor is completely off
-c of the grid, so return.
+c grid.
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin .and. (izmax >=nz .or. izmin <= 0) ) then
-        call remark("WARNING:srfrvout_rz: conductor is completely off the grid.")
+
+c If izmin > izbmax or izmax < izbmin then the conductor is completely off
+c of the grid, so return.
+      if (izmin > izbmax .or. izmax < izbmin) then
+        call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
 
@@ -8560,7 +8567,7 @@ c             --- Calculate distance to conductor at lower z.
 c             --- If grid location is between rrr and rrrlower and between
 c             --- rmax and rrrlower, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrlower+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
+              if (rrrlower <= rad .and. rad < min(rrr,rmax)-rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -8578,15 +8585,12 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rofzfunc,0)
                   if (rnew > rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
+                  else if (rnew <= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rad < rrrlower+rfuzz .or.
-     &                rad > min(rrr,rmax)-rfuzz) then
+              elseif (rad < rrrlower .or. rad > min(rrr,rmax)-rfuzz) then
                 delmz = 2.
               endif
 
@@ -8596,7 +8600,7 @@ c             --- Calculate distance to conductor at higher z.
 c             --- If grid location is between rrr and rrrhigher and between
 c             --- rmax and rrrhigher, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrhigher+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
+              if (rrrhigher <= rad .and. rad < min(rrr,rmax)-rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -8612,7 +8616,7 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew < rad) then
+                  if (rnew <= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew > rad) then
                     ddz = +abs(ddz)*0.5
@@ -8621,8 +8625,7 @@ c               --- 10% in the delta and slowing down the code.
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rad < rrrhigher+rfuzz .or.
-     &                rad > min(rrr,rmax)-rfuzz) then
+              elseif (rad < rrrhigher .or. rad > min(rrr,rmax)-rfuzz) then
                 delpz = 2.
               endif
 
@@ -8862,11 +8865,13 @@ c within the conductor.
       izmax =    int((zmax-zgmin)*dzi+zfuzz)
 
 c Perform error checking, to make sure that izmin and izmax are within the
-c grid.  If after the check, izmax < izmin, the conductor is completely off
-c of the grid, so return.
+c grid.
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin .and. (izmax >=nz .or. izmin <= 0) ) then
+
+c If izmin > izbmax or izmax < izbmin then the conductor is completely off
+c of the grid, so return.
+      if (izmin > izbmax .or. izmax < izbmin) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
@@ -8989,7 +8994,7 @@ c             --- Calculate distance to conductor at lower z.
 c             --- If grid location is between rrr and rrrlower and between
 c             --- rmax and rrrlower, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrminlower+rfuzz < rad .and. rad < rmin-rfuzz
+              if (rrrminlower <= rad .and. rad < rmin-rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -9007,14 +9012,12 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rminofz,1)
                   if (rnew > rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
+                  else if (rnew <= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rrrmaxlower-rfuzz > rad .and. rad > rmax+rfuzz
+              elseif (rrrmaxlower >= rad .and. rad > rmax+rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -9032,15 +9035,13 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rmaxofz,2)
                   if (rnew < rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
+                  else if (rnew >= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rad < rrrminlower+rfuzz .or.
-     &                rad > rrrmaxlower-rfuzz) then
+              elseif (rad < rrrminlower .or.
+     &                rad > rrrmaxlower) then
                 delmz = 2.
               endif
 
@@ -9050,7 +9051,7 @@ c             --- Calculate distance to conductor at higher z.
 c             --- If grid location is between rrr and rrrhigher and between
 c             --- rmax and rrrhigher, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrminhigher+rfuzz < rad .and. rad < rmin-rfuzz
+              if (rrrminhigher <= rad .and. rad < rmin-rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -9066,16 +9067,14 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew < rad) then
+                  if (rnew <= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew > rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rrrmaxhigher-rfuzz > rad .and. rad > rmax+rfuzz
+              elseif (rrrmaxhigher >= rad .and. rad > rmax+rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -9091,17 +9090,15 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew > rad) then
+                  if (rnew >= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew < rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rad < rrrminhigher+rfuzz .or.
-     &                rad > rrrmaxhigher-rfuzz) then
+              elseif (rad < rrrminhigher .or.
+     &                rad > rrrmaxhigher) then
                 delpz = 2.
               endif
 
@@ -9874,36 +9871,7 @@ c     --- end of dipoles
 
 c +++++++++++++++++++++++++++
 c Include injection source
-      if (inject > 0 .and. lvinject) then
-
-c       --- calculate points for injection source
-        do ij=1,ninject
-          nxinj = 2*int(ainject(ij)/dx)
-          nyinj = 2*int(binject(ij)/dy)
-          izmin = (zinject - zmmin)/dz
-          izmax = izmin + (rinject(ij) - sqrt(max(0.,
-     &                              min(rinject(ij)**2 - ainject(ij)**2,
-     &                                  rinject(ij)**2 - binject(ij)**2))))/dz
-
-c         --- make sure there is enough room
-          if ((ncond + nxinj*nyinj*(izmax - izmin)) > ncondmax) then
-            ncondmax = ncond + nxinj*nyinj*(izmax - izmin)
-            call gchange("PSOR3d",0)
-          endif
-
-c         --- find bounds of loop
-          ixmin = max(0,int((-ainject(ij)+xinject(ij))/dx+ix_axis-1))
-          ixmax = min(nx,int((+ainject(ij)+xinject(ij))/dx+ix_axis+1))
-          iymin = max(0,int((-binject(ij)+yinject(ij))/dy+iy_axis-1))
-          iymax = min(ny,int((+binject(ij)+yinject(ij))/dy+iy_axis+1))
-
-c         --- set axial location and call subroutine which does the work
-          call injctpnt(rinject(ij),ainject(ij),binject(ij),
-     &                  ainjmin(ij),binjmin(ij),
-     &                  xinject(ij),yinject(ij),ixmin,ixmax,iymin,iymax,
-     &                  dx,dy,dz,izmin,izmax,vinject(ij),ix_axis,iy_axis)
-        enddo
-      endif
+      call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
 
       return
       end
@@ -10031,11 +9999,13 @@ c within the conductor.
       izmax =    int((zmax-zgmin)*dzi+zfuzz)
 
 c Perform error checking, to make sure that izmin and izmax are within the
-c grid.  If after the check, izmax < izmin, the conductor is completely off
-c of the grid, so return.
+c grid. 
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin) then
+     
+c If izmin > izbmax or izmax < izbmin then the conductor is completely off
+c of the grid, so return.
+      if (izmin > izbmax .or. izmax < izbmin) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
@@ -10202,7 +10172,7 @@ c             --- Calculate distance to conductor at lower z.
 c             --- If grid location is between rrr and rrrlower and between
 c             --- rmax and rrrlower, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrlower+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
+              if (rrrlower <= rad .and. rad < min(rrr,rmax)-rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -10220,15 +10190,12 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rofzfunc,0)
                   if (rnew > rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
+                  else if (rnew <= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rad < rrrlower+rfuzz .or.
-     &                rad > min(rrr,rmax)-rfuzz) then
+              elseif (rad < rrrlower .or. rad > min(rrr,rmax)-rfuzz) then
                 delmz = 2.
               endif
 
@@ -10238,7 +10205,7 @@ c             --- Calculate distance to conductor at higher z.
 c             --- If grid location is between rrr and rrrhigher and between
 c             --- rmax and rrrhigher, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrhigher+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
+              if (rrrhigher <= rad .and. rad < min(rrr,rmax)-rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -10254,17 +10221,14 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew < rad) then
+                  if (rnew <= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew > rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rad < rrrhigher+rfuzz .or.
-     &                rad > min(rrr,rmax)-rfuzz) then
+              elseif (rad < rrrhigher .or. rad > min(rrr,rmax)-rfuzz) then
                 delpz = 2.
               endif
 
@@ -10504,11 +10468,13 @@ c within the conductor.
       izmax =    int((zmax-zgmin)*dzi+zfuzz)
 
 c Perform error checking, to make sure that izmin and izmax are within the
-c grid.  If after the check, izmax < izmin, the conductor is completely off
-c of the grid, so return.
+c grid.
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin) then
+     
+c If izmin > izbmax or izmax < izbmin then the conductor is completely off
+c of the grid, so return.
+      if (izmin > izbmax .or. izmax < izbmin) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
@@ -10631,7 +10597,7 @@ c             --- Calculate distance to conductor at lower z.
 c             --- If grid location is between rrr and rrrlower and between
 c             --- rmax and rrrlower, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrminlower+rfuzz < rad .and. rad < rmin-rfuzz
+              if (rrrminlower <= rad .and. rad < rmin-rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -10649,14 +10615,12 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rminofz,1)
                   if (rnew > rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
+                  else if (rnew <= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rrrmaxlower-rfuzz > rad .and. rad > rmax+rfuzz
+              elseif (rrrmaxlower >= rad .and. rad > rmax+rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -10674,15 +10638,13 @@ c               --- 10% in the delta and slowing down the code.
                   rnew = srfrv_f(znew,rmaxofz,2)
                   if (rnew < rad) then
                     ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
+                  else if (rnew >= rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delmz = (zz - znew)*dzi
-              elseif (rad < rrrminlower+rfuzz .or.
-     &                rad > rrrmaxlower-rfuzz) then
+              elseif (rad < rrrminlower .or.
+     &                rad > rrrmaxlower) then
                 delmz = 2.
               endif
 
@@ -10692,7 +10654,7 @@ c             --- Calculate distance to conductor at higher z.
 c             --- If grid location is between rrr and rrrhigher and between
 c             --- rmax and rrrhigher, find intersection point.  The zfuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrminhigher+rfuzz < rad .and. rad < rmin-rfuzz
+              if (rrrminhigher <= rad .and. rad < rmin-rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -10708,16 +10670,14 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew < rad) then
+                  if (rnew <= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew > rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rrrmaxhigher-rfuzz > rad .and. rad > rmax+rfuzz
+              elseif (rrrmaxhigher >= rad .and. rad > rmax+rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -10733,17 +10693,15 @@ c               --- 10% in the delta and slowing down the code.
                 do iterrf=1,32
                   znew = znew + ddz
                   rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew > rad) then
+                  if (rnew >= rad) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew < rad) then
                     ddz = +abs(ddz)*0.5
-                  else
-                    exit
                   endif
                 enddo
                 delpz = (znew - zz)*dzi
-              elseif (rad < rrrminhigher+rfuzz .or.
-     &                rad > rrrmaxhigher-rfuzz) then
+              elseif (rad < rrrminhigher .or.
+     &                rad > rrrmaxhigher) then
                 delpz = 2.
               endif
 
@@ -10844,4 +10802,4 @@ c     --- Clean up the table-ized data.
 
       return
       end
-
+c===========================================================================
