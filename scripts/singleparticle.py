@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.17 2005/02/15 23:53:55 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.18 2005/03/12 00:49:44 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -280,14 +280,14 @@ is not alive."""
       self.spvz = []
       self.spgi = []
       for i in xrange(self.nn):
-        self.spt.append(AppendableArray(maxsteps,type='d'))
-        self.spx.append(AppendableArray(maxsteps,type='d'))
-        self.spy.append(AppendableArray(maxsteps,type='d'))
-        self.spz.append(AppendableArray(maxsteps,type='d'))
-        self.spvx.append(AppendableArray(maxsteps,type='d'))
-        self.spvy.append(AppendableArray(maxsteps,type='d'))
-        self.spvz.append(AppendableArray(maxsteps,type='d'))
-        self.spgi.append(AppendableArray(maxsteps,type='d'))
+        self.spt.append(AppendableArray(maxsteps,typecode='d'))
+        self.spx.append(AppendableArray(maxsteps,typecode='d'))
+        self.spy.append(AppendableArray(maxsteps,typecode='d'))
+        self.spz.append(AppendableArray(maxsteps,typecode='d'))
+        self.spvx.append(AppendableArray(maxsteps,typecode='d'))
+        self.spvy.append(AppendableArray(maxsteps,typecode='d'))
+        self.spvz.append(AppendableArray(maxsteps,typecode='d'))
+        self.spgi.append(AppendableArray(maxsteps,typecode='d'))
       self.spsavedata()
 
   #----------------------------------------------------------------------
