@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.30 2004/12/02 17:28:10 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.31 2004/12/02 17:28:35 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -37,7 +37,7 @@ gun_iter = 0
 gun_steps = 0
 
 # --- reduction factor in number of particles saved each timestep
-_ipstep = top.npinject
+_ipstep = 0
 
 # --- number of particles to save
 _ipsave = 0
