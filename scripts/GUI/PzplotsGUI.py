@@ -1,75 +1,74 @@
-#Boa:FramePanel:Pzplots
+#Boa:FramePanel:panel
 
 from wxPython.wx import *
 from warp import *
 from StringIO import *
 
-[wxID_PZPLOTS, wxID_PZPLOTSCOLOR, wxID_PZPLOTSLINETYPE, wxID_PZPLOTSMARKER, 
- wxID_PZPLOTSMARKERSIZE, wxID_PZPLOTSMARKS, wxID_PZPLOTSSIZE, 
- wxID_PZPLOTSSTATICTEXT1, wxID_PZPLOTSSTATICTEXT2, wxID_PZPLOTSSTATICTEXT3, 
+[wxID_PANEL, wxID_PANELCOLOR, wxID_PANELLINETYPE, wxID_PANELMARKER, 
+ wxID_PANELMARKERSIZE, wxID_PANELMARKS, wxID_PANELSIZE, wxID_PANELSTATICTEXT1, 
+ wxID_PANELSTATICTEXT2, wxID_PANELSTATICTEXT3, 
 ] = map(lambda _init_ctrls: wxNewId(), range(10))
 
-class Pzplots(wxPanel):
+class panel(wxPanel):
     def _init_utils(self):
         # generated method, don't edit
         pass
 
     def _init_ctrls(self, prnt):
         # generated method, don't edit
-        wxPanel.__init__(self, id=wxID_PZPLOTS, name='Zplots', parent=prnt,
-              pos=wxPoint(591, 167), size=wxSize(596, 315),
-              style=wxTAB_TRAVERSAL)
+        wxPanel.__init__(self, id=wxID_PANEL, name='Zplots', parent=prnt,
+              pos=wxPoint(0, 0), size=wxSize(604, 349), style=wxTAB_TRAVERSAL)
         self._init_utils()
         self.SetClientSize(wxSize(596, 315))
 
         self.Color = wxChoice(choices=['black', 'white', 'red', 'green', 'blue',
-              'cyan', 'magenta', 'yellow'], id=wxID_PZPLOTSCOLOR, name='Color',
-              parent=self, pos=wxPoint(512, 0), size=wxSize(80, 24), style=0,
+              'cyan', 'magenta', 'yellow'], id=wxID_PANELCOLOR, name='Color',
+              parent=self, pos=wxPoint(512, 0), size=wxSize(80, 21), style=0,
               validator=wxDefaultValidator)
-        EVT_CHOICE(self.Color, wxID_PZPLOTSCOLOR, self.OnColorChoice)
+        EVT_CHOICE(self.Color, wxID_PANELCOLOR, self.OnColorChoice)
 
         self.LineType = wxChoice(choices=['solid', 'dash', 'dot', 'dashdot',
-              'dashdotdot', 'none'], id=wxID_PZPLOTSLINETYPE, name='LineType',
-              parent=self, pos=wxPoint(512, 24), size=wxSize(80, 24), style=0,
+              'dashdotdot', 'none'], id=wxID_PANELLINETYPE, name='LineType',
+              parent=self, pos=wxPoint(512, 24), size=wxSize(80, 21), style=0,
               validator=wxDefaultValidator)
-        EVT_CHOICE(self.LineType, wxID_PZPLOTSLINETYPE, self.OnLinetypeChoice)
+        EVT_CHOICE(self.LineType, wxID_PANELLINETYPE, self.OnLinetypeChoice)
 
-        self.Marker = wxTextCtrl(id=wxID_PZPLOTSMARKER, name='Marker',
+        self.Marker = wxTextCtrl(id=wxID_PANELMARKER, name='Marker',
               parent=self, pos=wxPoint(560, 72), size=wxSize(22, 22),
               style=wxTE_PROCESS_ENTER, value='A')
-        EVT_TEXT_ENTER(self.Marker, wxID_PZPLOTSMARKER, self.OnMarkerTextEnter)
+        EVT_TEXT_ENTER(self.Marker, wxID_PANELMARKER, self.OnMarkerTextEnter)
 
-        self.staticText1 = wxStaticText(id=wxID_PZPLOTSSTATICTEXT1,
+        self.staticText1 = wxStaticText(id=wxID_PANELSTATICTEXT1,
               label='Marker', name='staticText1', parent=self, pos=wxPoint(516,
               74), size=wxSize(39, 16), style=0)
 
-        self.staticText2 = wxStaticText(id=wxID_PZPLOTSSTATICTEXT2,
-              label='Size', name='staticText2', parent=self, pos=wxPoint(516,
-              50), size=wxSize(24, 16), style=0)
+        self.staticText2 = wxStaticText(id=wxID_PANELSTATICTEXT2, label='Size',
+              name='staticText2', parent=self, pos=wxPoint(516, 50),
+              size=wxSize(24, 16), style=0)
 
-        self.Size = wxSpinCtrl(id=wxID_PZPLOTSSIZE, initial=1, max=10, min=1,
+        self.Size = wxSpinCtrl(id=wxID_PANELSIZE, initial=1, max=10, min=1,
               name='Size', parent=self, pos=wxPoint(550, 48), size=wxSize(40,
               22), style=wxSP_ARROW_KEYS)
-        EVT_SPINCTRL(self.Size, wxID_PZPLOTSSIZE, self.OnSizeSpinctrl)
+        EVT_SPINCTRL(self.Size, wxID_PANELSIZE, self.OnSizeSpinctrl)
 
-        self.MarkerSize = wxSpinCtrl(id=wxID_PZPLOTSMARKERSIZE, initial=1,
-              max=10, min=1, name='MarkerSize', parent=self, pos=wxPoint(550,
-              96), size=wxSize(40, 22), style=wxSP_ARROW_KEYS)
-        EVT_SPINCTRL(self.MarkerSize, wxID_PZPLOTSMARKERSIZE,
+        self.MarkerSize = wxSpinCtrl(id=wxID_PANELMARKERSIZE, initial=1, max=10,
+              min=1, name='MarkerSize', parent=self, pos=wxPoint(550, 96),
+              size=wxSize(40, 22), style=wxSP_ARROW_KEYS)
+        EVT_SPINCTRL(self.MarkerSize, wxID_PANELMARKERSIZE,
               self.OnMarkersizeSpinctrl)
 
-        self.staticText3 = wxStaticText(id=wxID_PZPLOTSSTATICTEXT3,
-              label='Size', name='staticText3', parent=self, pos=wxPoint(516,
-              98), size=wxSize(24, 16), style=0)
+        self.staticText3 = wxStaticText(id=wxID_PANELSTATICTEXT3, label='Size',
+              name='staticText3', parent=self, pos=wxPoint(516, 98),
+              size=wxSize(24, 16), style=0)
 
-        self.Marks = wxCheckBox(id=wxID_PZPLOTSMARKS, label='', name='Marks',
+        self.Marks = wxCheckBox(id=wxID_PANELMARKS, label='', name='Marks',
               parent=self, pos=wxPoint(496, 71), size=wxSize(20, 20), style=0)
         self.Marks.SetValue(false)
-        EVT_CHECKBOX(self.Marks, wxID_PZPLOTSMARKS, self.OnMarksCheckbox)
+        EVT_CHECKBOX(self.Marks, wxID_PANELMARKS, self.OnMarksCheckbox)
 
     def __init__(self, parent):
         self._init_ctrls(parent)
-        parent.AddPage(imageId=-1, page=self, select=True, text='Pzplots')
+        self.Move(wxPoint(0,0))
         import pzplots
         import string
         listpzplots = StringIO(pzplots.__doc__)
@@ -111,10 +110,10 @@ class Pzplots(wxPanel):
                 doread = false
                               
     def AddPzplotsCategory(self, n, il, ixsize, iysize, iymin):
-        exec("[wxID_PZPLOTS"+n+",] = map(lambda _init_ctrls: wxNewId(), range(1))")
+        exec("[wxID_PANEL"+n+",] = map(lambda _init_ctrls: wxNewId(), range(1))")
         ix = 0
         iy = iymin + (il-1)*iysize 
-        exec("self."+n+" = wxStaticText(id=wxID_PZPLOTS"+n+", label='"+n+"',name='"+n+"', parent=self, pos=wxPoint(%g, %g), size=wxSize(%g,%g), style=0)"%(ix,iy,ixsize,iysize))
+        exec("self."+n+" = wxStaticText(id=wxID_PANEL"+n+", label='"+n+"',name='"+n+"', parent=self, pos=wxPoint(%g, %g), size=wxSize(%g,%g), style=0)"%(ix,iy,ixsize,iysize))
 
     def AddPzplotsButton(self, i, n, h, il, nlong, ixsize, iysize, iymin):
         exec("def On"+n+"Button(self,event):pz"+n+"("+
@@ -125,13 +124,13 @@ class Pzplots(wxPanel):
               "marker=self.pltmarker,"+
               "msize=self.pltmsize)")
         import new
-        exec("self.On"+n+"Button=new.instancemethod(On"+n+"Button,self,Pzplots)")
-        exec("[wxID_PZPLOTS"+n+",] = map(lambda _init_ctrls: wxNewId(), range(1))")
+        exec("self.On"+n+"Button=new.instancemethod(On"+n+"Button,self,panel)")
+        exec("[wxID_PANEL"+n+",] = map(lambda _init_ctrls: wxNewId(), range(1))")
         ix = i*ixsize
         iy = iymin + (il-1)*iysize
-        exec("self."+n+" = wxButton(id=wxID_PZPLOTS"+n+", label='"+n+"',name='"+n+"', parent=self, pos=wxPoint(%g, %g), size=wxSize(%g,%g), style=0)"%(ix,iy,ixsize,iysize))
+        exec("self."+n+" = wxButton(id=wxID_PANEL"+n+", label='"+n+"',name='"+n+"', parent=self, pos=wxPoint(%g, %g), size=wxSize(%g,%g), style=0)"%(ix,iy,ixsize,iysize))
         exec('self.'+n+'.SetToolTipString("'+h+'")')
-        exec("EVT_BUTTON(self."+n+", wxID_PZPLOTS"+n+", self.On"+n+"Button)")
+        exec("EVT_BUTTON(self."+n+", wxID_PANEL"+n+", self.On"+n+"Button)")
 
     def addfunction(self,f1,f2):
         self.f1=f2

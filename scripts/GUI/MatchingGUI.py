@@ -1,4 +1,4 @@
-#Boa:FramePanel:MatchingGUI
+#Boa:FramePanel:panel
 
 from wxPython.wx import *
 from wxPython.lib.anchors import LayoutAnchors
@@ -7,20 +7,17 @@ import newstdout
 import warp
 import __main__
 
-[wxID_MATCHINGGUI, wxID_MATCHINGGUIENDMATCHOUTPUT, wxID_MATCHINGGUIFINALA, 
- wxID_MATCHINGGUIFINALALABEL, wxID_MATCHINGGUIFINALAP, 
- wxID_MATCHINGGUIFINALAPLABEL, wxID_MATCHINGGUIFINALB, 
- wxID_MATCHINGGUIFINALBLABEL, wxID_MATCHINGGUIFINALBP, 
- wxID_MATCHINGGUIFINALBPLABEL, wxID_MATCHINGGUIMATCHEND, 
- wxID_MATCHINGGUIMATCHINGTYPES, wxID_MATCHINGGUIPANEL1, 
- wxID_MATCHINGGUIPANEL2, wxID_MATCHINGGUIPERIODICLABEL, 
- wxID_MATCHINGGUIPLOTENDMATCH, wxID_MATCHINGGUISETQUAD0, 
- wxID_MATCHINGGUISETQUAD1, wxID_MATCHINGGUISETQUAD2, wxID_MATCHINGGUISETQUAD3, 
- wxID_MATCHINGGUIUSEEMLT, wxID_MATCHINGGUIUSEHELE, wxID_MATCHINGGUIUSEMMLT, 
- wxID_MATCHINGGUIUSEQUAD, wxID_MATCHINGGUIVARYQUADS, 
+[wxID_PANEL, wxID_PANELENDMATCHOUTPUT, wxID_PANELFINALA, 
+ wxID_PANELFINALALABEL, wxID_PANELFINALAP, wxID_PANELFINALAPLABEL, 
+ wxID_PANELFINALB, wxID_PANELFINALBLABEL, wxID_PANELFINALBP, 
+ wxID_PANELFINALBPLABEL, wxID_PANELMATCHEND, wxID_PANELMATCHINGTYPES, 
+ wxID_PANELPANEL1, wxID_PANELPANEL2, wxID_PANELPERIODICLABEL, 
+ wxID_PANELPLOTENDMATCH, wxID_PANELSETQUAD0, wxID_PANELSETQUAD1, 
+ wxID_PANELSETQUAD2, wxID_PANELSETQUAD3, wxID_PANELUSEEMLT, wxID_PANELUSEHELE, 
+ wxID_PANELUSEMMLT, wxID_PANELUSEQUAD, wxID_PANELVARYQUADS, 
 ] = map(lambda _init_ctrls: wxNewId(), range(25))
 
-class MatchingGUI(wxPanel):
+class panel(wxPanel):
     def _init_coll_MatchingTypes_Pages(self, parent):
         # generated method, don't edit
 
@@ -35,168 +32,162 @@ class MatchingGUI(wxPanel):
 
     def _init_ctrls(self, prnt):
         # generated method, don't edit
-        wxPanel.__init__(self, id=wxID_MATCHINGGUI, name='MatchingGUI',
-              parent=prnt, pos=wxPoint(375, 304), size=wxSize(548, 315),
-              style=wxTAB_TRAVERSAL)
+        wxPanel.__init__(self, id=wxID_PANEL, name='MatchingGUI', parent=prnt,
+              pos=wxPoint(0, 0), size=wxSize(556, 349), style=wxTAB_TRAVERSAL)
         self._init_utils()
         self.SetClientSize(wxSize(548, 315))
         EVT_PAINT(self, self.OnMatchingguiPaint)
 
-        self.MatchingTypes = wxNotebook(id=wxID_MATCHINGGUIMATCHINGTYPES,
+        self.MatchingTypes = wxNotebook(id=wxID_PANELMATCHINGTYPES,
               name='MatchingTypes', parent=self, pos=wxPoint(0, 0),
               size=wxSize(548, 315), style=0)
         self.MatchingTypes.SetToolTipString('Envelope matching')
 
-        self.panel1 = wxPanel(id=wxID_MATCHINGGUIPANEL1, name='panel1',
-              parent=self.MatchingTypes, pos=wxPoint(0, 0), size=wxSize(544,
-              281), style=wxTAB_TRAVERSAL)
+        self.panel1 = wxPanel(id=wxID_PANELPANEL1, name='panel1',
+              parent=self.MatchingTypes, pos=wxPoint(0, 0), size=wxSize(540,
+              289), style=wxTAB_TRAVERSAL)
 
-        self.PeriodicLabel = wxStaticText(id=wxID_MATCHINGGUIPERIODICLABEL,
+        self.PeriodicLabel = wxStaticText(id=wxID_PANELPERIODICLABEL,
               label='Matching to a periodic lattice', name='PeriodicLabel',
-              parent=self.panel1, pos=wxPoint(4, 4), size=wxSize(185, 18),
+              parent=self.panel1, pos=wxPoint(4, 4), size=wxSize(238, 22),
               style=0)
         self.PeriodicLabel.SetToolTipString('')
         self.PeriodicLabel.SetFont(wxFont(14, wxSWISS, wxNORMAL, wxNORMAL,
               False, ''))
 
-        self.panel2 = wxPanel(id=wxID_MATCHINGGUIPANEL2, name='panel2',
-              parent=self.MatchingTypes, pos=wxPoint(0, 0), size=wxSize(544,
-              281), style=wxTAB_TRAVERSAL)
+        self.panel2 = wxPanel(id=wxID_PANELPANEL2, name='panel2',
+              parent=self.MatchingTypes, pos=wxPoint(0, 0), size=wxSize(540,
+              289), style=wxTAB_TRAVERSAL)
 
-        self.FinalaLabel = wxStaticText(id=wxID_MATCHINGGUIFINALALABEL,
+        self.FinalaLabel = wxStaticText(id=wxID_PANELFINALALABEL,
               label='Final a', name='FinalaLabel', parent=self.panel2,
               pos=wxPoint(16, 12), size=wxSize(39, 16), style=0)
         self.FinalaLabel.SetToolTipString('')
 
-        self.FinalbLabel = wxStaticText(id=wxID_MATCHINGGUIFINALBLABEL,
+        self.FinalbLabel = wxStaticText(id=wxID_PANELFINALBLABEL,
               label='Final b', name='FinalbLabel', parent=self.panel2,
               pos=wxPoint(16, 42), size=wxSize(39, 16), style=0)
         self.FinalbLabel.SetToolTipString('')
 
-        self.Finala = wxTextCtrl(id=wxID_MATCHINGGUIFINALA, name='Finala',
+        self.Finala = wxTextCtrl(id=wxID_PANELFINALA, name='Finala',
               parent=self.panel2, pos=wxPoint(70, 4), size=wxSize(80, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='afinal')
         self.Finala.SetToolTipString('Final value of a to match to')
-        EVT_TEXT_ENTER(self.Finala, wxID_MATCHINGGUIFINALA,
-              self.OnFinalaTextEnter)
+        EVT_TEXT_ENTER(self.Finala, wxID_PANELFINALA, self.OnFinalaTextEnter)
 
-        self.Finalb = wxTextCtrl(id=wxID_MATCHINGGUIFINALB, name='Finalb',
+        self.Finalb = wxTextCtrl(id=wxID_PANELFINALB, name='Finalb',
               parent=self.panel2, pos=wxPoint(70, 34), size=wxSize(80, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='bfinal')
         self.Finalb.SetToolTipString('Final value of b to match to')
-        EVT_TEXT_ENTER(self.Finalb, wxID_MATCHINGGUIFINALB,
-              self.OnFinalbTextEnter)
+        EVT_TEXT_ENTER(self.Finalb, wxID_PANELFINALB, self.OnFinalbTextEnter)
 
-        self.FinalapLabel = wxStaticText(id=wxID_MATCHINGGUIFINALAPLABEL,
+        self.FinalapLabel = wxStaticText(id=wxID_PANELFINALAPLABEL,
               label="Final a'", name='FinalapLabel', parent=self.panel2,
               pos=wxPoint(16, 72), size=wxSize(42, 16), style=0)
         self.FinalapLabel.SetToolTipString('')
 
-        self.FinalbpLabel = wxStaticText(id=wxID_MATCHINGGUIFINALBPLABEL,
+        self.FinalbpLabel = wxStaticText(id=wxID_PANELFINALBPLABEL,
               label="Final b'", name='FinalbpLabel', parent=self.panel2,
               pos=wxPoint(16, 102), size=wxSize(42, 16), style=0)
         self.FinalbpLabel.SetToolTipString('')
 
-        self.Finalap = wxTextCtrl(id=wxID_MATCHINGGUIFINALAP, name='Finalap',
+        self.Finalap = wxTextCtrl(id=wxID_PANELFINALAP, name='Finalap',
               parent=self.panel2, pos=wxPoint(70, 64), size=wxSize(80, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='apfinal')
         self.Finalap.SetToolTipString("Final value of a' to match to")
-        EVT_TEXT_ENTER(self.Finalap, wxID_MATCHINGGUIFINALAP,
-              self.OnFinalapTextEnter)
+        EVT_TEXT_ENTER(self.Finalap, wxID_PANELFINALAP, self.OnFinalapTextEnter)
 
-        self.Finalbp = wxTextCtrl(id=wxID_MATCHINGGUIFINALBP, name='Finalbp',
+        self.Finalbp = wxTextCtrl(id=wxID_PANELFINALBP, name='Finalbp',
               parent=self.panel2, pos=wxPoint(70, 94), size=wxSize(80, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='bpfinal')
         self.Finalbp.SetToolTipString("Final value of b' to match to")
-        EVT_TEXT_ENTER(self.Finalbp, wxID_MATCHINGGUIFINALBP,
-              self.OnFinalbpTextEnter)
+        EVT_TEXT_ENTER(self.Finalbp, wxID_PANELFINALBP, self.OnFinalbpTextEnter)
 
-        self.VaryQuads = wxStaticText(id=wxID_MATCHINGGUIVARYQUADS,
+        self.VaryQuads = wxStaticText(id=wxID_PANELVARYQUADS,
               label='Quads to vary', name='VaryQuads', parent=self.panel2,
               pos=wxPoint(12, 120), size=wxSize(80, 16), style=0)
 
-        self.SetQuad0 = wxTextCtrl(id=wxID_MATCHINGGUISETQUAD0, name='SetQuad0',
+        self.SetQuad0 = wxTextCtrl(id=wxID_PANELSETQUAD0, name='SetQuad0',
               parent=self.panel2, pos=wxPoint(8, 140), size=wxSize(30, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='')
-        EVT_TEXT_ENTER(self.SetQuad0, wxID_MATCHINGGUISETQUAD0,
+        EVT_TEXT_ENTER(self.SetQuad0, wxID_PANELSETQUAD0,
               self.OnSetquad0TextEnter)
 
-        self.SetQuad1 = wxTextCtrl(id=wxID_MATCHINGGUISETQUAD1, name='SetQuad1',
+        self.SetQuad1 = wxTextCtrl(id=wxID_PANELSETQUAD1, name='SetQuad1',
               parent=self.panel2, pos=wxPoint(42, 140), size=wxSize(30, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='')
-        EVT_TEXT_ENTER(self.SetQuad1, wxID_MATCHINGGUISETQUAD1,
+        EVT_TEXT_ENTER(self.SetQuad1, wxID_PANELSETQUAD1,
               self.OnSetquad1TextEnter)
 
-        self.SetQuad2 = wxTextCtrl(id=wxID_MATCHINGGUISETQUAD2, name='SetQuad2',
+        self.SetQuad2 = wxTextCtrl(id=wxID_PANELSETQUAD2, name='SetQuad2',
               parent=self.panel2, pos=wxPoint(76, 140), size=wxSize(30, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='')
         self.SetQuad2.SetToolTipString('')
-        EVT_TEXT_ENTER(self.SetQuad2, wxID_MATCHINGGUISETQUAD2,
+        EVT_TEXT_ENTER(self.SetQuad2, wxID_PANELSETQUAD2,
               self.OnSetquad2TextEnter)
 
-        self.SetQuad3 = wxTextCtrl(id=wxID_MATCHINGGUISETQUAD3, name='SetQuad3',
+        self.SetQuad3 = wxTextCtrl(id=wxID_PANELSETQUAD3, name='SetQuad3',
               parent=self.panel2, pos=wxPoint(110, 140), size=wxSize(30, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
               value='')
         self.SetQuad3.SetToolTipString('')
-        EVT_TEXT_ENTER(self.SetQuad3, wxID_MATCHINGGUISETQUAD3,
+        EVT_TEXT_ENTER(self.SetQuad3, wxID_PANELSETQUAD3,
               self.OnSetquad3TextEnter)
 
-        self.UseQuad = wxRadioButton(id=wxID_MATCHINGGUIUSEQUAD, label='Quad',
+        self.UseQuad = wxRadioButton(id=wxID_PANELUSEQUAD, label='Quad',
               name='UseQuad', parent=self.panel2, pos=wxPoint(16, 170),
               size=wxSize(94, 24), style=wxTAB_TRAVERSAL)
         self.UseQuad.SetValue(True)
         self.UseQuad.SetToolTipString('Use hard edged quadrupoles')
-        EVT_RADIOBUTTON(self.UseQuad, wxID_MATCHINGGUIUSEQUAD,
+        EVT_RADIOBUTTON(self.UseQuad, wxID_PANELUSEQUAD,
               self.OnUsequadRadiobutton)
 
-        self.UseHele = wxRadioButton(id=wxID_MATCHINGGUIUSEHELE, label='Hele',
+        self.UseHele = wxRadioButton(id=wxID_PANELUSEHELE, label='Hele',
               name='UseHele', parent=self.panel2, pos=wxPoint(16, 188),
               size=wxSize(94, 24), style=wxTAB_TRAVERSAL)
         self.UseHele.SetValue(False)
         self.UseHele.SetToolTipString('Use hard edged elements')
-        EVT_RADIOBUTTON(self.UseHele, wxID_MATCHINGGUIUSEHELE,
+        EVT_RADIOBUTTON(self.UseHele, wxID_PANELUSEHELE,
               self.OnUseheleRadiobutton)
 
-        self.UseEmlt = wxRadioButton(id=wxID_MATCHINGGUIUSEEMLT, label='Emlt',
+        self.UseEmlt = wxRadioButton(id=wxID_PANELUSEEMLT, label='Emlt',
               name='UseEmlt', parent=self.panel2, pos=wxPoint(86, 170),
               size=wxSize(94, 24), style=wxTAB_TRAVERSAL)
         self.UseEmlt.SetValue(False)
         self.UseEmlt.SetToolTipString('Use axially varying electric element')
-        EVT_RADIOBUTTON(self.UseEmlt, wxID_MATCHINGGUIUSEEMLT,
+        EVT_RADIOBUTTON(self.UseEmlt, wxID_PANELUSEEMLT,
               self.OnUseemltRadiobutton)
 
-        self.UseMmlt = wxRadioButton(id=wxID_MATCHINGGUIUSEMMLT, label='Mmlt',
+        self.UseMmlt = wxRadioButton(id=wxID_PANELUSEMMLT, label='Mmlt',
               name='UseMmlt', parent=self.panel2, pos=wxPoint(86, 188),
               size=wxSize(94, 24), style=wxTAB_TRAVERSAL)
         self.UseMmlt.SetValue(False)
         self.UseMmlt.SetToolTipString('Use axially varying magnetic elements')
-        EVT_RADIOBUTTON(self.UseMmlt, wxID_MATCHINGGUIUSEMMLT,
+        EVT_RADIOBUTTON(self.UseMmlt, wxID_PANELUSEMMLT,
               self.OnUsemmltRadiobutton)
 
-        self.MatchEnd = wxButton(id=wxID_MATCHINGGUIMATCHEND, label='Match',
+        self.MatchEnd = wxButton(id=wxID_PANELMATCHEND, label='Match',
               name='MatchEnd', parent=self.panel2, pos=wxPoint(12, 236),
               size=wxSize(80, 22), style=wxTAB_TRAVERSAL)
         self.MatchEnd.SetToolTipString('')
-        EVT_BUTTON(self.MatchEnd, wxID_MATCHINGGUIMATCHEND,
-              self.OnMatchendButton)
+        EVT_BUTTON(self.MatchEnd, wxID_PANELMATCHEND, self.OnMatchendButton)
 
-        self.PlotEndMatch = wxCheckBox(id=wxID_MATCHINGGUIPLOTENDMATCH,
+        self.PlotEndMatch = wxCheckBox(id=wxID_PANELPLOTENDMATCH,
               label='Plot envelope after match', name='PlotEndMatch',
               parent=self.panel2, pos=wxPoint(12, 258), size=wxSize(168, 24),
               style=wxTAB_TRAVERSAL)
         self.PlotEndMatch.SetValue(True)
-        EVT_CHECKBOX(self.PlotEndMatch, wxID_MATCHINGGUIPLOTENDMATCH,
+        EVT_CHECKBOX(self.PlotEndMatch, wxID_PANELPLOTENDMATCH,
               self.OnPlotendmatchCheckbox)
 
-        self.EndMatchOutput = wxTextCtrl(id=wxID_MATCHINGGUIENDMATCHOUTPUT,
+        self.EndMatchOutput = wxTextCtrl(id=wxID_PANELENDMATCHOUTPUT,
               name='EndMatchOutput', parent=self.panel2, pos=wxPoint(180, 24),
               size=wxSize(360, 250), style=wxTE_READONLY | wxTE_MULTILINE,
               value='')
@@ -206,7 +197,7 @@ class MatchingGUI(wxPanel):
 
     def __init__(self, parent, id=0, pos=0, size=0, style=0, name=0):
         self._init_ctrls(parent)
-        parent.AddPage(imageId=-1, page=self, select=True, text='Matching')
+        self.Move(wxPoint(0,0))
         self.plotafterendmatch = self.PlotEndMatch.GetValue()
         self.endmatchquads = [None,None,None,None]
         self.usequad = self.UseQuad.GetValue()
