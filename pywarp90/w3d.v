@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.15 $, $Date: 2001/08/01 00:47:40 $
+#@(#) File W3D.V, version $Revision: 3.16 $, $Date: 2001/08/03 00:05:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.15 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.16 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -46,7 +46,11 @@ lbeforefs  logical    /.false./  # Turns on call to basis function "beforefs"
 lafterfs   logical    /.false./  # Turns on call to basis function "afterfs"
 izfsmin    integer    /0/ +parallel # Left boundary for partial field solve.
 izfsmax    integer    /0/ +parallel # Right boundary for partial field solve.
+solvergeom integer    /0/  # Geometry of field solver
+XYZgeom    integer    /0/  # 3D-XYZ geometry will be used if 3Dsolver=XYZgeom
+RZgeom     integer    /1/  # axisymmetric RZ geometry will be used if 3Dsolver=RZgeom
 
+ 
 *********** InDiag3d dump:
 lgetese3d logical /.true./ # Sets whether electrostatic-energy is calculated,
                            # the product of rho and phi.
@@ -274,27 +278,29 @@ iy_axis                   integer [1]       # y location of axis in mesh
 iz_axis                   integer [1]       # z location of axis in mesh
 
 *********** InjectVars3d dump:
+inj_nx               integer  # size injection arrays in x
+inj_ny               integer  # size injection arrays in y
 inj_d                real /1./
    # Distance from surface where phi is fetched. In units of dz.
 inj_f                real /1./
    # Scaling factor on the number of particles injected.
 inj_zstart           real /0./
    # Starting location relative to the emitting surface location.
-inj_grid(0:nx,0:ny) _real
+inj_grid(0:inj_nx,0:inj_ny) _real
    # Grid giving axial field grid location of injection sources
-inj_angl(0:nx,0:ny) _real
+inj_angl(0:inj_nx,0:inj_ny) _real
    # Grid giving angle of injection sources for each transverse location
-inj_np(0:nx,0:ny)   _real
+inj_np(0:inj_nx,0:inj_ny)   _real
    # Grid holding number of particles injected on the current time step.
-inj_prev(0:nx,0:ny) _real
+inj_prev(0:inj_nx,0:inj_ny) _real
    # Grid holding number of particles injected on previous time step.
-inj_id(0:nx,0:ny)   _integer
+inj_id(0:inj_nx,0:inj_ny)   _integer
    # Grid holding the number of the injection source for each transvere cell
-inj_rho(0:nx,0:ny)  _real
+inj_rho(0:inj_nx,0:inj_ny)  _real
    # Surface charge density at the emitting surface.
-inj_phi(0:nx,0:ny)  _real
+inj_phi(0:inj_nx,0:inj_ny)  _real
    # Electrostatic potential at the emitting surface.
-inj_area(0:nx,0:ny)  _real
+inj_area(0:inj_nx,0:inj_ny)  _real
    # Inverse of the fraction of the grid cell's area within the emitting surface
 
 *********** Setpwork3d:
