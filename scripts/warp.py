@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.49 2003/02/27 13:42:30 dave Exp $"
+warp_version = "$Id: warp.py,v 1.50 2003/02/27 15:24:03 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -89,6 +89,7 @@ if sys.argv[0]:
     top.runid = sys.argv[0][:-3]
   else:
     top.runid = sys.argv[0]
+runid = arraytostr(top.runid)
 
 #=============================================================================
 # --- Set physical constants which depend on others.
