@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.183 $, $Date: 2005/01/24 14:37:27 $
+#@(#) File W3D.V, version $Revision: 3.184 $, $Date: 2005/02/16 00:17:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.183 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.184 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -320,6 +320,9 @@ zmmaxp real      # Upper limit of z for grid for particles
 phip(0:nxp,0:nyp,-1:nzp+1) _real +fassign # Potential used by the particles to
                  # calculated the field from the solution of Poisson's equation.
 rhop(0:nxp,0:nyp,0:nzp)    _real +fassign # Charge density from the particles.
+nsrhoptmp integer /0/
+jsrhoptmp(0:nsrhoptmp-1) _integer /0/ #
+rhoptmp(0:nxp,0:nyp,0:nzp,0:nsrhoptmp-1)    _real +fassign # Charge density from the particles.
 
 *********** Efields3d:
 nx_selfe integer /0/ +dump           # Same as nx
