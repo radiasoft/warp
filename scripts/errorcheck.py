@@ -1,5 +1,5 @@
 from warp import *
-errorcheck_version = "$Id: errorcheck.py,v 1.5 2001/02/13 02:42:38 dave Exp $"
+errorcheck_version = "$Id: errorcheck.py,v 1.6 2001/05/03 23:21:34 dave Exp $"
 
 def errorcheckdoc():
   print "errorcheck: runs all checks described below"
@@ -16,6 +16,7 @@ It is not quaranteed to find all mistakes.
   checkparticleload()
   checkibpush()
   checkenv()
+  checklattice()
 
 ############################################################################
 ############################################################################
@@ -124,4 +125,39 @@ def checkenv():
     if (env.tunezs <  env.zl or env.zu <= env.tunezs or
         env.tuneze <= env.zl or env.zu <  env.tuneze):
       raise "ERROR: tunezs and tuneze must be with the zl and zu"
+
+############################################################################
+def overlapcheck(zs,ze):
+  for i in range(len(zs)):
+    ii=compress(logical_and(greater(ze,zs[i]),less(zs,ze[i])),iota(0,len(zs)-1))
+    if len(ii) > 1: return ii
+  return [0]
+def checklattice():
+  """Make sure that there are no overlapping lattice elements"""
+  ii = overlapcheck(top.drftzs,top.drftze)
+  if len(ii) > 1: print "ERROR: drft elements ",ii," overlap"
+  ii = overlapcheck(top.bendzs,top.bendze)
+  if len(ii) > 1: print "ERROR: bend elements ",ii," overlap"
+  ii = overlapcheck(top.dipozs,top.dipoze)
+  if len(ii) > 1: print "ERROR: dipo elements ",ii," overlap"
+  ii = overlapcheck(top.quadzs,top.quadze)
+  if len(ii) > 1: print "ERROR: quad elements ",ii," overlap"
+  ii = overlapcheck(top.sextzs,top.sextze)
+  if len(ii) > 1: print "ERROR: sext elements ",ii," overlap"
+  ii = overlapcheck(top.helezs,top.heleze)
+  if len(ii) > 1: print "ERROR: hele elements ",ii," overlap"
+  ii = overlapcheck(top.acclzs,top.acclze)
+  if len(ii) > 1: print "ERROR: accl elements ",ii," overlap"
+  ii = overlapcheck(top.emltzs,top.emltze)
+  if len(ii) > 1: print "ERROR: emlt elements ",ii," overlap"
+  ii = overlapcheck(top.mmltzs,top.mmltze)
+  if len(ii) > 1: print "ERROR: mmlt elements ",ii," overlap"
+  ii = overlapcheck(top.mmlt2zs,top.mmlt2ze)
+  if len(ii) > 1: print "ERROR: mmlt2 elements ",ii," overlap"
+  ii = overlapcheck(top.bgrdzs,top.bgrdze)
+  if len(ii) > 1: print "ERROR: bgrd elements ",ii," overlap"
+  ii = overlapcheck(top.bgrd2zs,top.bgrd2ze)
+  if len(ii) > 1: print "ERROR: bgrd2 elements ",ii," overlap"
+  ii = overlapcheck(top.pgrdzs,top.pgrdze)
+  if len(ii) > 1: print "ERROR: pgrd elements ",ii," overlap"
 
