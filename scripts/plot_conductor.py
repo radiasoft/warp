@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.20 2001/07/17 17:33:18 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.21 2001/08/13 19:08:41 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -96,14 +96,11 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     xmmin = 0.
     ymmin = 0.
   if plotphi:
-    #xx=iota(0,w3d.nx)*dx + xmmin
-    #yy=iota(0,w3d.ny)*dy + ymmin
     ppp = getphi(iz=iz)
-    #ppp = transpose(ppp)
-    #plotc(ppp,yy,xx,contours=contours,filled=filled,color=phicolor)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-              xmin=xmmin,xmax=xmmin+w3d.nx*dx,
-              ymin=ymmin,ymax=ymmin+w3d.ny*dy)
+    if me == 0:
+      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
+                xmin=xmmin,xmax=xmmin+w3d.nx*dx,
+                ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.izcond[0:f3d.ncond],izlocal),arange(f3d.ncond))
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
@@ -163,14 +160,12 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     zmmin = 0.
     if lparallel: zmmin = top.izslave[me]
   if plotphi:
-    #xx = iota(0,w3d.nx)*dx + xmmin
-    #zz = iota(0,w3d.nzfull)*dz + zmmin
     ppp = getphi(iy=iy)
-    #plotc(ppp,xx,zz,contours=contours,filled=filled,color=phicolor)
     ppp = transpose(ppp)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-              xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
-              ymin=xmmin,ymax=xmmin+w3d.nx*dx)
+    if me == 0:
+      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
+                xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
+                ymin=xmmin,ymax=xmmin+w3d.nx*dx)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
@@ -233,14 +228,12 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     zmmin = 0.
     if lparallel: zmmin = top.izslave[me]
   if plotphi:
-    #yy = iota(0,w3d.ny)*dy + ymmin
-    #zz = iota(0,w3d.nzfull)*dz + zmmin
     ppp = getphi(ix=ix)
-    #plotc(ppp,yy,zz,contours=contours,filled=filled,color=phicolor)
     ppp = transpose(ppp)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-              xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
-              ymin=ymmin,ymax=ymmin+w3d.ny*dy)
+    if me == 0:
+      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
+                xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
+                ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
@@ -475,9 +468,10 @@ in X-Y plane
     xmmin = 0.
   if plotphi:
     ppp = getphi(iz=iz)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-              xmin=xmmin,xmax=xmmin+w3d.nx*dx,
-              ymin=ymmin,ymax=ymmin+w3d.ny*dy)
+    if me == 0:
+      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
+                xmin=xmmin,xmax=xmmin+w3d.nx*dx,
+                ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.izcond[0:f3d.ncond],izlocal),arange(f3d.ncond))
     x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
@@ -527,9 +521,10 @@ in Z-X plane
   if plotphi:
     ppp = getphi(iy=iy)
     ppp = transpose(ppp)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-              xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
-              ymin=xmmin,ymax=xmmin+w3d.nx*dx)
+    if me == 0:
+      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
+                xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
+                ymin=xmmin,ymax=xmmin+w3d.nx*dx)
   if (f3d.ncond > 0):
     ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
     x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
@@ -579,9 +574,10 @@ in Z-Y plane
   if plotphi:
     ppp = getphi(ix=ix)
     ppp = transpose(ppp)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-              xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
-              ymin=ymmin,ymax=ymmin+w3d.ny*dy)
+    if me == 0:
+      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
+                xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
+                ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if (f3d.ncond > 0):
     ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
     y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
