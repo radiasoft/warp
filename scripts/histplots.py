@@ -1,13 +1,12 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.2 2001/01/25 22:10:34 dave Exp $"
 
 ###########################################################################
 def hpdoc():
   """
 What follows is a list of all possible arguments to any of the history
 plotting routines, along with their default values.
-  - oord Data to be plotted (Only required argument)
   - absc Data for the abscissa. Defaults to either thist or hzbeam
   - xmin, xmax, ymin, ymax Plot limits, defaults to extrema of data
   - titlet, titleb, titlel, titler Plot titles, defaults to blank except
@@ -264,165 +263,776 @@ Plots data in various ways. By default, makes a mountain range plot.
   else:
     mountainplot1(kw['titlet'],hzarray,kw)
 
-#############################################################################
-# Now define the many plot functions.
-
-# --- List of all of the history variables and their docs
-# --- It would be better to generate these list directly from
-# --- top.varlist("Hist"). The list is done here to clean up the documentation.
-hist1list = [["hzbeam","Beam frame location","(m)"],
-             ["hvbeam","Beam frame velocity","(m/s)"],
-             ["hbmlen","RMS beam length","(m)"],
-             ["hefld","Field energy","(J)"],
-             ["hekzmbe","Total Z Kinetic energy minus beam energy","(J)"],
-             ["hekzbeam","Z Kinetic energy in the beam frame","(J)"],
-             ["hekperp","Perp Kinetic energy","(J)"]]
-hist2list = [["hepsx","X emittance","(pi-m-rad)"],
-             ["hepsy","Y emittance","(pi-m-rad)"],
-             ["hepsz","Z emittance","(pi-m-rad)"],
-             ["hepsnx","X normalized emittance","(pi-mm-mrad)"],
-             ["hepsny","Y normalized emittance","(pi-mm-mrad)"],
-             ["hepsnz","Z normalized emittance","(pi-mm-mrad)"],
-             ["hepsg","Generalized emittance","(pi-m-rad)"],
-             ["hepsh","Generalized emittance","(pi-m-rad)"],
-             ["hepsng","Generalized normalized emittance","(pi-mm-mrad)"],
-             ["hepsnh","Generalized normalized emittance","(pi-mm-mrad)"],
-             ["hpnum","Number of particles",""],
-             ["hrhomid","Charge density on axis","(C/m**3)"],
-             ["hrhomax","Charge density max","(C/m**3)"],
-             ["hxbar","True mean x","(m)"],
-             ["hybar","True mean y","(m)"],
-             ["hxybar","True mean xy","(m**2)"],
-             ["hxrms","True RMS x","(m)"],
-             ["hyrms","True RMS y","(m)"],
-             ["hxprms","True RMS x'","(rad)"],
-             ["hyprms","True RMS y'","(rad)"],
-             ["hxsqbar","Mean x squared","(m**2)"],
-             ["hysqbar","Mean y squared","(m**2)"],
-             ["hvxbar","Mean vx","(m/s)"],
-             ["hvybar","Mean vy","(m/s)"],
-             ["hvzbar","Mean vz","(m/s)"],
-             ["hxpbar","Mean x'","(rad)"],
-             ["hypbar","Mean y'","(rad)"],
-             ["hvxrms","True RMS vx","(m/s)"],
-             ["hvyrms","True RMS vy","(m/s)"],
-             ["hvzrms","True RMS vz","(m/s)"],
-             ["hxpsqbar","Mean x' squared","(rad**2)"],
-             ["hypsqbar","Mean y' squared","(rad**2)"],
-             ["hxxpbar","Mean x*x'","(m-rad)"],
-             ["hyypbar","Mean y*y'","(m-rad)"],
-             ["hxypbar","Mean x*y'","(m-rad)"],
-             ["hyxpbar","Mean y*x'","(m**2)"],
-             ["hxpypbar","Mean x'*y'","(rad**2)"],
-             ["hxvzbar","Mean x*vz","(m-m/s)"],
-             ["hyvzbar","Mean y*vz","(m-m/s)"],
-             ["hvxvzbar","Mean vx*vz","((m/s)**2)"],
-             ["hvyvzbar","Mean vy*vz","((m/s)**2)"]]
-hist3list = [["hlinechg","Line charge density"],
-             ["hvzofz","Vz versus space and time"],
-             ["hepsxz","X emittance"],
-             ["hepsyz","Y emittance"],
-             ["hepsnxz","X normalized emittance"],
-             ["hepsnyz","Y normalized emittance"],
-             ["hepsgz","Generalized emittance"],
-             ["hepshz","Generalized emittance"],
-             ["hepsngz","Generalized nrmlzd emittance"],
-             ["hepsnhz","Generalized nrmlzd emittance"],
-             ["hxbarz","X bar"],
-             ["hybarz","Y bar"],
-             ["hxybarz","XY bar"],
-             ["hxrmsz","X rms"],
-             ["hyrmsz","Y rms"],
-             ["hxprmsz","X' rms"],
-             ["hyprmsz","Y' rms"],
-             ["hxsqbarz","X**2 bar"],
-             ["hysqbarz","Y**2 bar"],
-             ["hvxbarz","Vx bar"],
-             ["hvybarz","Vy bar"],
-             ["hvzbarz","Vz bar"],
-             ["hxpbarz","X' bar"],
-             ["hypbarz","Y' bar"],
-             ["hvxrmsz","Vx rms"],
-             ["hvyrmsz","Vy rms"],
-             ["hvzrmsz","Vz rms"],
-             ["hxpsqbarz","X'**2 bar"],
-             ["hypsqbarz","Y'**2 bar"],
-             ["hxxpbarz","XX' bar"],
-             ["hyypbarz","YY' bar"],
-             ["hxypbarz","XY' bar"],
-             ["hyxpbarz","YX' bar"],
-             ["hxpypbarz","X'Y' bar"],
-             ["hxvzbarz","XVz bar"],
-             ["hyvzbarz","YVz bar"],
-             ["hvxvzbarz","VxVz bar"],
-             ["hvyvzbarz","VyVz bar"]]
-
-hist4list=[["hptotalke","Total Kinetic Energy","top.hekzbeam+top.hekperp",
-            "(J)"],
-           ["hptotale","Total Energy","top.hefld+top.hekzbeam+top.hekperp",
-                       "(J)"]]
-
-hist5list=[["hpthermale","Z Thermal Energy",
-            "0.5*sum(top.sm*top.sw*top.sp_fract)*top.hpnum*top.hvzrms**2",
-            "(J)"],
-           ["hpeps6d","6-D Emittance","top.hepsx*top.hepsy*top.hepsz",
-            "((pi-m-rad)**3)"],
-           ["hpepst","Transverse Emittance","sqrt(top.hepsx*top.hepsy)",
-            "(pi-m-rad)"],
-           ["hpepsnt","Normalized Transverse Emittance",
-            "sqrt(top.hepsnx*top.hepsny)","(pi-mm-mrad)"],
-           ["hpxedge","X Beam Edge","2.*top.hxrms","(m)"],
-           ["hpyedge","Y Beam Edge","2.*top.hyrms","(m)"],
-           ["hpenvx","X Beam Edge","2.*top.hxrms","(m)"],
-           ["hpenvy","Y Beam Edge","2.*top.hyrms","(m)"]]
-
-
 ###########################################################################
-# --- Template for global history plots
-dd1 = """
-def %s(kwdict={},**kw):
-  "%s. For a complete list of arguments, run hpdoc()."
-  kw.update(kwdict)
-  kw['titlet']="%s"
-  kw['titlel']="%s"
-  hpbasic(%s,kw)
-"""
-
-# --- Template for window history plots
-dd2 = """
-def %s(iw=0,kwdict={},**kw):
-  "%s. For a complete list of arguments, run hpdoc()."
-  kw.update(kwdict)
-  kw['titlet']="%s"
-  kw['titlel']="%s"
-  hpbasicwin(%s,iw,kw)
-"""
-
-# --- Template for zarrays history plots
-dd3 = """
-def %s(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "%s. For more help, run hpdoc() or doc(hpzarray)."
-  if not top.%s: return
-  kw.update(kwdict)
-  kw['titlet']="%s"
-  hpzarray(%s,contour,overlay,iz,kw)
-"""
-
 ###########################################################################
-# --- Create functions for all of the hist variables
-for (vname,vdoc,vunits) in hist1list:
-  exec(dd1%('hp'+vname[1:],vdoc,vdoc,vunits,'top.'+vname))
-for (vname,vdoc,vunits) in hist2list:
-  exec(dd2%('hp'+vname[1:],vdoc,vdoc,vunits,'top.'+vname))
-for (vname,vdoc) in hist3list:
-  exec(dd3%('hp'+vname[1:],vdoc,'l'+vname,vdoc,'top.'+vname))
-for (vname,vdoc,vexp,vunits) in hist4list:
-  exec(dd1%(vname,vdoc,vdoc,vunits,vexp))
-for (vname,vdoc,vexp,vunits) in hist5list:
-  exec(dd2%(vname,vdoc,vdoc,vunits,vexp))
-
 ###########################################################################
-# --- Create some extra specific functions for special cases.
+
+def hpzbeam(kwdict={},**kw):
+  "Beam frame location. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Beam frame location"
+  kw['titlel']="(m)"
+  hpbasic(top.hzbeam,kw)
+
+
+def hpvbeam(kwdict={},**kw):
+  "Beam frame velocity. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Beam frame velocity"
+  kw['titlel']="(m/s)"
+  hpbasic(top.hvbeam,kw)
+
+
+def hpbmlen(kwdict={},**kw):
+  "RMS beam length. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="RMS beam length"
+  kw['titlel']="(m)"
+  hpbasic(top.hbmlen,kw)
+
+
+def hpefld(kwdict={},**kw):
+  "Field energy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Field energy"
+  kw['titlel']="(J)"
+  hpbasic(top.hefld,kw)
+
+
+def hpekzmbe(kwdict={},**kw):
+  "Total Z Kinetic energy minus beam energy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Total Z Kinetic energy minus beam energy"
+  kw['titlel']="(J)"
+  hpbasic(top.hekzmbe,kw)
+
+
+def hpekzbeam(kwdict={},**kw):
+  "Z Kinetic energy in the beam frame. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Z Kinetic energy in the beam frame"
+  kw['titlel']="(J)"
+  hpbasic(top.hekzbeam,kw)
+
+
+def hpekperp(kwdict={},**kw):
+  "Perp Kinetic energy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Perp Kinetic energy"
+  kw['titlel']="(J)"
+  hpbasic(top.hekperp,kw)
+
+
+def hpepsx(iw=0,kwdict={},**kw):
+  "X emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="X emittance"
+  kw['titlel']="(pi-m-rad)"
+  hpbasicwin(top.hepsx,iw,kw)
+
+
+def hpepsy(iw=0,kwdict={},**kw):
+  "Y emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Y emittance"
+  kw['titlel']="(pi-m-rad)"
+  hpbasicwin(top.hepsy,iw,kw)
+
+
+def hpepsz(iw=0,kwdict={},**kw):
+  "Z emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Z emittance"
+  kw['titlel']="(pi-m-rad)"
+  hpbasicwin(top.hepsz,iw,kw)
+
+
+def hpepsnx(iw=0,kwdict={},**kw):
+  "X normalized emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="X normalized emittance"
+  kw['titlel']="(pi-mm-mrad)"
+  hpbasicwin(top.hepsnx,iw,kw)
+
+
+def hpepsny(iw=0,kwdict={},**kw):
+  "Y normalized emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Y normalized emittance"
+  kw['titlel']="(pi-mm-mrad)"
+  hpbasicwin(top.hepsny,iw,kw)
+
+
+def hpepsnz(iw=0,kwdict={},**kw):
+  "Z normalized emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Z normalized emittance"
+  kw['titlel']="(pi-mm-mrad)"
+  hpbasicwin(top.hepsnz,iw,kw)
+
+
+def hpepsg(iw=0,kwdict={},**kw):
+  "Generalized emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Generalized emittance"
+  kw['titlel']="(pi-m-rad)"
+  hpbasicwin(top.hepsg,iw,kw)
+
+
+def hpepsh(iw=0,kwdict={},**kw):
+  "Generalized emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Generalized emittance"
+  kw['titlel']="(pi-m-rad)"
+  hpbasicwin(top.hepsh,iw,kw)
+
+
+def hpepsng(iw=0,kwdict={},**kw):
+  "Generalized normalized emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Generalized normalized emittance"
+  kw['titlel']="(pi-mm-mrad)"
+  hpbasicwin(top.hepsng,iw,kw)
+
+
+def hpepsnh(iw=0,kwdict={},**kw):
+  "Generalized normalized emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Generalized normalized emittance"
+  kw['titlel']="(pi-mm-mrad)"
+  hpbasicwin(top.hepsnh,iw,kw)
+
+
+def hppnum(iw=0,kwdict={},**kw):
+  "Number of particles. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Number of particles"
+  kw['titlel']=""
+  hpbasicwin(top.hpnum,iw,kw)
+
+
+def hprhomid(iw=0,kwdict={},**kw):
+  "Charge density on axis. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Charge density on axis"
+  kw['titlel']="(C/m**3)"
+  hpbasicwin(top.hrhomid,iw,kw)
+
+
+def hprhomax(iw=0,kwdict={},**kw):
+  "Charge density max. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Charge density max"
+  kw['titlel']="(C/m**3)"
+  hpbasicwin(top.hrhomax,iw,kw)
+
+
+def hpxbar(iw=0,kwdict={},**kw):
+  "True mean x. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True mean x"
+  kw['titlel']="(m)"
+  hpbasicwin(top.hxbar,iw,kw)
+
+
+def hpybar(iw=0,kwdict={},**kw):
+  "True mean y. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True mean y"
+  kw['titlel']="(m)"
+  hpbasicwin(top.hybar,iw,kw)
+
+
+def hpxybar(iw=0,kwdict={},**kw):
+  "True mean xy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True mean xy"
+  kw['titlel']="(m**2)"
+  hpbasicwin(top.hxybar,iw,kw)
+
+
+def hpxrms(iw=0,kwdict={},**kw):
+  "True RMS x. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True RMS x"
+  kw['titlel']="(m)"
+  hpbasicwin(top.hxrms,iw,kw)
+
+
+def hpyrms(iw=0,kwdict={},**kw):
+  "True RMS y. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True RMS y"
+  kw['titlel']="(m)"
+  hpbasicwin(top.hyrms,iw,kw)
+
+
+def hpxprms(iw=0,kwdict={},**kw):
+  "True RMS x'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True RMS x'"
+  kw['titlel']="(rad)"
+  hpbasicwin(top.hxprms,iw,kw)
+
+
+def hpyprms(iw=0,kwdict={},**kw):
+  "True RMS y'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True RMS y'"
+  kw['titlel']="(rad)"
+  hpbasicwin(top.hyprms,iw,kw)
+
+
+def hpxsqbar(iw=0,kwdict={},**kw):
+  "Mean x squared. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean x squared"
+  kw['titlel']="(m**2)"
+  hpbasicwin(top.hxsqbar,iw,kw)
+
+
+def hpysqbar(iw=0,kwdict={},**kw):
+  "Mean y squared. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean y squared"
+  kw['titlel']="(m**2)"
+  hpbasicwin(top.hysqbar,iw,kw)
+
+
+def hpvxbar(iw=0,kwdict={},**kw):
+  "Mean vx. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean vx"
+  kw['titlel']="(m/s)"
+  hpbasicwin(top.hvxbar,iw,kw)
+
+
+def hpvybar(iw=0,kwdict={},**kw):
+  "Mean vy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean vy"
+  kw['titlel']="(m/s)"
+  hpbasicwin(top.hvybar,iw,kw)
+
+
+def hpvzbar(iw=0,kwdict={},**kw):
+  "Mean vz. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean vz"
+  kw['titlel']="(m/s)"
+  hpbasicwin(top.hvzbar,iw,kw)
+
+
+def hpxpbar(iw=0,kwdict={},**kw):
+  "Mean x'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean x'"
+  kw['titlel']="(rad)"
+  hpbasicwin(top.hxpbar,iw,kw)
+
+
+def hpypbar(iw=0,kwdict={},**kw):
+  "Mean y'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean y'"
+  kw['titlel']="(rad)"
+  hpbasicwin(top.hypbar,iw,kw)
+
+
+def hpvxrms(iw=0,kwdict={},**kw):
+  "True RMS vx. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True RMS vx"
+  kw['titlel']="(m/s)"
+  hpbasicwin(top.hvxrms,iw,kw)
+
+
+def hpvyrms(iw=0,kwdict={},**kw):
+  "True RMS vy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True RMS vy"
+  kw['titlel']="(m/s)"
+  hpbasicwin(top.hvyrms,iw,kw)
+
+
+def hpvzrms(iw=0,kwdict={},**kw):
+  "True RMS vz. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="True RMS vz"
+  kw['titlel']="(m/s)"
+  hpbasicwin(top.hvzrms,iw,kw)
+
+
+def hpxpsqbar(iw=0,kwdict={},**kw):
+  "Mean x' squared. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean x' squared"
+  kw['titlel']="(rad**2)"
+  hpbasicwin(top.hxpsqbar,iw,kw)
+
+
+def hpypsqbar(iw=0,kwdict={},**kw):
+  "Mean y' squared. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean y' squared"
+  kw['titlel']="(rad**2)"
+  hpbasicwin(top.hypsqbar,iw,kw)
+
+
+def hpxxpbar(iw=0,kwdict={},**kw):
+  "Mean x*x'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean x*x'"
+  kw['titlel']="(m-rad)"
+  hpbasicwin(top.hxxpbar,iw,kw)
+
+
+def hpyypbar(iw=0,kwdict={},**kw):
+  "Mean y*y'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean y*y'"
+  kw['titlel']="(m-rad)"
+  hpbasicwin(top.hyypbar,iw,kw)
+
+
+def hpxypbar(iw=0,kwdict={},**kw):
+  "Mean x*y'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean x*y'"
+  kw['titlel']="(m-rad)"
+  hpbasicwin(top.hxypbar,iw,kw)
+
+
+def hpyxpbar(iw=0,kwdict={},**kw):
+  "Mean y*x'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean y*x'"
+  kw['titlel']="(m**2)"
+  hpbasicwin(top.hyxpbar,iw,kw)
+
+
+def hpxpypbar(iw=0,kwdict={},**kw):
+  "Mean x'*y'. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean x'*y'"
+  kw['titlel']="(rad**2)"
+  hpbasicwin(top.hxpypbar,iw,kw)
+
+
+def hpxvzbar(iw=0,kwdict={},**kw):
+  "Mean x*vz. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean x*vz"
+  kw['titlel']="(m-m/s)"
+  hpbasicwin(top.hxvzbar,iw,kw)
+
+
+def hpyvzbar(iw=0,kwdict={},**kw):
+  "Mean y*vz. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean y*vz"
+  kw['titlel']="(m-m/s)"
+  hpbasicwin(top.hyvzbar,iw,kw)
+
+
+def hpvxvzbar(iw=0,kwdict={},**kw):
+  "Mean vx*vz. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean vx*vz"
+  kw['titlel']="((m/s)**2)"
+  hpbasicwin(top.hvxvzbar,iw,kw)
+
+
+def hpvyvzbar(iw=0,kwdict={},**kw):
+  "Mean vy*vz. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Mean vy*vz"
+  kw['titlel']="((m/s)**2)"
+  hpbasicwin(top.hvyvzbar,iw,kw)
+
+
+def hplinechg(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Line charge density. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhlinechg: return
+  kw.update(kwdict)
+  kw['titlet']="Line charge density"
+  hpzarray(top.hlinechg,contour,overlay,iz,kw)
+
+
+def hpvzofz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Vz versus space and time. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvzofz: return
+  kw.update(kwdict)
+  kw['titlet']="Vz versus space and time"
+  hpzarray(top.hvzofz,contour,overlay,iz,kw)
+
+
+def hpepsxz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X emittance. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhepsxz: return
+  kw.update(kwdict)
+  kw['titlet']="X emittance"
+  hpzarray(top.hepsxz,contour,overlay,iz,kw)
+
+
+def hpepsyz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Y emittance. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhepsyz: return
+  kw.update(kwdict)
+  kw['titlet']="Y emittance"
+  hpzarray(top.hepsyz,contour,overlay,iz,kw)
+
+
+def hpepsnxz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X normalized emittance. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhepsnxz: return
+  kw.update(kwdict)
+  kw['titlet']="X normalized emittance"
+  hpzarray(top.hepsnxz,contour,overlay,iz,kw)
+
+
+def hpepsnyz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Y normalized emittance. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhepsnyz: return
+  kw.update(kwdict)
+  kw['titlet']="Y normalized emittance"
+  hpzarray(top.hepsnyz,contour,overlay,iz,kw)
+
+
+def hpepsgz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Generalized emittance. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhepsgz: return
+  kw.update(kwdict)
+  kw['titlet']="Generalized emittance"
+  hpzarray(top.hepsgz,contour,overlay,iz,kw)
+
+
+def hpepshz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Generalized emittance. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhepshz: return
+  kw.update(kwdict)
+  kw['titlet']="Generalized emittance"
+  hpzarray(top.hepshz,contour,overlay,iz,kw)
+
+
+def hpepsngz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Generalized nrmlzd emittance. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhepsngz: return
+  kw.update(kwdict)
+  kw['titlet']="Generalized nrmlzd emittance"
+  hpzarray(top.hepsngz,contour,overlay,iz,kw)
+
+
+def hpepsnhz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Generalized nrmlzd emittance. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhepsnhz: return
+  kw.update(kwdict)
+  kw['titlet']="Generalized nrmlzd emittance"
+  hpzarray(top.hepsnhz,contour,overlay,iz,kw)
+
+
+def hpxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxbarz: return
+  kw.update(kwdict)
+  kw['titlet']="X bar"
+  hpzarray(top.hxbarz,contour,overlay,iz,kw)
+
+
+def hpybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Y bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhybarz: return
+  kw.update(kwdict)
+  kw['titlet']="Y bar"
+  hpzarray(top.hybarz,contour,overlay,iz,kw)
+
+
+def hpxybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "XY bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxybarz: return
+  kw.update(kwdict)
+  kw['titlet']="XY bar"
+  hpzarray(top.hxybarz,contour,overlay,iz,kw)
+
+
+def hpxrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X rms. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxrmsz: return
+  kw.update(kwdict)
+  kw['titlet']="X rms"
+  hpzarray(top.hxrmsz,contour,overlay,iz,kw)
+
+
+def hpyrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Y rms. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhyrmsz: return
+  kw.update(kwdict)
+  kw['titlet']="Y rms"
+  hpzarray(top.hyrmsz,contour,overlay,iz,kw)
+
+
+def hpxprmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X' rms. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxprmsz: return
+  kw.update(kwdict)
+  kw['titlet']="X' rms"
+  hpzarray(top.hxprmsz,contour,overlay,iz,kw)
+
+
+def hpyprmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Y' rms. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhyprmsz: return
+  kw.update(kwdict)
+  kw['titlet']="Y' rms"
+  hpzarray(top.hyprmsz,contour,overlay,iz,kw)
+
+
+def hpxsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X**2 bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxsqbarz: return
+  kw.update(kwdict)
+  kw['titlet']="X**2 bar"
+  hpzarray(top.hxsqbarz,contour,overlay,iz,kw)
+
+
+def hpysqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Y**2 bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhysqbarz: return
+  kw.update(kwdict)
+  kw['titlet']="Y**2 bar"
+  hpzarray(top.hysqbarz,contour,overlay,iz,kw)
+
+
+def hpvxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Vx bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvxbarz: return
+  kw.update(kwdict)
+  kw['titlet']="Vx bar"
+  hpzarray(top.hvxbarz,contour,overlay,iz,kw)
+
+
+def hpvybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Vy bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvybarz: return
+  kw.update(kwdict)
+  kw['titlet']="Vy bar"
+  hpzarray(top.hvybarz,contour,overlay,iz,kw)
+
+
+def hpvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Vz bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvzbarz: return
+  kw.update(kwdict)
+  kw['titlet']="Vz bar"
+  hpzarray(top.hvzbarz,contour,overlay,iz,kw)
+
+
+def hpxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X' bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxpbarz: return
+  kw.update(kwdict)
+  kw['titlet']="X' bar"
+  hpzarray(top.hxpbarz,contour,overlay,iz,kw)
+
+
+def hpypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Y' bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhypbarz: return
+  kw.update(kwdict)
+  kw['titlet']="Y' bar"
+  hpzarray(top.hypbarz,contour,overlay,iz,kw)
+
+
+def hpvxrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Vx rms. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvxrmsz: return
+  kw.update(kwdict)
+  kw['titlet']="Vx rms"
+  hpzarray(top.hvxrmsz,contour,overlay,iz,kw)
+
+
+def hpvyrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Vy rms. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvyrmsz: return
+  kw.update(kwdict)
+  kw['titlet']="Vy rms"
+  hpzarray(top.hvyrmsz,contour,overlay,iz,kw)
+
+
+def hpvzrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Vz rms. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvzrmsz: return
+  kw.update(kwdict)
+  kw['titlet']="Vz rms"
+  hpzarray(top.hvzrmsz,contour,overlay,iz,kw)
+
+
+def hpxpsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X'**2 bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxpsqbarz: return
+  kw.update(kwdict)
+  kw['titlet']="X'**2 bar"
+  hpzarray(top.hxpsqbarz,contour,overlay,iz,kw)
+
+
+def hpypsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Y'**2 bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhypsqbarz: return
+  kw.update(kwdict)
+  kw['titlet']="Y'**2 bar"
+  hpzarray(top.hypsqbarz,contour,overlay,iz,kw)
+
+
+def hpxxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "XX' bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxxpbarz: return
+  kw.update(kwdict)
+  kw['titlet']="XX' bar"
+  hpzarray(top.hxxpbarz,contour,overlay,iz,kw)
+
+
+def hpyypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "YY' bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhyypbarz: return
+  kw.update(kwdict)
+  kw['titlet']="YY' bar"
+  hpzarray(top.hyypbarz,contour,overlay,iz,kw)
+
+
+def hpxypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "XY' bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxypbarz: return
+  kw.update(kwdict)
+  kw['titlet']="XY' bar"
+  hpzarray(top.hxypbarz,contour,overlay,iz,kw)
+
+
+def hpyxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "YX' bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhyxpbarz: return
+  kw.update(kwdict)
+  kw['titlet']="YX' bar"
+  hpzarray(top.hyxpbarz,contour,overlay,iz,kw)
+
+
+def hpxpypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "X'Y' bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxpypbarz: return
+  kw.update(kwdict)
+  kw['titlet']="X'Y' bar"
+  hpzarray(top.hxpypbarz,contour,overlay,iz,kw)
+
+
+def hpxvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "XVz bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhxvzbarz: return
+  kw.update(kwdict)
+  kw['titlet']="XVz bar"
+  hpzarray(top.hxvzbarz,contour,overlay,iz,kw)
+
+
+def hpyvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "YVz bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhyvzbarz: return
+  kw.update(kwdict)
+  kw['titlet']="YVz bar"
+  hpzarray(top.hyvzbarz,contour,overlay,iz,kw)
+
+
+def hpvxvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "VxVz bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvxvzbarz: return
+  kw.update(kwdict)
+  kw['titlet']="VxVz bar"
+  hpzarray(top.hvxvzbarz,contour,overlay,iz,kw)
+
+
+def hpvyvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "VyVz bar. For more help, run hpdoc() or doc(hpzarray)."
+  if not top.lhvyvzbarz: return
+  kw.update(kwdict)
+  kw['titlet']="VyVz bar"
+  hpzarray(top.hvyvzbarz,contour,overlay,iz,kw)
+
+
+def hptotalke(kwdict={},**kw):
+  "Total Kinetic Energy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Total Kinetic Energy"
+  kw['titlel']="(J)"
+  hpbasic(top.hekzbeam+top.hekperp,kw)
+
+
+def hptotale(kwdict={},**kw):
+  "Total Energy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Total Energy"
+  kw['titlel']="(J)"
+  hpbasic(top.hefld+top.hekzbeam+top.hekperp,kw)
+
+
+def hpthermale(iw=0,kwdict={},**kw):
+  "Z Thermal Energy. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Z Thermal Energy"
+  kw['titlel']="(J)"
+  hpbasicwin(0.5*sum(top.sm*top.sw*top.sp_fract)*top.hpnum*top.hvzrms**2,iw,kw)
+
+
+def hpeps6d(iw=0,kwdict={},**kw):
+  "6-D Emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="6-D Emittance"
+  kw['titlel']="((pi-m-rad)**3)"
+  hpbasicwin(top.hepsx*top.hepsy*top.hepsz,iw,kw)
+
+
+def hpepst(iw=0,kwdict={},**kw):
+  "Transverse Emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Transverse Emittance"
+  kw['titlel']="(pi-m-rad)"
+  hpbasicwin(sqrt(top.hepsx*top.hepsy),iw,kw)
+
+
+def hpepsnt(iw=0,kwdict={},**kw):
+  "Normalized Transverse Emittance. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Normalized Transverse Emittance"
+  kw['titlel']="(pi-mm-mrad)"
+  hpbasicwin(sqrt(top.hepsnx*top.hepsny),iw,kw)
+
+
+def hpxedge(iw=0,kwdict={},**kw):
+  "X Beam Edge. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="X Beam Edge"
+  kw['titlel']="(m)"
+  hpbasicwin(2.*top.hxrms,iw,kw)
+
+
+def hpyedge(iw=0,kwdict={},**kw):
+  "Y Beam Edge. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Y Beam Edge"
+  kw['titlel']="(m)"
+  hpbasicwin(2.*top.hyrms,iw,kw)
+
+
+def hpenvx(iw=0,kwdict={},**kw):
+  "X Beam Edge. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="X Beam Edge"
+  kw['titlel']="(m)"
+  hpbasicwin(2.*top.hxrms,iw,kw)
+
+
+def hpenvy(iw=0,kwdict={},**kw):
+  "Y Beam Edge. For a complete list of arguments, run hpdoc()."
+  kw.update(kwdict)
+  kw['titlet']="Y Beam Edge"
+  kw['titlel']="(m)"
+  hpbasicwin(2.*top.hyrms,iw,kw)
 
 # --- plot mean z velocity in beam frame vs time
 def hpvzbar(iw=0,beamframe=1,kwdict={},**kw):
@@ -443,9 +1053,6 @@ def hpcurr(contour=0,overlay=0,iz=None,kwdict={},**kw):
   kw['titlet']="Current"
   hpzarray(top.hlinechg*top.hvzofz,contour,overlay,iz,kw)
 
-
-###########################################################################
-# --- Documentation that list all callable routines
 def histplotsdoc():
   """
 hpdoc(): Prints complete list of arguments for histplot routines
@@ -458,17 +1065,103 @@ hpepsnt(): Normalized Transverse Emittance
 hpxedge(): X Beam Edge (twice rms)
 hpyedge(): Y Beam Edge (twice rms)
 hpenvx = hpxedge
-hpenvy = hpyedge"""
+hpenvy = hpyedge
+hpzbeam(): Beam frame location
+hpvbeam(): Beam frame velocity
+hpbmlen(): RMS beam length
+hpefld(): Field energy
+hpekzmbe(): Total Z Kinetic energy minus beam energy
+hpekzbeam(): Z Kinetic energy in the beam frame
+hpekperp(): Perp Kinetic energy
+hpepsx(): X emittance
+hpepsy(): Y emittance
+hpepsz(): Z emittance
+hpepsnx(): X normalized emittance
+hpepsny(): Y normalized emittance
+hpepsnz(): Z normalized emittance
+hpepsg(): Generalized emittance
+hpepsh(): Generalized emittance
+hpepsng(): Generalized normalized emittance
+hpepsnh(): Generalized normalized emittance
+hppnum(): Number of particles
+hprhomid(): Charge density on axis
+hprhomax(): Charge density max
+hpxbar(): True mean x
+hpybar(): True mean y
+hpxybar(): True mean xy
+hpxrms(): True RMS x
+hpyrms(): True RMS y
+hpxprms(): True RMS x'
+hpyprms(): True RMS y'
+hpxsqbar(): Mean x squared
+hpysqbar(): Mean y squared
+hpvxbar(): Mean vx
+hpvybar(): Mean vy
+hpvzbar(): Mean vz
+hpxpbar(): Mean x'
+hpypbar(): Mean y'
+hpvxrms(): True RMS vx
+hpvyrms(): True RMS vy
+hpvzrms(): True RMS vz
+hpxpsqbar(): Mean x' squared
+hpypsqbar(): Mean y' squared
+hpxxpbar(): Mean x*x'
+hpyypbar(): Mean y*y'
+hpxypbar(): Mean x*y'
+hpyxpbar(): Mean y*x'
+hpxpypbar(): Mean x'*y'
+hpxvzbar(): Mean x*vz
+hpyvzbar(): Mean y*vz
+hpvxvzbar(): Mean vx*vz
+hpvyvzbar(): Mean vy*vz
+hplinechg(): Line charge density
+hpvzofz(): Vz versus space and time
+hpepsxz(): X emittance
+hpepsyz(): Y emittance
+hpepsnxz(): X normalized emittance
+hpepsnyz(): Y normalized emittance
+hpepsgz(): Generalized emittance
+hpepshz(): Generalized emittance
+hpepsngz(): Generalized nrmlzd emittance
+hpepsnhz(): Generalized nrmlzd emittance
+hpxbarz(): X bar
+hpybarz(): Y bar
+hpxybarz(): XY bar
+hpxrmsz(): X rms
+hpyrmsz(): Y rms
+hpxprmsz(): X' rms
+hpyprmsz(): Y' rms
+hpxsqbarz(): X**2 bar
+hpysqbarz(): Y**2 bar
+hpvxbarz(): Vx bar
+hpvybarz(): Vy bar
+hpvzbarz(): Vz bar
+hpxpbarz(): X' bar
+hpypbarz(): Y' bar
+hpvxrmsz(): Vx rms
+hpvyrmsz(): Vy rms
+hpvzrmsz(): Vz rms
+hpxpsqbarz(): X'**2 bar
+hpypsqbarz(): Y'**2 bar
+hpxxpbarz(): XX' bar
+hpyypbarz(): YY' bar
+hpxypbarz(): XY' bar
+hpyxpbarz(): YX' bar
+hpxpypbarz(): X'Y' bar
+hpxvzbarz(): XVz bar
+hpyvzbarz(): YVz bar
+hpvxvzbarz(): VxVz bar
+hpvyvzbarz(): VyVz bar
+hpptotalke(): Total Kinetic Energy
+hpptotale(): Total Energy
+hppthermale(): Z Thermal Energy
+hppeps6d(): 6-D Emittance
+hppepst(): Transverse Emittance
+hppepsnt(): Normalized Transverse Emittance
+hppxedge(): X Beam Edge
+hppyedge(): Y Beam Edge
+hppenvx(): X Beam Edge
+hppenvy(): Y Beam Edge
+  """
   print histplotsdoc.__doc__
 
-if sys.version[:5] != "1.5.1":
-  for (vname,vdoc,vunits) in hist1list:
-    histplotsdoc.__doc__ = histplotsdoc.__doc__+'hp'+vname[1:]+"(): "+vdoc+"\n"
-  for (vname,vdoc,vunits) in hist2list:
-    histplotsdoc.__doc__ = histplotsdoc.__doc__+'hp'+vname[1:]+"(): "+vdoc+"\n"
-  for (vname,vdoc) in hist3list:
-    histplotsdoc.__doc__ = histplotsdoc.__doc__+'hp'+vname[1:]+"(): "+vdoc+"\n"
-  for (vname,vdoc,vexp,vunits) in hist4list:
-    histplotsdoc.__doc__ = histplotsdoc.__doc__+'hp'+vname[1:]+"(): "+vdoc+"\n"
-  for (vname,vdoc,vexp,vunits) in hist5list:
-    histplotsdoc.__doc__ = histplotsdoc.__doc__+'hp'+vname[1:]+"(): "+vdoc+"\n"
