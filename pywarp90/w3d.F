@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.19 $, $Date: 2001/08/09 20:21:30 $
+c@(#) File W3D.M, version $Revision: 3.20 $, $Date: 2001/08/14 20:32:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5334,6 +5334,9 @@ c=============================================================================
       subroutine getinj_phi(nx,ny,nz,phi,dx,dy,dz,xmmin,ymmin)
       use InjectVars
       use InjectVars3d
+#ifdef PARALLEL
+      use Parallel
+#endif
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz,xmmin,ymmin
@@ -5350,6 +5353,11 @@ c to get zp.
       real(kind=8):: dxi,dyi
       real(kind=8):: ainj,binj,ainjsqi,binjsqi,xinj,yinj
       real(kind=8):: rrsq,aa,p2x,p2y,p2z,w2x,w2y,w2z
+
+#ifdef PARALLEL
+c     --- In the parallel version, only processor 0 calculates inj_phi.
+      if (my_index == 0) then
+#endif
 
       dxi = 1./dx
       dyi = 1./dy
@@ -5412,12 +5420,22 @@ c       --- Smooth out inj_phi for this emitting surface.
 
       enddo
 
+#ifdef PARALLEL
+      endif
+c     --- The result calculated by processor 0 is broadcast to the rest
+c     --- of the processors.
+      call parallelbroadcast(inj_phi,(nx+1)*(ny+1),0)
+#endif
+
       return
       end
 c=============================================================================
       subroutine getinj_phi_rz(nx,nz,phi,dx,dz,xmmin,ymmin)
       use InjectVars
       use InjectVars3d
+#ifdef PARALLEL
+      use Parallel
+#endif
       integer(ISZ):: nx,nz
       real(kind=8):: phi(0:nx,0:nz)
       real(kind=8):: dx,dz,xmmin,ymmin
@@ -5434,6 +5452,11 @@ c to get zp.
       real(kind=8):: dxi,dyi
       real(kind=8):: ainj,binj,ainjsqi,binjsqi,xinj,yinj
       real(kind=8):: rrsq,aa,p2x,p2y,p2r,p2z,w2r,w2z
+
+#ifdef PARALLEL
+c     --- In the parallel version, only processor 0 calculates inj_phi.
+      if (my_index == 0) then
+#endif
 
       dxi = 1./dx
       dyi = 1./dx
@@ -5490,6 +5513,13 @@ c     &                      xinj,yinj,ainj,binj,inj_nsmooth)
 c        endif
 
       enddo
+
+#ifdef PARALLEL
+      endif
+c     --- The result calculated by processor 0 is broadcast to the rest
+c     --- of the processors.
+      call parallelbroadcast(inj_phi,(nx+1)*(nx+1),0)
+#endif
 
       return
       end
