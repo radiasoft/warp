@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.76 2004/11/12 18:04:50 dave Exp $"
+warp_version = "$Id: warp.py,v 1.77 2004/11/12 22:52:19 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -812,7 +812,9 @@ from printparametersrz import *
 try:
   import os
   import warp
-  sys.path=sys.path+[os.path.dirname(warp.__file__)+'/GUI']
+  warp_path = os.path.dirname(warp.__file__)
+  if warp_path <> '':warp_path+='/'
+  sys.path=sys.path+[warp_path+'GUI']
   from WarpGUI import *
 except:
   pass
