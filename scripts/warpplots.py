@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.67 2002/01/08 00:40:53 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.68 2002/01/10 23:43:09 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2511,7 +2511,7 @@ def pcrhozy(ix=None,fullplane=1,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   rrr = getrho(ix=ix)
-  if rrr is None: rrr = zeros((w3d.ny+1,w3d.nzfull+1),'d')
+  if me > 0: rrr = zeros((w3d.ny+1,w3d.nzfull+1),'d')
   if fullplane and (w3d.l2symtry or w3d.l4symtry):
     rr1 = zeros((2*w3d.ny+1,w3d.nzfull+1),'d')
     rr1[w3d.ny:,:] = rrr
@@ -2540,7 +2540,7 @@ def pcrhozx(iy=None,fullplane=1,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   rrr = getrho(iy=iy)
-  if rrr is None: rrr = zeros((w3d.nx+1,w3d.nzfull+1),'d')
+  if me > 0: rrr = zeros((w3d.nx+1,w3d.nzfull+1),'d')
   if fullplane and w3d.l4symtry:
     rr1 = zeros((2*w3d.nx+1,w3d.nzfull+1),'d')
     rr1[w3d.nx:,:] = rrr
@@ -2569,7 +2569,7 @@ def pcrhoxy(iz=None,fullplane=1,**kw):
     kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
   rrr = getrho(iz=iz)
-  if rrr is None: rrr = zeros((w3d.nx+1,w3d.ny+1),'d')
+  if me > 0: rrr = zeros((w3d.nx+1,w3d.ny+1),'d')
   if fullplane and w3d.l4symtry:
     rr1 = zeros((2*w3d.nx+1,2*w3d.ny+1),'d')
     rr1[w3d.nx:,w3d.ny:] = rrr
@@ -2607,7 +2607,7 @@ def pcphizy(ix=None,fullplane=1,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix)
-  if ppp is None: ppp = zeros((w3d.ny+1,w3d.nzfull+1),'d')
+  if me > 0: ppp = zeros((w3d.ny+1,w3d.nzfull+1),'d')
   if fullplane and (w3d.l2symtry or w3d.l4symtry):
     pp1 = zeros((2*w3d.ny+1,w3d.nzfull+1),'d')
     pp1[w3d.ny:,:] = ppp
@@ -2636,7 +2636,7 @@ def pcphizx(iy=None,fullplane=1,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy)
-  if ppp is None: ppp = zeros((w3d.nx+1,w3d.nzfull+1),'d')
+  if me > 0: ppp = zeros((w3d.nx+1,w3d.nzfull+1),'d')
   if fullplane and w3d.l4symtry:
     pp1 = zeros((2*w3d.nx+1,w3d.nzfull+1),'d')
     pp1[w3d.nx:,:] = ppp
@@ -2665,7 +2665,7 @@ def pcphixy(iz=None,fullplane=1,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
   ppp = getphi(iz=iz)
-  if ppp is None: ppp = zeros((w3d.nx+1,w3d.ny+1),'d')
+  if me > 0: ppp = zeros((w3d.nx+1,w3d.ny+1),'d')
   if fullplane and w3d.l4symtry:
     pp1 = zeros((2*w3d.nx+1,2*w3d.ny+1),'d')
     pp1[w3d.nx:,w3d.ny:] = ppp
