@@ -5,7 +5,7 @@ PYVERS = 2.1
 PYTHON = /home/dave/Python-$(PYVERS)
 PYMAC = $(HOME)/pywrapper/pymac.py --f90 -t $(MACHINE)
 PYCTOF = $(HOME)/pywrapper/pyctof.py
-OPT = -fast
+OPT = -fast -Mcache_align -Mcray=pointer
 POPT = 
 PYMODULEOPT = -O1
 F90FREE  = pgf90 -Mextend -Mdclchk -fpic -r8
