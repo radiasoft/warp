@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.131 $, $Date: 2004/11/19 22:16:53 $
+c@(#) File DTOP.F, version $Revision: 3.132 $, $Date: 2004/12/07 22:21:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -259,6 +259,7 @@ c=============================================================================
       use Io
       integer(ISZ):: iunit,it
       real(kind=8):: time,pz,ese,ek
+      character*(240)::o_line
 
 
 c  Summarize the state of the system in one line
@@ -266,9 +267,10 @@ c  Summarize the state of the system in one line
 c     --- return if line is not requested
       if (verbosity .lt. 2) return
 
-      write (iunit,901) it,time,pz,ese,ek,ese+ek
+      write (o_line,901) it,time,pz,ese,ek,ese+ek
  901  format("it =",i6," time =",1pe11.4," pz =",1pe11.4,
      & " ese =",1pe11.4," ek =",1pe11.4," et  =",1pe11.4)
+      call remark(trim(o_line))
 
       return
       end
@@ -647,7 +649,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.131 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.132 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1190,7 +1192,7 @@ c     --- Reset grids if requested
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
-
+      write(0,*) np,size(x),nx,xmin,xmax,dxi
 c     --- loop over particles
       do ip=1,np
 
