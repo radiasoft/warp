@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.103 $, $Date: 2003/04/28 22:36:22 $
+#@(#) File W3D.V, version $Revision: 3.104 $, $Date: 2003/04/30 21:45:01 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.103 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.104 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -337,6 +337,8 @@ inj_np(0:inj_nx,0:inj_ny,inj_ninj,inj_ns)   _real
    # Grid holding number of particles injected on the current time step.
 inj_prev(0:inj_nx,0:inj_ny,inj_ninj,inj_ns) _real
    # Grid holding number of particles injected on previous time step.
+inj_npactual(0:inj_nx,0:inj_ny,inj_ninj,inj_ns)   _real
+   # Grid holding actual number of particles injected on the current time step.
 inj_rho(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Surface charge density at the emitting surface.
 inj_phi(0:inj_nx,0:inj_ny,inj_ninj)  _real

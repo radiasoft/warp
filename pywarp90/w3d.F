@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.103 $, $Date: 2003/04/28 22:36:22 $
+c@(#) File W3D.M, version $Revision: 3.104 $, $Date: 2003/04/30 21:45:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4393,6 +4393,7 @@ c         --- Zero npinje_s.
 c         --- Copy inj_np to inj_prev, and zero inj_np
           inj_prev = inj_np
           inj_np = 0.
+          inj_npactual = 0.
 
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
@@ -4760,6 +4761,7 @@ c                   --- particle is advanced.
 c                   --- increment particle counter
                     npinje_s(is) = npinje_s(is) + 1
                     npinjtmp(is,ij) = npinjtmp(is,ij) + 1
+                    inj_npactual(ix,iy,ij,is) = inj_npactual(ix,iy,ij,is) + 1.
 
                   enddo
 c                 --- end of loop over particles
