@@ -32,6 +32,7 @@ class newstdout:
     def __init__(self,winout):
         self.winout = winout
     def write(self,s):
+        self.winout.SetInsertionPointEnd()
         self.winout.WriteText(s)
     def flush(self):
         pass         
