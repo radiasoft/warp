@@ -1,10 +1,11 @@
-!     Last change:  JLV  26 Jul 2002    2:35 pm
+!     Last change:  JLV  29 Aug 2002   10:45 am
 #include "top.h"
 
 module multigrid_common
 
 USE constant
 USE PSOR3d, ONLY:boundxy,bound0,boundnz
+USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,Zgeom,l2symtry,l4symtry
 USE FRZmgrid
 #ifdef MPIPARALLEL
   use Parallel
@@ -59,6 +60,7 @@ end TYPE conductor_type
 LOGICAL(ISZ) :: bndy_allocated=.FALSE. ! flag set to true if bndy is allocated
 
 INTEGER(ISZ), parameter :: dirichlet=0, neumann=1, periodic=2, othertask=-1  ! boundary condition types
+INTEGER(ISZ) :: ixlbndi=dirichlet, ixrbndi=dirichlet, iylbndi=dirichlet, iyrbndi=dirichlet, izlbndi=dirichlet, izrbndi=dirichlet  ! boundary conditions for each side
 INTEGER(ISZ) :: ixlbnd=dirichlet, ixrbnd=dirichlet, iylbnd=dirichlet, iyrbnd=dirichlet, izlbnd=dirichlet, izrbnd=dirichlet  ! boundary conditions for each side
 
 INTEGER(ISZ) :: v_vacuum=0, v_cond=1, v_bnd=2
@@ -105,7 +107,7 @@ TYPE(bndptr), pointer :: bndy(:)
 
 TYPE grdptr
   INTEGER(ISZ) :: id,nlevels,nr,nz,jmin,jmax,lmin,lmax
-  REAL(8) :: rmin,rmax,zmin,zmax,dr,dz,invdr,invdz,zminp
+  REAL(8) :: rmin,rmax,xmin,xmax,zmin,zmax,dr,dz,invdr,invdz,zminp
   REAL(8), POINTER, DIMENSION(:) :: invvol
   REAL(8), POINTER, DIMENSION(:,:) :: rho, phi
 #ifdef MPIPARALLEL
@@ -124,8 +126,16 @@ TYPE(grdptr), pointer :: grids, basegrid
 TYPE grd_ptr
   TYPE(grdptr), POINTER :: grid
 END TYPE grd_ptr
-TYPE(grd_ptr), DIMENSION(:), ALLOCATABLE :: grids_ptr
-INTEGER(ISZ) :: ngrids,grids_nids,n_avail_ids,avail_ids(100),level_del_grid
+TYPE(grd_ptr), DIMENSION(:), ALLOCATABLE :: grids_ptr, gridinit
+
+INTEGER(ISZ) :: ngrids,         & ! number of grids
+		grids_nids,     & ! number of grid IDs
+                n_avail_ids,    & ! number of available IDs
+                avail_ids(100), & ! array of grid IDs
+                level_del_grid
+
+INTEGER(ISZ) :: nguardx=1, nguardy=1, nguardz=1 ! number of guard cells in each direction
+
 
 contains
 
@@ -138,26 +148,35 @@ INTEGER(ISZ) :: i,j, nzp, mglevel
 
   IF(associated(basegrid)) return
 
+  IF(solvergeom==RZgeom .OR. solvergeom==XZgeom) nguardy = 0
+  IF(solvergeom==Zgeom) then
+    nguardx = 0
+    nguardy = 0
+  END if
+
   ALLOCATE(grids)
   NULLIFY(grids%next,grids%prev,grids%down,grids%up,grids%bnd)
 #ifdef MPIPARALLEL
   workfact = mgridrz_workfact
   nzp=nzpslave(my_index)
-  ALLOCATE(grids%rho(nr+1,nz+1),grids%phi(0:nr+2,0:nz+2), &
-           grids%rhop(nr+1,nzp+1),grids%phip(0:nr+2,0:nzp+2), &
+  ALLOCATE(grids%rho(nr+1,nz+1),grids%phi(1-nguardx:nr+1+nguardx,1-nguardz:nz+1+nguardz), &
+           grids%rhop(nr+1,nzp+1),grids%phip(1-nguardx:nr+1+nguardx,1-nguardz:nzp+1+nguardz), &
            grids%loc_part(nr+1,nzp+1),grids%invvol(nr+1), &
            grids%loc_part_field_dep(nr+1,nzp+1),grids%invvol(nr+1))
 #else
-  ALLOCATE(grids%rho(nr+1,nz+1),grids%phi(0:nr+2,0:nz+2), &
+  ALLOCATE(grids%rho(nr+1,nz+1),grids%phi(1-nguardx:nr+1+nguardx,1-nguardz:nz+1+nguardz), &
            grids%loc_part(nr+1,nz+1),grids%invvol(nr+1), &
            grids%loc_part_field_dep(nr+1,nz+1),grids%invvol(nr+1))
 #endif
+WRITE(0,*) '******** Basegrid allocated.'
   grids%id=1
   grids_nids=1
   grids%nr=nr
   grids%dr=dr
   grids%rmin=rmin
   grids%rmax=rmin+nr*dr
+  grids%xmin=rmin
+  grids%xmax=rmin+nr*dr
   grids%nz=nz
 #ifdef MPIPARALLEL
   grids%nzp=nzp
@@ -199,29 +218,46 @@ INTEGER(ISZ) :: i,j, nzp, mglevel
   avail_ids=-1
   grids%invdr = 1._8/dr
   grids%invdz = 1._8/dz
-  ! computes divider by cell volumes to get density
-  j = 1
-  ! the factor 0.75 corrects for overdeposition due to linear weighting (for uniform distribution)
-  ! see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
-  ! and Verboncoeur, J. of Comp. Phys.,
-  grids%invvol(j) = 0.75_8 / (pi * (0.5_8*0.5_8*dr*dr)*dz)
-  do j = 2, nr+1
-    grids%invvol(j) = 1._8 / (2._8 * pi * real(j-1,8) * dr * dr * dz)
-  end do
+  IF(solvergeom==RZgeom) then
+    ! computes divider by cell volumes to get density
+    j = 1
+    ! the factor 0.75 corrects for overdeposition due to linear weighting (for uniform distribution)
+    ! see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+    ! and Verboncoeur, J. of Comp. Phys.,
+    grids%invvol(j) = 0.75_8 / (pi * (0.5_8*0.5_8*dr*dr)*dz)
+    do j = 2, nr+1
+      grids%invvol(j) = 1._8 / (2._8 * pi * real(j-1,8) * dr * dr * dz)
+    end do
+  else IF(solvergeom==XZgeom) then
+    grids%invvol(:) = 1._8 / (dr * dz)
+  END if
+
+  ixlbndi = boundxy
+  ixrbndi = boundxy
+  izlbndi = bound0
+  izrbndi = boundnz
+  ixlbnd = boundxy
+  ixrbnd = boundxy
+  izlbnd = bound0
+  izrbnd = boundnz
+  IF(l2symtry .or. l4symtry .or. solvergeom==RZgeom) ixlbnd=neumann
+  grids%ixlbnd = ixlbndi
+  grids%ixrbnd = ixrbndi
+  grids%izlbnd = izlbndi
+  grids%izrbnd = izrbndi
 
   call mk_grids_ptr()
-  call init_bnd(grids%bnd,nr,nz,dr,dz,grids%zmin,grids%zmax)
-  grids%nlevels=nlevels
-
-  grids%ixrbnd = boundxy
-  grids%izlbnd = bound0
-  grids%izrbnd = boundnz
+  IF(solvergeom==Zgeom) then
+    grids%nlevels=nlevels
+  else
+    call init_bnd(grids%bnd,nr,nz,dr,dz,grids%zmin,grids%zmax)
+    grids%nlevels=nlevels
+  END if
 
 !  do i = 1,grids%nlevels, 1
 !    grids%bnd(i)%izlbnd=grids%izlbnd
 !    grids%bnd(i)%izrbnd=grids%izrbnd
 !  END do
-
 
   mglevels = basegrid%nlevels
   do i = 1, basegrid%nlevels
@@ -250,6 +286,37 @@ INTEGER(ISZ) :: i,j, nzp, mglevel
 return
 end subroutine init_basegrid
 
+subroutine del_basegrid()
+USE Multigrid3d
+implicit none
+INTEGER(ISZ) :: i
+
+WRITE(0,*) 'enter del_basegrid'
+  IF(.NOT.associated(basegrid)) then
+    WRITE(0,*) 'Warning: call to del_basegrid while grid not associated'
+    return
+  end if
+
+  do i = 1, basegrid%nlevels
+    call del_cnds(basegrid%bnd(i))
+  end do
+  DEALLOCATE(basegrid%bnd)
+#ifdef MPIPARALLEL
+  DEALLOCATE(basegrid%rho,basegrid%phi, &
+           basegrid%rhop,basegrid%phip, &
+           basegrid%loc_part,basegrid%invvol, &
+           basegrid%loc_part_field_dep,basegrid%invvol)
+#else
+  DEALLOCATE(basegrid%rho,basegrid%phi, &
+           basegrid%loc_part,basegrid%invvol, &
+           basegrid%loc_part_field_dep,basegrid%invvol)
+#endif
+  DEALLOCATE(basegrid)
+WRITE(0,*) 'leave del_basegrid'
+
+return
+end subroutine del_basegrid
+
 subroutine add_grid(grid,nr,nz,dri,dzi,rmini,zmini,guard_min_r,guard_max_r,guard_min_z,guard_max_z)
 implicit none
 TYPE(grdptr), pointer :: grid
@@ -267,18 +334,20 @@ REAL(8) :: dr,dz,rmin,zmin
   lmin = 1+NINT((MAX(zmini,grid%zmin)-grid%zmin)/grid%dz)
   lmax = 1+NINT((MIN(zmini+nz*dzi,grid%zmax)-grid%zmin)/grid%dz)
 
-  rmin = (jmin-1)*grid%dr
-  zmin = (lmin-1)*grid%dz
+  rmin = grid%rmin+(jmin-1)*grid%dr
+  zmin = grid%zmin+(lmin-1)*grid%dz
 
-  dr = ((jmax-1)*grid%dr-rmin)/nr
-  dz = ((lmax-1)*grid%dz-zmin)/nz
+  dr = (jmax-jmin)*grid%dr/nr
+  dz = (lmax-lmin)*grid%dz/nz
+
+  WRITE(0,*) '#########',zmin,zmin+nz*dz,zmini,zmini+nz*dzi,dz,dzi
 
 ! allocate new grid
 
   ALLOCATE(newgrid)
   NULLIFY(newgrid%next,newgrid%prev,newgrid%down,newgrid%up,newgrid%bnd)
   ALLOCATE(newgrid%rho(nr+1,nz+1), &
-           newgrid%phi(0:nr+2,0:nz+2), &
+           newgrid%phi(1-nguardx:nr+1+nguardx,1-nguardz:nz+1+nguardz), &
            newgrid%loc_part(nr+1,nz+1), &
            newgrid%loc_part_field_dep(nr+1,nz+1), &
            newgrid%invvol(nr+1))
@@ -302,6 +371,8 @@ REAL(8) :: dr,dz,rmin,zmin
   newgrid%dr=dr
   newgrid%rmin=rmin
   newgrid%rmax=rmin+nr*dr
+  newgrid%xmin=rmin
+  newgrid%xmax=rmin+nr*dr
   newgrid%nz=nz
   newgrid%dz=dz
   newgrid%zmin=zmin
@@ -331,16 +402,13 @@ REAL(8) :: dr,dz,rmin,zmin
   ngrids=ngrids+1
   mgridrz_ngrids = ngrids
 
-! update grid pointers list array
-
-  call mk_grids_ptr()
-
-  newgrid%up%loc_part(jmin:jmax-1,lmin:lmax-1)=newgrid%id
-
-  newgrid%up%loc_part_field_dep(jmin+guard_min_r:jmax-1-guard_max_r,lmin+guard_min_z:lmax-1-guard_max_z)=newgrid%id
-
 ! assign boundary types
 
+  IF(ABS(newgrid%xmin-grid%xmin)<0.1*grid%dr) then
+    newgrid%ixlbnd = grid%ixlbnd
+  else
+    newgrid%ixlbnd = dirichlet
+  END if
   IF(ABS(newgrid%rmax-grid%rmax)<0.1*grid%dr) then
     newgrid%ixrbnd = grid%ixrbnd
   else
@@ -357,22 +425,40 @@ REAL(8) :: dr,dz,rmin,zmin
     newgrid%izrbnd = dirichlet
   END if
 
+! update grid pointers list array
+
+  call mk_grids_ptr()
+
+  newgrid%up%loc_part(jmin:jmax-1,lmin:lmax-1)=newgrid%id
+
+  newgrid%up%loc_part_field_dep(jmin+guard_min_r:jmax-1-guard_max_r,lmin+guard_min_z:lmax-1-guard_max_z)=newgrid%id
+
 ! computes commodity quantities for charge deposition
 
   newgrid%invdr = 1._8/dr
   newgrid%invdz = 1._8/dz
-  ! computes divider by cell volumes to get density
-  j = 1
-  ! the factor 0.75 corrects for overdeposition due to linear weighting (for uniform distribution)
-  ! see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
-  ! and Verboncoeur, J. of Comp. Phys.,
-  newgrid%invvol(j) = 0.75_8 / (pi * (0.5_8*0.5_8*dr*dr)*dz)
-  do j = 2, nr+1
-    newgrid%invvol(j) = 1._8 / (2._8 * pi * real(j-1,8) * dr * dr * dz)
-  end do
+  IF(solvergeom==RZgeom) then
+    ! computes divider by cell volumes to get density
+    j = 1
+    ! the factor 0.75 corrects for overdeposition due to linear weighting (for uniform distribution)
+    ! see Larson et al., Comp. Phys. Comm., 90:260-266, 1995
+    ! and Verboncoeur, J. of Comp. Phys.,
+    newgrid%invvol(j) = 0.75_8 / (pi * (0.5_8*0.5_8*dr*dr)*dz)
+    do j = 2, nr+1
+      newgrid%invvol(j) = 1._8 / (2._8 * pi * real(j-1,8) * dr * dr * dz)
+    end do
+  else IF(solvergeom==XZgeom) then
+    newgrid%invvol(:) = 1._8 / (dr * dz)
+  END if
+
+
   WRITE(0,'(" Add grid ID: ",i5)') newgrid%id
-  call init_bnd(newgrid%bnd,nr,nz,dr,dz,newgrid%zmin,newgrid%zmax)
-  newgrid%nlevels=nlevels
+  IF(solvergeom==Zgeom) then
+    newgrid%nlevels=nlevels
+  else
+    call init_bnd(newgrid%bnd,nr,nz,dr,dz,newgrid%zmin,newgrid%zmax)
+    newgrid%nlevels=nlevels
+  END if
   do i = 1,newgrid%nlevels, 1
     newgrid%bnd(i)%izlbnd=newgrid%izlbnd
     newgrid%bnd(i)%izrbnd=newgrid%izrbnd
@@ -479,10 +565,6 @@ REAL(8) :: drc, dzc
 !  dy = dr
   ny = 0
 
-  ixrbnd = boundxy
-  izlbnd = bound0
-  izrbnd = boundnz
-
   nrc = nr
   nzc = nz
   drc = dr
@@ -531,8 +613,8 @@ REAL(8) :: drc, dzc
 #endif
   do i = nlevels, 1, -1
     bndy(i)%l_merged=.false.
-    bndy(i)%izlbnd=izlbnd
-    bndy(i)%izrbnd=izrbnd
+    bndy(i)%izlbnd=izlbndi
+    bndy(i)%izrbnd=izrbndi
     IF(i/=nlevels) then
 !      call evalnewgrid(nrc,nzc,drc,dzc)
 #ifdef MPIPARALLEL
@@ -677,6 +759,60 @@ END if
 
 end subroutine init_bnd_sublevel
 
+subroutine del_cnds(bnd)
+! initializes quantities for one grid level
+implicit none
+TYPE(bndptr), INTENT(IN OUT) :: bnd
+TYPE(conductor_type), POINTER :: cnd,cndnext
+
+WRITE(0,*) 'enter del_cnds'
+
+IF(bnd%nb_conductors==0) return
+cnd => bnd%first
+do WHILE(associated(cnd%next))
+  WRITE(0,*) '#1'
+  cndnext => cnd%next
+  WRITE(0,*) '#2'
+  call del_cnd(cnd)
+  WRITE(0,*) '#3'
+  bnd%nb_conductors = bnd%nb_conductors - 1
+  WRITE(0,*) '#4'
+  cnd=>cndnext
+  WRITE(0,*) '#5'
+end do
+WRITE(0,*) 'call cnd'
+WRITE(0,*) associated(cnd)
+
+call del_cnd(cnd)
+bnd%nb_conductors = bnd%nb_conductors - 1
+WRITE(0,*) 'leave del_cnds'
+
+end subroutine del_cnds
+
+subroutine del_cnd(cnd)
+implicit none
+TYPE(conductor_type), POINTER :: cnd
+
+WRITE(0,*) 'enter del_cnd'
+WRITE(0,*) '##1'
+  IF(cnd%nbbnd>0) then
+    DEALLOCATE(cnd%phi0xm,cnd%phi0xp,cnd%phi0zm,cnd%phi0zp,cnd%dt)
+    DEALLOCATE(cnd%volt0xm,cnd%volt0xp,cnd%volt0zm,cnd%volt0zp)
+    DEALLOCATE(cnd%condidxm,cnd%condidxp,cnd%condidzm,cnd%condidzp)
+    DEALLOCATE(cnd%cf0,cnd%cfxp,cnd%cfxm,cnd%cfzp,cnd%cfzm)
+    DEALLOCATE(cnd%dxm,cnd%dxp,cnd%dzm,cnd%dzp)
+    DEALLOCATE(cnd%jj,cnd%kk,cnd%docalc)
+  END if
+WRITE(0,*) '##2'
+  IF(cnd%ncond>0) then
+    DEALLOCATE(cnd%jcond,cnd%kcond,cnd%voltage,cnd%condid)
+  END if
+WRITE(0,*) '##3'
+  DEALLOCATE(cnd)
+WRITE(0,*) 'leave del_cnd'
+
+end subroutine del_cnd
+
 function expandwguard(f)
 ! expand field from a grid to finer one. Each dimension is assumed to be a power of two.
 implicit none
@@ -724,15 +860,15 @@ return
 end function expandwguard
 
 function expandwguard_any(uold, nxnew, nznew, xminnew, xmaxnew, zminnew, zmaxnew, xminold,  xmaxold,  zminold,  zmaxold, &
-                          ixrbnd, izlbnd, izrbnd)
+                          ixlbnd, ixrbnd, izlbnd, izrbnd)
 ! expand field from grid to a finer one. Each dimension may have any number of cells.
 implicit none
-INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, ixrbnd, izlbnd, izrbnd
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, ixlbnd, ixrbnd, izlbnd, izrbnd
 REAL(8), DIMENSION(0:,0:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: expandwguard_any(0:nxnew+2,0:nznew+2)
 
-INTEGER(ISZ) :: nxold, nzold, nrf, nzi, nzf
+INTEGER(ISZ) :: nxold, nzold, nri, nrf, nzi, nzf
 INTEGER(ISZ) :: jnew, knew, j, k, jp, kp
 REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, delx, delz, odelx, odelz
 REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+1), oddz(nznew+1)
@@ -748,6 +884,12 @@ dznew = (zmaxnew-zminnew) / nznew
 invdxold = REAL(nxold,8)/(xmaxold-xminold)
 invdzold = REAL(nzold,8)/(zmaxold-zminold)
 
+IF(ixlbnd==dirichlet) then
+  nri=2
+else
+  nri=1
+END if
+IF(solvergeom==RZgeom) nri=1
 IF(ixrbnd==dirichlet) then
   nrf=nxnew
 else
@@ -774,7 +916,7 @@ do knew = nzi, nzf
   ddz(knew) = zz-(kold(knew)-1)
   oddz(knew) = 1.-ddz(knew)
 END do
-do jnew = 1, nrf
+do jnew = nri, nrf
   x = xminnew+(jnew-1)*dxnew
   xx = (x-xminold) * invdxold
   jold(jnew) = 1+MIN(nxold,INT(xx))
@@ -886,7 +1028,7 @@ IF(.not.quad) then
     END if
   else
     do knew = 1, nznew+1
-     WRITE(0,*) 'knew',knew
+!     WRITE(0,*) 'knew',knew
      k = kold(knew)
      kp = k+1
      delz = ddz(knew)
@@ -1106,17 +1248,17 @@ END subroutine combinewguard_any
 
 function expandwguardandbnd_any(uold, bnd, nxnew, nznew, xminnew, xmaxnew, zminnew, zmaxnew, &
                                                          xminold, xmaxold, zminold, zmaxold, &
-                                                         ixrbnd, izlbnd, izrbnd)
+                                                         ixlbnd, ixrbnd, izlbnd, izrbnd)
 ! expand field from grid to a finer one. Each dimension may have any number of cells.
 implicit none
-INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, ixrbnd, izlbnd, izrbnd
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, ixlbnd, ixrbnd, izlbnd, izrbnd
 REAL(8), DIMENSION(0:,0:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: expandwguardandbnd_any(0:nxnew+2,0:nznew+2)
 TYPE(bndptr) :: bnd
 
 INTEGER(ISZ) :: nxold, nzold
-INTEGER(ISZ) :: jnew, knew, j, k, jp, kp, nrf, nzi, nzf
+INTEGER(ISZ) :: jnew, knew, j, k, jp, kp, nri, nrf, nzi, nzf
 REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, delx, delz, odelx, odelz
 REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+1), oddz(nznew+1)
 INTEGER(ISZ) :: jold(nxnew+1), kold(nznew+1), joldp(nxnew+1), koldp(nznew+1)
@@ -1133,6 +1275,12 @@ dznew = (zmaxnew-zminnew) / nznew
 invdxold = REAL(nxold,8)/(xmaxold-xminold)
 invdzold = REAL(nzold,8)/(zmaxold-zminold)
 
+IF(ixlbnd==dirichlet) then
+  nri=2
+else
+  nri=1
+END if
+IF(solvergeom==RZgeom) nri=1
 IF(ixrbnd==dirichlet) then
   nrf=nxnew
 else
@@ -1159,7 +1307,7 @@ do knew = nzi, nzf
   ddz(knew) = zz-(kold(knew)-1)
   oddz(knew) = 1.-ddz(knew)
 END do
-do jnew = 1, nrf
+do jnew = nri, nrf
   x = xminnew+(jnew-1)*dxnew
   xx = (x-xminold) * invdxold
   jold(jnew) = 1+MIN(nxold,INT(xx))
@@ -1172,7 +1320,7 @@ do knew = nzi, nzf
   kp = koldp(knew)
   delz = ddz(knew)
   odelz = oddz(knew)
-  do jnew = 1, nrf
+  do jnew = nri, nrf
     j = jold(jnew)
     jp = joldp(jnew)
     delx = ddx(jnew)
@@ -1308,11 +1456,10 @@ IF(l_mgridrz_debug) WRITE(0,*) 'exit restrict_pof2, level = ',level
 return
 end function restrict_pof2
 
-function restrict(uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew, &
-                  ixrbnd, izlbnd, izrbnd)
+function restrict(uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
-INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, ixrbnd, izlbnd, izrbnd
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 REAL(8) :: restrict(1:nxnew+1,1:nznew+1),rap(1:nxnew+1,1:nznew+1)
@@ -2095,6 +2242,111 @@ IF(l_mgridrz_debug) WRITE(0,*) 'exit relax, level = ',level
 return
 END subroutine relaxbndrzwguard
 
+!pgi$r nobounds
+subroutine relaxbndxzwguard(f,rhs,bnd,nx,nz,dx,dz,nc,voltfact,mgparam, ixlbnd, ixrbnd, izlbnd, izrbnd)
+! make a relaxation step. Grid is assumed to have guard cells.
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: nx, nz, nc, ixlbnd, ixrbnd, izlbnd, izrbnd
+REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
+REAL(8), INTENT(IN) :: rhs(1:,1:)!rhs(nr+1,nz+1)
+REAL(8), INTENT(IN) :: dx, dz, voltfact, mgparam
+TYPE(bndptr), INTENT(IN OUT) :: bnd
+
+INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, redblack, iil, iiu, ic, nxi, nxf, nzi, nzf
+REAL(8) :: dt, cf0, cfx, cfz, cfrhs
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter relax, level = ',level
+
+! define CFL
+dt = mgparam/(2._8/dx**2+2._8/dz**2)
+! define coefficients
+cfz = dt / dz**2
+cfx = dt / dx**2
+cf0 = 1._8-2._8*(cfx+cfz)
+cfrhs = dt
+
+IF(ixlbnd==dirichlet) then
+  nxi=2
+else
+  nxi=1
+END if
+IF(ixrbnd==dirichlet) then
+  nxf=nx-1
+else
+  nxf=nx
+END if
+IF(izlbnd==dirichlet) then
+  nzi=2
+else
+  nzi=1
+END if
+IF(izrbnd==dirichlet) then
+  nzf=nz-1
+else
+  nzf=nz
+END if
+
+do i = 1, nc
+
+lsw = 1
+do redblack = 1, 2
+  jsw = lsw
+  do ic = 1, bnd%nb_conductors
+    IF(ic==1) then
+      bnd%cnd => bnd%first
+    else
+      bnd%cnd => bnd%cnd%next
+    END if
+
+    IF(redblack==2) THEN !red
+      iil=1
+      iiu=bnd%cnd%nbbndred
+    else !black
+      iil=bnd%cnd%nbbndred+1
+      iiu=bnd%cnd%nbbnd
+    ENDif
+    do ii = iil, iiu
+      j = bnd%cnd%jj(ii)
+      l = bnd%cnd%kk(ii)
+        IF(bnd%cnd%docalc(ii).and.bnd%v(j,l)==v_bnd) &
+        f(j,l) = f(j,l) + mgparam*bnd%cnd%dt(ii)*( &
+                 bnd%cnd%cf0(ii)*f(j,l) &
+               + bnd%cnd%cfxp(ii)*f(j+1,l)+bnd%cnd%cfxm(ii)*f(j-1,l) &
+               + bnd%cnd%cfzp(ii)*f(j,l+1)+bnd%cnd%cfzm(ii)*f(j,l-1) &
+               + voltfact*(bnd%cnd%phi0xm(ii)+bnd%cnd%phi0xp(ii) &
+               +           bnd%cnd%phi0zm(ii)+bnd%cnd%phi0zp(ii)) &
+               - rhs(j,l))
+    ENDDO
+  END do
+  do l = nzi, nzf+1
+    do j = nxi+jsw-1, nxf+1, 2
+      IF(bnd%v(j,l)==v_vacuum) &
+        f(j,l) = cf0 * f(j,l) &
+               + cfx*(f(j+1,l)+f(j-1,l))   &
+               + cfz*(f(j,l+1)+f(j,l-1)) &
+               - cfrhs*rhs(j,l)
+
+    end do
+    jsw = 3-jsw
+  end do
+  lsw = 3-lsw
+
+#ifdef MPIPARALLEL
+  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
+#endif
+
+END do !redblack=1, 2
+
+call updateguardcellsrz(f=f, ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=izlbnd, izrbnd=izrbnd)
+
+END do !i=1, nc
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit relax, level = ',level
+
+return
+END subroutine relaxbndxzwguard
+
 #ifdef MPIPARALLEL
   subroutine exchange_fbndz(f, izlbnd, izrbnd)
     REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
@@ -2474,6 +2726,110 @@ IF(l_mgridrz_debug) WRITE(0,*) 'exit resid, level = ',level
 return
 end function residbndrzwguard
 
+function residbndxzwguard(f,rhs,bnd,nx,nz,dx,dz,voltfact,l_zerolastz, ixlbnd, ixrbnd, izlbnd, izrbnd)
+! evaluate residue. Grid is assumed to have guard cells, but residue does not.
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: nx, nz, ixlbnd, ixrbnd, izlbnd, izrbnd
+REAL(8), INTENT(IN) :: f(0:,0:)!f(0:nx+2,0:nz+2)
+REAL(8), INTENT(IN) :: rhs(:,:)!rhs(nx+1,nz+1)
+TYPE(bndptr) :: bnd
+REAL(8), INTENT(IN) :: dx, dz,voltfact
+REAL(8), DIMENSION(SIZE(f,1)-2,SIZE(f,2)-2) :: residbndxzwguard
+LOGICAL(ISZ) :: l_zerolastz
+
+INTEGER(ISZ) :: i, j, l, ii, ic, nxi, nxf, nzi, nzf
+REAL(8) :: cf0, cfx, cfz
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter resid, level = ',level
+
+cfx = 1._8 / dx**2
+cfz = 1._8 / dz**2
+cf0 = -2._8*(cfx+cfz)
+
+residbndxzwguard = 0._8
+
+!do ic = 1, bnd%nb_conductors
+!  IF(ic==1) then
+!    bnd%cnd => bnd%first
+!  else
+!    bnd%cnd => bnd%cnd%next
+!  END if
+!  do i = 1, bnd%cnd%ncond
+!    residbndxzwguard(bnd%cnd%jcond(i),bnd%cnd%kcond(i)) = 0._8
+!  end do
+!END do
+
+IF(ixlbnd==dirichlet) then
+  nxi=2
+else
+  nxi=1
+END if
+IF(ixrbnd==dirichlet) then
+  nxf=nx-1
+else
+  nxf=nx
+END if
+IF(izlbnd==dirichlet) then
+  nzi=2
+else
+  nzi=1
+END if
+IF(izrbnd==dirichlet) then
+  nzf=nz-1
+else
+  nzf=nz
+END if
+
+do l = nzi, nzf+1
+  do j = nxi, nxf+1
+     IF(bnd%v(j,l)==v_vacuum) &
+       residbndxzwguard(j,l) = cf0 * f(j,l) + cfx*(f(j+1,l)+f(j-1,l))   &
+                                            + cfz*(f(j,l+1)+f(j,l-1)) &
+                                            - rhs(j,l)
+  end do
+end do
+
+do ic = 1, bnd%nb_conductors
+  IF(ic==1) then
+    bnd%cnd => bnd%first
+  else
+    bnd%cnd => bnd%cnd%next
+  END if
+  do ii = 1, bnd%cnd%nbbnd
+    j = bnd%cnd%jj(ii)
+    l = bnd%cnd%kk(ii)
+    IF(bnd%v(j,l)==v_bnd.and.bnd%cnd%docalc(ii)) &
+    residbndxzwguard(j,l) = bnd%cnd%cf0(ii)*f(j,l) &
+                          + bnd%cnd%cfxp(ii)*f(j+1,l)+bnd%cnd%cfxm(ii)*f(j-1,l) &
+                          + bnd%cnd%cfzp(ii)*f(j,l+1)+bnd%cnd%cfzm(ii)*f(j,l-1) &
+                          + voltfact*(bnd%cnd%phi0xp(ii)+bnd%cnd%phi0xm(ii) &
+                          + bnd%cnd%phi0zp(ii)+bnd%cnd%phi0zm(ii)) &
+                          - rhs(j,l)
+  ENDDO
+END do
+
+IF(l_zerolastz) residbndxzwguard(:,nz+1) = 0._8
+
+IF(ixlbnd==dirichlet) then
+  residbndxzwguard(1,:) = 0.
+END if
+IF(ixrbnd==dirichlet) then
+  residbndxzwguard(nx+1,:) = 0.
+END if
+IF(izlbnd==dirichlet) then
+  residbndxzwguard(:,1) = 0.
+END if
+IF(izrbnd==dirichlet) then
+  residbndxzwguard(:,nz+1) = 0.
+END if
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit resid, level = ',level
+
+return
+end function residbndxzwguard
+
+!pgi$r nobounds
 RECURSIVE subroutine mgbndrzwguard(j, u, rhs, bnd, nr, nz, dr, dz, npre, npost, ncycle, sub, relax_only, npmin, mgparam)
 ! performs a multigrid cycle. Grid is assumed to have guard cells.
 implicit none
@@ -2503,9 +2859,14 @@ END if
 
 IF(j<=npmin .or. relax_only) then
   call apply_voltagewguard(u,bnd(j),voltf)
-  call updateguardcellsrz(f=u,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
-  call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                        ixrbnd=ixrbnd, izlbnd=bnd(j)%izlbnd, izrbnd=bnd(j)%izrbnd)
+  call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+  IF(solvergeom==RZgeom) then
+    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
+                          ixrbnd=ixrbnd, izlbnd=bnd(j)%izlbnd, izrbnd=bnd(j)%izrbnd)
+  else IF(solvergeom==XZgeom) then
+    call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd(j),nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd(j)%izlbnd, izrbnd=bnd(j)%izrbnd)
+  END if
 else
   nrnext = bnd(j-1)%nr
   nznext = bnd(j-1)%nz
@@ -2513,9 +2874,14 @@ else
   dznext = bnd(j-1)%dz
   ALLOCATE(res(nrnext+1,nznext+1),v(0:nrnext+2,0:nznext+2))
   call apply_voltagewguard(u,bnd(j),voltf)
-  call updateguardcellsrz(f=u,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
-  call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
-                        ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+  call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+  IF(solvergeom==RZgeom) then
+    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
+                          ixrbnd=ixrbnd, izlbnd=bnd(j)%izlbnd, izrbnd=bnd(j)%izrbnd)
+  else IF(solvergeom==XZgeom) then
+    call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd(j),nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd(j)%izlbnd, izrbnd=bnd(j)%izrbnd)
+  END if
   IF(bnd(level-1)%l_merged) then
 #ifdef MPIPARALLEL
     IF(MOD(my_index/bnd(level)%nworkpproc,2)==0) then
@@ -2540,12 +2906,17 @@ else
 !                             ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
 !  else
   IF(bnd(level-1)%l_merged) res=0.
-  res(:,nzresmin:nzresmax) = restrict( &
+  IF(solvergeom==RZgeom) then
+    res(:,nzresmin:nzresmax) = restrict( &
                              residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.false., &
                              ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd), &
-                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
-                             ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
-
+                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+  else IF(solvergeom==XZgeom) then
+    res(:,nzresmin:nzresmax) = restrict( &
+                             residbndxzwguard(f=u,rhs=rhs,bnd=bnd(j),nx=nr,nz=nz,dx=dr,dz=dz,voltfact=voltf,l_zerolastz=.false., &
+                             ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd), &
+                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+  END if
 !  END if
   call apply_voltage(res,bnd(j-1),0._8)
 #ifdef MPIPARALLEL
@@ -2559,25 +2930,30 @@ else
     level = j
   end do
   call apply_voltagewguard(v,bnd(j-1),0._8)
-  call updateguardcellsrz(f=v,ixrbnd=ixrbnd,izlbnd=bnd(j-1)%izlbnd,izrbnd=bnd(j-1)%izrbnd)
+  call updateguardcellsrz(f=v,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd(j-1)%izlbnd,izrbnd=bnd(j-1)%izrbnd)
 !  IF(bnd(j)%l_powerof2) then
 !    u = u + expandwguard(v(:,nzresmin-1:nzresmax+1))
 !  else
  IF(restrictwbnd) then
     u = u + expandwguardandbnd_any(v(:,nzresmin-1:nzresmax+1),bnd(j),nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
-             ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+             ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
   else
     u = u + expandwguard_any(v(:,nzresmin-1:nzresmax+1),nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
-                                ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+                                ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
   END if
 !  END if
   call apply_voltagewguard(u,bnd(j),voltf)
-  call updateguardcellsrz(f=u,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+  call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
 #ifdef MPIPARALLEL
   call exchange_fbndz(u,bnd(j)%izlbnd,bnd(j)%izrbnd)
 #endif
-  call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npost,voltfact=voltf,mgparam=mgparam, &
-                        ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+  IF(solvergeom==RZgeom) then
+    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
+                          ixrbnd=ixrbnd, izlbnd=bnd(j)%izlbnd, izrbnd=bnd(j)%izrbnd)
+  else IF(solvergeom==XZgeom) then
+    call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd(j),nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
+                          ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd(j)%izlbnd, izrbnd=bnd(j)%izrbnd)
+  END if
   DEALLOCATE(res,v)
 END if
 
@@ -2586,10 +2962,12 @@ IF(l_mgridrz_debug) WRITE(0,*) 'exit mg, level = ',level
 return
 end subroutine mgbndrzwguard
 
-subroutine updateguardcellsrz(f, ixrbnd, izlbnd, izrbnd)
+!pgi$r nobounds
+subroutine updateguardcellsrz(f, ixlbnd, ixrbnd, izlbnd, izrbnd)
 ! update guard cells values according to boundary conditions.
 implicit none
 REAL(8),INTENT(IN OUT) :: f(:,:)
+INTEGER(ISZ), optional :: ixlbnd
 INTEGER(ISZ) :: ixrbnd, izlbnd, izrbnd
 
 INTEGER(ISZ) :: ixmax, izmax
@@ -2597,12 +2975,24 @@ INTEGER(ISZ) :: ixmax, izmax
 ixmax=SIZE(f,1)
 izmax=SIZE(f,2)
 
-f(1,:) = f(3,:)
+IF(PRESENT(ixlbnd)) then
+  select case (ixlbnd)
+    case (dirichlet)
+      f(1,:) = f(2,:)
+    case (neumann)
+      f(1,:) = f(3,:)
+    case (periodic)
+      f(1,:) = f(ixmax-1,:)
+    case default
+  end select
+END if
 select case (ixrbnd)
     case (dirichlet)
       f(ixmax,:) = f(ixmax-1,:)
     case (neumann)
       f(ixmax,:) = f(ixmax-2,:)
+    case (periodic)
+      f(ixmax,:) = f(2,2)
     case default
 end select
 select case (izlbnd)
@@ -2623,6 +3013,8 @@ select case (izrbnd)
       f(:,izmax) = f(:,2)
     case default
 end select
+
+IF(solvergeom==RZgeom) f(1,:) = f(3,:)
 
 end subroutine updateguardcellsrz
 
@@ -2653,6 +3045,7 @@ END do
 return
 end subroutine apply_voltage
 
+!pgi$r nobounds
 subroutine apply_voltagewguard(f,bnd,coef_voltage)
 ! assign voltage value at grid nodes located inside conductors. Grid is assumed to have guard cells.
 implicit none
@@ -2690,6 +3083,11 @@ REAL(8), allocatable, DIMENSION(:,:) :: uold, uinit
 REAL(8) :: maxerr, maxerr_old
 LOGICAL :: do_calc, has_diverged
 
+IF(solvergeom==Zgeom) then
+  call solve_multigridz(grid)
+  return
+END if
+
 nr = SIZE(grid%phi,1)
 nz = SIZE(grid%phi,2)
 
@@ -2724,8 +3122,8 @@ has_diverged = .false.
        IF(my_index==0) then
 #endif
         WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
-        WRITE(0,*) '        average initial residue = ',maxerr_old
-        WRITE(0,*) '        average current residue = ',maxerr
+        WRITE(0,*) '        initial maximum error = ',maxerr_old
+        WRITE(0,*) '        current maximum error = ',maxerr
         WRITE(0,*) '        trying npre and npost = ',grid%npre+1,' (also reset mgparam to 1.8)'
 #ifdef MPIPARALLEL
       END if
@@ -2772,6 +3170,33 @@ IF(l_for_timing) DEALLOCATE(uinit)
 
 return
 end subroutine solve_multigridrz
+
+subroutine solve_multigridz(grid)
+! solve field for u with density rhoinit.
+implicit none
+
+! input/output variables
+TYPE(grdptr) :: grid
+
+INTEGER(ISZ) :: j
+REAL(8) :: V0, VL
+
+V0 = grid%phi(1,1)
+VL = grid%phi(1,grid%nz+1)
+
+grid%phi(1,2) = 0
+do j = 2, grid%nz
+  grid%phi(1,2) = grid%phi(1,2) - (j-1)*grid%dz**2*grid%rho(1,grid%nz+2-j)/eps0
+end do
+grid%phi(1,2) = ((V0*(grid%nz-1)+VL)-grid%phi(1,2))/grid%nz
+do j = 2, grid%nz
+  grid%phi(1,j+1) = 2.*grid%phi(1,j) - grid%phi(1,j-1) - grid%dz**2*grid%rho(1,j)/eps0
+end do
+grid%phi(1,0) = 2.*grid%phi(1,1)-grid%phi(1,2)
+grid%phi(1,grid%nz+2) = 2.*grid%phi(1,grid%nz+1)-grid%phi(1,grid%nz)
+
+return
+end subroutine solve_multigridz
 
 recursive subroutine find_mgparam_rz_1grid(grid)
 implicit none
@@ -3034,6 +3459,7 @@ END function findnrecursmin
 END module multigridrz
 
 subroutine multigridrzf(iwhich,u0,rho0,nr0,nz0,dr0,dz0,accuracy)
+USE InjectVars_eq
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nr0, nz0
@@ -3041,13 +3467,21 @@ REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
 REAL(8), INTENT(IN) :: rho0(nr0+1,nz0+1)
 REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 
+  IF(l_find_rise_time) then
+    call multigridrzf_risetime(iwhich,u0,rho0,nr0,nz0,accuracy)
+    return
+  END if
+
   IF(mgridrz_ncmax==0) return
 
   IF(iwhich==1) return
 
 !  call distribute_rho(basegrid)
-
-  if (basegrid%ixrbnd==dirichlet) basegrid%phi(nr0+1,:)       = u0(nr0+1,:)
+  IF(solvergeom/=Zgeom) then
+    IF(solvergeom==XZgeom .AND. basegrid%ixlbnd==dirichlet) &
+                                    basegrid%phi(1,:)           = u0(1,:)
+    if (basegrid%ixrbnd==dirichlet) basegrid%phi(nr0+1,:)       = u0(nr0+1,:)
+  END if
   if (basegrid%izlbnd==dirichlet) basegrid%phi(1:nr0+1,1)     = u0(1:nr0+1,1)
   if (basegrid%izrbnd==dirichlet) basegrid%phi(1:nr0+1,nz0+1) = u0(1:nr0+1,nz0+1)
 
@@ -3057,6 +3491,123 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 
 return
 end subroutine multigridrzf
+
+subroutine multigridrzf_risetime(iwhich,u0,rho0,nr0,nz0,accuracy)
+USE Constant
+USE InGen
+USE InMesh3d
+USE Particles
+USE InjectVars
+USE InjectVars3D
+USE InjectVars_eq, ONLY: inj_phi_eq,v_max,afact,calc_a,l_verbose
+USE multigridrz
+implicit none
+INTEGER(ISZ), INTENT(IN) :: iwhich, nr0, nz0
+REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
+REAL(8), INTENT(IN) :: rho0(nr0+1,nz0+1)
+REAL(8), INTENT(IN) :: accuracy
+
+REAL(8) :: phi0, phiv, phiref, phirho, wtot
+REAL(8), ALLOCATABLE, DIMENSION(:) :: weights
+INTEGER(ISZ) :: i, j, max_j
+INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,border=4
+
+  IF(mgridrz_ncmax==0) return
+
+  IF(iwhich==1) return
+
+! --- Calculate the charge density on the surface of the emitter.
+!  if (inject == 3) then
+!    if(solvergeom==XYZgeom) then
+!      call inj_setrho3d(xmmin,ymmin,inj_dx,inj_dy,inj_dz,inj_nx,inj_ny,l2symtry,l4symtry)
+!    elseif(solvergeom==RZgeom) then
+! --- When using the RZ solver, inj_rho is forced to be
+! --- four-fold symmetric.
+!      call inj_setrho3d(xmmin,ymmin,inj_dx,inj_dy,inj_dz,inj_nx,inj_ny,.false.,.true.)
+!    elseif(solvergeom==Zgeom) then
+!      call inj_setrho3d_z(inj_dz,nz)
+!    endif
+!  endif
+  do i = 1, ngrids
+    grids_ptr(i)%grid%phi = gridinit(i)%grid%phi
+  end do
+  phi0 = v_max
+  phiref = inj_phi_eq
+  vinject=0.
+  call getinj_phi()
+  select case (calc_a)
+    case (center)
+      phiv = -inj_phi(0,0,1)
+      do i = 1, ngrids
+        grids_ptr(i)%grid%phi=0.
+      END do
+      call solve_mgridrz(basegrid,accuracy)
+      vinject=0.
+      call getinj_phi()
+      phirho = -inj_phi(0,0,1)
+!      IF(inject==3) then
+!        phirho = phirho + inj_dz*abs(inj_d(1))*0.5*inj_rho(0,0,1)*inj_dz/eps0
+!        phiref = phiref - inj_dz*abs(inj_d(1))*0.5*inj_rho_eq(0,0,1)*inj_dz/eps0
+!      END if
+    case (average_source)
+      max_j = 1+INT(ainject(1)/basegrid%dr)
+      phiv = -SUM(inj_phi(0:max_j-1,0,1))/max_j
+      do i = 1, ngrids
+        grids_ptr(i)%grid%phi=0.
+      END do
+      call solve_mgridrz(basegrid,accuracy)
+      vinject=0.
+      call getinj_phi()
+      phirho = -SUM(inj_phi(0:max_j-1,0,1))/max_j
+    case (weighted_average_source)
+      max_j = 1+INT(ainject(1)/basegrid%dr)
+      ALLOCATE(weights(max_j))
+      weights(1) = 0.25*pi*inj_dx**2
+      do j = 2, max_j
+        weights(j) = 2.*pi*(j-1)*inj_dx**2
+      end do
+      wtot = SUM(weights(1:max_j))
+      phiv = -SUM(weights(1:max_j)*inj_phi(0:max_j-1,0,1))/wtot
+      do i = 1, ngrids
+        grids_ptr(i)%grid%phi=0.
+      END do
+      call solve_mgridrz(basegrid,accuracy)
+      vinject=0.
+      call getinj_phi()
+      phirho = -SUM(weights(1:max_j)*inj_phi(0:max_j-1,0,1))/wtot
+      DEALLOCATE(weights)
+    case (border)
+      max_j = 1+INT(ainject(1)/basegrid%dr)
+      phiv = -inj_phi(max_j-2,0,1)
+      do i = 1, ngrids
+        grids_ptr(i)%grid%phi=0.
+      END do
+      call solve_mgridrz(basegrid,accuracy)
+      vinject=0.
+      call getinj_phi()
+      phirho = -inj_phi(max_j-2,0,1)
+    case default
+  end select
+  afact = (phiref+phirho)/(phi0-phiv)
+
+!  basegrid%phi(1:nr0+1,:) = basegrid%phi(1:nr0+1,:) + a*phi_init(:,1,:)
+  do i = 1, ngrids
+    grids_ptr(i)%grid%phi = grids_ptr(i)%grid%phi + afact*gridinit(i)%grid%phi
+  end do
+  if(solvergeom==RZgeom) &
+    call updateguardcellsrz(basegrid%phi, basegrid%ixlbnd, basegrid%ixrbnd, basegrid%izlbnd, basegrid%izrbnd)
+
+  vinject=afact*phi0
+  call getinj_phi()
+  IF(l_verbose) then
+    WRITE(0,*) 'a,inj_phi,inj_phi_eq',afact,inj_phi(0,0,1),inj_phi_eq
+    WRITE(0,*) 'phi0, phiv, phiref, phirho',phi0, phiv, phiref, phirho
+  END if
+
+  u0(1:nr0+1,:)=basegrid%phi(1:nr0+1,:)
+
+return
+end subroutine multigridrzf_risetime
 
 subroutine distribute_rho_rz()
 USE multigridrz
@@ -3104,12 +3655,13 @@ INTEGER(ISZ) :: i
                            ixrbnd=grid%ixrbnd, &
                            izlbnd=grid%izlbnd, &
                            izrbnd=grid%izrbnd, &
-                           bnd_only=.true., quad=.false.)
+                           bnd_only=.false., quad=.false.)
 !                           bnd_only=.true., quad=.true.)
     END if
     nlevels = grid%nlevels
     level = nlevels
     bndy => grid%bnd
+    ixlbnd = grid%ixlbnd
     ixrbnd = grid%ixrbnd
     izlbnd = grid%izlbnd
     izrbnd = grid%izrbnd
@@ -3132,7 +3684,7 @@ END subroutine find_mgparam_rz
 subroutine srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
                       xmin,xmax,ymin,ymax,lshell,                      &
                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,             &
-                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+                      ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
 ! call subroutine srfrvout_rz (which determines grid nodes near conductors and give
 ! directions and distances to conductors), initialize and assign coefficients
 ! for multigrid Poisson solver.
@@ -3141,7 +3693,7 @@ USE multigridrz
 implicit none
 character(*) rofzfunc
 real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
-LOGICAL(ISZ):: lfill,lshell,l2symtry,l4symtry
+LOGICAL(ISZ):: lfill,lshell,l2symtry_in,l4symtry_in
 real(kind=8):: xmin,xmax,ymin,ymax
 real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
 INTEGER(ISZ):: nx,ny,nz,ix_axis,iy_axis
@@ -3153,11 +3705,14 @@ REAL(8) :: drc,dzc,zmin_in,zmax_in
 
 TYPE(conductor_type), POINTER :: cndpnt
 
+IF(solvergeom==Zgeom) return
+
 IF(.not.associated(basegrid)) call init_basegrid(nx,nz,dx,dz,xmin,zmmin)
 
 do igrid=1,ngrids
  nlevels=grids_ptr(igrid)%grid%nlevels
  bndy => grids_ptr(igrid)%grid%bnd
+ ixlbnd = grids_ptr(igrid)%grid%ixlbnd
  ixrbnd = grids_ptr(igrid)%grid%ixrbnd
  do i = nlevels,1,-1
   nrc = bndy(i)%nr
@@ -3176,9 +3731,9 @@ do igrid=1,ngrids
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
                       xmin,xmax,ymin,ymax,lshell,                      &
                       zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
-                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+                      ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
 
-  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+  call addconductors_rz(i,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
                         ncond, ixcond, izcond, condvolt, condnumb, &
                         necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
                         ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
@@ -3198,7 +3753,7 @@ end subroutine srfrvoutrz
 subroutine srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,   &
                            lzend,xmin,xmax,ymin,ymax,lshell,          &
                            zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,       &
-                           ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+                           ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
 ! call subroutine srfrvinout_rz (which determines grid nodes near conductors and give
 ! directions and distances to conductors), initialize and assign coefficients
 ! for multigrid Poisson solver.
@@ -3207,7 +3762,7 @@ USE multigridrz
 implicit none
 character(*) rminofz,rmaxofz
 real(kind=8):: volt,zmin,zmax,xcent,ycent
-LOGICAL(ISZ):: lzend,lshell,l2symtry,l4symtry
+LOGICAL(ISZ):: lzend,lshell,l2symtry_in,l4symtry_in
 real(kind=8):: xmin,xmax,ymin,ymax
 real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
 INTEGER(ISZ):: nx,ny,nz,ix_axis,iy_axis
@@ -3219,11 +3774,14 @@ REAL(8) :: drc,dzc,zmin_in,zmax_in
 
 TYPE(conductor_type), POINTER :: cndpnt
 
+IF(solvergeom==Zgeom) return
+
 IF(.not.associated(basegrid)) call init_basegrid(nx,nz,dx,dz,xmin,zmmin)
 
 do igrid=1,ngrids
  nlevels=grids_ptr(igrid)%grid%nlevels
  bndy => grids_ptr(igrid)%grid%bnd
+ ixlbnd = grids_ptr(igrid)%grid%ixlbnd
  ixrbnd = grids_ptr(igrid)%grid%ixrbnd
  do i = nlevels,1,-1
   nrc = bndy(i)%nr
@@ -3242,9 +3800,9 @@ do igrid=1,ngrids
   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,  &
                      lzend,xmin,xmax,ymin,ymax,lshell,                &
                      zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
-                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+                     ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
 
-  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+  call addconductors_rz(i,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
                         ncond, ixcond, izcond, condvolt, condnumb, &
                         necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
                         ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
@@ -3262,21 +3820,24 @@ return
 end subroutine srfrvinoutrz
 
 subroutine setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz, &
-                      l2symtry,l4symtry)
+                      l2symtry_in,l4symtry_in)
 use Conductor3d
 USE multigridrz
 integer(ISZ):: nx,ny,nz
 real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
-logical(ISZ):: l2symtry,l4symtry
+logical(ISZ):: l2symtry_in,l4symtry_in
 
 INTEGER(ISZ) :: i,nrc,nzc,igrid
 REAL(8) :: drc,dzc,rmin_in,zmin_in
+
+IF(solvergeom==Zgeom) return
 
 IF(.not.associated(basegrid)) call init_basegrid(nx,nz,dx,dz,xmmin,zmmin)
 
 do igrid=1,ngrids
  nlevels=grids_ptr(igrid)%grid%nlevels
  bndy => grids_ptr(igrid)%grid%bnd
+ ixlbnd = grids_ptr(igrid)%grid%ixlbnd
  ixrbnd = grids_ptr(igrid)%grid%ixrbnd
  do i = nlevels,1,-1
   level = i
@@ -3294,9 +3855,9 @@ do igrid=1,ngrids
   ncond = 0
 
   call setcndtr_rz(rmin_in,rmin_in,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
-                   l2symtry,l4symtry)
+                   l2symtry_in,l4symtry_in)
 
-  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+  call addconductors_rz(i,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
                         ncond, ixcond, izcond, condvolt, condnumb, &
                         necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
                         ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
@@ -3338,11 +3899,15 @@ REAL(8), ALLOCATABLE, DIMENSION(:) :: ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelp
                                       ocvoltmxtmp, ocvoltpxtmp, ocvoltmztmp, ocvoltpztmp, &
                                       condvolttmp
 
+IF(solvergeom==Zgeom) return
+
 ALLOCATE(mg_ncond(basegrid%nlevels),mg_necndbdy(basegrid%nlevels), mg_nocndbdy(basegrid%nlevels))
 mg_ncond = 0
 mg_necndbdy = 0
 mg_nocndbdy = 0
 
+ixlbnd = basegrid%ixlbnd
+ixrbnd = basegrid%ixrbnd
 do i = 1, ncond
   ii = basegrid%nlevels-icondlevel(i)
   mg_ncond(ii) = mg_ncond(ii) + 1
@@ -3428,7 +3993,7 @@ end do
       ocnumbpztmp(itmp) = ocnumbpz(ii)
     END if
   end do
-  call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+  call addconductors_rz(i,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
                         ncondtmp, ixcondtmp, izcondtmp, condvolttmp, condnumbtmp, &
                         necndbdytmp, iecndxtmp, iecndztmp, ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, &
                         ecvoltmxtmp,ecvoltpxtmp, ecvoltmztmp,ecvoltpztmp, &
@@ -3461,7 +4026,7 @@ return
 end subroutine install_conductors_rz
 
 
-subroutine addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
+subroutine addconductors_rz(i,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
                             ncond, ixcond, izcond, condvolt, condnumb, &
                             necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
                             ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
@@ -3470,10 +4035,11 @@ subroutine addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
                             ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
                             ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
 !use Conductor3d
+USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,Zgeom
 USE multigridrz, ONLY: conductor_type, bndy, dirichlet, v_cond, v_bnd, bnd_method, egun, ecb, init_bnd_sublevel
 implicit none
 
-INTEGER(ISZ), INTENT(IN) :: nrc,nzc,i,ixrbnd,izlbnd,izrbnd,ncond,necndbdy,nocndbdy
+INTEGER(ISZ), INTENT(IN) :: nrc,nzc,i,ixlbnd,ixrbnd,izlbnd,izrbnd,ncond,necndbdy,nocndbdy
 REAL(8), INTENT(IN) :: drc,dzc
 INTEGER(ISZ), INTENT(IN) :: ixcond(ncond), izcond(ncond), &
                             iecndx(necndbdy), iecndz(necndbdy), &
@@ -3487,15 +4053,17 @@ REAL(8), INTENT(IN) :: condvolt(ncond), &
                        ecvoltmx(necndbdy), ecvoltpx(necndbdy), ecvoltmz(necndbdy), ecvoltpz(necndbdy), &
                        ocvoltmx(nocndbdy), ocvoltpx(nocndbdy), ocvoltmz(nocndbdy), ocvoltpz(nocndbdy)
 
-INTEGER(ISZ) :: ii,iii,iv,iiv,nxbnd,nzbndmin,nzbndmax,iivmin,iivmax
+INTEGER(ISZ) :: ii,iii,iv,iiv,nxbndmin,nxbndmax,nzbndmin,nzbndmax,iivmin,iivmax
 REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz
 
 TYPE(conductor_type), POINTER :: cndpnt
 
-  nxbnd=nrc
+  nxbndmin=0
+  nxbndmax=nrc
   nzbndmin=0
   nzbndmax=nzc
-  IF(ixrbnd==dirichlet) nxbnd=nxbnd-1
+  IF(ixlbnd==dirichlet) nxbndmin=nxbndmin+1
+  IF(ixrbnd==dirichlet) nxbndmax=nxbndmax-1
   IF(izlbnd==dirichlet) nzbndmin=nzbndmin+1
   IF(izrbnd==dirichlet) nzbndmax=nzbndmax-1
 
@@ -3554,7 +4122,7 @@ TYPE(conductor_type), POINTER :: cndpnt
      bndy(i)%cnd%condidzp(ii)=ocnumbpz(iii)
    END if
    IF(bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii))==v_cond) cycle
-   IF(.not. (bndy(i)%cnd%jj(ii)>=1 .and. bndy(i)%cnd%jj(ii)<=nxbnd+1 .and. &
+   IF(.not. (bndy(i)%cnd%jj(ii)>=nxbndmin+1 .and. bndy(i)%cnd%jj(ii)<=nxbndmax+1 .and. &
              bndy(i)%cnd%kk(ii)>=nzbndmin+1 .and. bndy(i)%cnd%kk(ii)<=nzbndmax+1)) cycle
    bndy(i)%cnd%docalc(ii)=.true.
    IF(bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii))/=v_bnd ) then
@@ -3613,13 +4181,12 @@ TYPE(conductor_type), POINTER :: cndpnt
        dzz=0.5_8*(dzp+dzm)  !ecb
      case default
    end select
-   IF(bndy(i)%cnd%jj(ii)==1) then
+   IF(solvergeom==RZgeom) then
+    IF(bndy(i)%cnd%jj(ii)==1) then
      bndy(i)%cnd%dt(ii) = 1._8/(4._8/(dxp*dxx)+(1._8/dzm+1._8/dzp)/dzz)
+     bndy(i)%cnd%cfxm(ii) = 0.
      bndy(i)%cnd%cfxp(ii) = 4._8/(dxp*dxx)
-     bndy(i)%cnd%cfzm(ii) = 1._8/(dzm*dzz)
-     bndy(i)%cnd%cfzp(ii) = 1._8/(dzp*dzz)
-     bndy(i)%cnd%cf0(ii)  = -bndy(i)%cnd%cfxp(ii)-bndy(i)%cnd%cfzm(ii)-bndy(i)%cnd%cfzp(ii)
-   else
+    else
      r = (bndy(i)%cnd%jj(ii)-1)*bndy(i)%dr
      select case (bnd_method)
        case (egun)
@@ -3633,38 +4200,92 @@ TYPE(conductor_type), POINTER :: cndpnt
      bndy(i)%cnd%dt(ii) = 1._8/((rm/dxm+rp/dxp)/(r*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      bndy(i)%cnd%cfxm(ii) = rm/(r*dxm*dxx)
      bndy(i)%cnd%cfxp(ii) = rp/(r*dxp*dxx)
-     bndy(i)%cnd%cfzm(ii) = 1._8/(dzm*dzz)
-     bndy(i)%cnd%cfzp(ii) = 1._8/(dzp*dzz)
-     bndy(i)%cnd%cf0(ii)  = -bndy(i)%cnd%cfxm(ii)-bndy(i)%cnd%cfxp(ii)-bndy(i)%cnd%cfzm(ii)-bndy(i)%cnd%cfzp(ii)
+    END if
+   else ! (solvergeom==XZgeom)
+     bndy(i)%cnd%dt(ii) = 1._8/((1._8/dxm+1._8/dxp)/dxx+(1._8/dzm+1._8/dzp)/dzz)
+     bndy(i)%cnd%cfxm(ii) = 1._8/(dxm*dxx)
+     bndy(i)%cnd%cfxp(ii) = 1._8/(dxp*dxx)
    END if
-     IF(dxm>=bndy(i)%dr) then
-       bndy(i)%cnd%phi0xm(ii)=0._8
-     else
-       bndy(i)%cnd%phi0xm(ii)=bndy(i)%cnd%cfxm(ii)*bndy(i)%cnd%volt0xm(ii)
-       bndy(i)%cnd%cfxm(ii)=0._8
-     END if
-     IF(dxp>=bndy(i)%dr) then
-       bndy(i)%cnd%phi0xp(ii)=0._8
-     else
-       bndy(i)%cnd%phi0xp(ii)=bndy(i)%cnd%cfxp(ii)*bndy(i)%cnd%volt0xp(ii)
-       bndy(i)%cnd%cfxp(ii)=0._8
-     END if
-     IF(dzm>=bndy(i)%dz) then
-       bndy(i)%cnd%phi0zm(ii)=0._8
-     else
-       bndy(i)%cnd%phi0zm(ii)=bndy(i)%cnd%cfzm(ii)*bndy(i)%cnd%volt0zm(ii)
-       bndy(i)%cnd%cfzm(ii)=0._8
-     END if
-     IF(dzp>=bndy(i)%dz) then
-       bndy(i)%cnd%phi0zp(ii)=0._8
-     else
-       bndy(i)%cnd%phi0zp(ii)=bndy(i)%cnd%cfzp(ii)*bndy(i)%cnd%volt0zp(ii)
-       bndy(i)%cnd%cfzp(ii)=0._8
-     END if
+   bndy(i)%cnd%cfzm(ii) = 1._8/(dzm*dzz)
+   bndy(i)%cnd%cfzp(ii) = 1._8/(dzp*dzz)
+   bndy(i)%cnd%cf0(ii)  = -bndy(i)%cnd%cfxm(ii)-bndy(i)%cnd%cfxp(ii)-bndy(i)%cnd%cfzm(ii)-bndy(i)%cnd%cfzp(ii)
+   IF(dxm>=bndy(i)%dr) then
+     bndy(i)%cnd%phi0xm(ii)=0._8
+   else
+     bndy(i)%cnd%phi0xm(ii)=bndy(i)%cnd%cfxm(ii)*bndy(i)%cnd%volt0xm(ii)
+     bndy(i)%cnd%cfxm(ii)=0._8
+   END if
+   IF(dxp>=bndy(i)%dr) then
+     bndy(i)%cnd%phi0xp(ii)=0._8
+   else
+     bndy(i)%cnd%phi0xp(ii)=bndy(i)%cnd%cfxp(ii)*bndy(i)%cnd%volt0xp(ii)
+     bndy(i)%cnd%cfxp(ii)=0._8
+   END if
+   IF(dzm>=bndy(i)%dz) then
+     bndy(i)%cnd%phi0zm(ii)=0._8
+   else
+     bndy(i)%cnd%phi0zm(ii)=bndy(i)%cnd%cfzm(ii)*bndy(i)%cnd%volt0zm(ii)
+     bndy(i)%cnd%cfzm(ii)=0._8
+   END if
+   IF(dzp>=bndy(i)%dz) then
+     bndy(i)%cnd%phi0zp(ii)=0._8
+   else
+     bndy(i)%cnd%phi0zp(ii)=bndy(i)%cnd%cfzp(ii)*bndy(i)%cnd%volt0zp(ii)
+     bndy(i)%cnd%cfzp(ii)=0._8
+   END if
   end do
 
 end subroutine addconductors_rz
 
+!=============================================================================
+subroutine gtlchgrz
+USE multigridrz
+use Subtimers
+use Picglb
+use InGen3d
+use Picglb3d
+use InMesh3d
+use Fields3d
+use Z_arrays
+use InDiag3d
+
+!  Calculates the line charge density from rho.
+
+real(kind=8):: zz,wzg,dzi
+integer(ISZ):: j,iz,izg
+real(kind=8):: substarttime,wtime
+if (lw3dtimesubs) substarttime = wtime()
+if (.not. lgtlchg3d) return
+
+dzi = 1./dz
+
+!conversion factor to go from grid frame to beam frame
+zz = zgrid + zmmin - zzmin - zbeam
+
+do iz=0,nzzarr
+
+  izg = (iz*dzz - zz)*dzi
+  wzg = (iz*dzz - zz)*dzi - izg
+  izg = izg+1
+
+  if (1 <= izg .and. izg <= nz+1) then
+   do j = 1, basegrid%nr+1
+    linechg(iz) = basegrid%rho(1,izg)/(basegrid%invvol(j)*basegrid%dz)*(1. - wzg)
+   end do
+  else
+    linechg(iz) = 0.
+  endif
+  if (1 <= izg+1 .and. izg+1 <= nz+1) then
+   do j = 1, basegrid%nr+1
+    linechg(iz) = linechg(iz) +  basegrid%rho(j,izg+1)/(basegrid%invvol(j)*basegrid%dz)*wzg
+   end do
+  endif
+
+enddo
+
+if (lw3dtimesubs) timegtlchg3d = timegtlchg3d + wtime() - substarttime
+return
+end subroutine gtlchgrz
 !     ******************************************************************
 !     *
 !     *                        SUBROUTINE RHOWEIGHTRZ
@@ -3672,7 +4293,7 @@ end subroutine addconductors_rz
 !     ******************************************************************
 
 
-subroutine rhoweightrz(xp,yp,zp,uzp,np,q,nr,nz,dr,dz,zmin)
+subroutine rhoweightrz(xp,yp,zp,uzp,np,q,nr,nz,dr,dz,xmin,zmin)
 USE multigridrz
 USE constant
 USE Subtimers
@@ -3680,19 +4301,21 @@ implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp
-REAL(8), INTENT(IN) :: q, dr, dz, zmin
+REAL(8), INTENT(IN) :: q, dr, dz, zmin, xmin
 
-REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr)
+REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr), invvolxz
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
 REAL(8):: substarttime,wtime
+LOGICAL(ISZ) :: l_sym
 
 if (lw3dtimesubs) substarttime = wtime()
 
 IF(np==0) return
 
-IF(ngrids>1) then
+IF(solvergeom==RZgeom) then
+ IF(ngrids>1) then
   call rhoweightrznew(xp,yp,zp,uzp,np,q)
-else
+ else
   invdr = 1._8/dr
   invdz = 1._8/dz
 
@@ -3735,11 +4358,111 @@ else
     basegrid%rho(jnp,lnp) = basegrid%rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
 #endif
   end do
+ END if
+else ! IF(solvergeom==XZgeom) then
+ IF(l4symtry .OR. l2symtry) then
+   l_sym = .true.
+ else
+   l_sym = .false.
+ END if
+ IF(ngrids>1) then
+!  call rhoweightrznew(xp,yp,zp,uzp,np,q)
+  WRITE(0,*) 'mesh refinement not yet supported in XZ.'
+  stop
+ else
+  invdr = 1._8/dr
+  invdz = 1._8/dz
+
+  invvolxz = 1._8 / (dr*dz)
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(uzp(i)==0.) cycle
+    IF(l_sym) then
+      rpos = abs(xp(i))*invdr
+    else
+      rpos = (xp(i)-xmin)*invdr
+    END if
+    zpos = (zp(i)-basegrid%zminp)*invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    jnp=jn+1
+    lnp=ln+1
+#ifdef MPIPARALLEL
+    basegrid%rhop(jn, ln)  = basegrid%rhop(jn, ln)  + q * oddr * oddz * invvolxz
+    basegrid%rhop(jnp,ln)  = basegrid%rhop(jnp,ln)  + q *  ddr * oddz * invvolxz
+    basegrid%rhop(jn, lnp) = basegrid%rhop(jn, lnp) + q * oddr *  ddz * invvolxz
+    basegrid%rhop(jnp,lnp) = basegrid%rhop(jnp,lnp) + q *  ddr *  ddz * invvolxz
+    basegrid%rhominr = MIN(basegrid%rhominr,jn)
+    basegrid%rhomaxr = MAX(basegrid%rhomaxr,jnp)
+    basegrid%rhominz = MIN(basegrid%rhominz,ln)
+    basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
+#else
+    basegrid%rho(jn, ln)  = basegrid%rho(jn, ln)  + q * oddr * oddz * invvolxz
+    basegrid%rho(jnp,ln)  = basegrid%rho(jnp,ln)  + q *  ddr * oddz * invvolxz
+    basegrid%rho(jn, lnp) = basegrid%rho(jn, lnp) + q * oddr *  ddz * invvolxz
+    basegrid%rho(jnp,lnp) = basegrid%rho(jnp,lnp) + q *  ddr *  ddz * invvolxz
+#endif
+  end do
+ END if
 END if
 
 if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
 return
 END SUBROUTINE RHOWEIGHTRZ
+
+subroutine rhoweightz(zp,uzp,np,q,nz,dz,zmin)
+USE multigridrz
+USE constant
+USE Subtimers
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np, nz
+REAL(8), DIMENSION(np), INTENT(IN) :: zp, uzp
+REAL(8), INTENT(IN) :: q, dz, zmin
+
+REAL(8) :: invdz, zpos, ddz, oddz
+INTEGER(ISZ) :: i, j, ln, lnp
+REAL(8):: substarttime,wtime
+
+if (lw3dtimesubs) substarttime = wtime()
+
+IF(np==0) return
+
+IF(ngrids>1) then
+!  call rhoweightrznew(xp,yp,zp,uzp,np,q)
+  WRITE(0,*) 'mesh refinement not yet supported in Z.'
+  STOP
+else
+  invdz = 1._8/dz
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(uzp(i)==0.) cycle
+    zpos = (zp(i)-basegrid%zminp)*invdz
+    ln = 1+INT(zpos)
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+    lnp=ln+1
+#ifdef MPIPARALLEL
+    basegrid%rhop(1,ln)  = basegrid%rhop(1,ln)  + q * oddz * invdz
+    basegrid%rhop(1,lnp) = basegrid%rhop(1,lnp) + q * ddz  * invdz
+    basegrid%rhominz = MIN(basegrid%rhominz,ln)
+    basegrid%rhomaxz = MAX(basegrid%rhomaxz,lnp)
+#else
+    basegrid%rho(1,ln)  = basegrid%rho(1,ln)  + q * oddz * invdz
+    basegrid%rho(1,lnp) = basegrid%rho(1,lnp) + q * ddz  * invdz
+#endif
+  end do
+END if
+
+if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
+return
+END SUBROUTINE RHOWEIGHTZ
 
 subroutine set_rho_rz(rho,nr,nz,id)
 USE multigridrz
@@ -3769,6 +4492,8 @@ implicit none
 INTEGER(ISZ), INTENT(IN) :: id,nr,nz,rhop
 REAL(8), DIMENSION(nr+1,nz+1), INTENT(IN OUT) :: rho
 
+IF(solvergeom==XZgeom) call rhobndrz()
+
   IF(id<1.or.id>ngrids) then
     WRITE(0,*) 'Error, id out of bounds'
     WRITE(0,*) 'given id = ',id,' while 1 < id < ',ngrids
@@ -3797,6 +4522,41 @@ REAL(8), DIMENSION(nr+1,nz+1), INTENT(IN OUT) :: rho
 #endif
 return
 end subroutine get_rho_rz
+
+subroutine get_rho_z(rho,nz,id,rhop)
+USE multigridrz
+implicit none
+INTEGER(ISZ), INTENT(IN) :: id,nz,rhop
+REAL(8), DIMENSION(nz+1), INTENT(IN OUT) :: rho
+
+  IF(id<1.or.id>ngrids) then
+    WRITE(0,*) 'Error, id out of bounds'
+    WRITE(0,*) 'given id = ',id,' while 1 < id < ',ngrids
+    return
+  END if
+#ifdef MPIPARALLEL
+  IF(rhop==1) then
+    IF(SIZE(rho)/=SIZE(grids_ptr(id)%grid%rhop,2)) then
+      WRITE(0,*) 'Error, dimensions should be the same: '
+      WRITE(0,*) 'Nz for rhop    : ',SIZE(rho,1)
+      WRITE(0,*) 'Nz for rhop(id): ',SIZE(grids_ptr(id)%grid%rhop,2)
+      return
+    END if
+    rho=grids_ptr(id)%grid%rhop(1,:)
+  else
+#endif
+    IF(SIZE(rho,1)/=SIZE(grids_ptr(id)%grid%rho,2)) then
+      WRITE(0,*) 'Error, dimensions should be the same: '
+      WRITE(0,*) 'Nz for rho    : ',SIZE(rho,1)
+      WRITE(0,*) 'Nz for rho(id): ',SIZE(grids_ptr(id)%grid%rho,2)
+      return
+    END if
+    rho=grids_ptr(id)%grid%rho(1,:)
+#ifdef MPIPARALLEL
+  END if
+#endif
+return
+end subroutine get_rho_z
 
 subroutine rhoweightrznew(xp,yp,zp,uzp,np,q)
 USE constant
@@ -3943,20 +4703,44 @@ INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
   return
 END SUBROUTINE RHOWEIGHTRZ_DEFORM
 
-subroutine rhobndrz(rho,nr,nz)
+subroutine rhobndrz(periinz)
 USE multigridrz
 implicit none
+LOGICAL(ISZ) :: periinz
 
-INTEGER(ISZ), INTENT(IN) :: nr, nz
-REAL(8), dimension(0:nr,0:nz), INTENT(IN OUT) :: rho
+INTEGER(ISZ) :: igrid, nr, nz
 
-  IF(ixrbnd==neumann) rho(nr,:) = 2._8*rho(nr,:)
-  IF(izlbnd==neumann) rho(:,0)  = 2._8*rho(:,0)
-  IF(izrbnd==neumann) rho(:,nz) = 2._8*rho(:,nz)
+  do igrid = 1, ngrids
+    nr = grids_ptr(igrid)%grid%nr
+    nz = grids_ptr(igrid)%grid%nz
+#ifdef MPIPARALLEL
+    IF(grids_ptr(igrid)%grid%ixlbnd==neumann) grids_ptr(igrid)%grid%rhop(1,:)    = 2._8*grids_ptr(igrid)%grid%rhop(1,:)
+    IF(grids_ptr(igrid)%grid%ixrbnd==neumann) grids_ptr(igrid)%grid%rhop(nr+1,:) = 2._8*grids_ptr(igrid)%grid%rhop(nr+1,:)
+    IF(grids_ptr(igrid)%grid%izlbnd==neumann) grids_ptr(igrid)%grid%rhop(:,1)    = 2._8*grids_ptr(igrid)%grid%rhop(:,1)
+    IF(grids_ptr(igrid)%grid%izrbnd==neumann) grids_ptr(igrid)%grid%rhop(:,nz+1) = 2._8*grids_ptr(igrid)%grid%rhop(:,nz+1)
+#else
+    IF(grids_ptr(igrid)%grid%ixlbnd==neumann) grids_ptr(igrid)%grid%rho(1,:)    = 2._8*grids_ptr(igrid)%grid%rho(1,:)
+    IF(grids_ptr(igrid)%grid%ixrbnd==neumann) grids_ptr(igrid)%grid%rho(nr+1,:) = 2._8*grids_ptr(igrid)%grid%rho(nr+1,:)
+    IF(grids_ptr(igrid)%grid%izlbnd==neumann) grids_ptr(igrid)%grid%rho(:,1)    = 2._8*grids_ptr(igrid)%grid%rho(:,1)
+    IF(grids_ptr(igrid)%grid%izrbnd==neumann) grids_ptr(igrid)%grid%rho(:,nz+1) = 2._8*grids_ptr(igrid)%grid%rho(:,nz+1)
+#endif
+  end do
+
+  IF(periinz) then
+#ifdef MPIPARALLEL
+      WRITE(0,*) 'ERROR:periodicity in RZ not yet supported on parallel platform, aborting.'
+      stop
+#endif
+    IF(ngrids>1) then
+      WRITE(0,*) 'ERROR:periodicity in RZ not yet supported with mesh refinement, aborting.'
+      stop
+    END if
+    basegrid%rho(:,1) = basegrid%rho(:,1) + basegrid%rho(:,basegrid%nz+1)
+    basegrid%rho(:,basegrid%nz+1) = basegrid%rho(:,1)
+  END if
 
   return
 end subroutine rhobndrz
-
 
 subroutine gchange_rhop_phip_rz()
 USE multigridrz
@@ -3992,6 +4776,18 @@ REAL(8), DIMENSION(0:nr,0:nz), INTENT(IN OUT) :: rho
 
   return
 end subroutine getrhoforfieldsolverz
+
+subroutine getrhoforfieldsolvez(nz,rho)
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: nz
+REAL(8), DIMENSION(0:nz), INTENT(IN OUT) :: rho
+
+  call get_rho_from_rhop(basegrid)
+
+  return
+end subroutine getrhoforfieldsolvez
 
 subroutine get_rho_from_rhop(grid)
 USE multigridrz
@@ -4393,6 +5189,210 @@ END if
   return
 end subroutine fieldweightrz
 
+subroutine fieldweightxz(xp,zp,uzp,ex,ez,np)
+USE multigridrz
+USE constant
+USE subtimers
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, zp, uzp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ez
+
+REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz
+INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
+LOGICAL(ISZ) :: ingrid, l_sym
+
+REAL(8):: substarttime,wtime
+if (lw3dtimesubs) substarttime = wtime()
+
+IF(l2symtry .OR. l4symtry) then
+  l_sym = .true.
+else
+  l_sym = .false.
+END if
+
+IF(ngrids>1) then
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(uzp(i)==0.) cycle
+    igrid = 1
+    grids => basegrid
+    ingrid=.false.
+    if(l_sym) then
+      rpos = (ABS(xp(i))-grids%xmin)*grids%invdr
+    else
+      rpos = (xp(i)-grids%xmin)*grids%invdr
+    end if
+    zpos = (zp(i)-grids%zminp)*grids%invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(grids%loc_part_field_dep(jn,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = grids%loc_part_field_dep(jn,ln)
+        grids=>grids_ptr(igrid)%grid
+        if(l_sym) then
+          rpos = (ABS(xp(i))-grids%xmin)*grids%invdr
+        else
+          rpos = (xp(i)-grids%xmin)*grids%invdr
+        end if
+        zpos = (zp(i)-grids%zminp)*grids%invdz
+        jn = 1+INT(rpos)
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+#ifdef MPIPARALLEL
+    ex(i) = 0.5*(oddr * oddz * (grids%phip(jn-1,ln  )-grids%phip(jn+1,ln  ))  &
+            + ddr  * oddz * (grids%phip(jn  ,ln  )-grids%phip(jn+2,ln  ))  &
+            + oddr * ddz  * (grids%phip(jn-1,ln+1)-grids%phip(jn+1,ln+1))  &
+            + ddr  * ddz  * (grids%phip(jn  ,ln+1)-grids%phip(jn+2,ln+1)))*grids%invdr
+#else
+    ex(i) = 0.5*(oddr * oddz * (grids%phi(jn-1,ln  )-grids%phi(jn+1,ln  ))  &
+            + ddr  * oddz * (grids%phi(jn  ,ln  )-grids%phi(jn+2,ln  ))  &
+            + oddr * ddz  * (grids%phi(jn-1,ln+1)-grids%phi(jn+1,ln+1))  &
+            + ddr  * ddz  * (grids%phi(jn  ,ln+1)-grids%phi(jn+2,ln+1)))*grids%invdr
+#endif
+    IF(l_sym) then
+      IF(xp(i)<0.) ex(i) = -ex(i)
+    END if
+#ifdef MPIPARALLEL
+    ez(i) = 0.5*(oddr * oddz * (grids%phip(jn  ,ln-1)-grids%phip(jn  ,ln+1))  &
+               + ddr  * oddz * (grids%phip(jn+1,ln-1)-grids%phip(jn+1,ln+1))  &
+               + oddr * ddz  * (grids%phip(jn  ,ln  )-grids%phip(jn  ,ln+2))  &
+               + ddr  * ddz  * (grids%phip(jn+1,ln  )-grids%phip(jn+1,ln+2)))*grids%invdz
+#else
+    ez(i) = 0.5*(oddr * oddz * (grids%phi(jn  ,ln-1)-grids%phi(jn  ,ln+1))  &
+               + ddr  * oddz * (grids%phi(jn+1,ln-1)-grids%phi(jn+1,ln+1))  &
+               + oddr * ddz  * (grids%phi(jn  ,ln  )-grids%phi(jn  ,ln+2))  &
+               + ddr  * ddz  * (grids%phi(jn+1,ln  )-grids%phi(jn+1,ln+2)))*grids%invdz
+#endif
+  END do
+else
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(uzp(i)==0.) cycle
+    ingrid=.false.
+    if(l_sym) then
+      rpos = ABS(xp(i))*basegrid%invdr
+    else
+      rpos = (xp(i)-basegrid%xmin)*basegrid%invdr
+    end if
+    zpos = (zp(i)-basegrid%zminp)*basegrid%invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+#ifdef MPIPARALLEL
+    ex(i) = 0.5*(oddr * oddz * (basegrid%phip(jn-1,ln  )-basegrid%phip(jn+1,ln  ))  &
+            + ddr  * oddz * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn+2,ln  ))  &
+            + oddr * ddz  * (basegrid%phip(jn-1,ln+1)-basegrid%phip(jn+1,ln+1))  &
+            + ddr  * ddz  * (basegrid%phip(jn  ,ln+1)-basegrid%phip(jn+2,ln+1)))*basegrid%invdr
+#else
+    ex(i) = 0.5*(oddr * oddz * (basegrid%phi(jn-1,ln  )-basegrid%phi(jn+1,ln  ))  &
+            + ddr  * oddz * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn+2,ln  ))  &
+            + oddr * ddz  * (basegrid%phi(jn-1,ln+1)-basegrid%phi(jn+1,ln+1))  &
+            + ddr  * ddz  * (basegrid%phi(jn  ,ln+1)-basegrid%phi(jn+2,ln+1)))*basegrid%invdr
+#endif
+    IF(l_sym) then
+      IF(xp(i)<0.) ex(i) = -ex(i)
+    END if
+#ifdef MPIPARALLEL
+    ez(i) = 0.5*(oddr * oddz * (basegrid%phip(jn  ,ln-1)-basegrid%phip(jn  ,ln+1))  &
+               + ddr  * oddz * (basegrid%phip(jn+1,ln-1)-basegrid%phip(jn+1,ln+1))  &
+               + oddr * ddz  * (basegrid%phip(jn  ,ln  )-basegrid%phip(jn  ,ln+2))  &
+               + ddr  * ddz  * (basegrid%phip(jn+1,ln  )-basegrid%phip(jn+1,ln+2)))*basegrid%invdz
+#else
+    ez(i) = 0.5*(oddr * oddz * (basegrid%phi(jn  ,ln-1)-basegrid%phi(jn  ,ln+1))  &
+               + ddr  * oddz * (basegrid%phi(jn+1,ln-1)-basegrid%phi(jn+1,ln+1))  &
+               + oddr * ddz  * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn  ,ln+2))  &
+               + ddr  * ddz  * (basegrid%phi(jn+1,ln  )-basegrid%phi(jn+1,ln+2)))*basegrid%invdz
+#endif
+  END do
+END if
+
+  if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
+  return
+end subroutine fieldweightxz
+
+subroutine fieldweightz(zp,uzp,ez,np)
+USE multigridrz
+USE constant
+USE subtimers
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: zp, uzp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: ez
+
+REAL(8) :: zpos, ddz, oddz
+INTEGER(ISZ) :: i, l, ln, lnp, igrid
+LOGICAL(ISZ) :: ingrid
+
+REAL(8):: substarttime,wtime
+if (lw3dtimesubs) substarttime = wtime()
+
+IF(ngrids>1) then
+
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(uzp(i)==0.) cycle
+    igrid = 1
+    grids => basegrid
+    ingrid=.false.
+    zpos = (zp(i)-grids%zminp)*grids%invdz
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(grids%loc_part_field_dep(1,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = grids%loc_part_field_dep(1,ln)
+        grids=>grids_ptr(igrid)%grid
+        zpos = (zp(i)-grids%zminp)*grids%invdz
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+#ifdef MPIPARALLEL
+    ez(i) = 0.5*(oddz * (grids%phip(1,ln-1)-grids%phip(1,ln+1))  &
+               + ddz  * (grids%phip(1,ln  )-grids%phip(1,ln+2)))*grids%invdz
+#else
+    ez(i) = 0.5*(oddz * (grids%phi(1,ln-1)-grids%phi(1,ln+1))  &
+               + ddz  * (grids%phi(1,ln  )-grids%phi(1,ln+2)))*grids%invdz
+#endif
+  END do
+else
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(uzp(i)==0.) cycle
+    ingrid=.false.
+    zpos = (zp(i)-basegrid%zminp)*basegrid%invdz
+    ln = 1+INT(zpos)
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+#ifdef MPIPARALLEL
+    ez(i) = 0.5*(oddz * (basegrid%phip(1,ln-1)-basegrid%phip(1,ln+1))  &
+               + ddz  * (basegrid%phip(1,ln  )-basegrid%phip(1,ln+2)))*basegrid%invdz
+#else
+    ez(i) = 0.5*(oddz * (basegrid%phi(1,ln-1)-basegrid%phi(1,ln+1))  &
+               + ddz  * (basegrid%phi(1,ln  )-basegrid%phi(1,ln+2)))*basegrid%invdz
+#endif
+  END do
+END if
+
+  if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
+  return
+end subroutine fieldweightz
+
 subroutine fieldweightrz_deform(xp,yp,zp,uzp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin,xfact,yfact,calcphi,phi3d,selfe)
 USE constant
 implicit none
@@ -4683,6 +5683,7 @@ IF(ngrids>1) then
   do i = 1, np
     igrid = 1
     grids => basegrid
+    IF(zp(i)<grids%zmin.or.zp(i)>=grids%zmax) cycle
     ingrid=.false.
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
     zpos = (zp(i)-grids%zmin)*grids%invdz
@@ -4694,6 +5695,7 @@ IF(ngrids>1) then
       else
         igrid = grids%loc_part(jn,ln)
         grids=>grids_ptr(igrid)%grid
+        IF(zp(i)<grids%zmin.or.zp(i)>=grids%zmax) cycle
         rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
         zpos = (zp(i)-grids%zminp)*grids%invdz
         jn = 1+INT(rpos)
@@ -4713,6 +5715,7 @@ else
   do i = 1, np
     ingrid=.false.
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*basegrid%invdr
+    IF(zp(i)<basegrid%zmin.or.zp(i)>=basegrid%zmax) cycle
     zpos = (zp(i)-basegrid%zmin)*basegrid%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
@@ -4730,6 +5733,87 @@ END if
   return
 end subroutine setphirz
 
+subroutine setphiz(np,zp,p)
+USE multigridrz
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: zp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: p
+
+REAL(8) :: zpos, ddz, oddz
+INTEGER(ISZ) :: i, l, ln, lnp, igrid
+LOGICAL(ISZ) :: ingrid
+
+! Collect phi using linear interpolation
+
+IF(ngrids>1) then
+  do i = 1, np
+    igrid = 1
+    grids => basegrid
+    ingrid=.false.
+    zpos = (zp(i)-grids%zmin)*grids%invdz
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(grids%loc_part(1,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = grids%loc_part(1,ln)
+        grids=>grids_ptr(igrid)%grid
+        zpos = (zp(i)-grids%zminp)*grids%invdz
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+    p(i) = oddz * grids%phi(1,ln  )  &
+         + ddz  * grids%phi(1,ln+1)
+  END do
+else
+  do i = 1, np
+    zpos = (zp(i)-basegrid%zmin)
+    IF(zpos<basegrid%zmin.or.zpos>=basegrid%zmax) cycle
+    zpos = zpos*basegrid%invdz
+    ln = 1+INT(zpos)
+    ddz = zpos-REAL(ln-1)
+    oddz = 1._8-ddz
+    p(i) = oddz * basegrid%phi(1,ln  )  &
+         + ddz  * basegrid%phi(1,ln+1)
+  END do
+END if
+
+  return
+end subroutine setphiz
+
+!=============================================================================
+subroutine setbnd_subgrid_to_inj_d()
+use multigridrz
+use InjectVars
+use InjectVars3d
+
+INTEGER(ISZ) :: ij, j, l, igrid
+REAL(8) :: rs, rc, r, z
+TYPE(grdptr), POINTER :: g
+
+ do ij = 1, ninject
+   rs = ainject(ij)
+   rc = rinject(ij)
+   do igrid=1,ngrids
+     g => grids_ptr(igrid)%grid
+     do j = 1, g%nr+1
+       r = (j-1)*g%dr
+       IF(r>rs) exit
+       ! we assume source emits forward
+       z = zinject(ij) + rc - SQRT(rc**2-r**2) + inj_d(ij)*g%dz
+       l = MAX(1,2+INT((z-g%zmin)/g%dz))
+       g%loc_part_field_dep(j,l:) = g%id
+     end do
+   end do
+ end do
+
+return
+end subroutine setbnd_subgrid_to_inj_d
+
 subroutine init_base(nr,nz,dr,dz,rmin,zmin)
 USE multigridrz
 implicit none
@@ -4740,6 +5824,14 @@ REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 
  return
 END subroutine init_base
+
+subroutine del_base()
+USE multigridrz
+
+  call del_basegrid()
+
+ return
+END subroutine del_base
 
 subroutine add_subgrid(id,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z)
 USE multigridrz
@@ -4773,6 +5865,16 @@ REAL(8), DIMENSION(1:nr+1,1:nz+1) :: phi
 
 return
 END subroutine get_phi_subgrid
+
+subroutine set_basegrid_phi()
+USE multigridrz
+USE Fields3D
+implicit none
+
+  basegrid%phi(1:basegrid%nr+1,:) = phi(:,0,:)
+
+return
+END subroutine set_basegrid_phi
 
 subroutine get_array_subgrid(id,array,nr,nz,which)
 USE multigridrz
@@ -4813,6 +5915,7 @@ REAL(8), DIMENSION(1:nr+1,1:nz+1) :: array
         WRITE(0,*) 'Valid options are: '&
                  //'  rho [abrv:r]' &
                  //'  phi [abrv:p]' &
+                 //'  res [no abrv]' &
                  //'  loc_part [abrv:lp]' &
                  //'  loc_part_field_dep [abrv:lpfd]'
     end select
@@ -4907,6 +6010,8 @@ INTEGER :: igrid,ilevel
 
 INTEGER :: i,ic,icc,ice,ico
 TYPE(bndptr), pointer :: bnd
+
+ IF(solvergeom==Zgeom) return
 
  bnd => grids_ptr(igrid)%grid%bnd(grids_ptr(igrid)%grid%nlevels-ilevel+1)
 
@@ -5072,11 +6177,10 @@ do igrid=1,ngrids
           dzz=0.5_8*(dzp+dzm)  !ecb
         case default
       end select
-      IF(cndpnt%jj(ic)==1) then
+      IF(solvergeom==RZgeom) then
+       IF(cndpnt%jj(ic)==1) then
         cndpnt%cfxp(ic) = 4._8/(dxp*dxx)
-        cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
-        cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
-      else
+       else
         r = (cndpnt%jj(ic)-1)*bndy(i)%dr
         select case (bnd_method)
           case (egun)
@@ -5089,9 +6193,13 @@ do igrid=1,ngrids
         end select
         cndpnt%cfxm(ic) = rm/(r*dxm*dxx)
         cndpnt%cfxp(ic) = rp/(r*dxp*dxx)
-        cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
-        cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
+       END if
+      else !IF(solvergeom==XZgeom) then
+        cndpnt%cfxm(ic) = 1._8/(dxm*dxx)
+        cndpnt%cfxp(ic) = 1._8/(dxp*dxx)
       END if
+      cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
+      cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
       IF(dxm>=bndy(i)%dr) then
         cndpnt%phi0xm(ic)=0._8
       else
@@ -5186,11 +6294,10 @@ do igrid=1,ngrids
           dzz=0.5_8*(dzp+dzm)  !ecb
         case default
       end select
-      IF(cndpnt%jj(ic)==1) then
+      IF(solvergeom==RZgeom) then
+       IF(cndpnt%jj(ic)==1) then
         cndpnt%cfxp(ic) = 4._8/(dxp*dxx)
-        cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
-        cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
-      else
+       else
         r = (cndpnt%jj(ic)-1)*bndy(i)%dr
         select case (bnd_method)
           case (egun)
@@ -5203,9 +6310,13 @@ do igrid=1,ngrids
         end select
         cndpnt%cfxm(ic) = rm/(r*dxm*dxx)
         cndpnt%cfxp(ic) = rp/(r*dxp*dxx)
-        cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
-        cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
+       END if
+      else !IF(solvergeom==XZgeom) then
+        cndpnt%cfxm(ic) = 1._8/(dxm*dxx)
+        cndpnt%cfxp(ic) = 1._8/(dxp*dxx)
       END if
+      cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
+      cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
       IF(dxm>=bndy(i)%dr) then
         cndpnt%phi0xm(ic)=0._8
       else
@@ -5238,4 +6349,21 @@ do igrid=1,ngrids
 enddo
 return
 end subroutine setconductorvoltagerz_id
+
+subroutine init_gridinit()
+USE multigridrz
+implicit none
+INTEGER(ISZ) :: i
+
+  ALLOCATE(gridinit(ngrids))
+  do i = 1, ngrids
+    ALLOCATE(gridinit(i)%grid)
+    ALLOCATE(gridinit(i)%grid%phi(LBOUND(grids_ptr(i)%grid%phi,1):UBOUND(grids_ptr(i)%grid%phi,1), &
+                                  LBOUND(grids_ptr(i)%grid%phi,2):UBOUND(grids_ptr(i)%grid%phi,2)))
+    gridinit(i)%grid%phi = grids_ptr(i)%grid%phi
+  end do
+
+return
+end subroutine init_gridinit
+
 
