@@ -1,7 +1,6 @@
 from warp import *
 import RandomArray
-import Ranf
-optimizer_version = "$Id: optimizer.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.2 2002/02/19 22:34:38 dave Exp $"
 """
 This file contains several optimizers, including:
   Simultaneaous Perturbation Stochastic Approximation
@@ -16,20 +15,21 @@ minimization algorithm. To use, create an instance of the Spsa class
 and then call the iter method.
   """
   def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
-               paramsmin=None,paramsmax=None):
+               paramsmin=None,paramsmax=None,verbose=0):
     """
 Creates an instance of the Spsa class.
-  - nparams Number of params to vary
-  - params Initial and current values of the parameters
-  - func Method which does any calculations given the varying parameters
-  - lossfunc Method which calculates the loss
-  - c1 Amount by which params are varied (initially) to calculate gradient
-  - a1 Amount params are changed by (initially), scaled by the gradient (which
+  - nparams: Number of params to vary
+  - params: Initial and current values of the parameters
+  - func: Method which does any calculations given the varying parameters
+  - lossfunc: Method which calculates the loss
+  - c1: Amount by which params are varied (initially) to calculate gradient
+  - a1: Amount params are changed by (initially), scaled by the gradient (which
        is approximately the change in loss when params are changed by c1
        divided by c1)
-  - a2=100. Scale (in iteration numbers) over which c and a are decreased
-  - paramsmin=-1.e+36 Min value of the parameters
-  - paramsmax=+1.e+36 Max value of the parameters
+  - a2=100.: Scale (in iteration numbers) over which c and a are decreased
+  - paramsmin=-1.e+36: Min value of the parameters
+  - paramsmax=+1.e+36: Max value of the parameters
+  - verbose=0: when true, print diagnostics
     """
     self.nparams = nparams
     self.params = params
@@ -39,6 +39,7 @@ Creates an instance of the Spsa class.
     self.a1 = a1
     self.a2 = a2
     self.c1 = c1
+    self.verbose = verbose
     self.hloss = []
     if not paramsmin:
       self.paramsmin = -ones(nparams)*1.e+36
@@ -60,6 +61,10 @@ Creates an instance of the Spsa class.
     self.func(self.params - self.ck()*deltak)
     lminus = self.loss()
     return (lplus - lminus)/(2.*self.ck()*deltak)
+  def printerror(self,err):
+    print "iterations = %d  error = %e %e" %(self.k,self.loss(),self.loss()/err)
+  def printparams(self):
+    for i in xrange(self.nparams): print '%15.12e'%self.params[i]
 
   def iter(self,err=1.e-9,imax=10000,kprint=10):
     """
@@ -74,14 +79,15 @@ Function to do iterations.
       # --- calculate new parameters
       #self.params = self.params - self.ak()*self.gradloss()
       dp = self.gradloss()
-      #print "ak = %f" % self.ak()
-      #print "gradloss = " + repr(dp)
-      #print "params = " + repr(self.params)
+      if self.verbose:
+        print "ak = %f" % self.ak()
+        print "gradloss = " + repr(dp)
+        print "params = " + repr(self.params)
       self.params = self.params - self.ak()*dp
-      #print "new params = " + repr(self.params)
       # --- Makes sure all params are within bounds
       self.params = minimum(maximum(self.params,self.paramsmin),self.paramsmax)
-      #print "new params = " + repr(self.params)
+      if self.verbose:
+        print "new params = " + repr(self.params)
       # --- Calculate function with new params
       self.func(self.params)
       # --- Save the latest value of the loss function.
@@ -90,19 +96,20 @@ Function to do iterations.
       self.k = self.k + 1
       # --- Print out loss function
       if (self.k <= kprint):
-        print "iterations = %d  error = %e %e" %(self.k,self.loss(),self.loss()/err)
+        self.printerror(err)
       elif ((self.k>kprint) and (self.k<=kprint**2) and ((self.k%kprint)==0)):
-        print "iterations = %d  error = %e %e" %(self.k,self.loss(),self.loss()/err)
+        self.printerror(err)
       elif ( (self.k%(kprint**2)) == 0):
-        print "iterations = %d  error = %e %e" %(self.k,self.loss(),self.loss()/err)
+        self.printerror(err)
+        self.printparams()
     # --- Print out the resulting params
-    for i in xrange(self.nparams):
-      print '%15.12e'%self.params[i]
-  
+    self.printerror(err)
+    self.printparams()
 
 
 
-
+###########################################################################
+###########################################################################
 ###########################################################################
 # Performs global optimization using genetic evolution algorithms.
 # Algorithm taken from Dr Dobb's Journal, April 1997, K Price, R. Storn
@@ -192,19 +199,19 @@ parameters.
         # Mutate/Recombine
 
         # --- Randomly pick three vectors different from each other and 'i'.
-        a=Ranf.ranf()*self.npop
-        b=Ranf.ranf()*self.npop
-        c=Ranf.ranf()*self.npop
-        while (a == i): a=Ranf.ranf()*self.npop
-        while (b == i or b == a): b=Ranf.ranf()*self.npop
-        while (c == i or c == a or c == b): c=Ranf.ranf()*self.npop
+        a=ranf()*self.npop
+        b=ranf()*self.npop
+        c=ranf()*self.npop
+        while (a == i): a=ranf()*self.npop
+        while (b == i or b == a): b=ranf()*self.npop
+        while (c == i or c == a or c == b): c=ranf()*self.npop
 
         # --- Randomly pick the first parameter
-        j = Ranf.ranf()*self.nparams
+        j = ranf()*self.nparams
 
         # --- Load parameters into trial, performing binomial trials
         for k in xrange(self.nparams):
-          if (Ranf.ranf() < self.crossover or k == self.nparams):
+          if (ranf() < self.crossover or k == self.nparams):
             # --- Source for trial is a random vector plus weighted differential
             # --- The last parameter always comes from noisy vector
             self.trial[j] = self.x1[c,j] + self.f*(self.x1[a,j] - self.x1[b,j])
