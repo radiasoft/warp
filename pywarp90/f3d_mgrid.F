@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.45 $, $Date: 2002/09/26 21:14:12 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.46 $, $Date: 2002/10/09 02:24:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -47,6 +47,10 @@ c consistent with the Chombo AMR/MG field solver.
 
       integer(ISZ):: nxy,nxyz
       real(kind=8):: maxerr
+c     added by petermc, 26 Sep 2002
+#ifdef WITHCHOMBO
+      real(kind=8):: maxres
+#endif
       real(kind=8):: dxsqi,dysqi,dzsqi,reps0c,rdel
       real(kind=8):: tdx,tdy,tdz
       integer(ISZ):: tnx,tny,tnz
@@ -214,9 +218,26 @@ c       --- Calculate the change in phi.
             enddo
           enddo
         enddo
+
+c     added by petermc, 26 Sep 2002
+#ifdef WITHCHOMBO
+        maxres = 0.
+        if (mgform == 2) then
+           do i=1+nxy,nxy+nxyz
+              maxres = max(maxres, abs(res(i)))
+           enddo
+        endif
+#endif
+
 #ifdef MPIPARALLEL
 c           --- calculate global sorerror
         call parallelmaxrealarray(maxerr,1)
+c     added by petermc, 26 Sep 2002
+#ifdef WITHCHOMBO
+        if (mgform == 2) then
+           call parallelmaxrealarray(maxres,1)
+        endif
+#endif
 #endif
 c       print*,mgiters,maxerr
 
@@ -224,6 +245,13 @@ c       --- This line below seems to create a large temporary which can
 c       --- cause problems when memory is close to full. So it was replaced
 c       --- with the explicit loop above.
 c       maxerr = maxval(abs(phisave - phi))
+
+c     added by petermc, 26 Sep 2002
+#ifdef WITHCHOMBO
+      print *, 'iteration ', mgiters, ' maxerr=', maxerr
+c     unscaled residual
+      print *, 'max(residual)=', maxres*2.0*(dxsqi+dysqi+dzsqi)
+#endif
 
       enddo
 
@@ -387,6 +415,14 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       localbnz = globalbnz
 #endif
 
+c     added by petermc, 26 Sep 2002
+#ifdef WITHCHOMBO
+c      print *, 'vcycle on dimensions ', nx, ny, nz
+c     message added by petermc, 1 Oct 2002
+      if (.false.) print *, 'DOING ', downpasses,
+     &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
+#endif
+
 c     --- Do initial SOR passes.
 c     print *, 'vcycle on dimensions ', nx, ny, nzfull,my_index
 c     call printarray3d(nx,ny,nz,0,0,izfsslave(my_index),rho,my_index,nslaves,
@@ -400,6 +436,12 @@ c    &                  "RHO",mglevel)
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
       enddo
+
+#ifdef WITHCHOMBO
+c     message added by petermc, 1 Oct 2002
+      if (.false.) print *, 'DID ', downpasses,
+     &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
+#endif
 
 c     --- If grid is not at its coarsest level in any of the axis or and
 c     --- all dimensions are even, continue the coarsening.
@@ -514,6 +556,12 @@ c         --- Add in resulting error.
       endif
 
 c     --- Do final SOR passes.
+#ifdef WITHCHOMBO
+c     message added by petermc, 1 Oct 2002
+      if (.false.) print *, 'DOING ', uppasses,
+     &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
+#endif
+
       do i=1,uppasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,scrtch,
@@ -521,6 +569,12 @@ c     --- Do final SOR passes.
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
       enddo
+
+#ifdef WITHCHOMBO
+c     message added by petermc, 1 Oct 2002
+      if (.false.) print *, 'DID ', uppasses,
+     &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
+#endif
 
       return
       end
@@ -1186,6 +1240,12 @@ c Set conductor points to the desired potential.
 
       integer(ISZ):: ic
 
+c     added by petermc, 26 Sep 2002
+#ifdef WITHCHOMBO
+c      print *, 'mglevel=', mglevel, ', lresidual=', lresidual,
+c     &     ', mgform2init=', mgform2init
+#endif
+
 c     --- When at the finest level and not calculating the residual, set
 c     --- phi to the voltage of the conductor, otherwise, set it to zero.
       if (mglevel == 0 .and. .not. lresidual .and.
@@ -1494,6 +1554,9 @@ c       --- the point higher in z is inside the conductor
 c       --- calculate the residual based on the boundary conditions
         if (ppp < 1.) then
           if (mgform2init) ppp = 1.
+#ifdef WITHCHOMBO
+          ppp = 1.
+#endif
           res(icdx,icdy,icdz) = ppp*(rho(icdx,icdy,icdz)
      &           + (pxm+pxp)*rdx2cs + (pym+pyp)*rdy2cs + (pzm+pzp)*rdz2cs
      &           - phi(icdx,icdy,icdz)*mgparam*denom)
