@@ -2,7 +2,7 @@
 import __main__
 from Numeric import *
 import ranlib
-warp_version = "$Id: warp.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+warp_version = "$Id: warp.py,v 1.2 2000/10/26 21:18:40 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -108,19 +108,26 @@ uninstallafterstep: Uninstall the function called after a step
 gethzarrays: Fixes the ordering of hlinechg and hvzofz data from a paralle run
   """
 
+def printversion(v):
+  v = arraytostr(v)
+  lenv = 12
+  for i in range(11,19):
+    if v[i] == "$": lenv = i
+  return v[11:lenv-1]
+
 print 'Python WARP'
-print '******  Fieldsolver FXY version %s' % arraytostr(fxy.versfxy)
-#print '******  Fieldsolver FRZ version %s' % arraytostr(frz.versfrz)
-print '******  Fieldsolver F3D version %s' % arraytostr(f3d.versf3d)
-print '******  Envelope solver ENV version %s' % arraytostr(env.versenv)
+print '******  Fieldsolver FXY version %s' % printversion(fxy.versfxy)
+#print '******  Fieldsolver FRZ version %s' % printversion(frz.versfrz)
+print '******  Fieldsolver F3D version %s' % printversion(f3d.versf3d)
+print '******  Envelope solver ENV version %s' % printversion(env.versenv)
 try:
-  print '******  Envelope solver CIR version %s' % arraytostr(cir.verscir)
+  print '******  Envelope solver CIR version %s' % printversion(cir.verscir)
 except:
   pass
-print '******  Particle package WXY version %s' % arraytostr(wxy.verswxy)
-#print '******  Particle package WRZ version %s' % arraytostr(wrz.verswrz)
-print '******  Particle package W3D version %s' % arraytostr(w3d.versw3d)
-print '******  Main package TOP version %s' % arraytostr(top.verstop)
+print '******  Particle package WXY version %s' % printversion(wxy.verswxy)
+#print '******  Particle package WRZ version %s' % printversion(wrz.verswrz)
+print '******  Particle package W3D version %s' % printversion(w3d.versw3d)
+print '******  Main package TOP version %s' % printversion(top.verstop)
 print 'For more help, type warphelp()'
 
 # --- Call derivqty to calculate eps0 and jperev
