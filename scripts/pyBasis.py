@@ -12,7 +12,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.3 2000/11/21 19:59:25 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.4 2001/01/11 00:23:01 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -189,7 +189,7 @@ def doc(f):
 # to the global name space. The exec also needed to have the local name
 # space explicitly included.
 # Note that attr can be a list of attributes and group names.
-def pydump(fname,attr=["dump"],vars=[],serial=0,ff=None):
+def pydump(fname,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None):
   """
 Dump data into a pdb file
   - fname dump file name
@@ -197,8 +197,11 @@ Dump data into a pdb file
   - vars list of python variables to dump
   - serial switch between parallel and serial versions
   - ff=None Allows passing in of a file object so that pydump can be called
-	    multiple times to pass data into the same file. Note that
-	    the file must be explicitly closed by the user.
+            multiple times to pass data into the same file. Note that
+            the file must be explicitly closed by the user.
+  - varsuffix=None Suffix to add to the variable names. If none is specified,
+                the suffix '@pkg' is used, where pkg is the package name
+                that the variable is in.
   """
   # --- Open the file if the file object was not passed in.
   # --- If the file object was passed in, then don't close it.
@@ -209,9 +212,16 @@ Dump data into a pdb file
     closefile = 0
   # --- Convert attr into a list if needed
   if not (type(attr) == type([])): attr = [attr]
-  # --- Loop through all of the packages (getting pkg object)
-  for pname in package():
+  # --- Loop through all of the packages in reverse order (getting pkg object)
+  # --- Reverse order is used so that if a varsuffix is specified and when
+  # --- a variable that have the same names in different packages is written,
+  # --- the one in the package with higher precedence is used.
+  pkgsuffix = varsuffix
+  packagelist = package()
+  packagelist.reverse()
+  for pname in packagelist:
     pkg = eval(pname,__main__.__dict__)
+    if varsuffix == None: pkgsuffix = '@' + pname
     # --- Get variables in this package which have attribute attr.
     vlist = []
     for a in attr: vlist = vlist + pkg.varlist(a)
@@ -229,11 +239,13 @@ Dump data into a pdb file
           if re.search('parallel',a):
             writevar = 0
         if writevar:
-          ff.write(vname+"@"+pname,v)
+          ff.write(vname+pkgsuffix,v)
   # --- Now, write out the python variables (that can be written out).
+  # --- If supplied, the varsuffix is append to the names here too.
+  if varsuffix == None: varsuffix = ''
   for v in vars:
     try:
-      exec('ff.'+v+'='+v,__main__.__dict__,locals())
+      exec('ff.'+v+varsuffix+'='+v,__main__.__dict__,locals())
     except:
       pass
   if closefile: ff.close()
