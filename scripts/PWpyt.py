@@ -5,7 +5,7 @@
 HDF basic writer class PW by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWpyt.py,v 1.6 2003/10/29 22:58:20 dave Exp $
+$Id: PWpyt.py,v 1.7 2004/02/09 16:21:46 dave Exp $
 """
 import tables
 import cPickle
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     f.k = k
     f.close()
 # read-back test
-    from PR import PR
+    from PRpyt import PR
     f = PR('foo.hdf')
     for x in f.inquire_names():
         print x, "is", eval(x), ", in file it is", eval('f.'+x)

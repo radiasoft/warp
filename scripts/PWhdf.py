@@ -3,7 +3,7 @@ HDF self-describing file format writer class PW
 by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWhdf.py,v 1.3 2003/08/07 19:00:57 dave Exp $
+$Id: PWhdf.py,v 1.4 2004/02/09 16:21:46 dave Exp $
 """
 import _pyhl
 from Numeric import *
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     f.k = k
     f.close ()
 # read-back test
-    from PR import PR
+    from PRhdf import PR
     f = PR('foo.pdb')
     for x in f.inquire_names ():
         print x, "is", eval(x), ", in file it is", eval('f.'+x)
