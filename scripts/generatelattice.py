@@ -1,5 +1,5 @@
 from lattice import *
-generatelattice_version = "$Id: generatelattice.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+generatelattice_version = "$Id: generatelattice.py,v 1.2 2001/09/21 23:22:28 dave Exp $"
 
 # Requires that functions beamduration, beamavesize, and endcondition
 # be supplied.
@@ -8,16 +8,16 @@ class GenerateLattice:
   def __doc__(s):
     return """
 Generates a lattice for final compression.
-  - ekin beam midpulse energy (eV's)
-  - totalcharge beam total charge (Coulombs)
-  - aion mass of beam ions (amu)
-  - sigma0 undrepressed phase advance (degrees)
-  - occupancy quadrupole occupancy
-  - beamduration function returning beam duration in seconds
-  - beamavesize function returning average beam transverse size in meters
-  - endcondition function returning true when lattice is complete
-The three functions take a single argument, an instance of the GenerateLattice
-class.
+  - ekin: beam midpulse energy (eV's)
+  - totalcharge: beam total charge (Coulombs)
+  - aion: mass of beam ions (amu)
+  - sigma0: undrepressed phase advance (degrees)
+  - occupancy: quadrupole occupancy
+  - beamduration: function returning beam duration in seconds
+  - beamavesize: function returning average beam transverse size in meters
+  - endcondition: function returning true when lattice is complete
+The three functions take a single argument, an instance of the
+GenerateLattice class.
 Function generator returns the lattice in MAD format. The user must call
 madtowarp.
 """
