@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.86 $, $Date: 2003/11/24 20:57:39 $
+#@(#) File F3D.V, version $Revision: 3.87 $, $Date: 2003/12/03 00:53:31 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.86 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.87 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -277,9 +277,6 @@ r_sr(npnts_sr)           _real # R of points in piecewise-linear curve
 rad_sr(npnts_sr-1)       _real /LARGEPOS/ # Radius of curvature of curve arc
 zc_sr(npnts_sr-1)        _real # Z center of circle
 rc_sr(npnts_sr-1)        _real # R center of circle
-inpnts_sr                integer /0/ # Size of wory array i_sr
-dzi_sr                   real  # Work data for surface of revolution
-i_sr(0:inpnts_sr)        _integer # Work array for surface of revolution
 lsrminlinr               logical /.false./ # Use piecewise-linear curve for rmin
 npnts_srmin              integer /0/ # Number points in piecewise-linear curve
 z_srmin(npnts_srmin)     _real # Z of points in piecewise-linear curve
@@ -287,9 +284,6 @@ r_srmin(npnts_srmin)     _real # R of points in piecewise-linear curve
 rad_srmin(npnts_srmin-1) _real /LARGEPOS/ # Radius of curvature of curve arc
 zc_srmin(npnts_srmin-1)  _real # Z center of circle
 rc_srmin(npnts_srmin-1)  _real # R center of circle
-inpnts_srmin             integer /0/ # Size of wory array i_srmin
-dzi_srmin                real  # Work data for surface of revolution
-i_srmin(0:inpnts_srmin)  _integer # Work array for surface of revolution
 lsrmaxlinr               logical /.false./ # Use piecewise-linear curve for rmax
 npnts_srmax              integer /0/ # Number points in piecewise-linear curve
 z_srmax(npnts_srmax)     _real # Z of points in piecewise-linear curve
@@ -297,9 +291,6 @@ r_srmax(npnts_srmax)     _real # R of points in piecewise-linear curve
 rad_srmax(npnts_srmax-1) _real /LARGEPOS/ # Radius of curvature of curve arc
 zc_srmax(npnts_srmax-1)  _real # Z center of circle
 rc_srmax(npnts_srmax-1)  _real # R center of circle
-inpnts_srmax             integer /0/ # Size of wory array i_srmax
-dzi_srmax                real  # Work data for surface of revolution
-i_srmax(0:inpnts_srmax)  _integer # Work array for surface of revolution
 
 *********** LantzSolverTemp:
 nxlan integer
@@ -446,6 +437,9 @@ zplaneconductorf(zcent:real,zsign,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 zplaneconductord(zcent:real,zsign,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zplaneintercept(zcent:real,zsign,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 planeconductorf(z0:real,zsign:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -453,11 +447,17 @@ planeconductorf(z0:real,zsign:real,theta:real,phi:real,
 planeconductord(z0:real,zsign:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+planeintercept(z0:real,zsign:real,theta:real,phi:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 boxconductorf(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 boxconductord(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+boxintercept(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 cylinderconductorf(rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -465,6 +465,10 @@ cylinderconductorf(rad:real,length:real,theta:real,phi:real,
 cylinderconductord(rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+cylinderintercept(rad:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 cylindersconductorf(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -472,21 +476,34 @@ cylindersconductorf(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
 cylindersconductord(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+cylindersintercept(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 xcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 xcylinderconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+xcylinderintercept(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 ycylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 ycylinderconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+ycylinderintercept(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 zcylinderconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zcylinderintercept(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zroundedcylinderconductorf(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -494,11 +511,18 @@ zroundedcylinderconductorf(rad:real,length:real,rad2:real,
 zroundedcylinderconductord(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zroundedcylinderintercept(rad:real,length:real,rad2:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zcylinderoutconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 zcylinderoutconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zcylinderoutintercept(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zroundedcylinderoutconductorf(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -506,11 +530,18 @@ zroundedcylinderoutconductorf(rad:real,length:real,rad2:real,
 zroundedcylinderoutconductord(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zroundedcylinderoutintercept(rad:real,length:real,rad2:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 sphereconductorf(rad:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 sphereconductord(rad:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+sphereintercept(rad:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 coneconductorf(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -518,6 +549,10 @@ coneconductorf(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
 coneconductord(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+coneintercept(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 conesconductorf(ncones:integer,r_zmin:real,r_zmax:real,length:real,
         theta:real,phi:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -525,6 +560,10 @@ conesconductorf(ncones:integer,r_zmin:real,r_zmax:real,length:real,
 conesconductord(ncones:integer,r_zmin:real,r_zmax:real,length:real,
         theta:real,phi:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+conesintercept(ncones:integer,r_zmin:real,r_zmax:real,length:real,
+        theta:real,phi:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zconeconductorf(r_zmin:real,r_zmax:real,length:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -532,6 +571,10 @@ zconeconductorf(r_zmin:real,r_zmax:real,length:real,
 zconeconductord(r_zmin:real,r_zmax:real,length:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zconeintercept(r_zmin:real,r_zmax:real,length:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zconeoutconductorf(r_zmin:real,r_zmax:real,length:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -539,11 +582,18 @@ zconeoutconductorf(r_zmin:real,r_zmax:real,length:real,
 zconeoutconductord(r_zmin:real,r_zmax:real,length:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zconeoutintercept(r_zmin:real,r_zmax:real,length:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 ztorusconductorf(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 ztorusconductord(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+ztorusintercept(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 beamletplateconductorf(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -551,6 +601,10 @@ beamletplateconductorf(za:real,zb:real,z0:real,thickness:real,
 beamletplateconductord(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+beamletplateintercept(za:real,zb:real,z0:real,thickness:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zsrfrvoutconductorf(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -558,6 +612,10 @@ zsrfrvoutconductorf(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
 zsrfrvoutconductord(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zsrfrvoutintercept(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zsrfrvinconductorf(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -565,6 +623,10 @@ zsrfrvinconductorf(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
 zsrfrvinconductord(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zsrfrvinintercept(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 zsrfrvinoutconductorf(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
         griddz:real,
         xcent:real,ycent:real,zcent:real,
@@ -574,6 +636,11 @@ zsrfrvinoutconductord(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
         griddz:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zsrfrvinoutintercept(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
+        griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        xi:real,yi:real,zi:real,angle:real,distance:real) subroutine
 
 
 ******** ConductorGeometryVisualization:
