@@ -136,10 +136,10 @@ class panel(wxPanel):
         self.f1=f2
 
     def OnColorChoice(self, event):
-        self.pltcolor = self.Color.GetStringSelection()
+        self.pltcolor = str(self.Color.GetStringSelection())
 
     def OnLinetypeChoice(self, event):
-        self.pltlinetype = self.LineType.GetStringSelection()
+        self.pltlinetype = str(self.LineType.GetStringSelection())
 
     def OnMarkerTextEnter(self, event):
         self.pltmarker = self.Marker.GetValue()
