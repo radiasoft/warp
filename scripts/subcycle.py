@@ -1,5 +1,5 @@
 from warp import *
-subcycle_version = "$Id: subcycle.py,v 1.1 2001/10/18 16:53:04 dave Exp $"
+subcycle_version = "$Id: subcycle.py,v 1.2 2001/10/18 23:12:52 dave Exp $"
 
 def subcycledoc():
   print """
@@ -47,7 +47,7 @@ solve when needed"""
       # --- cases where the user changes fstype midrun.
       if top.fstype > -1: s.fstypesave = top.fstype
       top.fstype = -1
-    if top.it%nsubcycle == 0:
+    if top.it%s.nsubcycle == 0:
       top.fstype = s.fstypesave
       fieldsol(-1)
       top.fstype = -1
