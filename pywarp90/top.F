@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.37 $, $Date: 2002/03/12 22:57:13 $
+c@(#) File TOP.M, version $Revision: 3.38 $, $Date: 2002/03/14 17:53:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3990,8 +3990,8 @@ c       itask=2  sums moments from particles
 c       itask=3  divides by number of particles, calculates emittances and rms
 
 
-      real(kind=8):: pp(0:17,NPARPGRP)
-      integer(ISZ):: iz(NPARPGRP)
+      real(kind=8):: pp(0:17,np)
+      integer(ISZ):: iz(np)
       integer(ISZ):: im,izm,iw,ip,icell,i
       real(kind=8):: dti,dtip1,wz1,wz0,zwin,tg,th
       real(kind=8):: oneondt,clighti,vzi,pnumi
@@ -4002,7 +4002,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
       real(kind=8):: gamma
       real(kind=8):: timetemp,wtime
 #ifdef J90
-      real(kind=8):: pmmnts(NUMZMMNT,NPARPGRP)
+      real(kind=8):: pmmnts(NUMZMMNT,np)
 #endif
 
       timetemp = wtime()
