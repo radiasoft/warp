@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.21 2002/04/30 21:36:33 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.22 2002/06/19 21:52:35 jlvay Exp $"
 
 def loadbalancedoc():
   print """
@@ -41,8 +41,9 @@ that has already been done.
   prwallyz = gatherallzarray(top.prwallyz)
   prwelips = gatherallzarray(top.prwelips)
   lostpars = gatherallzarray(top.lostpars)
-  phi = w3d.phi + 0.
-  rho = w3d.rho + 0.
+  if(w3d.solvergeom == w3d.XYZgeom):
+    phi = w3d.phi + 0.
+    rho = w3d.rho + 0.
 
   # --- Broadcast the window moments to all processors and gather lab window
   # --- data onto PE0. This is needed since the processors which own the
@@ -89,14 +90,15 @@ that has already been done.
   reorgparticles()
 
   # --- Shift the existing charge density and phi
-  izstart = max(oldiz,top.izslave[me])
-  izend = min(oldiz+oldnz,top.izslave[me]+top.nzslave[me])
-  newiz1 = izstart - top.izslave[me]
-  newiz2 = izend - top.izslave[me] + 1
-  oldiz1 = izstart - oldiz
-  oldiz2 = izend - oldiz + 1
-  w3d.phi[:,:,newiz1+1:newiz2+1] = phi[:,:,oldiz1+1:oldiz2+1]
-  w3d.rho[:,:,newiz1:newiz2] = rho[:,:,oldiz1:oldiz2]
+  if(w3d.solvergeom == w3d.XYZgeom):
+    izstart = max(oldiz,top.izslave[me])
+    izend = min(oldiz+oldnz,top.izslave[me]+top.nzslave[me])
+    newiz1 = izstart - top.izslave[me]
+    newiz2 = izend - top.izslave[me] + 1
+    oldiz1 = izstart - oldiz
+    oldiz2 = izend - oldiz + 1
+    w3d.phi[:,:,newiz1+1:newiz2+1] = phi[:,:,oldiz1+1:oldiz2+1]
+    w3d.rho[:,:,newiz1:newiz2] = rho[:,:,oldiz1:oldiz2]
 
   # --- Restore some data which needed to be redistributed
   top.eearsofz[:] = scatterallzarray(eearsofz)
@@ -107,19 +109,23 @@ that has already been done.
   top.lostpars[:] = scatterallzarray(lostpars)
 
   # --- Correct the locations of conductor points for the field-solver.
-  newiz = top.izslave[me]
-  if f3d.ncond > 0:
-    f3d.izcond[:f3d.ncond] = f3d.izcond[:f3d.ncond] + oldiz - newiz
-  if f3d.necndbdy > 0:
-    f3d.iecndz[:f3d.necndbdy] = f3d.iecndz[:f3d.necndbdy] + oldiz - newiz
-  if f3d.nocndbdy > 0:
-    f3d.iocndz[:f3d.nocndbdy] = f3d.iocndz[:f3d.nocndbdy] + oldiz - newiz
-  cleanconductors()
+  if(w3d.solvergeom == w3d.XYZgeom):
+    newiz = top.izslave[me]
+    if f3d.ncond > 0:
+      f3d.izcond[:f3d.ncond] = f3d.izcond[:f3d.ncond] + oldiz - newiz
+    if f3d.necndbdy > 0:
+      f3d.iecndz[:f3d.necndbdy] = f3d.iecndz[:f3d.necndbdy] + oldiz - newiz
+    if f3d.nocndbdy > 0:
+      f3d.iocndz[:f3d.nocndbdy] = f3d.iocndz[:f3d.nocndbdy] + oldiz - newiz
+    cleanconductors()
 
   # --- Correct location of injection source.
-  if top.inject > 0:
-    w3d.inj_grid[:,:,:] = w3d.inj_grid + oldiz - newiz
-
+  if(w3d.solvergeom == w3d.XYZgeom):
+    if top.inject > 0:
+      w3d.inj_grid[:,:,:] = w3d.inj_grid + oldiz - newiz
+  else:
+    gchange_rhop_phip_rz()
+    
   # --- Do some additional work if requested
   if lloadrho: loadrho()
   if dofs: fieldsol(0)
@@ -308,7 +314,8 @@ def _adjustz():
   # --- If space-charge limited injection is turned on, then add additional
   # --- grid cells to the first processor so it will have the injection
   # --- surface completely covered.
-  if top.inject > 1:
+  if(w3d.solvergeom == w3d.XYZgeom):
+   if top.inject > 1:
     zinjmax = top.ainject**2/(top.rinject+sqrt(top.rinject**2-top.ainject**2))
     nzinj = int(max((top.zinject+zinjmax-top.zmslmin[0])/w3d.dz+top.inj_d)) + 1
     top.nzpslave[0] = max(top.nzpslave[0],nzinj)
@@ -316,7 +323,8 @@ def _adjustz():
   #---------------------------------------------------------------------------
   # --- Set the axial extent of each slaves domain to include
   # --- both the particle and field solve domain.
-  for i in range(npes):
+  if(w3d.solvergeom == w3d.XYZgeom):
+   for i in range(npes):
     top.izslave[i] = min(top.izpslave[i],top.izfsslave[i])
     top.nzslave[i] = max(top.izpslave[i] + top.nzpslave[i], \
                          top.izfsslave[i] + top.nzfsslave[i]) - top.izslave[i]
@@ -342,7 +350,8 @@ def _adjustz():
   w3d.izfsmax = w3d.izfsmin + top.nzfsslave[me]
   w3d.zmmin = top.zmslmin[me]
   w3d.zmmax = top.zmslmax[me]
-  if top.fstype in [3,7] or f3d.nsorerr > 0:
+  if(w3d.solvergeom == w3d.XYZgeom):
+   if top.fstype in [3,7] or f3d.nsorerr > 0:
     # --- The additional check of nsorerr>0 is done since in some cases,
     # --- the field solver may be turned off when the load balancing is done
     # --- but used otherwise.
@@ -355,7 +364,8 @@ def _adjustz():
   gchange("LatticeInternal")
   gchange("Z_Moments")
   gchange("Hist")
-  if top.fstype in [3,7] or f3d.nsorerr > 0: gchange("PSOR3d")
+  if(w3d.solvergeom == w3d.XYZgeom):
+    if top.fstype in [3,7] or f3d.nsorerr > 0: gchange("PSOR3d")
   w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
   top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
   top.zlmesh[:] = top.zlmin + iota(0,top.nzl)*top.dzl
