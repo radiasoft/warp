@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.8 $, $Date: 2001/11/06 22:01:32 $
+c TOPSLAVE.M, version $Revision: 1.9 $, $Date: 2002/03/27 21:30:03 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -577,7 +577,7 @@ c=============================================================================
 c  Some parallel utility routines
 c=============================================================================
 c=============================================================================
-      subroutine parallelsum(data,ndata)
+      subroutine parallelsumrealarray(data,ndata)
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Does a sum over all of the processors.  Resulting data is broadcasted
@@ -594,7 +594,7 @@ c to all processors.
       return
       end
 c==========================================================================
-      subroutine parallelmax(data,ndata)
+      subroutine parallelmaxrealarray(data,ndata)
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Find the max of data over all processors.  Resulting data is broadcasted
@@ -611,7 +611,7 @@ c to all processors.
       return
       end
 c==========================================================================
-      subroutine parallelmin(data,ndata)
+      subroutine parallelminrealarray(data,ndata)
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Find the min of data over all processors.  Resulting data is broadcasted
@@ -629,7 +629,7 @@ c to all processors.
       end
 c==========================================================================
 c==========================================================================
-      subroutine parallelbroadcast(data,ndata,root)
+      subroutine parallelbroadcastrealarray(data,ndata,root)
       integer(ISZ):: ndata,root
       real(kind=8):: data(ndata)
 c Broadcast the data to all processors.
