@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.85 2004/11/03 22:59:16 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.86 2004/11/12 18:03:55 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2821,7 +2821,8 @@ Returns the scene use to draw the image
 
   # --- Make sure that the conductor data is properly installed.
   checkconductors(w3d.nx,w3d.ny,w3d.nz,w3d.nzfull,w3d.dx,w3d.dy,w3d.dz,
-                  w3d.l2symtry,w3d.l4symtry,conductors)
+                  conductors,
+                  top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
   # --- Save grid size
   nx = w3d.nx
