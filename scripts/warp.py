@@ -1,9 +1,10 @@
-warp_version = "$Id: warp.py,v 1.69 2004/08/24 00:07:28 dave Exp $"
+warp_version = "$Id: warp.py,v 1.70 2004/08/30 17:12:24 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
 import sys
 import os.path
+import time
 
 # --- Import the RNG module. Older versions have ranf in a seperate module
 # --- called Ranf. In newer versions, ranf is part of RNG.
@@ -176,6 +177,7 @@ def versionstext():
   if 'w3d' in pkg: r=r+fmt%('Particle package W3D',printversion(w3d.versw3d))
   if 'top' in pkg: r=r+fmt%('Main package TOP',printversion(top.verstop))
   return r
+print time.asctime()
 print versionstext()[:-1] # --- skip last line feed
 print 'For more help, type warphelp()'
 
@@ -717,8 +719,8 @@ except:
 initial_global_dict_keys = []
 initial_global_dict_keys = globals().keys()
 
-# --- Get start CPU time
-top.starttime = wtime()
+# --- Get start time
+top.starttime = time.time()
 
 # --- Save the versions string here so that it will be dumped into any
 # --- dump file.
