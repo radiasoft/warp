@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.118 2004/06/24 20:38:36 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.119 2004/07/02 22:56:58 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -611,6 +611,13 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If ireg is passed in, get its transpose, since only it will be used.
   if ireg is not None: iregt = transpose(ireg)
   else:                iregt = None
+
+  # --- If y is a 2-d array and x is not input, then assume that the user
+  # --- intends to plot gridded data.
+  # --- Not sure yet if this is a good idea.
+  if len(shape(y)) == 2 and x is None:
+    grid = y
+    y = None
 
   # --- Do some error checking on the consistency of the input
   assert (type(grid) == ArrayType or \
