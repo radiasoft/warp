@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.47 2004/07/29 17:21:27 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.48 2004/08/06 21:36:01 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -908,16 +908,17 @@ in the celemid array. It returns each element only once.
     # --- The lattice element conductors are only setup if the beam frame
     # --- has moved or if a new field solver is being used. This saves the
     # --- previous beam frame location and field solver to compare against
-    # --- the current one.
+    # --- the current one. Note that only the id of the solver is saved,
+    # --- in order to avoid having a full reference to it.
     try:
       self.lastzbeam
     except:
       self.lastzbeam = top.zbeam/2. - 1.
-      self.lastsolver = None
+      self.lastsolverid = None
     solver = getregisteredsolver()
-    if self.lastzbeam == top.zbeam and self.lastsolver == solver: return
+    if self.lastzbeam == top.zbeam and self.lastsolverid == id(solver): return
     self.lastzbeam = top.zbeam
-    self.lastsolver = solver
+    self.lastsolverid = id(solver)
 
     # --- Empty the list of conductors
     self.conductors = None
