@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.96 $, $Date: 2003/06/30 19:49:40 $
+c@(#) File TOP.M, version $Revision: 3.97 $, $Date: 2003/07/16 00:32:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3911,7 +3911,7 @@ c           --- Set the correction to the beam frame position
       end
 c=============================================================================
       subroutine getzmmnt(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,nplive,
-     &                    uxpo,uypo,uzpo,is,ns)
+     &                    uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
       use Constant
       use Beam_acc
       use InDiag
@@ -3927,6 +3927,9 @@ c=============================================================================
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
+      real(kind=8):: maxp(6),minp(6)
+      real(kind=8):: zmmnts0(NUMZMMNT)
+      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
 
 c  Sets moments for species 1 in as a function of z.
 c  Interpolation is done to grid centers
@@ -3966,31 +3969,11 @@ c       itask=3  divides by number of particles, calculates emittances and rms
       oneondt = 1./dvnz(dt)
 
       if (itask == 1 .and. .not. laccumulate_zmoments) then
-         xmaxp = -LARGEPOS
-         xminp = LARGEPOS
-         ymaxp = -LARGEPOS
-         yminp = LARGEPOS
-         zmaxp = -LARGEPOS
-         zminp = LARGEPOS
-         vxmaxp = -LARGEPOS
-         vxminp = LARGEPOS
-         vymaxp = -LARGEPOS
-         vyminp = LARGEPOS
-         vzmaxp = -LARGEPOS
-         vzminp = LARGEPOS
-         do im=1,NUMZMMNT
-           zmmnts0(im) = 0.
-         enddo
-         do im=1,NUMZMMNT
-           do izm=0,nzmmnt
-             zmmnts(izm,im) = 0.
-           enddo
-         enddo
-         do im=1,ns
-           do iw=1,nepwin
-             nep(iw,im) = 0
-           enddo
-         enddo
+         maxp = -LARGEPOS
+         minp = +LARGEPOS
+         zmmnts0 = 0.
+         zmmnts = 0.
+         nep = 0
          if(wpid>0) nplive = 0
       endif
 
@@ -3999,18 +3982,18 @@ c       --- Set maximum and minimum particle coordinate variables
 c       --- set multiplier so lost particles don't contribute
         do ip = 1, np
           if (uzp(ip) /= 0.) then
-            xmaxp  = max(xmaxp, xp(ip))
-            xminp  = min(xminp, xp(ip))
-            ymaxp  = max(ymaxp, yp(ip))
-            yminp  = min(yminp, yp(ip))
-            zmaxp  = max(zmaxp, zp(ip))
-            zminp  = min(zminp, zp(ip))
-            vxmaxp = max(vxmaxp, gaminv(ip)*uxp(ip))
-            vxminp = min(vxminp, gaminv(ip)*uxp(ip))
-            vymaxp = max(vymaxp, gaminv(ip)*uyp(ip))
-            vyminp = min(vyminp, gaminv(ip)*uyp(ip))
-            vzmaxp = max(vzmaxp, gaminv(ip)*uzp(ip))
-            vzminp = min(vzminp, gaminv(ip)*uzp(ip))
+            maxp(1) = max(maxp(1), xp(ip))
+            minp(1) = min(minp(1), xp(ip))
+            maxp(2) = max(maxp(2), yp(ip))
+            minp(2) = min(minp(2), yp(ip))
+            maxp(3) = max(maxp(3), zp(ip))
+            minp(3) = min(minp(3), zp(ip))
+            maxp(4) = max(maxp(4), gaminv(ip)*uxp(ip))
+            minp(4) = min(minp(4), gaminv(ip)*uxp(ip))
+            maxp(5) = max(maxp(5), gaminv(ip)*uyp(ip))
+            minp(5) = min(minp(5), gaminv(ip)*uyp(ip))
+            maxp(6) = max(maxp(6), gaminv(ip)*uzp(ip))
+            minp(6) = min(minp(6), gaminv(ip)*uzp(ip))
 
             pp(0,ip) = 1.
             if (ifzmmnt == 1) then
@@ -4221,6 +4204,7 @@ c         --- to the moments grid cell centers.
             do ip=1,np
               if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
      &            pp(0,ip) > 0.) then
+!$OMP ATOMIC
                 nep(iw,is) = nep(iw,is) + 1
                 tep(nep(iw,is),iw,is) = pp(16,ip) + time
                 xep(nep(iw,is),iw,is) = pp(1,ip)
@@ -4231,6 +4215,7 @@ c         --- to the moments grid cell centers.
               else if (iz(ip)+1 == izepwin(iw) .and.
      &                 nep(iw,is) < nepmax .and.
      &                 pp(0,ip) > 0.) then
+!$OMP ATOMIC
                 nep(iw,is) = nep(iw,is) + 1
                 tep(nep(iw,is),iw,is) = pp(17,ip) + time
                 xep(nep(iw,is),iw,is) = pp(2,ip)
@@ -4413,9 +4398,22 @@ c         --- End of Z moments accumulation
         clighti = 1./clight
         gamma = 1./sqrt(1. - (vbeam*clighti)**2)
 
+        xmaxp  = maxp(1)
+        xminp  = minp(1)
+        ymaxp  = maxp(2)
+        yminp  = minp(2)
+        zmaxp  = maxp(3)
+        zminp  = minp(3)
+        vxmaxp = maxp(4)
+        vxminp = minp(4)
+        vymaxp = maxp(5)
+        vyminp = minp(5)
+        vzmaxp = maxp(6)
+        vzminp = minp(6)
+
 c       --- For slave, call routine which sums moments over processors.
 #ifdef MPIPARALLEL
-        call sum_mmnts
+        call sum_mmnts(zmmnts0,zmmnts)
 #endif
 
 c       --- Complete the calculation of moments: divide by particle number
@@ -4679,13 +4677,14 @@ c         --- If the zwindow is outside the zmoments range, don't set anything.
 
       endif
 
+!$OMP ATOMIC
       momentstime = momentstime + (wtime() - timetemp)
 
       return
       end
 c=============================================================================
       subroutine getzmmnt_weights(np,xp,yp,zp,uxp,uyp,uzp,gaminv,wp,q,m,w,dt,itask,nplive,
-     &                    uxpo,uypo,uzpo,is,ns)
+     &                    uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
       use Constant
       use Beam_acc
       use InDiag
@@ -4700,6 +4699,9 @@ c=============================================================================
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
+      real(kind=8):: maxp(6),minp(6)
+      real(kind=8):: zmmnts0(NUMZMMNT)
+      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
 
 c  Sets moments for species 1 in as a function of z.
 c  Interpolation is done to grid centers
@@ -4747,18 +4749,18 @@ c       itask=3  divides by number of particles, calculates emittances and rms
 c       --- Set maximum and minimum particle coordinate variables
         do ip = 1, np
           if (uzp(ip) /= 0.) then
-            xmaxp  = max(xmaxp, xp(ip))
-            xminp  = min(xminp, xp(ip))
-            ymaxp  = max(ymaxp, yp(ip))
-            yminp  = min(yminp, yp(ip))
-            zmaxp  = max(zmaxp, zp(ip))
-            zminp  = min(zminp, zp(ip))
-            vxmaxp = max(vxmaxp, gaminv(ip)*uxp(ip))
-            vxminp = min(vxminp, gaminv(ip)*uxp(ip))
-            vymaxp = max(vymaxp, gaminv(ip)*uyp(ip))
-            vyminp = min(vyminp, gaminv(ip)*uyp(ip))
-            vzmaxp = max(vzmaxp, gaminv(ip)*uzp(ip))
-            vzminp = min(vzminp, gaminv(ip)*uzp(ip))
+            maxp(1) = max(maxp(1), xp(ip))
+            minp(1) = min(minp(1), xp(ip))
+            maxp(2) = max(maxp(2), yp(ip))
+            minp(2) = min(minp(2), yp(ip))
+            maxp(3) = max(maxp(3), zp(ip))
+            minp(3) = min(minp(3), zp(ip))
+            maxp(4) = max(maxp(4), gaminv(ip)*uxp(ip))
+            minp(4) = min(minp(4), gaminv(ip)*uxp(ip))
+            maxp(5) = max(maxp(5), gaminv(ip)*uyp(ip))
+            minp(5) = min(minp(5), gaminv(ip)*uyp(ip))
+            maxp(6) = max(maxp(6), gaminv(ip)*uzp(ip))
+            minp(6) = min(minp(6), gaminv(ip)*uzp(ip))
             nplive = nplive + 1
           endif
         enddo
@@ -4939,6 +4941,7 @@ c         --- to the moments grid cell centers.
             do ip=1,np
               if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
      &            wp(ip) > 0.) then
+!$OMP ATOMIC
                 nep(iw,is) = nep(iw,is) + 1
                 tep(nep(iw,is),iw,is) = pp(16,ip) + time
                 xep(nep(iw,is),iw,is) = pp(1,ip)
@@ -4949,6 +4952,7 @@ c         --- to the moments grid cell centers.
               else if (iz(ip)+1 == izepwin(iw) .and.
      &                 nep(iw,is) < nepmax .and.
      &                 wp(ip) > 0.) then
+!$OMP ATOMIC
                 nep(iw,is) = nep(iw,is) + 1
                 tep(nep(iw,is),iw,is) = pp(17,ip) + time
                 xep(nep(iw,is),iw,is) = pp(2,ip)
@@ -5132,6 +5136,7 @@ c         --- End of Z moments accumulation
         stop
       endif
 
+!$OMP ATOMIC
       momentstime = momentstime + (wtime() - timetemp)
 
       return
@@ -5296,12 +5301,14 @@ c     --- vector loop
          s1(ip) = w1 * g * gaminv(ip) * uzp(ip)
       enddo
 c     --- scalar loop
+!$OMP CRITICAL (CRITICAL_SETCURR1)
       do ip = 1,np
          if (uzp(ip) /= 0) then
             curr(kk(ip)) = curr(kk(ip)) + s0(ip)
             curr(kk(ip)+1) = curr(kk(ip)+1) + s1(ip)
          endif
       enddo
+!$OMP END CRITICAL (CRITICAL_SETCURR1)
 
       return
       end
@@ -5329,12 +5336,14 @@ c     --- vector loop
          s1(ip) = w1 * g * gaminv(ip) * uzp(ip) * w(ip)
       enddo
 c     --- scalar loop
+!$OMP CRITICAL (CRITICAL_SETCURR_WEIGHTS1)
       do ip = 1,np
          if (uzp(ip) /= 0) then
             curr(kk(ip)) = curr(kk(ip)) + s0(ip)
             curr(kk(ip)+1) = curr(kk(ip)+1) + s1(ip)
          endif
       enddo
+!$OMP END CRITICAL (CRITICAL_SETCURR_WEIGHTS1)
 
       return
       end
@@ -6400,9 +6409,11 @@ c=============================================================================
       real(kind=8):: source(nwords), target(nwords)
       integer(ISZ):: i
 
+!$OMP PARALLEL DO IF (nwords > 1000)
       do 100 i = 1, nwords
          target(i) = source(i)
   100 continue
+!$OMP END PARALLEL DO
 
       return
       end
@@ -6412,9 +6423,11 @@ c=============================================================================
       real(kind=8):: source(nwords), target(nwords)
       integer(ISZ):: i
 
+!$OMP PARALLEL DO IF (nwords > 1000)
       do 100 i = 1, nwords
          target(i) = target(i) + source(i)
   100 continue
+!$OMP END PARALLEL DO
 
       return
       end
@@ -6425,9 +6438,11 @@ c=============================================================================
 
 c  Sets ARRY to zero
       integer(ISZ):: i
+!$OMP PARALLEL DO IF (n > 1000)
       do i=1,n
         arry(i) = 0.0
       enddo
+!$OMP END PARALLEL DO
 
       return
       end

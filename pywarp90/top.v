@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.96 $, $Date: 2003/06/30 19:49:39 $
+#@(#) File TOP.V, version $Revision: 3.97 $, $Date: 2003/07/16 00:32:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.96 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.97 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1276,8 +1276,6 @@ vyrmsz(0:nzmmnt)    _real [m/s]   # True RMS Vy at grid point
 vzrmsz(0:nzmmnt)    _real [m/s]   # True RMS Vz at grid point
 rhomidz(0:nzmmnt)   _real [C/m^3] # Charge dens. on axis at grid point
 rhomaxz(0:nzmmnt)   _real [C/m^3] # Charge dens. max-over-X,Y at grid point
-zmmnts0(NUMZMMNT)    real         # Array used to calc total moments
-zmmnts(0:nzmmnt,NUMZMMNT) _real   # Array used to calc Z moments
 
 ********** Lab_Moments dump:
 # Particle moment data as a function of time at locations in the lab frame
@@ -1752,7 +1750,8 @@ cigar (np:real,zunifrm:real,zpunifrm:real,z:real,zp:real,perpscal:real,
 derivqty()  subroutine # Calculates global derived qtys.
 getzmmnt(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
          q:real,m:real,w:real,dt:real,itask,nplive,
-         uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer)
+         uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer,
+         maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1
 getzmmnt_weights(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
          wp:real,q:real,m:real,w:real,dt:real,itask,nplive,
