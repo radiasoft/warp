@@ -981,17 +981,17 @@ TYPE(GRIDtype), pointer :: gup
         b => g%bndlast
       else
         b => b%prev
-       !call BNDtypefree(b%next)
-        call DelBNDtype(b%next)
+        call DecRefBNDtype(b%next)
+        call ReleaseBNDtype(b%next)
       END if
       call del_cnds(b)
     end do
-   !call BNDtypefree(b)
-    call DelBNDtype(b)
+    call DecRefBNDtype(b)
+    call ReleaseBNDtype(b)
   END if
   NULLIFY(g%up%down)
- !call GRIDtypefree(g)
-  call DelGRIDtype(g)
+  call DecRefGRIDtype(g)
+  call ReleaseGRIDtype(g)
 
   ngrids=ngrids-1
   mgridrz_ngrids = ngrids
@@ -1273,12 +1273,8 @@ TYPE(GRIDtype), pointer :: g
   IF(solvergeom/=Zgeom .and. solvergeom /=Rgeom) call del_grid_bnds(g)
   call del_overlaps(g)
 
-! call GRIDtypefree(g)
-  NULLIFY(g%next)
-  NULLIFY(g%prev)
-  NULLIFY(g%up)
-  NULLIFY(g%down)
-  call DelGRIDtype(g)
+  call DecRefGRIDtype(g)
+  call ReleaseGRIDtype(g)
 
   return
 end subroutine del_grid
@@ -1289,26 +1285,16 @@ TYPE(BNDtype), POINTER :: b,bnext
 INTEGER :: i
 
   b=>g%bndfirst
-  NULLIFY(g%bndfirst)
-  NULLIFY(g%bndlast)
   do WHILE(associated(b%next))
     bnext => b%next
     call del_cnds(b)
-    NULLIFY(b%next)
-    NULLIFY(b%prev)
-    NULLIFY(b%cndfirst)
-    NULLIFY(b%cndlast)
-   !call BNDtypefree(b)
-    call DelBNDtype(b)
+    call DecRefBNDtype(b)
+    call ReleaseBNDtype(b)
     b => bnext
   end do
   call del_cnds(b)
-  NULLIFY(b%next)
-  NULLIFY(b%prev)
-  NULLIFY(b%cndfirst)
-  NULLIFY(b%cndlast)
- !call BNDtypefree(b)
-  call DelBNDtype(b)
+  call DecRefBNDtype(b)
+  call ReleaseBNDtype(b)
 
   return
 end subroutine del_grid_bnds
@@ -1348,10 +1334,8 @@ subroutine del_cnd(c)
 implicit none
 TYPE(CONDtype), POINTER :: c
 
-  NULLIFY(c%next)
-  NULLIFY(c%prev)
- !call CONDtypefree(c)
-  call DelCONDtype(c)
+  call DecRefCONDtype(c)
+  call ReleaseCONDtype(c)
 
 end subroutine del_cnd
 
@@ -1382,8 +1366,8 @@ IF(associated(o%next)) then
   call del_overlap(o%next)
   NULLIFY(o%next)
 endif
-!call OVERLAPtypefree(o)
-call DelOVERLAPtype(o)
+call DecRefOVERLAPtype(o)
+call ReleaseOVERLAPtype(o)
 
 end subroutine del_overlap
 
@@ -5788,7 +5772,7 @@ end do
 ! --- conductorstmp must be created this way since the gallot routine is called
 ! --- with it. The gallot needs to have the object accessible from python,
 ! --- which happens when the object is created this way. The alternative
-! --- is to explicitly call the InitPyRef and DelPyRef routines for
+! --- is to explicitly call the InitPyRef and DecRef routines for
 ! --- conductorstmp and all of the objects it refers to.
 conductorstmp => NewConductorType()
 
@@ -5848,7 +5832,8 @@ conductorstmp => NewConductorType()
                         conductorstmp)
  end do
 
-call DelConductorType(conductorstmp)
+call DecRefConductorType(conductorstmp)
+call ReleaseConductorType(conductorstmp)
 DEALLOCATE(mg_ncond,mg_necndbdy, mg_nocndbdy)
 
 conductors%interior%n = 0
