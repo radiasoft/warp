@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.95 2004/11/17 22:41:38 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.96 2004/11/29 17:43:22 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -169,6 +169,7 @@ Should never be directly created by the user.
                     and the conductors along the axis.
  - generatord=None: function which generates the smallest distance between the
                     points and the conductor surface.
+ - name=None: conductor name (string)
   """
 
   voltage = 0.
@@ -177,7 +178,7 @@ Should never be directly created by the user.
   zcent = 0.
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None,generatori=None):
+                    generatorf=None,generatord=None,generatori=None,name=None):
     self.voltage = v
     self.xcent = x
     self.ycent = y
@@ -187,6 +188,8 @@ Should never be directly created by the user.
     self.generatorf = generatorf
     self.generatord = generatord
     self.generatori = generatori
+    self.name = name
+    self.lostparticles_data = []
 
   def getkwlist(self):
     kwlist = []
@@ -226,7 +229,30 @@ Should never be directly created by the user.
                        kwlist=self.getkwlist())
     return result
 
-  # Operations which return an Assembly expression.
+  def get_current_history(self,js=None,tmin=None,tmax=None,nt=100):
+    data = array(self.lostparticles_data)
+    q = data[:,1].copy()
+    t = data[:,0].copy()
+    if tmin is None:tmin=min(t)
+    if tmax is None:tmax=max(t)
+    if js is not None:
+      j = data[:,3].copy()
+      q = compress(j==js,q)
+      t = compress(j==js,t)
+    n = shape(q)[0]
+    qt = zeros(nt+1,Float)
+    dt = (tmax-tmin)/nt
+    if n>0:
+      qtmp = zeros(nt+1,Float)
+      deposgrid1d(1,n,t,q,nt,qt,qtmp,tmin,tmax)
+    return arange(tmin,tmax+0.1*dt,dt),qt/dt
+   
+  def plot_current_history(self,js=None,tmin=None,tmax=None,nt=100,color=black,width=1,type='solid'):
+    time,current=self.get_current_history(js=js,tmin=tmin,tmax=tmax,nt=nt)
+    plg(current,time,color=color,width=width,type=type)
+    ptitles('Current history at '+self.name,'time (s)','I (A)')
+
+   # Operations which return an Assembly expression.
   def __mul__(self,right):
     if right is None: return self
     return AssemblyAnd(self,right)
@@ -4004,6 +4030,9 @@ A SRFRVLA contains two lists:
       colorb=color
     for parts in self.SRFRVLAconds:
         parts.draw(ncirc,scx,scy,colort,colorb,color,signx,width)
+
+  def getextent(self):
+    return ConductorExtent([w3d.xmmin,w3d.ymmin,w3d.zmmin],[w3d.xmmax,w3d.ymmax,w3d.zmmax])
 
 class SRFRVLAfromfile(SRFRVLAsystem):
   """
