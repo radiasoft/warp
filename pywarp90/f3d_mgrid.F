@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.6 $, $Date: 2001/06/08 19:10:02 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.7 $, $Date: 2001/06/09 00:07:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2020,7 +2020,7 @@ c         --- Then check if the point is within the requested region.
      &        ylo <= iy .and. iy <= yhi .and.
      &        zlo <= iz .and. iz <= zhi) then
 c           --- If so, set mask to 0.
-            mask(ix,iy,iz) = 0
+            mask(ix,iy,iz,0) = 0
           endif
         endif
       enddo
