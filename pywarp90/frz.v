@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.27 $, $Date: 2003/06/18 17:38:19 $
+#@(#) File FRZ.V, version $Revision: 3.28 $, $Date: 2003/07/22 18:02:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.27 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.28 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -196,7 +196,7 @@ reset_rzmgrid_rho() subroutine
 fieldweightz(zp:real,uzp:real,ez:real,np:integer,zgrid:real) subroutine
 fieldweightrz(xp:real,yp:real,zp:real,uzp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real) subroutine
 dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
-           xmin:real,zmin:real,zgrid:real) subroutine
+           xmin:real,zmin:real) subroutine
          # makes rho deposition on RZ grid
 distribute_rho_rz() subroutine
          # recursively distributes rho from fine patches to coarse patches
