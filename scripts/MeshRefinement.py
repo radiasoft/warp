@@ -12,45 +12,6 @@ except ImportError:
   pass
 
 
-# ---------------------------------------------------------------------------
-MRsolver = [None]
-def registersolver(solver):
-  """
-Registers the solver to be used in the particle simulation.
- - solver: is the solver object. It must have the methods loadrho, solve, and
-           fetche defined
-  """
-  MRsolver[0] = solver
-def getregisteredsolver():
-  return MRsolver[0]
-def loadrhoMR():
-  assert MRsolver[0] is not None,"No solver has been registered"
-  MRsolver[0].loadrho()
-def fieldsolMR():
-  assert MRsolver[0] is not None,"No solver has been registered"
-  MRsolver[0].solve()
-def fetcheMR():
-  assert MRsolver[0] is not None,"No solver has been registered"
-  MRsolver[0].fetche()
-def fetchphiMR():
-  assert MRsolver[0] is not None,"No solver has been registered"
-  MRsolver[0].fetchphi()
-def initfieldsolver():
-    if w3d.AMRlevels>0:
-      import AMR
-      AMRtree=AMR.AMRTree()
-      __main__.__dict__['AMRtree'] = AMRtree
-      gchange('AMR')
-      w3d.AMRcoalescing=0.8
-      if getcurrpkg()=='w3d' and w3d.solvergeom==w3d.XYZgeomMR:
-        registersolver(AMRtree.blocks)
-__main__.__dict__['loadrhoMR'] = loadrhoMR
-__main__.__dict__['fieldsolMR'] = fieldsolMR
-__main__.__dict__['fetcheMR'] = fetcheMR
-__main__.__dict__['fetchphiMR'] = fetchphiMR
-__main__.__dict__['initfieldsolver'] = initfieldsolver
-# ---------------------------------------------------------------------------
-
 #########################################################################
 class MRBlock(MultiGrid,Visualizable):
   """
@@ -67,8 +28,6 @@ class MRBlock(MultiGrid,Visualizable):
              (lower,upper,refinement). Children can also be added later
              using addchild.
   """
-  totalnumberofblocks = 0
-  listofblocks = []
   def __init__(self,parent=None,refinement=2,
                     lower=None,upper=None,
                     ichild=None,
@@ -81,26 +40,27 @@ class MRBlock(MultiGrid,Visualizable):
       # --- No parents, so just create empty lists
       self.parents = []
       self.ichild = []
+      self.root = self
       # --- It is assumed that the root block will be the first one created.
       # --- So clear out the global block list and count.
-      MRBlock.totalnumberofblocks = 0
-      MRBlock.listofblocks = []
+      self.totalnumberofblocks = 0
+      self.listofblocks = []
     else:
       # --- Save the parent and the index number. These are saved in lists
       # --- since a block can have multiple parents.
       self.parents = [parent]
       self.ichild = [ichild]
+      self.root = root
 
     # --- Get the current global block number and increment the counter.
     # --- Also, add self to the global list of blocks.
-    self.blocknumber = MRBlock.totalnumberofblocks
-    MRBlock.totalnumberofblocks += 1
-    MRBlock.listofblocks.append(self)
+    self.blocknumber = self.root.totalnumberofblocks
+    self.root.totalnumberofblocks += 1
+    self.root.listofblocks.append(self)
 
     self.overlaps = []
     self.refinement = refinement
     self.nguard = nguard
-    self.root = root
     self.conductorlist = []
 
     if parent is None:
@@ -110,28 +70,27 @@ class MRBlock(MultiGrid,Visualizable):
       self.mins = mins
       self.maxs = maxs
       self.totalrefinement = 1
-      self.root = self
       
     else:
 
       self.totalrefinement = parent.totalrefinement*self.refinement
       self.deltas = parent.deltas/refinement
-      self.rootdims = root.dims*self.totalrefinement
+      self.rootdims = self.root.dims*self.totalrefinement
 
       if lower is None and upper is None:
         # --- The grid mins and maxs are input.
         self.mins = array(mins)
         self.maxs = array(maxs)
-        self.lower = nint((self.mins - root.mins)/self.deltas)
-        self.upper = nint((self.maxs - root.mins)/self.deltas)
+        self.lower = nint((self.mins - self.root.mins)/self.deltas)
+        self.upper = nint((self.maxs - self.root.mins)/self.deltas)
 
       else:
         # --- The grid lower and upper bounds are input. The bounds are
         # --- relative to the root grid, but scaled by the total refinement.
         self.lower = array(lower)
         self.upper = array(upper)
-        self.mins = root.mins + self.lower*self.deltas
-        self.maxs = root.mins + self.upper*self.deltas
+        self.mins = self.root.mins + self.lower*self.deltas
+        self.maxs = self.root.mins + self.upper*self.deltas
 
       # --- Now, extend the domain by the given number of guard cells. Checks
       # --- are made so that the domain doesn't extend beyond the original grid.
@@ -140,19 +99,19 @@ class MRBlock(MultiGrid,Visualizable):
 
       # --- Recalculate grid quantities, including the guard regions.
       self.dims = self.fullupper - self.fulllower
-      self.mins = root.mins + self.fulllower*self.deltas
-      self.maxs = root.mins + self.fullupper*self.deltas
+      self.mins = self.root.mins + self.fulllower*self.deltas
+      self.maxs = self.root.mins + self.fullupper*self.deltas
 
       # --- First, just use same boundary conditions as root.
-      self.bounds = root.bounds.copy()
+      self.bounds = self.root.bounds.copy()
 
       # --- Check if the mesh doesn't reach the edge of the root grid.
       # --- If not, switch to Dirichlet boundary.
       self.bounds[::2] = where(self.fulllower > 0,0,self.bounds[::2])
       self.bounds[1::2] = where(self.fullupper < self.rootdims,
                                 0,self.bounds[1::2])
-      self.l2symtry = root.l2symtry
-      self.l4symtry = root.l4symtry
+      self.l2symtry = self.root.l2symtry
+      self.l4symtry = self.root.l4symtry
 
     # --- Set individual quantities based on the values in the arrays,
     # --- if they have been set.
@@ -477,7 +436,7 @@ the top level grid.
       ic1 = ichildsorted[1:] - ichildsorted[:-1]
       nn = compress(ic1 > 0,iota(len(ichildsorted-1)))
       #nperchild = zeros(1+len(self.children))
-      nperchild = zeros(len(MRBlock.listofblocks))
+      nperchild = zeros(len(self.root.listofblocks))
       ss = 0
       for n in nn:
         nperchild[nint(ichildsorted[n-1])] = n - ss
@@ -492,8 +451,8 @@ the top level grid.
 
     else:
       xout,yout,zout,uzout = zeros((4,len(x)),'d')
-      nperchild = zeros(MRBlock.totalnumberofblocks)
-      sortparticlesbyindex(len(x),ichild,x,y,z,uz,MRBlock.totalnumberofblocks,
+      nperchild = zeros(self.root.totalnumberofblocks)
+      sortparticlesbyindex(len(x),ichild,x,y,z,uz,self.root.totalnumberofblocks,
                            xout,yout,zout,uzout,nperchild)
 
     return xout,yout,zout,uzout,nperchild
@@ -527,7 +486,7 @@ It is not very fast - the sort takes a lot of time.
 
       # --- For each child, pass to it the particles in it's domain.
       ib = nonzero(nperchild)
-      cc = take(MRBlock.listofblocks,ib)
+      cc = take(self.root.listofblocks,ib)
       nn = take(nperchild,ib)
       i = 0
       for child,n in zip(cc,nn):
@@ -662,7 +621,7 @@ blocknumber rather than the child number relative to the parent.
 
     # --- For each block, pass to it the particles in it's domain.
     i = 0
-    for block,n in zip(MRBlock.listofblocks,nperchild):
+    for block,n in zip(self.root.listofblocks,nperchild):
       MultiGrid.setrho(block,x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w)
       i = i + n
 
@@ -960,10 +919,10 @@ Sets phi on the boundaries, using the values from the parent grid
     """
 Fetches the E field. This should only be called at the root level grid.
     """
-    self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                                     w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
-    #self.fetchefrompositions_gather(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-    #                                w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    #self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+    #                                 w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    self.fetchefrompositions_gather(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                                    w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
 
   def fetchefrompositions_gather(self,x,y,z,ex,ey,ez):
     if len(x) == 0: return
@@ -1020,7 +979,7 @@ Gathers the ichild for the fetche_allsort.
       getgridngp3dpositiveonly(len(x),x,y,z,ichild,
                                self.nx,self.ny,self.nz,self.childdomains,
                                self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                               self.zmmin,self.zmmax,top.zgrid,
+                               self.zmmin,self.zmmax,top.zgridprv,
                                self.l2symtry,self.l4symtry)
       for child in self.children:
         child.getichild_positiveonly(x,y,z,ichild)
@@ -1038,7 +997,7 @@ Gathers the ichild for the fetche_allsort.
       ic1 = ichildsorted[1:] - ichildsorted[:-1]
       nn = compress(ic1 > 0,iota(len(ichildsorted-1)))
       #nperchild = zeros(1+len(self.children))
-      nperchild = zeros(len(MRBlock.listofblocks))
+      nperchild = zeros(len(self.root.listofblocks))
       ss = 0
       for n in nn:
         nperchild[nint(ichildsorted[n-1])] = n - ss
@@ -1054,9 +1013,9 @@ Gathers the ichild for the fetche_allsort.
     else:
       xout,yout,zout = zeros((3,len(x)),'d')
       isort = zeros(len(x))
-      nperchild = zeros(MRBlock.totalnumberofblocks)
+      nperchild = zeros(self.root.totalnumberofblocks)
       sortparticlesbyindexgetisort(len(x),ichild,x,y,z,
-                                   MRBlock.totalnumberofblocks,
+                                   self.root.totalnumberofblocks,
                                    xout,yout,zout,isort,nperchild)
 
     return xout,yout,zout,isort,nperchild
@@ -1080,8 +1039,8 @@ blocknumber rather than the child number relative to the parent.
       for child in self.children:
         child.getichild_positiveonly(x,y,z,ichild)
 
-      # --- Zero out places where childdomains < 0
-      ichild = where(ichild < 0.,0.,ichild)
+     ## --- Zero out places where childdomains < 0
+     #ichild = where(ichild < 0.,0.,ichild)
       
       x,y,z,isort,nperchild = self.sortbyichildgetisort(ichild,x,y,z)
 
@@ -1095,9 +1054,9 @@ blocknumber rather than the child number relative to the parent.
 
     # --- For each block, pass to it the particles in it's domain.
     i = 0
-    for block,n in zip(MRBlock.listofblocks,nperchild):
-      MultiGrid.fetchefrompositions(self,x[i:i+n],y[i:i+n],z[i:i+n],
-                                         tex[i:i+n],tey[i:i+n],tez[i:i+n])
+    for block,n in zip(self.root.listofblocks,nperchild):
+      MultiGrid.fetchefrompositions(block,x[i:i+n],y[i:i+n],z[i:i+n],
+                                          tex[i:i+n],tey[i:i+n],tez[i:i+n])
       i = i + n
 
     # --- Now, put the E fields back into the original arrays, unsorting
