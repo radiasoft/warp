@@ -6,7 +6,6 @@ from pyOpenDX import Visualizable,DXCollection,viewboundingbox
 import MA
 import __main__
 
-
 # ---------------------------------------------------------------------------
 MRsolver = [None]
 def registersolver(solver):
@@ -30,6 +29,7 @@ __main__.__dict__['fieldsolMR'] = fieldsolMR
 __main__.__dict__['fetcheMR'] = fetcheMR
 # ---------------------------------------------------------------------------
 
+
 #########################################################################
 class MRBlock(MultiGrid,Visualizable):
   """
@@ -41,7 +41,8 @@ class MRBlock(MultiGrid,Visualizable):
  - dims: dimensions of the grid, only used for root block, the one with
          no parents
  - mins,maxs: locations of the grid lower and upper bounds in the beam frame
- - dimsmax: dimensions of the root block. Should not be set!
+ - rootdims: dimensions of the root block. Should not be set!
+ - rootmins,rootmaxs: extent of root block. Should not be set!
  - children: list of tuples, each containing three elements,
              (lower,upper,refinement). Children can also be added later
              using addchild.
@@ -50,7 +51,8 @@ class MRBlock(MultiGrid,Visualizable):
                     lower=None,upper=None,
                     ichild=None,
                     dims=None,mins=None,maxs=None,
-                    nguard=1,dimsmax=None,
+                    nguard=1,
+                    rootdims=None,rootmins=None,rootmaxs=None,
                     children=None,**kw):
 
     if parent is None:
@@ -66,7 +68,9 @@ class MRBlock(MultiGrid,Visualizable):
     self.overlaps = []
     self.refinement = refinement
     self.nguard = nguard
-    self.dimsmax = dimsmax
+    self.rootdims = rootdims
+    self.rootmins = rootmins
+    self.rootmaxs = rootmaxs
     self.conductors = []
 
     if parent is None:
@@ -91,32 +95,26 @@ class MRBlock(MultiGrid,Visualizable):
         # --- The grid mins and maxs are input.
         self.mins = array(mins)
         self.maxs = array(maxs)
-        self.lower = (nint((self.mins - parent.mins)/self.deltas) +
-                      refinement*parent.lower)
-        self.upper = (nint((self.maxs - parent.mins)/self.deltas) +
-                      refinement*parent.lower)
+        self.lower = nint((self.mins - self.rootmins)/self.deltas)
+        self.upper = nint((self.maxs - self.rootmins)/self.deltas)
 
       else:
         # --- The grid lower and upper bounds are input. The bounds are
-        # --- relative to the parent. They are converted to be relative
-        # --- to the root, but scale by the total refinement.
-        # --- This is the standard method of specifying a child block.
-        self.lower = refinement*(parent.lower + array(lower))
-        self.upper = refinement*(parent.lower + array(upper))
-        self.mins = parent.mins+(self.lower-refinement*parent.lower)*self.deltas
-        self.maxs = parent.mins+(self.upper-refinement*parent.lower)*self.deltas
+        # --- relative to the root grid, but scaled by the total refinement.
+        self.lower = array(lower)
+        self.upper = array(upper)
+        self.mins = self.rootmins + self.lower*self.deltas
+        self.maxs = self.rootmins + self.upper*self.deltas
 
       # --- Now, extend the domain by the given number of guard cells. Checks
       # --- are made so that the domain doesn't extend beyond the original grid.
       self.fulllower = maximum(0,self.lower - nguard*refinement)
-      self.fullupper = minimum(dimsmax,self.upper + nguard*refinement)
+      self.fullupper = minimum(rootdims,self.upper + nguard*refinement)
 
       # --- Recalculate grid quantities, including the guard regions.
       self.dims = self.fullupper - self.fulllower
-      self.mins = (parent.mins +
-                   (self.fulllower-refinement*parent.fulllower)*self.deltas)
-      self.maxs = (parent.mins +
-                   (self.fullupper-refinement*parent.fulllower)*self.deltas)
+      self.mins = self.rootmins + self.fulllower*self.deltas
+      self.maxs = self.rootmins + self.fullupper*self.deltas
 
     # --- Set individual quantities based on the values in the arrays,
     # --- if they have been set.
@@ -147,7 +145,9 @@ class MRBlock(MultiGrid,Visualizable):
       self.upper = self.dims
       self.fulllower = zeros(3)
       self.fullupper = self.dims
-      self.dimsmax = self.dims
+      self.rootdims = self.dims
+      self.rootmins = self.mins
+      self.rootmaxs = self.maxs
 
     # --- childdomains is the node centered grid which keeps track of which
     # --- cells are owned by which children. If there are no children,
@@ -177,29 +177,6 @@ class MRBlock(MultiGrid,Visualizable):
     self.w = outerproduct(w0,outerproduct(w0,w0))
     self.w.shape = (2*r-1,2*r-1,2*r-1)
 
-  def islastcall(self):
-    "Returns true when last parent has called"
-    try:                   self.ncallsfromparents
-    except AttributeError: self.ncallsfromparents = 0
-    self.ncallsfromparents += 1
-    if self.ncallsfromparents < len(self.parents): return 0
-    self.ncallsfromparents = 0
-    return 1
-
-  def isfirstcall(self):
-    "Returns true when first parent has called"
-    try:                   self.ncallsfromparents
-    except AttributeError: self.ncallsfromparents = 0
-    self.ncallsfromparents += 1
-    if self.ncallsfromparents > 1:
-      if self.ncallsfromparents == len(self.parents):
-        self.ncallsfromparents = 0
-      return 0
-    # --- This extra check is needed in case there is only one parent.
-    if self.ncallsfromparents == len(self.parents):
-      self.ncallsfromparents = 0
-    return 1
-
   def addchild(self,lower,upper,mins=None,maxs=None,refinement=2):
     """
 Add a mesh refined block to this block.
@@ -208,7 +185,8 @@ Add a mesh refined block to this block.
     """
     child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
                     refinement=refinement,ichild=len(self.children)+1,
-                    nguard=self.nguard,dimsmax=self.dimsmax*refinement)
+                    nguard=self.nguard,rootdims=self.rootdims*refinement,
+                    rootmins=self.rootmins,rootmaxs=self.rootmaxs)
     self.addblockaschild(child)
 
   def addblockaschild(self,block):
@@ -220,9 +198,6 @@ Given a block instance, installs it as a child.
     l = maximum(block.fulllower,self.fulllower*block.refinement)
     u = minimum(block.fullupper,self.fullupper*block.refinement)
     if sometrue(l > u): return
-    # --- If childdomains not yet created, do so
-    if self.childdomains is None:
-      self.childdomains = fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
     self.setdomainownership(block,len(self.children))
 
   def setdomainownership(self,block,ichild):
@@ -230,25 +205,24 @@ Given a block instance, installs it as a child.
 Sets the regions that are covered by a mesh refined block.
     """
     # --- Set full domain to negative of child number first.
-    ix1,iy1,iz1 = maximum(0,block.fulllower/block.refinement - self.fulllower)
-    ix2,iy2,iz2 = block.fullupper/block.refinement - self.fulllower
+    l = maximum(self.fulllower,block.fulllower/block.refinement)
+    u = block.fullupper/block.refinement
     # --- If the child extends to the edge of the parent mesh, it claims the
     # --- grid points on the upper edges.
-    if ix2 == self.dims[0]: ix2 += 1
-    if iy2 == self.dims[1]: iy2 += 1
-    if iz2 == self.dims[2]: iz2 += 1
-    ii = self.childdomains[ix1:ix2,iy1:iy2,iz1:iz2]
-    ii[:,:,:] = where(ii<=0.,-ichild,ii)
+    u = u + where(u == self.fullupper,1,0)
+    # --- The child claims all unclaimed areas.
+    ii = self.getchilddomains(l,u)
+    ii[...] = where(ii==0.,-ichild,ii)
 
     # --- Set interior to positive child number.
-    ix1,iy1,iz1 = maximum(0,block.lower/block.refinement - self.fulllower)
-    ix2,iy2,iz2 = block.upper/block.refinement - self.fulllower
+    l = maximum(self.fulllower,block.lower/block.refinement)
+    u = block.upper/block.refinement
     # --- If the child extends to the edge of the parent mesh, it claims the
     # --- grid points on the upper edges.
-    if ix2 == self.dims[0]: ix2 += 1
-    if iy2 == self.dims[1]: iy2 += 1
-    if iz2 == self.dims[2]: iz2 += 1
-    self.childdomains[ix1:ix2,iy1:iy2,iz1:iz2] = +ichild
+    u = u + where(u == self.fullupper,1,0)
+    # --- The child claims its full interior area
+    ii = self.getchilddomains(l,u)
+    ii[...] = +ichild
 
   def installconductors(self,conductor):
     self.conductors.append(conductor)
@@ -276,22 +250,27 @@ Sets the regions that are covered by a mesh refined block.
       # --- assumed to be a large enough number - there almost certainly
       # --- will never be 100 levels of refinement. The topmost list
       # --- will be empty since the top level has not parents.
-      blocklists = []
-      for i in range(100):
-        blocklists.append([])
+      blocklists = [[] for i in range(100)]
     # --- Add this instance to the top level of the list and pass the rest
     # --- of it to the children
-    if self not in blocklists[1]: blocklists[1].append(self)
+    if self not in blocklists[1]:
+      blocklists[1].append(self)
     for child in self.children:
-      child.generateblocklevellists(blocklists[1:])
+      b = child.generateblocklevellists(blocklists[1:])
     return blocklists
 
   def findallparents(self,blocklists):
+    try:
+      self.findallparentsalreadycalled
+      return
+    except AttributeError:
+      self.findallparentsalreadycalled = 1
+      pass
     for block in blocklists[0]:
       if block in self.parents: continue
       # --- Get extent of possible overlapping domain
-      l = maximum(block.fulllower,self.fulllower/self.refinement)
-      u = minimum(block.fullupper,self.fullupper/self.refinement)
+      l = maximum(block.fulllower*self.refinement,self.fulllower)
+      u = minimum(block.fullupper*self.refinement,self.fullupper)
       if alltrue(u >= l):
         self.parents.append(block)
         block.addblockaschild(self)
@@ -304,43 +283,47 @@ Sets the regions that are covered by a mesh refined block.
     # --- Note that this routine will be called once from each parent and that
     # --- each parent can have a different ordering of children. To avoid
     # --- problems with areas being claimed multiple times, only the region
-    # --- withing the calling parent is operated on and the siblingdomains
-    # --- is created filled with -1 to flag areas which has not yet been set.
-    # --- Create array if it hasn't already been done.
-    if self.siblingdomains is None:
-      self.siblingdomains = -1*ones(1+self.dims)
+    # --- withing the calling parent is operated on. When created, the
+    # --- siblingdomains is filled with -1 to flag all areas as being unset.
     # --- Get extent of domain within the calling parent
     l = maximum(parent.fulllower*self.refinement,self.fulllower)
     u = minimum(parent.fullupper*self.refinement,self.fullupper)
-    # --- Siblings listed before get claim to the domain,
-    # --- while ones after don't.
-    claimdomainflag = 0
+    if sometrue(l > u): return
     # --- Loop over siblings with the parent, checking for overlaps with them.
     for sibling in parent.children:
-      if sibling == self:
-        # --- Set claimdomainflag to 1 since this instance claims overlapping
-        # --- domains of siblings listed after it.
-        claimdomainflag = 1
-        continue
+      if sibling == self: continue
+
       # --- Find domain which overlaps the sibling. Do nothing if the
       # --- domain is zero size.
       sl = maximum(l,sibling.fulllower)
       su = minimum(u,sibling.fullupper)
       if sometrue(sl > su): continue
-      ix1,iy1,iz1 = sl - self.fulllower
-      ix2,iy2,iz2 = su - self.fulllower + 1
-      sd = self.siblingdomains[ix1:ix2,iy1:iy2,iz1:iz2]
-      # --- Set the flag in areas where it has not already been set.
-      sd[...] = where(sd == -1,claimdomainflag,sd)
+      sd = self.getsiblingdomains(sl,su)
+      od = sibling.getsiblingdomains(sl,su)
+
+      # --- This instance claims any cells that are unclaimed both here and in
+      # --- the sibling
+      unclaimed = (od == -1) & (sd == -1)
+      sd[...] = where(unclaimed,1,sd)
+      od[...] = where(unclaimed,0,od)
+
+      # --- Any cells that are marked as claimed here or in the sibling but
+      # --- are not set in the other are marked as claimed by others.
+      sd[...] = where(sd == -1,0,sd)
+      od[...] = where(od == -1,0,od)
+
+      # --- It is possible that some areas will be claimed by multiple
+      # --- siblings. Remove claim to those areas from the sibling.
+      overclaimed = (od == 1) & (sd == 1)
+      od[...] = where(overclaimed,0,od)
+
       # --- Keep a list of overlapping siblings
       if sibling not in self.overlaps:
         self.overlaps.append(sibling)
 
     # --- Now, claim any parts of the domain within this parent that have
     # --- not already been set. i.e. those parts not covered by other blocks.
-    ix1,iy1,iz1 = l - self.fulllower
-    ix2,iy2,iz2 = u - self.fulllower + 1
-    sd = self.siblingdomains[ix1:ix2,iy1:iy2,iz1:iz2]
+    sd = self.getsiblingdomains(l,u)
     sd[...] = where(sd == -1,1,sd)
 
     # --- Now, recursively call the children.
@@ -358,9 +341,7 @@ the top level grid.
     """
     if lzero: self.zerorho()
     for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
-      if n > 0:
-        self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],
-                    q,w)
+      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
     self.accumulaterhofromsiblings()
     self.getrhofromsiblings()
     self.gatherrhofromchildren()
@@ -393,6 +374,7 @@ density of the mesh structure.
     """
     if len(x) == 0: return
     if len(self.children) > 0:
+
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       ichild = zeros(len(x),'d')
@@ -400,23 +382,28 @@ density of the mesh structure.
                    self.nx,self.ny,self.nz,self.childdomains,
                    self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                    self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
+
       # --- Take absolute value since the childdomains is signed.
       # --- Can this be done in place to save memory?
       ichild = abs(ichild)
+
       # --- Sort the list of which domain the particles are in.
       ichildsorter = argsort(ichild)
       ichildsorted = take(ichild,ichildsorter)
       nperchild = self.getnperchild(ichildsorted)
+
       # --- Now use the same sorting on the particle quantities.
       x = take(x,ichildsorter)
       y = take(y,ichildsorter)
       z = take(z,ichildsorter)
       uz = take(uz,ichildsorter)
+
       # --- For each child, pass to it the particles in it's domain.
       i = nperchild[0]
       for child,n in zip(self.children,nperchild[1:]):
         child.setrho(x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w)
         i = i + n
+
       # --- Now, get remaining particles in this domain
       x = x[:nperchild[0]]
       y = y[:nperchild[0]]
@@ -432,40 +419,38 @@ density of the mesh structure.
     # --- before it can get its rho from here, it must be done on the
     # --- first call.
     if not self.isfirstcall(): return
+
     # --- Loop over the children
     for child in self.children:
+
       # --- Make sure that the child has gathered rho from its children.
       child.gatherrhofromchildren()
+
+
       # --- Get coordinates of child relative to this domain
       r = child.refinement
-      i1 = maximum(0,child.fulllower/r - self.fulllower)
-      i2 = minimum(self.dims,child.fullupper/r - self.fulllower)
-      if sometrue(i1 > i2): continue
+      l = maximum(child.fulllower/r,self.fulllower)
+      u = minimum(child.fullupper/r,self.fullupper)
+      if sometrue(l > u): continue
+
       # --- Grid cells to gather from child along each axis, relative to grid
       # --- cells in the parent mesh.
       dims = iota(-r+1,r-1)
+
       # --- Loop over the three dimensions. The loops loop over all child grid
       # --- cells that contribute to a parent grid cell.
       for k in dims:
         for j in dims:
           for i in dims:
-            ii1 = array([i,j,k]) + (i1 + self.fulllower)*r - child.fulllower
-            ii2 = array([i,j,k]) + (i2 + self.fulllower)*r - child.fulllower
-            # --- Make sure points outside the child's domain are skipped.
-            # --- If the ii1 are < 0, then skip the lowest plane since
-            # --- it is outside the childs domain. The same for the upper end.
-            pm = (ii1 < 0)
-            pp = -(ii2 > child.dims)
-            # --- Gather pointers to the blocks of data to be operated on
-            # --- First, self's rho.
-            ix1,iy1,iz1 = i1 + pm
-            ix2,iy2,iz2 = i2 + pp + 1
-            prho = self.rho[ix1:ix2,iy1:iy2,iz1:iz2]
-            # --- Then the child's rho
-            cx1,cy1,cz1 = ii1 + r*pm
-            cx2,cy2,cz2 = ii2 + r*pp + 1
-            crho = child.rho[cx1:cx2:r,cy1:cy2:r,cz1:cz2:r]
-            cowns = child.siblingdomains[cx1:cx2:r,cy1:cy2:r,cz1:cz2:r]
+            ls = array([i,j,k]) + l*r
+            us = array([i,j,k]) + u*r
+            pm = (ls < child.fulllower)
+            pp = (us > child.fullupper)
+
+            prho = self.getrho(l+pm,u-pp)
+            crho = child.getrho(ls+r*pm,us-r*pp,r)
+            cowns = child.getsiblingdomains(ls+r*pm,us-r*pp,r)
+
             # --- Get the rho that will be contributed.
             rh = where(cowns,crho,0.)
             # --- Multiply by the weight in place.
@@ -485,13 +470,9 @@ are owned by this instance.
     for other in self.overlaps:
       l = maximum(self.fulllower,other.fulllower)
       u = minimum(self.fullupper,other.fullupper)
-      sx1,sy1,sz1 = l - self.fulllower
-      sx2,sy2,sz2 = u - self.fulllower + 1
-      ox1,oy1,oz1 = l - other.fulllower
-      ox2,oy2,oz2 = u - other.fulllower + 1
-      srho = self.rho[sx1:sx2,sy1:sy2,sz1:sz2]
-      orho = other.rho[ox1:ox2,oy1:oy2,oz1:oz2]
-      sown = self.siblingdomains[sx1:sx2,sy1:sy2,sz1:sz2]
+      srho = self.getrho(l,u)
+      orho = other.getrho(l,u)
+      sown = self.getsiblingdomains(l,u)
       srho[...] = srho + where(sown,orho,0.)
 
   def getrhofromsiblings(self):
@@ -504,13 +485,9 @@ Get rho from overlapping siblings where they own the region.
     for other in self.overlaps:
       l = maximum(self.fulllower,other.fulllower)
       u = minimum(self.fullupper,other.fullupper)
-      sx1,sy1,sz1 = l - self.fulllower
-      sx2,sy2,sz2 = u - self.fulllower + 1
-      ox1,oy1,oz1 = l - other.fulllower
-      ox2,oy2,oz2 = u - other.fulllower + 1
-      srho = self.rho[sx1:sx2,sy1:sy2,sz1:sz2]
-      orho = other.rho[ox1:ox2,oy1:oy2,oz1:oz2]
-      oown = other.siblingdomains[ox1:ox2,oy1:oy2,oz1:oz2]
+      srho = self.getrho(l,u)
+      orho = other.getrho(l,u)
+      oown = other.getsiblingdomains(l,u)
       srho[...] = where(oown,orho,srho)
 
   #--------------------------------------------------------------------------
@@ -519,18 +496,18 @@ Get rho from overlapping siblings where they own the region.
 
   def solve(self,iwhich=0):
     # --- Wait until all of the parents have called here until actually
-    # --- doing the solve. This ensures that the phiboundaries obtained
-    # --- will be up to date.
+    # --- doing the solve. This ensures that the phi in all of the parents
+    # --- which is needed on the boundaries will be up to date.
     if not self.islastcall(): return
 
-    self.setgridboundaries('phi')
+    self.setphiboundaries()
     MultiGrid.solve(self,iwhich)
     for child in self.children:
       child.solve(iwhich)
 
-  def setgridboundaries(self,grid):
+  def setphiboundaries(self):
     """
-Sets grid on the boundaries, using the values from the parent grid
+Sets phi on the boundaries, using the values from the parent grid
     """
     if len(self.parents) == 0: return
     for parent in self.parents:
@@ -538,69 +515,39 @@ Sets grid on the boundaries, using the values from the parent grid
       # --- Coordinates of mesh relative to parent's mesh location
       # --- and refinement. The minimum and maximum are needed in case
       # --- this mesh extends beyond the parent's.
-      i1 = maximum(0,self.fulllower/self.refinement - parent.fulllower)
-      i2 = minimum(parent.dims,
-                   self.fullupper/self.refinement - parent.fulllower)
-      if sometrue(i1 > i2): continue
-      # --- Coordinates of this mesh that covers the parent's mesh.
-      # --- If this mesh is completely within the parents mesh,
-      # --- then i3 is zero and i4 is self.dims.
-      i3 = (parent.fulllower + i1)*self.refinement - self.fulllower
-      i4 = (parent.fulllower + i2)*self.refinement - self.fulllower
-      ix1,iy1,iz1 = i1
-      ix2,iy2,iz2 = i2
-      ix3,iy3,iz3 = i3
-      ix4,iy4,iz4 = i4
-      # --- First get points directly copied from parent.
-      # --- As a convenience, get references to the grid arrays without
-      # --- the z guard planes.
-      if grid == 'phi':
-        sgrid = getattr(self,grid)[:,:,1:-1]
-        pgrid = getattr(parent,grid)[:,:,1:-1]
-      else:
-        sgrid = getattr(self,grid)
-        pgrid = getattr(parent,grid)
-      # --- Note that if the child extends beyond the parent's domain,
-      # --- then certain boundary planes are completely skipped.
-      if self.fulllower[0]/self.refinement >= parent.fulllower[0]:
-        sgrid[ix3,iy3:iy4+1:r,iz3:iz4+1:r] = pgrid[ix1,iy1:iy2+1,iz1:iz2+1]
-      if self.fullupper[0]/self.refinement <= parent.fullupper[0]:
-        sgrid[ix4,iy3:iy4+1:r,iz3:iz4+1:r] = pgrid[ix2,iy1:iy2+1,iz1:iz2+1]
-      if self.fulllower[1]/self.refinement >= parent.fulllower[1]:
-        sgrid[ix3:ix4+1:r,iy3,iz3:iz4+1:r] = pgrid[ix1:ix2+1,iy1,iz1:iz2+1]
-      if self.fullupper[1]/self.refinement <= parent.fullupper[1]:
-        sgrid[ix3:ix4+1:r,iy4,iz3:iz4+1:r] = pgrid[ix1:ix2+1,iy2,iz1:iz2+1]
-      if self.fulllower[2]/self.refinement >= parent.fulllower[2]:
-        sgrid[ix3:ix4+1:r,iy3:iy4+1:r,iz3] = pgrid[ix1:ix2+1,iy1:iy2+1,iz1]
-      if self.fullupper[2]/self.refinement <= parent.fullupper[2]:
-        sgrid[ix3:ix4+1:r,iy3:iy4+1:r,iz4] = pgrid[ix1:ix2+1,iy1:iy2+1,iz2]
+      l = maximum(parent.fulllower*self.refinement,self.fulllower)
+      u = minimum(parent.fullupper*self.refinement,self.fullupper)
+      if sometrue(l > u): return
+      pl = l/self.refinement
+      pu = u/self.refinement
+      sphi = self.getphi(l,u)
+      pphi = self.getphi(pl,pu)
+      if l[0] == self.fulllower[0]: sphi[ 0,::r,::r] = pphi[ 0,:,:]
+      if u[0] == self.fullupper[0]: sphi[-1,::r,::r] = pphi[-1,:,:]
+      if l[1] == self.fulllower[1]: sphi[::r, 0,::r] = pphi[:, 0,:]
+      if u[1] == self.fullupper[1]: sphi[::r,-1,::r] = pphi[:,-1,:]
+      if l[2] == self.fulllower[2]: sphi[::r,::r, 0] = pphi[:,:, 0]
+      if u[2] == self.fullupper[2]: sphi[::r,::r,-1] = pphi[:,:,-1]
 
     # --- Do remaining points where interpolation is needed.
     # --- This can be done, now that all of the contributions from the parents
     # --- is done.
-    if grid == 'phi':
-      sgrid = getattr(self,grid)[:,:,1:-1]
-    else:
-      sgrid = getattr(self,grid)
-    self.setslice(sgrid[ 0,:,:])
-    self.setslice(sgrid[-1,:,:])
-    self.setslice(sgrid[:, 0,:])
-    self.setslice(sgrid[:,-1,:])
-    self.setslice(sgrid[:,:, 0])
-    self.setslice(sgrid[:,:,-1])
+    sphi = self.phi[:,:,1:-1]
+    self.setslice(sphi[ 0,:,:])
+    self.setslice(sphi[-1,:,:])
+    self.setslice(sphi[:, 0,:])
+    self.setslice(sphi[:,-1,:])
+    self.setslice(sphi[:,:, 0])
+    self.setslice(sphi[:,:,-1])
 
   def setslice(self,slice):
     # --- Does interpolation from cells coincident with the parent to the
     # --- other cells.
     r = self.refinement
-    slice[1::r,::r] = 0.5*(slice[ :-1:r,::r] + 
-                           slice[2:  :r,::r])
-    slice[::r,1::r] = 0.5*(slice[::r, :-1:r] + 
-                           slice[::r,2:  :r])
-    slice[1::r,1::r] = 0.25*(slice[ :-1:r, :-1:r] +
-                             slice[2:  :r, :-1:r] +
-                             slice[ :-1:r,2:  :r] +
-                             slice[2:  :r,2:  :r])
+    slice[1::r,::r] = 0.5*(slice[ :-1:r,::r] + slice[2:  :r,::r])
+    slice[::r,1::r] = 0.5*(slice[::r, :-1:r] + slice[::r,2:  :r])
+    slice[1::r,1::r] = 0.25*(slice[ :-1:r, :-1:r] + slice[2:  :r, :-1:r] +
+                             slice[ :-1:r,2:  :r] + slice[2:  :r,2:  :r])
 
   #--------------------------------------------------------------------------
   # --- Methods to fetch E-fields and potential
@@ -693,15 +640,30 @@ Fetches the E field. This should only be called at the root level grid.
   #--------------------------------------------------------------------------
   # --- Utility methods
   #--------------------------------------------------------------------------
-  def getphi(self,ix,iy,iz):
-    ix1,iy1,iz1 = self.fulllower
-    return self.phi[ix-ix1,iy-iy1,iz-iz1+1]
-  def getrho(self,ix,iy,iz):
-    ix1,iy1,iz1 = self.fulllower
-    return self.rho[ix-ix1,iy-iy1,iz-iz1]
-  def getchilddomain(self,ix,iy,iz):
-    ix1,iy1,iz1 = self.fulllower
-    return self.childdomains[ix-ix1,iy-iy1,iz-iz1]
+
+  def islastcall(self):
+    "Returns true when last parent has called"
+    try:                   self.ncallsfromparents
+    except AttributeError: self.ncallsfromparents = 0
+    self.ncallsfromparents += 1
+    if self.ncallsfromparents < len(self.parents): return 0
+    self.ncallsfromparents = 0
+    return 1
+
+  def isfirstcall(self):
+    "Returns true when first parent has called"
+    try:                   self.ncallsfromparents
+    except AttributeError: self.ncallsfromparents = 0
+    self.ncallsfromparents += 1
+    if self.ncallsfromparents > 1:
+      if self.ncallsfromparents == len(self.parents):
+        self.ncallsfromparents = 0
+      return 0
+    # --- This extra check is needed in case there is only one parent.
+    if self.ncallsfromparents == len(self.parents):
+      self.ncallsfromparents = 0
+    return 1
+
   def setname(self,root='c',ichild=None):
     import __main__
     if ichild is not None:
@@ -716,6 +678,27 @@ Fetches the E field. This should only be called at the root level grid.
       memtot = memtot + child.getmem()
     return memtot
       
+  def getphi(self,lower,upper):
+    # --- Note that this takes into account the guard cells in z.
+    ix1,iy1,iz1 = lower - self.fulllower + 1
+    ix2,iy2,iz2 = upper - self.fulllower
+    return self.phi[ix1:ix2,iy1:iy2,iz1:iz2]
+  def getrho(self,lower,upper,r=1):
+    ix1,iy1,iz1 = lower - self.fulllower
+    ix2,iy2,iz2 = upper - self.fulllower + 1
+    return self.rho[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
+  def getchilddomains(self,lower,upper,upperedge=0):
+    if self.childdomains is None:
+      self.childdomains = fzeros(1+self.dims,'d')
+    ix1,iy1,iz1 = lower - self.fulllower
+    ix2,iy2,iz2 = upper - self.fulllower + upperedge
+    return self.childdomains[ix1:ix2,iy1:iy2,iz1:iz2]
+  def getsiblingdomains(self,lower,upper,r=1):
+    if self.siblingdomains is None:
+      self.siblingdomains = -1*ones(1+self.dims)
+    ix1,iy1,iz1 = lower - self.fulllower
+    ix2,iy2,iz2 = upper - self.fulllower + 1
+    return self.siblingdomains[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
 
   #--------------------------------------------------------------------------
   # --- The following are used for plotting.
@@ -843,10 +826,10 @@ be plotted.
     i11 = self.mins[ii[1]]
     i12 = self.maxs[ii[1]]
     if not withguards:
-      i01 = i01 + self.dims[ii[0]]*self.nguard*self.refinement
-      i02 = i02 - self.dims[ii[0]]*self.nguard*self.refinement
-      i11 = i11 + self.dims[ii[1]]*self.nguard*self.refinement
-      i12 = i12 - self.dims[ii[1]]*self.nguard*self.refinement
+      i01 = i01 + self.deltas[ii[0]]*self.nguard*self.refinement
+      i02 = i02 - self.deltas[ii[0]]*self.nguard*self.refinement
+      i11 = i11 + self.deltas[ii[1]]*self.nguard*self.refinement
+      i12 = i12 - self.deltas[ii[1]]*self.nguard*self.refinement
     xx = [i01,i01,i02,i02,i01]
     yy = [i11,i12,i12,i11,i11]
     if idim==2: xx,yy = yy,xx
