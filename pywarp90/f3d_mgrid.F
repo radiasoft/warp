@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.56 $, $Date: 2004/02/03 18:42:40 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.57 $, $Date: 2004/02/06 19:35:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1524,71 +1524,71 @@ c       --- coarser levels since solver for the residuals.
           voltfac = 0.
         endif
 
-c       --- If both points in x are inside the conductor, revert to linear
+c       --- If both points in x are inside the conductor, both terms change
         if (cdelmx(ic) < 1. .and. cdelpx(ic) < 1.) then
-          pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
-          pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
-          denom = denom + (1.-cdelpx(ic))/cdelpx(ic)*rdx2cos
-     &                  + (1.-cdelmx(ic))/cdelmx(ic)*rdx2cos
+          pxm = voltfac*cvoltmx(ic)*2./(cdelmx(ic)*(cdelpx(ic)+cdelmx(ic)))
+          pxp = voltfac*cvoltpx(ic)*2./(cdelpx(ic)*(cdelpx(ic)+cdelmx(ic)))
+          denom = denom +
+     &          2.*(1.-cdelpx(ic)*cdelmx(ic))/(cdelpx(ic)*cdelmx(ic))*rdx2cos
           dosubgrid = .true.
         else
 c         --- the point lower in x is inside the conductor
           if (cdelmx(ic) < 1.) then
             pxm = voltfac*cvoltmx(ic)*2./(cdelmx(ic)*(1.+cdelmx(ic)))
-            pxp = pxp*(1.+(1.-cdelmx(ic))/(1.+cdelmx(ic)))
+            pxp = pxp*(2./(1.+cdelmx(ic)))
             denom = denom + 2.*(1.-cdelmx(ic))/cdelmx(ic)*rdx2cos
             dosubgrid = .true.
           endif
 c         --- the point higher in x is inside the conductor
           if (cdelpx(ic) < 1.) then
             pxp = voltfac*cvoltpx(ic)*2./(cdelpx(ic)*(1.+cdelpx(ic)))
-            pxm = pxm*(1.+(1.-cdelpx(ic))/(1.+cdelpx(ic)))
+            pxm = pxm*(2./(1.+cdelpx(ic)))
             denom = denom + 2.*(1.-cdelpx(ic))/cdelpx(ic)*rdx2cos
             dosubgrid = .true.
           endif
         endif
-c       --- If both points in y are inside the conductor, revert to linear
+c       --- If both points in y are inside the conductor, both terms change
         if (cdelmy(ic) < 1. .and. cdelpy(ic) < 1.) then
-          pym = voltfac*cvoltmy(ic)/cdelmy(ic)
-          pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
-          denom = denom + (1.-cdelpy(ic))/cdelpy(ic)*rdy2cos
-     &                  + (1.-cdelmy(ic))/cdelmy(ic)*rdy2cos
+          pym = voltfac*cvoltmy(ic)*2./(cdelmy(ic)*(cdelpy(ic)+cdelmy(ic)))
+          pyp = voltfac*cvoltpy(ic)*2./(cdelpy(ic)*(cdelpy(ic)+cdelmy(ic)))
+          denom = denom +
+     &          2.*(1.-cdelpy(ic)*cdelmy(ic))/(cdelpy(ic)*cdelmy(ic))*rdy2cos
           dosubgrid = .true.
         else
 c         --- the point lower in y is inside the conductor
           if (cdelmy(ic) < 1.) then
             pym = voltfac*cvoltmy(ic)*2./(cdelmy(ic)*(1.+cdelmy(ic)))
-            pyp = pyp*(1.+(1.-cdelmy(ic))/(1.+cdelmy(ic)))
+            pyp = pyp*(2./(1.+cdelmy(ic)))
             denom = denom + 2.*(1.-cdelmy(ic))/cdelmy(ic)*rdy2cos
             dosubgrid = .true.
           endif
 c         --- the point higher in y is inside the conductor
           if (cdelpy(ic) < 1.) then
             pyp = voltfac*cvoltpy(ic)*2./(cdelpy(ic)*(1.+cdelpy(ic)))
-            pym = pym*(1.+(1.-cdelpy(ic))/(1.+cdelpy(ic)))
+            pym = pym*(2./(1.+cdelpy(ic)))
             denom = denom + 2.*(1.-cdelpy(ic))/cdelpy(ic)*rdy2cos
             dosubgrid = .true.
           endif
         endif
-c       --- If both points in z are inside the conductor, revert to linear
+c       --- If both points in z are inside the conductor, both terms change
         if (cdelmz(ic) < 1. .and. cdelpz(ic) < 1.) then
-          pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
-          pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
-          denom = denom + (1.-cdelpz(ic))/cdelpz(ic)*rdz2cos
-     &                  + (1.-cdelmz(ic))/cdelmz(ic)*rdz2cos
+          pzm = voltfac*cvoltmz(ic)*2./(cdelmz(ic)*(cdelpz(ic)+cdelmz(ic)))
+          pzp = voltfac*cvoltpz(ic)*2./(cdelpz(ic)*(cdelpz(ic)+cdelmz(ic)))
+          denom = denom +
+     &          2.*(1.-cdelpz(ic)*cdelmz(ic))/(cdelpz(ic)*cdelmz(ic))*rdz2cos
           dosubgrid = .true.
         else
 c         --- the point lower in z is inside the conductor
           if (cdelmz(ic) < 1.) then
             pzm = voltfac*cvoltmz(ic)*2./(cdelmz(ic)*(1.+cdelmz(ic)))
-            pzp = pzp*(1.+(1.-cdelmz(ic))/(1.+cdelmz(ic)))
+            pzp = pzp*(2./(1.+cdelmz(ic)))
             denom = denom + 2.*(1.-cdelmz(ic))/cdelmz(ic)*rdz2cos
             dosubgrid = .true.
           endif
 c         --- the point higher in z is inside the conductor
           if (cdelpz(ic) < 1.) then
             pzp = voltfac*cvoltpz(ic)*2./(cdelpz(ic)*(1.+cdelpz(ic)))
-            pzm = pzm*(1.+(1.-cdelpz(ic))/(1.+cdelpz(ic)))
+            pzm = pzm*(2./(1.+cdelpz(ic)))
             denom = denom + 2.*(1.-cdelpz(ic))/cdelpz(ic)*rdz2cos
             dosubgrid = .true.
           endif
@@ -1828,74 +1828,74 @@ c       --- coarser levels since solver for the residuals.
           voltfac = 0.
         endif
 
-c       --- If both points in x are inside the conductor, revert to linear
+c       --- If both points in x are inside the conductor, change both sides
         if (cdelmx(ic) < 1. .and. cdelpx(ic) < 1.) then
-          pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
-          pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
-          denom = denom + (1.-cdelpx(ic))/cdelpx(ic)*rdx2c
-     &                  + (1.-cdelmx(ic))/cdelmx(ic)*rdx2c
+          pxm = voltfac*cvoltmx(ic)*2./(cdelmx(ic)*(cdelpx(ic)+cdelmx(ic)))
+          pxp = voltfac*cvoltpx(ic)*2./(cdelpx(ic)*(cdelpx(ic)+cdelmx(ic)))
+          denom = denom +
+     &          2.*(1.-cdelpx(ic)*cdelmx(ic))/(cdelpx(ic)*cdelmx(ic))*rdx2c
           ppp = min(ppp,cdelmx(ic))
           ppp = min(ppp,cdelpx(ic))
         else
 c         --- the point lower in x is inside the conductor
           if (cdelmx(ic) < 1.) then
             pxm = voltfac*cvoltmx(ic)*2./(cdelmx(ic)*(1.+cdelmx(ic)))
-            pxp = pxp*(1.+(1.-cdelmx(ic))/(1.+cdelmx(ic)))
+            pxp = pxp*(2./(1.+cdelmx(ic)))
             denom = denom + 2.*(1.-cdelmx(ic))/cdelmx(ic)*rdx2c
             ppp = min(ppp,cdelmx(ic))
           endif
 c         --- the point higher in x is inside the conductor
           if (cdelpx(ic) < 1.) then
             pxp = voltfac*cvoltpx(ic)*2./(cdelpx(ic)*(1.+cdelpx(ic)))
-            pxm = pxm*(1.+(1.-cdelpx(ic))/(1.+cdelpx(ic)))
+            pxm = pxm*(2./(1.+cdelpx(ic)))
             denom = denom + 2.*(1.-cdelpx(ic))/cdelpx(ic)*rdx2c
             ppp = min(ppp,cdelpx(ic))
           endif
         endif
-c       --- If both points in y are inside the conductor, revert to linear
+c       --- If both points in y are inside the conductor, change both sides
         if (cdelmy(ic) < 1. .and. cdelpy(ic) < 1.) then
-          pym = voltfac*cvoltmy(ic)/cdelmy(ic)
-          pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
-          denom = denom + (1.-cdelpy(ic))/cdelpy(ic)*rdy2c
-     &                  + (1.-cdelmy(ic))/cdelmy(ic)*rdy2c
+          pym = voltfac*cvoltmy(ic)*2./(cdelmy(ic)*(cdelpy(ic)+cdelmy(ic)))
+          pyp = voltfac*cvoltpy(ic)*2./(cdelpy(ic)*(cdelpy(ic)+cdelmy(ic)))
+          denom = denom +
+     &          2.*(1.-cdelpy(ic)*cdelmy(ic))/(cdelpy(ic)*cdelmy(ic))*rdy2c
           ppp = min(ppp,cdelmy(ic))
           ppp = min(ppp,cdelpy(ic))
         else
 c         --- the point lower in y is inside the conductor
           if (cdelmy(ic) < 1.) then
             pym = voltfac*cvoltmy(ic)*2./(cdelmy(ic)*(1.+cdelmy(ic)))
-            pyp = pyp*(1.+(1.-cdelmy(ic))/(1.+cdelmy(ic)))
+            pyp = pyp*(2./(1.+cdelmy(ic)))
             denom = denom + 2.*(1.-cdelmy(ic))/cdelmy(ic)*rdy2c
             ppp = min(ppp,cdelmy(ic))
           endif
 c         --- the point higher in y is inside the conductor
           if (cdelpy(ic) < 1.) then
             pyp = voltfac*cvoltpy(ic)*2./(cdelpy(ic)*(1.+cdelpy(ic)))
-            pym = pym*(1.+(1.-cdelpy(ic))/(1.+cdelpy(ic)))
+            pym = pym*(2./(1.+cdelpy(ic)))
             denom = denom + 2.*(1.-cdelpy(ic))/cdelpy(ic)*rdy2c
             ppp = min(ppp,cdelpy(ic))
           endif
         endif
-c       --- If both points in z are inside the conductor, revert to linear
+c       --- If both points in z are inside the conductor, change both sides
         if (cdelmz(ic) < 1. .and. cdelpz(ic) < 1.) then
-          pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
-          pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
-          denom = denom + (1.-cdelpz(ic))/cdelpz(ic)*rdz2c
-     &                  + (1.-cdelmz(ic))/cdelmz(ic)*rdz2c
+          pzm = voltfac*cvoltmz(ic)*2./(cdelmz(ic)*(cdelpz(ic)+cdelmz(ic)))
+          pzp = voltfac*cvoltpz(ic)*2./(cdelpz(ic)*(cdelpz(ic)+cdelmz(ic)))
+          denom = denom +
+     &          2.*(1.-cdelpz(ic)*cdelmz(ic))/(cdelpz(ic)*cdelmz(ic))*rdz2c
           ppp = min(ppp,cdelmz(ic))
           ppp = min(ppp,cdelpz(ic))
         else
 c         --- the point lower in z is inside the conductor
           if (cdelmz(ic) < 1.) then
             pzm = voltfac*cvoltmz(ic)*2./(cdelmz(ic)*(1.+cdelmz(ic)))
-            pzp = pzp*(1.+(1.-cdelmz(ic))/(1.+cdelmz(ic)))
+            pzp = pzp*(2./(1.+cdelmz(ic)))
             denom = denom + 2.*(1.-cdelmz(ic))/cdelmz(ic)*rdz2c
             ppp = min(ppp,cdelmz(ic))
           endif
 c         --- the point higher in z is inside the conductor
           if (cdelpz(ic) < 1.) then
             pzp = voltfac*cvoltpz(ic)*2./(cdelpz(ic)*(1.+cdelpz(ic)))
-            pzm = pzm*(1.+(1.-cdelpz(ic))/(1.+cdelpz(ic)))
+            pzm = pzm*(2./(1.+cdelpz(ic)))
             denom = denom + 2.*(1.-cdelpz(ic))/cdelpz(ic)*rdz2c
             ppp = min(ppp,cdelpz(ic))
           endif
