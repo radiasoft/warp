@@ -2,7 +2,8 @@ from warp import *
 import string
 import curses.ascii
 import sys
-egun_like_version = "$Id: egun_like.py,v 1.14 2003/02/27 17:21:59 dave Exp $"
+import adjustmesh3d
+egun_like_version = "$Id: egun_like.py,v 1.15 2003/03/06 00:23:47 jlvay Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -27,8 +28,8 @@ print "To recover from a keyboard interrupt, use the command recovergun()"
 print "before doing more iterations."
 ##############################################################################
 # The arguments are preserved by having a shadow with the same name prefixed
-# with an underscore. The underscored varaible is the variable used. The one
-# one without the underscor is only used as input arguments.
+# with an underscore. The underscored variable is the variable used. The one
+# without the underscore is only used as input arguments.
 ##############################################################################
 
 gun_iter = 0
@@ -64,7 +65,8 @@ _vzfuzz = 1.e-20
 import getzmom
 
 def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
-        laccumulate_zmoments=None,rhoparam=None,lstatusline=1):
+        laccumulate_zmoments=None,rhoparam=None,
+        lstatusline=true,insertbeforeiter=None,insertafteriter=None):
   """
 Performs steady-state iterations
   - iter=1 number of iterations to perform
@@ -80,11 +82,14 @@ Performs steady-state iterations
     when using this option.
   - lstatusline=1: when try, a line is printed and continuously updated
                    showing the status of the simulation.
+  - insertbeforeiter=None: function to be called before each iteration.
+  - insertafteriter=None: function to be called after each iteration.
   Note that ipsave and save_same_part are preserved in between calls
   """
   global _oinject,_ofstype,_onztinjmn,_onztinjmx
   global _ipstep,_ipsave,_save_same_part
   global gun_iter,gun_time,gun_steps
+  global rhoprevious
 
   # --- Save general parameters which are modified in this routine
   _oinject = top.inject
@@ -112,9 +117,17 @@ Performs steady-state iterations
   # --- all of the time steps for each iteration.
   top.laccumulate_rho = true
 
+  # --- Set 
+  top.clearlostpart = 1
+
   # --- Turn off rho-diagnostic and calculation of ese
-  w3d.lrhodia3d = 0
-  w3d.lgetese3d = 0
+  w3d.lrhodia3d = false
+  w3d.lgetese3d = false
+  w3d.lgtlchg3d = false
+  w3d.lgetvzofz = false
+  w3d.lsrhoax3d = false
+  w3d.lsphiax3d = false
+  w3d.lsezax3d  = false
 
   # --- Set the attribute 'dump' on the rho array so it is automatically saved
   # --- on a dump. This is done since rho holds the current state of the
@@ -140,6 +153,9 @@ Performs steady-state iterations
 
   # --- make multiple iterations
   for i in xrange(iter):
+    # --- call insertbeforeriter if defined
+    if insertbeforeiter is not None:
+       insertbeforeiter()
 
     # --- set number of particles to save
     # --- assumes the variable 'it' has only been advanced in egun mode and
@@ -163,7 +179,17 @@ Performs steady-state iterations
     top.fstype = -1
 
     # --- If rhoparam is not None, then save the previous rho
-    if rhoparam is not None: rhoprevious = w3d.rho + 0.
+    if rhoparam is not None:
+     if(w3d.solvergeom<>w3d.RZgeom):
+      rhoprevious = w3d.rho + 0.
+     else:
+       for ig in range(frz.ngrids):
+         if(ig==0):
+           g = frz.basegrid
+           rhoprevious = [g.rho]
+         else:
+           g = g.next
+           rhoprevious = rhoprevious+[g.rho]
 
     # --- Zero the charge density array
     w3d.rho = 0.
@@ -252,7 +278,7 @@ Performs steady-state iterations
       top.nztinjmn = 0
       top.nztinjmx = 0
     top.inject = 100
-
+    
     # --- Run until all particles are out of the system (no injection, no field
     # --- solves).  Accumulation of charge density and particle moments is done
     # --- automatically in the code.  Save particle data each time step on last
@@ -300,8 +326,14 @@ Performs steady-state iterations
     # --- If rhoparam is not None, mix in the previous rho with the
     # --- new rho
     if rhoparam is not None:
+     if(w3d.solvergeom<>w3d.RZgeom): 
       w3d.rho[:,:,:] = (1.-rhoparam)*w3d.rho + rhoparam*rhoprevious
-
+     else:
+      frz.l_distribute = true
+      frz.distribute_rho_rz()
+      frz.l_distribute = false
+      for ig in range(frz.ngrids):
+       mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
     # --- Do field solve including newly accumulated charge density.
     # --- The call to perrho3d is primarily needed for the parallel version.
     perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,f3d.bound0,f3d.boundxy)
@@ -332,6 +364,10 @@ Performs steady-state iterations
     gun_iter = gun_iter + 1
     gun_time = top.time - gun_time
     print "Number of iterations = %d"%gun_iter
+
+    # --- call insertafteriter if defined
+    if insertafteriter is not None:
+       insertafteriter()
 
   # --- end of multiple iterations
 
@@ -374,6 +410,134 @@ def recovergun():
     top.nztinjmx = _onztinjmx
   top.inject = _oinject
 
+########################################################################
+def gunmg(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
+        laccumulate_zmoments=None,rhoparam=None,
+        lstatusline=true,insertbeforeiter=None,insertafteriter=None,
+        nmg=0,set_objects=None):
+  """
+Performs steady-state iterations in a cascade using different resolutions.
+  - iter=1 number of iterations to perform
+  - itersub=1 number of iterations to perform at coarser levels (=iter by default)
+  - ipsave=0 number of particles to save from the last iteration
+  - save_same_part=0 when true, save same particles each time step instead
+    of random particles, i.e. saves particle trajectories
+  - maxtime=3*transittime maximum time each iteration will run
+  - laccumulate_zmoments=false: When set to true, z-moments are accumulated
+    over multiple iterations. Note that getzmom.zmmnt(3) must be called
+    by the user to finish the moments calculation.
+  - rhoparam=None: Amount of previous rho to mix in with the current rho. This
+    can help the relaxation toward a steady state. Caution should be used
+    when using this option.
+  - lstatusline=1: when try, a line is printed and continuously updated
+                   showing the status of the simulation.
+  - insertbeforeiter=None: function to be called before each iteration.
+  - insertafteriter=None: function to be called after each iteration.
+  - nmg = 0: number of 'multigrid' levels (in addition to main level).
+  - set_objects: function to be used for regenerating objects onto grid.
+  Note that ipsave and save_same_part are preserved in between calls
+  """
+  global rhonext,nrnex,nznext,dxnext,dznext
+  # if nmg=0, do a normal gun solve
+  if(nmg==0):
+    gun(iter,ipsave,save_same_part,maxtime,
+        laccumulate_zmoments,rhoparam,
+        lstatusline,lppzx,lppzy,gunpreplot=gunpreplot)
+    return
+  # initialize itersub
+  if itersub is None: itersub = iter
+  iterlast = iter
+  if(itersub==0):raise('Error in gunmg: called with iter=0 or itersub=0')
+  # Define function that makes charge deposition on grid at next level.
+  # This is used needed on the last iteration at a given level so that
+  # the charge density is transmitted to the next level.
+  def setrhonext():
+    global rhonext,nrnex,nznext,dxnext,dznext
+    frz.dep_rho_rz(1,rhonext,nrnext,nznext,drnext,dznext,0.,w3d.zmmin)
+  # declare arrays containing size grids for each mg level
+  gunnx = zeros(nmg+1)
+  gunny = zeros(nmg+1)
+  gunnz = zeros(nmg+1)
+  gundt = zeros(nmg+1,'d')
+  gunnpinject = zeros(nmg+1)
+  # save last level sizes
+  i = nmg
+  gunnx[nmg] = w3d.nx
+  gunny[nmg] = w3d.ny
+  gunnz[nmg] = w3d.nz
+  gundt[nmg] = top.dt
+  gunnpinject[nmg] = top.npinject
+  # compute sublevels sizes 
+  for i in range(nmg-1,-1,-1):
+    gunnx[i] = int(gunnx[i+1]/2)
+    gunny[i] = int(gunny[i+1]/2)
+    gunnz[i] = int(gunnz[i+1]/2)
+    gundt[i] = gundt[i+1]*2
+    gunnpinject[i] = int(gunnpinject[i+1]/2)
+  if(w3d.solvergeom<>w3d.RZgeom):
+    raise('function not yet implemented')
+  else:
+    # mg loop
+    for i in range(0,nmg+1):
+      if(i==nmg):
+        iter = iterlast
+      else:
+        iter = itersub
+      print 'gunmg: level %g on %g'%(i+1,nmg+1)
+      # reset a few variables so that the weights of particles is
+      # computed according to the current grid resolution
+      top.dt = gundt[i]
+      swprev = top.sw*1.
+      top.sw[:] = 0.
+      top.npinje_s[:] = 0
+      top.npinject = gunnpinject[i]
+      # resize the mesh and associated arrays
+      adjustmesh3d.resizemesh(gunnx[i],0,gunnz[i],0,0,1,1,1,set_objects)
+      # Except at the coarser level (i=0), the charge density is
+      # copied from rhonext where it was stored from at last iteration
+      # at the previous level.
+      if(i>0):
+        frz.basegrid.rho[:,:] = rhonext[:,:]
+        rhoprevious = [rhonext]
+      # update phi and inj_phi
+      fieldsol(-1)
+      getinj_phi()
+      # Set inj_param=1 (or almost) when starting at a new level since
+      # inj_prev has been redimensioned. Do interpolation of old inj_prev
+      # to new inj_prev in the future?
+      if(i>0):
+        top.inj_param = 0.9999999
+      else:
+        top.inj_param = 0.5
+      # performs all iterations but the last one
+      if(iter>1):
+        # first iteration is performed with top.inj_param=1 (except i=0)
+        gun(1,0,save_same_part,maxtime,
+            laccumulate_zmoments,rhoparam,
+            lstatusline,insertbeforeiter,insertafteriter)
+        # remaining iterations but last one perfromed with inj_param=0.5
+        top.inj_param = 0.5
+        if(iter>2):
+          gun(iter-2,0,save_same_part,maxtime,
+              laccumulate_zmoments,rhoparam,
+              lstatusline,insertbeforeiter,insertafteriter)
+      # For all sublevels, rhonext is created and setrhonext is installed
+      # so that rhonext is eveluated during last iteration at current level.
+      if i<nmg:
+         nrnext = gunnx[i+1]
+         nznext = gunnz[i+1]
+         drnext = (w3d.xmmax-w3d.xmmin)/nrnext         
+         dznext = (w3d.zmmax-w3d.zmmin)/nznext
+         rhonext = fzeros([nrnext+1,nznext+1],'d')
+         installafterstep(setrhonext)
+      # perform last iteration
+      gun(1,ipsave,save_same_part,maxtime,
+          laccumulate_zmoments,rhoparam,
+          lstatusline,insertbeforeiter,insertafteriter)
+      # Uninstall setrhonext if necessary.
+      if i<nmg:
+         uninstallafterstep(setrhonext)
+      
 ########################################################################
 def statusline():
   """
