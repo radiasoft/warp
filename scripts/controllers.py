@@ -46,7 +46,8 @@ installplseldom, uninstallplseldom, isinstalledplseldom
 installplalways, uninstallplalways, isinstalledplalways
 
 """
-controllers_version = "$Id: controllers.py,v 1.2 2004/07/24 00:46:08 dave Exp $"
+from __future__ import generators
+controllers_version = "$Id: controllers.py,v 1.3 2004/07/29 17:31:46 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -64,6 +65,21 @@ import copy
 # --- other references are deleted. If the user deletes an instance that
 # --- has a method referred to in a function list, then that method will also
 # --- be removed from the list.
+
+def _controllerfunclist(flist):
+  i = 0
+  while i < len(flist):
+    f = flist[i]
+    if type(f) == ListType:
+      object = f[0]()
+      if object is None:
+        del flist[i]
+        continue
+      result = [object,f[1]]
+    else:
+      result = flist[i]
+    i = i + 1
+    yield i-1,result
 
 def _installfuncinlist(flist,f):
   if type(f) == MethodType:
@@ -137,7 +153,7 @@ beforeplotfuncs = []
 afterplotfuncs = []
 plseldomfuncs = []
 plalwaysfuncs = []
-controllerfuncs = {'beforefs':beforefsfuncs,
+_controllerfuncs = {'beforefs':beforefsfuncs,
                    'afterfs':afterfsfuncs,
                    'callscraper':callscraperfuncs,
                    'addconductor':addconductorfuncs,
@@ -296,4 +312,61 @@ def uninstallplalways(f):
   _uninstallfuncinlist(plalwaysfuncs,f)
 def isinstalledplalways(f):
   return _isinstalledfuncinlist(plalwaysfuncs,f)
+
+# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# --- Functions handling dumping and restoring of controllers
+# ----------------------------------------------------------------------------
+def controllerspreparefordump():
+  # --- Convert control functions to their names so they can be written.
+  # --- For methods, store the object and the method name.
+  # --- Note that functions defined interactively will need to be redefined
+  # --- in the restarted run since the source is not available.
+  import __main__
+  for n,flist in _controllerfuncs.iteritems():
+    __main__.__dict__['controllercount%s'%n] = 0
+    for i,f in _controllerfunclist(flist):
+      __main__.__dict__['controllercount%s'%n] += 1
+      if type(f) is ListType:
+        # --- This won't work since the dump routine will write out a separate
+        # --- copy of the object, independent of the original
+        #__main__.__dict__['controller%s_%d_ref'%(n,i)] = f[0]
+        #__main__.__dict__['controller%s_%d_name'%(n,i)] = f[1]
+        pass
+      else:
+        __main__.__dict__['controller%s_%d'%(n,i)] = f.__name__
+def controllerscleanafterdump():
+  import __main__
+  for n,flist in _controllerfuncs.iteritems():
+    count = __main__.__dict__['controllercount%s'%n]
+    del __main__.__dict__['controllercount%s'%n]
+    for i in range(count):
+      try:
+        # --- This won't work since the dump routine will write out a separate
+        # --- copy of the object, independent of the original
+        #del __main__.__dict__['controller%s_%d_ref'%(n,i)]
+        #del __main__.__dict__['controller%s_%d_name'%(n,i)]
+        pass
+      except KeyError:
+        del __main__.__dict__['controller%s_%d'%(n,i)]
+def controllersrecreatelists():
+  import __main__
+  for n,flist in controllerfuncs.iteritems():
+    count = __main__.__dict__['controllercount%s'%n]
+    for i in range(count):
+      if 'controller%s_%d_ref'%(n,i) in __main__.__dict__:
+        # --- This won't work since the dump routine will write out a separate
+        # --- copy of the object, independent of the original
+        #obj = __main__.__dict__['controller%s_%d_ref'%(n,i)]
+        #name = __main__.__dict__['controller%s_%d_name'%(n,i)]
+        #meth = getattr(obj,name)
+        #if not _isinstalledfuncinlist(flist,meth):
+        #  _installfuncinlist(flist,meth)
+        pass
+      else:
+        fname = __main__.__dict__['controller%s_%d'%(n,i)]
+        func = __main__.__dict__[fname]
+        if not _isinstalledfuncinlist(flist,func):
+          _installfuncinlist(flist,func)
+  controllerscleanafterdump()
 
