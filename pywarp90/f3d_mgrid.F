@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.19 $, $Date: 2002/03/06 23:23:52 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.20 $, $Date: 2002/03/12 22:29:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2380,7 +2380,16 @@ c Does the work of setting the coefficients. The even or odd conductor
 c points can be passed into this routine.
 
       integer(ISZ):: ic,ix,iy,iz
-      real(kind=8):: coeff0(6)
+      real(kind=8):: coeff0(6),voltswitch
+
+c     --- Voltages are only applied at level == 1, the finest level.
+c     --- Otherwise, the voltages are set to zero, meaning that the
+c     --- residual is zero
+c     if (level == 1) then
+        voltswitch = 1.
+c     else
+c       voltswitch = 0.
+c     endif
 
 c     --- loop over points near surface of conductors
       do ic = 1,ncndbdy
@@ -2402,39 +2411,39 @@ c           --- Contributions of terms with no conductor boundary nearby.
 
 c           --- the point higher in x is inside the conductor
             if (cdelpx(ic) < level) then
-              coeff0(1) = 1./cdelpx(ic)
+              coeff0(1) = -1./(cdelpx(ic)/level)*rdx2
               coeffs(ix,iy,iz,1) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpx(ic)/cdelpx(ic)*rdx2
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpx(ic)/(cdelpx(ic)/level)*rdx2*voltswitch
             endif
 c           --- the point lower in x is inside the conductor
             if (cdelmx(ic) < level) then
-              coeff0(2) = 1./cdelmx(ic)
+              coeff0(2) = -1./(cdelmx(ic)/level)*rdx2
               coeffs(ix,iy,iz,2) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmx(ic)/cdelmx(ic)*rdx2
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmx(ic)/(cdelmx(ic)/level)*rdx2*voltswitch
             endif
 c           --- the point higher in y is inside the conductor
             if (cdelpy(ic) < level) then
-              coeff0(3) = 1./cdelpy(ic)
+              coeff0(3) = -1./(cdelpy(ic)/level)*rdx2
               coeffs(ix,iy,iz,3) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpy(ic)/cdelpy(ic)*rdx2
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpy(ic)/(cdelpy(ic)/level)*rdx2*voltswitch
             endif
 c           --- the point lower in y is inside the conductor
             if (cdelmy(ic) < level) then
-              coeff0(4) = 1./cdelmy(ic)
+              coeff0(4) = -1./(cdelmy(ic)/level)*rdx2
               coeffs(ix,iy,iz,4) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmy(ic)/cdelmy(ic)*rdx2
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmy(ic)/(cdelmy(ic)/level)*rdx2*voltswitch
             endif
 c           --- the point lower in z is inside the conductor
             if (cdelpz(ic) < level) then
-              coeff0(5) = 1./cdelpz(ic)
+              coeff0(5) = -1./(cdelpz(ic)/level)*rdx2
               coeffs(ix,iy,iz,5) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpz(ic)/cdelpz(ic)*rdx2
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpz(ic)/(cdelpz(ic)/level)*rdx2*voltswitch
             endif
 c           --- the point lower in z is inside the conductor
             if (cdelmz(ic) < level) then
-              coeff0(6) = 1./cdelmz(ic)
+              coeff0(6) = -1./(cdelmz(ic)/level)*rdx2
               coeffs(ix,iy,iz,6) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmz(ic)/cdelmz(ic)*rdx2
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmz(ic)/(cdelmz(ic)/level)*rdx2*voltswitch
             endif
 
 c           --- Sum contributions to center term.
