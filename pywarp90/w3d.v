@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.105 $, $Date: 2003/05/01 00:13:18 $
+#@(#) File W3D.V, version $Revision: 3.106 $, $Date: 2003/05/02 23:18:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.105 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.106 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -439,6 +439,10 @@ inj_sete3d(np:integer,ipmin:integer,xmmin:real,ymmin:real,zmmin:real,
 loadrho3d(ins,nps,is,lzero:logical) 
              subroutine # Provides a simple interface to the charge density
                         # loading routine setrho3d
+getrhoforfieldsolve()
+             subroutine # Copies data from rhop to rho - mainly for parallel
+getphiforparticles()
+             subroutine # Copies data from phi to phip - mainly for parallel
 padvnc3d(center:string)
              subroutine # Advances particles and rho
 perphi3d(phi:real,nx,ny,nz)

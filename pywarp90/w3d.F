@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.105 $, $Date: 2003/05/01 00:13:18 $
+c@(#) File W3D.M, version $Revision: 3.106 $, $Date: 2003/05/02 23:18:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3717,19 +3717,7 @@ c        --- loop over particle blocks
 
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
-#ifdef MPIPARALLEL
-
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call getrhoforfieldsolverz(nx,nz,rho(0,0,0))
-      else if(solvergeom==Zgeom) then
-        call getrhoforfieldsolvez(nz,rho(0,0,0))
-      elseif (solvergeom==XYZgeom) then
-        call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,bound0)
-        call getrhoforfieldsolve(nx,ny,nz,rho(0,0,0),
-     &                           nxp,nyp,nzp,rhop(0,0,0))
-      end if
-
-#endif
+      if (lzero) call getrhoforfieldsolve()
 
 c     --- enforce periodicity
 c     --- This is done on the rho array, rather than rhop, since that will
@@ -3740,6 +3728,32 @@ c     --- system.
       if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0,boundxy)
 
       if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + wtime() - substarttime
+      return
+      end
+c=============================================================================
+      subroutine getrhoforfieldsolve()
+      use InGen3d
+      use InMesh3d
+      use PSOR3d, ONLY: bound0
+      use Fields3d
+      use Fields3dParticles
+
+c  For parallel version, each processor sends rho to neighboring processors
+c  whose field solve region overlap its particle region.
+#ifdef MPIPARALLEL
+
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+        call getrhoforfieldsolverz(nx,nz,rho(0,0,0))
+      else if(solvergeom==Zgeom) then
+        call getrhoforfieldsolvez(nz,rho(0,0,0))
+      elseif (solvergeom==XYZgeom) then
+        call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,bound0)
+        call getrhoforfieldsolve3d(nx,ny,nz,rho(0,0,0),
+     &                           nxp,nyp,nzp,rhop(0,0,0))
+      end if
+
+#endif
+
       return
       end
 c=============================================================================
@@ -4752,7 +4766,7 @@ c                   --- particle is advanced.
 c                   --- increment particle counter
                     npinje_s(is) = npinje_s(is) + 1
                     npinjtmp(is,ij) = npinjtmp(is,ij) + 1
-                    inj_npactual(ix,iy,ij,is) = inj_npactual(ix,iy,ij,is) + 1.
+                    inj_npactual(ix,iy,ij,inj_is) = inj_npactual(ix,iy,ij,inj_is) + 1.
 
                   enddo
 c                 --- end of loop over particles
@@ -8138,6 +8152,27 @@ c     --- if failure to converge, report the bad news to user
       return
       end
 c===========================================================================
+      subroutine getphiforparticles()
+      use InGen3d
+      use InMesh3d
+      use Fields3d
+      use Fields3dParticles
+
+#ifdef MPIPARALLEL
+c     --- Distribute phi among the processes so each has phi in its
+c     --- particle domain.
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
+        call getphiforparticlesrz()
+c      else if(solvergeom==Zgeom) then
+c        call getphiforparticlesz()
+      elseif (solvergeom==XYZgeom) then
+        call getphiforparticles3d(nx,ny,nz,phi(0,0,-1),nxp,nyp,nzp,phip)
+      end if
+#endif
+
+      return
+      end
+c===========================================================================
       subroutine fieldsol3d(iwhich)
       use GlobalVars
       use Subtimers3d
@@ -8194,18 +8229,9 @@ c       --- Call perturbative bent beam field solver
 
       endif
 
-#ifdef MPIPARALLEL
 c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
-        call getphiforparticlesrz()
-c      else if(solvergeom==Zgeom) then
-c        call getphiforparticlesz()
-      elseif (solvergeom==XYZgeom) then
-        call getphiforparticles(nx,ny,nz,phi(0,0,-1),
-     &                          nxp,nyp,nzp,phip)
-      end if
-#endif
+      call getphiforparticles()
 
       if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
       fstime = fstime + (wtime() - timetemp)
