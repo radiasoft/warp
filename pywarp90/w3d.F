@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.5 $, $Date: 2001/05/15 01:47:26 $
+c@(#) File W3D.M, version $Revision: 3.6 $, $Date: 2001/05/16 22:28:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -706,33 +706,33 @@ c     --- handle quads
       call applyquad(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,bx,by)
 
 c     --- handle dipos 
-      call applydipo(np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,bx,by)
+      call applydipo(np,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,bx,by)
 
 c     --- handle sexts
-      call applysext(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,bx,by)
+      call applysext(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,bx,by)
 
 c     --- handle hard-edge electric and magnetic multipoles
-      call applyhele(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,ez,bx,by,bz)
+      call applyhele(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,ez,bx,by,bz)
 
 c     --- fold in coordinate transformation associated with bends
-      call applybend(np,xp,uzp,m,q,bendres,bendradi,by)
+      call applybend(np,xp,uzp,np,bendres,bendradi,m,q,by)
 
 c     --- handle acceleration (and calculate position correction)
       call applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,ez)
 
 c     --- handle electrostatic multipole components
-      call applyemlt(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,ez)
+      call applyemlt(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,ez)
 
 c     --- handle magnetostatic multipole components
-      call applymmlt(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,bx,by,bz)
-      call applymmlt2(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,bx,by,bz)
+      call applymmlt(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,bx,by,bz)
+      call applymmlt2(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,bx,by,bz)
 
 c     --- handle magnetic fields from 3-D grid
-      call applybgrd(np,xp,yp,zp,bx,by,bz)
-      call applybgrd2(np,xp,yp,zp,bx,by,bz)
+      call applybgrd(np,xp,yp,np,zp,bx,by,bz)
+      call applybgrd2(np,xp,yp,np,zp,bx,by,bz)
 
 c     --- handle electrostatic potential from 3-D grid
-      call applypgrd(np,xp,yp,zp,ex,ey,ez)
+      call applypgrd(np,xp,yp,np,zp,ex,ey,ez)
 
 c     --- Set E to zero for dead particles
       do ip=1,np
@@ -820,140 +820,6 @@ c     --- azimuthal magnetic field
       endif
 
       if (lw3dtimesubs) timeothere3d = timeothere3d + wtime() - substarttime
-      return
-      end
-c=============================================================================
-      subroutine acclbfrm(zcorrection)
-      use Subtimers
-      use Beam_acc
-      use InGen
-      use InPart
-      use Lattice
-      use Picglb
-      use Particles
-      real(kind=8):: zcorrection
-c Accelerate the beam frame using the accl lattice elements.
-c Beam frame is treated as a particle of species 1 located at the center of
-c the beam frame.
-c
-c Output argument, zcorrection, is the correction to the beam frame's
-c longitudinal postion. Note that zbeam can not be directly changed here
-c since that may force some particles off of the mesh. Instead, the
-c zcorrection is returned so that it can be dealt with in a reasonable way
-c by the calling routine.
-
-
-      integer(ISZ):: j,id = 0
-      real(kind=8):: offset,zs,ze,zc
-      real(kind=8):: gapez,z1,z2,vn,frac,qoverm
-      real(kind=8):: zl,zr,vbeamfrmo,deltav
-      real(kind=8):: zbeamnew
-      save id
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      qoverm = sq(1)/sm(1)
-      zcorrection = 0.
-
-      if (accls .and. vbeamfrm .ne. 0.) then
-
-c       --- index of accl element in center of beam frame
-c       --- The id is saved in order to minize the time searching for the
-c       --- next accl element from call to call.
-        call getelemid(zbeam,offset,naccl,acclzs(0),acclze(0),id) 
-
-c       --- Check if this gap should accelerate the beam frame.
-        if (acclsw(id) .ne. 0) then
-          if (lw3dtimesubs) timeacclbfrm = timeacclbfrm + wtime() - substarttime
-          return
-        endif
-
-c       --- Set some temporaries
-        gapez = acclez(id)
-        zs = acclzs(id) + offset
-        ze = acclze(id) + offset
-
-c       --- If not using zero length gaps then do residence corrections
-c       --- across the gap.
-        if (.not. lacclzl) then
-
-c         --- Calculate grid frame velocity at time level n
-          z1 = zbeam - 0.5*dt*vbeamfrm - 0.5*gapez*qoverm*(dt*0.5)**2
-          z2 = zbeam - 0.5*dt*vbeamfrm
-          if (zbeam .le. zs) then
-            vn = vbeamfrm
-          elseif (z1 .lt. zs) then
-            vn = sqrt(vbeamfrm**2 + 2.*gapez*qoverm*(zbeam - zs))
-          elseif (zbeam .le. ze) then
-            vn = vbeamfrm + 0.5*gapez*qoverm*dt
-          elseif (z2 .lt. ze) then
-            vn = 0.5*(vbeamfrm + 0.5*gapez*qoverm*dt + sqrt((vbeamfrm +
-     &           0.5*gapez*qoverm*dt)**2 -
-     &           4.*gapez*qoverm*(zbeam - ze)))
-          else
-            vn = vbeamfrm
-          endif
-c         --- Calculate the fraction of time in the gap.  Cases inside
-c         --- and outside are included implicitly in the max and min calls.
-c         --- Note that the max's inside the sqrt are for idiot proofing.
-          if (zbeam .le. zs) then
-            frac = max(0.5 + (zbeam - zs)/(vn*dt) , 0.)
-          elseif (zbeam .le. (zs + ze)*0.5) then
-            frac = min(0.5 + 2.*(zbeam - zs)/
-     &             (dt*(sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
-     &             (zbeam - zs))) + vn)), 1.)
-          elseif (zbeam .le. ze) then
-            frac = min(0.5 + 2.*(ze - zbeam)/
-     &             (dt*(sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
-     &             (ze - zbeam))) + vn)), 1.)
-          else
-            frac = max(0.5 - (zbeam - ze)/(vn*dt) , 0.)
-          endif
-c         --- do correction on position
-          zbeamnew = zbeam
-          call zgapcorr(1,zbeamnew,0.,vbeamfrm,1.,zbeamnew,-dt*0.5,dt*0.5,dt,
-     &                  sm(1),sq(1),time)
-          zcorrection = zbeamnew - zbeam
-c         --- add acceleration to beam frame velocity
-          vbeamfrm = vbeamfrm + gapez*qoverm*dt*frac
-c         --- also change beam frame velocity
-          vbeam = vbeamfrm
-
-        else
-c         --- Zero-length gap
-
-c         --- location of gap center
-          zc = 0.5*(zs + ze)
-c         --- "left" end of velocity advance step
-          zl = zbeam - 0.5*vbeamfrm*dt
-c         --- "right" end of velocity advance step
-          zr = zbeam + 0.5*vbeamfrm*dt
-c         --- Save current beam velocity
-          vbeamfrmo = vbeamfrm
-c         --- add acceleration to beam velocity
-          if (zl .le. zc .and. zc .lt. zr) then
-            vbeamfrm = sqrt(vbeamfrm**2 + 2.*qoverm*acclez(id)*(ze - zs))
-            vbeam = vbeamfrm
-          endif
-c         --- calculate correction on position of beam frame
-          frac = 0.
-          deltav = 0.
-          if (zbeam .lt. zc .and. zc .lt. zr) then
-            frac = - (zc - zbeam)/(vbeamfrmo*dt)
-            deltav = vbeamfrm - vbeamfrmo
-          endif
-          if (zr .lt. zc .and. zc .lt. zbeam+vbeamfrmo*dt) then
-            frac = 1. - (zc - zbeam)/(vbeamfrmo*dt)
-            deltav = sqrt(vbeamfrm**2 + 2.*qoverm*acclez(id)*(ze - zs))
-     &               - vbeamfrm
-          endif
-c         --- Set the correction to the beam frame position
-          zcorrection = frac*deltav*dt
-
-        endif
-      endif
-
-      if (lw3dtimesubs) timeacclbfrm = timeacclbfrm + wtime() - substarttime
       return
       end
 c=============================================================================
@@ -1257,6 +1123,7 @@ c=============================================================================
       use InGen3d
       use InPart
       use InGaps
+      use Lattice
       use LatticeInternal
       use Particles
       use Fields3d
@@ -1266,7 +1133,6 @@ c=============================================================================
       use Beam_acc
       use Z_arrays
       use Damped_eom
-      use Lattice
       use InjectVars
       use Apertures
       character(*):: center
@@ -1357,7 +1223,7 @@ c           --- FULLV
                enddo 
 c              --- Obtain bend radii and residence factors
                call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
-     &                       bendradi,-dt*0.5,dt*0.5,zbeam)
+     &                       bendradi,-dt*0.5,dt*0.5)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
@@ -1375,7 +1241,7 @@ c              --- Set quad, dipole E and B; All: Bz
      &                       bendres,bendradi,gammabar,dt)
 c              --- Correction to z on entry/exit to accelerator gap
                call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       zbeam,-dt*0.5, dt*0.5, dt, sm(1), sq(1), time)
+     &                       -dt*0.5, dt*0.5, dt, sm(1), sq(1), time)
 c              --- First half-electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                       ex, ey, ez, sq(is), sm(is), dt*0.5)
@@ -1393,7 +1259,7 @@ c              --- Position advance
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
 c              --- Bend residence factor over POSITION advance step
                call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,-dt,0.,zbeam)
+     &                       bendres,bendradi,-dt,0.)
 c              --- Correct position advance for warped mesh effect
                call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       gaminv(ipmin),dt,bendres,bendradi,bends,linbend)
@@ -1409,7 +1275,7 @@ c           --- HALFV
                enddo 
 c              --- Obtain bend radii and residence factors
                call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,0.,dt*0.5,zbeam)
+     &                       bendres,bendradi,0.,dt*0.5)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
@@ -1427,7 +1293,7 @@ c              --- Set quad, dipole E and B;  All: Bz
      &                       gammabar,dt)
 c              --- Correction to z on entry/exit to accelerator gap
                call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       zbeam,0., dt*0.5, dt, sm(1), sq(1), time)
+     &                       0., dt*0.5, dt, sm(1), sq(1), time)
 c              --- Magnetic field increment to momenta
                call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), dt*0.5, ibpush)
@@ -1442,7 +1308,7 @@ c              --- Position advance
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
 c              --- Bend residence factor over POSITION advance step
                call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,-dt,0.,zbeam)
+     &                       bendres,bendradi,-dt,0.)
 c              --- Correct position advance for warped mesh effect
                call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       gaminv(ipmin),dt,bendres,bendradi,bends,linbend)
@@ -1461,7 +1327,7 @@ c              --- Copy 'old' velocity into uxpo, uypo, and uzpo
                enddo
 c              --- Obtain bend radii and residence factors
                call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
-     &                       bendradi,-dt*0.5,0.,zbeam)
+     &                       bendradi,-dt*0.5,0.)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
@@ -1648,12 +1514,12 @@ c  whose field solve region overlap its particle region.
       return
       end
 c=============================================================================
-      subroutine epush3d (np, uxp, uyp, uzp, ex, ey, ez, q, m, ddt)
+      subroutine epush3d(np,uxp,uyp,uzp,ex,ey,ez,q,m,ddt)
       use Subtimers
       integer(ISZ):: np
-      real(kind=8):: uxp(np), uyp(np), uzp(np)
-      real(kind=8):: ex(np), ey(np), ez(np)
-      real(kind=8):: q, m, ddt
+      real(kind=8):: uxp(np),uyp(np),uzp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+      real(kind=8):: q,m,ddt
 
 c  Push the particle velocity with E field
 
@@ -1673,13 +1539,13 @@ c  Push the particle velocity with E field
       return
       end
 c=============================================================================
-      subroutine epusht3d(np, uxp, uyp, uzp, ex, ey, ez, q, m, dtp, fdt)
+      subroutine epusht3d(np,uxp,uyp,uzp,ex,ey,ez,q,m,dtp,fdt)
       use Subtimers
       integer(ISZ):: np
-      real(kind=8):: uxp(np), uyp(np), uzp(np)
-      real(kind=8):: ex(np), ey(np), ez(np)
+      real(kind=8):: uxp(np),uyp(np),uzp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
       real(kind=8):: dtp(np)
-      real(kind=8):: q, m, fdt
+      real(kind=8):: q,m,fdt
 
 c Push the particle velocity with E field using a different time step for
 c each particle.
@@ -1700,13 +1566,12 @@ c each particle.
       return
       end
 c============================================================================= 
-      subroutine bpush3d (np, uxp, uyp, uzp, gaminv, bx, by, bz, q, m, ddt,
-     &                    ibpush)
+      subroutine bpush3d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,ddt,ibpush)
       use Subtimers
       integer(ISZ):: np,ibpush
-      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
-      real(kind=8):: bx(np), by(np), bz(np)
-      real(kind=8):: q, m, ddt
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: bx(np),by(np),bz(np)
+      real(kind=8):: q,m,ddt
 
 c  Push the particle velocity with B field
 
@@ -1757,14 +1622,13 @@ c        --- tan(alpha) / alpha algorithm
       return
       end
 c============================================================================= 
-      subroutine bpusht3d(np, uxp, uyp, uzp, gaminv, bx, by, bz, q, m,
-     &                    dtp, fdt, ibpush)
+      subroutine bpusht3d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,dtp,fdt,ibpush)
       use Subtimers
       integer(ISZ):: np,ibpush
-      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
-      real(kind=8):: bx(np), by(np), bz(np)
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
+      real(kind=8):: bx(np),by(np),bz(np)
       real(kind=8):: dtp(np)
-      real(kind=8):: q, m, fdt
+      real(kind=8):: q,m,fdt
 
 c Push the particle velocity with B field using a different time step
 c for each particle.
@@ -1816,11 +1680,11 @@ c        --- tan(alpha) / alpha algorithm
       return
       end
 c=========================================================================== 
-      subroutine xpush3d (np, xp, yp, zp, uxp, uyp, uzp, gaminv, ddt)
+      subroutine xpush3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,ddt)
       use Subtimers
       integer(ISZ):: np
       real(kind=8):: ddt
-      real(kind=8):: xp(np), yp(np), zp(np), uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
 
 c  Advance particle positions
 
@@ -1838,10 +1702,10 @@ c  Advance particle positions
       return
       end
 c=========================================================================== 
-      subroutine xpusht3d(np, xp, yp, zp, uxp, uyp, uzp, gaminv, dtp)
+      subroutine xpusht3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
       use Subtimers
       integer(ISZ):: np
-      real(kind=8):: xp(np), yp(np), zp(np), uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: dtp(np)
 
 c  Advance particle positions
@@ -1884,8 +1748,8 @@ c Applies the first order relativistic correction to the self E-field.
       return
       end
 c============================================================================ 
-      subroutine edamp (eomdamp,it,itdamp,center,np,
-     &                  ex,ey,ez,exold,eyold,ezold,exlag,eylag,ezlag)
+      subroutine edamp(eomdamp,it,itdamp,center,np,
+     &                 ex,ey,ez,exold,eyold,ezold,exlag,eylag,ezlag)
       use Subtimers
       integer(ISZ):: eomdamp,it,itdamp,np
       real(kind=8):: ex(np), ey(np), ez(np), exold(np), eyold(np), ezold(np)
@@ -1992,67 +1856,7 @@ c        --- don't use modified field if too early in run
       return
       end
 c============================================================================ 
-      subroutine getbend (np,zp,uzp,gaminv,bendres,bendradi,dtl,dtr,zbeam)
-      use Subtimers
-      use InGen
-      use Lattice
-      use LatticeInternal
-      integer(ISZ):: np
-      real(kind=8):: dtl,dtr,zbeam
-      real(kind=8):: zp(np), uzp(np), gaminv(np), bendres(np), bendradi(np)
-
-
-c  Gets residence factor and radius for bends.
-c  For periodic runs, assumes mesh period length = lattice period length
-
-      integer(ISZ):: ip,j
-      real(kind=8):: vz,zl,fl,zr,fr,dti,vzi
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      if (.not. bends .or. .not. linbend) then
-        if (lw3dtimesubs) timegetbend = timegetbend + wtime() - substarttime
-        return
-      endif
-
-      dti = 1./(dtr-dtl)
-
-c  Extract the local bend properties for each particle off the general lattice
-
-      do ip = 1, np
-         vz = uzp(ip)*gaminv(ip)
-         vzi = 1./dvnz(vz)
-c        --- find z-cell in which particle lies
-         j = min(nzl,int(max(0., (zp(ip) - zlmin - zbeam)*dzli + 0.5)))
-c        --- "left" end of velocity advance step
-         zl = zp(ip) + vz * dtl
-         fl = 0.
-         if (zl.ge.cbendzs(j) .and. zl.lt.cbendze(j)) fl = 1.
-c        --- "right" end of velocity advance step
-         zr = zp(ip) + vz * dtr
-         fr = 0.
-         if (zr.ge.cbendzs(j) .and. zr.lt.cbendze(j)) fr = 1.
-c        --- residence fraction; set to all-in or all-out, possibly override
-         if (fr == fl) then
-c           --- all in, or all out
-            bendres(ip) = fl
-         elseif (fr .gt. fl) then
-c           --- entered bend this v-advance step
-            bendres(ip) = (zr - cbendzs(j)) * vzi*dti
-         else
-c           --- exited dipole this v-advance step
-            bendres(ip) = (cbendze(j) - zl) * vzi*dti
-         endif
-c        --- bend radius 
-         bendradi(ip) = cbendrc(j)
-      enddo
-
-      if (lw3dtimesubs) timegetbend = timegetbend + wtime() - substarttime
-      return
-      end
-c=========================================================================== 
-      subroutine bendez3d (np, xp, zp, ez, bendres, bendradi, bends, bnezflag,
-     &                     linbend)
+      subroutine bendez3d(np,xp,zp,ez,bendres,bendradi,bends,bnezflag,linbend)
       use Subtimers
       integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), ez(np), bendres(np), bendradi(np)
@@ -2072,8 +1876,7 @@ c  at smaller radii, zones are closer together, so field is larger.
       endif
 
       do ip=1,np
-         ez(ip) = ez(ip) * ( 1. 
-     &    - bendres(ip) * xp(ip) / (bendradi(ip) + xp(ip)) )
+         ez(ip) = ez(ip)*(1. - bendres(ip)*xp(ip)/(bendradi(ip) + xp(ip)))
       enddo
 
       if (lw3dtimesubs) timebendez3d = timebendez3d + wtime() - substarttime
@@ -2089,7 +1892,6 @@ c===========================================================================
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np) 
       real(kind=8):: q, m, dt, zbeam  
       logical(ISZ):: dipos 
-
 
 c Applies position and velocity jump corrections on entry/exit of dipoles 
 c with slanted faces.  (Must be called after all z advancement is done this 
@@ -2136,8 +1938,8 @@ c          --- exited dipole
       return
       end
 c=========================================================================== 
-      subroutine zbendcor (np, xp, zp, uxp, uzp, 
-     &                     gaminv, ddt, bendres, bendradi, bends, linbend)
+      subroutine zbendcor(np,xp,zp,uxp,uzp,gaminv,ddt,bendres,bendradi,bends,
+     &                    linbend)
       use Subtimers
       integer(ISZ):: np
       real(kind=8):: ddt
@@ -2161,100 +1963,13 @@ c  "along the centerline."
       do ip=1,np
         xprv = xp(ip) - ddt * uxp(ip) * gaminv(ip)
         xc = 0.5 * (xp(ip) + xprv)
-        zp(ip) = zp(ip) + ddt * uzp(ip) * gaminv(ip) * bendres(ip)
-     &                    * (bendradi(ip)/(bendradi(ip)+xc) - 1.)
+        zp(ip) = zp(ip) + ddt*uzp(ip)*gaminv(ip)*bendres(ip)
+     &                    *(bendradi(ip)/(bendradi(ip) + xc) - 1.)
       enddo
 
       if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
       return
       end      
-c=========================================================================== 
-      subroutine zgapcorr(np,zp,xp,uzp,gaminv,zbeam,dtl,dtr,dt,m,q,time)
-      use Subtimers
-      use Lattice
-      use LatticeInternal
-      integer(ISZ):: np
-      real(kind=8):: zp(np), xp(np), uzp(np), gaminv(np)
-      real(kind=8):: zbeam,dtl,dtr,dt,m,q,time
-
-
-      integer(ISZ):: ip,j
-      real(kind=8):: vz,gapez,zp2,delta,qoverm,vzi,cacclz,deltav,zr
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      qoverm = q/m
-
-c     Add residence correction to particle position when acceleration is done
-
-      if (accls) then
-
-c       --- Finite length gap
-        if (.not. lacclzl) then
-
-          do ip=1,np
-            vz = uzp(ip)*gaminv(ip)
-            vzi = 1./dvnz(vz)
-c           --- find index of nearest accl element
-            j = max(0., (zp(ip) - zlmin - zbeam)*dzli + 0.5)
-            gapez = cacclez(j) + cacclxw(j)*xp(ip)
-c           --- Approximate position of particle on next step
-c           --- with simple residence correction for gaps.
-c           --- Calculate time of entrance or exit, delta.
-c           --- Space charge forces are ignored.
-            zp2 = zp(ip) + vz*dt
-            delta = 0
-            if (zp(ip) .le. cacclzs(j) .and. cacclzs(j) .le. zp2) then
-              delta = (cacclzs(j) - zp(ip))*vzi
-            elseif (zp(ip) .le. cacclze(j) .and.
-     &           cacclze(j) .le. zp2 + gapez*qoverm*dt*(dtr-dtl)) then
-              delta = 2.*(cacclze(j) - zp(ip))/
-     &                (sqrt((vz - gapez*qoverm*dtl)**2 +
-     &                2.*(cacclze(j) - zp(ip))*gapez*qoverm) +
-     &                vz - gapez*qoverm*dtl)
-              zp2 = zp2 + gapez*qoverm*dt*(dtr-dtl)
-            endif
-c           --- calculate correction on particle position
-            if (delta .gt. 0.5*dt) delta = dt - delta
-            if (zp(ip) .le. cacclzs(j) .and. cacclzs(j) .le. zp2) then
-              zp(ip) = zp(ip) + 0.5*gapez*qoverm*delta**2
-            elseif (zp(ip) .le. cacclze(j) .and. cacclze(j) .le. zp2) then
-              zp(ip) = zp(ip) - 0.5*gapez*qoverm*delta**2
-            endif
-          enddo
-
-        else
-c         --- Zero length gap
-
-          do ip = 1, np
-            vz = uzp(ip)*gaminv(ip)
-            j = max(0., (zp(ip) - zlmin - zbeam)*dzli + 0.5)
-            cacclz = 0.5*(cacclzs(j) + cacclze(j))
-c           --- "right" end of velocity advance step
-            zr = zp(ip) + vz*dtr
-c           --- calculate correction on position
-            if (zp(ip) .lt. cacclz .and. cacclz .lt. zr) then
-              vzi = 1./dvnz(vz)
-              gapez = cacclez(j) + cacclxw(j)*xp(ip)
-              deltav = sqrt(vz**2 +
-     &                     2.*qoverm*gapez*(cacclze(j) - cacclzs(j))) - vz
-              zp(ip) = zp(ip) - (cacclz - zp(ip))*vzi*deltav
-            endif
-            if (zr .lt. cacclz .and. cacclz .lt. zp(ip) + vz*dt) then
-              vzi = 1./dvnz(vz)
-              gapez = cacclez(j) + cacclxw(j)*xp(ip)
-              deltav = sqrt(vz**2 +
-     &                     2.*qoverm*gapez*(cacclze(j) - cacclzs(j))) - vz
-              zp(ip) = zp(ip) + (dt - (cacclz - zp(ip))*vzi)*deltav
-            endif
-          enddo
-
-        endif
-      endif
-
-      if (lw3dtimesubs) timezgapcorr = timezgapcorr + wtime() - substarttime
-      return
-      end
 c=========================================================================== 
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry)

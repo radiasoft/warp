@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.5 $, $Date: 2001/05/15 01:47:27 $
+#@(#) File W3D.V, version $Revision: 3.6 $, $Date: 2001/05/16 22:28:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.5 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.6 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -383,18 +383,12 @@ perrho3d(rho:real,nx,ny,nz,periinz:logical)
              subroutine # Sums end slices of rho for periodicity
 prntpa3d(lprntpara:logical)
              subroutine # Prints out 3d specific stuff (like prntpara())
-getbend(np,zp:real,uzp:real,gaminv:real,bendres:real,bendradi:real,
-        dtl:real,dtr:real,zbeam:real)
-             subroutine # Computes residence factors for bends
 bendez3d(np,xp:real,zp:real,ez:real,bendres:real,bendradi:real,
          bends:logical,bnezflag:logical,linbend:logical)
              subroutine #  Corrects axial electric field for warped geometry
 zbendcor(np, xp:real, zp:real, uxp:real,uzp:real, gaminv:real, ddt:real,
          bendres:real,bendradi:real, bends:logical,linbend:logical)
              subroutine # Applies correction to z-advance for bends
-zgapcorr(np,zp:real,xp:real,uzp:real,gaminv:real,zbeam:real,dtl:real,dtr:real,
-         dt:real,sm:real,sq:real,time)
-             subroutine # Applies residence correction to z-advance for gaps
 epush3d(np,uxp:real,uyp:real,uzp:real,ex:real,ey:real,ez:real,q:real,m:real,
         dt:real)
              subroutine # Particle velocity advance from E field
@@ -454,7 +448,6 @@ timew3dfin real /0./
 timestep3d real /0./
 timeexteb3d real /0./
 timeothere3d real /0./
-timeacclbfrm real /0./
 timegetese3d real /0./
 timegtlchg3d real /0./
 timeseteears real /0./
@@ -473,7 +466,6 @@ timegetbend real /0./
 timebendez3d real /0./
 timesledgcor real /0./
 timezbendcor real /0./
-timezgapcorr real /0./
 timesete3d real /0./
 timegetselfe3d real /0./
 timestptcl3d real /0./

@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.4 $, $Date: 2001/05/15 01:49:04 $
+#@(#) File WXY.V, version $Revision: 3.5 $, $Date: 2001/05/16 22:28:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.4 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.5 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 npmaxxy    integer # Number of particles - same as npmax from TOP
@@ -33,7 +33,7 @@ lexbend  logical /.true./  # When true, use exact transformation in bend, when
 wxygen() subroutine
 wxyexe() subroutine
 extebxy(np,xp:real,yp:real,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
-        dodec:real,bz0:real,bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
+        bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
         m:real,q:real,bendres:real,bendradi:real,lexbend:logical,gammabar:real,
         zbeam:real,vbeam:real,dt:real,time:real)
              subroutine # Sets external E and B fields
@@ -45,14 +45,9 @@ padvncxy(center:string)
              subroutine # Advances particles and rho
 fixrhoxy(rho:real,nx,ny,nz,periinz:logical,lthick:logical)
              subroutine # Sums end slices of rho for periodicity
-getbendxy(zbeam:real,vbeam:real,bendres:real,bendradi:real,dtl:real,dtr:real)
-             subroutine # Computes residence factors for bends
 bendezxy(np,xp:real,zp:real,ez:real,bendres:real,bendradi:real,
           bends:logical,bnezflag:logical,linbend:logical)
              subroutine # Corrects axial electric field for warped geometry
-zgapcorrxy(np,zp:real,xp:real,uzp:real,gaminv:real,dtp:real,zbeam:real,
-           dtl:real,dtr:real,dt:real,sm:real,sq:real,time:real)
-             subroutine # Applies residence correction to z-advance for gaps
 epushxy(np,uxp:real,uyp:real,uzp:real,ex:real,ey:real,ez:real,q:real,m:real,
         dtp:real,fdt:real)
              subroutine # Particle velocity advance from E field
@@ -74,14 +69,5 @@ vpxy(iwhich:integer)
              subroutine # Call field solver
 loadrhoxy(ins,nps,is,lzero:logical)
              subroutine # Simple interface to setrhoxy
-setbgrdxy(in:integer,bgrdns:integer,bgrdbx:real,bgrdby:real,bgrdbz:real,
-          np:integer,xp:real,yp:real,zp:real,
-          nbgrd:integer,bgrdxs:real,bgrdys:real,cbgrdzs:real,
-          bgrdid:integer,bgrdsf:real,bgrdsc:real,
-          bgrdsy:integer,bgrdox:real,bgrdoy:real,bgrdph:real,
-          bgrdsp:real,bgrdcp:real,bgrddxi:real,bgrddyi:real,bgrddzi:real,
-          bgrdnx:integer,bgrdny:integer,bgrdnz:integer,bx:real,by:real,bz:real,
-          cbgrdid:integer,nzl:integer,zlmin:real,zbeam:real,dzli:real)
-             subroutine # External gridded e-field 
 
 
