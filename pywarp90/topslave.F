@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.3 $, $Date: 2001/08/14 20:30:16 $
+c TOPSLAVE.M, version $Revision: 1.4 $, $Date: 2001/10/18 20:58:08 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -21,6 +21,7 @@ c  track of how many left and sends to the appropriate processor.
       integer(ISZ):: is,ip,ins_init,nps_init,idest
       integer(ISZ):: nsendleft,nsendright,nrecvleft,nrecvright
       integer(ISZ):: left_pe,right_pe
+      integer(ISZ):: nquant
 
 c     integer(ISZ):: ii
 c     integer(ISZ):: blocklengths(7),displacements(7)
@@ -74,6 +75,11 @@ c         --- in the arrays.
             temp = gaminv(ip)
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
+	    if (npmaxi > 0) then
+              temp = pid(ip)
+              pid(ip) = pid(idest)
+              pid(idest) = temp
+	    endif
 c         endif
 
 c         --- If particle exited to the right, switch with highest particle
@@ -103,6 +109,11 @@ c         --- in the arrays.
             temp = gaminv(ip)
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
+	    if (npmaxi > 0) then
+              temp = pid(ip)
+              pid(ip) = pid(idest)
+              pid(idest) = temp
+	    endif
             ip = ip - 1
           endif
 
@@ -148,11 +159,16 @@ c       --- Make sure these are zero in case they are not set below.
         nsendleft = 0
         nsendright = 0
 
+c       --- Number of quantities to be exchanged. Normally it is seven,
+c       --- but when npmaxi > 0, then it is 8 since pid is also exchanged.
+	nquant = 7
+	if (npmaxi > 0) nquant = 8
+
 c       --- Copy particles being sent to the left to buffer1.
         if (periinz .or. my_index > 0) then
           nsendleft = ins(is) - ins_init
-          if (7*nsendleft > b1size) then
-            b1size = 7*nsendleft
+          if (nquant*nsendleft > b1size) then
+            b1size = nquant*nsendleft
             call gchange("Databuffers",0)
           endif
           if (nsendleft > 0) then
@@ -163,14 +179,16 @@ c       --- Copy particles being sent to the left to buffer1.
             call copyarry(uyp(ins_init),buffer1(1+4*nsendleft),nsendleft)
             call copyarry(uzp(ins_init),buffer1(1+5*nsendleft),nsendleft)
             call copyarry(gaminv(ins_init),buffer1(1+6*nsendleft),nsendleft)
+	    if (npmaxi > 0)
+     &        call copyarry(pid(ins_init),buffer1(1+7*nsendleft),nsendleft)
           endif
         endif
 
 c       --- Copy particles being sent to the right to buffer2.
         if (periinz .or. my_index < nslaves-1) then
           nsendright = ins_init + nps_init - ins(is) - nps(is)
-          if (7*nsendright > b2size) then
-            b2size = 7*nsendright
+          if (nquant*nsendright > b2size) then
+            b2size = nquant*nsendright
             call gchange("Databuffers",0)
           endif
           if (nsendright > 0) then
@@ -182,6 +200,8 @@ c       --- Copy particles being sent to the right to buffer2.
             call copyarry(uyp(ip),buffer2(1+4*nsendright),nsendright)
             call copyarry(uzp(ip),buffer2(1+5*nsendright),nsendright)
             call copyarry(gaminv(ip),buffer2(1+6*nsendright),nsendright)
+	    if (npmaxi > 0)
+     &        call copyarry(pid(ip),buffer2(1+7*nsendright),nsendright)
           endif
         endif
 
@@ -198,20 +218,20 @@ c       --- First send the number of particles to be sent
 c       --- Make sure that there is space for the incoming data.
         call chckpart(is,nrecvleft,nrecvright,.false.)
 
-        if (7*nrecvleft > b3size) then
-          b3size = 7*nrecvleft
+        if (nquant*nrecvleft > b3size) then
+          b3size = nquant*nrecvleft
           call gchange("Databuffers",0)
         endif
-        if (7*nrecvright > b4size) then
-          b4size = 7*nrecvright
+        if (nquant*nrecvright > b4size) then
+          b4size = nquant*nrecvright
           call gchange("Databuffers",0)
         endif
 
-        call MPI_SENDRECV(buffer2,7*nsendright,MPI_DOUBLE_PRECISION,right_pe,0,
-     &                    buffer3,7*nrecvleft,MPI_DOUBLE_PRECISION,left_pe,0,
+        call MPI_SENDRECV(buffer2,nquant*nsendright,MPI_DOUBLE_PRECISION,right_pe,0,
+     &                    buffer3,nquant*nrecvleft,MPI_DOUBLE_PRECISION,left_pe,0,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
-        call MPI_SENDRECV(buffer1,7*nsendleft,MPI_DOUBLE_PRECISION,left_pe,0,
-     &                    buffer4,7*nrecvright,MPI_DOUBLE_PRECISION,right_pe,0,
+        call MPI_SENDRECV(buffer1,nquant*nsendleft,MPI_DOUBLE_PRECISION,left_pe,0,
+     &                    buffer4,nquant*nrecvright,MPI_DOUBLE_PRECISION,right_pe,0,
      &                    MPI_COMM_WORLD,mpistatus,mpierror)
 
         ip = ins(is) - nrecvleft
@@ -222,6 +242,8 @@ c       --- Make sure that there is space for the incoming data.
         call copyarry(buffer3(1+4*nrecvleft),uyp(ip),nrecvleft)
         call copyarry(buffer3(1+5*nrecvleft),uzp(ip),nrecvleft)
         call copyarry(buffer3(1+6*nrecvleft),gaminv(ip),nrecvleft)
+        if (npmaxi > 0)
+     &    call copyarry(buffer3(1+7*nrecvleft),pid(ip),nrecvleft)
         ins(is) = ins(is) - nrecvleft
         nps(is) = nps(is) + nrecvleft
 
@@ -233,12 +255,14 @@ c       --- Make sure that there is space for the incoming data.
         call copyarry(buffer4(1+4*nrecvright),uyp(ip),nrecvright)
         call copyarry(buffer4(1+5*nrecvright),uzp(ip),nrecvright)
         call copyarry(buffer4(1+6*nrecvright),gaminv(ip),nrecvright)
+        if (npmaxi > 0)
+     &    call copyarry(buffer4(1+7*nrecvright),pid(ip),nrecvright)
         nps(is) = nps(is) + nrecvright
 
 c What follows (but is commented out) is the preferred version, but
 c is causes a core dump for some unknown reason.
 c       --- Create new type for receiving particles from left
-c       do ii=1,7
+c       do ii=1,nquant
 c         blocklengths(ii) = nrecvleft
 c       enddo
 c       ip = ins(is) - nrecvleft
@@ -249,12 +273,14 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       call MPI_TYPE_HINDEXED(7,blocklengths,displacements,
+c       if (npmaxi > 0)
+c    &    call MPI_ADDRESS(pid(ip),displacements(8),mpierror)
+c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
 c       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
 
 c       --- Pass particle data to the right
-c       call MPI_SENDRECV(buffer2,7*nsendright,MPI_DOUBLE_PRECISION,right_pe,0,
+c       call MPI_SENDRECV(buffer2,nquant*nsendright,MPI_DOUBLE_PRECISION,right_pe,0,
 c    &                    MPI_BOTTOM,1,mpinewtype,left_pe,0,
 c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
 c       ins(is) = ins(is) - nrecvleft
@@ -262,7 +288,7 @@ c       nps(is) = nps(is) + nrecvleft
 c       call MPI_TYPE_FREE(mpinewtype,mpierror)
 
 c       --- Create new type for receiving particles from right
-c       do ii=1,7
+c       do ii=1,nquant
 c         blocklengths(ii) = nrecvright
 c       enddo
 c       ip = ins(is) + nps(is)
@@ -273,12 +299,14 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       call MPI_TYPE_HINDEXED(7,blocklengths,displacements,
+c       if (npmaxi > 0)
+c    &    call MPI_ADDRESS(pid(ip),displacements(8),mpierror)
+c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
 c       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
 
 c       --- Pass particle data to the left
-c       call MPI_SENDRECV(buffer1,7*nsendleft,MPI_DOUBLE_PRECISION,left_pe,0,
+c       call MPI_SENDRECV(buffer1,nquant*nsendleft,MPI_DOUBLE_PRECISION,left_pe,0,
 c    &                    MPI_BOTTOM,1,mpinewtype,right_pe,0,
 c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
 c       nps(is) = nps(is) + nrecvright
