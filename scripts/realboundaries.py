@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.51 2004/09/09 00:51:05 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.52 2004/10/15 18:10:01 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -571,10 +571,15 @@ Constructor arguments:
   - lclearconductors=1: When true, in the 3d case, all conductor data is cleared
                         out. If false, it is up to the user to clear out the
                         data.
+  - pipethickness=largepos: Thickness of surrounding pipes. Only used in 3d.
+                            Can be used for efficiency - if the pipe
+                            completely surrounds the beam, then it doesn't
+                            need much thickness. Setting this can greatly
+                            reduce the amount of data generated.
   """
   #----------------------------------------------------------------------------
   def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=1,
-                    dfill=2,lclearconductors=1):
+                    dfill=2,lclearconductors=1,pipethickness=largepos):
     global _realboundarycount
     # --- Only allow one instance of this class.
     if _realboundarycount > 0:
@@ -587,6 +592,7 @@ Constructor arguments:
     self.scrapermglevel = scrapermglevel
     self.dfill = dfill
     self.lclearconductors = lclearconductors
+    self.pipethickness = pipethickness
 
     # --- Keep a global lists of all matrices. With a global lists of matrices,
     # --- recalculation of a matrix can be avoided if one with the same values
@@ -771,7 +777,11 @@ Constructor arguments:
     if ax == 0.: ax = ap
     if ay == 0.: ay = ap
     if ax == 0. or ay == 0.: return 0
-    pipe = ZCylinderEllipticOut(ay/ax,ax,ze-zs,0.,ox[id],oy[id],0.5*(zs+ze))
+    if self.pipethickness < largepos:
+      pipe = ZAnnulusElliptic(ay/ax,ax,ax+self.pipethickness,ze-zs,0.,
+                              ox[id],oy[id],0.5*(zs+ze))
+    else:
+      pipe = ZCylinderEllipticOut(ay/ax,ax,ze-zs,0.,ox[id],oy[id],0.5*(zs+ze))
     self.conductors += pipe
     return 0
   #----------------------------------------------------------------------------
