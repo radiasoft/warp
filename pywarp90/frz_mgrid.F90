@@ -1,4 +1,4 @@
-!     Last change:  JLV  16 May 2003    8:36 am
+!     Last change:  JLV   4 Jun 2003    1:31 pm
 #include "top.h"
 
 module multigrid_common
@@ -7,6 +7,7 @@ USE Constant
 USE multigrid_common_base
 USE PSOR3d, ONLY:boundxy,bound0,boundnz
 USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,Zgeom,l2symtry,l4symtry
+USE Picglb, ONLY:zgrid
 #ifdef MPIPARALLEL
   use Parallel
   use mpirz
@@ -6006,6 +6007,7 @@ end subroutine gtlchgrz
 subroutine dep_rho_rz(is,rho,nr,nz,dr,dz,xmin,zmin)
 USE Constant
 use Particles
+USE Picglb, ONLY:zgrid
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: is, nr, nz
@@ -6037,7 +6039,7 @@ LOGICAL(ISZ) :: l_sym
    do i = ins(is), ins(is) + nps(is) - 1
     IF(uzp(i)==0.) cycle
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr
-    zpos = (zp(i)-zmin)*invdz
+    zpos = (zp(i)-zmin-zgrid)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6055,7 +6057,7 @@ LOGICAL(ISZ) :: l_sym
    do i = ins(is), ins(is) + nps(is) - 1
     IF(uzp(i)==0.) cycle
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr
-    zpos = (zp(i)-zmin)*invdz
+    zpos = (zp(i)-zmin-zgrid)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6125,7 +6127,7 @@ IF(solvergeom==RZgeom) then
   do i = 1, np
     IF(uzp(i)==0.) cycle
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr
-    zpos = (zp(i)-basegrid%zminp)*invdz
+    zpos = (zp(i)-basegrid%zminp-zgrid)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6176,7 +6178,7 @@ else ! IF(solvergeom==XZgeom) then
     else
       rpos = (xp(i)-xmin)*invdr
     END if
-    zpos = (zp(i)-basegrid%zminp)*invdz
+    zpos = (zp(i)-basegrid%zminp-zgrid)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6243,7 +6245,7 @@ IF(solvergeom==RZgeom) then
   do i = 1, np
     IF(uzp(i)==0.) cycle
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr
-    zpos = (zp(i)-basegrid%zminp)*invdz
+    zpos = (zp(i)-basegrid%zminp-zgrid)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6295,7 +6297,7 @@ else ! IF(solvergeom==XZgeom) then
     else
       rpos = (xp(i)-xmin)*invdr
     END if
-    zpos = (zp(i)-basegrid%zminp)*invdz
+    zpos = (zp(i)-basegrid%zminp-zgrid)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6349,7 +6351,7 @@ ALLOCATE(invdz(ngrids),zmin(ngrids))
 
 do igrid = 1, ngrids
   invdz(igrid) = grids_ptr(igrid)%grid%invdz
-  zmin (igrid) = grids_ptr(igrid)%grid%zminp
+  zmin (igrid) = grids_ptr(igrid)%grid%zminp+zgrid
 end do
 
 IF(ngrids>1 .and. .not. l_dep_rho_on_base) then
@@ -6574,7 +6576,7 @@ ALLOCATE(invdr(ngrids),invdz(ngrids),zmin(ngrids))
 do igrid = 1, ngrids
   invdr(igrid) = grids_ptr(igrid)%grid%invdr
   invdz(igrid) = grids_ptr(igrid)%grid%invdz
-  zmin (igrid) = grids_ptr(igrid)%grid%zminp
+  zmin (igrid) = grids_ptr(igrid)%grid%zminp+zgrid
 end do
 
   ! make charge deposition using CIC weighting
@@ -6643,7 +6645,7 @@ ALLOCATE(invdr(ngrids),invdz(ngrids),zmin(ngrids))
 do igrid = 1, ngrids
   invdr(igrid) = grids_ptr(igrid)%grid%invdr
   invdz(igrid) = grids_ptr(igrid)%grid%invdz
-  zmin (igrid) = grids_ptr(igrid)%grid%zminp
+  zmin (igrid) = grids_ptr(igrid)%grid%zminp+zgrid
 end do
 
   ! make charge deposition using CIC weighting
@@ -6768,7 +6770,7 @@ INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
   ! make charge deposition using CIC weighting
   do i = 1, np
     IF(uzp(i)==0.) cycle
-    zpos = (zp(i)-basegrid%zminp)*invdz
+    zpos = (zp(i)-basegrid%zminp-zgrid)*invdz
     ln = 1+INT(zpos)
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
@@ -7103,6 +7105,7 @@ end subroutine get_phip_from_phi
 #endif
 
 subroutine fieldweightrzold(xp,yp,zp,uzp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,calcselfe)
+USE Picglb, ONLY:zgrid
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -7161,7 +7164,7 @@ INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
   do i = 1, np
     IF(uzp(i)==0.) cycle
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr
-    zpos = (zp(i)-zmin)*invdz
+    zpos = (zp(i)-zmin-zgrid)*invdz
     jn = INT(rpos)
     ln = INT(zpos)
     ddr = rpos-REAL(jn)
@@ -7215,7 +7218,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     g => basegrid
     ingrid=.false.
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*g%invdr
-    zpos = (zp(i)-g%zminp)*g%invdz
+    zpos = (zp(i)-g%zminp-zgrid)*g%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
@@ -7225,7 +7228,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
         igrid = g%loc_part_fd(jn,ln)
         g=>grids_ptr(igrid)%grid
         rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*g%invdr
-        zpos = (zp(i)-g%zminp)*g%invdz
+        zpos = (zp(i)-g%zminp-zgrid)*g%invdz
         jn = 1+INT(rpos)
         ln = 1+INT(zpos)
       END if
@@ -7271,7 +7274,7 @@ else
     IF(uzp(i)==0.) cycle
     ingrid=.false.
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*basegrid%invdr
-    zpos = (zp(i)-basegrid%zminp)*basegrid%invdz
+    zpos = (zp(i)-basegrid%zminp-zgrid)*basegrid%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -7346,7 +7349,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     else
       rpos = (xp(i)-g%xmin)*g%invdr
     end if
-    zpos = (zp(i)-g%zminp)*g%invdz
+    zpos = (zp(i)-g%zminp-zgrid)*g%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
@@ -7360,7 +7363,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
         else
           rpos = (xp(i)-g%xmin)*g%invdr
         end if
-        zpos = (zp(i)-g%zminp)*g%invdz
+        zpos = (zp(i)-g%zminp-zgrid)*g%invdz
         jn = 1+INT(rpos)
         ln = 1+INT(zpos)
       END if
@@ -7405,7 +7408,7 @@ else
     else
       rpos = (xp(i)-basegrid%xmin)*basegrid%invdr
     end if
-    zpos = (zp(i)-basegrid%zminp)*basegrid%invdz
+    zpos = (zp(i)-basegrid%zminp-zgrid)*basegrid%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -7465,7 +7468,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
     igrid = 1
     g => basegrid
     ingrid=.false.
-    zpos = (zp(i)-g%zminp)*g%invdz
+    zpos = (zp(i)-g%zminp-zgrid)*g%invdz
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
       IF(g%loc_part_fd(1,ln)==igrid) then
@@ -7473,7 +7476,7 @@ IF(ngrids>1 .and. .not.l_get_field_from_base) then
       else
         igrid = g%loc_part_fd(1,ln)
         g=>grids_ptr(igrid)%grid
-        zpos = (zp(i)-g%zminp)*g%invdz
+        zpos = (zp(i)-g%zminp-zgrid)*g%invdz
         ln = 1+INT(zpos)
       END if
     end do
@@ -7492,7 +7495,7 @@ else
   do i = 1, np
     IF(uzp(i)==0.) cycle
     ingrid=.false.
-    zpos = (zp(i)-basegrid%zminp)*basegrid%invdz
+    zpos = (zp(i)-basegrid%zminp-zgrid)*basegrid%invdz
     ln = 1+INT(zpos)
     ddz = zpos-REAL(ln-1)
     oddz = 1._8-ddz
@@ -7533,6 +7536,7 @@ end subroutine calc_phi3d_from_phirz
 
 subroutine fieldweightrz_deform_old2(xp,yp,zp,uzp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin,xfact,yfact,calcphi,phi3d,selfe)
 USE Constant
+USE Picglb, ONLY:zgrid
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -7592,7 +7596,7 @@ endif
     ddy = ypos-REAL(kn)
     oddy = 1._8-ddy
 
-    zpos = (zp(i)-zmin)*invdz
+    zpos = (zp(i)-zmin-zgrid)*invdz
     ln = INT(zpos)
     lnp = ln+1
     ddz = zpos-REAL(ln)
@@ -7644,6 +7648,7 @@ end subroutine fieldweightrz_deform_old2
 
 subroutine fieldweightrz_deform_old(xp,yp,zp,uzp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,xfact,yfact,calcselfe)
 USE Constant
+USE Picglb, ONLY:zgrid
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -7702,7 +7707,7 @@ INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
   ! make field deposition using CIC weighting
   do i = 1, np
     IF(uzp(i)==0.) cycle
-    zpos = (zp(i)-zmin)*invdz
+    zpos = (zp(i)-zmin-zgrid)*invdz
     ln = INT(zpos)
     ddz = zpos-REAL(ln)
     oddz = 1._8-ddz
@@ -7738,6 +7743,7 @@ subroutine calcfact_deform(dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
 USE Constant
 USE Particles, ONLY: xp, yp, zp, uzp
 use FRZmgrid
+USE Picglb, ONLY:zgrid
 implicit none
 
 !INTEGER(ISZ), INTENT(IN) :: np, nz, ns
@@ -7765,7 +7771,7 @@ REAL(8) :: ddz, oddz, wddz, woddz, xrms, yrms, invdz, zpos, xp2, yp2
   do isp = 1, ns
     do i = ins(is(isp)), ins(is(isp))+nps(is(isp))-1
       IF(uzp(i)==0.) cycle
-      zpos = (zp(i)-zmin)*invdz
+      zpos = (zp(i)-zmin-zgrid)*invdz
       ln = 1+INT(zpos)
       lnp = ln+1
       ddz = zpos-REAL(ln-1)
@@ -7822,10 +7828,10 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
   do i = 1, np
     igrid = 1
     g => basegrid
-    IF(zp(i)<g%zmin.or.zp(i)>=g%zmax) cycle
+    IF(zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) cycle
     ingrid=.false.
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*g%invdr
-    zpos = (zp(i)-g%zmin)*g%invdz
+    zpos = (zp(i)-g%zmin-zgrid)*g%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
@@ -7834,9 +7840,9 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
       else
         igrid = g%loc_part(jn,ln)
         g=>grids_ptr(igrid)%grid
-        IF(zp(i)<g%zmin.or.zp(i)>=g%zmax) cycle
+        IF(zp(i)<g%zmin+zgrid.or.zp(i)>=g%zmax+zgrid) cycle
         rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*g%invdr
-        zpos = (zp(i)-g%zminp)*g%invdz
+        zpos = (zp(i)-g%zminp-zgrid)*g%invdz
         jn = 1+INT(rpos)
         ln = 1+INT(zpos)
       END if
@@ -7854,8 +7860,8 @@ else
   do i = 1, np
     ingrid=.false.
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*basegrid%invdr
-    IF(zp(i)<basegrid%zmin.or.zp(i)>=basegrid%zmax) cycle
-    zpos = (zp(i)-basegrid%zmin)*basegrid%invdz
+    IF(zp(i)<basegrid%zmin+zgrid.or.zp(i)>=basegrid%zmax+zgrid) cycle
+    zpos = (zp(i)-basegrid%zmin-zgrid)*basegrid%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -7892,7 +7898,7 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
     igrid = 1
     g => basegrid
     ingrid=.false.
-    zpos = (zp(i)-g%zmin)*g%invdz
+    zpos = (zp(i)-g%zmin-zgrid)*g%invdz
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
       IF(g%loc_part(1,ln)==igrid) then
@@ -7900,7 +7906,7 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
       else
         igrid = g%loc_part(1,ln)
         g=>grids_ptr(igrid)%grid
-        zpos = (zp(i)-g%zminp)*g%invdz
+        zpos = (zp(i)-g%zminp-zgrid)*g%invdz
         ln = 1+INT(zpos)
       END if
     end do
@@ -7911,8 +7917,8 @@ IF(ngrids>1 .and. .not.l_get_injphi_from_base) then
   END do
 else
   do i = 1, np
-    zpos = (zp(i)-basegrid%zmin)
-    IF(zpos<basegrid%zmin.or.zpos>=basegrid%zmax) cycle
+    zpos = (zp(i)-basegrid%zmin-zgrid)
+    IF(zpos<basegrid%zmin+zgrid.or.zpos>=basegrid%zmax+zgrid) cycle
     zpos = zpos*basegrid%invdz
     ln = 1+INT(zpos)
     ddz = zpos-REAL(ln-1)
@@ -7949,7 +7955,7 @@ TYPE(BNDtype), POINTER :: b
        IF(r>rs) exit
        ! we assume source emits forward
        z = zinject(ij) + rc - SQRT(rc**2-r**2) + inj_d(ij)*g%dz
-       l = MAX(1,2+INT((z-g%zmin)/g%dz))
+       l = MAX(1,2+INT((z-g%zmin-zgrid)/g%dz))
        g%loc_part_fd(j,l:) = g%gid
      end do
    end do
@@ -7974,8 +7980,8 @@ TYPE(BNDtype), POINTER :: b
          r = MIN(rs,(j-1)*b%dr)
          ! we assume source emits forward
          z = zinject(ij) + rc - SQRT(rc**2-r**2) + inj_d(ij)*b%dz
-         l = 4+MAX(1,2+INT((z-g%zmin)/b%dz))
-         do l = 4+MAX(1,2+INT((z-g%zmin)/b%dz)), b%nz+1
+         l = 4+MAX(1,2+INT((z-g%zmin-zgrid)/b%dz))
+         do l = 4+MAX(1,2+INT((z-g%zmin-zgrid)/b%dz)), b%nz+1
            IF(b%v(j,l)==v_vacuum) then
              b%v(j,l)=v_cond
              nconds=nconds+1
