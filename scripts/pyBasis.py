@@ -13,7 +13,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.11 2001/06/21 23:11:12 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.12 2001/07/02 20:17:09 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -190,7 +190,8 @@ def doc(f):
 # to the global name space. The exec also needed to have the local name
 # space explicitly included.
 # Note that attr can be a list of attributes and group names.
-def pydump(fname,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None):
+def pydump(fname,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None,
+           verbose=false):
   """
 Dump data into a pdb file
   - fname dump file name
@@ -203,6 +204,8 @@ Dump data into a pdb file
   - varsuffix=None Suffix to add to the variable names. If none is specified,
                 the suffix '@pkg' is used, where pkg is the package name
                 that the variable is in.
+  - verbose=false When true, prints out the names of the variables as they are
+                  written to the dump file
   """
   # --- Open the file if the file object was not passed in.
   # --- If the file object was passed in, then don't close it.
@@ -245,6 +248,7 @@ Dump data into a pdb file
           writevar = 0
         # --- Write out the variable.
         if writevar:
+          if verbose: print "writing "+pname+"."+vname+" as "+vname+pkgsuffix
           ff.write(vname+pkgsuffix,v)
   # --- Now, write out the python variables (that can be written out).
   # --- If supplied, the varsuffix is append to the names here too.
@@ -254,6 +258,7 @@ Dump data into a pdb file
       vval = eval(v,__main__.__dict__,locals())
       if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
         raise "cannot dump zero length arrays"
+      if verbose: print "write python variable "+v+" as "+v+varsuffix
       exec('ff.'+v+varsuffix+'='+v,__main__.__dict__,locals())
     except:
       pass
@@ -308,7 +313,7 @@ Restores all of the variables in the specified file.
         # --- Array assignment is different than scalar assignment.
         if type(ff.__getattr__(v)) != type(array([])):
           # --- Simple assignment is done for scalars, using the exec command
-          if verbose: print v
+          if verbose: print "reading in "+v[-3:]+"."+v[:-4]
           exec(v[-3:]+'.'+v[:-4]+'=ff.__getattr__(v)',
                __main__.__dict__,locals())
       except:
@@ -322,7 +327,7 @@ Restores all of the variables in the specified file.
       # --- in put in the main dictionary.
       try:
         #exec('__main__.__dict__[v[:-7]]=ff.read(v)',locals())
-        if verbose: print v
+        if verbose: print "reading in python variable "+v[:-7]
         exec('%s=ff.__getattr__("%s");__main__.__dict__["%s"]=%s'%
              (v[:-7],v,v[:-7],v[:-7]))
       except:
@@ -333,7 +338,7 @@ Restores all of the variables in the specified file.
       # --- the variable in put in the main dictionary.
       try:
         #exec('__main__.__dict__["%s"]=ff.%s'%(v,v)) # This should work
-        if verbose: print v
+        if verbose: print "reading in python variable "+v
         exec('%s=ff.%s;__main__.__dict__["%s"]=%s'%(v,v,v,v))
       except:
         pass
@@ -345,7 +350,7 @@ Restores all of the variables in the specified file.
         if type(ff.__getattr__(v)) == type(array([])):
           # --- forceassign is used, allowing the array read in to have a
           # --- different size than the current size of the warp array.
-          if verbose: print v
+          if verbose: print "reading in "+v[-3:]+"."+v[:-4]
           pkg.forceassign(v[:-4],ff.__getattr__(v))
       except:
         print "Warning: There was problem restoring %s"% (v[-3:]+'.'+v[:-4])

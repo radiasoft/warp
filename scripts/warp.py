@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.25 2001/06/18 17:54:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.26 2001/07/02 20:17:09 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -317,7 +317,7 @@ def fieldsol(iwhich=0):
 
 # --- Dump command
 def dump(filename=None,suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
-         ff=None,varsuffix=None,histz=0):
+         ff=None,varsuffix=None,histz=0,verbose=false):
   """
 Creates a dump file
   - filename=(runid+'%06d'%top.it+suffix+'.dump')
@@ -355,14 +355,14 @@ Creates a dump file
   # --- Call routine to make data dump
   if onefile and lparallel:
     paralleldump(filename,attr,interpreter_variables,serial=serial,
-                 varsuffix=varsuffix,histz=histz)
+                 varsuffix=varsuffix,histz=histz,verbose=verbose)
   else:
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
-           varsuffix=varsuffix)
+           varsuffix=varsuffix,verbose=verbose)
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
-def restart(filename,onefile=1):
+def restart(filename,onefile=1,verbose=false):
   """
 Reads in data from file, redeposits charge density and does field solve
   - filename: restart file name - when restoring parallel run from multiple
@@ -377,9 +377,9 @@ Reads in data from file, redeposits charge density and does field solve
     filename = filename + '_%05d.dump'%(me)
   # --- Call different restore routine depending on context
   if onefile and lparallel:
-    parallelrestore(filename)
+    parallelrestore(filename,verbose=verbose)
   else:
-    pyrestore(filename)
+    pyrestore(filename,verbose=verbose)
   # --- Now that the dump file has been read in, finish up the restart work.
   # --- First set the current packge. Note that currpkg is only ever defined
   # --- in the main dictionary.
