@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.21 2005/02/22 19:06:44 dave Exp $"
+particles_version = "$Id: particles.py,v 1.22 2005/02/26 01:34:46 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -144,6 +144,46 @@ def setup_subsetsold(js=0):
 
 ##########################################################################
 #-------------------------------------------------------------------------
+def getattrwithsuffix(object=None,name=None,suffix='',checkmain=1,
+                      default=None):
+  """
+Helper function modeled on getattr. Like getattr, given an object and a name,
+it will return object.name. Optionally, a suffix can be given, in which case,
+it will return the equivalent of getattr(object,name+suffix). The object can
+be None, in which case the main dictionary will be searched,
+returning __main__.__dict__[name+suffix]. Also, object can be a dictionary
+itself. Finally, if the object is specified but name+suffix is not found and
+if checkmain is true, then the main dictionary will again be searched. If
+nothing if found and default is specified, it is returned, otherwise an
+exception is raised.
+  """
+  assert name is not None,"A name must be supplied"
+  if object is not None:
+    try:
+      result = getattr(object,name+suffix)
+      return result
+    except AttributeError:
+      pass
+  if type(object) is DictionaryType:
+    try:
+      result = object[name+suffix]
+      return result
+    except KeyError:
+      pass
+  if object is None or checkmain:
+    import __main__
+    try:
+      result = __main__.__dict__[name+suffix]
+      return result
+    except KeyError:
+      pass
+
+  if default is not None:
+    return default
+  else:
+    raise AttributeError
+
+#-------------------------------------------------------------------------
 # This returns the indices of the particles selected.
 def selectparticles(iw=0,kwdict={},**kw):
   """
@@ -164,11 +204,14 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   - zu=None: When specified, upper range of selection region
   - zc=None: When specified, picks particles within zc+-wz*dz
   - ii=None: If ii is supplied, it is just returned.
+  - lost=false: When true, returns indices to the lost particles rather than
+                the live particles
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "zl":None,"zu":None,"zc":None,"ii":None,
+                "lost":false,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -209,11 +252,20 @@ from window 0, getting all of the live partilces (whose uzp != 0).
         partlist = array(list(partlist)+list(newparts))
     return partlist
 
-  ir1 = top.ins[js]-1
-  ir2 = top.ins[js]+top.nps[js]-1
+  # --- If lost is true, append the suffix lost to the variable names
+  if lost: suffix = 'lost'
+  else:    suffix = ''
+
+  ins = getattrwithsuffix(top,'ins',suffix)
+  nps = getattrwithsuffix(top,'nps',suffix)
+
+  ir1 = ins[js] - 1
+  ir2 = ins[js] + nps[js] - 1
+
   if ir2 <= ir1: return array([])
+
   if zl is not None or zu is not None:
-    if z is None: z = top.zp
+    if z is None: z = getattrwithsuffix(top,'zp',suffix)
     if zl is None: zl = -top.largepos
     if zu is None: zu = +top.largepos
     if zl > zu: print "Warning: zl > zu"
@@ -222,21 +274,23 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   elif ix is not None:
     xl = w3d.xmmin + ix*w3d.dx - wx*w3d.dx
     xu = w3d.xmmin + ix*w3d.dx + wx*w3d.dx
-    ii=compress(logical_and(less(xl,top.xp[ir1:ir2]),less(top.xp[ir1:ir2],xu)),
+    x = getattrwithsuffix(top,'xp',suffix)
+    ii=compress(logical_and(less(xl,x[ir1:ir2]),less(x[ir1:ir2],xu)),
                 arrayrange(ir1,ir2))
   elif iy is not None:
     yl = w3d.ymmin + iy*w3d.dy - wy*w3d.dy
     yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
-    ii=compress(logical_and(less(yl,top.yp[ir1:ir2]),less(top.yp[ir1:ir2],yu)),
+    y = getattrwithsuffix(top,'yp',suffix)
+    ii=compress(logical_and(less(yl,y[ir1:ir2]),less(y[ir1:ir2],yu)),
                 arrayrange(ir1,ir2))
   elif iz is not None:
-    z = top.zp
+    z = getattrwithsuffix(top,'zp',suffix)
     zl = w3d.zmminglobal + iz*w3d.dz - wz*w3d.dz + top.zbeam
     zu = w3d.zmminglobal + iz*w3d.dz + wz*w3d.dz + top.zbeam
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
   elif zc is not None:
-    z = top.zp
+    z = getattrwithsuffix(top,'zp',suffix)
     zl = zc - wz*w3d.dz
     zu = zc + wz*w3d.dz
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
@@ -248,29 +302,30 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     # --- Also, if the number of species has changed, then also
     # --- use the population sampling.
     try: selectparticles.npsprev
-    except: selectparticles.npsprev = top.nps + 0
+    except: selectparticles.npsprev = nps + 0
     if len(selectparticles.npsprev) != top.ns:
       selectparticles.npsprev = zeros(top.ns)
-    if selectparticles.npsprev[js] >= top.nps[js]:
+    if selectparticles.npsprev[js] >= nps[js]:
       if psubset==[]: setup_subsets()
       if -iw > len(psubset): raise "Bad window number"
-      ii = ir1 + compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
+      ii = ir1 + compress(less(psubset[-iw-1],nps[js]),psubset[-iw-1])
     else:
       # --- Once this method is used, always use it.
       selectparticles.npsprev = zeros(top.ns)
-      if top.nps[js] <= top.npplot[-iw-1]:
-        ii = ir1 + arange(top.nps[js])
+      if nps[js] <= top.npplot[-iw-1]:
+        ii = ir1 + arange(nps[js])
       else:
-        ii = ir1 + populationsample(xrange(top.nps[js]),top.npplot[-iw-1])
+        ii = ir1 + populationsample(xrange(nps[js]),top.npplot[-iw-1])
   elif iw == 0:
     ii = xrange(ir1,ir2)
   else:
     if win is None: win = top.zwindows[:,iw] + top.zbeam
     if len(shape(win)) == 2: win = win[:,iw]
-    if z is None: z = top.zp
+    if z is None: z = getattrwithsuffix(top,'zp',suffix)
     ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
                 arrayrange(ir1,ir2))
-  ii = compress(not_equal(take(top.uzp,ii),0.),ii)
+  uz = getattrwithsuffix(top,'uzp',suffix)
+  ii = compress(not_equal(take(uz,ii),0.),ii)
   return ii
 
 #-------------------------------------------------------------------------
@@ -288,8 +343,10 @@ def getn(iw=0,gather=1,bcast=0,**kw):
 def getx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X positions."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.xp,ii)
+    x = getattrwithsuffix(top,'xp',suffix)
+    result = take(x,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -298,8 +355,10 @@ def getx(iw=0,gather=1,bcast=0,**kw):
 def gety(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y positions."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.yp,ii)
+    y = getattrwithsuffix(top,'yp',suffix)
+    result = take(y,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -308,8 +367,10 @@ def gety(iw=0,gather=1,bcast=0,**kw):
 def getz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z positions."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.zp,ii)
+    z = getattrwithsuffix(top,'zp',suffix)
+    result = take(z,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -318,8 +379,11 @@ def getz(iw=0,gather=1,bcast=0,**kw):
 def getr(iw=0,gather=1,bcast=0,**kw):
   "Returns the R postions."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
+    x = getattrwithsuffix(top,'xp',suffix)
+    y = getattrwithsuffix(top,'yp',suffix)
+    result = sqrt(take(x,ii)**2 + take(y,ii)**2)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -328,8 +392,11 @@ def getr(iw=0,gather=1,bcast=0,**kw):
 def gettheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the theta postions."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = arctan2(take(top.yp,ii),take(top.xp,ii))
+    x = getattrwithsuffix(top,'xp',suffix)
+    y = getattrwithsuffix(top,'yp',suffix)
+    result = arctan2(take(y,ii),take(x,ii))
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -338,8 +405,11 @@ def gettheta(iw=0,gather=1,bcast=0,**kw):
 def getvx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.uxp,ii)*take(top.gaminv,ii)
+    ux = getattrwithsuffix(top,'uxp',suffix)
+    uy = getattrwithsuffix(top,'uyp',suffix)
+    result = take(ux,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -348,8 +418,11 @@ def getvx(iw=0,gather=1,bcast=0,**kw):
 def getvy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.uyp,ii)*take(top.gaminv,ii)
+    uy = getattrwithsuffix(top,'uyp',suffix)
+    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    result = take(uy,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -358,8 +431,11 @@ def getvy(iw=0,gather=1,bcast=0,**kw):
 def getvz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.uzp,ii)*take(top.gaminv,ii)
+    uz = getattrwithsuffix(top,'uzp',suffix)
+    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    result = take(uz,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -368,9 +444,14 @@ def getvz(iw=0,gather=1,bcast=0,**kw):
 def getvr(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-    result = take(top.uxp,ii)*cos(tt) + take(top.uyp,ii)*sin(tt)
+    x = getattrwithsuffix(top,'xp',suffix)
+    y = getattrwithsuffix(top,'yp',suffix)
+    ux = getattrwithsuffix(top,'uxp',suffix)
+    uy = getattrwithsuffix(top,'uyp',suffix)
+    tt = arctan2(take(y,ii),take(x,ii))
+    result = take(ux,ii)*cos(tt) + take(uy,ii)*sin(tt)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -379,9 +460,14 @@ def getvr(iw=0,gather=1,bcast=0,**kw):
 def getvtheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-    result = -take(top.uxp,ii)*sin(tt) + take(top.uyp,ii)*cos(tt)
+    x = getattrwithsuffix(top,'xp',suffix)
+    y = getattrwithsuffix(top,'yp',suffix)
+    ux = getattrwithsuffix(top,'uxp',suffix)
+    uy = getattrwithsuffix(top,'uyp',suffix)
+    tt = arctan2(take(y,ii),take(x,ii))
+    result = -take(ux,ii)*sin(tt) + take(uy,ii)*cos(tt)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -390,8 +476,10 @@ def getvtheta(iw=0,gather=1,bcast=0,**kw):
 def getux(iw=0,gather=1,bcast=0,**kw):
   "Returns the X momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.uxp,ii)
+    ux = getattrwithsuffix(top,'uxp',suffix)
+    result = take(ux,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -400,8 +488,10 @@ def getux(iw=0,gather=1,bcast=0,**kw):
 def getuy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.uyp,ii)
+    uy = getattrwithsuffix(top,'uyp',suffix)
+    result = take(uy,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -410,8 +500,10 @@ def getuy(iw=0,gather=1,bcast=0,**kw):
 def getuz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.uzp,ii)
+    uz = getattrwithsuffix(top,'uzp',suffix)
+    result = take(uz,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -420,8 +512,11 @@ def getuz(iw=0,gather=1,bcast=0,**kw):
 def getxp(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity over the Z velocity (X')."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.uxp,ii)/take(top.uzp,ii)
+    ux = getattrwithsuffix(top,'uxp',suffix)
+    uz = getattrwithsuffix(top,'uzp',suffix)
+    result = take(ux,ii)/take(uz,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -430,8 +525,11 @@ def getxp(iw=0,gather=1,bcast=0,**kw):
 def getyp(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity over the Z velocity (Y')."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.uyp,ii)/take(top.uzp,ii)
+    uy = getattrwithsuffix(top,'uyp',suffix)
+    uz = getattrwithsuffix(top,'uzp',suffix)
+    result = take(uy,ii)/take(uz,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -440,10 +538,16 @@ def getyp(iw=0,gather=1,bcast=0,**kw):
 def getrp(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-    result = ((take(top.uxp,ii)*cos(tt)+take(top.uyp,ii)*sin(tt))/
-              take(top.uzp,ii))
+    x = getattrwithsuffix(top,'xp',suffix)
+    y = getattrwithsuffix(top,'yp',suffix)
+    ux = getattrwithsuffix(top,'uxp',suffix)
+    uy = getattrwithsuffix(top,'uyp',suffix)
+    uz = getattrwithsuffix(top,'uzp',suffix)
+    tt = arctan2(take(y,ii),take(x,ii))
+    result = ((take(ux,ii)*cos(tt)+take(uy,ii)*sin(tt))/
+              take(uz,ii))
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -452,10 +556,16 @@ def getrp(iw=0,gather=1,bcast=0,**kw):
 def gettp(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-    result = ((-take(top.uxp,ii)*sin(tt)+take(top.uyp,ii)*cos(tt))/
-              take(top.uzp,ii))
+    x = getattrwithsuffix(top,'xp',suffix)
+    y = getattrwithsuffix(top,'yp',suffix)
+    ux = getattrwithsuffix(top,'uxp',suffix)
+    uy = getattrwithsuffix(top,'uyp',suffix)
+    uz = getattrwithsuffix(top,'uzp',suffix)
+    tt = arctan2(take(y,ii),take(x,ii))
+    result = ((-take(ux,ii)*sin(tt)+take(uy,ii)*cos(tt))/
+              take(uz,ii))
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -464,8 +574,10 @@ def gettp(iw=0,gather=1,bcast=0,**kw):
 def getgaminv(iw=0,gather=1,bcast=0,**kw):
   "Returns the gamma inverse."
   ii = selectparticles(iw=iw,kwdict=kw)
+  suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
-    result = take(top.gaminv,ii)
+    gaminv = getattrwithsuffix(top,'gaminv',suffix)
+    result = take(gaminv,ii)
   else:
     result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
@@ -475,10 +587,14 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
   """Returns particle id number.
   -id=0: which pid value to return
   """
-  if top.npmaxi == top.npmax:
+  suffix = (kw.get('lost',0) and 'lost') or ''
+  if lost: dopid = (top.npidlostmax > 0)
+  else:    dopid = (top.npmaxi == top.npmax)
+  if dopid:
     ii = selectparticles(iw=iw,kwdict=kw)
     if len(ii) > 0:
-      result = take(top.pid[:,id],ii)
+      pid = getattrwithsuffix(top,'pid',suffix)
+      result = take(pid[:,id],ii)
     else:
       result = array([],'d')
   else:
@@ -489,9 +605,13 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
 # Add the selectparticles documentation to each of the routines.
 if sys.version[:5] != "1.5.1":
   if lparallel:
-    _gatherdoc = "  gather=1 When 1, all data is gathered to PE0"
+    _gatherdoc = (
+"""  gather=1 When 1, all data is gathered to PE0
+  bcast=0: when true, result is broadcast to all processors
+""")
   else:
-    _gatherdoc = ""
+    _gatherdoc = ''
+  _gatherdoc = _gatherdoc + ' lost=0: when true, gets lost particles'
   getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _gatherdoc
   getx.__doc__ = getx.__doc__ + selectparticles.__doc__ + _gatherdoc
   gety.__doc__ = gety.__doc__ + selectparticles.__doc__ + _gatherdoc
