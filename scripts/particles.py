@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.24 2005/03/04 21:45:41 dave Exp $"
+particles_version = "$Id: particles.py,v 1.25 2005/04/05 19:00:04 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -601,6 +601,7 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
   """Returns particle id number.
   -id=0: which pid value to return
   """
+  lost = kw.get('lost',0)
   suffix = (kw.get('lost',0) and 'lost') or ''
   if lost: dopid = (top.npidlostmax > 0)
   else:    dopid = (top.npmaxi == top.npmax)
