@@ -15,7 +15,10 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-import inspect
+try:
+  import inspect
+except ImportError:
+  pass
 # --- Add line completion capability
 try:
   import readline
@@ -25,7 +28,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.28 2002/10/29 01:54:45 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.29 2003/01/23 21:31:22 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -380,7 +383,7 @@ Dump data into a pdb file
         #if verbose:
         if verbose: print "writing python function "+v+" as "+v+varsuffix+'@function'
         ff.write(v+varsuffix+'@function',source)
-      except IOError:
+      except (IOError,NameError):
         if verbose: print "could not write python function "+v
       continue
     # --- Zero length arrays cannot by written out.
