@@ -8,6 +8,7 @@ Box(xsize,ysize,zsize,...)
 Cylinder(radius,length,theta=0.,phi=0.,...)
 ZCylinder(radius,length,...)
 ZCylinderOut(radius,length,...)
+ZRoundedCylinder(radius,length,radius2,...)
 ZRoundedCylinderOut(radius,length,radius2,...)
 YCylinder(radius,length,...)
 XCylinder(radius,length,...)
@@ -42,7 +43,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.28 2003/06/19 20:31:43 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.29 2003/08/05 16:47:47 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
