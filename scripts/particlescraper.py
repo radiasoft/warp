@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.23 2004/10/29 20:44:56 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.24 2004/11/29 17:44:56 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -27,6 +27,8 @@ Class for creating particle scraper for conductors
                    pidlost[:,-4].
                    Note that the condid where the particle is lost is also
                    saved in pidlost[:,-1].
+ - lcollectlpdata: When true, the lost particles statistics will be collected for 
+                   each conductor in the list lostparticles_data (Assembly class).
  - mglevel=0: Coarsening level for index grid which is used to determine
               which conductors particles are near. This grid is a full size,
               3d (or 2d) array and can require a not insignificant amount of
@@ -47,8 +49,8 @@ After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
-  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,mglevel=0,
-                    install=1,grid=None): 
+  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,lcollectlpdata=0,
+                    mglevel=0,install=1,grid=None): 
     self.mglevel = mglevel
     # --- Don't create the grid until it is needed.
     self.grid = grid
@@ -62,7 +64,8 @@ conductors are an argument.
     # --- If the conductor id where particles are lost is being saved,
     # --- need to turn on saving of lost particles.
     self.lsaveintercept = lsaveintercept
-    self.lsavecondid = lsavecondid or lsaveintercept
+    self.lsavecondid = lsavecondid or lsaveintercept or lcollectlpdata
+    self.lcollectlpdata = lcollectlpdata
     if self.lsavecondid:
       top.lsavelostpart = true
     # --- Install the call to scrape particles if requested
@@ -204,6 +207,7 @@ conductors are an argument.
     # --- Get the indices of all lost particles that havn't been localized
     # --- to a conductor.
     iscrape = compress(top.pidlost[i1:i2,-1]==0,arange(i1,i2))
+    if self.lcollectlpdata:iscrape1=iscrape.copy()
 
     # --- Duplicate the particle list eight times, once for each corner.
     iscrape = repeat(iscrape,8)
@@ -263,6 +267,15 @@ conductors are an argument.
                    (zc - intercept.zi)**2)/
               dvnz(sqrt(vx**2 + vy**2 + vz**2)))
         put(top.pidlost[:,-4],ic,top.time - dt)
-
-
+      if self.lcollectlpdata:
+        pidlostcondid = take(top.pidlost[:,-1],iscrape1)
+        pidtoconsider = compress(pidlostcondid==c.condid,iscrape1)
+        if top.wpid==0:
+          w = len(pidtoconsider)
+        else:
+          w = sum(take(top.pidlost[:,wpid],pidtoconsider))
+        c.lostparticles_data += [[top.time, 
+                                  w*top.sq[js]*top.sw[js],
+                                  top.dt,
+                                  js]]
 
