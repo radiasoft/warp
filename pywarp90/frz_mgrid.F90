@@ -1,4 +1,4 @@
-!     Last change:  JLV  25 Oct 2001   10:40 am
+!     Last change:  JLV  14 Jan 2002    2:07 pm
 #include "top.h"
 
 module multigrid_common
@@ -1010,7 +1010,7 @@ REAL(8), INTENT(IN) :: rhs(1:,1:)!rhs(nr+1,nz+1)
 REAL(8), INTENT(IN) :: dr, dz, voltfact
 TYPE(bndptr), INTENT(IN OUT) :: bnd
 
-INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, redblack, iil, iiu, ic
+INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, redblack, iil, iiu, ic, nrf, nzi, nzf
 REAL(8) :: dt, dt0
 REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz, cfrhs
 
@@ -1027,6 +1027,22 @@ do j = 2, nr+1
   cfrp(j) = dt * (1._8+0.5_8/REAL(j-1,8)) / dr**2
   cfrm(j) = dt * (1._8-0.5_8/REAL(j-1,8)) / dr**2
 end do
+
+IF(ixrbnd==dirichlet) then
+  nrf=nr-1
+else
+  nrf=nr
+END if
+IF(bndy(level)%izlbnd==dirichlet) then
+  nzi=2
+else
+  nzi=1
+END if
+IF(bndy(level)%izrbnd==dirichlet) then
+  nzf=nz-1
+else
+  nzf=nz
+END if
 
 do i = 1, nc
 
@@ -1069,7 +1085,7 @@ do redblack = 1, 2
       END if
     ENDDO
   END do
-  do l = 1, nz+1
+  do l = nzi, nzf+1
     IF(jsw==2) then! origin
       j = 1
       IF(bnd%v(j,l)==v_vacuum) &
@@ -1078,7 +1094,7 @@ do redblack = 1, 2
                                  + (dt0/dz**2)*(f(j,l+1)+f(j,l-1)) &
                                  - dt0*rhs(j,l)
     END if
-    do j = jsw+1, nr+1, 2
+    do j = jsw+1, nrf+1, 2
       IF(bnd%v(j,l)==v_vacuum) &
         f(j,l) = cf0 * f(j,l) &
                                  + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
@@ -1187,7 +1203,7 @@ REAL(8), INTENT(IN) :: dr, dz,voltfact
 REAL(8), DIMENSION(SIZE(f,1)-2,SIZE(f,2)-2) :: residbndrzwguard
 LOGICAL(ISZ) :: l_zerolastz
 
-INTEGER(ISZ) :: i, j, l, ii, ic
+INTEGER(ISZ) :: i, j, l, ii, ic, nrf, nzi, nzf
 REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz
 
 IF(l_mgridrz_debug) WRITE(0,*) 'enter resid, level = ',level
@@ -1212,13 +1228,29 @@ do ic = 1, bnd%nb_conductors
   end do
 END do
 
-do l = 1, nz+1
+IF(ixrbnd==dirichlet) then
+  nrf=nr-1
+else
+  nrf=nr
+END if
+IF(bndy(level)%izlbnd==dirichlet) then
+  nzi=2
+else
+  nzi=1
+END if
+IF(bndy(level)%izrbnd==dirichlet) then
+  nzf=nz-1
+else
+  nzf=nz
+END if
+
+do l = nzi, nzf+1
   j = 1
   IF(bnd%v(j,l)==v_vacuum) &
   residbndrzwguard(j,l) = (cf0+2._8/dr**2) * f(j,l) - 4._8*f(j+1,l)/dr**2   &
                                  + cfz*(f(j,l+1)+f(j,l-1)) &
                                  + rhs(j,l)
-  do j = 2, nr+1
+  do j = 2, nrf+1
      IF(bnd%v(j,l)==v_vacuum) &
        residbndrzwguard(j,l) = cf0 * f(j,l) + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
                                       + cfz*(f(j,l+1)+f(j,l-1)) &
@@ -1392,14 +1424,14 @@ izmax=SIZE(f,2)
 
 select case (ixrbnd)
     case (dirichlet)
-      f(ixmax,:) = -f(ixmax-2,:)
+      f(ixmax,:) = 2._8*f(ixmax-1,:) - f(ixmax-2,:)
     case (neumann)
       f(ixmax,:) = f(ixmax-2,:)
     case default
 end select
 select case (bndy(level)%izlbnd)
     case (dirichlet)
-      f(:,1) = -f(:,3)
+      f(:,1) = 2._8*f(:,2) - f(:,3)
     case (neumann)
       f(:,1) = f(:,3)
     case (periodic)
@@ -1408,7 +1440,7 @@ select case (bndy(level)%izlbnd)
 end select
 select case (bndy(level)%izrbnd)
     case (dirichlet)
-      f(:,izmax) = -f(:,izmax-2)
+      f(:,izmax) = 2._8*f(:,izmax-1) - f(:,izmax-2)
     case (neumann)
       f(:,izmax) = f(:,izmax-2)
     case (periodic)
@@ -1694,6 +1726,7 @@ TYPE(bndptr), DIMENSION(:) :: bnd
 
 INTEGER(ISZ) :: i, j, nrc, nzc, npmin
 !REAL(8), allocatable, DIMENSION(:,:) :: f!, fold
+REAL(8) :: uold(SIZE(u,1),SIZE(u,2))
 REAL(8) :: dr, dz
 REAL(8) :: average_residue, average_residue_init, average_residue_prev
 LOGICAL :: do_calc, has_diverged
@@ -1730,7 +1763,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
     END if
     average_residue_prev=average_residue_init
     do  j = 1, nc
-  !    fold = f
+      uold = u
       call mgbndrzwguard(j=i,u=u,rhs=rhoinit,bnd=bnd,nr=nrc,nz=nzc,dr=dr,dz=dz,npre=npre,npost=npost,ncycle=ncycle,sub=.FALSE., &
       relax_only=.false.,npmin=npmin)
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, level = ',level
@@ -1747,7 +1780,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
           WRITE(0,*) '        average initial residue = ',average_residue_init
           WRITE(0,*) '        average current residue = ',average_residue
           WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
-          u=0.!fold
+          u=uold
           do_calc=.true.
           npmin=npmin+1
           WRITE(0,*) '        trying npmin = ',npmin
@@ -1757,7 +1790,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
           WRITE(0,*) '        average initial residue = ',average_residue_init
           WRITE(0,*) '        average current residue = ',average_residue
           WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
-          u=0.!fold
+          u=uold
           do_calc=.false.
           exit
         END if
@@ -1791,6 +1824,122 @@ END if
 return
 end subroutine solve_multigridrz
 
+subroutine solve_multigridrz_jlv2(u,rhoinit,bnd,nr0,nz0,length_r,length_z, &
+                             accuracy,sub_accuracy,nc,npre,npost,ncycle,nrecurs_min)
+! solve field for u with density rhoinit.
+implicit none
+
+! input/output variables
+INTEGER(ISZ), INTENT(IN) :: nr0, nz0, &       ! number of meshes in R and Z (excluing guard cells)
+                            nc, &             ! maximum number of full-multigrid iterations
+                            npre, npost, &    ! number of relaxations before and after multigrid level coarsening
+                            ncycle            ! number of multigrid iterations (1: V-cycle, 2: VV cycle, etc.)
+INTEGER(ISZ), INTENT(IN OUT) :: nrecurs_min   ! minimum level for recursion
+REAL(8), INTENT(IN OUT) :: u(:,:)             ! u(0:nr0+2,0:nz0+2), potential
+REAL(8), INTENT(IN) :: rhoinit(:,:)           ! rhoinit(nr0+1,nz0+1), charge density
+REAL(8), INTENT(IN) :: length_r, length_z, &  ! grid lengths in X, Y and Z
+                       accuracy,           &  ! required average accuracy
+                       sub_accuracy           ! required average accuracy at sublevel
+
+! internal variables
+TYPE(bndptr), DIMENSION(:) :: bnd
+
+INTEGER(ISZ) :: i, j, nrc, nzc, npmin
+!REAL(8), allocatable, DIMENSION(:,:) :: f!, fold
+REAL(8) :: uold(SIZE(u,1),SIZE(u,2)), maxerr, maxerr_old
+REAL(8) :: dr, dz
+REAL(8) :: average_residue, average_residue_init, average_residue_prev
+LOGICAL :: do_calc, has_diverged
+
+do_calc=.true.
+has_diverged = .false.
+
+nrc = bnd(nlevels)%nr
+nzc = bnd(nlevels)%nz
+
+!ALLOCATE(f(0:bnd(nlevels)%nx+2,0:bnd(nlevels)%nz+2))
+!u = 0._8
+
+npmin=MIN(nrecurs_min,MAX(nlevels,1))
+  level = nlevels
+  i = nlevels
+  nrc = bnd(i)%nr
+  nzc = bnd(i)%nz
+  dr = bnd(i)%dr
+  dz = bnd(i)%dz
+!  ALLOCATE(fold(0:bnd(nlevels)%nx+2,0:bnd(nlevels)%nz+2))
+  do_calc=.true.
+  do while(do_calc)
+!    average_residue_init=SUM(ABS(residbnd3dwguard(f=RESHAPE((/(0._8*j,j=1,(nxc+3)*(nyc+3)*(nzc+3))/), (/nxc+3,nyc+3,nzc+3/)) &
+!                   ,rhs=rhoinit,bnd=bnd(i),nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nxc*nyc*nzc)
+#ifdef PARALLEL
+!    average_residue_init = mpi_global_compute_real(average_residue_init,MPI_SUM)/nslaves
+#endif
+!    if(average_residue_init==0._8) then
+!      average_residue=0.
+!      average_residue_init=1.
+!      cycle main_loop
+!    END if
+!    average_residue_prev=average_residue_init
+    maxerr = 1.
+    do  j = 1, nc
+  !    fold = f
+      uold=u
+      call mgbndrzwguard(j=i,u=u,rhs=rhoinit,bnd=bnd,nr=nrc,nz=nzc,dr=dr,dz=dz, &
+                         npre=npre,npost=npost,ncycle=ncycle,sub=.FALSE., &
+      relax_only=.false.,npmin=npmin)
+      maxerr_old = maxerr
+      maxerr = maxval(abs(u-uold))
+!      IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, level = ',level
+!      average_residue=SUM(ABS(residbnd3dwguard(f=u,rhs=rhoinit,bnd=bnd(i), &
+!                              nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nxc*nyc*nzc)
+#ifdef PARALLEL
+!      average_residue = mpi_global_compute_real(average_residue,MPI_SUM)/nslaves
+#endif
+!      IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, done.'
+      IF(maxerr/maxerr_old>=1..and.j>1) then
+        IF(npmin<i) then
+          has_diverged = .true.
+          WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
+          WRITE(0,*) '        average initial residue = ',maxerr_old
+          WRITE(0,*) '        average current residue = ',maxerr
+          WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
+          u=uold
+          do_calc=.true.
+          npmin=npmin+1
+          WRITE(0,*) '        trying npmin = ',npmin
+          exit
+        else
+          WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
+          WRITE(0,*) '        average initial residue = ',maxerr_old
+          WRITE(0,*) '        average current residue = ',maxerr    
+          WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
+          u=uold
+          do_calc=.false.
+          exit
+        END if
+        exit
+      END if
+      IF(maxerr <= accuracy) then
+        do_calc=.false.
+        exit
+      END if
+    end do
+    IF(j>=nc) do_calc=.false.
+  end do
+
+WRITE(0,'("multigridrz: precision = ",e12.5, " after ",i5," iterations...")') maxerr,j
+!u = f
+call updateguardcellsrz(f=u,level=nlevels)
+
+IF(nrecurs_min/=npmin) then
+  WRITE(0,'("WARNING multigridrz, nrecurs_min = ",i2,", npmin = ",i2,". Setting nrecurs_min = ",i2,".")') nrecurs_min, npmin, npmin
+  nrecurs_min = npmin
+END if
+
+return
+end subroutine solve_multigridrz_jlv2
+
 END module multigridrz
 
 subroutine multigridrzf(iwhich,u0,rho0,nr0,nz0,dr0,dz0,accuracy,ncmax,npre,npost,ncycle)
@@ -1803,6 +1952,7 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 
 real(8) :: u(0:nr0+2,0:nz0+2)
 
+WRITE(0,*) "JFDSKFJDSDLFJ"
 IF(ncmax==0) return
 
   IF(iwhich==0.or.iwhich==1) then
@@ -1812,18 +1962,22 @@ IF(ncmax==0) return
   IF(iwhich==1) return
 
   u(1:nr0+1,:)=u0(1:nr0+1,:)
-  u(0,:) = 0._8
-  u(nr0+2,:)=0._8
+  u(0,:) = u(2,:)! 0._8
+  u(nr0+2,:)=u(nr0+1,:)!0._8
 
- call solve_full_multigridrz(u=u,rhoinit=-rho0/eps0,bnd=bndy,nr0=nr0,nz0=nz0, &
-                         length_r=nr0*dr0,length_z=nz0*dz0, &
-                         accuracy=accuracy,sub_accuracy=mgridrz_sub_accuracy, &
-                        nc=ncmax,npre=npre,npost=npost,ncycle=ncycle,nrecurs_min=mgridrz_nrecurs_min)
+! call solve_full_multigridrz(u=u,rhoinit=-rho0/eps0,bnd=bndy,nr0=nr0,nz0=nz0, &
+!                         length_r=nr0*dr0,length_z=nz0*dz0, &
+!                         accuracy=accuracy,sub_accuracy=mgridrz_sub_accuracy, &
+!                        nc=ncmax,npre=npre,npost=npost,ncycle=ncycle,nrecurs_min=mgridrz_nrecurs_min)
 
 ! call solve_multigridrz(u=u,rhoinit=-rho0/eps0,bnd=bndy,nr0=nr0,nz0=nz0, &
 !                        length_r=nr0*dr0,length_z=nz0*dz0, &
 !                         accuracy=accuracy,sub_accuracy=mgridrz_sub_accuracy, &
 !                        nc=ncmax,npre=npre,npost=npost,ncycle=ncycle,nrecurs_min=mgridrz_nrecurs_min)
+ call solve_multigridrz_jlv2(u=u,rhoinit=-rho0/eps0,bnd=bndy,nr0=nr0,nz0=nz0, &
+                        length_r=nr0*dr0,length_z=nz0*dz0, &
+                         accuracy=accuracy,sub_accuracy=mgridrz_sub_accuracy, &
+                        nc=ncmax,npre=npre,npost=npost,ncycle=ncycle,nrecurs_min=mgridrz_nrecurs_min)
 
   u0(1:nr0+1,:)=u(1:nr0+1,:)
 
@@ -1875,7 +2029,7 @@ do i = nlevels,1,-1
 
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
                       xmin,xmax,ymin,ymax,lshell,                      &
-                      zmmin,zmmax,zbeam,drc,dy,dzc,nrc,ny,nzc,             &
+                      zmmin,zmmax,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc)
@@ -1928,7 +2082,7 @@ do i = nlevels,1,-1
 
   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,  &
                      lzend,xmin,xmax,ymin,ymax,lshell,                &
-                     zmin_in,zmax_in,zbeam,drc,dy,dzc,nrc,ny,nzc,             &
+                     zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc)
@@ -1966,7 +2120,7 @@ do i = nlevels,1,-1
   zmin_in = zmmin
 #endif
 
-  call setcndtr_rz(xmmin,ymmin,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,dy,dzc, &
+  call setcndtr_rz(xmmin,ymmin,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
                    l2symtry,l4symtry)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc)
@@ -1975,10 +2129,63 @@ end do
 
 END subroutine setcndtrrz
 
+!subroutine add_egun_data(volt,npts,aj,al,ax,az)
+!implicit none
+
+!INTEGER(ISZ), INTENT(IN) :: npts, aj(npts), al(npts)
+!REAL(8), INTENT(IN) :: volt, ax(npts), az(npts)
+
+!INTEGER(ISZ) :: i
+
+!do i = 1, npts
+!  IF(ax(i)>0.) then
+!    delmx=ax(i)
+!    delpx=2.0
+!  else
+!    delpx=ax(i)
+!    delmx=2.0
+!  END if
+!  IF(az(i)>0.) then
+!    delmz=az(i)
+!    delpz=2.0
+!  else
+!    delpz=az(i)
+!    delmz=2.0
+!  END if
+!  if (mod(aj(i)+al(i)+zparity,2) == 0) then
+!!   --- even
+!    necndbdy = necndbdy + 1
+!    iecndx(necndbdy) = ix
+!    iecndy(necndbdy) = iy
+!    iecndz(necndbdy) = iz
+!    ecdelmx(necndbdy) = delmx
+!    ecdelmy(necndbdy) = delmy
+!    ecdelmz(necndbdy) = delmz
+!    ecdelpx(necndbdy) = delpx
+!    ecdelpy(necndbdy) = delpy
+!    ecdelpz(necndbdy) = delpz
+!    ecvolt(necndbdy) = volt
+!  else
+!!   --- odd
+!    nocndbdy = nocndbdy + 1
+!    iocndx(nocndbdy) = ix
+!    iocndy(nocndbdy) = iy
+!    iocndz(nocndbdy) = iz
+!    ocdelmx(nocndbdy) = delmx
+!    ocdelmy(nocndbdy) = delmy
+!    ocdelmz(nocndbdy) = delmz
+!    ocdelpx(nocndbdy) = delpx
+!    ocdelpy(nocndbdy) = delpy
+!    ocdelpz(nocndbdy) = delpz
+!    ocvolt(nocndbdy) = volt
+!  endif
+!end do
+!
+!
+!return
+!end subroutine add_egun_data
+
 subroutine addconductors_rz(i,nrc,nzc,drc,dzc)
-! call subroutine srfrvinout_rz (which determines grid nodes near conductors and give
-! directions and distances to conductors), initialize and assign coefficients
-! for multigrid Poisson solver.
 use PSOR3d
 USE multigridrz
 implicit none
@@ -2419,7 +2626,7 @@ REAL(8), dimension(0:nr,0:nz), INTENT(IN OUT) :: rho
   return
 end subroutine rhobndrz
 
-subroutine fieldweightrz(xp,yp,zp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin)
+subroutine fieldweightrz(xp,yp,zp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,calcselfe)
 USE constant
 implicit none
 
@@ -2427,12 +2634,14 @@ INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
+REAL(8), DIMENSION(1:2,0:nr,0:nz), INTENT(IN OUT) :: e
 REAL(8), INTENT(IN) :: dr, dz, zmin
+LOGICAL(ISZ), INTENT(IN) :: calcselfe
 
 REAL(8) :: invdr, invdz, rpos, zpos, invrpos, ddr, ddz, oddr, oddz, er
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
-REAL(8) :: e(2,0:nr,0:nz)
 
+ IF(calcselfe) then
   invdr = 0.5_8/dr
   invdz = 0.5_8/dz
 
@@ -2468,7 +2677,7 @@ REAL(8) :: e(2,0:nr,0:nz)
   j=nr;l=nz
     e(1,j,l)= 2._8*invdr * (phi(j-1,l)-phi(j,l)  )
     e(2,j,l)= 2._8*invdz * (phi(j,l-1)-phi(j,l)  )
-
+  END if
 
   invdr = 1._8/dr
   invdz = 1._8/dz
@@ -2506,7 +2715,7 @@ REAL(8) :: e(2,0:nr,0:nz)
   return
 end subroutine fieldweightrz
 
-subroutine fieldweightrz_deform(xp,yp,zp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin,xfact,yfact)
+subroutine fieldweightrz_deform(xp,yp,zp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin,xfact,yfact,calcphi,phi3d,selfe)
 USE constant
 implicit none
 
@@ -2516,11 +2725,123 @@ REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
 REAL(8), INTENT(IN) :: dr, dz, zmin
 REAL(8), DIMENSION(0:nz), INTENT(INOUT) :: xfact,yfact
+LOGICAL(ISZ) :: calcphi
+REAL(8), INTENT(INOUT) :: phi3d(0:nr,0:nr,-1:nz+1), selfe(3,0:nr,0:nr,0:nz)
+
+REAL(8) :: invdx, invdy, invdr, invdz, xpos, ypos, rpos, zpos, ddx, ddy, ddr, ddz, oddx, oddy, oddr, oddz, &
+           w1, w2, w3, w4, w5, w6, w7, w8
+INTEGER(ISZ) :: i, j, k, l, jn, kn, ln, jnp, knp, lnp
+
+
+IF(calcphi) then
+  phi3d = 0.
+  selfe = 0.
+  do l = -1, nz+1
+    do k = 0, nr
+      do j = 0, nr
+        IF(l<=1.or.l==nz+1) then
+          rpos = SQRT(REAL(j)**2+REAL(k)**2)
+        else
+          rpos = SQRT(j**2*xfact(l)+k**2*yfact(l))
+        END if
+        jn = INT(rpos)
+        IF(jn>=nr) cycle
+        ddr=rpos-REAL(jn)
+        oddr=1._8-ddr
+        phi3d(j,k,l) = oddr*phi(jn,l)+ddr*phi(jn+1,l)
+      end do
+    end do
+  end do
+
+  call getselfe3d(phi3d,nr,nr,nz,selfe,nr,nr,nz,dr,dr,dz)
+!WRITE(0,*) 'sum(phi)',SUM(ABS(phi3d)),SUM(ABS(phi))
+endif
+
+  invdx = 1._8/dr
+  invdy = 1._8/dr
+  invdz = 1._8/dz
+
+  ! make field deposition using CIC weighting
+  do i = 1, np
+    xpos = abs(xp(i))*invdx
+    jn = INT(xpos)
+    jnp = jn+1
+    ddx = xpos-REAL(jn)
+    oddx = 1._8-ddx
+
+    ypos = abs(yp(i))*invdy
+    kn = INT(ypos)
+    knp = kn+1
+    ddy = ypos-REAL(kn)
+    oddy = 1._8-ddy
+
+    zpos = (zp(i)-zmin)*invdz
+    ln = INT(zpos)
+    lnp = ln+1
+    ddz = zpos-REAL(ln)
+    oddz = 1._8-ddz
+
+    w1 = oddx * oddy * oddz
+    w2 = ddx  * oddy * oddz
+    w3 = oddx * ddy  * oddz
+    w4 = ddx  * ddy  * oddz
+    w5 = oddx * oddy * ddz
+    w6 = ddx  * oddy * ddz
+    w7 = oddx * ddy  * ddz
+    w8 = ddx  * ddy  * ddz 
+
+    ex(i) = w1 * selfe(1,jn ,kn, ln)  &
+          + w2 * selfe(1,jnp,kn, ln)  &
+          + w3 * selfe(1,jn ,knp,ln)  &
+          + w4 * selfe(1,jnp,knp,ln)  &
+          + w5 * selfe(1,jn ,kn, lnp) &
+          + w6 * selfe(1,jnp,kn, lnp) &
+          + w7 * selfe(1,jn ,knp,lnp) &
+          + w8 * selfe(1,jnp,knp,lnp)
+
+    ey(i) = w1 * selfe(2,jn ,kn, ln)  &
+          + w2 * selfe(2,jnp,kn, ln)  &
+          + w3 * selfe(2,jn ,knp,ln)  &
+          + w4 * selfe(2,jnp,knp,ln)  &
+          + w5 * selfe(2,jn ,kn, lnp) &
+          + w6 * selfe(2,jnp,kn, lnp) &
+          + w7 * selfe(2,jn ,knp,lnp) &
+          + w8 * selfe(2,jnp,knp,lnp)
+
+    ez(i) = w1 * selfe(3,jn ,kn, ln)  &
+          + w2 * selfe(3,jnp,kn, ln)  &
+          + w3 * selfe(3,jn ,knp,ln)  &
+          + w4 * selfe(3,jnp,knp,ln)  &
+          + w5 * selfe(3,jn ,kn, lnp) &
+          + w6 * selfe(3,jnp,kn, lnp) &
+          + w7 * selfe(3,jn ,knp,lnp) &
+          + w8 * selfe(3,jnp,knp,lnp)
+
+    IF(xp(i)<0.) ex(i)=-ex(i)
+    IF(yp(i)<0.) ey(i)=-ey(i)
+
+  END do
+
+  return
+end subroutine fieldweightrz_deform
+
+subroutine fieldweightrz_deform_old(xp,yp,zp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,xfact,yfact,calcselfe)
+USE constant
+implicit none
+
+INTEGER(ISZ), INTENT(IN) :: np, nr, nz
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
+REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
+REAL(8), DIMENSION(1:2,0:nr,0:nz), INTENT(IN OUT) :: e
+REAL(8), INTENT(IN) :: dr, dz, zmin
+REAL(8), DIMENSION(0:nz), INTENT(INOUT) :: xfact,yfact
+LOGICAL(ISZ), INTENT(IN) :: calcselfe
 
 REAL(8) :: invdr, invdz, rpos, zpos, invrpos, ddr, ddz, oddr, oddz, er
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
-REAL(8) :: e(2,0:nr,0:nz)
 
+ IF(calcselfe) then
   invdr = 0.5_8/dr
   invdz = 0.5_8/dz
 
@@ -2556,7 +2877,7 @@ REAL(8) :: e(2,0:nr,0:nz)
   j=nr;l=nz
     e(1,j,l)= 2._8*invdr * (phi(j-1,l)-phi(j,l)  )
     e(2,j,l)= 2._8*invdz * (phi(j,l-1)-phi(j,l)  )
-
+ END if
 
   invdr = 1._8/dr
   invdz = 1._8/dz
@@ -2589,13 +2910,10 @@ REAL(8) :: e(2,0:nr,0:nz)
           + ddr  * oddz * e(2,jnp,ln)  &
           + oddr * ddz  * e(2,jn ,lnp) &
           + ddr  * ddz  * e(2,jnp,lnp)
-!    ex(i)=0.
-!    ey(i)=0.
-    ez(i)=0.
   END do
 
   return
-end subroutine fieldweightrz_deform
+end subroutine fieldweightrz_deform_old
 
 !subroutine calcfact_deform(xp,yp,zp,np,dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
 subroutine calcfact_deform(dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
@@ -2625,6 +2943,7 @@ REAL(8) :: ddz, oddz, wddz, woddz, xrms, yrms, invdz, zpos, xp2, yp2
 !return
   do isp = 1, ns
     do i = ins(is(isp)), ins(is(isp))+nps(is(isp))-1
+      IF(zp(i)<zmin) cycle
       zpos = (zp(i)-zmin)*invdz
       ln = INT(zpos)
       lnp = ln+1
@@ -2656,6 +2975,7 @@ REAL(8) :: ddz, oddz, wddz, woddz, xrms, yrms, invdz, zpos, xp2, yp2
       xfact(ln) = 1._8
       yfact(ln) = 1._8
     END if
+!    WRITE(0,*) ln,xfact(ln),yfact(ln),xrms,yrms,fweight(ln),fnb(ln)
   end do
 
   return
@@ -3622,7 +3942,7 @@ REAL(8), INTENT(IN) :: rhs(1:,1:,1:)!rhs(nx+1,ny+1,nz+1)
 REAL(8), INTENT(IN) :: dx, dy, dz, voltfact
 TYPE(bndptr), INTENT(IN OUT) :: bnd
 
-INTEGER(ISZ) :: i, j, k, l, ii, jsw, ksw, lsw, redblack, iil, iiu, ic
+INTEGER(ISZ) :: i, j, k, l, ii, jsw, ksw, lsw, redblack, iil, iiu, ic, nxi, nxf, nyi, nyf, nzi, nzf
 REAL(8) :: dt
 REAL(8) :: cf0, cfx, cfy, cfz, cfrhs
 
@@ -3636,6 +3956,37 @@ cfy = dt / dy**2
 cfz = dt / dz**2
 cf0 = 1._8-2._8*(cfx+cfy+cfz)
 cfrhs = -dt
+
+IF(ixlbnd==dirichlet) then
+  nxi=1
+else
+  nxi=0
+END if
+IF(ixrbnd==dirichlet) then
+  nxf=nx-1
+else
+  nxf=nx
+END if
+IF(iylbnd==dirichlet) then
+  nyi=2
+else
+  nyi=1
+END if
+IF(iyrbnd==dirichlet) then
+  nyf=ny-1
+else
+  nyf=ny
+END if
+IF(bndy(level)%izlbnd==dirichlet) then
+  nzi=2
+else
+  nzi=1
+END if
+IF(bndy(level)%izrbnd==dirichlet) then
+  nzf=nz-1
+else
+  nzf=nz
+END if
 
 do i = 1, nc
 
@@ -3670,11 +4021,13 @@ do redblack = 1, 2
                  + bnd%cnd%cfrhs(ii)*rhs(j,k,l)
     ENDDO
   END do
+END do !redblack=1, 2
+do redblack = 1, 2
   ksw = lsw
-  do l = 1, nz+1
+  do l = nzi, nzf+1
    jsw = ksw
-   do k = 1, ny+1
-    do j = jsw, nx+1, 2
+   do k = nyi, nyf+1
+    do j = jsw+nxi, nxf+1, 2
       IF(bnd%v(j,k,l)==v_vacuum) &
         f(j,k,l) = cf0 * f(j,k,l) &
                  + cfx*(f(j+1,k,l)+f(j-1,k,l))   &
@@ -3791,7 +4144,7 @@ REAL(8), INTENT(IN) :: dx, dy, dz,voltfact
 REAL(8), DIMENSION(SIZE(f,1)-2,SIZE(f,2)-2,SIZE(f,3)-2) :: residbnd3dwguard
 LOGICAL(ISZ) :: l_zerolastz
 
-INTEGER(ISZ) :: i, j, k, l, ii, redblack, ic
+INTEGER(ISZ) :: i, j, k, l, ii, redblack, ic, nxi, nxf, nyi, nyf, nzi, nzf
 REAL(8) :: cf0, cfx, cfy, cfz
 
 IF(l_mgridrz_debug) WRITE(0,*) 'enter resid, level = ',level
@@ -3814,9 +4167,40 @@ residbnd3dwguard = 0._8
 !  end do
 !END do
 
-do l = 1, nz+1
- do k = 1, ny+1
-  do j = 1, nx+1
+IF(ixlbnd==dirichlet) then
+  nxi=2
+else
+  nxi=1
+END if
+IF(ixrbnd==dirichlet) then
+  nxf=nx-1
+else
+  nxf=nx
+END if
+IF(iylbnd==dirichlet) then
+  nyi=2
+else
+  nyi=1
+END if
+IF(iyrbnd==dirichlet) then
+  nyf=ny-1
+else
+  nyf=ny
+END if
+IF(bndy(level)%izlbnd==dirichlet) then
+  nzi=2
+else
+  nzi=1
+END if
+IF(bndy(level)%izrbnd==dirichlet) then
+  nzf=nz-1
+else
+  nzf=nz
+END if
+
+do l = nzi, nzf+1
+ do k = nyi, nyf+1
+  do j = nxi, nxf+1
      IF(bnd%v(j,k,l)==v_vacuum) &
        residbnd3dwguard(j,k,l) = cf0 * f(j,k,l)    &
                                + cfx*(f(j+1,k,l)+f(j-1,k,l)) &
@@ -3991,35 +4375,35 @@ izmax=SIZE(f,3)
 
 select case (ixlbnd)
     case (dirichlet)
-      f(1,:,:) = -f(3,:,:)
+      f(1,:,:) = 2._8*f(2,:,:)-f(3,:,:)
     case (neumann)
       f(1,:,:) = f(3,:,:)
     case default
 end select
 select case (ixrbnd)
     case (dirichlet)
-      f(ixmax,:,:) = -f(ixmax-2,:,:)
+      f(ixmax,:,:) = 2._8*f(ixmax-1,:,:) - f(ixmax-2,:,:)
     case (neumann)
       f(ixmax,:,:) = f(ixmax-2,:,:)
     case default
 end select
 select case (iylbnd)
     case (dirichlet)
-      f(:,1,:) = -f(:,3,:)
+      f(:,1,:) = 2._8*f(:,2,:) - f(:,3,:)
     case (neumann)
       f(:,1,:) = f(:,3,:)
     case default
 end select
 select case (iyrbnd)
     case (dirichlet)
-      f(:,iymax,:) = -f(:,iymax-2,:)
+      f(:,iymax,:) = 2._8*f(:,iymax-1,:) - f(:,iymax-2,:)
     case (neumann)
       f(:,iymax,:) = f(:,iymax-2,:)
     case default
 end select
 select case (bndy(level)%izlbnd)
     case (dirichlet)
-      f(:,:,1) = -f(:,:,3)
+      f(:,:,1) = 2._8*f(:,:,2) - f(:,:,3)
     case (neumann)
       f(:,:,1) = f(:,:,3)
     case (periodic)
@@ -4028,7 +4412,7 @@ select case (bndy(level)%izlbnd)
 end select
 select case (bndy(level)%izrbnd)
     case (dirichlet)
-      f(:,:,izmax) = -f(:,:,izmax-2)
+      f(:,:,izmax) = 2._8*f(:,:,izmax-1) - f(:,:,izmax-2)
     case (neumann)
       f(:,:,izmax) = f(:,:,izmax-2)
     case (periodic)
@@ -4322,6 +4706,7 @@ TYPE(bndptr), DIMENSION(:) :: bnd
 
 INTEGER(ISZ) :: i, j, nxc, nyc, nzc, npmin
 !REAL(8), allocatable, DIMENSION(:,:) :: f!, fold
+REAL(8) :: uold(SIZE(u,1),SIZE(u,2),SIZE(u,3))
 REAL(8) :: dx, dy, dz
 REAL(8) :: average_residue, average_residue_init, average_residue_prev
 LOGICAL :: do_calc, has_diverged
@@ -4360,7 +4745,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
     END if
     average_residue_prev=average_residue_init
     do  j = 1, nc
-  !    fold = f
+      uold = u
       call mgbnd3dwguard(j=i,u=u,rhs=rhoinit,bnd=bnd,nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz, &
                          npre=npre,npost=npost,ncycle=ncycle,sub=.FALSE., &
       relax_only=.false.,npmin=npmin)
@@ -4378,7 +4763,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
           WRITE(0,*) '        average initial residue = ',average_residue_init
           WRITE(0,*) '        average current residue = ',average_residue
           WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
-          u=0.!fold
+          u=uold
           do_calc=.true.
           npmin=npmin+1
           WRITE(0,*) '        trying npmin = ',npmin
@@ -4388,7 +4773,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
           WRITE(0,*) '        average initial residue = ',average_residue_init
           WRITE(0,*) '        average current residue = ',average_residue
           WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
-          u=0.!fold
+          u=uold
           do_calc=.false.
           exit
         END if
@@ -4477,7 +4862,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
 !    average_residue_prev=average_residue_init
     maxerr = 1.
     do  j = 1, nc
-  !    fold = f
+      uold = u
       uold=u
       call mgbnd3dwguard(j=i,u=u,rhs=rhoinit,bnd=bnd,nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz, &
                          npre=npre,npost=npost,ncycle=ncycle,sub=.FALSE., &
@@ -4498,7 +4883,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
           WRITE(0,*) '        average initial residue = ',maxerr_old
           WRITE(0,*) '        average current residue = ',maxerr
           WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
-          u=0.!fold
+          u=uold
           do_calc=.true.
           npmin=npmin+1
           WRITE(0,*) '        trying npmin = ',npmin
@@ -4508,7 +4893,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
           WRITE(0,*) '        average initial residue = ',maxerr_old
           WRITE(0,*) '        average current residue = ',maxerr    
           WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
-          u=0.!fold
+          u=uold
           do_calc=.false.
           exit
         END if
