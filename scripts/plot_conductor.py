@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.3 2000/12/15 17:15:38 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.4 2001/02/06 23:18:34 dave Exp $"
 
 ######################################################################
 # functions to plot the conductor points and subgrid data            #
@@ -77,11 +77,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   ii = compress(equal(f3d.izcond[0:f3d.ncond],iz),arange(f3d.ncond))
   yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
   xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
-  if lparallel:
-    yy = gatherarray(yy)
-    xx = gatherarray(xx)
-  if xx:
-    plp(yy,xx,color=cyan)
+  warpplp(yy,xx,color=cyan)
   if (plotsg):
     plotsubgrid(iz,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
                 f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
@@ -124,11 +120,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
   xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
   zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
-  if lparallel:
-    xx = gatherarray(xx)
-    zz = gatherarray(zz)
-  if xx:
-    plp(xx,zz,color=cyan)
+  warpplp(xx,zz,color=cyan)
   if (plotsg):
     plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
                 f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
@@ -171,11 +163,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
   yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
   zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
-  if lparallel:
-    yy = gatherarray(yy)
-    zz = gatherarray(zz)
-  if yy:
-    plp(yy,zz,color=cyan)
+  warpplp(yy,zz,color=cyan)
   if (plotsg):
     plotsubgrid(ix,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
                 f3d.ecdelmy,f3d.ecdelmz,f3d.ecdelpy,f3d.ecdelpz,
