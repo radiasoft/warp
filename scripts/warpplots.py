@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.44 2001/06/20 23:46:40 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.45 2001/06/28 01:01:58 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -837,7 +837,7 @@ def pptitleright(iw=0,kwdict={},**kw):
 #############################################################################
 def ppgeneric_doc(x,y):
   doc = selectparticles.__doc__ + """
-  - z: optional third particle data quantity - when supplied, it is deposited
+  - zz: optional third particle data quantity - when supplied, it is deposited
        on a grid and that is used for contour levels.
   - grid: optional grid to plot (instead of deriving grid from particle data)
   - nx, ny: grid size, defaults to 20x20
@@ -882,7 +882,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   - y, x: optional particle data (instead of using inputted grid)
   """
   # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {'z':None,'grid':None,'nx':20,'ny':20,'slope':0.,
+  kwdefaults = {'zz':None,'grid':None,'nx':20,'ny':20,'slope':0.,
                 'offset':0.,'titles':1,'lframe':0,
                 'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
@@ -919,11 +919,11 @@ Note that either the x and y coordinates or the grid must be passed in.
          "both x and y must be specified if particles are to be plotted"
   assert ((type(x) != ArrayType and type(y) != ArrayType) or len(x) == len(y)),\
          "both x and y must be of the same length"
-  assert (z is None) or (type(z) == ArrayType and len(z) == len(x)),\
-         "z must be the same length as x"
+  assert (zz is None) or (type(zz) == ArrayType and len(zz) == len(x)),\
+         "zz must be the same length as x"
   assert (type(slope) != StringType),"slope must be a number"
-  assert (z is None) or (grid is None),\
-         "only one of z and grid can be specified"
+  assert (zz is None) or (grid is None),\
+         "only one of zz and grid can be specified"
 
   # -- Set the plotting view window
   plsys(view)
@@ -983,7 +983,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- it from the inputted particle data (if there was any)
   if type(grid) != ArrayType and \
      (hash or contours or color=='density' or chopped):
-    if z is None:
+    if zz is None:
       densitygrid = 1
 
       # --- Create space for data
@@ -1004,7 +1004,7 @@ Note that either the x and y coordinates or the grid must be passed in.
 
       # --- Deposit the data onto the grid. itask is 1 so that the parallel
       # --- version can be done properly.
-      deposgrid2d(1,len(x),x,yms,z,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+      deposgrid2d(1,len(x),x,yms,zz,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
 
       # --- If parallel, do a reduction on the grid
       if lparallel:
@@ -1057,11 +1057,11 @@ Note that either the x and y coordinates or the grid must be passed in.
       z1 = zeros(len(x),'d')
       getgrid2d(len(x),x,yms,z1,nx,ny,grid1,xmin,xmax,ymin,ymax)
     if chopped:
-      z = zeros(len(x),'d')
-      getgrid2d(len(x),x,yms,z,nx,ny,grid,xmin,xmax,ymin,ymax)
+      dd = zeros(len(x),'d')
+      getgrid2d(len(x),x,yms,dd,nx,ny,grid,xmin,xmax,ymin,ymax)
       maxdensity = maxnd(grid)
       npart = len(x)
-      ipick = less(RandomArray.random(shape(x)),maxdensity*chopped/z)
+      ipick = less(RandomArray.random(shape(x)),maxdensity*chopped/dd)
       x = compress(ipick,x)
       yms = compress(ipick,yms)
       if color == 'density':
