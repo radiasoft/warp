@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.11 $, $Date: 2001/07/24 00:53:06 $
+c@(#) File WXY.M, version $Revision: 3.12 $, $Date: 2001/09/19 22:32:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -752,12 +752,9 @@ c  a single step at present.  Perhaps we will also have to compute
 c  B_self more than once.
 
       integer(ISZ):: j,ip,in,iele,ii 
-      real(kind=8):: dti
       real(kind=8):: timetemp,wtime
 
       timetemp = wtime()
-
-      dti = 1./(dtr-dtl)
 
 c     --- handle quads
       call applyquad(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,.true.,ex,ey,bx,by)
@@ -964,12 +961,11 @@ c           --- (Only done when lvzchang is true.)
             do iter_dt=1,niter_dt
 c             --- Get field from accelerating elements (depends on dtp)
               call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                         dtp(ipmin),0.,dt*0.5,sm(is),sq(is),zbeam,dt,
+     &                         dtp(ipmin),0.,dt*0.5,sm(is),sq(is),dt,
      &                         .true.,ez)
 c             --- Correction to z on entry/exit to accelerator gap
               call zgapcorrxy(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                        dtp(ipmin),zbeam,0., dt*0.5, dt,
-     &                        sm(1), sq(1), time)
+     &                        dtp(ipmin),0., dt*0.5, dt, sm(1), sq(1), time)
 c             --- Magnetic field increment to momenta
               call bpushxy (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                      bx, by, bz, sq(is), sm(is), dtp(ipmin),0.5,ibpush)
@@ -1104,7 +1100,7 @@ c            --- Set quad, dipole E and B; All: Bz
      &                     gammabar,zbeam,vbeam,dt,time)
 c            --- Get field from accelerating elements (depends on dtp)
              call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                        dtp(ipmin),-dt*0.5,0.,sm(is),sq(is),zbeam,dt,
+     &                        dtp(ipmin),-dt*0.5,0.,sm(is),sq(is),dt,
      &                        .true.,ez)
 c            --- Half electric field increment to momenta
              call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
