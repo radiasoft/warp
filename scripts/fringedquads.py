@@ -1,5 +1,5 @@
 from warp import *
-fringedquads_version = "$Id: fringedquads.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+fringedquads_version = "$Id: fringedquads.py,v 1.2 2000/11/29 03:07:16 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -57,6 +57,12 @@ not, then the derivatives will be done with a finite difference of fringe.
     quaddb = top.quaddb[firstfringe:]
     quadox = top.qoffx[firstfringe:]
     quadoy = top.qoffy[firstfringe:]
+    quadrr = top.quadrr[firstfringe:]
+    quadrl = top.quadrl[firstfringe:]
+    quadgl = top.quadgl[firstfringe:]
+    quadgp = top.quadgp[firstfringe:]
+    quadpw = top.quadpw[firstfringe:]
+    quadpa = top.quadpa[firstfringe:]
     quadpe = zeros(top.nquad+1-firstfringe,'d')
     quadpm = zeros(top.nquad+1-firstfringe,'d')
   elif top.heles:
@@ -68,6 +74,12 @@ not, then the derivatives will be done with a finite difference of fringe.
     quaddb = []
     quadox = []
     quadoy = []
+    quadrr = []
+    quadrl = []
+    quadgl = []
+    quadgp = []
+    quadpw = []
+    quadpa = []
     quadpe = []
     quadpm = []
     for ih in xrange(firstfringe,top.nhele+1):
@@ -80,6 +92,12 @@ not, then the derivatives will be done with a finite difference of fringe.
           quaddb.append(top.heleam[im,ih])
           quadox.append(top.heleox[ih])
           quadoy.append(top.heleoy[ih])
+          quadrr.append(top.helerr[ih])
+          quadrl.append(top.helerl[ih])
+          quadgl.append(top.helegl[ih])
+          quadgp.append(top.helegp[ih])
+          quadpw.append(top.helepw[ih])
+          quadpa.append(top.helepa[ih])
           quadpe.append(top.helepe[im,ih])
           quadpm.append(top.helepm[im,ih])
           break # --- Just to prevent overlapping elements.
@@ -90,6 +108,12 @@ not, then the derivatives will be done with a finite difference of fringe.
     quaddb = array(quaddb)
     quadox = array(quadox)
     quadoy = array(quadoy)
+    quadrr = array(quadrr)
+    quadrl = array(quadrl)
+    quadgl = array(quadgl)
+    quadgp = array(quadgp)
+    quadpw = array(quadpw)
+    quadpa = array(quadpa)
     quadpe = array(quadpe)
     quadpm = array(quadpm)
 
@@ -199,6 +223,12 @@ not, then the derivatives will be done with a finite difference of fringe.
       top.emltox[neq] = quadox[iq]
       top.emltoy[neq] = quadoy[iq]
       top.emltap[neq] = quadap[iq]
+      top.emltrr[neq] = quadrr[iq]
+      top.emltrl[neq] = quadrl[iq]
+      top.emltgl[neq] = quadgl[iq]
+      top.emltgp[neq] = quadgp[iq]
+      top.emltpw[neq] = quadpw[iq]
+      top.emltpa[neq] = quadpa[iq]
       top.emltph[neq] = quadpe[iq]
       top.dzemlt[neq] = (top.emltze[neq] - top.emltzs[neq])/top.nzemltmax
       top.esemlt[:,0,neq] = 1.

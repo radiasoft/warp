@@ -1,7 +1,7 @@
 from warp import *
 import Ranf
 import __main__
-lattice_version = "$Id: lattice.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.2 2000/11/29 03:07:06 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -398,10 +398,17 @@ Creates an instance of a Hele lattice element.
   - am=[] list of magnitudes of magnetic multipole components
   - pe=[] list of phase angles of electric multipole components
   - pm=[] list of phase angles of magnetic multipole components
+  - rr=0 rod radius of an electric quad
+  - rl=0 rod length of an electric quad
+  - gl=0 gap length between rod and end plate of an electric quad
+  - gp=0 position of the rod to plate gap in the x plane of an electric quad
+  - pw=0 plate with of an electric quad
+  - pa=0 plate aperture of an electric quad
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
-               nn=[],vv=[],ae=[],am=[],pe=[],pm=[]):
+               nn=[],vv=[],ae=[],am=[],pe=[],pm=[],
+               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Hele'
@@ -411,6 +418,12 @@ Creates an instance of a Hele lattice element.
     self.am = am
     self.pe = pe
     self.pm = pm
+    self.rr = rr
+    self.rl = rl
+    self.gl = gl
+    self.gp = gp
+    self.pw = pw
+    self.pa = pa
     self.derivedquantities(self)
   def derivedquantities(_self,self):
     self.nn = array(self.nn)
@@ -475,10 +488,17 @@ Or specify the data set
   - ph=0 overal phase angle
   - sf=0 relative scale factor
   - sc=1 absolute scale factor
+  - rr=0 rod radius of an electric quad
+  - rl=0 rod length of an electric quad
+  - gl=0 gap length between rod and end plate of an electric quad
+  - gp=0 position of the rod to plate gap in the x plane of an electric quad
+  - pw=0 plate with of an electric quad
+  - pa=0 plate aperture of an electric quad
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
-               id=0,dz=0,e=[],ep=[],eph=[],nn=[],vv=[],ph=0,sf=0,sc=1):
+               id=0,dz=0,e=[],ep=[],eph=[],nn=[],vv=[],ph=0,sf=0,sc=1,
+               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Emlt'
@@ -492,6 +512,12 @@ Or specify the data set
     self.ph = ph
     self.sf = sf
     self.sc = sc
+    self.rr = rr
+    self.rl = rl
+    self.gl = gl
+    self.gp = gp
+    self.pw = pw
+    self.pa = pa
     self.derivedquantities(self)
   def derivedquantities(_self,self):
     self.e  = array(self.e)
@@ -615,10 +641,17 @@ Or specify the data set
   - dz=0 z increment size (m)
   - sf=0 relative scaling factor
   - sc=0 absolute scaling factor
+  - rr=0 rod radius of an electric quad
+  - rl=0 rod length of an electric quad
+  - gl=0 gap length between rod and end plate of an electric quad
+  - gp=0 position of the rod to plate gap in the x plane of an electric quad
+  - pw=0 plate with of an electric quad
+  - pa=0 plate aperture of an electric quad
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
-               id=0,sf=0,sc=1,pp=[],dx=0,dy=0,dz=0):
+               id=0,sf=0,sc=1,pp=[],dx=0,dy=0,dz=0,
+               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Pgrd'
@@ -629,6 +662,12 @@ Or specify the data set
     self.dx = dx
     self.dy = dy
     self.dz = dz
+    self.rr = rr
+    self.rl = rl
+    self.gl = gl
+    self.gp = gp
+    self.pw = pw
+    self.pa = pa
     self.derivedquantities(self)
   def derivedquantities(_self,self):
     self.pp = array(self.pp)
@@ -851,6 +890,12 @@ information if the WARP lattice arrays is deleted.
       top.heleap[ihele] = e.aperture
       top.heleox[ihele] = e.offset_x*errordist(e.error_type)
       top.heleoy[ihele] = e.offset_y*errordist(e.error_type)
+      top.helerr[ihele] = e.rr
+      top.helerl[ihele] = e.rl
+      top.helegl[ihele] = e.gl
+      top.helegp[ihele] = e.gp
+      top.helepw[ihele] = e.pw
+      top.helepa[ihele] = e.pa
       top.nhmlt = max(top.nhmlt,len(e.nn))
 
     elif e.type == 'Accl':
@@ -879,6 +924,12 @@ information if the WARP lattice arrays is deleted.
       top.emltph[iemlt] = e.ph
       top.emltsf[iemlt] = e.sf
       top.emltsc[iemlt] = e.sc
+      top.emltrr[iemlt] = e.rr
+      top.emltrl[iemlt] = e.rl
+      top.emltgl[iemlt] = e.gl
+      top.emltgp[iemlt] = e.gp
+      top.emltpw[iemlt] = e.pw
+      top.emltpa[iemlt] = e.pa
       if not e.id:
         top.emltid[iemlt] = top.nemltsets + 1
       else:
@@ -944,6 +995,12 @@ information if the WARP lattice arrays is deleted.
       top.pgrdoy[ipgrd] = e.offset_y*errordist(e.error_type)
       top.pgrdsf[ipgrd] = e.sf
       top.pgrdsc[ipgrd] = e.sc
+      top.pgrdrr[ipgrd] = e.rr
+      top.pgrdrl[ipgrd] = e.rl
+      top.pgrdgl[ipgrd] = e.gl
+      top.pgrdgp[ipgrd] = e.gp
+      top.pgrdpw[ipgrd] = e.pw
+      top.pgrdpa[ipgrd] = e.pa
       if not e.id:
         top.pgrdid[immlt] = top.pgrdns + 1
       else:
