@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.42 $, $Date: 2002/03/14 19:35:30 $
+c@(#) File W3D.M, version $Revision: 3.43 $, $Date: 2002/03/18 21:36:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -63,6 +63,7 @@ c=============================================================================
       use Hist
       use Pspwork
       use InjectVars
+      use FRZmgrid
 
 c  Invoked by the GENERATE command, it sets up the problem
 c  This routine allots all of the neccesary dynamic arrays, calls the
@@ -177,6 +178,13 @@ c phi (Ex, Ey, Ez) on the mesh.
         call gallot("Efields3d",0)
       endif
 
+      if(solvergeom==RZgeom) then
+        nx_selfe = nx
+        ny_selfe = 0
+        nz_selfe = nz
+        call gallot("Efields3d",0)
+      endif
+
 c  Set the value of prwall, radius at which particles are lost
       if (prwall == 0.) prwall = xmmax - dx
       do k=0,nzzarr
@@ -240,9 +248,14 @@ c     rho = 0.
 c     curr = 0.
       do is=1,ns
          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
-            call setrho3d(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                    uzp(ipmin),sq(is),sw(is),depos)
+           ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+           if(solvergeom==XYZgeom) then
+              call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
+     &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
+            elseif(solvergeom==RZgeom) then
+              call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ip,
+     &                         sq(is)*sw(is),rho(0,0,0),nx,nz,dx,dz,zmmin)
+            end if
          enddo
       enddo
       call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
@@ -1238,8 +1251,15 @@ c           --- Obtain the self-field from the electrostatic potential
      &                    zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
      &                    efetch,ex,ey,ez,l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
-              call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ex,ey,ez,
-     &                           ip,phi(0,0,-1),nx,nz,dx,dz,zmmin)
+             if(is==1.and.ipmin==ins(is)) then
+               call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ex,ey,ez,
+     &                            ip,phi(0,0,-1),selfe(1,0,0,0),nx,nz,dx,dz,
+     &                            zmmin,.true.)
+             else
+               call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ex,ey,ez,
+     &                            ip,phi(0,0,-1),selfe(1,0,0,0),nx,nz,dx,dz,
+     &                            zmmin,.false.)
+             end if
             endif
 c           --- Get E field for particles near the  injection surface.
             if (inject > 0) then
@@ -3538,12 +3558,14 @@ c=============================================================================
       subroutine loadrho3d(ins_i,nps_i,is_i,lzero)
       use Subtimers
       use InGen
+      use InGen3d
       use InPart
       use InMesh3d
       use Picglb
       use Picglb3d
       use Particles
       use Fields3d
+      use FRZmgrid
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
@@ -3586,8 +3608,13 @@ c        --- get loop limits for particles if needed
 c        --- loop over particle blocks
          do ipmin = ins_u, ins_u + nps_u - 1, NPARPGRP
             ip = min(NPARPGRP, ins_u+nps_u-ipmin)
-            call setrho3d(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                    uzp(ipmin),sq(is),sw(is),depos)
+            if(solvergeom==XYZgeom) then
+              call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
+     &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
+            elseif(solvergeom==RZgeom) then
+              call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ip,
+     &                         sq(is)*sw(is),rho(0,0,0),nx,nz,dx,dz,zmmin)
+            end if
          enddo
       enddo
 
