@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.8 2003/08/08 19:55:45 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.9 2003/08/12 00:47:50 dave Exp $"
 
 class PlaneSave:
   """
@@ -92,6 +92,7 @@ Input:
       self.f.ymmax     = w3d.ymmax
       self.f.dt        = top.dt
       self.f.deltaz    = self.deltaz
+      self.f.npid      = top.npid
      
       # --- set sym_plane and write it out
       if (w3d.l4symtry):
@@ -107,9 +108,9 @@ Input:
 
       # --- Write out particle quantities for each species
       for js in self.jslist:
-        self.f.write('sq_%08d'%js,top.sq[js])
-        self.f.write('sm_%08d'%js,top.sm[js])
-        self.f.write('sw_%08d'%js,top.sw[js])
+        self.f.write('sq_%d'%js,top.sq[js])
+        self.f.write('sm_%d'%js,top.sm[js])
+        self.f.write('sw_%d'%js,top.sw[js])
 
       self.f.set_verbosity(0)
       self.f.close()
@@ -130,7 +131,8 @@ Input:
       iz = nint((self.zplane - top.zbeam - w3d.zmminglobal)/w3d.dz)
       self.phi_save[:,:,0] = getphi(iz=iz-self.izz)
       self.phi_save[:,:,1] = getphi(iz=iz)
-      self.f.write('phiplane%08d'%self.it,self.phi_save)
+      if me == 0:
+        self.f.write('phiplane%d'%self.it,self.phi_save)
 
     if me == 0:
       if(self.save_this_step):
@@ -152,11 +154,11 @@ Input:
       # --- that may have crossed zplane.
       # --- If there are faster particles, increase maxvzdt appropriately and
       # --- reget vz. Do this until maxvzdt > max(vz)*dt
-      maxvz = broadcast(max(vz))
+      maxvz = globalmax(vz)
       while maxvz*top.dt > self.maxvzdt:
         self.maxvzdt = maxvz*top.dt*1.1
         vz = getvz(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
-        maxvz = broadcast(max(vz))
+        maxvz = globalmax(vz)
 
       # --- Get rest of particle data
       xx = getx(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
@@ -166,10 +168,11 @@ Input:
       uy = getuy(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
       uz = getuz(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
       gi = getgaminv(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
-      id = []
-      for i in range(top.npidmax):
-        id.append(getpid(js=js,id=i,zl=self.zplane,zu=self.zplane+self.maxvzdt))
-      id = array(id)
+      if top.npid > 0:
+        id = []
+        for i in range(top.npidmax):
+          id.append(getpid(js=js,id=i,zl=self.zplane,zu=self.zplane+self.maxvzdt))
+        id = transpose(array(id))
 
       # --- Recalculate the previous axial location of the particles to check
       # --- if the particles crossed the saving plane.
@@ -183,13 +186,18 @@ Input:
       if np_save > 0: self.save_this_step = true
       self.save_this_step = broadcast(self.save_this_step)
 
-      if (self.save_this_step and me == 0):
-        suffix = '%08d_%08d'%(self.it,js)
-        self.f.write('xp'+suffix,    take(top.xx,ii))
-        self.f.write('yp'+suffix,    take(top.yy,ii))
-        self.f.write('zp'+suffix,    take(top.zz,ii))
-        self.f.write('uxp'+suffix,   take(top.ux,ii))
-        self.f.write('uyp'+suffix,   take(top.uy,ii))
-        self.f.write('uzp'+suffix,   take(top.uz,ii))
-        self.f.write('gaminv'+suffix,take(top.gi,ii))
-        self.f.write('pid'+suffix,   take(top.id,ii))
+      if (self.save_this_step):
+        self.it = self.it + 1
+
+      if (np_save > 0 and self.save_this_step and me == 0):
+        suffix = '%d_%d'%(self.it,js)
+        self.f.write('xp'+suffix,    take(xx,ii))
+        self.f.write('yp'+suffix,    take(yy,ii))
+        self.f.write('zp'+suffix,    take(zz,ii))
+        self.f.write('uxp'+suffix,   take(ux,ii))
+        self.f.write('uyp'+suffix,   take(uy,ii))
+        self.f.write('uzp'+suffix,   take(uz,ii))
+        self.f.write('gaminv'+suffix,take(gi,ii))
+        if top.npid > 0:
+          self.f.write('pid'+suffix,   take(id,ii))
+
