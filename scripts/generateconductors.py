@@ -77,7 +77,7 @@ if not lparallel:
     pass
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.64 2004/05/20 21:59:35 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.65 2004/05/22 01:50:09 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -185,7 +185,7 @@ Should never be directly created by the user.
                        kwlist=self.getkwlist())
     return result
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
     raise  # virtual function
 
   def getdxobject(self):
@@ -235,7 +235,10 @@ AssemblyNot class.  Represents 'not' of assemblies.
     return (-(self.left.isinside(xx,yy,zz)))
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (-(self.left.intercept(xx,yy,zz,vx,vy,vz)))
-  def visualize(self,display=1,**kw):
+  def getdxobject(self):
+    return self.left.getdxobject()
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     self.left.visualize(display=display,kwdict=kw)
 
 
@@ -261,7 +264,13 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) *
             self.right.intercept(xx,yy,zz,vx,vy,vz))
-  def visualize(self,display=1,**kw):
+  def getdxobject(self):
+    l = self.left.dxobject()
+    r = self.right.dxobject()
+    v = pyOpenDX.DXCollection(l,r)
+    return v
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     self.left.visualize(display=0,kwdict=kw)
     self.right.visualize(display=0,kwdict=kw)
     v = pyOpenDX.DXCollection(self.left,self.right)
@@ -291,7 +300,13 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) +
             self.right.intercept(xx,yy,zz,vx,vy,vz))
-  def visualize(self,display=1,**kw):
+  def getdxobject(self):
+    l = self.left.getdxobject()
+    r = self.right.getdxobject()
+    v = pyOpenDX.DXCollection(l,r)
+    return v
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     self.left.visualize(display=0,kwdict=kw)
     self.right.visualize(display=0,kwdict=kw)
     v = pyOpenDX.DXCollection(self.left,self.right)
@@ -321,7 +336,13 @@ AssemblyMinus class.
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) -
             self.right.intercept(xx,yy,zz,vx,vy,vz))
-  def visualize(self,display=1,**kw):
+  def getdxobject(self):
+    l = self.left.getdxobject()
+    r = self.right.getdxobject()
+    v = pyOpenDX.DXCollection(l,r)
+    return v
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     self.left.visualize(display=0,kwdict=kw)
     self.right.visualize(display=0,kwdict=kw)
     v = pyOpenDX.DXCollection(self.left,self.right)
@@ -1334,14 +1355,14 @@ Cylinder aligned with z-axis
     return Assembly.getextent(self,[-self.radius,-self.radius,-self.length/2.],
                                    [+self.radius,+self.radius,+self.length/2.])
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=0.,rendzmax=0.,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=[self.radius,self.radius],
                        zdata=[-self.length/2.,+self.length/2.],
-                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
                        display=display,kwdict=kw)
     if not display: self.dxobject = v
 
@@ -1369,7 +1390,8 @@ Cylinder with rounded corners aligned with z-axis
     return Assembly.getextent(self,[-self.radius,-self.radius,-self.length/2.],
                                    [+self.radius,+self.radius,+self.length/2.])
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     rr = [self.radius-self.radius2,self.radius,
           self.radius,self.radius-self.radius2]
     zz = [-self.length/2.,-self.length/2.+self.radius2,
@@ -1413,7 +1435,8 @@ Outside of a cylinder aligned with z-axis
     return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
                                    [+largepos,+largepos,+self.length/2.])
 
-  def visualize(self,rend=1.,display=1,**kw):
+  def visualize(self,rend=1.,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=rend,rendzmax=rend,
@@ -1450,7 +1473,8 @@ Outside of a cylinder with rounded corners aligned with z-axis
     return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
                                    [+largepos,+largepos,+self.length/2.])
 
-  def visualize(self,rend=1.,display=1,**kw):
+  def visualize(self,rend=1.,display=1,kwdict={},**kw):
+    kw.update(kwdict)
 
     rr = [self.radius+self.radius2,self.radius,
           self.radius,self.radius+self.radius2]
@@ -1541,7 +1565,8 @@ Sphere
     return Assembly.getextent(self,[-self.radius,-self.radius,-self.radius],
                                    [+self.radius,+self.radius,+self.radius])
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.radius,zzmax=+self.radius,
                        rendzmin=0.,rendzmax=0.,
@@ -1696,7 +1721,8 @@ Cone
     return Assembly.getextent(self,[-rmax,-rmax,-self.length/2.],
                                    [+rmax,+rmax,+self.length/2.])
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=0.,rendzmax=0.,
@@ -1739,7 +1765,8 @@ Cone
     return Assembly.getextent(self,[-rmax,-rmax,-self.length/2.],
                                    [+rmax,+rmax,+self.length/2.])
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     self.r_zmin = self.slope*(-self.length/2. - self.intercept)
     self.r_zmax = self.slope*(+self.length/2. - self.intercept)
     v = VPythonobjects.VisualRevolution(
@@ -1776,7 +1803,8 @@ Cone outside
     return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
                                    [+largepos,+largepos,+self.length/2.])
 
-  def visualize(self,rend=1.,display=1,**kw):
+  def visualize(self,rend=1.,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
                        rendzmin=rend,rendzmax=rend,
@@ -1817,7 +1845,8 @@ Cone outside
     return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
                                    [+largepos,+largepos,+self.length/2.])
 
-  def visualize(self,rend=1.,display=1,**kw):
+  def visualize(self,rend=1.,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     self.r_zmin = self.slope*(-self.length/2. - self.intercept)
     self.r_zmax = self.slope*(+self.length/2. - self.intercept)
     v = VPythonobjects.VisualRevolution(
@@ -1853,7 +1882,8 @@ Torus
     return Assembly.getextent(self,[-rmax,-rmax,-self.r2],
                                    [+rmax,+rmax,+self.r2])
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.r2,zzmax=+self.r2,
                        rendzmin=self.r1,rendzmax=self.r1,
@@ -2124,7 +2154,8 @@ Outside of a surface of revolution
     return Assembly.getextent(self,[-self.rmax,-self.rmax,self.zmin],
                                    [+self.rmax,+self.rmax,self.zmax])
 
-  def visualize(self,rend=None,display=1,**kw):
+  def visualize(self,rend=None,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     if rend is None: rend = self.rmax
     v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
                        rendzmin=rend,rendzmax=rend,
@@ -2220,9 +2251,10 @@ Inside of a surface of revolution
     return Assembly.getextent(self,[-rmax,-rmax,self.zmin],
                                    [+rmax,+rmax,self.zmax])
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
-                       rendzmin=rend,rendzmax=rend,
+                       rendzmin=self.rmin,rendzmax=self.rmin,
                        xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rofzdata,zdata=self.zdata,
                        raddata=self.raddata,zcdata=self.zcdata,
@@ -2351,7 +2383,8 @@ Between surfaces of revolution
     return Assembly.getextent(self,[-rmax,-rmax,self.zmin],
                                    [+rmax,+rmax,self.zmax])
 
-  def visualize(self,display=1,**kw):
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
     if self.usemindata:
       rminzmin = self.rminofzdata[0]
       rminzmax = self.rminofzdata[-1]
@@ -2434,8 +2467,8 @@ Creates an Annulus as a surface of revolution.
     self.rmin = rmin
     self.rmax = rmax
     self.length = length
-    self.zmin = zcent - length/2.
-    self.zmax = zcent + length/2.
+    self.zmin = -length/2.
+    self.zmax = +length/2.
 
     # --- Setup tablized data.
     self.usemindata = true
