@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.19 2001/11/02 19:38:42 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.20 2001/11/03 01:19:13 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -40,7 +40,7 @@ that has already been done.
   prwallxz = gatherallzarray(top.prwallxz)
   prwallyz = gatherallzarray(top.prwallyz)
   prwelips = gatherallzarray(top.prwelips)
-  lostpars = gatherallzarray(top.lostpars,'i')
+  lostpars = gatherallzarray(top.lostpars)
   phi = w3d.phi + 0.
   rho = w3d.rho + 0.
 
