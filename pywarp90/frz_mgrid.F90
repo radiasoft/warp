@@ -1,4 +1,4 @@
-!     Last change:  JLV  15 Apr 2002    2:23 pm
+!     Last change:  JLV  23 Apr 2002    9:03 am
 #include "top.h"
 
 module multigrid_common
@@ -11,9 +11,7 @@ USE FRZmgrid
   use mpirz
 #endif
 
-LOGICAL :: restrictwbnd = .true.
-
-LOGICAL :: l_mgridrz_debug=.false.
+LOGICAL :: l_mgridrz_debug=.FALSE., l_timing_rz=.TRUE., restrictwbnd=.true.
 
 TYPE conductor_type
 ! structure for potential calculation close to conductors.
@@ -99,11 +97,11 @@ END TYPE bndptr
 TYPE(bndptr), pointer :: bndy(:)
 
 TYPE grdptr
-  INTEGER(ISZ) :: id,nlevels,nr,nz
+  INTEGER(ISZ) :: id,nlevels,nr,nz,jmin,jmax,lmin,lmax
   REAL(8) :: rmin,rmax,zmin,zmax,dr,dz,invdr,invdz
   REAL(8), POINTER, DIMENSION(:) :: invvol
   REAL(8), POINTER, DIMENSION(:,:) :: rho, phi
-  INTEGER(ISZ), POINTER, DIMENSION(:,:) :: loc_part
+  INTEGER(ISZ), POINTER, DIMENSION(:,:) :: loc_part, loc_part_field_dep
   INTEGER(ISZ) :: ixlbnd, ixrbnd, izlbnd, izrbnd  ! boundary conditions for each side
   TYPE(bndptr), pointer :: bnd(:)
   INTEGER(ISZ) :: npre, npost, ncycles, ncmax, npmin
@@ -130,7 +128,9 @@ INTEGER(ISZ) :: i,j
 
   ALLOCATE(grids)
   NULLIFY(grids%next,grids%prev,grids%down,grids%up,grids%bnd)
-  ALLOCATE(grids%rho(nr+1,nz+1),grids%phi(0:nr+2,0:nz+2),grids%loc_part(nr+1,nz+1),grids%invvol(nr+1))
+  ALLOCATE(grids%rho(nr+1,nz+1),grids%phi(0:nr+2,0:nz+2), &
+           grids%loc_part(nr+1,nz+1),grids%invvol(nr+1), &
+           grids%loc_part_field_dep(nr+1,nz+1),grids%invvol(nr+1))
   grids%id=1
   grids_nids=1
   grids%nr=nr
@@ -141,7 +141,12 @@ INTEGER(ISZ) :: i,j
   grids%dz=dz
   grids%zmin=zmin
   grids%zmax=zmin+nz*dz
+  grids%jmin=1
+  grids%jmax=nr+1
+  grids%lmin=1
+  grids%lmax=nr+1
   grids%loc_part=1
+  grids%loc_part_field_dep=1
   grids%mgparam = mgridrz_mgparam
   grids%npre = mgridrz_npre
   grids%npost = mgridrz_npost
@@ -193,14 +198,33 @@ subroutine add_grid(grid,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min
 implicit none
 TYPE(grdptr), pointer :: grid
 INTEGER(ISZ), INTENT(IN) :: nr, nz, guard_min_r, guard_max_r, guard_min_z, guard_max_z
-REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
+REAL(8), INTENT(IN OUT) :: dr,dz,rmin,zmin
 TYPE(grdptr), pointer :: newgrid
 INTEGER(ISZ) :: i,j,l,jmin,jmax,lmin,lmax
-REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
+
+! adjust new grid boundaries to fall onto mother grid lines
+! and recalculate mesh spacing for new grid
+
+  jmin = 1+NINT((MAX(rmin,grid%rmin)-grid%rmin)/grid%dr)
+  jmax = 1+NINT((MIN(rmin+nr*dr,grid%rmax)-grid%rmin)/grid%dr)
+  lmin = 1+NINT((MAX(zmin,grid%zmin)-grid%zmin)/grid%dz)
+  lmax = 1+NINT((MIN(zmin+nz*dz,grid%zmax)-grid%zmin)/grid%dz)
+
+  rmin = (jmin-1)*grid%dr
+  zmin = (lmin-1)*grid%dz
+
+  dr = ((jmax-1)*grid%dr-rmin)/nr
+  dz = ((lmax-1)*grid%dz-zmin)/nz
+
+! allocate new grid
 
   ALLOCATE(newgrid)
   NULLIFY(newgrid%next,newgrid%prev,newgrid%down,newgrid%up,newgrid%bnd)
-  ALLOCATE(newgrid%rho(nr+1,nz+1),newgrid%phi(0:nr+2,0:nz+2),newgrid%loc_part(nr+1,nz+1),newgrid%invvol(nr+1))
+  ALLOCATE(newgrid%rho(nr+1,nz+1), &
+           newgrid%phi(0:nr+2,0:nz+2), &
+           newgrid%loc_part(nr+1,nz+1), &
+           newgrid%loc_part_field_dep(nr+1,nz+1), &
+           newgrid%invvol(nr+1))
   IF(n_avail_ids==0) then
     newgrid%id=grids_nids+1
     grids_nids=grids_nids+1
@@ -208,7 +232,12 @@ REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
     newgrid%id=avail_ids(n_avail_ids)
     n_avail_ids=n_avail_ids-1
   END if
+  newgrid%jmin=jmin
+  newgrid%jmax=jmax
+  newgrid%lmin=lmin
+  newgrid%lmax=lmax
   newgrid%loc_part=newgrid%id
+  newgrid%loc_part_field_dep=newgrid%id
   newgrid%phi=0.
   newgrid%rho=0.
   newgrid%nr=nr
@@ -242,40 +271,15 @@ REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
   newgrid%up => grid
   ngrids=ngrids+1
 
+! update grid pointers list array
+
   call mk_grids_ptr()
 
-  rminguard=newgrid%rmin+guard_min_r*newgrid%up%dr
-  rmaxguard=newgrid%rmax-guard_max_r*newgrid%up%dr
-  zminguard=newgrid%zmin+guard_min_z*newgrid%up%dz
-  zmaxguard=newgrid%zmax-guard_max_z*newgrid%up%dz
+  newgrid%up%loc_part(jmin:jmax-1,lmin:lmax-1)=newgrid%id
 
-  jmin = (rminguard-newgrid%up%rmin)/newgrid%up%dr
-  jmax = (rmaxguard-newgrid%up%rmin)/newgrid%up%dr
-  lmin = (zminguard-newgrid%up%zmin)/newgrid%up%dz
-  lmax = (zmaxguard-newgrid%up%zmin)/newgrid%up%dz
+  newgrid%up%loc_part_field_dep(jmin+guard_min_r:jmax-1-guard_max_r,lmin+guard_min_z:lmax-1-guard_max_z)=newgrid%id
 
-  IF(lmin*newgrid%up%dz+newgrid%up%zmin<zminguard) lmin=lmin+1
-  IF(lmax*newgrid%up%dz+newgrid%up%zmin>zmaxguard) lmax=lmax-1
-  IF(jmin*newgrid%up%dr+newgrid%up%rmin<rminguard) jmin=jmin+1
-  IF(jmax*newgrid%up%dr+newgrid%up%rmin>rmaxguard) jmax=jmax-1
-
-  IF(lmin*newgrid%up%dz+newgrid%up%zmin<zminguard) then
-    WRITE(0,*) 'Error in add_grid:lmin*dz+zmin<zminguard'
-    stop
-  END if
-  IF(lmax*newgrid%up%dz+newgrid%up%zmin>zmaxguard) then
-    WRITE(0,*) 'Error in add_grid:lmax*dz+zmin>zmaxguard'
-    stop
-  END if
-  IF(jmin*newgrid%up%dr+newgrid%up%rmin<rminguard) then
-    WRITE(0,*) 'Error in add_grid:jmin*dr+rmin<rminguard'
-    stop
-  END if
-  IF(jmax*newgrid%up%dr+newgrid%up%rmin>rmaxguard) then
-    WRITE(0,*) 'Error in add_grid:jmax*dr+rmin>rmaxguard'
-    stop
-  END if
-  newgrid%up%loc_part(jmin+1:jmax+1,lmin+1:lmax+1)=newgrid%id
+! assign boundary types
 
   IF(ABS(newgrid%rmax-grid%rmax)<0.1*grid%dr) then
     newgrid%ixrbnd = grid%ixrbnd
@@ -292,6 +296,8 @@ REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
   else
     newgrid%izrbnd = dirichlet
   END if
+
+! computes commodity quantities for charge deposition
 
   newgrid%invdr = 1._8/dr
   newgrid%invdz = 1._8/dz
@@ -340,40 +346,10 @@ recursive subroutine del_grid(grid)
 implicit none
 TYPE(grdptr), pointer :: grid
 INTEGER(ISZ) :: j,l,jmin,jmax,lmin,lmax
-REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
 
-  rminguard=grid%rmin+grid%guard_min_r*grid%up%dr
-  rmaxguard=grid%rmax-grid%guard_max_r*grid%up%dr
-  zminguard=grid%zmin+grid%guard_min_z*grid%up%dz
-  zmaxguard=grid%zmax-grid%guard_max_z*grid%up%dz
-
-  jmin = (rminguard-grid%up%rmin)/grid%up%dr
-  jmax = (rmaxguard-grid%up%rmin)/grid%up%dr
-  lmin = (zminguard-grid%up%zmin)/grid%up%dz
-  lmax = (zmaxguard-grid%up%zmin)/grid%up%dz
-
-  IF(lmin*grid%up%dz+grid%up%zmin<zminguard) lmin=lmin+1
-  IF(lmax*grid%up%dz+grid%up%zmin>zmaxguard) lmax=lmax-1
-  IF(jmin*grid%up%dr+grid%up%rmin<rminguard) jmin=jmin+1
-  IF(jmax*grid%up%dr+grid%up%rmin>rmaxguard) jmax=jmax-1
-
-  IF(lmin*grid%up%dz+grid%up%zmin<zminguard) then
-    WRITE(0,*) 'Error in add_grid:lmin*dz+zmin<zminguard'
-    stop
-  END if
-  IF(lmax*grid%up%dz+grid%up%zmin>zmaxguard) then
-    WRITE(0,*) 'Error in add_grid:lmax*dz+zmin>zmaxguard'
-    stop
-  END if
-  IF(jmin*grid%up%dr+grid%up%rmin<rminguard) then
-    WRITE(0,*) 'Error in add_grid:jmin*dr+rmin<rminguard'
-    stop
-  END if
-  IF(jmax*grid%up%dr+grid%up%rmin>rmaxguard) then
-    WRITE(0,*) 'Error in add_grid:jmax*dr+rmin>rmaxguard'
-    stop
-  END if
-  grid%up%loc_part(jmin+1:jmax+1,lmin+1:lmax+1)=grid%up%id
+  grid%up%loc_part(grid%jmin:grid%jmax-1,grid%lmin:grid%lmax-1)=grid%up%id
+  grid%up%loc_part_field_dep(grid%jmin+grid%guard_min_r:grid%jmax-1-grid%guard_max_r, &
+                             grid%lmin+grid%guard_min_z:grid%lmax-1-grid%guard_max_z)=grid%up%id
 
   level_del_grid=level_del_grid+1
   IF(associated(grid%next)) then
@@ -389,7 +365,7 @@ REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
   else
     n_avail_ids=n_avail_ids+1
     avail_ids(n_avail_ids+1)=grid%id
-    DEALLOCATE(grid%rho,grid%phi,grid%loc_part,grid%invvol)
+    DEALLOCATE(grid%rho,grid%phi,grid%loc_part,grid%loc_part_field_dep,grid%invvol)
     deallocate(grid%next,grid%prev,grid%down,grid%up)
     DEALLOCATE(grid)
   END if
@@ -1338,17 +1314,18 @@ IF(l_mgridrz_debug) WRITE(0,*) 'exit restrict, level = ',level
 return
 END function restrict
 
-subroutine deposit(unew, uold, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
+subroutine deposit(unew, uold, invvolnew, invvolold, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
 ! deposit rho from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
 REAL(8), DIMENSION(1:,1:), INTENT(IN OUT) :: unew
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
+REAL(8), DIMENSION(1:), INTENT(IN) :: invvolnew, invvolold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
 
 INTEGER(ISZ) :: nxold, nzold, nxnew, nznew
 INTEGER(ISZ) :: jold, kold, j, k, jp, kp
-REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz, rap
-REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz
+REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz
+REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz, volold
 INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp
 
 IF(l_mgridrz_debug) WRITE(0,*) 'enter deposit'
@@ -1359,14 +1336,12 @@ nxnew = SIZE(unew,1) - 1
 nznew = SIZE(unew,2) - 1
 
 ALLOCATE(ddx(nxold+1), ddz(nzold+1), oddx(nxold+1), oddz(nzold+1), &
-         jnew(nxold+1), knew(nzold+1), jnewp(nxold+1), knewp(nzold+1))
+         jnew(nxold+1), knew(nzold+1), jnewp(nxold+1), knewp(nzold+1), volold(nxold+1))
 
 invdxnew = nxnew / (xmaxnew-xminnew)
 invdznew = nznew / (zmaxnew-zminnew)
 dxold = (xmaxold-xminold) / nxold
 dzold = (zmaxold-zminold) / nzold
-
-rap = dxold*dzold*invdxnew*invdznew
 
 do kold = 1, nzold+1
   z = zminold + (kold-1)*dzold
@@ -1382,6 +1357,7 @@ do jold = 1, nxold+1
   ddx(jold) = (x-xminnew) * invdxnew-real(jnew(jold)-1)
   jnewp(jold) = jnew(jold)+1
   oddx(jold) = 1._8-ddx(jold)
+  volold(jold) = 1._8/invvolold(jold)
 END do
 
 do kold = 1, nzold+1
@@ -1394,14 +1370,14 @@ do kold = 1, nzold+1
     jp = jnewp(jold)
     delx  =  ddx(jold)
     odelx = oddx(jold)
-    unew(j,k)   = unew(j,k)   + uold(jold,kold) * odelx * odelz * rap
-    unew(jp,k)  = unew(jp,k)  + uold(jold,kold) * delx  * odelz * rap
-    unew(j,kp)  = unew(j,kp)  + uold(jold,kold) * odelx * delz  * rap
-    unew(jp,kp) = unew(jp,kp) + uold(jold,kold) * delx  * delz  * rap
+    unew(j,k)   = unew(j,k)   + uold(jold,kold) * odelx * odelz * invvolnew(j) *volold(jold)
+    unew(jp,k)  = unew(jp,k)  + uold(jold,kold) * delx  * odelz * invvolnew(jp)*volold(jold)
+    unew(j,kp)  = unew(j,kp)  + uold(jold,kold) * odelx * delz  * invvolnew(j) *volold(jold)
+    unew(jp,kp) = unew(jp,kp) + uold(jold,kold) * delx  * delz  * invvolnew(jp)*volold(jold)
   end do
 end do
 
-DEALLOCATE(ddx, ddz, oddx, oddz, jnew, knew, jnewp, knewp)
+DEALLOCATE(ddx, ddz, oddx, oddz, jnew, knew, jnewp, knewp, volold)
 
 IF(l_mgridrz_debug) WRITE(0,*) 'exit deposit'
 
@@ -2752,6 +2728,34 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 return
 end subroutine multigridrzf
 
+subroutine assign_injdxdy_rz(inj_nx,inj_ny,inj_dx,inj_dy,inj_dz)
+USE multigridrz
+implicit none
+INTEGER(ISZ), INTENT(IN OUT) :: inj_nx,inj_ny
+REAL(8), INTENT(IN OUT) :: inj_dx,inj_dy,inj_dz
+
+  IF(mgridrz_inj_id>ngrids) then
+    WRITE(0,*) 'Error in assign_injdxdy_rz, mgridrz_inj_id > ngrids'
+    stop
+  END if
+  inj_nx = grids_ptr(mgridrz_inj_id)%grid%nr
+  inj_ny = grids_ptr(mgridrz_inj_id)%grid%nr
+  inj_dx = grids_ptr(mgridrz_inj_id)%grid%dr
+  inj_dy = grids_ptr(mgridrz_inj_id)%grid%dr
+  inj_dz = grids_ptr(mgridrz_inj_id)%grid%dz
+
+return
+end subroutine assign_injdxdy_rz
+
+subroutine distribute_rho_rz()
+USE multigridrz
+implicit none
+
+call distribute_rho(basegrid)
+
+return
+END subroutine distribute_rho_rz
+
 RECURSIVE subroutine distribute_rho(grid)
 USE multigridrz
 implicit none
@@ -2760,7 +2764,7 @@ TYPE(grdptr) :: grid
   IF(associated(grid%down)) call distribute_rho(grid%down)
   IF(associated(grid%next)) call distribute_rho(grid%next)
   IF(associated(grid%up)) then
-    call deposit(unew=grid%up%rho, uold=grid%rho, &
+    call deposit(unew=grid%up%rho, uold=grid%rho, invvolnew=grid%up%invvol, invvolold=grid%invvol, &
                  xminold=grid%rmin, xmaxold=grid%rmax, zminold=grid%zmin, zmaxold=grid%zmax, &
                  xminnew=grid%up%rmin, xmaxnew=grid%up%rmax, zminnew=grid%up%zmin, zmaxnew=grid%up%zmax)
   END if
@@ -3263,6 +3267,7 @@ end subroutine addconductors_rz
 subroutine rhoweightrz(xp,yp,zp,np,q,rho,nr,nz,dr,dz,zmin)
 USE multigridrz
 USE constant
+USE Subtimers
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -3272,6 +3277,9 @@ REAL(8), INTENT(IN) :: q, dr, dz, zmin
 
 REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr)
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
+REAL(8):: substarttime,wtime
+
+if (lw3dtimesubs) substarttime = wtime()
 
 IF(ngrids>1) then
   call rhoweightrznew(xp,yp,zp,np,q)
@@ -3294,22 +3302,22 @@ else
     IF(zp(i)<zmin) cycle
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr
     zpos = (zp(i)-zmin)*invdz
-    jn = INT(rpos)
-    ln = INT(zpos)
-    ddr = rpos-REAL(jn)
-    ddz = zpos-REAL(ln)
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
     oddr = 1._8-ddr
     oddz = 1._8-ddz
     jnp=jn+1
     lnp=ln+1
-    rho(jn, ln)  = rho(jn, ln)  + q * oddr * oddz * invvol(jn)
-    rho(jnp,ln)  = rho(jnp,ln)  + q *  ddr * oddz * invvol(jnp)
-    rho(jn, lnp) = rho(jn, lnp) + q * oddr *  ddz * invvol(jn)
-    rho(jnp,lnp) = rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp)
+    basegrid%rho(jn, ln)  = basegrid%rho(jn, ln)  + q * oddr * oddz * invvol(jn-1)
+    basegrid%rho(jnp,ln)  = basegrid%rho(jnp,ln)  + q *  ddr * oddz * invvol(jnp-1)
+    basegrid%rho(jn, lnp) = basegrid%rho(jn, lnp) + q * oddr *  ddz * invvol(jn-1)
+    basegrid%rho(jnp,lnp) = basegrid%rho(jnp,lnp) + q *  ddr *  ddz * invvol(jnp-1)
   end do
-  basegrid%rho = rho
 END if
 
+if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
 return
 END SUBROUTINE RHOWEIGHTRZ
 
@@ -3367,25 +3375,37 @@ REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
 REAL(8), INTENT(IN) :: q
 
 REAL(8) :: rpos, zpos, ddr, ddz, oddr, oddz
-INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp, grid_id
+INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp, igrid
 LOGICAL(ISZ) :: ingrid
+
+REAL(8), DIMENSION(:), ALLOCATABLE :: invdr, invdz, zmin
+
+ALLOCATE(invdr(ngrids),invdz(ngrids),zmin(ngrids))
+
+do igrid = 1, ngrids
+  invdr(igrid) = grids_ptr(igrid)%grid%invdr
+  invdz(igrid) = grids_ptr(igrid)%grid%invdz
+  zmin (igrid) = grids_ptr(igrid)%grid%zmin
+end do
 
   ! make charge deposition using CIC weighting
   do i = 1, np
     IF(zp(i)<grids%zmin) cycle
-    grids => basegrid
+    igrid = 1
+    grids=>basegrid
     ingrid=.false.
-    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
-    zpos = (zp(i)-grids%zmin)*grids%invdz
+    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr(igrid)
+    zpos = (zp(i)-zmin(igrid))*invdz(igrid)
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
-      IF(grids%loc_part(jn,ln)==grids%id) then
+      IF(grids%loc_part(jn,ln)==igrid) then
         ingrid=.true.
       else
-        grids=>grids_ptr(grids%loc_part(jn,ln))%grid
-        rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
-        zpos = (zp(i)-grids%zmin)*grids%invdz
+        igrid = grids%loc_part(jn,ln)
+        grids=>grids_ptr(igrid)%grid
+        rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr(igrid)
+        zpos = (zp(i)-grids%zmin)*invdz(igrid)
         jn = 1+INT(rpos)
         ln = 1+INT(zpos)
       END if
@@ -3401,6 +3421,8 @@ LOGICAL(ISZ) :: ingrid
     grids%rho(jn, lnp) = grids%rho(jn, lnp) + q * oddr *  ddz * grids%invvol(jn)
     grids%rho(jnp,lnp) = grids%rho(jnp,lnp) + q *  ddr *  ddz * grids%invvol(jnp)
   end do
+
+  DEALLOCATE(invdr,invdz,zmin)
 
   return
 END SUBROUTINE RHOWEIGHTRZNEW
@@ -3576,26 +3598,10 @@ INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
   return
 end subroutine fieldweightrzold
 
-subroutine fieldweightrz(xp,yp,zp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,calcselfe)
-USE constant
-implicit none
-
-INTEGER(ISZ), INTENT(IN) :: np, nr, nz
-REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
-REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
-REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
-REAL(8), DIMENSION(1:2,0:nr,0:nz), INTENT(IN OUT) :: e
-REAL(8), INTENT(IN) :: dr, dz, zmin
-LOGICAL(ISZ), INTENT(IN) :: calcselfe
-
-call fieldweightrznew(xp,yp,zp,ex,ey,ez,np)
-
-return
-end subroutine fieldweightrz
-
-subroutine fieldweightrznew(xp,yp,zp,ex,ey,ez,np)
+subroutine fieldweightrz(xp,yp,zp,ex,ey,ez,np)
 USE multigridrz
 USE constant
+USE subtimers
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
@@ -3603,26 +3609,40 @@ REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 
 REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz, er
-INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
+INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
 LOGICAL(ISZ) :: ingrid
 
+REAL(8), DIMENSION(:), ALLOCATABLE :: invdr, invdz, zmin
+REAL(8):: substarttime,wtime
+if (lw3dtimesubs) substarttime = wtime()
+
+IF(ngrids>1) then
+  ALLOCATE(invdr(ngrids),invdz(ngrids),zmin(ngrids))
+
+  do igrid = 1, ngrids
+    invdr(igrid) = grids_ptr(igrid)%grid%invdr
+    invdz(igrid) = grids_ptr(igrid)%grid%invdz
+    zmin(igrid)  = grids_ptr(igrid)%grid%zmin
+  end do
 
   ! make charge deposition using CIC weighting
   do i = 1, np
     IF(zp(i)<grids%zmin) cycle
+    igrid = 1
     grids => basegrid
     ingrid=.false.
-    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
-    zpos = (zp(i)-grids%zmin)*grids%invdz
+    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr(igrid)
+    zpos = (zp(i)-grids%zmin)*invdz(igrid)
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
-      IF(grids%loc_part(jn,ln)==grids%id) then
+      IF(grids%loc_part_field_dep(jn,ln)==igrid) then
         ingrid=.true.
       else
-        grids=>grids_ptr(grids%loc_part(jn,ln))%grid
-        rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
-        zpos = (zp(i)-grids%zmin)*grids%invdz
+        igrid = grids%loc_part_field_dep(jn,ln)
+        grids=>grids_ptr(igrid)%grid
+        rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr(igrid)
+        zpos = (zp(i)-zmin(igrid))*invdz(igrid)
         jn = 1+INT(rpos)
         ln = 1+INT(zpos)
       END if
@@ -3636,7 +3656,7 @@ LOGICAL(ISZ) :: ingrid
             + oddr * ddz  * (grids%phi(jn-1,ln+1)-grids%phi(jn+1,ln+1))  &
             + ddr  * ddz  * (grids%phi(jn  ,ln+1)-grids%phi(jn+2,ln+1)))*grids%invdr
     IF(rpos>1.e-10) then
-      invrpos=grids%invdr/rpos
+      invrpos=invdr(igrid)/rpos
       ex(i) = er*xp(i)*invrpos
       ey(i) = er*yp(i)*invrpos
     else
@@ -3646,11 +3666,44 @@ LOGICAL(ISZ) :: ingrid
     ez(i) = 0.5*(oddr * oddz * (grids%phi(jn  ,ln-1)-grids%phi(jn  ,ln+1))  &
                + ddr  * oddz * (grids%phi(jn+1,ln-1)-grids%phi(jn+1,ln+1))  &
                + oddr * ddz  * (grids%phi(jn  ,ln  )-grids%phi(jn  ,ln+2))  &
-               + ddr  * ddz  * (grids%phi(jn+1,ln  )-grids%phi(jn+1,ln+2)))*grids%invdz
+               + ddr  * ddz  * (grids%phi(jn+1,ln  )-grids%phi(jn+1,ln+2)))*invdz(igrid)
   END do
+  DEALLOCATE(invdr,invdz,zmin)
+else
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(zp(i)<basegrid%zmin) cycle
+    ingrid=.false.
+    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*basegrid%invdr
+    zpos = (zp(i)-basegrid%zmin)*basegrid%invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    er = 0.5*(oddr * oddz * (basegrid%phi(jn-1,ln  )-basegrid%phi(jn+1,ln  ))  &
+            + ddr  * oddz * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn+2,ln  ))  &
+            + oddr * ddz  * (basegrid%phi(jn-1,ln+1)-basegrid%phi(jn+1,ln+1))  &
+            + ddr  * ddz  * (basegrid%phi(jn  ,ln+1)-basegrid%phi(jn+2,ln+1)))*basegrid%invdr
+    IF(rpos>1.e-10) then
+      invrpos=basegrid%invdr/rpos
+      ex(i) = er*xp(i)*invrpos
+      ey(i) = er*yp(i)*invrpos
+    else
+      ex(i) = er
+      ey(i) = 0._8
+    END if
+    ez(i) = 0.5*(oddr * oddz * (basegrid%phi(jn  ,ln-1)-basegrid%phi(jn  ,ln+1))  &
+               + ddr  * oddz * (basegrid%phi(jn+1,ln-1)-basegrid%phi(jn+1,ln+1))  &
+               + oddr * ddz  * (basegrid%phi(jn  ,ln  )-basegrid%phi(jn  ,ln+2))  &
+               + ddr  * ddz  * (basegrid%phi(jn+1,ln  )-basegrid%phi(jn+1,ln+2)))*basegrid%invdz
+  END do
+END if
 
+  if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
   return
-end subroutine fieldweightrznew
+end subroutine fieldweightrz
 
 subroutine fieldweightrz_deform(xp,yp,zp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin,xfact,yfact,calcphi,phi3d,selfe)
 USE constant
@@ -3921,6 +3974,124 @@ REAL(8) :: ddz, oddz, wddz, woddz, xrms, yrms, invdz, zpos, xp2, yp2
   return
 end subroutine calcfact_deform
 
+subroutine getinj_phi_rz_ng()
+use InjectVars
+use InjectVars3d
+use FRZmgrid
+use multigridrz
+#ifdef MPIPARALLEL
+use Parallel
+#endif
+integer(ISZ):: nx,nz
+real(kind=8):: dx,dz,xmmin,ymmin
+
+! Calculate potential drop from emitting surface at distance
+! of dz from the surface.  This is only done for grid cells
+! within two grid cells of the elliptical emitting surface, and
+! within the axial extent of the grid. This is done over the
+! full axial extent since points which are outside of the
+! injection region maybe needed for the interlopation below
+! to get zp.
+
+integer(ISZ):: ij,ix,iy,i2r,i2z
+real(kind=8):: dxi,dyi
+real(kind=8):: ainjsqi,binjsqi,xinj,yinj
+real(kind=8):: rrsq,aa,p2x,p2y,p2r,p2z,w2r,w2z
+
+#ifdef MPIPARALLEL
+!     --- In the parallel version, only processor 0 calculates inj_phi.
+if (my_index == 0) then
+#endif
+
+grids=>grids_ptr(mgridrz_inj_id)%grid
+dx = grids%dr
+dz = grids%dz
+nx = grids%nr
+nz = grids%nz
+xmmin = grids%rmin
+ymmin = grids%rmin
+
+dxi = 1./dx
+dyi = 1./dx
+
+!c     --- loop over injection sources
+do ij=1,ninject
+
+!       --- Set some temporaries.
+  ainjsqi = 1./(ainject(ij) + 2.*dx)**2
+  binjsqi = 1./(binject(ij) + 2.*dx)**2
+  xinj = xinject(ij)
+  yinj = yinject(ij)
+
+  do iy = 0,nx
+    do ix = 0,nx
+      rrsq = (ix*dx + xmmin - xinj)**2*ainjsqi + &
+             (iy*dx + ymmin - yinj)**2*binjsqi
+      if (rrsq < 1. .and. (-1 <= inj_grid(ix,iy) .and. inj_grid(ix,iy) < nz)) then
+
+!             --- angle of point in transverse plane
+        aa = atan2(iy*dx+ymmin-yinj,dvnz(ix*dx+xmmin-xinj))
+
+!             --- Find coordinates of the point a distance dz in front
+!             --- of the source along a line perpendicular to the
+!             --- emitting surface.
+        p2x = ix-dz*cos(aa)*sin(inj_angl(ix,iy))*dxi*inj_d
+        p2y = iy-dz*sin(aa)*sin(inj_angl(ix,iy))*dyi*inj_d
+        p2r = sqrt(p2x**2+p2y**2)
+        p2z = inj_grid(ix,iy) + cos(inj_angl(ix,iy))*inj_d
+        i2r = p2r
+        i2z = p2z
+        w2r = p2r - i2r
+        w2z = p2z - i2z
+        i2r = i2r+1
+        i2z = i2z+1
+
+!             --- Fetch difference between phi at that point and phi on
+!             --- the emitting surface.
+       inj_phi(ix,iy) = vinject(ij) -                       &
+                grids%phi(i2r  ,i2z  )*(1.-w2r)*(1.-w2z) -  &
+                grids%phi(i2r+1,i2z  )*    w2r *(1.-w2z) -  &
+                grids%phi(i2r  ,i2z+1)*(1.-w2r)*    w2z  -  &
+                grids%phi(i2r+1,i2z+1)*    w2r *    w2z
+     endif
+   enddo
+ enddo
+
+!!        call getinj_phipgrd_rz(ij,nx,nz,phi,dx,dz,xmmin,ymmin)
+!       --- Smooth out inj_phi for this emitting surface.
+!        if (inj_nsmooth > 0) then
+!          call inj_smoother(nx,ny,inj_phi,dx,dy,xmmin,ymmin,
+!     &                      xinj,yinj,ainj,binj,inj_nsmooth)
+!        endif
+
+enddo
+
+#ifdef MPIPARALLEL
+endif
+!     --- The result calculated by processor 0 is broadcast to the rest
+!     --- of the processors.
+  call parallelbroadcastrealarray(inj_phi,(nx+1)*(nx+1),0)
+#endif
+
+!     --- Calculate the transverse fields
+if (linj_eperp) then
+  do iy = 1,nx-1
+    do ix = 1,nx-1
+      inj_ex(ix,iy) = (inj_phi(ix-1,iy  ) - inj_phi(ix+1,iy  ))*dxi*0.5
+      inj_ey(ix,iy) = (inj_phi(ix  ,iy-1) - inj_phi(ix  ,iy+1))*dyi*0.5
+    enddo
+  enddo
+  do ix = 1,nx-1
+    inj_ex(ix,0) = (inj_phi(ix-1,0) - inj_phi(ix+1,0))*dxi*0.5
+  enddo
+  do iy = 1,nx-1
+    inj_ey(0,iy) = (inj_phi(0,iy-1) - inj_phi(0,iy+1))*dyi*0.5
+  enddo
+endif
+
+return
+end
+
 subroutine init_base(nr,nz,dr,dz,rmin,zmin)
 USE multigridrz
 implicit none
@@ -3938,6 +4109,11 @@ implicit none
 INTEGER(ISZ), INTENT(IN) :: id,nr,nz,guard_min_r,guard_max_r,guard_min_z,guard_max_z
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 
+  IF(id<1 .or. id>ngrids) then
+    WRITE(0,*) 'Fatal error in add_subgrid: id = ', id ,' WHILE id = (1,...,',ngrids,')'
+    stop
+  END if
+
   call add_grid(grids_ptr(id)%grid,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z)
 
 return
@@ -3949,7 +4125,13 @@ implicit none
 INTEGER(ISZ), INTENT(IN) :: id,nr,nz
 REAL(8), DIMENSION(1:nr+1,1:nz+1) :: phi
 
-  phi(1:nr+1,1:nz+1)=grids_ptr(id)%grid%phi(1:nr+1,1:nz+1)
+  IF(id<1 .or. id>ngrids) then
+    WRITE(0,*) 'Error in get_phi_subgrid: id = ', id ,' WHILE id = (1,...,',ngrids,')'
+    WRITE(0,*) 'Returning Phi=0'
+    phi(1:nr+1,1:nz+1) = 0.
+  else
+    phi(1:nr+1,1:nz+1) = grids_ptr(id)%grid%phi(1:nr+1,1:nz+1)
+  END if
 
 return
 END subroutine get_phi_subgrid
