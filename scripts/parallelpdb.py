@@ -24,6 +24,74 @@ class ParallelPW(PW.PW):
 
     def write (self, name, quantity, record = 0, pe=None):
         """Write quantity to file as 'name'"""
+	# --- Only one processor is to write to the file.
+        if pe != None:
+	  # --- If it is not pe0, then pe0 should close the file and the other
+	  # --- should open it.
+	  if pe != 0:
+	    if me == 0:
+	      self.close()
+	    mpi.barrier()
+	    if me == pe:
+              self.open(self.filename,'a')
+          if me == pe:
+            PW.PW.write(self,name,quantity,record)
+	  # --- Now, that pe should close it and pe0 should open it again.
+	  if pe != 0:
+	    if me == pe:
+	      self.close()
+	    mpi.barrier()
+	    if me == 0:
+              self.open(self.filename,'a')
+          return
+	# -------------------------------------------------
+	# --- Coding for all pe's writing to the file.
+	nn = gatherall(list(shape(quantity)))
+	ndims = len(nn[0])
+	# --- Check for consistency of the data shape
+	for i in range(npes):
+	  if len(nn[i]) != ndims:
+	    raise "number of dimensions must be the same on all processors"
+	  for id in range(ndims-1):
+	    if nn[i][id] != nn[0][id]:
+	      raise "all dimensions must be of the same length except the last"
+	# --- Get partial sum of last dimension
+	nlast = zeros(npes+1)
+	for i in range(npes):
+	  nlast[i+1] = nlast[i] + nn[i][-1]
+	# --- Now, PE0 creates space in the file and closes it.
+        if me == 0:
+          if not self.is_open(): self.check_open()
+          nn[0][-1] = nlast[-1]
+	  self.defent(name,quantity,tuple(nn[0]))
+	  self.close()
+	# --- Now, all open file at once and write out data simultaneously.
+	mpi.barrier()
+        self.open(self.filename,'a')
+	index = ndims*[0]
+        index[-1] = nlast[me]
+	PW.PW.write(self,name,quantity,indx=tuple(index))
+	# --- All but PE0 close the file.
+	if me != 0:
+	  self.close()
+
+  
+# ----------------------------------------------------------------------
+# --- The old version
+class ParallelPWold(PW.PW):
+
+    def __init__ (self, filename='', mode="w", verbose = 1):
+        "PW(filename='', verbose=1) creates filename if given"
+        self.__dict__['_handle'] = None
+        self.set_verbosity (verbose)
+        if filename:
+          if me == 0:
+            self.open (filename, mode)
+        self.__dict__['filename'] = filename
+        self.__dict__['mode'] = mode
+
+    def write (self, name, quantity, record = 0, pe=None):
+        """Write quantity to file as 'name'"""
         if pe != None:
           if me == pe:
             PW.PW.write(self,name,quantity,record)
