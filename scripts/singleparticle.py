@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.6 2001/09/06 23:53:52 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.7 2001/09/17 23:03:48 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -122,7 +122,7 @@ initial data, and redefines the step command
              maxsteps=1000):
     "Initializes one of more particles to run independently"
     # --- Set default value of vz and make sure it is not zero
-    if not vz: vz = top.vbeam
+    if vz is None: vz = top.vbeam
     if vz == 0.: vz = top.smallpos
     # --- Make sure that the coordinates are not of list or tuple type
     if type(x)  in [ListType,TupleType]: x = array(x)
