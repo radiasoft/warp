@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.15 2004/05/20 16:24:28 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.16 2005/02/15 23:51:35 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -142,6 +142,12 @@ initial data.
     if type(vy) is ArrayType: self.nn = len(vy)
     if type(vz) is ArrayType: self.nn = len(vz)
     # --- Store the starting values
+    self.xinit = x
+    self.yinit = y
+    self.zinit = z
+    self.vxinit = vx
+    self.vyinit = vy
+    self.vzinit = vz
     self.x = x
     self.y = y
     self.z = z
@@ -213,7 +219,7 @@ initial data.
     if self.ip1 == top.ins[self.js]-1:
       top.ins[self.js] = top.ins[self.js] + self.nn
       top.nps[self.js] = top.nps[self.js] - self.nn
-    if self.ip2 == top.ins[self.js] + top.nps[self.js] - 1:
+    elif self.ip2 == top.ins[self.js] + top.nps[self.js] - 1:
       top.nps[self.js] = top.nps[self.js] - self.nn
     # --- remove routine from after step
     uninstallafterstep(self.spsavedata)
@@ -238,6 +244,27 @@ is not alive."""
     top.vbeamfrm = self.vbeamfrmsave
     top.dt = self.dtsave
     wxy.ds = self.dssave
+
+  #----------------------------------------------------------------------
+  def reset(self,clearhistory=0):
+    """Reset back to the starting conditions.
+  - clearhistory=0: when true, the history data is cleared.
+    """
+    # --- The disable and enable removes the particles from the fortran
+    # --- arrays and reinstalls the initial values.
+    self.disable()
+    self.x = self.xinit
+    self.y = self.yinit
+    self.z = self.zinit
+    self.vx = self.vxinit
+    self.vy = self.vyinit
+    self.vz = self.vzinit
+    self.resettime()
+    self.enable()
+    if self.savedata and clearhistory:
+      self.setuphistory(maxsteps=len(self.spt[0]))
+    else:
+      self.spsavedata()
 
   #----------------------------------------------------------------------
   def setuphistory(self,maxsteps=1000):
