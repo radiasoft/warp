@@ -186,6 +186,31 @@ class MRBlock(MultiGrid,Visualizable):
 
     self.createwarrayforrho()
 
+  def __getstate__(self):
+    """
+Check whether this instance is the registered solver so that upon unpickling
+it knows whether to re-register itself.
+    """
+    dict = self.__dict__.copy()
+    if self is getregisteredsolver():
+      dict['iamtheregisteredsolver'] = 1
+    else:
+      dict['iamtheregisteredsolver'] = 0
+    return dict
+
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    if self.iamtheregisteredsolver:
+      registersolver(self)
+      if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
+        w3d.rho = self.rho
+        w3d.phi = self.phi
+        w3d.nxp = self.nx
+        w3d.nyp = self.ny
+        w3d.nzp = self.nz
+        w3d.rhop = self.rho
+        w3d.phip = self.phi
+
   def createwarrayforrho(self):
     # --- Create weight array needed for rho deposition.
     r = self.refinement
@@ -321,7 +346,7 @@ Sets the regions that are covered by the children.
       # --- The child claims all unclaimed areas.
       ii = self.getchilddomains(l,u)
       #ii[...] = where(ii==0,-ichild,ii)
-      ii[...] = where(ii==0,-child.blocknumber,ii)
+      ii[...] = where(ii==self.blocknumber,-child.blocknumber,ii)
 
       # --- Set interior to positive child number.
       l = maximum(self.fulllower,child.lower/child.refinement)
@@ -1255,6 +1280,82 @@ Fetches the potential, given a list of positions
     ix2,iy2,iz2 = upper - fulllower + upperedge
     return array[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
 
+  def setmgtol(self,mgtol=None):
+    """
+Sets the convergence tolerance for all blocks. If mgtol is not given, it uses
+f3d.mgtol.
+    """
+    if mgtol is None: mgtol = f3d.mgtol
+    self.mgtol = mgtol
+    for child in self.children:
+      child.setmgtol(mgtol)
+  def setmgmaxiters(self,mgmaxiters=None):
+    """
+Sets the maximum number of iterations for all blocks. If mgmaxiters is
+not given, it uses f3d.mgmaxiters.
+    """
+    if mgmaxiters is None: mgmaxiters = f3d.mgmaxiters
+    self.mgmaxiters = mgmaxiters
+    for child in self.children:
+      child.setmgmaxiters(mgmaxiters)
+
+  def getphislicemax(self,ip,idim):
+    """
+Finds the minimum value of phi at the specified plane. The blocks only
+contribute within their domains of ownership.
+    """
+    # --- Each block only needs to check once
+    if not self.islastcall(): return
+    # --- Don't do anything if the ip is outside the block
+    # --- Note that lower and upper are used instead of fulllower and
+    # --- fullupper since only the same phi that would be applied to the 
+    # --- particles is considered.
+    if ip < self.lower[idim] or ip > self.upper[idim]: return -largepos
+    # --- Get the appropriate slice of phi and the childdomains array
+    ii = [slice(None),slice(None),slice(None)]
+    ii[idim] = ip - self.fulllower[idim]
+    ix,iy,iz = ii
+    ppp = self.getphi(self.lower,self.upper)
+    c = self.getchilddomains(self.lower,self.upper,1)
+    # --- Skip points that don't self doesn't own
+    if c is not None:
+      ppp = where(c[ix,iy,iz]==self.blocknumber,ppp[ix,iy,iz],-largepos)
+    # --- Find the max of self's and the children's phi
+    phimax = maxnd(ppp)
+    for child in self.children:
+      ipc = ip*child.refinement
+      phimax = max(phimax,child.getphislicemax(ipc,idim))
+    return phimax
+
+  def getphislicemin(self,ip,idim):
+    """
+Finds the maximum value of phi at the specified plane. The blocks only
+contribute within their domains of ownership.
+    """
+    # --- Each block only needs to check once
+    if not self.islastcall(): return
+    # --- Don't do anything if the ip is outside the block
+    # --- Note that lower and upper are used instead of fulllower and
+    # --- fullupper since only the same phi that would be applied to the 
+    # --- particles is considered.
+    if ip < self.lower[idim] or ip > self.upper[idim]: return +largepos
+    # --- Get the appropriate slice of phi and the childdomains array
+    ii = [slice(None),slice(None),slice(None)]
+    ii[idim] = ip - self.fulllower[idim]
+    ix,iy,iz = ii
+    ppp = self.getphi(self.lower,self.upper)
+    c = self.getchilddomains(self.lower,self.upper,1)
+    # --- Skip points that don't self doesn't own
+    if c is not None:
+      ppp = where(c[ix,iy,iz]==self.blocknumber,ppp[ix,iy,iz],+largepos)
+    phimin = minnd(ppp)
+    # --- Find the min of self's and the children's phi
+    for child in self.children:
+      ipc = ip*child.refinement
+      phimin = min(phimin,child.getphislicemin(ipc,idim))
+    return phimin
+
+
   #--------------------------------------------------------------------------
   # --- The following are used for plotting.
   #--------------------------------------------------------------------------
@@ -1269,22 +1370,30 @@ be plotted.
     # --- if not overlapped by a parent. This only affects the cellaray plots.
     # --- This also avoids the child plotting multiple times.
     if not self.islastcall(): return
+
     # --- Get the plane to be plotted
     if ip is None:
-      if idim == 0: ip = kw.get('ix',None)
-      if idim == 1: ip = kw.get('iy',None)
-      if idim == 2: ip = kw.get('iz',None)
+      ip = kw.get(('ix','iy','iz')[idim],None)
       if ip is None: ip = nint(-self.mins[idim]/self.deltas[idim])
     else:
       ip = ip*self.refinement
-      if idim == 0: kw['ix'] = ip - self.fulllower[0]
-      if idim == 1: kw['iy'] = ip - self.fulllower[1]
-      if idim == 2: kw['iz'] = ip - self.fulllower[2]
-      kw['cmin'] = ppgeneric.cmin
-      kw['cmax'] = ppgeneric.cmax
+      kw[('ix','iy','iz')[idim]] = ip - self.fulllower[idim]
+
+    # --- Set the values of cmin and cmax from all levels. This must be
+    # --- done by the root level.
+    if self is self.root:
+      cmin = kw.get('cmin',None)
+      cmax = kw.get('cmax',None)
+      if cmin is None: cmin = self.getphislicemin(ip,idim)
+      if cmax is None: cmax = self.getphislicemax(ip,idim)
+      kw['cmin'] = cmin
+      kw['cmax'] = cmax
+
     # --- Only make the plot if the plane is included in the domain.
     # --- Even if there is no overlap, the children must be called since
     # --- they may overlap (in the domain of a different parent).
+    # --- Note that the full extent is used so that the childdomains slice
+    # --- will have the same shape as ireg.
     if self.fulllower[idim] <= ip and ip <= self.fullupper[idim]:
       if self.childdomains is not None:
         # --- Create the ireg array, which will be set to zero in the domain
@@ -1292,15 +1401,10 @@ be plotted.
         ss = list(shape(self.rho))
         del ss[idim]
         ireg = zeros(ss)
-        if idim==0:
-          ireg[1:,1:]=equal(self.childdomains[ip-self.fulllower[0],:-1,:-1],
-                            self.blocknumber)
-        if idim==1:
-          ireg[1:,1:]=equal(self.childdomains[:-1,ip-self.fulllower[1],:-1],
-                            self.blocknumber)
-        if idim==2:
-          ireg[1:,1:]=equal(self.childdomains[:-1,:-1,ip-self.fulllower[2]],
-                            self.blocknumber)
+        ii = [slice(-1),slice(-1),slice(-1)]
+        ii[idim] = ip - self.fulllower[idim]
+        ix,iy,iz = ii
+        ireg[1:,1:]=equal(self.childdomains[ix,iy,iz],self.blocknumber)
         if idim != 2: ireg = transpose(ireg)
         kw['ireg'] = ireg
       else:
