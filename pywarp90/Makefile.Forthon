@@ -1,10 +1,11 @@
 #DEBUG = -g
 SO = so
+PUBLICHOME = 
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) ranffortran.c
 	rm -f warpC.so
 	python setup.py build --build-platlib .
-	mv warpC.so /home/dave/scriptsnew
+	#mv warpC.so /home/dave/scriptsnew
 
 toppy.$(SO): top.F dtop.F top.v
 	Forthon -a $(DEBUG) top dtop.F
@@ -42,6 +43,9 @@ chopy.$(SO): toppy.$(SO) cho.F cho.v
 ranffortran.c: ranffortran.m
 	python -c "from Forthon.preprocess import main;main()" --f90 ranffortran.m ranffortran.c
 
+public: warp
+	publishpywarp90.py $(PUBLICHOME)
+
 clean:
-	rm -rf build
+	rm -rf build *.so
 
