@@ -1,4 +1,4 @@
-!     Last change:  JLV  14 Mar 2002   10:00 am
+!     Last change:  JLV  21 Mar 2002    1:54 pm
 #include "top.h"
 
 module multigrid_common
@@ -103,9 +103,46 @@ END TYPE bndptr
 
 TYPE(bndptr), pointer :: bndy(:)
 
+TYPE grdptr
+  INTEGER(ISZ) :: nlevels
+  REAL(8) :: rmin,rmax,zmin,zmax
+  INTEGER(ISZ) :: ixlbnd, ixrbnd, izlbnd, izrbnd  ! boundary conditions for each side
+  TYPE(bndptr), pointer :: bnd(:)
+END TYPE grdptr
+TYPE(grdptr), pointer :: grids(:)
+INTEGER(ISZ) :: ngrids=1
+
 contains
 
-subroutine init_bnd(nr,nz,dr,dz)
+subroutine init_grids(ng,nr,nz,dr,dz,rmin,zmin)
+USE InGen3d, ONLY:l2symtry, l4symtry
+!USE Picglb3d, ONLY:dy
+!USE InMesh3d, ONLY:ny
+implicit none
+INTEGER(ISZ), INTENT(IN) :: ng, nr(ng), nz(ng)
+REAL(8), DIMENSION(ng), INTENT(IN) :: dr,dz,rmin,zmin
+INTEGER :: igrid
+
+IF(l_mgridrz_debug) WRITE(0,*) 'allocate grids'
+ALLOCATE(grids(ng))
+
+ngrids=ng
+do igrid=1,ngrids
+  NULLIFY(grids(igrid)%bnd)
+  WRITE(0,*) 'initializes grid ',igrid
+  call init_bnd(grids(igrid)%bnd,nr(igrid),nz(igrid),dr(igrid),dz(igrid))
+  grids(igrid)%nlevels = nlevels
+  grids(igrid)%rmin = rmin(igrid)
+  grids(igrid)%rmax = rmin(igrid)+nr(igrid)*dr(igrid)
+  grids(igrid)%zmin = zmin(igrid)
+  grids(igrid)%zmax = zmin(igrid)+nz(igrid)*dz(igrid)
+end do
+bndy => grids(1)%bnd
+
+return
+END subroutine init_grids
+
+subroutine init_bnd(bndy,nr,nz,dr,dz)
 ! intializes grid quantities according to the number of multigrid levels and grid sizes nx and nz.
 USE InGen3d, ONLY:l2symtry, l4symtry
 USE Picglb3d, ONLY:dy
@@ -113,11 +150,12 @@ USE InMesh3d, ONLY:ny
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr, dz
+TYPE(bndptr), pointer :: bndy(:)
 
-INTEGER(ISZ) :: i, nrp0, nzp0, nrc, nzc
+INTEGER(ISZ) :: i, nrp0, nzp0, nrc, nzc, nrc_old, nzc_old
 REAL(8) :: drc, dzc
 
-  dy = dr
+!  dy = dr
   ny = 0
 
 #ifdef MPIPARALLEL
@@ -137,7 +175,10 @@ REAL(8) :: drc, dzc
   nworkpproc = 1
 #endif
   do WHILE(nrc>mgridrz_nmeshmin.or.nzc>mgridrz_nmeshmin)
+    nrc_old=nrc
+    nzc_old=nzc
     call evalnewgrid(nrc,nzc,drc,dzc)
+    IF(nrc==nrc_old .AND. nzc==nzc_old) exit
     nlevels = nlevels + 1
 #ifdef MPIPARALLEL
     IF(nworkpproc*nrc*nzc<=workfact*nzfine) then
@@ -405,6 +446,137 @@ IF(l_mgridrz_debug) WRITE(0,*) 'exit expand, level = ',level
 
 return
 END function expandwguard_any
+
+function interpolate_any(uold, nxnew, nznew, xminnew, xmaxnew, zminnew, zmaxnew, xminold,  xmaxold,  zminold,  zmaxold)
+! expand field from grid to a finer one. Each dimension may have any number of cells.
+implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
+REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
+REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
+REAL(8) :: interpolate_any(1:nxnew+1,1:nznew+1)
+
+INTEGER(ISZ) :: nxold, nzold
+INTEGER(ISZ) :: jnew, knew, j, k, jp, kp
+REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, delx, delz, odelx, odelz
+REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+1), oddz(nznew+1)
+INTEGER(ISZ) :: jold(nxnew+1), kold(nznew+1), joldp(nxnew+1), koldp(nznew+1)
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter expand, level = ',level
+
+nxold = SIZE(uold,1) - 1
+nzold = SIZE(uold,2) - 1
+
+dxnew = (xmaxnew-xminnew) / nxnew
+dznew = (zmaxnew-zminnew) / nznew
+invdxold = REAL(nxold,8)/(xmaxold-xminold)
+invdzold = REAL(nzold,8)/(zmaxold-zminold)
+
+do knew = 1, nznew+1
+  z = zminnew+(knew-1)*dznew
+  zz = (z-zminold) * invdzold
+  kold(knew) = MIN(nzold,1+INT(zz))
+  koldp(knew) = kold(knew) + 1
+  ddz(knew) = zz-(kold(knew)-1)
+  oddz(knew) = 1.-ddz(knew)
+END do
+do jnew = 1, nxnew+1
+  x = xminnew+(jnew-1)*dxnew
+  xx = (x-xminold) * invdxold
+  jold(jnew) = MIN(nxold,1+INT(xx))
+  joldp(jnew) = jold(jnew) + 1
+  ddx(jnew) = xx-(jold(jnew)-1)
+  oddx(jnew) = 1.-ddx(jnew)
+END do
+do knew = 1, nznew+1
+  k = kold(knew)
+  kp = koldp(knew)
+  delz = ddz(knew)
+  odelz = oddz(knew)
+  do jnew = 1, nxnew+1
+    j = jold(jnew)
+    jp = joldp(jnew)
+    delx = ddx(jnew)
+    odelx = oddx(jnew)
+    interpolate_any(jnew,knew) = uold(j, k)  * odelx * odelz &
+                                + uold(jp,k)  * delx  * odelz &
+                                + uold(j, kp) * odelx * delz &
+                                + uold(jp,kp) * delx  * delz
+  end do
+END do
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit expand, level = ',level
+
+return
+END function interpolate_any
+
+subroutine combinewguard_any(unew, uold, nxnew, nznew, xminnew, xmaxnew, zminnew, zmaxnew, xminold,  xmaxold,  zminold,  zmaxold)
+! expand field from grid to a finer one. Each dimension may have any number of cells.
+implicit none
+INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
+REAL(8), DIMENSION(0:,0:), INTENT(IN) :: uold
+REAL(8), DIMENSION(0:,0:), INTENT(IN OUT) :: unew
+REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
+
+INTEGER(ISZ) :: nxold, nzold
+INTEGER(ISZ) :: jnew, knew, j, k, jp, kp, jmin,jmax,kmin,kmax
+REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, delx, delz, odelx, odelz
+REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, oddx, ddz, oddz
+INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jold, kold, joldp, koldp
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter combine, level = ',level
+
+nxold = SIZE(uold,1) - 1 - 2
+nzold = SIZE(uold,2) - 1 - 2
+
+dxnew = (xmaxnew-xminnew) / nxnew
+dznew = (zmaxnew-zminnew) / nznew
+invdxold = REAL(nxold,8)/(xmaxold-xminold)
+invdzold = REAL(nzold,8)/(zmaxold-zminold)
+
+jmin=1+NINT((xminold-xminnew)/dxnew)
+jmax=1+NINT((xmaxold-xminnew)/dxnew)
+kmin=1+NINT((zminold-zminnew)/dznew)
+kmax=1+NINT((zmaxold-zminnew)/dznew)
+ALLOCATE(ddx(jmin:jmax), oddx(jmin:jmax), ddz(kmin:kmax), oddz(kmin:kmax), &
+         jold(jmin:jmax), kold(kmin:kmax), joldp(jmin:jmax), koldp(kmin:kmax))
+do knew = kmin, kmax
+  z = zminnew+(knew-1)*dznew
+  zz = (z-zminold) * invdzold
+  kold(knew) = 1+MIN(nzold,INT(zz))
+  koldp(knew) = kold(knew) + 1
+  ddz(knew) = zz-(kold(knew)-1)
+  oddz(knew) = 1.-ddz(knew)
+END do
+do jnew = jmin, jmax
+  x = xminnew+(jnew-1)*dxnew
+  xx = (x-xminold) * invdxold
+  jold(jnew) = 1+MIN(nxold,INT(xx))
+  joldp(jnew) = jold(jnew) + 1
+  ddx(jnew) = xx-(jold(jnew)-1)
+  oddx(jnew) = 1.-ddx(jnew)
+END do
+do knew = kmin,kmax
+  k = kold(knew)
+  kp = koldp(knew)
+  delz = ddz(knew)
+  odelz = oddz(knew)
+  do jnew = jmin,jmax
+    j = jold(jnew)
+    jp = joldp(jnew)
+    delx = ddx(jnew)
+    odelx = oddx(jnew)
+    unew(jnew,knew) = uold(j, k)  * odelx * odelz &
+                    + uold(jp,k)  * delx  * odelz &
+                    + uold(j, kp) * odelx * delz &
+                    + uold(jp,kp) * delx  * delz
+  end do
+END do
+DEALLOCATE(ddx, oddx, ddz, oddz, jold, kold, joldp, koldp)
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit combine, level = ',level
+
+return
+END subroutine combinewguard_any
 
 function expandwguardandbnd_any(uold, bnd, nxnew, nznew, xminnew, xmaxnew, zminnew, zmaxnew, xminold,  xmaxold,  zminold,  zmaxold)
 ! expand field from grid to a finer one. Each dimension may have any number of cells.
@@ -1954,19 +2126,31 @@ end subroutine solve_multigridrz_jlv2
 subroutine change_coefs(sorparam_new,sorparam_old)
 REAL(8),INTENT(IN)::sorparam_new,sorparam_old
 
-INTEGER(ISZ) :: i
+TYPE(bndptr), pointer :: bnd(:)
+INTEGER(ISZ) :: i,igrid,ic
 
-  do i = 1, nlevels
-   if(bndy(i)%cnd%nbbnd>0) then
-    bndy(i)%cnd%cfxm (:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfxm (:)
-    bndy(i)%cnd%cfxp (:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfxp (:)
-    bndy(i)%cnd%cfzm (:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfzm (:)
-    bndy(i)%cnd%cfzp (:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfzp (:)
-    bndy(i)%cnd%cfrhs(:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfrhs(:)
-    bndy(i)%cnd%cf0  (:) = 1._8+sorparam_new/sorparam_old*(bndy(i)%cnd%cf0(:)-1._8)
-   end if
+ do igrid = 1, ngrids
+  bnd => grids(igrid)%bnd
+  do i = 1, grids(igrid)%nlevels
+   do ic = 1, bnd(i)%nb_conductors
+    IF(ic==1) then
+      bnd(i)%cnd => bnd(i)%first
+    else
+      bnd(i)%cnd => bnd(i)%cnd%next
+    END if
+    IF(bnd(i)%cnd%nbbnd>0) then
+     bnd(i)%cnd%cfxm (:) = sorparam_new/sorparam_old*bnd(i)%cnd%cfxm (:)
+     bnd(i)%cnd%cfxp (:) = sorparam_new/sorparam_old*bnd(i)%cnd%cfxp (:)
+     bnd(i)%cnd%cfzm (:) = sorparam_new/sorparam_old*bnd(i)%cnd%cfzm (:)
+     bnd(i)%cnd%cfzp (:) = sorparam_new/sorparam_old*bnd(i)%cnd%cfzp (:)
+     bnd(i)%cnd%cfrhs(:) = sorparam_new/sorparam_old*bnd(i)%cnd%cfrhs(:)
+     bnd(i)%cnd%cf0  (:) = 1._8+sorparam_new/sorparam_old*(bnd(i)%cnd%cf0(:)-1._8)
+    END if
+   end do
   end do
+ end do
 
+ return
 end subroutine change_coefs
 
 END module multigridrz
@@ -1982,12 +2166,23 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 REAL(8), INTENT(IN OUT) :: mgiters, sorparam
 
 real(8) :: u(0:nr0+2,0:nz0+2)
+INTEGER(ISZ) :: i
 
 IF(ncmax==0) return
 
   IF(iwhich==0.or.iwhich==1) then
-    if(.not.bndy_allocated) call init_bnd(nr0,nz0,dr0,dz0)
+    if(.not.bndy_allocated) call init_grids(1, &
+                                           (/(nr0,i=1,1)/), &
+                                           (/(nz0,i=1,1)/), &
+                                           (/(dr0,i=1,1)/), &
+                                           (/(dz0,i=1,1)/), &
+                                           (/(0._8,i=1,1)/), &
+                                           (/(0._8,i=1,1)/))
   END if
+
+  ixrbnd = boundxy
+  izlbnd = bound0
+  izrbnd = boundnz
 
 IF(sorparam>=1.95) then
   WRITE(0,*) 'Error in call of multigrid RZ solver, sorparam > 1.95, resetting sorparam to 1.8'
@@ -2027,6 +2222,147 @@ END if
 return
 end subroutine multigridrzf
 
+subroutine testrz()
+USE multigridrz
+INTEGER :: ng = 3, nr(ng),nz(ng),i
+REAL(8), DIMENSION(ng)  :: dr,dz,rmin,zmin
+
+i=1
+nr(i)=64;nz(i)=64;dr(i)=1.;dz(i)=1.
+rmin(i)=0.;zmin(i)=0.
+i=2
+nr(i)=32;nz(i)=32;dr(i)=0.5;dz(i)=0.5
+rmin(i)=0.;zmin(i)=0.
+i=3
+nr(i)=16;nz(i)=16;dr(i)=0.25;dz(i)=0.25
+rmin(i)=16.;zmin(i)=16.
+
+call init_grids(ng,nr,nz,dr,dz,rmin,zmin)
+
+end subroutine testrz
+
+subroutine init_rzgrids(ng,nr,nz,dr,dz,rmin,zmin)
+USE multigridrz
+implicit none
+INTEGER(ISZ), INTENT(IN) :: ng, nr(ng), nz(ng)
+REAL(8), DIMENSION(ng), INTENT(IN) :: dr,dz,rmin,zmin
+  call init_grids(ng,nr,nz,dr,dz,rmin,zmin)
+return
+END subroutine init_rzgrids
+
+subroutine multigridrzf_ng(iwhich,u0,rho0,nr0,nz0,dr0,dz0,accuracy,ncmax,npre,npost,ncycle,sorparam,mgiters)
+USE multigridrz
+implicit none
+INTEGER(ISZ), INTENT(IN) :: iwhich,nr0, nz0, ncmax,ncycle
+INTEGER(ISZ), INTENT(IN OUT) :: npre,npost
+REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
+REAL(8), INTENT(IN) :: rho0(nr0+1,nz0+1)
+REAL(8), INTENT(IN) :: dr0, dz0, accuracy
+REAL(8), INTENT(IN OUT) :: mgiters, sorparam
+
+INTEGER(ISZ) :: i,nr,nz,ixrbnd0,izlbnd0,izrbnd0,nrapz,igrid
+real(8) :: utmp(0:nr0+2,0:nz0+2)
+REAL(8), ALLOCATABLE, DIMENSION(:,:) :: rho,u
+REAL(8) :: rmin,rmax,zmin,zmax,rmax0,zmax0,dr,dz
+
+IF(ncmax==0) return
+
+  IF(iwhich==0.or.iwhich==1) then
+    if(.not.bndy_allocated) then
+      WRITE(0,*) 'Error RZ multigrid solver (2 grids): the grids have not be initialized.'
+      call abort()
+    END if
+  END if
+
+  ixrbnd0 = boundxy
+  izlbnd0 = bound0
+  izrbnd0 = boundnz
+
+IF(sorparam>=1.95) then
+  WRITE(0,*) 'Error in call of multigrid RZ solver, sorparam > 1.95, resetting sorparam to 1.8'
+  sorparam = 1.8_8
+END if
+IF(sorparam>0.001 .and. coefrelax/=sorparam) then
+  call change_coefs(sorparam,coefrelax)
+  coefrelax    = sorparam
+  coefrelaxbnd = sorparam
+END if
+
+  IF(iwhich==1) return
+
+  rmax0 = REAL(nr0,8)*dr0
+  zmax0 = REAL(nz0,8)*dz0
+
+  utmp(1:nr0+1,:)=u0(1:nr0+1,:)
+
+  do igrid = 1, ngrids
+    nlevels = grids(igrid)%nlevels
+    level=nlevels
+    bndy => grids(igrid)%bnd
+    nr = grids(igrid)%bnd(nlevels)%nr
+    nz = grids(igrid)%bnd(nlevels)%nz
+    dr = grids(igrid)%bnd(nlevels)%dr
+    dz = grids(igrid)%bnd(nlevels)%dz
+    rmin = grids(igrid)%rmin
+    rmax = grids(igrid)%rmax
+    zmin = grids(igrid)%zmin
+    zmax = grids(igrid)%zmax
+    ALLOCATE(rho(nr+1,nz+1))
+    rho = interpolate_any(uold=rho0, nxnew=nr, nznew=nz, &
+                    xminold=0._8, xmaxold=rmax0, zminold=0., zmaxold=zmax0, &
+                    xminnew=rmin, xmaxnew=rmax, &
+                    zminnew=zmin, zmaxnew=zmax)
+    ALLOCATE(u(0:nr+2,0:nz+2))
+    u(1:nr+1,1:nz+1) = interpolate_any(uold=utmp(1:nr0+1,1:nz0+1), nxnew=nr, nznew=nz, &
+                                xminold=0._8, xmaxold=rmax0, zminold=0._8, zmaxold=zmax0, &
+                                xminnew=rmin, xmaxnew=rmax, &
+                                zminnew=zmin, zmaxnew=zmax)
+    IF(ABS(rmax-rmax0)<0.1*dr0) then
+      ixrbnd = ixrbnd0
+    else
+      ixrbnd = dirichlet
+    END if
+    IF(ABS(zmin-0._8)<0.1*dz0) then
+      izlbnd = izlbnd0
+    else
+      izlbnd = dirichlet
+    END if
+    IF(ABS(zmax-zmax0)<0.1*dz0) then
+      izrbnd = izrbnd0
+    else
+      izrbnd = dirichlet
+    END if
+    do i = 1,nlevels, 1
+      bndy(i)%izlbnd=izlbnd
+      bndy(i)%izrbnd=izrbnd
+    END do
+    call solve_multigridrz_jlv2(u=u,rhoinit=-rho/eps0,bnd=bndy,nr0=nr,nz0=nz, &
+                                length_r=nr*dr,length_z=nz*dz, &
+                                accuracy=accuracy,sub_accuracy=mgridrz_sub_accuracy, &
+                                nc=ncmax,npre=npre,npost=npost,ncycle=ncycle,nrecurs_min=mgridrz_nrecurs_min)
+    IF(igrid==1) then
+      call combinewguard_any(unew=utmp, uold=u(0:nr+2,0:nz+2), nxnew=nr0, nznew=nz0, &
+                             xminnew=0._8, xmaxnew=rmax0, zminnew=0._8, zmaxnew=zmax0, &
+                             xminold=rmin, xmaxold=rmax , zminold=zmin, zmaxold=zmax)
+    else
+      nrapz = NINT(dz0/dz)
+      call combinewguard_any(unew=utmp, uold=u(0:nr+2,0:nz+2-2*nrapz), nxnew=nr0, nznew=nz0, &
+                             xminnew=0._8, xmaxnew=rmax0, zminnew=0._8, zmaxnew=zmax0, &
+                             xminold=rmin, xmaxold=rmax , zminold=zmin, zmaxold=zmax-2._8*nrapz*dz)
+     END if
+    DEALLOCATE(rho,u)
+  end do
+
+  u0(1:nr0+1,:)=utmp(1:nr0+1,:)
+
+  mgiters = nb_iters
+
+  sorparam = coefrelax
+
+return
+end subroutine multigridrzf_ng
+
+
 subroutine srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
                       xmin,xmax,ymin,ymax,lshell,                      &
                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,             &
@@ -2045,14 +2381,23 @@ real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
 INTEGER(ISZ):: nx,ny,nz,ix_axis,iy_axis
 real(kind=8):: xmesh(0:nx),ymesh(0:ny)
 
-INTEGER(ISZ) :: i,nrc,nzc
+INTEGER(ISZ) :: i,nrc,nzc,igrid
 REAL(8) :: drc,dzc,zmin_in,zmax_in
 
 TYPE(conductor_type), POINTER :: cndpnt
 
-IF(.not.bndy_allocated) call init_bnd(nx,nz,dx,dz)
+    if(.not.bndy_allocated) call init_grids(1, &
+                                           (/(nx,i=1,1)/), &
+                                           (/(nz,i=1,1)/), &
+                                           (/(dx,i=1,1)/), &
+                                           (/(dz,i=1,1)/), &
+                                           (/(0._8,i=1,1)/), &
+                                           (/(0._8,i=1,1)/))
 
-do i = nlevels,1,-1
+do igrid=1,ngrids
+ nlevels=grids(igrid)%nlevels
+ bndy => grids(igrid)%bnd
+ do i = nlevels,1,-1
   nrc = bndy(i)%nr
   nzc = bndy(i)%nz
   drc = bndy(i)%dr
@@ -2070,14 +2415,22 @@ do i = nlevels,1,-1
   zmax_in = zmmax
 #endif
 
+  IF(ngrids>1) then
+    zmin_in=grids(igrid)%zmin
+    zmax_in=grids(igrid)%zmax
+  END if
+
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
                       xmin,xmax,ymin,ymax,lshell,                      &
-                      zmmin,zmmax,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
+!                      zmmin,zmmax,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
+                      zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc)
 
+ end do
 end do
+return
 end subroutine srfrvoutrz
 
 subroutine srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,   &
@@ -2098,14 +2451,23 @@ real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
 INTEGER(ISZ):: nx,ny,nz,ix_axis,iy_axis
 real(kind=8):: xmesh(0:nx),ymesh(0:ny)
 
-INTEGER(ISZ) :: i,nrc,nzc
+INTEGER(ISZ) :: i,nrc,nzc,igrid
 REAL(8) :: drc,dzc,zmin_in,zmax_in
 
 TYPE(conductor_type), POINTER :: cndpnt
 
-IF(.not.bndy_allocated) call init_bnd(nx,nz,dx,dz)
+    if(.not.bndy_allocated) call init_grids(1, &
+                                           (/(nx,i=1,1)/), &
+                                           (/(nz,i=1,1)/), &
+                                           (/(dx,i=1,1)/), &
+                                           (/(dz,i=1,1)/), &
+                                           (/(0._8,i=1,1)/), &
+                                           (/(0._8,i=1,1)/))
 
-do i = nlevels,1,-1
+do igrid=1,ngrids
+ nlevels=grids(igrid)%nlevels
+ bndy => grids(igrid)%bnd
+ do i = nlevels,1,-1
   nrc = bndy(i)%nr
   nzc = bndy(i)%nz
   drc = bndy(i)%dr
@@ -2123,6 +2485,11 @@ do i = nlevels,1,-1
   zmax_in = zmmax
 #endif
 
+  IF(ngrids>1) then
+    zmin_in=grids(igrid)%zmin
+    zmax_in=grids(igrid)%zmax
+  END if
+
   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,  &
                      lzend,xmin,xmax,ymin,ymax,lshell,                &
                      zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
@@ -2130,7 +2497,9 @@ do i = nlevels,1,-1
 
   call addconductors_rz(i,nrc,nzc,drc,dzc)
 
+ end do
 end do
+return
 end subroutine srfrvinoutrz
 
 subroutine setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz, &
@@ -2141,12 +2510,21 @@ integer(ISZ):: nx,ny,nz
 real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
 logical(ISZ):: l2symtry,l4symtry
 
-INTEGER(ISZ) :: i,nrc,nzc
-REAL(8) :: drc,dzc,zmin_in
+INTEGER(ISZ) :: i,nrc,nzc,igrid
+REAL(8) :: drc,dzc,rmin_in,zmin_in
 
-IF(.not.bndy_allocated) call init_bnd(nx,nz,dx,dz)
+    if(.not.bndy_allocated) call init_grids(1, &
+                                           (/(nx,i=1,1)/), &
+                                           (/(nz,i=1,1)/), &
+                                           (/(dx,i=1,1)/), &
+                                           (/(dz,i=1,1)/), &
+                                           (/(0._8,i=1,1)/), &
+                                           (/(0._8,i=1,1)/))
 
-do i = nlevels,1,-1
+do igrid=1,ngrids
+ nlevels=grids(igrid)%nlevels
+ bndy => grids(igrid)%bnd
+ do i = nlevels,1,-1
   level = i
   nrc = bndy(i)%nr
   nzc = bndy(i)%nz
@@ -2157,17 +2535,24 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
+  rmin_in = xmmin
 #ifdef MPIPARALLEL
   zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
 #else
   zmin_in = zmmin
 #endif
 
-  call setcndtr_rz(xmmin,ymmin,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
+  IF(ngrids>1) then
+    rmin_in=grids(igrid)%rmin
+    zmin_in=grids(igrid)%zmin
+  END if
+
+  call setcndtr_rz(rmin_in,rmin_in,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
                    l2symtry,l4symtry)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc)
 
+ end do
 end do
 
 END subroutine setcndtrrz
@@ -2962,7 +3347,7 @@ end subroutine fieldweightrz_deform_old
 subroutine calcfact_deform(dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
 USE constant
 USE Particles, ONLY: xp, yp, zp
-USE FRZmgrid
+use FRZmgrid
 implicit none
 
 !INTEGER(ISZ), INTENT(IN) :: np, nz, ns
@@ -3109,6 +3494,3 @@ INTEGER(ISZ) :: nbbnd,ncond,i,ic,nbc
 
 return
 end subroutine read_bndstructure_rz
-
-
-
