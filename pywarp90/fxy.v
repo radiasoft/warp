@@ -1,5 +1,5 @@
 fxy
-#@(#) File FXY.V, version $Revision: 3.2 $, $Date: 2002/01/17 22:52:25 $
+#@(#) File FXY.V, version $Revision: 3.3 $, $Date: 2002/01/22 17:22:18 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FXY of code WARPxy
@@ -10,7 +10,7 @@ fxy
 
 *********** FXYversion:
 # Variables needed by the test driver of package FXY
-versfxy character*19 /"$Revision: 3.2 $"/#  Code version version is set by CVS
+versfxy character*19 /"$Revision: 3.3 $"/#  Code version version is set by CVS
 
 ******** CapMatxy dump: 
 ncxymax            integer  # Maximum number of points in conductors

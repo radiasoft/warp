@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FXY.M, version $Revision: 3.2 $, $Date: 2002/01/17 22:52:25 $
+c@(#) File FXY.M, version $Revision: 3.3 $, $Date: 2002/01/22 17:22:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -203,7 +203,6 @@ c the capacity matrix to be used in bends.
 
       real(kind=8):: wx,wy,cx,cy
       integer(ISZ):: ix,iy,i,j
-      logical(ISZ):: lattenuate
 
 c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then
@@ -230,21 +229,11 @@ c     --- phi for this to work)
 c     --- This is done piece-by-piece so that when filtering is done, the
 c     --- filtered source can be saved.
 
-c     --- First transform phi (actually the source).
+c     --- First transform phi (actually the source) and filter it.
       call vpois2d(2,phi,phi,kxsq,kysq,attx,atty,filt,
      &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
-
-c     --- Check if filtering is turned on. If so, filter.
-      lattenuate = .false.
-      do j=1,2
-        do i=1,5
-          if (filt(i,j) .ne. 0) lattenuate = .true.
-        enddo
-      enddo
-      if (lattenuate) then
-        call vpois2d(3,phi,phi,kxsq,kysq,attx,atty,filt,
-     &               xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
-      endif
+      call vpois2d(3,phi,phi,kxsq,kysq,attx,atty,filt,
+     &             xlen,ylen,nx,ny,scrtch,xywork,0,l2symtry,l4symtry)
 
 c     --- Now, save the transformed and possibly filtered source.
       call copyarry(phi,phisave,(nx+1)*(ny+1))
