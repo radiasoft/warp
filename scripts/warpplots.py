@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.86 2002/09/25 00:22:23 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.87 2002/09/27 23:10:18 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -895,8 +895,12 @@ Note that either the x and y coordinates or the grid must be passed in.
   if titles: ptitles(v=view)
   settitles() 
   if (lframe):
-    limits(pplimits[0]*xscale,pplimits[1]*xscale,
-           pplimits[2]*yscale,pplimits[3]*yscale)
+    ppp = list(pplimits)
+    if ppp[0] != 'e': ppp[0] = ppp[0]*xscale
+    if ppp[1] != 'e': ppp[1] = ppp[1]*xscale
+    if ppp[2] != 'e': ppp[2] = ppp[2]*yscale
+    if ppp[3] != 'e': ppp[3] = ppp[3]*yscale
+    limits(ppp[0],ppp[1],ppp[2],ppp[3])
 if sys.version[:5] != "1.5.1":
   ppgeneric.__doc__ = ppgeneric.__doc__ + ppgeneric_doc('x','y')
 
