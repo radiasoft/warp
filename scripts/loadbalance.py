@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.20 2001/11/03 01:19:13 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.21 2002/04/30 21:36:33 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -118,7 +118,7 @@ that has already been done.
 
   # --- Correct location of injection source.
   if top.inject > 0:
-    w3d.inj_grid[:,:] = w3d.inj_grid + oldiz - newiz
+    w3d.inj_grid[:,:,:] = w3d.inj_grid + oldiz - newiz
 
   # --- Do some additional work if requested
   if lloadrho: loadrho()
@@ -244,7 +244,7 @@ needed since some processors may have more conductor points than others.
 
   # --- Correct location of injection source.
   if top.inject > 0:
-    w3d.inj_grid[:,:] = w3d.inj_grid + oldiz[me] - newiz[me]
+    w3d.inj_grid[:,:,:] = w3d.inj_grid + oldiz[me] - newiz[me]
 
 #########################################################################
 def decompose(weight,npes):
@@ -310,7 +310,7 @@ def _adjustz():
   # --- surface completely covered.
   if top.inject > 1:
     zinjmax = top.ainject**2/(top.rinject+sqrt(top.rinject**2-top.ainject**2))
-    nzinj = int(max(top.zinject+zinjmax-top.zmslmin[0])/w3d.dz+w3d.inj_d) + 1
+    nzinj = int(max((top.zinject+zinjmax-top.zmslmin[0])/w3d.dz+top.inj_d)) + 1
     top.nzpslave[0] = max(top.nzpslave[0],nzinj)
 
   #---------------------------------------------------------------------------
