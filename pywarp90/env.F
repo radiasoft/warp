@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.8 $, $Date: 2001/07/18 23:51:19 $
+c@(#) File ENV.M, version $Revision: 3.9 $, $Date: 2001/07/19 19:57:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -75,6 +75,8 @@ c=============================================================================
       use ENVvars
       use OutParams
       use Parallel
+      use Lattice
+      use LatticeInternal
 
 c  Invoked by the STEP command, it runs the envelope code.
 c  passes sigma and sigma0 back to TOP through OutParams
