@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.74 $, $Date: 2003/03/26 23:15:13 $
+c@(#) File DTOP.M, version $Revision: 3.75 $, $Date: 2003/04/09 01:55:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -143,6 +143,18 @@ c  Save results of this time step in history buffers
       hekzmbe(jhist) = ekzmbe
       hekzbeam(jhist) = ekzbeam
       hekperp(jhist) = ekperp
+      hxmaxp(jhist) = xmaxp
+      hxminp(jhist) = xminp
+      hymaxp(jhist) = ymaxp
+      hyminp(jhist) = yminp
+      hzmaxp(jhist) = zmaxp
+      hzminp(jhist) = zminp
+      hvxmaxp(jhist) = vxmaxp
+      hvxminp(jhist) = vxminp
+      hvymaxp(jhist) = vymaxp
+      hvyminp(jhist) = vyminp
+      hvzmaxp(jhist) = vzmaxp
+      hvzminp(jhist) = vzminp
       do iw=0,nzwind
         hepsx(iw,jhist)    = epsx(iw)
         hepsy(iw,jhist)    = epsy(iw)
@@ -627,7 +639,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.74 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.75 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1641,44 +1653,42 @@ c       --- if within grid, gather
       end
 c=============================================================================
 c===========================================================================
-      subroutine emitthresh(threshold,js,iw,ngridw,ngridh,xxpmesh,yypmesh,
-     &                      zeromesh,tepsx,tepsy)
+      subroutine emitthresh(n,threshold,js,iw,ngridw,ngridh,tepsx,tepsy)
       use InPart
       use InDiag
       use Picglb
       use Win_Moments
       use Particles
-      real(kind=8):: threshold
-      integer(ISZ):: js,iw,ngridw,ngridh,zeromesh
-      real(kind=8):: xxpmesh(0:ngridw,0:ngridh)
-      real(kind=8):: yypmesh(0:ngridw,0:ngridh)
-      real(kind=8):: tepsx,tepsy
+      integer(ISZ):: n
+      real(kind=8):: threshold(n)
+      integer(ISZ):: js,iw,ngridw,ngridh
+      real(kind=8):: tepsx(n),tepsy(n)
 
 c --- Calculates the emittance with thesholding. Particles in regions where
 c --- the density is less than threshold are not included. The thresholding is
 c --- done in a way which mimics experiment - the particles are binned onto a
 c --- grid which has the slope subtracted (to minimize empty space).
 c --- Input:
-c ---   - threshold is threshold value
+c ---   - n is number of thresholds
+c ---   - threshold are threshold values
 c ---   - js species of particles to include
 c ---   - iw z-window to select particles
 c ---   - ngridw number of grid points position is binned into
 c ---   - ngridh number of grid points velocity is binned into
-c ---   - xxpmesh(0:ngridw,0:ngridh) scratch array holding x-xp density
-c ---   - yypmesh(0:ngridw,0:ngridh) scratch array holding y-yp density
 c --- Output:
 c ---   - tepsx,tepsy
 
-      integer(ISZ):: i1,i2,ip,i,j,jw,jh,npx,npy
+      real(kind=8):: xxpmesh(0:ngridw,0:ngridh)
+      real(kind=8):: yypmesh(0:ngridw,0:ngridh)
+      integer(ISZ):: i1,i2,ip,i,j,jw,jh
       real(kind=8):: zw1,zw2,vms,ww,wh,density
       real(kind=8):: slopex,mmaxx,dwx,dhx
       real(kind=8):: slopey,mmaxy,dwy,dhy
-      real(kind=8):: wminx,wmaxx,hminx,hmaxx
-      real(kind=8):: wminy,wmaxy,hminy,hmaxy
-      real(kind=8):: avexxsq,avexpsq,avexxxp,avexx,avexp,txe
-      real(kind=8):: aveyysq,aveypsq,aveyyyp,aveyy,aveyp,tye
+      real(kind=8):: maxes(4),mines(4)
+      integer(ISZ):: nn(2,n)
+      real(kind=8):: aves(2,5,n),te(2,n)
       real(kind=8):: uzpi
-      real(kind=8):: dwxi,dhxi,dwyi,dhyi,mmaxxi,mmaxyi
+      real(kind=8):: dwxi,dhxi,dwyi,dhyi
 
 c     --- Set some temporaries
       i1 = ins(js)
@@ -1689,161 +1699,120 @@ c     --- Set some temporaries
       slopey = (yypbar(iw)-ybar(iw)*ypbar(iw))/dvnz(yrms(iw)**2)
 
 c     --- Find min and max of position and velocity
-      wminx = +LARGEPOS
-      wmaxx = -LARGEPOS
-      hminx = +LARGEPOS
-      hmaxx = -LARGEPOS
-      wminy = +LARGEPOS
-      wmaxy = -LARGEPOS
-      hminy = +LARGEPOS
-      hmaxy = -LARGEPOS
+      mines = +LARGEPOS
+      maxes = -LARGEPOS
       do ip=i1,i2
-        if (uzp(ip) /= 0. .and. zw1 .le. zp(ip) .and. zp(ip) .le. zw2) then
+        if (uzp(ip) /= 0. .and. zw1 <= zp(ip) .and. zp(ip) <= zw2) then
           uzpi = 1./uzp(ip)
-          if (xp(ip) < wminx) then
-            wminx = xp(ip)
-          else if (xp(ip) > wmaxx) then
-            wmaxx = xp(ip)
-          endif
-          if (yp(ip) < wminy) then
-            wminy = yp(ip)
-          else if (yp(ip) > wmaxy) then
-            wmaxy = yp(ip)
-          endif
+          mines(1) = min(mines(1),xp(ip))
+          maxes(1) = max(maxes(1),xp(ip))
+          mines(2) = min(mines(2),yp(ip))
+          maxes(2) = max(maxes(2),yp(ip))
           vms = uxp(ip)*uzpi - xp(ip)*slopex
-          if (vms < hminx) then
-            hminx = vms
-          else if (vms > hmaxx) then
-            hmaxx = vms
-          endif
+          mines(3) = min(mines(3),vms)
+          maxes(3) = max(maxes(3),vms)
           vms = uyp(ip)*uzpi - yp(ip)*slopey
-          if (vms < hminy) then
-            hminy = vms
-          else if (vms > hmaxy) then
-            hmaxy = vms
-          endif
+          mines(4) = min(mines(4),vms)
+          maxes(4) = max(maxes(4),vms)
         endif
       enddo
 
+#ifdef MPIPARALLEL
+      call parallelmaxrealarray(maxes,4)
+      call parallelminrealarray(mines,4)
+#endif
+
 c     --- Extend the maximum a tiny bit to make sure that all particles are
 c     --- within range (min,max]. Calculate grid cell sizes.
-      wmaxx = wmaxx + (wmaxx - wminx)*1.e-6
-      hmaxx = hmaxx + (hmaxx - hminx)*1.e-6
-      dwx = (wmaxx - wminx)/ngridw
-      dhx = (hmaxx - hminx)/ngridh
+      maxes = maxes + (maxes - mines)*1.e-6
+      dwx = (maxes(1) - mines(1))/ngridw
+      dhx = (maxes(3) - mines(3))/ngridh
       dwxi = 1./dwx
       dhxi = 1./dhx
-      wmaxy = wmaxy + (wmaxy - wminy)*1.e-6
-      hmaxy = hmaxy + (hmaxy - hminy)*1.e-6
-      dwy = (wmaxy - wminy)/ngridw
-      dhy = (hmaxy - hminy)/ngridh
+      dwy = (maxes(2) - mines(2))/ngridw
+      dhy = (maxes(4) - mines(4))/ngridh
       dwyi = 1./dwy
       dhyi = 1./dhy
 
 c     --- Bin up the data onto a 2-D grid
-      if (zeromesh > 0) then
-        xxpmesh = 0.
-        yypmesh = 0.
-      endif
+      xxpmesh = 0.
+      yypmesh = 0.
       call getpsgrd(nps(js),xp(ins(js)),uxp(ins(js)),ngridw,ngridh,xxpmesh,
-     &              wminx,wmaxx,hminx,hmaxx,
+     &              mines(1),maxes(1),mines(3),maxes(3),
      &              zw1,zw2,zp(ins(js)),uzp(ins(js)),slopex)
       call getpsgrd(nps(js),yp(ins(js)),uyp(ins(js)),ngridw,ngridh,yypmesh,
-     &              wminy,wmaxy,hminy,hmaxy,
+     &              mines(2),maxes(2),mines(4),maxes(4),
      &              zw1,zw2,zp(ins(js)),uzp(ins(js)),slopey)
 
+#ifdef MPIPARALLEL
+      call parallelsumrealarray(xxpmesh,(1+ngridw)*(1+ngridh))
+      call parallelsumrealarray(yypmesh,(1+ngridw)*(1+ngridh))
+#endif
 c     --- Find max of data and rescale it so the max is 1.
-      mmaxx = -LARGEPOS
-      mmaxy = -LARGEPOS
-      do j=0,ngridh
-        do i=0,ngridw
-          if (xxpmesh(i,j) > mmaxx) mmaxx = xxpmesh(i,j)
-          if (yypmesh(i,j) > mmaxy) mmaxy = yypmesh(i,j)
-        enddo
-      enddo
-      mmaxxi = 1./dvnz(mmaxx)
-      mmaxyi = 1./dvnz(mmaxy)
-      do j=0,ngridh
-        do i=0,ngridw
-          xxpmesh(i,j) = xxpmesh(i,j)*mmaxxi
-          yypmesh(i,j) = yypmesh(i,j)*mmaxyi
-        enddo
-      enddo
+      mmaxx = maxval(xxpmesh)
+      mmaxy = maxval(yypmesh)
+      xxpmesh = xxpmesh/mmaxx
+      yypmesh = yypmesh/mmaxy
 
 c     --- Calculate average of particles in regions meeting threshold.
-      npx = 0
-      avexx = 0.
-      avexp = 0.
-      avexxsq = 0.
-      avexpsq = 0.
-      avexxxp = 0.
-      npy = 0
-      aveyy = 0.
-      aveyp = 0.
-      aveyysq = 0.
-      aveypsq = 0.
-      aveyyyp = 0.
+      nn = 0
+      aves = 0.
       do ip=i1,i2
-        if (uzp(ip) /= 0. .and. zw1 .le. zp(ip) .and. zp(ip) .le. zw2) then
+        if (uzp(ip) /= 0. .and. zw1 <= zp(ip) .and. zp(ip) <= zw2) then
           uzpi = 1./uzp(ip)
-          jw = int((xp(ip) - wminx)*dwxi)
-          ww =    ((xp(ip) - wminx)*dwxi) - jw
+          jw = int((xp(ip) - mines(1))*dwxi)
+          ww =    ((xp(ip) - mines(1))*dwxi) - jw
           vms = uxp(ip)*uzpi - slopex*xp(ip)
-          jh = int((vms - hminx)*dhxi)
-          wh =    ((vms - hminx)*dhxi) - jh
+          jh = int((vms - mines(3))*dhxi)
+          wh =    ((vms - mines(3))*dhxi) - jh
           density = xxpmesh(jw  ,jh  )*(1.-ww)*(1.-wh) +
-     &              xxpmesh(jw+1,jh  )*(1.   )*(1.-wh) +
-     &              xxpmesh(jw  ,jh+1)*(1.-ww)*(1.   ) +
-     &              xxpmesh(jw+1,jh+1)*(1.   )*(1.   )
-          if (density > threshold) then
-            npx = npx + 1
-            avexx = avexx + xp(ip)
-            avexp = avexp + vms
-            avexxsq = avexxsq + xp(ip)**2
-            avexpsq = avexpsq + vms**2
-            avexxxp = avexxxp + xp(ip)*vms
-          endif
-          jw = int((yp(ip) - wminy)*dwyi)
-          ww =    ((yp(ip) - wminy)*dwyi) - jw
+     &              xxpmesh(jw+1,jh  )*(   ww)*(1.-wh) +
+     &              xxpmesh(jw  ,jh+1)*(1.-ww)*(   wh) +
+     &              xxpmesh(jw+1,jh+1)*(   ww)*(   wh)
+          where (density > threshold)
+            nn(1,:) = nn(1,:) + 1
+            aves(1,1,:) = aves(1,1,:) + xp(ip)
+            aves(1,2,:) = aves(1,2,:) + vms
+            aves(1,3,:) = aves(1,3,:) + xp(ip)**2
+            aves(1,4,:) = aves(1,4,:) + vms**2
+            aves(1,5,:) = aves(1,5,:) + xp(ip)*vms
+          end where
+          jw = int((yp(ip) - mines(2))*dwyi)
+          ww =    ((yp(ip) - mines(2))*dwyi) - jw
           vms = uyp(ip)*uzpi - slopey*yp(ip)
-          jh = int((vms - hminy)*dhyi)
-          wh =    ((vms - hminy)*dhyi) - jh
+          jh = int((vms - mines(4))*dhyi)
+          wh =    ((vms - mines(4))*dhyi) - jh
           density = yypmesh(jw  ,jh  )*(1.-ww)*(1.-wh) +
-     &              yypmesh(jw+1,jh  )*(1.   )*(1.-wh) +
-     &              yypmesh(jw  ,jh+1)*(1.-ww)*(1.   ) +
-     &              yypmesh(jw+1,jh+1)*(1.   )*(1.   )
-          if (density > threshold) then
-            npy = npy + 1
-            aveyy = aveyy + yp(ip)
-            aveyp = aveyp + vms
-            aveyysq = aveyysq + yp(ip)**2
-            aveypsq = aveypsq + vms**2
-            aveyyyp = aveyyyp + yp(ip)*vms
-          endif
+     &              yypmesh(jw+1,jh  )*(   ww)*(1.-wh) +
+     &              yypmesh(jw  ,jh+1)*(1.-ww)*(   wh) +
+     &              yypmesh(jw+1,jh+1)*(   ww)*(   wh)
+          where (density > threshold)
+            nn(2,:) = nn(2,:) + 1
+            aves(2,1,:) = aves(2,1,:) + yp(ip)
+            aves(2,2,:) = aves(2,2,:) + vms
+            aves(2,3,:) = aves(2,3,:) + yp(ip)**2
+            aves(2,4,:) = aves(2,4,:) + vms**2
+            aves(2,5,:) = aves(2,5,:) + yp(ip)*vms
+          end where
         endif
       enddo
-      if (npx > 0) then
-        avexx = avexx/npx
-        avexp = avexp/npx
-        avexxsq = avexxsq/npx
-        avexpsq = avexpsq/npx
-        avexxxp = avexxxp/npx
-      endif
-      if (npy > 0) then
-        aveyy = aveyy/npy
-        aveyp = aveyp/npy
-        aveyysq = aveyysq/npy
-        aveypsq = aveypsq/npy
-        aveyyyp = aveyyyp/npy
-      endif
+#ifdef MPIPARALLEL
+      call parallelsumintegerarray(nn,2*n)
+      call parallelsumrealarray(aves,2*5*n)
+#endif
+      where (nn > 0)
+        aves(:,1,:) = aves(:,1,:)/nn
+        aves(:,2,:) = aves(:,2,:)/nn
+        aves(:,3,:) = aves(:,3,:)/nn
+        aves(:,4,:) = aves(:,4,:)/nn
+        aves(:,5,:) = aves(:,5,:)/nn
+      end where
 
 c     --- Calculate emittance from the remaining particles.
-      txe = ((avexxsq - avexx**2)*(avexpsq - avexp**2) -
-     &       (avexxxp - avexx*avexp)**2)
-      tepsx = 4.*sqrt(txe)
-      tye = ((aveyysq - aveyy**2)*(aveypsq - aveyp**2) -
-     &       (aveyyyp - aveyy*aveyp)**2)
-      tepsy = 4.*sqrt(tye)
+      te = ((aves(:,3,:) - aves(:,1,:)**2)*(aves(:,4,:) - aves(:,2,:)**2) -
+     &      (aves(:,5,:) - aves(:,1,:)*aves(:,2,:))**2)
+      tepsx = 4.*sqrt(te(1,:))
+      tepsy = 4.*sqrt(te(2,:))
 
       return
       end

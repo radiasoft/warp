@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.79 $, $Date: 2003/03/26 23:15:12 $
+#@(#) File TOP.V, version $Revision: 3.80 $, $Date: 2003/04/09 01:55:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.79 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.80 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -495,11 +495,11 @@ dzl                   real [m]     # LatticeInternal mesh grid cell size
 dzli                  real [m]     # LatticeInternal grid cell size inverse
 zlframe               real [m]     # Location of LatticeInternal frame
 zltime                real [m]     # Time of LatticeInternal frame
-zlmin                 real [m] +parallel # LatticeInternal mesh maximum in z
-zlmax                 real [m] +parallel # LatticeInternal mesh minimum in z
-nzl                integer /0/ [1] +parallel # Number of LatticeInternal points
-nzlmax             integer /0/ [1] +parallel # Length of LatticeInternal arrays
-zlmesh(0:nzlmax)     _real [m] +parallel # LatticeInternal Z mesh
+zlmin                 real [m]     # LatticeInternal mesh maximum in z
+zlmax                 real [m]     # LatticeInternal mesh minimum in z
+nzl                integer /0/ [1] # Number of LatticeInternal points
+nzlmax             integer /0/ [1] # Length of LatticeInternal arrays
+zlmesh(0:nzlmax)     _real [m]     # LatticeInternal Z mesh
 ndrftol            integer /1/ # Maximum level of overlapping drft elements
 odrftoi(0:ndrft)   _integer     # Overlap indices for drft elements
 odrftio(0:ndrft)   _integer     # Overlap indices for drft elements
@@ -1223,7 +1223,7 @@ vzrms(0:nzwind)         _real [m/s]   # True RMS Vz in window
 rhomid(0:nzwind)        _real [C/m^3] # Charge dens. on axis at ctr of window
 rhomax(0:nzwind)        _real [C/m^3] # Charge dens. max-over-X,Y at ctr of win.
 
-*********** Z_Moments dump parallel:
+*********** Z_Moments dump:
 # Particle and field moment data (including emittances) at current timestep
 # as a function of Z 
 zmmntmax             real         # Moments grid maximum in Z
@@ -1347,6 +1347,30 @@ hekzbeam(0:lenhist)           _real [J]     limited (0:jhist)
    # Z Kinetic energy in the beam frame
 hekperp(0:lenhist)            _real [J]     limited (0:jhist)
    # Perp Kinetic energy
+hxmaxp(0:lenhist)             _real [m]     limited (0:jhist)
+   # History of maximum X over particles
+hxminp(0:lenhist)             _real [m]     limited (0:jhist)
+   # History of minimum X over particles
+hymaxp(0:lenhist)             _real [m]     limited (0:jhist)
+   # History of maximum Y over particles
+hyminp(0:lenhist)             _real [m]     limited (0:jhist)
+   # History of minimum Y over particles
+hzmaxp(0:lenhist)             _real [m]     limited (0:jhist)
+   # History of maximum Z over particles
+hzminp(0:lenhist)             _real [m]     limited (0:jhist)
+   # History of minimum Z over particles
+hvxmaxp(0:lenhist)            _real [m/s]   limited (0:jhist)
+   # History of maximum Vx over particles
+hvxminp(0:lenhist)            _real [m/s]   limited (0:jhist)
+   # History of minimum Vx over particles
+hvymaxp(0:lenhist)            _real [m/s]   limited (0:jhist)
+   # History of maximum Vy over particles
+hvyminp(0:lenhist)            _real [m/s]   limited (0:jhist)
+   # History of minimum Vy over particles
+hvzmaxp(0:lenhist)            _real [m/s]   limited (0:jhist)
+   # History of maximum Vz over particles
+hvzminp(0:lenhist)            _real [m/s]   limited (0:jhist)
+   # History of minimum Vz over particles
 hepsx(0:nzwind,0:lenhist)     _real [m-r]   limited (0:nzwind,0:jhist) +winhist
    # X-X' emittance by window as a function of time
 hepsy(0:nzwind,0:lenhist)     _real [m-r]   limited (0:nzwind,0:jhist) +winhist
@@ -1444,147 +1468,147 @@ hcurrz(0:nzzarr*ihcurrz,0:lenhist)  _real [m/s] limited (0:nzzarr,0:jhist)
 lhepsxz logical /.false./    # Turns on history of X emittance
 ihepsxz integer /0 /         # Multiplier for hepsxz memory size (autoset)
 hepsxz(0:nzmmnt*ihepsxz,0:lenhist)  _real [m-r] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X emittance versus space and time
+            +zhist           # X emittance versus space and time
 lhepsyz logical /.false./    # Turns on history of Y emittance
 ihepsyz integer /0 /         # Multiplier for hepsyz memory size (autoset)
 hepsyz(0:nzmmnt*ihepsyz,0:lenhist)  _real [m-r] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Y emittance versus space and time
+            +zhist           # Y emittance versus space and time
 lhepsnxz logical /.false./   # Turns on history of X normalized emittance
 ihepsnxz integer /0 /        # Multiplier for hepsnxz memory size (autoset)
 hepsnxz(0:nzmmnt*ihepsnxz,0:lenhist)  _real [mm-mrad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X normalized emittance versus space and time
+            +zhist           # X normalized emittance versus space and time
 lhepsnyz logical /.false./   # Turns on history of Y normalized emittance
 ihepsnyz integer /0 /        # Multiplier for hepsnyz memory size (autoset)
 hepsnyz(0:nzmmnt*ihepsnyz,0:lenhist)  _real [mm-mrad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Y normalized emittance versus space and time
+            +zhist           # Y normalized emittance versus space and time
 lhepsgz logical /.false./    # Turns on history of Generalized emittance
 ihepsgz integer /0 /         # Multiplier for hepsgz memory size (autoset)
 hepsgz(0:nzmmnt*ihepsgz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Generalized emittance versus space and time
+            +zhist           # Generalized emittance versus space and time
 lhepshz logical /.false./    # Turns on history of Generalized emittance
 ihepshz integer /0 /         # Multiplier for hepshz memory size (autoset)
 hepshz(0:nzmmnt*ihepshz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Generalized emittance versus space and time
+            +zhist           # Generalized emittance versus space and time
 lhepsngz logical /.false./   # Turns on history of Generalized nrmlzd emittance
 ihepsngz integer /0 /        # Multiplier for hepsngz memory size (autoset)
 hepsngz(0:nzmmnt*ihepsngz,0:lenhist)  _real [mm-mrad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Generalized nrmlzd emittance versus space andtime
+            +zhist           # Generalized nrmlzd emittance versus space andtime
 lhepsnhz logical /.false./   # Turns on history of Generalized nrmlzd emittance
 ihepsnhz integer /0 /        # Multiplier for hepsnhz memory size (autoset)
 hepsnhz(0:nzmmnt*ihepsnhz,0:lenhist)  _real [mm-mrad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Generalized nrmlzd emittance versus space andtime
+            +zhist           # Generalized nrmlzd emittance versus space andtime
 lhxbarz logical /.false./    # Turns on history of X bar
 ihxbarz integer /0 /         # Multiplier for hxbarz memory size (autoset)
 hxbarz(0:nzmmnt*ihxbarz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X bar versus space and time
+            +zhist           # X bar versus space and time
 lhybarz logical /.false./    # Turns on history of Y bar
 ihybarz integer /0 /         # Multiplier for hybarz memory size (autoset)
 hybarz(0:nzmmnt*ihybarz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Y bar versus space and time
+            +zhist           # Y bar versus space and time
 lhxybarz logical /.false./   # Turns on history of XY bar
 ihxybarz integer /0 /        # Multiplier for hxybarz memory size (autoset)
 hxybarz(0:nzmmnt*ihxybarz,0:lenhist)  _real [m**2] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # XY bar versus space and time
+            +zhist           # XY bar versus space and time
 lhxrmsz logical /.false./    # Turns on history of X rms
 ihxrmsz integer /0 /         # Multiplier for hxrmsz memory size (autoset)
 hxrmsz(0:nzmmnt*ihxrmsz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X rms versus space and time
+            +zhist           # X rms versus space and time
 lhyrmsz logical /.false./    # Turns on history of Y rms
 ihyrmsz integer /0 /         # Multiplier for hyrmsz memory size (autoset)
 hyrmsz(0:nzmmnt*ihyrmsz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Y rms versus space and time
+            +zhist           # Y rms versus space and time
 lhxprmsz logical /.false./   # Turns on history of X' rms
 ihxprmsz integer /0 /        # Multiplier for hxprmsz memory size (autoset)
 hxprmsz(0:nzmmnt*ihxprmsz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X' rms versus space and time
+            +zhist           # X' rms versus space and time
 lhyprmsz logical /.false./   # Turns on history of Y' rms
 ihyprmsz integer /0 /        # Multiplier for hyprmsz memory size (autoset)
 hyprmsz(0:nzmmnt*ihyprmsz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Y' rms versus space and time
+            +zhist           # Y' rms versus space and time
 lhxsqbarz logical /.false./  # Turns on history of X**2 bar
 ihxsqbarz integer /0 /       # Multiplier for hxsqbarz memory size (autoset)
 hxsqbarz(0:nzmmnt*ihxsqbarz,0:lenhist)  _real [m**2] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X**2 bar versus space and time
+            +zhist           # X**2 bar versus space and time
 lhysqbarz logical /.false./  # Turns on history of Y**2 bar
 ihysqbarz integer /0 /       # Multiplier for hysqbarz memory size (autoset)
 hysqbarz(0:nzmmnt*ihysqbarz,0:lenhist)  _real [m**2] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Y**2 bar versus space and time
+            +zhist           # Y**2 bar versus space and time
 lhvxbarz logical /.false./   # Turns on history of Vx bar
 ihvxbarz integer /0 /        # Multiplier for hvxbarz memory size (autoset)
 hvxbarz(0:nzmmnt*ihvxbarz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Vx bar versus space and time
+            +zhist           # Vx bar versus space and time
 lhvybarz logical /.false./   # Turns on history of Vy bar
 ihvybarz integer /0 /        # Multiplier for hvybarz memory size (autoset)
 hvybarz(0:nzmmnt*ihvybarz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Vy bar versus space and time
+            +zhist           # Vy bar versus space and time
 lhvzbarz logical /.false./   # Turns on history of Vz bar
 ihvzbarz integer /0 /        # Multiplier for hvzbarz memory size (autoset)
 hvzbarz(0:nzmmnt*ihvzbarz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Vz bar versus space and time
+            +zhist           # Vz bar versus space and time
 lhxpbarz logical /.false./   # Turns on history of X' bar
 ihxpbarz integer /0 /        # Multiplier for hxpbarz memory size (autoset)
 hxpbarz(0:nzmmnt*ihxpbarz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X' bar versus space and time
+            +zhist           # X' bar versus space and time
 lhypbarz logical /.false./   # Turns on history of Y' bar
 ihypbarz integer /0 /        # Multiplier for hypbarz memory size (autoset)
 hypbarz(0:nzmmnt*ihypbarz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Y' bar versus space and time
+            +zhist           # Y' bar versus space and time
 lhvxrmsz logical /.false./   # Turns on history of Vx rms
 ihvxrmsz integer /0 /        # Multiplier for hvxrmsz memory size (autoset)
 hvxrmsz(0:nzmmnt*ihvxrmsz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Vx rms versus space and time
+            +zhist           # Vx rms versus space and time
 lhvyrmsz logical /.false./   # Turns on history of Vy rms
 ihvyrmsz integer /0 /        # Multiplier for hvyrmsz memory size (autoset)
 hvyrmsz(0:nzmmnt*ihvyrmsz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Vy rms versus space and time
+            +zhist           # Vy rms versus space and time
 lhvzrmsz logical /.false./   # Turns on history of Vz rms
 ihvzrmsz integer /0 /        # Multiplier for hvzrmsz memory size (autoset)
 hvzrmsz(0:nzmmnt*ihvzrmsz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Vz rms versus space and time
+            +zhist           # Vz rms versus space and time
 lhxpsqbarz logical /.false./ # Turns on history of X'**2 bar
 ihxpsqbarz integer /0 /      # Multiplier for hxpsqbarz memory size (autoset)
 hxpsqbarz(0:nzmmnt*ihxpsqbarz,0:lenhist)  _real [rad**2] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X'**2 bar versus space and time
+            +zhist           # X'**2 bar versus space and time
 lhypsqbarz logical /.false./ # Turns on history of Y'**2 bar
 ihypsqbarz integer /0 /      # Multiplier for hypsqbarz memory size (autoset)
 hypsqbarz(0:nzmmnt*ihypsqbarz,0:lenhist)  _real [rad**2] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # Y'**2 bar versus space and time
+            +zhist           # Y'**2 bar versus space and time
 lhxxpbarz logical /.false./  # Turns on history of XX' bar
 ihxxpbarz integer /0 /       # Multiplier for hxxpbarz memory size (autoset)
 hxxpbarz(0:nzmmnt*ihxxpbarz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # XX' bar versus space and time
+            +zhist           # XX' bar versus space and time
 lhyypbarz logical /.false./  # Turns on history of YY' bar
 ihyypbarz integer /0 /       # Multiplier for hyypbarz memory size (autoset)
 hyypbarz(0:nzmmnt*ihyypbarz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # YY' bar versus space and time
+            +zhist           # YY' bar versus space and time
 lhxypbarz logical /.false./  # Turns on history of XY' bar
 ihxypbarz integer /0 /       # Multiplier for hxypbarz memory size (autoset)
 hxypbarz(0:nzmmnt*ihxypbarz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # XY' bar versus space and time
+            +zhist           # XY' bar versus space and time
 lhyxpbarz logical /.false./  # Turns on history of YX' bar
 ihyxpbarz integer /0 /       # Multiplier for hyxpbarz memory size (autoset)
 hyxpbarz(0:nzmmnt*ihyxpbarz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # YX' bar versus space and time
+            +zhist           # YX' bar versus space and time
 lhxpypbarz logical /.false./ # Turns on history of X'Y' bar
 ihxpypbarz integer /0 /      # Multiplier for hxpypbarz memory size (autoset)
 hxpypbarz(0:nzmmnt*ihxpypbarz,0:lenhist)  _real [rad**2] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # X'Y' bar versus space and time
+            +zhist           # X'Y' bar versus space and time
 lhxvzbarz logical /.false./  # Turns on history of XVz bar
 ihxvzbarz integer /0 /       # Multiplier for hxvzbarz memory size (autoset)
 hxvzbarz(0:nzmmnt*ihxvzbarz,0:lenhist)  _real [m*m/s] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # XVz bar versus space and time
+            +zhist           # XVz bar versus space and time
 lhyvzbarz logical /.false./  # Turns on history of YVz bar
 ihyvzbarz integer /0 /       # Multiplier for hyvzbarz memory size (autoset)
 hyvzbarz(0:nzmmnt*ihyvzbarz,0:lenhist)  _real [m*m/s] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # YVz bar versus space and time
+            +zhist           # YVz bar versus space and time
 lhvxvzbarz logical /.false./ # Turns on history of VxVz bar
 ihvxvzbarz integer /0 /      # Multiplier for hvxvzbarz memory size (autoset)
 hvxvzbarz(0:nzmmnt*ihvxvzbarz,0:lenhist)  _real [(m/s)**2] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # VxVz bar versus space and time
+            +zhist           # VxVz bar versus space and time
 lhvyvzbarz logical /.false./ # Turns on history of VyVz bar
 ihvyvzbarz integer /0 /      # Multiplier for hvyvzbarz memory size (autoset)
 hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist)  _real [(m/s)**2] limited (0:nzmmnt,0:jhist)
-            +zhist +parallel # VyVz bar versus space and time
+            +zhist           # VyVz bar versus space and time
 
 *********** Particles dump parallel:
 # Dynamic particle arrays, and related data
@@ -1797,17 +1821,16 @@ grid2grid(unew:real,nxnew:integer,nynew:integer,
 getpsgrd(np,xp:real,uxp:real,nw,nh,psgrd:real,wmin:real,wmax:real,hmin:real,
          hmax:real,zl:real,zr:real,zp:real,uzp:real,slope:real)
               subroutine # lays particles onto slanted mesh in phase space
-emitthresh(threshold:real,js:integer,iw:integer,ngridw:integer,ngridh:integer,
-           xxpmesh:real,yypmesh:real,zeromesh:integer,tepsx:real,tepsy:real)
+emitthresh(n:integer,threshold:real,js:integer,iw:integer,
+           ngridw:integer,ngridh:integer,tepsx:real,tepsy:real)
               subroutine # Calculates the emittance with thesholding.
         # --- Input:
-        # ---   - threshold is threshold value
+        # ---   - n is number of thresholds
+        # ---   - threshold are threshold values
         # ---   - js species of particles to include
         # ---   - iw z-window to select particles
         # ---   - ngridw number of grid points position is binned into
         # ---   - ngridh number of grid points velocity is binned into
-        # ---   - xxpmesh(0:ngridw,0:ngridh) scratch array holding x-xp density
-        # ---   - yypmesh(0:ngridw,0:ngridh) scratch array holding y-yp density
         # --- Output:
         # ---   - tepsx,tepsy
 emitellipse(xpshear:real,vxgam:real,npart:integer,xbar:real,xsqbar:real,
