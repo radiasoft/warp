@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.10 2002/01/10 20:29:04 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.11 2002/01/22 20:08:09 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -148,21 +148,23 @@ Constructor arguments
   #----------------------------------------------------------------------------
   def ingrid(s,x,y):
     # --- Determines whether the data points are within the grid.
+    xfuzz = 1.e-5*w3d.dx
+    yfuzz = 1.e-5*w3d.dy
     if w3d.l4symtry:
       return where(logical_and(logical_and(greater(x,0.),
-                                           greater(w3d.xmmax,x)),
+                                           greater(w3d.xmmax-xfuzz,x)),
                                logical_and(greater(y,0.),
-                                           greater(w3d.ymmax,y))),1,0)
+                                           greater(w3d.ymmax-yfuzz,y))),1,0)
     elif w3d.l2symtry:
-      return where(logical_and(logical_and(greater(x,w3d.xmmin),
-                                           greater(w3d.xmmax,x)),
+      return where(logical_and(logical_and(greater(x,w3d.xmmin+xfuzz),
+                                           greater(w3d.xmmax-xfuzz,x)),
                                logical_and(greater(y,0.),
-                                           greater(w3d.ymmax,y))),1,0)
+                                           greater(w3d.ymmax-yfuzz,y))),1,0)
     else:
-      return where(logical_and(logical_and(greater(x,w3d.xmmin),
-                                           greater(w3d.xmmax,x)),
-                               logical_and(greater(y,w3d.ymmin),
-                                           greater(w3d.ymmax,y))),1,0)
+      return where(logical_and(logical_and(greater(x,w3d.xmmin+xfuzz),
+                                           greater(w3d.xmmax-xfuzz,x)),
+                               logical_and(greater(y,w3d.ymmin+yfuzz),
+                                           greater(w3d.ymmax-yfuzz,y))),1,0)
   #----------------------------------------------------------------------------
   def getmesh(s,xmin,xmax,ymin,ymax,rpart,xcent,ycent):
     # --- This routine redefines the mesh to match the size of the element.
