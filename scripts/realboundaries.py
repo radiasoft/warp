@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.11 2002/01/22 20:08:09 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.12 2002/02/08 22:05:18 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -126,7 +126,7 @@ Constructor arguments
     # --- Calculate matrix
     fieldsol(1)
   #----------------------------------------------------------------------------
-  def setmatrix(s):
+  def setmatrix(s,vlist=None):
     # --- Reset the mesh if requested
     if s.newmesh: s.setmesh()
     # --- Get number of conductor points.
@@ -236,16 +236,11 @@ Constructor arguments
     w3d.rho = 0.
     loadrho()
   #----------------------------------------------------------------------------
-  def issame(s,x,y,v):
+  def issame(s,x,y):
     # --- Checks if the input values would return the same matrix
     if max(abs(s.xcond - x)) > 0.: return 0
     if max(abs(s.ycond - y)) > 0.: return 0
-    try:
-      if max(abs(s.v - v)) > 0.: return 0
-    except:
-      if abs(s.v - v) > 0.: return 0
     return 1
-
 
 
 ##############################################################################
@@ -304,10 +299,14 @@ Constructor arguments:
     # --- and the matrix using those points
     s.getmatrix() 
   #----------------------------------------------------------------------------
-  def issame(s,ap,v,ox,oy):
+  def setmatrix(s,vlist):
+    s.vcond[:] = vlist[0]
+    CapacityMatrix.setmatrix(s)
+  #----------------------------------------------------------------------------
+  def issame(s,ap,ox,oy):
     # --- Checks if the input values would return the same matrix
     if s.ap == ap:
-      if s.v == v and s.ox == ox and s.oy == oy:
+      if s.ox == ox and s.oy == oy:
         return 1
     return 0
 
@@ -329,8 +328,8 @@ Constructor arguments:
             conductor points (implies that the matrix will be calculated)
   """
   #----------------------------------------------------------------------------
-  def __init__(s,ap,rr=None,vx=0.,vy=0.,vxm=None,vym=None,withx=1,withy=1,ox=0.,oy=0.,
-               newmesh=0,rodfract=0.5):
+  def __init__(s,ap,rr=None,vx=0.,vy=0.,vxm=None,vym=None,withx=1,withy=1,
+               ox=0.,oy=0.,newmesh=0,rodfract=0.5):
     # --- Save some input values
     s.ap = ap
     s.rr_in = rr
@@ -367,6 +366,14 @@ Constructor arguments:
     s.vy = vy
     s.vxm = vxm
     s.vym = vym
+    # --- Set vx = 1, vy = -1. They are later set to the actual values.
+    # --- It is done this way so that the voltages can change.
+    # --- The integers 0-3 are used to select the appropriate value in
+    # --- in the 'choose' statement in setmatrix.
+    vx  = 0
+    vy  = 1
+    vxm = 2
+    vym = 3
     # --- Now, estimate what a good number of points would be.
     # --- The minimum distance between two points that gaurantess that they
     # --- are not in the same cell is sqrt(dx**2+dy**2). Take as the minimum
@@ -402,15 +409,19 @@ Constructor arguments:
     ii = s.ingrid(x,y)
     s.xcond = compress(ii,x)
     s.ycond = compress(ii,y)
-    s.vcond = compress(ii,v)
+    s.vcond = compress(ii,v)*1.
+    s.vcondunit = int(s.vcond + 0)
     # --- Finally, get the matrix using those points
     s.getmatrix()
   #----------------------------------------------------------------------------
-  def issame(s,ap,rr,vx,vy,vxm,vym,withx,withy,ox,oy):
+  def setmatrix(s,vlist):
+    s.vcond[:] = 1.*choose(s.vcondunit,vlist)
+    CapacityMatrix.setmatrix(s)
+  #----------------------------------------------------------------------------
+  def issame(s,ap,rr,withx,withy,ox,oy):
     # --- Checks if the input values would return the same matrix
     if s.ap == ap and (s.rr == rr or s.rr_in == rr):
-      if s.vx == vx and s.vy == vy and s.vxm == vxm and s.vym == vym and \
-         s.withx == withx and s.withy == withy and s.ox == ox and s.oy == oy:
+      if s.withx == withx and s.withy == withy and s.ox == ox and s.oy == oy:
         return 1
     return 0
 
@@ -499,16 +510,16 @@ Constructor arguments:
     installbeforestep(s.setboundary)
     installbeforefs(s.initialsetboundary)
   #----------------------------------------------------------------------------
-  def setmatrix(s,m):
+  def setmatrix(s,m,vlist):
     if s.current == m: return
-    m.setmatrix()
+    m.setmatrix(vlist)
     s.current = m
   #----------------------------------------------------------------------------
   def getpipematrix(s,ap,v,ox,oy):
     # --- This searches through the list of matrices checking if one with the
     # --- same parameters has already be created. If so, just return that one.
     for m in s.pipematrixlist:
-      if m.issame(ap,v,ox,oy): return m
+      if m.issame(ap,ox,oy): return m
     # --- None was found, so create a new one, adding it to the list.
     m = RoundPipe(ap,v,ox,oy,s.newmesh)
     s.pipematrixlist.append(m)
@@ -518,7 +529,7 @@ Constructor arguments:
     # --- This searches through the list of matrices checking if one with the
     # --- same parameters has already be created. If so, just return that one.
     for m in s.rodmatrixlist:
-      if m.issame(ap,rr,vx,vy,vxm,vym,withx,withy,ox,oy): return m
+      if m.issame(ap,rr,withx,withy,ox,oy): return m
     # --- None was found, so create a new one, adding it to the list.
     m = RoundRods(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy,s.newmesh,s.rodfract)
     s.rodmatrixlist.append(m)
@@ -536,7 +547,7 @@ Constructor arguments:
           cm[id] = s.getpipematrix(ap[id],0.,ox[id],oy[id])
         else:
           return 0
-      s.setmatrix(cm[id])
+      s.setmatrix(cm[id],[0.])
       return 1
     return None
   #----------------------------------------------------------------------------
@@ -596,15 +607,15 @@ Constructor arguments:
         cm[id] = cmlist
       # --- Apply one of the five matrices.
       if zl <= top.zbeam < zl + pw:
-        s.setmatrix(cm[id][0])
+        s.setmatrix(cm[id][0],[v1])
       elif zl+pw <= top.zbeam < zl+pw+gl:
-        s.setmatrix(cm[id][1])
+        s.setmatrix(cm[id][1],[vx,vy,vx,vy])
       elif zl+pw+gl <= top.zbeam < zr-pw-gl:
-        s.setmatrix(cm[id][2])
+        s.setmatrix(cm[id][2],[vx,vy,vx,vy])
       elif zr-pw-gl <= top.zbeam < zr-pw:
-        s.setmatrix(cm[id][3])
+        s.setmatrix(cm[id][3],[vx,vy,vx,vy])
       elif zr-pw <= top.zbeam <= zr:
-        s.setmatrix(cm[id][4])
+        s.setmatrix(cm[id][4],[v2])
       return 1
     return 0
   #----------------------------------------------------------------------------
