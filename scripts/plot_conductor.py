@@ -1,5 +1,25 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.4 2001/02/06 23:18:34 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.5 2001/02/27 23:35:17 dave Exp $"
+
+def plot_conductordoc():
+  print """
+The following functions plot contours of the potential in various planes
+along with the conductors in that plane. The first three plot with the axis
+having units of meters. The suffix 'g' means that it plots with the axis
+having units of number of grid cells. The suffix 'i' means that it replicates
+the plots in all quadrants (when symmetry is used). The 'box' suffix means
+that it plots a box around each grid point inside of a conductor.
+
+pfxy, pfzx, pfzy
+pfxyg, pfzxg, pfzyg
+pfzxi, pfzyi, pfxyi
+pfxybox, pfzxbox, pfzybox, pfzxboxi, pfzyboxi
+
+plotgrid: plots the x-z mesh in the lab frame (including any bends)
+pfzxlab: makes the pfzx plot in the lab frame (including any bends)
+plotsrfrv: handy command to plot r versus z for a suface of revolution, giving
+           the function describing it
+  """
 
 ######################################################################
 # functions to plot the conductor points and subgrid data            #
@@ -565,4 +585,36 @@ def pfzxlab(zz=None,iy=None):
     top.zgrid = g
     setlatt()
     fieldsol(1)
+
+
+#####################################################################
+def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
+              roff=0,zoff=0):
+  """Handy function for plotting the r versus z for a surface of revolution
+ - srfrv: surface of revolution function to plot
+ - zmin,zmax: z range to plot
+ - n=1000: number of points to plot
+ - color='fg': color of line
+ - gridframe=0: when true, plots in grid frame
+ - rscale=1: scaling for radius
+ - zscale=1: scaling for z
+ - roff=0: offset for radius
+ - zoff=0: offset for z
+  """
+  zz = iota(0,n)*(zmax - zmin)/n + zmin
+  rr = ones(n+1,'d')
+  for i in range(n+1):
+    f3d.srfrv_z = zz[i]
+    srfrv()
+    rr[i] = f3d.srfrv_r
+  if gridframe:
+    zz = (zz - w3d.zmmin)/w3d.dz
+    rr = (rr)/w3d.dx
+  plg(rscale*rr+roff,zscale*zz+zoff,color=color)
+
+
+
+
+
+
 
