@@ -1,7 +1,7 @@
 from warp import *
 import Ranf
 import __main__
-lattice_version = "$Id: lattice.py,v 1.2 2000/11/29 03:07:06 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.3 2001/01/19 20:26:06 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -636,6 +636,8 @@ Either specify the index
   - id=0 index of the data set to use (if one is not supplied)
 Or specify the data set
   - pp=[] electrostatic potential (Volts)
+  - xs=0 x start of grid
+  - ys=0 y start of grid
   - dx=0 x increment size (m)
   - dy=0 y increment size (m)
   - dz=0 z increment size (m)
@@ -650,7 +652,7 @@ Or specify the data set
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
-               id=0,sf=0,sc=1,pp=[],dx=0,dy=0,dz=0,
+               id=0,sf=0,sc=1,pp=[],xs=0,ys=0,dx=0,dy=0,dz=0,
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
@@ -659,6 +661,8 @@ Or specify the data set
     self.sf = sf
     self.sc = sc
     self.pp = pp
+    self.xs = xs
+    self.ys = ys
     self.dx = dx
     self.dy = dy
     self.dz = dz
@@ -979,11 +983,14 @@ information if the WARP lattice arrays is deleted.
         top.bgrdid[immlt] = top.bgrdns + 1
       else:
         top.bgrdid[immlt] = e.id
-      top.bgrdns = max(top.bgrdid[immlt],top,bgrdns)
+      top.bgrdns = max(top.bgrdid[immlt],top.bgrdns)
       if e.bx or e.by or e.bz:
-        top.bgrdnx=max(shape(e.bx)[0],shape(e.by)[0],shape(e.bz)[0],top.bgrdnx)
-        top.bgrdny=max(shape(e.bx)[1],shape(e.by)[1],shape(e.bz)[1],top.bgrdny)
-        top.bgrdnz=max(shape(e.bx)[2],shape(e.by)[2],shape(e.bz)[2],top.bgrdnz)
+        sbx = shape(e.bx)
+        sby = shape(e.by)
+        sbz = shape(e.bz)
+        top.bgrdnx=max(sbx[0]-1,sby[0]-1,sbz[0]-1,top.bgrdnx)
+        top.bgrdny=max(sbx[1]-1,sby[1]-1,sbz[1]-1,top.bgrdny)
+        top.bgrdnz=max(sbx[2]-1,sby[2]-1,sbz[2]-1,top.bgrdnz)
 
     elif e.type == 'Pgrd':
       ipgrd = ipgrd + 1
@@ -991,6 +998,8 @@ information if the WARP lattice arrays is deleted.
       top.pgrdze[ipgrd] = top.pgrdzs[ipgrd] + e.length
       zz = top.pgrdze[ipgrd]
       top.pgrdap[ipgrd] = e.aperture
+      top.pgrdxs[ipgrd] = e.xs
+      top.pgrdys[ipgrd] = e.ys
       top.pgrdox[ipgrd] = e.offset_x*errordist(e.error_type)
       top.pgrdoy[ipgrd] = e.offset_y*errordist(e.error_type)
       top.pgrdsf[ipgrd] = e.sf
@@ -1002,14 +1011,14 @@ information if the WARP lattice arrays is deleted.
       top.pgrdpw[ipgrd] = e.pw
       top.pgrdpa[ipgrd] = e.pa
       if not e.id:
-        top.pgrdid[immlt] = top.pgrdns + 1
+        top.pgrdid[ipgrd] = top.pgrdns + 1
       else:
-        top.pgrdid[immlt] = e.id
-      top.pgrdns = max(top.pgrdid[immlt],top,pgrdns)
-      if e.p:
-        top.pgrdnx = max(shape(e.p)[0],top.pgrdnx)
-        top.pgrdny = max(shape(e.p)[1],top.pgrdny)
-        top.pgrdnz = max(shape(e.p)[2],top.pgrdnz)
+        top.pgrdid[ipgrd] = e.id
+      top.pgrdns = max(top.pgrdid[ipgrd],top.pgrdns)
+      if e.pp:
+        top.pgrdnx = max(shape(e.pp)[0]-1,top.pgrdnx)
+        top.pgrdny = max(shape(e.pp)[1]-1,top.pgrdny)
+        top.pgrdnz = max(shape(e.pp)[2]-1,top.pgrdnz)
   
   # --- Allocate the data space needed.
   gchange("Lattice")
@@ -1059,7 +1068,7 @@ information if the WARP lattice arrays is deleted.
 
     elif e.type == 'Mmlt':
       immlt = immlt + 1
-      id = top.mmltid[iemlt]
+      id = top.mmltid[immlt]
       if (e.m or e.mp) and top.nzmmlt[id-1] == 0:
         # --- Only copy data if this is a new data set
         top.nzmmlt[id-1] = max(shape(e.m)[0],shape(e.mp)[0]) - 1
@@ -1076,7 +1085,7 @@ information if the WARP lattice arrays is deleted.
 
     elif e.type == 'Bgrd':
       ibgrd = ibgrd + 1
-      id = top.bgrdid[iemlt]
+      id = top.bgrdid[ibgrd]
       if (e.bx or e.by or e.bz) and top.bgrddx[id-1] == 0.:
         top.bgrddx[id-1] = e.dx
         top.bgrddy[id-1] = e.dy
@@ -1090,13 +1099,13 @@ information if the WARP lattice arrays is deleted.
 
     elif e.type == 'Pgrd':
       ipgrd = ipgrd + 1
-      id = top.pgrdid[iemlt]
-      if e.p and top.pgrddx[id-1] == 0.:
+      id = top.pgrdid[ipgrd]
+      if e.pp and top.pgrddx[id-1] == 0.:
         top.pgrddx[id-1] = e.dx
         top.pgrddy[id-1] = e.dy
         top.pgrddz[id-1] = e.dz
-        sp = shape(p)
-        top.pgrdp[:sp[0],:sp[1],:sp[2],id-1] = e.p
+        sp = shape(e.pp)
+        top.pgrd[:sp[0],:sp[1],:sp[2],id-1] = e.pp
 
   # --- Finish by setting some general parameters.
   if iquad >= 2:
