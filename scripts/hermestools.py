@@ -1,4 +1,11 @@
 from warp import *
+hermestools_version = "$Id: hermestools.py,v 1.2 2001/03/01 23:48:20 dave Exp $"
+
+def hermestoolsdoc():
+  print """
+Tools for Hermes
+sethermesbeam: 
+  """
 
 def sethermesbeam():
   # Sets initial conditions
@@ -54,6 +61,10 @@ def sethermescurrent():
     her.var[10:12,:] = (top.emit*gaminv/her.var[9,:]) * her.var[12,:] / top.ibeam
                         
 def sethermesenvelope (niter = 1000, errorlimit = 1.e-9):
+  """
+This does ...
+  - niter=1000: ...
+  """
   # --- Finds the matched conditions. Assumes a cigar load.
   her.var[4:8,:] = 0.    # Centroid motion not implemented in HERMES
   her.var[:4,0]  = 0.    # First slice at zero (cigar load)
