@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.122 $, $Date: 2004/07/09 19:22:47 $
+c@(#) File DTOP.F, version $Revision: 3.123 $, $Date: 2004/07/22 23:18:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -642,7 +642,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.122 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.123 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1692,11 +1692,12 @@ c       --- if within grid, gather
       end
 c=============================================================================
       subroutine getgridngp3d(np,x,y,z,f,nx,ny,nz,grid,
-     &                        xmin,xmax,ymin,ymax,zmin,zmax,l2symtry,l4symtry)
+     &                        xmin,xmax,ymin,ymax,zmin,zmax,zgrid,
+     &                        l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz,np
       real(kind=8):: x(np), y(np), z(np), f(np)
       real(kind=8):: grid(0:nx,0:ny,0:nz)
-      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax,zgrid
       logical(ISZ):: l2symtry,l4symtry
 
 c Gathers data from a 3-D mesh onto particle positions.
@@ -1731,7 +1732,7 @@ c       --- find location on grid, taking into account any symmetries.
         endif
         gx = (gx    - xmin)*dxi
         gy = (gy    - ymin)*dyi
-        gz = (z(ip) - zmin)*dzi
+        gz = (z(ip) - zmin - zgrid)*dzi
 
 c       --- if within grid, gather
         if (0. <= gx .and. gx < nx .and.

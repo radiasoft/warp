@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.124 $, $Date: 2004/05/13 17:12:37 $
+#@(#) File TOP.V, version $Revision: 3.125 $, $Date: 2004/07/22 23:18:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.124 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.125 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -583,57 +583,57 @@ zlmax                 real [m]     # LatticeInternal mesh minimum in z
 nzl                integer /0/ [1] # Number of LatticeInternal points
 nzlmax             integer /0/ [1] # Length of LatticeInternal arrays
 zlmesh(0:nzlmax)     _real [m]     # LatticeInternal Z mesh
-ndrftol            integer /1/ # Maximum level of overlapping drft elements
+ndrftol            integer /0/ # Maximum level of overlapping drft elements
 odrftoi(0:ndrft)   _integer     # Overlap indices for drft elements
 odrftio(0:ndrft)   _integer     # Overlap indices for drft elements
 odrftii(ndrftol)   _integer     # Overlap indices for drft elements
 odrftnn(ndrftol)   _integer     # Number of drft elements in overlap levels
-nbendol            integer /1/ # Maximum level of overlapping bend elements
+nbendol            integer /0/ # Maximum level of overlapping bend elements
 obendoi(0:nbend)   _integer     # Overlap indices for bend elements
 obendio(0:nbend)   _integer     # Overlap indices for bend elements
 obendii(nbendol)   _integer     # Overlap indices for bend elements
 obendnn(nbendol)   _integer     # Number of bend elements in overlap levels
-ndipool            integer /1/ # Maximum level of overlapping dipo elements
+ndipool            integer /0/ # Maximum level of overlapping dipo elements
 odipooi(0:ndipo)   _integer     # Overlap indices for dipo elements
 odipoio(0:ndipo)   _integer     # Overlap indices for dipo elements
 odipoii(ndipool)   _integer     # Overlap indices for dipo elements
 odiponn(ndipool)   _integer     # Number of dipo elements in overlap levels
-nquadol            integer /1/ # Maximum level of overlapping quad elements
+nquadol            integer /0/ # Maximum level of overlapping quad elements
 oquadoi(0:nquad)   _integer     # Overlap indices for quad elements
 oquadio(0:nquad)   _integer     # Overlap indices for quad elements
 oquadii(nquadol)   _integer     # Overlap indices for quad elements
 oquadnn(nquadol)   _integer     # Number of quad elements in overlap levels
-nsextol            integer /1/ # Maximum level of overlapping sext elements
+nsextol            integer /0/ # Maximum level of overlapping sext elements
 osextoi(0:nsext)   _integer     # Overlap indices for sext elements
 osextio(0:nsext)   _integer     # Overlap indices for sext elements
 osextii(nsextol)   _integer     # Overlap indices for sext elements
 osextnn(nsextol)   _integer     # Number of sext elements in overlap levels
-nheleol            integer /1/ # Maximum level of overlapping hele elements
+nheleol            integer /0/ # Maximum level of overlapping hele elements
 oheleoi(0:nhele)   _integer     # Overlap indices for hele elements
 oheleio(0:nhele)   _integer     # Overlap indices for hele elements
 oheleii(nheleol)   _integer     # Overlap indices for hele elements
 ohelenn(nheleol)   _integer     # Number of hele elements in overlap levels
-nemltol            integer /1/ # Maximum level of overlapping emlt elements
+nemltol            integer /0/ # Maximum level of overlapping emlt elements
 oemltoi(0:nemlt)   _integer     # Overlap indices for emlt elements
 oemltio(0:nemlt)   _integer     # Overlap indices for emlt elements
 oemltii(nemltol)   _integer     # Overlap indices for emlt elements
 oemltnn(nemltol)   _integer     # Number of emlt elements in overlap levels
-nmmltol            integer /1/ # Maximum level of overlapping mmlt elements
+nmmltol            integer /0/ # Maximum level of overlapping mmlt elements
 ommltoi(0:nmmlt)   _integer     # Overlap indices for mmlt elements
 ommltio(0:nmmlt)   _integer     # Overlap indices for mmlt elements
 ommltii(nmmltol)   _integer     # Overlap indices for mmlt elements
 ommltnn(nmmltol)   _integer     # Number of mmlt elements in overlap levels
-nacclol            integer /1/ # Maximum level of overlapping accl elements
+nacclol            integer /0/ # Maximum level of overlapping accl elements
 oaccloi(0:naccl)   _integer     # Overlap indices for accl elements
 oacclio(0:naccl)   _integer     # Overlap indices for accl elements
 oacclii(nacclol)   _integer     # Overlap indices for accl elements
 oacclnn(nacclol)   _integer     # Number of accl elements in overlap levels
-nbgrdol            integer /1/ # Maximum level of overlapping bgrd elements
+nbgrdol            integer /0/ # Maximum level of overlapping bgrd elements
 obgrdoi(0:nbgrd)   _integer     # Overlap indices for bgrd elements
 obgrdio(0:nbgrd)   _integer     # Overlap indices for bgrd elements
 obgrdii(nbgrdol)   _integer     # Overlap indices for bgrd elements
 obgrdnn(nbgrdol)   _integer     # Number of bgrd elements in overlap levels
-npgrdol            integer /1/ # Maximum level of overlapping pgrd elements
+npgrdol            integer /0/ # Maximum level of overlapping pgrd elements
 opgrdoi(0:npgrd)   _integer     # Overlap indices for pgrd elements
 opgrdio(0:npgrd)   _integer     # Overlap indices for pgrd elements
 opgrdii(npgrdol)   _integer     # Overlap indices for pgrd elements
@@ -1947,7 +1947,7 @@ getgrid3d(np:integer,x:real,y:real,z:real,f:real,
 getgridngp3d(np:integer,x:real,y:real,z:real,f:real,
              nx:integer,ny:integer,nz:integer,grid:real,
              xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
-             l2symtry:logical,l4symtry:logical) subroutine
+             zgrid:real,l2symtry:logical,l4symtry:logical) subroutine
         # Gathers data from a 3-D grid using nearest grid point.
 grid2grid(unew:real,nxnew:integer,nynew:integer,
           xminnew:real,xmaxnew:real,yminnew:real,ymaxnew:real,
