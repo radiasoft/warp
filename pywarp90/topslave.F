@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.2 $, $Date: 2001/05/02 19:24:39 $
+c TOPSLAVE.M, version $Revision: 1.3 $, $Date: 2001/08/14 20:30:16 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -320,7 +320,7 @@ c Use reduction routines to sum whole beam moments across all
 c of the processors.  It also shares z moment data at PE boundaries.
 
 c     --- temporary for z moments
-      real(kind=8):: temp1(NUMZMMNT,0:10),temp2(NUMZMMNT,0:10)
+      real(kind=8):: temp1(NUMZMMNT,0:1),temp2(NUMZMMNT,0:1)
       integer(ISZ):: im,iz
       integer(ISZ):: left_pe,right_pe
       integer(ISZ):: left_iz,right_iz
@@ -346,18 +346,12 @@ c     --- and last processors.
       if (my_index > 0) then
         left_iz = 0
         left_nz = izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)
+	left_nz = min(left_nz, 1)
       endif
       if (my_index < nslaves-1) then
         right_iz = izpslave(my_index+1) - izpslave(my_index)
         right_nz = nzpslave(my_index) - right_iz
-      endif
-
-c     --- This should never happen, but make sure that no more than 11
-c     --- planes of data are to be exchanged.
-      if (left_nz > 11 .or. right_nz > 11) then
-        call remark("ERROR: in sum_mmnts more than 11 planes are to be")
-        call remark("       exchanged. This just doesn't work. Call Dave.")
-        call kaboom(1)
+	right_nz = min(right_nz, 1)
       endif
 
 c     --- Share z moments data at overlapping PE boundaries.
@@ -457,10 +451,12 @@ c     --- Get number of planes to exchange.
       if (my_index > 0) then
         left_iz = 0
         left_nz = izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)
+	left_nz = min(left_nz, 1)
       endif
       if (my_index < nslaves-1) then
         right_iz = izpslave(my_index+1) - izpslave(my_index)
         right_nz = nzpslave(my_index) - right_iz
+	right_nz = min(right_nz, 1)
       endif
 
 c     --- This should never happen, but make sure that no more than 11
@@ -544,6 +540,21 @@ c to all processors.
       call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_MIN,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
+
+      return
+      end
+c==========================================================================
+c==========================================================================
+      subroutine parallelbroadcast(data,ndata,root)
+      integer(ISZ):: ndata,root
+      real(kind=8):: data(ndata)
+c Broadcast the data to all processors.
+
+      integer(ISZ):: mpierror
+      include "mpif.h"
+
+      call MPI_BCAST(data,ndata,MPI_DOUBLE_PRECISION,
+     &               root,MPI_COMM_WORLD,mpierror)
 
       return
       end
