@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.88 2005/01/26 18:39:55 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.89 2005/02/25 22:31:59 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -23,6 +23,7 @@ plotsrfrv: handy command to plot r versus z for a suface of revolution, giving
 plotquadoutline: plots outline of quadrupole structure for quad elements
 plotheleoutline: plots outline of quadrupole structure for hele elements
 plotemltoutline: plots outline of quadrupole structure for emlt elements
+plotmmltoutline: plots outline of pipe structure for mmlt elements
 plotpgrdoutline: plots outline of quadrupole structure for pgrd elements
 plotaccloutline: plots outline of pipe structure for accl elements
 plotdrftoutline: plots outline of pipe structure for drft elements
@@ -1957,6 +1958,25 @@ def plotemltoutline(zl=None,zu=None,ie=0,ne=None,color='fg',gridframe=0,axis='x'
                      top.emltrr,top.emltrl,top.emltgl,top.emltgp,
                      top.emltpa,zeros(top.nemlt+1,'d'),top.emltpw,
                      zeros(top.nemlt+1,'d'),zeros(top.nemlt+1,'d'))
+
+#---------------------------------------------------------------------------
+def plotmmltoutline(zl=None,zu=None,ie=0,nm=None,color='fg',gridframe=0,axis='x',
+                    outline=1,fillcolor=None):
+  """Plots the outline of mmlt elements
+ - zl,zu: range in lab frame to plot, defaults to extent of phi field.
+ - ie=0: starting mmlt to plot
+ - nm=top.nmmlt+1: number of mmlts to plot
+ - color='fg': line color
+ - gridframe=0: when true, make plot in grid coordinates
+ - axis='x': selects axis to plot, either 'x' or 'y'
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
+  """
+  if top.nmmlt < 0: return
+  if nm is None: nm = top.nmmlt + 1
+  plotelementoutline(color,gridframe,axis,zl,zu,ie,nm,outline,fillcolor,
+                     top.mmltzs,top.mmltze,top.mmltap,top.mmltax,top.mmltay,
+                     top.mmltox,top.mmltoy)
 
 #---------------------------------------------------------------------------
 def plotpgrdoutline(zl=None,zu=None,ip=0,np=None,color='fg',gridframe=0,axis='x',
