@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.101 $, $Date: 2003/04/22 21:52:04 $
+c@(#) File W3D.M, version $Revision: 3.102 $, $Date: 2003/04/28 17:12:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4484,8 +4484,8 @@ c             --- is only strictly correct for planar emission.
             enddo
 
 c           --- Load particles one grid cell at a time.
-            do iy=0,inj_nx
-              do ix=0,inj_ny
+            do iy=0,inj_ny
+              do ix=0,inj_nx
 
 c               --- Mesh location relative to source center
                 xm = inj_xmmin(ij) + ix*inj_dx
@@ -5226,7 +5226,7 @@ c     --- Setup grids covering injection surfaces.
 c     --- Set mins for meshes around each source.
       inj_xmmin = max(xmin, - inj_nx/2*inj_dx)
       inj_ymmin = max(ymin, - inj_ny/2*inj_dy)
-      if (l_inj_rz) inj_ymmin = 0.
+      if (l_inj_rz) inj_xmmin = 0.
 
 c     --- Set inject z min and max. This is only really needed for
 c     --- the parallel version, but is useful for the serial version to
