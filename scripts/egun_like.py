@@ -1,6 +1,6 @@
 from warp import *
 import string
-egun_like_version = "$Id: egun_like.py,v 1.10 2002/08/08 18:13:22 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.11 2002/10/25 23:00:41 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -235,8 +235,9 @@ Performs steady-state iterations
 
           # --- save data of just injected particles
           if (len(ii) > 0):
-            chckpart(js+1,0,int(1.5*gun_steps*top.npinje_s[js]/_ipstep)+len(ii),
-                     false)
+            npguess = int(1.5*gun_steps*top.npinje_s[js]/_ipstep)+len(ii),
+            nplost = ins_save[js] - top.ins[js] - top.nps[js]
+            chckpart(js+1,0,npguess + nplost,false)
             copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
             nps_save[js] = nps_save[js] + len(ii)
 
@@ -278,7 +279,9 @@ Performs steady-state iterations
 
             # --- save data of just injected particles
             if (len(ii) > 0):
-              chckpart(js+1,0,nps_save[js]+len(ii),false)
+              npguess = nps_save[js] + len(ii)
+              nplost = ins_save[js] - top.ins[js] - top.nps[js]
+              chckpart(js+1,0,npguess + nplost,false)
               copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
               nps_save[js] = nps_save[js] + len(ii)
 
