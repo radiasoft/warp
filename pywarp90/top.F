@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.129 $, $Date: 2004/09/22 16:09:02 $
+c@(#) File TOP.F, version $Revision: 3.130 $, $Date: 2004/10/07 19:50:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7830,9 +7830,9 @@ c           conductor generate new particles.
             yp(i1+ir-1) = yplost(ip)+shifty+(wranf()-0.5)*deltay
             zp(i1+ir-1) = zplost(ip)+shiftz+(wranf()-0.5)*deltaz
           end do
-          uxp(i1:i2) = 0.
-          uyp(i1:i2) = 0.
-          uzp(i1:i2) = -uz_tmp
+          uxp(i1:i2) = (wranf()-0.5)*uz_tmp
+          uyp(i1:i2) = (wranf()-0.5)*uz_tmp
+          uzp(i1:i2) = -abs((wranf()-0.5)*uz_tmp)
           if(wpid>0) pid(i1:i2,wpid) = pidlost(ip,wpid)
           nps(is2) = nps(is2) + nbp
         end do
@@ -7840,5 +7840,3 @@ c           conductor generate new particles.
       return
       end subroutine impact_ion
 c=============================================================================
-
-
