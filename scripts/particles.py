@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.10 2003/04/29 17:32:54 dave Exp $"
+particles_version = "$Id: particles.py,v 1.11 2003/05/27 22:50:40 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -102,11 +102,12 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   - wz=1.: Width of window around zmesh[iz]
   - zl=None: When specified, lower range of selection region
   - zu=None: When specified, upper range of selection region
+  - zc=None: When specified, picks particles within zc+-wz*dz
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None,'checkargs':0,'allowbadargs':0}
+                "zl":None,"zu":None,"zc":None,'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
   # --- ignoring keywords not listed in kwdefaults.
@@ -166,6 +167,12 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     z = top.zp
     zl = w3d.zmminglobal + iz*w3d.dz - wz*w3d.dz + top.zbeam
     zu = w3d.zmminglobal + iz*w3d.dz + wz*w3d.dz + top.zbeam
+    ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
+                arrayrange(ir1,ir2))
+  elif zc is not None:
+    z = top.zp
+    zl = zc - wz*w3d.dz
+    zu = zc + wz*w3d.dz
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
   elif iw < 0:
