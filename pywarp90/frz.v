@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.21 $, $Date: 2002/08/29 17:49:35 $
+#@(#) File FRZ.V, version $Revision: 3.22 $, $Date: 2002/10/26 00:22:31 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.21 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.22 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -57,6 +57,29 @@ mgridrz_xfact(0:mgridrz_nz) _real       # array for deformation factor in X
 mgridrz_yfact(0:mgridrz_nz) _real       # array for deformation factor in Y
 mgridrz_ngrids            integer  /1/  # number of grids (useful when using mesh refinement)
 mgridrz_grid_is(mgridrz_ngrids)   _integer # array id grid associated with grid species 
+ngrids                    integer  /1/  # number of grids (includes base grid + patches)
+nrg(ngrids)               _integer      # number of mesh in R for each grid
+nzg(ngrids)               _integer      # number of mesh in Z for each grid
+drg(ngrids)               _real         # number of mesh in R for each grid
+dzg(ngrids)               _real         # number of mesh in Z for each grid
+l_change_grid             logical  /.false./
+ngrids_cg                 integer  /0/
+id_cg(ngrids_cg,2)        _integer
+nr_cg(ngrids_cg)          _integer  
+nz_cg(ngrids_cg)          _integer 
+dr_cg(ngrids_cg)          _real    
+dz_cg(ngrids_cg)          _real    
+rmin_cg(ngrids_cg)        _real    
+zmin_cg(ngrids_cg)        _real    
+guard_min_r_cg(ngrids_cg) _integer
+guard_max_r_cg(ngrids_cg) _integer
+guard_min_z_cg(ngrids_cg) _integer
+guard_max_z_cg(ngrids_cg) _integer
+l_change_loc_part         logical  /.false./
+nz_rmc                    integer
+rmc(nz_rmc+1)             _integer
+l_get_field_from_base     logical  /.false./
+l_dep_rho_on_base         logical  /.false./
 
 *********** InjectVars_eq dump:
 # variables and functions needed for getting voltage risetime from assumption of 
@@ -118,6 +141,8 @@ add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
             guard_min_r:integer,guard_max_r:integer,
             guard_min_z:integer,guard_max_z:integer) subroutine
          # add a subgrid to the grid id
+del_subgrid(id:integer) subroutine
+         # delete a subgrid and all its 'children'
 get_phi_subgrid(id:integer,phi:real,nr:integer,nz:integer) subroutine
          # get the potential of grid id
 get_array_subgrid(id:integer,phi:real,nr:integer,nz:integer,which:string) subroutine
@@ -128,6 +153,10 @@ get_rho_rz(rho:real,nr:integer,nz:integer,id:integer,rhop:integer) subroutine
          # get rho of grid id
 reset_rzmgrid_rho() subroutine
          # sets rho to zero.
+fieldweightz(zp:real,uzp:real,ez:real,np:integer) subroutine
+dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
+           xmin:real,zmin:real) subroutine
+         # makes rho deposition on RZ grid
 find_mgparam_rz() subroutine
          # RZ version of find_mgparam. Does the search for each subgrid.
 gchange_rhop_phip_rz() subroutine
@@ -139,3 +168,10 @@ set_basegrid_phi() subroutine
 setbnd_subgrid_to_inj_d() subroutine
          # set indices for force gathering (locpart) to coarser grid 
          # when grid point more than inj_d*grid%dz away from emitting surface
+clean_conductor_interior() subroutine
+         # removes conductor interior points from calculation 
+build_vlocs() subroutine
+set_patches_around_emitter(id:integer,np:integer,ij:integer,nz:integer,
+            guard_min_r:integer,guard_max_r:integer,
+            guard_min_z:integer,guard_max_z:integer) subroutine
+         # add patches around emitter
