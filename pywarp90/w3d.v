@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.174 $, $Date: 2004/11/30 18:39:56 $
+#@(#) File W3D.V, version $Revision: 3.175 $, $Date: 2004/12/02 21:17:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.174 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.175 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -754,6 +754,15 @@ bessi0(x:real) real function # Modified Bessel function I_0(x) for real x
 bessi1(x:real) real function # Modified Bessel function I_1(x) for real x
 bessi(n:integer,x:real) real function # Modified Bessel function I_n(x) 
                                       #  for real x and integer n >= 2
+zbrent(func:real,x1:real,x2:real,tol:real,itmax:integer) real function 
+                             # Brent routine for finding a root of fun(x) 
+                             # bracketed between x1 and x2 to tolerance tol 
+                             # within itmax iterations
+zbrent_test(x1:real,x2:real,tol:real,itmax:integer) real function
+watbagconstr(k1re:real) real function  # scaled constraint equation for a 
+                                       # waterbag equilbrium distribution in 
+                                       # continuous focusing
+
 
 ******** Subtimers3d dump:
 lw3dtimesubs logical /.false./
