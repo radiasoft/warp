@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.3 2001/02/08 00:11:27 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.4 2001/02/08 22:05:39 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -640,7 +640,8 @@ def parallelrestore(fname):
             elif histz == 1:
               # --- The proper solution would have to read the data in
               # --- in chunks for each time step.
-              itriple = array([top.izslave[me],top.izslave[me]+w3d.nz,1,0,0,0])
+              itriple = array([top.izslave[me+1],top.izslave[me+1]+w3d.nz,1,
+                               0,0,0])
               tmp = zeros((1+w3d.nz,1+top.lenhist),'d')
               for ih in xrange(top.jhist+1):
                 itriple[3:] = [ih,ih,1]
@@ -649,17 +650,17 @@ def parallelrestore(fname):
             elif histz == 2:
               # --- Read in data and untranspose it.
               itriple = array([0,top.lenhist,1,
-                               top.izslave[me],top.izslave[me]+w3d.nz,1])
+                               top.izslave[me+1],top.izslave[me+1]+w3d.nz,1])
               tmp = ff.read_part(vname+"@parallel",itriple)
               s = p+'.forceassign(vname,transpose(tmp))'
           elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                         'condvolt','icondlxy','icondlz']:
             # --- The conductor data was gathered into one place
-	    if ncond_p[me] > 0:
+            if ncond_p[me] > 0:
               imin = sum(ncond_p0[:me+1])
               itriple = array([imin,imin+ncond_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-	    else:
+            else:
               s = 'pass'
           elif p == 'f3d' and \
                vname in ['ecndpvph','iecndx','iecndy','iecndz',
@@ -668,11 +669,11 @@ def parallelrestore(fname):
                          'ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz',
                          'ecvoltpz','iecndlxy','iecndlz']:
             # --- The conductor data was gathered into one place
-	    if necndbdy_p[me] > 0:
+            if necndbdy_p[me] > 0:
               imin = sum(necndbdy_p0[:me+1])
               itriple = array([imin,imin+necndbdy_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-	    else:
+            else:
               s = 'pass'
           elif p == 'f3d' and \
                vname in ['ocndpvph','iocndx','iocndy','iocndz',
@@ -681,11 +682,11 @@ def parallelrestore(fname):
                          'ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz',
                          'ocvoltpz','iocndlxy','iocndlz']:
             # --- The conductor data was gathered into one place
-	    if nocndbdy_p[me] > 0:
+            if nocndbdy_p[me] > 0:
               imin = sum(nocndbdy_p0[:me+1])
               itriple = array([imin,imin+nocndbdy_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-	    else:
+            else:
               s = 'pass'
           elif p == 'w3d' and vname in ['rho']:
             imin = top.izslave[1+me]
