@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.47 $, $Date: 2002/05/13 21:12:57 $
+c@(#) File TOP.M, version $Revision: 3.48 $, $Date: 2002/05/14 19:08:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2670,7 +2670,7 @@ c  and not once per particle per multipole component.
         if (.not. linemlt(io)) cycle
 
 c       --- Get location of particle relative to moment data.
-        call mltlocat(np,xp,yp,npz,zp,nemltsets,dzemlt,nzemlt,nzl,
+        call mltlocat(np,xp,yp,npz,zp,nemltsets,dzemlt,nzemlt,nzl,nzlmax,
      &                nemltol,io,cemltzs,cemltze,cemltph,cemltsf,cemltsc,
      &                cemltim,cemltox,cemltoy,imm,izm,wzm,xxx,yyy,zzz,ttt,
      &                rr,tt,mltph,mltsf,zlmin,zlframe,dzli,
@@ -2811,7 +2811,7 @@ c  and not once per particle per multipole component.
         if (.not. linmmlt(io)) cycle
 
 c       --- Get location of particle relative to moment data.
-        call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,nzl,
+        call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,nzl,nzlmax,
      &                nmmltol,io,cmmltzs,cmmltze,cmmltph,cmmltsf,cmmltsc,
      &                cmmltim,cmmltox,cmmltoy,imm,izm,wzm,xxx,yyy,zzz,ttt,
      &                rr,tt,mltph,mltsf,zlmin,zlframe,dzli,
@@ -2892,25 +2892,26 @@ c       --- do coordinate transform on fields back to warped coordinates
       return
       end
 c=============================================================================
-      subroutine mltlocat(np,xp,yp,npz,zp,nmltsets,dzmlt,nzmlt,nzl,
+      subroutine mltlocat(np,xp,yp,npz,zp,nmltsets,dzmlt,nzmlt,nzl,nzlmax,
      &                    nol,io,cmltzs,cmltze,cmltph,cmltsf,cmltsc,
      &                    cmltim,cmltox,cmltoy,
      &                    imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
      &                    mltph,mltsf,zlmin,zlframe,dzli,bends,linbend,
      &                    cbendzs,cbendze,cbendrc,lslice)
-      integer(ISZ):: np,npz,nmltsets,nzl,nol,io
+      integer(ISZ):: np,npz,nmltsets,nzl,nzlmax,nol,io
       real(kind=8):: xp(np),yp(np),zp(npz)
       real(kind=8):: dzmlt(nmltsets)
       integer(ISZ):: nzmlt(nmltsets)
-      real(kind=8):: cmltzs(0:nzl,nol),cmltze(0:nzl,nol),cmltph(0:nzl,nol)
-      real(kind=8):: cmltsf(0:nzl,nol),cmltsc(0:nzl,nol)
-      integer(ISZ):: cmltim(0:nzl,nol)
-      real(kind=8):: cmltox(0:nzl,nol),cmltoy(0:nzl,nol)
+      real(kind=8):: cmltzs(0:nzlmax,nol),cmltze(0:nzlmax,nol)
+      real(kind=8):: cmltph(0:nzlmax,nol)
+      real(kind=8):: cmltsf(0:nzlmax,nol),cmltsc(0:nzlmax,nol)
+      integer(ISZ):: cmltim(0:nzlmax,nol)
+      real(kind=8):: cmltox(0:nzlmax,nol),cmltoy(0:nzlmax,nol)
       integer(ISZ):: imm(np),izm(np)
       real(kind=8):: wzm(np),xxx(np),yyy(np),zzz(np)
       real(kind=8):: ttt(np),rr(np),tt(np),mltph(np),mltsf(np)
       logical(ISZ):: bends,linbend
-      real(kind=8):: cbendzs(0:nzl),cbendze(0:nzl),cbendrc(0:nzl)
+      real(kind=8):: cbendzs(0:nzlmax),cbendze(0:nzlmax),cbendrc(0:nzlmax)
       real(kind=8):: zlmin,zlframe,dzli
       logical(ISZ):: lslice
 
