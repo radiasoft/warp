@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.71 2004/07/02 23:17:43 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.72 2004/07/07 18:25:42 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -531,7 +531,7 @@ Installs the data into the WARP database
     if nn > 0:
       if nc + nn > conductors.interior.nmax:
         conductors.interior.nmax = nn + nc
-        gchange("Conductor3d")
+        conductors.gchange("*")
       conductors.interior.n = conductors.interior.n + nn
       ii = compress(self.parity[:self.ndata] == -1,arange(self.ndata))
       conductors.interior.indx[0,nc:nc+nn] = take(self.ix,ii)
@@ -547,7 +547,7 @@ Installs the data into the WARP database
     if nn > 0:
       if ne + nn > conductors.evensubgrid.nmax:
         conductors.evensubgrid.nmax = nn + ne
-        gchange("Conductor3d")
+        conductors.gchange("*")
       conductors.evensubgrid.n = conductors.evensubgrid.n + nn
       ii = compress(self.parity[:self.ndata] == 0,arange(self.ndata))
       conductors.evensubgrid.indx[0,ne:ne+nn] = take(self.ix,ii)
@@ -564,7 +564,7 @@ Installs the data into the WARP database
     if nn > 0:
       if no + nn > conductors.oddsubgrid.nmax:
         conductors.oddsubgrid.nmax = nn + no
-        gchange("Conductor3d")
+        conductors.gchange("*")
       conductors.oddsubgrid.n = conductors.oddsubgrid.n + nn
       ii = compress(self.parity[:self.ndata] == 1,arange(self.ndata))
       conductors.oddsubgrid.indx[0,no:no+nn] = take(self.ix,ii)
