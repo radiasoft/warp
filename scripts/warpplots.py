@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.66 2002/01/08 00:25:23 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.67 2002/01/08 00:40:53 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2503,7 +2503,8 @@ def pcrhozy(ix=None,fullplane=1,**kw):
   if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
-  if not kw.has_key('contours'): kw['contours'] = 20
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
@@ -2531,7 +2532,8 @@ def pcrhozx(iy=None,fullplane=1,**kw):
   if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
-  if not kw.has_key('contours'): kw['contours'] = 20
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
@@ -2559,7 +2561,8 @@ def pcrhoxy(iz=None,fullplane=1,**kw):
   if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
-  if not kw.has_key('contours'): kw['contours'] = 20
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
@@ -2596,7 +2599,8 @@ def pcphizy(ix=None,fullplane=1,**kw):
   if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
-  if not kw.has_key('contours'): kw['contours'] = 20
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
@@ -2624,7 +2628,8 @@ def pcphizx(iy=None,fullplane=1,**kw):
   if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
-  if not kw.has_key('contours'): kw['contours'] = 20
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
@@ -2652,7 +2657,8 @@ def pcphixy(iz=None,fullplane=1,**kw):
   if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
-  if not kw.has_key('contours'): kw['contours'] = 20
+  if not kw.has_key('cellarray') or not kw['cellarray']:
+    if not kw.has_key('contours'): kw['contours'] = 20
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
