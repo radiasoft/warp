@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.16 2004/06/02 01:01:19 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.17 2004/06/04 16:14:27 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -425,6 +425,7 @@ Visualize surface of revolution
       for i in range(len(zdata)-1):
         z,r = zdata[i],rofzdata[i]
         zp1,rp1 = zdata[i+1],rofzdata[i+1]
+        if zp1 == z and rp1 == r: continue
         if raddata is not None: rad = raddata[i]
         else:                   rad = largepos
         if rad == largepos:
