@@ -7,6 +7,9 @@ specified to calculate the voltage as a function of time.
 Input for constructor:
  - condid=0: Id (or list of id's) of the conductor which is to be varied
  - discrete=true: z locations for plus/minus z subgrid points are round up/down.
+ - setvinject=false: when true, top.vinject is set to the same voltage
+ - doitnow=false: when true, applies the voltage and recalculates the fields
+                  when object created
 
  - tieffenback=false: when true, use the Tieffenback profile, with the
                       following parameters. Both maxvoltage and risetime
@@ -21,17 +24,16 @@ Input for constructor:
  - timedata: times at which the voltages are specified
    Linear interpolation is done between values.
 
- - setvinject=false: when true, top.vinject is set to the same voltage
  - voltfunc: user supplied function which takes a single argument, the current
              time. It returns the voltage at that time.
   """
 
   def __init__(self,condid=0,discrete=true,
+                setvinject=false,doitnow=false,
                 tieffenback=false,minvoltage=0.,maxvoltage=None,risetime=None,
                 flattime=top.largepos,falltime=top.largepos,
                 voltdata=None,timedata=None,
                 voltfunc=None,
-                setvinject=false,
                 aftervoltset=None):
     assert ((not tieffenback) or
            (tieffenback and maxvoltage is not None and risetime is not None)),\
@@ -68,6 +70,10 @@ Input for constructor:
     # --- to apply the voltage
     self.applyvoltage()
     installbeforefs(self.applyvoltage)
+
+    # --- Do it now if requested, both applying the voltage and calculating
+    # --- the fields.
+    if doitnow: fieldsol(-1)
 
   def applyvoltage(self,time=None):
     if time is None: time = top.time
