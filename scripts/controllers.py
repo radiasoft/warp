@@ -47,7 +47,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.6 2004/09/03 00:11:40 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.7 2004/09/09 19:43:12 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -88,7 +88,7 @@ class ControllerFunction:
     dict = self.__dict__.copy()
     del dict['funcs']
     funcnamelist = []
-    for i,f in self.controllerfunclist():
+    for f in self.controllerfunclist():
       if type(f) != ListType:
         funcnamelist.append(f.__name__)
     dict['funcnamelist'] = funcnamelist
@@ -127,19 +127,26 @@ class ControllerFunction:
     return len(self.funcs) > 0
 
   def controllerfunclist(self):
-    i = 0
-    while i < len(self.funcs):
-      f = self.funcs[i]
+    funclistcopy = copy.copy(self.funcs)
+    for f in funclistcopy:
       if type(f) == ListType:
         object = f[0]()
         if object is None:
-          del self.funcs[i]
+          self.funcs.remove(f)
           continue
         result = [object,f[1]]
+      elif type(f) == StringType:
+        import __main__
+        if f in __main__.__dict__:
+          result = __main__.__dict__[f]
+          # --- If the function with the name is found, then replace the
+          # --- name in the list with the function.
+          self.funcs[self.funcs.index(f)] = result
+        else:
+          continue
       else:
-        result = self.funcs[i]
-      i = i + 1
-      yield i-1,result
+        result = f
+      yield result
 
   def installfuncinlist(self,f):
     if type(f) == MethodType:
@@ -186,18 +193,9 @@ class ControllerFunction:
 
   def callfuncsinlist(self):
     bb = time.time()
-    for i,f in self.controllerfunclist():
+    for f in self.controllerfunclist():
       if type(f) == ListType:
         f = getattr(f[0],f[1])
-      elif type(f) == StringType:
-        import __main__
-        if f in __main__.__dict__:
-          f = __main__.__dict__[f]
-          # --- If the function with the name is found, then replace the
-          # --- name in the list with the function.
-          self.funcs[i] = f
-        else:
-          continue
       f()
     aa = time.time()
     return aa - bb
