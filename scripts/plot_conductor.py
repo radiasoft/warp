@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.5 2001/02/27 23:35:17 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.6 2001/03/03 01:49:20 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -19,6 +19,8 @@ plotgrid: plots the x-z mesh in the lab frame (including any bends)
 pfzxlab: makes the pfzx plot in the lab frame (including any bends)
 plotsrfrv: handy command to plot r versus z for a suface of revolution, giving
            the function describing it
+
+plotquadoutline: plots outline of quadrupole structure
   """
 
 ######################################################################
@@ -589,7 +591,7 @@ def pfzxlab(zz=None,iy=None):
 
 #####################################################################
 def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
-              roff=0,zoff=0):
+              roff=0,zoff=0,rmin=0.,rmax=top.largepos):
   """Handy function for plotting the r versus z for a surface of revolution
  - srfrv: surface of revolution function to plot
  - zmin,zmax: z range to plot
@@ -600,6 +602,8 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
  - zscale=1: scaling for z
  - roff=0: offset for radius
  - zoff=0: offset for z
+ - rmin=0: minimum value of r plotted (before applying rscale and roff)
+ - rmax=0: maximum value of r plotted (before applying rscale and roff)
   """
   zz = iota(0,n)*(zmax - zmin)/n + zmin
   rr = ones(n+1,'d')
@@ -610,11 +614,97 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
   if gridframe:
     zz = (zz - w3d.zmmin)/w3d.dz
     rr = (rr)/w3d.dx
+  rr = where(less(rr,rmin),rmin,rr)
+  rr = where(greater(rr,rmax),rmax,rr)
   plg(rscale*rr+roff,zscale*zz+zoff,color=color)
 
 
+#####################################################################
+def plotlatticeelement(color,gridframe,axis,iquad,nquad,
+                       ezs,eze,eap,err,erl,egl,egp,eox,eoy,epa,epr,epw,
+                       dpal,dpar):
+  """Plots the outline of electrostatic elements
+  - color: line color
+  - gridframe: when true, make plot in grid coordinates
+  - axis: selects axis to plot, either 'x' or 'y'
+  """
+  if axis == 'x':
+    gpsign = 1
+  else:
+    gssign = -1
+  for i in range(iquad,iquad+nquad+1):
+    # --- plot rods
+    # --- If aperture is zero, then this quad is skipped
+    rodap = eap[i]
+    if erl[i] > 0.:
+      rodlen = erl[i]
+      gp = egp[i]
+      gaplen = egl[i]
+    else:
+      rodlen = (eze[i] - ezs[i])
+      gp = 1
+      gaplen = 0.
+    if err[i] > 0.: rodrr = err[i]
+    else:           rodrr = 8./7.*eap[i]
+    if axis == 'x': offset = eox[i]
+    else:           offset = eoy[i]
+    if rodap > 0. and rodlen > 0.:
+      rr = rodap + rodrr + rodrr*array([1.,1.,-1.,-1.,1.])
+      zz = gpsign*(-0.5*(rodlen+gaplen) + rodlen*array([0.,1.,1.,0.,0.]))
+      rr1 = offset + rr
+      rr2 = offset - rr
+      zz = 0.5*(eze[i] + ezs[i]) + top.zlatstrt + zz
+      if gridframe:
+        rr1 = rr1/w3d.dx
+        rr2 = rr2/w3d.dx
+        zz = (zz - w3d.zmmin)/w3d.dz
+      plg(rr1,zz,color=color)
+      plg(rr2,zz,color=color)
+    # --- Plot end plates
+    pw = epw[i]
+    if pw > 0.:
+      if epa[i] > 0.: pa = epa[i]
+      else:           pa = eap[i]
+      if epr[i] > 0.: pr = epr[i]
+      else:           pr = rodap + 2.*rodrr
+      pal = pa + dpal[i]
+      par = pa + dpar[i]
+      rrl = array([pr,pr,pal,pal,pr])
+      rrr = array([pr,pr,par,par,pr])
+      zz = pw*array([0.,1.,1.,0.,0.])
+      rrl1 = offset + rrl
+      rrl2 = offset - rrl
+      rrr1 = offset + rrr
+      rrr2 = offset - rrr
+      zzl = 0.5*(eze[i] + ezs[i]) - 0.5*(rodlen+gaplen) - zz + \
+            top.zlatstrt
+      zzr = 0.5*(eze[i] + ezs[i]) + 0.5*(rodlen+gaplen) + zz + \
+            top.zlatstrt
+      if gridframe:
+        rr1 = rr1/w3d.dx
+        rr2 = rr2/w3d.dx
+        zzl = (zzl - w3d.zmmin)/w3d.dz
+        zzr = (zzr - w3d.zmmin)/w3d.dz
+      plg(rrl1,zzl,color=color)
+      plg(rrl2,zzl,color=color)
+      plg(rrr1,zzr,color=color)
+      plg(rrr2,zzr,color=color)
 
 
-
+#####################################################################
+def plotquadoutline(iquad=0,nquad=None,color='fg',gridframe=0,axis='x'):
+  """Plots the outline of quadrupole elements
+  - iquad=0: starting quad to plot
+  - nquad=top.nquad: number of quads to plot
+  - color='fg': line color
+  - gridframe=0: when true, make plot in grid coordinates
+  - axis='x': selects axis to plot, either 'x' or 'y'
+  """
+  if nquad == None: nquad = top.nquad
+  plotlatticeelement(color,gridframe,axis,iquad,nquad,
+                     top.quadzs,top.quadze,top.quadap,top.quadrr,top.quadrl,
+                     top.quadgl,top.quadgp,top.qoffx,top.qoffy,
+                     top.quadpa,top.quadpr,top.quadpw,
+                     top.qdelpal,top.qdelpar)
 
 
