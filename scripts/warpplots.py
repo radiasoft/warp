@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.122 2004/07/16 21:27:38 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.123 2004/07/24 00:27:02 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -70,8 +70,6 @@ hidesurfaces()
 warpplotsdocmore = """
 setup(): does the work needed to start writing plots to a file automatically
 plotruninfo(): plots run info at bottom of plots (called by fma and hcp)
-beforeplot[] list of functions called after each frame advance
-afterplot[] list of functions called just before each frame advance
 nf() = fma() Emulation of Basis command
 sf() = redraw() Emulation of Basis command
 warpplg(): for plotting data distributed across processors
@@ -87,10 +85,6 @@ point, plus, star, circle
 settitles(): set plot titles
 ptitles(): draw plot titles on the current frame
 
-plps[]: list of interpreter defined plots controlled by itplps
-plfreq[]: list of interpreter defined plots controlled by itplfreq
-plseldom[]: list of interpreter defined plots controlled by itplseldom
-plalways[]: list of interpreter defined plots controlled by itplalways
 pltfld3d(): makes fields plots which have been turned on
 onedplts(): makes 1-D plots which have been turned on
 psplots(): makes particle phase space plots which have been turned on
@@ -212,8 +206,6 @@ def plotruninfo():
 # like) names for fma and redraw.
 gistfma = fma
 gisthcp = hcp
-afterplot = []
-beforeplot = []
 def fma(legend=1):
   """
 Frame advance - plots run info on the bottom of the frame, gets graphics window
@@ -222,19 +214,18 @@ for before and after plot commands.
   - legend=1: when set to 0, the text at the frame bottom is omitted
   """
   if legend: plotruninfo()
-  for f in afterplot: f()
+  callafterplotfuncs()
   gistfma()
-  for f in beforeplot: f()
-  oldlimits = limits()
+  callbeforeplotfuncs()
 def hcp(legend=1):
   """
 Hardcopy - plots run info on the bottom of the frame and sends image to hard
 copy file.
   - legend=1: when set to 0, the text at the frame bottom is omitted
   """
-  for f in afterplot: f()
+  callafterplotfuncs()
   if legend: plotruninfo()
-  for f in beforeplot: f()
+  callbeforeplotfuncs()
   gisthcp()
 
 nf = fma
@@ -2912,36 +2903,6 @@ field domain.
 
 ##########################################################################
 ##########################################################################
-plps = []
-plfreq = []
-plseldom = []
-plalways = []
-#--------------------------------------------------------------------------
-def installplseldom(f):
-  "Adds a function to the list of functions called when seldom plots are made"
-  plseldom.append(f)
-#--------------------------------------------------------------------------
-def uninstallplseldom(f):
-  """Removes the function from the list of functions called when seldom plots
-     are made"""
-  if f in plseldom:
-    plseldom.remove(f)
-  else:
-    raise 'Warning: uninstallplseldom: no such function had been installed'
-#--------------------------------------------------------------------------
-def installplalways(f):
-  "Adds a function to the list of functions called when always plots are made"
-  plalways.append(f)
-#--------------------------------------------------------------------------
-def uninstallplalways(f):
-  """Removes the function from the list of functions called when always plots
-     are made"""
-  if f in plalways:
-    plalways.remove(f)
-  else:
-    raise 'Warning: uninstallplalways: no such function had been installed'
-
-##########################################################################
 def pltfld3d(fld='phi',freqflag=always):
   """Makes fields plots which have been turned on
      - fld='phi' quantity to plot, either 'phi' or 'rho'
@@ -2962,7 +2923,6 @@ def pltfld3d(fld='phi',freqflag=always):
   #if (top.icphixy4 == freqflag and fld == "phi"): pcphixy4
   #if (top.icphizx4 == freqflag and fld == "phi"): pcphizx4
   #if (top.icphizy4 == freqflag and fld == "phi"): pcphizy4
-  oldlimits = limits()
   window(currentwindow)
 
 ##########################################################################
@@ -2978,7 +2938,6 @@ def onedplts(freqflag=always):
   if freqflag == top.iprhoax: pzrhoax()
   if freqflag == top.ipphiax: pzphiax()
   if freqflag == top.ipezax: pzezax()
-  oldlimits = limits()
   window(currentwindow)
 
 # --- Thses are defined for the fortran interface. If WARP is not imported
@@ -3118,28 +3077,10 @@ def psplots(freqflag=always,js=0):
       fma()
 
   # --- Do the user defined plots
-  oldlimits = limits()
-  if freqflag == always:
-    for p in plalways:
-      p()
-      fma()
-      oldlimits = limits()
-    for p in plfreq:
-      p()
-      fma()
-      oldlimits = limits()
-  if freqflag == seldom:
-    for p in plseldom:
-      p()
-      fma()
-      oldlimits = limits()
-    for p in plps:
-      p()
-      fma()
-      oldlimits = limits()
+  if freqflag == always: callplalwaysfuncs()
+  if freqflag == seldom: callplseldomfuncs()
 
   # --- Reset the current window to it previous value.
-  oldlimits = limits()
   window(currentwindow)
 
   # --- Accumulate time
