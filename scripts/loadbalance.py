@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.25 2003/01/24 13:55:57 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.26 2003/04/17 22:16:22 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -17,71 +17,41 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
   """
 
 #########################################################################
-def setparticledomains(zslave,lloadrho=1,dofs=1):
+def setparticledomains(zslave,lloadrho=1,dofs=1,padleft=0.,padright=0.):
   """
 Sets the particles domains from the input, zslave, in the same way as done
 with top.zslave during the generate. This is only meant to be used after
 that has already been done.
- - zslave: list of sizes of domains - does not need any normalization
+ - zslave: list of starting locations of the domains in grid cell units
  - lloadrho=1: when true, the charge density is redeposited
  - dofs=1: when true, the fields are recalculated
+ - padleft=0, padright=0: extra space added on to leftmost and rightmost
+                          domains (up to edge of system) in units of meters
   """
   if not lparallel: return
   # --- It is assumed that the user supplied decomposition is specified
-  # --- in the array zslave, which is an unscaled weighting of the z-ranges
-  # --- of the particles for each processor.
+  # --- in the array zslave.
 
   # --- All values of zslave must be > 0.
-  assert min(zslave) > 0.,"The length of all particle domains must be > 0."
-
-  # --- Save some data which will need to be redistributed
-  eearsofz = gatherallzarray(top.eearsofz)
-  prwallz  = gatherallzarray(top.prwallz)
-  prwallxz = gatherallzarray(top.prwallxz)
-  prwallyz = gatherallzarray(top.prwallyz)
-  prwelips = gatherallzarray(top.prwelips)
-  lostpars = gatherallzarray(top.lostpars)
-  if(w3d.solvergeom == w3d.XYZgeom):
-    phi = w3d.phi + 0.
-    rho = w3d.rho + 0.
-
-  # --- Broadcast the window moments to all processors and gather lab window
-  # --- data onto PE0. This is needed since the processors which own the
-  # --- windows may change.
-  getwin_moments()
-  gethist()
-  getlabmoments()
-
-  # --- Save the current extent of the grid. This is used to correct the
-  # --- z location of any conductor points for the field-solver.
-  oldiz = top.izslave[me]
-  oldnz = top.nzslave[me]
-
-  # --- Get sum of zslave to allow proper scaling.
-  sumzslave = sum(zslave)
+  assert min(zslave[1:]-zslave[:-1]) > 0.,"The length of all particle domains must be > 0."
 
   # --- Set domain of each processor.
-  zlast = top.zmslmin[0]
   for i in range(npes):
-    top.zpslmin[i] = zlast
-    top.zpslmax[i] = zlast+zslave[i]/sumzslave*(top.zmslmax[-1]-top.zmslmin[0])
-    zlast = top.zpslmax[i]
+    top.zpslmin[i] = w3d.zmminglobal + zslave[i]*w3d.dz
+    top.zpslmax[i] = w3d.zmminglobal + zslave[i+1]*w3d.dz
 
-  # --- This is only needed to avoid problems from round off in the
-  # --- accumulation. From the loop above, zpslmax[-1] will
-  # --- not be exactly the same as zmmax due to roundoff.
-  top.zpslmax[-1] = top.zmslmax[-1]
+  top.zpslmin[0] = max(w3d.zmminglobal,top.zpslmin[0] - padleft)
+  top.zpslmax[-1] = min(w3d.zmmaxglobal,top.zpslmax[-1] + padright)
 
   # --- Set iz and nz. This is done so that zmesh[izpslave] < zpslmin, and
   # --- zmesh[izpslave+nzpslave] > zpslmax.
-  for i in range(npes):
-    top.izpslave[i] = int((top.zpslmin[i] - top.zmslmin[0])/w3d.dz)
-    top.nzpslave[i] = int((top.zpslmax[i] - top.zmslmin[0])/w3d.dz) - \
-                      top.izpslave[i] + 1
+  top.izpslave[:] = int((top.zpslmin - w3d.zmminglobal)/w3d.dz)
+  top.nzpslave[:] = int((top.zpslmax - w3d.zmminglobal)/w3d.dz)-top.izpslave+1
 
   # --- Make sure that the last processor doesn't have grid cells
   # --- sticking out the end.
-  top.nzpslave[-1] = w3d.nzfull - top.izpslave[-1]
+  if top.izpslave[-1]+top.nzpslave[-1] > w3d.nzfull:
+    top.nzpslave[-1] = w3d.nzfull - top.izpslave[-1]
 
   # --- Adjust the Z data
   _adjustz()
@@ -89,52 +59,23 @@ that has already been done.
   # --- Reorganize the particles
   reorgparticles()
 
-  # --- Shift the existing charge density and phi
+  # --- Update sizes of arrays for particles
   if(w3d.solvergeom == w3d.XYZgeom):
-    izstart = max(oldiz,top.izslave[me])
-    izend = min(oldiz+oldnz,top.izslave[me]+top.nzslave[me])
-    newiz1 = izstart - top.izslave[me]
-    newiz2 = izend - top.izslave[me] + 1
-    oldiz1 = izstart - oldiz
-    oldiz2 = izend - oldiz + 1
-    w3d.phi[:,:,newiz1+1:newiz2+1] = phi[:,:,oldiz1+1:oldiz2+1]
-    w3d.rho[:,:,newiz1:newiz2] = rho[:,:,oldiz1:oldiz2]
-
-  # --- Restore some data which needed to be redistributed
-  top.eearsofz[:] = scatterallzarray(eearsofz)
-  top.prwallz[:]  = scatterallzarray(prwallz)
-  top.prwallxz[:] = scatterallzarray(prwallxz)
-  top.prwallyz[:] = scatterallzarray(prwallyz)
-  top.prwelips[:] = scatterallzarray(prwelips)
-  top.lostpars[:] = scatterallzarray(lostpars)
-
-  # --- Correct the locations of conductor points for the field-solver.
-  if(w3d.solvergeom == w3d.XYZgeom):
-    if top.fstype == 3:
-      newiz = top.izslave[me]
-      if f3d.ncond > 0:
-        f3d.izcond[:f3d.ncond] = f3d.izcond[:f3d.ncond] + oldiz - newiz
-      if f3d.necndbdy > 0:
-        f3d.iecndz[:f3d.necndbdy] = f3d.iecndz[:f3d.necndbdy] + oldiz - newiz
-      if f3d.nocndbdy > 0:
-        f3d.iocndz[:f3d.nocndbdy] = f3d.iocndz[:f3d.nocndbdy] + oldiz - newiz
-      cleanconductors()
-
-  # --- Correct location of injection source.
-  if(w3d.solvergeom == w3d.XYZgeom):
-    if top.inject > 0:
-      newiz = top.izslave[me]
-      w3d.inj_grid[:,:,:] = w3d.inj_grid + oldiz - newiz
+    w3d.nzp = top.nzpslave[me]
+    w3d.zmminp = w3d.zmminglobal + top.izpslave[me]*w3d.dz
+    w3d.zmmaxp = w3d.zmminp + w3d.nzp*w3d.dz
+    gchange("Fields3dParticles")
   else:
     gchange_rhop_phip_rz()
-    
+
   # --- Do some additional work if requested
   if lloadrho: loadrho()
   if dofs: fieldsol(0)
 
 
 #########################################################################
-def loadbalanceparticles(lloadrho=1,dofs=1,spread=1.):
+def loadbalanceparticles(lloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
+                         pnumz=None):
   """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -143,11 +84,16 @@ grid points.
  - lloadrho=1: when true, the charge density is redoposited
  - dofs=1: when true, the fields are recalculated
  - spread=1.: fraction of processors to spread the work among
+ - padleft=0, padright=0: extra space added on to leftmost and rightmost
+                          domains (up to edge of system) in units of meters
+ - pnumz=top.pznum: the particle distribution to base the load balancing on
   """
   if not lparallel: return
-  # --- Gather pnumz. Return if there is no data.
-  pnumz = gatherallzarray(top.pnumz)
-  if max(pnumz) == 0.: return
+
+  if pnumz is None:
+    # --- Gather pnumz. Return if there is no data.
+    pnumz = top.pnumz
+    if max(pnumz) == 0.: return
 
   # --- Add fictitious data so that actual work is spread only to the
   # --- requested fraction of the processors.
@@ -156,10 +102,11 @@ grid points.
   pnumz[:] = pnumz + avepnumz*(1./spread - 1.)
 
   # --- Convert the number of particles to a decomposition
-  zslave = decompose(pnumz,npes)
+  zslave = decompose(pnumz,npes,lfullcoverage=0)
 
   # --- Apply the new domain decomposition.
-  setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs)
+  setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs,
+                     padleft=padleft,padright=padright)
 
 #########################################################################
 def loadbalancesor(sgweight=7.0,condweight=2.0):
@@ -199,7 +146,7 @@ needed since some processors may have more conductor points than others.
   weight = gatherallzfsarray(weight)
 
   # --- Convert to a decomposition
-  zslave = decompose(weight,npes)
+  zslave = decompose(weight,npes,lfullcoverage=1)
 
   # --- Set domain of each processor.
   # --- This coding ensures that all of the processors have nzfsslave at least
@@ -210,11 +157,11 @@ needed since some processors may have more conductor points than others.
   # --- which have the largest amount of roundup and take away one of their
   # --- grid cells until the last processor has enough. Do the same for the
   # --- case where the last processor has too many.
-  zlast = 0
-  for i in range(npes):
-    top.izfsslave[i] = zlast
-    top.nzfsslave[i] = max(nint(zslave[i]) + 1,2)
-    zlast = top.izfsslave[i] + top.nzfsslave[i] - 1
+  top.izfsslave[0] = 0
+  top.nzfsslave[0] = max(nint(zslave[1]) + 1,2)
+  for i in range(1,npes):
+    top.izfsslave[i] = top.izfsslave[i-1] + top.nzfsslave[i-1] - 1
+    top.nzfsslave[i] = max(nint(zslave[i+1]-zslave[i]) + 1,2)
   top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
   while (zslave[-1]-top.nzfsslave[-1]) > max(zslave[:-1]-top.nzfsslave[:-1]) \
          or top.nzfsslave[-1] < 2:
@@ -255,12 +202,14 @@ needed since some processors may have more conductor points than others.
     w3d.inj_grid[:,:,:] = w3d.inj_grid + oldiz[me] - newiz[me]
 
 #########################################################################
-def decompose(weight,npes):
+def decompose(weight,npes,lfullcoverage=0):
   """
 Converts a weight into the size of the domains.
  - weight: array of relative weights of the work done by each processor
  - npes: number of processors
-Returns an array of the same length which is which the relative length of each
+ - lfullcoverage=0: when true, the domains cover the full extent of
+                    the system
+Returns an array of the same length which is the relative length of each
 of the domains.
   """
   # --- Integrate weight, assuming linear variation between grid points
@@ -268,22 +217,27 @@ of the domains.
   np = 0.5*weight[0] + sum(weight[1:-1]) + 0.5*weight[-1]
   npperpe = 1.*np/npes
 
-  zslave = zeros(npes,'d')
+  zslave = zeros(npes+1,'d')
   iz = 0
+  if not lfullcoverage:
+    # --- First first non-zero weight, making sure to check first cell too.
+    while weight[iz] == 0. and weight[iz+1] == 0.: iz = iz + 1
   delta = 0.
-  for ip in range(npes-1):
+  zslave[0] = iz
+  for ip in xrange(1,npes):
+    fract = 0.
     npint = 0.
     npnext = weight[iz  ]*((1.-delta)+0.5*(delta**2-1.)) + \
              weight[iz+1]*0.5*(1. - delta**2)
-    # --- Get the remaining bit from the last cell if it is not too much.
+    # --- Get the remaining bit from the previous cell if it is not too much.
     if npnext < npperpe:
-      zslave[ip] = 1. - delta
+      fract = 1. - delta
       iz = iz + 1
       delta = 0.
       npint = npnext
     # --- Keep adding cells until the number per processor is reached.
     while npint + 0.5*(weight[iz]+weight[iz+1]) < npperpe:
-      zslave[ip] = zslave[ip] + 1.
+      fract = fract + 1.
       delta = 0.
       npint = npint + 0.5*(weight[iz]+weight[iz+1])
       iz = iz + 1
@@ -301,59 +255,48 @@ of the domains.
       delta = sqrt(-c/a)
     #npint = npint + weight[iz]*((delta-delta1) + 0.5*(delta1**2-delta**2)) + \
     #                weight[iz+1]*0.5*(delta**2 - delta1**2)
-    zslave[ip] = zslave[ip] + delta - delta1
+    fract = fract + delta - delta1
+    zslave[ip] = zslave[ip-1] + fract
 
-  # --- The last processor gets everything left over
-  zslave[-1] = nz - sum(zslave)
-
+  # --- Set the end of the last domain
+  if not lfullcoverage:
+    # --- Find the last place with non-zero weight, and give the last processor
+    # --- everything up to that point.
+    for ii in xrange(iz,nz):
+      if weight[ii] > 0.: zslave[-1] = ii+1
+  else:
+    zslave[-1] = nz
+    
   return zslave
-
 
 #########################################################################
 def _adjustz():
-
-  #---------------------------------------------------------------------------
-  # --- If space-charge limited injection is turned on, then add additional
-  # --- grid cells to the first processor so it will have the injection
-  # --- surface completely covered.
- #if(w3d.solvergeom == w3d.XYZgeom):
- # if top.inject > 1:
- #  zinjmax = top.ainject**2/(top.rinject+sqrt(top.rinject**2-top.ainject**2))
- #  nzinj = int(max((top.zinject+zinjmax-top.zmslmin[0])/w3d.dz+top.inj_d)) + 1
- #  top.nzpslave[0] = max(top.nzpslave[0],nzinj)
 
   #---------------------------------------------------------------------------
   # --- Set the axial extent of each slaves domain to include
   # --- both the particle and field solve domain.
   if(w3d.solvergeom == w3d.XYZgeom):
    for i in range(npes):
-    top.izslave[i] = min(top.izpslave[i],top.izfsslave[i])
-    top.nzslave[i] = max(top.izpslave[i] + top.nzpslave[i], \
-                         top.izfsslave[i] + top.nzfsslave[i]) - top.izslave[i]
-    top.zmslmin[i] = top.izslave[i]*w3d.dz + top.zmslmin[0]
-    top.zmslmax[i] = (top.izslave[i] + top.nzslave[i])*w3d.dz + top.zmslmin[0]
+    top.izslave[i] = top.izfsslave[i]
+    top.nzslave[i] = top.nzfsslave[i]
+    top.zmslmin[i] = top.izfsslave[i]*w3d.dz + w3d.zmminglobal
+    top.zmslmax[i] = (top.izfsslave[i]+top.nzfsslave[i])*w3d.dz+w3d.zmminglobal
 
   #---------------------------------------------------------------------------
   # --- Reset local values
-  w3d.nz     = top.nzslave[me]
-  top.nzmmnt = top.nzpslave[me]
-  zpmin = top.zmslmin[0] + top.izpslave[me]*w3d.dz
-  zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + top.zmslmin[0]
-  top.zmmntmin = zpmin
-  top.zmmntmax = zpmax
-  w3d.izfsmin = top.izfsslave[me] - top.izslave[me]
-  w3d.izfsmax = w3d.izfsmin + top.nzfsslave[me]
+  w3d.nz     = top.nzfsslave[me]
+  zpmin = w3d.zmminglobal + top.izpslave[me]*w3d.dz
+  zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + w3d.zmminglobal
+  w3d.izfsmin = 0.
+  w3d.izfsmax = top.nzfsslave[me]
   w3d.zmmin = top.zmslmin[me]
   w3d.zmmax = top.zmslmax[me]
 
   # --- Change the alocation of everything effected are reset the meshes.
   gchange("Fields3d")
-  gchange("Z_arrays")
-  gchange("LatticeInternal")
   gchange("Z_Moments")
   gchange("Hist")
   w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
-  top.zmntmesh[:] = top.zmmntmin + iota(0,top.nzmmnt)*top.dzm
   
   # --- Reset the lattice
   setlatt()
