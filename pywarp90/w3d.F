@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.53 $, $Date: 2002/04/24 21:38:57 $
+c@(#) File W3D.M, version $Revision: 3.54 $, $Date: 2002/04/25 16:49:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -663,7 +663,7 @@ c  after the call to afterfs in case some manipulation is done to phi.
 c  Set the potential near the emitting surface.
       if (inject > 0) then
         if(solvergeom==XYZgeom) then
-          call getinj_phi(nx,ny,nz,phi(0,0,0),dx,dy,dz,xmmin,ymmin)
+          call getinj_phi()
         elseif(solvergeom==RZgeom) then
           call getinj_phi_rz_ng()
         endif
@@ -3774,7 +3774,6 @@ c first cleans up the particle arrays and makes sure that there is enough room
 c for the new particles.  The second is the coding for constant current
 c injection.  The third part is for space-charge limited injection.
 
-
       integer(ISZ):: is,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,ijz
       integer(ISZ):: inj_is,inj_ij
       real(kind=8):: rnpinjct,rnn,t
@@ -3993,10 +3992,10 @@ c             --- The absolute values are needed for the cases of symmetry.
               iyy = abs(yp(ii) - ymmin)*dyi
               wxx = abs(xp(ii) - xmmin)*dxi - ixx
               wyy = abs(yp(ii) - ymmin)*dyi - iyy
-              zz = zmmin + inj_dz*(inj_grid(ixx  ,iyy  )*(1. - wxx)*(1. - wyy) +
-     &                         inj_grid(ixx+1,iyy  )*      wxx *(1. - wyy) +
-     &                         inj_grid(ixx  ,iyy+1)*(1. - wxx)*      wyy  +
-     &                         inj_grid(ixx+1,iyy+1)*      wxx *      wyy)
+              zz = inj_grid(ixx  ,iyy  )*(1. - wxx)*(1. - wyy) +
+     &             inj_grid(ixx+1,iyy  )*      wxx *(1. - wyy) +
+     &             inj_grid(ixx  ,iyy+1)*(1. - wxx)*      wyy  +
+     &             inj_grid(ixx+1,iyy+1)*      wxx *      wyy
 c             --- Only save particle if it is within the injection region.
               if (zinjmin <= zz .and. zz < zinjmax) then
                 zp(ii) = zz
@@ -4310,13 +4309,12 @@ c               --- Mesh location
                 ym = ymmin + iy*inj_dy
 
 c               --- Only inject particles if within 2 grid cells of the source
-c               --- and if the source is within the grid.
                 if (((xm-xinj)*(binj+2.*inj_dy))**2 +
      &              ((ym-yinj)*(ainj+2.*inj_dx))**2 .gt.
-     &              ((ainj+2.*inj_dx)*(binj+2.*inj_dy))**2 .or.
-     &              (inj_grid(ix,iy) < -1 .or.
-     &               inj_grid(ix,iy) >= nz)) cycle
-
+     &              ((ainj+2.*inj_dx)*(binj+2.*inj_dy))**2) cycle
+c               --- Only inject from cells within the grid
+                if (inj_grid(ix,iy) < zinjmin-inj_dz .or.
+     &              inj_grid(ix,iy) >= zinjmax) cycle
 
 c               --- Loop over the species
                 do is=1,ns
@@ -4423,11 +4421,11 @@ c                     --- find injection surface axial location by interpolation
                       iyy = abs(yp(ii) - ymmin)*dyi
                       wxx = abs(xp(ii) - xmmin)*dxi - ixx
                       wyy = abs(yp(ii) - ymmin)*dyi - iyy
-                      zp(ii)=zmmin+inj_dz*(inj_grid(ixx  ,iyy  )*(1.-wxx)*(1.-wyy)+
-     &                                     inj_grid(ixx+1,iyy  )*    wxx *(1.-wyy)+
-     &                                     inj_grid(ixx  ,iyy+1)*(1.-wxx)*    wyy +
-     &                                     inj_grid(ixx+1,iyy+1)*    wxx *    wyy)+
-     &                       inj_zstart
+                      zp(ii) = inj_grid(ixx  ,iyy  )*(1.-wxx)*(1.-wyy) +
+     &                         inj_grid(ixx+1,iyy  )*    wxx *(1.-wyy) +
+     &                         inj_grid(ixx  ,iyy+1)*(1.-wxx)*    wyy  +
+     &                         inj_grid(ixx+1,iyy+1)*    wxx *    wyy  +
+     &                         inj_zstart
 
 c                     --- Only inject particles within the injection region.
                       if (zp(ii) < zinjmin .or. zp(ii) >= zinjmax) cycle
@@ -4489,7 +4487,7 @@ c                     --- SMALLPOS is also added so that the field gathering
 c                     --- routines don't treat the newly injected particles
 c                     --- as dead particles when the other terms are zero.
                       uzp(ii) = vbeam_s(is)*cos(az) + vthz_s(is)*rnorm() +
-     &                          vznorm*cos(az) + SMALLPOS*inj_d
+     &                          vznorm*cos(az) + SMALLPOS
 
 c                     --- Calculate gamma inverse and reset the particle
 c                     --- massless momentums properly.
@@ -4918,7 +4916,11 @@ c=============================================================================
         inj_dx = dx
         inj_dy = dy
         inj_dz = dz
+        inj_xmmin = xmmin
+        inj_ymmin = ymmin
       elseif(solvergeom==RZgeom) then
+        inj_xmmin = xmmin
+        inj_ymmin = ymmin
         call assign_injdxdy_rz(inj_nx,inj_ny,inj_dx,inj_dy,inj_dz)
       end if
 
@@ -5139,13 +5141,13 @@ c=============================================================================
 c     --- Fill the injection grid array.  A padding of 2 grid cells is also
 c     --- set.
 c     --- The array inj_grid holds the axial location of the injection source
-c     --- as a function of the transverse coordinates.
+c     --- as a function of the transverse coordinates, in the lab frame.
 c     --- The array inj_angl holds the angle due to the curvature of the source
 c     --- as a function of the transverse coordinates.
 
 
       integer(ISZ):: ij,ix,iy
-      real(kind=8):: xx,yy,zz,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
+      real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
       real(kind=8):: xl,yl,xu,yu,x1,x2,txl,tyl,txu,tyu
       real(kind=8):: ainji,binji
       real(kind=8):: area
@@ -5165,8 +5167,6 @@ c       --- Calculate the extent of the source plus guard cells.
         binji   = 1./binj
         ai_dx = ainject(ij) + 2.*dx
         bi_dy = binject(ij) + 2.*dy
-c       --- Calculate grid location of transverse center of source.
-        zz = (zinject - zmmin)*dzi
 c       --- Loop over transverse plane.
 c        do iy = 0,ny
 c          do ix = 0,nx
@@ -5181,12 +5181,10 @@ c           --- axial distance and angle of curvature.
               inj_id(ix,iy) = ij
 c             --- Write the expression for inj_grid so as to avoid
 c             --- subtraction of large, similar numbers when rinject is large.
-c             inj_grid(ix,iy) = zz + (rinject(ij) -
-c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))*dzi
-              inj_grid(ix,iy) = zz + (xx**2 +  yy**2)/
-     &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))*dzi
-c             inj_angl(ix,iy) = atan2(sqrt(xx**2 + yy**2),
-c    &                             rinject(ij) - (inj_grid(ix,iy) - zz)*dz)
+c             inj_grid(ix,iy) = zinject + (rinject(ij) -
+c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
+              inj_grid(ix,iy) = zinject + (xx**2 +  yy**2)/
+     &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
               inj_angl(ix,iy) = asin(sqrt(xx**2 + yy**2)/rinject(ij))
 
 c             --- Calculate fraction of grid cell which is within the emitting
@@ -5296,13 +5294,13 @@ c=============================================================================
 c     --- Fill the injection grid array.  A padding of 2 grid cells is also
 c     --- set.
 c     --- The array inj_grid holds the axial location of the injection source
-c     --- as a function of the transverse coordinates.
+c     --- as a function of the transverse coordinates, in the lab frame.
 c     --- The array inj_angl holds the angle due to the curvature of the source
 c     --- as a function of the transverse coordinates.
 
 
       integer(ISZ):: ij,ix,iy
-      real(kind=8):: xx,yy,zz,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
+      real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
       real(kind=8):: xl,yl,xu,yu,x1,x2
       real(kind=8):: ainji,binji
       real(kind=8):: area
@@ -5322,8 +5320,6 @@ c       --- Calculate the extent of the source plus guard cells.
         binji   = 1./binj
         ai_dx = ainject(ij) + 2.*dx
         bi_dy = binject(ij) + 2.*dx
-c       --- Calculate grid location of transverse center of source.
-        zz = (zinject - zmmin)*dzi
 c       --- Loop over transverse plane.
         do iy = 0,inj_ny
           do ix = 0,inj_nx
@@ -5336,12 +5332,11 @@ c           --- axial distance and angle of curvature.
               inj_id(ix,iy) = ij
 c             --- Write the expression for inj_grid so as to avoid
 c             --- subtraction of large, similar numbers when rinject is large.
-c             inj_grid(ix,iy) = zz + (rinject(ij) -
-c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))*dzi
-              inj_grid(ix,iy) = zz + (xx**2 +  yy**2)/
-     &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))*dzi
-              inj_angl(ix,iy) = atan2(sqrt(xx**2 + yy**2),
-     &                             rinject(ij) - (inj_grid(ix,iy) - zz)*dz)
+c             inj_grid(ix,iy) = zinject + (rinject(ij) -
+c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
+              inj_grid(ix,iy) = zinject + (xx**2 +  yy**2)/
+     &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
+              inj_angl(ix,iy) = asin(sqrt(xx**2 + yy**2)/rinject(ij))
 
 c             --- Calculate fraction of grid cell which is within the emitting
 c             --- surface.  Used to scale the charge density on the emitting
@@ -5415,15 +5410,12 @@ c             --- the min is always ij.
       return
       end
 c=============================================================================
-      subroutine getinj_phi(nx,ny,nz,phi,dx,dy,dz,xmmin,ymmin)
+      subroutine getinj_phi()
       use InjectVars
       use InjectVars3d
 #ifdef MPIPARALLEL
       use Parallel
 #endif
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: phi(0:nx,0:ny,0:nz)
-      real(kind=8):: dx,dy,dz,xmmin,ymmin
 
 c Calculate potential drop from emitting surface at distance
 c of dz from the surface.  This is only done for grid cells
@@ -5437,14 +5429,21 @@ c to get zp.
       real(kind=8):: dxi,dyi
       real(kind=8):: ainj,binj,ainjsqi,binjsqi,xinj,yinj
       real(kind=8):: rrsq,aa,p2x,p2y,p2z,w2x,w2y,w2z
+      real(kind=8):: xx((1+inj_nx)*(1+inj_ny))
+      real(kind=8):: yy((1+inj_nx)*(1+inj_ny))
+      real(kind=8):: zz((1+inj_nx)*(1+inj_ny))
+      integer(ISZ):: xi((1+inj_nx)*(1+inj_ny))
+      integer(ISZ):: yi((1+inj_nx)*(1+inj_ny))
+      real(kind=8):: pp((1+inj_nx)*(1+inj_ny))
+      integer(ISZ):: nn,ii
 
 #ifdef MPIPARALLEL
 c     --- In the parallel version, only processor 0 calculates inj_phi.
       if (my_index == 0) then
 #endif
 
-      dxi = 1./dx
-      dyi = 1./dy
+      dxi = 1./inj_dx
+      dyi = 1./inj_dy
 
 c     --- loop over injection sources
       do ij=1,ninject
@@ -5452,53 +5451,55 @@ c     --- loop over injection sources
 c       --- Set some temporaries.
         ainj = ainject(ij)
         binj = binject(ij)
-        ainjsqi = 1./(ainject(ij) + 2.*dx)**2
-        binjsqi = 1./(binject(ij) + 2.*dy)**2
+        ainjsqi = 1./(ainject(ij) + 2.*inj_dx)**2
+        binjsqi = 1./(binject(ij) + 2.*inj_dy)**2
         xinj = xinject(ij)
         yinj = yinject(ij)
+        nn = 0
 
-        do iy = 0,ny
-          do ix = 0,nx
-            rrsq = (ix*dx + xmmin - xinj)**2*ainjsqi +
-     &             (iy*dy + ymmin - yinj)**2*binjsqi
-            if (rrsq < 1. .and.
-     &          (-1 <= inj_grid(ix,iy) .and.
-     &                 inj_grid(ix,iy) < nz)) then
+        do iy = 0,inj_ny
+          do ix = 0,inj_nx
+            rrsq = (ix*inj_dx + inj_xmmin - xinj)**2*ainjsqi +
+     &             (iy*inj_dy + inj_ymmin - yinj)**2*binjsqi
+            if (rrsq < 1.) then
+
+              nn = nn + 1
+
+c             --- Save coordinates relative to injection grid.
+              xi(nn) = ix
+              yi(nn) = iy
 
 c             --- angle of point in transverse plane
-              aa = atan2(iy*dy+ymmin-yinj,dvnz(ix*dx+xmmin-xinj))
+              aa = atan2(iy*inj_dy + inj_ymmin - yinj,
+     &              dvnz(ix*inj_dx + inj_xmmin - xinj))
 
 c             --- Find coordinates of the point a distance dz in front
 c             --- of the source along a line perpendicular to the
 c             --- emitting surface.
-              p2x = ix-dz*cos(aa)*sin(inj_angl(ix,iy))*dxi*inj_d
-              p2y = iy-dz*sin(aa)*sin(inj_angl(ix,iy))*dyi*inj_d
-              p2z = inj_grid(ix,iy) + cos(inj_angl(ix,iy))*inj_d
-              i2x = p2x
-              i2y = p2y
-              i2z = p2z
-              w2x = p2x - i2x
-              w2y = p2y - i2y
-              w2z = p2z - i2z
+              p2x = ix*inj_dx - inj_dz*cos(aa)*sin(inj_angl(ix,iy))*inj_d
+              p2y = iy*inj_dy - inj_dz*sin(aa)*sin(inj_angl(ix,iy))*inj_d
+              p2z = inj_grid(ix,iy) + cos(inj_angl(ix,iy))*inj_d*inj_dz
 
-c             --- Fetch difference between phi at that point and phi on
-c             --- the emitting surface.
-              inj_phi(ix,iy) = vinject(ij) -
-     &                 phi(i2x  ,i2y,  i2z  )*(1.-w2x)*(1.-w2y)*(1.-w2z) -
-     &                 phi(i2x+1,i2y,  i2z  )*    w2x *(1.-w2y)*(1.-w2z) -
-     &                 phi(i2x  ,i2y+1,i2z  )*(1.-w2x)*    w2y *(1.-w2z) -
-     &                 phi(i2x+1,i2y+1,i2z  )*    w2x *    w2y *(1.-w2z) -
-     &                 phi(i2x  ,i2y,  i2z+1)*(1.-w2x)*(1.-w2y)*    w2z  -
-     &                 phi(i2x+1,i2y,  i2z+1)*    w2x *(1.-w2y)*    w2z  -
-     &                 phi(i2x  ,i2y+1,i2z+1)*(1.-w2x)*    w2y *    w2z  -
-     &                 phi(i2x+1,i2y+1,i2z+1)*    w2x *    w2y *    w2z
+c             --- Save coordinates relative to the lab frame.
+              xx(nn) = inj_xmmin + p2x
+              yy(nn) = inj_ymmin + p2y
+              zz(nn) = p2z
             endif
           enddo
         enddo
 
+        call setphi(nn,xx,yy,zz,pp)
+        
+        do ii=1,nn
+c         --- Calculate the difference between phi at that point and phi on
+c         --- the emitting surface.
+          inj_phi(xi(ii),yi(ii)) = vinject(ij) - pp(ii)
+        enddo
+
 c       --- Smooth out inj_phi for this emitting surface.
         if (inj_nsmooth > 0) then
-          call inj_smoother(nx,ny,inj_phi,dx,dy,xmmin,ymmin,
+          call inj_smoother(inj_nx,inj_ny,inj_phi,inj_dx,inj_dy,
+     &                      inj_xmmin,inj_ymmin,
      &                      xinj,yinj,ainj,binj,inj_nsmooth)
         endif
 
@@ -5508,24 +5509,76 @@ c       --- Smooth out inj_phi for this emitting surface.
       endif
 c     --- The result calculated by processor 0 is broadcast to the rest
 c     --- of the processors.
-      call parallelbroadcastrealarray(inj_phi,(nx+1)*(ny+1),0)
+      call parallelbroadcastrealarray(inj_phi,(inj_nx+1)*(inj_ny+1),0)
 #endif
 
 c     --- Calculate the transverse fields
       if (linj_eperp) then
-        do iy = 1,ny-1
-          do ix = 1,nx-1
+        do iy = 1,inj_ny-1
+          do ix = 1,inj_nx-1
             inj_ex(ix,iy) = (inj_phi(ix-1,iy  ) - inj_phi(ix+1,iy  ))*dxi*0.5
             inj_ey(ix,iy) = (inj_phi(ix  ,iy-1) - inj_phi(ix  ,iy+1))*dyi*0.5
           enddo
         enddo
-        do ix = 1,nx-1
+        do ix = 1,inj_nx-1
           inj_ex(ix,0) = (inj_phi(ix-1,0) - inj_phi(ix+1,0))*dxi*0.5
         enddo
-        do iy = 1,ny-1
+        do iy = 1,inj_ny-1
           inj_ey(0,iy) = (inj_phi(0,iy-1) - inj_phi(0,iy+1))*dyi*0.5
         enddo
       endif
+
+      return
+      end
+c=============================================================================
+      subroutine setphi(n,x,y,z,p)
+      use InGen3d
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),p(n)
+
+c     --- Call the appropriate routine to get the phi
+      if(solvergeom==XYZgeom) then
+        call setphi3d(n,x,y,z,p)
+c     elseif(solvergeom==RZgeom) then
+c       call setphirz(n,x,y,z)
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine setphi3d(n,x,y,z,p)
+      use InMesh3d
+      use Picglb3d
+      use Fields3d
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),p(n)
+
+c Fetch phi at points.
+
+      integer(ISZ):: ix,iy,iz,ii
+      real(kind=8):: wx,wy,wz
+      real(kind=8):: dxi,dyi,dzi
+
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+
+      do ii=1,n
+        ix = (x(ii) - xmmin)*dxi
+        iy = (y(ii) - ymmin)*dyi
+        iz = (z(ii) - zmmin)*dzi
+        wx = (x(ii) - xmmin)*dxi - ix
+        wy = (y(ii) - ymmin)*dyi - iy
+        wz = (z(ii) - zmmin)*dzi - iz
+        p(ii) = phi(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
+     &          phi(ix+1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
+     &          phi(ix  ,iy+1,iz  )*(1.-wx)*    wy *(1.-wz) +
+     &          phi(ix+1,iy+1,iz  )*    wx *    wy *(1.-wz) +
+     &          phi(ix  ,iy,  iz+1)*(1.-wx)*(1.-wy)*    wz  +
+     &          phi(ix+1,iy,  iz+1)*    wx *(1.-wy)*    wz  +
+     &          phi(ix  ,iy+1,iz+1)*(1.-wx)*    wy *    wz  +
+     &          phi(ix+1,iy+1,iz+1)*    wx *    wy *    wz
+      enddo
 
       return
       end

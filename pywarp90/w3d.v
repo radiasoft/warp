@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.53 $, $Date: 2002/04/24 21:38:57 $
+#@(#) File W3D.V, version $Revision: 3.54 $, $Date: 2002/04/25 16:49:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.53 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.54 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -281,6 +281,8 @@ iy_axis          integer [1]           # y location of axis in mesh
 iz_axis          integer [1] +parallel # z location of axis in mesh
 
 *********** InjectVars3d dump:
+inj_xmmin            real [m] /0./ # Min x extent of injection mesh
+inj_ymmin            real [m] /0./ # Min y extent of injection mesh
 inj_nx               integer  # size injection arrays in x
 inj_ny               integer  # size injection arrays in y
 inj_dx               real [m] /0./ # mesh spacing in x for injection
@@ -296,10 +298,10 @@ inj_d                real /1./
    # Distance from surface where phi is fetched. In units of dz.
 inj_f                real /1./
    # Scaling factor on the number of particles injected.
-inj_zstart           real /0./
+inj_zstart           real /0./ [m]
    # Starting location relative to the emitting surface location.
-inj_grid(0:inj_nx,0:inj_ny) _real
-   # Grid giving axial field grid location of injection sources
+inj_grid(0:inj_nx,0:inj_ny) _real [m]
+   # Grid giving axial field grid location of injection sources in the lab frame
 inj_angl(0:inj_nx,0:inj_ny) _real
    # Grid giving angle of injection sources for each transverse location
 inj_np(0:inj_nx,0:inj_ny,inj_ninj,inj_ns)   _real
