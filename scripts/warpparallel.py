@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.23 2002/01/09 17:30:59 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.24 2002/01/10 01:27:12 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -664,7 +664,7 @@ def parallelrestore(fname,verbose=false,skip=[]):
     if v in skip:
       vlist.remove(v)
       continue
-    if v[-4] == '@':
+    if len(v) > 4 and v[-4] == '@':
       if v[:-4] in skip or v[-3:]+'.'+v[:-4] in skip: vlist.remove(v)
   del vlistcopy
 
