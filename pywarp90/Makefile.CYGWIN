@@ -1,0 +1,68 @@
+# -*- Mode: Makefile;  -*-
+ARCH = CYGWIN
+MACHINE = CYGWIN
+PYVERS = 2.2
+PYTHON = /c/cygwin/lib/python2.2
+PYWRAPPERHOME = ../pywrapper
+PYWRAPPERARGS =
+#PROF = -Mprof=lines
+OPT = -fast -Mcache_align $(PROF)
+#OPT = -g
+POPT =  -Mcache_align
+PYMODULEOPT = -O1
+CHECKS = #-Mbounds -Mchkfpstk
+F90FREE  = pgf90 -Mextend -Mdclchk -r8 $(CHECKS) -Munix -Mnounderscoring -DCYGWIN 
+F90FIXED = pgf90 -Mextend -Mdclchk -r8 $(CHECKS) -Munix -Mnounderscoring -DCYGWIN 
+CC = gcc -DCYGWIN 
+SO = dll
+LD = pgf90 -Mnomain $(PROF) $(OPT)
+EXPORT = -Wl,-export-dynamic
+FORTLIB = 
+LINKLIB = #-ldl -lutil -lpthread
+DLLIB = -ldl
+XLIB = -Lc:/cygwin/usr/X11R6/lib
+#PACTLIB = -L/usr/local/pact/lib -lpdb -lpml -lscore
+#YORICKLIB = -L/usr/local/lib/yorick/1.4/lib -lgist
+TCLLIB = 
+LAPACKLIB = -L/usr/local/LAPACK -llapack_CYGWIN -lblas_CYGWIN
+NUMPYINCLUDE = -I$(PYTHON)/Modules
+OLD = OLD1
+
+WARPSCRIPTS = ../scripts
+OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB)
+
+warp: warpC.$(SO) $(WARPSCRIPTS)
+	cp warpC.$(SO) $(WARPSCRIPTS)
+
+static: pywarp90
+
+$(WARPSCRIPTS):
+	mkdir -p $(WARPSCRIPTS)
+
+include Makefile.dependencies
+#PYTHONLIB = -Lc:/jlvay/Python-2.2.1 -lpython$(PYVERS).dll
+INCLUDE = -I/c/cygwin/usr/include/python$(PYVERS)
+PYTHONLIB = -Lc:/cygwin/lib/python$(PYVERS)/config -lpython$(PYVERS).dll
+PYTHONOBJ = c:/cygwin/lib/python$(PYVERS)/config/python.o
+
+warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
+	gcc -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
+	gcc -c initpgfortran.c
+	gcc -shared -Wl,--enable-auto-image-base -Wl,--export-all-symbols \
+	-Wl,--allow-multiple-definition \
+	-o warpC.dll warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
+	$(RNGOBJ) initpgfortran.o \
+        $(OTHERLIBS) \
+	c:/cygwin/lib/python2.2/site-packages/Numeric*/*/*/*.o \
+        $(PYTHONLIB) \
+	-L.  -L/c/PGI/nt86/lib -lpgf90 -lpgf90_rpm1 -lpgf902 \
+	-lpgf90rtl -lpgftnrtl -lpgc -lcrtdll 
+
+pywarp90: $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) config.o
+	gcc $(PROF) -Mnomain -o pywarp90 $(WARPOBJECTS) \
+        c:/cygwin/lib/python2.2/site-packages/*/*/*/*.o \
+	-Lc:/cygwin/lib -lm $(XLIB) -lX11 $(LINKLIB) $(PYTHONLIB) $(OTHERLIBS)\
+        $(MODULEOBJECTS) config.o $(RNGOBJ) \
+	-L/c/PGI/nt86/lib -lpgf90 -lpgf90_rpm1 -lpgf902 \
+	-lpgftnrtl -lpgf90rtl -lpghpf -lpghpf2 $(OTHERLIBS) -lpgc
+ 
