@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.39 2001/04/27 23:26:11 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.40 2001/05/14 20:02:08 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -465,7 +465,7 @@ def selectparticles(iw=0,kwdict={},**kw):
 Selects particles based on either subsets or windows. By default it selects
 from window 0, getting all of the live partilces (whose uzp > 0).
   - iw=0: Window to chose from
-  - js=1: Species to chose from
+  - js=0: Species to chose from
   - win=top.zwindows+top.zbeam: Windows to use (in lab frame)
   - z=top.zp: Coordinate for range selection
   - ix=-1: When 0 <= ix <= nx, picks particles within xmesh[ix]+-wx*dx
@@ -478,7 +478,7 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   - zu=None: When specified, upper range of selection region
   """
   # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {"js":1,"win":None,"z":None,
+  kwdefaults = {"js":0,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "zl":None,"zu":None,'checkargs':0,'allowbadargs':0}
 
@@ -499,8 +499,8 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   if badargs and not allowbadargs:
     raise "bad argument ",string.join(badargs.keys())
 
-  ir1 = top.ins[js-1]-1
-  ir2 = top.ins[js-1]+top.nps[js-1]-1
+  ir1 = top.ins[js]-1
+  ir2 = top.ins[js]+top.nps[js]-1
   if ir2 <= ir1: return array([])
   if zl!=None or zu!=None:
     if z == None: z = top.zp
@@ -532,7 +532,7 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   elif iw < 0:
     if psubset==[]: setup_subsets()
     if -iw > len(psubset): raise "Bad window number"
-    ii = ir1 + compress(less(psubset[-iw-1],top.nps[js-1]),psubset[-iw-1])
+    ii = ir1 + compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
   elif iw == 0:
     ii = xrange(ir1,ir2)
   else:
@@ -776,7 +776,7 @@ def getvzrange():
 def pptitleright(iw=0,kwdict={},**kw):
   "Returns right plot title. Takes same arguments as selectparticles"
   # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {"js":1,"win":None,"z":None,
+  kwdefaults = {"js":0,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "zl":None,"zu":None,'checkargs':0,'allowbadargs':0}
 
