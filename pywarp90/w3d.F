@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.181 $, $Date: 2004/12/03 21:11:21 $
+c@(#) File W3D.F, version $Revision: 3.182 $, $Date: 2004/12/08 15:31:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3127,6 +3127,37 @@ c       --- Also, normalize rdist.
         enddo
       endif
 
+c     Calculate rms equivalent matched beam equilibria in a continuous 
+c     focusing channel for use in generalized psudo-equilibrium distribution 
+c     loads.  
+c     
+c     As presently implemented, this only calculates the equilibrium 
+c     once for a single beam slice, making it useful only for xy slice code 
+c     simulations.  To get this to work in 3D, the following should be done:
+c       1) Modify the main particle loading loop to first load the particle 
+c          z coordinates of the full beam distribution before any transverse 
+c          loading.  
+c       2) Using the loaded z coordinates and the desired transverse loading 
+c          option, calculate the range max -> min of all continuous focusing 
+c          eqivalent beam parameters for all particles 
+c       3) Based on the ranges of parameters in 2) calculate needed equilibria 
+c          for the transverse load by discretizing the parameter range and 
+c          then calculating the equilibria in scaled coordinates over the 
+c          discretized range.  
+c       4) Go through the main particle loading loop again to load the 
+c          transverse distribution using the equilibria calculated in 3).  
+c          Interpolation can be used for equilibria not saved at exactly the 
+c          parameter values needed.
+
+
+      if (distrbtn == "WB" .or. distrbtn == "Waterbag"  .or.  
+     &    distrbtn == "PA" .or. distrbtn == "Parabolic" .or. 
+     &    distrbtn == "TE" .or. distrbtn == "ThermalEquilibrium") then 
+
+        call  perp_cfe_den()
+
+      endif 
+
 c----------------------------------
 c  Begin main loop over species
 c----------------------------------
@@ -3668,7 +3699,6 @@ c        --- appropriate for periodic focusing channels or
 
          elseif (distrbtn == "WB"  .or. distrbtn == "Waterbag"  .or.  
      &           distrbtn == "PA"  .or. distrbtn == "Parabolic" .or. 
-     &           distrbtn == "GA"  .or. distrbtn == "Gaussian"  .or. 
      &           distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium" .or. 
      &           distrbtn == "KV0" .or. 
      &           distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.  
@@ -3683,10 +3713,9 @@ c          --- particle
 
            if (distrbtn == "WB" .or. distrbtn == "Waterbag"  .or.  
      &         distrbtn == "PA" .or. distrbtn == "Parabolic" .or. 
-     &         distrbtn == "GA" .or. distrbtn == "Gaussian"  .or. 
      &         distrbtn == "TE" .or. distrbtn == "ThermalEquilibrium") then 
 c            --- use transforms of continuous focusing equilibria 
-             call loadperpdist(k+ioff,i1-k+1,xt,yt,uxt,uyt,
+             call loadperpdist(k+ioff,i1-k+1,xt,yt,rt,tt,uxt,uyt,
      &                         at,bt,apt,bpt,epsxt,epsyt)
            elseif (distrbtn == "KV0" .or. 
      &             distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.  
@@ -3833,229 +3862,6 @@ c     --- Apply particle boundary conditions
 !$OMP END MASTER
       return
       end
-c=============================================================================
-      subroutine loadperpdist(kioff,np,x,y,xp,yp,rx,ry,rxp,ryp,
-     &                        epsx,epsy)
-      use Constant
-      use InPart3d
-      integer(ISZ):: kioff,np
-      real(kind=8):: x(np), y(np), xp(np), yp(np)
-      real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
-      real(kind=8):: epsx(np), epsy(np) 
-c
-c Load a transverse distribution of particles based on transformation of 
-c an "equivalent" Hamiltonian defined beam equilibrium in a continuous 
-c focusing channel.  Each particle can have 
-c separate envelope coordinates and emittances so the script can be used 
-c in 2D or 3D loads.  The continuous focused equilibrium is tranformed 
-c consistent with KV like elliptical beam cross-sections and flutter to 
-c better match a focusing channel with axially varying focusing forces.  
-c These loads are not strict equilibria of such focusing channels but in 
-c many situaitons can provide reasonable approximate initial beam 
-c distributions.  
-c   
-c Particle coordinates loaded:
-c   np = number of particles to load 
-c   x,y    = x, y  coordinates of particle 
-c   xp,yp  = x',y' coordinates of particle
-c
-c Each particle can be in different parts of the beam envelope and the 
-c beam envelope in the axial slice of the each particle (note the 
-c z-coordinates of the particles are unknown within this routine) are 
-c defined by the arrays:
-c
-c   rx,   ry    = x- and y-envelope coordinates of beam: r_x,   r_y    
-c   rxp,  ryp   = x- and y-envelope angles      of beam: r_x',  r_y' 
-c   emitx,emity = x- and y-emittances           of beam: eps_x, eps_y 
-c
-c The method can be applied to an infinity of distributions.  Forms 
-c implemented include:
-c   distrbtn = "WB" or "Waterbag":  waterbag form (theta function) 
-c            = "PA" or "Parabolic": parabolic form 
-c            = "GA" or "Gaussian":  Gaussian form 
-c            = "TE" or "ThermalEquilibrium": Thermal Equilibrium form 
-c
-c
-
-c      integer(ISZ):: ip
-c      real(kind=8):: X1, X2, Y1, Y2
-c      real(kind=8):: F0, F, G
-      real(kind=8):: eps
-c      real(kind=8):: Ax, Ay, betax, betay 
-c      real(kind=8):: wrandom,wrandomgauss
-c      real(kind=8):: a, b, c, fa, fc
-c      character(72):: errline  
-
-c     Tolerances for iternative constraint solves 
-      eps = 1.e-6
-
-      call remark ("Load Option not yet implemented in routine loadperpdist") 
-      call kaboom (0)
-      
-c     --- Loop over particles to load 
-c      do ip = 1,np
-c
-c      enddo 
-
-      return 
-      end 
-c=============================================================================
-      subroutine loadperpdist0(kioff,np,x,y,xp,yp,rx,ry,rxp,ryp,
-     &                         epsx,epsy)
-      use Constant
-      use InPart3d
-      integer(ISZ):: kioff,np
-      real(kind=8):: x(np), y(np), xp(np), yp(np)
-      real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
-      real(kind=8):: epsx(np), epsy(np)
-c
-c Load a transverse distribution of particles based Courant-Snyder invariants 
-c in applied fields.  Each particle can have 
-c separate envelope coordinates and emittances so the script can be used 
-c in 2D or 3D loads.  The method employed here parallels T. Kikuchi's 
-c implementation of a procedure first developed by:
-c   Y.R. Batygin, "Particle Distribution generator in 4D Phase-Space"
-c   AIP Conf. Proc. 297 (1994) pp. 419-426  
-c The method uses local Courant-Snyder invariant type forms to define 
-c distributions that should be direct analogs to the equilibrium forms in 
-c continuous focusing channels. These distributions are equilibria in 
-c periodic focusing lattices for beams of zero current.  Because the
-c equilibria are defined in terms of functions of Courant Snyder invariants 
-c of the linear forcusing lattice with axially varying applied fields, the 
-c forms automatically hit the target envelope coordinates r_x, r_y, 
-c r_x', r_y' and emittances emitx, emity.   These forms are consitent only 
-c for linear total forces within the ellptic symmetry beam core.  Consequently 
-c the forms only reflect rms equivalent beam compensations and can be far 
-c from equilibrium form for strong space-charge depressions where the internal 
-c beam space-charge structure is Debye screened.  The case 
-c KV0 is correct for finite beam current because the internal forces are linear
-c in this case.  This loading method thereby provides an alternative 
-c loading method for a KV beam of arbitrary current/space-charge strength to 
-c the option "K-V" or "KV" which is implemented differently.  
-c   
-c Particle coordinates loaded:
-c   np = number of particles to load 
-c   x,y    = x, y  coordinates of particle 
-c   xp,yp  = x',y' coordinates of particle
-c
-c Each particle can be in different parts of the beam envelope and the 
-c beam envelope in the axial slice of the each particle (note the 
-c z-coordinates of the particles are unknown within this routine) are 
-c defined by the arrays:
-c
-c   rx,  ry   =   x- and y-envelope coordinates of beam: r_x,   r_y   
-c   rxp, ryp  =   x- and y-envelope angles      of beam: r_x',  r_y' 
-c   epsx,epsy =   x- and y-emittances           of beam: eps_x, eps_y
-c
-c The method can be applied to an infinity of distributions.  Forms 
-c presently implemented include:
-c   distrbtn = "KV0":  KV or Kapchinskij-Vladimirskij (delta function) 
-c            = "WB0" or "Waterbag0":  waterbag form (theta function) 
-c            = "PA0" or "Parabolic0": parabolic form 
-c            = "GA0" or "Gaussian0":  Gaussian form 
-c
-      integer(ISZ):: ip
-      real(kind=8):: alphax, alphay, alphaxp, alphayp
-      real(kind=8):: F0, F, G
-      real(kind=8):: Ax, Ay, betax, betay 
-      real(kind=8):: wrandom, wrandomgauss
-      real(kind=8):: alpha3,r
-      character(72):: errline  
-
-      
-      if (distrbtn == "KV0" .or. 
-     &    distrbtn == "WB0" .or. distrbtn == "Waterbag0" .or. 
-     &    distrbtn == "PA0" .or. distrbtn == "Parabolic0") then 
-
-c       --- Loop over particles to load 
-        do ip = 1,np
-
-c         --- phase ellipse variables (see Batygin papers and Fortran 
-c         --- subroutine PDS1 for initializing particles) used in defining 
-c         --- local KV like linear force psudo-invariants
-          alphax = rx(ip)/sqrt(epsx(ip))
-          alphay = ry(ip)/sqrt(epsy(ip))
-          alphaxp = rxp(ip)/sqrt(epsx(ip))
-          alphayp = ryp(ip)/sqrt(epsy(ip))
-
-c         --- calculate value of F0, F 
-          if (distrbtn == "KV0") then
-            F0 = epsx(ip)
-            F  = F0 
-
-          elseif (distrbtn == "WB0" .or. distrbtn == "Waterbag0") then
-            F0 = 1.5*epsx(ip)
-            F  = F0*sqrt( wrandom(xrandom,ip+kioff-1,dig1,1,1) ) 
-
-          elseif (distrbtn == "PA0" .or. distrbtn == "Parabolic0") then 
-
-            F0 = 2.0*epsx(ip)
-          
-            G = wrandom(xrandom,ip+kioff-1,dig1,1,1)
-
-            alpha3 = ( acos( 1.-2.*G ) )/3.
-            F = (F0/2.)*( 1.-2.*cos( alpha3 - 2.*Pi/3. ) )
-            if (G .eq. 0.) F = 0. 
-            if (G .eq. 1.) F = F0
-          endif 
-
-c         --- Set particle coordinates 
-          Ax = sqrt( F*wrandom(xrandom,ip+kioff-1,dig2,1,1) )
-          Ay = sqrt( (F - Ax*Ax)*epsy(ip)/epsx(ip) )
-
-          betax = 2.0*pi*wrandom(xrandom,ip+kioff-1,dig3,1,1)
-          betay = 2.0*pi*wrandom(xrandom,ip+kioff-1,dig4,1,1)
-
-          x(ip) = Ax * alphax * cos( betax )
-          y(ip) = Ay * alphay * cos( betay )
-
-          xp(ip) = Ax * ( alphaxp * cos( betax ) - sin( betax ) / alphax )
-          yp(ip) = Ay * ( alphayp * cos( betay ) - sin( betay ) / alphay )
-
-        enddo 
-      
-c     --- Implement Gaussian as a special case using a Gaussian distributed 
-c     --- random number generator with unit sigma.  This alternative 
-c     --- implementation is equivalent to loading the Courant-Snyder type 
-c     --- psudoinvariants but saves numerical work in avoiding the need to 
-c     --- solve an axillary equation numerically to solve for "F".  
-      elseif (distrbtn == "GA0" .or. distrbtn == "Gaussian0") then
-
-c       --- Loop over particles to load 
-c       --- Because of the way wrandomgauss is written, the code runs somwhat
-c       --- more efficiently when the loops are broken up. Note, very
-c       --- important, if the loops are not broken up, then the last argument
-c       --- to wrandomgauss MUST be false in order to the code to work
-c       --- properly.
-        do ip = 1,np
-          r = wrandomgauss(xrandom,ip+kioff-1,dig1,dig2,1,1,.true.)
-          x(ip) = 0.5*rx(ip)*r
-        enddo 
-        do ip = 1,np
-          r = wrandomgauss(xrandom,ip+kioff-1,dig3,dig4,1,1,.true.)
-          y(ip) = 0.5*ry(ip)*r
-        enddo 
-
-        do ip = 1,np
-          r = wrandomgauss(xrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
-          xp(ip) = 0.5*(epsx(ip)/rx(ip))*r + (rxp(ip)/rx(ip))*x(ip) 
-        enddo 
-        do ip = 1,np
-c         --- Note that dig7 and dig8 are already used for the longitudinal
-c         --- velocity spread.
-          r = wrandomgauss(xrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
-          yp(ip) = 0.5*(epsy(ip)/ry(ip))*r + (ryp(ip)/ry(ip))*y(ip)
-        enddo 
-
-      else 
-        write (errline,'("ERROR: distrbtn has an improper value = ",a8)')
-     &        distrbtn
-        call remark (errline)
-        call kaboom (0)
-      endif
-
-      return 
-      end 
 c=============================================================================
       subroutine setrho3d(rho,rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
