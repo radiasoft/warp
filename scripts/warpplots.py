@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.13 2001/01/19 20:25:49 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.14 2001/01/22 21:06:03 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -907,6 +907,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If the grid is needed for the plot and it was not passed in, generate
   # --- it from the inputted particle data (if there was any)
   if grid == None and (hash or contours or color=='density' or chopped):
+    densitygrid = 1
     # --- Create space for data
     grid = fzeros((1+nx,1+ny),'d')
 
@@ -917,6 +918,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     if lparallel: grid = parallelsum(grid)
 
   elif (hash or contours or color=='density' or chopped):
+    densitygrid = 0
     # --- Make sure that the grid size nx and ny are consistent with grid
     nx = shape(grid)[0] - 1
     ny = shape(grid)[1] - 1
@@ -925,11 +927,21 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- data. The original grid is left unchanged since that is still needed
   # --- by some operations below.
   if uselog:
-    # --- Find the minimum value, excluding zero.
-    dmax = maxnd(grid)
-    dmin = minnd(where(equal(grid,0.),dmax,grid))
-    # --- Now take the log, adding a constant to avoid taking the log of 0.
-    grid1 = log(grid + dmin/10.)
+    if densitygrid:
+      # --- Take the log adding 0.1. The 0.1 is added so that none of the
+      # --- elements are zero. That value is used since values any smaller
+      # --- do not have much meaning since a value of 1.0 means that there
+      # --- is already only one particle in that cell.
+      grid1 = log(grid + 0.1)
+    else:
+      # --- Before taking the log of the user supplied grid data, make sure
+      # --- that there are no negative values. Zero is ok since they will
+      # --- be replaced with a minimum value.
+      dmax = maxnd(grid)
+      dmin = minnd(where(equal(grid,0.),dmax,grid))
+      if dmin <= 0.:
+        raise "Can't take log since the grid has negative values"
+      grid1 = log(grid + dmin/10.)
   else:
     grid1 = grid
 
