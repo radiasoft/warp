@@ -1,6 +1,6 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.7 2001/03/05 18:24:59 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.8 2001/03/05 18:44:09 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -253,6 +253,7 @@ Plots data in various ways. By default, makes a mountain range plot.
       kw['titlet']=kw['titlet']+" at Center"
     else:
       kw['titlet']=kw['titlet']+" at iz = %d"%iz
+    kw['titler'] = 'z = %6.3f'%top.zmntmesh[iz]
     hpbasic(hzarray[iz,:],kw)
     return
   elif contour:
