@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.37 $, $Date: 2002/01/03 00:19:57 $
+#@(#) File W3D.V, version $Revision: 3.38 $, $Date: 2002/01/08 00:10:22 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.37 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.38 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -271,14 +271,14 @@ selfe(3,0:nx_selfe,0:ny_selfe,0:nz_selfe) _real [V/m] # Self E field,
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
-dx                        real   [m]  /0./  #  mesh spacing in x
-dy                        real   [m]  /0./  #  mesh spacing in y
-dz                        real   [m]  /0./  #  mesh spacing in z
-nxyz                      integer /0/
+dx               real   [m]  /0./      #  mesh spacing in x
+dy               real   [m]  /0./      #  mesh spacing in y
+dz               real   [m]  /0./      #  mesh spacing in z
+nxyz             integer /0/
    # size of a field array, (nx+1)*(ny+1)*(nz+1)
-ix_axis                   integer [1]       # x location of axis in mesh
-iy_axis                   integer [1]       # y location of axis in mesh
-iz_axis                   integer [1]       # z location of axis in mesh
+ix_axis          integer [1]           # x location of axis in mesh
+iy_axis          integer [1]           # y location of axis in mesh
+iz_axis          integer [1] +parallel # z location of axis in mesh
 
 *********** InjectVars3d dump:
 inj_nx               integer  # size injection arrays in x
