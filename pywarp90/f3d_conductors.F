@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.6 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.7 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -9,12 +9,13 @@ c  It contains the routines for calculating the intersection of points
 c  with various geometrical objects.
 c=======================================================================
 c=======================================================================
-      subroutine setconductorparity(nn,ix,iy,iz,dels,parity,fuzz,dfill)
+      subroutine setconductorparity(nn,ix,iy,iz,dels,parity,fuzz,fuzzsign,dfill)
       integer(ISZ):: nn
       integer(ISZ):: ix(nn),iy(nn),iz(nn),parity(nn)
       real(kind=8):: dels(0:5,nn)
       real(kind=8):: fuzz
-      integer(ISZ):: dfill
+      integer(ISZ):: fuzzsign
+      real(kind=8):: dfill
 
 c Set parity. For points inside, this is set to -1. For points near the surface,
 c this is set to the parity of ix+iy+iz. Otherwise defaults to large integer.
@@ -35,12 +36,12 @@ c  dels(5,:) -> delpz
         parity(i) = outside
 
         iparity = mod(ix(i)+iy(i)+iz(i),2)
-        if (dels(0,i) < 1.-fuzz) parity(i) = iparity
-        if (dels(1,i) < 1.-fuzz) parity(i) = iparity
-        if (dels(2,i) < 1.-fuzz) parity(i) = iparity
-        if (dels(3,i) < 1.-fuzz) parity(i) = iparity
-        if (dels(4,i) < 1.-fuzz) parity(i) = iparity
-        if (dels(5,i) < 1.-fuzz) parity(i) = iparity
+        if (dels(0,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
+        if (dels(1,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
+        if (dels(2,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
+        if (dels(3,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
+        if (dels(4,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
+        if (dels(5,i) < 1.+fuzzsign*fuzz) parity(i) = iparity
 
 c       --- If one direction is negative, all are negative. However,
 c       --- because of the fuzz factor, each direction must be checked
@@ -1274,6 +1275,140 @@ c         --- Now, get distances to surface
             if (yu >= yuend .and. yuend >= yl) delmy(i) = y(i) - yuend
             if (yuend >= yu .and. yu >= ylend) delmy(i) = y(i) - yu
           endif
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine BeamletplateConductorF(za,zb,z0,thickness,xcent,ycent,zcent,
+     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                            fuzz)
+      real(kind=8):: za,zb,z0,thickness,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a plate for the beamlet
+c source pre-accelerator.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: x0l,xl1,xl2,xlave
+      real(kind=8):: x0r,xr1,xr2,xrave
+      real(kind=8):: y0l,yl1,yl2,ylave
+      real(kind=8):: y0r,yr1,yr2,yrave
+      real(kind=8):: z0l,zl1,zl2,zlave
+      real(kind=8):: z0r,zr1,zr2,zrave
+
+      do i=1,n
+
+c       --- Set defaults
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Set temps
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+
+c       --- Get z-intersect with left and right hand side of the plate
+        z0l = z0 - 0.5*thickness
+        zl1 = zb - sqrt((zb-za+sqrt((za-z0l)**2-xx**2))**2 - yy**2)
+        zl2 = za - sqrt((za-zb+sqrt((zb-z0l)**2-yy**2))**2 - xx**2)
+        zlave = 0.5*(zl1 + zl2)
+
+        z0r = z0 + 0.5*thickness
+        zr1 = zb - sqrt((zb-za+sqrt((za-z0r)**2-xx**2))**2 - yy**2)
+        zr2 = za - sqrt((za-zb+sqrt((zb-z0r)**2-yy**2))**2 - xx**2)
+        zrave = 0.5*(zr1 + zr2)
+
+c       --- Point far to the left of the plate
+        if (zz < z0l) then
+          delpz(i) = zlave - zz
+          cycle
+        endif
+
+c       --- Point to the left of plate
+        if (zz <= zlave) then
+          xl1 = ((za-z0l)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
+          yl1 = ((zb-za+sqrt((za-z0l)**2-xx**2))**2 - (zb-zz)**2)
+          xl2 = ((za-zb+sqrt((zb-z0l)**2-yy**2))**2 - (za-zz)**2)
+          yl2 = ((zb-z0l)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
+          xlave = 0.5*(xl1 + xl2)
+          ylave = 0.5*(yl1 + yl2)
+          if (xlave < 0.) then
+            xlave = -LARGEPOS
+          else
+            xlave = sqrt(xlave)
+          endif
+          if (ylave < 0.) then
+            ylave = -LARGEPOS
+          else
+            ylave = sqrt(ylave)
+          endif
+          delmx(i) = xx - xlave
+          delmy(i) = yy - ylave
+          delpz(i) = zlave - zz
+          cycle
+        endif
+
+c       --- Point in the plate
+        if (zlave < zz .and. zz <= zrave) then
+          xl1 = sqrt((za-z0l)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
+          yl1 = sqrt((zb-za+sqrt((za-z0l)**2-xx**2))**2 - (zb-zz)**2)
+          xl2 = sqrt((za-zb+sqrt((zb-z0l)**2-yy**2))**2 - (za-zz)**2)
+          yl2 = sqrt((zb-z0l)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
+          xlave = 0.5*(xl1 + xl2)
+          ylave = 0.5*(yl1 + yl2)
+
+          xr1 = ((za-z0r)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
+          yr1 = ((zb-za+sqrt((za-z0r)**2-xx**2))**2 - (zb-zz)**2)
+          xr2 = ((za-zb+sqrt((zb-z0r)**2-yy**2))**2 - (za-zz)**2)
+          yr2 = ((zb-z0r)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
+          xrave = 0.5*(xr1 + xr2)
+          yrave = 0.5*(yr1 + yr2)
+          if (xrave < 0.) then
+            xrave = -LARGEPOS
+          else
+            xrave = sqrt(xrave)
+          endif
+          if (yrave < 0.) then
+            yrave = -LARGEPOS
+          else
+            yrave = sqrt(yrave)
+          endif
+
+          delmx(i) = xrave - xx
+          delpx(i) = xx - xlave
+          delmy(i) = yrave - yy
+          delpy(i) = yy - ylave
+          delmz(i) = zlave - zz
+          delpz(i) = zz - zrave
+          cycle
+        endif
+
+c       --- Point to the right of plate
+        if (zrave < zz) then
+          xr1 = sqrt((za-z0r)**2 - (sqrt(yy**2+(zb-zz)**2)+za-zb)**2)
+          yr1 = sqrt((zb-za+sqrt((za-z0r)**2-xx**2))**2 - (zb-zz)**2)
+          xr2 = sqrt((za-zb+sqrt((zb-z0r)**2-yy**2))**2 - (za-zz)**2)
+          yr2 = sqrt((zb-z0r)**2 - (sqrt(xx**2+(za-zz)**2)+zb-za)**2)
+          xrave = 0.5*(xr1 + xr2)
+          yrave = 0.5*(yr1 + yr2)
+          delpx(i) = xrave - xx
+          delpy(i) = yrave - yy
+          delmz(i) = zz - zrave
+          cycle
         endif
 
       enddo
