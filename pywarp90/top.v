@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.61 $, $Date: 2002/11/05 22:05:20 $
+#@(#) File TOP.V, version $Revision: 3.62 $, $Date: 2002/11/06 01:14:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.61 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.62 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1580,6 +1580,7 @@ npmax  integer    /0/  # Maximum no. of particles
 npmaxb integer    /0/  # Maximum no. of particles for xp, yp, uxp, uyp
 npid   integer    /1/  # number of columns for pid.
 npmaxi integer    /1/  # Maximum no. of particles for pid.
+wpid   integer    /0/  # position of particle weights in array pid
 sm(ns) _real [kg] /0./ # Species mass
 sq(ns) _real [C]  /0./ # Species charge
 sw(ns) _real [1]  /0./ # Species weight
