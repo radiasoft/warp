@@ -9,10 +9,16 @@ viewparticles: views particles
 DXImage: views a OpenDX object using a nice interactor handler
 """
 from warp import *
-from pyDXObject import *
 import __main__
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.8 2004/05/22 01:48:35 dave Exp $"
+try:
+  # --- Try importing. If not found, still define the functions and classes.
+  # --- But any calls require the pyOpenDX attributes will raise an exception.
+  from pyDXObject import *
+except:
+  pass
+
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.9 2004/05/25 21:39:40 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -51,7 +57,6 @@ def viewisosurface1(data,isovalue,origins=None,deltas=None,name='WARP viz'):
   moutput = ['camera']
   (camera,) = DXCallModule('AutoCamera',minput,moutput)
 
-  DXReference(camera)
   DXImage(isosurface,camera,name)
 
 def viewisosurface(data,isovalue,name='WARP viz'):
@@ -79,12 +84,10 @@ def viewisosurface(data,isovalue,name='WARP viz'):
   moutput = ['group']
   (group,) = DXCallModule('Collect',minput,moutput)
 
-  DXReference(camera)
-  DXReference(group)
   DXImage(group,camera,name)
 
 ###########################################################################
-def viewparticles(x,y,z,v,labels=None,name='WARP particles',
+def viewparticles(x,y,z,v,labels=None,name='WARP viz',
                   display=1):
   # --- First combine particle data and create a DX array
   n = len(x)
@@ -112,58 +115,94 @@ def viewparticles(x,y,z,v,labels=None,name='WARP particles',
   minput = {'data':glyphs,'opacity':.5}
   moutput = ['mapped']
   (dxobject,) = DXCallModule('AutoColor',minput,moutput)
-  DXReference(dxobject)
 
   if display:
     DXImage(dxobject,name=name,labels=labels)
-    DXDelete(dxobject)
   else:
     return dxobject
 
 ###########################################################################
-class DXCollection:
-  def __init__(self,*dxobjects,**kw):
-    labels = kw.get('labels',None)
-    self.labels = labels
-    self.dxobject = None
-    for o in dxobjects: self.addobject(o)
-  def getdxobject(self):
-    return self.dxobject
-  def extractdxobject(self,object):
-    dxobject = object
+class Visualizable:
+  """
+Virtual class which defines the API for objects that can be visualized.
+Note that any class inheriting this class must define the createdxobject
+method.
+  """
+  def createdxobject(self,kwdict={},**kw):
+    """
+Creates the dxobject. Note that this method must define the dxobject
+attribute.
+    """
+    raise 'createdxobject is a virtual function'
+  def getdxobject(self,kwdict={},**kw):
+    """
+Returns the dxobject, creating it is necessary. Note that the local
+reference to the dxobject is deleted.
+    """
     try:
-      # --- This is horribly kludgy, but works. This keeps looking until
-      # --- it finds an object which doesn't have dxobject as an attribute.
-      # --- Assumes that that will be an actual dxobject. This will fail
-      # --- miserably if an objects dxobject reference is recursive.
-      # --- Please, let that never happen!
-      while 1:
-        dxobject = dxobject.getdxobject()
+      self.dxobject
     except AttributeError:
-      pass
+      kw.update(kwdict)
+      self.createdxobject(kwdict=kw)
+    dxobject = self.dxobject
+    del self.dxobject
     return dxobject
-  def createdxobject(self,object):
+  def visualize(self,kwdict={},**kw):
+    """
+Displays the dxobject, creating it if necessary.
+    """
+    kw.update(kwdict)
+    dxobject = self.getdxobject(kwdict=kw)
+    DXImage(dxobject)
+
+###########################################################################
+class DXCollection(Visualizable):
+  def __init__(self,*dxobjects,**kw):
+    self.labels = kw.get('labels',None)
+    self.preserve = kw.get('preserve',0)
+    self.collection = None
+    for o in dxobjects: self.addobject(o)
+  def createdxobject(self,kwdict={},**kw):
+    assert self.collection is not None,"Empty collection can not be visualized"
+    self.dxobject = self.collection
+    if not self.preserve: self.collection = None
+  def extractdxobject(self,dxobject):
+    # --- This is somewhat kludgy, but works. This keeps looking until
+    # --- it finds a actual dxobject.
+    # --- Assumes that that will be an actual dxobject. This will fail
+    # --- miserably if an objects dxobject reference is recursive.
+    # --- Please, let that never happen!
+    while not isDXObject(dxobject):
+      dxobject = dxobject.getdxobject()
+    return dxobject
+  def initializedxobject(self,object):
     dxobject = self.extractdxobject(object)
     minput = {'object':dxobject}
     moutput = ['group']
-    (self.dxobject,) = DXCallModule('Collect',minput,moutput)
-    DXReference(self.dxobject)
+    (self.collection,) = DXCallModule('Collect',minput,moutput)
+    if self.preserve: DXReference(self.collection)
+    self.len = 1
+  def checkmaxlegth(self):
+    if self.len == 21:
+      if self.preserve: oldcollection = self.collection
+      self.initializedxobject(self.collection)
+      if self.preserve: DXDelete(oldcollection)
   def addobject(self,object):
-    if self.dxobject is None:
-      self.createdxobject(object)
+    if self.collection is None:
+      self.initializedxobject(object)
     else:
+      self.checkmaxlegth()
       dxobject = self.extractdxobject(object)
-      minput = {'input':self.dxobject,'object':dxobject}
+      if self.preserve: oldcollection = self.collection
+      minput = {'input':self.collection,'object':dxobject}
       moutput = ['group']
-      (g,) = DXCallModule('Append',minput,moutput)
-      DXDelete(self.dxobject)
-      self.dxobject = g
-      DXReference(self.dxobject)
+      (self.collection,) = DXCallModule('Append',minput,moutput)
+      if self.preserve:
+        DXDelete(oldcollection)
+        DXReference(self.collection)
   def reset(self):
-    DXDelete(self.dxobject)
-    self.dxobject = None
-  def reference(self):
-    DXReference(self.dxobject)
+    if self.preserve: DXDelete(self.collection)
+    self.collection = None
 
 ###########################################################################
 #==========================================================================
@@ -174,36 +213,44 @@ def interactor_handler():
   if len(getchar) > 0: interactor = eval(getchar)
   else:                interactor = -1
 
-_group = DXCollection()
 def DXImage(object,camera=None,name='WARP viz',labels=None):
+  """
+Displays an image of the input object, allowing mouse controls for moving the
+image. Default mode is rotation. Press 1 for panning, 2 for zooming.
+ - object: object to be imaged. Note that it will be deleted afterward
+           (to be consistent with the OpenDX standard).
+ - camera: optional camera used to view the image. Default uses AutoCamera.
+ - name='WARP viz': Title given to X window. When given a new name, a new X
+                    windows will be opened.
+ - labels=None: when specified, axis with labels are included. labels must be
+                of list containing three strings.
+  """
   global interactor
 
-  _group.addobject(object)
-  dxobject = _group.dxobject
-  if labels is None: labels = _group.labels
+  group = DXCollection(object)
+  dxobject = group.getdxobject()
+  assert isDXObject(dxobject),'Object to display is not a DXObject'
+
+  # --- Turn off the caching of images - caching can use a lot of memory
+  # --- which is not freed.
+  minput = {'input':dxobject,'attribute':'cache','value':0}
+  moutput = ['output']
+  (dxobject,) = DXCallModule('Options',minput,moutput)
 
   if camera is None:
-    cameraadded = 1
     DXReference(dxobject)
     minput = {'object':dxobject}
     moutput = ['camera']
     (camera,) = DXCallModule('AutoCamera',minput,moutput)
-    DXReference(camera)
-  else:
-    cameraadded = 0
 
   if labels is not None:
     assert (len(labels) == 3),"Length of lables list must be three"
-    labelsadded = 1
+    DXReference(camera)
     labels = DXMakeStringList(labels)
     minput = {'input':dxobject,'camera':camera,'labels':labels,
               'ticks':3,'colors':'yellow'}
     moutput = ['axes']
-    olddxobject = dxobject
     (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
-    DXReference(dxobject)
-  else:
-    labelsadded = 0
 
   i = 0
   DXRegisterInputHandler(interactor_handler)
@@ -228,12 +275,10 @@ def DXImage(object,camera=None,name='WARP viz',labels=None):
       (dobject,dcamera,dwhere,) = DXCallModule('SuperviseState',minput,moutput)
 
       minput = {'object':dobject,'camera':dcamera,'where':dwhere}
-      moutput = ['where']
-      (dwhere,) = DXCallModule('Display',minput,moutput)
+      moutput = []
+      DXCallModule('Display',minput,moutput)
 
-  DXDelete(dwhere)
-  if cameraadded: DXDelete(camera)
-  if labelsadded: DXDelete(olddxobject)
+  DXDelete(dxobject)
   interactor = 0
 
 def DXNewImage():
@@ -262,30 +307,23 @@ Writes an image of the object to a file.
 
   group = DXCollection(object)
   dxobject = group.getdxobject()
+  assert isDXObject(dxobject),'Object to display is not a DXObject'
   if labels is None: labels = group.labels
 
   if camera is None:
-    cameraadded = 1
     DXReference(dxobject)
     minput = {'object':dxobject}
     moutput = ['camera']
     (camera,) = DXCallModule('AutoCamera',minput,moutput)
-    DXReference(camera)
-  else:
-    cameraadded = 0
 
   if labels is not None:
     assert (len(labels) == 3),"Length of lables list must be three"
-    labelsadded = 1
     labels = DXMakeStringList(labels)
+    DXReference(camera)
     minput = {'input':dxobject,'camera':camera,'labels':labels,
               'ticks':3,'colors':'yellow'}
     moutput = ['axes']
-    olddxobject = dxobject
     (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
-    DXReference(dxobject)
-  else:
-    labelsadded = 0
 
   minput = {'object':dxobject,'camera':camera}
   moutput = ['image']
@@ -296,5 +334,3 @@ Writes an image of the object to a file.
   moutput = []
   DXCallModule('WriteImage',minput,moutput)
 
-  if cameraadded: DXDelete(camera)
-  if labelsadded: DXDelete(olddxobject)

@@ -40,7 +40,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.28 2004/05/22 01:49:13 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.29 2004/05/25 21:39:40 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -70,7 +70,7 @@ def errordist(etype):
 
 #############################################################################
 # --- LINE contains a list of lattice elements.
-class LINE:
+class LINE(pyOpenDX.Visualizable):
   """
 Creates an instance of the LINE lattice type which contains a list of
 lattice elements. The argument can either be a single element or a list of
@@ -121,6 +121,8 @@ elements.
       else:
         i = i + 1
     return self.elemslist
+  def walk(self,func):
+    for e in self.elems: e.walk(func)
   def setextent(self,zz):
     self.expand()
     for e in self.elemslist: zz = e.setextent(zz)
@@ -150,6 +152,13 @@ elements.
   def __iter__(self):
     self.expand()
     return self.elemslist.__iter__()
+  def createdxobject(self,kwdict={},**kw):
+    kw.update(kwdict)
+    self.expand()
+    dxlist = []
+    for elem in self.elemslist:
+      dxlist.append(elem.getdxobject(kwdict=kw))
+    self.dxobject = pyOpenDX.DXCollection(*dxlist)
 
 # --- Create an equivalent class to LINE.
 Line = LINE
@@ -172,6 +181,8 @@ list of the parameters which are changed.
     self.derivedquantities()
   def deepexpand(self):
     return copy.deepcopy(self)
+  def walk(self,func):
+    func(self)
   def expand(self,lredo=0):
     return self
   def __getattr__(self,name):
@@ -190,7 +201,7 @@ Child = child
 
 # --- Base element class. All elements have the following attributes:
 # --- Length, aperture, X offset, Y offset, and error type for the offset.
-class Elem:
+class Elem(pyOpenDX.Visualizable):
   """
 Base class for the lattice classes. Should never be directly called.
   """
@@ -228,6 +239,8 @@ Base class for the lattice classes. Should never be directly called.
     return 0
   def deepexpand(self):
     return copy.deepcopy(self)
+  def walk(self,func):
+    func(self)
   def expand(self,lredo=0):
     return self
   def getattr(self,a):
@@ -242,16 +255,10 @@ Base class for the lattice classes. Should never be directly called.
     return LINE(self,other)
   def __radd__(self,other):
     return LINE(other,self)
-  def getdxobject(self):
-    try:
-      return self.dxobject
-    except AttributeError:
-      object = self.getobject()
-      return object.getdxobject()
-  def visualize(self,display=1,kwdict={},**kw):
+  def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
     object = self.getobject()
-    object.visualize(display=display,kwdict=kw)
+    self.dxobject = object.getdxobject(kwdict=kw)
 
 #----------------------------------------------------------------------------
 # WARP elements
@@ -299,10 +306,24 @@ Creates an instance of a Drft lattice element.
     top.drftap[top.ndrft] = self.ap
     top.drftax[top.ndrft] = self.ax
     top.drftay[top.ndrft] = self.ay
-    top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
-    top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    self.xoffset = self.offset_x*errordist(self.error_type)
+    self.yoffset = self.offset_y*errordist(self.error_type)
+    top.drftox[top.ndrft] = self.xoffset
+    top.drftoy[top.ndrft] = self.yoffset
     top.drftol[top.ndrft] = self.ol
     return top.drftze[top.ndrft]
+  def getobject(self):
+    try:                   return self.object
+    except AttributeError: pass
+    try:
+      zc = 0.5*(top.drftzs[self.idrft]+top.drftze[self.idrft])
+    except AttributeError:
+      zc = 0.
+    q = ZAnnulus(rmin=self.ap,rmax=1.05*self.ap,length=self.length,
+                 xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
+                 condid=self.idrft)
+    self.object = q
+    return self.object
 
 class Bend(Elem):
   """
@@ -470,8 +491,13 @@ Creates an instance of a Quad lattice element.
       zc = 0.5*(top.quadzs[self.iquad]+top.quadze[self.iquad])
     except AttributeError:
       zc = 0.
-    q = Quadrupole(ap=self.ap,rl=self.rl,rr=self.rr,gl=self.gl,gp=self.gp,
-                   pa=self.pa,pw=self.pw,pr=self.pr,vx=self.vx,vy=self.vy,
+    if self.db == 0.:
+      q = Quadrupole(ap=self.ap,rl=self.rl,rr=self.rr,gl=self.gl,gp=self.gp,
+                     pa=self.pa,pw=self.pw,pr=self.pr,vx=self.vx,vy=self.vy,
+                     xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
+                     condid=self.iquad)
+    else:
+      q = ZAnnulus(rmin=self.ap,rmax=1.05*self.ap,length=self.length,
                    xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
                    condid=self.iquad)
     self.object = q
@@ -597,8 +623,10 @@ Creates an instance of a Hele lattice element.
     top.heleap[top.nhele] = self.ap
     top.heleax[top.nhele] = self.ax
     top.heleay[top.nhele] = self.ay
-    top.heleox[top.nhele] = self.offset_x*errordist(self.error_type)
-    top.heleoy[top.nhele] = self.offset_y*errordist(self.error_type)
+    self.xoffset = self.offset_x*errordist(self.error_type)
+    self.yoffset = self.offset_y*errordist(self.error_type)
+    top.heleox[top.nhele] = self.xoffset
+    top.heleoy[top.nhele] = self.yoffset
     top.heleol[top.nhele] = self.ol
     top.helerr[top.nhele] = self.rr
     top.helerl[top.nhele] = self.rl
@@ -615,6 +643,26 @@ Creates an instance of a Hele lattice element.
     top.helepe[:len(self.pe),self.ihele] = self.pe
     top.helepm[:len(self.pm),self.ihele] = self.pm
     return top.heleze[top.nhele]
+  def getobject(self):
+    try:
+      return self.object
+    except AttributeError:
+      pass
+    try:
+      zc = 0.5*(top.helezs[self.ihele]+top.heleze[self.ihele])
+    except AttributeError:
+      zc = 0.
+    if (len(self.ae) > 0. or self.rr > 0. or self.rl > 0. or self.gl > 0.):
+      q = Quadrupole(ap=self.ap,rl=self.rl,rr=self.rr,gl=self.gl,gp=self.gp,
+                     pa=self.pa,pw=self.pw,pr=self.pr,vx=self.vx,vy=self.vy,
+                     xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
+                     condid=self.ihele)
+    else:
+      q = ZAnnulus(rmin=self.ap,rmax=1.05*self.ap,length=self.length,
+                   xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
+                   condid=self.ihele)
+    self.object = q
+    return self.object
 
 class Accl(Elem):
   """
@@ -669,8 +717,10 @@ Creates an instance of a Accl lattice element.
     top.acclap[top.naccl] = self.ap
     top.acclax[top.naccl] = self.ax
     top.acclay[top.naccl] = self.ay
-    top.acclox[top.naccl] = self.offset_x*errordist(self.error_type)
-    top.accloy[top.naccl] = self.offset_y*errordist(self.error_type)
+    self.xoffset = self.offset_x*errordist(self.error_type)
+    self.yoffset = self.offset_y*errordist(self.error_type)
+    top.acclox[top.naccl] = self.xoffset
+    top.accloy[top.naccl] = self.yoffset
     top.acclol[top.naccl] = self.ol
     top.acclez[top.naccl] = self.ez
     top.acclxw[top.naccl] = self.xw
@@ -679,6 +729,18 @@ Creates an instance of a Accl lattice element.
     top.accldt[top.naccl] = self.dt
     top.acclet[:len(self.et),self.iaccl] = self.et
     return top.acclze[top.naccl]
+  def getobject(self):
+    try:                   return self.object
+    except AttributeError: pass
+    try:
+      zc = 0.5*(top.acclzs[self.iaccl]+top.acclze[self.iaccl])
+    except AttributeError:
+      zc = 0.
+    q = ZAnnulus(rmin=self.ap,rmax=1.05*self.ap,length=self.length,
+                 xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
+                 condid=self.iaccl)
+    self.object = q
+    return self.object
 
 
 class Emlt(Elem):

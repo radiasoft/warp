@@ -5,7 +5,8 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.13 2004/05/22 01:50:55 dave Exp $"
+from pyOpenDX import *
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.14 2004/05/25 21:39:40 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -13,9 +14,9 @@ def VPythonobjectsdoc():
 
 ##########################################################################
 
-class VisualModel:
+class VisualModel(Visualizable):
   def __init__(self,twoSided=1,normalsign=1,scene=None,
-                    title='Visualization',labels=None,
+                    name=None,labels=None,
                     vrange=None,viewer=None):
     if viewer is None: viewer = 'OpenDX'
     self.viewer = viewer
@@ -34,19 +35,12 @@ class VisualModel:
       self.vrange = [10.,10.,10.]
       self.autoscale = 1
       self.uniform = 1
-    self.title = title
+    if name is None: self.name = 'WARP viz'
+    else:            self.name = name
     self.labels = labels
     self.scene = scene
-    self.dxobject = None
 
-  def getdxobject(self):
-    try:
-      return self.dxobject
-    except AttributeError:
-      self.CreateDXObject()
-      return dxobject
-
-  def CreateDXObject(self):
+  def createdxobject(self,kwdict={},**kw):
 
     import pyOpenDX
 
@@ -91,7 +85,7 @@ class VisualModel:
 
       if self.scene is None:
         self.scene = visual.display(exit=0,width=500,height=500,
-                                    uniform=self.uniform,title=self.title,
+                                    uniform=self.uniform,title=self.name,
                                     autoscale=self.autoscale,range=self.vrange)
 
       self.frame = visual.frame(display=self.scene)
@@ -101,7 +95,7 @@ class VisualModel:
                                 display=self.scene)
     else:
       import pyOpenDX
-      if self.dxobject is None: self.CreateDXObject()
+      if self.dxobject is None: self.createdxobject()
       ff = self.dxobject
 
       if showgrid:
@@ -138,8 +132,7 @@ class VisualModel:
 
       if labels is None: labels = self.labels
 
-      pyOpenDX.DXImage(group,name=self.title,labels=labels)
-      pyOpenDX.DXDelete(group)
+      pyOpenDX.DXImage(group,name=self.name,labels=labels)
 
   def FacetedTriangle(self, vv, nn = None, color=None):
     """Add a triangle to the model, apply faceted shading automatically"""
@@ -261,16 +254,15 @@ twoSided=1: when true, surface is two sided
 normalsign=1: when negative, show the under side (and twoSided == 0)
 color=None: can be specified as an [r,g,b] list
 scene=None: an already existing display scene. When None, create a new one.
-title='Mesh': Display title - only used when new scene created.
+name='WARP viz': Display name - only used when new scene created.
   """
   def __init__(self, xvalues=None, yvalues=None, zvalues=None,
                xscaled=0,zscaled=1,
                twoSided=1,normalsign=1,color=None,color1=None,color2=None,
-               scene=None,title=None,vrange=None,viewer=None):
-    if not title: title = 'Mesh'
+               scene=None,name=None,vrange=None,viewer=None):
     VisualModel.__init__(self,twoSided=twoSided,normalsign=normalsign,
-                              scene=scene,title=title,
-                              vrange=vrange,viewer=viewer,display=1)
+                              scene=scene,name=name,
+                              vrange=vrange,viewer=viewer,display=0)
 
     assert zvalues is not None,"zvalues must be specified"
 
@@ -317,8 +309,9 @@ title='Mesh': Display title - only used when new scene created.
                              points[i+1,j+1], points[i+1,j]],
                             color=color)
 
-    self.CreateDXObject()
-    if display: self.Display()
+    if display:
+      self.createdxobject()
+      self.Display()
 
 ########################################################################
 class VisualRevolution(VisualModel):
@@ -330,7 +323,7 @@ Visualize surface of revolution
  - rendzmin: radius at zmin
  - rendzmax: radius at zmax
  - nz=20: if srfrv is given, number of z points radius sampled at
- - nth=20: number of theta angles points sampled at
+ - nphi=20: number of phi angles points sampled at
  - phimin=0.: miminmum phi angle
  - phimax=2*pi: maximum phi angle
  - fillinends=1: if theta range < 2pi, fill in ends if true.
@@ -347,25 +340,24 @@ Visualize surface of revolution
  - normalsign=1: 1 when data is clockwise, -1 with counterclockwise
  - color=None: RGB color for surface, of form [r,g,b]
  - scene=None: include object in exising scene (only for VPython)
- - title=None: window title
+ - name=None: window name
  - vrange=None: set view range (only for VPython)
  - viewer=None: select viewer, either 'OpenDX' or 'VPython'
- - display=1: if 1, immeidately display object
+ - display=0: if 1, immeidately display object
   """
   def __init__(self,srfrv=None,zzmin=None,zzmax=None,
                     rendzmin=None,rendzmax=None,
-                    nz=20,nth=20,phimin=None,phimax=None,fillinends=0,
+                    nz=20,nphi=20,phimin=None,phimax=None,fillinends=0,
                     close=0,
                     xoff=0,yoff=0,zoff=0,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,ntpts=5,
                     twoSided=0,normalsign=1,color=None,
-                    scene=None,title=None,vrange=None,
-                    viewer=None,display=1,kwdict={}):
+                    scene=None,name=None,vrange=None,
+                    viewer=None,display=0,kwdict={}):
     for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
-    if not title: title = 'Surface of revolution'
     VisualModel.__init__(self,twoSided=twoSided,normalsign=1,
-                              scene=scene,title=title,
+                              scene=scene,name=name,
                               vrange=vrange,viewer=viewer)
 
     # --- If phimin and phimax are not given, then the ends never need
@@ -459,7 +451,7 @@ Visualize surface of revolution
       ttleft += [-pi/2.]
       ttrght += [-pi/2.]
 
-    phi = phimin + (phimax - phimin)*arange(0,nth+1)/nth
+    phi = phimin + (phimax - phimin)*arange(0,nphi+1)/nphi
     xx = cos(phi)
     yy = sin(phi)
 
@@ -503,5 +495,6 @@ Visualize surface of revolution
       nn = map(array,zip(n*[nx],n*[ny],n*[0.]))
       self.FacetedPolygon(pp,nn,color=color)
 
-    self.CreateDXObject()
-    if display: self.Display()
+    if display:
+      self.createdxobject()
+      self.Display()
