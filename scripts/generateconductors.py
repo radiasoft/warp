@@ -70,7 +70,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.47 2004/03/03 16:42:28 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.48 2004/03/05 14:57:18 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -567,10 +567,17 @@ Installs the data into the WARP database
     "'or' operator, returns minimum of distances to surfaces."
     rdels = -right.dels
     c = less(self.dels,rdels)
-    return Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
-                 choose(c,(self.dels,rdels)),
-                 choose(c,(self.vs  ,right.vs)),
-                 choose(c,(self.ns  ,right.ns)))
+    result = Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
+                   choose(c,(self.dels,rdels)),
+                   choose(c,(self.vs  ,right.vs)),
+                   choose(c,(self.ns  ,right.ns)))
+    # --- This is a kludgy fix for problems with subtracting elements.
+    # --- If the subtractee has surfaces in common with the subtractor,
+    # --- the above algorithm leaves a zero thickness shell there.
+    # --- This fix effectively removes those points in common so the shell
+    # --- does not appear.
+    result.dels = where(abs(self.dels - right.dels)<1.e-10,largepos,result.dels)
+    return result
 
   def __str__(self):
     "Prints out delta"
