@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.8 2004/03/17 14:24:06 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.9 2004/07/24 00:24:23 dave Exp $"
 from warp import *
 import signal
 
@@ -49,8 +49,6 @@ def generate(command=None):
   top.gentime = wtime() - top.starttime
   #ruthere()
 
-beforestepfuncs = []
-afterstepfuncs = []
 def step(n=1,maxcalls=None,command=None):
   b = wtime()
   if command is None:
@@ -69,7 +67,7 @@ def step(n=1,maxcalls=None,command=None):
     top.ncall = top.ncall + 1
 
     bb = wtime()
-    for f in beforestepfuncs: f()
+    callbeforestepfuncs()
     aa = wtime()
     try: step.beforetime = step.beforetime + (aa - bb)
     except: step.beforetime = 0.
@@ -77,7 +75,7 @@ def step(n=1,maxcalls=None,command=None):
     command()
 
     bb = wtime()
-    for f in afterstepfuncs: f()
+    callafterstepfuncs()
     aa = wtime()
     try: step.aftertime = step.aftertime + (aa - bb)
     except: step.aftertime = 0.
