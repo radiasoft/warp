@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.6 2001/06/18 20:45:54 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.7 2001/08/06 18:51:03 ramiak Exp $"
 
 def getzmomdoc():
   print """
@@ -7,9 +7,9 @@ zmmnt  makes appropriate calls to compiled code to calculate the
        particle moments
   """
 
-def zmmnt(itask=0,js=None):
+def zmmnt(itask=0,js=None, jslist=xrange(0,top.ns)):
   """
-zmmnt(itask=0)
+zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   makes appropriate calls to compiled code to calculate the
   particle moments
   - itask=0 task to carry out
@@ -17,6 +17,9 @@ zmmnt(itask=0)
     1 initialization, zeros out moments variables
     2 gather moments
     3 final processing of moments, averaging and derived moments
+  - js: select species over which to calculate moments,
+        None: calculates moments over range 0 .. top.nx or,
+        alternatively, over list of moments specified in jslist
   """
   uxpo = top.uxp
   uypo = top.uyp
@@ -41,13 +44,11 @@ zmmnt(itask=0)
 
   # Calculate the moments
   if js is None:
-    jsmin = 0
-    jsmax = top.ns
+    pass
   else:
-    jsmin = js
-    jsmax = js + 1
+    jslist = [js]
   if (itask == 0 or itask == 2):
-    for js in xrange(jsmin,jsmax):
+    for js in jslist:
       for ipmin in xrange(top.ins[js]-1,top.ins[js]+top.nps[js]-1,256):
          ip = min(256, top.ins[js]+top.nps[js]-ipmin-1)
          getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
