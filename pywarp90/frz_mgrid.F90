@@ -6,7 +6,7 @@ module multigrid_common
 USE constant
 USE PSOR3d, ONLY:boundxy,bound0,boundnz
 USE FRZmgrid
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   use Parallel
   use mpirz
 #endif
@@ -70,7 +70,7 @@ INTEGER(ISZ) :: bnd_method=egun
 INTEGER(ISZ) :: nlevels ! number of multigrid levels
 INTEGER(ISZ) :: level ! current multigrid level
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   INTEGER(ISZ) :: nzfine, nworkpproc, workfact=3
 #endif
 
@@ -95,7 +95,7 @@ TYPE bndptr
   ! linked-list of conductors
   TYPE(conductor_type), POINTER :: cnd,first
   INTEGER(ISZ) :: izlbnd, izrbnd  ! boundary conditions for each side
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   INTEGER(ISZ) :: nworkpproc
 #endif
 END TYPE bndptr
@@ -114,7 +114,7 @@ REAL(8), INTENT(IN) :: dr, dz
 INTEGER(ISZ) :: i, nrp0, nzp0, nrc, nzc
 REAL(8) :: drc, dzc
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   nzfine = nz
 #endif
 
@@ -127,13 +127,13 @@ REAL(8) :: drc, dzc
   drc = dr
   dzc = dz
   nlevels    = 1
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   nworkpproc = 1
 #endif
   do WHILE(nrc>mgridrz_nmeshmin.or.nzc>mgridrz_nmeshmin)
     call evalnewgrid(nrc,nzc,drc,dzc)
     nlevels = nlevels + 1
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(nworkpproc*nrc*nzc<=workfact*nzfine) then
       nlevels = nlevels + 1
       nworkpproc = nworkpproc*2
@@ -150,7 +150,7 @@ REAL(8) :: drc, dzc
   nzc = nz
   drc = dr
   dzc = dz
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   nworkpproc = 1
 #endif
   do i = nlevels, 1, -1
@@ -159,14 +159,14 @@ REAL(8) :: drc, dzc
     bndy(i)%izrbnd=izrbnd
     IF(i/=nlevels) then
       call evalnewgrid(nrc,nzc,drc,dzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       IF(nworkpproc<nslaves.and.nworkpproc*nrc*nzc<=workfact*nzfine) then
         nworkpproc = nworkpproc*2
         bndy(i)%l_merged=.true.
       END if
 #endif
     END if
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     bndy(i)%nworkpproc = nworkpproc
     IF(my_index-nworkpproc>=0) bndy(i)%izlbnd = -(my_index-nworkpproc+1)
     IF(my_index+nworkpproc<nslaves) bndy(i)%izrbnd = -(my_index+nworkpproc+1)
@@ -183,7 +183,7 @@ REAL(8) :: drc, dzc
     ALLOCATE(bndy(i)%v(bndy(i)%nr+1,bndy(i)%nz+1))
     bndy(i)%v(:,:)=v_vacuum
   end do
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   IF(nslaves>1) then
     do i = 1, nlevels
       bndy(i)%l_powerof2 = .false.
@@ -495,7 +495,7 @@ afrz1 = 4._8/3._8
 aflz2 = 16._8/9._8
 afrz2 = 16._8/9._8
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   IF(bndy(level-1)%izlbnd<0) then
     flz=0.5_8
     aflz1 = 1._8
@@ -626,7 +626,7 @@ do kold = 1, nzold+1
   oddz(kold) = 1._8-ddz(kold)
 END do
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(bndy(level)%izlbnd<0) then
       ddz(1) = 0.5_8*ddz(1)
       oddz(1) = 0.5_8*oddz(1)
@@ -730,7 +730,7 @@ do kold = 1, nzold+1
   oddz(kold) = 1._8-ddz(kold)
 END do
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(bndy(level)%izlbnd<0) then
       ddz(1) = 0.5_8*ddz(1)
       oddz(1) = 0.5_8*oddz(1)
@@ -755,7 +755,7 @@ do kold = 1, nzold+1
   delz  =  ddz(kold)
   odelz = oddz(kold)
   do jold = 1, nxold+1
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF((bndy(level)%izlbnd<0.and.kold>1).or.(bndy(level)%izrbnd<0.and.kold<nzold+1)) then
       IF(.NOT.(bnd%v(jold,kold)==v_vacuum.or.jold==1.or.jold==nxold+1)) cycle
     END if
@@ -1092,7 +1092,7 @@ END do !redblack=1, 2
 
 call updateguardcellsrz(f=f,level=level)
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   call exchange_fbndz(f,level)
 #endif
 
@@ -1103,7 +1103,7 @@ IF(l_mgridrz_debug) WRITE(0,*) 'exit relax, level = ',level
 return
 END subroutine relaxbndrzwguard
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   subroutine exchange_fbndz(f,level)
     REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
     INTEGER(ISZ), INTENT(IN) :: level
@@ -1311,7 +1311,7 @@ else
 !IF(error2>error1) WRITE(0,*) 'relax 1, level = ',level,' error1/2 = ',error1,error2
 !error1 = SUM(ABS(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.false.)))
   IF(bnd(level-1)%l_merged) then
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(MOD(my_index/bnd(level)%nworkpproc,2)==0) then
       nzresmin = 1
       nzresmax = nznext/2+1
@@ -1335,7 +1335,7 @@ else
                              residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.false.), &
                              nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
   END if
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   IF(bnd(level-1)%l_merged) then
     call merge_work(res,level)
   else
@@ -1360,7 +1360,7 @@ call updateguardcellsrz(f=v,level=j-1)
     u = u + expandwguard_any(v(:,nzresmin-1:nzresmax+1),nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
   END if
 !  END if
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   call exchange_fbndz(u,level)
 #endif
 !error2 = SUM(ABS(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.false.)))
@@ -1513,7 +1513,7 @@ do i = nlevels-1, 1, -1
   rho(i)%a = 0.
   level = i
   IF(bnd(level)%l_merged) then
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(MOD(my_index/bnd(level+1)%nworkpproc,2)==0) then
       nzresmin = 1
       nzresmax = bnd(level)%nz/2+1
@@ -1534,7 +1534,7 @@ do i = nlevels-1, 1, -1
   else
   rho(i)%a(:,nzresmin:nzresmax) = restrict(rho(i+1)%a,bnd(i)%nr,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
   END if
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   IF(bnd(level-1)%l_merged) then
     call merge_work(rho(i)%a,level)
   else
@@ -1558,7 +1558,7 @@ main_loop: do i = 1, nlevels
     DEALLOCATE(f)
     ALLOCATE(f(0:nrc+2,0:nzc+2))
     IF(bnd(i-1)%l_merged) then
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       IF(MOD(my_index/bnd(i)%nworkpproc,2)==0) then
         nzresmin = 1
         nzresmax = bnd(i-1)%nz/2+1
@@ -1583,7 +1583,7 @@ main_loop: do i = 1, nlevels
       f = expandwguardandbnd_any(fold(:,nzresmin-1:nzresmax+1),bnd(i),nrc,nzc, &
                       xminold=0._8, xmaxold=length_r, zminold=0._8, zmaxold=length_z, &
                       xminnew=0._8, xmaxnew=length_r, zminnew=0._8, zmaxnew=length_z)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     call exchange_fbndz(f,i)
 #endif
     call apply_voltagewguard(f,bnd(i),1._8)
@@ -1597,7 +1597,7 @@ main_loop: do i = 1, nlevels
   do while(do_calc)
     average_residue_init=SUM(ABS(residbndrzwguard(f=RESHAPE((/(0._8*j,j=1,(nrc+3)*(nzc+3))/), (/nrc+3,nzc+3/)) &
                              ,rhs=rho(i)%a,bnd=bnd(i),nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nrc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     average_residue_init = mpi_global_compute_real(average_residue_init,MPI_SUM)/nslaves
 #endif
     if(average_residue_init==0._8) then
@@ -1612,7 +1612,7 @@ main_loop: do i = 1, nlevels
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, level = ',level
       average_residue=SUM(ABS(residbndrzwguard(f=f,rhs=rho(i)%a,bnd=bnd(i), &
                               nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nrc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       average_residue = mpi_global_compute_real(average_residue,MPI_SUM)/nslaves
 #endif
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, done.'
@@ -1720,7 +1720,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
   do while(do_calc)
     average_residue_init=SUM(ABS(residbndrzwguard(f=RESHAPE((/(0._8*j,j=1,(nrc+3)*(nzc+3))/), (/nrc+3,nzc+3/)) &
                              ,rhs=rhoinit,bnd=bnd(i),nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nrc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     average_residue_init = mpi_global_compute_real(average_residue_init,MPI_SUM)/nslaves
 #endif
     if(average_residue_init==0._8) then
@@ -1736,7 +1736,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, level = ',level
       average_residue=SUM(ABS(residbndrzwguard(f=u,rhs=rhoinit,bnd=bnd(i), &
                               nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nrc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       average_residue = mpi_global_compute_real(average_residue,MPI_SUM)/nslaves
 #endif
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, done.'
@@ -1865,7 +1865,7 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
   zmax_in = zmin_in + bndy(i)%nworkpproc * nzc * dzc
 #else
@@ -1918,7 +1918,7 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
   zmax_in = zmin_in + bndy(i)%nworkpproc * nzc * dzc
 #else
@@ -1960,7 +1960,7 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
 #else
   zmin_in = zmmin
@@ -2762,7 +2762,7 @@ TYPE bndptr
   ! linked-list of conductors
   TYPE(conductor_type), POINTER :: cnd,first
   INTEGER(ISZ) :: izlbnd, izrbnd  ! boundary conditions for each side
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   INTEGER(ISZ) :: nworkpproc
 #endif
 END TYPE bndptr
@@ -2783,7 +2783,7 @@ REAL(8) :: dxc, dyc, dzc
 
   IF(l_mgridrz_debug) WRITE(0,*) 'Enter init_bnd'
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   nzfine = nz
 #endif
 
@@ -2809,14 +2809,14 @@ REAL(8) :: dxc, dyc, dzc
   dyc = dy
   dzc = dz
   nlevels    = 1
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   nworkpproc = 1
 #endif
   do WHILE(nxc>mgridrz_nmeshmin.or.nyc>mgridrz_nmeshmin.or.nzc>mgridrz_nmeshmin)
     call evalnewgrid(nxc,nyc,nzc,dxc,dyc,dzc)
     nlevels = nlevels + 1
     WRITE(0,*) nlevels,nxc,nyc,nzc,dxc,dyc,dzc
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(nworkpproc*nxc*nyc*nzc<=workfact*nzfine) then
       nlevels = nlevels + 1
       nworkpproc = nworkpproc*2
@@ -2835,7 +2835,7 @@ REAL(8) :: dxc, dyc, dzc
   dxc = dx
   dyc = dy
   dzc = dz
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   nworkpproc = 1
 #endif
   do i = nlevels, 1, -1
@@ -2844,14 +2844,14 @@ REAL(8) :: dxc, dyc, dzc
     bndy(i)%izrbnd=izrbnd
     IF(i/=nlevels) then
       call evalnewgrid(nxc,nyc,nzc,dxc,dyc,dzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       IF(nworkpproc<nslaves.and.nworkpproc*nxc*nyc*nzc<=workfact*nzfine) then
         nworkpproc = nworkpproc*2
         bndy(i)%l_merged=.true.
       END if
 #endif
     END if
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     bndy(i)%nworkpproc = nworkpproc
     IF(my_index-nworkpproc>=0) bndy(i)%izlbnd = -(my_index-nworkpproc+1)
     IF(my_index+nworkpproc<nslaves) bndy(i)%izrbnd = -(my_index+nworkpproc+1)
@@ -2871,7 +2871,7 @@ REAL(8) :: dxc, dyc, dzc
     ALLOCATE(bndy(i)%v(bndy(i)%nx+1,bndy(i)%ny+1,bndy(i)%nz+1))
     bndy(i)%v(:,:,:)=v_vacuum
   end do
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   IF(nslaves>1) then
     do i = 1, nlevels
       bndy(i)%l_powerof2 = .false.
@@ -3164,7 +3164,7 @@ do lold = 1, nzold+1
   oddz(lold) = 1._8-ddz(lold)
 END do
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(bndy(level)%izlbnd<0) then
       ddz(1) = 0.5_8*ddz(1)
       oddz(1) = 0.5_8*oddz(1)
@@ -3296,7 +3296,7 @@ do lold = 1, nzold+1
   oddz(lold) = 1._8-ddz(lold)
 END do
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(bndy(level)%izlbnd<0) then
       ddz(1) = 0.5_8*ddz(1)
       oddz(1) = 0.5_8*oddz(1)
@@ -3333,7 +3333,7 @@ do lold = 1, nzold+1
     dely  =  ddy(kold)
     odely = oddy(kold)
     do jold = 1, nxold+1
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       IF((bndy(level)%izlbnd<0.and.lold>1).or.(bndy(level)%izrbnd<0.and.lold<nzold+1)) then
         IF(.NOT.(bnd%v(jold,kold,lold)==v_vacuum.or.jold==1.or.jold==nxold+1.or.kold==1.or.kold==nyold+1)) cycle
       END if
@@ -3691,7 +3691,7 @@ END do !redblack=1, 2
 
 call updateguardcells3d(f=f,level=level)
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   call exchange_fbndz(f,level)
 #endif
 
@@ -3702,7 +3702,7 @@ IF(l_mgridrz_debug) WRITE(0,*) 'exit relax, level = ',level
 return
 END subroutine relaxbnd3dwguard
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   subroutine exchange_fbndz(f,level)
     REAL(8), INTENT(IN OUT) :: f(0:,0:,0:)!f(0:nx+2,0:ny+2,0:nz+2)
     INTEGER(ISZ), INTENT(IN) :: level
@@ -3907,7 +3907,7 @@ else
 !IF(error2>error1) WRITE(0,*) 'relax 1, level = ',level,' error1/2 = ',error1,error2
 !error1 = SUM(ABS(residbndxzwguard(f=u,rhs=rhs,bnd=bnd(j),nx=nx,nz=nz,dx=dx,dz=dz,voltfact=voltf,l_zerolastz=.false.)))
   IF(bnd(level-1)%l_merged) then
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(MOD(my_index/bnd(level)%nworkpproc,2)==0) then
       nzresmin = 1
       nzresmax = nznext/2+1
@@ -3933,7 +3933,7 @@ else
                                               voltfact=voltf,l_zerolastz=.false.), &
                              nxnext,nynext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
   END if
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   IF(bnd(level-1)%l_merged) then
     call merge_work(res,level)
   else
@@ -3958,7 +3958,7 @@ call updateguardcells3d(f=v,level=j-1)
     u = u + expandwguard_any(v(:,:,nzresmin-1:nzresmax+1),nx,ny,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
 !  END if
 !  END if
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   call exchange_fbndz(u,level)
 #endif
 !error2 = SUM(ABS(residbndxzwguard(f=u,rhs=rhs,bnd=bnd(j),nx=nx,nz=nz,dx=dx,dz=dz,voltfact=voltf,l_zerolastz=.false.)))
@@ -4135,7 +4135,7 @@ do i = nlevels-1, 1, -1
   rho(i)%a = 0.
   level = i
   IF(bnd(level)%l_merged) then
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     IF(MOD(my_index/bnd(level+1)%nworkpproc,2)==0) then
       nzresmin = 1
       nzresmax = bnd(level)%nz/2+1
@@ -4158,7 +4158,7 @@ do i = nlevels-1, 1, -1
   rho(i)%a(:,:,nzresmin:nzresmax) = restrict(rho(i+1)%a,bnd(i)%nx,bnd(i)%ny,nzres, &
                                              0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
   END if
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   IF(bnd(level-1)%l_merged) then
     call merge_work(rho(i)%a,level)
   else
@@ -4184,7 +4184,7 @@ main_loop: do i = 1, nlevels
     DEALLOCATE(f)
     ALLOCATE(f(0:nxc+2,0:nyc+2,0:nzc+2))
     IF(bnd(i-1)%l_merged) then
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       IF(MOD(my_index/bnd(i)%nworkpproc,2)==0) then
         nzresmin = 1
         nzresmax = bnd(i-1)%nz/2+1
@@ -4209,7 +4209,7 @@ main_loop: do i = 1, nlevels
 !      f = expandwguardandbnd_any(fold(:,:,nzresmin-1:nzresmax+1),bnd(i),nxc,nyc,nzc, &
 !                      xminold=0._8, xmaxold=length_x, yminold=0._8, ymaxold=length_y, zminold=0._8, zmaxold=length_z, &
 !                      xminnew=0._8, xmaxnew=length_x, yminnew=0._8, ymaxnew=length_y, zminnew=0._8, zmaxnew=length_z)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     call exchange_fbndz(f,i)
 #endif
     call apply_voltagewguard(f,bnd(i),1._8)
@@ -4223,7 +4223,7 @@ main_loop: do i = 1, nlevels
   do while(do_calc)
     average_residue_init=SUM(ABS(residbnd3dwguard(f=RESHAPE((/(0._8*j,j=1,(nxc+3)*(nyc+3)*(nzc+3))/), (/nxc+3,nyc+3,nzc+3/)) &
                    ,rhs=rho(i)%a,bnd=bnd(i),nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nxc*nyc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     average_residue_init = mpi_global_compute_real(average_residue_init,MPI_SUM)/nslaves
 #endif
     if(average_residue_init==0._8) then
@@ -4239,7 +4239,7 @@ main_loop: do i = 1, nlevels
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, level = ',level
       average_residue=SUM(ABS(residbnd3dwguard(f=f,rhs=rho(i)%a,bnd=bnd(i), &
                               nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nxc*nyc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       average_residue = mpi_global_compute_real(average_residue,MPI_SUM)/nslaves
 #endif
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, done.'
@@ -4350,7 +4350,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
   do while(do_calc)
     average_residue_init=SUM(ABS(residbnd3dwguard(f=RESHAPE((/(0._8*j,j=1,(nxc+3)*(nyc+3)*(nzc+3))/), (/nxc+3,nyc+3,nzc+3/)) &
                    ,rhs=rhoinit,bnd=bnd(i),nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nxc*nyc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
     average_residue_init = mpi_global_compute_real(average_residue_init,MPI_SUM)/nslaves
 #endif
     if(average_residue_init==0._8) then
@@ -4367,7 +4367,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, level = ',level
       average_residue=SUM(ABS(residbnd3dwguard(f=u,rhs=rhoinit,bnd=bnd(i), &
                               nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nxc*nyc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       average_residue = mpi_global_compute_real(average_residue,MPI_SUM)/nslaves
 #endif
       IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, done.'
@@ -4466,7 +4466,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
   do while(do_calc)
 !    average_residue_init=SUM(ABS(residbnd3dwguard(f=RESHAPE((/(0._8*j,j=1,(nxc+3)*(nyc+3)*(nzc+3))/), (/nxc+3,nyc+3,nzc+3/)) &
 !                   ,rhs=rhoinit,bnd=bnd(i),nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nxc*nyc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 !    average_residue_init = mpi_global_compute_real(average_residue_init,MPI_SUM)/nslaves
 #endif
 !    if(average_residue_init==0._8) then
@@ -4487,7 +4487,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
 !      IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, level = ',level
 !      average_residue=SUM(ABS(residbnd3dwguard(f=u,rhs=rhoinit,bnd=bnd(i), &
 !                              nx=nxc,ny=nyc,nz=nzc,dx=dx,dy=dy,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nxc*nyc*nzc)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 !      average_residue = mpi_global_compute_real(average_residue,MPI_SUM)/nslaves
 #endif
 !      IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, done.'
@@ -4649,7 +4649,7 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
   zmax_in = zmin_in + bndy(i)%nworkpproc * nzc * dzc
 #else
@@ -4702,7 +4702,7 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
   zmax_in = zmin_in + bndy(i)%nworkpproc * nzc * dzc
 #else
@@ -4746,7 +4746,7 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
   zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
 #else
   zmin_in = zmmin

@@ -9,8 +9,8 @@ OPT = -O3 -qstrict -qarch=pwr3 -qtune=pwr3 -pg -g
 POPT = -O
 PYMODULEOPT = 
 SMP = -qsmp=omp
-F90FREE  = mpxlf90_r -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-D_PARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(SMP)
-F90FIXED = mpxlf90_r -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-D_PARALLEL -qfixed=132 $(SMP)
+F90FREE  = mpxlf90_r -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(SMP)
+F90FIXED = mpxlf90_r -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qfixed=132 $(SMP)
 CC = xlc_r -qmaxmem=8192
 SO = sl
 LD = mpcc_r

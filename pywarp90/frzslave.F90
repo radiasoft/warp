@@ -1,5 +1,5 @@
 !     Last change:  JLV   7 Sep 2001    9:59 am
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 #include "top.h"
 module mpirz
 
