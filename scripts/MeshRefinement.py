@@ -5,6 +5,12 @@ from multigrid import MultiGrid
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox
 import MA
 import __main__
+try:
+  import psyco
+  #from psyco.classes import *
+except ImportError:
+  pass
+
 
 # ---------------------------------------------------------------------------
 MRsolver = [None]
@@ -61,6 +67,8 @@ class MRBlock(MultiGrid,Visualizable):
              (lower,upper,refinement). Children can also be added later
              using addchild.
   """
+  totalnumberofblocks = 0
+  listofblocks = []
   def __init__(self,parent=None,refinement=2,
                     lower=None,upper=None,
                     ichild=None,
@@ -73,11 +81,21 @@ class MRBlock(MultiGrid,Visualizable):
       # --- No parents, so just create empty lists
       self.parents = []
       self.ichild = []
+      # --- It is assumed that the root block will be the first one created.
+      # --- So clear out the global block list and count.
+      MRBlock.totalnumberofblocks = 0
+      MRBlock.listofblocks = []
     else:
       # --- Save the parent and the index number. These are saved in lists
       # --- since a block can have multiple parents.
       self.parents = [parent]
       self.ichild = [ichild]
+
+    # --- Get the current global block number and increment the counter.
+    # --- Also, add self to the global list of blocks.
+    self.blocknumber = MRBlock.totalnumberofblocks
+    MRBlock.totalnumberofblocks += 1
+    MRBlock.listofblocks.append(self)
 
     self.overlaps = []
     self.refinement = refinement
@@ -165,6 +183,7 @@ class MRBlock(MultiGrid,Visualizable):
       self.upper = self.dims
       self.fulllower = zeros(3)
       self.fullupper = self.dims
+      self.rootdims = self.dims
 
     # --- childdomains is the node centered grid which keeps track of which
     # --- cells are owned by which children. If there are no children,
@@ -289,7 +308,8 @@ Sets the regions that are covered by the children.
       u = u + where(u == self.fullupper,1,0)
       # --- The child claims all unclaimed areas.
       ii = self.getchilddomains(l,u)
-      ii[...] = where(ii==0.,-ichild,ii)
+      #ii[...] = where(ii==0.,-ichild,ii)
+      ii[...] = where(ii==0.,-child.blocknumber,ii)
 
       # --- Set interior to positive child number.
       l = maximum(self.fulllower,child.lower/child.refinement)
@@ -299,7 +319,8 @@ Sets the regions that are covered by the children.
       u = u + where(u == self.fullupper,1,0)
       # --- The child claims its full interior area
       ii = self.getchilddomains(l,u)
-      ii[...] = +ichild
+      #ii[...] = +ichild
+      ii[...] = +child.blocknumber
 
   def findoverlappingsiblings(self,parent=None):
     # --- Recursively call the children.
@@ -384,9 +405,9 @@ not be fetched from there (it is set negative).
       # --- Get childdomains in the intersection region, Wherever the
       # --- the refinement level is lower than the childs, force childdomains
       # --- to be negative.
-      d = self.getchilddomains(cl,cu,1)
+      ii = self.getchilddomains(cl,cu,1)
       nbc = self.getlocalarray(nbcells,cl,cu,fulllower=l)
-      d[...] = where(nbc<level*r,-abs(d),d)
+      ii[...] = where(nbc<level*r,-abs(ii),ii)
 
       # --- Stretch out the array so it has the refined cell size of the child
       nbcstretched = zeros(1+(cu-cl)*2)
@@ -404,88 +425,258 @@ not be fetched from there (it is set negative).
   # --- The next several methods handle the charge density calculation.
   #--------------------------------------------------------------------------
 
-  def loadrho(self,lzero=true):
+  def loadrho(self,lzero=true,depositallparticles=0):
     """
 Loads the charge density from the particles. This should only be called for
 the top level grid.
     """
     if lzero: self.zerorho()
+    self.setname()
     for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
       if n == 0: continue
-      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
+      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w,
+                  depositallparticles)
     self.accumulaterhofromsiblings()
     self.getrhofromsiblings()
-    self.gatherrhofromchildren()
+    if not depositallparticles:
+      #self.gatherrhofromchildren_reversed()
+      #self.gatherrhofromchildren_python()
+      self.gatherrhofromchildren_fortran()
     self.makerhoperiodic()
 
   def zerorho(self):
+    if not self.isfirstcall(): return
     self.rho[...] = 0.
     for child in self.children:
       child.zerorho()
 
-  def getnperchild(self,ichildsorted):
-    """
-Given a sorted list of child numbers, returns how many of each number
-there are. This would probably be better done in compiled code. This should be
-efficient timewise, but uses two extra full-size arrays.
-    """
-    ic1 = ichildsorted[1:] - ichildsorted[:-1]
-    nn = compress(ic1 > 0,iota(len(ichildsorted-1)))
-    result = zeros(1+len(self.children))
-    ss = 0
-    for n in nn:
-      result[nint(ichildsorted[n-1])] = n - ss
-      ss += result[nint(ichildsorted[n-1])]
-    result[nint(ichildsorted[-1])] = len(ichildsorted) - sum(result)
-    return result
+  def getichildfromgrid(self,x,y,z,zgrid):
+    ichild = zeros(len(x),'d')
+    getgridngp3d(len(x),x,y,z,ichild,
+                 self.nx,self.ny,self.nz,self.childdomains,
+                 self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                 self.zmmin,self.zmmax,zgrid,
+                 self.l2symtry,self.l4symtry)
+    return ichild
 
-  def setrho(self,x,y,z,uz,q,w):
+  def sortbyichild(self,ichild,x,y,z,uz):
+    if 0:
+      # --- Sort the list of which domain the particles are in.
+      ichildsorter = argsort(ichild)
+      ichildsorted = take(ichild,ichildsorter)
+
+      # --- Given a sorted list of child numbers, get how many of each number
+      # --- there are. This would probably be better done in compiled
+      # --- code. This should be efficient timewise, but uses two extra
+      # --- full-size arrays.  
+      ic1 = ichildsorted[1:] - ichildsorted[:-1]
+      nn = compress(ic1 > 0,iota(len(ichildsorted-1)))
+      #nperchild = zeros(1+len(self.children))
+      nperchild = zeros(len(MRBlock.listofblocks))
+      ss = 0
+      for n in nn:
+        nperchild[nint(ichildsorted[n-1])] = n - ss
+        ss += nperchild[nint(ichildsorted[n-1])]
+      nperchild[nint(ichildsorted[-1])] = len(ichildsorted) - sum(nperchild)
+
+      # --- Now use the same sorting on the particle quantities.
+      xout = take(x,ichildsorter)
+      yout = take(y,ichildsorter)
+      zout = take(z,ichildsorter)
+      uzout = take(uz,ichildsorter)
+
+    else:
+      xout,yout,zout,uzout = zeros((4,len(x)),'d')
+      nperchild = zeros(MRBlock.totalnumberofblocks)
+      sortparticlesbyindex(len(x),ichild,x,y,z,uz,MRBlock.totalnumberofblocks,
+                           xout,yout,zout,uzout,nperchild)
+
+    return xout,yout,zout,uzout,nperchild
+
+  def setrho(self,x,y,z,uz,q,w,depositallparticles):
+    # --- Choose among the various versions of setrho
+    self.setrho_allsort(x,y,z,uz,q,w)
+    #self.setrho_sort(x,y,z,uz,q,w,depositallparticles)
+    #self.setrho_gather(x,y,z,uz,q,w,depositallparticles)
+    #self.setrho_select(x,y,z,uz,q,w,depositallparticles)
+
+  def setrho_sort(self,x,y,z,uz,q,w,depositallparticles):
     """
 Given the list of particles, a charge and a weight, deposits the charge
 density of the mesh structure.
+This method sorts the particles and then passes each block into the children.
+It is not very fast - the sort takes a lot of time.
     """
     if len(x) == 0: return
     if len(self.children) > 0:
 
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
-      ichild = zeros(len(x),'d')
-      getgridngp3d(len(x),x,y,z-top.zgrid,ichild,
-                   self.nx,self.ny,self.nz,self.childdomains,
-                   self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                   self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
+      ichild = self.getichildfromgrid(x,y,z,top.zgrid)
 
       # --- Take absolute value since the childdomains is signed.
       # --- Can this be done in place to save memory?
       ichild = abs(ichild)
 
-      # --- Sort the list of which domain the particles are in.
-      ichildsorter = argsort(ichild)
-      ichildsorted = take(ichild,ichildsorter)
-      nperchild = self.getnperchild(ichildsorted)
-
-      # --- Now use the same sorting on the particle quantities.
-      x = take(x,ichildsorter)
-      y = take(y,ichildsorter)
-      z = take(z,ichildsorter)
-      uz = take(uz,ichildsorter)
+      x,y,z,uz,nperchild = self.sortbyichild(ichild,x,y,z,uz)
 
       # --- For each child, pass to it the particles in it's domain.
-      i = nperchild[0]
-      for child,n in zip(self.children,nperchild[1:]):
-        child.setrho(x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w)
+      ib = nonzero(nperchild)
+      cc = take(MRBlock.listofblocks,ib)
+      nn = take(nperchild,ib)
+      i = 0
+      for child,n in zip(cc,nn):
         i = i + n
+        if child == self: continue
+        child.setrho_sort(x[i-n:i],y[i-n:i],z[i-n:i],uz[i-n:i],q,w,
+                          depositallparticles)
 
       # --- Now, get remaining particles in this domain
-      x = x[:nperchild[0]]
-      y = y[:nperchild[0]]
-      z = z[:nperchild[0]]
-      uz = uz[:nperchild[0]]
+      if not depositallparticles:
+        x = x[:nperchild[self.blocknumber]]
+        y = y[:nperchild[self.blocknumber]]
+        z = z[:nperchild[self.blocknumber]]
+        uz = uz[:nperchild[self.blocknumber]]
 
     # --- Deposit the particles in this domain
     MultiGrid.setrho(self,x,y,z,uz,q,w)
 
-  def gatherrhofromchildren(self):
+  def setrho_select(self,x,y,z,uz,q,w,depositallparticles):
+    """
+Given the list of particles, a charge and a weight, deposits the charge
+density of the mesh structure.
+This sends the entire list of particles to setrho3d, but selects out the
+ones that deposit by setting the uz flag. Note that this relies on using
+the setrho3dselect routine. For the cases tried, it actually isn't all that
+slow, and is in fact faster than setrho_sort. That may change if there are a
+large number of patches.
+    """
+    if len(x) == 0: return
+    if len(self.children) > 0:
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      ichild = zeros(len(x),'d') + largepos
+      getgridngp3d(len(x),x,y,z,ichild,
+                   self.nx,self.ny,self.nz,self.childdomains,
+                   self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                   self.zmmin,self.zmmax,
+                   top.zgrid,self.l2symtry,self.l4symtry)
+
+      at = wtime()
+      # --- Take absolute value since the childdomains is signed.
+      # --- Can this be done in place to save memory?
+      ichild = abs(ichild)
+      
+      for block in [self]+self.children:
+        # --- Get positions of those particles.
+        if depositallparticles and block == self:
+          uu = uz
+        else:
+          uu = ((uz != 0.) & (ichild == block.blocknumber)).astype('d')
+        # --- Now deposit rho
+        if block == self:
+          MultiGrid.setrhoselect(self,x,y,z,uu,q,w)
+        else:
+          block.setrho_select(x,y,z,uu,q,w,depositallparticles)
+
+    else:
+      # --- Now deposit rho
+      MultiGrid.setrhoselect(self,x,y,z,uz,q,w)
+
+  def setrho_gather(self,x,y,z,uz,q,w,depositallparticles):
+    """
+Given the list of particles, a charge and a weight, deposits the charge
+density of the mesh structure.
+This loops over the children, gathering the particles that are passed to them.
+This so far is the fastest routine, with depositallparticles=1. This is about
+twice as fast as setrho_sort, and 50% faster than setrho_select. With
+depositallparticles set, it is about 30% faster than with it not.
+    """
+    if len(x) == 0: return
+    if len(self.children) > 0:
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      ichild = self.getichildfromgrid(x,y,z,top.zgrid)
+
+      # --- Take absolute value since the childdomains is signed.
+      # --- Can this be done in place to save memory?
+      ichild = abs(ichild)
+      
+      for block in [self]+self.children:
+        if depositallparticles and block == self:
+          xc = x
+          yc = y
+          zc = z
+          uzc = uz
+        else:
+          # --- Get particles within the ith domain
+          # --- Note that when block==self, the particles selected are the
+          # --- ones from this instances domain.
+          ii = nonzero(ichild==block.blocknumber)
+          if len(ii) == 0: continue
+          xc = take(x,ii)
+          yc = take(y,ii)
+          zc = take(z,ii)
+          uzc = take(uz,ii)
+        # --- Now deposit rho
+        if block == self:
+          MultiGrid.setrho(self,xc,yc,zc,uzc,q,w)
+        else:
+          block.setrho_gather(xc,yc,zc,uzc,q,w,depositallparticles)
+
+    else:
+      # --- Now deposit rho
+      MultiGrid.setrho(self,x,y,z,uz,q,w)
+
+  def setrho_allsort(self,x,y,z,uz,q,w):
+    """
+Given the list of particles, a charge and a weight, deposits the charge
+density of the mesh structure.
+This first gets the blocknumber of the block where each of the particles are
+to be deposited. This is then sorted once. The loop is then over the list
+of blocks, rather than walking through the tree structure.
+This is about as fast as the setrho_select. The sort still takes up about 40%
+of the time. Note that this depends on having ichilddomains filled with the
+blocknumber rather than the child number relative to the parent.
+    """
+    ichild = zeros(len(x),'d')
+    # --- This assumes that the root block has blocknumber zero.
+    for child in self.children:
+      child.getichild_allsort(x,y,z,ichild)
+
+    # --- Take absolute value since the childdomains is signed.
+    # --- Can this be done in place to save memory?
+    ichild = abs(ichild)
+
+    x,y,z,uz,nperchild = self.sortbyichild(ichild,x,y,z,uz)
+
+    # --- For each block, pass to it the particles in it's domain.
+    i = nperchild[0]
+    for block,n in zip(MRBlock.listofblocks,nperchild):
+      MultiGrid.setrho(block,x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w)
+      i = i + n
+
+  def getichild_allsort(self,x,y,z,ichild):
+    """
+Gathers the ichild for the setrho_allsort.
+    """
+    if not self.islastcall(): return
+    if len(x) == 0: return
+    if len(self.children) > 0:
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      getgridngp3d(len(x),x,y,z,ichild,
+                   self.nx,self.ny,self.nz,self.childdomains,
+                   self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                   self.zmmin,self.zmmax,top.zgrid,
+                   self.l2symtry,self.l4symtry)
+      for child in self.children:
+        child.getichild_allsort(x,y,z,ichild)
+
+  def gatherrhofromchildren_python(self):
+    """
+Python version.
+    """
     # --- Do this only the first time this is called. This should only be
     # --- done once and since each parent requires that this be done
     # --- before it can get its rho from here, it must be done on the
@@ -496,12 +687,17 @@ density of the mesh structure.
     for child in self.children:
 
       # --- Make sure that the child has gathered rho from its children.
-      child.gatherrhofromchildren()
+      child.gatherrhofromchildren_python()
 
       # --- Get coordinates of child relative to this domain
       r = child.refinement
       l = maximum(child.fulllower/r,self.fulllower)
       u = minimum(child.fullupper/r,self.fullupper)
+
+      # --- Check for any Nuemann boundaries
+      dobounds = (sometrue(child.bounds == 1) and
+                  sometrue(l == 0) and
+                  sometrue(u == self.rootdims))
 
       # --- Grid cells to gather from child along each axis, relative to grid
       # --- cells in the parent mesh.
@@ -526,20 +722,129 @@ density of the mesh structure.
             # --- Multiply by the weight in place.
             multiply(rh,self.w[i+1,j+1,k+1],rh)
             # --- Adjust for symmetries
-            if child.bounds[0] == 1 and i > 0 and l[0] == 0:
-              rh[0,:,:] = 2.*rh[0,:,:]
-            if child.bounds[1] == 1 and i < 0 and u[0] == self.rootdims[0]:
-              rh[-1,:,:] = 2.*rh[-1,:,:]
-            if child.bounds[2] == 1 and j > 0 and l[1] == 0:
-              rh[:,0,:] = 2.*rh[:,0,:]
-            if child.bounds[3] == 1 and j < 0 and u[1] == self.rootdims[1]:
-              rh[:,-1,:] = 2.*rh[:,-1,:]
-            if child.bounds[4] == 1 and k > 0 and l[2] == 0:
-              rh[:,:,0] = 2.*rh[:,:,0]
-            if child.bounds[5] == 1 and k < 0 and u[2] == self.rootdims[2]:
-              rh[:,:,-1] = 2.*rh[:,:,-1]
+            if dobounds:
+              if child.bounds[0] == 1 and i > 0 and l[0] == 0:
+                rh[0,:,:] = 2.*rh[0,:,:]
+              if child.bounds[1] == 1 and i < 0 and u[0] == self.rootdims[0]:
+                rh[-1,:,:] = 2.*rh[-1,:,:]
+              if child.bounds[2] == 1 and j > 0 and l[1] == 0:
+                rh[:,0,:] = 2.*rh[:,0,:]
+              if child.bounds[3] == 1 and j < 0 and u[1] == self.rootdims[1]:
+                rh[:,-1,:] = 2.*rh[:,-1,:]
+              if child.bounds[4] == 1 and k > 0 and l[2] == 0:
+                rh[:,:,0] = 2.*rh[:,:,0]
+              if child.bounds[5] == 1 and k < 0 and u[2] == self.rootdims[2]:
+                rh[:,:,-1] = 2.*rh[:,:,-1]
+
             # --- Now add in the contribution (in place)
             add(prho,rh,prho)
+
+  def gatherrhofromchildren_fortran(self):
+    """
+Fortran version
+    """
+    # --- Do this only the first time this is called. This should only be
+    # --- done once and since each parent requires that this be done
+    # --- before it can get its rho from here, it must be done on the
+    # --- first call.
+    if not self.isfirstcall(): return
+
+    # --- Loop over the children
+    for child in self.children:
+
+      # --- Make sure that the child has gathered rho from its children.
+      child.gatherrhofromchildren_fortran()
+
+      # --- Get coordinates of child relative to this domain
+      r = child.refinement
+      l = maximum(child.fulllower/r,self.fulllower)
+      u = minimum(child.fullupper/r,self.fullupper)
+
+      # --- Check for any Nuemann boundaries
+      dobounds = (sometrue(child.bounds == 1) and
+                  sometrue(l == 0) and
+                  sometrue(u == self.rootdims))
+
+      gatherrhofromchild(self.rho,self.dims[0],self.dims[1],self.dims[2],
+                         child.rho,child.dims[0],child.dims[1],child.dims[2],
+                         l,u,self.fulllower,child.fulllower,child.fullupper,
+                         child.refinement,self.w,child.siblingdomains,
+                         dobounds,child.bounds,self.rootdims)
+
+  def gatherrhofromchildren_reversed(self):
+    """
+Python version with the loop over the child nodes as the inner loop
+    """
+    # --- Do this only the first time this is called. This should only be
+    # --- done once and since each parent requires that this be done
+    # --- before it can get its rho from here, it must be done on the
+    # --- first call.
+    if not self.isfirstcall(): return
+
+    # --- Loop over the children
+    for child in self.children:
+
+      # --- Make sure that the child has gathered rho from its children.
+      child.gatherrhofromchildren_reversed()
+
+      r = child.refinement
+      iwx,iwy,iwz = getmesh3d(-r+1,1,2*r-2,-r+1,1,2*r-2,-r+1,1,2*r-2)
+
+      # --- Get coordinates of child relative to this domain
+      l = maximum(child.fulllower/r,self.fulllower)
+      u = minimum(child.fullupper/r,self.fullupper)
+
+      # --- Check for any Nuemann boundaries
+      dobounds = (sometrue(child.bounds == 1) and
+                  sometrue(l == 0) and
+                  sometrue(u == self.rootdims))
+
+      for iz in range(l[2],u[2]+1):
+        iz0 = iz - self.fulllower[2]
+        iz1 = maximum(iz*r - r + 1,child.fulllower[2])
+        iz2 = minimum(iz*r + r - 1,child.fullupper[2])
+        iwz1 = iz1 - (iz*r - r + 1)
+        iwz2 = iz2 - (iz*r - r + 1) + 1
+        for iy in range(l[1],u[1]+1):
+          iy0 = iy - self.fulllower[1]
+          iy1 = maximum(iy*r - r + 1,child.fulllower[1])
+          iy2 = minimum(iy*r + r - 1,child.fullupper[1])
+          iwy1 = iy1 - (iy*r - r + 1)
+          iwy2 = iy2 - (iy*r - r + 1) + 1
+          for ix in range(l[0],u[0]+1):
+            ix0 = ix - self.fulllower[0]
+            ix1 = maximum(ix*r - r + 1,child.fulllower[0])
+            ix2 = minimum(ix*r + r - 1,child.fullupper[0])
+            iwx1 = ix1 - (ix*r - r + 1)
+            iwx2 = ix2 - (ix*r - r + 1) + 1
+
+            crho = child.getrho([ix1,iy1,iz1],[ix2,iy2,iz2])
+            cowns = child.getsiblingdomains([ix1,iy1,iz1],[ix2,iy2,iz2])
+
+            # --- Get the rho that will be contributed.
+            rh = where(cowns,crho,0.)
+
+            # --- Multiply by the weight in place.
+            w = self.w[iwx1:iwx2,iwy1:iwy2,iwz1:iwz2]
+            multiply(rh,w,rh)
+
+            # --- Adjust for symmetries
+            if dobounds:
+              if child.bounds[0] == 1 and ix == 0:
+                rh[1:,:,:] = 2.*rh[1:,:,:]
+              if child.bounds[1] == 1 and ix == self.rootdims[0]:
+                rh[:-1,:,:] = 2.*rh[:-1,:,:]
+              if child.bounds[2] == 1 and iy == 0:
+                rh[:,1:,:] = 2.*rh[:,1:,:]
+              if child.bounds[3] == 1 and iy == self.rootdims[1]:
+                rh[:,:-1,:] = 2.*rh[:,:-1,:]
+              if child.bounds[4] == 1 and iz == 0:
+                rh[:,:,1:] = 2.*rh[:,:,1:]
+              if child.bounds[5] == 1 and iz == self.rootdims[2]:
+                rh[:,:,:-1] = 2.*rh[:,:,:-1]
+
+            # --- Now add in the contribution (in place)
+            self.rho[ix0,iy0,iz0] += sum(ravel(rh))
 
   def accumulaterhofromsiblings(self):
     """
@@ -631,6 +936,12 @@ Sets phi on the boundaries, using the values from the parent grid
     slice[1::r,1::r] = 0.25*(slice[ :-1:r, :-1:r] + slice[2:  :r, :-1:r] +
                              slice[ :-1:r,2:  :r] + slice[2:  :r,2:  :r])
 
+  def optimizeconvergence(self,resetpasses=1):
+    if not self.islastcall(): return
+    MultiGrid.optimizeconvergence(self,resetpasses=resetpasses)
+    for child in self.children:
+      child.optimizeconvergence(resetpasses=resetpasses)
+    
   #--------------------------------------------------------------------------
   # --- Methods to fetch E-fields and potential
   #--------------------------------------------------------------------------
@@ -645,40 +956,43 @@ Fetches the E field. This should only be called at the root level grid.
   def fetchefrompositions(self,x,y,z,ex,ey,ez):
     if len(x) == 0: return
     if len(self.children) > 0:
+
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       ichild = zeros(len(x),'d')
-      getgridngp3d(len(x),x,y,z-top.zgridprv,ichild,
+      getgridngp3d(len(x),x,y,z,ichild,
                    self.nx,self.ny,self.nz,self.childdomains,
                    self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                   self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
+                   self.zmmin,self.zmmax,
+                   top.zgridprv,self.l2symtry,self.l4symtry)
+
       # --- Zero out places where childdomains < 0
       ichild = where(ichild < 0.,0.,ichild)
       
-      for i in range(len(self.children)+1):
+      for block in [self]+self.children:
         # --- Get list of particles within the ith domain
-        # --- Note that when i==0, the particles selected are the ones from
-        # --- this instances domain.
-        ii = compress(ichild == i,arange(len(x)))
+        # --- Note that when block==self, the particles selected are the
+        # --- ones from this instances domain.
+        ii = nonzero(ichild==block.blocknumber)
         if len(ii) == 0: continue
         # --- Get positions of those particles.
         xc = take(x,ii)
         yc = take(y,ii)
         zc = take(z,ii)
         # --- Create temporary arrays to hold the E field
-        n = len(xc)
-        tex,tey,tez = zeros(n,'d'),zeros(n,'d'),zeros(n,'d')
+        tex,tey,tez = zeros((3,len(xc)),'d')
         # --- Now get the field
-        if i == 0:
+        if block == self:
           MultiGrid.fetchefrompositions(self,xc,yc,zc,tex,tey,tez)
         else:
-          self.children[i-1].fetchefrompositions(xc,yc,zc,tex,tey,tez)
+          block.fetchefrompositions(xc,yc,zc,tex,tey,tez)
         # --- Put the E field into the passed in arrays
         put(ex,ii,tex)
         put(ey,ii,tey)
         put(ez,ii,tez)
 
     else:
+
       # --- Get e-field from this domain
       MultiGrid.fetchefrompositions(self,x,y,z,ex,ey,ez)
 
@@ -694,21 +1008,24 @@ Fetches the potential, given a list of positions
     """
     if len(x) == 0: return
     if len(self.children) > 0:
+
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       ichild = zeros(len(x),'d')
-      getgridngp3d(len(x),x,y,z-top.zgridprv,ichild,
+      getgridngp3d(len(x),x,y,z,ichild,
                    self.nx,self.ny,self.nz,self.childdomains,
                    self.xmmin,self.xmmax,self.ymmin,self.ymmax,
-                   self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
+                   self.zmmin,self.zmmax,
+                   top.zgridprv,self.l2symtry,self.l4symtry)
+
       # --- Zero out places where childdomains < 0
       ichild = where(ichild < 0.,0.,ichild)
       
-      for i in range(len(self.children)+1):
+      for block in [self]+self.children:
         # --- Get list of particles within the ith domain
-        # --- Note that when i==0, the particles selected are the ones from
-        # --- this instances domain.
-        ii = compress(ichild == i,arange(len(x)))
+        # --- Note that when block==self, the particles selected are the
+        # --- ones from this instances domain.
+        ii = nonzero(ichild==block.blocknumber)
         if len(ii) == 0: continue
         # --- Get positions of those particles.
         xc = take(x,ii)
@@ -717,14 +1034,15 @@ Fetches the potential, given a list of positions
         # --- Create temporary arrays to hold the potential
         tphi = zeros(len(xc),'d')
         # --- Now get the field
-        if i == 0:
+        if block == self:
           MultiGrid.fetchphifrompositions(self,xc,yc,zc,tphi)
         else:
-          self.children[i-1].fetchphifrompositions(xc,yc,zc,tphi)
+          block.fetchphifrompositions(xc,yc,zc,tphi)
         # --- Put the potential into the passed in arrays
         put(phi,ii,tphi)
 
     else:
+
       # --- Get e-field from this domain
       MultiGrid.fetchphifrompositions(self,x,y,z,phi)
 
@@ -750,8 +1068,8 @@ Fetches the potential, given a list of positions
       if self.ncallsfromparents == len(self.parents):
         self.ncallsfromparents = 0
       return 0
-    # --- This extra check is needed in case there is only one parent.
-    if self.ncallsfromparents == len(self.parents):
+    # --- This extra check is needed in case there is one or no parent.
+    if self.ncallsfromparents >= len(self.parents):
       self.ncallsfromparents = 0
     return 1
 
@@ -785,7 +1103,7 @@ Fetches the potential, given a list of positions
     return self.rho[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
   def getchilddomains(self,lower,upper,upperedge=0):
     if self.childdomains is None:
-      self.childdomains = fzeros(1+self.dims,'d')
+      self.childdomains = fzeros(1+self.dims,'d')  + self.blocknumber
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + upperedge
     return self.childdomains[ix1:ix2,iy1:iy2,iz1:iz2]
@@ -839,11 +1157,14 @@ be plotted.
         del ss[idim]
         ireg = zeros(ss)
         if idim==0:
-          ireg[1:,1:]=equal(self.childdomains[ip-self.fulllower[0],:-1,:-1],0)
+          ireg[1:,1:]=equal(self.childdomains[ip-self.fulllower[0],:-1,:-1],
+                            self.blocknumber)
         if idim==1:
-          ireg[1:,1:]=equal(self.childdomains[:-1,ip-self.fulllower[1],:-1],0)
+          ireg[1:,1:]=equal(self.childdomains[:-1,ip-self.fulllower[1],:-1],
+                            self.blocknumber)
         if idim==2:
-          ireg[1:,1:]=equal(self.childdomains[:-1,:-1,ip-self.fulllower[2]],0)
+          ireg[1:,1:]=equal(self.childdomains[:-1,:-1,ip-self.fulllower[2]],
+                            self.blocknumber)
         if idim != 2: ireg = transpose(ireg)
         kw['ireg'] = ireg
       else:
