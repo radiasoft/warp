@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.27 2004/07/12 23:28:09 jlvay Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.28 2004/08/11 22:47:28 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -188,18 +188,21 @@ Performs steady-state iterations
   # --- Set verbosity so that the one line diagnostic is not printed out.
   top.verbosity = 1
 
-  # --- Estimate the time that will be required for the particles
-  # --- to propagate through the system. It is based off of the Child-Langmuir
-  # --- solution for a diode. The diode length is assumed to be (nzfull*dz),
-  # --- the diode voltage is assumed to be abs(phi(,,0)-phi(,,nz)).
-  transittime = 3.*(w3d.nzfull*w3d.dz)*sqrt(0.5*top.sm[0]/abs(top.sq[0])/ \
-                abs(getphi(w3d.ix_axis,w3d.iy_axis,0,bcast=1) - \
-                    getphi(w3d.ix_axis,w3d.iy_axis,w3d.nz,bcast=1)))
-  # --- Set the default maxtime to 3*transittime. The factor of 3 is a random
-  # --- guess at a safety factor. The maxtime is used since in some cases it
-  # --- is possible for some particles to get stuck in a low field region,
-  # --- requiring a large number of time steps to move out of the system.
-  if not maxtime: maxtime = 3*transittime
+  if not maxtime:
+    # --- Estimate the time that will be required for the particles
+    # --- to propagate through the system. It is based off of the Child-Langmuir
+    # --- solution for a diode. The diode length is assumed to be (nzfull*dz),
+    # --- the diode voltage is assumed to be abs(phi(,,0)-phi(,,nz)).
+    delphi = abs(getphi(w3d.ix_axis,w3d.iy_axis,0,bcast=1) -
+                 getphi(w3d.ix_axis,w3d.iy_axis,w3d.nz,bcast=1))
+    if delphi == 0.: delphi = smallpos
+    transittime = (3.*(w3d.nzfull*w3d.dz)*sqrt(0.5*top.sm[0]/abs(top.sq[0])/
+                                               delphi))
+    # --- Set the default maxtime to 3*transittime. The factor of 3 is a random
+    # --- guess at a safety factor. The maxtime is used since in some cases it
+    # --- is possible for some particles to get stuck in a low field region,
+    # --- requiring a large number of time steps to move out of the system.
+    maxtime = 3*transittime
 
   # --- make multiple iterations
   for i in xrange(iter):
