@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.144 $, $Date: 2004/02/18 16:26:58 $
+c@(#) File W3D.F, version $Revision: 3.145 $, $Date: 2004/02/27 16:39:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9230,6 +9230,7 @@ c         The loop is in bendfieldsol3d
 
       real(kind=8):: timetemp
       real(kind=8):: substarttime,wtime
+      integer(ISZ):: izmin,izmax,tnz
       if (lw3dtimesubs) substarttime = wtime()
       timetemp = wtime()
 
@@ -9247,7 +9248,14 @@ c       --- If not in bend, call VP3D
         if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
      &      fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
      &      fstype == 8 .or. fstype == 9) then
-          call copyarry (rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
+          if (bound0  == dirichlet) izmin = 1
+          if (bound0  == neumann)   izmin = 0
+          if (bound0  == periodic)  izmin = 0
+          if (boundnz == dirichlet) izmax = nz-1
+          if (boundnz == neumann)   izmax = nz
+          if (boundnz == periodic)  izmax = nz
+          tnz = izmax - izmin + 1
+          call copyarry (rho(0,0,izmin), phi(0,0,izmin), (nx+1)*(ny+1)*(tnz))
         endif
         call vp3d (iwhich)
         if (bound0==periodic) call perphi3d(phi(0,0,-1),nx,ny,nz)
