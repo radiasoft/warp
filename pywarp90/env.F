@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.26 $, $Date: 2003/10/23 23:26:40 $
+c@(#) File ENV.M, version $Revision: 3.27 $, $Date: 2004/02/06 19:42:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1366,3 +1366,12 @@ c=========================================================================
       return
       end
       
+      subroutine dtypeargtest(e)
+      use ENVtypemodule
+      TYPE(ENVtype):: e
+      print*,'oo = ',e%oo
+      print*,'nn = ',e%nn
+      print*,'ee = ',e%ee
+      e%oo = 120
+      return
+      end

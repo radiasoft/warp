@@ -1,5 +1,5 @@
 env
-#@(#) File ENV.V, version $Revision: 3.26 $, $Date: 2003/10/23 23:26:39 $
+#@(#) File ENV.V, version $Revision: 3.27 $, $Date: 2004/02/06 19:42:28 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package ENV of the WARP code.
@@ -13,7 +13,7 @@ env
 
 *********** ENVversion:
 # Version control for env package
-versenv character*19 /"$Revision: 3.26 $"/  # Current code version, set by CVS
+versenv character*19 /"$Revision: 3.27 $"/  # Current code version, set by CVS
 
 *********** ENVvars dump:
 # Variables needed by the package ENV
@@ -168,6 +168,7 @@ envtypetest(n1:integer,n2:integer) subroutine
 printxxx() subroutine
 setzzz() subroutine
 printzzz() subroutine
+dtypeargtest(e:ENVtype) subroutine
 
 ****** ATester:
 iqiq integer
