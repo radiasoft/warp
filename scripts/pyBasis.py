@@ -28,7 +28,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.29 2003/01/23 21:31:22 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.30 2003/02/27 13:42:29 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -218,17 +218,15 @@ def doc(f,printit=1):
   else:       return d
 
 # --- Print out all variables in a group
-def printgroup(pkg=None,group=None,maxelements=10):
+def printgroup(pkg,group='',maxelements=10):
   """
 Print out all variables in a group or with an attribute
   - pkg: package name
   - group: group name
   - maxelements=10: only up to this many elements of arrays are printed
   """
-  assert pkg != None,"package must be specified"
-  assert group != None,"group name must be specified"
   if type(pkg) == StringType: pkg = __main__.__dict__[pkg]
-  vlist = pkg.varlist(" "+group+" ")
+  vlist = pkg.varlist(group)
   if not vlist:
     print "Unknown group name "+group
     return
@@ -271,6 +269,65 @@ Print out all variables in a group or with an attribute
               print vname+' = [[[[['+str(v[:maxelements,0,0,0,0,0])[:-1]+" ..."
   
 ##############################################################################
+##############################################################################
+def pydumpbasisobject(ff,attr,objname,obj,varsuffix,writtenvars,fobjlist,
+                      serial,verbose):
+  # --- General work of this object
+  if verbose: print "object "+objname+" being written"
+  # --- Write out the value of fobj so that in restore, any links to this
+  # --- object can be restored. Only do this if fobj != 0, which means that
+  # --- it is not a top level package, but a variable of fortran derived type.
+  fobj = obj.getfobject()
+  if fobj != 0:
+    ff.write('FOBJ'+varsuffix,fobj)
+    ff.write('TYPENAME'+varsuffix,obj.gettypename())
+    # --- If this object has already be written out, then return.
+    if fobj in fobjlist: return
+    # --- Add this object to the list of object already written out.
+    fobjlist.append(fobj)
+  # --- Get variables in this package which have attribute attr.
+  vlist = []
+  for a in attr:
+    if type(a) == StringType: vlist = vlist + obj.varlist(a)
+  # --- Loop over list of variables
+  for vname in vlist:
+    # --- Check if object is available (i.e. check if dynamic array is
+    # --- allocated).
+    v = obj.getpyobject(vname)
+    if v is None: continue
+    # --- If serial flag is set, get attributes and if has the parallel
+    # --- attribute, don't write it.
+    if serial:
+      a = obj.getvarattr(vname)
+      if re.search('parallel',a):
+        if verbose: print "variable "+vname+varsuffix+" skipped since it is a parallel variable"
+        continue
+    # --- Check if variable is a complex array. Currently, these
+    # --- can not be written out.
+    if type(v) == ArrayType and v.typecode() == Complex:
+      if verbose: print "variable "+vname+varsuffix+" skipped since it is a complex array"
+      continue
+    # --- Check if variable with same name has already been written out.
+    # --- This only matters when the variable is being written out as
+    # --- a plane python variable.
+    if '@' not in varsuffix:
+      if vname in writtenvars:
+        if verbose: print "variable "+objname+"."+vname+" skipped since other variable would have same name in the file"
+        continue
+      writtenvars.append(vname)
+    # --- Check if variable is a PyBasisType, if so, recursively call this
+    # --- function.
+    if type(v) == PyBasisType:
+      # --- Note that the attribute passed in is blank, since all components
+      # --- are to be written out to the file.
+      pydumpbasisobject(ff,[''],vname,v,'@'+vname+varsuffix,writtenvars,
+                        fobjlist,serial,verbose)
+      continue
+    # --- If this point is reached, then variable is written out to file
+    if verbose: print "writing "+objname+"."+vname+" as "+vname+pkgsuffix
+    ff.write(vname+varsuffix,v)
+
+##############################################################################
 # Python version of the dump routine. This uses the varlist command to
 # list of all of the variables in each package which have the
 # attribute attr (and actually attr could be a group name too). It then
@@ -284,6 +341,337 @@ Print out all variables in a group or with an attribute
 # used, allowing names with an '@' in them. The writing of python variables
 # is put into a 'try' command since some variables cannot be written to
 # a pdb file.
+def newpydump(fname=None,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None,
+              verbose=false):
+  """
+Dump data into a pdb file
+  - fname: dump file name
+  - attr=["dump"]: attribute or list of attributes of variables to dump
+       Any items that are not strings are skipped. To write no variables,
+       use attr=None.
+  - vars=[]: list of python variables to dump
+  - serial=0: switch between parallel and serial versions
+  - ff=None: Allows passing in of a file object so that pydump can be called
+       multiple times to pass data into the same file. Note that
+       the file must be explicitly closed by the user.
+  - varsuffix=None: Suffix to add to the variable names. If none is specified,
+       the suffix '@pkg' is used, where pkg is the package name that the
+       variable is in. Note that if varsuffix is specified, the simulation
+       cannot be restarted from the dump file.
+  - verbose=false: When true, prints out the names of the variables as they are
+       written to the dump file
+  """
+  assert fname is not None or ff is not None,\
+         "Either a filename must be specified or a pdb file pointer"
+  # --- Open the file if the file object was not passed in.
+  # --- If the file object was passed in, then don't close it.
+  if not ff:
+    ff = PW.PW(fname)
+    closefile = 1
+  else:
+    closefile = 0
+  # --- Convert attr into a list if needed
+  if not (type(attr) == ListType): attr = [attr]
+  # --- Loop through all of the packages (getting pkg object).
+  # --- When varsuffix is specified, the list of variables already written
+  # --- is created. This solves two problems. It gives proper precedence to
+  # --- variables of the same name in different packages. It also fixes
+  # --- an obscure bug in the pdb package - writing two different arrays with
+  # --- the same name causes a problem and the pdb file header is not
+  # --- properly written. The pdb code should really be fixed.
+  pkgsuffix = varsuffix
+  packagelist = package()
+  writtenvars = []
+  fobjlist = []
+  for pname in packagelist:
+    pkg = __main__.__dict__[pname]
+    if varsuffix is None: pkgsuffix = '@' + pname
+    pydumpbasisobject(ff,attr,pname,pkg,pkgsuffix,writtenvars,fobjlist,
+                      serial,verbose)
+
+  # --- Now, write out the python variables (that can be written out).
+  # --- If supplied, the varsuffix is append to the names here too.
+  if varsuffix is None: varsuffix = ''
+  for vname in vars:
+    # --- Skip python variables that would overwrite fortran variables.
+    if len(writtenvars) > 0:
+      if vname in writtenvars:
+        if verbose: print "variable "+vname+" skipped since other variable would have same name in the file"
+        continue
+    # --- Get the value of the variable.
+    vval = __main__.__dict__[vname]
+    # --- Don't try to write out classes. (They don't seem to
+    # --- cause problems but this avoids potential problems. The
+    # --- class body wouldn't be written out anyway.)
+    if type(vval) in [ClassType]: continue
+    # --- Write out the source of functions. Note that the source of functions
+    # --- typed in interatively is not retrieveable - inspect.getsource
+    # --- returns an IOError.
+    if type(vval) in [FunctionType]:
+      try:
+        source = inspect.getsource(vval)
+        #if verbose:
+        if verbose: print "writing python function "+vname+" as "+vname+varsuffix+'@function'
+        ff.write(vname+varsuffix+'@function',source)
+      except (IOError,NameError):
+        if verbose: print "could not write python function "+vname
+      continue
+    # --- Zero length arrays cannot by written out.
+    if type(vval) == ArrayType and product(array(shape(vval))) == 0:
+      continue
+    # --- Check if variable is a PyBasisType
+    if type(vval) == PyBasisType:
+      pydumpbasisobject(ff,attr,vname,vval,'@'+vname+varsuffix,writtenvars,
+                        fobjlist,serial,verbose)
+      continue
+    # --- Try writing as normal variable.
+    # --- The docontinue temporary is needed since python1.5.2 doesn't
+    # --- seem to like continue statements inside of try statements.
+    docontinue = 0
+    try:
+      if verbose: print "writing python variable "+vname+" as "+vname+varsuffix
+      ff.write(vname+varsuffix,vval)
+      docontinue = 1
+    except:
+      pass
+    if docontinue: continue
+    # --- If that didn't work, try writing as a pickled object
+    try:
+      if verbose:
+        print "writing python variable "+vname+" as "+vname+varsuffix+'@pickle'
+      ff.write(vname+varsuffix+'@pickle',cPickle.dumps(vval,0))
+      docontinue = 1
+    except (cPickle.PicklingError,TypeError):
+      pass
+    if docontinue: continue
+    # --- All attempts failed so write warning message
+    if verbose: print "cannot write python variable "+vname
+  if closefile: ff.close()
+
+
+# Python version of the restore routine. It restores all of the variables
+# in the pdb file, including any that are not part of a pybasis package.
+# An '@' in the name distinguishes between the two. The 'ff.__getattr__' is
+# used so that variables with an '@' in the name can be read. The reading
+# in of python variables is put in a 'try' command to make it idiot proof.
+# More fancy foot work is done to get new variables read in into the
+# global dictionary.
+def newpyrestore(filename=None,fname=None,verbose=0,skip=[],varsuffix=None,ls=0):
+  """
+Restores all of the variables in the specified file.
+  - filename: file to read in from (assumes PDB format)
+  - verbose=0: When true, prints out the names of variables which are read in
+  - skip=[]: list of variables to skip
+  - varsuffix: when set, all variables read in will be given the suffix
+               Note that fortran variables are then read into python vars
+  - ls=0: when true, prints a list of the variables in the file
+          when 1 prints as tuple
+          when 2 prints in a column
+  """
+  # --- The original had fname, but changed to filename to be consistent
+  # --- with restart and dump.
+  if filename is None: filename = fname
+  # --- Make sure a filename was input.
+  assert filename is not None,"A filename must be specified"
+  # --- open pdb file
+  ff = PR.PR(filename)
+  # --- Get a list of all of the variables in the file, loop over that list
+  vlist = ff.inquire_ls()
+  # --- Print list of variables
+  if ls:
+    if ls == 1:
+      print vlist
+    else:
+      for l in vlist: print l
+
+  # --- First, sort out the list of variables
+  groups = _sortvarsbysuffix(vlist,skip)
+  fobjdict = {}
+
+  # --- Read in the variables with the standard suffices.
+
+  # --- These would be interpreter variables written to the file
+  # --- from python (or other sources). A simple assignment is done and
+  # --- the variable in put in the main dictionary.
+  if groups.has_key(''):
+    plist = groups['']
+    del groups['']
+    for vname in plist:
+      pyname = vname
+      if varsuffix is not None: pyname = pyname + str(varsuffix)
+      try:
+        if verbose: print "reading in python variable "+vname
+        __main__.__dict__[pyname] = ff.__getattr__(vname)
+      except:
+        if verbose: print "error with variable "+vname
+
+  # --- These would be interpreter variables written to the file
+  # --- as pickled objects. The data is unpickled and the variable
+  # --- in put in the main dictionary.
+  if groups.has_key('pickle'):
+    picklelist = groups['pickle']
+    del groups['pickle']
+    for vname in picklelist:
+      pyname = vname
+      if varsuffix is not None: pyname = pyname + str(varsuffix)
+      try:
+        if verbose: print "reading in pickled variable "+vname
+        __main__.__dict__[pyname]=cPickle.loads(ff.__getattr__(vname+'@pickle'))
+      except:
+        if verbose: print "error with variable "+vname
+
+  # --- These would be interpreter variables written to the file
+  # --- from Basis. A simple assignment is done and the variable
+  # --- in put in the main dictionary.
+  if groups.has_key('global'):
+    globallist = groups['global']
+    del groups['global']
+    for vname in globallist:
+      pyname = vname
+      if varsuffix is not None: pyname = pyname + str(varsuffix)
+      try:
+        if verbose: print "reading in Basis variable "+vname
+        __main__.__dict__[pyname] = ff.__getattr__(vname+'@global')
+      except:
+        if verbose: print "error with variable "+vname
+
+  # --- User defined Python functions
+  if groups.has_key('function'):
+    functionlist = groups['function']
+    del groups['function']
+    for vname in functionlist:
+      # --- Skip functions which have already been defined in case the user
+      # --- has made source updates since the dump was made.
+      if __main__.__dict__.has_key(vname): 
+        if verbose:
+          print "skipping python function %s since it already is defined"%vname
+      else:
+        try:
+          if verbose: print "reading in python function"+vname
+          source = ff.__getattr__(vname+'@function')
+          exec(source,__main__.__dict__)
+        except:
+          if verbose: print "error with function "+vname
+
+  # --- Ignore variables with suffix @parallel
+  if groups.has_key('parallel'):
+    del groups['parallel']
+
+  for gname in groups.keys():
+    pyrestorepybssisobject(ff,gname,groups[gname],fobjdict,varsuffix,
+                           verbose,doarrays=0)
+  for gname in groups.keys():
+    pyrestorepybssisobject(ff,gname,groups[gname],fobjdict,varsuffix,
+                           verbose,doarrays=1)
+  ff.close()
+
+def _sortvarsbysuffix(vlist,skip):
+  # --- Sort the variables, collecting them in groups based on there suffix.
+  groups = {}
+  for v in vlist:
+    if '@' in v:
+      i = string.rfind(v,'@')
+      vname = v[:i]
+      gname = v[i+1:]
+    else:
+      # --- Otherwise, variable is plain python variable.
+      vname = v
+      gname = ''
+
+    # --- If variable is in the skip list, then skip
+    if (vname in skip or
+        (len(v) > 4 and v[-4]=='@' and v[-3:]+'.'+v[:-4] in skip)):
+#     if verbose: print "skipping "+v
+      continue
+
+    # --- Now add the variable to the appropriate group list.
+    groups.setdefault(gname,[]).append(vname)
+
+  return groups
+
+def pyrestorepybssisobject(ff,gname,vlist,fobjdict,varsuffix,verbose,doarrays):
+
+  # --- Convert gname in pdb-style name
+  gsplit = string.split(gname,'.')
+  gsplit.reverse()
+  gpdbname = string.join(gsplit,'@')
+
+  # --- Check is the variable gname exists or is allocated.
+  # --- If not, create a new variable.
+  neednew = 0
+  try:
+    v = eval(gname,__main__.__dict__)
+    if v is None: neednew = 1
+  except:
+    neednew = 1
+
+  if neednew:
+    # --- A new variable needs to be created.
+    fobj = ff.read("FOBJ@"+gpdbname)
+    # --- First, check if the object has already be restored.
+    if fobj in fobjdict:
+      # --- If so, then point new variable to existing object
+      exec("%s = %s"%(gname,fobjdict[fobj]),__main__.__dict__)
+      # return ???
+    else:
+      # --- Otherwise, create a new instance of the appropriate type,
+      # --- and add it to the list of objects.
+      typename = ff.read("TYPENAME@"+gpdbname)
+      exec("%s = %s()"%(gname,typename),__main__.__dict__)
+      fobjdict[fobj] = gname
+
+  # --- Sort out the list of variables
+  groups = _sortvarsbysuffix(vlist,[])
+
+  # --- Get "leaf" variables
+  if groups.has_key(''):
+    leafvars = groups['']
+    del groups['']
+  else:
+    leafvars = []
+
+  # --- Read in leafs.
+  for vname in leafvars:
+    if vname == 'FOBJ' or vname == 'TYPENAME': continue
+    fullname = gname + '.' + vname
+    vpdbname = vname + '@' + gpdbname
+
+    # --- Add suffix to name if given.
+    # --- varsuffix is wrapped in str in case a nonstring was passed in.
+    if varsuffix is not None: fullname = vname + str(varsuffix)
+
+    try:
+      if type(ff.__getattr__(vpdbname)) != ArrayType and not doarrays:
+        # --- Simple assignment is done for scalars, using the exec command
+        if verbose: print "reading in "+fullname
+        exec(fullname+'=ff.__getattr__(vpdbname)',__main__.__dict__,locals())
+      elif type(ff.__getattr__(vpdbname)) == ArrayType and doarrays:
+        pkg = eval(gname,__main__.__dict__)
+        # --- forceassign is used, allowing the array read in to have a
+        # --- different size than the current size of the warp array.
+        if verbose: print "reading in "+gname+"."+fullname
+        pkg.forceassign(vname,ff.__getattr__(vpdbname))
+    except:
+      # --- The catches errors in cases where the variable is not an
+      # --- actual warp variable, for example if it had been deleted
+      # --- after the dump was originally made.
+      print "Warning: There was problem restoring %s"% (fullname)
+
+  # --- Read in rest of groups.
+  for g,v in groups.items():
+    pyrestorepybssisobject(ff,gname+'.'+g,v,fobjdict,varsuffix,verbose,doarrays)
+
+
+# --- create an alias for pyrestore
+newrestore = newpyrestore
+
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
 def pydump(fname=None,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None,
            verbose=false):
   """
@@ -580,27 +968,12 @@ Restores all of the variables in the specified file.
 
 # --- create an alias for pyrestore
 restore = pyrestore
-
-def restoreold(fname):
-  ff = PR.PR(fname)
-  vlist = ff.inquire_ls()
-  for v in vlist:
-    if len(v) > 4 and v[3]=='@':
-      if type(eval('ff.__getattr__("'+v+'")')) == ArrayType:
-        exec(v[0:3]+'.forceassign("'+v[4:]+'",ff.__getattr__("'+v+'"))',
-             __main__.__dict__,locals())
-      else:
-        #exec(v[0:3]+'.'+v[4:]+'=ff.'+v,__main__.__dict__,locals())
-        exec(v[0:3]+'.'+v[4:]+'=ff.__getattr__("'+v+'")',
-             __main__.__dict__,locals())
-    else:
-      try:
-        exec('%s=ff.%s;__main__.__dict__["%s"]=%s'%(v,v,v,v))
-      except:
-        pass
-  ff.close()
-
-
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
+##############################################################################
 
 def Basisdoc():
   print """
