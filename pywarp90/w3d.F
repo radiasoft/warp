@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.72 $, $Date: 2002/09/04 18:10:31 $
+c@(#) File W3D.M, version $Revision: 3.73 $, $Date: 2002/09/18 23:33:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4262,13 +4262,13 @@ c             --- K. Blodgett, "Currents Limited by Space Charge Between
 c             --- Concentric Spheres", PhysRev, 1924.
               if (inject == 2) then
                 if (linj_spherical) then
-                  zz = (inj_dz*inj_d(ij))*rinji
+                  zz = (inj_dz*inj_v(ij))*rinji
                   sphericalcorrection = (1. + 1.6*zz + 2.06*zz**2)
                 else
                   sphericalcorrection = 1.
                 endif
                 cl_const(is) = 4./9.*eps0*(2.*abs(sq(is))/sm(is))**.5/
-     &                    ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(is)
+     &                    ((inj_dz*inj_v(ij))**2*sphericalcorrection)*jton(is)
               endif
 
 c             --- The constant terms in the expression for the normal
@@ -4313,13 +4313,13 @@ c                 --- Skip this species if the fraction is zero.
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
 c                   --- Child-Langmuir
-                    rnn = cl_const(is)*abs(inj_phi(ix,iy,inj_ij))**1.5/
+                    rnn = cl_const(is)*abs(inj_phiv(ix,iy,inj_ij))**1.5/
      &                    cos(inj_angl(ix,iy,inj_ij))
-                    rnn = sign(rnn,sq(is)*inj_phi(ix,iy,inj_ij))
+                    rnn = sign(rnn,sq(is)*inj_phiv(ix,iy,inj_ij))
                   elseif (inject == 3) then
 c                   --- Gauss's law
-                    rnn = (eps0*inj_phi(ix,iy,inj_ij)/
-     &                    (inj_dz*abs(inj_d(ij)))-0.5*inj_rho(ix,iy,inj_ij)*inj_dz)*
+                    rnn = (eps0*inj_phiv(ix,iy,inj_ij)/
+     &                    (inj_dz*abs(inj_v(ij)))-0.5*inj_rho(ix,iy,inj_ij)*inj_dz)*
      &                  inj_dx*inj_dy/sq(is)/sw(is)/cos(inj_angl(ix,iy,inj_ij))
                   endif
 c                 --- Make sure that rnn is >= 0.
@@ -4420,25 +4420,32 @@ c                     --- find injection surface axial location by interpolation
                       iyy = spready*(abs(yp(ii) - ymmin)*dyi)
                       wxx = spreadx*(abs(xp(ii) - xmmin)*dxi - ixx)
                       wyy = spready*(abs(yp(ii) - ymmin)*dyi - iyy)
+                      if (linj_sphere) then
+                        zp(ii) = zinject(ij) + (xp(ii)**2 + yp(ii)**2)/
+     &            (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
+     &              + inj_zstart(ij)
+                      else
                       zp(ii) = inj_grid(ixx        ,iyy        ,inj_ij)*(1.-wxx)*(1.-wyy) +
      &                         inj_grid(ixx+spreadx,iyy        ,inj_ij)*    wxx *(1.-wyy) +
      &                         inj_grid(ixx        ,iyy+spready,inj_ij)*(1.-wxx)*    wyy  +
      &                         inj_grid(ixx+spreadx,iyy+spready,inj_ij)*    wxx *    wyy  +
      &                         inj_zstart(ij)
+                      endif
 
 c                     --- Only inject particles within the injection region.
                       if (zp(ii) < zinjmin .or. zp(ii) >= zinjmax) cycle
 
 c                     --- find injection angle due to curvature by interpolation
+                      if (linj_sphere) then
+                      az = asin(sqrt(xp(ii)**2 + yp(ii)**2)/rinject(ij))
+                      else
                       az = inj_angl(ixx        ,iyy        ,inj_ij)*(1. - wxx)*(1. - wyy) +
      &                     inj_angl(ixx+spreadx,iyy        ,inj_ij)*      wxx *(1. - wyy) +
      &                     inj_angl(ixx        ,iyy+spready,inj_ij)*(1. - wxx)*      wyy  +
      &                     inj_angl(ixx+spreadx,iyy+spready,inj_ij)*      wxx *      wyy
+                      endif
 
-              zp(ii) = zinject(ij) + (xp(ii)**2+yp(ii)**2)/
-     &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
-              az = asin(sqrt(xp(ii)**2 + yp(ii)**2)/rinject(ij))
-              zp(ii) = zp(ii) * 1.001
+c             zp(ii) = zp(ii) * 1.001
 
 c                     --- Calculate transverse angle
                       aa = atan2(yp(ii)-yinj,xp(ii)-xinj)
@@ -5321,11 +5328,21 @@ c=============================================================================
       subroutine getinj_phi()
       use InjectVars
       use InjectVars3d
+      call getinj_phi1(inj_d,inj_phi,.true.)
+      call getinj_phi1(inj_v,inj_phiv,.false.)
+      return
+      end
+c=============================================================================
+      subroutine getinj_phi1(d,phi,lsete)
+      use InjectVars
+      use InjectVars3d
 #ifdef MPIPARALLEL
       use Parallel
       use InMesh3d
       use InGen3d
 #endif
+      real(kind=8):: d(ninject),phi(0:inj_nx,0:inj_ny,inj_ninj)
+      logical(ISZ):: lsete
 
 c Calculate potential drop from emitting surface at distance
 c of dz from the surface.  This is only done for grid cells
@@ -5361,7 +5378,7 @@ c to get zp.
       dxi = 1./inj_dx
       dyi = 1./inj_dy
 
-      inj_phi = 0.
+      phi = 0.
 
 c     --- loop over injection sources
       do ij=1,ninject
@@ -5396,9 +5413,9 @@ c             --- angle of point in transverse plane
 c             --- Find coordinates of the point a distance dz in front
 c             --- of the source along a line perpendicular to the
 c             --- emitting surface.
-              p2x = ix*inj_dx - inj_dz*cos(aa)*sin(az)*inj_d(ij)
-              p2y = iy*inj_dy - inj_dz*sin(aa)*sin(az)*inj_d(ij)
-              p2z = inj_grid(ix,iy,inj_ij) + cos(az)*inj_d(ij)*inj_dz
+              p2x = ix*inj_dx - inj_dz*cos(aa)*sin(az)*d(ij)
+              p2y = iy*inj_dy - inj_dz*sin(aa)*sin(az)*d(ij)
+              p2z = inj_grid(ix,iy,inj_ij) + cos(az)*d(ij)*inj_dz
 #ifdef MPIPARALLEL
 c             --- ensures that calculation is not duplicated among processors
               if(p2z<zmin_injphi.or.p2z>=zmax_injphi) then
@@ -5419,13 +5436,13 @@ c             --- Save coordinates relative to the lab frame.
         do ii=1,nn
 c         --- Calculate the difference between phi at that point and phi on
 c         --- the emitting surface.
-          inj_phi(xi(ii),yi(ii),inj_ij) = vinject(ij) - pp(ii)
+          phi(xi(ii),yi(ii),inj_ij) = vinject(ij) - pp(ii)
         enddo
       enddo
         
 #ifdef MPIPARALLEL
 c     --- The result calculated on each processor is gathered on all
-      call parallelsumrealarray(inj_phi,(inj_nx+1)*(inj_ny+1)*inj_ninj)
+      call parallelsumrealarray(phi,(inj_nx+1)*(inj_ny+1)*inj_ninj)
 #endif
       do ij=1,ninject
         inj_ij = min(ij,inj_ninj)
@@ -5440,7 +5457,7 @@ c       --- Set some temporaries.
 
 c       --- Smooth out inj_phi for this emitting surface.
         if (inj_nsmooth > 0) then
-          call inj_smoother(inj_nx,inj_ny,inj_phi(:,:,inj_ij),inj_dx,inj_dy,
+          call inj_smoother(inj_nx,inj_ny,phi(:,:,inj_ij),inj_dx,inj_dy,
      &                      inj_xmmin,inj_ymmin,
      &                      xinj,yinj,ainj,binj,inj_nsmooth)
         endif
@@ -5450,19 +5467,19 @@ c       --- Smooth out inj_phi for this emitting surface.
 c     --- Calculate the transverse fields
 c     --- Note that sign of inj_ex and inj_ey is not what you think it might
 c     --- be since inj_phi is actually vinject - phi, with an extra minus sign.
-      if (linj_eperp) then
+      if (linj_eperp .and. lsete) then
         do ij = 1,inj_ninj
           do iy = 1,inj_ny-1
             do ix = 1,inj_nx-1
-              inj_ex(ix,iy,ij)=(inj_phi(ix+1,iy  ,ij)-inj_phi(ix-1,iy  ,ij))*dxi*0.5
-              inj_ey(ix,iy,ij)=(inj_phi(ix  ,iy+1,ij)-inj_phi(ix  ,iy-1,ij))*dyi*0.5
+              inj_ex(ix,iy,ij)=(phi(ix+1,iy  ,ij)-phi(ix-1,iy  ,ij))*dxi*0.5
+              inj_ey(ix,iy,ij)=(phi(ix  ,iy+1,ij)-phi(ix  ,iy-1,ij))*dyi*0.5
             enddo
           enddo
           do ix = 1,inj_nx-1
-            inj_ex(ix,0,ij) = (inj_phi(ix+1,0,ij) - inj_phi(ix-1,0,ij))*dxi*0.5
+            inj_ex(ix,0,ij) = (phi(ix+1,0,ij) - phi(ix-1,0,ij))*dxi*0.5
           enddo
           do iy = 1,inj_ny-1
-            inj_ey(0,iy,ij) = (inj_phi(0,iy+1,ij) - inj_phi(0,iy-1,ij))*dyi*0.5
+            inj_ey(0,iy,ij) = (phi(0,iy+1,ij) - phi(0,iy-1,ij))*dyi*0.5
           enddo
         enddo
       endif
