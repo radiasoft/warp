@@ -1,5 +1,5 @@
 from warp import *
-cir_match_version = "$Id: cir_match.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+cir_match_version = "$Id: cir_match.py,v 1.2 2001/01/16 17:22:46 dave Exp $"
 
 print " "
 print "This scripts finds matched beam parameters for a periodic lattice."
@@ -45,7 +45,8 @@ def match1(n=1,varsave=None,zl=None,zu=None,savehist=false,errorlimit=1.e-6):
     varwork[:,:] = varsave
     cirrun(cir.nit,varwork,zl,zu,cir.dscir,cir.nscir,
            top.aion,top.zion,cir.icharge,false,cir.lperveance,
-           cir.lemittance,false,cir.llinear,cir.limage,cir.lendzero,savehist)
+           cir.lemittance,false,cir.llinear,cir.limage,cir.lendzero,savehist,
+	   cir.lfixed)
     # --- Get new values for envelope
     varsave[0,:] = 0.5*(varsave[0,:] + varwork[0,:])
     varsave[1,:] = 0.5*(varsave[1,:] + varwork[1,:])
@@ -79,7 +80,8 @@ def match2(n=1,varsave=None,zl=None,zu=None,savehist=false,errorlimit=1.e-6):
     varwork[:,:] = varsave
     cirrun(cir.nit,varwork,zl,zu,cir.dscir,cir.nscir,
            top.aion,top.zion,cir.icharge,false,cir.lperveance,
-           cir.lemittance,false,cir.llinear,cir.limage,cir.lendzero,savehist)
+           cir.lemittance,false,cir.llinear,cir.limage,cir.lendzero,savehist,
+	   cir.lfixed)
     # --- Get new values for envelope
     varsave[0,:] = 0.5*(varsave[0,:] + varwork[0,:])
     varsave[1,:] = 0.5*(varsave[1,:] + varwork[1,:])
