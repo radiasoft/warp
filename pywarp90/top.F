@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.74 $, $Date: 2003/03/06 01:34:48 $
+c@(#) File TOP.M, version $Revision: 3.75 $, $Date: 2003/03/06 22:20:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7175,7 +7175,7 @@ c=============================================================================
 c=============================================================================
       subroutine setregulartgrid(nx,ny,nz,xmin,xmax,ymin,ymax,zmin,zmax,dz,nzloc,lcollapse,lcorrel)
         use Temperatures
-        use Inpart
+        use InPart
 
         integer(ISZ) :: nx, ny, nz, nzloc
         logical(ISZ) :: lcollapse, lcorrel
