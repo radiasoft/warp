@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.110 $, $Date: 2004/07/09 19:21:39 $
+#@(#) File F3D.V, version $Revision: 3.111 $, $Date: 2004/07/22 23:19:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.110 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.111 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -273,6 +273,15 @@ wnx integer
 wny integer
 wnz integer
 iii(0:wnx,0:wny,0:wnz) _integer
+
+*********** AMR3droutines:
+gatherrhofromchild(rho:real,nx:integer,ny:integer,nz:integer,
+                   childrho:real,cnx:integer,cny:integer,cnz:integer,
+                   l:integer,u:integer,fulllower:integer,
+                   childlower:integer,childupper:integer,
+                   r:integer,weights:real,owndomain:integer,
+                   dobounds:integer,bounds:integer,rootdims:integer)
+      subroutine
 
 *********** Surface_of_Rev dump:
 srfrv_pernz              integer /0/ # Number of points per nz for tablized data
