@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.50 $, $Date: 2003/06/24 22:44:51 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.51 $, $Date: 2003/08/15 23:09:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -94,6 +94,7 @@ c     --- converted and expanded for the multigrid solver.
         nocndbdy = 0
         call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                l2symtry,l4symtry)
+        if (laddconductor) call execuser("calladdconductor")
       endif
       call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,l2symtry,l4symtry)
 
@@ -299,6 +300,27 @@ c=============================================================================
       use Parallel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
+
+      integer(ISZ):: savenx=0,saveny=0,savenz=0,savenzfull=0
+      save savenx,saveny,savenz,savenzfull
+
+c     --- Only do this calculation if one of these parameters changed. This
+c     --- is for parallel version. There, this is a global operation and if
+c     --- it is not needed, it would be an unneccesary synchronization point.
+c     --- This is still not quite correct since nz could change on a few
+c     --- processors and need not change on all. If that happens, only those
+c     --- processors where nz changed would call getmglevelsrecur, leading
+c     --- to a freeze up. Unfortunately, the whole idea here is to avoid
+c     --- global communication so there is no easy solution.
+      if (savenx == nx .and.
+     &    saveny == ny .and.
+     &    savenz == nz .and.
+     &    savenzfull == nzfull) return
+
+      savenx = nx
+      saveny = ny
+      savenz = nz
+      savenzfull = nzfull
 
       call setmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,0,1,1,1,
      &                      my_index,nslaves,izfsslave,nzfsslave)
@@ -2053,6 +2075,10 @@ c     --- Call the work routine for each level
         call checkconductors_work(nx1,ny1,nz1,dx1,dy1,dz1,
      &                            l2symtry,l4symtry,il)
       enddo
+
+      icstart = 1
+      ecstart = 1
+      ocstart = 1
 
 c     --- Sort the conductor data by level number
 c     --- First, sort conductor points
