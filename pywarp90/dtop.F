@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.126 $, $Date: 2004/09/14 02:29:07 $
+c@(#) File DTOP.F, version $Revision: 3.127 $, $Date: 2004/09/14 16:43:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -646,7 +646,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.126 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.127 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -868,10 +868,10 @@ c Calculate extent of data and offsets to get to lattice frame.
         if (zzz(i) > zzzmax) zzzmax = zzz(i)
       enddo
       if (zlatperi > 0.) then
-        offsetmx = (int(10.+(zzzmax-zlatstrt)/zlatperi)-10)*zlatperi + zlatstrt
-        offsetmn = (int(10.+(zzzmin-zlatstrt)/zlatperi)-10)*zlatperi + zlatstrt
-        if (zzzmin < bendzs(ibendmn)+offsetmn) offsetmn = offsetmn - zlatperi
-        if (zzzmax > bendze(ibendmx)+offsetmx) offsetmx = offsetmx + zlatperi
+        offsetmx = floor((zzzmax-zlatstrt)/zlatperi)*zlatperi
+        offsetmn = floor((zzzmin-zlatstrt)/zlatperi)*zlatperi
+        if (zzzmin <= bendzs(ibendmn)+offsetmn) offsetmn = offsetmn - zlatperi
+        if (zzzmax >= bendze(ibendmx)+offsetmx) offsetmx = offsetmx + zlatperi
       else
         offsetmx = zlatstrt
         offsetmn = zlatstrt
@@ -886,12 +886,7 @@ c Find bend to the left of zzzmin and to the right of zzzmax.
       enddo
 
 c Make array to index lattice elements.
-      if (zlatperi > 0.) then
-        numb = ibendr + int(nbend*(offsetmx - offsetmn)/zlatperi + 0.5) -
-     &         ibendl + 1
-      else
-        numb = ibendr - ibendl + 1
-      endif
+      numb = ibendr+1 + nint((nbend+1)*(offsetmx - offsetmn)/zlatperi) - ibendl
       ibend(1) = ibendl
       do i=2,numb
         ibend(i) = ibend(i-1) + 1
@@ -899,11 +894,17 @@ c Make array to index lattice elements.
       enddo
 
 c Calculate bend starts and ends of bends in lattice frame.
+c     --- They are constrained to be within 0 and zlatperi when zlatperi>0
       ib = ibendl
       offset = offsetmn
       do i=1,numb
-        bendlats(i) = offset + bendzs(ibend(i))
-        bendlate(i) = offset + bendze(ibend(i))
+        if (zlatperi == 0.) then
+          bendlats(i) = offset + bendzs(ibend(i))
+          bendlate(i) = offset + bendze(ibend(i))
+        else
+          bendlats(i) = offset + max(0.,bendzs(ibend(i)))
+          bendlate(i) = offset + min(zlatperi,bendze(ibend(i)))
+        endif
         ib = ib + 1
         if (ib .gt. ibendmx) then
           ib = ibendmn
