@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.43 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3481,10 +3481,10 @@ c       --- Point in the plate
 
 c       --- Point to the right of plate
         if (zrave < zz) then
-          xr1 = sqrt(xr1sq)
-          yr1 = sqrt(yr1sq)
-          xr2 = sqrt(xr2sq)
-          yr2 = sqrt(yr2sq)
+          xr1 = sqrt(max(0.,xr1sq))
+          yr1 = sqrt(max(0.,yr1sq))
+          xr2 = sqrt(max(0.,xr2sq))
+          yr2 = sqrt(max(0.,yr2sq))
           xrave = 0.5*(xr1 + xr2)
           yrave = 0.5*(yr1 + yr2)
           delpx(i) = xrave - xx
