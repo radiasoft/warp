@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.16 $, $Date: 2004/07/12 22:10:20 $
+c F3DSLAVE.M, version $Revision: 1.17 $, $Date: 2004/08/05 00:53:53 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -797,9 +797,10 @@ c     --- data needed.
 c     --- Loop over all slaves since this must be a global process.
       do idx=0,nslaves-1
 
-c       --- If this process covers the full extent of the mesh, then it
-c       --- doesn't need any data sent to it so skip it.
-        if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull)
+c       --- If this process covers the full extent of the mesh on this and the
+c       --- next finer mesh, then it doesn't need any data sent to it.
+        if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull
+     &      .and. rparity(idx) == 0)
      &    cycle
 
 c       --- Skip processors which have the same right mesh extent (and
@@ -833,7 +834,8 @@ c         --- Find all processors who data extent overlaps the right
 c         --- end of this processor, wrapping around to the left edge.
           js = 0
           ie = js
-          do while (ie < nslaves .and. izfsslave(ie) == 0)
+          do while (ie < nslaves .and. izfsslave(ie) == 0 .and.
+     &              lparity(ie) == 0)
             ie = ie + 1
           enddo
           ie = ie - 1
@@ -881,9 +883,10 @@ c     --- data needed.
 c     --- Loop over all slaves since this most be a global process.
       do idx=0,nslaves-1
 
-c       --- If this process covers the full extent of the mesh, then it
-c       --- doesn't need any data sent to it.
-        if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull)
+c       --- If this process covers the full extent on this and the
+c       --- next finer mesh, then it doesn't need any data sent to it.
+        if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull
+     &      .and. lparity(idx) == 0)
      &    cycle
 
 c       --- Skip processors which have the same left mesh extent (and
@@ -912,12 +915,13 @@ c         --- Now, treat the left most processor.
 
 c         --- Find all processors who data extent overlaps the left
 c         --- end of this processor, wrapping around to the left edge.
-          js = nslaves-1
-          ie = js
-          do while (ie >= 0 .and. izfsslave(ie)+nzfsslave(ie) == nzfull)
-            ie = ie - 1
+          ie = nslaves-1
+          js = ie
+          do while (js >= 0 .and. izfsslave(js)+nzfsslave(js) == nzfull .and.
+     &              rparity(js) == 0)
+            js = js - 1
           enddo
-          ie = ie + 1
+          js = js + 1
         else
 
 c         --- Some of the processors which extend to the left hand edge will
@@ -1113,6 +1117,109 @@ c       --- See comments on loop above.
      &                   MPI_DOUBLE_PRECISION,whosendingright(my_index),10,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
+      endif
+
+c     --- Now wait for everything to finish
+      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+
+      return
+      end
+c=============================================================================
+      subroutine mgexchange_rho(nx,ny,nz,nzfull,rho,
+     &                          my_index,nslaves,izfsslave,nzfsslave,
+     &                          lparity,rparity,
+     &                          whosendingleft,izsendingleft,
+     &                          whosendingright,izsendingright)
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
+      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
+      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
+
+c This routine sends out and receives boundary data for the MG field solver.
+
+      integer(ISZ):: ls,rs
+      integer(ISZ):: ip,w
+
+      include "mpif.h"
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
+      integer(ISZ):: mpirequest(2*nslaves+2),mpierror
+
+c     --- Set count to zero
+      w = 0
+
+c     --- Sends and receives can all be done synchronously since none
+c     --- of the data overlaps.
+
+c     --- The last processor is skipped since it doesn't need to have rho
+c     --- on the right end sent to it.
+      do ip=0,nslaves-2
+
+c       --- Also skip processors that extend to the right edge of this and the
+c       --- next finer level.
+        if (izfsslave(ip)+nzfsslave(ip)==nzfull .and. rparity(ip)==0) cycle
+
+        if (my_index == whosendingleft(ip)) then
+          w = w + 1
+          ls = izsendingleft(ip)
+
+c         --- When my_index < ip, it means that the data being sent is periodic.
+c         --- In this case, the izsendingleft(ip) is set to send the guard cell,
+c         --- so override it.
+          if (my_index < ip) ls = 0
+
+          call MPI_ISEND(rho(0,0,ls),(nx+1)*(ny+1),
+     &                   MPI_DOUBLE_PRECISION,ip,nzfull,
+     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
+
+        endif
+      enddo
+
+c     --- Any processor that extends to the left edge of this and the next
+c     --- finer level don't need a rho sent to it.
+      if (whosendingright(my_index) /= -1 .and. 
+     &    .not. (izfsslave(my_index)==0 .and. lparity(my_index)==0)) then
+        w = w + 1
+        call MPI_IRECV(rho(0,0,0),(nx+1)*(ny+1),
+     &                 MPI_DOUBLE_PRECISION,whosendingright(my_index),nzfull,
+     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
+      endif
+
+c     --- The first processor is skipped since it doesn't need to have rho
+c     --- on the left end sent to it.
+      do ip=1,nslaves-1
+
+c       --- Also skip processors that extend to the left edge of this and the
+c       --- next finer level.
+        if (izfsslave(ip)==0 .and. lparity(ip)==0) cycle
+
+        if (my_index == whosendingright(ip)) then
+          w = w + 1
+          rs = izsendingright(ip)
+
+c         --- When my_index > ip, it means that the data being sent is periodic.
+c         --- In this case, the izsendingright(ip) is set to send the guard cell,
+c         --- so override it.
+          if (my_index > ip) rs = nz
+
+          call MPI_ISEND(rho(0,0,rs),(nx+1)*(ny+1),
+     &                   MPI_DOUBLE_PRECISION,ip,nzfull,
+     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
+
+        endif
+      enddo
+
+c     --- Any processor that extends to the right edge of this and the next
+c     --- finer level don't need a rho sent to it.
+      if (whosendingleft(my_index) /= -1 .and.
+     &    .not. (izfsslave(my_index)+nzfsslave(my_index)==nzfull .and.
+     &           rparity(my_index)==0)) then
+        w = w + 1
+        call MPI_IRECV(rho(0,0,nz),(nx+1)*(ny+1),
+     &                 MPI_DOUBLE_PRECISION,whosendingleft(my_index),nzfull,
+     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
 
 c     --- Now wait for everything to finish
