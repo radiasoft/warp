@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.25 2004/01/24 00:53:58 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.26 2004/01/27 22:41:54 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -736,6 +736,11 @@ Constructor arguments:
         mid = top.cmmltid[0,io]
         mzs = top.cmmltzs[0,io]
         mze = top.cmmltze[0,io]
+        if top.mmltas[mid] != top.mmltze[mid]:
+          # --- Use aperture start and end, adding the same offset that was
+          # --- added to mmltzs to get cmmltzs.
+          mzs = top.mmltas[mid] + (top.cmmltzs[0,io] - top.mmltzs[mid])
+          mze = top.mmltae[mid] + (top.cmmltzs[0,io] - top.mmltzs[mid])
         if s.roundpipe(mid,mzs,mze,top.mmltap,top.mmltax,top.mmltay,
                        top.mmltox,top.mmltoy,s.mmltcm):
           return
@@ -800,7 +805,7 @@ Constructor arguments:
         sid = top.csextid[0,io]
         szs = top.csextzs[0,io]
         sze = top.csextze[0,io]
-        if s.roundpipe(sid,szs,sze,0., #top.sextap,
+        if s.roundpipe(sid,szs,sze,0.,0.,0., #top.sextap,
                        top.sextox,top.sextoy,s.sextcm):
           return
     #--------------------------------------------------------------------------
