@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.18 $, $Date: 2001/08/02 23:56:26 $
+#@(#) File TOP.V, version $Revision: 3.19 $, $Date: 2001/08/08 19:58:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -617,7 +617,7 @@ linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.18 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.19 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -1535,6 +1535,7 @@ nplive integer    /0/  # No. of "live" particles
 npmax  integer    /0/  # Maximum no. of particles
                        # (user input for some loadings)
 npmaxb integer    /0/  # Maximum no. of particles for xp, yp, uxp, uyp
+npmaxi integer    /0/  # Maximum no. of particles for pid.
 sm(ns) _real [kg] /0./ # Species mass
 sq(ns) _real [C]  /0./ # Species charge
 sw(ns) _real [1]  /0./ # Species weight
@@ -1548,6 +1549,7 @@ zp(npmax)      _real  [m]        # Z-positions of particles
 uxp(npmaxb)    _real  [m/s]      # gamma * X-velocities of particles
 uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
+pid(npmaxi)    _integer [1]      # Particle index - user for various purposes
 
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation

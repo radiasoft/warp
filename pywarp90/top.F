@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.18 $, $Date: 2001/08/02 23:56:25 $
+c@(#) File TOP.M, version $Revision: 3.19 $, $Date: 2001/08/08 19:58:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4899,7 +4899,6 @@ c=============================================================================
 
 c Allocate space for particles and set up associated arrays.
 
-
       integer(ISZ):: is
 
 c     --- Set one of npmax and np_s from the other. If they are both set,
@@ -4922,6 +4921,7 @@ c     --- distribute the particles among the processors.
       np = npmax
 #endif
       npmaxb = npmax
+      if (npmaxi > 0) npmaxi = npmax
 
 c     --- Allocate space. A gchange is done primarily so that any data
 c     --- in npmax_s is preserved.
@@ -4953,7 +4953,6 @@ c way to the end of the species block minus nhigher.  If there is not
 c enough space, add more to the arrays. Particle data is shifted
 c appropriately.
 
-
       integer(ISZ):: nadd,i,ishft
 
 c     --- If there is already enough space, then return.
@@ -4975,6 +4974,7 @@ c       --- 10000, add the amount of space needed.
 c       --- change the particle array dimension variables and allot space
         npmax = npmax + nadd
         npmaxb = npmax
+        if (npmaxi > 0) npmaxi = npmax
         call gchange("Particles",0)
 
 c       --- Loop over species species above 'is', shifting
@@ -5019,7 +5019,6 @@ c Assumes that the is enought space in the particle arrays to make the
 c shift without clobbering other particles or going past the ends of
 c the arrays.
 
-
       integer(ISZ):: ip
 
 c     --- return if shift is zero
@@ -5038,6 +5037,7 @@ c       --- Loop from top of live particles to bottom of species block.
           uyp(ip+ishft) = uyp(ip)
           uzp(ip+ishft) = uzp(ip)
           gaminv(ip+ishft) = gaminv(ip)
+          if (npmaxi > 0) pid(ip+ishft) = pid(ip)
         enddo
 
 c       --- change lower bound of live particles
@@ -5060,6 +5060,7 @@ c       --- (ins(is) - npmax_s(is-1)) < -ishft
           uyp(ip+ishft) = uyp(ip)
           uzp(ip+ishft) = uzp(ip)
           gaminv(ip+ishft) = gaminv(ip)
+          if (npmaxi > 0) pid(ip+ishft) = pid(ip)
         enddo
 
 c       --- change number of particles if data is lost
@@ -5081,9 +5082,11 @@ c=============================================================================
       use Particles
       integer(ISZ):: it,nn,istart
       integer(ISZ):: ii(0:nn-1)
+
 c Copies particle data from locations given by ii to the locations starting
 c at 'it', or if istart > 0, copy sequential particles from locations
 c starting at 'it' to locations starting at 'istart'.
+
       integer(ISZ):: i,in,ij
       if (istart > 0) then
         do i=0,nn-1
@@ -5096,6 +5099,7 @@ c starting at 'it' to locations starting at 'istart'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
+          if (npmaxi > 0) pid(in) = pid(ij)
         enddo
       else
         do i=0,nn-1
@@ -5108,6 +5112,7 @@ c starting at 'it' to locations starting at 'istart'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
+          if (npmaxi > 0) pid(in) = pid(ij)
         enddo
       endif
       return
