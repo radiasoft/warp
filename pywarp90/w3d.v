@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.78 $, $Date: 2002/11/05 22:06:33 $
+#@(#) File W3D.V, version $Revision: 3.79 $, $Date: 2002/11/06 01:22:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.78 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.79 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -305,6 +305,7 @@ inj_ns               integer  # Auto set to either 1 or ns. Set to 1
                               # when only one species is being injected from
                               # each source.
 linj_sphere          logical /.true./
+l_inj_rz             logical /.false./
 inj_grid(0:inj_nx,0:inj_ny,inj_ninj) _real [m]
    # Grid giving axial field grid location of injection sources in the lab frame
 inj_angl(0:inj_nx,0:inj_ny,inj_ninj) _real
