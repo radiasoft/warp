@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.50 2002/11/26 21:39:30 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.51 2003/01/16 16:51:30 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -20,6 +20,9 @@ plotsrfrv: handy command to plot r versus z for a suface of revolution, giving
            the function describing it
 
 plotquadoutline: plots outline of quadrupole structure
+
+visualizeconductors: create 3-D visualization of conductors based on subgrid
+                     data
 
 cleanconductors: not a plot routine, buts removes conductor points not
 		 within the the range of the field solve
@@ -2220,3 +2223,171 @@ Sets the voltage on a conductor, given an id.
     f3d.ocvoltpz[:] = where(equal(f3d.ocnumbpz,condid),ocvpz,f3d.ocvoltpz)
 
 #---------------------------------------------------------------------------
+
+
+#---------------------------------------------------------------------------
+def visualizeconductors(condid=None,color=None,mglevel=0,
+                        scene=None,title="Conductor geometry",vrange=None):
+  """
+Creates 3-D visualization of the conductors based off of the subgrid data.
+condid=None: optional conductor ID of object to draw
+color=None: color, in the form of a list, [r,g,b], e.g. [1,0,0] to get red
+mglevel=0: multigrid level to draw
+scene=None: scene to use - by default creates a new one.
+            the scene is returned by the function
+title="Conductor geometry": window title
+vrange=None: range of each dimension - used to scale size of image, in form
+             [x,y,z]. e.g. to decrease z by 10, use [1,1,10]
+
+Returns the scene use to draw the image
+  """
+  if lparallel: return
+  try:
+    import VPythonobjects
+  except ImportError:
+    return
+
+  # --- Save grid size
+  nx = w3d.nx
+  ny = w3d.ny
+  nz = w3d.nz
+
+  # --- Get conductors
+  ne = f3d.ecstart[mglevel+1] - 1
+  no = f3d.ocstart[mglevel+1] - 1
+  if condid is None:
+    # --- Get all conductors
+    iecndx = f3d.iecndx[:ne]
+    iecndy = f3d.iecndy[:ne]
+    iecndz = f3d.iecndz[:ne]
+    ecdelmx = f3d.ecdelmx[:ne]
+    ecdelpx = f3d.ecdelpx[:ne]
+    ecdelmy = f3d.ecdelmy[:ne]
+    ecdelpy = f3d.ecdelpy[:ne]
+    ecdelmz = f3d.ecdelmz[:ne]
+    ecdelpz = f3d.ecdelpz[:ne]
+    iocndx = f3d.iocndx[:no]
+    iocndy = f3d.iocndy[:no]
+    iocndz = f3d.iocndz[:no]
+    ocdelmx = f3d.ocdelmx[:no]
+    ocdelpx = f3d.ocdelpx[:no]
+    ocdelmy = f3d.ocdelmy[:no]
+    ocdelpy = f3d.ocdelpy[:no]
+    ocdelmz = f3d.ocdelmz[:no]
+    ocdelpz = f3d.ocdelpz[:no]
+  else:
+    # --- Get only points matching the specified condid
+    iecndx = compress(f3d.ecnumb[:ne]==condid,f3d.iecndx[:ne])
+    iecndy = compress(f3d.ecnumb[:ne]==condid,f3d.iecndy[:ne])
+    iecndz = compress(f3d.ecnumb[:ne]==condid,f3d.iecndz[:ne])
+    ecdelmx = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelmx[:ne])
+    ecdelpx = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelpx[:ne])
+    ecdelmy = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelmy[:ne])
+    ecdelpy = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelpy[:ne])
+    ecdelmz = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelmz[:ne])
+    ecdelpz = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelpz[:ne])
+    iocndx = compress(f3d.ocnumb[:no]==condid,f3d.iocndx[:no])
+    iocndy = compress(f3d.ocnumb[:no]==condid,f3d.iocndy[:no])
+    iocndz = compress(f3d.ocnumb[:no]==condid,f3d.iocndz[:no])
+    ocdelmx = compress(f3d.ocnumb[:no]==condid,f3d.ocdelmx[:no])
+    ocdelpx = compress(f3d.ocnumb[:no]==condid,f3d.ocdelpx[:no])
+    ocdelmy = compress(f3d.ocnumb[:no]==condid,f3d.ocdelmy[:no])
+    ocdelpy = compress(f3d.ocnumb[:no]==condid,f3d.ocdelpy[:no])
+    ocdelmz = compress(f3d.ocnumb[:no]==condid,f3d.ocdelmz[:no])
+    ocdelpz = compress(f3d.ocnumb[:no]==condid,f3d.ocdelpz[:no])
+
+  ne = len(iecndx)
+  no = len(iocndx)
+  nn = ne + no
+  if nn == 0: return
+  icndx=array(list(iecndx[:ne])+list(iocndx[:no]))
+  icndy=array(list(iecndy[:ne])+list(iocndy[:no]))
+  icndz=array(list(iecndz[:ne])+list(iocndz[:no]))
+  delmx = array(list(ecdelmx[:ne]) + list(ocdelmx[:no]))
+  delpx = array(list(ecdelpx[:ne]) + list(ocdelpx[:no]))
+  delmy = array(list(ecdelmy[:ne]) + list(ocdelmy[:no]))
+  delpy = array(list(ecdelpy[:ne]) + list(ocdelpy[:no]))
+  delmz = array(list(ecdelmz[:ne]) + list(ocdelmz[:no]))
+  delpz = array(list(ecdelpz[:ne]) + list(ocdelpz[:no]))
+  dels = array([delmx,delpx,delmy,delpy,delmz,delpz])
+
+  iii = zeros((nx+1,ny+1,nz+1))
+  for ic in xrange(nn):
+    iii[icndx[ic],icndy[ic],icndz[ic]] = ic + 1
+
+  model = VPythonobjects.VisualModel(twoSided=true,scene=scene,title=title,
+                                     vrange=vrange)
+  gridmin = array([w3d.xmmin,w3d.ymmin,w3d.zmmin])
+  griddd = array([w3d.dx,w3d.dy,w3d.dz])
+
+  oos = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]]
+  dds = [[+1,0,0],[-1,0,0],[+1,0,0],[-1,0,0],
+         [+1,0,0],[-1,0,0],[+1,0,0],[-1,0,0]]
+  for iz in xrange(nz):
+    for iy in xrange(ny):
+      for ix in xrange(nx):
+
+        for oo,dd in map(None,oos,dds):
+          if iii[ix+oo[0],iy+oo[1],iz+oo[2]] > 0:
+            pp = newfacet(ix,iy,iz,oo,dd,+1,iii,dels,gridmin,griddd)
+            if len(pp) == 0:
+              pp = newfacet(ix,iy,iz,oo,dd,-1,iii,dels,gridmin,griddd)
+            if len(pp) > 0:
+              model.FacetedPolygon(pp,color=color)
+        iii[ix:ix+2,iy:iy+2,iz:iz+2] = abs(iii[ix:ix+2,iy:iy+2,iz:iz+2])
+  model.Display()
+  return model.scene
+
+# --- This would be a little less painful is lists were hashable.
+def newfacet(ix,iy,iz,oo,dd,parity,iii,dels,gridmin,griddd,
+  oodict = {  0:[0,0,0],100:[1,0,0], 10:[0,1,0],110:[1,1,0],
+              1:[0,0,1],101:[1,0,1], 11:[0,1,1],111:[1,1,1]},
+  dddict = {211:[+1,0,0],121:[0,+1,0],112:[0,0,+1],
+             11:[-1,0,0],101:[0,-1,0],110:[0,0,-1]},
+  dirdict = {  0:[{211:0,112:1,121:2},{0:211,1:112,2:121}],
+             100:[{112:0, 11:1,121:2},{0:112,1: 11,2:121}],
+              10:[{211:0,101:1,112:2},{0:211,1:101,2:112}],
+             110:[{ 11:0,112:1,101:2},{0: 11,1:112,2:101}],
+               1:[{211:0,121:1,110:2},{0:211,1:121,2:110}],
+             101:[{110:0,121:1, 11:2},{0:110,1:121,2: 11}],
+              11:[{211:0,110:1,101:2},{0:211,1:110,2:101}],
+             111:[{ 11:0,101:1,110:2},{0: 11,1:101,2:110}]},
+  delsdict = { 11:0,211:1,101:2,121:3,110:4,112:5},
+  too = lambda oo : 100*oo[0] + 10*oo[1] + oo[2],
+  tdd = lambda dd : 100*(1+dd[0]) + 10*(1+dd[1]) + (1+dd[2])):
+  """
+Work routine used by visualizeconductors.
+  """
+  pp = []
+  done = 0
+  currentoo = oo
+  currentdd = dd
+  ncorners = 1
+  while not done:
+    ic = abs(iii[ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]])
+    iii[ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]] = -ic
+    if ic != 0 and dels[delsdict[tdd(currentdd)],ic-1] <= 1.000001:
+      newpoint = (array([ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]]) +
+                        dels[delsdict[tdd(currentdd)],ic-1]*array(currentdd))
+      pp.append(newpoint*griddd+gridmin)
+      dirs = dirdict[too(currentoo)]
+      currentddnum = dirs[0][tdd(currentdd)]
+      nextddnum = (currentddnum + parity) % 3
+      nextdd = dddict[dirs[1][nextddnum]]
+      nextoo = currentoo
+    else:
+      nextoo = list(array(currentoo) + array(currentdd))
+      nextdirs = dirdict[too(nextoo)]
+      nextddnum = (nextdirs[0][tdd(list(-array(currentdd)))] + parity) % 3
+      nextdd = dddict[nextdirs[1][nextddnum]]
+      ncorners = ncorners + 1
+    currentoo = nextoo
+    currentdd = nextdd
+    if ncorners > 8: done = 1
+    if len(pp) > 6:
+      pp = []
+      done = 1
+    if currentoo == oo and currentdd == dd: done = 1
+  return pp
+
+
