@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.30 $, $Date: 2002/04/18 21:46:06 $
+c@(#) File F3D.M, version $Revision: 3.31 $, $Date: 2002/04/22 20:15:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4306,9 +4306,15 @@ c If doing initialization only, then exit
 c Set the array islctype and determine the points that make up the conductor.
 c This takes extra time so should not be done if the grid is not moving
 c in the lab frame.  Set gridmode to 1 to avoid this call.
-      if (gridmode == 0 .or. iwhich == -2)
-     &  call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+      if (gridmode == 0 .or. iwhich == -2) then
+c       --- Zero the number of conductor points
+        ncond = 0
+        necndbdy = 0
+        nocndbdy = 0
+c       --- Generate new conductors.
+        call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                l2symtry,l4symtry)
+      endif
 
 c Set up for error calculations.  Set nsorerr so the sample points used to
 c check for convergence are spread throughout the grid.  The expression
@@ -5239,6 +5245,8 @@ c===========================================================================
 c===========================================================================
       subroutine setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    l2symtry,l4symtry)
+      use PSOR3d
+      use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
@@ -5254,6 +5262,9 @@ c     --- Call the appropriate routine.
       if(solvergeom==RZgeom) then
         call setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                  l2symtry,l4symtry)
+      else if (fstype == 7) then
+        call setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                    l2symtry,l4symtry)
 c     else if(fstype==11) then
 c       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
 c    &                    l2symtry,l4symtry)
@@ -5267,10 +5278,11 @@ c    &                    l2symtry,l4symtry)
 c===========================================================================
       subroutine setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                      l2symtry,l4symtry)
+      use Constant
+      use Surface_of_Rev
       use PSOR3d
       use Lattice
       use InjectVars
-      use InGen
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
@@ -5283,13 +5295,14 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 
       integer(ISZ):: islctype(-1:nz+1)
       real(kind=8):: slicvx(-1:nz+1),slicvy(-1:nz+1)
-      integer(ISZ):: ix,iz,iq,ix_axis,iy_axis
+      integer(ISZ):: ix,iz,iq,ix_axis,iy_axis,nc,nceo
       integer(ISZ):: izp1,izm1
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax,ichange,id,ij
       integer(ISZ):: ix_near,nxinj,nyinj
       real(kind=8):: zz,offset,qdcenter,qs,qe,rs,re,xmax0,ymax0
       real(kind=8):: rodrrsq,rodmxsq,rminsq,rrr,delz,rodx,rody,rodap,delz_p
       real(kind=8):: vvv,aper,rmax,prevcent,dipocent,delx
+      real(kind=8):: xcent,ycent
       real(kind=8):: fuzz,zfuzz
       logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
 
@@ -5313,6 +5326,8 @@ c     ---   3: quads on y axis
 c     ---   4: plate left of quad
 c     ---   5: plate right of quad
       iq = 0
+      nc = 0
+      nceo = 0
       lnotice = .false.
       do iz=-1,nz+1
         islctype(iz) = 0
@@ -5381,8 +5396,31 @@ c       --- models are being used for the same quadrupole.  Print notice if
 c       --- this is the case.
         if (islctype(iz) == 2 .and. quadde(iq) .ne. 0.) lnotice = .true.
 
+c       --- Estimate amount of space needed.
+        if (islctype(iz) == 1 .or. islctype(iz) == 3) then
+          nc = nc + 2*pi*(quadrr(iq)**2 - (quadrr(iq)-2.*max(dx,dy))**2)/(dx*dy)
+          nceo = nceo + pi*quadrr(iq)/dx
+        else if (islctype(iz) == 2) then
+          nc = nc + 4*pi*(quadrr(iq)**2 - (quadrr(iq)-2.*max(dx,dy))**2)/(dx*dy)
+          nceo = nceo + 2*pi*quadrr(iq)/dx
+        else if (islctype(iz) == 4 .or. islctype(iz) == 5) then
+          nc = nc + (1+nx)*(1+ny) - pi*quadpa(iq)**2/(dx*dy)
+          nceo = nceo + pi*quadpa(iq)/dx/2
+        endif
+        if ((islctype(iz) == 4 .and. islctype(iz-1) /= 4) .or.
+     &      (islctype(iz) == 5 .and. islctype(iz-1) /= 5) .or.
+     &      (islctype(iz-1) == 4 .and. islctype(iz) /= 4) .or.
+     &      (islctype(iz-1) == 5 .and. islctype(iz) /= 5)) then
+          nceo = nceo + (1+nx)*(1+ny) - pi*quadpa(iq)**2/(dx*dy)
+        endif
+
 c     --- end loop over z which fills islctype
       enddo
+
+c     --- Change the memory allocated based on the estimates made above.
+      ncondmax = max(ncondmax,ncond + nc)
+      ncndmax = max(ncndmax,max(necndbdy,nocndbdy) + nceo)
+      call gchange("PSOR3d",0)
 
 c Set slicv in planes at ends of quads to allow for sub-grid placement of
 c boundaries. This also takes care of the boundary planes.
@@ -5412,11 +5450,6 @@ c The subroutine rodpoint is used for all four of the rods.
 c For subgrid scale placement of boundaries,
 c names with 'e' are even in x, y, and z, names with 'o' are odd.
 c With no symmetries, points on and near all four rods are saved.
-
-c     --- zero array counters
-      ncond = 0
-      necndbdy = 0
-      nocndbdy = 0
 
 c     --- find the location of the center of the grid (x=0 and y=0)
       ix_axis = - xmmin/dx + fuzz
@@ -5770,77 +5803,51 @@ c       --- the plate it is neglected in this coding.
  
 
 c       --- plate on left hand side of quad
-        if (islctype(iz) == 4 .or.
-     &      islctype(iz + 1) == 4 .or. islctype(iz - 1) == 4 ) then
+        if (islctype(iz) == 4 .and. islctype(iz-1) /= 4) then
           if (quadgp(iq) < 0.) then
             vvv = slicvy(iz) + qdelvyp(iq)
           else
             vvv = slicvx(iz) + qdelvxp(iq)
           endif
 
-c         --- Test if slice is inside of plate or just outside the plate.
-c         --- Calculate delz_p if just outside.
-          if (islctype(iz) == 4) then
-            delz_p = 2.
-            lz_in_plate = .true.
-          elseif (islctype(iz) .ne. 4 .and. islctype(iz + 1) == 4) then
-            delz_p = (zz - (qs-quadpw(iq)-qdelpwl(iq)))/dz
-            lz_in_plate = .false.
-          elseif (islctype(iz) .ne. 4 .and. islctype(iz - 1) == 4) then
-            delz_p = (zz - qs)/dz
-            lz_in_plate = .false.
-          endif
-
-c         --- find min and max radius of plate
-          aper = (quadpa(iq) + qdelpal(iq))
+          lsrlinr = .true.
+          npnts_sr = 2
+          call gchange("Surface_of_Rev",0)
+          z_sr(1) = qs-quadpw(iq)-qdelpwl(iq)
+          z_sr(2) = qs
+          r_sr = quadpa(iq) + qdelpal(iq)
           rmax = (quadpr(iq) + qdelprl(iq))
+          xcent = qoffx(iq) + ix_axis*dx + xmmin
+          ycent = qoffy(iq) + iy_axis*dy + ymmin
+          call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
+     &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
+     &                    zmmin,zmmin+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
+     &                    ix_axis,iy_axis,0,0,l2symtry,l4symtry)
+          lsrlinr = .false.
 
-c         --- if this plate surrounded by two plates, don't fill it all in
-          if (0 < iz .and. iz < nz) then
-            if (islctype(iz-1) == 4 .and. islctype(iz+1) == 4)
-     &        rmax = (quadpa(iq) + qdelpal(iq) + 2*max(dx,dy))
-          endif
-
-          call platepnt(0,nx,0,ny,ix_axis,iy_axis,dx,dy,aper,
-     &                  rmax,vvv,qoffx(iq),qoffy(iq),delz_p,iz,lz_in_plate,
-     &                  fuzz)
         endif
 
 c       --- plate on right hand side of quad
-        if (islctype(iz) == 5 .or.
-     &      islctype(iz + 1) == 5 .or. islctype(iz - 1) == 5 ) then
+        if (islctype(iz) == 5 .and. islctype(iz-1) /= 5) then
           if (quadgp(iq) > 0.) then
             vvv = slicvy(iz) + qdelvyp(iq)
           else
             vvv = slicvx(iz) + qdelvxp(iq)
           endif
 
-c         --- Test if slice is inside of plate or just outside the plate.
-c         --- Calculate delz_p if just outside.
-          if (islctype(iz) == 5) then
-            delz_p = 2.
-            lz_in_plate = .true.
-          elseif (islctype(iz) .ne. 5 .and. islctype(iz - 1) == 5) then
-            delz_p = (zz - (qe+quadpw(iq)+qdelpwl(iq)))/dz
-            lz_in_plate = .false.
-          elseif (islctype(iz) .ne. 5 .and. islctype(iz + 1) == 5) then
-            delz_p = (zz - qe)/dz
-            lz_in_plate = .false.
-          endif
+          lsrlinr = .true.
+          npnts_sr = 2
+          call gchange("Surface_of_Rev",0)
+          z_sr(1) = qe
+          z_sr(2) = qe+quadpw(iq)+qdelpwl(iq)
+          r_sr = quadpa(iq) + qdelpar(iq)
+          rmax = quadpr(iq) + qdelprr(iq)
+          call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
+     &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
+     &                    zmmin,zmmin+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
+     &                    ix_axis,iy_axis,0,0,l2symtry,l4symtry)
+          lsrlinr = .false.
 
-c         --- find min and max radius of plate
-          aper = (quadpa(iq) + qdelpar(iq))
-          rmax = (quadpr(iq) + qdelprr(iq))
-
-c         --- if this plate surrounded by two plates, don't fill it all in
-          if (0 < iz .and. iz < nz) then
-            if (islctype(iz-1) == 5 .and. islctype(iz+1) == 5)
-     &        rmax = (quadpa(iq) + qdelpar(iq) + 2*max(dx,dy))
-          endif
-
-          call platepnt(0,nx,0,ny,ix_axis,iy_axis,dx,dy,aper,
-     &                  rmax,vvv,qoffx(iq),qoffy(iq),delz_p,iz,lz_in_plate,
-     &                  fuzz)
         endif
 
 c +++++++++++++++++++++++++++
@@ -6268,6 +6275,7 @@ c      end if
       prmxsq = (abs(rmax) + max(dx,dy))**2
       paprsq = aper**2
       papmsq = (aper - max(dx,dy))**2
+      if (aper - max(dx,dy) < 0.) papmsq = -papmsq
       r2fuzz = min(dx,dy)**2*fuzz
 
 c     --- The sign of rmax is used to flag whether or not the include subgrid
@@ -6296,7 +6304,7 @@ c     --- points.
           call gchange("PSOR3d",0)
       endif
 
-c     --- loop over transvere plane
+c     --- loop over transverse plane
       do ix = ixmin,ixmax
         do iy = iymin,iymax
           rad = ((ix-ix_axis)*dx-xoff)**2 + ((iy-iy_axis)*dy-yoff)**2
@@ -6719,6 +6727,7 @@ c===========================================================================
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
       use Surface_of_Rev
+      use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
@@ -6779,6 +6788,11 @@ c     --- Table-ize the data if srfrv_pernz > 0.
 c     --- Call the appropriate version of the routine.
       if(solvergeom==RZgeom) then
         call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                    xmin,xmax,ymin,ymax,lshell,
+     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      else if (fstype == 7) then
+        call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
@@ -7125,7 +7139,7 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delmz = (zz - znew)*dzi
                 endif
-              elseif (rad < rrrlower .or. rad > min(rrr,rmax)-rfuzz) then
+              elseif (rad < rrrlower .or. rad > rmax) then
                 delmz = 2.
               endif
 
@@ -7181,7 +7195,7 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delpz = (znew - zz)*dzi
                 endif
-              elseif (rad < rrrhigher .or. rad > min(rrr,rmax)-rfuzz) then
+              elseif (rad < rrrhigher .or. rad > rmax) then
                 delpz = 2.
               endif
 
@@ -7288,6 +7302,7 @@ c========================================================================
      &                   xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
       use Surface_of_Rev
+      use InGen, ONLY:fstype
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -7344,12 +7359,20 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrlinr = .true.
       endif
 
+      if (fstype == 7) then
+        call srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+     &                 xmin,xmax,ymin,ymax,lshell,
+     &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                 ix_axis,iy_axis,
+     &                 xmesh,ymesh,l2symtry,l4symtry)
+      else
 c     --- Call the appropriate routine
-      call srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
-     &               xmin,xmax,ymin,ymax,lshell,
-     &               zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &               ix_axis,iy_axis,
-     &               xmesh,ymesh,l2symtry,l4symtry)
+        call srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+     &                 xmin,xmax,ymin,ymax,lshell,
+     &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                 ix_axis,iy_axis,
+     &                 xmesh,ymesh,l2symtry,l4symtry)
+      endif
 
 c     --- Clean up the table-ized data.
       if (srfrv_pernz > 0) then
@@ -7858,6 +7881,7 @@ c===========================================================================
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
       use Surface_of_Rev
+      use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
@@ -7900,7 +7924,7 @@ c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of PSOR3d.
 
       real(kind=8):: zz,srfrv_f
-      integer(ISZ):: i
+      integer(ISZ):: i,nc,nceo
 
 c     --- Table-ize the data if srfrv_pernz > 0.
       if (srfrv_pernz > 0 .and. .not. lsrminlinr) then
@@ -7927,9 +7951,14 @@ c     --- Table-ize the data if srfrv_pernz > 0.
 c     --- Call the appropriate routine
       if(solvergeom==RZgeom) then
          call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                   lzend,xmin,xmax,ymin,ymax,lshell,
-     &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                     lzend,xmin,xmax,ymin,ymax,lshell,
+     &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      else if (fstype == 7) then
+        call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+     &                      lzend,xmin,xmax,ymin,ymax,lshell,
+     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 c     else if(fstype==11) then
 c        call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
 c    &                   lzend,xmin,xmax,ymin,ymax,lshell,
@@ -7937,9 +7966,9 @@ c    &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
 c    &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       else
         call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                  lzend,xmin,xmax,ymin,ymax,lshell,
-     &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                    lzend,xmin,xmax,ymin,ymax,lshell,
+     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       end if
 
 c     --- Clean up the table-ized data.

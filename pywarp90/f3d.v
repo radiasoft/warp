@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.29 $, $Date: 2002/04/18 21:46:06 $
+#@(#) File F3D.V, version $Revision: 3.30 $, $Date: 2002/04/22 20:15:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.29 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.30 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -170,6 +170,9 @@ ocvolt  (ncndmax)     _real # voltage of points for odd sub-grid boundaries
 ocnumb  (ncndmax)  _integer # Number of the conductor the odd points are in
 
 *********** MultigridConductor3d dump parallel:
+icstart(100)  integer # Start of the conductor points for each MG level
+ecstart(100)  integer # Start of the even conductor points for each MG level
+ocstart(100)  integer # Start of the odd conductor points for each MG level
 ecvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction, even
 ecvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction, even
 ecvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction, even
@@ -206,6 +209,7 @@ mgparam    real    /1.2/ # Acceleration parameter for multigrid fieldsolver
 mgmaxiters integer /100/ # Maximum number of iterations
 mgiters    integer       # Actual number of iterations
 mgtol      real  /1.e-6/ # Absolute tolerance in change in last iteration
+mgminlevel integer /4/   # Minimum grid size to coarsen to
 mgform     integer /1/   # When 1, MG operates on phi (and rho),
                          # when 2, MG operates on error (and residual)
 downpasses integer /1/   # Number of downpasses
@@ -219,10 +223,6 @@ mggoodnumbers(40) integer /4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,80,96,112,
                          # times 1, 3, 5, and 7.
 phi_temp(tempsize) _real # Work space holding phi on all grid levels
 rho_temp(tempsize) _real # Work space holding source on all grid levels
-conductor_data_level(nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real)
-  subroutine
-  # Calculates level of coarseness at which all of the conductor points
-  # are on the grid.
 subgrid_sor_to_mg(nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
                   l2symtry:logical,l4symtry:logical) subroutine
   # Converts a set of points generated for the SOR fieldsolver into the set of
