@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.36 2001/04/04 17:38:38 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.37 2001/04/24 20:47:40 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -194,24 +194,26 @@ gistfma = fma
 gisthcp = hcp
 afterplot = []
 beforeplot = []
-def fma():
+def fma(legend=1):
   """
 Frame advance - plots run info on the bottom of the frame, gets graphics window
 ready for next plot and sends image to hard copy file if one is opened. Checks
 for before and after plot commands.
+  - legend=1: when set to 0, the text at the frame bottom is omitted
   """
-  plotruninfo()
+  if legend: plotruninfo()
   for f in afterplot: f()
   gistfma()
   for f in beforeplot: f()
   oldlimits = limits()
-def hcp():
+def hcp(legend=1):
   """
 Hardcopy - plots run info on the bottom of the frame and sends image to hard
 copy file.
+  - legend=1: when set to 0, the text at the frame bottom is omitted
   """
   for f in afterplot: f()
-  plotruninfo()
+  if legend: plotruninfo()
   for f in beforeplot: f()
   gisthcp()
 
@@ -908,57 +910,73 @@ Note that either the x and y coordinates or the grid must be passed in.
          "bad argument %s"%string.join(badargs.keys())
 
   # --- Do some error checking on the consistency of the input
-  assert (grid != None or (x != None and y != None)), \
+  assert (type(grid) == ArrayType or \
+          (type(x) == ArrayType and type(y) == ArrayType)), \
          "either the grid and/or both x and y must be specified"
-  assert (not particles or (x != None and y != None)), \
+  assert (not particles or (type(x) == ArrayType and type(y) == ArrayType)), \
          "both x and y must be specified if particles are to be plotted"
-  assert ((x == None and y == None) or len(x) == len(y)), \
+  assert ((type(x) != ArrayType and type(y) != ArrayType) or len(x) == len(y)),\
          "both x and y must be of the same length"
-  assert (type(slope) != type('a')),"slope must be a number"
+  assert (type(slope) != StringType),"slope must be a number"
 
   # -- Set the plotting view window
   plsys(view)
 
+  # --- Make sure that the grid size nx and ny are consistent with grid
+  # --- is one is input
+  if type(grid) == ArrayType:
+    nx = shape(grid)[0] - 1
+    ny = shape(grid)[1] - 1
+
   # --- Calculate extrema of the particles
-  if x != None and y != None:
+  if type(x) == ArrayType and type(y) == ArrayType:
     # --- Get slope subtracted value of y
     yms = y - x*slope - offset
+    # --- Get mins and maxs of particles that were not supplied by the user.
     if lparallel:
-      if xmin == None: xmin = globalmin(x)
-      if xmax == None: xmax = globalmax(x)
-      if ymin == None: ymin = globalmin(yms)
-      if ymax == None: ymax = globalmax(yms)
+      if xmin == None: xmintemp = globalmin(x)
+      if xmax == None: xmaxtemp = globalmax(x)
+      if ymin == None: ymintemp = globalmin(yms)
+      if ymax == None: ymaxtemp = globalmax(yms)
     else:
-      if xmin == None and len(x) > 0: xmin = min(x)
-      if xmax == None and len(x) > 0: xmax = max(x)
-      if ymin == None and len(yms) > 0: ymin = min(yms)
-      if ymax == None and len(yms) > 0: ymax = max(yms)
-      if xmin == None: xmin = 0.
-      if xmax == None: xmax = 0.
-      if ymin == None: ymin = 0.
-      if ymax == None: ymax = 0.
+      xmintemp = 0.
+      xmaxtemp = 0.
+      ymintemp = 0.
+      ymaxtemp = 0.
+      if xmin == None and len(x) > 0: xmintemp = min(x)
+      if xmax == None and len(x) > 0: xmaxtemp = max(x)
+      if ymin == None and len(yms) > 0: ymintemp = min(yms)
+      if ymax == None and len(yms) > 0: ymaxtemp = max(yms)
+    # --- When neither the min or max are supplied by the user, extend
+    # --- extrema by one grid cell so that all particles are within the
+    # --- limits of the grid. This is the most common case.
+    if xmin == None and xmax == None:
+      xmintemp = xmintemp - (xmaxtemp-xmintemp)/(nx-2)
+      xmaxtemp = xmaxtemp + (xmaxtemp-xmintemp)/(nx-2)
+    if ymin == None and ymax == None:
+      ymintemp = ymintemp - (ymaxtemp-ymintemp)/(ny-2)
+      ymaxtemp = ymaxtemp + (ymaxtemp-ymintemp)/(ny-2)
+    # --- Now set main versions of min and max
+    if xmin == None: xmin = xmintemp
+    if xmax == None: xmax = xmaxtemp
+    if ymin == None: ymin = ymintemp
+    if ymax == None: ymax = ymaxtemp
   else:
     # --- If no particles are inputted and the extrema are not set, then
     # --- can only make a guess.
-    if xmin == None: xmin = 1
-    if xmax == None: xmax = nx-1
-    if ymin == None: ymin = 1
-    if ymax == None: ymax = ny-1
+    if xmin == None: xmin = 0
+    if xmax == None: xmax = nx
+    if ymin == None: ymin = 0
+    if ymax == None: ymax = ny
 
-  # --- Get grid cell sizes, assuming the the mesh will be extended one
-  # --- more grid cell to leave room around the particles.
-  dx = (xmax-xmin)/(nx-2)
-  dy = (ymax-ymin)/(ny-2)
-
-  # --- Extend extrema by one grid cell
-  xmin = xmin - dx
-  xmax = xmax + dx
-  ymin = ymin - dy
-  ymax = ymax + dy
+  # --- Get grid cell sizes
+  dx = (xmax-xmin)/nx
+  dy = (ymax-ymin)/ny
 
   # --- If the grid is needed for the plot and it was not passed in, generate
   # --- it from the inputted particle data (if there was any)
-  if grid == None and (hash or contours or color=='density' or chopped):
+  if type(grid) != ArrayType and \
+     (hash or contours or color=='density' or chopped):
     densitygrid = 1
     # --- Create space for data
     grid = fzeros((1+nx,1+ny),'d')
@@ -971,9 +989,6 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   elif (hash or contours or color=='density' or chopped):
     densitygrid = 0
-    # --- Make sure that the grid size nx and ny are consistent with grid
-    nx = shape(grid)[0] - 1
-    ny = shape(grid)[1] - 1
 
   # --- If using logarithmic number density levels, take the log of the grid
   # --- data. The original grid is left unchanged since that is still needed
