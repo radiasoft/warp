@@ -71,7 +71,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.51 2004/03/31 14:16:59 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.52 2004/04/08 19:22:50 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -95,7 +95,8 @@ def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         nx=None,ny=None,nz=None,nzfull=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                         zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
-                        installrz=1,gridmode=1,solvergeom=None):
+                        installrz=1,gridmode=1,solvergeom=None,
+                        conductors=f3d.conductors):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -118,7 +119,7 @@ Installs the given conductors.
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
-  g.installdata(installrz,gridmode,solvergeom)
+  g.installdata(installrz,gridmode,solvergeom,conductors)
   
 ##############################################################################
 ##############################################################################
@@ -347,6 +348,7 @@ distances to outside the surface are positive, inside negative.
       self.ns = int(ns)
       self.parity = parity
       self.setlevels(0)
+    self.fuzzsign = -1
    
   def setvoltages(self,voltage):
     "Routine to set appropriate voltages."
@@ -366,7 +368,7 @@ dx,dy,dz: the grid cell sizes
     """
     self.dels[:,:] = self.dels/array([dx,dx,dy,dy,dz,dz])[:,NewAxis]
 
-  def setparity(self,dfill):
+  def setparity(self,dfill,fuzzsign):
     """
 Set parity. For points inside, this is set to -1. For points near the surface,
 this is set to the parity of ix+iy+iz. Otherwise defaults to large integer.
@@ -374,10 +376,11 @@ This assumes that the data has already been normalized with respect to the
 grid cell sizes.
     """
     self.parity = zeros(self.ndata) + 999
+    self.fuzzsign = fuzzsign
     fuzz = 1.e-9
     # --- A compiled routine is called for optimization
     setconductorparity(self.ndata,self.ix,self.iy,self.iz,
-                       self.dels,self.parity,fuzz,f3d.fuzzsign,dfill)
+                       self.dels,self.parity,fuzz,fuzzsign,dfill)
 
   def clean(self):
     """
@@ -451,91 +454,92 @@ has already been called.
     self.mglevel[n1:n1+n2] = d.mglevel[:n2]
     self.ndata = n1 + n2
 
-  def install(self,installrz=1,solvergeom=None):
+  def install(self,installrz=1,solvergeom=None,conductors=None):
     """
 Installs the data into the WARP database
     """
+    # --- If no conductors object was passed in, use the default one
+    # --- from the f3d package.
+    if conductors is None: conductors = f3d.conductors
+
+    conductors.fuzzsign = self.fuzzsign
 
     # --- If the RZ solver is being used and the data is to be installed,
-    # --- then clear out an existing conductor data in the f3d database first.
+    # --- then clear out an existing conductor data in the database first.
     # --- If this is not done, then data from conductor
     # --- objects will be copied in the RZ database multiple time if
     # --- multiple objects are installed separately.
     # --- At the end of the install, the install_conductor_rz routine
-    # --- will copy data back from the RZ database to the f3d database.
+    # --- will copy data back from the RZ database to the database.
     # --- This is slightly inefficient since for each object installed, all
-    # --- of the accumulated data will be copied back into the f3d database.
+    # --- of the accumulated data will be copied back into the database.
     # --- The way around that is to make the call to install_conductors_rz
     # --- only after all of the objects have been installed.
     if solvergeom is None: solvergeom = w3d.solvergeom
     if(installrz and
        (solvergeom == w3d.RZgeom or solvergeom == w3d.XZgeom)):
-      f3d.interior.n = 0
-      f3d.evensubgrid.n = 0
-      f3d.oddsubgrid.n = 0
+      conductors.interior.n = 0
+      conductors.evensubgrid.n = 0
+      conductors.oddsubgrid.n = 0
 
-    # --- Install all of the conductor data into the f3d database.
+    # --- Install all of the conductor data into the database.
     ntot = 0
-    nc = f3d.interior.n
+    nc = conductors.interior.n
     nn = sum(where(self.parity[:self.ndata] == -1,1,0))
     ntot = ntot + nn
     if nn > 0:
-      if nc + nn > f3d.interior.nmax:
-        f3d.interior.nmax = nn + nc
+      if nc + nn > conductors.interior.nmax:
+        conductors.interior.nmax = nn + nc
         gchange("Conductor3d")
-      f3d.interior.n = f3d.interior.n + nn
+      conductors.interior.n = conductors.interior.n + nn
       ii = compress(self.parity[:self.ndata] == -1,arange(self.ndata))
-      f3d.interior.indx[0,nc:nc+nn] = take(self.ix,ii)
-      f3d.interior.indx[1,nc:nc+nn] = take(self.iy,ii)
-      f3d.interior.indx[2,nc:nc+nn] = take(self.iz,ii)
-      f3d.interior.volt[nc:nc+nn] = take(self.vs[0,:],ii)
-      f3d.interior.numb[nc:nc+nn] = take(self.ns[0,:],ii)
-      f3d.interior.ilevel[nc:nc+nn] = take(self.mglevel,ii)
+      conductors.interior.indx[0,nc:nc+nn] = take(self.ix,ii)
+      conductors.interior.indx[1,nc:nc+nn] = take(self.iy,ii)
+      conductors.interior.indx[2,nc:nc+nn] = take(self.iz,ii)
+      conductors.interior.volt[nc:nc+nn] = take(self.vs[0,:],ii)
+      conductors.interior.numb[nc:nc+nn] = take(self.ns[0,:],ii)
+      conductors.interior.ilevel[nc:nc+nn] = take(self.mglevel,ii)
 
-    ne = f3d.evensubgrid.n
+    ne = conductors.evensubgrid.n
     nn = sum(where(self.parity[:self.ndata] == 0,1,0))
     ntot = ntot + nn
     if nn > 0:
-      if ne + nn > f3d.evensubgrid.nmax:
-        f3d.evensubgrid.nmax = nn + ne
+      if ne + nn > conductors.evensubgrid.nmax:
+        conductors.evensubgrid.nmax = nn + ne
         gchange("Conductor3d")
-      f3d.evensubgrid.n = f3d.evensubgrid.n + nn
+      conductors.evensubgrid.n = conductors.evensubgrid.n + nn
       ii = compress(self.parity[:self.ndata] == 0,arange(self.ndata))
-      f3d.evensubgrid.indx[0,ne:ne+nn] = take(self.ix,ii)
-      f3d.evensubgrid.indx[1,ne:ne+nn] = take(self.iy,ii)
-      f3d.evensubgrid.indx[2,ne:ne+nn] = take(self.iz,ii)
-      f3d.evensubgrid.dels[:,ne:ne+nn] = take(self.dels,ii,1)
-      f3d.evensubgrid.volt[1:,ne:ne+nn] = take(self.vs,ii,1)
-      f3d.evensubgrid.volt[0 ,ne:ne+nn] = take(self.vs[0,:],ii)
-      f3d.evensubgrid.numb[1:,ne:ne+nn] = take(self.ns,ii,1)
-      f3d.evensubgrid.numb[0 ,ne:ne+nn] = take(self.ns[0,:],ii)
-      f3d.evensubgrid.ilevel[ne:ne+nn] = take(self.mglevel,ii)
+      conductors.evensubgrid.indx[0,ne:ne+nn] = take(self.ix,ii)
+      conductors.evensubgrid.indx[1,ne:ne+nn] = take(self.iy,ii)
+      conductors.evensubgrid.indx[2,ne:ne+nn] = take(self.iz,ii)
+      conductors.evensubgrid.dels[:,ne:ne+nn] = take(self.dels,ii,1)
+      conductors.evensubgrid.volt[:,ne:ne+nn] = take(self.vs,ii,1)
+      conductors.evensubgrid.numb[:,ne:ne+nn] = take(self.ns,ii,1)
+      conductors.evensubgrid.ilevel[ne:ne+nn] = take(self.mglevel,ii)
 
-    no = f3d.oddsubgrid.n
+    no = conductors.oddsubgrid.n
     nn = sum(where(self.parity[:self.ndata] == 1,1,0))
     ntot = ntot + nn
     if nn > 0:
-      if no + nn > f3d.oddsubgrid.nmax:
-        f3d.oddsubgrid.nmax = nn + no
+      if no + nn > conductors.oddsubgrid.nmax:
+        conductors.oddsubgrid.nmax = nn + no
         gchange("Conductor3d")
-      f3d.oddsubgrid.n = f3d.oddsubgrid.n + nn
+      conductors.oddsubgrid.n = conductors.oddsubgrid.n + nn
       ii = compress(self.parity[:self.ndata] == 1,arange(self.ndata))
-      f3d.oddsubgrid.indx[0,no:no+nn] = take(self.ix,ii)
-      f3d.oddsubgrid.indx[1,no:no+nn] = take(self.iy,ii)
-      f3d.oddsubgrid.indx[2,no:no+nn] = take(self.iz,ii)
-      f3d.oddsubgrid.dels[:,no:no+nn] = take(self.dels,ii,1)
-      f3d.oddsubgrid.volt[1:,no:no+nn] = take(self.vs,ii,1)
-      f3d.oddsubgrid.volt[0 ,no:no+nn] = take(self.vs[0,:],ii)
-      f3d.oddsubgrid.numb[1:,no:no+nn] = take(self.ns,ii,1)
-      f3d.oddsubgrid.numb[0 ,no:no+nn] = take(self.ns[0,:],ii)
-      f3d.oddsubgrid.ilevel[no:no+nn] = take(self.mglevel,ii)
+      conductors.oddsubgrid.indx[0,no:no+nn] = take(self.ix,ii)
+      conductors.oddsubgrid.indx[1,no:no+nn] = take(self.iy,ii)
+      conductors.oddsubgrid.indx[2,no:no+nn] = take(self.iz,ii)
+      conductors.oddsubgrid.dels[:,no:no+nn] = take(self.dels,ii,1)
+      conductors.oddsubgrid.volt[:,no:no+nn] = take(self.vs,ii,1)
+      conductors.oddsubgrid.numb[:,no:no+nn] = take(self.ns,ii,1)
+      conductors.oddsubgrid.ilevel[no:no+nn] = take(self.mglevel,ii)
 
     # --- If the RZ solver is being used, the copy the data into that
     # --- database. This also copies all of the accumulated data back into
-    # --- the f3d database to allow for plotting and diagnostics.
+    # --- the database to allow for plotting and diagnostics.
     if ntot > 0 and installrz:
       if(solvergeom == w3d.RZgeom or solvergeom == w3d.XZgeom):
-        frz.install_conductors_rz()
+        frz.install_conductors_rz(conductors)
 
   def __neg__(self):
     "Delta not operator."
@@ -641,6 +645,21 @@ The attribute 'distance' holds the calculated distance.
                         rdistance,dd.distance)
     dd.distance = where((rdistance < 0.) & (self.distance <= 0.),
                         maximum(rdistance,self.distance),dd.distance)
+#   # --- This is an alternate solution that gaurantees that distance will
+#   # --- have the correct sign.
+#   c = greater(abs(self.distance),abs(right.distance))
+#   dd = Distance(self.xx,self.yy,self.zz,
+#                 choose(c,(self.distance,right.distance)))
+#   dd.distance = where((self.distance < 0.) & (right.distance > 0.),
+#                       maximum(-right.distance,self.distance),dd.distance)
+#   dd.distance = where((self.distance < 0.) & (right.distance <= 0.),
+#                       -right.distance,dd.distance)
+#   dd.distance = where((self.distance >= 0.) & (right.distance < 0.),
+#                       -right.distance,dd.distance)
+#   dd.distance = where((self.distance >= 0.) & (right.distance > 0.),
+#                       self.distance,dd.distance)
+#   dd.distance = where((self.distance == 0.) & (right.distance == 0.),
+#                       1.,dd.distance)
     return dd
 
 
@@ -918,7 +937,7 @@ Creates a grid object which can generate conductor data.
     iz = zeros(len(xmesh)*len(ymesh))
     return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh
 
-  def getdata(self,a,dfill=top.largepos):
+  def getdata(self,a,dfill=top.largepos,fuzzsign=-1):
     """
 Given an Assembly, accumulate the appropriate data to represent that
 Assembly on this grid.
@@ -947,7 +966,7 @@ Assembly on this grid.
         d.normalize(dx,dy,dz)
         tt2[3] = tt2[3] + wtime() - tt1
         tt1 = wtime()
-        d.setparity(dfill)
+        d.setparity(dfill,fuzzsign)
         tt2[4] = tt2[4] + wtime() - tt1
         tt1 = wtime()
         d.clean()
@@ -962,11 +981,16 @@ Assembly on this grid.
     self.generatetime = endtime - starttime
     #print tt2
 
-  def installdata(self,installrz=1,gridmode=1,solvergeom=None):
+  def installdata(self,installrz=1,gridmode=1,solvergeom=None,
+                  conductors=f3d.conductors):
     """
 Installs the conductor data into the fortran database
     """
-    self.dall.install(installrz,solvergeom)
+    conductors.leveliz[:self.mglevels] = self.mglevelsiz
+    conductors.levellx[:self.mglevels] = self.mglevelslx
+    conductors.levelly[:self.mglevels] = self.mglevelsly
+    conductors.levellz[:self.mglevels] = self.mglevelslz
+    self.dall.install(installrz,solvergeom,conductors)
     if gridmode is not None:
       f3d.gridmode = gridmode
 
