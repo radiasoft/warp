@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.20 2003/08/18 17:44:03 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.21 2003/10/07 21:50:55 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -164,6 +164,12 @@ Performs steady-state iterations
       npisum = sum(parallelsum(top.npinje_s))
       _ipstep = gun_steps*npisum/_ipsave
       if (_ipstep < 1): _ipstep = 1
+
+    # --- If w3d.l_inj_regular is set to true, then always save the
+    # --- trajectories of all of the particles.
+    if w3d.l_inj_regular:
+      _ipsave = 1
+      _ipstep = 1
 
     # --- set number of particles to zero.
     top.nps = 0
