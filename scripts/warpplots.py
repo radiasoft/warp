@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.70 2002/01/30 18:25:28 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.71 2002/02/21 23:28:17 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2723,7 +2723,7 @@ def pcphixy(iz=None,fullplane=1,**kw):
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
+    kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
   ppp = getphi(iz=iz)
   if me > 0: ppp = zeros((w3d.nx+1,w3d.ny+1),'d')
