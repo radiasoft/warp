@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.16 2004/02/17 18:55:41 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.17 2004/07/22 23:52:22 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -25,7 +25,7 @@ find_mgparam_version = "$Id: find_mgparam.py,v 1.16 2004/02/17 18:55:41 dave Exp
 # and it converged every time.  An effort was made to make the script robust
 # and idiot proof.
 
-def find_mgparam(lsavephi=false):
+def find_mgparam(lsavephi=false,resetpasses=0,solver=None,pkg3d=None):
   """
 Optimize both mgparam and up and down passes, minimizing the fieldsolve
 time.
@@ -33,30 +33,42 @@ time.
                    starting point for the field solver, rather than zeroing
                    out phi.
   """
-  if(w3d.solvergeom == w3d.XYZgeom and top.fstype != 7):
-    print "The fstype must be set to 7"
-    return
-  if(w3d.solvergeom == w3d.Zgeom): return
-  if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
-    frz.find_mgparam_rz(lsavephi)
-    return
+  if solver is None:
+    if(w3d.solvergeom == w3d.XYZgeom and top.fstype != 7):
+      print "The fstype must be set to 7"
+      return
+    if(w3d.solvergeom == w3d.Zgeom): return
+    if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
+      frz.find_mgparam_rz(lsavephi)
+      return
+    solver = f3d
+    if pkg3d is None: pkg3d = w3d
+  else:
+    if pkg3d is None: pkg3d = solver
+    
   
   # --- Save the cuurrent value of phi to be used as the initial value
-  if lsavephi: phisave = w3d.phi + 0.
-  else:        phisave = None
+  if lsavephi:
+    phisave = pkg3d.phi.copy()
+  else:
+    phisave = None
+
+  if resetpasses:
+    solver.downpasses = 1
+    solver.uppasses = 1
 
   # --- Do some error checking first
-  if f3d.downpasses == 0: f3d.downpasses = 1
-  if f3d.uppasses == 0: f3d.uppasses = 1
+  if solver.downpasses == 0: solver.downpasses = 1
+  if solver.uppasses == 0: solver.uppasses = 1
   # --- Get initial field solve time
-  nexttime = field_solve(phisave)
+  nexttime = field_solve(phisave,solver,pkg3d)
   prevtime = 2*nexttime
   # --- Make sure that the number of iterations is below the maximum
-  savemgtol = f3d.mgtol
-  if f3d.mgiters == f3d.mgmaxiters:
+  savemgtol = solver.mgtol
+  if solver.mgiters == solver.mgmaxiters:
     try:
-      f3d.mgtol = 10*f3d.mgerror
-      nexttime = field_solve(phisave)
+      solver.mgtol = 10*solver.mgerror
+      nexttime = field_solve(phisave,solver,pkg3d)
       prevtime = 2*nexttime
     except:
       print """Notice: the maximum number of iterations has been reached, so
@@ -65,26 +77,26 @@ tolerance, increasing the maximum number of iterations, or making a
 better initial guess of mgparam."""
   # --- Loop, increasing the number of passes until the time is minimized.
   while nexttime < prevtime:
-    prevparam = f3d.mgparam
+    prevparam = solver.mgparam
     prevtime = nexttime
-    nexttime = _find_mgparam(phisave)
+    nexttime = _find_mgparam(phisave,solver,pkg3d)
     print "Field solve time = ",nexttime
-    print "f3d.mgparam = ",f3d.mgparam
-    print "f3d.downpasses = ",f3d.downpasses
-    print "f3d.uppasses = ",f3d.uppasses
+    print "f3d.mgparam = ",solver.mgparam
+    print "f3d.downpasses = ",solver.downpasses
+    print "f3d.uppasses = ",solver.uppasses
     if nexttime < prevtime:
-      f3d.downpasses = f3d.downpasses + 1
-      f3d.uppasses = f3d.uppasses + 1
+      solver.downpasses = solver.downpasses + 1
+      solver.uppasses = solver.uppasses + 1
     else:
       # --- Reset the values to the previous ones (which were the best)
-      f3d.mgparam = prevparam
-      f3d.downpasses = f3d.downpasses - 1
-      f3d.uppasses = f3d.uppasses - 1
+      solver.mgparam = prevparam
+      solver.downpasses = solver.downpasses - 1
+      solver.uppasses = solver.uppasses - 1
       # --- Do some error checking first
-      if f3d.downpasses == 0: f3d.downpasses = 1
-      if f3d.uppasses == 0: f3d.uppasses = 1
+      if solver.downpasses == 0: solver.downpasses = 1
+      if solver.uppasses == 0: solver.uppasses = 1
   # --- Print error message if maximum iterations is reached.
-  if f3d.mgiters == f3d.mgmaxiters:
+  if solver.mgiters == solver.mgmaxiters:
     print """Notice: the maximum number of iterations has been reached, so
 the values above are unlikely to be optimal. Try increasing the
 tolerance, increasing the maximum number of iterations, or making a
@@ -93,103 +105,104 @@ better initial guess of mgparam."""
     print "-----------------------------------------"
     print "The optimized values:"
     print "Field solve time = ",prevtime
-    print "f3d.mgparam = ",f3d.mgparam
-    print "f3d.downpasses = ",f3d.downpasses
-    print "f3d.uppasses = ",f3d.uppasses
+    print "f3d.mgparam = ",solver.mgparam
+    print "f3d.downpasses = ",solver.downpasses
+    print "f3d.uppasses = ",solver.uppasses
   # --- Restore the value of mgtol
-  f3d.mgtol = savemgtol
+  solver.mgtol = savemgtol
     
-def field_solve(phisave):
+def field_solve(phisave,solver,pkg3d):
   if phisave is None:
     ixmin = 1
-    ixmax = w3d.nx-1
+    ixmax = pkg3d.nx-1
     iymin = 1
-    iymax = w3d.ny-1
+    iymax = pkg3d.ny-1
     izmin = 1
-    izmax = w3d.nz-1
-    if (w3d.boundxy > 0 or w3d.l2symtry or w3d.l4symtry): ixmin = 0
-    if (w3d.boundxy > 0): ixmax = w3d.nx
-    if (w3d.boundxy > 0 or w3d.l4symtry): iymin = 0
-    if (w3d.boundxy > 0): iymax = w3d.ny
-    if (w3d.bound0  > 0): izmin = 0
-    if (w3d.boundnz > 0): izmax = w3d.ny
-    w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
+    izmax = pkg3d.nz-1
+    if (pkg3d.boundxy > 0 or pkg3d.l2symtry or pkg3d.l4symtry): ixmin = 0
+    if (pkg3d.boundxy > 0): ixmax = pkg3d.nx
+    if (pkg3d.boundxy > 0 or pkg3d.l4symtry): iymin = 0
+    if (pkg3d.boundxy > 0): iymax = pkg3d.ny
+    if (pkg3d.bound0  > 0): izmin = 0
+    if (pkg3d.boundnz > 0): izmax = pkg3d.ny
+    pkg3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
   else:
-    w3d.phi[:,:,:] = phisave
+    pkg3d.phi[:,:,:] = phisave
     
   beforetime = wtime()
-  vp3d(-1)
+  if solver == f3d: vp3d(-1)
+  else:             solver.solve()
   aftertime = wtime()
   return globalsum(aftertime - beforetime)
 
-def _find_mgparam(phisave):
+def _find_mgparam(phisave,solver,pkg3d):
   icount = 0  # iteration count
 
 # --- Make sure that mgparam is between 0 and 2.
 # --- If mgparam is less then zero, put mgparam closer to 2 since the
 # --- optimal value is always closer to 2 than to 0.
-  if (f3d.mgparam <= 0.):
-    f3d.mgparam = max(1., 2. + f3d.mgparam)
+  if (solver.mgparam <= 0.):
+    solver.mgparam = max(1., 2. + solver.mgparam)
 
 # --- If mgparam is greater than two, put it on the other side of two
 # --- and reduce the increment.  This keeps mgparam near two.
-  if (f3d.mgparam > 2.):
-    f3d.mgparam = max(1., 4. - f3d.mgparam)
+  if (solver.mgparam > 2.):
+    solver.mgparam = max(1., 4. - solver.mgparam)
 
 # --- do initial field solve
-  fstime = field_solve(phisave)
+  fstime = field_solve(phisave,solver,pkg3d)
 
 # --- set initail values for 'previous' quantities
-  mgparam_prev = f3d.mgparam
-  mgiters_prev = f3d.mgiters
+  mgparam_prev = solver.mgparam
+  mgiters_prev = solver.mgiters
 
 # --- set initial increment for mgparam
   sincr = .05
 
 # --- set mgiters to 0 so that while loop executes at least once
-  f3d.mgiters = 0
+  solver.mgiters = 0
 
 # --- increment mgparam so next field solve uses new mgparam
-  f3d.mgparam = f3d.mgparam + sincr
+  solver.mgparam = solver.mgparam + sincr
 
 # --- Execute while loop until two iterations give the same number of field
 # --- solve iterations or until a maximum number of iterations has been
 # --- reached.
-  while (mgiters_prev != f3d.mgiters and icount < 200):
+  while (mgiters_prev != solver.mgiters and icount < 200):
 
 #   --- print out current value of mgparam
-    print "Best parameter so far = %f" % f3d.mgparam
+    print "Best parameter so far = %f" % solver.mgparam
 
 #   --- do field solve (which prints out number of field solve iterations)
-    up_old = f3d.uppasses
-    fstime = field_solve(phisave)
+    up_old = solver.uppasses
+    fstime = field_solve(phisave,solver,pkg3d)
 
 #   --- If field solve took more iterations than previous field solve, change
 #   --- direction of the increment and reduce its size.  Reducing its size
 #   --- removes the possibility of an infinite loop.
-    if (f3d.mgiters > mgiters_prev):
+    if (solver.mgiters > mgiters_prev):
       sincr = - sincr/2.
-      f3d.mgparam = mgparam_prev + sincr
+      solver.mgparam = mgparam_prev + sincr
 
 #   --- If a smaller number of field solve iterations was returned, then
 #   --- reset the previous values and keep changing mgparam in the same
 #   --- direction.  The previous number of iterations is saved in mgiters
 #   --- temporarily to check if the two iterations had the same number
 #   --- of field solver iterations.
-    elif (f3d.mgiters < mgiters_prev):
+    elif (solver.mgiters < mgiters_prev):
       s = mgiters_prev
-      mgiters_prev = f3d.mgiters
-      f3d.mgiters = s
-      mgparam_prev = f3d.mgparam
-      f3d.mgparam = mgparam_prev + sincr
+      mgiters_prev = solver.mgiters
+      solver.mgiters = s
+      mgparam_prev = solver.mgparam
+      solver.mgparam = mgparam_prev + sincr
 
 #   --- Make sure that mgparam stays between 0.01 and 2.  .01 is used instead
 #   --- of zero since when mgparam is too close to zero, misleading things
 #   --- happen.
 #   --- If mgparam is outside the range, start the iterations over at a
 #   --- random place near the typical optimum value, 1.9.
-    if (f3d.mgparam <= 0.01 or 2. < f3d.mgparam):
-      f3d.mgparam = 1.9 + ranf()*.05
+    if (solver.mgparam <= 0.01 or 2. < solver.mgparam):
+      solver.mgparam = 1.9 + ranf()*.05
       sincr = .01
 
 #   --- increment iteration counter
@@ -203,3 +216,4 @@ def _find_mgparam(phisave):
 
 
   return fstime
+
