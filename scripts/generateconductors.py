@@ -99,7 +99,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.87 2004/09/13 22:31:01 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.88 2004/09/14 17:37:24 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -129,7 +129,7 @@ Installs the given conductors.
   - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
                        from w3d
   """
-  if conductors is None:
+  if conductors is None and gridrz is None:
     # --- If conductors was not specified, first check if mesh-refinement
     # --- or other special solver is being used.
     solver = getregisteredsolver()
