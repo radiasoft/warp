@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.93 2004/11/04 20:46:04 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.94 2004/11/12 18:00:53 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1255,7 +1255,8 @@ Creates a grid object which can generate conductor data.
     if top.fstype in [7,11,12]:
       conductors = ConductorType()
       getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
-                  conductors)
+                  conductors,
+                  top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
       self.mglevels = conductors.levels
       self.mgleveliz = conductors.leveliz[:self.mglevels].copy()
       self.mglevelnz = conductors.levelnz[:self.mglevels].copy()
