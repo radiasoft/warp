@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.134 $, $Date: 2005/01/24 13:19:01 $
+c@(#) File DTOP.F, version $Revision: 3.135 $, $Date: 2005/01/24 21:12:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -142,123 +142,136 @@ c============================================================================
       use Hist
       real(kind=8):: tim
 c  Save results of this time step in history buffers
-      integer(ISZ):: iw,iz
+      integer(ISZ):: iw,iz,js
 
       jhist = jhist + 1
       thist(jhist) = tim
       hzbeam(jhist) = zbeam
       hvbeam(jhist) = vbeam
       hefld(jhist) = ese
-      hbmlen(jhist,:) = sqrt(max(SMALLPOS, zsqbar(0,:)-zbar(0,:)**2))
-      hzbar(jhist,:) = zbar(0,:)
-      hekzmbe(jhist,:) = ekzmbe
-      hekzbeam(jhist,:) = ekzbeam
-      hekperp(jhist,:) = ekperp
-      hxmaxp(jhist,:) = xmaxp
-      hxminp(jhist,:) = xminp
-      hymaxp(jhist,:) = ymaxp
-      hyminp(jhist,:) = yminp
-      hzmaxp(jhist,:) = zmaxp
-      hzminp(jhist,:) = zminp
-      hvxmaxp(jhist,:) = vxmaxp
-      hvxminp(jhist,:) = vxminp
-      hvymaxp(jhist,:) = vymaxp
-      hvyminp(jhist,:) = vyminp
-      hvzmaxp(jhist,:) = vzmaxp
-      hvzminp(jhist,:) = vzminp
-c     do iw=0,nzwind
+
+      do js=0,nshist
+        hbmlen(jhist,js) = sqrt(max(SMALLPOS, zsqbar(0,js)-zbar(0,js)**2))
+        hzbar(jhist,js) = zbar(0,js)
+        hekzmbe(jhist,js) = ekzmbe(js)
+        hekzbeam(jhist,js) = ekzbeam(js)
+        hekperp(jhist,js) = ekperp(js)
+        hxmaxp(jhist,js) = xmaxp(js)
+        hxminp(jhist,js) = xminp(js)
+        hymaxp(jhist,js) = ymaxp(js)
+        hyminp(jhist,js) = yminp(js)
+        hzmaxp(jhist,js) = zmaxp(js)
+        hzminp(jhist,js) = zminp(js)
+        hvxmaxp(jhist,js) = vxmaxp(js)
+        hvxminp(jhist,js) = vxminp(js)
+        hvymaxp(jhist,js) = vymaxp(js)
+        hvyminp(jhist,js) = vyminp(js)
+        hvzmaxp(jhist,js) = vzmaxp(js)
+        hvzminp(jhist,js) = vzminp(js)
+
+c       --- Hopefully, this comment no longer applies.
+c       --- "This way" means using array notation, without the loops.
 c       --- Write the code this way gets around an unexplained segmentation
 c       --- fault that appears with the xlf compiler. It is almost certainly
 c       --- a compiler bug since the seg fault goes away when using the -g
 c       --- option, or when rewriting the code thusly.
-        hepsx(:,jhist,:)    = epsx(:,:)
-        hepsy(:,jhist,:)    = epsy(:,:)
-        hepsz(:,jhist,:)    = epsz(:,:)
-        hepsnx(:,jhist,:)   = epsnx(:,:)
-        hepsny(:,jhist,:)   = epsny(:,:)
-        hepsnz(:,jhist,:)   = epsnz(:,:)
-        hepsg(:,jhist,:)    = epsg(:,:)
-        hepsh(:,jhist,:)    = epsh(:,:)
-        hepsng(:,jhist,:)   = epsng(:,:)
-        hepsnh(:,jhist,:)   = epsnh(:,:)
-        hpnum(:,jhist,:)    = pnum(:,:)
-        hxbar(:,jhist,:)    = xbar(:,:)
-        hybar(:,jhist,:)    = ybar(:,:)
-        hxrms(:,jhist,:)    = xrms(:,:)
-        hyrms(:,jhist,:)    = yrms(:,:)
-        hrrms(:,jhist,:)    = rrms(:,:)
-        hxprms(:,jhist,:)   = xprms(:,:)
-        hyprms(:,jhist,:)   = yprms(:,:)
-        hxsqbar(:,jhist,:)  = xsqbar(:,:)
-        hysqbar(:,jhist,:)  = ysqbar(:,:)
-        hxybar(:,jhist,:)   = xybar(:,:)
-        hvxbar(:,jhist,:)   = vxbar(:,:)
-        hvybar(:,jhist,:)   = vybar(:,:)
-        hvzbar(:,jhist,:)   = vzbar(:,:)
-        hxpbar(:,jhist,:)   = xpbar(:,:)
-        hypbar(:,jhist,:)   = ypbar(:,:)
-        hvxrms(:,jhist,:)   = vxrms(:,:)
-        hvyrms(:,jhist,:)   = vyrms(:,:)
-        hvzrms(:,jhist,:)   = vzrms(:,:)
-        hxpsqbar(:,jhist,:) = xpsqbar(:,:) 
-        hypsqbar(:,jhist,:) = ypsqbar(:,:)
-        hxxpbar(:,jhist,:)  = xxpbar(:,:) 
-        hyypbar(:,jhist,:)  = yypbar(:,:) 
-        hxypbar(:,jhist,:)  = xypbar(:,:) 
-        hyxpbar(:,jhist,:)  = yxpbar(:,:) 
-        hxpypbar(:,jhist,:) = xpypbar(:,:) 
-        hxvzbar(:,jhist,:)  = xvzbar(:,:) 
-        hyvzbar(:,jhist,:)  = yvzbar(:,:) 
-        hvxvzbar(:,jhist,:) = vxvzbar(:,:) 
-        hvyvzbar(:,jhist,:) = vyvzbar(:,:) 
-        hrhomid(:,jhist)  = rhomid(:)
-        hrhomax(:,jhist)  = rhomax(:)
-c     enddo
 
-c     --- Collect only those z histories specified by the user.
+        do iw=0,nzwind
+          hepsx(iw,jhist,js)    = epsx(iw,js)
+          hepsy(iw,jhist,js)    = epsy(iw,js)
+          hepsz(iw,jhist,js)    = epsz(iw,js)
+          hepsnx(iw,jhist,js)   = epsnx(iw,js)
+          hepsny(iw,jhist,js)   = epsny(iw,js)
+          hepsnz(iw,jhist,js)   = epsnz(iw,js)
+          hepsg(iw,jhist,js)    = epsg(iw,js)
+          hepsh(iw,jhist,js)    = epsh(iw,js)
+          hepsng(iw,jhist,js)   = epsng(iw,js)
+          hepsnh(iw,jhist,js)   = epsnh(iw,js)
+          hpnum(iw,jhist,js)    = pnum(iw,js)
+          hxbar(iw,jhist,js)    = xbar(iw,js)
+          hybar(iw,jhist,js)    = ybar(iw,js)
+          hxrms(iw,jhist,js)    = xrms(iw,js)
+          hyrms(iw,jhist,js)    = yrms(iw,js)
+          hrrms(iw,jhist,js)    = rrms(iw,js)
+          hxprms(iw,jhist,js)   = xprms(iw,js)
+          hyprms(iw,jhist,js)   = yprms(iw,js)
+          hxsqbar(iw,jhist,js)  = xsqbar(iw,js)
+          hysqbar(iw,jhist,js)  = ysqbar(iw,js)
+          hxybar(iw,jhist,js)   = xybar(iw,js)
+          hvxbar(iw,jhist,js)   = vxbar(iw,js)
+          hvybar(iw,jhist,js)   = vybar(iw,js)
+          hvzbar(iw,jhist,js)   = vzbar(iw,js)
+          hxpbar(iw,jhist,js)   = xpbar(iw,js)
+          hypbar(iw,jhist,js)   = ypbar(iw,js)
+          hvxrms(iw,jhist,js)   = vxrms(iw,js)
+          hvyrms(iw,jhist,js)   = vyrms(iw,js)
+          hvzrms(iw,jhist,js)   = vzrms(iw,js)
+          hxpsqbar(iw,jhist,js) = xpsqbar(iw,js) 
+          hypsqbar(iw,jhist,js) = ypsqbar(iw,js)
+          hxxpbar(iw,jhist,js)  = xxpbar(iw,js) 
+          hyypbar(iw,jhist,js)  = yypbar(iw,js) 
+          hxypbar(iw,jhist,js)  = xypbar(iw,js) 
+          hyxpbar(iw,jhist,js)  = yxpbar(iw,js) 
+          hxpypbar(iw,jhist,js) = xpypbar(iw,js) 
+          hxvzbar(iw,jhist,js)  = xvzbar(iw,js) 
+          hyvzbar(iw,jhist,js)  = yvzbar(iw,js) 
+          hvxvzbar(iw,jhist,js) = vxvzbar(iw,js) 
+          hvyvzbar(iw,jhist,js) = vyvzbar(iw,js) 
+        enddo
+
+c       --- Collect only those z histories specified by the user.
+        do iz=0,nzzarr
+          if (lhcurrz)    hcurrz(iz,jhist,js) = curr(iz,js)
+        enddo
+        do iz=0,nzmmnt
+          if (lhepsxz)    hepsxz(iz,jhist,js)    = epsxz(iz,js)
+          if (lhepsyz)    hepsyz(iz,jhist,js)    = epsyz(iz,js)
+          if (lhepsnxz)   hepsnxz(iz,jhist,js)   = epsnxz(iz,js)
+          if (lhepsnyz)   hepsnyz(iz,jhist,js)   = epsnyz(iz,js)
+          if (lhepsgz)    hepsgz(iz,jhist,js)    = epsgz(iz,js)
+          if (lhepshz)    hepshz(iz,jhist,js)    = epshz(iz,js)
+          if (lhepsngz)   hepsngz(iz,jhist,js)   = epsngz(iz,js)
+          if (lhepsnhz)   hepsnhz(iz,jhist,js)   = epsnhz(iz,js)
+          if (lhxbarz)    hxbarz(iz,jhist,js)    = xbarz(iz,js)
+          if (lhybarz)    hybarz(iz,jhist,js)    = ybarz(iz,js)
+          if (lhxybarz)   hxybarz(iz,jhist,js)   = xybarz(iz,js)
+          if (lhxrmsz)    hxrmsz(iz,jhist,js)    = xrmsz(iz,js)
+          if (lhyrmsz)    hyrmsz(iz,jhist,js)    = yrmsz(iz,js)
+          if (lhrrmsz)    hrrmsz(iz,jhist,js)    = rrmsz(iz,js)
+          if (lhxprmsz)   hxprmsz(iz,jhist,js)   = xprmsz(iz,js)
+          if (lhyprmsz)   hyprmsz(iz,jhist,js)   = yprmsz(iz,js)
+          if (lhxsqbarz)  hxsqbarz(iz,jhist,js)  = xsqbarz(iz,js)
+          if (lhysqbarz)  hysqbarz(iz,jhist,js)  = ysqbarz(iz,js)
+          if (lhvxbarz)   hvxbarz(iz,jhist,js)   = vxbarz(iz,js)
+          if (lhvybarz)   hvybarz(iz,jhist,js)   = vybarz(iz,js)
+          if (lhvzbarz)   hvzbarz(iz,jhist,js)   = vzbarz(iz,js)
+          if (lhxpbarz)   hxpbarz(iz,jhist,js)   = xpbarz(iz,js)
+          if (lhypbarz)   hypbarz(iz,jhist,js)   = ypbarz(iz,js)
+          if (lhvxrmsz)   hvxrmsz(iz,jhist,js)   = vxrmsz(iz,js)
+          if (lhvyrmsz)   hvyrmsz(iz,jhist,js)   = vyrmsz(iz,js)
+          if (lhvzrmsz)   hvzrmsz(iz,jhist,js)   = vzrmsz(iz,js)
+          if (lhxpsqbarz) hxpsqbarz(iz,jhist,js) = xpsqbarz(iz,js)
+          if (lhypsqbarz) hypsqbarz(iz,jhist,js) = ypsqbarz(iz,js)
+          if (lhxxpbarz)  hxxpbarz(iz,jhist,js)  = xxpbarz(iz,js)
+          if (lhyypbarz)  hyypbarz(iz,jhist,js)  = yypbarz(iz,js)
+          if (lhxypbarz)  hxypbarz(iz,jhist,js)  = xypbarz(iz,js)
+          if (lhyxpbarz)  hyxpbarz(iz,jhist,js)  = yxpbarz(iz,js)
+          if (lhxpypbarz) hxpypbarz(iz,jhist,js) = xpypbarz(iz,js)
+          if (lhxvzbarz)  hxvzbarz(iz,jhist,js)  = xvzbarz(iz,js)
+          if (lhyvzbarz)  hyvzbarz(iz,jhist,js)  = yvzbarz(iz,js)
+          if (lhvxvzbarz) hvxvzbarz(iz,jhist,js) = vxvzbarz(iz,js)
+          if (lhvyvzbarz) hvyvzbarz(iz,jhist,js) = vyvzbarz(iz,js)
+        enddo
+      enddo
+
+c     --- These are the arrays which do not have the species index.
+      do iw=0,nzwind
+        hrhomid(iw,jhist)  = rhomid(iw)
+        hrhomax(iw,jhist)  = rhomax(iw)
+      enddo
       do iz=0,nzzarr
         if (lhlinechg)  hlinechg(iz,jhist) = linechg(iz)
         if (lhvzofz)    hvzofz(iz,jhist) = vzofz(iz)
-        if (lhcurrz)    hcurrz(iz,jhist,:) = curr(iz,:)
-      enddo
-      do iz=0,nzmmnt
-        if (lhepsxz)    hepsxz(iz,jhist,:)    = epsxz(iz,:)
-        if (lhepsyz)    hepsyz(iz,jhist,:)    = epsyz(iz,:)
-        if (lhepsnxz)   hepsnxz(iz,jhist,:)   = epsnxz(iz,:)
-        if (lhepsnyz)   hepsnyz(iz,jhist,:)   = epsnyz(iz,:)
-        if (lhepsgz)    hepsgz(iz,jhist,:)    = epsgz(iz,:)
-        if (lhepshz)    hepshz(iz,jhist,:)    = epshz(iz,:)
-        if (lhepsngz)   hepsngz(iz,jhist,:)   = epsngz(iz,:)
-        if (lhepsnhz)   hepsnhz(iz,jhist,:)   = epsnhz(iz,:)
-        if (lhxbarz)    hxbarz(iz,jhist,:)    = xbarz(iz,:)
-        if (lhybarz)    hybarz(iz,jhist,:)    = ybarz(iz,:)
-        if (lhxybarz)   hxybarz(iz,jhist,:)   = xybarz(iz,:)
-        if (lhxrmsz)    hxrmsz(iz,jhist,:)    = xrmsz(iz,:)
-        if (lhyrmsz)    hyrmsz(iz,jhist,:)    = yrmsz(iz,:)
-        if (lhrrmsz)    hrrmsz(iz,jhist,:)    = rrmsz(iz,:)
-        if (lhxprmsz)   hxprmsz(iz,jhist,:)   = xprmsz(iz,:)
-        if (lhyprmsz)   hyprmsz(iz,jhist,:)   = yprmsz(iz,:)
-        if (lhxsqbarz)  hxsqbarz(iz,jhist,:)  = xsqbarz(iz,:)
-        if (lhysqbarz)  hysqbarz(iz,jhist,:)  = ysqbarz(iz,:)
-        if (lhvxbarz)   hvxbarz(iz,jhist,:)   = vxbarz(iz,:)
-        if (lhvybarz)   hvybarz(iz,jhist,:)   = vybarz(iz,:)
-        if (lhvzbarz)   hvzbarz(iz,jhist,:)   = vzbarz(iz,:)
-        if (lhxpbarz)   hxpbarz(iz,jhist,:)   = xpbarz(iz,:)
-        if (lhypbarz)   hypbarz(iz,jhist,:)   = ypbarz(iz,:)
-        if (lhvxrmsz)   hvxrmsz(iz,jhist,:)   = vxrmsz(iz,:)
-        if (lhvyrmsz)   hvyrmsz(iz,jhist,:)   = vyrmsz(iz,:)
-        if (lhvzrmsz)   hvzrmsz(iz,jhist,:)   = vzrmsz(iz,:)
-        if (lhxpsqbarz) hxpsqbarz(iz,jhist,:) = xpsqbarz(iz,:)
-        if (lhypsqbarz) hypsqbarz(iz,jhist,:) = ypsqbarz(iz,:)
-        if (lhxxpbarz)  hxxpbarz(iz,jhist,:)  = xxpbarz(iz,:)
-        if (lhyypbarz)  hyypbarz(iz,jhist,:)  = yypbarz(iz,:)
-        if (lhxypbarz)  hxypbarz(iz,jhist,:)  = xypbarz(iz,:)
-        if (lhyxpbarz)  hyxpbarz(iz,jhist,:)  = yxpbarz(iz,:)
-        if (lhxpypbarz) hxpypbarz(iz,jhist,:) = xpypbarz(iz,:)
-        if (lhxvzbarz)  hxvzbarz(iz,jhist,:)  = xvzbarz(iz,:)
-        if (lhyvzbarz)  hyvzbarz(iz,jhist,:)  = yvzbarz(iz,:)
-        if (lhvxvzbarz) hvxvzbarz(iz,jhist,:) = vxvzbarz(iz,:)
-        if (lhvyvzbarz) hvyvzbarz(iz,jhist,:) = vyvzbarz(iz,:)
       enddo
 
       return
@@ -658,7 +671,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.134 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.135 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
