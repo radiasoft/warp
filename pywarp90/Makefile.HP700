@@ -67,7 +67,7 @@ MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
 		pybasisC.c
 
 static: $(WARPOBJECTS) $(MODULEOBJECTS) config.o
-	cc -o pywarp $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o \
+	cc -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o \
 	-lm -lX11 $(PYTHONLIB) $(LINKLIB) $(OTHERLIBS)
 
 warp: $(SHAREDOBJECTS)
