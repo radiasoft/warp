@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.35 $, $Date: 2002/04/26 16:07:50 $
+c@(#) File F3D.M, version $Revision: 3.36 $, $Date: 2002/04/26 22:09:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6566,7 +6566,7 @@ c===========================================================================
 
 c Sets points on injection source.
 
-      integer(ISZ):: ij,ix,iy,iz,npoints,nsgpoints
+      integer(ISZ):: ij,inj_ij,ix,iy,iz,npoints,nsgpoints
       integer(ISZ):: ixmin,ixmax,iymin,iymax
       real(kind=8):: xx,yy,zz,rmaxsq,ao_dx,bo_dy,ai_dx,bi_dy
       real(kind=8):: delmx,delpx,delmy,delpy,delmz,delpz,rrsq
@@ -6581,6 +6581,7 @@ c     --- Set size of fuzz
 
 c     --- calculate points for injection source
       do ij=1,ninject
+        inj_ij = min(ij,inj_ninj)
 c       --- find bounds of loop
         ixmin = max(1,       int((-ainject(ij)+xinject(ij))/dx+ix_axis-1))
         ixmax = min(inj_nx-1,int((+ainject(ij)+xinject(ij))/dx+ix_axis+1))
@@ -6629,13 +6630,13 @@ c           --- will be piecewise linear), otherwise make the surface spherical.
               delmz = iz - (inj_grid(ix,iy) - zmmin)/dz
               delpz = 2.
               if (inj_grid(ix-1,iy) > zz)
-     &          delmx = delmz/(inj_grid(ix-1,iy)-inj_grid(ix,iy))*dz
+     &          delmx = delmz/(inj_grid(ix-1,iy,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
               if (inj_grid(ix+1,iy) > zz)
-     &          delpx = delmz/(inj_grid(ix+1,iy)-inj_grid(ix,iy))*dz
+     &          delpx = delmz/(inj_grid(ix+1,iy,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
               if (inj_grid(ix,iy-1) > zz)
-     &          delmy = delmz/(inj_grid(ix,iy-1)-inj_grid(ix,iy))*dz
+     &          delmy = delmz/(inj_grid(ix,iy-1,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
               if (inj_grid(ix,iy+1) > zz)
-     &          delpy = delmz/(inj_grid(ix,iy+1)-inj_grid(ix,iy))*dz
+     &          delpy = delmz/(inj_grid(ix,iy+1,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
             else
               zz = (zinject(ij) - zmmin) + (xx**2 + yy**2)/
      &             (rinject(ij) + sqrt(rinject(ij)**2 - (xx**2 + yy**2)))
