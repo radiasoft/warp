@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.9 $, $Date: 2001/08/28 01:16:48 $
+#@(#) File F3D.V, version $Revision: 3.10 $, $Date: 2001/08/31 18:28:31 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.9 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.10 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -206,6 +206,10 @@ mgtol      real  /1.e-6/ # Absolute tolerance in change in last iteration
 downpasses integer /1/   # Number of downpasses
 uppasses   integer /1/   # Number of uppasses
 tempsize   integer       # Size of work space (autoset)
+mggoodnumbers(40) integer /4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256,320,384,448,512,640,768,896,1024,1280,1536,1792,2048,2560,3072,3584,5120,7168/
+                         # A list of good numbers to use for the grid
+                         # dimension. This is an ordered list of powers of two
+                         # times 1, 3, 5, and 7.
 phi_temp(tempsize) _real # Work space holding phi on all grid levels
 rho_temp(tempsize) _real # Work space holding source on all grid levels
 conductor_data_level(nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real)
