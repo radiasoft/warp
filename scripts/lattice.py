@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.7 2002/03/07 00:30:07 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.8 2002/04/04 21:24:57 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -395,6 +395,8 @@ Creates an instance of a Hele lattice element.
   - vv=[] list of v indices of multipole components
   - ae=[] list of magnitudes of electric multipole components
   - am=[] list of magnitudes of magnetic multipole components
+  - ep=[] list of magnitudes of the derivative of electric multipole components
+  - mp=[] list of magnitudes of the derivative of magnetic multipole components
   - pe=[] list of phase angles of electric multipole components
   - pm=[] list of phase angles of magnetic multipole components
   - rr=0 rod radius of an electric quad
@@ -406,7 +408,7 @@ Creates an instance of a Hele lattice element.
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
-               nn=[],vv=[],ae=[],am=[],pe=[],pm=[],
+               nn=[],vv=[],ae=[],am=[],ep=[],mp=[],pe=[],pm=[],
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
@@ -415,6 +417,8 @@ Creates an instance of a Hele lattice element.
     self.vv = vv
     self.ae = ae
     self.am = am
+    self.ep = ep
+    self.mp = mp
     self.pe = pe
     self.pm = pm
     self.rr = rr
@@ -429,6 +433,8 @@ Creates an instance of a Hele lattice element.
     self.vv = array(self.vv)
     self.ae = array(self.ae)
     self.am = array(self.am)
+    self.ep = array(self.ep)
+    self.mp = array(self.mp)
     self.pe = array(self.pe)
     self.pm = array(self.pm)
 
@@ -1045,6 +1051,8 @@ information if the WARP lattice arrays is deleted.
       top.hele_v[:,ihele] = e.vv
       top.heleae[:len(e.ae),ihele] = e.ae
       top.heleam[:len(e.am),ihele] = e.am
+      top.heleep[:len(e.ep),ihele] = e.ep
+      top.helemp[:len(e.mp),ihele] = e.mp
       top.helepe[:len(e.pe),ihele] = e.pe
       top.helepm[:len(e.pm),ihele] = e.pm
 
