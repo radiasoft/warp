@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.33 $, $Date: 2002/01/22 17:21:18 $
+#@(#) File TOP.V, version $Revision: 3.34 $, $Date: 2002/02/07 16:34:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,14 +61,14 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.33 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.34 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
 largepos real    /LARGEPOS/ # Large positive number
 smallpos real    /SMALLPOS/ # Small positive number
 
-*********** Timers dump:
+*********** Timers dump parallel:
 starttime   real /0./ # CPU start time (in seconds)
 gentime     real /0./ # CPU for generate (in seconds)
 steptime    real /0./ # Total CPU run time minus gentime (in seconds)
