@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.118 $, $Date: 2004/10/21 01:08:53 $
+#@(#) File F3D.V, version $Revision: 3.119 $, $Date: 2004/11/11 20:22:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.118 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.119 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -464,6 +464,7 @@ vcap3d(iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
      subroutine # External routine for capacity matrix field solve
 
 ******** ConductorGeometryGenerators:
+solvequartic(a0:real,a1:real,a2:real,a3:real,x1:complex,x2:complex,x3:complex,x4:complex) subroutine
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
                    dels:real,parity:integer,fuzz:real,fuzzsign:integer,
                    dfill:real) subroutine
