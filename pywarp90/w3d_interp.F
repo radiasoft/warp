@@ -71,7 +71,7 @@ c     print*,"start mugrdb, uxp,dtb = ", uxp(ipmin),needcalcgradb,dtb
         vxby=uzp(ip)*bx(i)-uxp(ip)*bz(i)
         vxbz=uxp(ip)*by(i)-uyp(ip)*bx(i)
         bdbsqds = bx(i)*grdbsq(2,i)+by(i)*grdbsq(3,i)+bz(i)*grdbsq(1,i)
-        coef=alphcoef*alphabar(i)*m_over_q(is)*bsqi(i)**2*bdbsqds
+        coef=0.25*alphabar(i)*m_over_q(is)*bsqi(i)**2*bdbsqds
         bxeff(i)=coef*vxbx
         byeff(i)=coef*vxby
         bzeff(i)=coef*vxbz
@@ -189,7 +189,8 @@ c     add in vparallel to get the drift-kinetic velocity
          vdky = vdy(i) + vparoverB(i)*by(i)
          vdkz = vdz(i) + vparoverB(i)*bz(i)
 
-c         if (i==1) print*, "in getveff",vdx(i),vparoverB(i),bx(i),vdkx
+c         if (i==1 .and. ipmin==1) print*, "in getveff",
+c     1      vdx(i),vparoverB(i),bx(i),vdkx,alpha(1),uxp(1)
 c     calculate interpolated velocity
          uxeff(i)=alpha(i)*uxp(ip) + alphabar(i)*vdkx
          uyeff(i)=alpha(i)*uyp(ip) + alphabar(i)*vdky
@@ -247,6 +248,8 @@ c        vdz(i) = vez(i) + vbz(i) + vpolz(i)
         vdy(i) = vey(i) + vby(i)
         vdz(i) = vez(i) + vbz(i)
       enddo
+c      if (ipmin == 1) print*, "in getvdrift",
+c    1      vex(1),ey(1),bz(1),ez(1),by(1),bsqi(1),vdx(1)
 c     print*,"drifts, x,ex, bx,bsqi ", x(1),ex(1),bx(1),bsqi(1)
 c     print*,"vex,vbx,vdx",vex(1),vbx(1),vdx(1)
       return
@@ -290,7 +293,8 @@ c     sets ej and bj.
       real(kind=8):: dtr
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
 c     print*,"*****SETTING FIELDS"
-      call fetche3d(ipmin,npd,is)
+      call fetche3d1(npd,x,y,z)
+c      call fetche3d(ipmin,npd,is)
 c     add in ears and uniform focusing E field pieces
       call othere3d(npd,x,y,z,zbeam,zimax,zimin,straight,ifeears,eears,
      &                     eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,
@@ -343,7 +347,7 @@ c     Calculate B**2 and interpolation parameter
 c         calculate interpolation parameter, 0 if magnetized, 1 if not
           omegacesq = qovermsq(is)*bsq(i)
           omegadtsq = omegacesq*dt**2
-          alpha(i) = usealphacalc(is)/sqrt(1.+.25*omegadtsq)  
+          alpha(i) = usealphacalc(is)/sqrt(1.+alphcoef*omegadtsq)  
      &       + notusealphcalc(is)
 c         alpha(i) = 1./sqrt(1.+omegadtsq)
 c         alpha = 1./sqrt(1.+4.*omegadtsq)
@@ -413,3 +417,27 @@ c      bx,by,bz written in bx(i), by(i), bz(i).  Returns ex, ey, ez
 
 c============================================================================ 
 c END INTERPOLATION ROUTINES
+c============================================================================
+c    Temporarily sets top.xp=x, etc, calls fetch3d, and resets top.xp
+      subroutine fetche3d1(npd,x,y,z)
+      use Particles
+      integer(ISZ):: npd,i
+      real(kind=8):: x(npd),y(npd),z(npd),xpd(npd),ypd(npd),zpd(npd)
+c     save values of xp, yp, zp and set xp,yp,zp to the x,y,z arrays
+      do i=1,npd
+         xpd(i)=xp(i)
+         ypd(i)=yp(i)
+         zpd(i)=zp(i)
+         xp(i)=x(i)
+         yp(i)=y(i)
+         zp(i)=z(i)
+      enddo
+      call fetche3d(1,npd,1)
+c     reset xp,yp,zp
+      do i=1,npd
+         xp(i)=xpd(i)
+         yp(i)=ypd(i)
+         zp(i)=zpd(i)
+      enddo
+      return
+      end
