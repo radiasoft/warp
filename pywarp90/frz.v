@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.23 $, $Date: 2002/11/06 01:08:22 $
+#@(#) File FRZ.V, version $Revision: 3.24 $, $Date: 2003/03/05 02:18:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.23 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.24 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -86,7 +86,7 @@ l_distribute              logical  /.true./
 *********** InjectVars_eq dump:
 # variables and functions needed for getting voltage risetime from assumption of 
 # constant injection (works with inj_d=2).
-inj_phi_eq  _real # Electrostatic potential at the emitting surface at equilibrium.
+inj_phi_eq   real # Electrostatic potential at the emitting surface at equilibrium.
 v_max                real /0./
 l_find_rise_time     logical /.false./
 afact                real /1./
