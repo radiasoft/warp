@@ -1,4 +1,4 @@
-!     Last change:  JLV  15 Jul 2002    5:49 pm
+!     Last change:  JLV  16 Jul 2002    1:26 pm
 #include "top.h"
 
 module multigrid_common
@@ -3040,6 +3040,10 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
   IF(iwhich==1) return
 
 !  call distribute_rho(basegrid)
+
+  if (basegrid%ixrbnd==dirichlet) basegrid%phi(nr0+1,:) = u0(nr0+1,:)
+  if (basegrid%izlbnd==dirichlet) basegrid%phi(:,1)     = u0(:,1)
+  if (basegrid%izrbnd==dirichlet) basegrid%phi(:,nz0+1) = u0(:,nz0+1)
 
   call solve_mgridrz(basegrid,accuracy)
 
