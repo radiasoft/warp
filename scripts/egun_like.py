@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.19 2003/06/02 20:37:39 jlvay Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.20 2003/08/18 17:44:03 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -312,6 +312,10 @@ Performs steady-state iterations
 
       npssum = sum(parallelsum(top.nps))
       maxvz = parallelmax(top.vzmaxp)
+
+    # --- Print a blank line so that the previous status line is not written
+    # --- over.
+    if lstatusline: print ''
 
     # --- If rhoparam is not None, mix in the previous rho with the
     # --- new rho
