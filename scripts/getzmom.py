@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.9 2002/03/14 23:05:01 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.10 2002/03/15 00:13:40 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -18,7 +18,7 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
     2 gather moments
     3 final processing of moments, averaging and derived moments
   - js: select species over which to calculate moments,
-        None: calculates moments over range 0 .. top.nx or,
+        None: calculates moments over range 0 .. top.ns or,
         alternatively, over list of moments specified in jslist
   - jslist: list of species to calculate moments for
   - groupsize=256: size of particle groups sent to getzmmnt
@@ -60,7 +60,7 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
                   top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
                   top.gaminv[ipmin:],top.sq[js],top.sm[js],top.sw[js],
                   top.dt,2,top.nplive,
-                  uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js,top.ns)
+                  uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,top.ns)
 
   # Do final summing and averaging of the moments
   if (itask == 0 or itask == 3):
