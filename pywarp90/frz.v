@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.13 $, $Date: 2002/04/15 22:49:45 $
+#@(#) File FRZ.V, version $Revision: 3.14 $, $Date: 2002/06/18 22:15:33 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.13 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.14 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -45,6 +45,7 @@ mgridrz_npost             integer /4/   # number of relaxations steps after
                                         # coarsening, in multigrid solver  
 mgridrz_ncycles           integer /2/   # number of multigrid cycles per level
 mgridrz_nlevels_max       integer /100/ # maximum number of multigrid levels
+mgridrz_levels_min        integer /1/   # lowest level of coarsening
 mgridrz_nmeshmin          integer /8/   # minimum number of meshes in each direction at coarsest level
 mgridrz_mgparam           real /1.8/    # SOR parameter
 mgridrz_mgiters           real /0/      # actual number of iterations for a solve
