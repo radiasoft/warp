@@ -23,7 +23,7 @@ from warp import *
 #=================================================================
 true = 1; false = 0
 def setbgrd(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
-            zmax=0,griddedBOnly=false,symmetry=2,zonly=false):
+            zmax=0,griddedBOnly=false,symmetry=2,zonly=false,returnb=0):
     print "Setting grad b**2 array"
     # check to see if there is gridded B data.  Use top.bgrdbx as test
     #  If so, use its array to define dx, dy, dz.
@@ -58,12 +58,12 @@ def setbgrd(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
        top.bgrddx=dx
        top.bgrddy=dy
        top.bgrddz=dz
-       top.bgrdxs[1]=xmin
-       top.bgrdys[1]=ymin
-       top.bgrdzs[1]=zmin
-       top.bgrdze[1]=zmax
-       top.bgrdid[1]=1
-       top.bgrdsy[1]=2
+       top.bgrdxs[0]=xmin
+       top.bgrdys[0]=ymin
+       top.bgrdzs[0]=zmin
+       top.bgrdze[0]=zmax
+       top.bgrdid[0]=1
+       top.bgrdsy[0]=2
     if griddedBOnly == true:
         # set bx,by,bz to top.bgrdbx, etc.
         bx=top.bgrdbx[:,:,:,0]
@@ -90,11 +90,15 @@ def setbgrd(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
         print "shapes", shape(x),shape(uzd),shape(gaminv)
         print shape(bx),shape(ex)
         w3d.exteb3d(npuse,x,y,z,uzd,gaminv,dtl,dtr,
-               bx,by,bz,ex,ey,ez,top.sm[0],
+                    bx,by,bz,ex,ey,ez,top.sm[0],
                     top.sq[0],bendres,bendradi,gaminv,dt)
         print "called exteb3d"
     fillbgrd(bx,by,bz,dx,dy,dz,symmetry,zonly)
+    resetlat()
+    setlatt()
     print "Done setting grad B^2 array"
+    if returnb:return bx,by,bz
+
 def fillbgrd(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
     global bsq,twodxi,dbsqdx,nx,dbsqdz,nz1,dzi,nz
     #number of grid points
