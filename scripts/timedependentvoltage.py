@@ -100,10 +100,11 @@ Input for constructor:
     if time is None: time = top.time
     volt = self.getvolt(time)
     # --- Get the appropriate conductors object to install into.
-    if 'AMRtree' in __main__.__dict__:
-      conds = __main__.__dict__['AMRtree'].getconductors()
-    else:
+    solver = getregisteredsolver()
+    if solver is None:
       conds = [f3d.conductors]
+    else:
+      conds = solver.getconductors()
     for c in self.condid:
       for cond in conds:
         setconductorvoltage(volt,c,discrete=self.discrete,
