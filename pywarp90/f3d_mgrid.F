@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.72 $, $Date: 2004/08/05 00:56:07 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.73 $, $Date: 2004/08/13 22:19:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -195,7 +195,7 @@ c     --- If using residual correction form, need to save the original rho.
 c     --- Also setup parallel arrays.
       if (mgform == 2) then
 !$OMP SINGLE
-        allocate(rhosave(0:nx,0:ny,0:nz),res(0:nx,0:ny,-1:nz+1))
+        allocate(rhosave(0:nx,0:ny,0:nz),res(-1:nx+1,-1:ny+1,-1:nz+1))
 !$OMP END SINGLE
         rhosave = rho
 #ifdef MPIPARALLEL
@@ -232,7 +232,7 @@ c       --- voltages rather than zero as is done otherwise for residual
 c       --- correction form since it is operating on the error.
         if (mgform == 2) then
           call cond_potmg(conductors%interior,
-     &                    nx,ny,nz,phisave,0,.false.,mgform,.true.)
+     &                    nx,ny,nz,phisave,0,mgform,.true.)
           call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phisave,rhosave,res,
      &                  0,localbounds,mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors)
@@ -245,7 +245,7 @@ c       --- correction form since it is operating on the error.
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
-          rho = res(:,:,0:nz)
+          rho = res(0:nx,0:ny,0:nz)
           phi = 0.
         endif
 
@@ -399,11 +399,13 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
       real(kind=8):: dxsqi,dysqi,dzsqi
       logical(ISZ):: partialcoarsening
-      real(kind=8),allocatable:: phi2(:,:,:),rho2(:,:,:)
-      real(kind=8):: res(0:nx,0:ny,-1:nz+1)
+      real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
       integer(ISZ):: i
       real(kind=8):: ff
-      integer(ISZ):: nznew
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
+      real(kind=8):: dxcoarse,dycoarse,dzcoarse
+      real(kind=8):: dxcoarsesqi,dycoarsesqi,dzcoarsesqi
       integer(ISZ):: localbounds(0:5),localbounds2(0:5)
       integer(ISZ):: lparityall(0:nslaves-1),rparityall(0:nslaves-1)
       integer(ISZ):: lparity,rparity
@@ -463,9 +465,7 @@ c     message added by petermc, 1 Oct 2002
 
 c     --- Check if this is the finest level. If so, then don't do any further
 c     --- coarsening. This is the same check that is done in getmglevels.
-c     --- If grid is not at its coarsest level in any of the axis or and
-c     --- all dimensions are even, continue the coarsening.
-      if (mod(nx,4) == 0 .and. mod(ny,4) == 0 .and. mod(nzfull,4) == 0 .and.
+      if (nx >= 4 .and. ny >= 4 .and. nzfull >= 4 .and.
      &    mglevel < mgmaxlevels) then
 
 c       --- Get the residual on the current grid.
@@ -482,6 +482,26 @@ c       --- Get the residual on the current grid.
      &                                whosendingleft,whosendingright)
 #endif
 
+c       --- Calculate the size of the next coarsest grid. If the current
+c       --- size is twice and odd integer, the next coarsest size will be
+c       --- n/2+1, gauranteeing that it is even.
+c       --- Note that nzcoarse is only used if full-coarsening is done.
+        nxcoarse = nx/2
+        if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
+        nycoarse = ny/2
+        if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
+        nzcoarse = nz/2
+        if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
+        nzfullcoarse = nzfull/2
+        if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
+
+        dxcoarse = dx*nx/nxcoarse
+        dycoarse = dy*ny/nycoarse
+        dzcoarse = dz*nzfull/nzfullcoarse
+        dxcoarsesqi = 1./dxcoarse**2
+        dycoarsesqi = 1./dycoarse**2
+        dzcoarsesqi = 1./dzcoarse**2
+
 c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
 c       --- all axis.  This is the same check that is done in getmglevels.
 c       --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
@@ -494,26 +514,28 @@ c       --- processor can get a different value if dz == 4./3.*dx.
         if (partialcoarsening) then
 
 c         --- Alloate new work space
-          allocate(phi2(0:nx/2,0:ny/2,-1:nz+1),rho2(0:nx/2,0:ny/2,0:nz))
-          phi2 = 0.
-          rho2 = 0.
+          allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nz+1),
+     &             rhocoarse(0:nxcoarse,0:nycoarse,0:nz))
+          phicoarse = 0.
 
 c         --- Ratio of old to new constant needed to scale the residual for
 c         --- the restriction.
-          ff = (dxsqi+dysqi+dzsqi)/(dxsqi*0.25 + dysqi*0.25 + dzsqi)
-          call restrict2d(nx,ny,nz,nzfull,res,rho2,ff,localbounds)
+          ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzsqi)
+          call restrict2d(nx,ny,nz,res,nxcoarse,nycoarse,rhocoarse,ff,
+     &                    localbounds)
 
 c         --- Continue at the next coarsest level.
-          call vcycle(mglevel+1,nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,phi2,rho2,
+          call vcycle(mglevel+1,nxcoarse,nycoarse,nz,nzfull,dxcoarse,dycoarse,
+     &                dz,phicoarse,rhocoarse,
      &                rstar,linbend,bendx,globalbounds,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslave,nzfsslave)
 
 c         --- Add in resulting error.
-          call expand2d(nx/2,ny/2,nz,nzfull,phi2,phi,localbounds)
+          call expand2d(nx,ny,nz,phi,nxcoarse,nycoarse,phicoarse,localbounds)
 
-          deallocate(phi2,rho2)
+          deallocate(phicoarse,rhocoarse)
         else
 
           localbounds2 = globalbounds
@@ -536,31 +558,31 @@ c         --- used in the serial version.
           rparity = rparityall(my_index)
 c         --- Get processor with which to exchange data on coarse grid
           call mggetexchangepes(nslaves,izfsslave2,nzfsslave2,my_index,
-     &                          globalbounds,nzfull/2,
+     &                          globalbounds,nzfullcoarse,
      &                          lparityall,rparityall,
      &                          whosendingleft2,izsendingleft2,
      &                          whosendingright2,izsendingright2)
           if (izfsslave2(my_index) > 0) localbounds2(4) = -1
-          if (izfsslave2(my_index) + nznew < nzfull/2) localbounds2(5) = -1
+          if (izfsslave2(my_index) + nznew < nzfullcoarse) localbounds2(5) = -1
 #else
-          nznew = nz/2
           lparity = 0
           rparity = 0
 #endif
 
 c         --- Alloate new work space
-          allocate(phi2(0:nx/2,0:ny/2,-1:nznew+1),
-     &             rho2(0:nx/2,0:ny/2,0:nznew))
-          phi2 = 0.
-          rho2 = 0.
+          allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1),
+     &             rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse))
+          phicoarse = 0.
 
 c         --- Restriction - note that scaling factor for residual is always
 c         --- 4 for full-coarsening and is compiled into the restriction
 c         --- routine.
-          call restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,
+          ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzcoarsesqi)
+          call restrict3d(nx,ny,nz,res,
+     &                    nxcoarse,nycoarse,nzcoarse,rhocoarse,ff,
      &                    localbounds2,localbounds,lparity,rparity)
 #ifdef MPIPARALLEL
-          call mgexchange_rho(nx/2,ny/2,nznew,nzfull/2,rho2,
+          call mgexchange_rho(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
      &                        my_index,nslaves,izfsslave2,nzfsslave2,
      &                        lparityall,rparityall,
      &                        whosendingleft2,izsendingleft2,
@@ -568,15 +590,16 @@ c         --- routine.
 #endif
 
 c         --- Continue at the next coarsest level.
-          call vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
-     &                dx*2,dy*2,dz*2,phi2,rho2,
+          call vcycle(mglevel+1,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
+     &                dxcoarse,dycoarse,dzcoarse,phicoarse,rhocoarse,
      &                rstar,linbend,bendx,globalbounds,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslave2,nzfsslave2)
 
 c         --- Add in resulting error.
-          call expand3d(nx/2,ny/2,nznew,nz,nzfull/2,phi2,phi,localbounds,
+          call expand3d(nx,ny,nz,phi,
+     &                  nxcoarse,nycoarse,nzcoarse,phicoarse,localbounds,
      &                  lparity,rparity)
 #ifdef MPIPARALLEL
           call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,
@@ -584,7 +607,7 @@ c         --- Add in resulting error.
      &                                whosendingleft,whosendingright)
 #endif
 
-          deallocate(phi2,rho2)
+          deallocate(phicoarse,rhocoarse)
         endif
 
       endif
@@ -615,177 +638,218 @@ c     message added by petermc, 1 Oct 2002
       return
       end
 c=============================================================================
-      subroutine restrict2d(nx,ny,nz,nzfull,res,rho2,ff,bounds)
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: res(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: rho2(0:nx/2,0:ny/2,0:nz)
+      subroutine restrict2d(nx,ny,nz,res,nxcoarse,nycoarse,rhocoarse,
+     &                      ff,bounds)
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxcoarse,nycoarse
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nz)
       real(kind=8):: ff
       integer(ISZ):: bounds(0:5)
-
+      
 c Restrict transversely to a coarser grid.  The factor of ff is needed
 c since the residual will be used as the source term in the next coarser
 c grid and it implicitly includes the factor 0.5/(dxsqi+dysqi+dzsqi)
 c which is ff times too small with the current values of dxsqi etc.
 
       integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixcoarse,iycoarse
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: ixm1,ixp1,iym1,iyp1
+      integer(ISZ):: ixcoarsemin,ixcoarsemax,iycoarsemin,iycoarsemax
+      real(kind=8):: w,r,dx,dy,dxi,dyi,wx(0:3),wy(0:3)
 
 c     --- Set the loop limits, including edges when appropriate.
-      ixmin = 2
-      ixmax = nx-2
-      iymin = 2
-      iymax = ny-2
+      ixcoarsemin = 1
+      ixcoarsemax = nxcoarse-1
+      iycoarsemin = 1
+      iycoarsemax = nycoarse-1
       izmin = 0
       izmax = nz
-      if (bounds(0) >  0) ixmin = 0
-      if (bounds(1) == 1) ixmax = nx
-      if (bounds(2) >  0) iymin = 0
-      if (bounds(3) == 1) iymax = ny
+      if (bounds(0) >  0) ixcoarsemin = 0
+      if (bounds(1) == 1) ixcoarsemax = nxcoarse
+      if (bounds(2) >  0) iycoarsemin = 0
+      if (bounds(3) == 1) iycoarsemax = nycoarse
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz-1
 
+      dx = 1.*nx/nxcoarse
+      dy = 1.*ny/nycoarse
+      dxi = 1.*nxcoarse/nx
+      dyi = 1.*nycoarse/ny
+      w = ff*dxi*dyi
+
 c     --- Do the loops.
 !$OMP DO
       do iz=izmin,izmax
-        do iy=iymin,iymax,2
-          iym1 = iy - 1
-          if (iy==0 .and. bounds(2) == 1) iym1 = 1
-          if (iy==0 .and. bounds(2) == 2) iym1 = ny-1
-          iyp1 = iy + 1
-          if (iy == ny .and. bounds(3) == 1)  iyp1 = ny-1
-          if (iy == ny .and. bounds(3) == 2)  iyp1 = 1
+        do iycoarse=iycoarsemin,iycoarsemax
+c         --- The 1.e-10 fuzz is needed when dy is 2, in which case
+c         --- (iycoarse+-1)*dy would be integers. The fuzz forces truncation
+c         --- in the correct manner. The fuzz needs to be small compared to
+c         --- the maximum number of grid cells ever used.
+          iymin = int(ceiling((iycoarse-1)*dy + 1.e-10))
+          iymax = int(floor((iycoarse+1)*dy - 1.e-10))
 
-          do ix=ixmin,ixmax,2
-            ixm1 = ix - 1
-            if (ix==0 .and. bounds(0) == 1) ixm1 = 1
-            if (ix==0 .and. bounds(0) == 2) ixm1 = nx-1
-            ixp1 = ix + 1
-            if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
-            if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
+          do iy=iymin,iymax
+            wy(iy-iymin) = 1. - abs(iycoarse - iy*dyi)
+          enddo
 
-            rho2(ix/2,iy/2,iz) =
-     &        ff*0.2500*res(ix  ,iy  ,iz) +
-     &        ff*0.1250*res(ixm1,iy  ,iz) +
-     &        ff*0.1250*res(ixp1,iy  ,iz) +
-     &        ff*0.1250*res(ix  ,iym1,iz) +
-     &        ff*0.1250*res(ix  ,iyp1,iz) +
-     &        ff*0.0625*res(ixm1,iym1,iz) +
-     &        ff*0.0625*res(ixp1,iym1,iz) +
-     &        ff*0.0625*res(ixm1,iyp1,iz) +
-     &        ff*0.0625*res(ixp1,iyp1,iz)
+          do ixcoarse=ixcoarsemin,ixcoarsemax
+            ixmin = int(ceiling((ixcoarse-1)*dx + 1.e-10))
+            ixmax = int(floor((ixcoarse+1)*dx - 1.e-10))
+
+            do ix=ixmin,ixmax
+              wx(ix-ixmin) = 1. - abs(ixcoarse - ix*dxi)
+            enddo
+
+            r = 0.
+            do iy=iymin,iymax
+              do ix=ixmin,ixmax
+                r = r + wx(ix-ixmin)*wy(iy-iymin)*res(ix,iy,iz)
+              enddo
+            enddo
+            rhocoarse(ixcoarse,iycoarse,iz) = w*r
 
           enddo
         enddo
       enddo
 !$OMP END DO
 
-c     --- Make copies for the periodic boundaries.
-      if (bounds(1) == 2) rho2(nx/2,:,:) = rho2(0,:,:)
-      if (bounds(3) == 2) rho2(:,ny/2,:) = rho2(:,0,:)
+c     --- Set appropriate boundary values
+      if (bounds(0) == 0) rhocoarse(nxcoarse,:,:) = 0.
+      if (bounds(1) == 0) rhocoarse(nxcoarse,:,:) = 0.
+      if (bounds(1) == 2) rhocoarse(nxcoarse,:,:) = rhocoarse(0,:,:)
+      if (bounds(2) == 0) rhocoarse(:,nycoarse,:) = 0.
+      if (bounds(3) == 0) rhocoarse(:,nycoarse,:) = 0.
+      if (bounds(3) == 2) rhocoarse(:,nycoarse,:) = rhocoarse(:,0,:)
 
-      if (bounds(4) == 0) rho2(:,:,0) = 0.
-      if (bounds(5) == 0) rho2(:,:,nz) = 0.
+      if (bounds(4) == 0) rhocoarse(:,:,0) = 0.
+      if (bounds(5) == 0) rhocoarse(:,:,nz) = 0.
 
       return
       end
 c=============================================================================
-      subroutine restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,bounds2,bounds,
+      subroutine restrict3d(nx,ny,nz,res,
+     &                      nxcoarse,nycoarse,nzcoarse,rhocoarse,ff,
+     &                      bounds,boundscoarse,
      &                      lparity,rparity)
-      integer(ISZ):: nx,ny,nz,nznew,nzfull
-      real(kind=8):: res(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: rho2(0:nx/2,0:ny/2,0:nznew)
-      integer(ISZ):: bounds2(0:5),bounds(0:5)
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse)
+      real(kind=8):: ff
+      integer(ISZ):: bounds(0:5)
+      integer(ISZ):: boundscoarse(0:5)
       integer(ISZ):: lparity,rparity
-
-c Restrict to a coarser grid.  The factor of 4 is needed since the
+      
+c Restrict to a coarser grid.  The factor ff is needed since the
 c residual will be used as the source term in the next coarser grid and
-c it implicitly includes the factor 0.5/(dxsqi+dysqi+dzsqi) which is 4
-c times too small with the current values of dxsqi etc.
+c it implicitly includes the factor 0.5/(dxsqi+dysqi+dzsqi) which is
+c too small with the current values of dxsqi etc.
 
-      integer(ISZ):: ix,iy,iz,ic
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixcoarse,iycoarse,izcoarse
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1,iz00
+      integer(ISZ):: ixcoarsemin,ixcoarsemax,iycoarsemin,iycoarsemax
+      integer(ISZ):: izcoarsemin,izcoarsemax
+      real(kind=8):: r,w,dx,dy,dz,dxi,dyi,dzi,wx(0:3),wy(0:3),wz(0:3)
 
 c     --- Set the loop limits, including edges when appropriate.
-      ixmin = 2
-      ixmax = nx-2
-      iymin = 2
-      iymax = ny-2
-      izmin = 0
-      izmax = nznew
-      if (bounds(0) >  0) ixmin = 0
-      if (bounds(1) == 1) ixmax = nx
-      if (bounds(2) >  0) iymin = 0
-      if (bounds(3) == 1) iymax = ny
-      if (bounds(4) == 0 .or. lparity >= 1) izmin = 1
-      if (bounds(5) == 0 .or. rparity >= 1) izmax = nznew - 1
+      ixcoarsemin = 1
+      ixcoarsemax = nxcoarse-1
+      iycoarsemin = 1
+      iycoarsemax = nycoarse-1
+      izcoarsemin = 0
+      izcoarsemax = nzcoarse
+      if (bounds(0) >  0) ixcoarsemin = 0
+      if (bounds(1) == 1) ixcoarsemax = nxcoarse
+      if (bounds(2) >  0) iycoarsemin = 0
+      if (bounds(3) == 1) iycoarsemax = nycoarse
+      if (bounds(4) == 0 .or. lparity >= 1) izcoarsemin = 1
+      if (bounds(5) == 0 .or. rparity >= 1) izcoarsemax = nzcoarse - 1
+
+      dx = 1.*nx/nxcoarse
+      dy = 1.*ny/nycoarse
+      dz = 1.*nz/nzcoarse
+      dxi = 1.*nxcoarse/nx
+      dyi = 1.*nycoarse/ny
+      dzi = 1.*nzcoarse/nz
+      w = ff*dxi*dyi*dzi
 
 c     --- Do the loops.
 !$OMP DO
-      do iz=izmin,izmax
-        izm1 = 2*iz - 1 - lparity
-        izp1 = 2*iz + 1 - lparity
-        iz00 = 2*iz     - lparity
+      do izcoarse=izcoarsemin,izcoarsemax
+        izmin = int(ceiling((izcoarse-1)*dz + 1.e-10))
+        izmax = int(floor((izcoarse+1)*dz - 1.e-10))
 
-        do iy=iymin,iymax,2
-          iym1 = iy - 1
-          if (iy==0 .and. bounds(2) == 1) iym1 = 1
-          if (iy==0 .and. bounds(2) == 2) iym1 = ny-1
-          iyp1 = iy + 1
-          if (iy == ny .and. bounds(3) == 1)  iyp1 = ny-1
-          if (iy == ny .and. bounds(3) == 2)  iyp1 = 1
+c XXX lparity and rparity need to be accounted for yet. This does not work
+c in parallel yet!!!!!!
+c       izm1 = 2*iz - 1 - lparity
+c       izp1 = 2*iz + 1 - lparity
+c       iz00 = 2*iz     - lparity
 
-          do ix=ixmin,ixmax,2
-            ixm1 = ix - 1
-            if (ix==0 .and. bounds(0) == 1) ixm1 = 1
-            if (ix==0 .and. bounds(0) == 2) ixm1 = nx-1
-            ixp1 = ix + 1
-            if (ix == nx .and. bounds(1) == 1)  ixp1 = nx-1
-            if (ix == nx .and. bounds(1) == 2)  ixp1 = 1
+        do iz=izmin,izmax
+          wz(iz-izmin) = 1. - abs(izcoarse - iz*dzi)
+        enddo
 
-            rho2(ix/2,iy/2,iz) =
-     &       4.*0.125000*res(ix  ,iy  ,iz00) +
-     &       4.*0.062500*res(ixm1,iy  ,iz00) + 4.*0.062500*res(ixp1,iy  ,iz00) +
-     &       4.*0.062500*res(ix  ,iym1,iz00) + 4.*0.062500*res(ix  ,iyp1,iz00) +
-     &       4.*0.062500*res(ix  ,iy  ,izm1) + 4.*0.062500*res(ix  ,iy  ,izp1) +
-     &       4.*0.031250*res(ixm1,iym1,iz00) + 4.*0.031250*res(ixp1,iym1,iz00) +
-     &       4.*0.031250*res(ixm1,iyp1,iz00) + 4.*0.031250*res(ixp1,iyp1,iz00) +
-     &       4.*0.031250*res(ixm1,iy  ,izm1) + 4.*0.031250*res(ixp1,iy  ,izm1) +
-     &       4.*0.031250*res(ixm1,iy  ,izp1) + 4.*0.031250*res(ixp1,iy  ,izp1) +
-     &       4.*0.031250*res(ix  ,iym1,izm1) + 4.*0.031250*res(ix  ,iyp1,izm1) +
-     &       4.*0.031250*res(ix  ,iym1,izp1) + 4.*0.031250*res(ix  ,iyp1,izp1) +
-     &       4.*0.015625*res(ixm1,iym1,izm1) + 4.*0.015625*res(ixp1,iym1,izm1) +
-     &       4.*0.015625*res(ixm1,iyp1,izm1) + 4.*0.015625*res(ixp1,iyp1,izm1) +
-     &       4.*0.015625*res(ixm1,iym1,izp1) + 4.*0.015625*res(ixp1,iym1,izp1) +
-     &       4.*0.015625*res(ixm1,iyp1,izp1) + 4.*0.015625*res(ixp1,iyp1,izp1)
+        do iycoarse=iycoarsemin,iycoarsemax
+          iymin = int(ceiling((iycoarse-1)*dy + 1.e-10))
+          iymax = int(floor((iycoarse+1)*dy - 1.e-10))
+
+          do iy=iymin,iymax
+            wy(iy-iymin) = 1. - abs(iycoarse - iy*dyi)
+          enddo
+
+          do ixcoarse=ixcoarsemin,ixcoarsemax
+            ixmin = int(ceiling((ixcoarse-1)*dx + 1.e-10))
+            ixmax = int(floor((ixcoarse+1)*dx - 1.e-10))
+
+            do ix=ixmin,ixmax
+              wx(ix-ixmin) = 1. - abs(ixcoarse - ix*dxi)
+            enddo
+
+            r = 0.
+            do iz=izmin,izmax
+              do iy=iymin,iymax
+                do ix=ixmin,ixmax
+                  r = r + wx(ix-ixmin)*wy(iy-iymin)*wz(iz-izmin)*res(ix,iy,iz)
+                enddo
+              enddo
+            enddo
+            rhocoarse(ixcoarse,iycoarse,izcoarse) = w*r
 
           enddo
         enddo
       enddo
 !$OMP END DO
 
-c     --- Make copies for the periodic boundaries.
-      if (bounds(1) == 2) rho2(nx/2,:,:) = rho2(0,:,:)
-      if (bounds(3) == 2) rho2(:,ny/2,:) = rho2(:,0,:)
+c     --- Set appropriate boundary values
+      if (bounds(0) == 0) rhocoarse(nxcoarse,:,:) = 0.
+      if (bounds(1) == 0) rhocoarse(nxcoarse,:,:) = 0.
+      if (bounds(1) == 2) rhocoarse(nxcoarse,:,:) = rhocoarse(0,:,:)
+      if (bounds(2) == 0) rhocoarse(:,nycoarse,:) = 0.
+      if (bounds(3) == 0) rhocoarse(:,nycoarse,:) = 0.
+      if (bounds(3) == 2) rhocoarse(:,nycoarse,:) = rhocoarse(:,0,:)
 
-      if (bounds2(4) == 0) rho2(:,:,0) = 0.
-      if (bounds2(5) == 0) rho2(:,:,nznew) = 0.
+      if (boundscoarse(4) == 0 .or. lparity >= 1) rhocoarse(:,:,0) = 0.
+      if (boundscoarse(5) == 0 .or. rparity >= 1) rhocoarse(:,:,nzcoarse) = 0.
 
       return
       end
 c=============================================================================
-      subroutine expand2d(nx,ny,nz,nzfull,p2h,ph,bounds)
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: p2h(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: ph(0:nx*2,0:ny*2,-1:nz+1)
+      subroutine expand2d(nx,ny,nz,phi,nxcoarse,nycoarse,phicoarse,bounds)
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxcoarse,nycoarse
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: phicoarse(0:nxcoarse,0:nycoarse,-1:nz+1)
       integer(ISZ):: bounds(0:5)
 
 c Add the error on the coarser grid to the current value on the finer grid.
 c The expansion is only transverse.
 
-      integer(ISZ):: ix,iy,iz
       integer(ISZ):: izmin,izmax
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: jx,jy,jz
+      real(kind=8):: wx,wy,dx,dy
 
 c     --- Set the loop limits, including edges when appropriate.
       izmin = -1
@@ -793,183 +857,144 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz-1
 
-c     --- Do the loops.
+      dx = 1.*nxcoarse/nx
+      dy = 1.*nycoarse/ny
+
 !$OMP DO
       do iz=izmin,izmax
         do iy=0,ny-1
+          jy = int(iy*dy)
+          wy =     iy*dy - jy
           do ix=0,nx-1
+            jx = int(ix*dx)
+            wx =     ix*dx - jx
 
-            ph(2*ix  ,2*iy  ,iz)=ph(2*ix  ,2*iy  ,iz)+      p2h(ix  ,iy  ,iz)
-            ph(2*ix+1,2*iy  ,iz)=ph(2*ix+1,2*iy  ,iz)+0.50*(p2h(ix  ,iy  ,iz)+
-     &                                                      p2h(ix+1,iy  ,iz))
-            ph(2*ix  ,2*iy+1,iz)=ph(2*ix  ,2*iy+1,iz)+0.50*(p2h(ix  ,iy  ,iz)+
-     &                                                      p2h(ix  ,iy+1,iz))
-            ph(2*ix+1,2*iy+1,iz)=ph(2*ix+1,2*iy+1,iz)+0.25*(p2h(ix  ,iy  ,iz)+
-     &                                                      p2h(ix+1,iy  ,iz)+
-     &                                                      p2h(ix  ,iy+1,iz)+
-     &                                                      p2h(ix+1,iy+1,iz))
+            phi(ix,iy,iz) = phi(ix,iy,iz) +
+     &             (1.-wx)*(1.-wy)*phicoarse(jx  ,jy  ,iz) +
+     &                 wx *(1.-wy)*phicoarse(jx+1,jy  ,iz) +
+     &             (1.-wx)*    wy *phicoarse(jx  ,jy+1,iz) +
+     &                 wx *    wy *phicoarse(jx+1,jy+1,iz)
           enddo
         enddo
       enddo
-!$OMP END DO
 
       if (bounds(1) > 0 .or. bounds(3) > 0) then
-!$OMP DO
         do iz=izmin,izmax
-
-c         --- Expand ix=nx, iy=ny line.
-          ph(2*nx,2*ny,iz) = ph(2*nx,2*ny,iz)+p2h(nx,ny,iz)
-
-c         --- Expand ix=nx plane.
+          phi(nx,ny,iz) = phi(nx,ny,iz) + phicoarse(nxcoarse,nycoarse,iz)
           if (bounds(1) > 0) then
             do iy=0,ny-1
-              ph(2*nx,2*iy  ,iz) = ph(2*nx,2*iy  ,iz) +      p2h(nx,iy  ,iz)
-              ph(2*nx,2*iy+1,iz) = ph(2*nx,2*iy+1,iz) + 0.5*(p2h(nx,iy  ,iz) +
-     &                                                       p2h(nx,iy+1,iz))
+              jy = int(iy*dy)
+              wy =     iy*dy - jy
+              phi(nx,iy,iz) = phi(nx,iy,iz) +
+     &                       (1.-wy)*phicoarse(nxcoarse,jy  ,iz) +
+     &                           wy *phicoarse(nxcoarse,jy+1,iz)
             enddo
           endif
-
-c         --- Expand iy=ny plane.
           if (bounds(3) > 0) then
             do ix=0,nx-1
-              ph(2*ix  ,2*ny,iz) = ph(2*ix  ,2*ny,iz) +      p2h(ix  ,ny,iz)
-              ph(2*ix+1,2*ny,iz) = ph(2*ix+1,2*ny,iz) + 0.5*(p2h(ix  ,ny,iz) +
-     &                                                       p2h(ix+1,ny,iz))
+              jx = int(ix*dx)
+              wx =     ix*dx - jx
+              phi(ix,ny,iz) = phi(ix,ny,iz) +
+     &                       (1.-wx)*phicoarse(jx  ,nycoarse,iz) +
+     &                           wx *phicoarse(jx+1,nycoarse,iz)
             enddo
           endif
-
         enddo
-!$OMP END DO
       endif
 
       return
       end
 c=============================================================================
-      subroutine expand3d(nx,ny,nz,nz2,nzfull,p2h,ph,bounds,lparity,rparity)
-      integer(ISZ):: nx,ny,nz,nz2,nzfull
-      real(kind=8):: p2h(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: ph(0:nx*2,0:ny*2,-1:nz2+1)
+      subroutine expand3d(nx,ny,nz,phi,
+     &                    nxcoarse,nycoarse,nzcoarse,phicoarse,bounds,
+     &                    lparity,rparity)
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1)
       integer(ISZ):: bounds(0:5),lparity,rparity
 
 c Add the error on the coarser grid to the current value on the finer grid.
-c The expansion is done along all axis.
+c The expansion is only transverse.
 
-      integer(ISZ):: ix,iy,iz,izmin,izmax
-      integer(ISZ):: iz2
+c XXX XXX Note, that lparity and rparity have not yet been accounted for.
+c         This will not work in parallel!!!!
 
-c     --- If lparity of even, start iz loop at 0 (since 0 lines up with
-c     --- cell in coarse grid). If lparity is odd, start iz loop at -1 (since
-c     --- -1 lines up with cell in coarse grid). It is almost certainly true
-c     --- that lparity is only 0 or 1, and lparity is never negative.
-c     --- Same for rparity.
-      izmin = -mod(lparity,2)
-      izmax = nz2 - mod(rparity,2)
+      integer(ISZ):: izmin,izmax
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: jx,jy,jz
+      real(kind=8):: dx,dy,dz
+      real(kind=8):: wx,wy,wz
 
-c     --- Expand the bulk of the grid.
+c     --- Set the loop limits, including edges when appropriate.
+      izmin = 0
+      izmax = nz
+
+      dx = 1.*nxcoarse/nx
+      dy = 1.*nycoarse/ny
+      dz = 1.*nzcoarse/nz
+
 !$OMP DO
-      do iz=izmin,izmax,2
-        iz2 = (iz + lparity)/2
+      do iz=izmin,izmax
+        jz = int(iz*dz)
+        wz =     iz*dz - jz
         do iy=0,ny-1
+          jy = int(iy*dy)
+          wy =     iy*dy - jy
           do ix=0,nx-1
+            jx = int(ix*dx)
+            wx =     ix*dx - jx
 
-      ph(2*ix  ,2*iy  ,iz  )=ph(2*ix  ,2*iy  ,iz  ) +
-     &                                                   p2h(ix  ,iy  ,iz2  )
-      ph(2*ix+1,2*iy  ,iz  )=ph(2*ix+1,2*iy  ,iz  ) +
-     &                                            0.500*(p2h(ix  ,iy  ,iz2  ) +
-     &                                                   p2h(ix+1,iy  ,iz2  ))
-      ph(2*ix  ,2*iy+1,iz  )=ph(2*ix  ,2*iy+1,iz  ) +
-     &                                            0.500*(p2h(ix  ,iy  ,iz2  ) +
-     &                                                   p2h(ix  ,iy+1,iz2  ))
-      ph(2*ix  ,2*iy  ,iz+1)=ph(2*ix  ,2*iy  ,iz+1) +
-     &                                            0.500*(p2h(ix  ,iy  ,iz2  ) +
-     &                                                   p2h(ix  ,iy  ,iz2+1))
-      ph(2*ix+1,2*iy+1,iz  )=ph(2*ix+1,2*iy+1,iz  ) +
-     &                                            0.250*(p2h(ix  ,iy  ,iz2  ) +
-     &                                                   p2h(ix+1,iy  ,iz2  ) +
-     &                                                   p2h(ix  ,iy+1,iz2  ) +
-     &                                                   p2h(ix+1,iy+1,iz2  ))
-      ph(2*ix+1,2*iy  ,iz+1)=ph(2*ix+1,2*iy  ,iz+1) +
-     &                                            0.250*(p2h(ix  ,iy  ,iz2  ) +
-     &                                                   p2h(ix+1,iy  ,iz2  ) +
-     &                                                   p2h(ix  ,iy  ,iz2+1) +
-     &                                                   p2h(ix+1,iy  ,iz2+1))
-      ph(2*ix  ,2*iy+1,iz+1)=ph(2*ix  ,2*iy+1,iz+1) +
-     &                                            0.250*(p2h(ix  ,iy  ,iz2  ) +
-     &                                                   p2h(ix  ,iy+1,iz2  ) +
-     &                                                   p2h(ix  ,iy  ,iz2+1) +
-     &                                                   p2h(ix  ,iy+1,iz2+1))
-      ph(2*ix+1,2*iy+1,iz+1)=ph(2*ix+1,2*iy+1,iz+1) +
-     &                                            0.125*(p2h(ix  ,iy  ,iz2  ) +
-     &                                                   p2h(ix+1,iy  ,iz2  ) +
-     &                                                   p2h(ix  ,iy+1,iz2  ) +
-     &                                                   p2h(ix+1,iy+1,iz2  ) +
-     &                                                   p2h(ix  ,iy  ,iz2+1) +
-     &                                                   p2h(ix+1,iy  ,iz2+1) +
-     &                                                   p2h(ix  ,iy+1,iz2+1) +
-     &                                                   p2h(ix+1,iy+1,iz2+1))
-
+            phi(ix,iy,iz) = phi(ix,iy,iz) +
+     &             (1.-wx)*(1.-wy)*(1.-wz)*phicoarse(jx  ,jy  ,jz  ) +
+     &                 wx *(1.-wy)*(1.-wz)*phicoarse(jx+1,jy  ,jz  ) +
+     &             (1.-wx)*    wy *(1.-wz)*phicoarse(jx  ,jy+1,jz  ) +
+     &                 wx *    wy *(1.-wz)*phicoarse(jx+1,jy+1,jz  ) +
+     &             (1.-wx)*(1.-wy)*    wz *phicoarse(jx  ,jy  ,jz+1) +
+     &                 wx *(1.-wy)*    wz *phicoarse(jx+1,jy  ,jz+1) +
+     &             (1.-wx)*    wy *    wz *phicoarse(jx  ,jy+1,jz+1) +
+     &                 wx *    wy *    wz *phicoarse(jx+1,jy+1,jz+1)
           enddo
         enddo
       enddo
-!$OMP END DO
 
       if (bounds(1) > 0 .or. bounds(3) > 0) then
-!$OMP DO
-        do iz=izmin,izmax,2
-          iz2 = (iz + lparity)/2
-
-c         --- Expand ix=nx, iy=ny line.
-          ph(2*nx,2*ny,iz  )=ph(2*nx,2*ny,iz  ) +        p2h(nx,ny,iz2  )
-          ph(2*nx,2*ny,iz+1)=ph(2*nx,2*ny,iz+1) + 0.500*(p2h(nx,ny,iz2  ) +
-     &                                                   p2h(nx,ny,iz2+1))
-
-c         --- Expand ix=nx plane.
+        do iz=izmin,izmax
+          jz = int(iz*dz)
+          wz =     iz*dz - jz
+          phi(nx,ny,iz) = phi(nx,ny,iz) +
+     &          (1.-wz)*phicoarse(nxcoarse,nycoarse,jz  ) +
+     &              wz *phicoarse(nxcoarse,nycoarse,jz+1)
           if (bounds(1) > 0) then
             do iy=0,ny-1
-              ph(2*nx,2*iy  ,iz  )=ph(2*nx,2*iy  ,iz  ) +
-     &                                                     p2h(nx,iy  ,iz2  )
-              ph(2*nx,2*iy+1,iz  )=ph(2*nx,2*iy+1,iz  )+
-     &                                              0.500*(p2h(nx,iy  ,iz2  ) +
-     &                                                     p2h(nx,iy+1,iz2  ))
-              ph(2*nx,2*iy  ,iz+1)=ph(2*nx,2*iy  ,iz+1)+
-     &                                              0.500*(p2h(nx,iy  ,iz2  ) +
-     &                                                     p2h(nx,iy  ,iz2+1))
-              ph(2*nx,2*iy+1,iz+1)=ph(2*nx,2*iy+1,iz+1)+
-     &                                              0.250*(p2h(nx,iy  ,iz2  ) +
-     &                                                     p2h(nx,iy+1,iz2  ) +
-     &                                                     p2h(nx,iy  ,iz2+1) +
-     &                                                     p2h(nx,iy+1,iz2+1))
+              jy = int(iy*dy)
+              wy =     iy*dy - jy
+              phi(nx,iy,iz) = phi(nx,iy,iz) +
+     &                       (1.-wy)*(1.-wz)*phicoarse(nxcoarse,jy  ,jz  ) +
+     &                           wy *(1.-wz)*phicoarse(nxcoarse,jy+1,jz  ) +
+     &                       (1.-wy)*    wz *phicoarse(nxcoarse,jy  ,jz+1) +
+     &                           wy *    wz *phicoarse(nxcoarse,jy+1,jz+1)
             enddo
           endif
-
-c         --- Expand iy=ny plane.
-          if (bounds(3) > 0) then
+          if (bounds(1) > 0) then
             do ix=0,nx-1
-              ph(2*ix  ,2*ny,iz  ) = ph(2*ix  ,2*ny,iz  ) +
-     &                                                     p2h(ix  ,ny,iz2  )
-              ph(2*ix+1,2*ny,iz  ) = ph(2*ix+1,2*ny,iz  )+
-     &                                              0.500*(p2h(ix  ,ny,iz2  ) +
-     &                                                     p2h(ix+1,ny,iz2  ))
-              ph(2*ix  ,2*ny,iz+1) = ph(2*ix  ,2*ny,iz+1)+
-     &                                              0.500*(p2h(ix  ,ny,iz2  ) +
-     &                                                     p2h(ix  ,ny,iz2+1))
-              ph(2*ix+1,2*ny,iz+1) = ph(2*ix+1,2*ny,iz+1)+
-     &                                              0.250*(p2h(ix  ,ny,iz2  ) +
-     &                                                     p2h(ix+1,ny,iz2  ) +
-     &                                                     p2h(ix  ,ny,iz2+1) +
-     &                                                     p2h(ix+1,ny,iz2+1))
+              jx = int(ix*dx)
+              wx =     ix*dx - jx
+              phi(ix,ny,iz) = phi(ix,ny,iz) +
+     &                       (1.-wx)*(1.-wz)*phicoarse(jx  ,nycoarse,jz  ) +
+     &                           wx *(1.-wz)*phicoarse(jx+1,nycoarse,jz  ) +
+     &                       (1.-wx)*    wz *phicoarse(jx  ,nycoarse,jz+1) +
+     &                           wx *    wz *phicoarse(jx+1,nycoarse,jz+1)
             enddo
           endif
-
         enddo
-!$OMP END DO
       endif
 
-      if (bounds(4) == 1) ph(:,:,-1) = ph(:,:,1)
-      if (bounds(5) == 1) ph(:,:,nz2+1) = ph(:,:,nz2-1)
+      if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
+      if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
 #ifndef MPIPARALLEL
-      if (bounds(4) == 2) ph(:,:,-1) = ph(:,:,nz2-1)
-      if (bounds(5) == 2) ph(:,:,nz2+1) = ph(:,:,1)
+      if (bounds(4) == 2) phi(:,:,-1) = phi(:,:,nz-1)
+      if (bounds(5) == 2) phi(:,:,nz+1) = phi(:,:,1)
 #endif
 
       return
@@ -1025,7 +1050,7 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
-     &                nx,ny,nz,phi,mglevel,.false.,mgform,.false.)
+     &                nx,ny,nz,phi,mglevel,mgform,.false.)
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
@@ -1282,18 +1307,20 @@ c     --- Periodic boundary conditions for the transverse planes
      &                  phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend,
      &                  rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx)
       endif
-      do iz=izl-1,izr-1
-        if (bounds(3) == 2) then
-          do ix=1+mod(iz+parity+1,2),nx-1,2
-            phi(ix,ny,iz) = phi(ix,0,iz)
-          enddo
-        endif
-        if (bounds(1) == 2) then
-          do iy=1+mod(iz+parity+1,2),ny-1,2
-            phi(nx,iy,iz) = phi(0,iy,iz)
-          enddo
-        endif
-      enddo
+      if (bounds(1) == 2 .or. bounds(3) == 2) then
+        do iz=izl-1,izr-1
+          if (bounds(3) == 2) then
+            do ix=1+mod(iz+parity+1,2),nx-1,2
+              phi(ix,ny,iz) = phi(ix,0,iz)
+            enddo
+          endif
+          if (bounds(1) == 2) then
+            do iy=1+mod(iz+parity+1,2),ny-1,2
+              phi(nx,iy,iz) = phi(0,iy,iz)
+            enddo
+          endif
+        enddo
+      endif
 c     --- lines at transverse edges
       if (ANY(bounds(0:3) == 2)) then
         call mgsor_loop(parity,nxy,izl,izl,1,1,nxy*(izr-izl)+1,2*nxy,
@@ -1307,6 +1334,36 @@ c     --- lines at transverse edges
         enddo
       endif
 c     --- end of transverse boundaries
+
+c     --- Restore even or odd boundary points to previous value
+c     --- along the transverse corners of the mesh when applying
+c     --- Dirichlet boundary conditions there. Otherwise, the corners
+c     --- will be left with Nuemann or periodic boundaries, which is not
+c     --- quite correct.
+      if (ANY(bounds(0:3)==0)) then
+        do iz=izl-1,izr-1
+          if (mod(iz+parity,2) == 0) then
+            if (bounds(0) == 0) then
+              phi(0,0,iz) = boundsavex(0,1,iz)
+              phi(nx,0,iz) = boundsavex(nx,1,iz)
+            endif
+            if (bounds(1) == 0) then
+              phi(0,ny,iz) = boundsavex(0,2,iz)
+              phi(nx,ny,iz) = boundsavex(nx,2,iz)
+            endif
+          endif
+          if (mod(iz+parity,2) == 0) then
+            if (bounds(2) == 0) then
+              phi(0,0,iz) = boundsavey(0,1,iz)
+              phi(0,ny,iz) = boundsavey(ny,1,iz)
+            endif
+            if (bounds(3) == 0) then
+              phi(nx,0,iz) = boundsavey(0,2,iz)
+              phi(nx,ny,iz) = boundsavey(ny,2,iz)
+            endif
+          endif
+        enddo
+      endif
 
 c     --- Apply altered difference equation to the points near the
 c     --- surface of the conductor boundaries.
@@ -1325,7 +1382,7 @@ c     --- surface of the conductor boundaries.
 
 c     --- Put desired potential onto conductors in phi array.
       call cond_potmg(conductors%interior,
-     &                nx,ny,nz,phi,mglevel,.false.,mgform,.false.)
+     &                nx,ny,nz,phi,mglevel,mgform,.false.)
 
 c     --- set phi in the z guard planes
       if (bounds(4) == 1) phi(:,:,izl-2) = phi(:,:,izl)
@@ -1519,13 +1576,13 @@ c           --- current z-slice is in a bend only
       return
       end
 c=============================================================================
-      subroutine cond_potmg(interior,nx,ny,nz,phi,mglevel,lresidual,
+      subroutine cond_potmg(interior,nx,ny,nz,phi,mglevel,
      &                      mgform,mgform2init)
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nz,mglevel,mgform
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      logical(ISZ):: lresidual,mgform2init
+      logical(ISZ):: mgform2init
 
 c Set conductor points to the desired potential.
 
@@ -1533,8 +1590,7 @@ c Set conductor points to the desired potential.
 
 c     --- When at the finest level and not calculating the residual, set
 c     --- phi to the voltage of the conductor, otherwise, set it to zero.
-      if (mglevel == 0 .and. .not. lresidual .and.
-     &    (mgform == 1 .or. mgform2init)) then
+      if (mglevel == 0 .and. (mgform == 1 .or. mgform2init)) then
 !$OMP DO
         do ic = interior%istart(mglevel),interior%istart(mglevel+1)-1
           ix = interior%indx(0,ic)
@@ -1553,6 +1609,30 @@ c     --- phi to the voltage of the conductor, otherwise, set it to zero.
         enddo
 !$OMP END DO
       endif
+
+      return
+      end
+c=============================================================================
+      subroutine cond_potmgres(interior,nx,ny,nz,res,mglevel,
+     &                         mgform,mgform2init)
+      use ConductorInteriorTypemodule
+      type(ConductorInteriorType):: interior
+      integer(ISZ):: nx,ny,nz,mglevel,mgform
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      logical(ISZ):: mgform2init
+
+c Set conductor points to the desired potential.
+
+      integer(ISZ):: ic,ix,iy,iz
+
+!$OMP DO
+      do ic = interior%istart(mglevel),interior%istart(mglevel+1)-1
+        ix = interior%indx(0,ic)
+        iy = interior%indx(1,ic)
+        iz = interior%indx(2,ic)
+        res(ix,iy,iz) = 0.
+      enddo
+!$OMP END DO
 
       return
       end
@@ -1833,7 +1913,8 @@ c=============================================================================
       type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,nz,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: rho(0:nx,0:ny,0:nz), res(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
       real(kind=8):: rdx2,rdy2,rdz2,mgparam
       integer(ISZ):: bounds(0:5),cstart(0:100),mgform,icndbndy
       logical(ISZ):: mgform2init
@@ -2133,7 +2214,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
-      real(kind=8):: res(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
       integer(ISZ):: mglevel,bounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgform
@@ -2211,8 +2292,8 @@ c     --- Calculate the residual.
 !$OMP END DO
 
 c     --- Zero the residual inside conductors.
-      call cond_potmg(conductors%interior,
-     &                nx,ny,nz,res,mglevel,.true.,mgform,.false.)
+      call cond_potmgres(conductors%interior,
+     &                nx,ny,nz,res,mglevel,mgform,.false.)
 
       if (lcndbndy) then
 c       --- Calculate the residual near the conductor.
@@ -2225,8 +2306,19 @@ c       --- Calculate the residual near the conductor.
       endif
 
 c     --- Transverse boundaries
-      if (bounds(1) == 2) res(nx,:,:) = res(0,:,:)
-      if (bounds(3) == 2) res(:,ny,:) = res(:,0,:)
+      if (bounds(0) == 0) res(-1:0,:,:) = 0.
+      if (bounds(1) == 0) res(nx:nx+1,:,:) = 0.
+      if (bounds(0) == 1) res(-1,:,:) = res(1,:,:)
+      if (bounds(1) == 1) res(nx+1,:,:) = res(nx-1,:,:)
+      if (bounds(0) == 2) res(-1,:,:) = res(nx-1,:,:)
+      if (bounds(1) == 2) res(nx:nx+1,:,:) = res(0:1,:,:)
+
+      if (bounds(2) == 0) res(:,-1:0,:) = 0.
+      if (bounds(3) == 0) res(:,ny:ny+1,:) = 0.
+      if (bounds(2) == 1) res(:,-1,:) = res(:,1,:)
+      if (bounds(3) == 1) res(:,ny+1,:) = res(:,ny-1,:)
+      if (bounds(2) == 2) res(:,-1,:) = res(:,ny-1,:)
+      if (bounds(3) == 2) res(:,ny:ny+1,:) = res(:,0:1,:)
 
 c     --- Longitudinal boundaries
       if (bounds(4) == 0) res(:,:,-1:0) = 0.
@@ -2297,10 +2389,7 @@ c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
       conductors%levellz(mglevel) = lz
       conductors%levels = mglevel + 1
 
-      if (mod(nx,4) /= 0 .or.
-     &    mod(ny,4) /= 0 .or.
-     &    mod(nzfull,4) /= 0 .or.
-     &    mglevel == 100) return
+      if (nx < 4 .or. ny < 4 .or. nzfull < 4 .or. mglevel == 100) return
 
 c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
 c     --- all axis.
@@ -2969,12 +3058,12 @@ c=============================================================================
       subroutine gatherrhofromchild(rho,nx,ny,nz,childrho,cnx,cny,cnz,
      &                              l,u,fulllower,childlower,childupper,
      &                              r,weights,owndomain,
-     &                              dobounds,bounds,rootdims)
+     &                              dopbounds,pbounds,rootdims)
       integer(ISZ):: nx,ny,nz,cnx,cny,cnz
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
       integer(ISZ):: childlower(0:2),childupper(0:2)
       integer(ISZ):: r
-      integer(ISZ):: dobounds,bounds(0:5),rootdims(0:2)
+      integer(ISZ):: dopbounds,pbounds(0:5),rootdims(0:2)
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: childrho(0:cnx,0:cny,0:cnz)
       real(kind=8):: weights(-r+1:r-1,-r+1:r-1,-r+1:r-1)
@@ -3014,18 +3103,18 @@ c=============================================================================
                     wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz)
 
 c                   --- Adjust for symmetries
-                    if (dobounds == 1) then
-                      if (bounds(0) == 1 .and. ix == 0 .and. iwx > 0)
+                    if (dopbounds == 1) then
+                      if (pbounds(0) == 1 .and. ix == 0 .and. iwx > 0)
      &                  wrho = 2*wrho
-                      if (bounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
+                      if (pbounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
      &                  wrho = 2*wrho
-                      if (bounds(2) == 1 .and. iy == 0 .and. iwy > 0)
+                      if (pbounds(2) == 1 .and. iy == 0 .and. iwy > 0)
      &                  wrho = 2*wrho
-                      if (bounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
+                      if (pbounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
      &                  wrho = 2*wrho
-                      if (bounds(4) == 1 .and. iz == 0 .and. iwz > 0)
+                      if (pbounds(4) == 1 .and. iz == 0 .and. iwz > 0)
      &                  wrho = 2*wrho
-                      if (bounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
+                      if (pbounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
      &                  wrho = 2*wrho
                     endif
 
