@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.43 2002/10/31 22:03:23 dave Exp $"
+warp_version = "$Id: warp.py,v 1.44 2002/11/07 00:52:22 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -100,11 +100,18 @@ euler     = top.euler
 jperev    = top.jperev
 mu0       = top.mu0
 boltzmann = top.boltzmann
-dirichlet = top.dirichlet
-neumann   = top.neumann
-periodic  = top.periodic
-absorb    = top.absorb
-reflect   = top.reflect
+try:
+  dirichlet = top.dirichlet
+  neumann   = top.neumann
+  periodic  = top.periodic
+  absorb    = top.absorb
+  reflect   = top.reflect
+except AttrbuteError:
+  dirichlet = 0
+  neumann   = 1
+  periodic  = 2
+  absorb    = 0
+  reflect   = 1
 
 # --- Create 
 
