@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.36 $, $Date: 2004/05/17 15:53:08 $
+#@(#) File FRZ.V, version $Revision: 3.37 $, $Date: 2004/07/02 23:25:52 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.36 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.37 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -65,6 +65,7 @@ nrg(ngrids)               _integer      # number of mesh in R for each grid
 nzg(ngrids)               _integer      # number of mesh in Z for each grid
 drg(ngrids)               _real         # number of mesh in R for each grid
 dzg(ngrids)               _real         # number of mesh in Z for each grid
+lverbose                  integer  /1/  # level of verbosity (0=no output; 1=low; 2=medium; 3=high)
 l_change_grid             logical  /.false./ # change grid patches during step if true
 ngrids_cg                 integer  /0/       # nb grid patches to change
 id_cg(ngrids_cg,2)        _integer           # IDs grid patches to change
@@ -133,7 +134,6 @@ v_max                real /0./
 l_find_rise_time     logical /.false./
 afact                real /1./
 calc_a               integer  /1/  # determines way of calculating voltage factor for rise time
-l_verbose            logical /.true./
 init_gridinit() subroutine #
 
 *********** FRZsubs:
@@ -158,7 +158,7 @@ multigridrzf(iwhich:integer,phi:real,rho:real,nx:integer,nz:integer) subroutine
          # solution is calculatedd at each level using a multigrid procedure 
          # and used as an approximated solution to start the calculation at 
          # the next level)
-setmglevels_rz() subroutine
+setmglevels_rz(grid:GRIDtype) subroutine
          # set mglevels in f3d arrays from RZ solver structure
 get_cond_rz(grid:integer) subroutine
          # get internal conductors locations from RZ multigrid solver
@@ -173,7 +173,7 @@ calcfact_deform(dz:real,zmin:real,
                 xfact:real,yfact:real,nz:integer,ns:integer,is:integer,
                 ins:integer,nps:integer,ws:real,zgrid:real) subroutine
          # computes factors for elliptical deformation in X and Y planes
-init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real,l_verbose:logical) subroutine
+init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real) subroutine
          # initializes the base grid for RZ solver
 del_base() subroutine
          # removes the base grid
@@ -183,7 +183,7 @@ mk_grids_ptr() subroutine
 add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
             rmin:real,zmin:real,
             transit_min_r:integer,transit_max_r:integer,
-            transit_min_z:integer,transit_max_z:integer,l_verbose:logical) subroutine
+            transit_min_z:integer,transit_max_z:integer) subroutine
          # add a subgrid to the grid id
 del_subgrid(id:integer) subroutine
          # delete a subgrid and all its 'children'
@@ -212,7 +212,7 @@ find_mgparam_rz_1g(grid:GRIDtype) subroutine
          # RZ version of find_mgparam for one grid only.
 gchange_rhop_phip_rz() subroutine
          # reallocate rhop and phip arrays
-install_conductors_rz(conductors:ConductorType) subroutine
+install_conductors_rz(conductors:ConductorType,grid:GRIDtype) subroutine
          # install conductors data into RZ arrays
 set_basegrid_phi() subroutine
 	 # set phi on basegrid using w3d.phi 
@@ -228,6 +228,12 @@ set_patches_around_emitter(id:integer,np:integer,ij:integer,nz:integer,
          # add patches around emitter
 test_subgrid_rz() subroutine
 test_subgrid_xz() subroutine
+sum_neighbors(fin:integer,fout:integer,nx:integer,ny:integer) subroutine
+         # returns sum of neighboring cells (inculding itself)
+adjust_lpfd(f:real,nr:integer,nz:integer,rmin:real,rmax:real,zmin:real,zmax:real) subroutine
+         # adjust loc_part_fd arrays according to array (f) used to generate grids.
+setphirz(np:integer,xp:real,yp:real,zp:real,p:real,zgrid:real) subroutine
+         # get phi in p from RZ grid at locations [x,y,z]
 
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
@@ -376,7 +382,7 @@ down _GRIDtype
 up   _GRIDtype
 neighbors _OVERLAPtype
 parents   _OVERLAPtype
-childs    _OVERLAPtype
+children  _OVERLAPtype
 
 %%%%%%%% GRDPTRtype:
 grid _GRIDtype
