@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.121 $, $Date: 2004/03/03 17:50:25 $
+c@(#) File DTOP.F, version $Revision: 3.122 $, $Date: 2004/07/09 19:22:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -642,7 +642,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.121 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.122 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1637,6 +1637,11 @@ c Gathers data from a 3-D mesh onto particle positions.
       integer(ISZ):: ip,ix,iy,iz
       real(kind=8):: gx,gy,gz
       real(kind=8):: dxi,dyi,dzi,wx,wy,wz
+      real(kind=8):: xsymmetryplane,ysymmetryplane
+
+c     --- These now default to zero, but could be input quantities.
+      xsymmetryplane = 0.
+      ysymmetryplane = 0.
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1646,20 +1651,20 @@ c     --- set grid cell inverse sizes
 c     --- loop over particles
       do ip=1,np
 
-c       --- find location on grid
+c       --- find location on grid, taking into account any symmetries.
         if (l4symtry) then
-          gx = abs((x(ip) - xmin)*dxi)
-          gy = abs((y(ip) - ymin)*dyi)
-          gz =     (z(ip) - zmin)*dzi
+          gx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
+          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
         else if (l2symtry) then
-          gx =     (x(ip) - xmin)*dxi
-          gy = abs((y(ip) - ymin)*dyi)
-          gz =     (z(ip) - zmin)*dzi
+          gx = x(ip)
+          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
         else
-          gx =     (x(ip) - xmin)*dxi
-          gy =     (y(ip) - ymin)*dyi
-          gz =     (z(ip) - zmin)*dzi
+          gx = x(ip)
+          gy = y(ip)
         endif
+        gx = (gx    - xmin)*dxi
+        gy = (gy    - ymin)*dyi
+        gz = (z(ip) - zmin)*dzi
 
 c       --- if within grid, gather
         if (0. <= gx .and. gx < nx .and.
@@ -1699,6 +1704,11 @@ c Gathers data from a 3-D mesh onto particle positions.
       integer(ISZ):: ip,ix,iy,iz
       real(kind=8):: gx,gy,gz
       real(kind=8):: dxi,dyi,dzi,wx,wy,wz
+      real(kind=8):: xsymmetryplane,ysymmetryplane
+
+c     --- These now default to zero, but could be input quantities.
+      xsymmetryplane = 0.
+      ysymmetryplane = 0.
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1708,20 +1718,20 @@ c     --- set grid cell inverse sizes
 c     --- loop over particles
       do ip=1,np
 
-c       --- find location on grid
+c       --- find location on grid, taking into account any symmetries.
         if (l4symtry) then
-          gx = abs((x(ip) - xmin)*dxi)
-          gy = abs((y(ip) - ymin)*dyi)
-          gz =     (z(ip) - zmin)*dzi
+          gx = abs(x(ip) - xsymmetryplane) + xsymmetryplane
+          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
         else if (l2symtry) then
-          gx =     (x(ip) - xmin)*dxi
-          gy = abs((y(ip) - ymin)*dyi)
-          gz =     (z(ip) - zmin)*dzi
+          gx = x(ip)
+          gy = abs(y(ip) - ysymmetryplane) + ysymmetryplane
         else
-          gx =     (x(ip) - xmin)*dxi
-          gy =     (y(ip) - ymin)*dyi
-          gz =     (z(ip) - zmin)*dzi
+          gx = x(ip)
+          gy = y(ip)
         endif
+        gx = (gx    - xmin)*dxi
+        gy = (gy    - ymin)*dyi
+        gz = (z(ip) - zmin)*dzi
 
 c       --- if within grid, gather
         if (0. <= gx .and. gx < nx .and.
