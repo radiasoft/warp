@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.10 2004/09/02 22:46:11 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.11 2004/09/13 19:47:20 dave Exp $"
 from warp import *
 import controllers
 import signal
@@ -38,6 +38,7 @@ def setinterrupt():
 def generate(command=None):
   "Generates the current package"
   #setinterrupt()
+  a = wtime()
   if command is None:
     for p in package():
       try:
@@ -47,7 +48,7 @@ def generate(command=None):
         pass
   command()
   # --- Get generate time
-  top.gentime = wtime() - top.starttime
+  top.gentime = wtime() - a
   #ruthere()
 
 def step(n=1,maxcalls=None,command=None):
