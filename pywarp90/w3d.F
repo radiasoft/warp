@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.30 $, $Date: 2001/10/25 18:21:25 $
+c@(#) File W3D.M, version $Revision: 3.31 $, $Date: 2001/10/30 19:53:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3953,6 +3953,8 @@ c             --- Only save particle if it is within the injection region.
                 else
                   gaminv(ii) = 1.
                 endif
+c               --- Save the ID of the injection source.
+                pid(ii) = ij
 c               --- increment particle counter
                 npinjtmp(is,ij) = npinjtmp(is,ij) + 1
               endif
