@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.123 $, $Date: 2003/07/22 19:35:20 $
+c@(#) File W3D.M, version $Revision: 3.124 $, $Date: 2003/07/25 00:25:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4502,7 +4502,11 @@ c             --- Only save particle if it is within the injection region.
      &                    vtx*uxt(ip)
                 uyp(ii) = vzinj*(bpinj*(yp(ii)-yinj)*binji) +
      &                    vty*uyt(ip)
-                uzp(ii) = vzinj + 0.5*vthz_s(is)*uzt(ip)
+                if(l_inj_addtempz_abs) then
+                  uzp(ii) = vzinj + abs(0.5*vthz_s(is)*uzt(ip))
+                else
+                  uzp(ii) = vzinj + 0.5*vthz_s(is)*uzt(ip)
+                endif
                 if (lrelativ) then
                   gaminv(ii) = sqrt(1.-
      &                           (uxp(ii)**2+uyp(ii)**2+uzp(ii)**2)*clightsqi)
