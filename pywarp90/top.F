@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.14 $, $Date: 2001/06/16 00:24:39 $
+c@(#) File TOP.M, version $Revision: 3.15 $, $Date: 2001/07/10 19:05:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1320,8 +1320,8 @@ c        --- find index of nearest drft element
 c            --- load lattice info into comoving 1d array
              cdrftzs(iz,io) = drftzs(cdrftid(iz,io)) + offset
              cdrftze(iz,io) = drftze(cdrftid(iz,io)) + offset
-             if (cdrftzs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= cdrftze(iz,io))
+             if (cdrftzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= cdrftze(iz,io))
      &           lindrft(io) = .true.
            enddo
          endif
@@ -1340,8 +1340,8 @@ c          --- load lattice info into comoving 1d array
            cbendrc(iz) = bendrc(cbendid(iz))
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cbendzs(iz) <= zz+zlatbuffer .and.
-     &                        zz-zlatbuffer <= cbendze(iz))
+           if (cbendzs(iz) <= zlmax+zbeam+zlatbuffer .and.
+     &                        zlmin+zbeam-zlatbuffer <= cbendze(iz))
      &         linbend = .true.
          endif
 
@@ -1362,8 +1362,8 @@ c            --- load lattice info into comoving 1d array
              cdipotb(iz,io) = dipotb(cdipoid(iz,io))
              cdipoex(iz,io) = dipoex(cdipoid(iz,io))
              cdipoey(iz,io) = dipoey(cdipoid(iz,io))
-             if (cdipozs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= cdipoze(iz,io))
+             if (cdipozs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= cdipoze(iz,io))
      &           lindipo(io) = .true.
            enddo
          endif
@@ -1406,8 +1406,8 @@ c            --- THIS NEEDS CHECKING, especially when iqerr is nonzero.
              iquaderr = mod(iquaderu, nqerr) 
              cqoffx(iz,io) = qoffx(iquaderr)
              cqoffy(iz,io) = qoffy(iquaderr)
-             if (cquadzs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= cquadze(iz,io))
+             if (cquadzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= cquadze(iz,io))
      &           linquad(io) = .true.
            enddo
          endif
@@ -1424,8 +1424,8 @@ c            --- load lattice info into comoving 1d array
              csextze(iz,io) = sextze(csextid(iz,io)) + offset
              csextdb(iz,io) = sextdb(csextid(iz,io))
              csextde(iz,io) = sextde(csextid(iz,io))
-             if (csextzs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= csextze(iz,io))
+             if (csextzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= csextze(iz,io))
      &           linsext(io) = .true.
            enddo
          endif
@@ -1438,8 +1438,8 @@ c        --- find index of nearest hard-edge multipole element
 c            --- load lattice info into comoving 1d array
              chelezs(iz,io) = helezs(cheleid(iz,io)) + offset
              cheleze(iz,io) = heleze(cheleid(iz,io)) + offset
-             if (chelezs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= cheleze(iz,io))
+             if (chelezs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= cheleze(iz,io))
      &           linhele(io) = .true.
            enddo
          endif
@@ -1463,8 +1463,8 @@ c        --- find index of nearest acceleration element
                  cacclez(iz,io) = cacclez(iz,io) + acclet(ii  ,id)*(1. - wi) +
      &                                       acclet(ii+1,id)*      wi 
                endif
-               if (cacclzs(iz,io) <= zz+zlatbuffer .and.
-     &                               zz-zlatbuffer <= cacclze(iz,io))
+               if (cacclzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                               zlmin+zbeam-zlatbuffer <= cacclze(iz,io))
      &             linaccl(io) = .true.
              else
                cacclzs(iz,io) = 0.
@@ -1493,8 +1493,8 @@ c            --- load lattice info into comoving 1d array
              cemltim(iz,io) = emltid(id)
 c            --- Check whether this grid point is in the element.
 c            --- The grid points intentionally overlap to avoid roundoff errors.
-             if (cemltzs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= cemltze(iz,io))
+             if (cemltzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= cemltze(iz,io))
      &           linemlt(io) = .true.
 c            --- set index for offset emlts.  NOTE that this uses "neerr"
 c            --- and not "nemlt".  This gives us a choice of either:
@@ -1530,8 +1530,8 @@ c            --- load lattice info into comoving 1d array
              cmmltim(iz,io) = mmltid(id)
 c            --- Check whether this grid point is in the element.
 c            --- The grid points intentionally overlap to avoid roundoff errors.
-             if (cmmltzs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= cmmltze(iz,io))
+             if (cmmltzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= cmmltze(iz,io))
      &           linmmlt(io) = .true.
 c            --- set index for offset mmlts.  NOTE that this uses "nmerr"
 c            --- and not "nmmlt".  This gives us a choice of either:
@@ -1562,8 +1562,8 @@ c            --- load lattice info into comoving 1d array
              cbgrdze(iz,io) = bgrdze(cbgrdid(iz,io)) + offset
 c            --- Check whether this grid point is in the element.
 c            --- The grid points intentionally overlap to avoid roundoff errors.
-             if (cbgrdzs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= cbgrdze(iz,io))
+             if (cbgrdzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= cbgrdze(iz,io))
      &           linbgrd(io) = .true.
            enddo
          endif
@@ -1580,8 +1580,8 @@ c            --- load lattice info into comoving 1d array
              cpgrdze(iz,io) = pgrdze(cpgrdid(iz,io)) + offset
 c            --- Check whether this grid point is in the element.
 c            --- The grid points intentionally overlap to avoid roundoff errors.
-             if (cpgrdzs(iz,io) <= zz+zlatbuffer .and.
-     &                             zz-zlatbuffer <= cpgrdze(iz,io))
+             if (cpgrdzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                             zlmin+zbeam-zlatbuffer <= cpgrdze(iz,io))
      &           linpgrd(io) = .true.
            enddo
          endif
@@ -1773,7 +1773,7 @@ c Apply uniform fields.
       return
       end
 c============================================================================ 
-      subroutine getbend(np,npz,zp,uzp,gaminv,bendres,bendradi,dtl,dtr)
+      subroutine getbend(np,npz,zp,uzp,gaminv,bendres,bendradi,dtl,dtr,lslice)
       use Subtimers
       use InGen
       use Lattice
@@ -1781,6 +1781,7 @@ c============================================================================
       integer(ISZ):: np,npz
       real(kind=8):: dtl,dtr
       real(kind=8):: zp(npz),uzp(npz),gaminv(npz)
+      logical(ISZ):: lslice
       real(kind=8):: bendres(np),bendradi(np)
 
 c  Gets residence factor and radius for bends.
@@ -1797,7 +1798,7 @@ c  For periodic runs, assumes mesh period length = lattice period length
 
 c  Extract the local bend properties for each particle off the general lattice
 
-      if (npz == 1) then
+      if (lslice) then
 c       --- find z-cell in which particle lies
         iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
 c       --- "left" end of velocity advance step
@@ -1841,12 +1842,13 @@ c       --- residence fraction
       return
       end
 c=============================================================================
-      subroutine applybend(np,xp,uzp,npz,bendres,bendradi,m,q,by)
+      subroutine applybend(np,xp,uzp,npz,bendres,bendradi,m,q,lslice,by)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),uzp(np),bendres(npz),bendradi(npz)
       real(kind=8):: m,q
+      logical(ISZ):: lslice
       real(kind=8):: by(np)
 
 c Apply transformation for bending field.
@@ -1856,14 +1858,14 @@ c Apply transformation for bending field.
 
       if (.not. bends .or. .not. linbend) return
 
-      if (npz == 1) then
+      if (lslice) then
         bres = bendres(1)
         brad = bendradi(1)
         if (bres == 0.) return
       endif
       qi = 1./q
       do ip = 1,np
-        if (npz == np) then
+        if (.not. lslice) then
           bres = bendres(ip)
           brad = bendradi(ip)
         endif
@@ -1875,13 +1877,14 @@ c Apply transformation for bending field.
       return
       end
 c=============================================================================
-      subroutine applyquad(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,
+      subroutine applyquad(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,bx,by)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz),uzp(npz),gaminv(npz)
       real(kind=8):: dtl,dtr,dt
+      logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),bx(np),by(np)
 
 c Apply the transverse focusing element quad.
@@ -1912,7 +1915,7 @@ c   bx, by   quadrupole magnetic field
       do io=1,nquadol
         if (.not. linquad(io)) cycle
 
-        if (npz == 1) then
+        if (lslice) then
 c         --- find z-cell in which particle lies
           iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
 c         --- "left" end of velocity advance step
@@ -1932,7 +1935,7 @@ c         --- if frac is zero, just return since no field will be applied
         endif
         do ip = 1, np
 
-          if (npz > 1) then
+          if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
 c           --- "left" end of velocity advance step
@@ -1972,13 +1975,14 @@ c         --- set the field
       return
       end
 c=============================================================================
-      subroutine applydipo(np,npz,zp,uzp,gaminv,dtl,dtr,dt,
+      subroutine applydipo(np,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,bx,by)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
       real(kind=8):: zp(npz),uzp(npz),gaminv(npz)
       real(kind=8):: dtl,dtr,dt
+      logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),bx(np),by(np)
 
 c Apply the transverse bending element dipo.
@@ -2007,7 +2011,7 @@ c   bx, by   dipole magnetic field
       do io=1,ndipool
         if (.not. lindipo(io)) cycle
 
-        if (npz == 1) then
+        if (lslice) then
 c         --- find z-cell in which particle lies
           iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
 c         --- "left" end of velocity advance step
@@ -2027,7 +2031,7 @@ c         --- if frac is zero, just return since no field will be applied
         endif
         do ip = 1, np
 
-          if (npz > 1) then
+          if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
 c           --- "left" end of velocity advance step
@@ -2057,13 +2061,14 @@ c         --- set the field
       return
       end
 c=========================================================================== 
-      subroutine sledgcor(np,xp,yp,npz,zp,zpo,uxp,uyp,uzp,gaminv,m,q)
+      subroutine sledgcor(np,xp,yp,npz,zp,zpo,uxp,uyp,uzp,gaminv,m,q,lslice)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
       real(kind=8):: xp(np), yp(np), zp(npz), zpo(npz) 
       real(kind=8):: uxp(np), uyp(np), uzp(npz), gaminv(npz) 
       real(kind=8):: q, m
+      logical(ISZ):: lslice
 
 c Applies position and velocity jump corrections on entry/exit of dipoles 
 c with slanted faces.  (Must be called after all z advancement is done this 
@@ -2082,14 +2087,14 @@ c less than the entire andvance step on entry/exit of the dipole.
       do io=1,ndipool
         if (.not. lindipo(io)) cycle
 
-        if (npz == 1) then
+        if (lslice) then
           iz = 0
           if (.not.((zpo(1) < cdipozs(iz,io) .and. zp(1) >= cdipozs(iz,io)) .or.
      &              (zpo(1) < cdipoze(iz,io) .and. zp(1) >= cdipoze(iz,io))))
      &      return
         endif
         do ip = 1,np
-          if (npz > 1) then
+          if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = min(nzl,int(max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)))
           endif
@@ -2117,13 +2122,14 @@ c           --- exited dipole
       return
       end
 c=============================================================================
-      subroutine applysext(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,
+      subroutine applysext(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,bx,by)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz),uzp(npz),gaminv(npz)
       real(kind=8):: dtl,dtr,dt
+      logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),bx(np),by(np)
 
 c Apply the transverse element sext.
@@ -2155,7 +2161,7 @@ c   bx, by   sextupole magnetic field
       do io=1,nsextol
         if (.not. linsext(io)) cycle
 
-        if (npz == 1) then
+        if (lslice) then
 c         --- find z-cell in which particle lies
           iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
 c         --- "left" end of velocity advance step
@@ -2175,7 +2181,7 @@ c         --- if frac is zero, just return since no field will be applied
         endif
         do ip = 1, np
 
-          if (npz > 1) then
+          if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
 c           --- "left" end of velocity advance step
@@ -2207,13 +2213,14 @@ c         --- set the field
       return
       end
 c=============================================================================
-      subroutine applyhele(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,
+      subroutine applyhele(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,ez,bx,by,bz)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz),uzp(npz),gaminv(npz)
       real(kind=8):: dtl,dtr,dt
+      logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),ez(np),bx(np),by(np),bz(np)
 
 c Apply the transverse element hele.
@@ -2253,7 +2260,7 @@ c       --- calculate coordinates, element indices, and residence
 c       --- fractions over particle block and store in temp arrays
 c       --- These factors will be used repeatedly when the fields
 c       --- are accumulated at each particle resulting from
-        if (npz == 1) then
+        if (lslice) then
 c         --- find z-cell in which particle lies
           iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
 c         --- "left" end of velocity advance step
@@ -2273,7 +2280,7 @@ c         --- if frac is zero, just return since no field will be applied
         endif
         do ip = 1, np
 
-          if (npz > 1) then
+          if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
 c           --- "left" end of velocity advance step
@@ -2371,13 +2378,14 @@ c               --- rest of components
       return
       end
 c=============================================================================
-      subroutine applyemlt(np,xp,yp,npz,zp,dtl,dtr,dt,ex,ey,ez)
+      subroutine applyemlt(np,xp,yp,npz,zp,dtl,dtr,dt,lslice,ex,ey,ez)
       use Lattice
       use LatticeInternal
       use Mult_data
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz)
       real(kind=8):: dtl,dtr,dt
+      logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),ez(np)
 
 c Apply the element emlt.
@@ -2436,7 +2444,8 @@ c       --- Get location of particle relative to moment data.
      &                cemltim,cemltox,cemltoy,
      &                tex,tey,tez,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
      &                mltph,mltsf,
-     &                zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
+     &                zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc,
+     &                lslice)
 
 c       --- accumulate the E field of the electrostatic multipoles
         do in=1,nesmult
@@ -2507,13 +2516,14 @@ c     --- do coordinate transform on fields back to warped coordinates
       return
       end
 c=============================================================================
-      subroutine applymmlt(np,xp,yp,npz,zp,dtl,dtr,dt,bx,by,bz)
+      subroutine applymmlt(np,xp,yp,npz,zp,dtl,dtr,dt,lslice,bx,by,bz)
       use Lattice
       use LatticeInternal
       use Mult_data
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz)
       real(kind=8):: dtl,dtr,dt
+      logical(ISZ):: lslice
       real(kind=8):: bx(np),by(np),bz(np)
 
 c Apply the element mmlt.
@@ -2571,7 +2581,8 @@ c       --- Get location of particle relative to moment data.
      &                cmmltim,cmmltox,cmmltoy,
      &                tbx,tby,tbz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
      &                mltph,mltsf,
-     &                zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
+     &                zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc,
+     &                lslice)
 
 c       --- accumulate the B field of the magnetostatic multipoles
         do in=1,nmsmult
@@ -2648,7 +2659,7 @@ c=============================================================================
      &                    tx,ty,tz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
      &                    mltph,mltsf,
      &                    zlmin,zlframe,dzli,bends,linbend,
-     &                    cbendzs,cbendze,cbendrc)
+     &                    cbendzs,cbendze,cbendrc,lslice)
       integer(ISZ):: np,npz,nmltsets,nzl,nol,io
       real(kind=8):: xp(np),yp(np),zp(npz)
       real(kind=8):: dzmlt(nmltsets)
@@ -2664,6 +2675,7 @@ c=============================================================================
       logical(ISZ):: bends,linbend
       real(kind=8):: cbendzs(0:nzl),cbendze(0:nzl),cbendrc(0:nzl)
       real(kind=8):: zlmin,zlframe,dzli
+      logical(ISZ):: lslice
 
 c     --- Calculate grid location and polar coordinates of particles
 c     --- for mlt elements.  Includes change of coordinates out of
@@ -2674,13 +2686,13 @@ c  Assumes that at most one bend will be between particle and the mult center.
       integer(ISZ):: iz,ip
       real(kind=8):: zz,cent,dzi,rrr,bzs,bze,bendrci
 
-      if (npz == 1) then
+      if (lslice) then
         zz = zp(1)
         iz = 0
       endif
       if (.not. bends .or. .not. linbend) then
         do ip=1,np
-          if (npz == np) then
+          if (.not. lslice) then
             zz = zp(ip)
 c           --- find z-cell in which particle lies
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
@@ -2717,7 +2729,7 @@ c         --- an element.
         enddo
       else
         do ip=1,np
-          if (npz == np) then
+          if (.not. lslice) then
             zz = zp(ip)
 c           --- find z-cell in which particle lies
             iz = max(0., (zz - zlmin - zlframe)*dzli)
@@ -2816,12 +2828,13 @@ c         --- Add offset
       return
       end
 c=========================================================================== 
-      subroutine applybgrd(np,xp,yp,npz,zp,bx,by,bz)
+      subroutine applybgrd(np,xp,yp,npz,zp,lslice,bx,by,bz)
       use Lattice
       use LatticeInternal
       use BGRDdata
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz)
+      logical(ISZ):: lslice
       real(kind=8):: bx(np),by(np),bz(np)
 
 c  Sets magnetic field for a group of up to NPARPGRP particles from data sets
@@ -2850,7 +2863,7 @@ c  Evaluation of B, vectorized over particles
       do io=1,nbgrdol
         if (.not. linbgrd(io)) cycle
 
-        if (npz == 1) then
+        if (lslice) then
 c         --- All particles are in the same z-cell
           zz = zp(1)
           iz = 0
@@ -2863,7 +2876,7 @@ c         --- Exit field accumulation if particles are outside of axial grid
 
         do ip = 1, np
 
-          if (npz == np) then
+          if (.not. lslice) then
             zz = zp(ip)
 c           --- find the location of the particle in the internal lattice arrays
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
@@ -3003,12 +3016,13 @@ c           --- tranverse field
       return
       end
 c=========================================================================== 
-      subroutine applypgrd(np,xp,yp,npz,zp,ex,ey,ez)
+      subroutine applypgrd(np,xp,yp,npz,zp,lslice,ex,ey,ez)
       use Lattice
       use LatticeInternal
       use PGRDdata
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz)
+      logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),ez(np)
 
 c  Sets electric field for a group of up to NPARPGRP particles from data
@@ -3042,7 +3056,7 @@ c  Evaluation of E, vectorized over particles
       do io=1,npgrdol
         if (.not. linpgrd(io)) cycle
 
-        if (npz == 1) then
+        if (lslice) then
 c         --- find the location of the particle in the internal lattice arrays
           zz = zp(1)
           iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
@@ -3054,7 +3068,7 @@ c         --- find the location of the particle in the internal lattice arrays
 
         do ip = 1, np
 
-          if (npz == np) then
+          if (.not. lslice) then
 c           --- find the location of the particle in the internal lattice arrays
             zz = zp(ip)
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
@@ -3146,12 +3160,13 @@ c           --- adjust sign of E field for approiate quadrant
       return
       end
 c=============================================================================
-      subroutine applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,ez)
+      subroutine applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,lslice,ez)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
       real(kind=8):: xp(np),zp(np),uzp(np),gaminv(np)
       real(kind=8):: dtl,dtr,dt,qoverm
+      logical(ISZ):: lslice
       real(kind=8):: ez(np)
 
 c Apply the accelerating gap element accl.
@@ -3346,13 +3361,14 @@ c             --- calculate correction on position
       return
       end
 c=============================================================================
-      subroutine applyacclxy(np,xp,zp,uzp,gaminv,dtp,dtl,dtr,ez,m,q,dt)
+      subroutine applyacclxy(np,xp,zp,uzp,gaminv,dtp,dtl,dtr,m,q,dt,lslice,ez)
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
       real(kind=8):: dtl,dtr,m,q,dt
       real(kind=8):: xp(np),zp(np)
       real(kind=8):: uzp(np),gaminv(np),dtp(np)
+      logical(ISZ):: lslice
       real(kind=8):: ez(np)
 
 c Apply acceleration for finite length gaps.
