@@ -1,4 +1,4 @@
-!     Last change:  JLV  23 Apr 2002   11:25 am
+!     Last change:  JLV  30 Apr 2002    5:08 pm
 #include "top.h"
 
 module multigrid_common
@@ -2729,25 +2729,6 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 return
 end subroutine multigridrzf
 
-subroutine assign_injdxdy_rz(inj_nx,inj_ny,inj_dx,inj_dy,inj_dz)
-USE multigridrz
-implicit none
-INTEGER(ISZ), INTENT(IN OUT) :: inj_nx,inj_ny
-REAL(8), INTENT(IN OUT) :: inj_dx,inj_dy,inj_dz
-
-  IF(mgridrz_inj_id>ngrids) then
-    WRITE(0,*) 'Error in assign_injdxdy_rz, mgridrz_inj_id > ngrids'
-    stop
-  END if
-  inj_nx = grids_ptr(mgridrz_inj_id)%grid%nr
-  inj_ny = grids_ptr(mgridrz_inj_id)%grid%nr
-  inj_dx = grids_ptr(mgridrz_inj_id)%grid%dr
-  inj_dy = grids_ptr(mgridrz_inj_id)%grid%dr
-  inj_dz = grids_ptr(mgridrz_inj_id)%grid%dz
-
-return
-end subroutine assign_injdxdy_rz
-
 subroutine distribute_rho_rz()
 USE multigridrz
 implicit none
@@ -3613,18 +3594,10 @@ REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz, er
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
 LOGICAL(ISZ) :: ingrid
 
-REAL(8), DIMENSION(:), ALLOCATABLE :: invdr, invdz, zmin
 REAL(8):: substarttime,wtime
 if (lw3dtimesubs) substarttime = wtime()
 
 IF(ngrids>1) then
-  ALLOCATE(invdr(ngrids),invdz(ngrids),zmin(ngrids))
-
-  do igrid = 1, ngrids
-    invdr(igrid) = grids_ptr(igrid)%grid%invdr
-    invdz(igrid) = grids_ptr(igrid)%grid%invdz
-    zmin(igrid)  = grids_ptr(igrid)%grid%zmin
-  end do
 
   ! make charge deposition using CIC weighting
   do i = 1, np
@@ -3632,8 +3605,8 @@ IF(ngrids>1) then
     igrid = 1
     grids => basegrid
     ingrid=.false.
-    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr(igrid)
-    zpos = (zp(i)-grids%zmin)*invdz(igrid)
+    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
+    zpos = (zp(i)-grids%zmin)*grids%invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     do WHILE(.not.ingrid)
@@ -3642,8 +3615,8 @@ IF(ngrids>1) then
       else
         igrid = grids%loc_part_field_dep(jn,ln)
         grids=>grids_ptr(igrid)%grid
-        rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr(igrid)
-        zpos = (zp(i)-zmin(igrid))*invdz(igrid)
+        rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
+        zpos = (zp(i)-grids%zmin)*grids%invdz
         jn = 1+INT(rpos)
         ln = 1+INT(zpos)
       END if
@@ -3657,7 +3630,7 @@ IF(ngrids>1) then
             + oddr * ddz  * (grids%phi(jn-1,ln+1)-grids%phi(jn+1,ln+1))  &
             + ddr  * ddz  * (grids%phi(jn  ,ln+1)-grids%phi(jn+2,ln+1)))*grids%invdr
     IF(rpos>1.e-10) then
-      invrpos=invdr(igrid)/rpos
+      invrpos=grids%invdr/rpos
       ex(i) = er*xp(i)*invrpos
       ey(i) = er*yp(i)*invrpos
     else
@@ -3667,9 +3640,8 @@ IF(ngrids>1) then
     ez(i) = 0.5*(oddr * oddz * (grids%phi(jn  ,ln-1)-grids%phi(jn  ,ln+1))  &
                + ddr  * oddz * (grids%phi(jn+1,ln-1)-grids%phi(jn+1,ln+1))  &
                + oddr * ddz  * (grids%phi(jn  ,ln  )-grids%phi(jn  ,ln+2))  &
-               + ddr  * ddz  * (grids%phi(jn+1,ln  )-grids%phi(jn+1,ln+2)))*invdz(igrid)
+               + ddr  * ddz  * (grids%phi(jn+1,ln  )-grids%phi(jn+1,ln+2)))*grids%invdz
   END do
-  DEALLOCATE(invdr,invdz,zmin)
 else
   ! make charge deposition using CIC weighting
   do i = 1, np
@@ -3975,123 +3947,73 @@ REAL(8) :: ddz, oddz, wddz, woddz, xrms, yrms, invdz, zpos, xp2, yp2
   return
 end subroutine calcfact_deform
 
-subroutine getinj_phi_rz_ng()
-use InjectVars
-use InjectVars3d
-use FRZmgrid
-use multigridrz
-#ifdef MPIPARALLEL
-use Parallel
-#endif
-integer(ISZ):: nx,nz
-real(kind=8):: dx,dz,xmmin,ymmin
+subroutine setphirz(np,xp,yp,zp,p)
+USE multigridrz
+implicit none
 
-! Calculate potential drop from emitting surface at distance
-! of dz from the surface.  This is only done for grid cells
-! within two grid cells of the elliptical emitting surface, and
-! within the axial extent of the grid. This is done over the
-! full axial extent since points which are outside of the
-! injection region maybe needed for the interlopation below
-! to get zp.
+INTEGER(ISZ), INTENT(IN) :: np
+REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
+REAL(8), DIMENSION(np), INTENT(IN OUT) :: p
 
-integer(ISZ):: ij,ix,iy,i2r,i2z
-real(kind=8):: dxi,dyi
-real(kind=8):: ainjsqi,binjsqi,xinj,yinj
-real(kind=8):: rrsq,aa,p2x,p2y,p2r,p2z,w2r,w2z
+REAL(8) :: rpos, zpos, ddr, ddz, oddr, oddz
+INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
+LOGICAL(ISZ) :: ingrid
 
-#ifdef MPIPARALLEL
-!     --- In the parallel version, only processor 0 calculates inj_phi.
-if (my_index == 0) then
-#endif
+IF(ngrids>1) then
 
-grids=>grids_ptr(mgridrz_inj_id)%grid
-dx = grids%dr
-dz = grids%dz
-nx = grids%nr
-nz = grids%nz
-xmmin = grids%rmin
-ymmin = grids%rmin
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(zp(i)<grids%zmin) cycle
+    igrid = 1
+    grids => basegrid
+    ingrid=.false.
+    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
+    zpos = (zp(i)-grids%zmin)*grids%invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    do WHILE(.not.ingrid)
+      IF(grids%loc_part_field_dep(jn,ln)==igrid) then
+        ingrid=.true.
+      else
+        igrid = grids%loc_part(jn,ln)
+        grids=>grids_ptr(igrid)%grid
+        rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
+        zpos = (zp(i)-grids%zmin)*grids%invdz
+        jn = 1+INT(rpos)
+        ln = 1+INT(zpos)
+      END if
+    end do
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    p(i) = oddr * oddz * grids%phi(jn,  ln  )  &
+         + ddr  * oddz * grids%phi(jn+1,ln  )  &
+         + oddr * ddz  * grids%phi(jn,  ln+1)  &
+         + ddr  * ddz  * grids%phi(jn+1,ln+1)
+  END do
+else
+  ! make charge deposition using CIC weighting
+  do i = 1, np
+    IF(zp(i)<basegrid%zmin) cycle
+    ingrid=.false.
+    rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*basegrid%invdr
+    zpos = (zp(i)-basegrid%zmin)*basegrid%invdz
+    jn = 1+INT(rpos)
+    ln = 1+INT(zpos)
+    ddr = rpos-REAL(jn-1)
+    ddz = zpos-REAL(ln-1)
+    oddr = 1._8-ddr
+    oddz = 1._8-ddz
+    p(i) = oddr * oddz * basegrid%phi(jn,  ln  )  &
+         + ddr  * oddz * basegrid%phi(jn+1,ln  )  &
+         + oddr * ddz  * basegrid%phi(jn,  ln+1)  &
+         + ddr  * ddz  * basegrid%phi(jn+1,ln+1)
+  END do
+END if
 
-dxi = 1./dx
-dyi = 1./dx
-
-!c     --- loop over injection sources
-do ij=1,ninject
-
-!       --- Set some temporaries.
-  ainjsqi = 1./(ainject(ij) + 2.*dx)**2
-  binjsqi = 1./(binject(ij) + 2.*dx)**2
-  xinj = xinject(ij)
-  yinj = yinject(ij)
-
-  do iy = 0,nx
-    do ix = 0,nx
-      rrsq = (ix*dx + xmmin - xinj)**2*ainjsqi + &
-             (iy*dx + ymmin - yinj)**2*binjsqi
-      if (rrsq < 1. .and. (-1 <= inj_grid(ix,iy) .and. inj_grid(ix,iy) < nz)) then
-
-!             --- angle of point in transverse plane
-        aa = atan2(iy*dx+ymmin-yinj,dvnz(ix*dx+xmmin-xinj))
-
-!             --- Find coordinates of the point a distance dz in front
-!             --- of the source along a line perpendicular to the
-!             --- emitting surface.
-        p2x = ix-dz*cos(aa)*sin(inj_angl(ix,iy))*dxi*inj_d(ij)
-        p2y = iy-dz*sin(aa)*sin(inj_angl(ix,iy))*dyi*inj_d(ij)
-        p2r = sqrt(p2x**2+p2y**2)
-        p2z = inj_grid(ix,iy)/dz + cos(inj_angl(ix,iy))*inj_d(ij)
-        i2r = p2r
-        i2z = p2z
-        w2r = p2r - i2r
-        w2z = p2z - i2z
-        i2r = i2r+1
-        i2z = i2z+1
-
-!             --- Fetch difference between phi at that point and phi on
-!             --- the emitting surface.
-       inj_phi(ix,iy) = vinject(ij) -                       &
-                grids%phi(i2r  ,i2z  )*(1.-w2r)*(1.-w2z) -  &
-                grids%phi(i2r+1,i2z  )*    w2r *(1.-w2z) -  &
-                grids%phi(i2r  ,i2z+1)*(1.-w2r)*    w2z  -  &
-                grids%phi(i2r+1,i2z+1)*    w2r *    w2z
-     endif
-   enddo
- enddo
-
-!!        call getinj_phipgrd_rz(ij,nx,nz,phi,dx,dz,xmmin,ymmin)
-!       --- Smooth out inj_phi for this emitting surface.
-!        if (inj_nsmooth > 0) then
-!          call inj_smoother(nx,ny,inj_phi,dx,dy,xmmin,ymmin,
-!     &                      xinj,yinj,ainj,binj,inj_nsmooth)
-!        endif
-
-enddo
-
-#ifdef MPIPARALLEL
-endif
-!     --- The result calculated by processor 0 is broadcast to the rest
-!     --- of the processors.
-  call parallelbroadcastrealarray(inj_phi,(nx+1)*(nx+1),0)
-#endif
-
-!     --- Calculate the transverse fields
-if (linj_eperp) then
-  do iy = 1,nx-1
-    do ix = 1,nx-1
-      inj_ex(ix,iy) = (inj_phi(ix-1,iy  ) - inj_phi(ix+1,iy  ))*dxi*0.5
-      inj_ey(ix,iy) = (inj_phi(ix  ,iy-1) - inj_phi(ix  ,iy+1))*dyi*0.5
-    enddo
-  enddo
-  do ix = 1,nx-1
-    inj_ex(ix,0) = (inj_phi(ix-1,0) - inj_phi(ix+1,0))*dxi*0.5
-  enddo
-  do iy = 1,nx-1
-    inj_ey(0,iy) = (inj_phi(0,iy-1) - inj_phi(0,iy+1))*dyi*0.5
-  enddo
-endif
-
-return
-end
+  return
+end subroutine setphirz
 
 subroutine init_base(nr,nz,dr,dz,rmin,zmin)
 USE multigridrz
@@ -4136,6 +4058,41 @@ REAL(8), DIMENSION(1:nr+1,1:nz+1) :: phi
 
 return
 END subroutine get_phi_subgrid
+
+subroutine get_array_subgrid(id,array,nr,nz,which)
+USE multigridrz
+implicit none
+INTEGER(ISZ), INTENT(IN) :: id,nr,nz
+CHARACTER(*) :: which
+REAL(8), DIMENSION(1:nr+1,1:nz+1) :: array
+
+  IF(id<1 .or. id>ngrids) then
+    WRITE(0,*) 'Error in get_phi_subgrid: id = ', id ,' WHILE id = (1,...,',ngrids,')'
+    WRITE(0,*) 'Returning Array=0'
+    array(1:nr+1,1:nz+1) = 0.
+  else
+    select case (which)
+      case ("rho","r")
+        array(1:nr+1,1:nz+1) = grids_ptr(id)%grid%rho(1:nr+1,1:nz+1)
+      case ("phi","p")
+        array(1:nr+1,1:nz+1) = grids_ptr(id)%grid%phi(1:nr+1,1:nz+1)
+      case ("loc_part","lp")
+        array(1:nr+1,1:nz+1) = grids_ptr(id)%grid%loc_part(1:nr+1,1:nz+1)
+      case ("loc_part_field_dep","lpfd")
+        array(1:nr+1,1:nz+1) = grids_ptr(id)%grid%loc_part_field_dep(1:nr+1,1:nz+1)
+      case default
+        WRITE(0,*) which,' is not a valid option for get_array_subgrid.'
+        WRITE(0,*) 'Valid options are: '&
+                 //'  rho [abrv:r]' &
+                 //'  phi [abrv:p]' &
+                 //'  loc_part [abrv:lp]' &
+                 //'  loc_part_field_dep [abrv:lpfd]'
+    end select
+  END if
+
+return
+END subroutine get_array_subgrid
+
 
 subroutine save_bndstructure_rz(filename)
 use multigridrz
@@ -4257,6 +4214,7 @@ TYPE(bndptr), pointer :: bnd
      icc=icc+1
    end do
    do i = 1, bnd%cnd%nbbndred
+    IF(bnd%v(bnd%cnd%jj(i),bnd%cnd%kk(i))==v_bnd) then
      iecndx(ice) = bnd%cnd%jj(i)-1
      iecndz(ice) = bnd%cnd%kk(i)-1
      ecdelmx(ice) = bnd%cnd%dxm(i)/bnd%dr
@@ -4264,8 +4222,10 @@ TYPE(bndptr), pointer :: bnd
      ecdelmz(ice) = bnd%cnd%dzm(i)/bnd%dz
      ecdelpz(ice) = bnd%cnd%dzp(i)/bnd%dz
      ice=ice+1
+    END if
    end do
    do i = bnd%cnd%nbbndred+1, bnd%cnd%nbbnd
+    IF(bnd%v(bnd%cnd%jj(i),bnd%cnd%kk(i))==v_bnd) then
      iocndx(ico) = bnd%cnd%jj(i)-1
      iocndz(ico) = bnd%cnd%kk(i)-1
      ocdelmx(ico) = bnd%cnd%dxm(i)/bnd%dr
@@ -4273,10 +4233,12 @@ TYPE(bndptr), pointer :: bnd
      ocdelmz(ico) = bnd%cnd%dzm(i)/bnd%dz
      ocdelpz(ico) = bnd%cnd%dzp(i)/bnd%dz
      ico=ico+1
+    END if
    end do
  END do
+ necndbdy = ice
+ nocndbdy = ico
 
 return
 end subroutine get_cond_rz
-
 
