@@ -77,7 +77,7 @@ if not lparallel:
     pass
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.68 2004/05/27 22:59:42 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.69 2004/06/03 20:56:50 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -981,6 +981,10 @@ Creates a grid object which can generate conductor data.
       self.mglevelly = [1]
       self.mglevellz = [1]
 
+    # --- Create empty lists of conductors
+    self.dlist = []
+    self.dlistinstalled = []
+
   def getmeshsize(self,mglevel=0):
     dx = self.dx*self.mglevellx[mglevel]
     dy = self.dy*self.mglevelly[mglevel]
@@ -1021,14 +1025,32 @@ Creates a grid object which can generate conductor data.
     """
 Given an Assembly, accumulate the appropriate data to represent that
 Assembly on this grid.
- - a: the assembly
+ - a: the assembly or a list of assemblies
  - dfill=top.largepos: points at a depth in the conductor greater than dfill
                        are skipped.
     """
+
+    # --- If 'a' is a list, then recursively call this routine for each
+    # --- element of 'a'. Note that this will be recursive if some elements
+    # --- of 'a' are themselves lists.
+    if type(a) == ListType:
+      for c in a: self.getdata(c,dfill=dfill,fuzzsign=fuzzsign)
+      return
+
+    # --- If 'a' is an AssemblyPlus, save time by generating the conductor
+    # --- data for each part separately. Time is saved since only data within
+    # --- the extent of each part is checked. Note that this will be recursive
+    # --- one of the parts of 'a' are themselves an AssemblyPlus.
+    if a.__class__ == AssemblyPlus:
+      self.getdata(a.left,dfill=dfill,fuzzsign=fuzzsign)
+      self.getdata(a.right,dfill=dfill,fuzzsign=fuzzsign)
+      return
+
     starttime = wtime()
     tt2 = zeros(8,'d')
     aextent = a.getextent()
-    self.dall = Delta()
+    dall = Delta()
+    self.dlist.append(dall)
     for i in range(self.mglevels):
       tt1 = wtime()
       ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(i,aextent)
@@ -1056,7 +1078,7 @@ Assembly on this grid.
         d.setlevels(i)
         tt2[6] = tt2[6] + wtime() - tt1
         tt1 = wtime()
-        self.dall.append(d)
+        dall.append(d)
         tt2[7] = tt2[7] + wtime() - tt1
     endtime = wtime()
     self.generatetime = endtime - starttime
@@ -1072,7 +1094,10 @@ Installs the conductor data into the fortran database
     conductors.levellx[:self.mglevels] = self.mglevellx
     conductors.levelly[:self.mglevels] = self.mglevelly
     conductors.levellz[:self.mglevels] = self.mglevellz
-    self.dall.install(installrz,solvergeom,conductors)
+    for d in self.dlist:
+      d.install(installrz,solvergeom,conductors)
+    self.dlistinstalled += self.dlist
+    self.dlist = []
     if gridmode is not None:
       f3d.gridmode = gridmode
 
