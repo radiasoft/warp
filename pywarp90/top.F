@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.97 $, $Date: 2003/07/16 00:32:06 $
+c@(#) File TOP.M, version $Revision: 3.98 $, $Date: 2003/07/16 18:07:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3973,7 +3973,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
          minp = +LARGEPOS
          zmmnts0 = 0.
          zmmnts = 0.
-         nep = 0
+         if (nepwin > 0) nep = 0
          if(wpid>0) nplive = 0
       endif
 
