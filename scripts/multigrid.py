@@ -181,6 +181,7 @@ class MultiGrid(object):
                             ymin=None,ymax=None,
                             zmin=None,zmax=None,
                             dfill=top.largepos):
+    if conductor in self.conductorlist: return
     self.conductorlist.append(conductor)
     installconductors(conductor,xmin,xmax,ymin,ymax,zmin,zmax,dfill,
                       top.zbeam,
