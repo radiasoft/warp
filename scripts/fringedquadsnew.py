@@ -1,5 +1,5 @@
 from warp import *
-fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.5 2001/05/14 19:58:58 dave Exp $"
+fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.6 2002/08/19 22:17:21 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -148,20 +148,18 @@ not, then the derivatives will be done with a finite difference of fringe.
   # --- Set parameters constant for all elements
   if len(nonzero(quadde)) > 0:
     top.nzemlt = npoints
-    for i in range(0,nderivs/2+1):
-      top.emlt_n[i] = 2.
-      top.emlt_v[i] = i
+    top.emlt_n[0:nderivs/2+1] = 2.
+    top.emlt_v[0:nderivs/2+1] = arange(0,nderivs/2+1)
   if len(nonzero(quaddb)) > 0:
     top.nzmmlt = npoints
-    for i in range(0,nderivs/2+1):
-      top.mmlt_n[i] = 2.
-      top.mmlt_v[i] = i
+    top.mmlt_n[0:nderivs/2+1] = 2.
+    top.mmlt_v[0:nderivs/2+1] = arange(0,nderivs/2+1)
 
   # --- Function that defines the profile of the fringe fields
   # --- This function should have the following properties
   # --- f(0) = 0, f(1) = 1.
   # --- f'(0) = 0, f'(1) = 0.
-  if not fringe:
+  if fringe is None:
     # --- use the default form, 0.5*(1. - tanh(cot(zz)))
     def fringe0(n):
       zz = pi*iota(1,n-1)/n
@@ -306,8 +304,8 @@ not, then the derivatives will be done with a finite difference of fringe.
       top.nhele = max(0,firstfringe-1)
 
   # --- Turn on the fringed elements
-  if top.nemlt > 0: top.emlts = true
-  if top.nmmlt > 0: top.mmlts = true
+  if neq >= 0: top.emlts = true
+  if nmq >= 0: top.mmlts = true
 
   # --- Make sure internal lattice arrays set properly
   setlatt()
