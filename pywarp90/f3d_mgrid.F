@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.15 $, $Date: 2001/11/06 22:17:13 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.16 $, $Date: 2001/12/05 17:48:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -166,11 +166,14 @@ c       --- Do one vcycle.
      &              boundxy,bound0,boundnz)
 
 c       --- Calculate the change in phi.
-c       maxerr = 0.
-c       do i=1+nxy,nxy+nxyz
-c         maxerr = max(maxerr,abs(phi_temp(i) - phi1d(i)))
-c       enddo
-        maxerr = maxval(abs(phi_temp(1+nxy:nxy+nxyz) - phi1d(1+nxy:nxy+nxyz)))
+        maxerr = 0.
+        do i=1+nxy,nxy+nxyz
+          maxerr = max(maxerr,abs(phi_temp(i) - phi1d(i)))
+        enddo
+c       --- This line below seems to create a large temporary which can
+c       --- cause problems when memory is close to full. So it was replaced
+c       --- with the explicit loop above.
+c       maxerr = maxval(abs(phi_temp(1+nxy:nxy+nxyz) - phi1d(1+nxy:nxy+nxyz)))
 
 c       --- Save the current phi. The original phi1d array is used as the
 c       --- scratch space to hold the current value of phi which is used
