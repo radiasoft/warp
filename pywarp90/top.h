@@ -27,7 +27,7 @@
 #define dvnz(X) sign(abs(X)+SMALLPOS,X)
 
 ! Define size of integers. Must be the same as the size of a long int in C.
-#if defined ALPHA || defined T3E || defined J90
+#if defined ALPHA || defined T3E || defined J90 || defined X86_64 || defined IA64
 #define ISZ 8
 #else
 #define ISZ 4
