@@ -18,7 +18,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.9 2004/05/25 21:39:40 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.10 2004/05/25 22:06:05 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -172,11 +172,12 @@ class DXCollection(Visualizable):
     # --- Assumes that that will be an actual dxobject. This will fail
     # --- miserably if an objects dxobject reference is recursive.
     # --- Please, let that never happen!
-    while not isDXObject(dxobject):
+    while not isDXObject(dxobject) and dxobject is not None:
       dxobject = dxobject.getdxobject()
     return dxobject
   def initializedxobject(self,object):
     dxobject = self.extractdxobject(object)
+    if dxobject is None: return
     minput = {'object':dxobject}
     moutput = ['group']
     (self.collection,) = DXCallModule('Collect',minput,moutput)
@@ -191,8 +192,9 @@ class DXCollection(Visualizable):
     if self.collection is None:
       self.initializedxobject(object)
     else:
-      self.checkmaxlegth()
       dxobject = self.extractdxobject(object)
+      if dxobject is None: return
+      self.checkmaxlegth()
       if self.preserve: oldcollection = self.collection
       minput = {'input':self.collection,'object':dxobject}
       moutput = ['group']
@@ -201,6 +203,7 @@ class DXCollection(Visualizable):
         DXDelete(oldcollection)
         DXReference(self.collection)
   def reset(self):
+    if self.collection is None: return
     if self.preserve: DXDelete(self.collection)
     self.collection = None
 
