@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.25 $, $Date: 2001/09/19 22:45:13 $
+c@(#) File W3D.M, version $Revision: 3.26 $, $Date: 2001/09/20 17:14:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5062,7 +5062,7 @@ c     --- as a function of the transverse coordinates.
 
       integer(ISZ):: ij,ix,iy
       real(kind=8):: xx,yy,zz,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
-      real(kind=8):: xl,yl,xu,yu,x1,x2
+      real(kind=8):: xl,yl,xu,yu,x1,x2,txl,tyl,txu,tyu
       real(kind=8):: ainji,binji
       real(kind=8):: area
       real(kind=8):: substarttime,wtime
@@ -5137,11 +5137,11 @@ c               --- Calculate area of block within first quadrant.
 c               --- If block extended past x axis, calculate the area of
 c               --- that piece.
                 if (abs(xx) - dx < 0.) then
-                  xu = - (abs(xx) - dx)*ainji
-                  xl = 0.
-                  x1 = max(xl, sqrt(max(0.,1. - yu**2)))
-                  x2 = min(xu, sqrt(max(0.,1. - yl**2)))
-                  area = area + (x1 - xl)*(yu - yl) +
+                  txu = - (abs(xx) - dx)*ainji
+                  txl = 0.
+                  x1 = max(txl, sqrt(max(0.,1. - yu**2)))
+                  x2 = min(txu, sqrt(max(0.,1. - yl**2)))
+                  area = area + (x1 - txl)*(yu - yl) +
      &                          0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
      &                          0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1) -
      &                          (x2 - x1)*yl
@@ -5149,11 +5149,11 @@ c               --- that piece.
 c               --- If block extended past y axis, calculate the area of
 c               --- that piece.
                 if (abs(yy) - dy < 0.) then
-                  yu = - (abs(yy) - dy)*binji
-                  yl = 0.
-                  x1 = max(xl, sqrt(max(0.,1. - yu**2)))
-                  x2 = min(xu, sqrt(max(0.,1. - yl**2)))
-                  area = area + (x1 - xl)*(yu - yl) +
+                  tyu = - (abs(yy) - dy)*binji
+                  tyl = 0.
+                  x1 = max(xl, sqrt(max(0.,1. - tyu**2)))
+                  x2 = min(xu, sqrt(max(0.,1. - tyl**2)))
+                  area = area + (x1 - xl)*(tyu - tyl) +
      &                          0.5*x2*sqrt(1. - x2**2) + 0.5*asin(x2) -
      &                          0.5*x1*sqrt(1. - x1**2) - 0.5*asin(x1)
                 endif
