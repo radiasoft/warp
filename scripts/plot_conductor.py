@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.72 2004/03/31 15:07:35 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.73 2004/04/01 13:39:10 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -10,8 +10,8 @@ having units of meters. The suffix 'g' means that it plots with the axis
 having units of number of grid cells. The 'box' suffix means
 that it plots a box around each grid point inside of a conductor.
 
-pfxy, pfzx, pfzy
-pfxyg, pfzxg, pfzyg
+pfxy, pfzx, pfzy, pfzr
+pfxyg, pfzxg, pfzyg, pfzrg
 pfxybox, pfzxbox, pfzybox, pfzxboxi, pfzyboxi
 
 plotgrid: plots the x-z mesh in the lab frame (including any bends)
@@ -942,6 +942,9 @@ Plots conductors and contours of electrostatic potential in Z-X plane
       plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1,
                interior,f3dmg)
 
+# z-r plane
+pfzr = pfzx
+
 # z-y plane
 def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
@@ -1071,6 +1074,9 @@ Same arguments as pfzx
        interior=f3d.interior,
        evensubgrid=f3d.evensubgrid,oddsubgrid=f3d.oddsubgrid,
        f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
+
+# z-r plane
+pfzrg = pfzxg
 
 # z-y plane
 def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
@@ -2032,9 +2038,87 @@ for optimization so that time is not wasted on those points.
       f3d.ocvolt[:f3d.nocndbdy] = vv
 
 #########################################################################
-def updatemgconductors():
+def updatemgconductors(dumpfilename):
   """
-This routine updates conductors which from old dump files. In older versions
+This routine updates conductors from old dump files that were written
+before the conductor data was put into derived types.
+ - dumpfilename: name of old dump file
+  """
+  ff = PR.PR(dumpfilename)
+
+  f3d.interior.nmax = ff.read('ncondmax@f3d')
+  f3d.evensubgrid.nmax = ff.read('ncndmax@f3d')
+  f3d.oddsubgrid.nmax = ff.read('ncndmax@f3d')
+  gchange('Conductor3d')
+
+  f3d.interior.n = ff.read('ncond@f3d')
+  if f3d.interior.n > 0:
+    f3d.interior.indx[0,:] = ff.read('ixcond@f3d')
+    f3d.interior.indx[1,:] = ff.read('iycond@f3d')
+    f3d.interior.indx[2,:] = ff.read('izcond@f3d')
+    f3d.interior.volt[:] = ff.read('condvolt@f3d')
+    f3d.interior.numb[:] = ff.read('condnumb@f3d')
+    f3d.interior.ilevel[:] = ff.read('icondlevel@f3d')
+
+  if f3d.evensubgrid.n > 0:
+    f3d.evensubgrid.n = ff.read('necndbdy@f3d')
+    f3d.evensubgrid.indx[0,:] = ff.read('iecndx@f3d')
+    f3d.evensubgrid.indx[1,:] = ff.read('iecndy@f3d')
+    f3d.evensubgrid.indx[2,:] = ff.read('iecndz@f3d')
+    f3d.evensubgrid.dels[0,:] = ff.read('ecdelmx@f3d')
+    f3d.evensubgrid.dels[1,:] = ff.read('ecdelmy@f3d')
+    f3d.evensubgrid.dels[2,:] = ff.read('ecdelmz@f3d')
+    f3d.evensubgrid.dels[3,:] = ff.read('ecdelpx@f3d')
+    f3d.evensubgrid.dels[4,:] = ff.read('ecdelpy@f3d')
+    f3d.evensubgrid.dels[5,:] = ff.read('ecdelpz@f3d')
+    f3d.evensubgrid.volt[0,:] = ff.read('ecvolt@f3d')
+    f3d.evensubgrid.volt[1,:] = ff.read('ecvoltmx@f3d')
+    f3d.evensubgrid.volt[2,:] = ff.read('ecvoltpx@f3d')
+    f3d.evensubgrid.volt[3,:] = ff.read('ecvoltmy@f3d')
+    f3d.evensubgrid.volt[4,:] = ff.read('ecvoltpy@f3d')
+    f3d.evensubgrid.volt[5,:] = ff.read('ecvoltmz@f3d')
+    f3d.evensubgrid.volt[6,:] = ff.read('ecvoltpz@f3d')
+    f3d.evensubgrid.numb[0,:] = ff.read('ecnumb@f3d')
+    f3d.evensubgrid.numb[1,:] = ff.read('ecnumbmx@f3d')
+    f3d.evensubgrid.numb[2,:] = ff.read('ecnumbpx@f3d')
+    f3d.evensubgrid.numb[3,:] = ff.read('ecnumbmy@f3d')
+    f3d.evensubgrid.numb[4,:] = ff.read('ecnumbpy@f3d')
+    f3d.evensubgrid.numb[5,:] = ff.read('ecnumbmz@f3d')
+    f3d.evensubgrid.numb[6,:] = ff.read('ecnumbpz@f3d')
+    f3d.evensubgrid.ilevel[:] = ff.read('iecndlevel@f3d')
+
+  if f3d.oddsubgrid.n > 0:
+    f3d.oddsubgrid.n = ff.read('nocndbdy@f3d')
+    f3d.oddsubgrid.indx[0,:] = ff.read('iocndx@f3d')
+    f3d.oddsubgrid.indx[1,:] = ff.read('iocndy@f3d')
+    f3d.oddsubgrid.indx[2,:] = ff.read('iocndz@f3d')
+    f3d.oddsubgrid.dels[0,:] = ff.read('ocdelmx@f3d')
+    f3d.oddsubgrid.dels[1,:] = ff.read('ocdelmy@f3d')
+    f3d.oddsubgrid.dels[2,:] = ff.read('ocdelmz@f3d')
+    f3d.oddsubgrid.dels[3,:] = ff.read('ocdelpx@f3d')
+    f3d.oddsubgrid.dels[4,:] = ff.read('ocdelpy@f3d')
+    f3d.oddsubgrid.dels[5,:] = ff.read('ocdelpz@f3d')
+    f3d.oddsubgrid.volt[0,:] = ff.read('ocvolt@f3d')
+    f3d.oddsubgrid.volt[1,:] = ff.read('ocvoltmx@f3d')
+    f3d.oddsubgrid.volt[2,:] = ff.read('ocvoltpx@f3d')
+    f3d.oddsubgrid.volt[3,:] = ff.read('ocvoltmy@f3d')
+    f3d.oddsubgrid.volt[4,:] = ff.read('ocvoltpy@f3d')
+    f3d.oddsubgrid.volt[5,:] = ff.read('ocvoltmz@f3d')
+    f3d.oddsubgrid.volt[6,:] = ff.read('ocvoltpz@f3d')
+    f3d.oddsubgrid.numb[0,:] = ff.read('ocnumb@f3d')
+    f3d.oddsubgrid.numb[1,:] = ff.read('ocnumbmx@f3d')
+    f3d.oddsubgrid.numb[2,:] = ff.read('ocnumbpx@f3d')
+    f3d.oddsubgrid.numb[3,:] = ff.read('ocnumbmy@f3d')
+    f3d.oddsubgrid.numb[4,:] = ff.read('ocnumbpy@f3d')
+    f3d.oddsubgrid.numb[5,:] = ff.read('ocnumbmz@f3d')
+    f3d.oddsubgrid.numb[6,:] = ff.read('ocnumbpz@f3d')
+    f3d.oddsubgrid.ilevel[:] = ff.read('iocndlevel@f3d')
+
+  ff.close()
+
+def updatemgconductorsold():
+  """
+This routine updates conductors which from old dump files.
 of the code, the conductor coordinates and deltas were stored relative to
 the finest grid. In the current version, the data is stored relative the to
 grid that data is to be used for.
