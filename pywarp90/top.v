@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.122 $, $Date: 2004/05/12 22:33:46 $
+#@(#) File TOP.V, version $Revision: 3.123 $, $Date: 2004/05/12 22:50:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.122 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.123 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2178,63 +2178,62 @@ envfixsscale_STdisc(n_STdiscs) _real /LARGEPOS/ [1]
     # to the envelope calculation.
 
 *********** Temperatures dump:
-nstmp integer /1/ # nb species
-l_temp                 logical /.false./ # compute temperature in true
-l_temp_collapseinz     logical /.false./ # collapse z-slices in temperature calculations
-l_temp_rmcorrelations  logical /.true./  # remove x*v correlations in temperature calculations
-l_accumulate_temperatures logical /.false./ # allows accumulation of data for temperatures
-nxtslices    integer    /0/   # nb cells in x of temperature slices
-nytslices    integer    /0/   # nb cells in y of temperature slices
-nztslices    integer    /1/   # nb temperature slices
-nxtslicesc   integer    /0/   # nb cells in x of temperature slices (correlation variables)
-nytslicesc   integer    /0/   # nb cells in y of temperature slices (correlation variables)
-nztslicesc   integer    /1/   # nb temperature slices               (correlation variables)
-tslicexmin(nztslices) _real   # min in x of temperature slices
-tslicexmax(nztslices) _real   # max in x of temperature slices
-tsliceymin(nztslices) _real   # min in y of temperature slices
-tsliceymax(nztslices) _real   # max in y of temperature slices
-tslicezmin(nztslices) _real   # min in z of temperature slices
-tslicezmax(nztslices) _real   # max in z of temperature slices
-dxti(nztslices)       _real   # inverse mesh size in x for temperature slices
-dyti(nztslices)       _real   # inverse mesh size in y for temperature slices
-pnumt(0:nxtslices,0:nytslices,nztslices)      _real # nb particles    in temperature slices
-pnumtw(0:nxtslices,0:nytslices,nztslices)     _real # weights         in temperature slices
-vxbart(0:nxtslices,0:nytslices,nztslices)     _real # average of vx   in temperature slices
-vybart(0:nxtslices,0:nytslices,nztslices)     _real # average of vy   in temperature slices
-vzbart(0:nxtslices,0:nytslices,nztslices)     _real # average of vz   in temperature slices
-vxsqbart(0:nxtslices,0:nytslices,nztslices)   _real # average of vx^2 in temperature slices
-vysqbart(0:nxtslices,0:nytslices,nztslices)   _real # average of vy^2 in temperature slices
-vzsqbart(0:nxtslices,0:nytslices,nztslices)   _real # average of vz^2 in temperature slices
-xbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of x    in temperature slices
-ybart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of y    in temperature slices
-zbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of z    in temperature slices
-xsqbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of x^2  in temperature slices
-ysqbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of y^2  in temperature slices
-zsqbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of z^2  in temperature slices
-xvxbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of x*vx in temperature slices
-yvybart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of y*vy in temperature slices
-zvzbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of z*vz in temperature slices
-tempx(0:nxtslices,0:nytslices,nztslices,nstmp) _real # x-temperature  in temperature slices
-tempy(0:nxtslices,0:nytslices,nztslices,nstmp) _real # y-temperature  in temperature slices
-tempz(0:nxtslices,0:nytslices,nztslices,nstmp) _real # z-temperature  in temperature slices
-tempxz(nztslices,nstmp) _real # x-temperature  in temperature slices
-tempyz(nztslices,nstmp) _real # y-temperature  in temperature slices
-tempzz(nztslices,nstmp) _real # z-temperature  in temperature slices
-nztlocator integer /1/ # nb meshes locator temperature slices
-ntlmax     integer /1/ # max nb of slices in locator temperature slices
-ntl(nztlocator) _integer # nb of slices in locator temperature slices
-tslice_locator(nztlocator,ntlmax) _integer # locator array for temperature array
-tloc_zmin  real # min locator temperature array 
-tloc_zmax  real # max locator temperature array 
-tloc_dzi   real # inverse mesh size locator temperature array 
-gett(is:integer,itask:integer,laxisymmetric:logical) subroutine
-     # get temperature for species is 
+nstemp integer /1/ # nb species
+l_temp_collapseinz     logical /.false./              # collapse z-slices in temperature calculations
+l_temp_rmcorrelations  logical /.true./               # remove x*v correlations in temperature calculations
+nxtslices    integer    /0/                           # nb cells in x of temperature slices
+nytslices    integer    /0/                           # nb cells in y of temperature slices
+nztslices    integer    /1/                           # nb temperature slices
+nxtslicesc   integer    /0/                           # nb cells in x of temperature slices (correlation variables)
+nytslicesc   integer    /0/                           # nb cells in y of temperature slices (correlation variables)
+nztslicesc   integer    /1/                           # nb temperature slices               (correlation variables)
+tslicexmin(nztslices) _real                           # min in x of temperature slices
+tslicexmax(nztslices) _real                           # max in x of temperature slices
+tsliceymin(nztslices) _real                           # min in y of temperature slices
+tsliceymax(nztslices) _real                           # max in y of temperature slices
+tslicezmin(nztslices) _real                           # min in z of temperature slices
+tslicezmax(nztslices) _real                           # max in z of temperature slices
+dxti(nztslices)       _real                           # inverse mesh size in x for temperature slices
+dyti(nztslices)       _real                           # inverse mesh size in y for temperature slices
+pnumt(0:nxtslices,0:nytslices,nztslices)        _real # nb particles    in temperature slices
+pnumtw(0:nxtslices,0:nytslices,nztslices)       _real # weights         in temperature slices
+vxbart(0:nxtslices,0:nytslices,nztslices)       _real # average of vx   in temperature slices
+vybart(0:nxtslices,0:nytslices,nztslices)       _real # average of vy   in temperature slices
+vzbart(0:nxtslices,0:nytslices,nztslices)       _real # average of vz   in temperature slices
+vxsqbart(0:nxtslices,0:nytslices,nztslices)     _real # average of vx^2 in temperature slices
+vysqbart(0:nxtslices,0:nytslices,nztslices)     _real # average of vy^2 in temperature slices
+vzsqbart(0:nxtslices,0:nytslices,nztslices)     _real # average of vz^2 in temperature slices
+xbart(0:nxtslicesc,0:nytslicesc,nztslicesc)     _real # average of x    in temperature slices
+ybart(0:nxtslicesc,0:nytslicesc,nztslicesc)     _real # average of y    in temperature slices
+zbart(0:nxtslicesc,0:nytslicesc,nztslicesc)     _real # average of z    in temperature slices
+xsqbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of x^2  in temperature slices
+ysqbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of y^2  in temperature slices
+zsqbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of z^2  in temperature slices
+xvxbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of x*vx in temperature slices
+yvybart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of y*vy in temperature slices
+zvzbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of z*vz in temperature slices
+tempx(0:nxtslices,0:nytslices,nztslices,nstemp) _real # x-temperature  in temperature slices
+tempy(0:nxtslices,0:nytslices,nztslices,nstemp) _real # y-temperature  in temperature slices
+tempz(0:nxtslices,0:nytslices,nztslices,nstemp) _real # z-temperature  in temperature slices
+tempxz(nztslices,nstemp) _real                        # x-temperature  in temperature slices
+tempyz(nztslices,nstemp) _real                        # y-temperature  in temperature slices
+tempzz(nztslices,nstemp) _real                        # z-temperature  in temperature slices
+nztlocator integer /1/                                # nb meshes locator temperature slices
+ntlmax     integer /1/                                # max nb of slices in locator temperature slices
+ntl(nztlocator) _integer                              # nb of slices in locator temperature slices
+tslice_locator(nztlocator,ntlmax) _integer            # locator array for temperature array
+tloc_zmin  real                                       # min locator temperature array 
+tloc_zmax  real                                       # max locator temperature array 
+tloc_dzi   real                                       # inverse mesh size locator temperature array 
+gett(is:integer,lrtheta:logical) subroutine           # get temperature for species is (r and theta temp. if lrtheta=true) 
 setregulartgrid(nx:integer,ny:integer,nz:integer,
-                xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
-                dz:real,nzloc:integer,lcollapse:logical,lcorrel:logical) subroutine 
-                # set slices regularly in z between zmin and zmax.
-                # nzloc refers to the number of nodes of a lookup table for fast 
-                # localization of temperature slices. In general setting nzloc=w3d.nz is good.
+                xmin:real,xmax:real,ymin:real,
+                ymax:real,zmin:real,zmax:real,
+                dz:real,nzloc:integer,
+                lcollapse:logical,
+                lcorrel:logical) subroutine           # Set slices regularly in z in a box delimited by (xmin,xmax,ymin,ymax,zmin,zmax).
+                                                      # nzloc refers to the number of nodes of a lookup table for fast 
+                                                      # localization of temperature slices. In general, set nzloc=w3d.nz.
 impact_ion(is1:integer,is2:integer,nbp:integer,w:real,
            shiftx:real,shifty:real,shiftz:real,
            deltax:real,deltay:real,deltaz:real,condid:integer)
