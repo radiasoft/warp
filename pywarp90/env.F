@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.11 $, $Date: 2001/08/10 18:38:38 $
+c@(#) File ENV.M, version $Revision: 3.12 $, $Date: 2001/11/06 22:24:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -655,6 +655,8 @@ c     --- Initialize variables to the values from the uniform fields.
       xdedx = (dedr + dexdx)*x
       ydbdx = dbdr*vz*y
       ydedx = (dedr + deydy)*y
+      ez = 0.
+      faccl = 0.
 
 c     --- Hard edge quadrupoles
 
@@ -782,6 +784,9 @@ c           --- Lookup field strengths with linear interpolation.
                 dedrr = dedrr - de
                 xdedx = xdedx - de*(x - emltox(ie))
                 ydedx = ydedx - de*(y - emltoy(ie))
+                ez = ez + (esemlt(iie  ,ii,iem)*(1.-wie) +
+     &                     esemlt(iie+1,ii,iem)*wie)*
+     &                    (emltsc(ie) + emltsf(ie))
               endif
             enddo
 
@@ -827,7 +832,6 @@ c           --- Lookup field strengths with linear interpolation.
       endif
 
 c     --- Get accelerating gradient from accl gaps.
-      faccl = 0.
       if (accls) then
 
         do io=1,nacclol
@@ -847,35 +851,37 @@ c         --- Calculate residence fraction.
           if (fracl > fracr) frac = (acclze(ia)+offset - zl) / dz
           if (fracr > fracl) frac = (zr - acclzs(ia)-offset) / dz
 
-          ez = acclez(ia)*frac
+          ez = ez + acclez(ia)*frac
 
-          if (ez .ne. 0) then
-            ek = ek + ez*dz
-
-c           --- Remove old vz and gamma from the perveance
-c           --- (Probably should completely recalculate the perveance, but
-c           --- that requires adding several more variables to the argument
-c           --- list.)
-            p = p*(vz*gamma)**3
-
-c           --- Calculate the new vz and gamma
-            if (lrelativ) then
-              ke = jperev*ek/dvnz(aion*amu*clight**2)
-              gamma = 1. + ke
-              vz = clight*sqrt((2*ke+ke**2)/gamma**2)
-            else
-              vz = sqrt(2.*ek*jperev/dvnz(aion)/amu)
-            endif
-
-c           --- Recalculate the perveance using update quantities
-            p = p/(vz*gamma)**3
-
-c           --- "Force" to account for the dvz/dz term which appears in the
-c           --- conversion from d/dt to d/dz
-            faccl = faccl + 0.5*ez/ek
-
-          endif
         enddo
+      endif
+
+c     --- Add in the acceleration (or deceleration)
+      if (ez .ne. 0) then
+        ek = ek + ez*dz
+
+c       --- Remove old vz and gamma from the perveance
+c       --- (Probably should completely recalculate the perveance, but
+c       --- that requires adding several more variables to the argument
+c       --- list.)
+        p = p*(vz*gamma)**3
+
+c       --- Calculate the new vz and gamma
+        if (lrelativ) then
+          ke = jperev*ek/dvnz(aion*amu*clight**2)
+          gamma = 1. + ke
+          vz = clight*sqrt((2*ke+ke**2)/gamma**2)
+        else
+          vz = sqrt(2.*ek*jperev/dvnz(aion)/amu)
+        endif
+
+c       --- Recalculate the perveance using update quantities
+        p = p/(vz*gamma)**3
+
+c       --- "Force" to account for the dvz/dz term which appears in the
+c       --- conversion from d/dt to d/dz
+        faccl = 0.5*ez/ek
+
       endif
 
 c     --- Compute external uniform focusing (proportional to r and 
