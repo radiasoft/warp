@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.32 $, $Date: 2002/05/09 21:40:51 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.33 $, $Date: 2002/05/09 22:35:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1564,13 +1564,14 @@ c=============================================================================
       subroutine setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                        l2symtry,l4symtry)
       use Parallel
+      use PSOR3d
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: nx,ny,nz
       logical(ISZ):: l2symtry,l4symtry
 
 c Makes call to the recursive routine which generates the conductors.
 
-      integer(ISZ):: nzfull
+      integer(ISZ):: nzfull,globalb0,globalbnz
 
 c     --- nzfull is needed, but difficult to pass down from above. But,
 c     --- it can be obtained from local info
@@ -1579,37 +1580,54 @@ c     --- it can be obtained from local info
 #else
       nzfull = nz
 #endif
+      globalb0 = bound0
+      globalbnz = boundnz
 
       call setcndtr3dmgrecur(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,nzfull,
-     &                       dx,dy,dz,l2symtry,l4symtry,
+     &                       dx,dy,dz,l2symtry,l4symtry,globalb0,globalbnz,
      &                       1,1,my_index,nslaves,izfsslave,nzfsslave)
+
+      bound0 = globalb0
+      boundnz = globalbnz
 
       return
       end
 c=============================================================================
       RECURSIVE subroutine setcndtr3dmgrecur(xmmin,ymmin,zmmin,zbeam,zgrid,
      &                      nx,ny,nz,nzfull,dx,dy,dz,l2symtry,l4symtry,
+     &                      globalb0,globalbnz,
      &                      levelxy,levelz,my_index,nslaves,izfsslave,nzfsslave)
       use PSOR3d
       use MultigridConductor3d
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: nx,ny,nz,nzfull,levelxy,levelz
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: globalb0,globalbnz
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 c Recursively calls the routine to generate the conductor data at the
 c various mesh resolutions needed by the MG solver.
 
+      integer(ISZ):: localb0,localbnz
       real(kind=8):: newzmmin
       integer(ISZ):: nznew
       integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
       integer(ISZ):: ic1,ic2,ie1,ie2,io1,io2
 
+      localb0 = globalb0
+      localbnz = globalbnz
+#ifdef MPIPARALLEL
+      if (izfsslave(my_index) > 0) localb0 = -1
+      if (izfsslave(my_index)+nz < nzfull) localbnz = -1
+#endif
+
 c     --- Get the conductors for this level
       ic1 = ncond + 1
       ie1 = necndbdy + 1
       io1 = nocndbdy + 1
+      bound0 = localb0
+      boundnz = localbnz
       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                l2symtry,l4symtry)
       ic2 = ncond
@@ -1649,7 +1667,8 @@ c       --- Note the the srfrv routine does not actually use the xmesh
 c       --- and ymesh arguments so they don't need to be modified.
         call setcndtr3dmgrecur(xmmin,ymmin,zmmin,zbeam,zgrid,
      &                         nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
-     &                         l2symtry,l4symtry,levelxy*2,levelz,
+     &                         l2symtry,l4symtry,globalb0,globalbnz,
+     &                         levelxy*2,levelz,
      &                         my_index,nslaves,izfsslave,nzfsslave)
 
       else
@@ -1671,7 +1690,8 @@ c       --- Note the the srfrv routine does not actually use the xmesh
 c       --- and ymesh arguments so they don't need to be modified.
         call setcndtr3dmgrecur(xmmin,ymmin,newzmmin,zbeam,zgrid,
      &                         nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
-     &                         l2symtry,l4symtry,levelxy*2,levelz*2,
+     &                         l2symtry,l4symtry,globalb0,globalbnz,
+     &                         levelxy*2,levelz*2,
      &                         my_index,nslaves,izfsslave2,nzfsslave2)
 
       endif
