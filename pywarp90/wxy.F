@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.49 $, $Date: 2005/01/12 17:04:59 $
+c@(#) File WXY.M, version $Revision: 3.50 $, $Date: 2005/01/21 19:26:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -871,6 +871,7 @@ c=============================================================================
       use InGenxy
       use InPart
       use InGaps
+      use InDiag
       use Lattice
       use LatticeInternal
       use Particles
