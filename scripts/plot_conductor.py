@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.60 2003/06/19 20:33:20 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.61 2003/06/30 19:42:07 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2095,7 +2095,7 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
-def setconductorvoltage(voltage,condid=0,discrete=false,setvinject=true):
+def setconductorvoltage(voltage,condid=0,discrete=false,setvinject=false):
   """
 Sets the voltage on a conductor, given an id.
  - voltage: voltage on conductor
