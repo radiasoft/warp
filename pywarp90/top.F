@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.61 $, $Date: 2002/11/05 22:05:20 $
+c@(#) File TOP.M, version $Revision: 3.62 $, $Date: 2002/11/06 01:20:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3932,6 +3932,7 @@ c=============================================================================
       use Picglb
       use ExtPart
       use Timers
+      use Particles, only: wpid
       integer(ISZ):: np,itask,nplive,is,ns
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
@@ -4001,6 +4002,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
              nep(iw,im) = 0
            enddo
          enddo
+         if(wpid>0) nplive = 0
       endif
 
       if (itask == 2) then
@@ -4258,7 +4260,6 @@ c         --- put particle moments into pmmnts array for zmmnts(iz,)
           do ip=1,np
             vzi = 1./(pp(11,ip)+SMALLPOS)
             wz0 = pp(14,ip)
-            if (ifzmmnt == 1) wz0 = pp(0,ip)
             pmmnts( 1,ip) = wz0
             pmmnts( 2,ip) = pp(1,ip)*wz0
             pmmnts( 3,ip) = pp(5,ip)*wz0
@@ -4346,7 +4347,6 @@ c       --- This method is faster for RISC and pentium machines.
 c           --- sum particle moments into zmmnts(iz,)
             vzi = 1./(pp(11,ip)+SMALLPOS)
             wz0 = pp(14,ip)
-            if (ifzmmnt == 1) wz0 = pp(0,ip)
             i = iz(ip)
             zmmnts(i, 1) = zmmnts(i, 1) + wz0
             zmmnts(i, 2) = zmmnts(i, 2) + pp(1,ip)*wz0
@@ -4517,7 +4517,7 @@ c       --- Compute generalized emittances
         epsnh(0) = epsh(0)*gamma*vzbar(0)*clighti*1.e6
 
 c       ---  Number of live particles (integer)
-        nplive = pnum(0) + 0.5
+        if(wpid==0) nplive = pnum(0) + 0.5
 
 c       ---  Axial z momentum in vbeam frame (classical)
         pz = m*w*pnum(0) * (vzbar(0)-vbeam)
@@ -4692,6 +4692,459 @@ c         --- If the zwindow is outside the zmoments range, don't set anything.
       return
       end
 c=============================================================================
+      subroutine getzmmnt_weights(np,xp,yp,zp,uxp,uyp,uzp,gaminv,wp,q,m,w,dt,itask,nplive,
+     &                    uxpo,uypo,uzpo,is,ns)
+      use Constant
+      use Beam_acc
+      use InDiag
+      use Z_Moments
+      use Win_Moments
+      use Moments
+      use Picglb
+      use ExtPart
+      use Timers
+      integer(ISZ):: np,itask,nplive,is,ns
+      real(kind=8):: q,m,w,dt
+      real(kind=8):: xp(np), yp(np), zp(np)
+      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
+      real(kind=8):: uxpo(np), uypo(np), uzpo(np)
+
+c  Sets moments for species 1 in as a function of z.
+c  Interpolation is done to grid centers
+c  Note that lost particles are to the left of the z grid.
+c  Note: "window zero" includes all particles, and no extrapolation is done
+c  Note: zbar and zsqbar calculations are meaningless except for 
+c        window zero (WE SHOULD DELETE ?)
+c  Note: Vectorized over moments.
+c        particle moment calculations are vectorized over particles
+c        moments are summed into a 2-D array, vectorized over moments
+c        then they are dumped into the seperate 1-D arrays in itask=3
+c  Three parts
+c  When itask=1  zeros out all moments
+c       itask=2  sums moments from particles
+c       itask=3  divides by number of particles, calculates emittances and rms
+
+
+      real(kind=8):: pp(1:17,np)
+      integer(ISZ):: iz(np)
+      integer(ISZ):: im,izm,iw,ip,icell,i
+      real(kind=8):: dti,dtip1,wz1,wz0,zwin,tg,th
+      real(kind=8):: oneondt,clighti,vzi,pnumi
+      real(kind=8):: delxsq,delxxp,delxpsq,delysq,delyyp,delypsq
+      real(kind=8):: delxy,delxyp,delyxp,delxpyp
+      real(kind=8):: delzsq,delvzsq,delzvz
+      real(kind=8):: delvxsq,delvysq
+      real(kind=8):: gamma
+      real(kind=8):: timetemp,wtime
+#ifdef J90
+      real(kind=8):: pmmnts(NUMZMMNT,np)
+#endif
+
+      timetemp = wtime()
+
+      if (ifzmmnt == 0) return
+
+      oneondt = 1./dvnz(dt)
+
+      if (itask == 1 .and. .not. laccumulate_zmoments) then
+        write(0,*) 'Error in getzmmnt_weights: call getzmmnt when itask = 1'
+        stop
+      endif
+
+      if (itask == 2) then
+c       --- Set maximum and minimum particle coordinate variables
+        do ip = 1, np
+          if (uzp(ip) /= 0.) then
+            xmaxp  = max(xmaxp, xp(ip))
+            xminp  = min(xminp, xp(ip))
+            ymaxp  = max(ymaxp, yp(ip))
+            yminp  = min(yminp, yp(ip))
+            zmaxp  = max(zmaxp, zp(ip))
+            zminp  = min(zminp, zp(ip))
+            vxmaxp = max(vxmaxp, gaminv(ip)*uxp(ip))
+            vxminp = min(vxminp, gaminv(ip)*uxp(ip))
+            vymaxp = max(vymaxp, gaminv(ip)*uyp(ip))
+            vyminp = min(vyminp, gaminv(ip)*uyp(ip))
+            vzmaxp = max(vzmaxp, gaminv(ip)*uzp(ip))
+            vzminp = min(vzminp, gaminv(ip)*uzp(ip))
+            nplive = nplive + 1
+          endif
+        enddo
+
+c       --- Accumate global moments first.
+
+c-------------------------------------------------------------------------
+#ifdef J90
+c       --- This method is faster for vectorized machines, primarily the J90.
+c       --- put particle moments into pmmnts array for total moments
+        do ip=1,np
+          vzi = 1./(uzp(ip)+SMALLPOS)
+          if (wp(ip) > 0.) then
+            pmmnts( 1,ip) = wp(ip)*wp(ip)
+            pmmnts( 2,ip) = xp(ip)*wp(ip)
+            pmmnts( 3,ip) = yp(ip)*wp(ip)
+            pmmnts( 4,ip) = zp(ip)*wp(ip)
+            pmmnts( 7,ip) = uxp(ip)*gaminv(ip)*wp(ip)
+            pmmnts( 8,ip) = uyp(ip)*gaminv(ip)*wp(ip)
+            pmmnts( 9,ip) = uzp(ip)*gaminv(ip)*wp(ip)
+            pmmnts(10,ip) = xp(ip)*yp(ip)*wp(ip)
+            pmmnts(12,ip) = xp(ip)**2*wp(ip)
+            pmmnts(13,ip) = yp(ip)**2*wp(ip)
+            pmmnts(14,ip) = zp(ip)**2*wp(ip)
+            pmmnts(17,ip) = (gaminv(ip)*uxp(ip))**2*wp(ip)
+            pmmnts(18,ip) = (gaminv(ip)*uyp(ip))**2*wp(ip)
+            pmmnts(19,ip) = (gaminv(ip)*uzp(ip))**2*wp(ip)
+            pmmnts(22,ip) = zp(ip)*gaminv(ip)*uzp(ip)*wp(ip)
+            pmmnts(25,ip) = xp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
+            pmmnts(26,ip) = yp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
+            pmmnts(27,ip) = uxp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
+            pmmnts(28,ip) = uyp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
+            pmmnts( 5,ip) = uxp(ip)*vzi*wp(ip)
+            pmmnts( 6,ip) = uyp(ip)*vzi*wp(ip)
+            pmmnts(11,ip) = uxp(ip)*uyp(ip)*vzi**2*wp(ip)
+            pmmnts(15,ip) = (uxp(ip)*vzi)**2*wp(ip)
+            pmmnts(16,ip) = (uyp(ip)*vzi)**2*wp(ip)
+            pmmnts(20,ip) = xp(ip)*uxp(ip)*vzi*wp(ip)
+            pmmnts(21,ip) = yp(ip)*uyp(ip)*vzi*wp(ip)
+            pmmnts(23,ip) = xp(ip)*uyp(ip)*vzi*wp(ip)
+            pmmnts(24,ip) = yp(ip)*uxp(ip)*vzi*wp(ip)
+          endif
+        enddo
+
+c       --- sum total moments
+c       --- Timings show that this loop runs much faster if the inner loop is
+c       --- completely unrolled.  It is faster on both HP workstations and
+c       --- CRAY C90.  WARNING: if NUMZMMNT changes, this loop needs to be
+c       --- adjusted to reflect that change.  Note that the similar loops
+c       --- below are still faster in their present form.
+        do ip=1,np
+          if (wp(ip) > 0.) then
+c           do im=1,NUMZMMNT
+c             zmmnts0(im) = zmmnts0(im) + pmmnts(ip,im)
+c           enddo
+            zmmnts0( 1) = zmmnts0( 1) + pmmnts( 1,ip)
+            zmmnts0( 2) = zmmnts0( 2) + pmmnts( 2,ip)
+            zmmnts0( 3) = zmmnts0( 3) + pmmnts( 3,ip)
+            zmmnts0( 4) = zmmnts0( 4) + pmmnts( 4,ip)
+            zmmnts0( 5) = zmmnts0( 5) + pmmnts( 5,ip)
+            zmmnts0( 6) = zmmnts0( 6) + pmmnts( 6,ip)
+            zmmnts0( 7) = zmmnts0( 7) + pmmnts( 7,ip)
+            zmmnts0( 8) = zmmnts0( 8) + pmmnts( 8,ip)
+            zmmnts0( 9) = zmmnts0( 9) + pmmnts( 9,ip)
+            zmmnts0(10) = zmmnts0(10) + pmmnts(10,ip)
+            zmmnts0(11) = zmmnts0(11) + pmmnts(11,ip)
+            zmmnts0(12) = zmmnts0(12) + pmmnts(12,ip)
+            zmmnts0(13) = zmmnts0(13) + pmmnts(13,ip)
+            zmmnts0(14) = zmmnts0(14) + pmmnts(14,ip)
+            zmmnts0(15) = zmmnts0(15) + pmmnts(15,ip)
+            zmmnts0(16) = zmmnts0(16) + pmmnts(16,ip)
+            zmmnts0(17) = zmmnts0(17) + pmmnts(17,ip)
+            zmmnts0(18) = zmmnts0(18) + pmmnts(18,ip)
+            zmmnts0(19) = zmmnts0(19) + pmmnts(19,ip)
+            zmmnts0(20) = zmmnts0(20) + pmmnts(20,ip)
+            zmmnts0(21) = zmmnts0(21) + pmmnts(21,ip)
+            zmmnts0(22) = zmmnts0(22) + pmmnts(22,ip)
+            zmmnts0(23) = zmmnts0(23) + pmmnts(23,ip) 
+            zmmnts0(24) = zmmnts0(24) + pmmnts(24,ip) 
+            zmmnts0(25) = zmmnts0(25) + pmmnts(25,ip) 
+            zmmnts0(26) = zmmnts0(26) + pmmnts(26,ip) 
+            zmmnts0(27) = zmmnts0(27) + pmmnts(27,ip) 
+            zmmnts0(28) = zmmnts0(28) + pmmnts(28,ip) 
+          endif
+        enddo
+
+#else
+
+c-------------------------------------------------------------------------
+c       --- This method is faster for RISC and pentium machines.
+c       --- sum particle moments into total moments
+        do ip=1,np
+          vzi = 1./(uzp(ip)+SMALLPOS)
+          if (wp(ip) > 0.) then
+            zmmnts0( 1) = zmmnts0( 1) + wp(ip)*wp(ip)
+            zmmnts0( 2) = zmmnts0( 2) + xp(ip)*wp(ip)
+            zmmnts0( 3) = zmmnts0( 3) + yp(ip)*wp(ip)
+            zmmnts0( 4) = zmmnts0( 4) + zp(ip)*wp(ip)
+            zmmnts0( 7) = zmmnts0( 7) + uxp(ip)*gaminv(ip)*wp(ip)
+            zmmnts0( 8) = zmmnts0( 8) + uyp(ip)*gaminv(ip)*wp(ip)
+            zmmnts0( 9) = zmmnts0( 9) + uzp(ip)*gaminv(ip)*wp(ip)
+            zmmnts0(10) = zmmnts0(10) + xp(ip)*yp(ip)*wp(ip)
+            zmmnts0(12) = zmmnts0(12) + xp(ip)**2*wp(ip)
+            zmmnts0(13) = zmmnts0(13) + yp(ip)**2*wp(ip)
+            zmmnts0(14) = zmmnts0(14) + zp(ip)**2*wp(ip)
+            zmmnts0(17) = zmmnts0(17) + (gaminv(ip)*uxp(ip))**2*wp(ip)
+            zmmnts0(18) = zmmnts0(18) + (gaminv(ip)*uyp(ip))**2*wp(ip)
+            zmmnts0(19) = zmmnts0(19) + (gaminv(ip)*uzp(ip))**2*wp(ip)
+            zmmnts0(22) = zmmnts0(22) + zp(ip)*gaminv(ip)*uzp(ip)*wp(ip)
+            zmmnts0(25) = zmmnts0(25) + xp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
+            zmmnts0(26) = zmmnts0(26) + yp(ip)*uzp(ip)*gaminv(ip)*wp(ip)
+            zmmnts0(27) = zmmnts0(27) + uxp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
+            zmmnts0(28) = zmmnts0(28) + uyp(ip)*uzp(ip)*gaminv(ip)**2*wp(ip)
+            zmmnts0( 5) = zmmnts0( 5) + uxp(ip)*vzi*wp(ip)
+            zmmnts0( 6) = zmmnts0( 6) + uyp(ip)*vzi*wp(ip)
+            zmmnts0(11) = zmmnts0(11) + uxp(ip)*uyp(ip)*vzi**2*wp(ip)
+            zmmnts0(15) = zmmnts0(15) + (uxp(ip)*vzi)**2*wp(ip)
+            zmmnts0(16) = zmmnts0(16) + (uyp(ip)*vzi)**2*wp(ip)
+            zmmnts0(20) = zmmnts0(20) + xp(ip)*uxp(ip)*vzi*wp(ip)
+            zmmnts0(21) = zmmnts0(21) + yp(ip)*uyp(ip)*vzi*wp(ip)
+            zmmnts0(23) = zmmnts0(23) + xp(ip)*uyp(ip)*vzi*wp(ip)
+            zmmnts0(24) = zmmnts0(24) + yp(ip)*uxp(ip)*vzi*wp(ip)
+          endif
+        enddo
+
+c-------------------------------------------------------------------------
+#endif
+
+
+c       --- Now, accumulate moments onto Z grid.
+        if (ifzmmnt == 2) then
+
+c         --- Extrapolate quantities onto grid points so all particles
+c         ---   contributing to a moment are at same z.
+c         --- dti and dtip1 calculated by assuming constant Vz and 
+c         ---   computing times at which z crosses the two nearest grid points.
+c         --- V extrapolated using current and previous values of V
+c         ---   (this avoids having to use E and B to extrapolate V).
+c         --- X extrapolated assuming constant V (uses V at particle position).
+c         --- After extrapolation, data is linearly weighted onto grid by
+c         ---   particle's z location.  This has the effect that the less
+c         ---   accurately extrapolated particles, which are far from the
+c         ---   grid point, are weighted less, hopefully helping smoothness.
+
+c         --- extrapolate to two nearest cells
+          do ip=1,np
+            vzi = 1./(uzp(ip)*gaminv(ip)+SMALLPOS)
+            iz(ip)  = (zp(ip) - zbeam - zmmntmin)*dzmi
+            dti = (iz(ip)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+            pp(3,ip) = uxp(ip)*(1. + dti*oneondt) - uxpo(ip)*dti*oneondt
+            pp(7,ip) = uyp(ip)*(1. + dti*oneondt) - uypo(ip)*dti*oneondt
+            pp(11,ip) = uzp(ip)*(1. + dti*oneondt) - uzpo(ip)*dti*oneondt
+            pp(1,ip) = xp(ip) + uxp(ip)*dti*gaminv(ip)
+            pp(5,ip) = yp(ip) + uyp(ip)*dti*gaminv(ip)
+            pp(9,ip) = zp(ip) + uzp(ip)*dti*gaminv(ip)
+c           pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
+
+            dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+            pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
+            pp(8,ip) = uyp(ip)*(1. + dtip1*oneondt) - uypo(ip)*dtip1*oneondt
+            pp(12,ip) = uzp(ip)*(1. + dtip1*oneondt) - uzpo(ip)*dtip1*oneondt
+            pp(2,ip) = xp(ip) + uxp(ip)*dtip1*gaminv(ip)
+            pp(6,ip) = yp(ip) + uyp(ip)*dtip1*gaminv(ip)
+            pp(10,ip) = zp(ip) + uzp(ip)*dtip1*gaminv(ip)
+c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
+
+            pp(13,ip) = gaminv(ip)
+            pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*wp(ip)
+            pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*wp(ip)
+            pp(16,ip) = dti
+            pp(17,ip) = dtip1
+          enddo
+
+c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
+c         --- This allows access to the particle data when it is extrapolated
+c         --- to the moments grid cell centers.
+          do iw=1,nepwin
+            do ip=1,np
+              if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
+     &            wp(ip) > 0.) then
+                nep(iw,is) = nep(iw,is) + 1
+                tep(nep(iw,is),iw,is) = pp(16,ip) + time
+                xep(nep(iw,is),iw,is) = pp(1,ip)
+                yep(nep(iw,is),iw,is) = pp(5,ip)
+                uxep(nep(iw,is),iw,is) = pp(3,ip)
+                uyep(nep(iw,is),iw,is) = pp(7,ip)
+                uzep(nep(iw,is),iw,is) = pp(11,ip)
+              else if (iz(ip)+1 == izepwin(iw) .and.
+     &                 nep(iw,is) < nepmax .and.
+     &                 pp(0,ip) > 0.) then
+                nep(iw,is) = nep(iw,is) + 1
+                tep(nep(iw,is),iw,is) = pp(17,ip) + time
+                xep(nep(iw,is),iw,is) = pp(2,ip)
+                yep(nep(iw,is),iw,is) = pp(6,ip)
+                uxep(nep(iw,is),iw,is) = pp(4,ip)
+                uyep(nep(iw,is),iw,is) = pp(8,ip)
+                uzep(nep(iw,is),iw,is) = pp(12,ip)
+              endif
+            enddo
+          enddo
+
+c-------------------------------------------------------------------------
+#ifdef J90
+c       --- This method is faster for vectorized machines, primarily the J90.
+c         --- put particle moments into pmmnts array for zmmnts(iz,)
+          do ip=1,np
+            vzi = 1./(pp(11,ip)+SMALLPOS)
+            wz0 = pp(14,ip)
+            pmmnts( 1,ip) = wz0
+            pmmnts( 2,ip) = pp(1,ip)*wz0
+            pmmnts( 3,ip) = pp(5,ip)*wz0
+            pmmnts( 4,ip) = pp(9,ip)*wz0
+            pmmnts( 7,ip) = pp(3,ip)*pp(13,ip)*wz0
+            pmmnts( 8,ip) = pp(7,ip)*pp(13,ip)*wz0
+            pmmnts( 9,ip) = pp(11,ip)*pp(13,ip)*wz0
+            pmmnts(10,ip) = pp(1,ip)*pp(5,ip)*wz0
+            pmmnts(12,ip) = pp(1,ip)**2*wz0
+            pmmnts(13,ip) = pp(5,ip)**2*wz0
+            pmmnts(14,ip) = pp(9,ip)**2*wz0
+            pmmnts(17,ip) = (pp(13,ip)*pp(3,ip))**2*wz0
+            pmmnts(18,ip) = (pp(13,ip)*pp(7,ip))**2*wz0
+            pmmnts(19,ip) = (pp(13,ip)*pp(11,ip))**2*wz0
+            pmmnts(22,ip) = pp(9,ip)*pp(13,ip)*pp(11,ip)*wz0
+            pmmnts(25,ip) = pp(1,ip)*pp(11,ip)*pp(13,ip)*wz0
+            pmmnts(26,ip) = pp(5,ip)*pp(11,ip)*pp(13,ip)*wz0
+            pmmnts(27,ip) = pp(3,ip)*pp(11,ip)*pp(13,ip)**2*wz0
+            pmmnts(28,ip) = pp(7,ip)*pp(11,ip)*pp(13,ip)**2*wz0
+            pmmnts( 5,ip) = pp(3,ip)*vzi*wz0
+            pmmnts( 6,ip) = pp(7,ip)*vzi*wz0
+            pmmnts(11,ip) = pp(3,ip)*pp(7,ip)*vzi**2*wz0
+            pmmnts(15,ip) = (pp(3,ip)*vzi)**2*wz0
+            pmmnts(16,ip) = (pp(7,ip)*vzi)**2*wz0
+            pmmnts(20,ip) = pp(1,ip)*pp(3,ip)*vzi*wz0
+            pmmnts(21,ip) = pp(5,ip)*pp(7,ip)*vzi*wz0
+            pmmnts(23,ip) = pp(1,ip)*pp(7,ip)*vzi*wz0
+            pmmnts(24,ip) = pp(5,ip)*pp(3,ip)*vzi*wz0
+          enddo
+
+c         --- deposit moments into array
+          do ip=1,np
+            do im=1,NUMZMMNT
+              zmmnts(iz(ip),im) = zmmnts(iz(ip),im) + pmmnts(im,ip)
+            enddo
+          enddo
+
+c         --- put particle moments into pmmnts array for zmmnts(iz+1,)
+          do ip=1,np
+            vzi = 1./(pp(12,ip)+SMALLPOS)
+            wz1 = pp(15,ip)
+            pmmnts( 1,ip) = wz1
+            pmmnts( 2,ip) = pp(2,ip)*wz1
+            pmmnts( 3,ip) = pp(6,ip)*wz1
+            pmmnts( 4,ip) = pp(10,ip)*wz1
+            pmmnts( 7,ip) = pp(4,ip)*pp(13,ip)*wz1
+            pmmnts( 8,ip) = pp(8,ip)*pp(13,ip)*wz1
+            pmmnts( 9,ip) = pp(12,ip)*pp(13,ip)*wz1
+            pmmnts(10,ip) = pp(2,ip)*pp(6,ip)*wz1
+            pmmnts(12,ip) = pp(2,ip)**2*wz1
+            pmmnts(13,ip) = pp(6,ip)**2*wz1
+            pmmnts(14,ip) = pp(10,ip)**2*wz1
+            pmmnts(17,ip) = (pp(13,ip)*pp(4,ip))**2*wz1
+            pmmnts(18,ip) = (pp(13,ip)*pp(8,ip))**2*wz1
+            pmmnts(19,ip) = (pp(13,ip)*pp(12,ip))**2*wz1
+            pmmnts(22,ip) = pp(10,ip)*pp(13,ip)*pp(12,ip)*wz1
+            pmmnts(25,ip) = pp(2,ip)*pp(12,ip)*pp(13,ip)*wz1
+            pmmnts(26,ip) = pp(6,ip)*pp(12,ip)*pp(13,ip)*wz1
+            pmmnts(27,ip) = pp(4,ip)*pp(12,ip)*pp(13,ip)**2*wz1
+            pmmnts(28,ip) = pp(8,ip)*pp(12,ip)*pp(13,ip)**2*wz1
+            pmmnts( 5,ip) = pp(4,ip)*vzi*wz1
+            pmmnts( 6,ip) = pp(8,ip)*vzi*wz1
+            pmmnts(11,ip) = pp(4,ip)*pp(8,ip)*vzi**2*wz1
+            pmmnts(15,ip) = (pp(4,ip)*vzi)**2*wz1
+            pmmnts(16,ip) = (pp(8,ip)*vzi)**2*wz1
+            pmmnts(20,ip) = pp(2,ip)*pp(4,ip)*vzi*wz1
+            pmmnts(21,ip) = pp(6,ip)*pp(8,ip)*vzi*wz1
+            pmmnts(23,ip) = pp(2,ip)*pp(8,ip)*vzi*wz1
+            pmmnts(24,ip) = pp(6,ip)*pp(4,ip)*vzi*wz1
+          enddo
+
+c         --- deposit moments into array
+          do ip=1,np
+            do im=1,NUMZMMNT
+              zmmnts(iz(ip)+1,im) = zmmnts(iz(ip)+1,im) + pmmnts(im,ip)
+            enddo
+          enddo
+
+#else
+
+c-------------------------------------------------------------------------
+c       --- This method is faster for RISC and pentium machines.
+
+          do ip=1,np
+c           --- sum particle moments into zmmnts(iz,)
+            vzi = 1./(pp(11,ip)+SMALLPOS)
+            wz0 = pp(14,ip)
+            i = iz(ip)
+            zmmnts(i, 1) = zmmnts(i, 1) + wz0
+            zmmnts(i, 2) = zmmnts(i, 2) + pp(1,ip)*wz0
+            zmmnts(i, 3) = zmmnts(i, 3) + pp(5,ip)*wz0
+            zmmnts(i, 4) = zmmnts(i, 4) + pp(9,ip)*wz0
+            zmmnts(i, 7) = zmmnts(i, 7) + pp(3,ip)*pp(13,ip)*wz0
+            zmmnts(i, 8) = zmmnts(i, 8) + pp(7,ip)*pp(13,ip)*wz0
+            zmmnts(i, 9) = zmmnts(i, 9) + pp(11,ip)*pp(13,ip)*wz0
+            zmmnts(i,10) = zmmnts(i,10) + pp(1,ip)*pp(5,ip)*wz0
+            zmmnts(i,12) = zmmnts(i,12) + pp(1,ip)**2*wz0
+            zmmnts(i,13) = zmmnts(i,13) + pp(5,ip)**2*wz0
+            zmmnts(i,14) = zmmnts(i,14) + pp(9,ip)**2*wz0
+            zmmnts(i,17) = zmmnts(i,17) + (pp(13,ip)*pp(3,ip))**2*wz0
+            zmmnts(i,18) = zmmnts(i,18) + (pp(13,ip)*pp(7,ip))**2*wz0
+            zmmnts(i,19) = zmmnts(i,19) + (pp(13,ip)*pp(11,ip))**2*wz0
+            zmmnts(i,22) = zmmnts(i,22) + pp(9,ip)*pp(13,ip)*pp(11,ip)*wz0
+            zmmnts(i,25) = zmmnts(i,25) + pp(1,ip)*pp(11,ip)*pp(13,ip)*wz0
+            zmmnts(i,26) = zmmnts(i,26) + pp(5,ip)*pp(11,ip)*pp(13,ip)*wz0
+            zmmnts(i,27) = zmmnts(i,27) + pp(3,ip)*pp(11,ip)*pp(13,ip)**2*wz0
+            zmmnts(i,28) = zmmnts(i,28) + pp(7,ip)*pp(11,ip)*pp(13,ip)**2*wz0
+            zmmnts(i, 5) = zmmnts(i, 5) + pp(3,ip)*vzi*wz0
+            zmmnts(i, 6) = zmmnts(i, 6) + pp(7,ip)*vzi*wz0
+            zmmnts(i,11) = zmmnts(i,11) + pp(3,ip)*pp(7,ip)*vzi**2*wz0
+            zmmnts(i,15) = zmmnts(i,15) + (pp(3,ip)*vzi)**2*wz0
+            zmmnts(i,16) = zmmnts(i,16) + (pp(7,ip)*vzi)**2*wz0
+            zmmnts(i,20) = zmmnts(i,20) + pp(1,ip)*pp(3,ip)*vzi*wz0
+            zmmnts(i,21) = zmmnts(i,21) + pp(5,ip)*pp(7,ip)*vzi*wz0
+            zmmnts(i,23) = zmmnts(i,23) + pp(1,ip)*pp(7,ip)*vzi*wz0
+            zmmnts(i,24) = zmmnts(i,24) + pp(5,ip)*pp(3,ip)*vzi*wz0
+
+c           --- sum particle moments into zmmnts(iz+1,)
+            vzi = 1./(pp(12,ip)+SMALLPOS)
+            wz1 = pp(15,ip)
+            i = iz(ip) + 1
+            zmmnts(i, 1) = zmmnts(i, 1) + wz1
+            zmmnts(i, 2) = zmmnts(i, 2) + pp(2,ip)*wz1
+            zmmnts(i, 3) = zmmnts(i, 3) + pp(6,ip)*wz1
+            zmmnts(i, 4) = zmmnts(i, 4) + pp(10,ip)*wz1
+            zmmnts(i, 7) = zmmnts(i, 7) + pp(4,ip)*pp(13,ip)*wz1
+            zmmnts(i, 8) = zmmnts(i, 8) + pp(8,ip)*pp(13,ip)*wz1
+            zmmnts(i, 9) = zmmnts(i, 9) + pp(12,ip)*pp(13,ip)*wz1
+            zmmnts(i,10) = zmmnts(i,10) + pp(2,ip)*pp(6,ip)*wz1
+            zmmnts(i,12) = zmmnts(i,12) + pp(2,ip)**2*wz1
+            zmmnts(i,13) = zmmnts(i,13) + pp(6,ip)**2*wz1
+            zmmnts(i,14) = zmmnts(i,14) + pp(10,ip)**2*wz1
+            zmmnts(i,17) = zmmnts(i,17) + (pp(13,ip)*pp(4,ip))**2*wz1
+            zmmnts(i,18) = zmmnts(i,18) + (pp(13,ip)*pp(8,ip))**2*wz1
+            zmmnts(i,19) = zmmnts(i,19) + (pp(13,ip)*pp(12,ip))**2*wz1
+            zmmnts(i,22) = zmmnts(i,22) + pp(10,ip)*pp(13,ip)*pp(12,ip)*wz1
+            zmmnts(i,25) = zmmnts(i,25) + pp(2,ip)*pp(12,ip)*pp(13,ip)*wz1
+            zmmnts(i,26) = zmmnts(i,26) + pp(6,ip)*pp(12,ip)*pp(13,ip)*wz1
+            zmmnts(i,27) = zmmnts(i,27) + pp(4,ip)*pp(12,ip)*pp(13,ip)**2*wz1
+            zmmnts(i,28) = zmmnts(i,28) + pp(8,ip)*pp(12,ip)*pp(13,ip)**2*wz1
+            zmmnts(i, 5) = zmmnts(i, 5) + pp(4,ip)*vzi*wz1
+            zmmnts(i, 6) = zmmnts(i, 6) + pp(8,ip)*vzi*wz1
+            zmmnts(i,11) = zmmnts(i,11) + pp(4,ip)*pp(8,ip)*vzi**2*wz1
+            zmmnts(i,15) = zmmnts(i,15) + (pp(4,ip)*vzi)**2*wz1
+            zmmnts(i,16) = zmmnts(i,16) + (pp(8,ip)*vzi)**2*wz1
+            zmmnts(i,20) = zmmnts(i,20) + pp(2,ip)*pp(4,ip)*vzi*wz1
+            zmmnts(i,21) = zmmnts(i,21) + pp(6,ip)*pp(8,ip)*vzi*wz1
+            zmmnts(i,23) = zmmnts(i,23) + pp(2,ip)*pp(8,ip)*vzi*wz1
+            zmmnts(i,24) = zmmnts(i,24) + pp(6,ip)*pp(4,ip)*vzi*wz1
+
+          enddo
+
+c-------------------------------------------------------------------------
+#endif
+
+c         --- End of Z moments accumulation
+        endif
+
+      endif
+
+      if (itask == 3 .and. .not. laccumulate_zmoments) then
+        write(0,*) 'Error in getzmmnt_weights: call getzmmnt when itask = 3'
+        stop
+      endif
+
+      momentstime = momentstime + (wtime() - timetemp)
+
+      return
+      end
+c=============================================================================
       subroutine getlabwn()
       use Beam_acc
       use InDiag
@@ -4819,6 +5272,40 @@ c     --- scalar loop
       return
       end
 c=============================================================================
+      subroutine setcurr_weights (curr,np,zp,uzp,w,gaminv,q,wght,zbeam,dzz,zzmin)
+      use GlobalVars
+      integer(ISZ):: np
+      real(kind=8):: q,wght,zbeam,dzz,zzmin
+      real(kind=8):: curr(0:*), zp(np), uzp(np), gaminv(np), w(np)
+
+c  Sets 1d beam current as a function of z, directly from particle data
+
+      real(kind=8):: s0(nparpgrp), s1(nparpgrp)
+      integer(ISZ):: kk(nparpgrp)
+      real(kind=8):: g,w1,w0,dzzi
+      integer(ISZ):: ip
+
+      g = wght * q / dzz
+      dzzi = 1. / dzz
+c     --- vector loop
+      do ip = 1,np
+         kk(ip) = (zp(ip) - zbeam - zzmin) * dzzi
+         w1 =  (zp(ip) - zbeam - zzmin) * dzzi - kk(ip)
+         w0 = 1. - w1
+         s0(ip) = w0 * g * gaminv(ip) * uzp(ip) * w(ip)
+         s1(ip) = w1 * g * gaminv(ip) * uzp(ip) * w(ip)
+      enddo
+c     --- scalar loop
+      do ip = 1,np
+         if (uzp(ip) /= 0) then
+            curr(kk(ip)) = curr(kk(ip)) + s0(ip)
+            curr(kk(ip)+1) = curr(kk(ip)+1) + s1(ip)
+         endif
+      enddo
+
+      return
+      end
+c=============================================================================
       subroutine percurr(curr,nzzarr,bound0)
       use GlobalVars
       integer(ISZ):: nzzarr,bound0
@@ -4852,6 +5339,7 @@ c  Computes the mean beam z velocity from the current and line charge density
 
       return
       end
+
 c=============================================================================
       subroutine setegap
       use Beam_acc
@@ -4979,6 +5467,7 @@ c     --- other boundary condition (particles absorbed or reflected)
               if(pboundnz==absorb) then
                 zp(ip) = zmmin - .9999*dz + zgrid
                 gaminv(ip) = 0.
+                if(wpid>0) pid(ip,wpid) = 0.
               elseif(pboundnz==reflect) then
                 zp(ip) = 2.*zgrid + 2.*zmmax - zp(ip)
                 uzp(ip) = -uzp(ip)
@@ -4987,6 +5476,7 @@ c     --- other boundary condition (particles absorbed or reflected)
               if(pbound0==absorb) then
                 zp(ip) = zmmin - .9999*dz + zgrid
                 gaminv(ip) = 0.
+                if(wpid>0) pid(ip,wpid) = 0.
               elseif(pbound0==reflect) then
                 zp(ip) = 2.*zgrid + 2.*zmmin - zp(ip)
                 uzp(ip) = -uzp(ip)
@@ -5549,6 +6039,7 @@ c       --- to fill in the empty spaces.
                 endif
                 uzp(ips) = 0.
                 gaminv(ips) = 0.
+                if(wpid>0) pid(ips,wpid) = 0.
                 ips = ips - 1
                 nps(j) = nps(j) + 1
               endif
@@ -5581,6 +6072,8 @@ c       --- Live particles are shifted downward to fill in the empty spaces
                   pid(ips,:) = 0
                 endif
                 uzp(ips) = 0.
+                gaminv(ips) = 0.
+                if(wpid>0) pid(ips,wpid) = 0.
               endif
               ip = ip + 1
               nps(j) = nps(j) + 1
@@ -6230,4 +6723,16 @@ c     --- Return n to it original value
 
       return
       end
+c=============================================================================
+      integer(ISZ) function oneiftrue(l)
+      logical(ISZ), intent(IN) :: l
+
+        if(l) then
+          oneiftrue = 1
+        else
+          oneiftrue = 0
+        end if
+
+        return
+      end function oneiftrue
 c=============================================================================
