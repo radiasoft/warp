@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.22 2004/10/28 18:00:37 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.23 2004/10/29 20:44:56 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -121,14 +121,16 @@ conductors are an argument.
     yy = top.yp[i1:i2]
     zz = top.zp[i1:i2]
     pp = zeros(top.nps[js],'d')
-    if w3d.solvergeom == w3d.XYZgeom:
+    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
       getgrid3d(top.nps[js],xx,yy,zz,pp,
                 nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
                 w3d.l2symtry,w3d.l4symtry)
-    else:
+    elif w3d.solvergeom == w3d.RZgeom:
       xx = sqrt(xx**2 + yy**2)
       yy = zeros(len(xx),'d')
       getgrid2d(top.nps[js],xx,zz,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
+    else:
+      raise "The particle scraping only works for XYZ and RZ geometry"
 
     iscrape = compress(pp>0.,arange(i1,i2))
     if len(iscrape) == 0: return
@@ -145,11 +147,11 @@ conductors are an argument.
     pp = zeros(nn,'d')
 
     # --- Get conductor id that particles are near
-    if w3d.solvergeom == w3d.XYZgeom:
+    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
       getgridngp3d(nn,xg,yg,zg,pp,
                    nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)
-    else:
+    elif w3d.solvergeom == w3d.RZgeom:
       getgridngp2d(nn,xg,zg,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
 
     # --- Loop over the conductors, removing particles inside of each.
@@ -215,12 +217,14 @@ conductors are an argument.
     pp = zeros(nn,'d')
 
     # --- Get conductor id that particles are near
-    if w3d.solvergeom == w3d.XYZgeom:
+    if w3d.solvergeom in [w3d.XYZgeom,w3d.XYZgeomMR]:
       getgridngp3d(nn,xg,yg,zg,pp,
                    nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)
-    else:
+    elif w3d.solvergeom == w3d.RZgeom:
       getgridngp2d(nn,xg,zg,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
+    else:
+      raise "The particle scraping only works for XYZ and RZ geometry"
 
     # --- Loop over the conductors, removing particles inside of each.
     for c in self.conductors:
