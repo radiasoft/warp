@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.65 $, $Date: 2003/01/24 13:50:33 $
+c@(#) File TOP.M, version $Revision: 3.66 $, $Date: 2003/01/24 16:53:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1444,8 +1444,8 @@ c        --- find index of nearest acceleration element
      &                           time < acclts(id)+ntaccl*accldt(id)) then
                  ii = int((time - acclts(id))/accldt(id))
                  wi = (time - acclts(id))/accldt(id) - ii
-                 cacclez(iz,io) = cacclez(iz,io) + acclet(ii  ,id)*(1. - wi) +
-     &                                       acclet(ii+1,id)*      wi 
+                 cacclez(iz,io) = acclez(id) + acclet(ii  ,id)*(1. - wi) +
+     &                                         acclet(ii+1,id)*      wi 
                endif
                if (cacclzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
      &                               zlmin+zbeam-zlatbuffer <= cacclze(iz,io))
