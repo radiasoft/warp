@@ -28,7 +28,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.31 2003/04/08 17:50:53 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.32 2003/05/22 00:17:40 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -116,6 +116,34 @@ def fzeros(shape,typecode=Int):
     s = list([shape])
   s.reverse()
   return transpose(zeros(s,typecode))
+
+# --- Convenience function which returns meshes filled with the coordinates.
+def getmeshcoordinates(mins,dds,nns):
+  """
+getmeshcoordinates(mins,dds,nns)
+Returns arrays holding the coordinates of the mesh points.
+Lenght of list of inputs determines number of dimensions.
+  """
+  nns = tuple(array(nns) + 1)
+  cc = indices(nns,'d')
+  for i in xrange(len(mins)): cc[i] = mins[i] + cc[i]*dds[i]
+  clist = []
+  for i in xrange(len(mins)): clist.append(cc[i])
+  return tuple(clist)
+
+def getmesh2d(xmin,dx,nx,ymin,dy,ny):
+  """
+getmesh2d(xmin,dx,nx,ymin,dy,ny)
+Returns 2 2-d arrays holding the coordinates of the mesh points
+  """
+  return getmeshcoordinates([xmin,ymin],[dx,dy],[nx,ny])
+
+def getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dz,nz):
+  """
+getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dx,nz)
+Returns 3 3-d arrays holding the coordinates of the mesh points
+  """
+  return getmeshcoordinates([xmin,ymin,zmin],[dx,dy,dz],[nx,ny,nz])
 
 # --- This function appends a new element to the end of an array.
 # --- It is not very efficient since it creates a whole new array each time.
@@ -216,6 +244,18 @@ def doc(f,printit=1):
         d = "No documentation found"
   if printit: print d
   else:       return d
+
+# --- Get size of all variables in a group
+def getgroupsize(pkg,grp):
+  ll = pkg.varlist(grp)
+  ss = 0
+  for v in ll:
+    vv = pkg.getpyobject(v)
+    if type(vv) == type(array([1])):
+      ss = ss + product(array(shape(vv)))
+    else:
+      ss = ss + 1
+  return ss
 
 # --- Print out all variables in a group
 def printgroup(pkg,group='',maxelements=10):
