@@ -80,11 +80,11 @@ class MRBlock(MultiGrid,Visualizable):
 
       if lower is None and upper is None:
         # --- The grid mins and maxs are input.
-        self.mins = mins
-        self.maxs = max
+        self.mins = array(mins)
+        self.maxs = array(maxs)
         self.dims = (self.maxs - self.mins)/self.deltas
-        self.lower = (self.mins - parent.mins)/self.deltas + parent.lower
-        self.upper = (self.maxs - parent.mins)/self.deltas + parent.lower
+        self.lower = nint((self.mins - parent.mins)/self.deltas) + refinement*parent.lower
+        self.upper = nint((self.maxs - parent.mins)/self.deltas) + refinement*parent.lower
 
       else:
         # --- The grid lower and upper bounds are input. The bounds are
@@ -158,8 +158,8 @@ class MRBlock(MultiGrid,Visualizable):
     # --- For rho deposition and field solving.
     self.ncallsfromparents = 0
 
-  def addchild(self,lower,upper,refinement=2):
-    child = MRBlock(parent=self,lower=lower,upper=upper,
+  def addchild(self,lower,upper,mins=None,maxs=None,refinement=2):
+    child = MRBlock(parent=self,lower=lower,upper=upper,mins=mins,maxs=maxs,
                     refinement=refinement,ichild=len(self.children)+1,
                     nguard=self.nguard,dimsmax=self.dimsmax*refinement)
     self.addblockaschild(child)
