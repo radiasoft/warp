@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.7 2004/05/14 23:06:12 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.8 2004/05/19 19:42:57 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -25,6 +25,7 @@ class VisualModel:
     self.connections = None
     self.twoSided = twoSided  # add every face twice with opposite normals
     self.normalsign = normalsign
+    self.defcolor = [0.5,0.7,1.0]
     if vrange is not None:
       self.vrange = vrange
       self.autoscale = 0
@@ -136,10 +137,11 @@ class VisualModel:
   def FacetedTriangle(self, vv, nn = None, color=None):
     """Add a triangle to the model, apply faceted shading automatically"""
     if nn is None: nn = len(vv)*[None]
+    if color is None: color = self.defcolor
     normal = self.Norm( self.Cross(vv[1]-vv[0], vv[2]-vv[0]) )
     for v,n in zip(vv,nn):
       self.triangles.append(v)
-      if color is not None: self.colors.append(color)
+      self.colors.append(color)
       if n is None: self.normals.append(normal)
       else:         self.normals.append(n)
       #self.model.append( pos=v, color=color, normal=normal )
@@ -147,7 +149,7 @@ class VisualModel:
       for v,n in zip(vv,nn):
         #self.model.append( pos=v, color=color, normal=-normal )
         self.triangles.append(v)
-        if color is not None: self.colors.append(color)
+        self.colors.append(color)
         if n is None: self.normals.append(-normal)
         else:         self.normals.append(-n)
 
@@ -158,6 +160,19 @@ class VisualModel:
     for t in range(len(v)-2):
       self.FacetedTriangle( vv=[v[0], v[t+1], v[t+2]],
                             nn=[n[0], n[t+1], n[t+2]], color=color)
+   # --- This is a small attempt to fill in areas that are concave without
+   # --- having triangles sticking outside. It doesn't help.
+   #ss = 0
+   #ee = len(v) - 1
+   #for t in range(len(v)-2):
+   #  if (t % 2) == 0:
+   #    self.FacetedTriangle(vv=[v[ss], v[ss+1], v[ee]],
+   #                         nn=[n[ss], n[ss+1], n[ee]], color=color)
+   #    ss += 1
+   #  else:
+   #    self.FacetedTriangle(vv=[v[ss], v[ee-1], v[ee]],
+   #                         nn=[n[ss], n[ee-1], n[ee]], color=color)
+   #    ee -= 1
 
   def DoSmoothShading(self):
     rsq = sum(self.triangles**2,1)
@@ -290,8 +305,9 @@ Visualize surface of revolution
  - rendzmax: radius at zmax
  - nz=20: if srfrv is given, number of z points radius sampled at
  - nth=20: number of theta angles points sampled at
- - thmin=0.: miminmum theta angle
- - thmax=2*pi: maximum theta angle
+ - phimin=0.: miminmum phi angle
+ - phimax=2*pi: maximum phi angle
+ - fillinends=1: if theta range < 2pi, fill in ends if true.
  - xoff=0: x offset
  - yoff=0: y offset
  - zoff=0: z offset
@@ -310,17 +326,28 @@ Visualize surface of revolution
  - viewer=None: select viewer, either 'OpenDX' or 'VPython'
  - display=1: if 1, immeidately display object
   """
-  def __init__(self,srfrv,zzmin,zzmax,rendzmin,rendzmax,
-                    nz=20,nth=20,thmin=0.,thmax=2*pi,xoff=0,yoff=0,zoff=0,
+  def __init__(self,srfrv=None,zzmin=None,zzmax=None,
+                    rendzmin=None,rendzmax=None,
+                    nz=20,nth=20,phimin=None,phimax=None,fillinends=0,
+                    xoff=0,yoff=0,zoff=0,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,ntpts=5,
-                    twoSided=1,normalsign=1,color=None,
+                    twoSided=0,normalsign=1,color=None,
                     scene=None,title=None,vrange=None,
-                    viewer=None,display=1):
+                    viewer=None,display=1,kwdict={}):
+    kwdict.update(kwdict.setdefault('kwdict',{}))
+    if 'kwdict' in kwdict: del kwdict['kwdict']
+    for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
     if not title: title = 'Surface of revolution'
-    VisualModel.__init__(self,twoSided=twoSided,normalsign=normalsign,
+    VisualModel.__init__(self,twoSided=twoSided,normalsign=1,
                               scene=scene,title=title,
                               vrange=vrange,viewer=viewer)
+
+    # --- If phimin and phimax are not given, then the ends never need
+    # --- filling in
+    if phimin is None and phimax is None: fillinends = 0
+    if phimin is None: phimin = 0.
+    if phimax is None: phimax = 2*pi
 
     if rofzdata is None and zdata is None:
       # --- Include extra points for the z end of the surface
@@ -380,22 +407,22 @@ Visualize surface of revolution
     # --- Now set end points
     if rendzmin == largepos: rendzmin = 2.*max(max(rrleft),max(rrrght))
     if rendzmax == largepos: rendzmax = 2.*max(max(rrleft),max(rrrght))
-    if rendzmin == None: rendzmin = rrleft[1]
-    if rendzmax == None: rendzmax = rrrght[-2]
-    zzleft[0] = zzmin
-    zzrght[0] = zzleft[1]
-    zzleft[-1] = zzrght[-2]
-    zzrght[-1] = zzmax
-    rrleft[0] = rendzmin
-    rrrght[0] = rrleft[1]
-    rrleft[-1] = rrrght[-2]
-    rrrght[-1] = rendzmax
-    ttleft[0] = pi #*(normalsign > 0.)
-    ttrght[0] = pi #*(normalsign > 0.)
-    ttleft[-1] = 0. # pi*(normalsign < 0.)
-    ttrght[-1] = 0. # pi*(normalsign < 0.)
+    if rendzmin is not None:
+      zzleft[0] = zzmin
+      zzrght[0] = zzleft[1]
+      rrleft[0] = rendzmin
+      rrrght[0] = rrleft[1]
+      ttleft[0] = pi *(normalsign > 0.)
+      ttrght[0] = pi *(normalsign > 0.)
+    if rendzmax is not None:
+      zzleft[-1] = zzrght[-2]
+      zzrght[-1] = zzmax
+      rrleft[-1] = rrrght[-2]
+      rrrght[-1] = rendzmax
+      ttleft[-1] = 0. + pi*(normalsign < 0.)
+      ttrght[-1] = 0. + pi*(normalsign < 0.)
 
-    phi = thmin + (thmax - thmin)*arange(0,nth+1)/nth
+    phi = phimin + (phimax - phimin)*arange(0,nth+1)/nth
     xx = cos(phi)
     yy = sin(phi)
 
@@ -410,25 +437,34 @@ Visualize surface of revolution
         p4 = array([rrrght[i]*xx[j  ]+xoff, rrrght[i]*yy[j  ]+yoff,
                     zzrght[i] + zoff])
         if ttleft[i] is not None:
-          n1 = array([sin(ttleft[i])*cos(phi[j  ]),sin(phi[j  ]),
-                      cos(ttleft[i])*cos(phi[j  ])])
-          n2 = array([sin(ttleft[i])*cos(phi[j+1]),sin(phi[j+1]),
-                      cos(ttleft[i])*cos(phi[j+1])])
-          n3 = array([sin(ttrght[i])*cos(phi[j+1]),sin(phi[j+1]),
-                      cos(ttrght[i])*cos(phi[j+1])])
-          n4 = array([sin(ttrght[i])*cos(phi[j  ]),sin(phi[j  ]),
-                      cos(ttrght[i])*cos(phi[j  ])])
+          n1 = array([sin(ttleft[i])*cos(phi[j  ]),
+                      sin(ttleft[i])*sin(phi[j  ]),cos(ttleft[i])])
+          n2 = array([sin(ttleft[i])*cos(phi[j+1]),
+                      sin(ttleft[i])*sin(phi[j+1]),cos(ttleft[i])])
+          n3 = array([sin(ttrght[i])*cos(phi[j+1]),
+                      sin(ttrght[i])*sin(phi[j+1]),cos(ttrght[i])])
+          n4 = array([sin(ttrght[i])*cos(phi[j  ]),
+                      sin(ttrght[i])*sin(phi[j  ]),cos(ttrght[i])])
         else:
           n1,n2,n3,n4 = None,None,None,None
         self.FacetedPolygon([p1,p2,p3,p4],[n1,n2,n3,n4],color=color)
 
+    if fillinends:
+      rr = array([rrleft[0]] + list(rrrght))
+      zz = array([zzleft[0]] + list(zzrght)) + zoff
+      n = len(rr)
+      if phimin < phimax: nsign = -normalsign
+      else:               nsign = +normalsign
+      xx,yy = rr*cos(phimin)+xoff,rr*sin(phimin)+yoff
+      pp = map(array,zip(xx,yy,zz))
+      nx,ny = -nsign*sin(phimin),nsign*cos(phimin)
+      nn = map(array,zip(n*[nx],n*[ny],n*[0.]))
+      self.FacetedPolygon(pp,nn,color=color)
+      xx,yy = rr*cos(phimax)+xoff,rr*sin(phimax)+yoff
+      pp = map(array,zip(xx,yy,zz))
+      nx,ny = -nsign*sin(phimax),nsign*cos(phimax)
+      nn = map(array,zip(n*[nx],n*[ny],n*[0.]))
+      self.FacetedPolygon(pp,nn,color=color)
+
     self.CreateDXObject()
     if display: self.Display()
-    self.zzleft = zzleft
-    self.rrleft = rrleft
-    self.ttleft = ttleft
-    self.zzrght = zzrght
-    self.rrrght = rrrght
-    self.ttrght = ttrght
-
-
