@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.84 2004/09/16 00:00:52 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.85 2004/11/03 22:59:16 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1731,8 +1731,8 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
     if zl is None: zl = top.zlatstrt
     zoffset = floor((zl-top.zlatstrt)/top.zlatperi)*top.zlatperi
     while zoffset < zu:
-      #z1 = max(zl,zoffset) - zoffset
-      #z2 = min(zu,zoffset+top.zlatperi) - zoffset
+      z1 = max(zl,zoffset) - zoffset
+      z2 = min(zu,zoffset+top.zlatperi) - zoffset
       plotelementoutline(color,gridframe,axis,z1,z2,ie,ne,outline,fillcolor,
                          ezs,eze,eap,eax,eay,eox,eoy,err,erl,egl,egp,
                          epa,epr,epw,dpal,dpar,zoffset=zoffset)
