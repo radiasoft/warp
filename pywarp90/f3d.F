@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.59 $, $Date: 2002/09/21 00:33:20 $
+c@(#) File F3D.M, version $Revision: 3.60 $, $Date: 2002/10/03 23:09:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -2823,7 +2823,11 @@ c     --- These routines are from LAPACK.
 #if WORDSIZE == 64
       call ssytrf("U",nc3d,cmat3d,nc3d,kpvt3d,scrtch,(1+nx)*(1+ny),info)
 #else
+#ifdef CYGWIN
+      call dsytrf_("U",nc3d,cmat3d,nc3d,kpvt3d,scrtch,(1+nx)*(1+ny),info)
+#else
       call dsytrf("U",nc3d,cmat3d,nc3d,kpvt3d,scrtch,(1+nx)*(1+ny),info)
+#endif
 #endif
       if (info .ne. 0) then
         call remark("ERROR: Capacity matrix is singular - it is likely that")
@@ -2835,7 +2839,11 @@ c     --- pcond3d is passed as workspace.
 #if WORDSIZE == 64
       call ssytri("U",nc3d,cmat3d,nc3d,kpvt3d,pcond3d,info)
 #else
+#ifdef CYGWIN
+      call dsytri_("U",nc3d,cmat3d,nc3d,kpvt3d,pcond3d,info)
+#else
       call dsytri("U",nc3d,cmat3d,nc3d,kpvt3d,pcond3d,info)
+#endif
 #endif
 
 c     --- Fill in lower half (which is the same as the upper half)
@@ -3082,8 +3090,13 @@ c       --- These routines are from LAPACK.
         call ssytrf("U",nc3d,cmat3d(1,1,iz),nc3d,kpvt3d,scrtch,(1+nx)*(1+ny),
      &              info)
 #else
+#ifdef CYGWIN
+        call dsytrf_("U",nc3d,cmat3d(1,1,iz),nc3d,kpvt3d,scrtch,(1+nx)*(1+ny),
+     &              info)
+#else
         call dsytrf("U",nc3d,cmat3d(1,1,iz),nc3d,kpvt3d,scrtch,(1+nx)*(1+ny),
      &              info)
+#endif
 #endif
         if (info .ne. 0) then
           call remark("ERROR: Capacity matrix is singular - it is likely that")
@@ -3095,7 +3108,11 @@ c       --- pcond3d is passed as workspace.
 #if WORDSIZE == 64
         call ssytri("U",nc3d,cmat3d(1,1,iz),nc3d,kpvt3d,pcond3d,info)
 #else
+#ifdef CYGWIN
+        call dsytri_("U",nc3d,cmat3d(1,1,iz),nc3d,kpvt3d,pcond3d,info)
+#else
         call dsytri("U",nc3d,cmat3d(1,1,iz),nc3d,kpvt3d,pcond3d,info)
+#endif
 #endif
 
 c     --- Fill in lower half (which is the same as the upper half)

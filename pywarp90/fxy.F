@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FXY.M, version $Revision: 3.3 $, $Date: 2002/01/22 17:22:18 $
+c@(#) File FXY.M, version $Revision: 3.4 $, $Date: 2002/10/03 23:09:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -150,7 +150,11 @@ c     --- These routines are from LAPACK.
 #if WORDSIZE == 64
       call ssytrf("U",ncxy,cmatxy,ncxy,kpvtxy,xywork,(1+nx)*(1+ny),info)
 #else
+#ifdef CYGWIN
+      call dsytrf_("U",ncxy,cmatxy,ncxy,kpvtxy,xywork,(1+nx)*(1+ny),info)
+#else
       call dsytrf("U",ncxy,cmatxy,ncxy,kpvtxy,xywork,(1+nx)*(1+ny),info)
+#endif
 #endif
       if (info .ne. 0) then
         print*,"ERROR: Capacity matrix is singular - it is likely that"
@@ -162,7 +166,11 @@ c     --- pcond is passed as workspace.
 #if WORDSIZE == 64
       call ssytri("U",ncxy,cmatxy,ncxy,kpvtxy,pcond,info)
 #else
+#ifdef CYGWIN
+      call dsytri_("U",ncxy,cmatxy,ncxy,kpvtxy,pcond,info)
+#else
       call dsytri("U",ncxy,cmatxy,ncxy,kpvtxy,pcond,info)
+#endif
 #endif
 
 c     --- Fill in lower half (which is the same as the upper half)
