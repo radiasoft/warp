@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.14 2001/08/14 18:25:03 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.15 2001/08/15 17:08:14 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -26,6 +26,7 @@ that has already been done.
  - lloadrho=1: when true, the charge density is redeposited
  - dofs=1: when true, the fields are recalculated
   """
+  if not lparallel: return
   # --- It is assumed that the user supplied decomposition is specified
   # --- in the array zslave, which is an unscaled weighting of the z-ranges
   # --- of the particles for each processor.
@@ -134,6 +135,7 @@ grid points.
  - lloadrho=1: when true, the charge density is redoposited
  - dofs=1: when true, the fields are recalculated
   """
+  if not lparallel: return
   # --- Gather pnumz. The commented out line does not work since there
   # --- maybe a complicated series of overlap among the processors.
   pnumz = gatherallzarray(top.pnumz)
@@ -160,6 +162,7 @@ needed since some processors may have more conductor points than others.
  - condweight=2.: weight (in timing) of a conductor points relative to weight
                   of a grid cell
   """
+  if not lparallel: return
   # --- Save the old values
   oldiz = top.izslave + 0
   oldnz = top.nzslave + 0
@@ -303,7 +306,7 @@ def _adjustz():
   # --- surface completely covered.
   if top.inject > 1:
     zinjmax = top.ainject**2/(top.rinject+sqrt(top.rinject**2-top.ainject**2))
-    nzinj = int(max(top.zinject + zinjmax - w3d.zmmin)/w3d.dz + w3d.inj_d) + 1
+    nzinj = int(max(top.zinject+zinjmax-top.zmslmin[0])/w3d.dz+w3d.inj_d) + 1
     top.nzpslave[0] = max(top.nzpslave[0],nzinj)
 
   #---------------------------------------------------------------------------
