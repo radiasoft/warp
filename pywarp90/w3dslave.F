@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.12 $, $Date: 2002/08/27 23:16:53 $
+c W3DSLAVE.M, version $Revision: 1.13 $, $Date: 2002/08/29 18:23:46 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -247,7 +247,7 @@ c       --- sticking out the end.
 c---------------------------------------------------------------------------
 c     --- Now set the axial extent of each slaves domain, which includes
 c     --- both the particle and field solve domain.
-      if(solvergeom/=RZgeom) then
+      if(solvergeom==XYZgeom) then
        do i=0,nslaves-1
         izslave(i) = min(izpslave(i),izfsslave(i))
         nzslave(i) = max(izpslave(i) + nzpslave(i),izfsslave(i) + nzfsslave(i))
@@ -316,7 +316,7 @@ c     --- end of phi. For the case when (nx+ny) < nslaves, phi needs
 c     --- to be made larger to hold the transposed array. izextra could
 c     --- actualy be one less then the value calculated here, but I don't
 c     --- subtract one so there is some extra slop.
-      if(solvergeom/=RZgeom) then
+      if(solvergeom==XYZgeom) then
        if (nx+ny < nslaves) then
         izextra = max(1,(nzfull-nzfull/nslaves*(nx+ny))/(nx*ny))
        endif
