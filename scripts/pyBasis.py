@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.45 2003/11/18 17:10:48 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.46 2003/12/17 21:08:29 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -492,7 +492,7 @@ Dump data into a pdb file
   try:
     ff.file_type
   except:
-    ff.file_type = "oldPDB"
+    ff.__dict__["file_type"] = "oldPDB"
   # --- Convert attr into a list if needed
   if not (type(attr) == ListType): attr = [attr]
   # --- Loop through all of the packages (getting pkg object).
@@ -612,7 +612,7 @@ Note that it will automatically detect whether the file is PDB or HDF.
   try:
     ff.file_type
   except:
-    ff.file_type = "oldPDB"
+    ff.__dict__["file_type"] = "oldPDB"
   # --- Get a list of all of the variables in the file, loop over that list
   vlist = ff.inquire_names()
   # --- Print list of variables
