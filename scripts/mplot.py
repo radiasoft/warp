@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.2 2001/02/02 00:15:32 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.3 2001/02/02 01:16:15 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -88,8 +88,7 @@ Mountain-range plots of quantities saved vs. z at every timestep
   else:
     abscissascale = 1.
   titler="nlines = %d  navg = %d  offset = %6.2e" % (nlines,navg,offset)
-  pltitle(titlet)
-  ptitles("",titleb,titlel,titler)
+  ptitles(titlet,titleb,titlel,titler)
   if navg:
     hl = qty[:,::istep] + 0.
     hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::istep])
@@ -154,8 +153,7 @@ def pvgap(_hvgap=None,ifzt=0,ifneg=0,nincr=1,offset=5000,color='fg'):
     shift = top.dt * steps_p_perd / 2 * 10
     start = (top.zlatstrt+top.acclzs[0]-top.zzmax) / top.hvbeam[0]
   titler="nincr = %d  offset = %6.2e" % (nincr,offset)
-  pltitle(titlet)
-  ptitles("",titleb,titlel,titler)
+  ptitles(titlet,titleb,titlel,titler)
   imax = 0
   for i in range(0,shape(_hvgap)[0]):
     if max(abs(_hvgap[i,:])):
