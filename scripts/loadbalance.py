@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.5 2001/08/09 22:07:40 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.6 2001/08/10 21:17:04 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -79,56 +79,8 @@ that has already been done.
   # --- sticking out the end.
   top.nzpslave[-1] = w3d.nzfull - top.izpslave[-1]
 
-  #---------------------------------------------------------------------------
-  # --- Now set the axial extent of each slaves domain to include
-  # --- both the particle and field solve domain.
-  for i in range(npes):
-    top.izslave[i] = min(top.izpslave[i],top.izfsslave[i])
-    top.nzslave[i] = max(top.izpslave[i] + top.nzpslave[i], \
-                         top.izfsslave[i] + top.nzfsslave[i]) - top.izslave[i]
-    top.zmslmin[i] = top.izslave[i]*w3d.dz + top.zmslmin[0]
-    top.zmslmax[i] = (top.izslave[i] + top.nzslave[i])*w3d.dz + top.zmslmin[0]
-
-  #---------------------------------------------------------------------------
-  # --- Reset local values
-  w3d.nz     = top.nzslave[me]
-  top.nzzarr = top.nzpslave[me]
-  top.nzl    = top.nzpslave[me]
-  top.nzlmax = top.nzpslave[me]
-  top.nzmmnt = top.nzpslave[me]
-  zpmin = top.zmslmin[0] + top.izpslave[me]*w3d.dz
-  zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + top.zmslmin[0]
-  top.zzmin = zpmin
-  top.zzmax = zpmax
-  top.zlmin = zpmin
-  top.zlmax = zpmax
-  top.zmmntmin = zpmin
-  top.zmmntmax = zpmax
-  w3d.izfsmin = top.izfsslave[me] - top.izslave[me]
-  w3d.izfsmax = w3d.izfsmin + top.nzfsslave[me]
-  w3d.zmmin = top.zmslmin[me]
-  w3d.zmmax = top.zmslmax[me]
-  if top.fstype in [3,7] or f3d.nsorerr > 0:
-    # --- The additional check of nsorerr>0 is done since in some cases,
-    # --- the field solver may be turned off when the load balancing is done
-    # --- but used otherwise.
-    f3d.nzpsor = w3d.nz
-    f3d.nsorerr = (w3d.nx+1)*(w3d.ny+1)*(w3d.nz+1)/(.9*w3d.nx-1)
-
-  # --- Change the alocation of everything effected are reset the meshes.
-  gchange("Fields3d")
-  gchange("Z_arrays")
-  gchange("LatticeInternal")
-  gchange("Z_Moments")
-  if top.fstype in [3,7] or f3d.nsorerr > 0: gchange("PSOR3d")
-  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
-  top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
-  top.zlmesh[:] = top.zlmin + iota(0,top.nzl)*top.dzl
-  top.zmntmesh[:] = top.zmmntmin + iota(0,top.nzmmnt)*top.dzm
-  
-  # --- Reset the lattice
-  resetlat()
-  setlatt()
+  # --- Adjust the Z data
+  _adjustz()
 
   # --- Reorganize the particles
   reorgparticles()
@@ -218,6 +170,8 @@ needed since some processors may have more conductor points than others.
   oldnz = top.nzslave + 0
   oldizfs = top.izfsslave + 0
   oldnzfs = top.nzfsslave + 0
+  oldphi = w3d.phi + 0.
+  oldrho = w3d.rho + 0.
 
   # --- Set domain of each processor.
   zlast = 0
@@ -225,46 +179,20 @@ needed since some processors may have more conductor points than others.
     top.izfsslave[i] = zlast
     top.nzfsslave[i] = nint(zslave[i]) + 1
     zlast = top.izfsslave[i] + top.nzfsslave[i] - 1
-  top.nzfsslave[-1] = w3d.nzfull - w3d.izfsslave[i]
+  top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[i]
 
-  #---------------------------------------------------------------------------
-  # --- Now set the axial extent of each slaves domain to include
-  # --- both the particle and field solve domain.
-  for i in range(npes):
-    top.izslave[i] = min(top.izpslave[i],top.izfsslave[i])
-    top.nzslave[i] = max(top.izpslave[i] + top.nzpslave[i], \
-                         top.izfsslave[i] + top.nzfsslave[i]) - top.izslave[i]
-    top.zmslmin[i] = top.izslave[i]*w3d.dz + top.zmslmin[0]
-    top.zmslmax[i] = (top.izslave[i] + top.nzslave[i])*w3d.dz + top.zmslmin[0]
+  # --- Adjust the Z data
+  _adjustz()
 
-  #---------------------------------------------------------------------------
-  # --- Reset local values
-  w3d.nz     = top.nzslave[me]
-  w3d.izfsmin = top.izfsslave[me] - top.izslave[me]
-  w3d.izfsmax = w3d.izfsmin + top.nzfsslave[me]
-  w3d.zmmin = top.zmslmin[me]
-  w3d.zmmax = top.zmslmax[me]
-  if top.fstype in [3,7] or f3d.nsorerr > 0:
-    # --- The additional check of nsorerr>0 is done since in some cases,
-    # --- the field solver may be turned off when the load balancing is done
-    # --- but used otherwise.
-    f3d.nzpsor = w3d.nz
-    f3d.nsorerr = (w3d.nx+1)*(w3d.ny+1)*(w3d.nz+1)/(.9*w3d.nx-1)
-
-  # --- Change the alocation of everything effected are reset the meshes.
-  gchange("Fields3d")
-  if top.fstype in [3,7] or f3d.nsorerr > 0: gchange("PSOR3d")
-  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
-  
   # --- Shift the existing charge density and phi
-  izstart = max(oldiz,top.izslave[me])
-  izend = min(oldiz+oldnz,top.izslave[me]+top.nzslave[me])
+  izstart = max(oldiz[me],top.izslave[me])
+  izend = min(oldiz[me]+oldnz[me],top.izslave[me]+top.nzslave[me])
   newiz1 = izstart - top.izslave[me]
   newiz2 = izend - top.izslave[me] + 1
-  oldiz1 = izstart - oldiz
-  oldiz2 = izend - oldiz + 1
-  w3d.phi[:,:,newiz1+1:newiz2+1] = phi[:,:,oldiz1+1:oldiz2+1]
-  w3d.rho[:,:,newiz1:newiz2] = rho[:,:,oldiz1:oldiz2]
+  oldiz1 = izstart - oldiz[me]
+  oldiz2 = izend - oldiz[me] + 1
+  w3d.phi[:,:,newiz1+1:newiz2+1] = oldphi[:,:,oldiz1+1:oldiz2+1]
+  w3d.rho[:,:,newiz1:newiz2] = oldrho[:,:,oldiz1:oldiz2]
 
   # --- Correct the locations of conductor points for the field-solver.
   newiz = top.izslave
@@ -276,7 +204,7 @@ needed since some processors may have more conductor points than others.
 
   # --- Correct location of injection source.
   if top.inject > 0:
-    w3d.inj_grid[:,:] = w3d.inj_grid + oldiz - newiz
+    w3d.inj_grid[:,:] = w3d.inj_grid + oldiz[me] - newiz[me]
 
 #########################################################################
 def decompose(weight,npes):
@@ -328,6 +256,60 @@ of the domains.
   zslave[-1] = nz - sum(zslave)
 
   return zslave
+
+
+#########################################################################
+def _adjustz():
+  #---------------------------------------------------------------------------
+  # --- Set the axial extent of each slaves domain to include
+  # --- both the particle and field solve domain.
+  for i in range(npes):
+    top.izslave[i] = min(top.izpslave[i],top.izfsslave[i])
+    top.nzslave[i] = max(top.izpslave[i] + top.nzpslave[i], \
+                         top.izfsslave[i] + top.nzfsslave[i]) - top.izslave[i]
+    top.zmslmin[i] = top.izslave[i]*w3d.dz + top.zmslmin[0]
+    top.zmslmax[i] = (top.izslave[i] + top.nzslave[i])*w3d.dz + top.zmslmin[0]
+
+  #---------------------------------------------------------------------------
+  # --- Reset local values
+  w3d.nz     = top.nzslave[me]
+  top.nzzarr = top.nzpslave[me]
+  top.nzl    = top.nzpslave[me]
+  top.nzlmax = top.nzpslave[me]
+  top.nzmmnt = top.nzpslave[me]
+  zpmin = top.zmslmin[0] + top.izpslave[me]*w3d.dz
+  zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + top.zmslmin[0]
+  top.zzmin = zpmin
+  top.zzmax = zpmax
+  top.zlmin = zpmin
+  top.zlmax = zpmax
+  top.zmmntmin = zpmin
+  top.zmmntmax = zpmax
+  w3d.izfsmin = top.izfsslave[me] - top.izslave[me]
+  w3d.izfsmax = w3d.izfsmin + top.nzfsslave[me]
+  w3d.zmmin = top.zmslmin[me]
+  w3d.zmmax = top.zmslmax[me]
+  if top.fstype in [3,7] or f3d.nsorerr > 0:
+    # --- The additional check of nsorerr>0 is done since in some cases,
+    # --- the field solver may be turned off when the load balancing is done
+    # --- but used otherwise.
+    f3d.nzpsor = w3d.nz
+    f3d.nsorerr = (w3d.nx+1)*(w3d.ny+1)*(w3d.nz+1)/(.9*w3d.nx-1)
+
+  # --- Change the alocation of everything effected are reset the meshes.
+  gchange("Fields3d")
+  gchange("Z_arrays")
+  gchange("LatticeInternal")
+  gchange("Z_Moments")
+  if top.fstype in [3,7] or f3d.nsorerr > 0: gchange("PSOR3d")
+  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
+  top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
+  top.zlmesh[:] = top.zlmin + iota(0,top.nzl)*top.dzl
+  top.zmntmesh[:] = top.zmmntmin + iota(0,top.nzmmnt)*top.dzm
+  
+  # --- Reset the lattice
+  resetlat()
+  setlatt()
 
 #########################################################################
 #########################################################################
@@ -450,25 +432,25 @@ def _reorgconductorarrays(arrays,z,oldiz,oldnz,oldizfs,oldnzfs,
   # --- Create list to save the incoming data in.
   results = len(arrays)*[[]]
 
- # --- Loop over global extent of grid, gathering data from other processors
- for iz in range(0,w3d.nzfull+1):
-   # --- Get the processor which "owns" the data, relative to the old
-   # --- grid extents.
-   pe = compress(logical_and(less_equal(oldizfs,iz),
-                 less_equal(iz,oldizfs+oldnzfs)),arange(npes))[-1]
-   # --- Check if data at this iz is needed locally
-   if not (oldiz[me] <= iz <= oldiz[me]+oldnz[me]) and \
-          (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
-     for i in range(len(arrays)):
-       results[i] = results[i] + list(getarray(pe,0,me))
-   elif me == pe:
-     # --- Loop over processors to check which ones need data
-     for ip in range(npes):
-       if not (oldiz[ip] <= iz <= oldiz[ip]+oldnz[ip]) and \
-              (newizfs[ip] <= iz <= newizfs[ip]+newnzfs[ip]):
-         ii = compress(equal(iz,z),arange(len(arrays[0])))
-         for i in range(len(arrays)):
-           temp = getarray(me,take(arrays[i],ii),ip)
+  # --- Loop over global extent of grid, gathering data from other processors
+  for iz in range(0,w3d.nzfull+1):
+    # --- Get the processor which "owns" the data, relative to the old
+    # --- grid extents.
+    pe = compress(logical_and(less_equal(oldizfs,iz),
+                  less_equal(iz,oldizfs+oldnzfs)),arange(npes))[-1]
+    # --- Check if data at this iz is needed locally
+    if not (oldiz[me] <= iz <= oldiz[me]+oldnz[me]) and \
+           (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
+      for i in range(len(arrays)):
+        results[i] = results[i] + list(getarray(pe,0,me))
+    elif me == pe:
+      # --- Loop over processors to check which ones need data
+      for ip in range(npes):
+        if not (oldiz[ip] <= iz <= oldiz[ip]+oldnz[ip]) and \
+               (newizfs[ip] <= iz <= newizfs[ip]+newnzfs[ip]):
+          ii = compress(equal(iz,z),arange(len(arrays[0])))
+          for i in range(len(arrays)):
+            temp = getarray(me,take(arrays[i],ii),ip)
 
   # --- Make sure all processors are done before continuing
   barrier()
