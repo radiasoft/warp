@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.18 $, $Date: 2003/03/13 17:51:33 $
+c TOPSLAVE.M, version $Revision: 1.19 $, $Date: 2003/04/09 01:55:59 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -18,6 +18,7 @@ c  Impose boundary conditions on zp.  Puts particles that exit to the left
 c  lower in the arrays and particles that exit to the right higher.  Keeps
 c  track of how many left and sends to the appropriate processor.
 
+      logical(ISZ):: ldoagain
       real(kind=8):: temp,pidtemp(npid),syslen
       integer(ISZ):: is,ip,ins_init,nps_init,idest,ipid
       integer(ISZ):: nsendleft,nsendright,nrecvleft,nrecvright
@@ -30,7 +31,13 @@ c     integer(ISZ):: blocklengths(100),displacements(100)
       integer(ISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
 c     integer(ISZ):: mpinewtype,mpirequest
 
-c     make sure that particles marked as lost in this routine will be cleaned by clearpart.
+c     --- Set ldoagain flag to false. Later on, particles received are checked
+c     --- if they are within the bounds and if any are not, ldoagain is set
+c     --- to true.
+      ldoagain = .false.
+
+c     --- make sure that particles marked as lost in this routine will be
+c     --- cleaned by clearpart.
       if(clearlostpart==0) clearlostpart = 1
       
 c     --- calculate numbers of the processors to the left and to the right,
@@ -40,6 +47,10 @@ c     --- wrapping around at the ends.
 
 c     --- Loop over species
       do is=1,ns
+
+        ldoagain = .true.
+        do while (ldoagain)
+          ldoagain = .false.
 
 c       --- initialize counter and save particle's start and number
         ip = ins(is)
@@ -266,6 +277,9 @@ c       --- Make sure that there is space for the incoming data.
           endif
           ins(is) = ins(is) - nrecvleft
           nps(is) = nps(is) + nrecvleft
+          if (maxval(zp(ip:ip+nrecvleft-1))-zgrid > zpslmax(my_index)) then
+            ldoagain = .true.
+          endif
         endif
 
         if (nrecvright > 0) then
@@ -284,6 +298,9 @@ c       --- Make sure that there is space for the incoming data.
             enddo
           endif
           nps(is) = nps(is) + nrecvright
+          if (minval(zp(ip:ip+nrecvright-1))-zgrid < zpslmin(my_index)) then
+            ldoagain = .true.
+          endif
         endif
 
 c What follows (but is commented out) is the preferred version, but
@@ -345,7 +362,12 @@ c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
 c       nps(is) = nps(is) + nrecvright
 c       call MPI_TYPE_FREE(mpinewtype,mpierror)
 
+
+          call parallellor(ldoagain)
+        enddo
+
       enddo
+
 
       return
       end
@@ -381,132 +403,21 @@ c Use reduction routines to sum whole beam moments across all
 c of the processors.  It also shares z moment data at PE boundaries.
 
 c     --- temporary for z moments
-      real(kind=8):: temp0(NUMZMMNT),temp1(NUMZMMNT,0:1),temp2(NUMZMMNT,0:1)
-      integer(ISZ):: im,iz
-      integer(ISZ):: left_pe,right_pe
-      integer(ISZ):: left_iz,right_iz
-      integer(ISZ):: left_nz,right_nz
+      real(kind=8):: ztemp0(NUMZMMNT),ztemp(0:nzmmnt,NUMZMMNT)
       real(kind=8):: maxes1(6),mines1(6)
       real(kind=8):: maxes2(6),mines2(6)
       include "mpif.h"
-      integer(ISZ):: mpierror,mpirequest(2),mpistatus(MPI_STATUS_SIZE,2)
-      integer(ISZ):: w
-
-c     --- calculate numbers of the processors to the left and to the right,
-c     --- wrapping around at the ends.
-      left_pe = mod(nslaves+my_index-1,nslaves)
-      right_pe = mod(my_index+1,nslaves)
+      integer(ISZ):: mpierror
 
 c     --- Do reduction on whole beam moments.
-      temp0 = zmmnts0
-      call MPI_ALLREDUCE(temp0,zmmnts0,NUMZMMNT,MPI_DOUBLE_PRECISION,MPI_SUM,
+      ztemp0 = zmmnts0
+      call MPI_ALLREDUCE(ztemp0,zmmnts0,NUMZMMNT,MPI_DOUBLE_PRECISION,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
 
-c     --- Get number of planes to exchange. The default values of zero are
-c     --- only applied to prevent kaboom from being called on the first
-c     --- and last processors.
-c     --- The 'min' is used since in some cases nzpslave can extend several
-c     --- grid cells beyond the particle domain. In those cases, left_nz
-c     --- would be greater than 1 even though those extra planes would not
-c     --- need to be exchanged. This code could be written using the
-c     --- variables zpslmin and zpslmax explicitly, in which case the 'min'
-c     --- would not be needed.
-      left_nz = 0
-      right_nz = 0
-      if (my_index > 0) then
-        left_iz = 0
-        left_nz = izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)
-        left_nz = min(left_nz, 1)
-      endif
-      if (my_index < nslaves-1) then
-        right_iz = izpslave(my_index+1) - izpslave(my_index)
-        right_nz = nzpslave(my_index) - right_iz
-        right_nz = min(right_nz, 1)
-      endif
-
-c     --- Share z moments data at overlapping PE boundaries.
-
-c     --------------------------------------------------------------------
-c     --- Send data to the right.
-
-c     --- Check if data being sent overlaps with data being received.
-c     --- If so, wait for the incoming data first.
-      if (my_index > 0 .and. right_iz <= left_iz+left_nz) then
-        call MPI_RECV(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                left_pe,30,MPI_COMM_WORLD,mpistatus,mpierror)
-        do iz=left_iz,left_iz+left_nz
-          do im=1,NUMZMMNT
-            zmmnts(iz,im) = zmmnts(iz,im) + temp2(im,iz-left_iz)
-          enddo
-        enddo
-      endif
-
-c     --- Send the data (which is copied into temp1 to make it contiguous).
-      w = 0
-      if (my_index < nslaves-1) then
-        do iz=right_iz,right_iz+right_nz
-          do im=1,NUMZMMNT
-            temp1(im,iz-right_iz) = zmmnts(iz,im)
-          enddo
-        enddo
-        w = w + 1
-        call MPI_ISEND(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                 right_pe,30,MPI_COMM_WORLD,mpirequest(w),mpierror)
-      endif
-
-c     --- If there is no overlap, wait for the data after sending so
-c     --- that processors to the right do not have to also wait.
-      if (my_index > 0 .and. right_iz > left_iz+left_nz) then
-        call MPI_RECV(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                left_pe,30,MPI_COMM_WORLD,mpistatus,mpierror)
-        do iz=left_iz,left_iz+left_nz
-          do im=1,NUMZMMNT
-            zmmnts(iz,im) = zmmnts(iz,im) + temp2(im,iz-left_iz)
-          enddo
-        enddo
-      endif
-
-c     --------------------------------------------------------------------
-c     --- Send summed data back to the left.
-
-c     --- Check if data being sent overlaps with data being received.
-c     --- If so, wait for the incoming data first.
-      if (my_index < nslaves-1 .and. right_iz <= left_iz+left_nz) then
-        call MPI_RECV(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                right_pe,30,MPI_COMM_WORLD,mpistatus,mpierror)
-        do iz=right_iz,right_iz+right_nz
-          do im=1,NUMZMMNT
-            zmmnts(iz,im) = temp1(im,iz-right_iz)
-          enddo
-        enddo
-      endif
-
-c     --- Send the data
-      if (my_index > 0) then
-        do iz=left_iz,left_iz+left_nz
-          do im=1,NUMZMMNT
-            temp2(im,iz-left_iz) = zmmnts(iz,im)
-          enddo
-        enddo
-        w = w + 1
-        call MPI_ISEND(temp2,(left_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                 left_pe,30,MPI_COMM_WORLD,mpirequest(w),mpierror)
-      endif
-
-c     --- If there is no overlap, wait for the data after sending so
-c     --- that processors to the right do not have to also wait.
-      if (my_index < nslaves-1 .and. right_iz > left_iz+left_nz) then
-        call MPI_RECV(temp1,(right_nz+1)*NUMZMMNT,MPI_DOUBLE_PRECISION,
-     &                right_pe,30,MPI_COMM_WORLD,mpistatus,mpierror)
-        do iz=right_iz,right_iz+right_nz
-          do im=1,NUMZMMNT
-            zmmnts(iz,im) = temp1(im,iz-right_iz)
-          enddo
-        enddo
-      endif
-
-c     --- Free up space of nonblocking messages.
-      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+c     --- Do reduction on beam z moments.
+      ztemp = zmmnts
+      call MPI_ALLREDUCE(ztemp,zmmnts,(1+nzmmnt)*NUMZMMNT,
+     &                   MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,mpierror)
 
 c     --- Find global max's and min's
 c     --- This is done minimizing the amount of interprocessor communication
@@ -549,7 +460,7 @@ c=============================================================================
       subroutine parallelsumrealarray(data,ndata)
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
-c Does a sum over all of the processors.  Resulting data is broadcasted
+c Does a sum over all of the processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8):: data2(ndata)
@@ -566,7 +477,7 @@ c=============================================================================
       subroutine parallelsumintegerarray(data,ndata)
       integer(ISZ):: ndata
       integer(ISZ):: data(ndata)
-c Does a sum over all of the processors.  Resulting data is broadcasted
+c Does a sum over all of the processors.  Resulting data is broadcast
 c to all processors.
 
       integer(ISZ):: data2(ndata)
@@ -583,7 +494,7 @@ c==========================================================================
       subroutine parallelmaxrealarray(data,ndata)
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
-c Find the max of data over all processors.  Resulting data is broadcasted
+c Find the max of data over all processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8):: data2(ndata)
@@ -600,7 +511,7 @@ c==========================================================================
       subroutine parallelminrealarray(data,ndata)
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
-c Find the min of data over all processors.  Resulting data is broadcasted
+c Find the min of data over all processors.  Resulting data is broadcast
 c to all processors.
 
       real(kind=8):: data2(ndata)
@@ -616,7 +527,7 @@ c to all processors.
 c==========================================================================
       subroutine parallellor(data)
       logical(ISZ):: data
-c Logical OR of data over all processors.  Resulting data is broadcasted
+c Logical OR of data over all processors.  Resulting data is broadcast
 c to all processors.
 
       logical(ISZ):: data2
@@ -655,8 +566,9 @@ c==========================================================================
       subroutine parallelnonzerorealarray(data,ndata)
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
-c Find the max of data over all processors.  Resulting data is broadcasted
-c to all processors.
+c Find the nonzero value of data over all processors. This assumes that the
+c non-zero values for each index are the same for all processors.
+c Resulting data is broadcast to all processors.
 
       real(kind=8):: dmax(ndata),dmin(ndata)
       integer(ISZ):: mpierror
