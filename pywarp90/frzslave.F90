@@ -1,4 +1,5 @@
-!     Last change:  JLV  31 Aug 2001   10:04 am
+!     Last change:  JLV   7 Sep 2001    9:59 am
+#ifdef PARALLEL
 #include "top.h"
 module mpirz
 
@@ -32,4 +33,4 @@ contains
   end function mpi_global_compute_real
 
 end module mpirz
-
+#endif
