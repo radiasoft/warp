@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.20 $, $Date: 2002/01/22 17:14:34 $
+c@(#) File F3D.M, version $Revision: 3.21 $, $Date: 2002/01/22 17:20:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1434,8 +1434,8 @@ c processors has the complete result. The one exception is the inverse
 c FFT, iwhich = 5, which always calls the gather since it is the last
 c operation anyway.
 c The number of processors in each group is set by the variable
-c xynsubproc, which defaults to 16 (for the 16 processors per node on
-c NERSC's SP). The variable needs to be optimized through experimentation.
+c xynppgroup (it defaults to 1 which means the no parallelization is done).
+c The variable needs to be optimized through experimentation.
 c-----------------------------------------------------------------------------
 
 
@@ -1483,13 +1483,13 @@ c  Start and end of loops
       iystart = 0
       iyend = ny-1
 #ifdef MPIPARALLEL
-      if (nx > xynsubproc) then
-        ixstart = mod(my_index,xynsubproc)*nx/xynsubproc
-        ixend = ixstart + nx/xynsubproc - 1
+      if (nx > xynppgroup .and. xynppgroup > 1) then
+        ixstart = mod(my_index,xynppgroup)*nx/xynppgroup
+        ixend = ixstart + nx/xynppgroup - 1
       endif
-      if (ny > xynsubproc) then
-        iystart = mod(my_index,xynsubproc)*ny/xynsubproc
-        iyend = iystart + ny/xynsubproc - 1
+      if (ny > xynppgroup .and. xynppgroup > 1) then
+        iystart = mod(my_index,xynppgroup)*ny/xynppgroup
+        iyend = iystart + ny/xynppgroup - 1
       endif
 #endif
 
@@ -1626,8 +1626,8 @@ c       --- Invoke the transform routines for the current z-slice
         endif
 
 #ifdef MPIPARALLEL
-        if (ny > xynsubproc)
-     &    call parallelgatherall(a,(1+nx)*ny/xynsubproc,xynsubproc,1)
+        if (ny > xynppgroup .and. xynppgroup > 1)
+     &    call parallelgatherall(a,(1+nx)*ny/xynppgroup,xynppgroup,1)
 #endif
 
         if (l4symtry .or. l2symtry) then
@@ -1689,9 +1689,9 @@ c         --- Invoke the inverse transform routines for the current z-slice
         endif
 
 #ifdef MPIPARALLEL
-        if (nx > xynsubproc) then
+        if (nx > xynppgroup .and. xynppgroup > 1) then
           atemp = transpose(a)
-          call parallelgatherall(atemp,(1+ny)*nx/xynsubproc,xynsubproc,1)
+          call parallelgatherall(atemp,(1+ny)*nx/xynppgroup,xynppgroup,1)
           a = transpose(atemp)
         endif
 #endif
@@ -1730,8 +1730,8 @@ c         --- factor of 2./lx for vsftx and .25/ly for cosqy
         enddo
 
 #ifdef MPIPARALLEL
-        if (ny > xynsubproc)
-     &    call parallelgatherall(a,(1+nx)*ny/xynsubproc,xynsubproc,1)
+        if (ny > xynppgroup .and. xynppgroup > 1)
+     &    call parallelgatherall(a,(1+nx)*ny/xynppgroup,xynppgroup,1)
 #endif
 
       endif
