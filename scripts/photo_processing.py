@@ -25,7 +25,7 @@ import Numeric
 import mphoto
 import gifmaker
 
-photo_processing_version = "$Id: photo_processing.py,v 1.1 2001/12/03 17:47:14 ramiak Exp $"
+photo_processing_version = "$Id: photo_processing.py,v 1.2 2002/08/14 21:08:30 ramiak Exp $"
 def photo_processingdoc():
   import photo_processing
   print photo_processing.__doc__
@@ -100,11 +100,11 @@ same name but with "montage" appended.
 
 
 def make_movie(runid=None, num_movie=None, tz=1,ty=0,tx=0):
-    """ make_montage(runid=None, num_movie=None, tz=1,ty=0,tx=0):
+	""" make_montage(runid=None, num_movie=None, tz=1,ty=0,tx=0):
     This function looks in the current directory, assembles all the tif files
 prefixed by the runid provided (top.runid by default), and arranges them
 in a gif animation.  <Needs More Work (to change fps, etc)>
-    """
+	"""
 	if runid is None:
 		runid = arraytostr(top.runid)
 
