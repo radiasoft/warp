@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.33 2004/09/16 16:56:56 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.34 2004/09/28 23:28:17 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2473,9 +2473,9 @@ pgrd arrays with the same suffices:
     top.pgrdnz = max(nz-1,top.pgrdnz)
     gchange("Mult_data")
     # --- Copy the data in
-    top.bgrddx[-1] = dx
-    top.bgrddy[-1] = dy
-    top.bgrddz[-1] = (ze - zs)/(nz - 1)
+    top.pgrddx[-1] = dx
+    top.pgrddy[-1] = dy
+    top.pgrddz[-1] = (ze - zs)/(nz - 1)
     top.pgrd[:nx,:ny,:nz,-1] = phi
 
   # --- Return the id of the new dataset. This allows the user to refer to
