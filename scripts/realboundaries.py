@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.29 2004/02/17 19:17:00 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.30 2004/02/24 00:01:04 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -841,6 +841,7 @@ Constructor arguments:
     # --- If this part of the code is reached, then there are no applicable
     # --- boundaries, so turn the capacity matrix field solver off.
     top.fstype = 0
+    CapacityMatrix.setparticleboundary(largepos,largepos,0.,0.)
   #----------------------------------------------------------------------------
   def plotcond(s,plotphi=1,filled=0,plotedge=1,plotpoints=0,plotsym=1,
                ccolor='red',ecolor='green',phicolor='fg'):
