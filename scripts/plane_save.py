@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.1 2002/11/26 23:31:51 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.2 2002/11/26 23:46:20 jlvay Exp $"
 
 class PlaneSave:
   """
@@ -21,7 +21,7 @@ Input:
 
   def __init__(self,zplane,filename=None,js=None):
 
-    self.zplane = zplane
+    self.zplane = nint(zplane/w3d.dz)*w3d.dz
 
     # --- Arrays to find particles which cross the plane
     self.old_zp = zeros(top.zp.shape[0],'d')
@@ -98,6 +98,13 @@ Input:
     for js in self.jslist:
       self.saveplanespecies(js)
 
+    # phi is saved every time step whether or not there are particles saved
+    # only save anything if there are particles to the right of zplane
+    # get the two planes of phi to be saved
+    if(self.np_save_tot>0):
+      iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
+      self.f.write('phiplane%08d'%self.it,w3d.phi[self.nx0:self.nxm,self.ny0:self.nym,iz-1:iz])
+
     # close file
     self.f.set_verbosity(0)
     self.f.close()
@@ -141,8 +148,3 @@ Input:
         self.f.write('gaminv%08d_%08d'%(self.it,js),take(top.gaminv,ii))
         for id in range(top.npid):
           self.f.write('pid%08d_%08d_%08d'%(self.it,js,top.npid),take(top.pid,ii))
-
-      # phi is saved every time step whether or not there are particles saved
-      # get the two planes of phi to be saved
-      iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
-      self.f.write('phiplane%08d'%self.it,w3d.phi[self.nx0:self.nxm,self.ny0:self.nym,iz-1:iz])
