@@ -1,4 +1,4 @@
-!     Last change:  JLV   6 Aug 2001   10:46 am
+!     Last change:  JLV   6 Aug 2001    4:28 pm
 #include "top.h"
 module multigridrz
 USE constant
@@ -1576,7 +1576,8 @@ INTEGER(ISZ) :: i,ic
           WRITE(10,*) bndy(i)%cnd%phi0xm,bndy(i)%cnd%phi0xp,bndy(i)%cnd%phi0ym,bndy(i)%cnd%phi0yp
           WRITE(10,*) bndy(i)%cnd%cf0, bndy(i)%cnd%cfxp, bndy(i)%cnd%cfxm, bndy(i)%cnd%cfyp, bndy(i)%cnd%cfym, bndy(i)%cnd%cfrhs
           WRITE(10,*) bndy(i)%cnd%rphi0xm,bndy(i)%cnd%rphi0xp,bndy(i)%cnd%rphi0ym,bndy(i)%cnd%rphi0yp
-          WRITE(10,*) bndy(i)%cnd%rcf0, bndy(i)%cnd%rcfxp, bndy(i)%cnd%rcfxm, bndy(i)%cnd%rcfyp, bndy(i)%cnd%rcfym, bndy(i)%cnd%rcfrhs
+          WRITE(10,*) bndy(i)%cnd%rcf0, bndy(i)%cnd%rcfxp, bndy(i)%cnd%rcfxm, &
+                      bndy(i)%cnd%rcfyp, bndy(i)%cnd%rcfym, bndy(i)%cnd%rcfrhs
           WRITE(10,*) bndy(i)%cnd%dxm,bndy(i)%cnd%dxp,bndy(i)%cnd%dym,bndy(i)%cnd%dyp
           WRITE(10,*) bndy(i)%cnd%jj, bndy(i)%cnd%kk   
           WRITE(10,*) bndy(i)%cnd%docalc
@@ -1616,7 +1617,8 @@ INTEGER(ISZ) :: nbndy,nx,ny,nbbnd,ncond,i,ic
           read(10,*) bndy(i)%cnd%phi0xm,bndy(i)%cnd%phi0xp,bndy(i)%cnd%phi0ym,bndy(i)%cnd%phi0yp
           read(10,*) bndy(i)%cnd%cf0, bndy(i)%cnd%cfxp, bndy(i)%cnd%cfxm, bndy(i)%cnd%cfyp, bndy(i)%cnd%cfym, bndy(i)%cnd%cfrhs
           read(10,*) bndy(i)%cnd%rphi0xm,bndy(i)%cnd%rphi0xp,bndy(i)%cnd%rphi0ym,bndy(i)%cnd%rphi0yp
-          read(10,*) bndy(i)%cnd%rcf0, bndy(i)%cnd%rcfxp, bndy(i)%cnd%rcfxm, bndy(i)%cnd%rcfyp, bndy(i)%cnd%rcfym, bndy(i)%cnd%rcfrhs
+          read(10,*) bndy(i)%cnd%rcf0, bndy(i)%cnd%rcfxp, bndy(i)%cnd%rcfxm, &
+                     bndy(i)%cnd%rcfyp, bndy(i)%cnd%rcfym, bndy(i)%cnd%rcfrhs
           read(10,*) bndy(i)%cnd%dxm,bndy(i)%cnd%dxp,bndy(i)%cnd%dym,bndy(i)%cnd%dyp
           read(10,*) bndy(i)%cnd%jj, bndy(i)%cnd%kk
           read(10,*) bndy(i)%cnd%docalc
