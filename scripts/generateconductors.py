@@ -29,17 +29,17 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.11 2002/10/31 23:16:07 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.12 2002/11/01 00:21:46 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
 
 ##############################################################################
-def installconductors(a):
+def installconductors(a,dfill=top.largepos):
   # First, create a grid object
   g = Grid()
   # Generate the conductor data
-  g.getdata(a)
+  g.getdata(a,dfill)
   # Then install it
   g.installdata()
 
@@ -202,7 +202,7 @@ dx,dy,dz: the grid cell sizes
     """
     self.dels[:,:] = self.dels/array([dx,dx,dy,dy,dz,dz])[:,NewAxis]
 
-  def setparity(self):
+  def setparity(self,dfill):
     """
 Set parity. For points inside, this is set to -1. For points near the surface,
 this is set to the parity of ix+iy+iz. Otherwise defaults to large integer.
@@ -213,7 +213,7 @@ grid cell sizes.
     fuzz = 1.e-9
     # --- A compiled routine is called for optimization
     setconductorparity(self.ndata,self.ix,self.iy,self.iz,
-                       self.dels,self.parity,fuzz)
+                       self.dels,self.parity,fuzz,dfill)
 
   def clean(self):
     """
@@ -425,7 +425,7 @@ Constructor arguments:
   - xmin,xmax,ymin,ymax,zmin,zmax: extent of conductors. Defaults to the
     mesh size. These only need to be set for optimization, to avoid looking
     for conductors where there are none.
-Call getdata(a) to generate the conductor data. 'a' is a geometry object.
+Call getdata(a,dfill) to generate the conductor data. 'a' is a geometry object.
 Call installdata() to install the data into the WARP database.
     """
     self.xmin = where(xmin==None,w3d.xmmin,xmin)[0]
@@ -478,10 +478,12 @@ Call installdata() to install the data into the WARP database.
     else:
       raise "top.fstype must have one of the following values, 3, 7, 10, or 11"
 
-  def getdata(self,a):
+  def getdata(self,a,dfill=top.largepos):
     """
 Given an Assembly, accumulate the appropriate data to represent that
 Assembly on this grid.
+ - dfill=top.largepos: points at a depth in the conductor greater than dfill
+                       are skipped.
     """
     starttime = wtime()
     tt2 = zeros(8,'d')
@@ -527,7 +529,7 @@ Assembly on this grid.
         d.normalize(dx,dy,dz)
         tt2[3] = tt2[3] + wtime() - tt1
         tt1 = wtime()
-        d.setparity()
+        d.setparity(dfill)
         tt2[4] = tt2[4] + wtime() - tt1
         tt1 = wtime()
         d.clean()
