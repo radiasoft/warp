@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.181 $, $Date: 2004/12/17 15:09:28 $
+#@(#) File W3D.V, version $Revision: 3.182 $, $Date: 2004/12/21 12:46:47 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.181 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.182 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -760,7 +760,11 @@ k_beta0  real [m^-1]  /0./ # Code set: CFE rms equivalent beam foc. wavenumber
 k1re     real [1]     /0./ # Code set: CFE WB distribution k_1*r_e 
 f_2      real [m^-2]  /0./ # Code set: CFE WB distribution norm f_2 
 r_e      real [m]     /0./ # Code set: CFE WB distribution edge radius 
-delta    real [1]     /0./ # Code set: CFE TE distribution delta parameter 
+delta    real [1]     /0./ # Code set: CFE TE distribution delta parameter
+logdeltarad real [1] /2.0/   # Bracket radius in log(delta) for delta sol 
+                             #   in TE root find: default: logdeltarad = 2.0 
+logdeltatol real [1] /1.e-4/ # Tolerance to calculate log(delta) for delta sol
+                             #   in TE root find: default: logdeltarad = 1.e-4
 glambdad real [1]     /0./ # Code set: CFE TE distribution gamma*lambda_Debye 
 tscaled  real [1]     /0./ # Code set: CFE TE distribution scaled temperature
 den0     real [m^-3]  /0./ # Code set: CFE TE distribuiton on-axis density
@@ -781,7 +785,6 @@ bessi(n:integer,x:real) real function # Modified Bessel function I_n(x)
                                       #  for real x and integer n >= 2
 
 *********** W3DloadTE:
-te_delta     real  [1] # Code set: TE dimensionless space charge parameter 
 te_rhomax    real  [1] # Code set: max value of norm radius rho to use for TE
 te_rhotrans  real  [1] # Code set: transition value of rho in norm density calc
 te_denptrans real  [1] /1.e-3/  
