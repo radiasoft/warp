@@ -43,7 +43,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.32 2003/08/15 23:05:53 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.33 2003/08/20 15:38:55 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -63,7 +63,7 @@ except:
 ##############################################################################
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         zmin=None,zmax=None,dfill=top.largepos,
-                        installrz=1):
+                        installrz=1,gridmode=1):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -79,7 +79,7 @@ Installs the given conductors.
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
-  g.installdata(installrz)
+  g.installdata(installrz,gridmode)
 
 ##############################################################################
 ##############################################################################
@@ -664,7 +664,7 @@ Constructor arguments:
     conductor.
   - zbeam=top.zbeam: location of grid frame relative to lab frame
 Call getdata(a,dfill) to generate the conductor data. 'a' is a geometry object.
-Call installdata() to install the data into the WARP database.
+Call installdata(installrz,gridmode) to install the data into the WARP database.
   """
 
   def __init__(self,xmin=None,xmax=None,ymin=None,ymax=None,
