@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.37 $, $Date: 2002/04/26 22:22:18 $
+c@(#) File F3D.M, version $Revision: 3.38 $, $Date: 2002/04/30 13:56:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4391,12 +4391,12 @@ c Precalculate the reciprocals of the subgrid data.
       ecdelpxi = 1./ecdelpx(1:necndbdy)
       ecdelpyi = 1./ecdelpy(1:necndbdy)
       ecdelpzi = 1./ecdelpz(1:necndbdy)
-      ocdelpxi = 1./ocdelpx(1:nocndbdy)
-      ocdelpyi = 1./ocdelpy(1:nocndbdy)
-      ocdelpzi = 1./ocdelpz(1:nocndbdy)
       ecdelmxi = 1./ecdelmx(1:necndbdy)
       ecdelmyi = 1./ecdelmy(1:necndbdy)
       ecdelmzi = 1./ecdelmz(1:necndbdy)
+      ocdelpxi = 1./ocdelpx(1:nocndbdy)
+      ocdelpyi = 1./ocdelpy(1:nocndbdy)
+      ocdelpzi = 1./ocdelpz(1:nocndbdy)
       ocdelmxi = 1./ocdelmx(1:nocndbdy)
       ocdelmyi = 1./ocdelmy(1:nocndbdy)
       ocdelmzi = 1./ocdelmz(1:nocndbdy)
@@ -4637,7 +4637,7 @@ c           --- end of transverse boundaries
 c           --- Apply altered difference equation to the points near the
 c           --- surface of the conductor boundaries.
             if (lcndbndy) then
-              if (parity == s_parity) then
+              if (parity == s_parity .and. necndbdy > 0) then
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
      &                     ncndmax,necndbdy,
      &                     ecdelmx(1),ecdelmy(1),ecdelmz(1),
@@ -4647,7 +4647,7 @@ c           --- surface of the conductor boundaries.
      &                     iecndx(1),iecndy(1),iecndz(1),ecvolt(1),ecndpvph(1),
      &                     bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
-              else
+              else if (nocndbdy > 0) then
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
      &                     ncndmax,nocndbdy,
      &                     ocdelmx(1),ocdelmy(1),ocdelmz(1),
@@ -5262,7 +5262,7 @@ c     --- Call the appropriate routine.
       if(solvergeom==RZgeom) then
         call setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                  l2symtry,l4symtry)
-      else if (fstype == 7) then
+      else if (fstype == 7 .or. fstype == 11) then
         call setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    l2symtry,l4symtry)
 c     else if(fstype==11) then
@@ -5407,11 +5407,13 @@ c       --- Estimate amount of space needed.
           nc = nc + (1+nx)*(1+ny) - pi*quadpa(iq)**2/(dx*dy)
           nceo = nceo + pi*quadpa(iq)/dx/2
         endif
-        if ((islctype(iz) == 4 .and. islctype(iz-1) /= 4) .or.
-     &      (islctype(iz) == 5 .and. islctype(iz-1) /= 5) .or.
-     &      (islctype(iz-1) == 4 .and. islctype(iz) /= 4) .or.
-     &      (islctype(iz-1) == 5 .and. islctype(iz) /= 5)) then
-          nceo = nceo + (1+nx)*(1+ny) - pi*quadpa(iq)**2/(dx*dy)
+        if (iz > -1) then
+          if ((islctype(iz) == 4 .and. islctype(iz-1) /= 4) .or.
+     &        (islctype(iz) == 5 .and. islctype(iz-1) /= 5) .or.
+     &        (islctype(iz-1) == 4 .and. islctype(iz) /= 4) .or.
+     &        (islctype(iz-1) == 5 .and. islctype(iz) /= 5)) then
+            nceo = nceo + (1+nx)*(1+ny) - pi*quadpa(iq)**2/(dx*dy)
+          endif
         endif
 
 c     --- end loop over z which fills islctype
@@ -6774,7 +6776,7 @@ c     --- Call the appropriate version of the routine.
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-      else if (fstype == 7) then
+      else if (fstype == 7 .or. fstype == 11) then
         call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
@@ -7342,7 +7344,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrlinr = .true.
       endif
 
-      if (fstype == 7) then
+      if (fstype == 7 .or. fstype == 11) then
         call srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
      &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
@@ -7937,7 +7939,7 @@ c     --- Call the appropriate routine
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-      else if (fstype == 7) then
+      else if (fstype == 7 .or. fstype == 11) then
         call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                      lzend,xmin,xmax,ymin,ymax,lshell,
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.37 $, $Date: 2002/04/26 22:22:19 $
+#@(#) File F3D.V, version $Revision: 3.38 $, $Date: 2002/04/30 13:56:28 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.37 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.38 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -209,7 +209,8 @@ mgparam    real    /1.2/ # Acceleration parameter for multigrid fieldsolver
 mgmaxiters integer /100/ # Maximum number of iterations
 mgiters    integer       # Actual number of iterations
 mgtol      real  /1.e-6/ # Absolute tolerance in change in last iteration
-mgminlevel integer /4/   # Minimum grid size to coarsen to
+mgminlevelxy integer /4/   # Minimum grid size in x-y to coarsen to
+mgminlevelz  integer /4/   # Minimum grid size in z to coarsen to
 mgform     integer /1/   # When 1, MG operates on phi (and rho),
                          # when 2, MG operates on error (and residual)
 downpasses integer /1/   # Number of downpasses
