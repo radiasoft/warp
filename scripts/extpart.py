@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.41 2005/03/27 18:34:05 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.42 2005/03/31 19:42:51 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -99,7 +99,7 @@ routines (such as ppxxp).
 
   def setuparrays(self,ns,bump=None):
     if self.laccumulate and not self.dumptofile:
-      if bump is None: bump = self.nepmax
+      if bump is None: bump = self.nepmax/ns
       self.tep = []
       self.xep = []
       self.yep = []
@@ -135,7 +135,7 @@ routines (such as ppxxp).
   def addspecies(self):
     if self.laccumulate and not self.dumptofile:
       for js in range(len(self.tep),top.ns):
-        bump = self.nepmax
+        bump = self.nepmax/top.ns
         self.tep.append(AppendableArray(self.nepmax,typecode='d',
                                         autobump=bump))
         self.xep.append(AppendableArray(self.nepmax,typecode='d',
@@ -409,11 +409,19 @@ feature.
   def selectparticles(self,val,js=0,tc=None,wt=None,tp=None):
     """
  - js=0: Species number to gather from.
+         If js=='all', then the quantity is gathered from all species into
+         a single array.
  - tc=None: time at which to gather particles from. When not given, returns
             all particles.
  - wt=top.dt: Width of region around tc from which to select particles.
  - tp=gett(js=js): Time value to use for the particle selection
     """
+    if js == 'all':
+      nn = sum(map(len,val))
+      rr = AppendableArray(initlen=nn,typecode='d')
+      for js in range(len(val)):
+        rr.append(self.selectparticles(val,js,tc,wt,tp))
+      return rr[...]
     if tc is None: return val[js][:]
     if wt is None: wt = self.dt
     if tp is None: tp = self.tep[js][:]
@@ -510,10 +518,35 @@ functions.
       ztext =  "z = %f m"%self.zz
     return ztext + ttext
 
+  def ppmultispecies(self,pp,args,kw):
+    kw['js'] = args[0]
+    result = ppmultispecies(self.pxy,args,kw)
+    del kw['js']
+    return result
+
+  def ppmultispecies(self,pp,args,kw):
+    """Check is js is -1 or a list, in which case call the pp function for
+each species and each one in the list. Also assign colors accordingly
+    """
+    args = list(args)
+    js = args[0]
+    if js != -1 and type(js) != ListType:
+      return false
+    else:
+      if js == -1: js = range(self.getns())
+      ncolor = kw.get('ncolor',240)
+      color = kw.get('color',range(0,ncolor,ncolor/len(js)))
+      for i in xrange(len(js)):
+        args[0] = js[i]
+        kw['color'] = color[i]
+        apply(pp,args,kw)
+      return true
+
   ############################################################################
   def pxy(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots X-Y for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.pxy,(js,tc,wt,tp),kw): return
     x = self.getx(js,tc,wt,tp)
     y = self.gety(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -528,6 +561,7 @@ functions.
            **kw):
     """Plots X-X' for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.pxxp,(js,tc,wt,tp),kw): return
     x = self.getx(js,tc,wt,tp)
     xp = self.getxp(js,tc,wt,tp)
     if type(slope) == type(''):
@@ -551,6 +585,7 @@ functions.
            **kw):
     """Plots Y-Y' for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.pyyp,(js,tc,wt,tp,slope,offset),kw): return
     y = self.gety(js,tc,wt,tp)
     yp = self.getyp(js,tc,wt,tp)
     if type(slope) == type(''):
@@ -573,6 +608,7 @@ functions.
   def pxpyp(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots X'-Y' for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.pxpyp,(js,tc,wt,tp),kw): return
     xp = self.getxp(js,tc,wt,tp)
     yp = self.getyp(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -587,6 +623,8 @@ functions.
            **kw):
     """Plots R-R' for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.prrp,(js,tc,wt,tp,scale,slope,offset),kw):
+      return
     x = self.getx(js,tc,wt,tp)
     y = self.gety(js,tc,wt,tp)
     xp = self.getxp(js,tc,wt,tp)
@@ -625,6 +663,7 @@ functions.
   def ptx(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-X for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptx,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     x = self.getx(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -638,6 +677,7 @@ functions.
   def pty(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-Y for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.pty,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     y = self.gety(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -651,6 +691,7 @@ functions.
   def ptxp(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-X' for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptxp,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     xp = self.getxp(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -664,6 +705,7 @@ functions.
   def ptyp(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-Y' for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptyp,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     yp = self.getyp(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -677,6 +719,7 @@ functions.
   def ptux(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-ux for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptux,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     ux = self.getux(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -688,6 +731,7 @@ functions.
   def ptuy(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-uy for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptuy,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     uy = self.getuy(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -699,6 +743,7 @@ functions.
   def ptuz(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-uz for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptuz,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     uz = self.getuz(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -710,6 +755,7 @@ functions.
   def ptvx(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-Vx for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptvx,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     vx = self.getvx(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -721,6 +767,7 @@ functions.
   def ptvy(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-Vy for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptvy,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     vy = self.getvy(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -732,6 +779,7 @@ functions.
   def ptvz(self,js=0,tc=None,wt=None,tp=None,**kw):
     """Plots time-Vz for extraploated particles"""
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptvz,(js,tc,wt,tp),kw): return
     t = self.gett(js,tc,wt,tp)
     vz = self.getvz(js,tc,wt,tp)
     if 'pplimits' in kw.keys():
@@ -750,6 +798,8 @@ If any of the tuples are empty, the limits used will be the usual ones for
 that plot.
     """
     self.checkplotargs(kw)
+    if self.ppmultispecies(self.ptrace,(js,tc,wt,tp,slope,pplimits),kw):
+      return
     x = self.getx(js,tc,wt,tp)
     y = self.gety(js,tc,wt,tp)
     xp = self.getxp(js,tc,wt,tp)
@@ -826,6 +876,7 @@ def restoreExtPart(object,filename):
   iz = broadcast(iz)
   if me > 0: result = ExtPart(iz)
   return result
+
 
 
 
