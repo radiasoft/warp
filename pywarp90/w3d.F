@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.62 $, $Date: 2002/07/17 17:35:21 $
+c@(#) File W3D.M, version $Revision: 3.63 $, $Date: 2002/07/22 23:13:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5357,6 +5357,7 @@ c=============================================================================
 #ifdef MPIPARALLEL
       use Parallel
       use InMesh3d
+      use InGen3d
 #endif
 
 c Calculate potential drop from emitting surface at distance
@@ -5378,6 +5379,17 @@ c to get zp.
       integer(ISZ):: yi((1+inj_nx)*(1+inj_ny))
       real(kind=8):: pp((1+inj_nx)*(1+inj_ny))
       integer(ISZ):: nn,ii
+#ifdef MPIPARALLEL
+      real(kind=8):: zmin_injphi, zmax_injphi
+
+      if(solvergeom==XYZgeom) then
+        zmin_injphi = zpslmin(my_index)
+        zmax_injphi = zpslmax(my_index)
+      elseif(solvergeom==RZgeom) then
+        zmin_injphi = zmmin
+        zmax_injphi = zmmax
+      endif
+#endif
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -5422,8 +5434,7 @@ c             --- emitting surface.
               p2z = inj_grid(ix,iy,inj_ij) + cos(az)*inj_d(ij)*inj_dz
 #ifdef MPIPARALLEL
 c             --- ensures that calculation is not duplicated among processors
-!              if(p2z<zpslmin(my_index).or.p2z>zpslmax(my_index)) then
-              if(p2z<zmmin.or.p2z>=zmmax) then
+              if(p2z<zmin_injphi.or.p2z>=zmax_injphi) then
                 nn = nn - 1
                 cycle
               end if
