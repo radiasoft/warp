@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.30 $, $Date: 2003/10/23 23:26:40 $
+#@(#) File FRZ.V, version $Revision: 3.31 $, $Date: 2003/11/06 21:01:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.30 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.31 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -174,6 +174,9 @@ init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real,l_verbose:lo
          # initializes the base grid for RZ solver
 del_base() subroutine
          # removes the base grid
+set_basegrid() subroutine
+nullify_basegrid() subroutine
+mk_grids_ptr() subroutine
 add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
             rmin:real,zmin:real,
             guard_min_r:integer,guard_max_r:integer,
