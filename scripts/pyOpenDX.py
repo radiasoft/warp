@@ -25,7 +25,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.20 2004/12/01 00:44:34 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.21 2004/12/15 23:37:26 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -421,6 +421,11 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
       DXCallModule('Display',minput,moutput)
 
   try:
+    gui_is_on = __main__.wgui.initialized
+  except:
+    gui_is_on = 0
+
+  if gui_is_on:
     __main__.wgui.dxinter = dxinter
     __main__.wgui.dxname  = name
     __main__.wgui.dxobject = dxobject
@@ -431,7 +436,7 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     dxinter(1)
     __main__.wgui.dx_timer = wxPyTimer(__main__.wgui.dxinter)
     __main__.wgui.dx_timer.Start(100)
-  except:
+  else:
     dxinter(1,name,dxobject)
     __main__.interactor = 0
     print "Press 0 for rotation, 1 for panning, 2 for zooming, return to exit."
