@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.78 2004/08/05 22:50:10 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.79 2004/08/31 22:18:44 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2994,9 +2994,7 @@ containing a list of primitives.
               pass
     else:
       for part in self.parts:
-        installconductors(part.installed,xmin=part.rmin,xmax=part.rmax,
-                        ymin=part.rmin,ymax=part.rmax,
-                        zmin=part.zmin,zmax=part.zmax) 
+        installconductors(part.installed)
 
   def draw(self,ncirc=50,scx=1.,scy=1.,colort='blue',colorb='red',
                  color='none',signx=1.,width=1.):
