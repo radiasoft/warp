@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.130 $, $Date: 2003/08/29 20:12:39 $
+c@(#) File W3D.M, version $Revision: 3.131 $, $Date: 2003/09/03 01:00:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1522,7 +1522,7 @@ c              --- Calculate moments over particles, now that we're sync'd
                endif
                call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                         dt/2.,uxpo,uypo,uzpo,is,time)
+     &                         dt/2.,uxpo,uypo,uzpo,is,time,zbeam)
             endif
          enddo
 !$OMP END DO

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.104 $, $Date: 2003/08/29 23:14:21 $
+c@(#) File TOP.M, version $Revision: 3.105 $, $Date: 2003/09/03 01:00:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5153,12 +5153,12 @@ c         --- End of Z moments accumulation
       end
 c=============================================================================
       subroutine getextrapolatedparticles(np,xp,yp,zp,uxp,uyp,uzp,gaminv,
-     &                                    dt,uxpo,uypo,uzpo,is,time)
+     &                                    dt,uxpo,uypo,uzpo,is,time,zbeam)
       use Z_Moments
       use ExtPart
       use Timers
       integer(ISZ):: np,is
-      real(kind=8):: dt,time
+      real(kind=8):: dt,time,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
@@ -5189,8 +5189,8 @@ c       --- in the moments calculation
         if (izepwin(iw) >= 0) cycle
 
 c       --- Skip windows that are outside of the grid frame.
-        if (zzepwin(iw)+wzepwin(iw) <= zmmntmin .or.
-     &      zzepwin(iw)-wzepwin(iw) >= zmmntmax) cycle
+        if (zzepwin(iw)+wzepwin(iw) <= zmmntmin+zbeam .or.
+     &      zzepwin(iw)-wzepwin(iw) >= zmmntmax+zbeam) cycle
 
 c       --- Make sure that there is enough room - assuming that all particles
 c       --- could be saved.

@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.103 $, $Date: 2003/08/29 23:14:21 $
+c@(#) File DTOP.M, version $Revision: 3.104 $, $Date: 2003/09/03 01:00:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -642,7 +642,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.103 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.104 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
