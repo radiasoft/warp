@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.31 2001/02/21 00:22:32 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.32 2001/02/27 18:40:17 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -876,11 +876,10 @@ Note that either the x and y coordinates or the grid must be passed in.
   # -- Set the plotting view window
   plsys(view)
 
-  # --- Get slope subtracted value of y
-  yms = y - x*slope - offset
-
   # --- Calculate extrema of the particles
   if x != None and y != None:
+    # --- Get slope subtracted value of y
+    yms = y - x*slope - offset
     if lparallel:
       if xmin == None: xmin = globalmin(x)
       if xmax == None: xmax = globalmax(x)
