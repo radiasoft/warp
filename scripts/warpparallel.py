@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.7 2001/02/26 20:08:51 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.8 2001/03/08 02:39:10 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -18,35 +18,41 @@ def convertiztope(iz):
     pe = None
   return pe
 
+# --- Given an z window number, returns the processor number whose region
+# --- contains that range (actually the center of the window).
+def convertiwtope(iw):
+  if 0 <= iw <= top.nzwind:
+    zz = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
+    return compress(logical_and(less_equal(top.zmslmin,zz),
+                                      less(zz,top.zmslmax)),arange(npes))[0]
+  else:
+    return None
+
 # --- Gathers windows data onto PE0.
 def getwin_moments():
-  #PIO_EnableAll()
-  vlist = top.varlist('Win_Moments')
-  if me > 0:
-    zw = []
-    for iw in range(1,top.nzwind+1):
-      zz = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
-      if w3d.zmmin <= zz and zz < w3d.zmmax:
-        zw = zw + [iw]
-    mpi.send(len(zw),0,0)
-    for iw in zw:
-      mpi.send(iw,0,0)
-      for v in vlist:
-        if eval('type(top.'+v+')==type(array([]))'):
-          exec('mpi.send(top.'+v+'[iw],0,0)',__main__.__dict__,locals())
-  else:
-    for i in range(1,number_of_PE()):
-      n = mpi.recv(i,0)
-      for ii in range(n):
-        iw = mpi.recv(i,0)
-        for v in vlist:
-          if eval('type(top.'+v+')==type(array([]))'):
-            exec('top.'+v+'[iw]=mpi.recv(i,0)',__main__.__dict__,locals())
+  """Broadcasts the window moments data to all processors."""
+  # --- First, get a list of all arrays in the group Win_Moments
+  vlistall = top.varlist('Win_Moments')
+  vlist = []
+  for v in vlistall:
+    if eval('type(top.'+v+')==type(array([]))'): vlist.append(v)
+  # --- Loop over the number of windows and get the pe that owns it.
+  # --- The processor is then the root for the broadcast call.
+  # --- All of the moment data for each window is sent as a single array.
+  for iw in range(1,top.nzwind+1):
+    pe = convertiwtope(iw)
+    vdata = []
+    for v in vlist:
+      vdata.append(eval('top.'+v+'[iw]',__main__.__dict__,locals()))
+    vdata = mpi.bcast(array(vdata),pe)
+    i = 0
+    for v in vlist:
+      exec('top.'+v+'[iw] = vdata[i]',__main__.__dict__,locals())
+      i = i + 1
 
 # --- Gathers windows history data onto PE0.
-# --- Still need to deal with linechg and hvzofz
+# --- Still need to deal with linechg and hvzofz and other zmoments histories.
 def gethist():
-  #PIO_EnableAll()
   varlist = top.varlist('Hist')
   if me > 0:
     zw = []
@@ -234,7 +240,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
                 else:
                   ff.write(pdbname,w3d.nzfull)
               elif (p == 'top' and vname in ['nzzarr','nzmmnt']) or \
-                   (p == 'w3d' and vname in ['nz','izfsmax']):
+                   (p == 'w3d' and vname in ['nz','izfsmax','nz_selfe']):
                 ff.write(pdbname,w3d.nzfull)
               elif (p=='top' and vname in ['np','nplive','npmax','npmaxb']) or\
                    (p=='wxy' and vname in ['npmaxxy']):
