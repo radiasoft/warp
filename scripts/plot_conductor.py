@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.36 2002/07/11 21:41:03 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.37 2002/07/18 00:52:31 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1595,14 +1595,14 @@ Sets the voltage on a conductor, given an id.
     # --- Get z location of the conductor points (taking into account
     # --- the differing grid cell sizes for coarse levels). Use that to
     # --- gather the value of voltage at those locations.
-    icz = f3d.izcond*take(f3d.mglevelslz,f3d.icondlevel) + \
+    icz = f3d.izcond*take(nint(f3d.mglevelslz),f3d.icondlevel) + \
                      take(f3d.mglevelsiz,f3d.icondlevel)
     icz = minimum(icz,len(voltage)-2,icz)
     cv = take(voltage,icz)
 
     # --- Get z location of even points. For conductors in the transverse
     # --- plane, use the voltage at the grid cell locations.
-    iecl = take(f3d.mglevelslz,f3d.iecndlevel)
+    iecl = take(nint(f3d.mglevelslz),f3d.iecndlevel)
     iecz = f3d.iecndz*iecl + take(f3d.mglevelsiz,f3d.iecndlevel)
     iecz = minimum(iecz,len(voltage)-2,iecz)
     ecv = take(voltage,iecz)
@@ -1628,7 +1628,7 @@ Sets the voltage on a conductor, given an id.
     ecvpz = take(voltage,iecpz)*(1.-wecpz) + take(voltage,iecpz+1)*wecpz
 
     # --- Repeat for odd conductor points.
-    iocl = take(f3d.mglevelslz,f3d.iocndlevel)
+    iocl = take(nint(f3d.mglevelslz),f3d.iocndlevel)
     iocz = f3d.iocndz*iocl + take(f3d.mglevelsiz,f3d.iocndlevel)
     iocz = minimum(iocz,len(voltage)-2,iocz)
     ocv = take(voltage,iocz)
@@ -1653,18 +1653,18 @@ Sets the voltage on a conductor, given an id.
     # --- coordinates x, y, z, in meters relative to the beam frame.
     if lparallel: zmmin = top.zmslmin[0]
     else:         zmmin = w3d.zmmin
-    icx = f3d.ixcond*take(f3d.mglevelslx,f3d.icondlevel)
-    icy = f3d.iycond*take(f3d.mglevelsly,f3d.icondlevel)
-    icz = f3d.izcond*take(f3d.mglevelslz,f3d.icondlevel) + \
+    icx = f3d.ixcond*take(nint(f3d.mglevelslx),f3d.icondlevel)
+    icy = f3d.iycond*take(nint(f3d.mglevelsly),f3d.icondlevel)
+    icz = f3d.izcond*take(nint(f3d.mglevelslz),f3d.icondlevel) + \
                      take(f3d.mglevelsiz,f3d.icondlevel)
     cx = w3d.xmmin + icx*w3d.dx
     cy = w3d.ymmin + icy*w3d.dy
     cz =     zmmin + icz*w3d.dz
     cv = voltage(cx,cy,cz)
 
-    ieclx = take(f3d.mglevelslx,f3d.iecndlevel)
-    iecly = take(f3d.mglevelsly,f3d.iecndlevel)
-    ieclz = take(f3d.mglevelslz,f3d.iecndlevel)
+    ieclx = take(nint(f3d.mglevelslx),f3d.iecndlevel)
+    iecly = take(nint(f3d.mglevelsly),f3d.iecndlevel)
+    ieclz = take(nint(f3d.mglevelslz),f3d.iecndlevel)
     ecx = w3d.xmmin + w3d.dx*f3d.iecndx*ieclx
     ecy = w3d.ymmin + w3d.dy*f3d.iecndy*iecly
     ecz =     zmmin + w3d.dz*(f3d.iecndz*ieclz + \
@@ -1683,9 +1683,9 @@ Sets the voltage on a conductor, given an id.
     ecvmz = voltage(ecx  ,ecy  ,eczmz)
     ecvpz = voltage(ecx  ,ecy  ,eczpz)
 
-    ioclx = take(f3d.mglevelslx,f3d.iocndlevel)
-    iocly = take(f3d.mglevelsly,f3d.iocndlevel)
-    ioclz = take(f3d.mglevelslz,f3d.iocndlevel)
+    ioclx = take(nint(f3d.mglevelslx),f3d.iocndlevel)
+    iocly = take(nint(f3d.mglevelsly),f3d.iocndlevel)
+    ioclz = take(nint(f3d.mglevelslz),f3d.iocndlevel)
     ocx = w3d.xmmin + w3d.dx*f3d.iocndx*ioclx
     ocy = w3d.ymmin + w3d.dy*f3d.iocndy*iocly
     ocz =     zmmin + w3d.dz*(f3d.iocndz*ioclz + \
