@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.27 $, $Date: 2002/04/08 13:27:31 $
+c@(#) File F3D.M, version $Revision: 3.28 $, $Date: 2002/04/12 21:15:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6562,6 +6562,7 @@ c===========================================================================
       use InjectVars
       use InjectVars3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
+      use multigridRZ
       real(kind=8):: dx,dy,dz,zmmin
       integer(ISZ):: ix_axis,iy_axis,nx,ny
 
@@ -6577,6 +6578,11 @@ c     --- Just return if injection is turned off or the source is not to be
 c     --- setup.
       if (inject == 0 .or. .not. lvinject) return
 
+      if(solvergeom==RZgeom) then
+        dx = grids_ptr(mgridrz_inj_id)%grid%dr
+        dy = grids_ptr(mgridrz_inj_id)%grid%dr
+        dz = grids_ptr(mgridrz_inj_id)%grid%dz
+      end if
 c     if(solvergeom==RZgeom) then
 c        call injctpntrz(rinject,ainject,binject,ainjmin,binjmin,
 c     &                    xinject,yinject,
@@ -6592,9 +6598,9 @@ c     --- calculate points for injection source
       do ij=1,ninject
 c       --- find bounds of loop
         ixmin = max(1,   int((-ainject(ij)+xinject(ij))/dx+ix_axis-1))
-        ixmax = min(nx-1,int((+ainject(ij)+xinject(ij))/dx+ix_axis+1))
+        ixmax = min(inj_nx-1,int((+ainject(ij)+xinject(ij))/dx+ix_axis+1))
         iymin = max(1,   int((-binject(ij)+yinject(ij))/dy+iy_axis-1))
-        iymax = min(ny-1,int((+binject(ij)+yinject(ij))/dy+iy_axis+1))
+        iymax = min(inj_ny-1,int((+binject(ij)+yinject(ij))/dy+iy_axis+1))
 
 c       --- Define maximum and minimum transverse extents of source
         ao_dx = ainject(ij) + dx
@@ -6706,6 +6712,12 @@ c               --- odd
           enddo
         enddo
       enddo
+
+      if(solvergeom==RZgeom) then
+        dx = basegrid%dr
+        dy = basegrid%dr
+        dz = basegrid%dz
+      end if
 
       return
       end
