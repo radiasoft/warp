@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.137 $, $Date: 2004/12/17 19:05:58 $
+c@(#) File TOP.F, version $Revision: 3.138 $, $Date: 2004/12/22 22:20:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6523,7 +6523,7 @@ c   lmomentum: Set to false when velocites are input as velocities, and true
 c              when input as massless momentum. Only used when lrelativ is
 c              true.
 
-      integer(ISZ):: ip,n1,i1,i2
+      integer(ISZ):: ip,n1,i1,i2,i
 
 c     --- Make sure that the particles are within the z extent of the domain,
 c     --- unless the input declares this to be so. Note that no check is made
