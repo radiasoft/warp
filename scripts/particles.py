@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.4 2002/09/27 16:40:48 dave Exp $"
+particles_version = "$Id: particles.py,v 1.5 2002/11/07 00:08:02 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -340,18 +340,21 @@ if sys.version[:5] != "1.5.1":
 def getxxpslope(iw=0,iz=-1):
   """
 Calculates the x-x' slope based on either the window moments in window iw
-or the zmoments at iz. This returns a tuple containing (slope,offset,vz).
+or the zmoments at iz. This returns a tuple containing
+(slope,xoffset,xpoffset,vz).
 The product slope*vz gives the slope for x-vx.
   """
   if not lparallel:
     if 0 <= iz <= w3d.nz:
       slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
-      offset = top.xpbarz[iz]-slope*top.xbarz[iz]
+      xoffset = top.xbarz[iz]
+      xpoffset = top.xpbarz[iz]
       vz = top.vzbarz[iz]
     else:
       iiw = max(0,iw)
       slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
-      offset = top.xpbar[iiw]-slope*top.xbar[iiw]
+      xoffset = top.xbar[iiw]
+      xpoffset = top.xpbar[iiw]
       vz = top.vzbar[iiw]
   else:
     if 0 <= iz <= w3d.nzfull:
@@ -359,38 +362,43 @@ The product slope*vz gives the slope for x-vx.
       if me == pe:
         iz = iz - top.izpslave[me]
         slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
-        offset = top.xpbarz[iz]-slope*top.xbarz[iz]
+        xoffset = top.xbarz[iz]
+        xpoffset = top.xpbarz[iz]
         vz = top.vzbarz[iz]
       else:
-        (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
+        (slope,xoffset,xpoffset,vz) = (0.,0.,0.,0.)
     else:
       iiw = max(0,iw)
       pe = convertiwtope(iiw)
       if me == pe:
         slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
-        offset = top.xpbar[iiw]-slope*top.xbar[iiw]
+        xoffset = top.xbar[iiw]
+        xpoffset = top.xpbar[iiw]
         vz = top.vzbar[iiw]
       else:
-        (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
-  return (slope,offset,vz)
+        (slope,xoffset,xpoffset,vz) = (0.,0.,0.,0.)
+    temp = array([slope,xoffset,xpoffset,vz])
+    (slope,xoffset,xpoffset,vz) = tuple(broadcast(temp,pe))
+  return (slope,xoffset,xpoffset,vz)
 #-------------------------------------------------------------------------
 def getyypslope(iw=0,iz=-1):
   """
 Calculates the y-y' slope based on either the window moments in window iw
-or the zmoments at iz. This returns a tuple containing (slope,offset,vz).
+or the zmoments at iz. This returns a tuple containing
+(slope,yoffset,ypffset,vz).
 The product slope*vz gives the slope for y-vy.
   """
   if not lparallel:
     if 0 <= iz <= w3d.nz:
       slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
-      offset = top.ypbarz[iz]-slope*top.ybarz[iz]
+      yoffset = top.ybarz[iz]
+      ypoffset = top.ypbarz[iz]
       vz = top.vzbarz[iz]
     else:
       iiw = max(0,iw)
       slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
-      offset = top.ypbar[iiw]-slope*top.ybar[iiw]
+      yoffset = top.ybar[iiw]
+      ypoffset = top.ypbar[iiw]
       vz = top.vzbar[iiw]
   else:
     if 0 <= iz <= w3d.nzfull:
@@ -398,22 +406,24 @@ The product slope*vz gives the slope for y-vy.
       if me == pe:
         iz = iz - top.izpslave[me]
         slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
-        offset = top.ypbarz[iz]-slope*top.ybarz[iz]
+        yoffset = top.ybarz[iz]
+        ypoffset = top.ypbarz[iz]
         vz = top.vzbarz[iz]
       else:
-        (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
+        (slope,yoffset,ypoffset,vz) = (0.,0.,0.,0.)
     else:
       iiw = max(0,iw)
       pe = convertiwtope(iiw)
       if me == pe:
         slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
-        offset = top.ypbar[iiw]-slope*top.ybar[iiw]
+        yoffset = top.ybar[iiw]
+        ypoffset = top.ypbar[iiw]
         vz = top.vzbar[iiw]
       else:
-        (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
-  return (slope,offset,vz)
+        (slope,yoffset,ypoffset,vz) = (0.,0.,0.,0.)
+    temp = array([slope,yoffset,ypoffset,vz])
+    (slope,yoffset,ypoffset,vz) = tuple(broadcast(temp,pe))
+  return (slope,yoffset,ypoffset,vz)
 #-------------------------------------------------------------------------
 def getvzrange():
   "Returns a tuple containg the Vz range for plots"

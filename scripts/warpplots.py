@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.88 2002/10/10 16:41:36 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.89 2002/11/07 00:08:02 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -485,7 +485,8 @@ def ppgeneric_doc(x,y):
   - grid: optional grid to plot (instead of deriving grid from particle data)
   - nx, ny: grid size, defaults to 20x20
   - slope=0.: slope to subtract from %(y)s coordinate (%(y)s-slope*%(x)s)
-  - offset=0.: %(y)s-offset of particles
+  - xoffset=0.: average %(x)s of particles
+  - yoffset=0.: average %(y)s of particles
   - xscale=1.: scaling factor applied to x data
   - yscale=1.: scaling factor applied to y data
   - titles=1: when true, plot the titles
@@ -543,7 +544,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {'zz':None,'grid':None,'nx':20,'ny':20,'slope':0.,
-                'offset':0.,'xscale':1.,'yscale':1.,'titles':1,'lframe':0,
+                'xoffset':0.,'yoffset':0.,'offset':0.,
+                'xscale':1.,'yscale':1.,'titles':1,'lframe':0,
                 'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
                 'particles':0,'uselog':0,'color':'fg','ncolor':top.ncolor,
@@ -643,7 +645,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Calculate extrema of the particles
   if type(x) == ArrayType and type(y) == ArrayType:
     # --- Get slope subtracted value of y
-    yms = y - x*slope - offset
+    yms = y - (x-xoffset)*slope - yoffset - offset
     # --- Get mins and maxs of particles that were not supplied by the user.
     if lparallel:
       if xmin is None: xmintemp = globalmin(x)
@@ -1415,9 +1417,10 @@ def ppxxp(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxxp,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
-    (slope,offset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
+    (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
     kw['slope'] = slope
-    kw['offset'] = offset
+    kw['yoffset'] = xpoffset
+    kw['xoffset'] = xoffset
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -1434,9 +1437,10 @@ def ppyyp(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyyp,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
-    (slope,offset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
+    (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
     kw['slope'] = slope
-    kw['offset'] = offset
+    kw['yoffset'] = ypoffset
+    kw['xoffset'] = yoffset
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -1454,19 +1458,22 @@ def ppxpyp(iw=0,**kw):
   if ppmultispecies(ppxpyp,(iw,),kw): return
   slope = kw.get('slope',0.)
   if type(slope) == type(''):
-    (xslope,xoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
-    (yslope,yoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
+    (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
+    (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
+    kw['slope'] = 0.
   else:
-    (xslope,xoffset) = (slope,0.)
-    (yslope,yoffset) = (slope,0.)
+    (xslope,xoffset,xpoffset) = (slope,0.,0.)
+    (yslope,yoffset,ypoffset) = (slope,0.,0.)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
   settitles("Y' vs X'","X'","Y'",pptitleright(iw=iw,kwdict=kw))
   ii = selectparticles(iw=iw,kwdict=kw)
-  xp = take(top.uxp,ii)/take(top.uzp,ii) - xslope*take(top.xp,ii) - xoffset
-  yp = take(top.uyp,ii)/take(top.uzp,ii) - yslope*take(top.yp,ii) - yoffset
+  xp = (take(top.uxp,ii)/take(top.uzp,ii) - xslope*(take(top.xp,ii)-xoffset) -
+       xpoffset)
+  yp = (take(top.uyp,ii)/take(top.uzp,ii) - yslope*(take(top.yp,ii)-yoffset) -
+       ypoffset)
   return ppgeneric(yp,xp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxpyp.__doc__ = ppxpyp.__doc__ + ppgeneric_doc("x'","y'")
@@ -1477,9 +1484,10 @@ def ppxvx(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxvx,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
-    (slope,offset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
+    (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
     kw['slope'] = slope*vz
-    kw['offset'] = offset*vz
+    kw['yoffset'] = xpoffset*vz
+    kw['xoffset'] = xoffset
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -1497,9 +1505,10 @@ def ppyvy(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyvy,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
-    (slope,offset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
+    (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
     kw['slope'] = slope*vz
-    kw['offset'] = offset*vz
+    kw['yoffset'] = ypoffset*vz
+    kw['xoffset'] = yoffset
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -1628,10 +1637,10 @@ that plot.
   if type(slope)==type(''):
     del kw['slope']
     iz = kw.get('iz',None)
-    xxpslope = getxxpslope(iw=iw,iz=iz)[0]
-    yypslope = getyypslope(iw=iw,iz=iz)[0]
-    xp = xp - xxpslope*x
-    yp = yp - yypslope*y
+    (xxpslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=iz)
+    (yypslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=iz)
+    xp = xp - xxpslope*(x - xoffset) - xpoffset
+    yp = yp - yypslope*(y - yoffset) - ypoffset
   if kw.get('titles',1):
     titler=pptitleright(iw=iw,kwdict=kw)
     ptitles(titler=titler)
