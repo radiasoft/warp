@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.16 $, $Date: 2004/12/22 22:13:33 $
+c@(#) File w3d_injection.F, version $Revision: 1.17 $, $Date: 2005/01/12 16:59:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2524,6 +2524,9 @@ c         --- emitting surface.
           wx = spreadx*(px - ix)
           wy = spready*(py - iy)
 
+          if (spreadx*px < 0. .or. (px+1)*spreadx > inj_nx .or.
+     &        spready*py < 0. .or. (py+1)*spready > inj_ny) cycle
+
 c         --- Calculate the normal electric field from the potential drop in
 c         --- front of the emitting surface. The normal field given by the
 c         --- Child-Langmuir solution (for planar surfaces) is used.
@@ -3724,6 +3727,10 @@ c         --- emitting surface.
             px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
             py = abs(yy(ip)*wr - inj_ymmin(ij))*dyi
           end if
+
+          if (spreadx*px < 0. .or. (px+1)*spreadx > inj_nx .or.
+     &        spready*py < 0. .or. (py+1)*spready > inj_ny) cycle
+
           ix = spreadx*int(px)
           iy = spready*int(py)
           wx = spreadx*(px - ix)
