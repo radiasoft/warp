@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.119 $, $Date: 2004/11/11 20:22:15 $
+#@(#) File F3D.V, version $Revision: 3.120 $, $Date: 2004/11/12 17:57:07 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.119 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.120 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -163,7 +163,9 @@ laddconductor logical /.false./ # When true, the python function
                           # calladdconductor is called at the beginning of the 
                           # field solve.
 checkconductors(nx:integer,ny:integer,nz:integer,nzfull:integer,
-                dx:real,dy:real,dz:real,conductors:ConductorType) subroutine
+                dx:real,dy:real,dz:real,conductors:ConductorType,
+                my_index:integer,nslaves:integer,
+                izfsslave:integer,nzfsslave:integer) subroutine
 
 *********** MGLevels3d:
 mglevels              integer /0/  # Number of coarsening levels
@@ -202,7 +204,9 @@ mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
 lbuildquads logical /.true./ # When true, quad elements are constructed
                              # automatically if defined.
 getmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
-            dx:real,dy:real,dz:real,conductors:ConductorType)
+            dx:real,dy:real,dz:real,conductors:ConductorType,
+            my_index:integer,nslaves:integer,
+            izfsslave:integer,nzfsslave:integer)
    subroutine
    # Calculates levels of coarsening. Note that mglevels
    # must be zero when calling this routine.
@@ -223,7 +227,9 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
                  mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
                  downpasses:integer,uppasses:integer,
                  lcndbndy:logical,laddconductor:logical,icndbndy:integer,
-                 lbuildquads:logical,gridmode:integer,conductors:ConductorType)
+                 lbuildquads:logical,gridmode:integer,conductors:ConductorType,
+                 my_index:integer,nslaves:integer,
+                 izfsslave:integer,nzfsslave:integer)
    subroutine
    # Solves Poisson's equation using the multigrid method. All input is
    # through the argument list.

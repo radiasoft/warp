@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.84 $, $Date: 2004/11/05 01:18:23 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.85 $, $Date: 2004/11/12 17:57:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -17,6 +17,7 @@ c=============================================================================
       use PSOR3d
       use Conductor3d
       use Multigrid3d
+      use Parallel
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -52,7 +53,8 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
      &                            mgmaxlevels,mgerror,mgtol,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
-     &                            gridmode,conductors)
+     &                            gridmode,conductors,
+     &                            my_index,nslaves,izfsslave,nzfsslave)
 
       return
       end
@@ -64,11 +66,11 @@ c=============================================================================
      &                            mgmaxlevels,mgerror,mgtol,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
-     &                            gridmode,conductors)
+     &                            gridmode,conductors,
+     &                            my_index,nslaves,izfsslave,nzfsslave)
       use Subtimersf3d
       use ConductorTypemodule
       use Constant
-      use Parallel
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -85,6 +87,8 @@ c=============================================================================
       logical(ISZ):: lcndbndy,laddconductor,lbuildquads
       integer(ISZ):: icndbndy,gridmode
       type(ConductorType):: conductors
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 c Use the multigrid method for solving Poisson's equation on a 3-D Cartesian
 c mesh. The fieldsolver allows internal conductors with subgrid scale
@@ -154,7 +158,8 @@ c     --- converted and expanded for the multigrid solver.
         endif
         if (laddconductor) call execuser("calladdconductor")
       endif
-      call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,conductors)
+      call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,conductors,
+     &                     my_index,nslaves,izfsslave,nzfsslave)
 
 
 !$OMP PARALLEL
@@ -2373,12 +2378,14 @@ c     --- Longitudinal boundaries
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine getmglevels(nx,ny,nz,nzfull,dx,dy,dz,conductors)
-      use Parallel
+      subroutine getmglevels(nx,ny,nz,nzfull,dx,dy,dz,conductors,
+     &                       my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
       type(ConductorType):: conductors
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 c     --- Only do this calculation if it is needed. This
 c     --- is for parallel version. There, this is a global operation and
@@ -2549,7 +2556,8 @@ c     --- above. But, they can be obtained from local info
       globalbnz = boundnz
 
 c     --- Calculate levels of coarsening
-      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors)
+      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors,
+     &                 my_index,nslaves,izfsslave,nzfsslave)
 
       do il=0,conductors%levels-1
 
@@ -2639,7 +2647,8 @@ c     --- above. But, they can be obtained from local info
 #endif
 
 c     --- Calculate levels of coarsening
-      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors)
+      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors,
+     &                 my_index,nslaves,izfsslave,nzfsslave)
 
       do il=0,conductors%levels-1
 
@@ -2715,7 +2724,8 @@ c     --- above. But, they can be obtained from local info
 #endif
 
 c     --- Calculate levels of coarsening
-      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors)
+      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors,
+     &                 my_index,nslaves,izfsslave,nzfsslave)
 
       do il=0,conductors%levels-1
 
@@ -2791,7 +2801,8 @@ c     --- above. But, they can be obtained from local info
 #endif
 
 c     --- Calculate levels of coarsening
-      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors)
+      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors,
+     &                 my_index,nslaves,izfsslave,nzfsslave)
 
       do il=0,conductors%levels-1
 
@@ -2832,12 +2843,14 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       RECURSIVE subroutine checkconductors(nx,ny,nz,nzfull,dx,dy,dz,
-     &                                     conductors)
-      use Parallel
+     &                                     conductors,
+     &                                     my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
       type(ConductorType):: conductors
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
 c Recursively calls the routine to generate the conductor data at the
 c various mesh resolutions needed by the MG solver.
@@ -2852,7 +2865,8 @@ c various mesh resolutions needed by the MG solver.
       integer(ISZ):: ix_axis1,iy_axis1
 
 c     --- Make sure the coarsening levels are setup.
-      call getmglevels(nx,ny,nz,nzfull,dx,dy,dz,conductors)
+      call getmglevels(nx,ny,nz,nzfull,dx,dy,dz,conductors,
+     &                 my_index,nslaves,izfsslave,nzfsslave)
 
 c     --- Call the work routine for each level
       do il=0,conductors%levels-1
