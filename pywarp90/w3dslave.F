@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.5 $, $Date: 2001/09/06 20:50:19 $
+c W3DSLAVE.M, version $Revision: 1.6 $, $Date: 2001/10/26 00:39:49 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -317,7 +317,7 @@ c Reorganize particles:  distributes particles to the appropriate slaves.
 c Particles are shifted multiple times until they are in the proper region.
 
       integer(ISZ):: checkzpartbnd
-      integer(ISZ):: nout
+      integer(ISZ):: nout1,nout2
       integer(ISZ):: mpierror
       include "mpif.h"
 
@@ -326,13 +326,13 @@ c any particles outside of the mesh and if so, loops until there aren't any.
 c This loop is necessary since in the initial load, the particles may be
 c loaded more than one region away from where the will be in the simulation,
 c but the routine zpartbnd only moves particles to the nearest neighbors.
-      nout = checkzpartbnd(zgrid)
-      call MPI_ALLREDUCE(nout,nout,1,MPI_INTEGER,MPI_MAX,
+      nout1 = checkzpartbnd(zgrid)
+      call MPI_ALLREDUCE(nout1,nout2,1,MPI_INTEGER,MPI_MAX,
      &                   MPI_COMM_WORLD,mpierror)
-      do while (nout > 0)
+      do while (nout2 > 0)
         call zpartbnd(zmmax,zmmin,dz,zgrid)
-        nout = checkzpartbnd(zgrid)
-        call MPI_ALLREDUCE(nout,nout,1,MPI_INTEGER,MPI_MAX,
+        nout1 = checkzpartbnd(zgrid)
+        call MPI_ALLREDUCE(nout1,nout2,1,MPI_INTEGER,MPI_MAX,
      &                     MPI_COMM_WORLD,mpierror)
       enddo
 
@@ -346,13 +346,15 @@ c As calculated in stptl3d, sw depends on 1 over the number of particles
 c in each processor. The new value of sw is 1 over the sum of the
 c reciprocals of the sw of each processor, and so depends only on the
 c total number of particles.
+      real(kind=8):: swtemp(ns)
       integer(ISZ):: is
       integer(ISZ):: mpierror
       include "mpif.h"
       do is=1,ns
         if (sw(is) /= 0.) sw(is) = 1./sw(is)
       enddo
-      call MPI_ALLREDUCE(sw,sw,ns,MPI_DOUBLE_PRECISION,MPI_SUM,
+      swtemp = sw
+      call MPI_ALLREDUCE(swtemp,sw,ns,MPI_DOUBLE_PRECISION,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
       do is=1,ns
         if (sw(is) /= 0.) sw(is) = 1./sw(is)

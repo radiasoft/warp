@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.4 $, $Date: 2001/10/18 20:58:08 $
+c TOPSLAVE.M, version $Revision: 1.5 $, $Date: 2001/10/26 00:39:49 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -348,12 +348,13 @@ c Use reduction routines to sum whole beam moments across all
 c of the processors.  It also shares z moment data at PE boundaries.
 
 c     --- temporary for z moments
-      real(kind=8):: temp1(NUMZMMNT,0:1),temp2(NUMZMMNT,0:1)
+      real(kind=8):: temp0(NUMZMMNT),temp1(NUMZMMNT,0:1),temp2(NUMZMMNT,0:1)
       integer(ISZ):: im,iz
       integer(ISZ):: left_pe,right_pe
       integer(ISZ):: left_iz,right_iz
       integer(ISZ):: left_nz,right_nz
-      real(kind=8):: maxes(6),mines(6)
+      real(kind=8):: maxes1(6),mines1(6)
+      real(kind=8):: maxes2(6),mines2(6)
       include "mpif.h"
       integer(ISZ):: mpierror,mpirequest,mpistatus(MPI_STATUS_SIZE)
 
@@ -363,7 +364,8 @@ c     --- wrapping around at the ends.
       right_pe = mod(my_index+1,nslaves)
 
 c     --- Do reduction on whole beam moments.
-      call MPI_ALLREDUCE(zmmnts0,zmmnts0,NUMZMMNT,MPI_DOUBLE_PRECISION,MPI_SUM,
+      temp0 = zmmnts0
+      call MPI_ALLREDUCE(temp0,zmmnts0,NUMZMMNT,MPI_DOUBLE_PRECISION,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
 
 c     --- Get number of planes to exchange. The default values of zero are
@@ -418,34 +420,34 @@ c       --- Send summed data back to the left.
 
 c     --- Find global max's and min's
 c     --- This is done minimizing the amount of interprocessor communication
-      maxes(1) = xmaxp
-      maxes(2) = ymaxp
-      maxes(3) = zmaxp
-      maxes(4) = vxmaxp
-      maxes(5) = vymaxp
-      maxes(6) = vzmaxp
-      mines(1) = xminp
-      mines(2) = yminp
-      mines(3) = zminp
-      mines(4) = vxminp
-      mines(5) = vyminp
-      mines(6) = vzminp
-      call MPI_ALLREDUCE(maxes,maxes,6,MPI_DOUBLE_PRECISION,MPI_MAX,
+      maxes1(1) = xmaxp
+      maxes1(2) = ymaxp
+      maxes1(3) = zmaxp
+      maxes1(4) = vxmaxp
+      maxes1(5) = vymaxp
+      maxes1(6) = vzmaxp
+      mines1(1) = xminp
+      mines1(2) = yminp
+      mines1(3) = zminp
+      mines1(4) = vxminp
+      mines1(5) = vyminp
+      mines1(6) = vzminp
+      call MPI_ALLREDUCE(maxes1,maxes2,6,MPI_DOUBLE_PRECISION,MPI_MAX,
      &                   MPI_COMM_WORLD,mpierror)
-      call MPI_ALLREDUCE(mines,mines,6,MPI_DOUBLE_PRECISION,MPI_MIN,
+      call MPI_ALLREDUCE(mines1,mines2,6,MPI_DOUBLE_PRECISION,MPI_MIN,
      &                   MPI_COMM_WORLD,mpierror)
-      xmaxp = maxes(1)
-      ymaxp = maxes(2)
-      zmaxp = maxes(3)
-      vxmaxp = maxes(4)
-      vymaxp = maxes(5)
-      vzmaxp = maxes(6)
-      xminp = mines(1)
-      yminp = mines(2)
-      zminp = mines(3)
-      vxminp = mines(4)
-      vyminp = mines(5)
-      vzminp = mines(6)
+      xmaxp = maxes2(1)
+      ymaxp = maxes2(2)
+      zmaxp = maxes2(3)
+      vxmaxp = maxes2(4)
+      vymaxp = maxes2(5)
+      vzmaxp = maxes2(6)
+      xminp = mines2(1)
+      yminp = mines2(2)
+      zminp = mines2(3)
+      vxminp = mines2(4)
+      vyminp = mines2(5)
+      vzminp = mines2(6)
 
       return
       end
