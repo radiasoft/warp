@@ -1,4 +1,4 @@
-!     Last change:  JLV  17 Oct 2001    7:28 pm
+!     Last change:  JLV  25 Oct 2001   10:27 am
 #include "top.h"
 
 module multigrid_common
@@ -752,7 +752,7 @@ do kold = 1, nzold+1
   odelz = oddz(kold)
   do jold = 1, nxold+1
 #ifdef PARALLEL
-    IF((bndy(level)%izlbnd<0.and.lold>1).or.(bndy(level)%izrbnd<0.and.lold<nzold+1)) then
+    IF((bndy(level)%izlbnd<0.and.kold>1).or.(bndy(level)%izrbnd<0.and.kold<nzold+1)) then
       IF(.NOT.(bnd%v(jold,kold)==v_vacuum.or.jold==1.or.jold==nxold+1)) cycle
     END if
 #else
@@ -3711,12 +3711,14 @@ END subroutine relaxbnd3dwguard
     nz = SIZE(f,3)-3
 
     ! send
-    IF(bndy(level)%izlbnd<0) call mpi_send_real_array(f(:,:,2), p_down, 0)
-    IF(bndy(level)%izrbnd<0) call mpi_send_real_array(f(:,:,nz), p_up, 0)
+    IF(bndy(level)%izlbnd<0) call mpi_send_real_array(PACK(f(:,:,2),.TRUE.), p_down, 0)
+    IF(bndy(level)%izrbnd<0) call mpi_send_real_array(PACK(f(:,:,nz),.TRUE.), p_up, 0)
 
     ! receive
-    IF(bndy(level)%izrbnd<0) f(:,:,nz+2) = mpi_recv_real_array(SIZE(f(:,:,nz)),p_up,0)
-    IF(bndy(level)%izlbnd<0) f(:,:,0)    = mpi_recv_real_array(SIZE(f(:,:,0 )),p_down,0)
+    IF(bndy(level)%izrbnd<0) f(:,:,nz+2) = RESHAPE(mpi_recv_real_array(SIZE(f(:,:,nz)),p_up,0), &
+                                                                      SHAPE(f(:,:,nz)))
+    IF(bndy(level)%izlbnd<0) f(:,:,0)    = RESHAPE(mpi_recv_real_array(SIZE(f(:,:,0 )),p_down,0), &
+                                                                      SHAPE(f(:,:,0)))
 
   end subroutine exchange_fbndz
   subroutine exchange_rhobndz(rho,level)
@@ -3734,13 +3736,14 @@ END subroutine relaxbnd3dwguard
     nz = SIZE(rho,3)-1
 
     ! send
-    IF(bndy(level)%izlbnd<0) call mpi_send_real_array(rho(:,:,1), p_down, 1)
-    IF(bndy(level)%izrbnd<0) call mpi_send_real_array(rho(:,:,nz+1), p_up, 1)
+    IF(bndy(level)%izlbnd<0) call mpi_send_real_array(PACK(rho(:,:,1),.TRUE.), p_down, 1)
+    IF(bndy(level)%izrbnd<0) call mpi_send_real_array(PACK(rho(:,:,nz+1),.TRUE.), p_up, 1)
 
     ! receive
-    IF(bndy(level)%izrbnd<0) rho(:,:,nz+1) = 0.5_8*rho(:,:,nz+1) + 0.5_8*mpi_recv_real_array(SIZE(rho(:,:,nz+1)),p_up,1)
-    IF(bndy(level)%izlbnd<0) rho(:,:,1)    = 0.5_8*rho(:,:,1)    + 0.5_8*mpi_recv_real_array(SIZE(rho(:,:,1 ))  ,p_down,1)
-
+    IF(bndy(level)%izrbnd<0) rho(:,:,nz+1) = 0.5_8*rho(:,:,nz+1) + 0.5_8*RESHAPE(mpi_recv_real_array(SIZE(rho(:,:,nz+1)),p_up,1), &
+                                                                                                    SHAPE(rho(:,:,nz+1)))
+    IF(bndy(level)%izlbnd<0) rho(:,:,1)    = 0.5_8*rho(:,:,1)    + 0.5_8*RESHAPE(mpi_recv_real_array(SIZE(rho(:,:,1 ))  ,p_down,1),&
+                                                                                                    SHAPE(rho(:,:,1)))
   end subroutine exchange_rhobndz
   subroutine merge_work(f,level)
     REAL(8), INTENT(IN OUT) :: f(1:,1:,1:)!f(1:nx+1,1:ny+1,1:nz+1)
