@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.87 2002/09/27 23:10:18 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.88 2002/10/10 16:41:36 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -527,8 +527,10 @@ def ppgeneric_doc(x,y):
                     Only in effect when a list of colorbars is specified.
   - surface=0: when true, a 3-d surface plot is made of the gridded data
                The view can be changed dynamically with the function viewsurface
-  - returngrid=0: when true, and when particle data is passed in, no plotting
-                  is done and the grid and extrema are returned
+  - returngrid=0: when true, and when particle data is passed in and a plot
+                  which requires a grid is requested (such as a contour
+                  plot), no plotting is done and the grid and extrema
+                  are returned in a tuple
   """
   return doc%vars()
 #-------------------------------------------------------------------------
