@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.53 2001/09/22 00:10:55 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.54 2001/10/16 23:30:37 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -249,7 +249,9 @@ star = '\3'
 plus = '\2'
 point = '\1'
 def plp(y,x=None,color="fg",marker="\1",msize=1.0):
-  "Plots particles, same as plg but with different defaults"
+  """Plots particles, same as plg but with different defaults so it plots
+markers instead of lines"""
+  if len(y) == 0: return
   if x is not None:
     plg(y,x,type="none",marker=marker,color=color,msize=msize)
   else:
