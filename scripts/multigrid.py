@@ -8,9 +8,13 @@ from generateconductors import installconductors
 from find_mgparam import find_mgparam
 import MA
 
+try:
+  import psyco
+except ImportError:
+  pass
 
 ##############################################################################
-class MultiGrid:
+class MultiGrid(object):
   
   __w3dinputs__ = ['nx','ny','nz',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
@@ -578,4 +582,10 @@ class MultiGrid:
              self.phi,rho,res,0,self.bounds,self.mgparam,self.mgform,false,
              self.lcndbndy,self.icndbndy,self.conductors)
     return res
+
+# --- This can only be done after MultiGrid is defined.
+try:
+  psyco.bind(MultiGrid)
+except NameError:
+  pass
 
