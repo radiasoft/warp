@@ -1,5 +1,4 @@
 from warp import *
-from slice3 import *
 #############################################################################
 #############################################################################
 #############################################################################
@@ -30,23 +29,21 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   if (abs(cmax - zmax) < 0.01*unit) :
      cmax = cmax
   n = int(((cmax - cmin)/unit + 0.5) + 1)
-  levs = span(cmin,cmax,n)
+  levs = cmin + arange(n)*unit
   llist = nonzero(less(abs(levs),0.1*unit))
   if len(llist) > 0:
      array_set(levs,llist,0.0)
   return levs
 
 #-----------------------------------------------------------------------
-def color_bar(zmin,zmax,uselog=0,split=0,ncolor=None):
+def color_bar(zmin,zmax,uselog=0,ncolor=100):
   """
 Plots a color bar to the right of the plot square labelled by the z
 values from zmin to zmax.
   - zmin, zmax: lower and upper range for color bar
   - uselog=0: when true, labels are printed in the form 10^x
-  - split=0: when non-zero, the color is split into two sections
   - ncolor=100: default number of colors to include
   """
-  if ncolor == None: ncolor = 100 + (1 - split)*100
   plsys(0)
   xmin = 0.66
   xmax = 0.68
@@ -54,10 +51,8 @@ values from zmin to zmax.
   ymin = 0.44
   if type(zmin) == type(zmax) == type(1):
      plotval = reshape(arange(zmin,zmax+1,typecode='b'),(zmax+1-zmin,1))
-  elif not split:
-     plotval = reshape(span(0,1,ncolor),(ncolor,1))
   else:
-     plotval = reshape(split_bytscl(span(0,1,ncolor),0).astype('b'),(ncolor,1))
+     plotval = reshape(arange(ncolor)/(ncolor-1.),(ncolor,1))
   # --- draw the bar
   pli(plotval,xmin,ymin,xmax,ymax)
   # --- Draw a black box around it
