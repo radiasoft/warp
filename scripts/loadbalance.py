@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.31 2003/08/18 17:34:56 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.32 2003/08/19 16:35:27 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -55,7 +55,7 @@ recalculated on a finer mesh to give better balancing.
     # --- Check if rightmost particle is close to edge of last processor
     # --- If so, then force a reloadbalance.
     if top.zpslmax[-1] < w3d.zmmaxglobal-w3d.dz:
-      if top.zmaxp > top.zpslmax[-1]-2*w3d.dz:
+      if top.zmaxp > top.zpslmax[-1]-2*w3d.dz + top.zbeam:
         lforce = true
         if self.verbose:
           print "Load balancing since particles near right end of mesh ",top.zpslmax[-1],w3d.zmmaxglobal,top.zmaxp,top.zpslmax[-1]-2*w3d.dz
@@ -85,7 +85,7 @@ recalculated on a finer mesh to give better balancing.
       pnumz = zeros(101,'d')
       zmin = max(w3d.zmminglobal,top.zminp-w3d.dz)
       zmax = min(w3d.zmmaxglobal,top.zmaxp+w3d.dz)
-      zz = getz(gather=0)
+      zz = getz(gather=0) - top.zbeam
       setgrid1d(len(zz),zz,100,pnumz,zmin,zmax)
       pnumz = parallelsum(pnumz)
       dz = (zmax - zmin)/100.
