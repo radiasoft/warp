@@ -79,11 +79,27 @@ Input for constructor:
     uninstallbeforefs(self.applyvoltage)
 
   def applyvoltage(self,time=None):
+    # --- AMR is being used, this routine will install itself there to
+    # --- be called before the field solve. This is so that the voltages
+    # --- on the conductors get set properly for the updated set of
+    # --- meshrefined blocks.
+    if isinstalledbeforefs(self.applyvoltage):
+      import __main__
+      if 'AMRtree' in __main__.__dict__:
+        __main__.__dict__['AMRtree'].installbeforefs(self.applyvoltage)
+        uninstallbeforefs(self.applyvoltage)
+        return
     if time is None: time = top.time
     volt = self.getvolt(time)
+    # --- Get the appropriate conductors object to install into.
+    if 'AMRtree' in __main__.__dict__:
+      cond = __main__.__dict__['AMRtree'].getconductors()
+    else:
+      cond = f3d.conductors
     for c in self.condid:
       setconductorvoltage(volt,c,discrete=self.discrete,
-                          setvinject=self.setvinject)
+                          setvinject=self.setvinject,
+                          conductors=cond)
     self.hvolt.append(volt)
     self.htime.append(time)
     if self.aftervoltset is not None: self.aftervoltset(volt)
