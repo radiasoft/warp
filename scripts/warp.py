@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.70 2004/08/30 17:12:24 dave Exp $"
+warp_version = "$Id: warp.py,v 1.71 2004/08/30 19:45:19 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -137,6 +137,10 @@ except AttrbuteError:
   absorb    = 0
   reflect   = 1
 
+# --- Get start time
+top.starttime = time.time()
+top.starttimedump = top.starttime
+
 # --- Simple function to calculate Child-Langmuir current density
 def childlangmuir(v,d,q=None,m=None):
   if q is None: q = top.sq[0]
@@ -177,7 +181,7 @@ def versionstext():
   if 'w3d' in pkg: r=r+fmt%('Particle package W3D',printversion(w3d.versw3d))
   if 'top' in pkg: r=r+fmt%('Main package TOP',printversion(top.verstop))
   return r
-print time.asctime()
+print time.ctime(top.starttime)
 print versionstext()[:-1] # --- skip last line feed
 print 'For more help, type warphelp()'
 
@@ -718,9 +722,6 @@ except:
 # --- of global keys.
 initial_global_dict_keys = []
 initial_global_dict_keys = globals().keys()
-
-# --- Get start time
-top.starttime = time.time()
 
 # --- Save the versions string here so that it will be dumped into any
 # --- dump file.
