@@ -70,7 +70,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.41 2003/12/09 02:42:18 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.42 2003/12/10 01:43:10 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -806,6 +806,16 @@ Creates a grid object which can generate conductor data.
     self.ymmin = w3d.ymmin
     self.zmmin = w3d.zmminglobal
 
+    # --- Check for symmetries
+    if w3d.l2symtry:
+      self.ymin = 0.
+      self.ymmin = 0.
+    elif w3d.l4symtry:
+      self.xmin = 0.
+      self.xmmin = 0.
+      self.ymin = 0.
+      self.ymmin = 0.
+
     # --- Calculate dx, dy, and dz in case this is called before
     # --- the generate.
     self.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
@@ -1480,6 +1490,16 @@ Plate from beamlet pre-accelerator
     ymmax = w3d.ymmax
     zmmax = w3d.zmmax
 
+    # --- Check for symmetries
+    if w3d.l2symtry:
+      ymin = 0.
+      ymmin = 0.
+    elif w3d.l4symtry:
+      xmin = 0.
+      xmmin = 0.
+      ymin = 0.
+      ymmin = 0.
+
     # --- Calculate dx, dy, and dz in case this is called before
     # --- the generate.
     dx = (xmmax - xmmin)/nx
@@ -1645,22 +1665,21 @@ Outside of a surface of revolution
                      self.zcdata,self.rcdata)
       self.rofzfunc = ' '
     else:
+      assert type(self.rofzfunc) in [FunctionType,StringType],\
+             'The rofzfunc is not properly specified'
       self.usedata = false
+      if type(self.rofzfunc) == FunctionType:
+        # --- Make sure the rofzfunc is in main.
+        # --- Note that this can only really work if a reference to the function
+        # --- is passed in (instead of the name).
+        import __main__
+        __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
+        # --- Get the name of the input function if a reference to the function
+        # --- was passed in.
+        self.rofzfunc = self.rofzfunc.__name__
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
-    # --- Make sure the rofzfunc is in main.
-    # --- Note that this can only really work if a reference to the function
-    # --- is passed in (instead of the name).
-    if type(self.rofzfunc) == FunctionType:
-      import __main__
-      __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
-
-    # --- Get the name of the input function if a reference to the function
-    # --- was passed in.
-    if type(self.rofzfunc) == FunctionType:
-      self.rofzfunc = self.rofzfunc.__name__
-
     # --- If data arrays are specified, then put the data in the right place
     if self.usedata:
       f3d.lsrlinr = true
@@ -1724,22 +1743,21 @@ Inside of a surface of revolution
                      self.zcdata,self.rcdata)
       self.rofzfunc = ' '
     else:
+      assert type(self.rofzfunc) in [FunctionType,StringType],\
+             'The rofzfunc is not properly specified'
       self.usedata = false
+      if type(self.rofzfunc) == FunctionType:
+        # --- Make sure the rofzfunc is in main.
+        # --- Note that this can only really work if a reference to the function
+        # --- is passed in (instead of the name).
+        import __main__
+        __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
+        # --- Get the name of the input function if a reference to the function
+        # --- was passed in.
+        self.rofzfunc = self.rofzfunc.__name__
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
-    # --- Make sure the rofzfunc is in main.
-    # --- Note that this can only really work if a reference to the function
-    # --- is passed in (instead of the name).
-    if type(self.rofzfunc) == FunctionType:
-      import __main__
-      __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
-
-    # --- Get the name of the input function if a reference to the function
-    # --- was passed in.
-    if type(self.rofzfunc) == FunctionType:
-      self.rofzfunc = self.rofzfunc.__name__
-
     # --- If data arrays are specified, then put the data in the right place
     if self.usedata:
       f3d.lsrlinr = true
@@ -1805,7 +1823,19 @@ Betweem surfaces of revolution
       self.rminofz = ' '
       self.rmaxofz = ' '
     else:
+      assert type(self.rminofz) in [FunctionType,StringType],\
+             'The rminofz is not properly specified'
       self.usemindata = false
+      if type(self.rminofz) == FunctionType:
+        # --- Make sure rminofz is in main.
+        # --- Note that this can only really work if a reference to the function
+        # --- is passed in (instead of the name).
+        import __main__
+        __main__.__dict__[self.rminofz.__name__] = self.rminofz
+        # --- Get the name of the input function if a reference to the function
+        # --- was passed in.
+        self.rminofz = self.rminofz.__name__
+
 
     if operator.isSequenceType(zmaxdata):
       self.usemaxdata = true
@@ -1820,27 +1850,21 @@ Betweem surfaces of revolution
       self.rminofz = ' '
       self.rmaxofz = ' '
     else:
+      assert type(self.rminofz) in [FunctionType,StringType],\
+             'The rminofz is not properly specified'
       self.usemaxdata = false
+      if type(self.rmaxofz) == FunctionType:
+        # --- Make sure rminofz is in main.
+        # --- Note that this can only really work if a reference to the function
+        # --- is passed in (instead of the name).
+        import __main__
+        __main__.__dict__[self.rmaxofz.__name__] = self.rmaxofz
+        # --- Get the name of the input function if a reference to the function
+        # --- was passed in.
+        self.rmaxofz = self.rmaxofz.__name__
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
-    # --- Make sure the rminofz and rmaxofz are in main.
-    # --- Note that this can only really work if a reference to the function
-    # --- is passed in (instead of the name).
-    if type(self.rminofz) == FunctionType:
-      import __main__
-      __main__.__dict__[self.rminofz.__name__] = self.rminofz
-    if type(self.rmaxofz) == FunctionType:
-      import __main__
-      __main__.__dict__[self.rmaxofz.__name__] = self.rmaxofz
-
-    # --- Get the name of the input function if a reference to the function
-    # --- was passed in.
-    if type(self.rminofz) == FunctionType:
-      self.rminofz = self.rminofz.__name__
-    if type(self.rmaxofz) == FunctionType:
-      self.rmaxofz = self.rmaxofz.__name__
-
     # --- If data arrays are specified, then put the data in the right place
     if self.usemindata:
       f3d.lsrminlinr = true
