@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.164 $, $Date: 2004/08/18 19:51:43 $
+c@(#) File W3D.F, version $Revision: 3.165 $, $Date: 2004/09/03 18:13:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2672,7 +2672,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
      &                    + u0*v1*w1*selfe(2,i  ,j+1,k+1)
      &                    + u1*v1*w1*selfe(2,i+1,j+1,k+1))
 
-             ez(ip) =       u0*v0*w0*selfe(3,i  ,j  ,k  )
+            ez(ip) =        u0*v0*w0*selfe(3,i  ,j  ,k  )
      &                    + u1*v0*w0*selfe(3,i+1,j  ,k  )
      &                    + u0*v1*w0*selfe(3,i  ,j+1,k  )
      &                    + u1*v1*w0*selfe(3,i+1,j+1,k  )
@@ -2680,6 +2680,115 @@ c           --- Adjust sign of E field for appropriate quadrant.
      &                    + u1*v0*w1*selfe(3,i+1,j  ,k+1)
      &                    + u0*v1*w1*selfe(3,i  ,j+1,k+1)
      &                    + u1*v1*w1*selfe(3,i+1,j+1,k+1)
+
+          enddo
+
+        endif
+
+      elseif (efetch == 4) then
+c      --- Energy conserving
+
+        if (.not. (l2symtry .or. l4symtry)) then
+          do ip = 1, np
+
+             i =  (xp(ip) - xmmin) * dxi
+             j =  (yp(ip) - ymmin) * dyi
+             k =  (zp(ip) - zgrid - zmmin) * dzi
+             ind0 = i + j*nnx + k*nnxy
+
+             u1 = (xp(ip) - xmmin) * dxi - i
+             v1 = (yp(ip) - ymmin) * dyi - j
+             w1 = (zp(ip) - zgrid - zmmin) * dzi - k
+
+             u0 = 1. - u1
+             v0 = 1. - v1
+             w0 = 1. - w1
+
+             ex(ip)=tdxi*(-v0*w0*phi1d(noff( 8)+ind0)
+     &                    +v0*w0*phi1d(noff( 9)+ind0)
+     &                    -v1*w0*phi1d(noff(12)+ind0)
+     &                    +v1*w0*phi1d(noff(13)+ind0)
+     &                    -v0*w1*phi1d(noff(20)+ind0)
+     &                    +v0*w1*phi1d(noff(21)+ind0)
+     &                    -v1*w1*phi1d(noff(24)+ind0)
+     &                    +v1*w1*phi1d(noff(25)+ind0))
+
+             ey(ip)=tdyi*(-u0*w0*phi1d(noff( 8)+ind0)
+     &                    -u1*w0*phi1d(noff( 9)+ind0)
+     &                    +u0*w0*phi1d(noff(12)+ind0)
+     &                    +u1*w0*phi1d(noff(13)+ind0)
+     &                    -u0*w1*phi1d(noff(20)+ind0)
+     &                    -u1*w1*phi1d(noff(21)+ind0)
+     &                    +u0*w1*phi1d(noff(24)+ind0)
+     &                    +u1*w1*phi1d(noff(25)+ind0))
+
+             ez(ip)=tdzi*(-u0*v0*phi1d(noff( 8)+ind0)
+     &                    -u1*v0*phi1d(noff( 9)+ind0)
+     &                    -u0*v1*phi1d(noff(12)+ind0)
+     &                    -u1*v1*phi1d(noff(13)+ind0)
+     &                    +u0*v0*phi1d(noff(20)+ind0)
+     &                    +u1*v0*phi1d(noff(21)+ind0)
+     &                    +u0*v1*phi1d(noff(24)+ind0)
+     &                    +u1*v1*phi1d(noff(25)+ind0))
+
+          enddo
+
+        else
+
+c         --- Set the signs of the E field for particles on negative side of
+c         --- the axis of symmetry.
+          sy = -1.
+          sx = 1.
+          if (l4symtry) sx = -1.
+
+c         --- special loop symmetry is used
+          do ip = 1, np
+  
+             i =  (abs(xp(ip)) - xmmin)*dxi
+             j =  (abs(yp(ip)) - ymmin)*dyi
+             k =  (zp(ip) - zgrid - zmmin)*dzi
+             ind0 = i + j*nnx + k*nnxy
+
+             u1 = (abs(xp(ip)) - xmmin)*dxi - i
+             v1 = (abs(yp(ip)) - ymmin)*dyi - j
+             w1 = (zp(ip) - zgrid - zmmin)*dzi - k
+
+             u0 = 1. - u1
+             v0 = 1. - v1
+             w0 = 1. - w1
+
+c            --- Adjust sign of E field for appropriate quadrant.
+             xsign = tdxi
+             ysign = tdyi
+             if (xp(ip) < 0.) xsign = sx*tdxi
+             if (yp(ip) < 0.) ysign = sy*tdyi
+
+             ex(ip)=xsign*(-v0*w0*phi1d(noff( 8)+ind0)
+     &                     +v0*w0*phi1d(noff( 9)+ind0)
+     &                     -v1*w0*phi1d(noff(12)+ind0)
+     &                     +v1*w0*phi1d(noff(13)+ind0)
+     &                     -v0*w1*phi1d(noff(20)+ind0)
+     &                     +v0*w1*phi1d(noff(21)+ind0)
+     &                     -v1*w1*phi1d(noff(24)+ind0)
+     &                     +v1*w1*phi1d(noff(25)+ind0))
+
+             ey(ip)=ysign*(-u0*w0*phi1d(noff( 8)+ind0)
+     &                     -u1*w0*phi1d(noff( 9)+ind0)
+     &                     +u0*w0*phi1d(noff(12)+ind0)
+     &                     +u1*w0*phi1d(noff(13)+ind0)
+     &                     -u0*w1*phi1d(noff(20)+ind0)
+     &                     -u1*w1*phi1d(noff(21)+ind0)
+     &                     +u0*w1*phi1d(noff(24)+ind0)
+     &                     +u1*w1*phi1d(noff(25)+ind0))
+
+              ez(ip)=tdzi*(-u0*v0*phi1d(noff( 8)+ind0)
+     &                     -u1*v0*phi1d(noff( 9)+ind0)
+     &                     -u0*v1*phi1d(noff(12)+ind0)
+     &                     -u1*v1*phi1d(noff(13)+ind0)
+     &                     +u0*v0*phi1d(noff(20)+ind0)
+     &                     +u1*v0*phi1d(noff(21)+ind0)
+     &                     +u0*v1*phi1d(noff(24)+ind0)
+     &                     +u1*v1*phi1d(noff(25)+ind0))
 
           enddo
 
