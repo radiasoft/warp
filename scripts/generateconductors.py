@@ -29,7 +29,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.12 2002/11/01 00:21:46 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.13 2002/12/02 19:15:54 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -291,8 +291,10 @@ has already been called.
     """
 Installs the data into the WARP database
     """
+    ntot = 0
     nc = f3d.ncond
     nn = sum(where(self.parity[:self.ndata] == -1,1,0))
+    ntot = ntot + nn
     if nn > 0:
       if nc + nn > f3d.ncondmax:
         f3d.ncondmax = nn + nc
@@ -308,6 +310,7 @@ Installs the data into the WARP database
 
     ne = f3d.necndbdy
     nn = sum(where(self.parity[:self.ndata] == 0,1,0))
+    ntot = ntot + nn
     if nn > 0:
       if ne + nn > f3d.ncndmax:
         f3d.ncndmax = nn + ne
@@ -341,6 +344,7 @@ Installs the data into the WARP database
 
     no = f3d.nocndbdy
     nn = sum(where(self.parity[:self.ndata] == 1,1,0))
+    ntot = ntot + nn
     if nn > 0:
       if no + nn > f3d.ncndmax:
         f3d.ncndmax = nn + no
@@ -371,8 +375,9 @@ Installs the data into the WARP database
       f3d.ocvolt[no:no+nn] = take(self.vs[0,:],ii)
       f3d.ocnumb[no:no+nn] = take(self.ns[0,:],ii)
       f3d.iocndlevel[no:no+nn] = take(self.mglevel,ii)
-    if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
-      frz.install_conductors_rz()
+    if ntot > 0:
+      if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
+        frz.install_conductors_rz()
 
   def __neg__(self):
     "Delta not operator."
