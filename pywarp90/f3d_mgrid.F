@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.87 $, $Date: 2004/12/22 22:03:12 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.88 $, $Date: 2005/01/12 16:56:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2998,11 +2998,14 @@ c=============================================================================
       subroutine iswapconductor(nc,isort,nn,ni,icond)
       integer(ISZ):: nc,nn,ni,isort(nc),icond(ni,nn)
 c Utility function for sort conductors
-      integer(ISZ):: ic,itemp(ni,nn)
+      integer(ISZ):: ic
+      integer(ISZ),allocatable:: itemp(:,:)
+      allocate(itemp(ni,nn))
       itemp = icond
       do ic=1,nc
         icond(:,ic) = itemp(:,isort(ic))
       enddo
+      deallocate(itemp)
       return
       end
 c=============================================================================
@@ -3010,12 +3013,14 @@ c=============================================================================
       integer(ISZ):: nc,nn,ni,isort(nc)
       real(kind=8):: rcond(ni,nn)
 c Utility function for sort conductors
-      real(kind=8):: rtemp(ni,nn)
+      real(kind=8),allocatable:: rtemp(:,:)
       integer(ISZ):: ic
+      allocate(rtemp(ni,nn))
       rtemp = rcond
       do ic=1,nc
         rcond(:,ic) = rtemp(:,isort(ic))
       enddo
+      deallocate(rtemp)
       return
       end
 c=============================================================================
