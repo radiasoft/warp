@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.7 $, $Date: 2001/07/18 23:54:05 $
+c@(#) File CIR.M, version $Revision: 3.8 $, $Date: 2002/11/13 19:32:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -244,6 +244,10 @@ c Run the CIRCE kernel, using the inputted array, y and the starting data.
 
 c     --- Make sure that the sign of the step size and the relation
 c     --- between zlcir and zucir are consistent.
+      if (dscir == 0.) then
+        call remark("Error: dscir must be non-zero")
+        return
+      endif
       if (dscir > 0. .and. zucir < zlcir) then
         call remark("Error: Either make dscir < 0 or make zlcir < zucir")
         return
@@ -1820,7 +1824,7 @@ c=============================================================================
       logical(ISZ):: lsavehist
 
 c     --- Check if saving history
-      if (lsavehist) then
+      if (lsavehist .and. nhcir > 0) then
 c       --- Check if saving history this step. Requires (nhcir > 0).
         if (mod(nscir,nhcir) == 0) then
           if (jhcir >= lhcir) then
