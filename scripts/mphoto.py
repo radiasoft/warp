@@ -4,7 +4,7 @@
 # by: Agust Valfells
 # created: Sep. 22, 2000
 #
-#	Last Modified: Sep 12, 2001
+#	Last Modified: 3/1/2002
 #
 # Set of functions to generate tif photos and other goodies from
 # 'rho' arrays in WARP, processed to look like experiment pictures.
@@ -30,7 +30,7 @@ yes = 1; no = 0
 from warp import *
 import Numeric, os, string
 
-mphoto_version = "$Id: mphoto.py,v 1.1 2001/12/03 17:47:14 ramiak Exp $"
+mphoto_version = "$Id: mphoto.py,v 1.2 2002/08/14 21:07:04 ramiak Exp $"
 def mphotodoc():
   import mphoto
   print mphoto.__doc__
@@ -158,7 +158,7 @@ def save_tif(matrix, filename = None):
     if max_val <> min_val:
         matrix = (matrix - min_val) / (max_val - min_val) *255		#Preprocessor
     matrix = matrix.astype('b')					#Convert to binary
-    matrix = Numeric.transpose(matrix)			#Preprocess for tif-ization	
+    matrix = Numeric.transpose(matrix)			#Preprocess for tif-ization
 	
     if filename is None:    filename = "temp.tif"
 	
@@ -192,10 +192,10 @@ def write_info_file(empty = 1):
 
 def take_photo(numphoto='loc', peakx=None, peaky=None, peakz=None,
 				iz=0, iy=None, ix=None,
-				Filt1=0, Filt2=None, lprofiles=no):
+				Filt1=0, Filt2=None, lprofiles=no, rho=None):
 	""" take_photo(numphoto='loc', peakx=None, peaky=None, peakz=None,
                     iz=0, iy=None, ix=None,
-                    Filt1=0, Filt2=None, lprofiles=no)
+                    Filt1=0, Filt2=None, lprofiles=no, rho=None)
 
     Extracts beam density information (using getrho()) and saves into a
 tif file, including options for unfolding and filtering.
@@ -262,9 +262,10 @@ tif file, including options for unfolding and filtering.
 			iy = iy + nint(w3d.ny/2)
 		elif ix <> None:
 			ix = ix + nint(w3d.nx/2)
-    		
+
 # --- Extract slice
-	slice = getrho(ix, iy, iz)
+	if rho is None: slice = getrho(ix, iy, iz)
+	else: slice = rho
 
 	if w3d.l2symtry:        # --- Take care of symmetry
 		if   iz<>None: F=unfold(slice[xb:xt, 0:nyh], 2)
@@ -278,7 +279,7 @@ tif file, including options for unfolding and filtering.
 		if   iz<>None: F=unfold(slice[xb:xt, yb:yt], 0)
 		elif iy<>None: F=unfold(Numeric.transpose(slice[xb:xt, zb:zt]), 0)
 		elif ix<>None: F=unfold(Numeric.transpose(slice[yb:yt, zb:zt]), 0)
-		
+
 	if Filt1:               # --- Filtering
 		if not Filt2: Filt2 = Filt1
 		F = median_filter(F, Filt1, Filt2)

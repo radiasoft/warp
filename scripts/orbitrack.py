@@ -3,7 +3,7 @@ Module orbitrack.py
 by Rami A. Kishek
 Created: May 29, 2001
 
-Last Modified: Aug. 6, 2001
+Last Modified: Jan 30, 2002
 
 Need to define a few variables before importing this function:
     'nrun' = # of steps to run
@@ -24,7 +24,7 @@ import __main__
 from rami_scripts import *
 import getzmom
 
-orbitrack_version = "$Id: orbitrack.py,v 1.1 2001/12/03 17:48:02 ramiak Exp $"
+orbitrack_version = "$Id: orbitrack.py,v 1.2 2002/08/14 21:07:53 ramiak Exp $"
 def orbitrackdoc():
   import orbitrack
   print orbitrack.__doc__
@@ -57,7 +57,7 @@ def find_trajects():
     """ Extract particle trajectories """
     for var in tvars:
         for spec in range(0,top.ns):
-            __main__.__dict__[var+runid][spec-1][top.it/top.nhist] = eval(
+            __main__.__dict__[var+runid][spec][top.it/top.nhist] = eval(
                     "get"+var[:-1]+"(js="+`spec`+",iw=-1)[0:num_part]")
 
 
@@ -75,8 +75,8 @@ def save_trajects(crun="0"):
 
 # ----------------------
 
-def ppsp(iwmb=-2, iwsp=-1, plots=('ppxy','ppxxp','ppyyp','ppxpyp'), scont=1, ncont=10):
-    """ppsp(iwmb=-2, iwsp=-1, plots=('ppxy','ppxxp','ppyyp','ppxpyp'), scont=1, ncont=10)
+def ppsp(iwmb=-2, iwsp=-1, plots=('ppxy','ppxxp','ppyyp','ppxpyp'), scont=1, ncont=7):
+    """ppsp(iwmb=-2, iwsp=-1, plots=('ppxy','ppxxp','ppyyp','ppxpyp'), scont=1, ncont=7)
 
     Plots a select set of particle plots given by the tuple "plots"
     with each species colored differently.  The particles in the main

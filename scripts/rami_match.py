@@ -19,7 +19,7 @@ from warp import *
 import LinearAlgebra
 import singleparticle
 
-rami_match_version = "$Id: rami_match.py,v 1.1 2001/12/03 17:48:03 ramiak Exp $"
+rami_match_version = "$Id: rami_match.py,v 1.2 2002/08/14 21:08:54 ramiak Exp $"
 def rami_matchdoc():
   import rami_match
   print rami_match.__doc__

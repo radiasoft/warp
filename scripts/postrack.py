@@ -3,7 +3,7 @@ Module postrack.py
 by: Rami A. Kishek
 Created: Nov 27, 2001
 
-Last Modified: Nov 29, 2001
+Last Modified: Feb. 1, 2002
 
 Contains a streamlined improved version of Lyapunov Calculations
 Contains functions for post-processing saved particle trajectories:
@@ -20,6 +20,7 @@ save_lyap()     ... Saves Lyapunov exponent for each clump into pdb file
 print_lyap()    ... Prints out Lyapunov exponent for each clump into txt file
 plot_diverge()  ... Plot difference b/w particle trajectories and centroids
 plot_traj()     ... Poincare' plots of particle trajectories for each clump
+plot_spect()    ... Fourier spectrum of particle trajectory
 calc_irrev()    ... Calculate Irreversibility factors (coefficients)
 save_irrev()    ... Save Irreversibility factors (coefficients) into text file
 
@@ -29,7 +30,7 @@ from rami_scripts import *
 from Fitting import *
 import __main__, os, sys
 
-postrack_version = "$Id: postrack.py,v 1.1 2001/12/03 17:48:03 ramiak Exp $"
+postrack_version = "$Id: postrack.py,v 1.2 2002/08/14 21:08:45 ramiak Exp $"
 def postrackdoc():
   import postrack
   print postrack.__doc__
@@ -377,10 +378,10 @@ def plot_diverge(lfull=0, jspec=None):
         ptitles(title, "S (m)", "Total Separation"); fma()
 
 
-def plot_traj(jspec=None):
-    """  plot_traj(jspec=None)
+def plot_traj(jspec=None, beg=0, end=n_steps):
+    """  plot_traj(jspec=None, beg=0, end=n_steps)
     Poincare' plots of particle trajectories.
-    Plots over all species, except 0, by default, unless a range of species
+    Plots over all species, by default, unless a range of species
     is provided via the parameter 'jspec'
     """
     if jspec is None: jspec = range(0, top.ns)
@@ -388,22 +389,45 @@ def plot_traj(jspec=None):
         title = runid+": species "+`sp`+' '+colors[sp % ncolors]
         #
         for part in range(0, num_part):
-            plg(eval("y_"+runid, __main__.__dict__)[sp,:,part],
-                eval("x_"+runid, __main__.__dict__)[sp,:,part], type='dot')
+            plg(eval("y_"+runid, __main__.__dict__)[sp,beg:end,part],
+                eval("x_"+runid, __main__.__dict__)[sp,beg:end,part], type='dot')
         ptitles(title, "X", "Y"); fma()
         #
         for part in range(0, num_part):
-            plg(eval("xp_"+runid, __main__.__dict__)[sp,:,part],
-                eval("x_"+runid, __main__.__dict__)[sp,:,part], type='dot')
+            plg(eval("xp_"+runid, __main__.__dict__)[sp,beg:end,part],
+                 eval("x_"+runid, __main__.__dict__)[sp,beg:end,part], type='dot')
         ptitles(title, "X", "X'"); fma()
         #
         for part in range(0, num_part):
-            plg(eval("yp_"+runid, __main__.__dict__)[sp,:,part],
-                eval("y_"+runid, __main__.__dict__)[sp,:,part], type='dot')
+            plg(eval("yp_"+runid, __main__.__dict__)[sp,beg:end,part],
+                 eval("y_"+runid, __main__.__dict__)[sp,beg:end,part], type='dot')
         ptitles(title, "Y", "Y'"); fma()
         #
         for part in range(0, num_part):
-            plg(eval("yp_"+runid, __main__.__dict__)[sp,:,part],
-                eval("xp_"+runid, __main__.__dict__)[sp,:,part], type='dot')
+            plg(eval("yp_"+runid, __main__.__dict__)[sp,beg:end,part],
+                eval("xp_"+runid, __main__.__dict__)[sp,beg:end,part], type='dot')
         ptitles(title, "X'", "Y'"); fma()
+
+
+def plot_spect(jspec=None, plist=[0], beg=0, end=n_steps, endp=None):
+    """plot_spect(jspec=None, plist=[0], beg=0, end=n_steps, endp=end/2)
+    Fourier Spectra of particle trajectories.
+    Plots over all species, by default, unless a range of species
+    is provided via the parameter 'jspec'
+    'plist' is a list of particles to calculate spectrum over (Default is
+    test particle #0).
+    """
+    import FFT
+    if endp is None: endp = nint(end/2)
+    if jspec is None: jspec = range(0, top.ns)
+    for sp in jspec:
+      for part in plist:
+        title = runid+": species "+`sp`+' '+colors[sp % ncolors]+'; particle '+`part`
+        #absc =
+        for plot in plots:
+            __main__.__dict__['spect_'+plot] = FFT.fft(
+                eval(plot+'_'+runid, __main__.__dict__)[sp,beg:end,part])
+            plg(abs(eval("spect_"+plot, __main__.__dict__))[:endp],  marker=plot)
+            #plg(eval("spect_"+plot, __main__.__dict__), absc, marker=plot)
+            ptitles(plot+' '+title, "frequency", "spectral power"); fma()
 

@@ -3,7 +3,7 @@
  by: Rami A. Kishek
  Date: June 5, 2001
 
-    Last Modified: 10/03/2001
+    Last Modified: 3/14/2002
 
  This module contains functions to generate a "thermal" KV distribution,
  i.e., a semiGaussian with a Parabolic Gaussian distribution.  The function
@@ -26,6 +26,7 @@
 
  10/03/01:  Modified the normalization to allow for a nonuniform beam
             in space.
+ 3/14/02:   Added functions 'dualgauss' and 'loadvels'
 
  Three functions are provided:
 
@@ -33,12 +34,14 @@
                 profile
  thermal_kv ... calls para_temp with the right parameter for a zero temperature
                 at the edge.
- test_T_prof ...    function to check temperature profile.
+ test_T_prof ... function to check temperature profile.
+ dualgauss  ... generates a dual-Guassian profile
+ loadvels   ... loads a given temperature distribution
 """
 
 from warp import *
 
-ParaKV_version = "$Id: ParaKV.py,v 1.1 2001/12/03 17:44:52 ramiak Exp $"
+ParaKV_version = "$Id: ParaKV.py,v 1.2 2002/08/14 21:08:05 ramiak Exp $"
 def ParaKVdoc():
   import ParaKV
   print ParaKV.__doc__
@@ -98,6 +101,43 @@ def thermal_kv():
         must be set to "semigauss".
     """
     para_temp(delta_h=1.0)
+
+
+def dualgauss(v, vm, vs):
+    """ dualgauss(v, vm, vs)
+        Profile of dual-Gausssian in velocity space.
+    """
+    return 2.0*exp(-0.5*(vm/vs)**2)*exp(-0.5*(v/vs)**2)*cosh(v*vm/(vs**2))
+
+
+def interp(temp, F, v):
+    """ interp(temp, F, v)
+        finds values of v corresponding to value 'temp' from given F(v)
+        using LINEAR interpolation
+    """
+    i1 = searchsorted(F, temp)
+    return take(v,i1-1)+(temp-take(F,i1-1))*(take(v,i1)-take(v,i1-1))/(take(F,i1)-take(F,i1-1))
+
+
+def loadvels(func=dualgauss, vm=0.02, vs=0.006, cut=0.038, npts=1000):
+    """ loadvels(func=dualgauss, vm=0.02, vs=0.006, cut=0.038, npts=1000)
+        Generates a 2-D random velocity distribution top.uxp, top.uyp that
+        is uncorrelated in space and fits a profile in velocity space given
+        by the function 'func'.
+        The velocity is discretized by 'npts' points from 0 up to 'cut'.
+    """
+    dv = cut/npts
+    v = arange(0, cut+dv, dv)
+    f = array(map(func, v, vm*ones(v.shape), vs*ones(v.shape)))
+    F = cumsum(2*pi*v*f)        # Calculate the c.d.f.
+    F = F/F[-1];  f = f/F[-1]   # Normalize
+    # -- Generate random arrays for creating velocities
+    temp = ranf(top.uxp);  rvang = 2*pi*ranf(top.uxp)
+    # -- Interpolate 'temp' in F to find total velocities
+    rvt = interp(temp, F, v)
+    # -- Set Particle Velocities
+    top.uxp = top.uzp*rvt*cos(rvang)
+    top.uyp = top.uzp*rvt*sin(rvang)
 
 
 def test_T_prof(ncpb=2):
