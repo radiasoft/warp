@@ -1,5 +1,5 @@
 /* Created by David P. Grote */
-/* $Id: warpC.c,v 1.1 2001/04/23 22:22:05 dave Exp $ */
+/* $Id: warpC.c,v 1.2 2004/03/11 10:41:53 dave Exp $ */
 /* This is a stub module which calls the init functions of all of            */
 /* the modules that are part of WARP. This is needed since the modules       */
 /* depend on each other and so must be incorporated into one shared          */
@@ -36,6 +36,7 @@ void initwarpC()
   initfrzpy();
   initcirpy();
   initherpy();
+  initchopy();
 }
 
 
