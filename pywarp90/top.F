@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.68 $, $Date: 2003/02/06 13:37:01 $
+c@(#) File TOP.M, version $Revision: 3.69 $, $Date: 2003/02/10 01:08:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1947,7 +1947,10 @@ c  For periodic runs, assumes mesh period length = lattice period length
       endif
 
       vz  = uzp*gaminv
-      dzi = 1./dvnz(vz*(dtr-dtl))
+c     --- Note that the absolute value is taken since dzi is used to scale
+c     --- the fraction of the step inside the element and the sign is
+c     --- not needed. This only matters if vz < 0.
+      dzi = abs(1./dvnz(vz*(dtr-dtl)))
 
 c  Extract the local bend properties for each particle off the general lattice
 
@@ -2074,7 +2077,10 @@ c   bx, by   quadrupole magnetic field
       if (.not. quads) return
 
       vz  = uzp*gaminv
-      dzi = 1./dvnz(vz*(dtr-dtl))
+c     --- Note that the absolute value is taken since dzi is used to scale
+c     --- the fraction of the step inside the element and the sign is
+c     --- not needed. This only matters if vz < 0.
+      dzi = abs(1./dvnz(vz*(dtr-dtl)))
 
       do io=1,nquadol
 
@@ -2180,7 +2186,10 @@ c   bx, by   dipole magnetic field
       if (.not. dipos) return
 
       vz  = uzp*gaminv
-      dzi = 1./dvnz(vz*(dtr-dtl))
+c     --- Note that the absolute value is taken since dzi is used to scale
+c     --- the fraction of the step inside the element and the sign is
+c     --- not needed. This only matters if vz < 0.
+      dzi = abs(1./dvnz(vz*(dtr-dtl)))
 
       do io=1,ndipool
 
@@ -2338,7 +2347,10 @@ c   bx, by   sextupole magnetic field
       if (.not. sexts) return
 
       vz  = uzp*gaminv
-      dzi = 1./dvnz(vz*(dtr-dtl))
+c     --- Note that the absolute value is taken since dzi is used to scale
+c     --- the fraction of the step inside the element and the sign is
+c     --- not needed. This only matters if vz < 0.
+      dzi = abs(1./dvnz(vz*(dtr-dtl)))
 
       do io=1,nsextol
 
@@ -2443,7 +2455,10 @@ c   bx, by, bz   magnetic field
       if (.not. heles) return
 
       vz  = uzp*gaminv
-      dzi = 1./dvnz(vz*(dtr-dtl))
+c     --- Note that the absolute value is taken since dzi is used to scale
+c     --- the fraction of the step inside the element and the sign is
+c     --- not needed. This only matters if vz < 0.
+      dzi = abs(1./dvnz(vz*(dtr-dtl)))
 
       do io=1,nheleol
 
