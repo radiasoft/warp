@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.7 2001/07/19 20:31:26 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.8 2001/07/24 23:31:08 dave Exp $"
 
 from Numeric import *
 # --- Try import mpi - if not found, then run in serial mode
@@ -16,6 +16,7 @@ except ImportError:
 if npes > 0: lparallel = 1
 else:        lparallel = 0
 
+# ---------------------------------------------------------------------------
 # --- By default, set so that only PE0 sends output to the terminal.
 if lparallel:
   mpi.synchronizeQueuedOutput('/dev/null')
@@ -32,16 +33,19 @@ if me == 0:
 else:
   from gistdummy import *
 
+# ---------------------------------------------------------------------------
 # Enable output from all processors
 def EnableAll():
   if not lparallel: return
   mpi.synchronizeQueuedOutput(None)
 
+# ---------------------------------------------------------------------------
 # Disable output from all but processor 0
 def DisableAll():
   if not lparallel: return
   mpi.synchronizeQueuedOutput('/dev/null')
 
+# ---------------------------------------------------------------------------
 # Print object on all processors
 def pprint(obj):
   if not lparallel:
@@ -50,6 +54,7 @@ def pprint(obj):
   mpi.synchronizedWrite(str(obj)+'\n')
   if mpi.rank == 0: print
 
+# ---------------------------------------------------------------------------
 # Print array (or list) from all processors
 def aprint(obj):
   if not lparallel:
@@ -57,11 +62,13 @@ def aprint(obj):
     return
   mpi.synchronizedWrite(str(obj))
 
+# ---------------------------------------------------------------------------
 # Get address of processor
 def self_address():
   if not lparallel: return 0
   return mpi.rank
 
+# ---------------------------------------------------------------------------
 # Copy an array from processor i to processor 0
 def getarray(src,v,dest=0):
   if not lparallel: return v
@@ -71,6 +78,7 @@ def getarray(src,v,dest=0):
     return mpi.recv(src)
   return v
 
+# ---------------------------------------------------------------------------
 # Plot an array that is distributed on all processors
 def plotarray(f,z,color="fg",linetype="solid",marks=0,marker="none",msize=1.0,
               width=1.0):
@@ -105,6 +113,7 @@ def plotarray(f,z,color="fg",linetype="solid",marks=0,marker="none",msize=1.0,
 #   mpi.send(f,0,2)
 #   mpi.send(z,0,2)
     
+# ---------------------------------------------------------------------------
 # Plot particles that are distributed on all processors
 def plotpart(f,z,color="fg",linetype="none",marker="\1",msize=1.0,**kw):
 # ff = gatherarray(f)
@@ -133,6 +142,7 @@ def plotpart(f,z,color="fg",linetype="none",marker="\1",msize=1.0,**kw):
     mpi.send(f,0,3)
     mpi.send(z,0,3)
 
+# ---------------------------------------------------------------------------
 # Gather an object from all processors into a list
 def gather(obj,dest=0):
   if not lparallel: return obj
@@ -148,17 +158,20 @@ def gather(obj,dest=0):
     mpi.send(obj,dest)
     return obj
 
+# ---------------------------------------------------------------------------
 # Broadcast an object to all procerssors
 def broadcast(obj,root=0):
   if not lparallel: return obj
   return mpi.bcast(obj,root)
 
+# ---------------------------------------------------------------------------
 # Gather an object from all processors into a list and scatter back to all
 def gatherall(obj):
   if not lparallel: return obj
   obj = gather(obj)
   return mpi.bcast(obj)
     
+# ---------------------------------------------------------------------------
 # General gatherarray which returns an array object combining the
 # first dimension.
 def gatherarray(a,root=0,othersempty=0):
@@ -211,6 +224,40 @@ def gatherarray(a,root=0,othersempty=0):
   ## --- Return the result
   #return result
 
+# ---------------------------------------------------------------------------
+def gatherallzarray(a,zaxis=0):
+  """Gathers and broadcasts the data in a z-array. Each processor contributes
+the data from within the particle decomposition region it owns. This works
+with any array from the groups Z_arrays and Z_Moments.
+ - first argument is the z-array
+ - zaxis: axis which is decomposed in z
+  """
+  if not lparallel: return a
+  # --- Get start and end of particle decomposition region
+  iz1 = 0
+  if me < npes-1: iz2 = top.izpslave[me+1] - 1 - top.izpslave[me]
+  else:           iz2 = -1
+  # --- Rearrange array to put the decomposed axis first
+  if zaxis != 0: a = swapaxes(a,0,zaxis)
+  # --- Gather and broadcast it
+  result = gatherarray(a[iz1:iz2+1,...])
+  result = broadcast(result)
+  # --- Rearrange array to put the decomposed axis back where it started
+  if zaxis != 0: result = swapaxes(result,0,zaxis)
+  return result
+ 
+# ---------------------------------------------------------------------------
+def scatterallzarray(a,zaxis=0):
+  if not lparallel: return a
+  # --- Rearrange array to put the decomposed axis first
+  if zaxis != 0: a = swapaxes(a,0,zaxis)
+  # --- Get the appropriate subsection
+  result = a[top.izpslave[me]:top.izpslave[me]+top.nzpslave[me] + 1,...]
+  # --- Rearrange array to put the decomposed axis back where it started
+  if zaxis != 0: result = swapaxes(result,0,zaxis)
+  return result
+
+# ---------------------------------------------------------------------------
 # Generic global operation on a distributed array.
 def globalop(a,localop,mpiop,defaultval):
   if type(a) in [FloatType,IntType]:
@@ -222,6 +269,7 @@ def globalop(a,localop,mpiop,defaultval):
   if not lparallel: return local
   return mpi.allreduce(local,eval("mpi."+mpiop))
 
+# ---------------------------------------------------------------------------
 # Specific operations on a distributed array.
 def globalmax(a):
   return globalop(a,max,"MAX",-1.e36)
@@ -236,6 +284,7 @@ def globalave(a):
   if n > 0: return s/n
   else:     return 0.
 
+# ---------------------------------------------------------------------------
 # Generic parallel element-by-element operation on a distributed array.
 # Note that this would be rather slow on large array. The mpi.allreduce
 # routine needs to be fixed to accept arrays.
@@ -250,6 +299,7 @@ def parallelop(a,mpiop):
   else:
     return mpi.allreduce(a,eval("mpi."+mpiop))
 
+# ---------------------------------------------------------------------------
 # Specific parallel element-by-element operations on a distributed array.
 def parallelmax(a):
   return parallelop(a,"MAX")
