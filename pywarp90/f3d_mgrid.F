@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.90 $, $Date: 2005/02/25 22:08:37 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.91 $, $Date: 2005/04/01 23:10:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -412,7 +412,8 @@ c=============================================================================
       function mggetarraysum(nx,ny,nz,delt,delz,a,
      &                       izfsslave,nzfsslave,npes,my_index)
       real(kind=8),dimension(2):: mggetarraysum
-      integer(ISZ):: nx,ny,nz,delt,delz,npes,my_index
+      integer(ISZ):: nx,ny,nz,npes,my_index
+      integer:: delt,delz
       integer(ISZ):: izfsslave(0:npes-1),nzfsslave(0:npes-1)
       real(kind=8):: a(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
 
@@ -483,7 +484,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
       real(kind=8),allocatable:: res(:,:,:)
-      integer(ISZ):: i
+      integer(ISZ):: i,iszone=1
       real(kind=8):: ff
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse
@@ -655,7 +656,7 @@ c         --- the restriction.
      &                    localbounds)
 
 c         --- Continue at the next coarsest level.
-          call vcycle(mglevel+1,nxcoarse,nycoarse,nz,nzfull,dxcoarse,dycoarse,
+          call vcycle(mglevel+iszone,nxcoarse,nycoarse,nz,nzfull,dxcoarse,dycoarse,
      &                dz,phicoarse,rhocoarse,
      &                rstar,linbend,bendx,globalbounds,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
@@ -732,7 +733,7 @@ c    &                        izfsslavec,nzfsslavec,nslaves,my_index)
 c         if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
 
 c         --- Continue at the next coarsest level.
-          call vcycle(mglevel+1,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
+          call vcycle(mglevel+iszone,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
      &                dxcoarse,dycoarse,dzcoarse,phicoarse,rhocoarse,
      &                rstar,linbend,bendx,globalbounds,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
@@ -2516,6 +2517,7 @@ c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse,cxf,cyf,czf
       logical(ISZ):: partialcoarsening
+      logical(ISZ):: iszone=1
 
 #ifdef MPIPARALLEL
       conductors%leveliz(mglevel) = izfsslave(my_index)
@@ -2563,7 +2565,7 @@ c     call parallellor(partialcoarsening)
 
       if (partialcoarsening) then
         call getmglevelsrecur(nxcoarse,nycoarse,nz,nzfull,dxcoarse,dycoarse,dz,
-     &                        mglevel+1,lx*cxf,ly*cyf,lz,conductors,
+     &                        mglevel+iszone,lx*cxf,ly*cyf,lz,conductors,
      &                        my_index,nslaves,izfsslave,nzfsslave)
       else
 
@@ -2577,7 +2579,7 @@ c       --- Set new value of nz
 
         call getmglevelsrecur(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
      &                        dxcoarse,dycoarse,dzcoarse,
-     &                        mglevel+1,lx*cxf,ly*cyf,lz*czf,conductors,
+     &                        mglevel+iszone,lx*cxf,ly*cyf,lz*czf,conductors,
      &                        my_index,nslaves,izfsslavec,nzfsslavec)
 
       endif
