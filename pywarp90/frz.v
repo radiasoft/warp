@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.35 $, $Date: 2004/04/08 19:20:28 $
+#@(#) File FRZ.V, version $Revision: 3.36 $, $Date: 2004/05/17 15:53:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.35 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.36 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -74,10 +74,10 @@ dr_cg(ngrids_cg)          _real              # new dr grid patch change
 dz_cg(ngrids_cg)          _real              # new dz grid patch change
 rmin_cg(ngrids_cg)        _real              # new rmin grid patch change
 zmin_cg(ngrids_cg)        _real              # new zmin grid patch change
-guard_min_r_cg(ngrids_cg) _integer  # new min guard in r grid patch change (helps reduce spurious force)
-guard_max_r_cg(ngrids_cg) _integer  # new max guard in r grid patch change (helps reduce spurious force)
-guard_min_z_cg(ngrids_cg) _integer  # new min guard in z grid patch change (helps reduce spurious force)
-guard_max_z_cg(ngrids_cg) _integer  # new max guard in z grid patch change (helps reduce spurious force)
+transit_min_r_cg(ngrids_cg) _integer  # new min guard in r grid patch change (helps reduce spurious force)
+transit_max_r_cg(ngrids_cg) _integer  # new max guard in r grid patch change (helps reduce spurious force)
+transit_min_z_cg(ngrids_cg) _integer  # new min guard in z grid patch change (helps reduce spurious force)
+transit_max_z_cg(ngrids_cg) _integer  # new max guard in z grid patch change (helps reduce spurious force)
 l_change_loc_part         logical  /.false./ # if true, loc_part is changed according to array rmc at next step
 nz_rmc                    integer            # size array rmc
 rmc(nz_rmc+1)             _integer           # minimum radius for field gathering  
@@ -182,8 +182,8 @@ nullify_basegrid() subroutine
 mk_grids_ptr() subroutine
 add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
             rmin:real,zmin:real,
-            guard_min_r:integer,guard_max_r:integer,
-            guard_min_z:integer,guard_max_z:integer,l_verbose:logical) subroutine
+            transit_min_r:integer,transit_max_r:integer,
+            transit_min_z:integer,transit_max_z:integer,l_verbose:logical) subroutine
          # add a subgrid to the grid id
 del_subgrid(id:integer) subroutine
          # delete a subgrid and all its 'children'
@@ -208,6 +208,8 @@ distribute_rho_rz() subroutine
          # recursively distributes rho from fine patches to coarse patches
 find_mgparam_rz(lsavephi:logical) subroutine
          # RZ version of find_mgparam. Does the search for each subgrid.
+find_mgparam_rz_1g(grid:GRIDtype) subroutine
+         # RZ version of find_mgparam for one grid only.
 gchange_rhop_phip_rz() subroutine
          # reallocate rhop and phip arrays
 install_conductors_rz(conductors:ConductorType) subroutine
@@ -221,9 +223,11 @@ clean_conductor_interior() subroutine
          # removes conductor interior points from calculation 
 build_vlocs() subroutine
 set_patches_around_emitter(id:integer,np:integer,ij:integer,nz:integer,
-            guard_min_r:integer,guard_max_r:integer,
-            guard_min_z:integer,guard_max_z:integer) subroutine
+            transit_min_r:integer,transit_max_r:integer,
+            transit_min_z:integer,transit_max_z:integer) subroutine
          # add patches around emitter
+test_subgrid_rz() subroutine
+test_subgrid_xz() subroutine
 
 %%%%%%%% CONDtype:
 # structure for potential calculation close to conductors.
@@ -359,10 +363,10 @@ npost integer
 ncycles integer
 ncmax integer
 npmin integer
-guard_min_r integer
-guard_max_r integer
-guard_min_z integer
-guard_max_z integer
+transit_min_r integer
+transit_max_r integer
+transit_min_z integer
+transit_max_z integer
 mgparam real
 bndfirst _BNDtype
 bndlast  _BNDtype
