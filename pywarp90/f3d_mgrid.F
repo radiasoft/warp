@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.57 $, $Date: 2004/02/06 19:35:34 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.58 $, $Date: 2004/03/16 17:23:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -9,10 +9,10 @@ c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
 c=============================================================================
 c=============================================================================
-      subroutine multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho1d,
-     &                       rstar,linbend,
-     &                       bound0,boundnz,boundxy,l2symtry,l4symtry,scrtch,
-     &                       xmmin,ymmin,zmmin,zbeam,zgrid)
+      subroutine multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
+     &                        rstar,linbend,
+     &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                        xmmin,ymmin,zmmin,zbeam,zgrid)
       use Constant
       use PSOR3d
       use Conductor3d
@@ -21,13 +21,12 @@ c=============================================================================
       integer(ISZ):: iwhich
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
-      real(kind=8):: rho1d(*)
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz
       real(kind=8):: rstar(-1:nz+1)
       logical(ISZ):: linbend
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: scrtch(*)
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
 
 c Use the multigrid method for solving Poisson's equation on a 3-D Cartesian
@@ -56,8 +55,9 @@ c     added by petermc, 26 Sep 2002
       integer(ISZ):: i,ii,k,ix,iy,iz
       real(kind=8):: rs,x,r
       real(kind=8):: phisave(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: bendx((nx+1)*(ny+1))
 c     --- The following only used when mgform == 2
-      real(kind=8),allocatable:: rhosave(:),res(:)
+      real(kind=8),allocatable:: rhosave(:,:,:),res(:,:,:)
       integer(ISZ):: localb0,localbnz
       integer(ISZ):: local2b0,local2bnz
       integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
@@ -104,29 +104,29 @@ c     --- Preset rho to increase performance (reducing the number of
 c     --- multiplies in the main SOR sweep loop).
       if (.not. linbend) then
 !OMP DO
-        rho1d(1:nxyz) = rho1d(1:nxyz)*reps0c
+        rho = rho*reps0c
 !OMP END DO
       else
 c       --- For bends, also include curvature corrections. Comment: Timing tests
 c       --- show that the use of 1d array is slightly faster than a 3d array.
 !$OMP DO
-        do ii=1,nxyz
-          i = mod(ii-1,nx+1)
-          k = (ii-1)/nxy
-          rs = rstar(k)
-          x  = xmmin + i*dx
-          r  = rs + x
-c         --- rearranged to reduce divides
-c         --- rho1d(ii) = rho1d(ii)*(rs/r)*reps0c/
-c         ---             ( 1. + (x/r)*((x/r)-2.)*rdel )
-          rho1d(ii) = rho1d(ii)*reps0c*rs*r/(r*r + x*(x-2.*r)*rdel)
+        do iz=0,nz
+          rs = rstar(iz)
+          do ix=0,nx
+            x  = xmmin + ix*dx
+            r  = rs + x
+c           --- rearranged to reduce divides
+c           --- rho(ix,:,iz) = rho(ix,:,iz)*(rs/r)*reps0c/
+c           ---             ( 1. + (x/r)*((x/r)-2.)*rdel )
+            rho(ix,:,iz) = rho(ix,:,iz)*reps0c*rs*r/(r*r + x*(x-2.*r)*rdel)
+          enddo
         enddo
 !$OMP END DO
 c       --- Fill scratch array with x values so it can be looked up
 c       --- in the bent beam loop instead of calculated.
 !$OMP DO
         do ii = 1, nxy
-          scrtch(ii) = xmmin + mod(ii-1,nx+1)*dx
+          bendx(ii) = xmmin + mod(ii-1,nx+1)*dx
         enddo
 !$OMP END DO
 c       --- Change rstar if using Nuemann boundary conditions
@@ -143,9 +143,9 @@ c     --- If using residual correction form, need to save the original rho.
 c     --- Also setup parallel arrays.
       if (mgform == 2) then
 !$OMP SINGLE
-        allocate(rhosave(nxyz),res((nx+1)*(ny+1)*(nz+3)))
+        allocate(rhosave(0:nx,0:ny,0:nz),res(0:nx,0:ny,-1:nz+1))
 !$OMP END SINGLE
-        rhosave = rho1d(1:nxyz)
+        rhosave = rho
 #ifdef MPIPARALLEL
         lparity = 0
         rparity = 0
@@ -175,7 +175,7 @@ c       --- Save current value of phi
         phisave = phi
 
 c       --- If using residual correction form, calculate the residual and
-c       --- copy it into rho_temp. Also, zero phi_temp (the initial error).
+c       --- copy it into rhosave, zero phisave (the initial error).
 c       --- In the calls to cond_potmg and residual, the last argument
 c       --- is true, telling the routines to use the actual value of
 c       --- voltages rather than zero as is done otherwise for residual
@@ -187,13 +187,13 @@ c       --- correction form since it is operating on the error.
      &                  my_index,nslaves,izfsslave,nzfsslave,
      &                  whosendingleft,izsendingleft,
      &                  whosendingright,izsendingright)
-          rho1d(1:nxyz) = res(1+nxy:nxy+nxyz)
+          rho = res(:,:,0:nz)
           phi = 0.
         endif
 
 c       --- Do one vcycle.
-        call vcycle(0,nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho1d,
-     &              rstar,linbend,l2symtry,l4symtry,scrtch,
+        call vcycle(0,nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,
+     &              rstar,linbend,l2symtry,l4symtry,bendx,
      &              boundxy,bound0,boundnz,my_index,nslaves,izfsslave,nzfsslave)
 
 c       --- If using residual correction form, add the resulting error to phi.
@@ -236,9 +236,9 @@ c     added by petermc, 26 Sep 2002
 #ifdef WITHCHOMBO
         maxres = 0.
         if (mgform == 2) then
-!$OMP DO REDUCTION(MAX:mgerror)
-           do i=1+nxy,nxy+nxyz
-              maxres = max(maxres, abs(res(i)))
+!$OMP DO REDUCTION(MAX:maxres)
+           do i=0,nz
+              maxres = max(maxres, maxval(abs(res(:,:,iz))))
            enddo
 !$OMP END DO
         endif
@@ -286,24 +286,24 @@ c     --- Make a print out.
 
 c     --- If using residual correction form, restore saved rho
       if (mgform == 2) then
-        rho1d(1:nxyz) = rhosave
+        rho = rhosave
         deallocate(rhosave,res)
       endif
 
 c     --- Restore rho
       reps0c = 1./reps0c
       if (.not. linbend) then
-        rho1d(1:nxyz) = rho1d(1:nxyz)*reps0c
+        rho = rho*reps0c
       else
 c       --- For bends, also include curvature corrections. Comment: Timing tests
 c       --- show that the use of 1d array is slightly faster than a 3d array.
-        do ii=1,nxyz
-          i = mod(ii-1,nx+1)
-          k = (ii-1)/nxy
-          rs = rstar(k)
-          x  = xmmin + i*dx
-          r  = rs + x
-          rho1d(ii) = rho1d(ii)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
+        do iz=0,nz
+          rs = rstar(iz)
+          do ix=0,nx
+            x  = xmmin + i*dx
+            r  = rs + x
+            rho(ix,:,iz) = rho(ix,:,iz)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
+          enddo
         enddo
       endif
 
@@ -412,7 +412,7 @@ c=============================================================================
       RECURSIVE subroutine vcycle(mglevel,nx,ny,nz,nzfull,
      &                            dxsqi,dysqi,dzsqi,
      &                            phi,rho,rstar,linbend,l2symtry,l4symtry,
-     &                            scrtch,boundxy,globalb0,globalbnz,
+     &                            bendx,boundxy,globalb0,globalbnz,
      &                            my_index,nslaves,izfsslave,nzfsslave)
       use Multigrid3d
       integer(ISZ):: mglevel
@@ -420,7 +420,7 @@ c=============================================================================
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       real(kind=8):: rstar(-1:nz+1)
-      real(kind=8):: scrtch(*)
+      real(kind=8):: bendx((nx+1)*(ny+1))
       logical(ISZ):: linbend
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: boundxy,globalb0,globalbnz
@@ -477,7 +477,7 @@ c     call printarray3d(nx,ny,nz,0,1,izfsslave(my_index),rho,my_index,nslaves,
 c    &                  "RHO",mglevel)
       do i=1,downpasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-     &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,scrtch,
+     &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,bendx,
      &                 localb0,localbnz,boundxy,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
@@ -524,7 +524,7 @@ c         --- the restriction.
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nz,nzfull,
      &                dxsqi*0.25,dysqi*0.25,dzsqi,phi2,rho2(0,0,0),
-     &                rstar,linbend,l2symtry,l4symtry,scrtch,
+     &                rstar,linbend,l2symtry,l4symtry,bendx,
      &                boundxy,globalb0,globalbnz,
      &                my_index,nslaves,izfsslave,nzfsslave)
 
@@ -588,7 +588,7 @@ c         --- routine.
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
      &                dxsqi*0.25,dysqi*0.25,dzsqi*0.25,phi2,rho2(0,0,0),
-     &                rstar,linbend,l2symtry,l4symtry,scrtch,
+     &                rstar,linbend,l2symtry,l4symtry,bendx,
      &                boundxy,globalb0,globalbnz,
      &                my_index,nslaves,izfsslave2,nzfsslave2)
 
@@ -612,7 +612,7 @@ c     message added by petermc, 1 Oct 2002
 
       do i=1,uppasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-     &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,scrtch,
+     &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,bendx,
      &                 localb0,localbnz,boundxy,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
@@ -1013,7 +1013,7 @@ c         --- Expand iy=ny plane.
 c=============================================================================
 c=============================================================================
       subroutine sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
-     &                     rdx2,rdy2,rdz2,linbend,l2symtry,l4symtry,scrtch,
+     &                     rdx2,rdy2,rdz2,linbend,l2symtry,l4symtry,bendx,
      &                     localb0,localbnz,boundxy,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
@@ -1023,7 +1023,7 @@ c=============================================================================
       use Constant
       integer(ISZ):: mglevel,nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
-      real(kind=8):: scrtch(*)
+      real(kind=8):: bendx((nx+1)*(ny+1))
       real(kind=8):: rdx2,rdy2,rdz2
       logical(ISZ):: linbend
       logical(ISZ):: l2symtry,l4symtry
@@ -1064,7 +1064,7 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
 c     --- Macro for common arguments to the psor_loop calls
 #define LOOP_ARGS iimz,iipz,phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend, \
-      rstar(-1),dx,rdx2,rdy2,rdz2,rdel,const,scrtch(1)
+      rstar(-1),dx,rdx2,rdy2,rdz2,rdel,const,bendx
 
 c     --- Set temporary variables (these are used to increase performance)
       dx = 1./sqrt(rdx2)
