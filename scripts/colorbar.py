@@ -37,13 +37,14 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   return levs
 
 #-----------------------------------------------------------------------
-def color_bar(zmin,zmax,uselog=0,ncolor=100):
+def color_bar(zmin,zmax,uselog=0,ncolor=100,view=1):
   """
 Plots a color bar to the right of the plot square labelled by the z
 values from zmin to zmax.
   - zmin, zmax: lower and upper range for color bar
   - uselog=0: when true, labels are printed in the form 10^x
   - ncolor=100: default number of colors to include
+  - view=1: specifies the view that is associated with the color bar
   """
   plsys(0)
   xmin = 0.66
@@ -77,5 +78,5 @@ values from zmin to zmax.
     plt(scales[i],xmax+0.005,ys[i]-0.005)   # labels
   pldj(llev*[xmin],ys,llev*[xmax+0.005],ys) # ticks
   # --- Return to plot system 1.
-  plsys(1)
+  plsys(view)
 
