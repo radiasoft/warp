@@ -5,7 +5,7 @@
 HDF basic writer class PW by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWpyt.py,v 1.2 2003/09/15 23:48:29 dave Exp $
+$Id: PWpyt.py,v 1.3 2003/09/16 00:09:20 dave Exp $
 """
 import tables
 import cPickle
@@ -109,15 +109,25 @@ class PW:
         self.close()
         assert mode in ['w','a'],"Improper mode: " + mode
         self.__dict__['mode'] = mode
-        self.__dict__['file'] = tables.openFile(filename,mode=mode,rootUEP=self.inquire_group())
-        if mode == 'w':
-          self.__dict__['ints'] = self.inquire_file().createTable(self.inquire_group(),
+        self.__dict__['file'] = tables.openFile(filename,mode=mode,
+                                                rootUEP=self.inquire_group())
+        if mode == 'a':
+          # --- If mode is append, check if the ints and floats tables
+          # --- have been created. If not, catch the error.
+          try:
+            self.__dict__['ints'] = self.inquire_file().root.ints
+            self.__dict__['floats'] = self.inquire_file().root.floats
+          except LookupError:
+            pass
+        if self.__dict__['ints'] is None:
+          # --- If mode is 'w' or if the mode is 'a' but the tables have
+          # --- not yet been writte, then create the tables.
+          self.__dict__['ints'] = self.inquire_file().createTable(
+                                        self.inquire_group(),
                                         'ints',IntScalar,"Scalar Ints")
-          self.__dict__['floats'] = self.inquire_file().createTable(self.inquire_group(),
+          self.__dict__['floats'] = self.inquire_file().createTable(
+                                        self.inquire_group(),
                                         'floats',FloatScalar,"Scalar Floats")
-        else:
-          self.__dict__['ints'] = self.inquire_file().root.ints
-          self.__dict__['floats'] = self.inquire_file().root.floats
 
     def make_group(self, name):
         """make_group(name) 
