@@ -1,15 +1,16 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.92 $, $Date: 2004/01/14 22:52:44 $
+#@(#) File F3D.V, version $Revision: 3.93 $, $Date: 2004/01/24 00:52:55 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
 # fieldsolver package and test driver
 # Alex Friedman, LLNL, (510)422-0827
 {
+LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.92 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.93 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -34,20 +35,6 @@ work(nx+ny-4)             _real        #  Workspace for sine transforms
 work2d(1:nx+2,1:ny+2)     _real        #  Workspace for 2d fieldsolver
     #  Note: should be ((nx+2)*(ny+2)-7), but MAC produces bad code !
 zwork(2,0:nx,0:nz)        _real        #  Workspace to optimize vpftz
-
-******* GridBoundary3d dump:
-bound0    integer /0/  # Type of boundary condition at plane z=0
-                       # 0 is constant potential, 1 is zero normal derivative,
-                       # and 2 is periodic
-boundnz   integer /0/  # Type of boundary condition at plane z=nz
-                       # 0 is constant potential, 1 is zero normal derivative,
-                       # and 2 is periodic
-boundxy   integer /0/  # Type of boundary condition at sides
-                       # 0 is constant potential, 1 is zero normal derivative,
-                       # and 2 is periodic
-lzerophiedge logical /.true./ # When true and when gridmode == 0, the edge of
-                       # the phi array is zeroed out. This clears phi at any
-                       # conductor points on the edge of the mesh.
 
 ******* Transpose_work_space:
 phi_trnspssize /0/       integer

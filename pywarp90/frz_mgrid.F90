@@ -4472,21 +4472,21 @@ REAL(8) :: nexttime, prvtime
 END function findnrecursmin
 END module multigridrz
 
-subroutine multigridrzf(iwhich,u0,rho0,nr0,nz0,dr0,dz0,accuracy)
+subroutine multigridrzf(iwhich,u0,rho0,nr0,nz0,dr0,dz0)
 USE InjectVars_eq
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich, nr0, nz0
 REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
 REAL(8), INTENT(IN OUT) :: rho0(nr0+1,nz0+1)
-REAL(8), INTENT(IN) :: dr0, dz0, accuracy
+REAL(8), INTENT(IN) :: dr0, dz0
 
   IF(mgridrz_ncmax==0) return
 
   IF(iwhich==1) return
 
   IF(l_find_rise_time) then
-    call multigridrzf_risetime(iwhich,u0,rho0,nr0,nz0,accuracy)
+    call multigridrzf_risetime(iwhich,u0,rho0,nr0,nz0,mgridrz_accuracy)
     return
   END if
 
@@ -4499,7 +4499,7 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
   if (basegrid%izlbnd==dirichlet) basegrid%phi(1:nr0+1,1)     = u0(1:nr0+1,1)
   if (basegrid%izrbnd==dirichlet) basegrid%phi(1:nr0+1,nz0+1) = u0(1:nr0+1,nz0+1)
 
-  call solve_mgridrz(basegrid,accuracy)
+  call solve_mgridrz(basegrid,mgridrz_accuracy)
 
   u0(1:nr0+1,:)=basegrid%phi(1:nr0+1,:)
 
@@ -6923,6 +6923,31 @@ END if
 
   return
 end subroutine fieldweightz
+
+subroutine setemgridrz(ipmin,ip,is,ex,ey,ez)
+use InGen
+use multigridrz
+use FRZmgrid
+use Particles
+use Efields3d
+use Picglb
+
+integer(ISZ):: ipmin,ip,is
+real(kind=8):: ex(ip),ey(ip),ez(ip)
+
+  if(.not.mgridrz_deform) then
+    call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ex,ey,ez,ip,zgridprv)
+  else
+    if(is==1 .and. ipmin==ins(is)) call calc_phi3d_from_phirz()
+    call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip, &
+                xp(ipmin),yp(ipmin),zp(ipmin), &
+                zgridprv,0.,0.,basegrid%zmin, &
+                basegrid%dr,basegrid%dr,basegrid%dz, &
+                mgridrz_nx,mgridrz_ny,mgridrz_nz, &
+                efetch,ex,ey,ez,l2symtry,l4symtry)
+  end if
+
+end subroutine setemgridrz
 
 subroutine calc_phi3d_from_phirz()
 USE multigridrz

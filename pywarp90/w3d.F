@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.140 $, $Date: 2003/12/18 00:13:16 $
+c@(#) File W3D.F, version $Revision: 3.141 $, $Date: 2004/01/24 00:52:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -69,7 +69,6 @@ c=============================================================================
       use Hist
       use InjectVars
       use InjectVars3d
-      use FRZmgrid
 
 c  Invoked by the GENERATE command, it sets up the problem
 c  This routine allots all of the neccesary dynamic arrays, calls the
@@ -306,7 +305,7 @@ c  Set the value of prwall, radius at which particles are lost
         prwallz(k) = prwall
         if (prwallxz(k) == 0.) prwallxz(k) = prwallx
         if (prwallyz(k) == 0.) prwallyz(k) = prwally
-        if (prwelips(k) == 0.) prwelips(k) = 1.
+        if (prwelipz(k) == 0.) prwelipz(k) = prwelip
       enddo
 
 c  Re-size the dynamic arrays for the lattice (scan for true length, first).
@@ -1265,7 +1264,6 @@ c=============================================================================
       use InjectVars3d
       use Apertures
       use GridBoundary3d
-      use FRZmgrid
       character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
@@ -3832,7 +3830,6 @@ c=============================================================================
       use Fields3d
       use Fields3dParticles
       use GridBoundary3d
-      use FRZmgrid
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
@@ -4042,7 +4039,6 @@ c=============================================================================
       use Fields3d
       use Fields3dParticles
       use EFields3d
-      use FRZmgrid
       integer(ISZ):: ipmin,ip,is
       real(kind=8):: ex(ip),ey(ip),ez(ip)
 
@@ -4057,15 +4053,7 @@ c     --- Obtain the self-field from the electrostatic potential
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==RZgeom) then
-        if(.not.mgridrz_deform) then
-          call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ex,ey,ez,ip,zgridprv)
-        else
-          if(is==1 .and. ipmin==ins(is)) call calc_phi3d_from_phirz()
-          call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip,
-     &                xp(ipmin),yp(ipmin),zp(ipmin),
-     &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                efetch,ex,ey,ez,l2symtry,l4symtry)
-        end if
+        call setemgridrz(ipmin,ip,is,ex,ey,ez)
       elseif(solvergeom==XZgeom) then
          call fieldweightxz(xp(ipmin),zp(ipmin),uzp(ipmin),ex,ez,ip,zgridprv)
       elseif(solvergeom==Zgeom) then
@@ -4217,7 +4205,7 @@ c Check values of rectangular boundary arrays to see if they will be used.
       do ip=1,np
         iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
         if (((xp(ip)-prwallxz(iz))**2 +
-     &       (yp(ip)-prwallyz(iz)*prwelips(iz))**2) >= prwallz(iz)**2 .or.
+     &       (yp(ip)-prwallyz(iz)*prwelipz(iz))**2) >= prwallz(iz)**2 .or.
      &      (xmin > xp(ip) .or. xp(ip) > xmax .or.
      &       ymin > yp(ip) .or. yp(ip) > ymax)) then
           gaminv(ip) = 0.
@@ -4352,7 +4340,6 @@ c=============================================================================
       use Picglb3d
       use Setpwork3d
       use Fields3dParticles
-      use FRZmgrid
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -5674,7 +5661,6 @@ c=============================================================================
       use InjectVars3d
       use Setpwork3d
       use Picglb3d
-      use FRZmgrid
       use Parallel
       use Obsolete3d,obs_inj_d=>inj_d,obs_inj_f=>inj_f
 
@@ -6795,7 +6781,6 @@ c=============================================================================
       use InPart
       use InjectVars
       use InjectVars3d
-      use FRZmgrid
       integer(ISZ):: npart
       real(kind=8):: xp(npart),yp(npart),zp(npart),pid(npart)
       real(kind=8):: ex(npart),ey(npart),ez(npart)
@@ -7000,7 +6985,6 @@ c=============================================================================
       use InjectVars
       use InjectVars3d
       use Particles
-      use FRZmgrid
       integer(ISZ):: npart,ipmin
       real(kind=8):: dz
 
@@ -7698,7 +7682,6 @@ c=============================================================================
       use InGen3d
       use InjectVars
       use InjectVars3d
-      use InjectVars_eq
       use InMesh3d
       use Particles
       use Constant
@@ -7862,7 +7845,7 @@ c              iz  = int(real(inj_nz) - log(1./dd)/log(2.))
 c              wz1 = dd*2.**(inj_nz-iz)-1.
             else
 c             prevent deposition in cell closer to emitter (gives better result on 1D Lampel-Tiefenback test)
-              IF(l_find_rise_time) cycle
+              IF(l_inj_no_rho_on_emit) cycle
               iz  = 0
               wz1 = dd/dzmin
             end if
@@ -7991,7 +7974,7 @@ c              iz  = int(real(inj_nz) - log(1./dd)/log(2.))
 c              wz1 = dd*2.**(inj_nz-iz)-1.
             else
 c             prevent deposition in cell closer to emitter (gives better result on 1D Lampel-Tiefenback test)
-              IF(l_find_rise_time) cycle
+              IF(l_inj_no_rho_on_emit) cycle
               iz  = 0
               wz1 = dd/dzmin
             end if
@@ -8029,7 +8012,7 @@ c       --- contributing area which is within the emitting surface.
       end if
 
 c     --- assign charge deposited on emitter surface (slice 0) to slice 1
-      IF(.not. l_find_rise_time) then
+      IF(.not. l_inj_no_rho_on_emit) then
         inj_q(:,:,1,:) = inj_q(:,:,1,:) + inj_q(:,:,0,:)
         inj_q(:,:,0,:) = 0.
       end if
@@ -8237,7 +8220,6 @@ c=============================================================================
       use InPart
       use InjectVars
       use InjectVars3d
-      use FRZmgrid
       integer(ISZ):: npart
       real(kind=8):: xp(npart),yp(npart),zp(npart),pid(npart)
       real(kind=8):: ex(npart),ey(npart),ez(npart)
@@ -9267,7 +9249,6 @@ c=============================================================================
       use GridBoundary3d
       use Fields3d
       use LatticeInternal
-      use FRZmgrid
       use Parallel
       integer(ISZ):: iwhich
 
@@ -9386,7 +9367,7 @@ c         --- put forward by Lantz
 #endif
       elseif (fstype == 10) then
 c         --- RZ full-multigrid solver
-       call multigridrzf(iwhich,phi(0,0,-1),rho(0,0,0),nx,nz,dx,dz,mgridrz_accuracy)
+       call multigridrzf(iwhich,phi(0,0,-1),rho(0,0,0),nx,nz,dx,dz)
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
         call cho_solve3d(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
