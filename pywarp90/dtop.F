@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.38 $, $Date: 2002/03/14 17:53:15 $
+c@(#) File DTOP.M, version $Revision: 3.39 $, $Date: 2002/03/27 18:48:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.38 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.39 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1033,11 +1033,9 @@ c lays particles down onto slanted mesh in phase space.  Slanted by slope.
 c Inputs are position, xp, velocity, uxp, axial position and velocity, zp,
 c and uzp, slope, and grid size and limits, nw, nh, wmin, wmax, hmin, hmax.
 c output is psgrd.
-c When itask is zero, psgrd is reset, when not zero, psgrd is not reset.
-c This allows data to be accumulated over several time steps to obtain
-c better statistics.
 
       integer(ISZ):: ip,iw,ih
+      real(kind=8):: gw,gh
       real(kind=8):: dwi,dhi,ww,wh
 
 c set grid cell inverse sizes
@@ -1047,19 +1045,20 @@ c set grid cell inverse sizes
 c loop over particles
       do ip=1,np
 
-c       if within z grid cell and not dead, include
-        if (zl .lt. zp(ip) .and. zp(ip) .lt. zr
-     &      .and. uzp(ip) .ne. 0.) then
+c       --- if within z grid cell and not dead, include
+        if (zl < zp(ip) .and. zp(ip) < zr .and. uzp(ip) .ne. 0.) then
 
-c         find location on grid
-          iw = (xp(ip) - wmin)*dwi
-          ih = (uxp(ip)/uzp(ip) - xp(ip)*slope - hmin)*dhi
+c         --- find location on grid
+          gw = (xp(ip) - wmin)*dwi
+          gh = (uxp(ip)/uzp(ip) - xp(ip)*slope - hmin)*dhi
 
-c         if within grid, accumulate
-          if (iw .ge. 0 .and. iw .lt. nw .and.
-     &        ih .ge. 0 .and. ih .lt. nh) then
-            ww = (xp(ip) - wmin)*dwi - iw
-            wh = (uxp(ip)/uzp(ip) - xp(ip)*slope - hmin)*dhi - ih
+c         --- if within grid, accumulate
+          if (gw >= 0. .and. gw < nw .and.
+     &        gh >= 0. .and. gh < nh) then
+            iw = int(gw)
+            ih = int(gh)
+            ww = gw - iw
+            wh = gh - ih
             psgrd(iw  ,ih  ) = psgrd(iw  ,ih  ) + (1. - ww)*(1. - wh)
             psgrd(iw+1,ih  ) = psgrd(iw+1,ih  ) +       ww *(1. - wh)
             psgrd(iw  ,ih+1) = psgrd(iw  ,ih+1) + (1. - ww)*      wh
@@ -1079,11 +1078,9 @@ c=============================================================================
       real(kind=8):: xmin,xmax
 
 c Lays particles down onto 1-D mesh.
-c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
-c This allows data to be accumulated to obtain better statistics.
 
       integer(ISZ):: ip,ix
-      real(kind=8):: dxi,wx
+      real(kind=8):: gx,dxi,wx
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1092,11 +1089,12 @@ c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        ix = (x(ip) - xmin)*dxi
+        gx = (x(ip) - xmin)*dxi
 
 c       --- if within grid, accumulate
-        if (ix >= 0 .and. ix < nx) then
-          wx = (x(ip) - xmin)*dxi - ix
+        if (0. <= gx .and. gx < nx) then
+          ix = int(gx)
+          wx = gx - ix
           grid(ix  ) = grid(ix  ) + (1. - wx)
           grid(ix+1) = grid(ix+1) +       wx
         endif
@@ -1119,7 +1117,7 @@ c of particles.
 c This allows data to be accumulated to obtain better statistics.
 
       integer(ISZ):: ip,ix
-      real(kind=8):: dxi,wx
+      real(kind=8):: gx,dxi,wx
 
 c     --- Reset grids if requested
       if (itask == 0) then
@@ -1134,11 +1132,12 @@ c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        ix = (x(ip) - xmin)*dxi
+        gx = (x(ip) - xmin)*dxi
 
 c       --- if within grid, accumulate
-        if (ix >= 0 .and. ix < nx) then
-          wx = (x(ip) - xmin)*dxi - ix
+        if (0. <= gx .and. gx < nx) then
+          ix = int(gx)
+          wx = gx - ix
           grid(ix  ) = grid(ix  ) + z(ip)*(1. - wx)
           grid(ix+1) = grid(ix+1) + z(ip)*      wx
           gridcount(ix  ) = gridcount(ix  ) + (1. - wx)
@@ -1169,7 +1168,7 @@ c=============================================================================
 c Gathers data from a 1-D mesh onto particle positions.
 
       integer(ISZ):: ip,ix
-      real(kind=8):: dxi,wx
+      real(kind=8):: gx,dxi,wx
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1178,11 +1177,12 @@ c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        ix = (x(ip) - xmin)*dxi
+        gx = (x(ip) - xmin)*dxi
 
 c       --- if within grid, gather
-        if (ix >= 0 .and. ix < nx) then
-          wx = (x(ip) - xmin)*dxi - ix
+        if (0. <= gx .and. gx < nx) then
+          ix = int(gx)
+          wx = gx - ix
           z(ip) = grid(ix  )*(1. - wx) + grid(ix+1)*wx
         endif
 
@@ -1203,7 +1203,7 @@ c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
 c This allows data to be accumulated to obtain better statistics.
 
       integer(ISZ):: ip,ix,iy
-      real(kind=8):: dxi,dyi,wx,wy
+      real(kind=8):: gx,gy,dxi,dyi,wx,wy
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1213,14 +1213,16 @@ c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        ix = (x(ip) - xmin)*dxi
-        iy = (y(ip) - ymin)*dyi
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
 
 c       --- if within grid, accumulate
-        if (ix >= 0 .and. ix < nx .and.
-     &      iy >= 0 .and. iy < ny) then
-          wx = (x(ip) - xmin)*dxi - ix
-          wy = (y(ip) - ymin)*dyi - iy
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
+          ix = int(gx)
+          iy = int(gy)
+          wx = gx - ix
+          wy = gy - iy
           grid(ix  ,iy  ) = grid(ix  ,iy  ) + (1. - wx)*(1. - wy)
           grid(ix+1,iy  ) = grid(ix+1,iy  ) +       wx *(1. - wy)
           grid(ix  ,iy+1) = grid(ix  ,iy+1) + (1. - wx)*      wy
@@ -1246,7 +1248,7 @@ c of particles.
 c This allows data to be accumulated to obtain better statistics.
 
       integer(ISZ):: ip,ix,iy
-      real(kind=8):: dxi,dyi,wx,wy
+      real(kind=8):: gx,gy,dxi,dyi,wx,wy
 
 c     --- Reset grids if requested
       if (itask == 0) then
@@ -1262,14 +1264,16 @@ c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        ix = (x(ip) - xmin)*dxi
-        iy = (y(ip) - ymin)*dyi
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
 
 c       --- if within grid, accumulate
-        if (ix >= 0 .and. ix < nx .and.
-     &      iy >= 0 .and. iy < ny) then
-          wx = (x(ip) - xmin)*dxi - ix
-          wy = (y(ip) - ymin)*dyi - iy
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
+          ix = int(gx)
+          iy = int(gy)
+          wx = gx - ix
+          wy = gy - iy
           grid(ix  ,iy  ) = grid(ix  ,iy  ) + z(ip)*(1. - wx)*(1. - wy)
           grid(ix+1,iy  ) = grid(ix+1,iy  ) + z(ip)*      wx *(1. - wy)
           grid(ix  ,iy+1) = grid(ix  ,iy+1) + z(ip)*(1. - wx)*      wy
@@ -1306,7 +1310,7 @@ c=============================================================================
 c Gathers data from a 2-D mesh onto particle positions.
 
       integer(ISZ):: ip,ix,iy
-      real(kind=8):: dxi,dyi,wx,wy
+      real(kind=8):: gx,gy,dxi,dyi,wx,wy
 
 c     --- set grid cell inverse sizes
       dxi = nx/(xmax - xmin)
@@ -1316,14 +1320,16 @@ c     --- loop over particles
       do ip=1,np
 
 c       --- find location on grid
-        ix = (x(ip) - xmin)*dxi
-        iy = (y(ip) - ymin)*dyi
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
 
 c       --- if within grid, gather
-        if (ix >= 0 .and. ix < nx .and.
-     &      iy >= 0 .and. iy < ny) then
-          wx = (x(ip) - xmin)*dxi - ix
-          wy = (y(ip) - ymin)*dyi - iy
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
+          ix = int(gx)
+          iy = int(gy)
+          wx = gx - ix
+          wy = gy - iy
           z(ip) = grid(ix  ,iy  )*(1. - wx)*(1. - wy) +
      &            grid(ix+1,iy  )*      wx *(1. - wy) +
      &            grid(ix  ,iy+1)*(1. - wx)*      wy  +
@@ -1346,6 +1352,7 @@ c=============================================================================
 c Gathers data from a 3-D mesh onto particle positions.
 
       integer(ISZ):: ip,ix,iy,iz
+      real(kind=8):: gx,gy,gz
       real(kind=8):: dxi,dyi,dzi,wx,wy,wz
 
 c     --- set grid cell inverse sizes
@@ -1358,26 +1365,29 @@ c     --- loop over particles
 
 c       --- find location on grid
         if (l4symtry) then
-          ix = abs((x(ip) - xmin)*dxi)
-          iy = abs((y(ip) - ymin)*dyi)
-          iz =     (z(ip) - zmin)*dzi
+          gx = abs((x(ip) - xmin)*dxi)
+          gy = abs((y(ip) - ymin)*dyi)
+          gz =     (z(ip) - zmin)*dzi
         else if (l2symtry) then
-          ix =     (x(ip) - xmin)*dxi
-          iy = abs((y(ip) - ymin)*dyi)
-          iz =     (z(ip) - zmin)*dzi
+          gx =     (x(ip) - xmin)*dxi
+          gy = abs((y(ip) - ymin)*dyi)
+          gz =     (z(ip) - zmin)*dzi
         else
-          ix =     (x(ip) - xmin)*dxi
-          iy =     (y(ip) - ymin)*dyi
-          iz =     (z(ip) - zmin)*dzi
+          gx =     (x(ip) - xmin)*dxi
+          gy =     (y(ip) - ymin)*dyi
+          gz =     (z(ip) - zmin)*dzi
         endif
 
 c       --- if within grid, gather
-        if (ix >= 0 .and. ix < nx .and.
-     &      iy >= 0 .and. iy < ny .and.
-     &      iz >= 0 .and. iz < nz) then
-          wx = (x(ip) - xmin)*dxi - ix
-          wy = (y(ip) - ymin)*dyi - iy
-          wz = (z(ip) - zmin)*dzi - iz
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny .and.
+     &      0. <= gz .and. gz < nz) then
+          ix = int(gx)
+          iy = int(gy)
+          iz = int(gz)
+          wx = gx - ix
+          wy = gy - iy
+          wz = gz - iz
           f(ip) = grid(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
      &            grid(ix+1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
      &            grid(ix  ,iy+1,iz  )*(1. - wx)*      wy *(1. - wz) +
