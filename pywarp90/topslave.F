@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.1 $, $Date: 2001/04/30 22:41:32 $
+c TOPSLAVE.M, version $Revision: 1.2 $, $Date: 2001/05/02 19:24:39 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -503,11 +503,13 @@ c=============================================================================
 c Does a sum over all of the processors.  Resulting data is broadcasted
 c to all processors.
 
+      real(kind=8):: data2(ndata)
       integer(ISZ):: mpierror
       include "mpif.h"
 
-      call MPI_ALLREDUCE(data,data,ndata,MPI_DOUBLE_PRECISION,MPI_SUM,
+      call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
+      data = data2
 
       return
       end
@@ -518,11 +520,13 @@ c==========================================================================
 c Find the max of data over all processors.  Resulting data is broadcasted
 c to all processors.
 
+      real(kind=8):: data2(ndata)
       integer(ISZ):: mpierror
       include "mpif.h"
 
-      call MPI_ALLREDUCE(data,data,ndata,MPI_DOUBLE_PRECISION,MPI_MAX,
+      call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_MAX,
      &                   MPI_COMM_WORLD,mpierror)
+      data = data2
 
       return
       end
@@ -533,11 +537,13 @@ c==========================================================================
 c Find the min of data over all processors.  Resulting data is broadcasted
 c to all processors.
 
+      real(kind=8):: data2(ndata)
       integer(ISZ):: mpierror
       include "mpif.h"
 
-      call MPI_ALLREDUCE(data,data,ndata,MPI_DOUBLE_PRECISION,MPI_MIN,
+      call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_MIN,
      &                   MPI_COMM_WORLD,mpierror)
+      data = data2
 
       return
       end
