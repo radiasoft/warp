@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.14 2004/02/06 21:24:59 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.15 2004/07/02 23:20:17 jlvay Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -62,7 +62,7 @@ Warning - this does not yet work in parallel
   setupfields3dparticles()  
   if w3d.solvergeom is w3d.RZgeom:
     frz.del_base()
-    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin,false)
+    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin)
 
   # --- Calculate the mesh points
   w3d.xmesh[:] = w3d.xmmin + arange(w3d.nx+1)*w3d.dx
@@ -185,7 +185,7 @@ Resizes the transverse size of the mesh
   setupfields3dparticles()  
   if w3d.solvergeom is w3d.RZgeom:
     frz.del_base()
-    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin,false)
+    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin)
 
   # --- Calculate the mesh points
   w3d.xmesh[:] = w3d.xmmin + arange(w3d.nx+1)*w3d.dx
