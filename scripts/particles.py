@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.19 2005/01/12 17:17:40 dave Exp $"
+particles_version = "$Id: particles.py,v 1.20 2005/02/08 17:55:03 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -43,6 +43,7 @@ Adds plotting subset to the list
   global psubset
   if lparallel:
     totalnp = parallelsum(top.nps[js])
+    if totalnp == 0: totalnp = 1
     fracnp = float(top.nps[js])/float(totalnp)
   else:
     fracnp = 1.
