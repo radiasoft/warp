@@ -22,6 +22,8 @@ Cylinders:
  YCylinderOut(radius,length,...)
  YCylinderElliptic(ellipticity,radius,length,...)
  YCylinderEllipticOut(ellipticity,radius,length,...)
+ ZAnnulus(rmin,rmax,length,...)
+ ZAnnulusElliptic(ellipticity,rmin,rmax,length,...)
 
 Cones:
  Cone(r_zmin,r_zmax,length,theta=0.,phi=0.,...)
@@ -99,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.89 2004/09/28 00:40:15 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.90 2004/10/15 18:08:54 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -675,7 +677,10 @@ this is set to the parity of ix+iy+iz. Otherwise defaults to large integer.
 This assumes that the data has already been normalized with respect to the
 grid cell sizes.
     """
-    self.parity = zeros(self.ndata) + 999
+    # --- Using the inplace add is slightly faster since it doesn't have to
+    # --- allocate a new array.
+    self.parity = zeros(self.ndata)
+    add(self.parity,999,self.parity)
     self.fuzzsign = fuzzsign
     fuzz = 1.e-9
     # --- A compiled routine is called for optimization
@@ -3184,7 +3189,7 @@ Between surfaces of revolution aligned along the Y axis
                             self.generatorf,self.generatord,self.generatori)
 
 #============================================================================
-class ZAnnulus(ZSrfrvInOut):
+class ZAnnulus(ZSrfrvIn):
   """
 Creates an Annulus as a surface of revolution.
   - rmin,rmax: Inner and outer radii
@@ -3204,17 +3209,46 @@ Creates an Annulus as a surface of revolution.
     zmin = -length/2.
     zmax = +length/2.
 
-    zmindata = [zmin,zmax]
-    rminofzdata = [rmin,rmin]
+    zdata = [zmin,zmax]
+    rofzdata = [rmax,rmax]
 
-    zmaxdata = [zmin,zmax]
-    rmaxofzdata = [rmax,rmax]
+    # --- ZSrfrvIn is a little faster than ZSrfrvInOut
+    ZSrfrvIn.__init__(self,' ',zmin,zmax,rmin=rmin,
+                      voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
+                      condid=condid,
+                      rofzdata=rofzdata,zdata=zdata)
 
-    ZSrfrvInOut.__init__(self,' ',' ',zmin,zmax,
-                         voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
-                         condid=condid,
-                         rminofzdata=rminofzdata,zmindata=zmindata,
-                         rmaxofzdata=rmaxofzdata,zmaxdata=zmaxdata)
+#============================================================================
+class ZAnnulusElliptic(ZSrfrvEllipticIn,EllipticAssembly):
+  """
+Creates an Annulus as a surface of revolution.
+  - ellipticity: ratio of y radius to x radius
+  - rmin,rmax: Inner and outer radii
+  - zmin,zmax: z-extent of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  """
+  def __init__(self,ellipticity,rmin,rmax,length,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+
+    self.rmin = rmin
+    self.rmax = rmax
+    self.length = length
+
+    # --- Setup dat for surface of revolution
+    zmin = -length/2.
+    zmax = +length/2.
+
+    zdata = [zmin,zmax]
+    rofzdata = [rmax,rmax]
+
+    # --- ZSrfrvEllipticIn is a little faster than ZSrfrvEllipticInOut
+    ZSrfrvEllipticIn.__init__(self,ellipticity,' ',zmin,zmax,rmin=rmin,
+                              voltage=voltage,
+                              xcent=xcent,ycent=ycent,zcent=zcent,
+                              condid=condid,
+                              rofzdata=rofzdata,zdata=zdata)
 
 #============================================================================
 class ZCone(ZSrfrvIn):
