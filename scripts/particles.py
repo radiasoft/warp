@@ -20,7 +20,8 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.16 2004/04/14 17:27:05 dave Exp $"
+import random
+particles_version = "$Id: particles.py,v 1.17 2004/05/26 17:18:14 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -56,6 +57,64 @@ def clear_subsets():
   "Clears the particle subsets so that they can be updated."
   global psubset
   psubset = []
+
+#----------------------------------------------------------------------------
+# Modified version of the sample routine from the random module of Python2.3
+def populationsample(population,k,self=random.Random(0)):
+    """Chooses k unique random elements from a population sequence.
+
+    Returns a new list containing elements from the population while
+    leaving the original population unchanged.  The resulting list is
+    in selection order so that all sub-slices will also be valid random
+    samples.  This allows raffle winners (the sample) to be partitioned
+    into grand prize and second place winners (the subslices).
+
+    Members of the population need not be hashable or unique.  If the
+    population contains repeats, then each occurrence is a possible
+    selection in the sample.
+
+    To choose a sample in a range of integers, use xrange as an argument.
+    This is especially fast and space efficient for sampling from a
+    large population:   sample(xrange(10000000), 60)
+    """
+
+    # Sampling without replacement entails tracking either potential
+    # selections (the pool) in a list or previous selections in a
+    # dictionary.
+
+    # When the number of selections is small compared to the population,
+    # then tracking selections is efficient, requiring only a small
+    # dictionary and an occasional reselection.  For a larger number of
+    # selections, the pool tracking method is preferred since the list takes
+    # less space than the dictionary and it doesn't suffer from frequent
+    # reselections.
+
+    n = len(population)
+    if not 0 <= k <= n:
+        raise ValueError, "sample larger than population"
+    random = self.random
+    _int = int
+    # --- Result is an array rather than a list ---
+    typecode = array([population[0]]).typecode()
+    result = zeros(k,typecode=typecode)
+    if n < 6 * k:     # if n len list takes less space than a k len dict
+        pool = list(population)
+        for i in xrange(k):         # invariant:  non-selected at [0,n-i)
+            j = _int(random() * (n-i))
+            result[i] = pool[j]
+            pool[j] = pool[n-i-1]   # move non-selected item into vacancy
+    else:
+        try:
+            n > 0 and (population[0], population[n//2], population[n-1])
+        except (TypeError, KeyError):   # handle sets and dictionaries
+            population = tuple(population)
+        selected = {}
+        for i in xrange(k):
+            j = _int(random() * n)
+            while j in selected:
+                j = _int(random() * n)
+            result[i] = selected[j] = population[j]
+    return result
 
 # --- Old method which replicates the numbers selected by the fortran
 # --- routine psubsets. Note that that method breaks down when
@@ -182,9 +241,26 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
   elif iw < 0:
-    if psubset==[]: setup_subsets()
-    if -iw > len(psubset): raise "Bad window number"
-    ii = ir1 + compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
+    # --- Add some smarts about choosing which method to use.
+    # --- If the number of particles is increasing, then use the
+    # --- population sampling. Otherwise use the preset subsets.
+    # --- Also, if the number of species has changed, then also
+    # --- use the population sampling.
+    try: selectparticles.npsprev
+    except: selectparticles.npsprev = top.nps + 0
+    if len(selectparticles.npsprev) != top.ns:
+      selectparticles.npsprev = zeros(top.ns)
+    if selectparticles.npsprev[js] >= top.nps[js]:
+      if psubset==[]: setup_subsets()
+      if -iw > len(psubset): raise "Bad window number"
+      ii = ir1 + compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
+    else:
+      # --- Once this method is used, always use it.
+      selectparticles.npsprev = zeros(top.ns)
+      if top.nps[js] <= top.npplot[-iw-1]:
+        ii = ir1 + arange(top.nps[js])
+      else:
+        ii = ir1 + populationsample(xrange(top.nps[js]),top.npplot[-iw-1])
   elif iw == 0:
     ii = xrange(ir1,ir2)
   else:
