@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.19 $, $Date: 2003/03/03 19:51:16 $
+c@(#) File ENV.M, version $Revision: 3.20 $, $Date: 2003/03/04 03:04:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1259,12 +1259,10 @@ c=========================================================================
       e1%aa(1:3) = 2.
       e2%ee(2:4) = 1.
       newe => NewENVType()
-c     ALLOCATE(newe)
-c     call initENVtypepy(-1,newe,newe%id)
       newe%oo = 1
       newe%nn = 21
       call ENVtypeallot(newe)
-      call ENVtypeassociate(e1,"ack",newe)
+      e1%ack => newe
       xxx => NewENVType()
       return
       end
