@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.34 2002/07/10 21:50:22 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.35 2002/07/11 01:15:31 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1700,18 +1700,18 @@ Sets the voltage on a conductor, given an id.
   if f3d.necndbdy > 0:
     f3d.ecvolt[:]   = where(equal(f3d.ecnumb  ,condid),ecvmx,f3d.ecvolt)
     f3d.ecvoltmx[:] = where(equal(f3d.ecnumbmx,condid),ecvmx,f3d.ecvoltmx)
-    f3d.ecvoltmy[:] = where(equal(f3d.ecnumbmy,condid),ecvpx,f3d.ecvoltmy)
-    f3d.ecvoltmz[:] = where(equal(f3d.ecnumbmz,condid),ecvmy,f3d.ecvoltmz)
-    f3d.ecvoltpx[:] = where(equal(f3d.ecnumbpx,condid),ecvpy,f3d.ecvoltpx)
-    f3d.ecvoltpy[:] = where(equal(f3d.ecnumbpy,condid),ecvmz,f3d.ecvoltpy)
-    f3d.ecvoltpz[:] = where(equal(f3d.ecnumbpz,condid),ecvpz,f3d.ecvoltmx)
+    f3d.ecvoltmy[:] = where(equal(f3d.ecnumbmy,condid),ecvmy,f3d.ecvoltmy)
+    f3d.ecvoltmz[:] = where(equal(f3d.ecnumbmz,condid),ecvmz,f3d.ecvoltmz)
+    f3d.ecvoltpx[:] = where(equal(f3d.ecnumbpx,condid),ecvpx,f3d.ecvoltpx)
+    f3d.ecvoltpy[:] = where(equal(f3d.ecnumbpy,condid),ecvpy,f3d.ecvoltpy)
+    f3d.ecvoltpz[:] = where(equal(f3d.ecnumbpz,condid),ecvpz,f3d.ecvoltpz)
   if f3d.nocndbdy > 0:
     f3d.ocvolt[:]   = where(equal(f3d.ocnumb  ,condid),ocvmx,f3d.ocvolt)
     f3d.ocvoltmx[:] = where(equal(f3d.ocnumbmx,condid),ocvmx,f3d.ocvoltmx)
-    f3d.ocvoltmy[:] = where(equal(f3d.ocnumbmy,condid),ocvpx,f3d.ocvoltmy)
-    f3d.ocvoltmz[:] = where(equal(f3d.ocnumbmz,condid),ocvmy,f3d.ocvoltmz)
-    f3d.ocvoltpx[:] = where(equal(f3d.ocnumbpx,condid),ocvpy,f3d.ocvoltpx)
-    f3d.ocvoltpy[:] = where(equal(f3d.ocnumbpy,condid),ocvmz,f3d.ocvoltpy)
+    f3d.ocvoltmy[:] = where(equal(f3d.ocnumbmy,condid),ocvmy,f3d.ocvoltmy)
+    f3d.ocvoltmz[:] = where(equal(f3d.ocnumbmz,condid),ocvmz,f3d.ocvoltmz)
+    f3d.ocvoltpx[:] = where(equal(f3d.ocnumbpx,condid),ocvpx,f3d.ocvoltpx)
+    f3d.ocvoltpy[:] = where(equal(f3d.ocnumbpy,condid),ocvpy,f3d.ocvoltpy)
     f3d.ocvoltpz[:] = where(equal(f3d.ocnumbpz,condid),ocvpz,f3d.ocvoltpz)
 
 #---------------------------------------------------------------------------
