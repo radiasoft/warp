@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.18 $, $Date: 2003/02/13 16:43:59 $
+c@(#) File ENV.M, version $Revision: 3.19 $, $Date: 2003/03/03 19:51:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1251,17 +1251,28 @@ c=========================================================================
       use TTester
       integer(ISZ):: n1,n2
       TYPE(ENVtype),POINTER:: newe
+      e1%oo = 1
+      e2%oo = 1
       e1%nn = n1
       e2%nn = n2
       call gallot("TTester",0)
       e1%aa(1:3) = 2.
       e2%ee(2:4) = 1.
-c     newe => NewENVType()
-      ALLOCATE(newe)
-      call initENVtypepy(-1,newe,newe%id)
-      newe%nn = 20
+      newe => NewENVType()
+c     ALLOCATE(newe)
+c     call initENVtypepy(-1,newe,newe%id)
+      newe%oo = 1
+      newe%nn = 21
       call ENVtypeallot(newe)
       call ENVtypeassociate(e1,"ack",newe)
+      xxx => NewENVType()
+      return
+      end
+      subroutine printxxx()
+      use TTester
+      print*,"xxx%oo = ",xxx%oo
+      print*,"xxx%nn = ",xxx%nn
+      print*,"xxx%ee = ",xxx%ee
       return
       end
 

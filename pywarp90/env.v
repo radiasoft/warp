@@ -1,5 +1,5 @@
 env
-#@(#) File ENV.V, version $Revision: 3.18 $, $Date: 2003/02/13 16:44:00 $
+#@(#) File ENV.V, version $Revision: 3.19 $, $Date: 2003/03/03 19:51:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package ENV of the WARP code.
@@ -13,7 +13,7 @@ env
 
 *********** ENVversion:
 # Version control for env package
-versenv character*19 /"$Revision: 3.18 $"/  # Current code version, set by CVS
+versenv character*19 /"$Revision: 3.19 $"/  # Current code version, set by CVS
 
 *********** ENVvars dump:
 # Variables needed by the package ENV
@@ -149,8 +149,9 @@ envxport(np,z:real,a:real,ap:real,b:real,bp:real,
 
 
 %%%%%%%% ENVtype:
+oo integer
 nn integer
-aa(0:nn) _real
+aa(1-oo:nn+oo+1) _real
 bb(0:nn) _real
 ap(0:nn) _real
 bp(0:nn) _real
@@ -160,5 +161,8 @@ ack _ENVtype
 ******* TTester:
 e1 ENVtype
 e2 ENVtype
+xxx _ENVtype
+#yyy(4) _ENVtype
 envtypetest(n1:integer,n2:integer) subroutine
+printxxx() subroutine
 
