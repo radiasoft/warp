@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.114 2004/03/26 16:08:14 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.115 2004/04/14 17:27:05 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1581,7 +1581,7 @@ def ppxxp(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxxp,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
-    (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
+    (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope
     kw['yoffset'] = xpoffset
     kw['xoffset'] = xoffset
@@ -1602,7 +1602,7 @@ def ppyyp(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyyp,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
-    (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
+    (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope
     kw['yoffset'] = ypoffset
     kw['xoffset'] = yoffset
@@ -1624,8 +1624,8 @@ def ppxpyp(iw=0,**kw):
   if ppmultispecies(ppxpyp,(iw,),kw): return
   slope = kw.get('slope',0.)
   if type(slope) == type(''):
-    (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
-    (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
+    (xslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
+    (yslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = 0.
   else:
     (xslope,xoffset,xpoffset) = (slope,0.,0.)
@@ -1651,7 +1651,7 @@ def ppxvx(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxvx,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
-    (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
+    (slope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = xpoffset*vz
     kw['xoffset'] = xoffset
@@ -1673,7 +1673,7 @@ def ppyvy(iw=0,**kw):
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyvy,(iw,),kw): return
   if type(kw.get('slope',0.)) == type(''):
-    (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
+    (slope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz'),kwdict=kw)
     kw['slope'] = slope*vz
     kw['yoffset'] = ypoffset*vz
     kw['xoffset'] = yoffset
@@ -1807,8 +1807,8 @@ that plot.
   if type(slope)==type(''):
     del kw['slope']
     iz = kw.get('iz',None)
-    (xxpslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=iz)
-    (yypslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=iz)
+    (xxpslope,xoffset,xpoffset,vz) = getxxpslope(iw=iw,iz=iz,kwdict=kw)
+    (yypslope,yoffset,ypoffset,vz) = getyypslope(iw=iw,iz=iz,kwdict=kw)
     xp = xp - xxpslope*(x - xoffset) - xpoffset
     yp = yp - yypslope*(y - yoffset) - ypoffset
   if kw.get('titles',1):

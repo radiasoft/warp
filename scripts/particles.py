@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.15 2003/10/07 21:53:04 dave Exp $"
+particles_version = "$Id: particles.py,v 1.16 2004/04/14 17:27:05 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -375,44 +375,94 @@ if sys.version[:5] != "1.5.1":
 #-------------------------------------------------------------------------
 
 ##########################################################################
-def getxxpslope(iw=0,iz=-1):
+def getxxpslope(iw=0,iz=-1,kwdict={}):
   """
-Calculates the x-x' slope based on either the window moments in window iw
-or the zmoments at iz. This returns a tuple containing
-(slope,xoffset,xpoffset,vz).
+Calculates the x-x' slope from particle moments.
+This returns a tuple containing (slope,xoffset,xpoffset,vz).
 The product slope*vz gives the slope for x-vx.
+  - iw=0: Window number
+  - iz=-1: Z grid location
+  - zl=None: When specified, lower range of selection region
+  - zu=None: When specified, upper range of selection region
+  - zc=None: When specified, center of range of selection region
   """
-  if 0 <= iz <= w3d.nz:
-    slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
-    xoffset = top.xbarz[iz]
-    xpoffset = top.xpbarz[iz]
-    vz = top.vzbarz[iz]
+  zl = kwdict.get('zl')
+  zu = kwdict.get('zu')
+  zc = kwdict.get('zc')
+  if zl is not None and zu is not None: zc = 0.5*(zl + zu)
+  if iw > 0: zc = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
+  if zc is not None:
+    iz = nint(floor((zc - w3d.zmmin)/w3d.dz))
+    wz = (zc - w3d.zmmin)/w3d.dz - iz
   else:
-    iiw = max(0,iw)
-    slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
-    xoffset = top.xbar[iiw]
-    xpoffset = top.xpbar[iiw]
-    vz = top.vzbar[iiw]
+    wz = 0.
+  if 0 <= iz <= w3d.nz:
+    izp1 = iz + 1
+    if iz == w3d.nz: izp1 = iz
+    xxpbar = top.xxpbarz[iz]*(1.-wz) + top.xxpbarz[izp1]*wz
+    xbar   = top.xbarz[iz]*(1.-wz)   + top.xbarz[izp1]*wz
+    xpbar  = top.xpbarz[iz]*(1.-wz)  + top.xpbarz[izp1]*wz
+    xrms   = top.xrmsz[iz]*(1.-wz)   + top.xrmsz[izp1]*wz
+    vzbar  = top.vzbarz[iz]*(1.-wz)  + top.vzbarz[izp1]*wz
+    slope = (xxpbar-xbar*xpbar)/xrms**2
+    xoffset = xbar
+    xpoffset = xpbar
+    vz = vzbar
+  elif iw <= 0:
+    slope = (top.xxpbar[0]-top.xbar[0]*top.xpbar[0])/top.xrms[0]**2
+    xoffset = top.xbar[0]
+    xpoffset = top.xpbar[0]
+    vz = top.vzbar[0]
+  else:
+    slope = 0.
+    xoffset = 0.
+    xpoffset = 0.
+    vz = 0.
   return (slope,xoffset,xpoffset,vz)
 #-------------------------------------------------------------------------
-def getyypslope(iw=0,iz=-1):
+def getyypslope(iw=0,iz=-1,kwdict={}):
   """
-Calculates the y-y' slope based on either the window moments in window iw
-or the zmoments at iz. This returns a tuple containing
-(slope,yoffset,ypffset,vz).
+Calculates the y-y' slope from particle moments.
+This returns a tuple containing (slope,yoffset,ypoffset,vz).
 The product slope*vz gives the slope for y-vy.
+  - iw=0: Window number
+  - iz=-1: Z grid location
+  - zl=None: When specified, lower range of selection region
+  - zu=None: When specified, upper range of selection region
+  - zc=None: When specified, center of range of selection region
   """
-  if 0 <= iz <= w3d.nz:
-    slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
-    yoffset = top.ybarz[iz]
-    ypoffset = top.ypbarz[iz]
-    vz = top.vzbarz[iz]
+  zl = kwdict.get('zl')
+  zu = kwdict.get('zu')
+  zc = kwdict.get('zc')
+  if zl is not None and zu is not None: zc = 0.5*(zl + zu)
+  if iw > 0: zc = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
+  if zc is not None:
+    iz = nint(floor((zc - w3d.zmmin)/w3d.dz))
+    wz = (zc - w3d.zmmin)/w3d.dz - iz
   else:
-    iiw = max(0,iw)
-    slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
-    yoffset = top.ybar[iiw]
-    ypoffset = top.ypbar[iiw]
-    vz = top.vzbar[iiw]
+    wz = 0.
+  if 0 <= iz <= w3d.nz:
+    izp1 = iz + 1
+    if iz == w3d.nz: izp1 = iz
+    yypbar = top.yypbarz[iz]*(1.-wz) + top.yypbarz[izp1]*wz
+    ybar   = top.ybarz[iz]*(1.-wz)   + top.ybarz[izp1]*wz
+    ypbar  = top.ypbarz[iz]*(1.-wz)  + top.ypbarz[izp1]*wz
+    yrms   = top.yrmsz[iz]*(1.-wz)   + top.yrmsz[izp1]*wz
+    vzbar  = top.vzbarz[iz]*(1.-wz)  + top.vzbarz[izp1]*wz
+    slope = (yypbar-ybar*ypbar)/yrms**2
+    yoffset = ybar
+    ypoffset = ypbar
+    vz = vzbar
+  elif iw <= 0:
+    slope = (top.yypbar[0]-top.ybar[0]*top.ypbar[0])/top.yrms[0]**2
+    yoffset = top.ybar[0]
+    ypoffset = top.ypbar[0]
+    vz = top.vzbar[0]
+  else:
+    slope = 0.
+    yoffset = 0.
+    ypoffset = 0.
+    vz = 0.
   return (slope,yoffset,ypoffset,vz)
 #-------------------------------------------------------------------------
 def getvzrange():
