@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-deprefix_version = "$Id: deprefix.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+deprefix_version = "$Id: deprefix.py,v 1.2 2001/06/18 18:05:01 dave Exp $"
 
 # --- Creates python object for each variable in each of the specified
 # --- packages. Does all packages by default.
@@ -16,7 +16,7 @@ def deprefix(pkgs=None):
 
     # --- For each variable, create python object in the global dictionary
     for v in vlist:
-      if eval(p+'.getpyobject("'+v+'")',__main__.__dict__)!=[]:
+      if eval(p+'.getpyobject("'+v+'")',__main__.__dict__) is not None:
         exec('__main__.__dict__["'+v+'"] = '+p+'.'+v,globals())
 
 def reprefix(pkgs=None):

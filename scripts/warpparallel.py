@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.11 2001/03/22 01:18:43 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.12 2001/06/18 18:05:01 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -215,9 +215,9 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
       for vname in vlist:
         # --- Check if can get a python object for the variable.
         # --- This check is for dynamic arrays - if array is unallocated,
-        # --- the getpyobject routine returns an emtpy list.
+        # --- the getpyobject routine returns None.
         v = pkg.getpyobject(vname)
-        if v!=[]:
+        if v is not None:
           # --- Get attributes of the variable
           a = pkg.getvarattr(vname)
           # --- Set name of variable in pdb file
@@ -404,7 +404,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
     for a in attr: vlist = vlist + pkg.varlist(a)
     for vname in vlist:
       v = pkg.getpyobject(vname)
-      if v!=[]:
+      if v is not None:
         a = pkg.getvarattr(vname)
         if varsuffix == None:
           pdbname = vname+'@'+p
@@ -607,7 +607,12 @@ def parallelrestore(fname):
       p = v[-3:]
       pkg = eval(p,__main__.__dict__)
       pname = p+'.'+vname
-      a = pkg.getvarattr(vname)
+      # --- Make sure that the variable is still valid. If not
+      # --- (e.g. it has been deleted) then don't try to restore it.
+      try:
+        a = pkg.getvarattr(vname)
+      except pybasisC.error:
+        print "Warning: There was a problem %s - it can't be found."(pname)
       parallelvar = re.search('parallel',a)
       # --- The shape is used determine whether the variable is an array
       # --- or not. When the length of the shape is zero, then the

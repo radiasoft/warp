@@ -13,7 +13,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.9 2001/06/18 17:54:32 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.10 2001/06/18 18:05:01 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -231,7 +231,7 @@ Dump data into a pdb file
       # --- Check if object is available (i.e. check if dynamic array is
       # --- allocated).
       v = pkg.getpyobject(vname)
-      if v!=[]:
+      if v is not None:
         writevar = 1
         # --- If serial flag is set, get attributes and if has the parallel
         # --- attribute, don't write it.
@@ -265,7 +265,7 @@ def pydumpold(fname,attr="dump",vars=[]):
   for p in package():
     vlist = eval(p+'.varlist("'+attr+'")',__main__.__dict__)
     for v in vlist:
-      if eval(p+'.getpyobject("'+v+'")',__main__.__dict__)!=[]:
+      if eval(p+'.getpyobject("'+v+'")',__main__.__dict__) is not None:
         #exec('ff.'+p+'_'+v+'='+p+'.'+v,__main__.__dict__,locals())
         exec('ff.write("'+p+'@'+v+'",'+p+'.'+v+')',__main__.__dict__,locals())
   for v in vars:
