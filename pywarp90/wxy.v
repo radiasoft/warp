@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.37 $, $Date: 2003/07/21 22:45:24 $
+#@(#) File WXY.V, version $Revision: 3.38 $, $Date: 2003/08/26 00:06:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.37 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.38 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 npmaxxy    integer # Number of particles - same as npmax from TOP
@@ -29,12 +29,16 @@ lvp3d    logical /.false./ # Sets whether or not to use the 3-D field solver
 ldiag    logical /.true./  # When false, no diagnostics are done
 lexbend  logical /.true./  # When true, use exact transformation in bend, when
                            # false, use same transformation as in 3-D code.
+lcommonz logical /.false./ # When true, the z of all particles is set to zbeam
+                           # when they are initially created. Otherwise, the
+                           # z's have an artificial spread.
 
 *********** WXYsubs:
 # Subroutines in package XY
 wxygen() subroutine
 wxyexe() subroutine
 initdtp() subroutine # Initializes dtp
+initzpxy() subroutine # Optionally sets all z values to zbeam.
 extebxy(np,xp:real,yp:real,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
         bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
         m:real,q:real,bendres:real,bendradi:real,lexbend:logical,gammabar:real,

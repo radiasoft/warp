@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.38 $, $Date: 2003/08/22 22:48:51 $
+c@(#) File WXY.M, version $Revision: 3.39 $, $Date: 2003/08/26 00:06:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -242,6 +242,7 @@ c  Load the particles, calculate the charge density
       call stptcl3d
       call setgamma(lrelativ)
       call initdtp
+      call initzpxy
       call remark(" ---  Setting charge density")
 c     call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
 c     call zeroarry(curr,nzzarr+1)
@@ -1217,12 +1218,17 @@ c     --- End loop over species
 
       if (center == "halfv") then
         do is=1,ns
+
 c         --- Apply particle boundary conditions
-          if (periinz)
-     &       call periz(nps(is),zp(ins(is)),zgrid,zmmax,zmmin)
-          if (stickyz)
-     &       call stckyz(nps(is),zp(ins(is)),zmmax,zmmin,dz,uxp(ins(is)),
-     &                   uyp(ins(is)),uzp(ins(is)),zgrid)
+
+          if (lthick) then
+            if (periinz)
+     &         call periz(nps(is),zp(ins(is)),zgrid,zmmax,zmmin)
+            if (stickyz)
+     &         call stckyz(nps(is),zp(ins(is)),zmmax,zmmin,dz,uxp(ins(is)),
+     &                     uyp(ins(is)),uzp(ins(is)),zgrid)
+          endif
+
           if (stickyxy)
      &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,
      &                     yp(ins(is)),ymmax,ymmin,dy,
@@ -1247,13 +1253,8 @@ c       --- Make rho periodic if periodic in z
           call fixcurrxy(curr,nzzarr,periinz,lthick)
         endif
 
-        if (lbeamcom) then
-c         --- Set zbeam so that it follows the center of mass of the beam.
-          call zbeamcom(zbeam)
-        else
-c         --- Advance beam frame location using the nominal beam frame velocity.
-          zbeam = zgrid
-        endif
+c       --- Advance beam frame location using the nominal beam frame velocity.
+        zbeam = zgrid
 
 c       --- zgridprv needs to be updated for the "synchv" step
 c       --- Note that zgridprv is also set at the beginning of wxyexe
@@ -1491,6 +1492,26 @@ c  Advance particle positions
       if (lwxytimesubs) timexpushxy = timexpushxy + wtime() - substarttime
       return
       end      
+c============================================================================ 
+      subroutine initzpxy()
+      use InPart
+      use Picglb
+      use InGenxy
+      use Particles
+
+c If requested to, this routine sets the z value of all of the particles to
+c zbeam.
+
+      integer(ISZ):: is
+
+      if (lcommonz) then
+        do is=1,ns
+          zp(ins(is):ins(is)+nps(is)-1) = zbeam
+        enddo
+      endif
+
+      return
+      end
 c============================================================================ 
       subroutine initdtp()
       use Subtimersxy
