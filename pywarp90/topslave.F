@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.17 $, $Date: 2003/01/23 21:27:58 $
+c TOPSLAVE.M, version $Revision: 1.18 $, $Date: 2003/03/13 17:51:33 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -30,7 +30,9 @@ c     integer(ISZ):: blocklengths(100),displacements(100)
       integer(ISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
 c     integer(ISZ):: mpinewtype,mpirequest
 
-
+c     make sure that particles marked as lost in this routine will be cleaned by clearpart.
+      if(clearlostpart==0) clearlostpart = 1
+      
 c     --- calculate numbers of the processors to the left and to the right,
 c     --- wrapping around at the ends.
       left_pe = mod(nslaves+my_index-1,nslaves)
