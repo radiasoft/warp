@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.20 2004/01/20 19:18:46 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.21 2004/01/20 19:34:47 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -1508,432 +1508,539 @@ if sys.version[:5] != "1.5.1":
 
 def hzzbeam(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpzbeam(kwdict=kwdict,kw=kw)
+  hpzbeam(kwdict=kwdict)
 def hzvbeam(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvbeam(kwdict=kwdict,kw=kw)
+  hpvbeam(kwdict=kwdict)
 def hzbmlen(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpbmlen(kwdict=kwdict,kw=kw)
+  hpbmlen(kwdict=kwdict)
 def hzefld(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpefld(kwdict=kwdict,kw=kw)
+  hpefld(kwdict=kwdict)
 def hzekzmbe(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpekzmbe(kwdict=kwdict,kw=kw)
+  hpekzmbe(kwdict=kwdict)
 def hzekzbeam(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpekzbeam(kwdict=kwdict,kw=kw)
+  hpekzbeam(kwdict=kwdict)
 def hzekperp(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpekperp(kwdict=kwdict,kw=kw)
+  hpekperp(kwdict=kwdict)
 def hzekinz(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpekinz(iw=iw,kwdict=kwdict,kw=kw)
+  hpekinz(iw=iw,kwdict=kwdict)
 def hzekin(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpekin(iw=iw,kwdict=kwdict,kw=kw)
+  hpekin(iw=iw,kwdict=kwdict)
 def hzepsx(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsx(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsx(iw=iw,kwdict=kwdict)
 def hzepsy(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsy(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsy(iw=iw,kwdict=kwdict)
 def hzepsz(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsz(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsz(iw=iw,kwdict=kwdict)
 def hzepsnx(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsnx(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsnx(iw=iw,kwdict=kwdict)
 def hzepsny(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsny(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsny(iw=iw,kwdict=kwdict)
 def hzepsnz(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsnz(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsnz(iw=iw,kwdict=kwdict)
 def hzepsg(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsg(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsg(iw=iw,kwdict=kwdict)
 def hzepsh(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsh(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsh(iw=iw,kwdict=kwdict)
 def hzepsng(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsng(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsng(iw=iw,kwdict=kwdict)
 def hzepsnh(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsnh(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsnh(iw=iw,kwdict=kwdict)
 def hzpnum(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hppnum(iw=iw,kwdict=kwdict,kw=kw)
+  hppnum(iw=iw,kwdict=kwdict)
 def hzrhomid(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hprhomid(iw=iw,kwdict=kwdict,kw=kw)
+  hprhomid(iw=iw,kwdict=kwdict)
 def hzrhomax(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hprhomax(iw=iw,kwdict=kwdict,kw=kw)
+  hprhomax(iw=iw,kwdict=kwdict)
 def hzxbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxbar(iw=iw,kwdict=kwdict)
 def hzybar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpybar(iw=iw,kwdict=kwdict,kw=kw)
+  hpybar(iw=iw,kwdict=kwdict)
 def hzxybar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxybar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxybar(iw=iw,kwdict=kwdict)
 def hzxrms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxrms(iw=iw,kwdict=kwdict,kw=kw)
+  hpxrms(iw=iw,kwdict=kwdict)
 def hzyrms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyrms(iw=iw,kwdict=kwdict,kw=kw)
+  hpyrms(iw=iw,kwdict=kwdict)
 def hzrrms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hprrms(iw=iw,kwdict=kwdict,kw=kw)
+  hprrms(iw=iw,kwdict=kwdict)
 def hzxprms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxprms(iw=iw,kwdict=kwdict,kw=kw)
+  hpxprms(iw=iw,kwdict=kwdict)
 def hzyprms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyprms(iw=iw,kwdict=kwdict,kw=kw)
+  hpyprms(iw=iw,kwdict=kwdict)
 def hzxsqbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxsqbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxsqbar(iw=iw,kwdict=kwdict)
 def hzysqbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpysqbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpysqbar(iw=iw,kwdict=kwdict)
 def hzvxbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvxbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpvxbar(iw=iw,kwdict=kwdict)
 def hzvybar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvybar(iw=iw,kwdict=kwdict,kw=kw)
+  hpvybar(iw=iw,kwdict=kwdict)
 def hzvzbar(iw=0,beamframe=1,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvzbar(iw=iw,beamframe=beamframe,kwdict=kwdict,kw=kw)
+  hpvzbar(iw=iw,beamframe=beamframe,kwdict=kwdict)
 def hzxpbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxpbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxpbar(iw=iw,kwdict=kwdict)
 def hzypbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpypbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpypbar(iw=iw,kwdict=kwdict)
 def hzvxrms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvxrms(iw=iw,kwdict=kwdict,kw=kw)
+  hpvxrms(iw=iw,kwdict=kwdict)
 def hzvyrms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvyrms(iw=iw,kwdict=kwdict,kw=kw)
+  hpvyrms(iw=iw,kwdict=kwdict)
 def hzvzrms(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvzrms(iw=iw,kwdict=kwdict,kw=kw)
+  hpvzrms(iw=iw,kwdict=kwdict)
 def hzxpsqbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxpsqbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxpsqbar(iw=iw,kwdict=kwdict)
 def hzypsqbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpypsqbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpypsqbar(iw=iw,kwdict=kwdict)
 def hzxxpbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxxpbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxxpbar(iw=iw,kwdict=kwdict)
 def hzyypbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyypbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpyypbar(iw=iw,kwdict=kwdict)
 def hzxypbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxypbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxypbar(iw=iw,kwdict=kwdict)
 def hzyxpbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyxpbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpyxpbar(iw=iw,kwdict=kwdict)
 def hzxpypbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxpypbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxpypbar(iw=iw,kwdict=kwdict)
 def hzxvzbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxvzbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpxvzbar(iw=iw,kwdict=kwdict)
 def hzyvzbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyvzbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpyvzbar(iw=iw,kwdict=kwdict)
 def hzvxvzbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvxvzbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpvxvzbar(iw=iw,kwdict=kwdict)
 def hzvyvzbar(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvyvzbar(iw=iw,kwdict=kwdict,kw=kw)
+  hpvyvzbar(iw=iw,kwdict=kwdict)
 def hzlinechg(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hplinechg(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hplinechg(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvzofz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvzofz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvzofz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzepsxz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsxz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpepsxz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzepsyz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsyz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpepsyz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzepsnxz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsnxz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpepsnxz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzepsnyz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsnyz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpepsnyz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzepsgz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsgz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpepsgz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzepshz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepshz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpepshz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzepsngz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsngz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpepsngz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzepsnhz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsnhz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpepsnhz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzyrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpyrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzrrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hprrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hprrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxprmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxprmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxprmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzyprmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyprmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpyprmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxsqbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxsqbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzysqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpysqbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpysqbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvxbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvxbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvybarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxpbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxpbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvxrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvxrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvxrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvyrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvyrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvyrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvzrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvzrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvzrmsz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxpsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxpsqbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxpsqbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzypsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpypsqbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpypsqbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxxpbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxxpbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzyypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpyypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzyxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyxpbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpyxpbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxpypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxpypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxpypbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzxvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpxvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzyvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpyvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvxvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvxvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvxvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hzvyvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpvyvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpvyvzbarz(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 def hztotalke(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hptotalke(kwdict=kwdict,kw=kw)
+  hptotalke(kwdict=kwdict)
 def hztotale(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hptotale(kwdict=kwdict,kw=kw)
+  hptotale(kwdict=kwdict)
 def hzthermale(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpthermale(iw=iw,kwdict=kwdict,kw=kw)
+  hpthermale(iw=iw,kwdict=kwdict)
 def hzeps6d(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpeps6d(iw=iw,kwdict=kwdict,kw=kw)
+  hpeps6d(iw=iw,kwdict=kwdict)
 def hzepst(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepst(iw=iw,kwdict=kwdict,kw=kw)
+  hpepst(iw=iw,kwdict=kwdict)
 def hzepsnt(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpepsnt(iw=iw,kwdict=kwdict,kw=kw)
+  hpepsnt(iw=iw,kwdict=kwdict)
 def hzxedge(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxedge(iw=iw,kwdict=kwdict,kw=kw)
+  hpxedge(iw=iw,kwdict=kwdict)
 def hzxpedge(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxpedge(iw=iw,kwdict=kwdict,kw=kw)
+  hpxpedge(iw=iw,kwdict=kwdict)
 def hzyedge(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyedge(iw=iw,kwdict=kwdict,kw=kw)
+  hpyedge(iw=iw,kwdict=kwdict)
 def hzypedge(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpypedge(iw=iw,kwdict=kwdict,kw=kw)
+  hpypedge(iw=iw,kwdict=kwdict)
 def hzredge(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpredge(iw=iw,kwdict=kwdict,kw=kw)
+  hpredge(iw=iw,kwdict=kwdict)
 def hzxedges(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpxedges(iw=iw,kwdict=kwdict,kw=kw)
+  hpxedges(iw=iw,kwdict=kwdict)
 def hzyedges(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpyedges(iw=iw,kwdict=kwdict,kw=kw)
+  hpyedges(iw=iw,kwdict=kwdict)
 def hzredges(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpredges(iw=iw,kwdict=kwdict,kw=kw)
+  hpredges(iw=iw,kwdict=kwdict)
 def hzenvx(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpenvx(iw=iw,kwdict=kwdict,kw=kw)
+  hpenvx(iw=iw,kwdict=kwdict)
 def hzenvy(iw=0,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpenvy(iw=iw,kwdict=kwdict,kw=kw)
+  hpenvy(iw=iw,kwdict=kwdict)
 def hzcurr(contour=0,overlay=0,iz=None,kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'
+  kw.update(kwdict)
   kwdict['lhzbeam'] = 1
-  hpcurr(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict,kw=kw)
+  hpcurr(contour=contour,overlay=overlay,iz=iz,kwdict=kwdict)
 
 
 def histplotsdoc():
