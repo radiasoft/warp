@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.99 2004/12/22 22:14:43 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.100 2004/12/23 01:30:44 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1749,12 +1749,15 @@ Cylinders class for a list of cylinders
     self.xcent  = self.xcent*ones(self.ncylinders)
     self.ycent  = self.ycent*ones(self.ncylinders)
     self.zcent  = self.zcent*ones(self.ncylinders)
-    self.extent = ConductorExtent([min(self.xcent-self.radius),
-                                   min(self.ycent-self.radius),
-                                   min(self.zcent-self.length/2.)],
-                                  [max(self.xcent-self.radius),
-                                   max(self.ycent-self.radius),
-                                   max(self.zcent-self.length/2.)])
+
+    rmax = sqrt(self.radius**2 + (self.length/2.)**2)
+    xmin = min(self.xcent-rmax)
+    ymin = min(self.ycent-rmax)
+    zmin = min(self.zcent-rmax)
+    xmax = max(self.xcent+rmax)
+    ymax = max(self.ycent+rmax)
+    zmax = max(self.zcent+rmax)
+    self.extent = ConductorExtent([xmin,ymin,zmin],[xmax,ymax,zmax])
 
 #============================================================================
 class ZCylinder(Assembly):
@@ -2288,10 +2291,14 @@ Cones
     self.ycent  = self.ycent*ones(self.ncones)
     self.zcent  = self.zcent*ones(self.ncones)
 
-    xmax = max(max(self.xcent+self.r_zmin),max(self.xcent+self.r_zmax))
-    ymax = max(max(self.ycent+self.r_zmin),max(self.ycent+self.r_zmax))
-    self.extent = ConductorExtent([-xmax,-ymax,min(self.zcent-self.length/2.)],
-                                  [+xmax,+ymax,max(self.zcent+self.length/2.)])
+    rmax = sqrt(maximum(self.r_zmin,self.r_zmax)**2 + (self.length/2.)**2)
+    xmin = min(self.xcent-rmax)
+    ymin = min(self.ycent-rmax)
+    zmin = min(self.zcent-rmax)
+    xmax = max(self.xcent+rmax)
+    ymax = max(self.ycent+rmax)
+    zmax = max(self.zcent+rmax)
+    self.extent = ConductorExtent([xmin,ymin,zmin],[xmax,ymax,zmax])
 
 #============================================================================
 class ZTorus(Assembly):
