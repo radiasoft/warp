@@ -1,45 +1,111 @@
-# This sets up a runcounter that can keep track of a runnumber from run to
+# This sets up a runcounter that can keep track of a counter from run to
 # run. The run number is save in a file in between runs.
 from warp import *
 import time
 import string
-runcounter_version = "$Id: runcounter.py,v 1.8 2004/01/08 21:09:26 dave Exp $"
+import sys, copy
+runcounter_version = "$Id: runcounter.py,v 1.9 2004/01/21 21:51:50 dave Exp $"
 
-def runcounter(init=0,delta=1,suffix=None,sleep=0,ensambles=None):
-  if not suffix: suffix = arraytostr(top.runid)
+def runcounter(init=0,delta=1,ensambles=[],prefix=None,suffix="_runcounter",
+               sleep=0):
+  """
+Each time runcounter is called, it will return a number incremented from the
+previous result by a given delta, defaulting to 1. The state is stored
+in filed so that incrementing can be done across multiple runs. This
+allows for example parameter scans.
+ - init=0: initial value which is returned the first time runcounter is
+           called.
+ - delta=1: value number if incremented by
+ - ensambles=None: size of multiple ensambles
+ - prefix=runid: prefix for file name where state is stored.
+ - suffix="_runcounter": suffix for file name
+
+Using ensambles, multiple counters can be returned. The number of counters
+returned is one greater than the number of ensambles. When a counter reaches
+its ensamble value, it is reset and the next counter is incremented. init and
+delta can be lists specifying the initial value and delta for each ensamble.
+They default to 0 and 1 respectively.
+For example, if ensambles = [10,15], the returned value will be a tuple of
+three numbers. The first between 0 and 9, the second between 0 and 14, and the
+third ever increasing. Each run, the first number will be incremented, every
+10 runs the second will be incremented and the first reset, etc.
+  """
+
+  # --- Set default prefix
+  if not prefix: prefix = arraytostr(top.runid)
+
+  # --- Handle ensambles
+  assert type(ensambles) in [IntType,ListType,TupleType,ArrayType],\
+         'ensambles must either be an integer or one of a list, tuple, or array'
+  # --- Make sure it is a list and make sure that it is a copy since it is
+  # --- appended to.
+  if type(ensambles) == IntType: ensambles = [ensambles]
+  ensambles = copy.copy(list(ensambles))
+  # --- Add the maximum value of integers to the last value. This simplifies
+  # --- the code below.
+  ensambles.append(sys.maxint)
   
-  try:
-    # --- Try to open the runnumber file
-    runnumberfile = open(suffix+"_runnumber","r")
-    runnumber = string.atoi(runnumberfile.readline()) + delta
-    runnumberfile.close()
-  except IOError:
-    # --- If no such file, then set to initial runnumber
-    runnumber = init
+  # --- Handle init values
+  assert type(init) in [IntType,ListType,TupleType,ArrayType],\
+         'init must either be an integer or one of a list, tuple, or array'
+  # --- Make sure it is a list
+  if type(init) == IntType: init = [init]
+  init = list(init)
+  # --- Make sure that init is the same length as ensambles by appending zeroes
+  while len(init) < len(ensambles): init.append(0)
 
-  # --- Make sure that every processor has read in runnumber already
+  # --- Handle delta values
+  assert type(delta) in [IntType,ListType,TupleType,ArrayType],\
+         'delta must either be an integer or one of a list, tuple, or array'
+  # --- Make sure it is a list
+  if type(delta) == IntType: delta = [delta]
+  delta = list(delta)
+  # --- Make sure that delta is the same length as ensambles by appending ones
+  while len(delta) < len(ensambles): delta.append(1)
+
+  try:
+    # --- Try to open the runcounter file
+    runcounterfile = open(prefix+suffix,"r")
+    # --- Read in the state, converting each number into an integer
+    counter = map(string.atoi,string.split(runcounterfile.readline()))
+    runcounterfile.close()
+  except IOError:
+    # --- If no such file, then flag counter
+    counter = None
+
+  # --- Increment the counter (if not the initial call)
+  if counter is not None:
+    # --- Add the delta to the first element
+    counter[0] = counter[0] + delta[0]
+    # --- Loop over elements, checking if each is greater than the
+    # --- size of the ensambles
+    # --- Note that because sys.maxint is in the last element, i can
+    # --- never go beyond the end of the lists.
+    i = 0
+    while counter[i] >= ensambles[i]:
+      counter[i] = init[i]
+      i = i + 1
+      counter[i] = counter[i] + delta[i]
+  else:
+    counter = init
+
+  # --- Make sure that every processor has read in counter already
   if npes>0: mpi.barrier()
 
   # --- PE0 (or serial job) can now write out the next value
   if me == 0:
-    runnumberfile = open(suffix+"_runnumber","w")
-    runnumberfile.write("%d\n"%(runnumber))
-    runnumberfile.close()
+    runcounterfile = open(prefix+suffix,"w")
+    runcounterfile.write(string.join(map(repr,counter)) + '\n')
+    runcounterfile.close()
 
   # --- Make this job wait a few seconds to make sure it is not running
   # --- the same time as another job in this series.
   # --- This is an attempt to prevent simultaneaous writes to a data file.
-  if sleep > 0: time.sleep((runnumber-init)*sleep)
+  if sleep > 0: time.sleep((counter[0]-init[0])*sleep)
 
-  if ensambles is None:
-    return runnumber
-  else:
-    r = []
-    for e in ensambles:
-      r.append(runnumber % e)
-      runnumber = int(runnumber/e)
-    r.append(runnumber)
-    return tuple(r)
+  # --- Return the counter as a tuple so it can be returned to multiple
+  # --- variables.
+  return tuple(counter)
 
 def accumulatedata(filename,datadict,scalardict={},pe0only=1):
   """
