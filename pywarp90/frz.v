@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.14 $, $Date: 2002/06/18 22:15:33 $
+#@(#) File FRZ.V, version $Revision: 3.15 $, $Date: 2002/06/19 22:35:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.14 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.15 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -52,10 +52,10 @@ mgridrz_mgiters           real /0/      # actual number of iterations for a solv
 mgridrz_sub_accuracy      real /1.e-1/  # average accuracy for a sublevel
 mgridrz_deform            logical /.false./ # flag for use of elliptic deformation
 mgridrz_nz                integer       # 
-mgridrz_xfact(0:mgridrz_nz) _real         # array for deformation factor in X
-mgridrz_yfact(0:mgridrz_nz) _real         # array for deformation factor in Y
-mgridrz_lmr               logical /.false./ # flag for mesh refinement 
-mgridrz_inj_id            integer /1/    # ID of grid to be used for injection
+mgridrz_xfact(0:mgridrz_nz) _real       # array for deformation factor in X
+mgridrz_yfact(0:mgridrz_nz) _real       # array for deformation factor in Y
+mgridrz_ngrids            integer  /1/  # number of grids (useful when using mesh refinement)
+mgridrz_grid_is(mgridrz_ngrids)   _integer # array id grid associated with grid species 
 
 *********** FRZsubs:
 #  Callable subroutines in the FRZ package
@@ -101,9 +101,13 @@ add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
          # add a subgrid to the grid id
 get_phi_subgrid(id:integer,phi:real,nr:integer,nz:integer) subroutine
          # get the potential of grid id
+get_array_subgrid(id:integer,phi:real,nr:integer,nz:integer,which:string) subroutine
+         # get the potential of grid id
 set_rho_rz(rho:real,nr:integer,nz:integer,id:integer) subroutine
          # set rho of grid id       
-get_rho_rz(rho:real,nr:integer,nz:integer,id:integer) subroutine
+get_rho_rz(rho:real,nr:integer,nz:integer,id:integer,rhop:integer) subroutine
          # get rho of grid id
 find_mgparam_rz() subroutine
          # RZ version of find_mgparam. Does the search for each subgrid.
+gchange_rhop_phip_rz() subroutine
+         # reallocate rhop and phip arrays
