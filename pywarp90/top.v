@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.74 $, $Date: 2003/03/03 20:04:20 $
+#@(#) File TOP.V, version $Revision: 3.75 $, $Date: 2003/03/06 01:32:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.74 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.75 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -88,6 +88,7 @@ fstime      real /0./ # Time to do the field solve, including beforefs and
 latticetime real /0./ # Time to apply the fields from the lattice
 dumptime    real /0./ # Time to do the data dumps, using the dump command
                       # (in seconds)
+temperaturestime real /0./ # Time to calculate the temperatures (in seconds)
 
 *********** Beam_acc dump:
 # Beam and Accelerator variables needed by more than one package
@@ -1017,6 +1018,8 @@ inj_d(ninject)      _real /1./ # Distance from surface where phi is fetched.
                                # In units of dz.
 inj_f(ninject)      _real /1./ # Scaling factor on the number of particles
                                # injected.
+inj_dtemp(ninject)  _real /0./ # Distance from surface where temperature is added.
+                               # In units of dz.
 lvinject logical /.false./ # Sets whether injection source is included
                            # in field solve
 vinject(ninject)  _real    # Voltage on the injection source
@@ -1593,6 +1596,8 @@ npmaxb integer    /0/  # Maximum no. of particles for xp, yp, uxp, uyp
 npid   integer    /1/  # number of columns for pid.
 npmaxi integer    /1/  # Maximum no. of particles for pid.
 wpid   integer    /0/  # position of particle weights in array pid
+tpid   integer    /0/  # position of particle creation time in array pid
+rpid   integer    /0/  # position of particle initial radius in array pid
 sm(ns) _real [kg] /0./ # Species mass
 sq(ns) _real [C]  /0./ # Species charge
 sw(ns) _real [1]  /0./ # Species weight
@@ -1607,6 +1612,21 @@ uxp(npmaxb)    _real  [m/s]      # gamma * X-velocities of particles
 uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
 pid(npmaxi,npid) _real    [1]      # Particle index - user for various purposes
+
+*********** Scraped_Particles dump parallel:
+# Arrays for scraped particles
+scr_np             integer  /0/   # Total no. of scraped particles. 
+scr_npmax          integer  /0/   # Max. no. of scraped particles.
+scr_npbunch        integer  /10000/ # Number of particles in a bunch
+scr_ns             integer  /1/   # number of species
+scr_ins(scr_ns)        _integer /1/   # Index of first particle in species
+scr_nps(scr_ns)        _integer /0/   # Number of particles in species
+scr_xp(scr_npmax)  _real    [m]   # X-position
+scr_yp(scr_npmax)  _real    [m]   # Y-position
+scr_zp(scr_npmax)  _real    [m]   # Z-position
+scr_uxp(scr_npmax) _real    [m/s] # gamma * X-velocities of particles
+scr_uyp(scr_npmax) _real    [m/s] # gamma * Y-velocities of particles
+scr_uzp(scr_npmax) _real    [m/s] # gamma * Z-velocities of particles
 
 *********** LostParticles dump parallel:
 lsavelostpart logical /.false./ # Flag setting whether lost particles are saved
@@ -1699,6 +1719,10 @@ getzmmnt(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
          q:real,m:real,w:real,dt:real,itask,nplive,
          uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer)
             subroutine # Sets moments as a function of z for species 1
+getzmmnt_weights(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
+         wp:real,q:real,m:real,w:real,dt:real,itask,nplive,
+         uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer)
+            subroutine # Sets moments as a function of z for species 1 with variables weights
 periz(np,zp:real,zgrid:real,zmmax:real,zmmin:real)
             subroutine # Imposes periodicity on z
 griddedparticlescraper(is:integer,distance:real,
@@ -1737,8 +1761,15 @@ getgrid1d(np:integer,x:real,z:real,nx:integer,grid:real,xmin:real,xmax:real)
         # Gathers data from a 1-D grid.
 setgrid2d(np:integer,x:real,y:real,nx:integer,ny:integer,grid:real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
-        # Deposits data onto a 2-D grid.
+        # Deposits uniform data onto a 2-D grid.
 deposgrid2d(itask:integer,np:integer,x:real,y:real,z:real,nx:integer,ny:integer,
+            grid:real,gridcount,xmin:real,xmax:real,ymin:real,ymax:real)
+        subroutine
+        # Deposits data onto a 2-D grid.
+setgrid2dw(np:integer,x:real,y:real,w:real,nx:integer,ny:integer,grid:real,
+          xmin:real,xmax:real,ymin:real,ymax:real) subroutine
+        # Deposits uniform data onto a 2-D grid.
+deposgrid2dw(itask:integer,np:integer,x:real,y:real,z:real,w:real,nx:integer,ny:integer,
             grid:real,gridcount,xmin:real,xmax:real,ymin:real,ymax:real)
         subroutine
         # Deposits data onto a 2-D grid.
@@ -1747,12 +1778,22 @@ getgrid2d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,grid:real,
         # Gathers data from a 2-D grid.
 setgrid3d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,nz:integer,
           grid:real,xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)        subroutine
+        # Deposits uniform data onto a 3-D grid.
+deposgrid3d(itask:integer,np:integer,x:real,y:real,z:real,q:real,
+            nx:integer,ny:integer,nz:integer,grid:real,gridcount,
+            xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real)
+        subroutine
         # Deposits data onto a 3-D grid.
 getgrid3d(np:integer,x:real,y:real,z:real,f:real,
           nx:integer,ny:integer,nz:integer,grid:real,
           xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
           l2symtry:logical,l4symtry:logical) subroutine
         # Gathers data from a 3-D grid.
+grid2grid(unew:real,nxnew:integer,nynew:integer,
+          xminnew:real,xmaxnew:real,yminnew:real,ymaxnew:real,
+          uold:real,nxold:integer,nyold:integer,
+          xminold:real,xmaxold:real,yminold:real,ymaxold:real) subroutine
+        # project field from one grid to another
 getpsgrd(np,xp:real,uxp:real,nw,nh,psgrd:real,wmin:real,wmax:real,hmin:real,
          hmax:real,zl:real,zr:real,zp:real,uzp:real,slope:real)
               subroutine # lays particles onto slanted mesh in phase space
@@ -1831,13 +1872,14 @@ fnice(i,e10:real)
 alotpart()   subroutine # Allocate for particles and setup associated data
 chckpart(is:integer,nlower:integer,nhigher:integer,lfullshft:logical)
              subroutine # Makes sure there is enough space for nn particles.
-addpart(nn:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,gi:real,
+addpart(nn:integer,npid:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
+        gi:real,pid:real,
         is:integer,lallindomain:logical,zmmin:real,zmmax:real,
         lmomentum:logical)
              subroutine # Adds new particles to the simulation
 clearpart(js:integer,fillmethod:integer)
              subroutine # Clears away lost particles.
-processlostpart(is:integer,clearlostpart:integer,time:real)
+processlostpart(is:integer,clearlostpart:integer,time:real,zbeam:real)
              subroutine # Processes lost particles (particles which have
                         # gaminv set to zero).
 load2d(np,x:real,y:real,nx,ny,n:real,dx:real,dy:real)
@@ -1959,3 +2001,61 @@ r_STdiscs(n_STdiscs)  _real               # Radii of semitransparent discs
 t_STdiscs(n_STdiscs)  _real               # Transparency of semitransparent discs
 semitransparent_disc(dz:real) subroutine # Randomly absorb particles passing through disc based on data in group SemiTransparentDisc.
 					 # dz is the maximum distance traveled by particles in one time step.
+
+*********** Temperatures dump:
+nstmp integer /1/ # nb species
+l_temp                 logical /.false./ # compute temperature in true
+l_temp_collapseinz     logical /.false./ # collapse z-slices in temperature calculations
+l_temp_rmcorrelations  logical /.true./  # remove x*v correlations in temperature calculations
+l_accumulate_temperatures logical /.false./ # allows accumulation of data for temperatures
+nxtslices    integer    /0/   # nb cells in x of temperature slices
+nytslices    integer    /0/   # nb cells in y of temperature slices
+nztslices    integer    /1/   # nb temperature slices
+nxtslicesc   integer    /0/   # nb cells in x of temperature slices (correlation variables)
+nytslicesc   integer    /0/   # nb cells in y of temperature slices (correlation variables)
+nztslicesc   integer    /1/   # nb temperature slices               (correlation variables)
+tslicexmin(nztslices) _real   # min in x of temperature slices
+tslicexmax(nztslices) _real   # max in x of temperature slices
+tsliceymin(nztslices) _real   # min in y of temperature slices
+tsliceymax(nztslices) _real   # max in y of temperature slices
+tslicezmin(nztslices) _real   # min in z of temperature slices
+tslicezmax(nztslices) _real   # max in z of temperature slices
+dxti(nztslices)       _real   # inverse mesh size in x for temperature slices
+dyti(nztslices)       _real   # inverse mesh size in y for temperature slices
+pnumt(0:nxtslices,0:nytslices,nztslices)      _real # nb particles    in temperature slices
+pnumtw(0:nxtslices,0:nytslices,nztslices)     _real # weights         in temperature slices
+vxbart(0:nxtslices,0:nytslices,nztslices)     _real # average of vx   in temperature slices
+vybart(0:nxtslices,0:nytslices,nztslices)     _real # average of vy   in temperature slices
+vzbart(0:nxtslices,0:nytslices,nztslices)     _real # average of vz   in temperature slices
+vxsqbart(0:nxtslices,0:nytslices,nztslices)   _real # average of vx^2 in temperature slices
+vysqbart(0:nxtslices,0:nytslices,nztslices)   _real # average of vy^2 in temperature slices
+vzsqbart(0:nxtslices,0:nytslices,nztslices)   _real # average of vz^2 in temperature slices
+xbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of x    in temperature slices
+ybart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of y    in temperature slices
+zbart(0:nxtslicesc,0:nytslicesc,nztslicesc)   _real # average of z    in temperature slices
+xsqbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of x^2  in temperature slices
+ysqbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of y^2  in temperature slices
+zsqbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of z^2  in temperature slices
+xvxbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of x*vx in temperature slices
+yvybart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of y*vy in temperature slices
+zvzbart(0:nxtslicesc,0:nytslicesc,nztslicesc) _real # average of z*vz in temperature slices
+tempx(0:nxtslices,0:nytslices,nztslices,nstmp) _real # x-temperature  in temperature slices
+tempy(0:nxtslices,0:nytslices,nztslices,nstmp) _real # y-temperature  in temperature slices
+tempz(0:nxtslices,0:nytslices,nztslices,nstmp) _real # z-temperature  in temperature slices
+tempxz(nztslices,nstmp) _real # x-temperature  in temperature slices
+tempyz(nztslices,nstmp) _real # y-temperature  in temperature slices
+tempzz(nztslices,nstmp) _real # z-temperature  in temperature slices
+nztlocator integer /1/ # nb meshes locator temperature slices
+ntlmax     integer /1/ # max nb of slices in locator temperature slices
+ntl(nztlocator) _integer # nb of slices in locator temperature slices
+tslice_locator(nztlocator,ntlmax) _integer # locator array for temperature array
+tloc_zmin  real # min locator temperature array 
+tloc_zmax  real # max locator temperature array 
+tloc_dzi   real # inverse mesh size locator temperature array 
+gett(is:integer,itask:integer) subroutine # get temperature for species is 
+setregulartgrid(nx:integer,ny:integer,nz:integer,
+                xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
+                dz:real,nzloc:integer,lcollapse:logical,lcorrel:logical) subroutine 
+                # set slices regularly in z between zmin and zmax.
+                # nzloc refers to the number of nodes of a lookup table for fast 
+                # localization of temperature slices. In general setting nzloc=w3d.nz is good.
