@@ -57,26 +57,25 @@ class AMRTree(Visualizable):
            + 0.5*abs((g[1:-1,2:  ]-g[1:-1,1:-1])/dx)
       else:
         s=shape(f)
-        nx = s[0]
-        ny = s[1]
-        nz = s[2]
-        g = fzeros([nx+2,ny+2,nz+2],Float)
+        g = fzeros(array(s)+2,Float)
         # fill interior
         g[1:-1,1:-1,1:-1] = f
         # set boundaries
-        g[0   ,1:-1,1:-1]=2.*f[0 ,: ,: ]-f[1 ,: ,: ]
-        g[-1  ,1:-1,1:-1]=2.*f[-1,: ,: ]-f[-2,: ,: ]
-        g[1:-1,0   ,1:-1]=2.*f[: ,0 ,: ]-f[: ,1 ,: ]
-        g[1:-1,-1  ,1:-1]=2.*f[: ,-1,: ]-f[: ,-2,: ]
-        g[1:-1,1:-1,0   ]=2.*f[: ,: ,0 ]-f[: ,: ,1 ]
-        g[1:-1,1:-1,-1  ]=2.*f[: ,: ,-1]-f[: ,: ,-2]
+        g[0   ,1:-1,1:-1] = f[1 ,: ,: ]
+        g[-1  ,1:-1,1:-1] = f[-2,: ,: ]
+        g[1:-1,0   ,1:-1] = f[: ,1 ,: ]
+        g[1:-1,-1  ,1:-1] = f[: ,-2,: ]
+        g[1:-1,1:-1,0   ] = f[: ,: ,1 ]
+        g[1:-1,1:-1,-1  ] = f[: ,: ,-2]
         # computes average of gradients
-        gr = 0.5*abs((g[1:-1,1:-1,1:-1]-g[ :-2,1:-1,1:-1])/dz) \
-           + 0.5*abs((g[2:,  1:-1,1:-1]-g[1:-1,1:-1,1:-1])/dz) \
-           + 0.5*abs((g[1:-1,1:-1,1:-1]-g[1:-1, :-2,1:-1])/dy) \
-           + 0.5*abs((g[1:-1,2:  ,1:-1]-g[1:-1,1:-1,1:-1])/dy) \
-           + 0.5*abs((g[1:-1,1:-1,1:-1]-g[1:-1,1:-1, :-2])/dx) \
-           + 0.5*abs((g[1:-1,1:-1,2:  ]-g[1:-1,1:-1,1:-1])/dx)
+        # --- The factor of 0.5 does affect anything since the gradient
+        # --- is scaled by its maximum.
+        gr = abs((g[1:-1,1:-1,1:-1] - g[ :-2,1:-1,1:-1])/dx) \
+           + abs((g[2:,  1:-1,1:-1] - g[1:-1,1:-1,1:-1])/dx) \
+           + abs((g[1:-1,1:-1,1:-1] - g[1:-1, :-2,1:-1])/dy) \
+           + abs((g[1:-1,2:  ,1:-1] - g[1:-1,1:-1,1:-1])/dy) \
+           + abs((g[1:-1,1:-1,1:-1] - g[1:-1,1:-1, :-2])/dz) \
+           + abs((g[1:-1,1:-1,2:  ] - g[1:-1,1:-1,1:-1])/dz)
       return gr
 
     def getedges_byslice(self,f,dx,dy,dz,threshold):
@@ -524,6 +523,7 @@ class AMRTree(Visualizable):
         self.nbcells=self.getnbcells(self.f,dx,dy,dz,self.Rdens,self.threshold,self.Rgrad,
                                      MRfact=self.MRfact,lmax=self.maxcells_isolated_blocks)
         nbcells=self.nbcells
+        self.f = None
       else:
         nbcells=self.nbcells_user
                                    
