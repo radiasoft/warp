@@ -5,7 +5,7 @@
 HDF basic writer class PW by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWpyt.py,v 1.5 2003/10/29 22:27:12 dave Exp $
+$Id: PWpyt.py,v 1.6 2003/10/29 22:58:20 dave Exp $
 """
 import tables
 import cPickle
@@ -192,7 +192,7 @@ class PW:
             raise "Array must not have a dimension of length zero"
           h.createArray(self.inquire_group(),name,quantity)
         else:
-          h.createArray(self.inquire_group(),name,cPickle.dumps(quantity,bin=1),"Pickled")
+          h.createArray(self.inquire_group(),name,cPickle.dumps(quantity,1),"Pickled")
 
     def defent(self, name, quantity, indx):
         """Define entry for quantity in file as 'name'"""
@@ -203,7 +203,7 @@ class PW:
 
 
 if __name__ == "__main__":
-    f=PW("foo.pdb")
+    f=PW("foo.hdf")
     a = 1
     b = 2.0
     c = "Hello world"
@@ -221,17 +221,17 @@ if __name__ == "__main__":
     f.g = g
     f.h = h
     f.close()
-    f.open("foo.pdb", "a")
+    f.open("foo.hdf", "a")
     f.k = k
     f.close()
 # read-back test
     from PR import PR
-    f = PR('foo.pdb')
+    f = PR('foo.hdf')
     for x in f.inquire_names():
         print x, "is", eval(x), ", in file it is", eval('f.'+x)
     f.close()
 # record-writing
-    g = PW('goo.pdb')
+    g = PW('goo.hdf')
     g.set_verbosity(1)
     xh = array([0.]*4)
     for i in range(len(xh)):
@@ -239,7 +239,7 @@ if __name__ == "__main__":
         g.write('xh', x, i + 1)
         xh [i] = x
     g.close()
-    g = PR('goo.pdb')
+    g = PR('goo.hdf')
     print "xh is", xh, ", file it is ", g.xh
     g.close()
 

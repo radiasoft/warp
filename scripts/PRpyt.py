@@ -8,6 +8,7 @@ import pprint
 import tables
 import sys
 import re
+import cPickle
 
 class PR:
     "HDF file read-access class."
@@ -163,8 +164,15 @@ class PR:
         "read(name) = the value of name as a Python object."
         self.check_open()
         name = self.fixamp.sub(self.amprepl,name)
-        if self.tabledict.has_key(name): return self.tabledict[name]
-        return self.inquire_file().getNode(self.inquire_group()+name).read()
+        if self.tabledict.has_key(name):
+          return self.tabledict[name]
+        else:
+          node = self.inquire_file().getNode(self.inquire_group()+name)
+          data = node.read()
+          if node.title == "Pickled":
+            return cPickle.loads(data)
+          else:
+            return data
 
     def read_part(self, name, triples):
         """read_part(name, triples) =  part of the value of name 
