@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.35 2004/03/04 17:20:35 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.36 2004/03/05 14:43:05 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -519,7 +519,7 @@ Constructor arguments:
     tt = span(0.,2*pi,101)
     for sx,sy,da,w in [(+1,0,0.,s.withx),(-1,0,pi,s.withx),
                        (0,+1,+pi/2.,s.withy),(0,-1,-pi/2.,s.withy)]:
-      if not w: cycle
+      if not w: continue
       xx = s.rr*cos(tt+da) + sx*(s.ap + s.rr) + s.ox
       yy = s.rr*sin(tt+da) + sy*(s.ap + s.rr) + s.oy
       ii = s.ingrid(xx,yy)
