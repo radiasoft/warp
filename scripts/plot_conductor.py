@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.75 2004/04/08 21:28:04 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.76 2004/04/14 17:37:54 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -19,7 +19,12 @@ pfzxlab: makes the pfzx plot in the lab frame (including any bends)
 plotsrfrv: handy command to plot r versus z for a suface of revolution, giving
            the function describing it
 
-plotquadoutline: plots outline of quadrupole structure
+plotquadoutline: plots outline of quadrupole structure for quad elements
+plotheleoutline: plots outline of quadrupole structure for hele elements
+plotemltoutline: plots outline of quadrupole structure for emlt elements
+plotpgrdoutline: plots outline of quadrupole structure for pgrd elements
+plotaccloutline: plots outline of pipe structure for accl elements
+plotdrftoutline: plots outline of pipe structure for drft elements
 
 visualizeconductors: create 3-D visualization of conductors based on subgrid
                      data
@@ -1894,69 +1899,69 @@ before the conductor data was put into derived types.
   """
   ff = PR.PR(dumpfilename)
 
-  f3d.interior.nmax = ff.read('ncondmax@f3d')
-  f3d.evensubgrid.nmax = ff.read('ncndmax@f3d')
-  f3d.oddsubgrid.nmax = ff.read('ncndmax@f3d')
+  f3d.conductors.interior.nmax = ff.read('ncondmax@f3d')
+  f3d.conductors.evensubgrid.nmax = ff.read('ncndmax@f3d')
+  f3d.conductors.oddsubgrid.nmax = ff.read('ncndmax@f3d')
   gchange('Conductor3d')
 
-  f3d.interior.n = ff.read('ncond@f3d')
-  if f3d.interior.n > 0:
-    f3d.interior.indx[0,:] = ff.read('ixcond@f3d')
-    f3d.interior.indx[1,:] = ff.read('iycond@f3d')
-    f3d.interior.indx[2,:] = ff.read('izcond@f3d')
-    f3d.interior.volt[:] = ff.read('condvolt@f3d')
-    f3d.interior.numb[:] = ff.read('condnumb@f3d')
-    f3d.interior.ilevel[:] = ff.read('icondlevel@f3d')
+  f3d.conductors.interior.n = ff.read('ncond@f3d')
+  if f3d.conductors.interior.n > 0:
+    f3d.conductors.interior.indx[0,:] = ff.read('ixcond@f3d')
+    f3d.conductors.interior.indx[1,:] = ff.read('iycond@f3d')
+    f3d.conductors.interior.indx[2,:] = ff.read('izcond@f3d')
+    f3d.conductors.interior.volt[:] = ff.read('condvolt@f3d')
+    f3d.conductors.interior.numb[:] = ff.read('condnumb@f3d')
+    f3d.conductors.interior.ilevel[:] = ff.read('icondlevel@f3d')
 
-  f3d.evensubgrid.n = ff.read('necndbdy@f3d')
-  if f3d.evensubgrid.n > 0:
-    f3d.evensubgrid.indx[0,:] = ff.read('iecndx@f3d')
-    f3d.evensubgrid.indx[1,:] = ff.read('iecndy@f3d')
-    f3d.evensubgrid.indx[2,:] = ff.read('iecndz@f3d')
-    f3d.evensubgrid.dels[0,:] = ff.read('ecdelmx@f3d')
-    f3d.evensubgrid.dels[1,:] = ff.read('ecdelpx@f3d')
-    f3d.evensubgrid.dels[2,:] = ff.read('ecdelmy@f3d')
-    f3d.evensubgrid.dels[3,:] = ff.read('ecdelpy@f3d')
-    f3d.evensubgrid.dels[4,:] = ff.read('ecdelmz@f3d')
-    f3d.evensubgrid.dels[5,:] = ff.read('ecdelpz@f3d')
-    f3d.evensubgrid.volt[0,:] = ff.read('ecvoltmx@f3d')
-    f3d.evensubgrid.volt[1,:] = ff.read('ecvoltpx@f3d')
-    f3d.evensubgrid.volt[2,:] = ff.read('ecvoltmy@f3d')
-    f3d.evensubgrid.volt[3,:] = ff.read('ecvoltpy@f3d')
-    f3d.evensubgrid.volt[4,:] = ff.read('ecvoltmz@f3d')
-    f3d.evensubgrid.volt[5,:] = ff.read('ecvoltpz@f3d')
-    f3d.evensubgrid.numb[0,:] = ff.read('ecnumbmx@f3d')
-    f3d.evensubgrid.numb[1,:] = ff.read('ecnumbpx@f3d')
-    f3d.evensubgrid.numb[2,:] = ff.read('ecnumbmy@f3d')
-    f3d.evensubgrid.numb[3,:] = ff.read('ecnumbpy@f3d')
-    f3d.evensubgrid.numb[4,:] = ff.read('ecnumbmz@f3d')
-    f3d.evensubgrid.numb[5,:] = ff.read('ecnumbpz@f3d')
-    f3d.evensubgrid.ilevel[:] = ff.read('iecndlevel@f3d')
+  f3d.conductors.evensubgrid.n = ff.read('necndbdy@f3d')
+  if f3d.conductors.evensubgrid.n > 0:
+    f3d.conductors.evensubgrid.indx[0,:] = ff.read('iecndx@f3d')
+    f3d.conductors.evensubgrid.indx[1,:] = ff.read('iecndy@f3d')
+    f3d.conductors.evensubgrid.indx[2,:] = ff.read('iecndz@f3d')
+    f3d.conductors.evensubgrid.dels[0,:] = ff.read('ecdelmx@f3d')
+    f3d.conductors.evensubgrid.dels[1,:] = ff.read('ecdelpx@f3d')
+    f3d.conductors.evensubgrid.dels[2,:] = ff.read('ecdelmy@f3d')
+    f3d.conductors.evensubgrid.dels[3,:] = ff.read('ecdelpy@f3d')
+    f3d.conductors.evensubgrid.dels[4,:] = ff.read('ecdelmz@f3d')
+    f3d.conductors.evensubgrid.dels[5,:] = ff.read('ecdelpz@f3d')
+    f3d.conductors.evensubgrid.volt[0,:] = ff.read('ecvoltmx@f3d')
+    f3d.conductors.evensubgrid.volt[1,:] = ff.read('ecvoltpx@f3d')
+    f3d.conductors.evensubgrid.volt[2,:] = ff.read('ecvoltmy@f3d')
+    f3d.conductors.evensubgrid.volt[3,:] = ff.read('ecvoltpy@f3d')
+    f3d.conductors.evensubgrid.volt[4,:] = ff.read('ecvoltmz@f3d')
+    f3d.conductors.evensubgrid.volt[5,:] = ff.read('ecvoltpz@f3d')
+    f3d.conductors.evensubgrid.numb[0,:] = ff.read('ecnumbmx@f3d')
+    f3d.conductors.evensubgrid.numb[1,:] = ff.read('ecnumbpx@f3d')
+    f3d.conductors.evensubgrid.numb[2,:] = ff.read('ecnumbmy@f3d')
+    f3d.conductors.evensubgrid.numb[3,:] = ff.read('ecnumbpy@f3d')
+    f3d.conductors.evensubgrid.numb[4,:] = ff.read('ecnumbmz@f3d')
+    f3d.conductors.evensubgrid.numb[5,:] = ff.read('ecnumbpz@f3d')
+    f3d.conductors.evensubgrid.ilevel[:] = ff.read('iecndlevel@f3d')
 
-  f3d.oddsubgrid.n = ff.read('nocndbdy@f3d')
-  if f3d.oddsubgrid.n > 0:
-    f3d.oddsubgrid.indx[0,:] = ff.read('iocndx@f3d')
-    f3d.oddsubgrid.indx[1,:] = ff.read('iocndy@f3d')
-    f3d.oddsubgrid.indx[2,:] = ff.read('iocndz@f3d')
-    f3d.oddsubgrid.dels[0,:] = ff.read('ocdelmx@f3d')
-    f3d.oddsubgrid.dels[1,:] = ff.read('ocdelpx@f3d')
-    f3d.oddsubgrid.dels[2,:] = ff.read('ocdelmy@f3d')
-    f3d.oddsubgrid.dels[3,:] = ff.read('ocdelpy@f3d')
-    f3d.oddsubgrid.dels[4,:] = ff.read('ocdelmz@f3d')
-    f3d.oddsubgrid.dels[5,:] = ff.read('ocdelpz@f3d')
-    f3d.oddsubgrid.volt[0,:] = ff.read('ocvoltmx@f3d')
-    f3d.oddsubgrid.volt[1,:] = ff.read('ocvoltpx@f3d')
-    f3d.oddsubgrid.volt[2,:] = ff.read('ocvoltmy@f3d')
-    f3d.oddsubgrid.volt[3,:] = ff.read('ocvoltpy@f3d')
-    f3d.oddsubgrid.volt[4,:] = ff.read('ocvoltmz@f3d')
-    f3d.oddsubgrid.volt[5,:] = ff.read('ocvoltpz@f3d')
-    f3d.oddsubgrid.numb[0,:] = ff.read('ocnumbmx@f3d')
-    f3d.oddsubgrid.numb[1,:] = ff.read('ocnumbpx@f3d')
-    f3d.oddsubgrid.numb[2,:] = ff.read('ocnumbmy@f3d')
-    f3d.oddsubgrid.numb[3,:] = ff.read('ocnumbpy@f3d')
-    f3d.oddsubgrid.numb[4,:] = ff.read('ocnumbmz@f3d')
-    f3d.oddsubgrid.numb[5,:] = ff.read('ocnumbpz@f3d')
-    f3d.oddsubgrid.ilevel[:] = ff.read('iocndlevel@f3d')
+  f3d.conductors.oddsubgrid.n = ff.read('nocndbdy@f3d')
+  if f3d.conductors.oddsubgrid.n > 0:
+    f3d.conductors.oddsubgrid.indx[0,:] = ff.read('iocndx@f3d')
+    f3d.conductors.oddsubgrid.indx[1,:] = ff.read('iocndy@f3d')
+    f3d.conductors.oddsubgrid.indx[2,:] = ff.read('iocndz@f3d')
+    f3d.conductors.oddsubgrid.dels[0,:] = ff.read('ocdelmx@f3d')
+    f3d.conductors.oddsubgrid.dels[1,:] = ff.read('ocdelpx@f3d')
+    f3d.conductors.oddsubgrid.dels[2,:] = ff.read('ocdelmy@f3d')
+    f3d.conductors.oddsubgrid.dels[3,:] = ff.read('ocdelpy@f3d')
+    f3d.conductors.oddsubgrid.dels[4,:] = ff.read('ocdelmz@f3d')
+    f3d.conductors.oddsubgrid.dels[5,:] = ff.read('ocdelpz@f3d')
+    f3d.conductors.oddsubgrid.volt[0,:] = ff.read('ocvoltmx@f3d')
+    f3d.conductors.oddsubgrid.volt[1,:] = ff.read('ocvoltpx@f3d')
+    f3d.conductors.oddsubgrid.volt[2,:] = ff.read('ocvoltmy@f3d')
+    f3d.conductors.oddsubgrid.volt[3,:] = ff.read('ocvoltpy@f3d')
+    f3d.conductors.oddsubgrid.volt[4,:] = ff.read('ocvoltmz@f3d')
+    f3d.conductors.oddsubgrid.volt[5,:] = ff.read('ocvoltpz@f3d')
+    f3d.conductors.oddsubgrid.numb[0,:] = ff.read('ocnumbmx@f3d')
+    f3d.conductors.oddsubgrid.numb[1,:] = ff.read('ocnumbpx@f3d')
+    f3d.conductors.oddsubgrid.numb[2,:] = ff.read('ocnumbmy@f3d')
+    f3d.conductors.oddsubgrid.numb[3,:] = ff.read('ocnumbpy@f3d')
+    f3d.conductors.oddsubgrid.numb[4,:] = ff.read('ocnumbmz@f3d')
+    f3d.conductors.oddsubgrid.numb[5,:] = ff.read('ocnumbpz@f3d')
+    f3d.conductors.oddsubgrid.ilevel[:] = ff.read('iocndlevel@f3d')
 
   ff.close()
 
