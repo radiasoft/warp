@@ -6,7 +6,7 @@ import getopt
 import hibeamlattice
 import string
 from hibeamdefaults import *
-hibeam_version = "$Id: hibeam.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+hibeam_version = "$Id: hibeam.py,v 1.2 2003/04/01 01:59:06 dave Exp $"
 
 
 # --- Get the command line options.
@@ -106,7 +106,7 @@ for e in line:
     top.qoffx[iq] = e.offset_x*errordist(e.error_type)
     top.qoffy[iq] = e.offset_y*errordist(e.error_type)
     zz = zz + e.length
-    if iq = top.nquad:
+    if iq == top.nquad:
       top.nquad = top.nquad + 100
       gchange("Lattice")
   if e.type == 'hyperb':
