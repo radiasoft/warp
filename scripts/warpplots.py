@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.55 2001/10/22 18:51:20 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.56 2001/11/28 23:46:24 ramiak Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -467,6 +467,7 @@ def checkarguments(input,arglist):
     if i in arglist.keys(): del inputcopy[i]
   return inputcopy
 
+
 #-------------------------------------------------------------------------
 # This returns the indices of the particles selected.
 def selectparticles(iw=0,kwdict={},**kw):
@@ -475,6 +476,7 @@ Selects particles based on either subsets or windows. By default it selects
 from window 0, getting all of the live partilces (whose uzp > 0).
   - iw=0: Window to chose from
   - js=0: Species to chose from
+  - jslist=None: List of Species to choose from, e.g. [0,3,4]; -1 for all specs
   - win=top.zwindows+top.zbeam: Windows to use (in lab frame)
   - z=top.zp: Coordinate for range selection
   - ix=-1: When 0 <= ix <= nx, picks particles within xmesh[ix]+-wx*dx
@@ -487,7 +489,7 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   - zu=None: When specified, upper range of selection region
   """
   # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {"js":0,"win":None,"z":None,
+  kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
                 "zl":None,"zu":None,'checkargs':0,'allowbadargs':0}
 
@@ -498,7 +500,7 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   kwvalues.update(kwdict)
   for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
 
-  # --- Check the argument list for bad arguments. 
+  # --- Check the argument list for bad arguments.
   # --- 'checkargs' allows this routine to be called only to check the
   # --- input for bad arguments.
   # --- 'allowbadargs' allows this routine to be called with bad arguments.
@@ -507,6 +509,19 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   if checkargs: return badargs
   if badargs and not allowbadargs:
     raise "bad argument ",string.join(badargs.keys())
+
+#  If jslist defined, call selectparticles repeatedly for each species on the list
+
+  del kwvalues['jslist']    # Remove list so selectparticles is subsequently
+                            # called with one species at a time
+  if jslist is not None:
+    if jslist == -1:    jslist = range(0,top.ns)
+    partlist = array([])
+    for js in jslist:
+        kwvalues['js'] = js
+        newparts = selectparticles(iw, kwvalues)
+        partlist = array(list(partlist)+list(newparts))
+    return partlist
 
   ir1 = top.ins[js]-1
   ir2 = top.ins[js]+top.nps[js]-1
