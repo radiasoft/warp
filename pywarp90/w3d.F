@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.179 $, $Date: 2004/12/01 23:26:03 $
+c@(#) File W3D.F, version $Revision: 3.180 $, $Date: 2004/12/03 01:08:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3686,15 +3686,15 @@ c          --- particle
      &         distrbtn == "GA" .or. distrbtn == "Gaussian"  .or. 
      &         distrbtn == "TE" .or. distrbtn == "ThermalEquilibrium") then 
 c            --- use transforms of continuous focusing equilibria 
-             call loadperpdist(i1-k+1,xt,yt,uxt,uyt,
-     &                         at,bt,apt,bpt,epsxt,epsyt,distrbtn) 
+             call loadperpdist(k+ioff,i1-k+1,xt,yt,uxt,uyt,
+     &                         at,bt,apt,bpt,epsxt,epsyt)
            elseif (distrbtn == "KV0" .or. 
      &             distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.  
      &             distrbtn == "PA0" .or. distrbtn == "Parabolic0" .or. 
      &             distrbtn == "GA0" .or. distrbtn == "Gaussian0") then 
 c            --- use zero applied field Courant-Snyder invariants 
-             call loadperpdist0(i1-k+1,xt,yt,uxt,uyt,
-     &                          at,bt,apt,bpt,epsxt,epsyt,distrbtn) 
+             call loadperpdist0(k+ioff,i1-k+1,xt,yt,uxt,uyt,
+     &                          at,bt,apt,bpt,epsxt,epsyt)
            endif 
 
 !$OMP CRITICAL (STPTCL3D2)
@@ -3834,15 +3834,14 @@ c     --- Apply particle boundary conditions
       return
       end
 c=============================================================================
-      subroutine loadperpdist(np,x,y,xp,yp,rx,ry,rxp,ryp,
-     &                        epsx,epsy,distrbtn)
-
+      subroutine loadperpdist(kioff,np,x,y,xp,yp,rx,ry,rxp,ryp,
+     &                        epsx,epsy)
       use Constant
-      integer(ISZ):: np
+      use InPart3d
+      integer(ISZ):: kioff,np
       real(kind=8):: x(np), y(np), xp(np), yp(np)
       real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
       real(kind=8):: epsx(np), epsy(np) 
-      character(18) distrbtn
 c
 c Load a transverse distribution of particles based on transformation of 
 c an "equivalent" Hamiltonian defined beam equilibrium in a continuous 
@@ -3883,7 +3882,7 @@ c      real(kind=8):: X1, X2, Y1, Y2
 c      real(kind=8):: F0, F, G
       real(kind=8):: eps
 c      real(kind=8):: Ax, Ay, betax, betay 
-c      real(kind=8):: wranf     
+c      real(kind=8):: wrandom,wrandomgauss
 c      real(kind=8):: a, b, c, fa, fc
 c      character(72):: errline  
 
@@ -3901,15 +3900,14 @@ c      enddo
       return 
       end 
 c=============================================================================
-      subroutine loadperpdist0(np,x,y,xp,yp,rx,ry,rxp,ryp,
-     &                         epsx,epsy,distrbtn)
-
+      subroutine loadperpdist0(kioff,np,x,y,xp,yp,rx,ry,rxp,ryp,
+     &                         epsx,epsy)
       use Constant
-      integer(ISZ):: np
+      use InPart3d
+      integer(ISZ):: kioff,np
       real(kind=8):: x(np), y(np), xp(np), yp(np)
       real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
       real(kind=8):: epsx(np), epsy(np)
-      character(20) distrbtn
 c
 c Load a transverse distribution of particles based Courant-Snyder invariants 
 c in applied fields.  Each particle can have 
@@ -3960,8 +3958,8 @@ c
       real(kind=8):: alphax, alphay, alphaxp, alphayp
       real(kind=8):: F0, F, G
       real(kind=8):: Ax, Ay, betax, betay 
-      real(kind=8):: wranf, rnorm 
-      real(kind=8):: alpha3
+      real(kind=8):: wrandom, wrandomgauss
+      real(kind=8):: alpha3,r
       character(72):: errline  
 
       
@@ -3987,13 +3985,13 @@ c         --- calculate value of F0, F
 
           elseif (distrbtn == "WB0" .or. distrbtn == "Waterbag0") then
             F0 = 1.5*epsx(ip)
-            F  = F0*sqrt( wranf() ) 
+            F  = F0*sqrt( wrandom(xrandom,ip+kioff-1,dig1,1,1) ) 
 
           elseif (distrbtn == "PA0" .or. distrbtn == "Parabolic0") then 
 
             F0 = 2.0*epsx(ip)
           
-            G = wranf() 
+            G = wrandom(xrandom,ip+kioff-1,dig1,1,1)
 
             alpha3 = ( acos( 1.-2.*G ) )/3.
             F = (F0/2.)*( 1.-2.*cos( alpha3 - 2.*Pi/3. ) )
@@ -4002,11 +4000,11 @@ c         --- calculate value of F0, F
           endif 
 
 c         --- Set particle coordinates 
-          Ax = sqrt( F*wranf() )
+          Ax = sqrt( F*wrandom(xrandom,ip+kioff-1,dig2,1,1) )
           Ay = sqrt( (F - Ax*Ax)*epsy(ip)/epsx(ip) )
 
-          betax = 2.0*pi*wranf()
-          betay = 2.0*pi*wranf()
+          betax = 2.0*pi*wrandom(xrandom,ip+kioff-1,dig3,1,1)
+          betay = 2.0*pi*wrandom(xrandom,ip+kioff-1,dig4,1,1)
 
           x(ip) = Ax * alphax * cos( betax )
           y(ip) = Ay * alphay * cos( betay )
@@ -4024,14 +4022,29 @@ c     --- solve an axillary equation numerically to solve for "F".
       elseif (distrbtn == "GA0" .or. distrbtn == "Gaussian0") then
 
 c       --- Loop over particles to load 
+c       --- Because of the way wrandomgauss is written, the code runs somwhat
+c       --- more efficiently when the loops are broken up. Note, very
+c       --- important, if the loops are not broken up, then the last argument
+c       --- to wrandomgauss MUST be false in order to the code to work
+c       --- properly.
         do ip = 1,np
-         
-          x(ip) = 0.5*rx(ip)*rnorm()
-          y(ip) = 0.5*ry(ip)*rnorm()
+          r = wrandomgauss(xrandom,ip+kioff-1,dig1,dig2,1,1,.true.)
+          x(ip) = 0.5*rx(ip)*r
+        enddo 
+        do ip = 1,np
+          r = wrandomgauss(xrandom,ip+kioff-1,dig3,dig4,1,1,.true.)
+          y(ip) = 0.5*ry(ip)*r
+        enddo 
 
-          xp(ip) = 0.5*(epsx(ip)/rx(ip))*rnorm() + (rxp(ip)/rx(ip))*x(ip) 
-          yp(ip) = 0.5*(epsy(ip)/ry(ip))*rnorm() + (ryp(ip)/ry(ip))*y(ip)
-
+        do ip = 1,np
+          r = wrandomgauss(xrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
+          xp(ip) = 0.5*(epsx(ip)/rx(ip))*r + (rxp(ip)/rx(ip))*x(ip) 
+        enddo 
+        do ip = 1,np
+c         --- Note that dig7 and dig8 are already used for the longitudinal
+c         --- velocity spread.
+          r = wrandomgauss(xrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
+          yp(ip) = 0.5*(epsy(ip)/ry(ip))*r + (ryp(ip)/ry(ip))*y(ip)
         enddo 
 
       else 
