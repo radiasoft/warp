@@ -35,7 +35,7 @@ madtowarp(lattice)
 from warp import *
 import __main__
 import RandomArray
-lattice_version = "$Id: lattice.py,v 1.14 2003/04/11 22:18:39 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.15 2003/04/17 22:26:01 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -451,9 +451,8 @@ Creates an instance of a Hele lattice element.
     self.pw = pw
     self.pa = pa
     self.derivedquantities(self)
-    if len(self.nn) > top.nhmlt:
-      top.nhmlt = len(self.nn)
-      gchange("Lattice")
+    top.nhmlt = max(len(self.nn),max(max(top.helene),max(top.helenm)))
+    gchange("Lattice")
   def derivedquantities(_self,self):
     self.nn = array(self.nn)
     self.vv = array(self.vv)
@@ -482,8 +481,9 @@ Creates an instance of a Hele lattice element.
     top.helegp[top.nhele] = self.gp
     top.helepw[top.nhele] = self.pw
     top.helepa[top.nhele] = self.pa
-    top.hele_n[:,self.ihele] = self.nn
-    top.hele_v[:,self.ihele] = self.vv
+    print shape(top.hele_n[:,self.ihele]),shape(self.nn)
+    top.hele_n[:len(self.nn),self.ihele] = self.nn
+    top.hele_v[:len(self.vv),self.ihele] = self.vv
     top.heleae[:len(self.ae),self.ihele] = self.ae
     top.heleam[:len(self.am),self.ihele] = self.am
     top.heleep[:len(self.ep),self.ihele] = self.ep
