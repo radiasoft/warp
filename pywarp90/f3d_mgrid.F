@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.43 $, $Date: 2002/09/20 18:16:20 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.44 $, $Date: 2002/09/20 22:05:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -362,7 +362,8 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: nznew
       integer(ISZ):: localb0,localbnz
       integer(ISZ):: local2b0,local2bnz
-      integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
+      integer(ISZ):: lparityall(0:nslaves-1),rparityall(0:nslaves-1)
+      integer(ISZ):: lparity,rparity
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
       integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
@@ -370,11 +371,11 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
 
 #ifdef MPIPARALLEL
-      lparity = 0
-      rparity = 0
+      lparityall = 0
+      rparityall = 0
       call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                      globalb0,globalbnz,nzfull,
-     &                      lparity,rparity,
+     &                      lparityall,rparityall,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
       localb0 = globalb0
@@ -451,12 +452,18 @@ c         --- Set new value of nz
           nznew = nzfsslave2(my_index)
 c         --- Difference between starts and ends of coarse and fine grids.
 c         --- Should only be in the range 0-2.
-          lparity = izfsslave - 2*izfsslave2
-          rparity = 2*(izfsslave2 + nzfsslave2) - (izfsslave + nzfsslave)
+          lparityall = izfsslave - 2*izfsslave2
+          rparityall = 2*(izfsslave2 + nzfsslave2) - (izfsslave + nzfsslave)
+c         --- Note that the lparityall and rparityall can only be used in
+c         --- MPIPARALLEL sections since they will be unallocated in the
+c         --- serial code. So, separate scalars are used in code which is
+c         --- used in the serial version.
+          lparity = lparityall(my_index)
+          rparity = rparityall(my_index)
 c         --- Get processor with which to exchange data on coarse grid
           call mggetexchangepes(nslaves,izfsslave2,nzfsslave2,my_index,
      &                          globalb0,globalbnz,nzfull/2,
-     &                          lparity,rparity,
+     &                          lparityall,rparityall,
      &                          whosendingleft2,izsendingleft2,
      &                          whosendingright2,izsendingright2)
           local2b0 = globalb0
@@ -482,7 +489,7 @@ c         --- 4 for full-coarsening and is compiled into the restriction
 c         --- routine.
           call restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,boundxy,
      &                    local2b0,local2bnz,localb0,localbnz,
-     &                    lparity(my_index),rparity(my_index),l2symtry,l4symtry,
+     &                    lparity,rparity,l2symtry,l4symtry,
      &                    my_index,nslaves,
      &                    izfsslave,nzfsslave,izfsslave2,nzfsslave2,
      &                    whosendingleft2,izsendingleft2,
@@ -497,8 +504,7 @@ c         --- Continue at the next coarsest level.
 
 c         --- Add in resulting error.
           call expand3d(nx/2,ny/2,nznew,nz,nzfull/2,phi2,phi,
-     &                  boundxy,localb0,localbnz,
-     &                  lparity(my_index),rparity(my_index),
+     &                  boundxy,localb0,localbnz,lparity,rparity,
      &                  my_index,nslaves,izfsslave,
      &                  whosendingleft,whosendingright)
 
