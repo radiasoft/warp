@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.93 $, $Date: 2004/01/24 00:52:55 $
+c@(#) File F3D.M, version $Revision: 3.94 $, $Date: 2004/02/18 16:09:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5399,7 +5399,7 @@ c===========================================================================
       subroutine setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry)
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: bound0,boundnz,boundxy
@@ -6917,7 +6917,7 @@ c===========================================================================
      &                     condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom,Rgeom
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
@@ -6974,7 +6974,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
       endif
 
 c     --- Call the appropriate version of the routine.
-      if(solvergeom==Zgeom) return
+      if(solvergeom==Zgeom .or. solvergeom==Rgeom) return
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,
      &                    xmin,xmax,lshell,
@@ -8102,7 +8102,7 @@ c===========================================================================
      &                       condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom,Rgeom
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
@@ -8168,7 +8168,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
       endif
 
 c     --- Call the appropriate routine
-      if(solvergeom==Zgeom) return
+      if(solvergeom==Zgeom .or. solvergeom==Rgeom) return
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
          call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,
      &                     lzend,xmin,xmax,lshell,
