@@ -4,9 +4,6 @@ PYCTOF = $(PYWRAPPERHOME)/pyctof.py --f90 -t $(MACHINE) $(PYWRAPPERARGS)
 INCLUDE = -I$(PYTHON)/include/python$(PYVERS)
 PYTHONLIB = -L$(PYTHON)/lib/python$(PYVERS)/config -lpython$(PYVERS)
 PYTHONOBJ = $(PYTHON)/lib/python$(PYVERS)/config/python.o
-OTHERLIBS = $(PACTLIB) -lpdb -lpml -lscore \
-            $(YORICKLIB) -lgist \
-            $(LAPACKLIB) -llapack -lblas
 RNGOBJ = pmath_rng.o  ranf.o
 RNGSRC = pmath_rng.c  ranf.c                                                    
 
