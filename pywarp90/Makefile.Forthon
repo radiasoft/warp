@@ -60,7 +60,7 @@ clean:
 #--- Build command for opendx wrapper.
 DX: pyDXObject.c
 	python DXsetup.py build --build-platlib .
-	cp pyDXObject.so $(WARPSCRIPTS)
+	#cp pyDXObject.so /home/dave/scriptsnew
 
 #----------------------------------------------------------------------------
 
