@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.45 $, $Date: 2002/04/30 21:09:48 $
+c@(#) File DTOP.M, version $Revision: 3.46 $, $Date: 2002/05/06 13:39:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -585,8 +585,8 @@ c  Phase space plots, both "frequent" ones and others
       timetemp = wtime()
 
       if (lpsplots) then
-        if (freqflag == ALWAYS) call parsestr("psplots(always)")
-        if (freqflag == SELDOM) call parsestr("psplots(seldom)")
+        if (freqflag == ALWAYS) call parsestr("psplotsalways()")
+        if (freqflag == SELDOM) call parsestr("psplotsseldom()")
         plottime = plottime + (wtime() - timetemp)
         return
       endif
@@ -605,8 +605,8 @@ c  Plots all 1d (z dependent) quantities vs z
       timetemp = wtime()
 
       if (lonedplts) then
-        if (freqflag == ALWAYS) call parsestr("onedplts(always)")
-        if (freqflag == SELDOM) call parsestr("onedplts(seldom)")
+        if (freqflag == ALWAYS) call parsestr("onedpltsalways()")
+        if (freqflag == SELDOM) call parsestr("onedpltsseldom()")
         return
       endif
 
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.45 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.46 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
