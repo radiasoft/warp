@@ -24,7 +24,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.18 2004/11/30 22:17:31 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.19 2004/12/01 00:05:41 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -329,7 +329,7 @@ def interactor_handler():
   if len(getchar) > 0: __main__.interactor = eval(getchar)
   else:                __main__.interactor = -1
 
-def DXImage(object,camera=None,name='WARP viz',labels=None):
+def DXImage(object,camera=None,name='WARP viz',labels=None,hardware=0):
   """
 Displays an image of the input object, allowing mouse controls for moving the
 image. Default mode is rotation. Press 1 for panning, 2 for zooming.
@@ -352,6 +352,11 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
   minput = {'input':dxobject,'attribute':'cache','value':0}
   moutput = ['output']
   (dxobject,) = DXCallModule('Options',minput,moutput)
+
+  if hardware:
+    minput = {'input':dxobject,'attribute':'rendering mode','value':'hardware'}
+    moutput = ['output']
+    (dxobject,) = DXCallModule('Options',minput,moutput)
 
   if camera is None:
     DXReference(dxobject)
@@ -380,7 +385,21 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     moutput = ['where','size','events']
     (wwhere,wsize,wevents,) = DXCallModule('SuperviseWindow',minput,moutput)
 
-    if wevents.isnull() and not l_init:
+    # --- Special coding is needed when hardware acceleration is used. The
+    # --- hardware seems to be capturing all events so that the events
+    # --- returned by SuperviseWindow is always null. Because of this, the
+    # --- code below is never called. This causes requests to change the
+    # --- interactor mode to be ignored. Now, if the interactor mode is
+    # --- changed, the code is forced to reexecute the display.
+    # --- This qualifies as a kludge since it is not understood exactly the
+    # --- events is alway null when using hardware acceleration.
+    try: dxinter.previousmode
+    except: dxinter.previousmode = 0
+    forceupdate = ((__main__.interactor != dxinter.previousmode) and
+                   (hardware or __main__.l_hardware_acceleration))
+    dxinter.previousmode = __main__.interactor
+
+    if wevents.isnull() and not l_init and not forceupdate:
       DXDelete(wwhere)
       DXDelete(wsize)
     else:
@@ -411,6 +430,9 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     __main__.wgui.dx_timer.Start(100)
   except:
     dxinter(1,name,dxobject)
+    __main__.interactor = 0
+    print "Press 0 for rotation, 1 for panning, 2 for zooming, return to exit."
+    print "Default mode is rotation."
     while __main__.interactor >=0:
       dxinter(0,name,dxobject)
     DXDelete(dxobject)
