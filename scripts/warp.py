@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.22 2001/05/25 19:58:39 dave Exp $"
+warp_version = "$Id: warp.py,v 1.23 2001/05/31 23:12:09 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -127,24 +127,6 @@ def versionstext():
   return r
 print versionstext()[:-1] # --- skip last line feed
 print 'For more help, type warphelp()'
-
-#=============================================================================
-# --- Import the convenience routines for plotting various slices and
-# --- projections of particles, histories, as well as some line plots.
-from warpplots import *
-from histplots import *
-from pzplots import *
-from plot_conductor import *
-
-# --- Import some online documentation modules.
-from warphelp import *
-from warpscripts import *
-from warpfortran import *
-
-# --- Import the printparameters modules (which are called from fortran)
-from printparameters import *
-from printparameters3d import *
-from printparametersrz import *
 
 #=============================================================================
 # --- Declare the documentation for the warp module.
@@ -565,6 +547,26 @@ def printtimers(file=None):
   if closeit:
     ff.close()
 
+
+#=============================================================================
+# --- Import the convenience routines for plotting various slices and
+# --- projections of particles, histories, as well as some line plots.
+# --- Import these here near the end so the functions defined above are
+# --- included in their dictionaries.
+from warpplots import *
+from histplots import *
+from pzplots import *
+from plot_conductor import *
+
+# --- Import some online documentation modules.
+from warphelp import *
+from warpscripts import *
+from warpfortran import *
+
+# --- Import the printparameters modules (which are called from fortran)
+from printparameters import *
+from printparameters3d import *
+from printparametersrz import *
 
 
 ##############################################################################
