@@ -3,7 +3,6 @@
 
 from wxPython.wx import *
 from warp import *
-
 import WarpRun
 
 modules ={'ConsoleClass':     [0, '', 'ConsoleClass.py'],
@@ -24,16 +23,21 @@ class BoaApp(wxApp):
         return true
 
 panels=[]
+wgui=BoaApp(0)
 
 def add_panel(panel,name):
     global panels
     panels+=[[panel,name]]
+    
+def process_gui_events():
+    while(wgui.Pending()):
+        wgui.Dispatch()
 
 def gui():
-  wgui=BoaApp(0)
+  global wgui
   for i in panels:
     wgui.main.add_panel(i[0],i[1])
-
+  installafterstep(process_gui_events)
   wgui.MainLoop()
 
 if __name__ == '__main__':
