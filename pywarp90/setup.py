@@ -28,7 +28,7 @@ for o in optlist:
 sys.argv = ['setup.py']+args
 fcompiler = FCompiler(machine=machine,
                       debug=debug,
-                      fcompiler=fcomp)
+                      fcompname=fcomp)
 
 dummydist = Distribution()
 dummybuild = build(dummydist)
