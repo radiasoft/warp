@@ -74,7 +74,7 @@ if not lparallel:
   import pyOpenDX
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.58 2004/05/15 01:17:52 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.59 2004/05/15 01:21:19 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1822,16 +1822,20 @@ Outside of a surface of revolution
 
     return Assembly.getkwlist(self)
 
-  def visualize(self,rend=None,
-                     twoSided=1,color=None,scene=None,title=None,vrange=None):
+  def visualize(self,rend=None,thmin=0.,thmax=2*pi,
+                     twoSided=1,color=None,scene=None,title=None,vrange=None,
+                     display=1):
     if rend is None: rend = self.rmax
     v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
+                       thmin=thmin,thmax=thmax,
                        rendzmin=rend,rendzmax=rend,
                        xoff=self.xcent,yoff=self.ycent,
                        rofzdata=self.rofzdata,zdata=self.zdata,
                        raddata=self.raddata,zcdata=self.zcdata,
                        rcdata=self.rcdata,
-                       twoSided=1,color=None,scene=None,title=None,vrange=None)
+                       twoSided=1,color=None,scene=None,title=None,vrange=None,
+                       display=display)
+    if not display: self.dxobject = v
 
 #============================================================================
 class ZSrfrvIn(Srfrv):
@@ -1911,14 +1915,19 @@ Inside of a surface of revolution
 
     return Assembly.getkwlist(self)
 
-  def visualize(self,twoSided=1,color=None,scene=None,title=None,vrange=None):
+  def visualize(self,thmin=0.,thmax=2*pi,
+                twoSided=1,color=None,scene=None,title=None,vrange=None,
+                display=1):
     v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
+                       thmin=thmin,thmax=thmax,
                        rendzmin=rend,rendzmax=rend,
                        xoff=self.xcent,yoff=self.ycent,
                        rofzdata=self.rofzdata,zdata=self.zdata,
                        raddata=self.raddata,zcdata=self.zcdata,
                        rcdata=self.rcdata,
-                       twoSided=1,color=None,scene=None,title=None,vrange=None)
+                       twoSided=1,color=None,scene=None,title=None,vrange=None,
+                       display=display)
+    if not display: self.dxobject = v
 
 #============================================================================
 class ZSrfrvInOut(Srfrv):
