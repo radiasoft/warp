@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.96 $, $Date: 2004/03/11 10:40:37 $
+#@(#) File F3D.V, version $Revision: 3.97 $, $Date: 2004/03/16 17:36:38 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.96 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.97 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -245,6 +245,14 @@ setmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
             dx:real,dy:real,dz:real)
             subroutine   # Calculates levels of coarsening. Note that mglevels
                          # must be zero when calling this routine.
+multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
+             dx:real,dy:real,dz:real,phi:real,rho:real,
+             rstar:real,linbend:logical,
+             bound0:integer,boundnz:integer,boundxy:integer,
+             l2symtry:logical,l4symtry:logical,
+             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real)
+             subroutine # Solves Poisson's equation using the multigrid method.
+
 
 *********** Multigrid3d_work:
 # Temporary variables and array used by subgrid_sor_to_mg
