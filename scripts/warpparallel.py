@@ -1,7 +1,14 @@
+"""Functions used in parallel version.
+Most important ones are the paralleldump and parallelrestore functions.
+"""
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.39 2003/08/27 20:32:34 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.40 2003/08/29 23:10:45 dave Exp $"
+
+def warpparalleldoc():
+  import warpparallel
+  print warpparallel.__doc__
 
 top.my_index = me
 top.nslaves = npes
@@ -436,7 +443,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                                       'gaminv']) or \
              (p == 'wxy' and vname in ['dtp']):
           # --- Write out each species seperately.
-          for js in xrange(top.ns):
+          for js in range(top.ns):
             if top.nps[js] > 0:
               ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
               ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1],
@@ -444,7 +451,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         elif p == 'top' and vname == 'pid':
           if top.npmaxi == top.npmax:
             # --- Write out each species seperately.
-            for js in xrange(top.ns):
+            for js in range(top.ns):
               if top.nps[js] > 0:
                 ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
                 ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:],
@@ -456,14 +463,14 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                                       'uxplost','uyplost','uzplost',
                                       'gaminvlost','tplost']:
           # --- Write out each species seperately.
-          for js in xrange(top.ns):
+          for js in range(top.ns):
             if top.npslost[js] > 0:
               ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
               ff.write(pdbname,v[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1],
                        indx=(ipmin,))
         elif p == 'top' and vname == 'pidlost':
           # --- Write out each species seperately.
-          for js in xrange(top.ns):
+          for js in range(top.ns):
             if top.npslost[js] > 0:
               ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
               ff.write(pdbname,v[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:],
@@ -655,6 +662,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
 
   # --- Allocate any groups with parallel arrays
   gchange("Particles")
+  gchange("LostParticles")
   gchange("Particlesxy")
   gchange("Conductor3d")
 
@@ -697,7 +705,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
         s = 'pass'
-        for js in xrange(top.ns):
+        for js in range(top.ns):
           if top.nps[js] > 0:
             ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
             itriple = array([ipmin,ipmin+top.nps[js]-1,1])
@@ -710,7 +718,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- is needed for each species.  Errors are not caught.
         s = 'pass'
         if top.npmaxi == top.npmax:
-          for js in xrange(top.ns):
+          for js in range(top.ns):
             if top.nps[js] > 0:
               ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
               itriple = array([ipmin,ipmin+top.nps[js]-1,1,0,top.npid-1,1])
@@ -730,7 +738,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
         s = 'pass'
-        for js in xrange(top.ns):
+        for js in range(top.ns):
           if top.npslost[js] > 0:
             ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
             itriple = array([ipmin,ipmin+top.npslost[js]-1,1])
@@ -742,7 +750,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         # --- The command is exec'ed here since a different command
         # --- is needed for each species.  Errors are not caught.
         s = 'pass'
-        for js in xrange(top.ns):
+        for js in range(top.ns):
           if top.npslost[js] > 0:
             ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
             itriple = array([ipmin,ipmin+top.npslost[js]-1,1,0,top.npid-1,1])
