@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.21 2004/10/27 19:51:59 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.22 2004/10/28 18:00:37 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -80,6 +80,7 @@ conductors are an argument.
     if self.grid is None: self.grid = Grid()
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
+      assert c.condid != 0,"The conductor id must be nonzero in order for the particle scraping to work."
       self.conductors.append(c)
       self.grid.getisinside(c,mglevel=self.mglevel)
 
