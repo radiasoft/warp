@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.13 2004/03/31 14:18:23 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.14 2004/04/22 00:26:09 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -17,10 +17,12 @@ Class for creating particle scraper for conductors
                Note that each conductor MUST have a unique id.
  - lsavecondid: when true, the id of the conductor where the particle is
                 lost is save. The id is saved in the array top.pidlost[:,-1].
- - lsaveintercept: when true, the location and angle where the particle
-                   intercepted the conductor surface is calculated. The
-                   location is overwritten onto the xplost, yplost, and zplost
-                   arrays. The angle is put into pidlost[:,-2].
+ - lsaveintercept: when true, the location and surface normal where the
+                   particle intercepted the conductor surface is calculated.
+                   The location is overwritten onto the xplost, yplost, and
+                   zplost arrays. The angles describing the surface normal are
+                   put into pidlost[:,-3] and pidlost[:,-2]. The spherical
+                   coordinate angle theta is in -3, and phi is in -2.
                    Note that the condid where the particle is lost is also
                    saved in pidlost[:,-1].
  - install=1: flag whether or not to install the scraper so that the scraping
@@ -140,7 +142,7 @@ conductors are an argument.
 
     # --- First make sure there is extra space in the pidlost array.
     pidspace = 1
-    if self.lsaveintercept: pidspace = 2
+    if self.lsaveintercept: pidspace = 3
     if top.npidlostmax < top.npidmax+pidspace:
       top.npidlostmax = top.npidmax + pidspace
       gchange("LostParticles")
@@ -206,7 +208,8 @@ conductors are an argument.
       # --- For particles which are inside, set pid to the id of the conductor
       # --- where the particle is lost.
       put(top.pidlost[:,-1],ic,c.condid)
-      # --- Save location and angle where particle intercepted the conductor.
+      # --- Save location and surface normal where particle intercepted the
+      # --- conductor.
       if self.lsaveintercept:
         xc = take(xx,ic-i1)
         yc = take(yy,ic-i1)
@@ -219,6 +222,7 @@ conductors are an argument.
         put(top.xplost,ic,intercept.xi)
         put(top.yplost,ic,intercept.yi)
         put(top.zplost,ic,intercept.zi)
-        put(top.pidlost[:,-2],ic,intercept.angle)
+        put(top.pidlost[:,-3],ic,intercept.itheta)
+        put(top.pidlost[:,-2],ic,intercept.iphi)
 
 
