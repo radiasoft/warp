@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.110 $, $Date: 2003/11/22 00:17:37 $
+#@(#) File TOP.V, version $Revision: 3.111 $, $Date: 2003/12/11 01:33:40 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.110 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.111 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1778,7 +1778,7 @@ griddedparticlescraper(is:integer,distance:real,
                        # in complex geometries.
 setgamma(lrelativ)
             subroutine # Converts v to u, sets gammainv for all ptcls
-gammaadv(np,gaminv:real,uxp:real,uyp:real,uzp:real,gamadv:real,lrelativ)
+gammaadv(np,gaminv:real,uxp:real,uyp:real,uzp:real,gamadv:string,lrelativ)
             subroutine # Advances gamma
 resetlat()  subroutine # Resizes lattice arrays to their true lengths
 setlatt()   subroutine # Sets lattice pointers for the current beam location
@@ -1791,6 +1791,10 @@ species()   subroutine # Sets species related arrays.
 stckyz(np,zp:real,zmmax:real,zmmin:real,dz:real,uxp:real,uyp:real,uzp:real,
        gaminv:real,zgrid:real)
             subroutine # Enforces sticky z walls
+zgapcorr(np:integer,zp:real,xp:real,uzp:real,gaminv:real,
+         dtl:real,dtr:real,dt:real,m:real,q:real,time:real)
+            subroutine # Adds z correction term for accelerating gap residence
+                       # correction.
 
 *********** TopDiag:
 # Subroutines in package TOP
