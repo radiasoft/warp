@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.35 2004/08/09 23:12:29 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.36 2004/09/19 05:38:37 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -134,7 +134,11 @@ recalculated on a finer mesh to give better balancing.
     # --- Calculate the right hand side padding.
     if self.padright is None:
       if not top.lmoments:
-        vzmaxp = globalmax(max(getvz(jslist=-1,gather=0)))
+        vz = getvz(jslist=-1,gather=0)
+        if len(vz) > 0: vzmaxp = max(vz)
+        else:           vzmaxp = -largepos
+        del vz
+        vzmaxp = globalmax(vzmaxp)
       else:
         vzmaxp = top.vzmaxp
       if vzmaxp > 0.: padright = vzmaxp*top.dt*ii*2
