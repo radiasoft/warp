@@ -4,7 +4,7 @@ gistdummy_version = "$Id:"
 from Numeric import *
 import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from gistC import *
-from Numeric import *
+import gistC
 from help import help
 from shapetest import *
 from arrayfns import *
@@ -22,7 +22,7 @@ def plg(*x,**x):
   pass
 def fma():
   pass
-def plt(titlel="",x=0,y=0,justify="CC",orient=1):
+def plt(*x,**x):
   pass
 def plsys(i=0):
   pass
@@ -59,4 +59,8 @@ def current_window():
 def pldefault(*x,**x):
   pass
 def palette(*x,**x):
+  pass
+def pli(*x,**x):
+  pass
+def pldj(*x,**x):
   pass
