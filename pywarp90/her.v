@@ -1,5 +1,5 @@
 her
-#@(#) File HER.V, version $Revision: 3.4 $, $Date: 2001/06/26 17:29:04 $
+#@(#) File HER.V, version $Revision: 3.5 $, $Date: 2001/07/12 00:03:59 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for HERMES.
@@ -9,14 +9,10 @@ her
 
 *********** HERversion:
 # Version control for her package
-versher       character*19 /"$Revision: 3.4 $"/  # Current code version, set by SCCS
+versher       character*19 /"$Revision: 3.5 $"/  # Current code version, set by SCCS
 
 *********** HERvars dump:
 # Variables needed by the package HER
-dther real /0.0/  [m]    # Time step size
-zlher real /0.0/  [m]    # Starting z for HERMES calc
-zuher real /0.0/  [m]    # Maximum  z for HERMES calc
-nther integer /0/        # Total number of time steps
 niz       integer [1]    # Number of point along beam
 aher(niz)   _real [m]    # Width in x (1)[0]
 apher(niz)  _real [1]    # Slope in x (2)[1]
@@ -42,10 +38,13 @@ hertime    real              # Total runtime
 
 *********** HERflags dump:
 icharge    integer /1/ # The space-charge model...
-                       # 0: uses simpel g-factor model with a fixed pipe/beam
-                       #    radius of 1.6
+                       # 0: uses simpel g-factor model with a fixed g-factor (initialized to 2 ln(1.6) in the generate)
                        # 1: uses simple g-factor space-charge model
                        # 2: includes envelope variation in space-charge model
+                       # 3: g-factor model with end effects (placeholder; not implemented)
+                       # 4: g-factor model with end effects (placeholder; not implemented)
+                       # 5: Bessel expansion with uniform line charge density in each slice
+                       # 6: Bessel expansion with smoothly varying line charge density in each slice
                        # 7: uses Warp's RZ solver to find the longitudinal field
 lezbeam    logical /.true./ # Turns on use of axial self-field
 lperveance logical /.true./ # Turns on use of perveance (transverse self-field)
@@ -64,16 +63,17 @@ iprofile   integer /0/ # line-charge profile flag
                        # 1 uses flat-top profile with linear fall-off
                        # 2 uses flat-top profile with quadratic fall-off
                        # 3 uses flat-top profile with cubic fall-off
-islice     integer /0/ # reference slice number.
-                       # the location of this slice is compared to zuher to
-                       # determine if the run has finished.
-nsteps     integer /0/ # if nonzero, nsteps steps are taken; ignored otherwise
+lfail      logical /.false./ # Set to true if a time step fails
 
 *********** HERfield:
 # Fields and forces at the current time step
 nizfield             integer # Size of arrays
 dedx(nizfield)       _real # From quadrupole
 dbdx(nizfield)       _real # From quadrupole
+er(nizfield)         _real # Radial electric field (n = 0, v = 0)
+ez(nizfield)         _real # Longitudinal electric field (n = 0, v = 0)
+br(nizfield)         _real # Radial magnetic field (n = 0, v = 0)
+bz(nizfield)         _real # Longitudinal magnetic field (n = 0, v = 0)
 ezbeam(nizfield)     _real [V/m] # Self axial electric field
 rpipe(nizfield)      _real # Pipe radius at the z-location of the different slices
 
@@ -85,12 +85,12 @@ dy(16,nizvartmp)  _real
 
 *********** HERtmp:
 niztmp           integer
-gtemp(niztmp)    _real # Temp space for getselffield, G-factor
-denmid(niztmp)   _real # Temp space for getselffield
-dden(niztmp)     _real # Temp space for getselffield
-denv(niztmp)     _real # Temp space for getselffield
-rad(niztmp)      _real # Temp space for getselffield
-deval(niztmp)    _real # Temp space for getselffield, Bessel model
+gtemp(niztmp)    _real # Temp space for fieldsolhr, g-factor
+denmid(niztmp)   _real # Temp space for fieldsolhr
+dden(niztmp)     _real # Temp space for fieldsolhr
+denv(niztmp)     _real # Temp space for fieldsolhr
+rad(niztmp)      _real # Temp space for fieldsolhr
+deval(niztmp)    _real # Temp space for fieldsolhr, Bessel model
 
 *********** HERbessel:
 nbessel           integer /20/ # Number of terms to use in the Bessel expansion
@@ -101,8 +101,8 @@ besselfactor(1024) _real # (J1(x))^(-2) in which x is a zero of the Bessel
 *********** HERhist dump:
 lhher integer
 nhher integer /1/
-nizhist  integer # Number of slices whose history is saved
 jhher integer /-1/
+nizhist integer
 hther(0:lhher)        _real [s]   limited(0:jhher)     # Time
 haher(nizhist,0:lhher)   _real [m]   limited(nizhist,0:jhher)
 hapher(nizhist,0:lhher)  _real [m]   limited(nizhist,0:jhher)
@@ -125,12 +125,6 @@ hden(nizhist,0:lhher)    _real []    limited(nizhist,0:jhher) #
 herinit()  subroutine
 hergen()   subroutine
 herexe()   subroutine
-herx ()    subroutine #  BASIS-level interface to HERMES
-herrun(niz:integer,y:real,dsher:real,nther:integer,
-       aion:real,zion:real,zlher:real,zuher:real,fviscous:real,islice:integer,
-       nsteps:integer,icharge:integer,lezbeam:logical,lperveance:logical,
-       lemittance:logical,lallez:logical,lezcenter:logical,lviscous:logical,
-       lsavehist:logical,lcurgrid:logical,lfail:logical) subroutine
   # Runs HERMES kernel
 extebher(t:real,dt:real,y:real,niz:integer) subroutine
   # Gather applied fields
@@ -138,16 +132,16 @@ getderivs(t:real,dt:real,y:real,dy:real,niz:integer,
        aion:real,zion:real,fviscous:real,
        icharge:integer,lezbeam:logical,lperveance:logical,lemittance:logical,
        lallez:logical,lezcenter:logical,lviscous:logical,lcurgrid:logical,lfail:logical) subroutine
-  # Calculates new envelope quantities based using applied and self fields
-onestep(y:real,dy:real,niz:integer,t:real,dt:real,
+  # Calculates new envelope quantities using applied and self fields
+stephr(y:real,dy:real,niz:integer,t:real,dt:real,
         aion:real,zion:real,fviscous:real,
         icharge:integer,lezbeam:logical,lperveance:logical,
         lemittance:logical,lallez:logical,lezcenter:logical,
         lviscous:logical,lcurgrid:logical,lfail:logical) subroutine
   # One complete isochronous leapfrog integration step
-loadcharge(niz:integer,y:real,rpipe:real,icharge:integer,lfail:logical) subroutine 
+setrhohr(niz:integer,y:real,rpipe:real,icharge:integer,lfail:logical) subroutine 
   # Loads the charge onto the RZ grid
-getselffield(niz:integer,y:real,eval:real,rpipe:real,icharge:integer,
+fieldsolhr(niz:integer,y:real,eval:real,rpipe:real,icharge:integer,
           lezbeam:logical,lezcenter:logical,lfail:logical) subroutine
   # Calculates self axial field
 getradius(y:real,niz:integer,rpipe:real,icharge:integer) subroutine
@@ -157,10 +151,10 @@ getgfactor(niz:integer,rpipe:real,icharge:integer) subroutine
 getcurrent(y:real,niz:integer,rpipe:real,icharge:integer,lcurgrid:logical,
            lfail:logical) subroutine
   # Calculates the current at the slices boundaries
-savehisther(t:real,y:real,niz:integer,nther:integer,lsavehist:logical)
+savehermesvars(t:real,y:real,niz:integer,it:integer,lsavehist:logical)
     subroutine
   # Checks if history needs to be saved and saves it
-savehisther1(t:real,y:real,niz:integer) subroutine
-  # Copies data into history arrays
-readbessel() subroutine
-  # Initializes the arrays besselzero and besselfactor.
+copyhermesvars() subroutine
+   # Copies the her.var variables into the separated arrays
+resizehermeshist() subroutine
+   # Resizes the history arrays to only those entries that are used.
