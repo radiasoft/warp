@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.61 2001/12/21 16:27:20 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.62 2001/12/21 18:52:26 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -62,6 +62,9 @@ Plots contours of charge density (rho) or electrostatic potential (phi) in
 various planes.
 pcrhozy(), pcrhozx(), pcrhoxy()
 pcphizy(), pcphizx(), pcphixy()
+
+Dynamically view any 3-D surface plot
+viewsurface
 """
 ##########################################################################
 warpplotsdocmore = """
@@ -911,6 +914,7 @@ def ppgeneric_doc(x,y):
                     otherwise each contour level gets an equal sized area.
                     Only in effect when a list of colorbars is specified.
   - surface=0: when true, a 3-d surface plot is made of the gridded data
+               The view can be changed dynamically with the function viewsurface
   """
   return doc%vars()
 #-------------------------------------------------------------------------
@@ -1319,6 +1323,184 @@ values from zmin to zmax.
   pldj(llev*[xmax],ys,llev*[xmax+0.005],ys)
   # --- Return to plot system 1.
   plsys(view)
+
+#############################################################################
+#############################################################################
+def changepalette(returnpalette=0,help=0):
+  """
+Dynamically change the color palette.
+  - returnpalette=0: when true, returns tuple of (red, green, blue)
+  - help=0: when true, prints this message
+Mouse actions:
+  Button 1: shifts a point, compressing and stretching the rest of the colors
+  Button 2: reset palette to original
+  Button 3: shifts a point, sliding the colors up and down
+  Shift Button 1: reverse the palette
+  Control Button 1: add black point
+  Control Button 3: add white point
+  """
+  # --- Print out help if wanted
+  if help: print changepalette.__doc__
+  # --- min's and max's are the same as in the colorbar routine
+  xmin = 0.66
+  xmax = 0.68
+  ymax = 0.85
+  ymin = 0.44
+  # --- Create storate arrays
+  # --- rr, gg, bb hold the original palette
+  rr = zeros(200,'b')
+  gg = zeros(200,'b')
+  bb = zeros(200,'b')
+  palette(rr,gg,bb,query=1)
+  # --- newrr, newgg, newbb hold the new palette
+  newrr = zeros(200,'b')
+  newgg = zeros(200,'b')
+  newbb = zeros(200,'b')
+  # --- position relative to the original palette
+  cc = arange(0,200)*1.
+  newcc = arange(0,200)*1.
+  # --- List of black and white points
+  blacklist = []
+  whitelist = []
+  while 1:
+    mm = mouse(0,0,"")
+    if mm == None: break
+    # --- Get mouse positions. Skip if outside the colorbar
+    (x1, y1, x2, y2) = tuple(mm[:4])
+    if x1 < xmin or x1 > xmax or x2 < xmin or x2 > xmax: continue
+    if y1 < ymin or y1 > ymax or y2 < ymin or y2 > ymax: continue
+
+    if mm[9] == 1 and mm[10] == 0:
+      # --- Button 1, no keys
+      i1 = nint((y1 - ymin)/(ymax - ymin)*200)
+      i2 = nint((y2 - ymin)/(ymax - ymin)*200)
+      up = (ymax - y1)/(ymax - y2)
+      down = (y1 - ymin)/(y2 - ymin)
+      for i in xrange(1,i2):
+        iold = int(i*down)
+        wold =     i*down - iold
+        newcc[i] = cc[iold]*(1.-wold) + cc[iold+1]*wold
+      for i in xrange(i2,199):
+        iold = 199 - int((199-i)*up)
+        wold = iold - (199 -    ((199-i)*up))
+        newcc[i] = cc[iold]*(1.-wold) + cc[iold-1]*wold
+
+    if mm[9] == 2:
+      # --- Button 2, no keys
+      # --- Restore original palette
+      newcc = arange(0,200)*1.
+      blacklist = []
+      whitelist = []
+
+    if mm[9] == 3:
+      # --- Button 3, no keys
+      # --- slide whole palette
+      i1 = nint((y1 - ymin)/(ymax - ymin)*200)
+      i2 = nint((y2 - ymin)/(ymax - ymin)*200)
+      for i in xrange(0,200):
+        iold = i - (i2 - i1)
+        if iold < 0: newcc[i] = cc[0]
+        elif iold > 199: newcc[i] = cc[-1]
+        else: newcc[i] = cc[iold]
+
+    if mm[9] == 1 and mm[10] == 1:
+      # --- Button 1, shift
+      # --- Reverse the palette
+      newcc[:] = cc[::-1]
+
+    if mm[9] == 1 and mm[10] == 4:
+      # --- button 1, control
+      # --- Add black point
+      i1 = nint((y1 - ymin)/(ymax - ymin)*200)
+      blacklist.append(i1)
+
+    if mm[9] == 3 and mm[10] == 4:
+      # --- button 3, control
+      # --- Add white point
+      i1 = nint((y1 - ymin)/(ymax - ymin)*200)
+      whitelist.append(i1)
+
+    # --- Calculate the new palette based on the position relative to the
+    # --- original palette.
+    for i in xrange(0,200):
+      ii = int(newcc[i])
+      ww =     newcc[i]  - ii
+      iip1 = min(ii+1,199)
+      newrr[i] = (nint(rr[ii]*(1.-ww) + rr[iip1]*ww))
+      newgg[i] = (nint(gg[ii]*(1.-ww) + gg[iip1]*ww))
+      newbb[i] = (nint(bb[ii]*(1.-ww) + bb[iip1]*ww))
+    for ii in blacklist: (newrr[ii], newgg[ii], newbb[ii]) = 0,0,0
+    for ii in whitelist: (newrr[ii], newgg[ii], newbb[ii]) = 255,255,255
+    cc[:] = newcc
+    palette(newrr,newgg,newbb)
+  if returnpalette: return (newrr,newgg,newbb)
+
+#############################################################################
+#############################################################################
+def viewsurface(scale=4.,gnomon=1):
+  """
+Dynamically view a surface plot. The mouse is used to change to view angle.
+With button 1 pushed, the horizontal movement changes the z angle, and
+vertical the y angle. With button 2 pressed, horizontal changes the x angle.
+When finished, press return in the python window.
+  - scale=4.: multiplicative factor to convert mouse movement to angle change
+  """
+  pl3d.gnomon(gnomon)
+  [xmin3min,xmax3max,ymin3min,ymax3max,sys] = limits()
+  while 1:
+    mm = mouse(0,0,"")
+    if mm == None: break
+    (xa, ya, za) = (0.,0.,0.)
+    if mm[9] == 1:
+      ya = - (mm[3] - mm[1])*scale
+      za = - (mm[2] - mm[0])*scale
+    if mm[9] == 3:
+      xa = (mm[2] - mm[0])*scale
+    pl3d.rot3(xa,ya,za)
+    [xmin3,xmax3,ymin3,ymax3] = pl3d.draw3(1)
+    xmin3min = min(xmin3min,xmin3)
+    xmax3max = max(xmax3max,xmax3)
+    ymin3min = min(ymin3min,ymin3)
+    ymax3max = max(ymax3max,ymax3)
+    limits(xmin3min,xmax3max,ymin3min,ymax3max)
+  pl3d.gnomon(gnomon)
+
+def _viewsurfacetest(scale=4.,gnomon=1):
+  """
+Dynamically view a surface plot. The mouse is used to change to view angle.
+With button 1 pushed, the horizontal movement changes the z angle, and
+vertical the y angle. With button 2 pressed, horizontal changes the x angle.
+When finished, press return in the python window.
+  - scale=4.: multiplicative factor to convert mouse movement to angle change
+  """
+  pl3d.gnomon(gnomon)
+  pl3d.orient3(phi=0.,theta=0.)
+  [xmin3min,xmax3max,ymin3min,ymax3max] = pl3d.draw3(1)
+  phi = 0.
+  theta = 0.
+  (xa, ya, za) = (0.,0.,0.)
+  while 1:
+    mm = mouse(0,0,"")
+    if mm == None: break
+    dphi   = (mm[3] - mm[1])*scale
+    dtheta = (mm[2] - mm[0])*scale
+    print theta,phi
+    newxa = xa + dtheta*sin(phi)*cos(theta) + dphi*cos(phi)*cos(theta)
+    newya = ya + dtheta*sin(phi)*sin(theta) + dphi*cos(phi)*sin(theta)
+    newza = za + dtheta*cos(phi)*cos(theta) + dphi*sin(phi)*sin(theta)
+    phi = xa*cos(za) + ya*sin(za)
+    theta = za
+    pl3d.rot3(newxa-xa,newya-ya,newza-za)
+    xa = newxa
+    ya = newya
+    za = newza
+    [xmin3,xmax3,ymin3,ymax3] = pl3d.draw3(1)
+    xmin3min = min(xmin3min,xmin3)
+    xmax3max = max(xmax3max,xmax3)
+    ymin3min = min(ymin3min,ymin3)
+    ymax3max = max(ymax3max,ymax3)
+    limits(xmin3min,xmax3max,ymin3min,ymax3max)
+  pl3d.gnomon(gnomon)
 
 #############################################################################
 #############################################################################
