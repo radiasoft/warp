@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.80 $, $Date: 2004/11/02 01:32:30 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.81 $, $Date: 2004/11/03 20:56:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -344,7 +344,7 @@ c     --- Make a print out.
         call remark("Multigrid: Maximum number of iterations reached")
       endif
       write(errline,20) mgerror,mgiters
-  20  format("Multigrid: Error converged to ",1pe11.3," in ",i4," v-cycles")
+  20  format("Multigrid: Error converged to ",1pe11.3," in ",i5," v-cycles")
       call remark(errline)
 
 c     --- If using residual correction form, restore saved rho
