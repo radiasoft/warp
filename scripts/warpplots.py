@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.94 2003/02/12 19:53:27 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.95 2003/02/24 17:58:02 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -195,6 +195,7 @@ def plotruninfo():
 # with one that prints informative text at the bottom of each frame just
 # before the normal gist fma is called. Also created are alternate (Basis
 # like) names for fma and redraw.
+print me, 'fma'
 gistfma = fma
 gisthcp = hcp
 afterplot = []
@@ -553,7 +554,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   - y, x: optional particle data (instead of using inputted grid)
   """
   # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {'zz':None,'grid':None,'nx':20,'ny':20,'slope':0.,
+  kwdefaults = {'zz':None,'weights':None,'grid':None,
+                'nx':20,'ny':20,'slope':0.,
                 'xoffset':0.,'yoffset':0.,'offset':0.,
                 'xscale':1.,'yscale':1.,'titles':1,'lframe':0,
                 'xmin':None,'xmax':None,'ymin':None,'ymax':None,
@@ -721,8 +723,10 @@ Note that either the x and y coordinates or the grid must be passed in.
       grid = fzeros((1+nx,1+ny),'d')
 
       # --- Deposit the density onto the grid.
-      setgrid2d(len(x),x,yms,nx,ny,grid,xmin,xmax,ymin,ymax)
-
+      if(weights is None):
+        setgrid2d(len(x),x,yms,nx,ny,grid,xmin,xmax,ymin,ymax)
+      else:
+        setgrid2dw(len(x),x,yms,weights,nx,ny,grid,xmin,xmax,ymin,ymax)
       # --- If parallel, do a reduction on the grid
       if lparallel: grid = parallelsum(grid)
 
@@ -735,7 +739,10 @@ Note that either the x and y coordinates or the grid must be passed in.
 
       # --- Deposit the data onto the grid. itask is 1 so that the parallel
       # --- version can be done properly.
-      deposgrid2d(1,len(x),x,yms,zz,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+      if(weights is None):
+        deposgrid2d(1,len(x),x,yms,zz,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+      else:
+        deposgrid2dw(1,len(x),x,yms,zz,weights,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
 
       # --- If parallel, do a reduction on the grid
       if lparallel:
@@ -1307,6 +1314,7 @@ def ppzxy(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,win=top.ywindows,z=top.yp,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
 
@@ -1333,6 +1341,7 @@ def ppzx(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1349,6 +1358,7 @@ def ppzy(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1365,6 +1375,7 @@ def ppzr(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("R vs Z","Z","R",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(sqrt(top.xp**2+top.yp**2),ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1381,6 +1392,7 @@ def ppzxp(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin,top.xpplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("X' vs Z","Z","X'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1397,6 +1409,7 @@ def ppzvx(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Vx vs Z","Z","Vx",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uxp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1413,6 +1426,7 @@ def ppzyp(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.ypplmin,top.ypplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Y' vs Z","Z","Y'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1429,6 +1443,7 @@ def ppzvy(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Vy vs Z","Z","Vy",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1445,6 +1460,7 @@ def ppzvz(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1460,6 +1476,7 @@ def ppxy(iw=0,**kw):
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Y vs X","X","Y",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.yp,ii),take(top.xp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1480,6 +1497,7 @@ def ppxxp(iw=0,**kw):
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("X' vs X","X","X'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.xp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1500,6 +1518,7 @@ def ppyyp(iw=0,**kw):
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Y' vs Y","Y","Y'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.yp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1524,6 +1543,7 @@ def ppxpyp(iw=0,**kw):
     kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
   settitles("Y' vs X'","X'","Y'",pptitleright(iw=iw,kwdict=kw))
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   xp = (take(top.uxp,ii)/take(top.uzp,ii) - xslope*(take(top.xp,ii)-xoffset) -
        xpoffset)
   yp = (take(top.uyp,ii)/take(top.uzp,ii) - yslope*(take(top.yp,ii)-yoffset) -
@@ -1548,6 +1568,7 @@ def ppxvx(iw=0,**kw):
     kw['pplimits'] = (top.xplmin,top.xplmax,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uxp,ii),take(top.xp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1569,6 +1590,7 @@ def ppyvy(iw=0,**kw):
     kw['pplimits'] = (top.yplmin,top.yplmax,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Vy vs Y","Y","Vy",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1585,6 +1607,7 @@ def ppxvz(iw=0,**kw):
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Vz vs X","X","Vz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.xp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1601,6 +1624,7 @@ def ppyvz(iw=0,**kw):
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Vz vs Y","Y","Vz",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1648,6 +1672,7 @@ def pprrp(iw=0,scale=0,**kw):
   else:
     kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
                       top.xpplmin/xpscale,top.xpplmax/ypscale)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("R' vs R","R","R'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(rp,rr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1664,6 +1689,7 @@ def pprvz(iw=0,**kw):
   else:
     kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   settitles("Vz vs R","R","Vz",pptitleright(iw=iw,kwdict=kw))
   rr = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
   vz = take(top.uzp,ii)*take(top.gaminv,ii)
@@ -1687,6 +1713,7 @@ that plot.
   y = take(top.yp,ii)
   xp = take(top.uxp,ii)/take(top.uzp,ii)
   yp = take(top.uyp,ii)/take(top.uzp,ii)
+  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
   slope = kw.get('slope',0.)
   if type(slope)==type(''):
     del kw['slope']
@@ -1780,7 +1807,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzxco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
            ncolor=None,nskipcol=None,nstepcol=None):
-  """Plots Z-X with color based in paricle index
+  """Plots Z-X with color based in particle index
      - js=0 species to plot
      - marker='\1' marker type (see gist manual for the list)
      - msize=1.0 marker size
