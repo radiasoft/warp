@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.33 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -442,13 +442,12 @@ c A positive zsign means that the conductor is the region above zcent.
       return
       end
 c=======================================================================
-      subroutine ZPlaneIntercept(zcent,zsign,
-     &                           n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+      subroutine ZPlaneIntercept(zcent,zsign,n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       use Constant
       real(kind=8):: zcent,zsign
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -464,15 +463,11 @@ c relative to a plane normal to the surface at that point.
           d1 = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
           d2 = vz(i)
           angle(i) = acos(d2/d1)
-          distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                       (y(i) - yi(i))**2 +
-     &                       (z(i) - zi(i))**2)
         else
           xi(i) = LARGEPOS
           yi(i) = LARGEPOS
           zi(i) = zcent
           angle(i) = pi/2.
-          distance(i) = LARGEPOS
         endif
       enddo
 
@@ -584,11 +579,11 @@ c A positive zsign means that the conductor is the region above zcent.
       end
 c=======================================================================
       subroutine PlaneIntercept(z0,zsign,theta,phi,xcent,ycent,zcent,
-     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: z0,zsign,theta,phi,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -610,7 +605,6 @@ c relative to a plane normal to the surface at that point.
           yi(i) = LARGEPOS
           zi(i) = LARGEPOS
           angle(i) = 0.
-          distance(i) = LARGEPOS
 
         else
 
@@ -632,9 +626,6 @@ c relative to a plane normal to the surface at that point.
           d1 = vv
           d2 = vx(i)*stheta*cphi + vy(i)*sphi + vz(i)*ctheta*cphi
           angle(i) = acos(d2/d1)
-          distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                       (y(i) - yi(i))**2 +
-     &                       (z(i) - zi(i))**2)
 
         endif
       enddo
@@ -752,11 +743,11 @@ c A positive zsign means that the conductor is the region above zcent.
       end
 c=======================================================================
       subroutine BoxIntercept(xsize,ysize,zsize,xcent,ycent,zcent,
-     &                        n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                        n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: xsize,ysize,zsize,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -767,7 +758,7 @@ c relative to a plane normal to the surface at that point.
       real(kind=8):: ty,xiy,yiy,ziy,diy
       real(kind=8):: tz,xiz,yiz,ziz,diz
       real(kind=8):: ctheta,stheta,cphi,sphi
-      real(kind=8):: di,d1,d2
+      real(kind=8):: di,d1,d2,distance
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
 
       xmin = xcent - xsize/2.
@@ -785,7 +776,6 @@ c relative to a plane normal to the surface at that point.
           yi(i) = LARGEPOS
           zi(i) = LARGEPOS
           angle(i) = 0.
-          distance(i) = LARGEPOS
 
         else
 
@@ -847,7 +837,7 @@ c relative to a plane normal to the surface at that point.
             xi(i) = xix
             yi(i) = yix
             zi(i) = zix
-            distance(i) = dix
+            distance = dix
             ctheta = 0.
             stheta = 1.
             cphi = 1.
@@ -856,17 +846,17 @@ c relative to a plane normal to the surface at that point.
             xi(i) = xiy
             yi(i) = yiy
             zi(i) = ziy
-            distance(i) = diy
+            distance = diy
             ctheta = 1.
             stheta = 0.
             cphi = 0.
             sphi = 1.
           endif
-          if (diz < distance(i)) then
+          if (diz < distance) then
             xi(i) = xiz
             yi(i) = yiz
             zi(i) = ziz
-            distance(i) = diz
+            distance = diz
             ctheta = 1.
             stheta = 0.
             cphi = 1.
@@ -876,7 +866,6 @@ c relative to a plane normal to the surface at that point.
           d1 = vv
           d2 = vx(i)*stheta*cphi + vy(i)*sphi + vz(i)*ctheta*cphi
           angle(i) = acos(d2/d1)
-          if (distance(i) < LARGEPOS) distance(i) = sqrt(distance(i))
 
         endif
       enddo
@@ -994,12 +983,12 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine ZCylinderIntercept(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       use Constant
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -1017,7 +1006,6 @@ c relative to a plane normal to the surface at that point.
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
 
         vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
         if (vv == 0.) cycle
@@ -1086,9 +1074,6 @@ c       --- Check if it hits the cylinder.
         xi(i) = -vx(i)*tt + x(i)
         yi(i) = -vy(i)*tt + y(i)
         zi(i) = -vz(i)*tt + z(i)
-        distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                     (y(i) - yi(i))**2 +
-     &                     (z(i) - zi(i))**2)
         d1 = vv
         d2 = vx(i)*sin(theta)*cos(phi) + vy(i)*sin(phi) +
      &       vz(i)*cos(theta)*cos(phi)
@@ -1258,23 +1243,23 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine ZRoundedCylinderIntercept(rad,length,rad2,xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                                     n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: rad,length,rad2,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for ZRoundedCylinder"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -1394,12 +1379,12 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine ZCylinderOutIntercept(rad,length,xcent,ycent,zcent,
-     &                                 n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                                 n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       use Constant
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -1417,7 +1402,6 @@ c relative to a plane normal to the surface at that point.
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
 
         vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
         if (vv == 0.) cycle
@@ -1486,9 +1470,6 @@ c       --- Check if it hits the cylinder.
         xi(i) = -vx(i)*tt + x(i)
         yi(i) = -vy(i)*tt + y(i)
         zi(i) = -vz(i)*tt + z(i)
-        distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                     (y(i) - yi(i))**2 +
-     &                     (z(i) - zi(i))**2)
         d1 = vv
         d2 = vx(i)*sin(theta)*cos(phi) + vy(i)*sin(phi) +
      &       vz(i)*cos(theta)*cos(phi)
@@ -1663,23 +1644,23 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine ZRoundedCylinderOutIntercept(rad,length,rad2,xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                                        n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: rad,length,rad2,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for ZRoundedCylinderOut"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -1723,7 +1704,7 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine XCylinderIntercept(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
@@ -1733,7 +1714,7 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       call ZCylinderIntercept(rad,length,ycent,zcent,xcent,
-     &                        n,y,z,x,vy,vz,vx,yi,zi,xi,angle,distance)
+     &                        n,y,z,x,vy,vz,vx,yi,zi,xi,angle)
 
       return
       end
@@ -1776,7 +1757,7 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine YCylinderIntercept(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
@@ -1786,7 +1767,7 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       call ZCylinderIntercept(rad,length,zcent,xcent,ycent,
-     &                        n,z,x,y,vz,vx,vy,zi,xi,yi,angle,distance)
+     &                        n,z,x,y,vz,vx,vy,zi,xi,yi,angle)
 
       return
       end
@@ -1892,11 +1873,11 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine SphereIntercept(rad,xcent,ycent,zcent,
-     &                           n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                           n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: rad,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -1920,7 +1901,6 @@ c relative to a plane normal to the surface at that point.
           yi(i) = LARGEPOS
           zi(i) = LARGEPOS
           angle(i) = 0.
-          distance(i) = LARGEPOS
         else
           t1 = (-b + sqrt(b**2 - 4*a*c))/(2*a)
           t2 = (-b - sqrt(b**2 - 4*a*c))/(2*a)
@@ -1944,9 +1924,6 @@ c relative to a plane normal to the surface at that point.
           d1 = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
           d2 = vx(i)*stheta*cphi + vy(i)*sphi + vz(i)*ctheta*cphi
           angle(i) = acos(d2/d1)
-          distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                       (y(i) - yi(i))**2 +
-     &                       (z(i) - zi(i))**2)
         endif
 
       enddo
@@ -2123,23 +2100,23 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine ZConeIntercept(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for ZCone"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -2318,23 +2295,23 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine ZConeOutIntercept(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                             n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for ZConeOut"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -2648,11 +2625,11 @@ c       --- Now find the minimum ttemp.
       end
 c=======================================================================
       subroutine ZTorusIntercept(r1,r2,xcent,ycent,zcent,
-     &                           n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                           n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: r1,r2,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -2665,7 +2642,6 @@ c relative to a plane normal to the surface at that point.
       yi = LARGEPOS
       zi = LARGEPOS
       angle = 0.
-      distance = LARGEPOS
       tt = LARGEPOS
       theta = 0.
       phi = 0.
@@ -2685,9 +2661,6 @@ c relative to a plane normal to the surface at that point.
         d2 = vx(i)*sin(theta(i))*cos(phi(i)) + vy(i)*sin(phi(i)) +
      &       vz(i)*cos(theta(i))*cos(phi(i))
         angle(i) = acos(abs(d2)/d1)
-        distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                     (y(i) - yi(i))**2 +
-     &                     (z(i) - zi(i))**2)
       enddo
 
       return
@@ -2914,23 +2887,23 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine CylinderIntercept(rad,length,theta,phi,xcent,ycent,zcent,
-     &                             n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                             n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: rad,length,theta,phi,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for Cylinder"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -3111,26 +3084,26 @@ c Otherwise, the cylinders can be at any angle.
 c=======================================================================
       subroutine CylindersIntercept(ncylinders,rad,length,theta,phi,
      &                              xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       integer(ISZ):: ncylinders
       real(kind=8):: rad(ncylinders),length(ncylinders)
       real(kind=8):: theta(ncylinders),phi(ncylinders)
       real(kind=8):: xcent(ncylinders),ycent(ncylinders),zcent(ncylinders)
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for Cylinders"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -3481,24 +3454,24 @@ c       zz = zg*cos(theta)*cos(phi) + xg*sin(theta)*cos(phi) + yg*sin(phi)
 c=======================================================================
       subroutine ConeIntercept(r_zmin,r_zmax,length,theta,phi,
      &                         xcent,ycent,zcent,
-     &                         n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                         n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       use Constant
       real(kind=8):: r_zmin,r_zmax,length,theta,phi,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for Cone"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -3680,7 +3653,7 @@ c Otherwise, the cones can be at any angle.
 c=======================================================================
       subroutine ConesIntercept(ncones,r_zmin,r_zmax,length,theta,phi,
      &                          xcent,ycent,zcent,
-     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       use Constant
       integer(ISZ):: ncones
       real(kind=8):: r_zmin(ncones),r_zmax(ncones),length(ncones)
@@ -3688,19 +3661,19 @@ c=======================================================================
       real(kind=8):: xcent(ncones),ycent(ncones),zcent(ncones)
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for Cones"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -3912,23 +3885,23 @@ c           z2 = za - sqrt((za-zb+sqrt((zb-z0)**2-y1**2))**2 - x1**2)
       end
 c=======================================================================
       subroutine BeamletplateIntercept(za,zb,z0,thickness,xcent,ycent,zcent,
-     &                                 n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                                 n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       real(kind=8):: za,zb,z0,thickness,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
 
+      print*,"The intercept calculation is not yet implemented for Beamletplate"
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
       enddo
 
       return
@@ -4389,14 +4362,14 @@ c           --- !!!!!!! not correct !!!!!!
 c=======================================================================
       subroutine ZSrfrvOutIntercept(rofzfunc,zmin,zmax,rmax,griddz,
      &                              xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       use Constant
       use Surface_of_Rev
       character(*):: rofzfunc
       real(kind=8):: zmin,zmax,rmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -4426,7 +4399,6 @@ c       --- Set parameter to LARGEPOS as an initial guess.
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
 
         vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
         if (vv == 0.) cycle
@@ -4491,9 +4463,6 @@ c       --- Check if it hits the outer cylinder.
         xi(i) = -vx(i)*tt(i) + x(i)
         yi(i) = -vy(i)*tt(i) + y(i)
         zi(i) = -vz(i)*tt(i) + z(i)
-        distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                     (y(i) - yi(i))**2 +
-     &                     (z(i) - zi(i))**2)
         d1 = vv
         d2 = vx(i)*sin(theta(i))*cos(phi(i)) + vy(i)*sin(phi(i)) +
      &       vz(i)*cos(theta(i))*cos(phi(i))
@@ -4795,14 +4764,14 @@ c near the surface, the distance has the correct sign.
 c=======================================================================
       subroutine ZSrfrvInIntercept(rofzfunc,zmin,zmax,rmin,griddz,
      &                             xcent,ycent,zcent,
-     &                             n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                             n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       use Constant
       use Surface_of_Rev
       character(*):: rofzfunc
       real(kind=8):: zmin,zmax,rmin,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -4832,7 +4801,6 @@ c       --- Set parameter to LARGEPOS as an initial guess.
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
 
         vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
         if (vv == 0.) cycle
@@ -4897,9 +4865,6 @@ c       --- Check if it hits the inner cylinder.
         xi(i) = -vx(i)*tt(i) + x(i)
         yi(i) = -vy(i)*tt(i) + y(i)
         zi(i) = -vz(i)*tt(i) + z(i)
-        distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                     (y(i) - yi(i))**2 +
-     &                     (z(i) - zi(i))**2)
         d1 = vv
         d2 = vx(i)*sin(theta(i))*cos(phi(i)) + vy(i)*sin(phi(i)) +
      &       vz(i)*cos(theta(i))*cos(phi(i))
@@ -5462,13 +5427,13 @@ c near the surface, the distance has the correct sign.
 c=======================================================================
       subroutine ZSrfrvInOutIntercept(rminofz,rmaxofz,zmin,zmax,griddz,
      &                                xcent,ycent,zcent,
-     &                                n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+     &                                n,x,y,z,vx,vy,vz,xi,yi,zi,angle)
       use Surface_of_Rev
       character(*):: rminofz,rmaxofz
       real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),angle(n),distance(n)
+      real(kind=8):: xi(n),yi(n),zi(n),angle(n)
 
 c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
@@ -5506,7 +5471,6 @@ c       --- Set parameter to LARGEPOS as an initial guess.
         yi(i) = LARGEPOS
         zi(i) = LARGEPOS
         angle(i) = 0.
-        distance(i) = LARGEPOS
 
         vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
         if (vv == 0.) cycle
@@ -5543,9 +5507,6 @@ c       --- First, check if trajectory hits conductor end.
         xi(i) = -vx(i)*tt(i) + x(i)
         yi(i) = -vy(i)*tt(i) + y(i)
         zi(i) = -vz(i)*tt(i) + z(i)
-        distance(i) = sqrt((x(i) - xi(i))**2 +
-     &                     (y(i) - yi(i))**2 +
-     &                     (z(i) - zi(i))**2)
         d1 = vv
         d2 = vx(i)*sin(theta(i))*cos(phi(i)) + vy(i)*sin(phi(i)) +
      &       vz(i)*cos(theta(i))*cos(phi(i))
