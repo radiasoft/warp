@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.25 2002/01/10 23:05:06 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.26 2002/03/22 15:38:25 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -206,6 +206,8 @@ def getwin_moments():
 # --- Gathers windows history data onto PE0.
 # --- Still need to deal with linechg and hvzofz and other zmoments histories.
 def gethist():
+  # --- Do nothing if there is no history data
+  if top.jhist < 0: return
   # --- All zwindow histories have the attribute winhist.
   vlist = top.varlist('winhist')
   # --- Loop over the number of windows and get the pe that owns it.
