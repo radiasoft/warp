@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.53 2003/02/24 16:10:40 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.54 2003/02/24 20:24:56 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2258,62 +2258,62 @@ Returns the scene use to draw the image
   nz = w3d.nz
 
   # --- Get conductors
+  ie = f3d.ecstart[mglevel  ] - 1
+  io = f3d.ocstart[mglevel  ] - 1
   ne = f3d.ecstart[mglevel+1] - 1
   no = f3d.ocstart[mglevel+1] - 1
   if condid is None:
     # --- Get all conductors
-    iecndx = f3d.iecndx[:ne]
-    iecndy = f3d.iecndy[:ne]
-    iecndz = f3d.iecndz[:ne]
-    ecdelmx = f3d.ecdelmx[:ne]
-    ecdelpx = f3d.ecdelpx[:ne]
-    ecdelmy = f3d.ecdelmy[:ne]
-    ecdelpy = f3d.ecdelpy[:ne]
-    ecdelmz = f3d.ecdelmz[:ne]
-    ecdelpz = f3d.ecdelpz[:ne]
-    iocndx = f3d.iocndx[:no]
-    iocndy = f3d.iocndy[:no]
-    iocndz = f3d.iocndz[:no]
-    ocdelmx = f3d.ocdelmx[:no]
-    ocdelpx = f3d.ocdelpx[:no]
-    ocdelmy = f3d.ocdelmy[:no]
-    ocdelpy = f3d.ocdelpy[:no]
-    ocdelmz = f3d.ocdelmz[:no]
-    ocdelpz = f3d.ocdelpz[:no]
+    iecndx = f3d.iecndx[ie:ne]
+    iecndy = f3d.iecndy[ie:ne]
+    iecndz = f3d.iecndz[ie:ne]
+    ecdelmx = f3d.ecdelmx[ie:ne]
+    ecdelpx = f3d.ecdelpx[ie:ne]
+    ecdelmy = f3d.ecdelmy[ie:ne]
+    ecdelpy = f3d.ecdelpy[ie:ne]
+    ecdelmz = f3d.ecdelmz[ie:ne]
+    ecdelpz = f3d.ecdelpz[ie:ne]
+    iocndx = f3d.iocndx[io:no]
+    iocndy = f3d.iocndy[io:no]
+    iocndz = f3d.iocndz[io:no]
+    ocdelmx = f3d.ocdelmx[io:no]
+    ocdelpx = f3d.ocdelpx[io:no]
+    ocdelmy = f3d.ocdelmy[io:no]
+    ocdelpy = f3d.ocdelpy[io:no]
+    ocdelmz = f3d.ocdelmz[io:no]
+    ocdelpz = f3d.ocdelpz[io:no]
   else:
     # --- Get only points matching the specified condid
-    iecndx = compress(f3d.ecnumb[:ne]==condid,f3d.iecndx[:ne])
-    iecndy = compress(f3d.ecnumb[:ne]==condid,f3d.iecndy[:ne])
-    iecndz = compress(f3d.ecnumb[:ne]==condid,f3d.iecndz[:ne])
-    ecdelmx = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelmx[:ne])
-    ecdelpx = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelpx[:ne])
-    ecdelmy = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelmy[:ne])
-    ecdelpy = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelpy[:ne])
-    ecdelmz = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelmz[:ne])
-    ecdelpz = compress(f3d.ecnumb[:ne]==condid,f3d.ecdelpz[:ne])
-    iocndx = compress(f3d.ocnumb[:no]==condid,f3d.iocndx[:no])
-    iocndy = compress(f3d.ocnumb[:no]==condid,f3d.iocndy[:no])
-    iocndz = compress(f3d.ocnumb[:no]==condid,f3d.iocndz[:no])
-    ocdelmx = compress(f3d.ocnumb[:no]==condid,f3d.ocdelmx[:no])
-    ocdelpx = compress(f3d.ocnumb[:no]==condid,f3d.ocdelpx[:no])
-    ocdelmy = compress(f3d.ocnumb[:no]==condid,f3d.ocdelmy[:no])
-    ocdelpy = compress(f3d.ocnumb[:no]==condid,f3d.ocdelpy[:no])
-    ocdelmz = compress(f3d.ocnumb[:no]==condid,f3d.ocdelmz[:no])
-    ocdelpz = compress(f3d.ocnumb[:no]==condid,f3d.ocdelpz[:no])
+    iecndx = compress(f3d.ecnumb[ie:ne]==condid,f3d.iecndx[ie:ne])
+    iecndy = compress(f3d.ecnumb[ie:ne]==condid,f3d.iecndy[ie:ne])
+    iecndz = compress(f3d.ecnumb[ie:ne]==condid,f3d.iecndz[ie:ne])
+    ecdelmx = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelmx[ie:ne])
+    ecdelpx = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelpx[ie:ne])
+    ecdelmy = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelmy[ie:ne])
+    ecdelpy = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelpy[ie:ne])
+    ecdelmz = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelmz[ie:ne])
+    ecdelpz = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelpz[ie:ne])
+    iocndx = compress(f3d.ocnumb[io:no]==condid,f3d.iocndx[io:no])
+    iocndy = compress(f3d.ocnumb[io:no]==condid,f3d.iocndy[io:no])
+    iocndz = compress(f3d.ocnumb[io:no]==condid,f3d.iocndz[io:no])
+    ocdelmx = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelmx[io:no])
+    ocdelpx = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelpx[io:no])
+    ocdelmy = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelmy[io:no])
+    ocdelpy = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelpy[io:no])
+    ocdelmz = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelmz[io:no])
+    ocdelpz = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelpz[io:no])
 
-  ne = len(iecndx)
-  no = len(iocndx)
-  nn = ne + no
+  nn = len(iecndx) + len(iocndx)
   if nn == 0: return
-  icndx = array(list(iecndx[:ne])+list(iocndx[:no]))
-  icndy = array(list(iecndy[:ne])+list(iocndy[:no]))
-  icndz = array(list(iecndz[:ne])+list(iocndz[:no]))
-  delmx = array(list(ecdelmx[:ne]) + list(ocdelmx[:no]))
-  delpx = array(list(ecdelpx[:ne]) + list(ocdelpx[:no]))
-  delmy = array(list(ecdelmy[:ne]) + list(ocdelmy[:no]))
-  delpy = array(list(ecdelpy[:ne]) + list(ocdelpy[:no]))
-  delmz = array(list(ecdelmz[:ne]) + list(ocdelmz[:no]))
-  delpz = array(list(ecdelpz[:ne]) + list(ocdelpz[:no]))
+  icndx = concatenate((iecndx,iocndx))
+  icndy = concatenate((iecndy,iocndy))
+  icndz = concatenate((iecndz,iocndz))
+  delmx = concatenate((ecdelmx,ocdelmx))
+  delpx = concatenate((ecdelpx,ocdelpx))
+  delmy = concatenate((ecdelmy,ocdelmy))
+  delpy = concatenate((ecdelpy,ocdelpy))
+  delmz = concatenate((ecdelmz,ocdelmz))
+  delpz = concatenate((ecdelpz,ocdelpz))
   icnd = array([icndx,icndy,icndz])
   dels = array([delmx,delpx,delmy,delpy,delmz,delpz])
 
