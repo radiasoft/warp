@@ -69,10 +69,12 @@ SRFRVLA_rnd_rectangle(name,c,l,h,r)
 
 from warp import *
 import operator
-if not lparallel: import VPythonobjects
+if not lparallel:
+  import VPythonobjects
+  import pyOpenDX
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.57 2004/05/06 00:26:24 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.58 2004/05/15 01:17:52 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1820,6 +1822,17 @@ Outside of a surface of revolution
 
     return Assembly.getkwlist(self)
 
+  def visualize(self,rend=None,
+                     twoSided=1,color=None,scene=None,title=None,vrange=None):
+    if rend is None: rend = self.rmax
+    v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
+                       rendzmin=rend,rendzmax=rend,
+                       xoff=self.xcent,yoff=self.ycent,
+                       rofzdata=self.rofzdata,zdata=self.zdata,
+                       raddata=self.raddata,zcdata=self.zcdata,
+                       rcdata=self.rcdata,
+                       twoSided=1,color=None,scene=None,title=None,vrange=None)
+
 #============================================================================
 class ZSrfrvIn(Srfrv):
   """
@@ -1898,6 +1911,15 @@ Inside of a surface of revolution
 
     return Assembly.getkwlist(self)
 
+  def visualize(self,twoSided=1,color=None,scene=None,title=None,vrange=None):
+    v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
+                       rendzmin=rend,rendzmax=rend,
+                       xoff=self.xcent,yoff=self.ycent,
+                       rofzdata=self.rofzdata,zdata=self.zdata,
+                       raddata=self.raddata,zcdata=self.zcdata,
+                       rcdata=self.rcdata,
+                       twoSided=1,color=None,scene=None,title=None,vrange=None)
+
 #============================================================================
 class ZSrfrvInOut(Srfrv):
   """
@@ -1961,7 +1983,6 @@ Between surfaces of revolution
         # --- was passed in.
         self.rminofz = self.rminofz.__name__
 
-
     if operator.isSequenceType(zmaxdata):
       self.usemaxdata = true
       self.zmaxdata = zmaxdata
@@ -2013,6 +2034,62 @@ Between surfaces of revolution
       f3d.lsrmaxlinr = false
 
     return Assembly.getkwlist(self)
+
+  def visualize(self,thmin=0.,thmax=2*pi,
+                     twoSided=1,color=None,scene=None,title=None,vrange=None,
+                     display=1):
+    if self.usemindata:
+      rminzmin = self.rminofzdata[0]
+      rminzmax = self.rminofzdata[-1]
+    else:
+      import __main__
+      f3d.srfrv_z = self.zmin
+      __main__.__dict__[self.rminofz]()
+      rminzmin = f3d.srfrv_r
+      f3d.srfrv_z = self.zmax
+      __main__.__dict__[self.rminofz]()
+      rminzmax = f3d.srfrv_r
+    if self.usemaxdata:
+      rmaxzmin = self.rmaxofzdata[0]
+      rmaxzmax = self.rmaxofzdata[-1]
+    else:
+      import __main__
+      f3d.srfrv_z = self.zmin
+      __main__.__dict__[self.rmaxofz]()
+      rmaxzmin = f3d.srfrv_r
+      f3d.srfrv_z = self.zmax
+      __main__.__dict__[self.rmaxofz]()
+      rmaxzmax = f3d.srfrv_r
+    rendzmin = 0.5*(rminzmin + rmaxzmin)
+    rendzmax = 0.5*(rminzmax + rmaxzmax)
+
+    vmin = VPythonobjects.VisualRevolution(self.rminofz,self.zmin,self.zmax,
+                       rendzmin=rendzmin,rendzmax=rendzmax,
+                       thmin=thmin,thmax=thmax,
+                       xoff=self.xcent,yoff=self.ycent,
+                       rofzdata=self.rminofzdata,zdata=self.zmindata,
+                       raddata=self.radmindata,zcdata=self.zcmindata,
+                       rcdata=self.rcmindata,
+                       twoSided=0,normalsign=+1,
+                       color=color,scene=None,title=None,vrange=None,
+                       display=0)
+    vmax = VPythonobjects.VisualRevolution(self.rmaxofz,self.zmin,self.zmax,
+                       rendzmin=rendzmin,rendzmax=rendzmax,
+                       thmin=thmin,thmax=thmax,
+                       xoff=self.xcent,yoff=self.ycent,
+                       rofzdata=self.rmaxofzdata,zdata=self.zmaxdata,
+                       raddata=self.radmaxdata,zcdata=self.zcmaxdata,
+                       rcdata=self.rcmaxdata,
+                       twoSided=0,normalsign=-1,
+                       color=color,scene=None,title=None,vrange=None,
+                       display=0)
+    self.vmin = vmin
+    self.vmax = vmax
+    v = pyOpenDX.DXCollection(vmin.dxobject,vmax.dxobject)
+    if display:
+      pyOpenDX.DXImage(v)
+    else:
+      self.dxobject = v
 
 #============================================================================
 class ZAnnulus(ZSrfrvInOut):
