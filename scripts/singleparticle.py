@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.16 2005/02/15 23:51:35 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.17 2005/02/15 23:53:55 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -244,6 +244,7 @@ is not alive."""
     top.vbeamfrm = self.vbeamfrmsave
     top.dt = self.dtsave
     wxy.ds = self.dssave
+    setlatt()
 
   #----------------------------------------------------------------------
   def reset(self,clearhistory=0):
