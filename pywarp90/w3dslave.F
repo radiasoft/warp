@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.11 $, $Date: 2002/08/06 23:27:33 $
+c W3DSLAVE.M, version $Revision: 1.12 $, $Date: 2002/08/27 23:16:53 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -216,16 +216,28 @@ c       --- Set minimum z of each processor.
           zpslmax(i) = zlast + zslave(i)/sumzslave*(zmmax - zmmin)
           zlast = zpslmax(i)
         enddo
+
+c       --- When using solvergeom==AMRgeom, the particle decomposition must
+c       --- be aligned with the grid.
+        if (solvergeom==AMRgeom) then
+         do i=0,nslaves-1
+           zpslmin(i) = nint((zpslmin(i) - zmmin)/dz)*dz
+           zpslmax(i) = nint((zpslmax(i) - zmmin)/dz)*dz
+         enddo
+        endif
+
 c       --- This is only needed to avoid problems from round off in the
 c       --- accumulation. From the loop above, zpslmax(nslaves-1) will
 c       --- not be exactly the same as zmmax due to roundoff.
         zpslmax(nslaves-1) = zmmax
+
 c       --- Set iz and nz. This is done so that zmesh(izpslave) < zpslmin, and
 c       --- zmesh(izpslave+nzpslave) > zpslmax.
         do i=0,nslaves-1
           izpslave(i) = int((zpslmin(i) - zmmin)/dz)
           nzpslave(i) = int((zpslmax(i) - zmmin)/dz) - izpslave(i) + 1
         enddo
+
 c       --- Make sure that the last processors doesn't have grid cells
 c       --- sticking out the end.
         nzpslave(nslaves-1) = nz - izpslave(nslaves-1)
