@@ -2,6 +2,8 @@ from warp import *
 import RandomArray
 import re
 import os
+import sys
+import string
 import __main__
 if me == 0:
   try:
@@ -9,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.108 2003/08/22 17:18:59 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.109 2003/08/25 23:45:55 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -166,7 +168,7 @@ Opens up an X window
   - winnum=0 is the window number
   - dpi=100 is the dots per inch (either 100 or 75)
   """
-  if winnum==0:
+  if winnum==0 and sys.platform <> 'win32':
     window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
   else:
     window(winnum,dpi=dpi)
@@ -3106,3 +3108,107 @@ def psplotsseldom():
 __main__.__dict__['psplotsalways'] = psplotsalways
 __main__.__dict__['psplotsseldom'] = psplotsseldom
 
+def gstyle():
+    global gist_style
+    gist_style = get_style()
+    for i in range(0,len(gist_style['systems'])):
+      gist_style['systems'][i]['legend']=''
+
+def set_label(height=None,font=None,bold=0,italic=0,axis='all',system=None):
+    """change plots label attributes
+       - height=None,
+       - scale=1.,
+       - font=None ('Courier'=0,'Times'=1,'Helvetica'=2,'Symbol'=3,'New Century'=4),
+       - bold=0
+       - italic=0
+       - axis='all'
+       - system='all'"""
+    global gist_style
+    try:
+      a=gist_style
+    except:
+      gstyle()
+      
+    if font is not None:
+      if(type(font)==type('string')):
+        if font == 'Courier':     font = 0
+        if font == 'Times':       font = 1
+        if font == 'Helvetica':   font = 2
+        if font == 'Symbol':      font = 3
+        if font == 'New Century': font = 4
+      font=4*font+bold+2*italic
+    if system is None:
+      systems = [plsys(plsys())-1]
+    else:
+      if(system=='all'):
+        systems = range(0,len(gist_style['systems']))
+      else:
+        systems = [system-1]
+    for i in systems:
+      if(axis=='x' or axis=='all'):
+        if height is not None:
+          gist_style ['systems'][i]['ticks']['horizontal']['textStyle']['height']= height
+        if font is not None:
+          gist_style ['systems'][i]['ticks']['horizontal']['textStyle']['font']=font
+      if(axis=='y' or axis=='all'):
+        if height is not None:
+          gist_style ['systems'][i]['ticks']['vertical']['textStyle']['height']= height
+        if font is not None:
+          gist_style ['systems'][i]['ticks']['vertical']['textStyle']['font']=font
+    set_style(gist_style)
+
+
+class getstdout:
+    def __init__(self):
+        self.out = []
+    def write(self,s):
+        self.out.append(s)
+    def clear(self):
+        self.out = []
+    def flush(self):
+        pass         
+
+def wplq(i):
+    """return dictionary of plot options"""
+    s = sys.stdout
+    sys.stdout = getstdout()
+    plq(i)
+    r = sys.stdout.out
+    sys.stdout = s
+    l = {}
+    for j in range(0,len(r)):
+      line = string.split(r[j])
+      if(len(line)>0):
+        k = 0
+        while k <len(line):
+          if(string.find(line[k],'=')>0):
+             arg = string.replace(line[k],'=','')
+             val = string.replace(line[k+1],',','')
+             try:
+               val=float(val)
+             except:
+               try:
+                 val=int(val)
+               except:
+                 val = string.replace(val,'"','')
+                 val = string.replace(val,"'",'')
+                 pass
+             l[arg]=val
+             k = k+2
+          else:
+            k = k+1
+    return l
+             
+def aplq():
+    """return list of dictionaries for all elements in active window"""
+    list = []
+    l = 1
+    i = 1
+    while l>0:
+      d=wplq(i)
+      l=len(d)
+      if l>0:
+        list=list+[d]
+        i=i+1
+    return list
+         
