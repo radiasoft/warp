@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.45 $, $Date: 2002/06/20 19:35:34 $
+c@(#) File F3D.M, version $Revision: 3.46 $, $Date: 2002/06/21 23:02:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5955,8 +5955,8 @@ c             --- calculate bounds of first plate (these are bounded to be
 c             --- within the field mesh)
               iymax = min(ny,int( 0.5*dipow1(id)/dy+0.5+iy_axis))
               iymin = max(0,int(-0.5*dipow1(id)/dy-0.5+iy_axis))
-              izmax = min(nz,int((dipocent + dipol1(id)*0.5)/dz + zfuzz))
-              izmin = max(0,int((dipocent - dipol1(id)*0.5)/dz + zfuzz))
+              izmax = min(nz,int((dipocent + dipol1(id)*0.5)/dz + fuzz))
+              izmin = max(0,int((dipocent - dipol1(id)*0.5)/dz + fuzz))
 
 c             --- add more space to the arrays if necessary
               if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
@@ -6974,8 +6974,8 @@ c numbers in the range of -1 and 0 from being rounded to zero.
 c Is there no "floor" function in fortran?
       zgmin = zmmin + zbeam
       zgmax = zmmax + zbeam
-      izmin = int((zmin - zgmin)*dzi - zfuzz + 1 + nz) - nz
-      izmax = int((zmax - zgmin)*dzi + zfuzz     + nz) - nz
+      izmin = int((zmin - zgmin)*dzi - fuzz + 1 + nz) - nz
+      izmax = int((zmax - zgmin)*dzi + fuzz     + nz) - nz
 
 c Perform error checking, to make sure that izmin and izmax are within the
 c grid.
@@ -7062,8 +7062,8 @@ c       --- Calculate r at zmin and zmax.
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz  +nz)-nz)
-        izmax = min(izbmax,int((zmax-zgmin)*dzi+zfuzz+1+nz)-nz)
+        izmin = max(izbmin,int((zmin-zgmin)*dzi-fuzz  +nz)-nz)
+        izmax = min(izbmax,int((zmax-zgmin)*dzi+fuzz+1+nz)-nz)
 
 c       -- Set all points along and just outside conductor.
         do iz=izmin,izmax
@@ -7162,10 +7162,10 @@ c             --- Calculate distance to conductor at lower z.
               delmz = delmz0
 
 c             --- If grid location is between rrr and rrrlower and between
-c             --- rmax and rrrlower, find intersection point.  The zfuzz
+c             --- rmax and rrrlower, find intersection point.  The fuzz
 c             --- ensures that a distance of zero is not calculated.
               if (rrrlower <= rad .and. rad < min(rrr,rmax)-rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
+     &            .and. delmz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
 c               --- First, try Regula-Falsi (secant method) iteration to
@@ -7219,10 +7219,10 @@ c             --- Calculate distance to conductor at higher z.
               delpz = delpz0
 
 c             --- If grid location is between rrr and rrrhigher and between
-c             --- rmax and rrrhigher, find intersection point.  The zfuzz
+c             --- rmax and rrrhigher, find intersection point.  The fuzz
 c             --- ensures that a distance of zero is not calculated.
               if (rrrhigher <= rad .and. rad < min(rrr,rmax)-rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
+     &            .and. delpz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
 c               --- First, try Regula-Falsi (secant method) iteration to
@@ -7576,8 +7576,8 @@ c numbers in the range of -1 and 0 from being rounded to zero.
 c Is there no "floor" function in fortran?
       zgmin = zmmin + zbeam
       zgmax = zmmax + zbeam
-      izmin = int((zmin - zgmin)*dzi - zfuzz + 1 + nz) - nz
-      izmax = int((zmax - zgmin)*dzi + zfuzz     + nz) - nz
+      izmin = int((zmin - zgmin)*dzi - fuzz + 1 + nz) - nz
+      izmax = int((zmax - zgmin)*dzi + fuzz     + nz) - nz
 
 c Perform error checking, to make sure that izmin and izmax are within the
 c grid.
@@ -7663,8 +7663,8 @@ c       --- Calculate r at zmin and zmax.
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz  +nz)-nz)
-        izmax = min(izbmax,int((zmax-zgmin)*dzi+zfuzz+1+nz)-nz)
+        izmin = max(izbmin,int((zmin-zgmin)*dzi-fuzz  +nz)-nz)
+        izmax = min(izbmax,int((zmax-zgmin)*dzi+fuzz+1+nz)-nz)
 
 c       -- Loop over z planes
         do iz=izmin,izmax
@@ -7762,10 +7762,10 @@ c             --- Calculate distance to conductor at lower z.
               delmz = delmz0
 
 c             --- If grid location is between rrr and rrrlower and between
-c             --- rmin and rrrlower, find intersection point.  The zfuzz
+c             --- rmin and rrrlower, find intersection point.  The fuzz
 c             --- ensures that a distance of zero is not calculated.
               if (rrrlower >= rad .and. rad > max(rrr,rmin)+rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
+     &            .and. delmz > fuzz .and.
      &            xxmin <= xx .and. xx <= xxmax .and.
      &            yymin <= yy .and. yy <= yymax) then
 c               --- First, try Regula-Falsi (secant method) iteration to
@@ -7818,10 +7818,10 @@ c             --- Calculate distance to conductor at higher z.
               delpz = delpz0
 
 c             --- If grid location is between rrr and rrrhigher and between
-c             --- rmin and rrrhigher, find intersection point.  The zfuzz
+c             --- rmin and rrrhigher, find intersection point.  The fuzz
 c             --- ensures that a distance of zero is not calculated.
               if (rrrhigher >= rad .and. rad > max(rrr,rmin)+rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
+     &            .and. delpz > fuzz .and.
      &            xxmin <= xx .and. xx <= xxmax .and.
      &            yymin <= yy .and. yy <= yymax) then
 c               --- First, try Regula-Falsi (secant method) iteration to
@@ -8186,8 +8186,8 @@ c numbers in the range of -1 and 0 from being rounded to zero.
 c Is there no "floor" function in fortran?
       zgmin = zmmin + zbeam
       zgmax = zmmax + zbeam
-      izmin = int((zmin - zgmin)*dzi - zfuzz + 1 + nz) - nz
-      izmax = int((zmax - zgmin)*dzi + zfuzz     + nz) - nz
+      izmin = int((zmin - zgmin)*dzi - fuzz + 1 + nz) - nz
+      izmax = int((zmax - zgmin)*dzi + fuzz     + nz) - nz
 
 c Perform error checking, to make sure that izmin and izmax are within the
 c grid.
@@ -8249,8 +8249,8 @@ c       --- Calculate r at zmin and zmax.
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz  +nz)-nz)
-        izmax = min(izbmax,int((zmax-zgmin)*dzi+zfuzz+1+nz)-nz)
+        izmin = max(izbmin,int((zmin-zgmin)*dzi-fuzz  +nz)-nz)
+        izmax = min(izbmax,int((zmax-zgmin)*dzi+fuzz+1+nz)-nz)
 
 c       -- Set all points along and just outside conductor.
         do iz=izmin,izmax
@@ -8318,10 +8318,10 @@ c             --- Calculate distance to conductor at lower z.
               delmz = delmz0
 
 c             --- If grid location is between rrr and rrrlower and between
-c             --- rmax and rrrlower, find intersection point.  The zfuzz
+c             --- rmax and rrrlower, find intersection point.  The fuzz
 c             --- ensures that a distance of zero is not calculated.
               if (rrrminlower <= rad .and. rad < rmin-rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
+     &            .and. delmz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
 c               --- First, try Regula-Falsi (secant method) iteration to
@@ -8367,7 +8367,7 @@ c                 --- 10% in the delta and slowing down the code.
                   delmz = (zz - znew)*dzi
                 endif
               elseif (rrrmaxlower >= rad .and. rad > rmax+rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
+     &            .and. delmz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
 c               --- First, try Regula-Falsi (secant method) iteration to
@@ -8421,10 +8421,10 @@ c             --- Calculate distance to conductor at higher z.
               delpz = delpz0
 
 c             --- If grid location is between rrr and rrrhigher and between
-c             --- rmax and rrrhigher, find intersection point.  The zfuzz
+c             --- rmax and rrrhigher, find intersection point.  The fuzz
 c             --- ensures that a distance of zero is not calculated.
               if (rrrminhigher <= rad .and. rad < rmin-rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
+     &            .and. delpz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
 c               --- First, try Regula-Falsi (secant method) iteration to
@@ -8470,7 +8470,7 @@ c                 --- 10% in the delta and slowing down the code.
                   delpz = (znew - zz)*dzi
                 endif
               elseif (rrrmaxhigher >= rad .and. rad > rmax+rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
+     &            .and. delpz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
 c               --- First, try Regula-Falsi (secant method) iteration to
