@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.18 2003/07/03 23:31:04 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.19 2003/07/04 00:04:53 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -213,7 +213,7 @@ def gatherall(obj):
 # ---------------------------------------------------------------------------
 # General gatherarray which returns an array object combining the
 # first dimension.
-def gatherarray(a,root=0,othersempty=0):
+def gatherarray(a,root=0,othersempty=0,bcast=0):
   if not lparallel: return a
   # --- First check if input can be converted to an array
   isinputok = 1
@@ -233,24 +233,26 @@ def gatherarray(a,root=0,othersempty=0):
   # --- Now, actually gather the array.
   result = gather(a,root)
   # --- All processors but root simply return either the input argument
-  # --- or an empty array
-  if me != root:
+  # --- or an empty array unless the result is to be broadcast
+  if me != root and not bcast:
     if othersempty: return zeros(len(shape(a))*[0],a.typecode())
     else: return a
-  # --- Processor 1 reshapes the data, removing the first dimension
+  # --- Root processor reshapes the data, removing the first dimension
   # --- Do it bit by bit since the data passed by the other processors may
   # --- not be all the same size.
-  newlen = 0
-  for i in range(npes):
-    newlen = newlen + shape(result[i])[0]
-  newshape = list(shape(result[0]))
-  newshape[0] = newlen
-  newresult = zeros(newshape,a.typecode())
-  i1 = 0
-  for i in range(npes):
-    i2 = i1 + shape(result[i])[0]
-    newresult[i1:i2,...] = result[i]
-    i1 = i2
+  if me == root
+    newlen = 0
+    for i in range(npes):
+      newlen = newlen + shape(result[i])[0]
+    newshape = list(shape(result[0]))
+    newshape[0] = newlen
+    newresult = zeros(newshape,a.typecode())
+    i1 = 0
+    for i in range(npes):
+      i2 = i1 + shape(result[i])[0]
+      newresult[i1:i2,...] = result[i]
+      i1 = i2
+  if bcast: newresult = mpi.bcast(newresult,root=root)
   return newresult
   ## --- Old way
   ## --- Its easy if all of the arrays passed from the other processors
