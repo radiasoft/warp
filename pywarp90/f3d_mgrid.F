@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.73 $, $Date: 2004/08/13 22:19:47 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.74 $, $Date: 2004/08/24 00:09:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -61,6 +61,7 @@ c=============================================================================
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
      &                            gridmode,conductors)
+      use Subtimersf3d
       use ConductorTypemodule
       use Constant
       use Parallel
@@ -118,6 +119,8 @@ c     --- The following only used when mgform == 2
       integer(ISZ):: whosendingright2(0:nslaves-1),izsendingright2(0:nslaves-1)
       integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
       character(72):: errline
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Initialize temporaries
       nxy    = (nx+1)*(ny+1)
@@ -367,6 +370,9 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
       endif
 
 !$OMP END PARALLEL
+
+      if (lf3dtimesubs) timemultigrid3dsolve = timemultigrid3dsolve +
+     &                                         wtime() - substarttime
 
       return
       end
@@ -3059,6 +3065,7 @@ c=============================================================================
      &                              l,u,fulllower,childlower,childupper,
      &                              r,weights,owndomain,
      &                              dopbounds,pbounds,rootdims)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nz,cnx,cny,cnz
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
       integer(ISZ):: childlower(0:2),childupper(0:2)
@@ -3073,6 +3080,8 @@ c=============================================================================
       integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
       integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2
       real(kind=8):: wrho
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       do iz=l(2),u(2)
         iz0 = iz - fulllower(2)
@@ -3128,6 +3137,9 @@ c                   --- Adjust for symmetries
           enddo
         enddo
       enddo
+
+      if (lf3dtimesubs) timegatherrhofromchild = timegatherrhofromchild +
+     &                                           wtime() - substarttime
 
       return
       end
