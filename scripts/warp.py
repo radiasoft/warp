@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.38 2002/05/31 23:20:03 dave Exp $"
+warp_version = "$Id: warp.py,v 1.39 2002/07/09 16:17:26 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -357,7 +357,7 @@ Creates a dump file
   - serial=0: When 1, does a dump of only non-parallel data (parallel version
     only).
   - onefile=1: When 1, all processors dump to one file, otherwise each dumps to
-    seperate file.
+    seperate file. The processor number is appended to the dump filename.
   - pyvars=1: When 1, saves user defined python variables to the file.
   - ff=None: Optional file object. When passed in, write to that file instead
              of creating a new one. Note that the inputted file object must be
@@ -377,6 +377,10 @@ Creates a dump file
       filename=arraytostr(top.runid)+('%06d'%top.it)+suffix+s
     else:
       filename=arraytostr(top.runid)+('%06d_%05d'%(top.it,me))+suffix+s
+  else:
+    if not onefile and lparallel:
+      # --- Append the processor number to the user inputted filename
+      filename = filename + '%05d'%me
   # --- Make list of all of the new python variables.
   interpreter_variables = []
   if pyvars:
