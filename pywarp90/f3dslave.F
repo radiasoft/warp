@@ -1,12 +1,12 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.20 $, $Date: 2004/10/21 01:08:53 $
+c F3DSLAVE.M, version $Revision: 1.21 $, $Date: 2004/11/02 01:33:18 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
-      subroutine exchange_phi(nx,ny,nz,phi,bound0,boundnz,delz)
+      subroutine exchange_phi(nx,ny,nz,phi,bound0,boundnz,zsend)
       use Parallel
-      integer(ISZ):: nx,ny,nz,bound0,boundnz,delz
+      integer(ISZ):: nx,ny,nz,bound0,boundnz,zsend
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
 
 c This routine sends out and receives boundary data for the SOR field solver.
@@ -26,18 +26,18 @@ c     --- wrapping around at the ends.
 c     --- Location where incoming phi plane is to be loaded.  Normally, it
 c     --- is put at the edge of the grid, either at iz=0 or iz=nz.  For
 c     --- periodic boundaries, it is put just outside the grid, at iz=-1
-c     --- or iz=nz+1.  For the above, delz=0.  At the end of the field solve,
+c     --- or iz=nz+1.  For the above, zsend=0.  At the end of the field solve,
 c     --- phi at the outside of the grid is passed, so phi is put at iz=-1 and
-c     --- iz=nz+1 so delz needs to be -1.
-      left_recv = delz
-      right_recv = delz
+c     --- iz=nz+1 so zsend needs to be -1.
+      left_recv = zsend
+      right_recv = zsend
       if (bound0 == 2) left_recv = -1
       if (boundnz == 2) right_recv = -1
 
 c     --- Location from where incoming phi is obtained.  The same cases as
 c     --- above are used.
-      left_send = 1 - delz
-      right_send = 1 - delz
+      left_send = 1 - zsend
+      right_send = 1 - zsend
       if (bound0 == 2) left_send = 1
       if (boundnz == 2) right_send = 1
 
@@ -722,9 +722,8 @@ c=============================================================================
 c==== Parallel routines for the multigrid fieldsolver
 c=============================================================================
       subroutine mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
-     &                      nzfull,nzfullcoarse,czfactor)
+     &                      nzfull,nzfullcoarse)
       integer(ISZ):: nslaves,nzfull,nzfullcoarse
-      real(kind=8):: czfactor
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
 
@@ -739,9 +738,9 @@ c also, subtract 1 from izfsslave.
 
 c       --- First divide nz by 2. izfsslave is rounded down, and nzfsslave
 c       --- is rounded up.
-        izfsslavec(is) = int(floor(izfsslave(is)*czfactor))
-        nzfsslavec(is) = int(ceiling((izfsslave(is)+nzfsslave(is))*czfactor -
-     &                   izfsslavec(is)))
+        izfsslavec(is) = int(floor(1.*izfsslave(is)*nzfullcoarse/nzfull))
+        nzfsslavec(is) = int(ceiling(1.*(izfsslave(is)+nzfsslave(is))*
+     &                                nzfullcoarse/nzfull - izfsslavec(is)))
 
 c       --- Then check that no nz are less than nzmin.
 c       --- Note that if nzfsslave is already < nzmin, leave it as is.
@@ -966,12 +965,12 @@ c       --- Increment the number of sends that processor makes.
       return
       end
 c=============================================================================
-      subroutine mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,delz,delt,
+      subroutine mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,zsend,delt,delz,
      &                          my_index,nslaves,izfsslave,nzfsslave,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
-      integer(ISZ):: nx,ny,nz,nzfull,delz,delt
-      real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-1:nz+1)
+      integer(ISZ):: nx,ny,nz,nzfull,zsend,delt,delz
+      real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
@@ -991,19 +990,19 @@ c This routine sends out and receives boundary data for the MG field solver.
 c     --- Location where incoming phi plane is to be loaded.  Normally, it
 c     --- is put at the edge of the grid, either at iz=0 or iz=nz.  For
 c     --- periodic boundaries, it is put just outside the grid, at iz=-1
-c     --- or iz=nz+1.  For the above, delz=0.  At the end of the field solve,
+c     --- or iz=nz+1.  For the above, zsend=0.  At the end of the field solve,
 c     --- phi at the outside of the grid is passed, so phi is put at iz=-1 and
-c     --- iz=nz+1 so delz needs to be -1.
-      lr = delz
-      rr = nz - delz
+c     --- iz=nz+1 so zsend needs to be -1.
+      lr = zsend
+      rr = nz - zsend
       if (bounds(4) == 2) lr = -1
       if (bounds(5) == 2) rr = nz + 1
 
-c     --- The actual value of delz used depends on the boundary conditions.
+c     --- The actual value of zsend used depends on the boundary conditions.
 c     --- For periodic boundary conditions, processors which are on the ends
-c     --- of the mess, always send the same data, independent of what delz is.
-      leftdelta = delz
-      rightdelta = delz
+c     --- of the mess, always send the same data, independent of what zsend is.
+      leftdelta = zsend
+      rightdelta = zsend
       if (izfsslave(my_index) == 0 .and. bounds(4) == 2) leftdelta = 0
       if (izfsslave(my_index)+nzfsslave(my_index) == nzfull .and. bounds(5) == 2)
      &  rightdelta = 0
@@ -1051,11 +1050,11 @@ c     --- Now wait for everything to finish
       return
       end
 c=============================================================================
-      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,delz,delt,
-     &                                  my_index,nslaves,izfsslave,
+      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,zsend,delt,
+     &                                  delz,my_index,nslaves,izfsslave,
      &                                  whosendingleft,whosendingright)
-      integer(ISZ):: nx,ny,nz,nzfull,delz,delt
-      real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-1:nz+1)
+      integer(ISZ):: nx,ny,nz,nzfull,zsend,delt,delz
+      real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1)
@@ -1087,18 +1086,18 @@ c       --- on the waitall since that message would never be received.
         do ip=my_index+1,nslaves-1
           if (my_index == whosendingleft(ip)) then
             w = w + 1
-            call MPI_ISEND(phi(-delt,-delt,delz),(nx+1+2*delt)*(ny+1+2*delt),
+            call MPI_ISEND(phi(-delt,-delt,zsend),(nx+1+2*delt)*(ny+1+2*delt),
      &                     MPI_DOUBLE_PRECISION,ip,10,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
         enddo
       endif
-      if (izfsslave(my_index)+nz == nzfull .and. delz /= 0) then
+      if (izfsslave(my_index)+nz == nzfull .and. zsend /= 0) then
 c       --- See comments on loop above.
         do ip=0,my_index-1
           if (my_index == whosendingright(ip)) then
             w = w + 1
-            call MPI_ISEND(phi(-delt,-delt,nz-delz),(nx+1+2*delt)*(ny+1+2*delt),
+            call MPI_ISEND(phi(-delt,-delt,nz-zsend),(nx+1+2*delt)*(ny+1+2*delt),
      &                     MPI_DOUBLE_PRECISION,ip,10,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -1108,15 +1107,15 @@ c       --- See comments on loop above.
       if (izfsslave(my_index)+nz == nzfull) then
         if (whosendingleft(my_index) /= -1) then
           w = w + 1
-          call MPI_IRECV(phi(-delt,-delt,nz+delz),(nx+1+2*delt)*(ny+1+2*delt),
+          call MPI_IRECV(phi(-delt,-delt,nz+zsend),(nx+1+2*delt)*(ny+1+2*delt),
      &                   MPI_DOUBLE_PRECISION,whosendingleft(my_index),10,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       endif
-      if (izfsslave(my_index) == 0 .and. delz /= 0) then
+      if (izfsslave(my_index) == 0 .and. zsend /= 0) then
         if (whosendingright(my_index) /= -1) then
           w = w + 1
-          call MPI_IRECV(phi(-delt,-delt,-delz),(nx+1+2*delt)*(ny+1+2*delt),
+          call MPI_IRECV(phi(-delt,-delt,-zsend),(nx+1+2*delt)*(ny+1+2*delt),
      &                   MPI_DOUBLE_PRECISION,whosendingright(my_index),10,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
