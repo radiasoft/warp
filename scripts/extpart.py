@@ -7,7 +7,7 @@ Two functions are available for saving the object in a file.
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.15 2003/08/28 23:02:01 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.16 2003/08/29 23:09:36 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -148,17 +148,27 @@ routines (such as ppxxp).
     # --- Set so accumulate method is not called after time steps
     uninstallafterstep(self.accumulate)
     # --- Remove this window from the list.
-    top.nepwin = top.nepwin - 1
-    for i in range(self.getid(),top.nepwin):
+    for i in range(self.getid(),top.nepwin-1):
       top.izepwin[i] = top.izepwin[i+1]
       top.zzepwin[i] = top.zzepwin[i+1]
       top.wzepwin[i] = top.wzepwin[i+1]
+    top.nepwin = top.nepwin - 1
     gchange("ExtPart")
     self.enabled = 0
 
   def accumulate(self):
+    # --- If top.nepwin is 0 then something is really wrong - this routine
+    # --- should never be called it top.nepwin is zero.
     if top.nepwin == 0: return
+    # --- Check if the number of species has changed. This is done to ensure
+    # --- crashes don't happen.
     if top.ns > self.getns(): self.addspecies()
+    # --- If this windows is outside of the grid, then just return.
+    if (self.iz == -1 and 
+        (self.zz+self.wz < w3d.zmminglobal+top.zbeam or
+         self.zz-self.wz > w3d.zmmaxglobal+top.zbeam)): return
+    # --- Make sure the arrays didn't overflow. Note that this is not an
+    # --- issue for lab frame windows.
     if globalmax(maxnd(top.nep)) == top.nepmax:
       print "************* WARNING *************"
       print "**** Not enough space was allocated for the ExtPart arrays."
@@ -177,12 +187,16 @@ routines (such as ppxxp).
         top.nepmax = max(2*top.nepmax,guess)
         err = gchange("ExtPart")
       return
+    id = self.getid()
+    # --- Loop over species, collecting only ones where some particles
+    # --- were saved.
     for js in range(top.ns):
-      id = self.getid()
       # --- Gather the data.
       # --- In parallel, the data is gathered in PE0, return empty arrays
       # --- on other processors. In serial, the arrays are just returned as is.
       nn = top.nep[id,js]
+      ntot = globalsum(nn)
+      if ntot == 0: continue
       t = gatherarray(top.tep[:nn,id,js]+0.,othersempty=1)
       x = gatherarray(top.xep[:nn,id,js]+0.,othersempty=1)
       y = gatherarray(top.yep[:nn,id,js]+0.,othersempty=1)
