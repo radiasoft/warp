@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.26 $, $Date: 2002/04/22 20:12:00 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.27 $, $Date: 2002/04/30 13:59:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -223,7 +223,7 @@ c       --- Calculate the change in phi.
 c           --- calculate global sorerror
         call parallelmaxrealarray(maxerr,1)
 #endif
-        print*,mgiters,maxerr
+c       print*,mgiters,maxerr
 
 c       --- This line below seems to create a large temporary which can
 c       --- cause problems when memory is close to full. So it was replaced
@@ -318,7 +318,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 #endif
 
 c     --- Do initial SOR passes.
-      print *, 'vcycle on dimensions ', nx, ny, nzfull,my_index
+c     print *, 'vcycle on dimensions ', nx, ny, nzfull,my_index
       do i=1,downpasses
         call sorpass3d(levelxy,levelz,nx,ny,nz,nzfull,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,scrtch,
@@ -329,9 +329,9 @@ c     --- Do initial SOR passes.
 
 c     --- If grid is not at its coarsest level in any of the axis or and
 c     --- all dimensions are even, continue the coarsening.
-      if (mod(nx,mgminlevel) == 0 .and.
-     &    mod(ny,mgminlevel) == 0 .and.
-     &    mod(nzfull,mgminlevel) == 0) then
+      if (mod(nx,mgminlevelxy) == 0 .and.
+     &    mod(ny,mgminlevelxy) == 0 .and.
+     &    mod(nzfull,mgminlevelz) == 0) then
 
 c       --- Get the residual on the current grid.
         call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
@@ -348,6 +348,7 @@ c       --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
 c         --- Alloate new work space
           allocate(phi2(0:nx/2,0:ny/2,-1:nz+1),rho2(0:nx/2,0:ny/2,0:nz))
           phi2 = 0.
+          rho2 = 0.
 
 c         --- Ratio of old to new constant needed to scale the residual for
 c         --- the restriction.
@@ -357,7 +358,7 @@ c         --- the restriction.
 
 c         --- Continue at the next coarsest level.
           call vcycle(levelxy*2,levelz,nx/2,ny/2,nz,nzfull,
-     &                dxsqi*0.25,dysqi*0.25,dzsqi,phi2,rho2,
+     &                dxsqi*0.25,dysqi*0.25,dzsqi,phi2,rho2(0,0,0),
      &                rstar,linbend,l2symtry,l4symtry,scrtch,
      &                boundxy,globalb0,globalbnz,
      &                my_index,nslaves,izfsslave,nzfsslave)
@@ -400,16 +401,16 @@ c         --- Alloate new work space
           allocate(phi2(0:nx/2,0:ny/2,-1:nznew+1),
      &             rho2(0:nx/2,0:ny/2,-1:nznew+1))
           phi2 = 0.
+          rho2 = 0.
 
 c         --- Restriction - note that scaling factor for residual is always
 c         --- 4 for full-coarsening and is compiled into the restriction
 c         --- routine.
           call restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,boundxy,
-     &                    local2b0,local2bnz,
-     &                    lparity,l2symtry,l4symtry,
-     &                    my_index,nslaves,izfsslave2,nzfsslave2,
-     &                    whosendingleft2,izsendingleft2,
-     &                    whosendingright2,izsendingright2)
+     &                    local2b0,local2bnz,localb0,localbnz,
+     &                    lparity,rparity,l2symtry,l4symtry,
+     &                    my_index,nslaves,
+     &                    izfsslave,nzfsslave,izfsslave2,nzfsslave2)
 
 c         --- Continue at the next coarsest level.
           call vcycle(levelxy*2,levelz*2,nx/2,ny/2,nznew,nzfull/2,
@@ -520,27 +521,26 @@ c     --- Make copies for the periodic boundaries.
       end
 c=============================================================================
       subroutine restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,boundxy,
-     &                      localb0,localbnz,
-     &                      iparity,l2symtry,l4symtry,
-     &                      my_index,nslaves,izfsslave,nzfsslave,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
+     &                      local2b0,local2bnz,localb0,localbnz,
+     &                      lparity,rparity,l2symtry,l4symtry,
+     &                      my_index,nslaves,
+     &                      izfsslave,nzfsslave,izfsslave2,nzfsslave2)
       integer(ISZ):: nx,ny,nz,nznew,nzfull
       real(kind=8):: res(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rho2(0:nx/2,0:ny/2,-1:nznew+1)
-      integer(ISZ):: boundxy,localb0,localbnz,iparity
+      integer(ISZ):: boundxy,local2b0,local2bnz,localb0,localbnz
+      integer(ISZ):: lparity,rparity
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
-      integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
+      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
 
 c Restrict to a coarser grid.  The factor of 4 is needed since the
 c residual will be used as the source term in the next coarser grid and
 c it implicitly includes the factor 0.5/(dxsqi+dysqi+dzsqi) which is 4
 c times too small with the current values of dxsqi etc.
 
-      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ix,iy,iz,ic
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1,iz00
 
@@ -549,20 +549,20 @@ c     --- Set the loop limits, including edges when appropriate.
       ixmax = nx-2
       iymin = 2
       iymax = ny-2
-      izmin = 1
-      izmax = nznew-1
+      izmin = 0
+      izmax = nznew
       if (boundxy > 0 .or. l2symtry .or. l4symtry) ixmin = 0
       if (boundxy == 1) ixmax = nx
       if (boundxy > 0 .or. l4symtry) iymin = 0
       if (boundxy == 1) iymax = ny
-      if (localb0 > 0) izmin = 0
-      if (localbnz == 1) izmax = nznew
+      if (localb0 == 0 .or. lparity == 1) izmin = 1
+      if (localbnz == 0 .or. rparity == 1) izmax = nznew - 1
 
 c     --- Do the loops.
       do iz=izmin,izmax
-        izm1 = 2*iz - 1 - iparity
-        izp1 = 2*iz + 1 - iparity
-        iz00 = 2*iz     - iparity
+        izm1 = 2*iz - 1 - lparity
+        izp1 = 2*iz + 1 - lparity
+        iz00 = 2*iz     - lparity
 
         do iy=iymin,iymax,2
           iym1 = iy - 1
@@ -605,19 +605,11 @@ c     --- Make copies for the periodic boundaries.
         rho2(:,ny/2,:) = rho2(:,0,:)
         rho2(nx/2,:,:) = rho2(0,:,:)
       endif
-      if (localb0  == 0) rho2(:,:,0) = 0.
-      if (localbnz == 0) rho2(:,:,nznew) = 0.
+      if (local2b0  == 0) rho2(:,:,0) = 0.
+      if (local2bnz == 0) rho2(:,:,nznew) = 0.
 #ifdef MPIPARALLEL
-      call mgexchange_phi(nx/2,ny/2,nznew,nzfull/2,rho2(0,0,-1),0,0,0,
-     &                    my_index,nslaves,izfsslave,nzfsslave,
-     &                    whosendingleft,izsendingleft,
-     &                    whosendingright,izsendingright)
-      call mgexchange_phiperiodic(nx/2,ny/2,nznew,nzfull/2,rho2,
-     &                            localb0,localbnz,0,
-     &                            my_index,nslaves,izfsslave,
-     &                            whosendingleft)
-#else
-      if (localbnz == 2) rho2(:,:,nznew) = rho2(:,:,0)
+      call mgexchange_res(nx/2,ny/2,nznew,nzfull/2,rho2,my_index,nslaves,
+     &                    izfsslave,nzfsslave,izfsslave2,nzfsslave2)
 #endif
 
       return
@@ -866,7 +858,8 @@ c
 c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
       real(kind=8):: rdel,const,rdx2c,rdy2c,rdz2c,spm1,dx
-      real(kind=8):: boundsave(0:nx,4,0:nz)
+      real(kind=8):: boundsavex(0:nx,2,0:nz)
+      real(kind=8):: boundsavey(0:ny,2,0:nz)
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
       integer(ISZ):: ii,ix,iy,iz,ic
       integer(ISZ):: s_parity,e_parity
@@ -909,12 +902,12 @@ c     --- Save values on the transverse boundaries.
 c     --- Both even and odd points are saved for all transverse boundaries.
       do iz=izl-1,izr-1
         do ix=0,nx
-          boundsave(ix,2,iz) = phi(ix,0,iz)
-          boundsave(ix,4,iz) = phi(ix,ny,iz)
+          boundsavex(ix,1,iz) = phi(ix,0,iz)
+          boundsavex(ix,2,iz) = phi(ix,ny,iz)
         enddo
         do iy=0,ny
-          boundsave(iy,1,iz) = phi(0,iy,iz)
-          boundsave(iy,3,iz) = phi(nx,iy,iz)
+          boundsavey(iy,1,iz) = phi(0,iy,iz)
+          boundsavey(iy,2,iz) = phi(nx,iy,iz)
         enddo
       enddo
 
@@ -936,11 +929,11 @@ c     --- grid refinement.
 
 c     --- Set starting and ending parity.
 #ifdef MPIPARALLEL
-      s_parity = mod(izfsslave(my_index)+1,2)
+      s_parity = mod(izfsslave(my_index),2)
       e_parity = mod(s_parity+1,2)
 #else
-      s_parity = 1
-      e_parity = 0
+      s_parity = 0
+      e_parity = 1
 #endif
 
 c     --- do loop to cover even and odd points
@@ -986,12 +979,12 @@ c       --- since only want to restore the values changed from the 1d
 c       --- loop.  This automatically takes care of Dirichlet boundaries.
         do iz=izl-1,izr-1
           do ix=mod(iz+parity,2),nx,2
-            phi(ix,0,iz) = boundsave(ix,2,iz)
-            phi(ix,ny,iz) = boundsave(ix,4,iz)
+            phi(ix,0,iz) = boundsavex(ix,1,iz)
+            phi(ix,ny,iz) = boundsavex(ix,2,iz)
           enddo
           do iy=mod(iz+parity,2),ny,2
-            phi(0,iy,iz) = boundsave(iy,1,iz)
-            phi(nx,iy,iz) = boundsave(iy,3,iz)
+            phi(0,iy,iz) = boundsavey(iy,1,iz)
+            phi(nx,iy,iz) = boundsavey(iy,2,iz)
           enddo
         enddo
 
@@ -1062,7 +1055,7 @@ c       --- end of transverse boundaries
 c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
-          if (parity == 0) then
+          if (parity == zparity) then
            call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
      &                    ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,
      &                    ecdelpx,ecdelpy,ecdelpz,iecndx,iecndy,iecndz,
@@ -1071,7 +1064,7 @@ c       --- surface of the conductor boundaries.
      &                    ecndpvph,localb0,localbnz,boundxy,l2symtry,l4symtry,
      &                    levelxy,levelz,ecstart,mgform)
           endif
-          if (parity == 1) then
+          if (parity /= zparity) then
            call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
      &                    ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,
      &                    ocdelpx,ocdelpy,ocdelpz,iocndx,iocndy,iocndz,
@@ -1205,6 +1198,8 @@ c       --- Only use point if it is usable at this level.
           icdx = icndx(ic)
           icdy = icndy(ic)
           icdz = icndz(ic)
+
+c         if (mod(icdx+icdy+icdz,2) /= parity) cycle
 
 c         --- set temporaries for boundaries
           icndxp1 = icdx + 1
@@ -1549,6 +1544,7 @@ c     --- Calculate the residual.
         enddo
       enddo
 
+
 c     --- Zero the residual inside conductors.
       call cond_potmg(nx,ny,nz,res,levelxy,levelz,.true.,mgform,.false.)
 
@@ -1570,6 +1566,7 @@ c     --- Calculate the residual near the conductor.
      &                mgform,mgform2init)
 
       endif
+c     print*," V res 12",my_index,nx,nzfull,res(12/(levelxy),0,:)
 
 c     --- Transverse boundaries
       if (boundxy == 2) then
@@ -1834,7 +1831,7 @@ c       --- Find domains in coarser grid
 c       --- Set new value of nz
         nznew = nzfsslave2(my_index)
         newzmmin = zmmin - (izfsslave(my_index) - 2*izfsslave2(my_index))*dz
-        newzmmax = newzmmin + nzfsslave2(my_index)*2*dz
+        newzmmax = newzmmin + nznew*2*dz
 #else
         nznew = nz/2
         newzmmin = zmmin
@@ -2155,23 +2152,12 @@ c=============================================================================
 c Recursively calls the routine to generate the conductor data at the
 c various mesh resolutions needed by the MG solver.
 
-      integer(ISZ):: iii(0:nx,0:ny,0:nz)
       integer(ISZ):: ic,ix,iy,iz,ii,nn
       integer(ISZ),allocatable:: isort(:)
-
-c     --- Set the conductor points.
-      iii = 0
-      do ic=1,ncond
-        ix = ixcond(ic)*icondlxy(ic)
-        iy = iycond(ic)*icondlxy(ic)
-        iz = izcond(ic)*icondlz(ic)
-        iii(ix,iy,iz) = ncndmax + 1
-      enddo
 
 c     --- Make initial call to checkconductors1
         call checkconductors1(nx,ny,nz,nzfull,dx,dy,dz,
      &                        l2symtry,l4symtry,1,1,
-     &                        nx,ny,nz,iii,
      &                        my_index,nslaves,izfsslave,nzfsslave)
 
 c     --- Sort the conductor data by level number
@@ -2313,7 +2299,6 @@ c Utility function for sort conductors
 c=============================================================================
       RECURSIVE subroutine checkconductors1(nx,ny,nz,nzfull,dx,dy,dz,
      &                                      l2symtry,l4symtry,levelxy,levelz,
-     &                                      nxfine,nyfine,nzfine,iii,
      &                                      my_index,nslaves,izfsslave,nzfsslave)
       use PSOR3d
       integer(ISZ):: nx,ny,nz,nzfull,levelxy,levelz
@@ -2321,8 +2306,6 @@ c=============================================================================
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: nxfine,nyfine,nzfine
-      integer(ISZ):: iii(0:nxfine,0:nyfine,0:nzfine)
 
 c Recursively calls the routine to generate the conductor data at the
 c various mesh resolutions needed by the MG solver.
@@ -2332,7 +2315,7 @@ c various mesh resolutions needed by the MG solver.
 
 c     --- Check the conductors for this level
       call checkconductors_work(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry,
-     &                          levelxy,levelz,nxfine,nyfine,nzfine,iii)
+     &                          levelxy,levelz)
 
 c     --- If grid is at its coarsest level in any of the axis or
 c     --- any dimensions are odd, then return
@@ -2346,7 +2329,6 @@ c     --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
 c       --- Recursively call this routine for the next coarser level.
         call checkconductors1(nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
      &                        l2symtry,l4symtry,levelxy*2,levelz,
-     &                        nxfine,nyfine,nzfine,iii,
      &                        my_index,nslaves,izfsslave,nzfsslave)
 
       else
@@ -2364,7 +2346,6 @@ c       --- Set new value of nz
 c       --- Recursively call this routine for the next coarser level.
         call checkconductors1(nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
      &                        l2symtry,l4symtry,levelxy*2,levelz*2,
-     &                        nxfine,nyfine,nzfine,iii,
      &                        my_index,nslaves,izfsslave2,nzfsslave2)
 
       endif
@@ -2373,15 +2354,13 @@ c       --- Recursively call this routine for the next coarser level.
       end
 c=============================================================================
       subroutine checkconductors_work(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry,
-     &                                levelxy,levelz,nxfine,nyfine,nzfine,iii)
+     &                                levelxy,levelz)
       use PSOR3d
       use MultigridConductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny,nz,levelxy,levelz
       real(kind=8):: dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: nxfine,nyfine,nzfine
-      integer(ISZ):: iii(0:nxfine,0:nyfine,0:nzfine)
 
 c This checks the conductor dataset for consistency.
 c  - clean up data set, removing any subgrid points which may lie inside
@@ -2397,7 +2376,15 @@ c     attached - positive for even points, negative for odd points
 c   - the value chosen for inside of conductors is large enough so that
 c     is will not be the same as a subgrid point
 
+      integer(ISZ):: iii(0:nx,0:ny,0:nz)
       integer(ISZ):: ic,i,ix,iy,iz
+
+c     --- Set the conductor points.
+      iii = 0
+      do ic=1,ncond
+        if (icondlxy(ic) /= levelxy .or. icondlz(ic) /= levelz) cycle
+        iii(ixcond(ic),iycond(ic),izcond(ic)) = ncndmax + 1
+      enddo
 
 c     --- Scan through subgrid points:
 c     ---   remove points which lie inside of a conductor
@@ -2407,9 +2394,9 @@ c     ---   check for redundant point (multiple points at grid location)
 
         if (iecndlxy(ic) /= levelxy .or. iecndlz(ic) /= levelz) cycle
 
-        ix = iecndx(ic)*iecndlxy(ic)
-        iy = iecndy(ic)*iecndlxy(ic)
-        iz = iecndz(ic)*iecndlz(ic)
+        ix = iecndx(ic)
+        iy = iecndy(ic)
+        iz = iecndz(ic)
 
 c       --- If this point lies on a conductor point, kill it.
         if (iii(ix,iy,iz) == ncndmax+1) then
@@ -2488,9 +2475,9 @@ c     ---   check for redundant point (multiple points at grid location)
 
         if (iocndlxy(ic) /= levelxy .or. iocndlz(ic) /= levelz) cycle
 
-        ix = iocndx(ic)*iocndlxy(ic)
-        iy = iocndy(ic)*iocndlxy(ic)
-        iz = iocndz(ic)*iocndlz(ic)
+        ix = iocndx(ic)
+        iy = iocndy(ic)
+        iz = iocndz(ic)
 
 c       --- If this point lies on a conductor point, kill it.
         if (iii(ix,iy,iz) == ncndmax+1) then
