@@ -1,6 +1,7 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.86 2004/11/12 18:03:55 dave Exp $"
+import copy
+plot_conductor_version = "$Id: plot_conductor.py,v 1.87 2004/11/19 00:50:05 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -779,12 +780,11 @@ by the conductor number.
 ######################################################################
 ######################################################################
 # x-y plane
-def pfxy(iz=None,izf=None,fullplane=1,
-         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
-         subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
-         oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=None,solver=None,
-         kwdict=None,**kw):
+def pfxy(iz=None,izf=None,fullplane=1,cond=1,plotsg=1,fill=0,scale=1,
+         plotphi=1,plotrho=0,plotselfe=0,comp='z',
+         subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
+         condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
+         conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
   - iz=nint(-zmmin/dz): z index of plane
@@ -795,8 +795,11 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
+  - plotselfe=0: when true, plot contours or vectors of the electric field
+  - comp='z': the component of the electric field to plot
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
+  - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
@@ -815,7 +818,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     if solver is not None:
       # --- Note that kw is not a valid keyword and so must be removed. Its
       # --- contents have been put into kwdict.
-      kw = locals()
+      kw = copy.copy(locals())
       del kw['kw']
       solver.pfxy(**kw)
       return
@@ -846,7 +849,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     ymmin = 0.
     xmmax = solver.nx
     ymmax = solver.ny
-  if plotphi or plotrho:
+  if plotphi or plotrho or plotselfe:
     if not scale:
       kwdict['xmin'] = 0
       kwdict['xmax'] = solver.nx
@@ -858,6 +861,9 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     if plotrho:
       kwdict['ccolor'] = rhocolor
       pcrhoxy(*(iz,fullplane,solver),**kwdict)
+    if plotselfe:
+      kwdict['ccolor'] = selfecolor
+      pcselfexy(*(comp,iz,fullplane,solver),**kwdict)
   if fill:
     plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,1,1,conductors)
     if fullplane and (solver.l2symtry or solver.l4symtry):
@@ -898,11 +904,11 @@ Plots conductors and contours of electrostatic potential in X-Y plane
 
 # z-x plane
 def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
-         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
-         subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
-         oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=None,solver=None,
-         kwdict=None,**kw):
+         cond=1,plotsg=1,fill=0,scale=1,
+         plotphi=1,plotrho=0,plotselfe=0,comp='z',
+         subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
+         condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
+         conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
   - iy=nint(-ymmin/dy): y index of plane
@@ -914,8 +920,11 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
+  - plotselfe=0: when true, plot contours or vectors of the electric field
+  - comp='z': the component of the electric field to plot
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
+  - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
@@ -934,7 +943,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     if solver is not None:
       # --- Note that kw is not a valid keyword and so must be removed. Its
       # --- contents have been put into kwdict.
-      kw = locals()
+      kw = copy.copy(locals())
       del kw['kw']
       solver.pfzx(**kw)
       return
@@ -959,7 +968,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     dz = 1.
     xmmin = 0.
     zmmin = 0.
-  if plotphi or plotrho:
+  if plotphi or plotrho or plotselfe:
     if not scale:
       kwdict['xmin'] = 0
       kwdict['xmax'] = solver.nzfull
@@ -971,6 +980,9 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     if plotrho:
       kwdict['ccolor'] = rhocolor
       pcrhozx(*(iy,fullplane,lbeamframe,solver),**kwdict)
+    if plotselfe:
+      kwdict['ccolor'] = selfecolor
+      pcselfezx(*(comp,iy,fullplane,solver),**kwdict)
   if fill:
     plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,1,1,conductors)
     if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
@@ -997,11 +1009,11 @@ pfzr = pfzx
 
 # z-y plane
 def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
-         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
-         subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
-         oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=None,solver=None,
-         kwdict=None,**kw):
+         cond=1,plotsg=1,fill=0,scale=1,
+         plotphi=1,plotrho=0,plotselfe=0,comp='z',
+         subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
+         condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
+         conductors=None,solver=None,kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
   - ix=nint(-xmmin/dx): x index of plane
@@ -1013,8 +1025,11 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
+  - plotselfe=0: when true, plot contours or vectors of the electric field
+  - comp='z': the component of the electric field to plot
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
+  - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
@@ -1033,7 +1048,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     if solver is not None:
       # --- Note that kw is not a valid keyword and so must be removed. Its
       # --- contents have been put into kwdict.
-      kw = locals()
+      kw = copy.copy(locals())
       del kw['kw']
       solver.pfzy(**kw)
       return
@@ -1058,7 +1073,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     dz = 1.
     ymmin = 0.
     zmmin = 0.
-  if plotphi or plotrho:
+  if plotphi or plotrho or plotselfe:
     if not scale:
       kwdict['xmin'] = 0
       kwdict['xmax'] = solver.nzfull
@@ -1070,6 +1085,9 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     if plotrho:
       kwdict['ccolor'] = rhocolor
       pcrhozy(*(ix,fullplane,lbeamframe,solver),**kwdict)
+    if plotselfe:
+      kwdict['ccolor'] = selfecolor
+      pcselfezy(*(comp,ix,fullplane,solver),**kwdict)
   if fill:
     plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,1,1,conductors)
     if fullplane and (solver.l2symtry or solver.l4symtry):
@@ -1098,28 +1116,28 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
 
 # x-y plane
 def pfxyg(iz=None,izf=None,fullplane=1,
-          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
-          phicolor=blue,rhocolor=red,subgridlen=1.,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,mglevel=0,
-          conductors=None,solver=None,**kw):
+          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
+          phicolor=blue,rhocolor=red,selfecolor=green,
+          subgridlen=1.,condcolor='fg',oddcolor=red,evencolor=green,
+          numb=None,mglevel=0,conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
 Same arguments as pfxy
   """
   if izf is not None: iz = izf
-  pfxy(iz=iz,fullplane=fullplane,scale=0,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
+  pfxy(iz=iz,fullplane=fullplane,scale=0,cond=cond,plotsg=plotsg,fill=fill,
+       plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
        subgridlen=subgridlen,
-       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
-       conductors=conductors,solver=w3d,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
+       condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
+       numb=numb,mglevel=mglevel,conductors=conductors,solver=w3d,kwdict=kw)
 
 # z-x plane
 def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,
-          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
-          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,mglevel=0,
+          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
+          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
+          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
           conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
@@ -1128,20 +1146,21 @@ Same arguments as pfzx
   """
   if iyf is not None: iy = iyf
   pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
+       cond=cond,plotsg=plotsg,fill=fill,
+       plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
        subgridlen=subgridlen,
-       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
-       conductors=conductors,solver=w3d,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
+       condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
+       numb=numb,mglevel=mglevel,conductors=conductors,solver=w3d,kwdict=kw)
 
 # z-r plane
 pfzrg = pfzxg
 
 # z-y plane
 def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
-          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
-          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,mglevel=0,
+          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,plotselfe=0,comp='z',
+          subgridlen=1.,phicolor=blue,rhocolor=red,selfecolor=green,
+          condcolor='fg',oddcolor=red,evencolor=green,numb=None,mglevel=0,
           conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
@@ -1150,11 +1169,12 @@ Same arguments as pfzy
   """
   if ixf is not None: ix = ixf
   pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
+       cond=cond,plotsg=plotsg,fill=fill,
+       plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
        subgridlen=subgridlen,
-       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
-       conductors=conductors,solver=w3d,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
+       condcolor=condcolor,oddcolor=oddcolor,evencolor=evencolor,
+       numb=numb,mglevel=mglevel,conductors=conductors,solver=w3d,kwdict=kw)
 
 ######################################################################
 
@@ -1164,7 +1184,8 @@ Same arguments as pfzy
 
 # x-y plane
 def pfxybox(iz=None,izf=None,contours=8,plotsg=1,scale=1,signx=1,signy=1,
-            plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+            plotphi=1,plotrho=0,plotselfe=0,comp='z',filled=0,
+            phicolor=blue,rhocolor=red,selfecolor=green,
             condcolor='fg',conductors=None,solver=None,
             kwdict=None,**kw):
   """
@@ -1178,9 +1199,12 @@ in X-Y plane
   - signy=1 sign of y, used for plotting symmetry planes
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
+  - plotselfe=0: when true, plot contours or vectors of the electric field
+  - comp='z': the component of the electric field to plot
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
+  - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   - subgridlen=1 maximum length of subgrid line which are plotted
   """
@@ -1199,13 +1223,21 @@ in X-Y plane
     dx = 1.*signx
     ymmin = 0.
     xmmin = 0.
-  if plotphi or plotrho:
-    ppp = getphi(iz=iz)
-    if me == 0:
-      if kwdict.has_key('cellarray') and kwdict['cellarray']: contours=None
-      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=xmmin,xmax=xmmin+solver.nx*dx,
-                ymin=ymmin,ymax=ymmin+solver.ny*dy,kwdict=kwdict)
+  if plotphi or plotrho or plotselfe:
+    if not scale:
+      kwdict['xmin'] = 0
+      kwdict['xmax'] = solver.nx
+      kwdict['ymin'] = 0
+      kwdict['ymax'] = solver.ny
+    if plotphi:
+      kwdict['ccolor'] = phicolor
+      pcphixy(*(iz,fullplane,solver),**kwdict)
+    if plotrho:
+      kwdict['ccolor'] = rhocolor
+      pcrhoxy(*(iz,fullplane,solver),**kwdict)
+    if plotselfe:
+      kwdict['ccolor'] = selfecolor
+      pcselfexy(*(comp,iz,fullplane,solver),**kwdict)
   if conductors.interior.n > 0:
     n = conductors.interior.n
     izc = conductors.indx[2,0:n]+conductors.leveliz[0]
@@ -1225,7 +1257,8 @@ in X-Y plane
 
 # z-x plane
 def pfzxbox(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
-            plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+            plotphi=1,plotrho=0,plotselfe=0,comp='z',filled=0,
+            phicolor=blue,rhocolor=red,selfecolor=green,
             condcolor='fg',conductors=f3d.conductors,solver=w3d,
             kwdict=None,**kw):
   """
@@ -1239,9 +1272,12 @@ in Z-X plane
   - signx=1 sign of x, used for plotting symmetry planes
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
+  - plotselfe=0: when true, plot contours or vectors of the electric field
+  - comp='z': the component of the electric field to plot
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
+  - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   """
   if kwdict is None: kwdict = {}
@@ -1259,14 +1295,21 @@ in Z-X plane
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-  if plotphi or plotrho:
-    ppp = getphi(iy=iy)
-    ppp = transpose(ppp)
-    if me == 0:
-      if kwdict.has_key('cellarray') and kwdict['cellarray']: contours=None
-      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=zmmin,xmax=zmmin+solver.nzfull*dz,
-                ymin=xmmin,ymax=xmmin+solver.nx*dx,kwdict=kwdict)
+  if plotphi or plotrho or plotselfe:
+    if not scale:
+      kwdict['xmin'] = 0
+      kwdict['xmax'] = solver.nx
+      kwdict['ymin'] = 0
+      kwdict['ymax'] = solver.ny
+    if plotphi:
+      kwdict['ccolor'] = phicolor
+      pcphizx(*(iy,fullplane,solver),**kwdict)
+    if plotrho:
+      kwdict['ccolor'] = rhocolor
+      pcrhozx(*(iy,fullplane,solver),**kwdict)
+    if plotselfe:
+      kwdict['ccolor'] = selfecolor
+      pcselfezx(*(comp,iy,fullplane,solver),**kwdict)
   n = conductors.interior.n
   if (n > 0):
     ii = compress(equal(conductors.interior.indx[1,0:n],iy),arange(n))
@@ -1285,7 +1328,8 @@ in Z-X plane
 
 # z-y plane
 def pfzybox(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
-            plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+            plotphi=1,plotrho=0,plotselfe=0,comp='z',filled=0,
+            phicolor=blue,rhocolor=red,selfecolor=green,
             condcolor='fg',conductors=f3d.conductors,solver=w3d,
             kwdict=None,**kw):
   """
@@ -1299,9 +1343,12 @@ in Z-Y plane
   - signy=1 sign of y, used for plotting symmetry planes
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
+  - plotselfe=0: when true, plot contours or vectors of the electric field
+  - comp='z': the component of the electric field to plot
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
+  - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   """
   if kwdict is None: kwdict = {}
@@ -1319,14 +1366,21 @@ in Z-Y plane
     dz = 1.*signz
     ymmin = 0.
     zmmin = 0.
-  if plotphi or plotrho:
-    ppp = getphi(ix=ix)
-    ppp = transpose(ppp)
-    if me == 0:
-      if kwdict.has_key('cellarray') and kwdict['cellarray']: contours=None
-      ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=zmmin,xmax=zmmin+solver.nzfull*dz,
-                ymin=ymmin,ymax=ymmin+solver.ny*dy,kwdict=kwdict)
+  if plotphi or plotrho or plotselfe:
+    if not scale:
+      kwdict['xmin'] = 0
+      kwdict['xmax'] = solver.nx
+      kwdict['ymin'] = 0
+      kwdict['ymax'] = solver.ny
+    if plotphi:
+      kwdict['ccolor'] = phicolor
+      pcphizy(*(ix,fullplane,solver),**kwdict)
+    if plotrho:
+      kwdict['ccolor'] = rhocolor
+      pcrhozy(*(ix,fullplane,solver),**kwdict)
+    if plotselfe:
+      kwdict['ccolor'] = selfecolor
+      pcselfezy(*(comp,ix,fullplane,solver),**kwdict)
   n = conductors.interior.n
   if (n > 0):
     ii = compress(equal(conductors.interior.indx[0,0:n],ix),arange(n))
@@ -1345,7 +1399,8 @@ in Z-Y plane
 
 # z-x plane
 def pfzxboxi(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,
-             plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+             plotphi=1,plotrho=0,plotselfe=0,comp='z',
+             filled=0,phicolor=blue,rhocolor=red,selfecolor=green,
              condcolor='fg',conductors=f3d.conductors,solver=w3d,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
@@ -1357,20 +1412,26 @@ in Z-(-X) plane
   - signz=1 sign of z, used for plotting symmetry planes
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
+  - plotselfe=0: when true, plot contours or vectors of the electric field
+  - comp='z': the component of the electric field to plot
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
+  - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   """
   if iyf is not None: iy = iyf
   pfzxbox(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
-          signx=-1,plotphi=plotphi,plotrho=plotrho,filled=filled,
-          phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
-          conductors=conductors,solver=w3d,kwdict=kw)
+          signx=-1,
+          plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
+          filled=filled,
+          phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
+          condcolor=condcolor,conductors=conductors,solver=w3d,kwdict=kw)
 
 # z-y plane
 def pfzyboxi(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=-1,
-             plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+             plotphi=1,plotrho=0,plotselfe=0,comp='z',
+             filled=0,phicolor=blue,rhocolor=red,selfecolor=green,
              condcolor='fg',conductors=f3d.conductors,solver=w3d,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
@@ -1382,16 +1443,21 @@ in Z-(-Y) plane
   - signz=1 sign of z, used for plotting symmetry planes
   - plotphi=1: when true, plot contours of potential
   - plotrho=0: when true, plot contours of the charge density
+  - plotselfe=0: when true, plot contours or vectors of the electric field
+  - comp='z': the component of the electric field to plot
   - filled=0 when true, plots filled contours
   - phicolor=blue: color of phi contours
   - rhocolor=red: color of rho contours
+  - selfecolor=green: color of selfe contours or vectors
   - condcolor='fg' color of conductor points inside conductors
   """
   if ixf is not None: ix = ixf
   pfzybox(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
-          signy=-1,plotphi=plotphi,plotrho=plotrho,filled=filled,
-          phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
-          conductors=conductors,solver=w3d,kwdict=kw)
+          signy=-1,
+          plotphi=plotphi,plotrho=plotrho,plotselfe=plotselfe,comp=comp,
+          filled=filled,
+          phicolor=phicolor,rhocolor=rhocolor,selfecolor=selfecolor,
+          condcolor=condcolor,conductors=conductors,solver=w3d,kwdict=kw)
 
 
 
