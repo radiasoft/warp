@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.50 2001/08/24 20:38:29 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.51 2001/08/25 01:08:45 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -890,6 +890,9 @@ def ppgeneric_doc(x,y):
   - ldensityscale=0: when true, scale the density by its max.
   - view=1: view window to use (experts only)
   - colbarunitless=0: when true, color-bar scale is unitless
+  - colbarlinear=1: when true, the color-bar is laid out linearly in density,
+                    otherwise each contour level gets an equal sized area.
+                    Only in effect when a list of colorbars is specified.
   - surface=0: when true, a 3-d surface plot is made of the gridded data
   """
   return doc%vars()
@@ -911,7 +914,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':1.,'hcolor':'fg','width':1.0,
                 'contours':None,'filled':0,'ccolor':'fg','ldensityscale':0,
-                'view':1,'colbarunitless':0,'surface':0,
+                'view':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -1143,7 +1146,8 @@ Note that either the x and y coordinates or the grid must be passed in.
     else:
       dmax = maxnd(grid1)
       dmin = minnd(grid1)
-    colorbar(dmin,dmax,uselog=uselog,ncolor=nc,view=view,levs=levs)
+    colorbar(dmin,dmax,uselog=uselog,ncolor=nc,view=view,levs=levs,
+             colbarlinear=colbarlinear)
 
   # --- Make surface plot
   if surface and me == 0:
@@ -1194,7 +1198,7 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   return levs
 
 #-----------------------------------------------------------------------
-def colorbar(zmin,zmax,uselog=0,ncolor=100,view=1,levs=None):
+def colorbar(zmin,zmax,uselog=0,ncolor=100,view=1,levs=None,colbarlinear=1):
   """
 Plots a color bar to the right of the plot square labelled by the z
 values from zmin to zmax.
@@ -1209,53 +1213,67 @@ values from zmin to zmax.
   xmax = 0.68
   ymax = 0.85
   ymin = 0.44
-  if type(zmin) == type(zmax) == type(1):
-     plotval = reshape(arange(zmin,zmax+1,typecode='b'),(zmax+1-zmin,1))
-  else:
-     plotval = reshape(arange(ncolor)/(ncolor-1.),(ncolor,1))
   # --- draw the bar
-  pli(plotval,xmin,ymin,xmax,ymax)
+  if colbarlinear and levs is not None:
+    # --- Use the contour plotting routine plfc for this case. The data
+    # --- plotted is uniformly spaced between zmin and zmax. The contour
+    # --- levels are those specified. The result is that the colorbar
+    # --- shows the contours levels by their values relative to zmin and zmax.
+    plotval = span(zmin,zmax,255)[:,NewAxis]*ones(2)
+    xx = array([xmin,xmax])*ones(255)[:,NewAxis]
+    yy = span(ymin,ymax,255)[:,NewAxis]*ones(2)
+    ireg = ones((255,2))
+    plfc(plotval,yy,xx,ireg,contours=array(levs))
+  else:
+    # --- Use cell array plotting for this case. All of the colors get a block
+    # --- of the same size. If levs is not specified, the uniform spacing 
+    # --- matches the uniform spacing of the contours. If levs is specified,
+    # --- each equal sized block represents one contour level, independent of
+    # --- the range of the level relative to other levels.
+    if type(zmin) == type(zmax) == type(1):
+       plotval = arange(zmin,zmax+1,typecode='b')[:,NewAxis]*ones(2)
+    else:
+       plotval = (arange(ncolor)/(ncolor-1.))[:,NewAxis]*ones(2)
+    pli(plotval,xmin,ymin,xmax,ymax)
   # --- Draw a black box around it
   pldj([xmin,xmin,xmin,xmax],[ymin,ymax,ymin,ymin],
        [xmax,xmax,xmin,xmax],[ymin,ymax,ymax,ymax])
-  # --- Plot tick marks and labels
+  # --- Generate nice levels for the labels and tick marks.
   if levs is None:
+    # --- Use the nicelevels routine to get evenly spaced labels.
     nicelevs = nicelevels(array([zmin,zmax]))
   else:
-    if len(levs) < 15:
-      nicelevs = levs
-    else:
-      nicelevs = take(levs,arange(0,len(levs),max(int(len(levs)/15),1)))
-    if zmin < levs[0]: nicelevs = array([zmin] + list(levs))
-    if zmax > levs[-1]: nicelevs = array(list(levs) + [zmax])
+    # --- If there are less than 15 specified contour levels, put a label
+    # --- at each of the labels. If there are more, pick out roughly 15
+    # --- evenly spaced values. Also, if the levels do not extend beyond
+    # --- zmin and zmax, add labels at those points too.
+    nicelevs = levs
+    if zmin < levs[0]:  nicelevs = array([zmin] + list(nicelevs))
+    if zmax > levs[-1]: nicelevs = array(list(nicelevs) + [zmax])
   llev = len(nicelevs)
-  scales = []
-  if uselog:
-    ss = " 10^%.5g"
-  else:
-    ss = " %.5g"
-  for i in xrange(llev):
-    scales.append(ss%nicelevs[i])
-  if levs is not None:
-    ys = zeros(llev,'d')
-    i=0
-    j=0
-    for i in xrange(llev):
-      while j < len(levs) and levs[j] < nicelevs[i]: j = j + 1
-      if j == 0:
-        ys[i] = 0
-      elif j == len(levs):
-        ys[i] = len(levs) + 1
-      else:
-        ys[i] = j + (nicelevs[i] - levs[j-1])/(levs[j] - levs[j-1])
-    ys[:] = ymin + ys/(len(levs)+1)*(ymax - ymin)
+  # --- Create the labels
+  labels = []
+  # --- Calculate the location of the labels.
+  if not colbarlinear and levs is not None:
+    # --- The ys are evenly spaced
+    ys = ymin + arange(len(nicelevs))/(len(levs)+1.)*(ymax - ymin)
+    # --- If the lowest level is less than zmin, then bump up the y's
+    # --- by one block size.
+    if levs[0] < zmin: ys = ys + 1./(len(levs)+1.)*(ymax - ymin)
   elif llev==2 and (nicelevs[0] == nicelevs[1]):
     ys = array([ymin,ymax])
   else:
     ys = ymin + (ymax - ymin)*(nicelevs - zmin)/(zmax - zmin)
+  # --- Plot the labels, skipping ones that are too close together.
+  if uselog: ss = " 10^%.5g"
+  else:      ss = " %.5g"
+  ylast = 0.
   for i in xrange(llev):
-    plt(scales[i],xmax+0.005,ys[i]-0.005)   # labels
-  pldj(llev*[xmax],ys,llev*[xmax+0.005],ys) # ticks
+    if ys[i] - ylast > (ymax-ymin)/30:
+      plt(ss%nicelevs[i],xmax+0.005,ys[i]-0.005)
+      ylast = ys[i]
+  # --- Plot the tick marks
+  pldj(llev*[xmax],ys,llev*[xmax+0.005],ys)
   # --- Return to plot system 1.
   plsys(view)
 
