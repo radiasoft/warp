@@ -42,7 +42,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.24 2003/04/25 23:01:35 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.25 2003/04/28 22:16:34 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -799,7 +799,7 @@ grid points.
     try:
       self.distances[0,0,0]
     except:
-      self.distances = zeros((1+nx,1+ny,1+nz),'d')
+      self.distances = fzeros((1+nx,1+ny,1+nz),'d')
     ix1 = min(ix)
     ix2 = max(ix)
     iy1 = min(iy)
@@ -837,7 +837,7 @@ assembly.
     try:
       self.isinside[0,0,0]
     except:
-      self.isinside = zeros((1+nx,1+ny,1+nz),'d')
+      self.isinside = fzeros((1+nx,1+ny,1+nz),'d')
     ix1 = min(ix)
     ix2 = max(ix)
     iy1 = min(iy)
