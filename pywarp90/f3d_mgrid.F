@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.17 $, $Date: 2002/01/23 20:19:39 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.18 $, $Date: 2002/01/31 17:42:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -152,7 +152,7 @@ c       --- Change rstar if using Nuemann boundary conditions
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
 c     --- vary few iterations are done.
       mgiters = 0
-      maxerr = 1.
+      maxerr = 2.*mgtol + 1.
       do while (maxerr > mgtol .and. mgiters < mgmaxiters)
         mgiters = mgiters + 1
 
