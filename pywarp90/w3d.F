@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.158 $, $Date: 2004/06/29 06:51:04 $
+c@(#) File W3D.F, version $Revision: 3.159 $, $Date: 2004/07/02 23:29:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -297,7 +297,7 @@ c  Initialize base grid for RZ solver
      &   solvergeom==XZgeom .or.
      &   solvergeom==Rgeom  .or.
      &   solvergeom==Zgeom) then
-        call init_base(nx,nz,dx,dz,xmmin,zmmin,.true.)
+        call init_base(nx,nz,dx,dz,xmmin,zmmin)
       end if
 
 c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
@@ -1750,7 +1750,7 @@ c=============================================================================
       subroutine perrho3d(rho,nx,ny,nz,bound0,boundxy)
       use GlobalVars
       use Subtimers3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom,Rgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,XYgeom,Zgeom,Rgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: bound0,boundxy
@@ -1770,19 +1770,28 @@ c  Enforce transverse periodicity if requested.
         rho(nx,:,:) = rho(0,:,:)
       endif
 
-c  Enforce longitudinal periodicity.
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+c  Distribute rho for 2d solver
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
+     &   solvergeom==XYgeom .or. solvergeom==Zgeom) then
         call distribute_rho_rz()
+      end if
+
+c  Enforce longitudinal periodicity.
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==XYgeom) then
         call rhobndrz()
 #ifdef MPIPARALLEL
         if(bound0==periodic) call perrhorz()
 #endif
+      end if
+
+c  Copy charge density from frz.basegrid to w3d.rho
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call get_rho_rz(rho(0,0,0),nx,nz,1,0)
+      else if(solvergeom==XYgeom) then
+        call get_rho_rz(rho(0,0,0),nx,ny,1,0)
       else if(solvergeom==Zgeom) then
-        call distribute_rho_rz()
         call get_rho_z(rho(0,0,0),nz,1,0)
       else if(solvergeom==Rgeom) then
-        call distribute_rho_rz()
         call get_rho_r(rho(0,0,0),nx,1,0)
       end if
 
@@ -2326,7 +2335,6 @@ c     if (noff(1) /= -nnxy) then
 c     endif
 
 c  Evaluation of E, vectorized over particles
-
       tdxi = 1. / (2. * dx)
       tdyi = 1. / (2. * dy)
       tdzi = 1. / (2. * dz)
@@ -2378,7 +2386,6 @@ c  Evaluation of E, vectorized over particles
      &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
      &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
      &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
-
         enddo
 
       else
@@ -2451,7 +2458,6 @@ c          --- Adjust sign of E field for appropriate quadrant.
      &                + u1*v0*w1*(phi1d(noff( 9)+ind0) - phi1d(noff(30)+ind0))
      &                + u0*v1*w1*(phi1d(noff(12)+ind0) - phi1d(noff(31)+ind0))
      &                + u1*v1*w1*(phi1d(noff(13)+ind0) - phi1d(noff(32)+ind0)))
-
         enddo
 
       endif
@@ -3640,7 +3646,7 @@ c     --- For both algorithms
 
 c  Set up offset array for vectorized deposition:
 
-c     if (moff(4) /= (nx+1)*(ny+1)) then
+c      if (moff(4) /= (nx+1)*(ny+1)) then
         moff(0) = 0
         moff(1) = 1
         moff(2) = nx+1
@@ -3649,7 +3655,7 @@ c     if (moff(4) /= (nx+1)*(ny+1)) then
         moff(5) = (nx+1)*(ny+1)+1
         moff(6) = (nx+1)*(ny+1)+nx+1
         moff(7) = (nx+1)*(ny+1)+nx+2
-c     endif
+c      endif
 
       g = wght * q / (dx * dy * dz)
       dxi = 1./dx
