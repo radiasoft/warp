@@ -1,6 +1,9 @@
+from __future__ import generators
 from warp import *
+from generateconductors import *
+from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.37 2004/03/18 15:50:20 lund Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.38 2004/05/03 21:03:38 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -174,6 +177,26 @@ Constructor arguments
       return where(logical_and(logical_and(greater(x,w3d.xmmin+xfuzz),
                                            greater(w3d.xmmax-xfuzz,x)),
                                logical_and(greater(y,0.),
+                                           greater(w3d.ymmax-yfuzz,y))),1,0)
+    else:
+      return where(logical_and(logical_and(greater(x,w3d.xmmin+xfuzz),
+                                           greater(w3d.xmmax-xfuzz,x)),
+                               logical_and(greater(y,w3d.ymmin+yfuzz),
+                                           greater(w3d.ymmax-yfuzz,y))),1,0)
+  #----------------------------------------------------------------------------
+  def insymmetricgrid(s,x,y):
+    # --- Determines whether the data points are within the grid.
+    xfuzz = 1.e-5*w3d.dx
+    yfuzz = 1.e-5*w3d.dy
+    if w3d.l4symtry:
+      return where(logical_and(logical_and(greater(x,-w3d.xmmax+xfuzz),
+                                           greater(w3d.xmmax-xfuzz,x)),
+                               logical_and(greater(y,-w3d.ymmax+yfuzz),
+                                           greater(w3d.ymmax-yfuzz,y))),1,0)
+    elif w3d.l2symtry:
+      return where(logical_and(logical_and(greater(x,w3d.xmmin+xfuzz),
+                                           greater(w3d.xmmax-xfuzz,x)),
+                               logical_and(greater(y,-w3d.ymmax+yfuzz),
                                            greater(w3d.ymmax-yfuzz,y))),1,0)
     else:
       return where(logical_and(logical_and(greater(x,w3d.xmmin+xfuzz),
@@ -389,7 +412,7 @@ Constructor arguments:
     tt = span(0.,2*pi,101)
     xx = s.ax*cos(tt-pi*0.75) + s.ox
     yy = s.ay*sin(tt-pi*0.75) + s.oy
-    ii = s.ingrid(xx,yy)
+    ii = s.insymmetricgrid(xx,yy)
     xx = compress(ii,xx)
     yy = compress(ii,yy)
     plg(yy*yscale,xx*xscale,color=color)
@@ -522,7 +545,7 @@ Constructor arguments:
       if not w: continue
       xx = s.rr*cos(tt+da) + sx*(s.ap + s.rr) + s.ox
       yy = s.rr*sin(tt+da) + sy*(s.ap + s.rr) + s.oy
-      ii = s.ingrid(xx,yy)
+      ii = s.insymmetricgrid(xx,yy)
       x = compress(ii,xx)
       y = compress(ii,yy)
       plg(y*yscale,x*xscale,color=color)
@@ -534,132 +557,196 @@ class RealBoundary:
   """
 Applies appropriate boundaries using capacity matrix solver for the slice code.
 Constructor arguments:
-  - newmesh=0 when true, the grid is redefined to ensure that the elements
-              boundaries are included within the grid
-  - rodfract=0.5 when newmesh is true, this gives the fraction of the rods which
-                 are included for electric quads.
+  - newmesh=0: when true, the grid is redefined to ensure that the elements
+               boundaries are included within the grid
+  - rodfract=0.5: when newmesh is true, this gives the fraction of the rods
+                  which are included for electric quads.
+  - lscrapeparticles=1: When true, particles are scraped on the conductors.
+                        This only applies to the 3d case.
+  - scrapermglevel=2: Coarsening level for index grid used to locate which
+                      conductors particles are near. See doc(ParticleScraper)
+                      for more info.
   """
   #----------------------------------------------------------------------------
-  def __init__(s,newmesh=0,rodfract=0.5):
+  def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=2):
     global _realboundarycount
     # --- Only allow one instance of this class.
     if _realboundarycount > 0:
       raise "There can only be one instance of the RealBoundary class"
     _realboundarycount = 1
     # --- Save the input arguments
-    s.newmesh = newmesh
-    s.rodfract = rodfract
-    # --- Some idiot proofing. Make sure that fstype = 0 at this point. fstype
-    # --- is set to the proper value by setboundary. This is done so that in
-    # --- case this is called before the generate and a user still is setting
-    # --- fstype=1 (or 2). In that case, the capacity matrix solver will be
-    # --- initialized, but no conductors have been defined at this point.
-    # --- Doing this only avoids a printed notice which may confuse the user.
-    top.fstype = 0
+    self.newmesh = newmesh
+    self.rodfract = rodfract
+    self.lscrapeparticles = lscrapeparticles
+    self.scrapermglevel = scrapermglevel
+
     # --- Keep a global lists of all matrices. With a global lists of matrices,
     # --- recalculation of a matrix can be avoided if one with the same values
     # --- have already been calculated.
-    s.nomatrixlist = []
-    s.pipematrixlist = []
-    s.rodmatrixlist = []
+    self.nomatrixlist = []
+    self.pipematrixlist = []
+    self.rodmatrixlist = []
+
     # --- For each element type, create a list of capacity matrices, which are
     # --- all only initially empty. It is done this way so that if the number
     # --- of elements were to change, this coding would not be affected.
-    s.drftcm  = []
-    s.quadcm  = []
-    s.acclcm  = []
-    s.emltcm  = []
-    s.mmltcm  = []
-    s.mmlt2cm = []
-    s.pgrdcm  = []
-    s.bgrdcm  = []
-    s.bgrd2cm = []
-    s.helecm  = []
-    s.bendcm  = []
-    s.dipocm  = []
-    s.sextcm  = []
-    s.nonecm  = []
-    # --- Turn on the realboundaries.
-    s.enable()
+    self.drftcm  = []
+    self.quadcm  = []
+    self.acclcm  = []
+    self.emltcm  = []
+    self.mmltcm  = []
+    self.mmlt2cm = []
+    self.pgrdcm  = []
+    self.bgrdcm  = []
+    self.bgrd2cm = []
+    self.helecm  = []
+    self.bendcm  = []
+    self.dipocm  = []
+    self.sextcm  = []
+    self.nonecm  = []
+
+    # --- Keep track of the current matrix. Knowing the current matrix, the
+    # --- time wasted reseting the fxy variables to the same values is avoided.
+    self.current = None
+
+    # --- Setup so the initialization routine will be called.
+    installbeforefs(self.initialsetboundary)
+
   #----------------------------------------------------------------------------
-  def __del__(s):
+  def initialsetboundary(self):
+    global _initialmeshparams
+    # --- This does initialization that depends on which simulation package
+    # --- is being used. This happens the first time a field solve is done
+    # --- after this instance was created. Normal operation would have the
+    # --- instance created before the generate step (and before the package
+    # --- was specified).
+
+    # --- This routine removes itself from the beforefs so it is only
+    # --- called once.
+    uninstallbeforefs(self.initialsetboundary)
+
+    # --- Fetch the initial values of the mesh parameters. This can only be
+    # --- done here since they must have been set by the user at this point.
+    _initialmeshparams = [w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
+                          0.5*(w3d.xmmax+w3d.xmmin),0.5*(w3d.ymmax+w3d.ymmin)]
+
+    currpkg = getcurrpkg()
+    if currpkg == 'w3d':
+      # --- Make sure that an appropriate field solver is turned on.
+      if top.fstype not in [3,7]: top.fstype = 7
+    elif currpkg == 'wxy':
+      # --- Make sure that fstype = 0 at this point, since fstype
+      # --- is set to the proper value by setboundary. This is done so that in
+      # --- case this is called before the generate and a user still is setting
+      # --- fstype=1 (or 2).
+      top.fstype = 0
+      # --- Now make the call. This call is needed since it would noramally
+      # --- be called at the beginning of the step, which has already passed.
+      self.setboundary()
+
+    # --- Turn on the realboundaries for normal operation.
+    self.enable()
+
+  #----------------------------------------------------------------------------
+  def __del__(self):
     global _realboundarycount
     # --- Class destructor
     _realboundarycount = 0
-    s.disable()
+    self.disable()
   #----------------------------------------------------------------------------
-  def disable(s):
+  def disable(self):
     # --- Turns off the realboundaries
     # --- This must be protected since disable may be called by __del__
     # --- on exit from python, at which point 'top' may not exist.
     try:
+      # --- Just try uninstalling everything, independent of what package
+      # --- is active.
+      if isinstalledbeforestep(self.setboundary):
+        uninstallbeforestep(self.setboundary)
+      if isinstalledbeforefs(self.initialsetboundary):
+        uninstallbeforefs(self.initialsetboundary)
+      if isinstalledaddconductor(self.setboundary):
+        uninstalladdconductor(self.setboundary)
       top.fstype = 0
     except:
       pass
-    try:
-      uninstallbeforestep(s.setboundary)
-      uninstallbeforefs(s.initialsetboundary)
-    except:
-      pass
   #----------------------------------------------------------------------------
-  def enable(s):
+  def enable(self):
     # --- Turns on the realboundaries
-    # --- Keep track of the current matrix. Knowing the current matrix, the
-    # --- time wasted reseting the fxy variables to the same values is avoided.
-    s.current = None
     # --- The routine setboundary will be called at the start of every
     # --- time step.  It also must be called just be the field solve
     # --- during the generate.  This is done by the initialsetboundary
     # --- routine, which then removes itself from that list.
-    installbeforestep(s.setboundary)
-    installbeforefs(s.initialsetboundary)
+    currpkg = getcurrpkg()
+    if currpkg == 'wxy':
+      installbeforestep(self.setboundary)
+    elif currpkg == 'w3d':
+      installaddconductor(self.setboundary)
   #----------------------------------------------------------------------------
-  def setmatrix(s,m,v):
-    if s.current == m: return
+  def setmatrix(self,m,v):
+    if self.current == m: return
     if m is not None: m.setmatrix(v)
-    s.current = m
+    self.current = m
   #----------------------------------------------------------------------------
-  def getnomatrix(s):
+  def getnomatrix(self):
     # --- This searches through the list of matrices checking if one with the
     # --- same parameters has already be created. If so, just return that one.
-    for m in s.nomatrixlist:
+    for m in self.nomatrixlist:
       if m.issame(): return m
     # --- None was found, so create a new one, adding it to the list.
-    m = NoPipe(s.newmesh)
-    s.nomatrixlist.append(m)
+    m = NoPipe(self.newmesh)
+    self.nomatrixlist.append(m)
     return m
   #----------------------------------------------------------------------------
-  def getpipematrix(s,ap,ax,ay,v,ox,oy):
+  def getpipematrix(self,ap,ax,ay,v,ox,oy):
     # --- This searches through the list of matrices checking if one with the
     # --- same parameters has already be created. If so, just return that one.
-    for m in s.pipematrixlist:
+    for m in self.pipematrixlist:
       if m.issame(ap,ax,ay,ox,oy): return m
     # --- None was found, so create a new one, adding it to the list.
-    m = RoundPipe(ap,ax,ay,v,ox,oy,s.newmesh)
-    s.pipematrixlist.append(m)
+    m = RoundPipe(ap,ax,ay,v,ox,oy,self.newmesh)
+    self.pipematrixlist.append(m)
     return m
   #----------------------------------------------------------------------------
-  def getrodmatrix(s,ap,rr,vx,vy,vxm,vym,withx,withy,ox,oy):
+  def getrodmatrix(self,ap,rr,vx,vy,vxm,vym,withx,withy,ox,oy):
     # --- This searches through the list of matrices checking if one with the
     # --- same parameters has already be created. If so, just return that one.
-    for m in s.rodmatrixlist:
+    for m in self.rodmatrixlist:
       if m.issame(ap,rr,withx,withy,ox,oy): return m
     # --- None was found, so create a new one, adding it to the list.
-    m = RoundRods(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy,s.newmesh,s.rodfract)
-    s.rodmatrixlist.append(m)
+    m = RoundRods(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy,self.newmesh,
+                  self.rodfract)
+    self.rodmatrixlist.append(m)
     return m
   #----------------------------------------------------------------------------
-  def nopipe(s,id,cm):
-    # --- Check if there is a matrix for this element
-    if (len(cm) > id and cm[id] is None) or len(cm) < id+1:
-      # --- If the list is too short, add some None's in.
-      while len(cm) < id+1: cm.append(None)
-      # --- Now, add the capacity matrix.
-      cm[id] = s.getnomatrix()
-    s.setmatrix(cm[id],0.)
-    return 1
+  def nopipe(self,id,cm):
+    currpkg = getcurrpkg()
+    if currpkg == 'wxy':
+      # --- Check if there is a matrix for this element
+      if (len(cm) > id and cm[id] is None) or len(cm) < id+1:
+        # --- If the list is too short, add some None's in.
+        while len(cm) < id+1: cm.append(None)
+        # --- Now, add the capacity matrix.
+        cm[id] = self.getnomatrix()
+      self.setmatrix(cm[id],0.)
+      return 1
+    elif currpkg == 'w3d':
+      return 0
   #----------------------------------------------------------------------------
-  def roundpipe(s,id,zs,ze,ap,ax,ay,ox,oy,cm):
+  def roundpipe(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
+    currpkg = getcurrpkg()
+    if currpkg == 'wxy':
+      return self.roundpipexy(id,zs,ze,ap,ax,ay,ox,oy,cm)
+    elif currpkg == 'w3d':
+      return self.roundpipe3d(id,zs,ze,ap,ax,ay,ox,oy,cm)
+  #----------------------------------------------------------------------------
+  def roundpipe3d(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
+    if ze < w3d.zmmin+top.zbeam or zs > w3d.zmmax+top.zbeam: return 0
+    pipe = ZCylinderOut(ap,ze-zs,0.,ox,oy,0.5*(zs+ze))
+    self.conductors += pipe
+    return 0
+  #----------------------------------------------------------------------------
+  def roundpipexy(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
     # --- Only apply matrix is the z location is within the current element
     if zs <= top.zbeam < ze:
       # --- Check if there is a matrix for this element
@@ -668,14 +755,30 @@ Constructor arguments:
         while len(cm) < id+1: cm.append(None)
         # --- Now, add the capacity matrix.
         try:
-          cm[id] = s.getpipematrix(ap[id],ax[id],ay[id],0.,ox[id],oy[id])
+          cm[id] = self.getpipematrix(ap[id],ax[id],ay[id],0.,ox[id],oy[id])
         except:
           return 0
-      s.setmatrix(cm[id],0.)
+      self.setmatrix(cm[id],0.)
       return 1
     return None
   #----------------------------------------------------------------------------
-  def quadrods(s,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,ox,oy,cm):
+  def quadrods(self,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy,cm):
+    currpkg = getcurrpkg()
+    if currpkg == 'wxy':
+      return self.quadrodsxy(id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,ox,oy,cm)
+    elif currpkg == 'w3d':
+      return self.quadrods3d(id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy)
+  #----------------------------------------------------------------------------
+  def quadrods3d(self,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy):
+    zc = 0.5*(zs+ze)
+    if (zc+0.5*(rl+gl)+pw < w3d.zmmin+top.zbeam or
+        zc-0.5*(rl+gl)-pw > w3d.zmmax+top.zbeam): return 0
+    quad = Quadrupole(ap,rl,rr,gl,gp,pa,pw,pr,vx,vy,ox,oy,zc,id)
+    if quad is not None:
+      self.conductors += quad
+    return 0
+  #----------------------------------------------------------------------------
+  def quadrodsxy(self,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,ox,oy,cm):
     # --- Find the extent of the element.
     zc = 0.5*(zs + ze)
     if rl > 0.:
@@ -704,215 +807,198 @@ Constructor arguments:
           if pa == 0.: pa = ap
           if gp > 0.: v1 = vx
           else: v1 = vy
-          cmlist[0] = s.getpipematrix(pa,pa,pa,v1,ox,oy)
+          cmlist[0] = self.getpipematrix(pa,pa,pa,v1,ox,oy)
         # --- First gap location
         if gl > 0.:
           withx = 0
           withy = 0
           if gp > 0.: withx = 1
           else:       withy = 1
-          cmlist[1] = s.getrodmatrix(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy)
+          cmlist[1] = self.getrodmatrix(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy)
         # --- Rod overlap
-        cmlist[2] = s.getrodmatrix(ap,rr,vx,vy,vx,vy,1,1,ox,oy)
+        cmlist[2] = self.getrodmatrix(ap,rr,vx,vy,vx,vy,1,1,ox,oy)
         # --- Second gap location
         if gl > 0.:
           withx = 0
           withy = 0
           if gp > 0.: withy = 1
           else:       withx = 1
-          cmlist[3] = s.getrodmatrix(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy)
+          cmlist[3] = self.getrodmatrix(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy)
         # --- Second end-plate
         if pw > 0.:
           if pa == 0.: pa = ap
           if gp > 0.: v2 = vy
           else: v2 = vx
-          cmlist[4] = s.getpipematrix(pa,pa,pa,v2,ox,oy)
+          cmlist[4] = self.getpipematrix(pa,pa,pa,v2,ox,oy)
         # --- Now append the list of 5 to the end of the main list of matrices.
         cm[id] = cmlist
       # --- Apply one of the five matrices.
       if zl <= top.zbeam < zl + pw:
         if gp > 0.: v1 = vx
         else:       v1 = vy
-        s.setmatrix(cm[id][0],v1)
+        self.setmatrix(cm[id][0],v1)
       elif zl+pw <= top.zbeam < zl+pw+gl:
-        s.setmatrix(cm[id][1],[vx,vy,vx,vy])
+        self.setmatrix(cm[id][1],[vx,vy,vx,vy])
       elif zl+pw+gl <= top.zbeam < zr-pw-gl:
-        s.setmatrix(cm[id][2],[vx,vy,vx,vy])
+        self.setmatrix(cm[id][2],[vx,vy,vx,vy])
       elif zr-pw-gl <= top.zbeam < zr-pw:
-        s.setmatrix(cm[id][3],[vx,vy,vx,vy])
+        self.setmatrix(cm[id][3],[vx,vy,vx,vy])
       elif zr-pw <= top.zbeam <= zr:
         if gp > 0.: v2 = vy
         else:       v2 = vx
-        s.setmatrix(cm[id][4],v2)
+        self.setmatrix(cm[id][4],v2)
       return 1
     return 0
   #----------------------------------------------------------------------------
-  def initialsetboundary(s):
-    global _initialmeshparams
-    # --- This does an initial call to setboundary during the generate. It is
-    # --- called just before the field solve.
-    # --- This is only needed for the case where an instance of this class is
-    # --- created before the generate. During the generate, the capacity
-    # --- matrix field solver needs to be initialized but the step command
-    # --- has not been called (which would normally make a call to setboundary).
-    # --- This routine should only be called during the generate, so steps
-    # --- are taken below to ensure that this is the case before the call
-    # --- to setboundary is made.
-    # --- This routine removes itself from the beforefs list since during
-    # --- the run, the capacity matrices are reset at the start of the step.
-    uninstallbeforefs(s.initialsetboundary)
-    # --- Fetch the initial values of the mesh parameters. This can only be
-    # --- done here since they must have been set by the user at this point.
-    _initialmeshparams = [w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                          0.5*(w3d.xmmax+w3d.xmmin),0.5*(w3d.ymmax+w3d.ymmin)]
-    # --- If the generate has already be done (i.e. top.it > 0) then return
-    # --- since setboundary doesn't need to be called.
-    if top.it > 0: return
-    # --- Now make the call.
-    s.setboundary()
+  def elemlist(self,nol,cid,czs,cze):
+    """This little routine returns the info about each element referenced
+in the celemid array. It returns each element only once.
+    """
+    for io in range(nol):
+      previd = -1
+      prevzs = largepos
+      prevze = largepos
+      for id,zs,ze in zip(cid[:,io],czs[:,io],cze[:,io]):
+        if id == previd or (zs == prevzs and ze == prevze): continue
+        previd = id
+        prevzs = zs
+        prevze = ze
+        yield (id,zs,ze)
   #----------------------------------------------------------------------------
-  def setboundary(s):
-    # --- This routine should only be called by the wxy package
-    if package()[0] != 'wxy': return
+  def setboundary(self):
+    self.conductors = None
     # --- Go through each element type and chose the first one covers the
     # --- current location.
     #--------------------------------------------------------------------------
     if top.quads:
-      # --- The exception handling is done to allow for the two different
-      # --- versions of the code, the f90 which allows element overlapping
-      # --- and the f77 which does not.
-      for io in xrange(top.nquadol):
-        qid = top.cquadid[0,io]
-        qzs = top.cquadzs[0,io]
-        qze = top.cquadze[0,io]
+      for qid,qzs,qze in self.elemlist(top.nquadol,top.cquadid,
+                                       top.cquadzs,top.cquadze):
         if (abs(top.quadde[qid]) > 0. or
             abs(top.quadvx[qid]) > 0. or abs(top.quadvy[qid]) > 0. or
             top.quadrr[qid] > 0. or top.quadrl[qid] > 0. or
             top.quadgl[qid] > 0.):
-          if s.quadrods(qid,qzs,qze,top.quadap[qid],
-                        top.quadrr[qid],top.quadrl[qid],top.quadgl[qid],
-                        top.quadgp[qid],top.quadvx[qid],top.quadvy[qid],
-                        top.quadpa[qid],top.quadpw[qid],
-                        top.qoffx[qid],top.qoffy[qid],s.quadcm):
+          if self.quadrods(qid,qzs,qze,top.quadap[qid],
+                           top.quadrr[qid],top.quadrl[qid],top.quadgl[qid],
+                           top.quadgp[qid],top.quadvx[qid],top.quadvy[qid],
+                           top.quadpa[qid],top.quadpw[qid],top.quadpr[qid],
+                           top.qoffx[qid],top.qoffy[qid],self.quadcm):
             return
         else:
-          if s.roundpipe(qid,qzs,qze,top.quadap,top.quadax,top.quaday,
-                         top.qoffx,top.qoffy,s.quadcm):
+          if self.roundpipe(qid,qzs,qze,top.quadap,top.quadax,top.quaday,
+                            top.qoffx,top.qoffy,self.quadcm):
             return
     #--------------------------------------------------------------------------
     if top.accls:
-      for io in xrange(top.nacclol):
-        aid = top.cacclid[0,io]
-        azs = top.cacclzs[0,io]
-        aze = top.cacclze[0,io]
-        if s.roundpipe(aid,azs,aze,top.acclap,top.acclax,top.acclay,
-                       top.acclox,top.accloy,s.acclcm):
+      for aid,azs,aze in self.elemlist(top.nacclol,top.cacclid,
+                                       top.cacclzs,top.cacclze):
+        if self.roundpipe(aid,azs,aze,top.acclap,top.acclax,top.acclay,
+                          top.acclox,top.accloy,self.acclcm):
           return
     #--------------------------------------------------------------------------
     if top.emlts:
-      for io in xrange(top.nemltol):
-        eid = top.cemltid[0,io]
-        ezs = top.cemltzs[0,io]
-        eze = top.cemltze[0,io]
-        if s.quadrods(eid,ezs,eze,top.emltap[eid],
-                      top.emltrr[eid],top.emltrl[eid],top.emltgl[eid],
-                      top.emltgp[eid],0.,0.,top.emltpa[eid],top.emltpw[eid],
-                      top.emltox[eid],top.emltoy[eid],s.emltcm):
+      for eid,ezs,eze in self.elemlist(top.nemltol,top.cemltid,
+                                       top.cemltzs,top.cemltze):
+        if self.quadrods(eid,ezs,eze,top.emltap[eid],
+                         top.emltrr[eid],top.emltrl[eid],top.emltgl[eid],
+                         top.emltgp[eid],0.,0.,
+                         top.emltpa[eid],top.emltpw[eid],0., #top.emltpr[eid],
+                         top.emltox[eid],top.emltoy[eid],self.emltcm):
           return
     #--------------------------------------------------------------------------
     if top.mmlts:
-      for io in xrange(top.nmmltol):
-        mid = top.cmmltid[0,io]
-        mzs = top.cmmltzs[0,io]
-        mze = top.cmmltze[0,io]
+      for mid,mzs,mze in self.elemlist(top.nmmltol,top.cmmltid,
+                                       top.cmmltzs,top.cmmltze):
         if top.mmltas[mid] != top.mmltze[mid]:
           # --- Use aperture start and end, adding the same offset that was
           # --- added to mmltzs to get cmmltzs.
           mzs = top.mmltas[mid] + (top.cmmltzs[0,io] - top.mmltzs[mid])
           mze = top.mmltae[mid] + (top.cmmltzs[0,io] - top.mmltzs[mid])
-        if s.roundpipe(mid,mzs,mze,top.mmltap,top.mmltax,top.mmltay,
-                       top.mmltox,top.mmltoy,s.mmltcm):
+        if self.roundpipe(mid,mzs,mze,top.mmltap,top.mmltax,top.mmltay,
+                          top.mmltox,top.mmltoy,self.mmltcm):
           return
     #--------------------------------------------------------------------------
     if top.pgrds:
-      for io in xrange(top.npgrdol):
-        pid = top.cpgrdid[0,io]
-        pzs = top.cpgrdzs[0,io]
-        pze = top.cpgrdze[0,io]
-        if s.quadrods(pid,pzs,pze,top.pgrdap[pid],
-                      top.pgrdrr[pid],top.pgrdrl[pid],top.pgrdgl[pid],
-                      top.pgrdgp[pid],0.,0.,top.pgrdpa[pid],top.pgrdpw[pid],
-                      top.pgrdox[pid],top.pgrdoy[pid],s.pgrdcm):
+      for pid,pzs,pze in self.elemlist(top.npgrdol,top.cpgrdid,
+                                       top.cpgrdzs,top.cpgrdze):
+        if self.quadrods(pid,pzs,pze,top.pgrdap[pid],
+                         top.pgrdrr[pid],top.pgrdrl[pid],top.pgrdgl[pid],
+                         top.pgrdgp[pid],0.,0.,
+                         top.pgrdpa[pid],top.pgrdpw[pid],0., #top.pgrdpr[pid],
+                         top.pgrdox[pid],top.pgrdoy[pid],self.pgrdcm):
           return
     #--------------------------------------------------------------------------
     if top.bgrds:
-      for io in xrange(top.nbgrdol):
-        bid = top.cbgrdid[0,io]
-        bzs = top.cbgrdzs[0,io]
-        bze = top.cbgrdze[0,io]
-        if s.roundpipe(bid,bzs,bze,top.bgrdap,top.bgrdax,top.bgrday,
-                       top.bgrdox,top.bgrdoy,s.bgrdcm):
+      for bid,bzs,bze in self.elemlist(top.nbgrdol,top.cbgrdid,
+                                       top.cbgrdzs,top.cbgrdze):
+        if self.roundpipe(bid,bzs,bze,top.bgrdap,top.bgrdax,top.bgrday,
+                          top.bgrdox,top.bgrdoy,self.bgrdcm):
           return
     #--------------------------------------------------------------------------
     if top.heles:
-      for io in xrange(top.nheleol):
-        hid = top.cheleid[0,io]
-        hzs = top.chelezs[0,io]
-        hze = top.cheleze[0,io]
+      for hid,hzs,hze in self.elemlist(top.nheleol,top.cheleid,
+                                       top.chelezs,top.cheleze):
         if (max(abs(top.heleae[:,hid])) > 0. or
             top.helerr[hid] > 0. or top.helerl[hid] > 0. or
             top.helegl[hid] > 0.):
-          if s.quadrods(hid,hzs,hze,top.heleap[hid],
-                        top.helerr[hid],top.helerl[hid],top.helegl[hid],
-                        top.helegp[hid],0.,0.,top.helepa[hid],top.helepw[hid],
-                        top.heleox[hid],top.heleoy[hid],s.helecm):
+          if self.quadrods(hid,hzs,hze,top.heleap[hid],
+                           top.helerr[hid],top.helerl[hid],top.helegl[hid],
+                           top.helegp[hid],0.,0.,
+                           top.helepa[hid],top.helepw[hid],0., #top.helepr[hid],
+                           top.heleox[hid],top.heleoy[hid],self.helecm):
             return
         else:
-          if s.roundpipe(hid,hzs,hze,top.heleap,top.heleax,top.heleay,
-                         top.heleox,top.heleoy,s.helecm):
+          if self.roundpipe(hid,hzs,hze,top.heleap,top.heleax,top.heleay,
+                         top.heleox,top.heleoy,self.helecm):
             return
     #--------------------------------------------------------------------------
     if top.bends:
-      bid = top.cbendid[0]
-      bzs = top.cbendzs[0]
-      bze = top.cbendze[0]
-      if s.roundpipe(bid,bzs,bze,top.bendap,top.bendax,top.benday,
-                     top.bendox,top.bendoy,s.bendcm):
-        return
+      cbendid = transpose([top.cbendid])
+      cbendzs = transpose([top.cbendzs])
+      cbendze = transpose([top.cbendze])
+      for bid,bzs,bze in self.elemlist(top.nbendol,    cbendid,
+                                           cbendzs,    cbendze):
+        if self.roundpipe(bid,bzs,bze,top.bendap,top.bendax,top.benday,
+                          top.bendox,top.bendoy,self.bendcm):
+          return
     #--------------------------------------------------------------------------
     if top.dipos:
-      for io in xrange(top.ndipool):
-        did = top.cdipoid[0,io]
-        dzs = top.cdipozs[0,io]
-        dze = top.cdipoze[0,io]
-        if s.roundpipe(did,dzs,dze,top.dipoap,top.dipoax,top.dipoay,
-                       top.dipoox,top.dipooy,s.dipocm):
+      for did,dzs,dze in self.elemlist(top.ndipool,top.cdipoid,
+                                       top.cdipozs,top.cdipoze):
+        if self.roundpipe(did,dzs,dze,top.dipoap,top.dipoax,top.dipoay,
+                          top.dipoox,top.dipooy,self.dipocm):
           return
     #--------------------------------------------------------------------------
     if top.sexts:
-      for io in xrange(top.nsextol):
-        sid = top.csextid[0,io]
-        szs = top.csextzs[0,io]
-        sze = top.csextze[0,io]
-        if s.roundpipe(sid,szs,sze,0.,0.,0., #top.sextap,
-                       top.sextox,top.sextoy,s.sextcm):
+      for sid,szs,sze in self.elemlist(top.nsextol,top.csextid,
+                                       top.csextzs,top.csextze):
+        if self.roundpipe(sid,szs,sze,0.,0.,0., #top.sextap,
+                          top.sextox,top.sextoy,self.sextcm):
           return
     #--------------------------------------------------------------------------
     # --- Drifts are checked for last in case the other elements might extend
     # --- into the neighboring drifts.
     if top.drfts:
-      for io in xrange(top.ndrftol):
-        did = top.cdrftid[0,io]
-        dzs = top.cdrftzs[0,io]
-        dze = top.cdrftze[0,io]
-        if s.roundpipe(did,dzs,dze,top.drftap,top.drftax,top.drftay,
-                       top.drftox,top.drftoy,s.drftcm):
+      for did,dzs,dze in self.elemlist(top.ndrftol,top.cdrftid,
+                                       top.cdrftzs,top.cdrftze):
+        if self.roundpipe(did,dzs,dze,top.drftap,top.drftax,top.drftay,
+                          top.drftox,top.drftoy,self.drftcm):
           return
     # --- If this part of the code is reached, then there are no applicable
     # --- boundaries, so turn the capacity matrix field solver off.
-    s.nopipe(0,s.nonecm)
+    self.nopipe(0,self.nonecm)
+    # --- This place is always reached in the 3d case.
+    if self.conductors is not None:
+      installconductors(self.conductors,gridmode=0)
+      if self.lscrapeparticles:
+        try:
+          self.scraper.disable()
+        except:
+          pass
+        self.scraper = ParticleScraper(self.conductors,
+                                       mglevel=self.scrapermglevel)
+
   #----------------------------------------------------------------------------
-  def plotcond(s,plotphi=1,filled=0,plotedge=1,plotpoints=0,plotsym=1,\
+  def plotcond(self,plotphi=1,filled=0,plotedge=1,plotpoints=0,plotsym=1,\
                ccolor='red',ecolor='green',phicolor='fg',\
                xscale=None,yscale=None):
     """
@@ -949,13 +1035,13 @@ Makes a plot of the conductor.
                 color=phicolor)
     # --- Plot conductor points next.
     if top.fstype == 1:
-      s.current.plotcond(ccolor,xscale=xscale,yscale=yscale)
+      self.current.plotcond(ccolor,xscale=xscale,yscale=yscale)
       if plotsym:
         if w3d.l2symtry or w3d.l4symtry:
-          s.current.plotcond(color=ccolor,xscale=xscale,yscale=-yscale)
+          self.current.plotcond(color=ccolor,xscale=xscale,yscale=-yscale)
         if w3d.l4symtry:
-          s.current.plotcond(color=ccolor,xscale=-xscale,yscale= yscale)
-          s.current.plotcond(color=ccolor,xscale=-xscale,yscale=-yscale)
+          self.current.plotcond(color=ccolor,xscale=-xscale,yscale= yscale)
+          self.current.plotcond(color=ccolor,xscale=-xscale,yscale=-yscale)
 
     # --- Plot the edge of the mesh last
     if plotedge:
@@ -986,6 +1072,8 @@ Save a class to the file filename.
   - object
   - filename
   """
+  currpkg = getcurrpkg()
+  if currpkg != 'wxy': return
   # --- This is only do by the first processor on a parallel machine.
   if me == 0:
     ff = open(filename,'w')
@@ -998,6 +1086,8 @@ Restore a class from the file filename.
   - filename
 Returns the object
   """
+  currpkg = getcurrpkg()
+  if currpkg != 'wxy': return
   ff = open(filename,'r')
   result = cPickle.load(ff)
   ff.close()
