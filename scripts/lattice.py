@@ -36,10 +36,11 @@ madtowarp(lattice)
 todo = """ Add comment attribute to elements """
 
 from warp import *
+from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.27 2004/03/03 16:38:52 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.28 2004/05/22 01:49:13 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -241,6 +242,16 @@ Base class for the lattice classes. Should never be directly called.
     return LINE(self,other)
   def __radd__(self,other):
     return LINE(other,self)
+  def getdxobject(self):
+    try:
+      return self.dxobject
+    except AttributeError:
+      object = self.getobject()
+      return object.getdxobject()
+  def visualize(self,display=1,kwdict={},**kw):
+    kw.update(kwdict)
+    object = self.getobject()
+    object.visualize(display=display,kwdict=kw)
 
 #----------------------------------------------------------------------------
 # WARP elements
@@ -440,14 +451,31 @@ Creates an instance of a Quad lattice element.
       top.nquad = self.iquad
     top.quadzs[top.nquad] = zz + self.zshift
     top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
-    top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
-    top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
+    self.xoffset = self.offset_x*errordist(self.error_type)
+    self.yoffset = self.offset_y*errordist(self.error_type)
+    top.qoffx[top.nquad] = self.xoffset
+    top.qoffy[top.nquad] = self.yoffset
     top.quadol[top.nquad] = self.ol
     for xx in ['ap','ax','ay','de','db','vx','vy','rr','rl','gl','gp',
                'pw','pa','pr']:
       aa = top.getpyobject('quad'+xx)
       aa[top.nquad] = self.__dict__[xx]
     return top.quadze[top.nquad]
+  def getobject(self):
+    try:
+      return self.object
+    except AttributeError:
+      pass
+    try:
+      zc = 0.5*(top.quadzs[self.iquad]+top.quadze[self.iquad])
+    except AttributeError:
+      zc = 0.
+    q = Quadrupole(ap=self.ap,rl=self.rl,rr=self.rr,gl=self.gl,gp=self.gp,
+                   pa=self.pa,pw=self.pw,pr=self.pr,vx=self.vx,vy=self.vy,
+                   xcent=self.xoffset,ycent=self.yoffset,zcent=zc,
+                   condid=self.iquad)
+    self.object = q
+    return self.object
 
 class Sext(Elem):
   """
