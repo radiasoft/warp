@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.30 $, $Date: 2003/02/27 19:34:47 $
+c@(#) File WXY.M, version $Revision: 3.31 $, $Date: 2003/04/22 21:50:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1705,7 +1705,6 @@ c       --- and 1 - this avoids potential problems with roundoff errors.
 c=========================================================================== 
       subroutine setrhoxy(rho1d,np,xp,yp,zp,zgrid,uzp,gaminv,q,wght)
       use Subtimersxy
-      use GlobalVars
       use InGen
       use InGenxy
       use InGen3d
@@ -1739,11 +1738,11 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:3), indx(0:3,nparpgrp)
+      integer(ISZ):: moff(0:3), indx(0:3,np)
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1)
+      integer(ISZ):: ii(0:np-1), jj(0:np-1)
 c     --- For both algorithms
-      real(kind=8):: s(0:3,nparpgrp)
+      real(kind=8):: s(0:3,np)
 
       integer(ISZ):: ip,i,j,ind0,m,ir
       real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,gxfact,gyfact,f
@@ -1767,7 +1766,7 @@ c  Set up offset array for vectorized deposition:
       moff(2) = nx+1
       moff(3) = nx+2
 
-c  Begin main loop over species, groups of nparpgrp particles
+c  Begin main loop over species
 
       g = wght * q / (dx * dy)
       dxi = 1./dx
@@ -1862,7 +1861,7 @@ c  Begin scalar deposition loop
 c--------------------------------------
       elseif (depos == "scalar") then
 
-c  Begin main loop over species, groups of nparpgrp particles
+c  Begin main loop over species
 
       g = wght * q / (dx * dy)
       dxi = 1./dx

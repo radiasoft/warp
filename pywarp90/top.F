@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.81 $, $Date: 2003/04/22 16:32:48 $
+c@(#) File TOP.M, version $Revision: 3.82 $, $Date: 2003/04/22 21:52:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2418,7 +2418,6 @@ c         --- set the field
 c=============================================================================
       subroutine applyhele(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,lslice,
      &                     ex,ey,ez,bx,by,bz)
-      use GlobalVars
       use Lattice
       use LatticeInternal
       integer(ISZ):: np,npz
@@ -2448,9 +2447,9 @@ c   bx, by, bz   magnetic field
       real(kind=8):: vz(npz),dzi(npz)
       real(kind=8):: n,v,f,rpow,cosnt,sinnt
       real(kind=8):: xpmqoff,ypmqoff
-      integer(ISZ):: tiele(nparpgrp)
-      real(kind=8):: tfrac(nparpgrp),txpmqoff(nparpgrp),typmqoff(nparpgrp)
-      real(kind=8):: trpmqoff(nparpgrp),ttpmqoff(nparpgrp)
+      integer(ISZ):: tiele(np)
+      real(kind=8):: tfrac(np),txpmqoff(np),typmqoff(np)
+      real(kind=8):: trpmqoff(np),ttpmqoff(np)
 
       if (.not. heles) return
 
@@ -2595,7 +2594,6 @@ c               --- rest of components
       end
 c=============================================================================
       subroutine applyemlt(np,xp,yp,npz,zp,dtl,dtr,dt,lslice,ex,ey,ez)
-      use GlobalVars
       use Lattice
       use LatticeInternal
       use Mult_data
@@ -2644,11 +2642,11 @@ c  and not once per particle per multipole component.
 
       integer(ISZ):: io,in,ip
       real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
-      integer(ISZ):: izm(nparpgrp),imm(nparpgrp)
-      real(kind=8):: xxx(nparpgrp),yyy(nparpgrp),zzz(nparpgrp),ttt(nparpgrp)
-      real(kind=8):: wzm(nparpgrp),rr(nparpgrp),tt(nparpgrp)
-      real(kind=8):: mltph(nparpgrp),mltsf(nparpgrp)
-      real(kind=8):: tex(nparpgrp),tey(nparpgrp),tez(nparpgrp)
+      integer(ISZ):: izm(np),imm(np)
+      real(kind=8):: xxx(np),yyy(np),zzz(np),ttt(np)
+      real(kind=8):: wzm(np),rr(np),tt(np)
+      real(kind=8):: mltph(np),mltsf(np)
+      real(kind=8):: tex(np),tey(np),tez(np)
 
       if (.not. emlts .or. .not. linemlt(0)) return
 
@@ -2738,7 +2736,6 @@ c       --- do coordinate transform on fields back to warped coordinates
       end
 c=============================================================================
       subroutine applymmlt(np,xp,yp,npz,zp,dtl,dtr,dt,lslice,bx,by,bz)
-      use GlobalVars
       use Lattice
       use LatticeInternal
       use Mult_data
@@ -2786,11 +2783,11 @@ c  and not once per particle per multipole component.
 
       integer(ISZ):: io,in,ip
       real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
-      integer(ISZ):: izm(nparpgrp),imm(nparpgrp)
-      real(kind=8):: xxx(nparpgrp),yyy(nparpgrp),zzz(nparpgrp),ttt(nparpgrp)
-      real(kind=8):: wzm(nparpgrp),rr(nparpgrp),tt(nparpgrp)
-      real(kind=8):: mltph(nparpgrp),mltsf(nparpgrp)
-      real(kind=8):: tbx(nparpgrp),tby(nparpgrp),tbz(nparpgrp)
+      integer(ISZ):: izm(np),imm(np)
+      real(kind=8):: xxx(np),yyy(np),zzz(np),ttt(np)
+      real(kind=8):: wzm(np),rr(np),tt(np)
+      real(kind=8):: mltph(np),mltsf(np)
+      real(kind=8):: tbx(np),tby(np),tbz(np)
 
       if (.not. mmlts .or. .not. linmmlt(0)) return
 
@@ -3053,7 +3050,7 @@ c===========================================================================
       logical(ISZ):: lslice
       real(kind=8):: bx(np),by(np),bz(np)
 
-c  Sets magnetic field for a group of up to nparpgrp particles from data sets
+c  Sets magnetic field for particles from data sets
 c  containing Bx, By, and Bz on 3-D grids.
 c  Calling arguments:
 c     np          number of particles
@@ -3241,7 +3238,7 @@ c===========================================================================
       logical(ISZ):: lslice
       real(kind=8):: ex(np),ey(np),ez(np)
 
-c  Sets electric field for a group of up to nparpgrp particles from data
+c  Sets electric field for particles from data
 c  sets containing the potential on a 3-D grid.
 c  Calling arguments:
 c     np          number of particles
@@ -5228,15 +5225,14 @@ c  Fast gamma advance, version 2, fastest, but least accurate
       end
 c=============================================================================
       subroutine setcurr (curr,np,zp,uzp,gaminv,q,wght,zbeam,dzz,zzmin)
-      use GlobalVars
       integer(ISZ):: np
       real(kind=8):: q,wght,zbeam,dzz,zzmin
       real(kind=8):: curr(0:*), zp(np), uzp(np), gaminv(np)
 
 c  Sets 1d beam current as a function of z, directly from particle data
 
-      real(kind=8):: s0(nparpgrp), s1(nparpgrp)
-      integer(ISZ):: kk(nparpgrp)
+      real(kind=8):: s0(np), s1(np)
+      integer(ISZ):: kk(np)
       real(kind=8):: g,w1,w0,dzzi
       integer(ISZ):: ip
 
@@ -5262,15 +5258,14 @@ c     --- scalar loop
       end
 c=============================================================================
       subroutine setcurr_weights (curr,np,zp,uzp,w,gaminv,q,wght,zbeam,dzz,zzmin)
-      use GlobalVars
       integer(ISZ):: np
       real(kind=8):: q,wght,zbeam,dzz,zzmin
       real(kind=8):: curr(0:*), zp(np), uzp(np), gaminv(np), w(np)
 
 c  Sets 1d beam current as a function of z, directly from particle data
 
-      real(kind=8):: s0(nparpgrp), s1(nparpgrp)
-      integer(ISZ):: kk(nparpgrp)
+      real(kind=8):: s0(np), s1(np)
+      integer(ISZ):: kk(np)
       real(kind=8):: g,w1,w0,dzzi
       integer(ISZ):: ip
 

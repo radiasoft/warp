@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.11 $, $Date: 2002/11/06 01:38:23 $
+c@(#) File WRZ.M, version $Revision: 3.12 $, $Date: 2003/04/22 21:51:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -1210,7 +1210,7 @@ c=============================================================================
       real(kind=8):: rp(np),tp(np),zp(np),urp(np),utp(np),uzp(np),gaminv(np)
       real(kind=8):: er(np),et(np),ez(np),br(np),bt(np),bz(np),frext(np)
       real(kind=8):: q,m,dt
-      real(kind=8):: tmp(nparpgrp)
+      real(kind=8):: tmp(np)
  
 c  Advances the particles
  

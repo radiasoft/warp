@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.100 $, $Date: 2003/04/22 16:33:55 $
+c@(#) File W3D.M, version $Revision: 3.101 $, $Date: 2003/04/22 21:52:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2060,7 +2060,6 @@ c  "along the centerline."
 c=========================================================================== 
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry)
-      use GlobalVars
       use Subtimers3d
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
@@ -2069,7 +2068,7 @@ c===========================================================================
       integer(ISZ):: efetch
       logical(ISZ):: l2symtry,l4symtry
 
-c  Sets self electric field for a group of up to nparpgrp particles
+c  Sets self electric field for particles
 c  Note that the phi1d passed in is assumed to start at phi(0,0,-1).
 c  This is a change is behavior from what is was earlier. This change
 c  was made to avoid problems with bounds checking. phi needs to be accessed
@@ -2096,8 +2095,8 @@ c        + ...
 
 c     --- For second version
 c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
-      integer(ISZ):: indx(33,nparpgrp)
-      real(kind=8):: p(33,nparpgrp), u1p(nparpgrp), v1p(nparpgrp), w1p(nparpgrp)
+      integer(ISZ):: indx(33,np)
+      real(kind=8):: p(33,np), u1p(np), v1p(np), w1p(np)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -3334,7 +3333,6 @@ c     --- Apply particle boundary conditions
 c=============================================================================
       subroutine setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
      &                    nx,ny,nz,xmmin,ymmin,zmmin)
-      use GlobalVars
       use Subtimers3d
       use InGen3d
       use Fields3d
@@ -3364,12 +3362,12 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:7), indx(0:7,nparpgrp)
+      integer(ISZ):: moff(0:7), indx(0:7,np)
       save moff
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1)
+      integer(ISZ):: ii(0:np-1), jj(0:np-1), kk(0:np-1)
 c     --- For both algorithms
-      real(kind=8):: s(0:7,nparpgrp)
+      real(kind=8):: s(0:7,np)
 
       integer(ISZ):: ip,i,j,k,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
@@ -3394,7 +3392,7 @@ c  Set up offset array for vectorized deposition:
         moff(7) = (nx+1)*(ny+1)+nx+2
       endif
 
-c  Begin main loop over species, groups of nparpgrp particles
+c  Begin main loop over species
 
       g = wght * q / (dx * dy * dz)
       dxi = 1./dx
@@ -3519,7 +3517,7 @@ c  Begin scalar deposition loop
 c--------------------------------------
       elseif (depos == "scalar") then
 
-c  Begin main loop over species, groups of nparpgrp particles
+c  Begin main loop over species
 
       g = wght * q / (dx * dy * dz)
       dxi = 1./dx
