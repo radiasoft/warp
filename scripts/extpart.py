@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.10 2002/10/30 22:30:27 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.11 2003/04/17 22:13:17 dave Exp $"
 
 def extpartdoc():
   print """
@@ -45,12 +45,11 @@ routines (such as ppxxp).
   def __init__(self,iz,nepmax=None,laccumulate=0):
     # --- Save input values, getting default values when needed
     self.iz = iz
-    self.izlocal = iz - top.izslave[me]
     self.laccumulate = laccumulate
     if nepmax is None:
       self.nepmax = 10000
-      if top.allocated("pnumz") and 0 <= self.izlocal <= top.nzmmnt:
-        if top.pnumz[self.izlocal] > 0: self.nepmax = top.pnumz[self.izlocal]*3
+      if top.allocated("pnumz") and 0 <= self.iz <= top.nzmmnt:
+        if top.pnumz[self.iz] > 0: self.nepmax = top.pnumz[self.iz]*3
     else:
       self.nepmax = nepmax
     # --- Add this new window to the ExtPart group in top
@@ -90,7 +89,7 @@ routines (such as ppxxp).
   def getid(self):
     assert self.enabled,"This window is disabled and there is no associated id"
     for i in xrange(top.nepwin):
-      if top.izepwin[i] == self.izlocal: return i
+      if top.izepwin[i] == self.iz: return i
     raise "Uh Ooh! Somehow the window was deleted! I can't continue!"
 
   def enable(self):
@@ -103,7 +102,7 @@ routines (such as ppxxp).
     top.nepwin = top.nepwin + 1
     if top.nepmax < self.nepmax: top.nepmax = self.nepmax
     err = gchange("ExtPart")
-    top.izepwin[-1] = self.izlocal
+    top.izepwin[-1] = self.iz
     # --- Set so accumulate method is called after time steps
     installafterstep(self.accumulate)
     self.enabled = 1
@@ -127,8 +126,8 @@ routines (such as ppxxp).
       print "**** A guess will be made as to how much to increase the size"
       print "**** of the arrays. Please run another timestep to accumulate new"
       print "**** data"
-      if top.allocated("pnumz") and 0 <= self.izlocal <= top.nzmmnt:
-        guess = 3*top.pnumz[self.izlocal]
+      if top.allocated("pnumz") and 0 <= self.iz <= top.nzmmnt:
+        guess = 3*top.pnumz[self.iz]
       else:
         guess = 0
       # --- Only do this on if the relation is true. This avoids unnecessarily
@@ -217,10 +216,7 @@ functions.
     if badargs: raise "bad arguments ",string.join(badargs.keys())
 
   def titleright(self):
-    if lparallel:
-      return "iz = %d (z = %f m)"%(self.iz,top.zmslmin[0]+self.iz*w3d.dz)
-    else:
-      return "iz = %d (z = %f m)"%(self.iz,w3d.zmesh[self.iz])
+    return "iz = %d (z = %f m)"%(self.iz,w3d.zmminglobal+self.iz*w3d.dz)
 
   ############################################################################
   def pxy(self,js=0,particles=1,**kw):
