@@ -59,7 +59,7 @@ pybasisC.$(SO):pybasisC.o
 	#$(LD) -o pybasisC.$(SO) pybasisC.o $(RANFOBJS) $(INCLUDE) $(OTHERLIBS)
 	$(LD) -o pybasisC.$(SO) pybasisC.o $(FORTLIB)
 pybasisC.o:pybasisC.c
-	$(CC) -g -c pybasisC.c $(INCLUDE) $(NUMPYINCLUDE)
+	$(CC) -g $(PYMODULEOPT) -c pybasisC.c $(INCLUDE) $(NUMPYINCLUDE)
 pybasisC.c:$(PYWRAPPERHOME)/pybasisC.m pybasis.h
 	cp $(PYWRAPPERHOME)/pybasisC.m .
 	$(PYCTOF) --f90 -t$(ARCH) pybasisC
@@ -131,7 +131,7 @@ f3d.o:f3d.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3d.F
 f3d_mgrid.o:f3d_mgrid.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3d_mgrid.F
-f3d_conductors.o:f3d_conductors.F
+f3d_conductors.o:f3d_conductors.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3d_conductors.F
 f3dslave.o:f3dslave.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3dslave.F
