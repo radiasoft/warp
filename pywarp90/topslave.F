@@ -1,11 +1,12 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.26 $, $Date: 2004/06/23 22:20:45 $
+c TOPSLAVE.M, version $Revision: 1.27 $, $Date: 2004/11/13 01:33:30 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
 c===========================================================================
       subroutine zpartbnd_slave(zmmax,zmmin,dz,zgrid)
+      use Subtimerstop
       use GlobalVars
       use InGen
       use InPart
@@ -31,6 +32,9 @@ c     integer(ISZ):: blocklengths(100),displacements(100)
       include "mpif.h"
       integer(ISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
 c     integer(ISZ):: mpinewtype,mpirequest
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
 #ifdef VAMPIR
       call VTSYMDEF(10, "ZBND", "SORT", IERR)
       call VTSYMDEF(20, "ZBND", "CPY1", IERR)
@@ -432,11 +436,16 @@ c    &                    MPI_COMM_WORLD,mpistatus,mpierror)
 c       nps(is) = nps(is) + nrecvright
 c       call MPI_TYPE_FREE(mpinewtype,mpierror)
 
+!$OMP MASTER
+      if (ltoptimesubs) timezpartbnd_slave = timezpartbnd_slave + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
 c=============================================================================
       subroutine reorgparticles_parallel()
+      use Subtimerstop
       use InPart
       use Picglb
       use Particles
@@ -460,6 +469,8 @@ c at once.
       integer(ISZ):: sendcounts(0:nslaves-1),sdispls(0:nslaves-1)
       integer(ISZ):: recvcounts(0:nslaves-1),rdispls(0:nslaves-1)
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- First, create z-array that specifies which processors owns which
 c     --- location. This is used to make the sorting of particles to
@@ -627,11 +638,16 @@ c     --- Free work space
 
 c     --- Done!
 
+!$OMP MASTER
+      if (ltoptimesubs) timereorgparticles_parallel = timereorgparticles_parallel + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
 c=============================================================================
       integer(ISZ) function checkzpartbnd(zgrid)
+      use Subtimerstop
       use InPart
       use Particles
       use Parallel
@@ -639,6 +655,9 @@ c=============================================================================
 c Check if all particles are within the mesh.  Returns number of particles
 c outside the mesh.
       integer(ISZ):: is,ip,nout
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
       nout = 0
       do is=1,ns
 !$OMP PARALLEL DO REDUCTION(+:nout)
@@ -651,11 +670,17 @@ c outside the mesh.
       enddo
 !$OMP END PARALLEL DO
       checkzpartbnd = nout
+
+!$OMP MASTER
+      if (ltoptimesubs) timecheckzpartbnd = timecheckzpartbnd + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
 c=============================================================================
       subroutine parallel_sum_mmnts(zmmnts0,zmmnts)
+      use Subtimerstop
       use Parallel
       use Moments
       use Z_Moments
@@ -671,6 +696,8 @@ c     --- temporary for z moments
       real(kind=8):: maxes2(6),mines2(6)
       include "mpif.h"
       integer(ISZ):: mpierror
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- Do reduction on whole beam moments.
       ztemp0 = zmmnts0
@@ -713,12 +740,19 @@ c     --- This is done minimizing the amount of interprocessor communication
       vyminp = mines2(5)
       vzminp = mines2(6)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeparallel_sum_mmnts = timeparallel_sum_mmnts + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine parallel_sum_temperature()
+      use Subtimerstop
       use Temperatures
       integer(ISZ):: nn
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c Do a global sum of the data used to calculate local temperatures.
 
@@ -747,6 +781,10 @@ c Do a global sum of the data used to calculate local temperatures.
 
       endif
 
+!$OMP MASTER
+      if (ltoptimesubs) timeparallel_sum_temperature = timeparallel_sum_temperature + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -755,6 +793,7 @@ c  Some parallel utility routines
 c=============================================================================
 c=============================================================================
       subroutine parallelsumrealarray(data,ndata)
+      use Subtimerstop
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Does a sum over all of the processors.  Resulting data is broadcast
@@ -763,15 +802,22 @@ c to all processors.
       real(kind=8):: data2(ndata)
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
 
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelsumrealarray = timeparallelsumrealarray + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine parallelsumintegerarray(data,ndata)
+      use Subtimerstop
       integer(ISZ):: ndata
       integer(ISZ):: data(ndata)
 c Does a sum over all of the processors.  Resulting data is broadcast
@@ -780,15 +826,22 @@ c to all processors.
       integer(ISZ):: data2(ndata)
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_INTEGER,MPI_SUM,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
 
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelsumintegerarray = timeparallelsumintegerarray + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c==========================================================================
       subroutine parallelmaxrealarray(data,ndata)
+      use Subtimerstop
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Find the max of data over all processors.  Resulting data is broadcast
@@ -797,15 +850,22 @@ c to all processors.
       real(kind=8):: data2(ndata)
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_MAX,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
 
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelmaxrealarray = timeparallelmaxrealarray + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c==========================================================================
       subroutine parallelminrealarray(data,ndata)
+      use Subtimerstop
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Find the min of data over all processors.  Resulting data is broadcast
@@ -814,15 +874,22 @@ c to all processors.
       real(kind=8):: data2(ndata)
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       call MPI_ALLREDUCE(data,data2,ndata,MPI_DOUBLE_PRECISION,MPI_MIN,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
 
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelminrealarray = timeparallelminrealarray + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c==========================================================================
       subroutine parallellor(data)
+      use Subtimerstop
       logical(ISZ):: data
 c Logical OR of data over all processors.  Resulting data is broadcast
 c to all processors.
@@ -830,37 +897,60 @@ c to all processors.
       logical(ISZ):: data2
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       call MPI_ALLREDUCE(data,data2,1,MPI_LOGICAL,MPI_LOR,
      &                   MPI_COMM_WORLD,mpierror)
       data = data2
 
+!$OMP MASTER
+      if (ltoptimesubs) timeparallellor = timeparallellor + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c==========================================================================
       subroutine parallelbroadcastrealarray(data,ndata,root)
+      use Subtimerstop
       integer(ISZ):: ndata,root
       real(kind=8):: data(ndata)
 c Broadcast the data to all processors.
 
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       call MPI_BCAST(data,ndata,MPI_DOUBLE_PRECISION,
      &               root,MPI_COMM_WORLD,mpierror)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelbroadcastrealarray = timeparallelbroadcastrealarray + wtime() - substarttime
+!$OMP END MASTER
 
       return
       end
 c==========================================================================
       subroutine parallelbarrier()
+      use Subtimerstop
 c Calls MPI barrier
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
       call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelbarrier = timeparallelbarrier + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c==========================================================================
       subroutine parallelnonzerorealarray(data,ndata)
+      use Subtimerstop
       integer(ISZ):: ndata
       real(kind=8):: data(ndata)
 c Find the nonzero value of data over all processors. This assumes that the
@@ -870,6 +960,8 @@ c Resulting data is broadcast to all processors.
       real(kind=8):: dmax(ndata),dmin(ndata)
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       call MPI_ALLREDUCE(data,dmax,ndata,MPI_DOUBLE_PRECISION,MPI_MAX,
      &                   MPI_COMM_WORLD,mpierror)
@@ -880,6 +972,10 @@ c Resulting data is broadcast to all processors.
       elsewhere
         data = dmin
       endwhere
+
+!$OMP MASTER
+      if (ltoptimesubs) timeparallelnonzerorealarray = timeparallelnonzerorealarray + wtime() - substarttime
+!$OMP END MASTER
 
       return
       end

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.120 $, $Date: 2004/11/12 17:57:07 $
+#@(#) File F3D.V, version $Revision: 3.121 $, $Date: 2004/11/13 01:33:07 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.120 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.121 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -671,3 +671,16 @@ lf3dtimesubs logical /.false./
 timemultigrid3dsolve real /0./
 timegatherrhofromchild real /0./
 
+timeexchange_phi           real /0./
+timetranspose              real /0./
+timetransposei             real /0./
+timelantzsolver            real /0./
+timegeneraltridiag         real /0./
+timeparalleltridiag        real /0./
+timeparallelgatherall      real /0./
+timemgdividenz             real /0./
+timemggetexchangepes       real /0./
+timemgexchange_phi         real /0./
+timemgexchange_phiperiodic real /0./
+timemgexchange_rho         real /0./
+timeprintarray3d           real /0./

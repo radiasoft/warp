@@ -1,10 +1,11 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.21 $, $Date: 2004/11/02 01:33:18 $
+c F3DSLAVE.M, version $Revision: 1.22 $, $Date: 2004/11/13 01:33:07 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
       subroutine exchange_phi(nx,ny,nz,phi,bound0,boundnz,zsend)
+      use Subtimersf3d
       use Parallel
       integer(ISZ):: nx,ny,nz,bound0,boundnz,zsend
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -17,6 +18,8 @@ c This routine sends out and receives boundary data for the SOR field solver.
 
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,4),mpirequest(4),mpierror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- calculate index of the processors to the left and to the right,
 c     --- wrapping around at the ends.
@@ -72,11 +75,16 @@ c     --- of the data overlaps.
 c     --- Now wait for everything to finish
       call MPI_WAITALL(waitcount,mpirequest(waitstart),mpistatus,mpierror)
 
+!$OMP MASTER
+      if (lf3dtimesubs) timeexchange_phi = timeexchange_phi + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
 c=============================================================================
       subroutine transpose(nx,ny,nz,phi,nx_tran,ny_tran)
+      use Subtimersf3d
       use Parallel
       use Transpose_work_space
       integer(ISZ):: nx,ny,nz,nx_tran,ny_tran
@@ -105,6 +113,8 @@ c of processors is a power of two.
       integer(ISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
       integer(ISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
 c     integer(ISZ),parameter:: M_TRANSPOSE=10
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Calculate what the dimensions of the grid will be after the
 c     --- transpose.  The dimensions will be (0:nx_tran,ny_tran).  The
@@ -217,10 +227,15 @@ c     --- the temp space.
       call copyarry(phi_trnsps,phi,nn*nz*nslaves)
 
 c DONE!
+!$OMP MASTER
+      if (lf3dtimesubs) timetranspose = timetranspose + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine transposei(nx,ny,nz,phi,nx_tran,ny_tran)
+      use Subtimersf3d
       use Parallel
       use Transpose_work_space
       integer(ISZ):: nx,ny,nz,nx_tran,ny_tran
@@ -245,6 +260,8 @@ c of processors is a power of two.
       integer(ISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
       integer(ISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
 c     integer(ISZ),parameter:: M_TRANSPOSE=10
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Allocate the work space.
       if (phi_trnspssize < (nx_tran+1)*ny_tran*nz*nslaves) then
@@ -321,6 +338,10 @@ c     --- Free the data type
 c     --- Now the array phi is returned to normal.
 
 c DONE!
+!$OMP MASTER
+      if (lf3dtimesubs) timetransposei = timetransposei + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -330,6 +351,7 @@ c=============================================================================
       subroutine lantzsolver(iwhich,a,kxsq,kysq,kzsq,attx,atty,attz,
      &                       filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,
      &                       l2symtry,l4symtry,bound0,boundnz,boundxy)
+      use Subtimersf3d
       use Constant
       use Parallel
       use LantzSolverTemp
@@ -359,6 +381,8 @@ c Finally, inverse FFT's are applied transversely.
       logical(ISZ):: lalloted
       data lalloted/.false./
       save lalloted
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Allocate space if needed or requested
       if (iwhich == 0 .or. iwhich == 1 .or. .not. lalloted) then
@@ -559,10 +583,15 @@ c     --- Apply inverse FFT's to transverse planes.
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       print*,6,a(4,5,4)
+!$OMP MASTER
+      if (lf3dtimesubs) timelantzsolver = timelantzsolver + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine generaltridiag(nx,ny,nz,a,b,c,d,ikxmin,ikymin,jey)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,jey
       real(kind=8):: a(0:nx,0:ny,nz)
       real(kind=8):: b(0:nx,0:ny,nz)
@@ -571,6 +600,8 @@ c=============================================================================
 
       integer(ISZ):: ix,iy,iz
       real(kind=8):: t
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       do iz = 2,nz
         do iy=ikymin,ny-jey
@@ -595,6 +626,10 @@ c=============================================================================
         enddo
       enddo
 
+!$OMP MASTER
+      if (lf3dtimesubs) timegeneraltridiag = timegeneraltridiag + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -603,6 +638,7 @@ c=============================================================================
       subroutine paralleltridiag(a,kxsq,kysq,kzsq,attx,atty,attz,filt,lx,ly,lz,
      &                     nx,ny,nz,scrtch,xywork,zwork,l2symtry,l4symtry,
      &                     bound0,boundnz,boundxy)
+      use Subtimersf3d
       use Constant
       integer(ISZ):: nx,ny,nz
       real(kind=8):: a(0:nx,0:ny,-1:nz+1)
@@ -626,6 +662,8 @@ c than the tolerance.
       real(kind=8):: norm
       real(kind=8):: achange,err
       integer(ISZ):: ix,iy
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Apply FFT's to transverse planes.
       call vpois3d(12,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
@@ -676,12 +714,17 @@ c     --- Apply inverse FFT's to transverse planes.
      &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
+!$OMP MASTER
+      if (lf3dtimesubs) timeparalleltridiag = timeparalleltridiag + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine parallelgatherall(data,ndata,nproc,nstep)
+      use Subtimersf3d
       use Parallel
       integer(ISZ):: ndata,nproc,nstep
       real(kind=8):: data(ndata,nproc,nstep)
@@ -689,6 +732,8 @@ c Gathers data in subgroups of processors
       include "mpif.h"
       integer(ISZ):: isend
       integer:: datatype,subcomm,ierror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- First, create subgroups of processors
       if (nproc < nslaves) then
@@ -715,6 +760,10 @@ c     --- Gather the data
 c     --- Delete the subgroup communicator
       call MPI_COMM_FREE(subcomm,ierror)
 
+!$OMP MASTER
+      if (lf3dtimesubs) timeparallelgatherall = timeparallelgatherall + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -723,6 +772,7 @@ c==== Parallel routines for the multigrid fieldsolver
 c=============================================================================
       subroutine mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
      &                      nzfull,nzfullcoarse)
+      use Subtimersf3d
       integer(ISZ):: nslaves,nzfull,nzfullcoarse
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
@@ -733,6 +783,8 @@ c being equal to 1, then change it to 2. For the last processor, if nz is 1,
 c also, subtract 1 from izfsslave.
 
       integer(ISZ):: is,nzmin = 2
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       do is=0,nslaves-1
 
@@ -760,6 +812,10 @@ c       --- then to write the code to exchange the data for that case.
 
       enddo
 
+!$OMP MASTER
+      if (lf3dtimesubs) timemgdividenz = timemgdividenz + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -767,6 +823,7 @@ c=============================================================================
      &                            bounds,nzfull,lzoffset,rzoffset,
      &                            whosendingleft,izsendingleft,
      &                            whosendingright,izsendingright)
+      use Subtimersf3d
       integer(ISZ):: nslaves,my_index
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: bounds(0:5),nzfull
@@ -785,6 +842,8 @@ c is sending out the fewest messages so far.
       integer(ISZ):: numsendingleft(0:nslaves-1)
       integer(ISZ):: numsendingright(0:nslaves-1)
       integer(ISZ):: idx,js,ie,mm(1)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- By default, no processors send data (flagged by -1)
       whosendingleft = -1
@@ -962,6 +1021,10 @@ c       --- Increment the number of sends that processor makes.
         numsendingright(whosendingright(idx)) = numsendingright(whosendingright(idx)) + 1
       enddo
 
+!$OMP MASTER
+      if (lf3dtimesubs) timemggetexchangepes = timemggetexchangepes + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -969,6 +1032,7 @@ c=============================================================================
      &                          my_index,nslaves,izfsslave,nzfsslave,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nz,nzfull,zsend,delt,delz
       real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
       integer(ISZ):: bounds(0:5)
@@ -986,6 +1050,8 @@ c This routine sends out and receives boundary data for the MG field solver.
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
       integer(ISZ):: mpirequest(2*nslaves+2),mpierror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Location where incoming phi plane is to be loaded.  Normally, it
 c     --- is put at the edge of the grid, either at iz=0 or iz=nz.  For
@@ -1047,12 +1113,17 @@ c     --- of the data overlaps.
 c     --- Now wait for everything to finish
       if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 
+!$OMP MASTER
+      if (lf3dtimesubs) timemgexchange_phi = timemgexchange_phi + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,zsend,delt,
      &                                  delz,my_index,nslaves,izfsslave,
      &                                  whosendingleft,whosendingright)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nz,nzfull,zsend,delt,delz
       real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
       integer(ISZ):: bounds(0:5)
@@ -1068,6 +1139,8 @@ c This only sends plane iz=0 when there are periodic boundary conditions.
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves)
       integer(ISZ):: mpirequest(nslaves),mpierror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Does nothing if boundaries are not periodic.
       if (.not. (bounds(4) == 2 .or. bounds(5) == 2)) return
@@ -1124,6 +1197,10 @@ c       --- See comments on loop above.
 c     --- Now wait for everything to finish
       if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 
+!$OMP MASTER
+      if (lf3dtimesubs) timemgexchange_phiperiodic = timemgexchange_phiperiodic + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -1132,6 +1209,7 @@ c=============================================================================
      &                          lzoffset,rzoffset,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: my_index,nslaves
@@ -1148,6 +1226,8 @@ c This routine sends out and receives boundary data for the MG field solver.
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
       integer(ISZ):: mpirequest(2*nslaves+2),mpierror
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
 c     --- Set count to zero
       w = 0
@@ -1227,10 +1307,15 @@ c     --- finer level don't need a rho sent to it.
 c     --- Now wait for everything to finish
       if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 
+!$OMP MASTER
+      if (lf3dtimesubs) timemgexchange_rho = timemgexchange_rho + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine printarray3d(nx,ny,nz,iz0,nz0,izs,a,my_index,nslaves,text,mglevel)
+      use Subtimersf3d
       integer(ISZ):: nx,ny,nz,iz0,nz0,izs,my_index,nslaves,mglevel
       real(kind=8):: a(0:nx,0:ny,iz0:nz)
       character(*):: text
@@ -1243,6 +1328,8 @@ c to getting it correct.
       integer(ISZ):: ix,iy,iz,lastz,firstz
       include "mpif.h"
       integer(ISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
+      real(kind=8):: substarttime,wtime
+      if (lf3dtimesubs) substarttime = wtime()
 
       call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
 
@@ -1285,6 +1372,10 @@ c the processors deal with files.
       endif
 
       call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+
+!$OMP MASTER
+      if (lf3dtimesubs) timeprintarray3d = timeprintarray3d + wtime() - substarttime
+!$OMP END MASTER
 
       return
       end
