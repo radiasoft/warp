@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.2 $, $Date: 2001/04/24 20:58:36 $
+c@(#) File HER.M, version $Revision: 3.3 $, $Date: 2001/05/30 00:05:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -333,7 +333,7 @@ c     y    is the array hold the envelope information
 c     niz  is the number of slices
 
       real(kind=8):: vz,vzi,zl,zr,fl,fr,frac,dta
-      integer(ISZ):: iele,ii,j
+      integer(ISZ):: io,iele,ii,j
       
       dta = abs(dt)
       
@@ -363,32 +363,34 @@ c       --- Hard edge quadrupoles
       if (quads) then
 c       --- If in a quad, get field and pipe.
 
-        do ii=1,niz
-          vz = y(10,ii)*clight
-          vzi = 1./dvnz(vz)
-c         --- find z-cell in which particle lies
-          j = max(0., (y(9,ii) - zlmin) * dzli + 0.5)
-c         --- "left" end of velocity advance step
-          zl = y(9,ii) - vz * dta / 2.
-          fl = 0.
-          if (zl.ge.cquadzs(j) .and. zl.lt.cquadze(j)) then
-            fl = 1.
-            iele = cquadid(j)
-            if (quadap(iele) > 0.) rpipe(ii) = quadap(iele)
-          endif
-c         --- "right" end of velocity advance step
-          zr = y(9,ii) + vz * dta / 2.
-          fr = 0.
-          if (zr.ge.cquadzs(j) .and. zr.lt.cquadze(j)) fr = 1.
-c          --- residence fraction
-          frac = fl
-          if (fl .gt. fr) frac = (cquadze(j)-zl)*vzi/dta
-          if (fr .gt. fl) frac = (zr-cquadzs(j))*vzi/dta
-c         --- set the field
-          if (frac .gt. 0.) then
-            dbdx(ii) = dbdx(ii) + cquaddb(j) * frac
-            dedx(ii) = dedx(ii) + cquadde(j) * frac
-          endif
+        do io=1,nquadol
+          do ii=1,niz
+            vz = y(10,ii)*clight
+            vzi = 1./dvnz(vz)
+c           --- find z-cell in which particle lies
+            j = max(0., (y(9,ii) - zlmin) * dzli + 0.5)
+c           --- "left" end of velocity advance step
+            zl = y(9,ii) - vz * dta / 2.
+            fl = 0.
+            if (zl.ge.cquadzs(j,io) .and. zl.lt.cquadze(j,io)) then
+              fl = 1.
+              iele = cquadid(j,io)
+              if (quadap(iele) > 0.) rpipe(ii) = quadap(iele)
+            endif
+c           --- "right" end of velocity advance step
+            zr = y(9,ii) + vz * dta / 2.
+            fr = 0.
+            if (zr.ge.cquadzs(j,io) .and. zr.lt.cquadze(j,io)) fr = 1.
+c            --- residence fraction
+            frac = fl
+            if (fl .gt. fr) frac = (cquadze(j,io)-zl)*vzi/dta
+            if (fr .gt. fl) frac = (zr-cquadzs(j,io))*vzi/dta
+c           --- set the field
+            if (frac .gt. 0.) then
+              dbdx(ii) = dbdx(ii) + cquaddb(j,io) * frac
+              dedx(ii) = dedx(ii) + cquadde(j,io) * frac
+            endif
+          enddo
         enddo
       endif
 
@@ -396,15 +398,17 @@ c---------------------------------------------------------------------------
 c       --- Get aperture from drift elements
       if (drfts) then
         
-        do ii=1,niz
-c         --- find z-cell in which particle lies
-          j = max(0., (y(9,ii) - zlmin) * dzli + 0.5)
-c         --- use current position to find the aperture
-          zl = y(9,ii)
-          if (zl.ge.cdrftzs(j) .and. zl.lt.cdrftze(j)) then
-            iele = cdrftid(j)
-            if (drftap(iele) > 0.) rpipe(ii) = drftap(iele)
-          endif
+        do io=1,ndrftol
+          do ii=1,niz
+c           --- find z-cell in which particle lies
+            j = max(0., (y(9,ii) - zlmin) * dzli + 0.5)
+c           --- use current position to find the aperture
+            zl = y(9,ii)
+            if (zl.ge.cdrftzs(j,io) .and. zl.lt.cdrftze(j,io)) then
+              iele = cdrftid(j,io)
+              if (drftap(iele) > 0.) rpipe(ii) = drftap(iele)
+            endif
+          enddo
         enddo
         
       endif
