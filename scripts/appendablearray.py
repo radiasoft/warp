@@ -1,9 +1,15 @@
 """Array type which can be appended to in an efficient way.
 """
 from warp import *
+# This is needed to get the shape function which conficts with the deprecated
+# shape argument
+import Numeric
+# This is needed to get the type function which conficts with the deprecated
+# type argument
+_pythontype = type
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.8 2005/02/15 19:55:35 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.9 2005/03/12 00:48:42 dave Exp $"
 
 class AppendableArray:
   """
@@ -14,16 +20,18 @@ allocated when that space fills up. This saves both the allocation time, and
 the time to copy the existing data to the new space.
  - initlen=1: The initial size of the array. The most efficiency is gained
               when initlen is close to the total expected length.
- - shape=None: The appendable unit can be an array. This gives the shape of
+ - unitshape=None: The appendable unit can be an array. This gives the shape of
                the unit. The full shape of the array then would be
-               [n]+shape, where n is the number of units appended.
- - type='i': Typecode of the array. Uses the same default as the standard
-             array creation routines.
+               [n]+unitshape, where n is the number of units appended.
+ - typecode='i': Typecode of the array. Uses the same default as the standard
+                 array creation routines.
  - autobump=100: The size of the increment used when additional extra space
                  is needed.
+ - initunit=None: When given, the unitshape and the typecode are taken from
+                  it. Also, this unit is make the first unit in the array.
 
 Create an instance like so
->>> a = AppendableArray(initlen=100,type='d')
+>>> a = AppendableArray(initlen=100,typecode='d')
 
 Append a single unit like this
 >>> a.append(7.)
@@ -38,13 +46,33 @@ will give the first four number appended
 
 Other methods include len, data, setautobump, cleardata, reshape
   """
-  def __init__(self,initlen=1,shape=None,type='i',autobump=100):
+  def __init__(self,initlen=1,unitshape=None,typecode='i',autobump=100,
+               initunit=None,shape=None,type=None):
+    # --- The shape and type arguments are deprecated since they comfict with
+    # --- other names.
+    if shape is not None:
+      print "Warning: the shape keyword argument is obsolete, please use unitshape instead"
+      unitshape = shape
+    if type is not None:
+      print "Warning: the type keyword argument is obsolete, please use typecode instead"
+      typecode = type
     self._maxlen = initlen
-    self._type = type
-    self._shape = shape
+    if initunit is None:
+      self._typecode = typecode
+      self._unitshape = unitshape
+    else:
+      # --- Get typecode and unitshape from initunit
+      if _pythontype(initunit) == ArrayType:
+        self._typecode = initunit.typecode()
+        self._unitshape = Numeric.shape(initunit)
+      else:
+        if _pythontype(initunit) == IntType: self._typecode = 'i'
+        else:                         self._typecode = 'd'
+        self._unitshape = None
     self._datalen = 0
     self._autobump = autobump
     self._allocatearray()
+    if initunit: self.append(initunit)
   def _extend(self,deltalen):
     # --- Only increase of the size of the array if the extra space fills up
     if len(self) + deltalen > self._maxlen:
@@ -53,16 +81,16 @@ Other methods include len, data, setautobump, cleardata, reshape
       self._allocatearray()
       self._array[:len(self),...] = a
   def _allocatearray(self):
-    if self._shape is None:
-      self._array = zeros(self._maxlen,self._type)
+    if self._unitshape is None:
+      self._array = zeros(self._maxlen,self._typecode)
     else:
-      self._array = zeros([self._maxlen]+list(self._shape),self._type)
+      self._array = zeros([self._maxlen]+list(self._unitshape),self._typecode)
   def append(self,data):
-    if self._shape is None:
+    if self._unitshape is None:
       # --- If data is just a scalar, then set length to one. Otherwise
       # --- get length of data to add.
       try:
-        lendata = shape(data)[0]
+        lendata = Numeric.shape(data)[0]
       except (TypeError,IndexError):
         lendata = 1
     else:
@@ -71,8 +99,8 @@ Other methods include len, data, setautobump, cleardata, reshape
       # --- then only one unit is added. Otherwise, get the number
       # --- of units to add. The length is always added to the first
       # --- dimension.
-      if len(shape(data)) == len(self._shape): lendata = 1
-      else:                                    lendata = shape(data)[0]
+      if len(Numeric.shape(data)) == len(self._unitshape): lendata = 1
+      else:                                    lendata = Numeric.shape(data)[0]
     self._extend(lendata)
     newlen = self._datalen + lendata
     self._array[self._datalen:newlen,...] = data
@@ -92,24 +120,26 @@ Set the autobump attribute to the value specified.
 Reset the array so it has a length of zero.
     """
     self._datalen = 0
-  def reshape(self,newshape):
+  def reshape(self,newunitshape):
     """
-Change the shape of the appendable unit. Can only be used if a shape was
+Change the shape of the appendable unit. Can only be used if a unitshape was
 specified on creation.
- - newshape: must have the same number of dimensions as the original shape
+ - newunitshape: must have the same number of dimensions as the original
+                 unitshape
     """
-    assert self._shape is not None,\
-           'Only an array with a specified shape can be reshaped'
-    assert len(newshape) == len(self._shape),\
-           'New shape must have the same number of dimensions as original shape'
+    assert self._unitshape is not None,\
+           'Only an array with a specified unitshape can be reshaped'
+    assert len(newunitshape) == len(self._unitshape),\
+           ('New unitshape must have the same number of dimensions as original'+
+            'unitshape')
     # --- Save old data
-    oldshape = self._shape
+    oldunitshape = self._unitshape
     oldarray = self._array
     # --- Create new array
-    self._shape = newshape
+    self._unitshape = newunitshape
     self._allocatearray()
     # --- Copy data from old to new
-    ii = [None] + list(minimum(oldshape,newshape))
+    ii = [None] + list(minimum(oldunitshape,newunitshape))
     ss = map(slice,ii)
     self._array[ss] = oldarray[ss]
 
