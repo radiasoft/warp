@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.165 $, $Date: 2004/09/07 15:26:36 $
+#@(#) File W3D.V, version $Revision: 3.166 $, $Date: 2004/09/10 18:31:18 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.165 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.166 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -442,19 +442,19 @@ aper_ey(0:nx,0:ny,-1:aper_zmax,napertures) _real [V/m]
 *********** DKInterp dump:
 # This group contains inputs and other saved data for the drift-kinetic
 #  interpolation
-# Note several species dependent quantities; assume max of ns is 5
-m_over_q(5)  _real [mks] /0./ # mass over charge, calc. by code
-qovermsq(5)  _real [mks] /0./ # (charge/mass)**2, calc. by code
-alpha0(5)     _real     /0./ 
+# Note several species dependent quantities; assume max of ns is 1000
+m_over_q(1000)  _real [mks] /0./ # mass over charge, calc. by code
+qovermsq(1000)  _real [mks] /0./ # (charge/mass)**2, calc. by code
+alpha0(1000)     _real     /0./ 
                 # Interpolation parameter if not to be automatically set
-acntr(5)      _real /.5/    # centering parameter for predictor-corrector
-usealphacalc(5) _real  /1./  # fraction of calculated interpolation parameter
+acntr(1000)      _real /.5/    # centering parameter for predictor-corrector
+usealphacalc(1000) _real  /1./  # fraction of calculated interpolation parameter
                          # to use; will use (1-usealphacalc)*alpha0.
-notusealphcalc(5) _real /0./ # 1-usealphacalc, calculated by code
+notusealphcalc(1000) _real /0./ # 1-usealphacalc, calculated by code
 dksmall       real  /1.e-20/ # small parameter for safe divides
 igradb   integer  /2/    #  parameter to select method of calculating grad B
                          # 1 for lookup table, 2 for assumed quadrupole
-interpdk(5) _integer  /0/ # parameter specifies whether and how to do orbit
+interpdk(1000) _integer  /0/ # parameter specifies whether and how to do orbit
                          # interpolation: 0, full orbit. 1, interpolate;
                          # 2, pure drift
 alphcoef      real    /0.25/ # coefficient multiplying (omegac dt)**2
@@ -493,7 +493,7 @@ uzeff(npint)    _real [m/s]       # interpolated uz
 alpha(npint)    _real             # interepolation parameter
 alphabar(npint) _real             # complement of interp param
 
-*********** AMR:
+*********** AMR dump:
 AMRlevels                  integer /0/   # number of mesh refinement levels (0 = no mesh refinement)
 AMRrefinement              integer /2/   # refinement ratio between levels
 AMRcoalescing(AMRlevels)  _real    /0.8/ # coefficient controlling coalescence for each refinement level
@@ -711,7 +711,7 @@ putsortedefield(n:integer,isort:integer,tex:real,tey:real,tez:real,
       subroutine
 
 
-******** Subtimers3d:
+******** Subtimers3d dump:
 lw3dtimesubs logical /.false./
 timew3dinit real /0./
 timew3dvers real /0./
