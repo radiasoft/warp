@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.133 $, $Date: 2004/11/04 23:51:14 $
+c@(#) File TOP.F, version $Revision: 3.134 $, $Date: 2004/11/05 23:12:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1107,6 +1107,18 @@ c For each of the elements types, get the level of overlaps
 c zlatbuffer is the amount of space (on meters) around each element. It is
 c used so that elements right next to each other but not strictly overlapping
 c are considered to be overlapping.
+
+      ndrftol = 0
+      nbendol = 0
+      ndipool = 0
+      nquadol = 0
+      nsextol = 0
+      nheleol = 0
+      nacclol = 0
+      nemltol = 0
+      nmmltol = 0
+      nbgrdol = 0
+      npgrdol = 0
 
       if (ndrft >= 0)
      &  call getelemoverlaps(ndrft,drftzs,drftze,drftol,zlatbuffer,ndrftol)
