@@ -1,6 +1,7 @@
 #Boa:Dialog:wxDialog1
 
 from wxPython.wx import *
+import WarpPanel
 
 def create(parent):
     return wxDialog1(parent)
@@ -34,17 +35,17 @@ class wxDialog1(wxDialog):
 
     def __init__(self, parent, child, title):
         self._init_ctrls(parent)
-        self.panel = child(self.window1)
-        self.window1.Fit()
-        self.Fit()
         self.SetTitle(title)
         self.parent = parent
-        self.child = child
         self.title = title
+        if child is None: return
+        self.panel = child(self.window1)
+        self.child = child
 
     def OnTonotebookButton(self, event):
-        self.parent.panels[self.title]=self.parent.show_GUI(self.parent.panels[self.title]['gui'],
-                                                            'notebook',
-                                                            self.title)
+        self.panel.Reparent(self.parent.notebook1.GetPage(self.nbselection))
+        self.parent.notebook1.GetPage(self.nbselection).Show(1)
+        self.parent.notebook1.SetSelection(self.nbselection)
+        self.panel.Move(wxPoint(0,0))
         self.Destroy()
         event.Skip()
