@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.52 2004/10/15 18:10:01 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.53 2004/10/18 22:58:03 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -1164,7 +1164,10 @@ Restore a class from the file filename.
 Returns the object
   """
   currpkg = getcurrpkg()
-  if currpkg != 'wxy' or (currpkg == 'wxy' and w3d.solvergeom==w3d.XYgeom):return
+  # --- XXX Don't know why this check is here - it shouldn't be. This
+  # --- function should work before the generate is done, in which case
+  # --- the package generally has not been set yet.
+  #if currpkg != 'wxy' or (currpkg == 'wxy' and w3d.solvergeom==w3d.XYgeom):return
   ff = open(filename,'r')
   result = cPickle.load(ff)
   ff.close()
