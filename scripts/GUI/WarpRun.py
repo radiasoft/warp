@@ -1264,6 +1264,8 @@ Ctrl+=            Default font size.
 
     def OnFrameClose(self,event):
       self.Hide()
+      __main__.wgui.initialized=False
+      __main__.wgui.closed=True
       __main__.wgui.ExitMainLoop()
       event.Skip()
 
