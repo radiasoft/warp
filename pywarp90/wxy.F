@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.47 $, $Date: 2004/09/13 19:59:04 $
+c@(#) File WXY.M, version $Revision: 3.48 $, $Date: 2004/12/08 21:36:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -423,11 +423,11 @@ c  set timestep counter, time, and advance grid frame
       time = time + dt
       if (lgridqnt) then
 c       --- zgrid is integer number of dz's
-        zgridprv = int(zbeam/dz + .5)*dz
+        zgridprv = zgrid
         zgrid = int((zbeam + dt*vbeamfrm + zcorrection)/dz + .5)*dz
       else
 c       --- zgrid is the same as the beam frame
-        zgridprv = zbeam
+        zgridprv = zgrid
         zgrid = zbeam + dt*vbeamfrm + zcorrection
       endif
       call stepid (it, time, zgrid)
@@ -946,9 +946,24 @@ c  Loop over particle blocks; move each block separately
 c          call fetche3d(ipmin,ip,is,ex,ey,ez)
           if(solvergeom/=XYgeom) then
 c           --- Obtain the self-field from the electrostatic potential
-            call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                  zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                  efetch,ex,ey,ez,l2symtry,l4symtry)
+            if (lwithez) then
+c             --- Note that zp, zgrid, and zmmin are all passed in as zero
+c             --- to avoid any possible funny business with rounding.
+c             --- ds is passed in for dz since that is the distance between
+c             --- the locations where phi is known.
+              zpo = zp(ipmin:ipmin+ip-1)
+              zp(ipmin:ipmin+ip-1) = 0.
+              call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                    0.,xmmin,ymmin,0.,dx,dy,ds,nx,ny,nz,
+     &                    efetch,ex,ey,ez,l2symtry,l4symtry)
+c             --- The zp is preserved so that the small correction done
+c             --- in setdtp is still used.
+              zp(ipmin:ipmin+ip-1) = zpo
+            else
+              call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                    zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                    efetch,ex,ey,ez,l2symtry,l4symtry)
+            endif
           elseif(solvergeom==XYgeom) then
             call fieldweightxz(xp(ipmin),yp(ipmin),ex,ey,ip,zgridprv)
           end if
@@ -1044,7 +1059,7 @@ c             --- Simplified translation of position for warped mesh effect
               if (lvzchang .and. iter_dt < niter_dt_tmp) then
 c               --- Calculate dt for particles.
                 call setdtp(ip,dtp(ipmin),xp(ipmin),zp(ipmin),zpo,uzp(ipmin),
-     &                      bendres,bendradi)
+     &                      bendres,bendradi,zgridprv)
 c               --- Restore position and velocity if not finished with iteration
                 do i=1,ip
                   xp(ipmin+i-1) = xpo(i)
@@ -1059,6 +1074,8 @@ c               --- Restore position and velocity if not finished with iteration
               endif
             enddo
 
+c           --- If using a common z position, enforce it to remove small
+c           --- differences. The iteration done
 c           --- Exact translation of position and velocity for warped
 c           --- mesh effect
             call exbendcorxy(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
@@ -1517,7 +1534,7 @@ c zbeam.
 
       integer(ISZ):: is
 
-      if (lcommonz) then
+      if (lcommonz .or. lwithez) then
         do is=1,ns
           zp(ins(is):ins(is)+nps(is)-1) = zbeam
         enddo
@@ -1569,17 +1586,18 @@ c     --- if any values are zero.
       return
       end
 c============================================================================ 
-      subroutine setdtp(np,dtp,xp,zp,zpo,uzp,bendres,bendradi)
+      subroutine setdtp(np,dtp,xp,zp,zpo,uzp,bendres,bendradi,zgridprv)
       use Subtimersxy
       use InGenxy
       integer(ISZ):: np
       real(kind=8):: dtp(np),xp(np),zp(np),zpo(np),uzp(np)
-      real(kind=8):: bendres,bendradi
+      real(kind=8):: bendres,bendradi,zgridprv
 
 c Set dt for each of the particles.  With changing vz, dt needs to be
 c recalculated for each particle each timestep.
 
       integer(ISZ):: ip
+      real(kind=8):: dsp(np)
       real(kind=8):: dtheta0,dtheta,rr
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
@@ -1607,9 +1625,21 @@ c       --- and 1 - this avoids potential problems with roundoff errors.
         else
 
 c         --- with no bends...
+          if ((lcommonz .or. lwithez) .and. lzstepcorrection) then
+c           --- If the particles share a common z, a correction can be done
+c           --- when calculating the step size to account for errors on
+c           --- previous steps. If the particle position on the previous
+c           --- step is short, then the dt will be larger with this correction.
+c           --- The correction tries to move the particle to the new zgrid
+c           --- rather than just move the particle ds.
+            dsp = ds + (zgridprv - zpo)
+          else
+            dsp = ds
+          endif
+
           do ip=1,np
             if (uzp(ip) /= 0. .and. ds .ne. 0.) then
-              dtp(ip) = dtp(ip)*ds/(zp(ip) - zpo(ip))
+              dtp(ip) = dtp(ip)*dsp(ip)/(zp(ip) - zpo(ip))
             endif
           enddo
 
@@ -2319,6 +2349,11 @@ c       --- 3D field solver
 
 c       --- 2D fieldsolver
 
+c       --- If using approximate Ez, copy old phi into the plane iz=-1.
+        if (lwithez) then
+          phi(:,:,-1) = phi(:,:,0)
+        endif
+
 c       --- Get information about the closest bend.
         call getbend(1,1,zbeam,0.,1.,bendres,bendradi,0.,0.,.true.)
 
@@ -2336,10 +2371,21 @@ c         --- otherwise, include bend correction terms
         endif
 
 c       --- fill rest of phi array
-        call copyarry(phi(0,0,0),phi(0,0,-1),(nx+1)*(ny+1))
-        do iz=1,nz+1
-          call copyarry(phi(0,0,0),phi(0,0,iz),(nx+1)*(ny+1))
-        enddo
+        if (lwithez .and. it > 0) then
+
+c         --- Use old phi and new phi to extrapolate a value to the plate iz=+1.
+c         --- This is skipped on the first step since there is no old phi.
+          phi(:,:,1) = 2.*phi(:,:,0) - phi(:,:,-1)
+
+        else
+
+c         --- Fill rest of phi array with copy of new phi
+          call copyarry(phi(0,0,0),phi(0,0,-1),(nx+1)*(ny+1))
+          do iz=1,nz+1
+            call copyarry(phi(0,0,0),phi(0,0,iz),(nx+1)*(ny+1))
+          enddo
+
+        endif
 
       endif
 
@@ -2384,7 +2430,7 @@ c         --- Note that phi(,,-1) and phi(,,1) are passed in as
 c         --- scratch space.
           call capmatxyf(iwhich,phi(0,0,0),kxsq,kysq,attx,atty,
      &             filt,xmmax-xmmin,ymmax-ymmin,nx,ny,dx,dy,xmmin,ymmin,
-     &             scrtch,phi(0,0,-1),phi(0,0,1),l2symtry,l4symtry)
+     &             scrtch,phi(0,0,2),phi(0,0,1),l2symtry,l4symtry)
         elseif (fstype == 7) then
 c         --- Multigrid solver
           call multigridxyf(iwhich,nx,ny,dx,dy,phi(0,0,0),rho(0,0,0),
