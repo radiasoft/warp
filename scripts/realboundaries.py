@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.19 2002/05/15 19:23:25 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.20 2002/05/15 19:30:33 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -809,13 +809,16 @@ Makes a plot of the conductor.
       # --- Plot negative y
       if w3d.l2symtry or w3d.l4symtry:
         if plotphi:
-          plotc(transpose(getphi(iz=0)),-w3d.ymesh,w3d.xmesh,filled=filled)
+          plotc(transpose(getphi(iz=0)),-w3d.ymesh,w3d.xmesh,filled=filled,
+                color=phicolor)
       # --- Plot negative x
       if w3d.l4symtry:
         if plotphi:
-          plotc(transpose(getphi(iz=0)),w3d.ymesh,-w3d.xmesh,filled=filled)
+          plotc(transpose(getphi(iz=0)),w3d.ymesh,-w3d.xmesh,filled=filled,
+                color=phicolor)
         if plotphi:
-          plotc(transpose(getphi(iz=0)),-w3d.ymesh,-w3d.xmesh,filled=filled)
+          plotc(transpose(getphi(iz=0)),-w3d.ymesh,-w3d.xmesh,filled=filled,
+                color=phicolor)
     # --- Plot conductor points next.
     if fxy.ncxy > 0 and top.fstype == 1:
       plp(fxy.ycond[:fxy.ncxy],fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
