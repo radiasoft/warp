@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.12 $, $Date: 2002/04/12 21:11:02 $
+#@(#) File FRZ.V, version $Revision: 3.13 $, $Date: 2002/04/15 22:49:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.12 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.13 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -94,7 +94,9 @@ calcfact_deform(dz:real,zmin:real,
 init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real) subroutine
          # initializes the base grid
 add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
-            rmin:real,zmin:real) subroutine
+            rmin:real,zmin:real,
+            guard_min_r:integer,guard_max_r:integer,
+            guard_min_z:integer,guard_max_z:integer) subroutine
          # add a subgrid to the grid id
 get_phi_subgrid(id:integer,phi:real,nr:integer,nz:integer) subroutine
          # get the potential of grid id
