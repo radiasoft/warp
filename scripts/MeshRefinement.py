@@ -153,6 +153,15 @@ class MRBlock(object,MultiGrid,Visualizable):
       self.fulllower = zeros(3)
       self.fullupper = self.dims
       self.rootdims = self.dims
+      # --- This may or may not be a good idea...
+      if self.nx == w3d.nx and self.ny == w3d.ny and self.nz == w3d.nz:
+        w3d.rho = self.rho
+        w3d.phi = self.phi
+        w3d.nxp = self.nx
+        w3d.nyp = self.ny
+        w3d.nzp = self.nz
+        w3d.rhop = self.rho
+        w3d.phip = self.phi
 
     # --- childdomains is the node centered grid which keeps track of which
     # --- cells are owned by which children. If there are no children,
