@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.2 $, $Date: 2002/06/20 19:39:33 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.3 $, $Date: 2002/06/26 00:46:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -366,14 +366,14 @@ c     --- subgrid points which are to be used at the current level of
 c     --- grid refinement.
       if (lcndbndy) then
         do ic=1,necndbdy
-          if (iecndlxy(ic) >= levelxy) then
+          if (iecndlevel(ic) >= levelxy) then
             ecndpvph(ic) = phi(iecndx(ic)/levelxy,
      &                         iecndy(ic)/levelxy)
           endif
         enddo
         if (levelxy == 1) then
           do ic=1,nocndbdy
-            if (iocndlxy(ic) >= levelxy) then
+            if (iocndlevel(ic) >= levelxy) then
               ocndpvph(ic) = phi(iocndx(ic)/levelxy,
      &                           iocndy(ic)/levelxy)
             endif
@@ -492,7 +492,7 @@ c       --- surface of the conductor boundaries.
             call condbndymgxy(nx,ny,phi(0,0),rho(0,0),rdx2c,rdy2c,spm1,mgparam,
      &                        ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),
      &                        ecdelpx(1),ecdelpy(1),iecndx(1),iecndy(1),
-     &                        iecndlxy(1),
+     &                        iecndlevel(1),
      &                        ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),
      &                        ecndpvph(1),boundxy,l2symtry,l4symtry,
      &                        levelxy,parity)
@@ -501,7 +501,7 @@ c       --- surface of the conductor boundaries.
             call condbndymgxy(nx,ny,phi(0,0),rho(0,0),rdx2c,rdy2c,spm1,mgparam,
      &                        ncndmax,nocndbdy,ocdelmx(1),ocdelmy(1),
      &                        ocdelpx(1),ocdelpy(1),iocndx(1),iocndy(1),
-     &                        iocndlxy(1),
+     &                        iocndlevel(1),
      &                        ocvoltmx(1),ocvoltpx(1),ocvoltmy(1),ocvoltpy(1),
      &                        ocndpvph(1),boundxy,l2symtry,l4symtry,
      &                        levelxy,parity)
@@ -539,7 +539,7 @@ c     --- phi to the voltage of the conductor, otherwise, set it to zero.
         do ic=1,ncond
 c         --- Only set points which are on the coarse grid at the current
 c         --- level of refinement.
-          if (icondlxy(ic) >= levelxy) then
+          if (icondlevel(ic) >= levelxy) then
             phi(ixcond(ic)/levelxy,iycond(ic)/levelxy) = 0.
           endif
         enddo
@@ -550,7 +550,7 @@ c         --- level of refinement.
 c=============================================================================
       subroutine condbndymgxy(nx,ny,phi,rho,rdx2c,rdy2c,spm1,srp,
      &                      ncndmax,ncndbdy,cdelmx,cdelmy,cdelpx,cdelpy,
-     &                      icndx,icndy,icndlxy,
+     &                      icndx,icndy,icndlevel,
      &                      cvoltmx,cvoltpx,cvoltmy,cvoltpy,
      &                      cndpvph,boundxy,
      &                      l2symtry,l4symtry,levelxy,parity)
@@ -560,7 +560,7 @@ c=============================================================================
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax)
       real(kind=8):: cdelpx(ncndmax), cdelpy(ncndmax)
       integer(ISZ):: icndx(ncndmax), icndy(ncndmax)
-      integer(ISZ):: icndlxy(ncndmax)
+      integer(ISZ):: icndlevel(ncndmax)
       real(kind=8):: cvoltmx(ncndmax),cvoltmy(ncndmax)
       real(kind=8):: cvoltpx(ncndmax),cvoltpy(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
@@ -597,7 +597,7 @@ c     --- loop over points near surface of conductors
 
 c       --- Only use point if it is usable at this level or higher
 c       --- and if the parity is correct.
-        if (icndlxy(ic) >= levelxy) then
+        if (icndlevel(ic) >= levelxy) then
 
           icdx = icndx(ic)/levelxy
           icdy = icndy(ic)/levelxy
@@ -687,7 +687,7 @@ c             rhovolume = (dxp+dxm)*(dyp+dym)*0.125
 c=============================================================================
       subroutine condbndyresxy(nx,ny,phi,rho,res,rdx2,rdy2,mgparam,
      &                       ncndmax,ncndbdy,cdelmx,cdelmy,cdelpx,cdelpy,
-     &                       icndx,icndy,icndlxy,
+     &                       icndx,icndy,icndlevel,
      &                       cvoltmx,cvoltpx,cvoltmy,cvoltpy,
      &                       cndpvph,boundxy,
      &                       l2symtry,l4symtry,levelxy,parity)
@@ -698,7 +698,7 @@ c=============================================================================
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax)
       real(kind=8):: cdelpx(ncndmax), cdelpy(ncndmax)
       integer(ISZ):: icndx(ncndmax), icndy(ncndmax)
-      integer(ISZ):: icndlxy(ncndmax)
+      integer(ISZ):: icndlevel(ncndmax)
       real(kind=8):: cvoltmx(ncndmax),cvoltmy(ncndmax)
       real(kind=8):: cvoltpx(ncndmax),cvoltpy(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
@@ -739,7 +739,7 @@ c     --- loop over points near surface of conductors
 
 c       --- Only use point if it is usable at this level or higher
 c       --- and if the parity is correct.
-        if (icndlxy(ic) >= levelxy) then
+        if (icndlevel(ic) >= levelxy) then
 
           icdx = icndx(ic)/levelxy
           icdy = icndy(ic)/levelxy
@@ -911,7 +911,7 @@ c     --- that level.
       if (levelxy == 1) then
         call condbndyresxy(nx,ny,phi(0,0),rho(0,0),res(0,0),dxsqi,dysqi,mgparam,
      &             ncndmax,nocndbdy,ocdelmx(1),ocdelmy(1),ocdelpx(1),ocdelpy(1),
-     &             iocndx(1),iocndy(1),iocndlxy(1),
+     &             iocndx(1),iocndy(1),iocndlevel(1),
      &             ocvoltmx(1),ocvoltpx(1),ocvoltmy(1),ocvoltpy(1),
      &             ocndpvph(1),boundxy,
      &             l2symtry,l4symtry,levelxy,1)
@@ -919,14 +919,14 @@ c     --- that level.
       if (levelxy > 1) then
         call condbndyresxy(nx,ny,phi(0,0),rho(0,0),res(0,0),dxsqi,dysqi,mgparam,
      &             ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),ecdelpx(1),ecdelpy(1),
-     &             iecndx(1),iecndy(1),iecndlxy(1),
+     &             iecndx(1),iecndy(1),iecndlevel(1),
      &             ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),
      &             ecndpvph(1),boundxy,
      &             l2symtry,l4symtry,levelxy,1)
       endif
       call condbndyresxy(nx,ny,phi(0,0),rho(0,0),res(0,0),dxsqi,dysqi,mgparam,
      &             ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),ecdelpx(1),ecdelpy(1),
-     &             iecndx(1),iecndy(1),iecndlxy(1),
+     &             iecndx(1),iecndy(1),iecndlevel(1),
      &             ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),
      &             ecndpvph(1),boundxy,
      &             l2symtry,l4symtry,levelxy,0)
@@ -955,9 +955,9 @@ c     --- If there are not conductors, then immediately return.
       if (ncond == 0 .and. necndbdy == 0 .and. nocndbdy == 0) return
 
 c     --- Zero arrays, assuming that no points are used.
-      icondlxy(:ncond) = 0
-      iecndlxy(:necndbdy) = 0
-      iocndlxy(:nocndbdy) = 0
+      icondlevel(:ncond) = 0
+      iecndlevel(:necndbdy) = 0
+      iocndlevel(:nocndbdy) = 0
 
 c     --- Initialize the temps
       tnx = nx
@@ -975,7 +975,7 @@ c       --- Interior points
 c         --- Check if point is on the current grid.
           if (mod(ixcond(ic),levelxy) == 0 .and.
      &        mod(iycond(ic),levelxy) == 0) then
-            icondlxy(ic) = levelxy
+            icondlevel(ic) = levelxy
           endif
         enddo
 
@@ -988,7 +988,7 @@ c         --- i.e. is within one grid cell of a conductor on the current grid.
 c           --- Now, check if point is on the current grid.
             if (mod(iecndx(ic),levelxy) == 0 .and.
      &          mod(iecndy(ic),levelxy) == 0) then
-              iecndlxy(ic) = levelxy
+              iecndlevel(ic) = levelxy
             endif
           endif
         enddo
@@ -1002,7 +1002,7 @@ c         --- i.e. is within one grid cell of a conductor on the current grid.
 c           --- Now, check if point is on the current grid.
             if (mod(iocndx(ic),levelxy) == 0 .and.
      &          mod(iocndy(ic),levelxy) == 0) then
-              iocndlxy(ic) = levelxy
+              iocndlevel(ic) = levelxy
             endif
           endif
         enddo
@@ -1019,7 +1019,7 @@ c       --- Go to the next level of coarseness.
 c     --- Now, clear out all of the points which were not flagged as usable.
       ne = 0
       do ic=1,necndbdy
-        if (iecndlxy(ic) > 0) then
+        if (iecndlevel(ic) > 0) then
           ne = ne + 1
           if (ne < ic) then
             iecndx(ne)   = iecndx(ic)
@@ -1033,7 +1033,7 @@ c     --- Now, clear out all of the points which were not flagged as usable.
             ecvoltpx(ne) = ecvoltpx(ic)
             ecvoltmy(ne) = ecvoltmy(ic)
             ecvoltpy(ne) = ecvoltpy(ic)
-            iecndlxy(ne) = iecndlxy(ic)
+            iecndlevel(ne) = iecndlevel(ic)
           endif
         endif
       enddo
@@ -1041,7 +1041,7 @@ c     --- Now, clear out all of the points which were not flagged as usable.
 
       no = 0
       do ic=1,nocndbdy
-        if (iocndlxy(ic) > 0) then
+        if (iocndlevel(ic) > 0) then
           no = no + 1
           if (no < ic) then
             iocndx(no)   = iocndx(ic)
@@ -1055,7 +1055,7 @@ c     --- Now, clear out all of the points which were not flagged as usable.
             ocvoltpx(no) = ocvoltpx(ic)
             ocvoltmy(no) = ocvoltmy(ic)
             ocvoltpy(no) = ocvoltpy(ic)
-            iocndlxy(no) = iocndlxy(ic)
+            iocndlevel(no) = iocndlevel(ic)
           endif
         endif
       enddo
