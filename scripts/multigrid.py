@@ -174,6 +174,8 @@ class MultiGrid(object):
     if lzero: self.rho[...] = 0.
     for i,n,q,w in zip(top.ins,top.nps,top.sq,top.sw):
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
+    self.makerhoperiodic()
+    self.getrhoforfieldsolve()
 
   def makerhoperiodic(self):
     if self.pbounds[0] == 2 or self.pbounds[1] == 2:
@@ -183,8 +185,30 @@ class MultiGrid(object):
       self.rho[:,0,:] = self.rho[:,0,:] + self.rho[:,-1,:]
       self.rho[:,-1,:] = self.rho[:,0,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
-      self.rho[:,:,0] = self.rho[:,:,0] + self.rho[:,:,-1]
-      self.rho[:,:,-1] = self.rho[:,:,0]
+      if self.nslaves > 1:
+        self.makerhoperiodic_parallel()
+      else:
+        self.rho[:,:,0] = self.rho[:,:,0] + self.rho[:,:,-1]
+        self.rho[:,:,-1] = self.rho[:,:,0]
+
+  def getrhoforfieldsolve(self):
+    if self.nslaves > 1:
+      getrhoforfieldsolve3d(self.nx,self.ny,self.nz,self.rho,
+                            self.nx,self.ny,self.nz,self.rho,
+                            me,self.nslaves,
+                          top.izfsslave,top.nzfsslave,top.izpslave,top.nzpslave)
+
+  def makerhoperiodic_parallel(self):
+    tag = 70
+    if me == self.nslaves-1:
+      request = mpi.isend(self.rho[:,:,nz],0,tag)
+      self.rho[:,:,nz],status = mpi.recv(0,tag)
+    elif me == 0:
+      rhotemp,status = mpi.recv(self.nslaves-1,tag)
+      self.rho[:,:,0] = self.rho[:,:,0] + rhotemp
+      request = mpi.isend(self.rho[:,:,0],self.nslaves-1,tag)
+    if me == 0 or me == self.nslaves-1:
+      status = request.wait()
 
   def fetche(self):
     self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
