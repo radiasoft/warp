@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.17 2004/06/04 16:14:27 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.18 2004/09/09 19:44:55 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -526,6 +526,234 @@ Visualize surface of revolution
       nn = map(array,zip(n*[nx],n*[ny],n*[0.]))
       self.FacetedPolygon(pp,nn,color=color)
       xx,yy = rr*cos(phimax)+xoff,rr*sin(phimax)+yoff
+      pp = map(array,zip(xx,yy,zz))
+      nx,ny = -nsign*sin(phimax),nsign*cos(phimax)
+      nn = map(array,zip(n*[nx],n*[ny],n*[0.]))
+      self.FacetedPolygon(pp,nn,color=color)
+
+    if display:
+      self.createdxobject()
+      self.Display()
+########################################################################
+class VisualRevolutionEllipse(VisualModel):
+  """
+Visualize surface of revolution
+ - srfrv: optional function defining surface
+ - zzmin: min z extent of surface
+ - zzmax: max z extent of surface
+ - rxendzmin: x radius at zmin
+ - rxendzmax: x radius at zmax
+ - ryendzmin: y radius at zmin
+ - ryendzmax: y radius at zmax
+ - nz=20: if srfrv is given, number of z points radius sampled at
+ - nphi=20: number of phi angles points sampled at
+ - phimin=0.: miminmum phi angle
+ - phimax=2*pi: maximum phi angle
+ - fillinends=1: if theta range < 2pi, fill in ends if true.
+ - xoff=0: x offset
+ - yoff=0: y offset
+ - zoff=0: z offset
+ - rxofzdata=None: optional tablized radius defining surface
+ - ryofzdata=None: optional tablized radius defining surface
+ - zdata=None: optional tablized z poins defining surface
+ - raddata=None: optional tablized circle radius defining surface
+ - zcdata=None: optional tablized circle z center defining surface
+ - rcdata=None: optional tablized circle r center defining surface
+ - ntpts=5: number of points sampled for circles
+ - twoSided=1: if true, include both sides of the surface
+ - normalsign=1: 1 when data is clockwise, -1 with counterclockwise
+ - color=None: RGB color for surface, of form [r,g,b]
+ - scene=None: include object in exising scene (only for VPython)
+ - name=None: window name
+ - vrange=None: set view range (only for VPython)
+ - viewer=None: select viewer, either 'OpenDX' or 'VPython'
+ - display=0: if 1, immeidately display object
+  """
+  def __init__(self,srfrv=None,zzmin=None,zzmax=None,
+                    rxendzmin=None,rxendzmax=None,
+                    ryendzmin=None,ryendzmax=None,
+                    nz=20,nphi=20,phimin=None,phimax=None,fillinends=0,
+                    close=0,
+                    xoff=0,yoff=0,zoff=0,
+                    rxofzdata=None,ryofzdata=None,zdata=None,raddata=None,
+                    zcdata=None,rcdata=None,ntpts=5,
+                    twoSided=0,normalsign=1,color=None,
+                    scene=None,name=None,vrange=None,
+                    rscale=None,zscale=None,
+                    viewer=None,display=0,kwdict={}):
+    for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
+    VisualModel.__init__(self,twoSided=twoSided,normalsign=1,
+                              scene=scene,name=name,
+                              vrange=vrange,viewer=viewer,
+                              rscale=rscale,zscale=zscale)
+
+    # --- If phimin and phimax are not given, then the ends never need
+    # --- filling in
+    if phimin is None and phimax is None: fillinends = 0
+    if phimin is None: phimin = 0.
+    if phimax is None: phimax = 2*pi
+
+    if rxofzdata is None and ryofzdata is None and zdata is None:
+      # --- Include extra points for the z end of the surface
+      zz = arange(-1,nz+2)*(zzmax - zzmin)/nz + zzmin
+      rr = ones(nz+3,'d')
+      for i in range(nz+1):
+        warp.f3d.srfrv_z = zz[i+1]
+        srfrv()
+        rr[i+1] = warp.f3d.srfrv_r
+      zzleft = zz[:-1]
+      zzrght = zz[1:]
+      rrleft = rr[:-1]
+      rrrght = rr[1:]
+      ttleft = len(zzleft)*[None]
+      ttrght = len(zzrght)*[None]
+    else:
+      zzleft = [0.]
+      zzrght = [0.]
+      rxleft = [0.]
+      rxrght = [0.]
+      txleft = [0.]
+      txrght = [0.]
+      ryleft = [0.]
+      ryrght = [0.]
+      tyleft = [0.]
+      tyrght = [0.]
+      for i in range(len(zdata)-1):
+        z,rx,ry = zdata[i],rxofzdata[i],ryofzdata[i]
+        zp1,rxp1,ryp1 = zdata[i+1],rxofzdata[i+1],ryofzdata[i+1]
+        if zp1 == z and rxp1 == rx and ryp1 == ry: continue
+        if raddata is not None: rad = raddata[i]
+        else:                   rad = largepos
+        if rad == largepos:
+          zzleft.append(z)
+          zzrght.append(zp1)
+          rxleft.append(rx)
+          rxrght.append(rxp1)
+          txleft.append(arctan2((zp1 - z),(rx - rxp1)))
+          txrght.append(txleft[-1])
+          ryleft.append(ry)
+          ryrght.append(ryp1)
+          tyleft.append(arctan2((zp1 - z),(ry - ryp1)))
+          tyrght.append(tyleft[-1])
+        else:
+          raise "don't do this to me!!"
+          zc,rc = zcdata[i],rcdata[i]
+          t1 = arctan2(r-rc,z-zc)
+          t2 = arctan2(rp1-rc,zp1-zc)
+          if t1 > t2 and rad < 0.: t2 += 2*pi
+          if t1 < t2 and rad > 0.: t1 += 2*pi
+          tt = t1 + (t2 - t1)*arange(ntpts+1)/ntpts
+          zz = zc + abs(rad)*cos(tt)
+          rr = rc + abs(rad)*sin(tt)
+          zzleft += list(zz[:-1])
+          zzrght += list(zz[1:])
+          rrleft += list(rr[:-1])
+          rrrght += list(rr[1:])
+          if rad < 0.: addpi = pi
+          else:        addpi = 0.
+          ttleft += list(tt[:-1]+addpi)
+          ttrght += list(tt[1:]+addpi)
+
+      zzleft += [0.]
+      zzrght += [0.]
+      rxleft += [0.]
+      rxrght += [0.]
+      txleft += [0.]
+      txrght += [0.]
+      ryleft += [0.]
+      ryrght += [0.]
+      tyleft += [0.]
+      tyrght += [0.]
+
+    # --- Now set end points
+    if rendzmin == largepos: rendzmin = 2.*max(max(rxleft),max(rxrght),
+                                               max(ryleft),max(ryrght))
+    if rendzmax == largepos: rendzmax = 2.*max(max(rxleft),max(rxrght),
+                                               max(ryleft),max(ryrght))
+    if rendzmin is not None:
+      zzleft[0] = zzmin
+      zzrght[0] = zzleft[1]
+      rxleft[0] = rendzmin
+      rxrght[0] = rxleft[1]
+      txleft[0] = pi *(normalsign > 0.)
+      txrght[0] = pi *(normalsign > 0.)
+      ryleft[0] = rendzmin
+      ryrght[0] = ryleft[1]
+      tyleft[0] = pi *(normalsign > 0.)
+      tyrght[0] = pi *(normalsign > 0.)
+    if rendzmax is not None:
+      zzleft[-1] = zzrght[-2]
+      zzrght[-1] = zzmax
+      rxleft[-1] = rxrght[-2]
+      rxrght[-1] = rendzmax
+      txleft[-1] = 0. + pi*(normalsign < 0.)
+      txrght[-1] = 0. + pi*(normalsign < 0.)
+      ryleft[-1] = ryrght[-2]
+      ryrght[-1] = rendzmax
+      tyleft[-1] = 0. + pi*(normalsign < 0.)
+      tyrght[-1] = 0. + pi*(normalsign < 0.)
+
+    # --- Close the loop if requested.
+    if close:
+      zzleft += [zzrght[-1]]
+      zzrght += [zzleft[0]]
+      rxleft += [rxrght[-1]]
+      rxrght += [rxleft[0]]
+      txleft += [-pi/2.]
+      txrght += [-pi/2.]
+      ryleft += [ryrght[-1]]
+      ryrght += [ryleft[0]]
+      tyleft += [-pi/2.]
+      tyrght += [-pi/2.]
+
+    phi = phimin + (phimax - phimin)*arange(0,nphi+1)/nphi
+    xx = cos(phi)
+    yy = sin(phi)
+
+    for i in range(len(zzleft)):
+      for j in range(len(xx)-1):
+        p1 = array([rxleft[i]*xx[j  ]+xoff, ryleft[i]*yy[j  ]+yoff,
+                    zzleft[i] + zoff])
+        p2 = array([rxleft[i]*xx[j+1]+xoff, ryleft[i]*yy[j+1]+yoff,
+                    zzleft[i] + zoff])
+        p3 = array([rxrght[i]*xx[j+1]+xoff, ryrght[i]*yy[j+1]+yoff,
+                    zzrght[i] + zoff])
+        p4 = array([rxrght[i]*xx[j  ]+xoff, ryrght[i]*yy[j  ]+yoff,
+                    zzrght[i] + zoff])
+        if txleft[i] is not None:
+          tt = txleft[i]*xx[j  ]**2+tyleft[i]*yy[j  ]**2
+          n1 = array([sin(tt)*xx[j  ],
+                      sin(tt)*yy[j  ],
+                      cos(tt)])
+          tt = txleft[i]*xx[j+1]**2+tyleft[i]*yy[j+1]**2
+          n2 = array([sin(tt)*xx[j+1],
+                      sin(tt)*yy[j+1],
+                      cos(tt)])
+          tt = txrght[i]*xx[j+1]**2+tyrght[i]*yy[j+1]**2
+          n3 = array([sin(tt)*xx[j+1],
+                      sin(tt)*yy[j+1],
+                      cos(tt)])
+          tt = txrght[i]*xx[j  ]**2+tyrght[i]*yy[j  ]**2
+          n4 = array([sin(tt)*xx[j  ],
+                      sin(tt)*yy[j  ],
+                      cos(tt)])
+        else:
+          n1,n2,n3,n4 = None,None,None,None
+        self.FacetedPolygon([p1,p2,p3,p4],[n1,n2,n3,n4],color=color)
+
+    if fillinends:
+      rx = array([rxleft[0]] + list(rxrght))
+      ry = array([ryleft[0]] + list(ryrght))
+      zz = array([zzleft[0]] + list(zzrght)) + zoff
+      n = len(rx)
+      if phimin < phimax: nsign = -normalsign
+      else:               nsign = +normalsign
+      xx,yy = rx*cos(phimin)+xoff,ry*sin(phimin)+yoff
+      pp = map(array,zip(xx,yy,zz))
+      nx,ny = -nsign*sin(phimin),nsign*cos(phimin)
+      nn = map(array,zip(n*[nx],n*[ny],n*[0.]))
+      self.FacetedPolygon(pp,nn,color=color)
+      xx,yy = rx*cos(phimax)+xoff,ry*sin(phimax)+yoff
       pp = map(array,zip(xx,yy,zz))
       nx,ny = -nsign*sin(phimax),nsign*cos(phimax)
       nn = map(array,zip(n*[nx],n*[ny],n*[0.]))
