@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.46 2003/02/04 18:04:34 dave Exp $"
+warp_version = "$Id: warp.py,v 1.47 2003/02/13 14:36:17 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -81,6 +81,14 @@ if lparallel:
 
 # --- Add stuff to the path
 import sys
+
+# --- Set default runid to first filename in the command line, stripping off
+# --- the .py suffix.
+if sys.argv[0]:
+  if sys.argv[0][-3:] == '.py':
+    top.runid = sys.argv[0][:-3]
+  else:
+    top.runid = sys.argv[0]
 
 #=============================================================================
 # --- Set physical constants which depend on others.
