@@ -230,6 +230,10 @@ Given a block instance, installs it as a child.
     """
     self.children.append(block)
 
+  #--------------------------------------------------------------------------
+  # --- The next several methods handle conductors
+  #--------------------------------------------------------------------------
+
   def installconductor(self,conductor,dfill=top.largepos):
     MultiGrid.installconductor(self,conductor,dfill=dfill)
     for child in self.children:
@@ -431,7 +435,6 @@ Loads the charge density from the particles. This should only be called for
 the top level grid.
     """
     if lzero: self.zerorho()
-    self.setname()
     for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
       if n == 0: continue
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w,
@@ -648,10 +651,13 @@ blocknumber rather than the child number relative to the parent.
     # --- Can this be done in place to save memory?
     ichild = abs(ichild)
 
-    x,y,z,uz,nperchild = self.sortbyichild(ichild,x,y,z,uz)
+    if len(self.children) > 0:
+      x,y,z,uz,nperchild = self.sortbyichild(ichild,x,y,z,uz)
+    else:
+      nperchild = [len(x)]
 
     # --- For each block, pass to it the particles in it's domain.
-    i = nperchild[0]
+    i = 0
     for block,n in zip(MRBlock.listofblocks,nperchild):
       MultiGrid.setrho(block,x[i:i+n],y[i:i+n],z[i:i+n],uz[i:i+n],q,w)
       i = i + n
