@@ -25,7 +25,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.27 2002/10/26 00:45:20 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.28 2002/10/29 01:54:45 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -214,6 +214,59 @@ def doc(f,printit=1):
   if printit: print d
   else:       return d
 
+# --- Print out all variables in a group
+def printgroup(pkg=None,group=None,maxelements=10):
+  """
+Print out all variables in a group or with an attribute
+  - pkg: package name
+  - group: group name
+  - maxelements=10: only up to this many elements of arrays are printed
+  """
+  assert pkg != None,"package must be specified"
+  assert group != None,"group name must be specified"
+  if type(pkg) == StringType: pkg = __main__.__dict__[pkg]
+  vlist = pkg.varlist(" "+group+" ")
+  if not vlist:
+    print "Unknown group name "+group
+    return
+  for vname in vlist:
+    v = pkg.getpyobject(vname)
+    if v is None:
+      print vname+' is not allocated'
+    elif type(v) != ArrayType:
+      print vname+' = '+str(v)
+    else:
+      if v.typecode() == 'c':
+        print vname+' = "'+str(arraytostr(v))+'"'
+      elif size(v) <= maxelements:
+        print vname+' = '+str(v)
+      else:
+        if rank(v) == 1:
+          print vname+' = '+str(v[:maxelements])[:-1]+" ..."
+        else:
+          if shape(v)[0] <= maxelements:
+            if rank(v) == 2:
+              print vname+' = ['+str(v[:,0])+"] ..."
+            elif rank(v) == 3:
+              print vname+' = [['+str(v[:,0,0])+"]] ..."
+            elif rank(v) == 4:
+              print vname+' = [[['+str(v[:,0,0,0])+"]]] ..."
+            elif rank(v) == 5:
+              print vname+' = [[[['+str(v[:,0,0,0,0])+"]]]] ..."
+            elif rank(v) == 6:
+              print vname+' = [[[[['+str(v[:,0,0,0,0,0])+"]]]]] ..."
+          else:
+            if rank(v) == 2:
+              print vname+' = ['+str(v[:maxelements,0])[:-1]+" ..."
+            elif rank(v) == 3:
+              print vname+' = [['+str(v[:maxelements,0,0])[:-1]+" ..."
+            elif rank(v) == 4:
+              print vname+' = [[['+str(v[:maxelements,0,0,0])[:-1]+" ..."
+            elif rank(v) == 5:
+              print vname+' = [[[['+str(v[:maxelements,0,0,0,0])[:-1]+" ..."
+            elif rank(v) == 6:
+              print vname+' = [[[[['+str(v[:maxelements,0,0,0,0,0])[:-1]+" ..."
+  
 ##############################################################################
 # Python version of the dump routine. This uses the varlist command to
 # list of all of the variables in each package which have the
@@ -563,6 +616,7 @@ maxnd(): finds max of multi-dimensional array
 minnd(): finds min of multi-dimensional array
 getnextfilename(): finds next available file name in a numeric sequence
 doc(): prints info about variables and functions
+printgroup(): prints all variables in the group or with an attribute
 pydump(): dumps data into pdb format file
 pyrestore(): reads data from pdb format file
 restore(): equivalent to pyrestore
