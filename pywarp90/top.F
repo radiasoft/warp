@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.115 $, $Date: 2004/01/27 22:44:46 $
+c@(#) File TOP.F, version $Revision: 3.116 $, $Date: 2004/01/28 23:35:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6514,6 +6514,13 @@ c the routine which clears out the lost particles is called.
 
       if (lsavelostpart) then
 
+c       --- Make sure that if npidmax has changed, then npidlostmax is also
+c       --- changed.
+        if (npidmax > npidlostmax) then
+          npidlostmax = npidmax
+          call gchange("LostParticles",0)
+        endif
+
 c       --- Get the number of lost particles and make sure there is
 c       --- enough space to save them in the LostParticles arrays.
         i1 = ins(is)
@@ -6553,7 +6560,7 @@ c         --- lost on a previous step but wasn't cleared out of the array.
               gaminvlost(i1) = 1.
             endif
             tplost(i1) = time
-            if (npid > 0) pidlost(i1,:) = pid(ip,:)
+            if (npid > 0) pidlost(i1,1:npidmax) = pid(ip,:)
             npslost(is) = npslost(is) + 1
           endif
 
@@ -6579,6 +6586,7 @@ c Allocate space for lost particles and set up associated arrays.
 
       integer(ISZ):: is
 
+      npidlostmax = max(npidmax,npidlostmax)
       call gchange("LostParticles",0)
 
       npmaxlost_s(0) = 0

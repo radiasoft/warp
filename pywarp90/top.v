@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.115 $, $Date: 2004/01/27 22:44:47 $
+#@(#) File TOP.V, version $Revision: 3.116 $, $Date: 2004/01/28 23:35:43 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.115 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.116 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1746,6 +1746,7 @@ scr_uzp(scr_npmax) _real    [m/s] # gamma * Z-velocities of particles
 *********** LostParticles dump parallel:
 lsavelostpart logical /.false./ # Flag setting whether lost particles are saved
 npmaxlost           integer /0/ # Size of lost particle arrays
+npidlostmax         integer /1/ # Number of columns in pidlist
 lostpartchunksize   integer /1000/
 inslost(ns)        _integer /0/ # Index of first lost particles of species
 npslost(ns)        _integer /0/ # Number of lost particles in species
@@ -1758,7 +1759,7 @@ uyplost(npmaxlost) _real [m/s]  # gamma * Y-velocities of lost particles
 uzplost(npmaxlost) _real [m/s]  # gamma * Z-velocities of lost particles
 gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
 tplost(npmaxlost)  _real [s]    # time particles were lost
-pidlost(npmaxlost,npidmax) _real [1] # Particle index of lost particles
+pidlost(npmaxlost,npidlostmax) _real [1] # Particle index of lost particles
 
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation
