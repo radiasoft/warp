@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.30 2001/02/09 22:25:55 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.31 2001/02/21 00:22:32 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -30,6 +30,7 @@ getx(), gety(), getz(), getr(), gettheta(): get particle position
 getvx(), getvy(), getvz(): get particle velocity
 getux(), getuy(), getuz(): get particle momentum/mass
 getxp(), getyp(), getrp(): get tranverse normalized velocities
+getgaminv(): get gamma inverse
 
 These return or set a slice out of the rho or phi array.
 getrho(), getphi(), setrho(), setphi()
@@ -647,6 +648,13 @@ def getrp(iw=0,gather=1,**kw):
   ii = selectparticles(iw=iw,kwdict=kw)
   tt = arctan2(take(top.yp,ii),take(top.xp,ii))
   result = (take(top.uxp,ii)*cos(tt)+take(top.uyp,ii)*sin(tt))/take(top.uzp,ii)
+  if lparallel and gather: return gatherarray(result)
+  else: return result
+#-------------------------------------------------------------------------
+def getgaminv(iw=0,gather=1,**kw):
+  "Returns the gamma inverse."
+  ii = selectparticles(iw=iw,kwdict=kw)
+  result = take(top.gaminv,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
