@@ -1,11 +1,11 @@
-#DEBUG = -g --fargs -C
+#DEBUG = -g #--fargs -C
 FCOMP = --farg "-DMPIPARALLEL -I/usr/local/mpi/include"
 SO = so
 PUBLICHOME = $(HOME)/pub
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) ranffortran.c
 	rm -f warpC.so
-	python setup.py build --build-platlib .
+	python setup.py --parallel build --build-platlib .
 	#mv warpC.so /home/dave/scriptsnew
 
 toppy.$(SO): top.F dtop.F top.v topslave.F
