@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.64 $, $Date: 2002/07/23 21:04:55 $
+c@(#) File W3D.M, version $Revision: 3.65 $, $Date: 2002/08/06 22:16:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5194,6 +5194,10 @@ c      enddo
 c Set vbeamfrm to zero so that the grid does not move off of the source,
 c causing a code crash.
       vbeamfrm = 0.
+
+c When using constant current injection, turn off the flag that specifies
+c use of the normal E field with the Child-Langmuir profile
+      if (inject == 1) linj_enormcl = .false.
 
       if (lw3dtimesubs) timeinjctint = timeinjctint + wtime() - substarttime
       return
