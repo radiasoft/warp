@@ -2,12 +2,16 @@
 The function drawlattice which plots the lattice.
 """
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.3 2003/02/06 20:29:38 dave Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.4 2004/07/22 23:37:45 dave Exp $"
 
 #############################################################################
-def _getelem(ll,zs,ze,zlatmin,zlatmax):
+def _getelem(elem,zlatmin,zlatmax):
+  ne = getattr(top,'n'+elem)
   nn = 0
-  if ll:
+  if ne >= 0:
+    # --- Note that the elemzs and elemze will be unallocated if ne < 0.
+    zs = getattr(top,elem+'zs')
+    ze = getattr(top,elem+'ze')
     ii = compress(logical_and(ze >= zlatmin,zs <= zlatmax), iota(0,len(zs)))
     if len(ii) > 0: nn = ii[0]
   else:
@@ -230,15 +234,15 @@ type, and should draw any general lattice.
   cl = []
 
   # --- find element indices in plot region
-  iq,nq = _getelem(top.quads,top.quadzs,top.quadze,zlatmin,zlatmax)
-  ih,nh = _getelem(top.heles,top.helezs,top.heleze,zlatmin,zlatmax)
-  ie,ne = _getelem(top.emlts,top.emltzs,top.emltze,zlatmin,zlatmax)
-  im,nm = _getelem(top.mmlts,top.mmltzs,top.mmltze,zlatmin,zlatmax)
-  ib,nb = _getelem(top.bgrds,top.bgrdzs,top.bgrdze,zlatmin,zlatmax)
-  ip,np = _getelem(top.pgrds,top.pgrdzs,top.pgrdze,zlatmin,zlatmax)
-  id,nd = _getelem(top.dipos,top.dipozs,top.dipoze,zlatmin,zlatmax)
-  ia,na = _getelem(top.accls,top.acclzs,top.acclze,zlatmin,zlatmax)
-  ic,nc = _getelem(top.bends,top.bendzs,top.bendze,zlatmin,zlatmax)
+  iq,nq = _getelem('quad',zlatmin,zlatmax)
+  ih,nh = _getelem('hele',zlatmin,zlatmax)
+  ie,ne = _getelem('emlt',zlatmin,zlatmax)
+  im,nm = _getelem('mmlt',zlatmin,zlatmax)
+  ib,nb = _getelem('bgrd',zlatmin,zlatmax)
+  ip,np = _getelem('pgrd',zlatmin,zlatmax)
+  id,nd = _getelem('dipo',zlatmin,zlatmax)
+  ia,na = _getelem('accl',zlatmin,zlatmax)
+  ic,nc = _getelem('bend',zlatmin,zlatmax)
 
   # --- Get maximum element length, and set height proportional to that
   # --- so all elements are the same height.

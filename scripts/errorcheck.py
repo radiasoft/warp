@@ -1,5 +1,5 @@
 from warp import *
-errorcheck_version = "$Id: errorcheck.py,v 1.7 2002/05/06 13:33:24 dave Exp $"
+errorcheck_version = "$Id: errorcheck.py,v 1.8 2004/07/22 23:38:35 dave Exp $"
 
 def errorcheckdoc():
   print """
@@ -107,17 +107,17 @@ def checkparticleload():
 def checkibpush():
   """Makes sure that if ibpush is zero, there are no B-field elements"""
   if top.ibpush == 0:
-    if max(top.quaddb) > 0. or maxnd(top.quadbt) > 0.:
+    if top.nquad >= 0 and (max(top.quaddb) > 0. or maxnd(top.quadbt) > 0.):
       raise "ERROR: magnetic quad elements are defined but top.ibpush is zero"
-    if maxnd(top.heleam) > 0.:
+    if top.nhele >= 0 and maxnd(top.heleam) > 0.:
       raise "ERROR: magnetic hele elements are defined but top.ibpush is zero"
-    if max(top.dipobx) > 0. or max(top.dipoby) > 0.:
+    if top.ndipo >= 0 and (max(top.dipobx) > 0. or max(top.dipoby) > 0.):
       raise "ERROR: magnetic dipo elements are defined but top.ibpush is zero"
-    if max(top.sextdb) > 0.:
+    if top.nsext >= 0 and max(top.sextdb) > 0.:
       raise "ERROR: magnetic sext elements are defined but top.ibpush is zero"
-    if max(top.mmltzs) > 0. or max(top.mmltze) > 0.:
+    if top.nmmlt >= 0 and (max(top.mmltzs) > 0. or max(top.mmltze) > 0.):
       raise "ERROR: mmlt elements are defined but top.ibpush is zero"
-    if max(top.bgrdzs) > 0. or max(top.bgrdze) > 0.:
+    if top.nbgrd >= 0 and (max(top.bgrdzs) > 0. or max(top.bgrdze) > 0.):
       raise "ERROR: bgrd elements are defined but top.ibpush is zero"
 
 ############################################################################
@@ -130,7 +130,11 @@ def checkenv():
       raise "ERROR: tunezs and tuneze must be with the zl and zu"
 
 ############################################################################
-def _overlapcheck(zs,ze):
+def _overlapcheck(elem):
+  ne = getattr(top,'n'+elem)
+  if ne < 0: return [0]
+  zs = getattr(top,elem+'zs')
+  ze = getattr(top,elem+'ze')
   for i in range(len(zs)):
     ii=compress(logical_and(greater(ze,zs[i]),less(zs,ze[i])),iota(0,len(zs)-1))
     if len(ii) > 1: return ii
@@ -139,30 +143,26 @@ def checkoverlappingelements():
   """Make sure that there are no overlapping lattice elements.
 This check is obsolete since the code now accepts overlapping elements.
   """
-  ii = _overlapcheck(top.drftzs,top.drftze)
+  ii = _overlapcheck('drftz')
   if len(ii) > 1: print "ERROR: drft elements ",ii," overlap"
-  ii = _overlapcheck(top.bendzs,top.bendze)
+  ii = _overlapcheck('bendz')
   if len(ii) > 1: print "ERROR: bend elements ",ii," overlap"
-  ii = _overlapcheck(top.dipozs,top.dipoze)
+  ii = _overlapcheck('dipoz')
   if len(ii) > 1: print "ERROR: dipo elements ",ii," overlap"
-  ii = _overlapcheck(top.quadzs,top.quadze)
+  ii = _overlapcheck('quadz')
   if len(ii) > 1: print "ERROR: quad elements ",ii," overlap"
-  ii = _overlapcheck(top.sextzs,top.sextze)
+  ii = _overlapcheck('sextz')
   if len(ii) > 1: print "ERROR: sext elements ",ii," overlap"
-  ii = _overlapcheck(top.helezs,top.heleze)
+  ii = _overlapcheck('helez')
   if len(ii) > 1: print "ERROR: hele elements ",ii," overlap"
-  ii = _overlapcheck(top.acclzs,top.acclze)
+  ii = _overlapcheck('acclz')
   if len(ii) > 1: print "ERROR: accl elements ",ii," overlap"
-  ii = _overlapcheck(top.emltzs,top.emltze)
+  ii = _overlapcheck('emltz')
   if len(ii) > 1: print "ERROR: emlt elements ",ii," overlap"
-  ii = _overlapcheck(top.mmltzs,top.mmltze)
+  ii = _overlapcheck('mmltz')
   if len(ii) > 1: print "ERROR: mmlt elements ",ii," overlap"
-  ii = _overlapcheck(top.mmlt2zs,top.mmlt2ze)
-  if len(ii) > 1: print "ERROR: mmlt2 elements ",ii," overlap"
-  ii = _overlapcheck(top.bgrdzs,top.bgrdze)
+  ii = _overlapcheck('bgrdz')
   if len(ii) > 1: print "ERROR: bgrd elements ",ii," overlap"
-  ii = _overlapcheck(top.bgrd2zs,top.bgrd2ze)
-  if len(ii) > 1: print "ERROR: bgrd2 elements ",ii," overlap"
-  ii = _overlapcheck(top.pgrdzs,top.pgrdze)
+  ii = _overlapcheck('pgrdz')
   if len(ii) > 1: print "ERROR: pgrd elements ",ii," overlap"
 
