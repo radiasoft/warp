@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.31 $, $Date: 2002/05/07 17:38:40 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.32 $, $Date: 2002/05/09 21:40:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -409,7 +409,8 @@ c         --- Continue at the next coarsest level.
 c         --- Add in resulting error.
           call expand3d(nx/2,ny/2,nznew,nz,nzfull/2,phi2,phi,
      &                  boundxy,localb0,localbnz,lparity,rparity,
-     &                  my_index,nslaves,izfsslave,whosendingleft)
+     &                  my_index,nslaves,izfsslave,
+     &                  whosendingleft,whosendingright)
 
           deallocate(phi2,rho2)
         endif
@@ -663,14 +664,15 @@ c         --- Expand iy=ny plane.
       end
 c=============================================================================
       subroutine expand3d(nx,ny,nz,nz2,nzfull,p2h,ph,boundxy,localb0,localbnz,
-     &                    lparity,rparity,
-     &                    my_index,nslaves,izfsslave,whosendingleft)
+     &                    lparity,rparity,my_index,nslaves,izfsslave,
+     &                    whosendingleft,whosendingright)
       integer(ISZ):: nx,ny,nz,nz2,nzfull
       real(kind=8):: p2h(0:nx,0:ny,-1:nz+1)
       real(kind=8):: ph(0:nx*2,0:ny*2,-1:nz2+1)
       integer(ISZ):: boundxy,localb0,localbnz,lparity,rparity
       integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),whosendingleft(*)
+      integer(ISZ):: izfsslave(0:nslaves-1)
+      integer(ISZ):: whosendingleft(0:nslaves-1),whosendingright(0:nslaves-1)
 
 c Add the error on the coarser grid to the current value on the finer grid.
 c The expansion is done along all axis.
@@ -785,7 +787,8 @@ c         --- Expand iy=ny plane.
       if (localbnz == 2) ph(:,:,nz2+1) = ph(:,:,1)
 #else
       call mgexchange_phiperiodic(2*nx,2*ny,nz2,2*nzfull,ph,localb0,localbnz,1,
-     &                            my_index,nslaves,izfsslave,whosendingleft)
+     &                            my_index,nslaves,izfsslave,
+     &                            whosendingleft,whosendingright)
 #endif
 
       return
@@ -1056,7 +1059,7 @@ c       --- set phi in the z guard planes
      &                      whosendingright,izsendingright)
         call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localb0,localbnz,1,
      &                              my_index,nslaves,izfsslave,
-     &                              whosendingleft)
+     &                              whosendingleft,whosendingright)
 #endif
 
 c     --- end of loop over even and odd points
@@ -1548,6 +1551,9 @@ c     --- Longitudinal boundaries
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
+      call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localb0,localbnz,0,
+     &                            my_index,nslaves,izfsslave,
+     &                            whosendingleft,whosendingright)
 #endif
 
       return
@@ -1663,7 +1669,7 @@ c       --- Set new value of nz
 c       --- Recursively call this routine for the next coarser level.
 c       --- Note the the srfrv routine does not actually use the xmesh
 c       --- and ymesh arguments so they don't need to be modified.
-        call setcndtr3dmgrecur(xmmin,ymmin,zmmin,zbeam,zgrid,
+        call setcndtr3dmgrecur(xmmin,ymmin,newzmmin,zbeam,zgrid,
      &                         nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
      &                         l2symtry,l4symtry,levelxy*2,levelz*2,
      &                         my_index,nslaves,izfsslave2,nzfsslave2)
