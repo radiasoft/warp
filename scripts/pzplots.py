@@ -28,8 +28,10 @@ Envelope:
   pzxpedge: Plot beam X' envelope versus Z
   pzyedge: Plot beam Y envelope (twice Yrms) versus Z
   pzypedge: Plot beam Y' envelope versus Z
+  pzredge: Plot beam R envelope (root 2 Rrms) versus Z
   pzxedges: Plot beam X edges (centroid +- twice Xrms) versus Z
   pzyedges: Plot beam Y edges (centroid +- twice Yrms) versus Z
+  pzredges: Plot beam R edges (+- root 2 Rrms) versus Z
   pzenvxp: Plot beam X' envelope (2*xxpbar/xrms) versus Z
   pzenvyp: Plot beam Y' envelope (2*yypbar/yrms) versus Z
 Means:
@@ -76,7 +78,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.13 2003/06/27 23:21:18 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.14 2003/06/27 23:31:54 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -2044,6 +2046,37 @@ def pzypedge(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titles: ptitles("Beam Y' envelope",titleb,"(m)")
 
 ##########################################################################
+def pzenvr(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
+           marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
+            varsuffix=None):
+  """Plots beam R envelope (root 2 R rms) versus Z
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + zmntmesh/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  rrmsz = _extractvar('rrmsz',varsuffix,'top')*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  warpplg(sqrt(2.)*rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("Beam R envelope (sqrt(2)*rms)",titleb,"(m)")
+pzredge = pzenvr
+
+##########################################################################
 def pzxedges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
              marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
             varsuffix=None):
@@ -2108,6 +2141,38 @@ def pzyedges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   warpplg(ybarz-2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Beam Y edges (ybar+-2*rms)",titleb,"(m)")
+
+##########################################################################
+def pzredges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
+             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
+            varsuffix=None):
+  """Plots beam R edges (+- root 2 R rms) versus Z
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + zmntmesh/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  rrmsz = _extractvar('rrmsz',varsuffix,'top')*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  warpplg(+2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
+          linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
+  warpplg(-2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
+          linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("Beam R edges (+-sqrt(2)*rms)",titleb,"(m)")
 
 ##########################################################################
 def pzenvxp(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
