@@ -44,7 +44,7 @@ from warp import *
 import operator
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.36 2003/11/22 03:19:50 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.37 2003/11/24 20:59:02 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1416,32 +1416,64 @@ Plate from beamlet pre-accelerator
 
 #============================================================================
 #============================================================================
-def findcirclecenter(zz,rr,rad,zc,rc):
-  """Utility routine for surface of revoluation routines.
-Given two points and a radius, this finds the center of the cirlce.
+class Srfrv(Assembly):
   """
-  for i in range(len(zz)-1):
-    if rad[i] == largepos:
-      zc[i] = 0.
-      rc[i] = 0.
-    elif zc[i] is None or rc[i] is None:
-      assert rad[i]**2 > ((zz[i] - zz[i+1])**2 + (rr[i] - rr[i+1])**2),\
+Generic surface of revolution. Contains utility routines to check the
+data and make sure it is consistent.
+  """
+  def checkarcs(self,zz,rr,rad,zc,rc):
+    """Utility routine for surface of revoluation routines.
+  Checks consistency of input and calculates any parameters not given.
+    """
+    for i in range(len(zz)-1):
+      if ((rad[i] == None or rad[i] == largepos) and
+          (zc[i] == None or zc[i] == largepos) and
+          (rc[i] == None or rc[i] == largepos)):
+        # --- When there is a straight line, then set the radius to a large
+        # --- number (used as a flag in the code).
+        rad[i] = largepos
+        zc[i] = largepos
+        rc[i] = largepos
+      elif ((zc[i] == None or zc[i] == largepos) or
+            (rc[i] == None or rc[i] == largepos)):
+        # --- Given a radius and the two endpoints, the center of the
+        # --- circle can be found.
+        assert rad[i]**2 > ((zz[i] - zz[i+1])**2 + (rr[i] - rr[i+1])**2),\
              "Radius of circle must be larger than the distance between points"
-      zm = 0.5*(zz[i] + zz[i+1])
-      rm = 0.5*(rr[i] + rr[i+1])
-      dbm = sqrt((zm - zz[i+1])**2 + (rm - rr[i+1])**2)
-      dcm = sqrt(rad[i]**2 - dbm**2)
-      angle1 = arcsin((rm - rr[i+1])/dbm)
-      if rad[i] < 0:
-        zc[i] = zm + dcm*sin(angle1)
-        rc[i] = rm + dcm*cos(angle1)
+        zm = 0.5*(zz[i] + zz[i+1])
+        rm = 0.5*(rr[i] + rr[i+1])
+        dbm = sqrt((zm - zz[i+1])**2 + (rm - rr[i+1])**2)
+        dcm = sqrt(rad[i]**2 - dbm**2)
+        angle1 = arcsin((rm - rr[i+1])/dbm)
+        if rad[i] < 0:
+          zc[i] = zm + dcm*sin(angle1)
+          rc[i] = rm + dcm*cos(angle1)
+        else:
+          zc[i] = zm - dcm*sin(angle1)
+          rc[i] = rm - dcm*cos(angle1)
+      elif (rad[i] == None or rad[i] == largepos):
+        # --- Given the center, the radius can be found. With the two end
+        # --- points of the arc given, the data is redundant, so check
+        # --- to be sure it is consistent.
+        rad[i] = sqrt((zz[i] - zc[i])**2 + (rr[i] - rc[i])**2)
+        rad2 = sqrt((zz[i+1] - zc[i])**2 + (rr[i+1] - rc[i])**2)
+        assert abs(rad[i] - rad2)/rad[i] < 1.e-8,\
+               "Points %d and %d are not at the same radius relative to the arc center"%(i,i+1)
+        # --- Make sure the radius has the correct sign.
+        if rc[i] > rr[i] or rc[i] > rr[i+1]: rad[i] = -rad[i]
       else:
-        zc[i] = zm - dcm*sin(angle1)
-        rc[i] = rm - dcm*cos(angle1)
-  zc[-1] = 0.
-  rc[-1] = 0.
+        raise "There was some problem with the input data"
+
+  def setdatadefaults(self,data,ndata,default):
+    if data is None:
+      data = ndata*[default]
+    else:
+      assert len(data) == ndata,\
+             "Some of the input surface data is not the correct length"
+    return data
+
 #============================================================================
-class ZSrfrvOut(Assembly):
+class ZSrfrvOut(Srfrv):
   """
 Outside of a surface of revolution
   - rofzfunc: name of python function describing surface
@@ -1457,7 +1489,10 @@ Outside of a surface of revolution
   - rcdata=None: r center of circle or curved segment
   - raddata=None: optional radius of curvature of segments
       The centers of the circles will be calculated automatically if
-      not supplied.
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and z data.
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofzfunc,zmin,zmax,rmax=largepos,
@@ -1477,23 +1512,15 @@ Outside of a surface of revolution
     if operator.isSequenceType(rofzdata):
       self.usedata = true
       self.zdata = zdata
-      self.rofzdata = self.checkdata(rofzdata,zdata,rmax)
-      self.raddata = self.checkdata(raddata,zdata,largepos)
-      self.zcdata = self.checkdata(zcdata,zdata,None)
-      self.rcdata = self.checkdata(rcdata,zdata,None)
-      findcirclecenter(self.zdata,self.rofzdata,self.raddata,
-                       self.zcdata,self.rcdata)
+      self.rofzdata = self.setdatadefaults(rofzdata,len(zdata),rmax)
+      self.raddata = self.setdatadefaults(raddata,len(zdata)-1,None)
+      self.zcdata = self.setdatadefaults(zcdata,len(zdata)-1,None)
+      self.rcdata = self.setdatadefaults(rcdata,len(zdata)-1,None)
+      self.checkarcs(self.zdata,self.rofzdata,self.raddata,
+                     self.zcdata,self.rcdata)
       self.rofzfunc = ' '
     else:
       self.usedata = false
-
-  def checkdata(self,data,zdata,default):
-    if data is None:
-      data = len(zdata)*[default]
-    else:
-      assert len(data) == len(zdata),\
-             "All input arrays for each of min and max must be the same size"
-    return data
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
@@ -1524,7 +1551,7 @@ Outside of a surface of revolution
     return Assembly.getkwlist(self)
 
 #============================================================================
-class ZSrfrvIn(Assembly):
+class ZSrfrvIn(Srfrv):
   """
 Inside of a surface of revolution
   - rofzfunc: name of python function describing surface
@@ -1540,7 +1567,10 @@ Inside of a surface of revolution
   - zcdata=None: z center of circle or curved segment
   - rcdata=None: r center of circle or curved segment
       The centers of the circles will be calculated automatically if
-      not supplied.
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and z data.
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofzfunc,zmin,zmax,rmin=0,
@@ -1560,24 +1590,16 @@ Inside of a surface of revolution
     if operator.isSequenceType(rofzdata):
       self.usedata = true
       self.zdata = zdata
-      self.rofzdata = self.checkdata(rofzdata,zdata,rmin)
-      self.raddata = self.checkdata(raddata,zdata,largepos)
-      self.zcdata = self.checkdata(zcdata,zdata,None)
-      self.rcdata = self.checkdata(rcdata,zdata,None)
-      findcirclecenter(self.zdata,self.rofzdata,self.raddata,
-                       self.zcdata,self.rcdata)
+      self.rofzdata = self.setdatadefaults(rofzdata,len(zdata),rmin)
+      self.raddata = self.setdatadefaults(raddata,len(zdata)-1,None)
+      self.zcdata = self.setdatadefaults(zcdata,len(zdata)-1,None)
+      self.rcdata = self.setdatadefaults(rcdata,len(zdata)-1,None)
+      self.checkarcs(self.zdata,self.rofzdata,self.raddata,
+                     self.zcdata,self.rcdata)
       self.rofzfunc = ' '
     else:
       self.usedata = false
 
-  def checkdata(self,data,zdata,default):
-    if data is None:
-      data = len(zdata)*[default]
-    else:
-      assert len(data) == len(zdata),\
-             "All input arrays for each of min and max must be the same size"
-    return data
-        
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
     # --- Make sure the rofzfunc is in main.
@@ -1605,8 +1627,9 @@ Inside of a surface of revolution
       f3d.lsrlinr = false
 
     return Assembly.getkwlist(self)
+
 #============================================================================
-class ZSrfrvInOut(Assembly):
+class ZSrfrvInOut(Srfrv):
   """
 Betweem surfaces of revolution
   - rminofz,rmaxofz: names of python functions describing surfaces
@@ -1621,7 +1644,10 @@ Betweem surfaces of revolution
   - zcmindata,zcmaxdata=None: z center of circle or curved segment
   - rcmindata,rcmaxdata=None: r center of circle or curved segment
       The centers of the circles will be calculated automatically if
-      not supplied.
+      not supplied, or if the centers are supplied, the radii will be
+      calculated automatically.
+      The length of the radii and centers lists is one less than the length
+      of the list of r and z data.
     Note that if tablized data is given, the first two arguments are ignored.
   """
   def __init__(self,rminofz,rmaxofz,zmin,zmax,
@@ -1643,12 +1669,12 @@ Betweem surfaces of revolution
     if operator.isSequenceType(zmindata):
       self.usemindata = true
       self.zmindata = zmindata
-      self.rminofzdata = self.checkdata(rminofzdata,zmindata,0.)
-      self.radmindata = self.checkdata(radmindata,zmindata,largepos)
-      self.rcmindata = self.checkdata(rcmindata,zmindata,None)
-      self.zcmindata = self.checkdata(zcmindata,zmindata,None)
-      findcirclecenter(self.zmindata,self.rminofzdata,self.radmindata,
-                       self.zcmindata,self.rcmindata)
+      self.rminofzdata = self.setdatadefaults(rminofzdata,len(zmindata),0.)
+      self.radmindata = self.setdatadefaults(radmindata,len(zmindata)-1,None)
+      self.rcmindata = self.setdatadefaults(rcmindata,len(zmindata)-1,None)
+      self.zcmindata = self.setdatadefaults(zcmindata,len(zmindata)-1,None)
+      self.checkarcs(self.zmindata,self.rminofzdata,self.radmindata,
+                     self.zcmindata,self.rcmindata)
       self.rminofz = ' '
       self.rmaxofz = ' '
     else:
@@ -1657,24 +1683,17 @@ Betweem surfaces of revolution
     if operator.isSequenceType(zmaxdata):
       self.usemaxdata = true
       self.zmaxdata = zmaxdata
-      self.rmaxofzdata = self.checkdata(rmaxofzdata,zmaxdata,largepos)
-      self.radmaxdata = self.checkdata(radmaxdata,zmaxdata,largepos)
-      self.rcmaxdata = self.checkdata(rcmaxdata,zmaxdata,None)
-      self.zcmaxdata = self.checkdata(zcmaxdata,zmaxdata,None)
-      findcirclecenter(self.zmaxdata,self.rmaxofzdata,self.radmaxdata,
-                       self.zcmaxdata,self.rcmaxdata)
+      self.rmaxofzdata = self.setdatadefaults(rmaxofzdata,len(zmaxdata),
+                                              largepos)
+      self.radmaxdata = self.setdatadefaults(radmaxdata,len(zmaxdata)-1,None)
+      self.rcmaxdata = self.setdatadefaults(rcmaxdata,len(zmaxdata)-1,None)
+      self.zcmaxdata = self.setdatadefaults(zcmaxdata,len(zmaxdata)-1,None)
+      self.checkarcs(self.zmaxdata,self.rmaxofzdata,self.radmaxdata,
+                     self.zcmaxdata,self.rcmaxdata)
       self.rminofz = ' '
       self.rmaxofz = ' '
     else:
       self.usemaxdata = false
-
-  def checkdata(self,data,zdata,default):
-    if data is None:
-      data = len(zdata)*[default]
-    else:
-      assert len(data) == len(zdata),\
-             "All input arrays for each of min and max must be the same size"
-    return data
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
