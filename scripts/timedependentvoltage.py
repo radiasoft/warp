@@ -83,8 +83,8 @@ Input for constructor:
     # --- be called before the field solve. This is so that the voltages
     # --- on the conductors get set properly for the updated set of
     # --- meshrefined blocks.
+    import __main__
     if isinstalledbeforefs(self.applyvoltage):
-      import __main__
       if 'AMRtree' in __main__.__dict__:
         __main__.__dict__['AMRtree'].installbeforefs(self.applyvoltage)
         uninstallbeforefs(self.applyvoltage)
