@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.88 $, $Date: 2003/05/29 16:55:55 $
+c@(#) File TOP.M, version $Revision: 3.89 $, $Date: 2003/06/02 17:42:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2274,7 +2274,11 @@ c less than the entire andvance step on entry/exit of the dipole.
       if (.not.dipos) return
 
       qoverm = q/m
-      vzi = 1./dvnz(uzp*gaminv)
+      if (npz == 1) then
+        vzi = 1./dvnz(uzp(1)*gaminv(1))
+      else
+        vzi = 1./dvnz(uzp*gaminv)
+      endif
 
       do io=1,ndipool
 
@@ -5963,7 +5967,7 @@ c=============================================================================
 
 c Copies particle data from locations given by ii to the locations starting
 c at 'it', or if istart > 0, copy sequential particles from locations
-c starting at 'it' to locations starting at 'istart'.
+c starting at 'istart' to locations starting at 'it'.
 
       integer(ISZ):: i,in,ij
       if (istart > 0) then
