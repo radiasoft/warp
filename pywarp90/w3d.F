@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.91 $, $Date: 2003/03/06 01:54:41 $
+c@(#) File W3D.M, version $Revision: 3.92 $, $Date: 2003/03/06 02:15:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5850,9 +5850,6 @@ c Fetch phi from pgrd at points.
         if (.not. linpgrd(io)) cycle
 
         do ip = 1, np
-
-c         --- cycle if lost particle
-          if(uzp(ip)=0._8) cycle
 
 c         --- find the location of the particle in the internal lattice arrays
           zz = zp(ip)
