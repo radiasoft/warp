@@ -100,8 +100,8 @@ Input for constructor:
     return volt
     
   def voltagefromdata(self,time):
-    if time <= self.timedata[0]: return voltdata[0]
-    if time >= self.timedata[-1]: return voltdata[-1]
+    if time <= self.timedata[0]: return self.voltdata[0]
+    if time >= self.timedata[-1]: return self.voltdata[-1]
     try:
       test = self.index
     except AttributeError:
