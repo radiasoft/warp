@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.58 $, $Date: 2002/10/24 23:59:59 $
+#@(#) File TOP.V, version $Revision: 3.59 $, $Date: 2002/10/25 20:22:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.58 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.59 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -155,7 +155,7 @@ frametl  character*(8)        # ascii left   title for frame index
 pline3   character*(59)       # 3 above bottom (big, loaded by W6 w/ IT etc.)
 pline2   character*(80)       # 2 above bottom (usually main label)
 pline1   character*(80)       # 1 above bottom (usually aux. label)
-runid    character*(4)  /"warp"/ # Four-character run name
+runid    character*(40) /"warp"/ # Four-character run name
 rundate  character*(8)  /" "/    # Run date
 runtime  character*(8)  /" "/    # Run time
 runmaker character*(35) /" "/    # Name of person running code / special notes
