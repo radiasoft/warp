@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.71 2002/02/21 23:28:17 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.72 2002/02/22 19:57:48 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2554,14 +2554,17 @@ be from none to all three.
    #return ppp
 ##########################################################################
 ##########################################################################
-def pcrhozy(ix=None,fullplane=1,**kw):
+def pcrhozy(ix=None,fullplane=1,lbeamframe=1,**kw):
   """Plots contours of charge density in the Z-Y plane
   - ix=w3d.ix_axis X index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
   if ix is None: ix = w3d.ix_axis
-  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
-  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
@@ -2569,7 +2572,7 @@ def pcrhozy(ix=None,fullplane=1,**kw):
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
+    kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   rrr = getrho(ix=ix)
   if me > 0: rrr = zeros((w3d.ny+1,w3d.nzfull+1),'d')
@@ -2583,14 +2586,17 @@ def pcrhozy(ix=None,fullplane=1,**kw):
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcrhozx(iy=None,fullplane=1,**kw):
+def pcrhozx(iy=None,fullplane=1,lbeamframe=1,**kw):
   """Plots contours of charge density in the Z-X plane
   - iy=w3d.iy_axis Y index of plane
   - fullplane=1: when true, plots rho in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
   if iy is None: iy = w3d.iy_axis
-  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
-  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
@@ -2598,7 +2604,7 @@ def pcrhozx(iy=None,fullplane=1,**kw):
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
+    kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   rrr = getrho(iy=iy)
   if me > 0: rrr = zeros((w3d.nx+1,w3d.nzfull+1),'d')
@@ -2650,14 +2656,17 @@ def pcrhoxy(iz=None,fullplane=1,**kw):
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcphizy(ix=None,fullplane=1,**kw):
+def pcphizy(ix=None,fullplane=1,lbeamframe=1,**kw):
   """Plots contours of electrostatic potential in the Z-Y plane
   - ix=w3d.ix_axis X index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
   if ix is None: ix = w3d.ix_axis
-  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
-  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
@@ -2665,7 +2674,7 @@ def pcphizy(ix=None,fullplane=1,**kw):
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
+    kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix)
   if me > 0: ppp = zeros((w3d.ny+1,w3d.nzfull+1),'d')
@@ -2679,14 +2688,17 @@ def pcphizy(ix=None,fullplane=1,**kw):
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcphizx(iy=None,fullplane=1,**kw):
+def pcphizx(iy=None,fullplane=1,lbeamframe=1,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - iy=w3d.iy_axis Y index of plane
   - fullplane=1: when true, plots phi in the symmetric quadrants
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   """
   if iy is None: iy = w3d.iy_axis
-  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
-  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
@@ -2694,7 +2706,7 @@ def pcphizx(iy=None,fullplane=1,**kw):
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
+    kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy)
   if me > 0: ppp = zeros((w3d.nx+1,w3d.nzfull+1),'d')
