@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.6 2000/12/15 17:17:03 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.7 2001/01/11 00:19:15 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -531,7 +531,7 @@ from window 0, getting all of the live partilces (whose uzp > 0).
 def getn(iw=0,**kw):
   "Returns number of particles in selection."
   ii = selectparticles(iw=iw,kwdict=kw)
-  if lparallel and gather: return mpi_sum(len(ii))
+  if lparallel and gather: return globalsum(len(ii))
   else: return len(ii)
 #-------------------------------------------------------------------------
 def getx(iw=0,**kw):
@@ -846,10 +846,14 @@ Note that either the x and y coordinates or the grid must be passed in.
       if ymin == None: ymin = globalmin(yms)
       if ymax == None: ymax = globalmax(yms)
     else:
-      if xmin == None: xmin = min(x)
-      if xmax == None: xmax = max(x)
-      if ymin == None: ymin = min(yms)
-      if ymax == None: ymax = max(yms)
+      xmin = 0.
+      xmax = 0.
+      ymin = 0.
+      ymax = 0.
+      if xmin == None and len(x) > 0: xmin = min(x)
+      if xmax == None and len(x) > 0: xmax = max(x)
+      if ymin == None and len(yms) > 0: ymin = min(yms)
+      if ymax == None and len(yms) > 0: ymax = max(yms)
   else:
     # --- If no particles are inputted and the extrema are not set, then
     # --- can only make a guess.
@@ -1651,7 +1655,7 @@ Plots history of X envelope
   if not me==0: return
   plg(2.*top.hxrms[iw,:top.jhist+1:istep],hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("X Beam Edge","Z","X (m)",zwintitle(iw))
+  if titles: ptitles("X Beam Edge","Z","X (m)",pptitleright(iw))
 ##########################################################################
 def hpenvy(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
            titles=1,lzshift=0,lvsz=1):
@@ -1671,7 +1675,7 @@ Plots history of Y envelope
   if not me==0: return
   plg(2.*top.hyrms[iw,:top.jhist+1:istep],hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Y Beam Edge","Z","Y (m)",zwintitle(iw))
+  if titles: ptitles("Y Beam Edge","Z","Y (m)",pptitleright(iw))
 ##########################################################################
 def hpepsx(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
            titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1694,7 +1698,8 @@ Plots history of X emittance
   else: s = 1.
   plg(top.hepsx[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Unnormalized X emittance","Z","(pi-m-rad)",zwintitle(iw))
+  if titles: ptitles("Unnormalized X emittance","Z","(pi-m-rad)",
+                     pptitleright(iw))
 ##########################################################################
 def hpepsy(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
            titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1717,7 +1722,8 @@ Plots history of Y emittance
   else: s = 1.
   plg(top.hepsy[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Unnormalized Y emittance","Z","(pi-m-rad)",zwintitle(iw))
+  if titles: ptitles("Unnormalized Y emittance","Z","(pi-m-rad)",
+                     pptitleright(iw))
 ##########################################################################
 def hpepsnx(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
             titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1740,7 +1746,8 @@ Plots history of X normalized emittance
   else: s = 1.
   plg(top.hepsnx[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Normalized X emittance","Z","(pi-mm-mrad)",zwintitle(iw))
+  if titles: ptitles("Normalized X emittance","Z","(pi-mm-mrad)",
+                     pptitleright(iw))
 ##########################################################################
 def hpepsny(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
             titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1763,7 +1770,8 @@ Plots history of Y normalized emittance
   else: s = 1.
   plg(top.hepsny[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Normalized Y emittance","Z","(pi-mm-mrad)",zwintitle(iw))
+  if titles: ptitles("Normalized Y emittance","Z","(pi-mm-mrad)",
+                     pptitleright(iw))
 ##########################################################################
 def hpepsg(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
            titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1787,7 +1795,8 @@ Plots history of 1st generalized emittance
   plg(top.hepsg[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
   if titles:
-    ptitles("Unnormalized generalized emittance","Z","(pi-m-rad)",zwintitle(iw))
+    ptitles("Unnormalized generalized emittance","Z","(pi-m-rad)",
+            pptitleright(iw))
 ##########################################################################
 def hpepsh(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
            titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1811,7 +1820,8 @@ Plots history of 2nd generalized emittance
   plg(top.hepsh[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
   if titles:
-    ptitles("Unnormalized generalized emittance","Z","(pi-m-rad)",zwintitle(iw))
+    ptitles("Unnormalized generalized emittance","Z","(pi-m-rad)",
+            pptitleright(iw))
 ##########################################################################
 def hpepsng(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
             titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1835,7 +1845,8 @@ Plots history of 1st generalized normalized emittance
   plg(top.hepsng[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
   if titles:
-    ptitles("Normalized generalized emittance","Z","(pi-mm-mrad)",zwintitle(iw))
+    ptitles("Normalized generalized emittance","Z","(pi-mm-mrad)",
+            pptitleright(iw))
 ##########################################################################
 def hpepsnh(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
             titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1859,7 +1870,8 @@ Plots history of 2nd generalized normalized emittance
   plg(top.hepsnh[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
   if titles:
-    ptitles("Normalized generalized emittance","Z","(pi-mm-mrad)",zwintitle(iw))
+    ptitles("Normalized generalized emittance","Z","(pi-mm-mrad)",
+            pptitleright(iw))
 ##########################################################################
 def hppnum(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
            titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1882,7 +1894,7 @@ Plots history of the number of particles
   else: s = 1.
   plg(top.hpnum[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Number of particles","Z","#",zwintitle(iw))
+  if titles: ptitles("Number of particles","Z","#",pptitleright(iw))
 ##########################################################################
 def hpxbar(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
            titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1905,7 +1917,7 @@ Plots history of X bar
   else: s = 1.
   plg(top.hxbar[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("X bar","Z","X (m)",zwintitle(iw))
+  if titles: ptitles("X bar","Z","X (m)",pptitleright(iw))
 ##########################################################################
 def hpybar(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
            titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1928,7 +1940,7 @@ Plots history of Y bar
   else: s = 1.
   plg(top.hybar[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Y bar","Z","Y (m)",zwintitle(iw))
+  if titles: ptitles("Y bar","Z","Y (m)",pptitleright(iw))
 ##########################################################################
 def hpvzbar(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
             titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1951,7 +1963,7 @@ Plots history of average Vz
   else: s = 1.
   plg(top.hvzbar[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Average Vz","Z","Vz (m/s)",zwintitle(iw))
+  if titles: ptitles("Average Vz","Z","Vz (m/s)",pptitleright(iw))
 ##########################################################################
 def hpxprms(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
             titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1975,7 +1987,7 @@ Plots history of X' RMS
   plg(top.hvxrms[iw,:top.jhist+1:istep]/top.hvzbar[iw,:top.jhist+1:istep]/s,
       hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("X' RMS","Z","X' (rad)",zwintitle(iw))
+  if titles: ptitles("X' RMS","Z","X' (rad)",pptitleright(iw))
 ##########################################################################
 def hpyprms(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
             titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -1999,7 +2011,7 @@ Plots history of Y' RMS
   plg(top.hvyrms[iw,:top.jhist+1:istep]/top.hvzbar[iw,:top.jhist+1:istep]/s,
       hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Y' RMS","Z","Y' (rad)",zwintitle(iw))
+  if titles: ptitles("Y' RMS","Z","Y' (rad)",pptitleright(iw))
 ##########################################################################
 def hpvzrms(iw=0,istep=1,color="fg",marks=0,marker=None,msize=1.0,lframe=0,
             titles=1,lzshift=0,lvsz=1,lnormalized=0):
@@ -2022,7 +2034,7 @@ Plots history of Vz RMS
   else: s = 1.
   plg(top.hvzrms[iw,:top.jhist+1:istep]/s,hzaxis(lzshift,istep,lvsz,iw),
       color=color,marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Vz RMS","Z","Vz (m/s)",zwintitle(iw))
+  if titles: ptitles("Vz RMS","Z","Vz (m/s)",pptitleright(iw))
 ##########################################################################
 def penv(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
   """
@@ -2317,6 +2329,32 @@ plps = []
 plfreq = []
 plseldom = []
 plalways = []
+#--------------------------------------------------------------------------
+def installplseldom(f):
+  "Adds a function to the list of functions called when seldom plots are made"
+  plseldom.append(f)
+#--------------------------------------------------------------------------
+def uninstallplseldom(f):
+  """Removes the function from the list of functions called when seldom plots
+     are made"""
+  if f in plseldom:
+    plseldom.remove(f)
+  else:
+    raise 'Warning: uninstallplseldom: no such function had been installed'
+#--------------------------------------------------------------------------
+def installplalways(f):
+  "Adds a function to the list of functions called when always plots are made"
+  plalways.append(f)
+#--------------------------------------------------------------------------
+def uninstallplalways(f):
+  """Removes the function from the list of functions called when always plots
+     are made"""
+  if f in plalways:
+    plalways.remove(f)
+  else:
+    raise 'Warning: uninstallplalways: no such function had been installed'
+
+##########################################################################
 def pltfld3d(fld='phi',freqflag=always):
   """Makes fields plots which have been turned on
      - fld='phi' quantity to plot, either 'phi' or 'rho'
