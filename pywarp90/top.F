@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.91 $, $Date: 2003/06/03 23:06:09 $
+c@(#) File TOP.M, version $Revision: 3.92 $, $Date: 2003/06/04 16:55:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5171,6 +5171,7 @@ c=============================================================================
       use InDiag
       use Picglb
       use Z_Moments
+      use Z_arrays
       use Lab_Moments
  
 c  Sets moments for species 1 in all axial windows in the lab frame
@@ -5210,6 +5211,12 @@ c  are actually calculated more or less often.
           vzrmslw(ilw,i) = w1*vzrmsz(iz) + w0*vzrmsz(iz+1)
           xrmslw(ilw,i)  = w1*xrmsz(iz)  + w0*xrmsz(iz+1)
           yrmslw(ilw,i)  = w1*yrmsz(iz)  + w0*yrmsz(iz+1)
+          iz = (zlw(i) - zbeam - zzmin)*dzzi
+          w0 = (zlw(i) - zbeam - zzmin)*dzzi - iz
+          w1 = 1. - w0
+          currlw(ilw,i)  = w1*curr(iz)   + w0*curr(iz+1)
+          linechglw(ilw,i)  = w1*linechg(iz)   + w0*linechg(iz+1)
+          lostparslw(ilw,i)  = w1*lostpars(iz)   + w0*lostpars(iz+1)
         endif
       enddo
 

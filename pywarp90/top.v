@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.91 $, $Date: 2003/06/03 23:06:09 $
+#@(#) File TOP.V, version $Revision: 3.92 $, $Date: 2003/06/04 16:55:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.91 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.92 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1298,6 +1298,9 @@ vyrmslw(ntlabwn,nlabwn) _real # Vy RMS in lab frame
 vzrmslw(ntlabwn,nlabwn) _real # Vz RMS in lab frame
 xrmslw(ntlabwn,nlabwn)  _real # X RMS in lab frame
 yrmslw(ntlabwn,nlabwn)  _real # Y RMS in lab frame
+currlw(ntlabwn,nlabwn)  _real # Current in lab frame
+linechglw(ntlabwn,nlabwn)  _real # Line-charge in lab frame
+lostparslw(ntlabwn,nlabwn)  _real # Number of lost particles in lab frame
 
 *********** Moments dump:
 # Scalar moments of general interest
