@@ -1,4 +1,4 @@
-!     Last change:  JLV   7 Nov 2003    4:00 pm
+!     Last change:  JLV  21 Nov 2003   11:28 am
 #include "top.h"
 
 module multigrid_common
@@ -44,17 +44,18 @@ TYPE(GRDPTRtype), DIMENSION(:), ALLOCATABLE :: grids_ptr, gridinit
 contains
 
 subroutine init_basegrid(nr,nz,dr,dz,rmin,zmin,l_verbose)
-USE Multigrid3d
+!USE Multigrid3d
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
-INTEGER(ISZ) :: i,j, nzp, mglevel
+INTEGER(ISZ) :: i,j, nzp
 LOGICAL(ISZ) :: l_verbose
 TYPE(GRIDtype), POINTER :: bg
 TYPE(BNDtype), POINTER :: b
 
   if (l_verbose) then
-    WRITE(0,*) 'enter init_basegrid'
+    write(o_line,'("Enter init_basegrid")')
+    call remark(trim(o_line))
   endif
 
   IF(.not. associated(basegrid)) call set_basegrid()
@@ -176,42 +177,24 @@ TYPE(BNDtype), POINTER :: b
 !    bg%bnd(i)%izrbnd=bg%izrbnd
 !  END do
 
-  mglevels = bg%nlevels
   do i = 1, bg%nlevels
     IF(i==1) then
       b => bg%bndfirst
     else
       b => b%next
     END if
-    mglevel = i-1
-    mglevelsnx(mglevel) = b%nr
-    mglevelsny(mglevel) = 0
-#ifdef MPIPARALLEL
-    mglevelsnzfull(mglevel) = b%nz*nslaves/b%nworkpproc
-    mglevelsiz(mglevel) = INT(my_index/b%nworkpproc)*b%nz-1
-#else
-    mglevelsnzfull(mglevel) = b%nz
-    mglevelsiz(mglevel) = 0
-#endif
-    mglevelsnz(mglevel) = b%nz
-    IF(mglevel==0) then
-      mglevelslx(mglevel) = 1.
-      mglevelsly(mglevel) = 1.
-      mglevelslz(mglevel) = 1.
-    else
-      mglevelslx(mglevel) = b%dr/bg%bndfirst%dr
-      mglevelsly(mglevel) = 1.
-      mglevelslz(mglevel) = b%dz/bg%bndfirst%dz
-    END if
-    IF(b%izlbnd==dirichlet) b%v(:,1) = v_dirichlet
-    IF(b%izrbnd==dirichlet) b%v(:,b%nz+1) = v_dirichlet
-    IF(bg%ixlbnd==dirichlet) b%v(1,:) = v_dirichlet
+    IF(b%izlbnd==dirichlet)  b%v(:,1)      = v_dirichlet
+    IF(b%izrbnd==dirichlet)  b%v(:,b%nz+1) = v_dirichlet
+    IF(bg%ixlbnd==dirichlet) b%v(1,:)      = v_dirichlet
     IF(bg%ixrbnd==dirichlet) b%v(b%nr+1,:) = v_dirichlet
   END do
 
+  call setmglevels_rz()
   call mk_grids_ptr()
+
   if (l_verbose) then
-    WRITE(0,*) 'exit init_basegrid'
+    write(o_line,'("Exit init_basegrid")')
+    call remark(trim(o_line))
   endif
 
 return
@@ -5121,7 +5104,7 @@ necndbdy=0
 nocndbdy=0
 ncond = 0
 
-call get_cond_rz(1,1)
+call get_cond_rz(1)
 
 return
 end subroutine install_conductors_rz
@@ -7746,7 +7729,49 @@ implicit none
 return
 END subroutine set_basegrid_phi
 
-subroutine get_cond_rz(igrid,ilevel)
+subroutine setmglevels_rz()
+USE multigridrz
+USE Multigrid3d
+implicit none
+INTEGER :: i,mglevel
+TYPE(GRIDtype), POINTER :: bg
+TYPE(BNDtype), pointer :: b
+
+bg => basegrid
+
+  mglevels = bg%nlevels
+  do i = 1, bg%nlevels
+    IF(i==1) then
+      b => bg%bndfirst
+    else
+      b => b%next
+    END if
+    mglevel = i-1
+    mglevelsnx(mglevel) = b%nr
+    mglevelsny(mglevel) = 0
+#ifdef MPIPARALLEL
+    mglevelsnzfull(mglevel) = b%nz*nslaves/b%nworkpproc
+    mglevelsiz(mglevel) = INT(my_index/b%nworkpproc)*b%nz-1
+#else
+    mglevelsnzfull(mglevel) = b%nz
+    mglevelsiz(mglevel) = 0
+#endif
+    mglevelsnz(mglevel) = b%nz
+    IF(mglevel==0) then
+      mglevelslx(mglevel) = 1.
+      mglevelsly(mglevel) = 1.
+      mglevelslz(mglevel) = 1.
+    else
+      mglevelslx(mglevel) = b%dr/bg%bndfirst%dr
+      mglevelsly(mglevel) = 1.
+      mglevelslz(mglevel) = b%dz/bg%bndfirst%dz
+    END if
+  END do
+
+  return
+end subroutine setmglevels_rz
+
+subroutine get_cond_rz_level(igrid,ilevel)
 USE multigridrz
 USE Conductor3d
 implicit none
@@ -7835,6 +7860,106 @@ TYPE(CONDtype), pointer :: c
      ocvoltpz(ico) = c%volt0zp(i)
     END if
    end do
+ END do
+ necndbdy = ice
+ nocndbdy = ico
+
+return
+end subroutine get_cond_rz_level
+
+subroutine get_cond_rz(igrid)
+USE multigridrz
+USE Conductor3d
+implicit none
+INTEGER :: igrid
+
+INTEGER :: i,il,ic,icc,ice,ico
+TYPE(BNDtype), pointer :: bnd
+TYPE(CONDtype), pointer :: c
+
+ IF(solvergeom==Zgeom) return
+
+ ncond    = 0
+ necndbdy = 0
+ nocndbdy = 0
+ do il = 1, nlevels
+   IF(il == 1) then
+     bnd => grids_ptr(igrid)%grid%bndfirst
+   else
+     bnd => bnd%next
+   END if
+   do ic = 1, bnd%nb_conductors
+     IF(ic==1) then
+       c => bnd%cndfirst
+     else
+       c => c%next
+     END if
+     ncond    = ncond    + c%ncond
+     necndbdy = necndbdy + c%nbbndred
+     nocndbdy = nocndbdy + c%nbbnd-c%nbbndred
+   END do
+ END do
+ if (ncondmax < ncond) ncondmax = ncond
+ if (ncndmax < max(necndbdy,nocndbdy)) ncndmax = max(necndbdy,nocndbdy)
+ call gchange("Conductor3d",0)
+
+ icc=0
+ ice=0
+ ico=0
+ do il = 1, nlevels
+   IF(il == 1) then
+     bnd => grids_ptr(igrid)%grid%bndfirst
+   else
+     bnd => bnd%next
+   END if
+   do ic = 1, bnd%nb_conductors
+     IF(ic==1) then
+       c => bnd%cndfirst
+     else
+       c => c%next
+     END if
+     do i = 1, c%ncond
+       icc=icc+1
+       ixcond(icc) = c%jcond(i)-1
+       izcond(icc) = c%kcond(i)-1
+       icondlevel(icc) = il-1
+       condvolt(icc) = c%voltage(i)
+     end do
+     do i = 1, c%nbbndred
+      IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
+       ice=ice+1
+       iecndx(ice) = c%jj(i)-1
+       iecndz(ice) = c%kk(i)-1
+       ecdelmx(ice) = c%dxm(i)/bnd%dr
+       ecdelpx(ice) = c%dxp(i)/bnd%dr
+       ecdelmz(ice) = c%dzm(i)/bnd%dz
+       ecdelpz(ice) = c%dzp(i)/bnd%dz
+       iecndlevel(ice) = il-1
+       ecvolt(ice) = c%volt0xm(i)
+       ecvoltmx(ice) = c%volt0xm(i)
+       ecvoltpx(ice) = c%volt0xp(i)
+       ecvoltmz(ice) = c%volt0zm(i)
+       ecvoltpz(ice) = c%volt0zp(i)
+      END if
+     end do
+     do i = c%nbbndred+1, c%nbbnd
+      IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
+       ico=ico+1
+       iocndx(ico) = c%jj(i)-1
+       iocndz(ico) = c%kk(i)-1
+       ocdelmx(ico) = c%dxm(i)/bnd%dr
+       ocdelpx(ico) = c%dxp(i)/bnd%dr
+       ocdelmz(ico) = c%dzm(i)/bnd%dz
+       ocdelpz(ico) = c%dzp(i)/bnd%dz
+       iocndlevel(ico) = il-1
+       ocvolt(ico) = c%volt0xm(i)
+       ocvoltmx(ico) = c%volt0xm(i)
+       ocvoltpx(ico) = c%volt0xp(i)
+       ocvoltmz(ico) = c%volt0zm(i)
+       ocvoltpz(ico) = c%volt0zp(i)
+      END if
+     end do
+   END do
  END do
  necndbdy = ice
  nocndbdy = ico
