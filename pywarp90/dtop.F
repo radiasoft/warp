@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.42 $, $Date: 2002/03/29 22:25:18 $
+c@(#) File DTOP.M, version $Revision: 3.43 $, $Date: 2002/04/24 21:37:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.42 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.43 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1046,7 +1046,7 @@ c loop over particles
       do ip=1,np
 
 c       --- if within z grid cell and not dead, include
-        if (zl < zp(ip) .and. zp(ip) < zr .and. uzp(ip) .ne. 0.) then
+        if (zl < zp(ip) .and. zp(ip) < zr .and. uzp(ip) /= 0.) then
 
 c         --- find location on grid
           gw = (xp(ip) - wmin)*dwi
@@ -1512,7 +1512,7 @@ c     --- Find min and max of position and velocity
       hminy = +LARGEPOS
       hmaxy = -LARGEPOS
       do ip=i1,i2
-        if (uzp(ip) > 0. .and. zw1 .le. zp(ip) .and. zp(ip) .le. zw2) then
+        if (uzp(ip) /= 0. .and. zw1 .le. zp(ip) .and. zp(ip) .le. zw2) then
           uzpi = 1./uzp(ip)
           if (xp(ip) < wminx) then
             wminx = xp(ip)
@@ -1600,7 +1600,7 @@ c     --- Calculate average of particles in regions meeting threshold.
       aveypsq = 0.
       aveyyyp = 0.
       do ip=i1,i2
-        if (uzp(ip) > 0. .and. zw1 .le. zp(ip) .and. zp(ip) .le. zw2) then
+        if (uzp(ip) /= 0. .and. zw1 .le. zp(ip) .and. zp(ip) .le. zw2) then
           uzpi = 1./uzp(ip)
           jw = int((xp(ip) - wminx)*dwxi)
           ww =    ((xp(ip) - wminx)*dwxi) - jw
@@ -1787,7 +1787,7 @@ c correct physical area measure in x-x' phase space for the emittance.
 c
       do ip = 1,np
 c       --- check that particle is live 
-        if (uzp(ip) .ne. 0.) then 
+        if (uzp(ip) /= 0.) then 
           emitp(ip) = eps*( tx(ip)**2 + epsinvsq*(txp(ip)**2) )
           emitmax   = max(emitmax,emitp(ip))
         endif       
@@ -1812,7 +1812,7 @@ c     --- zero moment arrays
 c     --- accumulate moment sums 
       do ip = 1,np
 c       --- sample live particles only 
-        if (uzp(ip) .ne. 0.) then 
+        if (uzp(ip) /= 0.) then 
 c         --- count live particles in set analyzed 
           nplive = nplive + 1
 c         --- find area index 
@@ -1919,7 +1919,7 @@ c Rotate coordinates of all live particles
 
       do ip = 1,np
 c       --- check that particle is live 
-        if (uzp(ip) .ne. 0.) then 
+        if (uzp(ip) /= 0.) then 
           tx(ip)  =  (xp(ip) - xbar)*cost + (uxp(ip)/uzp(ip) - xpbar)*sint
           txp(ip) = -(xp(ip) - xbar)*sint + (uxp(ip)/uzp(ip) - xpbar)*cost
         endif 

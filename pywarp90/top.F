@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.42 $, $Date: 2002/03/29 22:25:18 $
+c@(#) File TOP.M, version $Revision: 3.43 $, $Date: 2002/04/24 21:37:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4043,7 +4043,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
 c       --- Set maximum and minimum particle coordinate variables
 c       --- set multiplier so dead particles don't contribute
         do ip = 1, np
-          if (uzp(ip) .ne. 0.) then
+          if (uzp(ip) /= 0.) then
             xmaxp  = max(xmaxp, xp(ip))
             xminp  = min(xminp, xp(ip))
             ymaxp  = max(ymaxp, yp(ip))
@@ -4845,7 +4845,7 @@ c     --- vector loop
       enddo
 c     --- scalar loop
       do ip = 1,np
-         if (uzp(ip) > 0) then
+         if (uzp(ip) /= 0) then
             curr(kk(ip)) = curr(kk(ip)) + s0(ip)
             curr(kk(ip)+1) = curr(kk(ip)+1) + s1(ip)
          endif
@@ -5115,7 +5115,7 @@ c       --- if within grid, examine the particle, otherwise assume its OK.
 
           if (dd < 0.) then
 c           --- Scrape the particle
-            if (uzp(ip) .ne. 0.) lostpars(iz) = lostpars(iz) + 1
+            if (uzp(ip) /= 0.) lostpars(iz) = lostpars(iz) + 1
             uxp(ip) = 0.0
             uyp(ip) = 0.0
             uzp(ip) = 0.0
@@ -5203,7 +5203,7 @@ c Calculate the center of mass of the beam along the z axis from the particles
       totmass = 0.
       do is=1,ns
         do ip=ins(is),ins(is)+nps(is)-1
-          if (uzp(ip) .ne. 0.) then
+          if (uzp(ip) /= 0.) then
             totz = totz + zp(ip)*sm(is)
             totmass = totmass + sm(is)
           endif
