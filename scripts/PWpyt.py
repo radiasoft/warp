@@ -5,7 +5,7 @@
 HDF basic writer class PW by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWpyt.py,v 1.3 2003/09/16 00:09:20 dave Exp $
+$Id: PWpyt.py,v 1.4 2003/10/13 17:26:53 dave Exp $
 """
 import tables
 import cPickle
@@ -22,6 +22,7 @@ class FloatScalar(tables.IsDescription):
 
 class PW:
     "HDF file writer class."
+    file_type = "HDF"
 
     no_file_message = '(PW object not open on any file)'
 

@@ -11,6 +11,7 @@ import re
 
 class PR:
     "HDF file read-access class."
+    file_type = "HDF"
 
     no_file_message = '(PR object not open on any file)'
 
