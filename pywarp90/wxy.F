@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.45 $, $Date: 2004/07/02 23:32:14 $
+c@(#) File WXY.M, version $Revision: 3.46 $, $Date: 2004/07/08 19:20:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -62,6 +62,7 @@ c=============================================================================
       use Moments
       use Damped_eom
       use Hist
+      use AMR
 c     use Pspwork
 #ifdef MPIPARALLEL
       use Parallel
@@ -228,6 +229,7 @@ c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
       iz_axis = nint(-zmmin/dz)
 
 c Initialize grid when solvergeom=XYgeom
+      if(AMRlevels>0) solvergeom=XYgeom
       if(solvergeom==XYgeom) then
         nz = 0
         nzfull = nz
@@ -2369,6 +2371,8 @@ c       --- Use 3d field solver
       else
 
 c       --- Otherwise, use 2d field solver
+
+        if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
 
         if (fstype == 0) then
           call vpois2d (iwhich, phi(0,0,0), phi(0,0,0), kxsq, kysq,
