@@ -15,6 +15,8 @@ Registers the solver to be used in the particle simulation.
            fetche defined
   """
   MRsolver[0] = solver
+def getregisteredsolver():
+  return MRsolver[0]
 def loadrhoMR():
   assert MRsolver[0] is not None,"No solver has been registered"
   MRsolver[0].loadrho()
