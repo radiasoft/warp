@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.72 2004/09/02 22:45:28 dave Exp $"
+warp_version = "$Id: warp.py,v 1.73 2004/09/16 00:57:52 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -105,6 +105,14 @@ if sys.argv[0]:
     del h,t
 runid = arraytostr(top.runid)
 
+#try:
+#  from psyco.classes import psyobj
+#  import psyco
+#  psyco.background(watermark=.3)
+#except ImportError:
+#  class psyobj:
+#    pass
+
 #=============================================================================
 # --- Set physical constants which depend on others.
 # --- Magnetic constant = 4*pi*1.e-7
@@ -204,6 +212,8 @@ dump: Creates a dump file containing the current state of the simulation
 restart: Retreives the state of a simulation from a dump file
 loadrho: Load the particles onto the charge density mesh
 fieldsol: Solve for the self-fields
+getappliedfields: Gathers the fields from the accelerator lattice at given
+                  locations
 installbeforefs: Install a function which will be called before a field-solve
 uninstallbeforefs: Uninstall the function called before a field-solve
 isinstalledbeforefs: Checks if a function is installed to be called before a
@@ -410,6 +420,93 @@ __main__.__dict__['fieldsolMR'] = fieldsolMR
 __main__.__dict__['fetcheMR'] = fetcheMR
 __main__.__dict__['fetchphiMR'] = fetchphiMR
 __main__.__dict__['initfieldsolver'] = initfieldsolver
+
+##############################################################################
+def getappliedfields(x,y,z,time=0.,js=0):
+  """
+Gets the applied fields from the lattice at the given locations.
+It returns the tuple (ex,ey,ez,bx,by,bz)
+ - x,y,z: arrays of position where the field is to be gathered.
+          Note that z can be a scalar - all fields are gathered at that
+          z position.
+ - time=0.: Time to use whan gathering fields - only affects time dependent
+            elements.
+ - js=0: species to get mass and charge from. Only affects accl elements.
+  """
+  n = len(x)
+  if n == 0: return
+
+  # --- Allow z to be a scalar (as in the slice case)
+  if type(z) in [IntType,FloatType]: z = z*ones(n,'d')
+
+  # --- Save existing internal lattice variables so they can be restored
+  # --- afterward.
+  dzlsave = top.dzl
+  dzlisave = top.dzli
+  zlframesave = top.zlframe
+  zltimesave = top.zltime
+  zlminsave = top.zlmin
+  zlmaxsave = top.zlmax
+  nzlsave = top.nzl
+  nzlmaxsave = top.nzlmax
+
+  ex,ey,ez = zeros((3,n),'d')
+  bx,by,bz = zeros((3,n),'d')
+  zmin = min(z)
+  zmax = max(z)
+
+  # --- Set them based on the particle data
+  zlen = zmax - zmin
+  if zlen == 0.:
+    top.zlmin = zmin
+    top.zlmax = zmin
+    top.nzl = 0
+  else:
+    top.zlmin = zmin - zlen/10.
+    top.zlmax = zmax + zlen/10.
+    top.nzl = 100
+    top.dzl = (top.zlmax - top.zlmin)/top.nzl
+    top.dzli = 1./top.dzl
+    top.zlframe = 0.
+    top.nzlmax = max(top.nzlmax,top.nzl)
+    gchange("LatticeInternal")
+  top.zltime = time
+    
+  # --- Make sure that the lattice is set up. If it is already, this won't
+  # --- change anything (maybe).
+  resetlat()
+  setlatt()
+
+  # --- Create other temporaries
+  uzp = ones(n,'d')
+  gaminv = ones(n,'d')
+  dtl = -0.5*top.dt
+  dtr = +0.5*top.dt
+  m = top.sm[js]
+  q = top.sq[js]
+  bendres = ones(n,'d')
+  bendradi = ones(n,'d')
+  gammabar = 1.
+  dt = top.dt
+
+  exteb3d(n,x,y,z,uzp,gaminv,dtl,dtr,
+          bx,by,bz,ex,ey,ez,m,q,bendres,bendradi,gammabar,dt)
+
+  # --- Restore these quantities
+  top.dzl = dzlsave
+  top.dzli = dzlisave
+  top.zlframe = zlframesave
+  top.zltime = zltimesave
+  top.zlmin = zlminsave
+  top.zlmax = zlmaxsave
+  top.nzl = nzlsave
+  top.nzlmax = nzlmaxsave
+  gchange("LatticeInternal")
+  setlatt()
+
+  return ex,ey,ez,bx,by,bz
+
+
 
 ##############################################################################
 ##############################################################################
