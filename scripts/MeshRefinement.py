@@ -135,10 +135,20 @@ class MRBlock(MultiGrid,Visualizable):
       self.fullupper = self.dims
       self.dimsmax = self.dims
 
-    # --- idomains is the cell centered grid which keeps track of which
+    # --- idomains is the node centered grid which keeps track of which
     # --- cells are owned by which children. If there are no children,
     # --- then it is not needed.
     self.idomains = None
+
+    # --- iedgeowner are the node centered array which keeps track of
+    # --- which nodes on the upper edges of the domain are owned by this
+    # --- instance. This is used when the parent gathers the charge density
+    # --- from its children, so the same density isn't accumuluated
+    # --- from multiple children.
+    # --- The arrays are updated with overalapping siblings are searched for.
+    self.iedgeowner = [ones((1+self.ny,1+self.nz)),
+                       ones((1+self.nx,1+self.nz)),
+                       ones((1+self.nx,1+self.ny))]
 
     # --- Now add any specified children
     self.children = []
@@ -169,25 +179,50 @@ class MRBlock(MultiGrid,Visualizable):
     # --- If idomains not yet created, do so
     if self.idomains is None:
       self.idomains = fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
+    self.setdomainownership(block,len(self.children),1)
+
+  def setdomainownership(self,block,ichild,upperedge):
+    # --- Here, the idomains is set over the full extent of the child,
+    # --- including the upper edges. In the finalization, if no other child
+    # --- claims the upper edges, they are released. The upper edges are
+    # --- special since the child will contribute denisty to the parent there
+    # --- but have no particles in the cell, since the actual volume of the
+    # --- cell is outside the childs domain (cells are defined by the
+    # --- coordinates of the lower corner). Ownership must be staked out
+    # --- initially though so that multiple children won't contribute to the
+    # --- same place.
+
     # --- Set full domain to negative of child number first.
     ix1,iy1,iz1 = maximum(0,block.fulllower/block.refinement - self.fulllower)
-    ix2,iy2,iz2 =           block.fullupper/block.refinement - self.fulllower
+    ix2,iy2,iz2 = block.fullupper/block.refinement - self.fulllower + upperedge
     # --- If the child extends to the edge of the parent mesh, it claims the
     # --- grid points on the upper edges.
-    if ix2 == self.dims[0]: ix2 += 1
-    if iy2 == self.dims[1]: iy2 += 1
-    if iz2 == self.dims[2]: iz2 += 1
+    if upperedge == 0:
+      if ix2 == self.dims[0]: ix2 += 1
+      if iy2 == self.dims[1]: iy2 += 1
+      if iz2 == self.dims[2]: iz2 += 1
     ii = self.idomains[ix1:ix2,iy1:iy2,iz1:iz2]
-    ii[:,:,:] = where(ii==0.,-len(self.children),ii)
+    ii[:,:,:] = where(ii<=0.,-ichild,ii)
+
     # --- Set interior to positive child number.
     ix1,iy1,iz1 = maximum(0,block.lower/block.refinement - self.fulllower)
-    ix2,iy2,iz2 =           block.upper/block.refinement - self.fulllower
+    ix2,iy2,iz2 = block.upper/block.refinement - self.fulllower
     # --- If the child extends to the edge of the parent mesh, it claims the
     # --- grid points on the upper edges.
     if ix2 == self.dims[0]: ix2 += 1
     if iy2 == self.dims[1]: iy2 += 1
     if iz2 == self.dims[2]: iz2 += 1
-    self.idomains[ix1:ix2,iy1:iy2,iz1:iz2] = +len(self.children)
+    self.idomains[ix1:ix2,iy1:iy2,iz1:iz2] = +ichild
+
+  def resetdomainownership(self):
+    if self.idomains is None: return
+    self.ncallsfromparents += 1
+    if self.ncallsfromparents < len(self.parents): return
+    self.ncallsfromparents = 0
+    self.idomains[:,:,:] = 0.
+    for child,ichild in zip(self.children,range(1,1+len(self.children))):
+      child.resetdomainownership()
+      self.setdomainownership(child,ichild,0)
 
   def setrhoboundaries(self):
     """
@@ -365,13 +400,13 @@ efficient timewise, but uses two extra full-size arrays.
             # --- First, self's rho.
             ix1,iy1,iz1 = i1 + pm
             ix2,iy2,iz2 = i2 + pp + 1
-            p = self.rho[ix1:ix2,iy1:iy2,iz1:iz2]
+            prho = self.rho[ix1:ix2,iy1:iy2,iz1:iz2]
             # --- Then the child's rho
             cx1,cy1,cz1 = ii1 + r*pm
             cx2,cy2,cz2 = ii2 + r*pp + 1
-            c = child.rho[cx1:cx2:r,cy1:cy2:r,cz1:cz2:r]
-            # --- Note the differing indexing from self.rho. For p(xyz)m==0,
-            # --- this has no affect. But or p(xyz)m==1, (i.e. i,j, or k=-1),
+            crho = child.rho[cx1:cx2:r,cy1:cy2:r,cz1:cz2:r]
+            # --- Note the differing indexing from self.rho. For prho(xyz)m==0,
+            # --- this has no affect. But or prho(xyz)m==1, (i.e. i,j, or k=-1),
             # --- this is needed since, if the child owns the cell that that
             # --- falls in, it will contribute it to the next cell up even
             # --- if its doesn't own it.
@@ -379,33 +414,33 @@ efficient timewise, but uses two extra full-size arrays.
             ix2,iy2,iz2 = i2 + pp - pm + 1
             d = abs(self.idomains[ix1:ix2,iy1:iy2,iz1:iz2])
             ld = (d == ichild)
-            # --- For the upper edges of the childs domain, if no other
-            # --- children own the cells, this child must contribute rho to
-            # --- there.
-            if i <= 0: ld[-1,:,:] = where(d[-1,:,:]==0.,1,ld[-1,:,:])
-            if j <= 0: ld[:,-1,:] = where(d[:,-1,:]==0.,1,ld[:,-1,:])
-            if k <= 0: ld[:,:,-1] = where(d[:,:,-1]==0.,1,ld[:,:,-1])
+            # --- For the upper edges of the childs domain, the ownership
+            # --- is stored in separate arrays, iedgeowner. The arrays only
+            # --- apply if the region is explicitly unclaimed.
+            if i < 0:
+              ie = child.iedgeowner[0][cy1:cy2:r,cz1:cz2:r]
+              ld[-1,:,:] = where(d[-1,:,:]==0.,ie,ld[-1,:,:])
+            if j < 0:
+              ie = child.iedgeowner[1][cx1:cx2:r,cz1:cz2:r]
+              ld[:,-1,:] = where(d[:,-1,:]==0.,ie,ld[:,-1,:])
+            if k < 0:
+              ie = child.iedgeowner[2][cx1:cx2:r,cy1:cy2:r]
+              ld[:,:,-1] = where(d[:,:,-1]==0.,ie,ld[:,:,-1])
+            if i == 0:
+              ie = child.iedgeowner[0][cy1:cy2:r,cz1:cz2:r]
+              ld[-1,:,:] = where(d[-1,:,:]==0.,ie,ld[-1,:,:])
+            if j == 0:
+              ie = child.iedgeowner[1][cx1:cx2:r,cz1:cz2:r]
+              ld[:,-1,:] = where(d[:,-1,:]==0.,ie,ld[:,-1,:])
+            if k == 0:
+              ie = child.iedgeowner[2][cx1:cx2:r,cy1:cy2:r]
+              ld[:,:,-1] = where(d[:,:,-1]==0.,ie,ld[:,:,-1])
             # --- Get the rho that will be contributed.
-            rh = where(ld,c,0.)
+            rh = where(ld,crho,0.)
             # --- Multiply by the weight in place.
             multiply(rh,self.w[i+1,j+1,k+1],rh)
             # --- Now add in the contribution (in place)
-            add(p,rh,p)
-
-      #ix1,iy1,iz1 = i1
-      #ix2,iy2,iz2 = i2 + 1
-      #iii = self.idomains[ix2-1,iy1:iy2,iz1:iz2]
-      #iii[:,:] = where(iii==0.,largepos,iii)
-      #iii = self.idomains[ix1:ix2,iy2-1,iz1:iz2]
-      #iii[:,:] = where(iii==0.,largepos,iii)
-      #iii = self.idomains[ix1:ix2,iy1:iy2,iz2-1]
-      #iii[:,:] = where(iii==0.,largepos,iii)
-
-  def cleanidomains(self):
-    if self.idomains is None: return
-    self.idomains[:,:,:] = where(self.idomains==largepos,0.,self.idomains)
-    for child in self.children:
-      child.cleanidomains()
+            add(prho,rh,prho)
 
   def addmyrhotosiblings(self):
     self.ncallsfromparents += 1
@@ -456,6 +491,9 @@ efficient timewise, but uses two extra full-size arrays.
     # --- If any of the lengths are negative, then there is no overlap.
     # --- Don't do anything else.
     if sometrue(l > u): return
+    self.checkoverlapownership(other,l,u)
+
+  def checkoverlapownership(self,other,l,u):
     # --- Check how much of the overlap region is owned by the other instance
     # --- First, assume that it doesn't own any.
     otherowns = zeros(u-l+1)
@@ -465,11 +503,13 @@ efficient timewise, but uses two extra full-size arrays.
     # --- Check the idomains for each parent of the other to find out the
     # --- regions owned by that instance.
     for parent,ichild in zip(other.parents,other.ichild):
+      ld = maximum(l,parent.fulllower*other.refinement)
+      ud = minimum(u,parent.fullupper*other.refinement)
       pld = maximum(pl,parent.fulllower)
       pud = minimum(pu,parent.fullupper)
       if sometrue(pud < pld): continue
-      ix1,iy1,iz1 = pld*other.refinement - l
-      ix2,iy2,iz2 = pud*other.refinement - l + 1
+      ix1,iy1,iz1 = ld - l
+      ix2,iy2,iz2 = ud - l + 1
       ix3,iy3,iz3 = pld - parent.fulllower
       ix4,iy4,iz4 = pud - parent.fulllower + 1
       otherownsslice = otherowns[ix1:ix2,iy1:iy2,iz1:iz2]
@@ -493,6 +533,66 @@ efficient timewise, but uses two extra full-size arrays.
     # --- is no reason to keep track of the overlap.
     if maxnd(otherowns) == 1:
       self.overlaps.append(BlockOverlap(other,l,u,otherowns))
+
+  def checkupperedgeownership(self):
+    self.ncallsfromparents += 1
+    if self.ncallsfromparents < len(self.parents): return
+    self.ncallsfromparents = 0
+    for child in self.children: child.checkupperedgeownership()
+    for parent,ichild in zip(self.parents,self.ichild):
+      l  = maximum(parent.fulllower*self.refinement,self.fulllower)
+      u  = minimum(parent.fullupper*self.refinement,self.fullupper)
+      if sometrue(l > u): continue
+      for other in parent.children[ichild:]:
+        ol  = maximum(other.fulllower,l)
+        ou  = minimum(other.fullupper,u)
+        if sometrue(ol > ou): continue
+
+        sx1,sy1,sz1 = ol - self.fulllower
+        sx2,sy2,sz2 = ou - self.fulllower
+
+        if ol[0] <= self.fullupper[0] <= ou[0]:
+          self.iedgeowner[0][sy1:sy2+1,sz1:sz2+1] = 0.
+        if ol[1] <= self.fullupper[1] <= ou[1]:
+          self.iedgeowner[1][sx1:sx2+1,sz1:sz2+1] = 0.
+        if ol[2] <= self.fullupper[2] <= ou[2]:
+          self.iedgeowner[2][sx1:sx2+1,sy1:sy2+1] = 0.
+
+  def checkupperedgeownership2(self):
+    self.ncallsfromparents += 1
+    if self.ncallsfromparents < len(self.parents): return
+    self.ncallsfromparents = 0
+    for child in self.children: child.checkupperedgeownership()
+    r = self.refinement
+    for parent,ichild in zip(self.parents,self.ichild):
+      l  = maximum(parent.fulllower*self.refinement,self.fulllower)
+      u  = minimum(parent.fullupper*self.refinement,self.fullupper)
+      pl = maximum(parent.fulllower,self.fulllower/self.refinement)
+      pu = minimum(parent.fullupper,self.fullupper/self.refinement)
+      if sometrue(l > u): continue
+
+      sx1,sy1,sz1 = l - self.fulllower
+      sx2,sy2,sz2 = u - self.fulllower
+      px1,py1,pz1 = pl - parent.fulllower
+      px2,py2,pz2 = pu - parent.fulllower
+
+      iii = self.iedgeowner[0][sy1:sy2+1,sz1:sz2+1]
+      iii[::r,::r] = (abs(parent.idomains[px2,py1:py2+1,pz1:pz2+1]) == ichild)
+      iii[1::r,::r] = iii[:-1:r,::r]
+      iii[::r,1::r] = iii[::r,:-1:r]
+      iii[1::r,1::r] = iii[:-1:r,:-1:r]
+
+      iii = self.iedgeowner[1][sx1:sx2+1,sz1:sz2+1]
+      iii[::r,::r] = (abs(parent.idomains[px1:px2+1,py2,pz1:pz2+1]) == ichild)
+      iii[1::r,::r] = iii[:-1:r,::r]
+      iii[::r,1::r] = iii[::r,:-1:r]
+      iii[1::r,1::r] = iii[:-1:r,:-1:r]
+
+      iii = self.iedgeowner[2][sx1:sx2+1,sy1:sy2+1]
+      iii[::r,::r] = (abs(parent.idomains[px1:px2+1,py1:py2+1,pz2]) == ichild)
+      iii[1::r,::r] = iii[:-1:r,::r]
+      iii[::r,1::r] = iii[::r,:-1:r]
+      iii[1::r,1::r] = iii[:-1:r,:-1:r]
 
   def findallparents(self,blocklists):
     for block in blocklists[0]:
@@ -532,6 +632,8 @@ efficient timewise, but uses two extra full-size arrays.
     blocklists = self.generateblocklevellists()
     self.findallparents(blocklists)
     self.findoverlappingsiblings()
+    self.checkupperedgeownership()
+    self.resetdomainownership()
 
 
   def loadrho(self,lzero=true):
@@ -547,7 +649,6 @@ the top level grid.
     self.addmyrhotosiblings()
     self.getrhofromsiblings()
     self.gatherrhofromchildren()
-    self.cleanidomains()
     #self.setrhoboundaries()
 
   def gete(self,x,y,z,ex,ey,ez):
