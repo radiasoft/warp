@@ -5,14 +5,16 @@ PYVERS = 1.5
 PYTHON = $(HOME)/Python-$(PYVERS)
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
+#VAMPIR = $(VTINC) $(VTLIB)
 OPT = -O3 -qstrict -qarch=pwr3 -qtune=pwr3
 POPT = -O
 PYMODULEOPT = 
-F90FREE  = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VTINC) $(VTLIB)
-F90FIXED = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DPARALLEL -qfixed=132 $(VTINC) $(VTLIB)
-CC = mpcc -qmaxmem=8192
+DATASIZE = -bmaxdata:0x20000000
+F90FREE  = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VAMPIR) $(DATASIZE)
+F90FIXED = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DPARALLEL -qfixed=132 $(VAMPIR) $(DATASIZE)
+CC = mpcc -qmaxmem=8192 $(DATASIZE)
 SO = so
-LD = mpcc $(VTINC) $(VTLIB)
+LD = mpcc $(VAMPIR) $(DATASIZE)
 LDSHARED = $(PYTHON)/lib/python$(PYVERS)/config/ld_so_aix mpcc -bI:$(PYTHON)/lib/python$(PYVERS)/config/python.exp
 FORTLIB = -lxlf90 -lxlopt -lxlf -lxlomp_ser
 LINKLIB = -lpthread
