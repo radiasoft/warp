@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.93 2003/02/11 22:29:00 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.94 2003/02/12 19:53:27 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -27,6 +27,8 @@ pla(): plots multi-dimensional array as a series of lines
 plotc(): contour plots 2-D data
 plotfc(): contour plots 2-D data with colored contour levels
 limits(): sets plot limits in order left, right, bottom, top
+zoombox(): when called, use the mouse left button (press and hold) to draw a
+           box around the area to be zoomed to.
 mouse commmands: left button zoom in, middle shifts, right zoom out
 
 These return or set a slice out of the rho or phi array.
@@ -1236,6 +1238,19 @@ When finished, press return in the python window.
     ymax3max = max(ymax3max,ymax3)
     limits(xmin3min,xmax3max,ymin3min,ymax3max)
   pl3d.gnomon(gnomon)
+
+#############################################################################
+def zoombox():
+  """
+When called, use the mouse left button (press and hold) to draw a
+box around the area to be zoomed to.
+  """
+  m1 = mouse(1,1,'')
+  xmin = min(m1[0],m1[2])
+  xmax = max(m1[0],m1[2])
+  ymin = min(m1[1],m1[3])
+  ymax = max(m1[1],m1[3])
+  limits(xmin,xmax,ymin,ymax)
 
 #############################################################################
 def hidesurfaces():
