@@ -7,7 +7,7 @@ Two functions are available for saving the object in a file.
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.20 2003/09/05 19:05:37 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.21 2003/09/11 18:25:28 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -181,9 +181,19 @@ routines (such as ppxxp).
     if self.iz >= 0: return
     if self.zz+self.wz > w3d.zmminglobal+top.zbeam: return
     self.disable()
-    ff = PW.PW(self.name+'_ep.pdb')
-    if me == 0: ff.write(self.name+'@pickle',cPickle.dumps(self,0))
-    ff.close()
+    if me == 0:
+      ff = None
+      try:
+        ff = PWpyt.PW(self.name+'_ep.pyt')
+        dumpsmode = 1
+      except:
+        ff = PW.PW(self.name+'_ep.pdb')
+        dumpsmode = 0
+      if ff is None:
+         print "ExtPart: %s unable to dump data to file."%self.name
+         return
+      ff.write(self.name+'@pickle',cPickle.dumps(self,dumpsmode))
+      ff.close()
     self.nepmax = 1
     self.clear()
 
