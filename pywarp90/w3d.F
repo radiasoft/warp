@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.109 $, $Date: 2003/06/02 22:24:36 $
+c@(#) File W3D.M, version $Revision: 3.110 $, $Date: 2003/06/03 21:38:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -270,15 +270,12 @@ c  Setup arrays for potential and charge density for the particles.
 
       nxp = nx
       nyp = ny
-#ifdef MPIPARALLEL
-      call gchange("Fields3dParticles",0)
-#else
+#ifndef MPIPARALLEL
       nzp = nz
       zmminp = zmmin
       zmmaxp = zmmax
-      phip => phi
-      rhop => rho
 #endif
+      call setupFields3dParticles()
 
 c  Initialize base grid for RZ solver
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
@@ -3639,6 +3636,11 @@ c     --- change AMR grid if necessary
       if(solvergeom==RZgeom .or. solvergeom==XZgeom
      &                        .or. solvergeom==Zgeom) call change_loc_part()
 
+c     --- Ensure that the rhop array is setup properly
+      if(solvergeom==XYZgeom) then
+        call setupFields3dParticles()
+      endif
+
 c     --- set limits on loop over species
       if (is_i == -1) then
         is1 = 1
@@ -3715,10 +3717,24 @@ c=============================================================================
       use Fields3d
       use Fields3dParticles
 
+#ifndef MPIPARALLEL
+
+c     --- If rhop is not associated with rho, then copy the data.
+      if (.not. associated(rho,rhop)) then
+        if (nxp == nx .and. nyp == ny .and. nzp == nz) then
+          rho = rhop
+        else
+          call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+          call remark("ERROR!! rhop and rho are not the same shape!       ")
+          call remark("        The space charge will not be properly used!")
+          call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        endif
+      endif
+
+#else
+
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
-#ifdef MPIPARALLEL
-
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call getrhoforfieldsolverz(nx,nz,rho(0,0,0))
       else if(solvergeom==Zgeom) then
@@ -3730,6 +3746,52 @@ c  whose field solve region overlap its particle region.
       end if
 
 #endif
+
+      return
+      end
+c=============================================================================
+      subroutine setupFields3dParticles()
+      use InMesh3d
+      use Fields3d
+      use Fields3dParticles
+#ifdef MPIPARALLEL
+      use Parallel
+#endif
+
+c Ensures that the phip and rhop arrays are setup properly.
+
+      nxp = nx
+      nyp = ny
+#ifndef MPIPARALLEL
+      nzp = nz
+      zmminp = zmmin
+      zmmaxp = zmmax
+#else
+      nzp = nzpslave(my_index)
+      zmminp = zmminglobal + izpslave(my_index)*dz
+      zmmaxp = zmminp + nzp*dz
+#endif
+
+c     --- If either rhop of phip are not associated or either does not have
+c     --- the correct dimensions as given by nxp, etc, something 
+c     --- needs to be done for fix them.
+      if (.not. associated(rhop) .or. .not. associated(phip) .or.
+     &    ANY(ubound(phip) .ne. (/ nxp,nyp,nzp+1 /) ) .or.
+     &    ANY(ubound(rhop) .ne. (/ nxp,nyp,nzp   /) )) then
+
+c       --- Free whatever the rhop and phip arrays are now refering to.
+        call gfree('Fields3dParticles')
+
+        if (ALL( (/ nxp,nyp,nzp /) == (/ nx,ny,nzfull /) )) then
+c         --- If the sizes of rhop and rho, and phip and phi, are the same,
+c         --- then associate rhop with rho and phip with phi
+          rhop => rho
+          phip => phi
+        else
+c         --- If the sizes are not the same, then allocate the group
+          call gallot('Fields3dParticles',0)
+        endif
+      endif
 
       return
       end
@@ -8402,7 +8464,27 @@ c===========================================================================
       use Fields3d
       use Fields3dParticles
 
-#ifdef MPIPARALLEL
+c     --- Ensure that the phip array is setup properly
+      if(solvergeom==XYZgeom) then
+        call setupFields3dParticles()
+      endif
+
+#ifndef MPIPARALLEL
+
+c     --- If phip is not associated with phi, then copy the data.
+      if (.not. associated(phi,phip)) then
+        if (nxp == nx .and. nyp == ny .and. nzp == nz) then
+          phip = phi
+        else
+          call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+          call remark("ERROR!! phip and phi are not the same shape!        ")
+          call remark("        The self field will not be properly applied!")
+          call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        endif
+      endif
+
+#else
+
 c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
