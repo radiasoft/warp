@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.149 $, $Date: 2005/03/08 00:47:44 $
+c@(#) File TOP.F, version $Revision: 3.150 $, $Date: 2005/03/17 18:07:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4467,7 +4467,7 @@ c=============================================================================
       use Picglb
       use ExtPart
       use Timers
-      use Particles, only: wpid
+      use Particles, only: wpid,dtscale
       integer(ISZ):: np,itask,nplive,is,ns
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
@@ -4492,6 +4492,10 @@ c  When itask=1  zeros out all moments
 c       itask=2  sums moments from particles
 c       itask=3  divides by number of particles, calculates emittances and rms
 
+c  Note that the moments are scaled by the dtscale factor. This accounts for
+c  the fact that particles with larger dtscale would normally contribute more
+c  if nominal dt would be used since they would spend proportionately more
+c  time in any location.
 
       real(kind=8):: pp(0:17,np)
       integer(ISZ):: iz(np)
@@ -4508,6 +4512,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
       real(kind=8):: tg,th
       real(kind=8):: gamma
       real(kind=8):: timetemp,wtime
+      real(kind=8):: zmmntscopy(NUMZMMNT)
 #ifdef J90
       real(kind=8):: pmmnts(NUMZMMNT,np)
 #endif
@@ -4577,7 +4582,7 @@ c       --- set multiplier so lost particles don't contribute
             maxp(6,js) = max(maxp(6,js), gaminv(ip)*uzp(ip))
             minp(6,js) = min(minp(6,js), gaminv(ip)*uzp(ip))
 
-            pp(0,ip) = 1.
+            pp(0,ip) = dtscale(is)
             if (ifzmmnt == 1) then
               if ((zp(ip) - zbeam) < zmmntmin .or.
      &            (zp(ip) - zbeam) > zmmntmax) pp(0,ip) = 0.
@@ -4612,13 +4617,16 @@ c       endif
 
 c       --- Accumate global moments first.
 
+c       --- Used to add in dtscale factor below.
+        if (dtscale(is) /= 1.) zmmntscopy = zmmnts0(:,js)
+
 c-------------------------------------------------------------------------
 #ifdef J90
 c       --- This method is faster for vectorized machines, primarily the J90.
 c       --- put particle moments into pmmnts array for total moments
         do ip=1,np
-          vzi = 1./(uzp(ip)+SMALLPOS)
-          if (pp(0,ip) > 0.) then
+          if (pp(0,ip) /= 0.) then
+            vzi = 1./(uzp(ip)+SMALLPOS)
             pmmnts( 1,ip) = 1.
             pmmnts( 2,ip) = xp(ip)
             pmmnts( 3,ip) = yp(ip)
@@ -4657,7 +4665,7 @@ c       --- CRAY C90.  WARNING: if NUMZMMNT changes, this loop needs to be
 c       --- adjusted to reflect that change.  Note that the similar loops
 c       --- below are still faster in their present form.
         do ip=1,np
-          if (pp(0,ip) > 0.) then
+          if (pp(0,ip) /= 0.) then
 c           do im=1,NUMZMMNT
 c             zmmnts0(im) = zmmnts0(im) + pmmnts(ip,im)
 c           enddo
@@ -4698,8 +4706,8 @@ c-------------------------------------------------------------------------
 c       --- This method is faster for RISC and pentium machines.
 c       --- sum particle moments into total moments
         do ip=1,np
-          vzi = 1./(uzp(ip)+SMALLPOS)
-          if (pp(0,ip) > 0.) then
+          if (pp(0,ip) /= 0.) then
+            vzi = 1./(uzp(ip)+SMALLPOS)
             zmmnts0( 1,js) = zmmnts0( 1,js) + 1.
             zmmnts0( 2,js) = zmmnts0( 2,js) + xp(ip)
             zmmnts0( 3,js) = zmmnts0( 3,js) + yp(ip)
@@ -4734,6 +4742,10 @@ c       --- sum particle moments into total moments
 c-------------------------------------------------------------------------
 #endif
 
+c       --- Adds in dtscale factor efficiently. Somewhat kludgy though.
+        if (dtscale(is) /= 1.)
+     &    zmmnts0(:,js) = zmmntscopy + (zmmnts0(:,js) - zmmntscopy)*dtscale(is)
+
 
 c       --- Now, accumulate moments onto Z grid.
         if (ifzmmnt == 2) then
@@ -4752,33 +4764,39 @@ c         ---   grid point, are weighted less, hopefully helping smoothness.
 
 c         --- extrapolate to two nearest cells
           do ip=1,np
-            vzi = 1./(uzp(ip)*gaminv(ip)+SMALLPOS)
-            iz(ip)  = (zp(ip) - zbeam - zmmntmin)*dzmi*pp(0,ip)
-            dti = (iz(ip)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
-            dti = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dti))
-            pp(3,ip) = uxp(ip)*(1. + dti*oneondt) - uxpo(ip)*dti*oneondt
-            pp(7,ip) = uyp(ip)*(1. + dti*oneondt) - uypo(ip)*dti*oneondt
-            pp(11,ip) = uzp(ip)*(1. + dti*oneondt) - uzpo(ip)*dti*oneondt
-            pp(1,ip) = xp(ip) + uxp(ip)*dti*gaminv(ip)
-            pp(5,ip) = yp(ip) + uyp(ip)*dti*gaminv(ip)
-            pp(9,ip) = zp(ip) + uzp(ip)*dti*gaminv(ip)
-c           pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
+            if (pp(0,ip) /= 0.) then
+              vzi = 1./(uzp(ip)*gaminv(ip)+SMALLPOS)
+              iz(ip)  = (zp(ip) - zbeam - zmmntmin)*dzmi
+              dti = (iz(ip)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+              dti = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dti))
+              pp(3,ip) = uxp(ip)*(1. + dti*oneondt) - uxpo(ip)*dti*oneondt
+              pp(7,ip) = uyp(ip)*(1. + dti*oneondt) - uypo(ip)*dti*oneondt
+              pp(11,ip) = uzp(ip)*(1. + dti*oneondt) - uzpo(ip)*dti*oneondt
+              pp(1,ip) = xp(ip) + uxp(ip)*dti*gaminv(ip)
+              pp(5,ip) = yp(ip) + uyp(ip)*dti*gaminv(ip)
+              pp(9,ip) = zp(ip) + uzp(ip)*dti*gaminv(ip)
+c             pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
 
-            dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
-            dtip1 = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dtip1))
-            pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
-            pp(8,ip) = uyp(ip)*(1. + dtip1*oneondt) - uypo(ip)*dtip1*oneondt
-            pp(12,ip) = uzp(ip)*(1. + dtip1*oneondt) - uzpo(ip)*dtip1*oneondt
-            pp(2,ip) = xp(ip) + uxp(ip)*dtip1*gaminv(ip)
-            pp(6,ip) = yp(ip) + uyp(ip)*dtip1*gaminv(ip)
-            pp(10,ip) = zp(ip) + uzp(ip)*dtip1*gaminv(ip)
-c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
+              dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+              dtip1 = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dtip1))
+              pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
+              pp(8,ip) = uyp(ip)*(1. + dtip1*oneondt) - uypo(ip)*dtip1*oneondt
+              pp(12,ip) = uzp(ip)*(1. + dtip1*oneondt) - uzpo(ip)*dtip1*oneondt
+              pp(2,ip) = xp(ip) + uxp(ip)*dtip1*gaminv(ip)
+              pp(6,ip) = yp(ip) + uyp(ip)*dtip1*gaminv(ip)
+              pp(10,ip) = zp(ip) + uzp(ip)*dtip1*gaminv(ip)
+c             pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
 
-            pp(13,ip) = gaminv(ip)
-            pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*pp(0,ip)
-            pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*pp(0,ip)
-            pp(16,ip) = dti
-            pp(17,ip) = dtip1
+              pp(13,ip) = gaminv(ip)
+              pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*pp(0,ip)
+              pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*pp(0,ip)
+              pp(16,ip) = dti
+              pp(17,ip) = dtip1
+            else
+              iz(ip) = 0
+              pp(14,ip) = 0.
+              pp(15,ip) = 0.
+            endif
           enddo
 
 c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
@@ -4799,7 +4817,7 @@ c            endif
 
 c           do ip=1,np
 c             if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
-c    &            pp(0,ip) > 0.) then
+c    &            pp(0,ip) /= 0.) then
 c$OMP ATOMIC
 c               nep(iw,is) = nep(iw,is) + 1
 c               tep(nep(iw,is),iw,is) = pp(16,ip) + time
@@ -4811,7 +4829,7 @@ c               uzep(nep(iw,is),iw,is) = pp(11,ip)
 c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
 c             else if (iz(ip)+1 == izepwin(iw) .and.
 c    &                 nep(iw,is) < nepmax .and.
-c    &                 pp(0,ip) > 0.) then
+c    &                 pp(0,ip) /= 0.) then
 c$OMP ATOMIC
 c               nep(iw,is) = nep(iw,is) + 1
 c               tep(nep(iw,is),iw,is) = pp(17,ip) + time
@@ -5326,6 +5344,7 @@ c=============================================================================
       use Picglb
       use ExtPart
       use Timers
+      use Particles, only: dtscale
       integer(ISZ):: np,itask,nplive,is,ns
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
@@ -5350,6 +5369,10 @@ c  When itask=1  zeros out all moments
 c       itask=2  sums moments from particles
 c       itask=3  divides by number of particles, calculates emittances and rms
 
+c  Note that the moments are scaled by the dtscale factor. This accounts for
+c  the fact that particles with larger dtscale would normally contribute more
+c  if nominal dt would be used since they would spend proportionately more
+c  time in any location.
 
       real(kind=8):: pp(1:17,np)
       integer(ISZ):: iz(np)
@@ -5366,6 +5389,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
       real(kind=8):: tg(0:nszmmnt),th(0:nszmmnt)
       real(kind=8):: gamma
       real(kind=8):: timetemp,wtime
+      real(kind=8):: zmmntscopy(NUMZMMNT)
 #ifdef J90
       real(kind=8):: pmmnts(NUMZMMNT,np)
 #endif
@@ -5411,6 +5435,9 @@ c       --- Set maximum and minimum particle coordinate variables
         enddo
 
 c       --- Accumate global moments first.
+
+c       --- Used to add in dtscale factor below.
+        if (dtscale(is) /= 1.) zmmntscopy = zmmnts0(:,js)
 
 c-------------------------------------------------------------------------
 #ifdef J90
@@ -5534,6 +5561,10 @@ c       --- sum particle moments into total moments
 c-------------------------------------------------------------------------
 #endif
 
+c       --- Adds in dtscale factor efficiently. Somewhat kludgy though.
+        if (dtscale(is) /= 1.)
+     &    zmmnts0(:,js) = zmmntscopy + (zmmnts0(:,js) - zmmntscopy)*dtscale(is)
+
 
 c       --- Now, accumulate moments onto Z grid.
         if (ifzmmnt == 2) then
@@ -5573,8 +5604,10 @@ c           pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
 c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
 
             pp(13,ip) = gaminv(ip)
-            pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*wp(ip)
-            pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*wp(ip)
+            pp(14,ip) = (1. - (zp(ip)-zbeam-zmmntmin)*dzmi + iz(ip))*wp(ip)*
+     &                  dtscale(is)
+            pp(15,ip) = ((zp(ip) - zbeam - zmmntmin)*dzmi - iz(ip))*wp(ip)*
+     &                  dtscale(is)
             pp(16,ip) = dti
             pp(17,ip) = dtip1
           enddo

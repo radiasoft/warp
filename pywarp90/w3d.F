@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.192 $, $Date: 2005/03/08 00:47:44 $
+c@(#) File W3D.F, version $Revision: 3.193 $, $Date: 2005/03/17 18:07:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -297,7 +297,7 @@ c  Setup arrays for potential and charge density for the particles.
       zmminp = zmmin
       zmmaxp = zmmax
 #endif
-      call setupFields3dParticles()
+      call setupFields3dParticles(ns,ndts,it)
 
 c  Initialize base grid for RZ solver
       if(solvergeom==RZgeom .or.
@@ -380,13 +380,6 @@ c  use a user-set npmax directly)
 
       call alotpart
       call alotlostpart
-
-c  Setup rhoptmp
-      ldts = .true.
-      do is = 1, ns
-        if (ndts(is)>1) nsrhoptmp=nsrhoptmp+1
-      enddo
-      if (nsrhoptmp>0) call gchange("Fields3dParticles",0)
 
 c  Load the particles, calculate the charge density
 
@@ -1411,7 +1404,10 @@ c  Advance species according to subcycling rule governed by ndts.
             end if
           end if
         end if
-        fulldt_s    = dt*ndts(is)
+
+c Include the scaling factors in the time step size, both the one for
+c subcycling and step size scaling for steady-state and slice modes.
+        fulldt_s    = dt*ndts(is)*dtscale(is)
         halfdt_s    = 0.5*fulldt_s
 
 c If this species involves drift-kinetic interpolation, allocate
@@ -1799,12 +1795,12 @@ c         --- If only one species, then don't have separate species data.
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             if(wpid==0) then
               call setcurr(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
-     &                     gaminv(ipmin),sq(is),sw(is),is,zbeam,dzz,zzmin,
-     &                     ns,lspeciesmoments)
+     &                     gaminv(ipmin),sq(is),sw(is)*dtscale(is),is,
+     &                     zbeam,dzz,zzmin,ns,lspeciesmoments)
             else
               call setcurr_weights(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
      &                             pid(ipmin,wpid),gaminv(ipmin),
-     &                             sq(is),sw(is),is,zbeam,dzz,zzmin,
+     &                             sq(is),sw(is)*dtscale(is),is,zbeam,dzz,zzmin,
      &                             ns,lspeciesmoments)
             end if
           enddo
@@ -1865,8 +1861,9 @@ c  Loop over species
       do is=1,ns
 
 c  Advance species according to subcycling rule governed by ndts.
+c  Also include time step size scaling for steady-state and slice modes.
         if (mod(it,ndts(is))/=0) cycle
-        fulldt_s    = dt*ndts(is)
+        fulldt_s    = dt*ndts(is)*dtscale(is)
         halfdt_s    = 0.5*fulldt_s
 
          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
@@ -4638,15 +4635,16 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2
       integer(ISZ):: ip,ipmin,is
+      real(kind=8):: swtmp
       real(kind=8):: substarttime,wtime
-      real(kind=8),dimension(:,:,:),allocatable::rhopcopy
+      real(kind=8),dimension(:,:,:),pointer::rhopcopy
       integer(ISZ):: allocerror
 
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Ensure that the rhop array is setup properly
       if(solvergeom==XYZgeom) then
-        call setupFields3dParticles()
+        call setupFields3dParticles(ns,ndts,it)
       endif
 
 c     --- zero rhop if requested
@@ -4681,23 +4679,6 @@ c     --- (will be changed if necessary in the loop)
 c     --- loop over species
       do is=is1,is2
 
-c        --- deposit species according to subcycling rule governed by ndts.
-         if (ndts(is)>1) then
-           if (mod(it+1,ndts(is))==0) then
-              allocate(rhopcopy(0:nxp,0:nyp,0:nzp),stat=allocerror)
-              if (allocerror /= 0) then
-                print*,"loadrho3d: allocation error ",allocerror,
-     &                 ": could not allocate temp arrays to shape ",nxp,nyp,nzp
-                stop
-              endif
-              rhopcopy=rhop
-              rhop=0.
-           else
-              rhop=rhop+rhoptmp(:,:,:,jsrhoptmp(is-1))
-              cycle
-            end if
-         end if
-
 c        --- For the AMR/Chombo version, all of the lost particles must be
 c        --- cleared out.
          if (solvergeom == AMRgeom) call clearpart(is,1)
@@ -4706,53 +4687,77 @@ c        --- get loop limits for particles if needed
          if (ins_i == -1) ins_u = ins(is)
          if (nps_i == -1) nps_u = nps(is)
 
-c        --- loop over particle blocks
+c        --- Scale the weight, sw, by the time step scale size. This only
+c        --- makes sense for steady-state and slice modes. In time-dependent
+c        --- mode, it is assumed that dtscale has not been changed from 1.
+         swtmp = sw(is)*dtscale(is)
+
          if(solvergeom==XYZgeom) then
            ipmin = ins_u
            if (nps_u > 0) then
+             if (ndts(is)>1) then
+c              --- This code would be better if it were in setrho3d, but since
+c              --- rhop is passed into it, this must be done here.
+               if (mod(it+1,ndts(is))==0) then
+c                 --- If this species is being advanced this step, then
+c                 --- deposit its rho into rhoptmp.
+                  rhopcopy => rhop
+                  rhop => rhoptmp(:,:,:,jsrhoptmp(is-1))
+                  rhop = 0.
+               else
+c                 --- If this species is not being advanced this step, then
+c                 --- just add its saved rhoptmp into rhop.
+                  rhop = rhop + rhoptmp(:,:,:,jsrhoptmp(is-1))
+                  cycle
+                end if
+             end if
              call setrho3d(rhop,rhop,nps_u,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                     zgrid,uzp(ipmin),sq(is),sw(is),depos,
+     &                     zgrid,uzp(ipmin),sq(is),swtmp,depos,
      &                     nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
      &                     l2symtry,l4symtry)
+             if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
+c               --- If this species is being advanced this step, then restore
+c               --- rhop and copy its rho into rhop.
+                rhop => rhopcopy
+                rhop = rhop + rhoptmp(:,:,:,jsrhoptmp(is-1))
+             end if
            endif
          elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+c          --- loop over particle blocks
            do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
              ip = min(nparpgrp, ins_u+nps_u-ipmin)
              if(wpid==0) then
                call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ip,
-     &                          sq(is)*sw(is),nx,nz,dx,dz,xmmin,zgrid)
+     &                          sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
              else
                call rhoweightrz_weights(xp(ipmin),yp(ipmin),zp(ipmin),pid(ipmin,wpid),ip,
-     &                          sq(is)*sw(is),nx,nz,dx,dz,xmmin,zgrid)
+     &                          sq(is)*swtmp,nx,nz,dx,dz,xmmin,zgrid)
              end if
            enddo
          elseif(solvergeom==Zgeom) then
+c          --- loop over particle blocks
            do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
               ip = min(nparpgrp, ins_u+nps_u-ipmin)
-              call rhoweightz(zp(ipmin),ip,sq(is)*sw(is),nz,dz,zgrid)
+              call rhoweightz(zp(ipmin),ip,sq(is)*swtmp,nz,dz,zgrid)
            enddo
          elseif(solvergeom==Rgeom) then
+c          --- loop over particle blocks
            do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
               ip = min(nparpgrp, ins_u+nps_u-ipmin)
               if(wpid==0) then
-                call rhoweightr(xp(ipmin),yp(ipmin),ip,sq(is)*sw(is),nx,dx,xmmin)
+                call rhoweightr(xp(ipmin),yp(ipmin),ip,sq(is)*swtmp,nx,dx,xmmin)
               else
                 call rhoweightr_weights(xp(ipmin),yp(ipmin),pid(ipmin,wpid),ip,
-     &                                  sq(is)*sw(is),nx,dx,xmmin)
+     &                                  sq(is)*swtmp,nx,dx,xmmin)
               end if
            enddo
          elseif(solvergeom==AMRgeom) then
+c          --- loop over particle blocks
            do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
               ip = min(nparpgrp, ins_u+nps_u-ipmin)
               call cho_setrho3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                          sq(is),sw(is),is,(ipmin-ins(is))/nparpgrp)
+     &                          sq(is),swtmp,is,(ipmin-ins(is))/nparpgrp)
            enddo
-         end if
-c        --- deposit species according to subcycling rule governed by ndts.
-         if (ndts(is)>1 .and. mod(it+1,ndts(is))==0) then
-            rhoptmp(:,:,:,jsrhoptmp(is-1))=rhop
-            rhop = rhop+rhopcopy
-            deallocate(rhopcopy)
          end if
       enddo
 
@@ -4845,7 +4850,7 @@ c=============================================================================
       return
       end
 c=============================================================================
-      subroutine setupFields3dParticles()
+      subroutine setupFields3dParticles(ns,ndts,it)
       use Picglb3d
       use InMesh3d
       use Fields3d
@@ -4854,7 +4859,13 @@ c=============================================================================
       use Parallel
 #endif
 
+      integer(ISZ):: ns,ndts(0:ns-1),it
+
 c Ensures that the phip and rhop arrays are setup properly.
+c Also, setup rhoptmp for the case when species have different time step sizes.
+
+      integer(ISZ):: js,i,oldnsndts
+      integer(ISZ),allocatable:: lirhoptmp(:)
 
       nxp = nx
       nyp = ny
@@ -4888,6 +4899,73 @@ c         --- If the sizes are not the same, then allocate the group
           call gallot('Fields3dParticles',0)
         endif
       endif
+
+c     --- Setup rhoptmp
+
+c     --- First, count how many species take larger time steps and increase
+c     --- the size of the arrays appropriately.
+      oldnsndts = nsndts
+      nsndts = 0
+      do js = 0, ns-1
+        if (ndts(js) > 1) nsndts = nsndts + 1
+      enddo
+
+      if (nsndts > 0) then
+
+c       --- Set local copy of the number of species, used to size jsrhoptmp
+        nsrhoptmp = ns
+
+c       --- Only change size if it has increased. If it is decreased, do the
+c       --- gchange afterward so that data that may still be needed at the end
+c       --- of the array is not thrown away.
+        if (nsndts > oldnsndts) call gchange("Fields3dParticles",0)
+
+c       --- Now set the species index into the rhoptmp array's last dimension.
+c       --- Clear out any that have have ndts set back to 1 and find which
+c       --- indices are already taken. If ndts is changed and a value is
+c       --- changed from or to 1, the species that already have ndts > 1
+c       --- must keep the existing data in rhoptmp. This code fills in any
+c       --- empty spaces with new species or ones at the end of the list.
+c       --- The lirhoptmp array flags which indices have already been claimed.
+c       --- Also, jsrhoptmp defaults to -1 for species which have ndts == 1.
+        allocate(lirhoptmp(0:nsndts-1))
+        lirhoptmp = 0
+        do js = 0, ns-1
+          if (ndts(js) == 1) jsrhoptmp(js) = -1
+          if (ndts(js) > 0 .and. jsrhoptmp(js) >= 0)
+     &       lirhoptmp(jsrhoptmp(js)) = 1
+        enddo
+
+        i = 0
+        do js = 0, ns-1
+          if (ndts(js) > 1) then
+c           --- If ndts is now set, or if this species index falls beyond the
+c           --- new size of the array, find a spot for it.
+            if (jsrhoptmp(js) == -1 .or. jsrhoptmp(js) >= nsndts) then
+c             --- Find the next available index
+              do while (lirhoptmp(i) == 1)
+                i = i + 1
+              enddo
+c             --- If the species was beyond the end of the array, copy the
+c             --- data into the new place, unless it will be recalculated
+c             --- anyway this step.
+              if (jsrhoptmp(js) >= nsndts .and. mod(it+1,ndts(js)) /= 0) then
+                rhoptmp(:,:,:,i) = rhoptmp(:,:,:,jsrhoptmp(js))
+              endif
+c             --- Finally, do the assignment
+              jsrhoptmp(js) = i
+              lirhoptmp(i) = 1
+            endif
+          endif
+        enddo
+        deallocate(lirhoptmp)
+      endif
+
+c     --- If the new size is smaller, the change can now be done since the
+c     --- data that needed to be saved is copied to its new place.
+c     --- Note that this is done outside the if-block above to catch the case
+c     --- when nsndts==0 and oldnsndts>0.
+      if (nsndts < oldnsndts) call gchange("Fields3dParticles",0)
 
       return
       end
@@ -6052,7 +6130,9 @@ c===========================================================================
 
 c     --- Ensure that the phip array is setup properly
       if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
-        call setupFields3dParticles()
+c       --- zeros are passed in since the arguments are only needed for
+c       --- setting up rhoptmp.
+        call setupFields3dParticles(0,0,0)
       endif
 
 #ifndef MPIPARALLEL

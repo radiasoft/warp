@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.23 $, $Date: 2005/03/08 00:50:50 $
+c@(#) File w3d_injection.F, version $Revision: 1.24 $, $Date: 2005/03/17 18:07:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -144,7 +144,7 @@ c         --- loop over injection sources
 c         --- Loop over species.
           do is=1,ns
             if (mod(it,ndts(is))/=0) cycle
-            fulldt_s    = dt*ndts(is)
+            fulldt_s    = dt*ndts(is)*dtscale(is)
 
             rnn = rnpinje_s(is)*finject(ij,is)
 c                 --- Add a random number to the number of particles injected
@@ -389,7 +389,7 @@ c level of rest of particles.
 c         loop over species and injection sources
           do is=1,ns
             if (mod(it,ndts(is))/=0) cycle
-            fulldt_s    = dt*ndts(is)
+            fulldt_s    = dt*ndts(is)*dtscale(is)
 
             ipmin = ins(is)
             nn = 0
@@ -561,7 +561,7 @@ c           --- need to be loaded in each of the four quadrants.
 
 c             --- Don't bother doing anything if finject is 0.
               if (mod(it,ndts(is))/=0 .or. finject(ij,is) == 0.) cycle
-              fulldt_s    = dt*ndts(is)
+              fulldt_s    = dt*ndts(is)*dtscale(is)
 
 c             --- The factor to convert current density to particle number.
 c             --- The absolute value is taken of sq so the factor is always
@@ -977,7 +977,7 @@ c         --- size, uniformly distributed between 0 and dt.
           do is=1,ns
 c           --- Skip this if no particles of this species were injected.
             if (mod(it,ndts(is))/=0) cycle
-            fulldt_s    = dt*ndts(is)
+            fulldt_s    = dt*ndts(is)*dtscale(is)
             if(npinje_s(is)==0) cycle
 
 c           --- Make sure that there is enough room in the temporary arrays.
@@ -1053,7 +1053,7 @@ c level of rest of particles.
 c         --- loop over species
           do is=1,ns
             if (mod(it,ndts(is))/=0) cycle
-            fulldt_s    = dt*ndts(is)
+            fulldt_s    = dt*ndts(is)*dtscale(is)
 
 #ifndef MPIPARALLEL
 c           --- Skip this if no particles of this species were injected.
@@ -1204,7 +1204,7 @@ c         --- Loop over injection sources
 c           --- loop over species
             do is=1,ns
               if (mod(it,ndts(is))/=0) cycle
-              fulldt_s    = dt*ndts(is)
+              fulldt_s    = dt*ndts(is)*dtscale(is)
               nti = 0
               qoverm = sq(is)/sm(is)
 
