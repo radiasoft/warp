@@ -15,7 +15,7 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.17 2001/11/16 17:40:24 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.18 2001/12/06 00:39:20 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -167,12 +167,30 @@ def getnextfilename(root,suffix):
 # --- Prints out the documentation of the subroutine or variable.
 def doc(f):
   if type(f) == type(''):
+    # --- Check if it is a WARP variable
     try:
       listvar(f)
+      return
     except NameError:
-      print eval(f+'.__doc__',__main__.__dict__)
-  else:
+      pass
+    # --- Check if it is a module name
+    try:
+      exec(f+'doc()',__main__.__dict__)
+      return
+    except:
+      pass
+    # --- Try to get the actual value of the object
+    try:
+      f = eval(f)
+    except:
+      print "Name not found"
+  # --- Check if it has a doc string
+  try:
     print f.__doc__
+    return
+  except:
+    pass
+  print "No documentation found"
 
 ##############################################################################
 # Python version of the dump routine. This uses the varlist command to
