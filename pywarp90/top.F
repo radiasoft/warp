@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.136 $, $Date: 2004/11/30 01:10:34 $
+c@(#) File TOP.F, version $Revision: 3.137 $, $Date: 2004/12/17 19:05:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6573,6 +6573,10 @@ c     --- Now, copy data into arrays
       uzp(i1:i2) = vz(1:n1)
       gaminv(i1:i2) = gi(1:n1)
       if (nnpid > 0) pid(i1:i2,1:nnpid) = ppid(1:n1,:)
+      if (spid > 0) then
+        pid(i1:i2,spid) = (/(ssn+i,i=0,n1-1)/)
+        ssn = ssn + n1
+      end if
       nps(is) = nps(is) + n1
 
       return
@@ -7962,6 +7966,10 @@ c           conductor generate new particles.
             xp(i1+ir-1) = xplost(ip)+shiftx+(wranf()-0.5)*deltax
             yp(i1+ir-1) = yplost(ip)+shifty+(wranf()-0.5)*deltay
             zp(i1+ir-1) = zplost(ip)+shiftz+(wranf()-0.5)*deltaz
+            if(spid>0) then
+              pid(i1+ir-1,spid) = ssn
+              ssn=ssn+1
+            end if
           end do
           uxp(i1:i2) = (wranf()-0.5)*uz_tmp
           uyp(i1:i2) = (wranf()-0.5)*uz_tmp
