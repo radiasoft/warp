@@ -393,6 +393,8 @@ class WarpRun(wxFrame):
 
     def __init__(self, parent):
         self._init_ctrls(parent)
+
+    def init(self):
         self.FileName = None
         #EVT_UPDATE_UI(,self.mnuPackageUpdate)
         self.mnuPackageUpdate()
