@@ -5,7 +5,7 @@
 HDF basic writer class PW by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWpyt.py,v 1.4 2003/10/13 17:26:53 dave Exp $
+$Id: PWpyt.py,v 1.5 2003/10/29 22:27:12 dave Exp $
 """
 import tables
 import cPickle
@@ -192,7 +192,7 @@ class PW:
             raise "Array must not have a dimension of length zero"
           h.createArray(self.inquire_group(),name,quantity)
         else:
-          h.createArray(self.inquire_group(),name,cPickel.dumps(quantity,bin=1),"Pickled")
+          h.createArray(self.inquire_group(),name,cPickle.dumps(quantity,bin=1),"Pickled")
 
     def defent(self, name, quantity, indx):
         """Define entry for quantity in file as 'name'"""
