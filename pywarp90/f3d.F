@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.7 $, $Date: 2001/06/19 01:05:09 $
+c@(#) File F3D.M, version $Revision: 3.8 $, $Date: 2001/08/03 00:20:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5961,6 +5961,7 @@ c===========================================================================
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       character(*) rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
@@ -6016,6 +6017,14 @@ c Output is put directly into the conductor arrays of PSOR3d.
       real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
       real(kind=8):: max_dxdy,dxi,dyi,dzi
       real(kind=8):: srfrv_f
+
+      if(solvergeom==RZgeom) then
+        call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,
+     &                  xmin,xmax,lshell,
+     &                  zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                  ix_axis,xmesh)
+        return
+      end if
 
       dxpsor = dx
       rmaxsq = rmax*rmax
@@ -6828,6 +6837,7 @@ c===========================================================================
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       character(*) rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
@@ -6886,6 +6896,14 @@ c Output is put directly into the conductor arrays of PSOR3d.
       real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
       real(kind=8):: max_dxdy,dxi,dyi,dzi
       real(kind=8):: srfrv_f
+
+      if(solvergeom==RZgeom) then
+        call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,
+     &                    lzend,xmin,xmax,lshell,
+     &                    zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                    ix_axis,xmesh)
+        return
+      end if
 
       dxpsor = dx
       max_dxdy = max(dx,dy)
@@ -7331,3 +7349,787 @@ c       --- Get r(z) from the basis function.
       return
       end
 c=======================================================================
+c===========================================================================
+      subroutine srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,
+     &                    xmin,xmax,lshell,
+     &                    zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                    ix_axis,xmesh,ndz)
+      use PSOR3d
+      implicit none
+      character(*) rofzfunc
+      real(kind=8):: volt,zmin,zmax,xcent,rmax
+      logical(ISZ):: lfill,lshell
+      real(kind=8):: xmin,xmax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dz
+      integer(ISZ):: nx,nz,ix_axis,ndz
+      real(kind=8):: xmesh(0:nx)
+
+c same as srfrvout for RZ geometry
+
+c Sets up a conductor represented by the outside of a surface of revolution.
+c The Basis routine rofzfunc should be of the form
+c    function rofz
+c      $z = srfrv_z
+c      $r = f($z)
+c      srfrv_r = $z
+c    endf
+c where f() is the radius as a function of z and srfrv_z and srfrv_r are
+c compiled variables which pass data into and out of rofz.
+c The begining of the calling sequence would then be
+c call srfrvout("rofz",...)
+c
+c Input:
+c   rofzfunc  is the name of the basis routine which calculates the radius as a
+c             function of z.
+c   volt      is the voltage on the conductor.
+c   zmin      is the minimum z of the conductor.
+c   zmax      is the maximum z of the conductor.
+c   xcent     is the x center of the conductor.
+c   ycent     is the y center of the conductor.
+c   rmax      is the maximum radius of the conductor.
+c   lfill     is the logical requesting that the whole conductor be filled
+c             with points.
+c   lshell    is the logical requesting that the shell be subgrid resolved
+c   xmin,xmax,ymin,ymax
+c             min and max transverse extent of conductor.
+c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+c   xmesh,ymesh,l2symtry,l4symtry
+c            are all variables describing the grid.
+c Output is put directly into the conductor arrays of PSOR3d.
+
+
+      integer(ISZ):: ix,iy,iz,i
+      real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
+      real(kind=8):: rmaxsq,zgmin,zgmax,r_zmin,r_zmax
+      real(kind=8):: rrrlower,rrrhigher,zlower,zhigher
+      real(kind=8):: xxmin,xxmax,yymin,yymax
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: jxmin,jxmax,jymin,jymax
+      integer(ISZ):: izbmin,izbmax,iterrf
+      real(kind=8):: x(2),f(2)
+      real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
+      real(kind=8):: delmz0,delpz0
+      real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
+      real(kind=8):: max_dxdy,dxi,dyi,dzi
+      real(kind=8):: srfrv_f
+
+      integer(ISZ) :: idz
+      real(kind=8):: rrr_tmp
+
+      dxpsor = dx
+      rmaxsq = rmax*rmax
+      max_dxdy = dx
+      dxi = 1./dx
+      dzi = 1./dz
+
+c Set fuzz which is used to avoid problems with roundoff.
+      fuzz = 1.e-10
+      xfuzz = dx*fuzz
+      rfuzz = xfuzz
+      zfuzz = dz*fuzz
+
+c Find maximal transverse extent of the conductors with an additional grid
+c cell added to allow subgrid-scale resolution at the edge.
+      jxmin = int(max(xmin*dxi,(-rmax+xcent)*dxi)) + ix_axis - 1
+      jxmax = int(min(xmax*dxi,(+rmax+xcent)*dxi)) + ix_axis + 1
+
+c Set limits for transverse loops based on the transverse boundary conditions
+c and the symmetry.
+      ixmin = max(0   ,jxmin)
+      ixmax = min(nx  ,jxmax)
+
+c Calculate bounding box relative to center of surface of revolution.
+      xxmin = xmin - xcent
+      xxmax = xmax - xcent
+
+c Set limits for longitudinal loops based on boundary conditions.  If
+c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
+      izbmin = 0
+      izbmax = nz
+
+c Set limits for longitudinal loops.  They are set so that the minimum
+c end is rounded up and maximum end is rounded down, ensuring that iz is
+c within the conductor.
+      zgmin = zmmin + zbeam
+      zgmax = zmmax + zbeam
+      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
+      izmax =    int((zmax-zgmin)*dzi+zfuzz)
+
+c Perform error checking, to make sure that izmin and izmax are within the
+c grid.  If after the check, izmax < izmin, the conductor is completely off
+c of the grid, so return.
+      izmin = max(izbmin,izmin)
+      izmax = min(izbmax,izmax)
+      if (izmax < izmin) then
+        call remark("WARNING:srfrvout: conductor is completely off the grid.")
+        return
+      endif
+
+c Set conductor points.  If lfill or at end, set all points outside radius.
+      do iz=izmin,izmax
+        zz = iz*dz+zgmin
+        zlower = max(zz-dz,zmin)
+        zhigher = min(zz+dz,zmax)
+c       --- Make sure there is enough room in the arrays.
+        if (ncond + (1+nx) > ncondmax) then
+          ncondmax = ncond + (1+nx)
+          call gchange("PSOR3d",0)
+        endif
+c       --- Calculate the surface radius at iz.
+        rrr = srfrv_f(zz,rofzfunc,0)
+        rrrsq = rrr*rrr
+c       --- Calculate the maximum radius to be filled.
+c       --- If not filling the whole conductor, set rrrmax large enough so
+c       --- that enough conductor is filled to match neighboring points in iz.
+        if (lfill .or. (lshell .and. (iz == izmin .or. iz == izmax))) then
+          rrrmax = rmax
+        else
+          rrrmax = max((rrr+max_dxdy),
+     &              (srfrv_f(zlower,rofzfunc,0)+max_dxdy),
+     &              (srfrv_f(zhigher,rofzfunc,0)+max_dxdy))
+        endif
+c       --- Loop over transverse plane.
+        do ix=ixmin,ixmax
+            xx = (ix-ix_axis)*dx-xcent
+            rad = xx
+
+c           --- The points selected must meet a number of conditions.
+c           --- > The radius must be between the surface radius and rmax.
+c           --- > The position must be within the min/max transverse extent
+c           --- > of the conductor.
+c           --- The points selected must also meet one of the following.
+c           --- > A radius less than rrrmax.
+c           --- > A radius within one grid cell of rmax.
+c           --- > A position within a grid cell of the transverse bounds.
+c           --- The last two conditions put an optional shell around an
+c           --- unfilled conductor.
+            if ((rrr-rfuzz <= rad .and. rad <= rmax+rfuzz .and.
+     &           xxmin <= xx .and. xx <= xxmax) .and.
+     &          (rad <= rrrmax .or.
+     &           (lshell .and. (rmax-rad < max_dxdy .or.
+     &                          xx-xxmin < max_dxdy .or.
+     &                          xxmax-xx < max_dxdy )))) then
+              ncond = ncond + 1
+              ixcond(ncond) = ix
+              izcond(ncond) = iz
+              condvolt(ncond) = volt
+            endif
+        enddo
+      enddo
+c End of conductor points section
+
+c Set subgrid scale arrays
+      if (lcndbndy) then
+
+c       --- Calculate r at zmin and zmax.
+        r_zmin = srfrv_f(zmin,rofzfunc,0)
+        r_zmax = srfrv_f(zmax,rofzfunc,0)
+
+c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
+c       --- to include the plane just outside the conductor.
+        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
+        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
+
+c       -- Set all points along and just outside conductor.
+        do iz=izmin,izmax
+          zz = iz*dz+zgmin
+          zlower = max(zz-dz,zmin)
+          zhigher = min(zz+dz,zmax)
+
+          if (necndbdy + (1+nx) > ncndmax .or.
+     &        nocndbdy + (1+nx) > ncndmax) then
+            ncndmax = max(necndbdy,nocndbdy) + (1+nx)
+            call gchange("PSOR3d",0)
+          endif
+
+c         --- Calculate radius of the surface.
+c         --- When zz is outside the conductor, get radius at end of
+c         --- conductor.  rrrsq is used to chose which grid points may
+c         --- be within the subgrid-scale region.  rrrsq1 is used in the
+c         --- calculation of the transverse distances.  When zz is
+c         --- outside the conductor, only points within the radius rmax
+c         --- (when lshell is true) or r_zmin or r_zmax (otherwise) are
+c         --- desired, but the radius used in the calculation is set to
+c         --- be large so that transverse subgrid resolution will not be done.
+          if (zz < zmin-zfuzz) then
+            rrr = r_zmin
+            if (lshell) then
+              rrrsq = rmax*rmax
+            else
+              rrrsq = rrr*rrr
+            endif
+            rrrsq1 = LARGEPOS
+          elseif (zz > zmax+zfuzz) then
+            rrr = r_zmax
+            if (lshell) then
+              rrrsq = rmax*rmax
+            else
+              rrrsq = rrr*rrr
+            endif
+            rrrsq1 = LARGEPOS
+          else
+            rrr = srfrv_f(zz,rofzfunc,0)
+            rrrsq = rrr*rrr
+            rrrsq1 = rrrsq
+          endif
+
+c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
+c         --- in most cases, assuming that the conductor is far away in z.
+c         --- When zz > zmax, the delmz0 is set to the distance
+c         --- between the z plane and the end of the conductor.
+c         --- When zz < zmin, rrrlower is set to rrr so Regula-Falsi
+c         --- iteration is not done.
+          rrr_tmp=srfrv_f(zz,rofzfunc,0)
+          do idz=1,ndz
+            zlower = max(zz-idz*(dz/ndz),zmin)
+            rrrlower = srfrv_f(zlower,rofzfunc,0)
+            if(rrrlower/=rrr_tmp) exit
+          end do
+          delmz0 = 2.
+          if (zz < zmin) then
+            rrrlower = rrr
+          elseif (zz > zmax) then
+            delmz0 = (zz - zmax)*dzi
+          endif
+
+c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
+c         --- in most cases, assuming that the conductor is far away in z.
+c         --- When zz < zmin, the delmp0 is set to the distance
+c         --- between the z plane and the end of the conductor.
+c         --- When zz > zmax, rrrhigher is set to rrr so Regula-Falsi
+c         --- iteration is not done.
+          rrr_tmp=srfrv_f(zz,rofzfunc,0)
+          do idz=1,ndz
+            zhigher = max(zz+idz*(dz/ndz),zmin)
+            rrrhigher = srfrv_f(zhigher,rofzfunc,0)
+            if(rrrlower/=rrr_tmp) exit
+          end do
+          delpz0 = 2.
+          if (zz > zmax) then
+            rrrhigher = rrr
+          elseif (zz < zmin) then
+            delpz0 = (zmin - zz)*dzi
+          endif
+
+c         --- Find minimum of rrr and radius of surface at nearby z points.
+          rrrmin = min(rrr-max_dxdy,rrrlower,rrrhigher)
+
+          do ix=ixmin,ixmax
+              xx = (ix-ix_axis)*dx-xcent
+              rad = xx
+
+c             --- Calculate distances in z first.  Select points which
+c             --- are transversely near the surface of revolution and
+c             --- are within the bounding box.
+
+c             --- Calculate distance to conductor at lower z.
+              delmz = delmz0
+
+c             --- If grid location is between rrr and rrrlower and between
+c             --- rmax and rrrlower, find intersection point.  The zfuzz
+c             --- ensures that a distance of zero is not calculated.
+              if (rrrlower+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
+     &            .and. delmz > zfuzz*dzi .and.
+     &          xxmin <= xx .and. xx <= xxmax) then
+c               --- Regula-Falsi iteration is used to find distance in z
+c               --- to the surface.
+                x(1) = min(zz,zmax)
+                f(1) = rrr - rad
+                x(2) = zlower
+                f(2) = rrrlower - rad
+                iterrf = 0
+                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
+                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  iterrf = iterrf + 1
+                end do
+                delmz = (zz - x(i))*dzi
+              elseif (rad < rrrlower+rfuzz .or.
+     &                rad > min(rrr,rmax)-rfuzz) then
+                delmz = 3.
+              endif
+
+c             --- Calculate distance to conductor at higher z.
+              delpz = delpz0
+
+c             --- If grid location is between rrr and rrrhigher and between
+c             --- rmax and rrrhigher, find intersection point.  The zfuzz
+c             --- ensures that a distance of zero is not calculated.
+              if (rrrhigher+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
+     &            .and. delpz > zfuzz*dzi .and.
+     &          xxmin <= xx .and. xx <= xxmax) then
+c               --- Regula-Falsi iteration is used to find distance in z
+c               --- to the surface.
+                x(1) = max(zz,zmin)
+                f(1) = rrr - rad
+                x(2) = zhigher
+                f(2) = rrrhigher - rad
+                iterrf = 0
+                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
+                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  iterrf = iterrf + 1
+                end do
+                delpz = (x(i) - zz)*dzi
+              elseif (rad < rrrhigher+rfuzz .or.
+     &                rad > min(rrr,rmax)-rfuzz) then
+                delpz = 3.
+              endif
+
+c             --- Now calculate transverse distances.
+              delmx = 2.
+              delpx = 2.
+
+c             --- Calculate distances to surface of revolution.
+              if (rrrmin+rfuzz < rad .and. rad <= min(rrr,rmax)+rfuzz) then
+c               --- Note that for z slices outside the conductor, rrrsq1 is a
+c               --- large number, so all transverse distance all also large.
+                delmx = (sqrt(max(0.,rrrsq1)) + xx)*dxi
+                delpx = (sqrt(max(0.,rrrsq1)) - xx)*dxi
+              endif
+
+c             --- If requested, select points on shell around rmax and
+c             --- bounding box.
+              if (lshell .and. zmin-zfuzz <= zz .and. zz <= zmax+zfuzz) then
+c               --- Select grid points within 1 grid cell of rmax.
+                if (rmax+rfuzz < rad .and. rad < rmax+max_dxdy-rfuzz) then
+                  delmx = ( xx - sqrt(max(0.,rmaxsq)))*dxi
+                  delpx = (-xx - sqrt(max(0.,rmaxsq)))*dxi
+                endif
+c               --- Select points within 1 grid cell outside of bounding box
+c               --- which are also within rrr and rmax.
+                if (rrr-rfuzz <= rad .and. rad <= rmax+rfuzz) then
+                  if (xx < xxmin) delpx = (xxmin-xx)*dxi
+                  if (xx > xxmax) delmx = (xx-xxmax)*dxi
+                endif
+              endif
+c             --- Now, ensure that the point on the surface from which the
+c             --- distance was calculated is within the bounding box.
+              if (xx-delmx*dx < xxmin) delmx = 2.
+              if (xx+delpx*dx > xxmax) delpx = 2.
+
+c             --- Make sure that distances are greater than zero.
+              if (delmx < fuzz) delmx = 2.
+              if (delpx < fuzz) delpx = 2.
+              if (delmz < fuzz) delmz = 2.
+              if (delpz < fuzz) delpz = 2.
+
+c             -- Check if any of the distances are less than 1.
+              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
+     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
+                if (mod(ix+iz+zparity,2) == 0) then
+c                 --- even
+                  necndbdy = necndbdy + 1
+                  iecndx(necndbdy) = ix
+                  iecndz(necndbdy) = iz
+                  ecdelmx(necndbdy) = delmx
+                  ecdelmz(necndbdy) = delmz
+                  ecdelpx(necndbdy) = delpx
+                  ecdelpz(necndbdy) = delpz
+                  ecvolt(necndbdy) = volt
+                else
+c                 --- odd
+                  nocndbdy = nocndbdy + 1
+                  iocndx(nocndbdy) = ix
+                  iocndz(nocndbdy) = iz
+                  ocdelmx(nocndbdy) = delmx
+                  ocdelmz(nocndbdy) = delmz
+                  ocdelpx(nocndbdy) = delpx
+                  ocdelpz(nocndbdy) = delpz
+                  ocvolt(nocndbdy) = volt
+                endif
+              endif
+          enddo
+        enddo
+      endif
+
+      return
+      end
+c========================================================================
+
+c===========================================================================
+      subroutine srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,
+     &                      lzend,xmin,xmax,lshell,
+     &                      zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                      ix_axis,xmesh)
+      use PSOR3d
+      character(*) rminofz,rmaxofz
+      real(kind=8):: volt,zmin,zmax,xcent
+      logical(ISZ):: lzend,lshell
+      real(kind=8):: xmin,xmax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dz
+      integer(ISZ):: nx,nz,ix_axis
+      real(kind=8):: xmesh(0:nx)
+
+c same as srfrvinout for RZ geometry
+
+c Sets up a conductor represented by the outside of a surface of revolution.
+c The Basis routines rminofz and rmaxofz should be of the form
+c    function rofz
+c      $z = srfrv_z
+c      $r = f($z)
+c      srfrv_r = $z
+c    endf
+c where f() is the radius as a function of z and srfrv_z and srfrv_r are
+c compiled variables which pass data into and out of rofz.
+c The begining of the calling sequence would then be
+c call srfrvout("rofz",...)
+c
+c Input:
+c   rminofz   is the name of the basis routine which calculates the radius as a
+c             function of z.
+c   rmaxofz   (same)
+c   volt      is the voltage on the conductor.
+c   zmin      is the minimum z of the conductor.
+c   zmax      is the maximum z of the conductor.
+c   xcent     is the x center of the conductor.
+c   ycent     is the y center of the conductor.
+c   lzend     is the logical requesting that the end of the conductor be
+c             included
+c   lshell    is the logical requesting that the shell be subgrid resolved
+c   xmin,xmax,ymin,ymax
+c             min and max transverse extent of conductor.
+c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+c   xmesh,ymesh,l2symtry,l4symtry
+c            are all variables describing the grid.
+c Output is put directly into the conductor arrays of PSOR3d.
+
+
+      integer(ISZ):: ix,iz,i
+      real(kind=8):: rad,rrrmax,rrrmin,rmin,rmax
+      real(kind=8):: zgmin,zgmax
+      real(kind=8):: rmin_zmin,rmin_zmax
+      real(kind=8):: rmax_zmin,rmax_zmax
+      real(kind=8):: rrrminlower,rrrminhigher,rrrmaxlower,rrrmaxhigher
+      real(kind=8):: zlower,zhigher
+      real(kind=8):: xxmin,xxmax
+      integer(ISZ):: ixmin,ixmax,izmin,izmax
+      integer(ISZ):: jxmin,jxmax
+      integer(ISZ):: izbmin,izbmax,iterrf
+      real(kind=8):: x(2),f(2)
+      real(kind=8):: fuzz,xfuzz,rfuzz,zfuzz,xx,zz
+      real(kind=8):: delmz0,delpz0
+      real(kind=8):: delmx,delmz,delpx,delpz
+      real(kind=8):: max_dxdy,dxi,dzi
+      real(kind=8):: srfrv_f
+
+      dxpsor = dx
+      max_dxdy = dx
+      dxi = 1./dx
+      dzi = 1./dz
+
+c Set fuzz which is used to avoid problems with roundoff.
+      fuzz = 1.e-10
+      xfuzz = dx*fuzz
+      rfuzz = xfuzz
+      zfuzz = dz*fuzz
+
+c Find maximal transverse extent of the conductors with an additional grid
+c cell added to allow subgrid-scale resolution at the edge.
+      jxmin = 0
+      jxmax = nx
+
+c Set limits for transverse loops based on the transverse boundary conditions
+c and the symmetry.
+      ixmin = max(0   ,jxmin)
+      ixmax = min(nx  ,jxmax)
+
+c Calculate bounding box relative to center of surface of revolution.
+      xxmin = xmin - xcent
+      xxmax = xmax - xcent
+
+c Set limits for longitudinal loops based on boundary conditions.  If
+c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
+      izbmin = 0
+      izbmax = nz
+
+c Set limits for longitudinal loops.  They are set so that the minimum
+c end is rounded up and maximum end is rounded down, ensuring that iz is
+c within the conductor.
+      zgmin = zmmin + zbeam
+      zgmax = zmmax + zbeam
+      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
+      izmax =    int((zmax-zgmin)*dzi+zfuzz)
+
+c Perform error checking, to make sure that izmin and izmax are within the
+c grid.  If after the check, izmax < izmin, the conductor is completely off
+c of the grid, so return.
+      izmin = max(izbmin,izmin)
+      izmax = min(izbmax,izmax)
+      if (izmax < izmin) then
+        call remark("WARNING:srfrvout: conductor is completely off the grid.")
+        return
+      endif
+
+c Set conductor points.
+      do iz=izmin,izmax
+        zz = iz*dz+zgmin
+        zlower = max(zz-dz,zmin)
+        zhigher = min(zz+dz,zmax)
+c       --- Make sure there is enough room in the arrays.
+        if (ncond + (1+nx) > ncondmax) then
+          ncondmax = ncond + (1+nx)
+          call gchange("PSOR3d",0)
+        endif
+c       --- Calculate the surface radius at iz.
+        rrrmin = srfrv_f(zz,rminofz,1)
+        rrrmax = srfrv_f(zz,rmaxofz,2)
+c       --- Loop over transverse plane.
+        do ix=ixmin,ixmax
+            xx = (ix-ix_axis)*dx-xcent
+            rad = xx
+
+c           --- The position must be within the min/max transverse extent
+c           --- of the conductor.
+            if ((rrrmin-rfuzz <= rad .and. rad <= rrrmax+rfuzz .and.
+     &           xxmin <= xx .and. xx <= xxmax)) then
+              ncond = ncond + 1
+              ixcond(ncond) = ix
+              izcond(ncond) = iz
+              condvolt(ncond) = volt
+            endif
+        enddo
+      enddo
+c End of conductor points section
+
+c Set subgrid scale arrays
+      if (lcndbndy) then
+
+c       --- Calculate r at zmin and zmax.
+        rmin_zmin = srfrv_f(zmin,rminofz,1)
+        rmin_zmax = srfrv_f(zmax,rminofz,1)
+        rmax_zmin = srfrv_f(zmin,rmaxofz,2)
+        rmax_zmax = srfrv_f(zmax,rmaxofz,2)
+
+c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
+c       --- to include the plane just outside the conductor.
+        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
+        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
+
+c       -- Set all points along and just outside conductor.
+        do iz=izmin,izmax
+          zz = iz*dz+zgmin
+          zlower = max(zz-dz,zmin)
+          zhigher = min(zz+dz,zmax)
+
+          if (necndbdy + (1+nx) > ncndmax .or.
+     &        nocndbdy + (1+nx) > ncndmax) then
+            ncndmax = max(necndbdy,nocndbdy) + (1+nx)
+            call gchange("PSOR3d",0)
+          endif
+
+c         --- Calculate radius of the surface.
+c         --- When zz is outside the conductor, get radius at end of
+c         --- conductor.
+          if (zz < zmin-zfuzz) then
+            rmin = rmin_zmin
+            rmax = rmax_zmin
+          elseif (zz > zmax+zfuzz) then
+            rmin = rmin_zmax
+            rmax = rmax_zmax
+          else
+            rmin = srfrv_f(zz,rminofz,1)
+            rmax = srfrv_f(zz,rmaxofz,2)
+          endif
+
+c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
+c         --- in most cases, assuming that the conductor is far away in z.
+c         --- When zz > zmax, the delmz0 is set to the distance
+c         --- between the z plane and the end of the conductor.
+          rrrminlower = srfrv_f(zlower,rminofz,1)
+          rrrmaxlower = srfrv_f(zlower,rmaxofz,2)
+          delmz0 = 2.
+          if (zz > zmax .and. lzend) then
+            delmz0 = (zz - zmax)*dzi
+          endif
+
+c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
+c         --- in most cases, assuming that the conductor is far away in z.
+c         --- When zz < zmin, the delmp0 is set to the distance
+c         --- between the z plane and the end of the conductor.
+          rrrminhigher = srfrv_f(zhigher,rminofz,1)
+          rrrmaxhigher = srfrv_f(zhigher,rmaxofz,2)
+          delpz0 = 2.
+          if (zz < zmin .and. lzend) then
+            delpz0 = (zmin - zz)*dzi
+          endif
+
+c         --- Find minimum of rrr and radius of surface at nearby z points.
+          rrrmin = min(rmin-max_dxdy,rrrminlower,rrrminhigher)
+          rrrmax = max(rmax+max_dxdy,rrrmaxlower,rrrmaxhigher)
+
+          do ix=ixmin,ixmax
+              xx = (ix-ix_axis)*dx-xcent
+              rad = xx
+
+c             --- Calculate distances in z first.  Select points which
+c             --- are transversely near the surface of revolution and
+c             --- are within the bounding box.
+
+c             --- Calculate distance to conductor at lower z.
+              delmz = delmz0
+
+c             --- If grid location is between rrr and rrrlower and between
+c             --- rmax and rrrlower, find intersection point.  The zfuzz
+c             --- ensures that a distance of zero is not calculated.
+              if (rrrminlower+rfuzz < rad .and. rad < rmin-rfuzz
+     &            .and. delmz > zfuzz*dzi .and.
+     &          xxmin <= xx .and. xx <= xxmax) then
+c               --- Regula-Falsi iteration is used to find distance in z
+c               --- to the surface.
+                x(1) = min(zz,zmax)
+                f(1) = rmin - rad
+                x(2) = zlower
+                f(2) = rrrminlower - rad
+                iterrf = 0
+                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
+                  f(i) = srfrv_f(x(i),rminofz,1) - rad
+                  iterrf = iterrf + 1
+                end do
+                delmz = (zz - x(i))*dzi
+              elseif (rrrmaxlower-rfuzz > rad .and. rad > rmax+rfuzz
+     &            .and. delmz > zfuzz*dzi .and.
+     &          xxmin <= xx .and. xx <= xxmax) then
+c               --- Regula-Falsi iteration is used to find distance in z
+c               --- to the surface.
+                x(1) = min(zz,zmax)
+                f(1) = rad - rmax
+                x(2) = zlower
+                f(2) = rad - rrrmaxlower
+                iterrf = 0
+                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
+                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
+                  iterrf = iterrf + 1
+                end do
+                delmz = (zz - x(i))*dzi
+              elseif (rad < rrrminlower+rfuzz .or.
+     &                rad > rrrmaxlower-rfuzz) then
+                delmz = 2.
+              endif
+
+c             --- Calculate distance to conductor at higher z.
+              delpz = delpz0
+
+c             --- If grid location is between rrr and rrrhigher and between
+c             --- rmax and rrrhigher, find intersection point.  The zfuzz
+c             --- ensures that a distance of zero is not calculated.
+              if (rrrminhigher+rfuzz < rad .and. rad < rmin-rfuzz
+     &            .and. delpz > zfuzz*dzi .and.
+     &          xxmin <= xx .and. xx <= xxmax) then
+c               --- Regula-Falsi iteration is used to find distance in z
+c               --- to the surface.
+                x(1) = max(zz,zmin)
+                f(1) = rmin - rad
+                x(2) = zhigher
+                f(2) = rrrminhigher - rad
+                iterrf = 0
+                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
+                  f(i) = srfrv_f(x(i),rminofz,1) - rad
+                  iterrf = iterrf + 1
+                end do
+                delpz = (x(i) - zz)*dzi
+              elseif (rrrmaxhigher-rfuzz > rad .and. rad > rmax+rfuzz
+     &            .and. delpz > zfuzz*dzi .and.
+     &          xxmin <= xx .and. xx <= xxmax) then
+c               --- Regula-Falsi iteration is used to find distance in z
+c               --- to the surface.
+                x(1) = max(zz,zmin)
+                f(1) = rad - rmax
+                x(2) = zhigher
+                f(2) = rad - rrrmaxhigher
+                iterrf = 0
+                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
+                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
+                  iterrf = iterrf + 1
+                end do
+                delpz = (x(i) - zz)*dzi
+              elseif (rad < rrrminhigher+rfuzz .or.
+     &                rad > rrrmaxhigher-rfuzz) then
+                delpz = 2.
+              endif
+
+c             --- Now calculate transverse distances.
+              delmx = 2.
+              delpx = 2.
+
+c             --- Calculate distances to surface of revolution.
+              if (rrrmin+rfuzz < rad .and. rad <= rmin+rfuzz .and.
+     &            zmin <= zz .and. zz <= zmax) then
+                delmx = (sqrt(max(0.,rmin**2)) + xx)*dxi
+                delpx = (sqrt(max(0.,rmin**2)) - xx)*dxi
+              elseif (rrrmax-rfuzz > rad .and. rad >= rmax-rfuzz .and.
+     &            zmin <= zz .and. zz <= zmax) then
+              endif
+
+c             --- If requested, select points on shell around bounding box.
+              if (lshell .and. zmin-zfuzz <= zz .and. zz <= zmax+zfuzz) then
+c               --- Select points within 1 grid cell outside of bounding box
+c               --- which are also within rrr and rmax.
+                if (rmin-rfuzz <= rad .and. rad <= rmax+rfuzz) then
+                  if (xx < xxmin) delpx = (xxmin-xx)*dxi
+                  if (xx > xxmax) delmx = (xx-xxmax)*dxi
+                endif
+              endif
+
+c             --- Now, ensure that the point on the surface from which the
+c             --- distance was calculated is within the bounding box.
+              if (xx-delmx*dx < xxmin) delmx = 2.
+              if (xx+delpx*dx > xxmax) delpx = 2.
+
+c             --- Make sure that distances are greater than zero.
+              if (delmx < fuzz) delmx = 2.
+              if (delpx < fuzz) delpx = 2.
+              if (delmz < fuzz) delmz = 2.
+              if (delpz < fuzz) delpz = 2.
+
+c             -- Check if any of the distances are less than 1.
+              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
+     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
+                if (mod(ix+iz+zparity,2) == 0) then
+c                 --- even
+                  necndbdy = necndbdy + 1
+                  iecndx(necndbdy) = ix
+                  iecndz(necndbdy) = iz
+                  ecdelmx(necndbdy) = delmx
+                  ecdelmz(necndbdy) = delmz
+                  ecdelpx(necndbdy) = delpx
+                  ecdelpz(necndbdy) = delpz
+                  ecvolt(necndbdy) = volt
+                else
+c                 --- odd
+                  nocndbdy = nocndbdy + 1
+                  iocndx(nocndbdy) = ix
+                  iocndz(nocndbdy) = iz
+                  ocdelmx(nocndbdy) = delmx
+                  ocdelmz(nocndbdy) = delmz
+                  ocdelpx(nocndbdy) = delpx
+                  ocdelpz(nocndbdy) = delpz
+                  ocvolt(nocndbdy) = volt
+                endif
+              endif
+            enddo
+        enddo
+      endif
+
+      return
+      end
+c========================================================================
+
+
+
