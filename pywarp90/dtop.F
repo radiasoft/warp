@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.46 $, $Date: 2002/05/06 13:39:49 $
+c@(#) File DTOP.M, version $Revision: 3.47 $, $Date: 2002/05/13 21:12:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.46 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.47 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1482,7 +1482,6 @@ c ---   - yypmesh(0:ngridw,0:ngridh) scratch array holding y-yp density
 c --- Output:
 c ---   - tepsx,tepsy
 
-
       integer(ISZ):: i1,i2,ip,i,j,jw,jh,npx,npy
       real(kind=8):: zw1,zw2,vms,ww,wh,density
       real(kind=8):: slopex,mmaxx,dwx,dhx
@@ -1556,8 +1555,6 @@ c     --- within range (min,max]. Calculate grid cell sizes.
 
 c     --- Bin up the data onto a 2-D grid
       if (zeromesh > 0) then
-c       call zeroarry(xxpmesh,(1+ngridw)*(1+ngridh))
-c       call zeroarry(yypmesh,(1+ngridw)*(1+ngridh))
         xxpmesh = 0.
         yypmesh = 0.
       endif
@@ -1685,74 +1682,73 @@ c=============================================================================
       real(kind=8):: rwork(3,npts)
       integer(ISZ):: iwork(npts)
 
-c This subroutine calculates the points for a graph of emittance vs. 
-c the fraction of the beam particles in phase space enclosed by 
-c nested ellipses (with the rms equivalent beam) in phase space. 
-c Also, the single particle emittances are returned for each 
-c particle.  These emittances are calculated assuming that the instantaneous 
-c emittance ellipse of each particle is nested with that of the rms 
-c equivalent beam phase-space ellipse.  
+c This subroutine calculates the points for a graph of emittance vs.
+c the fraction of the beam particles in phase space enclosed by
+c nested ellipses (with the rms equivalent beam) in phase space.
+c Also, the single particle emittances are returned for each
+c particle.  These emittances are calculated assuming that the instantaneous
+c emittance ellipse of each particle is nested with that of the rms
+c equivalent beam phase-space ellipse.
 c The subroutine prin is used to rotate and translate the phase space
-c ellipse first, so that it is upright in phase space.  
-c The emittance calculated is the unnormalized rms edge emittance 
-c = 4*Sqrt(<x**2><x'**2>-<x*x'>**2).  The emittance bins 
-c are set uniformly (npts bins) relative to emitbinmax as set by 
+c ellipse first, so that it is upright in phase space.
+c The emittance calculated is the unnormalized rms edge emittance
+c = 4*Sqrt(<x**2><x'**2>-<x*x'>**2).  The emittance bins
+c are set uniformly (npts bins) relative to emitbinmax as set by
 c input.  If emitbinmax is zero, the maximum single particle emittance
-c (live particle only) will be employed for the emittance bins.  Note 
-c that this will result in varying bin sizes as the maximum particle 
-c excursion in phase-space evolves.  
+c (live particle only) will be employed for the emittance bins.  Note
+c that this will result in varying bin sizes as the maximum particle
+c excursion in phase-space evolves.
 
 c Variables are:
 c Input:
 c    xp(np) = x coordinates of particles
 c   uxp(np) = gamma*vx      of particles
-c   uzp(np) = gamma*vz      of particles 
+c   uzp(np) = gamma*vz      of particles
 c   np  = number of particles
 c
-c   xbar    = <x>        of input particles 
-c   xsqbar  = <x**2>     of input particles 
-c   xxpbar  = <x*x'>     of input particles 
+c   xbar    = <x>        of input particles
+c   xsqbar  = <x**2>     of input particles
+c   xxpbar  = <x*x'>     of input particles
 c   xpsqbar = <x'**2>    of input particles
-c   xpbar   = <x'>       of input particles    
+c   xpbar   = <x'>       of input particles
 c
-c   vbeam    = mean axial beam velocity 
-c   gammabar = mean axial beam gamma (paraxial) 
+c   vbeam    = mean axial beam velocity
+c   gammabar = mean axial beam gamma (paraxial)
 c
-c   emitbinmax = max value of emittance bins ().  If set, npts bins will be 
-c                generated uniformly from 0 to emitbinmax.  If emitbinmax 
-c                is zero, the maximum single particle emittance (live 
-c                particles only) will be employed to set the bins.  
+c   emitbinmax = max value of emittance bins ().  If set, npts bins will be
+c                generated uniformly from 0 to emitbinmax.  If emitbinmax
+c                is zero, the maximum single particle emittance (live
+c                particles only) will be employed to set the bins.
 c
 c   npts = number of nested ellipses into which to divide phase space
 c
 c Output:
-c   fracbin(0:npts) = fraction beam within an ellipse with emittance emit(npts) 
+c   fracbin(0:npts) = fraction beam within an ellipse with emittance emit(npts)
 c                     nested with beam rms emittance ellipse
 c   emitbin(0:npts) = Emittance of particles within an ellipse
 c
-c   tx(np)    = transformed x  coordinates of the particles (mixed units) 
+c   tx(np)    = transformed x  coordinates of the particles (mixed units)
 c   txp(np)   = transformed x' coordinates of the particles (mixed units)
-c                   Note: This transfomation employs a translation and 
-c                         rotation to remove the <x>, <x'>, and <x*x'> 
-c                         moments of the particles. It (for simplicity) 
-c                         employs a mixed unit symplectic transform that 
-c                         perserves area.  However, direct physical 
-c                         interpretation of the coordinates must be taken 
-c                         with care.  
-c 
-c   emitp(np) = unormalized emittance of particle in x-x' phase space 
-c                 assuming that the phase space ellipse is nested with that 
-c                 of the rms equivalent beam.   
+c                   Note: This transfomation employs a translation and
+c                         rotation to remove the <x>, <x'>, and <x*x'>
+c                         moments of the particles. It (for simplicity)
+c                         employs a mixed unit symplectic transform that
+c                         perserves area.  However, direct physical
+c                         interpretation of the coordinates must be taken
+c                         with care.
+c
+c   emitp(np) = unormalized emittance of particle in x-x' phase space
+c                 assuming that the phase space ellipse is nested with that
+c                 of the rms equivalent beam.
 c
 c Work Arrays:
-c   rwork(3,npts) = real(kind=8):: work array.  Used to store 
-c                   rwork(1,npts) = sum of tx*tx   in elliptical shell  
+c   rwork(3,npts) = real(kind=8):: work array.  Used to store
+c                   rwork(1,npts) = sum of tx*tx   in elliptical shell
 c                   rwork(2,npts) = sum of txp*txp in elliptical shell
-c                   rwork(3,npts) = sum of tx*txp  in elliptical shell 
-c   iwork(npts)   = integer work array. Used to store 
-c                   iwork(npts) = sum of particles in elliptical shell 
+c                   rwork(3,npts) = sum of tx*txp  in elliptical shell
+c   iwork(npts)   = integer work array. Used to store
+c                   iwork(npts) = sum of particles in elliptical shell
 c
-
 
       integer(ISZ):: ip,ipt,aindex
       integer(ISZ):: tnptot,nplive 
@@ -1761,47 +1757,51 @@ c
       real(kind=8):: txp2,txxp,tx2
       real(kind=8):: txp2tot,txxptot,tx2tot
 
-c Rotate and translate the particles coordinates and moments to 
-c principal axes.  Note that the rotated coordinates and moments 
-c are expressed in mixed units.  
+c Rotate and translate the particles coordinates and moments to
+c principal axes.  Note that the rotated coordinates and moments
+c are expressed in mixed units.
 
       call prin(xp,uxp,uzp,np,xsqbar,xpsqbar,xxpbar,xbar,xpbar,
      &          tx,txp,txsqbar,txpsqbar,txxpbar)
-c
+
       txrms  = sqrt(txsqbar-xbar**2)
       txprms = sqrt(txpsqbar-xpbar**2)
 
-c     --- ellipticity of rms equivalent beam phase space ellipse 
+c     --- ellipticity of rms equivalent beam phase space ellipse
       eps = txprms/txrms
 
-c For each particle, calculate the area/pi = single particle emittance 
+c For each particle, calculate the area/pi = single particle emittance
 c within an ellipse in tx-txp phase space with the same
 c ellipticity as the ellipse with axes 2*txrms and 2*txprms which passes
 c through the particle's coordinates.  This information will be used to
-c place the particle in the set of nested ellipses.  Note that since the 
-c transformation is symplectic, this mixed unit transform yields the 
-c correct physical area measure in x-x' phase space for the emittance. 
+c place the particle in the set of nested ellipses.  Note that since the
+c transformation is symplectic, this mixed unit transform yields the
+c correct physical area measure in x-x' phase space for the emittance.
 
       emitmax = 0.
       epsinvsq = 1./(eps*eps) 
-c
+
       do ip = 1,np
-c       --- check that particle is live 
+c       --- check that particle is live
         if (uzp(ip) /= 0.) then 
           emitp(ip) = eps*( tx(ip)**2 + epsinvsq*(txp(ip)**2) )
           emitmax   = max(emitmax,emitp(ip))
         endif       
       enddo
-c
+
+#ifdef MPIPARALLEL
+      call parallelmaxrealarray(emitmax,1)
+#endif
+
       if (emitbinmax .gt. 0.) emitmax = emitbinmax
 
 c Find the nested ellipses, and locate the particles within them.  Add
 c each particle's moments to the moments for the elliptical shell it is
-c in.  These will be summed later to find the emittance within each ellipse.  
+c in.  These will be summed later to find the emittance within each ellipse.
 
       nplive = 0 
 
-c     --- zero moment arrays 
+c     --- zero moment arrays
       do ipt = 1,npts
          iwork(ipt) = 0
          rwork(1,ipt) = 0.
@@ -1809,13 +1809,13 @@ c     --- zero moment arrays
          rwork(3,ipt) = 0.
       enddo
 
-c     --- accumulate moment sums 
+c     --- accumulate moment sums
       do ip = 1,np
-c       --- sample live particles only 
+c       --- sample live particles only
         if (uzp(ip) /= 0.) then 
-c         --- count live particles in set analyzed 
+c         --- count live particles in set analyzed
           nplive = nplive + 1
-c         --- find area index 
+c         --- find area index
           aindex = aint(npts*emitp(ip)/dvnz(emitmax)) + 1 
 c         --- accumulate moments
           if (aindex .le. npts) then  
@@ -1826,6 +1826,12 @@ c         --- accumulate moments
           endif 
         endif 
       enddo
+
+#ifdef MPIPARALLEL
+      call parallelsumrealarray(nplive,1)
+      call parallelsumrealarray(rwork,npts*3)
+      call parallelsumintegerarray(iwork,npts)
+#endif
 
 c Find the number of particles within each nested ellipse and their emittance
 
@@ -1842,21 +1848,21 @@ c Find the number of particles within each nested ellipse and their emittance
       emitbin(0) = 0.
       
       do ipt = 1,npts
-c      
+
          tnptot =  tnptot + iwork(ipt)
          tx2tot =  tx2tot + rwork(1,ipt)
         txp2tot = txp2tot + rwork(2,ipt)
         txxptot = txxptot + rwork(3,ipt)
-c
+
         if (tnptot .ne. 0) then 
           tx2  = tx2tot/real(tnptot)
           txp2 = txp2tot/real(tnptot)
           txxp = txxptot/real(tnptot)
         endif
-c       --- express emittance as a fraction of *live* particles 
+c       --- express emittance as a fraction of *live* particles
         fracbin(ipt) = real(tnptot)/real(nplive)
         emitbin(ipt) = 4.*sqrt(tx2*txp2-txxp**2)
-c      
+
       enddo
 
       return
@@ -1872,42 +1878,42 @@ c=============================================================================
       real(kind=8):: tx(np),txp(np)
       real(kind=8):: txsqbar,txpsqbar,txxpbar
 
-c This subroutine transforms a phase ellipse which has non-zero <xx'>, 
-c <x> and <x'> and rotates and translates it to produce a distribution 
-c with zero <x*x'>, <x>, and <x'> in the transformed (principal axis) 
-c coordinate system.  Note that this invloves a rotation and translation 
+c This subroutine transforms a phase ellipse which has non-zero <xx'>,
+c <x> and <x'> and rotates and translates it to produce a distribution
+c with zero <x*x'>, <x>, and <x'> in the transformed (principal axis)
+c coordinate system.  Note that this invloves a rotation and translation
 c -- the extent of the ellipse in x is not the same as before
-c the transformation.  Also, the coordinate transformation employs mixed 
-c units but is still symplectic (area preserving).  
+c the transformation.  Also, the coordinate transformation employs mixed
+c units but is still symplectic (area preserving).
 c
 c Input variables are:
 c
 c   xp(np)  = coordinates of particles
 c   uxp(np) = gamma*vx    of particles
-c   uzp(np) = gamma*vz    of particles 
-c   np      = number of particles 
+c   uzp(np) = gamma*vz    of particles
+c   np      = number of particles
 c
-c   xsqbar  = <x**2>  of particle distribution input 
-c   xpsqbar = <x'**2> of particle distribution input 
-c   xxpbar  = <x*x'>  of particle distribution input 
-c   xbar    = <x>     of particle distribution input 
-c   xpbar   = <x'>    of particle distribution input 
+c   xsqbar  = <x**2>  of particle distribution input
+c   xpsqbar = <x'**2> of particle distribution input
+c   xxpbar  = <x*x'>  of particle distribution input
+c   xbar    = <x>     of particle distribution input
+c   xpbar   = <x'>    of particle distribution input
 c
 c Output variables are:
 c
-c   tx(np)  = "coordinates" of particles rotated to principal axes 
-c             (mixed units) 
-c   txp(np) = "angles"      of particles rotated to principal axes 
-c             (mixed units) 
+c   tx(np)  = "coordinates" of particles rotated to principal axes
+c             (mixed units)
+c   txp(np) = "angles"      of particles rotated to principal axes
+c             (mixed units)
 c   txsqbar  = <x**2>  of rotated particle distribution (mixed units)
-c   txpsqbar = <x'**2> of rotated particle distribution (mixed units) 
-c   txxpbar  = <x*x'>  of rotated particle distribution (mixed units) 
+c   txpsqbar = <x'**2> of rotated particle distribution (mixed units)
+c   txxpbar  = <x*x'>  of rotated particle distribution (mixed units)
 
       real(kind=8):: theta,sint,cost,sintcost,sint2,cost2
       real(kind=8):: txsqoff,txpsqoff,txxpoff
       integer(ISZ):: ip
 
-c Find rotation angle to make ellipse upright 
+c Find rotation angle to make ellipse upright
 
       theta = 0.5*atan2(2.*(xxpbar-xbar*xpbar),
      &                  dvnz(xsqbar-xpsqbar-xbar**2+xpbar**2))
@@ -1918,7 +1924,7 @@ c
 c Rotate coordinates of all live particles
 
       do ip = 1,np
-c       --- check that particle is live 
+c       --- check that particle is live
         if (uzp(ip) /= 0.) then 
           tx(ip)  =  (xp(ip) - xbar)*cost + (uxp(ip)/uzp(ip) - xpbar)*sint
           txp(ip) = -(xp(ip) - xbar)*sint + (uxp(ip)/uzp(ip) - xpbar)*cost
