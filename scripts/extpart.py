@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.12 2003/08/11 18:15:06 jlvay Exp $"
+extpart_version = "$Id: extpart.py,v 1.13 2003/08/25 23:07:10 dave Exp $"
 
 def extpartdoc():
   print """
@@ -18,9 +18,13 @@ class ExtPart:
 particle data. It can optionally accumulate the data over multiple time steps.
 The creator options are:
  - iz: grid location where the extrapolated data is saved.
+ - zz: lab location where data is saved.
+ - wz: width of lab window
  - nepmax: max size of the arrays. Defaults to 3*top.pnumz[iz] if non-zero,
            otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
+
+One of iz or zz must be specified.
 
 Available methods:
  - setaccumulate(v=1): Turns accumulation on or off. If turned on, all
@@ -42,14 +46,18 @@ routines (such as ppxxp).
  - ptvy, ptvz, ptrace
   """
 
-  def __init__(self,iz,nepmax=None,laccumulate=0):
+  def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0):
     # --- Save input values, getting default values when needed
+    assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
     self.iz = iz
+    self.zz = zz
+    if wz is None: self.wz = w3d.dz
+    else:          self.wz = wz
     self.laccumulate = laccumulate
     if nepmax is None:
       self.nepmax = 10000
-      if top.allocated("pnumz") and 0 <= self.iz <= top.nzmmnt:
-        if top.pnumz[self.iz] > 0: self.nepmax = top.pnumz[self.iz]*3
+      if top.allocated("pnumz") and 0 <= self.getiz() <= top.nzmmnt:
+        if top.pnumz[self.getiz()] > 0: self.nepmax = top.pnumz[self.getiz()]*3
     else:
       self.nepmax = nepmax
     # --- Add this new window to the ExtPart group in top
@@ -58,6 +66,12 @@ routines (such as ppxxp).
     # --- Setup empty arrays for accumulation if laccumulate if true.
     # --- Otherwise, the arrays will just point to the data in ExtPart.
     self.setuparrays()
+
+  def getiz(self):
+    if self.iz >= 0:
+      return self.iz
+    else:
+      return int((self.zz - top.zmmntmin)*top.dzmi)
 
   def setuparrays(self):
     if self.laccumulate:
@@ -89,20 +103,23 @@ routines (such as ppxxp).
   def getid(self):
     assert self.enabled,"This window is disabled and there is no associated id"
     for i in xrange(top.nepwin):
-      if top.izepwin[i] == self.iz: return i
+      if top.izepwin[i] == self.iz and self.iz >= 0: return i
+      if top.zzepwin[i] == self.zz and self.iz == -1: return i
     raise "Uh Ooh! Somehow the window was deleted! I can't continue!"
 
   def enable(self):
     # --- Add this window to the list
-    # --- Only add this iz to the list if it is not already there.
+    # --- Only add this location to the list if it is not already there.
     # --- Note that it is not an error to have more than one instance
-    # --- have the same value of iz. For example one could be accumulating
-    # --- while another isn't.
+    # --- have the same location. For example one could be accumulating
+    # --- while another isn't or the widths could be different.
     if self.enabled: return
     top.nepwin = top.nepwin + 1
     if top.nepmax < self.nepmax: top.nepmax = self.nepmax
     err = gchange("ExtPart")
     top.izepwin[-1] = self.iz
+    top.zzepwin[-1] = self.zz
+    top.wzepwin[-1] = self.wz
     # --- Set so accumulate method is called after time steps
     installafterstep(self.accumulate)
     self.enabled = 1
@@ -115,6 +132,8 @@ routines (such as ppxxp).
     top.nepwin = top.nepwin - 1
     for i in xrange(self.getid(),top.nepwin):
       top.izepwin[i] = top.izepwin[i+1]
+      top.zzepwin[i] = top.zzepwin[i+1]
+      top.wzepwin[i] = top.wzepwin[i+1]
     gchange("ExtPart")
     self.enabled = 0
 
