@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.12 $, $Date: 2001/09/19 22:32:28 $
+c@(#) File WXY.M, version $Revision: 3.13 $, $Date: 2001/11/06 22:18:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -54,7 +54,7 @@ c=============================================================================
       use Damped_eom
       use Hist
       use Pspwork
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
 
@@ -98,7 +98,7 @@ c  Zmmin and zmmax are chosen so that dz = 1.
         if (nz == 2) nz = 1
       endif
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c     --- Use routine from w3d to initialize the MPI and divide up
 c     --- the problem. nz is set to nslaves so that the grid is divided
 c     --- up properly among the processors. zmmin and zmmax are then set so
@@ -1225,7 +1225,7 @@ c  For thin slice model, average out rho along the axis.
 
       endif
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c     --- Sum up rho over the processors.
       if (.not. lthick) then
         call parallelsum(rho(0,0,0),(1+nx)*(1+ny))

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.16 $, $Date: 2001/10/26 18:09:21 $
+c@(#) File F3D.M, version $Revision: 3.17 $, $Date: 2001/11/06 22:17:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -273,7 +273,7 @@ c=============================================================================
      &                   lx,ly,lz,nx,ny,nz,w,xywork,zwork,ibc,
      &                   l2symtry,l4symtry)
       use Constant
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: iwhich,nx,ny,nz,ibc
@@ -360,7 +360,7 @@ c-----------------------------------------------------------------------------
       real(kind=8):: fulllz
       integer(ISZ):: i,j
       logical(ISZ):: lattenuate
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       integer(ISZ):: nx_tran,ny_tran,ikxm,ikym
       logical(ISZ):: transposed
 #endif
@@ -368,7 +368,7 @@ c-----------------------------------------------------------------------------
       fullnz = nz
       fulllz = lz
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  Value of nz and lz for full array across all processors.
       fullnz = nz*nslaves
       fulllz = lz*nslaves
@@ -602,7 +602,7 @@ c          --- Invoke the transform routines for the current z-slice
 c  Here we perform the periodic transforms in z, two y's at a time.
 c  We vectorize over x.  No scratch space is needed.
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, transpose is used to redistribute phi so each axial
 c  line is on a single processor.
         call transpose(nx,ny,nz,a,nx_tran,ny_tran)
@@ -693,7 +693,7 @@ c ----------------------------------------------------------------------------
 
         norm = .5 * dz
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, transpose is used to redistribute phi so each axial
 c  line is on a single processor.
         call transpose(nx,ny,nz,a,nx_tran,ny_tran)
@@ -735,7 +735,7 @@ c       --- the user.
 
         if (lattenuate) then
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, data may be arranged differently then serial version.
 
           if (transposed) then
@@ -776,7 +776,7 @@ c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 4) then
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, data may be arranged differently then serial version.
         if (transposed) then
 c         --- Find location of transverse data relative to original dimensions.
@@ -816,7 +816,7 @@ c ----------------------------------------------------------------------------
 
 c  Inverse transform and shift in z.
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, inverse transpose is used to redistribute phi into its
 c  original format.
         if (.not. transposed) then
@@ -1000,7 +1000,7 @@ c  Inverse transform and shift in z.
 
         norm = 1./fulllz
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, inverse transpose is used to redistribute phi into its
 c  original format.
         call transpose(nx,ny,nz,a,nx_tran,ny_tran)
@@ -1036,7 +1036,7 @@ c ----------------------------------------------------------------------------
 
       if (iwhich == 8) then
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, at this point, the data will never be transposed.
         iz = my_index*nz
         call unattenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1)
@@ -1054,7 +1054,7 @@ c ----------------------------------------------------------------------------
 
       if (iwhich == 9) then
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, at this point, the data will never be transposed.
         iz = my_index*nz
         call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1)
@@ -1073,7 +1073,7 @@ c ----------------------------------------------------------------------------
 
         norm = dz**2/eps0
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c  For parallel code, transpose is used to redistribute phi so each axial
 c  line is on a single processor.
 c       --- Rearrange phi array so each axial line is on a single processor.
@@ -2367,7 +2367,7 @@ c find capacity matrix
 
 c     --- Make sure capacity matrix is fully allocated.
       nc3dz = nz
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       nc3dz2 = nz - 1
 #else
       nc3dz2 = nz/2
@@ -2650,7 +2650,7 @@ c  If iwhich is '0' or '1', also allocates local variables
 
 c  Allocate local variables
       pipenz = nz
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       pipenz2 = nz - 1
 #else
       pipenz2 = nz/2
@@ -3587,7 +3587,7 @@ c===========================================================================
      &                  l2symtry,l4symtry,scrtch,izfsmin,izfsmax)
       use PSOR3d
       use Constant
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: iwhich,nx,ny,nz,izfsmin,izfsmax
@@ -3819,7 +3819,7 @@ c         --- Again, both even and odd points are saved.
           endif
 
 c do loop to cover even and odd points
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
           s_parity = mod(izslave(my_index),2)
           e_parity = mod(s_parity+1,2)
 #else
@@ -3828,7 +3828,7 @@ c do loop to cover even and odd points
 #endif
           do parity=s_parity,e_parity,e_parity-s_parity
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c*********************Parallel Routine*********************
 c           --- exchange phi on the boundary
             call exchange_phi(nx,ny,izfsmax-izfsmin,phi(0,0,izfsmin-1),
@@ -3844,7 +3844,7 @@ c           --- parallel version since it automatically happens in exchange_phi
               do ii = (izl-1)*nxy+1+mod(parity+izl-1,2),(izl-1)*nxy+nxy
                 phi1d(ii) = phi1d(ii + 2*nxy)
               enddo
-#ifndef PARALLEL
+#ifndef MPIPARALLEL
             elseif (bound0 == 2) then
               do ii = (izl-1)*nxy+1+mod(parity+izl-1,2),(izl-1)*nxy+nxy
                 phi1d(ii) = phi1d(ii + nz*nxy)
@@ -3855,7 +3855,7 @@ c           --- parallel version since it automatically happens in exchange_phi
               do ii = (izr+1)*nxy+1+mod(parity+izr+1,2),(izr+1)*nxy+nxy
                 phi1d(ii) = phi1d(ii - 2*nxy)
               enddo
-#ifndef PARALLEL
+#ifndef MPIPARALLEL
             elseif (boundnz == 2) then
               do ii = (izr+1)*nxy+1+mod(parity+izr+1,2),(izr+1)*nxy+nxy
                 phi1d(ii) = phi1d(ii - nz*nxy)
@@ -4011,7 +4011,7 @@ c         --- done with real(kind=8):: numbers so that there is not an integer o
      &              int(1.*i*nxy*(izr-izl+1)*nsorerri+.5)) - sorerrar(i))
               if (sorerrar(i) > sorerror) sorerror = sorerrar(i)
             enddo
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c*********************Parallel Routine*********************
 c           --- calculate global sorerror
             call parallelmax(sorerror,1)
@@ -4041,7 +4041,7 @@ c write out number of iterations taken
 c Exchange phi at the boundaries, 0 and nz, one last time to ensure
 c consistency across processors. This has the side benefit of setting
 c planes -1 and nz+1 for the periodic case.
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c*********************Parallel Routine*********************
 c     --- exchange phi on the boundary
       call exchange_phi(nx,ny,izfsmax-izfsmin,phi(0,0,izfsmin-1),
@@ -4072,7 +4072,7 @@ c  I don't remember why I wrote out the loops instead of calling copyaray.
               phi(ix,iy,-1) = phi(ix,iy,1)
             enddo
           enddo
-#ifndef PARALLEL
+#ifndef MPIPARALLEL
         else if (bound0 == 2) then
           do ix=0,nx
             do iy=0,ny
@@ -4095,7 +4095,7 @@ c  I don't remember why I wrote out the loops instead of calling copyaray.
               phi(ix,iy,nz+1) = phi(ix,iy,nz-1)
             enddo
           enddo
-#ifndef PARALLEL
+#ifndef MPIPARALLEL
         else if (boundnz == 2) then
           do ix=0,nx
             do iy=0,ny
@@ -4541,7 +4541,7 @@ c===========================================================================
       use PSOR3d
       use InGen
       use Lattice
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: nx,ny,nz
@@ -4552,7 +4552,7 @@ c Allocate various arrays
 
       integer(ISZ):: nc,iq
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c Fix longitudinal boundary conditions for the parallel version.
       if (my_index > 0) bound0 = 0
       if (my_index < nslaves-1) boundnz = 0

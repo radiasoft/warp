@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.32 $, $Date: 2001/10/31 00:03:22 $
+c@(#) File W3D.M, version $Revision: 3.33 $, $Date: 2001/11/06 22:17:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -87,7 +87,7 @@ c  Put ny to zero for RZ geometry
       endif
 
 c------- Parallel only -----------------------------------------------------
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       call init_w3d_parallel()
 #endif
 c---------------------------------------------------------------------------
@@ -1090,7 +1090,7 @@ c Calculated for first species.
 
 
       real(kind=8):: zm
-#ifndef PARALLEL
+#ifndef MPIPARALLEL
       integer(ISZ):: nzla,nzlb,nzma,nzmb,iz
       real(kind=8):: zs,zl,eearsprs
 #endif
@@ -1109,7 +1109,7 @@ c     set to be linear in z (eears is actually slope of Eears)
 c     --- For Parallel slave, message passing must be done so seperate
 c     --- routine is used.  Note that second half of ifelse macro
 c     --- includes the next 30 lines.
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
         call seteears_slave(zwork(1,0,0))
 #else
 c     set to initial field on axis (with the center part zero)
@@ -1500,7 +1500,7 @@ c  Sets the slices on the exterior of phi for periodicity
 c  sets slice at -1 equal to the slice at nz-1
 c  sets slice at nz+1 equal to the slice at 1
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       call perphi3d_slave(phi(0,0,-1),nx,ny,nz)
 #else
       do iy=0,ny
@@ -1530,7 +1530,7 @@ c  and puts the result into both slices.
 
 
 c Parallel version makes call to special routine perrho3d_slave
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 
 c This sums rho in the overlapping region of neighboring processes.
       call perrho3d_slave(rho(0,0,0),nx,ny,nz,periinz)
@@ -2487,7 +2487,7 @@ c=============================================================================
       use Particles
       use Setpwork3d
       use Picglb
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
 
@@ -2516,7 +2516,7 @@ c  Picglb is included only to use zbeam
       integer(ISZ):: envxport
       character(72):: errline
       real(kind=8):: wranf,rnorm,rnrev
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       real(kind=8):: zmin,zmax
 #endif
       real(kind=8):: substarttime,wtime
@@ -2653,7 +2653,7 @@ c       --- seeds for the generators.
         zoff = 0.
         ioff = 0
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c       --- first, calculate z extent of beam within this processor
         zmin = max(zimin_s(is),zpslmin(my_index))
         zmax = min(zimax_s(is),zpslmax(my_index))
@@ -3222,7 +3222,7 @@ c       --- distribution.
       enddo
 
 c     --- if slave, reorganize particles and recalculate sw
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       call reorg_particles
       call sw_globalsum(ns,sw(1))
 #endif
@@ -3700,7 +3700,7 @@ c=============================================================================
       use Picglb3d
       use Setpwork3d
       use Fields3d
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: itask
@@ -3758,7 +3758,7 @@ c taken out of action.  Also zero out the array npinje_s.
 c Set inject z min and max. This is only really needed for
 c the parallel version, but is useful for the serial version to
 c prevent particles from being injected off of the grid.
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       zinjmin = zpslmin(my_index)
       zinjmax = zpslmax(my_index)
 #else
@@ -5335,7 +5335,7 @@ c=============================================================================
       subroutine getinj_phi(nx,ny,nz,phi,dx,dy,dz,xmmin,ymmin)
       use InjectVars
       use InjectVars3d
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: nx,ny,nz
@@ -5355,7 +5355,7 @@ c to get zp.
       real(kind=8):: ainj,binj,ainjsqi,binjsqi,xinj,yinj
       real(kind=8):: rrsq,aa,p2x,p2y,p2z,w2x,w2y,w2z
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c     --- In the parallel version, only processor 0 calculates inj_phi.
       if (my_index == 0) then
 #endif
@@ -5421,7 +5421,7 @@ c       --- Smooth out inj_phi for this emitting surface.
 
       enddo
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       endif
 c     --- The result calculated by processor 0 is broadcast to the rest
 c     --- of the processors.
@@ -5450,7 +5450,7 @@ c=============================================================================
       subroutine getinj_phi_rz(nx,nz,phi,dx,dz,xmmin,ymmin)
       use InjectVars
       use InjectVars3d
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: nx,nz
@@ -5470,7 +5470,7 @@ c to get zp.
       real(kind=8):: ainjsqi,binjsqi,xinj,yinj
       real(kind=8):: rrsq,aa,p2x,p2y,p2r,p2z,w2r,w2z
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c     --- In the parallel version, only processor 0 calculates inj_phi.
       if (my_index == 0) then
 #endif
@@ -5529,7 +5529,7 @@ c        endif
 
       enddo
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       endif
 c     --- The result calculated by processor 0 is broadcast to the rest
 c     --- of the processors.
@@ -6717,11 +6717,11 @@ c     --- compute error
       enddo
 
 c     --- For the parallel version, find global max of errors.
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       call parallelmax(phiref,1)
 #endif
       bndferr = bndferr / dvnz(phiref)
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       call parallelmax(bndferr,1)
 #endif
 
@@ -6796,7 +6796,7 @@ c       --- Call perturbative bent beam field solver
 
       endif
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
       call getphiforparticles(nx,ny,nz,phi(0,0,-1))
@@ -6913,7 +6913,7 @@ c       case (7)
      &                     rstar,linbend,l2symtry,l4symtry,scrtch(0,0),
      &                     xmmin,ymmin,zmmin,zbeam,zgrid)
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c       case (8)
       elseif (fstype == 8) then
 c         --- Experimental parallel solver

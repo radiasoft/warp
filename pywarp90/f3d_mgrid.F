@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.14 $, $Date: 2001/10/19 22:06:18 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.15 $, $Date: 2001/11/06 22:17:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -692,7 +692,7 @@ c=============================================================================
       use MultigridConductor3d
       use Multigrid3d
       use Constant
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: levelxy,levelz,nx,ny,nz
@@ -800,7 +800,7 @@ c     --- grid refinement.
       endif
 
 c     --- Set starting and ending parity.
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       s_parity = mod(izslave(my_index),2)
       e_parity = mod(s_parity+1,2)
 #else
@@ -811,7 +811,7 @@ c     --- Set starting and ending parity.
 c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
 
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
 c*********************Parallel Routine*********************
 c       --- exchange phi on the boundary
         call exchange_phi(nx,ny,nz,phi(0,0,-1),bound0,boundnz,0)
@@ -826,7 +826,7 @@ c       --- parallel version since it automatically happens in exchange_phi
           do ii = (izl-1)*nxy+1+mod(parity+izl-1,2),(izl-1)*nxy+nxy
             phi1d(ii) = phi1d(ii + 2*nxy)
           enddo
-#ifndef PARALLEL
+#ifndef MPIPARALLEL
         elseif (bound0 == 2) then
           do ii = (izl-1)*nxy+1+mod(parity+izl-1,2),(izl-1)*nxy+nxy
             phi1d(ii) = phi1d(ii + nz*nxy)
@@ -837,7 +837,7 @@ c       --- parallel version since it automatically happens in exchange_phi
           do ii = (izr+1)*nxy+1+mod(parity+izr+1,2),(izr+1)*nxy+nxy
             phi1d(ii) = phi1d(ii - 2*nxy)
           enddo
-#ifndef PARALLEL
+#ifndef MPIPARALLEL
         elseif (boundnz == 2) then
           do ii = (izr+1)*nxy+1+mod(parity+izr+1,2),(izr+1)*nxy+nxy
             phi1d(ii) = phi1d(ii - nz*nxy)

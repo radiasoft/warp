@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.27 $, $Date: 2001/11/02 19:27:51 $
+c@(#) File TOP.M, version $Revision: 3.28 $, $Date: 2001/11/06 22:18:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1613,7 +1613,7 @@ c     --- For each element type, check to see if any elements are in the mesh.
 
 c     --- All parallel slave processors must know if any processors
 c     --- are in a bend.  There is probably a better way of doing this.
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       if (bends) then
         wi = 0.
         if (linbend) wi = 1.
@@ -4446,7 +4446,7 @@ c         --- End of Z moments accumulation
         gamma = 1./sqrt(1. - (vbeam*clighti)**2)
 
 c       --- For slave, call routine which sums moments over processors.
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
         call sum_mmnts
 #endif
 
@@ -4846,7 +4846,7 @@ c=============================================================================
 c Make current periodic.
 
 c Parallel version makes call to special routine percurr_slave
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       call percurr_slave(curr,nzzarr,periinz)
 #else
       if (periinz) then
@@ -4974,7 +4974,7 @@ c  Impose boundary conditions on zp
       integer(ISZ):: is,ip
 
 c Parallel version makes call to special routine zpartbnd_slave
-#ifdef PARALLEL
+#ifdef MPIPARALLEL
       call zpartbnd_slave(zmmax,zmmin,dz,zgrid)
 #else
 
@@ -5220,7 +5220,7 @@ c     --- distribute the particles among the processors.
       do is=1,ns
         if (np_s(is) == 0) np_s(is) = npmax*sp_fract(is)
       enddo
-#ifndef PARALLEL
+#ifndef MPIPARALLEL
       npmax = 0
       do is=1,ns
         npmax = npmax + np_s(is)
