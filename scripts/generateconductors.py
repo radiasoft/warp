@@ -33,7 +33,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.14 2003/01/16 20:23:36 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.15 2003/02/18 20:29:49 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -612,6 +612,8 @@ class Cylinder(Assembly):
 Cylinder class
   - radius,length: cylinder size
   - theta=0,phi=0: angle of cylinder relative to z-axis
+    theta is angle in z-x plane
+    phi is angle in z-y plane
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
   - condid=0: conductor id of cylinder
@@ -820,6 +822,39 @@ Sphere
     result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
                    generator=f3d.sphereconductorf,
                    kwlist=[self.radius,self.xcent,self.ycent,self.zcent])
+    return result
+
+#============================================================================
+class Cone(Assembly):
+  """
+Cone
+  - r_zmin: radius at z min
+  - r_zmax: radius at z max
+  - length: length
+  - theta=0,phi=0: angle of cylinder relative to z-axis
+    theta is angle in z-x plane
+    phi is angle in z-y plane
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=0: conductor id of cone
+  """
+
+  def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
+                    xcent=0.,ycent=0.,zcent=0.,condid=0):
+    Assembly.__init__(self,voltage,xcent,ycent,zcent)
+    self.r_zmin = r_zmin
+    self.r_zmax = r_zmax
+    self.theta = theta
+    self.phi = phi
+    self.length = length
+    self.condid = condid
+
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
+                   generator=f3d.coneconductorf,
+                   kwlist=[self.r_zmin,self.r_zmax,self.length,
+                           self.theta,self.phi,
+                           self.xcent,self.ycent,self.zcent])
     return result
 
 #============================================================================
