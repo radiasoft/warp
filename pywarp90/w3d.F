@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.116 $, $Date: 2003/06/18 17:37:20 $
+c@(#) File W3D.M, version $Revision: 3.117 $, $Date: 2003/06/23 18:58:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5032,7 +5032,7 @@ c           --- Assume that injection will never be done inside a bend.
 
 #ifndef MPIPARALLEL
 c           --- Fetch time step size
-            tt = dt*(pid(ins(is):ins(is)+npinje_s(is)-1,injpid) -
+            tt(1:nn) = dt*(pid(ins(is):ins(is)+npinje_s(is)-1,injpid) -
      &           int(pid(ins(is):ins(is)+npinje_s(is)-1,injpid)))
 c           --- Create equivalences
             xx => xp(ins(is):ins(is)+npinje_s(is)-1)
