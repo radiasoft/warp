@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.4 2001/02/08 22:05:39 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.5 2001/02/09 18:41:01 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -233,6 +233,12 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
               elif (p=='top' and vname in ['np','nplive','npmax','npmaxb']) or\
                    (p=='wxy' and vname in ['npmaxxy']):
                 ff.write(pdbname,sum(nps_p)[0])
+              elif (p=='f3d' and vname in ['ncond']):
+                ff.write(pdbname,sum(ncond_p))
+              elif (p=='f3d' and vname in ['necndbdy']):
+                ff.write(pdbname,sum(necndbdy_p))
+              elif (p=='f3d' and vname in ['nocndbdy']):
+                ff.write(pdbname,sum(nocndbdy_p))
               else:
                 # --- Otherwise, write out value as is on PE0
                 ff.write(pdbname,v)
@@ -528,12 +534,15 @@ def parallelrestore(fname):
   if 'ncond_p@parallel' in vlist:
     ncond_p = ff.read('ncond_p@parallel')
     ncond_p0 = array([0] + list(ncond_p))
+    f3d.ncond = ncond_p[me]
   if 'necndbdy_p@parallel' in vlist:
     necndbdy_p = ff.read('necndbdy_p@parallel')
     necndbdy_p0 = array([0] + list(necndbdy_p))
+    f3d.necndbdy = necndbdy_p[me]
   if 'nocndbdy_p@parallel' in vlist:
     nocndbdy_p = ff.read('nocndbdy_p@parallel')
     nocndbdy_p0 = array([0] + list(nocndbdy_p))
+    f3d.nocndbdy = nocndbdy_p[me]
 
   # --- These are needed below and, since there is no gaurantee about the
   # --- order in which variables are read in, they must be set ahead of time.
