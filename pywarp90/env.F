@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.23 $, $Date: 2003/06/30 16:58:41 $
+c@(#) File ENV.M, version $Revision: 3.24 $, $Date: 2003/07/18 17:26:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -491,6 +491,18 @@ c
            y0p2end = y0p2end*(1. - wz) + y0p2*wz
          endif
 c        Advance the envelope and orbits; 
+c
+c        For the case of solenoidal magnetic fields, all orbits and 
+c        centroid advances are carried out implicitly in the Larmor 
+c        frame.  This gives correct results for a uniform density beam 
+c        with zero canonical angular momentum.  If WARP inputs are 
+c        generalized to work with nonzero canonical angular momentum, then 
+c        both the envelope and centroid advance equations will need to be 
+c        generalized.  In this case it would probably be easier to just 
+c        advance first and second order moments for a uniform density 
+c        elliptical beam and then project out all quantities needed (envelope, 
+c        centroid, emittance, etc.) from the statistical moments.   
+c
 c        --- envelope a in x-z plane
          ap   = ap   + .5*dz*fa   - 0.5*dz*faccl*ap
          a    = a    + ap*dz
@@ -654,7 +666,7 @@ c than to create new local ones.
       real(kind=8):: fuzz
       real(kind=8):: frac,ez,bz,ke,de,db
       real(kind=8):: dedrr,dbdrr,dbdxq,dedxq
-      real(kind=8):: xdbdx,xdedx,ydbdx,ydedx,xex,yey,alpha
+      real(kind=8):: xdbdx,xdedx,ydbdy,ydedy,xex,yey,alpha
       real(kind=8):: fux,fuy,fq,feself,fexself,feyself,fsol
       real(kind=8):: wie,wim
       real(kind=8):: offset
@@ -674,8 +686,8 @@ c     --- Initialize variables to the values from the uniform fields.
       dedxq = 0.
       xdbdx = dbdr*vz*x
       xdedx = (dedr + dexdx)*x
-      ydbdx = dbdr*vz*y
-      ydedx = (dedr + deydy)*y
+      ydbdy = dbdr*vz*y
+      ydedy = (dedr + deydy)*y
       xex   = 0.
       yey   = 0.
       ez = 0.
@@ -708,9 +720,9 @@ c         --- quadrupole fields, including residence fraction
             dbdxq = dbdxq + quaddb(iq)*frac 
             dedxq = dedxq + quadde(iq)*frac 
             xdbdx = xdbdx + quaddb(iq)*frac*(x - qoffx(iq))
-            xdedx = xdedx + quadde(iq)*frac*(x - qoffx(iq))
-            ydbdx = ydbdx + quaddb(iq)*frac*(y - qoffy(iq))
-            ydedx = ydedx + quadde(iq)*frac*(y - qoffy(iq))
+            xdedx = xdedx - quadde(iq)*frac*(x - qoffx(iq))
+            ydbdy = ydbdy + quaddb(iq)*frac*(y - qoffy(iq))
+            ydedy = ydedy + quadde(iq)*frac*(y - qoffy(iq))
           endif
 
         enddo
@@ -718,7 +730,7 @@ c         --- quadrupole fields, including residence fraction
       endif 
 
 c     --- Hard edge multipoles, can include linearly focusing 
-c     --- quadrupole or azimuthally symmetric field 
+c     --- quadrupole, solenoid, or azimuthally symmetric field 
  
       if (heles) then
 
@@ -739,7 +751,7 @@ c         --- Calculate residence fraction.
           if (fracr > fracl) frac = (zr - helezs(ih)-offset) / abs(dz)
           if (frac == 0.) cycle
 
-c         --- Get only the quadrupole and uniform components
+c         --- Get only the quadrupole, solenoid, and uniform components
           do ii = 1, max(helenm(ih),helene(ih)) 
             if ((nint(hele_n(ii,ih)) == 2) .and. 
      &          (nint(hele_v(ii,ih)) == 0)) then
@@ -753,16 +765,21 @@ c             --- quadrupole field
               dbdxq = dbdxq + db
               dedxq = dedxq + de
               xdbdx = xdbdx + db*(x - heleox(ih))
-              xdedx = xdedx + de*(x - heleox(ih))
-              ydbdx = ydbdx + db*(y - heleoy(ih))
-              ydedx = ydedx + de*(y - heleoy(ih))
+              xdedx = xdedx - de*(x - heleox(ih))
+              ydbdy = ydbdy + db*(y - heleoy(ih))
+              ydedy = ydedy + de*(y - heleoy(ih))
             endif 
+            if ((nint(hele_n(ii,ih)) == 0) .and.
+     &          (nint(hele_v(ii,ih)) == 0)) then
+c             --- solenoidal field 
+                bz = bz + heleam(ii,ih)*frac 
+            endif
             if ((nint(hele_n(ii,ih)) == 0) .and.
      &          (nint(hele_v(ii,ih)) == 0)) then
 c             --- uniform field
               dedrr = dedrr + 0.5*heleep(ii,ih)*frac
               xdedx = xdedx + 0.5*heleep(ii,ih)*frac*(x - heleox(ih))
-              ydedx = ydedx + 0.5*heleep(ii,ih)*frac*(y - heleoy(ih))
+              ydedy = ydedy + 0.5*heleep(ii,ih)*frac*(y - heleoy(ih))
             endif
           enddo
 
@@ -797,8 +814,8 @@ c           --- Lookup field strengths with linear interpolation.
                 de = (esemlt(iie  ,ii,iem)*(1.-wie)+ esemlt(iie+1,ii,iem)*wie)*
      &               (emltsc(ie) + emltsf(ie))
                 dedxq = dedxq + de
-                xdedx = xdedx + de*(x - emltox(ie))
-                ydedx = ydedx + de*(y - emltoy(ie))
+                xdedx = xdedx - de*(x - emltox(ie))
+                ydedy = ydedy + de*(y - emltoy(ie))
               endif
               if ((nint(emlt_n(ii)) == 0) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
@@ -807,7 +824,7 @@ c           --- Lookup field strengths with linear interpolation.
      &                   (emltsc(ie) + emltsf(ie))
                 dedrr = dedrr - de
                 xdedx = xdedx - de*(x - emltox(ie))
-                ydedx = ydedx - de*(y - emltoy(ie))
+                ydedy = ydedy - de*(y - emltoy(ie))
                 ez = ez + (esemlt(iie  ,ii,iem)*(1.-wie) +
      &                     esemlt(iie+1,ii,iem)*wie)*
      &                    (emltsc(ie) + emltsf(ie))
@@ -855,7 +872,7 @@ c           --- Lookup field strengths with linear interpolation.
      &               (mmltsc(im) + mmltsf(im))
                 dbdxq = dbdxq + db
                 xdbdx = xdbdx + db*(x - mmltox(im))
-                ydbdx = ydbdx + db*(y - mmltoy(im))
+                ydbdy = ydbdy + db*(y - mmltoy(im))
               endif
               if ((nint(mmlt_n(ii)) == 0) .and. 
      &            (nint(mmlt_v(ii)) == 0)) then
@@ -935,12 +952,12 @@ c     --- azimuthally symmetric) and quadrupole focusing strengths
       fq  = zion*echarge*(dedxq - dbdxq*vz)/(aion*amu*gamma*vz**2)
       fsol = (zion*echarge*bz/(2.*aion*amu*gamma*vz))**2
 
-c     --- Calculate forces for advancing envelope and test particles
+c     --- Calculate forces for advancing envelope, centroid, and test particles
       feself = 2.*p/(a + b)
       fa = ( fq + fux - fsol)*a + feself + (emitnx_l*clight/(vz*gamma))**2/a**3
       fb = (-fq + fuy - fsol)*b + feself + (emitny_l*clight/(vz*gamma))**2/b**3
       fx = zion*echarge/(aion*amu*gamma*vz**2)*(xdedx - xdbdx*vz + xex)
-      fy = zion*echarge/(aion*amu*gamma*vz**2)*(ydedx - ydbdx*vz + yey)
+      fy = zion*echarge/(aion*amu*gamma*vz**2)*(ydedy + ydbdy*vz + yey)
 
       fexself = feself/a
       fx1  = (fq + fux + fsol + fexself)*x1
