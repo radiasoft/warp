@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.50 $, $Date: 2002/07/17 17:35:20 $
+c@(#) File TOP.M, version $Revision: 3.51 $, $Date: 2002/07/25 21:21:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1967,7 +1967,7 @@ c  For periodic runs, assumes mesh period length = lattice period length
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8):: vz(npz),dzi(npz)
 
-      if (.not. bends .or. .not. linbend) then
+      if (.not. bends) then
         bendres = 0.
         return
       endif
@@ -2045,7 +2045,7 @@ c Apply transformation for bending field.
       integer(ISZ):: ip
       real(kind=8):: qi,bres,brad
 
-      if (.not. bends .or. .not. linbend) return
+      if (.not. bends) return
 
       if (lslice) then
         bres = bendres(1)
@@ -2103,7 +2103,6 @@ c   bx, by   quadrupole magnetic field
       dzi = 1./dvnz(vz*(dtr-dtl))
 
       do io=1,nquadol
-        if (.not. linquad(io)) cycle
 
         if (lslice) then
 c         --- find z-cell in which particle lies
@@ -2125,8 +2124,8 @@ c         --- residence fraction
           frac = fl
           if (fl > fr) frac = (cquadze(iz,io)-zl)*dzi(1)
           if (fr > fl) frac = (zr-cquadzs(iz,io))*dzi(1)
-c         --- if frac is zero, just return since no field will be applied
-          if (frac == 0.) return
+c         --- if frac is zero, no field will be applied
+          if (frac == 0.) cycle
         endif
         do ip = 1, np
 
@@ -2210,7 +2209,6 @@ c   bx, by   dipole magnetic field
       dzi = 1./dvnz(vz*(dtr-dtl))
 
       do io=1,ndipool
-        if (.not. lindipo(io)) cycle
 
         if (lslice) then
 c         --- find z-cell in which particle lies
@@ -2232,8 +2230,8 @@ c         --- residence fraction
           frac = fl
           if (fl > fr) frac = (cdipoze(iz,io)-zl)*dzi(1)
           if (fr > fl) frac = (zr-cdipozs(iz,io))*dzi(1)
-c         --- if frac is zero, just return since no field will be applied
-          if (frac == 0.) return
+c         --- if frac is zero, no field will be applied
+          if (frac == 0.) cycle
         endif
         do ip = 1, np
 
@@ -2296,13 +2294,12 @@ c less than the entire andvance step on entry/exit of the dipole.
       vzi = 1./dvnz(uzp*gaminv)
 
       do io=1,ndipool
-        if (.not. lindipo(io)) cycle
 
         if (lslice) then
           iz = 0
           if (.not.((zpo(1) < cdipozs(iz,io) .and. zp(1) >= cdipozs(iz,io)) .or.
      &              (zpo(1) < cdipoze(iz,io) .and. zp(1) >= cdipoze(iz,io))))
-     &      return
+     &      cycle
         endif
         do ip = 1,np
           if (.not. lslice) then
@@ -2370,7 +2367,6 @@ c   bx, by   sextupole magnetic field
       dzi = 1./dvnz(vz*(dtr-dtl))
 
       do io=1,nsextol
-        if (.not. linsext(io)) cycle
 
         if (lslice) then
 c         --- find z-cell in which particle lies
@@ -2392,8 +2388,8 @@ c         --- residence fraction
           frac = fl
           if (fl > fr) frac = (csextze(iz,io)-zl)*dzi(1)
           if (fr > fl) frac = (zr-csextzs(iz,io))*dzi(1)
-c         --- if frac is zero, just return since no field will be applied
-          if (frac == 0.) return
+c         --- if frac is zero, no field will be applied
+          if (frac == 0.) cycle
         endif
         do ip = 1, np
 
@@ -2476,7 +2472,6 @@ c   bx, by, bz   magnetic field
       dzi = 1./dvnz(vz*(dtr-dtl))
 
       do io=1,nheleol
-        if (.not. linhele(io)) cycle
 
 c       --- calculate coordinates, element indices, and residence
 c       --- fractions over particle block and store in temp arrays
@@ -2502,8 +2497,8 @@ c         --- residence fraction
           frac = fl
           if (fl > fr) frac = (cheleze(iz,io)-zl)*dzi(1)
           if (fr > fl) frac = (zr-chelezs(iz,io))*dzi(1)
-c         --- if frac is zero, just return since no field will be applied
-          if (frac == 0.) return
+c         --- if frac is zero, no field will be applied
+          if (frac == 0.) cycle
         endif
         do ip = 1, np
 
@@ -3102,8 +3097,8 @@ c         --- All particles are in the same z-cell
           ii = cbgrdid(iz,io)
           ib = bgrdid(ii)
           k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
-c         --- Exit field accumulation if particles are outside of axial grid
-          if (k < 0 .or. k >= bgrdnz) return
+c         --- skip field accumulation if particles are outside of axial grid
+          if (k < 0 .or. k >= bgrdnz) cycle
         endif
 
         do ip = 1, np
@@ -3295,7 +3290,7 @@ c         --- find the location of the particle in the internal lattice arrays
           ii = cpgrdid(iz,io)
           ib = pgrdid(ii)
           k = (zz - cpgrdzs(iz,io))*pgrddzi(ib)
-          if (k < 0 .or. k >= pgrdnz) return
+          if (k < 0 .or. k >= pgrdnz) cycle
         endif
 
         do ip = 1, np
@@ -3429,7 +3424,6 @@ c     --- Finite length gaps
       if (.not. lacclzl) then
 
         do io=1,nacclol
-          if (.not. linaccl(io)) cycle
 
 c         --- For velocity correction, first calculate the velocity at
 c         --- time level n.
@@ -3478,7 +3472,6 @@ c           --- add acceleration field to Ez field
       else
 
         do io=1,nacclol
-          if (.not. linaccl(io)) cycle
 
 c         --- Zero length gaps
           do ip = 1, np
@@ -3531,7 +3524,6 @@ c       --- Finite length gap
         if (.not. lacclzl) then
 
           do io=1,nacclol
-            if (.not. linaccl(io)) cycle
 
             do ip=1,np
 c             --- find index of nearest accl element
@@ -3567,7 +3559,6 @@ c             --- calculate correction on particle position
 c         --- Zero length gap
 
           do io=1,nacclol
-            if (.not. linaccl(io)) cycle
 
             do ip = 1, np
               iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
@@ -3634,7 +3625,6 @@ c     --- All particles lie at the same z-cell
       if (.not. lacclzl) then
 
         do io=1,nacclol
-          if (.not. linaccl(io)) cycle
 
 c         --- For velocity correction, first calculate the velocity at
 c         --- time level n.
@@ -3685,7 +3675,6 @@ c           --- add acceleration field to Ez field
 
 c       --- Zero-length gaps.
         do io=1,nacclol
-          if (.not. linaccl(io)) cycle
 
           moverq = m/q
           cacclz = 0.5*(cacclzs(iz,io) + cacclze(iz,io))
@@ -3744,7 +3733,6 @@ c     --- Finite length gap
       if (.not. lacclzl) then
 
         do io=1,nacclol
-          if (.not. linaccl(io)) cycle
 
           do ip=1,np
 c           --- Scale time step size by particles time step.
@@ -3782,7 +3770,6 @@ c           --- calculate correction on particle position
 
 c       --- Zero length gap
         do io=1,nacclol
-          if (.not. linaccl(io)) cycle
 
           cacclz = 0.5*(cacclzs(iz,io) + cacclze(iz,io))
           caccll = cacclze(iz,io) - cacclzs(iz,io)
@@ -3860,7 +3847,6 @@ c by the calling routine.
       if (accls .and. vbeamfrm .ne. 0.) then
 
         do io=1,nacclol
-          if (.not. linaccl(io)) cycle
 
 c         --- index of accl element in center of beam frame
 c         --- The id is saved in order to minize the time searching for the
@@ -3870,7 +3856,7 @@ c         --- next accl element from call to call.
           id = aid(io)
 
 c         --- Check if this gap should accelerate the beam frame.
-          if (acclsw(id) .ne. 0) return
+          if (acclsw(id) .ne. 0) cycle
 
 c         --- Set some temporaries
           gapez = acclez(id)
