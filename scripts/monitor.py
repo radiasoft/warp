@@ -12,18 +12,20 @@ connect(machine="machinename",passwd='mypassword')
 
 where "machinename" is the name of the machine where the original run
 is. Note that the password must be the same as in the createmonitor
-command. (The password provides very minimal security and is sent in
-plain text so do not use a sensitive password!) A "+++" prompt will be
-shown and commands typed will be sent to the remote job.
+command. (The password provides some security since it is since using md5
+encryption.  Though you should still probably not use a sensitive password!)
+A "+++" prompt will be shown and commands typed will be sent to the remote job.
 
 When the "+++" prompt is displayed, the remote job will stop execution
 and wait for commands. To continue the job, type the control-d key.
 """
 from warp import *
+import gist
 import socket
 import time
 import re
-monitor_version = "$Id: monitor.py,v 1.3 2003/05/30 17:03:12 dave Exp $"
+import md5
+monitor_version = "$Id: monitor.py,v 1.4 2003/12/02 02:21:45 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -51,10 +53,11 @@ class Monitor:
   """
 Creates a monitor for a running job.
  - port=50007: port number to use
- - passwd='0': password to provide minimal security
+ - passwd='0': password to provide some security
   """
-  def __init__(self,port=50007,passwd='0'):
-    self.passwd = passwd
+  def __init__(self,port=50007,passwd='fj39jfgks'):
+    self.md5passwd = md5.new(passwd)
+    self.hexdigestpasswd = self.md5passwd.hexdigest()
     self.port = port
     self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     self.sock.bind(("",port))
@@ -82,9 +85,12 @@ commands, then don't do anything.
       return
     self.sock.setblocking(1)
     #self.sock.setblocking(0)
+    # --- Not sure why this first send is needed, but it doesn't seem to 
+    # --- work if it is not done, especially if the passwd is not ok.
     socketsend(self.client,'0')
-    pw = socketrecv(self.client)
-    if pw == self.passwd:
+    socketsend(self.client,self.hexdigestpasswd)
+    passwdok = socketrecv(self.client)
+    if passwdok == 'ok':
       self.lspecialsave = top.lspecial
       top.lspecial = 1
       self.maxcallssave = top.maxcalls
@@ -92,7 +98,7 @@ commands, then don't do anything.
       return
     else:
       print "Access not authorized"
-      socketsend(self.client,"Access not authorized")
+     #socketsend(self.client,"Access not authorized")
       self.sock.setblocking(0)
       self.client.close()
       self.client = []
@@ -108,14 +114,14 @@ and if so, get commands from it.
       print "Ready for input."
       socketsend(self.client,"Ready for input.")
       self.gettingcommands = 1
-      notdone = 1
-      while notdone:
+      done = false
+      while not done:
         try:
           comm = socketrecv(self.client)
         except:
           break
-        if comm == "cont" or comm == "continue":
-          notdone = 0
+        if comm == "EOF":
+          done = true
           print "Continuing"
           socketsend(self.client,"Continuing")
         elif comm == "exec":
@@ -138,6 +144,13 @@ and if so, get commands from it.
             socketsend(self.client,repr(rrr))
           except:
             socketsend(self.client,"Error")
+        # --- Handle any gist events
+        try:
+          v = gist.__version__
+          pyg_pending()
+          pyg_idler()
+        except:
+          ygdispatch()
       # --- When done, release the socket and return some variables
       # --- back to normal.
       self.client.close()
@@ -148,11 +161,11 @@ and if so, get commands from it.
       top.ncall = self.ncallsave
       self.gettingcommands = 0
 
-def createmonitor(port=50007,passwd='0'):
+def createmonitor(port=50007,passwd='fj39jfgks'):
   """
 Creates a monitor for a running job.
  - port=50007: port number to use
- - passwd='0': password to provide minimal security
+ - passwd='0': password to provide some security
   """
   global _monitor
   _monitor = Monitor(port=port,passwd=passwd)
@@ -177,7 +190,7 @@ def sendexec(s):
 
 # --- Send continue command
 def sendcont():
-  sendeval('cont')
+  sendeval('EOF')
 
 # --- Reads command from stdin and sends them off. Assumes that anything
 # --- containing an '=' should be exec'ed, otherwise eval'ed. That
@@ -188,20 +201,27 @@ def sendcommands():
       s = raw_input('+++ ')
     except EOFError:
       try:
-        sendeval('cont')
+        sendeval('EOF')
       except socket.error:
         pass
       break
     try:
-      if re.search('=',s):
+      if not s:
+        pass
+      elif s == 'EOF':
+        sendeval('EOF')
+        break
+      elif re.search('=',s):
         sendexec(s)
+      elif s[:6] == 'print ':
+        sendeval(s[6:])
       else:
         sendeval(s)
     except socket.error:
       break
 
 # --- Create functions for client side
-def connect(machine="localhost",port=50007,passwd='0',auto=1): 
+def connect(machine="localhost",port=50007,passwd='fj39jfgks',auto=1): 
   """
 Make a connection to a running job with a monitor.
   - machine="localhost": machine on which job is running
@@ -210,14 +230,26 @@ Make a connection to a running job with a monitor.
   - auto=1: when 1, go directly into the "+++" prompt
   """
   global _sock
+  try:
+    if _sock.fileno() != -1:
+      print "Already connected!"
+      return
+  except:
+    pass
   _sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
   _sock.connect((machine,port))
+  md5passwd = md5.new(passwd)
+  hexdigestpasswd = md5passwd.hexdigest()
   r = socketrecv(_sock)
-  socketsend(_sock,passwd)
-  s = socketrecv(_sock)
-  #if s == "Access not authorized":
-    #_sock.close()
-  print s
+  r = socketrecv(_sock)
+  if r == hexdigestpasswd:
+    socketsend(_sock,'ok')
+  else:
+    socketsend(_sock,'nope')
+    print "Access not authorized"
+    _sock.close()
+    return
+  print socketrecv(_sock)
   if auto:
     sendcommands()
     _sock.close()
