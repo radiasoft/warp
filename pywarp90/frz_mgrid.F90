@@ -2982,11 +2982,11 @@ END subroutine find_mgparam_rz
 subroutine srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
                       xmin,xmax,ymin,ymax,lshell,                      &
                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,             &
-                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 ! call subroutine srfrvout_rz (which determines grid nodes near conductors and give
 ! directions and distances to conductors), initialize and assign coefficients
 ! for multigrid Poisson solver.
-use PSOR3d
+use Conductor3d
 USE multigridrz
 implicit none
 character(*) rofzfunc
@@ -2996,6 +2996,7 @@ real(kind=8):: xmin,xmax,ymin,ymax
 real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
 INTEGER(ISZ):: nx,ny,nz,ix_axis,iy_axis
 real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+integer(ISZ):: condid
 
 INTEGER(ISZ) :: i,nrc,nzc,igrid
 REAL(8) :: drc,dzc,zmin_in,zmax_in
@@ -3025,7 +3026,7 @@ do igrid=1,ngrids
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
                       xmin,xmax,ymin,ymax,lshell,                      &
                       zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
-                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd)
 
@@ -3037,11 +3038,11 @@ end subroutine srfrvoutrz
 subroutine srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,   &
                            lzend,xmin,xmax,ymin,ymax,lshell,          &
                            zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,       &
-                           ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+                           ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 ! call subroutine srfrvinout_rz (which determines grid nodes near conductors and give
 ! directions and distances to conductors), initialize and assign coefficients
 ! for multigrid Poisson solver.
-use PSOR3d
+use Conductor3d
 USE multigridrz
 implicit none
 character(*) rminofz,rmaxofz
@@ -3051,6 +3052,7 @@ real(kind=8):: xmin,xmax,ymin,ymax
 real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
 INTEGER(ISZ):: nx,ny,nz,ix_axis,iy_axis
 real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+integer(ISZ):: condid
 
 INTEGER(ISZ) :: i,nrc,nzc,igrid
 REAL(8) :: drc,dzc,zmin_in,zmax_in
@@ -3080,7 +3082,7 @@ do igrid=1,ngrids
   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,  &
                      lzend,xmin,xmax,ymin,ymax,lshell,                &
                      zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
-                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd)
 
@@ -3091,7 +3093,7 @@ end subroutine srfrvinoutrz
 
 subroutine setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz, &
                       l2symtry,l4symtry)
-use PSOR3d
+use Conductor3d
 USE multigridrz
 integer(ISZ):: nx,ny,nz
 real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
@@ -3132,7 +3134,7 @@ end do
 END subroutine setcndtrrz
 
 subroutine addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd)
-use PSOR3d
+use Conductor3d
 USE multigridrz, ONLY: conductor_type, bndy, dirichlet, v_cond, v_bnd, bnd_method, egun, ecb, init_bnd_sublevel
 implicit none
 
@@ -4627,7 +4629,7 @@ end subroutine read_bndstructure_rz
 
 subroutine get_cond_rz(igrid,ilevel)
 USE multigridrz
-USE PSOR3d
+USE Conductor3d
 implicit none
 INTEGER :: igrid,ilevel
 
@@ -4651,7 +4653,7 @@ TYPE(bndptr), pointer :: bnd
  END do
  ncondmax = ncond
  ncndmax = max(necndbdy,nocndbdy)
- call gchange("PSOR3d",0)
+ call gchange("Conductor3d",0)
 
  icc=0
  ice=0
@@ -4666,6 +4668,8 @@ TYPE(bndptr), pointer :: bnd
      icc=icc+1
      ixcond(icc) = bnd%cnd%jcond(i)-1
      izcond(icc) = bnd%cnd%kcond(i)-1
+     icondlxy(icc) = 2**(ic-1)
+     icondlz(icc) = 2**(ic-1)
    end do
    do i = 1, bnd%cnd%nbbndred
     IF(bnd%v(bnd%cnd%jj(i),bnd%cnd%kk(i))==v_bnd) then
@@ -4676,6 +4680,8 @@ TYPE(bndptr), pointer :: bnd
      ecdelpx(ice) = bnd%cnd%dxp(i)/bnd%dr
      ecdelmz(ice) = bnd%cnd%dzm(i)/bnd%dz
      ecdelpz(ice) = bnd%cnd%dzp(i)/bnd%dz
+     iecndlxy(ice) = 2**(ic-1)
+     iecndlz(ice) = 2**(ic-1)
     END if
    end do
    do i = bnd%cnd%nbbndred+1, bnd%cnd%nbbnd
@@ -4687,6 +4693,8 @@ TYPE(bndptr), pointer :: bnd
      ocdelpx(ico) = bnd%cnd%dxp(i)/bnd%dr
      ocdelmz(ico) = bnd%cnd%dzm(i)/bnd%dz
      ocdelpz(ico) = bnd%cnd%dzp(i)/bnd%dz
+     iocndlxy(ico) = 2**(ic-1)
+     iocndlz(ico) = 2**(ic-1)
     END if
    end do
  END do
