@@ -214,15 +214,15 @@ class MRBlock(MultiGrid,Visualizable):
     if iz2 == self.dims[2]: iz2 += 1
     self.idomains[ix1:ix2,iy1:iy2,iz1:iz2] = +ichild
 
-  def resetdomainownership(self):
+  def resetdomainownership(self,upperedge=0):
     if self.idomains is None: return
     self.ncallsfromparents += 1
     if self.ncallsfromparents < len(self.parents): return
     self.ncallsfromparents = 0
     self.idomains[:,:,:] = 0.
     for child,ichild in zip(self.children,range(1,1+len(self.children))):
-      child.resetdomainownership()
-      self.setdomainownership(child,ichild,0)
+      child.resetdomainownership(upperedge)
+      self.setdomainownership(child,ichild,upperedge)
 
   def setrhoboundaries(self):
     """
@@ -785,6 +785,33 @@ the top level grid.
     MultiGrid.installconductors(self,conductor)
     for child in self.children:
       child.installconductors(conductor)
+
+  #############################################################################
+  def getphi(self,ix,iy,iz):
+    ix1,iy1,iz1 = self.fulllower
+    return self.phi[ix-ix1,iy-iy1,iz-iz1+1]
+  def getrho(self,ix,iy,iz):
+    ix1,iy1,iz1 = self.fulllower
+    return self.rho[ix-ix1,iy-iy1,iz-iz1]
+  def getidomain(self,ix,iy,iz):
+    ix1,iy1,iz1 = self.fulllower
+    return self.idomains[ix-ix1,iy-iy1,iz-iz1]
+  def setname(self,root='c',ichild=None):
+    import __main__
+    if ichild is not None:
+      root = root + '%d'%ichild
+      __main__.__dict__[root] = self
+    for child,ichild in zip(self.children,range(1,1+len(self.children))):
+      child.setname(root,ichild)
+  def getmem(self):
+    self.ncallsfromparents += 1
+    if self.ncallsfromparents < len(self.parents): return
+    self.ncallsfromparents = 0
+    memtot = product(self.dims + 1)
+    for child in self.children:
+      memtot = memtot + child.getmem()
+    return memtot
+      
 
   #############################################################################
   # --- The following are used for plotting.
