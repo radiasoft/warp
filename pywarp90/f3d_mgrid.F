@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.60 $, $Date: 2004/04/08 19:20:28 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.61 $, $Date: 2004/04/08 20:04:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1167,7 +1167,6 @@ c=============================================================================
       use Multigrid3d
       use Constant
       use ConductorTypemodule
-      use ConductorSubGridTypemodule
       integer(ISZ):: parity,mglevel,nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
@@ -1205,15 +1204,11 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       real(kind=8):: boundsavex(0:nx,2,0:nz)
       real(kind=8):: boundsavey(0:ny,2,0:nz)
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr
-      integer(ISZ):: ii,ix,iy,iz,ic
-      type(ConductorSubGridType),pointer:: evensubgrid,oddsubgrid
+      integer(ISZ):: ii,ix,iy,iz,ic,i1,i2
 
 c     --- Macro for common arguments to the psor_loop calls
 #define LOOP_ARGS iimz,iipz,phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend, \
       rstar(-1),dx,rdx2,rdy2,rdz2,rdel,const,bendx
-
-      evensubgrid => conductors%evensubgrid
-      oddsubgrid => conductors%oddsubgrid
 
 c     --- Set temporary variables (these are used to increase performance)
       dx = 1./sqrt(rdx2)
@@ -1259,18 +1254,22 @@ c     --- subgrid points which are to be used at the current level of
 c     --- grid refinement.
       if (lcndbndy) then
         if (parity == 0) then
-          do ic = evensubgrid%istart(mglevel),evensubgrid%istart(mglevel+1)-1
-            ix = evensubgrid%indx(0,ic)
-            iy = evensubgrid%indx(1,ic)
-            iz = evensubgrid%indx(2,ic)
-            evensubgrid%prevphi(ic) = phi(ix,iy,iz)
+          i1 = conductors%evensubgrid%istart(mglevel)
+          i2 = conductors%evensubgrid%istart(mglevel+1)-1
+          do ic = i1,i2
+            ix = conductors%evensubgrid%indx(0,ic)
+            iy = conductors%evensubgrid%indx(1,ic)
+            iz = conductors%evensubgrid%indx(2,ic)
+            conductors%evensubgrid%prevphi(ic) = phi(ix,iy,iz)
           enddo
         else
-          do ic = oddsubgrid%istart(mglevel),oddsubgrid%istart(mglevel+1)-1
-            ix = oddsubgrid%indx(0,ic)
-            iy = oddsubgrid%indx(1,ic)
-            iz = oddsubgrid%indx(2,ic)
-            oddsubgrid%prevphi(ic) = phi(ix,iy,iz)
+          i1 = conductors%oddsubgrid%istart(mglevel)
+          i2 = conductors%oddsubgrid%istart(mglevel+1)-1
+          do ic = i1,i2
+            ix = conductors%oddsubgrid%indx(0,ic)
+            iy = conductors%oddsubgrid%indx(1,ic)
+            iz = conductors%oddsubgrid%indx(2,ic)
+            conductors%oddsubgrid%prevphi(ic) = phi(ix,iy,iz)
           enddo
         endif
       endif
@@ -1378,12 +1377,14 @@ c     --- Apply altered difference equation to the points near the
 c     --- surface of the conductor boundaries.
       if (lcndbndy) then
         if (parity == 0) then
-         call condbndymg(evensubgrid,nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,
+         call condbndymg(conductors%evensubgrid,nx,ny,nz,phi,rho,
+     &                   rdx2c,rdy2c,rdz2c,spm1,
      &                   mgparam,localb0,localbnz,boundxy,l2symtry,l4symtry,
      &                   mglevel,mgform,icndbndy)
         endif
         if (parity == 1) then
-         call condbndymg(oddsubgrid,nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,
+         call condbndymg(conductors%oddsubgrid,nx,ny,nz,phi,rho,
+     &                   rdx2c,rdy2c,rdz2c,spm1,
      &                   mgparam,localb0,localbnz,boundxy,l2symtry,l4symtry,
      &                   mglevel,mgform,icndbndy)
         endif
@@ -2485,8 +2486,6 @@ c=============================================================================
       use MGLevels3d
       use Parallel
       use ConductorTypemodule
-      use ConductorInteriorTypemodule
-      use ConductorSubGridTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
@@ -2503,12 +2502,6 @@ c various mesh resolutions needed by the MG solver.
       real(kind=8):: dx1,dy1,dz1
       integer(ISZ):: nx1,ny1,nz1
       integer(ISZ):: ix_axis1,iy_axis1
-      type(ConductorInteriorType),pointer:: interior
-      type(ConductorSubGridType),pointer:: evensubgrid,oddsubgrid
-
-      interior => conductors%interior
-      evensubgrid => conductors%evensubgrid
-      oddsubgrid => conductors%oddsubgrid
 
 c     --- Call the work routine for each level
       do il=0,mglevels-1
@@ -2518,56 +2511,60 @@ c     --- Call the work routine for each level
         nx1 = mglevelsnx(il)
         ny1 = mglevelsny(il)
         nz1 = mglevelsnz(il)
-        call checkconductors_work(interior,evensubgrid,oddsubgrid,
+        call checkconductors_work(conductors%interior,
+     &                            conductors%evensubgrid,conductors%oddsubgrid,
      &                            nx1,ny1,nz1,dx1,dy1,dz1,l2symtry,l4symtry,il)
       enddo
 
-      interior%istart = 1
-      evensubgrid%istart = 1
-      oddsubgrid%istart = 1
+      conductors%interior%istart = 1
+      conductors%evensubgrid%istart = 1
+      conductors%oddsubgrid%istart = 1
 
 c     --- Sort the conductor data by level number
 c     --- First, sort conductor points
-      if (interior%n > 0) then
-        allocate(isort(interior%n))
-        call isortconductor(interior%n,interior%ilevel,isort,interior%istart,
-     &                      mglevels)
-        nn = interior%n
-        interior%n = interior%istart(mglevels) - 1
-        call iswapconductor(interior%n,isort,nn,3,interior%indx)
-        call iswapconductor(interior%n,isort,nn,1,interior%numb)
-        call rswapconductor(interior%n,isort,nn,1,interior%volt)
-        call iswapconductor(interior%n,isort,nn,1,interior%ilevel)
+      if (conductors%interior%n > 0) then
+        allocate(isort(conductors%interior%n))
+        nn = conductors%interior%n
+        call isortconductor(nn,conductors%interior%ilevel,isort,
+     &                      conductors%interior%istart,mglevels)
+        conductors%interior%n = conductors%interior%istart(mglevels) - 1
+        nn = conductors%interior%n
+        call iswapconductor(nn,isort,nn,3,conductors%interior%indx)
+        call iswapconductor(nn,isort,nn,1,conductors%interior%numb)
+        call rswapconductor(nn,isort,nn,1,conductors%interior%volt)
+        call iswapconductor(nn,isort,nn,1,conductors%interior%ilevel)
         deallocate(isort)
       endif
 
 c     --- Sort even subgrid points
-      if (evensubgrid%n > 0) then
-        allocate(isort(evensubgrid%n))
-        call isortconductor(evensubgrid%n,evensubgrid%ilevel,isort,
-     &                      evensubgrid%istart,mglevels)
-        nn = evensubgrid%n
-        evensubgrid%n = evensubgrid%istart(mglevels) - 1
-        call iswapconductor(evensubgrid%n,isort,nn,3,evensubgrid%indx)
-        call rswapconductor(evensubgrid%n,isort,nn,6,evensubgrid%dels)
-        call rswapconductor(evensubgrid%n,isort,nn,6,evensubgrid%volt)
-        call iswapconductor(evensubgrid%n,isort,nn,6,evensubgrid%numb)
-        call iswapconductor(evensubgrid%n,isort,nn,1,evensubgrid%ilevel)
+      if (conductors%evensubgrid%n > 0) then
+        allocate(isort(conductors%evensubgrid%n))
+        nn = conductors%evensubgrid%n
+        call isortconductor(nn,conductors%evensubgrid%ilevel,isort,
+     &                      conductors%evensubgrid%istart,mglevels)
+        conductors%evensubgrid%n = conductors%evensubgrid%istart(mglevels) - 1
+        nn = conductors%evensubgrid%n
+        call iswapconductor(nn,isort,nn,3,conductors%evensubgrid%indx)
+        call rswapconductor(nn,isort,nn,6,conductors%evensubgrid%dels)
+        call rswapconductor(nn,isort,nn,6,conductors%evensubgrid%volt)
+        call iswapconductor(nn,isort,nn,6,conductors%evensubgrid%numb)
+        call iswapconductor(nn,isort,nn,1,conductors%evensubgrid%ilevel)
         deallocate(isort)
       endif
     
 c     --- Sort odd subgrid points
-      if (oddsubgrid%n > 0) then
-        allocate(isort(oddsubgrid%n))
-        call isortconductor(oddsubgrid%n,oddsubgrid%ilevel,isort,
-     &                      oddsubgrid%istart,mglevels)
-        nn = oddsubgrid%n
-        oddsubgrid%n = oddsubgrid%istart(mglevels) - 1
-        call iswapconductor(oddsubgrid%n,isort,nn,3,oddsubgrid%indx)
-        call rswapconductor(oddsubgrid%n,isort,nn,6,oddsubgrid%dels)
-        call rswapconductor(oddsubgrid%n,isort,nn,6,oddsubgrid%volt)
-        call iswapconductor(oddsubgrid%n,isort,nn,6,oddsubgrid%numb)
-        call iswapconductor(oddsubgrid%n,isort,nn,1,oddsubgrid%ilevel)
+      if (conductors%oddsubgrid%n > 0) then
+        allocate(isort(conductors%oddsubgrid%n))
+        nn = conductors%oddsubgrid%n
+        call isortconductor(nn,conductors%oddsubgrid%ilevel,isort,
+     &                      conductors%oddsubgrid%istart,mglevels)
+        conductors%oddsubgrid%n = conductors%oddsubgrid%istart(mglevels) - 1
+        nn = conductors%oddsubgrid%n
+        call iswapconductor(nn,isort,nn,3,conductors%oddsubgrid%indx)
+        call rswapconductor(nn,isort,nn,6,conductors%oddsubgrid%dels)
+        call rswapconductor(nn,isort,nn,6,conductors%oddsubgrid%volt)
+        call iswapconductor(nn,isort,nn,6,conductors%oddsubgrid%numb)
+        call iswapconductor(nn,isort,nn,1,conductors%oddsubgrid%ilevel)
         deallocate(isort)
       endif
 
