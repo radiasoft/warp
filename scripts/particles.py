@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.20 2005/02/08 17:55:03 dave Exp $"
+particles_version = "$Id: particles.py,v 1.21 2005/02/22 19:06:44 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -641,7 +641,7 @@ def getvzrange(kwdict={}):
 #-------------------------------------------------------------------------
 #-------------------------------------------------------------------------
 def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=1.,js=0,
-                 lallindomain=false,zmmin=None,zmmax=None,lmomentum=false,
+                 lallindomain=None,zmmin=None,zmmax=None,lmomentum=false,
                  resetrho=false,dofieldsol=false,resetmoments=false):
   """
 Adds particles to the simulation
@@ -653,6 +653,9 @@ Adds particles to the simulation
   lallindomain=false: When true, all particles are assumed to be with in the
                       z extent of the domain so particle scraping is not done.
                       Note that no check is done transversely.
+                      This is automatically set to true when the code is in
+                      slice mode, i.e. after package('wxy'). Except if the
+                      option is explicitly set.
   zmmin=w3d.zmmin,zmmax=w3d.zmmax: z extent of the domain
   lmomentum=false: Set to false when velocities are input as velocities, true
                    when input as massless momentum (as WARP stores them).
@@ -705,6 +708,14 @@ Adds particles to the simulation
   else:
     if zmmin is None: zmmin = top.zpslmin[me] + top.zbeam
     if zmmax is None: zmmax = top.zpslmax[me] + top.zbeam
+
+  # --- When running in slice mode, automatically set lallindomain to true.
+  # --- It is assumed that all particles will be within the specified domain,
+  # --- since in the slice mode, the z of the particles is ignored.
+  # --- The user can still set lallindomain to false to override this.
+  if lallindomain is None:
+    if getcurrpkg() == 'wxy': lallindomain = true
+    else:                     lallindomain = false
 
   # --- Now data can be passed into the fortran addparticles routine.
   addpart(maxlen,top.npid,x,y,z,vx,vy,vz,gi,pid,js+1,lallindomain,zmmin,zmmax,lmomentum)
