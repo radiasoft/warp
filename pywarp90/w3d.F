@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.142 $, $Date: 2004/01/27 22:45:13 $
+c@(#) File W3D.F, version $Revision: 3.143 $, $Date: 2004/02/12 21:16:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5375,8 +5375,8 @@ c           --- Create equivalences
             yy => yt(1:nn)
             zz => zt(1:nn)
             ux => uxt(1:nn)
-            uy => uxt(1:nn)
-            uz => uxt(1:nn)
+            uy => uyt(1:nn)
+            uz => uzt(1:nn)
             gg => rt(1:nn)
             id => perpscal(1:nn)
 c           --- Fetch time step size
