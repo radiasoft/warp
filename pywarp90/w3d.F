@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.84 $, $Date: 2003/02/11 20:39:08 $
+c@(#) File W3D.M, version $Revision: 3.85 $, $Date: 2003/02/12 15:29:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1488,7 +1488,7 @@ c       --- Apply particle boundary conditions
         call zpartbnd(zmmax,zmmin,dz,zgrid)
 
 c       --- absorb particles passing through semitransparent disc
-        call semitransparent_disc()
+        call semitransparent_disc(dz)
 
 #ifdef MPIPARALLEL
         call reorg_particles()
