@@ -1,8 +1,18 @@
-!     Last change:  JLV  29 Aug 2001    3:35 pm
+!     Last change:  JLV   5 Sep 2001    3:11 pm
 #include "top.h"
+
 module multigridrz
 ! module containing RZ multigrid solver
 USE constant
+USE PSOR3d, ONLY:boundxy,bound0,boundnz
+USE FRZmgrid
+#ifdef PARALLEL
+  use Parallel
+  use mpirz
+#endif
+
+LOGICAL :: l_mgridrz_debug=.false.
+
 TYPE conductor_type
 ! structure for potential calculation close to conductors.
 ! The stencil for the iterative calculation of the potential f is given by
@@ -48,6 +58,7 @@ TYPE bndptr
   ! mask array on the grid, = .true. on nodes in vacuum (i.e. not near or in conductors)
   LOGICAL(ISZ), POINTER :: v(:,:)
   LOGICAL(ISZ) :: l_powerof2 ! set to true if all grid dimensions (in number of meshes) are a power of two
+  LOGICAL(ISZ) :: l_merged ! set to true if grids between tasks have been merged
   INTEGER(ISZ) :: nr, nz
   ! mesh sizes
   REAL(8) :: dr, dz
@@ -55,6 +66,10 @@ TYPE bndptr
   INTEGER(ISZ) :: nb_conductors
   ! linked-list of conductors
   TYPE(conductor_type), POINTER :: cnd,first
+  INTEGER(ISZ) :: izlbnd, izrbnd  ! boundary conditions for each side
+#ifdef PARALLEL
+  INTEGER(ISZ) :: nworkpproc
+#endif
 END TYPE bndptr
 
 TYPE(bndptr), pointer :: bndy(:)
@@ -64,13 +79,18 @@ LOGICAL(ISZ) :: bndy_allocated=.FALSE. ! flag set to true if bndy is allocated
 REAL(8), parameter :: coefrelax=1._8, coefrelaxbnd=1._8 ! coefficients for relaxation steps
 INTEGER, parameter :: nmeshmin=2
 
-INTEGER(ISZ), parameter :: dirichlet=0, neumann=1, periodic=2  ! boundary condition types
+INTEGER(ISZ), parameter :: dirichlet=0, neumann=1, periodic=2, othertask=-1  ! boundary condition types
 INTEGER(ISZ) :: ixlbnd=dirichlet, ixrbnd=dirichlet, izlbnd=dirichlet, izrbnd=dirichlet  ! boundary conditions for each side
 
 INTEGER(ISZ), parameter :: egun=0, ecb=1
 INTEGER(ISZ) :: bnd_method=egun
 
 INTEGER(ISZ) :: nlevels ! number of multigrid levels
+INTEGER(ISZ) :: level ! current multigrid level
+
+#ifdef PARALLEL
+  INTEGER(ISZ) :: nzfine, nworkpproc, workfact=3
+#endif
 
 contains
 
@@ -83,47 +103,101 @@ REAL(8), INTENT(IN) :: dr, dz
 INTEGER(ISZ) :: i, nrp0, nzp0, nrc, nzc
 REAL(8) :: drc, dzc
 
+#ifdef PARALLEL
+  nzfine = nz
+#endif
+
+  ixrbnd = boundxy
+  izlbnd = bound0
+  izrbnd = boundnz
+
   nrc = nr
   nzc = nz
   drc = dr
   dzc = dz
-  nlevels=1
+  nlevels    = 1
+#ifdef PARALLEL
+  nworkpproc = 1
+#endif
   do WHILE(nrc>nmeshmin.or.nzc>nmeshmin)
     call evalnewgrid(nrc,nzc,drc,dzc)
     nlevels = nlevels + 1
+#ifdef PARALLEL
+    IF(nworkpproc*nrc*nzc<=workfact*nzfine) then
+      nlevels = nlevels + 1
+      nworkpproc = nworkpproc*2
+    END if
+#endif
   end do
+
+  nlevels=MIN(nlevels,mgridrz_nlevels_max)
 
   allocate(bndy(nlevels))
   bndy_allocated=.true.
 
-  nrc=nr
-  nzc=nz
+  nrc = nr
+  nzc = nz
   drc = dr
   dzc = dz
+#ifdef PARALLEL
+  nworkpproc = 1
+#endif
   do i = nlevels, 1, -1
+    bndy(i)%l_merged=.false.
+    bndy(i)%izlbnd=izlbnd
+    bndy(i)%izrbnd=izrbnd
     IF(i/=nlevels) then
       call evalnewgrid(nrc,nzc,drc,dzc)
+#ifdef PARALLEL
+      IF(nworkpproc<nslaves.and.nworkpproc*nrc*nzc<=workfact*nzfine) then
+        nworkpproc = nworkpproc*2
+        bndy(i)%l_merged=.true.
+      END if
+#endif
     END if
+#ifdef PARALLEL
+    bndy(i)%nworkpproc = nworkpproc
+    IF(my_index-nworkpproc>=0) bndy(i)%izlbnd = -(my_index-nworkpproc+1)
+    IF(my_index+nworkpproc<nslaves) bndy(i)%izrbnd = -(my_index+nworkpproc+1)
+    bndy(i)%nr = nrc
+    bndy(i)%nz = nworkpproc*nzc
+#else
     bndy(i)%nr = nrc
     bndy(i)%nz = nzc
+#endif
     bndy(i)%dr = drc
     bndy(i)%dz = dzc
     NULLIFY(bndy(i)%first)
     bndy(i)%nb_conductors = 0
     ALLOCATE(bndy(i)%v(bndy(i)%nr+1,bndy(i)%nz+1))
     bndy(i)%v(:,:)=.true.
+  end do
+#ifdef PARALLEL
+  IF(nslaves>1) then
+    do i = 1, nlevels
+      bndy(i)%l_powerof2 = .false.
+    END do
+    do i = nlevels,1,-1
+    END do
+    return
+  END if
+#endif
+  do i = nlevels, 2, -1
     nrp0 = INT(LOG(REAL(bndy(i)%nr+1))/LOG(2.))
     nzp0 = INT(LOG(REAL(bndy(i)%nz+1))/LOG(2.))
-  end do
-  do i = nlevels, 2, -1
-    IF(2**nrp0/=bndy(i)%nr.or.2**nzp0/=bndy(i)%nr.or.bndy(i-1)%nr==bndy(i)%nr.or.bndy(i-1)%nz==bndy(i)%nz) THEN
+!    nrp0 = LOG(REAL(bndy(i)%nr))/LOG(2.)+0.5
+!    nzp0 = LOG(REAL(bndy(i)%nz))/LOG(2.)+0.5
+    IF(2**nrp0/=bndy(i)%nr.OR.2**nzp0/=bndy(i)%nz.OR.bndy(i-1)%nr==bndy(i)%nr.OR.bndy(i-1)%nz==bndy(i)%nz) THEN
       bndy(i)%l_powerof2=.false.
     else
       bndy(i)%l_powerof2=.true.
     END if
+    IF(l_mgridrz_debug) WRITE(0,*) i,bndy(i)%l_powerof2,2**nrp0,bndy(i)%nr,2**nzp0,bndy(i)%nz
   end do
   bndy(1)%l_powerof2=.false.
 
+
+  return
 end subroutine init_bnd
 
 subroutine evalnewgrid(nr,nz,dr,dz)
@@ -197,12 +271,15 @@ function expandwguard(f)
 implicit none
 
 REAL(8), DIMENSION(0:,0:), INTENT(IN) :: f
-REAL(8), DIMENSION(0:2*(SIZE(f,1)-2)-1+1,0:2*(SIZE(f,2)-2)-1+1) :: expandwguard
+REAL(8), DIMENSION(0:2*(SIZE(f,1)-2),0:2*(SIZE(f,2)-2)) :: expandwguard
 
 INTEGER(ISZ) :: j, l, nxe, nze
 
-nxe = 2*(SIZE(f,1)-2)-2
-nze = 2*(SIZE(f,2)-2)-2
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter expand, level = ',level
+
+nxe = 2*(SIZE(f,1)-3)
+nze = 2*(SIZE(f,2)-3)
 
 do l = 1, nze+1, 2
   do j = 1, nxe+1, 2
@@ -230,6 +307,8 @@ expandwguard(nxe+2,:)=0._8
 expandwguard(:,0)=0._8
 expandwguard(:,nze+2)=0._8
 
+IF(l_mgridrz_debug) WRITE(0,*) 'exit expand, level = ',level
+
 return
 end function expandwguard
 
@@ -241,8 +320,12 @@ REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zmi
 REAL(8) :: expandwguard_any(0:nxnew+2,0:nznew+2)
 
 INTEGER(ISZ) :: nxnew, nznew, nxold, nzold
-INTEGER(ISZ) :: jold, kold, jnew, knew
-REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, ddx, ddz
+INTEGER(ISZ) :: jnew, knew, j, k, jp, kp
+REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, delx, delz, odelx, odelz
+REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+1), oddz(nznew+1)
+INTEGER(ISZ) :: jold(nxnew+1), kold(nznew+1), joldp(nxnew+1), koldp(nznew+1)
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter expand, level = ',level
 
 nxold = SIZE(uold,1) - 1 - 2
 nzold = SIZE(uold,2) - 1 - 2
@@ -254,22 +337,34 @@ invdzold = REAL(nzold,8)/(zmaxold-zminold)
 
 do knew = 1, nznew+1
   z = zminnew+(knew-1)*dznew
-  IF(z<zminold.AND.z>zmaxold) cycle
   zz = (z-zminold) * invdzold
-  kold = MIN(nzold,INT(zz))
-  ddz = zz-kold
-  kold=kold+1
+  kold(knew) = 1+MIN(nzold,INT(zz))
+  koldp(knew) = kold(knew) + 1
+  ddz(knew) = zz-(kold(knew)-1)
+  oddz(knew) = 1.-ddz(knew)
+END do
+do jnew = 1, nxnew+1
+  x = xminnew+(jnew-1)*dxnew
+  xx = (x-xminold) * invdxold
+  jold(jnew) = 1+MIN(nxold,INT(xx))
+  joldp(jnew) = jold(jnew) + 1
+  ddx(jnew) = xx-(jold(jnew)-1)
+  oddx(jnew) = 1.-ddx(jnew)
+END do
+do knew = 1, nznew+1
+  k = kold(knew)
+  kp = koldp(knew)
+  delz = ddz(knew)
+  odelz = oddz(knew)
   do jnew = 1, nxnew+1
-    x = xminnew+(jnew-1)*dxnew
-    IF(x<xminold.AND.x>xmaxold) cycle
-    xx = (x-xminold) * invdxold
-    jold = MIN(nxold,INT(xx))
-    ddx = xx-jold
-    jold=jold+1
-    expandwguard_any(jnew,knew) = uold(jold,kold)     * (1.-ddx) * (1.-ddz) &
-                            + uold(jold+1,kold)   * ddx * (1.-ddz) &
-                            + uold(jold,kold+1)   * (1.-ddx) * ddz &
-                            + uold(jold+1,kold+1) * ddx * ddz
+    j = jold(jnew)
+    jp = joldp(jnew)
+    delx = ddx(jnew)
+    odelx = oddx(jnew)
+    expandwguard_any(jnew,knew) = uold(j, k)  * odelx * odelz &
+                                + uold(jp,k)  * delx  * odelz &
+                                + uold(j, kp) * odelx * delz &
+                                + uold(jp,kp) * delx  * delz
   end do
 END do
 
@@ -278,80 +373,216 @@ expandwguard_any(nxnew+2,:) = 0._8
 expandwguard_any(:,0) = 0._8
 expandwguard_any(:,nznew+2) = 0._8
 
+IF(l_mgridrz_debug) WRITE(0,*) 'exit expand, level = ',level
+
 return
 END function expandwguard_any
 
-function restrict(f)
+function restrict_pof2(f)
 ! restrict field from one grid to a coarser one. Each dimension is assumed to be a power of two.
 implicit none
 
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: f
-REAL(8), DIMENSION(SIZE(f,1)/2+1, SIZE(f,2)/2+1) :: restrict
+REAL(8), DIMENSION(SIZE(f,1)/2+1, SIZE(f,2)/2+1) :: restrict_pof2
 
 INTEGER(ISZ) :: nx, nz, nxi, nzi, j, l, jj, ll
+REAL(8) :: flz, frz, aflz1, aflz2, afrz1, afrz2
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter restrict_pof2, level = ',level
 
 nxi = SIZE(f,1)-1
 nzi = SIZE(f,2)-1
 nx = nxi/2
 nz = nzi/2
 
+flz = 1._8
+frz = 1._8
+aflz1 = 4._8/3._8
+afrz1 = 4._8/3._8
+aflz2 = 16._8/9._8
+afrz2 = 16._8/9._8
+
+#ifdef PARALLEL
+  IF(bndy(level-1)%izlbnd<0) then
+    flz=0.5_8
+    aflz1 = 1._8
+    aflz2 = 4._8/3._8
+  endif
+  IF(bndy(level-1)%izrbnd<0) then
+    frz=0.5_8
+    afrz1 = 1._8
+    afrz2 = 4._8/3._8
+  endif
+#endif
+
 do l = 2, nz
   do j = 2, nx
     jj = 2*j-1
     ll = 2*l-1
-    restrict(j,l) = 0.25*f(jj,ll) &
-                  + 0.125*(f(jj-1,ll)+f(jj,ll-1)+f(jj+1,ll)+f(jj,ll+1))  &
-                  + 0.0625*(f(jj-1,ll-1)+f(jj+1,ll-1)+f(jj+1,ll+1)+f(jj-1,ll+1))
+    restrict_pof2(j,l) = 0.25*f(jj,ll) &
+                       + 0.125*(f(jj-1,ll)+f(jj,ll-1)+f(jj+1,ll)+f(jj,ll+1))  &
+                       + 0.0625*(f(jj-1,ll-1)+f(jj+1,ll-1)+f(jj+1,ll+1)+f(jj-1,ll+1))
   end do
 end do
-restrict(1:nx+1, 1)    = f(1:nxi+1:2, 1)
-restrict(1:nx+1, nz+1) = f(1:nxi+1:2, nzi+1)
-restrict(1,      2:nz) = f(1,         3:nzi-1:2)
-restrict(nx+1,   2:nz) = f(nxi+1,     3:nzi-1:2)
+l = 1
+  do j = 2, nx
+    jj = 2*j-1
+    ll = 2*l-1
+    restrict_pof2(j,l) = aflz1*(0.25*flz*f(jj,ll) &
+                       + 0.125*(flz*f(jj-1,ll)+flz*f(jj+1,ll)+f(jj,ll+1))  &
+                       + 0.0625*(f(jj+1,ll+1)+f(jj-1,ll+1)))
+  end do
+l = nz+1
+  do j = 2, nx
+    jj = 2*j-1
+    ll = 2*l-1
+    restrict_pof2(j,l) = afrz1*(0.25*frz*f(jj,ll) &
+                       + 0.125*(frz*f(jj-1,ll)+f(jj,ll-1)+frz*f(jj+1,ll))  &
+                       + 0.0625*(f(jj-1,ll-1)+f(jj+1,ll-1)))
+  end do
+j = 1
+  do l = 2, nz
+    jj = 2*j-1
+    ll = 2*l-1
+    restrict_pof2(j,l) = (4._8/3._8)*(0.25*f(jj,ll) &
+                       + 0.125*(f(jj,ll-1)+f(jj+1,ll)+f(jj,ll+1))  &
+                       + 0.0625*(f(jj+1,ll-1)+f(jj+1,ll+1)))
+  end do
+j = nx+1
+  do l = 2, nz
+    jj = 2*j-1
+    ll = 2*l-1
+    restrict_pof2(j,l) = (4._8/3._8)*(0.25*f(jj,ll) &
+                       + 0.125*(f(jj,ll-1)+f(jj-1,ll)+f(jj,ll+1))  &
+                       + 0.0625*(f(jj-1,ll-1)+f(jj-1,ll+1)))
+  end do
+j = 1
+l = 1
+    jj = 2*j-1
+    ll = 2*l-1
+    restrict_pof2(j,l) = aflz2*(0.25*flz*f(jj,ll) &
+                       + 0.125*(flz*f(jj+1,ll)+f(jj,ll+1))  &
+                       + 0.0625*(f(jj+1,ll+1)))
+j = 1
+l = nz+1
+    jj = 2*j-1
+    ll = 2*l-1
+    restrict_pof2(j,l) = afrz2*(0.25*frz*f(jj,ll) &
+                       + 0.125*(frz*f(jj+1,ll)+f(jj,ll-1))  &
+                       + 0.0625*(f(jj+1,ll-1)))
+j = nx+1
+l = 1
+    jj = 2*j-1
+    ll = 2*l-1
+    restrict_pof2(j,l) = aflz2*(0.25*flz*f(jj,ll) &
+                       + 0.125*(flz*f(jj-1,ll)+f(jj,ll+1))  &
+                       + 0.0625*(f(jj-1,ll+1)))
+j = nx+1
+l = nz+1
+    jj = 2*j-1
+    ll = 2*l-1
+    restrict_pof2(j,l) = afrz2*(0.25*frz*f(jj,ll) &
+                       + 0.125*(frz*f(jj-1,ll)+f(jj,ll-1))  &
+                       + 0.0625*(f(jj-1,ll-1)))
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit restrict_pof2, level = ',level
 
 return
-end function restrict
+end function restrict_pof2
 
-function restrict_any(uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
+function restrict(uold, nxnew, nznew, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
 ! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
 implicit none
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
-REAL(8) :: restrict_any(1:nxnew+1,1:nznew+1)
+REAL(8) :: restrict(1:nxnew+1,1:nznew+1),rap(1:nxnew+1,1:nznew+1)
 
 INTEGER(ISZ) :: nxnew, nznew, nxold, nzold
-INTEGER(ISZ) :: jold, kold, jnew, knew
-REAL(8) :: x, z, dxold, dzold, dxnew, dznew, ddx, ddz, rap
+INTEGER(ISZ) :: jold, kold, j, k, jp, kp
+REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz
+REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz
+INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp
+
+IF(bndy(level)%l_powerof2) then
+  restrict = restrict_pof2(uold)
+  return
+END if
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter restrict, level = ',level
 
 nxold = SIZE(uold,1) - 1
 nzold = SIZE(uold,2) - 1
 
-dxnew = (xmaxnew-xminnew) / nxnew
-dznew = (zmaxnew-zminnew) / nznew
+ALLOCATE(ddx(nxold+1), ddz(nzold+1), oddx(nxold+1), oddz(nzold+1), &
+         jnew(nxold+1), knew(nzold+1), jnewp(nxold+1), knewp(nzold+1))
+
+invdxnew = nxnew / (xmaxnew-xminnew)
+invdznew = nznew / (zmaxnew-zminnew)
 dxold = (xmaxold-xminold) / nxold
 dzold = (zmaxold-zminold) / nzold
 
-rap = dxold*dzold / (dxnew*dznew)
-
-restrict_any=0._8
+restrict=0._8
+rap = 0._8
 
 do kold = 1, nzold+1
   z = zminold + (kold-1)*dzold
-  knew = MIN(1 + INT((z-zminnew) / dznew), nznew)
-  ddz = (z-zminnew)/dznew-real(knew-1)
+  knew(kold) = MIN(1 + INT((z-zminnew) * invdznew), nznew)
+  ddz(kold) = (z-zminnew) * invdznew-real(knew(kold)-1)
+  knewp(kold) = knew(kold)+1
+  oddz(kold) = 1._8-ddz(kold)
+END do
+
+#ifdef PARALLEL
+    IF(bndy(level)%izlbnd<0) then
+      ddz(1) = 0.5_8*ddz(1)
+      oddz(1) = 0.5_8*oddz(1)
+    END if
+    IF(bndy(level)%izrbnd<0) then
+      ddz(nzold+1) = 0.5_8*ddz(nzold+1)
+      oddz(nzold+1) = 0.5_8*oddz(nzold+1)
+    END if
+#endif
+
+do jold = 1, nxold+1
+  x = xminold + (jold-1)*dxold
+  jnew(jold) = MIN(1 + INT((x-xminnew) * invdxnew), nxnew)
+  ddx(jold) = (x-xminnew) * invdxnew-real(jnew(jold)-1)
+  jnewp(jold) = jnew(jold)+1
+  oddx(jold) = 1._8-ddx(jold)
+END do
+
+do kold = 1, nzold+1
+  k = knew(kold)
+  kp = knewp(kold)
+  delz  =  ddz(kold)
+  odelz = oddz(kold)
   do jold = 1, nxold+1
-    x = xminold + (jold-1)*dxold
-    jnew = MIN(1 + INT((x-xminnew) / dxnew), nxnew)
-    ddx = (x-xminnew)/dxnew-real(jnew-1)
-    restrict_any(jnew,knew)     = restrict_any(jnew,knew)     + uold(jold,kold) * rap * (1.-ddx) * (1.-ddz)
-    restrict_any(jnew+1,knew)   = restrict_any(jnew+1,knew)   + uold(jold,kold) * rap * ddx * (1.-ddz)
-    restrict_any(jnew,knew+1)   = restrict_any(jnew,knew+1)   + uold(jold,kold) * rap * (1.-ddx) * ddz
-    restrict_any(jnew+1,knew+1) = restrict_any(jnew+1,knew+1) + uold(jold,kold) * rap * ddx * ddz
+    j = jnew(jold)
+    jp = jnewp(jold)
+    delx  =  ddx(jold)
+    odelx = oddx(jold)
+    restrict(j,k)   = restrict(j,k)   + uold(jold,kold) * odelx * odelz
+    restrict(jp,k)  = restrict(jp,k)  + uold(jold,kold) * delx  * odelz
+    restrict(j,kp)  = restrict(j,kp)  + uold(jold,kold) * odelx * delz
+    restrict(jp,kp) = restrict(jp,kp) + uold(jold,kold) * delx  * delz
+    rap(j,k)   = rap(j,k)   + odelx * odelz
+    rap(jp,k)  = rap(jp,k)  + delx  * odelz
+    rap(j,kp)  = rap(j,kp)  + odelx * delz
+    rap(jp,kp) = rap(jp,kp) + delx  * delz
+  end do
+end do
+do k = 1, nznew+1
+  do j = 1, nxnew+1
+    IF(rap(j,k)/=0._8) restrict(j,k)   = restrict(j,k)   / rap(j,k)
   end do
 end do
 
+DEALLOCATE(ddx, ddz, oddx, oddz, jnew, knew, jnewp, knewp)
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit restrict, level = ',level
+
 return
-END function restrict_any
+END function restrict
 
 subroutine interp_bndwguard(unew, uold, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
 ! interpolate boundary values from two conformal grids. Grid is assumed to have guard cells.
@@ -419,14 +650,16 @@ subroutine relaxbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,nc,voltfact)
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: nr, nz, nc
-REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nx+2,0:nz+2)
-REAL(8), INTENT(IN) :: rhs(1:,1:)!rhs(nx+1,nz+1)
+REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
+REAL(8), INTENT(IN) :: rhs(1:,1:)!rhs(nr+1,nz+1)
 REAL(8), INTENT(IN) :: dr, dz, voltfact
 TYPE(bndptr), INTENT(IN OUT) :: bnd
 
 INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, redblack, iil, iiu, ic
 REAL(8) :: dt, dt0, r
 REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz, cfrhs
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter relax, level = ',level
 
 ! define CFL
 dt = coefrelax/(2._8/dr**2+2._8/dz**2)
@@ -513,12 +746,90 @@ do redblack = 1, 2
   lsw = 3-lsw
 END do !redblack=1, 2
 
+#ifdef PARALLEL
+  call exchange_fbndz(f,level)
+#endif
+
 END do !i=1, nc
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit relax, level = ',level
 
 return
 END subroutine relaxbndrzwguard
 
-function residbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,voltfact)
+#ifdef PARALLEL
+  subroutine exchange_fbndz(f,level)
+    REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
+    INTEGER(ISZ), INTENT(IN) :: level
+
+    INTEGER(ISZ) :: nr,nz
+    INTEGER(ISZ) :: p_up, p_down
+
+    p_up   = -bndy(level)%izrbnd-1
+    p_down = -bndy(level)%izlbnd-1
+
+    nr = SIZE(f,1)-3
+    nz = SIZE(f,2)-3
+
+    ! send
+    IF(bndy(level)%izlbnd<0) call mpi_send_real_array(f(:,2), p_down, 0)
+    IF(bndy(level)%izrbnd<0) call mpi_send_real_array(f(:,nz), p_up, 0)
+
+    ! receive
+    IF(bndy(level)%izrbnd<0) f(:,nz+2) = mpi_recv_real_array(SIZE(f(:,nz)),p_up,0)
+    IF(bndy(level)%izlbnd<0) f(:,0)    = mpi_recv_real_array(SIZE(f(:,0 )),p_down,0)
+
+  end subroutine exchange_fbndz
+  subroutine exchange_rhobndz(rho,level)
+    REAL(8), INTENT(IN OUT) :: rho(1:,1:)!rho(1:nr+1,1:nz+1)
+    INTEGER(ISZ), INTENT(IN) :: level
+
+    INTEGER(ISZ) :: nr,nz
+    INTEGER(ISZ) :: p_up, p_down
+
+    p_up   = -bndy(level)%izrbnd-1
+    p_down = -bndy(level)%izlbnd-1
+
+    nr = SIZE(rho,1)-1
+    nz = SIZE(rho,2)-1
+
+    ! send
+    IF(bndy(level)%izlbnd<0) call mpi_send_real_array(rho(:,1), p_down, 1)
+    IF(bndy(level)%izrbnd<0) call mpi_send_real_array(rho(:,nz+1), p_up, 1)
+
+    ! receive
+    IF(bndy(level)%izrbnd<0) rho(:,nz+1) = 0.5_8*rho(:,nz+1) + 0.5_8*mpi_recv_real_array(SIZE(rho(:,nz+1)),p_up,1)
+    IF(bndy(level)%izlbnd<0) rho(:,1)    = 0.5_8*rho(:,1)    + 0.5_8*mpi_recv_real_array(SIZE(rho(:,1 ))  ,p_down,1)
+
+  end subroutine exchange_rhobndz
+  subroutine merge_work(f,level)
+    REAL(8), INTENT(IN OUT) :: f(1:,1:)!f(1:nr+1,1:nz+1)
+    INTEGER(ISZ), INTENT(IN) :: level
+
+    INTEGER(ISZ) :: nz, p_up, p_down
+
+    nz     = bndy(level-1)%nz
+    p_up   = -bndy(level)%izrbnd-1
+    p_down = -bndy(level)%izlbnd-1
+
+    IF(MOD(my_index/bndy(level)%nworkpproc,2)==0) then
+    ! send up
+      call mpi_send_real_array(PACK(f(:,1:nz/2),     .TRUE.), p_up,   2)
+    ! receive up
+      f(:,nz/2+2:nz+1) = RESHAPE(mpi_recv_real_array(SIZE(f(:,nz/2+2:nz+1)), p_up,2), &
+                                                    SHAPE(f(:,nz/2+2:nz+1)))
+    else
+    ! send down
+      call mpi_send_real_array(PACK(f(:,nz/2+2:nz+1),.TRUE.), p_down, 2)
+    ! receive down
+      f(:,1:nz/2)      = RESHAPE(mpi_recv_real_array(SIZE(f(:,1:nz/2)),       p_down,2), &
+                                                    SHAPE(f(:,1:nz/2)))
+    END if
+
+  end subroutine merge_work
+#endif
+
+function residbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,voltfact,l_zerolastz)
 ! evaluate residue. Grid is assumed to have guard cells, but residue does not.
 implicit none
 
@@ -528,10 +839,13 @@ REAL(8), INTENT(IN OUT) :: rhs(:,:)!rhs(nx+1,nz+1)
 TYPE(bndptr) :: bnd
 REAL(8), INTENT(IN) :: dr, dz,voltfact
 REAL(8), DIMENSION(SIZE(f,1)-2,SIZE(f,2)-2) :: residbndrzwguard
+LOGICAL(ISZ) :: l_zerolastz
 
 INTEGER(ISZ) :: i, j, l, ii, jsw, ksw, redblack, ic
 REAL(8) :: r
 REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter resid, level = ',level
 
 cfz = -1._8 / dz**2
 cf0 = 2._8/dr**2-2._8*cfz
@@ -596,6 +910,10 @@ do ic = 1, bnd%nb_conductors
   ENDDO
 END do
 
+IF(l_zerolastz) residbndrzwguard(:,nz+1) = 0._8
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit resid, level = ',level
+
 return
 end function residbndrzwguard
 
@@ -612,77 +930,88 @@ LOGICAL(ISZ), INTENT(IN) :: sub, relax_only
 
 REAL(8), DIMENSION(:,:), allocatable :: res, v
 INTEGER(ISZ) :: i
-INTEGER :: nrnext, nznext
-REAL(8) :: drnext, dznext
+INTEGER :: nrnext, nznext, nzresmin, nzresmax, nzres
+REAL(8) :: drnext, dznext, voltf
 
+level = j
+
+IF(l_mgridrz_debug) WRITE(0,*) 'enter mg, level = ',level
+
+IF(sub) then
+  voltf = 0._8
+else
+  voltf = 1._8
+END if
 
 IF(j<=npmin .or. relax_only) then
-  call updateguardcellsrz(f=u)
-  IF(sub) then
-    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=0._8)
-  else
-    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=1._8)
-  END if
+  call updateguardcellsrz(f=u,level=j)
+  call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf)
 else
   nrnext = bnd(j-1)%nr
   nznext = bnd(j-1)%nz
   drnext = bnd(j-1)%dr
   dznext = bnd(j-1)%dz
   ALLOCATE(res(nrnext+1,nznext+1),v(0:nrnext+2,0:nznext+2))
-  call updateguardcellsrz(f=u)
-  IF(sub) then
-    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=0._8)
-  else
-    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=1._8)
-  END if
-  IF(sub) then
-    IF(bnd(j)%l_powerof2) then
-      res = restrict(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=0._8))
+  call updateguardcellsrz(f=u,level=j)
+  call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf)
+  IF(bnd(level-1)%l_merged) then
+#ifdef PARALLEL
+    IF(MOD(my_index/bnd(level)%nworkpproc,2)==0) then
+      nzresmin = 1
+      nzresmax = nznext/2+1
     else
-      res = restrict_any(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=0._8), &
-                         nrnext,nznext,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+      nzresmin = nznext/2+1
+      nzresmax = nznext+1
     END if
+    nzres = nznext/2
+#endif
   else
-    IF(bnd(j)%l_powerof2) then
-      res = restrict(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=1._8))
-    else
-      res = restrict_any(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=1._8), &
-                         nrnext,nznext,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
-    END if
+    nzresmin = 1
+    nzresmax = nznext+1
+    nzres = nznext
   END if
+  res(:,nzresmin:nzresmax) = restrict( &
+                             residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.false.), &
+                             nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+#ifdef PARALLEL
+  IF(bnd(level-1)%l_merged) then
+    call merge_work(res,level)
+  else
+    call exchange_rhobndz(res,level-1)
+  END if
+#endif
   call apply_voltage(res,bnd(j-1),0._8)
   v = 0.0_8
   do i = 1, ncycle  !(1=V cycles, 2=W cycle)
     call mgbndrzwguard(j=j-1, u=v, rhs=res, bnd=bnd(1:j-1), nr=nrnext, nz=nznext, dr=drnext, dz=dznext, npre=npre, npost=npost, &
                    ncycle=ncycle, sub=.TRUE., relax_only=.FALSE., npmin=npmin)
+    level = j
   end do
   call apply_voltagewguard(v,bnd(j-1),0._8)
   IF(bnd(j)%l_powerof2) then
-    u = u + expandwguard(v)
+    u = u + expandwguard(v(:,nzresmin-1:nzresmax+1))
   else
-    u = u + expandwguard_any(v,nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+    u = u + expandwguard_any(v(:,nzresmin-1:nzresmax+1),nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
   END if
-  IF(sub) then
-    call apply_voltagewguard(u,bnd(j),0._8)
-  else
-    call apply_voltagewguard(u,bnd(j),1._8)
-  END if
-  call updateguardcellsrz(f=u)
-  IF(sub) then
-    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npost,voltfact=0._8)
-  else
-    call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npost,voltfact=1._8)
-  END if
+#ifdef PARALLEL
+  call exchange_fbndz(u,level)
+#endif
+  call apply_voltagewguard(u,bnd(j),voltf)
+  call updateguardcellsrz(f=u,level=j)
+  call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npost,voltfact=voltf)
   DEALLOCATE(res,v)
 END if
+
+IF(l_mgridrz_debug) WRITE(0,*) 'exit mg, level = ',level
 
 return
 end subroutine mgbndrzwguard
 
-subroutine updateguardcellsrz(f)
+subroutine updateguardcellsrz(f,level)
 ! update guard cells values according to boundary conditions.
 implicit none
 REAL(8),INTENT(IN OUT) :: f(:,:)
+INTEGER(ISZ) :: level
 
 INTEGER(ISZ) :: ixmax, izmax
 
@@ -696,7 +1025,7 @@ select case (ixrbnd)
       f(ixmax,:) = f(ixmax-2,:)
     case default
 end select
-select case (izlbnd)
+select case (bndy(level)%izlbnd)
     case (dirichlet)
       f(:,1) = -f(:,3)
     case (neumann)
@@ -705,7 +1034,7 @@ select case (izlbnd)
       f(:,1) = f(:,izmax-1)
     case default
 end select
-select case (izrbnd)
+select case (bndy(level)%izrbnd)
     case (dirichlet)
       f(:,izmax) = -f(:,izmax-2)
     case (neumann)
@@ -763,7 +1092,7 @@ END do
 return
 end subroutine apply_voltagewguard
 
-subroutine solve_multigridrz(u,rhoinit,bnd,nr0,nz0,length_r,length_z,accuracy,nc,npre,npost,ncycle)
+subroutine solve_multigridrz(u,rhoinit,bnd,nr0,nz0,length_r,length_z,accuracy,sub_accuracy,nc,npre,npost,ncycle,nrecurs_min)
 ! solve field for u with density rhoinit.
 implicit none
 
@@ -771,11 +1100,13 @@ implicit none
 INTEGER(ISZ), INTENT(IN) :: nr0, nz0, &       ! number of meshes in R and Z (excluing guard cells)
                             nc, &             ! maximum number of full-multigrid iterations
                             npre, npost, &    ! number of relaxations before and after multigrid level coarsening
-                            ncycle            ! number of multigrid iterations (1: V-cycle, 2: VV cycle, etc.)
+                            ncycle, &         ! number of multigrid iterations (1: V-cycle, 2: VV cycle, etc.)
+                            nrecurs_min       ! minimum level for recursion
 REAL(8), INTENT(IN OUT) :: u(:,:)             ! u(0:nr0+2,0:nz0+2), potential
 REAL(8), INTENT(IN) :: rhoinit(:,:)           ! rhoinit(nr0+1,nz0+1), charge density
 REAL(8), INTENT(IN) :: length_r, length_z, &  ! grid lengths in R and Z
-                       accuracy               ! required average accuracy
+                       accuracy,           &  ! required average accuracy
+                       sub_accuracy           ! required average accuracy at sublevel
 
 ! internal variables
 TYPE(bndptr), DIMENSION(:) :: bnd
@@ -791,7 +1122,7 @@ END TYPE rhoptr
 TYPE(rhoptr), ALLOCATABLE :: rho(:)
 REAL(8) :: average_residue, average_residue_init, average_residue_prev
 LOGICAL :: do_calc, has_diverged
-INTEGER(ISZ), DIMENSION(:), ALLOCATABLE :: nr, nz
+INTEGER(ISZ):: nzresmin,nzresmax,nzres,ia,ib
 
 do_calc=.true.
 has_diverged = .false.
@@ -806,50 +1137,94 @@ ALLOCATE(f(0:bnd(1)%nr+2,0:bnd(1)%nz+2), rho(nlevels))
 ALLOCATE(rho(nlevels)%a(nrc+1,nzc+1))
 rho(nlevels)%a = rhoinit
 f = 0._8
-f(1:bnd(1)%nr+1,1:bnd(1)%nz+1) = restrict_any(uold=u, nxnew=bnd(1)%nr, nznew=bnd(1)%nz, &
-                     xminold=0._8, xmaxold=length_r, zminold=0._8, zmaxold=length_z, &
-                     xminnew=0._8, xmaxnew=length_r, zminnew=0._8, zmaxnew=length_z)
+!f(1:bnd(1)%nr+1,1:bnd(1)%nz+1) = restrict(uold=u, nxnew=bnd(1)%nr, nznew=bnd(1)%nz, &
+!                     xminold=0._8, xmaxold=length_r, zminold=0._8, zmaxold=length_z, &
+!                     xminnew=0._8, xmaxnew=length_r, zminnew=0._8, zmaxnew=length_z)
 
 do i = nlevels-1, 1, -1
   ALLOCATE(rho(i)%a(bnd(i)%nr+1,bnd(i)%nz+1))
   rho(i)%a = 0.
-  IF(bnd(i)%l_powerof2) then
-    rho(i)%a = restrict(rho(i+1)%a)
+  level = i
+  IF(bnd(level)%l_merged) then
+#ifdef PARALLEL
+    IF(MOD(my_index/bnd(level+1)%nworkpproc,2)==0) then
+      nzresmin = 1
+      nzresmax = bnd(level)%nz/2+1
+    else
+      nzresmin = bnd(level)%nz/2+1
+      nzresmax = bnd(level)%nz+1
+    END if
+    nzres = bnd(level)%nz/2
+#endif
   else
-    rho(i)%a = restrict_any(rho(i+1)%a,bnd(i)%nr,bnd(i)%nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+    nzresmin = 1
+    nzresmax = bnd(level)%nz+1
+    nzres = bnd(level)%nz
   END if
+  level = i+1
+  rho(i)%a(:,nzresmin:nzresmax) = restrict(rho(i+1)%a,bnd(i)%nr,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+#ifdef PARALLEL
+  IF(bnd(level-1)%l_merged) then
+    call merge_work(rho(i)%a,level)
+  else
+    call exchange_rhobndz(rho(i)%a,level-1)
+  END if
+#endif
 end do
 
-main_loop: do i = 2, nlevels
-  IF(ALLOCATED(fold)) DEALLOCATE(fold)
-  ALLOCATE(fold(SIZE(f,1),SIZE(f,2)))
-  fold = f
-  DEALLOCATE(f)
+main_loop: do i = 1, nlevels
+  IF(l_mgridrz_debug) WRITE(0,*) 'begin main loop, level = ',i
+  level = i
   nrc = bnd(i)%nr
   nzc = bnd(i)%nz
   dr = bnd(i)%dr
   dz = bnd(i)%dz
-  ALLOCATE(f(0:nrc+2,0:nzc+2))
-  IF(bnd(i)%l_powerof2) then
-    f = expandwguard(fold)
-  else
-    f = expandwguard_any(fold,nrc,nzc, &
-                    xminold=0._8, xmaxold=length_r, zminold=0._8, zmaxold=length_r, &
-                    xminnew=0._8, xmaxnew=length_z, zminnew=0._8, zmaxnew=length_z)
+  IF(i>1) then
+    IF(ALLOCATED(fold)) DEALLOCATE(fold)
+    ALLOCATE(fold(0:bnd(i-1)%nr+2,0:bnd(i-1)%nz+2))
+    fold = f
+    DEALLOCATE(f)
+    ALLOCATE(f(0:nrc+2,0:nzc+2))
+    IF(bnd(i-1)%l_merged) then
+#ifdef PARALLEL
+      IF(MOD(my_index/bnd(i)%nworkpproc,2)==0) then
+        nzresmin = 1
+        nzresmax = bnd(i-1)%nz/2+1
+      else
+        nzresmin = bnd(i-1)%nz/2+1
+        nzresmax = bnd(i-1)%nz+1
+      END if
+      nzres = bnd(i-1)%nz/2
+#endif
+    else
+      nzresmin = 1
+      nzresmax = bnd(i-1)%nz+1
+      nzres = bnd(i-1)%nz
+    END if
+    IF(bnd(i)%l_powerof2) then
+      f = expandwguard(fold(:,nzresmin-1:nzresmax+1))
+    else
+      f = expandwguard_any(fold(:,nzresmin-1:nzresmax+1),nrc,nzc, &
+                      xminold=0._8, xmaxold=length_r, zminold=0._8, zmaxold=length_z, &
+                      xminnew=0._8, xmaxnew=length_r, zminnew=0._8, zmaxnew=length_z)
+    END if
+#ifdef PARALLEL
+    call exchange_fbndz(f,i)
+#endif
+    call apply_voltagewguard(f,bnd(i),1._8)
+    DEALLOCATE(fold)
   END if
-  call interp_bndwguard(unew=f,uold=u, &
-                  xminold=0._8, xmaxold=length_r, zminold=0._8, zmaxold=length_r, &
-                  xminnew=0._8, xmaxnew=length_z, zminnew=0._8, zmaxnew=length_z)
-  call apply_voltagewguard(f,bnd(i),1._8)
-  DEALLOCATE(fold)
-  ALLOCATE(fold(SIZE(f,1),SIZE(f,2)))
+  ALLOCATE(fold(0:nrc+2,0:nzc+2))
   fold = f
 !f = 0. ! for debugging purpose only
-  npmin=3
+  npmin=MIN(nrecurs_min,MAX(nlevels-1,1))
   do_calc=.true.
   do while(do_calc)
     average_residue_init=SUM(ABS(residbndrzwguard(f=RESHAPE((/(0._8*j,j=1,(nrc+3)*(nzc+3))/), (/nrc+3,nzc+3/)) &
-                             ,rhs=rho(i)%a,bnd=bnd(i),nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8)))/(nrc*nzc)
+                             ,rhs=rho(i)%a,bnd=bnd(i),nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nrc*nzc)
+#ifdef PARALLEL
+    average_residue_init = mpi_global_compute_real(average_residue_init,MPI_SUM)/nslaves
+#endif
     if(average_residue_init==0._8) then
       average_residue=0.
       average_residue_init=1.
@@ -859,7 +1234,13 @@ main_loop: do i = 2, nlevels
     do  j = 1, nc
       call mgbndrzwguard(j=i,u=f,rhs=rho(i)%a,bnd=bnd,nr=nrc,nz=nzc,dr=dr,dz=dz,npre=npre,npost=npost,ncycle=ncycle,sub=.FALSE., &
       relax_only=.FALSE.,npmin=npmin)
-      average_residue=SUM(ABS(residbndrzwguard(f=f,rhs=rho(i)%a,bnd=bnd(i),nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8)))/(nrc*nzc)
+      IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, level = ',level
+      average_residue=SUM(ABS(residbndrzwguard(f=f,rhs=rho(i)%a,bnd=bnd(i), &
+                              nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8,l_zerolastz=.true.)))/(nrc*nzc)
+#ifdef PARALLEL
+      average_residue = mpi_global_compute_real(average_residue,MPI_SUM)/nslaves
+#endif
+      IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, done.'
       IF(average_residue/average_residue_prev>=1. .and. average_residue/average_residue_init>=1.) then
         has_diverged = .true.
         WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
@@ -879,7 +1260,7 @@ main_loop: do i = 2, nlevels
           exit
         END if
       else
-        IF(average_residue/average_residue_init <= 1.e-4) then
+        IF(average_residue/average_residue_init <= sub_accuracy) then
           do_calc=.false.
           exit
         END if
@@ -892,7 +1273,7 @@ end do main_loop
 
 WRITE(0,'("multigridrz: precision = ",e12.5, " after ",i5," iterations...")') average_residue/average_residue_init,j
 u = f
-call updateguardcellsrz(f=u)
+call updateguardcellsrz(f=u,level=nlevels)
 
 do i = nlevels, 1, -1
   DEALLOCATE(rho(i)%a)
@@ -923,16 +1304,17 @@ real(8) :: u(0:nr0+2,0:nz0+2)
 
   IF(iwhich==1) return
 
-  ixrbnd = rxbnd
-  izlbnd = lzbnd
-  izrbnd = rzbnd
+!  ixrbnd = rxbnd
+!  izlbnd = lzbnd
+!  izrbnd = rzbnd
   u(1:nr0+1,:)=u0(1:nr0+1,:)
   u(0,:) = 0._8
   u(nr0+2,:)=0._8
 
   call solve_multigridrz(u=u,rhoinit=-rho0/eps0,bnd=bndy,nr0=nr0,nz0=nz0, &
                          length_r=nr0*dr0,length_z=nz0*dz0, &
-                         accuracy=accuracy,nc=ncmax,npre=npre,npost=npost,ncycle=ncycle)
+                         accuracy=accuracy,sub_accuracy=mgridrz_sub_accuracy, &
+                         nc=ncmax,npre=npre,npost=npost,ncycle=ncycle,nrecurs_min=mgridrz_nrecurs_min)
 
   u0(1:nr0+1,:)=u(1:nr0+1,:)
 
@@ -958,15 +1340,13 @@ INTEGER(ISZ):: nx,nz,ix_axis
 real(kind=8):: xmesh(0:nx)
 
 INTEGER(ISZ) :: i,ii,iii,iv,iiv,nxbnd,nzbnd,nrc,nzc,nrp0,nzp0, lfill_tmp,j,l
-REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz,voltxm,voltxp,voltzm,voltzp,drc,dzc
+REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz,voltxm,voltxp,voltzm,voltzp,drc,dzc,zmin_in,zmax_in
 
 TYPE(conductor_type), POINTER :: cndpnt
 
 IF(.not.bndy_allocated) call init_bnd(nx,nz,dx,dz)
 
 do i = nlevels,1,-1
-  IF(i/=nlevels) call evalnewgrid(nrc,nzc,drc,dzc)
-
   nrc = bndy(i)%nr
   nzc = bndy(i)%nz
   drc = bndy(i)%dr
@@ -978,9 +1358,17 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
+#ifdef PARALLEL
+  zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
+  zmax_in = zmin_in + bndy(i)%nworkpproc * nzc * dzc
+#else
+  zmin_in = zmmin
+  zmax_in = zmmax
+#endif
+
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill, &
                    xmin,xmax,lshell, &
-                   zmmin,zmmax,zbeam,bndy(i)%dr,bndy(i)%dz,nrc,nzc, &
+                   zmin_in,zmax_in,zbeam,bndy(i)%dr,bndy(i)%dz,nrc,nzc, &
                    ix_axis,xmesh,nz/(nzbnd-1))
 
   call init_bnd_sublevel(bndy(i),necndbdy+nocndbdy,ncond)
@@ -1268,7 +1656,7 @@ INTEGER(ISZ):: nx,nz,ix_axis
 real(kind=8):: xmesh(0:nx)
 
 INTEGER(ISZ) :: i,ii,iii,iv,iiv,nxbnd,nzbnd,nrc,nzc,nrp0,nzp0, lfill_tmp,j,l
-REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz,voltxm,voltxp,voltzm,voltzp,drc,dzc
+REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz,voltxm,voltxp,voltzm,voltzp,drc,dzc,zmin_in,zmax_in
 
 TYPE(conductor_type), POINTER :: cndpnt
 
@@ -1286,9 +1674,17 @@ do i = nlevels,1,-1
   nocndbdy=0
   ncond = 0
 
+#ifdef PARALLEL
+  zmin_in = my_index / bndy(i)%nworkpproc * nzc * dzc
+  zmax_in = zmin_in + bndy(i)%nworkpproc * nzc * dzc
+#else
+  zmin_in = zmmin
+  zmax_in = zmmax
+#endif
+
   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,   &
                         lzend,xmin,xmax,lshell,             &
-                        zmmin,zmmax,zbeam,bndy(i)%dr,bndy(i)%dz,nrc,nzc, &
+                        zmin_in,zmax_in,zbeam,bndy(i)%dr,bndy(i)%dz,nrc,nzc, &
                         ix_axis,xmesh)
 
   call init_bnd_sublevel(bndy(i),necndbdy+nocndbdy,ncond)
