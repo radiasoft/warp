@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.41 $, $Date: 2002/02/28 20:27:24 $
+c@(#) File W3D.M, version $Revision: 3.42 $, $Date: 2002/03/14 19:35:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6965,7 +6965,9 @@ c         --- RZ full-multigrid solver
      &                      mgridrz_ncmax,
      &                      mgridrz_npre,
      &                      mgridrz_npost,
-     &                      mgridrz_ncycles)
+     &                      mgridrz_ncycles,
+     &                      mgridrz_mgparam,
+     &                      mgridrz_mgiters)
 c       case (11)
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
