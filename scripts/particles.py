@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.13 2003/07/08 22:26:15 dave Exp $"
+particles_version = "$Id: particles.py,v 1.14 2003/07/09 21:27:45 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -253,6 +253,22 @@ def getvz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uzp*top.gaminv,ii)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getvr(iw=0,gather=1,bcast=0,**kw):
+  "Returns the radial velocity."
+  ii = selectparticles(iw=iw,kwdict=kw)
+  tt = arctan2(take(top.yp,ii),take(top.xp,ii))
+  result = take(top.uxp,ii)*cos(tt) + take(top.uyp,ii)*sin(tt)
+  if lparallel and gather: return gatherarray(result,bcast=bcast)
+  else: return result
+#-------------------------------------------------------------------------
+def getvtheta(iw=0,gather=1,bcast=0,**kw):
+  "Returns the azimuthal velocity."
+  ii = selectparticles(iw=iw,kwdict=kw)
+  tt = arctan2(take(top.yp,ii),take(top.xp,ii))
+  result = -take(top.uxp,ii)*sin(tt) + take(top.uyp,ii)*cos(tt)
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
