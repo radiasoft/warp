@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.101 2003/05/27 21:57:36 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.102 2003/05/27 22:48:31 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2427,7 +2427,7 @@ be from none to all three.
       w3d.ny_selfe = 0
     if w3d.solvergeom==w3d.Zgeom: w3d.nx_selfe = 0
     gchange("Efields3d")
-    getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
+    getselfe3d(w3d.phip,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
                w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,w3d.dx,w3d.dy,w3d.dz,
                top.pboundxy)
   ic = ['x','y','z'].index(comp)
