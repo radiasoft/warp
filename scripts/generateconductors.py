@@ -95,7 +95,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.84 2004/09/08 22:26:29 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.85 2004/09/09 19:44:00 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -372,36 +372,48 @@ Elliptic assembly
 
   def ellipseconductorf(self,*argtuple):
     arglist = list(argtuple)
-    y = arglist[-9]
-    delmy = arglist[-5]
-    delpy = arglist[-4]
-    arglist[-9] = y/self.ellipticity
+    if self.ellipticity != 1.:
+      y = arglist[-9]
+      delmy = arglist[-5]
+      delpy = arglist[-4]
+      arglist[-9] = y/self.ellipticity
+
     apply(self.circlegeneratorf,arglist)
-    delmy[:] = delmy*self.ellipticity
-    delpy[:] = delpy*self.ellipticity
+
+    if self.ellipticity != 1.:
+      delmy[:] = delmy*self.ellipticity
+      delpy[:] = delpy*self.ellipticity
 
   def ellipseconductord(self,*argtuple):
     arglist = list(argtuple)
-    x = arglist[-4]
-    y = arglist[-3]
-    distance = arglist[-1]
-    arglist[-3] = y/self.ellipticity
+    if self.ellipticity != 1.:
+      x = arglist[-4]
+      y = arglist[-3]
+      distance = arglist[-1]
+      arglist[-3] = y/self.ellipticity
+
     apply(self.circlegeneratord,arglist)
-    tt = arctan2(y,x)
-    dx = distance*cos(tt)
-    dy = distance*sin(tt)*self.ellipticity
-    distance[:] = sqrt(dx**2 + dy**2)*sign(distance)
+
+    if self.ellipticity != 1.:
+      tt = arctan2(y,x)
+      dx = distance*cos(tt)
+      dy = distance*sin(tt)*self.ellipticity
+      distance[:] = sqrt(dx**2 + dy**2)*sign(distance)
 
   def ellipseintercept(self,*argtuple):
     arglist = list(argtuple)
-    y = arglist[-10]
-    xi = arglist[-5]
-    yi = arglist[-4]
-    iphi = arglist[-1]
-    arglist[-10] = y/self.ellipticity
+    if self.ellipticity != 1.:
+      y = arglist[-10]
+      xi = arglist[-5]
+      yi = arglist[-4]
+      iphi = arglist[-1]
+      arglist[-10] = y/self.ellipticity
+
     apply(self.circlegeneratori,arglist)
-    yi[:] = yi*self.ellipticity
-    iphi[:] = arctan2(sin(iphi),self.ellipticity*cos(iphi))
+
+    if self.ellipticity != 1.:
+      yi[:] = yi*self.ellipticity
+      iphi[:] = arctan2(sin(iphi),self.ellipticity*cos(iphi))
 
 #============================================================================
 class XAssembly(Assembly):
