@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.8 2003/10/07 21:55:51 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.9 2005/01/13 19:20:07 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -34,7 +34,8 @@ Mountain-range plots of quantities saved vs. z at every timestep
   - istep=jhist/nlines: Can be specified instead of nlines
   - navg=0: Turns on averaging (over 2*navg+1 points)
   - offset=0: Abscissa offset of overlaid lines
-  - ordoffset=0: Ordinate offset of overlaid lines
+  - ordoffset=0: Ordinate offset of overlaid lines. Can be an array such as
+                 top.hzbeam.
   - color='fg': Line color
   - nz=shape(qty)[0]-1: Number of z points
   - dz=w3d.dz: Size of z points
@@ -104,10 +105,15 @@ Mountain-range plots of quantities saved vs. z at every timestep
     hl0 = hl[:,0]
   else:
     hl0 = zeros(shape(hl[:,0]),'d')
+  if type(ordoffset) in [IntType,FloatType]:
+    ordoffset = iota(0,iend)*ordoffset
+  else:
+    assert len(ordoffset) == shape(qty)[1],\
+           "ordoffset must have same length is data's second dimension"
   j = -1
   for i in range(istart,iend+1,istep):
     j = j + 1
-    plg(i*shift+abscissascale*sign*(hl[:,j]-hl0),ord+i*ordoffset,color=color)
+    plg(i*shift+abscissascale*sign*(hl[:,j]-hl0),ord+ordoffset[i],color=color)
 
 
 ### PMLCHG - plot line charge
@@ -120,7 +126,7 @@ def pmlchg(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=5.e-9,
 ### PMCURR - plot current
 def pmcurr(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=1.e-3,
           ordoffset=0.,istep=None,title="Current"):
-  mountainplot1(title,top.hcurrz,ifdelta=ifdelta,ifordt=ifordt,
+  mountainplot1(title,top.hcurrz[...,-1],ifdelta=ifdelta,ifordt=ifordt,
                 ifneg=ifneg,ifvst=ifvst,nlines=nlines,navg=navg,
                 offset=offset,ordoffset=ordoffset,istep=istep)
 
