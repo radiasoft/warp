@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.34 2001/12/06 18:42:37 dave Exp $"
+warp_version = "$Id: warp.py,v 1.35 2002/01/08 00:09:24 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -387,14 +387,17 @@ Creates a dump file
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
-def restart(filename,onefile=1,verbose=false):
+def restart(filename,onefile=1,verbose=false,dofieldsol=true):
   """
 Reads in data from file, redeposits charge density and does field solve
   - filename: restart file name - when restoring parallel run from multiple
-    files, filename should only be prefix up to but not including the '_'
-    before the processor number.
+              files, filename should only be prefix up to but not including
+              the '_' before the processor number.
   - onefile=1: Restores from one file unless 0, then each processor restores
-    from seperate file.
+               from seperate file.
+  - dofieldsol=true: When true, call fieldsol(0). This allows special cases
+                     where just calling fieldsol(0) is not appropriate or
+                     optimal
   """
   # --- If each processor is restoring from a seperate file, append
   # --- appropriate suffix, assuming only prefix was passed in
@@ -423,7 +426,7 @@ Reads in data from file, redeposits charge density and does field solve
   # --- Load the charge density (since it was not saved)
   loadrho()
   # --- Recalculate the fields (since it was not saved)
-  fieldsol(0)
+  if dofieldsol: fieldsol(0)
   # --- Call setup if it is needed.
   if me == 0 and current_window() == -1: setup()
 
