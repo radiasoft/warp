@@ -27,7 +27,7 @@ class AMRTree(object,Visualizable):
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
       self.conds_installed_onbasegrid = []
-      self.beforefsfuncs = ControllerFunction()
+      self.beforefs = ControllerFunction()
       self.dfill = 2
       self.enable()
 
@@ -563,7 +563,10 @@ class AMRTree(object,Visualizable):
     the charge density. If self.f is null, an error message is raised.
       """
       # return if not time to generate a new set of blocks
-      if(top.it%w3d.AMRgenerate_periodicity<>0):return
+      # Note that beforefs is still called.
+      if(top.it%w3d.AMRgenerate_periodicity<>0):
+        self.beforefs()
+        return
       print 'generate grids at it = ',top.it
       
       # check if w3d.AMRlevels set properly and set defaut variables
