@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.65 $, $Date: 2002/08/06 22:16:12 $
+#@(#) File W3D.V, version $Revision: 3.66 $, $Date: 2002/08/06 23:26:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.65 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.66 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -366,6 +366,7 @@ aper_ey(0:nx,0:ny,-1:aper_zmax,napertures) _real [V/m]
 # Subroutines in package 3D
 w3dgen() subroutine
 w3dexe() subroutine
+w3dfin() subroutine
 divxy(iz,ndiv,divx:real,divy:real,divvx:real,divvx2:real,divvy:real,
       divvy2:real,wnpx:real,wnpy:real,itask)
              subroutine # calculates RMS vx and vy versus x and y
