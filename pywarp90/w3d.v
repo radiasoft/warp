@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.153 $, $Date: 2004/05/12 22:30:37 $
+#@(#) File W3D.V, version $Revision: 3.154 $, $Date: 2004/05/19 22:27:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.153 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.154 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -587,9 +587,10 @@ getselfe3d(phi:real,nx:integer,ny:integer,nz:integer,
            selfe:real,nx_selfe:integer,ny_selfe:integer,nz_selfe:integer,
            dx:real,dy:real,dz:real,pboundxy:integer)
              subroutine # Calculates the self-E via finite difference of phi
-setrho3d (rho1d:real,np,xp:real,yp:real,zp:real,zgrid:real,uzp:real,q:real,
-          wght:real,depos:string,nx:integer,ny:integer,nz:integer,
-          xmmin:real,ymmin:real,zmmin:real)
+setrho3d(rho:real,rho1d:real,np,xp:real,yp:real,zp:real,zgrid:real,uzp:real,
+         q:real,wght:real,depos:string,nx:integer,ny:integer,nz:integer,
+         dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,
+         l2symtry:logical,l4symtry:logical)
              subroutine # Computes charge density
 sezax3d()    subroutine # Sets EZAX, Ez on axix
 sphiax3d()   subroutine # Sets PHIAX, E. S. potential on axis

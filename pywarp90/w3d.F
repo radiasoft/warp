@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.154 $, $Date: 2004/05/17 15:48:49 $
+c@(#) File W3D.F, version $Revision: 3.155 $, $Date: 2004/05/19 22:27:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2866,6 +2866,7 @@ c       --- Calculate integral of zdist from 0 to iz
 c       --- Integral = 0.5*zdist(0) + sum(zdist(1:iz-1)) + 0.5*zdist(iz)
 c       --- Also, normalize zdist.
         call gchange("InPart3d",0)
+        nrmzdist(0) = zdist(0)/sumzdist
         intzdist(0) = 0.
         do iz=1,nzdist
           nrmzdist(iz) = zdist(iz)/sumzdist
@@ -3593,20 +3594,20 @@ c     --- Apply particle boundary conditions
       return
       end
 c=============================================================================
-      subroutine setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
-     &                    nx,ny,nz,xmmin,ymmin,zmmin)
+      subroutine setrho3d(rho,rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
+     &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)
       use GlobalVars
       use Subtimers3d
-      use InGen3d
-      use Fields3d
-      use Picglb3d
       integer(ISZ):: np
       integer(ISZ):: nx,ny,nz
+      real(kind=8):: dx,dy,dz
       real(kind=8):: zgrid,q,wght
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
       character(8):: depos
       real(kind=8):: xmmin,ymmin,zmmin
+      logical(ISZ):: l2symtry,l4symtry
 
 c  Sets charge density
 
@@ -3977,9 +3978,10 @@ c        --- loop over particle blocks
          if(solvergeom==XYZgeom) then
            ipmin = ins_u
            if (nps_u > 0) then
-             call setrho3d(rhop(0,0,0),nps_u,xp(ipmin),yp(ipmin),zp(ipmin),
+             call setrho3d(rhop,rhop,nps_u,xp(ipmin),yp(ipmin),zp(ipmin),
      &                     zgrid,uzp(ipmin),sq(is),sw(is),depos,
-     &                     nxp,nyp,nzp,xmmin,ymmin,zmminp)
+     &                     nxp,nyp,nzp,dx,dy,dz,xmmin,ymmin,zmminp,
+     &                     l2symtry,l4symtry)
            endif
          elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
            do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
