@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.73 $, $Date: 2003/02/24 18:50:42 $
+#@(#) File TOP.V, version $Revision: 3.74 $, $Date: 2003/03/03 20:04:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.73 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.74 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -618,7 +618,7 @@ cpgrdzs(0:nzlmax,npgrdol)    _real [m]     # by z, Z's of 3-D potential start
 cpgrdze(0:nzlmax,npgrdol)    _real [m]     # by z, Z's of 3-D potential end
 cpgrdid(0:nzlmax,npgrdol) _integer [1]     # by z, Index of pgrd arrays
 lindrft(0:ndrftol)        _logical         # Flag for when drft element in mesh
-linbend                   _logical         # Flag for when bend element in mesh
+linbend                    logical         # Flag for when bend element in mesh
 lindipo(0:ndipool)        _logical         # Flag for when dipo element in mesh
 linquad(0:nquadol)        _logical         # Flag for when quad element in mesh
 linsext(0:nsextol)        _logical         # Flag for when sext element in mesh
