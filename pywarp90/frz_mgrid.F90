@@ -981,16 +981,13 @@ TYPE(GRIDtype), pointer :: gup
         b => g%bndlast
       else
         b => b%prev
-        call DecRefBNDtype(b%next)
         call ReleaseBNDtype(b%next)
       END if
       call del_cnds(b)
     end do
-    call DecRefBNDtype(b)
     call ReleaseBNDtype(b)
   END if
   NULLIFY(g%up%down)
-  call DecRefGRIDtype(g)
   call ReleaseGRIDtype(g)
 
   ngrids=ngrids-1
@@ -1256,10 +1253,15 @@ end subroutine init_bnd_sublevel
 
 subroutine del_grid(g)
 implicit none
-TYPE(GRIDtype), pointer :: g
+TYPE(GRIDtype), pointer :: g,mother
 
   if (associated(g%up)) then
-    IF(associated(g%up%down)) NULLIFY(g%up%down)
+    mother => g%up
+    IF(associated(mother%down,g)) NULLIFY(mother%down)
+    do while (associated(mother%next))
+      mother => mother%next
+      IF(associated(mother%down,g)) NULLIFY(mother%down)
+    enddo
   end if
   if (associated(g%prev) .and. associated(g%next)) then
     g%prev%next => g%next
@@ -1273,7 +1275,6 @@ TYPE(GRIDtype), pointer :: g
   IF(solvergeom/=Zgeom .and. solvergeom /=Rgeom) call del_grid_bnds(g)
   call del_overlaps(g)
 
-  call DecRefGRIDtype(g)
   call ReleaseGRIDtype(g)
 
   return
@@ -1285,15 +1286,17 @@ TYPE(BNDtype), POINTER :: b,bnext
 INTEGER :: i
 
   b=>g%bndfirst
+  NULLIFY(g%bndfirst)
+  NULLIFY(g%bndlast)
   do WHILE(associated(b%next))
     bnext => b%next
+    NULLIFY(b%next%prev)
+    NULLIFY(b%next)
     call del_cnds(b)
-    call DecRefBNDtype(b)
     call ReleaseBNDtype(b)
     b => bnext
   end do
   call del_cnds(b)
-  call DecRefBNDtype(b)
   call ReleaseBNDtype(b)
 
   return
@@ -1307,9 +1310,13 @@ TYPE(CONDtype), POINTER :: c,cprev
 
 IF(bnd%nb_conductors==0) return
 c => bnd%cndlast
+NULLIFY(bnd%cndlast)
+NULLIFY(bnd%cndfirst)
 do WHILE(associated(c%prev))
   cprev => c%prev
-  call del_cnd(c)
+  NULLIFY(c%prev%next)
+  NULLIFY(c%prev)
+  call ReleaseCONDtype(c)
   bnd%nb_conductors = bnd%nb_conductors - 1
   c=>cprev
 end do
@@ -1322,7 +1329,6 @@ IF(bnd%nb_conductors>0) then
   stop
 END if
 
-NULLIFY(bnd%cndfirst)
 
 WHERE(bnd%v == v_cond .OR. bnd%v == v_bnd)
   bnd%v = v_vacuum
@@ -1334,7 +1340,6 @@ subroutine del_cnd(c)
 implicit none
 TYPE(CONDtype), POINTER :: c
 
-  call DecRefCONDtype(c)
   call ReleaseCONDtype(c)
 
 end subroutine del_cnd
@@ -1366,7 +1371,6 @@ IF(associated(o%next)) then
   call del_overlap(o%next)
   NULLIFY(o%next)
 endif
-call DecRefOVERLAPtype(o)
 call ReleaseOVERLAPtype(o)
 
 end subroutine del_overlap
@@ -5832,7 +5836,6 @@ conductorstmp => NewConductorType()
                         conductorstmp)
  end do
 
-call DecRefConductorType(conductorstmp)
 call ReleaseConductorType(conductorstmp)
 DEALLOCATE(mg_ncond,mg_necndbdy, mg_nocndbdy)
 
