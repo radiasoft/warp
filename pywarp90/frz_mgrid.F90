@@ -4852,7 +4852,7 @@ do igrid=1,ngrids
         bndy(i)%cnd%volt0xp(ic) = vv
       endif
       if (bndy(i)%cnd%dzm(ic) < bndy(i)%dz) then
-        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1) \
+        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1) &
              - bndy(i)%cnd%dzm(ic)
         if (zmmin <= zz .and. zz < zmmin + nz*dz) then
           iz = int(zz/dz)
@@ -4866,7 +4866,7 @@ do igrid=1,ngrids
         endif
       endif
       if (bndy(i)%cnd%dzp(ic) < bndy(i)%dz) then
-        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1) \
+        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1) &
              + bndy(i)%cnd%dzp(ic)
         if (zmmin <= zz .and. zz < zmmin + nz*dz) then
           iz = int(zz/dz)
