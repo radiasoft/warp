@@ -4351,7 +4351,7 @@ end subroutine mgbndrzwguard_jump
 subroutine updateguardcellsrz(f, ixlbnd, ixrbnd, izlbnd, izrbnd)
 ! update guard cells values according to boundary conditions.
 implicit none
-REAL(8),INTENT(IN OUT) :: f(:,:)
+REAL(8),INTENT(IN OUT) :: f(0:,0:)
 INTEGER(ISZ), optional :: ixlbnd
 INTEGER(ISZ) :: ixrbnd, izlbnd, izrbnd
 
@@ -4365,39 +4365,39 @@ izmax=SIZE(f,2)
 IF(PRESENT(ixlbnd)) then
   select case (ixlbnd)
     case (dirichlet)
-      f(1,:) = 2.*f(2,:)-f(3,:)
+      f(0,:) = 2.*f(1,:)-f(2,:)
     case (neumann)
-      f(1,:) = f(3,:)
+      f(0,:) = f(2,:)
     case (periodic)
-      f(1,:) = f(ixmax-1,:)
+      f(0,:) = f(ixmax-2,:)
     case default
   end select
 END if
 select case (ixrbnd)
     case (dirichlet)
-      f(ixmax,:) = 2.*f(ixmax-1,:)-f(ixmax-2,:)
+      f(ixmax-1,:) = 2.*f(ixmax-2,:)-f(ixmax-3,:)
     case (neumann)
-      f(ixmax,:) = f(ixmax-2,:)
+      f(ixmax-1,:) = f(ixmax-3,:)
     case (periodic)
-      f(ixmax,:) = f(2,2)
+      f(ixmax-1,:) = f(1,1) ! Shouldn't this be (1,:)?
     case default
 end select
 select case (izlbnd)
     case (dirichlet)
-      f(:,1) = 2.*f(:,2)-f(:,3)
+      f(:,0) = 2.*f(:,1)-f(:,2)
     case (neumann)
-      f(:,1) = f(:,3)
+      f(:,0) = f(:,2)
     case (periodic)
-      f(:,1) = f(:,izmax-1)
+      f(:,0) = f(:,izmax-2)
     case default
 end select
 select case (izrbnd)
     case (dirichlet)
-      f(:,izmax) = 2.*f(:,izmax-1)-f(:,izmax-2)
+      f(:,izmax-1) = 2.*f(:,izmax-2)-f(:,izmax-3)
     case (neumann)
-      f(:,izmax) = f(:,izmax-2)
+      f(:,izmax-1) = f(:,izmax-3)
     case (periodic)
-      f(:,izmax) = f(:,2)
+      f(:,izmax-1) = f(:,1)
     case default
 end select
 
@@ -5723,7 +5723,7 @@ INTEGER(ISZ) :: i, ii, nrc, nzc, itmp
 INTEGER(ISZ) :: ncondtmp, necndbdytmp, nocndbdytmp
 REAL(8) :: drc, dzc
 
-type(ConductorType):: conductorstmp
+type(ConductorType),pointer:: conductorstmp
 
 TYPE(BNDtype), POINTER :: b
 
@@ -5748,6 +5748,13 @@ do i = 1, conductors%oddsubgrid%n
   ii = conductors%oddsubgrid%ilevel(i) + 1
   mg_nocndbdy(ii) = mg_nocndbdy(ii) + 1
 end do
+
+! --- conductorstmp must be created this way since the gallot routine is called
+! --- with it. The gallot needs to have the object accessible from python,
+! --- which happens when the object is created this way. The alternative
+! --- is to explicitly call the InitPyRef and DelPyRef routines for
+! --- conductorstmp and all of the objects it refers to.
+conductorstmp => NewConductorType()
 
  do i = 1, grid%nlevels
   IF(i == 1) then
@@ -5805,7 +5812,7 @@ end do
                         conductorstmp)
  end do
 
-call ConductorTypefree(conductorstmp)
+call DelConductorType(conductorstmp)
 DEALLOCATE(mg_ncond,mg_necndbdy, mg_nocndbdy)
 
 conductors%interior%n = 0
