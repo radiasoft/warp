@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.146 $, $Date: 2004/03/03 17:50:25 $
+c@(#) File W3D.F, version $Revision: 3.147 $, $Date: 2004/03/16 17:24:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9388,7 +9388,7 @@ c         --- General capacity matrix solver
       elseif (fstype == 7) then
           call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &            phi(0,0,izfsmin-1),rho(0,0,izfsmin),rstar(izfsmin-1),
-     &            linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,scrtch(0,0),
+     &            linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,
      &            xmmin,ymmin,zmmin,zbeam,zgrid)
 
 #ifdef MPIPARALLEL
