@@ -1,4 +1,4 @@
-!     Last change:  JLV   7 Mar 2003    1:15 pm
+!     Last change:  JLV  13 Mar 2003    2:00 pm
 #include "top.h"
 
 module multigrid_common
@@ -53,6 +53,7 @@ LOGICAL(ISZ) :: l_verbose
 TYPE(GRIDtype), POINTER :: bg
 TYPE(BNDtype), POINTER :: b
 
+  WRITE(0,*) 'enter init_basegrid'
   IF(associated(basegrid)) return
 
   basegrid => NewGRIDType()
@@ -202,6 +203,7 @@ TYPE(BNDtype), POINTER :: b
   END do
 
   call mk_grids_ptr()
+  WRITE(0,*) 'exit init_basegrid'
 
 return
 end subroutine init_basegrid
@@ -8297,10 +8299,17 @@ TYPE(BNDtype), pointer :: bnd
 TYPE(CONDtype), pointer :: c
 
  IF(solvergeom==Zgeom) return
- WRITE(0,*) 'needs fix.'
- stop
-! bnd => grids_ptr(igrid)%grid%bnd(grids_ptr(igrid)%grid%nlevels-ilevel+1)
 
+ IF(ilevel>grids_ptr(igrid)%grid%nlevels) then
+   WRITE(0,*) 'Error in get_condrz: ilevel>nlevels.'
+   return
+ END if
+
+ bnd => grids_ptr(igrid)%grid%bndfirst
+ do i = 1, ilevel-1
+   bnd => bnd%next
+ end do
+ 
  ncond    = 0
  necndbdy = 0
  nocndbdy = 0
