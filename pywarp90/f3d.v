@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.38 $, $Date: 2002/04/30 13:56:28 $
+#@(#) File F3D.V, version $Revision: 3.39 $, $Date: 2002/05/07 17:39:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.38 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.39 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -141,8 +141,8 @@ lcndbndy logical /.true./ # Turns on sub-grid boundaries
 icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
                           # 2 EBC style (non-centered finite-difference)
-ncndmax       integer /0/ # Maximum number of points for sub-grid boundaries
-necndbdy          integer # Number of points for even sub-grid boundaries
+ncndmax       integer /0/   # Maximum number of points for sub-grid boundaries
+necndbdy      integer /0/   # Number of points for even sub-grid boundaries
 ecndpvph(ncndmax)     _real -dump # Saves phi for even sub-grid boundaries
 iecndx  (ncndmax)  _integer # location of points for even sub-grid boundaries
 iecndy  (ncndmax)  _integer # location of points for even sub-grid boundaries
@@ -155,7 +155,7 @@ ecdelpy (ncndmax)     _real # distance in y of surface with higher y, even
 ecdelpz (ncndmax)     _real # distance in z of surface with higher z, even
 ecvolt  (ncndmax)     _real # voltage of points for even sub-grid boundaries
 ecnumb  (ncndmax)  _integer # Number of the conductor the even points are in
-nocndbdy        integer # Number of points for odd sub-grid boundaries
+nocndbdy      integer /0/   # Number of points for odd sub-grid boundaries
 ocndpvph(ncndmax)     _real -dump # Saves phi for odd sub-grid boundaries
 iocndx  (ncndmax)  _integer # location of points for odd sub-grid boundaries
 iocndy  (ncndmax)  _integer # location of points for odd sub-grid boundaries

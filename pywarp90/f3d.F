@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.38 $, $Date: 2002/04/30 13:56:27 $
+c@(#) File F3D.M, version $Revision: 3.39 $, $Date: 2002/05/07 17:39:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4388,18 +4388,24 @@ c       --- Change rstar if using Nuemann boundary conditions
       endif 
 
 c Precalculate the reciprocals of the subgrid data.
-      ecdelpxi = 1./ecdelpx(1:necndbdy)
-      ecdelpyi = 1./ecdelpy(1:necndbdy)
-      ecdelpzi = 1./ecdelpz(1:necndbdy)
-      ecdelmxi = 1./ecdelmx(1:necndbdy)
-      ecdelmyi = 1./ecdelmy(1:necndbdy)
-      ecdelmzi = 1./ecdelmz(1:necndbdy)
-      ocdelpxi = 1./ocdelpx(1:nocndbdy)
-      ocdelpyi = 1./ocdelpy(1:nocndbdy)
-      ocdelpzi = 1./ocdelpz(1:nocndbdy)
-      ocdelmxi = 1./ocdelmx(1:nocndbdy)
-      ocdelmyi = 1./ocdelmy(1:nocndbdy)
-      ocdelmzi = 1./ocdelmz(1:nocndbdy)
+      if (lcndbndy) then
+        if (necndbdy > 0) then
+          ecdelpxi = 1./ecdelpx(1:necndbdy)
+          ecdelpyi = 1./ecdelpy(1:necndbdy)
+          ecdelpzi = 1./ecdelpz(1:necndbdy)
+          ecdelmxi = 1./ecdelmx(1:necndbdy)
+          ecdelmyi = 1./ecdelmy(1:necndbdy)
+          ecdelmzi = 1./ecdelmz(1:necndbdy)
+        endif
+        if (nocndbdy > 0) then
+          ocdelpxi = 1./ocdelpx(1:nocndbdy)
+          ocdelpyi = 1./ocdelpy(1:nocndbdy)
+          ocdelpzi = 1./ocdelpz(1:nocndbdy)
+          ocdelmxi = 1./ocdelmx(1:nocndbdy)
+          ocdelmyi = 1./ocdelmy(1:nocndbdy)
+          ocdelmzi = 1./ocdelmz(1:nocndbdy)
+        endif
+      endif
 
 c If doing Chebyshev accel, set sorparam to one for first iteration.
       if (lchebshv) sorparam = 1.
