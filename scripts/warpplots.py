@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.107 2003/08/12 23:13:49 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.108 2003/08/22 17:18:59 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2216,12 +2216,13 @@ def getrho(ix=None,iy=None,iz=None,bcast=0):
   """Returns slices of rho, the charge density array. The shape of the object
 returned depends on the number of arguments specified, which can be from none
 to all three.
-  - ix = None
-  - iy = None
-  - iz = None
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
   - bcast=0: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   """
+  if iy is None and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
       return w3d.rho
@@ -2268,10 +2269,11 @@ def setrho(val,ix=None,iy=None,iz=None):
 object depends on the number of arguments specified, which can be from none
 to all three.
   - val input array (must be supplied)
-  - ix = None
-  - iy = None
-  - iz = None
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None:
   """
+  if iy is None and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
       w3d.rho[:,:,:] = val
@@ -2315,13 +2317,14 @@ def getphi(ix=None,iy=None,iz=None,bcast=0):
   """Returns slices of phi, the electrostatic potential array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
-  - ix = None
-  - iy = None
-  - iz = None Value is relative to the fortran indexing, so iz ranges
-              from -1 to nz+1
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None: Value is relative to the fortran indexing, so iz ranges
+               from -1 to nz+1
   - bcast=0: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
   """
+  if iy is None and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
       return w3d.phi[:,:,1:-1]
@@ -2368,11 +2371,12 @@ def setphi(val,ix=None,iy=None,iz=None):
 the input object depends on the number of arguments specified, which can
 be from none to all three.
   - val input array (must be supplied)
-  - ix = None
-  - iy = None
-  - iz = None Value is relative to the fortran indexing, so iz ranges
-              from -1 to nz+1
+  - ix = None:
+  - iy = None: Defaults to 0 except when using 3-D geometry.
+  - iz = None: Value is relative to the fortran indexing, so iz ranges
+               from -1 to nz+1
   """
+  if iy is None and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
       w3d.phi[:,:,1:-1] = val
@@ -2424,6 +2428,7 @@ be from none to all three.
              (otherwise returns None to all but PE0
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
+  if iy is None and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
   if top.efetch != 3 or w3d.nx_selfe == 0:
     # --- If not already using selfe, then allocate it and set it.
     # --- Note that this could be an unexpected expense for a user.
