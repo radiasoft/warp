@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.9 $, $Date: 2004/04/08 19:32:59 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.10 $, $Date: 2004/04/13 21:45:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -47,12 +47,10 @@ c     --- Initialize temporaries
       dysqi=1./dy**2
       reps0c = mgparam/(eps0*2.*(dxsqi+dysqi))
 
-      call setmglevelsxy(nx,ny,dx,dy)
-
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
 
-      call checkconductorsxy(nx,ny,dx,dy,l2symtry,l4symtry)
+      call checkconductorsxy(nx,ny,dx,dy,l2symtry,l4symtry,conductors)
 
 c     --- Preset rho to increase performance (reducing the number of
 c     --- multiplies in the main SOR sweep loop).
@@ -70,7 +68,8 @@ c       --- Save current value of phi
 
 c       --- Do one vcycle.
         call vcyclexy(0,nx,ny,dxsqi,dysqi,phi,rho,
-     &                l2symtry,l4symtry,boundxy,
+     &                l2symtry,l4symtry,boundxy,mgmaxlevels,
+     &                downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors)
 
         maxerr = maxval(abs(phisave - phi))
@@ -89,53 +88,52 @@ c     --- Make a print out.
       return
       end
 c=============================================================================
-      subroutine setmglevelsxy(nx,ny,dx,dy)
+      subroutine getmglevelsxy(nx,ny,dx,dy,conductors)
       use Parallel
+      use ConductorTypemodule
       integer(ISZ):: nx,ny
       real(kind=8):: dx,dy
+      type(ConductorType):: conductors
 
-      call setmglevelsrecurxy(nx,ny,dx,dy,0,1,1,1)
+      call getmglevelsrecurxy(nx,ny,dx,dy,0,1,1,1,conductors)
 
       return
       end
 c=============================================================================
-      RECURSIVE subroutine setmglevelsrecurxy(nx,ny,dx,dy,mglevel,lx,ly)
-      use MGLevels3d
+      RECURSIVE subroutine getmglevelsrecurxy(nx,ny,dx,dy,mglevel,lx,ly,
+     &                                        conductors)
+      use ConductorTypemodule
       integer(ISZ):: nx,ny
       real(kind=8):: dx,dy
       integer(ISZ):: mglevel,lx,ly
+      type(ConductorType):: conductors
 
 c Calculate the levels of coarsening, saving the nx, and ny for each level.
 
-      mglevelsnx(mglevel) = nx
-      mglevelsny(mglevel) = ny
-      mglevelslx(mglevel) = lx
-      mglevelsly(mglevel) = ly
-      mglevels = mglevel + 1
+      conductors%levellx(mglevel) = lx
+      conductors%levelly(mglevel) = ly
+      conductors%levels = mglevel + 1
 
       if (mod(nx,4) /= 0 .or.
-     &    mod(ny,4) /= 0 .or.
-     &    mglevel == mgmaxlevels) return
+     &    mod(ny,4) /= 0) return
 
-      mglevelspart(mglevel+1) = .false.
-
-      call setmglevelsrecurxy(nx/2,ny/2,dx*2,dy*2,mglevel+1,lx*2,ly*2)
+      call getmglevelsrecurxy(nx/2,ny/2,dx*2,dy*2,mglevel+1,lx*2,ly*2,
+     &                        conductors)
 
       return
       end
 c=============================================================================
       RECURSIVE subroutine vcyclexy(mglevel,nx,ny,dxsqi,dysqi,
      &                              phi,rho,l2symtry,l4symtry,boundxy,
+     &                              mgmaxlevels,downpasses,uppasses,
      &                              lcndbndy,icndbndy,conductors)
-      use Multigrid3d
-      use MGLevels3d
       use ConductorTypemodule
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny
       real(kind=8):: dxsqi,dysqi
       real(kind=8):: phi(0:nx,0:ny),rho(0:nx,0:ny)
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: boundxy
+      integer(ISZ):: boundxy,mgmaxlevels,downpasses,uppasses
       type(ConductorType):: conductors
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
@@ -153,7 +151,7 @@ c     --- Do initial SOR passes.
      &                 lcndbndy,icndbndy,conductors)
       enddo
 
-      if (mglevel < mglevels-1) then
+      if (mglevel < mgmaxlevels-1) then
 
 c       --- Get the residual on the current grid.
         call residualxy(nx,ny,dxsqi,dysqi,phi,rho,res,
@@ -169,7 +167,8 @@ c       --- Get the residual on the current grid.
 
 c         --- Continue at the next coarsest level.
           call vcyclexy(mglevel+1,nx/2,ny/2,dxsqi*0.25,dysqi*0.25,phi2,rho2,
-     &                  l2symtry,l4symtry,boundxy,
+     &                  l2symtry,l4symtry,boundxy,mgmaxlevels,
+     &                  downpasses,uppasses,
      &                  lcndbndy,icndbndy,conductors)
 
 c         --- Add in resulting error.
@@ -880,13 +879,14 @@ c     --- Calculate the residual near the conductor.
       end
 c=============================================================================
 c=============================================================================
-      RECURSIVE subroutine checkconductorsxy(nx,ny,dx,dy,l2symtry,l4symtry)
-      use MGLevels3d
-      use Conductor3d
+      RECURSIVE subroutine checkconductorsxy(nx,ny,dx,dy,l2symtry,l4symtry,
+     &                                       conductors)
       use Parallel
+      use ConductorTypemodule
       integer(ISZ):: nx,ny
       real(kind=8):: dx,dy
       logical(ISZ):: l2symtry,l4symtry
+      type(ConductorType):: conductors
 
 c Recursively calls the routine to generate the conductor data at the
 c various mesh resolutions needed by the MG solver.
@@ -894,17 +894,19 @@ c various mesh resolutions needed by the MG solver.
       integer(ISZ):: ic,ix,iy,ii,nn
       integer(ISZ),allocatable:: isort(:)
 
-      integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
+      integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2,mglevels
       real(kind=8):: dx1,dy1
       integer(ISZ):: nx1,ny1
       integer(ISZ):: ix_axis1,iy_axis1
 
+      mglevels = conductors%levels
+
 c     --- Call the work routine for each level
-      do il=0,mglevels-1
-        dx1 = dx*mglevelslx(il)
-        dy1 = dy*mglevelsly(il)
-        nx1 = mglevelsnx(il)
-        ny1 = mglevelsny(il)
+      do il=0,conductors%levels-1
+        dx1 = dx*conductors%levellx(il)
+        dy1 = dy*conductors%levelly(il)
+        nx1 = nx/conductors%levellx(il)
+        ny1 = nx/conductors%levelly(il)
         call checkconductors_workxy(conductors%interior,
      &                            conductors%evensubgrid,conductors%oddsubgrid,
      &                            nx1,ny1,dx1,dy1,l2symtry,l4symtry,il)
