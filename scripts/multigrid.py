@@ -151,6 +151,11 @@ class MultiGrid:
                       solvergeom=self.solvergeom,
                       conductors=self.conductors)
 
+  def clearconductors(self):
+    self.conductors.interior.n = 0
+    self.conductors.evensubgrid.n = 0
+    self.conductors.oddsubgrid.n = 0
+
   def solve(self,iwhich=0):
     multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                      self.dx,self.dy,self.dz,self.phi,self.rho,
