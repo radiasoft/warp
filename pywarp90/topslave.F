@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.27 $, $Date: 2004/11/13 01:33:30 $
+c TOPSLAVE.M, version $Revision: 1.28 $, $Date: 2005/01/12 17:04:58 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -684,16 +684,17 @@ c=============================================================================
       use Parallel
       use Moments
       use Z_Moments
-      real(kind=8):: zmmnts0(NUMZMMNT)
-      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
+      real(kind=8):: zmmnts0(NUMZMMNT,0:nszmmnt)
+      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt)
 
 c Use reduction routines to sum whole beam moments across all
 c of the processors.  It also shares z moment data at PE boundaries.
 
 c     --- temporary for z moments
-      real(kind=8):: ztemp0(NUMZMMNT),ztemp(0:nzmmnt,NUMZMMNT)
-      real(kind=8):: maxes1(6),mines1(6)
-      real(kind=8):: maxes2(6),mines2(6)
+      real(kind=8):: ztemp0(NUMZMMNT,0:nszmmnt)
+      real(kind=8):: ztemp(0:nzmmnt,NUMZMMNT,0:nszmmnt)
+      real(kind=8):: maxes1(6,0:nszmmnt),mines1(6,0:nszmmnt)
+      real(kind=8):: maxes2(6,0:nszmmnt),mines2(6,0:nszmmnt)
       include "mpif.h"
       integer(ISZ):: mpierror
       real(kind=8):: substarttime,wtime
@@ -701,44 +702,44 @@ c     --- temporary for z moments
 
 c     --- Do reduction on whole beam moments.
       ztemp0 = zmmnts0
-      call MPI_ALLREDUCE(ztemp0,zmmnts0,NUMZMMNT,MPI_DOUBLE_PRECISION,MPI_SUM,
-     &                   MPI_COMM_WORLD,mpierror)
+      call MPI_ALLREDUCE(ztemp0,zmmnts0,NUMZMMNT*(1+nszmmnt),
+     &                   MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,mpierror)
 
 c     --- Do reduction on beam z moments.
       ztemp = zmmnts
-      call MPI_ALLREDUCE(ztemp,zmmnts,(1+nzmmnt)*NUMZMMNT,
+      call MPI_ALLREDUCE(ztemp,zmmnts,(1+nzmmnt)*NUMZMMNT*(1+nszmmnt),
      &                   MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,mpierror)
 
 c     --- Find global max's and min's
 c     --- This is done minimizing the amount of interprocessor communication
-      maxes1(1) = xmaxp
-      maxes1(2) = ymaxp
-      maxes1(3) = zmaxp
-      maxes1(4) = vxmaxp
-      maxes1(5) = vymaxp
-      maxes1(6) = vzmaxp
-      mines1(1) = xminp
-      mines1(2) = yminp
-      mines1(3) = zminp
-      mines1(4) = vxminp
-      mines1(5) = vyminp
-      mines1(6) = vzminp
-      call MPI_ALLREDUCE(maxes1,maxes2,6,MPI_DOUBLE_PRECISION,MPI_MAX,
-     &                   MPI_COMM_WORLD,mpierror)
-      call MPI_ALLREDUCE(mines1,mines2,6,MPI_DOUBLE_PRECISION,MPI_MIN,
-     &                   MPI_COMM_WORLD,mpierror)
-      xmaxp = maxes2(1)
-      ymaxp = maxes2(2)
-      zmaxp = maxes2(3)
-      vxmaxp = maxes2(4)
-      vymaxp = maxes2(5)
-      vzmaxp = maxes2(6)
-      xminp = mines2(1)
-      yminp = mines2(2)
-      zminp = mines2(3)
-      vxminp = mines2(4)
-      vyminp = mines2(5)
-      vzminp = mines2(6)
+      maxes1(1,:) = xmaxp
+      maxes1(2,:) = ymaxp
+      maxes1(3,:) = zmaxp
+      maxes1(4,:) = vxmaxp
+      maxes1(5,:) = vymaxp
+      maxes1(6,:) = vzmaxp
+      mines1(1,:) = xminp
+      mines1(2,:) = yminp
+      mines1(3,:) = zminp
+      mines1(4,:) = vxminp
+      mines1(5,:) = vyminp
+      mines1(6,:) = vzminp
+      call MPI_ALLREDUCE(maxes1,maxes2,6*(1+nszmmnt),MPI_DOUBLE_PRECISION,
+     &                   MPI_MAX,MPI_COMM_WORLD,mpierror)
+      call MPI_ALLREDUCE(mines1,mines2,6*(1+nszmmnt),MPI_DOUBLE_PRECISION,
+     &                   MPI_MIN,MPI_COMM_WORLD,mpierror)
+      xmaxp = maxes2(1,:)
+      ymaxp = maxes2(2,:)
+      zmaxp = maxes2(3,:)
+      vxmaxp = maxes2(4,:)
+      vymaxp = maxes2(5,:)
+      vzmaxp = maxes2(6,:)
+      xminp = mines2(1,:)
+      yminp = mines2(2,:)
+      zminp = mines2(3,:)
+      vxminp = mines2(4,:)
+      vyminp = mines2(5,:)
+      vzminp = mines2(6,:)
 
 !$OMP MASTER
       if (ltoptimesubs) timeparallel_sum_mmnts = timeparallel_sum_mmnts + wtime() - substarttime

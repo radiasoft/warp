@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.182 $, $Date: 2004/12/08 15:31:14 $
+c@(#) File W3D.F, version $Revision: 3.183 $, $Date: 2005/01/12 17:04:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1281,6 +1281,7 @@ c=============================================================================
       use InGen3d
       use InPart
       use InGaps
+      use InDiag
       use Lattice
       use LatticeInternal
       use Particles
@@ -1291,7 +1292,7 @@ c=============================================================================
       use Picglb3d
       use Beam_acc
       use Z_arrays
-      use Z_Moments, only: nzmmnt, tempmaxp,tempminp,tempzmmnts0,tempzmmnts
+      use Z_Moments, only: nzmmnt,nszmmnt,tempmaxp,tempminp,tempzmmnts0,tempzmmnts
       use Damped_eom
       use InjectVars
       use InjectVars3d
@@ -1314,17 +1315,13 @@ c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
 #ifdef _OPENMP
-      real(kind=8):: threadmaxp(6,16),threadminp(6,16)
-      real(kind=8):: threadzmmnts0(NUMZMMNT,16)
-      real(kind=8):: threadzmmnts(0:nzmmnt,NUMZMMNT,16)
-      real(kind=8):: sharedcurr(0:nzzarr,16)
+      real(kind=8),allocatable:: threadmaxp(:,:,:),threadminp(:,:,:)
+      real(kind=8),allocatable:: threadzmmnts0(:,:,:),threadzmmnts(:,:,:,:)
       integer(ISZ):: ithread,omp_get_thread_num
       integer(ISZ):: nthread,omp_get_num_threads
 #endif
-      real(kind=8):: maxp(6)
-      real(kind=8):: minp(6)
-      real(kind=8):: zmmnts0(NUMZMMNT)
-      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
+      real(kind=8),pointer:: maxp(:,:),minp(:,:)
+      real(kind=8),pointer:: zmmnts0(:,:),zmmnts(:,:,:)
       real(kind=8):: getbeamcom,zbeamcom
       real(kind=8):: substarttime,wtime
 
@@ -1345,10 +1342,20 @@ c  Zero the moments if center is synchv
      &                sq(1),sm(1),sw(1),dt*0.5,1,
      &                nplive,uxpo,uypo,uzpo,1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+#ifdef _OPENMP
+        allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt))
+        allocate(zmmnts0(NUMZMMNT,0:nszmmnt))
+        allocate(zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt))
         maxp = -LARGEPOS
         minp = +LARGEPOS
         zmmnts0 = 0.
         zmmnts = 0.
+#else
+        maxp => tempmaxp
+        minp => tempminp
+        zmmnts0 => tempzmmnts0
+        zmmnts => tempzmmnts
+#endif
       endif
 
 c  Set the transverse E fields near any defined apertures.
@@ -1670,10 +1677,17 @@ c              --- THIS IS NOT DONE FOR center = hbor1.
       if (center == "synchv" .or. center == "gen") then
         ithread = omp_get_thread_num() + 1
         nthread = omp_get_num_threads()
-        threadmaxp(:,ithread) = maxp
-        threadminp(:,ithread) = minp
-        threadzmmnts0(:,ithread) = zmmnts0
-        threadzmmnts(:,:,ithread) = zmmnts
+!$OMP SINGLE
+        allocate(threadmaxp(6,0:nszmmnt,nthread))
+        allocate(threadminp(6,0:nszmmnt,nthread))
+        allocate(threadzmmnts0(NUMZMMNT,0:nszmmnt,nthread))
+        allocate(threadzmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt,nthread))
+!$OMP END SINGLE
+        threadmaxp(:,:,ithread) = maxp
+        threadminp(:,:,ithread) = minp
+        threadzmmnts0(:,:,ithread) = zmmnts0
+        threadzmmnts(:,:,:,ithread) = zmmnts
+        deallocate(maxp,minp,zmmnts0,zmmnts)
       endif
 #endif
 
@@ -1683,15 +1697,11 @@ c----------------------------------------------------------------------------
 c     ---  Do final stuff for moments calculation
       if (center == "synchv" .or. center == "gen" .and. npmax>0) then
 #ifdef _OPENMP
-        tempmaxp = max(tempmaxp,maxval(threadmaxp(:,1:nthread),2))
-        tempminp = min(tempminp,minval(threadminp(:,1:nthread),2))
-        tempzmmnts0 = tempzmmnts0 + sum(threadzmmnts0(:,1:nthread),2)
-        tempzmmnts = tempzmmnts + sum(threadzmmnts(:,:,1:nthread),3)
-#else
-        tempmaxp = max(tempmaxp,maxp)
-        tempminp = min(tempminp,minp)
-        tempzmmnts0 = tempzmmnts0 + zmmnts0
-        tempzmmnts = tempzmmnts + zmmnts
+        tempmaxp = max(tempmaxp,maxval(threadmaxp(:,1:nthread),3))
+        tempminp = min(tempminp,minval(threadminp(:,1:nthread),3))
+        tempzmmnts0 = tempzmmnts0 + sum(threadzmmnts0(:,1:nthread),3)
+        tempzmmnts = tempzmmnts + sum(threadzmmnts(:,:,1:nthread),4)
+        deallocate(threadmaxp,threadminp,threadzmmnts0,threadzmmnts)
 #endif
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),halfdt,3,nplive,uxpo,uypo,uzpo,
@@ -1702,7 +1712,7 @@ c       --- load rho diagnostic quantities
       endif
 
       if (center == "synchv" .or. center == "gen" .or. ifgap) then
-        if (.not. laccumulate_rho) call zeroarry(curr(0),nzzarr+1)
+        if (.not. laccumulate_rho) call zeroarry(curr,(nzzarr+1)*(1+nszarr))
 
 c       --- Calculate current
 !$OMP PARALLEL PRIVATE(ip)
@@ -1711,17 +1721,20 @@ c       --- Calculate current
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             if(wpid==0) then
-              call setcurr(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                     sq(is),sw(is),zbeam,dzz,zzmin)
+              call setcurr(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
+     &                     gaminv(ipmin),sq(is),sw(is),is,zbeam,dzz,zzmin,
+     &                     ns,lspeciesmoments)
             else
-              call setcurr_weights(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),pid(ipmin,wpid),
-     &                     sq(is),sw(is),zbeam,dzz,zzmin)
+              call setcurr_weights(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
+     &                             pid(ipmin,wpid),gaminv(ipmin),
+     &                             sq(is),sw(is),is,zbeam,dzz,zzmin,
+     &                             ns,lspeciesmoments)
             end if
           enddo
 !$OMP END DO
         enddo
 !$OMP END PARALLEL
-        call percurr(curr(0),nzzarr,bound0)
+        call percurr(curr,nzzarr,nszarr,bound0)
       endif
 
 c----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.48 $, $Date: 2004/12/08 21:36:24 $
+c@(#) File WXY.M, version $Revision: 3.49 $, $Date: 2005/01/12 17:04:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -881,7 +881,7 @@ c=============================================================================
       use Picglb3d
       use Beam_acc
       use Z_arrays
-      use Z_Moments, only: nzmmnt
+      use Z_Moments, only: nzmmnt,nszmmnt,tempmaxp,tempminp,tempzmmnts0,tempzmmnts
       use Damped_eom
       character(*):: center
 
@@ -897,17 +897,13 @@ c  and also loads RHO at the new time level.
       real(kind=8):: gaminvo(nparpgrp)
       real(kind=8):: bendres, bendradi
 #ifdef _OPENMP
-      real(kind=8):: threadmaxp(6,16),threadminp(6,16)
-      real(kind=8):: threadzmmnts0(NUMZMMNT,16)
-      real(kind=8):: threadzmmnts(0:nzmmnt,NUMZMMNT,16)
-      real(kind=8):: sharedcurr(0:nzzarr,16)
+      real(kind=8),allocatable:: threadmaxp(:,:,:),threadminp(:,:,:)
+      real(kind=8),allocatable:: threadzmmnts0(:,:,:),threadzmmnts(:,:,:,:)
       integer(ISZ):: ithread,omp_get_thread_num
       integer(ISZ):: nthread,omp_get_num_threads
-      real(kind=8):: aa(16),bb(16)
 #endif
-      real(kind=8):: maxp(6),minp(6)
-      real(kind=8):: zmmnts0(NUMZMMNT)
-      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
+      real(kind=8),pointer:: maxp(:,:),minp(:,:)
+      real(kind=8),pointer:: zmmnts0(:,:),zmmnts(:,:,:)
       integer(ISZ):: iter_dt,niter_dt_tmp
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
@@ -920,7 +916,22 @@ c  Zero the moments if center is synchv
       if (ldiag .and. (center == "synchv" .or. center == "gen")) then
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),dt*0.5,1,
-     &                nplive,uxpo,uypo,uzpo,1,ns,maxp,minp,zmmnts0,zmmnts)
+     &                nplive,uxpo,uypo,uzpo,1,ns,
+     &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+#ifdef _OPENMP
+        allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt))
+        allocate(zmmnts0(NUMZMMNT,0:nszmmnt))
+        allocate(zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt))
+        maxp = -LARGEPOS
+        minp = +LARGEPOS
+        zmmnts0 = 0.
+        zmmnts = 0.
+#else
+        maxp => tempmaxp
+        minp => tempminp
+        zmmnts0 => tempzmmnts0
+        zmmnts => tempzmmnts
+#endif
       endif
 
 !$OMP PARALLEL
@@ -1216,8 +1227,9 @@ c            --- Calculate moments over particles, now that we're sync'd
                endif
              endif
 c            --- Calculate current
-             call setcurrxy(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                      sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)
+             call setcurrxy(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
+     &                      gaminv(ipmin),sq(is),sw(is),is,zbeam,dzz,zzmin,
+     &                      ns,lspeciesmoments,dz,lthick)
           endif
         enddo
 !$OMP END DO
@@ -1229,10 +1241,17 @@ c     --- End loop over species
       if (center == "synchv" .or. center == "gen") then
         ithread = omp_get_thread_num() + 1
         nthread = omp_get_num_threads()
-        threadmaxp(:,ithread) = maxp
-        threadminp(:,ithread) = minp
-        threadzmmnts0(:,ithread) = zmmnts0
-        threadzmmnts(:,:,ithread) = zmmnts
+!$OMP SINGLE
+        allocate(threadmaxp(6,0:nszmmnt,nthread))
+        allocate(threadminp(6,0:nszmmnt,nthread))
+        allocate(threadzmmnts0(NUMZMMNT,0:nszmmnt,nthread))
+        allocate(threadzmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt,nthread))
+!$OMP END SINGLE
+        threadmaxp(:,:,ithread) = maxp
+        threadminp(:,:,ithread) = minp
+        threadzmmnts0(:,:,ithread) = zmmnts0
+        threadzmmnts(:,:,:,ithread) = zmmnts
+        deallocate(maxp,minp,zmmnts0,zmmnts)
       endif
 #endif
 !$OMP END PARALLEL
@@ -1270,10 +1289,11 @@ c       --- Collect charge density (xy) and current (1d)
         if (ifgap) then
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-            call setcurrxy(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                     sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)
+            call setcurrxy(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),
+     &                     gaminv(ipmin),sq(is),sw(is),is,zbeam,dzz,zzmin,
+     &                     ns,lspeciesmoments,dz,lthick)
           enddo
-          call fixcurrxy(curr,nzzarr,periinz,lthick)
+          call fixcurrxy(curr,nzzarr,nszarr,periinz,lthick)
         endif
 
 c       --- Advance beam frame location using the nominal beam frame velocity.
@@ -1290,21 +1310,22 @@ c     ---  Do final stuff for moments calculation and fix current
 
         if (ldiag) then
 #ifdef _OPENMP
-          maxp = maxval(threadmaxp(:,1:nthread),2)
-          minp = minval(threadminp(:,1:nthread),2)
-          zmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
-          zmmnts = sum(threadzmmnts(:,:,1:nthread),3)
+          tempmaxp = max(tempmaxp,maxval(threadmaxp(:,1:nthread),3))
+          tempminp = min(tempminp,minval(threadminp(:,1:nthread),3))
+          tempzmmnts0 = tempzmmnts0 + sum(threadzmmnts0(:,1:nthread),3)
+          tempzmmnts = tempzmmnts + sum(threadzmmnts(:,:,1:nthread),4)
+          deallocate(threadmaxp,threadminp,threadzmmnts0,threadzmmnts)
 #endif
           call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                  sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns,
-     &                  maxp,minp,zmmnts0,zmmnts)
+     &                  tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
           call getlabwn()
 c         --- load rho diagnostic qtys
           call rhodia3d()
         endif
 
 c       --- Fix the current
-        call fixcurrxy(curr,nzzarr,periinz,lthick)
+        call fixcurrxy(curr,nzzarr,nszarr,periinz,lthick)
 
       endif
 
@@ -1380,10 +1401,10 @@ c       --- Distribute rho to all z planes.
       return
       end
 c=============================================================================
-      subroutine fixcurrxy(curr,nzzarr,periinz,lthick)
+      subroutine fixcurrxy(curr,nzzarr,nszarr,periinz,lthick)
       use Subtimersxy
-      integer(ISZ):: nzzarr
-      real(kind=8):: curr(0:nzzarr)
+      integer(ISZ):: nzzarr,nszarr
+      real(kind=8):: curr(0:nzzarr,0:nszarr)
       logical(ISZ):: periinz,lthick
 
 c  Sums the first and last slices of curr for periodicity
@@ -1394,10 +1415,15 @@ c  For thin slice model, distribute the current along the axis.
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
+      if (nszarr > 0) then
+c       --- Sum up the current from all of the speices.
+        curr(:,nszarr) = sum(curr(:,0:nszarr-1),2)
+      endif
+
       if (periinz) then
 
-        curr(0)  = curr(0) + curr(nzzarr)
-        curr(nzzarr) = curr(0)
+        curr(0,:)  = curr(0,:) + curr(nzzarr,:)
+        curr(nzzarr,:) = curr(0,:)
 
       endif
 
@@ -1406,7 +1432,7 @@ c       --- In the setcurrxy routine, all of the current was put at iz=0.
 
 c       --- Distribute the current.
         do iz=1,nzzarr
-          curr(iz) = curr(0)
+          curr(iz,:) = curr(0,:)
         enddo
 
       endif
@@ -2186,21 +2212,22 @@ c  Copy charge density from frz.basegrid to w3d.rho
       return
       end
 c=============================================================================
-      subroutine setcurrxy(curr,np,zp,uzp,gaminv,q,wght,zbeam,dzz,zzmin,dz,
-     &                     lthick)
+      subroutine setcurrxy(nzzarr,nszarr,curr,np,zp,uzp,gaminv,q,wght,is,
+     &                     zbeam,dzz,zzmin,
+     &                     ns,lspeciesmoments,dz,lthick)
       use GlobalVars
       use Subtimersxy
-      integer(ISZ):: np
+      integer(ISZ):: nzzarr,nszarr,np,is,ns
       real(kind=8):: q,wght,zbeam,dzz,zzmin,dz
-      real(kind=8):: curr(0:*), zp(np), uzp(np), gaminv(np)
-      logical(ISZ):: lthick
+      real(kind=8):: curr(0:nzzarr,0:nszarr), zp(np), uzp(np), gaminv(np)
+      logical(ISZ):: lspeciesmoments,lthick
 
 c  Sets 1d beam current directly from particle data.
 c  If running slice version, puts all data at iz=0, else if running thick
 c  slice version, makes a call to the 3d version of setcurr.
 
       real(kind=8):: csum,g
-      integer(ISZ):: ip,ipmin
+      integer(ISZ):: ip,ipmin,js
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
@@ -2210,13 +2237,31 @@ c       --- Call 3d version.
 !$OMP DO
         do ipmin = 1,np,nparpgrp
           ip = min(nparpgrp, np+1-ipmin)
-          call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                 q,wght,zbeam,dzz,zzmin)
+          call setcurr(nzzarr,nszarr,curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                 q,wght,is,zbeam,dzz,zzmin,ns,lspeciesmoments)
         enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
       else
+
+        if (lspeciesmoments) then
+c         --- Check if the moments are to be calculated separately for
+c         --- each species. If so, check if nszarr already has been set
+c         --- appropriately. If not, set it and allocate the arrays.
+c         --- If only one species, then don't have separate species data.
+          if (nszarr /= ns .and. ns > 1) then
+            nszarr = ns
+            call gchange("Z_arrays",0)
+          endif
+          js = is - 1
+        else
+          if (nszarr /= 0) then
+            nszarr = 0
+            call gchange("Z_arrays",0)
+          endif
+          js = 0
+        endif
 
 c       --- Sum the charge times velocity over all particles.
         g = wght*q/dz
@@ -2226,7 +2271,8 @@ c       --- Sum the charge times velocity over all particles.
            csum = csum + gaminv(ip)*uzp(ip)
         enddo
 !$OMP END PARALLEL DO
-        curr(0) = curr(0) + csum*g
+        curr(0,js) = curr(0,js) + csum*g
+        if (js > 0) curr(0,0) = curr(0,0) + csum*g
 
       endif
 

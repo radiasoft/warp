@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.132 $, $Date: 2004/12/17 18:25:47 $
+#@(#) File TOP.V, version $Revision: 3.133 $, $Date: 2005/01/12 17:04:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.132 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.133 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -754,6 +754,11 @@ phiplmax real  [V]          /0./ # Max phi for on axis plots;both zero-autoscale
 ifzmmnt                   integer /2/
    # specifies z moments calculation (0:none, 1:global moments only,
    # 2:full z moments(with extrapolation and linear weighting))
+lspeciesmoments           logical /.true./
+   # When true, the various moments are calculated separately for each
+   # species, as well as for all of the species combined. The species list
+   # will be the last index in the moments arrays, with the last element
+   # being all species combined.
 laccumulate_zmoments      logical /.false./
    # When true, zmoments are accumulated over multiple time steps.  Note that
    # then the routines which initially zero the arrays and which finish the
@@ -1237,8 +1242,12 @@ dzzi                    real  [m]      # Z_arrays mesh grid cell size inverse
 zzmin                   real  [m]      # Z_arrays mesh maximum in z
 zzmax                   real  [m]      # Z_arrays mesh minimum in z
 nzzarr            integer /0/ [1]      # Length of arrays in group Z_arrays
+nszarr            integer /0/          # Number of species z data is calculated
+                                       # for. Defaults to zero, unless
+                                       # lspeciesmoments is true, then it
+                                       # defaults to top.ns.
+                                       # Should always be same as nszmmnt.
 zplmesh(0:nzzarr)      _real  [m]      # Z mesh used for qtys in group Z_arrays
-curr(0:nzzarr)         _real  [A]      # Beam current
 egap(0:nzzarr)         _real  [V/m]    # Gap electric field (smeared in z)
 linechg(0:nzzarr)      _real  [C/m]    # Line charge density
 vzofz(0:nzzarr)        _real  [m/s]    # Mean axial speed vs z
@@ -1251,9 +1260,10 @@ prwallxz(0:nzzarr)     _real  [m]      # X of center of cylindrical wall
 prwallyz(0:nzzarr)     _real  [m]      # Y of center of cylindrical wall
 prwelipz(0:nzzarr)     _real  [1] /1./ # Ellipticity of cylindrical wall
                                        # (ay = prwelipz*ax)
-lostpars(0:nzzarr)  _integer           # number of lost particles by zcells
 lamkreal(0:nzzarr)     _real  [C/m]    # Real part of FFT of lambda
 lamkimag(0:nzzarr)     _real  [C/m]    # Imaginary part of FFT of lambda
+curr(0:nzzarr,0:nszarr)     _real [A]  # Beam current
+lostpars(0:nzzarr,0:nszarr) _integer   # number of lost particles by zcells
 
 
 xmaxz(0:nzzarr)        _real   [m]   /+LARGEPOS/ # z-dependent locations used 
@@ -1278,56 +1288,60 @@ verbosity                 integer /2/
 
 *********** Win_Moments dump:
 # Particle and field moment data (including emittances) at current timestep
-nzwind       integer # Actual number of z windows used for emittance calcs
-pnum(0:nzwind)          _real [1]     # Total no. of (physical) ions in window
-xbar(0:nzwind)          _real [m]     # Mean X coordinate in window
-ybar(0:nzwind)          _real [m]     # Mean Y coordinate in window
-zbar(0:nzwind)          _real [m]     # Mean axial location in window
-xpbar(0:nzwind)         _real [1]     # Mean X' in window
-ypbar(0:nzwind)         _real [1]     # Mean Y' in window
-vxbar(0:nzwind)         _real [m/s]   # Mean Vx in window
-vybar(0:nzwind)         _real [m/s]   # Mean Vy in window
-vzbar(0:nzwind)         _real [m/s]   # Mean Vz in window
-xybar(0:nzwind)         _real [m**2]  # Mean product of X and Y in window
-xypbar(0:nzwind)        _real [m]     # Mean product of X  and Y'
-yxpbar(0:nzwind)        _real [m]     # Mean product of Y  and X'
-xpypbar(0:nzwind)       _real [1]     # Mean product of X' and Y'
-xsqbar(0:nzwind)        _real [m**2]  # Mean X-squared in window
-ysqbar(0:nzwind)        _real [m**2]  # Mean Y-squared in window
-zsqbar(0:nzwind)        _real [m**2]  # Mean Z-squared in window
-xpsqbar(0:nzwind)       _real [1]     # Mean X' squared in window
-ypsqbar(0:nzwind)       _real [1]     # Mean Y' squared in window
-vxsqbar(0:nzwind)       _real [m/s]   # Mean Vx squared in window
-vysqbar(0:nzwind)       _real [m/s]   # Mean Vy squared in window
-vzsqbar(0:nzwind)       _real [m/s]   # Mean Vz squared in window
-xxpbar(0:nzwind)        _real [m]     # Mean product of X and X' in window
-yypbar(0:nzwind)        _real [m]     # Mean product of Y and Y' in window
-zvzbar(0:nzwind)        _real [m]     # Mean product of Z and Vz in window
-xvzbar(0:nzwind)        _real [m]     # Mean product of X and Vz in window
-yvzbar(0:nzwind)        _real [m]     # Mean product of X and Vz in window
-vxvzbar(0:nzwind)       _real [m]     # Mean product of Vx and Vz in window
-vyvzbar(0:nzwind)       _real [m]     # Mean product of Vy and Vz in window
-xrms(0:nzwind)          _real [m]     # RMS X in window
-yrms(0:nzwind)          _real [m]     # RMS Y in window
-zrms(0:nzwind)          _real [m]     # RMS Z in window
-rrms(0:nzwind)          _real [m]     # RMS R in window
-xprms(0:nzwind)         _real [m]     # RMS X' in window
-yprms(0:nzwind)         _real [m]     # RMS Y' in window
-epsx(0:nzwind)          _real [m-rad] # X-X' emittance
-epsy(0:nzwind)          _real [m-rad] # Y-Y' emittance
-epsz(0:nzwind)          _real [m-rad] # Z-Z' emittance
-epsnx(0:nzwind)         _real [mm-mrad] # X-X' normalized emittance
-epsny(0:nzwind)         _real [mm-mrad] # Y-Y' normalized emittance
-epsnz(0:nzwind)         _real [mm-mrad] # Z-Z' normalized emittance
-epsg(0:nzwind)          _real [m-rad] # Generalized emittance
-epsh(0:nzwind)          _real [m-rad] # Generalized emittance
-epsng(0:nzwind)         _real [mm-mrad] # Generalized normalized emittance
-epsnh(0:nzwind)         _real [mm-mrad] # Generalized normalized emittance
-vxrms(0:nzwind)         _real [m/s]   # True RMS Vx in window
-vyrms(0:nzwind)         _real [m/s]   # True RMS Vy in window
-vzrms(0:nzwind)         _real [m/s]   # True RMS Vz in window
-rhomid(0:nzwind)        _real [C/m^3] # Charge dens. on axis at ctr of window
-rhomax(0:nzwind)        _real [C/m^3] # Charge dens. max-over-X,Y at ctr of win.
+nzwind       integer /0/ # Actual number of z windows used for emittance calcs
+nswind       integer /0/ # Number of species window moments data is calculated
+                         # for. Defaults to zero, unless lspeciesmoments is
+                         # true, then it defaults to top.ns.
+                         # Should always be same as nszmmnt.
+pnum(0:nzwind,0:nswind)    _real [1]     # Total no. of (physical) ions in window
+xbar(0:nzwind,0:nswind)    _real [m]     # Mean X coordinate in window
+ybar(0:nzwind,0:nswind)    _real [m]     # Mean Y coordinate in window
+zbar(0:nzwind,0:nswind)    _real [m]     # Mean axial location in window
+xpbar(0:nzwind,0:nswind)   _real [1]     # Mean X' in window
+ypbar(0:nzwind,0:nswind)   _real [1]     # Mean Y' in window
+vxbar(0:nzwind,0:nswind)   _real [m/s]   # Mean Vx in window
+vybar(0:nzwind,0:nswind)   _real [m/s]   # Mean Vy in window
+vzbar(0:nzwind,0:nswind)   _real [m/s]   # Mean Vz in window
+xybar(0:nzwind,0:nswind)   _real [m**2]  # Mean product of X and Y in window
+xypbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X  and Y'
+yxpbar(0:nzwind,0:nswind)  _real [m]     # Mean product of Y  and X'
+xpypbar(0:nzwind,0:nswind) _real [1]     # Mean product of X' and Y'
+xsqbar(0:nzwind,0:nswind)  _real [m**2]  # Mean X-squared in window
+ysqbar(0:nzwind,0:nswind)  _real [m**2]  # Mean Y-squared in window
+zsqbar(0:nzwind,0:nswind)  _real [m**2]  # Mean Z-squared in window
+xpsqbar(0:nzwind,0:nswind) _real [1]     # Mean X' squared in window
+ypsqbar(0:nzwind,0:nswind) _real [1]     # Mean Y' squared in window
+vxsqbar(0:nzwind,0:nswind) _real [m/s]   # Mean Vx squared in window
+vysqbar(0:nzwind,0:nswind) _real [m/s]   # Mean Vy squared in window
+vzsqbar(0:nzwind,0:nswind) _real [m/s]   # Mean Vz squared in window
+xxpbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X and X' in window
+yypbar(0:nzwind,0:nswind)  _real [m]     # Mean product of Y and Y' in window
+zvzbar(0:nzwind,0:nswind)  _real [m]     # Mean product of Z and Vz in window
+xvzbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X and Vz in window
+yvzbar(0:nzwind,0:nswind)  _real [m]     # Mean product of X and Vz in window
+vxvzbar(0:nzwind,0:nswind) _real [m]     # Mean product of Vx and Vz in window
+vyvzbar(0:nzwind,0:nswind) _real [m]     # Mean product of Vy and Vz in window
+xrms(0:nzwind,0:nswind)    _real [m]     # RMS X in window
+yrms(0:nzwind,0:nswind)    _real [m]     # RMS Y in window
+zrms(0:nzwind,0:nswind)    _real [m]     # RMS Z in window
+rrms(0:nzwind,0:nswind)    _real [m]     # RMS R in window
+xprms(0:nzwind,0:nswind)   _real [m]     # RMS X' in window
+yprms(0:nzwind,0:nswind)   _real [m]     # RMS Y' in window
+epsx(0:nzwind,0:nswind)    _real [m-rad] # X-X' emittance
+epsy(0:nzwind,0:nswind)    _real [m-rad] # Y-Y' emittance
+epsz(0:nzwind,0:nswind)    _real [m-rad] # Z-Z' emittance
+epsnx(0:nzwind,0:nswind)   _real [mm-mrad] # X-X' normalized emittance
+epsny(0:nzwind,0:nswind)   _real [mm-mrad] # Y-Y' normalized emittance
+epsnz(0:nzwind,0:nswind)   _real [mm-mrad] # Z-Z' normalized emittance
+epsg(0:nzwind,0:nswind)    _real [m-rad] # Generalized emittance
+epsh(0:nzwind,0:nswind)    _real [m-rad] # Generalized emittance
+epsng(0:nzwind,0:nswind)   _real [mm-mrad] # Generalized normalized emittance
+epsnh(0:nzwind,0:nswind)   _real [mm-mrad] # Generalized normalized emittance
+vxrms(0:nzwind,0:nswind)   _real [m/s]   # True RMS Vx in window
+vyrms(0:nzwind,0:nswind)   _real [m/s]   # True RMS Vy in window
+vzrms(0:nzwind,0:nswind)   _real [m/s]   # True RMS Vz in window
+rhomid(0:nzwind)           _real [C/m^3] # Charge dens. on axis at ctr of window
+rhomax(0:nzwind)           _real [C/m^3] # Charge dens. max-over-X,Y at ctr of win.
 
 *********** Z_Moments dump:
 # Particle and field moment data (including emittances) at current timestep
@@ -1335,114 +1349,126 @@ rhomax(0:nzwind)        _real [C/m^3] # Charge dens. max-over-X,Y at ctr of win.
 zmmntmax             real         # Moments grid maximum in Z
 zmmntmin             real         # Moments grid minimum in Z
 nzmmnt               integer /0/  # Number of points in z moments grid
+nszmmnt              integer /0/  # Number of species z moments data is
+                                  # calculated for. Defaults to zero, unless
+                                  # lspeciesmoments is true, then it defaults
+                                  # to top.ns.
 dzm                  real         # Moments grid cell size
 dzmi                 real         # Moments grid cell size inverse
 numzmmnt             integer /NUMZMMNT/ # Number of moments calculated
 zmntmesh(0:nzmmnt)  _real [m]     # Z mesh associated with Z moments
-pnumz(0:nzmmnt)     _real [1]     # No. of (physical) ions at grid point
-xbarz(0:nzmmnt)     _real [m]     # Mean X coordinate at grid point
-ybarz(0:nzmmnt)     _real [m]     # Mean Y coordinate at grid point
-zbarz(0:nzmmnt)     _real [m]     # Mean axial location at grid point
-xpbarz(0:nzmmnt)    _real [1]     # Mean X' at grid point
-ypbarz(0:nzmmnt)    _real [1]     # Mean Y' at grid point
-vxbarz(0:nzmmnt)    _real [m/s]   # Mean Vx at grid point
-vybarz(0:nzmmnt)    _real [m/s]   # Mean Vy at grid point
-vzbarz(0:nzmmnt)    _real [m/s]   # Mean Vz at grid point
-xybarz(0:nzmmnt)    _real [m**2]  # Mean product of X  and Y  at grid point
-xypbarz(0:nzmmnt)   _real [m]     # Mean product of X  and Y' at grid point
-yxpbarz(0:nzmmnt)   _real [m]     # Mean product of Y  and X' at grid point
-xpypbarz(0:nzmmnt)  _real [1]     # Mean product of X' and Y' at grid point 
-xsqbarz(0:nzmmnt)   _real [m**2]  # Mean X-squared at grid point
-ysqbarz(0:nzmmnt)   _real [m**2]  # Mean Y-squared at grid point
-zsqbarz(0:nzmmnt)   _real [m**2]  # Mean Z-squared at grid point
-xpsqbarz(0:nzmmnt)  _real [1]     # Mean X' squared at grid point
-ypsqbarz(0:nzmmnt)  _real [1]     # Mean Y' squared at grid point
-vxsqbarz(0:nzmmnt)  _real [m/s]   # Mean Vx squared at grid point
-vysqbarz(0:nzmmnt)  _real [m/s]   # Mean Vy squared at grid point
-vzsqbarz(0:nzmmnt)  _real [m/s]   # Mean Vz squared at grid point
-xxpbarz(0:nzmmnt)   _real [m]     # Mean product of X and X' at grid point
-yypbarz(0:nzmmnt)   _real [m]     # Mean product of Y and Y' at grid point
-zvzbarz(0:nzmmnt)   _real [m]     # Mean product of Z and Vz at grid point
-xvzbarz(0:nzmmnt)   _real [m]     # Mean product of X and Vz at grid point
-yvzbarz(0:nzmmnt)   _real [m]     # Mean product of X and Vz at grid point
-vxvzbarz(0:nzmmnt)  _real [m]     # Mean product of Vx and Vz at grid point
-vyvzbarz(0:nzmmnt)  _real [m]     # Mean product of Vy and Vz at grid point
-xrmsz(0:nzmmnt)     _real [m]     # RMS X at grid point
-yrmsz(0:nzmmnt)     _real [m]     # RMS Y at grid point
-zrmsz(0:nzmmnt)     _real [m]     # RMS Z at grid point
-rrmsz(0:nzmmnt)     _real [m]     # RMS R at grid point
-xprmsz(0:nzmmnt)    _real [m]     # RMS X' at grid point
-yprmsz(0:nzmmnt)    _real [m]     # RMS Y' at grid point
-epsxz(0:nzmmnt)     _real [m-rad] # X-X' emittance at grid point
-epsyz(0:nzmmnt)     _real [m-rad] # Y-Y' emittance at grid point
-epszz(0:nzmmnt)     _real [m-rad] # Z-Z' emittance at grid point
-epsnxz(0:nzmmnt)    _real [mm-mrad] # X-X' normalized emittance at grid point
-epsnyz(0:nzmmnt)    _real [mm-mrad] # Y-Y' normalized emittance at grid point
-epsnzz(0:nzmmnt)    _real [mm-mrad] # Z-Z' normalized emittance at grid point
-epsgz(0:nzmmnt)     _real [m-rad]   # Generalized emittance on grid
-epshz(0:nzmmnt)     _real [m-rad]   # Generalized emittance on grid
-epsngz(0:nzmmnt)    _real [mm-mrad] # Generalized normalized emittance on grid
-epsnhz(0:nzmmnt)    _real [mm-mrad] # Generalized normalized emittance on grid
-vxrmsz(0:nzmmnt)    _real [m/s]   # True RMS Vx at grid point
-vyrmsz(0:nzmmnt)    _real [m/s]   # True RMS Vy at grid point
-vzrmsz(0:nzmmnt)    _real [m/s]   # True RMS Vz at grid point
-rhomidz(0:nzmmnt)   _real [C/m^3] # Charge dens. on axis at grid point
-rhomaxz(0:nzmmnt)   _real [C/m^3] # Charge dens. max-over-X,Y at grid point
-tempmaxp(6)                    real # Temporary work array
-tempminp(6)                    real # Temporary work array
-tempzmmnts0(NUMZMMNT)          real # Temporary work array
-tempzmmnts(0:nzmmnt,NUMZMMNT) _real # Temporary work array
+pnumz(0:nzmmnt,0:nszmmnt)    _real [1]     # No. of (physical) ions at grid point
+xbarz(0:nzmmnt,0:nszmmnt)    _real [m]     # Mean X coordinate at grid point
+ybarz(0:nzmmnt,0:nszmmnt)    _real [m]     # Mean Y coordinate at grid point
+zbarz(0:nzmmnt,0:nszmmnt)    _real [m]     # Mean axial location at grid point
+xpbarz(0:nzmmnt,0:nszmmnt)   _real [1]     # Mean X' at grid point
+ypbarz(0:nzmmnt,0:nszmmnt)   _real [1]     # Mean Y' at grid point
+vxbarz(0:nzmmnt,0:nszmmnt)   _real [m/s]   # Mean Vx at grid point
+vybarz(0:nzmmnt,0:nszmmnt)   _real [m/s]   # Mean Vy at grid point
+vzbarz(0:nzmmnt,0:nszmmnt)   _real [m/s]   # Mean Vz at grid point
+xybarz(0:nzmmnt,0:nszmmnt)   _real [m**2]  # Mean product of X  and Y  at grid point
+xypbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X  and Y' at grid point
+yxpbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of Y  and X' at grid point
+xpypbarz(0:nzmmnt,0:nszmmnt) _real [1]     # Mean product of X' and Y' at grid point
+xsqbarz(0:nzmmnt,0:nszmmnt)  _real [m**2]  # Mean X-squared at grid point
+ysqbarz(0:nzmmnt,0:nszmmnt)  _real [m**2]  # Mean Y-squared at grid point
+zsqbarz(0:nzmmnt,0:nszmmnt)  _real [m**2]  # Mean Z-squared at grid point
+xpsqbarz(0:nzmmnt,0:nszmmnt) _real [1]     # Mean X' squared at grid point
+ypsqbarz(0:nzmmnt,0:nszmmnt) _real [1]     # Mean Y' squared at grid point
+vxsqbarz(0:nzmmnt,0:nszmmnt) _real [m/s]   # Mean Vx squared at grid point
+vysqbarz(0:nzmmnt,0:nszmmnt) _real [m/s]   # Mean Vy squared at grid point
+vzsqbarz(0:nzmmnt,0:nszmmnt) _real [m/s]   # Mean Vz squared at grid point
+xxpbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X and X' at grid point
+yypbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of Y and Y' at grid point
+zvzbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of Z and Vz at grid point
+xvzbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X and Vz at grid point
+yvzbarz(0:nzmmnt,0:nszmmnt)  _real [m]     # Mean product of X and Vz at grid point
+vxvzbarz(0:nzmmnt,0:nszmmnt) _real [m]     # Mean product of Vx and Vz at grid point
+vyvzbarz(0:nzmmnt,0:nszmmnt) _real [m]     # Mean product of Vy and Vz at grid point
+xrmsz(0:nzmmnt,0:nszmmnt)    _real [m]     # RMS X at grid point
+yrmsz(0:nzmmnt,0:nszmmnt)    _real [m]     # RMS Y at grid point
+zrmsz(0:nzmmnt,0:nszmmnt)    _real [m]     # RMS Z at grid point
+rrmsz(0:nzmmnt,0:nszmmnt)    _real [m]     # RMS R at grid point
+xprmsz(0:nzmmnt,0:nszmmnt)   _real [m]     # RMS X' at grid point
+yprmsz(0:nzmmnt,0:nszmmnt)   _real [m]     # RMS Y' at grid point
+epsxz(0:nzmmnt,0:nszmmnt)    _real [m-rad] # X-X' emittance at grid point
+epsyz(0:nzmmnt,0:nszmmnt)    _real [m-rad] # Y-Y' emittance at grid point
+epszz(0:nzmmnt,0:nszmmnt)    _real [m-rad] # Z-Z' emittance at grid point
+epsnxz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # X-X' normalized emittance at grid point
+epsnyz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Y-Y' normalized emittance at grid point
+epsnzz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Z-Z' normalized emittance at grid point
+epsgz(0:nzmmnt,0:nszmmnt)    _real [m-rad]   # Generalized emittance on grid
+epshz(0:nzmmnt,0:nszmmnt)    _real [m-rad]   # Generalized emittance on grid
+epsngz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Generalized normalized emittance on grid
+epsnhz(0:nzmmnt,0:nszmmnt)   _real [mm-mrad] # Generalized normalized emittance on grid
+vxrmsz(0:nzmmnt,0:nszmmnt)   _real [m/s]   # True RMS Vx at grid point
+vyrmsz(0:nzmmnt,0:nszmmnt)   _real [m/s]   # True RMS Vy at grid point
+vzrmsz(0:nzmmnt,0:nszmmnt)   _real [m/s]   # True RMS Vz at grid point
+rhomidz(0:nzmmnt)            _real [C/m^3] # Charge dens. on axis at grid point
+rhomaxz(0:nzmmnt)            _real [C/m^3] # Charge dens. max-over-X,Y at grid point
+tempmaxp(6,0:nszmmnt)                   _real # Temporary work array
+tempminp(6,0:nszmmnt)                   _real # Temporary work array
+tempzmmnts0(NUMZMMNT,0:nszmmnt)         _real # Temporary work array
+tempzmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt) _real # Temporary work array
 
 ********** Lab_Moments dump:
 # Particle moment data as a function of time at locations in the lab frame
 nlabwn  integer   /50/ # number of lab windows
+nslabwn integer   /0/  # Number of species lab moments data is
+                       # calculated for. Defaults to zero, unless
+                       # lspeciesmoments is true, then it defaults to top.ns.
+                       # Should always be same as nszmmnt.
 zlw(nlabwn) _real [m] /0./ # z for lab windows
 iflabwn integer /1/ # turns on lab window moments (0 off; 1 on)
 itlabwn integer /0/ # Sets how often the lab moments are calculated
 ntlabwn integer     # Maximum number of times lab frame moments are calculated
 ilabwn(nlabwn) _integer # Number of times lab frame moments have been calculated
-timelw(ntlabwn,nlabwn)  _real # Time in lab frame
-pnumlw(ntlabwn,nlabwn)  _real # Number of particles in lab frame
-xbarlw(ntlabwn,nlabwn)  _real # X bar in lab frame
-ybarlw(ntlabwn,nlabwn)  _real # Y bar in lab frame
-vzbarlw(ntlabwn,nlabwn) _real # Vz bar in lab frame
-epsxlw(ntlabwn,nlabwn)  _real # X emittance in lab frame
-epsylw(ntlabwn,nlabwn)  _real # Y emittance in lab frame
-epszlw(ntlabwn,nlabwn)  _real # Z emittance in lab frame
-vxrmslw(ntlabwn,nlabwn) _real # Vx RMS in lab frame
-vyrmslw(ntlabwn,nlabwn) _real # Vy RMS in lab frame
-vzrmslw(ntlabwn,nlabwn) _real # Vz RMS in lab frame
-xrmslw(ntlabwn,nlabwn)  _real # X RMS in lab frame
-yrmslw(ntlabwn,nlabwn)  _real # Y RMS in lab frame
-rrmslw(ntlabwn,nlabwn)  _real # R RMS in lab frame
-xxpbarlw(ntlabwn,nlabwn)  _real # XX' bar in lab frame
-yypbarlw(ntlabwn,nlabwn)  _real # YY' bar in lab frame
-currlw(ntlabwn,nlabwn)  _real # Current in lab frame
-linechglw(ntlabwn,nlabwn)  _real # Line-charge in lab frame
-lostparslw(ntlabwn,nlabwn)  _real # Number of lost particles in lab frame
+timelw(ntlabwn,nlabwn)               _real # Time in lab frame
+pnumlw(ntlabwn,nlabwn,0:nslabwn)     _real # Number of particles in lab frame
+xbarlw(ntlabwn,nlabwn,0:nslabwn)     _real # X bar in lab frame
+ybarlw(ntlabwn,nlabwn,0:nslabwn)     _real # Y bar in lab frame
+vzbarlw(ntlabwn,nlabwn,0:nslabwn)    _real # Vz bar in lab frame
+epsxlw(ntlabwn,nlabwn,0:nslabwn)     _real # X emittance in lab frame
+epsylw(ntlabwn,nlabwn,0:nslabwn)     _real # Y emittance in lab frame
+epszlw(ntlabwn,nlabwn,0:nslabwn)     _real # Z emittance in lab frame
+vxrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vx RMS in lab frame
+vyrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vy RMS in lab frame
+vzrmslw(ntlabwn,nlabwn,0:nslabwn)    _real # Vz RMS in lab frame
+xrmslw(ntlabwn,nlabwn,0:nslabwn)     _real # X RMS in lab frame
+yrmslw(ntlabwn,nlabwn,0:nslabwn)     _real # Y RMS in lab frame
+rrmslw(ntlabwn,nlabwn,0:nslabwn)     _real # R RMS in lab frame
+xxpbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # XX' bar in lab frame
+yypbarlw(ntlabwn,nlabwn,0:nslabwn)   _real # YY' bar in lab frame
+currlw(ntlabwn,nlabwn,0:nslabwn)     _real # Current in lab frame
+linechglw(ntlabwn,nlabwn)            _real # Line-charge in lab frame
+lostparslw(ntlabwn,nlabwn,0:nslabwn) _real # Number of lost particles in lab frame
 
 *********** Moments dump:
 # Scalar moments of general interest
-ek      real [J]      # Total Kinetic energy
-ekzmbe  real [J]      # Total Z Kinetic energy minus beam energy
+nsmmnt integer /0/  # Number of species moments data is
+                    # calculated for. Defaults to zero, unless
+                    # lspeciesmoments is true, then it defaults to top.ns.
+                    # Should always be same as nszmmnt.
+ese                real [J]      # Electrostatic energy
+ek(0:nsmmnt)      _real [J]      # Total Kinetic energy
+ekzmbe(0:nsmmnt)  _real [J]      # Total Z Kinetic energy minus beam energy
                       # 1/2m(vzsqbar - vbeam**2)
-ekzbeam real [J]      # Z Kinetic energy in the beam frame
+ekzbeam(0:nsmmnt) _real [J]      # Z Kinetic energy in the beam frame
                       # 1/2m ave[(vz - vbeam)**2]
-ekperp  real [J]      # Perp Kinetic energy
-ese     real [J]      # Electrostatic energy
-pz      real [kg-m/s] # Total axial momentum (subtracting out Vbeam)
-xmaxp   real [m]      # Maximum X  over particles (set intermittently)
-xminp   real [m]      # Minimum X  over particles (set intermittently)
-ymaxp   real [m]      # Maximum Y  over particles (set intermittently)
-yminp   real [m]      # Minimum Y  over particles (set intermittently)
-zmaxp   real [m]      # Maximum Z  over particles (set intermittently)
-zminp   real [m]      # Minimum Z  over particles (set intermittently)
-vxmaxp  real [m/s]    # Maximum Vx over particles (set intermittently)
-vxminp  real [m/s]    # Minimum Vx over particles (set intermittently)
-vymaxp  real [m/s]    # Maximum Vy over particles (set intermittently)
-vyminp  real [m/s]    # Minimum Vy over particles (set intermittently)
-vzmaxp  real [m/s]    # Maximum Vz over particles (set intermittently)
-vzminp  real [m/s]    # Minimum Vz over particles (set intermittently)
+ekperp(0:nsmmnt)  _real [J]      # Perp Kinetic energy
+pz(0:nsmmnt)      _real [kg-m/s] # Total axial momentum (subtracting out Vbeam)
+xmaxp(0:nsmmnt)   _real [m]    # Maximum X  over particles (set intermittently)
+xminp(0:nsmmnt)   _real [m]    # Minimum X  over particles (set intermittently)
+ymaxp(0:nsmmnt)   _real [m]    # Maximum Y  over particles (set intermittently)
+yminp(0:nsmmnt)   _real [m]    # Minimum Y  over particles (set intermittently)
+zmaxp(0:nsmmnt)   _real [m]    # Maximum Z  over particles (set intermittently)
+zminp(0:nsmmnt)   _real [m]    # Minimum Z  over particles (set intermittently)
+vxmaxp(0:nsmmnt)  _real [m/s]  # Maximum Vx over particles (set intermittently)
+vxminp(0:nsmmnt)  _real [m/s]  # Minimum Vx over particles (set intermittently)
+vymaxp(0:nsmmnt)  _real [m/s]  # Maximum Vy over particles (set intermittently)
+vyminp(0:nsmmnt)  _real [m/s]  # Minimum Vy over particles (set intermittently)
+vzmaxp(0:nsmmnt)  _real [m/s]  # Maximum Vz over particles (set intermittently)
+vzminp(0:nsmmnt)  _real [m/s]  # Minimum Vz over particles (set intermittently)
 
 *********** Hist dump history:
 # History data
@@ -1450,291 +1476,377 @@ jhist                          integer  /-1/
    # pointer to current entry in history arrays
 lenhist                        integer  /0/
    # length of the history arrays
+nshist integer /0/  # Number of species history data is save.
+                    # Defaults to zero, unless lspeciesmoments is true, then
+                    # it defaults to top.ns.
+                    # Should always be same as nszmmnt.
 thist(0:lenhist)              _real [s]     limited (0:jhist)
    # Times at which data is saved
 hzbeam(0:lenhist)             _real [m]     limited (0:jhist)
    # Beam frame location in lab frame
 hvbeam(0:lenhist)             _real [m/s]   limited (0:jhist)
    # Beam frame velocity
-hbmlen(0:lenhist)             _real [m]     limited (0:jhist)
+hbmlen(0:lenhist,0:nshist)    _real [m]     limited (0:jhist,0:nshist)
    # RMS beam length
-hzbar(0:lenhist)              _real [m]     limited (0:jhist)
+hzbar(0:lenhist,0:nshist)     _real [m]     limited (0:jhist,0:nshist)
    # History of the average of z over all particles
 hefld(0:lenhist)              _real [J]     limited (0:jhist)
    # Field energy
-hekzmbe(0:lenhist)            _real [J]     limited (0:jhist)
+hekzmbe(0:lenhist,0:nshist)   _real [J]     limited (0:jhist,0:nshist)
    # Total Z Kinetic energy minus beam energy
-hekzbeam(0:lenhist)           _real [J]     limited (0:jhist)
+hekzbeam(0:lenhist,0:nshist)  _real [J]     limited (0:jhist,0:nshist)
    # Z Kinetic energy in the beam frame
-hekperp(0:lenhist)            _real [J]     limited (0:jhist)
+hekperp(0:lenhist,0:nshist)   _real [J]     limited (0:jhist,0:nshist)
    # Perp Kinetic energy
-hxmaxp(0:lenhist)             _real [m]     limited (0:jhist)
+hxmaxp(0:lenhist,0:nshist)    _real [m]     limited (0:jhist,0:nshist)
    # History of maximum X over particles
-hxminp(0:lenhist)             _real [m]     limited (0:jhist)
+hxminp(0:lenhist,0:nshist)    _real [m]     limited (0:jhist,0:nshist)
    # History of minimum X over particles
-hymaxp(0:lenhist)             _real [m]     limited (0:jhist)
+hymaxp(0:lenhist,0:nshist)    _real [m]     limited (0:jhist,0:nshist)
    # History of maximum Y over particles
-hyminp(0:lenhist)             _real [m]     limited (0:jhist)
+hyminp(0:lenhist,0:nshist)    _real [m]     limited (0:jhist,0:nshist)
    # History of minimum Y over particles
-hzmaxp(0:lenhist)             _real [m]     limited (0:jhist)
+hzmaxp(0:lenhist,0:nshist)    _real [m]     limited (0:jhist,0:nshist)
    # History of maximum Z over particles
-hzminp(0:lenhist)             _real [m]     limited (0:jhist)
+hzminp(0:lenhist,0:nshist)    _real [m]     limited (0:jhist,0:nshist)
    # History of minimum Z over particles
-hvxmaxp(0:lenhist)            _real [m/s]   limited (0:jhist)
+hvxmaxp(0:lenhist,0:nshist)   _real [m/s]   limited (0:jhist,0:nshist)
    # History of maximum Vx over particles
-hvxminp(0:lenhist)            _real [m/s]   limited (0:jhist)
+hvxminp(0:lenhist,0:nshist)   _real [m/s]   limited (0:jhist,0:nshist)
    # History of minimum Vx over particles
-hvymaxp(0:lenhist)            _real [m/s]   limited (0:jhist)
+hvymaxp(0:lenhist,0:nshist)   _real [m/s]   limited (0:jhist,0:nshist)
    # History of maximum Vy over particles
-hvyminp(0:lenhist)            _real [m/s]   limited (0:jhist)
+hvyminp(0:lenhist,0:nshist)   _real [m/s]   limited (0:jhist,0:nshist)
    # History of minimum Vy over particles
-hvzmaxp(0:lenhist)            _real [m/s]   limited (0:jhist)
+hvzmaxp(0:lenhist,0:nshist)   _real [m/s]   limited (0:jhist,0:nshist)
    # History of maximum Vz over particles
-hvzminp(0:lenhist)            _real [m/s]   limited (0:jhist)
+hvzminp(0:lenhist,0:nshist)   _real [m/s]   limited (0:jhist,0:nshist)
    # History of minimum Vz over particles
-hepsx(0:nzwind,0:lenhist)     _real [m-r]   limited (0:nzwind,0:jhist) +winhist
+hepsx(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # X-X' emittance by window as a function of time
-hepsy(0:nzwind,0:lenhist)     _real [m-r]   limited (0:nzwind,0:jhist) +winhist
+hepsy(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Y-Y' emittance by window as a function of time
-hepsz(0:nzwind,0:lenhist)     _real [m-r]   limited (0:nzwind,0:jhist) +winhist
+hepsz(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Z-Z' emittance by window as a function of time
-hepsnx(0:nzwind,0:lenhist)    _real [mm-mr] limited (0:nzwind,0:jhist) +winhist
+hepsnx(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # X-X' normalized emittance by window as a function of time
-hepsny(0:nzwind,0:lenhist)    _real [mm-mr] limited (0:nzwind,0:jhist) +winhist
+hepsny(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Y-Y' normalized emittance by window as a function of time
-hepsnz(0:nzwind,0:lenhist)    _real [mm-mr] limited (0:nzwind,0:jhist) +winhist
+hepsnz(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Z-Z' normalized emittance by window as a function of time
-hepsg(0:nzwind,0:lenhist)     _real [m-r]   limited (0:nzwind,0:jhist) +winhist
+hepsg(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Generalized emittance by window as a function of time
-hepsh(0:nzwind,0:lenhist)     _real [m-r]   limited (0:nzwind,0:jhist) +winhist
+hepsh(0:nzwind,0:lenhist,0:nshist)     _real [m-r]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Generalized emittance by window as a function of time
-hepsng(0:nzwind,0:lenhist)    _real [mm-mr] limited (0:nzwind,0:jhist) +winhist
+hepsng(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Generalized normalized emittance by window as a function of time
-hepsnh(0:nzwind,0:lenhist)    _real [mm-mr] limited (0:nzwind,0:jhist) +winhist
+hepsnh(0:nzwind,0:lenhist,0:nshist)    _real [mm-mr]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Generalized normalized emittance by window as a function of time
-hpnum(0:nzwind,0:lenhist)     _real [1]     limited (0:nzwind,0:jhist) +winhist
-   # Number of particles in each z window (species 1)
-hrhomid(0:nzwind,0:lenhist)   _real [C/m^3] limited (0:nzwind,0:jhist) +winhist
+hpnum(0:nzwind,0:lenhist,0:nshist)     _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
+   # Number of particles in each z window (species 1,0:nshist)
+hrhomid(0:nzwind,0:lenhist)            _real [C/m^3]
+   limited (0:nzwind,0:jhist)          +winhist
    # Charge density on axis at center of z window as a fcn of time
-hrhomax(0:nzwind,0:lenhist)   _real [C/m^3] limited (0:nzwind,0:jhist) +winhist
+hrhomax(0:nzwind,0:lenhist)            _real [C/m^3]
+   limited (0:nzwind,0:jhist)          +winhist
    # Charge dens. max-over-x,y at ctr of z window as a fcn of time
-hxbar(0:nzwind,0:lenhist)     _real [m]     limited (0:nzwind,0:jhist) +winhist
+hxbar(0:nzwind,0:lenhist,0:nshist)     _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True mean x by window as a function of time
-hybar(0:nzwind,0:lenhist)     _real [m]     limited (0:nzwind,0:jhist) +winhist
+hybar(0:nzwind,0:lenhist,0:nshist)     _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True mean y by window as a function of time
-hxybar(0:nzwind,0:lenhist)    _real [m]     limited (0:nzwind,0:jhist) +winhist
+hxybar(0:nzwind,0:lenhist,0:nshist)    _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True mean xy by window as a function of time
-hxrms(0:nzwind,0:lenhist)     _real [m]     limited (0:nzwind,0:jhist) +winhist
+hxrms(0:nzwind,0:lenhist,0:nshist)     _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS x by window as a function of time
-hyrms(0:nzwind,0:lenhist)     _real [m]     limited (0:nzwind,0:jhist) +winhist
+hyrms(0:nzwind,0:lenhist,0:nshist)     _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS y by window as a function of time
-hrrms(0:nzwind,0:lenhist)     _real [m]     limited (0:nzwind,0:jhist) +winhist
+hrrms(0:nzwind,0:lenhist,0:nshist)     _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS r by window as a function of time
-hxprms(0:nzwind,0:lenhist)    _real [m]     limited (0:nzwind,0:jhist) +winhist
+hxprms(0:nzwind,0:lenhist,0:nshist)    _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS x' by window as a function of time
-hyprms(0:nzwind,0:lenhist)    _real [m]     limited (0:nzwind,0:jhist) +winhist
+hyprms(0:nzwind,0:lenhist,0:nshist)    _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS y' by window as a function of time
-hxsqbar(0:nzwind,0:lenhist)   _real [m^2]   limited (0:nzwind,0:jhist) +winhist
+hxsqbar(0:nzwind,0:lenhist,0:nshist)   _real [m^2]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # x squared bar by window as a function of time
-hysqbar(0:nzwind,0:lenhist)   _real [m^2]   limited (0:nzwind,0:jhist) +winhist
+hysqbar(0:nzwind,0:lenhist,0:nshist)   _real [m^2]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # y squared bar by window as a function of time
-hvxbar(0:nzwind,0:lenhist)    _real [m/s]   limited (0:nzwind,0:jhist) +winhist
+hvxbar(0:nzwind,0:lenhist,0:nshist)    _real [m/s]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean vx by window as a function of time
-hvybar(0:nzwind,0:lenhist)    _real [m/s]   limited (0:nzwind,0:jhist) +winhist
+hvybar(0:nzwind,0:lenhist,0:nshist)    _real [m/s]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean vy by window as a function of time
-hvzbar(0:nzwind,0:lenhist)    _real [m/s]   limited (0:nzwind,0:jhist) +winhist
+hvzbar(0:nzwind,0:lenhist,0:nshist)    _real [m/s]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean vz by window as a function of time
-hxpbar(0:nzwind,0:lenhist)    _real [1]     limited (0:nzwind,0:jhist) +winhist
+hxpbar(0:nzwind,0:lenhist,0:nshist)    _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean x' by window as a function of time
-hypbar(0:nzwind,0:lenhist)    _real [1]     limited (0:nzwind,0:jhist) +winhist
+hypbar(0:nzwind,0:lenhist,0:nshist)    _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean y' by window as a function of time
-hvxrms(0:nzwind,0:lenhist)    _real [m/s]   limited (0:nzwind,0:jhist) +winhist
+hvxrms(0:nzwind,0:lenhist,0:nshist)    _real [m/s]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS vx by window as a function of time
-hvyrms(0:nzwind,0:lenhist)    _real [m/s]   limited (0:nzwind,0:jhist) +winhist
+hvyrms(0:nzwind,0:lenhist,0:nshist)    _real [m/s]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS vy by window as a function of time
-hvzrms(0:nzwind,0:lenhist)    _real [m/s]   limited (0:nzwind,0:jhist) +winhist
+hvzrms(0:nzwind,0:lenhist,0:nshist)    _real [m/s]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # True RMS vz by window as a function of time
-hxpsqbar(0:nzwind,0:lenhist)  _real [1]     limited (0:nzwind,0:jhist) +winhist
+hxpsqbar(0:nzwind,0:lenhist,0:nshist)  _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean x' squared by window as a function of time
-hypsqbar(0:nzwind,0:lenhist)  _real [1]     limited (0:nzwind,0:jhist) +winhist
+hypsqbar(0:nzwind,0:lenhist,0:nshist)  _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean y' squared by window as a function of time
-hxxpbar(0:nzwind,0:lenhist)   _real [m]     limited (0:nzwind,0:jhist) +winhist
+hxxpbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean x * x' by window as a function of time
-hyypbar(0:nzwind,0:lenhist)   _real [m]     limited (0:nzwind,0:jhist) +winhist
+hyypbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean y  * y' by window as a function of time
-hxypbar(0:nzwind,0:lenhist)   _real [m]     limited (0:nzwind,0:jhist) +winhist
+hxypbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean x  * y' by window as a function of time 
-hyxpbar(0:nzwind,0:lenhist)   _real [m]     limited (0:nzwind,0:jhist) +winhist
+hyxpbar(0:nzwind,0:lenhist,0:nshist)   _real [m]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean y  * x' by window as a function of time 
-hxpypbar(0:nzwind,0:lenhist)  _real [1]     limited (0:nzwind,0:jhist) +winhist
+hxpypbar(0:nzwind,0:lenhist,0:nshist)  _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean x' * y' by window as a function of time
-hxvzbar(0:nzwind,0:lenhist)   _real [1]     limited (0:nzwind,0:jhist) +winhist
+hxvzbar(0:nzwind,0:lenhist,0:nshist)   _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean x * vz by window as a function of time
-hyvzbar(0:nzwind,0:lenhist)   _real [1]     limited (0:nzwind,0:jhist) +winhist
+hyvzbar(0:nzwind,0:lenhist,0:nshist)   _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean y * vz by window as a function of time
-hvxvzbar(0:nzwind,0:lenhist)  _real [1]     limited (0:nzwind,0:jhist) +winhist
+hvxvzbar(0:nzwind,0:lenhist,0:nshist)  _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean vx * vz by window as a function of time
-hvyvzbar(0:nzwind,0:lenhist)  _real [1]     limited (0:nzwind,0:jhist) +winhist
+hvyvzbar(0:nzwind,0:lenhist,0:nshist)  _real [1]
+   limited (0:nzwind,0:jhist,0:nshist) +winhist
    # Mean vy * vz by window as a function of time
 lhlinechg logical /.true./   # Turns on history of line charge
 ihlinechg integer /1/        # Multiplier for hlinechg memory size (autoset)
-hlinechg(0:nzzarr*ihlinechg,0:lenhist) _real [C/m] limited (0:nzzarr,0:jhist)
+hlinechg(0:nzzarr*ihlinechg,0:lenhist) _real [C/m]
+            limited (0:nzzarr,0:jhist)
             +zhist           # Line charge density vs. space and time
 lhvzofz logical /.true./     # Turns on history of vz
 ihvzofz integer /1/          # Multiplier for hvzofz memory size (autoset)
-hvzofz(0:nzzarr*ihvzofz,0:lenhist)  _real [m/s] limited (0:nzzarr,0:jhist)
+hvzofz(0:nzzarr*ihvzofz,0:lenhist)  _real [m/s]
+            limited (0:nzzarr,0:jhist)
             +zhist           # Vz versus space and time
 lhcurrz logical /.false./    # Turns on history of current
 ihcurrz integer /1/          # Multiplier for hcurrz memory size (autoset)
-hcurrz(0:nzzarr*ihcurrz,0:lenhist)  _real [m/s] limited (0:nzzarr,0:jhist)
+hcurrz(0:nzzarr*ihcurrz,0:lenhist,0:nszarr)  _real [m/s]
+            limited (0:nzzarr,0:jhist,0:nszarr)
             +zhist           # Current versus space and time
 lhepsxz logical /.false./    # Turns on history of X emittance
 ihepsxz integer /0 /         # Multiplier for hepsxz memory size (autoset)
-hepsxz(0:nzmmnt*ihepsxz,0:lenhist)  _real [m-r] limited (0:nzmmnt,0:jhist)
+hepsxz(0:nzmmnt*ihepsxz,0:lenhist,0:nshist)  _real [m-r]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X emittance versus space and time
 lhepsyz logical /.false./    # Turns on history of Y emittance
 ihepsyz integer /0 /         # Multiplier for hepsyz memory size (autoset)
-hepsyz(0:nzmmnt*ihepsyz,0:lenhist)  _real [m-r] limited (0:nzmmnt,0:jhist)
+hepsyz(0:nzmmnt*ihepsyz,0:lenhist,0:nshist)  _real [m-r]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y emittance versus space and time
 lhepsnxz logical /.false./   # Turns on history of X normalized emittance
 ihepsnxz integer /0 /        # Multiplier for hepsnxz memory size (autoset)
-hepsnxz(0:nzmmnt*ihepsnxz,0:lenhist)  _real [mm-mrad] limited (0:nzmmnt,0:jhist)
+hepsnxz(0:nzmmnt*ihepsnxz,0:lenhist,0:nshist)  _real [mm-mrad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X normalized emittance versus space and time
 lhepsnyz logical /.false./   # Turns on history of Y normalized emittance
 ihepsnyz integer /0 /        # Multiplier for hepsnyz memory size (autoset)
-hepsnyz(0:nzmmnt*ihepsnyz,0:lenhist)  _real [mm-mrad] limited (0:nzmmnt,0:jhist)
+hepsnyz(0:nzmmnt*ihepsnyz,0:lenhist,0:nshist)  _real [mm-mrad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y normalized emittance versus space and time
 lhepsgz logical /.false./    # Turns on history of Generalized emittance
 ihepsgz integer /0 /         # Multiplier for hepsgz memory size (autoset)
-hepsgz(0:nzmmnt*ihepsgz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
+hepsgz(0:nzmmnt*ihepsgz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Generalized emittance versus space and time
 lhepshz logical /.false./    # Turns on history of Generalized emittance
 ihepshz integer /0 /         # Multiplier for hepshz memory size (autoset)
-hepshz(0:nzmmnt*ihepshz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
+hepshz(0:nzmmnt*ihepshz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Generalized emittance versus space and time
 lhepsngz logical /.false./   # Turns on history of Generalized nrmlzd emittance
 ihepsngz integer /0 /        # Multiplier for hepsngz memory size (autoset)
-hepsngz(0:nzmmnt*ihepsngz,0:lenhist)  _real [mm-mrad] limited (0:nzmmnt,0:jhist)
+hepsngz(0:nzmmnt*ihepsngz,0:lenhist,0:nshist)  _real [mm-mrad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Generalized nrmlzd emittance versus space andtime
 lhepsnhz logical /.false./   # Turns on history of Generalized nrmlzd emittance
 ihepsnhz integer /0 /        # Multiplier for hepsnhz memory size (autoset)
-hepsnhz(0:nzmmnt*ihepsnhz,0:lenhist)  _real [mm-mrad] limited (0:nzmmnt,0:jhist)
+hepsnhz(0:nzmmnt*ihepsnhz,0:lenhist,0:nshist)  _real [mm-mrad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Generalized nrmlzd emittance versus space andtime
 lhxbarz logical /.false./    # Turns on history of X bar
 ihxbarz integer /0 /         # Multiplier for hxbarz memory size (autoset)
-hxbarz(0:nzmmnt*ihxbarz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
+hxbarz(0:nzmmnt*ihxbarz,0:lenhist,0:nshist)  _real [m]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X bar versus space and time
 lhybarz logical /.false./    # Turns on history of Y bar
 ihybarz integer /0 /         # Multiplier for hybarz memory size (autoset)
-hybarz(0:nzmmnt*ihybarz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
+hybarz(0:nzmmnt*ihybarz,0:lenhist,0:nshist)  _real [m]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y bar versus space and time
 lhxybarz logical /.false./   # Turns on history of XY bar
 ihxybarz integer /0 /        # Multiplier for hxybarz memory size (autoset)
-hxybarz(0:nzmmnt*ihxybarz,0:lenhist)  _real [m**2] limited (0:nzmmnt,0:jhist)
+hxybarz(0:nzmmnt*ihxybarz,0:lenhist,0:nshist)  _real [m**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # XY bar versus space and time
 lhxrmsz logical /.false./    # Turns on history of X rms
 ihxrmsz integer /0 /         # Multiplier for hxrmsz memory size (autoset)
-hxrmsz(0:nzmmnt*ihxrmsz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
+hxrmsz(0:nzmmnt*ihxrmsz,0:lenhist,0:nshist)  _real [m]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X rms versus space and time
 lhyrmsz logical /.false./    # Turns on history of Y rms
 ihyrmsz integer /0 /         # Multiplier for hyrmsz memory size (autoset)
-hyrmsz(0:nzmmnt*ihyrmsz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
+hyrmsz(0:nzmmnt*ihyrmsz,0:lenhist,0:nshist)  _real [m]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y rms versus space and time
 lhrrmsz logical /.false./    # Turns on history of X rms
 ihrrmsz integer /0 /         # Multiplier for hrrmsz memory size (autoset)
-hrrmsz(0:nzmmnt*ihrrmsz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
+hrrmsz(0:nzmmnt*ihrrmsz,0:lenhist,0:nshist)  _real [m]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X rms versus space and time
 lhxprmsz logical /.false./   # Turns on history of X' rms
 ihxprmsz integer /0 /        # Multiplier for hxprmsz memory size (autoset)
-hxprmsz(0:nzmmnt*ihxprmsz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
+hxprmsz(0:nzmmnt*ihxprmsz,0:lenhist,0:nshist)  _real [rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X' rms versus space and time
 lhyprmsz logical /.false./   # Turns on history of Y' rms
 ihyprmsz integer /0 /        # Multiplier for hyprmsz memory size (autoset)
-hyprmsz(0:nzmmnt*ihyprmsz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
+hyprmsz(0:nzmmnt*ihyprmsz,0:lenhist,0:nshist)  _real [rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y' rms versus space and time
 lhxsqbarz logical /.false./  # Turns on history of X**2 bar
 ihxsqbarz integer /0 /       # Multiplier for hxsqbarz memory size (autoset)
-hxsqbarz(0:nzmmnt*ihxsqbarz,0:lenhist)  _real [m**2] limited (0:nzmmnt,0:jhist)
+hxsqbarz(0:nzmmnt*ihxsqbarz,0:lenhist,0:nshist)  _real [m**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X**2 bar versus space and time
 lhysqbarz logical /.false./  # Turns on history of Y**2 bar
 ihysqbarz integer /0 /       # Multiplier for hysqbarz memory size (autoset)
-hysqbarz(0:nzmmnt*ihysqbarz,0:lenhist)  _real [m**2] limited (0:nzmmnt,0:jhist)
+hysqbarz(0:nzmmnt*ihysqbarz,0:lenhist,0:nshist)  _real [m**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y**2 bar versus space and time
 lhvxbarz logical /.false./   # Turns on history of Vx bar
 ihvxbarz integer /0 /        # Multiplier for hvxbarz memory size (autoset)
-hvxbarz(0:nzmmnt*ihvxbarz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
+hvxbarz(0:nzmmnt*ihvxbarz,0:lenhist,0:nshist)  _real [m/s]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Vx bar versus space and time
 lhvybarz logical /.false./   # Turns on history of Vy bar
 ihvybarz integer /0 /        # Multiplier for hvybarz memory size (autoset)
-hvybarz(0:nzmmnt*ihvybarz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
+hvybarz(0:nzmmnt*ihvybarz,0:lenhist,0:nshist)  _real [m/s]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Vy bar versus space and time
 lhvzbarz logical /.false./   # Turns on history of Vz bar
 ihvzbarz integer /0 /        # Multiplier for hvzbarz memory size (autoset)
-hvzbarz(0:nzmmnt*ihvzbarz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
+hvzbarz(0:nzmmnt*ihvzbarz,0:lenhist,0:nshist)  _real [m/s]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Vz bar versus space and time
 lhxpbarz logical /.false./   # Turns on history of X' bar
 ihxpbarz integer /0 /        # Multiplier for hxpbarz memory size (autoset)
-hxpbarz(0:nzmmnt*ihxpbarz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
+hxpbarz(0:nzmmnt*ihxpbarz,0:lenhist,0:nshist)  _real [rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X' bar versus space and time
 lhypbarz logical /.false./   # Turns on history of Y' bar
 ihypbarz integer /0 /        # Multiplier for hypbarz memory size (autoset)
-hypbarz(0:nzmmnt*ihypbarz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
+hypbarz(0:nzmmnt*ihypbarz,0:lenhist,0:nshist)  _real [rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y' bar versus space and time
 lhvxrmsz logical /.false./   # Turns on history of Vx rms
 ihvxrmsz integer /0 /        # Multiplier for hvxrmsz memory size (autoset)
-hvxrmsz(0:nzmmnt*ihvxrmsz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
+hvxrmsz(0:nzmmnt*ihvxrmsz,0:lenhist,0:nshist)  _real [m/s]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Vx rms versus space and time
 lhvyrmsz logical /.false./   # Turns on history of Vy rms
 ihvyrmsz integer /0 /        # Multiplier for hvyrmsz memory size (autoset)
-hvyrmsz(0:nzmmnt*ihvyrmsz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
+hvyrmsz(0:nzmmnt*ihvyrmsz,0:lenhist,0:nshist)  _real [m/s]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Vy rms versus space and time
 lhvzrmsz logical /.false./   # Turns on history of Vz rms
 ihvzrmsz integer /0 /        # Multiplier for hvzrmsz memory size (autoset)
-hvzrmsz(0:nzmmnt*ihvzrmsz,0:lenhist)  _real [m/s] limited (0:nzmmnt,0:jhist)
+hvzrmsz(0:nzmmnt*ihvzrmsz,0:lenhist,0:nshist)  _real [m/s]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Vz rms versus space and time
 lhxpsqbarz logical /.false./ # Turns on history of X'**2 bar
 ihxpsqbarz integer /0 /      # Multiplier for hxpsqbarz memory size (autoset)
-hxpsqbarz(0:nzmmnt*ihxpsqbarz,0:lenhist)  _real [rad**2] limited (0:nzmmnt,0:jhist)
+hxpsqbarz(0:nzmmnt*ihxpsqbarz,0:lenhist,0:nshist)  _real [rad**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X'**2 bar versus space and time
 lhypsqbarz logical /.false./ # Turns on history of Y'**2 bar
 ihypsqbarz integer /0 /      # Multiplier for hypsqbarz memory size (autoset)
-hypsqbarz(0:nzmmnt*ihypsqbarz,0:lenhist)  _real [rad**2] limited (0:nzmmnt,0:jhist)
+hypsqbarz(0:nzmmnt*ihypsqbarz,0:lenhist,0:nshist)  _real [rad**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # Y'**2 bar versus space and time
 lhxxpbarz logical /.false./  # Turns on history of XX' bar
 ihxxpbarz integer /0 /       # Multiplier for hxxpbarz memory size (autoset)
-hxxpbarz(0:nzmmnt*ihxxpbarz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
+hxxpbarz(0:nzmmnt*ihxxpbarz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # XX' bar versus space and time
 lhyypbarz logical /.false./  # Turns on history of YY' bar
 ihyypbarz integer /0 /       # Multiplier for hyypbarz memory size (autoset)
-hyypbarz(0:nzmmnt*ihyypbarz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
+hyypbarz(0:nzmmnt*ihyypbarz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # YY' bar versus space and time
 lhxypbarz logical /.false./  # Turns on history of XY' bar
 ihxypbarz integer /0 /       # Multiplier for hxypbarz memory size (autoset)
-hxypbarz(0:nzmmnt*ihxypbarz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
+hxypbarz(0:nzmmnt*ihxypbarz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # XY' bar versus space and time
 lhyxpbarz logical /.false./  # Turns on history of YX' bar
 ihyxpbarz integer /0 /       # Multiplier for hyxpbarz memory size (autoset)
-hyxpbarz(0:nzmmnt*ihyxpbarz,0:lenhist)  _real [m-rad] limited (0:nzmmnt,0:jhist)
+hyxpbarz(0:nzmmnt*ihyxpbarz,0:lenhist,0:nshist)  _real [m-rad]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # YX' bar versus space and time
 lhxpypbarz logical /.false./ # Turns on history of X'Y' bar
 ihxpypbarz integer /0 /      # Multiplier for hxpypbarz memory size (autoset)
-hxpypbarz(0:nzmmnt*ihxpypbarz,0:lenhist)  _real [rad**2] limited (0:nzmmnt,0:jhist)
+hxpypbarz(0:nzmmnt*ihxpypbarz,0:lenhist,0:nshist)  _real [rad**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # X'Y' bar versus space and time
 lhxvzbarz logical /.false./  # Turns on history of XVz bar
 ihxvzbarz integer /0 /       # Multiplier for hxvzbarz memory size (autoset)
-hxvzbarz(0:nzmmnt*ihxvzbarz,0:lenhist)  _real [m*m/s] limited (0:nzmmnt,0:jhist)
+hxvzbarz(0:nzmmnt*ihxvzbarz,0:lenhist,0:nshist)  _real [m*m/s]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # XVz bar versus space and time
 lhyvzbarz logical /.false./  # Turns on history of YVz bar
 ihyvzbarz integer /0 /       # Multiplier for hyvzbarz memory size (autoset)
-hyvzbarz(0:nzmmnt*ihyvzbarz,0:lenhist)  _real [m*m/s] limited (0:nzmmnt,0:jhist)
+hyvzbarz(0:nzmmnt*ihyvzbarz,0:lenhist,0:nshist)  _real [m*m/s]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # YVz bar versus space and time
 lhvxvzbarz logical /.false./ # Turns on history of VxVz bar
 ihvxvzbarz integer /0 /      # Multiplier for hvxvzbarz memory size (autoset)
-hvxvzbarz(0:nzmmnt*ihvxvzbarz,0:lenhist)  _real [(m/s)**2] limited (0:nzmmnt,0:jhist)
+hvxvzbarz(0:nzmmnt*ihvxvzbarz,0:lenhist,0:nshist)  _real [(m/s)**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # VxVz bar versus space and time
 lhvyvzbarz logical /.false./ # Turns on history of VyVz bar
 ihvyvzbarz integer /0 /      # Multiplier for hvyvzbarz memory size (autoset)
-hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist)  _real [(m/s)**2] limited (0:nzmmnt,0:jhist)
+hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist,0:nshist)  _real [(m/s)**2]
+            limited (0:nzmmnt,0:jhist,0:nshist)
             +zhist           # VyVz bar versus space and time
 
 *********** Particles dump parallel:

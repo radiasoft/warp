@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.132 $, $Date: 2004/12/07 22:21:53 $
+c@(#) File DTOP.F, version $Revision: 3.133 $, $Date: 2005/01/12 17:04:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -40,12 +40,21 @@ c     --- called 'oneliner'.
         if (lspecial) call oneliner (STDOUT,itt,tim,pz,ese,ek)
       endif
 
-      if (nhist .gt. 0) then
+      if (nhist > 0) then
 c  Set builtin Hist arrays
         lgchange = .false.
 c       --- increase the size of Hist arrays if necessary
         if (jhist == lenhist) then
           lenhist = lenhist + 100
+          lgchange = .true.
+        endif
+
+c       --- Make sure that the histories are set to have the same
+c       --- number of species as the z moments.
+c       --- This is not a good thing to do if nszmmnt was decreased since
+c       --- some histories will be thrown away.
+        if (nshist /= nszmmnt) then
+          nshist = nszmmnt
           lgchange = .true.
         endif
 
@@ -140,68 +149,68 @@ c  Save results of this time step in history buffers
       hzbeam(jhist) = zbeam
       hvbeam(jhist) = vbeam
       hefld(jhist) = ese
-      hbmlen(jhist) = sqrt(max(SMALLPOS, zsqbar(0)-zbar(0)**2))
-      hzbar(jhist) = zbar(0)
-      hekzmbe(jhist) = ekzmbe
-      hekzbeam(jhist) = ekzbeam
-      hekperp(jhist) = ekperp
-      hxmaxp(jhist) = xmaxp
-      hxminp(jhist) = xminp
-      hymaxp(jhist) = ymaxp
-      hyminp(jhist) = yminp
-      hzmaxp(jhist) = zmaxp
-      hzminp(jhist) = zminp
-      hvxmaxp(jhist) = vxmaxp
-      hvxminp(jhist) = vxminp
-      hvymaxp(jhist) = vymaxp
-      hvyminp(jhist) = vyminp
-      hvzmaxp(jhist) = vzmaxp
-      hvzminp(jhist) = vzminp
+      hbmlen(jhist,:) = sqrt(max(SMALLPOS, zsqbar(0,:)-zbar(0,:)**2))
+      hzbar(jhist,:) = zbar(0,:)
+      hekzmbe(jhist,:) = ekzmbe
+      hekzbeam(jhist,:) = ekzbeam
+      hekperp(jhist,:) = ekperp
+      hxmaxp(jhist,:) = xmaxp
+      hxminp(jhist,:) = xminp
+      hymaxp(jhist,:) = ymaxp
+      hyminp(jhist,:) = yminp
+      hzmaxp(jhist,:) = zmaxp
+      hzminp(jhist,:) = zminp
+      hvxmaxp(jhist,:) = vxmaxp
+      hvxminp(jhist,:) = vxminp
+      hvymaxp(jhist,:) = vymaxp
+      hvyminp(jhist,:) = vyminp
+      hvzmaxp(jhist,:) = vzmaxp
+      hvzminp(jhist,:) = vzminp
 c     do iw=0,nzwind
 c       --- Write the code this way gets around an unexplained segmentation
 c       --- fault that appears with the xlf compiler. It is almost certainly
 c       --- a compiler bug since the seg fault goes away when using the -g
 c       --- option, or when rewriting the code thusly.
-        hepsx(:,jhist)    = epsx(:)
-        hepsy(:,jhist)    = epsy(:)
-        hepsz(:,jhist)    = epsz(:)
-        hepsnx(:,jhist)   = epsnx(:)
-        hepsny(:,jhist)   = epsny(:)
-        hepsnz(:,jhist)   = epsnz(:)
-        hepsg(:,jhist)    = epsg(:)
-        hepsh(:,jhist)    = epsh(:)
-        hepsng(:,jhist)   = epsng(:)
-        hepsnh(:,jhist)   = epsnh(:)
-        hpnum(:,jhist)    = pnum(:)
-        hxbar(:,jhist)    = xbar(:)
-        hybar(:,jhist)    = ybar(:)
-        hxrms(:,jhist)    = xrms(:)
-        hyrms(:,jhist)    = yrms(:)
-        hrrms(:,jhist)    = rrms(:)
-        hxprms(:,jhist)   = xprms(:)
-        hyprms(:,jhist)   = yprms(:)
-        hxsqbar(:,jhist)  = xsqbar(:)
-        hysqbar(:,jhist)  = ysqbar(:)
-        hxybar(:,jhist)   = xybar(:)
-        hvxbar(:,jhist)   = vxbar(:)
-        hvybar(:,jhist)   = vybar(:)
-        hvzbar(:,jhist)   = vzbar(:)
-        hxpbar(:,jhist)   = xpbar(:)
-        hypbar(:,jhist)   = ypbar(:)
-        hvxrms(:,jhist)   = vxrms(:)
-        hvyrms(:,jhist)   = vyrms(:)
-        hvzrms(:,jhist)   = vzrms(:)
-        hxpsqbar(:,jhist) = xpsqbar(:) 
-        hypsqbar(:,jhist) = ypsqbar(:)
-        hxxpbar(:,jhist)  = xxpbar(:) 
-        hyypbar(:,jhist)  = yypbar(:) 
-        hxypbar(:,jhist)  = xypbar(:) 
-        hyxpbar(:,jhist)  = yxpbar(:) 
-        hxpypbar(:,jhist) = xpypbar(:) 
-        hxvzbar(:,jhist)  = xvzbar(:) 
-        hyvzbar(:,jhist)  = yvzbar(:) 
-        hvxvzbar(:,jhist) = vxvzbar(:) 
-        hvyvzbar(:,jhist) = vyvzbar(:) 
+        hepsx(:,jhist,:)    = epsx(:,:)
+        hepsy(:,jhist,:)    = epsy(:,:)
+        hepsz(:,jhist,:)    = epsz(:,:)
+        hepsnx(:,jhist,:)   = epsnx(:,:)
+        hepsny(:,jhist,:)   = epsny(:,:)
+        hepsnz(:,jhist,:)   = epsnz(:,:)
+        hepsg(:,jhist,:)    = epsg(:,:)
+        hepsh(:,jhist,:)    = epsh(:,:)
+        hepsng(:,jhist,:)   = epsng(:,:)
+        hepsnh(:,jhist,:)   = epsnh(:,:)
+        hpnum(:,jhist,:)    = pnum(:,:)
+        hxbar(:,jhist,:)    = xbar(:,:)
+        hybar(:,jhist,:)    = ybar(:,:)
+        hxrms(:,jhist,:)    = xrms(:,:)
+        hyrms(:,jhist,:)    = yrms(:,:)
+        hrrms(:,jhist,:)    = rrms(:,:)
+        hxprms(:,jhist,:)   = xprms(:,:)
+        hyprms(:,jhist,:)   = yprms(:,:)
+        hxsqbar(:,jhist,:)  = xsqbar(:,:)
+        hysqbar(:,jhist,:)  = ysqbar(:,:)
+        hxybar(:,jhist,:)   = xybar(:,:)
+        hvxbar(:,jhist,:)   = vxbar(:,:)
+        hvybar(:,jhist,:)   = vybar(:,:)
+        hvzbar(:,jhist,:)   = vzbar(:,:)
+        hxpbar(:,jhist,:)   = xpbar(:,:)
+        hypbar(:,jhist,:)   = ypbar(:,:)
+        hvxrms(:,jhist,:)   = vxrms(:,:)
+        hvyrms(:,jhist,:)   = vyrms(:,:)
+        hvzrms(:,jhist,:)   = vzrms(:,:)
+        hxpsqbar(:,jhist,:) = xpsqbar(:,:) 
+        hypsqbar(:,jhist,:) = ypsqbar(:,:)
+        hxxpbar(:,jhist,:)  = xxpbar(:,:) 
+        hyypbar(:,jhist,:)  = yypbar(:,:) 
+        hxypbar(:,jhist,:)  = xypbar(:,:) 
+        hyxpbar(:,jhist,:)  = yxpbar(:,:) 
+        hxpypbar(:,jhist,:) = xpypbar(:,:) 
+        hxvzbar(:,jhist,:)  = xvzbar(:,:) 
+        hyvzbar(:,jhist,:)  = yvzbar(:,:) 
+        hvxvzbar(:,jhist,:) = vxvzbar(:,:) 
+        hvyvzbar(:,jhist,:) = vyvzbar(:,:) 
         hrhomid(:,jhist)  = rhomid(:)
         hrhomax(:,jhist)  = rhomax(:)
 c     enddo
@@ -210,46 +219,46 @@ c     --- Collect only those z histories specified by the user.
       do iz=0,nzzarr
         if (lhlinechg)  hlinechg(iz,jhist) = linechg(iz)
         if (lhvzofz)    hvzofz(iz,jhist) = vzofz(iz)
-        if (lhcurrz)    hcurrz(iz,jhist) = curr(iz)
+        if (lhcurrz)    hcurrz(iz,jhist,:) = curr(iz,:)
       enddo
       do iz=0,nzmmnt
-        if (lhepsxz)    hepsxz(iz,jhist)    = epsxz(iz)
-        if (lhepsyz)    hepsyz(iz,jhist)    = epsyz(iz)
-        if (lhepsnxz)   hepsnxz(iz,jhist)   = epsnxz(iz)
-        if (lhepsnyz)   hepsnyz(iz,jhist)   = epsnyz(iz)
-        if (lhepsgz)    hepsgz(iz,jhist)    = epsgz(iz)
-        if (lhepshz)    hepshz(iz,jhist)    = epshz(iz)
-        if (lhepsngz)   hepsngz(iz,jhist)   = epsngz(iz)
-        if (lhepsnhz)   hepsnhz(iz,jhist)   = epsnhz(iz)
-        if (lhxbarz)    hxbarz(iz,jhist)    = xbarz(iz)
-        if (lhybarz)    hybarz(iz,jhist)    = ybarz(iz)
-        if (lhxybarz)   hxybarz(iz,jhist)   = xybarz(iz)
-        if (lhxrmsz)    hxrmsz(iz,jhist)    = xrmsz(iz)
-        if (lhyrmsz)    hyrmsz(iz,jhist)    = yrmsz(iz)
-        if (lhrrmsz)    hrrmsz(iz,jhist)    = rrmsz(iz)
-        if (lhxprmsz)   hxprmsz(iz,jhist)   = xprmsz(iz)
-        if (lhyprmsz)   hyprmsz(iz,jhist)   = yprmsz(iz)
-        if (lhxsqbarz)  hxsqbarz(iz,jhist)  = xsqbarz(iz)
-        if (lhysqbarz)  hysqbarz(iz,jhist)  = ysqbarz(iz)
-        if (lhvxbarz)   hvxbarz(iz,jhist)   = vxbarz(iz)
-        if (lhvybarz)   hvybarz(iz,jhist)   = vybarz(iz)
-        if (lhvzbarz)   hvzbarz(iz,jhist)   = vzbarz(iz)
-        if (lhxpbarz)   hxpbarz(iz,jhist)   = xpbarz(iz)
-        if (lhypbarz)   hypbarz(iz,jhist)   = ypbarz(iz)
-        if (lhvxrmsz)   hvxrmsz(iz,jhist)   = vxrmsz(iz)
-        if (lhvyrmsz)   hvyrmsz(iz,jhist)   = vyrmsz(iz)
-        if (lhvzrmsz)   hvzrmsz(iz,jhist)   = vzrmsz(iz)
-        if (lhxpsqbarz) hxpsqbarz(iz,jhist) = xpsqbarz(iz)
-        if (lhypsqbarz) hypsqbarz(iz,jhist) = ypsqbarz(iz)
-        if (lhxxpbarz)  hxxpbarz(iz,jhist)  = xxpbarz(iz)
-        if (lhyypbarz)  hyypbarz(iz,jhist)  = yypbarz(iz)
-        if (lhxypbarz)  hxypbarz(iz,jhist)  = xypbarz(iz)
-        if (lhyxpbarz)  hyxpbarz(iz,jhist)  = yxpbarz(iz)
-        if (lhxpypbarz) hxpypbarz(iz,jhist) = xpypbarz(iz)
-        if (lhxvzbarz)  hxvzbarz(iz,jhist)  = xvzbarz(iz)
-        if (lhyvzbarz)  hyvzbarz(iz,jhist)  = yvzbarz(iz)
-        if (lhvxvzbarz) hvxvzbarz(iz,jhist) = vxvzbarz(iz)
-        if (lhvyvzbarz) hvyvzbarz(iz,jhist) = vyvzbarz(iz)
+        if (lhepsxz)    hepsxz(iz,jhist,:)    = epsxz(iz,:)
+        if (lhepsyz)    hepsyz(iz,jhist,:)    = epsyz(iz,:)
+        if (lhepsnxz)   hepsnxz(iz,jhist,:)   = epsnxz(iz,:)
+        if (lhepsnyz)   hepsnyz(iz,jhist,:)   = epsnyz(iz,:)
+        if (lhepsgz)    hepsgz(iz,jhist,:)    = epsgz(iz,:)
+        if (lhepshz)    hepshz(iz,jhist,:)    = epshz(iz,:)
+        if (lhepsngz)   hepsngz(iz,jhist,:)   = epsngz(iz,:)
+        if (lhepsnhz)   hepsnhz(iz,jhist,:)   = epsnhz(iz,:)
+        if (lhxbarz)    hxbarz(iz,jhist,:)    = xbarz(iz,:)
+        if (lhybarz)    hybarz(iz,jhist,:)    = ybarz(iz,:)
+        if (lhxybarz)   hxybarz(iz,jhist,:)   = xybarz(iz,:)
+        if (lhxrmsz)    hxrmsz(iz,jhist,:)    = xrmsz(iz,:)
+        if (lhyrmsz)    hyrmsz(iz,jhist,:)    = yrmsz(iz,:)
+        if (lhrrmsz)    hrrmsz(iz,jhist,:)    = rrmsz(iz,:)
+        if (lhxprmsz)   hxprmsz(iz,jhist,:)   = xprmsz(iz,:)
+        if (lhyprmsz)   hyprmsz(iz,jhist,:)   = yprmsz(iz,:)
+        if (lhxsqbarz)  hxsqbarz(iz,jhist,:)  = xsqbarz(iz,:)
+        if (lhysqbarz)  hysqbarz(iz,jhist,:)  = ysqbarz(iz,:)
+        if (lhvxbarz)   hvxbarz(iz,jhist,:)   = vxbarz(iz,:)
+        if (lhvybarz)   hvybarz(iz,jhist,:)   = vybarz(iz,:)
+        if (lhvzbarz)   hvzbarz(iz,jhist,:)   = vzbarz(iz,:)
+        if (lhxpbarz)   hxpbarz(iz,jhist,:)   = xpbarz(iz,:)
+        if (lhypbarz)   hypbarz(iz,jhist,:)   = ypbarz(iz,:)
+        if (lhvxrmsz)   hvxrmsz(iz,jhist,:)   = vxrmsz(iz,:)
+        if (lhvyrmsz)   hvyrmsz(iz,jhist,:)   = vyrmsz(iz,:)
+        if (lhvzrmsz)   hvzrmsz(iz,jhist,:)   = vzrmsz(iz,:)
+        if (lhxpsqbarz) hxpsqbarz(iz,jhist,:) = xpsqbarz(iz,:)
+        if (lhypsqbarz) hypsqbarz(iz,jhist,:) = ypsqbarz(iz,:)
+        if (lhxxpbarz)  hxxpbarz(iz,jhist,:)  = xxpbarz(iz,:)
+        if (lhyypbarz)  hyypbarz(iz,jhist,:)  = yypbarz(iz,:)
+        if (lhxypbarz)  hxypbarz(iz,jhist,:)  = xypbarz(iz,:)
+        if (lhyxpbarz)  hyxpbarz(iz,jhist,:)  = yxpbarz(iz,:)
+        if (lhxpypbarz) hxpypbarz(iz,jhist,:) = xpypbarz(iz,:)
+        if (lhxvzbarz)  hxvzbarz(iz,jhist,:)  = xvzbarz(iz,:)
+        if (lhyvzbarz)  hyvzbarz(iz,jhist,:)  = yvzbarz(iz,:)
+        if (lhvxvzbarz) hvxvzbarz(iz,jhist,:) = vxvzbarz(iz,:)
+        if (lhvyvzbarz) hvyvzbarz(iz,jhist,:) = vyvzbarz(iz,:)
       enddo
 
       return
@@ -649,7 +658,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.132 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.133 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1818,7 +1827,7 @@ c=============================================================================
       end
 c=============================================================================
 c===========================================================================
-      subroutine emitthresh(n,threshold,js,iw,ngridw,ngridh,tepsx,tepsy)
+      subroutine emitthresh(n,threshold,is,iw,ngridw,ngridh,tepsx,tepsy)
       use InPart
       use InDiag
       use Picglb
@@ -1826,7 +1835,7 @@ c===========================================================================
       use Particles
       integer(ISZ):: n
       real(kind=8):: threshold(n)
-      integer(ISZ):: js,iw,ngridw,ngridh
+      integer(ISZ):: is,iw,ngridw,ngridh
       real(kind=8):: tepsx(n),tepsy(n)
 
 c --- Calculates the emittance with thesholding. Particles in regions where
@@ -1836,7 +1845,7 @@ c --- grid which has the slope subtracted (to minimize empty space).
 c --- Input:
 c ---   - n is number of thresholds
 c ---   - threshold are threshold values
-c ---   - js species of particles to include
+c ---   - is species of particles to include
 c ---   - iw z-window to select particles
 c ---   - ngridw number of grid points position is binned into
 c ---   - ngridh number of grid points velocity is binned into
@@ -1845,7 +1854,7 @@ c ---   - tepsx,tepsy
 
       real(kind=8):: xxpmesh(0:ngridw,0:ngridh)
       real(kind=8):: yypmesh(0:ngridw,0:ngridh)
-      integer(ISZ):: i1,i2,ip,i,j,jw,jh
+      integer(ISZ):: i1,i2,ip,i,j,jw,jh,js
       real(kind=8):: zw1,zw2,vms,ww,wh,density
       real(kind=8):: slopex,mmaxx,dwx,dhx
       real(kind=8):: slopey,mmaxy,dwy,dhy
@@ -1856,12 +1865,13 @@ c ---   - tepsx,tepsy
       real(kind=8):: dwxi,dhxi,dwyi,dhyi
 
 c     --- Set some temporaries
-      i1 = ins(js)
-      i2 = ins(js)+nps(js)-1
+      i1 = ins(is)
+      i2 = ins(is)+nps(is)-1
       zw1 = zwindows(1,iw)+zbeam
       zw2 = zwindows(2,iw)+zbeam
-      slopex = (xxpbar(iw)-xbar(iw)*xpbar(iw))/dvnz(xrms(iw)**2)
-      slopey = (yypbar(iw)-ybar(iw)*ypbar(iw))/dvnz(yrms(iw)**2)
+      js = min(is,nswind)
+      slopex = (xxpbar(iw,js)-xbar(iw,js)*xpbar(iw,js))/dvnz(xrms(iw,js)**2)
+      slopey = (yypbar(iw,js)-ybar(iw,js)*ypbar(iw,js))/dvnz(yrms(iw,js)**2)
 
 c     --- Find min and max of position and velocity
       mines = +LARGEPOS
@@ -1902,12 +1912,12 @@ c     --- within range (min,max]. Calculate grid cell sizes.
 c     --- Bin up the data onto a 2-D grid
       xxpmesh = 0.
       yypmesh = 0.
-      call getpsgrd(nps(js),xp(ins(js)),uxp(ins(js)),ngridw,ngridh,xxpmesh,
+      call getpsgrd(nps(is),xp(ins(is)),uxp(ins(is)),ngridw,ngridh,xxpmesh,
      &              mines(1),maxes(1),mines(3),maxes(3),
-     &              zw1,zw2,zp(ins(js)),uzp(ins(js)),slopex)
-      call getpsgrd(nps(js),yp(ins(js)),uyp(ins(js)),ngridw,ngridh,yypmesh,
+     &              zw1,zw2,zp(ins(is)),uzp(ins(is)),slopex)
+      call getpsgrd(nps(is),yp(ins(is)),uyp(ins(is)),ngridw,ngridh,yypmesh,
      &              mines(2),maxes(2),mines(4),maxes(4),
-     &              zw1,zw2,zp(ins(js)),uzp(ins(js)),slopey)
+     &              zw1,zw2,zp(ins(is)),uzp(ins(is)),slopey)
 
 #ifdef MPIPARALLEL
       call parallelsumrealarray(xxpmesh,(1+ngridw)*(1+ngridh))
