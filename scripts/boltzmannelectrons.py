@@ -1,4 +1,5 @@
 from warp import *
+from multigrid import MultiGrid
 
 class BoltzmanSolver:
   """
@@ -31,6 +32,8 @@ Method numbers:
     compared. Note that this is the same as method 2, except that here the
     sor passes are called explicitly. This allows the number of iterations
     to be controlled for faster convergence.
+ 5: Used for test only - Puts a cap on phi of phi0.
+ 6: FAS multigrid algorithm
 
 Note that in all cases, sormaxit is set to zero so that the functions here
 have direct control over the sor iterations.
@@ -43,6 +46,8 @@ have direct control over the sor iterations.
     self.n = n
     self.method = method
     self.withegun = withegun
+    checkconductors(w3d.nx,w3d.ny,w3d.nz,w3d.nzfull,w3d.dx,w3d.dy,w3d.dz,
+                    f3d.conductors,0,0,0,0)
     if self.method == 0:
       if not withegun: installafterfs(self.solve0)
       f3d.sormaxit = 0
@@ -65,6 +70,10 @@ have direct control over the sor iterations.
       if self.method == 1 and not withegun: installafterfs(self.solve1)
       if self.method == 3 and not withegun: installafterfs(self.solve3)
       f3d.sormaxit = 0
+    elif self.method == 5:
+      if not withegun: installafterfs(self.solve5)
+    elif self.method == 6:
+      if not withegun: installafterfs(self.solve6)
 
   def solve0(self):
     # --- These two lines are needed to turn on the field solver, which is
@@ -82,6 +91,7 @@ have direct control over the sor iterations.
       self.phiprev = getphi()[:,:,1:-1].copy()
       #print "PotI,PotE:",maxnd(phi),maxnd(self.rhoelectron/eps0*const)
       #print "DnsI,DnsE:",maxnd(w3d.rho),maxnd(self.rhoelectron)
+      cond_potmg(f3d.conductors.interior,w3d.nx,w3d.ny,w3d.nz,w3d.phi,0,1,1)
     # --- Turn the field solver back off.
     f3d.sormaxit = 0
     top.fstype = -1
@@ -106,6 +116,7 @@ have direct control over the sor iterations.
         re = self.rhoion*exp(-ff/self.te)
         phi = getphi()[:,:,1:-1]
         phi[:,:,:] = where(self.parity==iparity,phi - re/eps0*const,phi)
+        cond_potmg(f3d.conductors.interior,w3d.nx,w3d.ny,w3d.nz,w3d.phi,0,1,1)
         #print "PotI,PotE:",maxnd(phi),maxnd(self.rhoelectron/eps0*const)
         #print "DnsI,DnsE:",maxnd(w3d.rho),maxnd(self.rhoelectron)
   
@@ -128,6 +139,7 @@ have direct control over the sor iterations.
       phinew = phi - numer/denom
       #phi[:,:,:] = where(phi-self.phi0 > -10*self.te,phinew,phi)
       phi[:,:,1:-1] = phinew[:,:,1:-1]
+      cond_potmg(f3d.conductors.interior,w3d.nx,w3d.ny,w3d.nz,w3d.phi,0,1,1)
 
     f3d.sormaxit = 0
     top.fstype = -1
@@ -157,6 +169,8 @@ have direct control over the sor iterations.
         denom = 1.0 + numer/self.te
         phinew = phi - numer/denom
         phi[:,:,:] = where(self.parity==iparity,phinew,phi)
+        cond_potmg(f3d.conductors.interior,w3d.nx,w3d.ny,w3d.nz,w3d.phi,0,1,1)
+
 
 
   def solve4(self,n=None):
@@ -184,5 +198,12 @@ have direct control over the sor iterations.
       denom = 1.0 + numer/self.te
       phinew = phi - numer/denom
       phi[:,:,1:-1] = phinew[:,:,1:-1]
+      cond_potmg(f3d.conductors.interior,w3d.nx,w3d.ny,w3d.nz,w3d.phi,0,1,1)
 
+
+  def solve5(self):
+    w3d.phi[:,:,:] = minimum(self.phi0,w3d.phi)
+
+  def solve6(self):
+    pass
 
