@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.28 2004/02/09 19:55:58 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.29 2004/02/17 19:17:00 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -565,7 +565,7 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def setmatrix(s,m,v):
     if s.current == m: return
-    m.setmatrix(v)
+    if m is not None: m.setmatrix(v)
     s.current = m
   #----------------------------------------------------------------------------
   def getpipematrix(s,ap,ax,ay,v,ox,oy):
