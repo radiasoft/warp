@@ -1,5 +1,5 @@
 from warp import *
-fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.3 2001/04/23 21:19:59 dave Exp $"
+fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.4 2001/05/10 23:42:45 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -243,7 +243,7 @@ not, then the derivatives will be done with a finite difference of fringe.
           top.esemltp[nmax:nmax-nend-1:-1,i,neq] = -top.esemltp[0:nend+1,i,neq]
           top.esemltp[:,i,neq] = top.esemltp[:,i,neq]*scalefactor/coeff/ \
                                  top.dzemlt[neq]
-    elif quaddb[iq] != 0.:
+    if quaddb[iq] != 0.:
       # --- Magnetic quads
       nmq = nmq + 1
       top.mmltzs[nmq] = quadzs[iq] - fringelen[iq]*fringescale[iq]
