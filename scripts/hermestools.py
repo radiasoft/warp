@@ -51,12 +51,21 @@ def sethermesprofile(lsamecharge):
         her.var[13,i] = fint(her.var[8,i+1])-fint(her.var[8,i])
     her.var[13,:] = her.var[13,:]*top.ibeam*delzbeam/top.vbeam
     her.var[8,:] = delzbeam * her.var[8,:]
+  extebher(0.,her.dther,her.var,her.niz) # Needed to set up rpipe and therefore rmmax
   her.var[9,:] = top.vbeam / top.clight
+  her.var[0,:] = wrz.rmmax / 2. # For now
+  her.var[1,:] = 0.             # For now
+  her.var[2,:] = wrz.rmmax / 2. # For now
+  her.var[3,:] = 0.             # For now
   lfail = false
-  getappliedfield(0.,her.dther,her.var,her.niz)
-  gethertmp(her.var,her.niz,her.rpipe,her.icharge,lfail)
+  loadcharge(her.niz,her.var,her.rpipe,her.icharge,lfail)
   if lfail:
-    print "Error in sethermescurrent: Slice positions are not in increasing order"
+    print "Error in loadcharge: Slice positions are not in increasing order"
+    return
+  getcurrent(her.var,her.niz,her.rpipe,her.icharge,her.lcurgrid,lfail)
+  if lfail:
+    print "Error in getcurrent: Slice positions are not in increasing order"
+    return
   if top.emitn:
     her.var[10:12,:] = top.emitn * her.var[12,:] / top.ibeam
   else:
