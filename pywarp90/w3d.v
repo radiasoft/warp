@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.157 $, $Date: 2004/07/09 19:17:21 $
+#@(#) File W3D.V, version $Revision: 3.158 $, $Date: 2004/07/12 23:26:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.157 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.158 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -499,7 +499,7 @@ AMRrefinement              integer /2/   # refinement ratio between levels
 AMRcoalescing(AMRlevels)  _real    /0.8/ # coefficient controlling coalescence for each refinement level
                                          # range: between 0 and 1; 0=minimal coalescence; 1=most aggressive coalescence
 AMRtransit                 integer /2/   # number of transition cells around each patch, in units of parent cells.
-AMRgenerate_frequency      integer /1/   # frequency at which to generate new set of AMR blocks, in units of time steps.
+AMRgenerate_periodicity    integer /1/   # periodicity at which to generate new set of AMR blocks, in units of time steps.
 AMRmaxlevel_density        integer /-1/  # maximum level for automatic refinement based in charge density
 AMRmaxlevel_gradient       integer /-1/  # maximum level for automatic refinement based in charge density gradient
 AMRthreshold_gradient      real    /0.8/ # threshold above which to refine for automatic refinement based on gradient
