@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.128 $, $Date: 2004/09/11 07:26:40 $
+c@(#) File TOP.F, version $Revision: 3.129 $, $Date: 2004/09/22 16:09:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6703,6 +6703,7 @@ c         --- lost on a previous step but wasn't cleared out of the array.
             endif
             tplost(i1) = time
             if (npid > 0) pidlost(i1,1:npidmax) = pid(ip,:)
+            if (npidlostmax > npidmax) pidlost(i1,npidmax+1:) = 0.
             npslost(is) = npslost(is) + 1
           endif
 
