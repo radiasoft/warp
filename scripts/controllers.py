@@ -47,7 +47,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.5 2004/09/02 22:41:36 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.6 2004/09/03 00:11:40 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -188,8 +188,7 @@ class ControllerFunction:
     bb = time.time()
     for i,f in self.controllerfunclist():
       if type(f) == ListType:
-        object = f[0]()
-        f = getattr(object,f[1])
+        f = getattr(f[0],f[1])
       elif type(f) == StringType:
         import __main__
         if f in __main__.__dict__:
