@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.10 $, $Date: 2004/04/13 21:45:07 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.11 $, $Date: 2004/05/12 22:08:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -95,7 +95,7 @@ c=============================================================================
       real(kind=8):: dx,dy
       type(ConductorType):: conductors
 
-      call getmglevelsrecurxy(nx,ny,dx,dy,0,1,1,1,conductors)
+      call getmglevelsrecurxy(nx,ny,dx,dy,0,1,1,conductors)
 
       return
       end
