@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.17 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -322,7 +322,8 @@ c A much, much better way of doing this is to sort the data first.
           endif
           iq = iq + 1
         end do
-        pnormals(:,npoints) = pnormals(:,npoints)/dvnz(sqrt(sum(pnormals(:,npoints)**2)))
+        pnormals(:,npoints) = pnormals(:,npoints)/
+     &                        dvnz(sqrt(sum(pnormals(:,npoints)**2)))
         ip = ip + 1
         i2 = ii(ip)/3 + 1
         j2 = ii(ip) - i2*3
@@ -3128,12 +3129,11 @@ c=======================================================================
       real(kind=8):: fuzz
 
       integer(ISZ):: i,iterrf,ii
-      real(kind=8):: xx,yy,zz,rr,rsrf
       real(kind=8):: srfrv_f
+      real(kind=8):: xx,yy,zz,rr,rsrf
+      real(kind=8):: xisrf,yisrf,ximax,yimax
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
-
-c!!!!! This needs to be input somehow!!!
 
       do i=1,n
         delmx(i) = LARGEPOS
@@ -3149,48 +3149,51 @@ c       --- Set temps
         rr = sqrt(xx**2 + yy**2)
         zz = z(i) - zcent
 
-
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
           rsrf = srfrv_f(zz,rofzfunc,0,0)
+          xisrf = sqrt(max(0.,rsrf**2 - yy**2))
+          yisrf = sqrt(max(0.,rsrf**2 - xx**2))
+          ximax = sqrt(max(0.,rmax**2 - yy**2))
+          yimax = sqrt(max(0.,rmax**2 - xx**2))
           if (rr <= rsrf) then
-            delmx(i) = sqrt(max(0.,rsrf**2 - yy**2)) + xx
-            delpx(i) = sqrt(max(0.,rsrf**2 - yy**2)) - xx
-            delmy(i) = sqrt(max(0.,rsrf**2 - xx**2)) + yy
-            delpy(i) = sqrt(max(0.,rsrf**2 - xx**2)) - yy
+            delmx(i) = xisrf + xx
+            delpx(i) = xisrf - xx
+            delmy(i) = yisrf + yy
+            delpy(i) = yisrf - yy
           else if (rr < rmax) then
-            if (yy > rsrf .or. -rsrf > yy) then
-              delmx(i) = - sqrt(max(0.,rmax - yy**2)) - xx
-              delpx(i) = xx - sqrt(max(0.,rmax - yy**2))
+            if (yy > rsrf .or. -rsrf > yy .or. rsrf == 0.) then
+              delmx(i) = - ximax - xx
+              delpx(i) = + xx - ximax
             else
               if (xx > 0.) then
-                delmx(i) = sqrt(max(0.,rsrf**2 - yy**2)) + xx
-                delpx(i) = xx - sqrt(max(0.,rmax - yy**2))
+                delmx(i) = xisrf - xx
+                delpx(i) = xx - ximax
               else
-                delmx(i) = - sqrt(max(0.,rmax - yy**2)) - xx
-                delpx(i) = sqrt(max(0.,rsrf**2 - yy**2)) - xx
+                delmx(i) = - ximax - xx
+                delpx(i) = + xx + xisrf
               endif
             endif
-            if (xx > rsrf .or. -rsrf > xx) then
-              delmy(i) = - sqrt(max(0.,rmax - xx**2)) - yy
-              delpy(i) = yy - sqrt(max(0.,rmax - xx**2))
+            if (xx > rsrf .or. -rsrf > xx .or. rsrf == 0.) then
+              delmy(i) = - yimax - yy
+              delpy(i) = + yy - yimax
             else
               if (yy > 0.) then
-                delmy(i) = sqrt(max(0.,rsrf**2 - xx**2)) + yy
-                delpy(i) = yy - sqrt(max(0.,rmax - xx**2))
+                delmy(i) = yisrf - yy
+                delpy(i) = yy - yimax
               else
-                delmy(i) = - sqrt(max(0.,rmax - xx**2)) - yy
-                delpy(i) = sqrt(max(0.,rsrf**2 - xx**2)) - yy
+                delmy(i) = - yimax - yy
+                delpy(i) = yy + yisrf
               endif
             endif
           else
-            if (yy <= rmax) then
-              if (xx >= 0.) delmx(i) = xx - sqrt(max(0.,rmax - yy**2))
-              if (xx <= 0.) delpx(i) = sqrt(max(0.,rmax - yy**2)) - xx
+            if (abs(yy) <= rmax) then
+              if (xx >= 0.) delmx(i) = + xx - ximax
+              if (xx <= 0.) delpx(i) = - ximax - xx
             endif
-            if (xx <= rmax) then
-              if (yy >= 0.) delmy(i) = yy - sqrt(max(0.,rmax - xx**2))
-              if (yy <= 0.) delpy(i) = sqrt(max(0.,rmax - xx**2)) - yy
+            if (abs(xx) <= rmax) then
+              if (yy >= 0.) delmy(i) = + yy - yimax
+              if (yy <= 0.) delpy(i) = - yimax - yy
             endif
           endif
         endif
@@ -3200,8 +3203,8 @@ c use griddz
 
 c       --- Only find deltas if point within griddz of the z-extent of
 c       --- conductor or within the max radius.
-        if (zz >= zmin - griddz .or.
-     &      zz <= zmax + griddz .or.
+        if (zz >= zmin - griddz .and.
+     &      zz <= zmax + griddz .and.
      &      rr <= rmax) then
 
           zzz = min(max(zz,zmin),zmax)
@@ -3414,6 +3417,213 @@ c=======================================================================
       real(kind=8):: delmz(n),delpz(n)
       real(kind=8):: fuzz
 
+      integer(ISZ):: i,iterrf,ii
+      real(kind=8):: srfrv_f
+      real(kind=8):: xx,yy,zz,rr,rsrf
+      real(kind=8):: xisrf,yisrf,ximin,yimin
+      real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
+      real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
+
+      do i=1,n
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Set temps
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        rr = sqrt(xx**2 + yy**2)
+        zz = z(i) - zcent
+
+        if (zmin <= zz .and. zz <= zmax) then
+c         --- Point inside the z-extent
+          rsrf = srfrv_f(zz,rofzfunc,0,0)
+          xisrf = sqrt(max(0.,rsrf**2 - yy**2))
+          yisrf = sqrt(max(0.,rsrf**2 - xx**2))
+          ximin = sqrt(max(0.,rmin**2 - yy**2))
+          yimin = sqrt(max(0.,rmin**2 - xx**2))
+          if (rr <= rmin) then
+            delmx(i) = ximin + xx
+            delpx(i) = ximin - xx
+            delmy(i) = yimin + yy
+            delpy(i) = yimin - yy
+          else if (rr < rsrf) then
+            if (yy > rmin .or. -rmin > yy .or. rmin == 0.) then
+              delmx(i) = - xisrf - xx
+              delpx(i) = + xx - xisrf
+            else
+              if (xx > 0.) then
+                delmx(i) = ximin - xx
+                delpx(i) = xx - xisrf
+              else
+                delmx(i) = - xisrf - xx
+                delpx(i) = + xx + ximin
+              endif
+            endif
+            if (xx > rmin .or. -rmin > xx .or. rmin == 0.) then
+              delmy(i) = - yisrf - yy
+              delpy(i) = + yy - yisrf
+            else
+              if (yy > 0.) then
+                delmy(i) = yimin - yy
+                delpy(i) = yy - yisrf
+              else
+                delmy(i) = - yisrf - yy
+                delpy(i) = yy + yimin
+              endif
+            endif
+          else
+            if (abs(yy) <= rsrf) then
+              if (xx >= 0.) delmx(i) = + xx - xisrf
+              if (xx <= 0.) delpx(i) = - xisrf - xx
+            endif
+            if (abs(xx) <= rsrf) then
+              if (yy >= 0.) delmy(i) = + yy - yisrf
+              if (yy <= 0.) delpy(i) = - yisrf - yy
+            endif
+          endif
+        endif
+
+c Now get delmz delpz
+c use griddz
+
+c       --- Only find deltas if point within griddz of the z-extent of
+c       --- conductor or within the max radius.
+        if (zz >= zmin - griddz .and.
+     &      zz <= zmax + griddz .and.
+     &      rr >= rmin) then
+
+          zzz = min(max(zz,zmin),zmax)
+          zlower = max(zz-griddz,zmin)
+          zhigher = min(zz+griddz,zmax)
+
+          rsrf = srfrv_f(zzz,rofzfunc,0,0)
+          rlower = srfrv_f(zlower,rofzfunc,0,0)
+          rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+          rfuzz = max(rsrf,rlower,rhigher)*1.e-12
+
+          if (zz >= zmax .and. rr <= rsrf) then
+            delmz(i) = zz - zmax
+          elseif (zz < zmin) then
+            delmz(i) = LARGEPOS
+          elseif (rr < min(rlower,rsrf)) then
+            delmz(i) = zmin - zz
+          elseif (min(rlower,rsrf) <= rr .and. rr <= max(rlower,rsrf)) then
+c           --- If grid location is between rsrf and rlower find
+c           --- intersection point.
+c           --- First, try Regula-Falsi (secant method) iteration to
+c           --- find distance in z to the surface. If that doesn't
+c           --- converge rapidly, then go to the brute force binary search.
+c           --- Empirically, it was found that stopping at 12 iterations
+c           --- gives the best performance, with a broad minimum around
+c           --- that point.
+            zi(1) = zzz
+            ri(1) = rsrf - rr
+            zi(2) = zlower
+            ri(2) = rlower - rr
+            iterrf = 0
+            if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+            ii = 1
+            do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+              ii = 1
+              if (abs(ri(2)) > abs(ri(1))) ii = 2
+              if (ri(1) == ri(2)) exit
+              zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
+              ri(ii) = srfrv_f(zi(ii),rofzfunc,0,0) - rr
+              iterrf = iterrf + 1
+            end do
+            if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &          zlower <= zi(ii) .and. zi(ii) < zz) then
+              delmz(i) = zz - zi(ii)
+            else
+c             --- A simple binary search is used to find distance in z
+c             --- to the surface. This is used since it is more robust
+c             --- than other root finding methods. The major problem
+c             --- occurs when the radius changes like a step function.
+c             --- The secant method (the original coding) converged
+c             --- very slowly in that case, leaving errors as large as
+c             --- 10% in the delta and slowing down the code.
+              ddz = (min(zz,zmax) - zlower)*0.5
+              znew = zlower
+              do iterrf=1,32
+                znew = znew + ddz
+                rnew = srfrv_f(znew,rofzfunc,0,0)
+                if (rnew > rr) then
+                  ddz = -abs(ddz)*0.5
+                else if (rnew <= rr) then
+                  ddz = +abs(ddz)*0.5
+                endif
+              enddo
+              delmz(i) = zz - znew
+            endif
+            if (rr <= rsrf) delmz(i) = -delmz(i)
+          endif
+
+c         --- Calculate distance to conductor at higher z.
+
+          if (zz <= zmin .and. rr <= rsrf) then
+            delpz(i) = zmin - zz
+          elseif (zz > zmax) then
+            delpz(i) = LARGEPOS
+          elseif (rr < min(rhigher,rsrf)) then
+            delpz(i) = zz - zmax
+c         --- If grid location is between rrr and rhigher.
+          elseif (min(rhigher,rsrf) <= rr .and. rr <= max(rhigher,rsrf)) then
+c           --- First, try Regula-Falsi (secant method) iteration to
+c           --- find distance in z to the surface. If that doesn't
+c           --- converge rapidly, then go to the brute force binary search.
+c           --- Empirically, it was found that stopping at 12 iterations
+c           --- gives the best performance, with a broad minimum around
+c           --- that point.
+            zi(1) = zzz
+            ri(1) = rsrf - rr
+            zi(2) = zhigher
+            ri(2) = rhigher - rr
+            iterrf = 0
+            if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+            ii = 1
+            do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+              ii = 1
+              if (abs(ri(2)) > abs(ri(1))) ii = 2
+              if (ri(1) == ri(2)) exit
+              zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
+              ri(ii) = srfrv_f(zi(ii),rofzfunc,0,0) - rr
+              iterrf = iterrf + 1
+            end do
+            if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &          zz < zi(ii) .and. zi(ii) <= zhigher) then
+              delpz(i) = zi(ii) - zz
+            else
+c             --- A simple binary search is used to find distance in z
+c             --- to the surface. This is used since it is more robust
+c             --- than other root finding methods. The major problem
+c             --- occurs when the radius changes like a step function.
+c             --- The secant method (the original coding) converged
+c             --- very slowly in that case, leaving errors as large as
+c             --- 10% in the delta and slowing down the code.
+              ddz = (max(zz,zmin) - zhigher)*0.5
+              znew = zhigher
+              do iterrf=1,32
+                znew = znew + ddz
+                rnew = srfrv_f(znew,rofzfunc,0,0)
+                if (rnew <= rr) then
+                  ddz = -abs(ddz)*0.5
+                else if (rnew > rr) then
+                  ddz = +abs(ddz)*0.5
+                endif
+              enddo
+              delpz(i) = znew - zz
+            endif
+            if (rr <= rsrf) delpz(i) = -delpz(i)
+          endif
+
+        endif
+
+      enddo
+
       return
       end
 c=======================================================================
@@ -3484,8 +3694,8 @@ c near the surface, the distance has the correct sign.
 c=======================================================================
 c=======================================================================
       subroutine ZSrfrvInOutConductorF(rminofz,rmaxofz,zmin,zmax,griddz,
-     &                                xcent,ycent,zcent,n,x,y,z,
-     &                                delmx,delpx,delmy,delpy,delmz,delpz,fuzz)
+     &                                 xcent,ycent,zcent,n,x,y,z,
+     &                                 delmx,delpx,delmy,delpy,delmz,delpz,fuzz)
       character(*):: rminofz,rmaxofz
       real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
@@ -3495,6 +3705,337 @@ c=======================================================================
       real(kind=8):: delmz(n),delpz(n)
       real(kind=8):: fuzz
 
+      integer(ISZ):: i,iterrf,ii
+      real(kind=8):: srfrv_f
+      real(kind=8):: xx,yy,zz,rr,rmin,rmax
+      real(kind=8):: ximin,yimin,ximax,yimax
+      real(kind=8):: zzz,zlower,zhigher,rfuzz
+      real(kind=8):: rminlower,rminhigher,rmaxlower,rmaxhigher
+      real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
+      real(kind=8):: delmz1,delpz1
+
+      do i=1,n
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Set temps
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        rr = sqrt(xx**2 + yy**2)
+        zz = z(i) - zcent
+
+        if (zmin <= zz .and. zz <= zmax) then
+c         --- Point inside the z-extent
+          rmin = srfrv_f(zz,rminofz,0,0)
+          rmax = srfrv_f(zz,rmaxofz,0,0)
+          ximin = sqrt(max(0.,rmin**2 - yy**2))
+          yimin = sqrt(max(0.,rmin**2 - xx**2))
+          ximax = sqrt(max(0.,rmax**2 - yy**2))
+          yimax = sqrt(max(0.,rmax**2 - xx**2))
+          if (rr < rmin) then
+            delmx(i) = ximin + xx
+            delpx(i) = ximin - xx
+            delmy(i) = yimin + yy
+            delpy(i) = yimin - yy
+          else if (rr < rmax) then
+            if (yy > rmin .or. -rmin > yy .or. rmin == 0.) then
+              delmx(i) = - ximax - xx
+              delpx(i) = + xx - ximax
+            else
+              if (xx > 0.) then
+                delmx(i) = ximin - xx
+                delpx(i) = xx - ximax
+              else
+                delmx(i) = - ximax - xx
+                delpx(i) = + xx + ximin
+              endif
+            endif
+            if (xx > rmin .or. -rmin > xx .or. rmin == 0.) then
+              delmy(i) = - yimax - yy
+              delpy(i) = + yy - yimax
+            else
+              if (yy > 0.) then
+                delmy(i) = yimin - yy
+                delpy(i) = yy - yimax
+              else
+                delmy(i) = - yimax - yy
+                delpy(i) = yy + yimin
+              endif
+            endif
+          else
+            if (abs(yy) <= rmax) then
+              if (xx >= 0.) delmx(i) = + xx - ximax
+              if (xx <= 0.) delpx(i) = - ximax - xx
+            endif
+            if (abs(xx) <= rmax) then
+              if (yy >= 0.) delmy(i) = + yy - yimax
+              if (yy <= 0.) delpy(i) = - yimax - yy
+            endif
+          endif
+        endif
+
+c Now get delmz delpz
+c use griddz
+
+c       --- Only find deltas if point within griddz of the z-extent of
+c       --- conductor or within the max radius.
+        if (zz >= zmin - griddz .and.
+     &      zz <= zmax + griddz) then
+
+          zzz = min(max(zz,zmin),zmax)
+          zlower = max(zz-griddz,zmin)
+          zhigher = min(zz+griddz,zmax)
+
+          rmin = srfrv_f(zzz,rminofz,0,0)
+          rmax = srfrv_f(zzz,rmaxofz,0,0)
+          rminlower = srfrv_f(zlower,rminofz,0,0)
+          rminhigher = srfrv_f(zhigher,rminofz,0,0)
+          rmaxlower = srfrv_f(zlower,rmaxofz,0,0)
+          rmaxhigher = srfrv_f(zhigher,rmaxofz,0,0)
+          rfuzz = max(rmin,rmax,rminlower,rminhigher,rmaxlower,rmaxhigher)*1.e-12
+
+          if (zz < zmin .or. rr < min(rminlower,rmin) .or.
+     &                       max(rmaxlower,rmax) < rr) then
+            delmz(i) = LARGEPOS
+          elseif (zz >= zmax .and. rmin <= rr .and. rr <= rmax) then
+            delmz(i) = zz - zmax
+          elseif (max(rminlower,rmin) < rr .and. rr < min(rmaxlower,rmax)) then
+            delmz(i) = zmin - zz
+          else
+            delmz(i) = LARGEPOS
+            if (min(rminlower,rmin) <= rr .and. rr <= max(rminlower,rmin)) then
+c             --- If grid location is between rmin and rminlower find
+c             --- intersection point.
+c             --- First, try Regula-Falsi (secant method) iteration to
+c             --- find distance in z to the surface. If that doesn't
+c             --- converge rapidly, then go to the brute force binary search.
+c             --- Empirically, it was found that stopping at 12 iterations
+c             --- gives the best performance, with a broad minimum around
+c             --- that point.
+              zi(1) = zzz
+              ri(1) = rmin - rr
+              zi(2) = zlower
+              ri(2) = rminlower - rr
+              iterrf = 0
+              if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+              ii = 1
+              do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+                ii = 1
+                if (abs(ri(2)) > abs(ri(1))) ii = 2
+                if (ri(1) == ri(2)) exit
+                zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
+                ri(ii) = srfrv_f(zi(ii),rminofz,0,0) - rr
+                iterrf = iterrf + 1
+              end do
+              if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &            zlower <= zi(ii) .and. zi(ii) < zz) then
+                delmz(i) = zz - zi(ii)
+              else
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rminofz,0,0)
+                  if (rnew > rr) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew <= rr) then
+                    ddz = +abs(ddz)*0.5
+                  endif
+                enddo
+                delmz(i) = zz - znew
+              endif
+              if (rr >= rmin) delmz(i) = -delmz(i)
+            endif
+            if (min(rmaxlower,rmax) <= rr .and. rr <= max(rmaxlower,rmax)) then
+c             --- If grid location is between rmax and rmaxlower find
+c             --- intersection point.
+c             --- First, try Regula-Falsi (secant method) iteration to
+c             --- find distance in z to the surface. If that doesn't
+c             --- converge rapidly, then go to the brute force binary search.
+c             --- Empirically, it was found that stopping at 12 iterations
+c             --- gives the best performance, with a broad minimum around
+c             --- that point.
+              zi(1) = zzz
+              ri(1) = rmax - rr
+              zi(2) = zlower
+              ri(2) = rmaxlower - rr
+              iterrf = 0
+              if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+              ii = 1
+              do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+                ii = 1
+                if (abs(ri(2)) > abs(ri(1))) ii = 2
+                if (ri(1) == ri(2)) exit
+                zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
+                ri(ii) = srfrv_f(zi(ii),rmaxofz,0,0) - rr
+                iterrf = iterrf + 1
+              end do
+              if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &            zlower <= zi(ii) .and. zi(ii) < zz) then
+                delmz1 = zz - zi(ii)
+              else
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rmaxofz,0,0)
+                  if (rnew > rr) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew <= rr) then
+                    ddz = +abs(ddz)*0.5
+                  endif
+                enddo
+                delmz1 = zz - znew
+              endif
+              if (delmz1 < abs(delmz(i))) then
+                if (rr <= rmax) then
+                  delmz(i) = -delmz1
+                else
+                  delmz(i) = +delmz1
+                endif
+              endif
+            endif
+          endif
+
+c         --- Calculate distance to conductor at higher z.
+
+          if (zz > zmax .or. rr < min(rminhigher,rmin) .or.
+     &                       max(rmaxhigher,rmax) < rr) then
+            delpz(i) = LARGEPOS
+          elseif (zz <= zmin .and. rmin <= rr .and. rr <= rmax) then
+            delpz(i) = zmin - zz
+          elseif (max(rminhigher,rmin) < rr .and.
+     &            rr < min(rmaxhigher,rmax)) then
+            delpz(i) = zz - zmax
+          else
+            delpz(i) = LARGEPOS
+            if (min(rminhigher,rmin) <= rr .and.
+     &          rr <= max(rminhigher,rmin)) then
+c             --- First, try Regula-Falsi (secant method) iteration to
+c             --- find distance in z to the surface. If that doesn't
+c             --- converge rapidly, then go to the brute force binary search.
+c             --- Empirically, it was found that stopping at 12 iterations
+c             --- gives the best performance, with a broad minimum around
+c             --- that point.
+              zi(1) = zzz
+              ri(1) = rmin - rr
+              zi(2) = zhigher
+              ri(2) = rminhigher - rr
+              iterrf = 0
+              if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+              ii = 1
+              do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+                ii = 1
+                if (abs(ri(2)) > abs(ri(1))) ii = 2
+                if (ri(1) == ri(2)) exit
+                zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
+                ri(ii) = srfrv_f(zi(ii),rminofz,0,0) - rr
+                iterrf = iterrf + 1
+              end do
+              if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &            zz < zi(ii) .and. zi(ii) <= zhigher) then
+                delpz(i) = zi(ii) - zz
+              else
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rminofz,0,0)
+                  if (rnew <= rr) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rr) then
+                    ddz = +abs(ddz)*0.5
+                  endif
+                enddo
+                delpz(i) = znew - zz
+              endif
+              if (rr >= rmin) delpz(i) = -delpz(i)
+            endif
+            if (min(rmaxhigher,rmax) <= rr .and.
+     &          rr <= max(rmaxhigher,rmax)) then
+c             --- First, try Regula-Falsi (secant method) iteration to
+c             --- find distance in z to the surface. If that doesn't
+c             --- converge rapidly, then go to the brute force binary search.
+c             --- Empirically, it was found that stopping at 12 iterations
+c             --- gives the best performance, with a broad minimum around
+c             --- that point.
+              zi(1) = zzz
+              ri(1) = rmax - rr
+              zi(2) = zhigher
+              ri(2) = rmaxhigher - rr
+              iterrf = 0
+              if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+              ii = 1
+              do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+                ii = 1
+                if (abs(ri(2)) > abs(ri(1))) ii = 2
+                if (ri(1) == ri(2)) exit
+                zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
+                ri(ii) = srfrv_f(zi(ii),rmaxofz,0,0) - rr
+                iterrf = iterrf + 1
+              end do
+              if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &            zz < zi(ii) .and. zi(ii) <= zhigher) then
+                delpz1 = zi(ii) - zz
+              else
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rmaxofz,0,0)
+                  if (rnew <= rr) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rr) then
+                    ddz = +abs(ddz)*0.5
+                  endif
+                enddo
+                delpz1 = znew - zz
+              endif
+              if (delpz1 < abs(delpz(i))) then
+                if (rr <= rmax) then
+                  delpz(i) = -delpz1
+                else
+                  delpz(i) = +delpz1
+                endif
+              endif
+            endif
+          endif
+
+        endif
+
+      enddo
       return
       end
 c=======================================================================
