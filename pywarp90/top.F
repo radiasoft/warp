@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.35 $, $Date: 2002/02/07 16:34:32 $
+c@(#) File TOP.M, version $Revision: 3.36 $, $Date: 2002/03/06 00:53:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1313,8 +1313,9 @@ c        --- find the elements at each of the grid points.
 c        --- find index of nearest drft element
          if (drfts) then
            do io=1,ndrftol
-             call getelemid(zz,offset,ndrft,drftzs(0),drftze(0),odrftnn(io),
-     &                      odrftoi(odrftii(io)),odrftio,cdrftid(iz,io))
+             call getelemid(zz,offset,ndrft,drftzs(0),drftze(0),drftol(0),
+     &                      odrftnn(io),odrftoi(odrftii(io)),odrftio,
+     &                      cdrftid(iz,io),io)
 c            --- load lattice info into comoving 1d array
              cdrftzs(iz,io) = drftzs(cdrftid(iz,io)) + offset
              cdrftze(iz,io) = drftze(cdrftid(iz,io)) + offset
@@ -1330,8 +1331,9 @@ c        --- are actually not supported since the idea of overlapping bends
 c        --- doesn't make much sense. The extra indexing is done so that the
 c        --- getelemid routine can still be used.
          if (bends) then
-           call getelemid(zz,offset,nbend,bendzs(0),bendze(0),obendnn(1),
-     &                    obendoi(obendii(1)),obendio,cbendid(iz))
+           call getelemid(zz,offset,nbend,bendzs(0),bendze(0),bendol(0),
+     &                    obendnn(1),obendoi(obendii(1)),obendio,
+     &                    cbendid(iz),io)
 c          --- load lattice info into comoving 1d array
            cbendzs(iz) = bendzs(cbendid(iz)) + offset
            cbendze(iz) = bendze(cbendid(iz)) + offset
@@ -1349,8 +1351,9 @@ c        --- corrections (when dipos is true), and internal conductors (when
 c        --- fstype is 3).
          if (dipos .or. fstype == 3) then
            do io=1,ndipool
-             call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),odiponn(io),
-     &                      odipooi(odipoii(io)),odipoio,cdipoid(iz,io))
+             call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),dipool(0),
+     &                      odiponn(io),odipooi(odipoii(io)),odipoio,
+     &                      cdipoid(iz,io),io)
 c            --- load lattice info into comoving 1d array
              cdipozs(iz,io) = dipozs(cdipoid(iz,io)) + offset
              cdipoze(iz,io) = dipoze(cdipoid(iz,io)) + offset
@@ -1372,8 +1375,9 @@ c        --- corrections (when quads is true) and the internal conductors (when
 c        --- fstype is either 2 or 3).
          if (quads .or. fstype == 2 .or. fstype == 3) then
            do io=1,nquadol
-             call getelemid(zz,offset,nquad,quadzs(0),quadze(0),oquadnn(io),
-     &                      oquadoi(oquadii(io)),oquadio(0),cquadid(iz,io))
+             call getelemid(zz,offset,nquad,quadzs(0),quadze(0),quadol(0),
+     &                      oquadnn(io),oquadoi(oquadii(io)),oquadio(0),
+     &                      cquadid(iz,io),io)
              id = cquadid(iz,io)
 c            --- load lattice info into comoving 1d array
              cquadzs(iz,io) = quadzs(id) + offset
@@ -1420,8 +1424,9 @@ c        --- The csext arrays calculated here are needed for residence
 c        --- corrections (when sexts is true).
          if (sexts) then
            do io=1,nsextol
-             call getelemid(zz,offset,nsext,sextzs(0),sextze(0),osextnn(io),
-     &                      osextoi(osextii(io)),osextio(0),csextid(iz,io))
+             call getelemid(zz,offset,nsext,sextzs(0),sextze(0),sextol(0),
+     &                      osextnn(io),osextoi(osextii(io)),osextio(0),
+     &                      csextid(iz,io),io)
 c            --- load lattice info into comoving 1d array
              csextzs(iz,io) = sextzs(csextid(iz,io)) + offset
              csextze(iz,io) = sextze(csextid(iz,io)) + offset
@@ -1436,8 +1441,9 @@ c            --- load lattice info into comoving 1d array
 c        --- find index of nearest hard-edge multipole element
          if (heles) then
            do io=1,nheleol
-             call getelemid(zz,offset,nhele,helezs(0),heleze(0),ohelenn(io),
-     &                      oheleoi(oheleii(io)),oheleio(0),cheleid(iz,io))
+             call getelemid(zz,offset,nhele,helezs(0),heleze(0),heleol(0),
+     &                      ohelenn(io),oheleoi(oheleii(io)),oheleio(0),
+     &                      cheleid(iz,io),io)
 c            --- load lattice info into comoving 1d array
              chelezs(iz,io) = helezs(cheleid(iz,io)) + offset
              cheleze(iz,io) = heleze(cheleid(iz,io)) + offset
@@ -1450,8 +1456,9 @@ c            --- load lattice info into comoving 1d array
 c        --- find index of nearest acceleration element
          if (accls) then
            do io=1,nacclol
-             call getelemid(zz,offset,naccl,acclzs(0),acclze(0),oacclnn(io),
-     &                      oaccloi(oacclii(io)),oacclio(0),cacclid(iz,io))
+             call getelemid(zz,offset,naccl,acclzs(0),acclze(0),acclol(0),
+     &                      oacclnn(io),oaccloi(oacclii(io)),oacclio(0),
+     &                      cacclid(iz,io),io)
              id = cacclid(iz,io)
              if (acclze(id) + offset > acclzstt) then
                cacclzs(iz,io) = acclzs(id) + offset
@@ -1484,8 +1491,9 @@ c        --- The cemlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          if (emlts) then
            do io=1,nemltol
-             call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),oemltnn(io),
-     &                      oemltoi(oemltii(io)),oemltio(0),cemltid(iz,io))
+             call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),emltol(0),
+     &                      oemltnn(io),oemltoi(oemltii(io)),oemltio(0),
+     &                      cemltid(iz,io),io)
 c            --- load lattice info into comoving 1d array
              id = cemltid(iz,io)
              cemltzs(iz,io) = emltzs(id) + offset
@@ -1525,8 +1533,9 @@ c        --- The cmmlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          if (mmlts) then
            do io=1,nmmltol
-             call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),ommltnn(io),
-     &                      ommltoi(ommltii(io)),ommltio(0),cmmltid(iz,io))
+             call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),mmltol(0),
+     &                      ommltnn(io),ommltoi(ommltii(io)),ommltio(0),
+     &                      cmmltid(iz,io),io)
 c            --- load lattice info into comoving 1d array
              id = cmmltid(iz,io)
              cmmltzs(iz,io) = mmltzs(id) + offset
@@ -1566,8 +1575,9 @@ c        --- The cbgrdid array calculated here is needed for the magnetic
 c        --- elements described by B field data on a 3-D grid.
          if (bgrds) then
            do io=1,nbgrdol
-             call getelemid(zz,offset,nbgrd,bgrdzs(0),bgrdze(0),obgrdnn(io),
-     &                      obgrdoi(obgrdii(io)),obgrdio(0),cbgrdid(iz,io))
+             call getelemid(zz,offset,nbgrd,bgrdzs(0),bgrdze(0),bgrdol(0),
+     &                      obgrdnn(io),obgrdoi(obgrdii(io)),obgrdio(0),
+     &                      cbgrdid(iz,io),io)
 c            --- load lattice info into comoving 1d array
              cbgrdzs(iz,io) = bgrdzs(cbgrdid(iz,io)) + offset
              cbgrdze(iz,io) = bgrdze(cbgrdid(iz,io)) + offset
@@ -1584,8 +1594,9 @@ c        --- The cpgrdid array calculated here is needed for the electrostatic
 c        --- elements described by potential data on a 3-D grid.
          if (pgrds) then
            do io=1,npgrdol
-             call getelemid(zz,offset,npgrd,pgrdzs(0),pgrdze(0),opgrdnn(io),
-     &                      opgrdoi(opgrdii(io)),opgrdio(0),cpgrdid(iz,io))
+             call getelemid(zz,offset,npgrd,pgrdzs(0),pgrdze(0),pgrdol(0),
+     &                      opgrdnn(io),opgrdoi(opgrdii(io)),opgrdio(0),
+     &                      cpgrdid(iz,io),io)
 c            --- load lattice info into comoving 1d array
              cpgrdzs(iz,io) = pgrdzs(cpgrdid(iz,io)) + offset
              cpgrdze(iz,io) = pgrdze(cpgrdid(iz,io)) + offset
@@ -1625,11 +1636,11 @@ c     --- are in a bend.  There is probably a better way of doing this.
       return
       end
 c=============================================================================
-      subroutine getelemid(z,offset,nelem,elemzs,elemze,
-     &                     oelemnn,oelemoi,oelemio,id)
+      subroutine getelemid(z,offset,nelem,elemzs,elemze,elemol,
+     &                     oelemnn,oelemoi,oelemio,id,io)
       use Lattice
-      integer(ISZ):: nelem,oelemnn,id
-      real(kind=8):: z,offset,elemzs(0:nelem),elemze(0:nelem)
+      integer(ISZ):: nelem,oelemnn,id,io
+      real(kind=8):: z,offset,elemzs(0:nelem),elemze(0:nelem),elemol(0:nelem)
       integer(ISZ):: oelemoi(oelemnn),oelemio(0:nelem)
 
 c Given information about the starts and stops of lattice elements, this
@@ -1672,6 +1683,9 @@ c --- Check if there is only one element. If so, return id is that element.
         id = oelemoi(1)
         return
       endif
+
+c --- Make sure id actually refers to an element of the overlap level.
+      if (elemol(id) .ne. io) id = oelemoi(1)
 
 c --- Check if z is somehow greater than the current element (id) location.
 c --- If so, reset it to 0 and start from the beginning. This happens if
@@ -1722,18 +1736,18 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),odiponn(io),
-     &                 odipooi(odipoii(io)),odipoio(0),id)
+        call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),dipool(0),
+     &                 odiponn(io),odipooi(odipoii(io)),odipoio(0),id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),odiponn(1),
-     &                 odipooi(odipoii(1)),odipoio(0),id)
+        call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),dipool(0),
+     &                 odiponn(1),odipooi(odipoii(1)),odipoio(0),id,1)
 c       --- Loop over rest of overlap levels looking for a dipo with lower
 c       --- z start.
         id_temp = id
         do ii=2,ndipool
-          call getelemid(zz,offset_temp,ndipo,dipozs(0),dipoze(0),odiponn(ii),
-     &                   odipooi(odipoii(ii)),odipoio(0),id_temp)
+          call getelemid(zz,offset_temp,ndipo,dipozs(0),dipoze(0),dipool(0),
+     &                   odiponn(ii),odipooi(odipoii(ii)),odipoio(0),id_temp,ii)
           if (dipozs(id_temp)+offset_temp < dipozs(id)+offset) then
             id = id_temp
             offset = offset_temp
@@ -1758,18 +1772,18 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,nquad,quadzs(0),quadze(0),oquadnn(io),
-     &                 oquadoi(oquadii(io)),oquadio(0),id)
+        call getelemid(zz,offset,nquad,quadzs(0),quadze(0),quadol(0),
+     &                 oquadnn(io),oquadoi(oquadii(io)),oquadio(0),id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,nquad,quadzs(0),quadze(0),oquadnn(1),
-     &                 oquadoi(oquadii(1)),oquadio(0),id)
+        call getelemid(zz,offset,nquad,quadzs(0),quadze(0),quadol(0),
+     &                 oquadnn(1),oquadoi(oquadii(1)),oquadio(0),id,1)
 c       --- Loop over rest of overlap levels looking for a quad with lower
 c       --- z start.
         id_temp = id
         do ii=2,nquadol
-          call getelemid(zz,offset_temp,nquad,quadzs(0),quadze(0),oquadnn(ii),
-     &                   oquadoi(oquadii(ii)),oquadio(0),id_temp)
+          call getelemid(zz,offset_temp,nquad,quadzs(0),quadze(0),quadol(0),
+     &                   oquadnn(ii),oquadoi(oquadii(ii)),oquadio(0),id_temp,ii)
           if (quadzs(id_temp)+offset_temp < quadzs(id)+offset) then
             id = id_temp
             offset = offset_temp
@@ -1794,18 +1808,18 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,nhele,helezs(0),heleze(0),ohelenn(io),
-     &                 oheleoi(oheleii(io)),oheleio(0),id)
+        call getelemid(zz,offset,nhele,helezs(0),heleze(0),heleol(0),
+     &                 ohelenn(io),oheleoi(oheleii(io)),oheleio(0),id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,nhele,helezs(0),heleze(0),ohelenn(1),
-     &                 oheleoi(oheleii(1)),oheleio(0),id)
+        call getelemid(zz,offset,nhele,helezs(0),heleze(0),heleol(0),
+     &                 ohelenn(1),oheleoi(oheleii(1)),oheleio(0),id,1)
 c       --- Loop over rest of overlap levels looking for a hele with lower
 c       --- z start.
         id_temp = id
         do ii=2,nheleol
-          call getelemid(zz,offset_temp,nhele,helezs(0),heleze(0),ohelenn(ii),
-     &                   oheleoi(oheleii(ii)),oheleio(0),id_temp)
+          call getelemid(zz,offset_temp,nhele,helezs(0),heleze(0),heleol(0),
+     &                   ohelenn(ii),oheleoi(oheleii(ii)),oheleio(0),id_temp,ii)
           if (helezs(id_temp)+offset_temp < helezs(id)+offset) then
             id = id_temp
             offset = offset_temp
@@ -1830,18 +1844,18 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),oemltnn(io),
-     &                 oemltoi(oemltii(io)),oemltio(0),id)
+        call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),emltol(0),
+     &                 oemltnn(io),oemltoi(oemltii(io)),oemltio(0),id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),oemltnn(1),
-     &                 oemltoi(oemltii(1)),oemltio(0),id)
+        call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),emltol(0),
+     &                 oemltnn(1),oemltoi(oemltii(1)),oemltio(0),id,1)
 c       --- Loop over rest of overlap levels looking for a emlt with lower
 c       --- z start.
         id_temp = id
         do ii=2,nemltol
-          call getelemid(zz,offset_temp,nemlt,emltzs(0),emltze(0),oemltnn(ii),
-     &                   oemltoi(oemltii(ii)),oemltio(0),id_temp)
+          call getelemid(zz,offset_temp,nemlt,emltzs(0),emltze(0),emltol(0),
+     &                   oemltnn(ii),oemltoi(oemltii(ii)),oemltio(0),id_temp,ii)
           if (emltzs(id_temp)+offset_temp < emltzs(id)+offset) then
             id = id_temp
             offset = offset_temp
@@ -1866,18 +1880,18 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),ommltnn(io),
-     &                 ommltoi(ommltii(io)),ommltio(0),id)
+        call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),mmltol(0),
+     &                 ommltnn(io),ommltoi(ommltii(io)),ommltio(0),id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),ommltnn(1),
-     &                 ommltoi(ommltii(1)),ommltio(0),id)
+        call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),mmltol(0),
+     &                 ommltnn(1),ommltoi(ommltii(1)),ommltio(0),id,1)
 c       --- Loop over rest of overlap levels looking for a mmlt with lower
 c       --- z start.
         id_temp = id
         do ii=2,nmmltol
-          call getelemid(zz,offset_temp,nmmlt,mmltzs(0),mmltze(0),ommltnn(ii),
-     &                   ommltoi(ommltii(ii)),ommltio(0),id_temp)
+          call getelemid(zz,offset_temp,nmmlt,mmltzs(0),mmltze(0),mmltol(0),
+     &                   ommltnn(ii),ommltoi(ommltii(ii)),ommltio(0),id_temp,ii)
           if (mmltzs(id_temp)+offset_temp < mmltzs(id)+offset) then
             id = id_temp
             offset = offset_temp
@@ -1902,18 +1916,18 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,naccl,acclzs(0),acclze(0),oacclnn(io),
-     &                 oaccloi(oacclii(io)),oacclio(0),id)
+        call getelemid(zz,offset,naccl,acclzs(0),acclze(0),acclol(0),
+     &                 oacclnn(io),oaccloi(oacclii(io)),oacclio(0),id,io)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,naccl,acclzs(0),acclze(0),oacclnn(1),
-     &                 oaccloi(oacclii(1)),oacclio(0),id)
+        call getelemid(zz,offset,naccl,acclzs(0),acclze(0),acclol(0),
+     &                 oacclnn(1),oaccloi(oacclii(1)),oacclio(0),id,1)
 c       --- Loop over rest of overlap levels looking for a accl with lower
 c       --- z start.
         id_temp = id
         do ii=2,nacclol
-          call getelemid(zz,offset_temp,naccl,acclzs(0),acclze(0),oacclnn(ii),
-     &                   oaccloi(oacclii(ii)),oacclio(0),id_temp)
+          call getelemid(zz,offset_temp,naccl,acclzs(0),acclze(0),acclol(0),
+     &                   oacclnn(ii),oaccloi(oacclii(ii)),oacclio(0),id_temp,ii)
           if (acclzs(id_temp)+offset_temp < acclzs(id)+offset) then
             id = id_temp
             offset = offset_temp
@@ -3844,8 +3858,8 @@ c by the calling routine.
 c         --- index of accl element in center of beam frame
 c         --- The id is saved in order to minize the time searching for the
 c         --- next accl element from call to call.
-          call getelemid(zbeam,offset,naccl,acclzs,acclze,oacclnn(io),
-     &                   oaccloi(oacclii(io)),oacclio,aid(io))
+          call getelemid(zbeam,offset,naccl,acclzs,acclze,acclol(0),
+     &                   oacclnn(io),oaccloi(oacclii(io)),oacclio,aid(io),io)
           id = aid(io)
 
 c         --- Check if this gap should accelerate the beam frame.
