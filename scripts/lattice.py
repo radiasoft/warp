@@ -36,7 +36,7 @@ from warp import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.21 2003/08/05 17:03:38 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.22 2003/08/18 17:41:58 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -91,6 +91,7 @@ elements.
     for e in self.elemslist: e.derivedquantities()
   def expand(self,lredo=0):
     if self.elemslist and not lredo: return self.elemslist
+    self.elemslist = []
     for e in self.elems:
       self.elemslist.append(e.expand())
     # --- Unravel any imbedded lists.
