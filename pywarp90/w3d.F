@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.165 $, $Date: 2004/09/03 18:13:47 $
+c@(#) File W3D.F, version $Revision: 3.166 $, $Date: 2004/09/03 21:54:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2704,32 +2704,32 @@ c      --- Energy conserving
              v0 = 1. - v1
              w0 = 1. - w1
 
-             ex(ip)=tdxi*(-v0*w0*phi1d(noff( 8)+ind0)
-     &                    +v0*w0*phi1d(noff( 9)+ind0)
-     &                    -v1*w0*phi1d(noff(12)+ind0)
-     &                    +v1*w0*phi1d(noff(13)+ind0)
-     &                    -v0*w1*phi1d(noff(20)+ind0)
-     &                    +v0*w1*phi1d(noff(21)+ind0)
-     &                    -v1*w1*phi1d(noff(24)+ind0)
-     &                    +v1*w1*phi1d(noff(25)+ind0))
+             ex(ip)=dxi*(+v0*w0*phi1d(noff( 8)+ind0)
+     &                   -v0*w0*phi1d(noff( 9)+ind0)
+     &                   +v1*w0*phi1d(noff(12)+ind0)
+     &                   -v1*w0*phi1d(noff(13)+ind0)
+     &                   +v0*w1*phi1d(noff(20)+ind0)
+     &                   -v0*w1*phi1d(noff(21)+ind0)
+     &                   +v1*w1*phi1d(noff(24)+ind0)
+     &                   -v1*w1*phi1d(noff(25)+ind0))
 
-             ey(ip)=tdyi*(-u0*w0*phi1d(noff( 8)+ind0)
-     &                    -u1*w0*phi1d(noff( 9)+ind0)
-     &                    +u0*w0*phi1d(noff(12)+ind0)
-     &                    +u1*w0*phi1d(noff(13)+ind0)
-     &                    -u0*w1*phi1d(noff(20)+ind0)
-     &                    -u1*w1*phi1d(noff(21)+ind0)
-     &                    +u0*w1*phi1d(noff(24)+ind0)
-     &                    +u1*w1*phi1d(noff(25)+ind0))
+             ey(ip)=dyi*(+u0*w0*phi1d(noff( 8)+ind0)
+     &                   +u1*w0*phi1d(noff( 9)+ind0)
+     &                   -u0*w0*phi1d(noff(12)+ind0)
+     &                   -u1*w0*phi1d(noff(13)+ind0)
+     &                   +u0*w1*phi1d(noff(20)+ind0)
+     &                   +u1*w1*phi1d(noff(21)+ind0)
+     &                   -u0*w1*phi1d(noff(24)+ind0)
+     &                   -u1*w1*phi1d(noff(25)+ind0))
 
-             ez(ip)=tdzi*(-u0*v0*phi1d(noff( 8)+ind0)
-     &                    -u1*v0*phi1d(noff( 9)+ind0)
-     &                    -u0*v1*phi1d(noff(12)+ind0)
-     &                    -u1*v1*phi1d(noff(13)+ind0)
-     &                    +u0*v0*phi1d(noff(20)+ind0)
-     &                    +u1*v0*phi1d(noff(21)+ind0)
-     &                    +u0*v1*phi1d(noff(24)+ind0)
-     &                    +u1*v1*phi1d(noff(25)+ind0))
+             ez(ip)=dzi*(+u0*v0*phi1d(noff( 8)+ind0)
+     &                   +u1*v0*phi1d(noff( 9)+ind0)
+     &                   +u0*v1*phi1d(noff(12)+ind0)
+     &                   +u1*v1*phi1d(noff(13)+ind0)
+     &                   -u0*v0*phi1d(noff(20)+ind0)
+     &                   -u1*v0*phi1d(noff(21)+ind0)
+     &                   -u0*v1*phi1d(noff(24)+ind0)
+     &                   -u1*v1*phi1d(noff(25)+ind0))
 
           enddo
 
@@ -2758,37 +2758,37 @@ c         --- special loop symmetry is used
              w0 = 1. - w1
 
 c            --- Adjust sign of E field for appropriate quadrant.
-             xsign = tdxi
-             ysign = tdyi
-             if (xp(ip) < 0.) xsign = sx*tdxi
-             if (yp(ip) < 0.) ysign = sy*tdyi
+             xsign = dxi
+             ysign = dyi
+             if (xp(ip) < 0.) xsign = sx*dxi
+             if (yp(ip) < 0.) ysign = sy*dyi
 
-             ex(ip)=xsign*(-v0*w0*phi1d(noff( 8)+ind0)
-     &                     +v0*w0*phi1d(noff( 9)+ind0)
-     &                     -v1*w0*phi1d(noff(12)+ind0)
-     &                     +v1*w0*phi1d(noff(13)+ind0)
-     &                     -v0*w1*phi1d(noff(20)+ind0)
-     &                     +v0*w1*phi1d(noff(21)+ind0)
-     &                     -v1*w1*phi1d(noff(24)+ind0)
-     &                     +v1*w1*phi1d(noff(25)+ind0))
+             ex(ip)=xsign*(+v0*w0*phi1d(noff( 8)+ind0)
+     &                     -v0*w0*phi1d(noff( 9)+ind0)
+     &                     +v1*w0*phi1d(noff(12)+ind0)
+     &                     -v1*w0*phi1d(noff(13)+ind0)
+     &                     +v0*w1*phi1d(noff(20)+ind0)
+     &                     -v0*w1*phi1d(noff(21)+ind0)
+     &                     +v1*w1*phi1d(noff(24)+ind0)
+     &                     -v1*w1*phi1d(noff(25)+ind0))
 
-             ey(ip)=ysign*(-u0*w0*phi1d(noff( 8)+ind0)
-     &                     -u1*w0*phi1d(noff( 9)+ind0)
-     &                     +u0*w0*phi1d(noff(12)+ind0)
-     &                     +u1*w0*phi1d(noff(13)+ind0)
-     &                     -u0*w1*phi1d(noff(20)+ind0)
-     &                     -u1*w1*phi1d(noff(21)+ind0)
-     &                     +u0*w1*phi1d(noff(24)+ind0)
-     &                     +u1*w1*phi1d(noff(25)+ind0))
+             ey(ip)=ysign*(+u0*w0*phi1d(noff( 8)+ind0)
+     &                     +u1*w0*phi1d(noff( 9)+ind0)
+     &                     -u0*w0*phi1d(noff(12)+ind0)
+     &                     -u1*w0*phi1d(noff(13)+ind0)
+     &                     +u0*w1*phi1d(noff(20)+ind0)
+     &                     +u1*w1*phi1d(noff(21)+ind0)
+     &                     -u0*w1*phi1d(noff(24)+ind0)
+     &                     -u1*w1*phi1d(noff(25)+ind0))
 
-              ez(ip)=tdzi*(-u0*v0*phi1d(noff( 8)+ind0)
-     &                     -u1*v0*phi1d(noff( 9)+ind0)
-     &                     -u0*v1*phi1d(noff(12)+ind0)
-     &                     -u1*v1*phi1d(noff(13)+ind0)
-     &                     +u0*v0*phi1d(noff(20)+ind0)
-     &                     +u1*v0*phi1d(noff(21)+ind0)
-     &                     +u0*v1*phi1d(noff(24)+ind0)
-     &                     +u1*v1*phi1d(noff(25)+ind0))
+             ez(ip) = dzi*(+u0*v0*phi1d(noff( 8)+ind0)
+     &                     +u1*v0*phi1d(noff( 9)+ind0)
+     &                     +u0*v1*phi1d(noff(12)+ind0)
+     &                     +u1*v1*phi1d(noff(13)+ind0)
+     &                     -u0*v0*phi1d(noff(20)+ind0)
+     &                     -u1*v0*phi1d(noff(21)+ind0)
+     &                     -u0*v1*phi1d(noff(24)+ind0)
+     &                     -u1*v1*phi1d(noff(25)+ind0))
 
           enddo
 
