@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.137 $, $Date: 2005/02/15 01:23:54 $
+#@(#) File TOP.V, version $Revision: 3.138 $, $Date: 2005/02/16 00:14:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.137 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.138 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -204,6 +204,7 @@ nmerr     integer /1000/      # No. of magnetic mult elements for which error
                               # data is stored
 nbgrd     integer /NELEMENT/  # No. of elements with B field on a 3-D grid
 npgrd     integer /NELEMENT/  # No. of elements with potential on a 3-D grid
+nbsqgrad  integer /NELEMENT/  # No. of elements with grad B^2 field on a 3-D grid
 drftzs(0:ndrft)   _real [m]   # Z's of drift starts
 drftze(0:ndrft)   _real [m]   # Z's of drift ends
 drftap(0:ndrft)   _real [m]   # Aperture in drifts
@@ -439,6 +440,28 @@ pgrdpw(0:npgrd)   _real [m]   # End plate width of electrostatic quadrupole
 pgrdpa(0:npgrd)   _real [m]   # End plate aperture of electrostatic quadrupole
 pgrdol(0:npgrd)   _integer    # Overlap level of the element (autoset).
                               # Set to -1 to ignore overlaps.
+bsqgradzs(0:nbsqgrad)   _real [m]   # Z starts of 3-D grid of grad B^2 field data (BSQGRADdata)
+bsqgradze(0:nbsqgrad)   _real [m]   # Z ends of 3-D grid of grad B^2 field data (BSQGRADdata)
+bsqgradxs(0:nbsqgrad)   _real [m]   # X starts of 3-D grid of grad B^2 field data (BSQGRADdata)
+bsqgradys(0:nbsqgrad)   _real [m]   # Y starts of 3-D grid of grad B^2 field data (BSQGRADdata)
+bsqgradap(0:nbsqgrad)   _real [m]   # Aperture in bsqgrad elements
+bsqgradax(0:nbsqgrad)   _real [m]   # Aperture in bsqgrad elements in x
+bsqgraday(0:nbsqgrad)   _real [m]   # Aperture in bsqgrad elements in y
+bsqgradox(0:nbsqgrad)   _real [m]   # Offset in x of bsqgrad elements
+bsqgradoy(0:nbsqgrad)   _real [m]   # Offset in y of bsqgrad elements
+bsqgradph(0:nbsqgrad)   _real [rad] # Phase angle of bsqgrad elements 
+bsqgradsp(0:nbsqgrad)   _real [1]   # Sine   of bsqgradph (auto-set) 
+bsqgradcp(0:nbsqgrad)   _real [1]   # Cosine of bsqgradph (auto-set) 
+bsqgradid(0:nbsqgrad)   _integer    # Index of to 3-D grad B^2 field data sets (BSQGRADdata)
+bsqgradsf(0:nbsqgrad) _real [1] /0./ # Scale factor to multiply 3-D grad B^2 field data set
+                               # BSQGRADdata. Field is scaled by (bsqgradsc+bsqgradsf)
+bsqgradsc(0:nbsqgrad) _real [1] /1./ # Scale factor to multiply 3-D grad B^2 field data set
+                               # BSQGRADdata. Field is scaled by (bsqgradsc+bsqgradsf)
+bsqgradsy(0:nbsqgrad) _integer /0/   # Level of symmetry in the bsqgrad data.
+                               # (0, no symmetry; 2, quadrupole)
+                               # Defaul is no symmetry.
+bsqgradol(0:nbsqgrad)   _integer    # Overlap level of the element (autoset).
+                              # Set to -1 to ignore overlaps.
 drfts     logical             # Flag for existence of drfts (auto set)
 bends     logical             # Flag for existence of bends (auto set)
 dipos     logical             # Flag for existence of dipos (auto set)
@@ -450,6 +473,7 @@ emlts     logical             # Flag for existence of emlts (auto set)
 mmlts     logical             # Flag for existence of mmlts (auto set)
 bgrds     logical             # Flag for existence of bgrds (auto set)
 pgrds     logical             # Flag for existence of pgrds (auto set)
+bsqgrads  logical             # Flag for existence of bsqgrads (auto set)
 diposet   logical  /.true./   # Auto-set dipoles from bend locations and radii 
 
 applyuniformfields(np:integer,ez:real,bz:real) subroutine
@@ -481,9 +505,9 @@ applymmlt(np:integer,xp:real,yp:real,npz:integer,zp:real,dtl:real,dtr:real,
 applybgrd(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
           bx:real,by:real,bz:real) subroutine
   # Applies the bgrd element at the locations passed in.
-applybgrd2(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
+applybsqgrad(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
            b:real) subroutine
-  # Applies the bgrd element at the locations passed in using the alternate
+  # Applies the bsqgrad element at the locations passed in using the alternate
   # form of the gridded data (top.bgrd array). The returned array b must be
   # shaped (bgrdnc,np).
 applypgrd(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,ex:real,
@@ -554,7 +578,21 @@ bgrddzi(bgrdns)                     _real [1/m] # 1 over Z cell size (autoset)
 bgrdbx(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # Bx
 bgrdby(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # By
 bgrdbz(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # Bz
-bgrd(bgrdnc,0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real
+
+******** BSQGRADdata dump:
+# Data for the 3-D grad B^2 field 'lattice element'
+bsqgradnx integer /0/ # Number of X cells
+bsqgradny integer /0/ # Number of Y cells
+bsqgradnz integer /0/ # Number of Z cells
+bsqgradns integer /0/ # Number of data sets
+bsqgradnc integer /0/ # Number of components stored in bsqgrad
+bsqgraddx(bsqgradns)                      _real [m]   # X cell size
+bsqgraddy(bsqgradns)                      _real [m]   # Y cell size
+bsqgraddz(bsqgradns)                      _real [m]   # Z cell size
+bsqgraddxi(bsqgradns)                     _real [1/m] # 1 over X cell size (autoset)
+bsqgraddyi(bsqgradns)                     _real [1/m] # 1 over Y cell size (autoset)
+bsqgraddzi(bsqgradns)                     _real [1/m] # 1 over Z cell size (autoset)
+bsqgrad(bsqgradnc,0:bsqgradnx,0:bsqgradny,0:bsqgradnz,bsqgradns) _real
   # B field stored in interleaved array. First dimension is changable,
   # allowing option of storing additional data.
 
@@ -639,6 +677,11 @@ opgrdoi(0:npgrd)   _integer     # Overlap indices for pgrd elements
 opgrdio(0:npgrd)   _integer     # Overlap indices for pgrd elements
 opgrdii(npgrdol)   _integer     # Overlap indices for pgrd elements
 opgrdnn(npgrdol)   _integer     # Number of pgrd elements in overlap levels
+nbsqgradol            integer /0/ # Maximum level of overlapping bsqgrad elements
+obsqgradoi(0:nbsqgrad)   _integer     # Overlap indices for bsqgrad elements
+obsqgradio(0:nbsqgrad)   _integer     # Overlap indices for bsqgrad elements
+obsqgradii(nbsqgradol)   _integer     # Overlap indices for bsqgrad elements
+obsqgradnn(nbsqgradol)   _integer     # Number of bsqgrad elements in overlap levels
 cdrftzs(0:nzlmax,ndrftol)    _real [m]     # by z, Z's of drft starts
 cdrftze(0:nzlmax,ndrftol)    _real [m]     # by z, Z's of drft ends
 cdrftid(0:nzlmax,ndrftol) _integer         # by z, Index to drft arrays
@@ -702,6 +745,9 @@ cbgrdid(0:nzlmax,nbgrdol) _integer [1]     # by z, Index of bgrd arrays
 cpgrdzs(0:nzlmax,npgrdol)    _real [m]     # by z, Z's of 3-D potential start
 cpgrdze(0:nzlmax,npgrdol)    _real [m]     # by z, Z's of 3-D potential end
 cpgrdid(0:nzlmax,npgrdol) _integer [1]     # by z, Index of pgrd arrays
+cbsqgradzs(0:nzlmax,nbsqgradol)    _real [m]     # by z, Z's of 3-D B field start
+cbsqgradze(0:nzlmax,nbsqgradol)    _real [m]     # by z, Z's of 3-D B field end
+cbsqgradid(0:nzlmax,nbsqgradol) _integer [1]     # by z, Index of bsqgrad arrays
 lindrft(0:ndrftol)        _logical         # Flag for when drft element in mesh
 linbend                    logical         # Flag for when bend element in mesh
 lindipo(0:ndipool)        _logical         # Flag for when dipo element in mesh
@@ -713,6 +759,7 @@ linmmlt(0:nmmltol)        _logical         # Flag for when mmlt element in mesh
 linaccl(0:nacclol)        _logical         # Flag for when accl element in mesh
 linbgrd(0:nbgrdol)        _logical         # Flag for when bgrd element in mesh
 linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
+linbsqgrad(0:nbsqgradol)        _logical         # Flag for when bsqgrad element in mesh
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -1878,6 +1925,8 @@ sw(ns) _real [1]  /0./ -parallel # Species weight
                        # (real particles per simulation particles)
 ins(ns)  _integer /1/  # Index of first particle in species
 nps(ns)  _integer /0/  # Number of particles in species
+ndts(ns) _integer /1/  # Stride for time step advance for each species
+ldts(ns) _logical  
 gaminv(npmax)  _real  [1]   /1./ # inverse relativistic gamma factor
 xp(npmaxb)     _real  [m]        # X-positions of particles
 yp(npmaxb)     _real  [m]        # Y-positions of particles
