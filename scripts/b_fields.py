@@ -21,7 +21,7 @@
 #
 # ==================
 """
-b_fields_version = "$Id: b_fields.py,v 1.1 2001/12/03 17:48:03 ramiak Exp $"
+b_fields_version = "$Id: b_fields.py,v 1.2 2002/08/14 21:01:27 ramiak Exp $"
 from warp import *
 from rami_scripts import *
 

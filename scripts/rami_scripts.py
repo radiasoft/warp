@@ -2,7 +2,7 @@
 # by: Rami A. Kishek    (some functions based on Grote's scripts)
 # created: Aug. 30, 2000
 #
-#	Last Modified: Nov. 15, 2001
+#	Last Modified: 7/31/2002
 #
 # Contains many convenience functions used in Rami's Python Input decks
 # and other modules:
@@ -34,7 +34,12 @@
 #   plot_emit	... Plot 4*rms beam Emittance
 #   plot_cent	... Plot beam centroid in x,y
 #   plot_vz 	... Plot vz,thermal
+#   plot_de     ... Plot ENERGY Spread
+#   plot_vzbar  ... Plot ave vz
+#   plot_ekin   ... Plot ave ENERGY
 #   plot_np		... Plot np as function of t
+#   plot_curr	... Plot beam current as function of t
+#   plot_linechg	... Plot Line Charge as function of t
 #   plot_rot	... Plot beam rotation angle
 #   plot_remit  ... Plot generalized Emittances with rotations, Eg, Eh
 #   plot_disp	... Plot dispersion function < x * (uzp-vz)/vz >
@@ -62,13 +67,13 @@ import sys, __main__
 from warp import *
 from histplots import *
 
-rami_scripts_version = "$Id: rami_scripts.py,v 1.1 2001/12/03 17:48:03 ramiak Exp $"
+rami_scripts_version = "$Id: rami_scripts.py,v 1.2 2002/08/14 21:04:00 ramiak Exp $"
 def rami_scriptsdoc():
   import rami_scripts
   print rami_scripts.__doc__
 
 # -- Default Variables to be saved
-def_vars1 = ["hvzbar", "hpnum", "hvzrms",
+def_vars1 = ["hpnum", "hvzbar", "hvzrms",
              "hxrms", "hyrms", "hepsx", "hepsy", "hxbar", "hybar"]
 def_vars2 = ["zscale", "nx", "ny", "xmmax", "ymmax"]
 def_vars =  def_vars1 + def_vars2
@@ -188,18 +193,21 @@ def rmarray(x):
 
 #===========
 
-def init_cmom(l3d=yes, lhist=yes):
-    """ init_cmom(l3d=yes, lhist=yes)
+def init_cmom(l3d=yes, lhist=yes, lcalc_mom=yes):
+    """ init_cmom(l3d=yes, lhist=yes, lcalc_mom=yes)
     Invoke at beginning of run if 3d lab frame and want z-moment history.
     Saves histories of proper moments needed for additional moment calculation
     using calc_mom().
     """
     if l3d and lhist:
-        for mom in req_mom[1:]:
-            exec "top.lh"+mom+"z = true"
-        for mom in def_vars1[2:]+add_vars:
-            exec "top.l"+mom+"z = true"
         top.lhvzofz = true
+        for mom in def_vars1[1:]:
+            exec "top.l"+mom+"z = true"
+        if lcalc_mom:
+          for mom in req_mom[0:]:
+            exec "top.lh"+mom+"z = true"
+          for mom in add_vars:
+            exec "top.l"+mom+"z = true"
 
 #===========
 
@@ -251,8 +259,12 @@ def seek_name(var, l3d=no, lhist=no):
         if lhist:   pre = 'transpose(top.h'; suf = 'z)'
         else:       pre = 'top.'
     if (lhist and l3d):
-        if var == "hvzbar": return "transpose(top.hvzofz)"
-        if var == "hpnum":  return "top.pnumz"
+        if var == "hvzbar":
+            try:                return "transpose(top.hvzbarz)"
+            except NameError:   return "transpose(top.hvzofz)"
+        if var == "hpnum":      return "top.pnumz"
+        if var == "hlinechg":   return "transpose(top.hlinechg)"
+        if var == "hcurr":      return "transpose(top.hcurrz)"
     if var in top.varlist("dump"):  return pre+var[1:]+suf
     if var in w3d.varlist("dump"):  return "w3d."+var
     if var in globals().keys():     return var
@@ -310,7 +322,7 @@ def gen_plot(vars=(), xaxis="", runid=None, kwdict={},  **kw):
     """ gen_plot(vars=(), xaxis="", runid=None,  kwdict={}, **kw)
 	    Generic plotter of any number of identical variables, with strobing
 	    Understands any of Grote's arguments [hpdoc() for help] +  the following:
-	
+
 	    vars = tuple of names of variables plotted (defaults to "vzbar")
 	    xaxis = name of x-axis variable (defaults to "zscale")
 	    runid = runid of run to be plotted.  (None defaults to current run)
@@ -419,6 +431,70 @@ def plot_vz(runid=None,  kwdict={}, **kw):
 
 #===========
 
+def plot_curr(runid=None,  kwdict={}, **kw):
+    """ plot_curr(runid=None, kwdict={}, **kw)
+        Plots Beam Current, using gen_plot
+    """
+    pldef = {'nwin': 0, 'yscale': 1.e3,
+             'titlel': "I (mA)", 'titlet': "Beam Current from"}
+    pldef.update(kwdict); pldef.update(kw)    # Override defaults & import new params
+    gen_plot(("hcurr", ), "zscale", runid, pldef)
+
+#===========
+
+def plot_linechg(runid=None,  kwdict={}, **kw):
+    """ plot_linechg(runid=None, kwdict={}, **kw)
+        Plots Line Charge, using gen_plot
+    """
+    pldef = {'nwin': 0, 'titlel': "lambda (C/m)", 'titlet': "Line charge from"}
+    pldef.update(kwdict); pldef.update(kw)    # Override defaults & import new params
+    gen_plot(("hlinechg", ), "zscale", runid, pldef)
+
+#===========
+
+def plot_vzbar(runid=None,  kwdict={}, **kw):
+    """ plot_vzbar(runid=None, kwdict={}, **kw)
+        Plots ave VZ, using gen_plot
+    """
+    pldef = {'nwin': 0, 'titlel': "Vz-BAR (m/s)", 'titlet': "Vz-BAR from"}
+    pldef.update(kwdict); pldef.update(kw)    # Override defaults & import new params
+    try:                gen_plot(("hvzbar", ), "zscale", runid, pldef)
+    except NameError:   gen_plot(("vzbar", ), "zscale", runid, pldef)
+
+#===========
+
+def plot_de(runid=None,  kwdict={}, **kw):
+    """ plot_de(runid=None, kwdict={}, **kw)
+        Plots Energy Spread Delta-E, using gen_plot
+    """
+    if runid is None:   runid = arraytostr(top.runid)
+    try:
+        vzb = eval("hvzbar"+runid, __main__.__dict__)
+        vzth = eval("hvzrms"+runid, __main__.__dict__)
+    except NameError:
+        vzb = eval("vzbar"+runid, __main__.__dict__)
+        vzth = eval("vzrms"+runid, __main__.__dict__)
+    __main__.__dict__["ESPREAD"+runid] = (emass/echarge)*(vzb*vzth)
+    pldef = {'nwin': 0, 'titlel': "Delta-E (eV)", 'titlet': "Delta-E from"}
+    pldef.update(kwdict); pldef.update(kw)    # Override defaults & import new params
+    gen_plot(("ESPREAD", ), "zscale", runid, pldef)
+
+#===========
+
+def plot_ekin(runid=None,  kwdict={}, **kw):
+    """ plot_ekin(runid=None, kwdict={}, **kw)
+        Plots Beam Kinetic Energy using gen_plot
+    """
+    if runid is None:   runid = arraytostr(top.runid)
+    try:                vzb = eval("hvzbar"+runid, __main__.__dict__)
+    except NameError:   vzb = eval("vzbar"+runid, __main__.__dict__)
+    __main__.__dict__["ekin"+runid] = 0.5*(emass/echarge)*(vzb**2)
+    pldef = {'nwin': 0, 'titlel': "Ekin (eV)", 'titlet': "Ekin from"}
+    pldef.update(kwdict); pldef.update(kw)    # Override defaults & import new params
+    gen_plot(("ekin", ), "zscale", runid, pldef)
+
+#===========
+
 def plot_np(runid=None,  kwdict={}, **kw):
     """ plot_np(runid=None, kwdict={}, **kw)
         Plots NUM Particles, using gen_plot
@@ -478,7 +554,7 @@ def plot_demit(runid=None, kwdict={}, **kw):
 
 def plot_comp(runs={}, plots=("env", "emit", "cent"), kwdict={}, **kw):
     """ plot_comp(runs={}, plots=("env", "emit", "cent"), kwdict={}, **kw)
-	    Generates comparison plots between any number of simulations using gen_plot	
+	    Generates comparison plots between any number of simulations using gen_plot
             runs  = dictionary relating strings of runids+crun to dictionary of
                     properties
                     eg., {"abcd0": {'type': "solid", 'yscale': 2.0, ...}, ...}
