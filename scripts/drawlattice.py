@@ -2,7 +2,7 @@
 The function drawlattice which plots the lattice.
 """
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.2 2002/08/24 00:19:03 dave Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.3 2003/02/06 20:29:38 dave Exp $"
 
 #############################################################################
 def _getelem(ll,zs,ze,zlatmin,zlatmax):
@@ -55,6 +55,7 @@ Draws the lattice.  All lattice elements starting in the interval
  - zlatmin=0,zlatmax: lattice elements within the range are plotted.
                       zlatmax defaults to zlatperi, or max z of elements.
  - ilinflg=0: when true, bends are straightened out.
+ - ilabflg=1: when true, plots labels on each element
  - ratio=1.5: ratio of height to lenght of elements
  - narc=10: number of points in bend arcs
 For each element type are the following inputs:
@@ -419,6 +420,8 @@ type, and should draw any general lattice.
   # --- Plot the axis
   plg(xaxis,zaxis)
   # --- Plot the labels
-  for z,x,c in map(None,zl,xl,cl): plt(c,z,x,tosys=1,justify="CA")
+  if ilabflg:
+    for z,x,c in map(None,zl,xl,cl):
+      plt(c,z,x,tosys=1,justify="CA")
   ptitles(titleb="meters",titlel="meters")
 
