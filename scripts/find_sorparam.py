@@ -1,5 +1,5 @@
 from warp import *
-find_sorparam_version = "$Id: find_sorparam.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+find_sorparam_version = "$Id: find_sorparam.py,v 1.2 2004/01/24 01:26:07 dave Exp $"
 # FIND_SORPARAM
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
@@ -34,12 +34,12 @@ def field_solve():
   iymax = w3d.ny-1
   izmin = 1
   izmax = w3d.nz-1
-  if (f3d.boundxy > 0 or w3d.l2symtry or w3d.l4symtry): ixmin = 0
-  if (f3d.boundxy > 0): ixmax = w3d.nx
-  if (f3d.boundxy > 0 or w3d.l4symtry): iymin = 0
-  if (f3d.boundxy > 0): iymax = w3d.ny
-  if (f3d.bound0  > 0): izmin = 0
-  if (f3d.boundnz > 0): izmax = w3d.ny
+  if (w3d.boundxy > 0 or w3d.l2symtry or w3d.l4symtry): ixmin = 0
+  if (w3d.boundxy > 0): ixmax = w3d.nx
+  if (w3d.boundxy > 0 or w3d.l4symtry): iymin = 0
+  if (w3d.boundxy > 0): iymax = w3d.ny
+  if (w3d.bound0  > 0): izmin = 0
+  if (w3d.boundnz > 0): izmax = w3d.ny
   w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
   vp3d(-1)
 

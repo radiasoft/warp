@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.23 2003/12/16 01:20:29 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.24 2004/01/24 01:26:07 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -340,7 +340,7 @@ Performs steady-state iterations
        mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
     # --- Do field solve including newly accumulated charge density.
     # --- The call to perrho3d is primarily needed for the parallel version.
-    perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,f3d.bound0,f3d.boundxy)
+    perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,w3d.bound0,w3d.boundxy)
     top.fstype = _ofstype
     fieldsol(-1)
     top.fstype = -1

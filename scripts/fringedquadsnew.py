@@ -1,5 +1,5 @@
 from warp import *
-fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.7 2003/04/10 20:30:13 dave Exp $"
+fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.8 2004/01/24 01:26:07 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -314,6 +314,7 @@ not, then the derivatives will be done with a finite difference of fringe.
   if nmq >= 0: top.mmlts = true
 
   # --- Make sure internal lattice arrays set properly
+  resetlat()
   setlatt()
 
 def testfringedequads():

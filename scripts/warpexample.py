@@ -157,9 +157,9 @@ top.lhvzofz = false
 top.lhcurrz = true
 # --- set up psor
 top.fstype = 11
-f3d.bound0 = 1 #neumann boundary at iz=0
-f3d.boundnz = 0 #dirichlet boundary at iz=w3d.nz
-f3d.boundxy = 1 #neumann boundary
+w3d.bound0 = 1 #neumann boundary at iz=0
+w3d.boundnz = 0 #dirichlet boundary at iz=w3d.nz
+w3d.boundxy = 1 #neumann boundary
 f3d.sorparam =    1.957683
 f3d.mgparam = 1.63125
 f3d.downpasses = 4

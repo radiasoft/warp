@@ -4,7 +4,7 @@ Most important ones are the paralleldump and parallelrestore functions.
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.43 2003/10/30 01:14:17 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.44 2004/01/24 01:26:07 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -166,7 +166,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   npslost_p0[1:,1:] = npslost_p
 
   # --- Need boundnz from the right most processor.
-  boundnz_p = gatherarray(f3d.boundnz)
+  boundnz_p = gatherarray(w3d.boundnz)
 
   # --- Gather conductor information from all processors
   # --- Also setup temp arrays which have gaurd cells at the lower end.
