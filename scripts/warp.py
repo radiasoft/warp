@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.42 2002/10/26 00:09:27 jlvay Exp $"
+warp_version = "$Id: warp.py,v 1.43 2002/10/31 22:03:23 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -110,7 +110,9 @@ reflect   = top.reflect
 
 # --- Create python version of dvnz (divisor not zero)
 def dvnz(x):
-  return sign(abs(x)+top.smallpos,x)
+  if x == 0.: return top.smallpos
+  else:       return x
+  #return sign(abs(x)+top.smallpos,x)
 
 #=============================================================================
 # --- Setup and make initial printout of the versions of the packages.
