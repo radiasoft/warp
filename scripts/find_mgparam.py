@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.13 2003/04/11 19:02:13 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.14 2003/05/30 18:00:45 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -29,6 +29,9 @@ def find_mgparam(lsavephi=false):
   """
 Optimize both mgparam and up and down passes, minimizing the fieldsolve
 time.
+ - lsavephi=false: When true, the current data in phi is saved and used as the
+                   starting point for the field solver, rather than zeroing
+                   out phi.
   """
   if(w3d.solvergeom == w3d.XYZgeom and top.fstype != 7):
     print "The fstype must be set to 7"
