@@ -1,10 +1,11 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.20 $, $Date: 2003/06/20 00:16:04 $
+c W3DSLAVE.M, version $Revision: 1.21 $, $Date: 2004/11/12 17:57:29 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
       subroutine init_w3d_parallel
+      use Subtimers3d
       use Parallel
       use Databuffers
       use InGen
@@ -37,6 +38,8 @@ c This is the routine which divies up the work among the slaves.
       logical(ISZ):: initialized
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c This routine should only be called once.
       if (w3dinitialized) return
@@ -324,11 +327,16 @@ c     --- subtract one so there is some extra slop.
        endif
       endif
 
+!$OMP MASTER
+      if (lw3dtimesubs) timeinit_w3d_parallel = timeinit_w3d_parallel + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c===========================================================================
 c===========================================================================
       subroutine sw_globalsum(ns,sw)
+      use Subtimers3d
       integer(ISZ):: ns
       real(kind=8):: sw(ns)
 c As calculated in stptl3d, sw depends on 1 over the number of particles
@@ -339,6 +347,8 @@ c total number of particles.
       integer(ISZ):: is
       integer(ISZ):: mpierror
       include "mpif.h"
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       do is=1,ns
         if (sw(is) /= 0.) sw(is) = 1./sw(is)
       enddo
@@ -349,10 +359,15 @@ c total number of particles.
         if (sw(is) /= 0.) sw(is) = 1./sw(is)
       enddo
 
+!$OMP MASTER
+      if (lw3dtimesubs) timesw_globalsum = timesw_globalsum + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c===========================================================================
       subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp)
+      use Subtimers3d
       use GlobalVars
       use Parallel
       use Databuffers
@@ -384,6 +399,8 @@ c more robust to future changes.
       integer(ISZ):: ix,iy,iz
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Allocate some buffer space.
       if (b2d1 < nxp .or. b2d2 < nyp) then
@@ -454,10 +471,15 @@ c     --- Now, wait just to make sure that the send was recv'ed
         call MPI_WAIT(mpirequest,mpistatus,mpierror)
       endif
 
+!$OMP MASTER
+      if (lw3dtimesubs) timesumrhoondomainboundaries = timesumrhoondomainboundaries + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine perrho3d_slave(rho,nx,ny,nz)
+      use Subtimers3d
       use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
@@ -468,6 +490,8 @@ c  Only first and last processors do anything.
       real(kind=8):: rhotemp(0:nx,0:ny)
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
  
       if (my_index == nslaves-1) then
         call MPI_ISEND(rho(0,0,nz),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
@@ -486,10 +510,15 @@ c  Only first and last processors do anything.
         call MPI_WAIT(mpirequest,mpistatus,mpierror)
       endif
  
+!$OMP MASTER
+      if (lw3dtimesubs) timeperrho3d_slave = timeperrho3d_slave + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
+      use Subtimers3d
       use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
@@ -508,6 +537,8 @@ c only responsible for sending out the rho is owns.
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
       integer(ISZ):: mpirequest(nslaves)
       integer(ISZ):: w
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- First, calculate what data needs to be sent and received.
 c     --- Data to be sent
@@ -566,10 +597,15 @@ c     --- for optimization purposes.
       if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
 
+!$OMP MASTER
+      if (lw3dtimesubs) timegetrhoforfieldsolve3d = timegetrhoforfieldsolve3d + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine perphi3d_slave(phi,nx,ny,nz)
+      use Subtimers3d
       use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -579,6 +615,8 @@ c  sets slice at nz+1 equal to the slice at 1
 c  Only first and last processors do anything.
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
  
       if (my_index == 0) then
         call MPI_ISEND(phi(0,0,0),2*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
@@ -600,10 +638,15 @@ c  Only first and last processors do anything.
         call MPI_WAIT(mpirequest,mpistatus,mpierror)
       endif
  
+!$OMP MASTER
+      if (lw3dtimesubs) timeperphi3d_slave = timeperphi3d_slave + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine getphiforparticles3d(nx,ny,nz,phi,nxp,nyp,nzp,phip)
+      use Subtimers3d
       use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -621,6 +664,8 @@ c iz=-1 and +1.
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
       integer(ISZ):: mpierror,w
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- First, calculate what data needs to be sent and received.
 c     --- Data to be sent
@@ -674,6 +719,10 @@ c     --- This is needed since the sends are done without buffering.
 c     --- No problems have been seem without it, but this just for robustness.
       if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
 c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+
+!$OMP MASTER
+      if (lw3dtimesubs) timegetphiforparticles3d = timegetphiforparticles3d + wtime() - substarttime
+!$OMP END MASTER
 
       return
       end                                                                       
