@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.49 2001/08/14 18:31:54 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.50 2001/08/24 20:38:29 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -292,6 +292,8 @@ Simple interface to contour plotting, same arguments as plc
     yy = yy*ones(s[0],'d')[:,NewAxis]
   if not ireg:
     ireg = ones(s)
+  if type(contours) == ListType: contours = array(contours)
+  if type(contours) == TupleType: contours = array(contours)
   if filled:
     plfc(zz,xx,yy,ireg,contours=contours)
   else:
@@ -717,7 +719,7 @@ The product slope*vz gives the slope for x-vx.
         vz = top.vzbarz[iz]
       else:
         (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(mpi.bcast(array([slope,offset,vz]),pe))
+      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
     else:
       iiw = max(0,iw)
       pe = convertiwtope(iiw)
@@ -727,7 +729,7 @@ The product slope*vz gives the slope for x-vx.
         vz = top.vzbar[iiw]
       else:
         (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(mpi.bcast(array([slope,offset,vz]),pe))
+      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
   return (slope,offset,vz)
 #-------------------------------------------------------------------------
 def getyypslope(iw=0,iz=-1):
@@ -756,7 +758,7 @@ The product slope*vz gives the slope for y-vy.
         vz = top.vzbarz[iz]
       else:
         (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(mpi.bcast(array([slope,offset,vz]),pe))
+      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
     else:
       iiw = max(0,iw)
       pe = convertiwtope(iiw)
@@ -766,7 +768,7 @@ The product slope*vz gives the slope for y-vy.
         vz = top.vzbar[iiw]
       else:
         (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(mpi.bcast(array([slope,offset,vz]),pe))
+      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
   return (slope,offset,vz)
 #-------------------------------------------------------------------------
 def getvzrange():
@@ -885,6 +887,7 @@ def ppgeneric_doc(x,y):
   - contours=None: number of countours to plot
   - filled=0: when true, plot filled contours (assumes contours is set)
   - ccolor='fg': contour color (when not filled)
+  - ldensityscale=0: when true, scale the density by its max.
   - view=1: view window to use (experts only)
   - colbarunitless=0: when true, color-bar scale is unitless
   - surface=0: when true, a 3-d surface plot is made of the gridded data
@@ -907,8 +910,8 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'usepalette':1,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':1.,'hcolor':'fg','width':1.0,
-                'contours':None,'filled':0,'ccolor':'fg','view':1,
-                'colbarunitless':0,'surface':0,
+                'contours':None,'filled':0,'ccolor':'fg','ldensityscale':0,
+                'view':1,'colbarunitless':0,'surface':0,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -1041,6 +1044,10 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   elif (hash or contours or color=='density' or chopped or surface):
     densitygrid = 0
+ 
+  # --- Scale the grid by its maximum if requested.
+  if ldensityscale and grid is not None:
+    grid[:,:] = grid/maxnd(grid)
 
   # --- If using logarithmic number density levels, take the log of the grid
   # --- data. The original grid is left unchanged since that is still needed
@@ -1120,15 +1127,23 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Add colorbar if needed
   if (contours and filled==1) or (color == 'density' and len(x) > 0):
-    if (contours and filled==1): nc = contours + 1
-    else: nc = ncolor + 1
+    if (contours and filled==1):
+      try:
+        nc = len(contours) + 1
+        levs = contours
+      except TypeError:
+        nc = contours + 1
+        levs = None
+    else:
+      nc = ncolor + 1
+      levs = None
     if colbarunitless:
       dmax = 1.0
       dmin = 0.
     else:
       dmax = maxnd(grid1)
       dmin = minnd(grid1)
-    colorbar(dmin,dmax,uselog=uselog,ncolor=nc,view=view)
+    colorbar(dmin,dmax,uselog=uselog,ncolor=nc,view=view,levs=levs)
 
   # --- Make surface plot
   if surface and me == 0:
@@ -1179,7 +1194,7 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   return levs
 
 #-----------------------------------------------------------------------
-def colorbar(zmin,zmax,uselog=0,ncolor=100,view=1):
+def colorbar(zmin,zmax,uselog=0,ncolor=100,view=1,levs=None):
   """
 Plots a color bar to the right of the plot square labelled by the z
 values from zmin to zmax.
@@ -1187,6 +1202,7 @@ values from zmin to zmax.
   - uselog=0: when true, labels are printed in the form 10^x
   - ncolor=100: default number of colors to include
   - view=1: specifies the view that is associated with the color bar
+  - levs: an optional list of color levels
   """
   plsys(0)
   xmin = 0.66
@@ -1203,22 +1219,43 @@ values from zmin to zmax.
   pldj([xmin,xmin,xmin,xmax],[ymin,ymax,ymin,ymin],
        [xmax,xmax,xmin,xmax],[ymin,ymax,ymax,ymax])
   # --- Plot tick marks and labels
-  levs = nicelevels(array([zmin,zmax]))
-  llev = len(levs)
+  if levs is None:
+    nicelevs = nicelevels(array([zmin,zmax]))
+  else:
+    if len(levs) < 15:
+      nicelevs = levs
+    else:
+      nicelevs = take(levs,arange(0,len(levs),max(int(len(levs)/15),1)))
+    if zmin < levs[0]: nicelevs = array([zmin] + list(levs))
+    if zmax > levs[-1]: nicelevs = array(list(levs) + [zmax])
+  llev = len(nicelevs)
   scales = []
   if uselog:
     ss = " 10^%.5g"
   else:
     ss = " %.5g"
   for i in xrange(llev):
-    scales.append(ss%levs[i])
-  if llev==2 and (levs[0] == levs[1]):
+    scales.append(ss%nicelevs[i])
+  if levs is not None:
+    ys = zeros(llev,'d')
+    i=0
+    j=0
+    for i in xrange(llev):
+      while j < len(levs) and levs[j] < nicelevs[i]: j = j + 1
+      if j == 0:
+        ys[i] = 0
+      elif j == len(levs):
+        ys[i] = len(levs) + 1
+      else:
+        ys[i] = j + (nicelevs[i] - levs[j-1])/(levs[j] - levs[j-1])
+    ys[:] = ymin + ys/(len(levs)+1)*(ymax - ymin)
+  elif llev==2 and (nicelevs[0] == nicelevs[1]):
     ys = array([ymin,ymax])
   else:
-    ys = ymin + (ymax - ymin)*(levs - zmin)/(zmax - zmin)
+    ys = ymin + (ymax - ymin)*(nicelevs - zmin)/(zmax - zmin)
   for i in xrange(llev):
     plt(scales[i],xmax+0.005,ys[i]-0.005)   # labels
-  pldj(llev*[xmin],ys,llev*[xmax+0.005],ys) # ticks
+  pldj(llev*[xmax],ys,llev*[xmax+0.005],ys) # ticks
   # --- Return to plot system 1.
   plsys(view)
 
@@ -2037,7 +2074,7 @@ to all three.
       if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
       else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-    if bcast: ppp = mpi.bcast(ppp)
+    if bcast: ppp = broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
 def setrho(val,ix=None,iy=None,iz=None):
@@ -2085,7 +2122,7 @@ to all three.
    #  if pe is None: return None
    #  if me == pe: ppp = ppp[...,iz-top.izslave[me+1]+1]
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-   #if bcast: ppp = mpi.bcast(ppp)
+   #if bcast: ppp = broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
 def getphi(ix=None,iy=None,iz=None,bcast=0):
@@ -2136,7 +2173,7 @@ be from none to all three.
       if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
       else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-    if bcast: ppp = mpi.bcast(ppp)
+    if bcast: ppp = broadcast(ppp)
     return ppp
 # --------------------------------------------------------------------------
 def setphi(val,ix=None,iy=None,iz=None):
@@ -2185,7 +2222,7 @@ be from none to all three.
    #  if pe is None: return None
    #  if me == pe: ppp = ppp[...,iz-top.izslave[me+1]+1]
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
-   #if bcast: ppp = mpi.bcast(ppp)
+   #if bcast: ppp = broadcast(ppp)
    #return ppp
 ##########################################################################
 ##########################################################################
