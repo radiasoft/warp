@@ -1,0 +1,49 @@
+ARCH = LINUX
+MACHINE = LINUX
+HOME = /home/dave
+PYVERS = 2.1
+PYTHON = /home/dave/Python-$(PYVERS)
+PYWRAPPERHOME = $(HOME)/pywrapper
+PYWRAPPERARGS =
+PROF = #-Mprof=lines
+OPT = -O3 -unroll
+OPT = -O3
+POPT = -O0
+PYMODULEOPT = -O1
+F90FREE  = ifc -Kpic -132 -r8 -DIFC -FR -fpp -implicitnone -C90 -Zp8
+F90FIXED = ifc -Kpic -132 -r8 -DIFC -FI -fpp -implicitnone -C90 -Zp8
+CC = cc -fpic
+SO = so
+LD = ifc -shared -C90
+FORTLIB = -L/opt/intel/compiler50/ia32/lib/ -lIEPCF90 -lCEPCF90 -lF90 -lintrins -limf -lsvml -lirc -lcxa
+LINKLIB = -ldl -lutil -lpthread
+DLLIB = -ldl
+XLIB = -L/usr/X11R6/lib
+PACTLIB = -L/usr/local/pact/lib
+YORICKLIB = -L/usr/local/lib/yorick/1.4/lib
+TCLLIB = 
+LAPACKLIB = -L/home/dave/lapack_ifc/LAPACK
+NUMPYINCLUDE = -I$(PYTHON)/include/python$(PYVERS)/Numeric
+OLD = OLD1
+
+WARPSCRIPTS = $(HOME)/scripts
+OTHERLIBS = $(PACTLIB) -lpdb -lpml -lscore \
+            $(YORICKLIB) -lgist \
+            $(LAPACKLIB) -llapackifc -lblasifc
+
+warp: warpC.$(SO)
+	#cp warpC.$(SO) $(WARPSCRIPTS)
+
+static: build_static
+
+include Makefile.dependencies
+
+build_static: $(MODULEOBJECTS) $(WARPOBJECTS) config.o
+	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o \
+	$(OTHERLIBS) $(XLIB) $(PYTHONLIB) $(FORTLIB) $(LINKLIB)
+
+warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
+	cc -fpic -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
+	$(LD) -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
+	$(RNGOBJ) $(OTHERLIBS)
+
