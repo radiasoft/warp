@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.51 $, $Date: 2005/02/25 22:08:38 $
+c@(#) File WXY.M, version $Revision: 3.52 $, $Date: 2005/03/08 00:47:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -912,7 +912,25 @@ c  and also loads RHO at the new time level.
 
 c  Zero curr if center is synchv or if using gaps
 c     if (center == "synchv" .or. ifgap) call zeroarry(curr,nzzarr+1)
-      if (center == "synchv" .or. ifgap) curr = 0.
+      if (center == "synchv" .or. ifgap) then
+c       --- First set nszarr and update array allocation if needed
+        if (lspeciesmoments) then
+c         --- Check if the moments are to be calculated separately for
+c         --- each species. If so, check if nszarr already has been set
+c         --- appropriately. If not, set it and allocate the arrays.
+c         --- If only one species, then don't have separate species data.
+          if (nszarr /= ns .and. ns > 1) then
+            nszarr = ns
+            call gchange("Z_arrays",0)
+          endif
+        else
+          if (nszarr /= 0) then
+            nszarr = 0
+            call gchange("Z_arrays",0)
+          endif
+        endif
+        curr = 0.
+      endif
 
 c  Zero the moments if center is synchv
       if (ldiag .and. (center == "synchv" .or. center == "gen")) then

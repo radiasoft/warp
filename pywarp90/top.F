@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.148 $, $Date: 2005/02/25 22:08:37 $
+c@(#) File TOP.F, version $Revision: 3.149 $, $Date: 2005/03/08 00:47:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6080,20 +6080,8 @@ c  Sets 1d beam current as a function of z, directly from particle data
       integer(ISZ):: js,ip
 
       if (lspeciesmoments) then
-c       --- Check if the moments are to be calculated separately for
-c       --- each species. If so, check if nszarr already has been set
-c       --- appropriately. If not, set it and allocate the arrays.
-c       --- If only one species, then don't have separate species data.
-        if (nszarr /= ns .and. ns > 1) then
-          nszarr = ns
-          call gchange("Z_arrays",0)
-        endif
         js = is - 1
       else
-        if (nszarr /= 0) then
-          nszarr = 0
-          call gchange("Z_arrays",0)
-        endif
         js = 0
       endif
 
@@ -6134,20 +6122,8 @@ c  Sets 1d beam current as a function of z, directly from particle data
       integer(ISZ):: js,ip
 
       if (lspeciesmoments) then
-c       --- Check if the moments are to be calculated separately for
-c       --- each species. If so, check if nszarr already has been set
-c       --- appropriately. If not, set it and allocate the arrays.
-c       --- If only one species, then don't have separate species data.
-        if (nszarr /= ns .and. ns > 1) then
-          nszarr = ns
-          call gchange("Z_arrays",0)
-        endif
         js = is - 1
       else
-        if (nszarr /= 0) then
-          nszarr = 0
-          call gchange("Z_arrays",0)
-        endif
         js = 0
       endif
 

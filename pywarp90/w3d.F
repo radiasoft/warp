@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.191 $, $Date: 2005/03/03 21:44:27 $
+c@(#) File W3D.F, version $Revision: 3.192 $, $Date: 2005/03/08 00:47:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1770,9 +1770,28 @@ c       --- load rho diagnostic quantities
       endif
 
       if (center == "synchv" .or. center == "gen" .or. ifgap) then
-        if (.not. laccumulate_rho) call zeroarry(curr,(nzzarr+1)*(1+nszarr))
 
 c       --- Calculate current
+
+c       --- First set nszarr and update array allocation if needed
+        if (lspeciesmoments) then
+c         --- Check if the moments are to be calculated separately for
+c         --- each species. If so, check if nszarr already has been set
+c         --- appropriately. If not, set it and allocate the arrays.
+c         --- If only one species, then don't have separate species data.
+          if (nszarr /= ns .and. ns > 1) then
+            nszarr = ns
+            call gchange("Z_arrays",0)
+          endif
+        else
+          if (nszarr /= 0) then
+            nszarr = 0
+            call gchange("Z_arrays",0)
+          endif
+        endif
+
+        if (.not. laccumulate_rho) call zeroarry(curr,(nzzarr+1)*(1+nszarr))
+
 !$OMP PARALLEL PRIVATE(ip)
         do is=1,ns
 !$OMP DO
