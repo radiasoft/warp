@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.41 $, $Date: 2002/03/27 22:30:55 $
+c@(#) File DTOP.M, version $Revision: 3.42 $, $Date: 2002/03/29 22:25:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.41 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.42 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1334,6 +1334,56 @@ c       --- if within grid, gather
      &            grid(ix+1,iy  )*      wx *(1. - wy) +
      &            grid(ix  ,iy+1)*(1. - wx)*      wy  +
      &            grid(ix+1,iy+1)*      wx *      wy
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+      subroutine setgrid3d(np,x,y,z,nx,ny,nz,grid,xmin,xmax,ymin,ymax,zmin,zmax)
+      integer(ISZ):: nx,ny,nz,np
+      real(kind=8):: x(np), y(np), z(np)
+      real(kind=8):: grid(0:nx,0:ny,0:nz)
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
+
+c Lays particles down onto 3-D mesh.
+
+      integer(ISZ):: ip,ix,iy,iz
+      real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+      dzi = nz/(zmax - zmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
+        gz = (z(ip) - zmin)*dzi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny .and.
+     &      0. <= gz .and. gz < nz) then
+          ix = int(gx)
+          iy = int(gy)
+          iz = int(gz)
+          wx = gx - ix
+          wy = gy - iy
+          wz = gz - iz
+          grid(ix  ,iy  ,iz  ) = grid(ix  ,iy  ,iz  ) + (1.-wx)*(1.-wy)*(1.-wz)
+          grid(ix+1,iy  ,iz  ) = grid(ix+1,iy  ,iz  ) +     wx *(1.-wy)*(1.-wz)
+          grid(ix  ,iy+1,iz  ) = grid(ix  ,iy+1,iz  ) + (1.-wx)*    wy *(1.-wz)
+          grid(ix+1,iy+1,iz  ) = grid(ix+1,iy+1,iz  ) +     wx *    wy *(1.-wz)
+          grid(ix  ,iy  ,iz+1) = grid(ix  ,iy  ,iz+1) + (1.-wx)*(1.-wy)*    wz
+          grid(ix+1,iy  ,iz+1) = grid(ix+1,iy  ,iz+1) +     wx *(1.-wy)*    wz
+          grid(ix  ,iy+1,iz+1) = grid(ix  ,iy+1,iz+1) + (1.-wx)*    wy *    wz
+          grid(ix+1,iy+1,iz+1) = grid(ix+1,iy+1,iz+1) +     wx *    wy *    wz
         endif
 
       enddo
