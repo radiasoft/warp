@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.28 2002/05/02 17:57:08 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.29 2002/05/02 21:27:54 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1109,44 +1109,26 @@ grid that data is to be used for.
   iycondnew = []
   izcondnew = []
   condvoltnew = []
-  iecndxnew = []
-  iecndynew = []
-  iecndznew = []
-  ecdelmxnew = []
-  ecdelmynew = []
-  ecdelmznew = []
-  ecdelpxnew = []
-  ecdelpynew = []
-  ecdelpznew = []
-  ecvoltnew = []
-  iocndxnew = []
-  iocndynew = []
-  iocndznew = []
-  ocdelmxnew = []
-  ocdelmynew = []
-  ocdelmznew = []
-  ocdelpxnew = []
-  ocdelpynew = []
-  ocdelpznew = []
-  ocvoltnew = []
-  ecvoltmxnew = []
-  ecvoltpxnew = []
-  ecvoltmynew = []
-  ecvoltpynew = []
-  ecvoltmznew = []
-  ecvoltpznew = []
-  ocvoltmxnew = []
-  ocvoltpxnew = []
-  ocvoltmynew = []
-  ocvoltpynew = []
-  ocvoltmznew = []
-  ocvoltpznew = []
   icondlxynew = []
   icondlznew = []
-  iecndlxynew = []
-  iecndlznew = []
-  iocndlxynew = []
-  iocndlznew = []
+  icndxnew = []
+  icndynew = []
+  icndznew = []
+  cdelmxnew = []
+  cdelmynew = []
+  cdelmznew = []
+  cdelpxnew = []
+  cdelpynew = []
+  cdelpznew = []
+  cvoltnew = []
+  cvoltmxnew = []
+  cvoltpxnew = []
+  cvoltmynew = []
+  cvoltpynew = []
+  cvoltmznew = []
+  cvoltpznew = []
+  icndlxynew = []
+  icndlznew = []
 
   # --- Get number of old data points
   ncond = len(ixcond)
@@ -1167,98 +1149,107 @@ grid that data is to be used for.
   
     ii = compress(logical_and(iecndlxy >= llxy[j],iecndlz >= llz[j]), \
                   arange(necndbdy))
-    iecndxnew = iecndxnew + list(take(iecndx/llxy[j],ii))
-    iecndynew = iecndynew + list(take(iecndy/llxy[j],ii))
-    iecndznew = iecndznew + list(take(iecndz/llz[j],ii))
-    ecdelmxnew = ecdelmxnew + list(take(ecdelmx/llxy[j],ii))
-    ecdelmynew = ecdelmynew + list(take(ecdelmy/llxy[j],ii))
-    ecdelmznew = ecdelmznew + list(take(ecdelmz/llz[j],ii))
-    ecdelpxnew = ecdelpxnew + list(take(ecdelpx/llxy[j],ii))
-    ecdelpynew = ecdelpynew + list(take(ecdelpy/llxy[j],ii))
-    ecdelpznew = ecdelpznew + list(take(ecdelpz/llz[j],ii))
-    ecvoltnew = ecvoltnew + list(take(ecvolt,ii))
-    ecvoltmxnew = ecvoltmxnew + list(take(ecvoltmx,ii))
-    ecvoltpxnew = ecvoltpxnew + list(take(ecvoltpx,ii))
-    ecvoltmynew = ecvoltmynew + list(take(ecvoltmy,ii))
-    ecvoltpynew = ecvoltpynew + list(take(ecvoltpy,ii))
-    ecvoltmznew = ecvoltmznew + list(take(ecvoltmz,ii))
-    ecvoltpznew = ecvoltpznew + list(take(ecvoltpz,ii))
-    iecndlxynew = iecndlxynew + list(llxy[j]*ones(len(ii)))
-    iecndlznew = iecndlznew + list(llz[j]*ones(len(ii)))
+    icndxnew = icndxnew + list(take(iecndx/llxy[j],ii))
+    icndynew = icndynew + list(take(iecndy/llxy[j],ii))
+    icndznew = icndznew + list(take(iecndz/llz[j],ii))
+    cdelmxnew = cdelmxnew + list(take(ecdelmx/llxy[j],ii))
+    cdelmynew = cdelmynew + list(take(ecdelmy/llxy[j],ii))
+    cdelmznew = cdelmznew + list(take(ecdelmz/llz[j],ii))
+    cdelpxnew = cdelpxnew + list(take(ecdelpx/llxy[j],ii))
+    cdelpynew = cdelpynew + list(take(ecdelpy/llxy[j],ii))
+    cdelpznew = cdelpznew + list(take(ecdelpz/llz[j],ii))
+    cvoltnew = cvoltnew + list(take(ecvolt,ii))
+    cvoltmxnew = cvoltmxnew + list(take(ecvoltmx,ii))
+    cvoltpxnew = cvoltpxnew + list(take(ecvoltpx,ii))
+    cvoltmynew = cvoltmynew + list(take(ecvoltmy,ii))
+    cvoltpynew = cvoltpynew + list(take(ecvoltpy,ii))
+    cvoltmznew = cvoltmznew + list(take(ecvoltmz,ii))
+    cvoltpznew = cvoltpznew + list(take(ecvoltpz,ii))
+    icndlxynew = icndlxynew + list(llxy[j]*ones(len(ii)))
+    icndlznew = icndlznew + list(llz[j]*ones(len(ii)))
   
     ii = compress(logical_and(iocndlxy >= llxy[j],iocndlz >= llz[j]), \
                   arange(nocndbdy))
-    iocndxnew = iocndxnew + list(take(iocndx/llxy[j],ii))
-    iocndynew = iocndynew + list(take(iocndy/llxy[j],ii))
-    iocndznew = iocndznew + list(take(iocndz/llz[j],ii))
-    ocdelmxnew = ocdelmxnew + list(take(ocdelmx/llxy[j],ii))
-    ocdelmynew = ocdelmynew + list(take(ocdelmy/llxy[j],ii))
-    ocdelmznew = ocdelmznew + list(take(ocdelmz/llz[j],ii))
-    ocdelpxnew = ocdelpxnew + list(take(ocdelpx/llxy[j],ii))
-    ocdelpynew = ocdelpynew + list(take(ocdelpy/llxy[j],ii))
-    ocdelpznew = ocdelpznew + list(take(ocdelpz/llz[j],ii))
-    ocvoltnew = ocvoltnew + list(take(ocvolt,ii))
-    ocvoltmxnew = ocvoltmxnew + list(take(ocvoltmx,ii))
-    ocvoltpxnew = ocvoltpxnew + list(take(ocvoltpx,ii))
-    ocvoltmynew = ocvoltmynew + list(take(ocvoltmy,ii))
-    ocvoltpynew = ocvoltpynew + list(take(ocvoltpy,ii))
-    ocvoltmznew = ocvoltmznew + list(take(ocvoltmz,ii))
-    ocvoltpznew = ocvoltpznew + list(take(ocvoltpz,ii))
-    iocndlxynew = iocndlxynew + list(llxy[j]*ones(len(ii)))
-    iocndlznew = iocndlznew + list(llz[j]*ones(len(ii)))
+    icndxnew = icndxnew + list(take(iocndx/llxy[j],ii))
+    icndynew = icndynew + list(take(iocndy/llxy[j],ii))
+    icndznew = icndznew + list(take(iocndz/llz[j],ii))
+    cdelmxnew = cdelmxnew + list(take(ocdelmx/llxy[j],ii))
+    cdelmynew = cdelmynew + list(take(ocdelmy/llxy[j],ii))
+    cdelmznew = cdelmznew + list(take(ocdelmz/llz[j],ii))
+    cdelpxnew = cdelpxnew + list(take(ocdelpx/llxy[j],ii))
+    cdelpynew = cdelpynew + list(take(ocdelpy/llxy[j],ii))
+    cdelpznew = cdelpznew + list(take(ocdelpz/llz[j],ii))
+    cvoltnew = cvoltnew + list(take(ocvolt,ii))
+    cvoltmxnew = cvoltmxnew + list(take(ocvoltmx,ii))
+    cvoltpxnew = cvoltpxnew + list(take(ocvoltpx,ii))
+    cvoltmynew = cvoltmynew + list(take(ocvoltmy,ii))
+    cvoltpynew = cvoltpynew + list(take(ocvoltpy,ii))
+    cvoltmznew = cvoltmznew + list(take(ocvoltmz,ii))
+    cvoltpznew = cvoltpznew + list(take(ocvoltpz,ii))
+    icndlxynew = icndlxynew + list(llxy[j]*ones(len(ii)))
+    icndlznew = icndlznew + list(llz[j]*ones(len(ii)))
+
+  # --- Find odd and even points
+  icndxnew = array(icndxnew,typecode='i')
+  icndynew = array(icndynew,typecode='i')
+  icndznew = array(icndznew,typecode='i')
+  ee = compress((icndxnew+icndynew+icndznew)%2==0,arange(len(icndxnew)))
+  oo = compress((icndxnew+icndynew+icndznew)%2==1,arange(len(icndxnew)))
 
   # --- Reset counters and reallocate arrays for the converted data.
   f3d.ncondmax = len(ixcondnew)
-  f3d.ncndmax = max(len(iecndxnew),len(iocndxnew))
+  f3d.ncndmax = max(len(ee),len(oo))
   gchange("PSOR3d")
   gchange("MultigridConductor3d")
   f3d.ncond = len(ixcondnew)
-  f3d.necndbdy = len(iecndxnew)
-  f3d.nocndbdy = len(iocndxnew)
+  f3d.necndbdy = len(ee)
+  f3d.nocndbdy = len(oo)
   
   # --- Copy converted data into WARP arrays.
   f3d.ixcond[:f3d.ncond] = ixcondnew
   f3d.iycond[:f3d.ncond] = iycondnew
   f3d.izcond[:f3d.ncond] = izcondnew
   f3d.condvolt[:f3d.ncond] = condvoltnew
-  f3d.icondlxy[:f3d.ncond]= icondlxynew
-  f3d.icondlz[:f3d.ncond]= icondlznew
-  f3d.iecndx[:f3d.necndbdy]= iecndxnew
-  f3d.iecndy[:f3d.necndbdy]= iecndynew
-  f3d.iecndz[:f3d.necndbdy]= iecndznew
-  f3d.ecdelmx[:f3d.necndbdy]= ecdelmxnew
-  f3d.ecdelmy[:f3d.necndbdy]= ecdelmynew
-  f3d.ecdelmz[:f3d.necndbdy]= ecdelmznew
-  f3d.ecdelpx[:f3d.necndbdy]= ecdelpxnew
-  f3d.ecdelpy[:f3d.necndbdy]= ecdelpynew
-  f3d.ecdelpz[:f3d.necndbdy]= ecdelpznew
-  f3d.ecvolt[:f3d.necndbdy]= ecvoltnew
-  f3d.iocndx[:f3d.nocndbdy]= iocndxnew
-  f3d.iocndy[:f3d.nocndbdy]= iocndynew
-  f3d.iocndz[:f3d.nocndbdy]= iocndznew
-  f3d.ocdelmx[:f3d.nocndbdy]= ocdelmxnew
-  f3d.ocdelmy[:f3d.nocndbdy]= ocdelmynew
-  f3d.ocdelmz[:f3d.nocndbdy]= ocdelmznew
-  f3d.ocdelpx[:f3d.nocndbdy]= ocdelpxnew
-  f3d.ocdelpy[:f3d.nocndbdy]= ocdelpynew
-  f3d.ocdelpz[:f3d.nocndbdy]= ocdelpznew
-  f3d.ocvolt[:f3d.nocndbdy]= ocvoltnew
-  f3d.ecvoltmx[:f3d.necndbdy]= ecvoltmxnew
-  f3d.ecvoltpx[:f3d.necndbdy]= ecvoltpxnew
-  f3d.ecvoltmy[:f3d.necndbdy]= ecvoltmynew
-  f3d.ecvoltpy[:f3d.necndbdy]= ecvoltpynew
-  f3d.ecvoltmz[:f3d.necndbdy]= ecvoltmznew
-  f3d.ecvoltpz[:f3d.necndbdy]= ecvoltpznew
-  f3d.ocvoltmx[:f3d.nocndbdy]= ocvoltmxnew
-  f3d.ocvoltpx[:f3d.nocndbdy]= ocvoltpxnew
-  f3d.ocvoltmy[:f3d.nocndbdy]= ocvoltmynew
-  f3d.ocvoltpy[:f3d.nocndbdy]= ocvoltpynew
-  f3d.ocvoltmz[:f3d.nocndbdy]= ocvoltmznew
-  f3d.ocvoltpz[:f3d.nocndbdy]= ocvoltpznew
-  f3d.iecndlxy[:f3d.necndbdy]= iecndlxynew
-  f3d.iecndlz[:f3d.necndbdy]= iecndlznew
-  f3d.iocndlxy[:f3d.nocndbdy]= iocndlxynew
-  f3d.iocndlz[:f3d.nocndbdy]= iocndlznew
+  f3d.icondlxy[:f3d.ncond] = icondlxynew
+  f3d.icondlz[:f3d.ncond] = icondlznew
+
+  f3d.iecndx[:f3d.necndbdy] = take(icndxnew,ee)
+  f3d.iecndy[:f3d.necndbdy] = take(icndynew,ee)
+  f3d.iecndz[:f3d.necndbdy] = take(icndznew,ee)
+  f3d.ecdelmx[:f3d.necndbdy] = take(cdelmxnew,ee)
+  f3d.ecdelmy[:f3d.necndbdy] = take(cdelmynew,ee)
+  f3d.ecdelmz[:f3d.necndbdy] = take(cdelmznew,ee)
+  f3d.ecdelpx[:f3d.necndbdy] = take(cdelpxnew,ee)
+  f3d.ecdelpy[:f3d.necndbdy] = take(cdelpynew,ee)
+  f3d.ecdelpz[:f3d.necndbdy] = take(cdelpznew,ee)
+  f3d.ecvolt[:f3d.necndbdy] = take(cvoltnew,ee)
+  f3d.ecvoltmx[:f3d.necndbdy] = take(cvoltmxnew,ee)
+  f3d.ecvoltpx[:f3d.necndbdy] = take(cvoltpxnew,ee)
+  f3d.ecvoltmy[:f3d.necndbdy] = take(cvoltmynew,ee)
+  f3d.ecvoltpy[:f3d.necndbdy] = take(cvoltpynew,ee)
+  f3d.ecvoltmz[:f3d.necndbdy] = take(cvoltmznew,ee)
+  f3d.ecvoltpz[:f3d.necndbdy] = take(cvoltpznew,ee)
+  f3d.iecndlxy[:f3d.necndbdy] = take(icndlxynew,ee)
+  f3d.iecndlz[:f3d.necndbdy] = take(icndlznew,ee)
+
+  f3d.iocndx[:f3d.nocndbdy] = take(icndxnew,oo)
+  f3d.iocndy[:f3d.nocndbdy] = take(icndynew,oo)
+  f3d.iocndz[:f3d.nocndbdy] = take(icndznew,oo)
+  f3d.ocdelmx[:f3d.nocndbdy] = take(cdelmxnew,oo)
+  f3d.ocdelmy[:f3d.nocndbdy] = take(cdelmynew,oo)
+  f3d.ocdelmz[:f3d.nocndbdy] = take(cdelmznew,oo)
+  f3d.ocdelpx[:f3d.nocndbdy] = take(cdelpxnew,oo)
+  f3d.ocdelpy[:f3d.nocndbdy] = take(cdelpynew,oo)
+  f3d.ocdelpz[:f3d.nocndbdy] = take(cdelpznew,oo)
+  f3d.ocvolt[:f3d.nocndbdy] = take(cvoltnew,oo)
+  f3d.ocvoltmx[:f3d.nocndbdy] = take(cvoltmxnew,oo)
+  f3d.ocvoltpx[:f3d.nocndbdy] = take(cvoltpxnew,oo)
+  f3d.ocvoltmy[:f3d.nocndbdy] = take(cvoltmynew,oo)
+  f3d.ocvoltpy[:f3d.nocndbdy] = take(cvoltpynew,oo)
+  f3d.ocvoltmz[:f3d.nocndbdy] = take(cvoltmznew,oo)
+  f3d.ocvoltpz[:f3d.nocndbdy] = take(cvoltpznew,oo)
+  f3d.iocndlxy[:f3d.nocndbdy] = take(icndlxynew,oo)
+  f3d.iocndlz[:f3d.nocndbdy] = take(icndlznew,oo)
 
 
 
