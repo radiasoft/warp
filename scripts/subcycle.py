@@ -1,5 +1,5 @@
 from warp import *
-subcycle_version = "$Id: subcycle.py,v 1.3 2001/10/25 22:32:24 dave Exp $"
+subcycle_version = "$Id: subcycle.py,v 1.4 2001/11/03 01:19:52 dave Exp $"
 
 def subcycledoc():
   print """
@@ -36,8 +36,11 @@ on. The enable function is automatically called initially.
     "Turns off charge deposition for optimization"
     if (top.it+1)%s.nsubcycle == 0:
       top.depos = "vector"
+      top.laccumulate_rho = false
     else:
       top.depos = "none"
+      # --- Save some more time by turning off the zeroing of rho
+      top.laccumulate_rho = true
   # --------------------------------------------------------------------
   def doafterstep(s):
     """Turns off the field solver for subcycled steps and do a field
