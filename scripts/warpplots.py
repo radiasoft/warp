@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.37 2001/04/24 20:47:40 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.38 2001/04/27 23:04:57 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1076,12 +1076,14 @@ Note that either the x and y coordinates or the grid must be passed in.
     else:
       dmax = maxnd(grid1)
       dmin = minnd(grid1)
-    color_bar(dmin,dmax,uselog=uselog,ncolor=nc)
+    color_bar(dmin,dmax,uselog=uselog,ncolor=nc,view=view)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
   if titles: ptitles(v=view)
   settitles() 
-  if (lframe): limits(pplimits[0],pplimits[1],pplimits[2],pplimits[3])
+  if (lframe):
+    limits(pplimits[0],pplimits[1],pplimits[2],pplimits[3])
+    print 'pp= ',pplimits
 if sys.version[:5] != "1.5.1":
   ppgeneric.__doc__ = ppgeneric.__doc__ + ppgeneric_doc('x','y')
 
