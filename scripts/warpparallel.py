@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.37 2003/07/08 22:28:53 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.38 2003/07/11 22:14:13 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -30,8 +30,7 @@ with any array from the groups Z_arrays and Z_Moments.
   # --- Rearrange array to put the decomposed axis first
   if zaxis != 0: a = swapaxes(a,0,zaxis)
   # --- Gather and broadcast it
-  result = gatherarray(a[iz1:iz2+1,...])
-  result = broadcast(result)
+  result = gatherarray(a[iz1:iz2+1,...],bcast=1)
   # --- Rearrange array to put the decomposed axis back where it started
   if zaxis != 0: result = swapaxes(result,0,zaxis)
   return result
@@ -70,8 +69,7 @@ the field-solve decomposition region it owns.
   # --- Rearrange array to put the decomposed axis first
   if zaxis != 0: a = swapaxes(a,0,zaxis)
   # --- Gather and broadcast it
-  result = gatherarray(a[iz1:iz2+1,...])
-  result = broadcast(result)
+  result = gatherarray(a[iz1:iz2+1,...],bcast=1)
   # --- Rearrange array to put the decomposed axis back where it started
   if zaxis != 0: result = swapaxes(result,0,zaxis)
   return result
@@ -149,8 +147,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   if not (type(attr) == type([])): attr = [attr]
 
   # --- Gather nps from all processors
-  nps_p = gatherarray(top.nps)
-  nps_p = mpi.bcast(nps_p,0)
+  nps_p = gatherarray(top.nps,bcast=1)
   nps_p.shape = (top.nslaves,top.ns)
   nps_p0 = zeros((top.nslaves+1,top.ns+1))
   nps_p0[1:,1:] = nps_p
@@ -161,15 +158,21 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   # --- Gather conductor information from all processors
   # --- Also setup temp arrays which have gaurd cells at the lower end.
   # --- These are used to calculate partial sums.
-  ncond_p = gatherarray(f3d.ncond)
-  ncond_p = mpi.bcast(ncond_p,0)
+  ncond_p = gatherarray(f3d.ncond,bcast=1)
   ncond_p0 = array([0] + list(ncond_p))
-  necndbdy_p = gatherarray(f3d.necndbdy)
-  necndbdy_p = mpi.bcast(necndbdy_p,0)
+  necndbdy_p = gatherarray(f3d.necndbdy,bcast=1)
   necndbdy_p0 = array([0] + list(necndbdy_p))
-  nocndbdy_p = gatherarray(f3d.nocndbdy)
-  nocndbdy_p = mpi.bcast(nocndbdy_p,0)
+  nocndbdy_p = gatherarray(f3d.nocndbdy,bcast=1)
   nocndbdy_p0 = array([0] + list(nocndbdy_p))
+  # --- Make sure that the conductor arrays are allocated on all processors.
+  # --- I would like not to have to do this, but the code below would be
+  # --- more difficult. This is really only needed for processor 0, since
+  # --- if there are no conductors on that processor and the arrays are
+  # --- unallocated there, then processor 0 does not know to set up the
+  # --- arrays that the other processors write data to.
+  f3d.ncondmax = max(1,f3d.ncondmax)
+  f3d.ncndmax = max(1,f3d.ncndmax)
+  gchange("Conductor3d")
 
   # --- PE0 first writes out all of the non-parallel stuff and sets up
   # --- space for parallel stuff.
@@ -205,18 +208,18 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
       vlist = []
       for a in attr: vlist = vlist + pkg.varlist(a)
       for vname in vlist:
+        # --- Get attributes of the variable
+        a = pkg.getvarattr(vname)
+        # --- Check if variable has the attribute 'parallel'
+        parallelvar = re.search('parallel',a)
+        if not parallelvar: continue
+
         # --- Check if can get a python object for the variable.
         # --- This check is for dynamic arrays - if array is unallocated,
         # --- the getpyobject routine returns None.
         v = pkg.getpyobject(vname)
         if v is None: continue
         if type(v) == ArrayType and v.typecode() == Complex: continue
-
-        # --- Get attributes of the variable
-        a = pkg.getvarattr(vname)
-        # --- Check if variable has the attribute 'parallel'
-        parallelvar = re.search('parallel',a)
-        if not parallelvar: continue
 
         # --- Set name of variable in pdb file
         if varsuffix is None:
@@ -249,17 +252,13 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                (p=='wxy' and vname in ['npmaxxy']):
             ff.write(pdbname,sum(nps_p)[0])
           elif (p=='f3d' and vname in ['ncond','ncondmax']):
-#           ff.write(pdbname,sum(ncond_p))
-            pass
+            ff.write(pdbname,sum(ncond_p))
           elif (p=='f3d' and vname in ['necndbdy']):
-#           ff.write(pdbname,sum(necndbdy_p))
-            pass
+            ff.write(pdbname,sum(necndbdy_p))
           elif (p=='f3d' and vname in ['nocndbdy']):
-#           ff.write(pdbname,sum(nocndbdy_p))
-            pass
+            ff.write(pdbname,sum(nocndbdy_p))
           elif (p=='f3d' and vname in ['ncndmax']):
-#           ff.write(pdbname,max(sum(necndbdy_p),sum(nocndbdy_p)))
-            pass
+            ff.write(pdbname,max(sum(necndbdy_p),sum(nocndbdy_p)))
           else:
             # --- Otherwise, write out value as is on PE0
             ff.write(pdbname,v)
@@ -305,6 +304,12 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- A WARPxy particle array
             if wxy.npmaxxy > 0 and sum(sum(nps_p)) > 0:
               ff.defent(pdbname,v,(sum(sum(nps_p)),))
+          elif p == 'f3d' and vname == 'mglevelsiz':
+            ff.defent(vname+'@parallel',v,(top.nslaves,len(v)))
+            ff.write(pdbname,zeros(len(v)))
+          elif p == 'f3d' and vname == 'mglevelsnz':
+            ff.defent(vname+'@parallel',v,(top.nslaves,len(v)))
+            ff.write(pdbname,f3d.mglevelsnzfull)
           elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                        'condvolt','condnumb','icondlevel']:
             # --- The conductor data is gathered into one place
@@ -411,6 +416,10 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                 ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
                 ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:],
                          indx=(ipmin,0))
+        elif p == 'f3d' and vname == 'mglevelsiz':
+          ff.write(vname+'@parallel',array([v]),indx=(me,0))
+        elif p == 'f3d' and vname == 'mglevelsnz':
+          ff.write(vname+'@parallel',array([v]),indx=(me,0))
         elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                       'condvolt','condnumb','icondlevel']:
           # --- Write out conductor data.
@@ -486,16 +495,19 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
   # --- Long list of parallel variables that are to be skipped in the serial
   # --- restore.
   skipparallel = ['xp','yp','zp','uxp','uyp','uzp','gaminv','dtp','pid',
+    'mglevelsiz','mglevelsnz',
     'ncondmax','ncndmax','ncond','necndbdy','nocndbdy',
     'ixcond','iycond','izcond','condvolt','condnumb','icondlevel'
     'iecndx','iecndy','iecndz',
     'ecdelmx','ecdelpx','ecdelmy','ecdelpy','ecdelmz','ecdelpz',
     'ecvolt','ecvoltmx','ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz','ecvoltpz',
     'ecnumb','ecnumbmx','ecnumbpx','ecnumbmy','ecnumbpy','ecnumbmz','ecnumbpz',
+    'iecndlevel',
     'iocndx','iocndy','iocndz',
     'ocdelmx','ocdelpx','ocdelmy','ocdelpy','ocdelmz','ocdelpz',
     'ocvolt','ocvoltmx','ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz','ocvoltpz',
     'ocnumb','ocnumbmx','ocnumbpx','ocnumbmy','ocnumbpy','ocnumbmz','ocnumbpz',
+    'iocndlevel',
     'rho','phi']
 
   # --- Read in all of the serial data. This is only really needed
@@ -641,6 +653,12 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
               ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:]'
               exec(pname+ip+' = ff.read_part(v,itriple)',
                    __main__.__dict__,locals())
+      elif p == 'f3d' and vname == 'mglevelsiz':
+        itriple = array([me,me,1,0,len(f3d.mglevelsiz)-1,1])
+        s = p+'.'+vname+'[:] = ff.read_part(vname+"@parallel",itriple)[0,...])'
+      elif p == 'f3d' and vname == 'mglevelsnz':
+        itriple = array([me,me,1,0,len(f3d.mglevelsnz)-1,1])
+        s = p+'.'+vname+'[:] = ff.read_part(vname+"@parallel",itriple)[0,...])'
       elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                     'condvolt','condnumb','icondlevel']:
         # --- The conductor data was gathered into one place
