@@ -40,7 +40,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.31 2004/07/22 23:41:22 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.32 2004/08/13 00:00:27 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -999,6 +999,8 @@ Creates an instance of a Bgrd lattice element.
   - ap=0 aperture (can affect location of transverse boundaries)
   - ax=0 aperture in x (can affect location of transverse boundaries)
   - ay=0 aperture in y (can affect location of transverse boundaries)
+  - xs=0: x starts of 3-D grid of B field data
+  - ys=0: y starts of 3-D grid of B field data
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - ol=0 when set to -1, overlaps of the element with others is ignored
@@ -1018,14 +1020,16 @@ Or specify the data set
   - dy=0 y increment size (m)
   - dz=0 z increment size (m)
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               ol=0,error_type='',
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,
+               xs=0,ys=0,ox=0,oy=0,ol=0,error_type='',
                id=None,sf=0,sc=1,bx=[],by=[],bz=[],dx=0,dy=0,dz=0):
     assert (bx or by or bz) or (id is not None),"A data set or id must be given"
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Bgrd'
+    self.xs = xs
+    self.ys = ys
     self.sf = sf
     self.sc = sc
     self.bx = bx
@@ -1075,6 +1079,8 @@ Or specify the data set
     top.bgrdap[top.nbgrd] = self.ap
     top.bgrdax[top.nbgrd] = self.ax
     top.bgrday[top.nbgrd] = self.ay
+    top.bgrdxs[top.nbgrd] = self.xs
+    top.bgrdys[top.nbgrd] = self.ys
     top.bgrdox[top.nbgrd] = self.offset_x*errordist(self.error_type)
     top.bgrdoy[top.nbgrd] = self.offset_y*errordist(self.error_type)
     top.bgrdol[top.nbgrd] = self.ol
@@ -1092,6 +1098,8 @@ Creates an instance of a Pgrd lattice element.
   - ap=0 aperture (can affect location of transverse boundaries)
   - ax=0 aperture in x (can affect location of transverse boundaries)
   - ay=0 aperture in y (can affect location of transverse boundaries)
+  - xs=0: x starts of 3-D grid of B field data
+  - ys=0: y starts of 3-D grid of B field data
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - ol=0 when set to -1, overlaps of the element with others is ignored
@@ -1111,26 +1119,24 @@ Either specify the index
   - id=None: index of data set to use
 Or specify the data set
   - pp=[] electrostatic potential (Volts)
-  - xs=0 x start of grid
-  - ys=0 y start of grid
   - dx=0 x increment size (m)
   - dy=0 y increment size (m)
   - dz=0 z increment size (m)
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               ol=0,error_type='',
-               id=None,sf=0,sc=1,pp=[],xs=0,ys=0,dx=0,dy=0,dz=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,
+               xs=0,ys=0,ox=0,oy=0,ol=0,error_type='',
+               id=None,sf=0,sc=1,pp=[],dx=0,dy=0,dz=0,
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     assert (pp) or (id is not None),"A data set or id must be given"
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Pgrd'
+    self.xs = xs
+    self.ys = ys
     self.sf = sf
     self.sc = sc
     self.pp = pp
-    self.xs = xs
-    self.ys = ys
     self.dx = dx
     self.dy = dy
     self.dz = dz
