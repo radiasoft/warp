@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.4 2000/12/05 20:11:42 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.5 2000/12/05 20:15:19 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -478,6 +478,7 @@ from window 0, getting all of the live partilces (whose uzp > 0).
     ii = ir1 + compress(less(psubset[-iw-1],top.nps[js-1]),psubset[-iw-1])
   else:
     if win == None: win = top.zwindows[:,iw] + top.zbeam
+    if len(shape(win)) == 2: win = win[:,iw]
     if z == None: z = top.zp
     ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
                 arrayrange(ir1,ir2))
