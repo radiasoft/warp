@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.9 $, $Date: 2002/10/26 00:29:09 $
+c@(#) File WRZ.M, version $Revision: 3.10 $, $Date: 2002/11/05 22:36:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -1112,7 +1112,7 @@ c    &                       gaminv(ipmin),sm(is),sw(is),2,nplive)
      &                                 uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
      &                                 gaminv(ins(is)),
      &                                 zgrid,ins(is),it)
-            call processlostpart(is,clearlostpart)
+            call processlostpart(is,clearlostpart,time,zbeam)
             do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
                ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
                call setrhorz (rho, ip, xp(ipmin), zp(ipmin), zgrid,
