@@ -1,11 +1,375 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.3 $, $Date: 2004/12/02 23:55:28 $
+c@(#) File w3d_load.F, version $Revision: 1.4 $, $Date: 2004/12/06 23:27:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
 c  3d electrostatic PIC code, Cartesian geometry, for beam problems
 c=============================================================================
+c=============================================================================
+      subroutine perp_cfe_den() 
+     
+      use Constant
+      use Beam_acc
+      use InPart3d
+      use W3DLoad
+
+c     Calculate the density profile of a continuous focused f(H) equilibrium 
+c     distribution that will be used to load an rms equivalent beam.  
+c     At present, the routine works with the following distributions:
+c       distrbtn = WB  or Waterbag             
+c                = TE  or ThermalEquilibrium 
+
+      real(kind=8):: r_x,r_y,emit_x,emit_y,q_perv
+      real(kind=8):: r_b,emit_b,k_beta0
+      integer(ISZ):: ir
+      real(kind=8):: k1re,f_2,r_e
+      real(kind=8):: sc_param,k1re1,k1re2,rho
+      real(kind=8):: zbrent,bessi0,bessi
+      external wbagconstr
+      common /wbagconstrcom/ sc_param
+
+c     Define local rms equivalent beam parameters to use in the subroutine
+
+      r_x = a0 
+      r_y = b0 
+      emit_x = emitx
+      emit_y = emity 
+      q_perv = zion*echarge*ibeam/
+     &         dvnz(2.*Pi*eps0*aion*amu*(vbeam*gammabar)**3)
+
+c     Continuous focusing, matched rms equivlaent beam parameters 
+
+      r_b = sqrt( r_x*r_y )
+      emit_b = sqrt( emit_x*emit_y ) 
+      k_beta0 = sqrt( q_perv/r_b**2 + emit_b**2/r_b**4 )  
+
+c     Setup grid to define the axisymmetric radial particle density and angle 
+c     spread variables that will be set by the rms equivalent beam 
+c     continuous focusing equilibrium. 
+c
+c       hl_rmax   = max radius of continuous focusing (CF) equivalent 
+c                     Hamiltonian equilibrium density and angle spreads  
+c       hl_nrdist = number of radial data points of CF Hamiltonian eq 
+c                     ranging from [0:hl_nrdist] -> [0,hl_rmax]. 
+c       hl_rdist(0:hl_nrdist) = Code set: particle density in r calculated 
+c                                 for CF Hamiltonian eq load 
+c       hl_tdist(0:hl_nrdist) = Code set: particle temp spread in r calculated 
+c                                 for CF Hamiltonian eq load 
+
+      call gchange("W3Dload",0)
+
+
+c     Calculate classes of equilbria 
+      if (distrbtn == "WB" .or. distrbtn == "Waterbag") then 
+c       --- waterbag equilibrium 
+
+c       --- calculate k1re = k1*r_e using bracketed brent numerical root 
+c           find method in zbrent  
+c             k1re1 = left  bracket established from small argument exapansion 
+c             k1re2 = right bracket set to a point where the bessel function 
+c                     part of waterbagconstr() changes sign for sc_param = 0.
+
+        sc_param = (r_b*k_beta0)**2/q_perv
+        k1re1 = 2./sqrt( sc_param )
+        k1re2 = 3. 
+
+        k1re = zbrent(wbagconstr,k1re1,k1re2,1.e-6,1000)
+
+        write (0,*) "sc_param = ",sc_param
+        write (0,*) "k1re1 = ",k1re1
+        write (0,*) "k1re2 = ",k1re2 
+        write (0,*) "k1re = ",k1re
+
+c       --- calculate properties of the distribution 
+c             r_e = edge radius where the density falls to zero 
+c             f_2 = distribution normalization coefficient 
+
+        r_e = r_b*( bessi0(k1re)/bessi(2,k1re) - 
+     &              4./k1re*( 2. + k1re*bessi(3,k1re)/bessi(2,k1re) ) 
+     &            )**-2 
+
+        f_2 = aion*amu*eps0*vbeam**2*gammabar**3/
+     &        (2.*Pi*(zion*echarge)**2)*(k1re/r_e)**2 
+
+        write (0,*) "r_e = ",r_e
+        write (0,*) "f_2 = ",f_2 
+
+c       ---- calculate radial density profile
+        hl_rmax = r_e 
+        do ir = 0,hl_nrdist
+c         --- radial coordinate in distribution 
+          rho = float(ir)/float(hl_nrdist) 
+c         --- density 
+          hl_rdist(ir) = 4.*Pi*f_2*(k_beta0*r_e/k1re)**2 * 
+     &                   ( 1. - bessi0(k1re*rho)/bessi0(k1re) ) 
+        enddo 
+
+c       --- return to main code 
+        return    
+
+        call remark("routine perp_cf_eq: end of code place holder") 
+        call kaboom(0) 
+
+      elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
+c       --- thermal equilibrium 
+        call remark("routine perp_cf_eq: Thermal Equilibrium not implemented") 
+        call kaboom(0) 
+      else 
+c       --- undefined option trap 
+        call remark("routine perp_cf_eq: distrbtn option not implemented") 
+        call kaboom(0) 
+      endif 
+
+      return 
+      end 
+c=============================================================================
+      real(kind=8) function wbagconstr(k1re)
+
+      real(kind=8):: k1re
+
+c    watbagconstr returns a scaled constraint equation assoicated with 
+c    a matched waterbag equilbrium distribution function in a continuous 
+c    focusing channel.  
+c
+c    k1re = k_1 * r_e       k_1 = wavenumber parameter 
+c                           r_e = beam edge radius
+c
+
+      real(kind=8):: bessi0,bessi
+      real(kind=8):: sc_param
+      common /wbagconstrcom/ sc_param
+
+      wbagconstr = sc_param - bessi0(k1re)**2/bessi(2,k1re)**2 + 
+     &  4./(k1re)*( 2.*bessi(2,k1re)/bessi0(k1re) +
+     &              k1re*bessi0(k1re)*bessi(3,k1re)/(bessi(2,k1re))**2
+     &            )
+
+      return 
+      end 
+c=============================================================================
+      subroutine loadperpdist(kioff,np,x,y,xp,yp,rx,ry,rxp,ryp,
+     &                        epsx,epsy)
+      use Constant
+      use InPart3d
+      integer(ISZ):: kioff,np
+      real(kind=8):: x(np), y(np), xp(np), yp(np)
+      real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
+      real(kind=8):: epsx(np), epsy(np) 
+c
+c Load a transverse distribution of particles based on transformation of 
+c an "equivalent" Hamiltonian defined beam equilibrium in a continuous 
+c focusing channel.  Each particle can have 
+c separate envelope coordinates and emittances so the script can be used 
+c in 2D or 3D loads.  The continuous focused equilibrium is tranformed 
+c consistent with KV like elliptical beam cross-sections and flutter to 
+c better match a focusing channel with axially varying focusing forces.  
+c These loads are not strict equilibria of such focusing channels but in 
+c many situaitons can provide reasonable approximate initial beam 
+c distributions.  
+c   
+c Particle coordinates loaded:
+c   np = number of particles to load 
+c   x,y    = x, y  coordinates of particle 
+c   xp,yp  = x',y' coordinates of particle
+c
+c Each particle can be in different parts of the beam envelope and the 
+c beam envelope in the axial slice of the each particle (note the 
+c z-coordinates of the particles are unknown within this routine) are 
+c defined by the arrays:
+c
+c   rx,   ry    = x- and y-envelope coordinates of beam: r_x,   r_y    
+c   rxp,  ryp   = x- and y-envelope angles      of beam: r_x',  r_y' 
+c   emitx,emity = x- and y-emittances           of beam: eps_x, eps_y 
+c
+c The method can be applied to an infinity of distributions.  Forms 
+c implemented include:
+c   distrbtn = "WB" or "Waterbag":  waterbag form (theta function) 
+c            = "PA" or "Parabolic": parabolic form 
+c            = "GA" or "Gaussian":  Gaussian form 
+c            = "TE" or "ThermalEquilibrium": Thermal Equilibrium form 
+c
+c
+
+c      integer(ISZ):: ip
+c      real(kind=8):: X1, X2, Y1, Y2
+c      real(kind=8):: F0, F, G
+      real(kind=8):: eps
+c      real(kind=8):: Ax, Ay, betax, betay 
+c      real(kind=8):: wrandom,wrandomgauss
+c      real(kind=8):: a, b, c, fa, fc
+c      character(72):: errline  
+
+c     Tolerances for iternative constraint solves 
+      eps = 1.e-6
+
+      call remark ("Load Option not yet implemented in routine loadperpdist") 
+      call kaboom (0)
+      
+c     --- Loop over particles to load 
+c      do ip = 1,np
+c
+c      enddo 
+
+      return 
+      end 
+c=============================================================================
+      subroutine loadperpdist0(kioff,np,x,y,xp,yp,rx,ry,rxp,ryp,
+     &                         epsx,epsy)
+      use Constant
+      use InPart3d
+      integer(ISZ):: kioff,np
+      real(kind=8):: x(np), y(np), xp(np), yp(np)
+      real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
+      real(kind=8):: epsx(np), epsy(np)
+c
+c Load a transverse distribution of particles based Courant-Snyder invariants 
+c in applied fields.  Each particle can have 
+c separate envelope coordinates and emittances so the script can be used 
+c in 2D or 3D loads.  The method employed here parallels T. Kikuchi's 
+c implementation of a procedure first developed by:
+c   Y.R. Batygin, "Particle Distribution generator in 4D Phase-Space"
+c   AIP Conf. Proc. 297 (1994) pp. 419-426  
+c The method uses local Courant-Snyder invariant type forms to define 
+c distributions that should be direct analogs to the equilibrium forms in 
+c continuous focusing channels. These distributions are equilibria in 
+c periodic focusing lattices for beams of zero current.  Because the
+c equilibria are defined in terms of functions of Courant Snyder invariants 
+c of the linear forcusing lattice with axially varying applied fields, the 
+c forms automatically hit the target envelope coordinates r_x, r_y, 
+c r_x', r_y' and emittances emitx, emity.   These forms are consitent only 
+c for linear total forces within the ellptic symmetry beam core.  Consequently 
+c the forms only reflect rms equivalent beam compensations and can be far 
+c from equilibrium form for strong space-charge depressions where the internal 
+c beam space-charge structure is Debye screened.  The case 
+c KV0 is correct for finite beam current because the internal forces are linear
+c in this case.  This loading method thereby provides an alternative 
+c loading method for a KV beam of arbitrary current/space-charge strength to 
+c the option "K-V" or "KV" which is implemented differently.  
+c   
+c Particle coordinates loaded:
+c   np = number of particles to load 
+c   x,y    = x, y  coordinates of particle 
+c   xp,yp  = x',y' coordinates of particle
+c
+c Each particle can be in different parts of the beam envelope and the 
+c beam envelope in the axial slice of the each particle (note the 
+c z-coordinates of the particles are unknown within this routine) are 
+c defined by the arrays:
+c
+c   rx,  ry   =   x- and y-envelope coordinates of beam: r_x,   r_y   
+c   rxp, ryp  =   x- and y-envelope angles      of beam: r_x',  r_y' 
+c   epsx,epsy =   x- and y-emittances           of beam: eps_x, eps_y
+c
+c The method can be applied to an infinity of distributions.  Forms 
+c presently implemented include:
+c   distrbtn = "KV0":  KV or Kapchinskij-Vladimirskij (delta function) 
+c            = "WB0" or "Waterbag0":  waterbag form (theta function) 
+c            = "PA0" or "Parabolic0": parabolic form 
+c            = "GA0" or "Gaussian0":  Gaussian form 
+c
+      integer(ISZ):: ip
+      real(kind=8):: alphax, alphay, alphaxp, alphayp
+      real(kind=8):: F0, F, G
+      real(kind=8):: Ax, Ay, betax, betay 
+      real(kind=8):: wrandom, wrandomgauss
+      real(kind=8):: alpha3,r
+      character(72):: errline  
+
+      
+      if (distrbtn == "KV0" .or. 
+     &    distrbtn == "WB0" .or. distrbtn == "Waterbag0" .or. 
+     &    distrbtn == "PA0" .or. distrbtn == "Parabolic0") then 
+
+c       --- Loop over particles to load 
+        do ip = 1,np
+
+c         --- phase ellipse variables (see Batygin papers and Fortran 
+c         --- subroutine PDS1 for initializing particles) used in defining 
+c         --- local KV like linear force psudo-invariants
+          alphax = rx(ip)/sqrt(epsx(ip))
+          alphay = ry(ip)/sqrt(epsy(ip))
+          alphaxp = rxp(ip)/sqrt(epsx(ip))
+          alphayp = ryp(ip)/sqrt(epsy(ip))
+
+c         --- calculate value of F0, F 
+          if (distrbtn == "KV0") then
+            F0 = epsx(ip)
+            F  = F0 
+
+          elseif (distrbtn == "WB0" .or. distrbtn == "Waterbag0") then
+            F0 = 1.5*epsx(ip)
+            F  = F0*sqrt( wrandom(xrandom,ip+kioff-1,dig1,1,1) ) 
+
+          elseif (distrbtn == "PA0" .or. distrbtn == "Parabolic0") then 
+
+            F0 = 2.0*epsx(ip)
+          
+            G = wrandom(xrandom,ip+kioff-1,dig1,1,1)
+
+            alpha3 = ( acos( 1.-2.*G ) )/3.
+            F = (F0/2.)*( 1.-2.*cos( alpha3 - 2.*Pi/3. ) )
+            if (G .eq. 0.) F = 0. 
+            if (G .eq. 1.) F = F0
+          endif 
+
+c         --- Set particle coordinates 
+          Ax = sqrt( F*wrandom(xrandom,ip+kioff-1,dig2,1,1) )
+          Ay = sqrt( (F - Ax*Ax)*epsy(ip)/epsx(ip) )
+
+          betax = 2.0*pi*wrandom(xrandom,ip+kioff-1,dig3,1,1)
+          betay = 2.0*pi*wrandom(xrandom,ip+kioff-1,dig4,1,1)
+
+          x(ip) = Ax * alphax * cos( betax )
+          y(ip) = Ay * alphay * cos( betay )
+
+          xp(ip) = Ax * ( alphaxp * cos( betax ) - sin( betax ) / alphax )
+          yp(ip) = Ay * ( alphayp * cos( betay ) - sin( betay ) / alphay )
+
+        enddo 
+      
+c     --- Implement Gaussian as a special case using a Gaussian distributed 
+c     --- random number generator with unit sigma.  This alternative 
+c     --- implementation is equivalent to loading the Courant-Snyder type 
+c     --- psudoinvariants but saves numerical work in avoiding the need to 
+c     --- solve an axillary equation numerically to solve for "F".  
+      elseif (distrbtn == "GA0" .or. distrbtn == "Gaussian0") then
+
+c       --- Loop over particles to load 
+c       --- Because of the way wrandomgauss is written, the code runs somwhat
+c       --- more efficiently when the loops are broken up. Note, very
+c       --- important, if the loops are not broken up, then the last argument
+c       --- to wrandomgauss MUST be false in order to the code to work
+c       --- properly.
+        do ip = 1,np
+          r = wrandomgauss(xrandom,ip+kioff-1,dig1,dig2,1,1,.true.)
+          x(ip) = 0.5*rx(ip)*r
+        enddo 
+        do ip = 1,np
+          r = wrandomgauss(xrandom,ip+kioff-1,dig3,dig4,1,1,.true.)
+          y(ip) = 0.5*ry(ip)*r
+        enddo 
+
+        do ip = 1,np
+          r = wrandomgauss(xrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
+          xp(ip) = 0.5*(epsx(ip)/rx(ip))*r + (rxp(ip)/rx(ip))*x(ip) 
+        enddo 
+        do ip = 1,np
+c         --- Note that dig7 and dig8 are already used for the longitudinal
+c         --- velocity spread.
+          r = wrandomgauss(xrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
+          yp(ip) = 0.5*(epsy(ip)/ry(ip))*r + (ryp(ip)/ry(ip))*y(ip)
+        enddo 
+
+      else 
+        write (errline,'("ERROR: distrbtn has an improper value = ",a8)')
+     &        distrbtn
+        call remark (errline)
+        call kaboom (0)
+      endif
+
+      return 
+      end
 c=============================================================================
       real(kind=8) function bessi0(x)
       real(kind=8):: x
@@ -237,139 +601,6 @@ c        Press, Flannery, Teukolsky, and Vetterling (1986)
       return
       end
 c=============================================================================
-      real(kind=8) function watbagconstr(k1re)
-
-      real(kind=8):: k1re
-
-c    watbagconstr returns a scaled constraint equation assoicated with 
-c    a matched waterbag equilbrium distribution function in a continuous 
-c    focusing channel.  
-c
-c    k1re = k_1 * r_e       k_1 = wavenumber parameter 
-c                           r_e = beam edge radius
-c
-
-      real(kind=8):: bessi0,bessi
-
-      watbagconstr = bessi0(k1re)**2/bessi(2,k1re)**2 - 
-     &  4./(k1re)*( 2*bessi(2,k1re)/bessi0(k1re) +
-     &              k1re*bessi0(k1re)*bessi(3,k1re)/Bessi(2,k1re)**2
-     &            )
-
-      return 
-      end 
-c=============================================================================
-      real(kind=8) function zbrent_test(x1,x2,tol,itmax)
-
-      integer(ISZ):: itmax 
-      real(kind=8):: func,x1,x2,tol
-
-c     zbrent caluclates the root of a func(x) that is bracketed between 
-c     x1 and x2.  The root is found to accuracy tol using up to itmax 
-c     iterations.  
-c
-c     The routine is slightly modified from the one presented in:
-c        Numerical Recipes The Art of Scientific Computing, 1st Edition 
-c        Press, Flannery, Teukolsky, and Vetterling (1986)
-
-  
-      integer(ISZ):: ITER
-      real(kind=8):: A,B,C,D,E,FA,FB,FC,P,Q,R,S,TOL1,XM
-      real(kind=8):: EPS = 3.e-8
-      real(kind=8):: watbagconstr
-
-      A=x1
-      B=x2
-      FA=watbagconstr(A)
-      FB=watbagconstr(B)
-      if(FB*FA .gt. 0.) then
-        call remark('Root must be bracketed for zbrent.') 
-        call kaboom(1)  
-      endif 
-      FC=FB
-      do ITER=1,itmax
-        if(FB*FC .gt. 0.) then
-          C=A
-          FC=FA
-          D=B-A
-          E=D
-        endif
-        if(abs(FC) .lt. abs(FB)) then
-          A=B
-          B=C
-          C=A
-          FA=FB
-          FB=FC
-          FC=FA
-        endif 
-        TOL1=2.*EPS*abs(B)+0.5*tol
-        XM=.5*(C-B)
-        if(abs(XM) .le. TOL1 .or. FB .eq. 0.) then
-          zbrent_test = B
-          return
-        endif
-        if(abs(E) .ge. TOL1 .and. abs(FA) .gt. abs(FB)) then
-          S=FB/FA
-          if(A .eq. C) then
-            P=2.*XM*S
-            Q=1.-S
-          else
-            Q=FA/FC
-            R=FB/FC
-            P=S*(2.*XM*Q*(Q-R)-(B-A)*(R-1.))
-            Q=(Q-1.)*(R-1.)*(S-1.)
-          endif
-          if(P .gt. 0.) Q=-Q
-          P=ABS(P)
-          if(2.*P .lt. min(3.*XM*Q-abs(TOL1*Q),abs(E*Q))) then
-            E=D
-            D=P/Q
-          else
-            D=XM
-            E=D
-          endif
-        else
-          D=XM
-          E=D
-        endif
-        A=B
-        FA=FB
-        if(abs(D) .gt. TOL1) then
-          B=B+D
-        else
-          B=B+sign(TOL1,XM)
-        endif
-        FB=watbagconstr(B)
-      enddo
-      zbrent_test = B
-      call remark('zbrent exceeding maximum iterations.')
-      call kaboom(1)
-
-      return
-      end
-c=============================================================================
-      real(kind=8) function watbagconstr(k1re)
-
-      real(kind=8):: k1re 
-
-c    watbagconstr returns a scaled constraint equation assoicated with 
-c    a matched waterbag equilbrium distribution function in a continuous 
-c    focusing channel.  
-c
-c    k1re = k_1 * r_e       k_1 = wavenumber parameter 
-c                           r_e = beam edge radius
-c
-
-      real(kind=8):: bessi0,bessi
-  
-      watbagconstr = bessi0(k1re)**2/bessi(2,k1re)**2 - 
-     &  4./(k1re)*( 2*bessi(2,k1re)/bessi0(k1re) +
-     &              k1re*bessi0(k1re)*bessi(3,k1re)/Bessi(2,k1re)**2
-     &            )
-
-      return 
-      end 
-c=============================================================================
       subroutine rk4(y,dydx,n,x,h,yout,derivs)
 
       integer(ISZ):: n 
@@ -407,18 +638,18 @@ c     First step
         YT(I)=y(I)+HH*dydx(I)
       enddo
 c     Second step
-      call derivs(XH,YT,DYT)
+      call derivs(XH,n,YT,DYT)
       do I=1,N
         YT(I)=Y(I)+HH*DYT(I)
       enddo 
 c     Third step 
-      call derivs(XH,YT,DYM)
+      call derivs(XH,n,YT,DYM)
       do I=1,N
         YT(I)=Y(I)+H*DYM(I)
         DYM(I)=DYT(I)+DYM(I)
       enddo
 c     Fourth step 
-      call derivs(X+H,YT,DYT)
+      call derivs(X+H,n,YT,DYT)
       do I=1,N
         YOUT(I)=Y(I)+H6*(DYDX(I)+DYT(I)+2.*DYM(I))
       enddo
@@ -439,6 +670,10 @@ c       external user supplied subroutine derivs(x,y,dydx)
 c       returns the derivatives dydx evaluated at x, y(x) 
 c       where y and dydx have dimension nvar.   
 c
+c       external user supplied subroutine derivs(x,y,dydx) 
+c       returns the derivatives dydx evaluated at x, y(x) 
+c       where y and dydx have dimension nvar.     
+c
 c     The routine is slightly modified from the one presented in:
 c        Numerical Recipes The Art of Scientific Computing, 1st Edition 
 c        Press, Flannery, Teukolsky, and Vetterling (1986)
@@ -455,7 +690,7 @@ c     load starting values
       H=(X2-X1)/float(nstep)
 c     take nstep 4th order Runge-Kutta steps using rk4
       do K=1,NSTEP
-        call derivs(XX,y_work,dy_work)
+        call derivs(XX,nvar,y_work,dy_work)
         call rk4(y_work,dy_work,nvar,XX,H,y_work,DERIVS)
         if(XX+H .eq. XX) then
           call remark('Stepsize not significant in rkdumb') 
@@ -469,6 +704,37 @@ c       store intermediate steps
         enddo
       enddo 
 
+      return
+      end
+c=============================================================================
+      subroutine derivs_cf(x,nvar,y,dydx)
+      
+      integer(ISZ):: nvar
+      real(kind=8):: x 
+      real(kind=8):: y(nvar),dydx(nvar) 
+      
+c     calculates derivatives dydx at x,y
+c        nvar       = number equations 
+c        x          = independent coordinate 
+c        y(nvar)    = dependant variable at x 
+c        dydx(nvar) = derivatives at x,y 
+c
+
+      dydx(1) =  y(2) 
+      dydx(2) = -y(1) 
+      
+      return
+      end
+c=============================================================================
+      subroutine integrate_test(y,x,nvar,nstep,x1,x2,y_work,dy_work)
+
+      integer(ISZ):: nvar,nstep 
+      real(kind=8):: x1,x2
+      real(kind=8):: y(nvar,nstep),x(nstep),y_work(nvar),dy_work(nvar)
+      external derivs_cf 
+
+      call rkdumb(y,x,nvar,nstep,x1,x2,y_work,dy_work,derivs_cf)
+      
       return
       end
 c=============================================================================
