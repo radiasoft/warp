@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.23 2001/05/31 23:12:09 dave Exp $"
+warp_version = "$Id: warp.py,v 1.24 2001/06/05 16:53:12 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -390,7 +390,10 @@ Reads in data from file, redeposits charge density and does field solve
   loadrho()
   # --- Recalculate the fields (since it was not saved)
   fieldsol(0)
-  # --- Set the lattice internal variables (probably not really needed)
+  # --- Set the lattice internal variables. Only needed if reading in a dump
+  # --- that was made before the overlapping elements was implemented.
+  # --- Otherwise is doesn't hurt anything.
+  resetlat()
   setlatt()
   # --- Reinitialize some injection stuff if it is needed.
   # --- This is really only needed for the parallel version since some of the
