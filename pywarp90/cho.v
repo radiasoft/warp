@@ -1,5 +1,5 @@
 cho
-#@(#) File CHO.V, version $Revision: 1.12 $, $Date: 2002/10/28 22:49:24 $
+#@(#) File CHO.V, version $Revision: 1.13 $, $Date: 2003/01/07 18:32:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package cho of code WARP6
@@ -9,7 +9,7 @@ cho
 }
 
 *********** CHOversion:
-verscho character*19 /"$Revision: 1.12 $"/#  Code version version is set by CVS
+verscho character*19 /"$Revision: 1.13 $"/#  Code version version is set by CVS
 
 *********** CHOHandle:
 cho_handle integer # Handle to the ChomboPIC package
@@ -22,8 +22,7 @@ cho_refratio integer /2/ # Refinement ratio
 cho_maxparticlespercell integer /0/ # Maximum particles per cell
 cho_tol real /1.e-8/ # Tolerance on field solution
 cho_bcflags(3,2) integer /6*0/ # Boundary conditions. 0 Dirichlet, 1 Nuemman
-lcho_allnodesreachable logical /.true./ # When true, all nodes are considered
-reachable
+lcho_allnodesreachable logical /.true./ # When true, all nodes are considered reachable
 
 *********** CHOsubs:
 cho_setamrgrids(nx:integer, ny:integer, nz:integer, dx:real, xmmin:real,
