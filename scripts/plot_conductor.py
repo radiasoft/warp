@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.49 2002/11/07 23:57:15 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.50 2002/11/26 21:39:30 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1335,6 +1335,25 @@ def plotquadoutline(iq=0,nq=None,color='fg',gridframe=0,axis='x',
                      top.quadgl,top.quadgp,top.qoffx,top.qoffy,
                      top.quadpa,top.quadpr,top.quadpw,
                      top.qdelpal,top.qdelpar)
+
+#---------------------------------------------------------------------------
+def plotheleoutline(ih=0,nh=None,color='fg',gridframe=0,axis='x',
+                    outline=1,fillcolor=None):
+  """Plots the outline of hele elements
+ - ih=0: starting hele to plot
+ - nh=top.nhele+1: number of heles to plot
+ - color='fg': line color
+ - gridframe=0: when true, make plot in grid coordinates
+ - axis='x': selects axis to plot, either 'x' or 'y'
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
+  """
+  if nh is None: nh = top.nhele + 1
+  plotelementoutline(color,gridframe,axis,ih,nh,outline,fillcolor,
+                     top.helezs,top.heleze,top.heleap,top.helerr,top.helerl,
+                     top.helegl,top.helegp,top.heleox,top.heleoy,
+                     top.helepa,zeros(top.nhele+1,'d'),top.helepw,
+                     zeros(top.nhele+1,'d'),zeros(top.nhele+1,'d'))
 
 #---------------------------------------------------------------------------
 def plotemltoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
