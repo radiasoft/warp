@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.4 2001/05/29 20:34:44 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.5 2001/05/29 20:41:20 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -45,7 +45,7 @@ zmmnt(itask=0)
     jsmax = top.ns
   else:
     jsmin = js
-    jsmax = js
+    jsmax = js + 1
   if (itask == 0 or itask == 2):
     for js in xrange(jsmin,jsmax):
       for ipmin in xrange(top.ins[js]-1,top.ins[js]+top.nps[js]-1,256):
