@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.72 2004/07/07 18:25:42 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.73 2004/07/16 21:31:04 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -940,13 +940,13 @@ Creates a grid object which can generate conductor data.
 
     # --- Check for symmetries
     if self.l2symtry:
-      self.ymin = 0.
-      self.ymmin = 0.
+      if self.ymin  < 0.: self.ymin  = 0.
+      if self.ymmin < 0.: self.ymmin = 0.
     elif self.l4symtry:
-      self.xmin = 0.
-      self.xmmin = 0.
-      self.ymin = 0.
-      self.ymmin = 0.
+      if self.xmin  < 0.: self.xmin  = 0.
+      if self.xmmin < 0.: self.xmmin = 0.
+      if self.ymin  < 0.: self.ymin  = 0.
+      if self.ymmin < 0.: self.ymmin = 0.
 
     # --- Note that for the parallel version, the values of zmmin and zmmax
     # --- will be wrong if this is done before the generate, during which time
