@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.13 $, $Date: 2002/01/30 18:26:35 $
+c@(#) File ENV.M, version $Revision: 3.14 $, $Date: 2002/02/23 00:59:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -40,7 +40,9 @@ c  for the envelope code.
 
 c  Send a startup message to the standard output
 
-      call remark(" ***  envelope solver package ENV generating")
+      if (lenvout) then
+        call remark(" ***  envelope solver package ENV generating")
+      endif
 
 c  Calculate derived quantities
 
