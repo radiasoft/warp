@@ -6435,7 +6435,7 @@ LOGICAL(ISZ) :: l_sym
 IF(np==0) return
 
  IF(ngrids>1 .and. .not. l_dep_rho_on_base) then
-  call rhoweightr_meshref_weights(xp,yp,w,np,q,rgrid)
+  call rhoweightr_meshref_weights(xp,yp,w,np,q)
  else
   invdr = 1._8/dr
 
