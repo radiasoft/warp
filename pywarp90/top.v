@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.136 $, $Date: 2005/02/04 23:40:18 $
+#@(#) File TOP.V, version $Revision: 3.137 $, $Date: 2005/02/15 01:23:54 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.136 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.137 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1958,13 +1958,25 @@ lspecial                  logical
 
 *********** ExtPart dump:
 # Arrays that hold particle data that is extrapolated to grid cell centers
-# in the GETZMMNT routine.
+# in the GETZMMNT and GETEXTRAPOLATEDPARTICLES routines.
 nepwin                  integer /0/ # Number of grid locations (windows)
 izepwin(nepwin)        _integer /-1/ # List of grid locations (indx of zmntmesh)
 zzepwin(nepwin)        _real        # List of lab frame locations
 wzepwin(nepwin)        _real        # List of lab frame widths
 nepmax                  integer /0/ # Maximum number of particles
 npidepmax               integer /0/ # Max number of columns in pidep
+lepsaveonce             logical /.false./ # When true, each particle is saved
+                                          # at most only once in each window
+                                          # This only works if the windows
+                                          # do not overlap each other!
+epclosenessfactor       real /0.75/ # When saving particles only once,
+                                    # particle is saved if the extrapolation
+                                    # factor is this much less than the
+                                    # estimated extrapolation factor for the
+                                    # next step.
+epflagpid               integer /0/ # Position in the array pid where the
+                                    # saveonce flag is stored.
+                                    # (FORTRAN indexed: based 1)
 nep(nepwin,ns)         _integer     # Number of particles in each grid location
 tep(nepmax,nepwin,ns)  _real        # time of particles at grid cell centers
 xep(nepmax,nepwin,ns)  _real        # X coordinates at grid cell centers
@@ -1972,7 +1984,7 @@ yep(nepmax,nepwin,ns)  _real        # Y coordinates at grid cell centers
 uxep(nepmax,nepwin,ns) _real        # X velocities at grid cell centers
 uyep(nepmax,nepwin,ns) _real        # Y velocities at grid cell centers
 uzep(nepmax,nepwin,ns) _real        # Z velocities at grid cell centers
-$pidep(nepmax,npidepmax,nepwin,ns) _real # Particle ID XXX Not yet implemented
+pidep(nepmax,npidepmax,nepwin,ns) _real # Particle ID 
 
 *********** Pspwork:
 # Scratch arrays for phase space plots

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.185 $, $Date: 2005/01/24 14:49:44 $
+c@(#) File W3D.F, version $Revision: 3.186 $, $Date: 2005/02/15 01:23:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -71,6 +71,7 @@ c=============================================================================
       use InjectVars3d
       use DKInterp
       use InDiag3d
+      use ExtPart
 
 c  Invoked by the GENERATE command, it sets up the problem
 c  This routine allots all of the neccesary dynamic arrays, calls the
@@ -130,6 +131,12 @@ c Set rpid if needed and not set by user
         rpid = npid+1
         npid = npid+1
       end if
+
+c Set epflagpid if needed
+      if (lepsaveonce) then
+        epflagpid = npid + 1
+        npid = npid + 1
+      endif
 
 c initializes boundary conditions
 
@@ -1646,9 +1653,9 @@ c                --- Don't do this if we're doing drift-kinetic interp
                  enddo
                endif
               endif
-c              --- Calculate moments over particles, now that we're sync'd
-c              --- THIS IS NOT DONE FOR center = hbor1.
-               if (center == "gen" .or. center == "synchv") then
+c             --- Calculate moments over particles, now that we're sync'd
+c             --- THIS IS NOT DONE FOR center = hbor1.
+              if (center == "gen" .or. center == "synchv") then
                 if(wpid==0) then
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
@@ -1663,10 +1670,20 @@ c              --- THIS IS NOT DONE FOR center = hbor1.
      &                         uxpo,uypo,uzpo,is,ns,
      &                         maxp,minp,zmmnts0,zmmnts)
                 endif
-                call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                         dt/2.,uxpo,uypo,uzpo,is,time,zbeam)
-               endif
+                if (npid > 0) then
+                  call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),
+     &                           zp(ipmin),
+     &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                           npidmax,pid(ipmin:ipmin+ip-1,:),
+     &                           dt/2.,uxpo,uypo,uzpo,is,time,zbeam)
+                else
+                  call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),
+     &                           zp(ipmin),
+     &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                           0,0.,
+     &                           dt/2.,uxpo,uypo,uzpo,is,time,zbeam)
+                endif
+              endif
             endif
          enddo
 !$OMP END DO

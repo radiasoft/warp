@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.145 $, $Date: 2005/02/03 20:41:12 $
+c@(#) File TOP.F, version $Revision: 3.146 $, $Date: 2005/02/15 01:23:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4680,46 +4680,46 @@ c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
 c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
 c         --- This allows access to the particle data when it is extrapolated
 c         --- to the moments grid cell centers.
-          do iw=1,nepwin
-            if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
+c         do iw=1,nepwin
+c           if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
 
 c            --- Make sure that there is enough room - assuming that all
 c            --- particles could be saved.
-             if (nep(iw,is)+np > nepmax) then
-               nepmax = nep(iw,is)+np
-               call gchange("ExtPart",0)
-             endif
+c            if (nep(iw,is)+np > nepmax) then
+c              nepmax = nep(iw,is)+np
+c              call gchange("ExtPart",0)
+c            endif
 c            if (npidepmax .ne. npidmax) then
 c              call gchange("ExtPart",0)
 c            endif
 
-            do ip=1,np
-              if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
-     &            pp(0,ip) > 0.) then
-!$OMP ATOMIC
-                nep(iw,is) = nep(iw,is) + 1
-                tep(nep(iw,is),iw,is) = pp(16,ip) + time
-                xep(nep(iw,is),iw,is) = pp(1,ip)
-                yep(nep(iw,is),iw,is) = pp(5,ip)
-                uxep(nep(iw,is),iw,is) = pp(3,ip)
-                uyep(nep(iw,is),iw,is) = pp(7,ip)
-                uzep(nep(iw,is),iw,is) = pp(11,ip)
+c           do ip=1,np
+c             if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
+c    &            pp(0,ip) > 0.) then
+c$OMP ATOMIC
+c               nep(iw,is) = nep(iw,is) + 1
+c               tep(nep(iw,is),iw,is) = pp(16,ip) + time
+c               xep(nep(iw,is),iw,is) = pp(1,ip)
+c               yep(nep(iw,is),iw,is) = pp(5,ip)
+c               uxep(nep(iw,is),iw,is) = pp(3,ip)
+c               uyep(nep(iw,is),iw,is) = pp(7,ip)
+c               uzep(nep(iw,is),iw,is) = pp(11,ip)
 c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
-              else if (iz(ip)+1 == izepwin(iw) .and.
-     &                 nep(iw,is) < nepmax .and.
-     &                 pp(0,ip) > 0.) then
-!$OMP ATOMIC
-                nep(iw,is) = nep(iw,is) + 1
-                tep(nep(iw,is),iw,is) = pp(17,ip) + time
-                xep(nep(iw,is),iw,is) = pp(2,ip)
-                yep(nep(iw,is),iw,is) = pp(6,ip)
-                uxep(nep(iw,is),iw,is) = pp(4,ip)
-                uyep(nep(iw,is),iw,is) = pp(8,ip)
-                uzep(nep(iw,is),iw,is) = pp(12,ip)
+c             else if (iz(ip)+1 == izepwin(iw) .and.
+c    &                 nep(iw,is) < nepmax .and.
+c    &                 pp(0,ip) > 0.) then
+c$OMP ATOMIC
+c               nep(iw,is) = nep(iw,is) + 1
+c               tep(nep(iw,is),iw,is) = pp(17,ip) + time
+c               xep(nep(iw,is),iw,is) = pp(2,ip)
+c               yep(nep(iw,is),iw,is) = pp(6,ip)
+c               uxep(nep(iw,is),iw,is) = pp(4,ip)
+c               uyep(nep(iw,is),iw,is) = pp(8,ip)
+c               uzep(nep(iw,is),iw,is) = pp(12,ip)
 c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
-              endif
-            enddo
-          enddo
+c             endif
+c           enddo
+c         enddo
 
 c-------------------------------------------------------------------------
 #ifdef J90
@@ -5478,46 +5478,46 @@ c           pp(10,ip) = (iz(ip)+1)*dzm + zbeam + zmmntmin
 c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
 c         --- This allows access to the particle data when it is extrapolated
 c         --- to the moments grid cell centers.
-          do iw=1,nepwin
-            if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
+c         do iw=1,nepwin
+c           if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
 
 c            --- Make sure that there is enough room - assuming that all
 c            --- particles could be saved.
-             if (nep(iw,is)+np > nepmax) then
-               nepmax = nep(iw,is)+np
-               call gchange("ExtPart",0)
-             endif
+c            if (nep(iw,is)+np > nepmax) then
+c              nepmax = nep(iw,is)+np
+c              call gchange("ExtPart",0)
+c            endif
 c            if (npidepmax .ne. npidmax) then
 c              call gchange("ExtPart",0)
 c            endif
 
-            do ip=1,np
-              if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
-     &            wp(ip) > 0.) then
-!$OMP ATOMIC
-                nep(iw,is) = nep(iw,is) + 1
-                tep(nep(iw,is),iw,is) = pp(16,ip) + time
-                xep(nep(iw,is),iw,is) = pp(1,ip)
-                yep(nep(iw,is),iw,is) = pp(5,ip)
-                uxep(nep(iw,is),iw,is) = pp(3,ip)
-                uyep(nep(iw,is),iw,is) = pp(7,ip)
-                uzep(nep(iw,is),iw,is) = pp(11,ip)
+c           do ip=1,np
+c             if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
+c    &            wp(ip) > 0.) then
+c$OMP ATOMIC
+c               nep(iw,is) = nep(iw,is) + 1
+c               tep(nep(iw,is),iw,is) = pp(16,ip) + time
+c               xep(nep(iw,is),iw,is) = pp(1,ip)
+c               yep(nep(iw,is),iw,is) = pp(5,ip)
+c               uxep(nep(iw,is),iw,is) = pp(3,ip)
+c               uyep(nep(iw,is),iw,is) = pp(7,ip)
+c               uzep(nep(iw,is),iw,is) = pp(11,ip)
 c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
-              else if (iz(ip)+1 == izepwin(iw) .and.
-     &                 nep(iw,is) < nepmax .and.
-     &                 wp(ip) > 0.) then
-!$OMP ATOMIC
-                nep(iw,is) = nep(iw,is) + 1
-                tep(nep(iw,is),iw,is) = pp(17,ip) + time
-                xep(nep(iw,is),iw,is) = pp(2,ip)
-                yep(nep(iw,is),iw,is) = pp(6,ip)
-                uxep(nep(iw,is),iw,is) = pp(4,ip)
-                uyep(nep(iw,is),iw,is) = pp(8,ip)
-                uzep(nep(iw,is),iw,is) = pp(12,ip)
+c             else if (iz(ip)+1 == izepwin(iw) .and.
+c    &                 nep(iw,is) < nepmax .and.
+c    &                 wp(ip) > 0.) then
+c$OMP ATOMIC
+c               nep(iw,is) = nep(iw,is) + 1
+c               tep(nep(iw,is),iw,is) = pp(17,ip) + time
+c               xep(nep(iw,is),iw,is) = pp(2,ip)
+c               yep(nep(iw,is),iw,is) = pp(6,ip)
+c               uxep(nep(iw,is),iw,is) = pp(4,ip)
+c               uyep(nep(iw,is),iw,is) = pp(8,ip)
+c               uzep(nep(iw,is),iw,is) = pp(12,ip)
 c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
-              endif
-            enddo
-          enddo
+c             endif
+c           enddo
+c         enddo
 
 c-------------------------------------------------------------------------
 #ifdef J90
@@ -5698,14 +5698,16 @@ c         --- End of Z moments accumulation
       end
 c=============================================================================
       subroutine getextrapolatedparticles(np,xp,yp,zp,uxp,uyp,uzp,gaminv,
+     &                                    npidmax,pid,
      &                                    dt,uxpo,uypo,uzpo,is,time,zbeam)
       use Z_Moments
       use ExtPart
       use Timers
-      integer(ISZ):: np,is
+      integer(ISZ):: np,is,npidmax
       real(kind=8):: dt,time,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
+      real(kind=8):: pid(np,npidmax)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
 
 c Given current and previous velocities, extrapolates particles to the
@@ -5719,27 +5721,35 @@ c --- V extrapolated using current V and estimated A
 c ---   (this avoids having to use E and B to extrapolate V).
 c --- X extrapolated using constant V and estimated A
 
+      real(kind=8):: zzep,wzep
       real(kind=8):: oneondt,dtstar,delz,vx,vy,vz,ax,ay,az
+      real(kind=8):: vznp1,zznp1,delznp1,dtstarnp1
       integer(ISZ):: iw,ip,nn
 
       real(kind=8):: timetemp,wtime
 
       oneondt = 1./dt
 
-c     if (npidepmax .ne. npidmax) then
-c       call gchange("ExtPart",0)
-c     endif
+      if (npidepmax .ne. npidmax) then
+        npidepmax = npidmax
+        call gchange("ExtPart",0)
+      endif
 
 c     --- Loop over windows
       do iw=1,nepwin
 
-c       --- Skip windows with iz defined since those are already dealt with
-c       --- in the moments calculation
-        if (izepwin(iw) >= 0) cycle
+c       --- Get the location of the extrapolation plane.
+        if (izepwin(iw) >= 0) then
+          zzep = zmmntmin + izepwin(iw)*dzm + zbeam
+          wzep = dzm
+        else
+          zzep = zzepwin(iw)
+          wzep = wzepwin(iw)
+        endif
 
 c       --- Skip windows that are outside of the grid frame.
-        if (zzepwin(iw)+wzepwin(iw) <= zmmntmin+zbeam .or.
-     &      zzepwin(iw)-wzepwin(iw) >= zmmntmax+zbeam) cycle
+        if (zzep+wzep <= zmmntmin+zbeam .or.
+     &      zzep-wzep >= zmmntmax+zbeam) cycle
 
 c       --- Make sure that there is enough room - assuming that all particles
 c       --- could be saved.
@@ -5750,9 +5760,14 @@ c       --- could be saved.
 
 c       --- extrapolate to window if near it
         do ip=1,np
-          if (zp(ip) < zzepwin(iw)-wzepwin(iw) .or.
-     &        zp(ip) > zzepwin(iw)+wzepwin(iw)) cycle
-c         if (nep(iw,is) == nepmax) cycle
+          if (zp(ip) < zzep-wzep .or.
+     &        zp(ip) > zzep+wzep) cycle
+
+c         --- Check if particle has already been saved in this window.
+c         --- This only works if multiple windows don't overlap.
+          if (lepsaveonce) then
+            if (pid(ip,epflagpid) == iw) cycle
+          endif
 
           vx = uxp(ip)*gaminv(ip)
           vy = uyp(ip)*gaminv(ip)
@@ -5761,11 +5776,31 @@ c         if (nep(iw,is) == nepmax) cycle
           ay = (uyp(ip) - uypo(ip))*oneondt
           az = (uzp(ip) - uzpo(ip))*oneondt
 
-          delz = (zzepwin(iw) - zp(ip))
+          delz = (zzep - zp(ip))
           dtstar = 2.*delz/(sqrt(vz**2 - 2.*az*delz) + vz)
+
+c         --- Make an estimate of where the particle will be on the next step.
+c         --- This assumes that az will be constant.
+c         --- If it will be much closer to the z plane (smaller dtstar),
+c         --- then wait until then to save the particle.
+          if (lepsaveonce) then
+            vznp1 = vz + 0.5*az*dt
+            zznp1 = zp(ip) + vznp1*dt
+            vznp1 = vznp1 + 0.5*az*dt
+            delznp1 = (zzep - zznp1)
+            dtstarnp1 = 2.*delznp1/(sqrt(vznp1**2 - 2.*az*delznp1) + vznp1)
+c           --- The factor of 0.75 is an adhoc parameter, an attempt to
+c           --- prevent particles from being missed if the estimate of
+c           --- dtstarnp1 is way off.
+            if (abs(dtstarnp1) < abs(dtstar)*epclosenessfactor) cycle
+          endif
 
           nep(iw,is) = nep(iw,is) + 1
           nn = nep(iw,is)
+
+          if (lepsaveonce) then
+            pid(ip,epflagpid) = iw
+          endif
 
           tep(nn,iw,is) = time + dtstar
           xep(nn,iw,is) = xp(ip) + vx*dtstar + 0.5*ax*dtstar**2
@@ -5773,7 +5808,7 @@ c         if (nep(iw,is) == nepmax) cycle
           uxep(nn,iw,is) = vx + ax*dtstar
           uyep(nn,iw,is) = vy + ay*dtstar
           uzep(nn,iw,is) = vz + az*dtstar
-c         if (npid > 0) pidep(nn,:,iw,is) = pid(ip,:)
+          if (npidmax > 0) pidep(nn,:,iw,is) = pid(ip,:)
 
         enddo
       enddo
