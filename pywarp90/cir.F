@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.8 $, $Date: 2002/11/13 19:32:22 $
+c@(#) File CIR.M, version $Revision: 3.9 $, $Date: 2002/11/14 22:27:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -1188,8 +1188,10 @@ c     --- Laslett formulation is used here
               call kaboom(-1)
               lzeroenv = .true.
             endif
+            logcon = 0.
+          else
+            logcon = y(1,ii)*y(3,ii)*log10(y(1,ii)/y(3,ii))/rpipe**2
           endif
-          logcon = y(1,ii)*y(3,ii)*log10(y(1,ii)/y(3,ii))/rpipe**2
           c0 = 0.785 + 3.0*logcon
           d0 = 0.785 - 3.0*logcon
           c1 = 0.834 + 3.0*logcon
