@@ -6,15 +6,17 @@ from wxPython.grid import *
 from warp import *
 
 [wxID_PANEL, wxID_PANELBOLDLABEL, wxID_PANELCOLOR, wxID_PANELELEMENT_SPIN, 
- wxID_PANELFONTLABEL, wxID_PANELHEIGHTLABEL, wxID_PANELHIDE, 
- wxID_PANELITALICLABEL, wxID_PANELLABELAXIS, wxID_PANELMARKER_LETTER, 
- wxID_PANELMARKS, wxID_PANELMPHASE, wxID_PANELMSIZE, wxID_PANELMSPACE, 
- wxID_PANELSTATICBOX1, wxID_PANELSTATICBOX2, wxID_PANELSTATICTEXT1, 
- wxID_PANELSTATICTEXT10, wxID_PANELSTATICTEXT11, wxID_PANELSTATICTEXT2, 
- wxID_PANELSTATICTEXT3, wxID_PANELSTATICTEXT3, wxID_PANELSTATICTEXT4, 
- wxID_PANELSTATICTEXT5, wxID_PANELSTATICTEXT6, wxID_PANELSTATICTEXT7, 
+ wxID_PANELFILENAME, wxID_PANELFONTLABEL, wxID_PANELFORMAT, 
+ wxID_PANELHEIGHTLABEL, wxID_PANELHIDE, wxID_PANELITALICLABEL, 
+ wxID_PANELLABELAXIS, wxID_PANELMARKER_LETTER, wxID_PANELMARKS, 
+ wxID_PANELMPHASE, wxID_PANELMSIZE, wxID_PANELMSPACE, wxID_PANELSAVE, 
+ wxID_PANELSTATICBOX1, wxID_PANELSTATICBOX2, wxID_PANELSTATICBOX3, 
+ wxID_PANELSTATICTEXT1, wxID_PANELSTATICTEXT10, wxID_PANELSTATICTEXT11, 
+ wxID_PANELSTATICTEXT12, wxID_PANELSTATICTEXT2, wxID_PANELSTATICTEXT3, 
+ wxID_PANELSTATICTEXT3, wxID_PANELSTATICTEXT4, wxID_PANELSTATICTEXT5, 
+ wxID_PANELSTATICTEXT6, wxID_PANELSTATICTEXT7, wxID_PANELSTATICTEXT8, 
  wxID_PANELSTATICTEXT9, wxID_PANELTYPE, wxID_PANELWIDTH_SLIDER, 
-] = map(lambda _init_ctrls: wxNewId(), range(29))
+] = map(lambda _init_ctrls: wxNewId(), range(35))
 
 class panel(wxPanel):
     def _init_utils(self):
@@ -24,10 +26,10 @@ class panel(wxPanel):
     def _init_ctrls(self, prnt):
         # generated method, don't edit
         wxPanel.__init__(self, id=wxID_PANEL, name='Gist', parent=prnt,
-              pos=wxPoint(498, 297), size=wxSize(344, 232),
+              pos=wxPoint(415, 280), size=wxSize(342, 232),
               style=wxTAB_TRAVERSAL)
         self._init_utils()
-        self.SetClientSize(wxSize(336, 208))
+        self.SetClientSize(wxSize(334, 208))
         EVT_ENTER_WINDOW(self, self.OnPanelEnterWindow)
 
         self.staticText1 = wxStaticText(id=wxID_PANELSTATICTEXT1, label='Color',
@@ -117,51 +119,55 @@ class panel(wxPanel):
         EVT_SCROLL(self.mspace, self.OnMspaceScroll)
 
         self.staticText9 = wxStaticText(id=wxID_PANELSTATICTEXT9, label='Font',
-              name='staticText9', parent=self, pos=wxPoint(184, 24),
+              name='staticText9', parent=self, pos=wxPoint(184, 20),
               size=wxSize(31, 20), style=0)
 
         self.staticText10 = wxStaticText(id=wxID_PANELSTATICTEXT10,
               label='Height', name='staticText10', parent=self, pos=wxPoint(184,
-              72), size=wxSize(41, 16), style=0)
+              62), size=wxSize(41, 16), style=0)
 
         self.BoldLabel = wxCheckBox(id=wxID_PANELBOLDLABEL, label='Bold',
-              name='BoldLabel', parent=self, pos=wxPoint(224, 48),
+              name='BoldLabel', parent=self, pos=wxPoint(224, 40),
               size=wxSize(48, 16), style=0)
         self.BoldLabel.SetValue(False)
+        self.BoldLabel.SetFont(wxFont(8, wxSWISS, wxNORMAL, wxBOLD, False,
+              'MS Sans Serif'))
         EVT_CHECKBOX(self.BoldLabel, wxID_PANELBOLDLABEL,
               self.OnBoldlabelCheckbox)
 
         self.ItalicLabel = wxCheckBox(id=wxID_PANELITALICLABEL, label='Italic',
-              name='ItalicLabel', parent=self, pos=wxPoint(272, 48),
+              name='ItalicLabel', parent=self, pos=wxPoint(272, 40),
               size=wxSize(48, 16), style=0)
         self.ItalicLabel.SetValue(False)
+        self.ItalicLabel.SetFont(wxFont(8, wxSWISS, wxITALIC, wxNORMAL, False,
+              'MS Sans Serif'))
         EVT_CHECKBOX(self.ItalicLabel, wxID_PANELITALICLABEL,
               self.OnItaliclabelCheckbox)
 
         self.LabelAxis = wxChoice(choices=['x', 'y', 'all'],
               id=wxID_PANELLABELAXIS, name='LabelAxis', parent=self,
-              pos=wxPoint(224, 96), size=wxSize(96, 21), style=0,
+              pos=wxPoint(224, 84), size=wxSize(96, 21), style=0,
               validator=wxDefaultValidator)
 
         self.FontLabel = wxChoice(choices=['Courier', 'Times', 'Helvetica',
               'Symbol', 'New Century'], id=wxID_PANELFONTLABEL,
-              name='FontLabel', parent=self, pos=wxPoint(224, 22),
+              name='FontLabel', parent=self, pos=wxPoint(224, 16),
               size=wxSize(96, 21), style=0, validator=wxDefaultValidator)
         EVT_CHOICE(self.FontLabel, wxID_PANELFONTLABEL, self.OnFontlabelChoice)
 
         self.HeightLabel = wxSlider(id=wxID_PANELHEIGHTLABEL, maxValue=100,
               minValue=1, name='HeightLabel', parent=self, point=wxPoint(224,
-              70), size=wxSize(96, 20), style=wxSL_HORIZONTAL,
+              60), size=wxSize(96, 20), style=wxSL_HORIZONTAL,
               validator=wxDefaultValidator, value=0)
         EVT_SCROLL(self.HeightLabel, self.OnHeightlabelScroll)
 
         self.staticText11 = wxStaticText(id=wxID_PANELSTATICTEXT11,
               label='Axis', name='staticText11', parent=self, pos=wxPoint(184,
-              100), size=wxSize(30, 13), style=0)
+              88), size=wxSize(30, 13), style=0)
 
         self.staticBox1 = wxStaticBox(id=wxID_PANELSTATICBOX1, label='Labels',
               name='staticBox1', parent=self, pos=wxPoint(176, 0),
-              size=wxSize(152, 200), style=0)
+              size=wxSize(152, 112), style=0)
         self.staticBox1.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxBOLD, False,
               'MS Sans Serif'))
 
@@ -176,6 +182,32 @@ class panel(wxPanel):
               size=wxSize(90, 21), style=wxSL_HORIZONTAL,
               validator=wxDefaultValidator, value=0)
         EVT_SCROLL(self.mphase, self.OnMphaseScroll)
+
+        self.staticBox3 = wxStaticBox(id=wxID_PANELSTATICBOX3, label='Output',
+              name='staticBox3', parent=self, pos=wxPoint(176, 112),
+              size=wxSize(152, 88), style=0)
+        self.staticBox3.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxBOLD, False,
+              'MS Sans Serif'))
+
+        self.staticText8 = wxStaticText(id=wxID_PANELSTATICTEXT8, label='File',
+              name='staticText8', parent=self, pos=wxPoint(184, 130),
+              size=wxSize(32, 13), style=0)
+
+        self.staticText12 = wxStaticText(id=wxID_PANELSTATICTEXT12,
+              label='Format', name='staticText12', parent=self, pos=wxPoint(184,
+              152), size=wxSize(40, 13), style=0)
+
+        self.Filename = wxTextCtrl(id=wxID_PANELFILENAME, name='Filename',
+              parent=self, pos=wxPoint(232, 128), size=wxSize(88, 21), style=0,
+              value='GistPlot')
+
+        self.Format = wxChoice(choices=['ps', 'cgm'], id=wxID_PANELFORMAT,
+              name='Format', parent=self, pos=wxPoint(232, 152), size=wxSize(88,
+              21), style=0, validator=wxDefaultValidator)
+
+        self.Save = wxButton(id=wxID_PANELSAVE, label='Save', name='Save',
+              parent=self, pos=wxPoint(232, 176), size=wxSize(88, 20), style=0)
+        EVT_BUTTON(self.Save, wxID_PANELSAVE, self.OnSaveButton)
 
     def __init__(self, parent):
         self._init_ctrls(parent)
@@ -372,6 +404,18 @@ class panel(wxPanel):
     def OnHeightlabelScroll(self, event):
         self.setheightlabel = 1
         if self.updatenow: self.OnUpdateButton(event)
+        event.Skip()
+
+    def OnSaveButton(self, event):
+        self.filename = str(self.Filename.GetValue())
+        self.format = str(self.Format.GetStringSelection())
+        if self.format=='ps':
+            suffix = '.ps'
+        else:
+            suffix = '.cgm'
+        hcp_file(self.filename+suffix)
+        hcp()
+        hcp_finish()
         event.Skip()
        
             
