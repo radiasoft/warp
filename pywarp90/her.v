@@ -1,5 +1,5 @@
 her
-#@(#) File HER.V, version $Revision: 3.9 $, $Date: 2001/07/30 22:58:19 $
+#@(#) File HER.V, version $Revision: 3.10 $, $Date: 2001/08/09 18:27:23 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for HERMES.
@@ -9,7 +9,7 @@ her
 
 *********** HERversion:
 # Version control for her package
-versher       character*19 /"$Revision: 3.9 $"/  # Current code version, set by SCCS
+versher       character*19 /"$Revision: 3.10 $"/  # Current code version, set by SCCS
 
 *********** HERvars dump:
 # Variables needed by the package HER

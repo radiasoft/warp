@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.9 $, $Date: 2001/07/30 22:58:19 $
+c@(#) File HER.M, version $Revision: 3.10 $, $Date: 2001/08/09 18:27:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -156,7 +156,8 @@ c       --- Save the initial history
         call savehermesvars(time,var,niz,it,lsavehist)
 c       --- Find initial forces
         call getderivs(time,dt,var,dy,niz,aion,zion,fviscous,icharge,iimage,
-     &            lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail)
+     &            lezbeam,lperveance,lemittance,lallez,lrelativ,
+     &            lezcenter,lviscous,lcurgrid,lfail)
         if (lfail) return
         if (lherout) then
 c         --- Send a startup message to the standard output
@@ -169,8 +170,8 @@ c     --- Run the HERMES kernel
       time = time + dt
 c     --- Advance the envelope and orbits (one step)
       call stephr (var,dy,niz,time,dt,aion,zion,fviscous,
-     &              icharge,iimage,lezbeam,lperveance,lemittance,lallez,lezcenter,
-     &              lviscous,lcurgrid,lfail)
+     &              icharge,iimage,lezbeam,lperveance,lemittance,lallez,lrelativ,
+     &              lezcenter,lviscous,lcurgrid,lfail)
       if (lfail) return
 
       call savehermesvars(time,var,niz,it,lsavehist)
@@ -644,16 +645,18 @@ c ---   Print warning if rpipe is zero
       end
 c=============================================================================
       subroutine getderivs(t,dt,y,dy,niz,aion,zion,fviscous,
-     &                  icharge,iimage,lezbeam,lperveance,lemittance,lallez,
+     &                  icharge,iimage,lezbeam,lperveance,lemittance,lallez,lrelativ,
      &                  lezcenter,lviscous,lcurgrid,lfail)
       use Constant
       use HERfield
+      use InGen3d
       integer(ISZ):: niz
       real(kind=8):: t,dt,y(16,niz),dy(16,niz)
       real(kind=8):: aion,zion
       real(kind=8):: fviscous
       integer(ISZ):: icharge,iimage
-      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lrelativ
+      logical(ISZ):: lezcenter,lviscous,lcurgrid,lfail
 
 c  Computes the forces needed for the general-lattice envelope calculation.
 c  Includes both residence corrected hard edged quadrupole elements
@@ -678,7 +681,7 @@ c     --- Get the applied fields.
 c     --- Image forces are not yet implemented in HERMES
 
 c     --- Calculate the beam radius if needed
-      if (icharge < 7) call getradius(y,niz,rpipe,icharge)
+      if (icharge > 0) call getradius(y,niz,rpipe,icharge)
       if (icharge < 5) call getgfactor(niz,rpipe,icharge)
       
 c     --- Calculate auxiliary variables needed for fieldsolhr and getcurrent
@@ -690,8 +693,10 @@ c     --- Calculate the current (needed for the envelope equation)
       if (lfail) return
       
 c     --- Get self axial fields of beam.
+      if (lbeforefs) call execuser("beforefs")
       call fieldsolhr (niz,y,ezbeam,rpipe,icharge,lezbeam,lezcenter,lfail)
       if (lfail) return
+      if (lafterfs) call execuser("afterfs")
       
 c     --- Get the image effect on the beam envelope
       if (iimage > 0) then
@@ -734,8 +739,13 @@ c       --- longitudinal velocity
         dsdt = vz/(1.+xbend)
 
 c       --- relativistic factor gamma and gambeta = gamma*beta
-        gamma = 1/sqrt(1.0 - y(10,iz)**2)
-        gambeta = y(10,iz)*gamma
+        if (lrelativ) then
+          gamma = 1/sqrt(1.0 - y(10,iz)**2)
+          gambeta = y(10,iz)*gamma
+        else
+          gamma = 1.
+          gambeta = y(10,iz)
+        endif
 
 c       --- magnetic rigidity reciprocal
         rigidityi = zion*echarge/(aion*amu*clight*gambeta)
@@ -744,7 +754,7 @@ c       --- quadrupole-force coefficient
         quadfld = (dedx(iz) - dbdx(iz) * vz)*rigidityi
 c       --- bz ignored for now
 
-c       --- perveance perv (labeled K in the envelope equation)
+c       --- perveance perv
         if (lperveance) then
           perv = 2.0*y(13,iz)/(alfcur*gambeta**3)
         else
@@ -833,15 +843,16 @@ c       --- dbeta/dt
       end
 c=============================================================================
       subroutine stephr(y,dy,niz,t,dt,aion,zion,fviscous,
-     &            icharge,iimage,lezbeam,lperveance,lemittance,lallez,lezcenter,
-     &            lviscous,lcurgrid,lfail)
+     &            icharge,iimage,lezbeam,lperveance,lemittance,lallez,lrelativ,
+     &             lezcenter,lviscous,lcurgrid,lfail)
       use Constant
       integer(ISZ):: niz
       real(kind=8):: y(16,niz),dy(16,niz)
       real(kind=8):: t,dt,aion,zion
       real(kind=8):: fviscous
       integer(ISZ):: icharge,iimage
-      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lrelativ
+      logical(ISZ):: lezcenter,lviscous,lcurgrid,lfail
 
 c STEPHR  advances the set of the envelope equations using the
 c isochronous leapfrog algorithm.
@@ -883,7 +894,8 @@ c isochronous leapfrog algorithm.
       enddo
       
       call getderivs(t,dt,y,dy,niz,aion,zion,fviscous,icharge,iimage,
-     &            lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail)
+     &            lezbeam,lperveance,lemittance,lallez,lrelativ,
+     &            lezcenter,lviscous,lcurgrid,lfail)
       if (lfail) return
 
       do j=1,niz
@@ -953,11 +965,10 @@ c --- Load charge
         zslmax = max (y(9,ii),y(9,ii+1))
         izl = (zslmin-zmmin)/dz
         izr = (zslmax-zmmin)/dz
-        rm = (y(1,ii)*y(3,ii) + y(1,ii+1)*y(3,ii+1)) / 2.
-        dtemp = denmid(ii) / (pi * rm)
-        rm = sqrt(rm)/dr
+        rm = (rad(ii)+rad(ii+1))/2.
+        dtemp = denmid(ii) / (pi * (rm**2))
+        rm = rm / dr
         irm = rm
-        rm = rm - irm
         if (irm + 1> nr) then
           call remark ("Error in setrhohr: Beam radius is larger than the aperture.")
           lfail = .true.
@@ -966,8 +977,8 @@ c --- Load charge
         fact1 = (zslmin-zmmin)/dz - izl
         fact2 = (zslmax-zmmin)/dz - izr
         if (irm > 0) then
-          part1 = (irm/2. - 0.25 - rm*(irm+rm/2.)*((rm**2)/2.+rm*irm-1-2*irm)/(2.*irm+1.))/irm
-          part2 = ((rm*(irm+rm/2.))**2)/((irm+1.)*(2.*irm+1.))
+          part1 = (0.25/irm)*(2.*irm-1.+(2.*((irm+1)*rm)**2 - rm**4 - 2.*((irm+1)*irm)**2 + irm**4)/(2.*irm+1))
+          part2 = 0.25*((rm**2-irm**2)**2)/((2.*irm+1)*(irm+1))
         else
           part1 = 4.*(rm**2)*(1-(rm**2)/2.) - 2.
           part2 = (rm**2)/4.
@@ -1202,16 +1213,15 @@ c ---   Find Ez on slices
             fact1 =  del2-dz/2.
             fact2 =  del1-del2
             fact3 = -del1+dz/2.
-            rm = sqrt(y(1,ii)*y(3,ii))/dr
+            rm = rad(ii)/dr
             if (rm > 0.) then
               irm = rm
-              rm = rm - irm
-              part1 = irm - 0.5 - 2.*rm*(irm+rm/2.)*((rm**2)/2.+rm*irm-1-2*irm)/(2.*irm+1.)
-              part2 = 2.*((rm*(irm+rm/2.))**2)/(2.*irm+1.)
+              part1 = -((rm**2 - (irm+1.)**2)**2)/(4.*irm+2.)
+              part2 = ((rm**2-irm**2)**2)/(4.*irm+2)
               phi1 = 0.5*phi(0,iz-1)
               phi2 = 0.5*phi(0,iz)
               phi3 = 0.5*phi(0,iz+1)
-              do ir = 1,irm-1
+              do ir = 1,irm
                 phi1 = phi1 + 2.*ir*phi(ir,iz-1)
                 phi2 = phi2 + 2.*ir*phi(ir,iz)
                 phi3 = phi3 + 2.*ir*phi(ir,iz+1)
@@ -1219,7 +1229,7 @@ c ---   Find Ez on slices
               phi1 = phi1 + part1*phi(irm,iz-1) + part2*phi(irm+1,iz-1)
               phi2 = phi2 + part1*phi(irm,iz)   + part2*phi(irm+1,iz)
               phi3 = phi3 + part1*phi(irm,iz+1) + part2*phi(irm+1,iz+1)
-              eval(ii) = (fact1*phi1 + fact2*phi2 + fact3*phi3) / (((irm+rm)*dz)**2)
+              eval(ii) = (fact1*phi1 + fact2*phi2 + fact3*phi3) / ((rm*dz)**2)
             else
               phi1 = phi(0,iz-1)
               phi2 = phi(0,iz)
@@ -1331,13 +1341,13 @@ c=============================================================================
       
 c --- calculate space-charge geometric factor g
 c --- For icharge == 0, the g-factor has been set by the generate
-      if (icharge > 1) then
-        do ii=1,niz
-          gtemp(ii) = 2.*log(rpipe(ii)/rad(ii)) + 0.5
-        enddo
-      else
+      if (icharge == 1) then
         do ii=1,niz
           gtemp(ii) = 2.*log(rpipe(ii)/rad(ii))
+        enddo
+      elseif (icharge > 1) then
+        do ii=1,niz
+          gtemp(ii) = 2.*log(rpipe(ii)/rad(ii)) + 0.5
         enddo
       endif
 
