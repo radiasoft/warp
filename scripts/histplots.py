@@ -1,6 +1,6 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.6 2001/02/10 01:30:50 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.7 2001/03/05 18:24:59 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -58,7 +58,8 @@ hpbasicconttext = (
   - titles=1: Line width
   - width=1.0: Line width
   - linetype='solid': Line type
-  - levs=None: When false, no titles are printed
+  - levs=None: number of contours levels
+  - titles=true: When false, no titles are printed
   - filled=0: When true, plot filled contours""")
 hpzarraytext = (
   """
@@ -337,6 +338,37 @@ def hpekperp(kwdict={},**kw):
   hpbasic(top.hekperp,kw)
 if sys.version[:5] != "1.5.1":
   hpekperp.__doc__ = hpekperp.__doc__ + hpbasictext
+
+
+def hpekinz(iw=0,kwdict={},**kw):
+  "Z Kinetic energy (units of MV)"
+  kw.update(kwdict)
+  kw['titlet']="Z Kinetic energy"
+  kw['titlel']="(MV)"
+  if top.lrelativ:
+    u = (top.hvzbar/clight)**2
+    e = (top.aion*amu*clight**2)*(u/(sqrt(1.-u)+1.-u))/jperev              
+  else:
+    e = 0.5*top.aion*amu*top.hvzbar**2/jperev
+  hpbasicwin(e*1.e-6,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpekinz.__doc__ = hpekinz.__doc__ + hpbasicwintext
+
+
+def hpekin(iw=0,kwdict={},**kw):
+  "Total Kinetic energy (units of MV)"
+  kw.update(kwdict)
+  kw['titlet']="Total Kinetic energy"
+  kw['titlel']="(MV)"
+  if top.lrelativ:
+    u = (top.hvxbar**2 + top.hvybar**2 + top.hvzbar**2)/clight**2
+    e = (top.aion*amu*clight**2)*(u/(sqrt(1.-u)+1.-u))/jperev              
+  else:
+    u = top.hvxbar**2 + top.hvybar**2 + top.hvzbar**2
+    e = 0.5*top.aion*amu*u/jperev
+  hpbasicwin(e*1.e-6,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpekin.__doc__ = hpekin.__doc__ + hpbasicwintext
 
 
 def hpepsx(iw=0,kwdict={},**kw):
@@ -1285,6 +1317,8 @@ hpefld(): Field energy
 hpekzmbe(): Total Z Kinetic energy minus beam energy
 hpekzbeam(): Z Kinetic energy in the beam frame
 hpekperp(): Perp Kinetic energy
+hpekinz(): Z Kinetic energy (units of MV)
+hpekin(): Total kinetic energy (units of MV)
 hpepsx(): X emittance
 hpepsy(): Y emittance
 hpepsz(): Z emittance
