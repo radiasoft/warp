@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.105 2005/01/26 18:39:02 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.106 2005/02/22 19:02:19 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -277,14 +277,14 @@ Should never be directly created by the user.
     ni = 0
     if l_accu and len(self.imageparticles_data) > 0:
       datai = array(self.imageparticles_data)
-      qi = 0.5*(datai[:-2,1]-datai[2:,1])
+      qi = 0.5*(datai[2:,1]-datai[:-2,1])
       ti = datai[1:-1,0].copy()
       if tmin is None:tmini=min(ti)
       if tmax is None:tmaxi=max(ti)
       ni = shape(qi)[0]
     # setup time min/max and arrays
-    tmin=min(tminl,tmine,tmini)
-    tmax=max(tmaxl,tmaxe,tmaxi)
+    if tmin is None:tmin=min(tminl,tmine,tmini)
+    if tmax is None:tmax=max(tmaxl,tmaxe,tmaxi)
     qt = zeros(nt+1,Float)
     qtmp = zeros(nt+1,Float)
     dt = (tmax-tmin)/nt
@@ -307,6 +307,7 @@ Should never be directly created by the user.
     - widht=1      : line width
     - type='solid' : line type
     """
+    if me<>0:return
     time,current=self.get_current_history(js=js,l_lost=l_lost,l_emit=l_emit,l_accu=l_accu,tmin=tmin,tmax=tmax,nt=nt)
     plg(current,time,color=color,width=width,type=type)
     ptitles('Current history at '+self.name,'time (s)','I (A)')
@@ -333,21 +334,31 @@ Should never be directly created by the user.
     ymax = min(w3d.ymmax,maxs[1])
     zmax = min(w3d.zmmax,maxs[2])
     # get box boundaries at nodes locations
-    ixmin = max(0,       int((xmin-w3d.xmmin)/w3d.dx))
-    iymin = max(0,       int((ymin-w3d.ymmin)/w3d.dy))
-    izmin = max(1,       int((zmin-w3d.zmmin)/w3d.dz))+1   
-    ixmax = min(w3d.nx,  int((xmax-w3d.xmmin)/w3d.dx)+1)
-    iymax = min(w3d.ny,  int((ymax-w3d.ymmin)/w3d.dy)+1)
-    izmax = min(w3d.nz+1,int((zmax-w3d.zmmin)/w3d.dz)+1)+1 
+    ixmin = max(0,      int((xmin-w3d.xmmin)/w3d.dx))
+    iymin = max(0,      int((ymin-w3d.ymmin)/w3d.dy))
+    izmin = max(0,      int((zmin-w3d.zmmin)/w3d.dz))   
+    ixmax = min(w3d.nx, int((xmax-w3d.xmmin)/w3d.dx)+1)
+    iymax = min(w3d.ny, int((ymax-w3d.ymmin)/w3d.dy)+1)
+    izmax = min(w3d.nz, int((zmax-w3d.zmmin)/w3d.dz)+1)
+    izminp = izmin+1
+    izmaxp = izmax+1
+
+    if me>0:izmin=max(izmin,2)
     
     # accumulate charge due to integral form of Gauss Law
     q = 0.
-    if izmax<w3d.nz+1: q += sum(sum(w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmax+1]-w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmax]))*w3d.dx*w3d.dy/w3d.dz
-    if izmin>1:        q += sum(sum(w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin-1]-w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin]))*w3d.dx*w3d.dy/w3d.dz
-    if ixmax<w3d.nx:   q += sum(sum(w3d.phi[ixmax+1,iymin:iymax+1,izmin:izmax+1]-w3d.phi[ixmax,iymin:iymax+1,izmin:izmax+1]))*w3d.dz*w3d.dy/w3d.dx
-    if ixmin>0:        q += sum(sum(w3d.phi[ixmin-1,iymin:iymax+1,izmin:izmax+1]-w3d.phi[ixmin,iymin:iymax+1,izmin:izmax+1]))*w3d.dz*w3d.dy/w3d.dx
-    if iymax<w3d.ny:   q += sum(sum(w3d.phi[ixmin:ixmax+1,iymax+1,izmin:izmax+1]-w3d.phi[ixmin:ixmax+1,iymax,izmin:izmax+1]))*w3d.dx*w3d.dz/w3d.dy
-    if iymin>0:        q += sum(sum(w3d.phi[ixmin:ixmax+1,iymin-1,izmin:izmax+1]-w3d.phi[ixmin:ixmax+1,iymin,izmin:izmax+1]))*w3d.dx*w3d.dz/w3d.dy
+    if izmax<w3d.nz:   q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp+1       ] \
+                                   -w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izmaxp         ]))*w3d.dx*w3d.dy/w3d.dz
+    if izmin>0:        q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izminp-1       ] \
+                                   -w3d.phi[ixmin:ixmax+1, iymin:iymax+1, izminp         ]))*w3d.dx*w3d.dy/w3d.dz
+    if ixmax<w3d.nx:   q += sum(sum(w3d.phi[ixmax+1,       iymin:iymax+1, izminp:izmaxp+1] \
+                                   -w3d.phi[ixmax,         iymin:iymax+1, izminp:izmaxp+1]))*w3d.dz*w3d.dy/w3d.dx
+    if ixmin>0:        q += sum(sum(w3d.phi[ixmin-1,       iymin:iymax+1, izminp:izmaxp+1] \
+                                   -w3d.phi[ixmin,         iymin:iymax+1, izminp:izmaxp+1]))*w3d.dz*w3d.dy/w3d.dx
+    if iymax<w3d.ny:   q += sum(sum(w3d.phi[ixmin:ixmax+1, iymax+1,       izminp:izmaxp+1] \
+                                   -w3d.phi[ixmin:ixmax+1, iymax,         izminp:izmaxp+1]))*w3d.dx*w3d.dz/w3d.dy
+    if iymin>0:        q += sum(sum(w3d.phi[ixmin:ixmax+1, iymin-1,       izminp:izmaxp+1] \
+                                   -w3d.phi[ixmin:ixmax+1, iymin,         izminp:izmaxp+1]))*w3d.dx*w3d.dz/w3d.dy
 
     # compute total charge inside volume
     qc = sum(sum(sum(w3d.rho[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1])))*w3d.dx*w3d.dy*w3d.dz
@@ -361,24 +372,24 @@ Should never be directly created by the user.
       qc=qc*2.
     if w3d.l2symtry or w3d.l4symtry:
       if iymin==0:
-        if izmax<w3d.nz+1: q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izmax+1]-w3d.phi[ixmin:ixmax+1,iymin,izmax])*w3d.dx*w3d.dy/w3d.dz
-        if izmin>1:        q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izmin-1]-w3d.phi[ixmin:ixmax+1,iymin,izmin])*w3d.dx*w3d.dy/w3d.dz
-        if ixmax<w3d.nx:   q -= 2.*sum(w3d.phi[ixmax+1,iymin,izmin:izmax+1]-w3d.phi[ixmax,iymin,izmin:izmax+1])*w3d.dz*w3d.dy/w3d.dx
-        if ixmin>0:        q -= 2.*sum(w3d.phi[ixmin-1,iymin,izmin:izmax+1]-w3d.phi[ixmin,iymin,izmin:izmax+1])*w3d.dz*w3d.dy/w3d.dx
+        if izmax<w3d.nz  : q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izmaxp+1] -w3d.phi[ixmin:ixmax+1,iymin,izmaxp] )*w3d.dx*w3d.dy/w3d.dz
+        if izmin>0:        q -= 2.*sum(w3d.phi[ixmin:ixmax+1,iymin,izminp-1] -w3d.phi[ixmin:ixmax+1,iymin,izminp] )*w3d.dx*w3d.dy/w3d.dz
+        if ixmax<w3d.nx:   q -= 2.*sum(w3d.phi[ixmax+1,iymin,izminp:izmaxp+1]-w3d.phi[ixmax,iymin,izminp:izmaxp+1])*w3d.dz*w3d.dy/w3d.dx
+        if ixmin>0:        q -= 2.*sum(w3d.phi[ixmin-1,iymin,izminp:izmaxp+1]-w3d.phi[ixmin,iymin,izminp:izmaxp+1])*w3d.dz*w3d.dy/w3d.dx
         qc -= 2.*sum(sum(w3d.rho[ixmin:ixmax+1,iymin,izmin:izmax+1]))*w3d.dx*w3d.dy*w3d.dz
     if w3d.l4symtry:
       if ixmin==0:
-        if izmax<w3d.nz+1: q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izmax+1]-w3d.phi[ixmin,iymin:iymax+1,izmax])*w3d.dx*w3d.dy/w3d.dz
-        if izmin>1:        q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izmin-1]-w3d.phi[ixmin,iymin:iymax+1,izmin])*w3d.dx*w3d.dy/w3d.dz
-        if iymax<w3d.ny:   q -= 2.*sum(w3d.phi[ixmin,iymax+1,izmin:izmax+1]-w3d.phi[ixmin,iymax,izmin:izmax+1])*w3d.dx*w3d.dz/w3d.dy
-        if iymin>0:        q -= 2.*sum(w3d.phi[ixmin,iymin-1,izmin:izmax+1]-w3d.phi[ixmin,iymin,izmin:izmax+1])*w3d.dx*w3d.dz/w3d.dy
+        if izmax<w3d.nz  : q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izmaxp+1] -w3d.phi[ixmin,iymin:iymax+1,izmaxp] )*w3d.dx*w3d.dy/w3d.dz
+        if izmin>0:        q -= 2.*sum(w3d.phi[ixmin,iymin:iymax+1,izminp-1] -w3d.phi[ixmin,iymin:iymax+1,izminp] )*w3d.dx*w3d.dy/w3d.dz
+        if iymax<w3d.ny:   q -= 2.*sum(w3d.phi[ixmin,iymax+1,izminp:izmaxp+1]-w3d.phi[ixmin,iymax,izminp:izmaxp+1])*w3d.dx*w3d.dz/w3d.dy
+        if iymin>0:        q -= 2.*sum(w3d.phi[ixmin,iymin-1,izminp:izmaxp+1]-w3d.phi[ixmin,iymin,izminp:izmaxp+1])*w3d.dx*w3d.dz/w3d.dy
         qc -= 2.*sum(sum(w3d.rho[ixmin,iymin:iymax+1,izmin:izmax+1]))*w3d.dx*w3d.dy*w3d.dz
       if ixmin==0 and iymin==0:
-        if izmax<w3d.nz+1: q += (w3d.phi[ixmin,iymin,izmax+1]-w3d.phi[ixmin,iymin,izmax])*w3d.dx*w3d.dy/w3d.dz
-        if izmin>1:        q += (w3d.phi[ixmin,iymin,izmin-1]-w3d.phi[ixmin,iymin,izmin])*w3d.dx*w3d.dy/w3d.dz
+        if izmax<w3d.nz  : q += (w3d.phi[ixmin,iymin,izmaxp+1]-w3d.phi[ixmin,iymin,izmaxp])*w3d.dx*w3d.dy/w3d.dz
+        if izmin>0:        q += (w3d.phi[ixmin,iymin,izminp-1]-w3d.phi[ixmin,iymin,izminp])*w3d.dx*w3d.dy/w3d.dz
         qc += sum(w3d.rho[ixmin,iymin,izmin:izmax+1])*w3d.dx*w3d.dy*w3d.dz
 
-    self.imageparticles_data += [[top.time,q*eps0-qc]]
+    self.imageparticles_data += [[top.time,q*eps0+qc]]
     if l_verbose:print self.name,q*eps0,qc
     if doplot:
       window(0)
@@ -386,8 +397,8 @@ Should never be directly created by the user.
       window(1)
       pldj([zmin,zmin,zmin,zmax],[ymin,ymin,ymax,ymin],[zmax,zmin,zmax,zmax],[ymin,ymax,ymax,ymax],color=red,width=3)
       window(0)
-      zmin=w3d.zmmin+(izmin-1)*w3d.dz
-      zmax=w3d.zmmin+(izmax-1)*w3d.dz
+      zmin=w3d.zmmin+izmin*w3d.dz
+      zmax=w3d.zmmin+izmax*w3d.dz
       xmin=w3d.xmmin+ixmin*w3d.dx
       xmax=w3d.xmmin+ixmax*w3d.dx
       ymin=w3d.ymmin+iymin*w3d.dy
@@ -4341,3 +4352,4 @@ Creates a rectangle with rounded edge.
     data.append([x1+r,y1,'b'])
     if(r>0.):data.append([x1,y1+r,x1+r,y1+r,'b'])
     SRFRVLApart.__init__(self,name,data)
+
