@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.68 2002/01/10 23:43:09 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.69 2002/01/29 22:43:53 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2288,6 +2288,54 @@ Plots a and b envelope
   plg(env.benv,env.zenv,
       color=color,marks=marks,marker=marker,msize=msize)
   if titles: ptitles("Envelope","Z")
+##########################################################################
+def penvp(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
+  """
+Plots a' and b' of envelope
+  - color='fg' line color
+  - marks=0 turns on identifying marks on the curve
+  - marker=None marker type (see gist manual for the list)
+  - msize=1.0 marker size
+  - lframe=0 specifies whether or not to set plot limits
+  - titles=1 specifies whether or not to plot titles"""
+  if not me==0: return
+  plg(env.apenv,env.zenv,
+      color=color,marks=marks,marker=marker,msize=msize)
+  plg(env.bpenv,env.zenv,
+      color=color,marks=marks,marker=marker,msize=msize)
+  if titles: ptitles("Envelope slope","Z")
+##########################################################################
+def penvaedge(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
+  """
+Plots a envelope +/- x centroid
+  - color='fg' line color
+  - marks=0 turns on identifying marks on the curve
+  - marker=None marker type (see gist manual for the list)
+  - msize=1.0 marker size
+  - lframe=0 specifies whether or not to set plot limits
+  - titles=1 specifies whether or not to plot titles"""
+  if not me==0: return
+  plg(+env.aenv+env.xenv,env.zenv,
+      color=color,marks=marks,marker=marker,msize=msize)
+  plg(-env.aenv+env.xenv,env.zenv,
+      color=color,marks=marks,marker=marker,msize=msize)
+  if titles: ptitles("X Envelope edges","Z")
+##########################################################################
+def penvbedge(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
+  """
+Plots b envelope +/- x centroid
+  - color='fg' line color
+  - marks=0 turns on identifying marks on the curve
+  - marker=None marker type (see gist manual for the list)
+  - msize=1.0 marker size
+  - lframe=0 specifies whether or not to set plot limits
+  - titles=1 specifies whether or not to plot titles"""
+  if not me==0: return
+  plg(+env.benv+env.xenv,env.zenv,
+      color=color,marks=marks,marker=marker,msize=msize)
+  plg(-env.benv+env.xenv,env.zenv,
+      color=color,marks=marks,marker=marker,msize=msize)
+  if titles: ptitles("Y Envelope edges","Z")
 ##########################################################################
 ##########################################################################
 # --- These functions returns or sets slices of phi and rho.
