@@ -330,6 +330,52 @@ Sets the regions that are covered by a mesh refined block.
     for child in self.children:
       child.findoverlappingsiblings(self)
 
+  def clearinactiveregions(self,nbcells,parent=None,level=1):
+    """
+For regions which should not be refined but are included because of the
+coalescing of blocks, the childdomains is set so that the E-fields will
+not be fetched from there (it is set negative).
+ - nbcells: array containing the refinement level of the grid cells.
+            The shape will be the same as the intersection of self and the
+            calling parent.
+ - parent: the calling parent
+ - level: the total amount refinement
+    """
+    if parent is None:
+      # --- If there is no parent, it is assumed that this is the root block
+      l = self.fulllower
+      u = self.fullupper
+    else:
+      # --- Find intersection of parent and self.
+      l = maximum(parent.fulllower*self.refinement,self.fulllower)
+      u = minimum(parent.fullupper*self.refinement,self.fullupper)
+
+    for child in self.children:
+      # --- Find intersection of parent, self, and child
+      r = child.refinement
+      cl = maximum(child.fulllower/r,l)
+      cu = minimum(child.fullupper/r,u)
+      if sometrue(cl > cu): continue
+
+      # --- Get childdomains in the intersection region, Wherever the
+      # --- the refinement level is lower than the childs, force childdomains
+      # --- to be negative.
+      d = self.getchilddomains(cl,cu,1)
+      nbc = self.getlocalarray(nbcells,cl,cu,fulllower=l)
+      d[...] = where(nbc<level*r,-abs(d),d)
+
+      # --- Stretch out the array so it has the refined cell size of the child
+      nbcstretched = zeros(1+(cu-cl)*2)
+      nbcstretched[ ::r, ::r, ::r] = nbc[:  ,:  ,:  ]
+      nbcstretched[1::r, ::r, ::r] = nbc[:-1,:  ,:  ]
+      nbcstretched[ ::r,1::r, ::r] = nbc[:  ,:-1,:  ]
+      nbcstretched[1::r,1::r, ::r] = nbc[:-1,:-1,:  ]
+      nbcstretched[ ::r, ::r,1::r] = nbc[:  ,:  ,:-1]
+      nbcstretched[1::r, ::r,1::r] = nbc[:-1,:  ,:-1]
+      nbcstretched[ ::r,1::r,1::r] = nbc[:  ,:-1,:-1]
+      nbcstretched[1::r,1::r,1::r] = nbc[:-1,:-1,:-1]
+      child.clearinactiveregions(nbcstretched,self,level*r)
+
   #--------------------------------------------------------------------------
   # --- The next several methods handle the charge density calculation.
   #--------------------------------------------------------------------------
@@ -699,6 +745,11 @@ Fetches the E field. This should only be called at the root level grid.
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
     return self.siblingdomains[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
+  def getlocalarray(self,array,lower,upper,r=1,fulllower=None):
+    if fulllower is None: fulllower = self.fulllower
+    ix1,iy1,iz1 = lower - fulllower
+    ix2,iy2,iz2 = upper - fulllower + 1
+    return array[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
 
   #--------------------------------------------------------------------------
   # --- The following are used for plotting.
