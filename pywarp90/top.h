@@ -23,8 +23,6 @@
 #define NEVER   0
 #define SELDOM  1
 #define ALWAYS  2
-#define ERR 1
-#define OK 0
 #define STDOUT 6
 #define dvnz(X) sign(abs(X)+SMALLPOS,X)
 
