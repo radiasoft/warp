@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.31 $, $Date: 2001/12/06 18:41:21 $
+c@(#) File TOP.M, version $Revision: 3.32 $, $Date: 2002/01/14 20:51:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3278,6 +3278,9 @@ c         --- find the location of the particle in the internal lattice arrays
         endif
 
         do ip = 1, np
+
+c         --- cycle if dead particle
+          if(zp(ip)<0._8) cycle
 
           if (.not. lslice) then
 c           --- find the location of the particle in the internal lattice arrays
