@@ -43,7 +43,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.30 2003/08/14 17:30:47 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.31 2003/08/14 21:15:21 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -677,8 +677,8 @@ Creates a grid object which can generate conductor data.
     self.xmax = where(xmax==None,w3d.xmmax,xmax)[0]
     self.ymin = where(ymin==None,w3d.ymmin,ymin)[0]
     self.ymax = where(ymax==None,w3d.ymmax,ymax)[0]
-    self.zmin = where(zmin==None,w3d.zmmin,zmin)[0]
-    self.zmax = where(zmax==None,w3d.zmmax,zmax)[0]
+    self.zmin = where(zmin==None,w3d.zmmin+self.zbeam,zmin)[0]
+    self.zmax = where(zmax==None,w3d.zmmax+self.zbeam,zmax)[0]
 
     self.nx = w3d.nx
     self.ny = w3d.ny
@@ -701,7 +701,7 @@ Creates a grid object which can generate conductor data.
       if top.fstype in [7,11]:
         setmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz)
       if top.fstype == 10:
-        init_base(self.nx,self.nz,self.dx,self.dz,0.,self.zmin,false)
+        init_base(self.nx,self.nz,self.dx,self.dz,0.,w3d.zmmin,false)
       self.mglevels = f3d.mglevels
       self.mglevelsnx = f3d.mglevelsnx[:f3d.mglevels]
       self.mglevelsny = f3d.mglevelsny[:f3d.mglevels]
@@ -735,7 +735,7 @@ Creates a grid object which can generate conductor data.
 
     xmesh = self.xmmin + dx*arange(nx+1)
     ymesh = self.ymmin + dy*arange(ny+1)
-    zmesh =      zmmin + dz*arange(nz+1)
+    zmesh =      zmmin + dz*arange(nz+1) + self.zbeam
     xmesh = compress(logical_and(self.xmin-dx <= xmesh,
                                                  xmesh <= self.xmax+dx),xmesh)
     ymesh = compress(logical_and(self.ymin-dy <= ymesh,
@@ -769,8 +769,8 @@ Assembly on this grid.
       if len(x) == 0: continue
       for zz in zmesh:
         tt1 = wtime()
-        z[:] = zz + self.zbeam
-        iz[:] = nint((zz - zmmin)/dz)
+        z[:] = zz
+        iz[:] = nint((zz - zmmin - self.zbeam)/dz)
         tt2[1] = tt2[1] + wtime() - tt1
         tt1 = wtime()
         d = a.griddistance(ix,iy,iz,x,y,z)
@@ -824,8 +824,8 @@ grid points.
     if len(x) == 0: return
     for zz in zmesh:
       tt1 = wtime()
-      z[:] = zz + self.zbeam
-      iz[:] = nint((zz - zmmin)/dz)
+      z[:] = zz
+      iz[:] = nint((zz - zmmin - self.zbeam)/dz)
       tt2[1] = tt2[1] + wtime() - tt1
       tt1 = wtime()
       d = a.distance(x,y,z)
@@ -862,8 +862,8 @@ assembly.
     if len(x) == 0: return
     for zz in zmesh:
       tt1 = wtime()
-      z[:] = zz + self.zbeam #####
-      iz[:] = nint((zz - zmmin)/dz)  #####
+      z[:] = zz #####
+      iz[:] = nint((zz - zmmin - self.zbeam)/dz)  #####
       tt2[1] = tt2[1] + wtime() - tt1
       tt1 = wtime()
       d = a.isinside(x,y,z)  #####
