@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.6 $, $Date: 2004/12/07 22:23:00 $
+c@(#) File w3d_load.F, version $Revision: 1.7 $, $Date: 2004/12/08 15:49:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -8,50 +8,49 @@ c  3d electrostatic PIC code, Cartesian geometry, for beam problems
 c=============================================================================
 c=============================================================================
       subroutine perp_cfe_den() 
-     
+
       use Constant
       use Beam_acc
       use InPart3d
       use W3Dload
 
-c     Calculate the density profile of a continuous focused f(H) equilibrium 
-c     distribution that will be used to load an rms equivalent beam.  
+c Calculate the density profile of a continuous focused f(H) equilibrium 
+c distribution that will be used to load an rms equivalent beam.  
 c
-c     The routine works with the following distributions:
-c       distrbtn = WB  or Waterbag
-c                = PA  or Parabolic              
-c                = TE  or ThermalEquilibrium 
+c The routine works with the following distributions:
+c   distrbtn = WB  or Waterbag
+c            = PA  or Parabolic              
+c            = TE  or ThermalEquilibrium 
 c
-c     The axisymmetric equivalent beam density profile is returned via a grid 
-c     defined by:
+c The axisymmetric equivalent beam density profile is returned via a grid 
+c defined by:
 c
-c       hl_nrdist = number of radial data points of CF Hamiltonian eq 
-c                     ranging from [0:hl_nrdist] -> [0,hl_rmax].   
-c                     This variable is user set.  
-c       hl_rmax   = Code set: max radius that the density profile is 
-c                     defined by (must contain all non-negligible density) 
-c       hl_rdist(0:hl_nrdist) = Code set: particle density in r 
+c   hl_nrdist = number of radial data points of CF Hamiltonian eq 
+c                 ranging from [0:hl_nrdist] -> [0,hl_rmax].   
+c                 This variable is user set.  
+c   hl_rmax   = Code set: max radius that the density profile is 
+c                 defined by (must contain all non-negligible density) 
+c   hl_rdist(0:hl_nrdist) = Code set: particle density in r 
 c
-c     Auxillary variables used in loading the density profile are also set:
+c Auxillary variables used in loading the density profile are also set:
 c
-c       hl_nrmrdist(0:hl_nrdist) = Code set: normalized hl_rdist with 
-c                                    sum(hl_nrmrdist)=1. 
-c       hl_intrdist(0:hl_nrdist) = Code set: integral of r*rdist from 
-c                                    r=0 to r where r is a scaled radius.
+c   hl_nrmrdist(0:hl_nrdist) = Code set: normalized hl_rdist with 
+c                                sum(hl_nrmrdist)=1. 
+c   hl_intrdist(0:hl_nrdist) = Code set: integral of r*rdist from 
+c                                r=0 to r where r is a scaled radius.
 
 c     --- beam rms descriptions 
-      real(kind=8):: r_x,r_y,emit_x,emit_y,q_perv
-      real(kind=8):: r_b,emit_b,k_beta0
+      real(kind=8):: r_x, r_y, emit_x, emit_y
       integer(ISZ):: ir
 c     --- waterbag equilibrium 
-      real(kind=8):: k1re,f_2,r_e
-      real(kind=8):: sc_param,k1re1,k1re2,rho
-      real(kind=8):: zbrent,bessi0,bessi
+      real(kind=8):: sc_param, k1re1, k1re2, rho
+      real(kind=8):: zbrent, bessi0, bessi
       external wbagconstr
       common /wbagconstrcom/ sc_param
 c     --- distribution loading 
       real(kind=8):: hl_sumrdist
 
+   
 c     Define local rms equivalent beam parameters to use in the subroutine
 
       r_x = a0 
@@ -91,11 +90,6 @@ c                     part of waterbagconstr() changes sign for sc_param = 0.
 
         k1re = zbrent(wbagconstr,k1re1,k1re2,1.e-6,1000)
 
-        write (0,*) "sc_param = ",sc_param
-        write (0,*) "k1re1 = ",k1re1
-        write (0,*) "k1re2 = ",k1re2 
-        write (0,*) "k1re = ",k1re
-
 c       --- calculate properties of the distribution 
 c             r_e = edge radius where the density falls to zero 
 c             f_2 = distribution normalization coefficient 
@@ -106,9 +100,6 @@ c             f_2 = distribution normalization coefficient
 
         f_2 = aion*amu*eps0*vbeam**2*gammabar**3/
      &        (2.*Pi*(zion*echarge)**2)*(k1re/r_e)**2 
-
-        write (0,*) "r_e = ",r_e
-        write (0,*) "f_2 = ",f_2 
 
 c       ---- calculate radial density profile
         hl_rmax = r_e 
@@ -132,10 +123,12 @@ c     --- thermal equilibrium
         call remark("routine perp_cf_eq: Thermal Equilibrium not implemented") 
         call kaboom(0) 
 
-      else 
 c       --- undefined option trap 
+      else 
+
         call remark("routine perp_cf_eq: distrbtn option not implemented") 
         call kaboom(0) 
+
       endif 
 
 c     Prepare for loading a specified particle density distribution in r,
@@ -170,9 +163,9 @@ c=============================================================================
 
       real(kind=8):: k1re
 
-c    watbagconstr returns a scaled constraint equation assoicated with 
-c    a matched waterbag equilbrium distribution function in a continuous 
-c    focusing channel.  
+c watbagconstr returns a scaled constraint equation assoicated with 
+c a matched waterbag equilbrium distribution function in a continuous 
+c focusing channel.  
 c
 c    k1re = k_1 * r_e       k_1 = wavenumber parameter 
 c                           r_e = beam edge radius
@@ -190,13 +183,13 @@ c
       return 
       end 
 c=============================================================================
-      subroutine loadperpdist(kioff,np,x,y,xp,yp,rx,ry,rxp,ryp,
+      subroutine loadperpdist(kioff,np,x,y,r,t,xp,yp,rx,ry,rxp,ryp,
      &                        epsx,epsy)
       use Constant
       use InPart3d
       use W3Dload
-      integer(ISZ):: kioff,np
-      real(kind=8):: x(np), y(np), xp(np), yp(np)
+      integer(ISZ):: kioff, np
+      real(kind=8):: x(np), y(np), xp(np), yp(np), r(np), t(np) 
       real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
       real(kind=8):: epsx(np), epsy(np) 
 c
@@ -214,6 +207,7 @@ c
 c Particle coordinates loaded:
 c   np = number of particles to load 
 c   x,y    = x, y  coordinates of particle 
+c   r,t    = radius, theta polar coordinates of particle 
 c   xp,yp  = x',y' coordinates of particle
 c
 c Each particle can be in different parts of the beam envelope and the 
@@ -232,18 +226,119 @@ c            = "PA" or "Parabolic": parabolic form
 c            = "GA" or "Gaussian":  Gaussian form 
 c            = "TE" or "ThermalEquilibrium": Thermal Equilibrium form 
 c
-c
+      integer(ISZ):: ip, irr
+      real(kind=8):: wrandom, wrandomgauss
+      real(kind=8):: wranf
+      real(kind=8):: u_max, u, p  
+      real(kind=8):: bessi0
 
 c     Load axisymmetric particle coordinates x,y based on the equivalent 
-c     continuous focused equilibrium profile calculated in perp_cfe_den()
+c     continuous focused equilibrium profile calculated in 
+c     perp_cfe_den() and returned via the hl_rdist(0:hl_nrdist) and 
+c     related variables.  This is the same (simplified) procedure as setup in 
+c     stptcl3d() for use in loading "arbitrary" radial density profiles 
+c     under the semiGaussian load option.  
 
+      do ip = 1,np  
 
-      call remark ("Load Option not yet implemented in routine loadperpdist") 
-      call kaboom (0)
-      
-c     --- Loop over particles to load 
-c      do ip = 1,np
-c
+c       --- radius = r in [0,1) and theta = t in [-Pi,Pi) variables 
+c       --- used to construct needed probability transforms
+        r(ip) = wranf()
+        t(ip) = Pi*( 2.*wranf() - 1. ) 
+c        r(ip) = wrandom(xrandom,ip+kioff-1,dig1,1,1)
+c        t(ip) = Pi*( 2.*wrandom(xrandom,ip+kioff-1,dig2,1,1) - 1. )
+
+c       --- Transform the radial positions to match the specified
+c       --- distribution.
+
+c       --- Find what grid cell the particle is in.
+        irr = 0
+        do while (r(ip) > hl_intrdist(irr+1))
+          irr = irr + 1
+        enddo
+c       --- Do the transformation.  The transformation assumes a
+c       --- linearly varying distribution between grid locations.
+c       --- The transformation is derived by equating an integral
+c       --- over the uniform distribution to an integral over the
+c       --- specified distribution.  The particle remains within
+c       --- the range [0,1].
+        if (hl_nrmrdist(irr+1) == hl_nrmrdist(irr)) then
+          r(ip) = ( r(ip) - hl_intrdist(irr) )/hl_nrmrdist(irr)
+        else
+          r(ip) = ( ( sqrt( hl_nrmrdist(irr)**2 -
+     &                      2.*( hl_nrmrdist(irr+1) - hl_nrmrdist(irr) )*
+     &                         ( hl_intrdist(irr) - r(ip) )
+     &                    ) - hl_nrmrdist(irr) 
+     &               )/( hl_nrmrdist(irr+1) - hl_nrmrdist(irr) ) + 
+     &               irr 
+     &            )/hl_nrdist
+        endif
+
+c       --- rescale radius r to physical units and 
+c       --- convert radius r and theta t to x and y
+        r(ip) = hl_rmax*r(ip)
+        x(ip) = r(ip)*cos(t(ip))
+        y(ip) = r(ip)*sin(t(ip))
+
+      enddo
+
+c     Load axisymmetric particle coordinates x',y' based on the class of 
+c     distribution loaded and the particle x,y coordinates loaded
+
+c     --- waterbag equilibrium 
+      if (distrbtn == "WB" .or. distrbtn == "Waterbag") then 
+
+        do ip = 1,np
+
+c         --- calculate maximum value of u = (1/2)*( x'^2 + y'^2 ) 
+c         --- acceptable at the particle radius r = r(ip) 
+          u_max = 2.*(k_beta0*r_e/k1re)**2*
+     &               ( 1. - bessi0(k1re*r(ip)/r_e)/bessi0(k1re) )  
+
+c         --- set particle x' and y' to be uniformly distributed within 
+c         --- a unit disk of radius u_max 
+          u = u_max*wranf() 
+          p = Pi*( 2.*wranf() - 1. ) 
+          xp(ip) = u*cos(p)  
+          yp(ip) = u*sin(p) 
+          
+        enddo  
+
+c     --- parabolic equilibrium 
+      elseif(distrbtn == "PA"  .or. distrbtn == "Parabolic") then 
+
+        call remark("routine loadperpdist: distrbtn = PA not implemented") 
+        call kaboom(0) 
+
+c     --- thermal equilibrium 
+      elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
+
+        call remark("routine loadperpdist: distrbtn = TE not implemented") 
+        call kaboom(0)
+
+c       --- undefined option trap 
+      else 
+
+        call remark("routine loadperpdist: distrbtn option not implemented") 
+        call kaboom(0) 
+ 
+      endif 
+
+c     Transform the axisymmetric particle coordinates for elliptical rms 
+c     equivalency.   
+
+c      do ip = 1,np 
+ 
+c       --- tranform particle coordinates x,y 
+c        x(ip) = rx(ip)/r_b * x(ip) 
+c        y(ip) = ry(ip)/r_b * y(ip) 
+ 
+cc       --- tranform particle angles x',y'
+c        xp(ip) = rxp(ip)/rx(ip) * x(ip) + 
+c     &             2.*(epsx(ip)/rx(ip))*(r_b/emit_b)**2 
+c        yp(ip) = ryp(ip)/ry(ip) * y(ip) + 
+c     &             2.*(epsy(ip)/ry(ip))*(r_b/emit_b)**2
+
 c      enddo 
 
       return 
@@ -253,7 +348,7 @@ c=============================================================================
      &                         epsx,epsy)
       use Constant
       use InPart3d
-      integer(ISZ):: kioff,np
+      integer(ISZ):: kioff, np
       real(kind=8):: x(np), y(np), xp(np), yp(np)
       real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
       real(kind=8):: epsx(np), epsy(np)
@@ -352,8 +447,8 @@ c         --- Set particle coordinates
           Ax = sqrt( F*wrandom(xrandom,ip+kioff-1,dig2,1,1) )
           Ay = sqrt( (F - Ax*Ax)*epsy(ip)/epsx(ip) )
 
-          betax = 2.0*pi*wrandom(xrandom,ip+kioff-1,dig3,1,1)
-          betay = 2.0*pi*wrandom(xrandom,ip+kioff-1,dig4,1,1)
+          betax = 2.0*Pi*wrandom(xrandom,ip+kioff-1,dig3,1,1)
+          betay = 2.0*Pi*wrandom(xrandom,ip+kioff-1,dig4,1,1)
 
           x(ip) = Ax * alphax * cos( betax )
           y(ip) = Ay * alphay * cos( betay )
@@ -409,15 +504,15 @@ c=============================================================================
       real(kind=8) function bessi0(x)
       real(kind=8):: x
 
-c     bessi0(x) calculates the Bessel function I_0(x) for real x using 
-c     approximate polynomial coefficients.  Because I_0 is smooth, this 
-c     provides a good, efficient approximation using only a few terms and
-c     together with recusion relations can be used to calculate higher order 
-c     I_n(x) with integer n > 0.    
+c bessi0(x) calculates the Bessel function I_0(x) for real x using 
+c approximate polynomial coefficients.  Because I_0 is smooth, this 
+c provides a good, efficient approximation using only a few terms and
+c together with recusion relations can be used to calculate higher order 
+c I_n(x) with integer n > 0.    
 c
-c     The routine is slightly modified from the one presented in:
-c        Numerical Recipes The Art of Scientific Computing, 1st Edition 
-c        Press, Flannery, Teukolsky, and Vetterling (1986)
+c The routine is slightly modified from the one presented in:
+c    Numerical Recipes The Art of Scientific Computing, 1st Edition 
+c    Press, Flannery, Teukolsky, and Vetterling (1986)
  
       real(kind=8):: P1 =  1.0e0
       real(kind=8):: P2 =  3.5156229e0
@@ -454,15 +549,15 @@ c=============================================================================
       real(kind=8) function bessi1(x)
       real(kind=8):: x
 
-c     bessi1(x) calculates the Bessel function I_1(x) for real x using 
-c     approximate polynomial coefficients.  Because I_1 is smooth, this 
-c     provides a good, efficient approximation using only a few terms and
-c     together with recusion relations can be used to calculate higher order 
-c     I_n(x) with integer n > 0.    
+c bessi1(x) calculates the Bessel function I_1(x) for real x using 
+c approximate polynomial coefficients.  Because I_1 is smooth, this 
+c provides a good, efficient approximation using only a few terms and
+c together with recusion relations can be used to calculate higher order 
+c I_n(x) with integer n > 0.    
 c
-c     The routine is slightly modified from the one presented in:
-c        Numerical Recipes The Art of Scientific Computing, 1st Edition 
-c        Press, Flannery, Teukolsky, and Vetterling (1986)
+c The routine is slightly modified from the one presented in:
+c    Numerical Recipes The Art of Scientific Computing, 1st Edition 
+c    Press, Flannery, Teukolsky, and Vetterling (1986)
 
       real(kind=8):: P1 =  0.5e0
       real(kind=8):: P2 =  0.87890594e0
@@ -501,13 +596,13 @@ c=============================================================================
       integer(ISZ):: n 
       real(kind=8):: x
 
-c     bessi(n,x) calculates the Bessel function I_n(x) for real x 
-c     and integer n >= 2 using downward recursion operators seeded using 
-c     calls to bessi0(x) for I_0(x).  
+c bessi(n,x) calculates the Bessel function I_n(x) for real x 
+c and integer n >= 2 using downward recursion operators seeded using 
+c calls to bessi0(x) for I_0(x).  
 c
-c     The routine is slightly modified from the one presented in:
-c        Numerical Recipes The Art of Scientific Computing, 1st Edition 
-c        Press, Flannery, Teukolsky, and Vetterling (1986)
+c The routine is slightly modified from the one presented in:
+c    Numerical Recipes The Art of Scientific Computing, 1st Edition 
+c    Press, Flannery, Teukolsky, and Vetterling (1986)
 
       integer(ISZ):: J,M
       real(kind=8):: BI,BIM,BIP,TOX,bessi0
@@ -552,13 +647,13 @@ c=============================================================================
       integer(ISZ):: itmax 
       real(kind=8):: func,x1,x2,tol
 
-c     zbrent caluclates the root of a func(x) that is bracketed between 
-c     x1 and x2.  The root is found to accuracy tol using up to itmax 
-c     iterations.  
+c zbrent caluclates the root of a func(x) that is bracketed between 
+c x1 and x2.  The root is found to accuracy tol using up to itmax 
+c iterations.  
 c
-c     The routine is slightly modified from the one presented in:
-c        Numerical Recipes The Art of Scientific Computing, 1st Edition 
-c        Press, Flannery, Teukolsky, and Vetterling (1986)
+c The routine is slightly modified from the one presented in:
+c    Numerical Recipes The Art of Scientific Computing, 1st Edition 
+c    Press, Flannery, Teukolsky, and Vetterling (1986)
 
   
       integer(ISZ):: ITER
@@ -643,21 +738,21 @@ c=============================================================================
       real(kind=8):: y(n),dydx(n),yout(n) 
       external derivs 
 
-c     4th order Runge-Kutta advance 
-c       x          initial coordinate 
-c       y(1:n)     initial y values at x 
-c       dydx(1:n)  initial dy/dx derivaties at x 
-c       h          step 
-c       yout(1:n)  final y values at x + h
-c                    y and yout need not be distinct  
+c 4th order Runge-Kutta advance 
+c   x          initial coordinate 
+c   y(1:n)     initial y values at x 
+c   dydx(1:n)  initial dy/dx derivaties at x 
+c   h          step 
+c   yout(1:n)  final y values at x + h
+c                y and yout need not be distinct  
 c
-c       external user supplied subroutine derivs(x,y,dydx) 
-c       returns the derivatives dydx evaluated at x, y(x) 
-c       where y and dydx have dimension nvar.     
+c   external user supplied subroutine derivs(x,y,dydx) 
+c   returns the derivatives dydx evaluated at x, y(x) 
+c   where y and dydx have dimension nvar.     
 c
-c     The routine is slightly modified from the one presented in:
-c        Numerical Recipes The Art of Scientific Computing, 1st Edition 
-c        Press, Flannery, Teukolsky, and Vetterling (1986)
+c The routine is slightly modified from the one presented in:
+c    Numerical Recipes The Art of Scientific Computing, 1st Edition 
+c    Press, Flannery, Teukolsky, and Vetterling (1986)
 
       integer(ISZ),parameter:: NMAX=10
       real(kind=8):: YT(NMAX),DYT(NMAX),DYM(NMAX)
@@ -699,19 +794,15 @@ c=============================================================================
       real(kind=8):: y(nvar,nstep),x(nstep),y_work(nvar),dy_work(nvar)
       external derivs 
 
-c     4th order Runge-Kutta advance with uniform step size  
+c 4th order Runge-Kutta advance with uniform step size  
 c
-c       external user supplied subroutine derivs(x,y,dydx) 
-c       returns the derivatives dydx evaluated at x, y(x) 
-c       where y and dydx have dimension nvar.   
+c   external user supplied subroutine derivs(x,y,dydx) 
+c   returns the derivatives dydx evaluated at x, y(x) 
+c   where y and dydx have dimension nvar.   
 c
-c       external user supplied subroutine derivs(x,y,dydx) 
-c       returns the derivatives dydx evaluated at x, y(x) 
-c       where y and dydx have dimension nvar.     
-c
-c     The routine is slightly modified from the one presented in:
-c        Numerical Recipes The Art of Scientific Computing, 1st Edition 
-c        Press, Flannery, Teukolsky, and Vetterling (1986)
+c The routine is slightly modified from the one presented in:
+c    Numerical Recipes The Art of Scientific Computing, 1st Edition 
+c    Press, Flannery, Teukolsky, and Vetterling (1986)
 
       integer(ISZ):: I,K
       real(kind=8):: H,XX 
@@ -748,11 +839,11 @@ c=============================================================================
       real(kind=8):: x 
       real(kind=8):: y(nvar),dydx(nvar) 
       
-c     calculates derivatives dydx at x,y
-c        nvar       = number equations 
-c        x          = independent coordinate 
-c        y(nvar)    = dependant variable at x 
-c        dydx(nvar) = derivatives at x,y 
+c calculates derivatives dydx at x,y
+c    nvar       = number equations 
+c    x          = independent coordinate 
+c    y(nvar)    = dependant variable at x 
+c    dydx(nvar) = derivatives at x,y 
 c
 
       dydx(1) =  y(2) 
