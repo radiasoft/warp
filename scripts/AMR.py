@@ -494,7 +494,7 @@ class AMRTree(object,Visualizable):
           if self.solvergeom == w3d.XYZgeomMR:
             lower = nint(array(patch[:3])*r)
             upper = lower + nint(array(patch[3:])*r)
-            mothergrid.addchild(lower,upper)
+            mothergrid.addchild(lower,upper,refinement=self.MRfact)
           else:
             nx = nint(patch[2]*r)
             ny = nint(patch[3]*r)
