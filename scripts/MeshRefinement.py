@@ -9,7 +9,6 @@ import __main__
 # ---------------------------------------------------------------------------
 MRsolver = [None]
 def registersolver(solver):
-  assert MRsolver[0] is not None,"No solver has been registered"
   MRsolver[0] = solver
 def loadrhoMR():
   assert MRsolver[0] is not None,"No solver has been registered"
