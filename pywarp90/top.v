@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.55 $, $Date: 2002/10/04 22:19:54 $
+#@(#) File TOP.V, version $Revision: 3.56 $, $Date: 2002/10/22 17:28:47 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.55 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.56 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -208,7 +208,7 @@ bendrc(0:nbend)   _real [m]   # Radii of curvature of bends
 bendap(0:nbend)   _real [m]   # Aperture in bends
 bendox(0:nbend)   _real [m]   # X-offsets of bends (for aperture only)
 bendoy(0:nbend)   _real [m]   # Y-offsets of bends (for aperture only)
-bendol(0:ndipo)   _integer    # Overlap level of the element (autoset)
+bendol(0:nbend)   _integer    # Overlap level of the element (autoset)
 dipozs(0:ndipo)   _real [m]   # Z's of dipo starts (set from bendzs if =dipoze)
 dipoze(0:ndipo)   _real [m]   # Z's of dipo ends   (set from bendze if =dipozs)
 dipoby(0:ndipo)   _real [T]   # By's of dipos (set from bendrc if 0 & dipoex=0)

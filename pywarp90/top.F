@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.55 $, $Date: 2002/10/04 22:19:54 $
+c@(#) File TOP.M, version $Revision: 3.56 $, $Date: 2002/10/22 17:28:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1135,22 +1135,11 @@ c============================================================================
 c Loops over lattice elements and for elements of the same type that overlap,
 c keep track of the level of overlaps.
 
-      integer(ISZ):: ie,ii,no,astat
-      logical(ISZ),allocatable:: overlaps(:)
-
-c     --- First set up space to save the overlap levels of elements which
-c     --- each element overlaps. At first, a value of 10 is assumed.
-      no = 10
-      allocate(overlaps(no),stat=astat)
-      if (astat .ne. 0) then
-        print*,"ERROR: getelemoverlaps: not enough space to allocate temp"
-        print*,"array. Array size needed is ",no
-        stop
-      endif
+      integer(ISZ):: ie,ii
+      logical(ISZ):: overlaps(1+nelem)
 
 c     --- The first element is always at the lowest overlap level.
       elemol(0) = 1
-      nelemol = 1
 
 c     --- Loop over the rest of the elements...
       do ie=1,nelem
@@ -1171,29 +1160,14 @@ c       --- to true.
 c       --- Loop over the list of overlap levels, looking for the lowest
 c       --- level which has no overlap
         ii = 1
-        do while (overlaps(ii) .and. ii <= no)
+        do while (overlaps(ii) .and. ii <= 1+nelem)
           ii = ii + 1
         enddo
         elemol(ie) = ii
-        nelemol = max(nelemol,ii)
-
-c       --- If the number of overlapping levels is greater than the size of
-c       --- the overlap array, increase its size.
-        if (nelemol > no) then
-          deallocate(overlaps)
-          no = no*2
-          allocate(overlaps(no),stat=astat)
-          if (astat .ne. 0) then
-            print*,"ERROR: getelemoverlaps: not enough space to allocate temp"
-            print*,"array. Array size needed is ",no
-            stop
-          endif
-        endif
 
       enddo
 
-c     --- Clean up the temp space
-      deallocate(overlaps)
+      nelemol = maxval(elemol)
 
       return
       end
@@ -1333,7 +1307,7 @@ c        --- getelemid routine can still be used.
          if (bends) then
            call getelemid(zz,offset,nbend,bendzs(0),bendze(0),bendol(0),
      &                    obendnn(1),obendoi(obendii(1)),obendio,
-     &                    cbendid(iz),io)
+     &                    cbendid(iz),1)
 c          --- load lattice info into comoving 1d array
            cbendzs(iz) = bendzs(cbendid(iz)) + offset
            cbendze(iz) = bendze(cbendid(iz)) + offset
