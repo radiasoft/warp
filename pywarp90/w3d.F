@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.106 $, $Date: 2003/05/02 23:18:35 $
+c@(#) File W3D.M, version $Revision: 3.107 $, $Date: 2003/05/21 23:54:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -285,6 +285,9 @@ c  Initialize base grid for RZ solver
         call init_base(nx,nz,dx,dz,xmmin,zmmin,.true.)
       end if
 
+c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
+      call vp3d (1)
+
 c  Create the dynamic arrays in Z_arrays; set the z mesh
 
       if (nzzarr == 0) nzzarr = nzfull
@@ -450,10 +453,6 @@ c  Print interesting things to plot file and teletype
 
       call prntpara(dx,dy,dz,lprntpara)
       call prntpa3d(lprntpara)
-
-c  Initial call to fieldsolver in order to initialize attx, kxsq, etc.
-
-      call vp3d (1)
 
 c  Initial fieldsolve, diagnostics
 
@@ -1300,6 +1299,10 @@ c           --- Obtain the self-field from the electrostatic potential
             elseif(solvergeom==AMRgeom) then
               call cho_gete3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgridprv,
      &                        ex,ey,ez,is,(ipmin-ins(is))/nparpgrp)
+            else
+              ex = 0.
+              ey = 0.
+              ez = 0.
             endif
 
 c           --- Get E field for particles near the  injection surface.
