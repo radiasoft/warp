@@ -4908,11 +4908,12 @@ return
 end subroutine srfrvinoutrz
 
 subroutine setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz, &
-                      l2symtry_in,l4symtry_in)
+                      bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
 USE multigridrz
 use Conductor3d
 integer(ISZ):: nx,ny,nz
 real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+integer(ISZ):: bound0_in,boundnz_in,boundxy_in
 logical(ISZ):: l2symtry_in,l4symtry_in
 
 INTEGER(ISZ) :: i,nrc,nzc,igrid,jmin,jmax
@@ -4947,7 +4948,7 @@ do igrid=1,ngrids
   ncond = 0
 
   call setcndtr_rz(rmin_in,rmin_in,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
-                   l2symtry_in,l4symtry_in)
+                   bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
 
   call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
                         ncond, ixcond, izcond, condvolt, condnumb, &
