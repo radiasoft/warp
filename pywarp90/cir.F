@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.4 $, $Date: 2001/05/29 21:17:40 $
+c@(#) File CIR.M, version $Revision: 3.5 $, $Date: 2001/05/29 21:20:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -2566,7 +2566,7 @@ c     calculate average value
       elseif(ieargap >= 1)then 
 c     calculate local value based on ear cell spacing
 
-        iear = cacclid(0)
+        iear = minval(cacclid(0,:))
         sear = 0.5*(acclzs(iear) + acclze(iear)) + zlatstrt
         if (iear == 0) then
           slastear = zlatstrt
@@ -2868,7 +2868,7 @@ c     The present version is incorrect for dipole with fringe fields.
 
 c check bend class
 
-      idipo = cdipoid(0)
+      idipo = minval(cdipoid(0,:))
       if (dipoex(idipo) == 0. .and. dipoey(idipo) == 0. .and.
      &    dipov1(idipo) == 0. .and. dipov2(idipo) == 0.) return
 
