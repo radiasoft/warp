@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.39 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1949,394 +1949,6 @@ c normal angle of the surface at that point.
       return
       end
 c=======================================================================
-      subroutine ZConeConductorF(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                           n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
-     &                           fuzz)
-      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n)
-      real(kind=8):: delmx(n),delpx(n)
-      real(kind=8):: delmy(n),delpy(n)
-      real(kind=8):: delmz(n),delpz(n)
-      real(kind=8):: fuzz
-
-c Finds distances along the axis of the points from a cone aligned with
-c the z-axis.
-c The notation is that a negative distance means that the point is inside.
-
-      integer(ISZ):: i
-      real(kind=8):: zmin,zmax
-      real(kind=8):: xx,yy,rsq,r,rcone,zcone
-
-c     --- First, find min and max extent of the cone.
-      zmin = zcent - length*0.5
-      zmax = zcent + length*0.5
-
-      do i=1,n
-
-c       --- Set defaults
-        delmx(i) = LARGEPOS
-        delpx(i) = LARGEPOS
-        delmy(i) = LARGEPOS
-        delpy(i) = LARGEPOS
-        delmz(i) = LARGEPOS
-        delpz(i) = LARGEPOS
-
-c       --- Find radius of point relative to cone axis
-        xx = x(i) - xcent
-        yy = y(i) - ycent
-        rsq = xx**2 + yy**2
-        r = sqrt(rsq)
-
-c       --- Find z location where transverse line through point intersects
-c       --- the cone.
-        zcone = zmin + (zmax - zmin)*(r - r_zmin)/(r_zmax - r_zmin)
-        if (r == r_zmax) zcone = zmax
-
-c       --- Calculate z deltas
-        if (r <= min(r_zmin,r_zmax)) then
-c         --- point is inside of smaller radius
-          if (z(i) >= zmin) delmz(i) = zmin - z(i)
-          if (z(i) >= zmax) delmz(i) = z(i) - zmax
-          if (z(i) <= zmax) delpz(i) = z(i) - zmax
-          if (z(i) <= zmin) delpz(i) = zmin - z(i)
-        else if (r <= max(r_zmin,r_zmax)) then
-c         --- point is inside of larger radius
-          if (r_zmin < r_zmax) then
-            if (z(i) < zcone) delpz(i) = zcone - z(i)
-            if (zcone <= z(i) .and. z(i) <= zmax) then
-              delmz(i) = zcone - z(i)
-              delpz(i) = z(i) - zmax
-            endif
-            if (z(i) > zmax) delmz(i) = z(i) - zmax
-          endif
-          if (r_zmin > r_zmax) then
-            if (z(i) > zcone) delmz(i) = z(i) - zcone
-            if (zcone >= z(i) .and. z(i) >= zmin) then
-              delpz(i) = z(i) - zcone
-              delmz(i) = zmin - z(i)
-            endif
-            if (z(i) < zmin) delpz(i) = zmin - z(i)
-          endif
-        endif
-
-c       --- If point outside the z-extent of the cone, then skip the next
-c       --- part.
-        if (z(i) < zmin - fuzz .or. zmax + fuzz < z(i)) cycle
-
-c       --- Calculate the radius of the cone at the z-location of the point
-        rcone = r_zmin + (r_zmax - r_zmin)*(z(i) - zmin)/(zmax - zmin)
-c       --- If z == zmax, the set rcone equal to r_zmax exactly since the
-c       --- expression above will have roundoff problems.
-        if (z(i) == zmax) rcone = r_zmax
-
-c       --- Point inside the cone
-        if (r < rcone) then
-          delmx(i) = -(sqrt(rcone**2 - yy**2) + xx)
-          delpx(i) = -(sqrt(rcone**2 - yy**2) - xx)
-          delmy(i) = -(sqrt(rcone**2 - xx**2) + yy)
-          delpy(i) = -(sqrt(rcone**2 - xx**2) - yy)
-
-c       --- Point is outside the cone
-        else if (r > rcone) then
-          if (abs(yy) <= rcone) then
-            if (xx > 0) delmx(i) = ( xx - sqrt(max(0.,rcone**2 - yy**2)))
-            if (xx < 0) delpx(i) = (-xx - sqrt(max(0.,rcone**2 - yy**2)))
-          endif
-          if (abs(xx) <= rcone) then
-            if (yy > 0) delmy(i) = ( yy - sqrt(max(0.,rcone**2 - xx**2)))
-            if (yy < 0) delpy(i) = (-yy - sqrt(max(0.,rcone**2 - xx**2)))
-          endif
-
-        else
-c         --- The point is on the cone exactly.
-          delmx(i) = 0.
-          delpx(i) = 0.
-          delmy(i) = 0.
-          delpy(i) = 0.
-          delmz(i) = 0.
-          delpz(i) = 0.
-
-        endif
-
-      enddo
-
-      return
-      end
-c=======================================================================
-      subroutine ZConeConductorD(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                           n,x,y,z,distance)
-      use Constant
-      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n)
-      real(kind=8):: distance(n)
-
-c Finds distances along the axis of the points from a cone aligned with
-c the z-axis.
-c The notation is that a negative distance means that the point is inside.
-
-      integer(ISZ):: i
-      real(kind=8):: xx,yy,zz,rr
-      real(kind=8):: d1,ang_zmin,ang_zmax,dd,dz
-
-      do i=1,n
-        xx = x(i) - xcent
-        yy = y(i) - ycent
-        zz = z(i) - zcent
-        rr = sqrt(xx**2 + yy**2)
-
-        d1 = sqrt((rr - r_zmin)**2 + (zz + length*0.5)**2)
-        ang_zmin = atan2((rr - r_zmin),(zz + length*0.5)) -
-     &         atan2((r_zmax - r_zmin),length)
-        if (ang_zmin > +pi) ang_zmin = ang_zmin - 2*pi
-        if (ang_zmin < -pi) ang_zmin = ang_zmin + 2*pi
-        ang_zmax = atan2((r_zmin - r_zmax),-length) -
-     &          atan2((rr - r_zmax),(zz - length*0.5))
-        if (ang_zmax > +pi) ang_zmax = ang_zmax - 2*pi
-        if (ang_zmax < -pi) ang_zmax = ang_zmax + 2*pi
-        dd = d1*sin(ang_zmin)
-        dz = abs(zz) - length*0.5
-
-        if (zz <= -length*0.5 .and. rr <= r_zmin) then
-          distance(i) = dz
-        else if (ang_zmin >= pi*0.5) then
-          distance(i) = sqrt((rr - r_zmin)**2 + (zz + length*0.5)**2)
-        else if (zz >= length*0.5 .and. rr <= r_zmax) then
-          distance(i) = dz
-        else if (ang_zmax >= pi*0.5) then
-          distance(i) = sqrt((rr - r_zmax)**2 + (zz - length*0.5)**2)
-        else if (dd >= 0.) then
-          distance(i) = dd
-        else
-          distance(i) = max(dd,dz)
-        endif
-
-      enddo
-
-      return
-      end
-c=======================================================================
-      subroutine ZConeIntercept(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
-      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
-
-c Finds place where particle inside intercepted the surface and the
-c normal angle of the surface at that point.
-
-      integer(ISZ):: i
-
-      print*,"The intercept calculation is not yet implemented for ZCone"
-      do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = LARGEPOS
-        itheta(i) = 0.
-        iphi(i) = 0.
-      enddo
-
-      return
-      end
-c=======================================================================
-      subroutine ZConeOutConductorF(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
-     &                              fuzz)
-      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n)
-      real(kind=8):: delmx(n),delpx(n)
-      real(kind=8):: delmy(n),delpy(n)
-      real(kind=8):: delmz(n),delpz(n)
-      real(kind=8):: fuzz
-
-c Finds distances along the axis of the points from a cone aligned with
-c the z-axis.
-c The notation is that a negative distance means that the point is inside.
-
-      integer(ISZ):: i
-      real(kind=8):: zmin,zmax
-      real(kind=8):: xx,yy,rsq,r,rcone,zcone
-
-c     --- First, find min and max extent of the cone.
-      zmin = zcent - length*0.5
-      zmax = zcent + length*0.5
-
-      do i=1,n
-
-c       --- Set defaults
-        delmx(i) = LARGEPOS
-        delpx(i) = LARGEPOS
-        delmy(i) = LARGEPOS
-        delpy(i) = LARGEPOS
-        delmz(i) = LARGEPOS
-        delpz(i) = LARGEPOS
-
-c       --- Find radius of point relative to cone axis
-        xx = x(i) - xcent
-        yy = y(i) - ycent
-        rsq = xx**2 + yy**2
-        r = sqrt(rsq)
-
-c       --- Find z location where transverse line through point intersects
-c       --- the cone.
-        zcone = zmin + (zmax - zmin)*(r - r_zmin)/(r_zmax - r_zmin)
-        if (r == r_zmax) zcone = zmax
-
-c       --- Calculate z deltas
-        if (r >= max(r_zmin,r_zmax)) then
-c         --- point is outside of larger radius
-          if (z(i) >= zmin) delmz(i) = zmin - z(i)
-          if (z(i) >= zmax) delmz(i) = z(i) - zmax
-          if (z(i) <= zmax) delpz(i) = z(i) - zmax
-          if (z(i) <= zmin) delpz(i) = zmin - z(i)
-        else if (r >= min(r_zmin,r_zmax)) then
-c         --- point is outside of smaller radius
-          if (r_zmin > r_zmax) then
-            if (z(i) < zcone) delpz(i) = zcone - z(i)
-            if (zcone <= z(i) .and. z(i) <= zmax) then
-              delmz(i) = zcone - z(i)
-              delpz(i) = z(i) - zmax
-            endif
-            if (z(i) > zmax) delmz(i) = z(i) - zmax
-          endif
-          if (r_zmin < r_zmax) then
-            if (z(i) > zcone) delmz(i) = z(i) - zcone
-            if (zcone >= z(i) .and. z(i) >= zmin) then
-              delpz(i) = z(i) - zcone
-              delmz(i) = zmin - z(i)
-            endif
-            if (z(i) < zmin) delpz(i) = zmin - z(i)
-          endif
-        endif
-
-c       --- If point outside the z-extent of the cone, then skip the next
-c       --- part.
-        if (z(i) < zmin - fuzz .or. zmax + fuzz < z(i)) cycle
-
-c       --- Calculate the radius of the cone at the z-location of the point
-        rcone = r_zmin + (r_zmax - r_zmin)*(z(i) - zmin)/(zmax - zmin)
-c       --- If z == zmax, the set rcone equal to r_zmax exactly since the
-c       --- expression above will have roundoff problems.
-        if (z(i) == zmax) rcone = r_zmax
-
-c       --- Point inside the cone
-        if (r < rcone) then
-          delmx(i) = (sqrt(rcone**2 - yy**2) + xx)
-          delpx(i) = (sqrt(rcone**2 - yy**2) - xx)
-          delmy(i) = (sqrt(rcone**2 - xx**2) + yy)
-          delpy(i) = (sqrt(rcone**2 - xx**2) - yy)
-
-c       --- Point is outside the cone
-        else if (r > rcone) then
-          delmx(i) = -LARGEPOS
-          delpx(i) = -LARGEPOS
-          delmy(i) = -LARGEPOS
-          delpy(i) = -LARGEPOS
-          if (abs(yy) <= rcone) then
-            if (xx > 0) delmx(i) = -( xx - sqrt(max(0.,rcone**2 - yy**2)))
-            if (xx < 0) delpx(i) = -(-xx - sqrt(max(0.,rcone**2 - yy**2)))
-          endif
-          if (abs(xx) <= rcone) then
-            if (yy > 0) delmy(i) = -( yy - sqrt(max(0.,rcone**2 - xx**2)))
-            if (yy < 0) delpy(i) = -(-yy - sqrt(max(0.,rcone**2 - xx**2)))
-          endif
-
-        else
-c         --- The point is on the cone exactly.
-          delmx(i) = 0.
-          delpx(i) = 0.
-          delmy(i) = 0.
-          delpy(i) = 0.
-          delmz(i) = 0.
-          delpz(i) = 0.
-
-        endif
-
-      enddo
-
-      return
-      end
-c=======================================================================
-      subroutine ZConeOutConductorD(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                              n,x,y,z,distance)
-      use Constant
-      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n)
-      real(kind=8):: distance(n)
-
-c Finds distances along the axis of the points from a cone aligned with
-c the z-axis.
-c The notation is that a negative distance means that the point is inside.
-
-      integer(ISZ):: i
-      real(kind=8):: xx,yy,zz,rr
-      real(kind=8):: d1,ang_zmin,ang_zmax,dd,dz
-
-      do i=1,n
-        xx = x(i) - xcent
-        yy = y(i) - ycent
-        zz = z(i) - zcent
-        rr = sqrt(xx**2 + yy**2)
-
-        d1 = sqrt((rr - r_zmin)**2 + (zz + length*0.5)**2)
-        ang_zmin = atan2((r_zmax - r_zmin),length) -
-     &         atan2((rr - r_zmin),(zz + length*0.5))
-        if (ang_zmin > +pi) ang_zmin = ang_zmin - 2*pi
-        if (ang_zmin < -pi) ang_zmin = ang_zmin + 2*pi
-        ang_zmax = atan2((rr - r_zmax),(zz - length*0.5)) -
-     &          atan2((r_zmin - r_zmax),-length)
-        if (ang_zmax > +pi) ang_zmax = ang_zmax - 2*pi
-        if (ang_zmax < -pi) ang_zmax = ang_zmax + 2*pi
-        dd = d1*sin(ang_zmin)
-        dz = abs(zz) - length*0.5
-
-        if (zz <= -length*0.5 .and. rr >= r_zmin) then
-          distance(i) = dz
-        else if (ang_zmin >= pi*0.5) then
-          distance(i) = sqrt((rr - r_zmin)**2 + (zz + length*0.5)**2)
-        else if (zz >= length*0.5 .and. rr >= r_zmax) then
-          distance(i) = dz
-        else if (ang_zmax >= pi*0.5) then
-          distance(i) = sqrt((rr - r_zmax)**2 + (zz - length*0.5)**2)
-        else if (dd >= 0.) then
-          distance(i) = dd
-        else
-          distance(i) = max(dd,dz)
-        endif
-
-      enddo
-
-      return
-      end
-c=======================================================================
-      subroutine ZConeOutIntercept(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                             n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
-      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
-
-c Finds place where particle inside intercepted the surface and the
-c normal angle of the surface at that point.
-
-      integer(ISZ):: i
-
-      print*,"The intercept calculation is not yet implemented for ZConeOut"
-      do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = LARGEPOS
-        itheta(i) = 0.
-        iphi(i) = 0.
-      enddo
-
-      return
-      end
-c=======================================================================
       subroutine ZTorusConductorF(r1,r2,xcent,ycent,zcent,
      &                             n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                            fuzz)
@@ -3524,6 +3136,30 @@ c       zz = zg*cos(theta)*cos(phi) + xg*sin(theta)*cos(phi) + yg*sin(phi)
       return
       end
 c=======================================================================
+      subroutine zconeintercept(r_zmin,r_zmax,length,xcent,ycent,zcent,
+     &                          n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
+      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
+      real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
+
+c Finds place where particle inside intercepted the surface and the
+c normal angle of the surface at that point.
+
+      integer(ISZ):: i
+
+      print*,"The intercept calculation is not yet implemented for Cone"
+      do i=1,n
+        xi(i) = LARGEPOS
+        yi(i) = LARGEPOS
+        zi(i) = LARGEPOS
+        itheta(i) = 0.
+        iphi(i) = 0.
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine ConeIntercept(r_zmin,r_zmax,length,theta,phi,
      &                         xcent,ycent,zcent,
      &                         n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
@@ -3553,7 +3189,7 @@ c     --- Translate and rotate to frame of Cone
       vzp = +vx*sin(theta)*cos(phi) + vy*sin(phi) + vz*cos(theta)*cos(phi)
 
 c     --- Get data
-      call ZConeIntercept(r_zmin,r_zmax,length,0.,0.,0.,
+      call zconeintercept(r_zmin,r_zmax,length,0.,0.,0.,
      &                    n,x,y,z,vx,vy,vz,xi,yi,zi,ttheta,tphi)
 
 c     --- Rotate and translate interception points to lab frame
