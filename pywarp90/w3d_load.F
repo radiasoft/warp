@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.4 $, $Date: 2004/12/06 23:27:38 $
+c@(#) File w3d_load.F, version $Revision: 1.5 $, $Date: 2004/12/07 11:44:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -12,22 +12,45 @@ c=============================================================================
       use Constant
       use Beam_acc
       use InPart3d
-      use W3DLoad
+      use W3Dload
 
 c     Calculate the density profile of a continuous focused f(H) equilibrium 
 c     distribution that will be used to load an rms equivalent beam.  
-c     At present, the routine works with the following distributions:
-c       distrbtn = WB  or Waterbag             
+c
+c     The routine works with the following distributions:
+c       distrbtn = WB  or Waterbag
+c                = PA  or Parabolic              
 c                = TE  or ThermalEquilibrium 
+c
+c     The axisymmetric equivalent beam density profile is returned via a grid 
+c     defined by:
+c
+c       hl_nrdist = number of radial data points of CF Hamiltonian eq 
+c                     ranging from [0:hl_nrdist] -> [0,hl_rmax].   
+c                     This variable is user set.  
+c       hl_rmax   = Code set: max radius that the density profile is 
+c                     defined by (must contain all non-negligible density) 
+c       hl_rdist(0:hl_nrdist) = Code set: particle density in r 
+c
+c     Auxillary variables used in loading the density profile are also set:
+c
+c       hl_nrmrdist(0:hl_nrdist) = Code set: normalized hl_rdist with 
+c                                    sum(hl_nrmrdist)=1. 
+c       hl_intrdist(0:hl_nrdist) = Code set: integral of r*rdist from 
+c                                    r=0 to r where r is a scaled radius.
 
+c     --- beam rms descriptions 
       real(kind=8):: r_x,r_y,emit_x,emit_y,q_perv
       real(kind=8):: r_b,emit_b,k_beta0
       integer(ISZ):: ir
+c     --- waterbag equilibrium 
       real(kind=8):: k1re,f_2,r_e
       real(kind=8):: sc_param,k1re1,k1re2,rho
       real(kind=8):: zbrent,bessi0,bessi
       external wbagconstr
       common /wbagconstrcom/ sc_param
+c     --- distribution loading 
+      real(kind=8):: hl_sumrdist
 
 c     Define local rms equivalent beam parameters to use in the subroutine
 
@@ -44,25 +67,17 @@ c     Continuous focusing, matched rms equivlaent beam parameters
       emit_b = sqrt( emit_x*emit_y ) 
       k_beta0 = sqrt( q_perv/r_b**2 + emit_b**2/r_b**4 )  
 
-c     Setup grid to define the axisymmetric radial particle density and angle 
-c     spread variables that will be set by the rms equivalent beam 
-c     continuous focusing equilibrium. 
-c
-c       hl_rmax   = max radius of continuous focusing (CF) equivalent 
-c                     Hamiltonian equilibrium density and angle spreads  
-c       hl_nrdist = number of radial data points of CF Hamiltonian eq 
-c                     ranging from [0:hl_nrdist] -> [0,hl_rmax]. 
-c       hl_rdist(0:hl_nrdist) = Code set: particle density in r calculated 
-c                                 for CF Hamiltonian eq load 
-c       hl_tdist(0:hl_nrdist) = Code set: particle temp spread in r calculated 
-c                                 for CF Hamiltonian eq load 
-
+c     Allocate dynamic variables used to define the gridded density 
+c     and check that the density grid has been defined.   
       call gchange("W3Dload",0)
+      if (hl_nrdist .lt. 2) then
+        call remark("routine perp_cf_eq: hl_nrdist >= 2 must be set") 
+        call kaboom(0)  
+      endif 
 
-
-c     Calculate classes of equilbria 
+c     Calculate gridded density for classes of equilbria 
+c     --- waterbag equilibrium 
       if (distrbtn == "WB" .or. distrbtn == "Waterbag") then 
-c       --- waterbag equilibrium 
 
 c       --- calculate k1re = k1*r_e using bracketed brent numerical root 
 c           find method in zbrent  
@@ -71,8 +86,8 @@ c             k1re2 = right bracket set to a point where the bessel function
 c                     part of waterbagconstr() changes sign for sc_param = 0.
 
         sc_param = (r_b*k_beta0)**2/q_perv
-        k1re1 = 2./sqrt( sc_param )
-        k1re2 = 3. 
+        k1re1 = (64./sc_param)**0.25
+        k1re2 = 2. + 4./(sc_param-1.)  
 
         k1re = zbrent(wbagconstr,k1re1,k1re2,1.e-6,1000)
 
@@ -86,7 +101,7 @@ c             r_e = edge radius where the density falls to zero
 c             f_2 = distribution normalization coefficient 
 
         r_e = r_b*( bessi0(k1re)/bessi(2,k1re) - 
-     &              4./k1re*( 2. + k1re*bessi(3,k1re)/bessi(2,k1re) ) 
+     &              4./(k1re**2)*( 2. + k1re*bessi(3,k1re)/bessi(2,k1re) ) 
      &            )**-2 
 
         f_2 = aion*amu*eps0*vbeam**2*gammabar**3/
@@ -105,21 +120,48 @@ c         --- density
      &                   ( 1. - bessi0(k1re*rho)/bessi0(k1re) ) 
         enddo 
 
-c       --- return to main code 
-        return    
+c     --- parabolic equilibrium 
+      elseif(distrbtn == "PA"  .or. distrbtn == "Parabolic") then 
 
-        call remark("routine perp_cf_eq: end of code place holder") 
+        call remark("routine perp_cf_eq: Parabolic Eq option not implemented") 
         call kaboom(0) 
 
+c     --- thermal equilibrium 
       elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
-c       --- thermal equilibrium 
+
         call remark("routine perp_cf_eq: Thermal Equilibrium not implemented") 
         call kaboom(0) 
+
       else 
 c       --- undefined option trap 
         call remark("routine perp_cf_eq: distrbtn option not implemented") 
         call kaboom(0) 
       endif 
+
+c     Prepare for loading a specified particle density distribution in r,
+c     based on hl_rdist by calculating needed auxillary variables that will 
+c     employed in the loading process.    
+
+c     --- Multiply hl_rdist by r.
+      do ir=0,hl_nrdist
+        hl_nrmrdist(ir) = hl_rdist(ir)*float(ir)/float(hl_nrdist)
+      enddo
+c     --- Integrate r*hl_rdist so it can be normalized.  
+c     --- Note that hl_nrmrdist(0) is ignored since it is always zero.
+      hl_sumrdist = 0.
+      do ir=1,hl_nrdist-1
+        hl_sumrdist = hl_sumrdist + hl_nrmrdist(ir)
+      enddo
+      hl_sumrdist = hl_sumrdist + 0.5*hl_nrmrdist(hl_nrdist)
+c     --- Calculate integral of hl_rdist from 0 to ir
+c     --- Integral = 0.5*hl_rdist(0) + sum(hl_rdist(1:ir-1)) + 0.5*hl_rdist(ir)
+c     --- Also, normalize rdist.
+      hl_intrdist(0) = 0.
+      do ir=1,hl_nrdist
+        hl_nrmrdist(ir) = hl_nrmrdist(ir)/hl_sumrdist
+        hl_intrdist(ir) = hl_intrdist(ir-1) + 
+     &                    0.5*( hl_nrmrdist(ir-1) + hl_nrmrdist(ir) )
+      enddo
 
       return 
       end 
@@ -141,9 +183,9 @@ c
       common /wbagconstrcom/ sc_param
 
       wbagconstr = sc_param - bessi0(k1re)**2/bessi(2,k1re)**2 + 
-     &  4./(k1re)*( 2.*bessi(2,k1re)/bessi0(k1re) +
-     &              k1re*bessi0(k1re)*bessi(3,k1re)/(bessi(2,k1re))**2
-     &            )
+     &  4./(k1re**2)*( 2.*bessi(2,k1re)/bessi0(k1re) +
+     &                 k1re*bessi0(k1re)*bessi(3,k1re)/(bessi(2,k1re))**2
+     &               )
 
       return 
       end 
@@ -152,6 +194,7 @@ c=============================================================================
      &                        epsx,epsy)
       use Constant
       use InPart3d
+      use W3Dload
       integer(ISZ):: kioff,np
       real(kind=8):: x(np), y(np), xp(np), yp(np)
       real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
@@ -191,17 +234,9 @@ c            = "TE" or "ThermalEquilibrium": Thermal Equilibrium form
 c
 c
 
-c      integer(ISZ):: ip
-c      real(kind=8):: X1, X2, Y1, Y2
-c      real(kind=8):: F0, F, G
-      real(kind=8):: eps
-c      real(kind=8):: Ax, Ay, betax, betay 
-c      real(kind=8):: wrandom,wrandomgauss
-c      real(kind=8):: a, b, c, fa, fc
-c      character(72):: errline  
+c     Load axisymmetric particle coordinates x,y based on the equivalent 
+c     continuous focused equilibrium profile calculated in perp_cfe_den()
 
-c     Tolerances for iternative constraint solves 
-      eps = 1.e-6
 
       call remark ("Load Option not yet implemented in routine loadperpdist") 
       call kaboom (0)
@@ -226,8 +261,8 @@ c
 c Load a transverse distribution of particles based Courant-Snyder invariants 
 c in applied fields.  Each particle can have 
 c separate envelope coordinates and emittances so the script can be used 
-c in 2D or 3D loads.  The method employed here parallels T. Kikuchi's 
-c implementation of a procedure first developed by:
+c in 2D or 3D loads.  The method employed here is based in part on 
+c T. Kikuchi's implementation of a procedure first developed by:
 c   Y.R. Batygin, "Particle Distribution generator in 4D Phase-Space"
 c   AIP Conf. Proc. 297 (1994) pp. 419-426  
 c The method uses local Courant-Snyder invariant type forms to define 
