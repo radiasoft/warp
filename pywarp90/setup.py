@@ -14,14 +14,17 @@ try:
 except:
     raise SystemExit, "Distutils problem"
 
-optlist,args = getopt.getopt(sys.argv[1:],'gt:F:')
+optlist,args = getopt.getopt(sys.argv[1:],'gt:F:',['parallel'])
 machine = sys.platform
 debug   = 0
 fcomp   = None
+parallel = 0
 for o in optlist:
   if   o[0] == '-g': debug = 1
   elif o[0] == '-t': machine = o[1]
   elif o[0] == '-F': fcomp = o[1]
+  elif o[0] == '--parallel': parallel = 1
+
 sys.argv = ['setup.py']+args
 fcompiler = FCompiler(machine=machine,
                       debug=debug,
@@ -56,8 +59,16 @@ warpobjects = warpobjects + ['dtop.o',
                              'fxy_mgrid.o',
                              'dwrz.o',
                              'frz_mgrid.o']
+if parallel:
+  warpobjects = warpobjects + ['f3dslave.o','frzslave.o','topslave.o',
+                               'w3dslave.o']
 
 warpobjects = map(lambda p:os.path.join(builddir,p),warpobjects)
+
+if parallel:
+  library_dirs = fcompiler.libdirs + ['mpifarg','mpi','elan','elan3','rmscall','elf']
+  libraries = fcompiler.libs + ['/usr/lib/mpi/lib']
+  warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
 
 setup (name = "warpC",
        version = '3.0',
