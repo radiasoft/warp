@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.170 $, $Date: 2004/11/12 17:57:29 $
+#@(#) File W3D.V, version $Revision: 3.171 $, $Date: 2004/11/13 01:35:12 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.170 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.171 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -606,6 +606,12 @@ setupfields3dparticles()
              subroutine # Sets up the Fields3dParticles group
 getrhoforfieldsolve()
              subroutine # Copies data from rhop to rho - mainly for parallel
+getrhoforfieldsolve3d(nx:integer,ny:integer,nz:integer,rho:real,
+                      nxp:integer,nyp:integer,nzp:integer,rhop:real,
+                      my_index:integer,nslaves:integer,
+                      izfsslave:integer,nzfsslave:integer,
+                      izpslave:integer,nzpslave:integer)
+             subroutine # Copies data from rhop to rho - for parallel
 getphiforparticles()
              subroutine # Copies data from phi to phip - mainly for parallel
 padvnc3d(center:string)
