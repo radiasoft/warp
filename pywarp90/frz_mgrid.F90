@@ -1,4 +1,4 @@
-!     Last change:  JLV  23 Apr 2002    9:03 am
+!     Last change:  JLV  23 Apr 2002   11:25 am
 #include "top.h"
 
 module multigrid_common
@@ -194,21 +194,22 @@ INTEGER(ISZ) :: i,j
 return
 end subroutine init_basegrid
 
-subroutine add_grid(grid,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z)
+subroutine add_grid(grid,nr,nz,dri,dzi,rmini,zmini,guard_min_r,guard_max_r,guard_min_z,guard_max_z)
 implicit none
 TYPE(grdptr), pointer :: grid
 INTEGER(ISZ), INTENT(IN) :: nr, nz, guard_min_r, guard_max_r, guard_min_z, guard_max_z
-REAL(8), INTENT(IN OUT) :: dr,dz,rmin,zmin
+REAL(8), INTENT(IN) :: dri,dzi,rmini,zmini
 TYPE(grdptr), pointer :: newgrid
 INTEGER(ISZ) :: i,j,l,jmin,jmax,lmin,lmax
+REAL(8) :: dr,dz,rmin,zmin
 
 ! adjust new grid boundaries to fall onto mother grid lines
 ! and recalculate mesh spacing for new grid
 
-  jmin = 1+NINT((MAX(rmin,grid%rmin)-grid%rmin)/grid%dr)
-  jmax = 1+NINT((MIN(rmin+nr*dr,grid%rmax)-grid%rmin)/grid%dr)
-  lmin = 1+NINT((MAX(zmin,grid%zmin)-grid%zmin)/grid%dz)
-  lmax = 1+NINT((MIN(zmin+nz*dz,grid%zmax)-grid%zmin)/grid%dz)
+  jmin = 1+NINT((MAX(rmini,grid%rmin)-grid%rmin)/grid%dr)
+  jmax = 1+NINT((MIN(rmini+nr*dri,grid%rmax)-grid%rmin)/grid%dr)
+  lmin = 1+NINT((MAX(zmini,grid%zmin)-grid%zmin)/grid%dz)
+  lmax = 1+NINT((MIN(zmini+nz*dzi,grid%zmax)-grid%zmin)/grid%dz)
 
   rmin = (jmin-1)*grid%dr
   zmin = (lmin-1)*grid%dz
