@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.113 $, $Date: 2005/02/25 22:08:36 $
+c@(#) File F3D.M, version $Revision: 3.114 $, $Date: 2005/03/12 00:55:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -386,7 +386,7 @@ c  This allows a non-power-of-2 for the tridiag in z field solver.
      &      ( iwhich .ne. 1 .and. iwhich .ne. 12 .and. iwhich .ne. 13 .and.
      &        iwhich .ne. 14 ) ) ) then
          call remark("NX and NY must be powers of 2, NZ also unless using tridiag solver")
-         return
+         stop
       endif
 #endif
 
@@ -1821,7 +1821,8 @@ c  Error checking; so far, only possible error is non-power-of-2 nx,ny
 
       if (  ( nx .ne. 2**int( .5 + log(1.*nx) / log(2.) ) )
      & .or. ( ny .ne. 2**int( .5 + log(1.*ny) / log(2.) ) ) ) then
-         return
+         call remark("NX and NY must be powers of 2")
+         stop
       endif
 
 c  Set pointers into workspace needed by x and y sine transforms
