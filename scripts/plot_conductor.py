@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.78 2004/04/16 23:02:18 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.79 2004/07/08 19:39:42 jlvay Exp $"
 
 def plot_conductordoc():
   print """
@@ -810,7 +810,8 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- otherwise coding below could lead to a deadlock in the parallel version
   if izf is not None: iz = izf
   if iz is None: iz = nint(-w3dgrid.zmmin/w3dgrid.dz) + top.izslave[me]
-  if iz < 0 or w3dgrid.nzfull < iz: return
+  if w3d.solvergeom<>w3d.XYgeom:
+    if iz < 0 or w3dgrid.nzfull < iz: return
   if scale:
     dx = w3dgrid.dx
     dy = w3dgrid.dy
