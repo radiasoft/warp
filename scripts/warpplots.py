@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.8 2001/01/11 00:51:28 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.9 2001/01/12 19:02:07 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -439,6 +439,12 @@ def ptitles(titlet="",titleb="",titlel="",titler="",v=1):
 ##########################   UTILITY ROUTINES  ###########################
 ##########################################################################
 ##########################################################################
+def checkarguments(input,arglist):
+  "Compare inputs against and argument list and return list of bad arguments"
+  inputcopy = input.copy()
+  for i in inputcopy.keys():
+    if i in arglist.keys(): del inputcopy[i]
+  return inputcopy
 
 #-------------------------------------------------------------------------
 # This returns the indices of the particles selected.
@@ -462,25 +468,24 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":1,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None}
+                "zl":None,"zu":None,'checkargs':0,'allowbadargs':0}
 
-  # --- Add together dictionaries
-  kw.update(kwdict)
+  # --- Create dictionary of local values and copy it into local dictionary,
+  # --- ignoring keywords not listed in kwdefaults.
+  kwvalues = kwdefaults.copy()
+  kwvalues.update(kw)
+  kwvalues.update(kwdict)
+  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
 
-  # --- Check through the possible keyword arguments
-  for arg in kwdefaults.keys():
-    if kw.has_key(arg):
-      exec(arg+" = kw['"+arg+"']")
-      del kw[arg]
-    else:
-      exec(arg+" = kwdefaults['"+arg+"']")
-  # --- Raise an error if there are keywords left over
-# if len(kw) > 0:
-#   badkwlist = 'unexpected keyword argument:'
-#   if len(kw) > 1: badkwlist = badkwlist[:-1] + 's:'
-#   for arg in kw.keys():
-#     badkwlist = badkwlist + ' ' + arg
-#   raise TypeError, badkwlist
+  # --- Check the argument list for bad arguments. 
+  # --- 'checkargs' allows this routine to be called only to check the
+  # --- input for bad arguments.
+  # --- 'allowbadargs' allows this routine to be called with bad arguments.
+  # --- These are intentionally undocumented features.
+  badargs = checkarguments(kwvalues,kwdefaults)
+  if checkargs: return badargs
+  if badargs and not allowbadargs:
+    raise "bad argument ",string.join(badargs.keys())
 
   ir1 = top.ins[js-1]-1
   ir2 = top.ins[js-1]+top.nps[js-1]-1
@@ -707,13 +712,25 @@ def pptitleright(iw=0,kwdict={},**kw):
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":1,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None}
-  # --- Add together dictionaries
-  kw.update(kwdict)
-  # --- Check through the possible keyword arguments
-  for arg in kwdefaults.keys():
-    if kw.has_key(arg): exec(arg+" = kw['"+arg+"']")
-    else:               exec(arg+" = kwdefaults['"+arg+"']")
+                "zl":None,"zu":None,'checkargs':0,'allowbadargs':0}
+
+  # --- Create dictionary of local values and copy it into local dictionary,
+  # --- ignoring keywords not listed in kwdefaults.
+  kwvalues = kwdefaults.copy()
+  kwvalues.update(kw)
+  kwvalues.update(kwdict)
+  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+
+  # --- Check the argument list for bad arguments.
+  # --- 'checkargs' allows this routine to be called only to check the
+  # --- input for bad arguments.
+  # --- 'allowbadargs' allows this routine to be called with bad arguments.
+  # --- These are intentionally undocumented features.
+  badargs = checkarguments(kwvalues,kwdefaults)
+  if checkargs: return badargs
+  if badargs and not allowbadargs:
+    raise "bad argument ",string.join(badargs.keys())
+
   # --- Return appropriate right title
   if zl!=None or zu!=None:
     if z == None: prefix = ""
@@ -804,25 +821,25 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'usepalette':1,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':1.,'hcolor':'fg','width':1.0,
-                'contours':None,'filled':0,'ccolor':'fg','view':1}
+                'contours':None,'filled':0,'ccolor':'fg','view':1,
+                'checkargs':0,'allowbadargs':0}
 
-  # --- Add together dictionaries
-  kw.update(kwdict)
+  # --- Create dictionary of local values and copy it into local dictionary,
+  # --- ignoring keywords not listed in kwdefaults.
+  kwvalues = kwdefaults.copy()
+  kwvalues.update(kw)
+  kwvalues.update(kwdict)
+  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
 
-  # --- Check through the possible keyword arguments
-  for arg in kwdefaults.keys():
-    if kw.has_key(arg):
-      exec(arg+" = kw['"+arg+"']")
-      del kw[arg]
-    else:
-      exec(arg+" = kwdefaults['"+arg+"']")
-  # --- Raise an error if there are keywords left over
-# if len(kw) > 0:
-#   badkwlist = 'unexpected keyword argument:'
-#   if len(kw) > 1: badkwlist = badkwlist[:-1] + 's:'
-#   for arg in kw.keys():
-#     badkwlist = badkwlist + ' ' + arg
-#   raise TypeError, badkwlist
+  # --- Check the argument list for bad arguments.
+  # --- 'checkargs' allows this routine to be called only to check the
+  # --- input for bad arguments.
+  # --- 'allowbadargs' allows this routine to be called with bad arguments.
+  # --- These are intentionally undocumented features.
+  badargs = checkarguments(kwvalues,kwdefaults)
+  if checkargs: return badargs
+  if badargs and not allowbadargs:
+    raise "bad argument ",string.join(badargs.keys())
 
   # --- Do some error checking on the consistency of the input
   if grid == None and (x == None or y == None):
@@ -966,9 +983,23 @@ if sys.version[:5] != "1.5.1":
 ########################################################################
 ########################################################################
 ########################################################################
+def checkparticleplotarguments(kw):
+  """Convenience routine to check arguments of particle plot routines.
+Warning: this has the side affect of adding the arguement allowbadargs to
+the kw dictionary. This is done since the calls to these functions here to
+make the plots may have unused arguements since the entire kw list passed
+into each of the pp plotting routines is passed into each of these
+functions.
+  """
+  badargs = selectparticles(checkargs=1,kwdict=kw)
+  badargs = pptitleright(checkargs=1,kwdict=badargs)
+  badargs = ppgeneric(checkargs=1,kwdict=badargs)
+  kw['allowbadargs'] = 1
+  if badargs: raise "bad arguments ",string.join(badargs.keys())
 ########################################################################
 def ppzxy(iw=0,particles=1,**kw):
   "Plots Z-X and Z-Y in single page"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['view'] = 9
   kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -989,6 +1020,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzx(iw=0,particles=1,**kw):
   "Plots Z-X"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                     top.xplmin,top.xplmax)
@@ -1001,6 +1033,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzy(iw=0,particles=1,**kw):
   "Plots Z-Y"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                     top.yplmin,top.yplmax)
@@ -1013,6 +1046,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzxp(iw=0,particles=1,**kw):
   "Plots Z-X'"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                     top.xpplmin,top.xpplmax)
@@ -1025,6 +1059,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzvx(iw=0,particles=1,**kw):
   "Plots Z-Vx"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                     top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
@@ -1037,6 +1072,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzyp(iw=0,particles=1,**kw):
   "Plots Z-Y'"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                     top.ypplmin,top.ypplmax)
@@ -1049,6 +1085,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzvy(iw=0,particles=1,**kw):
   "Plots Z-Vy"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                     top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
@@ -1061,6 +1098,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzvz(iw=0,particles=1,**kw):
   "Plots Z-Vz"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   (vzmin,vzmax) = getvzrange()
   kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
@@ -1073,6 +1111,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxy(iw=0,particles=1,**kw):
   "Plots X-Y"
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
@@ -1084,6 +1123,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxxp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots X-X'. If slope='auto', it is calculated from the moments."
+  checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
   kw['particles'] = particles
   kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
@@ -1099,6 +1139,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppyyp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots Y-Y'. If slope='auto', it is calculated from the moments."
+  checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
   kw['particles'] = particles
   kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
@@ -1114,6 +1155,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxpyp(iw=0,particles=1,**kw):
   "Plots X'-Y'. If slope='auto', it is calculated from the moments."
+  checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
@@ -1126,6 +1168,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxvx(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots X-Vx. If slope='auto', it is calculated from the moments."
+  checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
   kw['particles'] = particles
   kw['pplimits'] = (top.xplmin,top.xplmax,
@@ -1142,6 +1185,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppyvy(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots Y-Vy. If slope='auto', it is calculated from the moments."
+  checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
   kw['particles'] = particles
   kw['pplimits'] = (top.yplmin,top.yplmax,
@@ -1158,6 +1202,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxvz(iw=0,particles=1,**kw):
   "Plots X-Vz."
+  checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
   kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
@@ -1170,6 +1215,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppyvz(iw=0,particles=1,**kw):
   "Plots Y-Vz."
+  checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
   kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
@@ -1183,6 +1229,7 @@ if sys.version[:5] != "1.5.1":
 def pprrp(iw=0,scale=0,slope=0.,particles=1,**kw):
   """Plots R-R', If slope='auto', it is calculated from the moments.
   - scale=0: when true, scale particle by 2*rms"""
+  checkparticleplotarguments(kw)
   xscale = 1.
   yscale = 1.
   xpscale = 1.
@@ -1224,6 +1271,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def pprvz(iw=0,particles=1,**kw):
   "Plots R-Vz"
+  checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
   kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
@@ -1240,6 +1288,7 @@ def pptrace(iw=0,slope=0.,iz=-1,particles=1,titles=1,**kw):
   """
 Plots X-Y, X-X', Y-Y', Y'-X' in single page
 If slope='auto', it is calculated from the moments for X-X' and Y-Y' plots."""
+  checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
   x = take(top.xp,ii)
   y = take(top.yp,ii)
