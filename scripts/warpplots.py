@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.127 2004/09/02 22:43:10 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.128 2004/09/09 20:50:00 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1420,9 +1420,9 @@ def ppzxy(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,win=top.ywindows,z=top.yp,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
+  ppgeneric(getx(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 
   kw['view'] = 10
   if kw.has_key('pplimits'):
@@ -1432,7 +1432,7 @@ def ppzxy(iw=0,**kw):
                       top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,win=top.xwindows,z=top.xp,kwdict=kw)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
+  ppgeneric(gety(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzxy.__doc__ = ppzxy.__doc__ + ppgeneric_doc('z','x')
 
@@ -1447,9 +1447,9 @@ def ppzx(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(getx(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzx.__doc__ = ppzx.__doc__ + ppgeneric_doc('z','x')
 
@@ -1464,9 +1464,9 @@ def ppzy(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(gety(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzy.__doc__ = ppzy.__doc__ + ppgeneric_doc('z','y')
 
@@ -1481,9 +1481,9 @@ def ppzr(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("R vs Z","Z","R",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(sqrt(top.xp**2+top.yp**2),ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(getr(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzr.__doc__ = ppzr.__doc__ + ppgeneric_doc('z','r')
 
@@ -1498,9 +1498,9 @@ def ppzxp(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin,top.xpplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("X' vs Z","Z","X'",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(getxp(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzxp.__doc__ = ppzxp.__doc__ + ppgeneric_doc('z',"x'")
 
@@ -1515,9 +1515,9 @@ def ppzvx(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Vx vs Z","Z","Vx",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uxp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(getvx(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvx.__doc__ = ppzvx.__doc__ + ppgeneric_doc('z',"vx")
 
@@ -1532,9 +1532,9 @@ def ppzyp(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.ypplmin,top.ypplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Y' vs Z","Z","Y'",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(getyp(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzyp.__doc__ = ppzyp.__doc__ + ppgeneric_doc('z',"y'")
 
@@ -1549,9 +1549,9 @@ def ppzvy(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Vy vs Z","Z","Vy",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(getvy(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvy.__doc__ = ppzvy.__doc__ + ppgeneric_doc('z',"vy")
 
@@ -1566,9 +1566,9 @@ def ppzvz(iw=0,**kw):
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(getvz(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvz.__doc__ = ppzvz.__doc__ + ppgeneric_doc('z',"vz")
 
@@ -1583,7 +1583,7 @@ def ppzrp(iw=0,**kw):
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin,top.xpplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=getpid(id=top.wpid-1,ii=ii,gather=0)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("R' vs Z","Z","R'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getrp(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1599,9 +1599,9 @@ def ppxy(iw=0,**kw):
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Y vs X","X","Y",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.yp,ii),take(top.xp,ii),kwdict=kw)
+  return ppgeneric(gety(ii=ii,gather=0),getx(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxy.__doc__ = ppxy.__doc__ + ppgeneric_doc('x','y')
 
@@ -1620,9 +1620,9 @@ def ppxxp(iw=0,**kw):
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("X' vs X","X","X'",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.xp,ii),kwdict=kw)
+  return ppgeneric(getxp(ii=ii,gather=0),getx(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxxp.__doc__ = ppxxp.__doc__ + ppgeneric_doc("x","x'")
 
@@ -1641,9 +1641,9 @@ def ppyyp(iw=0,**kw):
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Y' vs Y","Y","Y'",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.yp,ii),kwdict=kw)
+  return ppgeneric(getyp(ii=ii,gather=0),gety(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppyyp.__doc__ = ppyyp.__doc__ + ppgeneric_doc("y","y'")
 
@@ -1666,10 +1666,10 @@ def ppxpyp(iw=0,**kw):
     kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
   settitles("Y' vs X'","X'","Y'",pptitleright(iw=iw,kwdict=kw))
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
-  xp = (take(top.uxp,ii)/take(top.uzp,ii) - xslope*(take(top.xp,ii)-xoffset) -
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
+  xp = (getxp(ii=ii,gather=0) - xslope*(getx(ii=ii,gather=0)-xoffset) -
        xpoffset)
-  yp = (take(top.uyp,ii)/take(top.uzp,ii) - yslope*(take(top.yp,ii)-yoffset) -
+  yp = (getyp(ii=ii,gather=0) - yslope*(gety(ii=ii,gather=0)-yoffset) -
        ypoffset)
   return ppgeneric(yp,xp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1691,9 +1691,9 @@ def ppxvx(iw=0,**kw):
     kw['pplimits'] = (top.xplmin,top.xplmax,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uxp,ii),take(top.xp,ii),kwdict=kw)
+  return ppgeneric(getux(ii=ii,gather=0),getx(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxvx.__doc__ = ppxvx.__doc__ + ppgeneric_doc("x","Vx")
 
@@ -1713,9 +1713,9 @@ def ppyvy(iw=0,**kw):
     kw['pplimits'] = (top.yplmin,top.yplmax,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Vy vs Y","Y","Vy",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
+  return ppgeneric(getvy(ii=ii,gather=0),gety(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppyvy.__doc__ = ppyvy.__doc__ + ppgeneric_doc("y","Vy")
 
@@ -1730,9 +1730,9 @@ def ppxvz(iw=0,**kw):
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Vz vs X","X","Vz",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.xp,ii),kwdict=kw)
+  return ppgeneric(getvz(ii=ii,gather=0),getx(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxvz.__doc__ = ppxvz.__doc__ + ppgeneric_doc("x","Vz")
 
@@ -1747,9 +1747,9 @@ def ppyvz(iw=0,**kw):
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Vz vs Y","Y","Vz",pptitleright(iw=iw,kwdict=kw))
-  return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
+  return ppgeneric(getvz(ii=ii,gather=0),gety(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppyvz.__doc__ = ppyvz.__doc__ + ppgeneric_doc("y","Vz")
 
@@ -1770,10 +1770,10 @@ def pprrp(iw=0,scale=0,**kw):
     xpscale = 2.*top.vxrms[iiw]/top.vzbar[iiw]
     ypscale = 2.*top.vyrms[iiw]/top.vzbar[iiw]
   ii = selectparticles(iw=iw,kwdict=kw)
-  xx = take(top.xp,ii)/xscale
-  yy = take(top.yp,ii)/yscale
-  xp = take(top.uxp,ii)/take(top.uzp,ii)/xpscale
-  yp = take(top.uyp,ii)/take(top.uzp,ii)/ypscale
+  xx = getx(ii=ii,gather=0)/xscale
+  yy = gety(ii=ii,gather=0)/yscale
+  xp = getxp(ii=ii,gather=0)/xpscale
+  yp = getyp(ii=ii,gather=0)/ypscale
   rr = sqrt(xx**2 + yy**2)
   tt = arctan2(yy,xx)
   rp = xp*cos(tt) + yp*sin(tt)
@@ -1791,7 +1791,7 @@ def pprrp(iw=0,scale=0,**kw):
   else:
     kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
                       top.xpplmin/xpscale,top.xpplmax/ypscale)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("R' vs R","R","R'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(rp,rr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -1808,11 +1808,9 @@ def pprvz(iw=0,**kw):
   else:
     kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   settitles("Vz vs R","R","Vz",pptitleright(iw=iw,kwdict=kw))
-  rr = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
-  vz = take(top.uzp,ii)*take(top.gaminv,ii)
-  return ppgeneric(vz,rr,kwdict=kw)
+  return ppgeneric(getvz(ii=ii,gather=0),getr(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pprvz.__doc__ = pprvz.__doc__ + ppgeneric_doc("r","vz")
 
@@ -1828,11 +1826,11 @@ that plot.
   checkparticleplotarguments(kw)
   if ppmultispecies(pptrace,(iw,normalize),kw): return
   ii = selectparticles(iw=iw,kwdict=kw)
-  x = take(top.xp,ii)
-  y = take(top.yp,ii)
-  xp = take(top.uxp,ii)/take(top.uzp,ii)
-  yp = take(top.uyp,ii)/take(top.uzp,ii)
-  if(top.wpid!=0):kw['weights']=take(top.pid[:,top.wpid-1],ii)
+  x = getx(ii=ii,gather=0)
+  y = gety(ii=ii,gather=0)
+  xp = getxp(ii=ii,gather=0)
+  yp = getyp(ii=ii,gather=0)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
   slope = kw.get('slope',0.)
   if type(slope)==type(''):
     del kw['slope']
