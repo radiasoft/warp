@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.152 $, $Date: 2004/05/07 18:38:44 $
+#@(#) File W3D.V, version $Revision: 3.153 $, $Date: 2004/05/12 22:30:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.152 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.153 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -428,6 +428,85 @@ aper_ex(0:nx,0:ny,-1:aper_zmax,napertures) _real [V/m]
                             # Calculated Ex on special apertures.
 aper_ey(0:nx,0:ny,-1:aper_zmax,napertures) _real [V/m]
                             # Calculated Ey on special apertures.
+
+*********** DKInterp dump:
+# This group contains inputs and other saved data for the drift-kinetic
+#  interpolation
+# Note several species dependent quantities; assume max of ns is 5
+m_over_q(5)  _real [mks] /0./ # mass over charge, calc. by code
+qovermsq(5)  _real [mks] /0./ # (charge/mass)**2, calc. by code
+alpha0(5)     _real     /0./ 
+                # Interpolation parameter if not to be automatically set
+acntr(5)      _real /.5/    # centering parameter for predictor-corrector
+usealphacalc(5) _real  /1./  # fraction of calculated interpolation parameter
+                         # to use; will use (1-usealphacalc)*alpha0.
+notusealphcalc(5) _real /0./ # 1-usealphacalc, calculated by code
+dksmall       real  /1.e-20/ # small parameter for safe divides
+igradb   integer  /2/    #  parameter to select method of calculating grad B
+                         # 1 for lookup table, 2 for assumed quadrupole
+interpdk(5) _integer  /0/ # parameter specifies whether and how to do orbit
+                         # interpolation: 0, full orbit. 1, interpolate;
+                         # 2, pure drift
+alphcoef      real    /0.25/ # coefficient multiplying (omegac dt)**2
+                             # in setting alpha
+
+*********** DKInterptmp:
+# This group contains temporary data for the drift-kinetic interpolation
+npint          integer   /0/     # dimension for interpolation arrays
+npfield        integer   /0/     # dimension for temp field arrays
+grdbsq(3,npint) _real [t**2/m]   # components of gradbsq (z,x,y)
+dbsqdz(npint)   _real [T**2/m]    # dB^2/dz
+bsqi(npint)     _real [1/T**2]    # 1/B^2
+bsq(npint)      _real [1/T**2]    # B^2
+vparoverB(npint) _real [m/s*T]    # v_parallel/B
+vparsq(npint)   _real [m**2/s**2] # vparallel^2
+vperpsq(npint)  _real [m**2/s**2] # vperpendicular^2
+vsq(npint)      _real [m**2/s**2] # v^2
+bx(npfield)     _real [T]          # Bx 
+by(npfield)     _real [T]          # By
+bz(npfield)     _real [T]          # Bz 
+ex(npfield)     _real [V/m]        # Ex 
+ey(npfield)     _real [V/m]        # Ey 
+ez(npfield)     _real [V/m]        # Ez 
+vbx(npint)      _real [m/s]       # x magnetic drift velocity
+vby(npint)      _real [m/s]       # y magnetic drift velocity
+vbz(npint)      _real [m/s]       # z magnetic drift velocity
+vex(npint)      _real [m/s]       # x electric drift velocity
+vey(npint)      _real [m/s]       # y electric drift velocity
+vez(npint)      _real [m/s]       # z electric drift velocity
+vdx(npint)      _real [m/s]       # V_dx
+vdy(npint)      _real [m/s]       # V_dy
+vdz(npint)      _real [m/s]       # V_dz
+uxeff(npint)    _real [m/s]       # interpolated ux
+uyeff(npint)    _real [m/s]       # interpolated uy
+uzeff(npint)    _real [m/s]       # interpolated uz
+alpha(npint)    _real             # interepolation parameter
+alphabar(npint) _real             # complement of interp param
+
+*********** W3D_interpsubs:
+# Subroutines in file W3d_interp.F
+#setptrs(bx:real,by:real,bz:real,ex:real,ey:real,ez:real) 
+#            subroutine # sets database B and E arrays
+#                      # equal to bx, by, bz, ex, ey, ez
+mugrdbpush(np,is,ipmin,dtb:real,needcalcgradb)
+            subroutine #  does the mu grad B parallel acceleration 
+                       #  and corresponding change to vperp
+xpush3dintrp(np,is,ipmin)
+              subroutine #  does the interpolated x push
+getvperpparsq(np,ipmin) 
+              subroutine #  finds v_perp^2, v_parallel^2, vparallel/B,v^2
+                         #  of particles
+getveff(np,is,ipmin,x:real,y:real,z:real,predcor:string) 
+    subroutine #  gets components of interpolated velocity used in x push
+getvdrift(np,is,ipmin,x:real,y:real,z:real) 
+    subroutine #  calculates vdrift from ExB and gradB
+setfields(np,is,ipmin,x:real,y:real,z:real) 
+    subroutine #  sets E,B at particle arrays; determines interpolation
+               #  parameter alpha and its complement alphabar
+getgradbsq(np,is,ipmin,x:real,y:real,z:real) 
+         subroutine    #  calculates or fetches grad B^2 components
+geteb(np,is,ipmin,x:real,y:real,z:real) 
+          subroutine   #  fetch E and B fields
 
 *********** W3Dsubs:
 # Subroutines in package 3D
