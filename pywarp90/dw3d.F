@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.87 $, $Date: 2003/02/27 19:34:17 $
+c@(#) File DW3D.M, version $Revision: 3.88 $, $Date: 2003/03/06 00:44:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -193,6 +193,7 @@ c=============================================================================
 c  Sets 1d array for the charge density on the axis
       use InGen3d
       use InMesh3d
+      use InDiag3d
       use Picglb
       use Picglb3d
       use Fields3d
@@ -200,6 +201,8 @@ c  Sets 1d array for the charge density on the axis
 
       integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: zz,wzg,dzi
+
+      if(.not. lsrhoax3d) return
 
       dzi = 1./dz
 
@@ -234,6 +237,7 @@ c=============================================================================
 c  Sets 1d array for the potential on the axis
       use InGen3d
       use InMesh3d
+      use InDiag3d
       use Z_arrays
       use Picglb
       use Picglb3d
@@ -241,6 +245,8 @@ c  Sets 1d array for the potential on the axis
 
       integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: zz,wzg,dzi
+
+      if(.not. lsphiax3d) return
 
       dzi = 1./dz
 
@@ -275,6 +281,7 @@ c=============================================================================
 c  Sets 1d array for the space charge E field on the axis
       use InMesh3d
       use InGen3d
+      use InDiag3d
       use Picglb
       use Picglb3d
       use Z_arrays
@@ -282,6 +289,8 @@ c  Sets 1d array for the space charge E field on the axis
 
       integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: wx,wy,zz,wzg,wx1,wy1,dzi
+
+      if(.not. lsezax3d) return
 
       dzi = 1./dz
 
