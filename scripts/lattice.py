@@ -39,7 +39,7 @@ from warp import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.25 2004/01/24 00:55:03 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.26 2004/01/27 22:42:46 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -773,6 +773,8 @@ Creates an instance of a Mmlt lattice element.
   - ap=0 aperture (can affect location of transverse boundaries)
   - ax=0 aperture in x (can affect location of transverse boundaries)
   - ay=0 aperture in y (can affect location of transverse boundaries)
+  - as=0 z start of aperture (can affect location of transverse boundaries)
+  - ae=0 z end of aperture (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -792,14 +794,16 @@ Or specify the data set
   - nn=[] n indices
   - vv=[] v indices
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,as=0.,ae=0.,
+               ox=0,oy=0,error_type='',
                id=None,dz=0,m=[],mp=[],mph=[],nn=[],vv=[],ph=0,sf=0,sc=1):
     assert (m or mp) or (id is not None),"A data set or id must be given"
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Mmlt'
+    self.as = as
+    self.ae = ae
     self.dz = dz
     self.m = m
     self.mp = mp
@@ -863,6 +867,8 @@ Or specify the data set
     top.mmltap[top.nmmlt] = self.ap
     top.mmltax[top.nmmlt] = self.ax
     top.mmltay[top.nmmlt] = self.ay
+    top.mmltas[top.nmmlt] = self.as
+    top.mmltae[top.nmmlt] = self.ae
     top.mmltox[top.nmmlt] = self.offset_x*errordist(self.error_type)
     top.mmltoy[top.nmmlt] = self.offset_y*errordist(self.error_type)
     top.mmltph[top.nmmlt] = self.ph
