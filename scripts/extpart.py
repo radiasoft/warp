@@ -8,19 +8,19 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.27 2003/10/03 17:44:14 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.28 2003/10/07 21:51:41 dave Exp $"
 
 def extpartdoc():
   import extpart
   print extpart.__doc__
 
-__extforcenorestore = 0
+_extforcenorestore = 0
 def extforcenorestore():
-  global __extforcenorestore
-  __extforcenorestore = 1
+  global _extforcenorestore
+  _extforcenorestore = 1
 def extnoforcenorestore():
-  global __extforcenorestore
-  __extforcenorestore = 0
+  global _extforcenorestore
+  _extforcenorestore = 0
 
 ############################################################################
 class ExtPart:
@@ -75,7 +75,6 @@ routines (such as ppxxp).
     self.lautodump = lautodump
     self.name = name
     self.dumptofile = dumptofile
-    self.isave = 0
     self.dt = top.dt
     if nepmax is None:
       self.nepmax = 10000
@@ -113,12 +112,12 @@ routines (such as ppxxp).
         self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
     else:
-      self.tep = ns*[None]
-      self.xep = ns*[None]
-      self.yep = ns*[None]
-      self.uxep = ns*[None]
-      self.uyep = ns*[None]
-      self.uzep = ns*[None]
+      self.tep = ns*[zeros(0,'d')]
+      self.xep = ns*[zeros(0,'d')]
+      self.yep = ns*[zeros(0,'d')]
+      self.uxep = ns*[zeros(0,'d')]
+      self.uyep = ns*[zeros(0,'d')]
+      self.uzep = ns*[zeros(0,'d')]
 
   def addspecies(self):
     if self.laccumulate and not self.dumptofile:
@@ -131,12 +130,12 @@ routines (such as ppxxp).
         self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
     else:
-      self.tep = top.ns*[None]
-      self.xep = top.ns*[None]
-      self.yep = top.ns*[None]
-      self.uxep = top.ns*[None]
-      self.uyep = top.ns*[None]
-      self.uzep = top.ns*[None]
+      self.tep = top.ns*[zeros(0,'d')]
+      self.xep = top.ns*[zeros(0,'d')]
+      self.yep = top.ns*[zeros(0,'d')]
+      self.uxep = top.ns*[zeros(0,'d')]
+      self.uyep = top.ns*[zeros(0,'d')]
+      self.uzep = top.ns*[zeros(0,'d')]
 
   def clear(self):
     self.setuparrays(top.ns)
@@ -186,6 +185,7 @@ routines (such as ppxxp).
     if not self.enabled: return
     try:    id = self.getid()
     except: self.setupid()
+    self.restoredata()
     if not isinstalledafterstep(self.accumulate):
       installafterstep(self.accumulate)
 
@@ -222,7 +222,6 @@ routines (such as ppxxp).
 
   def dodumptofile(self):
     if me != 0: return
-    if max(top.nep) == 0: return
     ff = None
 #   try:
 #     --- For now, pytables doesn't work since it has a limit of the number
@@ -233,9 +232,8 @@ routines (such as ppxxp).
     if ff is None:
        print "ExtPart: %s unable to dump data to file."%self.name
        return
-    self.isave = self.isave + 1
     for js in range(top.ns):
-      suffix = "_%d_%d"%(self.isave,js)
+      suffix = "_%d_%d"%(top.it,js)
       if self.getn(js=js) > 0:
         ff.write('n'+suffix,self.getn(js=js))
         ff.write('t'+suffix,self.gett(js=js))
@@ -325,7 +323,7 @@ feature.
   - lforce=0: if true, force a restore, despite the value of enabled.
     """
     if not self.dumptofile: return
-    if not lforce and (not self.enabled or __extforcenorestore): return
+    if not lforce and (not self.enabled or _extforcenorestore): return
     self.dumptofile = 0
     self.laccumulate = 1
     try:
@@ -334,25 +332,16 @@ feature.
       ff = PR.PR(self.name+'_ep.pdb','a',verbose=0)
     # --- Get total number of particles
     ntot = []
-    iimax = 0
     jsmax = 0
     varlist = list(ff.inquire_ls())
     varlist.sort()
     for var in varlist:
       if var[0] == 'n':
         name,ii,js = string.split(var,'_')
-        iimax = max(iimax,eval(ii))
         jsmax = max(jsmax,eval(js))
         while jsmax >= len(ntot): ntot.append(0)
         ntot[jsmax] = ntot[jsmax] + ff.read(var)
     self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
-    for js in range(jsmax):
-      self.tep[js] = zeros(ntot[js],'d')
-      self.xep[js] = zeros(ntot[js],'d')
-      self.yep[js] = zeros(ntot[js],'d')
-      self.uxep[js] = zeros(ntot[js],'d')
-      self.uyep[js] = zeros(ntot[js],'d')
-      self.uzep[js] = zeros(ntot[js],'d')
     for var in varlist:
       if var[0] == 'n':
         name,iis,jss = string.split(var,'_')
