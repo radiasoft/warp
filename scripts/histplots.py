@@ -1,6 +1,6 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.9 2001/06/18 20:45:54 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.10 2001/10/24 20:28:39 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -1289,10 +1289,14 @@ if sys.version[:5] != "1.5.1":
 # --- Plots of current
 def hpcurr(contour=0,overlay=0,iz=None,kwdict={},**kw):
   "Current."
-  if not top.lhlinechg and not top.lhvzofz: return
-  kw.update(kwdict)
-  kw['titlet']="Current"
-  hpzarray(top.hlinechg*top.hvzofz,contour,overlay,iz,kw)
+  if top.lhcurrz:
+    kw.update(kwdict)
+    kw['titlet']="Current"
+    hpzarray(top.hcurrz,contour,overlay,iz,kw)
+  elif top.lhlinechg and top.lhvzofz:
+    kw.update(kwdict)
+    kw['titlet']="Current"
+    hpzarray(top.hlinechg*top.hvzofz,contour,overlay,iz,kw)
 if sys.version[:5] != "1.5.1":
   hpcurr.__doc__ = hpcurr.__doc__ + hpzarraytext
 
