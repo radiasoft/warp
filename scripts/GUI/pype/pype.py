@@ -1253,6 +1253,7 @@ class MainWindow(wxFrame):
         num = self.control.GetSelection()
         if num >= 0:
             return num, self.control.GetPage(num).GetWindow1()
+        return num,0
         if e:
             e.Skip()
         raise cancelled
@@ -1468,6 +1469,7 @@ class MainWindow(wxFrame):
 
     def OnResize(self, e):
         num, stc = self.getNumWin(e)
+        if num<0: return
         width = e.GetSize()[0]
         split = stc.parent
         split.SetSashPosition(max(width-stc.SAVEDPOSITION, int(width/2)))
