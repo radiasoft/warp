@@ -19,7 +19,7 @@ averagezdata(): Does local averaging over the first dimension of the input
 """
 from warp import *
 
-warputils_version = "$Id: warputils.py,v 1.5 2004/05/06 00:56:14 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.6 2004/07/29 17:33:09 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -199,4 +199,14 @@ def warpprofilesample(frame,event,arg):
   if event == 'return': warpprofile.level = warpprofile.level - 1
   print "%s %s %s"%(warpprofile.level*'  ',event,frame.f_code.co_name)
   if event == 'call': warpprofile.level = warpprofile.level + 1
+
+# --- Create enumerate function, which is defined in python2.3 but not 2.2
+try:
+  enumerate
+except:
+  def enumerate(ll):
+    tt = []
+    for i in range(len(ll)):
+      tt.append((i,ll[i]))
+    return tt
 
