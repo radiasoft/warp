@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.7 $, $Date: 2001/06/09 00:07:10 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.8 $, $Date: 2001/07/13 21:25:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -127,7 +127,7 @@ c     --- converted and expanded for the multigrid solver.
       endif
 
 c     --- Copy phi to the temporary array and zero out rho_temp.
-      call copyarry(phi1d,phi_temp,nxyz3)
+      call copyarry(phi1d(1),phi_temp(1),nxyz3)
 c     call zeroarry(rho_temp(nxyz3+1),tempsize-nxyz3)
       rho_temp(nxyz3+1:) = 0.
 
@@ -174,8 +174,8 @@ c       call zeroarry(phi_temp(nxyz3+1),tempsize-nxyz3)
         phi_temp(nxyz3+1:) = 0.
 
 c       --- Do one vcycle.
-        call vcycle(1,1,nx,ny,nz,dxsqi,dysqi,dzsqi,phi_temp,rho_temp,res,
-     &              rstar,linbends,l2symtry,l4symtry,scrtch,
+        call vcycle(1,1,nx,ny,nz,dxsqi,dysqi,dzsqi,phi_temp(1),rho_temp(1),res(1),
+     &              rstar(-1),linbends,l2symtry,l4symtry,scrtch,
      &              boundxy,bound0,boundnz)
 
 c       --- Calculate the change in phi.
@@ -236,8 +236,8 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
 c     --- Do initial SOR passes.
       do i=1,downpasses
-        call sorpass3d(levelxy,levelz,nx,ny,nz,phi,rho,phi,rho,rstar,
-     &                 dxsqi,dysqi,dzsqi,linbends,l2symtry,l4symtry,scrtch)
+        call sorpass3d(levelxy,levelz,nx,ny,nz,phi(1),rho(1),phi(1),rho(1),rstar(1),
+     &                 dxsqi,dysqi,dzsqi,linbends,l2symtry,l4symtry,scrtch(1))
       enddo
 
 c     --- If grid is not at its coarsest level in any of the axis or and
@@ -249,7 +249,7 @@ c       --- Location of the next block of data.
         i2h = (nx+1)*(ny+1)*(nz+3) + 1
 
 c       --- Get the residual on the current grid.
-        call residual(nx,ny,nz,dxsqi,dysqi,dzsqi,phi,rho,res,levelxy,levelz,
+        call residual(nx,ny,nz,dxsqi,dysqi,dzsqi,phi(1),rho(1),res(1),levelxy,levelz,
      &                l2symtry,l4symtry)
 
 c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
@@ -259,34 +259,34 @@ c       --- all axis.
 c         --- Ratio of old to new constant needed to scale the residual for
 c         --- the restriction.
           ff = (dxsqi+dysqi+dzsqi)/(dxsqi*0.25 + dysqi*0.25 + dzsqi)
-          call restrict2d(nx,ny,nz,res,rho(i2h),ff,boundxy,bound0,boundnz,
+          call restrict2d(nx,ny,nz,res(1),rho(i2h),ff,boundxy,bound0,boundnz,
      &                    l2symtry,l4symtry)
 
 c         --- Continue at the next coarsest level.
           call vcycle(levelxy*2,levelz,nx/2,ny/2,nz,
-     &                dxsqi*0.25,dysqi*0.25,dzsqi,phi(i2h),rho(i2h),res,
-     &                rstar,linbends,l2symtry,l4symtry,scrtch,
+     &                dxsqi*0.25,dysqi*0.25,dzsqi,phi(i2h),rho(i2h),res(1),
+     &                rstar(1),linbends,l2symtry,l4symtry,scrtch(1),
      &                boundxy,bound0,boundnz)
 
 c         --- Add in resulting error.
-          call expand2d(nx/2,ny/2,nz,phi(i2h),phi,boundxy,bound0,boundnz)
+          call expand2d(nx/2,ny/2,nz,phi(i2h),phi(1),boundxy,bound0,boundnz)
 
         else
 
 c         --- Restiction - note that scaling factor for residual is always
 c         --- 4 for full-coarsening and is compiled into the restriction
 c         --- routine.
-          call restrict3d(nx,ny,nz,res,rho(i2h),boundxy,bound0,boundnz,
+          call restrict3d(nx,ny,nz,res(1),rho(i2h),boundxy,bound0,boundnz,
      &                    l2symtry,l4symtry)
 
 c         --- Continue at the next coarsest level.
           call vcycle(levelxy*2,levelz*2,nx/2,ny/2,nz/2,
-     &                dxsqi*0.25,dysqi*0.25,dzsqi*0.25,phi(i2h),rho(i2h),res,
-     &                rstar,linbends,l2symtry,l4symtry,scrtch,
+     & dxsqi*0.25,dysqi*0.25,dzsqi*0.25,phi(i2h),rho(i2h),res(1),
+     &                rstar(1),linbends,l2symtry,l4symtry,scrtch(1),
      &                boundxy,bound0,boundnz)
 
 c         --- Add in resulting error.
-          call expand3d(nx/2,ny/2,nz/2,phi(i2h),phi,boundxy,boundnz)
+          call expand3d(nx/2,ny/2,nz/2,phi(i2h),phi(1),boundxy,boundnz)
 
         endif
 
@@ -294,8 +294,8 @@ c         --- Add in resulting error.
 
 c     --- Do final SOR passes.
       do i=1,uppasses
-        call sorpass3d(levelxy,levelz,nx,ny,nz,phi,rho,phi,rho,rstar,
-     &                 dxsqi,dysqi,dzsqi,linbends,l2symtry,l4symtry,scrtch)
+        call sorpass3d(levelxy,levelz,nx,ny,nz,phi(1),rho(1),phi(1),rho(1),rstar(1),
+     &                 dxsqi,dysqi,dzsqi,linbends,l2symtry,l4symtry,scrtch(1))
       enddo
 
       return
@@ -725,8 +725,8 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       integer(ISZ):: s_parity,e_parity
 
 c     --- Macro for common arguments to the psor_loop calls
-#define LOOP_ARGS iimz,iipz,phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends, \
-         rstar,dx,rdx2,rdy2,rdz2,rdel,const,scrtch
+#define LOOP_ARGS iimz,iipz,phi1d(1),rho1d(1),nxy,rdx2c,rdy2c,rdz2c,spm1,linbends, \
+         rstar(-1),dx,rdx2,rdy2,rdz2,rdel,const,scrtch(1)
 
 c     --- Set temporary variables (these are used to increase performance)
       dx = 1./sqrt(rdx2)
@@ -941,21 +941,21 @@ c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
           if (parity == 0 .or. (levelxy > 1 .or. levelz > 1)) then
-           call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
-     &                    ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,
-     &                    ecdelpx,ecdelpy,ecdelpz,iecndx,iecndy,iecndz,
-     &                    iecndlxy,iecndlz,
-     &                    ecvoltmx,ecvoltpx,ecvoltmy,ecvoltpy,ecvoltmz,ecvoltpz,
-     &                    ecndpvph,bound0,boundnz,boundxy,l2symtry,l4symtry,
+           call condbndymg(nx,ny,nz,phi(0,0,0),rho(0,0,0),rdx2c,rdy2c,rdz2c,spm1,mgparam,
+     &                    ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),ecdelmz(1),
+     &                    ecdelpx(1),ecdelpy(1),ecdelpz(1),iecndx(1),iecndy(1),iecndz(1),
+     &                    iecndlxy(1),iecndlz(1),
+     &                    ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),ecvoltmz(1),ecvoltpz(1),
+     &                    ecndpvph(1),bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    levelxy,levelz,parity)
           endif
           if (parity == 1 .and. (levelxy == 1 .or. levelz == 1)) then
-           call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
-     &                    ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,
-     &                    ocdelpx,ocdelpy,ocdelpz,iocndx,iocndy,iocndz,
-     &                    iocndlxy,iocndlz,
-     &                    ocvoltmx,ocvoltpx,ocvoltmy,ocvoltpy,ocvoltmz,ocvoltpz,
-     &                    ocndpvph,bound0,boundnz,boundxy,l2symtry,l4symtry,
+           call condbndymg(nx,ny,nz,phi(0,0,0),rho(0,0,0),rdx2c,rdy2c,rdz2c,spm1,mgparam,
+     &                    ncndmax,nocndbdy,ocdelmx(1),ocdelmy(1),ocdelmz(1),
+     &                    ocdelpx(1),ocdelpy(1),ocdelpz(1),iocndx(1),iocndy(1),iocndz(1),
+     &                    iocndlxy(1),iocndlz(1),
+     &                    ocvoltmx(1),ocvoltpx(1),ocvoltmy(1),ocvoltpy(1),ocvoltmz(1),ocvoltpz(1),
+     &                    ocndpvph(1),bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    levelxy,levelz,parity)
           endif
         endif
@@ -1402,33 +1402,33 @@ c     --- Make copies for the periodic boundaries.
       endif
 
 c     --- Zero the residual inside conductors.
-      call cond_potmg(nx,ny,nz,res,levelxy,levelz,.true.)
+      call cond_potmg(nx,ny,nz,res(0,0,0),levelxy,levelz,.true.)
 
 c     --- Calculate the residual near the conductor. Note that the odd points
 c     --- are only used at the finest level. Also, for higher levels, the even
 c     --- points are passed down with an odd parity since they may be odd at
 c     --- that level.
       if (levelxy == 1 .or. levelz == 1) then
-        call condbndyres(nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,
-     &                ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,
-     &                ocdelpz,iocndx,iocndy,iocndz,iocndlxy,iocndlz,
-     &                ocvoltmx,ocvoltpx,ocvoltmy,ocvoltpy,ocvoltmz,ocvoltpz,
-     &                ocndpvph,bound0,boundnz,boundxy,
+        call condbndyres(nx,ny,nz,phi(0,0,0),rho(0,0,0),res(0,0,0),dxsqi,dysqi,dzsqi,mgparam,
+     &                ncndmax,nocndbdy,ocdelmx(1),ocdelmy(1),ocdelmz(1),ocdelpx(1),ocdelpy(1),
+     &                ocdelpz(1),iocndx(1),iocndy(1),iocndz(1),iocndlxy(1),iocndlz(1),
+     &                ocvoltmx(1),ocvoltpx(1),ocvoltmy(1),ocvoltpy(1),ocvoltmz(1),ocvoltpz(1),
+     &                ocndpvph(1),bound0,boundnz,boundxy,
      &                l2symtry,l4symtry,levelxy,levelz,1)
       endif
       if (levelxy > 1 .or. levelz > 1) then
-        call condbndyres(nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,
-     &                ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,ecdelpx,ecdelpy,
-     &                ecdelpz,iecndx,iecndy,iecndz,iecndlxy,iecndlz,
-     &                ecvoltmx,ecvoltpx,ecvoltmy,ecvoltpy,ecvoltmz,ecvoltpz,
-     &                ecndpvph,bound0,boundnz,boundxy,
+        call condbndyres(nx,ny,nz,phi(0,0,0),rho(0,0,0),res(0,0,0),dxsqi,dysqi,dzsqi,mgparam,
+     &                ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),ecdelmz(1),ecdelpx(1),ecdelpy(1),
+     &                ecdelpz(1),iecndx(1),iecndy(1),iecndz(1),iecndlxy(1),iecndlz(1),
+     &                ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),ecvoltmz(1),ecvoltpz(1),
+     &                ecndpvph(1),bound0,boundnz,boundxy,
      &                l2symtry,l4symtry,levelxy,levelz,1)
       endif
-      call condbndyres(nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,
-     &                ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,ecdelpx,ecdelpy,
-     &                ecdelpz,iecndx,iecndy,iecndz,iecndlxy,iecndlz,
-     &                ecvoltmx,ecvoltpx,ecvoltmy,ecvoltpy,ecvoltmz,ecvoltpz,
-     &                ecndpvph,bound0,boundnz,boundxy,
+      call condbndyres(nx,ny,nz,phi(0,0,0),rho(0,0,0),res(0,0,0),dxsqi,dysqi,dzsqi,mgparam,
+     &                ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),ecdelmz(1),ecdelpx(1),ecdelpy(1),
+     &                ecdelpz(1),iecndx(1),iecndy(1),iecndz(1),iecndlxy(1),iecndlz(1),
+     &                ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),ecvoltmz(1),ecvoltpz(1),
+     &                ecndpvph(1),bound0,boundnz,boundxy,
      &                l2symtry,l4symtry,levelxy,levelz,0)
 
       return
@@ -1765,47 +1765,47 @@ c     --- the appropriate direction.
         cds(1) = iecndx(ic)
         cds(2) = iecndy(ic)
         cds(3) = iecndz(ic)
-        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelmx,ocdelmx,ecdelmx(ic),iecndx(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ecvoltmx(ic))
-        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelpx,ocdelpx,ecdelpx(ic),iecndx(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ecvoltpx(ic))
-        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelmy,ocdelmy,ecdelmy(ic),iecndy(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ecvoltmy(ic))
-        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelpy,ocdelpy,ecdelpy(ic),iecndy(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ecvoltpy(ic))
-        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelmz,ocdelmz,ecdelmz(ic),iecndz(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ecvoltmz(ic))
-        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelpz,ocdelpz,ecdelpz(ic),iecndz(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ecvoltpz(ic))
+        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelmx(1),ocdelmx(1),ecdelmx(ic),iecndx(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ecvoltmx(ic))
+        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelpx(1),ocdelpx(1),ecdelpx(ic),iecndx(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ecvoltpx(ic))
+        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelmy(1),ocdelmy(1),ecdelmy(ic),iecndy(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ecvoltmy(ic))
+        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelpy(1),ocdelpy(1),ecdelpy(ic),iecndy(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ecvoltpy(ic))
+        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelmz(1),ocdelmz(1),ecdelmz(ic),iecndz(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ecvoltmz(ic))
+        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelpz(1),ocdelpz(1),ecdelpz(ic),iecndz(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ecvoltpz(ic))
       enddo
       do ic=1,nocndbdy
         cds(1) = iocndx(ic)
         cds(2) = iocndy(ic)
         cds(3) = iocndz(ic)
-        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelmx,ocdelmx,ocdelmx(ic),iocndx(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ocvoltmx(ic))
-        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelpx,ocdelpx,ocdelpx(ic),iocndx(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ocvoltpx(ic))
-        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelmy,ocdelmy,ocdelmy(ic),iocndy(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ocvoltmy(ic))
-        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelpy,ocdelpy,ocdelpy(ic),iocndy(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ocvoltpy(ic))
-        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelmz,ocdelmz,ocdelmz(ic),iocndz(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ocvoltmz(ic))
-        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,iii,
-     &                         ecdelpz,ocdelpz,ocdelpz(ic),iocndz(ic),icond,
-     &                         condvolt,ecvolt,ocvolt,ocvoltpz(ic))
+        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelmx(1),ocdelmx(1),ocdelmx(ic),iocndx(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ocvoltmx(ic))
+        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelpx(1),ocdelpx(1),ocdelpx(ic),iocndx(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ocvoltpx(ic))
+        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelmy(1),ocdelmy(1),ocdelmy(ic),iocndy(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ocvoltmy(ic))
+        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelpy(1),ocdelpy(1),ocdelpy(ic),iocndy(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ocvoltpy(ic))
+        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelmz(1),ocdelmz(1),ocdelmz(ic),iocndz(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt,ocvoltmz(ic))
+        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                         ecdelpz(1),ocdelpz(1),ocdelpz(ic),iocndz(ic),icond,
+     &                         condvolt(1),ecvolt(1),ocvolt(1),ocvoltpz(ic))
       enddo
 
 
@@ -1864,24 +1864,24 @@ c             --- at this location.
               if (iii(ix,iy,iz) == 0) then
 
 c               --- Scan along the 6 directions.
-                call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                                 ecdelmx,ocdelmx,ecdelmx(ic),ix,icond,
-     &                                 condvolt,ecvoltmx,ocvoltmx,ecvoltmx(ic))
-                call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,iii,
-     &                                 ecdelpx,ocdelpx,ecdelpx(ic),ix,icond,
-     &                                 condvolt,ecvoltpx,ocvoltpx,ecvoltpx(ic))
-                call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                                 ecdelmy,ocdelmy,ecdelmy(ic),iy,icond,
-     &                                 condvolt,ecvoltmy,ocvoltmy,ecvoltmy(ic))
-                call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,iii,
-     &                                 ecdelpy,ocdelpy,ecdelpy(ic),iy,icond,
-     &                                 condvolt,ecvoltpy,ocvoltpy,ecvoltpy(ic))
-                call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,nx,ny,nz,iii,
-     &                                 ecdelmz,ocdelmz,ecdelmz(ic),iz,icond,
-     &                                 condvolt,ecvoltmz,ocvoltmz,ecvoltmz(ic))
-                call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,iii,
-     &                                 ecdelpz,ocdelpz,ecdelpz(ic),iz,icond,
-     &                                 condvolt,ecvoltpz,ocvoltpz,ecvoltpz(ic))
+                call subgrid_scan_axis(1,-1,cds, -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                                 ecdelmx(1),ocdelmx(1),ecdelmx(ic),ix,icond,
+     &                                 condvolt(1),ecvoltmx(1),ocvoltmx(1),ecvoltmx(ic))
+                call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                                 ecdelpx(1),ocdelpx(1),ecdelpx(ic),ix,icond,
+     &                                 condvolt(1),ecvoltpx(1),ocvoltpx(1),ecvoltpx(ic))
+                call subgrid_scan_axis(2,-1,cds, -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                                 ecdelmy(1),ocdelmy(1),ecdelmy(ic),iy,icond,
+     &                                 condvolt(1),ecvoltmy(1),ocvoltmy(1),ecvoltmy(ic))
+                call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                                 ecdelpy(1),ocdelpy(1),ecdelpy(ic),iy,icond,
+     &                                 condvolt(1),ecvoltpy(1),ocvoltpy(1),ecvoltpy(ic))
+                call subgrid_scan_axis(3,-1,cds, -1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                                 ecdelmz(1),ocdelmz(1),ecdelmz(ic),iz,icond,
+     &                                 condvolt(1),ecvoltmz(1),ocvoltmz(1),ecvoltmz(ic))
+                call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,iii(0,0,0),
+     &                                 ecdelpz(1),ocdelpz(1),ecdelpz(ic),iz,icond,
+     &                                 condvolt(1),ecvoltpz(1),ocvoltpz(1),ecvoltpz(ic))
 
 c               --- If the point is near a conductor, save it.
                 if (ecdelmx(ic)/levelxy < 1. .or.
