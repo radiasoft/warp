@@ -466,7 +466,7 @@ class AMRTree(object,Visualizable):
     def setblocks(self):
       self.nblocks=0
       if self.solvergeom == w3d.XYZgeomMR:
-        self.blocks = MRBlock()
+        self.blocks.resetroot()
         mothergrid = self.blocks
       else:
         self.blocks = [frz.basegrid]
