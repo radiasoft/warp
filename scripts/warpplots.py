@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.65 2002/01/08 00:04:38 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.66 2002/01/08 00:25:23 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -936,7 +936,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
                 'contours':None,'filled':0,'ccolor':'fg',
                 'cellarray':0,'ctop':199,
-                'cmin':-top.largepos,'cmax':top.largepos,
+                'cmin':None,'cmax':None,
                 'ldensityscale':0,
                 'view':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'checkargs':0,'allowbadargs':0}
@@ -1119,8 +1119,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make cell-array plot. This also is done early since it covers anything
   # --- done before it.
   if cellarray:
-    cmin = max(cmin,minnd(grid1))
-    cmax = min(cmax,maxnd(grid1))
+    if cmin is None: cmin = minnd(grid1)
+    if cmax is None: cmax = maxnd(grid1)
     pli(transpose(grid1),xmin,ymin,xmax,ymax,top=ctop,cmin=cmin,cmax=cmax)
 
   # --- Plot particles
