@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.7 2001/03/03 02:02:14 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.8 2001/03/03 02:08:49 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -620,7 +620,7 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
 
 
 #####################################################################
-def plotlatticeelement(color,gridframe,axis,iquad,nquad,
+def plotelementoutline(color,gridframe,axis,iquad,nquad,
                        ezs,eze,eap,err,erl,egl,egp,eox,eoy,epa,epr,epw,
                        dpal,dpar):
   """Plots the outline of electrostatic elements
@@ -628,10 +628,8 @@ def plotlatticeelement(color,gridframe,axis,iquad,nquad,
   - gridframe: when true, make plot in grid coordinates
   - axis: selects axis to plot, either 'x' or 'y'
   """
-  if axis == 'x':
-    gpsign = 1
-  else:
-    gssign = -1
+  if axis == 'x': gpsign = 1
+  else:           gpsign = -1
   for i in range(iquad,iquad+nquad+1):
     # --- plot rods
     # --- If aperture is zero, then this quad is skipped
@@ -703,7 +701,7 @@ def plotquadoutline(iquad=0,nquad=None,color='fg',gridframe=0,axis='x'):
   - axis='x': selects axis to plot, either 'x' or 'y'
   """
   if nquad == None: nquad = top.nquad
-  plotlatticeelement(color,gridframe,axis,iquad,nquad,
+  plotelementoutline(color,gridframe,axis,iquad,nquad,
                      top.quadzs,top.quadze,top.quadap,top.quadrr,top.quadrl,
                      top.quadgl,top.quadgp,top.qoffx,top.qoffy,
                      top.quadpa,top.quadpr,top.quadpw,
