@@ -10,11 +10,15 @@ OPT = -O3 -unroll
 OPT = -O3
 POPT = -O0
 PYMODULEOPT = -O1
-F90FREE  = ifc -Kpic -132 -r8 -DIFC -FR -fpp -implicitnone -C90 -Zp8
-F90FIXED = ifc -Kpic -132 -r8 -DIFC -FI -fpp -implicitnone -C90 -Zp8
+#ARGS = -common_args -doubletemps -fp -i4 -pc64
+#ARGS = -fp -i4 -pc64 -mp
+# -mp -mp1 -pad -prec_div -rcd
+# -save -auto -zero
+F90FREE  = ifc -132 -r8 -DIFC -FR -fpp -implicitnone -C90 -Zp8 $(ARGS)
+F90FIXED = ifc -132 -r8 -DIFC -FI -fpp -implicitnone -C90 -Zp8 $(ARGS)
 CC = cc -fpic
 SO = so
-LD = ifc -shared -C90
+LD = ifc -Kpic -132 -r8 -C90 -Zp8 $(ARGS)
 FORTLIB = -L/opt/intel/compiler50/ia32/lib/ -lIEPCF90 -lCEPCF90 -lF90 -lintrins -limf -lsvml -lirc -lcxa
 LINKLIB = -ldl -lutil -lpthread
 DLLIB = -ldl
@@ -38,12 +42,13 @@ static: build_static
 
 include Makefile.dependencies
 
-build_static: $(MODULEOBJECTS) $(WARPOBJECTS) config.o
-	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o \
+build_static: $(MODULEOBJECTS) $(WARPOBJECTS) config.o $(RNGOBJ)
+	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) \
+	config.o $(RNGOBJ) $(PYTHON)/lib/python2.1/site-packages/*/*.so \
 	$(OTHERLIBS) $(XLIB) $(PYTHONLIB) $(FORTLIB) $(LINKLIB)
 
 warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
 	cc -fpic -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
-	$(LD) -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
-	$(RNGOBJ) $(OTHERLIBS)
+	$(LD) -shared -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
+	$(RNGOBJ) $(PYTHON)/lib/python2.1/site-packages/*/*.so $(OTHERLIBS)
 
