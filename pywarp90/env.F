@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.29 $, $Date: 2004/03/11 14:54:46 $
+c@(#) File ENV.M, version $Revision: 3.30 $, $Date: 2004/04/13 22:22:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -801,9 +801,9 @@ c             --- solenoidal field
             if ((nint(hele_n(ii,ih)) == 0) .and.
      &          (nint(hele_v(ii,ih)) == 0)) then
 c             --- uniform field
-              dedrr = dedrr + 0.5*heleep(ii,ih)*frac
-              xdedx = xdedx + 0.5*heleep(ii,ih)*frac*(x - heleox(ih))
-              ydedy = ydedy + 0.5*heleep(ii,ih)*frac*(y - heleoy(ih))
+              dedrr = dedrr - 0.5*heleep(ii,ih)*frac
+              xdedx = xdedx - 0.5*heleep(ii,ih)*frac*(x - heleox(ih))
+              ydedy = ydedy - 0.5*heleep(ii,ih)*frac*(y - heleoy(ih))
             endif
           enddo
 
