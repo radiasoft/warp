@@ -13,9 +13,6 @@ try:
 except:
     raise SystemExit, "Distutils problem"
 
-lapacklibdir = ['/home/dave/lapack_ifc/LAPACK']
-lapacklibs = ['lapackifc','blasifc']
-
 fcomp = FCompiler()
 
 dummydist = Distribution()
@@ -60,8 +57,8 @@ setup (name = "warpC",
                                  os.path.join(builddir,'Forthon.c'),
                                  'pmath_rng.c','ranf.c','ranffortran.c'],
                                 include_dirs=[builddir],
-                                library_dirs=fcomp.libdirs+lapacklibdir,
-                                libraries=fcomp.libs+lapacklibs,
+                                library_dirs=fcomp.libdirs,
+                                libraries=fcomp.libs,
                                 extra_objects=warpobjects,
                                 extra_link_args=['-g'])]
        )
