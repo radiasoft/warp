@@ -5,12 +5,13 @@ PYVERS = 2.1
 PYTHON = /home/dave/Python-$(PYVERS)
 PYMAC = $(HOME)/pywrapper/pymac.py --f90 -t $(MACHINE)
 PYCTOF = $(HOME)/pywrapper/pyctof.py
-OPT = -fast -Mcache_align -Mcray=pointer
+OPT = -fast -Mcache_align  #-Mcray=pointer
 #OPT = -g
 POPT = 
 PYMODULEOPT = -O1
-F90FREE  = pgf90 -Mextend -Mdclchk -fpic -r8
-F90FIXED = pgf90 -Mextend -Mdclchk -fpic -r8
+CHECKS = #-Mbounds -Mchkfpstk
+F90FREE  = pgf90 -Mextend -Mdclchk -r8 -fpic $(CHECKS)
+F90FIXED = pgf90 -Mextend -Mdclchk -r8 -fpic $(CHECKS)
 CC = cc -fpic
 SO = so
 LD = pgf90 -shared
@@ -70,17 +71,18 @@ MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
                 pybasisC.c
 
 warp: warpC.$(SO)
-	#cp warpC.$(SO) $(WARPSCRIPTS)
+	cp warpC.$(SO) $(WARPSCRIPTS)
 warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
 	cc -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
 	$(LD) -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
 	$(RNGOBJ) $(OTHERLIBS)
 
-static: $(MODULEOBJECTS) config.o
-	cc -o pywarp $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o \
-	-lm -lX11 $(LINKLIB) $(PYTHONLIB) $(OTHERLIBS)
+static: $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) config.o
+	pgf90 -Mnomain -o pywarp $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o $(RNGOBJ) /home/dave/Python-2.1/lib/python2.1/site-packages/*/*.so \
+	-lm $(XLIB) -lX11 $(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) \
+	-ldl -lpthread -lutil -ldb1 -Wl,-export-dynamic
 config.o:config.c
-	cc -Ae +z -c config.c $(INCLUDE)
+	$(CC) -c config.c $(INCLUDE)
 $(RNGOBJ):$(RNGSRC)
 	$(CC) -O -c $(RNGSRC)
 
@@ -247,3 +249,7 @@ herpymodule.c her.p.F90:her.v
 
 clean:
 	rm -f *.mod *.o *.p.F90 *module.c *.scalars *.$(SO) pybasis*
+
+eee:
+	$(CC) $(PYMODULEOPT) -c eeepymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+	$(LD) -o eeepy.so eeepymodule.o 
