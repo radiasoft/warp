@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.77 $, $Date: 2003/07/16 00:33:27 $
+c@(#) File F3D.M, version $Revision: 3.78 $, $Date: 2003/07/16 17:18:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -543,7 +543,7 @@ c ----------------------------------------------------------------------------
 
       endif
 
-!$OMP PARALLEL PRIVATE(xywork,zwork,aa,bb,pid)
+!$OMP PARALLEL PRIVATE(xywork,zwork)
 
 c ----------------------------------------------------------------------------
 c  Do the forward transform
@@ -1855,7 +1855,7 @@ c ----------------------------------------------------------------------------
 
       endif
 
-!$OMP PARALLEL PRIVATE(xywork,aa,bb,pid)
+!$OMP PARALLEL PRIVATE(xywork)
 
 c ----------------------------------------------------------------------------
 c  Do the forward transform
@@ -4799,7 +4799,7 @@ c         --- done with real(kind=8):: numbers so that there is not an integer o
             do i=1,nsorerr
               phisave(i)=abs(phi1d(nxy*izl +
      &              int(1.*i*nxy*(izr-izl+1)*nsorerri+.5)) - phisave(i))
-              if (phisave(i) > sorerror) sorerror = phisave(i)
+              sorerror = max(sorerror,phisave(i))
             enddo
 !$OMP END DO
 #ifdef MPIPARALLEL
