@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.46 2002/09/12 23:34:14 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.47 2002/09/25 00:18:24 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -40,9 +40,9 @@ def plotcond(yy,xx,zz,iz,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx):
     ixc = eval('f3d.i'+xx+'cond')*signx*lx
     iyc = eval('f3d.i'+yy+'cond')*signy*ly
     izc = eval('f3d.i'+zz+'cond')      *lz
-    if xx == 'z': ixc[:] = ixc + f3d.mglevelsiz[mglevel]
-    if yy == 'z': iyc[:] = iyc + f3d.mglevelsiz[mglevel]
-    if zz == 'z': izc[:] = izc + f3d.mglevelsiz[mglevel]
+    if xx == 'z': ixc[:] = ixc + f3d.mglevelsiz[mglevel]*lx
+    if yy == 'z': iyc[:] = iyc + f3d.mglevelsiz[mglevel]*ly
+    if zz == 'z': izc[:] = izc + f3d.mglevelsiz[mglevel]*lz
     cnumb = f3d.condnumb
     try:
       level = equal(mglevel,f3d.icondlevel)
