@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.14 $, $Date: 2001/12/04 23:09:08 $
+c@(#) File WXY.M, version $Revision: 3.15 $, $Date: 2001/12/19 22:11:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -212,9 +212,9 @@ c  Calculate mesh dimensioning quantities
       enddo
 
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
-      ix_axis = int(-xmmin/dx + dx*1.e-5)
-      iy_axis = int(-ymmin/dy + dy*1.e-5)
-      iz_axis = int(-zmmin/dz + dz*1.e-5)
+      ix_axis = nint(-xmmin/dx)
+      iy_axis = nint(-ymmin/dy)
+      iz_axis = nint(-zmmin/dz)
 
 c  Create the dynamic arrays for particles (set npmax to an estimated 
 c  length for now, for those loading schemes that don't actually
