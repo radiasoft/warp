@@ -1,14 +1,45 @@
+"""
+MAD style lattice input
+A lattice is built up by adding pieces together, each of which can be a sum of
+several pieces. The basic elements correspond directly to the lattice elements
+type of Warp. Here is the list...
+
+Drft, Bend, Dipo, Quad, Sext, Hele, Accl, Emlt, Mmlt, Bgrd, Pgrd
+
+For each element, one defines an instance of one of the above. They all
+take an argument specifying the length of the element. The other
+arguments define the properties of the field. For example, to define a
+hard-edge focusing magnetic quadrupole with a length of 10 cm, field
+gradient of 1.5 Tesla/m and a pipe radius of 3 cm, one would do
+
+qf = Quad(l=10.e-2,db=1.5,ap=3.e-2)
+
+To define a full FODO lattice period, one would do
+
+dd = Drft(l=5.e-2,ap=3.e-2)
+qf = Quad(l=10.e-2,db=+1.5,ap=3.e-2)
+qd = Quad(l=10.e-2,db=-1.5,ap=3.e-2)
+lp = qf + dd + qd + dd
+
+One could then define a section which was 10 of these lattice periods in a row
+
+s1 = 10*lp
+
+Once the full lattice is defined, the data must be given to Warp using the
+madtowarp function. For example, an accelerator made up of 3 sections, named
+s1, s2, and s3.
+
+lattice = s1 + s2 + s3
+madtowarp(lattice)
+"""
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.13 2003/04/01 01:59:50 dave Exp $"
-
-# Setup classes for MAD style input
-# This includes both the elements from hibeam and WARP
-# hibeam element names are all lower case, WARP elements are capitalized
-# DPG 7/27/99
-#import re
-#import string
 import RandomArray
+lattice_version = "$Id: lattice.py,v 1.14 2003/04/11 22:18:39 dave Exp $"
+
+def latticedoc():
+  import lattice
+  print lattice.__doc__
 
 # --- This function returns a random number from the given distribution.
 _errordist_getnextnumber = 0
@@ -36,7 +67,7 @@ def errordist(etype):
 # --- LINE contains a list of lattice elements.
 class LINE:
   """
-Creates and instance of the LINE lattice type which contains a list of
+Creates an instance of the LINE lattice type which contains a list of
 lattice elements. The argument can either be a single element or a list of
 elements.
   """
@@ -71,9 +102,6 @@ elements.
     self.expand()
     for e in self.elemslist: zz = e.install(zz)
     return zz
-  def installdata(self):
-    self.expand()
-    for e in self.elemslist: e.installdata()
   def __mul__(self,other):
     # --- This allows multiplication of elements by integers
     return LINE(other*[self])
@@ -150,8 +178,6 @@ Base class for the lattice classes. Should never be directly called.
       self.length = self.ze - self.zs
   def install(self):
     pass
-  def installdata(self):
-    pass
   def isin(self,z=top.zbeam):
     if self.zs < z and z < self.ze: return 1
     return 0
@@ -165,6 +191,770 @@ Base class for the lattice classes. Should never be directly called.
     return LINE(self,other)
   def __radd__(self,other):
     return LINE(other,self)
+
+#----------------------------------------------------------------------------
+# WARP elements
+#----------------------------------------------------------------------------
+
+class Drft(Elem):
+  """
+Creates an instance of a Drft lattice element.
+  - l (or length) =0 drift length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type=''):
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Drft'
+  def install(self,zz):
+    top.ndrft = top.ndrft + 1
+    self.idrft = top.ndrft
+    if top.ndrft > len(top.drftzs)-1:
+      top.ndrft = top.ndrft + 100
+      gchange("Lattice")
+      top.ndrft = self.idrft
+    top.drftzs[top.ndrft] = zz + self.zshift
+    top.drftze[top.ndrft] = top.drftzs[top.ndrft] + self.length
+    top.drftap[top.ndrft] = self.ap
+    top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
+    top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    return top.drftze[top.ndrft]
+
+class Bend(Elem):
+  """
+Creates an instance of a Bend lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - rc=1.e36 radius of curvature of the bend
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               rc=1.e36):
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Bend'
+    self.rc = rc
+  def install(self,zz):
+    top.nbend = top.nbend + 1
+    self.ibend = top.nbend
+    if top.nbend > len(top.bendzs)-1:
+      self.ibend = top.nbend
+      top.nbend = top.nbend + 100
+      gchange("Lattice")
+      top.nbend = self.ibend
+    top.bendzs[top.nbend] = zz + self.zshift
+    top.bendze[top.nbend] = top.bendzs[top.nbend] + self.length
+    top.bendap[top.nbend] = self.ap
+    #top.bendox[top.nbend] = self.offset_x*errordist(self.error_type)
+    #top.bendoy[top.nbend] = self.offset_y*errordist(self.error_type)
+    top.bendrc[top.nbend] = self.rc
+    return top.bendze[self.ibend]
+
+class Dipo(Elem):
+  """
+Creates an instance of a Dipo lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - ex=0 Ex field (V/m)
+  - ey=0 Ey field (V/m)
+  - bx=0 Bx field (T/m)
+  - by=0 By field (T/m)
+  - ta=0 tangent of entrance angle
+  - tb=0 tangent of exit angle
+  - x1=0 location of first electric plate
+  - x2=0 location of second electric plate
+  - v1=0 voltage on first electric plate
+  - v2=0 voltage on second electric plate
+  - l1=0 length of first electric plate
+  - l2=0 length of second electric plate
+  - w1=0 width of first electric plate
+  - w2=0 width of second electric plate
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               ex=0,ey=0,bx=0,by=0,ta=0,tb=0,
+               x1=0,x2=0,v1=0,v2=0,l1=0,l2=0,w1=0,w2=0):
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Dipo'
+    for xx in ['ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
+               'l1','l2','w1','w2']:
+      self.__dict__[xx] = locals()[xx]
+  def install(self,zz):
+    top.ndipo = top.ndipo + 1
+    self.idipo = top.ndipo
+    if top.ndipo > len(top.dipozs)-1:
+      idipo = top.ndipo
+      top.ndipo = top.ndipo + 100
+      gchange("Lattice")
+      top.ndipo = idipo
+    top.dipozs[top.ndipo] = zz + self.zshift
+    top.dipoze[top.ndipo] = top.dipozs[top.ndipo] + self.length
+    #top.dipoox[top.ndipo] = self.offset_x*errordist(self.error_type)
+    #top.dipooy[top.ndipo] = self.offset_y*errordist(self.error_type)
+    for xx in ['ap','ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
+               'l1','l2','w1','w2']:
+      aa = top.getpyobject('dipo'+xx)
+      aa[top.ndipo] = self.__dict__[xx]
+    return top.dipoze[top.ndipo]
+
+class Quad(Elem):
+  """
+Creates an instance of a Quad lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - de=0 electric field gradient (V/m**2)
+  - db=0 magnetic field gradient (T/m**2)
+  - vx=0 voltage on x-rod of an electric quad
+  - vy=0 voltage on y-rod of an electric quad
+  - rr=0 rod radius of an electric quad
+  - rl=0 rod length of an electric quad
+  - gl=0 gap length between rod and end plate of an electric quad
+  - gp=0 position of the rod to plate gap in the x plane of an electric quad
+  - pw=0 plate with of an electric quad
+  - pa=0 plate aperture of an electric quad
+  - pr=0 plate outer radius of an electric quad
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               de=0,db=0,vx=0,vy=0,rr=0,rl=0,gl=0,gp=0,pw=0,pa=0,pr=0):
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Quad'
+    for xx in ['de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
+      self.__dict__[xx] = locals()[xx]
+  def install(self,zz):
+    top.nquad = top.nquad + 1
+    self.iquad = top.nquad
+    if top.nquad > len(top.quadzs)-1:
+      top.nquad = top.nquad + 100
+      top.nqerr = top.nquad
+      gchange("Lattice")
+      top.nquad = self.iquad
+    top.quadzs[top.nquad] = zz + self.zshift
+    top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
+    top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
+    top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
+    for xx in ['ap','de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
+      aa = top.getpyobject('quad'+xx)
+      aa[top.nquad] = self.__dict__[xx]
+    return top.quadze[top.nquad]
+
+class Sext(Elem):
+  """
+Creates an instance of a Sext lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - de=0 electric field gradient
+  - db=0 magnetic field gradient
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               de=0,db=0):
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Sext'
+    self.de = de
+    self.db = db
+  def install(self,zz):
+    top.nsext = top.nsext + 1
+    self.isext = top.nsext
+    if top.nsext > len(top.sextzs)-1:
+      isext = top.nsext
+      top.nsext = top.nsext + 100
+      gchange("Lattice")
+      top.nsext = isext
+    top.sextzs[top.nsext] = zz + self.zshift
+    top.sextze[top.nsext] = top.sextzs[top.nsext] + self.length
+    top.sextap[top.nsext] = self.ap
+    top.sextox[top.nsext] = self.offset_x*errordist(self.error_type)
+    top.sextoy[top.nsext] = self.offset_y*errordist(self.error_type)
+    top.sextde[top.nsext] = self.de
+    top.sextdb[top.nsext] = self.db
+    return top.sextze[top.nsext]
+
+class Hele(Elem):
+  """
+Creates an instance of a Hele lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - nn=[] list of n indices of multipole components
+  - vv=[] list of v indices of multipole components
+  - ae=[] list of magnitudes of electric multipole components
+  - am=[] list of magnitudes of magnetic multipole components
+  - ep=[] list of magnitudes of the derivative of electric multipole components
+  - mp=[] list of magnitudes of the derivative of magnetic multipole components
+  - pe=[] list of phase angles of electric multipole components
+  - pm=[] list of phase angles of magnetic multipole components
+  - rr=0 rod radius of an electric quad
+  - rl=0 rod length of an electric quad
+  - gl=0 gap length between rod and end plate of an electric quad
+  - gp=0 position of the rod to plate gap in the x plane of an electric quad
+  - pw=0 plate with of an electric quad
+  - pa=0 plate aperture of an electric quad
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               nn=[],vv=[],ae=[],am=[],ep=[],mp=[],pe=[],pm=[],
+               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Hele'
+    self.nn = nn
+    self.vv = vv
+    self.ae = ae
+    self.am = am
+    self.ep = ep
+    self.mp = mp
+    self.pe = pe
+    self.pm = pm
+    self.rr = rr
+    self.rl = rl
+    self.gl = gl
+    self.gp = gp
+    self.pw = pw
+    self.pa = pa
+    self.derivedquantities(self)
+    if len(self.nn) > top.nhmlt:
+      top.nhmlt = len(self.nn)
+      gchange("Lattice")
+  def derivedquantities(_self,self):
+    self.nn = array(self.nn)
+    self.vv = array(self.vv)
+    self.ae = array(self.ae)
+    self.am = array(self.am)
+    self.ep = array(self.ep)
+    self.mp = array(self.mp)
+    self.pe = array(self.pe)
+    self.pm = array(self.pm)
+  def install(self,zz):
+    top.nhele = top.nhele + 1
+    self.ihele = top.nhele
+    if top.nhele > len(top.helezs)-1:
+      ihele = top.nhele
+      top.nhele = top.nhele + 100
+      gchange("Lattice")
+      top.nhele = ihele
+    top.helezs[top.nhele] = zz + self.zshift
+    top.heleze[top.nhele] = top.helezs[top.nhele] + self.length
+    top.heleap[top.nhele] = self.ap
+    top.heleox[top.nhele] = self.offset_x*errordist(self.error_type)
+    top.heleoy[top.nhele] = self.offset_y*errordist(self.error_type)
+    top.helerr[top.nhele] = self.rr
+    top.helerl[top.nhele] = self.rl
+    top.helegl[top.nhele] = self.gl
+    top.helegp[top.nhele] = self.gp
+    top.helepw[top.nhele] = self.pw
+    top.helepa[top.nhele] = self.pa
+    top.hele_n[:,self.ihele] = self.nn
+    top.hele_v[:,self.ihele] = self.vv
+    top.heleae[:len(self.ae),self.ihele] = self.ae
+    top.heleam[:len(self.am),self.ihele] = self.am
+    top.heleep[:len(self.ep),self.ihele] = self.ep
+    top.helemp[:len(self.mp),self.ihele] = self.mp
+    top.helepe[:len(self.pe),self.ihele] = self.pe
+    top.helepm[:len(self.pm),self.ihele] = self.pm
+    return top.heleze[top.nhele]
+
+class Accl(Elem):
+  """
+Creates an instance of a Accl lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - ez=0 time independent accelerating gradient (V/m)
+  - xw=0 x variation in accelerating gradient
+  - sw=0 switch sets whether mesh frame is accelerated by a gap
+  - et=[] time dependent accelerating gradient (1-D array)
+  - ts=0 initial time of time dependent accelerating gradient
+  - dt=0 time increment in the time dependent accelerating gradient data (s)
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               ez=0,xw=0,sw=0,et=[],ts=0,dt=0):
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Accl'
+    self.ez = ez
+    self.xw = xw
+    self.sw = sw
+    self.et = et
+    self.ts = ts
+    self.dt = dt
+    self.derivedquantities(self)
+    if shape(self.et)[0]-1 > top.ntaccl:
+      top.ntaccl = shape(self.et)[0]-1
+      gchange("Lattice")
+  def derivedquantities(_self,self):
+    self.et = array(self.et)
+  def install(self,zz):
+    top.naccl = top.naccl + 1
+    self.iaccl = top.naccl
+    if top.naccl > len(top.acclzs)-1:
+      iaccl = top.naccl
+      top.naccl = top.naccl + 100
+      gchange("Lattice")
+      top.naccl = iaccl
+    top.acclzs[top.naccl] = zz + self.zshift
+    top.acclze[top.naccl] = top.acclzs[top.naccl] + self.length
+    top.acclap[top.naccl] = self.ap
+    top.acclox[top.naccl] = self.offset_x*errordist(self.error_type)
+    top.accloy[top.naccl] = self.offset_y*errordist(self.error_type)
+    top.acclez[top.naccl] = self.ez
+    top.acclxw[top.naccl] = self.xw
+    top.acclsw[top.naccl] = self.sw
+    top.acclts[top.naccl] = self.ts
+    top.accldt[top.naccl] = self.dt
+    top.acclet[:len(self.et),self.iaccl] = self.et
+    return top.acclze[top.naccl]
+
+
+class Emlt(Elem):
+  """
+Creates an instance of a Emlt lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - ph=0 overal phase angle
+  - sf=0 relative scale factor
+  - sc=1 absolute scale factor
+  - rr=0 rod radius of an electric quad
+  - rl=0 rod length of an electric quad
+  - gl=0 gap length between rod and end plate of an electric quad
+  - gp=0 position of the rod to plate gap in the x plane of an electric quad
+  - pw=0 plate with of an electric quad
+  - pa=0 plate aperture of an electric quad
+One must either specify the field data or give an id from an existing data or
+from another element.
+  - id=None: index of data set to use
+Or specify the data set
+  - dz=0 z increment in the data set (z)
+  - e=[] multipole components (1 or 2-D, 1st is data, 2nd is list of components)
+  - ep=[] axial derivatives of multipole components
+  - eph=[] phase angle
+  - nn=[] n indices
+  - vv=[] v indices
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               id=None,dz=0,e=[],ep=[],eph=[],nn=[],vv=[],ph=0,sf=0,sc=1,
+               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
+    assert (e or ep) or (id is not None),"A data set or id must be given"
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Emlt'
+    self.dz = dz
+    self.e = e
+    self.ep = ep
+    self.eph = eph
+    self.nn = nn
+    self.vv = vv
+    self.ph = ph
+    self.sf = sf
+    self.sc = sc
+    self.rr = rr
+    self.rl = rl
+    self.gl = gl
+    self.gp = gp
+    self.pw = pw
+    self.pa = pa
+    self.derivedquantities(self)
+    if id is None: self.id = top.nemltsets + 1
+    else:          self.id = id
+    dogchange = 0
+    if self.id > top.nemltsets:
+      top.nemltsets = self.id
+      dogchange = 1
+    if self.e:
+      top.nzemltmax = max(shape(self.e)[0]-1,top.nzemltmax)
+      if len(shape(self.e)) == 2:
+        top.nesmult = max(shape(self.e)[1],top.nesmult)
+      dogchange = 1
+    if self.ep:
+      top.nzemltmax = max(shape(self.ep)[0]-1,top.nzemltmax)
+      if len(shape(self.ep)) == 2:
+        top.nesmult = max(shape(self.ep)[1],top.nesmult)
+      dogchange = 1
+    if dogchange: gchange("Mult_data")
+    # --- Install data only if this is a new data set (i.e. nzemlt == 0)
+    id = self.id
+    if (self.e or self.ep) and top.nzemlt[id-1] == 0:
+      top.nzemlt[id-1] = max(shape(self.e)[0],shape(self.ep)[0]) - 1
+      if not self.dz:
+        top.dzemlt[id-1] = self.length/top.nzemlt[id-1]
+      else:
+        top.dzemlt[id-1] = self.dz
+      top.emlt_n[:len(self.nn)] = self.nn
+      top.emlt_v[:len(self.vv)] = self.vv
+      top.esemlt[:shape(self.e)[0],:shape(self.e)[1],id-1] = self.e
+      top.esemltp[:shape(self.ep)[0],:shape(self.ep)[1],id-1] = self.ep
+      top.esemltph[:shape(self.eph)[0],:shape(self.eph)[1],id-1] = self.eph
+  def derivedquantities(_self,self):
+    self.e  = array(self.e)
+    self.ep = array(self.ep)
+    self.eph = array(self.eph)
+    if len(shape(self.e)) == 1: self.e = self.e[:,NewAxis]
+    if len(shape(self.ep)) == 1: self.ep = self.ep[:,NewAxis]
+    if len(shape(self.eph)) == 1: self.eph = self.eph[:,NewAxis]
+    self.nn = array(self.nn)
+    self.vv = array(self.vv)
+  def install(self,zz):
+    top.nemlt = top.nemlt + 1
+    self.iemlt = top.nemlt
+    if top.nemlt > len(top.emltzs)-1:
+      iemlt = top.nemlt
+      top.nemlt = top.nemlt + 100
+      top.neerr = top.nemlt
+      gchange("Lattice")
+      top.nemlt = iemlt
+    top.emltzs[top.nemlt] = zz + self.zshift
+    top.emltze[top.nemlt] = top.emltzs[top.nemlt] + self.length
+    top.emltap[top.nemlt] = self.ap
+    top.emltox[top.nemlt] = self.offset_x*errordist(self.error_type)
+    top.emltoy[top.nemlt] = self.offset_y*errordist(self.error_type)
+    top.emltph[top.nemlt] = self.ph
+    top.emltsf[top.nemlt] = self.sf
+    top.emltsc[top.nemlt] = self.sc
+    top.emltrr[top.nemlt] = self.rr
+    top.emltrl[top.nemlt] = self.rl
+    top.emltgl[top.nemlt] = self.gl
+    top.emltgp[top.nemlt] = self.gp
+    top.emltpw[top.nemlt] = self.pw
+    top.emltpa[top.nemlt] = self.pa
+    top.emltid[top.nemlt] = self.id
+    return top.emltze[top.nemlt]
+
+class Mmlt(Elem):
+  """
+Creates an instance of a Mmlt lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - ph=0 overal phase angle
+  - sf=0 relative scale factor
+  - sc=1 absolute scale factor
+One must either specify the field data or give an id from an existing data or
+from another element.
+Either specify the index
+  - id=None: index of data set to use
+Or specify the data set
+  - dz=0 z increment in the data set (z)
+  - m=[] multipole components (1 or 2-D, 1st is data, 2nd is list of components)
+  - mp=[] axial derivatives of multipole components
+  - mph=[] phase angle
+  - nn=[] n indices
+  - vv=[] v indices
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               id=None,dz=0,m=[],mp=[],mph=[],nn=[],vv=[],ph=0,sf=0,sc=1):
+    assert (m or mp) or (id is not None),"A data set or id must be given"
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Mmlt'
+    self.dz = dz
+    self.m = m
+    self.mp = mp
+    self.mph = mph
+    self.nn = nn
+    self.vv = vv
+    self.ph = ph
+    self.sf = sf
+    self.sc = sc
+    self.derivedquantities(self)
+    if id is None: self.id = top.nmmltsets + 1
+    else:          self.id = id
+    dogchange = 0
+    if self.id > top.nmmltsets:
+      top.nmmltsets = self.id
+      dogchange = 1
+    if self.m:
+      top.nzmmltmax = max(shape(self.m)[0]-1,top.nzmmltmax)
+      if len(shape(self.m)) == 2:
+        top.nmsmult = max(shape(self.m)[1],top.nmsmult)
+      dogchange = 1
+    if self.mp:
+      top.nzmmltmax = max(shape(self.mp)[0]-1,top.nzmmltmax)
+      if len(shape(self.mp)) == 2:
+        top.nmsmult = max(shape(self.mp)[1],top.nmsmult)
+      dogchange = 1
+    if dogchange: gchange("Mult_data")
+    # --- Install data only if this is a new data set (i.e. nzmmlt == 0)
+    id = self.id
+    if (self.m or self.mp) and top.nzmmlt[id-1] == 0:
+      top.nzmmlt[id-1] = max(shape(self.m)[0],shape(self.mp)[0]) - 1
+      if not self.dz:
+        top.dzmmlt[id-1] = self.length/top.nzmmlt[id-1]
+      else:
+        top.dzmmlt[id-1] = self.dz
+      top.mmlt_n[:len(self.nn)] = self.nn
+      top.mmlt_v[:len(self.vv)] = self.vv
+      top.msmmlt[:shape(self.m)[0],:shape(self.m)[1],id-1] = self.m
+      top.msmmltp[:shape(self.mp)[0],:shape(self.mp)[1],id-1] = self.mp
+      top.msmmltph[:shape(self.mph)[0],:shape(self.mph)[1],id-1] = self.mph
+  def derivedquantities(_self,self):
+    self.m  = array(self.m)
+    self.mp = array(self.mp)
+    self.mph = array(self.mph)
+    if len(shape(self.m)) == 1: self.m = self.m[:,NewAxis]
+    if len(shape(self.mp)) == 1: self.mp = self.mp[:,NewAxis]
+    if len(shape(self.mph)) == 1: self.mph = self.mph[:,NewAxis]
+    self.nn = array(self.nn)
+    self.vv = array(self.vv)
+  def install(self,zz):
+    top.nmmlt = top.nmmlt + 1
+    self.immlt = top.nmmlt
+    if top.nmmlt > len(top.mmltzs)-1:
+      immlt = top.nmmlt
+      top.nmmlt = top.nmmlt + 100
+      top.nmerr = top.nmmlt
+      gchange("Lattice")
+      top.nmmlt = immlt
+    top.mmltzs[top.nmmlt] = zz + self.zshift
+    top.mmltze[top.nmmlt] = top.mmltzs[top.nmmlt] + self.length
+    top.mmltap[top.nmmlt] = self.ap
+    top.mmltox[top.nmmlt] = self.offset_x*errordist(self.error_type)
+    top.mmltoy[top.nmmlt] = self.offset_y*errordist(self.error_type)
+    top.mmltph[top.nmmlt] = self.ph
+    top.mmltsf[top.nmmlt] = self.sf
+    top.mmltsc[top.nmmlt] = self.sc
+    top.mmltid[top.nmmlt] = self.id
+    return top.mmltze[top.nmmlt]
+
+class Bgrd(Elem):
+  """
+Creates an instance of a Bgrd lattice element.
+  - l (or length) =0 element length
+  - length=0 alternate form of the element length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - sf=0 relative scaling factor
+  - sc=0 absolute scaling factor
+One must either specify the field data or give an id from an existing data or
+from another element.
+Either specify the index
+  - id=None: index of data set to use
+Or specify the data set
+  - bx=[] Bx (Tesla)
+  - by=[] By (Tesla)
+  - bz=[] Bz (Tesla)
+  - dx=0 x increment size (m)
+  - dy=0 y increment size (m)
+  - dz=0 z increment size (m)
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               id=None,sf=0,sc=1,bx=[],by=[],bz=[],dx=0,dy=0,dz=0):
+    assert (bx or by or bz) or (id is not None),"A data set or id must be given"
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Bgrd'
+    self.sf = sf
+    self.sc = sc
+    self.bx = bx
+    self.by = by
+    self.bz = bz
+    self.dx = dx
+    self.dy = dy
+    self.dz = dz
+    self.derivedquantities(self)
+    if id is None: self.id = top.bgrdns + 1
+    else:          self.id = id
+    top.bgrdns = max(self.id,top.bgrdns)
+    if self.bx or self.by or self.bz:
+      sbx = shape(self.bx)
+      sby = shape(self.by)
+      sbz = shape(self.bz)
+      top.bgrdnx = max(sbx[0]-1,sby[0]-1,sbz[0]-1,top.bgrdnx)
+      top.bgrdny = max(sbx[1]-1,sby[1]-1,sbz[1]-1,top.bgrdny)
+      top.bgrdnz = max(sbx[2]-1,sby[2]-1,sbz[2]-1,top.bgrdnz)
+      gchange("BGRDdata")
+    # --- Install data only if this is a new data set (i.e. bgrddx == 0)
+    id = self.id
+    if (self.bx or self.by or self.bz) and top.bgrddx[id-1] == 0.:
+      top.bgrddx[id-1] = self.dx
+      top.bgrddy[id-1] = self.dy
+      top.bgrddz[id-1] = self.dz
+      sbx = shape(self.bx)
+      sby = shape(self.by)
+      sbz = shape(self.bz)
+      top.bgrdbx[:sbx[0],:sbx[1],:sbx[2],id-1] = self.bx
+      top.bgrdby[:sby[0],:sby[1],:sby[2],id-1] = self.by
+      top.bgrdbz[:sbz[0],:sbz[1],:sbz[2],id-1] = self.bz
+  def derivedquantities(_self,self):
+    self.bx = array(self.bx)
+    self.by = array(self.by)
+    self.bz = array(self.bz)
+  def install(self,zz):
+    top.nbgrd = top.nbgrd + 1
+    self.ibgrd = top.nbgrd
+    if top.nbgrd > len(top.bgrdzs)-1:
+      ibgrd = top.nbgrd
+      top.nbgrd = top.nbgrd + 100
+      gchange("Lattice")
+      top.nbgrd = ibgrd
+    top.bgrdzs[top.nbgrd] = zz + self.zshift
+    top.bgrdze[top.nbgrd] = top.bgrdzs[top.nbgrd] + self.length
+    top.bgrdap[top.nbgrd] = self.ap
+    top.bgrdox[top.nbgrd] = self.offset_x*errordist(self.error_type)
+    top.bgrdoy[top.nbgrd] = self.offset_y*errordist(self.error_type)
+    top.bgrdsf[top.nbgrd] = self.sf
+    top.bgrdsc[top.nbgrd] = self.sc
+    top.bgrdid[top.nbgrd] = self.id
+    return top.bgrdze[top.nbgrd]
+
+class Pgrd(Elem):
+  """
+Creates an instance of a Pgrd lattice element.
+  - l (or length) =0 elemenet length
+  - length=0 alternate form of the elemenet length
+  - zshift=0 start of element relative to current lattice location
+  - ap=0 aperture (can affect location of transverse boundaries)
+  - ox=0 offset in x (can affect location of transverse boundaries)
+  - oy=0 offset in y (can affect location of transverse boundaries)
+  - error_type='' type of error distribution to apply
+                  one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
+  - sf=0 relative scaling factor
+  - sc=1 absolute scaling factor
+  - rr=0 rod radius of an electric quad
+  - rl=0 rod length of an electric quad
+  - gl=0 gap length between rod and end plate of an electric quad
+  - gp=0 position of the rod to plate gap in the x plane of an electric quad
+  - pw=0 plate with of an electric quad
+  - pa=0 plate aperture of an electric quad
+One must either specify the field data or give an id from an existing data or
+from another element.
+Either specify the index
+  - id=None: index of data set to use
+Or specify the data set
+  - pp=[] electrostatic potential (Volts)
+  - xs=0 x start of grid
+  - ys=0 y start of grid
+  - dx=0 x increment size (m)
+  - dy=0 y increment size (m)
+  - dz=0 z increment size (m)
+  """
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+               error_type='',
+               id=None,sf=0,sc=1,pp=[],xs=0,ys=0,dx=0,dy=0,dz=0,
+               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
+    assert (pp) or (id is not None),"A data set or id must be given"
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+                  offset_x=ox,offset_y=oy,error_type=error_type)
+    self.type = 'Pgrd'
+    self.sf = sf
+    self.sc = sc
+    self.pp = pp
+    self.xs = xs
+    self.ys = ys
+    self.dx = dx
+    self.dy = dy
+    self.dz = dz
+    self.rr = rr
+    self.rl = rl
+    self.gl = gl
+    self.gp = gp
+    self.pw = pw
+    self.pa = pa
+    self.derivedquantities(self)
+    if id is None: self.id = top.pgrdns + 1
+    else:          self.id = id
+    top.pgrdns = max(self.id,top.pgrdns)
+    if self.pp:
+      top.pgrdnx = max(shape(self.pp)[0]-1,top.pgrdnx)
+      top.pgrdny = max(shape(self.pp)[1]-1,top.pgrdny)
+      top.pgrdnz = max(shape(self.pp)[2]-1,top.pgrdnz)
+      gchange("PGRDdata")
+    # --- Install data only if this is a new data set (i.e. pgrddx == 0)
+    id = self.id
+    if self.pp and top.pgrddx[id-1] == 0.:
+      top.pgrddx[id-1] = self.dx
+      top.pgrddy[id-1] = self.dy
+      top.pgrddz[id-1] = self.dz
+      sp = shape(self.pp)
+      top.pgrd[:sp[0],:sp[1],1:sp[2]+1,id-1] = self.pp
+  def derivedquantities(_self,self):
+    self.pp = array(self.pp)
+  def install(self,zz):
+    top.npgrd = top.npgrd + 1
+    self.ipgrd = top.npgrd
+    if top.npgrd > len(top.pgrdzs)-1:
+      ipgrd = top.npgrd
+      top.npgrd = top.npgrd + 100
+      gchange("Lattice")
+      top.npgrd = ipgrd
+    top.pgrdzs[top.npgrd] = zz + self.zshift
+    top.pgrdze[top.npgrd] = top.pgrdzs[top.npgrd] + self.length
+    top.pgrdap[top.npgrd] = self.ap
+    top.pgrdxs[top.npgrd] = self.xs
+    top.pgrdys[top.npgrd] = self.ys
+    top.pgrdox[top.npgrd] = self.offset_x*errordist(self.error_type)
+    top.pgrdoy[top.npgrd] = self.offset_y*errordist(self.error_type)
+    top.pgrdsf[top.npgrd] = self.sf
+    top.pgrdsc[top.npgrd] = self.sc
+    top.pgrdrr[top.npgrd] = self.rr
+    top.pgrdrl[top.npgrd] = self.rl
+    top.pgrdgl[top.npgrd] = self.gl
+    top.pgrdgp[top.npgrd] = self.gp
+    top.pgrdpw[top.npgrd] = self.pw
+    top.pgrdpa[top.npgrd] = self.pa
+    top.pgrdid[top.npgrd] = self.id
+    return top.pgrdze[top.npgrd]
 
 #----------------------------------------------------------------------------
 # HIBEAM elements
@@ -316,746 +1106,6 @@ class wire(Elem):
     top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
     return top.drftze[top.ndrft]
 
-#----------------------------------------------------------------------------
-# WARP elements
-#----------------------------------------------------------------------------
-
-class Drft(Elem):
-  """
-Creates an instance of a Drft lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type=''):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Drft'
-  def install(self,zz):
-    top.ndrft = top.ndrft + 1
-    self.idrft = top.ndrft
-    if top.ndrft > len(top.drftzs)-1:
-      top.ndrft = top.ndrft + 100
-      gchange("Lattice")
-      top.ndrft = self.idrft
-    top.drftzs[top.ndrft] = zz + self.zshift
-    top.drftze[top.ndrft] = top.drftzs[top.ndrft] + self.length
-    top.drftap[top.ndrft] = self.ap
-    top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
-    top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
-    return top.drftze[top.ndrft]
-
-class Bend(Elem):
-  """
-Creates an instance of a Bend lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-  - rc=1.e36 radius of curvature of the bend
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               rc=1.e36):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Bend'
-    self.rc = rc
-  def install(self,zz):
-    top.nbend = top.nbend + 1
-    self.ibend = top.nbend
-    if top.nbend > len(top.bendzs)-1:
-      ibend = top.nbend
-      top.nbend = top.nbend + 100
-      gchange("Lattice")
-      top.nbend = ibend
-    top.bendzs[top.nbend] = zz + self.zshift
-    top.bendze[top.nbend] = top.bendzs[top.nbend] + self.length
-    top.bendap[top.nbend] = self.ap
-    #top.bendox[top.nbend] = self.offset_x*errordist(self.error_type)
-    #top.bendoy[top.nbend] = self.offset_y*errordist(self.error_type)
-    top.bendrc[top.nbend] = self.rc
-    return top.bendze[ibend]
-
-class Dipo(Elem):
-  """
-Creates an instance of a Dipo lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-  - ex=0 Ex field (V/m)
-  - ey=0 Ey field (V/m)
-  - bx=0 Bx field (T/m)
-  - by=0 By field (T/m)
-  - ta=0 tangent of entrance angle
-  - tb=0 tangent of exit angle
-  - x1=0 location of first electric plate
-  - x2=0 location of second electric plate
-  - v1=0 voltage on first electric plate
-  - v2=0 voltage on second electric plate
-  - l1=0 length of first electric plate
-  - l2=0 length of second electric plate
-  - w1=0 width of first electric plate
-  - w2=0 width of second electric plate
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               ex=0,ey=0,bx=0,by=0,ta=0,tb=0,
-               x1=0,x2=0,v1=0,v2=0,l1=0,l2=0,w1=0,w2=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Dipo'
-    for xx in ['ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
-               'l1','l2','w1','w2']:
-      self.__dict__[xx] = locals()[xx]
-  def install(self,zz):
-    top.ndipo = top.ndipo + 1
-    self.idipo = top.ndipo
-    if top.ndipo > len(top.dipozs)-1:
-      idipo = top.ndipo
-      top.ndipo = top.ndipo + 100
-      gchange("Lattice")
-      top.ndipo = idipo
-    top.dipozs[top.ndipo] = zz + self.zshift
-    top.dipoze[top.ndipo] = top.dipozs[top.ndipo] + self.length
-    #top.dipoox[top.ndipo] = self.offset_x*errordist(self.error_type)
-    #top.dipooy[top.ndipo] = self.offset_y*errordist(self.error_type)
-    for xx in ['ap','ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
-               'l1','l2','w1','w2']:
-      aa = top.getpyobject('dipo'+xx)
-      aa[top.ndipo] = self.__dict__[xx]
-    return top.dipoze[top.ndipo]
-
-class Quad(Elem):
-  """
-Creates an instance of a Quad lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-  - de=0 electric field gradient (V/m**2)
-  - db=0 magnetic field gradient (T/m**2)
-  - vx=0 voltage on x-rod of an electric quad
-  - vy=0 voltage on y-rod of an electric quad
-  - rr=0 rod radius of an electric quad
-  - rl=0 rod length of an electric quad
-  - gl=0 gap length between rod and end plate of an electric quad
-  - gp=0 position of the rod to plate gap in the x plane of an electric quad
-  - pw=0 plate with of an electric quad
-  - pa=0 plate aperture of an electric quad
-  - pr=0 plate outer radius of an electric quad
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               de=0,db=0,vx=0,vy=0,rr=0,rl=0,gl=0,gp=0,pw=0,pa=0,pr=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Quad'
-    for xx in ['de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
-      self.__dict__[xx] = locals()[xx]
-  def install(self,zz):
-    top.nquad = top.nquad + 1
-    self.iquad = top.nquad
-    if top.nquad > len(top.quadzs)-1:
-      top.nquad = top.nquad + 100
-      top.nqerr = top.nquad
-      gchange("Lattice")
-      top.nquad = self.iquad
-    top.quadzs[top.nquad] = zz + self.zshift
-    top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
-    top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
-    top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
-    for xx in ['ap','de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
-      aa = top.getpyobject('quad'+xx)
-      aa[top.nquad] = self.__dict__[xx]
-    return top.quadze[top.nquad]
-
-class Sext(Elem):
-  """
-Creates an instance of a Sext lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-  - de=0 electric field gradient
-  - db=0 magnetic field gradient
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               de=0,db=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Sext'
-    self.de = de
-    self.db = db
-  def install(self,zz):
-    top.nsext = top.nsext + 1
-    self.isext = top.nsext
-    if top.nsext > len(top.sextzs)-1:
-      isext = top.nsext
-      top.nsext = top.nsext + 100
-      gchange("Lattice")
-      top.nsext = isext
-    top.sextzs[top.nsext] = zz + self.zshift
-    top.sextze[top.nsext] = top.sextzs[top.nsext] + self.length
-    top.sextap[top.nsext] = self.ap
-    top.sextox[top.nsext] = self.offset_x*errordist(self.error_type)
-    top.sextoy[top.nsext] = self.offset_y*errordist(self.error_type)
-    top.sextde[top.nsext] = self.de
-    top.sextdb[top.nsext] = self.db
-    return top.sextze[top.nsext]
-
-class Hele(Elem):
-  """
-Creates an instance of a Hele lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-  - nn=[] list of n indices of multipole components
-  - vv=[] list of v indices of multipole components
-  - ae=[] list of magnitudes of electric multipole components
-  - am=[] list of magnitudes of magnetic multipole components
-  - ep=[] list of magnitudes of the derivative of electric multipole components
-  - mp=[] list of magnitudes of the derivative of magnetic multipole components
-  - pe=[] list of phase angles of electric multipole components
-  - pm=[] list of phase angles of magnetic multipole components
-  - rr=0 rod radius of an electric quad
-  - rl=0 rod length of an electric quad
-  - gl=0 gap length between rod and end plate of an electric quad
-  - gp=0 position of the rod to plate gap in the x plane of an electric quad
-  - pw=0 plate with of an electric quad
-  - pa=0 plate aperture of an electric quad
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               nn=[],vv=[],ae=[],am=[],ep=[],mp=[],pe=[],pm=[],
-               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Hele'
-    self.nn = nn
-    self.vv = vv
-    self.ae = ae
-    self.am = am
-    self.ep = ep
-    self.mp = mp
-    self.pe = pe
-    self.pm = pm
-    self.rr = rr
-    self.rl = rl
-    self.gl = gl
-    self.gp = gp
-    self.pw = pw
-    self.pa = pa
-    self.derivedquantities(self)
-  def derivedquantities(_self,self):
-    self.nn = array(self.nn)
-    self.vv = array(self.vv)
-    self.ae = array(self.ae)
-    self.am = array(self.am)
-    self.ep = array(self.ep)
-    self.mp = array(self.mp)
-    self.pe = array(self.pe)
-    self.pm = array(self.pm)
-  def install(self,zz):
-    top.nhele = top.nhele + 1
-    self.ihele = top.nhele
-    if top.nhele > len(top.helezs)-1:
-      ihele = top.nhele
-      top.nhele = top.nhele + 100
-      gchange("Lattice")
-      top.nhele = ihele
-    top.helezs[top.nhele] = zz + self.zshift
-    top.heleze[top.nhele] = top.helezs[top.nhele] + self.length
-    top.heleap[top.nhele] = self.ap
-    top.heleox[top.nhele] = self.offset_x*errordist(self.error_type)
-    top.heleoy[top.nhele] = self.offset_y*errordist(self.error_type)
-    top.helerr[top.nhele] = self.rr
-    top.helerl[top.nhele] = self.rl
-    top.helegl[top.nhele] = self.gl
-    top.helegp[top.nhele] = self.gp
-    top.helepw[top.nhele] = self.pw
-    top.helepa[top.nhele] = self.pa
-    top.nhmlt = max(top.nhmlt,len(self.nn))
-    return top.heleze[top.nhele]
-  def installdata(self):
-    top.hele_n[:,self.ihele] = self.nn
-    top.hele_v[:,self.ihele] = self.vv
-    top.heleae[:len(self.ae),self.ihele] = self.ae
-    top.heleam[:len(self.am),self.ihele] = self.am
-    top.heleep[:len(self.ep),self.ihele] = self.ep
-    top.helemp[:len(self.mp),self.ihele] = self.mp
-    top.helepe[:len(self.pe),self.ihele] = self.pe
-    top.helepm[:len(self.pm),self.ihele] = self.pm
-
-class Accl(Elem):
-  """
-Creates an instance of a Accl lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-  - ez=0 time independent accelerating gradient (V/m)
-  - xw=0 x variation in accelerating gradient
-  - sw=0 switch sets whether mesh frame is accelerated by a gap
-  - et=[] time dependent accelerating gradient (1-D array)
-  - ts=0 initial time of time dependent accelerating gradient
-  - dt=0 time increment in the time dependent accelerating gradient data (s)
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               ez=0,xw=0,sw=0,et=[],ts=0,dt=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Accl'
-    self.ez = ez
-    self.xw = xw
-    self.sw = sw
-    self.et = et
-    self.ts = ts
-    self.dt = dt
-    self.derivedquantities(self)
-  def derivedquantities(_self,self):
-    self.et = array(self.et)
-  def install(self,zz):
-    top.naccl = top.naccl + 1
-    self.iaccl = top.naccl
-    if top.naccl > len(top.acclzs)-1:
-      iaccl = top.naccl
-      top.naccl = top.naccl + 100
-      gchange("Lattice")
-      top.naccl = iaccl
-    top.acclzs[top.naccl] = zz + self.zshift
-    top.acclze[top.naccl] = top.acclzs[top.naccl] + self.length
-    top.acclap[top.naccl] = self.ap
-    top.acclox[top.naccl] = self.offset_x*errordist(self.error_type)
-    top.accloy[top.naccl] = self.offset_y*errordist(self.error_type)
-    top.acclez[top.naccl] = self.ez
-    top.acclxw[top.naccl] = self.xw
-    top.acclsw[top.naccl] = self.sw
-    top.acclts[top.naccl] = self.ts
-    top.accldt[top.naccl] = self.dt
-    top.ntaccl = max(top.ntaccl,shape(self.et)[0]-1)
-    return top.acclze[top.naccl]
-  def installdata(self):
-    top.acclet[:len(self.et),self.iaccl] = self.et
-
-
-class Emlt(Elem):
-  """
-Creates an instance of a Emlt lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-Either specify the index
-  - id=0 index of the data set to use (if one is not supplied)
-Or specify the data set
-  - dz=0 z increment in the data set (z)
-  - e=[] multipole components (1 or 2-D, 1st is data, 2nd is list of components)
-  - ep=[] axial derivatives of multipole components
-  - eph=[] phase angle
-  - nn=[] n indices
-  - vv=[] v indices
-  - ph=0 overal phase angle
-  - sf=0 relative scale factor
-  - sc=1 absolute scale factor
-  - rr=0 rod radius of an electric quad
-  - rl=0 rod length of an electric quad
-  - gl=0 gap length between rod and end plate of an electric quad
-  - gp=0 position of the rod to plate gap in the x plane of an electric quad
-  - pw=0 plate with of an electric quad
-  - pa=0 plate aperture of an electric quad
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               id=0,dz=0,e=[],ep=[],eph=[],nn=[],vv=[],ph=0,sf=0,sc=1,
-               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Emlt'
-    self.id = id
-    self.dz = dz
-    self.e = e
-    self.ep = ep
-    self.eph = eph
-    self.nn = nn
-    self.vv = vv
-    self.ph = ph
-    self.sf = sf
-    self.sc = sc
-    self.rr = rr
-    self.rl = rl
-    self.gl = gl
-    self.gp = gp
-    self.pw = pw
-    self.pa = pa
-    self.derivedquantities(self)
-  def derivedquantities(_self,self):
-    self.e  = array(self.e)
-    self.ep = array(self.ep)
-    self.eph = array(self.eph)
-    if len(shape(self.e)) == 1: self.e = self.e[:,NewAxis]
-    if len(shape(self.ep)) == 1: self.ep = self.ep[:,NewAxis]
-    if len(shape(self.eph)) == 1: self.eph = self.eph[:,NewAxis]
-    self.nn = array(self.nn)
-    self.vv = array(self.vv)
-  def install(self,zz):
-    top.nemlt = top.nemlt + 1
-    self.iemlt = top.nemlt
-    if top.nemlt > len(top.emltzs)-1:
-      iemlt = top.nemlt
-      top.nemlt = top.nemlt + 100
-      top.neerr = top.nemlt
-      gchange("Lattice")
-      top.nemlt = iemlt
-    top.emltzs[top.nemlt] = zz + self.zshift
-    top.emltze[top.nemlt] = top.emltzs[top.nemlt] + self.length
-    top.emltap[top.nemlt] = self.ap
-    top.emltox[top.nemlt] = self.offset_x*errordist(self.error_type)
-    top.emltoy[top.nemlt] = self.offset_y*errordist(self.error_type)
-    top.emltph[top.nemlt] = self.ph
-    top.emltsf[top.nemlt] = self.sf
-    top.emltsc[top.nemlt] = self.sc
-    top.emltrr[top.nemlt] = self.rr
-    top.emltrl[top.nemlt] = self.rl
-    top.emltgl[top.nemlt] = self.gl
-    top.emltgp[top.nemlt] = self.gp
-    top.emltpw[top.nemlt] = self.pw
-    top.emltpa[top.nemlt] = self.pa
-    if not self.id:
-      top.emltid[top.nemlt] = top.nemltsets + 1
-    else:
-      top.emltid[top.nemlt] = self.id
-    top.nemltsets = max(top.emltid[top.nemlt],top.nemltsets)
-    if self.e:
-      top.nzemltmax = max(shape(self.e)[0]-1,top.nzemltmax)
-      if len(shape(self.e)) == 2:
-        top.nesmult = max(shape(self.e)[1],top.nesmult)
-    if self.ep:
-      top.nzemltmax = max(shape(self.ep)[0]-1,top.nzemltmax)
-      if len(shape(self.ep)) == 2:
-        top.nesmult = max(shape(self.ep)[1],top.nesmult)
-    return top.emltze[top.nemlt]
-  def installdata(self):
-    id = top.emltid[self.iemlt]
-    # --- Only copy data if this is a new data set
-    if (self.e or self.ep) and top.nzemlt[id-1] == 0:
-      top.nzemlt[id-1] = max(shape(self.e)[0],shape(self.ep)[0]) - 1
-      if not self.dz:
-        top.dzemlt[id-1] = ((top.emltze[self.iemlt] - top.emltzs[self.iemlt])/
-                            top.nzemlt[id-1])
-      else:
-        top.dzemlt[id-1] = self.dz
-      top.emlt_n[:len(self.nn)] = self.nn
-      top.emlt_v[:len(self.vv)] = self.vv
-      top.esemlt[:shape(self.e)[0],:shape(self.e)[1],id-1] = self.e
-      top.esemltp[:shape(self.ep)[0],:shape(self.ep)[1],id-1] = self.ep
-      top.esemltph[:shape(self.eph)[0],:shape(self.eph)[1],id-1] = self.eph
-
-class Mmlt(Elem):
-  """
-Creates an instance of a Mmlt lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-Either specify the index
-  - id=0 index of the data set to use (if a data set is not supplied)
-Or specify the data set
-  - dz=0 z increment in the data set (z)
-  - m=[] multipole components (1 or 2-D, 1st is data, 2nd is list of components)
-  - mp=[] axial derivatives of multipole components
-  - mph=[] phase angle
-  - nn=[] n indices
-  - vv=[] v indices
-  - ph=0 overal phase angle
-  - sf=0 relative scale factor
-  - sc=1 absolute scale factor
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               id=0,dz=0,m=[],mp=[],mph=[],nn=[],vv=[],ph=0,sf=0,sc=1):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Mmlt'
-    self.id = id
-    self.dz = dz
-    self.m = m
-    self.mp = mp
-    self.mph = mph
-    self.nn = nn
-    self.vv = vv
-    self.ph = ph
-    self.sf = sf
-    self.sc = sc
-    self.derivedquantities(self)
-  def derivedquantities(_self,self):
-    self.m  = array(self.m)
-    self.mp = array(self.mp)
-    self.mph = array(self.mph)
-    if len(shape(self.m)) == 1: self.m = self.m[:,NewAxis]
-    if len(shape(self.mp)) == 1: self.mp = self.mp[:,NewAxis]
-    if len(shape(self.mph)) == 1: self.mph = self.mph[:,NewAxis]
-    self.nn = array(self.nn)
-    self.vv = array(self.vv)
-  def install(self,zz):
-    top.nmmlt = top.nmmlt + 1
-    self.immlt = top.nmmlt
-    if top.nmmlt > len(top.mmltzs)-1:
-      immlt = top.nmmlt
-      top.nmmlt = top.nmmlt + 100
-      top.nmerr = top.nmmlt
-      gchange("Lattice")
-      top.nmmlt = immlt
-    top.mmltzs[top.nmmlt] = zz + self.zshift
-    top.mmltze[top.nmmlt] = top.mmltzs[top.nmmlt] + self.length
-    top.mmltap[top.nmmlt] = self.ap
-    top.mmltox[top.nmmlt] = self.offset_x*errordist(self.error_type)
-    top.mmltoy[top.nmmlt] = self.offset_y*errordist(self.error_type)
-    top.mmltph[top.nmmlt] = self.ph
-    top.mmltsf[top.nmmlt] = self.sf
-    top.mmltsc[top.nmmlt] = self.sc
-    if not self.id:
-      top.mmltid[top.nmmlt] = top.nmmltsets + 1
-    else:
-      top.mmltid[top.nmmlt] = self.id
-    top.nmmltsets = max(top.mmltid[top.nmmlt],top.nmmltsets)
-    if self.m:
-      top.nzmmltmax = max(shape(self.m)[0]-1,top.nzmmltmax)
-      if len(shape(self.m)) == 2:
-        top.nmsmult = max(shape(self.m)[1],top.nmsmult)
-    if self.mp:
-      top.nzmmltmax = max(shape(self.mp)[0]-1,top.nzmmltmax)
-      if len(shape(self.mp)) == 2:
-        top.nmsmult = max(shape(self.mp)[1],top.nmsmult)
-    return top.mmltze[top.nmmlt]
-  def installdata(self):
-    id = top.mmltid[self.immlt]
-    # --- Only copy data if this is a new data set
-    if (self.m or self.mp) and top.nzmmlt[id-1] == 0:
-      top.nzmmlt[id-1] = max(shape(self.m)[0],shape(self.mp)[0]) - 1
-      if not self.dz:
-        top.dzmmlt[id-1] = ((top.mmltze[self.immlt] - top.mmltzs[self.immlt])/
-                            top.nzmmlt[id-1])
-      else:
-        top.dzmmlt[id-1] = self.dz
-      top.mmlt_n[:len(self.nn)] = self.nn
-      top.mmlt_v[:len(self.vv)] = self.vv
-      top.msmmlt[:shape(self.m)[0],:shape(self.m)[1],id-1] = self.m
-      top.msmmltp[:shape(self.mp)[0],:shape(self.mp)[1],id-1] = self.mp
-      top.msmmltph[:shape(self.mph)[0],:shape(self.mph)[1],id-1] = self.mph
-
-
-class Bgrd(Elem):
-  """
-Creates an instance of a Bgrd lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-Either specify the index
-  - id=0 index of the data set to use (if one is not supplied)
-Or specify the data set
-  - bx=[] Bx (Tesla)
-  - by=[] By (Tesla)
-  - bz=[] Bz (Tesla)
-  - dx=0 x increment size (m)
-  - dy=0 y increment size (m)
-  - dz=0 z increment size (m)
-  - sf=0 relative scaling factor
-  - sc=0 absolute scaling factor
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               id=0,sf=0,sc=1,bx=[],by=[],bz=[],dx=0,dy=0,dz=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Bgrd'
-    self.id = id
-    self.sf = sf
-    self.sc = sc
-    self.bx = bx
-    self.by = by
-    self.bz = bz
-    self.dx = dx
-    self.dy = dy
-    self.dz = dz
-    self.derivedquantities(self)
-  def derivedquantities(_self,self):
-    self.bx = array(self.bx)
-    self.by = array(self.by)
-    self.bz = array(self.bz)
-  def install(self,zz):
-    top.nbgrd = top.nbgrd + 1
-    self.ibgrd = top.nbgrd
-    if top.nbgrd > len(top.bgrdzs)-1:
-      ibgrd = top.nbgrd
-      top.nbgrd = top.nbgrd + 100
-      gchange("Lattice")
-      top.nbgrd = ibgrd
-    top.bgrdzs[top.nbgrd] = zz + self.zshift
-    top.bgrdze[top.nbgrd] = top.bgrdzs[top.nbgrd] + self.length
-    top.bgrdap[top.nbgrd] = self.ap
-    top.bgrdox[top.nbgrd] = self.offset_x*errordist(self.error_type)
-    top.bgrdoy[top.nbgrd] = self.offset_y*errordist(self.error_type)
-    top.bgrdsf[top.nbgrd] = self.sf
-    top.bgrdsc[top.nbgrd] = self.sc
-    if not self.id:
-      top.bgrdid[top.nbgrd] = top.bgrdns + 1
-    else:
-      top.bgrdid[top.nbgrd] = self.id
-    top.bgrdns = max(top.bgrdid[top.nbgrd],top.bgrdns)
-    if self.bx or self.by or self.bz:
-      sbx = shape(self.bx)
-      sby = shape(self.by)
-      sbz = shape(self.bz)
-      top.bgrdnx=max(sbx[0]-1,sby[0]-1,sbz[0]-1,top.bgrdnx)
-      top.bgrdny=max(sbx[1]-1,sby[1]-1,sbz[1]-1,top.bgrdny)
-      top.bgrdnz=max(sbx[2]-1,sby[2]-1,sbz[2]-1,top.bgrdnz)
-    return top.bgrdze[top.nbgrd]
-  def installdata(self):
-    id = top.bgrdid[self.ibgrd]
-    if (self.bx or self.by or self.bz) and top.bgrddx[id-1] == 0.:
-      top.bgrddx[id-1] = self.dx
-      top.bgrddy[id-1] = self.dy
-      top.bgrddz[id-1] = self.dz
-      sbx = shape(self.bx)
-      sby = shape(self.by)
-      sbz = shape(self.bz)
-      top.bgrdbx[:sbx[0],:sbx[1],:sbx[2],id-1] = self.bx
-      top.bgrdby[:sby[0],:sby[1],:sby[2],id-1] = self.by
-      top.bgrdbz[:sbz[0],:sbz[1],:sbz[2],id-1] = self.bz
-
-class Pgrd(Elem):
-  """
-Creates an instance of a Pgrd lattice element.
-  - l=0 drift length
-  - length=0 alternate form of the drift length
-  - zshift=0 start of element relative to current lattice location
-  - ap=0 aperture (can affect location of transverse boundaries)
-  - ox=0 offset in x (can affect location of transverse boundaries)
-  - oy=0 offset in y (can affect location of transverse boundaries)
-  - error_type='' type of error distribution to apply
-Either specify the index
-  - id=0 index of the data set to use (if one is not supplied)
-Or specify the data set
-  - pp=[] electrostatic potential (Volts)
-  - xs=0 x start of grid
-  - ys=0 y start of grid
-  - dx=0 x increment size (m)
-  - dy=0 y increment size (m)
-  - dz=0 z increment size (m)
-  - sf=0 relative scaling factor
-  - sc=0 absolute scaling factor
-  - rr=0 rod radius of an electric quad
-  - rl=0 rod length of an electric quad
-  - gl=0 gap length between rod and end plate of an electric quad
-  - gp=0 position of the rod to plate gap in the x plane of an electric quad
-  - pw=0 plate with of an electric quad
-  - pa=0 plate aperture of an electric quad
-  """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
-               error_type='',
-               id=0,sf=0,sc=1,pp=[],xs=0,ys=0,dx=0,dy=0,dz=0,
-               rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
-    self.type = 'Pgrd'
-    self.id = id
-    self.sf = sf
-    self.sc = sc
-    self.pp = pp
-    self.xs = xs
-    self.ys = ys
-    self.dx = dx
-    self.dy = dy
-    self.dz = dz
-    self.rr = rr
-    self.rl = rl
-    self.gl = gl
-    self.gp = gp
-    self.pw = pw
-    self.pa = pa
-    self.derivedquantities(self)
-  def derivedquantities(_self,self):
-    self.pp = array(self.pp)
-  def install(self,zz):
-    top.npgrd = top.npgrd + 1
-    self.ipgrd = top.npgrd
-    if top.npgrd > len(top.pgrdzs)-1:
-      ipgrd = top.npgrd
-      top.npgrd = top.npgrd + 100
-      gchange("Lattice")
-      top.npgrd = ipgrd
-    top.pgrdzs[top.npgrd] = zz + self.zshift
-    top.pgrdze[top.npgrd] = top.pgrdzs[top.npgrd] + self.length
-    top.pgrdap[top.npgrd] = self.ap
-    top.pgrdxs[top.npgrd] = self.xs
-    top.pgrdys[top.npgrd] = self.ys
-    top.pgrdox[top.npgrd] = self.offset_x*errordist(self.error_type)
-    top.pgrdoy[top.npgrd] = self.offset_y*errordist(self.error_type)
-    top.pgrdsf[top.npgrd] = self.sf
-    top.pgrdsc[top.npgrd] = self.sc
-    top.pgrdrr[top.npgrd] = self.rr
-    top.pgrdrl[top.npgrd] = self.rl
-    top.pgrdgl[top.npgrd] = self.gl
-    top.pgrdgp[top.npgrd] = self.gp
-    top.pgrdpw[top.npgrd] = self.pw
-    top.pgrdpa[top.npgrd] = self.pa
-    if not self.id:
-      top.pgrdid[top.npgrd] = top.pgrdns + 1
-    else:
-      top.pgrdid[top.npgrd] = self.id
-    top.pgrdns = max(top.pgrdid[top.npgrd],top.pgrdns)
-    if self.pp:
-      top.pgrdnx = max(shape(self.pp)[0]-1,top.pgrdnx)
-      top.pgrdny = max(shape(self.pp)[1]-1,top.pgrdny)
-      top.pgrdnz = max(shape(self.pp)[2]-1,top.pgrdnz)
-    return top.pgrdze[top.npgrd]
-  def installdata(self):
-    id = top.pgrdid[self.ipgrd]
-    if self.pp and top.pgrddx[id-1] == 0.:
-      top.pgrddx[id-1] = self.dx
-      top.pgrddy[id-1] = self.dy
-      top.pgrddz[id-1] = self.dz
-      sp = shape(self.pp)
-      top.pgrd[:sp[0],:sp[1],1:sp[2]+1,id-1] = self.pp
-
 ############################################################################
 ############################################################################
 # --- Convert and copy the input MAD lattice into a WARP lattice.
@@ -1070,27 +1120,11 @@ information if the WARP lattice arrays is deleted.
   top.nbend = -1
   top.ndipo = -1
   top.nhele = -1
-  top.nhmlt = 0
   top.naccl = -1
-  top.ntaccl = 0
   top.nemlt = -1
-  top.nemltsets = 0
-  top.nesmult = 0
-  top.nzemltmax = 0
   top.nmmlt = -1
-  top.nmmltsets = 0
-  top.nmsmult = 0
-  top.nzmmltmax = 0
   top.nbgrd = -1
-  top.bgrdnx = 0
-  top.bgrdny = 0
-  top.bgrdnz = 0
-  top.bgrdns = 0
   top.npgrd = -1
-  top.pgrdnx = 0
-  top.pgrdny = 0
-  top.pgrdnz = 0
-  top.pgrdns = 0
   top.nsext = -1
 
   # --- Install the line into fortran.
@@ -1110,16 +1144,6 @@ information if the WARP lattice arrays is deleted.
   if top.nbgrd == -1: top.nbgrd = 0
   if top.npgrd == -1: top.npgrd = 0
   if top.nsext == -1: top.nsext = 0
-
-  # --- Allocate the data space needed.
-  gchange("Lattice")
-  gchange("Mult_data")
-  gchange("BGRDdata")
-  gchange("PGRDdata")
-
-  # --- Now, go back through the latice and fill in the data that needed
-  # --- space allocated.
-  line.installdata()
 
   # --- Finish by setting some general parameters.
   if settunelen:
