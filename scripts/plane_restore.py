@@ -24,7 +24,7 @@ specified z plane. The data have been saved by PlaneSave.
 The two simulations are linked together.
 """
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.1 2003/01/30 17:21:43 jlvay Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.2 2003/03/13 17:14:22 jlvay Exp $"
 
 class PlaneRestore:
   """
@@ -41,27 +41,36 @@ Input:
 
   def __init__(self,filename,zplane=None,js=None):
 
-    # set self.zplane
-    if zplane is None:
-      self.zplane = w3d.zmmin
-    else:
-      self.zplane = zplane
-
     # --- Make sure that vbeamfrm is set to zero so that the grid doesn't move
     # --- out from under the restoration plane.
     top.vbeamfrm = 0.
+
+    # set self.zplane
+    if zplane is None:
+      if not lparallel:
+        self.zplane = w3d.zmmin
+      else:
+        self.zplane = top.zmslmin[0]
+    else:
+      self.zplane = zplane
 
     ##############################
     # Initialization stuff
 
     # open the file which holds the data
     self.f = PR.PR(filename)
+    self.zshift = self.zplane - self.f.zplane
 
     # get time level of first plane and subtract 1
     self.it_restore = 1
 
     # set record number to 0
     self.ir_plane = 0
+
+    # get time step, tmin, tmax
+    top.dt = self.f.dt
+    self.tmin = self.f.tmin
+    self.tmax = self.f.tmax
 
     # initializes list of species
     if type(js) == IntType:
@@ -77,6 +86,16 @@ Input:
       top.sm[js] = self.f.read('sm_%08d'%js)
       top.sw[js] = self.f.read('sw_%08d'%js)
 
+    # make sure that pid will be allocated
+    if(top.npmaxi==1):
+      top.npmax  = max(top.npmax,2)
+      top.npmaxb = max(top.npmax,2)
+      top.npmaxi = max(top.npmax,2)
+      gchange('Particles')
+
+    # restore only if between grid bounds
+    if(self.zplane<w3d.zmmin or self.zplane>=w3d.zmmax): return
+    
     # set up indices which specify transverse extent of saved and restored phi
     # _r for restored phi array, _s for saved phi array
     # '0' is minimum index, 'm' is maximum index
@@ -109,6 +128,12 @@ Input:
     installafterfs(self.restoreplane_afs)
 
   ###########################################################################
+  def disable_plane_restore(self):
+    # for some reason, does not work!
+    uninstallbeforefs(self.restoreplane_bfs)
+    uninstallafterfs(self.restoreplane_afs)
+
+  ###########################################################################
   # restore the next plane of data
   def restoreplane_bfs(self):
     # increment the timelevel of the plane
@@ -123,18 +148,24 @@ Input:
     iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
 
     # load saved phi into the phi array
-    self.restore_phi(iz,it)
+    try:
+      self.restore_phi(iz,it)
+    except:
+      return
 
   def restoreplane(self,js=0,it=0):
 
     # get number of particles to be added and the starting point
-    nn = self.f.read('np%08d'%it)
-
+    try:
+      nn = self.f.read('np%08d_%08d'%(it,js))
+    except:
+      return
+    
     # put restored data into particle arrays, adjusting the z location
     if (nn > 0):
       addparticles(self.f.read('xp%08d_%08d'%(it,js)),
                    self.f.read('yp%08d_%08d'%(it,js)),
-                   self.f.read('zp%08d_%08d'%(it,js)),
+                   self.f.read('zp%08d_%08d'%(it,js))+self.zshift,
                    self.f.read('uxp%08d_%08d'%(it,js)),
                    self.f.read('uyp%08d_%08d'%(it,js)),
                    self.f.read('uzp%08d_%08d'%(it,js)),
@@ -153,7 +184,10 @@ Input:
 
     # reset phi at plane iz=-1 if zplane is at iz=0
     if (iz == 0):
-      self.restore_phi(iz,top.it)
+      try:
+        self.restore_phi(iz,self.it_restore)
+      except:
+        return
 
   #######################################################################
   # This routine copies the saved phi plane into the current phi array
