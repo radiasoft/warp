@@ -43,7 +43,7 @@ chopy.$(SO): toppy.$(SO) cho.F cho.v
 ranffortran.c: ranffortran.m
 	python -c "from Forthon.preprocess import main;main()" --f90 ranffortran.m ranffortran.c
 
-public: warp
+public: all
 	publishpywarp90.py $(PUBLICHOME)
 
 clean:
