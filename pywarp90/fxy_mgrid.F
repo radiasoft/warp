@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.8 $, $Date: 2004/04/08 19:20:29 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.9 $, $Date: 2004/04/08 19:32:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -514,8 +514,8 @@ c=============================================================================
 c=============================================================================
       subroutine cond_potmgxy(interior,nx,ny,phi,mglevel,lresidual)
       use GridBoundary3d
-      use ConductorInteriormodule
-      type(ConductorInterior):: interior
+      use ConductorInteriorTypemodule
+      type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,mglevel
       real(kind=8):: phi(0:nx,0:ny)
       logical(ISZ):: lresidual
@@ -545,8 +545,8 @@ c     --- phi to the voltage of the conductor, otherwise, set it to zero.
 c=============================================================================
       subroutine condbndymgxy(subgrid,nx,ny,phi,rho,rdx2c,rdy2c,spm1,srp,
      &                        boundxy,l2symtry,l4symtry,mglevel)
-      use ConductorSubGridmodule
-      type(ConductorSubgrid):: subgrid
+      use ConductorSubGridTypemodule
+      type(ConductorSubgridType):: subgrid
       integer(ISZ):: nx,ny,mglevel,parity
       real(kind=8):: phi(0:nx,0:ny), rho(0:nx,0:ny)
       real(kind=8):: rdx2c,rdy2c,spm1,srp
@@ -666,8 +666,8 @@ c         rhovolume = (dxp+dxm)*(dyp+dym)*0.125
 c=============================================================================
       subroutine condbndyresxy(subgrid,nx,ny,phi,rho,res,rdx2,rdy2,mgparam,
      &                         boundxy,l2symtry,l4symtry,mglevel)
-      use ConductorSubGridmodule
-      type(ConductorSubgrid):: subgrid
+      use ConductorSubGridTypemodule
+      type(ConductorSubgridType):: subgrid
       integer(ISZ):: nx,ny,mglevel
       real(kind=8):: phi(0:nx,0:ny)
       real(kind=8):: rho(0:nx,0:ny), res(0:nx,0:ny)
@@ -965,10 +965,10 @@ c=============================================================================
       subroutine checkconductors_workxy(interior,evensubgrid,oddsubgrid,
      &                                  nx,ny,dx,dy,l2symtry,l4symtry,mglevel)
       use Multigrid3d
-      use ConductorInteriormodule
-      use ConductorSubGridmodule
-      type(ConductorInterior):: interior
-      type(ConductorSubGrid):: evensubgrid,oddsubgrid
+      use ConductorInteriorTypemodule
+      use ConductorSubGridTypemodule
+      type(ConductorInteriorType):: interior
+      type(ConductorSubGridType):: evensubgrid,oddsubgrid
       integer(ISZ):: nx,ny,mglevel
       real(kind=8):: dx,dy
       logical(ISZ):: l2symtry,l4symtry
