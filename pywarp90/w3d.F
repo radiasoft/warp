@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.155 $, $Date: 2004/05/19 22:27:30 $
+c@(#) File W3D.F, version $Revision: 3.156 $, $Date: 2004/06/04 22:55:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3931,6 +3931,11 @@ c --- all of the particles, otherwise the specified particles are loaded.
 
       if (lw3dtimesubs) substarttime = wtime()
 
+c     --- Ensure that the rhop array is setup properly
+      if(solvergeom==XYZgeom) then
+        call setupFields3dParticles()
+      endif
+
 c     --- zero rhop if requested
       if (lzero) then
         call zeroarry(rhop(0,0,0),(nxp+1)*(nyp+1)*(nzp+1))
@@ -3941,11 +3946,6 @@ c     --- zero rhop if requested
 c     --- change AMR grid if necessary
       if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
      &   solvergeom==Rgeom  .or. solvergeom==Zgeom) call change_loc_part()
-
-c     --- Ensure that the rhop array is setup properly
-      if(solvergeom==XYZgeom) then
-        call setupFields3dParticles()
-      endif
 
 c     --- set limits on loop over species
       if (is_i == -1) then
