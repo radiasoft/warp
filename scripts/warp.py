@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.82 2005/03/12 00:46:44 dave Exp $"
+warp_version = "$Id: warp.py,v 1.83 2005/03/17 19:01:37 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -438,6 +438,43 @@ __main__.__dict__['fieldsolMR'] = fieldsolMR
 __main__.__dict__['fetcheMR'] = fetcheMR
 __main__.__dict__['fetchphiMR'] = fetchphiMR
 __main__.__dict__['initfieldsolver'] = initfieldsolver
+
+##############################################################################
+def getappliedfieldsongrid(nx=None,ny=None,nz=None,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None):
+  """
+Gets the applied fields from the lattice on a grid. 
+It returns the tuple (ex,ey,ez,bx,by,bz).
+Inputs (optional) are the number of cells in each dimension and the limits of 
+the grid: nx, ny, nz, xmin, xmax, ymin, ymax, zmin, zmax. The defaults values 
+are respectively: w3d.nx, w3d.ny, w3d.nz, w3d.xmmin, w3d.xmmax, w3d.ymmin, w3d.ymmax, 
+w3d.zmmin, w3d.zmmax.
+  """
+  if nx is None:nx=w3d.nx
+  if ny is None:ny=w3d.ny
+  if nz is None:nz=w3d.nz
+  if xmin is None:xmin=w3d.xmmin
+  if xmax is None:xmax=w3d.xmmax
+  if ymin is None:ymin=w3d.ymmin
+  if ymax is None:ymax=w3d.ymmax
+  if zmin is None:zmin=w3d.zmmin
+  if zmax is None:zmax=w3d.zmmax
+  ex=zeros([nx+1,ny+1,nz+1],Float)
+  ey=zeros([nx+1,ny+1,nz+1],Float)
+  ez=zeros([nx+1,ny+1,nz+1],Float)
+  bx=zeros([nx+1,ny+1,nz+1],Float)
+  by=zeros([nx+1,ny+1,nz+1],Float)
+  bz=zeros([nx+1,ny+1,nz+1],Float)
+  dx=(xmax-xmin)/nx
+  dy=(ymax-ymin)/ny
+  dz=(zmax-zmin)/nz
+  xi=ones(nz+1)
+  z = arange(zmin,zmax+0.1*dz,dz)
+  for j in range(nx+1):
+    x = xi*j*dx
+    for k in range(ny+1):
+      y = xi*k*dy
+      ex[j,k,:],ey[j,k,:],ez[j,k,:],bx[j,k,:],by[j,k,:],bz[j,k,:]=getappliedfields(x,y,z)
+  return ex,ey,ez,bx,by,bz
 
 ##############################################################################
 def getappliedfields(x,y,z,time=0.,js=0):
