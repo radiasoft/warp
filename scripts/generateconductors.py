@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.100 2004/12/23 01:30:44 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.101 2005/01/12 17:07:49 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1291,7 +1291,9 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
 Creates a grid object which can generate conductor data.
     """
     _default = lambda x,d: (x,d)[x is None]
-    self.zbeam = _default(zbeam,top.zbeam)
+    self.zbeam = zbeam
+    if self.zbeam is None: zbeam = top.zbeam
+    else:                  zbeam = self.zbeam
 
     self.nx = _default(nx,w3d.nx)
     self.ny = _default(ny,w3d.ny)
@@ -1314,8 +1316,8 @@ Creates a grid object which can generate conductor data.
     self.xmax = _default(xmax,self.xmmax)
     self.ymin = _default(ymin,self.ymmin)
     self.ymax = _default(ymax,self.ymmax)
-    self.zmin = _default(zmin,self.zmmin+self.zbeam)
-    self.zmax = _default(zmax,self.zmmax+self.zbeam)
+    self.zmin = _default(zmin,self.zmmin+zbeam)
+    self.zmax = _default(zmax,self.zmmax+zbeam)
 
     # --- Check for symmetries
     if self.l2symtry:
@@ -1387,23 +1389,26 @@ Creates a grid object which can generate conductor data.
     dx,dy,dz,nx,ny,nz,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
 
+    if self.zbeam is None: zbeam = top.zbeam
+    else:                  zbeam = self.zbeam
+
     xmin,ymin = self.xmin,self.ymin
     xmax,ymax = self.xmax,self.ymax
-    zmin = max(self.zmin,self.zmmin+iz*dz+top.zbeam)
-    zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+top.zbeam)
+    zmin = max(self.zmin,self.zmmin+iz*dz+zbeam)
+    zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+zbeam)
     if extent is not None:
       xmin,ymin,zmin = maximum(array(extent.mins),array([xmin,ymin,zmin]))
       xmax,ymax,zmax = minimum(array(extent.maxs),array([xmax,ymax,zmax]))
 
     # --- The conductor extent is completely outside the grid
     if xmin-dx > xmax or ymin-dy > ymax or zmin-dz > zmax:
-      return [],[],[],[],[],[],0.,0.,0.,0.,0,0,0,[]
+      return [],[],[],[],[],[],0.,0.,0.,0.,0,0,0,[],0
 
     zmmin = self.zmmin + iz*dz
 
     xmesh = self.xmmin + dx*arange(nx+1)
     ymesh = self.ymmin + dy*arange(ny+1)
-    zmesh =      zmmin + dz*arange(nz+1) + self.zbeam
+    zmesh =      zmmin + dz*arange(nz+1) + zbeam
     xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
     ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
     zmesh = compress(logical_and(zmin-dz <= zmesh,zmesh <= zmax+dz),zmesh)
@@ -1413,7 +1418,7 @@ Creates a grid object which can generate conductor data.
     ix = nint((x - self.xmmin)/dx)
     iy = nint((y - self.ymmin)/dy)
     iz = zeros(len(xmesh)*len(ymesh))
-    return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh
+    return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam
 
   def checkoverlap(self,mglevel,extent):
     if extent is None: return 1
@@ -1423,8 +1428,8 @@ Creates a grid object which can generate conductor data.
     xmin,ymin = self.xmin,self.ymin
     xmax,ymax = self.xmax,self.ymax
     if lparallel:
-      zmin = max(self.zmin,self.zmmin+iz*dz+top.zbeam)
-      zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+top.zbeam)
+      zmin = max(self.zmin,self.zmmin+iz*dz+zbeam)
+      zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+zbeam)
     else:
       zmin = self.zmin
       zmax = self.zmax
@@ -1484,13 +1489,13 @@ Assembly on this grid.
     if timeit: tt2[8] = tt2[8] + wtime() - tt1
     for i in range(self.mglevels):
       if timeit: tt1 = wtime()
-      ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(i,aextent)
+      ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam=self.getmesh(i,aextent)
       if timeit: tt2[0] = tt2[0] + wtime() - tt1
       if len(x) == 0: continue
       for zz in zmesh:
         if timeit: tt1 = wtime()
         z[:] = zz
-        iz[:] = nint((zz - zmmin - self.zbeam)/dz)
+        iz[:] = nint((zz - zmmin - zbeam)/dz)
         if timeit: tt2[1] = tt2[1] + wtime() - tt1
         if timeit: tt1 = wtime()
         d = a.griddistance(ix,iy,iz,x,y,z)
@@ -1546,7 +1551,7 @@ grid points.
     starttime = wtime()
     tt2 = zeros(4,'d')
     tt1 = wtime()
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(mglevel)
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam = self.getmesh(mglevel)
     try:
       self.distances[0,0,0]
     except AttributeError:
@@ -1560,7 +1565,7 @@ grid points.
     for zz in zmesh:
       tt1 = wtime()
       z[:] = zz
-      iz[:] = nint((zz - zmmin - self.zbeam)/dz)
+      iz[:] = nint((zz - zmmin - zbeam)/dz)
       tt2[1] = tt2[1] + wtime() - tt1
       tt1 = wtime()
       d = a.distance(x,y,z)
@@ -1578,7 +1583,7 @@ grid points.
     """
 Clears out any data in isinside by recreating the array.
     """
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(mglevel)
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam = self.getmesh(mglevel)
     self.isinside = fzeros((1+nx,1+ny,1+nz),'d')
     
   def removeisinside(self,a,nooverlap=0):
@@ -1603,7 +1608,7 @@ assembly.
     starttime = wtime()
     tt2 = zeros(4,'d')
     tt1 = wtime()
-    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(mglevel)
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh,zbeam = self.getmesh(mglevel)
     try:
       self.isinside[0,0,0]
     except AttributeError:
@@ -1617,7 +1622,7 @@ assembly.
     for zz in zmesh:
       tt1 = wtime()
       z[:] = zz #####
-      iz[:] = nint((zz - zmmin - self.zbeam)/dz)  #####
+      iz[:] = nint((zz - zmmin - zbeam)/dz)  #####
       tt2[1] = tt2[1] + wtime() - tt1
       tt1 = wtime()
       d = a.isinside(x,y,z)  #####
