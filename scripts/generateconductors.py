@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.73 2004/07/16 21:31:04 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.74 2004/07/23 20:51:07 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -961,25 +961,24 @@ Creates a grid object which can generate conductor data.
     # --- but is affected by parallel decomposition.
     if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nzfull
     else:           self.dz = (self.zmmax - self.zmmin)
-#    if w3d.solvergeom==w3d.XYgeom:self.dz=1.
-    if top.fstype in [7,11,10]:
-      if top.fstype in [7,11]:
-        conductors = ConductorType()
-        getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
-                    conductors)
-        self.mglevels = conductors.levels
-        self.mgleveliz = conductors.leveliz[:self.mglevels]
-        self.mglevellx = conductors.levellx[:self.mglevels]
-        self.mglevelly = conductors.levelly[:self.mglevels]
-        self.mglevellz = conductors.levellz[:self.mglevels]
-      if top.fstype == 10:
-        if gridrz is None:gridrz=frz.basegrid
-        setmglevels_rz(gridrz)
-        self.mglevels = f3d.mglevels
-        self.mgleveliz = f3d.mglevelsiz[:f3d.mglevels]
-        self.mglevellx = f3d.mglevelslx[:f3d.mglevels]
-        self.mglevelly = f3d.mglevelsly[:f3d.mglevels]
-        self.mglevellz = f3d.mglevelslz[:f3d.mglevels]
+    #if w3d.solvergeom==w3d.XYgeom:self.dz=1.
+    if top.fstype in [7,11,12]:
+      conductors = ConductorType()
+      getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
+                  conductors)
+      self.mglevels = conductors.levels
+      self.mgleveliz = conductors.leveliz[:self.mglevels].copy()
+      self.mglevellx = conductors.levellx[:self.mglevels].copy()
+      self.mglevelly = conductors.levelly[:self.mglevels].copy()
+      self.mglevellz = conductors.levellz[:self.mglevels].copy()
+    elif top.fstype == 10:
+      if gridrz is None:gridrz=frz.basegrid
+      setmglevels_rz(gridrz)
+      self.mglevels = f3d.mglevels
+      self.mgleveliz = f3d.mglevelsiz[:f3d.mglevels].copy()
+      self.mglevellx = f3d.mglevelslx[:f3d.mglevels].copy()
+      self.mglevelly = f3d.mglevelsly[:f3d.mglevels].copy()
+      self.mglevellz = f3d.mglevelslz[:f3d.mglevels].copy()
     else:
       self.mglevels = 1
       self.mgleveliz = [top.izfsslave[me]]
