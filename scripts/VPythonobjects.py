@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.6 2004/04/16 22:59:29 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.7 2004/05/14 23:06:12 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -14,14 +14,17 @@ def VPythonobjectsdoc():
 ##########################################################################
 
 class VisualModel:
-  def __init__(self,twoSided=1,scene=None,title='Visualization',vrange=None,
-                    viewer='OpenDX'):
+  def __init__(self,twoSided=1,normalsign=1,scene=None,
+                    title='Visualization',labels=None,
+                    vrange=None,viewer=None):
+    if viewer is None: viewer = 'OpenDX'
     self.viewer = viewer
     self.triangles = []
     self.colors = []
     self.normals = []
     self.connections = None
     self.twoSided = twoSided  # add every face twice with opposite normals
+    self.normalsign = normalsign
     if vrange is not None:
       self.vrange = vrange
       self.autoscale = 0
@@ -31,9 +34,49 @@ class VisualModel:
       self.autoscale = 1
       self.uniform = 1
     self.title = title
+    self.labels = labels
     self.scene = scene
+    self.dxobject = None
 
-  def Display(self,showgrid=0,showaxes=0):
+  def CreateDXObject(self):
+
+    import pyOpenDX
+
+    n = len(self.triangles)
+    p = array(self.triangles).astype(Float32)
+    ss = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
+    pyOpenDX.DXAddArrayData(ss,0,n,p)
+
+    normals = array(self.normals)*self.normalsign
+    nn = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
+    pyOpenDX.DXAddArrayData(nn,0,n,normals.astype(Float32))
+    pyOpenDX.DXSetStringAttribute(nn,'dep','positions')
+
+    if not self.colors: colors = array(n*[[0.5,0.7,1.0]])
+    else:               colors = array(self.colors)
+    co = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
+    pyOpenDX.DXAddArrayData(co,0,n,colors.astype(Float32))
+    pyOpenDX.DXSetStringAttribute(co,'dep','positions')
+
+    if self.connections is None:
+      self.connections = arange(n)
+      self.connections.shape = (nint(n/3),3)
+    cc = pyOpenDX.DXNewArray(pyOpenDX.TYPE_INT,pyOpenDX.CATEGORY_REAL,1,3)
+    pyOpenDX.DXAddArrayData(cc,0,nint(n/3),self.connections.astype(Int))
+    pyOpenDX.DXSetStringAttribute(cc,'ref','positions')
+    pyOpenDX.DXSetStringAttribute(cc,'element type','triangles')
+    pyOpenDX.DXSetStringAttribute(cc,'dep','connections')
+
+    ff = pyOpenDX.DXNewField()
+    pyOpenDX.DXSetComponentValue(ff,'positions',ss)
+    pyOpenDX.DXSetComponentValue(ff,'colors',co)
+    pyOpenDX.DXSetComponentValue(ff,'normals',nn)
+    pyOpenDX.DXSetComponentValue(ff,'connections',cc)
+    pyOpenDX.DXEndField(ff)
+
+    self.dxobject = ff
+
+  def Display(self,showgrid=0,labels=None):
 
     if self.viewer == 'VPython':
       import visual
@@ -50,38 +93,8 @@ class VisualModel:
                                 display=self.scene)
     else:
       import pyOpenDX
-
-      n = len(self.triangles)
-      p = array(self.triangles).astype(Float32)
-      ss = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
-      pyOpenDX.DXAddArrayData(ss,0,n,p)
-
-      normals = array(self.normals)
-      nn = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
-      pyOpenDX.DXAddArrayData(nn,0,n,normals.astype(Float32))
-      pyOpenDX.DXSetStringAttribute(nn,'dep','positions')
-
-      if not self.colors: colors = array(n*[[0.5,0.7,1.0]])
-      else:               colors = array(self.colors)
-      co = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
-      pyOpenDX.DXAddArrayData(co,0,n,colors.astype(Float32))
-      pyOpenDX.DXSetStringAttribute(co,'dep','positions')
-
-      if self.connections is None:
-        self.connections = arange(n)
-        self.connections.shape = (nint(n/3),3)
-      cc = pyOpenDX.DXNewArray(pyOpenDX.TYPE_INT,pyOpenDX.CATEGORY_REAL,1,3)
-      pyOpenDX.DXAddArrayData(cc,0,nint(n/3),self.connections.astype(Int))
-      pyOpenDX.DXSetStringAttribute(cc,'ref','positions')
-      pyOpenDX.DXSetStringAttribute(cc,'element type','triangles')
-      pyOpenDX.DXSetStringAttribute(cc,'dep','connections')
-
-      ff = pyOpenDX.DXNewField()
-      pyOpenDX.DXSetComponentValue(ff,'positions',ss)
-      pyOpenDX.DXSetComponentValue(ff,'colors',co)
-      pyOpenDX.DXSetComponentValue(ff,'normals',nn)
-      pyOpenDX.DXSetComponentValue(ff,'connections',cc)
-      pyOpenDX.DXEndField(ff)
+      if self.dxobject is None: self.CreateDXObject()
+      ff = self.dxobject
 
       if showgrid:
 
@@ -115,47 +128,36 @@ class VisualModel:
       else:
         group = ff
 
-      pyOpenDX.DXReference(group)
-      minput = {'object':group}
-      moutput = ['camera']
-      (camera,) = pyOpenDX.DXCallModule('AutoCamera',minput,moutput)
-      pyOpenDX.DXReference(camera)
+      if labels is None: labels = self.labels
 
-      if showaxes:
-        labels = pyOpenDX.DXMakeStringList(['x','y','z'])
-        minput = {'input':group,'camera':camera,'labels':labels,
-                  'ticks':3,'colors':'yellow'}
-        moutput = ['axes']
-        (axes,) = pyOpenDX.DXCallModule('AutoAxes',minput,moutput)
-        pyOpenDX.DXReference(axes)
-      else:
-        axes = group
+      pyOpenDX.DXImage(group,name=self.title,labels=labels)
+      pyOpenDX.DXDelete(group)
 
-      pyOpenDX.DXImage(axes,camera,self.title)
-
-      pyOpenDX.DXDelete(camera)
-      pyOpenDX.DXDelete(axes)
-
-  def FacetedTriangle(self, v1, v2, v3, color=None):
+  def FacetedTriangle(self, vv, nn = None, color=None):
     """Add a triangle to the model, apply faceted shading automatically"""
-    normal = self.Norm( self.Cross(v2-v1, v3-v1) )
-    for v in (v1,v2,v3):
+    if nn is None: nn = len(vv)*[None]
+    normal = self.Norm( self.Cross(vv[1]-vv[0], vv[2]-vv[0]) )
+    for v,n in zip(vv,nn):
       self.triangles.append(v)
       if color is not None: self.colors.append(color)
-      self.normals.append(normal)
+      if n is None: self.normals.append(normal)
+      else:         self.normals.append(n)
       #self.model.append( pos=v, color=color, normal=normal )
     if self.twoSided:
-      for v in (v1,v3,v2):
+      for v,n in zip(vv,nn):
         #self.model.append( pos=v, color=color, normal=-normal )
         self.triangles.append(v)
         if color is not None: self.colors.append(color)
-        self.normals.append(-normal)
+        if n is None: self.normals.append(-normal)
+        else:         self.normals.append(-n)
 
-  def FacetedPolygon(self, v, color=None):
+  def FacetedPolygon(self, v, n=None, color=None):
     """Appends a planar polygon of any number of vertices to the model,
        applying faceted shading automatically."""
+    if n is None: n = len(v)*[None]
     for t in range(len(v)-2):
-      self.FacetedTriangle( v[0], v[t+1], v[t+2] ,color=color)
+      self.FacetedTriangle( vv=[v[0], v[t+1], v[t+2]],
+                            nn=[n[0], n[t+1], n[t+2]], color=color)
 
   def DoSmoothShading(self):
     rsq = sum(self.triangles**2,1)
@@ -215,17 +217,19 @@ class VisualMesh (VisualModel):
   """
 xvalues, yvalues, zvalues: 2-D arrays containing the coordinates and data
 twoSided=1: when true, surface is two sided
+normalsign=1: when negative, show the under side (and twoSided == 0)
 color=None: can be specified as an [r,g,b] list
 scene=None: an already existing display scene. When None, create a new one.
 title='Mesh': Display title - only used when new scene created.
   """
   def __init__(self, xvalues=None, yvalues=None, zvalues=None,
                xscaled=0,zscaled=1,
-               twoSided=1,color=None,color1=None,color2=None,
+               twoSided=1,normalsign=1,color=None,color1=None,color2=None,
                scene=None,title=None,vrange=None,viewer=None):
     if not title: title = 'Mesh'
-    VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
-                              vrange=vrange,viewer=viewer)
+    VisualModel.__init__(self,twoSided=twoSided,normalsign=normalsign,
+                              scene=scene,title=title,
+                              vrange=vrange,viewer=viewer,display=1)
 
     assert zvalues is not None,"zvalues must be specified"
 
@@ -271,45 +275,160 @@ title='Mesh': Display title - only used when new scene created.
         self.FacetedPolygon([points[i,j], points[i,j+1],
                              points[i+1,j+1], points[i+1,j]],
                             color=color)
-    self.Display()
+
+    self.CreateDXObject()
+    if display: self.Display()
 
 ########################################################################
 class VisualRevolution(VisualModel):
   """
 Visualize surface of revolution
+ - srfrv: optional function defining surface
+ - zzmin: min z extent of surface
+ - zzmax: max z extent of surface
+ - rendzmin: radius at zmin
+ - rendzmax: radius at zmax
+ - nz=20: if srfrv is given, number of z points radius sampled at
+ - nth=20: number of theta angles points sampled at
+ - thmin=0.: miminmum theta angle
+ - thmax=2*pi: maximum theta angle
+ - xoff=0: x offset
+ - yoff=0: y offset
+ - zoff=0: z offset
+ - rofzdata=None: optional tablized radius defining surface
+ - zdata=None: optional tablized z poins defining surface
+ - raddata=None: optional tablized circle radius defining surface
+ - zcdata=None: optional tablized circle z center defining surface
+ - rcdata=None: optional tablized circle r center defining surface
+ - ntpts=5: number of points sampled for circles
+ - twoSided=1: if true, include both sides of the surface
+ - normalsign=1: 1 when data is clockwise, -1 with counterclockwise
+ - color=None: RGB color for surface, of form [r,g,b]
+ - scene=None: include object in exising scene (only for VPython)
+ - title=None: window title
+ - vrange=None: set view range (only for VPython)
+ - viewer=None: select viewer, either 'OpenDX' or 'VPython'
+ - display=1: if 1, immeidately display object
   """
-  def __init__(self,srfrv,zzmin,zzmax,nz=20,nth=20,xoff=0,yoff=0,zoff=0,
-                    twoSided=1,color=None,color1=None,color2=None,
-                    scene=None,title=None,vrange=None):
+  def __init__(self,srfrv,zzmin,zzmax,rendzmin,rendzmax,
+                    nz=20,nth=20,thmin=0.,thmax=2*pi,xoff=0,yoff=0,zoff=0,
+                    rofzdata=None,zdata=None,raddata=None,
+                    zcdata=None,rcdata=None,ntpts=5,
+                    twoSided=1,normalsign=1,color=None,
+                    scene=None,title=None,vrange=None,
+                    viewer=None,display=1):
     if not title: title = 'Surface of revolution'
-    VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
-                              vrange=vrange)
+    VisualModel.__init__(self,twoSided=twoSided,normalsign=normalsign,
+                              scene=scene,title=title,
+                              vrange=vrange,viewer=viewer)
 
-    zz = arange(0,nz+1)*(zzmax - zzmin)/nz + zzmin
-    rr = ones(nz+1,'d')
-    for i in range(nz+1):
-      warp.f3d.srfrv_z = zz[i]
-      srfrv()
-      rr[i] = warp.f3d.srfrv_r
-
-    xx = cos(2.*pi*arange(0,nth+1)/nth) + xoff
-    yy = sin(2.*pi*arange(0,nth+1)/nth) + yoff
-
-    if color1 is not None:
-      getcolor = 1
-      zmin = minnd(zvalues)
-      zmax = maxnd(zvalues)
-      if color2 is None: color2 = zeros(3,'d')
+    if rofzdata is None and zdata is None:
+      # --- Include extra points for the z end of the surface
+      zz = arange(-1,nz+2)*(zzmax - zzmin)/nz + zzmin
+      rr = ones(nz+3,'d')
+      for i in range(nz+1):
+        warp.f3d.srfrv_z = zz[i+1]
+        srfrv()
+        rr[i+1] = warp.f3d.srfrv_r
+      zzleft = zz[:-1]
+      zzrght = zz[1:]
+      rrleft = rr[:-1]
+      rrrght = rr[1:]
+      ttleft = len(zzleft)*[None]
+      ttrght = len(zzrght)*[None]
     else:
-      getcolor = 0
+      zzleft = [0.]
+      zzrght = [0.]
+      rrleft = [0.]
+      rrrght = [0.]
+      ttleft = [0.]
+      ttrght = [0.]
+      for i in range(len(zdata)-1):
+        z,r,rad,zc,rc = zdata[i],rofzdata[i],raddata[i],zcdata[i],rcdata[i]
+        zp1,rp1 = zdata[i+1],rofzdata[i+1]
+        if rad == largepos:
+          zzleft.append(z)
+          zzrght.append(zp1)
+          rrleft.append(r)
+          rrrght.append(rp1)
+          ttleft.append(arctan2((zp1 - z),(r - rp1)))
+          ttrght.append(ttleft[i])
+        else:
+          t1 = arctan2(r-rc,z-zc)
+          t2 = arctan2(rp1-rc,zp1-zc)
+          if t1 > t2 and rad < 0.: t2 += 2*pi
+          if t1 < t2 and rad > 0.: t1 += 2*pi
+          tt = t1 + (t2 - t1)*arange(ntpts+1)/ntpts
+          zz = zc + abs(rad)*cos(tt)
+          rr = rc + abs(rad)*sin(tt)
+          zzleft += list(zz[:-1])
+          zzrght += list(zz[1:])
+          rrleft += list(rr[:-1])
+          rrrght += list(rr[1:])
+          if rad < 0.: addpi = pi
+          else:        addpi = 0.
+          ttleft += list(tt[:-1]+addpi)
+          ttrght += list(tt[1:]+addpi)
 
-    for i in xrange(nz-1):
-      for j in xrange(len(xx)-1):
-        p1 = array([rr[i  ]*xx[j  ], rr[i  ]*yy[j  ], zz[i  ]+zoff])
-        p2 = array([rr[i  ]*xx[j+1], rr[i  ]*yy[j+1], zz[i  ]+zoff])
-        p3 = array([rr[i+1]*xx[j+1], rr[i+1]*yy[j+1], zz[i+1]+zoff])
-        p4 = array([rr[i+1]*xx[j  ], rr[i+1]*yy[j  ], zz[i+1]+zoff])
-        self.FacetedPolygon([p1,p2,p3,p4],color=color)
-    self.Display()
+      zzleft += [0.]
+      zzrght += [0.]
+      rrleft += [0.]
+      rrrght += [0.]
+      ttleft += [0.]
+      ttrght += [0.]
+
+    # --- Now set end points
+    if rendzmin == largepos: rendzmin = 2.*max(max(rrleft),max(rrrght))
+    if rendzmax == largepos: rendzmax = 2.*max(max(rrleft),max(rrrght))
+    if rendzmin == None: rendzmin = rrleft[1]
+    if rendzmax == None: rendzmax = rrrght[-2]
+    zzleft[0] = zzmin
+    zzrght[0] = zzleft[1]
+    zzleft[-1] = zzrght[-2]
+    zzrght[-1] = zzmax
+    rrleft[0] = rendzmin
+    rrrght[0] = rrleft[1]
+    rrleft[-1] = rrrght[-2]
+    rrrght[-1] = rendzmax
+    ttleft[0] = pi #*(normalsign > 0.)
+    ttrght[0] = pi #*(normalsign > 0.)
+    ttleft[-1] = 0. # pi*(normalsign < 0.)
+    ttrght[-1] = 0. # pi*(normalsign < 0.)
+
+    phi = thmin + (thmax - thmin)*arange(0,nth+1)/nth
+    xx = cos(phi)
+    yy = sin(phi)
+
+    for i in range(len(zzleft)):
+      for j in range(len(xx)-1):
+        p1 = array([rrleft[i]*xx[j  ]+xoff, rrleft[i]*yy[j  ]+yoff,
+                    zzleft[i] + zoff])
+        p2 = array([rrleft[i]*xx[j+1]+xoff, rrleft[i]*yy[j+1]+yoff,
+                    zzleft[i] + zoff])
+        p3 = array([rrrght[i]*xx[j+1]+xoff, rrrght[i]*yy[j+1]+yoff,
+                    zzrght[i] + zoff])
+        p4 = array([rrrght[i]*xx[j  ]+xoff, rrrght[i]*yy[j  ]+yoff,
+                    zzrght[i] + zoff])
+        if ttleft[i] is not None:
+          n1 = array([sin(ttleft[i])*cos(phi[j  ]),sin(phi[j  ]),
+                      cos(ttleft[i])*cos(phi[j  ])])
+          n2 = array([sin(ttleft[i])*cos(phi[j+1]),sin(phi[j+1]),
+                      cos(ttleft[i])*cos(phi[j+1])])
+          n3 = array([sin(ttrght[i])*cos(phi[j+1]),sin(phi[j+1]),
+                      cos(ttrght[i])*cos(phi[j+1])])
+          n4 = array([sin(ttrght[i])*cos(phi[j  ]),sin(phi[j  ]),
+                      cos(ttrght[i])*cos(phi[j  ])])
+        else:
+          n1,n2,n3,n4 = None,None,None,None
+        self.FacetedPolygon([p1,p2,p3,p4],[n1,n2,n3,n4],color=color)
+
+    self.CreateDXObject()
+    if display: self.Display()
+    self.zzleft = zzleft
+    self.rrleft = rrleft
+    self.ttleft = ttleft
+    self.zzrght = zzrght
+    self.rrrght = rrrght
+    self.ttrght = ttrght
 
 
