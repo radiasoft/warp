@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.96 2004/11/29 17:43:22 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.97 2004/12/11 00:08:53 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1549,7 +1549,7 @@ grid points.
     ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(mglevel)
     try:
       self.distances[0,0,0]
-    except:
+    except AttributeError:
       self.distances = fzeros((1+nx,1+ny,1+nz),'d')
     ix1 = min(ix)
     ix2 = max(ix)
@@ -1606,7 +1606,7 @@ assembly.
     ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(mglevel)
     try:
       self.isinside[0,0,0]
-    except:
+    except AttributeError:
       self.resetisinside(mglevel)
     ix1 = min(ix)
     ix2 = max(ix)
@@ -1738,7 +1738,7 @@ Cylinders class for a list of cylinders
       try:
         self.ncylinders = len(k)
         break
-      except:
+      except TypeError:
         pass
 
     assert self.ncylinders > 0,"At least on of the input arguments must be a list!"
@@ -2275,7 +2275,7 @@ Cones
       try:
         self.ncones = len(k)
         break
-      except:
+      except TypeError:
         pass
 
     assert self.ncones > 0,"At least on of the input arguments must be a list!"
@@ -3971,7 +3971,7 @@ containing a list of primitives.
     stype = 'list'
     try:
       l=len(s)
-    except:
+    except TypeError:
       stype = 'scalar'
 
     if(stype=='scalar'):
