@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.42 $, $Date: 2002/05/13 21:14:46 $
+c@(#) File F3D.M, version $Revision: 3.43 $, $Date: 2002/05/15 21:54:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1142,38 +1142,40 @@ c nxy is the size of the transverse planes.
       integer(ISZ):: ix,iy,iz
 
       integer(ISZ):: naux1,naux2
-      integer(ISZ):: prevnaux1,prevnaux2
+      integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
-      data naux1/0/,naux2/0/
-      save naux1,naux2,aux1,aux2
+      data maxnaux1/0/,maxnaux2/0/
+      save maxnaux1,maxnaux2,aux1,aux2
  
 c Setup and make call to the ESSL routine for sine-transforms
 
-c     if (isetup == 1) then
-c       --- Calculate how much space is needed. Only allocate if it is
-c       --- different from last time (deallocating if needed).
-        prevnaux1 = naux1
-        prevnaux2 = naux2
-        if (nz <= 2048) then
-          naux1 = 20000
-        else
-          naux1 = 20000+2.28*nz
-        endif
-        if (nz <= 2048) then
-          naux2 = 20000
-        else
-          naux2 = 20000+2.28*nz
-        endif
-        if (nz >= 252) naux2 = naux2 + (2*nz+256)*(min(64, nx+(1-esx)))
+c     --- Calculate how much space is needed. Only allocate if it is
+c     --- different from last time (deallocating if needed).
+      if (nz <= 2048) then
+        naux1 = 20000
+      else
+        naux1 = 20000+2.28*nz
+      endif
+      if (nz <= 2048) then
+        naux2 = 20000
+      else
+        naux2 = 20000+2.28*nz
+      endif
+      if (nz >= 252) naux2 = naux2 + (2*nz+256)*(min(64, nx+(1-esx)))
 
-        if (prevnaux1 > 0 .and. prevnaux1 .ne. naux1) deallocate(aux1)
-        if (prevnaux2 > 0 .and. prevnaux2 .ne. naux2) deallocate(aux2)
-        if (prevnaux1 .ne. naux1) allocate(aux1(naux1))
-        if (prevnaux2 .ne. naux2) allocate(aux2(naux2))
-        call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
-     &            aux1,naux1,aux2,naux2)
-c       return
-c     endif
+      if (naux1 > maxnaux1) then
+        maxnaux1 = naux1
+        if (allocated(aux1)) deallocate(aux1)
+        allocate(aux1(maxnaux1))
+      endif
+      if (naux2 > maxnaux2) then
+        maxnaux2 = naux2
+        if (allocated(aux2)) deallocate(aux2)
+        allocate(aux2(maxnaux2))
+      endif
+
+      call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
+     &          aux1,naux1,aux2,naux2)
  
       do iy = 0, ny-2+(1-esy), 2
 c       --- shift k-space origin to middle and apply normalization factor
@@ -1229,38 +1231,40 @@ c nxy is the size of the transverse planes.
       integer(ISZ):: ix,iy,iz
 
       integer(ISZ):: naux1,naux2
-      integer(ISZ):: prevnaux1,prevnaux2
+      integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
-      data naux1/0/,naux2/0/
-      save naux1,naux2,aux1,aux2
+      data maxnaux1/0/,maxnaux2/0/
+      save maxnaux1,maxnaux2,aux1,aux2
  
 c Setup and make call to the ESSL routine for sine-transforms
 
-c     if (isetup == 1) then
-c       --- Calculate how much space is needed. Only allocate if it is
-c       --- different from last time (deallocating if needed).
-        prevnaux1 = naux1
-        prevnaux2 = naux2
-        if (nz <= 2048) then
-          naux1 = 20000
-        else
-          naux1 = 20000+2.28*nz
-        endif
-        if (nz <= 2048) then
-          naux2 = 20000
-        else
-          naux2 = 20000+2.28*nz
-        endif
-        if (nz >= 252) naux2 = naux2 + (2*nz+256)*(min(64, nx+(1-esx)))
+c     --- Calculate how much space is needed. Only allocate if it is
+c     --- different from last time (deallocating if needed).
+      if (nz <= 2048) then
+        naux1 = 20000
+      else
+        naux1 = 20000+2.28*nz
+      endif
+      if (nz <= 2048) then
+        naux2 = 20000
+      else
+        naux2 = 20000+2.28*nz
+      endif
+      if (nz >= 252) naux2 = naux2 + (2*nz+256)*(min(64, nx+(1-esx)))
 
-        if (prevnaux1 > 0 .and. prevnaux1 .ne. naux1) deallocate(aux1)
-        if (prevnaux2 > 0 .and. prevnaux2 .ne. naux2) deallocate(aux2)
-        if (prevnaux1 .ne. naux1) allocate(aux1(naux1))
-        if (prevnaux2 .ne. naux2) allocate(aux2(naux2))
-        call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
-     &            aux1,naux1,aux2,naux2)
-c       return
-c     endif
+      if (naux1 > maxnaux1) then
+        maxnaux1 = naux1
+        if (allocated(aux1)) deallocate(aux1)
+        allocate(aux1(maxnaux1))
+      endif
+      if (naux2 > maxnaux2) then
+        maxnaux2 = naux2
+        if (allocated(aux2)) deallocate(aux2)
+        allocate(aux2(maxnaux2))
+      endif
+
+      call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
+     &          aux1,naux1,aux2,naux2)
 
       do iy = 0, ny-2+(1-esy), 2
 
@@ -2064,36 +2068,42 @@ c Separate sine coefficients
 c -----------------------------------------------------------------
 
       integer(ISZ):: naux1,naux2
-      integer(ISZ):: prevnaux1,prevnaux2
+      integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
       data naux1/0/,naux2/0/
-      save naux1,naux2,aux1,aux2
+      data maxnaux1/0/,maxnaux2/0/
+      save aux1,aux2,maxnaux1,maxnaux2
 
 c Setup and make call to the ESSL routine for sine-transforms
 
-      if (isetup == 1) then
-c       --- Calculate how much space is needed. Only allocate if it is
-c       --- different from last time (deallocating if needed).
-        prevnaux1 = naux1
-        prevnaux2 = naux2
-        if (2*nx <= 16384) then
-          naux1 = 50000
-        else
-          naux1 = 20000+.60*nx*2
-        endif
-        if (2*nx <= 16384) then
-          naux2 = 20000
-        else
-          naux2 = 20000+.64*nx*2
-        endif
-        if (prevnaux1 > 0 .and. prevnaux1 .ne. naux1) deallocate(aux1)
-        if (prevnaux2 > 0 .and. prevnaux2 .ne. naux2) deallocate(aux2)
-        if (prevnaux1 .ne. naux1) allocate(aux1(naux1))
-        if (prevnaux2 .ne. naux2) allocate(aux2(naux2))
-        call dsinf(1,a,1,1+nx,a,1,1+nx,2*nx,ny,1.,aux1,naux1,aux2,naux2)
-        return
+c     --- Calculate how much space is needed. Only allocate if it is
+c     --- different from last time (deallocating if needed).
+      if (2*nx <= 16384) then
+        naux1 = 50000
+      else
+        naux1 = 20000+.60*nx*2
       endif
- 
+      if (2*nx <= 16384) then
+        naux2 = 20000
+      else
+        naux2 = 20000+.64*nx*2
+      endif
+
+      if (naux1 > maxnaux1) then
+        maxnaux1 = naux1
+        if (allocated(aux1)) deallocate(aux1)
+        allocate(aux1(maxnaux1))
+      endif
+      if (naux2 > maxnaux2) then
+        maxnaux2 = naux2
+        if (allocated(aux2)) deallocate(aux2)
+        allocate(aux2(maxnaux2))
+      endif
+
+      call dsinf(1,a,1,1+nx,a,1,1+nx,2*nx,ny,1.,aux1,naux1,aux2,naux2)
+
+      if (isetup == 1) return
+
       call dsinf(0,a,1,1+nx,a,1,1+nx,2*nx,ny,1.,aux1,naux1,aux2,naux2)
 
 #endif
@@ -2175,37 +2185,42 @@ c Separate sine coefficients
 c -----------------------------------------------------------------
 
       integer(ISZ):: naux1,naux2
-      integer(ISZ):: prevnaux1,prevnaux2
+      integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
       data naux1/0/,naux2/0/
-      save naux1,naux2,aux1,aux2
+      data maxnaux1/0/,maxnaux2/0/
+      save aux1,aux2,maxnaux1,maxnaux2
 
 c Setup and make call to the ESSL routine for sine-transforms
- 
-      if (isetup == 1) then
-c       --- Calculate how much space is needed. Only allocate if it is
-c       --- different from last time (deallocating if needed).
-        prevnaux1 = naux1
-        prevnaux2 = naux2
-        if (2*ny <= 16384) then
-          naux1 = 50000
-        else
-          naux1 = 20000+.60*ny*2
-        endif
-        if (2*ny <= 16384) then
-          naux2 = 20000
-        else
-          naux2 = 20000+.64*ny*2
-        endif
-        if (ny >= 252) naux2 = naux2 + (ny+257)*(min(128, nx))
-        if (prevnaux1 > 0 .and. prevnaux1 .ne. naux1) deallocate(aux1)
-        if (prevnaux2 > 0 .and. prevnaux2 .ne. naux2) deallocate(aux2)
-        if (prevnaux1 .ne. naux1) allocate(aux1(naux1))
-        if (prevnaux2 .ne. naux2) allocate(aux2(naux2))
 
-        call dsinf(1,a,1+nx,1,a,1+nx,1,2*ny,nx,1.,aux1,naux1,aux2,naux2)
-        return
+c     --- Calculate how much space is needed. Only allocate if it is
+c     --- different from last time (deallocating if needed).
+      if (2*ny <= 16384) then
+        naux1 = 50000
+      else
+        naux1 = 20000+.60*nx*2
       endif
+      if (2*ny <= 16384) then
+        naux2 = 20000
+      else
+        naux2 = 20000+.64*nx*2
+      endif
+      if (2*ny >= 252) naux2 = naux2 + (ny + 257)*min(128,1+nx)
+
+      if (naux1 > maxnaux1) then
+        maxnaux1 = naux1
+        if (allocated(aux1)) deallocate(aux1)
+        allocate(aux1(maxnaux1))
+      endif
+      if (naux2 > maxnaux2) then
+        maxnaux2 = naux2
+        if (allocated(aux2)) deallocate(aux2)
+        allocate(aux2(maxnaux2))
+      endif
+
+      call dsinf(1,a,1+nx,1,a,1+nx,1,2*ny,nx,1.,aux1,naux1,aux2,naux2)
+
+      if (isetup == 1) return
  
       call dsinf(0,a,1+nx,1,a,1+nx,1,2*ny,nx,1.,aux1,naux1,aux2,naux2)
 
@@ -2247,42 +2262,33 @@ c  copy the data back to the original array.
       integer(ISZ):: k,kc,ix,iy,ii,jj
 
       integer(ISZ):: naux1,naux2
-      integer(ISZ):: prevnaux1,prevnaux2
-      integer(ISZ):: prevnx,prevny,previsign
+      integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
-      data naux1/0/,naux2/0/
-      data prevnx/0/,prevny/0/,previsign/0/
-      save naux1,naux2,aux1,aux2,prevnx,prevny,previsign
+      data maxnaux1/0/,maxnaux2/0/
+      save maxnaux1,maxnaux2,aux1,aux2
  
 c     --- If needed, allocate and initialize auxiliary arrays.
-      if (nx .ne. prevnx .or. ny .ne. prevny .or. isign .ne. previsign) then
-c       --- Calculate how much space is needed.
-        naux1 = 20000
-        if (nx > 2048) naux1 = naux1 + 2.28*nx
-        naux2 = 20000
-        if (nx > 2048) naux2 = naux2 + 2.28*nx
+c     --- Calculate how much space is needed.
+      naux1 = 20000
+      if (nx > 2048) naux1 = naux1 + 2.28*nx
+      naux2 = 20000
+      if (nx > 2048) naux2 = naux2 + 2.28*nx
 
-c       --- Only allocate if it is larger than last time (deallocating
-c       --- if needed).
-        if (naux1 > prevnaux1) then
-          if (allocated(aux1)) deallocate(aux1)
-          allocate(aux1(naux1))
-        endif
-        if (naux2 > prevnaux2) then
-          if (allocated(aux2)) deallocate(aux2)
-          allocate(aux2(naux2))
-        endif
-
-c       --- Initialize the auxiliary arrays
-        call dcft(1,w,1,nx+1,w,1,nx+1,nx,ny/2,-isign,1.,aux1,naux1,aux2,naux2)
-
-c       --- Save the values for this intialization
-        prevnx = nx
-        prevny = ny
-        previsign = isign
-        prevnaux1 = naux1
-        prevnaux2 = naux2
+c     --- Only allocate if it is larger than last time (deallocating
+c     --- if needed).
+      if (naux1 > maxnaux1) then
+        maxnaux1 = naux1
+        if (allocated(aux1)) deallocate(aux1)
+        allocate(aux1(maxnaux1))
       endif
+      if (naux2 > maxnaux2) then
+        maxnaux2 = naux2
+        if (allocated(aux2)) deallocate(aux2)
+        allocate(aux2(maxnaux2))
+      endif
+
+c     --- Initialize the auxiliary arrays
+      call dcft(1,w,1,nx+1,w,1,nx+1,nx,ny/2,-isign,1.,aux1,naux1,aux2,naux2)
 
 c     do setup
       if (isetup == 1) then
@@ -2394,44 +2400,35 @@ c  copy the data back to the original array.
       integer(ISZ):: k,kc,ix,iy,ii,jj
 
       integer(ISZ):: naux1,naux2
-      integer(ISZ):: prevnaux1,prevnaux2
-      integer(ISZ):: prevnx,prevny,previsign
+      integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
-      data naux1/0/,naux2/0/
-      data prevnx/0/,prevny/0/,previsign/0/
-      save naux1,naux2,aux1,aux2,prevnx,prevny,previsign
+      data maxnaux1/0/,maxnaux2/0/
+      save maxnaux1,maxnaux2,aux1,aux2
  
 c Setup and make call to the ESSL routine for Fourier-transforms
 
 c     --- If needed, allocate and initialize auxiliary arrays.
-      if (nx .ne. prevnx .or. ny .ne. prevny .or. isign .ne. previsign) then
-c       --- Calculate how much space is needed.
-        naux1 = 20000
-        if (ny > 2048) naux1 = naux1 + 2.28*ny
-        naux2 = 20000
-        if (ny > 2048) naux2 = naux2 + 2.28*ny
+c     --- Calculate how much space is needed.
+      naux1 = 20000
+      if (ny > 2048) naux1 = naux1 + 2.28*ny
+      naux2 = 20000
+      if (ny > 2048) naux2 = naux2 + 2.28*ny
 
-c       --- Only allocate if it is larger than last time (deallocating
-c       --- if needed).
-        if (naux1 > prevnaux1) then
-          if (allocated(aux1)) deallocate(aux1)
-          allocate(aux1(naux1))
-        endif
-        if (naux2 > prevnaux2) then
-          if (allocated(aux2)) deallocate(aux2)
-          allocate(aux2(naux2))
-        endif
-
-c       --- Initialize the auxiliary arrays
-        call dcft(1,w,1,ny+1,w,1,ny+1,ny,nx/2,-isign,1.,aux1,naux1,aux2,naux2)
-
-c       --- Save the values for this intialization
-        prevnx = nx
-        prevny = ny
-        previsign = isign
-        prevnaux1 = naux1
-        prevnaux2 = naux2
+c     --- Only allocate if it is larger than last time (deallocating
+c     --- if needed).
+      if (naux1 > maxnaux1) then
+        maxnaux1 = naux1
+        if (allocated(aux1)) deallocate(aux1)
+        allocate(aux1(maxnaux1))
       endif
+      if (naux2 > maxnaux2) then
+        maxnaux2 = naux2
+        if (allocated(aux2)) deallocate(aux2)
+        allocate(aux2(maxnaux2))
+      endif
+
+c     --- Initialize the auxiliary arrays
+      call dcft(1,w,1,ny+1,w,1,ny+1,ny,nx/2,-isign,1.,aux1,naux1,aux2,naux2)
 
 c     do setup
       if (isetup == 1) then
