@@ -19,6 +19,7 @@ class MultiGrid:
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
+  __topinputs__ = ['pbound0','pboundnz','pboundxy']
 
   def __init__(self,**kw):
     self.solvergeom = w3d.XYZgeom
@@ -37,6 +38,11 @@ class MultiGrid:
       if name not in self.__dict__:
         #self.__dict__[name] = kw.pop(name,getattr(f3d,name)) # Python2.3
         self.__dict__[name] = kw.get(name,getattr(f3d,name))
+        if kw.has_key(name): del kw[name]
+    for name in MultiGrid.__topinputs__:
+      if name not in self.__dict__:
+        #self.__dict__[name] = kw.pop(name,getattr(top,name)) # Python2.3
+        self.__dict__[name] = kw.get(name,getattr(top,name))
         if kw.has_key(name): del kw[name]
 
     # --- bounds is special since it will sometimes be set from the
@@ -57,6 +63,25 @@ class MultiGrid:
         elif self.l4symtry:
           self.bounds[0] = 1
           self.bounds[2] = 1
+
+    # --- pbounds is special since it will sometimes be set from the
+    # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
+    if 'pbounds' not in self.__dict__:
+      if 'pbounds' in kw:
+        self.pbounds = kw['pbounds']
+      else:
+        self.pbounds = zeros(6)
+        self.pbounds[0] = self.pboundxy
+        self.pbounds[1] = self.pboundxy
+        self.pbounds[2] = self.pboundxy
+        self.pbounds[3] = self.pboundxy
+        self.pbounds[4] = self.pbound0
+        self.pbounds[5] = self.pboundnz
+        if self.l2symtry:
+          self.pbounds[2] = 1
+        elif self.l4symtry:
+          self.pbounds[0] = 1
+          self.pbounds[2] = 1
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
@@ -130,13 +155,13 @@ class MultiGrid:
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
 
   def makerhoperiodic(self):
-    if self.bounds[0] == 2 or self.bounds[1] == 2:
+    if self.pbounds[0] == 2 or self.pbounds[1] == 2:
       self.rho[0,:,:] = self.rho[0,:,:] + self.rho[-1,:,:]
       self.rho[-1,:,:] = self.rho[0,:,:]
-    if self.bounds[2] == 2 or self.bounds[3] == 2:
+    if self.pbounds[2] == 2 or self.pbounds[3] == 2:
       self.rho[:,0,:] = self.rho[:,0,:] + self.rho[:,-1,:]
       self.rho[:,-1,:] = self.rho[:,0,:]
-    if self.bounds[4] == 2 or self.bounds[5] == 2:
+    if self.pbounds[4] == 2 or self.pbounds[5] == 2:
       self.rho[:,:,0] = self.rho[:,:,0] + self.rho[:,:,-1]
       self.rho[:,:,-1] = self.rho[:,:,0]
 
