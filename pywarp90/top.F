@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.16 $, $Date: 2001/07/10 20:37:09 $
+c@(#) File TOP.M, version $Revision: 3.17 $, $Date: 2001/07/14 00:46:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1798,7 +1798,7 @@ c  For periodic runs, assumes mesh period length = lattice period length
       if (.not. bends .or. .not. linbend) return
 
       vz  = uzp*gaminv
-      dzi = 1./(vz*(dtr-dtl))
+      dzi = 1./dvnz(vz*(dtr-dtl))
 
 c  Extract the local bend properties for each particle off the general lattice
 
@@ -1914,7 +1914,7 @@ c   bx, by   quadrupole magnetic field
       if (.not. quads) return
 
       vz  = uzp*gaminv
-      dzi = 1./(vz*(dtr-dtl))
+      dzi = 1./dvnz(vz*(dtr-dtl))
 
       do io=1,nquadol
         if (.not. linquad(io)) cycle
@@ -2010,7 +2010,7 @@ c   bx, by   dipole magnetic field
       if (.not. dipos) return
 
       vz  = uzp*gaminv
-      dzi = 1./(vz*(dtr-dtl))
+      dzi = 1./dvnz(vz*(dtr-dtl))
 
       do io=1,ndipool
         if (.not. lindipo(io)) cycle
@@ -2160,7 +2160,7 @@ c   bx, by   sextupole magnetic field
       if (.not. sexts) return
 
       vz  = uzp*gaminv
-      dzi = 1./(vz*(dtr-dtl))
+      dzi = 1./dvnz(vz*(dtr-dtl))
 
       do io=1,nsextol
         if (.not. linsext(io)) cycle
@@ -2255,7 +2255,7 @@ c   bx, by, bz   magnetic field
       if (.not. heles) return
 
       vz  = uzp*gaminv
-      dzi = 1./(vz*(dtr-dtl))
+      dzi = 1./dvnz(vz*(dtr-dtl))
 
       do io=1,nheleol
         if (.not. linhele(io)) cycle
