@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FRZ.M, version $Revision: 3.13 $, $Date: 2002/04/23 14:15:47 $
+c@(#) File FRZ.M, version $Revision: 3.14 $, $Date: 2003/10/23 23:26:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Written by Debbie Callahan
@@ -11,7 +11,7 @@ c
 c     1) Dale Nielsen's vectorized version of Langdon's cpft, VCPFT
 c     2) Vectorized two at a time real(kind=8):: transforms: VRPFT2, VRPFTI2
 c     4) A vectorized periodic (z) and tridiagonal (r) Poisson solver: VPOISRZ
-c     5) A BASIS test driver (invoke via PACKAGE FRZ;GENERATE)
+c     5) A Python test driver (invoke via PACKAGE FRZ;GENERATE)
 c        The arrays and scalars used are local to package FRZ; some have the
 c        same names as those in the associated particle code package W6,
 c        but they are <<not>> the same variables.  After calling this driver
@@ -47,10 +47,6 @@ c=============================================================================
       real(kind=8):: lr4
 
 c  Invoked by the GENERATE command, it tests the fieldsolver.
-c  (The only BASIS/MPPL dependent coding is use of STDOUT, return (value),
-c  and the next few lines).
-
-c  Bring in the common block; allocate dynamic arrays ("group allot")
 
       integer(ISZ):: ir,iz
       real(kind=8):: dr,dz,sz,cz,fact1,fact2,rjph,rjmh,dr2j,dr20
@@ -438,7 +434,7 @@ c=======================================================================
       integer(ISZ):: iwhich
       real(kind=8):: dt
 
-c  BASIS interface to VPOISRZ, using variables from the database for
+c  Python interface to VPOISRZ, using variables from the database for
 c  package FRZ.  The user's application package should contain a
 c  similar subroutine for convenience, using its own database variables.
 c  To avoid confusion, it should have a different name, say "vprz"

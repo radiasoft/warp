@@ -1,11 +1,11 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.25 $, $Date: 2003/10/21 21:23:40 $
+c@(#) File ENV.M, version $Revision: 3.26 $, $Date: 2003/10/23 23:26:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
 c  but it may be useful by itself.  It consists of an simple 
-c  envelope code and a BASIS interface.  
+c  envelope code and a Python interface.  
 c
 c=======================================================================
       subroutine envinit

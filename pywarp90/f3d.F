@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.82 $, $Date: 2003/08/29 17:32:24 $
+c@(#) File F3D.M, version $Revision: 3.83 $, $Date: 2003/10/23 23:26:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -11,7 +11,7 @@ c     1) Dale Nielsen's vectorized version of Langdon's cpft, VCPFT
 c     2) Vectorized two at a time real(kind=8):: transforms: VRPFT2, VRPFTI2
 c     3) Vectorized sine transforms, in X and Y: VSFTX, VSFTY
 c     4) A vectorized 3d sine-sine-periodic Poisson solver: VPOIS3D
-c     5) A BASIS test driver (invoke via PACKAGE F3D;GENERATE)
+c     5) A Python test driver (invoke via PACKAGE F3D;GENERATE)
 c        The arrays and scalars used are local to package F3D; some have the
 c        same names as those in the associated particle code package W6,
 c        but they are <<not>> the same variables.  After calling this driver
@@ -50,11 +50,6 @@ c=============================================================================
       use F3Dvars
 
 c  Invoked by the GENERATE command, it tests the fieldsolver.
-c  (The only BASIS/MPPL dependent coding is use of STDOUT, return (value),
-c  and the next few lines).
-
-c  Bring in the common block; allocate dynamic arrays ("group allot")
-
 
       real(kind=8):: dx,dy,dz,cx,cy,cz,aa,sumsq,sqm,errmax,time,delsq,err
       integer(ISZ):: nx2,ny2,nz2,ix,iy,iz,kx,ky,kz,itest
@@ -237,7 +232,7 @@ c=======================================================================
       use F3Dvars
       integer(ISZ):: iwhich
 
-c  BASIS interface to VPOIS3D, using variables from the database for
+c  Python interface to VPOIS3D, using variables from the database for
 c  package F3D.  The user's application package should contain a
 c  similar subroutine for convenience, using its own database variables.
 c  To avoid confusion, it should have a different name, say "vp3"
@@ -3875,8 +3870,6 @@ c  input:
 c  pipeshpe   shape of conductors, default is circlular, "hyp" is hyperbolic
 c  rest of variables have the standard meanings
 
-c  using common block since needs too many arguments to be handled by basis
-
       real(kind=8):: xx,yy,zz,dx,dy,dz,dxi,dyi,dzi
       integer(ISZ):: iend,iquad,ic,iq,ix,iy,iz
 
@@ -6922,19 +6915,17 @@ c===========================================================================
       integer(ISZ):: condid
 
 c Sets up a conductor represented by the outside of a surface of revolution.
-c The Basis routine rofzfunc should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
+c The Python routine rofzfunc should be of the form
+c    def rofz():
+c      f3d.srfrv_r = f(f3d.srfrv_z)
+c
 c where f() is the radius as a function of z and srfrv_z and srfrv_r are
 c compiled variables which pass data into and out of rofz.
 c The begining of the calling sequence would then be
 c call srfrvout("rofz",...)
 c
 c Input:
-c   rofzfunc  is the name of the basis routine which calculates the radius as a
+c   rofzfunc  is the name of the Python routine which calculates the radius as a
 c             function of z.
 c   volt      is the voltage on the conductor.
 c   zmin      is the minimum z of the conductor.
@@ -7013,19 +7004,17 @@ c===========================================================================
       integer(ISZ):: condid
 
 c Sets up a conductor represented by the outside of a surface of revolution.
-c The Basis routine rofzfunc should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
+c The Python routine rofzfunc should be of the form
+c    def rofz():
+c      f3d.srfrv_r = f(f3d.srfrv_z)
+c
 c where f() is the radius as a function of z and srfrv_z and srfrv_r are
 c compiled variables which pass data into and out of rofz.
 c The begining of the calling sequence would then be
 c call srfrvout("rofz",...)
 c
 c Input:
-c   rofzfunc  is the name of the basis routine which calculates the radius as a
+c   rofzfunc  is the name of the Python routine which calculates the radius as a
 c             function of z.
 c   volt      is the voltage on the conductor.
 c   zmin      is the minimum z of the conductor.
@@ -7517,19 +7506,17 @@ c========================================================================
       integer(ISZ):: condid
 
 c Sets up a conductor represented by the inside of a surface of revolution.
-c The Basis routine rofzfunc should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
+c The Python routine rofzfunc should be of the form
+c    def rofz():
+c      f3d.srfrv_r = f(f3d.srfrv_z)
+c
 c where f() is the radius as a function of z and srfrv_z and srfrv_r are
 c compiled variables which pass data into and out of rofz.
 c The begining of the calling sequence would then be
 c call srfrvin("rofz",...)
 c
 c Input:
-c   rofzfunc  is the name of the basis routine which calculates the radius as a
+c   rofzfunc  is the name of the Python routine which calculates the radius as a
 c             function of z.
 c   volt      is the voltage on the conductor.
 c   zmin      is the minimum z of the conductor.
@@ -7603,19 +7590,17 @@ c========================================================================
       integer(ISZ):: condid
 
 c Sets up a conductor represented by the inside of a surface of revolution.
-c The Basis routine rofzfunc should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
+c The Python routine rofzfunc should be of the form
+c    def rofz():
+c      f3d.srfrv_r = f(f3d.srfrv_z)
+c
 c where f() is the radius as a function of z and srfrv_z and srfrv_r are
 c compiled variables which pass data into and out of rofz.
 c The begining of the calling sequence would then be
 c call srfrvin("rofz",...)
 c
 c Input:
-c   rofzfunc  is the name of the basis routine which calculates the radius as a
+c   rofzfunc  is the name of the Python routine which calculates the radius as a
 c             function of z.
 c   volt      is the voltage on the conductor.
 c   zmin      is the minimum z of the conductor.
@@ -8115,19 +8100,17 @@ c===========================================================================
       integer(ISZ):: condid
 
 c Sets up a conductor represented by the outside of a surface of revolution.
-c The Basis routines rminofz and rmaxofz should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
+c The Python routine rofzfunc should be of the form
+c    def rofz():
+c      f3d.srfrv_r = f(f3d.srfrv_z)
+c
 c where f() is the radius as a function of z and srfrv_z and srfrv_r are
 c compiled variables which pass data into and out of rofz.
 c The begining of the calling sequence would then be
 c call srfrvout("rofz",...)
 c
 c Input:
-c   rminofz   is the name of the basis routine which calculates the radius as a
+c   rminofz   is the name of the Python routine which calculates the radius as a
 c             function of z.
 c   rmaxofz   (same)
 c   volt      is the voltage on the conductor.
@@ -8215,19 +8198,17 @@ c===========================================================================
       integer(ISZ):: condid
 
 c Sets up a conductor represented by the outside of a surface of revolution.
-c The Basis routines rminofz and rmaxofz should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
+c The Python routine rofzfunc should be of the form
+c    def rofz():
+c      f3d.srfrv_r = f(f3d.srfrv_z)
+c
 c where f() is the radius as a function of z and srfrv_z and srfrv_r are
 c compiled variables which pass data into and out of rofz.
 c The begining of the calling sequence would then be
 c call srfrvout("rofz",...)
 c
 c Input:
-c   rminofz   is the name of the basis routine which calculates the radius as a
+c   rminofz   is the name of the Python routine which calculates the radius as a
 c             function of z.
 c   rmaxofz   (same)
 c   volt      is the voltage on the conductor.
@@ -8770,7 +8751,7 @@ c========================================================================
       character(*):: rofzfunc
 c     This function returns the value of radius as a function of z.
 c     That can be calculated either from a piecewise-linear curve, or from
-c     the basis routine rofzfunc.
+c     the Python routine rofzfunc.
 c     The radius returned is always greater than or equal to zero.
 
       integer(ISZ):: i,ii
@@ -8900,7 +8881,7 @@ c         --- Calculate r from z.
 
       else
 
-c       --- Get r(z) from the basis function.
+c       --- Get r(z) from the Python function.
         srfrv_z = zz
         call execuser(rofzfunc)
 

@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.29 $, $Date: 2003/07/28 23:35:58 $
+#@(#) File FRZ.V, version $Revision: 3.30 $, $Date: 2003/10/23 23:26:40 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.29 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.30 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -145,7 +145,7 @@ vpoisrz  (iwhich, a:real, ak:real, kzsq:real,schrg:real, eta:real,
          scrtch:real, scrtch2:real, ibc)   integer function
          #  The RZ Poisson solver
 vprzx     (iwhich,dt:real)                                          subroutine
-         #  BASIS-level interface to VPOISRZ, using FRZ database variables
+         #  Python-level interface to VPOISRZ, using FRZ database variables
          #  The user program should declare a similar subroutine w/ its vars.
 advsc    (schrg:real,eta:real,a:real,kzsq:real,dt:real,dr:real,dz:real,
           nr,nz,phikold:real,taurc:real)       subroutine

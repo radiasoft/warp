@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.12 $, $Date: 2003/04/22 21:51:18 $
+c@(#) File WRZ.M, version $Revision: 3.13 $, $Date: 2003/10/23 23:26:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -410,7 +410,7 @@ c  Announce that we're running
    10 format(" ***  particle simulation package RZ running  ***")
  
 c  If it=0 calculate rho.  This way we can play with the initial
-c  conditions in basis after we generate.
+c  conditions in Python after we generate.
  
       if (it.eq.0) then
 c        call zeroarry(rho,nrz)

@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.107 $, $Date: 2003/10/08 23:08:47 $
+c@(#) File DTOP.F, version $Revision: 3.108 $, $Date: 2003/10/23 23:26:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -32,7 +32,7 @@ c  Makes call to hstall to utilize the hst package.
       endif
 
 c     --- Call routine to print out diagnostics.  This can either be the
-c     --- builting routine 'oneliner' or can be a basis function also
+c     --- builting routine 'oneliner' or can be a Python function also
 c     --- called 'oneliner'.
       if (loneliner) then
         call execuser("oneliner")
@@ -642,7 +642,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.107 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.108 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -662,10 +662,6 @@ c=============================================================================
       character(79):: version
       character(72):: author
       common /cverpar/ version, author
-
-c  This is where "Basis version ..... <some person>....." gets printed.
-c  We pervert it for other info.
-
 
       version = "Particle simulation of heavy ion beams for inertial fusion"
       author =

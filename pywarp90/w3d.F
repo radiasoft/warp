@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.135 $, $Date: 2003/10/21 21:32:10 $
+c@(#) File W3D.F, version $Revision: 3.136 $, $Date: 2003/10/23 23:26:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -567,10 +567,10 @@ c     use Pspwork
 
 c  Finish up at end of RUN, or on receipt of FIN
 c  This routine is never called, at present; history plots are
-c  made using a BASIS interpreter script (histplot), and we just
+c  made using a Python interpreter script (histplot), and we just
 c  end the run.  If we wanted to chain runs so that an output qty
 c  might be plotted vs a parameter, this routine might be useful.
-c  It would be needed for a non-BASIS version of WARP.
+c  It would be needed for a non-Python version of WARP.
 c  For now it serves as a place-holder.
 
 

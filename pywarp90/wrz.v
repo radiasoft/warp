@@ -1,5 +1,5 @@
 wrz
-#@(#) File WRZ.V, version $Revision: 3.9 $, $Date: 2003/04/22 21:51:18 $ 
+#@(#) File WRZ.V, version $Revision: 3.10 $, $Date: 2003/10/23 23:26:41 $ 
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WRZ of code WARP
@@ -10,7 +10,7 @@ wrz
  
 *********** WRZversion dump:
 # Quantities associated with version control 
-verswrz character*19 /"$Revision: 3.9 $"/ # Current code version, set by CVS
+verswrz character*19 /"$Revision: 3.10 $"/ # Current code version, set by CVS
  
 *********** InPltCtlrz dump:
 # Controls for when the various plots are made
@@ -30,8 +30,8 @@ frcetype                  character*8 /"regress"/
     # Method used to calculate external radial force--regress or analytic
 eta                       real  [V/A/m] /0.0/ # Surface resistivity (Ohm/meter)
 taurc                     real  [s]     /0.0/ # RC time
-lbeforefs  logical    /.false./  # Turns on call to basis function "beforefs"
-lafterfs   logical    /.false./  # Turns on call to basis function "afterfs"
+lbeforefs  logical    /.false./  # Turns on call to Python function "beforefs"
+lafterfs   logical    /.false./  # Turns on call to Python function "afterfs"
  
 *********** InPartrz dump:
 # Particle input quantities (input qtys)

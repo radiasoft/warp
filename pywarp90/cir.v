@@ -1,5 +1,5 @@
 cir
-#@(#) File CIR.V, version $Revision: 3.9 $, $Date: 2002/11/14 22:27:06 $
+#@(#) File CIR.V, version $Revision: 3.10 $, $Date: 2003/10/23 23:30:56 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for CIRCE.
@@ -10,7 +10,7 @@ cir
 
 *********** CIRversion:
 # Version control for cir package
-verscir  character*19 /"$Revision: 3.9 $"/  # Current code version, set by CVS
+verscir  character*19 /"$Revision: 3.10 $"/  # Current code version, set by CVS
 
 *********** CIRvars dump:
 # Variables needed by the package CIR
@@ -204,7 +204,7 @@ iaccl             integer
 cirinit()  subroutine
 cirgen()   subroutine
 cirexe()   subroutine
-cirx ()    subroutine #  BASIS-level interface to CIRCE
+cirx ()    subroutine #  Python-level interface to CIRCE
 initbeam() subroutine # Calls setbeam using WARP database
 cirrun(nit:integer,y:real,zlcir:real,zucir:real,dscir:real,nscir:integer,
        aion:real,zion:real,

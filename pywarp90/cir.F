@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.9 $, $Date: 2002/11/14 22:27:05 $
+c@(#) File CIR.M, version $Revision: 3.10 $, $Date: 2003/10/23 23:30:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
