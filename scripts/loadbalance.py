@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.15 2001/08/15 17:08:14 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.16 2001/09/04 21:21:09 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -126,7 +126,7 @@ that has already been done.
 
 
 #########################################################################
-def loadbalanceparticles(lloadrho=1,dofs=1):
+def loadbalanceparticles(lloadrho=1,dofs=1,spread=1.):
   """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -134,17 +134,18 @@ been calculated. The number density is assumed to vary linearly between
 grid points.
  - lloadrho=1: when true, the charge density is redoposited
  - dofs=1: when true, the fields are recalculated
+ - spread=1.: fraction of processors to spread the work among
   """
   if not lparallel: return
-  # --- Gather pnumz. The commented out line does not work since there
-  # --- maybe a complicated series of overlap among the processors.
+  # --- Gather pnumz. Return if there is no data.
   pnumz = gatherallzarray(top.pnumz)
-# pnumz = zeros(w3d.nzfull+1,'d')
-# for iz in range(0,w3d.nzfull+1):
-#   pe = convertiztope(iz)
-#   if me == pe: nn = top.pnumz[iz-top.izpslave[me]]
-#   else:        nn = 0
-#   pnumz[iz] = mpi.bcast(nn,pe)
+  if max(pnumz) == 0.: return
+
+  # --- Add fictitious data so that actual work is spread only to the
+  # --- requested fraction of the processors.
+  assert (0. < spread <= 1.),"spread must be between 0 and 1 or 1."
+  avepnumz = ave(pnumz)
+  pnumz[:] = pnumz + avepnumz*(1./spread - 1.)
 
   # --- Convert the number of particles to a decomposition
   zslave = decompose(pnumz,npes)
@@ -357,7 +358,6 @@ def _adjustz():
   top.zmntmesh[:] = top.zmmntmin + iota(0,top.nzmmnt)*top.dzm
   
   # --- Reset the lattice
-  resetlat()
   setlatt()
 
 #########################################################################
