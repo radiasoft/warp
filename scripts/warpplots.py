@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.82 2002/06/21 16:16:41 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.83 2002/06/21 16:59:44 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -690,8 +690,10 @@ Note that either the x and y coordinates or the grid must be passed in.
   ymax = ymax*yscale
 
   # --- Get grid cell sizes
-  dx = (xmax-xmin)/nx
-  dy = (ymax-ymin)/ny
+  if nx != 0: dx = (xmax-xmin)/nx
+  else:       dx = 1.
+  if ny != 0: dy = (ymax-ymin)/ny
+  else:       dy = 1.
 
   # --- If the grid is needed for the plot and it was not passed in, generate
   # --- it from the inputted particle data (if there was any)
@@ -736,7 +738,9 @@ Note that either the x and y coordinates or the grid must be passed in.
  
   # --- Scale the grid by its maximum if requested.
   if ldensityscale and grid is not None:
-    grid[:,:] = grid/maxnd(grid)
+    gridmax = maxnd(abs(grid))
+    if gridmax != 0.:
+      grid[:,:] = grid/gridmax
 
   # --- If using logarithmic number density levels, take the log of the grid
   # --- data. The original grid is left unchanged since that is still needed
@@ -775,7 +779,7 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
-  if contours and filled:
+  if contours and filled and nx > 1 and ny > 1:
     if cmax != cmin:
       plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
@@ -785,7 +789,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- each grid cell has the correct centering.
   # --- If the user supplies a mesh, then use plf, a filled mesh plot, since
   # --- the meshes may not be Cartesian.
-  if cellarray:
+  if cellarray and nx > 1 and ny > 1:
     if not usermesh:
       if centering == 'node':
         xminc = xmin
@@ -832,7 +836,7 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Now plot unfilled contours, which are easier to see on top of the
   # --- particles
-  if contours and not filled:
+  if contours and not filled and nx > 1 and ny > 1:
     if cmax != cmin:
       plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
             color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
@@ -840,7 +844,10 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Plot hash last since it easiest seen on top of everything else.
   if hash:
     # --- Set line length
-    sss = line_scale*(xmax-xmin)/nx/(cmax - cmin)
+    if nx != 0 and cmax != cmin:
+      sss = line_scale*(xmax-xmin)/nx/(cmax - cmin)
+    else:
+      sss = 1.
     # --- Make plot of tick marks
     for ix in range(nx+1):
       for iy in range(ny+1):
@@ -877,7 +884,7 @@ Note that either the x and y coordinates or the grid must be passed in.
              colbarlinear=colbarlinear,ctop=ctop)
 
   # --- Make surface plot
-  if surface and me == 0:
+  if surface and me == 0 and nx > 1 and ny > 1:
     pl3d.orient3()
     pl3d.light3()
     plwf.plwf(grid1,xmesh,ymesh,fill=grid1,edges=0)
