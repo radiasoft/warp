@@ -1,7 +1,7 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.6 2003/01/17 19:15:57 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.7 2003/01/24 18:03:55 dave Exp $"
 ######################################################################
 # Lattice builder
 # 
@@ -596,7 +596,7 @@ class LatticeGenerator:
   def __getstate__(s):
     # --- This is needed since the user supplied subroutines cannot be
     # --- pickled properly.
-    odict = s.__dict__
+    odict = s.__dict__.copy()
     del odict['endcondition']
     del odict['midpulsegapvoltage']
     del odict['tilt']
