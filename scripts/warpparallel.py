@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.24 2002/01/10 01:27:12 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.25 2002/01/10 23:05:06 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -673,12 +673,12 @@ def parallelrestore(fname,verbose=false,skip=[]):
   # --- the simulation which made the restart dump. The following
   # --- variables are needed to get that setup correctly.
   # --- In all cases, check if the variable was written out first.
+  if 'ns@top' in vlist:
+    top.ns = ff.read('ns@top')
   if 'nps_p@parallel' in vlist:
     nps_p = ff.read('nps_p@parallel')
     nps_p0 = zeros((top.nslaves+1,top.ns+1))
     nps_p0[1:,1:] = nps_p
-  if 'ns@top' in vlist:
-    top.ns = ff.read('ns@top')
   itriple = array([me,me,1])
   if 'npmax@parallel' in vlist:
     top.npmax = ff.read_part('npmax@parallel',itriple)[0]
