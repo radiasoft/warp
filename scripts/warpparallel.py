@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.27 2002/04/30 21:35:20 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.28 2002/05/15 00:21:28 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -321,19 +321,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
     # --- Write out the list of python variables to the file.
     # --- This assumes that all interpreted variables are the same on
     # --- all processors.
-    if varsuffix is None:
-      suffix = ''
-    else:
-      suffix = varsuffix
-    for v in vars:
-      try:
-        vval = eval(v,__main__.__dict__,locals())
-        if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
-          raise "cannot dump zero length arrays"
-        if verbose: print "writing python variable "+v+" as "+v+suffix
-        exec('ff.'+v+suffix+'='+v,__main__.__dict__,locals())
-      except:
-        if verbose: print "cannot write python variable "+v
+    pydump(ff=ff,attr=None,vars=vars,varsuffix=varsuffix,verbose=verbose)
 
     # --- Loop through all variables, getting the ones with attribute attr
     packagelist = package()
@@ -772,6 +760,9 @@ def parallelrestore(fname,verbose=false,skip=[]):
              (v[:-7],v,v[:-7],v[:-7]))
       except:
         pass
+    elif v[-9:] == '@parallel':
+      # --- Do not directly read in variables with the @parallel suffix
+      pass
     else:
       try:
         if verbose: print "reading python variable "+v
