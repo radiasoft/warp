@@ -262,7 +262,7 @@ class AMRTree(Visualizable):
                   if dim==2:
                     cond2 = sum(fno[j+ix,k-iym:k+iy])==0
                   else:
-                    cond2 = sum(fno[j+ix,k-iym:k+iy,l-izm:l+iz])==0
+                    cond2 = sum(sum(fno[j+ix,k-iym:k+iy,l-izm:l+iz]))==0
                 else:
                   cond2 = true
                 if(cond and cond2):
@@ -281,7 +281,7 @@ class AMRTree(Visualizable):
                   if dim==2:
                     cond2 = sum(fno[j-ixm:j+ix,k+iy])==0
                   else:
-                    cond2 = sum(fno[j-ixm:j+ix,k+iy,l-izm:l+iz])==0
+                    cond2 = sum(sum(fno[j-ixm:j+ix,k+iy,l-izm:l+iz]))==0
                 else:
                   cond2 = true
                 if(cond and cond2):
@@ -295,7 +295,7 @@ class AMRTree(Visualizable):
                 else:
                   cond = sum(f0t==ib)>0
                 if(nooverlap):
-                  cond2 = sum(fno[j-ixm:j+ix,k-iym:k+iy,l+iz])==0
+                  cond2 = sum(sum(fno[j-ixm:j+ix,k-iym:k+iy,l+iz]))==0
                 else:
                   cond2 = true
                 if(cond and cond2):
@@ -314,7 +314,7 @@ class AMRTree(Visualizable):
                   if dim==2:
                     cond2 = sum(fno[j-ixm-1,k-iym:k+iy])==0
                   else:
-                    cond2 = sum(fno[j-ixm-1,k-iym:k+iy,l-izm:l+iz])==0
+                    cond2 = sum(sum(fno[j-ixm-1,k-iym:k+iy,l-izm:l+iz]))==0
                 else:
                   cond2 = true
                 if(cond and cond2):
@@ -333,7 +333,7 @@ class AMRTree(Visualizable):
                   if dim==2:
                     cond2 = sum(fno[j-ixm:j+ix,k-iym-1])==0
                   else:
-                    cond2 = sum(fno[j-ixm:j+ix,k-iym-1,l-izm:l+iz])==0
+                    cond2 = sum(sum(fno[j-ixm:j+ix,k-iym-1,l-izm:l+iz]))==0
                 else:
                   cond2 = true
                 if(cond and cond2):
@@ -346,7 +346,7 @@ class AMRTree(Visualizable):
                 else:
                   cond = sum(f0t==ib)>0
                 if(nooverlap):
-                  cond2 = sum(fno[j-ixm:j+ix,k-iym:k+iy,l-izm-1])==0
+                  cond2 = sum(sum(fno[j-ixm:j+ix,k-iym:k+iy,l-izm-1]))==0
                 else:
                   cond2 = true
                 if(cond and cond2):
