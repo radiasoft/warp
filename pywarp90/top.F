@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.52 $, $Date: 2002/09/04 18:07:27 $
+c@(#) File TOP.M, version $Revision: 3.53 $, $Date: 2002/09/14 01:11:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1640,8 +1640,8 @@ c=============================================================================
      &                     oelemnn,oelemoi,oelemio,id,io)
       use Lattice
       integer(ISZ):: nelem,oelemnn,id,io
-      real(kind=8):: z,offset,elemzs(0:nelem),elemze(0:nelem),elemol(0:nelem)
-      integer(ISZ):: oelemoi(oelemnn),oelemio(0:nelem)
+      real(kind=8):: z,offset,elemzs(0:nelem),elemze(0:nelem)
+      integer(ISZ):: elemol(0:nelem),oelemoi(oelemnn),oelemio(0:nelem)
 
 c Given information about the starts and stops of lattice elements, this
 c routine finds the number of the element closest to the specified z value.
