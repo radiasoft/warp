@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.39 2004/05/26 17:32:58 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.40 2004/05/27 00:00:06 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -566,9 +566,12 @@ Constructor arguments:
   - scrapermglevel=2: Coarsening level for index grid used to locate which
                       conductors particles are near. See doc(ParticleScraper)
                       for more info.
+  - dfill=2: parameter passed to installconductors in 3d. sets how much the
+             interior of conductors are filled.
   """
   #----------------------------------------------------------------------------
-  def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=2):
+  def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=2,
+                    dfill=2):
     global _realboundarycount
     # --- Only allow one instance of this class.
     if _realboundarycount > 0:
@@ -579,6 +582,7 @@ Constructor arguments:
     self.rodfract = rodfract
     self.lscrapeparticles = lscrapeparticles
     self.scrapermglevel = scrapermglevel
+    self.dfill = dfill
 
     # --- Keep a global lists of all matrices. With a global lists of matrices,
     # --- recalculation of a matrix can be avoided if one with the same values
@@ -990,7 +994,7 @@ in the celemid array. It returns each element only once.
     self.nopipe(0,self.nonecm)
     # --- This place is always reached in the 3d case.
     if self.conductors is not None:
-      installconductors(self.conductors,gridmode=0)
+      installconductors(self.conductors,dfill=self.dfill,gridmode=0)
       if self.lscrapeparticles:
         try:
           self.scraper.disable()
