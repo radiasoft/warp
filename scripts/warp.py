@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.81 2005/01/12 23:11:04 dave Exp $"
+warp_version = "$Id: warp.py,v 1.82 2005/03/12 00:46:44 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -157,6 +157,13 @@ top.starttimedump = top.starttime
 
 # --- Simple function to calculate Child-Langmuir current density
 def childlangmuir(v,d,q=None,m=None):
+  """
+Computes current density from Child-Langmuir formula
+ - v: diode voltage
+ - d: diode length
+ - q: particle charge (defaults to top.sq[0])
+ - m: particle mass (defaults to top.sm[0])
+  """
   if q is None: q = top.sq[0]
   if m is None: m = top.sm[0]
   return 4./9.*eps0*sqrt(2.*q/m)*v**1.5/d**2
