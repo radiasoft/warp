@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.5 2002/08/21 18:12:15 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.6 2003/01/31 14:42:26 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -124,10 +124,26 @@ def averagezdata(qty,navg=0,nlines=100,jhist=None,istep=None,nz=None):
                            qty[j-navg-1,::istep])/(2*navg+1)
   return hl
 
-### PLCHG - plot line charge
-def plchg(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=5.e-9):
-  mountainplot1("line charge",top.hlinechg,ifdelta=ifdelta,ifordt=ifordt,
-                ifneg=ifneg,ifvst=ifvst,nlines=nlines,navg=navg,offset=offset)
+### PMLCHG - plot line charge
+def pmlchg(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=5.e-9,
+          ordoffset=0.,istep=None):
+  mountainplot1("Line charge",top.hlinechg,ifdelta=ifdelta,ifordt=ifordt,
+                ifneg=ifneg,ifvst=ifvst,nlines=nlines,navg=navg,
+                offset=offset,ordoffset=ordoffset,istep=istep)
+
+### PMCURR - plot current
+def pmcurr(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=1.e-3,
+          ordoffset=0.,istep=None):
+  mountainplot1("Current",top.hcurr,ifdelta=ifdelta,ifordt=ifordt,
+                ifneg=ifneg,ifvst=ifvst,nlines=nlines,navg=navg,
+                offset=offset,ordoffset=ordoffset,istep=istep)
+
+### PMVZOFZ - plot axial velocity
+def pmvzofz(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=5.e-9,
+            ordoffset=0.,istep=None):
+  mountainplot1("Axial velocity",top.hvzofz,ifdelta=ifdelta,ifordt=ifordt,
+                ifneg=ifneg,ifvst=ifvst,nlines=nlines,navg=navg,
+                offset=offset,ordoffset=ordoffset,istep=istep)
 
 ### PVGAP - Mountain-range plot of vgap, which is saved at every 10th accel gap
 def pvgap(_hvgap=None,ifzt=0,ifneg=0,nincr=1,offset=5000,color='fg'):
