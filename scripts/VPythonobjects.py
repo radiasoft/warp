@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.12 2004/05/21 20:18:26 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.13 2004/05/22 01:50:55 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -362,8 +362,6 @@ Visualize surface of revolution
                     twoSided=0,normalsign=1,color=None,
                     scene=None,title=None,vrange=None,
                     viewer=None,display=1,kwdict={}):
-    kwdict.update(kwdict.setdefault('kwdict',{}))
-    if 'kwdict' in kwdict: del kwdict['kwdict']
     for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
     if not title: title = 'Surface of revolution'
     VisualModel.__init__(self,twoSided=twoSided,normalsign=1,
@@ -398,8 +396,10 @@ Visualize surface of revolution
       ttleft = [0.]
       ttrght = [0.]
       for i in range(len(zdata)-1):
-        z,r,rad,zc,rc = zdata[i],rofzdata[i],raddata[i],zcdata[i],rcdata[i]
+        z,r = zdata[i],rofzdata[i]
         zp1,rp1 = zdata[i+1],rofzdata[i+1]
+        if raddata is not None: rad = raddata[i]
+        else:                   rad = largepos
         if rad == largepos:
           zzleft.append(z)
           zzrght.append(zp1)
@@ -408,6 +408,7 @@ Visualize surface of revolution
           ttleft.append(arctan2((zp1 - z),(r - rp1)))
           ttrght.append(ttleft[i])
         else:
+          zc,rc = zcdata[i],rcdata[i]
           t1 = arctan2(r-rc,z-zc)
           t2 = arctan2(rp1-rc,zp1-zc)
           if t1 > t2 and rad < 0.: t2 += 2*pi
