@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.18 $, $Date: 2005/01/21 15:09:21 $
+c@(#) File w3d_injection.F, version $Revision: 1.19 $, $Date: 2005/02/04 23:40:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2422,6 +2422,10 @@ c any conductor surface.
       real(kind=8):: substarttime,wtime
       integer(ISZ):: spreadx,spready
       if (lw3dtimesubs) substarttime = wtime()
+
+c     --- The user can force the code to skip the special calculation of the 
+c     --- E fields for particles behind the virtual surface.
+      if (linj_efromgrid) return
 
       if(inj_nz>1) call inj_sete_3darray(npart,xp,yp,zp,pid,dz,ex,ey,ez)
 
