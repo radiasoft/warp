@@ -4187,12 +4187,14 @@ grid%phi(1,grid%nz+2) = 2.*grid%phi(1,grid%nz+1)-grid%phi(1,grid%nz)
 return
 end subroutine solve_multigridz
 
-recursive subroutine find_mgparam_rz_1grid(grid)
+recursive subroutine find_mgparam_rz_1grid(grid,lsavephi)
 implicit none
 TYPE(GRIDtype):: grid
+logical(ISZ):: lsavephi
 
 REAL(8) :: nexttime, prevtime, prevparam
 INTEGER(ISZ) :: npreinit, npostinit
+real(8),allocatable :: phisave(:,:)
 
   nlevels = grid%nlevels
   level = nlevels
@@ -4214,16 +4216,23 @@ INTEGER(ISZ) :: npreinit, npostinit
                           bnd_only=.true., quad=.true.)
   END if
 
+  if (lsavephi) then
+    allocate(phisave(size(grid%phi,1),size(grid%phi,2)))
+    phisave = grid%phi
+  else
+    allocate(phisave(1,1))
+  endif
+
   npreinit = grid%npre
   npostinit = grid%npost
   ! --- Get initial field solve time
-  nexttime = time_field_solve(grid)
+  nexttime = time_field_solve(grid,lsavephi,phisave)
   prevtime = 2*nexttime
   ! --- Loop, increasing the number of passes until the time is minimized.
   DO WHILE(nexttime < prevtime)
     prevparam = grid%mgparam
     prevtime = nexttime
-    nexttime = ffind_mgparam(grid)
+    nexttime = ffind_mgparam(grid,lsavephi,phisave)
     IF(my_index==0) then
       write(o_line,*) "Field solve time = ",nexttime
       call remark(trim(o_line))
@@ -4261,7 +4270,7 @@ INTEGER(ISZ) :: npreinit, npostinit
       call remark(trim(o_line))
     END if
   else
-    prevtime=findnrecursmin(grid,prevtime)
+    prevtime=findnrecursmin(grid,prevtime,lsavephi,phisave)
     IF(my_index==0) then
       write(o_line,*) "-----------------------------------------"
       call remark(trim(o_line))
@@ -4280,16 +4289,20 @@ INTEGER(ISZ) :: npreinit, npostinit
     END if
   END if
 
-  IF(associated(grid%down)) call find_mgparam_rz_1grid(grid%down)
-  IF(associated(grid%next)) call find_mgparam_rz_1grid(grid%next)
+  deallocate(phisave)
+
+  IF(associated(grid%down)) call find_mgparam_rz_1grid(grid%down,lsavephi)
+  IF(associated(grid%next)) call find_mgparam_rz_1grid(grid%next,lsavephi)
 
 return
 END subroutine find_mgparam_rz_1grid
 
-function time_field_solve(grid)
+function time_field_solve(grid,lsavephi,phisave)
 implicit none
 REAL(8) :: time_field_solve
 TYPE(GRIDtype):: grid
+logical(ISZ):: lsavephi
+real(8):: phisave(:,:)
 
 INTEGER(ISZ) :: ixmax, izmin, izmax
 REAL(8) :: beforetime, aftertime
@@ -4302,7 +4315,11 @@ REAL(8), EXTERNAL :: wtime
   IF(grid%izlbnd==dirichlet) izmin=izmin+1
   IF(grid%izrbnd==dirichlet) izmax=izmax-1
 
-  grid%phi(1:ixmax,izmin:izmax)=0.
+  if (lsavephi) then
+    grid%phi = phisave
+  else
+    grid%phi(1:ixmax,izmin:izmax)=0.
+  endif
 
   beforetime = wtime()
   call solve_multigridrz(grid=grid, accuracy=mgridrz_accuracy, l_for_timing=.true.)
@@ -4315,10 +4332,12 @@ REAL(8), EXTERNAL :: wtime
   return
 END function time_field_solve
 
-function ffind_mgparam(grid)
+function ffind_mgparam(grid,lsavephi,phisave)
 implicit none
 REAL(8) :: ffind_mgparam
 TYPE(GRIDtype):: grid
+logical(ISZ):: lsavephi
+real(8):: phisave(:,:)
 
 INTEGER(ISZ) :: icount, mgiters_prev, up_old, down_old, s
 REAL(8) :: mgparam_prev, sincr, mgparam_init
@@ -4338,7 +4357,7 @@ REAL(8), EXTERNAL :: wranf
   mgparam_init=grid%mgparam
  
 ! --- do initial field solve
-  ffind_mgparam = time_field_solve(grid)
+  ffind_mgparam = time_field_solve(grid,lsavephi,phisave)
 
 ! --- set initail values for 'previous' quantities
   mgparam_prev = grid%mgparam
@@ -4367,7 +4386,7 @@ REAL(8), EXTERNAL :: wranf
 !   --- do field solve (which prints out number of field solve iterations)
     up_old = grid%npre
     down_old = grid%npost
-    ffind_mgparam = time_field_solve(grid)
+    ffind_mgparam = time_field_solve(grid,lsavephi,phisave)
 
 !   --- If field solve took more iterations than previous field solve, change
 !   --- direction of the increment and reduce its size.  Reducing its size
@@ -4409,7 +4428,7 @@ REAL(8), EXTERNAL :: wranf
       icount=0
       grid%npre = up_old
       grid%npost = down_old
-      ffind_mgparam = time_field_solve(grid)
+      ffind_mgparam = time_field_solve(grid,lsavephi,phisave)
       mgparam_prev = mgparam_init
       mgiters_prev = nb_iters
       sincr = .05
@@ -4434,12 +4453,14 @@ REAL(8), EXTERNAL :: wranf
   return
 END function ffind_mgparam
 
-function findnrecursmin(grid,prevtime)
+function findnrecursmin(grid,prevtime,lsavephi,phisave)
 !Optimize levels_min, minimizing the fieldsolve time.
 implicit none
 REAL(8) :: findnrecursmin
 TYPE(GRIDtype) :: grid
 REAL(8), INTENT(IN) :: prevtime
+logical(ISZ):: lsavephi
+real(8):: phisave(:,:)
 
 REAL(8) :: nexttime, prvtime
 
@@ -4450,7 +4471,7 @@ REAL(8) :: nexttime, prvtime
   do WHILE(nexttime < prvtime .and. grid%npmin < mgridrz_nlevels_max)
     prvtime = nexttime
     grid%npmin = grid%npmin + 1
-    nexttime = time_field_solve(grid)
+    nexttime = time_field_solve(grid,lsavephi,phisave)
     IF(my_index==0) then
       write(o_line,*) "Field solve time = ",nexttime
       call remark(trim(o_line))
@@ -4731,11 +4752,12 @@ INTEGER(ISZ) :: i, ic
 return
 END subroutine solve_mgridrz
 
-subroutine find_mgparam_rz()
+subroutine find_mgparam_rz(lsavephi)
 USE multigridrz
 implicit none
+logical(ISZ):: lsavephi
 
-    call find_mgparam_rz_1grid(grid=basegrid)
+    call find_mgparam_rz_1grid(grid=basegrid,lsavephi=lsavephi)
 
 return
 END subroutine find_mgparam_rz

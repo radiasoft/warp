@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.32 $, $Date: 2003/11/21 22:38:59 $
+#@(#) File FRZ.V, version $Revision: 3.33 $, $Date: 2004/02/17 18:55:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.32 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.33 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -207,7 +207,7 @@ dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
          # makes rho deposition on RZ grid
 distribute_rho_rz() subroutine
          # recursively distributes rho from fine patches to coarse patches
-find_mgparam_rz() subroutine
+find_mgparam_rz(lsavephi:logical) subroutine
          # RZ version of find_mgparam. Does the search for each subgrid.
 gchange_rhop_phip_rz() subroutine
          # reallocate rhop and phip arrays
