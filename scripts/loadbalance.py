@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.34 2004/06/02 22:47:01 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.35 2004/08/09 23:12:29 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -146,7 +146,8 @@ recalculated on a finer mesh to give better balancing.
 
     loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
                          padright=padright,padleft=self.padleft,
-                         reorg=reorg,pnumz=pnumz,zmin=w3d.zmminglobal,dz=dz)
+                         reorg=reorg,pnumz=pnumz,zmin=w3d.zmminglobal,dz=dz,
+                         zminp=zminp,zmaxp=zmaxp)
     getphiforparticles()
 
 #########################################################################
@@ -216,7 +217,8 @@ that has already been done.
 
 #########################################################################
 def loadbalanceparticles(doloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
-                         reorg=0,pnumz=None,zmin=None,dz=None):
+                         reorg=0,pnumz=None,zmin=None,dz=None,
+                         zminp=None,zmaxp=None):
   """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -232,6 +234,10 @@ grid points.
             zpartbnd which is fastest when particles are to be shifted only to
             nearest neighbors.
  - pnumz=top.pznum: the particle distribution to base the load balancing on
+ - zmin=None: optional z-minimum of the grid
+ - dz=None: optional grid cell size
+ - zminp,zmaxp=None: optional min and max of the region that must be included
+                     in the decomposition
   """
   if not lparallel: return
   starttime = wtime()
@@ -253,6 +259,8 @@ grid points.
   # --- Scale to specified grid if zmin and/or dz input
   if dz is not None: zslave = zslave*dz/w3d.dz
   if zmin is not None: zslave = zslave + zmin
+  if zminp is not None: zslave[0] = min(zslave[0],zminp)
+  if zmaxp is not None: zslave[-1] = max(zslave[-1],zmaxp)
 
   # --- Apply the new domain decomposition.
   setparticledomains(zslave,doloadrho=doloadrho,dofs=dofs,
