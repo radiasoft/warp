@@ -285,7 +285,7 @@ c     sets ej and bj.
       use DKInterp
       use DKInterptmp
       use InGen
-      use Inpart
+      use InPart
       use Beam_acc
       use Z_arrays
       use Picglb
