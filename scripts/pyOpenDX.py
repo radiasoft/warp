@@ -15,7 +15,8 @@ except:
   pass
 import __main__
 __main__.selectbox = 1
-__main__.l_hardware_acceleration = 0
+__main__.l_hardware_acceleration = 1
+__main__.l_dxforceupdate = 0
 
 try:
   # --- Try importing. If not found, still define the functions and classes.
@@ -24,7 +25,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.19 2004/12/01 00:05:41 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.20 2004/12/01 00:44:34 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -395,8 +396,10 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     # --- events is alway null when using hardware acceleration.
     try: dxinter.previousmode
     except: dxinter.previousmode = 0
-    forceupdate = ((__main__.interactor != dxinter.previousmode) and
-                   (hardware or __main__.l_hardware_acceleration))
+    forceupdate = (((__main__.interactor != dxinter.previousmode) and
+                   (hardware or __main__.l_hardware_acceleration)) or 
+                   __main__.l_dxforceupdate)
+    __main__.l_dxforceupdate = 0
     dxinter.previousmode = __main__.interactor
 
     if wevents.isnull() and not l_init and not forceupdate:
@@ -437,6 +440,16 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
       dxinter(0,name,dxobject)
     DXDelete(dxobject)
     interactor = 0
+
+def DXRendering(rendering='software'):
+  minput = {'input':__main__.wgui.dxobject,'attribute':'rendering mode','value':rendering}
+  moutput = ['output']
+  (__main__.wgui.dxobject,) = DXCallModule('Options',minput,moutput)
+  __main__.l_dxforceupdate=1
+  if rendering=='hardware':
+    __main__.l_hardware_acceleration=1
+  else:
+    __main__.l_hardware_acceleration=0
 
 def DXNewImage():
   _group.reset()
