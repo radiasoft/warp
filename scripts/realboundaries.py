@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.9 2002/01/07 19:23:36 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.10 2002/01/10 20:29:04 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -900,7 +900,6 @@ Returns the object
   result = cPickle.load(ff)
   ff.close()
   result.enable()
-  result.setboundary()
   return result
 
 def restartRealBoundary(object):
