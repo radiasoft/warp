@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.64 2004/07/08 19:44:28 jlvay Exp $"
+warp_version = "$Id: warp.py,v 1.65 2004/07/24 00:25:49 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -75,6 +75,7 @@ try:  # chopy hasn't been installed on all machines yet
   from chopy import *
 except ImportError:
   pass
+from controllers import *
 from ctl import *
 
 # --- Rearrange the list of packages to a more sensible order
@@ -232,123 +233,6 @@ printtimers: Print timers in a nice annotated format
 #=============================================================================
 # --- Call derivqty to calculate eps0 and jperev
 derivqty()
-
-#=============================================================================
-# --- Setup mechanism for "before" and "after" python scripts
-beforefsfuncs = []
-afterfsfuncs = []
-callscraperfuncs = []
-addconductorfuncs = []
-__controlfuncs = {'beforefs':beforefsfuncs,
-                  'afterfs':afterfsfuncs,
-                  'callscraper':callscraperfuncs,
-                  'addconductor':addconductorfuncs,
-                  'beforestep':beforestepfuncs,
-                  'afterstep':afterstepfuncs}
-def beforefs():
-  bb = wtime()
-  for f in beforefsfuncs: f()
-  aa = wtime()
-  try: beforefs.time = beforefs.time + (aa - bb)
-  except: beforefs.time = 0.
-def afterfs():
-  bb = wtime()
-  for f in afterfsfuncs: f()
-  aa = wtime()
-  try: afterfs.time = afterfs.time + (aa - bb)
-  except: afterfs.time = 0.
-def callscraper():
-  bb = wtime()
-  for f in callscraperfuncs: f()
-  aa = wtime()
-  try: callscraper.time = callscraper.time + (aa - bb)
-  except: callscraper.time = 0.
-def calladdconductor():
-  bb = wtime()
-  for f in addconductorfuncs: f()
-  aa = wtime()
-  try: calladdconductor.time = calladdconductor.time + (aa - bb)
-  except: calladdconductor.time = 0.
-
-def installbeforefs(f):
-  "Adds a function to the list of functions called before a field-solve"
-  beforefsfuncs.append(f)
-  w3d.lbeforefs = true
-def uninstallbeforefs(f):
-  "Removes the function from the list of functions called before a field-solve"
-  if f in beforefsfuncs:
-    beforefsfuncs.remove(f)
-  else:
-    raise 'Warning: uninstallbeforefs: no such function had been installed'
-  if len(beforefsfuncs) == 0: w3d.lbeforefs = false
-def isinstalledbeforefs(f):
-  return f in beforefsfuncs
-
-def installafterfs(f):
-  "Adds a function to the list of functions called after a field-solve"
-  afterfsfuncs.append(f)
-  w3d.lafterfs = true
-def uninstallafterfs(f):
-  "Removes the function from the list of functions called after a field-solve"
-  if f in afterfsfuncs:
-    afterfsfuncs.remove(f)
-  else:
-    raise 'Warning: uninstallafterfs: no such function had been installed'
-  if len(afterfsfuncs) == 0: w3d.lafterfs = false
-def isinstalledafterfs(f):
-  return f in afterfsfuncs
-
-def installparticlescraper(f):
-  "Adds a function to the list of functions called to scrape particles"
-  callscraperfuncs.append(f)
-  w3d.lcallscraper = true
-def uninstallparticlescraper(f):
-  "Removes the function from the list of functions called to scrape particles"
-  if f in callscraperfuncs:
-    callscraperfuncs.remove(f)
-  else:
-    raise 'Warning: uninstallparticlescraper: no such function had been installed'
-  if len(callscraperfuncs) == 0: w3d.lcallscraper = false
-def isinstalledparticlescraper(f):
-  return f in callscraperfuncs
-
-def installaddconductor(f):
-  "Adds a function to the list of functions called to add conductors"
-  addconductorfuncs.append(f)
-  f3d.laddconductor = true
-def uninstalladdconductor(f):
-  "Removes the function from the list of functions called to add conductors"
-  if f in addconductorfuncs:
-    addconductorfuncs.remove(f)
-  else:
-    raise 'Warning: uninstalladdconductor: no such function had been installed'
-  if len(addconductorfuncs) == 0: f3d.laddconductor = false
-def isinstalledaddconductor(f):
-  return f in addconductorfuncs
-
-def installbeforestep(f):
-  "Adds a function to the list of functions called before a step"
-  beforestepfuncs.append(f)
-def uninstallbeforestep(f):
-  "Removes the function from the list of functions called before a step"
-  if f in beforestepfuncs:
-    beforestepfuncs.remove(f)
-  else:
-    raise 'Warning: uninstallbeforestep: no such function had been installed'
-def isinstalledbeforestep(f):
-  return f in beforestepfuncs
-
-def installafterstep(f):
-  "Adds a function to the list of functions called after a step"
-  afterstepfuncs.append(f)
-def uninstallafterstep(f):
-  "Removes the function from the list of functions called after a step"
-  if f in afterstepfuncs:
-    afterstepfuncs.remove(f)
-  else:
-    raise 'Warning: uninstallafterstep: no such function had been installed'
-def isinstalledafterstep(f):
-  return f in afterstepfuncs
 
 #=============================================================================
 # --- Convenience function for random numbers.
@@ -536,7 +420,7 @@ Creates a dump file
       # --- Note, only functions are converted, not methods of class
       # --- instances. Also, note that functions defined interactively will
       # --- not be restored properly since the source is not available.
-      for n,l in __controlfuncs.iteritems():
+      for n,l in controllerfuncs.iteritems():
         __main__.__dict__['control'+n] = []
         for f in l:
           if type(f) is FunctionType:
@@ -557,7 +441,7 @@ Creates a dump file
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
            varsuffix=varsuffix,verbose=verbose,hdf=hdf)
   # --- Remove control names from main dict
-  for n in __controlfuncs.iterkeys():
+  for n in controllerfuncs.iterkeys():
     if 'control'+n in __main__.__dict__:
       del __main__.__dict__['control'+n]
   # --- Update dump time
@@ -586,7 +470,7 @@ Reads in data from file, redeposits charge density and does field solve
   else:
     pyrestore(filename,verbose=verbose)
   # --- Recreate control function lists
-  for n,l in __controlfuncs.iteritems():
+  for n,l in controllerfuncs.iteritems():
     if 'control'+n not in __main__.__dict__: continue
     # --- Add items that are defined to the list if not already there.
     for fname in __main__.__dict__['control'+n]:
