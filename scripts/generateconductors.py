@@ -33,7 +33,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.16 2003/03/18 21:14:52 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.17 2003/03/25 22:08:22 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -636,6 +636,37 @@ Cylinder class
     return result
 
 #============================================================================
+class Cylinders(Assembly):
+  """
+Cylinders class for a list of cylinders
+  - radius,length: cylinder size
+  - theta=0,phi=0: angle of cylinder relative to z-axis
+    theta is angle in z-x plane
+    phi is angle in z-y plane
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=0: conductor id of cylinder
+  """
+
+  def __init__(self,radius,length,theta=0.,phi=0.,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0):
+    Assembly.__init__(self,voltage,xcent,ycent,zcent)
+    self.ncylinders = len(radius)
+    self.radius = radius
+    self.length = length
+    self.theta  = theta
+    self.phi    = phi
+    self.condid = condid
+
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
+                   generator=f3d.cylindersconductorf,
+                   kwlist=[self.ncylinders,self.radius,self.length,
+                           self.theta,self.phi,
+                           self.xcent,self.ycent,self.zcent])
+    return result
+
+#============================================================================
 class ZCylinder(Assembly):
   """
 Cylinder aligned with z-axis
@@ -853,6 +884,40 @@ Cone
     result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
                    generator=f3d.coneconductorf,
                    kwlist=[self.r_zmin,self.r_zmax,self.length,
+                           self.theta,self.phi,
+                           self.xcent,self.ycent,self.zcent])
+    return result
+
+#============================================================================
+class Cones(Assembly):
+  """
+Cones
+  - r_zmin: radius at z min
+  - r_zmax: radius at z max
+  - length: length
+  - theta=0,phi=0: angle of cylinder relative to z-axis
+    theta is angle in z-x plane
+    phi is angle in z-y plane
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=0: conductor id of cone
+  """
+
+  def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
+                    xcent=0.,ycent=0.,zcent=0.,condid=0):
+    Assembly.__init__(self,voltage,xcent,ycent,zcent)
+    self.ncones = len(r_zmin)
+    self.r_zmin = r_zmin
+    self.r_zmax = r_zmax
+    self.theta = theta
+    self.phi = phi
+    self.length = length
+    self.condid = condid
+
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
+                   generator=f3d.conesconductorf,
+                   kwlist=[self.ncones,self.r_zmin,self.r_zmax,self.length,
                            self.theta,self.phi,
                            self.xcent,self.ycent,self.zcent])
     return result
