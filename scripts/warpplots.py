@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.104 2003/05/28 20:25:06 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.105 2003/07/09 18:51:10 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -159,7 +159,7 @@ Does the work needed to start writing plots to a file automatically
 def winon(winnum=0,dpi=100):
   """
 Opens up an X window
-  - winum=0 is the window number
+  - winnum=0 is the window number
   - dpi=100 is the dots per inch (either 100 or 75)
   """
   if winnum==0:
