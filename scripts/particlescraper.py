@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.20 2004/09/18 06:33:51 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.21 2004/10/27 19:51:59 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -40,15 +40,18 @@ Class for creating particle scraper for conductors
               probably optimal.
  - install=1: flag whether or not to install the scraper so that the scraping
               automatically happens every time step.
+ - grid=None: A instance of the Grid class can be supplied, allowing control
+              over the region where the scraping is done and the resolution
+              of the scraping data.
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
   def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,mglevel=0,
-                    install=1): 
+                    install=1,grid=None): 
     self.mglevel = mglevel
     # --- Don't create the grid until it is needed.
-    self.grid = None
+    self.grid = grid
     # --- register any initial conductors
     self.conductors = []
     self.registerconductors(conductors)
