@@ -11,13 +11,14 @@ DXLIBS = ["DXcallm","DXlite","GL","GLU","X11","Xm","Xt","Magick","dl",
           "netcdf","cdf"]
 
 setup (name = "pyDXObject",
-       version = '1',
+       version = '1.0',
+       author = 'David P. Grote',
+       author_email = "DPGrote@lbl.gov",
        description = "Interface to OpenDX",
-       extra_path = 'pyDXObject',
-       packages = [''],
-       include_dirs = ['%s/include'%DX],
+       platforms = "Unix, Windows (cygwin), Mac OSX",
        ext_modules = [Extension('pyDXObject',
                                 ['pyDXObject.c'],
+                                include_dirs = ['%s/include'%DX],
                                 library_dirs=DXLIBPATH,
                                 libraries=DXLIBS)
                      ]
