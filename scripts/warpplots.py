@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.14 2001/01/22 21:06:03 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.15 2001/01/22 21:12:03 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -928,11 +928,12 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- by some operations below.
   if uselog:
     if densitygrid:
-      # --- Take the log adding 0.1. The 0.1 is added so that none of the
-      # --- elements are zero. That value is used since values any smaller
-      # --- do not have much meaning since a value of 1.0 means that there
-      # --- is already only one particle in that cell.
-      grid1 = log(grid + 0.1)
+      # --- Take the log, raising all values below 0.1 to 0.1. The
+      # --- threshold is used so that none of the elements are zero.
+      # --- That value 0.1 is used since values any smaller do not have
+      # --- much meaning since a value of 1.0 means that there is already
+      # --- only one particle in that cell.
+      grid1 = log(where(less(grid,0.1),0.1,grid))
     else:
       # --- Before taking the log of the user supplied grid data, make sure
       # --- that there are no negative values. Zero is ok since they will
@@ -941,7 +942,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       dmin = minnd(where(equal(grid,0.),dmax,grid))
       if dmin <= 0.:
         raise "Can't take log since the grid has negative values"
-      grid1 = log(grid + dmin/10.)
+      grid1 = log(where(less(grid,dmin/10.),dmin/10.,grid))
   else:
     grid1 = grid
 
