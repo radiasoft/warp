@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.24 $, $Date: 2001/10/16 20:48:30 $
+c@(#) File TOP.M, version $Revision: 3.25 $, $Date: 2001/10/18 20:27:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1935,7 +1935,7 @@ c  Gets residence factor and radius for bends.
 c  For periodic runs, assumes mesh period length = lattice period length
 
       integer(ISZ):: ip,iz
-      real(kind=8):: zl,fl,zr,fr,frac
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. bends .or. .not. linbend) return
@@ -1948,12 +1948,17 @@ c  Extract the local bend properties for each particle off the general lattice
       if (lslice) then
 c       --- find z-cell in which particle lies
         iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c       --- Precalculate these quantities. zl is the min of the two and
+c       --- zr is the max. This generalizes the routine, allowing left
+c       --- moving particles, vz < 0.
+        z1 = zp(1) + vz(1)*dtl
+        z2 = zp(1) + vz(1)*dtr
 c       --- "left" end of velocity advance step
-        zl = zp(1) + vz(1)*dtl
+        zl = min(z1,z2)
         fl = 0.
         if (zl >= cbendzs(iz) .and. zl < cbendze(iz)) fl = 1.
 c       --- "right" end of velocity advance step
-        zr = zp(1) + vz(1)*dtr
+        zr = max(z1,z2)
         fr = 0.
         if (zr >= cbendzs(iz) .and. zr < cbendze(iz)) fr = 1.
 c       --- residence fraction
@@ -1969,12 +1974,17 @@ c       --- residence fraction
 
 c       --- find z-cell in which particle lies
         iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c       --- Precalculate these quantities. zl is the min of the two and
+c       --- zr is the max. This generalizes the routine, allowing left
+c       --- moving particles, vz < 0.
+        z1 = zp(ip) + vz(ip)*dtl
+        z2 = zp(ip) + vz(ip)*dtr
 c       --- "left" end of velocity advance step
-        zl = zp(ip) + vz(ip)*dtl
+        zl = min(z1,z2)
         fl = 0.
         if (zl >= cbendzs(iz) .and. zl < cbendze(iz)) fl = 1.
 c       --- "right" end of velocity advance step
-        zr = zp(ip) + vz(ip)*dtr
+        zr = max(z1,z2)
         fr = 0.
         if (zr >= cbendzs(iz) .and. zr < cbendze(iz)) fr = 1.
 c       --- residence fraction
@@ -2051,7 +2061,7 @@ c   ex, ey   quadrupole electric field
 c   bx, by   quadrupole magnetic field
 
       integer(ISZ):: io,ip,iz
-      real(kind=8):: zl,fl,zr,fr,frac,xpmqoff,ypmqoff
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xpmqoff,ypmqoff
       real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. quads) return
@@ -2065,12 +2075,17 @@ c   bx, by   quadrupole magnetic field
         if (lslice) then
 c         --- find z-cell in which particle lies
           iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c         --- Precalculate these quantities. zl is the min of the two and
+c         --- zr is the max. This generalizes the routine, allowing left
+c         --- moving particles, vz < 0.
+          z1 = zp(1) + vz(1)*dtl
+          z2 = zp(1) + vz(1)*dtr
 c         --- "left" end of velocity advance step
-          zl = zp(1) + vz(1)*dtl
+          zl = min(z1,z2)
           fl = 0.
           if (zl >= cquadzs(iz,io) .and. zl < cquadze(iz,io)) fl = 1.
 c         --- "right" end of velocity advance step
-          zr = zp(1) + vz(1)*dtr
+          zr = max(z1,z2)
           fr = 0.
           if (zr >= cquadzs(iz,io) .and. zr < cquadze(iz,io)) fr = 1.
 c         --- residence fraction
@@ -2085,12 +2100,17 @@ c         --- if frac is zero, just return since no field will be applied
           if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zp(ip) + vz(ip)*dtl
+            z2 = zp(ip) + vz(ip)*dtr
 c           --- "left" end of velocity advance step
-            zl = zp(ip) + vz(ip)*dtl
+            zl = min(z1,z2)
             fl = 0.
             if (zl >= cquadzs(iz,io) .and. zl < cquadze(iz,io)) fl = 1.
 c           --- "right" end of velocity advance step
-            zr = zp(ip) + vz(ip)*dtr
+            zr = max(z1,z2)
             fr = 0.
             if (zr >= cquadzs(iz,io) .and. zr < cquadze(iz,io)) fr = 1.
 c           --- residence fraction
@@ -2147,7 +2167,7 @@ c   ex, ey   dipole electric field
 c   bx, by   dipole magnetic field
 
       integer(ISZ):: io,ip,iz
-      real(kind=8):: zl,fl,zr,fr,frac
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. dipos) return
@@ -2161,12 +2181,17 @@ c   bx, by   dipole magnetic field
         if (lslice) then
 c         --- find z-cell in which particle lies
           iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c         --- Precalculate these quantities. zl is the min of the two and
+c         --- zr is the max. This generalizes the routine, allowing left
+c         --- moving particles, vz < 0.
+          z1 = zp(1) + vz(1)*dtl
+          z2 = zp(1) + vz(1)*dtr
 c         --- "left" end of velocity advance step
-          zl = zp(1) + vz(1)*dtl
+          zl = min(z1,z2)
           fl = 0.
           if (zl >= cdipozs(iz,io) .and. zl < cdipoze(iz,io)) fl = 1.
 c         --- "right" end of velocity advance step
-          zr = zp(1) + vz(1)*dtr
+          zr = max(z1,z2)
           fr = 0.
           if (zr >= cdipozs(iz,io) .and. zr < cdipoze(iz,io)) fr = 1.
 c         --- residence fraction
@@ -2181,12 +2206,17 @@ c         --- if frac is zero, just return since no field will be applied
           if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zp(ip) + vz(ip)*dtl
+            z2 = zp(ip) + vz(ip)*dtr
 c           --- "left" end of velocity advance step
-            zl = zp(ip) + vz(ip)*dtl
+            zl = min(z1,z2)
             fl = 0.
             if (zl >= cdipozs(iz,io) .and. zl < cdipoze(iz,io)) fl = 1.
 c           --- "right" end of velocity advance step
-            zr = zp(ip) + vz(ip)*dtr
+            zr = max(z1,z2)
             fr = 0.
             if (zr >= cdipozs(iz,io) .and. zr < cdipoze(iz,io)) fr = 1.
 c           --- residence fraction
@@ -2297,7 +2327,7 @@ c   bx, by   sextupole magnetic field
 
       integer(ISZ):: io,ip,iz
       real(kind=8):: xpmqoff,ypmqoff
-      real(kind=8):: zl,fl,zr,fr,frac
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. sexts) return
@@ -2311,12 +2341,17 @@ c   bx, by   sextupole magnetic field
         if (lslice) then
 c         --- find z-cell in which particle lies
           iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c         --- Precalculate these quantities. zl is the min of the two and
+c         --- zr is the max. This generalizes the routine, allowing left
+c         --- moving particles, vz < 0.
+          z1 = zp(1) + vz(1)*dtl
+          z2 = zp(1) + vz(1)*dtr
 c         --- "left" end of velocity advance step
-          zl = zp(1) + vz(1)*dtl
+          zl = min(z1,z2)
           fl = 0.
           if (zl >= csextzs(iz,io) .and. zl < csextze(iz,io)) fl = 1.
 c         --- "right" end of velocity advance step
-          zr = zp(1) + vz(1)*dtr
+          zr = max(z1,z2)
           fr = 0.
           if (zr >= csextzs(iz,io) .and. zr < csextze(iz,io)) fr = 1.
 c         --- residence fraction
@@ -2331,12 +2366,17 @@ c         --- if frac is zero, just return since no field will be applied
           if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zp(ip) + vz(ip)*dtl
+            z2 = zp(ip) + vz(ip)*dtr
 c           --- "left" end of velocity advance step
-            zl = zp(ip) + vz(ip)*dtl
+            zl = min(z1,z2)
             fl = 0.
             if (zl >= csextzs(iz,io) .and. zl < csextze(iz,io)) fl = 1.
 c           --- "right" end of velocity advance step
-            zr = zp(ip) + vz(ip)*dtr
+            zr = max(z1,z2)
             fr = 0.
             if (zr >= csextzs(iz,io) .and. zr < csextze(iz,io)) fr = 1.
 c           --- residence fraction
@@ -2387,7 +2427,7 @@ c   ex, ey, ez   electric field
 c   bx, by, bz   magnetic field
 
       integer(ISZ):: io,ip,iz,iele,ii
-      real(kind=8):: zl,fl,zr,fr,frac
+      real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8):: vz(npz),dzi(npz)
       real(kind=8):: n,v,f,rpow,cosnt,sinnt
       real(kind=8):: xpmqoff,ypmqoff
@@ -2410,12 +2450,17 @@ c       --- are accumulated at each particle resulting from
         if (lslice) then
 c         --- find z-cell in which particle lies
           iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c         --- Precalculate these quantities. zl is the min of the two and
+c         --- zr is the max. This generalizes the routine, allowing left
+c         --- moving particles, vz < 0.
+          z1 = zp(1) + vz(1)*dtl
+          z2 = zp(1) + vz(1)*dtr
 c         --- "left" end of velocity advance step
-          zl = zp(1) + vz(1)*dtl
+          zl = min(z1,z2)
           fl = 0.
           if (zl >= chelezs(iz,io) .and. zl < cheleze(iz,io)) fl = 1.
 c         --- "right" end of velocity advance step
-          zr = zp(1) + vz(1)*dtr
+          zr = max(z1,z2)
           fr = 0.
           if (zr >= chelezs(iz,io) .and. zr < cheleze(iz,io)) fr = 1.
 c         --- residence fraction
@@ -2430,12 +2475,17 @@ c         --- if frac is zero, just return since no field will be applied
           if (.not. lslice) then
 c           --- find z-cell in which particle lies
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c           --- Precalculate these quantities. zl is the min of the two and
+c           --- zr is the max. This generalizes the routine, allowing left
+c           --- moving particles, vz < 0.
+            z1 = zp(ip) + vz(ip)*dtl
+            z2 = zp(ip) + vz(ip)*dtr
 c           --- "left" end of velocity advance step
-            zl = zp(ip) + vz(ip)*dtl
+            zl = min(z1,z2)
             fl = 0.
             if (zl >= chelezs(iz,io) .and. zl < cheleze(iz,io)) fl = 1.
 c           --- "right" end of velocity advance step
-            zr = zp(ip) + vz(ip)*dtr
+            zr = max(z1,z2)
             fr = 0.
             if (zr >= chelezs(iz,io) .and. zr < cheleze(iz,io)) fr = 1.
 c           --- residence fraction
