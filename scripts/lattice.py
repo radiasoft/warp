@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.8 2002/04/04 21:24:57 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.9 2002/05/31 23:22:25 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -985,10 +985,10 @@ information if the WARP lattice arrays is deleted.
       top.bgrdsf[ibgrd] = e.sf
       top.bgrdsc[ibgrd] = e.sc
       if not e.id:
-        top.bgrdid[immlt] = top.bgrdns + 1
+        top.bgrdid[ibgrd] = top.bgrdns + 1
       else:
-        top.bgrdid[immlt] = e.id
-      top.bgrdns = max(top.bgrdid[immlt],top.bgrdns)
+        top.bgrdid[ibgrd] = e.id
+      top.bgrdns = max(top.bgrdid[ibgrd],top.bgrdns)
       if e.bx or e.by or e.bz:
         sbx = shape(e.bx)
         sby = shape(e.by)
@@ -1097,9 +1097,9 @@ information if the WARP lattice arrays is deleted.
         top.bgrddx[id-1] = e.dx
         top.bgrddy[id-1] = e.dy
         top.bgrddz[id-1] = e.dz
-        sbx = shape(bx)
-        sby = shape(by)
-        sbz = shape(bz)
+        sbx = shape(e.bx)
+        sby = shape(e.by)
+        sbz = shape(e.bz)
         top.bgrdbx[:sbx[0],:sbx[1],:sbx[2],id-1] = e.bx
         top.bgrdby[:sby[0],:sby[1],:sby[2],id-1] = e.by
         top.bgrdbz[:sbz[0],:sbz[1],:sbz[2],id-1] = e.bz
@@ -1112,7 +1112,7 @@ information if the WARP lattice arrays is deleted.
         top.pgrddy[id-1] = e.dy
         top.pgrddz[id-1] = e.dz
         sp = shape(e.pp)
-        top.pgrd[:sp[0],:sp[1],:sp[2],id-1] = e.pp
+        top.pgrd[:sp[0],:sp[1],1:sp[2]+1,id-1] = e.pp
 
   # --- Finish by setting some general parameters.
   if iquad >= 2:
