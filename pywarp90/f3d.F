@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.91 $, $Date: 2003/12/17 17:28:43 $
+c@(#) File F3D.M, version $Revision: 3.92 $, $Date: 2004/01/14 22:52:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -8868,7 +8868,7 @@ c         --- Find which piece z is in.
 
 c         --- Calculate r from z.
           if (ii == npnts_srmin+1) then
-            srfrv_r = r_srmin(1)
+            srfrv_r = r_srmin(npnts_srmin)
           elseif (ii == 1) then
             srfrv_r = r_srmin(1)
           else
@@ -8934,7 +8934,7 @@ c         --- Find which piece z is in.
 
 c         --- Calculate r from z.
           if (ii == npnts_srmax+1) then
-            srfrv_r = r_srmax(1)
+            srfrv_r = r_srmax(npnts_srmax)
           elseif (ii == 1) then
             srfrv_r = r_srmax(1)
           else
