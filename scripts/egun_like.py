@@ -1,6 +1,8 @@
 from warp import *
 import string
-egun_like_version = "$Id: egun_like.py,v 1.13 2003/02/27 15:19:29 dave Exp $"
+import curses.ascii
+import sys
+egun_like_version = "$Id: egun_like.py,v 1.14 2003/02/27 17:21:59 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -62,7 +64,7 @@ _vzfuzz = 1.e-20
 import getzmom
 
 def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
-        laccumulate_zmoments=None,rhoparam=None):
+        laccumulate_zmoments=None,rhoparam=None,lstatusline=1):
   """
 Performs steady-state iterations
   - iter=1 number of iterations to perform
@@ -76,6 +78,8 @@ Performs steady-state iterations
   - rhoparam=None: Amount of previous rho to mix in with the current rho. This
     can help the relaxation toward a steady state. Caution should be used
     when using this option.
+  - lstatusline=1: when try, a line is printed and continuously updated
+                   showing the status of the simulation.
   Note that ipsave and save_same_part are preserved in between calls
   """
   global _oinject,_ofstype,_onztinjmn,_onztinjmx
@@ -257,6 +261,7 @@ Performs steady-state iterations
     while (npssum > 0 and maxvz>_vzfuzz and
            top.time-gun_time < maxtime):
       step()
+      if lstatusline: statusline()
       tmp_gun_steps = tmp_gun_steps + 1
       # --- only save particles on last iteration
       if (i == iter-1 and _ipsave > 0 and _ipstep > 0):
@@ -368,4 +373,19 @@ def recovergun():
     top.nztinjmn = _onztinjmn
     top.nztinjmx = _onztinjmx
   top.inject = _oinject
+
+########################################################################
+def statusline():
+  """
+Prints a running line showing current status of the step.
+  """
+  if (top.it % 10) == 0:
+    CR = curses.ascii.ctrl('m')
+    sys.stdout.write("%5d "%top.it)
+    nplive = top.npinject-sum(top.lostpars)
+    sys.stdout.write("nplive = %5d "%nplive)
+    zz = top.zp[top.ins[0]-1]
+    if zz < w3d.zmminglobal: zz = w3d.zmmaxglobal
+    sys.stdout.write("zz = %6.4f"%(zz))
+    sys.stdout.write(CR)
 
