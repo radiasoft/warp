@@ -1,5 +1,5 @@
 from warp import *
-grid_1d_version = "$Id: grid_1d.py,v 1.2 2001/04/13 20:50:59 dave Exp $"
+grid_1d_version = "$Id: grid_1d.py,v 1.3 2001/04/13 22:56:15 dave Exp $"
 ############################################################################
 # This script contains two routines, one to gather particle data onto
 # a 1D grid, and the other to scatter data from a 1D grid to the particles.
@@ -46,14 +46,14 @@ ouput
   grid_1d = zeros(ng1d+1,'d')
   grid_1dmesh = zeros(ng1d+1,'d')
 
-  if (not g1dmin):
+  if (g1dmin == None):
     g1dmin = min(location)
     g1dmin = g1dmin - (max(location)-g1dmin)/ng1d
-  if (not g1dmax):
+  if (g1dmax == None):
     g1dmax = max(location)
     g1dmax = g1dmax + (g1dmax - g1dmin)/ng1d
   if (type(data)!=type(location)):
-    if (not data):
+    if (data == None):
       data = 1.
       do_divide = false
   else:
@@ -98,21 +98,16 @@ ouput
   - returns array same size as location with the interpolated data
   """
   # Perform error checking to make sure the input data makes sense
-  if (len(shape(data)) > 1):
-    remark("gather_1d: error - data array is not a 1D array")
-    return 0
-  if (len(data) < 2):
-    remark("gather_1d: error - data needs to have more than 1 element")
-    return 0
-  if (len(shape(zmsh)) > 1):
-    remark("gather_1d: error - z mesh array is not a 1D array")
-    return 0
-  if (len(zmsh) < 2):
-    remark("gather_1d: error - z mesh needs to have more than 1 element")
-    return 0
-  if (len(data) != len(zmsh)):
-    remark("gather_1d: error - data array and z mesh array need to be the same size")
-    return 0
+  assert (len(shape(data)) > 1), \
+    ("gather_1d: error - data array is not a 1D array")
+  assert (len(data) < 2), \
+    ("gather_1d: error - data needs to have more than 1 element")
+  assert (len(shape(zmsh)) > 1), \
+    ("gather_1d: error - z mesh array is not a 1D array")
+  assert (len(zmsh) < 2), \
+    ("gather_1d: error - z mesh needs to have more than 1 element")
+  assert (len(data) != len(zmsh)), \
+    ("gather_1d: error - data array and z mesh array need to be the same size")
 
   # Get sizes of input arrays
   nz = len(zmsh)
@@ -132,3 +127,4 @@ ouput
 
   # Gather data and return it.
   return (ww*(take(data,iz)*(1.-wz) + take(data,iz+1)*wz))
+
