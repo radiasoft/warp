@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.43 2002/08/08 18:10:50 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.44 2002/08/08 18:12:31 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -269,14 +269,14 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
     apply(pcphizx,(iy,fullplane,lbeamframe),kw)
   plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,1,1)
-  if (fullplane and w3d.l4symtry) or w3d.solvergeom == w3d.RZgeom:
+  if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
     plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1)
   if (plotsg):
     plotsubgrid('x','z','y','e',iy,numb,xmmin,zmmin,dx,dz,evencolor,
                 subgridlen,mglevel,1,1)
     plotsubgrid('x','z','y','o',iy,numb,xmmin,zmmin,dx,dz,oddcolor,
                 subgridlen,mglevel,1,1)
-    if (fullplane and w3d.l4symtry) or w3d.solvergeom == w3d.RZgeom:
+    if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
       plotsubgrid('x','z','y','e',iy,numb,xmmin,zmmin,dx,dz,evencolor,
                   subgridlen,mglevel,-1,1)
       plotsubgrid('x','z','y','o',iy,numb,xmmin,zmmin,dx,dz,oddcolor,
