@@ -1,5 +1,5 @@
 # Gist warpstyle.gs drawing style
-# $Id: work.gs,v 1.2 2000/10/16 19:56:14 dave Exp $
+# $Id: work.gs,v 1.3 2001/04/23 22:15:25 dave Exp $
 
 # Multiple viewports
 #  1:  Standard, full page, left axis
@@ -59,7 +59,7 @@ default = {
 # The first coordinate system has left ticks and labels
 system= {
   #legend= "Left Axis (1)",
-  ticks= { horiz= { flags= 0x029 }, vert= { flags= 0x029 } }}
+  ticks= { horiz= { flags= 0x02b }, vert= { flags= 0x02b } }}
 
 # The second coordinate system has right ticks and labels
 system= {
@@ -128,6 +128,12 @@ system= {
   viewport= { 0.1200, 0.6802, 0.3548, 0.9150 },
   ticks= { horiz= { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }},
            vert=  { tickLen= { 0.006, 0.004, 0.002, 0.002, 0.001 }} }}
+
+# The twelfth coordinate system has left ticks and labels and is used in
+# conjunction with system 2.
+system= {
+  #legend= "Left Axis (12)",
+  ticks= { horiz= { flags= 0x029 }, vert= { flags= 0x029 } }}
 
 legends= {
   x= 0.04698,  y= 0.350,  dx= 0.3758,  dy= 0.0,
