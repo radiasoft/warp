@@ -1,9 +1,4 @@
-from warp import *
-import __main__
-pzplots_version = "$Id: pzplots.py,v 1.10 2002/12/02 23:41:51 dave Exp $"
-
-def pzplotsdoc():
-  print """
+"""
 pzpnum: Plot no. of simulation particles versus Z
 pzppcell: Plot no. of simulation particles per cell versus Z
 pzxbar: Plot mean X coordinate versus Z
@@ -72,7 +67,15 @@ pzxedges: Plot beam X edges (centroid +- twice Xrms) versus Z
 pzyedges: Plot beam Y edges (centroid +- twice Yrms) versus Z
 pzenvxp: Plot beam X' envelope (2*xxpbar/xrms) versus Z
 pzenvyp: Plot beam Y' envelope (2*yypbar/yrms) versus Z
-  """
+"""
+
+from warp import *
+import __main__
+pzplots_version = "$Id: pzplots.py,v 1.11 2003/01/13 16:00:02 dave Exp $"
+
+def pzplotsdoc():
+  import pzplots
+  print pzplots.__doc__
 
 ###########################################################################
 def _extractvar(name,varsuffix=None,pkg='top'):
