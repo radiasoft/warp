@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.19 2004/09/18 05:45:27 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.20 2004/09/18 06:33:51 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -250,7 +250,9 @@ conductors are an argument.
         put(top.zplost,ic,intercept.zi)
         put(top.pidlost[:,-3],ic,intercept.itheta)
         put(top.pidlost[:,-2],ic,intercept.iphi)
-        dt = (sqrt((xc-xi)**2 + (yc-yi)**2 + (zc-zi)**2)/
+        dt = (sqrt((xc - intercept.xi)**2 +
+                   (yc - intercept.yi)**2 +
+                   (zc - intercept.zi)**2)/
               dvnz(sqrt(vx**2 + vy**2 + vz**2)))
         put(top.pidlost[:,-4],ic,top.time - dt)
 
