@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.102 $, $Date: 2003/04/28 17:12:07 $
+c@(#) File W3D.M, version $Revision: 3.103 $, $Date: 2003/04/28 22:36:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4445,6 +4445,7 @@ c           --- need to be loaded in each of the four quadrants.
               spreadx = 0
               spready = 0
             endif
+            if (l_inj_rz) spready = 0
 
             do is=1,ns
 
@@ -4636,7 +4637,7 @@ c                     --- if inject only radially, use variable weights and assi
                     end if
 
 c                   --- find injection surface axial location by interpolation
-                    if(l_inj_regular) then
+                    if(l_inj_rz) then
                       ixx = spreadx*(abs(r_tmp - inj_xmmin(ij))*dxi)
                       iyy = 0
                       wxx = spreadx*(abs(r_tmp - inj_xmmin(ij))*dxi - ixx)
@@ -6189,6 +6190,7 @@ c any conductor surface.
         spreadx = 0
         spready = 0
       end if
+      if (l_inj_rz) spready = 0
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -7297,6 +7299,7 @@ c any conductor surface.
         spreadx = 0
         spready = 0
       end if
+      if (l_inj_rz) spready = 0
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
