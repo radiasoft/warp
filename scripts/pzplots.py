@@ -1,5 +1,5 @@
 from warp import *
-pzplots_version = "$Id: pzplots.py,v 1.3 2001/02/08 00:33:21 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.4 2001/03/22 19:03:16 dave Exp $"
 
 def pzplotsdoc():
   print """
@@ -50,6 +50,8 @@ pzepsnh: Plot generalized normalized emittance versus Z
 pzvxrms: Plot true RMS Vx versus Z
 pzvyrms: Plot true RMS Vy versus Z
 pzvzrms: Plot true RMS Vz versus Z
+pzxxpslope: Plot slope of x-x' phase space versus Z
+pzyypslope: Plot slope of y-y' phase space versus Z
 pzrhomid: Plot charge dens. on axis versus Z
 pzrhomax: Plot charge dens. max-over-X,Y versus Z
 pzcurr: Plot beam current versus Z
@@ -65,6 +67,8 @@ pzxedge: Plot beam X envelope (twice Xrms) versus Z
 pzyedge: Plot beam Y envelope (twice Yrms) versus Z
 pzxedges: Plot beam X edges (centroid +- twice Xrms) versus Z
 pzyedges: Plot beam Y edges (centroid +- twice Yrms) versus Z
+pzenvxp: Plot beam X' envelope (xxpbar/xrms) versus Z
+pzenvyp: Plot beam Y' envelope (yypbar/yrms) versus Z
   """
 
 ##########################################################################
@@ -1199,6 +1203,58 @@ def pzvzrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titles: ptitles("True RMS Vz versus Z",titleb,"(m/s)")
 
 ##########################################################################
+def pzxxpslope(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
+               marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
+  """Plot slope of x-x' phase space versus Z
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + top.zplmesh/zscale
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb == None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  sxz = (top.xxpbarz - top.xbarz*top.xpbarz)/ \
+        where(greater(top.xrmsz,0.),top.xrmsz**2,1.)
+  warpplg(sxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("Slope of x-x' phase space",titleb,"(1)")
+
+##########################################################################
+def pzyypslope(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
+               marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
+  """Plot slope of y-y' phase space versus Z
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + top.zplmesh/zscale
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb == None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  syz = (top.yypbarz - top.ybarz*top.ypbarz)/ \
+        where(greater(top.yrmsz,0.),top.yrmsz**2,1.)
+  warpplg(syz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("Slope of y-y' phase space",titleb,"(1)")
+
+##########################################################################
 def pzrhomid(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
   """Plots rhomidz along z-axis
@@ -1530,4 +1586,54 @@ def pzyedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titles: ptitles("Beam Y edges (ybar+-2*rms)",titleb,"(m)")
 
 ##########################################################################
+def pzenvxp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
+            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
+  """Plot beam X' envelope (xxpbar/xrms) versus Z
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + top.zplmesh/zscale
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb == None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  sxz = (top.xxpbarz - top.xbarz*top.xpbarz)/ \
+        where(greater(top.xrmsz,0.),top.xrmsz,1.)
+  warpplg(sxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("Beam X' envelope",titleb,"(rad)")
+
+##########################################################################
+def pzenvyp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
+            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
+  """Plot beam Y' envelope (yypbar/yrms) versus Z
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + top.zplmesh/zscale
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb == None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  syz = (top.yypbarz - top.ybarz*top.ypbarz)/ \
+        where(greater(top.yrmsz,0.),top.yrmsz,1.)
+  warpplg(syz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("Beam Y' envelope",titleb,"(rad)")
 
