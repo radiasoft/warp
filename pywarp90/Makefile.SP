@@ -8,8 +8,8 @@ PYCTOF = $(HOME)/pywrapper/pyctof.py
 OPT = -O3 -qstrict -qarch=pwr3 -qtune=pwr3
 POPT = -O
 PYMODULEOPT = 
-F90FREE  = mpxlf -c -qmaxmem=8192 -qdpc=e -qintsize=4 -qsuffix=f=f90:cpp=F90 -qfree=f90
-F90FIXED = mpxlf -c -qmaxmem=8192 -qdpc=e -qintsize=4 -qfixed=132
+F90FREE  = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90
+F90FIXED = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DPARALLEL -qfixed=132
 CC = xlc -qmaxmem=8192
 SO = sl
 LD = mpcc
@@ -57,6 +57,8 @@ WARPOBJECTS = env.o \
               cir.o \
               her.o
 
+WARPSLAVEOBJECTS = topslave.o w3dslave.o f3dslave.o
+
 MODULEOBJECTS = toppymodule.o envpymodule.o w3dpymodule.o f3dpymodule.o \
                 wxypymodule.o fxypymodule.o wrzpymodule.o frzpymodule.o \
 		cirpymodule.o herpymodule.o \
@@ -68,8 +70,9 @@ MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
 		cirpymodule.c herpymodule.c \
 		pybasisC.c
 
-static: $(WARPOBJECTS) $(MODULEOBJECTS) config.o
-	$(LD) -o pywarp90 $(PYMPIOBJS) $(WARPOBJECTS) $(MODULEOBJECTS) config.o \
+static: $(WARPOBJECTS) $(WARPSLAVEOBJECTS) $(MODULEOBJECTS) config.o
+	$(LD) -o pywarp90 $(PYMPIOBJS) $(WARPOBJECTS) $(WARPSLAVEOBJECTS) \
+	$(MODULEOBJECTS) config.o \
 	-lm -lX11 $(PYTHONLIB) $(LINKLIB) $(OTHERLIBS) $(FORTLIB)
 
 warp: $(SHAREDOBJECTS)
@@ -101,6 +104,8 @@ top.o:top.F top.p.o
 	$(F90FIXED) $(OPT) -c top.F
 dtop.o:dtop.F top.p.o
 	$(F90FIXED) $(OPT) -c dtop.F
+topslave.o:topslave.F top.p.o
+	$(F90FIXED) $(OPT) -c topslave.F
 fft.o:fft.F
 	$(F90FIXED) $(OPT) -c fft.F
 util.o:util.F
@@ -134,6 +139,8 @@ w3d.o:w3d.F w3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c w3d.F
 dw3d.o:dw3d.F w3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c dw3d.F
+w3dslave.o:w3dslave.F w3d.p.o top.p.o
+	$(F90FIXED) $(OPT) -c w3dslave.F
 
 w3dpymodule.o:w3dpymodule.c pybasis.h
 	$(CC) $(PYMODULEOPT) -c w3dpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
@@ -150,6 +157,8 @@ f3d.o:f3d.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3d.F
 f3d_mgrid.o:f3d_mgrid.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3d_mgrid.F
+f3dslave.o:f3dslave.F f3d.p.o top.p.o
+	$(F90FIXED) $(OPT) -c f3dslave.F
 
 f3dpymodule.o:f3dpymodule.c pybasis.h
 	$(CC) $(PYMODULEOPT) -c f3dpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
