@@ -9,7 +9,7 @@ import Numeric
 _pythontype = type
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.9 2005/03/12 00:48:42 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.10 2005/03/24 21:31:51 dave Exp $"
 
 class AppendableArray:
   """
@@ -72,7 +72,7 @@ Other methods include len, data, setautobump, cleardata, reshape
     self._datalen = 0
     self._autobump = autobump
     self._allocatearray()
-    if initunit: self.append(initunit)
+    if initunit is not None: self.append(initunit)
   def _extend(self,deltalen):
     # --- Only increase of the size of the array if the extra space fills up
     if len(self) + deltalen > self._maxlen:
