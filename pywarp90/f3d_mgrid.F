@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.52 $, $Date: 2003/08/22 22:46:11 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.53 $, $Date: 2003/08/29 17:33:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -10,10 +10,10 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho1d,
-     &                       rstar,linbend,l2symtry,l4symtry,scrtch,
+     &                       rstar,linbend,
+     &                       bound0,boundnz,boundxy,l2symtry,l4symtry,scrtch,
      &                       xmmin,ymmin,zmmin,zbeam,zgrid)
       use Constant
-      use GridBoundary3d
       use PSOR3d
       use Conductor3d
       use Multigrid3d
@@ -25,6 +25,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       real(kind=8):: rstar(-1:nz+1)
       logical(ISZ):: linbend
+      integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: scrtch(*)
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
@@ -93,7 +94,7 @@ c     --- converted and expanded for the multigrid solver.
         necndbdy = 0
         nocndbdy = 0
         call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                l2symtry,l4symtry)
+     &                bound0,boundnz,boundxy,l2symtry,l4symtry)
         if (laddconductor) call execuser("calladdconductor")
       endif
       call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,l2symtry,l4symtry)
@@ -173,7 +174,7 @@ c       --- correction form since it is operating on the error.
         if (mgform == 2) then
           call cond_potmg(nx,ny,nz,phisave,0,.false.,mgform,.true.)
           call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phisave,rhosave,res,
-     &                  0,localb0,localbnz,l2symtry,l4symtry,.true.,
+     &                  0,localb0,localbnz,boundxy,l2symtry,l4symtry,.true.,
      &                  my_index,nslaves,izfsslave,nzfsslave,
      &                  whosendingleft,izsendingleft,
      &                  whosendingright,izsendingright)
@@ -462,7 +463,8 @@ c    &                  "RHO",mglevel)
       do i=1,downpasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,scrtch,
-     &                 localb0,localbnz,my_index,nslaves,izfsslave,nzfsslave,
+     &                 localb0,localbnz,boundxy,
+     &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
       enddo
@@ -482,7 +484,7 @@ c     --- coarsening.
 
 c       --- Get the residual on the current grid.
         call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
-     &                mglevel,localb0,localbnz,l2symtry,l4symtry,.false.,
+     &                mglevel,localb0,localbnz,boundxy,l2symtry,l4symtry,.false.,
      &                my_index,nslaves,izfsslave,nzfsslave,
      &                whosendingleft,izsendingleft,
      &                whosendingright,izsendingright)
@@ -596,7 +598,8 @@ c     message added by petermc, 1 Oct 2002
       do i=1,uppasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,scrtch,
-     &                 localb0,localbnz,my_index,nslaves,izfsslave,nzfsslave,
+     &                 localb0,localbnz,boundxy,
+     &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
      &                 whosendingright,izsendingright)
       enddo
@@ -984,11 +987,10 @@ c=============================================================================
 c=============================================================================
       subroutine sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                     rdx2,rdy2,rdz2,linbend,l2symtry,l4symtry,scrtch,
-     &                     localb0,localbnz,
+     &                     localb0,localbnz,boundxy,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
      &                     whosendingright,izsendingright)
-      use GridBoundary3d
       use Conductor3d
       use Multigrid3d
       use Constant
@@ -998,7 +1000,7 @@ c=============================================================================
       real(kind=8):: rdx2,rdy2,rdz2
       logical(ISZ):: linbend
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: localb0,localbnz
+      integer(ISZ):: localb0,localbnz,boundxy
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -1597,19 +1599,18 @@ c       --- calculate the residual based on the boundary conditions
       end
 c=============================================================================
       subroutine residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
-     &                    mglevel,localb0,localbnz,l2symtry,l4symtry,
+     &                    mglevel,localb0,localbnz,boundxy,l2symtry,l4symtry,
      &                    mgform2init,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
-      use GridBoundary3d
       use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(0:nx,0:ny,-1:nz+1)
-      integer(ISZ):: mglevel,localb0,localbnz
+      integer(ISZ):: mglevel,localb0,localbnz,boundxy
       logical(ISZ):: l2symtry,l4symtry,mgform2init
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
@@ -1734,13 +1735,13 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                        l2symtry,l4symtry)
-      use GridBoundary3d
+     &                        bound0,boundnz,boundxy,l2symtry,l4symtry)
       use Multigrid3d
       use Conductor3d
       use Parallel
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: nx,ny,nz
+      integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
 c Makes call to the recursive routine which generates the conductors.
@@ -1795,7 +1796,7 @@ c       --- Get the conductors for this level
         bound0 = localb0
         boundnz = localbnz
         call setcndtr3d(xmmin,ymmin,zmmin1,zbeam,zgrid,nx1,ny1,nz1,dx1,dy1,dz1,
-     &                  l2symtry,l4symtry)
+     &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
         ic2 = ncond
         ie2 = necndbdy
         io2 = nocndbdy

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.82 $, $Date: 2003/08/26 23:51:18 $
+#@(#) File F3D.V, version $Revision: 3.83 $, $Date: 2003/08/29 17:32:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.82 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.83 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -302,7 +302,8 @@ dtranlan(0:nxlan,0:nylan,0:2) _real
 *********** PSOR3d_subs:
 psor3df(iwhich,nx,ny,nz,phi:real,rho:real,phi1d:real,rho1d:real,rstar:real,
        dx:real,dy:real,dz:real,xmmin:real,ymmin:real,zmmin:real,zbeam:real,
-       zgrid:real,linbends:logical,l2symtry:logical,l4symtry:logical,
+       zgrid:real,linbends:logical,bound0:integer,boundnz:integer,
+       boundxy:integer,l2symtry:logical,l4symtry:logical,lzerophiedge:logical,
        scrtch:real,izfsmin:integer,izfsmax:integer)
      subroutine # PSOR field solver
 psorinit(nx,ny,nz,dx:real,dy:real,dz:real,l2symtry:logical,l4symtry:logical)

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.81 $, $Date: 2003/08/26 23:51:18 $
+c@(#) File F3D.M, version $Revision: 3.82 $, $Date: 2003/08/29 17:32:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -257,7 +257,6 @@ c=============================================================================
      &                   ibc,l2symtry,l4symtry)
       use Constant
       use Timers
-      use GridBoundary3d
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -3860,7 +3859,6 @@ c==========================================================================
      &                 xlen,ylen,zlen,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                 work,workz,xywork,zwork,xmmax,pipeshpe,
      &                 l2symtry,l4symtry)
-      use GridBoundary3d
       use Capvars
       use GlobalVars
       integer(ISZ):: iwhich,nx,ny,nz,nzfull
@@ -3966,13 +3964,13 @@ c  reload rho back into phi
 
 c  if periodic in z, zero out iz=nz plane so that plane will only have
 c  image charges (plane 0 will have both image charges and beam charge)
-      if (bound0==periodic) then
+c     if (bound0==periodic) then
         do ix=0,nx
           do iy=0,ny
             phi(ix,iy,nz) = 0.
           enddo
         enddo
-      endif
+c     endif
 
 c  load induced charges onto phi
       do iend=1,numends
@@ -4028,14 +4026,14 @@ c    load charge onto each of the four conductors in this lens
 c Make phi periodic by adding planes iz=0 and nz and placing result back into
 c both planes.  (Note that plane 0 has beam charge and additional image charge 
 c while plane nz has only image charge.)
-      if (bound0==periodic) then
+c     if (bound0==periodic) then
         do ix=0,nx
           do iy=0,ny
             phi(ix,iy,0) = phi(ix,iy,0) + phi(ix,iy,nz)
             phi(ix,iy,nz) = phi(ix,iy,0)
           enddo
         enddo
-      endif
+c     endif
 
 c  finished with conductors, so...
 c  now do full 3-d field solve, with induced charges
@@ -4300,8 +4298,8 @@ c
 c===========================================================================
       subroutine psor3df(iwhich,nx,ny,nz,phi,rho,phi1d,rho1d,rstar,dx,dy,dz,
      &                  xmmin,ymmin,zmmin,zbeam,zgrid,linbends,
-     &                  l2symtry,l4symtry,scrtch,izfsmin,izfsmax)
-      use GridBoundary3d
+     &                  bound0,boundnz,boundxy,l2symtry,l4symtry,lzerophiedge,
+     &                  scrtch,izfsmin,izfsmax)
       use PSOR3d
       use Conductor3d
       use Constant
@@ -4313,7 +4311,8 @@ c===========================================================================
       real(kind=8):: phi1d(*),rho1d(*),scrtch(*)
       real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin,zbeam,zgrid
       logical(ISZ):: linbends
-      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: bound0,boundnz,boundxy
+      logical(ISZ):: l2symtry,l4symtry,lzerophiedge
 
 c This routine does a 3D field solve using point SOR with even-odd (red-black)
 c ordering.  It makes call to the routine cond_pot which sets voltages at
@@ -4391,7 +4390,7 @@ c       --- Zero the number of conductor points
         nocndbdy = 0
 c       --- Generate new conductors.
         call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                l2symtry,l4symtry)
+     &                bound0,boundnz,boundxy,l2symtry,l4symtry)
       endif
 
 c Set up for error calculations.  Set nsorerr so the sample points used to
@@ -5368,13 +5367,13 @@ c -------------------------------------------------------------------------
       end
 c===========================================================================
 c===========================================================================
-      subroutine psorinit(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
-      use GridBoundary3d
+      subroutine psorinit(nx,ny,nz,dx,dy,dz,bound0,boundnz,boundxy,l2symtry,l4symtry)
 #ifdef MPIPARALLEL
       use Parallel
 #endif
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
+      integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 c Allocate various arrays
 
@@ -5391,11 +5390,12 @@ c Fix longitudinal boundary conditions for the parallel version.
 c===========================================================================
 c===========================================================================
       subroutine setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                    l2symtry,l4symtry)
+     &                    bound0,boundnz,boundxy,l2symtry,l4symtry)
       use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
 c  Find type of slice, and put quad voltage into slicvx,slicvy.
@@ -5407,32 +5407,32 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 c     --- Call the appropriate routine.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                  l2symtry,l4symtry)
+     &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       else if (fstype == 7 .or. solvergeom==AMRgeom) then
         call setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                    l2symtry,l4symtry)
+     &                    bound0,boundnz,boundxy,l2symtry,l4symtry)
 c     else if(fstype==11) then
 c       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-c    &                    l2symtry,l4symtry)
+c    &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       else
         call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                  l2symtry,l4symtry)
+     &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       end if
 
       return
       end
 c===========================================================================
       subroutine setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                      l2symtry,l4symtry)
+     &                      bound0,boundnz,boundxy,l2symtry,l4symtry)
       use Constant
       use Surface_of_Rev
-      use GridBoundary3d
       use PSOR3d
       use Conductor3d
       use Lattice
       use InjectVars
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
 c  Find type of slice, and put quad voltage into slicvx,slicvy.
@@ -8977,14 +8977,15 @@ c points with indices in the range i1 and i2.
       end
 c===========================================================================
       subroutine setcndtr_rz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                       l2symtry,l4symtry)
+     &                       bound0,boundnz,boundxy,l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
       l4symtry = .true.
       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                l2symtry,l4symtry)
+     &                bound0,boundnz,boundxy,l2symtry,l4symtry)
 
       return
       end
@@ -9036,14 +9037,15 @@ c===========================================================================
       end
 c===========================================================================
       subroutine setcndtr_3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                       l2symtry,l4symtry)
+     &                       bound0,boundnz,boundxy,l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
       l4symtry = .true.
       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                l2symtry,l4symtry)
+     &                bound0,boundnz,boundxy,l2symtry,l4symtry)
 
       return
       end
