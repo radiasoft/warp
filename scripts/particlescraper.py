@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.14 2004/04/22 00:26:09 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.15 2004/04/26 21:32:28 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -23,6 +23,8 @@ Class for creating particle scraper for conductors
                    zplost arrays. The angles describing the surface normal are
                    put into pidlost[:,-3] and pidlost[:,-2]. The spherical
                    coordinate angle theta is in -3, and phi is in -2.
+                   The time at which the particles are lost is put into
+                   pidlost[:,-4].
                    Note that the condid where the particle is lost is also
                    saved in pidlost[:,-1].
  - install=1: flag whether or not to install the scraper so that the scraping
@@ -142,7 +144,7 @@ conductors are an argument.
 
     # --- First make sure there is extra space in the pidlost array.
     pidspace = 1
-    if self.lsaveintercept: pidspace = 3
+    if self.lsaveintercept: pidspace = 4
     if top.npidlostmax < top.npidmax+pidspace:
       top.npidlostmax = top.npidmax + pidspace
       gchange("LostParticles")
@@ -214,15 +216,23 @@ conductors are an argument.
         xc = take(xx,ic-i1)
         yc = take(yy,ic-i1)
         zc = take(zz,ic-i1)
-        # --- Should really multiply by gaminv
-        vx = take(top.uxplost[i1:i2],ic-i1)
-        vy = take(top.uyplost[i1:i2],ic-i1)
-        vz = take(top.uzplost[i1:i2],ic-i1)
+        if top.lrelativ:
+          vx = take(top.uxplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
+          vy = take(top.uyplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
+          vz = take(top.uzplost[i1:i2],ic-i1)*take(top.gaminvlost[i1:i2],ic-i1)
+        else:
+          vx = take(top.uxplost[i1:i2],ic-i1)
+          vy = take(top.uyplost[i1:i2],ic-i1)
+          vz = take(top.uzplost[i1:i2],ic-i1)
         intercept = c.intercept(xc,yc,zc,vx,vy,vz)
         put(top.xplost,ic,intercept.xi)
         put(top.yplost,ic,intercept.yi)
         put(top.zplost,ic,intercept.zi)
         put(top.pidlost[:,-3],ic,intercept.itheta)
         put(top.pidlost[:,-2],ic,intercept.iphi)
+        dt = (sqrt((xc-xi)**2 + (yc-yi)**2 + (zc-zi)**2)/
+              dvnz(sqrt(vx**2 + vy**2 + vz**2)))
+        put(top.pidlost[:,-4],ic,top.time - dt)
+
 
 
