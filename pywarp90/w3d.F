@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.85 $, $Date: 2003/02/12 15:29:28 $
+c@(#) File W3D.M, version $Revision: 3.86 $, $Date: 2003/02/13 17:02:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6596,7 +6596,11 @@ c            dz1 = 2.*dz1
         ldab = 1+kd
         ldb = inj_nz-1
         n = inj_nz-1
+#ifdef CYGWIN
+        call dpbsv_('u',n,kd,nrhs,ab,ldab,rhs,ldb,info)
+#else
         call dpbsv('u',n,kd,nrhs,ab,ldab,rhs,ldb,info)
+#endif
         if(info/=0) then
           write(0,*) 'ERROR in subroutine inj_setq_3darray_and_solvephi at exit of call to LAPACK routine dpbsv'
           write(0,*) 'Info /= 0, info = ',info
