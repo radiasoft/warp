@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.10 $, $Date: 2002/06/19 22:09:17 $
+c W3DSLAVE.M, version $Revision: 1.11 $, $Date: 2002/08/06 23:27:33 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -230,18 +230,6 @@ c       --- Make sure that the last processors doesn't have grid cells
 c       --- sticking out the end.
         nzpslave(nslaves-1) = nz - izpslave(nslaves-1)
 
-      endif
-
-c---------------------------------------------------------------------------
-c     --- If space-charge limited injection is turned on, then add additional
-c     --- grid cells to the first processor so it will have the injection
-c     --- surface completely covered.
-      if(solvergeom/=RZgeom) then
-       if (inject > 1) then
-        zinjmax = ainject**2/(rinject+sqrt(rinject**2-ainject**2))
-        nzinj = int(maxval((zinject + zinjmax - zmmin)/dz + inj_d)) + 1
-        nzpslave(0) = max(nzpslave(0),nzinj)
-       endif
       endif
 
 c---------------------------------------------------------------------------
