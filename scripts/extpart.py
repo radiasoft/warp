@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.33 2004/04/15 18:39:08 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.34 2004/09/24 22:37:59 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -472,7 +472,7 @@ functions.
     else:
       kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
     settitles("Y vs X","X","Y",self.titleright(tc,wt))
-    ppgeneric(y,x,kwdict=kw)
+    return ppgeneric(y,x,kwdict=kw)
 
   ############################################################################
   def pxxp(self,js=0,tc=None,wt=None,tp=None,slope=0.,offset=0.,
@@ -495,7 +495,7 @@ functions.
     else:
       kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
     settitles("X' vs X","X","X'",self.titleright(tc,wt))
-    ppgeneric(xp,x,kwdict=kw)
+    return ppgeneric(xp,x,kwdict=kw)
 
   ############################################################################
   def pyyp(self,js=0,tc=None,wt=None,tp=None,slope=0.,offset=0.,
@@ -518,7 +518,7 @@ functions.
     else:
       kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
     settitles("Y' vs Y","Y","Y'",self.titleright(tc,wt))
-    ppgeneric(yp,y,kwdict=kw)
+    return ppgeneric(yp,y,kwdict=kw)
 
   ############################################################################
   def pxpyp(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -531,7 +531,7 @@ functions.
     else:
       kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
     settitles("Y' vs X'","X'","Y'",self.titleright(tc,wt))
-    ppgeneric(yp,xp,kwdict=kw)
+    return ppgeneric(yp,xp,kwdict=kw)
 
   ############################################################################
   def prrp(self,js=0,tc=None,wt=None,tp=None,scale=0.,slope=0.,offset=0.,
@@ -570,7 +570,7 @@ functions.
       kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
                         top.xpplmin/xpscale,top.xpplmax/ypscale)
     settitles("R' vs R","R","R'",self.titleright(tc,wt))
-    ppgeneric(rp,r,kwdict=kw)
+    return ppgeneric(rp,r,kwdict=kw)
 
   ############################################################################
   def ptx(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -583,7 +583,7 @@ functions.
     else:
       kw['pplimits'] = ('e','e',top.xplmin,top.xplmax)
     settitles("X vs time","time","X",self.titleright(tc,wt))
-    ppgeneric(x,t,kwdict=kw)
+    return ppgeneric(x,t,kwdict=kw)
 
   ############################################################################
   def pty(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -596,7 +596,7 @@ functions.
     else:
       kw['pplimits'] = ('e','e',top.yplmin,top.yplmax)
     settitles("Y vs time","time","Y",self.titleright(tc,wt))
-    ppgeneric(y,t,kwdict=kw)
+    return ppgeneric(y,t,kwdict=kw)
 
   ############################################################################
   def ptxp(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -609,7 +609,7 @@ functions.
     else:
       kw['pplimits'] = ('e','e',top.xpplmin,top.xpplmax)
     settitles("X' vs time","time","X'",self.titleright(tc,wt))
-    ppgeneric(xp,t,kwdict=kw)
+    return ppgeneric(xp,t,kwdict=kw)
 
   ############################################################################
   def ptyp(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -622,7 +622,7 @@ functions.
     else:
       kw['pplimits'] = ('e','e',top.ypplmin,top.ypplmax)
     settitles("Y' vs time","time","Y'",self.titleright(tc,wt))
-    ppgeneric(yp,t,kwdict=kw)
+    return ppgeneric(yp,t,kwdict=kw)
 
   ############################################################################
   def ptux(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -633,7 +633,7 @@ functions.
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     settitles("ux vs time","time","ux",self.titleright(tc,wt))
-    ppgeneric(ux,t,kwdict=kw)
+    return ppgeneric(ux,t,kwdict=kw)
 
   ############################################################################
   def ptuy(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -644,7 +644,7 @@ functions.
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     settitles("uy vs time","time","uy",self.titleright(tc,wt))
-    ppgeneric(uy,t,kwdict=kw)
+    return ppgeneric(uy,t,kwdict=kw)
 
   ############################################################################
   def ptuz(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -655,7 +655,7 @@ functions.
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     settitles("uz vs time","time","uz",self.titleright(tc,wt))
-    ppgeneric(uz,t,kwdict=kw)
+    return ppgeneric(uz,t,kwdict=kw)
 
   ############################################################################
   def ptvx(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -666,7 +666,7 @@ functions.
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     settitles("Vx vs time","time","Vx",self.titleright(tc,wt))
-    ppgeneric(vx,t,kwdict=kw)
+    return ppgeneric(vx,t,kwdict=kw)
 
   ############################################################################
   def ptvy(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -677,7 +677,7 @@ functions.
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     settitles("Vy vs time","time","Vy",self.titleright(tc,wt))
-    ppgeneric(vy,t,kwdict=kw)
+    return ppgeneric(vy,t,kwdict=kw)
 
   ############################################################################
   def ptvz(self,js=0,tc=None,wt=None,tp=None,**kw):
@@ -688,7 +688,7 @@ functions.
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     settitles("Vz vs time","time","Vz",self.titleright(tc,wt))
-    ppgeneric(vz,t,kwdict=kw)
+    return ppgeneric(vz,t,kwdict=kw)
 
   ############################################################################
   def ptrace(self,js=0,tc=None,wt=None,tp=None,slope=0.,
