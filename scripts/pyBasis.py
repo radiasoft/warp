@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.40 2003/09/18 18:39:35 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.41 2003/10/07 21:55:14 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -192,6 +192,20 @@ def ave(x,index=0):
     return sum(x,index)/shape(x)[index]
   else:
     return 0.
+
+def averagezdata(qty,navg=0,nlines=100,jhist=None,istep=None,nz=None):
+  if navg == 0 or nlines == 0: return qty
+  if len(shape(qty)) == 1: qty.shape = (len(qty),1)
+  if not nz: nz = shape(qty)[0] - 1
+  if not jhist: jhist = shape(qty)[1] - 1
+  if istep is None: istep = max(1,jhist/nlines)
+  hl = qty[:,::istep] + 0.
+  hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::istep])
+  for j in range(navg+1,nz-navg-1):
+    hl[j,:] = hl[j-1,:] + (qty[j+navg,::istep] -
+                           qty[j-navg-1,::istep])/(2*navg+1)
+  if shape(qty)[1] > 1: return hl
+  else: return hl[:,0]
 
 # --- Returns the max of the multiarray
 def maxnd(x):
