@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.65 2003/12/13 01:40:29 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.66 2004/01/23 00:19:54 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -130,24 +130,52 @@ def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     numbpx = take(numbpx,ii)
     numbmy = take(numbmy,ii)
     numbpy = take(numbpy,ii)
+    xxmx = compress(numbmx == numb,xx)
+    xxpx = compress(numbpx == numb,xx)
+    xxmy = compress(numbmy == numb,xx)
+    xxpy = compress(numbpy == numb,xx)
+    yymx = compress(numbmx == numb,yy)
+    yypx = compress(numbpx == numb,yy)
+    yymy = compress(numbmy == numb,yy)
+    yypy = compress(numbpy == numb,yy)
+    delmx = compress(numbmx == numb,delmx)
+    delpx = compress(numbmx == numb,delpx)
+    delmy = compress(numbmy == numb,delmy)
+    delpy = compress(numbmy == numb,delpy)
+  else:
+    xxmx = xx
+    xxpx = xx
+    xxmy = xx
+    xxpy = xx
+    yymx = yy
+    yypx = yy
+    yymy = yy
+    yypy = yy
   if lparallel:
-    xx = gatherarray(xx)
-    yy = gatherarray(yy)
+    xxmx = gatherarray(xxmx)
+    xxpx = gatherarray(xxpx)
+    xxmy = gatherarray(xxmy)
+    xxpy = gatherarray(xxpy)
+    yymx = gatherarray(yymx)
+    yypx = gatherarray(yypx)
+    yymy = gatherarray(yymy)
+    yypy = gatherarray(yypy)
     delmx = gatherarray(delmx)
     delpx = gatherarray(delpx)
     delmy = gatherarray(delmy)
     delpy = gatherarray(delpy)
   # --- This code combines all of the individual lines into the list pp.
   # --- This vectorized code avoids slower explicit loops.
-  niota = arange(len(xx))
-  ii = compress(less(abs(delmy),dy*subgridlen),niota)
-  pp = map(lambda x,y,d:[y,y-d,x,x],take(xx,ii),take(yy,ii),take(delmy,ii))
-  ii = compress(less(abs(delmx),dx*subgridlen),niota)
-  pp = pp + map(lambda x,y,d:[y,y,x,x-d],take(xx,ii),take(yy,ii),take(delmx,ii))
-  ii = compress(less(abs(delpy),dy*subgridlen),niota)
-  pp = pp + map(lambda x,y,d:[y,y+d,x,x],take(xx,ii),take(yy,ii),take(delpy,ii))
-  ii = compress(less(abs(delpx),dx*subgridlen),niota)
-  pp = pp + map(lambda x,y,d:[y,y,x,x+d],take(xx,ii),take(yy,ii),take(delpx,ii))
+  pp = []
+  for mapfunc,xx,yy,dl,dd in [(lambda x,y,d:[y,y-d,x,x],xxmy,yymy,delmy,dy),
+                              (lambda x,y,d:[y,y,x,x-d],xxmx,yymy,delmx,dx),
+                              (lambda x,y,d:[y,y+d,x,x],xxpy,yypy,delpy,dy),
+                              (lambda x,y,d:[y,y,x,x+d],xxpx,yypx,delpx,dx)]:
+    ii = compress(less(abs(dl),dd*subgridlen),arange(len(xx)))
+    xx = take(xx,ii)
+    yy = take(yy,ii)
+    dl = take(dl,ii)
+    pp = pp + map(mapfunc,xx,yy,dl)
   # --- Convert the list to an array and plot it
   if len(pp) > 0:
     pp = array(pp)
@@ -1329,20 +1357,20 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
   nlist = findunique(nlist)
   #nlist.remove(0)
   nlist = broadcast(nlist)
-  for i in range(len(nlist)):
-    plotsubgrid('x','z','y',0,iy,nlist[i],xmmin,zmmin,dx,dz,
+  for i in nlist:
+    plotsubgrid('x','z','y',0,iy,i,xmmin,zmmin,dx,dz,
                 colors[i%ncolor],subgridlen,mglevel,1,1)
     if fullplane and w3d.l4symtry:
-      plotsubgrid('x','z','y',0,iy,nlist[i],xmmin,zmmin,dx,dz,
+      plotsubgrid('x','z','y',0,iy,i,xmmin,zmmin,dx,dz,
                   colors[i%ncolor],subgridlen,mglevel,-1,1)
   nlist = gatherarray(f3d.ocnumb[:f3d.nocndbdy])
   nlist = findunique(nlist)
   nlist = broadcast(nlist)
-  for i in range(len(nlist)):
-    plotsubgrid('x','z','y',1,iy,nlist[i],xmmin,zmmin,dx,dz,
+  for i in nlist:
+    plotsubgrid('x','z','y',1,iy,i,xmmin,zmmin,dx,dz,
                 colors[i%ncolor],subgridlen,mglevel,1,1)
     if fullplane and w3d.l4symtry:
-      plotsubgrid('x','z','y',1,iy,nlist[i],xmmin,zmmin,dx,dz,
+      plotsubgrid('x','z','y',1,iy,i,xmmin,zmmin,dx,dz,
                   colors[i%ncolor],subgridlen,mglevel,-1,1)
 
 
