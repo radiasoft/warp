@@ -8,8 +8,8 @@ PYCTOF = $(HOME)/pywrapper/pyctof.py
 OPT = -fast
 POPT = -O
 PYMODULEOPT = -O1
-FORTFREE  = f90 -fpconstant
-FORTFIXED = f90 -extend_source -fpconstant
+F90FREE  = f90 -fpconstant
+F90FIXED = f90 -extend_source -fpconstant
 CC = cc -fpic
 SO = so
 LD = f90 -shared
@@ -239,4 +239,7 @@ herpymodule.o:herpymodule.c pybasis.h
 herpymodule.c her.p.f90:her.v
 	$(PYMAC) -a her.v top.v
 
+
+clean:
+	rm -f *.mod *.o *.p.f90 *module.c *.scalars *.$(SO) pybasis*
 
