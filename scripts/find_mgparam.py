@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.2 2001/08/30 23:30:07 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.3 2001/08/31 18:06:18 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -25,6 +25,27 @@ find_mgparam_version = "$Id: find_mgparam.py,v 1.2 2001/08/30 23:30:07 dave Exp 
 # and it converged every time.  An effort was made to make the script robust
 # and idiot proof.
 
+def find_mgparam():
+  """
+Optimize both mgparam and up and down passes, minimizing the fieldsolve
+time.
+  """
+  nexttime = field_solve()
+  prevtime = 2*nexttime
+  while nexttime < prevtime:
+    prevtime = nexttime
+    nexttime = _find_mgparam()
+    print "Field solve time = ",nexttime
+    print "f3d.mgparam = ",f3d.mgparam
+    print "f3d.downpasses = ",f3d.downpasses
+    print "f3d.uppasses = ",f3d.uppasses
+    if nexttime < prevtime:
+      f3d.downpasses = f3d.downpasses + 1
+      f3d.uppasses = f3d.uppasses + 1
+    else:
+      f3d.downpasses = f3d.downpasses - 1
+      f3d.uppasses = f3d.uppasses - 1
+
 def field_solve():
   ixmin = 1
   ixmax = w3d.nx-1
@@ -39,9 +60,12 @@ def field_solve():
   if (f3d.bound0  > 0): izmin = 0
   if (f3d.boundnz > 0): izmax = w3d.ny
   w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
+  beforetime = wtime()
   vp3d(-1)
+  aftertime = wtime()
+  return aftertime - beforetime
 
-def find_mgparam():
+def _find_mgparam():
   icount = 0  # iteration count
 
 # --- Make sure that mgparam is between 0 and 2.
@@ -56,7 +80,7 @@ def find_mgparam():
     f3d.mgparam = max(1., 4. - f3d.mgparam)
 
 # --- do initial field solve
-  field_solve()
+  fstime = field_solve()
 
 # --- set initail values for 'previous' quantities
   mgparam_prev = f3d.mgparam
@@ -80,7 +104,7 @@ def find_mgparam():
     print "Best parameter so far = %f" % f3d.mgparam
 
 #   --- do field solve (which prints out number of field solve iterations)
-    field_solve()
+    fstime = field_solve()
 
 #   --- If field solve took more iterations than previous field solve, change
 #   --- direction of the increment and reduce its size.  Reducing its size
@@ -121,3 +145,4 @@ def find_mgparam():
     print "         Try increasing mgmaxit."
 
 
+  return fstime
