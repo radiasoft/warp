@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.32 2004/04/14 17:58:14 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.33 2004/04/15 18:39:08 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -140,12 +140,16 @@ routines (such as ppxxp).
   def clear(self):
     self.setuparrays(top.ns)
 
-  def getid(self):
+  def getid(self,safe=0):
+    'If safe, then return None is id is not found rather than raising error'
     assert self.enabled,"This window is disabled and there is no associated id"
     for i in range(top.nepwin):
       if top.izepwin[i] == self.iz and self.iz >= 0: return i
       if top.zzepwin[i] == self.zz and self.iz == -1: return i
-    raise "Uh Ooh! Somehow the window was deleted! I can't continue! "+self.titleright(None,None)
+    if not safe:
+      raise "Uh Ooh! Somehow the window was deleted! I can't continue! "+self.titleright(None,None)
+    else:
+      return None
 
   def setupid(self):
     top.nepwin = top.nepwin + 1
@@ -171,20 +175,23 @@ routines (such as ppxxp).
     if not self.enabled: return
     # --- Set so accumulate method is not called after time steps
     uninstallafterstep(self.accumulate)
-    # --- Remove this window from the list.
-    for i in range(self.getid(),top.nepwin-1):
-      top.izepwin[i] = top.izepwin[i+1]
-      top.zzepwin[i] = top.zzepwin[i+1]
-      top.wzepwin[i] = top.wzepwin[i+1]
-    top.nepwin = top.nepwin - 1
-    gchange("ExtPart")
+    # --- Remove this window from the list. Turn safe on when gettin
+    # --- the id, since it may for some reason not be consistent.
+    id = self.getid(safe=1)
+    if id is not None:
+      for i in range(id,top.nepwin-1):
+        top.izepwin[i] = top.izepwin[i+1]
+        top.zzepwin[i] = top.zzepwin[i+1]
+        top.wzepwin[i] = top.wzepwin[i+1]
+      top.nepwin = top.nepwin - 1
+      gchange("ExtPart")
     self.enabled = 0
 
   def __setstate__(self,dict):
     self.__dict__.update(dict)
     if not self.enabled: return
-    try:    id = self.getid()
-    except: self.setupid()
+    id = self.getid(safe=1)
+    if id is None: self.setupid()
     self.restoredata()
     if not isinstalledafterstep(self.accumulate):
       installafterstep(self.accumulate)
@@ -201,12 +208,12 @@ routines (such as ppxxp).
       ntot = ntot + self.getn(js=js)
     if ntot > 0 and me == 0:
       ff = None
-      try:
-        ff = PWpyt.PW(self.name+'_epdump.pyt')
-        dumpsmode = 1
-      except:
-        ff = PW.PW(self.name+'_epdump.pdb')
-        dumpsmode = 0
+#     try:
+#       ff = PWpyt.PW(self.name+'_epdump.pyt')
+#       dumpsmode = 1
+#     except:
+      ff = PW.PW(self.name+'_epdump.pdb')
+      dumpsmode = 0
       if ff is None:
          print "ExtPart: %s unable to dump data to file."%self.name
          return
@@ -251,7 +258,7 @@ routines (such as ppxxp).
 
   def accumulate(self):
     # --- If top.nepwin is 0 then something is really wrong - this routine
-    # --- should never be called it top.nepwin is zero.
+    # --- should never be called if top.nepwin is zero.
     if top.nepwin == 0: return
     # --- Check if the number of species has changed. This is done to ensure
     # --- crashes don't happen.
