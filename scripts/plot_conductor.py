@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.44 2002/08/08 18:12:31 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.45 2002/09/09 21:49:46 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1750,7 +1750,7 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
            w3d.xmmin+ixmin*w3d.dx,w3d.xmmin+ixmax*w3d.dx,
            w3d.ymmin+iymin*w3d.dy,w3d.ymmin+iymax*w3d.dy,true,
            w3d.zmmin,w3d.zmmax,top.zbeam,dx,dy,w3d.dz,
-           w3d.nx,w3d.ny,w3d.nz,ix_axis,iy_axis,condid)
+           w3d.nx,w3d.ny,w3d.nz,ix_axis,iy_axis,condid=condid)
 
   f3d.lsrlinr = false
 
