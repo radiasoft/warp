@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.30 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -4911,15 +4911,15 @@ c       --- Check if it hits the inner cylinder.
 c=======================================================================
 c=======================================================================
       real(kind=8) function linrzintersection(zz,rr,npnts_sr,z_sr,r_sr,
-     &                               rad_sr,zc_sr,rc_sr,zend,i1,i2,istep)
+     &                                        rad_sr,zc_sr,rc_sr,zend,istep)
       real(kind=8):: zz,rr
       integer(ISZ):: npnts_sr
       real(kind=8):: z_sr(npnts_sr),r_sr(npnts_sr)
       real(kind=8):: rad_sr(npnts_sr-1),zc_sr(npnts_sr-1),rc_sr(npnts_sr-1)
       real(kind=8):: zend
-      integer(ISZ):: i1,i2,istep
+      integer(ISZ):: istep
 
-c This searches throught the line segments to find the one that the z-line
+c This searches through the line segments to find the one that the z-line
 c will intersect. From that, the location of the z intersection can be
 c calculated directly.
 
@@ -4928,13 +4928,13 @@ c calculated directly.
       logical(ISZ):: done
 
 c     --- Find the line segment which covers the range of z where the point is.
-      do ii=i1,i2,istep
-        if (z_sr(ii) > zz .and. istep == +1) exit
-        if (z_sr(ii) < zz .and. istep == -1) exit
+c     --- The search can either be to the left or to the right. But in both
+c     --- cases, find the line segment end just to the left of the data point.
+c     --- If zz if less that z_sr(1), then ii will be 1. If zz greater than
+c     --- the end of the last line segment, then ii will be npnts_sr-1.
+      do ii=1,npnts_sr-2
+        if (zz < z_sr(ii+1)) exit
       enddo
-      if (ii > npnts_sr .and. istep == +1) ii = npnts_sr
-      if (ii < 1        .and. istep == -1) ii = 1
-      if (istep == 1) ii = ii - 1
 
 c     --- Search up (or down) in the line segments to find one which crosses
 c     --- the r of the point.
@@ -4944,6 +4944,9 @@ c     --- the r of the point.
         r2 = max(r_sr(ii+1),r_sr(ii))
         if (rad_sr(ii) < LARGEPOS .and.
      &      (z_sr(ii) < zc_sr(ii) .and. zc_sr(ii) < z_sr(ii+1))) then
+c         --- If the segment is an arc and if the z center of the arc is
+c         --- within the z range, then the r max or min of the segment will
+c         --- be somewhere along the arc rather than at an endpoint.
           if (rad_sr(ii) < 0.) then
             r1 = rc_sr(ii) + rad_sr(ii)
           else
@@ -4951,14 +4954,43 @@ c     --- the r of the point.
           endif
         endif
         if (r1 <= rr .and. rr <= r2) then
-c     --- Directly calculate the z intersection for this segment.
+c         --- Directly calculate the z intersection for this segment.
           if (rad_sr(ii) == LARGEPOS) then
-            zi = (rr - r_sr(ii))*(z_sr(ii+1) - z_sr(ii))/
-     &           (r_sr(ii+1) - r_sr(ii)) + z_sr(ii)
+c           --- For a straight line
+            if (r_sr(ii+1) - r_sr(ii) == 0.) then
+c             --- A special case is needed if two adjacent radii are equal and
+c             --- if the radius of the point is at that same radius.
+              if (zz < z_sr(ii)) then
+c               --- This will only ever be done if there is only one line
+c               --- segment and the z of the left end is greater than the z of
+c               --- the left end of the conductor (i.e. the data does not span
+c               --- the conductor).
+                zi = z_sr(ii)
+              else if (zz > z_sr(ii+1)) then
+c               --- This will only ever be done if there is only one line
+c               --- segment and the z of the right end is less than the z of
+c               --- the right end of the conductor (i.e. the data does not span
+c               --- the conductor).
+                zi = z_sr(ii+1)
+              else
+c               --- In all other cases, the z of the point will be within
+c               --- the range of the line segment and so the point is on
+c               --- the surface of the conductor.
+                zi = zz
+              endif
+            else
+              zi = (rr - r_sr(ii))*(z_sr(ii+1) - z_sr(ii))/
+     &             (r_sr(ii+1) - r_sr(ii)) + z_sr(ii)
+            endif
           else
+c           --- For an arc
             z1 = sqrt(max(0.,rad_sr(ii)**2 - (rr-rc_sr(ii))**2))
+c           --- The line along z intersects the arc at the two points zc+-z1.
+c           --- Pick first the one seen first along the direction of search.
             zi = zc_sr(ii) + istep*z1
             if ((zi > zz .and. istep == 1).or.(zi < zz .and. istep == -1)) then
+c             --- If that one is not in the correct direction relative to the
+c             --- point, then pick the other.
               zi = zc_sr(ii) - istep*z1
             endif
           endif
@@ -4970,11 +5002,10 @@ c         --- side of the point. Otherwise, try the next segment.
           endif
         endif
         ii = ii - istep
-        if (istep == +1 .and. ii == 0) then
-          zi = zend
-          done = .true.
-        endif
-        if (istep == -1 .and. ii == npnts_sr+1) then
+c       --- Check if the search has gone beyond the extent of the data.
+c       --- This will only occur if the line segments do not span the conductor.
+c       --- If this does happen, return the end point of the conductor.
+        if (ii == 0 .or. ii == npnts_sr) then
           zi = zend
           done = .true.
         endif
@@ -5104,8 +5135,7 @@ c       --- conductor or within the max radius.
             if (min(rminlower,rmin) <= rr .and. rr <= max(rminlower,rmin)) then
               if (lsrminlinr) then
                 znew = linrzintersection(zz,rr,npnts_srmin,z_srmin,r_srmin,
-     &                                   rad_srmin,zc_srmin,rc_srmin,zmin,
-     &                                   2,npnts_srmin,1)
+     &                                   rad_srmin,zc_srmin,rc_srmin,zmin,1)
                 delmz(i) = zz - znew
               else
 c               --- If grid location is between rmin and rminlower find
@@ -5161,8 +5191,7 @@ c                 --- 10% in the delta and slowing down the code.
             if (min(rmaxlower,rmax) <= rr .and. rr <= max(rmaxlower,rmax)) then
               if (lsrmaxlinr) then
                 znew = linrzintersection(zz,rr,npnts_srmax,z_srmax,r_srmax,
-     &                                   rad_srmax,zc_srmax,rc_srmax,zmin,
-     &                                   2,npnts_srmax,1)
+     &                                   rad_srmax,zc_srmax,rc_srmax,zmin,1)
                 delmz1 = zz - znew
               else
 c               --- If grid location is between rmax and rmaxlower find
@@ -5239,8 +5268,7 @@ c         --- Calculate distance to conductor at higher z.
      &          rr <= max(rminhigher,rmin)) then
               if (lsrminlinr) then
                 znew = linrzintersection(zz,rr,npnts_srmin,z_srmin,r_srmin,
-     &                                   rad_srmin,zc_srmin,rc_srmin,zmax,
-     &                                   npnts_srmin-1,1,-1)
+     &                                   rad_srmin,zc_srmin,rc_srmin,zmax,-1)
                 delpz(i) = znew - zz
               else
 c               --- First, try Regula-Falsi (secant method) iteration to
@@ -5295,8 +5323,7 @@ c                 --- 10% in the delta and slowing down the code.
      &          rr <= max(rmaxhigher,rmax)) then
               if (lsrmaxlinr) then
                 znew = linrzintersection(zz,rr,npnts_srmax,z_srmax,r_srmax,
-     &                                   rad_srmax,zc_srmax,rc_srmax,zmax,
-     &                                   npnts_srmax-1,1,-1)
+     &                                   rad_srmax,zc_srmax,rc_srmax,zmax,-1)
                 delpz1 = znew - zz
               else
 c               --- First, try Regula-Falsi (secant method) iteration to
