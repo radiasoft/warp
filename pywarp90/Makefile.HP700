@@ -25,7 +25,7 @@ NUMPYINCLUDE =
 OLD = OLD1
 
 WARPSCRIPTS = $(HOME)/scriptsnew
-INCLUDE = -I$(PYTHON)/include/python$(PYVERS) -I$(HOME)/python
+INCLUDE = -I$(PYTHON)/include/python$(PYVERS)
 PYTHONLIB = -L$(PYTHON)/lib/python$(PYVERS)/config -lpython$(PYVERS)
 PYTHONOBJ = $(PYTHON)/lib/python$(PYVERS)/config/python.o
 OTHERLIBS = $(PACTLIB) -lpdb -lpml -lscore \
