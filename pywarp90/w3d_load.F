@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.8 $, $Date: 2004/12/10 23:18:37 $
+c@(#) File w3d_load.F, version $Revision: 1.9 $, $Date: 2004/12/14 12:41:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -228,7 +228,7 @@ c            = "TE" or "ThermalEquilibrium": Thermal Equilibrium form
 c
       integer(ISZ):: ip, irr
       real(kind=8):: wrandom, wrandomgauss
-      real(kind=8):: u_max, ang_mag, ang_phase  
+      real(kind=8):: u_max, ang_mag, ang_phase, g_dist    
       real(kind=8):: bessi0
  
 c     Load axisymmetric particle coordinates x,y based on the equivalent 
@@ -294,9 +294,10 @@ c         --- acceptable at the particle radius r = r(ip)
 
 c         --- set particle x' and y' to be uniformly distributed within 
 c         --- a unit disk of radius u_max 
-          ang_mag   = sqrt(abs(2.*u_max))*
-     &                  wrandom(xrandom,ip+kioff-1,dig3,1,1) 
+          ang_mag   = sqrt(abs(2.*u_max)*
+     &                     wrandom(xrandom,ip+kioff-1,dig3,1,1)) 
           ang_phase = Pi*( 2.*wrandom(xrandom,ip+kioff-1,dig4,1,1) - 1. ) 
+
           xp(ip) = ang_mag*cos(ang_phase)  
           yp(ip) = ang_mag*sin(ang_phase) 
           
@@ -311,8 +312,18 @@ c     --- parabolic equilibrium
 c     --- thermal equilibrium 
       elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
 
-        call remark("routine loadperpdist: distrbtn = TE not implemented") 
-        call kaboom(0)
+        do ip = 1,np 
+
+c         --- use Gaussian random number generator to load distribution 
+c         --- of angles.  This is independent of the particle coordinates 
+c         --- loaded for a thermal distribution.  
+
+          g_dist = wrandomgauss(xrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
+          xp(ip) = 0.5*(emit_b/r_b)*g_dist
+          g_dist = wrandomgauss(xrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
+          yp(ip) = 0.5*(emit_b/r_b)*g_dist
+
+        enddo 
 
 c       --- undefined option trap 
       else 
