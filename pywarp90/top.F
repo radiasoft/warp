@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.22 $, $Date: 2001/09/19 22:28:00 $
+c@(#) File TOP.M, version $Revision: 3.23 $, $Date: 2001/09/20 00:50:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4954,14 +4954,20 @@ c A general particle scraping routine, which allows particles to be scraped
 c efficiently using complex geometries.
 c=============================================================================
       subroutine griddedparticlescraper(is,distance,nx,ny,nz,dx,dy,dz,
-     &                                  xmin,ymin,zmin,l2symtry,l4symtry)
+     &                                  xmin,ymin,zmin,zbeam,l2symtry,l4symtry)
       use Particles
+      use Z_arrays
       integer(ISZ):: is,nx,ny,nz
-      real(kind=8):: dx,dy,dz,xmin,ymin,zmin
+      real(kind=8):: dx,dy,dz,xmin,ymin,zmin,zbeam
       logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: distance(0:nx,0:ny,0:nz)
 
 c This provides a method of scraping particles in a complex geometry.
+c The 3-d array distances holds the distance of each node to the nearest
+c scraping boundary, a negative value being inside.
+c This distance is linearly interpolated to the particle
+c position. If the resulting value is negative, then the particle is
+c considered inside the boundary and is removed.
 
 c Input:
 c   is: species number of particles to process
@@ -4969,6 +4975,7 @@ c   distance(0:nx,0:ny,0:nz): distance to boundary surface
 c   nx,ny,nz: grid dimensions
 c   dx,dy,dz: grid cell sizes
 c   xmin,ymin,zmin: coordinates of lower left hand corner of grid
+c   zbeam: location of the beam frame (only needed to set lostpars)
 c   l2symtry,l4symtry: level of symmetry to use
 
       integer(ISZ):: ip,ix,iy,iz
@@ -5026,6 +5033,8 @@ c           --- Scrape the particle
             uxp(ip) = 0.0
             uyp(ip) = 0.0
             uzp(ip) = 0.0
+            iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
+            lostpars(iz) = lostpars(iz) + 1
           endif
 
         endif
@@ -5035,99 +5044,6 @@ c           --- Scrape the particle
       return
       end
 c=============================================================================
-      subroutine griddedparticlescraper1(is,isinside,volumeinside,nx,ny,nz,
-     &                                  dx,dy,dz,xmin,ymin,zmin,
-     &                                  l2symtry,l4symtry)
-      use Particles
-      integer(ISZ):: is,nx,ny,nz
-      real(kind=8):: dx,dy,dz,xmin,ymin,zmin
-      logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: isinside(0:nx,0:ny,0:nz)
-      real(kind=8):: volumeinside(0:nx-1,0:ny-1,0:nz-1)
-
-c This provides a method of scraping particles in a complex geometry.  It
-c takes two arrays: a node-centered array which has a value of 1 for each
-c point inside a conductor and 0 otherwise; and a cell-centered array
-c which has the fraction of each cell inside of the conductor. To make the
-c check, the node-centered array is area weighted onto the partice
-c position, giving effectively the fraction of the particle inside the
-c conductor. If that fraction is greater than the fraction of the grid
-c cell outside the conductor, then the particle is scraped. Note that this
-c only approximates the conductor as a piece-wise continuous plane.
-
-c Input:
-c   is: species number of particles to process
-c   isinside(0:nx,0:ny,0:nz): node-centered grid
-c   volumeinside(0:nx-1,0:ny-1,0:nz-1): cell-centered grid
-c   nx,ny,nz: grid dimensions
-c   dx,dy,dz: grid cell sizes
-c   xmin,ymin,zmin: coordinates of lower left hand corner of grid
-c   l2symtry,l4symtry: level of symmetry to use
-
-      integer(ISZ):: ip,ix,iy,iz
-      real(kind=8):: dxi,dyi,dzi,wx,wy,wz
-      real(kind=8):: fraction_inside
- 
-c     --- set grid cell inverse sizes
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
- 
-c     --- loop over particles
-      do ip=1,np
- 
-c       --- find location on grid
-        if (l4symtry) then
-          ix = abs((xp(ip) - xmin)*dxi)
-          iy = abs((yp(ip) - ymin)*dyi)
-          iz =     (zp(ip) - zmin)*dzi
-          wx = abs((xp(ip) - xmin)*dxi) - ix
-          wy = abs((yp(ip) - ymin)*dyi) - iy
-          wz =     (zp(ip) - zmin)*dzi - iz
-        else if (l2symtry) then
-          ix =     (xp(ip) - xmin)*dxi
-          iy = abs((yp(ip) - ymin)*dyi)
-          iz =     (zp(ip) - zmin)*dzi
-          wx =     (xp(ip) - xmin)*dxi - ix
-          wy = abs((yp(ip) - ymin)*dyi) - iy
-          wz =     (zp(ip) - zmin)*dzi - iz
-        else
-          ix =     (xp(ip) - xmin)*dxi
-          iy =     (yp(ip) - ymin)*dyi
-          iz =     (zp(ip) - zmin)*dzi
-          wx =     (xp(ip) - xmin)*dxi - ix
-          wy =     (yp(ip) - ymin)*dyi - iy
-          wz =     (zp(ip) - zmin)*dzi - iz
-        endif
- 
-c       --- if within grid, examine the particle, otherwise assume its OK.
-        if (ix >= 0 .and. ix < nx .and.
-     &      iy >= 0 .and. iy < ny .and.
-     &      iz >= 0 .and. iz < nz) then
-
-          fraction_inside =
-     &        isinside(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
-     &        isinside(ix+1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
-     &        isinside(ix  ,iy+1,iz  )*(1. - wx)*      wy *(1. - wz) +
-     &        isinside(ix+1,iy+1,iz  )*      wx *      wy *(1. - wz) +
-     &        isinside(ix  ,iy  ,iz+1)*(1. - wx)*(1. - wy)*      wz  +
-     &        isinside(ix+1,iy  ,iz+1)*      wx *(1. - wy)*      wz  +
-     &        isinside(ix  ,iy+1,iz+1)*(1. - wx)*      wy *      wz  +
-     &        isinside(ix+1,iy+1,iz+1)*      wx *      wy *      wz
-
-          if (fraction_inside > (1. - volumeinside(ix,iy,iz))) then
-c           --- Scrape the particle
-            uxp(ip) = 0.0
-            uyp(ip) = 0.0
-            uzp(ip) = 0.0
-          endif
-
-        endif
- 
-      enddo
-
-      return
-      end
 c=============================================================================
 c The following two subroutines are made obsolete by zpartbnd above, but
 c are maintained for use by the wrz and wxy packages.

@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.22 $, $Date: 2001/09/19 22:28:00 $
+#@(#) File TOP.V, version $Revision: 3.23 $, $Date: 2001/09/20 00:50:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -617,7 +617,7 @@ linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.22 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.23 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -1636,13 +1636,7 @@ periz(np,zp:real,zgrid:real,zmmax:real,zmmin:real)
 griddedparticlescraper(is:integer,distance:real,
                        nx:integer,ny:integer,nz:integer,
                        dx:real,dy:real,dz:real,xmin:real,ymin:real,zmin:real,
-                       l2symtry:logical,l4symtry:logical) subroutine
-                       # General particle scraper which allows scraping
-                       # in complex geometries.
-griddedparticlescraper1(is:integer,isinside:real,volumeinside:real,
-                       nx:integer,ny:integer,nz:integer,
-                       dx:real,dy:real,dz:real,xmin:real,ymin:real,zmin:real,
-                       l2symtry:logical,l4symtry:logical) subroutine
+                       zbeam:real,l2symtry:logical,l4symtry:logical) subroutine
                        # General particle scraper which allows scraping
                        # in complex geometries.
 setgamma(lrelativ)
