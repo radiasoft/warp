@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.2 2001/07/10 18:54:58 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.3 2001/07/10 22:40:04 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -91,9 +91,6 @@ initial data, and redefines the step command
     if zerophi: w3d.phi = 0.
     # --- Turn off charge deposition
     top.depos = 'none'
-    # --- Turn off the sticky boundary conditions
-    top.stickyxy = false
-    top.stickyz = false
     # --- Save initial time-step data
     self.itsave = top.it
     self.timesave = top.time
