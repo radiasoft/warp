@@ -221,3 +221,5 @@ herpymodule.c her.p.F90:her.v
 
 clean:
 	rm -f *.mod *.o *.p.F90 *module.c *.scalars *.$(SO) pybasis*
+cleanfortranobjects:
+	rm -f ???.o d???.o *.p.o util.o *_mgrid.o
