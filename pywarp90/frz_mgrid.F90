@@ -1,4 +1,4 @@
-!     Last change:  JLV  14 Jan 2002    2:07 pm
+!     Last change:  JLV  14 Jan 2002    2:53 pm
 #include "top.h"
 
 module multigrid_common
@@ -1952,7 +1952,6 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 
 real(8) :: u(0:nr0+2,0:nz0+2)
 
-WRITE(0,*) "JFDSKFJDSDLFJ"
 IF(ncmax==0) return
 
   IF(iwhich==0.or.iwhich==1) then
@@ -1978,7 +1977,6 @@ IF(ncmax==0) return
                         length_r=nr0*dr0,length_z=nz0*dz0, &
                          accuracy=accuracy,sub_accuracy=mgridrz_sub_accuracy, &
                         nc=ncmax,npre=npre,npost=npost,ncycle=ncycle,nrecurs_min=mgridrz_nrecurs_min)
-
   u0(1:nr0+1,:)=u(1:nr0+1,:)
 
 return
