@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.11 $, $Date: 2002/09/12 23:42:50 $
+c F3DSLAVE.M, version $Revision: 1.12 $, $Date: 2002/09/20 18:15:00 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -752,12 +752,13 @@ c       --- Then check that no nz are less than nzmin.
       end
 c=============================================================================
       subroutine mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-     &                            bound0,boundnz,nzfull,
+     &                            bound0,boundnz,nzfull,lparity,rparity,
      &                            whosendingleft,izsendingleft,
      &                            whosendingright,izsendingright)
       integer(ISZ):: nslaves,my_index
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: bound0,boundnz,nzfull
+      integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1)
       integer(ISZ):: izsendingleft(0:nslaves-1)
@@ -781,6 +782,8 @@ c     --- By default, no processoers send data (flagged by -1)
       numsendingright = 0
       izsendingright = 0
 
+c     --- For each processor, find a processor on the right which has the
+c     --- data needed.
 c     --- Loop over all slaves since this must be a global process.
       do idx=0,nslaves-1
 
@@ -797,8 +800,10 @@ c       --- therefore don't have the data needed for this processor.
           js = js + 1
         enddo
 
-c       --- The right most processor is treated differently (and is only
-c       --- sent data from the left with periodic boundary conditions).
+c       --- Processors whose extent extends to the right edge are treated
+c       --- differently. They are sent data from the left with periodic
+c       --- boundary conditions. Otherwise, all receive data from the last
+c       --- processor.
 c       --- Do all but that one first.
         if (js < nslaves) then
 
@@ -823,10 +828,23 @@ c         --- end of this processor, wrapping around to the left edge.
           enddo
           ie = ie - 1
         else
-c         --- This should only be reached at the right hand end when
-c         --- periodic boundaries are turned off. Hence no data is
-c         --- exchanged.
-          cycle
+
+c         --- Some of the processors which extend to the right hand edge will
+c         --- need data there if they did not extend to the right edge
+c         --- at a the next finer level. These processors are known by
+c         --- having rparity > 0.
+          if (idx < nslaves-1 .and. rparity(idx) > 0) then
+            ie = nslaves - 1
+            js = ie - 1
+            do while (js > idx .and. rparity(js) == 0 .and.
+     &            izfsslave(js)+nzfsslave(js)==izfsslave(idx)+nzfsslave(idx))
+              js = js - 1
+            enddo
+            js = js + 1
+          else
+            cycle
+          endif
+          
         endif
 
 c       --- Get the data from the processor which is doing the least amount
@@ -848,6 +866,8 @@ c       --- Increment the number of sends that processor makes.
         numsendingleft(whosendingleft(idx)) = numsendingleft(whosendingleft(idx)) + 1
       enddo
 
+c     --- For each processor, find a processor on the left which has the
+c     --- data needed.
 c     --- Loop over all slaves since this most be a global process.
       do idx=0,nslaves-1
 
@@ -856,13 +876,12 @@ c       --- doesn't need any data sent to it.
         if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull)
      &    cycle
 
-c       --- Skip processors which have the same right mesh extent (and
+c       --- Skip processors which have the same left mesh extent (and
 c       --- therefore don't have the data needed for this processor.
         js = idx - 1
         do while (js >= 0 .and. izfsslave(js) == izfsslave(idx))
           js = js - 1
         enddo
-
 
 c       --- The left most processor is treated differently (and is only
 c       --- sent data from the right with periodic boundary conditions).
@@ -890,10 +909,22 @@ c         --- end of this processor, wrapping around to the left edge.
           enddo
           ie = ie + 1
         else
-c         --- This should only be reached at the left hand end when
-c         --- periodic boundaries are turned off. Hence no data is
-c         --- exchanged.
-          cycle
+
+c         --- Some of the processors which extend to the left hand edge will
+c         --- need data there if they did not extend to the left edge
+c         --- at a the next finer level. These processors are known by
+c         --- having lparity > 0.
+          if (idx > 0 .and. lparity(idx) > 0) then
+            js = 0
+            ie = js + 1
+            do while (ie < idx .and. lparity(ie) == 0 .and. izfsslave(ie) == 0)
+              ie = ie + 1
+            enddo
+            ie = ie - 1
+          else
+            cycle
+          endif
+
         endif
 
 c       --- Get the data from the processor which is doing the least amount
@@ -1002,73 +1033,6 @@ c     --- Now wait for everything to finish
       return
       end
 c=============================================================================
-      subroutine mgexchange_res(nx,ny,nz,nzfull,res,my_index,nslaves,
-     &                          izfsslave,nzfsslave,izfsslave2,nzfsslave2)
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: res(0:nx,0:ny,-1:nz+1)
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
-
-c This routine sends out and receives boundary data for the MG field solver.
-
-      integer(ISZ):: lparity,rparity,ls,rs,w
-
-      include "mpif.h"
-      integer(ISZ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
-      integer(ISZ):: mpirequest(2*nslaves+2),mpierror
-
-c     --- Set count to zero
-      w = 0
-
-c     --- Sends and receives can all be done synchronously since none
-c     --- of the data overlaps.
-      if (my_index > 0) then
-        rparity = 2*(izfsslave2(my_index-1)+nzfsslave2(my_index-1)) -
-     &              (izfsslave(my_index-1) +nzfsslave(my_index-1))
-        if (rparity >= 1) then
-          w = w + 1
-          ls = izfsslave2(my_index-1)+nzfsslave2(my_index-1)-izfsslave2(my_index)
-          call MPI_ISEND(res(0,0,ls),(nx+1)*(ny+1),
-     &                   MPI_DOUBLE_PRECISION,my_index-1,nzfull,
-     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
-        endif
-      endif
-
-      if (my_index < nslaves-1) then
-        lparity = izfsslave(my_index+1) - 2*izfsslave2(my_index+1)
-        if (lparity >= 1) then
-          w = w + 1
-          rs = izfsslave2(my_index+1) - izfsslave2(my_index)
-          call MPI_ISEND(res(0,0,rs),(nx+1)*(ny+1),
-     &                   MPI_DOUBLE_PRECISION,my_index+1,nzfull,
-     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
-        endif
-      endif
-
-      lparity = izfsslave(my_index) - 2*izfsslave2(my_index)
-      if (lparity >= 1) then
-        w = w + 1
-        call MPI_IRECV(res(0,0,0),(nx+1)*(ny+1),
-     &                 MPI_DOUBLE_PRECISION,my_index-1,nzfull,
-     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
-      endif
-
-      rparity = 2*(izfsslave2(my_index)+nzfsslave2(my_index)) -
-     &            (izfsslave(my_index) +nzfsslave(my_index))
-      if (rparity >= 1) then
-        w = w + 1
-        call MPI_IRECV(res(0,0,nz),(nx+1)*(ny+1),
-     &                 MPI_DOUBLE_PRECISION,my_index+1,nzfull,
-     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
-      endif
-
-c     --- Now wait for everything to finish
-      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
-
-      return
-      end
-c=============================================================================
       subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bound0,boundnz,delz,
      &                                  my_index,nslaves,izfsslave,
      &                                  whosendingleft,whosendingright)
@@ -1139,9 +1103,9 @@ c     --- Now wait for everything to finish
       return
       end
 c=============================================================================
-      subroutine printarray3d(nx,ny,nz,izs,a,my_index,nslaves,text,mglevel)
-      integer(ISZ):: nx,ny,nz,izs,my_index,nslaves,mglevel
-      real(kind=8):: a(0:nx,0:ny,-1:nz)
+      subroutine printarray3d(nx,ny,nz,iz0,nz0,izs,a,my_index,nslaves,text,mglevel)
+      integer(ISZ):: nx,ny,nz,iz0,nz0,izs,my_index,nslaves,mglevel
+      real(kind=8):: a(0:nx,0:ny,iz0:nz)
       character(*):: text
 
 c Specialized routine for printing out an array in parallel, keeping the same
@@ -1160,7 +1124,8 @@ c overlapping regions.
 c   when lastz == nz, the lower number processor's data is printed
 c   when lastz == nz-1 (or -2), the higher number processor's data is printed
       lastz = nz
-      lastz = nz - 2
+c     lastz = nz - 2
+      lastz = nz - nz0
       if (my_index == nslaves-1) lastz = nz
 
 c Each processor prints out its data and then sends a message to the next so it
@@ -1174,11 +1139,15 @@ c can print its data.
 
 c The file needs to be reopened each time since there is no coordination in how
 c the processors deal with files.
-      open(22,action="write",position="append",file="out4")
+      if (nslaves == 16) then
+        open(22,action="write",position="append",file="out16")
+      else
+        open(22,action="write",position="append",file="out32")
+      endif
       do iz=firstz,lastz
         do iy=0,ny
           do ix=0,nx
-            write(22,'(I3,x,I3,x,I3,F10.1,x,A,I3,I3)') ix,iy,izs+iz,a(ix,iy,iz),text,mglevel
+            write(22,'(I3,x,I3,x,I3,1pE15.5,x,A,I3,I3)') ix,iy,izs+iz,a(ix,iy,iz),text,mglevel,nz0
           enddo
         enddo
       enddo
