@@ -1,6 +1,6 @@
 from warp import *
 import PW
-parallelpdb_version = "$Id:"
+parallelpdb_version = "$Id: parallelpdb.py,v 1.4 2001/02/08 00:11:27 dave Exp $"
 
 # Routines to allow all processors to write data to one file.
 # The PE's sequentially append data to the file. When a file is open,

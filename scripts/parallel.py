@@ -4,7 +4,7 @@
 
 from Numeric import *
 import mpi
-parallel_version = "$Id:"
+parallel_version = "$Id: parallel.py,v 1.5 2001/02/08 00:11:27 dave Exp $"
 me = mpi.rank
 npes = mpi.procs
 

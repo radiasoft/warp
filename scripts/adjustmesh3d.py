@@ -1,5 +1,5 @@
 from warp import *
-adjustmesh3d_version = "$Id:"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.2 2001/02/08 00:11:50 dave Exp $"
 
 def adjustmesh3ddoc():
   print "adjustmeshz: Adjust the longitudinal length of the mesh."

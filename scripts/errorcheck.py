@@ -1,5 +1,5 @@
 from warp import *
-errorcheck_version = "$Id:"
+errorcheck_version = "$Id: errorcheck.py,v 1.4 2001/02/08 00:11:27 dave Exp $"
 
 def errorcheckdoc():
   print "errorcheck: runs all checks described below"

@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id:"
+warpparallel_version = "$Id: warpparallel.py,v 1.3 2001/02/08 00:11:27 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes

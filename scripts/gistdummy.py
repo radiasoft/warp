@@ -1,10 +1,10 @@
 # Copyright (c) 1996, 1997, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-gistdummy_version = "$Id:"
+gistdummy_version = "$Id: gistdummy.py,v 1.4 2001/02/08 00:11:27 dave Exp $"
 from Numeric import *
 import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from gistC import *
-import gistC
+#import gistC
 from help import help
 from shapetest import *
 from arrayfns import *
