@@ -1,5 +1,5 @@
 from warp import *
-fixwxy_version = "$Id: fixwxy.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+fixwxy_version = "$Id: fixwxy.py,v 1.2 2001/03/01 22:23:37 dave Exp $"
 # Fixes beam so that it exactly agress with the specified beam paramters
 
 # --- Fixes 1st and 2nd moments
@@ -48,6 +48,8 @@ def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None):
   loadrho()
   import getzmom
   getzmom.zmmnt()
+  srhoax3d()
+  rhodia3d()
   top.jhist = -1
   savehist(0.)
 
@@ -81,6 +83,8 @@ def fixwxy1(x=None,y=None,xp=None,yp=None,xerr=0.,yerr=0.,xperr=0.,yperr=0.,
   loadrho()
   import getzmom
   getzmom.zmmnt()
+  srhoax3d()
+  rhodia3d()
   if replacehist: top.jhist = top.jhist - 1
   savehist(top.time)
 
