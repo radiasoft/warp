@@ -530,7 +530,7 @@ the top level grid.
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       ichild = zeros(len(x),'d')
-      getgridngp3d(len(x),x,y,z-top.zgrid,ichild,
+      getgridngp3d(len(x),x,y,z-top.zgridprv,ichild,
                    self.nx,self.ny,self.nz,self.idomains,
                    self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                    self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)

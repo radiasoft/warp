@@ -79,7 +79,7 @@ class MultiGrid:
 
   def gete(self,x,y,z,ex,ey,ez):
     n = len(x)
-    sete3d(self.phi,0.,n,x,y,z,top.zgrid,self.xmmin,self.ymmin,self.zmmin,
+    sete3d(self.phi,0.,n,x,y,z,top.zgridprv,self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,1,ex,ey,ez,
            self.l2symtry,self.l4symtry)
 
