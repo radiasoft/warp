@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.44 $, $Date: 2002/04/26 15:51:16 $
+c@(#) File TOP.M, version $Revision: 3.45 $, $Date: 2002/04/30 21:09:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5440,6 +5440,79 @@ c starting at 'it' to locations starting at 'istart'.
       return
       end
 c=============================================================================
+      subroutine addpart(nn,x,y,z,vx,vy,vz,gi,is,lallindomain,zmmin,zmmax,
+     &                   lmomentum)
+      use Constant
+      use Particles
+      use Beam_acc
+      integer(ISZ):: is,nn
+      real(kind=8):: x(nn),y(nn),z(nn),vx(nn),vy(nn),vz(nn),gi(nn)
+      logical(ISZ):: lallindomain,lmomentum
+      real(kind=8):: zmmin,zmmax
+
+c Adds new particles to the simulation
+c   nn: number of particles to add
+c   x,y,z,vx,vy,vz,gi: coordinates and velocities
+c   is: species number to add particles to
+c   lallindomain: When true, all particles are assumed to be within the
+c                 z extent of the domain and the scraping check is skipped
+c   zmmin,zmmax: z extent of the domain
+c   lmomentum: Set to false when velocites are input as velocities, and true
+c              when input as massless momentum. Only used when lrelativ is
+c              true.
+
+      integer(ISZ):: ip,n1,i1,i2
+
+c     --- Make sure that the particles are within the z extent of the domain,
+c     --- unless the input declares this to be so. Note that no check is made
+c     --- transversely.
+      if (.not. lallindomain) then
+        n1 = 0
+        do ip=1,nn
+          if (zmmin <= z(ip) .and. z(ip) < zmmax) then
+            n1 = n1 + 1
+            if (n1 < ip) then
+              x(n1) = x(ip)
+              y(n1) = y(ip)
+              z(n1) = z(ip)
+              vx(n1) = vx(ip)
+              vy(n1) = vy(ip)
+              vz(n1) = vz(ip)
+              gi(n1) = gi(ip)
+            endif
+          endif
+        enddo
+      else
+        n1 = nn
+      endif
+
+c     --- If velocities input are not momentum, and lrelativ is true,
+c     --- calculate gamma inverse and convert velocities to massless
+c     --- momentum.
+      if (.not. lmomentum .and. lrelativ) then
+        gi(1:n1) = sqrt(1.- (vx(1:n1)**2+vy(1:n1)**2+vz(1:n1)**2)/clight**2)
+        vx(1:n1) = vx(1:n1)/gi(1:n1)
+        vy(1:n1) = vy(1:n1)/gi(1:n1)
+        vz(1:n1) = vz(1:n1)/gi(1:n1)
+      endif
+
+c     --- Make room for the particles
+      call chckpart(is,0,n1,.false.)
+
+c     --- Now, copy data into arrays
+      i1 = ins(is) + nps(is)
+      i2 = i1 + n1 - 1
+      xp(i1:i2) = x(1:n1)
+      yp(i1:i2) = y(1:n1)
+      zp(i1:i2) = z(1:n1)
+      uxp(i1:i2) = vx(1:n1)
+      uyp(i1:i2) = vy(1:n1)
+      uzp(i1:i2) = vz(1:n1)
+      gaminv(i1:i2) = gi(1:n1)
+      nps(is) = nps(is) + n1
+
+      return
+      end
 c=============================================================================
 c  VARIOUS UTILITIES
 c=============================================================================
