@@ -2,7 +2,7 @@ from warp import *
 
 def vtkparticlegrid(xx,yy,zz,gnx=32,gny=32,gnz=32,
                     fname="phasespacegrid.vtk",returngrid=0,
-                    comment="phase space grid"):
+                    comment="phase space grid",cmax=None):
   gg = zeros((gnx+1,gny+1,gnz+1),'d')
   xmin = min(xx)
   xmax = max(xx)
@@ -20,6 +20,7 @@ def vtkparticlegrid(xx,yy,zz,gnx=32,gny=32,gnz=32,
   zmin = zmin - gdz
   zmax = zmax + gdz
   setgrid3d(len(xx),xx,yy,zz,gnx,gny,gnz,gg,xmin,xmax,ymin,ymax,zmin,zmax)
+  if cmax is not None: gg = where(gg>cmax,cmax,gg)
 
   ff = open(fname,"w")
   stdoutsave = sys.stdout
