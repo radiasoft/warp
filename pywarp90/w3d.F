@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.184 $, $Date: 2005/01/21 15:05:27 $
+c@(#) File W3D.F, version $Revision: 3.185 $, $Date: 2005/01/24 14:49:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1743,26 +1743,8 @@ c       --- Inject more particles. This adds particles and alters ins and nps.
 
         if (inject > 0) call inject3d(1)
 
-c       --- Apply particle boundary conditions
-        call zpartbnd(zmmax,zmmin,dz,zgrid)
-
-c       --- absorb particles passing through semitransparent disc
-        call semitransparent_disc(dz)
-
-        do is=1,ns
-          if (nps(is) > 0)
-     &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,yp(ins(is)),ymmax,
-     &                     ymmin,dy,zp(ins(is)),zmmin,dz,uxp(ins(is)),
-     &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
-     &                     zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
-
-        enddo
-
-        if (lcallscraper) call execuser("callscraper")
-
-        do is=1,ns
-          call processlostpart(is,clearlostpart,time+dt,zbeam)
-        enddo
+c       --- Treat particles at boundaries
+        call particleboundaries3d()
 
 c       --- Collect charge density (3d)
         call loadrho3d(-1,-1,-1,.not. laccumulate_rho)
@@ -1786,6 +1768,28 @@ c       --- Note that zgridprv is also set at the beginning of w3dexe
 !$OMP MASTER
       if (lw3dtimesubs) timepadvnc3d = timepadvnc3d + wtime() - substarttime
 !$OMP END MASTER
+      return
+      end
+c=============================================================================
+      subroutine getextpart()
+      use GlobalVars
+      use InGen
+      use Inpart
+      use Particles
+      use Picglb
+
+      integer(ISZ):: is,ip,ipmin
+
+c  Loop over species
+      do is=1,ns
+        do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+          ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
+          call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                                  uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                                  0.5*dt,uxp(ipmin),uyp(ipmin),uzp(ipmin),is,time,zbeam)
+        enddo
+      enddo
+
       return
       end
 c=============================================================================
