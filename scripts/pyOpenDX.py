@@ -14,7 +14,8 @@ try:
 except:
   pass
 import __main__
-selectbox = 1
+__main__.selectbox = 1
+__main__.l_hardware_acceleration = 0
 
 try:
   # --- Try importing. If not found, still define the functions and classes.
@@ -23,7 +24,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.17 2004/11/30 00:47:24 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.18 2004/11/30 22:17:31 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -159,6 +160,7 @@ Create a box
   dxd = DXNewArray(TYPE_DOUBLE,CATEGORY_REAL,0)
   DXAddArrayData(dxd,0,n,array([1.,1.]))
   DXSetStringAttribute(dxd,'dep','positions')
+
   # --- Create the field
   dxf = DXNewField()
   DXSetComponentValue(dxf,'positions',dxp)
@@ -172,6 +174,57 @@ Create a box
   moutput = ['colored']
   (box,) = DXCallModule('Color',minput,moutput)
   return box
+
+def DXMountainPlot(f,xmin=0.,ymin=0.,dx=1.,dy=1.,scale=1.,display=1,labels=['x','y','z'],name = 'Mountain plot',perspective=1):
+  fshape = shape(f)
+  nx = fshape[0]
+  ny = fshape[1]
+  dxdata = DXNewArray(TYPE_DOUBLE,CATEGORY_REAL,0)
+  DXAddArrayData(dxdata,0,nx*ny,f)
+
+  origin = array([xmin,ymin]).astype(Float32)
+  dxorigin = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,2)
+  DXAddArrayData(dxorigin,0,1,origin)
+
+  deltas = array([dx,dy]).astype(Float32)
+  dxdeltas = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,2)
+  DXAddArrayData(dxdeltas,0,1,deltas)
+
+  counts = array([nx,ny])
+  dxcounts = DXNewArray(TYPE_INT,CATEGORY_REAL,1,2)
+  DXAddArrayData(dxcounts,0,1,counts)
+
+  minput = {'origin':dxorigin,'deltas':dxdeltas,'counts':dxcounts,'data':dxdata}
+  moutput = ['output']
+  (dxf2,) = DXCallModule('Construct',minput,moutput)
+
+  minput = {'data':dxf2}
+  moutput = ['mapped']
+  (colored,) = DXCallModule('AutoColor',minput,moutput)
+    
+  frange = maxnd(f)-minnd(f)
+  if frange == 0.:
+    scale = 1.
+  else:
+    xrange = sqrt((nx*dx)**2+(ny*dy)**2)
+    scale = 2.*scale*(0.1*xrange/frange)
+  minput = {'data':colored,'scale':scale}
+  moutput = ['graph']
+  (dxobject,) = DXCallModule('RubberSheet',minput,moutput)
+
+  up = array([0,0,1])
+  dxup = DXNewArray(TYPE_INT,CATEGORY_REAL,1,3)
+  DXAddArrayData(dxup,0,1,up)
+  DXReference(dxobject)
+  minput = {'object':dxobject,'direction':'diagonal','up':dxup,'perspective':perspective}
+  moutput = ['camera']
+  (camera,) = DXCallModule('AutoCamera',minput,moutput)
+
+  if display:
+    DXImage(dxobject,name=name,labels=labels,camera=camera)
+  else:
+    return dxobject
+ 
 
 ###########################################################################
 class Visualizable:
@@ -270,12 +323,11 @@ class DXCollection(Visualizable):
 
 ###########################################################################
 #==========================================================================
-interactor = 0
+__main__.interactor = 0
 def interactor_handler():
-  global interactor
   getchar = sys.stdin.readline()[:-1]
-  if len(getchar) > 0: interactor = eval(getchar)
-  else:                interactor = -1
+  if len(getchar) > 0: __main__.interactor = eval(getchar)
+  else:                __main__.interactor = -1
 
 def DXImage(object,camera=None,name='WARP viz',labels=None):
   """
@@ -312,7 +364,7 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     DXReference(camera)
     labels = DXMakeStringList(labels)
     minput = {'input':dxobject,'camera':camera,'labels':labels,
-              'ticks':3,'colors':'grey'}#'yellow'}
+              'ticks':3,'adjust':1,'colors':'grey'}#'yellow'}
     moutput = ['axes']
     (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
 
@@ -335,14 +387,14 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
       # --- This is needed and sometimes not.
       DXReference(dxobject)
       minput = {'where':wwhere,'size':wsize,'events':wevents,
-                'object':dxobject,'mode':interactor,'resetObject':1}
+                'object':dxobject,'mode':__main__.interactor,'resetObject':1}
       if l_init:
         minput['defaultCamera'] = camera
         minput['resetCamera'] = 1
       moutput = ['object','camera','where']
-      (dobject,dcamera,dwhere,) = DXCallModule('SuperviseState',minput,moutput)
+      (__main__.dobject,__main__.dcamera,__main__.dwhere,) = DXCallModule('SuperviseState',minput,moutput)
 
-      minput = {'object':dobject,'camera':dcamera,'where':dwhere}
+      minput = {'object':__main__.dobject,'camera':__main__.dcamera,'where':__main__.dwhere}
       moutput = []
       DXCallModule('Display',minput,moutput)
 
@@ -350,12 +402,16 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     __main__.wgui.dxinter = dxinter
     __main__.wgui.dxname  = name
     __main__.wgui.dxobject = dxobject
+    if __main__.l_hardware_acceleration:
+      minput = {'input':__main__.wgui.dxobject,'attribute':'rendering mode','value':'hardware'}
+      moutput = ['output'] 
+      (__main__.wgui.dxobject,) = DXCallModule('Options',minput,moutput)
     dxinter(1)
     __main__.wgui.dx_timer = wxPyTimer(__main__.wgui.dxinter)
     __main__.wgui.dx_timer.Start(100)
   except:
     dxinter(1,name,dxobject)
-    while interactor >=0:
+    while __main__.interactor >=0:
       dxinter(0,name,dxobject)
     DXDelete(dxobject)
     interactor = 0
