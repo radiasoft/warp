@@ -103,21 +103,25 @@ c     3D xpush with interpolation between drift kinetic and full PIC
 c     get effective velocities for old positions
       call getveff(npd,is,ipmin,xpr,ypr,zpr,"predictor")
 c     push to get x': (predictor)
-c     print*,"xpush1",ipmin,dt,alpha(1)
-c     print*,npd,xpr(1),ypr(1),zpr(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
-      call xpush3d (npd,xpr,ypr,zpr,uxeff,uyeff,uzeff,gaminv(ipmin),dt)
-c     Now construct averaged positions; self.actr is centering param
-      acntrbar=1.-acntr(is)
-      do i=1,npd      
-        ip=i+ipmin1
-        xbar(i)=acntr(is)*xpr(i)+acntrbar*xp(ip)
-        ybar(i)=acntr(is)*ypr(i)+acntrbar*yp(ip)
-        zbar(i)=acntr(is)*zpr(i)+acntrbar*zp(ip)
-      enddo
+c     If acntr is 0, skip to push to get final x
+      if (acntr(is) > 1.e-20) then
+c       print*,"xpush1",ipmin,dt,alpha(1)
+c       print*,npd,xpr(1),ypr(1),zpr(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
+        call xpush3d (npd,xpr,ypr,zpr,uxeff,uyeff,uzeff,gaminv(ipmin),dt)
+c       Now construct averaged positions; self.actr is centering param
+        acntrbar=1.-acntr(is)
+        do i=1,npd      
+          ip=i+ipmin1
+          xbar(i)=acntr(is)*xpr(i)+acntrbar*xp(ip)
+          ybar(i)=acntr(is)*ypr(i)+acntrbar*yp(ip)
+          zbar(i)=acntr(is)*zpr(i)+acntrbar*zp(ip)
+        enddo
 
-c     Now get average velocity using these positions
-      call getveff(npd,is,ipmin,xbar,ybar,zbar,"corrector")
-c     and do the final particle push (corrector) using these veffs.
+c       Now get average velocity using these positions
+        call getveff(npd,is,ipmin,xbar,ybar,zbar,"corrector")
+c       and do the final particle push (corrector) using these veffs.
+      endif
+
 c     This time call xpush3d with xp, etc, so that the
 c     real particle arrays  will be updated to the new values
 c     note if interpolation is such that veff is the pure v,
