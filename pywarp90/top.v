@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.113 $, $Date: 2004/01/23 22:18:03 $
+#@(#) File TOP.V, version $Revision: 3.114 $, $Date: 2004/01/24 00:44:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.113 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.114 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1038,6 +1038,8 @@ prwallx         real    [m]   /0./
    # X location of the center of the cylindrical wall that absorbs particles
 prwally         real    [m]   /0./
    # Y location of the center of the cylindrical wall that absorbs particles
+prwelip         real   [1]    /1./
+   # Ellipticity of cylindrical wall (ay = prwelip*ax)
 np_pert         integer [1]   /0/
    # Number of particles in a perturbation to the main distribution.
 pertz_den       real    [1]   /0./
@@ -1209,8 +1211,8 @@ eearsofz(0:nzzarr)     _real   [V/m]   # confining Eears, as a function of z
 prwallz(0:nzzarr)      _real   [m]     # Radius at which particles are absorbed
 prwallxz(0:nzzarr)     _real   [m]     # X of center of cylindrical wall
 prwallyz(0:nzzarr)     _real   [m]     # Y of center of cylindrical wall
-prwelips(0:nzzarr)     _real   [1]     # ellipticity of cylindrical wall
-                                       # (ay = prwelips*ax)
+prwelipz(0:nzzarr)     _real   [1]     # Ellipticity of cylindrical wall
+                                       # (ay = prwelipz*ax)
 lostpars(0:nzzarr)  _integer           # number of lost particles by zcells
 lamkreal(0:nzzarr)     _real   [C/m]   # Real part of FFT of lambda
 lamkimag(0:nzzarr)     _real   [C/m]   # Imaginary part of FFT of lambda
