@@ -15,7 +15,7 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.24 2002/08/06 21:52:38 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.25 2002/09/09 16:40:19 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -329,7 +329,7 @@ Dump data into a pdb file
         print "writing python variable "+v+" as "+v+varsuffix+'@pickle'
       ff.write(v+varsuffix+'@pickle',cPickle.dumps(vval,0))
       docontinue = 1
-    except cPickle.PicklingError:
+    except (cPickle.PicklingError,TypeError):
       pass
     if docontinue: continue
     # --- All attempts failed so write warning message
