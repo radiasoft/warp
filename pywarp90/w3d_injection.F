@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.5 $, $Date: 2004/09/23 19:31:01 $
+c@(#) File w3d_injection.F, version $Revision: 1.6 $, $Date: 2004/09/24 22:21:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -263,7 +263,7 @@ c             --- The absolute values are needed for the cases of symmetry.
               zs = inj_grid(ixx  ,iyy  ,ij)*(1. - wxx)*(1. - wyy) +
      &             inj_grid(ixx+1,iyy  ,ij)*      wxx *(1. - wyy) +
      &             inj_grid(ixx  ,iyy+1,ij)*(1. - wxx)*      wyy  +
-     &             inj_grid(ixx+1,iyy+1,ij)*      wxx *      wyy  +
+     &             inj_grid(ixx+1,iyy+1,ij)*      wxx *      wyy
 c             --- Only save particle if it is within the injection region.
               if (inj_zmmin <= zs .and. zs < inj_zmmax) then
                 ii = ins(is) - 1 - npinjtmp(is,ij)
