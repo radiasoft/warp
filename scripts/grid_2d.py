@@ -1,5 +1,5 @@
-from Numeric import *
-grid_2d_version = "$Id: grid_2d.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+from warp import *
+grid_2d_version = "$Id: grid_2d.py,v 1.2 2001/01/25 18:05:37 dave Exp $"
 # This routine lays a 2-D set of data onto a grid.
 # Input:
 #   gxmin       Minimum x value of data range.
