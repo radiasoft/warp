@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.11 $, $Date: 2003/02/12 23:06:30 $
+c@(#) File HER.M, version $Revision: 3.12 $, $Date: 2003/02/14 07:24:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -153,7 +153,7 @@ c  Invoked by the STEP command, it runs the HERMES code.
 c       --- Start at time = 0.
         time = 0.
 c       --- Save the initial history
-        call savehermesvars(time,var,niz,it,lsavehist)
+        call savehermesvars(time,var,niz,it,lhist)
 c       --- Find initial forces
         call getderivs(time,dt,var,dy,niz,aion,zion,fviscous,icharge,iimage,
      &            lezbeam,lperveance,lemittance,lallez,lrelativ,
@@ -174,7 +174,7 @@ c     --- Advance the envelope and orbits (one step)
      &              lezcenter,lviscous,lcurgrid,lfail)
       if (lfail) return
 
-      call savehermesvars(time,var,niz,it,lsavehist)
+      call savehermesvars(time,var,niz,it,lhist)
 
       return
       end
@@ -920,9 +920,6 @@ c If icharge == 7, it also loads the charge onto the RZ grid
       real(kind=8):: zslmin, zslmax
       integer(ISZ):: ii,ir,irm,iz,izl,izr
 
-      if (icharge == 5 .or. icharge == 6) return
-c --- denmid not needed in these cases
-      
 c --- first calculate line-charge density inside the slices
       denmid(niz)=0.0
       do ii=1,niz-1
@@ -1499,16 +1496,16 @@ c       because this is what we actually need
       return
       end
 c=============================================================================
-      subroutine savehermesvars(t,y,niz,it,lsavehist)
+      subroutine savehermesvars(t,y,niz,it,lhist)
       use HERhist
       integer(ISZ):: niz,it
       real(kind=8):: t,y(16,niz)
-      logical(ISZ):: lsavehist
+      logical(ISZ):: lhist
 
       integer(ISZ):: iz
 
 c     --- Check if saving history
-      if (lsavehist) then
+      if (lhist) then
 c       --- Check if saving history this step. Requires (nhher > 0).
         if (mod(it,nhher) == 0) then
           if (jhher >= lhher) then
@@ -1544,12 +1541,12 @@ c=============================================================================
 
       subroutine resizehermeshist()
       use HERhist
-      use HERflags
+      use Picglb
 
 c  At the end of a run, resizes the history arrays
 
 c     --- Resize history arrays
-      if (lsavehist .and. lhher > jhher) then
+      if (lhist .and. lhher > jhher) then
         lhher = jhher
         call gchange("HERhist",0)
       endif
