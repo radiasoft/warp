@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.84 $, $Date: 2003/10/23 23:26:40 $
+#@(#) File F3D.V, version $Revision: 3.85 $, $Date: 2003/11/22 03:22:13 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.84 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.85 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -274,14 +274,32 @@ lsrlinr                logical /.false./ # Use piecewise-linear curve.
 npnts_sr               integer /0/ # Number points in piecewise-linear curve.
 z_sr(npnts_sr)         _real # Z of points in piecewise-linear curve
 r_sr(npnts_sr)         _real # R of points in piecewise-linear curve
+rad_sr(npnts_sr)       _real /LARGEPOS/ # Radius of curvature of curve arc
+zc_sr(npnts_sr)        _real # Z center of circle
+rc_sr(npnts_sr)        _real # R center of circle
+inpnts_sr              integer /0/ # Size of wory array i_sr
+dzi_sr                 real  # Work data for surface of revolution
+i_sr(0:inpnts_sr)      _integer # Work array for surface of revolution
 lsrminlinr             logical /.false./ # Use piecewise-linear curve for rmin.
 npnts_srmin            integer /0/ # Number points in piecewise-linear curve.
 z_srmin(npnts_srmin)   _real # Z of points in piecewise-linear curve
 r_srmin(npnts_srmin)   _real # R of points in piecewise-linear curve
+rad_srmin(npnts_srmin) _real /LARGEPOS/ # Radius of curvature of curve arc
+zc_srmin(npnts_srmin)  _real # Z center of circle
+rc_srmin(npnts_srmin)  _real # R center of circle
+inpnts_srmin           integer /0/ # Size of wory array i_srmin
+dzi_srmin              real  # Work data for surface of revolution
+i_srmin(0:inpnts_srmin)  _integer # Work array for surface of revolution
 lsrmaxlinr             logical /.false./ # Use piecewise-linear curve for rmax.
 npnts_srmax            integer /0/ # Number points in piecewise-linear curve.
 z_srmax(npnts_srmax)   _real # Z of points in piecewise-linear curve
 r_srmax(npnts_srmax)   _real # R of points in piecewise-linear curve
+rad_srmax(npnts_srmax) _real /LARGEPOS/ # Radius of curvature of curve arc
+zc_srmax(npnts_srmax)  _real # Z center of circle
+rc_srmax(npnts_srmax)  _real # R center of circle
+inpnts_srmax           integer /0/ # Size of wory array i_srmax
+dzi_srmax              real  # Work data for surface of revolution
+i_srmax(0:inpnts_srmax) _integer # Work array for surface of revolution
 
 *********** LantzSolverTemp:
 nxlan integer

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.84 $, $Date: 2003/11/08 00:36:19 $
+c@(#) File F3D.M, version $Revision: 3.85 $, $Date: 2003/11/22 03:22:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6947,6 +6947,9 @@ c Output is put directly into the conductor arrays of Conductor3d.
       integer(ISZ):: i
       real(kind=8):: srfrv_f
 
+c     --- Initialize srfrv_f data
+      call srfrv_finit
+
 c     --- Table-ize the data if srfrv_pernz > 0.
       if (srfrv_pernz > 0 .and. .not. lsrlinr) then
         npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
@@ -7537,6 +7540,9 @@ c See comments in srfrvout.
 
       real(kind=8):: zz,srfrv_f
       integer(ISZ):: i
+
+c     --- Initialize srfrv_f data
+      call srfrv_finit
 
 c     --- Table-ize the data if srfrv_pernz > 0.
       if (srfrv_pernz > 0 .and. .not. lsrlinr) then
@@ -8130,6 +8136,9 @@ c Output is put directly into the conductor arrays of Conductor3d.
 
       real(kind=8):: zz,srfrv_f
       integer(ISZ):: i,nc,nceo
+
+c     --- Initialize srfrv_f data
+      call srfrv_finit
 
 c     --- Table-ize the data if srfrv_pernz > 0.
       if (srfrv_pernz > 0 .and. .not. lsrminlinr) then
@@ -8744,7 +8753,69 @@ c                 --- odd
       return
       end
 c========================================================================
+      subroutine srfrv_finit()
+      use Surface_of_Rev
+
+c Sets up work array used to speed up the look up of where in the tablized
+c data the z locations are.
+
+      integer(ISZ):: i,j
+      real(kind=8):: zz
+
+c     --- Allocate work arrays
+      if (lsrlinr .and. inpnts_sr < 4*npnts_sr) then
+        inpnts_sr = 4*npnts_sr
+        call gchange("Surface_of_Rev",0)
+      endif
+      if (lsrminlinr .and. inpnts_srmin < 4*npnts_srmin) then
+        inpnts_srmin = 4*npnts_srmin
+        call gchange("Surface_of_Rev",0)
+      endif
+      if (lsrmaxlinr .and. inpnts_srmax < 4*npnts_srmax) then
+        inpnts_srmax = 4*npnts_srmax
+        call gchange("Surface_of_Rev",0)
+      endif
+
+c     --- Setup the work arrays
+      if (lsrlinr) then
+        dzi_sr = inpnts_sr/(z_sr(npnts_sr) - z_sr(1))
+        j = 1
+        do i=0,inpnts_sr
+          zz = z_sr(1) + i/dzi_sr
+          do while (zz >= z_sr(j+1) .and. j < npnts_sr)
+            j = j + 1
+          enddo
+          i_sr(i) = j
+        enddo
+      endif
+      if (lsrminlinr) then
+        dzi_srmin = inpnts_srmin/(z_srmin(npnts_srmin) - z_srmin(1))
+        j = 1
+        do i=0,inpnts_srmin
+          zz = z_srmin(1) + i/dzi_srmin
+          do while (zz >= z_srmin(j+1) .and. j < npnts_srmin)
+            j = j + 1
+          enddo
+          i_srmin(i) = j
+        enddo
+      endif
+      if (lsrmaxlinr) then
+        dzi_srmax = inpnts_srmax/(z_srmax(npnts_srmax) - z_srmax(1))
+        j = 1
+        do i=0,inpnts_srmax
+          zz = z_srmax(1) + i/dzi_srmax
+          do while (zz >= z_srmax(j+1) .and. j < npnts_srmax)
+            j = j + 1
+          enddo
+          i_srmax(i) = j
+        enddo
+      endif
+
+      return
+      end
+c========================================================================
       real(kind=8) function srfrv_f(zz,rofzfunc,icase,izflag)
+      use Machine_param
       use Surface_of_Rev
       real(kind=8):: zz
       integer(ISZ):: icase,izflag
@@ -8754,17 +8825,23 @@ c     That can be calculated either from a piecewise-linear curve, or from
 c     the Python routine rofzfunc.
 c     The radius returned is always greater than or equal to zero.
 
-      integer(ISZ):: i,ii
+      integer(ISZ):: i,ii,iz
 
       if (lsrlinr .and. icase == 0) then
 
 c       --- Calculate r(z) from a piecewise-linear curve.
 
 c       --- Find which piece z is in.
-        ii = 0
-        do i=1,npnts_sr
-          if (zz >= z_sr(i)) ii = i
-        enddo
+        if (zz <= z_sr(1)) then
+          ii = 0
+        else if (zz >= z_sr(npnts_sr)) then
+          ii = npnts_sr
+        else
+          iz = (zz - z_sr(1))*dzi_sr
+          do i=i_sr(iz),i_sr(iz+1)
+            if (zz >= z_sr(i)) ii = i
+          enddo
+        endif
 
 c       --- Calculate r from z.
         if (ii == 0) then
@@ -8778,12 +8855,28 @@ c       --- Calculate r from z.
             if (ii-1 == 1) then
               srfrv_r = r_sr(1)
             else
-              srfrv_r = r_sr(ii-2) + (zz - z_sr(ii-1))*
-     &                     (r_sr(ii-2) - r_sr(ii-1))/(z_sr(ii-2) - z_sr(ii-1))
+              if (rad_sr(ii-2) == largepos) then
+                srfrv_r = r_sr(ii-2) + (zz - z_sr(ii-1))*
+     &                       (r_sr(ii-2) - r_sr(ii-1))/(z_sr(ii-2) - z_sr(ii-1))
+              else
+                if (rad_sr(ii-2) > 0) then
+                  srfrv_r = rc_sr(ii-2) + sqrt(rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2)
+                else
+                  srfrv_r = rc_sr(ii-2) - sqrt(rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2)
+                endif
+              endif
             endif
           else
-            srfrv_r = r_sr(ii) + (zz - z_sr(ii))*
-     &                   (r_sr(ii+1) - r_sr(ii))/(z_sr(ii+1) - z_sr(ii))
+            if (rad_sr(ii) == largepos) then
+              srfrv_r = r_sr(ii) + (zz - z_sr(ii))*
+     &                     (r_sr(ii+1) - r_sr(ii))/(z_sr(ii+1) - z_sr(ii))
+            else
+              if (rad_sr(ii) > 0) then
+                srfrv_r = rc_sr(ii) + sqrt(rad_sr(ii)**2 - (zz - zc_sr(ii))**2)
+              else
+                srfrv_r = rc_sr(ii) - sqrt(rad_sr(ii)**2 - (zz - zc_sr(ii))**2)
+              endif
+            endif
           endif
         endif
 
@@ -8798,10 +8891,16 @@ c       --- where two neighboring points have the same z value.
         if (izflag <= 0) then
 
 c         --- Find which piece z is in.
-          ii = 0
-          do i=1,npnts_srmin
-            if (zz >= z_srmin(i)) ii = i
-          enddo
+          if (zz < z_srmin(1)) then
+            ii = 0
+          else if (zz >= z_srmin(npnts_srmin)) then
+            ii = npnts_srmin
+          else
+            iz = (zz - z_srmin(1))*dzi_srmin
+            do i=i_srmin(iz),i_srmin(iz+1)
+              if (zz >= z_srmin(i)) ii = i
+            enddo
+          endif
 
 c         --- Calculate r from z.
           if (ii == 0) then
@@ -8809,17 +8908,33 @@ c         --- Calculate r from z.
           elseif (ii == npnts_srmin) then
             srfrv_r = r_srmin(npnts_srmin)
           else
+            if (rad_srmin(ii) == largepos) then
               srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
      &              (r_srmin(ii+1) - r_srmin(ii))/(z_srmin(ii+1) - z_srmin(ii))
+            else
+              if (rad_srmin(ii) > 0) then
+                srfrv_r = rc_srmin(ii) + sqrt(rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2)
+              else
+                srfrv_r = rc_srmin(ii) - sqrt(rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2)
+              endif
+            endif
           endif
 
         else
 
 c         --- Find which piece z is in.
           ii = npnts_srmin+1
-          do i=npnts_srmin,1,-1
-            if (zz <= z_srmin(i)) ii = i
-          enddo
+          if (zz <= z_srmin(1)) then
+            ii = 1
+          else if (zz == z_srmin(npnts_srmin)) then
+            ii = npnts_srmin
+          else
+            iz = (zz - z_srmin(1))*dzi_srmin
+            do i=i_srmin(iz),i_srmin(iz+1)
+              if (zz >= z_srmin(i)) ii = i
+            enddo
+            if (ii < npnts_srmin .and. zz > z_srmin(ii)) ii = ii + 1
+          endif
 
 c         --- Calculate r from z.
           if (ii == npnts_srmin+1) then
@@ -8827,8 +8942,16 @@ c         --- Calculate r from z.
           elseif (ii == 1) then
             srfrv_r = r_srmin(1)
           else
-            srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
-     &       (r_srmin(ii-1) - r_srmin(ii))/(z_srmin(ii-1) - z_srmin(ii))
+            if (rad_srmin(ii-1) == largepos) then
+              srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
+     &         (r_srmin(ii-1) - r_srmin(ii))/(z_srmin(ii-1) - z_srmin(ii))
+            else
+              if (rad_srmin(ii-1) > 0) then
+                srfrv_r = rc_srmin(ii-1) + sqrt(rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2)
+              else
+                srfrv_r = rc_srmin(ii-1) - sqrt(rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2)
+              endif
+            endif
           endif
 
         endif
@@ -8844,10 +8967,16 @@ c       --- where two neighboring points have the same z value.
         if (izflag <= 0) then
 
 c         --- Find which piece z is in.
-          ii = 0
-          do i=1,npnts_srmax
-            if (zz >= z_srmax(i)) ii = i
-          enddo
+          if (zz < z_srmax(1)) then
+            ii = 0
+          else if (zz >= z_srmax(npnts_srmax)) then
+            ii = npnts_srmax
+          else
+            iz = (zz - z_srmax(1))*dzi_srmax
+            do i=i_srmax(iz),i_srmax(iz+1)
+              if (zz >= z_srmax(i)) ii = i
+            enddo
+          endif
 
 c         --- Calculate r from z.
           if (ii == 0) then
@@ -8855,17 +8984,33 @@ c         --- Calculate r from z.
           elseif (ii == npnts_srmax) then
             srfrv_r = r_srmax(npnts_srmax)
           else
+            if (rad_srmax(ii) == largepos) then
               srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
      &              (r_srmax(ii+1) - r_srmax(ii))/(z_srmax(ii+1) - z_srmax(ii))
+            else
+              if (rad_srmax(ii) > 0) then
+                srfrv_r = rc_srmax(ii) + sqrt(rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2)
+              else
+                srfrv_r = rc_srmax(ii) - sqrt(rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2)
+              endif
+            endif
           endif
 
         else
 
 c         --- Find which piece z is in.
           ii = npnts_srmax+1
-          do i=npnts_srmax,1,-1
-            if (zz <= z_srmax(i)) ii = i
-          enddo
+          if (zz <= z_srmax(1)) then
+            ii = 1
+          else if (zz == z_srmax(npnts_srmax)) then
+            ii = npnts_srmax
+          else
+            iz = (zz - z_srmax(1))*dzi_srmax
+            do i=i_srmax(iz),i_srmax(iz+1)
+              if (zz >= z_srmax(i)) ii = i
+            enddo
+            if (ii < npnts_srmax .and. zz > z_srmax(ii)) ii = ii + 1
+          endif
 
 c         --- Calculate r from z.
           if (ii == npnts_srmax+1) then
@@ -8873,8 +9018,16 @@ c         --- Calculate r from z.
           elseif (ii == 1) then
             srfrv_r = r_srmax(1)
           else
-            srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
-     &       (r_srmax(ii-1) - r_srmax(ii))/(z_srmax(ii-1) - z_srmax(ii))
+            if (rad_srmax(ii-1) == largepos) then
+              srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
+     &         (r_srmax(ii-1) - r_srmax(ii))/(z_srmax(ii-1) - z_srmax(ii))
+            else
+              if (rad_srmax(ii-1) > 0) then
+                srfrv_r = rc_srmax(ii-1) + sqrt(rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2)
+              else
+                srfrv_r = rc_srmax(ii-1) - sqrt(rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2)
+              endif
+            endif
           endif
 
         endif

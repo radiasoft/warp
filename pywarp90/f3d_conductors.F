@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.24 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2990,6 +2990,9 @@ c=======================================================================
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
 
+c     --- Initialize srfrv_f data
+      call srfrv_finit
+
       do i=1,n
         delmx(i) = LARGEPOS
         delpx(i) = LARGEPOS
@@ -3216,6 +3219,9 @@ c near the surface, the distance has the correct sign.
       real(kind=8):: xx,yy,zz,rr,rsrf,zd,rd
       real(kind=8):: srfrv_f
 
+c     --- Initialize srfrv_f data
+      call srfrv_finit
+
       do i=1,n
 
         xx = x(i) - xcent
@@ -3278,6 +3284,9 @@ c=======================================================================
       real(kind=8):: xisrf,yisrf,ximin,yimin
       real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
+
+c     --- Initialize srfrv_f data
+      call srfrv_finit
 
       do i=1,n
         delmx(i) = LARGEPOS
@@ -3505,6 +3514,9 @@ c near the surface, the distance has the correct sign.
       real(kind=8):: xx,yy,zz,rr,rsrf,zd,rd
       real(kind=8):: srfrv_f
 
+c     --- Initialize srfrv_f data
+      call srfrv_finit
+
       do i=1,n
 
         xx = x(i) - xcent
@@ -3568,6 +3580,9 @@ c=======================================================================
       real(kind=8):: rminlower,rminhigher,rmaxlower,rmaxhigher
       real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
       real(kind=8):: delmz1,delpz1
+
+c     --- Initialize srfrv_f data
+      call srfrv_finit
 
       do i=1,n
         delmx(i) = LARGEPOS
@@ -3916,6 +3931,9 @@ c near the surface, the distance has the correct sign.
       integer(ISZ):: i
       real(kind=8):: xx,yy,zz,rr,rmin,rmax,zd,rd
       real(kind=8):: srfrv_f
+
+c     --- Initialize srfrv_f data
+      call srfrv_finit
 
       do i=1,n
 
