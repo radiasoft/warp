@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.80 $, $Date: 2003/04/09 01:55:35 $
+#@(#) File TOP.V, version $Revision: 3.81 $, $Date: 2003/04/16 23:09:38 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.80 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.81 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1813,6 +1813,11 @@ getgrid3d(np:integer,x:real,y:real,z:real,f:real,
           xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
           l2symtry:logical,l4symtry:logical) subroutine
         # Gathers data from a 3-D grid.
+getgridngp3d(np:integer,x:real,y:real,z:real,f:real,
+             nx:integer,ny:integer,nz:integer,grid:real,
+             xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
+             l2symtry:logical,l4symtry:logical) subroutine
+        # Gathers data from a 3-D grid using nearest grid point.
 grid2grid(unew:real,nxnew:integer,nynew:integer,
           xminnew:real,xmaxnew:real,yminnew:real,ymaxnew:real,
           uold:real,nxold:integer,nyold:integer,

@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.75 $, $Date: 2003/04/09 01:55:36 $
+c@(#) File DTOP.M, version $Revision: 3.76 $, $Date: 2003/04/16 23:09:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -639,7 +639,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.75 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.76 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1645,6 +1645,58 @@ c       --- if within grid, gather
      &            grid(ix+1,iy  ,iz+1)*      wx *(1. - wy)*      wz  +
      &            grid(ix  ,iy+1,iz+1)*(1. - wx)*      wy *      wz  +
      &            grid(ix+1,iy+1,iz+1)*      wx *      wy *      wz
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine getgridngp3d(np,x,y,z,f,nx,ny,nz,grid,
+     &                        xmin,xmax,ymin,ymax,zmin,zmax,l2symtry,l4symtry)
+      integer(ISZ):: nx,ny,nz,np
+      real(kind=8):: x(np), y(np), z(np), f(np)
+      real(kind=8):: grid(0:nx,0:ny,0:nz)
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
+      logical(ISZ):: l2symtry,l4symtry
+
+c Gathers data from a 3-D mesh onto particle positions.
+
+      integer(ISZ):: ip,ix,iy,iz
+      real(kind=8):: gx,gy,gz
+      real(kind=8):: dxi,dyi,dzi,wx,wy,wz
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+      dzi = nz/(zmax - zmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        if (l4symtry) then
+          gx = abs((x(ip) - xmin)*dxi)
+          gy = abs((y(ip) - ymin)*dyi)
+          gz =     (z(ip) - zmin)*dzi
+        else if (l2symtry) then
+          gx =     (x(ip) - xmin)*dxi
+          gy = abs((y(ip) - ymin)*dyi)
+          gz =     (z(ip) - zmin)*dzi
+        else
+          gx =     (x(ip) - xmin)*dxi
+          gy =     (y(ip) - ymin)*dyi
+          gz =     (z(ip) - zmin)*dzi
+        endif
+
+c       --- if within grid, gather
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny .and.
+     &      0. <= gz .and. gz < nz) then
+          ix = int(gx)
+          iy = int(gy)
+          iz = int(gz)
+          f(ip) = grid(ix,iy,iz)
         endif
 
       enddo

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.79 $, $Date: 2003/04/09 01:55:36 $
+c@(#) File TOP.M, version $Revision: 3.80 $, $Date: 2003/04/16 23:09:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3403,6 +3403,7 @@ c Output:
 c   ez       axial electric field
 
       real(kind=8):: dti,vz,gapez,frac,z1,z2,vn,zl,zr,cacclz,caccll
+      real(kind=8):: frac1,frac2
       integer(ISZ):: io,ip,iz
 
       if (.not. accls) return
@@ -3442,14 +3443,14 @@ c           --- and outside are included implicitly in the max and min calls.
 c           --- Note that the max's inside the sqrt are for idiot proofing.
             if (zp(ip) <= cacclzs(iz,io)) then
               frac = max((dtr + (zp(ip) - cacclzs(iz,io))/vn)*dti , 0.)
-            elseif (zp(ip) <= (cacclzs(iz,io) + cacclze(iz,io))*0.5) then
-              frac = min((dtr + 2.*(zp(ip) - cacclzs(iz,io))/
-     &               (sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
-     &               (zp(ip) - cacclzs(iz,io)))) + vn))*dti, 1.)
             elseif (zp(ip) <= cacclze(iz,io)) then
-              frac = min((-dtl + 2.*(cacclze(iz,io) - zp(ip))/
-     &               (sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
-     &               (cacclze(iz,io) - zp(ip)))) + vn))*dti, 1.)
+              frac1 = min((dtr + 2.*(zp(ip) - cacclzs(iz,io))/
+     &                (sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
+     &                (zp(ip) - cacclzs(iz,io)))) + vn))*dti, 1.)
+              frac2 = min((-dtl + 2.*(cacclze(iz,io) - zp(ip))/
+     &                (sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
+     &                (cacclze(iz,io) - zp(ip)))) + vn))*dti, 1.)
+              frac = min(frac1,frac2)
             else
               frac = max((-dtl - (zp(ip) - cacclze(iz,io))/vn)*dti , 0.)
             endif
@@ -3526,8 +3527,8 @@ c             --- Space charge forces are ignored.
               delta = 0
               if (zp(ip) <= cacclzs(iz,io) .and. cacclzs(iz,io) <= zp2) then
                 delta = (cacclzs(iz,io) - zp(ip))*vzi(ip)
-              elseif (zp(ip) <= cacclze(iz,io) .and.
-     &             cacclze(iz,io) <= zp2 + gapez*qoverm*dt*(dtr-dtl)) then
+              elseif (cacclzs(iz,io) < zp(ip) .and. zp(ip) <= cacclze(iz,io)
+     &            .and. cacclze(iz,io) <= zp2 + gapez*qoverm*dt*(dtr-dtl)) then
                 delta = 2.*(cacclze(iz,io) - zp(ip))/
      &                  (sqrt((vz(ip) - gapez*qoverm*dtl)**2 +
      &                  2.*(cacclze(iz,io) - zp(ip))*gapez*qoverm) +
@@ -3737,8 +3738,8 @@ c           --- Space charge forces are ignored.
             delta = 0
             if (zlframe <= cacclzs(iz,io) .and. cacclzs(iz,io) <= zp2) then
               delta = (cacclzs(iz,io) - zlframe)*vzi(ip)
-            elseif (zlframe <= cacclze(iz,io) .and.
-     &         cacclze(iz,io) <= zp2 + gapez*qoverm*dtp(ip)*(dtr_a-dtl_a)) then
+            elseif (cacclzs(iz,io) < zlframe .and. zlframe <= cacclze(iz,io)
+     &   .and. cacclze(iz,io) <= zp2 + gapez*qoverm*dtp(ip)*(dtr_a-dtl_a)) then
               delta = 2.*(cacclze(iz,io) - zlframe)/
      &                (sqrt((vz(ip) - gapez*qoverm*dtl_a)**2 +
      &                2.*(cacclze(iz,io) - zlframe)*gapez*qoverm) +
