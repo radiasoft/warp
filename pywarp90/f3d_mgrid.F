@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.67 $, $Date: 2004/05/14 23:32:54 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.68 $, $Date: 2004/05/27 23:07:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -34,8 +34,8 @@ c=============================================================================
      &                            mgparam,mgform,mgiters,mgmaxiters,
      &                            mgmaxlevels,mgerror,mgtol,
      &                            downpasses,uppasses,
-     &                            lcndbndy,laddconductor,icndbndy,gridmode,
-     &                            conductors)
+     &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
+     &                            gridmode,conductors)
 
       return
       end
@@ -47,8 +47,8 @@ c=============================================================================
      &                            mgparam,mgform,mgiters,mgmaxiters,
      &                            mgmaxlevels,mgerror,mgtol,
      &                            downpasses,uppasses,
-     &                            lcndbndy,laddconductor,icndbndy,gridmode,
-     &                            conductors)
+     &                            lcndbndy,laddconductor,icndbndy,lbuildquads,
+     &                            gridmode,conductors)
       use ConductorTypemodule
       use Constant
       use Parallel
@@ -66,7 +66,7 @@ c=============================================================================
       integer(ISZ):: mgform,mgiters,mgmaxiters,mgmaxlevels
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
-      logical(ISZ):: lcndbndy,laddconductor
+      logical(ISZ):: lcndbndy,laddconductor,lbuildquads
       integer(ISZ):: icndbndy,gridmode
       type(ConductorType):: conductors
 
@@ -129,8 +129,10 @@ c     --- converted and expanded for the multigrid solver.
         conductors%interior%n = 0
         conductors%evensubgrid%n = 0
         conductors%oddsubgrid%n = 0
-c       call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-c    &                bound0,boundnz,boundxy,l2symtry,l4symtry)
+        if (lbuildquads) then
+          call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
+        endif
         if (laddconductor) call execuser("calladdconductor")
       endif
       call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,l2symtry,l4symtry,

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.108 $, $Date: 2004/05/13 18:00:26 $
+c@(#) File F3D.M, version $Revision: 3.109 $, $Date: 2004/05/27 23:07:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6121,6 +6121,7 @@ c       --- plate on left hand side of quad
           z_sr(1) = qs-quadpw(iq)-qdelpwl(iq)
           z_sr(2) = qs
           r_sr = quadpa(iq) + qdelpal(iq)
+          rad_sr = LARGEPOS
           rmax = (quadpr(iq) + qdelprl(iq))
           xcent = qoffx(iq) + ix_axis*dx + xmmin
           ycent = qoffy(iq) + iy_axis*dy + ymmin
@@ -6148,6 +6149,7 @@ c       --- plate on right hand side of quad
           z_sr(1) = qe
           z_sr(2) = qe+quadpw(iq)+qdelpwl(iq)
           r_sr = quadpa(iq) + qdelpar(iq)
+          rad_sr = LARGEPOS
           rmax = quadpr(iq) + qdelprr(iq)
           call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
      &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
