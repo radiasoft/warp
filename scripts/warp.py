@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.7 2001/01/16 21:41:43 dave Exp $"
+warp_version = "$Id: warp.py,v 1.8 2001/01/17 00:39:14 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -300,7 +300,7 @@ Creates a dump file
       s = '.sdump'
     else:
       s = '.dump'
-    if onefile or npes==0:
+    if onefile or not lparallel:
       filename=arraytostr(top.runid)+('%06d'%top.it)+suffix+s
     else:
       filename=arraytostr(top.runid)+('%06d_%05d'%(top.it,me))+suffix+s
@@ -311,7 +311,7 @@ Creates a dump file
       if l not in initial_global_dict_keys:
         interpreter_variables.append(l)
   # --- Call routine to make data dump
-  if onefile and npes > 0:
+  if onefile and lparallel:
     paralleldump(filename,attr,interpreter_variables,serial=serial,
                  varsuffix=varsuffix)
   else:
@@ -334,7 +334,7 @@ Reads in data from file, redeposits charge density and does field solve
   if not onefile:
     filename = filename + '_%05d.dump'%(me)
   # --- Call different restore routine depending on context
-  if onefile and npes > 0:
+  if onefile and lparallel:
     parallelrestore(filename)
   else:
     pyrestore(filename)
@@ -415,7 +415,7 @@ def printtimers(file=None):
   else:
     ff = file
     closeit = 0
-  if npes == 0:
+  if not lparallel:
     ff.write('                 Total time')
     if top.it > 0: ff.write('        Time per step')
     ff.write('\n')
