@@ -213,7 +213,6 @@ class WarpRun(wxFrame):
         self.SetClientSize(wxSize(620, 646))
         self.SetMenuBar(self.menuBar1)
         self.SetAutoLayout(True)
-        EVT_IDLE(self, self.OnWxframe1Idle)
 
         self.statusBar1 = wxStatusBar(id=wxID_WARPRUNSTATUSBAR1,
               name='statusBar1', parent=self, style=0)
@@ -343,7 +342,7 @@ class WarpRun(wxFrame):
 
         self.MessageWindow = wxTextCtrl(id=wxID_WARPRUNMESSAGEWINDOW,
               name='MessageWindow', parent=self.splitterWindow1, pos=wxPoint(2,
-              357), size=wxSize(612, 201),
+              357), size=wxSize(612, 236),
               style=wxHSCROLL | wxVSCROLL | wxTE_READONLY | wxTE_MULTILINE,
               value='')
         self.MessageWindow.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL,
@@ -422,7 +421,9 @@ class WarpRun(wxFrame):
         Palettes = ["earth","rainbow","gray","yarg","heat","ncar","cool","rainbowaf","stern","christmas"]
         for i in range(0,len(Palettes)):
             self.AddPalette(Palettes[i])
-
+        self.gist_timer = wxPyTimer(self.HandleGistEvents)
+        self.gist_timer.Start(100)
+            
     def launch_pype(self):
         def GetKeyPress(evt):
             keycode = evt.GetKeyCode()
@@ -615,6 +616,7 @@ class WarpRun(wxFrame):
     def add_panel(self,panel,name,out='notebook'):
         if(self.panels.has_key(name)):return
         self.panels[name] = self.show_GUI(panel,out,name)
+        self.OutToMessageWindow()
 
     def show_GUI(self,gui,winout,title):
         if(winout=='notebook'):
@@ -954,15 +956,6 @@ class WarpRun(wxFrame):
     def OnMnupackageEnvMenu(self, event):
         package('env')
         self.mnuPackageUpdate()
-
-    def OnWxframe1Idle(self, event):
-      if current_window()>-1:
-        self.gist_timer = wxPyTimer(self.HandleGistEvents)
-        self.gist_timer.Start(100)
-        event.Skip()
-#       self.HandleGistEvents()
-#       time.sleep(0.1)
-#       event.RequestMore(1)
 
     def OnWinonButton(self, event=None):
         if not self.isgistwindowon:
