@@ -1,6 +1,6 @@
 from warp import *
 import RandomArray
-optimizer_version = "$Id: optimizer.py,v 1.6 2002/03/14 16:20:27 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.7 2002/09/04 21:06:46 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -13,27 +13,43 @@ class Spsa:
 Implements the Simultaneaous Perturbation Stochastic Approximation
 minimization algorithm. To use, create an instance of the Spsa class
 and then call the iter method.
-  """
-  def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
-               paramsmin=None,paramsmax=None,verbose=0,errmax=top.largepos):
-    """
-Creates an instance of the Spsa class.
+
+opt = Spsa(...)
+opt.iter(...)
+
+Note that the parameters are all varied by approximately the same amount and so
+should be normalized to be of the same order of magnitude.
+
+Constructor arguments:
   - nparams: Number of params to vary
-  - params: Initial and current values of the parameters
-  - func: Method which does any calculations given the varying parameters
-  - lossfunc: Method which calculates the loss
-  - c1: Amount by which params are varied (initially) to calculate gradient
-  - a1: Amount params are changed by (initially), scaled by the gradient (which
-       is approximately the change in loss when params are changed by c1
-       divided by c1)
+  - params: Initial values of the parameters
+  - func: Method which does any calculations given the varying parameters.
+          It takes a single argument, the list of parameters.
+  - lossfunc: Method which calculates the loss and returns it.
+  - c1: Amount by which params are initially varied to calculate gradient
+  - a1: Amount by which the params are changed, scaled by the gradient (the gradient
+        is the change in loss when params are changed by c1, divided by c1).
+        To check the scaling, call the method gradloss, which returns the gradient.
   - a2=100.: Scale (in iteration numbers) over which c and a are decreased
   - paramsmin=-1.e+36: Min value of the parameters. This can be a function
-                       which takes the params as its single argument.
+                       which takes the params as its single argument and returns
+                       the parameter mins.
   - paramsmax=+1.e+36: Max value of the parameters. This can be a function
-                       which takes the params as its single argument.
+                       which takes the params as its single argument and returns
+                       the parameter maxes.
   - verbose=0: when true, print diagnostics
   - errmax=+1.e36: Maximum acceptable value of the error. If the error
                    is greater, the iteration is skipped.
+  - saveparamhist=false: When true, saves the history of the parameters in the
+                         attribute hparam. Note that the history of the loss is
+                         always saved in hloss.
+  """
+
+  def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
+               paramsmin=None,paramsmax=None,verbose=0,errmax=top.largepos,
+               saveparamhist=false):
+    """
+Creates an instance of the Spsa class.
     """
     self.nparams = nparams
     self.params = params
@@ -46,14 +62,12 @@ Creates an instance of the Spsa class.
     self.verbose = verbose
     self.hloss = []
     self.errmax = errmax
-    if paramsmin is None:
-      self.paramsmin = -ones(nparams)*1.e+36
-    else:
-      self.paramsmin = paramsmin
-    if paramsmax is None:
-      self.paramsmax = +ones(nparams)*1.e+36
-    else:
-      self.paramsmax = paramsmax
+    self.saveparamhist = saveparamhist
+    if paramsmin is None: self.paramsmin = -ones(nparams)*1.e+36
+    else:                 self.paramsmin = paramsmin
+    if paramsmax is None: self.paramsmax = +ones(nparams)*1.e+36
+    else:                 self.paramsmax = paramsmax
+    if self.saveparamhist: self.hparam = []
   def ak(self):
     return self.a1/(self.k+self.a2)**0.602
   def ck(self):
@@ -84,13 +98,14 @@ Creates an instance of the Spsa class.
     params = minimum(params,self.getparamsmax(params))
     return params
 
-  def iter(self,err=1.e-9,imax=10000,kprint=10,verbose=None):
+  def iter(self,err=1.e-9,imax=10000,verbose=None,kprint=10,kprintlogmax=3):
     """
 Function to do iterations.
   - err=err=1.e-9: Convergence criteria
   - imax=10000: Maximum number of iterations
-  - kprint=10: exponential scale for printing out current status
   - verbose=None: can override main value of verbose
+  - kprint=10: exponential scale for printing out current status
+  - kprintlogmax=3: max value of exponential scale
     """
     if verbose is None: verbose = self.verbose
     i = 0
@@ -107,6 +122,7 @@ Function to do iterations.
       self.params = self.constrainparams(self.params - self.ak()*dp)
       if verbose: print "new params = " + repr(self.params)
       # --- Calculate function with new params
+      if self.saveparamhist: self.hparam.append(self.params)
       self.func(self.params)
       # --- Check if loss it too great.
       if self.loss() > self.errmax:
@@ -117,14 +133,12 @@ Function to do iterations.
       self.hloss.append(self.loss())
       # --- Increment the counter
       self.k = self.k + 1
-      # --- Print out loss function
-      if (self.k <= kprint):
+      # --- Print out loss value
+      klog = int(log(self.k)/log(kprint))
+      klog = min(klog,kprintlogmax)
+      if ((self.k%(kprint**klog)) == 0):
         self.printerror(err)
-      elif ((self.k>kprint) and (self.k<=kprint**2) and ((self.k%kprint)==0)):
-        self.printerror(err)
-      elif ( (self.k%(kprint**2)) == 0):
-        self.printerror(err)
-        self.printparams()
+        if klog == kprintlogmax: self.printparams()
     # --- Print out the resulting params
     self.printerror(err)
     self.printparams()
