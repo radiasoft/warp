@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.4 2001/07/19 20:33:52 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.5 2001/07/19 21:41:58 dave Exp $"
 
 def extpartdoc():
   print """
@@ -149,21 +149,20 @@ routines (such as ppxxp).
       ux = gatherarray(top.uxep[:nn,id,js]+0.,othersempty=1)
       uy = gatherarray(top.uyep[:nn,id,js]+0.,othersempty=1)
       uz = gatherarray(top.uzep[:nn,id,js]+0.,othersempty=1)
-      if len(t) > 0:
-        if self.laccumulate:
-          self.tep[js].append(t)
-          self.xep[js].append(x)
-          self.yep[js].append(y)
-          self.uxep[js].append(ux)
-          self.uyep[js].append(uy)
-          self.uzep[js].append(uz)
-        else:
-          self.tep[js] = t
-          self.xep[js] = x
-          self.yep[js] = y
-          self.uxep[js] = ux
-          self.uyep[js] = uy
-          self.uzep[js] = uz
+      if self.laccumulate:
+        self.tep[js].append(t)
+        self.xep[js].append(x)
+        self.yep[js].append(y)
+        self.uxep[js].append(ux)
+        self.uyep[js].append(uy)
+        self.uzep[js].append(uz)
+      else:
+        self.tep[js] = t
+        self.xep[js] = x
+        self.yep[js] = y
+        self.uxep[js] = ux
+        self.uyep[js] = uy
+        self.uzep[js] = uz
 
   def setaccumulate(self,v=1):
     self.laccumulate = v
@@ -203,7 +202,10 @@ functions.
     if badargs: raise "bad arguments ",string.join(badargs.keys())
 
   def titleright(self):
-    return "iz = %d (z = %f m)"%(self.iz,w3d.zmesh[self.iz])
+    if lparallel:
+      return "iz = %d (z = %f m)"%(self.iz,top.zmslmin[0]+self.iz*w3d.dz)
+    else:
+      return "iz = %d (z = %f m)"%(self.iz,w3d.zmesh[self.iz])
 
   ############################################################################
   def pxy(self,js=0,particles=1,**kw):
