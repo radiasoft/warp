@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.40 $, $Date: 2002/05/08 16:01:57 $
+c@(#) File F3D.M, version $Revision: 3.41 $, $Date: 2002/05/13 20:09:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6604,7 +6604,6 @@ c===========================================================================
       use InjectVars
       use InjectVars3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
-      use multigridRZ
       real(kind=8):: dx,dy,dz,zmmin
       integer(ISZ):: ix_axis,iy_axis,nx,ny
 
