@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.9 2001/07/25 00:21:47 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.10 2001/08/09 22:08:46 dave Exp $"
 
 from Numeric import *
 # --- Try import mpi - if not found, then run in serial mode
@@ -157,6 +157,12 @@ def gather(obj,dest=0):
   else:
     mpi.send(obj,dest)
     return obj
+
+# ---------------------------------------------------------------------------
+# Define a barrier
+def barrier():
+  if not lparallel: return
+  mpi.barrier()
 
 # ---------------------------------------------------------------------------
 # Broadcast an object to all procerssors
