@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.6 $, $Date: 2002/05/07 17:38:40 $
+c F3DSLAVE.M, version $Revision: 1.7 $, $Date: 2002/05/09 21:40:06 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -43,10 +43,10 @@ c     --- above are used.
 
       waitcount = 4
       waitstart = 1
-      if (my_index == 0 .and. bound0 .ne. 2) then
+      if (my_index == 0 .and. bound0 /= 2) then
         waitcount = 2
         waitstart = 3
-      else if (my_index == nslaves-1 .and. boundnz .ne. 2) then
+      else if (my_index == nslaves-1 .and. boundnz /= 2) then
         waitcount = 2
         waitstart = 1
       endif
@@ -468,7 +468,7 @@ c         --- set some initial values for the matrix diagonals
         enddo
       enddo
 c     --- Fill in the zeros since the generaltridiag
-c     --- solver requires all b's to be .ne. 0.
+c     --- solver requires all b's to be /= 0.
 c     do iy=0,ny
 c       blan(nx,iy,0) = 1.
 c       blan(nx,iy,nz-1) = 1.
@@ -1006,7 +1006,7 @@ c     --- of the data overlaps.
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       enddo
-      if (whosendingright(my_index) .ne. -1) then
+      if (whosendingright(my_index) /= -1) then
         w = w + 1
         call MPI_IRECV(phi(0,0,lr),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,whosendingright(my_index),nzfull,
@@ -1022,7 +1022,7 @@ c     --- of the data overlaps.
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       enddo
-      if (whosendingleft(my_index) .ne. -1) then
+      if (whosendingleft(my_index) /= -1) then
         w = w + 1
         call MPI_IRECV(phi(0,0,rr),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,whosendingleft(my_index),nzfull,
@@ -1104,12 +1104,12 @@ c     --- Now wait for everything to finish
 c=============================================================================
       subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bound0,boundnz,delz,
      &                                  my_index,nslaves,izfsslave,
-     &                                  whosendingleft)
+     &                                  whosendingleft,whosendingright)
       integer(ISZ):: nx,ny,nz,nzfull,bound0,boundnz,delz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1)
-      integer(ISZ):: whosendingleft(0:nslaves-1)
+      integer(ISZ):: whosendingleft(0:nslaves-1),whosendingright(0:nslaves-1)
 
 c This routine sends out and receives boundary data for the MG field solver.
 c This only sends plane iz=0 when there are periodic boundary conditions.
@@ -1138,12 +1138,30 @@ c     --- of the data overlaps.
           endif
         enddo
       endif
+      if (izfsslave(my_index)+nz == nzfull .and. delz /= 0) then
+        do ip=0,nslaves-1
+          if (my_index == whosendingright(ip)) then
+            w = w + 1
+            call MPI_ISEND(phi(0,0,nz-delz),(nx+1)*(ny+1),
+     &                     MPI_DOUBLE_PRECISION,ip,0,
+     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
+          endif
+        enddo
+      endif
 
       if (izfsslave(my_index)+nz == nzfull) then
-        if (whosendingleft(my_index) .ne. -1) then
+        if (whosendingleft(my_index) /= -1) then
           w = w + 1
           call MPI_IRECV(phi(0,0,nz+delz),(nx+1)*(ny+1),
      &                   MPI_DOUBLE_PRECISION,whosendingleft(my_index),0,
+     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
+        endif
+      endif
+      if (izfsslave(my_index) == 0 .and. delz /= 0) then
+        if (whosendingright(my_index) /= -1) then
+          w = w + 1
+          call MPI_IRECV(phi(0,0,-delz),(nx+1)*(ny+1),
+     &                   MPI_DOUBLE_PRECISION,whosendingright(my_index),0,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
       endif
