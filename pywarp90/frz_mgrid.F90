@@ -1,4 +1,4 @@
-!     Last change:  JLV   4 Jun 2003    1:31 pm
+!     Last change:  JLV  12 Jun 2003    1:09 pm
 #include "top.h"
 
 module multigrid_common
@@ -290,6 +290,15 @@ TYPE(BNDtype), POINTER :: b
   g%guard_max_z = guard_max_z
   g%nguardx = nguardx
   g%nguardz = nguardz
+#ifdef MPIPARALLEL
+  g%nzp   = nzpslave(my_index)
+  g%nrpar = nr
+  g%nzpar = g%nzp
+#else
+  g%nzp   = nz
+  g%nrpar = 0
+  g%nzpar = 0
+#endif
   call GRIDtypeallot(g)
   NULLIFY(g%next,g%prev,g%down,g%up,g%bndfirst,g%bndlast)
   IF(associated(mothergrid%down)) then
@@ -508,9 +517,9 @@ TYPE(BNDtype), pointer :: b
       END if
       call del_cnds(b)
     end do
+    call tfree(b%id)
+    DEALLOCATE(b)
   END if
-  call tfree(b%next%id)
-  DEALLOCATE(b)
   NULLIFY(g%up%down)
   call tfree(g%id)
   DEALLOCATE(g)
