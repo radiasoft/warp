@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.55 2004/10/20 19:46:48 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.56 2004/10/28 23:12:54 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -927,7 +927,7 @@ in the celemid array. It returns each element only once.
         prevze = ze
         yield (id,zs,ze)
   #----------------------------------------------------------------------------
-  def setboundary(self):
+  def setboundary(self,lforce=0):
     # --- The lattice element conductors are only setup if the beam frame
     # --- has moved or if a new field solver is being used. This saves the
     # --- previous beam frame location and field solver to compare against
@@ -938,10 +938,20 @@ in the celemid array. It returns each element only once.
     except:
       self.lastzbeam = top.zbeam/2. - 1.
       self.lastsolverid = None
+      self.lastsolverparams = None
     solver = getregisteredsolver()
-    if self.lastzbeam == top.zbeam and self.lastsolverid == id(solver): return
+    if solver is None: solver = w3d
+    solverparams = [solver.nx,solver.ny,solver.nz,
+                    solver.dx,solver.dy,solver.dz,
+                    solver.xmmin,solver.ymmin,solve.zmmin,
+                    solver.xmmax,solver.ymmax,solve.zmmax]
+    if (not lforce and
+        self.lastzbeam == top.zbeam and
+        self.lastsolverid == id(solver) and
+        self.lastsolverparams == solverparams): return
     self.lastzbeam = top.zbeam
     self.lastsolverid = id(solver)
+    self.lastsolverparams = solverparams
 
     # --- Empty the list of conductors
     self.conductors = None
