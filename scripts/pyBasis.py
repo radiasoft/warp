@@ -12,7 +12,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.5 2001/01/22 21:57:04 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.6 2001/02/26 19:55:43 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -250,6 +250,9 @@ Dump data into a pdb file
   if varsuffix == None: varsuffix = ''
   for v in vars:
     try:
+      vval = eval(v,__main__.__dict__,locals())
+      if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
+        raise "cannot dump zero length arrays"
       exec('ff.'+v+varsuffix+'='+v,__main__.__dict__,locals())
     except:
       pass
