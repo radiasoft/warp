@@ -18,7 +18,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.14 2004/07/01 23:38:59 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.15 2004/09/28 00:21:14 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -253,6 +253,8 @@ class DXCollection(Visualizable):
     if self.collection is None: return
     if self.preserve: DXDelete(self.collection)
     self.collection = None
+  def __add__(self,right):
+    return DXCollection(self,right)
 
 ###########################################################################
 #==========================================================================
