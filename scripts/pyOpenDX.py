@@ -28,7 +28,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.23 2004/12/22 16:04:31 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.24 2004/12/22 21:53:20 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -510,8 +510,8 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
   else:
     __main__.dxwindow.l_hardware_acceleration=0
 
-  if scale is None:
-     __main__.dxwindow.dxscale=[1.,1.,1.]
+  if scale is None:scale=[1.,1.,1.]
+  __main__.dxwindow.dxscale=scale
   __main__.dxwindow.dxobject = DXScale(__main__.dxwindow.dxobject_init,__main__.dxwindow.dxscale)
 
   if camera is None:
