@@ -12,12 +12,12 @@ POPT = -O
 PYMODULEOPT = 
 DATASIZE = -bmaxdata:0x80000000 -bmaxstack:0x10000000	
 ESSL = -WF,-DESSL
-F90FREE  = mpxlf90 -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -qalias=intptr -WF,-DMPIPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VAMPIR) $(DATASIZE) $(ESSL)
-F90FIXED = mpxlf90 -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -qalias=intptr -WF,-DMPIPARALLEL -qfixed=132 $(VAMPIR) $(DATASIZE) $(ESSL)
+F90FREE  = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VAMPIR) $(DATASIZE) $(ESSL)
+F90FIXED = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qfixed=132 $(VAMPIR) $(DATASIZE) $(ESSL)
 CC = mpcc -qmaxmem=8192 $(DATASIZE)
 SO = so
 LD = mpcc $(VAMPIR) $(DATASIZE)
-LD = mpxlf90 $(VAMPIR) $(DATASIZE)
+LD = mpxlf $(VAMPIR) $(DATASIZE)
 LDSHARED = $(PYTHON)/lib/python$(PYVERS)/config/ld_so_aix mpcc -bI:$(PYTHON)/lib/python$(PYVERS)/config/python.exp
 FORTLIB = 
 LINKLIB = -lpthread
