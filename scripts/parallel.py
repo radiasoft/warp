@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.22 2003/07/08 23:08:08 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.23 2003/07/08 23:55:45 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -320,7 +320,15 @@ def globalave(a):
 # Generic parallel element-by-element operation on a distributed array.
 def parallelop(a,mpiop):
   if not lparallel: return a
-  return mpi.allreduce(a,eval("mpi."+mpiop))
+  if type(a) == type(array([])):
+    a1d = ravel(a) + 0
+    for i in range(len(a1d)):
+      a1d[i] = mpi.allreduce(a1d[i],eval("mpi."+mpiop))
+    a1d.shape = shape(a)
+    return a1d
+  else:
+    return mpi.allreduce(a,eval("mpi."+mpiop))
+
 
 # ---------------------------------------------------------------------------
 # Specific parallel element-by-element operations on a distributed array.
@@ -329,6 +337,6 @@ def parallelmax(a):
 def parallelmin(a):
   return parallelop(a,"MIN")
 def parallelsum(a):
-  return parallelop(a,"SUM")
+  return mpi.allreduce(a,mpi.SUM)
 
 
