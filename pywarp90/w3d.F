@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.98 $, $Date: 2003/04/16 23:05:03 $
+c@(#) File W3D.M, version $Revision: 3.99 $, $Date: 2003/04/17 23:22:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5210,11 +5210,9 @@ c     --- Setup grids covering injection surfaces.
         inj_dy = dy
         inj_dz = dz
       elseif(solvergeom==RZgeom) then
-        if(inj_nx==0) then
-          inj_dx = dx
-          inj_dy = dx
-          inj_dz = dz
-        end if
+        inj_dx = dx
+        inj_dy = dx
+        inj_dz = dz
       end if
       inj_dz0 = inj_dz
       if(inj_nz>1) inj_dz = inj_d(1)*inj_dz/(real(inj_nz-1)*2.**(1./3.)+real(2-inj_nz))**3
@@ -5778,6 +5776,7 @@ c             --- emitting surface.
               xx(i2) = xm - inj_dz*cos(aa)*sin(az)*inj_d(ij)
               yy(i2) = ym - inj_dz*sin(aa)*sin(az)*inj_d(ij)
               zz(i2) = inj_grid(ix,iy,ij) + cos(az)*inj_d(ij)*inj_dz
+              in(i2) = ij
 
             endif
           enddo
@@ -5796,7 +5795,7 @@ c       --- for this processor.
             xx(nn) = xx(ii)
             yy(nn) = yy(ii)
             zz(nn) = zz(ii)
-            in(nn) = ij
+            in(nn) = in(ii)
             nn = nn + 1
           endif
         enddo
