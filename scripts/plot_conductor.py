@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.64 2003/11/04 22:05:17 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.65 2003/12/13 01:40:29 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -412,6 +412,329 @@ cell. It must be called for each of the four corners of a grid cell.
         y.append(yys[i0]+delsy[i0])
         numb = nmsy[i0]
   return nn,numb
+
+def plotcondfillnew(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx):
+  """
+Plots conductors, filling them in with a solid color. The color is given
+by the conductor number.
+  """
+  # --- Get the numbers of conductor points
+  nc = f3d.ncond
+  ne = f3d.necndbdy
+  no = f3d.nocndbdy
+  ns = ne + no
+  lx = eval('f3d.mglevelsl'+xx)[mglevel]
+  ly = eval('f3d.mglevelsl'+yy)[mglevel]
+  lz = eval('f3d.mglevelsl'+zz)[mglevel]
+  if nc > 0:
+    ixc = eval('f3d.i'+xx+'cond')[:nc]
+    iyc = eval('f3d.i'+yy+'cond')[:nc]
+    izc = eval('f3d.i'+zz+'cond')[:nc]
+    numb = f3d.condnumb[:nc]
+    # --- Add z offset of data. This only applies for the parallel version
+    if xx == 'z': ixc = ixc + f3d.mglevelsiz[mglevel]
+    if yy == 'z': iyc = iyc + f3d.mglevelsiz[mglevel]
+    if zz == 'z': izc = izc + f3d.mglevelsiz[mglevel]
+    try:
+      levc = f3d.icondlevel[:nc]
+      levelc = equal(mglevel,levc)
+    except:
+      levelc = ones(nc)
+  else:
+    ixc = array([])
+    iyc = array([])
+    izc = array([])
+    numb = array([])
+    levelc = array([])
+  if ne > 0:
+    iexs = eval('f3d.iecnd'+xx)[:ne]
+    ieys = eval('f3d.iecnd'+yy)[:ne]
+    iezs = eval('f3d.iecnd'+zz)[:ne] 
+    ecdelmx = eval('f3d.ecdelm'+xx)[:ne]
+    ecdelpx = eval('f3d.ecdelp'+xx)[:ne]
+    ecdelmy = eval('f3d.ecdelm'+yy)[:ne]
+    ecdelpy = eval('f3d.ecdelp'+yy)[:ne]
+    enumbmx = eval('f3d.ecnumbm'+xx)[:ne]
+    enumbpx = eval('f3d.ecnumbp'+xx)[:ne]
+    enumbmy = eval('f3d.ecnumbm'+yy)[:ne]
+    enumbpy = eval('f3d.ecnumbp'+yy)[:ne]
+    try:
+      elevs = f3d.iecndlevel[:ne]
+      elevels = equal(mglevel,elevs)
+    except:
+      elevels = ones(ne)
+  else:
+    iexs = array([])
+    ieys = array([])
+    iezs = array([])
+    ecdelmx = array([])
+    ecdelpx = array([])
+    ecdelmy = array([])
+    ecdelpy = array([])
+    enumbmx = array([])
+    enumbpx = array([])
+    enumbmy = array([])
+    enumbpy = array([])
+    elevels = array([])
+  if no > 0:
+    ioxs = eval('f3d.iocnd'+xx)[:no]
+    ioys = eval('f3d.iocnd'+yy)[:no]
+    iozs = eval('f3d.iocnd'+zz)[:no] 
+    ocdelmx = eval('f3d.ocdelm'+xx)[:no]
+    ocdelpx = eval('f3d.ocdelp'+xx)[:no]
+    ocdelmy = eval('f3d.ocdelm'+yy)[:no]
+    ocdelpy = eval('f3d.ocdelp'+yy)[:no]
+    onumbmx = eval('f3d.ocnumbm'+xx)[:no]
+    onumbpx = eval('f3d.ocnumbp'+xx)[:no]
+    onumbmy = eval('f3d.ocnumbm'+yy)[:no]
+    onumbpy = eval('f3d.ocnumbp'+yy)[:no]
+    try:
+      olevs = f3d.iocndlevel[:no]
+      olevels = equal(mglevel,olevs)
+    except:
+      olevels = ones(no)
+  else:
+    ioxs = array([])
+    ioys = array([])
+    iozs = array([])
+    ocdelmx = array([])
+    ocdelpx = array([])
+    ocdelmy = array([])
+    ocdelpy = array([])
+    onumbmx = array([])
+    onumbpx = array([])
+    onumbmy = array([])
+    onumbpy = array([])
+    olevels = array([])
+
+  # --- The even and odd data are merged into the same list.
+  ixs = array(list(iexs) + list(ioxs))
+  iys = array(list(ieys) + list(ioys))
+  izs = array(list(iezs) + list(iozs))*lz
+  # --- Add z offset of data. This only applies for the parallel version
+  if xx == 'z': ixs = ixs + f3d.mglevelsiz[mglevel]
+  if yy == 'z': iys = iys + f3d.mglevelsiz[mglevel]
+  if zz == 'z': izs = izs + f3d.mglevelsiz[mglevel]
+
+  delmx = array(list(ecdelmx) + list(ocdelmx))
+  delpx = array(list(ecdelpx) + list(ocdelpx))
+  delmy = array(list(ecdelmy) + list(ocdelmy))
+  delpy = array(list(ecdelpy) + list(ocdelpy))
+  numbmx = array(list(enumbmx) + list(onumbmx))
+  numbpx = array(list(enumbpx) + list(onumbpx))
+  numbmy = array(list(enumbmy) + list(onumbmy))
+  numbpy = array(list(enumbpy) + list(onumbpy))
+  levels = array(list(elevels) + list(olevels))
+
+  # --- Select out the conductor points in the appropriate slice and in
+  # --- the appropriate refinement level.
+  iic = compress(logical_and(equal(izc,iz),equal(levelc,1)),arange(nc))
+  iis = compress(logical_and(equal(izs,iz),equal(levels,1)),arange(ns))
+  dx = dx*lx*signx
+  dy = dy*ly*signy
+  ixc = take(ixc,iic)
+  iyc = take(iyc,iic)
+  xxc = ixc*dx+xmin
+  yyc = iyc*dy+ymin
+  numb = take(numb,iic)
+  ixs = take(ixs,iis)
+  iys = take(iys,iis)
+  xxs = ixs*dx+xmin
+  yys = iys*dy+ymin
+  delmx = take(delmx,iis)*dx
+  delpx = take(delpx,iis)*dx
+  delmy = take(delmy,iis)*dy
+  delpy = take(delpy,iis)*dy
+  numbmx = take(numbmx,iis)
+  numbpx = take(numbpx,iis)
+  numbmy = take(numbmy,iis)
+  numbpy = take(numbpy,iis)
+  if lparallel:
+    ixc = gatherarray(ixc)
+    iyc = gatherarray(iyc)
+    xxc = gatherarray(xxc)
+    yyc = gatherarray(yyc)
+    numb = gatherarray(numb)
+    ixs = gatherarray(ixs)
+    iys = gatherarray(iys)
+    xxs = gatherarray(xxs)
+    yys = gatherarray(yys)
+    delmx = gatherarray(delmx)
+    delpx = gatherarray(delpx)
+    delmy = gatherarray(delmy)
+    delpy = gatherarray(delpy)
+    numbmx = gatherarray(numbmx)
+    numbpx = gatherarray(numbpx)
+    numbmy = gatherarray(numbmy)
+    numbpy = gatherarray(numbpy)
+  # --- Now, after the global gather, if there is no data then quit.
+  if len(ixc) + len(ixs) == 0: return
+  # --- Get max grid point so that an array can be created which covers all
+  # --- of the data.
+  if len(ixc) == 0:
+    maxixc = 0
+    maxiyc = 0
+  else:
+    maxixc = max(ixc)
+    maxiyc = max(iyc)
+  if len(ixs) == 0:
+    maxixs = 0
+    maxiys = 0
+  else:
+    maxixs = max(ixs)
+    maxiys = max(iys)
+  nx = max(maxixc,maxixs) + 1
+  ny = max(maxiyc,maxiys) + 1
+  iii = zeros((5,1+nx,1+ny))
+  mx,px,my,py = 1,2,3,4
+  # --- Flag grid points where the conductors are.
+  for i in xrange(len(ixc)): iii[0,ixc[i],iyc[i]] = i+1
+  for i in xrange(len(ixs)):
+    if abs(delmx[i]) < abs(dx): iii[mx,ixs[i],iys[i]] = i+1
+    if abs(delpx[i]) < abs(dx): iii[px,ixs[i],iys[i]] = i+1
+    if abs(delmy[i]) < abs(dy): iii[my,ixs[i],iys[i]] = i+1
+    if abs(delpy[i]) < abs(dy): iii[py,ixs[i],iys[i]] = i+1
+  # --- Zero out data for all points internal to a conductor
+  iiisum = zeros((3+nx,3+ny))
+  iiisum[1:-1,1:-1] = sum(iii,axis=0)
+  iiisurf = where(((iiisum[:-2,1:-1]>0)&(iiisum[1:-1,:-2]>0)&
+                   (iiisum[2:,1:-1]>0)&(iiisum[1:-1,2:]>0)),
+                  0,iiisum[1:-1,1:-1])
+  iiis = zeros((5,1+nx,1+ny))
+  for i in range(5):
+    iiis[i,:,:] = where(iiisurf>0,iii[i,:,:],0)
+
+  x = []
+  y = []
+  z = []
+  n = []
+
+  # --- Loop over all conductor points, drawing a fill polygon for each.
+  ixall = list(ixc) + list(ixs)
+  iyall = list(iyc) + list(iys)
+  for ix,iy in map(None,ixall,iyall):
+    if iiisurf[ix,iy] == 0 or iiis[0,ix,iy] > 0: continue
+    iix = []
+    iiy = []
+    z.append(0)
+    n.append(0)
+    while 1:
+      if iiis[0,ix,iy] > 0:
+        i0 = iiis[0,ix,iy] - 1
+        iiis[0,ix,iy] = 0
+        iiisurf[ix,iy] = 0
+        x.append(xxc[i0])
+        y.append(yyc[i0])
+        z[-1] = numb[i0]
+        n[-1] = n[-1] + 1
+        if ix>0 and iiis[px,ix-1,iy] > 0: ix = ix - 1
+        elif ix>0 and iiis[0,ix-1,iy] > 0: ix = ix - 1
+        elif ix>0 and iiis[py,ix-1,iy] > 0: ix = ix - 1
+        elif ix>0 and iy<ny and iiis[my,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
+        elif ix>0 and iy<ny and iiis[0,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
+        elif ix>0 and iy<ny and iiis[px,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
+        elif iy<ny and iiis[mx,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and iiis[0,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and iiis[my,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and iiis[px,ix,iy+1] > 0: iy = iy + 1
+        elif ix<nx and iy<ny and iiis[mx,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
+        elif ix<nx and iy<ny and iiis[0,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
+        elif ix<nx and iy<ny and iiis[my,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
+        elif ix<nx and iiis[py,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iiis[0,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iiis[mx,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iiis[my,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iy>0 and iiis[py,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
+        elif ix<nx and iy>0 and iiis[0,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
+        elif ix<nx and iy>0 and iiis[mx,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
+        elif iy>0 and iiis[px,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and iiis[0,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and iiis[py,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and iiis[mx,ix,iy-1] > 0: iy = iy - 1
+        elif ix>0 and iy>0 and iiis[px,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        elif ix>0 and iy>0 and iiis[0,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        elif ix>0 and iy>0 and iiis[py,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        elif ix>0 and iiis[my,ix-1,iy] > 0: ix = ix - 1
+        continue
+      if iiis[mx,ix,iy] > 0:
+        i0 = iiis[mx,ix,iy] - 1
+        iiis[mx,ix,iy] = 0
+        iiisurf[ix,iy] = 0
+        x.append(xxs[i0]-delmx[i0])
+        y.append(yys[i0])
+        z[-1] = numbmx[i0]
+        n[-1] = n[-1] + 1
+        if iiis[0,ix,iy] > 0: pass
+        elif iiis[py,ix,iy] > 0: pass
+        elif iy<ny and iiis[0,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and iiis[mx,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and ix>0 and iiis[0,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
+        elif iy<ny and ix>0 and iiis[my,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
+        elif ix>0 and iiis[0,ix-1,iy] > 0: ix = ix - 1
+        elif ix>0 and iiis[px,ix-1,iy] > 0: ix = ix - 1
+        continue
+      if iiis[py,ix,iy] > 0:
+        i0 = iiis[py,ix,iy] - 1
+        iiis[py,ix,iy] = 0
+        iiisurf[ix,iy] = 0
+        x.append(xxs[i0])
+        y.append(yys[i0]+delpy[i0])
+        z[-1] = numbpy[i0]
+        n[-1] = n[-1] + 1
+        if iiis[0,ix,iy] > 0: pass
+        elif iiis[px,ix,iy] > 0: pass
+        elif ix<nx and iiis[0,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iiis[py,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iy<ny and iiis[0,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
+        elif ix<nx and iy<ny and iiis[mx,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
+        elif iy<ny and iiis[0,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and iiis[my,ix,iy+1] > 0: iy = iy + 1
+        continue
+      if iiis[px,ix,iy] > 0:
+        i0 = iiis[px,ix,iy] - 1
+        iiis[px,ix,iy] = 0
+        iiisurf[ix,iy] = 0
+        x.append(xxs[i0]+delpx[i0])
+        y.append(yys[i0])
+        z[-1] = numbpx[i0]
+        n[-1] = n[-1] + 1
+        if iiis[0,ix,iy] > 0: pass
+        elif iiis[my,ix,iy] > 0: pass
+        elif iy>0 and iiis[0,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and iiis[px,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and ix<nx and iiis[0,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
+        elif iy>0 and ix<nx and iiis[py,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
+        elif ix<nx and iiis[0,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iiis[mx,ix+1,iy] > 0: ix = ix + 1
+        continue
+      if iiis[my,ix,iy] > 0:
+        i0 = iiis[my,ix,iy] - 1
+        iiis[my,ix,iy] = 0
+        iiisurf[ix,iy] = 0
+        x.append(xxs[i0])
+        y.append(yys[i0]-delmy[i0])
+        z[-1] = numbmy[i0]
+        n[-1] = n[-1] + 1
+        if iiis[0,ix,iy] > 0: pass
+        elif iiis[mx,ix,iy] > 0: pass
+        elif ix>0 and iiis[0,ix-1,iy] > 0: ix = ix - 1
+        elif ix>0 and iiis[my,ix-1,iy] > 0: ix = ix - 1
+        elif ix>0 and iy>0 and iiis[0,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        elif ix>0 and iy>0 and iiis[px,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        elif iy>0 and iiis[0,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and iiis[py,ix,iy-1] > 0: iy = iy - 1
+        continue
+      break
+    if n[-1] == 0:
+      del n[-1]
+      del z[-1]
+
+  print n
+  if len(n) > 0:
+    # --- Now that the data is gathered, make the plot.
+    z = array(z)
+    z = z.astype('b')
+    plfp(z,y,x,n)
 
 ######################################################################
 ######################################################################
