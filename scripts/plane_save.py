@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.7 2003/08/07 23:32:55 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.8 2003/08/08 19:55:45 dave Exp $"
 
 class PlaneSave:
   """
@@ -13,7 +13,8 @@ field solve is finished. The positions and velocities are staggered.
 It is automatically called every time step after the field solve
 Input:
   - zplane: location where simulations are linked together. Units of meters
-            relative to the lab frame. Note zplane must lie on a grid cell.
+            relative to the lab frame. Note grid cell nearest zplane is
+            the actual location where data is saved.
   - filename=runid.plane: filename where data is stored
   - js: species which are saved. Defaults to all species. Can be single
         integer or a list of integers.
@@ -22,155 +23,173 @@ Input:
                         when first particle cross zplane.
   - deltaz: z grid cell size of simulation where the data will be restored.
             Defaults to w3d.dz, must be an integer multiple of w3d.dz. 
+  - maxvzdt=w3d.dz: maximum distance particles are expected to travel
+                    when passing through zplane
 
   """
 
-  def __init__(self,zplane,filename=None,js=None,allways_save=None,deltaz=None):
+  def __init__(self,zplane,filename=None,js=None,allways_save=false,
+                    deltaz=None,maxvzdt=None):
 
     self.zplane = nint(zplane/w3d.dz)*w3d.dz
 
-    # save only if between grid bounds
-    if(self.zplane<w3d.zmmin or self.zplane>=w3d.zmmax): return
+    # --- save only if between grid bounds, otherwise raise and exception
+    if(self.zplane<w3d.zmminglobal or self.zplane>=w3d.zmmaxglobal):
+      raise "The zplane specified is outside the simulation domain"
 
-    if allways_save is None:
-      self.allways_save = false
+    if allways_save:
+      self.save_this_step = true
     else:
-      self.allways_save = true
-    # set distance between saved phi planes
+      self.save_this_step = false
+
+    # --- set distance between saved phi planes
     if deltaz is None: self.deltaz = w3d.dz
     else:              self.deltaz = deltaz
     self.izz = nint(self.deltaz/w3d.dz)
 
-    # --- Arrays to find particles which cross the plane
-    self.old_zp = zeros(top.zp.shape[0],'d')
-    self.ii_zp  = arange(top.zp.shape[0])
+    # --- Maximum distance particles are expected to travel when passing
+    # --- through zplane. This is the initial value taken and will be updated
+    # --- if faster particles are found.
+    if maxvzdt is None: self.maxvzdt = w3d.dz
+    else:               self.maxvzdt = maxvzdt
 
-    # --- Setup region of phi to be saved
-    self.nx0 = 0
-    self.nxm = w3d.nx
-    self.ny0 = 0
-    self.nym = max(w3d.ny,self.ny0+1)
-    self.ixa_plane = w3d.ix_axis
-    self.iya_plane = w3d.iy_axis
-    self.nx_plane = self.nxm - self.nx0
-    self.ny_plane = self.nym - self.ny0
+    # --- Create space to copy phi into
+    self.phi_save = zeros([w3d.nx+1,w3d.ny+1,2],'d')
 
-    # --- Array used to save the potential
-    self.phi_plane = zeros([self.nx_plane+1,self.ny_plane+1,2],'d')
-    self.phi_plane = w3d.phi[self.nx0:self.nxm+1,self.ny0:self.nym+1,0:2]
-
-    # create the file which will hold the data
-    if filename is None:
-      self.filename = arraytostr(top.runid)+".plane"
-    else:
-      self.filename = filename
-    self.f = PW.PW(self.filename)
-
-    # save plane size and location and time step
-    self.f.zplane    = zplane
-    self.f.nx_plane  = self.nx_plane
-    self.f.ny_plane  = self.ny_plane
-    self.f.ixa_plane = self.ixa_plane
-    self.f.iya_plane = self.iya_plane
-    self.f.xmmin     = w3d.xmmin
-    self.f.xmmax     = w3d.xmmax
-    self.f.ymmin     = w3d.ymmin
-    self.f.ymmax     = w3d.ymmax
-    self.f.dt        = top.dt
-    self.f.deltaz    = self.deltaz
-     
-    # set sym_plane and write it out
-    if (w3d.l4symtry):
-      sym_plane = 4
-    elif (w3d.l2symtry):
-      sym_plane = 2
-    else:
-      sym_plane = 1
-    self.f.sym_plane = sym_plane
-
-    # Write out the solver geometry flag
-    self.f.solvergeom = w3d.solvergeom
-
-    # initializes list of species
+    # --- initializes list of species
     if type(js) == IntType:
       self.jslist= [js]
     elif js is None:
       self.jslist = range(top.ns)
     else:
       self.jslist = js
-    for js in self.jslist:
-      self.f.write('sq_%08d'%js,top.sq[js])
-      self.f.write('sm_%08d'%js,top.sm[js])
-      self.f.write('sw_%08d'%js,top.sw[js])
 
-    # defines useful variables
+    # --- defines useful variables
     self.it = 0
-    self.np_save_tot = 0
 
-    self.f.set_verbosity(0)
-    self.f.close()
-
+    # --- Set so data is saved to file immediately after a field solve.
     installafterfs(self.saveplane)
 
+    # --- Set the name of the file which will hold the data
+    if filename is None:
+      self.filename = arraytostr(top.runid)+".plane"
+    else:
+      self.filename = filename
+
+    # --- The file is only opened and the data written on processor 0
+    if me == 0:
+      self.f = PW.PW(self.filename)
+
+      # --- save plane size and location and time step
+      self.f.zplane    = self.zplane
+      self.f.nx_plane  = w3d.nx
+      self.f.ny_plane  = w3d.ny
+      self.f.ixa_plane = w3d.ix_axis
+      self.f.iya_plane = w3d.iy_axis
+      self.f.xmmin     = w3d.xmmin
+      self.f.xmmax     = w3d.xmmax
+      self.f.ymmin     = w3d.ymmin
+      self.f.ymmax     = w3d.ymmax
+      self.f.dt        = top.dt
+      self.f.deltaz    = self.deltaz
+     
+      # --- set sym_plane and write it out
+      if (w3d.l4symtry):
+        sym_plane = 4
+      elif (w3d.l2symtry):
+        sym_plane = 2
+      else:
+        sym_plane = 1
+      self.f.sym_plane = sym_plane
+
+      # --- Write out the solver geometry flag
+      self.f.solvergeom = w3d.solvergeom
+
+      # --- Write out particle quantities for each species
+      for js in self.jslist:
+        self.f.write('sq_%08d'%js,top.sq[js])
+        self.f.write('sm_%08d'%js,top.sm[js])
+        self.f.write('sw_%08d'%js,top.sw[js])
+
+      self.f.set_verbosity(0)
+      self.f.close()
+
   def saveplane(self):
-    if(self.old_zp.shape <> top.zp.shape):
-       self.old_zp = zeros(top.zp.shape[0],'d')
-       self.ii_zp  = arange(top.zp.shape[0])
+    if me == 0:
+      # --- open file in append mode
+      self.f = PW.PW(self.filename,'a')
 
-    # open file in append mode
-    self.f = PW.PW(self.filename,'a')
-
-    # save for each species
+    # --- save for each species
     for js in self.jslist:
         self.saveplanespecies(js)
 
-    # phi is saved every time step whether or not there are particles saved
-    # only save anything if there are particles to the right of zplane unless allways_save=true
-    if(self.np_save_tot>0 or self.allways_save is true):
-      # save tmin and tmax
-      if(self.it==1): self.f.tmin = top.time
-      self.f.tmax = top.time
+    # --- phi is saved every time step whether or not there are particles saved
+    # --- but only after saving has started.
+    if(self.save_this_step):
+      # --- get the two planes of phi to be saved
+      iz = nint((self.zplane - top.zbeam - w3d.zmminglobal)/w3d.dz)
+      self.phi_save[:,:,0] = getphi(iz=iz-self.izz)
+      self.phi_save[:,:,1] = getphi(iz=iz)
+      self.f.write('phiplane%08d'%self.it,self.phi_save)
 
-      # get the two planes of phi to be saved
-      iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
-      self.f.write('phiplane%08d'%self.it,w3d.phi[self.nx0:self.nxm+1,self.ny0:self.nym+1,iz-self.izz:iz+1:self.izz])
+    if me == 0:
+      if(self.save_this_step):
+        # --- Write start time and update end time
+        if(self.it==1): self.f.tmin = top.time
+        self.f.tmax = top.time
 
-    # close file
-    self.f.set_verbosity(0)
-    self.f.close()
+      # --- close file
+      self.f.set_verbosity(0)
+      self.f.close()
 
   def saveplanespecies(self,js):
+    # --- Gather vz of all particles somewhat beyond zplane
+    vz = getvz(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+    np = getn(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
 
-    # set range for particle arrays
-    ipl = top.ins[js]-1
-    ipu = top.ins[js]+top.nps[js]-1
-  
-    # Recalculate the previous axial location of the particles to check
-    # if the particles crossed the saving plane.
-    self.old_zp[ipl:ipu] = top.zp[ipl:ipu] - top.uzp[ipl:ipu]*top.gaminv[ipl:ipu]*top.dt
+    if np > 0:
+      # --- Make sure that the region is large enough to capture all particles
+      # --- that may have crossed zplane.
+      # --- If there are faster particles, increase maxvzdt appropriately and
+      # --- reget vz. Do this until maxvzdt > max(vz)*dt
+      maxvz = broadcast(max(vz))
+      while maxvz*top.dt > self.maxvzdt:
+        self.maxvzdt = maxvz*top.dt*1.1
+        vz = getvz(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+        maxvz = broadcast(max(vz))
 
-    # find indices of particles which crossed the plane in the last timestep
-    ii = compress((self.old_zp[ipl:ipu]<=self.zplane) & (top.zp[ipl:ipu]>=self.zplane), self.ii_zp[ipl:ipu])
+      # --- Get rest of particle data
+      xx = getx(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+      yy = gety(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+      zz = getz(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+      ux = getux(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+      uy = getuy(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+      uz = getuz(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+      gi = getgaminv(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
+      id = []
+      for i in range(top.npidmax):
+        id.append(getpid(js=js,id=i,zl=self.zplane,zu=self.zplane+self.maxvzdt))
+      id = array(id)
 
-    np_save = shape(ii)[0]
-    self.np_save_tot = self.np_save_tot + np_save
+      # --- Recalculate the previous axial location of the particles to check
+      # --- if the particles crossed the saving plane.
+      old_zz = zz - vz*top.dt
 
-    if(self.np_save_tot>0 or self.allways_save is true):
-      # increment saving counter
-      if(js==0):
-        self.it = self.it + 1
+      # --- find indices of particles which crossed the plane in the
+      # --- last time step
+      ii = compress((old_zz<=self.zplane) & (zz>=self.zplane), arange(len(zz)))
 
-      # save number of particles
-      self.f.write('np%08d_%08d'%(self.it,js),np_save)
+      np_save = shape(ii)[0]
+      if np_save > 0: self.save_this_step = true
+      self.save_this_step = broadcast(self.save_this_step)
 
-    if(self.np_save_tot>0):
-      # if there are particles that crossed the plane, save the data
-      if (np_save > 0):
-        self.f.write('xp%08d_%08d'%(self.it,js),    take(top.xp,ii))
-        self.f.write('yp%08d_%08d'%(self.it,js),    take(top.yp,ii))
-        self.f.write('zp%08d_%08d'%(self.it,js),    take(top.zp,ii))
-        self.f.write('uxp%08d_%08d'%(self.it,js),   take(top.uxp,ii))
-        self.f.write('uyp%08d_%08d'%(self.it,js),   take(top.uyp,ii))
-        self.f.write('uzp%08d_%08d'%(self.it,js),   take(top.uzp,ii))
-        self.f.write('gaminv%08d_%08d'%(self.it,js),take(top.gaminv,ii))
-        self.f.write('pid%08d_%08d'%(self.it,js),   take(top.pid,ii))
+      if (self.save_this_step and me == 0):
+        suffix = '%08d_%08d'%(self.it,js)
+        self.f.write('xp'+suffix,    take(top.xx,ii))
+        self.f.write('yp'+suffix,    take(top.yy,ii))
+        self.f.write('zp'+suffix,    take(top.zz,ii))
+        self.f.write('uxp'+suffix,   take(top.ux,ii))
+        self.f.write('uyp'+suffix,   take(top.uy,ii))
+        self.f.write('uzp'+suffix,   take(top.uz,ii))
+        self.f.write('gaminv'+suffix,take(top.gi,ii))
+        self.f.write('pid'+suffix,   take(top.id,ii))
