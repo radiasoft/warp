@@ -1,5 +1,5 @@
 from warp import *
-fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.4 2001/05/10 23:42:45 dave Exp $"
+fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.5 2001/05/14 19:58:58 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -116,6 +116,8 @@ not, then the derivatives will be done with a finite difference of fringe.
     quadpa = array(quadpa)
     quadpe = array(quadpe)
     quadpm = array(quadpm)
+  else:
+    raise "No quad elements were specified, maybe need to pass usequads=true"
 
   # --- Make sure that the fringelen and scale are arrays.
   fringelen = fringelen*ones(len(quadzs),'d')
