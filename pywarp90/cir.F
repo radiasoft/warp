@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.5 $, $Date: 2001/05/29 21:20:06 $
+c@(#) File CIR.M, version $Revision: 3.6 $, $Date: 2001/07/13 16:59:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -292,7 +292,7 @@ c     --- to travel.
 c       --- If doing fast method, set field and pipe quantities now.
 c       if(ifast.ne.0)then
 c         call getpipe
-c         call getimage()
+c         call circegetimage()
 c         call getezbeam()
 c       endif
 
@@ -801,7 +801,7 @@ c     --- Get image forces based on pipe type set above.
 c     --- This subroutine call puts the image forces into the temporary
 c     --- arrays in the group CIRfield.
 c     ---  fx,fy,gxx,gxy,gyx,gyy
-      call getimage(y,nit,llinear,limage,lendzero)
+      call circegetimage(y,nit,llinear,limage,lendzero)
 
 c     --- Get self axial fields of beam.
       call getezbeam(nit,y,ezbeam,rpipe,icharge,lezbeam,lendzero,lfixed,lfailed)
@@ -1064,14 +1064,16 @@ c     enddo
       return
       end
 c=============================================================================
-      subroutine getimage(y,nit,llinear,limage,lendzero)
+      subroutine circegetimage(y,nit,llinear,limage,lendzero)
       use Constant
       use CIRfield
       integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       logical(ISZ):: llinear,limage,lendzero
 
-c GETIMAGE calculates image-field coefficients as functions of
+c This subroutine was renamed circegetimage, instead of getimage, since a
+c subroutine getimage exists already in the Hermes package.
+c CIRCEGETIMAGE calculates image-field coefficients as functions of
 c time for the pipe type ipipetype.
 c   0 round pipe (default)
 c   1 electric quadrupole rods (hyperbolic sufaces)

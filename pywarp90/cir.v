@@ -1,5 +1,5 @@
 cir
-#@(#) File CIR.V, version $Revision: 3.5 $, $Date: 2001/05/29 21:20:07 $
+#@(#) File CIR.V, version $Revision: 3.6 $, $Date: 2001/07/13 16:59:19 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for CIRCE.
@@ -10,7 +10,7 @@ cir
 
 *********** CIRversion:
 # Version control for cir package
-verscir  character*19 /"$Revision: 3.5 $"/  # Current code version, set by CVS
+verscir  character*19 /"$Revision: 3.6 $"/  # Current code version, set by CVS
 
 *********** CIRvars dump:
 # Variables needed by the package CIR
@@ -226,7 +226,7 @@ integrt(y:real,yt:real,dy1:real,dy2:real,dy3:real,nit:integer,s:real,ds:real,
         icharge:integer,lezbeam,lperveance,lemittance,lallez,llinear,
         limage:logical,lendzero:logical,lfixed:logical) subroutine
   # Complete Runga-Kutta integration step
-getimage(y:real,nit:integer,llinear,limage:logical,lendzero:logical) subroutine
+circegetimage(y:real,nit:integer,llinear,limage:logical,lendzero:logical) subroutine
   # Calculate images fields from surrounding pipe
 getezbeam(nit:integer,y:real,eval:real,rpipe:real,icharge:integer,
           lezbeam:logical,lendzero:logical,lfixed:logical,lfailed:logical) subroutine
