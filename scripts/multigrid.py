@@ -21,6 +21,7 @@ class MultiGrid:
                    'lcndbndy','icndbndy','laddconductor'] 
 
   def __init__(self,**kw):
+    self.solvergeom = w3d.XYZgeom
 
     # --- Kludge - make sure that the multigrid3df routines never sets up
     # --- any conductors.
@@ -112,6 +113,7 @@ class MultiGrid:
 
   def fetchefrompositions(self,x,y,z,ex,ey,ez):
     n = len(x)
+    if n == 0: return
     sete3d(self.phi,0.,n,x,y,z,top.zgridprv,self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,1,ex,ey,ez,
            self.l2symtry,self.l4symtry)
@@ -184,7 +186,7 @@ class MultiGrid:
   # Define the basic plot commands
   def genericpf(self,kw,pffunc):
     kw['conductors'] = self.conductors
-    kw['w3dgrid'] = self
+    kw['solver'] = self
     pffunc(**kw)
   def pfxy(self,**kw): self.genericpf(kw,pfxy)
   def pfzx(self,**kw): self.genericpf(kw,pfzx)
