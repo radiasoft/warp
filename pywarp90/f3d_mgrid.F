@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.36 $, $Date: 2002/06/26 19:31:54 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.37 $, $Date: 2002/06/26 19:42:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1655,7 +1655,7 @@ c       --- Set the grid parameters for this level
         nx1 = mglevelsnx(il)
         ny1 = mglevelsny(il)
         nz1 = mglevelsnz(il)
-        nzfull1 = mglevelsnzfull(ii)
+        nzfull1 = mglevelsnzfull(il)
         zmmin1 = zmminglobal + dz1*mglevelsiz(il)
         localb0 = globalb0
         localbnz = globalbnz
