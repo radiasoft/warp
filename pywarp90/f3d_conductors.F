@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.35 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1077,13 +1077,14 @@ c       --- Check if it hits the cylinder.
                 tt = ttemp
                 xx = -vx(i)*ttemp + x(i) - xcent
                 yy = -vy(i)*ttemp + y(i) - ycent
-                rr = sqrt(xx**2 + yy**2)
-                theta = atan2(rr,zz)
+                theta = pi/2
                 phi = atan2(yy,xx)
               endif
             endif
           endif
         endif
+
+        if (tt == LARGEPOS) cycle
 
         xi(i) = -vx(i)*tt + x(i)
         yi(i) = -vy(i)*tt + y(i)
@@ -1474,13 +1475,14 @@ c       --- Check if it hits the cylinder.
                 tt = ttemp
                 xx = -vx(i)*ttemp + x(i) - xcent
                 yy = -vy(i)*ttemp + y(i) - ycent
-                rr = sqrt(xx**2 + yy**2)
-                theta = atan2(rr,zz)
+                theta = pi/2
                 phi = atan2(yy,xx)
               endif
             endif
           endif
         endif
+
+        if (tt == LARGEPOS) cycle
 
         xi(i) = -vx(i)*tt + x(i)
         yi(i) = -vy(i)*tt + y(i)
@@ -1732,8 +1734,9 @@ c normal angle of the surface at that point.
 
       call ZCylinderIntercept(rad,length,ycent,zcent,xcent,
      &                        n,y,z,x,vy,vz,vx,yi,zi,xi,ttheta,tphi)
-      itheta = acos(sin(ttheta)*sin(tphi))
-      iphi = acos(cos(ttheta)/dvnz(sin(itheta)))
+      itheta = atan2(sqrt(cos(ttheta)**2 + (cos(tphi)*sin(ttheta))**2),
+     &               sin(tphi)*sin(ttheta))
+      iphi = atan2(cos(tphi)*sin(ttheta),cos(ttheta))
 
       return
       end
@@ -1789,8 +1792,9 @@ c normal angle of the surface at that point.
 
       call ZCylinderIntercept(rad,length,zcent,xcent,ycent,
      &                        n,z,x,y,vz,vx,vy,zi,xi,yi,ttheta,tphi)
-      itheta = acos(sin(ttheta)*cos(tphi))
-      iphi = asin(cos(ttheta)/dvnz(sin(itheta)))
+      itheta = atan2(sqrt((sin(tphi)*sin(ttheta))**2 + cos(ttheta)**2),
+     &               cos(tphi)*sin(ttheta))
+      iphi = atan2(cos(ttheta),sin(tphi)*sin(ttheta))
 
       return
       end
@@ -2733,9 +2737,9 @@ c       --- Set temps
         xx = x(i) - xcent
         yy = y(i) - ycent
         zz = z(i) - zcent
-c       zp = zz*cos(theta)*cos(phi) + xx*sin(theta)*cos(phi) + yy*sin(phi)
-c       xp = xx*cos(theta) - zz*sin(theta)
-c       yp = yy*cos(phi) - zz*cos(theta)*sin(phi) - xx*sin(theta)*sin(phi)
+c       xp = +xx*cos(theta)                        - zz*sin(theta)
+c       yp = -xx*sin(theta)*sin(phi) + yy*cos(phi) - zz*cos(theta)*sin(phi)
+c       zp = +xx*sin(theta)*cos(phi) + yy*sin(phi) + zz*cos(theta)*cos(phi)
 c       rsq = (Ap**2 + yp**2)
 
 c       --- delta z
@@ -2907,16 +2911,46 @@ c=======================================================================
 c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
-      integer(ISZ):: i
+      real(kind=8):: ttheta(n),tphi(n)
+      real(kind=8):: xx(n),yy(n),zz(n)
+      real(kind=8):: xp(n),yp(n),zp(n),vxp(n),vyp(n),vzp(n)
+      real(kind=8):: xn(n),yn(n),zn(n),rn(n)
 
-      print*,"The intercept calculation is not yet implemented for Cylinder"
-      do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = LARGEPOS
-        itheta(i) = 0.
-        iphi(i) = 0.
-      enddo
+c     --- Translate and rotate to the Cylinder frame
+      xx = x - xcent
+      yy = y - ycent
+      zz = z - zcent
+      xp = +xx*cos(theta)                        - zz*sin(theta)
+      yp = -xx*sin(theta)*sin(phi) + yy*cos(phi) - zz*cos(theta)*sin(phi)
+      zp = +xx*sin(theta)*cos(phi) + yy*sin(phi) + zz*cos(theta)*cos(phi)
+      vxp = +vx*cos(theta)                        - vz*sin(theta)
+      vyp = -vx*sin(theta)*sin(phi) + vy*cos(phi) - vz*cos(theta)*sin(phi)
+      vzp = +vx*sin(theta)*cos(phi) + vy*sin(phi) + vz*cos(theta)*cos(phi)
+
+c     --- Get data
+      call ZCylinderIntercept(rad,length,0.,0.,0.,
+     &                        n,xp,yp,zp,vxp,vyp,vzp,xn,yn,zn,ttheta,tphi)
+
+c     --- Rotate and translate interception points to lab frame
+      xi = +xn*cos(theta) - yn*sin(theta)*sin(phi) + zn*sin(theta)*cos(phi)
+      yi =                + yn*cos(phi)            + zn*sin(phi)
+      zi = -xn*sin(theta) - yn*cos(theta)*sin(phi) + zn*cos(theta)*cos(phi)
+      xi = xi + xcent
+      yi = yi + ycent
+      zi = zi + zcent
+
+c     --- Get points on surface normal at the unit sphere
+      xp = sin(ttheta)*cos(tphi)
+      yp = sin(ttheta)*sin(tphi)
+      zp = cos(ttheta)
+c     --- Rotate to the lab frame
+      xn = +xp*cos(theta) - yp*sin(theta)*sin(phi) + zp*sin(theta)*cos(phi)
+      yn =                + yp*cos(phi)            + zp*sin(phi)
+      zn = -xp*sin(theta) - yp*cos(theta)*sin(phi) + zp*cos(theta)*cos(phi)
+c     --- Calculate angles in lab frame
+      rn = sqrt(xn**2 + yn**2)
+      itheta = atan2(rn,zn)
+      iphi = atan2(yn,xn)
 
       return
       end
@@ -3108,15 +3142,40 @@ c=======================================================================
 c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
-      integer(ISZ):: i
+      integer(ISZ):: ic,i
+      real(kind=8):: txi(n),tyi(n),tzi(n),ttheta(n),tphi(n),tt(n),ttemp
 
-      print*,"The intercept calculation is not yet implemented for Cylinders"
-      do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = LARGEPOS
-        itheta(i) = 0.
-        iphi(i) = 0.
+      xi = LARGEPOS
+      yi = LARGEPOS
+      zi = LARGEPOS
+      tt = LARGEPOS
+      itheta = 0.
+      iphi = 0.
+
+      do ic=1,ncylinders
+        call CylinderIntercept(rad(ic),length(ic),theta(ic),phi(ic),
+     &                         xcent(ic),ycent(ic),zcent(ic),
+     &                         n,x,y,z,vx,vy,vz,txi,tyi,tzi,ttheta,tphi)
+        do i=1,n
+          if (vx(i)**2 + vy(i)**2 + vz(i)**2 == 0.) cycle
+          if (vx(i) .ne. 0.) then
+            ttemp = -(txi(i) - x(i))/vx(i)
+          else if (vy(i) .ne. 0.) then
+            ttemp = -(tyi(i) - y(i))/vy(i)
+          else if (vz(i) .ne. 0.) then
+            ttemp = -(tzi(i) - z(i))/vz(i)
+          endif
+          if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &        (ttemp > tt(i) .and. tt(i) < 0.)) then
+            tt(i) = ttemp
+            xi(i) = txi(i)
+            yi(i) = tyi(i)
+            zi(i) = tzi(i)
+            itheta(i) = ttheta(i)
+            iphi(i) = tphi(i)
+          endif
+        enddo
+
       enddo
 
       return
@@ -3477,16 +3536,46 @@ c=======================================================================
 c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
-      integer(ISZ):: i
+      real(kind=8):: ttheta(n),tphi(n)
+      real(kind=8):: xx(n),yy(n),zz(n)
+      real(kind=8):: xp(n),yp(n),zp(n),vxp(n),vyp(n),vzp(n)
+      real(kind=8):: xn(n),yn(n),zn(n),rn(n)
 
-      print*,"The intercept calculation is not yet implemented for Cone"
-      do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = LARGEPOS
-        itheta(i) = 0.
-        iphi(i) = 0.
-      enddo
+c     --- Translate and rotate to frame of Cone
+      xx = x - xcent
+      yy = y - ycent
+      zz = z - zcent
+      xp = +xx*cos(theta)                        - zz*sin(theta)
+      yp = -xx*sin(theta)*sin(phi) + yy*cos(phi) - zz*cos(theta)*sin(phi)
+      zp = +xx*sin(theta)*cos(phi) + yy*sin(phi) + zz*cos(theta)*cos(phi)
+      vxp = +vx*cos(theta)                        - vz*sin(theta)
+      vyp = -vx*sin(theta)*sin(phi) + vy*cos(phi) - vz*cos(theta)*sin(phi)
+      vzp = +vx*sin(theta)*cos(phi) + vy*sin(phi) + vz*cos(theta)*cos(phi)
+
+c     --- Get data
+      call ZConeIntercept(r_zmin,r_zmax,length,0.,0.,0.,
+     &                    n,x,y,z,vx,vy,vz,xi,yi,zi,ttheta,tphi)
+
+c     --- Rotate and translate interception points to lab frame
+      xi = +xn*cos(theta) - yn*sin(theta)*sin(phi) + zn*sin(theta)*cos(phi)
+      yi =                + yn*cos(phi)            + zn*sin(phi)
+      zi = -xn*sin(theta) - yn*cos(theta)*sin(phi) + zn*cos(theta)*cos(phi)
+      xi = xi + xcent
+      yi = yi + ycent
+      zi = zi + zcent
+
+c     --- Find point along surface normal at the unit sphere
+      xp = sin(ttheta)*cos(tphi)
+      yp = sin(ttheta)*sin(tphi)
+      zp = cos(ttheta)
+c     --- Convert to lab frame coordinates
+      xn = +xp*cos(theta) - yp*sin(theta)*sin(phi) + zp*sin(theta)*cos(phi)
+      yn =                + yp*cos(phi)            + zp*sin(phi)
+      zn = -xp*sin(theta) - yp*cos(theta)*sin(phi) + zp*cos(theta)*cos(phi)
+c     --- Generate angles on lab frame
+      rn = sqrt(xn**2 + yn**2)
+      itheta = atan2(rn,zn)
+      iphi = atan2(yn,xn)
 
       return
       end
@@ -3680,15 +3769,40 @@ c=======================================================================
 c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
-      integer(ISZ):: i
+      integer(ISZ):: ic,i
+      real(kind=8):: txi(n),tyi(n),tzi(n),ttheta(n),tphi(n),tt(n),ttemp
 
-      print*,"The intercept calculation is not yet implemented for Cones"
-      do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = LARGEPOS
-        itheta(i) = 0.
-        iphi(i) = 0.
+      xi = LARGEPOS
+      yi = LARGEPOS
+      zi = LARGEPOS
+      tt = LARGEPOS
+      itheta = 0.
+      iphi = 0.
+
+      do ic=1,ncones
+        call ConeIntercept(r_zmin(ic),r_zmax(ic),length(ic),theta(ic),phi(ic),
+     &                     xcent(ic),ycent(ic),zcent(ic),
+     &                     n,x,y,z,vx,vy,vz,txi,tyi,tzi,ttheta,tphi)
+        do i=1,n
+          if (vx(i)**2 + vy(i)**2 + vz(i)**2 == 0.) cycle
+          if (vx(i) .ne. 0.) then
+            ttemp = -(txi(i) - x(i))/vx(i)
+          else if (vy(i) .ne. 0.) then
+            ttemp = -(tyi(i) - y(i))/vy(i)
+          else if (vz(i) .ne. 0.) then
+            ttemp = -(tzi(i) - z(i))/vz(i)
+          endif
+          if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &        (ttemp > tt(i) .and. tt(i) < 0.)) then
+            tt(i) = ttemp
+            xi(i) = txi(i)
+            yi(i) = tyi(i)
+            zi(i) = tzi(i)
+            itheta(i) = ttheta(i)
+            iphi(i) = tphi(i)
+          endif
+        enddo
+
       enddo
 
       return
