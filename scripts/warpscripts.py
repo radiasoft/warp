@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.2 2000/11/30 22:03:39 dave Exp $"
 
 def warpscriptsdoc():
   print """
@@ -19,6 +19,7 @@ drifts.py: routine to create drift elements in blank spots in the lattice
 egun_like.py: routine for steady-state calculations (like diode problems)
 env_match.py: routines for matching beam using the env module
 envtuner.py: experimental script for mouse driven tuning of the beam envelope
+expt_diagnostic.py: emulates experimental slit scanner plots of phase space
 find_mgparam.py: routine for finding optimal multigrid relaxation parameter
 find_sorparam.py: routine for finding optimal sor relaxation parameter
 fixwxy.py: routine to shift particles to satisfy average quantities (wxy only)
@@ -39,7 +40,7 @@ plot_conductor.py: routines for ploting internal conductors
 ptob.py: routine to save multi-dimensional array in a basis readable pdb file
 pyBasis.py: defines routines to emulate basis functionality
             (automatically imported)
-realboundaries.py: routines allowing automatic pipe boundaries
+realboundaries.py: routines allowing automatic boundaries for wxy
 residual.py: calculates residual of Poisson's equation, del**2 phi - rho
 runcounter.py: implements a counter for series of simulations
 singleparticle.py: sets WARP up for single particle calculations
