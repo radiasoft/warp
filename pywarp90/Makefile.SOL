@@ -5,12 +5,12 @@ PYVERS = 1.5
 PYTHON = /d/cs-10/vol.sun4.sos5/pub/python-1.5.2
 PYMAC = $(HOME)/pywrapper/pymac.py --f90 -t $(MACHINE)
 PYCTOF = $(HOME)/pywrapper/pyctof.py
-OPT = -fast
+OPT = -fast -xtarget=generic
 #OPT = -g -dalign -f
 POPT = -dalign -f
 PYMODULEOPT = 
-F90FREE = f90 -e -r8const
-F90FIXED = f90 -e -r8const
+F90FREE = f90 -e -r8const -u
+F90FIXED = f90 -e -r8const -u
 CC = cc
 SO = sl
 LD = f90 -e -r8const $(OPT)
@@ -70,7 +70,7 @@ MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
                 pybasisC.c
 
 warp: $(MODULEOBJECTS) $(WARPOBJECTS) config.o pypdbmodule.o
-	$(LD) -o pywarp $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o pypdbmodule.o -L$(PYTHON)/lib/python1.5/config -lpython1.5 $(NUMPY) $(OTHERLIBS) -lX11 -lc -lsocket -ldl -lnsl -lm
+	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o pypdbmodule.o -L$(PYTHON)/lib/python1.5/config -lpython1.5 $(NUMPY) $(OTHERLIBS) -lX11 -lc -lsocket -ldl -lnsl -lm
 
 warpshared: $(SHAREDOBJECTS)
 	#cp *.$(SO) $(WARPSCRIPTS)
@@ -245,4 +245,4 @@ herpymodule.c her.p.F90:her.v
 
 
 clean:
-	rm -f *.mod *.o *.p.F90 *module.c *.scalars *.$(SO) pybasis*
+	rm -f *.mod *.o *.p.F90 *pymodule.c *.scalars *.$(SO) pybasis*
