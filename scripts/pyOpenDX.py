@@ -10,8 +10,9 @@ DXImage: views a OpenDX object using a nice interactor handler
 """
 from warp import *
 from pyDXObject import *
+import __main__
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.2 2003/01/22 17:29:05 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.3 2003/02/24 16:13:41 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -193,4 +194,9 @@ def DXNewImage():
   DXDelete(_group[0])
   _group[0] = None
   _groupn[0] = 0
+
+# This may not be the best thing to do, but it works - it gives access to this
+# function without having to explicitly import this module. Note that this
+# only works for interactive sessions.
+__main__.__dict__['DXNewImage'] = DXNewImage
 
