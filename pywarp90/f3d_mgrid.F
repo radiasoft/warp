@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.33 $, $Date: 2002/05/09 22:35:57 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.34 $, $Date: 2002/06/20 19:39:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -14,6 +14,7 @@ c=============================================================================
      &                       xmmin,ymmin,zmmin,zbeam,zgrid)
       use Constant
       use PSOR3d
+      use Conductor3d
       use Multigrid3d
       use Parallel
       integer(ISZ):: iwhich
@@ -70,6 +71,13 @@ c     --- Initialize temporaries
       dzsqi  = 1./dz**2
       reps0c = mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
       rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
+
+c     --- Calculate levels of coarsening if it hasn't been done yet.
+      if (mglevels == 0) then
+        call getmglevels(nx,ny,nz,nzfull,dx,dy,dz,mgminlevelxy,mgminlevelz,
+     &                   mglevels,mglevelsnx,mglevelsny,mglevelsnzfull,
+     &                   mglevelsiz,mglevelsnz)
+      endif
 
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
@@ -251,6 +259,87 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
           r  = rs + x
           rho1d(ii) = rho1d(ii)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
         enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine getmglevels(nx,ny,nz,nzfull,dx,dy,dz,mgminlevelxy,mgminlevelz,
+     &                       mglevels,mglevelsnx,mglevelsny,mglevelsnzfull,
+     &                       mglevelsiz,mglevelsnz)
+      use Parallel
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: mgminlevelxy,mgminlevelz
+      integer(ISZ):: mglevels
+      integer(ISZ):: mglevelsnx(20),mglevelsny(20),mglevelsnzfull(20)
+      integer(ISZ):: mglevelsiz(20),mglevelsnz(20)
+
+      call getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,mgminlevelxy,mgminlevelz,
+     &                      mglevels,mglevelsnx,mglevelsny,mglevelsnzfull,
+     &                      mglevelsiz,mglevelsnz,
+     &                      my_index,nslaves,izfsslave,nzfsslave)
+
+      return
+      end
+c=============================================================================
+      RECURSIVE subroutine getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,
+     &                                 mgminlevelxy,mgminlevelz,
+     &                                 mglevels,
+     &                                 mglevelsnx,mglevelsny,mglevelsnzfull,
+     &                                 mglevelsiz,mglevelsnz,
+     &                                 my_index,nslaves,izfsslave,nzfsslave)
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: mgminlevelxy,mgminlevelz
+      integer(ISZ):: mglevels
+      integer(ISZ):: mglevelsnx(20),mglevelsny(20),mglevelsnzfull(20)
+      integer(ISZ):: mglevelsiz(20),mglevelsnz(20)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves),nzfsslave(0:nslaves)
+
+c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
+c Note that when calling getmglevels, mglevels must be zero.
+
+      integer(ISZ):: izfsslave2(0:nslaves),nzfsslave2(0:nslaves)
+      integer(ISZ):: nznew
+
+      mglevels = mglevels + 1
+      mglevelsnx(mglevels) = nx
+      mglevelsny(mglevels) = ny
+      mglevelsnzfull(mglevels) = nzfull
+      mglevelsiz(mglevels) = izfsslave(my_index)
+      mglevelsnz(mglevels) = nz
+
+      if (mod(nx,mgminlevelxy) /= 0 .or.
+     &    mod(ny,mgminlevelxy) /= 0 .or.
+     &    mod(nzfull,mgminlevelz) /= 0) return
+
+c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+c     --- all axis.
+      if (dz > 4./3.*dx) then
+        call getmglevelsrecur(nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
+     &                   mgminlevelxy,mgminlevelz,
+     &                   mglevels,mglevelsnx,mglevelsny,mglevelsnzfull,
+     &                   mglevelsiz,mglevelsnz,
+     &                   my_index,nslaves,izfsslave,nzfsslave)
+      else
+
+#ifdef MPIPARALLEL
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                  nzfull)
+c       --- Set new value of nz
+        nznew = nzfsslave2(my_index)
+#else
+        nznew = nz/2
+#endif
+
+        call getmglevelsrecur(nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
+     &                   mgminlevelxy,mgminlevelz,
+     &                   mglevels,mglevelsnx,mglevelsny,mglevelsnzfull,
+     &                   mglevelsiz,mglevelsnz,
+     &                   my_index,nslaves,izfsslave2,nzfsslave2)
       endif
 
       return
@@ -802,7 +891,7 @@ c=============================================================================
      &                     whosendingleft,izsendingleft,
      &                     whosendingright,izsendingright)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       use Multigrid3d
       use Constant
       integer(ISZ):: levelxy,levelz,nx,ny,nz,nzfull
@@ -1079,7 +1168,7 @@ c=============================================================================
       subroutine cond_potmg(nx,ny,nz,phi,levelxy,levelz,lresidual,
      &                      mgform,mgform2init)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       integer(ISZ):: nx,ny,nz,levelxy,levelz,mgform
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       logical(ISZ):: lresidual,mgform2init
@@ -1430,7 +1519,7 @@ c=============================================================================
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
@@ -1598,7 +1687,7 @@ c=============================================================================
      &                      globalb0,globalbnz,
      &                      levelxy,levelz,my_index,nslaves,izfsslave,nzfsslave)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: nx,ny,nz,nzfull,levelxy,levelz
       logical(ISZ):: l2symtry,l4symtry
@@ -1633,25 +1722,12 @@ c     --- Get the conductors for this level
       ic2 = ncond
       ie2 = necndbdy
       io2 = nocndbdy
-      call gchange("MultigridConductor3d",0)
       icondlxy(ic1:ic2) = levelxy
       icondlz(ic1:ic2) = levelz
       iecndlxy(ie1:ie2) = levelxy
       iecndlz(ie1:ie2) = levelz
       iocndlxy(io1:io2) = levelxy
       iocndlz(io1:io2) = levelz
-      ecvoltmx(ie1:ie2) = ecvolt(ie1:ie2)
-      ecvoltpx(ie1:ie2) = ecvolt(ie1:ie2)
-      ecvoltmy(ie1:ie2) = ecvolt(ie1:ie2)
-      ecvoltpy(ie1:ie2) = ecvolt(ie1:ie2)
-      ecvoltmz(ie1:ie2) = ecvolt(ie1:ie2)
-      ecvoltpz(ie1:ie2) = ecvolt(ie1:ie2)
-      ocvoltmx(io1:io2) = ocvolt(io1:io2)
-      ocvoltpx(io1:io2) = ocvolt(io1:io2)
-      ocvoltmy(io1:io2) = ocvolt(io1:io2)
-      ocvoltpy(io1:io2) = ocvolt(io1:io2)
-      ocvoltmz(io1:io2) = ocvolt(io1:io2)
-      ocvoltpz(io1:io2) = ocvolt(io1:io2)
 
 c     --- If grid is at its coarsest level in any of the axis or
 c     --- any dimensions are odd, then return
@@ -1702,7 +1778,8 @@ c=============================================================================
       subroutine srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                        xmin,xmax,ymin,ymax,lshell,
      &                        zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                        condid)
       use Parallel
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
@@ -1712,6 +1789,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Makes call to the recursive routine which generates the conductors.
 
@@ -1729,6 +1807,7 @@ c     --- it can be obtained from local info
      &                       xmin,xmax,ymin,ymax,lshell,
      &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
      &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                       condid,
      &                       1,1,my_index,nslaves,izfsslave,nzfsslave)
 
       return
@@ -1738,9 +1817,10 @@ c=============================================================================
      &                      xcent,ycent,rmax,lfill,xmin,xmax,ymin,ymax,lshell,
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                      condid,
      &                      levelxy,levelz,my_index,nslaves,izfsslave,nzfsslave)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
@@ -1749,6 +1829,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,nzfull,ix_axis,iy_axis,levelxy,levelz
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
@@ -1767,29 +1848,16 @@ c     --- Get the conductors for this level
       call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                xmin,xmax,ymin,ymax,lshell,
      &                zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       ic2 = ncond
       ie2 = necndbdy
       io2 = nocndbdy
-      call gchange("MultigridConductor3d",0)
       icondlxy(ic1:ic2) = levelxy
       icondlz(ic1:ic2) = levelz
       iecndlxy(ie1:ie2) = levelxy
       iecndlz(ie1:ie2) = levelz
       iocndlxy(io1:io2) = levelxy
       iocndlz(io1:io2) = levelz
-      ecvoltmx(ie1:ie2) = volt
-      ecvoltpx(ie1:ie2) = volt
-      ecvoltmy(ie1:ie2) = volt
-      ecvoltpy(ie1:ie2) = volt
-      ecvoltmz(ie1:ie2) = volt
-      ecvoltpz(ie1:ie2) = volt
-      ocvoltmx(io1:io2) = volt
-      ocvoltpx(io1:io2) = volt
-      ocvoltmy(io1:io2) = volt
-      ocvoltpy(io1:io2) = volt
-      ocvoltmz(io1:io2) = volt
-      ocvoltpz(io1:io2) = volt
 
 c     --- If grid is at its coarsest level in any of the axis or
 c     --- any dimensions are odd, then return
@@ -1807,6 +1875,7 @@ c       --- and ymesh arguments so they don't need to be modified.
      &                   xcent,ycent,rmax,lfill,xmin,xmax,ymin,ymax,lshell,
      &                   zmmin,zmmax,zbeam,dx*2.,dy*2.,dz,nx/2,ny/2,nz,nzfull,
      &                   ix_axis/2,iy_axis/2,xmesh,ymesh,l2symtry,l4symtry,
+     &                   condid,
      &                   levelxy*2,levelz,my_index,nslaves,izfsslave,nzfsslave)
 
       else
@@ -1829,11 +1898,12 @@ c       --- Recursively call this routine for the next coarser level.
 c       --- Note the the srfrv routine does not actually use the xmesh
 c       --- and ymesh arguments so they don't need to be modified.
         call srfrvout3dmgrecur(rofzfunc,volt,zmin,zmax,
-     &                      xcent,ycent,rmax,lfill,xmin,xmax,ymin,ymax,lshell,
-     &                      newzmmin,newzmmax,zbeam,dx*2.,dy*2.,dz*2.,
-     &                      nx/2,ny/2,nznew,nzfull/2,ix_axis/2,iy_axis/2,
-     &                      xmesh,ymesh,l2symtry,l4symtry,levelxy*2,levelz*2,
-     &                      my_index,nslaves,izfsslave2,nzfsslave2)
+     &               xcent,ycent,rmax,lfill,xmin,xmax,ymin,ymax,lshell,
+     &               newzmmin,newzmmax,zbeam,dx*2.,dy*2.,dz*2.,
+     &               nx/2,ny/2,nznew,nzfull/2,ix_axis/2,iy_axis/2,
+     &               xmesh,ymesh,l2symtry,l4symtry,
+     &               condid,
+     &               levelxy*2,levelz*2,my_index,nslaves,izfsslave2,nzfsslave2)
 
       endif
 
@@ -1843,7 +1913,8 @@ c=============================================================================
       subroutine srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                       xmin,xmax,ymin,ymax,lshell,
      &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                       condid)
       use Parallel
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
@@ -1853,6 +1924,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Makes call to the recursive routine which generates the conductors.
 
@@ -1870,6 +1942,7 @@ c     --- it can be obtained from local info
      &                      xmin,xmax,ymin,ymax,lshell,
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                      condid,
      &                      1,1,my_index,nslaves,izfsslave,nzfsslave)
 
       return
@@ -1879,9 +1952,10 @@ c=============================================================================
      &                      xcent,ycent,rmin,lfill,xmin,xmax,ymin,ymax,lshell,
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                      condid,
      &                      levelxy,levelz,my_index,nslaves,izfsslave,nzfsslave)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       logical(ISZ):: lfill,lshell
@@ -1890,6 +1964,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,nzfull,ix_axis,iy_axis,levelxy,levelz
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
@@ -1908,29 +1983,16 @@ c     --- Get the conductors for this level
       call srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &               xmin,xmax,ymin,ymax,lshell,
      &               zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &               ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &               ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       ic2 = ncond
       ie2 = necndbdy
       io2 = nocndbdy
-      call gchange("MultigridConductor3d",0)
       icondlxy(ic1:ic2) = levelxy
       icondlz(ic1:ic2) = levelz
       iecndlxy(ie1:ie2) = levelxy
       iecndlz(ie1:ie2) = levelz
       iocndlxy(io1:io2) = levelxy
       iocndlz(io1:io2) = levelz
-      ecvoltmx(ie1:ie2) = volt
-      ecvoltpx(ie1:ie2) = volt
-      ecvoltmy(ie1:ie2) = volt
-      ecvoltpy(ie1:ie2) = volt
-      ecvoltmz(ie1:ie2) = volt
-      ecvoltpz(ie1:ie2) = volt
-      ocvoltmx(io1:io2) = volt
-      ocvoltpx(io1:io2) = volt
-      ocvoltmy(io1:io2) = volt
-      ocvoltpy(io1:io2) = volt
-      ocvoltmz(io1:io2) = volt
-      ocvoltpz(io1:io2) = volt
 
 c     --- If grid is at its coarsest level in any of the axis or
 c     --- any dimensions are odd, then return
@@ -1948,6 +2010,7 @@ c       --- and ymesh arguments so they don't need to be modified.
      &                    xcent,ycent,rmin,lfill,xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx*2.,dy*2.,dz,nx/2,ny/2,nz,nzfull,
      &                    ix_axis/2,iy_axis/2,xmesh,ymesh,l2symtry,l4symtry,
+     &                    condid,
      &                    levelxy*2,levelz,my_index,nslaves,izfsslave,nzfsslave)
 
       else
@@ -1973,7 +2036,8 @@ c       --- and ymesh arguments so they don't need to be modified.
      &                      xcent,ycent,rmin,lfill,xmin,xmax,ymin,ymax,lshell,
      &                      newzmmin,newzmmax,zbeam,dx*2.,dy*2.,dz*2.,
      &                      nx/2,ny/2,nznew,nzfull/2,ix_axis/2,iy_axis/2,
-     &                      xmesh,ymesh,l2symtry,l4symtry,levelxy*2,levelz*2,
+     &                      xmesh,ymesh,l2symtry,l4symtry,condid,
+     &                      levelxy*2,levelz*2,
      &                      my_index,nslaves,izfsslave2,nzfsslave2)
 
       endif
@@ -1984,7 +2048,8 @@ c=============================================================================
       subroutine srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,
      &                          xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
      &                          zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                          ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                          ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                          condid)
       use Parallel
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
@@ -1994,6 +2059,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Makes call to the recursive routine which generates the conductors.
 
@@ -2011,6 +2077,7 @@ c     --- it can be obtained from local info
      &                         xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
      &                         zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
      &                         ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                         condid,
      &                         1,1,my_index,nslaves,izfsslave,nzfsslave)
 
       return
@@ -2020,10 +2087,11 @@ c=============================================================================
      &                          xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
      &                          zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
      &                          ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                          condid,
      &                          levelxy,levelz,
      &                          my_index,nslaves,izfsslave,nzfsslave)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
@@ -2032,6 +2100,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,nzfull,ix_axis,iy_axis,levelxy,levelz
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
 
@@ -2050,29 +2119,16 @@ c     --- Get the conductors for this level
       call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                  lzend,xmin,xmax,ymin,ymax,lshell,
      &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       ic2 = ncond
       ie2 = necndbdy
       io2 = nocndbdy
-      call gchange("MultigridConductor3d",0)
       icondlxy(ic1:ic2) = levelxy
       icondlz(ic1:ic2) = levelz
       iecndlxy(ie1:ie2) = levelxy
       iecndlz(ie1:ie2) = levelz
       iocndlxy(io1:io2) = levelxy
       iocndlz(io1:io2) = levelz
-      ecvoltmx(ie1:ie2) = volt
-      ecvoltpx(ie1:ie2) = volt
-      ecvoltmy(ie1:ie2) = volt
-      ecvoltpy(ie1:ie2) = volt
-      ecvoltmz(ie1:ie2) = volt
-      ecvoltpz(ie1:ie2) = volt
-      ocvoltmx(io1:io2) = volt
-      ocvoltpx(io1:io2) = volt
-      ocvoltmy(io1:io2) = volt
-      ocvoltpy(io1:io2) = volt
-      ocvoltmz(io1:io2) = volt
-      ocvoltpz(io1:io2) = volt
 
 c     --- If grid is at its coarsest level in any of the axis or
 c     --- any dimensions are odd, then return
@@ -2090,6 +2146,7 @@ c       --- and ymesh arguments so they don't need to be modified.
      &                    xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx*2.,dy*2.,dz,nx/2,ny/2,nz,nzfull,
      &                    ix_axis/2,iy_axis/2,xmesh,ymesh,l2symtry,l4symtry,
+     &                    condid,
      &                    levelxy*2,levelz,
      &                    my_index,nslaves,izfsslave,nzfsslave)
 
@@ -2117,6 +2174,7 @@ c       --- and ymesh arguments so they don't need to be modified.
      &                      newzmmin,newzmmax,zbeam,dx*2.,dy*2.,dz*2.,
      &                      nx/2,ny/2,nznew,nzfull/2,ix_axis/2,iy_axis/2,
      &                      xmesh,ymesh,l2symtry,l4symtry,
+     &                      condid,
      &                      levelxy*2,levelz*2,
      &                      my_index,nslaves,izfsslave2,nzfsslave2)
 
@@ -2130,7 +2188,7 @@ c=============================================================================
       RECURSIVE subroutine checkconductors(nx,ny,nz,nzfull,dx,dy,dz,
      &                                     l2symtry,l4symtry)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       use Parallel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
@@ -2344,7 +2402,7 @@ c=============================================================================
       subroutine checkconductors_work(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry,
      &                                levelxy,levelz)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny,nz,levelxy,levelz
       real(kind=8):: dx,dy,dz
@@ -2540,9 +2598,6 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine subgrid_sor_to_mg(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
-      use PSOR3d
-      use MultigridConductor3d
-      use Multigrid3d_work
       integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
@@ -2563,7 +2618,7 @@ c=============================================================================
 c=============================================================================
       subroutine ReachableNodes(dx, mask, xlo, ylo, zlo, xhi, yhi, zhi, ncomp)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       integer(ISZ):: xlo, ylo, zlo, xhi, yhi, zhi, ncomp
       integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi, 0:6)
       real(kind=8):: dx
@@ -2700,7 +2755,7 @@ c=============================================================================
 c=============================================================================
       subroutine CoveredNodes(dx, mask, xlo, ylo, zlo, xhi, yhi, zhi)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       integer(ISZ):: xlo, ylo, zlo, xhi, yhi, zhi
       integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi)
       real(kind=8):: dx
@@ -2734,7 +2789,7 @@ c           --- If so, set mask to 1.
 c=============================================================================
       subroutine NodalCoefficients(dx,coeffs,xlo,ylo,zlo,xhi,yhi,zhi,ncomp)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi,ncomp
       real(kind=8):: dx,coeffs(xlo:xhi,ylo:yhi,zlo:zhi,0:7)
 
