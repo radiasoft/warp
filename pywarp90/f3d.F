@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.21 $, $Date: 2002/01/22 17:20:03 $
+c@(#) File F3D.M, version $Revision: 3.22 $, $Date: 2002/01/23 20:18:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -264,7 +264,7 @@ c=============================================================================
       real(kind=8):: ak(0:nx, 0:ny, -nz/2:nz/2)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz), filt(5,3)
-      real(kind=8):: lx, ly, lz, w(*), xywork(*), zwork(2,0:nx,0:nz)
+      real(kind=8):: lx, ly, lz, w(*), xywork(0:nx,0:ny), zwork(2,0:nx,0:nz)
       logical(ISZ):: l2symtry,l4symtry
       
 c-----------------------------------------------------------------------------
@@ -4402,26 +4402,26 @@ c         --- set temporaries for boundaries
           icndzm1 = icndz(ic) - 1
 
           if (icndxm1 == -1 .and. l4symtry) icndxm1 = 1
-          if (icndxm1 == -1 .and. boundxy == 0) icndxm1 = 0
+          if (icndxm1 == -1 .and. boundxy == 0) cycle
           if (icndxm1 == -1 .and. boundxy == 1) icndxm1 = 1
           if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
-          if (icndxp1 == nx+1 .and. boundxy == 0) icndxp1 = nx
+          if (icndxp1 == nx+1 .and. boundxy == 0) cycle
           if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
           if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
 
           if (icndym1 == -1 .and. l2symtry) icndym1 = 1
           if (icndym1 == -1 .and. l4symtry) icndym1 = 1
-          if (icndym1 == -1 .and. boundxy == 0) icndym1 = 0
+          if (icndym1 == -1 .and. boundxy == 0) cycle
           if (icndym1 == -1 .and. boundxy == 1) icndym1 = 1
           if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
-          if (icndyp1 == ny+1 .and. boundxy == 0) icndyp1 = ny
+          if (icndyp1 == ny+1 .and. boundxy == 0) cycle
           if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
           if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
 
-          if (icndzm1 == izfsmin-1 .and. bound0  == 0) icndzm1 = izfsmin
+          if (icndzm1 == izfsmin-1 .and. bound0  == 0) cycle
           if (icndzm1 == izfsmin-1 .and. bound0  == 1) icndzm1 = izfsmin+1
           if (icndzm1 == izfsmin-1 .and. bound0  == 2) icndzm1 = izfsmax-1
-          if (icndzp1 == izfsmax+1 .and. boundnz == 0) icndzp1 = izfsmax
+          if (icndzp1 == izfsmax+1 .and. boundnz == 0) cycle
           if (icndzp1 == izfsmax+1 .and. boundnz == 1) icndzp1 = izfsmax-1
           if (icndzp1 == izfsmax+1 .and. boundnz == 2) icndzp1 = izfsmin+1
 
@@ -4502,26 +4502,26 @@ c         --- set temporaries for boundaries
           icndzm1 = icndz(ic) - 1
 
           if (icndxm1 == -1 .and. l4symtry) icndxm1 = 1
-          if (icndxm1 == -1 .and. boundxy == 0) icndxm1 = 0
+          if (icndxm1 == -1 .and. boundxy == 0) cycle
           if (icndxm1 == -1 .and. boundxy == 1) icndxm1 = 1
           if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
-          if (icndxp1 == nx+1 .and. boundxy == 0) icndxp1 = nx
+          if (icndxp1 == nx+1 .and. boundxy == 0) cycle
           if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
           if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
 
           if (icndym1 == -1 .and. l2symtry) icndym1 = 1
           if (icndym1 == -1 .and. l4symtry) icndym1 = 1
-          if (icndym1 == -1 .and. boundxy == 0) icndym1 = 0
+          if (icndym1 == -1 .and. boundxy == 0) cycle
           if (icndym1 == -1 .and. boundxy == 1) icndym1 = 1
           if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
-          if (icndyp1 == ny+1 .and. boundxy == 0) icndyp1 = ny
+          if (icndyp1 == ny+1 .and. boundxy == 0) cycle
           if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
           if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
 
-          if (icndzm1 == izfsmin-1 .and. bound0  == 0) icndzm1 = izfsmin
+          if (icndzm1 == izfsmin-1 .and. bound0  == 0) cycle
           if (icndzm1 == izfsmin-1 .and. bound0  == 1) icndzm1 = izfsmin+1
           if (icndzm1 == izfsmin-1 .and. bound0  == 2) icndzm1 = izfsmax-1
-          if (icndzp1 == izfsmax+1 .and. boundnz == 0) icndzp1 = izfsmax
+          if (icndzp1 == izfsmax+1 .and. boundnz == 0) cycle
           if (icndzp1 == izfsmax+1 .and. boundnz == 1) icndzp1 = izfsmax-1
           if (icndzp1 == izfsmax+1 .and. boundnz == 2) icndzp1 = izfsmin+1
 
