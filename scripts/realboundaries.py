@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.46 2004/07/22 23:48:11 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.47 2004/07/29 17:21:27 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -780,23 +780,44 @@ Constructor arguments:
       return 1
     return None
   #----------------------------------------------------------------------------
-  def quadrods(self,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy,cm):
+  def quadrods(self,elem,elemid,zs,ze,cm):
     currpkg = getcurrpkg()
     if currpkg == 'w3d' or (currpkg == 'wxy' and w3d.solvergeom==w3d.XYgeom):
-      return self.quadrods3d(id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy)
+      return self.quadrods3d(elem,elemid,zs,ze)
     elif currpkg == 'wxy':
-      return self.quadrodsxy(id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,ox,oy,cm)
+      return self.quadrodsxy(elem,elemid,zs,ze,cm)
   #----------------------------------------------------------------------------
-  def quadrods3d(self,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy):
+  def quadrods3d(self,elem,elemid,zs,ze):
+    rl = getattr(top,elem+'rl')[elemid]
+    gl = getattr(top,elem+'gl')[elemid]
+    pw = getattr(top,elem+'pw')[elemid]
     zc = 0.5*(zs+ze)
     if (zc+0.5*(rl+gl)+pw < w3d.zmmin+top.zbeam or
         zc-0.5*(rl+gl)-pw > w3d.zmmax+top.zbeam): return 0
-    quad = Quadrupole(ap,rl,rr,gl,gp,pa,pw,pr,vx,vy,ox,oy,zc,id)
+    quad = Quadrupole(zcent=zc,condid=elemid,elem=elem,elemid=elemid)
     if quad is not None:
       self.conductors += quad
     return 0
   #----------------------------------------------------------------------------
-  def quadrodsxy(self,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,ox,oy,cm):
+  def quadrodsxy(self,elem,elemid,zs,ze,cm):
+    ap = getattr(top,elem+'ap')[elemid]
+    rl = getattr(top,elem+'rl')[elemid]
+    rr = getattr(top,elem+'rr')[elemid]
+    gl = getattr(top,elem+'gl')[elemid]
+    gp = getattr(top,elem+'gp')[elemid]
+    pa = getattr(top,elem+'pa')[elemid]
+    pw = getattr(top,elem+'pw')[elemid]
+    if elem == 'quad':
+      vx = top.quadvx[elemid]
+      vy = top.quadvy[elemid]
+      ox = top.qoffx[elemid]
+      oy = top.qoffy[elemid]
+    else:
+      vx = 0.
+      vy = 0.
+      ox = getattr(top,elem+'ox')[elemid]
+      oy = getattr(top,elem+'oy')[elemid]
+
     # --- Find the extent of the element.
     zc = 0.5*(zs + ze)
     if rl > 0.:
@@ -810,9 +831,9 @@ Constructor arguments:
     # --- Only apply matrix if the z location is within the current element
     if zl <= top.zbeam < zr and ap > 0.:
       # --- Check if the matrix has already been calculated.
-      if (len(cm) > id and cm[id] is None) or len(cm) < id+1:
+      if (len(cm) > elemid and cm[elemid] is None) or len(cm) < elemid+1:
         # --- If the list is too short, add some None's in.
-        while len(cm) < id+1: cm.append(None)
+        while len(cm) < elemid+1: cm.append(None)
         # --- Generate the matrix
         # --- Electric quads: Up to five matrices are generated,
         # --- 2 for the end-plates, 2 for where there are gaps between rods
@@ -849,22 +870,22 @@ Constructor arguments:
           else: v2 = vx
           cmlist[4] = self.getpipematrix(pa,pa,pa,v2,ox,oy)
         # --- Now append the list of 5 to the end of the main list of matrices.
-        cm[id] = cmlist
+        cm[elemid] = cmlist
       # --- Apply one of the five matrices.
       if zl <= top.zbeam < zl + pw:
         if gp > 0.: v1 = vx
         else:       v1 = vy
-        self.setmatrix(cm[id][0],v1)
+        self.setmatrix(cm[elemid][0],v1)
       elif zl+pw <= top.zbeam < zl+pw+gl:
-        self.setmatrix(cm[id][1],[vx,vy,vx,vy])
+        self.setmatrix(cm[elemid][1],[vx,vy,vx,vy])
       elif zl+pw+gl <= top.zbeam < zr-pw-gl:
-        self.setmatrix(cm[id][2],[vx,vy,vx,vy])
+        self.setmatrix(cm[elemid][2],[vx,vy,vx,vy])
       elif zr-pw-gl <= top.zbeam < zr-pw:
-        self.setmatrix(cm[id][3],[vx,vy,vx,vy])
+        self.setmatrix(cm[elemid][3],[vx,vy,vx,vy])
       elif zr-pw <= top.zbeam <= zr:
         if gp > 0.: v2 = vy
         else:       v2 = vx
-        self.setmatrix(cm[id][4],v2)
+        self.setmatrix(cm[elemid][4],v2)
       return 1
     return 0
   #----------------------------------------------------------------------------
@@ -913,11 +934,7 @@ in the celemid array. It returns each element only once.
             abs(top.quadvx[qid]) > 0. or abs(top.quadvy[qid]) > 0. or
             top.quadrr[qid] > 0. or top.quadrl[qid] > 0. or
             top.quadgl[qid] > 0.):
-          if self.quadrods(qid,qzs,qze,top.quadap[qid],
-                           top.quadrr[qid],top.quadrl[qid],top.quadgl[qid],
-                           top.quadgp[qid],top.quadvx[qid],top.quadvy[qid],
-                           top.quadpa[qid],top.quadpw[qid],top.quadpr[qid],
-                           top.qoffx[qid],top.qoffy[qid],self.quadcm):
+          if self.quadrods('quad',qid,qzs,qze,self.quadcm):
             return
         else:
           if self.roundpipe(qid,qzs,qze,top.quadap,top.quadax,top.quaday,
@@ -934,11 +951,7 @@ in the celemid array. It returns each element only once.
     if top.nemltol > 0:
       for eid,ezs,eze in self.elemlist(top.nemltol,top.cemltid,
                                        top.cemltzs,top.cemltze):
-        if self.quadrods(eid,ezs,eze,top.emltap[eid],
-                         top.emltrr[eid],top.emltrl[eid],top.emltgl[eid],
-                         top.emltgp[eid],0.,0.,
-                         top.emltpa[eid],top.emltpw[eid],0., #top.emltpr[eid],
-                         top.emltox[eid],top.emltoy[eid],self.emltcm):
+        if self.quadrods('emlt',eid,ezs,eze,self.emltcm):
           return
     #--------------------------------------------------------------------------
     if top.nmmltol > 0:
@@ -957,11 +970,7 @@ in the celemid array. It returns each element only once.
     if top.npgrdol > 0:
       for pid,pzs,pze in self.elemlist(top.npgrdol,top.cpgrdid,
                                        top.cpgrdzs,top.cpgrdze):
-        if self.quadrods(pid,pzs,pze,top.pgrdap[pid],
-                         top.pgrdrr[pid],top.pgrdrl[pid],top.pgrdgl[pid],
-                         top.pgrdgp[pid],0.,0.,
-                         top.pgrdpa[pid],top.pgrdpw[pid],0., #top.pgrdpr[pid],
-                         top.pgrdox[pid],top.pgrdoy[pid],self.pgrdcm):
+        if self.quadrods('pgrd',pid,pzs,pze,self.pgrdcm):
           return
     #--------------------------------------------------------------------------
     if top.nbgrdol > 0:
@@ -977,11 +986,7 @@ in the celemid array. It returns each element only once.
         if (max(abs(top.heleae[:,hid])) > 0. or
             top.helerr[hid] > 0. or top.helerl[hid] > 0. or
             top.helegl[hid] > 0.):
-          if self.quadrods(hid,hzs,hze,top.heleap[hid],
-                           top.helerr[hid],top.helerl[hid],top.helegl[hid],
-                           top.helegp[hid],0.,0.,
-                           top.helepa[hid],top.helepw[hid],0., #top.helepr[hid],
-                           top.heleox[hid],top.heleoy[hid],self.helecm):
+          if self.quadrods('hele',hid,hzs,hze,self.helecm):
             return
         else:
           if self.roundpipe(hid,hzs,hze,top.heleap,top.heleax,top.heleay,
