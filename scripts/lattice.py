@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.39 2004/12/14 18:42:26 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.40 2004/12/14 18:58:20 jlvay Exp $"
 
 def latticedoc():
   import lattice
@@ -136,7 +136,7 @@ Returns a new instance with the reverse flag switched.
         self.elemslistshallow[i:i+1] = self.elemslistshallow[i]
       else:
         i = i + 1
-      return elems
+      return self.elems
     if self.reverse: self.elemslistshallow.reverse()
     return self.elemslistshallow
   def deepexpand(self,lredo=0):
@@ -200,7 +200,10 @@ Returns a new instance with the reverse flag switched.
     self.deepexpand()
     dxlist = []
     for elem in self.elemslist:
-      dxlist.append(elem.getdxobject(kwdict=kw))
+      try:
+        dxlist.append(elem.getdxobject(kwdict=kw))
+      except:
+        print 'Warning: element of type '+elem.type+' is not renderable in 3-D at this point.'
     self.dxobject = pyOpenDX.DXCollection(*dxlist)
 
 # --- Create an equivalent class to LINE.
