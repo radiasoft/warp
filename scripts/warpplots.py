@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.11 2001/01/17 00:38:49 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.12 2001/01/17 17:54:40 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -80,6 +80,7 @@ Define variable names for plot markers
 point, plus, star, circle
 
 setup_subsets(): Create subsets for particle plots (negative window numbers)
+clear_subsets(): Clears the subsets for particle plots (negative window numbers)
 settitles(): set plot titles
 ptitles(): draw plot titles on the current frame
 
@@ -365,6 +366,11 @@ Adds plotting subset to the list
     rr = top.nps[0]*RandomArray.random(top.nps[0])
     ii = compress(less(rr,ntopick),ii)
     psubset.append(ii.astype('i'))
+#----------------------------------------------------------------------------
+def clear_subsets():
+  "Clears the particle subsets so that they can be updated."
+  global psubset
+  psubset = []
 
 # --- Old method which replicates the numbers selected by the fortran
 # --- routine psubsets. Note that that method breaks down when
@@ -524,6 +530,7 @@ from window 0, getting all of the live partilces (whose uzp > 0).
                 arrayrange(ir1,ir2))
   elif iw < 0:
     if psubset==[]: setup_subsets()
+    if -iw > len(psubset): raise "Bad window number"
     ii = ir1 + compress(less(psubset[-iw-1],top.nps[js-1]),psubset[-iw-1])
   else:
     if win == None: win = top.zwindows[:,iw] + top.zbeam
@@ -853,6 +860,8 @@ Note that either the x and y coordinates or the grid must be passed in.
     raise "both x and y must be specified if particles are to be plotted"
   if (x != None and y != None) and len(x) != len(y):
     raise "both x and y must be of the same length"
+  if type(slope) == type('a'):
+    raise "slope must be a number"
 
   # -- Set the plotting view window
   plsys(view)
