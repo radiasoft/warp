@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.98 $, $Date: 2004/03/31 13:49:29 $
+c@(#) File F3D.M, version $Revision: 3.99 $, $Date: 2004/03/31 15:06:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4357,10 +4357,6 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       real(kind=8):: boundarry(0:ny,2,0:nz)
       real(kind=8):: rdx2,rdy2,rdz2,rdel,reps0,const
       real(kind=8):: rdx2c,rdy2c,rdz2c,reps0c,spm1
-      real(kind=8):: ecdelmxi(necndbdy),ecdelmyi(necndbdy),ecdelmzi(necndbdy)
-      real(kind=8):: ecdelpxi(necndbdy),ecdelpyi(necndbdy),ecdelpzi(necndbdy)
-      real(kind=8):: ocdelmxi(nocndbdy),ocdelmyi(nocndbdy),ocdelmzi(nocndbdy)
-      real(kind=8):: ocdelpxi(nocndbdy),ocdelpyi(nocndbdy),ocdelpzi(nocndbdy)
       integer(ISZ):: nsorerr
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
       integer(ISZ):: i,k,ii,ie,ix,iy,iz,ic
@@ -4392,9 +4388,9 @@ c This takes extra time so should not be done if the grid is not moving
 c in the lab frame.  Set gridmode to 1 to avoid this call.
       if (gridmode == 0 .or. iwhich == -2) then
 c       --- Zero the number of conductor points
-        ncond = 0
-        necndbdy = 0
-        nocndbdy = 0
+        interior%n = 0
+        evensubgrid%n = 0
+        oddsubgrid%n = 0
 c       --- Generate new conductors.
         call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                bound0,boundnz,boundxy,l2symtry,l4symtry)
@@ -4478,26 +4474,6 @@ c       --- Change rstar if using Nuemann boundary conditions
         if (boundnz == 1) rstar(nz+1) = rstar(nz-1)
       endif 
 
-c Precalculate the reciprocals of the subgrid data.
-      if (lcndbndy) then
-        if (necndbdy > 0) then
-          ecdelpxi = 1./ecdelpx(1:necndbdy)
-          ecdelpyi = 1./ecdelpy(1:necndbdy)
-          ecdelpzi = 1./ecdelpz(1:necndbdy)
-          ecdelmxi = 1./ecdelmx(1:necndbdy)
-          ecdelmyi = 1./ecdelmy(1:necndbdy)
-          ecdelmzi = 1./ecdelmz(1:necndbdy)
-        endif
-        if (nocndbdy > 0) then
-          ocdelpxi = 1./ocdelpx(1:nocndbdy)
-          ocdelpyi = 1./ocdelpy(1:nocndbdy)
-          ocdelpzi = 1./ocdelpz(1:nocndbdy)
-          ocdelmxi = 1./ocdelmx(1:nocndbdy)
-          ocdelmyi = 1./ocdelmy(1:nocndbdy)
-          ocdelmzi = 1./ocdelmz(1:nocndbdy)
-        endif
-      endif
-
 c If doing Chebyshev accel, set sorparam to one for first iteration.
       if (lchebshv) sorparam = 1.
 
@@ -4508,7 +4484,7 @@ c when lzerophiedge is true, when using Dirichlet boundary conditions, and
 c if there are conductors. The logical allows the user to turn this off for
 c special cases.
       if (lzerophiedge .and. gridmode == 0 .and.
-     &    (ncond > 0 .or. necndbdy > 0 .or. nocndbdy > 0)) then
+     &    (interior%n > 0 .or. evensubgrid%n > 0 .or. oddsubgrid%n > 0)) then
         if (boundxy == 0) then
           do iz=0,nz
             do ix=0,nx
@@ -4590,13 +4566,19 @@ c         --- Save values just outside conductor surfaces.
 c         --- Again, both even and odd points are saved.
           if (lcndbndy) then
 !$OMP DO
-            do ic=1,necndbdy
-              ecndpvph(ic) = phi(iecndx(ic),iecndy(ic),iecndz(ic))
+            do ic=1,evensubgrid%n
+              ix = evensubgrid%indx(1,ic)
+              iy = evensubgrid%indx(2,ic)
+              iz = evensubgrid%indx(3,ic)
+              evensubgrid%prevphi(ic) = phi(ix,iy,iz)
             enddo
 !$OMP END DO
 !$OMP DO
-            do ic=1,nocndbdy
-              ocndpvph(ic) = phi(iocndx(ic),iocndy(ic),iocndz(ic))
+            do ic=1,oddsubgrid%n
+              ix = oddsubgrid%indx(1,ic)
+              iy = oddsubgrid%indx(2,ic)
+              iz = oddsubgrid%indx(3,ic)
+              oddsubgrid%prevphi(ic) = phi(ix,iy,iz)
             enddo
 !$OMP END DO
           endif
@@ -4750,24 +4732,14 @@ c           --- end of transverse boundaries
 c           --- Apply altered difference equation to the points near the
 c           --- surface of the conductor boundaries.
             if (lcndbndy) then
-              if (parity == 0 .and. necndbdy > 0) then
-                call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
-     &                     ncndmax,necndbdy,
-     &                     ecdelmx(1),ecdelmy(1),ecdelmz(1),
-     &                     ecdelpx(1),ecdelpy(1),ecdelpz(1),
-     &                     ecdelmxi(1),ecdelmyi(1),ecdelmzi(1),
-     &                     ecdelpxi(1),ecdelpyi(1),ecdelpzi(1),
-     &                     iecndx(1),iecndy(1),iecndz(1),ecvolt(1),ecndpvph(1),
+              if (parity == 0 .and. evensubgrid%n > 0) then
+                call condbndy(evensubgrid,
+     &                     nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
      &                     bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
-              else if (parity == 1 .and. nocndbdy > 0) then
-                call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
-     &                     ncndmax,nocndbdy,
-     &                     ocdelmx(1),ocdelmy(1),ocdelmz(1),
-     &                     ocdelpx(1),ocdelpy(1),ocdelpz(1),
-     &                     ocdelmxi(1),ocdelmyi(1),ocdelmzi(1),
-     &                     ocdelpxi(1),ocdelpyi(1),ocdelpzi(1),
-     &                     iocndx(1),iocndy(1),iocndz(1),ocvolt(1),ocndpvph(1),
+              else if (parity == 1 .and. oddsubgrid%n > 0) then
+                call condbndy(oddsubgrid,
+     &                     nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
      &                     bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
               endif
@@ -5107,40 +5079,35 @@ c           --- current z-slice is in a bend only
       return
       end
 c===========================================================================
-      subroutine cond_pot(nx,ny,nz,phi)
-      use Conductor3d
+      subroutine cond_pot(interior,nx,ny,nz,phi)
+      use ConductorInteriormodule
+      type(ConductorInterior):: interior
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
 c Set conductor points to the desired potential.
-      integer(ISZ):: ic
+      integer(ISZ):: ic,ix,iy,iz
 
 c sets phi to the desired potential on conductors
 !$OMP DO
-      do ic = 1,ncond
-        phi(ixcond(ic),iycond(ic),izcond(ic)) = condvolt(ic)
+      do ic = 1,interior%n
+        ix = interior%indx(1,ic)
+        iy = interior%indx(2,ic)
+        iz = interior%indx(3,ic)
+        phi(ix,iy,iz) = interior%volt(ic)
       enddo
 !$OMP END DO
 
       return
       end
 c===========================================================================
-      subroutine condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,srp,
-     &                    ncndmax,ncndbdy,
-     &                    cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,cdelpz,
-     &                    cdelmxi,cdelmyi,cdelmzi,cdelpxi,cdelpyi,cdelpzi,
-     &                    icndx,icndy,icndz,cvolt,cndpvph,
+      subroutine condbndy(subgrid,nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,srp,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    izfsmin,izfsmax,dx,dy,dz,icndbndy)
-      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy
+      use ConductorSubGridmodule
+      type(ConductorSubGrid):: subgrid
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
-      real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax), cdelmz(ncndmax)
-      real(kind=8):: cdelpx(ncndmax), cdelpy(ncndmax), cdelpz(ncndmax)
-      real(kind=8):: cdelmxi(ncndbdy), cdelmyi(ncndbdy), cdelmzi(ncndbdy)
-      real(kind=8):: cdelpxi(ncndbdy), cdelpyi(ncndbdy), cdelpzi(ncndbdy)
-      integer(ISZ):: icndx(ncndmax), icndy(ncndmax), icndz(ncndmax)
-      real(kind=8):: cvolt(ncndmax)
-      real(kind=8):: cndpvph(ncndmax)
       integer(ISZ):: bound0,boundnz,boundxy,izfsmin,izfsmax
       logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: dx,dy,dz
@@ -5156,14 +5123,19 @@ c These are changed when the finite difference in the appropriate direction
 c includes the boundary condition.
 c
 c Note that care has been taken with the boundaries.  Temps are set up
-c to hold icndx-1, icndx+1 etc which are are adjusted appopriately for
+c to hold ix-1, ix+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
       real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom
       real(kind=8):: denomi
       real(kind=8):: dxm,dxp,dym,dyp,dzm,dzp
       real(kind=8):: rhofix,rhovolume,dxyzi
-      integer(ISZ):: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
+      integer(ISZ):: ix,iy,iz,id
+      integer(ISZ):: ic,ixp1,ixm1,iyp1,iym1,izp1,izm1
+      real(kind=8),pointer:: dels(:,:),volt(:,:)
+
+      dels => subgrid%dels
+      volt => subgrid%volt
 
 c -------------------------------------------------------------------------
 c EGUN style interpolation at conductor boundaries
@@ -5175,46 +5147,49 @@ c EGUN style interpolation at conductor boundaries
 
 c       --- loop over points near surface of rods
 !$OMP DO
-        do ic = 1,ncndbdy
+        do ic = 1,subgrid%n
 c         --- set temporaries for boundaries
-          icndxp1 = icndx(ic) + 1
-          icndxm1 = icndx(ic) - 1
-          icndyp1 = icndy(ic) + 1
-          icndym1 = icndy(ic) - 1
-          icndzp1 = icndz(ic) + 1
-          icndzm1 = icndz(ic) - 1
+          ix = subgrid%indx(1,ic)
+          iy = subgrid%indx(2,ic)
+          iz = subgrid%indx(3,ic)
+          ixp1 = ix + 1
+          ixm1 = ix - 1
+          iyp1 = iy + 1
+          iym1 = iy - 1
+          izp1 = iz + 1
+          izm1 = iz - 1
 
-          if (icndxm1 == -1 .and. l4symtry) icndxm1 = 1
-          if (icndxm1 == -1 .and. boundxy == 0) cycle
-          if (icndxm1 == -1 .and. boundxy == 1) icndxm1 = 1
-          if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
-          if (icndxp1 == nx+1 .and. boundxy == 0) cycle
-          if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
-          if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
+          if (ixm1 == -1 .and. l4symtry) ixm1 = 1
+          if (ixm1 == -1 .and. boundxy == 0) cycle
+          if (ixm1 == -1 .and. boundxy == 1) ixm1 = 1
+          if (ixm1 == -1 .and. boundxy == 2) ixm1 = nx-1
+          if (ixp1 == nx+1 .and. boundxy == 0) cycle
+          if (ixp1 == nx+1 .and. boundxy == 1) ixp1 = nx-1
+          if (ixp1 == nx+1 .and. boundxy == 2) ixp1 = 1
 
-          if (icndym1 == -1 .and. l2symtry) icndym1 = 1
-          if (icndym1 == -1 .and. l4symtry) icndym1 = 1
-          if (icndym1 == -1 .and. boundxy == 0) cycle
-          if (icndym1 == -1 .and. boundxy == 1) icndym1 = 1
-          if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
-          if (icndyp1 == ny+1 .and. boundxy == 0) cycle
-          if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
-          if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
+          if (iym1 == -1 .and. l2symtry) iym1 = 1
+          if (iym1 == -1 .and. l4symtry) iym1 = 1
+          if (iym1 == -1 .and. boundxy == 0) cycle
+          if (iym1 == -1 .and. boundxy == 1) iym1 = 1
+          if (iym1 == -1 .and. boundxy == 2) iym1 = ny-1
+          if (iyp1 == ny+1 .and. boundxy == 0) cycle
+          if (iyp1 == ny+1 .and. boundxy == 1) iyp1 = ny-1
+          if (iyp1 == ny+1 .and. boundxy == 2) iyp1 = 1
 
-          if (icndzm1 == izfsmin-1 .and. bound0  == 0) cycle
-          if (icndzm1 == izfsmin-1 .and. bound0  == 1) icndzm1 = izfsmin+1
-          if (icndzm1 == izfsmin-1 .and. bound0  == 2) icndzm1 = izfsmax-1
-          if (icndzp1 == izfsmax+1 .and. boundnz == 0) cycle
-          if (icndzp1 == izfsmax+1 .and. boundnz == 1) icndzp1 = izfsmax-1
-          if (icndzp1 == izfsmax+1 .and. boundnz == 2) icndzp1 = izfsmin+1
+          if (izm1 == izfsmin-1 .and. bound0  == 0) cycle
+          if (izm1 == izfsmin-1 .and. bound0  == 1) izm1 = izfsmin+1
+          if (izm1 == izfsmin-1 .and. bound0  == 2) izm1 = izfsmax-1
+          if (izp1 == izfsmax+1 .and. boundnz == 0) cycle
+          if (izp1 == izfsmax+1 .and. boundnz == 1) izp1 = izfsmax-1
+          if (izp1 == izfsmax+1 .and. boundnz == 2) izp1 = izfsmin+1
 
 c         --- set temporaries with initial values
-          pxm = phi(icndxm1  ,icndy(ic),icndz(ic))
-          pxp = phi(icndxp1  ,icndy(ic),icndz(ic))
-          pym = phi(icndx(ic),icndym1  ,icndz(ic))
-          pyp = phi(icndx(ic),icndyp1  ,icndz(ic))
-          pzm = phi(icndx(ic),icndy(ic),icndzm1  )
-          pzp = phi(icndx(ic),icndy(ic),icndzp1  )
+          pxm = phi(ixm1  ,iy    ,iz    )
+          pxp = phi(ixp1  ,iy    ,iz    )
+          pym = phi(ix    ,iym1  ,iz    )
+          pyp = phi(ix    ,iyp1  ,iz    )
+          pzm = phi(ix    ,iy    ,izm1  )
+          pzp = phi(ix    ,iy    ,izp1  )
           denom = 1.
           dxm = 1.
           dxp = 1.
@@ -5224,48 +5199,48 @@ c         --- set temporaries with initial values
           dzp = 1.
 
 c         --- the point lower in x is inside the conductor
-          if (cdelmx(ic) < 1.) then
-            pxm = cvolt(ic)*cdelmxi(ic)
-            denom = denom + (1.-cdelmx(ic))*cdelmxi(ic)*rdx2cos
-            dxm = cdelmx(ic)
+          if (dels(1,ic) < 1.) then
+            pxm = volt(1,ic)/dels(1,ic)
+            denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2cos
+            dxm = dels(1,ic)
           endif
 c         --- the point higher in x is inside the conductor
-          if (cdelpx(ic) < 1.) then
-            pxp = cvolt(ic)*cdelpxi(ic)
-            denom = denom + (1.-cdelpx(ic))*cdelpxi(ic)*rdx2cos
-            dxp = cdelpx(ic)
+          if (dels(2,ic) < 1.) then
+            pxp = volt(2,ic)/dels(2,ic)
+            denom = denom + (2.-dels(2,ic))/dels(2,ic)*rdx2cos
+            dxp = dels(2,ic)
           endif
 c         --- the point lower in y is inside the conductor
-          if (cdelmy(ic) < 1.) then
-            pym = cvolt(ic)*cdelmyi(ic)
-            denom = denom + (1.-cdelmy(ic))*cdelmyi(ic)*rdy2cos
-            dym = cdelmy(ic)
+          if (dels(3,ic) < 1.) then
+            pym = volt(3,ic)/dels(3,ic)
+            denom = denom + (3.-dels(3,ic))/dels(3,ic)*rdy2cos
+            dym = dels(3,ic)
           endif
 c         --- the point higher in y is inside the conductor
-          if (cdelpy(ic) < 1.) then
-            pyp = cvolt(ic)*cdelpyi(ic)
-            denom = denom + (1.-cdelpy(ic))*cdelpyi(ic)*rdy2cos
-            dyp = cdelpy(ic)
+          if (dels(4,ic) < 1.) then
+            pyp = volt(4,ic)/dels(4,ic)
+            denom = denom + (4.-dels(4,ic))/dels(4,ic)*rdy2cos
+            dyp = dels(4,ic)
           endif
 c         --- the point lower in z is inside the conductor
-          if (cdelmz(ic) < 1.) then
-            pzm = cvolt(ic)*cdelmzi(ic)
-            denom = denom + (1.-cdelmz(ic))*cdelmzi(ic)*rdz2cos
-            dzm = cdelmz(ic)
+          if (dels(5,ic) < 1.) then
+            pzm = volt(5,ic)/dels(5,ic)
+            denom = denom + (5.-dels(5,ic))/dels(5,ic)*rdz2cos
+            dzm = dels(5,ic)
           endif
 c         --- the point lower in z is inside the conductor
-          if (cdelpz(ic) < 1.) then
-            pzp = cvolt(ic)*cdelpzi(ic)
-            denom = denom + (1.-cdelpz(ic))*cdelpzi(ic)*rdz2cos
-            dzp = cdelpz(ic)
+          if (dels(6,ic) < 1.) then
+            pzp = volt(6,ic)/dels(6,ic)
+            denom = denom + (6.-dels(6,ic))/dels(6,ic)*rdz2cos
+            dzp = dels(6,ic)
           endif
 c         --- calculate the new phi based on the boundary conditions
 c         rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
           rhovolume = 1.
-          phi(icndx(ic),icndy(ic),icndz(ic)) =
-     &        (rho(icndx(ic),icndy(ic),icndz(ic))*rhovolume +
+          phi(ix,iy,iz) =
+     &        (rho(ix,iy,iz)*rhovolume +
      &         (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
-     &         spm1*cndpvph(ic)
+     &         spm1*subgrid%prevphi(ic)
         enddo
 !$OMP END DO
 
@@ -5277,46 +5252,49 @@ c EBC style interpolation, uses non-centered finite difference
 
 c       --- loop over points near surface of rods
 !$OMP DO
-        do ic = 1,ncndbdy
+        do ic = 1,subgrid%n
 c         --- set temporaries for boundaries
-          icndxp1 = icndx(ic) + 1
-          icndxm1 = icndx(ic) - 1
-          icndyp1 = icndy(ic) + 1
-          icndym1 = icndy(ic) - 1
-          icndzp1 = icndz(ic) + 1
-          icndzm1 = icndz(ic) - 1
+          ix = subgrid%indx(1,ic)
+          iy = subgrid%indx(2,ic)
+          iz = subgrid%indx(3,ic)
+          ixp1 = ix + 1
+          ixm1 = ix - 1
+          iyp1 = iy + 1
+          iym1 = iy - 1
+          izp1 = iz + 1
+          izm1 = iz - 1
 
-          if (icndxm1 == -1 .and. l4symtry) icndxm1 = 1
-          if (icndxm1 == -1 .and. boundxy == 0) cycle
-          if (icndxm1 == -1 .and. boundxy == 1) icndxm1 = 1
-          if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
-          if (icndxp1 == nx+1 .and. boundxy == 0) cycle
-          if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
-          if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
+          if (ixm1 == -1 .and. l4symtry) ixm1 = 1
+          if (ixm1 == -1 .and. boundxy == 0) cycle
+          if (ixm1 == -1 .and. boundxy == 1) ixm1 = 1
+          if (ixm1 == -1 .and. boundxy == 2) ixm1 = nx-1
+          if (ixp1 == nx+1 .and. boundxy == 0) cycle
+          if (ixp1 == nx+1 .and. boundxy == 1) ixp1 = nx-1
+          if (ixp1 == nx+1 .and. boundxy == 2) ixp1 = 1
 
-          if (icndym1 == -1 .and. l2symtry) icndym1 = 1
-          if (icndym1 == -1 .and. l4symtry) icndym1 = 1
-          if (icndym1 == -1 .and. boundxy == 0) cycle
-          if (icndym1 == -1 .and. boundxy == 1) icndym1 = 1
-          if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
-          if (icndyp1 == ny+1 .and. boundxy == 0) cycle
-          if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
-          if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
+          if (iym1 == -1 .and. l2symtry) iym1 = 1
+          if (iym1 == -1 .and. l4symtry) iym1 = 1
+          if (iym1 == -1 .and. boundxy == 0) cycle
+          if (iym1 == -1 .and. boundxy == 1) iym1 = 1
+          if (iym1 == -1 .and. boundxy == 2) iym1 = ny-1
+          if (iyp1 == ny+1 .and. boundxy == 0) cycle
+          if (iyp1 == ny+1 .and. boundxy == 1) iyp1 = ny-1
+          if (iyp1 == ny+1 .and. boundxy == 2) iyp1 = 1
 
-          if (icndzm1 == izfsmin-1 .and. bound0  == 0) cycle
-          if (icndzm1 == izfsmin-1 .and. bound0  == 1) icndzm1 = izfsmin+1
-          if (icndzm1 == izfsmin-1 .and. bound0  == 2) icndzm1 = izfsmax-1
-          if (icndzp1 == izfsmax+1 .and. boundnz == 0) cycle
-          if (icndzp1 == izfsmax+1 .and. boundnz == 1) icndzp1 = izfsmax-1
-          if (icndzp1 == izfsmax+1 .and. boundnz == 2) icndzp1 = izfsmin+1
+          if (izm1 == izfsmin-1 .and. bound0  == 0) cycle
+          if (izm1 == izfsmin-1 .and. bound0  == 1) izm1 = izfsmin+1
+          if (izm1 == izfsmin-1 .and. bound0  == 2) izm1 = izfsmax-1
+          if (izp1 == izfsmax+1 .and. boundnz == 0) cycle
+          if (izp1 == izfsmax+1 .and. boundnz == 1) izp1 = izfsmax-1
+          if (izp1 == izfsmax+1 .and. boundnz == 2) izp1 = izfsmin+1
 
 c         --- set temporaries with initial values
-          pxm = phi(icndxm1  ,icndy(ic),icndz(ic))
-          pxp = phi(icndxp1  ,icndy(ic),icndz(ic))
-          pym = phi(icndx(ic),icndym1  ,icndz(ic))
-          pyp = phi(icndx(ic),icndyp1  ,icndz(ic))
-          pzm = phi(icndx(ic),icndy(ic),icndzm1  )
-          pzp = phi(icndx(ic),icndy(ic),icndzp1  )
+          pxm = phi(ixm1  ,iy    ,iz    )
+          pxp = phi(ixp1  ,iy    ,iz    )
+          pym = phi(ix    ,iym1  ,iz    )
+          pyp = phi(ix    ,iyp1  ,iz    )
+          pzm = phi(ix    ,iy    ,izm1  )
+          pzp = phi(ix    ,iy    ,izp1  )
           dxm = dx
           dxp = dx
           dym = dy
@@ -5325,45 +5303,45 @@ c         --- set temporaries with initial values
           dzp = dz
 
 c         --- the point lower in x is inside the conductor
-          if (cdelmx(ic) < 1.) then
-            pxm = cvolt(ic)
-            dxm = cdelmx(ic)*dx
+          if (dels(1,ic) < 1.) then
+            pxm = volt(1,ic)
+            dxm = dels(1,ic)*dx
           endif
 c         --- the point higher in x is inside the conductor
-          if (cdelpx(ic) < 1.) then
-            pxp = cvolt(ic)
-            dxp = cdelpx(ic)*dx
+          if (dels(2,ic) < 1.) then
+            pxp = volt(2,ic)
+            dxp = dels(2,ic)*dx
           endif
 c         --- the point lower in y is inside the conductor
-          if (cdelmy(ic) < 1.) then
-            pym = cvolt(ic)
-            dym = cdelmy(ic)*dy
+          if (dels(3,ic) < 1.) then
+            pym = volt(3,ic)
+            dym = dels(3,ic)*dy
           endif
 c         --- the point higher in y is inside the conductor
-          if (cdelpy(ic) < 1.) then
-            pyp = cvolt(ic)
-            dyp = cdelpy(ic)*dy
+          if (dels(4,ic) < 1.) then
+            pyp = volt(4,ic)
+            dyp = dels(4,ic)*dy
           endif
 c         --- the point lower in z is inside the conductor
-          if (cdelmz(ic) < 1.) then
-            pzm = cvolt(ic)
-            dzm = cdelmz(ic)*dz
+          if (dels(5,ic) < 1.) then
+            pzm = volt(5,ic)
+            dzm = dels(5,ic)*dz
           endif
 c         --- the point lower in z is inside the conductor
-          if (cdelpz(ic) < 1.) then
-            pzp = cvolt(ic)
-            dzp = cdelpz(ic)*dz
+          if (dels(6,ic) < 1.) then
+            pzp = volt(6,ic)
+            dzp = dels(6,ic)*dz
           endif
 c         --- calculate the new phi based on the boundary conditions
           denomi = 1./(2./(dxm*dxp) + 2./(dym*dyp) + 2./(dzm*dzp))
 c         rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125*dxyzi
           rhovolume = 1.
-          phi(icndx(ic),icndy(ic),icndz(ic))  =
-     &        (rho(icndx(ic),icndy(ic),icndz(ic))*rhofix*rhovolume +
+          phi(ix,iy,iz)  =
+     &        (rho(ix,iy,iz)*rhofix*rhovolume +
      &         pxm*2./(dxm*(dxm+dxp)) + pxp*2./(dxp*(dxm+dxp)) +
      &         pym*2./(dym*(dym+dyp)) + pyp*2./(dyp*(dym+dyp)) +
      &         pzm*2./(dzm*(dzm+dzp)) + pzp*2./(dzp*(dzm+dzp)))*srp*denomi +
-     &        spm1*cndpvph(ic)
+     &        spm1*subgrid%prevphi(ic)
         enddo
 !$OMP END DO
 
@@ -5462,10 +5440,10 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
       real(kind=8):: fuzz,zfuzz
       logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
 
-c     --- Save starting value of ncond, necndbdy, and nocndbdy
-      istart = ncond + 1
-      iestart = necndbdy + 1
-      iostart = nocndbdy + 1
+c     --- Save starting value of ncond, ne, and no
+      istart = interior%n + 1
+      iestart = evensubgrid%n + 1
+      iostart = oddsubgrid%n + 1
 
 c     --- fuzz is used to prevent the distance from a point to the surface
 c     --- from being too small or zero.  Any point within fuzz of the surface
@@ -5584,8 +5562,9 @@ c     --- end loop over z which fills islctype
       enddo
 
 c     --- Change the memory allocated based on the estimates made above.
-      ncondmax = max(ncondmax,ncond + nc)
-      ncndmax = max(ncndmax,max(necndbdy,nocndbdy) + nceo)
+      interior%nmax = max(interior%nmax,interior%n + nc)
+      evensubgrid%nmax = max(evensubgrid%nmax,evensubgrid%n + nceo)
+      oddsubgrid%nmax = max(oddsubgrid%nmax,oddsubgrid%n + nceo)
       call gchange("Conductor3d",0)
 
 c Set slicv in planes at ends of quads to allow for sub-grid placement of
@@ -5962,18 +5941,22 @@ c +++++++++++++++++++++++++++
 c       --- Make arrays bigger if they are about to be filled up.
 c       --- If ncond is within (1+nx)*(1+ny) of ncondmax, increase ncondmax.
 c       --- That is the maximum number of points needed to fill an endplate.
-c       --- If the max of necndbdy and nocndbdy are within 3*max(nx,ny) if
+c       --- If the max of ne and no are within 3*max(nx,ny) if
 c       --- ncndmax, increase ncndmax.  That is roughly the number of points
 c       --- needed for one axial slice of a rod.
 c       --- Set flag ichange so that if anything needs to be changed, all
 c       --- of the changes can be made at once.
         ichange = 0
-        if (ncond + (1+nx)*(1+ny) > ncondmax) then
-          ncondmax = ncond + (1+nx)*(1+ny)
+        if (interior%n + (1+nx)*(1+ny) > interior%nmax) then
+          interior%nmax = interior%n + (1+nx)*(1+ny)
           ichange = 1
         endif
-        if (max(necndbdy,nocndbdy) + 3*max(nx,ny) > ncndmax) then
-          ncndmax = max(necndbdy,nocndbdy) + 3*max(nx,ny)
+        if (evensubgrid%n + 3*max(nx,ny) > evensubgrid%nmax) then
+          evensubgrid%nmax = evensubgrid%n + 3*max(nx,ny)
+          ichange = 1
+        endif
+        if (oddsubgrid%n + 3*max(nx,ny) > oddsubgrid%nmax) then
+          oddsubgrid%nmax = oddsubgrid%n + 3*max(nx,ny)
           ichange = 1
         endif
         if (ichange == 1) call gchange("Conductor3d",0)
@@ -6057,18 +6040,22 @@ c +++++++++++++++++++++++++++
 c       --- Make arrays bigger if they are about to be filled up.
 c       --- If ncond is within (1+nx)*(1+ny) of ncondmax, increase ncondmax.
 c       --- That is the maximum number of points needed to fill an endplate.
-c       --- If the max of necndbdy and nocndbdy are within 3*max(nx,ny) if
+c       --- If the max of ne and no are within 3*max(nx,ny) if
 c       --- ncndmax, increase ncndmax.  That is roughly the number of points
 c       --- needed for one axial slice of a rod.
 c       --- Set flag ichange so that if anything needs to be changed, all
 c       --- of the changes can be made at once.
         ichange = 0
-        if (ncond + (1+nx)*(1+ny) > ncondmax) then
-          ncondmax = ncond + (1+nx)*(1+ny)
+        if (interior%n + (1+nx)*(1+ny) > interior%nmax) then
+          interior%nmax = interior%n + (1+nx)*(1+ny)
           ichange = 1
         endif
-        if (max(necndbdy,nocndbdy) + 3*max(nx,ny) > ncndmax) then
-          ncndmax = max(necndbdy,nocndbdy) + 3*max(nx,ny)
+        if (evensubgrid%n + 3*max(nx,ny) > evensubgrid%nmax) then
+          evensubgrid%nmax = evensubgrid%n + 3*max(nx,ny)
+          ichange = 1
+        endif
+        if (oddsubgrid%n + 3*max(nx,ny) > oddsubgrid%nmax) then
+          oddsubgrid%nmax = oddsubgrid%n + 3*max(nx,ny)
           ichange = 1
         endif
         if (ichange == 1) call gchange("Conductor3d",0)
@@ -6114,8 +6101,8 @@ c             --- within the field mesh)
               izmin = max(0,int((dipocent - dipol1(id)*0.5)/dz + fuzz))
 
 c             --- add more space to the arrays if necessary
-              if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
-                ncondmax = ncond + (iymax-iymin+1)*(izmax-izmin+1)
+              if (interior%n + (iymax-iymin+1)*(izmax-izmin+1) > interior%nmax) then
+                interior%nmax = interior%n + (iymax-iymin+1)*(izmax-izmin+1)
                 call gchange("Conductor3d",0)
               endif
 
@@ -6132,8 +6119,8 @@ c           --- now do the same for the second dipole plate
               iymin = max(0,int(-0.5*dipow2(id)/dy-0.5+iy_axis))
               izmax = min(nz,int((dipocent + dipol2(id)*0.5)/dz + 0.5))
               izmin = max(0,int((dipocent - dipol2(id)*0.5)/dz + 0.5))
-              if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
-                ncondmax = ncond + (iymax-iymin+1)*(izmax-izmin+1)
+              if (interior%n + (iymax-iymin+1)*(izmax-izmin+1) > interior%nmax) then
+                interior%nmax = interior%n + (iymax-iymin+1)*(izmax-izmin+1)
                 call gchange("Conductor3d",0)
               endif
               call dipopnt(iymin,iymax,izmin,izmax,dipov2(id),ix_near,ix,delx)
@@ -6153,7 +6140,7 @@ c Include injection source
       call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
 
 c     --- Now fill in the rest of the conductor data
-      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+      call setconductorvoltnumb(iestart,evensubgrid%n,iostart,oddsubgrid%n)
 
       return
       end
@@ -6207,8 +6194,16 @@ c          put in but never fully tested.
 
 
       integer(ISZ):: ix,iy,npoints,nsgpoints
+      integer(ISZ):: ncond,ncondmax,ne,nemax,no,nomax
       real(kind=8):: radsq,delx,dely,delz,rodxsq,rodysq,dxi,dyi,dzi,quadsli
       real(kind=8):: x2fuzz,y2fuzz,r2fuzz
+
+      ncond = interior%n
+      ncondmax = interior%nmax
+      ne = evensubgrid%n
+      nemax = evensubgrid%nmax
+      no = oddsubgrid%n
+      nomax = oddsubgrid%nmax
 
 c      if(solvergeom==RZgeom) then
 c        call rodpointrz(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
@@ -6228,11 +6223,14 @@ c     --- points.
         nsgpoints = npoints
       endif
       if (ncond+npoints > ncondmax .or.
-     &    necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax) then
+     &    ne+nsgpoints > nemax .or. no+nsgpoints > nomax) then
         if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
-        if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
-     &    ncndmax = max(necndbdy,nocndbdy) + nsgpoints
-          call gchange("Conductor3d",0)
+        if (ne+nsgpoints > nemax)  nemax = ne + nsgpoints
+        if (no+nsgpoints > nomax)  nomax = no + nsgpoints
+        interior%nmax = ncondmax
+        evensubgrid%nmax = nemax
+        oddsubgrid%nmax = nomax
+        call gchange("Conductor3d",0)
       endif
 
 c     --- set temporaries
@@ -6261,10 +6259,10 @@ c           --- yet, select point.
      &        ((ix==ixmax .or. iy==iymax .or. ix==ixmin .or. iy==iymin)
      &         .and. radsq-r2fuzz <= rodrrsq)) .and. ncond < ncondmax) then
               ncond = ncond + 1
-              ixcond(ncond) = ix + ix_axis
-              iycond(ncond) = iy + iy_axis
-              izcond(ncond) = iz
-              condvolt(ncond) = voltage
+              interior%indx(1,ncond) = ix + ix_axis
+              interior%indx(2,ncond) = iy + iy_axis
+              interior%indx(3,ncond) = iz
+              interior%volt(ncond) = voltage
             endif
 
           else
@@ -6275,20 +6273,20 @@ c              --- horizontal electrode
                if (lz_in_rod .and. ((iy*dy)**2-y2fuzz < (ix*dx)**2-rodxsq)
      &            .and. ncond < ncondmax) then
                  ncond = ncond + 1
-                 ixcond(ncond) = ix + ix_axis
-                 iycond(ncond) = iy + iy_axis
-                 izcond(ncond) = iz
-                 condvolt(ncond) = voltage
+                 interior%indx(1,ncond) = ix + ix_axis
+                 interior%indx(2,ncond) = iy + iy_axis
+                 interior%indx(3,ncond) = iz
+                 interior%volt(ncond) = voltage
                endif
             else
 c              --- vertical electrode
                if (lz_in_rod .and. ((ix*dx)**2-x2fuzz < (iy*dy)**2-rodysq)
      &             .and. ncond < ncondmax) then
                  ncond = ncond + 1
-                 ixcond(ncond) = ix + ix_axis
-                 iycond(ncond) = iy + iy_axis
-                 izcond(ncond) = iz
-                 condvolt(ncond) = voltage
+                 interior%indx(1,ncond) = ix + ix_axis
+                 interior%indx(2,ncond) = iy + iy_axis
+                 interior%indx(3,ncond) = iz
+                 interior%volt(ncond) = voltage
                endif
             endif
 
@@ -6303,7 +6301,7 @@ c         --- distance is calculated for all points and only the check
 c         --- on whether the arrays are full is used.
           if (((rrr < radsq .and. radsq < rodmxsq) .or.
      &         rodrrsq < 0.) .and.
-     &        necndbdy < ncndmax .and. nocndbdy < ncndmax) then
+     &        ne < nemax .and. no < nomax) then
 
 c           --- set to default values
             delx = 2.
@@ -6378,42 +6376,54 @@ c           --- if within one cell in any direction, save the point
      &          fuzz < abs(delz) .and. abs(delz) < 1.+fuzzsign*fuzz) then
               if (mod(ix_axis + ix + iy_axis + iy + iz,2) == 0) then
 c               --- even
-                necndbdy = necndbdy + 1
-                ecdelmx(necndbdy) = 2.
-                ecdelpx(necndbdy) = 2.
-                ecdelmy(necndbdy) = 2.
-                ecdelpy(necndbdy) = 2.
-                ecdelmz(necndbdy) = 2.
-                ecdelpz(necndbdy) = 2.
-                if (fuzz <  delx .and.  delx < 1.+fuzzsign*fuzz) ecdelmx(necndbdy)= delx
-                if (fuzz <  dely .and.  dely < 1.+fuzzsign*fuzz) ecdelmy(necndbdy)= dely
-                if (fuzz <  delz .and.  delz < 1.+fuzzsign*fuzz) ecdelmz(necndbdy)= delz
-                if (fuzz < -delx .and. -delx < 1.+fuzzsign*fuzz) ecdelpx(necndbdy)=-delx
-                if (fuzz < -dely .and. -dely < 1.+fuzzsign*fuzz) ecdelpy(necndbdy)=-dely
-                if (fuzz < -delz .and. -delz < 1.+fuzzsign*fuzz) ecdelpz(necndbdy)=-delz
-                iecndx(necndbdy) = ix + ix_axis
-                iecndy(necndbdy) = iy + iy_axis
-                iecndz(necndbdy) = iz
-                ecvolt(necndbdy) = voltage
+                ne = ne + 1
+                evensubgrid%dels(1,ne) = 2.
+                evensubgrid%dels(2,ne) = 2.
+                evensubgrid%dels(3,ne) = 2.
+                evensubgrid%dels(4,ne) = 2.
+                evensubgrid%dels(5,ne) = 2.
+                evensubgrid%dels(6,ne) = 2.
+                if (fuzz <  delx .and.  delx < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(1,ne) =  delx
+                if (fuzz <  dely .and.  dely < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(2,ne) =  dely
+                if (fuzz <  delz .and.  delz < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(3,ne) =  delz
+                if (fuzz < -delx .and. -delx < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(4,ne) = -delx
+                if (fuzz < -dely .and. -dely < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(5,ne) = -dely
+                if (fuzz < -delz .and. -delz < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(6,ne) = -delz
+                evensubgrid%indx(1,ne) = ix + ix_axis
+                evensubgrid%indx(2,ne) = iy + iy_axis
+                evensubgrid%indx(3,ne) = iz
+                evensubgrid%volt(0,ne) = voltage
               else
 c               --- odd
-                nocndbdy = nocndbdy + 1
-                ocdelmx(nocndbdy) = 2.
-                ocdelpx(nocndbdy) = 2.
-                ocdelmy(nocndbdy) = 2.
-                ocdelpy(nocndbdy) = 2.
-                ocdelmz(nocndbdy) = 2.
-                ocdelpz(nocndbdy) = 2.
-                if (fuzz <  delx.and. delx < 1.+fuzzsign*fuzz) ocdelmx(nocndbdy) =  delx
-                if (fuzz <  dely.and. dely < 1.+fuzzsign*fuzz) ocdelmy(nocndbdy) =  dely
-                if (fuzz <  delz.and. delz < 1.+fuzzsign*fuzz) ocdelmz(nocndbdy) =  delz
-                if (fuzz < -delx.and.-delx < 1.+fuzzsign*fuzz) ocdelpx(nocndbdy) = -delx
-                if (fuzz < -dely.and.-dely < 1.+fuzzsign*fuzz) ocdelpy(nocndbdy) = -dely
-                if (fuzz < -delz.and.-delz < 1.+fuzzsign*fuzz) ocdelpz(nocndbdy) = -delz
-                iocndx(nocndbdy) = ix + ix_axis
-                iocndy(nocndbdy) = iy + iy_axis
-                iocndz(nocndbdy) = iz
-                ocvolt(nocndbdy) = voltage
+                no = no + 1
+                oddsubgrid%dels(1,no) = 2.
+                oddsubgrid%dels(2,no) = 2.
+                oddsubgrid%dels(3,no) = 2.
+                oddsubgrid%dels(4,no) = 2.
+                oddsubgrid%dels(5,no) = 2.
+                oddsubgrid%dels(6,no) = 2.
+                if (fuzz <  delx .and.  delx < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(1,no) =  delx
+                if (fuzz <  dely .and.  dely < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(2,no) =  dely
+                if (fuzz <  delz .and.  delz < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(3,no) =  delz
+                if (fuzz < -delx .and. -delx < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(4,no) = -delx
+                if (fuzz < -dely .and. -dely < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(5,no) = -dely
+                if (fuzz < -delz .and. -delz < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(6,no) = -delz
+                oddsubgrid%indx(1,no) = ix + ix_axis
+                oddsubgrid%indx(2,no) = iy + iy_axis
+                oddsubgrid%indx(3,no) = iz
+                oddsubgrid%volt(0,no) = voltage
               endif
             endif
           endif
@@ -6421,13 +6431,19 @@ c               --- odd
       enddo
 
 c     --- Print warning if conductor arrays filled up.
-      if (necndbdy == ncndmax .or. nocndbdy == ncndmax .or.
-     &    ncond == ncondmax) then
+      if (ne == nemax .or. no == nomax .or. ncond == ncondmax) then
         call remark("WARNING: The arrays holding the conductor data have filled")
         call remark("         up.  Increase size of arrays to ensure all of")
         call remark("         the conductors have been generated.")
         call remark("         In function rodpoint.")
       endif
+
+      interior%n = ncond
+      interior%nmax = ncondmax
+      evensubgrid%n = ne
+      evensubgrid%nmax = nemax
+      oddsubgrid%n = no
+      oddsubgrid%nmax = nomax
 
       return
       end
@@ -6460,6 +6476,7 @@ c     iz       axial grid location of the plate
 c     fuzz     number smalled compared to grid cell size, used
 c              to prevent precision problems
 
+      integer(ISZ):: ncond,ncondmax,ne,nemax,no,nomax
       integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy
       real(kind=8):: rad,pradsq,prmxsq,paprsq,papmsq,delx,dely,delz,dxi,dyi
@@ -6467,8 +6484,15 @@ c              to prevent precision problems
       integer(ISZ):: npoints,nsgpoints
       logical(ISZ):: lout
 
-      iestart = necndbdy + 1
-      iostart = nocndbdy + 1
+      ncond = interior%n
+      ncondmax = interior%nmax
+      ne = evensubgrid%n
+      nemax = evensubgrid%nmax
+      no = oddsubgrid%n
+      nomax = oddsubgrid%nmax
+
+      iestart = ne + 1
+      iostart = no + 1
 
 c      if(solvergeom==RZgeom) then
 c        call platepntrz(ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,dx,dy,
@@ -6504,11 +6528,14 @@ c     --- points.
         nsgpoints = npoints
       endif
       if (ncond+npoints > ncondmax .or.
-     &    necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax) then
+     &    ne+nsgpoints > nemax .or. no+nsgpoints > nomax) then
         if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
-        if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
-     &    ncndmax = max(necndbdy,nocndbdy) + nsgpoints
-          call gchange("Conductor3d",0)
+        if (ne+nsgpoints > nemax)  nemax = ne + nsgpoints
+        if (no+nsgpoints > nomax)  nomax = no + nsgpoints
+        interior%nmax = ncondmax
+        evensubgrid%nmax = nemax
+        oddsubgrid%nmax = nomax
+        call gchange("Conductor3d",0)
       endif
 
 c     --- loop over transverse plane
@@ -6519,10 +6546,10 @@ c     --- loop over transverse plane
      &        paprsq <= rad+r2fuzz .and. rad-r2fuzz <= pradsq .and.
      &        ncond < ncondmax) then
             ncond = ncond + 1
-            ixcond(ncond) = ix
-            iycond(ncond) = iy
-            izcond(ncond) = iz
-            condvolt(ncond) = vvv
+            interior%indx(1,ncond) = ix
+            interior%indx(2,ncond) = iy
+            interior%indx(3,ncond) = iz
+            interior%volt(ncond) = vvv
           endif
 
 c         --- calculate interpolation values
@@ -6535,8 +6562,7 @@ c         --- if point within one grid cell outside of the plate
 c         --- and arrays not full, select point.
           if ((pradsq < rad-r2fuzz .and. rad+r2fuzz < prmxsq) .and.
      &        lz_in_plate .and. lout .and.
-     &        necndbdy < ncndmax .and.
-     &        nocndbdy < ncndmax) then
+     &        ne < nemax .and. no < nomax) then
 
 c           --- find distance in x from boundary
             if (pradsq-((iy-iy_axis)*dy-yoff)**2 > 0.) then
@@ -6557,8 +6583,7 @@ c         --- if point within one grid cell inside of the plate
 c         --- and arrays not full, select point.
           if ((papmsq < rad-r2fuzz .and. rad+r2fuzz < paprsq) .and.
      &        lz_in_plate .and.
-     &        necndbdy < ncndmax .and.
-     &        nocndbdy < ncndmax) then
+     &        ne < nemax .and. no < nomax) then
 
 c           --- find distance in x from boundary
             if (paprsq-((iy-iy_axis)*dy-yoff)**2 > 0.) then
@@ -6578,8 +6603,7 @@ c           --- find distance in y from boundary
 c         --- find distance in z from boundary
           if (.not. lz_in_plate .and.
      &        (paprsq < rad+r2fuzz .and. rad-r2fuzz < pradsq) .and.
-     &        necndbdy < ncndmax .and.
-     &        nocndbdy < ncndmax) then
+     &        ne < nemax .and. no < nomax) then
             delz = delz_in
           endif
 
@@ -6588,50 +6612,62 @@ c         --- if within one cell in any direction, save the point
      &        fuzz < abs(dely) .and. abs(dely) < 1.+fuzzsign*fuzz .or.
      &        fuzz < abs(delz) .and. abs(delz) < 1.+fuzzsign*fuzz) then
             if (mod(ix + iy + iz, 2) == 0) then
-c             --- even
-              necndbdy = necndbdy + 1
-              ecdelmx(necndbdy) = 2.
-              ecdelpx(necndbdy) = 2.
-              ecdelmy(necndbdy) = 2.
-              ecdelpy(necndbdy) = 2.
-              ecdelmz(necndbdy) = 2.
-              ecdelpz(necndbdy) = 2.
-              if (fuzz <  delx.and. delx < 1.+fuzzsign*fuzz) ecdelmx(necndbdy) =  delx
-              if (fuzz <  dely.and. dely < 1.+fuzzsign*fuzz) ecdelmy(necndbdy) =  dely
-              if (fuzz <  delz.and. delz < 1.+fuzzsign*fuzz) ecdelmz(necndbdy) =  delz
-              if (fuzz < -delx.and.-delx < 1.+fuzzsign*fuzz) ecdelpx(necndbdy) = -delx
-              if (fuzz < -dely.and.-dely < 1.+fuzzsign*fuzz) ecdelpy(necndbdy) = -dely
-              if (fuzz < -delz.and.-delz < 1.+fuzzsign*fuzz) ecdelpz(necndbdy) = -delz
-              iecndx(necndbdy) = ix
-              iecndy(necndbdy) = iy
-              iecndz(necndbdy) = iz
-              ecvolt(necndbdy) = vvv
-            else
-c             --- odd
-              nocndbdy = nocndbdy + 1
-              ocdelmx(nocndbdy) = 2.
-              ocdelpx(nocndbdy) = 2.
-              ocdelmy(nocndbdy) = 2.
-              ocdelpy(nocndbdy) = 2.
-              ocdelmz(nocndbdy) = 2.
-              ocdelpz(nocndbdy) = 2.
-              if (fuzz <  delx.and. delx < 1.+fuzzsign*fuzz) ocdelmx(nocndbdy) =  delx
-              if (fuzz <  dely.and. dely < 1.+fuzzsign*fuzz) ocdelmy(nocndbdy) =  dely
-              if (fuzz <  delz.and. delz < 1.+fuzzsign*fuzz) ocdelmz(nocndbdy) =  delz
-              if (fuzz < -delx.and.-delx < 1.+fuzzsign*fuzz) ocdelpx(nocndbdy) = -delx
-              if (fuzz < -dely.and.-dely < 1.+fuzzsign*fuzz) ocdelpy(nocndbdy) = -dely
-              if (fuzz < -delz.and.-delz < 1.+fuzzsign*fuzz) ocdelpz(nocndbdy) = -delz
-              iocndx(nocndbdy) = ix
-              iocndy(nocndbdy) = iy
-              iocndz(nocndbdy) = iz
-              ocvolt(nocndbdy) = vvv
+c               --- even
+                ne = ne + 1
+                evensubgrid%dels(1,ne) = 2.
+                evensubgrid%dels(2,ne) = 2.
+                evensubgrid%dels(3,ne) = 2.
+                evensubgrid%dels(4,ne) = 2.
+                evensubgrid%dels(5,ne) = 2.
+                evensubgrid%dels(6,ne) = 2.
+                if (fuzz <  delx .and.  delx < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(1,ne) =  delx
+                if (fuzz <  dely .and.  dely < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(2,ne) =  dely
+                if (fuzz <  delz .and.  delz < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(3,ne) =  delz
+                if (fuzz < -delx .and. -delx < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(4,ne) = -delx
+                if (fuzz < -dely .and. -dely < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(5,ne) = -dely
+                if (fuzz < -delz .and. -delz < 1.+fuzzsign*fuzz)
+     &                evensubgrid%dels(6,ne) = -delz
+                evensubgrid%indx(1,ne) = ix
+                evensubgrid%indx(2,ne) = iy
+                evensubgrid%indx(3,ne) = iz
+                evensubgrid%volt(0,ne) = vvv
+              else
+c               --- odd
+                no = no + 1
+                oddsubgrid%dels(1,no) = 2.
+                oddsubgrid%dels(2,no) = 2.
+                oddsubgrid%dels(3,no) = 2.
+                oddsubgrid%dels(4,no) = 2.
+                oddsubgrid%dels(5,no) = 2.
+                oddsubgrid%dels(6,no) = 2.
+                if (fuzz <  delx .and.  delx < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(1,no) =  delx
+                if (fuzz <  dely .and.  dely < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(2,no) =  dely
+                if (fuzz <  delz .and.  delz < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(3,no) =  delz
+                if (fuzz < -delx .and. -delx < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(4,no) = -delx
+                if (fuzz < -dely .and. -dely < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(5,no) = -dely
+                if (fuzz < -delz .and. -delz < 1.+fuzzsign*fuzz)
+     &                oddsubgrid%dels(6,no) = -delz
+                oddsubgrid%indx(1,no) = ix
+                oddsubgrid%indx(2,no) = iy
+                oddsubgrid%indx(3,no) = iz
+                oddsubgrid%volt(0,no) = vvv
             endif
           endif
         enddo
       enddo
 
 c     --- Print warning if conductor arrays filled up.
-      if (necndbdy == ncndmax .or. nocndbdy == ncndmax .or.
+      if (ne == nemax .or. no == nomax .or.
      &    ncond == ncondmax) then
         call remark("WARNING: The arrays holding the conductor data have filled")
         call remark("         up.  Increase size of arrays to ensure all of")
@@ -6639,7 +6675,14 @@ c     --- Print warning if conductor arrays filled up.
         call remark("         In function platepnt.")
       endif
 
-      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+      interior%n = ncond
+      interior%nmax = ncondmax
+      evensubgrid%n = ne
+      evensubgrid%nmax = nemax
+      oddsubgrid%n = no
+      oddsubgrid%nmax = nomax
+
+      call setconductorvoltnumb(iestart,evensubgrid%n,iostart,oddsubgrid%n)
 
       return
       end
@@ -6662,8 +6705,15 @@ c
 c If not using sub-grid boundaries, that places conductor points, otherwise
 c saves data for sub-grid boundaries.
 
-
+      integer(ISZ):: ncond,ncondmax,ne,nemax,no,nomax
       integer(ISZ):: iy,iz,npoints,nsgpoints
+
+      ncond = interior%n
+      ncondmax = interior%nmax
+      ne = evensubgrid%n
+      nemax = evensubgrid%nmax
+      no = oddsubgrid%n
+      nomax = oddsubgrid%nmax
 
 c      if(solvergeom==RZgeom) then
 c        call dipopntrz(iymin,iymax,izmin,izmax,vvv,ix_near,ix,delx)
@@ -6677,11 +6727,14 @@ c     --- points.
       npoints = (izmax-izmin+1)*(iymax-iymin+1)
       nsgpoints = npoints
       if (ncond+npoints > ncondmax .or.
-     &    necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax) then
+     &    ne+nsgpoints > nemax .or. no+nsgpoints > nomax) then
         if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
-        if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
-     &    ncndmax = max(necndbdy,nocndbdy) + nsgpoints
-          call gchange("Conductor3d",0)
+        if (ne+nsgpoints > nemax)  nemax = ne + nsgpoints
+        if (no+nsgpoints > nomax)  nomax = no + nsgpoints
+        interior%nmax = ncondmax
+        evensubgrid%nmax = nemax
+        oddsubgrid%nmax = nomax
+        call gchange("Conductor3d",0)
       endif
 
 c     --- loop over plate to fill in data
@@ -6689,75 +6742,66 @@ c     --- loop over plate to fill in data
         do iz=izmin,izmax
           if (.not. lcndbndy .or. delx == 0) then
             ncond = ncond + 1
-            ixcond(ncond) = ix_near
-            iycond(ncond) = iy
-            izcond(ncond) = iz
-            condvolt(ncond) = vvv
+            interior%indx(1,ncond) = ix_near
+            interior%indx(2,ncond) = iy
+            interior%indx(3,ncond) = iz
+            interior%volt(ncond) = vvv
           else
 
             if (mod(ix + iy + iz,2) == 0) then
 c             --- ix is even
-              necndbdy = necndbdy + 1
-              ecdelmx(necndbdy) = 2.
-              ecdelpx(necndbdy) = delx
-              ecdelmy(necndbdy) = 2.
-              ecdelpy(necndbdy) = 2.
-              ecdelmz(necndbdy) = 2.
-              ecdelpz(necndbdy) = 2.
-              iecndx(necndbdy) = ix
-              iecndy(necndbdy) = iy
-              iecndz(necndbdy) = iz
-              ecvolt(necndbdy) = vvv
+              ne = ne + 1
+              evensubgrid%dels(:,ne) = 2.
+              evensubgrid%dels(2,ne) = delx
+              evensubgrid%indx(1,ne) = ix
+              evensubgrid%indx(2,ne) = iy
+              evensubgrid%indx(3,ne) = iz
+              evensubgrid%volt(0,ne) = vvv
 c             --- ix+1 is odd
-              nocndbdy = nocndbdy + 1
-              ocdelmx(nocndbdy) = 1. - delx
-              ocdelpx(nocndbdy) = 2.
-              ocdelmy(nocndbdy) = 2.
-              ocdelpy(nocndbdy) = 2.
-              ocdelmz(nocndbdy) = 2.
-              ocdelpz(nocndbdy) = 2.
-              iocndx(nocndbdy) = ix + 1
-              iocndy(nocndbdy) = iy
-              iocndz(nocndbdy) = iz
-              ocvolt(nocndbdy) = vvv
+              no = no + 1
+              oddsubgrid%dels(:,no) = 2.
+              oddsubgrid%dels(1,no) = 1. - delx
+              oddsubgrid%indx(1,no) = ix + 1
+              oddsubgrid%indx(2,no) = iy
+              oddsubgrid%indx(3,no) = iz
+              oddsubgrid%volt(0,no) = vvv
             else
 c             --- ix is odd
-              nocndbdy = nocndbdy + 1
-              ocdelmx(nocndbdy) = 2.
-              ocdelpx(nocndbdy) = delx
-              ocdelmy(nocndbdy) = 2.
-              ocdelpy(nocndbdy) = 2.
-              ocdelmz(nocndbdy) = 2.
-              ocdelpz(nocndbdy) = 2.
-              iocndx(nocndbdy) = ix
-              iocndy(nocndbdy) = iy
-              iocndz(nocndbdy) = iz
-              ocvolt(nocndbdy) = vvv
+              no = no + 1
+              oddsubgrid%dels(:,no) = 2.
+              oddsubgrid%dels(2,no) = delx
+              oddsubgrid%indx(1,no) = ix
+              oddsubgrid%indx(2,no) = iy
+              oddsubgrid%indx(3,no) = iz
+              oddsubgrid%volt(0,no) = vvv
 c             --- ix+1 is even
-              necndbdy = necndbdy + 1
-              ecdelmx(necndbdy) = 1. - delx
-              ecdelpx(necndbdy) = 2.
-              ecdelmy(necndbdy) = 2.
-              ecdelpy(necndbdy) = 2.
-              ecdelmz(necndbdy) = 2.
-              ecdelpz(necndbdy) = 2.
-              iecndx(necndbdy) = ix + 1
-              iecndy(necndbdy) = iy
-              iecndz(necndbdy) = iz
-              ecvolt(necndbdy) = vvv
+              ne = ne + 1
+              evensubgrid%dels(:,ne) = 2.
+              evensubgrid%dels(1,ne) = 1. - delx
+              evensubgrid%indx(1,ne) = ix + 1
+              evensubgrid%indx(2,ne) = iy
+              evensubgrid%indx(3,ne) = iz
+              evensubgrid%volt(0,ne) = vvv
             endif
           endif
         enddo
       enddo
 
 c     --- Print warning if conductor arrays filled up.
-      if (necndbdy == ncndmax .or. nocndbdy == ncndmax .or.
+      if (ne == nemax .or. no == nomax .or.
      &    ncond == ncondmax) then
         call remark("WARNING: The arrays holding the conductor data have filled")
         call remark("         up.  Increase size of arrays to ensure all of")
         call remark("         the conductors have been generated.")
         call remark("         In function dipopnt.")
       endif
+
+      interior%n = ncond
+      interior%nmax = ncondmax
+      evensubgrid%n = ne
+      evensubgrid%nmax = nemax
+      oddsubgrid%n = no
+      oddsubgrid%nmax = nomax
 
       return
       end
@@ -6773,6 +6817,7 @@ c===========================================================================
 
 c Sets points on injection source.
 
+      integer(ISZ):: ncond,ncondmax,ne,nemax,no,nomax
       integer(ISZ):: ij,inj_ij,ix,iy,iz,npoints,nsgpoints
       integer(ISZ):: ixmin,ixmax,iymin,iymax
       real(kind=8):: xx,yy,zz,ao_dx,bo_dy,ai_dx,bi_dy
@@ -6801,6 +6846,13 @@ c       --- Define maximum and minimum transverse extents of source
         ai_dx = ainjmin(ij)
         bi_dy = binjmin(ij)
 
+        ncond = interior%n
+        ncondmax = interior%nmax
+        ne = evensubgrid%n
+        nemax = evensubgrid%nmax
+        no = oddsubgrid%n
+        nomax = oddsubgrid%nmax
+
 c       --- Make sure there is enough space. npoints is the maximum
 c       --- number of points that could be needed. nsgpoints is 
 c       --- big enough to always be larger than the number of subgrid
@@ -6808,10 +6860,13 @@ c       --- points.
         npoints = pi*(ao_dx*bo_dy - ai_dx*bi_dy)/(dx*dy) + 1
         nsgpoints = npoints
         if (ncond+npoints > ncondmax .or.
-     &      necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax) then
+     &      ne+nsgpoints > nemax .or. no+nsgpoints > nomax) then
           if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
-          if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
-     &      ncndmax = max(necndbdy,nocndbdy) + nsgpoints
+          if (ne+nsgpoints > nemax)  nemax = ne + nsgpoints
+          if (no+nsgpoints > nomax)  nomax = no + nsgpoints
+          interior%nmax = ncondmax
+          evensubgrid%nmax = nemax
+          oddsubgrid%nmax = nomax
           call gchange("Conductor3d",0)
         endif
 
@@ -6866,44 +6921,52 @@ c           --- Now add conductor point or subgrid point
 c             --- If any del's are small, then all del's are small, so add
 c             --- a conductor point.
               ncond = ncond + 1
-              ixcond(ncond) = ix
-              iycond(ncond) = iy
-              izcond(ncond) = iz
-              condvolt(ncond) = vinject(ij)
+              interior%indx(1,ncond) = ix
+              interior%indx(2,ncond) = iy
+              interior%indx(3,ncond) = iz
+              interior%volt(ncond) = vinject(ij)
             else if (delmx < 1.+fuzzsign*fuzz .or. delpx < 1.+fuzzsign*fuzz .or.
      &               delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
      &               delmz < 1.+fuzzsign*fuzz) then
 c             --- Add subgrid point
               if (mod(ix+iy+iz,2) == 0) then
 c               --- even
-                necndbdy = necndbdy + 1
-                iecndx(necndbdy) = ix
-                iecndy(necndbdy) = iy
-                iecndz(necndbdy) = iz
-                ecdelmx(necndbdy) = delmx
-                ecdelmy(necndbdy) = delmy
-                ecdelmz(necndbdy) = delmz
-                ecdelpx(necndbdy) = delpx
-                ecdelpy(necndbdy) = delpy
-                ecdelpz(necndbdy) = delpz
-                ecvolt(necndbdy) = vinject(ij)
+                ne = ne + 1
+                evensubgrid%indx(1,ne) = ix
+                evensubgrid%indx(2,ne) = iy
+                evensubgrid%indx(3,ne) = iz
+                evensubgrid%dels(1,ne) = delmx
+                evensubgrid%dels(2,ne) = delmy
+                evensubgrid%dels(3,ne) = delmz
+                evensubgrid%dels(4,ne) = delpx
+                evensubgrid%dels(5,ne) = delpy
+                evensubgrid%dels(6,ne) = delpz
+                evensubgrid%volt(0,ne) = vinject(ij)
               else
 c               --- odd
-                nocndbdy = nocndbdy + 1
-                iocndx(nocndbdy) = ix
-                iocndy(nocndbdy) = iy
-                iocndz(nocndbdy) = iz
-                ocdelmx(nocndbdy) = delmx
-                ocdelmy(nocndbdy) = delmy
-                ocdelmz(nocndbdy) = delmz
-                ocdelpx(nocndbdy) = delpx
-                ocdelpy(nocndbdy) = delpy
-                ocdelpz(nocndbdy) = delpz
-                ocvolt(nocndbdy) = vinject(ij)
+                no = no + 1
+                oddsubgrid%indx(1,no) = ix
+                oddsubgrid%indx(2,no) = iy
+                oddsubgrid%indx(3,no) = iz
+                oddsubgrid%dels(1,no) = delmx
+                oddsubgrid%dels(2,no) = delmy
+                oddsubgrid%dels(3,no) = delmz
+                oddsubgrid%dels(4,no) = delpx
+                oddsubgrid%dels(5,no) = delpy
+                oddsubgrid%dels(6,no) = delpz
+                oddsubgrid%volt(0,no) = vinject(ij)
               endif
             endif
           enddo
         enddo
+
+        interior%n = ncond
+        interior%nmax = ncondmax
+        evensubgrid%n = ne
+        evensubgrid%nmax = nemax
+        oddsubgrid%n = no
+        oddsubgrid%nmax = nomax
+
       enddo
 
       return
@@ -7046,6 +7109,7 @@ c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of Conductor3d.
 
+      integer(ISZ):: ncond,ncondmax,ne,nemax,no,nomax
       integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
@@ -7063,8 +7127,8 @@ c Output is put directly into the conductor arrays of Conductor3d.
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
 
-      iestart = necndbdy + 1
-      iostart = nocndbdy + 1
+      iestart = evensubgrid%n + 1
+      iostart = oddsubgrid%n + 1
 
       rmaxsq = rmax*rmax
       max_dxdy = max(dx,dy)
@@ -7132,8 +7196,11 @@ c Set conductor points.  If lfill or at end, set all points outside radius.
         zlower = max(zz-dz,zmin)
         zhigher = min(zz+dz,zmax)
 c       --- Make sure there is enough room in the arrays.
+        ncond = interior%n
+        ncondmax = interior%nmax
         if (ncond + (1+nx)*(1+ny) > ncondmax) then
           ncondmax = ncond + (1+nx)*(1+ny)
+          interior%nmax = ncondmax
           call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
@@ -7176,14 +7243,16 @@ c           --- unfilled conductor.
      &                          xxmax-xx < max_dxdy .or.
      &                          yymax-yy < max_dxdy      )))) then
               ncond = ncond + 1
-              ixcond(ncond) = ix
-              iycond(ncond) = iy
-              izcond(ncond) = iz
-              condvolt(ncond) = volt
-              condnumb(ncond) = condid
+              interior%indx(1,ncond) = ix
+              interior%indx(2,ncond) = iy
+              interior%indx(3,ncond) = iz
+              interior%volt(ncond) = volt
+              interior%numb(ncond) = condid
             endif
           enddo
         enddo
+        interior%n = ncond
+        interior%nmax = ncondmax
       enddo
 c End of conductor points section
 
@@ -7205,9 +7274,18 @@ c       -- Set all points along and just outside conductor.
           zlower = max(zz-dz,zmin)
           zhigher = min(zz+dz,zmax)
 
-          if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
-     &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
-            ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
+          ne = evensubgrid%n
+          nemax = evensubgrid%nmax
+          no = oddsubgrid%n
+          nomax = oddsubgrid%nmax
+          if (ne + (1+nx)*(1+ny) > evensubgrid%nmax) then
+            nemax = ne + (1+nx)*(1+ny)
+            evensubgrid%nmax = nemax
+            call gchange("Conductor3d",0)
+          endif
+          if (no + (1+nx)*(1+ny) > oddsubgrid%nmax) then
+            nomax = no + (1+nx)*(1+ny)
+            oddsubgrid%nmax = nomax
             call gchange("Conductor3d",0)
           endif
 
@@ -7462,40 +7540,44 @@ c             -- Check if any of the distances are less than 1.
      &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
                 if (mod(ix+iy+iz,2) == 0) then
 c                 --- even
-                  necndbdy = necndbdy + 1
-                  iecndx(necndbdy) = ix
-                  iecndy(necndbdy) = iy
-                  iecndz(necndbdy) = iz
-                  ecdelmx(necndbdy) = delmx
-                  ecdelmy(necndbdy) = delmy
-                  ecdelmz(necndbdy) = delmz
-                  ecdelpx(necndbdy) = delpx
-                  ecdelpy(necndbdy) = delpy
-                  ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = volt
-                  ecnumb(necndbdy) = condid
+                  ne = ne + 1
+                  evensubgrid%indx(1,ne) = ix
+                  evensubgrid%indx(2,ne) = iy
+                  evensubgrid%indx(3,ne) = iz
+                  evensubgrid%dels(1,ne) = delmx
+                  evensubgrid%dels(2,ne) = delmy
+                  evensubgrid%dels(3,ne) = delmz
+                  evensubgrid%dels(4,ne) = delpx
+                  evensubgrid%dels(5,ne) = delpy
+                  evensubgrid%dels(6,ne) = delpz
+                  evensubgrid%volt(0,ne) = volt
+                  evensubgrid%numb(0,ne) = condid
                 else
 c                 --- odd
-                  nocndbdy = nocndbdy + 1
-                  iocndx(nocndbdy) = ix
-                  iocndy(nocndbdy) = iy
-                  iocndz(nocndbdy) = iz
-                  ocdelmx(nocndbdy) = delmx
-                  ocdelmy(nocndbdy) = delmy
-                  ocdelmz(nocndbdy) = delmz
-                  ocdelpx(nocndbdy) = delpx
-                  ocdelpy(nocndbdy) = delpy
-                  ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = volt
-                  ocnumb(nocndbdy) = condid
+                  no = no + 1
+                  oddsubgrid%indx(1,no) = ix
+                  oddsubgrid%indx(2,no) = iy
+                  oddsubgrid%indx(3,no) = iz
+                  oddsubgrid%dels(1,no) = delmx
+                  oddsubgrid%dels(2,no) = delmy
+                  oddsubgrid%dels(3,no) = delmz
+                  oddsubgrid%dels(4,no) = delpx
+                  oddsubgrid%dels(5,no) = delpy
+                  oddsubgrid%dels(6,no) = delpz
+                  oddsubgrid%volt(0,no) = volt
+                  oddsubgrid%numb(0,no) = condid
                 endif
               endif
             enddo
           enddo
+          evensubgrid%n = ne
+          evensubgrid%nmax = nemax
+          oddsubgrid%n = no
+          oddsubgrid%nmax = nomax
         enddo
       endif
 
-      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+      call setconductorvoltnumb(iestart,evensubgrid%n,iostart,oddsubgrid%n)
 
       return
       end
@@ -7633,6 +7715,7 @@ c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of Conductor3d.
 c See comments in srfrvout.
 
+      integer(ISZ):: ncond,ncondmax,ne,nemax,no,nomax
       integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
@@ -7650,8 +7733,8 @@ c See comments in srfrvout.
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
 
-      iestart = necndbdy + 1
-      iostart = nocndbdy + 1
+      iestart = evensubgrid%n + 1
+      iostart = oddsubgrid%n + 1
 
       rminsq = rmin*rmin
       max_dxdy = max(dx,dy)
@@ -7719,8 +7802,11 @@ c Set conductor points.  If lfill or at end, set all points inside radius.
         zlower = max(zz-dz,zmin)
         zhigher = min(zz+dz,zmax)
 c       --- Make sure there is enough room in the arrays.
+        ncond = interior%n
+        ncondmax = interior%nmax
         if (ncond + (1+nx)*(1+ny) > ncondmax) then
           ncondmax = ncond + (1+nx)*(1+ny)
+          interior%nmax = ncondmax
           call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
@@ -7765,14 +7851,16 @@ c           --- unfilled conductor.
      &                          xxmax-xx < max_dxdy .or.
      &                          yymax-yy < max_dxdy      )))) then
               ncond = ncond + 1
-              ixcond(ncond) = ix
-              iycond(ncond) = iy
-              izcond(ncond) = iz
-              condvolt(ncond) = volt
-              condnumb(ncond) = condid
+              interior%indx(1,ncond) = ix
+              interior%indx(2,ncond) = iy
+              interior%indx(3,ncond) = iz
+              interior%volt(ncond) = volt
+              interior%numb(ncond) = condid
             endif
           enddo
         enddo
+        interior%n = ncond
+        interior%nmax = ncondmax
       enddo
 c End of conductor points section
 
@@ -7794,9 +7882,18 @@ c       -- Loop over z planes
           zlower = max(zz-dz,zmin)
           zhigher = min(zz+dz,zmax)
 
-          if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
-     &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
-            ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
+          ne = evensubgrid%n
+          nemax = evensubgrid%nmax
+          no = oddsubgrid%n
+          nomax = oddsubgrid%nmax
+          if (ne + (1+nx)*(1+ny) > evensubgrid%nmax) then
+            nemax = ne + (1+nx)*(1+ny)
+            evensubgrid%nmax = nemax
+            call gchange("Conductor3d",0)
+          endif
+          if (no + (1+nx)*(1+ny) > oddsubgrid%nmax) then
+            nomax = no + (1+nx)*(1+ny)
+            oddsubgrid%nmax = nomax
             call gchange("Conductor3d",0)
           endif
 
@@ -8058,39 +8155,45 @@ c             -- Check if any of the distances are less than 1.
      &            delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
      &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
                 if (mod(ix+iy+iz,2) == 0) then
-                  necndbdy = necndbdy + 1
-                  iecndx(necndbdy) = ix
-                  iecndy(necndbdy) = iy
-                  iecndz(necndbdy) = iz
-                  ecdelmx(necndbdy) = delmx
-                  ecdelmy(necndbdy) = delmy
-                  ecdelmz(necndbdy) = delmz
-                  ecdelpx(necndbdy) = delpx
-                  ecdelpy(necndbdy) = delpy
-                  ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = volt
-                  ecnumb(necndbdy) = condid
+c                 --- even
+                  ne = ne + 1
+                  evensubgrid%indx(1,ne) = ix
+                  evensubgrid%indx(2,ne) = iy
+                  evensubgrid%indx(3,ne) = iz
+                  evensubgrid%dels(1,ne) = delmx
+                  evensubgrid%dels(2,ne) = delmy
+                  evensubgrid%dels(3,ne) = delmz
+                  evensubgrid%dels(4,ne) = delpx
+                  evensubgrid%dels(5,ne) = delpy
+                  evensubgrid%dels(6,ne) = delpz
+                  evensubgrid%volt(0,ne) = volt
+                  evensubgrid%numb(0,ne) = condid
                 else
-                  nocndbdy = nocndbdy + 1
-                  iocndx(nocndbdy) = ix
-                  iocndy(nocndbdy) = iy
-                  iocndz(nocndbdy) = iz
-                  ocdelmx(nocndbdy) = delmx
-                  ocdelmy(nocndbdy) = delmy
-                  ocdelmz(nocndbdy) = delmz
-                  ocdelpx(nocndbdy) = delpx
-                  ocdelpy(nocndbdy) = delpy
-                  ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = volt
-                  ocnumb(nocndbdy) = condid
+c                 --- odd
+                  no = no + 1
+                  oddsubgrid%indx(1,no) = ix
+                  oddsubgrid%indx(2,no) = iy
+                  oddsubgrid%indx(3,no) = iz
+                  oddsubgrid%dels(1,no) = delmx
+                  oddsubgrid%dels(2,no) = delmy
+                  oddsubgrid%dels(3,no) = delmz
+                  oddsubgrid%dels(4,no) = delpx
+                  oddsubgrid%dels(5,no) = delpy
+                  oddsubgrid%dels(6,no) = delpz
+                  oddsubgrid%volt(0,no) = volt
+                  oddsubgrid%numb(0,no) = condid
                 endif
               endif
             enddo
           enddo
+          evensubgrid%n = ne
+          evensubgrid%nmax = nemax
+          oddsubgrid%n = no
+          oddsubgrid%nmax = nomax
         enddo
       endif
 
-      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+      call setconductorvoltnumb(iestart,evensubgrid%n,iostart,oddsubgrid%n)
 
       return
       end
@@ -8240,6 +8343,7 @@ c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of Conductor3d.
 
+      integer(ISZ):: ncond,ncondmax,ne,nemax,no,nomax
       integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rad,rrrmax,rrrmin
@@ -8261,8 +8365,8 @@ c Output is put directly into the conductor arrays of Conductor3d.
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
 
-      iestart = necndbdy + 1
-      iostart = nocndbdy + 1
+      iestart = evensubgrid%n + 1
+      iostart = oddsubgrid%n + 1
 
       max_dxdy = max(dx,dy)
       dxi = 1./dx
@@ -8329,8 +8433,11 @@ c Set conductor points.
         zlower = max(zz-dz,zmin)
         zhigher = min(zz+dz,zmax)
 c       --- Make sure there is enough room in the arrays.
+        ncond = interior%n
+        ncondmax = interior%nmax
         if (ncond + (1+nx)*(1+ny) > ncondmax) then
           ncondmax = ncond + (1+nx)*(1+ny)
+          interior%nmax = ncondmax
           call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
@@ -8349,14 +8456,16 @@ c           --- of the conductor.
      &           xxmin <= xx .and. xx <= xxmax .and.
      &           yymin <= yy .and. yy <= yymax)) then
               ncond = ncond + 1
-              ixcond(ncond) = ix
-              iycond(ncond) = iy
-              izcond(ncond) = iz
-              condvolt(ncond) = volt
-              condnumb(ncond) = condid
+              interior%indx(1,ncond) = ix
+              interior%indx(2,ncond) = iy
+              interior%indx(3,ncond) = iz
+              interior%volt(ncond) = volt
+              interior%numb(ncond) = condid
             endif
           enddo
         enddo
+        interior%n = ncond
+        interior%nmax = ncondmax
       enddo
 c End of conductor points section
 
@@ -8380,9 +8489,18 @@ c       -- Set all points along and just outside conductor.
           zlower = max(zz-dz,zmin)
           zhigher = min(zz+dz,zmax)
 
-          if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
-     &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
-            ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
+          ne = evensubgrid%n
+          nemax = evensubgrid%nmax
+          no = oddsubgrid%n
+          nomax = oddsubgrid%nmax
+          if (ne + (1+nx)*(1+ny) > evensubgrid%nmax) then
+            nemax = ne + (1+nx)*(1+ny)
+            evensubgrid%nmax = nemax
+            call gchange("Conductor3d",0)
+          endif
+          if (no + (1+nx)*(1+ny) > oddsubgrid%nmax) then
+            nomax = no + (1+nx)*(1+ny)
+            oddsubgrid%nmax = nomax
             call gchange("Conductor3d",0)
           endif
 
@@ -8720,40 +8838,44 @@ c             -- Check if any of the distances are less than 1.
      &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
                 if (mod(ix+iy+iz,2) == 0) then
 c                 --- even
-                  necndbdy = necndbdy + 1
-                  iecndx(necndbdy) = ix
-                  iecndy(necndbdy) = iy
-                  iecndz(necndbdy) = iz
-                  ecdelmx(necndbdy) = delmx
-                  ecdelmy(necndbdy) = delmy
-                  ecdelmz(necndbdy) = delmz
-                  ecdelpx(necndbdy) = delpx
-                  ecdelpy(necndbdy) = delpy
-                  ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = volt
-                  ecnumb(necndbdy) = condid
+                  ne = ne + 1
+                  evensubgrid%indx(1,ne) = ix
+                  evensubgrid%indx(2,ne) = iy
+                  evensubgrid%indx(3,ne) = iz
+                  evensubgrid%dels(1,ne) = delmx
+                  evensubgrid%dels(2,ne) = delmy
+                  evensubgrid%dels(3,ne) = delmz
+                  evensubgrid%dels(4,ne) = delpx
+                  evensubgrid%dels(5,ne) = delpy
+                  evensubgrid%dels(6,ne) = delpz
+                  evensubgrid%volt(0,ne) = volt
+                  evensubgrid%numb(0,ne) = condid
                 else
 c                 --- odd
-                  nocndbdy = nocndbdy + 1
-                  iocndx(nocndbdy) = ix
-                  iocndy(nocndbdy) = iy
-                  iocndz(nocndbdy) = iz
-                  ocdelmx(nocndbdy) = delmx
-                  ocdelmy(nocndbdy) = delmy
-                  ocdelmz(nocndbdy) = delmz
-                  ocdelpx(nocndbdy) = delpx
-                  ocdelpy(nocndbdy) = delpy
-                  ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = volt
-                  ocnumb(nocndbdy) = condid
+                  no = no + 1
+                  oddsubgrid%indx(1,no) = ix
+                  oddsubgrid%indx(2,no) = iy
+                  oddsubgrid%indx(3,no) = iz
+                  oddsubgrid%dels(1,no) = delmx
+                  oddsubgrid%dels(2,no) = delmy
+                  oddsubgrid%dels(3,no) = delmz
+                  oddsubgrid%dels(4,no) = delpx
+                  oddsubgrid%dels(5,no) = delpy
+                  oddsubgrid%dels(6,no) = delpz
+                  oddsubgrid%volt(0,no) = volt
+                  oddsubgrid%numb(0,no) = condid
                 endif
               endif
             enddo
           enddo
+          evensubgrid%n = ne
+          evensubgrid%nmax = nemax
+          oddsubgrid%n = no
+          oddsubgrid%nmax = nomax
         enddo
       endif
 
-      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+      call setconductorvoltnumb(iestart,evensubgrid%n,iostart,oddsubgrid%n)
 
       return
       end
@@ -8973,60 +9095,23 @@ c===========================================================================
 c Sets the voltage voltage and number for each of the 6 directions, for the
 c points with indices in the range i1 and i2.
 
-      integer(ISZ):: i
+      integer(ISZ):: i,id
 
       do i=ie1,ie2
-        if (ecdelmx(i) < 1.) then
-          ecvoltmx(i) = ecvolt(i)
-          ecnumbmx(i) = ecnumb(i)
-        endif
-        if (ecdelmy(i) < 1.) then
-          ecvoltmy(i) = ecvolt(i)
-          ecnumbmy(i) = ecnumb(i)
-        endif
-        if (ecdelmz(i) < 1.) then
-          ecvoltmz(i) = ecvolt(i)
-          ecnumbmz(i) = ecnumb(i)
-        endif
-        if (ecdelpx(i) < 1.) then
-          ecvoltpx(i) = ecvolt(i)
-          ecnumbpx(i) = ecnumb(i)
-        endif
-        if (ecdelpy(i) < 1.) then
-          ecvoltpy(i) = ecvolt(i)
-          ecnumbpy(i) = ecnumb(i)
-        endif
-        if (ecdelpz(i) < 1.) then
-          ecvoltpz(i) = ecvolt(i)
-          ecnumbpz(i) = ecnumb(i)
-        endif
+        do id=1,6
+          if (evensubgrid%dels(id,i) < 1.) then
+            evensubgrid%volt(id,i) = evensubgrid%volt(0,i)
+            evensubgrid%numb(id,i) = evensubgrid%numb(0,i)
+          endif
+        enddo
       enddo
-
       do i=io1,io2
-        if (ocdelmx(i) < 1.) then
-          ocvoltmx(i) = ocvolt(i)
-          ocnumbmx(i) = ocnumb(i)
-        endif
-        if (ocdelmy(i) < 1.) then
-          ocvoltmy(i) = ocvolt(i)
-          ocnumbmy(i) = ocnumb(i)
-        endif
-        if (ocdelmz(i) < 1.) then
-          ocvoltmz(i) = ocvolt(i)
-          ocnumbmz(i) = ocnumb(i)
-        endif
-        if (ocdelpx(i) < 1.) then
-          ocvoltpx(i) = ocvolt(i)
-          ocnumbpx(i) = ocnumb(i)
-        endif
-        if (ocdelpy(i) < 1.) then
-          ocvoltpy(i) = ocvolt(i)
-          ocnumbpy(i) = ocnumb(i)
-        endif
-        if (ocdelpz(i) < 1.) then
-          ocvoltpz(i) = ocvolt(i)
-          ocnumbpz(i) = ocnumb(i)
-        endif
+        do id=1,6
+          if (oddsubgrid%dels(id,i) < 1.) then
+            oddsubgrid%volt(id,i) = oddsubgrid%volt(0,i)
+            oddsubgrid%numb(id,i) = oddsubgrid%numb(0,i)
+          endif
+        enddo
       enddo
 
       return

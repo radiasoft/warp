@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.98 $, $Date: 2004/03/31 13:49:29 $
+#@(#) File F3D.V, version $Revision: 3.99 $, $Date: 2004/03/31 15:06:12 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.98 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.99 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -119,6 +119,26 @@ dxfine    real         # Size of transverse grid cells are finest level
 lplates  logical /.true./ # Sets whether or not quadruple endplates are included
 rodfract        real /1./ # Fraction of quadrupole rod which is used
 
+%%%%%%%%%% ConductorInterior:
+nmax          integer /0/ # Maximum number of points in conductor
+n             integer /0/ # Number of points within conductors
+indx(3,nmax) _integer # Coordinates of points in conductor
+volt(nmax)   _real    # voltage of points in conductor
+numb(nmax)   _integer # Number of the conductor the points are in
+ilevel(nmax) _integer /-1/ # Coarseness level at which the point is on grid
+istart(0:100) integer # Start of the conductor points for each MG level
+
+%%%%%%%%%% ConductorSubGrid:
+nmax            integer /0/ # Maximum number of points for sub-grid boundaries
+n               integer /0/ # Number of points for sub-grid boundaries
+prevphi(nmax)  _real    # Saves phi for sub-grid boundaries
+indx(3,nmax)   _integer # location of points for sub-grid boundaries
+dels(6,nmax)   _real    # distance to the surface
+volt(0:6,nmax) _real    # voltage of points for sub-grid boundaries
+numb(0:6,nmax) _integer # ID of the conductor the points are in
+ilevel(nmax)   _integer /-1/ # Coarseness level at which the point is on grid
+istart(0:100)   integer # Start of the conductor data for each MG level
+
 *********** Conductor3d dump parallel:
 laddconductor logical /.false./ # When true, the python function
                           # calladdconductor is called at the beginning of the 
@@ -127,81 +147,14 @@ lcndbndy logical /.true./ # Turns on sub-grid boundaries
 icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
                           # 2 EBC style (non-centered finite-difference)
-icstart(0:100)  integer -dump # Start of the conductor points for each MG level
-ecstart(0:100)  integer -dump # Start of the even conductor points for each MG level
-ocstart(0:100)  integer -dump # Start of the odd conductor points for each MG level
-ncondmax          integer # Maximum number of points in conductor
-ncond             integer # Number of points within conductors
-ixcond(ncondmax) _integer # X coordinate of points in conductor
-iycond(ncondmax) _integer # Y coordinate of points in conductor
-izcond(ncondmax) _integer # Y coordinate of points in conductor
-condvolt(ncondmax) _real  # voltage of points in conductor
-condnumb(ncondmax) _integer # Number of the conductor the points are in
-icondlevel(ncondmax) _integer /-1/ # Coarseness level at which the point is on grid
-#icondlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
-#icondlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
-
-fuzzsign      integer /-1/ # When -1, subgrid points with distances == 1 are
-                           # skipped, when +1 not skipped.
-ncndmax       integer /0/   # Maximum number of points for sub-grid boundaries
-necndbdy      integer /0/   # Number of points for even sub-grid boundaries
-ecndpvph(ncndmax)     _real -dump # Saves phi for even sub-grid boundaries
-iecndx  (ncndmax)  _integer # location of points for even sub-grid boundaries
-iecndy  (ncndmax)  _integer # location of points for even sub-grid boundaries
-iecndz  (ncndmax)  _integer # location of points for even sub-grid boundaries
-ecdelmx (ncndmax)     _real # distance in x of surface with lower x, even
-ecdelmy (ncndmax)     _real # distance in y of surface with lower y, even
-ecdelmz (ncndmax)     _real # distance in z of surface with lower z, even
-ecdelpx (ncndmax)     _real # distance in x of surface with higher x, even
-ecdelpy (ncndmax)     _real # distance in y of surface with higher y, even
-ecdelpz (ncndmax)     _real # distance in z of surface with higher z, even
-ecvolt  (ncndmax)     _real # voltage of points for even sub-grid boundaries
-ecvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction, even
-ecvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction, even
-ecvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction, even
-ecvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction, even
-ecvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction, even
-ecvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction, even
-ecnumb  (ncndmax)  _integer # Number of the conductor the even points are in
-ecnumbmx(ncndmax)  _integer # Number of the conductor in minus x direction, even
-ecnumbpx(ncndmax)  _integer # Number of the conductor in plus  x direction, even
-ecnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, even
-ecnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, even
-ecnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, even
-ecnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, even
-iecndlevel(ncndmax)  _integer /-1/ # Coarseness level at which the point is on grid
-#iecndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
-#iecndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
-
-nocndbdy      integer /0/   # Number of points for odd sub-grid boundaries
-ocndpvph(ncndmax)     _real -dump # Saves phi for odd sub-grid boundaries
-iocndx  (ncndmax)  _integer # location of points for odd sub-grid boundaries
-iocndy  (ncndmax)  _integer # location of points for odd sub-grid boundaries
-iocndz  (ncndmax)  _integer # location of points for odd sub-grid boundaries
-ocdelmx (ncndmax)     _real # distance in x of surface with lower x, odd
-ocdelmy (ncndmax)     _real # distance in y of surface with lower y, odd
-ocdelmz (ncndmax)     _real # distance in z of surface with lower z, odd
-ocdelpx (ncndmax)     _real # distance in x of surface with higher x, odd
-ocdelpy (ncndmax)     _real # distance in y of surface with higher y, odd
-ocdelpz (ncndmax)     _real # distance in z of surface with higher z, odd
-ocvolt  (ncndmax)     _real # voltage of points for odd sub-grid boundaries
-ocvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction, odd
-ocvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction, odd
-ocvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction, odd
-ocvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction, odd
-ocvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction, odd
-ocvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction, odd
-ocnumb  (ncndmax)  _integer # Number of the conductor the odd points are in
-ocnumbmx(ncndmax)  _integer # Number of the conductor in minus x direction, odd
-ocnumbpx(ncndmax)  _integer # Number of the conductor in plus  x direction, odd
-ocnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, odd
-ocnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, odd
-ocnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, odd
-ocnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, odd
-iocndlevel(ncndmax)  _integer /-1/ # Coarseness level at which the point is on grid
-#iocndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
-#iocndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
-checkconductors(nx:integer,ny:integer,nz:integer,nzfull:integer,dx:real,dy:real,dz:real,l2symtry:logical,l4symtry:logical) subroutine
+fuzzsign     integer /-1/ # When -1, subgrid points with distances == 1 are
+                          # skipped, when +1 not skipped.
+interior ConductorInterior   # Interior of the conductors
+evensubgrid ConductorSubGrid # Even subgrid data for conductors
+oddsubgrid ConductorSubGrid  # Odd subgrid data for conductors
+checkconductors(nx:integer,ny:integer,nz:integer,nzfull:integer,
+                dx:real,dy:real,dz:real,
+                l2symtry:logical,l4symtry:logical) subroutine
 
 *********** Multigrid3d dump:
 mgparam    real    /1.2/ # Acceleration parameter for multigrid fieldsolver
@@ -234,9 +187,6 @@ mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                          # A list of good numbers to use for the grid
                          # dimension. This is an ordered list of powers of two
                          # times 1, 3, 5, and 7.
-tempsize   integer       # Size of work space (autoset)
-phi_temp(tempsize) _real # Work space holding phi on all grid levels
-rho_temp(tempsize) _real # Work space holding source on all grid levels
 subgrid_sor_to_mg(nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
                   l2symtry:logical,l4symtry:logical) subroutine
   # Converts a set of points generated for the SOR fieldsolver into the set of

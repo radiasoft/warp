@@ -5415,9 +5415,9 @@ do igrid=1,ngrids
   zmin_in = b%zmin!-b%dz
   zmax_in = b%zmax!+b%dz
 
-  necndbdy=0
-  nocndbdy=0
-  ncond = 0
+  interior%n = 0
+  evensubgrid%n = 0
+  oddsubgrid%n = 0
 
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,  &
                    grids_ptr(igrid)%grid%rmin,grids_ptr(igrid)%grid%rmax,lshell,                      &
@@ -5425,20 +5425,30 @@ do igrid=1,ngrids
                    -NINT(grids_ptr(igrid)%grid%rmin/grids_ptr(igrid)%grid%dr), &
                    xmesh,l2symtry_in,l4symtry_in,condid)
 
-  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                        ncond, ixcond, izcond, condvolt, condnumb, &
-                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
+  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
+                 ixlbnd,ixrbnd,izlbnd,izrbnd, &
+                 interior%n, interior%indx(1,:), interior%indx(3,:), &
+                 interior%volt, interior%numb, &
+                 evensubgrid%n, evensubgrid%indx(1,:), evensubgrid%indx(3,:), &
+                 evensubgrid%dels(1,:), evensubgrid%dels(2,:), &
+                 evensubgrid%dels(5,:), evensubgrid%dels(6,:), &
+                 evensubgrid%volt(1,:),evensubgrid%volt(2,:), &
+                 evensubgrid%volt(5,:),evensubgrid%volt(6,:), &
+                 evensubgrid%numb(1,:),evensubgrid%numb(2,:), &
+                 evensubgrid%numb(5,:),evensubgrid%numb(6,:), &
+                 oddsubgrid%n, oddsubgrid%indx(1,:), oddsubgrid%indx(3,:), &
+                 oddsubgrid%dels(1,:), oddsubgrid%dels(2,:), &
+                 oddsubgrid%dels(5,:), oddsubgrid%dels(6,:), &
+                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
+                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:), &
+                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
+                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:))
   
  end do
 end do
-necndbdy=0
-nocndbdy=0
-ncond = 0
+interior%n = 0
+evensubgrid%n = 0
+oddsubgrid%n = 0
 
 return
 end subroutine srfrvoutrz
@@ -5492,9 +5502,9 @@ do igrid=1,ngrids
   zmin_in = b%zmin!-b%dz
   zmax_in = b%zmax!+b%dz
 
-  necndbdy=0
-  nocndbdy=0
-  ncond = 0
+  interior%n = 0
+  evensubgrid%n = 0
+  oddsubgrid%n = 0
 
   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,  &
                      lzend,grids_ptr(igrid)%grid%rmin,grids_ptr(igrid)%grid%rmax,lshell,                &
@@ -5502,20 +5512,30 @@ do igrid=1,ngrids
                      -NINT(grids_ptr(igrid)%grid%rmin/grids_ptr(igrid)%grid%dr), &
                      xmesh,l2symtry_in,l4symtry_in,condid)
 
-  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                        ncond, ixcond, izcond, condvolt, condnumb, &
-                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
+  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
+                 ixlbnd,ixrbnd,izlbnd,izrbnd, &
+                 interior%n, interior%indx(1,:), interior%indx(3,:), &
+                 interior%volt, interior%numb, &
+                 evensubgrid%n, evensubgrid%indx(1,:), evensubgrid%indx(3,:), &
+                 evensubgrid%dels(1,:), evensubgrid%dels(2,:), &
+                 evensubgrid%dels(5,:), evensubgrid%dels(6,:), &
+                 evensubgrid%volt(1,:),evensubgrid%volt(2,:), &
+                 evensubgrid%volt(5,:),evensubgrid%volt(6,:), &
+                 evensubgrid%numb(1,:),evensubgrid%numb(2,:), &
+                 evensubgrid%numb(5,:),evensubgrid%numb(6,:), &
+                 oddsubgrid%n, oddsubgrid%indx(1,:), oddsubgrid%indx(3,:), &
+                 oddsubgrid%dels(1,:), oddsubgrid%dels(2,:), &
+                 oddsubgrid%dels(5,:), oddsubgrid%dels(6,:), &
+                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
+                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:), &
+                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
+                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:))
   
  end do
 end do
-necndbdy=0
-nocndbdy=0
-ncond = 0
+interior%n = 0
+evensubgrid%n = 0
+oddsubgrid%n = 0
 return
 end subroutine srfrvinoutrz
 
@@ -5556,27 +5576,37 @@ do igrid=1,ngrids
   izrbnd = b%izrbnd
   zmin_in = b%zmin!-b%dz
 
-  necndbdy=0
-  nocndbdy=0
-  ncond = 0
+  interior%n = 0
+  evensubgrid%n = 0
+  oddsubgrid%n = 0
 
   call setcndtr_rz(rmin_in,zmin_in,zbeam,zgrid,nrc,nzc,drc,dzc, &
                    bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
 
-  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                        ncond, ixcond, izcond, condvolt, condnumb, &
-                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
+  call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
+                 ixlbnd,ixrbnd,izlbnd,izrbnd, &
+                 interior%n, interior%indx(1,:), interior%indx(3,:), &
+                 interior%volt, interior%numb, &
+                 evensubgrid%n, evensubgrid%indx(1,:), evensubgrid%indx(3,:), &
+                 evensubgrid%dels(1,:), evensubgrid%dels(2,:), &
+                 evensubgrid%dels(5,:), evensubgrid%dels(6,:), &
+                 evensubgrid%volt(1,:),evensubgrid%volt(2,:), &
+                 evensubgrid%volt(5,:),evensubgrid%volt(6,:), &
+                 evensubgrid%numb(1,:),evensubgrid%numb(2,:), &
+                 evensubgrid%numb(5,:),evensubgrid%numb(6,:), &
+                 oddsubgrid%n, oddsubgrid%indx(1,:), oddsubgrid%indx(3,:), &
+                 oddsubgrid%dels(1,:), oddsubgrid%dels(2,:), &
+                 oddsubgrid%dels(5,:), oddsubgrid%dels(6,:), &
+                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
+                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:), &
+                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
+                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:))
   
  end do
 end do
-necndbdy=0
-nocndbdy=0
-ncond = 0
+interior%n = 0
+evensubgrid%n = 0
+oddsubgrid%n = 0
 
 END subroutine setcndtrrz
 
@@ -5615,16 +5645,16 @@ mg_nocndbdy = 0
 
 ixlbnd = basegrid%ixlbnd
 ixrbnd = basegrid%ixrbnd
-do i = 1, ncond
-  ii = icondlevel(i) + 1
+do i = 1, interior%n
+  ii = interior%ilevel(i) + 1
   mg_ncond(ii) = mg_ncond(ii) + 1
 end do
-do i = 1, necndbdy
-  ii = iecndlevel(i) + 1
+do i = 1, evensubgrid%n
+  ii = evensubgrid%ilevel(i) + 1
   mg_necndbdy(ii) = mg_necndbdy(ii) + 1
 end do
-do i = 1, nocndbdy
-  ii = iocndlevel(i) + 1
+do i = 1, oddsubgrid%n
+  ii = oddsubgrid%ilevel(i) + 1
   mg_nocndbdy(ii) = mg_nocndbdy(ii) + 1
 end do
 
@@ -5656,53 +5686,53 @@ end do
            ecvoltmxtmp(necndbdytmp),ecvoltpxtmp(necndbdytmp), ecvoltmztmp(necndbdytmp),ecvoltpztmp(necndbdytmp), &
            ocvoltmxtmp(nocndbdytmp),ocvoltpxtmp(nocndbdytmp), ocvoltmztmp(nocndbdytmp),ocvoltpztmp(nocndbdytmp))
   itmp = 0
-  do ii = 1, ncond
-    IF(icondlevel(ii)+1==i) then
+  do ii = 1, interior%n
+    IF(interior%ilevel(ii)+1==i) then
       itmp = itmp + 1
-      ixcondtmp(itmp) = ixcond(ii)
-      izcondtmp(itmp) = izcond(ii)
-      condvolttmp(itmp) = condvolt(ii)
-      condnumbtmp(itmp) = condnumb(ii)
+      ixcondtmp(itmp) = interior%indx(1,ii)
+      izcondtmp(itmp) = interior%indx(3,ii)
+      condvolttmp(itmp) = interior%volt(ii)
+      condnumbtmp(itmp) = interior%numb(ii)
     END if
   end do
   itmp = 0
-  do ii = 1, necndbdy
-    IF(iecndlevel(ii)+1==i) then
+  do ii = 1, evensubgrid%n
+    IF(evensubgrid%ilevel(ii)+1==i) then
       itmp = itmp + 1
-      iecndxtmp(itmp) = iecndx(ii)
-      iecndztmp(itmp) = iecndz(ii)
-      ecdelmxtmp(itmp) = ecdelmx(ii)
-      ecdelpxtmp(itmp) = ecdelpx(ii)
-      ecdelmztmp(itmp) = ecdelmz(ii)
-      ecdelpztmp(itmp) = ecdelpz(ii)
-      ecvoltmxtmp(itmp) = ecvoltmx(ii)
-      ecvoltpxtmp(itmp) = ecvoltpx(ii)
-      ecvoltmztmp(itmp) = ecvoltmz(ii)
-      ecvoltpztmp(itmp) = ecvoltpz(ii)
-      ecnumbmxtmp(itmp) = ecnumbmx(ii)
-      ecnumbpxtmp(itmp) = ecnumbpx(ii)
-      ecnumbmztmp(itmp) = ecnumbmz(ii)
-      ecnumbpztmp(itmp) = ecnumbpz(ii)
+      iecndxtmp(itmp) = evensubgrid%indx(1,ii)
+      iecndztmp(itmp) = evensubgrid%indx(3,ii)
+      ecdelmxtmp(itmp) = evensubgrid%dels(1,ii)
+      ecdelpxtmp(itmp) = evensubgrid%dels(2,ii)
+      ecdelmztmp(itmp) = evensubgrid%dels(5,ii)
+      ecdelpztmp(itmp) = evensubgrid%dels(6,ii)
+      ecvoltmxtmp(itmp) = evensubgrid%volt(1,ii)
+      ecvoltpxtmp(itmp) = evensubgrid%volt(2,ii)
+      ecvoltmztmp(itmp) = evensubgrid%volt(5,ii)
+      ecvoltpztmp(itmp) = evensubgrid%volt(6,ii)
+      ecnumbmxtmp(itmp) = evensubgrid%numb(1,ii)
+      ecnumbpxtmp(itmp) = evensubgrid%numb(2,ii)
+      ecnumbmztmp(itmp) = evensubgrid%numb(5,ii)
+      ecnumbpztmp(itmp) = evensubgrid%numb(6,ii)
     END if
   end do
   itmp = 0
-  do ii = 1, nocndbdy
-    IF(iocndlevel(ii)+1==i) then
+  do ii = 1, oddsubgrid%n
+    IF(oddsubgrid%ilevel(ii)+1==i) then
       itmp = itmp + 1
-      iocndxtmp(itmp) = iocndx(ii)
-      iocndztmp(itmp) = iocndz(ii)
-      ocdelmxtmp(itmp) = ocdelmx(ii)
-      ocdelpxtmp(itmp) = ocdelpx(ii)
-      ocdelmztmp(itmp) = ocdelmz(ii)
-      ocdelpztmp(itmp) = ocdelpz(ii)
-      ocvoltmxtmp(itmp) = ocvoltmx(ii)
-      ocvoltpxtmp(itmp) = ocvoltpx(ii)
-      ocvoltmztmp(itmp) = ocvoltmz(ii)
-      ocvoltpztmp(itmp) = ocvoltpz(ii)
-      ocnumbmxtmp(itmp) = ocnumbmx(ii)
-      ocnumbpxtmp(itmp) = ocnumbpx(ii)
-      ocnumbmztmp(itmp) = ocnumbmz(ii)
-      ocnumbpztmp(itmp) = ocnumbpz(ii)
+      iocndxtmp(itmp) = oddsubgrid%indx(1,ii)
+      iocndztmp(itmp) = oddsubgrid%indx(3,ii)
+      ocdelmxtmp(itmp) = oddsubgrid%dels(1,ii)
+      ocdelpxtmp(itmp) = oddsubgrid%dels(2,ii)
+      ocdelmztmp(itmp) = oddsubgrid%dels(5,ii)
+      ocdelpztmp(itmp) = oddsubgrid%dels(6,ii)
+      ocvoltmxtmp(itmp) = oddsubgrid%volt(1,ii)
+      ocvoltpxtmp(itmp) = oddsubgrid%volt(2,ii)
+      ocvoltmztmp(itmp) = oddsubgrid%volt(5,ii)
+      ocvoltpztmp(itmp) = oddsubgrid%volt(6,ii)
+      ocnumbmxtmp(itmp) = oddsubgrid%numb(1,ii)
+      ocnumbpxtmp(itmp) = oddsubgrid%numb(2,ii)
+      ocnumbmztmp(itmp) = oddsubgrid%numb(5,ii)
+      ocnumbpztmp(itmp) = oddsubgrid%numb(6,ii)
     END if
   end do
   call addconductors_rz(b,nrc,nzc,drc,dzc,basegrid%rmin,ixlbnd,ixrbnd,izlbnd,izrbnd, &
@@ -5728,9 +5758,9 @@ end do
 
 DEALLOCATE(mg_ncond,mg_necndbdy, mg_nocndbdy)
 
-necndbdy=0
-nocndbdy=0
-ncond = 0
+interior%n = 0
+evensubgrid%n = 0
+oddsubgrid%n = 0
 
 call get_cond_rz(1)
 
@@ -8827,21 +8857,22 @@ TYPE(CONDtype), pointer :: c
    bnd => bnd%next
  end do
  
- ncond    = 0
- necndbdy = 0
- nocndbdy = 0
+ interior%n = 0
+ evensubgrid%n = 0
+ oddsubgrid%n = 0
  do ic = 1, bnd%nb_conductors
    IF(ic==1) then
      c => bnd%cndfirst
    else
      c => c%next
    END if
-   ncond    = ncond    + c%ncond
-   necndbdy = necndbdy + c%nbbndred
-   nocndbdy = nocndbdy + c%nbbnd-c%nbbndred
+   interior%n    = interior%n    + c%ncond
+   evensubgrid%n = evensubgrid%n + c%nbbndred
+   oddsubgrid%n  = oddsubgrid%n  + c%nbbnd-c%nbbndred
  END do
- if (ncondmax < ncond) ncondmax = ncond
- if (ncndmax < max(necndbdy,nocndbdy)) ncndmax = max(necndbdy,nocndbdy)
+ if (interior%nmax < interior%n) interior%nmax = interior%n
+ if (evensubgrid%nmax < evensubgrid%n) evensubgrid%nmax = evensubgrid%n
+ if (oddsubgrid%nmax < oddsubgrid%n) oddsubgrid%nmax = oddsubgrid%n
  call gchange("Conductor3d",0)
 
  icc=0
@@ -8855,48 +8886,48 @@ TYPE(CONDtype), pointer :: c
    END if
    do i = 1, c%ncond
      icc=icc+1
-     ixcond(icc) = c%jcond(i)-1
-     izcond(icc) = c%kcond(i)-1
-     icondlevel(icc) = ilevel - 1
-     condvolt(icc) = c%voltage(i)
+     interior%indx(1,icc) = c%jcond(i)-1
+     interior%indx(3,icc) = c%kcond(i)-1
+     interior%ilevel(icc) = ilevel - 1
+     interior%volt(icc) = c%voltage(i)
    end do
    do i = 1, c%nbbndred
     IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
      ice=ice+1
-     iecndx(ice) = c%jj(i)-1
-     iecndz(ice) = c%kk(i)-1
-     ecdelmx(ice) = c%dxm(i)/bnd%dr
-     ecdelpx(ice) = c%dxp(i)/bnd%dr
-     ecdelmz(ice) = c%dzm(i)/bnd%dz
-     ecdelpz(ice) = c%dzp(i)/bnd%dz
-     iecndlevel(ice) = ilevel - 1
-     ecvolt(ice) = c%volt0xm(i)
-     ecvoltmx(ice) = c%volt0xm(i)
-     ecvoltpx(ice) = c%volt0xp(i)
-     ecvoltmz(ice) = c%volt0zm(i)
-     ecvoltpz(ice) = c%volt0zp(i)
+     evensubgrid%indx(1,ice) = c%jj(i)-1
+     evensubgrid%indx(3,ice) = c%kk(i)-1
+     evensubgrid%dels(1,ice) = c%dxm(i)/bnd%dr
+     evensubgrid%dels(2,ice) = c%dxp(i)/bnd%dr
+     evensubgrid%dels(5,ice) = c%dzm(i)/bnd%dz
+     evensubgrid%dels(6,ice) = c%dzp(i)/bnd%dz
+     evensubgrid%ilevel(ice) = ilevel - 1
+     evensubgrid%volt(0,ice) = c%volt0xm(i)
+     evensubgrid%volt(1,ice) = c%volt0xm(i)
+     evensubgrid%volt(2,ice) = c%volt0xp(i)
+     evensubgrid%volt(5,ice) = c%volt0zm(i)
+     evensubgrid%volt(6,ice) = c%volt0zp(i)
     END if
    end do
    do i = c%nbbndred+1, c%nbbnd
     IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
      ico=ico+1
-     iocndx(ico) = c%jj(i)-1
-     iocndz(ico) = c%kk(i)-1
-     ocdelmx(ico) = c%dxm(i)/bnd%dr
-     ocdelpx(ico) = c%dxp(i)/bnd%dr
-     ocdelmz(ico) = c%dzm(i)/bnd%dz
-     ocdelpz(ico) = c%dzp(i)/bnd%dz
-     iocndlevel(ico) = ilevel - 1
-     ocvolt(ico) = c%volt0xm(i)
-     ocvoltmx(ico) = c%volt0xm(i)
-     ocvoltpx(ico) = c%volt0xp(i)
-     ocvoltmz(ico) = c%volt0zm(i)
-     ocvoltpz(ico) = c%volt0zp(i)
+     oddsubgrid%indx(1,ico) = c%jj(i)-1
+     oddsubgrid%indx(3,ico) = c%kk(i)-1
+     oddsubgrid%dels(1,ico) = c%dxm(i)/bnd%dr
+     oddsubgrid%dels(2,ico) = c%dxp(i)/bnd%dr
+     oddsubgrid%dels(5,ico) = c%dzm(i)/bnd%dz
+     oddsubgrid%dels(6,ico) = c%dzp(i)/bnd%dz
+     oddsubgrid%ilevel(ico) = ilevel - 1
+     oddsubgrid%volt(0,ico) = c%volt0xm(i)
+     oddsubgrid%volt(1,ico) = c%volt0xm(i)
+     oddsubgrid%volt(2,ico) = c%volt0xp(i)
+     oddsubgrid%volt(5,ico) = c%volt0zm(i)
+     oddsubgrid%volt(6,ico) = c%volt0zp(i)
     END if
    end do
  END do
- necndbdy = ice
- nocndbdy = ico
+ evensubgrid%n = ice
+ oddsubgrid%n = ico
 
 return
 end subroutine get_cond_rz_level
@@ -8913,9 +8944,9 @@ TYPE(CONDtype), pointer :: c
 
  IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
 
- ncond    = 0
- necndbdy = 0
- nocndbdy = 0
+ interior%n = 0
+ evensubgrid%n = 0
+ oddsubgrid%n = 0
  do il = 1, nlevels
    IF(il == 1) then
      bnd => grids_ptr(igrid)%grid%bndfirst
@@ -8928,13 +8959,14 @@ TYPE(CONDtype), pointer :: c
      else
        c => c%next
      END if
-     ncond    = ncond    + c%ncond
-     necndbdy = necndbdy + c%nbbndred
-     nocndbdy = nocndbdy + c%nbbnd-c%nbbndred
+     interior%n    = interior%n    + c%ncond
+     evensubgrid%n = evensubgrid%n + c%nbbndred
+     oddsubgrid%n  = oddsubgrid%n  + c%nbbnd-c%nbbndred
    END do
  END do
- if (ncondmax < ncond) ncondmax = ncond
- if (ncndmax < max(necndbdy,nocndbdy)) ncndmax = max(necndbdy,nocndbdy)
+ if (interior%nmax < interior%n) interior%nmax = interior%n
+ if (evensubgrid%nmax < evensubgrid%n) evensubgrid%nmax = evensubgrid%n
+ if (oddsubgrid%nmax < oddsubgrid%n) oddsubgrid%nmax = oddsubgrid%n
  call gchange("Conductor3d",0)
 
  icc=0
@@ -8954,49 +8986,49 @@ TYPE(CONDtype), pointer :: c
      END if
      do i = 1, c%ncond
        icc=icc+1
-       ixcond(icc) = c%jcond(i)-1
-       izcond(icc) = c%kcond(i)-1
-       icondlevel(icc) = il-1
-       condvolt(icc) = c%voltage(i)
+       interior%indx(1,icc) = c%jcond(i)-1
+       interior%indx(3,icc) = c%kcond(i)-1
+       interior%ilevel(icc) = il - 1
+       interior%volt(icc) = c%voltage(i)
      end do
      do i = 1, c%nbbndred
       IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
        ice=ice+1
-       iecndx(ice) = c%jj(i)-1
-       iecndz(ice) = c%kk(i)-1
-       ecdelmx(ice) = c%dxm(i)/bnd%dr
-       ecdelpx(ice) = c%dxp(i)/bnd%dr
-       ecdelmz(ice) = c%dzm(i)/bnd%dz
-       ecdelpz(ice) = c%dzp(i)/bnd%dz
-       iecndlevel(ice) = il-1
-       ecvolt(ice) = c%volt0xm(i)
-       ecvoltmx(ice) = c%volt0xm(i)
-       ecvoltpx(ice) = c%volt0xp(i)
-       ecvoltmz(ice) = c%volt0zm(i)
-       ecvoltpz(ice) = c%volt0zp(i)
+       evensubgrid%indx(1,ice) = c%jj(i)-1
+       evensubgrid%indx(3,ice) = c%kk(i)-1
+       evensubgrid%dels(1,ice) = c%dxm(i)/bnd%dr
+       evensubgrid%dels(2,ice) = c%dxp(i)/bnd%dr
+       evensubgrid%dels(5,ice) = c%dzm(i)/bnd%dz
+       evensubgrid%dels(6,ice) = c%dzp(i)/bnd%dz
+       evensubgrid%ilevel(ice) = il - 1
+       evensubgrid%volt(0,ice) = c%volt0xm(i)
+       evensubgrid%volt(1,ice) = c%volt0xm(i)
+       evensubgrid%volt(2,ice) = c%volt0xp(i)
+       evensubgrid%volt(5,ice) = c%volt0zm(i)
+       evensubgrid%volt(6,ice) = c%volt0zp(i)
       END if
      end do
      do i = c%nbbndred+1, c%nbbnd
       IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
        ico=ico+1
-       iocndx(ico) = c%jj(i)-1
-       iocndz(ico) = c%kk(i)-1
-       ocdelmx(ico) = c%dxm(i)/bnd%dr
-       ocdelpx(ico) = c%dxp(i)/bnd%dr
-       ocdelmz(ico) = c%dzm(i)/bnd%dz
-       ocdelpz(ico) = c%dzp(i)/bnd%dz
-       iocndlevel(ico) = il-1
-       ocvolt(ico) = c%volt0xm(i)
-       ocvoltmx(ico) = c%volt0xm(i)
-       ocvoltpx(ico) = c%volt0xp(i)
-       ocvoltmz(ico) = c%volt0zm(i)
-       ocvoltpz(ico) = c%volt0zp(i)
+       oddsubgrid%indx(1,ico) = c%jj(i)-1
+       oddsubgrid%indx(3,ico) = c%kk(i)-1
+       oddsubgrid%dels(1,ico) = c%dxm(i)/bnd%dr
+       oddsubgrid%dels(2,ico) = c%dxp(i)/bnd%dr
+       oddsubgrid%dels(5,ico) = c%dzm(i)/bnd%dz
+       oddsubgrid%dels(6,ico) = c%dzp(i)/bnd%dz
+       oddsubgrid%ilevel(ico) = il - 1
+       oddsubgrid%volt(0,ico) = c%volt0xm(i)
+       oddsubgrid%volt(1,ico) = c%volt0xm(i)
+       oddsubgrid%volt(2,ico) = c%volt0xp(i)
+       oddsubgrid%volt(5,ico) = c%volt0zm(i)
+       oddsubgrid%volt(6,ico) = c%volt0zp(i)
       END if
      end do
    END do
  END do
- necndbdy = ice
- nocndbdy = ico
+ evensubgrid%n = ice
+ oddsubgrid%n = ico
 
 return
 end subroutine get_cond_rz
