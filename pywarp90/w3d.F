@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.118 $, $Date: 2003/06/25 00:05:12 $
+c@(#) File W3D.M, version $Revision: 3.119 $, $Date: 2003/07/09 21:19:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3951,11 +3951,12 @@ c=============================================================================
         ymin = -ymmax
       elseif (l4symtry) then
         xmin = -xmmax
-        ymin = -ymmax
+        ymin = -xmmax
       endif
       if(solvergeom==RZgeom) then
         xmin = -xmmax
-        ymin = -ymmax
+        ymin = -xmmax
+        ymax =  xmmax
       else if(solvergeom==XZgeom) then
         if(l2symtry .or. l4symtry) then
           xmin = -xmmax
