@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.18 2001/07/25 00:22:27 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.19 2001/07/25 00:46:29 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -62,6 +62,38 @@ def scatterallzarray(a,zaxis=0):
   if zaxis != 0: a = swapaxes(a,0,zaxis)
   # --- Get the appropriate subsection
   result = a[top.izpslave[me]:top.izpslave[me]+top.nzpslave[me] + 1,...]
+  # --- Rearrange array to put the decomposed axis back where it started
+  if zaxis != 0: result = swapaxes(result,0,zaxis)
+  return result
+
+# ---------------------------------------------------------------------------
+def gatherallzmarray(a,zaxis=0):
+  """Gathers and broadcasts the data in a z-array. Each processor contributes
+the data from within the field decomposition region it owns.
+ - first argument is the z-array
+ - zaxis: axis which is decomposed in z
+  """
+  if not lparallel: return a
+  # --- Get start and end of particle decomposition region
+  iz1 = 0
+  if me < npes-1: iz2 = top.izslave[me+1] - 1 - top.izslave[me]
+  else:           iz2 = w3d.nzfull - top.izslave[me]
+  # --- Rearrange array to put the decomposed axis first
+  if zaxis != 0: a = swapaxes(a,0,zaxis)
+  # --- Gather and broadcast it
+  result = gatherarray(a[iz1:iz2+1,...])
+  result = broadcast(result)
+  # --- Rearrange array to put the decomposed axis back where it started
+  if zaxis != 0: result = swapaxes(result,0,zaxis)
+  return result
+ 
+# ---------------------------------------------------------------------------
+def scatterallzmarray(a,zaxis=0):
+  if not lparallel: return a
+  # --- Rearrange array to put the decomposed axis first
+  if zaxis != 0: a = swapaxes(a,0,zaxis)
+  # --- Get the appropriate subsection
+  result = a[top.izslave[me]:top.izslave[me]+top.nzslave[me] + 1,...]
   # --- Rearrange array to put the decomposed axis back where it started
   if zaxis != 0: result = swapaxes(result,0,zaxis)
   return result
