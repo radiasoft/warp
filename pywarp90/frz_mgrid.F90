@@ -1,4 +1,4 @@
-!     Last change:  JLV  12 Apr 2002    1:31 pm
+!     Last change:  JLV  12 Apr 2002    4:23 pm
 #include "top.h"
 
 module multigrid_common
@@ -2721,7 +2721,7 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 
   IF(iwhich==1) return
 
-  call distribute_rho(basegrid)
+!  call distribute_rho(basegrid)
 
   call solve_mgridrz(basegrid,accuracy)
 
@@ -3253,7 +3253,6 @@ INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
 
 IF(ngrids>1) then
   call rhoweightrznew(xp,yp,zp,np,q)
-  rho=basegrid%rho
 else
   invdr = 1._8/dr
   invdz = 1._8/dz
