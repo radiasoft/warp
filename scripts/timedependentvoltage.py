@@ -75,6 +75,9 @@ Input for constructor:
     # --- the fields.
     if doitnow: fieldsol(-1)
 
+  def disable(self):
+    uninstallbeforefs(self.applyvoltage)
+
   def applyvoltage(self,time=None):
     if time is None: time = top.time
     volt = self.getvolt(time)
