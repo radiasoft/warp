@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.62 2004/04/26 23:53:53 dave Exp $"
+warp_version = "$Id: warp.py,v 1.63 2004/05/06 00:57:03 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -206,8 +206,8 @@ isinstalledafterfs: Checks if a function is installed to be called after a
 uninstallafterfs: Uninstall the function called after a field-solve
 installbeforestep: Install a function which will be called before a step
 uninstallbeforestep: Uninstall the function called before a step
-isinstalledbeforefs: Checks if a function is installed to be called before a
-                     step
+isinstalledbeforestep: Checks if a function is installed to be called before a
+                       step
 installafterstep: Install a function which will be called after a step
 uninstallafterstep: Uninstall the function called after a step
 isinstalledafterfs: Checks if a function is installed to be called after a
