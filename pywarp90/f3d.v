@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.103 $, $Date: 2004/04/23 16:22:55 $
+#@(#) File F3D.V, version $Revision: 3.104 $, $Date: 2004/05/04 21:47:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.103 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.104 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -218,13 +218,59 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
                  l2symtry:logical,l4symtry:logical,
                  xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
                  mgparam:integer,mgform:integer,mgiters:integer,
-                 mgmaxiters:integer,mgerror:real,mgtol:real,
+                 mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
                  downpasses:integer,uppasses:integer,
                  lcndbndy:logical,laddconductor:logical,icndbndy:integer,
                  gridmode:integer,conductors:ConductorType)
    subroutine
    # Solves Poisson's equation using the multigrid method. All input is
    # through the argument list.
+residual(nx:integer,ny:integer,nz:integer,nzfull:integer,
+         dxsqi:real,dysqi:real,dzsqi:real,phi:real,rho:real,res:real,
+         mglevel:integer,localb0:integer,localbnz:integer,boundxy:integer,
+         l2symtry:logical,l4symtry:logical,
+         mgparam:real,mgform:integer,mgform2init:logical,
+         lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
+   subroutine
+   # Calculates the residual
+restrict2d(nx:integer,ny:integer,nz:integer,nzfull:integer,
+           res:real,rho2:real,ff:real,
+           boundxy:integer,localb0:integer,localbnz:integer,
+           l2symtry:logical,l4symtry:logical)
+   subroutine
+   # Restricts phi in 2 transverse dimensions
+expand2d(nx:integer,ny:integer,nz:integer,nzfull:integer,
+         phi2:real,phi:real,boundxy:integer,localb0:integer,localbnz:integer)
+   subroutine
+   # Expands phi in 2 transverse dimensiosn
+restrict3d(nx:integer,ny:integer,nz:integer,nznew:integer,nzfull:integer,
+           res:real,rho2:real,boundxy:integer,
+           local2b0:integer,local2bnz:integer,localb0:integer,localbnz:integer,
+           lparity:integer,rparity:integer,l2symtry:logical,l4symtry:logical)
+   subroutine
+   # Restricts phi in 3 dimensions
+expand3d(nx:integer,ny:integer,nznew:integer,nz:integer,nzfull:integer,
+         phi2:real,phi:real,
+         boundxy:integer,localb0:integer,localbnz:integer,
+         lparity:integer,rparity:integer)
+   subroutine
+   # Expands phi in 3 dimensiosn
+sorhalfpass3d(parity:integer,mglevel:integer,
+              nx:integer,ny:integer,nz:integer,nzfull:integer,
+              phi:real,rho:real,rstar:real,dxsqi:real,dysqi:real,dzsqi:real,
+              linbend:logical,l2symtry:logical,l4symtry:logical,bendx:real,
+              localb0:integer,localbnz:integer,boundxy:integer,
+              mgparam:real,mgform:integer,
+              lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
+   subroutine
+   # Performs one pass of SOR relaxation, either even or odd.
+cond_potmg(interior:ConductorInteriorType,nx:integer,ny:integer,nz:integer,
+           phi:real,mglevel:integer,lresidual:logical,
+           mgform:integer,mgform2init:logical)
+    subroutine
+    # Sets voltage on interior of conductors
+
+
 
 *********** Multigrid3d_work:
 # Temporary variables and array used by subgrid_sor_to_mg
