@@ -1,11 +1,39 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.16 2001/07/10 23:47:58 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.17 2001/07/12 00:40:33 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
 
+#-------------------------------------------------------------------------
+# --- This reorganizes the particles for the parallel version after the mesh
+# --- has been changed. The compiled routine reorg_particles should probably
+# --- be called instead (but it is not callable from python yet).
+def reorgparticles():
+  lout = 1
+  while lout:
+    zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
+    lout = 0
+    for js in range(top.ns):
+      ii=compress(greater(top.uzp[top.ins[js]-1:top.ins[js]+top.nps[js]-1],0.),
+                  iota(top.ins[js]-1,top.ins[js]+top.nps[js]-2))
+      if len(ii) > 0:
+        if (min(take(top.zp,ii))-top.zgrid <  top.zpslmin[me] or
+            max(take(top.zp,ii))-top.zgrid >= top.zpslmax[me]):
+          lout = 1
+ 
+     #ip1 = top.ins[js]-1
+     #ip2 = top.ins[js]+top.nps[js]-1
+     #if ip2 > ip1:
+     #  if logical_and(greater(top.uzp[ip1:ip1],0.),
+     #       logical_or(less(top.zp[ip1:ip1],top.zpslmin[me]+top.zgrid),
+     #         greater_equal(top.zp[ip1:ip1],top.zpslmax[me]+top.zgrid))):
+     #   lout = 1
+
+    lout = globalmax(lout)
+
+#-------------------------------------------------------------------------
 def convertiztope(iz):
   """Given an iz value, returns the processor number whose particle region
 contains that value."""
@@ -810,7 +838,6 @@ def readdump(fnameprefix):
   print "Restore from file "+fname
   basisrestore("dump",fname)
   print "Restore successful"
-
 
 
 
