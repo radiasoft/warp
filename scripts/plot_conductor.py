@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.19 2001/07/03 18:41:43 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.20 2001/07/17 17:33:18 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -21,6 +21,9 @@ plotsrfrv: handy command to plot r versus z for a suface of revolution, giving
            the function describing it
 
 plotquadoutline: plots outline of quadrupole structure
+
+cleanconductors: not a plot routine, buts removes conductor points not
+		 within the the range of the field solve
   """
 
 ######################################################################
@@ -109,12 +112,22 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   else:
     warpplp([],[],color=condcolor)
   if (plotsg):
-    plotsubgrid(izlocal,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
-                f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
-                ymmin,xmmin,dy,dx,evencolor,subgridlen)
-    plotsubgrid(izlocal,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
-                f3d.ocdelmy,f3d.ocdelmx,f3d.ocdelpy,f3d.ocdelpx,
-                ymmin,xmmin,dy,dx,oddcolor,subgridlen)
+    if f3d.necndbdy > 0:
+      plotsubgrid(izlocal,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
+                  f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
+                  ymmin,xmmin,dy,dx,evencolor,subgridlen)
+    else:
+      plotsubgrid(izlocal,0,[0],[0],[0],
+                  [2.],[2.],[2.],[2.],
+                  ymmin,xmmin,dy,dx,evencolor,subgridlen)
+    if f3d.nocndbdy > 0:
+      plotsubgrid(izlocal,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
+                  f3d.ocdelmy,f3d.ocdelmx,f3d.ocdelpy,f3d.ocdelpx,
+                  ymmin,xmmin,dy,dx,oddcolor,subgridlen)
+    else:
+      plotsubgrid(izlocal,0,[0],[0],[0],
+                  [2.],[2.],[2.],[2.],
+                  ymmin,xmmin,dy,dx,oddcolor,subgridlen)
 
 # z-x plane
 def pfzx(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
@@ -166,12 +179,25 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   else:
     warpplp([],[],color=condcolor)
   if (plotsg):
-    plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
-                f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
-                xmmin,zmmin,dx,dz,evencolor,subgridlen)
-    plotsubgrid(iy,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
-                f3d.ocdelmx,f3d.ocdelmz,f3d.ocdelpx,f3d.ocdelpz,
-                xmmin,zmmin,dx,dz,oddcolor,subgridlen)
+    # --- This coding is done to avoid reference to unallocated arrays
+    # --- and to prevent lock-ups on the parallel version.
+    # --- Kind of messy but I'm not sure what else to do.
+    if f3d.necndbdy > 0:
+      plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
+                  f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
+                  xmmin,zmmin,dx,dz,evencolor,subgridlen)
+    else:
+      plotsubgrid(iy,0,[0],[0],[0],
+                  [2.],[2.],[2.],[2.],
+                  xmmin,zmmin,dx,dz,evencolor,subgridlen)
+    if f3d.nocndbdy > 0:
+      plotsubgrid(iy,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
+                  f3d.ocdelmx,f3d.ocdelmz,f3d.ocdelpx,f3d.ocdelpz,
+                  xmmin,zmmin,dx,dz,oddcolor,subgridlen)
+    else:
+      plotsubgrid(iy,0,[0],[0],[0],
+                  [2.],[2.],[2.],[2.],
+                  xmmin,zmmin,dx,dz,oddcolor,subgridlen)
 
 # z-y plane
 def pfzy(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
@@ -223,12 +249,22 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   else:
     warpplp([],[],color=condcolor)
   if (plotsg):
-    plotsubgrid(ix,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
-                f3d.ecdelmy,f3d.ecdelmz,f3d.ecdelpy,f3d.ecdelpz,
-                ymmin,zmmin,dy,dz,evencolor,subgridlen)
-    plotsubgrid(ix,f3d.nocndbdy,f3d.iocndy,f3d.iocndz,f3d.iocndx,
-                f3d.ocdelmy,f3d.ocdelmz,f3d.ocdelpy,f3d.ocdelpz,
-                ymmin,zmmin,dy,dz,oddcolor,subgridlen)
+    if f3d.necndbdy > 0:
+      plotsubgrid(ix,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
+                  f3d.ecdelmy,f3d.ecdelmz,f3d.ecdelpy,f3d.ecdelpz,
+                  ymmin,zmmin,dy,dz,evencolor,subgridlen)
+    else:
+      plotsubgrid(ix,0,[0],[0],[0],
+                  [2.],[2.],[2.],[2.],
+                  ymmin,zmmin,dy,dz,evencolor,subgridlen)
+    if f3d.nocndbdy > 0:
+      plotsubgrid(ix,f3d.nocndbdy,f3d.iocndy,f3d.iocndz,f3d.iocndx,
+                  f3d.ocdelmy,f3d.ocdelmz,f3d.ocdelpy,f3d.ocdelpz,
+                  ymmin,zmmin,dy,dz,oddcolor,subgridlen)
+    else:
+      plotsubgrid(ix,0,[0],[0],[0],
+                  [2.],[2.],[2.],[2.],
+                  ymmin,zmmin,dy,dz,oddcolor,subgridlen)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
@@ -801,4 +837,85 @@ def plotquadoutline(iquad=0,nquad=None,color='fg',gridframe=0,axis='x'):
                      top.quadpa,top.quadpr,top.quadpw,
                      top.qdelpal,top.qdelpar)
 
+
+
+#########################################################################
+#########################################################################
+def cleanconductors():
+  """This routine clears out conductor points which are not within the
+range of the field solution, w3d.izfsmin and w3d.izfsmax. This is done
+for optimization so that time is not wasted on those points.
+  """
+  if f3d.ncond > 0:
+    ii = compress(logical_and(less(w3d.izfsmin-1,f3d.izcond[:f3d.ncond]), \
+                              less(f3d.izcond[:f3d.ncond],w3d.izfsmax+1)), \
+                  arange(f3d.ncond))
+    xx = take(f3d.ixcond,ii)
+    yy = take(f3d.iycond,ii)
+    zz = take(f3d.izcond,ii)
+    vv = take(f3d.condvolt,ii)
+    f3d.ncond = len(ii)
+    f3d.ncondmax = f3d.ncond
+    gchange("PSOR3d")
+    if f3d.ncond > 0:
+      f3d.ixcond[:] = xx
+      f3d.iycond[:] = yy
+      f3d.izcond[:] = zz
+      f3d.condvolt[:] = vv
+  if f3d.necndbdy > 0:
+    ii = compress(logical_and(less(w3d.izfsmin-1,f3d.iecndz[:f3d.necndbdy]), \
+                              less(f3d.iecndz[:f3d.necndbdy],w3d.izfsmax+1)), \
+                  arange(f3d.necndbdy))
+    xx = take(f3d.iecndx,ii)
+    yy = take(f3d.iecndy,ii)
+    zz = take(f3d.iecndz,ii)
+    mx = take(f3d.ecdelmx,ii)
+    my = take(f3d.ecdelmy,ii)
+    mz = take(f3d.ecdelmz,ii)
+    px = take(f3d.ecdelpx,ii)
+    py = take(f3d.ecdelpy,ii)
+    pz = take(f3d.ecdelpz,ii)
+    vv = take(f3d.ecvolt,ii)
+    f3d.necndbdy = len(ii)
+    f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy)
+    gchange("PSOR3d")
+    if f3d.necndbdy > 0:
+      f3d.iecndx[:f3d.necndbdy] = xx
+      f3d.iecndy[:f3d.necndbdy] = yy
+      f3d.iecndz[:f3d.necndbdy] = zz
+      f3d.ecdelmx[:f3d.necndbdy] = mx
+      f3d.ecdelmy[:f3d.necndbdy] = my
+      f3d.ecdelmz[:f3d.necndbdy] = mz
+      f3d.ecdelpx[:f3d.necndbdy] = px
+      f3d.ecdelpy[:f3d.necndbdy] = py
+      f3d.ecdelpz[:f3d.necndbdy] = pz
+      f3d.ecvolt[:f3d.necndbdy] = vv
+  if f3d.nocndbdy > 0:
+    ii = compress(logical_and(less(w3d.izfsmin-1,f3d.iocndz[:f3d.nocndbdy]), \
+                              less(f3d.iocndz[:f3d.nocndbdy],w3d.izfsmax+1)), \
+                  arange(f3d.nocndbdy))
+    xx = take(f3d.iocndx,ii)
+    yy = take(f3d.iocndy,ii)
+    zz = take(f3d.iocndz,ii)
+    mx = take(f3d.ocdelmx,ii)
+    my = take(f3d.ocdelmy,ii)
+    mz = take(f3d.ocdelmz,ii)
+    px = take(f3d.ocdelpx,ii)
+    py = take(f3d.ocdelpy,ii)
+    pz = take(f3d.ocdelpz,ii)
+    vv = take(f3d.ocvolt,ii)
+    f3d.nocndbdy = len(ii)
+    f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy)
+    gchange("PSOR3d")
+    if f3d.nocndbdy > 0:
+      f3d.iocndx[:f3d.nocndbdy] = xx
+      f3d.iocndy[:f3d.nocndbdy] = yy
+      f3d.iocndz[:f3d.nocndbdy] = zz
+      f3d.ocdelmx[:f3d.nocndbdy] = mx
+      f3d.ocdelmy[:f3d.nocndbdy] = my
+      f3d.ocdelmz[:f3d.nocndbdy] = mz
+      f3d.ocdelpx[:f3d.nocndbdy] = px
+      f3d.ocdelpy[:f3d.nocndbdy] = py
+      f3d.ocdelpz[:f3d.nocndbdy] = pz
+      f3d.ocvolt[:f3d.nocndbdy] = vv
 
