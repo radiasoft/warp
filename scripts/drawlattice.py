@@ -1,8 +1,10 @@
-"""
-The function drawlattice which plots the lattice.
+"""Creates the function drawlattice which plots the lattice.
 """
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.4 2004/07/22 23:37:45 dave Exp $"
+drawlattice_version = "$Id: drawlattice.py,v 1.5 2004/09/14 17:33:59 dave Exp $"
+def drawlatticedoc():
+  import drawlattice
+  print drawlattice.__doc__
 
 #############################################################################
 def _getelem(elem,zlatmin,zlatmax):
@@ -43,8 +45,17 @@ def _addelement(zs,ze,zend,ang,dh,zele,xele,zaxis,xaxis,zz,xx,zl,xl):
   xl = xl + [0.5*(x0+x1)]
   return zaxis,xaxis,zz,xx,zl,xl
 
+def _makearcs(x,z,narc):
+  xx,zz = [],[]
+  for i in xrange(len(x)-1):
+    xx = xx + list(span(x[i],x[i+1],narc))
+    zz = zz + list(span(z[i],z[i+1],narc))
+  return array(xx),array(zz)
+  
+
 #############################################################################
-def drawlattice(zlatmin=0,zlatmax=None,ilinflg=0,ilabflg=1,ratio=1.5,narc=10,
+def drawlattice(zlatmin=0,zlatmax=None,ilinflg=0,ilabflg=1,ratio=None,narc=10,
+                height=None,
                 zquad=None,xquad=None,quadlab=None,quadcolor=10,
                 zhele=None,xhele=None,helelab=None,helecolor=35,
                 zemlt=None,xemlt=None,emltlab=None,emltcolor=60,
@@ -57,17 +68,26 @@ def drawlattice(zlatmin=0,zlatmax=None,ilinflg=0,ilabflg=1,ratio=1.5,narc=10,
   """
 Draws the lattice.  All lattice elements starting in the interval 
  - zlatmin=0,zlatmax: lattice elements within the range are plotted.
-                      zlatmax defaults to zlatperi, or max z of elements.
- - ilinflg=0: when true, bends are straightened out.
- - ilabflg=1: when true, plots labels on each element
- - ratio=1.5: ratio of height to lenght of elements
- - narc=10: number of points in bend arcs
-For each element type are the following inputs:
+                      zlatmax defaults to zlatperi when it is nonzero,
+                      or maximum z of elements.
+ - ilinflg=0: when true, bends are straightened out. The default is to plot
+              elements in laboratory frame, showing bends.
+ - ilabflg=1: when true, labels on each element are plotted
+ - ratio=1.5: ratio of height to length of elements
+ - narc=10: number of points in bend arcs, any curved line in a bend
+ - height=(zlatmax-zlatmin)/10.: height of elements blocks, in meters
+
+For each element type, the following inputs can be optionally given to affect
+how the element is displayed. Here 'elem' refers is replaced by one of the
+element names, such as 'quad' or 'bgrd'.:
  - zelem, xelem: coordinates of image to draw, normalized to
                  0 <= z <= 1, with 0 at elemzs, and 1 at elemze
                -.5 <= x <= 0.5
- - elemlab: label for each element
- - elemcolor: color index for each element
+ - elemlab: label for each element, must be either a string or a function
+            that takes one arguement, the integer id of the element being
+            plotted.
+ - elemcolor: color index for each element - index is relative to the active
+              palette.
 
 Some lattice element symbols and labels are as follows:
 
@@ -116,30 +136,39 @@ type, and should draw any general lattice.
       if top.accls: zlatmax = max(max(top.acclze),zlatmax)
 
   # --- Shapes for the elements
+  # --- Note that 0 <= z <= 1 and -0.5 <= x <= +0.5
   if zquad is None:
     zquad = array([0., 0. , 1. ,  1. ,  0. , 0.])
     xquad = array([0., 0.5, 0.5, -0.5, -0.5, 0.])
+    if ilinflg == 0: xquad,zquad = _makearcs(xquad,zquad,narc)
   if zhele is None:
     zhele = array([0., 0. , 1. ,  1. ,  0. , 0.])
     xhele = array([0., 0.5, 0.5, -0.5, -0.5, 0.])
+    if ilinflg == 0: xhele,zhele = _makearcs(xhele,zhele,narc)
   if zemlt is None:
     zemlt = array([0., 0.  , 0.1, 0.9, 1.  ,  1.  ,  0.9,  0.1,  0.  , 0.])
     xemlt = array([0., 0.4 , 0.5, 0.5, 0.4 , -0.4 , -0.5, -0.5, -0.4 , 0.])
+    if ilinflg == 0: xemlt,zemlt = _makearcs(xemlt,zemlt,narc)
   if zmmlt is None:
     zmmlt = array([0., 0.  , 0.2, 0.8, 1.  ,  1.  ,  0.8,  0.2,  0.  , 0.])
     xmmlt = array([0., 0.25, 0.5, 0.5, 0.25, -0.25, -0.5, -0.5, -0.25, 0.])
+    if ilinflg == 0: xmmlt,zmmlt = _makearcs(xmmlt,zmmlt,narc)
   if zbgrd is None:
     zbgrd = array([0.,0.,0.333,0.333,0.667,0.667,1.,1.,0.667,0.667,0.333,0.333,0.,0.,1.,1.,0.,0.])
-    xbgrd = array([0.,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.25,0.25,-0.25,-0.25,0.])
+    xbgrd = array([0.,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.167,0.167,-0.167,-0.167,0.])
+    if ilinflg == 0: xbgrd,zbgrd = _makearcs(xbgrd,zbgrd,narc)
   if zpgrd is None:
     zpgrd = array([0.,0.,0.333,0.333,0.667,0.667,1.,1.,0.667,0.667,0.333,0.333,0.,0.])
     xpgrd = array([0.,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.5,0.5,-0.5,-0.5,0.])
+    if ilinflg == 0: xpgrd,zpgrd = _makearcs(xpgrd,zpgrd,narc)
   if zaccl is None:
     zaccl = array([0., 0. , 1.,  0. , 0.])
     xaccl = array([0., 0.5, 0., -0.5, 0.])
+    if ilinflg == 0: xaccl,zaccl = _makearcs(xaccl,zaccl,narc)
   if zdipo is None:
     zdipo = array([0., 0. , 1. , 1.,  0.5, 0.])
     xdipo = array([0., 0.5, 0.5, 0., -0.5, 0.])
+    if ilinflg == 0: xdipo,zdipo = _makearcs(xdipo,zdipo,narc)
   if zbend is None:
     zbend = array([0.] + list(1.*iota(0,narc)/narc) +
                          list(1.*iota(narc,0,-1)/narc) + [0.])
@@ -246,17 +275,22 @@ type, and should draw any general lattice.
 
   # --- Get maximum element length, and set height proportional to that
   # --- so all elements are the same height.
-  hmax = 0.
-  if len(iq) > 0: hmax = max(hmax,max(take(top.quadze-top.quadzs,iq)))
-  if len(ih) > 0: hmax = max(hmax,max(take(top.heleze-top.helezs,ih)))
-  if len(ie) > 0: hmax = max(hmax,max(take(top.emltze-top.emltzs,ie)))
-  if len(im) > 0: hmax = max(hmax,max(take(top.mmltze-top.mmltzs,im)))
-  if len(ib) > 0: hmax = max(hmax,max(take(top.bgrdze-top.bgrdzs,ib)))
-  if len(ip) > 0: hmax = max(hmax,max(take(top.pgrdze-top.pgrdzs,ip)))
-  if len(id) > 0: hmax = max(hmax,max(take(top.dipoze-top.dipozs,id)))
-  if len(ia) > 0: hmax = max(hmax,max(take(top.acclze-top.acclzs,ia)))
-  if len(ic) > 0: hmax = max(hmax,max(take(top.bendze-top.bendzs,ic)))
-  dh = ratio*hmax
+  if ratio is not None:
+    hmax = 0.
+    if len(iq) > 0: hmax = max(hmax,max(take(top.quadze-top.quadzs,iq)))
+    if len(ih) > 0: hmax = max(hmax,max(take(top.heleze-top.helezs,ih)))
+    if len(ie) > 0: hmax = max(hmax,max(take(top.emltze-top.emltzs,ie)))
+    if len(im) > 0: hmax = max(hmax,max(take(top.mmltze-top.mmltzs,im)))
+    if len(ib) > 0: hmax = max(hmax,max(take(top.bgrdze-top.bgrdzs,ib)))
+    if len(ip) > 0: hmax = max(hmax,max(take(top.pgrdze-top.pgrdzs,ip)))
+    if len(id) > 0: hmax = max(hmax,max(take(top.dipoze-top.dipozs,id)))
+    if len(ia) > 0: hmax = max(hmax,max(take(top.acclze-top.acclzs,ia)))
+    if len(ic) > 0: hmax = max(hmax,max(take(top.bendze-top.bendzs,ic)))
+    dh = ratio*hmax
+  elif height is not None:
+    dh = height
+  else:
+    dh = (zlatmax - zlatmin)/10.
 
   # --- First point on axis
   zaxis.append(zlatmin)
@@ -342,30 +376,16 @@ type, and should draw any general lattice.
     elif ilatspc == 'd':
       # --- load dipole element
       dl = top.dipoze[nd] - top.dipozs[nd]
-      if not ilinflg and nc-1 in ic and top.bendzs[nc-1] == top.dipozs[nd]:
-        angb = (top.bendze[nc-1]-top.bendzs[nc-1])/top.bendrc[nc-1]
-        dlt  = dl*(2./angb)*sin(angb/2.)
-        z0 = zaxis[-1] - dlt*cos(ang+angb-angb/2.)
-        x0 = xaxis[-1] - dlt*sin(ang+angb-angb/2.)
-        zcent = z0 + top.bendrc[nc-1]*sin(ang+angb)
-        xcent = x0 - top.bendrc[nc-1]*cos(ang+angb)
-        aa = ang+angb - angb*zdipo
-        rc = top.bendrc[nc-1]
-        zd = zd + list(zcent - (rc + 0.5*sign(dh,rc)*xdipo)*sin(aa))
-        xd = xd + list(xcent + (rc + 0.5*sign(dh,rc)*xdipo)*cos(aa))
-        z1 = z0 + dlt*cos(ang+angb-angb/2.)
-        x1 = x0 + dlt*sin(ang+angb-angb/2.)
-      else:
-        if nc-1 in ic and top.bendzs[nc-1] == top.dipozs[nd]: sf = 0.5
-        else:                                                 sf = 1.0
-        z0 = zaxis[-1] + (top.dipozs[nd] - zend)*cos(ang)
-        x0 = xaxis[-1] + (top.dipozs[nd] - zend)*sin(ang)
-        zd = zd + list(z0 + zdipo*dl*cos(ang) - sf*xdipo*dh*sin(ang))
-        xd = xd + list(x0 + sf*xdipo*dh*cos(ang) + zdipo*dl*sin(ang))
-        z1 = z0 + dl*cos(ang)
-        x1 = x0 + dl*sin(ang)
-        zaxis = zaxis + [z0,z1]
-        xaxis = xaxis + [x0,x1]
+      if nc-1 in ic and top.bendzs[nc-1] == top.dipozs[nd]: sf = 0.5
+      else:                                                 sf = 1.0
+      z0 = zaxis[-1] + (top.dipozs[nd] - zend)*cos(ang)
+      x0 = xaxis[-1] + (top.dipozs[nd] - zend)*sin(ang)
+      zd = zd + list(z0 + zdipo*dl*cos(ang) - sf*xdipo*dh*sin(ang))
+      xd = xd + list(x0 + sf*xdipo*dh*cos(ang) + zdipo*dl*sin(ang))
+      z1 = z0 + dl*cos(ang)
+      x1 = x0 + dl*sin(ang)
+      zaxis = zaxis + [z0,z1]
+      xaxis = xaxis + [x0,x1]
       zend = top.dipoze[nd] 
       if dipolab is not None:
         zl = zl + [0.5*(z0+z1)]
@@ -375,30 +395,14 @@ type, and should draw any general lattice.
     elif ilatspc == 'c':
       # --- load bent beam pipe with no element 
       dl = top.bendze[nc] - top.bendzs[nc]
-      if ilinflg == 1:
-        z0 = zaxis[-1] + (top.bendzs[nc] - zend)
-        x0 = xaxis[-1]
-        z1 = z0 + dl
-        x1 = x0
-        zc = zc + list(z0 + zbend*dl)
-        xc = xc + list(x0 + xbend*dh)
-        zaxis = zaxis + [z0,z1]
-        xaxis = xaxis + [x0,x1]
-      else:
-        angb = dl/top.bendrc[nc]
-        dlt  = dl*(2./angb)*sin(angb/2.)
-        z0 = zaxis[-1] + (top.bendzs[nc] - zend)*cos(ang)
-        x0 = xaxis[-1] + (top.bendzs[nc] - zend)*sin(ang)
-        z1 = z0 + dlt*cos(ang-angb/2.)
-        x1 = x0 + dlt*sin(ang-angb/2.)
-        zcent = z0 + top.bendrc[nc]*sin(ang)
-        xcent = x0 - top.bendrc[nc]*cos(ang)
-        zc = zc + list(zcent - (top.bendrc[nc]+dh*xbend)*sin(ang - angb*zbend))
-        xc = xc + list(xcent + (top.bendrc[nc]+dh*xbend)*cos(ang - angb*zbend))
-        aa = ang - angb*iota(0,narc)/narc
-        zaxis = zaxis + list(zcent - top.bendrc[nc]*sin(aa))
-        xaxis = xaxis + list(xcent + top.bendrc[nc]*cos(aa))
-        ang = ang - angb
+      z0 = zaxis[-1] + (top.bendzs[nc] - zend)
+      x0 = xaxis[-1]
+      z1 = z0 + dl
+      x1 = x0
+      zc = zc + list(z0 + zbend*dl)
+      xc = xc + list(x0 + xbend*dh)
+      zaxis = zaxis + [z0,z1]
+      xaxis = xaxis + [x0,x1]
       zend = top.bendze[nc]
       if bendlab is not None:
         zl = zl + [0.5*(z0+z1)]
@@ -409,6 +413,31 @@ type, and should draw any general lattice.
   # --- Add the last point
   zaxis.append(zaxis[-1] + (zlatmax - zend)*cos(ang))
   xaxis.append(xaxis[-1] + (zlatmax - zend)*sin(ang))
+
+  if ilinflg == 0:
+    xq,zq = array(xq),array(zq)
+    xh,zh = array(xh),array(zh)
+    xe,ze = array(xe),array(ze)
+    xm,zm = array(xm),array(zm)
+    xb,zb = array(xb),array(zb)
+    xp,zp = array(xp),array(zp)
+    xa,za = array(xa),array(za)
+    xc,zc = array(xc),array(zc)
+    xd,zd = array(xd),array(zd)
+    xaxis,zaxis = _makearcs(xaxis,zaxis,narc)
+    xl,zl = array(xl),array(zl)
+
+    tolabfrm(zlatmin,len(xq),xq,zq)
+    tolabfrm(zlatmin,len(xh),xh,zh)
+    tolabfrm(zlatmin,len(xe),xe,ze)
+    tolabfrm(zlatmin,len(xm),xm,zm)
+    tolabfrm(zlatmin,len(xb),xb,zb)
+    tolabfrm(zlatmin,len(xp),xp,zp)
+    tolabfrm(zlatmin,len(xa),xa,za)
+    tolabfrm(zlatmin,len(xc),xc,zc)
+    tolabfrm(zlatmin,len(xd),xd,zd)
+    tolabfrm(zlatmin,len(xaxis),xaxis,zaxis)
+    tolabfrm(zlatmin,len(xl),xl,zl)
 
   # --- plot the lattice
   _plotele(xq,zq,quadcolor,len(iq),len(zquad))
