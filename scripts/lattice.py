@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.35 2004/10/04 21:45:54 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.36 2004/11/12 18:02:05 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2567,14 +2567,17 @@ Plots the time dependent field of the accl element
     if not tcentered: tt = top.acclts[ii] + tt
     plg(top.acclet[:,ii]*ascale,tt*oscale,color=color)
 
-def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=1,**kw):
+def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=1,
+             zlatstrt=None,**kw):
   """
 Plots the one of the field components in one of the planes
  - component: Component to plot, one of 'x', 'y', or 'z'.
  - ix, iy, iz: When one is set, plots the in the plane a that value.
+               When two are set, plots along the remaining axis.
                Each is an integer between 0 and bgrdnx, bgrdny, or bgrdnz.
  - withbends=1: When true, account for bends and convert to the lab frame.
                 Only applies with iy specified.
+ - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
@@ -2582,41 +2585,152 @@ such as contours, and cellarray.
          "component to plot must be one of 'x', 'y', or 'z'"
   assert (ix is not None) or (iy is not None) or (iz is not None),\
          "One of ix, iy, iz must be specified"
-
+  if zlatstrt is None: zlatstrt = top.zlatstrt
   id = top.bgrdid[ib] - 1
-
   bb = getattr(top,'bgrdb'+component)
+
+  # --- Determine which axis are specified and which are to be plotted.
+  ax = ['z','x','y']
   if ix is not None:
-    bb = bb[ix,:,:,id]
-    ys = top.bgrdys[ib]+top.bgrdoy[ib]
-    ny = top.bgrdny
-    dy = top.bgrddy[id]
-    xs = top.bgrdzs[ib]
-    nx = top.bgrdnz
-    dx = top.bgrddz[id]
+    ax.remove('x')
+    sx = ix
+  else:
+    sx = slice(None)
   if iy is not None:
-    bb = bb[:,iy,:,id]
-    ys = top.bgrdxs[ib]+top.bgrdox[ib]
-    ny = top.bgrdnx
-    dy = top.bgrddx[id]
-    xs = top.bgrdzs[ib]
-    nx = top.bgrdnz
-    dx = top.bgrddz[id]
+    ax.remove('y')
+    sy = iy
+  else:
+    sy = slice(None)
   if iz is not None:
-    bb = bb[:,:,iz,id]
-    ys = top.bgrdys[ib]+top.bgrdoy[ib]
-    ny = top.bgrdny
-    dy = top.bgrddy[id]
-    xs = top.bgrdxs[ib]+top.bgrdox[ib]
-    nx = top.bgrdnx
-    dx = top.bgrddx[id]
+    ax.remove('z')
+    sz = iz
+  else:
+    sz = slice(None)
 
-  xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+  # --- Get the B field. If all three axis specified, just return the value
+  # --- at that location.
+  bb = bb[sx,sy,sz,id]
+  if len(ax) == 0: return bb
 
-  if withbends and iy is not None and top.bends:
-    tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+  # --- Get mesh quantities along first axis
+  xs = getattr(top,'bgrd'+ax[0]+'s')[ib]
+  if ax[0] == 'z': xs = xs + zlatstrt
+  else:            xs = xs + getattr(top,'bgrdo'+ax[0])
+  nx = getattr(top,'bgrdn'+ax[0])
+  dx = getattr(top,'bgrdd'+ax[0])[id]
 
-  kw['xmesh'] = xm
-  kw['ymesh'] = ym
-  ppgeneric(gridt=bb,kwdict=kw)
+  if len(ax) > 1:
+    # --- Get mesh quantities along second axis
+    ys = getattr(top,'bgrd'+ax[1]+'s')[ib]
+    if ax[1] == 'z': ys = ys + zlatstrt
+    else:            ys = ys + getattr(top,'bgrdo'+ax[1])
+    ny = getattr(top,'bgrdn'+ax[1])
+    dy = getattr(top,'bgrdd'+ax[1])[id]
+
+
+  if len(ax) == 1:
+    # --- Make 1-d line plot
+    xm = xs + iota(0,nx)*dx
+    color = kw.get('color','fg')
+    plg(bb,xm,color=color)
+
+  elif len(ax) == 2:
+    # --- Make 2-d plot
+    xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+
+    if withbends and iy is not None and top.bends:
+      # --- Apply coordinate transformations in any bends
+      tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+
+    kw['xmesh'] = xm
+    kw['ymesh'] = ym
+    ppgeneric(gridt=bb,kwdict=kw)
+
+  elif len(ax) == 3:
+    # --- Will do isosurface or volume rendering in future
+    raise '3-d plot Not yet implemented'
+
+def plotpgrd(ip=0,component=None,ix=None,iy=None,iz=None,withbends=1,
+             zlatstrt=None,**kw):
+  """
+Plots the one of the field components in one of the planes
+ - component: Component to plot, one of 'x', 'y', or 'z'.
+              If not specified, will plot the potential.
+ - ix, iy, iz: When one is set, plots the in the plane a that value.
+               When two are set, plots along the remaining axis.
+               Each is an integer between 0 and bgrdnx, bgrdny, or bgrdnz.
+ - withbends=1: When true, account for bends and convert to the lab frame.
+                Only applies with iy specified.
+ - zlatstrt=top.zlatstrt: location of z=0 of the lattice in the lab frame
+Accepts any keywords from ppgeneric for controller how the grid is plotted,
+such as contours, and cellarray.
+  """
+  assert component in [None,'x','y','z'],\
+         "component to plot must be None or one of 'x', 'y', or 'z'"
+  assert (ix is not None) or (iy is not None) or (iz is not None),\
+         "One of ix, iy, iz must be specified"
+  if zlatstrt is None: zlatstrt = top.zlatstrt
+  id = top.pgrdid[ip] - 1
+  pp = top.pgrd
+
+  # --- Determine which axis are specified and which are to be plotted.
+  ax = ['z','x','y']
+  if ix is not None:
+    ax.remove('x')
+    sx = ix
+  else:
+    sx = slice(None)
+  if iy is not None:
+    ax.remove('y')
+    sy = iy
+  else:
+    sy = slice(None)
+  if iz is not None:
+    ax.remove('z')
+    sz = iz
+  else:
+    sz = slice(None)
+
+  # --- Get the B field. If all three axis specified, just return the value
+  # --- at that location.
+  pp = pp[sx,sy,sz,id]
+  if len(ax) == 0: return pp
+
+  # --- Get mesh quantities along first axis
+  xs = getattr(top,'pgrd'+ax[0]+'s')[ip]
+  if ax[0] == 'z': xs = xs + zlatstrt
+  else:            xs = xs + getattr(top,'pgrdo'+ax[0])
+  nx = getattr(top,'pgrdn'+ax[0])
+  dx = getattr(top,'pgrdd'+ax[0])[id]
+
+  if len(ax) > 1:
+    # --- Get mesh quantities along second axis
+    ys = getattr(top,'pgrd'+ax[1]+'s')[ip]
+    if ax[1] == 'z': ys = ys + zlatstrt
+    else:            ys = ys + getattr(top,'pgrdo'+ax[1])
+    ny = getattr(top,'pgrdn'+ax[1])
+    dy = getattr(top,'pgrdd'+ax[1])[id]
+
+
+  if len(ax) == 1:
+    # --- Make 1-d line plot
+    xm = xs + iota(0,nx)*dx
+    color = kw.get('color','fg')
+    plg(pp,xm,color=color)
+
+  elif len(ax) == 2:
+    # --- Make 2-d plot
+    xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+
+    if withbends and iy is not None and top.bends:
+      # --- Apply coordinate transformations in any bends
+      tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+
+    kw['xmesh'] = xm
+    kw['ymesh'] = ym
+    ppgeneric(gridt=pp,kwdict=kw)
+
+  elif len(ax) == 3:
+    # --- Will do isosurface or volume rendering in future
+    raise '3-d plot Not yet implemented'
 
