@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.137 2004/12/01 00:23:38 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.138 2004/12/21 21:47:14 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -992,8 +992,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       zrange = 1.5*maxnd(abs(grid))
      #vo = VPythonobjects.VisualMesh(zvalues=grid,display=1,twoSided=0,
      #                               color=scolor,vrange=(xrange,yrange,zrange))
-      vo = pyOpenDX.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy,
-                                   name=(default_titlet or 'Mountain plot'))
+      vo = pyOpenDX.DXMountainPlot(f=grid,xmin=xmin,ymin=ymin,dx=dx,dy=dy)
     except ImportError:
       pl3d.orient3()
       pl3d.light3()
