@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.94 $, $Date: 2004/02/18 16:09:49 $
+c@(#) File F3D.M, version $Revision: 3.95 $, $Date: 2004/03/03 17:50:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -2874,13 +2874,13 @@ c       --- fill matrix with phi
 c     --- invert to get capacity matrix (checking for singular matrix)
 
 c     --- These routines don't seem to give as good a result as those below.
-c     call ssifa(cmat3d,nc3d,nc3d,kpvt3d,info)
+c     call dsifa(cmat3d,nc3d,nc3d,kpvt3d,info)
 c     if (info .ne. 0) then
 c       call remark("ERROR: Capacity matrix is singular - it is likely that")
 c       call remark("two or more conductor points are within the same grid cell.")
 c       call kaboom(0)
 c     endif
-c     call ssidi(cmat3d,nc3d,nc3d,kpvt3d,tt1,tt2,scrtch,001)
+c     call dsidi(cmat3d,nc3d,nc3d,kpvt3d,tt1,tt2,scrtch,001)
 
 c     --- These routines are from LAPACK.
 #if WORDSIZE == 64
@@ -3141,13 +3141,13 @@ c     --- invert to get capacity matrices (checking for singular matrix)
       do iz=0,nc3dz2
 
 c       --- These routines don't seem to give as good a result as those below.
-c       call ssifa(cmat3d(1,1,iz),nc3d,nc3d,kpvt3d,info)
+c       call dsifa(cmat3d(1,1,iz),nc3d,nc3d,kpvt3d,info)
 c       if (info .ne. 0) then
 c         call remark("ERROR: Capacity matrix is singular - it is likely that")
 c         call remark("two or more conductor points are within the same grid cell.")
 c         call kaboom(0)
 c       endif
-c       call ssidi(cmat3d(1,1,iz),nc3d,nc3d,kpvt3d,tt1,tt2,scrtch,001)
+c       call dsidi(cmat3d(1,1,iz),nc3d,nc3d,kpvt3d,tt1,tt2,scrtch,001)
 
 c       --- These routines are from LAPACK.
 #if WORDSIZE == 64
@@ -3551,8 +3551,8 @@ c       --- fill cap with inverse capacity matrix
         enddo
 
 c       --- invert to get capacity matrix
-        call ssifa(cap,2*(nx+ny),pipen,kpvt,info)
-        call ssidi(cap,2*(nx+ny),pipen,kpvt,tt1,tt2,scrtch,001)
+        call dsifa(cap,2*(nx+ny),pipen,kpvt,info)
+        call dsidi(cap,2*(nx+ny),pipen,kpvt,tt1,tt2,scrtch,001)
 
 c       --- store matrix in 3-D array (cap only contains upper half)
         do i=1,pipe8th
@@ -3858,7 +3858,7 @@ c  then fill in rest of matrix using symmetries of the conductor arrangement
         enddo
 
 c  now reduce to allow inversion
-      call ssifa(quadcap,4*ncndpts,4*ncndpts,kpvt,info)
+      call dsifa(quadcap,4*ncndpts,4*ncndpts,kpvt,info)
 
       return
       end
@@ -3961,7 +3961,7 @@ c    get (volt - vshift - phi) on conductor
         enddo
 
 c     solve for induced charge by solving phi = matrix*rho
-        call ssisl(quadcap,4*ncndpts,4*ncndpts,kkkk,quadrho(1,1,iend))
+        call dsisl(quadcap,4*ncndpts,4*ncndpts,kkkk,quadrho(1,1,iend))
 
       enddo
 

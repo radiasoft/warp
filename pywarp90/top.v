@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.120 $, $Date: 2004/03/03 16:36:52 $
+#@(#) File TOP.V, version $Revision: 3.121 $, $Date: 2004/03/03 17:50:24 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.120 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.121 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -908,8 +908,23 @@ ibpush                    integer /1/
 ifeears                   integer /0/
    # Specifies type of Eears: 0-none, 1-linear, 2-Ezax
 fstype                    integer /0/
-   # Specifies type of field solve (-1:none, 0:normal FFT, 1:pipe, 
-   #                                2:cap, 3:psor, 4:2d FFT + tridiag in z)
+   # Specifies type of field solve
+   # -1: none, 0:sine-sine-periodic FFT,
+   #  1: 8-fold symmetric capacity matrix in kz space,
+   #  2: capacity matrix for quadrupoles,
+   #  3: SOR (obsolete, use 7, multigrid),
+   #  4: 2d sine-sine FFT + tridiag in z),
+   #  5: general capacity matrix in kz space,
+   #  6: general capacity matrix,
+   #  7: multigrid solver,
+   #  8: parallel solver (in development, don't use),
+   #  9: parallel solver (in development, don't use),
+   # 10: RZ multigrid solver
+   # 11: Chombo AMR/multigrid solver
+ztransformtype            integer /0/
+   # Specifies the type of z transform
+   #  0: periodic FFT
+   #  1: tridiagonal matrix solve
 itdump                    integer    /500/
    # Restart dump interval
 nrestart                  character*8  /" "/
@@ -2050,21 +2065,21 @@ sphere4(a:real,b:real,c:real,d:real,n:integer)
 sphere4f(a:real,b:real,c:real,d:real,ig1,ig2,ig3)
              subroutine # distr pts on surf of 4d unit sphere
                         # a-d are arrays declared (1:n)
-ssifa(a:real,lda,n,kpvt,info)
+dsifa(a:real,lda,n,kpvt,info)
              subroutine # LINPACK matrix reduction routine # (in file UTIL.F)
-ssidi(a:real,lda,n,kpvt,det:real,inert,work:real,job:real)
+dsidi(a:real,lda,n,kpvt,det:real,inert,work:real,job:real)
              subroutine # LINPACK matrix inverting routine # (in file UTIL.F)
-ssisl(a:real,lda,n,kpvt,b:real)
+dsisl(a:real,lda,n,kpvt,b:real)
              subroutine # LINPACK routine to solve a*x = b # (in file UTIL.F)
-svdfit(x:real,y:real,ndata:integer,ndatap:integer,a:real,
+dvdfit(x:real,y:real,ndata:integer,ndatap:integer,a:real,
        basis:real,ma:integer,map:integer,u:real,w:real,v:real,tmp:real,
        tol:real,chisq:real)    subroutine
        # matrix linear least squares fit using an input singular value 
        # decomposition of a basis matrix                   (in util.m) 
-svdcmp(a:real,m:integer,n:integer,mp:integer,np:integer,
+dvdcmp(a:real,m:integer,n:integer,mp:integer,np:integer,
        w:real,v:real,tmp:real) subroutine
        # singular value decomposition of the matrix a      (in util.m)
-svbksb(u:real,w:real,v:real,m:integer,n:integer,mp:integer,np:integer,
+dvbksb(u:real,w:real,v:real,m:integer,n:integer,mp:integer,np:integer,
        b:real,x:real,tmp:real) subroutine
        # singular value back-substitution routine for solution of matrix 
        # problems                                          (in util.m)

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.143 $, $Date: 2004/02/27 16:39:39 $
+c@(#) File DW3D.F, version $Revision: 3.144 $, $Date: 2004/03/03 17:50:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -628,7 +628,7 @@ c       --- use in the linear least squares fit, first copy basis to usvd
             usvd(np,ifit) = basis(np,ifit)  
           enddo 
         enddo 
-        call svdcmp(usvd,npts,nfit,nptsmx,nfitmx,wsvd,vsvd,tmp)
+        call dvdcmp(usvd,npts,nfit,nptsmx,nfitmx,wsvd,vsvd,tmp)
 c       --- loop over axial grid index iz, and calculate multipoles 
 c       --- with azimuthal mode number l at each index 
         do iz = 0,nz
@@ -686,9 +686,9 @@ c           --- rescale azimuthal integrals
           enddo  
 c         --- calculate vectors of moments, rmomcst and rmomsst for cosine 
 c         --- and sine expansion terms using linear least squares algorithm 
-          call svdfit(rdat,azicosint,npts,nptsmx,rmomcst,basis,nfit,nfitmx,
+          call dvdfit(rdat,azicosint,npts,nptsmx,rmomcst,basis,nfit,nfitmx,
      &                usvd,wsvd,vsvd,tmp,tol,chisq)
-          call svdfit(rdat,azisinint,npts,nptsmx,rmomsst,basis,nfit,nfitmx,
+          call dvdfit(rdat,azisinint,npts,nptsmx,rmomsst,basis,nfit,nfitmx,
      &                usvd,wsvd,vsvd,tmp,tol,chisq)
 c         --- load moments calculated in axial grid indexed vectors of 
 c         --- multipole moments 
