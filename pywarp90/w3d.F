@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.161 $, $Date: 2004/07/09 19:17:20 $
+c@(#) File W3D.F, version $Revision: 3.162 $, $Date: 2004/07/14 15:08:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -7388,19 +7388,6 @@ c       --- Transform the particles back into the lab frame
 c     --- Loop over unique injection sources
       do ij = 1,inj_ninj
 
-c       --- If two-fold symmetry, divide inj_rho by two except on x axis.
-        if (l2symtry) then
-          inj_rho(0:inj_nx,1:inj_ny,ij) = inj_rho(0:inj_nx,1:inj_ny,ij)*0.5
-        endif
-
-c       --- If four-fold symmetry, divide inj_rho by four, except on both axis
-c       --- divide by two, except the origin.
-        if (l4symtry) then
-          inj_rho(1:inj_nx,1:inj_ny,ij) = inj_rho(1:inj_nx,1:inj_ny,ij)*0.25
-          inj_rho(1:inj_nx,0,ij) = inj_rho(1:inj_nx,0,ij)*0.5
-          inj_rho(0,1:inj_ny,ij) = inj_rho(0,1:inj_ny,ij)*0.5
-        endif
-
 c       --- Scale the charge density by the inverse of the fraction of the
 c       --- contributing area which is within the emitting surface.
 c       --- The factor of two is needed since particles are contributing to
@@ -7496,212 +7483,6 @@ c       --- Transform the particles back into the lab frame
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
 !$OMP END MASTER
       return
-      end
-c=============================================================================
-      subroutine test_inj_setq(nn,xxp,yyp,zzp,base)
-      use Subtimers3d
-      use InPart
-      use InGen
-      use InGen3d
-      use InjectVars
-      use InjectVars3d
-      use InMesh3d
-      use Particles
-      use Constant
-      use Fields3d
-      use Efields3d
-      use Picglb
-      use Picglb3d
-
-c Calculate the charge density on the emitting surface.  The particles are
-c mapped onto the surface assuming a spherical emitter.  The charge density
-c scale to account for symmetries and to account for the fraction of the
-c grid cell within emitting surface.
-c The scaling is done so that the charge density accurately represents
-c the charge divided by the volume filled by that charge.  This only
-c affects the edge of the emitting surface where only part of a grid cell
-c will have charge in it, but the charge is divided by the area of all of
-c the grid cell.
-
-      integer(ISZ), intent(in) :: nn
-      real(kind=8), dimension(nn), intent(in) :: xxp, yyp, zzp
-      real(8) :: base
-
-      integer(ISZ):: ijp(npmax)
-      integer(ISZ):: i,is,ip,ix,iy,iz,ij,ij1,nrhs,irhs,kd,ldab,ldb,n,info
-      real(kind=8):: rinj,rinji,rr2,dd,deltaz(ninject)
-      real(kind=8):: aa,az,px,py,wx1,wy1,wz1,wx0,wy0,wz0,ww,dz0,dz1
-      real(kind=8):: dxi,dyi,dzmin,ainjsqi,binjsqi,rrsq
-      real(kind=8):: substarttime,wtime,onethird
-      real(kind=8), allocatable, dimension(:,:) :: rhs, ab
-      integer(ISZ), allocatable, dimension(:,:) :: coord
-      integer(ISZ):: sx,sy
-
-      real(8) :: inj_phi_tmp(0:inj_nx,0:inj_ny,0:inj_nz,1)
-
-      if (lw3dtimesubs) substarttime = wtime()
-
-      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or.
-     &   solvergeom==RZgeom) then
-        sx = 1
-        sy = 1
-      elseif(solvergeom==XZgeom) then
-        sx = 1
-        sy = 0
-      elseif(solvergeom==Zgeom) then
-        sx = 0
-        sy = 0
-      end if
-
-      onethird = 1./3.
-
-      inj_dz = inj_d(1)*dz/(inj_nz*2.**onethird+1.-inj_nz)**3
-      dzmin = 1./(inj_nz*2.**onethird+1.-inj_nz)**3
-      deltaz(:) = inj_d(1)*dz
-
-      dxi = 1./inj_dx
-      dyi = 1./inj_dy
-
-c     --- zero out the array
-      call zeroarry(inj_q(0,0,0,1),(1+inj_nx)*(1+inj_ny)*(1+inj_nz)*inj_ninj)
-
-c     --- Loop over species and particles
-      do is=1,ns
-
-c       --- Transform the particles into the frame of the injection source
-        if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),-1,.true.)
-        endif
-
-        ww = sq(is)*sw(is)*dxi*dyi
-        do ip=ins(is),ins(is)+nps(is)-1
-c         --- Get number of injection source of particle.  The particle id
-c         --- has the number of the injection source the particle was
-c         --- emitted from. The int is needed since it is doing double
-c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,injpid))
-
-          ix = int(abs(xp(ip) - inj_xmmin(ij))*dxi)
-          iy = int(abs(yp(ip) - inj_ymmin(ij))*dyi)
-
-c         --- set temporaries
-          rinji = 1./rinject(ij)
-          rinj = rinject(ij)
-
-c         --- Calculate distance of particle from the emitting surface
-          rr2 = xp(ip)**2 + yp(ip)**2
-          if (abs(zp(ip)) < abs(rinj)) then
-c           --- The expression below for zp(ip)<rinj is mathematically identical
-c           --- to the commented out expression below.  That form is
-c           --- used so that for large values of rinj, i.e. a flat emitting
-c           --- surface, the correct value of the distance is calculated,
-c           --- namely zp(ip).
-c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
-            dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
-     &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
-            if (rinj < 0.) dd = -dd
-          else
-c           --- When zp(ip)>rinj, a seperate equation is needed.
-            dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
-          endif
-          dd = dd/deltaz(ij)
-
-c         --- Only deposit charge of particles in emitting area
-          if (abs(dd) < 1. .and. uzp(ip) /= 0.) then
-
-c           --- angle of point in transverse plane
-            aa = atan2(yp(ip),dvnz(xp(ip)))
-
-c           --- angle relative to z axis
-            az = atan2(sqrt(rr2),rinj-zp(ip))
-
-c           --- Map the particle position onto the emitting surface.
-            px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
-            py = abs(rinj*sin(az)*sin(aa) - inj_ymmin(ij))*dyi
-            ix = int(px)
-            iy = int(py)
-            wx1 = px - ix
-            wy1 = py - iy
-            wx0 = 1. - wx1
-            wy0 = 1. - wy1
-            if(dd>dzmin) then
-              iz  = int(real(inj_nz)*(1.-(1-dd**onethird)/(1.-dzmin**onethird)))
-              wz1 = dd-(1.-((real(inj_nz)-real(iz))/real(inj_nz))*(1.-dzmin**onethird))**3
-            else
-              iz  = 0
-              wz1 = dd/dzmin
-            end if
-            wz0 = 1.-wz1
-            if(wz1<0. .or. wz1>1.) write(0,*) 'error wz1 = ',wz1
-
-c           prevent deposition in cell closer to emitter (gives better result on 1D Lampel-Tiefenback test)
-c            if(iz==0) cycle
-
-c           --- Deposit the particle's charge onto the emitting region.
-            ij1 = min(ij,inj_ninj)
-            inj_q(ix   ,iy   ,iz  , ij1) = inj_q(ix   ,iy   ,iz  ,ij1) + ww*wx0*wy0*wz0
-            inj_q(ix+sx,iy   ,iz  , ij1) = inj_q(ix+sx,iy   ,iz  ,ij1) + ww*wx1*wy0*wz0
-            inj_q(ix   ,iy+sy,iz  , ij1) = inj_q(ix   ,iy+sy,iz  ,ij1) + ww*wx0*wy1*wz0
-            inj_q(ix+sx,iy+sy,iz  , ij1) = inj_q(ix+sx,iy+sy,iz  ,ij1) + ww*wx1*wy1*wz0
-            inj_q(ix   ,iy   ,iz+1, ij1) = inj_q(ix   ,iy   ,iz+1,ij1) + ww*wx0*wy0*wz1
-            inj_q(ix+sx,iy   ,iz+1, ij1) = inj_q(ix+sx,iy   ,iz+1,ij1) + ww*wx1*wy0*wz1
-            inj_q(ix   ,iy+sy,iz+1, ij1) = inj_q(ix   ,iy+sy,iz+1,ij1) + ww*wx0*wy1*wz1
-            inj_q(ix+sx,iy+sy,iz+1, ij1) = inj_q(ix+sx,iy+sy,iz+1,ij1) + ww*wx1*wy1*wz1
-
-          endif
-        enddo
-
-c       --- Transform the particles back into the lab frame
-        if (nps(is) > 0) then
-          call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(ins(is)),1,.true.)
-        endif
-
-      enddo
-
-      if (solvergeom/=Zgeom) then
-c     --- Loop over unique injection sources
-       do ij1 = 1,inj_ninj
-
-c       --- If two-fold symmetry, divide inj_rho by two except on x axis.
-        if (l2symtry) then
-          do iy=1,inj_ny
-            do ix=0,inj_nx
-              inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)*0.5
-            enddo
-          enddo
-        endif
-
-c       --- If four-fold symmetry, divide inj_rho by four, except on both axis
-c       --- divide by two, except the origin.
-        if (l4symtry .or. solvergeom==RZgeom) then
-          do iy=1,inj_ny
-            do ix=1,inj_nx
-              inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)*0.25
-            enddo
-          enddo
-          do ix=1,inj_nx
-            inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1)*0.5
-          enddo
-          do iy=1,inj_ny
-            inj_q(0,iy,:,ij1) = inj_q(0,iy,:,ij1)*0.5
-          enddo
-        endif
-
-c       --- Scale the charge density by the inverse of the fraction of the
-c       --- contributing area which is within the emitting surface.
-        do iy=0,inj_ny
-          do ix=0,inj_nx
-            if (inj_area(ix,iy,ij1) > 0.)
-     &        inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)/inj_area(ix,iy,ij1)
-          enddo
-        enddo
-
-       enddo
-      endif
-
       end
 c=============================================================================
       subroutine getinj_phi_3d()
@@ -8052,30 +7833,6 @@ c       --- Transform the particles back into the lab frame
 c     --- Loop over unique injection sources
        do ij1 = 1,inj_ninj
 
-c       --- If two-fold symmetry, divide inj_rho by two except on x axis.
-          if (l2symtry) then
-            do iy=1,inj_ny
-              do ix=0,inj_nx
-                inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)*0.5
-              enddo
-            enddo
-          endif
-
-c       --- If four-fold symmetry, divide inj_rho by four, except on both axis
-c       --- divide by two, except the origin.
-          if (l4symtry) then
-            do iy=1,inj_ny
-              do ix=1,inj_nx
-                inj_q(ix,iy,:,ij1) = inj_q(ix,iy,:,ij1)*0.25
-              enddo
-            enddo
-            do ix=1,inj_nx
-              inj_q(ix,0,:,ij1) = inj_q(ix,0,:,ij1)*0.5
-            enddo
-            do iy=1,inj_ny
-              inj_q(0,iy,:,ij1) = inj_q(0,iy,:,ij1)*0.5
-            enddo
-          endif
 c       --- Scale the charge density by the inverse of the fraction of the/
 c       --- contributing area which is within the emitting surface.
           do iy=0,inj_ny
@@ -8255,29 +8012,6 @@ c            dz1 = 2.*dz1
             inj_phi_3d(ix,iy,iz,ij) = rhs(iz,irhs)
           end do
         end do
-c        inj_phi_tmp = inj_phi_3d
-c        inj_phi_3d(0,0,0,1) = 672841.88091783
-c        inj_phi_3d(0,0,1,1) = 672841.32944052
-c        inj_phi_3d(0,0,2,1) = 672840.68425476
-c        inj_phi_3d(0,0,3,1) = 672839.00179134
-c        inj_phi_3d(0,0,4,1) = 672834.65606573
-c        inj_phi_3d(0,0,5,1) = 672823.51133966
-c        inj_phi_3d(0,0,6,1) = 672795.07252278
-c        inj_phi_3d(0,0,7,1) = 672722.75659789
-c        inj_phi_3d(0,0,8,1) = 672539.35262475
-c        inj_phi_3d(0,0,9,1) = 672075.11162663
-c        inj_phi_3d(0,0,10,1) = 670901.58654685
-c        inj_phi_3d(0,0,0,1) =  (665573.                                             )
-c        inj_phi_3d(0,0,1,1) =  (665573.-2275089.5894124038 *(0.00195312*dz)**(4./3.))
-c        inj_phi_3d(0,0,2,1) =  (665573.-2275089.5894124038 *(0.00390625*dz)**(4./3.))
-c        inj_phi_3d(0,0,3,1) =  (665573.-2275089.5894124038 *(0.0078125*dz)**(4./3.) )
-c        inj_phi_3d(0,0,4,1) =  (665573.-2275089.5894124038 *(0.015625*dz)**(4./3.)  )
-c        inj_phi_3d(0,0,5,1) =  (665573.-2275089.5894124038 *(0.03125*dz)**(4./3.)   )
-c        inj_phi_3d(0,0,6,1) =  (665573.-2275089.5894124038 *(0.0625*dz)**(4./3.)    )
-c        inj_phi_3d(0,0,7,1) =  (665573.-2275089.5894124038 *(0.125*dz)**(4./3.)     )
-c        inj_phi_3d(0,0,8,1) =  (665573.-2275089.5894124038 *(0.25*dz)**(4./3.)      )
-c        inj_phi_3d(0,0,9,1) =  (665573.-2275089.5894124038 *(0.5*dz)**(4./3.)       )
-c        inj_phi_3d(0,0,10,1) = (665573.-2275089.5894124038 *(dz)**(4./3.)           )
 
         call inj_transform(nrhs,xxp,yyp,zzp,1,ij,-1,.true.)
         do iz = 1, inj_nz-1
