@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.13 $, $Date: 2001/06/08 23:42:23 $
+c@(#) File DTOP.M, version $Revision: 3.14 $, $Date: 2001/06/16 00:24:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.13 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.14 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1107,6 +1107,71 @@ c       --- if within grid, accumulate
         endif
 
       enddo
+
+      return
+      end
+c=============================================================================
+      subroutine deposgrid2d(itask,np,x,y,z,nx,ny,grid,gridcount,
+     &                       xmin,xmax,ymin,ymax)
+      integer(ISZ):: itask,nx,ny,np
+      real(kind=8):: x(np), y(np), z(np)
+      real(kind=8):: grid(0:nx,0:ny), gridcount(0:nx,0:ny)
+      real(kind=8):: xmin,xmax,ymin,ymax
+
+c Deposits particle data onto 2-D mesh.
+c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
+c Also, if itask is zero, then the data is divided by the number density
+c of particles.
+c This allows data to be accumulated to obtain better statistics.
+
+      integer(ISZ):: ip,ix,iy
+      real(kind=8):: dxi,dyi,wx,wy
+
+c     --- Reset grids if requested
+      if (itask == 0) then
+        grid = 0.
+        gridcount = 0.
+      endif
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        ix = (x(ip) - xmin)*dxi
+        iy = (y(ip) - ymin)*dyi
+
+c       --- if within grid, accumulate
+        if (ix >= 0 .and. ix < nx .and.
+     &      iy >= 0 .and. iy < ny) then
+          wx = (x(ip) - xmin)*dxi - ix
+          wy = (y(ip) - ymin)*dyi - iy
+          grid(ix  ,iy  ) = grid(ix  ,iy  ) + z(ip)*(1. - wx)*(1. - wy)
+          grid(ix+1,iy  ) = grid(ix+1,iy  ) + z(ip)*      wx *(1. - wy)
+          grid(ix  ,iy+1) = grid(ix  ,iy+1) + z(ip)*(1. - wx)*      wy
+          grid(ix+1,iy+1) = grid(ix+1,iy+1) + z(ip)*      wx *      wy
+          gridcount(ix  ,iy  ) = gridcount(ix  ,iy  ) + (1. - wx)*(1. - wy)
+          gridcount(ix+1,iy  ) = gridcount(ix+1,iy  ) +       wx *(1. - wy)
+          gridcount(ix  ,iy+1) = gridcount(ix  ,iy+1) + (1. - wx)*      wy
+          gridcount(ix+1,iy+1) = gridcount(ix+1,iy+1) +       wx *      wy
+        endif
+
+      enddo
+
+c     --- Divide out the number of particles at each grid point, only if
+c     --- itask == 0.
+      if (itask == 0) then
+        do iy=0,nx
+          do ix=0,ny
+            if (gridcount(ix,iy) > 0.) then
+              grid(ix,iy) = grid(ix,iy)/gridcount(ix,iy)
+            endif
+          enddo
+        enddo
+      endif
 
       return
       end

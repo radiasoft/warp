@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.13 $, $Date: 2001/06/08 23:42:24 $
+#@(#) File TOP.V, version $Revision: 3.14 $, $Date: 2001/06/16 00:24:40 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -617,7 +617,7 @@ linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.13 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.14 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -999,6 +999,8 @@ injctspc  integer    /0/   # Extra space added to particle arrays
 injctcnt  integer          # Count for random number generators
 jmininj   real /0/         # Minimum current density emited from the source.
 jmaxinj   real /LARGEPOS/  # Maximum current density emittable from the source.
+inj_nsmooth integer /0/    # Number of smoothing iterations to do on the
+                           # E field in front of the emitting surface.
 
 ntinj          integer /0/ # Number of transverse emitting surfaces.
 nztinjmn(ntinj)   _integer # Minimum z extent of transverse injection.
@@ -1641,6 +1643,10 @@ stckyz(np,zp:real,zmmax:real,zmmin:real,dz:real,uxp:real,uyp:real,uzp:real,
 # Subroutines in package TOP
 setgrid2d(np:integer,x:real,y:real,nx:integer,ny:integer,grid:real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
+        # Deposits data onto a 2-D grid.
+deposgrid2d(itask:integer,np:integer,x:real,y:real,z:real,nx:integer,ny:integer,
+            grid:real,gridcount,xmin:real,xmax:real,ymin:real,ymax:real)
+        subroutine
         # Deposits data onto a 2-D grid.
 getgrid2d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,grid:real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
