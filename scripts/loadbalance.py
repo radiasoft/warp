@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.7 2001/08/11 00:11:19 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.8 2001/08/11 22:37:43 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -158,6 +158,14 @@ needed since some processors may have more conductor points than others.
  - condweight=2.: weight (in timing) of a conductor points relative to weight
                   of a grid cell
   """
+  # --- Save the old values
+  oldiz = top.izslave + 0
+  oldnz = top.nzslave + 0
+  oldizfs = top.izfsslave + 0
+  oldnzfs = top.nzfsslave + 0
+  oldphi = w3d.phi + 0.
+  oldrho = w3d.rho + 0.
+
   # --- Gather the field solve weights. For each z plane, sum the number of
   # --- grid cells, subgrid points, and conductor points, appropriately
   # --- weighted.
@@ -171,22 +179,30 @@ needed since some processors may have more conductor points than others.
 			     condweight*nc
   weight = gatherallzfsarray(weight)
 
-  # --- Convert to a decomposition and scale to w3d.nzfull
+  # --- Convert to a decomposition
   zslave = decompose(weight,npes)
 
-  # --- Save the old values
-  oldiz = top.izslave + 0
-  oldnz = top.nzslave + 0
-  oldizfs = top.izfsslave + 0
-  oldnzfs = top.nzfsslave + 0
-  oldphi = w3d.phi + 0.
-  oldrho = w3d.rho + 0.
-
   # --- Set domain of each processor.
+  round = 1.0
+  cost = 10000.
+  costprev = 20000.
+  while (cost <= costprev):
+    zlast = 0
+    for i in range(npes):
+      top.izfsslave[i] = zlast
+      top.nzfsslave[i] = int(zslave[i]+round) + 1
+      zlast = top.izfsslave[i] + top.nzfsslave[i] - 1
+    top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
+    costprev = cost
+    cost = max(top.nzfsslave-zslave) - min(top.nzfsslave-zslave) + \
+           10000.*(min(top.nzfsslave) < 2)
+    round = round - 0.05
+
+  round = round + 0.05*2
   zlast = 0
   for i in range(npes):
     top.izfsslave[i] = zlast
-    top.nzfsslave[i] = nint(zslave[i]) + 1
+    top.nzfsslave[i] = int(zslave[i]+round) + 1
     zlast = top.izfsslave[i] + top.nzfsslave[i] - 1
   top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
 
