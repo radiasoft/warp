@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.17 $, $Date: 2002/03/27 21:33:48 $
+c@(#) File WXY.M, version $Revision: 3.18 $, $Date: 2002/04/03 23:08:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -630,8 +630,10 @@ c  The range is used is determining whether diagnostics are done which
 c  are based on the z location of the beam frame.  The diagnostics are done
 c  on the time step which ends closest to the value given in the controlling
 c  arrays.
-      zbeaml   = zbeam - 0.5*vbeamfrm*dt
-      zbeamr   = zbeam + 0.5*vbeamfrm*dt
+c  The absolute values are taken so that if dt < 0 or vbeamfrm < 0, then
+c  it will still be true that zbeaml < zbeamr.
+      zbeaml   = zbeam - abs(0.5*vbeamfrm*dt)
+      zbeamr   = zbeam + abs(0.5*vbeamfrm*dt)
 
 c  Set logical flags to determine if "always" or "seldom" phase space 
 c  plots, restart dumps, final timesteps, and moment accumulations should 
