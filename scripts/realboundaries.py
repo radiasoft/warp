@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.20 2002/05/15 19:30:33 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.21 2002/05/21 16:41:44 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -747,7 +747,7 @@ Constructor arguments:
                         top.heleox[hid],top.heleoy[hid],s.helecm):
             return
         else:
-          if s.roundpipe(hid,top.chelezs[0],top.cheleze[0],top.heleap,
+          if s.roundpipe(hid,hzs,hze,top.heleap,
                          top.heleox,top.heleoy,s.helecm):
             return
     #--------------------------------------------------------------------------
