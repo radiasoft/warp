@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.18 $, $Date: 2004/09/18 04:10:48 $
+c F3DSLAVE.M, version $Revision: 1.19 $, $Date: 2004/09/18 05:37:32 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1051,7 +1051,7 @@ c=============================================================================
       subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,delz,delt,
      &                                  my_index,nslaves,izfsslave,
      &                                  whosendingleft,whosendingright)
-      integer(ISZ):: nx,ny,nz,nzfull,delz
+      integer(ISZ):: nx,ny,nz,nzfull,delz,delt
       real(kind=8):: phi(-delt:nx+delt,-delt:ny+delt,-1:nz+1)
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
