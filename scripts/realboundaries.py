@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.42 2004/05/27 23:09:23 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.43 2004/05/28 16:47:30 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -751,7 +751,7 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def roundpipe3d(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
     if ze < w3d.zmmin+top.zbeam or zs > w3d.zmmax+top.zbeam: return 0
-    pipe = ZCylinderOut(ap,ze-zs,0.,ox,oy,0.5*(zs+ze))
+    pipe = ZCylinderOut(ap[id],ze-zs,0.,ox[id],oy[id],0.5*(zs+ze))
     self.conductors += pipe
     return 0
   #----------------------------------------------------------------------------
