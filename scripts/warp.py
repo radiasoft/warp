@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.6 2001/01/11 22:49:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.7 2001/01/16 21:41:43 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -436,10 +436,9 @@ def printtimers(file=None):
     ff.write('Field Solve time %10.4f'%top.fstime)
     if top.it > 0: ff.write('           %10.4f'%(top.fstime/top.it))
     ff.write('\n')
-    if top.dumptime > 0.:
-      ff.write('Dump time        %10.4f'%top.dumptime)
-      if top.it > 0: ff.write('           %10.4f'%(top.dumptime/top.it))
-      ff.write('\n')
+    ff.write('Dump time        %10.4f'%top.dumptime)
+    if top.it > 0: ff.write('           %10.4f'%(top.dumptime/top.it))
+    ff.write('\n')
   else:
     timers = [['Generate time',    top.gentime],
               ['Step time',        top.steptime],
@@ -451,6 +450,7 @@ def printtimers(file=None):
     totaltimes = []
     timedevs = []
     for t in timers: timelists.append(array(gather(t[1]))) 
+    if me > 0: return
     for t in timelists: totaltimes.append(sum(t))
     for t in timelists: timedevs.append(sqrt(ave(t**2) - ave(t)**2))
     h1a = '                        Total time         Deviation'
