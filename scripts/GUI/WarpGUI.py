@@ -18,11 +18,10 @@ modules ={'ConsoleClass':     [0, '', 'ConsoleClass.py'],
 class BoaApp(wxApp):
     def OnInit(self):
         self.main = WarpRun.create(None)
-        self.main.Show(true)
-        self.SetTopWindow(self.main)
         return true
 
 panels=[]
+wgui=None
 wgui=BoaApp(0)
 
 def add_panel(panel,name):
@@ -34,7 +33,9 @@ def process_gui_events():
         wgui.Dispatch()
 
 def gui():
-  global wgui
+  wgui.main.init()
+  wgui.main.Show(true)
+  wgui.SetTopWindow(wgui.main)
   for i in panels:
     wgui.main.add_panel(i[0],i[1])
   installafterstep(process_gui_events)
