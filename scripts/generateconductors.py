@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.91 2004/10/21 01:11:36 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.92 2004/10/21 18:43:04 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -431,10 +431,14 @@ Assembly aligned along X axis
     self.zgeneratorf = generatorf
     self.zgeneratord = generatord
     self.zgeneratori = generatori
-    self.extent.toX()
+    self.extent.toX(self.xcent,self.ycent,self.zcent)
 
   def xconductorf(self,*argtuple):
     arglist = list(argtuple)
+    # --- permutate the object center
+    arglist[-14] = argtuple[-13]
+    arglist[-13] = argtuple[-12]
+    arglist[-12] = argtuple[-14]
     # --- permutate coordinates
     arglist[-10] = argtuple[- 9]
     arglist[- 9] = argtuple[- 8]
@@ -450,6 +454,10 @@ Assembly aligned along X axis
 
   def xconductord(self,*argtuple):
     arglist = list(argtuple)
+    # --- permutate the object center
+    arglist[-8] = argtuple[-7]
+    arglist[-7] = argtuple[-6]
+    arglist[-6] = argtuple[-8]
     # --- permutate coordinates
     arglist[-4] = argtuple[-3]
     arglist[-3] = argtuple[-2]
@@ -458,6 +466,10 @@ Assembly aligned along X axis
 
   def xintercept(self,*argtuple):
     arglist = list(argtuple)
+    # --- permutate the object center
+    arglist[-15] = argtuple[-14]
+    arglist[-14] = argtuple[-13]
+    arglist[-13] = argtuple[-15]
     # --- permutate coordinates
     arglist[-11] = argtuple[-10]
     arglist[-10] = argtuple[- 9]
@@ -492,10 +504,14 @@ Assembly aligned along Y axis
     self.zgeneratorf = generatorf
     self.zgeneratord = generatord
     self.zgeneratori = generatori
-    self.extent.toY()
+    self.extent.toY(self.xcent,self.ycent,self.zcent)
 
   def yconductorf(self,*argtuple):
     arglist = list(argtuple)
+    # --- permutate the object center
+    arglist[-14] = argtuple[-12]
+    arglist[-13] = argtuple[-14]
+    arglist[-12] = argtuple[-13]
     # --- permutate coordinates
     arglist[-10] = argtuple[- 8]
     arglist[- 9] = argtuple[-10]
@@ -511,6 +527,10 @@ Assembly aligned along Y axis
 
   def yconductord(self,*argtuple):
     arglist = list(argtuple)
+    # --- permutate the object center
+    arglist[-8] = argtuple[-6]
+    arglist[-7] = argtuple[-8]
+    arglist[-6] = argtuple[-7]
     # --- permutate coordinates
     arglist[-4] = argtuple[-2]
     arglist[-3] = argtuple[-4]
@@ -519,6 +539,10 @@ Assembly aligned along Y axis
 
   def yintercept(self,*argtuple):
     arglist = list(argtuple)
+    # --- permutate the object center
+    arglist[-15] = argtuple[-13]
+    arglist[-14] = argtuple[-15]
+    arglist[-13] = argtuple[-14]
     # --- permutate coordinates
     arglist[-11] = argtuple[- 9]
     arglist[-10] = argtuple[-11]
@@ -552,24 +576,26 @@ class, but it does provide a nice way of putting this into one spot.
   def toellipse(self,ellipticity):
     self.mins[1] = self.mins[1]*ellipticity
     self.maxs[1] = self.maxs[1]*ellipticity
-  def toX(self):
-    minscopy = copy.copy(self.mins)
-    maxscopy = copy.copy(self.maxs)
-    self.mins[0] = minscopy[2]
-    self.maxs[0] = maxscopy[2]
-    self.mins[1] = minscopy[0]
-    self.maxs[1] = maxscopy[0]
-    self.mins[2] = minscopy[1]
-    self.maxs[2] = maxscopy[1]
-  def toY(self):
-    minscopy = copy.copy(self.mins)
-    maxscopy = copy.copy(self.maxs)
-    self.mins[0] = minscopy[1]
-    self.maxs[0] = maxscopy[1]
-    self.mins[1] = minscopy[2]
-    self.maxs[1] = maxscopy[2]
-    self.mins[2] = minscopy[0]
-    self.maxs[2] = maxscopy[0]
+  def toX(self,xcent,ycent,zcent):
+    cent = array([xcent,ycent,zcent])
+    minscopy = self.mins - cent
+    maxscopy = self.maxs - cent
+    self.mins[0] = minscopy[2] + xcent
+    self.maxs[0] = maxscopy[2] + xcent
+    self.mins[1] = minscopy[0] + ycent
+    self.maxs[1] = maxscopy[0] + ycent
+    self.mins[2] = minscopy[1] + zcent
+    self.maxs[2] = maxscopy[1] + zcent
+  def toY(self,xcent,ycent,zcent):
+    cent = array([xcent,ycent,zcent])
+    minscopy = self.mins - cent
+    maxscopy = self.maxs - cent
+    self.mins[0] = minscopy[1] + xcent
+    self.maxs[0] = maxscopy[1] + xcent
+    self.mins[1] = minscopy[2] + ycent
+    self.maxs[1] = maxscopy[2] + ycent
+    self.mins[2] = minscopy[0] + zcent
+    self.maxs[2] = maxscopy[0] + zcent
 
   def __neg__(self):
     "This one is doesn't help much"
@@ -1812,7 +1838,7 @@ Cylinder aligned with X-axis
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
     ZCylinder.__init__(self,radius,length,
-                            voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1)
+                            voltage,xcent,ycent,zcent,condid=1)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori)
 
@@ -1828,7 +1854,7 @@ Cylinder aligned with X-axis
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
     ZCylinderOut.__init__(self,radius,length,
-                               voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1)
+                               voltage,xcent,ycent,zcent,condid=1)
     XAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori)
 
@@ -1844,7 +1870,7 @@ Cylinder aligned with Y-axis
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
     ZCylinder.__init__(self,radius,length,
-                            voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1)
+                            voltage,xcent,ycent,zcent,condid=1)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori)
 
@@ -1860,7 +1886,7 @@ Cylinder aligned with Y-axis
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
                     condid=1):
     ZCylinderOut.__init__(self,radius,length,
-                               voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1)
+                               voltage,xcent,ycent,zcent,condid=1)
     YAssembly.__init__(self,voltage,xcent,ycent,zcent,condid,self.kwlist,
                             self.generatorf,self.generatord,self.generatori)
 
@@ -1875,7 +1901,7 @@ Elliptical cylinder aligned with z-axis
   - condid=1: conductor id of cylinder, must be integer
   """
   def __init__(self,ellipticity,radius,length,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage,xcent,ycent,zcent,condid=1):
     ZCylinder.__init__(self,radius,length,
                             voltage,xcent,ycent,zcent,condid)
     EllipticAssembly.__init__(self,ellipticity,
