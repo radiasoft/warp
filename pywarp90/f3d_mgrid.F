@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.5 $, $Date: 2001/05/29 21:07:56 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.6 $, $Date: 2001/06/08 19:10:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1099,37 +1099,37 @@ c           --- coarser levels since solver for the residuals.
             endif
 
 c           --- the point lower in x is inside the conductor
-            if (cdelmx(ic) .lt. levelxy) then
+            if (cdelmx(ic) < levelxy) then
               pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
               denom = denom + (levelxy-cdelmx(ic))/cdelmx(ic)*rdx2cos
               dosubgrid = .true.
             endif
 c           --- the point higher in x is inside the conductor
-            if (cdelpx(ic) .lt. levelxy) then
+            if (cdelpx(ic) < levelxy) then
               pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
               denom = denom + (levelxy-cdelpx(ic))/cdelpx(ic)*rdx2cos
               dosubgrid = .true.
             endif
 c           --- the point lower in y is inside the conductor
-            if (cdelmy(ic) .lt. levelxy) then
+            if (cdelmy(ic) < levelxy) then
               pym = voltfac*cvoltmy(ic)/cdelmy(ic)
               denom = denom + (levelxy-cdelmy(ic))/cdelmy(ic)*rdy2cos
               dosubgrid = .true.
             endif
 c           --- the point higher in y is inside the conductor
-            if (cdelpy(ic) .lt. levelxy) then
+            if (cdelpy(ic) < levelxy) then
               pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
               denom = denom + (levelxy-cdelpy(ic))/cdelpy(ic)*rdy2cos
               dosubgrid = .true.
             endif
 c           --- the point lower in z is inside the conductor
-            if (cdelmz(ic) .lt. levelz) then
+            if (cdelmz(ic) < levelz) then
               pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
               denom = denom + (levelz-cdelmz(ic))/cdelmz(ic)*rdz2cos
               dosubgrid = .true.
             endif
 c           --- the point lower in z is inside the conductor
-            if (cdelpz(ic) .lt. levelz) then
+            if (cdelpz(ic) < levelz) then
               pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
               denom = denom + (levelz-cdelpz(ic))/cdelpz(ic)*rdz2cos
               dosubgrid = .true.
@@ -1252,37 +1252,37 @@ c           --- coarser levels since solver for the residuals.
             endif
 
 c           --- the point lower in x is inside the conductor
-            if (cdelmx(ic) .lt. levelxy) then
+            if (cdelmx(ic) < levelxy) then
               pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
               denom = denom + (levelxy-cdelmx(ic))/cdelmx(ic)*rdx2c
               ppp = min(ppp,cdelmx(ic)*levelxyi)
             endif
 c           --- the point higher in x is inside the conductor
-            if (cdelpx(ic) .lt. levelxy) then
+            if (cdelpx(ic) < levelxy) then
               pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
               denom = denom + (levelxy-cdelpx(ic))/cdelpx(ic)*rdx2c
               ppp = min(ppp,cdelpx(ic)*levelxyi)
             endif
 c           --- the point lower in y is inside the conductor
-            if (cdelmy(ic) .lt. levelxy) then
+            if (cdelmy(ic) < levelxy) then
               pym = voltfac*cvoltmy(ic)/cdelmy(ic)
               denom = denom + (levelxy-cdelmy(ic))/cdelmy(ic)*rdy2c
               ppp = min(ppp,cdelmy(ic)*levelxyi)
             endif
 c           --- the point higher in y is inside the conductor
-            if (cdelpy(ic) .lt. levelxy) then
+            if (cdelpy(ic) < levelxy) then
               pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
               denom = denom + (levelxy-cdelpy(ic))/cdelpy(ic)*rdy2c
               ppp = min(ppp,cdelpy(ic)*levelxyi)
             endif
 c           --- the point lower in z is inside the conductor
-            if (cdelmz(ic) .lt. levelz) then
+            if (cdelmz(ic) < levelz) then
               pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
               denom = denom + (levelz-cdelmz(ic))/cdelmz(ic)*rdz2c
               ppp = min(ppp,cdelmz(ic)*levelzi)
             endif
 c           --- the point lower in z is inside the conductor
-            if (cdelpz(ic) .lt. levelz) then
+            if (cdelpz(ic) < levelz) then
               pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
               denom = denom + (levelz-cdelpz(ic))/cdelpz(ic)*rdz2c
               ppp = min(ppp,cdelpz(ic)*levelzi)
@@ -1979,6 +1979,129 @@ c     --- Reset the index.
       return
       end
 c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine ReachableNodes(dx, mask, xlo, ylo, zlo, xhi, yhi, zhi, ncomp)
+      use PSOR3d
+      use MultigridConductor3d
+      integer(ISZ):: xlo, ylo, zlo, xhi, yhi, zhi, ncomp
+      integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi, 0:6)
+      real(kind=8):: dx
+
+c This subroutine sets array mask:
+c
+c mask(i, j, k, 0) = 1 if (i, j, k) is in the domain (uncovered); else 0
+c               1    1 if (i+1, j  , k  ) is reachable from (i, j, k); else 0
+c               2    1 if (i-1, j  , k  ) is reachable from (i, j, k); else 0
+c               3    1 if (i  , j+1, k  ) is reachable from (i, j, k); else 0
+c               4    1 if (i  , j-1, k  ) is reachable from (i, j, k); else 0
+c               5    1 if (i  , j  , k+1) is reachable from (i, j, k); else 0
+c               6    1 if (i  , j  , k-1) is reachable from (i, j, k); else 0
+
+      integer(ISZ):: level
+      integer(ISZ):: ic,ix,iy,iz
+
+c     --- Get level of coarseness
+      level = nint(dx/dxpsor)
+
+c     --- By default, all points are within the domain and are reachable.
+      mask = 1
+
+c     --- Check for point in conductors.
+      do ic=1,ncond
+c       --- First check if the conductor point is on the grid at this
+c       --- level of refinement.
+        if (icondlxy(ic) >= level .and. icondlz(ic) >= level) then
+          ix = ixcond(ic)/level
+          iy = iycond(ic)/level
+          iz = izcond(ic)/level
+c         --- Then check if the point is within the requested region.
+          if (xlo <= ix .and. ix <= xhi .and.
+     &        ylo <= iy .and. iy <= yhi .and.
+     &        zlo <= iz .and. iz <= zhi) then
+c           --- If so, set mask to 0.
+            mask(ix,iy,iz) = 0
+          endif
+        endif
+      enddo
+
+c     --- Check points near boundary.
+      call ReachableNodeswork(mask,xlo,ylo,zlo,xhi,yhi,zhi,
+     &                        necndbdy,
+     &                        ecdelmx,ecdelmy,ecdelmz,ecdelpx,ecdelpy,ecdelpz,
+     &                        iecndx,iecndy,iecndz,iecndlxy,iecndlz,
+     &                        level)
+      if (level == 1) then
+        call ReachableNodeswork(mask,xlo,ylo,zlo,xhi,yhi,zhi,
+     &                          nocndbdy,
+     &                          ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,ocdelpz,
+     &                          iocndx,iocndy,iocndz,iocndlxy,iocndlz,
+     &                          level)
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine ReachableNodeswork(mask,xlo,ylo,zlo,xhi,yhi,zhi,
+     &                              ncndbdy,
+     &                              cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,
+     &                              cdelpz,icndx,icndy,icndz,icndlxy,icndlz,
+     &                              level)
+      integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi
+      integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi, 0:6)
+      integer(ISZ):: ncndbdy,level
+      real(kind=8):: cdelmx(ncndbdy), cdelmy(ncndbdy), cdelmz(ncndbdy)
+      real(kind=8):: cdelpx(ncndbdy), cdelpy(ncndbdy), cdelpz(ncndbdy)
+      integer(ISZ):: icndx(ncndbdy), icndy(ncndbdy), icndz(ncndbdy)
+      integer(ISZ):: icndlxy(ncndbdy), icndlz(ncndbdy)
+
+c Does the work of determining whether neighboring points are "reachable"
+c from the central point. The even or odd conductor points can be passed
+c into this routine.
+
+      integer(ISZ):: ic,ix,iy,iz
+
+c     --- loop over points near surface of conductors
+      do ic = 1,ncndbdy
+ 
+c       --- Only use point if it is usable at this level or higher
+c       --- and if the point is within the requested domain
+        if (icndlxy(ic) >= level .and. icndlz(ic) >= level) then
+ 
+          ix = icndx(ic)/level
+          iy = icndy(ic)/level
+          iz = icndz(ic)/level
+ 
+          if (xlo <= ix .and. ix <= xhi .and.
+     &        ylo <= iy .and. iy <= yhi .and.
+     &        zlo <= iz .and. iz <= zhi) then
+
+c           --- the point higher in x is inside the conductor
+            if (cdelpx(ic) < level) mask(ix,iy,iz,1) = 0
+
+c           --- the point lower in x is inside the conductor
+            if (cdelmx(ic) < level) mask(ix,iy,iz,2) = 0
+
+c           --- the point higher in y is inside the conductor
+            if (cdelpy(ic) < level) mask(ix,iy,iz,3) = 0
+
+c           --- the point lower in y is inside the conductor
+            if (cdelmy(ic) < level) mask(ix,iy,iz,4) = 0
+
+c           --- the point lower in z is inside the conductor
+            if (cdelpz(ic) < level) mask(ix,iy,iz,5) = 0
+
+c           --- the point lower in z is inside the conductor
+            if (cdelmz(ic) < level) mask(ix,iy,iz,6) = 0
+
+          endif
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+c=============================================================================
       subroutine CoveredNodes(dx, mask, xlo, ylo, zlo, xhi, yhi, zhi)
       use PSOR3d
       use MultigridConductor3d
@@ -2063,8 +2186,8 @@ c     --- level.
 c=============================================================================
       subroutine NodalCoefficientswork(coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,
      &                        ncndbdy,
-     &                        cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,
-     &                        cdelpz,icndx,icndy,icndz,icndlxy,icndlz,
+     &                        cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,cdelpz,
+     &                        icndx,icndy,icndz,icndlxy,icndlz,
      &                        cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                        level)
       integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi
@@ -2102,42 +2225,43 @@ c       --- and if the point is within the requested domain
 c           --- Contributions of terms with no conductor boundary nearby.
             coeff0 = -rdx2
 
-c           --- the point lower in x is inside the conductor
-            if (cdelmx(ic) .lt. level) then
-              coeff0(2) = 1./cdelmx(ic)
-              coeffs(ix,iy,iz,2) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmx(ic)/cdelmx(ic)*rdx2
-            endif
 c           --- the point higher in x is inside the conductor
-            if (cdelpx(ic) .lt. level) then
+            if (cdelpx(ic) < level) then
               coeff0(1) = 1./cdelpx(ic)
               coeffs(ix,iy,iz,1) = 0.
               coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpx(ic)/cdelpx(ic)*rdx2
             endif
-c           --- the point lower in y is inside the conductor
-            if (cdelmy(ic) .lt. level) then
-              coeff0(4) = 1./cdelmy(ic)
-              coeffs(ix,iy,iz,4) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmy(ic)/cdelmy(ic)*rdx2
+c           --- the point lower in x is inside the conductor
+            if (cdelmx(ic) < level) then
+              coeff0(2) = 1./cdelmx(ic)
+              coeffs(ix,iy,iz,2) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmx(ic)/cdelmx(ic)*rdx2
             endif
 c           --- the point higher in y is inside the conductor
-            if (cdelpy(ic) .lt. level) then
+            if (cdelpy(ic) < level) then
               coeff0(3) = 1./cdelpy(ic)
               coeffs(ix,iy,iz,3) = 0.
               coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpy(ic)/cdelpy(ic)*rdx2
             endif
-c           --- the point lower in z is inside the conductor
-            if (cdelmz(ic) .lt. level) then
-              coeff0(6) = 1./cdelmz(ic)
-              coeffs(ix,iy,iz,6) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmz(ic)/cdelmz(ic)*rdx2
+c           --- the point lower in y is inside the conductor
+            if (cdelmy(ic) < level) then
+              coeff0(4) = 1./cdelmy(ic)
+              coeffs(ix,iy,iz,4) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmy(ic)/cdelmy(ic)*rdx2
             endif
 c           --- the point lower in z is inside the conductor
-            if (cdelpz(ic) .lt. level) then
+            if (cdelpz(ic) < level) then
               coeff0(5) = 1./cdelpz(ic)
               coeffs(ix,iy,iz,5) = 0.
               coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltpz(ic)/cdelpz(ic)*rdx2
             endif
+c           --- the point lower in z is inside the conductor
+            if (cdelmz(ic) < level) then
+              coeff0(6) = 1./cdelmz(ic)
+              coeffs(ix,iy,iz,6) = 0.
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7)+cvoltmz(ic)/cdelmz(ic)*rdx2
+            endif
+
 c           --- Sum contributions to center term.
             coeffs(ix,iy,iz,0) = sum(coeff0)
 
