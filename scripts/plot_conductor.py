@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.83 2004/09/15 21:36:07 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.84 2004/09/16 00:00:52 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1476,9 +1476,9 @@ Plots Z-X grid in the lab frame (including bends)
   if zbeam is None: zbeam=top.zbeam
   if zcent is None: zcent=top.zbeam
   # --- declare temporary data space, 2 2-D arrays to hold grid coordinates
-  nx = nint(1.*solver.nx/ii)
+  nx = max(1,nint(1.*solver.nx/ii))
   dx = 1.*solver.nx/nx*solver.dx
-  nz = nint(1.*solver.nz/ii)
+  nz = max(1,nint(1.*solver.nz/ii))
   dz = 1.*solver.nz/nz*solver.dz
   xg,zg = getmesh2d(solver.xmmin,dx,nx,solver.zmmin+zbeam,dz,nz)
 
