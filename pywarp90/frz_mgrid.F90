@@ -4954,11 +4954,13 @@ do igrid=1,ngrids
         iz = int(zz/dz)
         wz =     zz/dz - iz
         vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
+        if (cndpnt%dxm(ic) < bndy(i)%dr) cndpnt%volt0xm(ic) = vv
+        if (cndpnt%dxp(ic) < bndy(i)%dr) cndpnt%volt0xp(ic) = vv
       else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
         vv = volt(nz)
+        if (cndpnt%dxm(ic) < bndy(i)%dr) cndpnt%volt0xm(ic) = vv
+        if (cndpnt%dxp(ic) < bndy(i)%dr) cndpnt%volt0xp(ic) = vv
       endif
-      if (cndpnt%dxm(ic) < bndy(i)%dr) cndpnt%volt0xm(ic) = vv
-      if (cndpnt%dxp(ic) < bndy(i)%dr) cndpnt%volt0xp(ic) = vv
       if (cndpnt%dzm(ic) < bndy(i)%dz) then
         zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(cndpnt%kk(ic)-1) &
              - cndpnt%dzm(ic)
@@ -4966,11 +4968,10 @@ do igrid=1,ngrids
           iz = int(zz/dz)
           wz =     zz/dz - iz
           if (discrete) wz = 0.
-          vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
+          cndpnt%volt0zm(ic) = volt(iz)*(1.-wz) + volt(iz+1)*wz
         else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
-          vv = volt(nz)
+          cndpnt%volt0zm(ic) = volt(nz)
         endif
-        cndpnt%volt0zm(ic) = vv
       endif
       if (cndpnt%dzp(ic) < bndy(i)%dz) then
         zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(cndpnt%kk(ic)-1) &
@@ -4979,11 +4980,10 @@ do igrid=1,ngrids
           iz = int(zz/dz)
           wz =     zz/dz - iz
           if (discrete) wz = 1.
-          vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
+          cndpnt%volt0zp(ic) = volt(iz)*(1.-wz) + volt(iz+1)*wz
         else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
-          vv = volt(nz)
+          cndpnt%volt0zp(ic) = volt(nz)
         endif
-        cndpnt%volt0zp(ic) = vv
       endif
 
       dxm = cndpnt%dxm(ic)
