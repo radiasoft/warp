@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.16 $, $Date: 2002/11/05 21:37:11 $
+c TOPSLAVE.M, version $Revision: 1.17 $, $Date: 2003/01/23 21:27:58 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -76,7 +76,7 @@ c         --- in the arrays.
             temp = gaminv(ip)
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
-            if (npmaxi > 0) then
+            if (npmaxi == npmax) then
               pidtemp = pid(ip,:)
               pid(ip,:) = pid(idest,:)
               pid(idest,:) = pidtemp
@@ -110,7 +110,7 @@ c         --- in the arrays.
             temp = gaminv(ip)
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
-            if (npmaxi > 0) then
+            if (npmaxi == npmax) then
               pidtemp = pid(ip,:)
               pid(ip,:) = pid(idest,:)
               pid(idest,:) = pidtemp
@@ -165,9 +165,9 @@ c       --- Make sure these are zero in case they are not set below.
         nsendright = 0
 
 c       --- Number of quantities to be exchanged. Normally it is seven,
-c       --- but when npmaxi > 0, then it is more since pid is also exchanged.
+c       --- but when npmaxi==npmax, then it is more since pid is also exchanged.
         nquant = 7
-        if (npmaxi > 0) nquant = nquant + npid
+        if (npmaxi == npmax) nquant = nquant + npid
 
 c       --- Copy particles being sent to the left to buffer1.
         if (pbound0==periodic .or. my_index > 0) then
@@ -184,7 +184,7 @@ c       --- Copy particles being sent to the left to buffer1.
             call copyarry(uyp(ins_init),buffer1(1+4*nsendleft),nsendleft)
             call copyarry(uzp(ins_init),buffer1(1+5*nsendleft),nsendleft)
             call copyarry(gaminv(ins_init),buffer1(1+6*nsendleft),nsendleft)
-            if (npmaxi > 0) then
+            if (npmaxi == npmax) then
               do ipid=1,npid
                 call copyarry(pid(ins_init,ipid),buffer1(1+(6+ipid)*nsendleft),
      &                        nsendleft)
@@ -209,7 +209,7 @@ c       --- Copy particles being sent to the right to buffer2.
             call copyarry(uyp(ip),buffer2(1+4*nsendright),nsendright)
             call copyarry(uzp(ip),buffer2(1+5*nsendright),nsendright)
             call copyarry(gaminv(ip),buffer2(1+6*nsendright),nsendright)
-            if (npmaxi > 0) then
+            if (npmaxi == npmax) then
               do ipid=1,npid
                 call copyarry(pid(ip,ipid),buffer2(1+(6+ipid)*nsendright),
      &                        nsendright)
@@ -256,7 +256,7 @@ c       --- Make sure that there is space for the incoming data.
           call copyarry(buffer3(1+4*nrecvleft),uyp(ip),nrecvleft)
           call copyarry(buffer3(1+5*nrecvleft),uzp(ip),nrecvleft)
           call copyarry(buffer3(1+6*nrecvleft),gaminv(ip),nrecvleft)
-          if (npmaxi > 0) then
+          if (npmaxi == npmax) then
             do ipid=1,npid
               call copyarry(buffer3(1+(6+ipid)*nrecvleft),pid(ip,ipid),
      &                      nrecvleft)
@@ -275,7 +275,7 @@ c       --- Make sure that there is space for the incoming data.
           call copyarry(buffer4(1+4*nrecvright),uyp(ip),nrecvright)
           call copyarry(buffer4(1+5*nrecvright),uzp(ip),nrecvright)
           call copyarry(buffer4(1+6*nrecvright),gaminv(ip),nrecvright)
-          if (npmaxi > 0) then
+          if (npmaxi == npmax) then
             do ipid=1,npid
               call copyarry(buffer4(1+(6+ipid)*nrecvright),pid(ip,ipid),
      &                      nrecvright)
@@ -298,7 +298,7 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       if (npmaxi > 0) then
+c       if (npmaxi == npmax) then
 c         do ipid=1,npid
 c           call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
 c         enddo
@@ -327,7 +327,7 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       if (npmaxi > 0) then
+c       if (npmaxi == npmax) then
 c         do ipid=1,npid
 c           call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
 c         enddo
@@ -540,80 +540,6 @@ c     --- This is done minimizing the amount of interprocessor communication
       return
       end
 c=============================================================================
-      subroutine percurr_slave(curr,nzzarr,bound0)
-      use GlobalVars
-      use Parallel
-      integer(ISZ):: nzzarr
-      real(kind=8):: curr(0:nzzarr)
-      integer(ISZ):: bound0
-c Make current periodic and share current at PE boundaries.
-c Assumes a maximum grid overlap of 11.
-
-      integer(ISZ):: left_pe,right_pe
-      integer(ISZ):: left_iz,right_iz
-      integer(ISZ):: left_nz,right_nz
-      integer(ISZ):: iz
-      real(kind=8):: temp(0:10)
-      include "mpif.h"
-      integer(ISZ):: mpierror,w
-      integer(ISZ):: mpirequest(2),mpistatus(MPI_STATUS_SIZE,2)
-
-c     --- calculate numbers of the processors to the left and to the right,
-c     --- wrapping around at the ends.
-      left_pe = mod(nslaves+my_index-1,nslaves)
-      right_pe = mod(my_index+1,nslaves)
-
-c     --- Get number of planes to exchange.
-      left_iz = 0
-      left_nz = 1
-      right_iz = nzpslave(my_index)
-      right_nz = 1
-      if (my_index > 0) then
-        left_iz = 0
-        left_nz = izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)
-        left_nz = min(left_nz, 1)
-      endif
-      if (my_index < nslaves-1) then
-        right_iz = izpslave(my_index+1) - izpslave(my_index)
-        right_nz = nzpslave(my_index) - right_iz
-        right_nz = min(right_nz, 1)
-      endif
-
-c     --- This should never happen, but make sure that no more than 11
-c     --- elements of data are to be exchanged.
-      if (left_nz > 11 .or. right_nz > 11) then
-        call remark("ERROR: in percurr_slave more than 11 values are to be")
-        call remark("       exchanged. This just doesn't work. Call Dave.")
-        call kaboom(1)
-      endif
-
-c     --- Send the data to the right.
-      w = 0
-      if (my_index < nslaves-1 .or. bound0==periodic) then
-        w = w + 1
-        call MPI_ISEND(curr(right_iz),right_nz+1,MPI_DOUBLE_PRECISION,
-     &                 right_pe,40,MPI_COMM_WORLD,mpirequest(w),mpierror)
-      endif
-      if (my_index > 0 .or. bound0==periodic) then
-        call MPI_RECV(temp,left_nz+1,MPI_DOUBLE_PRECISION,
-     &                left_pe,40,MPI_COMM_WORLD,mpistatus,mpierror)
-        do iz=left_iz,left_iz+left_nz
-          curr(iz) = curr(iz) + temp(iz-left_iz)
-        enddo
-        w = w + 1
-        call MPI_ISEND(curr(left_iz),left_nz+1,MPI_DOUBLE_PRECISION,
-     &                 left_pe,40,MPI_COMM_WORLD,mpirequest(w),mpierror)
-      endif
-      if (my_index < nslaves-1 .or. bound0==periodic) then
-        call MPI_RECV(curr(right_iz),right_nz+1,MPI_DOUBLE_PRECISION,
-     &                right_pe,40,MPI_COMM_WORLD,mpistatus,mpierror)
-      endif
-
-      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
-
-      return
-      end
-c=============================================================================
 c=============================================================================
 c  Some parallel utility routines
 c=============================================================================
@@ -702,7 +628,6 @@ c to all processors.
       return
       end
 c==========================================================================
-c==========================================================================
       subroutine parallelbroadcastrealarray(data,ndata,root)
       integer(ISZ):: ndata,root
       real(kind=8):: data(ndata)
@@ -717,7 +642,6 @@ c Broadcast the data to all processors.
       return
       end
 c==========================================================================
-c==========================================================================
       subroutine parallelbarrier()
 c Calls MPI barrier
       integer(ISZ):: mpierror
@@ -726,4 +650,26 @@ c Calls MPI barrier
       return
       end
 c==========================================================================
+      subroutine parallelnonzerorealarray(data,ndata)
+      integer(ISZ):: ndata
+      real(kind=8):: data(ndata)
+c Find the max of data over all processors.  Resulting data is broadcasted
+c to all processors.
+
+      real(kind=8):: dmax(ndata),dmin(ndata)
+      integer(ISZ):: mpierror
+      include "mpif.h"
+
+      call MPI_ALLREDUCE(data,dmax,ndata,MPI_DOUBLE_PRECISION,MPI_MAX,
+     &                   MPI_COMM_WORLD,mpierror)
+      call MPI_ALLREDUCE(data,dmin,ndata,MPI_DOUBLE_PRECISION,MPI_MIN,
+     &                   MPI_COMM_WORLD,mpierror)
+      where (dmax /= 0)
+        data = dmax
+      elsewhere
+        data = dmin
+      endwhere
+
+      return
+      end
 c==========================================================================
