@@ -1,7 +1,7 @@
 from warp import *
 
 #=================================================================
-#setbgrd:
+#setbsqgrad:
 #   generates array of grad B^2 data
 # 
 #  Arguments:
@@ -13,28 +13,29 @@ from warp import *
 #    griddedBonly: if true, just passes gridded B data to bx,by,bz.
 #     if false, finds B from call to geteb.
 #    symmetry: assume quadrupole symmetry of B field data if == 2.
-#    zonly: if true, set top.bgrd to have only dB^2/dz (for use
+#    zonly: if true, set top.bsqgrad to have only dB^2/dz (for use
 #     when the other components of grad B^2 are to be calculated from
 #     multipole approximations)
 #getbarray:
 #    fills b arrays consisting of sum of all B field data
-#fillbgrd:
+#fillbsqgrad:
 #  Calculates grad B^2 from Bfield data on grid and loads into top.brgd
 #=================================================================
 true = 1; false = 0
-def setbgrd(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
+def setbsqgrad(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
             zmax=0,griddedBOnly=false,symmetry=2,zonly=false,returnb=0):
     print "Setting grad b**2 array"
-    # check to see if there is gridded B data.  Use top.bgrdbx as test
+    # check to see if there is gridded B data.  Use top.bsqgradbx as test
     #  If so, use its array to define dx, dy, dz.
     global npuse,x,y,z,uzd,gaminv,bx,by,bz,bendres,bendradi,gaminv,dtl,dtr, \
            ex,ey,ez,dt
-    try:
-        dx=top.bgrddx;dy=top.bgrddy;dz=top.bgrddz
-        nx=top.bgrdnx;ny=top.bgrdny;nz=top.bgrdnz
-        # tentative: assume only one kind of element
-        zmin=top.bgrdzs[1];xmin=top.bgrdxs[1];ymin=top.bgrdys[1]
-    except:
+#    try:
+#        dx=top.bsqgraddx;dy=top.bsqgraddy;dz=top.bsqgraddz
+#        nx=top.bsqgradnx;ny=top.bsqgradny;nz=top.bsqgradnz
+#        # tentative: assume only one kind of element
+#        zmin=top.bsqgradzs[1];xmin=top.bsqgradxs[1];ymin=top.bsqgradys[1]
+#    except:
+    if 1:
        print "no allocated gridded B data; defining a grid now"
        # Note in this case, griddedBOnly shouldn't have been set true
        if griddedBOnly == true:
@@ -48,28 +49,29 @@ def setbgrd(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
        dx=(xmax-xmin)/nx
        dy=(ymax-ymin)/ny
        dz=(zmax-zmin)/nz
-       top.bgrdnx=nx;top.bgrdny=ny;top.bgrdnz=nz
-       top.bgrdns=1
-       top.bgrdnc=3
-       top.nbgrd=1
+       top.bsqgradnx=nx;top.bsqgradny=ny;top.bsqgradnz=nz
+       top.bsqgradns+=1
+       top.bsqgradnc=3
+       top.nbsqgrad+=1
        gchange("Lattice")
-       gchange("BGRDdata")
-       top.bgrds=1
-       top.bgrddx=dx
-       top.bgrddy=dy
-       top.bgrddz=dz
-       top.bgrdxs[0]=xmin
-       top.bgrdys[0]=ymin
-       top.bgrdzs[0]=zmin
-       top.bgrdze[0]=zmax
-       top.bgrdid[0]=1
-       top.bgrdsy[0]=2
+       gchange("BSQGRADdata")
+       top.bsqgrads=1
+       top.bsqgraddx[0]=dx
+       top.bsqgraddy[0]=dy
+       top.bsqgraddz[0]=dz
+       top.bsqgradxs[0]=xmin
+       top.bsqgradys[0]=ymin
+       top.bsqgradzs[0]=zmin
+       top.bsqgradze[0]=zmax
+       top.bsqgradid[0]=1
+       top.bsqgradsy[0]=2
     if griddedBOnly == true:
-        # set bx,by,bz to top.bgrdbx, etc.
-        bx=top.bgrdbx[:,:,:,0]
-        by=top.bgrdby[:,:,:,0]
-        bz=top.bgrdbz[:,:,:,0]
+        # set bx,by,bz to top.bsqgradbx, etc.
+        bx=top.bsqgradbx[:,:,:,0]
+        by=top.bsqgradby[:,:,:,0]
+        bz=top.bsqgradbz[:,:,:,0]
     else:
+#	print xmin,dx,nx,ymin,dy,ny,zmin,dz,nz
         x,y,z=getmesh3d(xmin,dx,nx,ymin,dy,ny,zmin,dz,nz)
         print "finished getmesh3d"
         dt=top.dt;dtr=.5*dt;dtl=-dtr
@@ -93,13 +95,13 @@ def setbgrd(nx=0,ny=0,nz=0,xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,
                     bx,by,bz,ex,ey,ez,top.sm[0],
                     top.sq[0],bendres,bendradi,gaminv,dt)
         print "called exteb3d"
-    fillbgrd(bx,by,bz,dx,dy,dz,symmetry,zonly)
+    fillbsqgrad(bx,by,bz,dx,dy,dz,symmetry,zonly)
     resetlat()
     setlatt()
     print "Done setting grad B^2 array"
     if returnb:return bx,by,bz
 
-def fillbgrd(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
+def fillbsqgrad(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
     global bsq,twodxi,dbsqdx,nx,dbsqdz,nz1,dzi,nz
     #number of grid points
     nx1=shape(bx)[0]
@@ -107,33 +109,33 @@ def fillbgrd(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
     nz1=shape(bx)[2]
     #number of cells:
     nx=nx1-1;ny=ny1-1;nz=nz1-1
-    # check to see that top.bgrd has appropriate dimensions; if
+    # check to see that top.bsqgrad has appropriate dimensions; if
     # not, print warnings
     needsgchange=0
     if zonly == false:
-      if top.bgrdnc < 3:
-        print "top.bgrdnc too small; fixing"
+      if top.bsqgradnc < 3:
+        print "top.bsqgradnc too small; fixing"
         needsgchange=1
-        top.bgrdnc=3
+        top.bsqgradnc=3
     else:
-      if top.bgrdnc != 1:
+      if top.bsqgradnc != 1:
         print "top.brdnc is not 1; fixing"
-        top.bgrdnc=1
-    if top.bgrdnx != nx:
-        print "top.bgrdnx < nx; fixing"
+        top.bsqgradnc=1
+    if top.bsqgradnx != nx:
+        print "top.bsqgradnx < nx; fixing"
         needsgchange=1
-        top.bgrdnx=nx
-    if top.bgrdny != ny:
-        print "top.bgrdny < ny; fixing"
+        top.bsqgradnx=nx
+    if top.bsqgradny != ny:
+        print "top.bsqgradny < ny; fixing"
         needsgchange=1
-        top.bgrdny=ny
-    if top.bgrdnz != nz:
-        print "top.bgrdnz < nz; fixing"
+        top.bsqgradny=ny
+    if top.bsqgradnz != nz:
+        print "top.bsqgradnz < nz; fixing"
         needsgchange=1
-        top.bgrdnz=nz
+        top.bsqgradnz=nz
     if needsgchange == 1:
-        top.bgrdns=1
-        gchange("BGRDdata")
+        top.bsqgradns=1
+        gchange("BSQGRADdata")
     dxi=1./dx
     dyi=1./dy
     dzi=1./dz
@@ -141,12 +143,12 @@ def fillbgrd(bx,by,bz,dx,dy,dz,symmetry=0,zonly=false):
     twodyi=.5*dyi
     twodzi=.5*dzi
     bsq=bx*bx+by*by+bz*bz
-    # equivalence dbsqdx to the first entry in top.bgrd, and similarly
+    # equivalence dbsqdx to the first entry in top.bsqgrad, and similarly
     # for dbsqdy, dbsqdz
-    dbsqdz=top.bgrd[0,:,:,:,0]
+    dbsqdz=top.bsqgrad[0,:,:,:,0]
     if zonly == false:
-      dbsqdx=top.bgrd[1,:,:,:,0]
-      dbsqdy=top.bgrd[2,:,:,:,0]
+      dbsqdx=top.bsqgrad[1,:,:,:,0]
+      dbsqdy=top.bsqgrad[2,:,:,:,0]
       dbsqdx[1:nx,:,:]=(bsq[2:nx1,:,:]-bsq[0:nx-1,:,:])*twodxi
       dbsqdy[:,1:ny,:]=(bsq[:,2:ny1,:]-bsq[:,0:ny-1,:])*twodyi
     dbsqdz[:,:,1:nz]=(bsq[:,:,2:nz1]-bsq[:,:,0:nz-1])*twodzi
