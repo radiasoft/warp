@@ -42,7 +42,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.25 2003/04/28 22:16:34 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.26 2003/04/29 16:12:20 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -884,7 +884,7 @@ Plane class
                     condid=1):
     kwlist=['z0','zsign','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           f3d.planeconductorf,f3d.planeconductord)
+                           planeconductorf,planeconductord)
     self.z0 = z0
     self.zsign = zsign
     self.theta = theta
@@ -903,7 +903,7 @@ Box class
                     condid=1):
     kwlist=['xsize','ysize','zsize']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           f3d.boxconductorf,f3d.boxconductord)
+                           boxconductorf,boxconductord)
     self.xsize = xsize
     self.ysize = ysize
     self.zsize = zsize
@@ -924,7 +924,7 @@ Cylinder class
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           f3d.cylinderconductorf,f3d.cylinderconductord)
+                           cylinderconductorf,cylinderconductord)
     self.radius = radius
     self.length = length
     self.theta  = theta
@@ -946,7 +946,7 @@ Cylinders class for a list of cylinders
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['ncylinders','radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           f3d.cylindersconductorf,f3d.cylindersconductord)
+                           cylindersconductorf,cylindersconductord)
     self.ncylinders = 0
     self.radius = radius
     self.length = length
@@ -982,7 +982,7 @@ Cylinder aligned with z-axis
                     condid=1):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           f3d.zcylinderconductorf,f3d.zcylinderconductord)
+                           zcylinderconductorf,zcylinderconductord)
     self.radius = radius
     self.length = length
 
@@ -1000,8 +1000,7 @@ Cylinder with rounded corners aligned with z-axis
                     condid=1):
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zroundedcylinderconductorf,
-                      f3d.zroundedcylinderconductord)
+                      zroundedcylinderconductorf,zroundedcylinderconductord)
     self.radius = radius
     self.length = length
     self.radius2 = radius2
@@ -1020,7 +1019,7 @@ Outside of a cylinder aligned with z-axis
                     condid=1):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zcylinderoutconductorf,f3d.zcylinderoutconductord)
+                      zcylinderoutconductorf,zcylinderoutconductord)
     self.radius = radius
     self.length = length
 
@@ -1038,8 +1037,8 @@ Outside of a cylinder with rounded corners aligned with z-axis
                     condid=1):
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zroundedcylinderoutconductorf,
-                      f3d.zroundedcylinderoutconductord)
+                      zroundedcylinderoutconductorf,
+                      zroundedcylinderoutconductord)
     self.radius = radius
     self.length = length
     self.radius2 = radius2
@@ -1057,7 +1056,7 @@ Cylinder aligned with y-axis
                     condid=1):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.ycylinderconductorf,f3d.ycylinderconductord)
+                      ycylinderconductorf,ycylinderconductord)
     self.radius = radius
     self.length = length
 
@@ -1074,7 +1073,7 @@ Cylinder aligned with x-axis
                     condid=1):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.xcylinderconductorf,f3d.xcylinderconductord)
+                      xcylinderconductorf,xcylinderconductord)
     self.radius = radius
     self.length = length
 
@@ -1091,7 +1090,7 @@ Sphere
                     condid=1):
     kwlist = ['radius']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.sphereconductorf,f3d.sphereconductord)
+                      sphereconductorf,sphereconductord)
     self.radius = radius
 
 #============================================================================
@@ -1112,7 +1111,7 @@ Cone
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.coneconductorf,f3d.coneconductord)
+                      coneconductorf,coneconductord)
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.theta = theta
@@ -1139,7 +1138,7 @@ Cone
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.coneconductorf,f3d.coneconductord)
+                      coneconductorf,coneconductord)
     self.slope = slope
     self.intercept = intercept
     self.theta = theta
@@ -1168,7 +1167,7 @@ Cones
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['ncones','r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.conesconductorf,f3d.conesconductord)
+                      conesconductorf,conesconductord)
     self.ncones = 0
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
@@ -1208,7 +1207,7 @@ Cone
                     condid=1):
     kwlist = ['r_zmin','r_zmax','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zconeconductorf,f3d.zconeconductord)
+                      zconeconductorf,zconeconductord)
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.length = length
@@ -1229,7 +1228,7 @@ Cone
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r_zmin','r_zmax','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zconeconductorf,f3d.zconeconductord)
+                      zconeconductorf,zconeconductord)
     self.slope = slope
     self.intercept = intercept
     self.length = length
@@ -1253,7 +1252,7 @@ Cone outside
                     condid=1):
     kwlist = ['r_zmin','r_zmax','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zconeoutconductorf,f3d.zconeoutconductord)
+                      zconeoutconductorf,zconeoutconductord)
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.length = length
@@ -1274,7 +1273,7 @@ Cone outside
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r_zmin','r_zmax','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zconeoutconductorf,f3d.zconeoutconductord)
+                      zconeoutconductorf,zconeoutconductord)
     self.slope = slope
     self.intercept = intercept
     self.length = length
@@ -1296,7 +1295,7 @@ Torus
   def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r1','r2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.ztorusconductorf,f3d.ztorusconductord)
+                      ztorusconductorf,ztorusconductord)
     self.r1 = r1
     self.r2 = r2
 
@@ -1316,7 +1315,7 @@ Plate from beamlet pre-accelerator
                xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['za','zb','z0','thickness']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.beamletplateconductorf,f3d.beamletplateconductord)
+                      beamletplateconductorf,beamletplateconductord)
     self.za = za
     self.zb = zb
     self.z0 = z0
@@ -1413,7 +1412,7 @@ Outside of a surface of revolution
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['rofzfunc','zmin','zmax','rmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zsrfrvoutconductorf,f3d.zsrfrvoutconductord)
+                      zsrfrvoutconductorf,zsrfrvoutconductord)
     self.rofzfunc = rofzfunc
     self.zmin = zmin
     self.zmax = zmax
@@ -1449,7 +1448,7 @@ Inside of a surface of revolution
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['rofzfunc','zmin','zmax','rmin','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zsrfrvinconductorf,f3d.zsrfrvinconductord)
+                      zsrfrvinconductorf,zsrfrvinconductord)
     self.rofzfunc = rofzfunc
     self.zmin = zmin
     self.zmax = zmax
@@ -1484,7 +1483,7 @@ Betweem surfaces of revolution
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      f3d.zsrfrvinoutconductorf,f3d.zsrfrvinoutconductord)
+                      zsrfrvinoutconductorf,zsrfrvinoutconductord)
     self.rminofz = rminofz
     self.rmaxofz = rmaxofz
     self.zmin = zmin
