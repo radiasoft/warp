@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.9 $, $Date: 2001/07/19 19:57:30 $
+c@(#) File ENV.M, version $Revision: 3.10 $, $Date: 2001/08/10 16:44:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -92,10 +92,12 @@ c  Send a startup message to the standard output
 
 c     --- reset Lattice arrays to final size
       zlatbuffer = dzenv
-      call resetlat
-      nzl = 0
-      zlmin = 0.
-      zlmin = 0.
+      if (nzl .ne. 0) then
+        call resetlat
+        nzl = 0
+        zlmin = 0.
+        zlmin = 0.
+      endif
 
 c  Execute evelope solve, and time it
       call wtimeon
