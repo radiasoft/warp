@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.40 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1679,122 +1679,6 @@ c normal angle of the surface at that point.
         itheta(i) = 0.
         iphi(i) = 0.
       enddo
-
-      return
-      end
-c=======================================================================
-      subroutine XCylinderConductorF(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
-     &                              fuzz)
-      real(kind=8):: rad,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n)
-      real(kind=8):: delmx(n),delpx(n)
-      real(kind=8):: delmy(n),delpy(n)
-      real(kind=8):: delmz(n),delpz(n)
-      real(kind=8):: fuzz
-
-c Finds distances along the axis of the points from a cylinder aligned with
-c the x-axis.
-c The notation is that a negative distance means that the point is inside.
-
-      call ZCylinderConductorF(rad,length,ycent,zcent,xcent,
-     &                         n,y,z,x,delmy,delpy,delmz,delpz,delmx,delpx,fuzz)
-
-      return
-      end
-c=======================================================================
-      subroutine XCylinderConductorD(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,distance)
-      real(kind=8):: rad,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n)
-      real(kind=8):: distance(n)
-
-c Finds distances from a cylinder aligned with the x-axis.
-c The notation is that a negative distance means that the point is inside.
-
-      call ZCylinderConductorD(rad,length,ycent,zcent,xcent,
-     &                         n,y,z,x,distance)
-
-      return
-      end
-c=======================================================================
-      subroutine XCylinderIntercept(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
-      real(kind=8):: rad,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
-
-c Finds place where particle inside intercepted the surface and the
-c normal angle of the surface at that point.
-
-      real(kind=8):: ttheta(n),tphi(n)
-
-      call ZCylinderIntercept(rad,length,ycent,zcent,xcent,
-     &                        n,y,z,x,vy,vz,vx,yi,zi,xi,ttheta,tphi)
-      itheta = atan2(sqrt(cos(ttheta)**2 + (cos(tphi)*sin(ttheta))**2),
-     &               sin(tphi)*sin(ttheta))
-      iphi = atan2(cos(tphi)*sin(ttheta),cos(ttheta))
-
-      return
-      end
-c=======================================================================
-      subroutine YCylinderConductorF(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
-     &                              fuzz)
-      real(kind=8):: rad,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n)
-      real(kind=8):: delmx(n),delpx(n)
-      real(kind=8):: delmy(n),delpy(n)
-      real(kind=8):: delmz(n),delpz(n)
-      real(kind=8):: fuzz
-
-c Finds distances along the axis of the points from a cylinder aligned with
-c the y-axis.
-c The notation is that a negative distance means that the point is inside.
-
-      call ZCylinderConductorF(rad,length,zcent,xcent,ycent,
-     &                         n,z,x,y,delmz,delpz,delmx,delpx,delmy,delpy,fuzz)
-
-      return
-      end
-c=======================================================================
-      subroutine YCylinderConductorD(rad,length,xcent,ycent,zcent,
-     &                               n,x,y,z,distance)
-      real(kind=8):: rad,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n)
-      real(kind=8):: distance(n)
-
-c Finds distances from a cylinder aligned with the y-axis.
-c The notation is that a negative distance means that the point is inside.
-
-      call ZCylinderConductorD(rad,length,zcent,xcent,ycent,
-     &                         n,z,x,y,distance)
-
-      return
-      end
-c=======================================================================
-      subroutine YCylinderIntercept(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,vx,vy,vz,xi,yi,zi,itheta,iphi)
-      real(kind=8):: rad,length,xcent,ycent,zcent
-      integer(ISZ):: n
-      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
-      real(kind=8):: xi(n),yi(n),zi(n),itheta(n),iphi(n)
-
-c Finds place where particle inside intercepted the surface and the
-c normal angle of the surface at that point.
-
-      real(kind=8):: ttheta(n),tphi(n)
-
-      call ZCylinderIntercept(rad,length,zcent,xcent,ycent,
-     &                        n,z,x,y,vz,vx,vy,zi,xi,yi,ttheta,tphi)
-      itheta = atan2(sqrt((sin(tphi)*sin(ttheta))**2 + cos(ttheta)**2),
-     &               cos(tphi)*sin(ttheta))
-      iphi = atan2(cos(ttheta),sin(tphi)*sin(ttheta))
 
       return
       end
