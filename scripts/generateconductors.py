@@ -3,14 +3,14 @@ This module contains classes for generating the conductor data from a
 combination of simple geometrical elements.
 The following elements are defined:
 
-Box(xsize,ysize,zsize,voltage=0.,xcent=0.,ycent=0.,zcent=0.)
-Cylinder(radius,length,theta=0.,phi=0.,voltage=0.,xcent=0.,ycent=0.,zcent=0.)
-ZCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.)
-YCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.)
-XCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.)
-Sphere(radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.)
-ZCone(r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.)
-ZTorus(r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.)
+Box(xsize,ysize,zsize,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+Cylinder(radius,length,theta=0.,phi=0.,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+ZCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+YCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+XCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+Sphere(radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+ZCone(r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+ZTorus(r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 
 installconductors(a): generates the data needed for the fieldsolve
 """
@@ -26,7 +26,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.4 2002/07/16 00:58:56 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.5 2002/07/16 19:54:08 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -535,7 +535,7 @@ Assembly on this grid.
         tt2[7] = tt2[7] + wtime() - tt1
     endtime = wtime()
     self.generatetime = endtime - starttime
-    print tt2
+    #print tt2
 
   def installdata(self):
     """
@@ -698,6 +698,27 @@ Cone
   def distance(self,ix,iy,iz,xx,yy,zz):
     result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
                    generator=f3d.zconeconductorf,
+                   kwlist=[self.r_zmin,self.r_zmax,self.length,
+                           self.xcent,self.ycent,self.zcent])
+    return result
+
+#============================================================================
+class ZConeOut(Assembly):
+  """
+Cone
+  """
+
+  def __init__(self,r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=0):
+    Assembly.__init__(self,voltage,xcent,ycent,zcent)
+    self.r_zmin = r_zmin
+    self.r_zmax = r_zmax
+    self.length = length
+    self.condid = condid
+
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
+                   generator=f3d.zconeoutconductorf,
                    kwlist=[self.r_zmin,self.r_zmax,self.length,
                            self.xcent,self.ycent,self.zcent])
     return result
