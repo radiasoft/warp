@@ -1,0 +1,69 @@
+ARCH = LINUX
+MACHINE = LINUX
+HOME = /home/jlvay
+PYVERS = 2.2
+PYTHON = C:/Python22
+PYWRAPPERHOME = /usr/local/warp/pywrapper
+PYWRAPPERARGS =
+
+SRC=../
+FOBJ=-Fo
+
+PROF = #-Mprof=lines
+#OPT = -O3 -xK -tpp6 -ip -unroll -prefetch # for Pentium III
+#OPT = -O3 -xW -tpp7 -zeros -ip -unroll -prefetch # for Pentium IV
+#OPT = -O3 -xW -tpp7 -unroll -prefetch # for Pentium IV
+#OPT = -gPOPT = -O0
+#OPT = -O3 -tpp7 -unroll -prefetch # for Pentium IV
+ifeq ($(DEBUG),YES)
+  OPT = -g -CB
+else
+#  OPT = -O3 -xW -tpp7 -zeros -ip -unroll -prefetch # for Pentium IV
+  OPT = -O3 
+endif
+PYMODULEOPT = -O1
+F90FREE  = ifl -Qextend_source -Qautodouble -DIFC -FR -Qfpp -4Yd -C90 -Zp8 -Qlowercase -us -MT -Zl -static $(ARGS) 
+F90FIXED = ifl -Qextend_source -Qautodouble -DIFC -FI -Qfpp -4Yd -C90 -Zp8 -Qlowercase -us -MT -Zl -static $(ARGS) 
+CC = gcc -mno-cygwin -mdll -mwindows -DMINGW32
+SO = pyd
+LD = ifc -Bdynamic -132 -r8 -C90 -Zp8 $(ARGS) $(OPT)
+EXPORT = -Qoption,ld,-export-dynamic
+FORTLIB = -L/opt/intel/compiler70/ia32/lib -lCEPCF90 -lF90 -lintrins -lcxa -lcprts -lunwind -lIEPCF90 -limf -lirc -lircmt -lsvml
+LINKLIB = -ldl -lutil -lpthread
+XLIB = -L/usr/X11R6/lib
+PACTLIB = -L/usr/local/pact/lib -lpdb -lpml -lscore
+YORICKLIB = -L/usr/local/yorick-1.5/gist -lgist
+TCLLIB = 
+LAPACKLIB = -LLAPACK -llapack_WINIFL -lblas_WINIFL
+NUMPYINCLUDE = -I$(PYTHON)/include/python$(PYVERS)/Numeric
+OLD = OLD1
+IntelLib=/c/Program\ Files/Intel/Compiler70/IA32/Lib
+
+WARPSCRIPTS = $(HOME)/warp/scripts
+OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB) 
+OTHERSOS = $(PYTHON)/lib/python$(PYVERS)/site-packages/*/*.so \
+        #$(PYTHON)/lib/python$(PYVERS)/site-packages/*/*/*.so
+
+warp: warpC.$(SO)
+	cp warpC.$(SO) $(WARPSCRIPTS)
+
+static: build_static
+
+include ../ifc/Makefile.dependencies.jlv
+INCLUDE = -I$(PYTHON)/include
+PYTHONLIB = -L$(PYTHON)/lib/config -lpython$(PYVERS)
+
+build_static: $(MODULEOBJECTS) $(WARPOBJECTS) config.o $(RNGOBJ)
+	icc -c $(PYTHONSRC) $(INCLUDE) 
+	ifc $(HOME)/dummy/dummy.o \
+	-o pywarp90 $(PYTHONOBJ) $(MODULEOBJECTS) $(WARPOBJECTS) \
+	config.o $(RNGOBJ) $(OTHERSOS) \
+	$(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) $(FORTLIB) 
+
+warpC.$(SO): warpC.c $(MODULEOBJECTS)  $(RNGOBJ) $(WARPOBJECTS)
+	gcc -c  -mno-cygwin -mdll  -O -Wall warpC.c $(INCLUDE) $(NUMPYINCLUDE) -mwindows
+	gcc.exe -mno-cygwin -mdll -static --entry _DllMain@12 -s \
+	warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) \
+	-lm -o warpC.pyd warpC.def $(LAPACKLIB) \
+	-LLib -lpython22 \
+        $(IntelLib)/libCEPCF90MD.lib  $(IntelLib)/libF90MD.lib $(IntelLib)/libintrinsMD.lib -mwindows
