@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.24 2003/09/23 19:37:18 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.25 2003/09/30 18:19:20 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -80,7 +80,7 @@ routines (such as ppxxp).
     self.enable()
     # --- Setup empty arrays for accumulation if laccumulate if true.
     # --- Otherwise, the arrays will just point to the data in ExtPart.
-    self.setuparrays()
+    self.setuparrays(top.ns)
 
   def getiz(self):
     if self.iz >= 0:
@@ -88,16 +88,16 @@ routines (such as ppxxp).
     else:
       return int((self.zz - top.zmmntmin)*top.dzmi)
 
-  def setuparrays(self):
+  def setuparrays(self,ns,bump=None):
     if self.laccumulate and not self.dumptofile:
+      if bump is None: bump = self.nepmax
       self.tep = []
       self.xep = []
       self.yep = []
       self.uxep = []
       self.uyep = []
       self.uzep = []
-      for js in range(top.ns):
-        bump = self.nepmax
+      for js in range(ns):
         self.tep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.xep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.yep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
@@ -105,12 +105,12 @@ routines (such as ppxxp).
         self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
     else:
-      self.tep = top.ns*[None]
-      self.xep = top.ns*[None]
-      self.yep = top.ns*[None]
-      self.uxep = top.ns*[None]
-      self.uyep = top.ns*[None]
-      self.uzep = top.ns*[None]
+      self.tep = ns*[None]
+      self.xep = ns*[None]
+      self.yep = ns*[None]
+      self.uxep = ns*[None]
+      self.uyep = ns*[None]
+      self.uzep = ns*[None]
 
   def addspecies(self):
     if self.laccumulate and not self.dumptofile:
@@ -131,7 +131,7 @@ routines (such as ppxxp).
       self.uzep = top.ns*[None]
 
   def clear(self):
-    self.setuparrays()
+    self.setuparrays(top.ns)
 
   def getid(self):
     assert self.enabled,"This window is disabled and there is no associated id"
@@ -298,11 +298,17 @@ routines (such as ppxxp).
 
   def setaccumulate(self,v=1):
     self.laccumulate = v
-    if self.laccumulate: self.setuparrays()
+    if self.laccumulate: self.setuparrays(top.ns)
 
   ############################################################################
   def restoredata(self):
+    """
+Restores data dumped to a file. Note that this turns off the dumptofile
+feature.
+    """
     if not self.dumptofile: return
+    self.dumptofile = 0
+    self.laccumulate = 1
     try:
       ff = PRpyt.PR(self.name+'_ep.pyt','a',verbose=0)
     except:
@@ -311,16 +317,16 @@ routines (such as ppxxp).
     ntot = []
     iimax = 0
     jsmax = 0
-    varlist = ff.inquire_ls()
+    varlist = list(ff.inquire_ls())
     varlist.sort()
     for var in varlist:
       if var[0] == 'n':
         name,ii,js = string.split(var,'_')
         iimax = max(iimax,eval(ii))
         jsmax = max(jsmax,eval(js))
-        if jsmax > len(ntot): ntot.append(0)
+        while jsmax >= len(ntot): ntot.append(0)
         ntot[jsmax] = ntot[jsmax] + ff.read(var)
-    self.setuparrays()
+    self.setuparrays(jsmax+1,bump=max(array(ntot))+1)
     for js in range(jsmax):
       self.tep[js] = zeros(ntot[js],'d')
       self.xep[js] = zeros(ntot[js],'d')
@@ -328,20 +334,18 @@ routines (such as ppxxp).
       self.uxep[js] = zeros(ntot[js],'d')
       self.uyep[js] = zeros(ntot[js],'d')
       self.uzep[js] = zeros(ntot[js],'d')
-    ins = jsmax*[0]
     for var in varlist:
       if var[0] == 'n':
         name,iis,jss = string.split(var,'_')
         nn = ff.read(var)
         ii = eval(iis)
         js = eval(jss)
-        self.tep[js][ins[js]:ins[js]+nn] = ff.read('t_%d_%d'%(ii,js))
-        self.xep[js][ins[js]:ins[js]+nn] = ff.read('x_%d_%d'%(ii,js))
-        self.yep[js][ins[js]:ins[js]+nn] = ff.read('y_%d_%d'%(ii,js))
-        self.uxep[js][ins[js]:ins[js]+nn] = ff.read('ux_%d_%d'%(ii,js))
-        self.uyep[js][ins[js]:ins[js]+nn] = ff.read('uy_%d_%d'%(ii,js))
-        self.uzep[js][ins[js]:ins[js]+nn] = ff.read('uz_%d_%d'%(ii,js))
-        ins[js] = ins[js] + nn
+        self.tep[js].append(ff.read('t_%d_%d'%(ii,js)))
+        self.xep[js].append(ff.read('x_%d_%d'%(ii,js)))
+        self.yep[js].append(ff.read('y_%d_%d'%(ii,js)))
+        self.uxep[js].append(ff.read('ux_%d_%d'%(ii,js)))
+        self.uyep[js].append(ff.read('uy_%d_%d'%(ii,js)))
+        self.uzep[js].append(ff.read('uz_%d_%d'%(ii,js)))
     ff.close()
 
   ############################################################################
@@ -421,7 +425,7 @@ functions.
       ttext = ''
     else:
       if wt is None: wt = self.dt
-      ttext = "  time = %f ^+_-%f"%(tc,wt)
+      ttext = "  time = %e ^+_-%e"%(tc,wt)
     if self.iz >= 0:
       ztext =  "iz = %d (z = %f m)"%(self.iz,w3d.zmminglobal+self.iz*w3d.dz)
     else:
