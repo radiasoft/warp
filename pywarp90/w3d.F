@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.77 $, $Date: 2002/10/26 00:26:14 $
+c@(#) File W3D.M, version $Revision: 3.78 $, $Date: 2002/11/05 22:06:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9,7 +9,7 @@ c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
       subroutine w3dinit
-      use Subtimers
+      use Subtimers3d
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -22,7 +22,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
       end
 c=============================================================================
       subroutine w3dvers (iout)
-      use Subtimers
+      use Subtimers3d
       use W3Dversion
       integer(ISZ):: iout
       real(kind=8):: substarttime,wtime
@@ -35,7 +35,7 @@ c  Echoes code version, etc. to output files as they're created
 c=============================================================================
       subroutine w3dgen()
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       use Ch_var
       use Constant
       use InGen
@@ -429,7 +429,7 @@ c  Set up Eears of z
       end
 c=============================================================================
       subroutine w3dexe()
-      use Subtimers
+      use Subtimers3d
       use Picglb
       use InGen
       use InPart
@@ -511,7 +511,7 @@ c  Continue to run.
       end
 c=============================================================================
       subroutine w3dfin()
-      use Subtimers
+      use Subtimers3d
       use InGen
       use InGen3d
       use InDiag
@@ -571,7 +571,7 @@ c     call gfree ("Pspwork")
       end
 c=============================================================================
       subroutine step3d (caller)
-      use Subtimers
+      use Subtimers3d
       use Constant
       use InGen
       use InGen3d
@@ -777,7 +777,7 @@ c  Finally, moment diagnostic printout and history storage
 c=============================================================================
       subroutine exteb3d(np,xp,yp,zp,uzp,gaminv,dtl,dtr,
      &                   bx,by,bz,ex,ey,ez,m,q,bendres,bendradi,gammabar,dt)
-      use Subtimers
+      use Subtimers3d
       use Timers
       integer(ISZ):: np
       real(kind=8):: dtl,dtr,m,q,gammabar,dt
@@ -860,7 +860,7 @@ c=============================================================================
       subroutine othere3d (np,xp,yp,zp,zbeam,zimax,zimin,straight,
      &                     ifeears,eears,eearsofz,dzzi,nzzarr,zzmin,
      &                     dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np,ifeears,nzzarr
       real(kind=8):: zbeam,zimax,zimin,straight,eears,dzzi,zzmin
       real(kind=8):: dedr,dexdx,deydy,dbdr
@@ -931,7 +931,7 @@ c     --- azimuthal magnetic field
       end
 c=============================================================================
       subroutine getese3d
-      use Subtimers
+      use Subtimers3d
       use Beam_acc
       use Picglb
       use Picglb3d
@@ -1027,7 +1027,7 @@ c       --- Bulk is doubled
       end
 c=============================================================================
       subroutine gtlchg3d
-      use Subtimers
+      use Subtimers3d
       use Picglb
       use InGen3d
       use Picglb3d
@@ -1098,7 +1098,7 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
       end
 c=============================================================================
       subroutine seteears()
-      use Subtimers
+      use Subtimers3d
       use Beam_acc
       use InGen
       use InPart
@@ -1180,7 +1180,7 @@ c       --- Add on linear pressure term
 c=============================================================================
       subroutine padvnc3d(center)
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       use InMesh3d
       use InGen
       use InGen3d
@@ -1481,11 +1481,11 @@ c       --- Apply particle boundary conditions
      &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
      &                     zgrid,zbeam,nzzarr,
      &                     prwallz(0),prwallxz(0),prwallyz(0),prwelips(0),
-     &                     l2symtry,l4symtry,lostpars(0),zzmin,dzzi)
+     &                     l2symtry,l4symtry,zzmin,dzzi)
         enddo
 
         do is=1,ns
-          call processlostpart(is,clearlostpart)
+          call processlostpart(is,clearlostpart,time,zbeam)
         enddo
 
 c       --- Collect charge density (3d)
@@ -1510,7 +1510,7 @@ c       --- Note that zgridprv is also set at the beginning of w3dexe
       end
 c=============================================================================
       subroutine perphi3d(phi,nx,ny,nz)
-      use Subtimers
+      use Subtimers3d
       use InGen3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -1545,7 +1545,7 @@ c  sets slice at nz+1 equal to the slice at 1
 c=============================================================================
       subroutine perrho3d(rho,nx,ny,nz,bound0)
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
@@ -1608,7 +1608,7 @@ c  whose field solve region overlap its particle region.
       end
 c=============================================================================
       subroutine epush3d(np,uxp,uyp,uzp,ex,ey,ez,q,m,ddt)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np),uzp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -1633,7 +1633,7 @@ c  Push the particle velocity with E field
       end
 c=============================================================================
       subroutine epusht3d(np,uxp,uyp,uzp,ex,ey,ez,q,m,dtp,fdt)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np),uzp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -1660,7 +1660,7 @@ c each particle.
       end
 c============================================================================= 
       subroutine bpush3d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,ddt,ibpush)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: bx(np),by(np),bz(np)
@@ -1716,7 +1716,7 @@ c        --- tan(alpha) / alpha algorithm
       end
 c============================================================================= 
       subroutine bpusht3d(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,dtp,fdt,ibpush)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: bx(np),by(np),bz(np)
@@ -1774,7 +1774,7 @@ c        --- tan(alpha) / alpha algorithm
       end
 c=========================================================================== 
       subroutine xpush3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,ddt)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np
       real(kind=8):: ddt
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
@@ -1796,7 +1796,7 @@ c  Advance particle positions
       end
 c===========================================================================
       subroutine xpusht3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: dtp(np)
@@ -1818,7 +1818,7 @@ c  Advance particle positions
       end
 c============================================================================
       subroutine sete3d_relativity(np,ex,ey,vbeam)
-      use Subtimers
+      use Subtimers3d
       use Constant
       integer(ISZ):: np
       real(kind=8):: ex(np),ey(np)
@@ -1843,7 +1843,7 @@ c Applies the first order relativistic correction to the self E-field.
 c============================================================================ 
       subroutine edamp(eomdamp,it,itdamp,center,np,
      &                 ex,ey,ez,exold,eyold,ezold,exlag,eylag,ezlag)
-      use Subtimers
+      use Subtimers3d
       real(kind=8):: eomdamp
       integer(ISZ):: it,itdamp,np
       real(kind=8):: ex(np), ey(np), ez(np), exold(np), eyold(np), ezold(np)
@@ -1951,7 +1951,7 @@ c        --- don't use modified field if too early in run
       end
 c============================================================================ 
       subroutine bendez3d(np,xp,zp,ez,bendres,bendradi,bends,bnezflag,linbend)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), ez(np), bendres(np), bendradi(np)
       logical(ISZ):: bends, bnezflag, linbend
@@ -1979,7 +1979,7 @@ c  at smaller radii, zones are closer together, so field is larger.
 c=========================================================================== 
       subroutine zbendcor(np,xp,zp,uxp,uzp,gaminv,ddt,bendres,bendradi,bends,
      &                    linbend)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np
       real(kind=8):: ddt
       real(kind=8):: xp(np), zp(np), uxp(np), uzp(np), gaminv(np)
@@ -2013,7 +2013,7 @@ c===========================================================================
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry)
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
       real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:ny,0:nz),xp(np),yp(np),zp(np)
@@ -2449,7 +2449,7 @@ c           --- Adjust sign of E field for appropriate quadrant.
 c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
      &                      dx,dy,dz)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nx_selfe,ny_selfe,nz_selfe
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),selfe(3,0:nx,0:ny,0:nz)
@@ -2529,7 +2529,7 @@ c     --- of the guard cells.
 c=============================================================================
       subroutine stptcl3d
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       use Beam_acc
       use Constant
       use InPart
@@ -3284,7 +3284,7 @@ c     --- if slave, reorganize particles and recalculate sw
 c=============================================================================
       subroutine setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos)
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -3576,7 +3576,7 @@ c     --- scalar loop does the actual deposition
 c=============================================================================
       subroutine loadrho3d(ins_i,nps_i,is_i,lzero)
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       use InGen
       use InGen3d
       use InPart
@@ -3666,8 +3666,8 @@ c=============================================================================
       subroutine stckxy3d(np,xp,xmmax,xmmin,dx,yp,ymmax,ymmin,dy,
      &                   zp,zmmin,dz,uxp,uyp,uzp,gaminv,zgrid,zbeam,
      &                   nzzarr,prwallz,prwallxz,prwallyz,prwelips,
-     &                   l2symtry,l4symtry,lostpars,zzmin,dzzi)
-      use Subtimers
+     &                   l2symtry,l4symtry,zzmin,dzzi)
+      use Subtimers3d
       use InGen3d, only: solvergeom, RZgeom, XZgeom, Zgeom
       integer(ISZ):: np,nzzarr
       real(kind=8):: xmmax,xmmin,dx,ymmax,ymmin,dy,zmmin,dz,zgrid,zbeam
@@ -3676,7 +3676,6 @@ c=============================================================================
       real(kind=8):: prwallz(0:nzzarr),prwallxz(0:nzzarr),prwallyz(0:nzzarr)
       real(kind=8):: prwelips(0:nzzarr)
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: lostpars(0:nzzarr)
       real(kind=8):: zzmin,dzzi
 
 c Enforces transverse sticky boundary conditions.
@@ -3688,9 +3687,6 @@ c the grid longitudinally, as well as having the velocity set to zero. Zero
 c longitudinal velocity is the flag for lost particles. Note that particles
 c previously lost are continually moved to the left end of the grid (which
 c is important with a moving grid).
-c The array lostpars keeps track of where particles are lost (in the beam
-c frame). A check is done so that already lost particles don't contribute to
-c lostpars.
 
       integer(ISZ):: ip,iz
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -3720,7 +3716,6 @@ c lostpars.
      &       (yp(ip)-prwallyz(iz)*prwelips(iz))**2) >= prwallz(iz)**2 .or.
      &      (xmin > xp(ip) .or. xp(ip) > xmax .or.
      &       ymin > yp(ip) .or. yp(ip) > ymax)) then
-          if (uzp(ip)  /=  0.) lostpars(iz) = lostpars(iz) + 1
           gaminv(ip) = 0.
         endif
       enddo
@@ -3730,7 +3725,7 @@ c lostpars.
       end
 c=============================================================================
       subroutine setrstar(rstar,nz,dz,zmmin,zgrid)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: nz
       real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: dz,zmmin,zgrid
@@ -3769,7 +3764,7 @@ c     --- Also, make sure the rstar is non-zero.
 c=============================================================================
       subroutine inject3d(itask)
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       use Constant
       use Beam_acc
       use InGen
@@ -4961,7 +4956,7 @@ c     --- End of transverse injection
       end
 c=============================================================================
       subroutine injctint()
-      use Subtimers
+      use Subtimers3d
       use Constant
       use Beam_acc
       use InGen
@@ -5249,7 +5244,7 @@ c use of the normal E field with the Child-Langmuir profile
       end
 c=============================================================================
       subroutine fill_inj(dx,dy,dz,ix_axis,iy_axis)
-      use Subtimers
+      use Subtimers3d
       use InPart
       use InMesh3d
       use InjectVars
@@ -5718,7 +5713,7 @@ c     --- Do the smoothing.
       end
 c=============================================================================
       subroutine inj_sete3d(npart,ipmin,xmmin,ymmin,zmmin,dx,dy,dz,ex,ey,ez)
-      use Subtimers
+      use Subtimers3d
       use InGen3d
       use InPart
       use InjectVars
@@ -5883,7 +5878,7 @@ c           --- (i.e. zero) and the value on the secondary surface.
       end
 c=============================================================================
       subroutine inj_setrho3d(xmmin,ymmin,dx,dy,dz,nx,ny,l2symtry,l4symtry)
-      use Subtimers
+      use Subtimers3d
       use InPart
       use InjectVars
       use InjectVars3d
@@ -6031,7 +6026,7 @@ c       --- rho only on the right side of the emitting surface.
       end
 c=============================================================================
       subroutine inj_setrho3d_z(dz,nz)
-      use Subtimers
+      use Subtimers3d
       use InPart
       use InjectVars
       use InjectVars3d
@@ -6100,7 +6095,7 @@ c           --- Deposit the particle's charge onto the emitting surface.
       end
 c=============================================================================
       subroutine test_inj_setq(nn,xxp,yyp,zzp,base)
-      use Subtimers
+      use Subtimers3d
       use InPart
       use InGen
       use InGen3d
@@ -6292,7 +6287,7 @@ c       --- contributing area which is within the emitting surface.
       end
 c=============================================================================
       subroutine inj_setq_3darray_and_solvephi(nn,xxp,yyp,zzp,xi,yi)
-      use Subtimers
+      use Subtimers3d
       use InPart
       use InGen
       use InGen3d
@@ -6665,7 +6660,7 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
 
 c=============================================================================
       subroutine inj_sete_3darray(npart,ipmin,xmmin,ymmin,zmmin,dx,dy,dz,ex,ey,ez)
-      use Subtimers
+      use Subtimers3d
       use InGen3d
       use InPart
       use InjectVars
@@ -6871,7 +6866,7 @@ c===========================================================================
       subroutine sete3d_aperture(phi1d,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                           zmmax,dx,dy,dz,nx,ny,nz,ex,ey,
      &                           l2symtry,l4symtry)
-      use Subtimers
+      use Subtimers3d
       use Apertures
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,zmmax,dx,dy,dz
@@ -7011,7 +7006,7 @@ c     --- End of loop over apertures
       end
 c===========================================================================
       subroutine set_aperture_e()
-      use Subtimers
+      use Subtimers3d
       use InGen3d
       use Picglb
       use Picglb3d
@@ -7545,7 +7540,7 @@ c     --- if failure to converge, report the bad news to user
 c===========================================================================
       subroutine fieldsol3d(iwhich)
       use GlobalVars
-      use Subtimers
+      use Subtimers3d
       use Timers
       use InGen
       use InGen3d
@@ -7616,7 +7611,7 @@ c        call getphiforparticlesz()
       end
 c=============================================================================
       subroutine vp3d (iwhich)
-      use Subtimers
+      use Subtimers3d
       use Constant
       use InGen
       use InGen3d
