@@ -12,6 +12,8 @@ import ConsoleClass
 import PzplotsGUI
 import txtEditorDialog
 import newstdout
+import wxDialog_proto
+import pygistDialog
 import gist
 import sys
 import code
@@ -26,9 +28,10 @@ def create(parent):
 [wxID_WARPRUN, wxID_WARPRUNCONT, wxID_WARPRUNDOC, wxID_WARPRUNENV, 
  wxID_WARPRUNFMA, wxID_WARPRUNHCP, wxID_WARPRUNLAT, wxID_WARPRUNMESSAGEWINDOW, 
  wxID_WARPRUNNEXT, wxID_WARPRUNNOTEBOOK1, wxID_WARPRUNPANEL1, 
- wxID_WARPRUNSTART, wxID_WARPRUNSTATUSBAR1, wxID_WARPRUNSTEP, 
- wxID_WARPRUNTXTEDITOR, wxID_WARPRUNWINON, 
-] = map(lambda _init_ctrls: wxNewId(), range(16))
+ wxID_WARPRUNREDRAW, wxID_WARPRUNSEPARATE, wxID_WARPRUNSTART, 
+ wxID_WARPRUNSTATUSBAR1, wxID_WARPRUNSTEP, wxID_WARPRUNTXTEDITOR, 
+ wxID_WARPRUNWINON, 
+] = map(lambda _init_ctrls: wxNewId(), range(18))
 
 [wxID_WARPRUNTOOLBAR2TOOLS0, wxID_WARPRUNTOOLBAR2TOOLS1, wxID_WARPRUNTOOLBAR2TOOLS2,
  wxID_WARPRUNTOOLBAR2TOOLS3] = map(lambda _init_coll_toolBar2_Tools: wxNewId(), range(4))
@@ -197,10 +200,10 @@ class WarpRun(wxFrame):
     def _init_ctrls(self, prnt):
         # generated method, don't edit
         wxFrame.__init__(self, id=wxID_WARPRUN, name='WarpRun', parent=prnt,
-              pos=wxPoint(520, 164), size=wxSize(600, 604),
+              pos=wxPoint(564, 162), size=wxSize(608, 647),
               style=wxDEFAULT_FRAME_STYLE, title='WARP')
         self._init_utils()
-        self.SetClientSize(wxSize(600, 580))
+        self.SetClientSize(wxSize(600, 623))
         self.SetMenuBar(self.menuBar1)
         EVT_IDLE(self, self.OnWxframe1Idle)
 
@@ -217,31 +220,55 @@ class WarpRun(wxFrame):
         self.winon = wxButton(id=wxID_WARPRUNWINON, label='win', name='winon',
               parent=self.panel1, pos=wxPoint(0, 0), size=wxSize(40, 22),
               style=0)
+        self.winon.SetBackgroundColour(wxColour(0, 0, 160))
+        self.winon.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.winon.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.winon, wxID_WARPRUNWINON, self.OnWinonButton)
 
         self.fma = wxButton(id=wxID_WARPRUNFMA, label='fma', name='fma',
               parent=self.panel1, pos=wxPoint(40, 0), size=wxSize(40, 22),
               style=0)
+        self.fma.SetBackgroundColour(wxColour(0, 0, 160))
+        self.fma.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.fma.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.fma, wxID_WARPRUNFMA, self.OnFmaButton)
 
         self.hcp = wxButton(id=wxID_WARPRUNHCP, label='hcp', name='hcp',
               parent=self.panel1, pos=wxPoint(80, 0), size=wxSize(40, 22),
               style=0)
+        self.hcp.SetBackgroundColour(wxColour(0, 0, 160))
+        self.hcp.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.hcp.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.hcp, wxID_WARPRUNHCP, self.OnHcpButton)
 
         self.env = wxButton(id=wxID_WARPRUNENV, label='env', name='env',
-              parent=self.panel1, pos=wxPoint(120, 0), size=wxSize(40, 22),
+              parent=self.panel1, pos=wxPoint(168, 0), size=wxSize(40, 22),
               style=0)
+        self.env.SetBackgroundColour(wxColour(0, 128, 0))
+        self.env.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.env.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.env, wxID_WARPRUNENV, self.OnEnvButton)
 
         self.lat = wxButton(id=wxID_WARPRUNLAT, label='lat', name='lat',
-              parent=self.panel1, pos=wxPoint(160, 0), size=wxSize(40, 22),
+              parent=self.panel1, pos=wxPoint(208, 0), size=wxSize(40, 22),
               style=0)
+        self.lat.SetBackgroundColour(wxColour(0, 128, 0))
+        self.lat.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.lat.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.lat, wxID_WARPRUNLAT, self.OnLatButton)
 
         self.doc = wxButton(id=wxID_WARPRUNDOC, label='doc', name='doc',
-              parent=self.panel1, pos=wxPoint(200, 0), size=wxSize(40, 22),
+              parent=self.panel1, pos=wxPoint(456, 0), size=wxSize(40, 22),
               style=0)
+        self.doc.SetForegroundColour(wxColour(0, 0, 0))
+        self.doc.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxBOLD, False,
+              'MS Sans Serif'))
+        self.doc.SetBackgroundColour(wxColour(255, 255, 128))
         EVT_BUTTON(self.doc, wxID_WARPRUNDOC, self.OnDocButton)
 
         self.notebook1 = wxNotebook(id=wxID_WARPRUNNOTEBOOK1, name='notebook1',
@@ -250,7 +277,7 @@ class WarpRun(wxFrame):
               self.OnNotebook1NotebookPageChanged)
 
         self.txtEditor = wxTextCtrl(id=wxID_WARPRUNTXTEDITOR, name='txtEditor',
-              parent=self.notebook1, pos=wxPoint(0, 0), size=wxSize(596, 316),
+              parent=self.notebook1, pos=wxPoint(0, 0), size=wxSize(592, 324),
               style=wxTE_MULTILINE, value='')
         self.txtEditor.SetToolTipString('Text Editor')
 
@@ -263,24 +290,56 @@ class WarpRun(wxFrame):
         self.MessageWindow.SetBackgroundColour(wxColour(192, 192, 192))
 
         self.Step = wxButton(id=wxID_WARPRUNSTEP, label='Step', name='Step',
-              parent=self.panel1, pos=wxPoint(280, 0), size=wxSize(40, 22),
+              parent=self.panel1, pos=wxPoint(296, 0), size=wxSize(40, 22),
               style=0)
+        self.Step.SetBackgroundColour(wxColour(128, 0, 64))
+        self.Step.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.Step.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.Step, wxID_WARPRUNSTEP, self.OnStepButton)
 
         self.Next = wxButton(id=wxID_WARPRUNNEXT, label='Next', name='Next',
-              parent=self.panel1, pos=wxPoint(320, 0), size=wxSize(40, 22),
+              parent=self.panel1, pos=wxPoint(336, 0), size=wxSize(40, 22),
               style=0)
+        self.Next.SetBackgroundColour(wxColour(128, 0, 64))
+        self.Next.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.Next.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.Next, wxID_WARPRUNNEXT, self.OnNextButton)
 
         self.Start = wxButton(id=wxID_WARPRUNSTART, label='Start', name='Start',
-              parent=self.panel1, pos=wxPoint(240, 0), size=wxSize(40, 22),
+              parent=self.panel1, pos=wxPoint(256, 0), size=wxSize(40, 22),
               style=0)
+        self.Start.SetBackgroundColour(wxColour(128, 0, 64))
+        self.Start.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.Start.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.Start, wxID_WARPRUNSTART, self.OnStartButton)
 
         self.Cont = wxButton(id=wxID_WARPRUNCONT, label='Cont', name='Cont',
-              parent=self.panel1, pos=wxPoint(360, 0), size=wxSize(40, 22),
+              parent=self.panel1, pos=wxPoint(376, 0), size=wxSize(40, 22),
               style=0)
+        self.Cont.SetBackgroundColour(wxColour(128, 0, 64))
+        self.Cont.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.Cont.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.Cont, wxID_WARPRUNCONT, self.OnContButton)
+
+        self.separate = wxButton(id=wxID_WARPRUNSEPARATE, label='separate',
+              name='separate', parent=self.panel1, pos=wxPoint(544, 0),
+              size=wxSize(56, 23), style=0)
+        self.separate.SetBackgroundColour(wxColour(128, 128, 128))
+        self.separate.SetForegroundColour(wxColour(255, 255, 255))
+        EVT_BUTTON(self.separate, wxID_WARPRUNSEPARATE, self.OnSeparateButton)
+
+        self.redraw = wxButton(id=wxID_WARPRUNREDRAW, label='rdw',
+              name='redraw', parent=self.panel1, pos=wxPoint(120, 0),
+              size=wxSize(40, 22), style=0)
+        self.redraw.SetBackgroundColour(wxColour(0, 0, 160))
+        self.redraw.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxNORMAL, False,
+              'MS Sans Serif'))
+        self.redraw.SetForegroundColour(wxColour(255, 255, 255))
+        EVT_BUTTON(self.redraw, wxID_WARPRUNREDRAW, self.OnRedrawButton)
 
         self._init_coll_notebook1_Pages(self.notebook1)
 
@@ -299,16 +358,27 @@ class WarpRun(wxFrame):
         self.Console = self.ConsolePanel.Console
         self.prefix = ''
         self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self.notebook1)
-        self.PzplotsGUI = PzplotsGUI.Pzplots(self.notebook1)
-        self.MatchingGUI = MatchingGUI.MatchingGUI(self.notebook1)
+        self.panels = {}
+        self.panels['Pzplots'] = self.show_GUI(PzplotsGUI,'notebook','Pzplots')
+        self.panels['Matching'] = self.show_GUI(MatchingGUI,'notebook','Matching')
+        self.panels['Gist'] = self.show_GUI(pygistDialog,'notebook','Gist')
         self.notebook1.SetSelection(0) # open notebook on Editor
         self.FileExecDialog = txtEditorDialog.txtEditorDialog(self)      
         self.FileExec = self.FileExecDialog.txtEditor  
-#        self.FileExec.Show(1)
+        self.FileExec.Show(1)
         Palettes = ["earth","rainbow","gray","yarg","heat","ncar","cool","rainbowaf","stern","christmas"]
         for i in range(0,len(Palettes)):
             self.AddPalette(Palettes[i])
    
+    def show_GUI(self,gui,winout,title):
+        if(winout=='notebook'):
+          panel = gui.panel(self.notebook1)
+          self.notebook1.AddPage(imageId=-1, page=panel, select=True, text=title)
+        else:
+          panel = wxDialog_proto.wxDialog1(self,gui.panel,title)
+          panel.Show(1)
+        return {'panel':panel,'gui':gui,'winout':winout,'title':title}
+        
     def HandleGistEvents(self):
       try:
         v = gist.__version__
@@ -601,7 +671,7 @@ class WarpRun(wxFrame):
         self.mnuPackageUpdate()
 
     def OnWxframe1Idle(self, event):
-        if self.isgistwindowon:
+#        if self.isgistwindowon:
             self.HandleGistEvents()
             event.RequestMore(1)
     
@@ -678,6 +748,27 @@ class WarpRun(wxFrame):
             self.OutToConsole()
         else:
             self.OutToMessageWindow()
+        if sys.platform == 'win32':event.Skip()
+
+    def OnGistButton(self, event):
+        import pygistDialog
+        self.pygistDialog = pygistDialog.wxDialog1(self)
+        self.pygistDialog.Show(1)
+        if sys.platform <> 'win32':event.Skip()
+
+    def OnSeparateButton(self, event):
+        current = self.notebook1.GetPage(self.notebook1.GetSelection())
+        for i in self.panels.keys():
+            if self.panels[i]['panel'] == current:
+                self.notebook1.DeletePage(self.notebook1.GetSelection())
+                self.panels[i]=self.show_GUI(self.panels[i]['gui'],
+                                             'dialog',
+                                             self.panels[i]['title'])
+                exit
+        event.Skip()
+
+    def OnRedrawButton(self, event):
+        redraw()
         event.Skip()
             
         
