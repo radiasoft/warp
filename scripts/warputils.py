@@ -19,7 +19,7 @@ averagezdata(): Does local averaging over the first dimension of the input
 """
 from warp import *
 
-warputils_version = "$Id: warputils.py,v 1.6 2004/07/29 17:33:09 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.7 2004/09/02 21:50:23 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -118,6 +118,7 @@ Checks whether or not the variable whose name is specified exists in the
 main dictionary.
  - x: Name of variable - must be a string.
   """
+  import __main__
   if x in __main__.__dict__.keys(): return true
   if x in locals().keys(): return true
   if x in globals().keys(): return true
