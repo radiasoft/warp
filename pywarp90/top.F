@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.84 $, $Date: 2003/04/22 22:26:33 $
+c@(#) File TOP.M, version $Revision: 3.85 $, $Date: 2003/04/28 19:17:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3084,7 +3084,7 @@ c         --- All particles are in the same z-cell
           ib = bgrdid(ii)
           k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
 c         --- skip field accumulation if particles are outside of axial grid
-          if (k < 0 .or. k >= bgrdnz) cycle
+          if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
         endif
 
         do ip = 1, np
@@ -3095,6 +3095,7 @@ c           --- find the location of the particle in the internal lattice arrays
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
             ii = cbgrdid(iz,io)
             ib = bgrdid(ii)
+            if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
           endif
 
 c         --- find transverse particle coordinate in frame of gridded field 
@@ -3276,13 +3277,10 @@ c         --- find the location of the particle in the internal lattice arrays
           ii = cpgrdid(iz,io)
           ib = pgrdid(ii)
           k = (zz - cpgrdzs(iz,io))*pgrddzi(ib)
-          if (k < 0 .or. k >= pgrdnz) cycle
+          if (zz < cpgrdzs(iz,io) .or. cpgrdze(iz,io) < zz) cycle
         endif
 
         do ip = 1, np
-
-c         --- cycle if lost particle
-          if(zp(ip)<0._8) cycle
 
           if (.not. lslice) then
 c           --- find the location of the particle in the internal lattice arrays
@@ -3290,6 +3288,8 @@ c           --- find the location of the particle in the internal lattice arrays
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
             ii = cpgrdid(iz,io)
             ib = pgrdid(ii)
+c           --- cycle if lost particle
+            if (zz < cpgrdzs(iz,io) .or. cpgrdze(iz,io) < zz) cycle
           endif
 
 c         --- find transverse particle coordinate in frame of gridded field 
