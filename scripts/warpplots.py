@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.133 2004/11/13 01:32:04 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.134 2004/11/16 00:39:16 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -428,7 +428,7 @@ def pptitleright(iw=0,kwdict={},**kw):
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None,"slope":0,
+                "zl":None,"zu":None,"zc":None,"slope":0,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -467,6 +467,10 @@ def pptitleright(iw=0,kwdict={},**kw):
     zl = w3d.zmminglobal + iz*w3d.dz - wz*w3d.dz + top.zbeam
     zu = w3d.zmminglobal + iz*w3d.dz + wz*w3d.dz + top.zbeam
     result = "iz = %d, z range (%9.4e, %9.4e)"%(iz,zl,zu)
+  elif zc is not None:
+    zl = zc - wz*w3d.dz
+    zu = zc + wz*w3d.dz
+    result = "zc = %9.4e, z range (%9.4e, %9.4e)"%(zc,zl,zu)
   elif iw < 0:
     if psubset==[]: setup_subsets()
     result = "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
