@@ -1,4 +1,4 @@
-!     Last change:  JLV  19 Jun 2002    3:02 pm
+!     Last change:  JLV  26 Jun 2002   11:30 am
 #include "top.h"
 
 module multigrid_common
@@ -66,6 +66,8 @@ INTEGER(ISZ) :: nb_iters ! actual number of iterations used for a solve
 
 #ifdef MPIPARALLEL
   INTEGER(ISZ) :: nworkpproc, workfact=8
+#else
+  INTEGER(ISZ) :: my_index = 0
 #endif
 
 end module multigrid_common
@@ -133,6 +135,7 @@ INTEGER(ISZ) :: i,j, nzp
   ALLOCATE(grids)
   NULLIFY(grids%next,grids%prev,grids%down,grids%up,grids%bnd)
 #ifdef MPIPARALLEL
+  workfact = mgridrz_workfact
   nzp=nzpslave(my_index)
   ALLOCATE(grids%rho(nr+1,nz+1),grids%phi(0:nr+2,0:nz+2), &
            grids%rhop(nr+1,nzp+1),grids%phip(0:nr+2,0:nzp+2), &
@@ -460,7 +463,13 @@ REAL(8) :: drc, dzc
   do WHILE(nrc>mgridrz_nmeshmin.or.nzc>mgridrz_nmeshmin)
     nrc_old=nrc
     nzc_old=nzc
+#ifdef MPIPARALLEL
+    nzc = nzc * nslaves / nworkpproc
     call evalnewgrid(nrc,nzc,drc,dzc)
+    nzc = nzc * nworkpproc / nslaves 
+#else
+    call evalnewgrid(nrc,nzc,drc,dzc)
+#endif
     IF(nrc==nrc_old .AND. nzc==nzc_old) exit
     nlevels = nlevels + 1
 #ifdef MPIPARALLEL
@@ -494,7 +503,14 @@ REAL(8) :: drc, dzc
     bndy(i)%izlbnd=izlbnd
     bndy(i)%izrbnd=izrbnd
     IF(i/=nlevels) then
-      call evalnewgrid(nrc,nzc,drc,dzc)
+!      call evalnewgrid(nrc,nzc,drc,dzc)
+#ifdef MPIPARALLEL
+    nzc = nzc * nslaves / nworkpproc
+    call evalnewgrid(nrc,nzc,drc,dzc)
+    nzc = nzc * nworkpproc / nslaves 
+#else
+    call evalnewgrid(nrc,nzc,drc,dzc)
+#endif
 #ifdef MPIPARALLEL
       IF(nslaves>1.and.nworkpproc<nslaves.and.nrc*nzc<=workfact*nr) then
         nworkpproc = nworkpproc*2
@@ -529,6 +545,7 @@ REAL(8) :: drc, dzc
     bndy(i)%nb_conductors = 0
     ALLOCATE(bndy(i)%v(bndy(i)%nr+1,bndy(i)%nz+1))
     bndy(i)%v(:,:)=v_vacuum
+    if(my_index==0) write(0,*) i,nrc,nzc,drc,dzc,bndy(i)%l_merged
   end do
 #ifdef MPIPARALLEL
   IF(nslaves>1) then
@@ -572,9 +589,6 @@ REAL(8), INTENT(IN OUT) :: dr,dz
 REAL(8) :: rap
 INTEGER :: nrnew, nznew
 
-#ifdef MPIPARALLEL
-  nz=nz*nslaves
-#endif
   rap = dr/dz
   IF(rap>4._8/3._8.or.nr<=mgridrz_nmeshmin) then
     nznew = MAX(mgridrz_nmeshmin,nz/2)
@@ -592,9 +606,6 @@ INTEGER :: nrnew, nznew
     nr=nrnew
     nz=nznew
   END if
-#ifdef MPIPARALLEL
-  nz=nz/nslaves
-#endif
 
   return
 end subroutine evalnewgrid
@@ -1280,10 +1291,10 @@ REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz
 REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz
 INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp
 
-IF(bndy(level)%l_powerof2) then
-  restrict = restrict_pof2(uold, ixrbnd, izlbnd, izrbnd)
-  return
-END if
+!IF(bndy(level)%l_powerof2) then
+!  restrict = restrict_pof2(uold, ixrbnd, izlbnd, izrbnd)
+!  return
+!END if
 
 IF(l_mgridrz_debug) WRITE(0,*) 'enter restrict, level = ',level
 
@@ -1349,6 +1360,14 @@ do kold = 1, nzold+1
   end do
 end do
 
+#ifdef MPIPARALLEL
+    IF(izlbnd<0) then
+      rap(:,1) = 2.*rap(:,1)
+    END if
+    IF(izrbnd<0) then
+      rap(:,nznew+1) = 2.*rap(:,nznew+1)
+    END if
+#endif
 do k = 1, nznew+1
   do j = 1, nxnew+1
     IF(rap(j,k)/=0._8) restrict(j,k)   = restrict(j,k)   / rap(j,k)
@@ -2048,10 +2067,12 @@ do redblack = 1, 2
 
 #ifdef MPIPARALLEL
 !  call check_fbndz(f,izlbnd,izrbnd)
-  call exchange_fbndz(f,izlbnd,izrbnd)
+  call exchange_fbndz_rb(f,izlbnd,izrbnd,1-(redblack-1))
+!  call exchange_fbndz(f,izlbnd,izrbnd)
 #endif
 
 END do !redblack=1, 2
+!  call exchange_fbndz(f,izlbnd,izrbnd)
 
 call updateguardcellsrz(f=f, ixrbnd=ixrbnd, izlbnd=izlbnd, izrbnd=izrbnd)
 
@@ -2072,6 +2093,11 @@ END subroutine relaxbndrzwguard
 
     INTEGER(ISZ) :: nr,nz
     INTEGER(ISZ) :: p_up, p_down
+    integer(ISZ) :: mpi_req(2*nslaves+2),mpistatus(MPI_STATUS_SIZE,2*nslaves+2),mpierror,ir
+
+    
+!    write(0,*) my_index,':enter exchangefbnd'
+    ir = 0
 
     p_up   = -izrbnd-1
     p_down = -izlbnd-1
@@ -2080,26 +2106,109 @@ END subroutine relaxbndrzwguard
     nz = SIZE(f,2)-3
 
     ! send
-!    IF(bndy(level)%izlbnd<0) WRITE(0,*) my_index, ' send to ',p_down
-!    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' send to ',p_up
-    IF(izlbnd<0) call mpi_send_real_array(f(:,2), p_down, 0)
-    IF(izrbnd<0) call mpi_send_real_array(f(:,nz), p_up, 0)
+    IF(izlbnd<0) then
+      ir = ir + 1
+      call mpi_isend(f(0,2),size(f(:,2)),mpi_double_precision,p_down,0,mpi_comm_world,mpi_req(ir),mpierror)
+     end if
+!    IF(bndy(level)%izlbnd<0) WRITE(0,*) my_index, ' send to ',p_down,ir
+    IF(izrbnd<0) then
+      ir = ir + 1
+      call mpi_isend(f(0,nz),size(f(:,nz)),mpi_double_precision,p_up,0,mpi_comm_world,mpi_req(ir),mpierror)
+    end if
+!    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' send to ',p_up,ir
 
     ! receive
-!    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' recv from ',p_up
-!    IF(bndy(level)%izlbnd<0) WRITE(0,*) my_index, ' recv from ',p_down
-    IF(izrbnd<0) f(:,nz+2) = mpi_recv_real_array(SIZE(f(:,nz)),p_up,0)
-    IF(izlbnd<0) f(:,0)    = mpi_recv_real_array(SIZE(f(:,0 )),p_down,0)
+    IF(izrbnd<0) then
+      ir = ir + 1
+      call mpi_irecv(f(0,nz+2),size(f(:,nz+2)),mpi_double_precision,p_up,0,mpi_comm_world,mpi_req(ir),mpierror)
+    end if     
+!    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' recv from ',p_up,ir
+    IF(izlbnd<0) then
+      ir = ir + 1
+      call mpi_irecv(f(0,0),size(f(:,0)),mpi_double_precision,p_down,0,mpi_comm_world,mpi_req(ir),mpierror)
+    end if
+!    IF(bndy(level)%izlbnd<0) WRITE(0,*) my_index, ' recv from ',p_down,ir
 
-!    call parallelbarrier()
+    if(ir>0) call MPI_WAITALL(ir,mpi_req(1:ir),mpistatus(:,1:ir),mpierror)
 
   end subroutine exchange_fbndz
+
+
+  subroutine exchange_fbndz_rb(f, izlbnd, izrbnd, izf)
+    REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
+    INTEGER(ISZ), INTENT(IN) :: izlbnd, izrbnd, izf
+
+    INTEGER(ISZ) :: nr,nz
+    INTEGER(ISZ) :: p_up, p_down
+    integer(ISZ) :: mpi_req(4),mpistatus(MPI_STATUS_SIZE,4),mpierror,ir
+
+    real(8), allocatable, dimension(:) :: ftmpd, ftmpu, ftmpds, ftmpus
+    
+!    write(0,*) my_index,':enter exchangefbnd',izf
+    ir = 0
+
+    p_up   = -izrbnd-1
+    p_down = -izlbnd-1
+
+    nz = SIZE(f,2)-3
+    if(izf==0) then
+      nr = (SIZE(f,1)-1)/2+1
+    else
+      nr = (SIZE(f,1)-1)/2
+    end if
+
+    nr = SIZE(f(izf::2,2))
+
+    allocate(ftmpd(izf:nr+izf-1),ftmpu(izf:nr+izf-1))
+    allocate(ftmpds(izf:nr+izf-1),ftmpus(izf:nr+izf-1))
+
+    ! send
+    IF(izlbnd<0) then
+      ir = ir + 1
+!      WRITE(0,*) my_index,SIZE(ftmpds),SIZE(f(izf::2,2))
+      ftmpds = f(izf::2,2) 
+      call mpi_isend(ftmpds(izf),nr,mpi_double_precision,p_down,0,mpi_comm_world,mpi_req(ir),mpierror)
+    end if
+!    IF(bndy(level)%izlbnd<0) WRITE(0,*) my_index, ' send to ',p_down,ir
+    IF(izrbnd<0) then
+      ir = ir + 1
+!      WRITE(0,*) my_index,SIZE(ftmpus),SIZE(f(izf::2,nz))
+      ftmpus = f(izf::2,nz)
+      call mpi_isend(ftmpus(izf),nr,mpi_double_precision,p_up,0,mpi_comm_world,mpi_req(ir),mpierror)
+    end if
+!    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' send to ',p_up,ir
+
+    ! receive
+    IF(izrbnd<0) then
+      ir = ir + 1
+      call mpi_irecv(ftmpu(izf),nr,mpi_double_precision,p_up,0,mpi_comm_world,mpi_req(ir),mpierror)
+    end if     
+!    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' recv from ',p_up,ir
+    IF(izlbnd<0) then
+      ir = ir + 1
+      call mpi_irecv(ftmpd(izf),nr,mpi_double_precision,p_down,0,mpi_comm_world,mpi_req(ir),mpierror)
+    end if
+!    IF(bndy(level)%izlbnd<0) WRITE(0,*) my_index, ' recv from ',p_down,ir
+
+    if(ir>0) call MPI_WAITALL(ir,mpi_req(1),mpistatus(1,1),mpierror)
+
+    IF(izrbnd<0) then
+      f(izf::2,nz+2) = ftmpu
+    end if     
+    IF(izlbnd<0) then
+      f(izf::2,0)    = ftmpd
+    end if
+    deallocate(ftmpd,ftmpu)
+    deallocate(ftmpds,ftmpus)
+!    write(0,*) my_index,':exit exchangefbnd'
+
+  end subroutine exchange_fbndz_rb
   subroutine check_fbndz(f, izlbnd, izrbnd)
     REAL(8), INTENT(IN OUT) :: f(0:,0:)!f(0:nr+2,0:nz+2)
     INTEGER(ISZ), INTENT(IN) :: izlbnd, izrbnd
 
     INTEGER(ISZ) :: nr,nz,i
-    INTEGER(ISZ) :: p_up, p_down
+    INTEGER(ISZ) :: p_up, p_down, mpi_req
 
     REAL(8), DIMENSION(0:SIZE(f,1)-1) :: fr,fl
 
@@ -2141,6 +2250,11 @@ END subroutine relaxbndrzwguard
 
     INTEGER(ISZ) :: nr,nz
     INTEGER(ISZ) :: p_up, p_down
+    integer(ISZ) :: mpi_req(4),mpistatus(MPI_STATUS_SIZE,4),mpierror,ir,j
+    real(8), allocatable, dimension(:) :: fd, fu
+
+!    write(0,*) my_index,':enter exchangeres'
+    ir = 0
 
     p_up   = -izrbnd-1
     p_down = -izlbnd-1
@@ -2151,49 +2265,88 @@ END subroutine relaxbndrzwguard
     ! send
 !    IF(bndy(level)%izlbnd<0) WRITE(0,*) my_index, ' send to ',p_down
 !    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' send to ',p_up
-    IF(izlbnd<0) call mpi_send_real_array(rho(:,1), p_down, 1)
-    IF(izrbnd<0) call mpi_send_real_array(rho(:,nz+1), p_up, 1)
+    IF(izlbnd<0) then
+      ir = ir + 1
+      call mpi_isend_real_array(rho(:,1), p_down, 1,mpi_req(ir))
+    end if
+    IF(izrbnd<0) then
+      ir = ir + 1
+      call mpi_isend_real_array(rho(:,nz+1), p_up, 1,mpi_req(ir))
+    end if
 
     ! receive
 !    IF(bndy(level)%izrbnd<0) WRITE(0,*) my_index, ' recv from ',p_up
 !    IF(bndy(level)%izlbnd<0) WRITE(0,*) my_index, ' recv from ',p_down
-    IF(izrbnd<0) rho(:,nz+1) = 0.5_8*rho(:,nz+1) + 0.5_8*mpi_recv_real_array(SIZE(rho(:,nz+1)),p_up,1)
-    IF(izlbnd<0) rho(:,1)    = 0.5_8*rho(:,1)    + 0.5_8*mpi_recv_real_array(SIZE(rho(:,1 ))  ,p_down,1)
+    IF(izrbnd<0) then
+      ir = ir + 1
+      allocate(fu(nr+1))
+      call mpi_irecv(fu(1),nr+1,mpi_double_precision,p_up,1,mpi_comm_world,mpi_req(ir),mpierror)
+    end if
+    IF(izlbnd<0) then
+      ir = ir + 1
+      allocate(fd(nr+1))
+      call mpi_irecv(fd(1),nr+1,mpi_double_precision,p_down,1,mpi_comm_world,mpi_req(ir),mpierror)
+   end if
 
 !    call parallelbarrier()
+    if(ir>0) call MPI_WAITALL(ir,mpi_req(1),mpistatus(1,1),mpierror)
+    IF(izrbnd<0) then
+      rho(:,nz+1) = rho(:,nz+1) + fu(:)
+      deallocate(fu)
+    end if
+    IF(izlbnd<0) then
+      rho(:,1) = rho(:,1) + fd(:)
+      deallocate(fd)
+    end if
 
   end subroutine exchange_resbndz
-  subroutine merge_work(f, level, izlbnd, izrbnd)
+   subroutine merge_work(f, level, izlbnd, izrbnd)
     REAL(8), INTENT(IN OUT) :: f(1:,1:)!f(1:nr+1,1:nz+1)
     INTEGER(ISZ), INTENT(IN) :: level, izlbnd, izrbnd
 
-    INTEGER(ISZ) :: nz, p_up, p_down
+    INTEGER(ISZ) :: nz, p_up, p_down, j, nr
+    integer(ISZ) :: mpi_req(2),mpistatus(MPI_STATUS_SIZE,2),mpierror,ir
+    real(8), allocatable, dimension(:,:) :: fd, fu
 
-!    WRITE(0,*) my_index, 'enter merge'
+!    write(0,*) my_index,':enter merge'
+
+    ir = 0
+
+!    if(my_index==0) WRITE(0,*) my_index, 'enter merge, level = ',level
+    nr     = size(f,1)-1
     nz     = bndy(level-1)%nz
     p_up   = -izrbnd-1
     p_down = -izlbnd-1
 
     IF(MOD(my_index/bndy(level)%nworkpproc,2)==0) then
     ! send up
-      call mpi_send_real_array(PACK(f(:,1:nz/2+1),     .TRUE.), p_up,   2)
+      ir = ir +1
+      call mpi_isend(f(1,1),(nr+1)*(nz/2+1),mpi_real8,p_up,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
     ! receive up
-      f(:,nz/2+1:nz+1) = f(:,nz/2+1:nz+1) &
-                       + RESHAPE(mpi_recv_real_array(SIZE(f(:,nz/2+1:nz+1)), p_up,2), &
-                                                     SHAPE(f(:,nz/2+1:nz+1)))
-     f(:,nz/2+1) = 0.5*f(:,nz/2+1)
+      ir = ir +1
+      allocate(fu(nr+1,nz/2+1:nz+1))
+      call mpi_irecv(fu(1,nz/2+1),(nr+1)*(nz/2+1),mpi_real8,p_up,2,mpi_comm_world,mpi_req(ir),mpierror)
     else
     ! send down
-      call mpi_send_real_array(PACK(f(:,nz/2+1:nz+1),.TRUE.), p_down, 2)
+      ir = ir +1
+      call mpi_isend(f(1,nz/2+1),int(SIZE(f,1)*(nz/2+1)),mpi_real8,p_down,2,MPI_COMM_WORLD,mpi_req(ir),mpierror)
     ! receive down
-      f(:,1:nz/2+1)    = f(:,1:nz/2+1) &
-                       + RESHAPE(mpi_recv_real_array(SIZE(f(:,1:nz/2+1)),       p_down,2), &
-                                                     SHAPE(f(:,1:nz/2+1)))
-      f(:,nz/2+1) = 0.5*f(:,nz/2+1)
+      ir = ir +1
+      allocate(fd(nr+1,1:nz/2+1))
+      call mpi_irecv(fd(1,1),(nr+1)*(nz/2+1),mpi_real8,p_down,2,mpi_comm_world,mpi_req(ir),mpierror)
     END if
-!    WRITE(0,*) my_index, 'exit merge'
 
-!    call parallelbarrier()
+    if(ir>0) call MPI_WAITALL(ir,mpi_req(1),mpistatus(1,1),mpierror)
+
+     IF(MOD(my_index/bndy(level)%nworkpproc,2)==0) then
+       f(:,nz/2+2:nz+1) = fu(:,nz/2+2:nz+1)
+       f(:,nz/2+1) = f(:,nz/2+1)+fu(:,nz/2+1)
+       deallocate(fu)
+     else
+       f(:,1:nz/2) = fd(:,1:nz/2)
+       f(:,nz/2+1) = f(:,nz/2+1)+fd(:,nz/2+1)
+       deallocate(fd)
+     end if
 
   end subroutine merge_work
 #endif
@@ -2378,20 +2531,16 @@ else
 !  else
   IF(bnd(level-1)%l_merged) res=0.
   res(:,nzresmin:nzresmax) = restrict( &
-                             residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.FALSE., &
+                             residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.false., &
                              ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd), &
                              nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
                              ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
 !  END if
+  call apply_voltage(res,bnd(j-1),0._8)
 #ifdef MPIPARALLEL
-  IF(bnd(level-1)%l_merged) then
-    call merge_work(res,level,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
-  else
-!    call exchange_resbndz(rho=res,izlbnd=bnd(j-1)%izlbnd,izrbnd=bnd(j-1)%izrbnd)
-  END if
+  IF(bnd(level-1)%l_merged) call merge_work(res,level,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
   call exchange_resbndz(rho=res,izlbnd=bnd(j-1)%izlbnd,izrbnd=bnd(j-1)%izrbnd)
 #endif
-  call apply_voltage(res,bnd(j-1),0._8)
   v = 0.0_8
   do i = 1, ncycle  !(1=V cycles, 2=W cycle)
     call mgbndrzwguard(j=j-1, u=v, rhs=-res, bnd=bnd(1:j-1), nr=nrnext, nz=nznext, dr=drnext, dz=dznext, npre=npre, npost=npost, &
@@ -2403,25 +2552,7 @@ else
 !  IF(bnd(j)%l_powerof2) then
 !    u = u + expandwguard(v(:,nzresmin-1:nzresmax+1))
 !  else
-#ifdef MPIPARALLEL
-GOTO 10
-  IF(bnd(level-1)%l_merged.and.ANY(v/=0.)) then
-    IF(my_index==0) then
-      OPEN(10,FILE='v0.dat',STATUS='unknown')
-    else
-      OPEN(10,FILE='v1.dat',STATUS='unknown')
-    END if
-       do ll = 0, nznext+2
-        do jj = 0, nrnext+2
-         WRITE(10,*) jj,ll,v(jj,ll)
-        end do
-       end do
-      CLOSE(10)
-      stop
-  END if
-10 continue
-#endif
-  IF(restrictwbnd) then
+ IF(restrictwbnd) then
     u = u + expandwguardandbnd_any(v(:,nzresmin-1:nzresmax+1),bnd(j),nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
              ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
   else
@@ -2429,11 +2560,11 @@ GOTO 10
                                 ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
   END if
 !  END if
-#ifdef MPIPARALLEL
-  call exchange_fbndz(f=u,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
-#endif
   call apply_voltagewguard(u,bnd(j),voltf)
   call updateguardcellsrz(f=u,ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
+#ifdef MPIPARALLEL
+  call exchange_fbndz(u,bnd(j)%izlbnd,bnd(j)%izrbnd)
+#endif
   call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npost,voltfact=voltf,mgparam=mgparam, &
                         ixrbnd=ixrbnd,izlbnd=bnd(j)%izlbnd,izrbnd=bnd(j)%izrbnd)
   DEALLOCATE(res,v)
@@ -2505,7 +2636,7 @@ do ic = 1, bnd%nb_conductors
 END do
 
 #ifdef MPIPARALLEL
-  call exchange_fbndz(f,izlbnd,izrbnd)
+!  call exchange_fbndz(f,izlbnd,izrbnd)
 #endif
 
 return
@@ -2567,20 +2698,21 @@ has_diverged = .false.
       uold=grid%phi
       call mgbndrzwguard(j=nlevels,u=grid%phi,rhs=-grid%rho/eps0,bnd=grid%bnd,nr=grid%nr,nz=grid%nz,dr=grid%dr,dz=grid%dz, &
                          npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=grid%npmin, &
+!                         npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.true.,npmin=grid%npmin, &
+!                         npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=nlevels-1, &
                          mgparam=grid%mgparam)
-!                         npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=nlevels-0, &
       maxerr_old = maxerr
       maxerr = maxval(abs(grid%phi-uold))
 #ifdef MPIPARALLEL
       maxerr = mpi_global_compute_real(maxerr,MPI_MAX)
-      IF(my_index==0) WRITE(0,*) j,maxerr
-      IF(my_index==0) then
-        OPEN(10,FILE='fout.dat',POSITION='append')
-        WRITE(10,*) j,maxerr
-        CLOSE(10)
-      END if
+ !     IF(my_index==0) WRITE(0,*) j,maxerr,'*****************************'
+ !     IF(my_index==0) then
+ !       OPEN(10,FILE='fout.dat',POSITION='append')
+ !       WRITE(10,*) j,maxerr
+ !       CLOSE(10)
+ !     END if
 #else
-      WRITE(0,*) j,maxerr
+ !     WRITE(0,*) j,maxerr
 #endif
       IF(maxerr <= accuracy) then
         do_calc=.false.
@@ -2678,10 +2810,12 @@ INTEGER(ISZ) :: npreinit, npostinit
     prevparam = grid%mgparam
     prevtime = nexttime
     nexttime = ffind_mgparam(grid)
-    WRITE(0,*) "Field solve time = ",nexttime
-    write(0,*) "mgparam = ",grid%mgparam
-    write(0,*) "npre    = ",grid%npre
-    write(0,*) "npost   = ",grid%npost
+    IF(my_index==0) then
+      WRITE(0,*) "Field solve time = ",nexttime
+      write(0,*) "mgparam = ",grid%mgparam
+      write(0,*) "npre    = ",grid%npre
+      write(0,*) "npost   = ",grid%npost
+    END if
     IF(nb_iters == grid%ncmax) prevtime=2*nexttime
     IF(nexttime < prevtime) then
       grid%npre  = grid%npre  + 1
@@ -2689,8 +2823,8 @@ INTEGER(ISZ) :: npreinit, npostinit
     else
       ! --- Reset the values to the previous ones (which were the best)
       grid%mgparam = prevparam
-      grid%npre  = MAX(npreinit,grid%npre-1)
-      grid%npost = MAX(npostinit,grid%npost-1)
+      grid%npre  = MIN(npreinit,grid%npre-1)
+      grid%npost = MIN(npostinit,grid%npost-1)
       ! --- Do some error checking first
       IF(grid%npre  == 0) grid%npre  = 1
       IF(grid%npost == 0) grid%npost = 1
@@ -2698,19 +2832,23 @@ INTEGER(ISZ) :: npreinit, npostinit
   END do
   ! --- print error message if maximum iterations is reached.
   IF(nb_iters == grid%ncmax) then
-    write(0,*) 'Notice: the maximum number of iterations has been reached, so '
-    write(0,*) 'the values above are unlikely to be optimal. Try increasing the '
-    write(0,*) 'tolerance, increasing the maximum number of iterations, or making a '
-    write(0,*) 'better initial guess of mgparam.'
+    IF(my_index==0) then
+      write(0,*) 'Notice: the maximum number of iterations has been reached, so '
+      write(0,*) 'the values above are unlikely to be optimal. Try increasing the '
+      write(0,*) 'tolerance, increasing the maximum number of iterations, or making a '
+      write(0,*) 'better initial guess of mgparam.'
+    END if
   else
     prevtime=findnrecursmin(grid,prevtime)
-    write(0,*) "-----------------------------------------"
-    write(0,*) "The optimized values:"
-    write(0,*) "Field solve time = ",prevtime
-    write(0,*) "frz.mgridrz_mgparam     = ",grid%mgparam
-    write(0,*) "frz.mgridrz_npre        = ",grid%npre
-    write(0,*) "frz.mgridrz_npost       = ",grid%npost
-    write(0,*) "frz.mgridrz_levels_min  = ",grid%npmin
+    IF(my_index==0) then
+      write(0,*) "-----------------------------------------"
+      write(0,*) "The optimized values:"
+      write(0,*) "Field solve time = ",prevtime
+      write(0,*) "frz.mgridrz_mgparam     = ",grid%mgparam
+      write(0,*) "frz.mgridrz_npre        = ",grid%npre
+      write(0,*) "frz.mgridrz_npost       = ",grid%npost
+      write(0,*) "frz.mgridrz_levels_min  = ",grid%npmin
+    END if
   END if
 
   IF(associated(grid%down)) call find_mgparam_rz_1grid(grid%down)
@@ -2753,7 +2891,7 @@ implicit none
 REAL(8) :: ffind_mgparam
 TYPE(grdptr):: grid
 
-INTEGER(ISZ) :: icount, mgiters_prev, up_old, s
+INTEGER(ISZ) :: icount, mgiters_prev, up_old, down_old, s
 REAL(8) :: mgparam_prev, sincr, mgparam_init
 REAL(8), EXTERNAL :: wranf
 
@@ -2792,10 +2930,11 @@ REAL(8), EXTERNAL :: wranf
   do while (mgiters_prev /= nb_iters .and. icount < 200)
 
 !   --- print out current value of mgparam
-    write(0,*) "Best parameter so far = ", grid%mgparam
+    IF(my_index==0) write(0,*) "Best parameter so far = ", grid%mgparam
 
 !   --- do field solve (which prints out number of field solve iterations)
     up_old = grid%npre
+    down_old = grid%npost
     ffind_mgparam = time_field_solve(grid)
 
 !   --- If field solve took more iterations than previous field solve, change
@@ -2830,9 +2969,11 @@ REAL(8), EXTERNAL :: wranf
 !   --- increment iteration counter
     icount = icount + 1
 
-    if(grid%npre /= up_old) then
-      write(0,*) "resetting ffind_mgparam"
+    if(grid%npre /= up_old .or. grid%npost/=down_old) then
+      IF(my_index==0) write(0,*) "resetting ffind_mgparam"
       icount=0
+      grid%npre = up_old
+      grid%npost = down_old
       ffind_mgparam = time_field_solve(grid)
       mgparam_prev = mgparam_init
       mgiters_prev = nb_iters
@@ -2845,9 +2986,11 @@ REAL(8), EXTERNAL :: wranf
 
 ! --- write(0,*) message if an optimal value wasn't found
   if (icount == 200) then
-    write(0,*) "Warning: maximum number of iterations reached."
-    write(0,*) "         The value of mgparam may not be optimal."
-    write(0,*) "         Try increasing mgmaxit."
+    IF(my_index==0) then
+      write(0,*) "Warning: maximum number of iterations reached."
+      write(0,*) "         The value of mgparam may not be optimal."
+      write(0,*) "         Try increasing mgmaxit."
+    END if
   END if
 
   return
@@ -2870,8 +3013,10 @@ REAL(8) :: nexttime, prvtime
     prvtime = nexttime
     grid%npmin = grid%npmin + 1
     nexttime = time_field_solve(grid)
-    write(0,*) "Field solve time = ",nexttime
-    write(0,*) "frz.mgridrz_levels_min = ",grid%npmin
+    IF(my_index==0) then
+      write(0,*) "Field solve time = ",nexttime
+      write(0,*) "frz.mgridrz_levels_min = ",grid%npmin
+    END if
     IF(nb_iters == grid%ncmax) prvtime=2*nexttime
     IF(nexttime > prvtime) then
       ! --- Reset the values to the previous ones (which were the best)
@@ -3781,7 +3926,7 @@ do i = 0, nslaves-1
   end if
 end do
 
-call parallelbarrier()
+!call parallelbarrier()
 
 IF(testthis) then
 ALLOCATE(wz(izpslave(nslaves-1)+nzpslave(nslaves-1)+1))
@@ -3878,7 +4023,7 @@ do i = 0, nslaves-1
   end if
 end do
 
-call parallelbarrier()
+!call parallelbarrier()
 
 IF(testthis) then
 i=my_index
@@ -4531,11 +4676,6 @@ REAL(8), DIMENSION(1:nr+1,1:nz+1) :: array
                                  ixrbnd=ixrbnd, &
                                  izlbnd=grids_ptr(id)%grid%bnd(grids_ptr(id)%grid%nlevels)%izlbnd, &
                                  izrbnd=grids_ptr(id)%grid%bnd(grids_ptr(id)%grid%nlevels)%izrbnd)
-#ifdef MPIPARALLEL
-         call exchange_resbndz(rho=array, &
-                               izlbnd=grids_ptr(id)%grid%bnd(grids_ptr(id)%grid%nlevels)%izlbnd, &
-                               izrbnd=grids_ptr(id)%grid%bnd(grids_ptr(id)%grid%nlevels)%izrbnd)
-#endif
       case default
         WRITE(0,*) which,' is not a valid option for get_array_subgrid.'
         WRITE(0,*) 'Valid options are: '&
