@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.170 $, $Date: 2004/09/25 00:37:50 $
+c@(#) File W3D.F, version $Revision: 3.171 $, $Date: 2004/09/30 00:20:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -248,9 +248,9 @@ c  so that by default izfsmax = nz (for full field solve).
 
 c  Calculate mesh dimensioning quantities
 
-      dx = (xmmax - xmmin) / nx
-      dy = (ymmax - ymmin) / ny
-      dz = (zmmaxglobal - zmminglobal) / nzfull
+      if (nx .ne. 0) dx = (xmmax - xmmin) / nx
+      if (ny .ne. 0) dy = (ymmax - ymmin) / ny
+      if (nzfull .ne. 0) dz = (zmmaxglobal - zmminglobal) / nzfull
       if(solvergeom==RZgeom) then
         dy = dx
       elseif(solvergeom==XZgeom) then
