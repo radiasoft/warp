@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.125 2004/08/06 23:38:05 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.126 2004/08/30 19:45:58 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -148,7 +148,8 @@ Does the work needed to start writing plots to a file automatically
     cgmlogfile = open(plogname,"w")
     cgmlogfile.write("CGMLOG file for "+pname+"\n\n")
   # --- Print the versions to the plot file.
-  plt(versionstext()+'\n'+runcomments,0.15,0.88,justify="LT")
+  plt(time.ctime(top.starttime)+'\n'+versionstext()+'\n'+runcomments,
+      0.15,0.88,justify="LT")
   fma()
 
 # --- Convenience function to open a window with default value specilized to
