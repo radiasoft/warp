@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.22 $, $Date: 2003/06/02 17:43:26 $
+c@(#) File ENV.M, version $Revision: 3.23 $, $Date: 2003/06/30 16:58:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -652,9 +652,10 @@ c than to create new local ones.
 
       real(kind=8):: z1,z2,zl,fracl,zr,fracr
       real(kind=8):: fuzz
-      real(kind=8):: frac,ez,ke,de,db
-      real(kind=8):: dedrr,dbdxq,dedxq,xdbdx,xdedx,ydbdx,ydedx,xex,yey,alpha
-      real(kind=8):: fux,fuy,fq,feself,fexself,feyself 
+      real(kind=8):: frac,ez,bz,ke,de,db
+      real(kind=8):: dedrr,dbdrr,dbdxq,dedxq
+      real(kind=8):: xdbdx,xdedx,ydbdx,ydedx,xex,yey,alpha
+      real(kind=8):: fux,fuy,fq,feself,fexself,feyself,fsol
       real(kind=8):: wie,wim
       real(kind=8):: offset
       integer(ISZ):: io
@@ -668,6 +669,7 @@ c than to create new local ones.
 
 c     --- Initialize variables to the values from the uniform fields.
       dedrr = dedr
+      dbdrr = dbdr
       dbdxq = 0.
       dedxq = 0.
       xdbdx = dbdr*vz*x
@@ -677,6 +679,7 @@ c     --- Initialize variables to the values from the uniform fields.
       xex   = 0.
       yey   = 0.
       ez = 0.
+      bz = 0.
       faccl = 0.
 
 c     --- Hard edge quadrupoles
@@ -854,6 +857,16 @@ c           --- Lookup field strengths with linear interpolation.
                 xdbdx = xdbdx + db*(x - mmltox(im))
                 ydbdx = ydbdx + db*(y - mmltoy(im))
               endif
+              if ((nint(mmlt_n(ii)) == 0) .and. 
+     &            (nint(mmlt_v(ii)) == 0)) then
+c               db = 0.5*(msmmltp(iim  ,ii,imm)*(1.-wim) +
+c    &                    msmmltp(iim+1,ii,imm)*wim)*
+c    &                   (mmltsc(im) + mmltsf(im))
+c               dbdrr = dbdrr + db
+                bz = bz + (msmmlt(iim  ,ii,imm)*(1.-wim) +
+     &                     msmmlt(iim+1,ii,imm)*wim)*
+     &                    (mmltsc(im) + mmltsf(im))
+              endif
             enddo
 
           endif
@@ -917,26 +930,27 @@ c       --- conversion from d/dt to d/dz
 
 c     --- Compute external uniform focusing (proportional to r and 
 c     --- azimuthally symmetric) and quadrupole focusing strengths
-      fux = zion*echarge*(dedrr + dexdx - dbdr*vz)/(aion*amu*gamma*vz**2)
-      fuy = zion*echarge*(dedrr + deydy - dbdr*vz)/(aion*amu*gamma*vz**2)
+      fux = zion*echarge*(dedrr + dexdx - dbdrr*vz)/(aion*amu*gamma*vz**2)
+      fuy = zion*echarge*(dedrr + deydy - dbdrr*vz)/(aion*amu*gamma*vz**2)
       fq  = zion*echarge*(dedxq - dbdxq*vz)/(aion*amu*gamma*vz**2)
+      fsol = (zion*echarge*bz/(2.*aion*amu*gamma*vz))**2
 
 c     --- Calculate forces for advancing envelope and test particles
       feself = 2.*p/(a + b)
-      fa = ( fq + fux)*a + feself + (emitnx_l*clight/(vz*gamma))**2/a**3
-      fb = (-fq + fuy)*b + feself + (emitny_l*clight/(vz*gamma))**2/b**3
+      fa = ( fq + fux - fsol)*a + feself + (emitnx_l*clight/(vz*gamma))**2/a**3
+      fb = (-fq + fuy - fsol)*b + feself + (emitny_l*clight/(vz*gamma))**2/b**3
       fx = zion*echarge/(aion*amu*gamma*vz**2)*(xdedx - xdbdx*vz + xex)
       fy = zion*echarge/(aion*amu*gamma*vz**2)*(ydedx - ydbdx*vz + yey)
 
       fexself = feself/a
-      fx1  = (fq + fux + fexself)*x1
-      fx2  = (fq + fux + fexself)*x2
-      fx01 = (fq + fux)*x01
-      fx02 = (fq + fux)*x02
+      fx1  = (fq + fux + fsol + fexself)*x1
+      fx2  = (fq + fux + fsol + fexself)*x2
+      fx01 = (fq + fux + fsol)*x01
+      fx02 = (fq + fux + fsol)*x02
 
       feyself = feself/b
-      fy1  = (-fq + fuy + feyself)*y1
-      fy2  = (-fq + fuy + feyself)*y2
+      fy1  = (-fq + fuy + fsol + feyself)*y1
+      fy2  = (-fq + fuy + fsol + feyself)*y2
       fy01 = (fq + fuy)*y01
       fy02 = (fq + fuy)*y02
 
