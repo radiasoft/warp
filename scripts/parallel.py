@@ -53,49 +53,57 @@ def getarray(src,v,dest=0):
 # Plot an array that is distributed on all processors
 def plotarray(f,z,color="fg",type="solid",marks=0,marker="none",msize=1.0,
               width=1.0):
-  if mpi.rank == 0:
-    # --- Start list with PE0 data
-    x = [f]
-    y = [z]
-    # --- Append rest of PE's data to list
-    for i in range(1,mpi.procs):
-      x.append(mpi.recv(i,2))
-      y.append(mpi.recv(i,2))
-    # --- Get total number of elements in list
-    l = 0
-    for i in range(0,mpi.procs):
-      l = l + len(x[i])
-    # --- Create space for total list (flattened out)
-    xx = zeros(l,"d")
-    yy = zeros(l,"d")
-    # --- Copy data to new space
-    l = 0
-    for i in range(0,mpi.procs):
-      xx[l:l+len(x[i])] = x[i]
-      yy[l:l+len(y[i])] = y[i]
-      l = l + len(y[i])
-    # --- Now plot the result
-    plg(xx,yy,color=color,marker=marker,msize=msize,width=width)
-  else:
-    mpi.send(f,0,2)
-    mpi.send(z,0,2)
+  ff = gatherarray(f)
+  zz = gatherarray(z)
+  if len(ff) > 0 and len(zz) == len(ff):
+    plg(ff,zz,color=color,marker=marker,msize=msize,width=width)
+# if mpi.rank == 0:
+#   # --- Start list with PE0 data
+#   x = [f]
+#   y = [z]
+#   # --- Append rest of PE's data to list
+#   for i in range(1,mpi.procs):
+#     x.append(mpi.recv(i,2))
+#     y.append(mpi.recv(i,2))
+#   # --- Get total number of elements in list
+#   l = 0
+#   for i in range(0,mpi.procs):
+#     l = l + len(x[i])
+#   # --- Create space for total list (flattened out)
+#   xx = zeros(l,"d")
+#   yy = zeros(l,"d")
+#   # --- Copy data to new space
+#   l = 0
+#   for i in range(0,mpi.procs):
+#     xx[l:l+len(x[i])] = x[i]
+#     yy[l:l+len(y[i])] = y[i]
+#     l = l + len(y[i])
+#   # --- Now plot the result
+#   plg(xx,yy,color=color,marker=marker,msize=msize,width=width)
+# else:
+#   mpi.send(f,0,2)
+#   mpi.send(z,0,2)
     
 # Plot particles that are distributed on all processors
 def plotpart(f,z,color="fg",type="none",marker="\1",msize=1.0):
-  ff = gatherarray(f)
-  zz = gatherarray(z)
-  plg(ff,zz,color=color,type="none",marker=marker,msize=msize)
-# if mpi.rank == 0:
-#   if len(f) > 0 and len(f)==len(z):
-#     plg(f,z,color=color,type="none",marker=marker,msize=msize)
-#   for i in range(1,mpi.procs):
-#     x = mpi.recv(i,3)
-#     y = mpi.recv(i,3)
-#     if len(x) > 0 and len(y)==len(x):
-#       plg(x,y,color=color,type=type,marker=marker,msize=msize)
-# else:
-#   mpi.send(f,0,3)
-#   mpi.send(z,0,3)
+# ff = gatherarray(f)
+# zz = gatherarray(z)
+# if len(ff) > 0 and len(zz) == len(ff):
+#   plg(ff,zz,color=color,type="none",marker=marker,msize=msize)
+  # --- This way is preferred since for large data sets, it reduces the
+  # --- risk of running out of memory since only part of the data is stored
+  # --- on PE0 at a time.
+  if mpi.rank == 0:
+    if len(f) > 0 and len(f)==len(z):
+      plg(f,z,color=color,type="none",marker=marker,msize=msize)
+    for i in range(1,mpi.procs):
+      x = mpi.recv(i,3)
+      y = mpi.recv(i,3)
+      if len(x) > 0 and len(y)==len(x):
+        plg(x,y,color=color,type=type,marker=marker,msize=msize)
+  else:
+    mpi.send(f,0,3)
+    mpi.send(z,0,3)
 
 # Gather an object from all processors into a list
 def gather(obj,dest=0):
