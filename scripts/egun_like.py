@@ -1,5 +1,5 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.6 2001/06/18 20:45:54 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.7 2002/01/08 00:27:21 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -80,7 +80,7 @@ w3d.addvarattr("rho","dump")
 top.verbosity = 1
 
 def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
-        laccumulate_zmoments=None):
+        laccumulate_zmoments=None,rhoparam=None):
   """
 Performs steady-state iterations
   - iter=1 number of iterations to perform
@@ -91,6 +91,9 @@ Performs steady-state iterations
   - laccumulate_zmoments=false: When set to true, z-moments are accumulated
     over multiple iterations. Note that getzmom.zmmnt(3) must be called
     by the user to finish the moments calculation.
+  - rhoparam=None: Amount of previous rho to mix in with the current rho. This
+    can help the relaxation toward a steady state. Caution should be used
+    when using this option.
   Note that ipsave and save_same_part are preserved in between calls
   """
   global _oinject,_ofstype,_onztinjmn,_onztinjmx
@@ -151,6 +154,9 @@ Performs steady-state iterations
 
     # --- turn off field solver
     top.fstype = -1
+
+    # --- If rhoparam is not None, then save the previous rho
+    if rhoparam is not None: rhoprevious = w3d.rho + 0.
 
     # --- Zero the charge density array
     w3d.rho = 0.
@@ -318,6 +324,11 @@ Performs steady-state iterations
       else:
         npssum = sum(top.nps)
         maxvz = top.vzmaxp
+
+    # --- If rhoparam is not None, mix in the previous rho with the
+    # --- new rho
+    if rhoparam is not None:
+      w3d.rho[:,:,:] = (1.-rhoparam)*w3d.rho + rhoparam*rhoprevious
 
     # --- Do field solve including newly accumulated charge density.
     # --- The call to perrho3d is primarily needed for the parallel version.
