@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.146 $, $Date: 2005/02/15 01:23:53 $
+c@(#) File TOP.F, version $Revision: 3.147 $, $Date: 2005/02/16 00:16:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -578,7 +578,7 @@ c  Sets dipole field, lattice element 0, flags for bends, etc.
       integer(ISZ):: idrft,ib,id,iq,is,ih,ii,ia,im,ie,ip
       integer(ISZ):: nndrft,nnbend,nndipo,nnquad,nnsext 
       integer(ISZ):: nnhele,nnhmlt,nnaccl,nnemlt,nnmmlt
-      integer(ISZ):: nnbgrd,nnpgrd
+      integer(ISZ):: nnbgrd,nnpgrd,nnbsqgrad
 
 c     Find size of lattice element arrays for resizing 
 c     --- initialize counting variables  
@@ -594,6 +594,7 @@ c     --- initialize counting variables
       nnmmlt = -1
       nnbgrd = -1
       nnpgrd = -1
+      nnbsqgrad = -1
 c     --- count drfts 
       do idrft = 0, ndrft
          if (drftzs(idrft) .ne. drftze(idrft)) nndrft = idrft
@@ -643,6 +644,9 @@ c     --- count bgridded field data sets
       do ip = 0, npgrd
          if (pgrdzs(ip) .ne. pgrdze(ip) .or. pgrdid(ip) > 0) nnpgrd = ip
       enddo
+      do ib = 0, nbsqgrad
+         if (bsqgradzs(ib) .ne. bsqgradze(ib) .or. bsqgradid(ib) > 0) nnbsqgrad = ib
+      enddo
 c     --- set lengths equal to counted size 
       ndrft = nndrft
       nbend = nnbend
@@ -656,6 +660,7 @@ c     --- set lengths equal to counted size
       nmmlt = nnmmlt
       nbgrd = nnbgrd
       npgrd = nnpgrd
+      nbsqgrad = nnbsqgrad
 
 c     --- resize lattice arrays (use corrected ndipo size if autoset dipoles, 
 c     --- bends imply dipoles for autoset dipoles, see following code)
@@ -683,6 +688,7 @@ c============================================================================
       use Mult_data
       use BGRDdata
       use PGRDdata
+      use BSQGRADdata
 
 c  work routine for the resizing of lattice arrays by routine resetlat  
 
@@ -922,6 +928,22 @@ c       --- specified.
              pgrdpa(0) = pgrdpa(npgrd)
           endif
         endif
+        if (nbsqgrad >= 0) then
+          if (bsqgradid(0) == 0) then
+             bsqgradzs(0) = bsqgradzs(nbsqgrad) - zlatperi
+             bsqgradze(0) = bsqgradze(nbsqgrad) - zlatperi
+             bsqgradxs(0) = bsqgradxs(nbsqgrad)
+             bsqgradys(0) = bsqgradys(nbsqgrad)
+             bsqgradid(0) = bsqgradid(nbsqgrad)
+             bsqgradsf(0) = bsqgradsf(nbsqgrad)
+             bsqgradsc(0) = bsqgradsc(nbsqgrad)
+             bsqgradsy(0) = bsqgradsy(nbsqgrad)
+             bsqgradox(0) = bsqgradox(nbsqgrad)
+             bsqgradoy(0) = bsqgradoy(nbsqgrad)
+             bsqgradph(0) = bsqgradph(nbsqgrad) 
+             bsqgradap(0) = bsqgradap(nbsqgrad)
+          endif
+        endif
       endif
 
 c     --- Set flags for existence of the elements - checking if the fields
@@ -976,6 +998,10 @@ c     --- are specified.
       do im = 0, npgrd
          if (pgrdid(im) > 0) pgrds = .true.
       enddo
+      bsqgrads = .false.
+      do im = 0, nbsqgrad
+         if (bsqgradid(im) > 0) bsqgrads = .true.
+      enddo
 
 c     --- If qerrxrms or qerryrms not zero, then set qoff arrays using cutoff
 c     --- Gaussian distribution of offsets
@@ -1016,6 +1042,20 @@ c     --- Calculate sines and cosines of pgrdph for efficiency
       do i=0,npgrd
         pgrdsp(i) = sin(pgrdph(i)) 
         pgrdcp(i) = cos(pgrdph(i)) 
+      enddo 
+
+c     --- Calculate 1/bsqgraddx etc. for efficiency (minimizes divides)
+c     --- Note that this coding is not executed if bsqgradns=0.
+      do i=1,bsqgradns
+        if (bsqgraddxi(i) == 0.) bsqgraddxi(i) = 1./bsqgraddx(i)
+        if (bsqgraddyi(i) == 0.) bsqgraddyi(i) = 1./bsqgraddy(i)
+        if (bsqgraddzi(i) == 0.) bsqgraddzi(i) = 1./bsqgraddz(i)
+      enddo
+
+c     --- Calculate sines and cosines of bsqgradph for efficiency
+      do i=0,nbsqgrad
+        bsqgradsp(i) = sin(bsqgradph(i)) 
+        bsqgradcp(i) = cos(bsqgradph(i)) 
       enddo 
 
 c     --- Precalculate the axial derivatives of the multipole moments
@@ -1119,6 +1159,7 @@ c are considered to be overlapping.
       nmmltol = 0
       nbgrdol = 0
       npgrdol = 0
+      nbsqgradol = 0
 
       if (ndrft >= 0)
      &  call getelemoverlaps(ndrft,drftzs,drftze,drftol,zlatbuffer,ndrftol)
@@ -1142,6 +1183,8 @@ c are considered to be overlapping.
      &  call getelemoverlaps(nbgrd,bgrdzs,bgrdze,bgrdol,zlatbuffer,nbgrdol)
       if (npgrd >= 0)
      &  call getelemoverlaps(npgrd,pgrdzs,pgrdze,pgrdol,zlatbuffer,npgrdol)
+      if (nbsqgrad >= 0)
+     &  call getelemoverlaps(nbsqgrad,bsqgradzs,bsqgradze,bsqgradol,zlatbuffer,nbsqgradol)
 
 c Now, setup indicing arrays in LatticeInternal
       call gchange("LatticeInternal",0)
@@ -1179,6 +1222,9 @@ c Now, setup indicing arrays in LatticeInternal
       if (npgrd >= 0)
      &  call getelemoverlapindices(npgrd,pgrdol,npgrdol,opgrdoi,opgrdio,opgrdii,
      &                             opgrdnn)
+      if (nbsqgrad >= 0)
+     &  call getelemoverlapindices(nbsqgrad,bsqgradol,nbsqgradol,obsqgradoi,obsqgradio,obsqgradii,
+     &                             obsqgradnn)
 
       return
       end
@@ -1342,6 +1388,7 @@ c     --- Assume at the start that there are not any elements in the mesh.
       linaccl = .false.
       linbgrd = .false.
       linpgrd = .false.
+      linbsqgrad = .false.
 
       do iz = 0, nzl
 c        --- compute z of center of cell (may be off lattice)
@@ -1629,19 +1676,37 @@ c          --- The grid points intentionally overlap to avoid roundoff errors.
      &       linpgrd(io) = .true.
          enddo
 
+c        --- find index of nearest bsqgrad element
+c        --- The cbsqgradid array calculated here is needed for the magnetic
+c        --- elements described by grad B^2 field data on a 3-D grid.
+         do io=1,nbsqgradol
+           call getelemid(zz,offset,nbsqgrad,bsqgradzs(0),bsqgradze(0),bsqgradol(0),
+     &                    obsqgradnn(io),obsqgradoi(obsqgradii(io)),obsqgradio(0),
+     &                    cbsqgradid(iz,io),io)
+c          --- load lattice info into comoving 1d array
+           cbsqgradzs(iz,io) = bsqgradzs(cbsqgradid(iz,io)) + offset
+           cbsqgradze(iz,io) = bsqgradze(cbsqgradid(iz,io)) + offset
+c          --- Check whether this grid point is in the element.
+c          --- The grid points intentionally overlap to avoid roundoff errors.
+           if (cbsqgradzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
+     &                           zlmin+zbeam-zlatbuffer <= cbsqgradze(iz,io))
+     &       linbsqgrad(io) = .true.
+         enddo
+
       enddo
 
 c     --- For each element type, check to see if any elements are in the mesh.
-      lindrft(0) = any(lindrft)
-      lindipo(0) = any(lindipo)
-      linquad(0) = any(linquad)
-      linsext(0) = any(linsext)
-      linhele(0) = any(linhele)
-      linemlt(0) = any(linemlt)
-      linmmlt(0) = any(linmmlt)
-      linaccl(0) = any(linaccl)
-      linbgrd(0) = any(linbgrd)
-      linpgrd(0) = any(linpgrd)
+      lindrft(0)    = any(lindrft)
+      lindipo(0)    = any(lindipo)
+      linquad(0)    = any(linquad)
+      linsext(0)    = any(linsext)
+      linhele(0)    = any(linhele)
+      linemlt(0)    = any(linemlt)
+      linmmlt(0)    = any(linmmlt)
+      linaccl(0)    = any(linaccl)
+      linbgrd(0)    = any(linbgrd)
+      linpgrd(0)    = any(linpgrd)
+      linbsqgrad(0) = any(linbsqgrad)
 
 c     --- All parallel slave processors must know if any processors
 c     --- are in a bend.  There is probably a better way of doing this.
@@ -3222,18 +3287,18 @@ c
 c             Quadrant      B_x            B_y             B_z 
 c             --------------------------------------------------------
 c                I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
-c                II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)  
+c                II         B_x(-x, y,z)  -B_y(-x, y,z)   -B_z(-x, y,z)  
 c                III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
-c                IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
+c                IV        -B_x( x,-y,z)   B_x( x,-y,z)   -B_z( x,-y,z) 
 
           if (bgrdsy(ii) == 2) then
 c           --- Get quadrant that the particle is in.
             if (txp < 0.) then
-              xsign = -1.
+              ysign = -1.
               txp = -txp
             endif
             if (typ < 0.) then
-              ysign = -1.
+              xsign = -1.
               typ = -typ
             endif
 c           --- If in even quadrant...
@@ -3241,9 +3306,9 @@ c           --- If in even quadrant...
 c             --- Switch sign of Bz.
               zsign = -1.
 c             --- Swap x and y
-              temp = txp
-              txp = typ
-              typ = temp
+cc              temp = txp
+cc              txp = typ
+cc              typ = temp
             endif
           endif
 
@@ -3285,11 +3350,11 @@ c         --- Only calculate for particles inside the B field grid
      &                        u0*v1*w1*bgrdby(i  ,j+1,k+1,id) +
      &                        u1*v1*w1*bgrdby(i+1,j+1,k+1,id))
 
-            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
-              temp = tbx 
-              tbx = tby
-              tby = temp
-            endif 
+c            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
+c              temp = tbx 
+c              tbx = tby
+c              tby = temp
+c            endif 
 
 c           --- rotate transverse field componets for correct lab frame 
 c               orientation if the element is rotated.  
@@ -3320,14 +3385,14 @@ c           --- tranverse field
       return
       end
 c=========================================================================== 
-      subroutine applybgrd2(np,xp,yp,npz,zp,lslice,b)
+      subroutine applybsqgrad(np,xp,yp,npz,zp,lslice,b)
       use Lattice
       use LatticeInternal
-      use BGRDdata
+      use BSQGRADdata
       integer(ISZ):: np,npz
       real(kind=8):: xp(np),yp(np),zp(npz)
       logical(ISZ):: lslice
-      real(kind=8):: b(bgrdnc,np)
+      real(kind=8):: b(bsqgradnc,np)
 
 c  Sets magnetic field for particles from data sets
 c  containing Bx, By, and Bz on 3-D grids. Grid can also contain
@@ -3341,31 +3406,31 @@ c  Output:
 c     b           magnetic field and additional information
 
 c  The field is:
-c     b(:,ip) = u0 * v0 * w0 * bgrd(:,i  ,j  ,k  ,bgrdid)
-c             + u1 * v0 * w0 * bgrd(:,i+1,j  ,k  ,bgrdid)
-c             + u0 * v1 * w0 * bgrd(:,i  ,j+1,k  ,bgrdid)
+c     b(:,ip) = u0 * v0 * w0 * bsqgrad(:,i  ,j  ,k  ,bsqgradid)
+c             + u1 * v0 * w0 * bsqgrad(:,i+1,j  ,k  ,bsqgradid)
+c             + u0 * v1 * w0 * bsqgrad(:,i  ,j+1,k  ,bsqgradid)
 c             + ...
 
       integer(ISZ):: io,ip,i,j,k,iz,ii,id,ic
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
-      real(kind=8):: tb(bgrdnc)
+      real(kind=8):: tb(bsqgradnc)
 
 c  Evaluation of B, vectorized over particles
 
-      if (.not. bgrds .or. .not. linbgrd(0)) return
+      if (.not. bsqgrads .or. .not. linbsqgrad(0)) return
 
-      do io=1,nbgrdol
-        if (.not. linbgrd(io)) cycle
+      do io=1,nbsqgradol
+        if (.not. linbsqgrad(io)) cycle
 
         if (lslice) then
 c         --- All particles are in the same z-cell
           zz = zp(1)
           iz = 0
-          ii = cbgrdid(iz,io)
-          id = bgrdid(ii)
-          k = (zz - cbgrdzs(iz,io))*bgrddzi(id)
+          ii = cbsqgradid(iz,io)
+          id = bsqgradid(ii)
+          k = (zz - cbsqgradzs(iz,io))*bsqgraddzi(id)
 c         --- skip field accumulation if particles are outside of axial grid
-          if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
+          if (zz < cbsqgradzs(iz,io) .or. cbsqgradze(iz,io) < zz) cycle
         endif
 
         do ip = 1, np
@@ -3374,9 +3439,9 @@ c         --- skip field accumulation if particles are outside of axial grid
             zz = zp(ip)
 c           --- find the location of the particle in the internal lattice arrays
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-            ii = cbgrdid(iz,io)
-            id = bgrdid(ii)
-            if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
+            ii = cbsqgradid(iz,io)
+            id = bsqgradid(ii)
+            if (zz < cbsqgradzs(iz,io) .or. cbsqgradze(iz,io) < zz) cycle
           endif
 
 c         --- Cycle if this element is turned off
@@ -3384,21 +3449,21 @@ c         --- Cycle if this element is turned off
 
 c         --- find transverse particle coordinate in frame of gridded field 
 c         --- transverse offsets
-          txp = xp(ip) - bgrdox(ii)
-          typ = yp(ip) - bgrdoy(ii)
+          txp = xp(ip) - bsqgradox(ii)
+          typ = yp(ip) - bsqgradoy(ii)
 c         --- transverse rotation to take into account an active rotation 
 c         --- of the field element.  Particles are rotated in that oposite 
 c         --- sense of the element. Later the field components accumulated 
 c         --- must be rotated back. 
-          if ( bgrdph(ii) .ne. 0. ) then
+          if ( bsqgradph(ii) .ne. 0. ) then
             temp = txp  
-            txp =  temp*bgrdcp(ii) + typ*bgrdsp(ii) 
-            typ = -temp*bgrdsp(ii) + typ*bgrdcp(ii) 
+            txp =  temp*bsqgradcp(ii) + typ*bsqgradsp(ii) 
+            typ = -temp*bsqgradsp(ii) + typ*bsqgradcp(ii) 
           endif 
 
 c         --- Shift coordinates to measure from the edge of the field grid
-          txp = txp - bgrdxs(ii)
-          typ = typ - bgrdys(ii)
+          txp = txp - bsqgradxs(ii)
+          typ = typ - bsqgradys(ii)
 
 c         --- Set default sign of B field
           xsign = 1.
@@ -3420,7 +3485,7 @@ c                II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)
 c                III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
 c                IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
 
-          if (bgrdsy(ii) == 2) then
+          if (bsqgradsy(ii) == 2) then
 c           --- Get quadrant that the particle is in.
             if (txp < 0.) then
               xsign = -1.
@@ -3442,45 +3507,45 @@ c             --- Swap x and y
           endif
 
 c         --- find location of particle in B field grid
-          i =  txp*bgrddxi(id)
-          j =  typ*bgrddyi(id)
-          k = (zz - cbgrdzs(iz,io))*bgrddzi(id)
+          i =  txp*bsqgraddxi(id)
+          j =  typ*bsqgraddyi(id)
+          k = (zz - cbsqgradzs(iz,io))*bsqgraddzi(id)
 
 c         --- Calculate linear weights
-          u1 = txp*bgrddxi(id) - i
-          v1 = typ*bgrddyi(id) - j
-          w1 = (zz - cbgrdzs(iz,io))*bgrddzi(id) - k
+          u1 = txp*bsqgraddxi(id) - i
+          v1 = typ*bsqgraddyi(id) - j
+          w1 = (zz - cbsqgradzs(iz,io))*bsqgraddzi(id) - k
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
 
 c         --- Only calculate for particles inside the B field grid
-          if (0 <= i .and. i < bgrdnx .and.
-     &        0 <= j .and. j < bgrdny .and.
-     &        0 <= k .and. k < bgrdnz) then
+          if (0 <= i .and. i < bsqgradnx .and.
+     &        0 <= j .and. j < bsqgradny .and.
+     &        0 <= k .and. k < bsqgradnz) then
 
-            bfac = bgrdsc(ii) + bgrdsf(ii)
+            bfac = bsqgradsc(ii) + bsqgradsf(ii)
 
-            tb = bfac*(u0*v0*w0*bgrd(:,i  ,j  ,k  ,id) +
-     &                 u1*v0*w0*bgrd(:,i+1,j  ,k  ,id) +
-     &                 u0*v1*w0*bgrd(:,i  ,j+1,k  ,id) +
-     &                 u1*v1*w0*bgrd(:,i+1,j+1,k  ,id) +
-     &                 u0*v0*w1*bgrd(:,i  ,j  ,k+1,id) +
-     &                 u1*v0*w1*bgrd(:,i+1,j  ,k+1,id) +
-     &                 u0*v1*w1*bgrd(:,i  ,j+1,k+1,id) +
-     &                 u1*v1*w1*bgrd(:,i+1,j+1,k+1,id))
+            tb = bfac*(u0*v0*w0*bsqgrad(:,i  ,j  ,k  ,id) +
+     &                 u1*v0*w0*bsqgrad(:,i+1,j  ,k  ,id) +
+     &                 u0*v1*w0*bsqgrad(:,i  ,j+1,k  ,id) +
+     &                 u1*v1*w0*bsqgrad(:,i+1,j+1,k  ,id) +
+     &                 u0*v0*w1*bsqgrad(:,i  ,j  ,k+1,id) +
+     &                 u1*v0*w1*bsqgrad(:,i+1,j  ,k+1,id) +
+     &                 u0*v1*w1*bsqgrad(:,i  ,j+1,k+1,id) +
+     &                 u1*v1*w1*bsqgrad(:,i+1,j+1,k+1,id))
 
 
            if(.false.) then
 c --- original
-            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
-              do ic=0,bgrdnc/3-1
+            if (bsqgradsy(ii) == 2 .and. xsign*ysign < 0.) then
+              do ic=0,bsqgradnc/3-1
                 tb(1+ic*3) = xsign*tb(1+ic*3)
                 tb(2+ic*3) = ysign*tb(2+ic*3)
                 tb(3+ic*3) = zsign*tb(3+ic*3)
               enddo
               if (xsign*ysign < 0.) then
-                do ic=0,bgrdnc/3-1
+                do ic=0,bsqgradnc/3-1
                   temp = tb(1+ic*3)
                   tb(1+ic*3) = tb(2+ic*3)
                   tb(2+ic*3) = temp
@@ -3489,14 +3554,14 @@ c --- original
             endif
            else
 c --- modified
-            if (bgrdsy(ii) == 2) then
-              do ic=0,bgrdnc/3-1
+            if (bsqgradsy(ii) == 2) then
+              do ic=0,bsqgradnc/3-1
                 tb(1+ic*3) = zsign*tb(1+ic*3)
                 tb(2+ic*3) = ysign*tb(2+ic*3)
                 tb(3+ic*3) = xsign*tb(3+ic*3)
               enddo
               if (xsign*ysign < 0.) then
-                do ic=0,bgrdnc/3-1
+                do ic=0,bsqgradnc/3-1
                   temp = tb(3+ic*3)
                   tb(3+ic*3) = tb(2+ic*3)
                   tb(2+ic*3) = temp
@@ -3507,11 +3572,11 @@ c --- modified
 
 c           --- rotate transverse field componets for correct lab frame 
 c               orientation if the element is rotated.  
-            if ( bgrdph(ii) .ne. 0. ) then
-              do ic=0,bgrdnc/3-1
+            if ( bsqgradph(ii) .ne. 0. ) then
+              do ic=0,bsqgradnc/3-1
                 temp = tb(1+ic*3)
-                tb(1+ic*3) = temp*bgrdcp(ii) - tb(2+ic*3)*bgrdsp(ii) 
-                tb(2+ic*3) = temp*bgrdsp(ii) + tb(2+ic*3)*bgrdcp(ii)         
+                tb(1+ic*3) = temp*bsqgradcp(ii) - tb(2+ic*3)*bsqgradsp(ii) 
+                tb(2+ic*3) = temp*bsqgradsp(ii) + tb(2+ic*3)*bsqgradcp(ii)         
               enddo
             endif 
 
@@ -6200,6 +6265,7 @@ c  Converts v to u, sets inverse gamma factor for all particles
       end
 c=============================================================================
       subroutine zpartbnd(zmmax,zmmin,dz,zgrid)
+      use Picglb, only: it
       use GlobalVars
       use InGen
       use InPart
@@ -6220,6 +6286,7 @@ c Parallel version makes call to special routine zpartbnd_slave
 c     --- periodic boundary condition
         syslen = zmmax - zmmin
         do is=1,ns
+          if (mod(it,ndts(is))/=0) cycle
           do ip=ins(is),ins(is)+nps(is)-1
             if (zp(ip) < zgrid + zmmin)
      &        zp(ip) = zp(ip) + syslen*int((zgrid + zmmax - zp(ip))/syslen)
@@ -6230,6 +6297,7 @@ c     --- periodic boundary condition
       else
 c     --- other boundary condition (particles absorbed or reflected)
         do is=1,ns
+          if (mod(it,ndts(is))/=0) cycle
           do ip=ins(is),ins(is)+nps(is)-1
             if ((zp(ip)-zgrid) >= zmmax) then
               if(pboundnz==absorb) then
@@ -6264,6 +6332,7 @@ c=============================================================================
       end
 c=============================================================================
       subroutine semitransparent_disc(dz)
+      use Picglb, only: it
       use Particles
       use InGen
       use Moments
@@ -6289,6 +6358,8 @@ c of semi-transparent disc location are checked for disc crossing.
 
 c     --- loop on species
       do is=1,ns
+c       --- do it only if species was advanced on this time step
+        if (mod(it,ndts(is))/=0) cycle
 c       --- loop on particles
         do ip=ins(is),ins(is)+nps(is)-1
 c         --- loop on number of discs
