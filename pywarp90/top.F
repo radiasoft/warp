@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.11 $, $Date: 2001/06/01 20:20:26 $
+c@(#) File TOP.M, version $Revision: 3.12 $, $Date: 2001/06/01 22:36:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1695,13 +1695,13 @@ c=============================================================================
       integer(ISZ):: id,io
 
 c Gets the id and offset for the dipole at the z location zz and overlap
-c level io. If the overlap level is -1, finds the element with the lowest
+c level io. If the overlap level is 0, finds the element with the lowest
 c z start.
 
       integer(ISZ):: ii,id_temp
       real(kind=8):: offset_temp
 
-      if (io >= 0) then
+      if (io > 0) then
 c       --- Just call getelemid.
         call getelemid(zz,offset,ndipo,dipozs,dipoze,odiponn(io),
      &                 odipooi(odipoii(io)),odipoio,id)
@@ -1731,13 +1731,13 @@ c=============================================================================
       integer(ISZ):: id,io
 
 c Gets the id and offset for the quadrupole at the z location zz and overlap
-c level io. If the overlap level is -1, finds the element with the lowest
+c level io. If the overlap level is 0, finds the element with the lowest
 c z start.
 
       integer(ISZ):: ii,id_temp
       real(kind=8):: offset_temp
 
-      if (io >= 0) then
+      if (io > 0) then
 c       --- Just call getelemid.
         call getelemid(zz,offset,nquad,quadzs,quadze,oquadnn(io),
      &                 oquadoi(oquadii(io)),oquadio,id)
