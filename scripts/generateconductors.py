@@ -38,7 +38,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.20 2003/04/17 18:22:42 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.21 2003/04/22 16:30:26 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -842,7 +842,8 @@ assembly.
       tt1 = wtime()
       dd = d.isinside
       dd.shape = (ix2-ix1+1,iy2-iy1+1)
-      self.isinside[ix1:ix2+1,iy1:iy2+1,iz[0]] = dd
+      self.isinside[ix1:ix2+1,iy1:iy2+1,iz[0]] = where(dd>0,dd,
+                                   self.isinside[ix1:ix2+1,iy1:iy2+1,iz[0]])
       tt2[3] = tt2[3] + wtime() - tt1
     endtime = wtime()
     self.generatetime = endtime - starttime
