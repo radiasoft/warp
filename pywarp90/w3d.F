@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.99 $, $Date: 2003/04/17 23:22:15 $
+c@(#) File W3D.M, version $Revision: 3.100 $, $Date: 2003/04/22 16:33:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5167,10 +5167,12 @@ c=============================================================================
       use Parallel
       use Obsolete3d,obs_inj_d=>inj_d,obs_inj_f=>inj_f
 
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: ixmin,ixmax,iymin,iymax
+      integer(ISZ):: inx,iny
       integer(ISZ):: is,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
       real(kind=8):: maxab1,maxab2,minab1,minab2
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,inx,iny
       integer(ISZ), external :: oneiftrue
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -5192,15 +5194,16 @@ c apinject or bpinject back to zero after the generate.
       enddo
 
 c     --- Setup grids covering injection surfaces.
+      call getparticleextant(1,xmin,xmax,ymin,ymax,xmmin,xmmax,ymmin,ymmax)
       inj_ninj = ninject
       call gchange("InjectVars3d",0)
       do ij=1,ninject
-        ixmin = max(0, int((xinject(ij)-ainject(ij)-xmmin)/dx-2))
-        ixmax = min(nx,int((xinject(ij)+ainject(ij)-xmmin)/dx+3))
-        iymin = max(0, int((yinject(ij)-binject(ij)-ymmin)/dy-2))*oneiftrue(.not. l_inj_rz)
-        iymax = min(ny,int((yinject(ij)+binject(ij)-ymmin)/dy+3))*oneiftrue(.not. l_inj_rz)
-        inx = ixmax - ixmin
-        iny = iymax - iymin
+        ixmin = max(xmin,xinject(ij) - ainject(ij) - 2*dx)
+        ixmax = min(xmax,xinject(ij) + ainject(ij) + 2*dx)
+        iymin = max(ymin,yinject(ij) - binject(ij) - 2*dy)*oneiftrue(.not. l_inj_rz)
+        iymax = min(ymax,yinject(ij) + binject(ij) + 2*dy)*oneiftrue(.not. l_inj_rz)
+        inx = nint((ixmax - ixmin)/dx)
+        iny = nint((iymax - iymin)/dy)
         inj_nx = max(inj_nx,inx)
         inj_ny = max(inj_ny,iny)
       enddo
@@ -5223,8 +5226,9 @@ c     --- Setup grids covering injection surfaces.
       end if
 
 c     --- Set mins for meshes around each source.
-      inj_xmmin = - inj_nx/2*inj_dx
-      inj_ymmin = - inj_ny/2*inj_dy
+      inj_xmmin = max(xmin, - inj_nx/2*inj_dx)
+      inj_ymmin = max(ymin, - inj_ny/2*inj_dy)
+      if (l_inj_rz) inj_ymmin = 0.
 
 c     --- Set inject z min and max. This is only really needed for
 c     --- the parallel version, but is useful for the serial version to
