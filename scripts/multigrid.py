@@ -173,7 +173,7 @@ class MultiGrid(object):
     self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
                              w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
 
-  def fetche(self):
+  def fetchphi(self):
     self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
 
   def installconductor(self,conductor,
