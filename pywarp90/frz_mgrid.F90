@@ -8131,8 +8131,8 @@ TYPE(bndptr), pointer :: bnd
    necndbdy = necndbdy + bnd%cnd%nbbndred
    nocndbdy = nocndbdy + bnd%cnd%nbbnd-bnd%cnd%nbbndred
  END do
- ncondmax = ncond
- ncndmax = max(necndbdy,nocndbdy)
+ if (ncondmax < ncond) ncondmax = ncond
+ if (ncndmax < max(necndbdy,nocndbdy)) ncndmax = max(necndbdy,nocndbdy)
  call gchange("Conductor3d",0)
 
  icc=0
