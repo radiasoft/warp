@@ -7,7 +7,7 @@ Two functions are available for saving the object in a file.
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.17 2003/09/03 17:53:48 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.18 2003/09/04 20:01:58 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -179,10 +179,10 @@ routines (such as ppxxp).
     if not self.laccumulate: return
     if self.iz >= 0: return
     if self.zz+self.wz > w3d.zmminglobal+top.zbeam: return
-    import __main__
-    if self.name not in __main__.__dict__: return
     self.disable()
-    if me == 0: pydump(self.name+'_ep.pdb',attr='None',vars=[self.name])
+    ff = PW.PW(self.name+'_ep.pdb')
+    if me == 0: ff.write(self.name+'@pickle',cPickle.dumps(self,0))
+    ff.close()
     self.nepmax = 1
     self.clear()
 
@@ -617,7 +617,7 @@ def restoreExtPart(object,filename):
     # --- Create temp iz
     iz = 0
   # --- PE0 broadcasts its value of iz to all of the other processors
-  # --- whcih create new instances of the ExtPart class.
+  # --- which create new instances of the ExtPart class.
   iz = broadcast(iz)
   if me > 0: result = ExtPart(iz)
   return result
