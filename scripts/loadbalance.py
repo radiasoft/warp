@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.28 2003/06/27 23:19:56 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.29 2003/07/08 22:28:17 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -16,6 +16,41 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
                 the solver including the work specifying the conductors.
   """
 
+#########################################################################
+#########################################################################
+class LoadBalancer:
+  """
+Installs load balancer.
+Creation arguments:
+ - when: dictionary of when to do the load balancing. Keys are time step
+         numbers, values are frequency of loadbalancing when top.it is less
+         than key.
+ - padright: Amount of space added to right end of grid. When not specified,
+             it is product of w3d.dz and the number of steps between
+             load balances.
+  """
+  def __init__(self,padright=None,when=None):
+    if not lparallel: return
+    if when is None:
+      self.when = {10:1,100:10,1000000:20}
+    else:
+      self.when = when
+    self.padright = padright
+    installafterstep(self.doloadbalance)
+
+  def doloadbalance(self,lforce=0,lloadrho=0,dofs=0,reorg=None):
+    if not lparallel: return
+    if reorg is None: reorg = (top.it==1)
+    for key,value in self.when.items():
+      if top.it < key: ii = value
+    if self.padright is None: padright = ii*w3d.dz
+    else:                     padright = self.padright
+    if ((top.it%ii) == 0) or lforce:
+      loadbalanceparticles(lloadrho=loadrho,dofs=dofs,padright=padright,
+                           reorg=reorg)
+      getphiforparticles()
+
+#########################################################################
 #########################################################################
 def setparticledomains(zslave,lloadrho=1,dofs=1,padleft=0.,padright=0.,reorg=0):
   """
