@@ -2,11 +2,7 @@
 The function drawlattice which plots the lattice.
 """
 from warp import *
-drawlattice_version = "$Id: drawlattice.py,v 1.1 2002/05/31 23:17:24 dave Exp $"
-def drawlatticedoc():
-  import drawlattice
-  print drawlattice.__doc__
-
+drawlattice_version = "$Id: drawlattice.py,v 1.2 2002/08/24 00:19:03 dave Exp $"
 
 #############################################################################
 def _getelem(ll,zs,ze,zlatmin,zlatmax):
@@ -281,6 +277,7 @@ type, and should draw any general lattice.
     if len(ic) > 0 and nc in ic: zcmin = top.bendzs[nc]
     ii = argmin([zqmin,zhmin,zemin,zmmin,zbmin,zpmin,zamin,zcmin,zdmin])
     ilatspc =   ['q'  ,'h'  ,'e'  ,'m'  ,'b'  ,'p'  ,'a'  ,'c'  ,'d'][ii]
+
     if ilatspc == 'q':
       # --- load quadrapole element (focussing or defocussing)
       zaxis,xaxis,zq,xq,zl,xl = _addelement(top.quadzs[nq],top.quadze[nq],
