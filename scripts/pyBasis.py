@@ -15,7 +15,7 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.18 2001/12/06 00:39:20 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.19 2001/12/06 00:47:02 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -181,9 +181,10 @@ def doc(f):
       pass
     # --- Try to get the actual value of the object
     try:
-      f = eval(f)
+      f = eval(f,__main__.__dict__)
     except:
       print "Name not found"
+      return
   # --- Check if it has a doc string
   try:
     print f.__doc__
