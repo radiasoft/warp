@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.9 2001/09/28 18:13:55 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.10 2001/10/18 22:59:45 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -159,6 +159,7 @@ initial data.
       self.gi = self.nn*[1.]
     # --- Initialize particle coordinates
     self.enable()
+    self.checklive()
 
   #----------------------------------------------------------------------
   def enable(self):
@@ -209,6 +210,14 @@ initial data.
     uninstallafterstep(self.spsavedata)
 
   #----------------------------------------------------------------------
+  def checklive(self):
+    """Check which particles are still alive. Note that this refers directly
+to the WARP particle database since the particle's data is not saved if it
+is not alive."""
+    self.live = where(equal(top.uzp[self.ip1:self.ip2],0.),0,1)
+    #self.live = where(top.uzp[self.ip1:self.ip2] == 0.,0,1)
+
+  #----------------------------------------------------------------------
   def resettime(self):
     # --- Initialize time stepping
     top.it = self.itsave
@@ -247,16 +256,18 @@ initial data.
   #----------------------------------------------------------------------
   def spsavedata(self):
     """Saves data"""
+    self.checklive()
     if not self.savedata: return
     for i in xrange(self.nn):
-      self.spt[i].append(top.time)
-      self.spx[i].append(top.xp[self.ip1 + i])
-      self.spy[i].append(top.yp[self.ip1 + i])
-      self.spz[i].append(top.zp[self.ip1 + i])
-      self.spvx[i].append(top.uxp[self.ip1 + i])
-      self.spvy[i].append(top.uyp[self.ip1 + i])
-      self.spvz[i].append(top.uzp[self.ip1 + i])
-      self.spgi[i].append(top.gaminv[self.ip1 + i])
+      if self.live[i]:
+        self.spt[i].append(top.time)
+        self.spx[i].append(top.xp[self.ip1 + i])
+        self.spy[i].append(top.yp[self.ip1 + i])
+        self.spz[i].append(top.zp[self.ip1 + i])
+        self.spvx[i].append(top.uxp[self.ip1 + i])
+        self.spvy[i].append(top.uyp[self.ip1 + i])
+        self.spvz[i].append(top.uzp[self.ip1 + i])
+        self.spgi[i].append(top.gaminv[self.ip1 + i])
 
   #----------------------------------------------------------------------
   def getsavedata(self):
