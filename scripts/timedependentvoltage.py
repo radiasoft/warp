@@ -5,7 +5,7 @@ class TimeVoltage:
 Makes the voltage on a conductor time dependent. One of several methods can be
 specified to calculate the voltage as a function of time.
 Input for constructor:
- - condid=0: Id of the conductor which is to be varied
+ - condid=0: Id (or list of id's) of the conductor which is to be varied
  - discrete=true: z locations for plus/minus z subgrid points are round up/down.
 
  - tieffenback=false: when true, use the Tieffenback profile, with the
@@ -29,12 +29,14 @@ Input for constructor:
                 tieffenback=false,minvoltage=0.,maxvoltage=None,risetime=None,
                 flattime=top.largepos,falltime=top.largepos,
                 voltdata=None,timedata=None,
-                voltfunc=None):
+                voltfunc=None,
+                aftervoltset=None):
     assert ((not tieffenback) or
            (tieffenback and maxvoltage is not None and risetime is not None)),\
            "If Tieffenback profile is used, both a maxvoltage and a risetime must be specified"
 
-    self.condid = condid
+    if type(condid) == IntType: self.condid = [condid]
+    else:                       self.condid = condid
     self.tieffenback = tieffenback
     self.minvoltage = minvoltage
     self.maxvoltage = maxvoltage
@@ -45,6 +47,7 @@ Input for constructor:
     self.timedata = timedata
     self.voltfunc = voltfunc
     self.discrete = discrete
+    self.aftervoltset = aftervoltset
 
     # --- Select method of calculating the voltage
     self.getvolt = None
@@ -60,6 +63,7 @@ Input for constructor:
 
     # --- Now, set so the function is called before each field solve
     # --- to apply the voltage
+    self.applyvoltage()
     installbeforefs(self.applyvoltage)
 
   def applyvoltage(self):
@@ -68,6 +72,7 @@ Input for constructor:
     setconductorvoltage(volt,self.condid,discrete=self.discrete)
     self.hvolt.append(volt)
     self.htime.append(time)
+    if self.aftervoltset is not None: self.aftervoltset(volt)
 
   def tieffenbackvoltage(self,time):
     risetime = self.risetime
