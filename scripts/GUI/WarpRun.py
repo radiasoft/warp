@@ -16,9 +16,15 @@ import txtEditorDialog
 import newstdout
 import wxDialog_proto
 import pygistDialog
+try:
+  import pyOpenDXDialog
+  l_opendx=1
+except:
+  l_opendx=0
 import WarpPanel
 import gist
 import sys
+import os
 import code
 import __main__
 from warp import *
@@ -443,6 +449,8 @@ Ctrl+=            Default font size.
 	  self.shell.SetSize(self.splitterWindow1.GetSize())
 	  self.splitterWindow1.ReplaceWindow(self.MessageWindow,self.shell)
           self.MessageWindow.Destroy()
+	  self.Console = self.shell
+          self.inter = self.shell.interp
 	else:
           self.inter = code.InteractiveConsole(__main__.__dict__)
           self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.splitterWindow1,inter=self.inter)
@@ -456,6 +464,8 @@ Ctrl+=            Default font size.
         self.panels['Pzplots']  = self.show_GUI(PzplotsGUI,  'notebook','Pzplots')
         self.panels['Matching'] = self.show_GUI(MatchingGUI, 'notebook','Matching')
         self.panels['Gist']     = self.show_GUI(pygistDialog,'notebook','Gist')
+        if l_opendx:
+          self.panels['OpenDX']     = self.show_GUI(pyOpenDXDialog,'notebook','OpenDX')
         self.notebook1.SetSelection(0) # open notebook on Editor
         self.FileExecDialog = txtEditorDialog.txtEditorDialog(self)      
         self.FileExec = self.FileExecDialog.txtEditor  
@@ -768,7 +778,8 @@ Ctrl+=            Default font size.
         if(not l_standard_out): sys.stdout = newstdout.newstdout(self.Console)
         if(not l_standard_out): sys.stderr = newstdout.newstdout(self.Console)
         self.statusBar1.SetStatusText(number=0,text="Executing file %s"%self.FileName)
-        if(self.startrun and self.ConsolePanel.NoEntry):
+	if not l_PyShell:
+          if(self.startrun and self.ConsolePanel.NoEntry):
             self.Console.Clear()
             startrun = 0
         self.OnContButton()
@@ -877,14 +888,14 @@ Ctrl+=            Default font size.
                     if(self.line[0]<>' '):
                         if(len(self.line)>=4):
                             if(self.line[:4]<>'else' and self.line[:4]<>'elif'):
-                                self.inter.push('\n')
+                                self.inter.push(os.linesep)
                                 endsection = true
                                 redo = false
                                 self.EdPos = self.EdPos - len(self.line) - 1
                                 self.linenum = self.linenum-1
                                 self.prefix=''
                         else:
-                            self.inter.push('\n')
+                            self.inter.push(os.linesep)
                             endsection = true
                             redo = false
                             self.EdPos = self.EdPos - len(self.line) - 1
@@ -904,9 +915,14 @@ Ctrl+=            Default font size.
                     if(string.strip(self.line)=='winon()'):
                         self.OnWinonButton()
                     else:
-                        self.Console.WriteText(self.prefix+self.line+'\n')
-                        r=self.ConsolePanel.sendcommand(self.line,addlist=0)
-                        if(r==1):
+			if l_PyShell:
+			  self.shell.SetCurrentPos(self.shell.GetTextLength())
+			  self.shell.write(self.line+os.linesep)
+			  more=self.inter.push(self.line)
+			else:
+                          self.Console.WriteText(self.prefix+self.line+os.linesep)
+                          more=self.ConsolePanel.sendcommand(self.line,addlist=0)
+                        if(more):
                           if action is 'next': redo=true
                           self.prefix='... '
                         else:
@@ -925,10 +941,15 @@ Ctrl+=            Default font size.
         return dorun
 
     def ReturnToPrompt(self,line):
-        self.Console.WriteText('>>> ')
-        self.ConsolePanel.CursorMin = self.Console.GetLastPosition()
-        self.FileExec.ShowPosition(self.EdPos-len(line)-1) 
-        self.statusBar1.SetStatusText(number=0,text="Ready")
+	if l_PyShell:
+	  self.shell.prompt()
+        else:    
+	  self.Console.WriteText('>>> ')
+          self.ConsolePanel.CursorMin = self.Console.GetLastPosition()
+#	self.shell.AddText('>>> ')
+#	self.shell.DocumentEnd()
+	self.FileExec.ShowPosition(self.EdPos-len(line)-1) 
+	self.statusBar1.SetStatusText(number=0,text="Ready")
 
     def OnMnudumpDump(self,event):
         dump()
