@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.148 2005/03/08 18:27:31 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.149 2005/03/08 18:33:52 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1546,7 +1546,8 @@ def ppmultispecies(pp,args,kw):
       return false
     else:
       if js == -1: js = range(top.ns)
-      color = kw.get('color',range(0,200,200/len(js)))
+      ncolor = kw.get('ncolor',240)
+      color = kw.get('color',range(0,ncolor,ncolor/len(js)))
       for i in xrange(len(js)):
         kw['js'] = js[i]
         kw['color'] = color[i]
