@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.78 $, $Date: 2002/11/05 22:06:33 $
+c@(#) File W3D.M, version $Revision: 3.79 $, $Date: 2002/11/06 01:37:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -86,6 +86,10 @@ c  Put ny to zero for RZ geometry
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         ny = 0
         fstype = 10
+        if(l_inj_rz .and. wpid==0) then
+          wpid = npid+1
+          npid = npid+1
+        endif
       elseif(solvergeom==Zgeom) then
         nx = 0
         ny = 0
@@ -1430,10 +1434,18 @@ c                --- for interpolation in moments calculation
                  enddo
                endif
 c              --- Calculate moments over particles, now that we're sync'd
-               call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),sq(is),sm(is),sw(is),dt*0.5,2,nplive,
-     &                       uxpo,uypo,uzpo,is,ns)
+               if(wpid==0) then
+                 call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                         gaminv(ipmin),sq(is),sm(is),sw(is),dt*0.5,2,nplive,
+     &                         uxpo,uypo,uzpo,is,ns)
+               else
+                 call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                         gaminv(ipmin),pid(ipmin,wpid),
+     &                         sq(is),sm(is),sw(is),dt*0.5,2,nplive,
+     &                         uxpo,uypo,uzpo,is,ns)
+               endif
             endif
          enddo
 
@@ -1457,8 +1469,13 @@ c       --- Calculate current
         do is=1,ns
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-            call setcurr(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                   sq(is),sw(is),zbeam,dzz,zzmin)
+            if(wpid==0) then
+              call setcurr(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                     sq(is),sw(is),zbeam,dzz,zzmin)
+            else
+              call setcurr_weights(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),pid(ipmin,wpid),
+     &                     sq(is),sw(is),zbeam,dzz,zzmin)
+            end if
           enddo
         enddo
         call percurr(curr(0),nzzarr,bound0)
@@ -1774,7 +1791,7 @@ c        --- tan(alpha) / alpha algorithm
       end
 c=========================================================================== 
       subroutine xpush3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,ddt)
-      use Subtimers3d
+      use Subtimers
       integer(ISZ):: np
       real(kind=8):: ddt
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
@@ -1796,7 +1813,7 @@ c  Advance particle positions
       end
 c===========================================================================
       subroutine xpusht3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
-      use Subtimers3d
+      use Subtimers
       integer(ISZ):: np
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: dtp(np)
@@ -3621,6 +3638,8 @@ c     --- set limits on loop over species
         is2 = is_i
       endif
 
+      if(depos /= 'none') then
+
 c     --- set initial limits from input
 c     --- (will be changed if necessary in the loop)
       ins_u = ins_i
@@ -3644,8 +3663,13 @@ c        --- loop over particle blocks
               call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
      &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
             elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+             if(wpid==0) then
               call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
      &                         sq(is)*sw(is),nx,nz,dx,dz,zmmin)
+             else
+              call rhoweightrz_weights(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),pid(ipmin,wpid),ip,
+     &                         sq(is)*sw(is),nx,nz,dx,dz,zmmin)
+             end if
             elseif(solvergeom==Zgeom) then
               call rhoweightz(zp(ipmin),uzp(ipmin),ip,sq(is)*sw(is),nz,dz)
             elseif(solvergeom==AMRgeom) then
@@ -3654,6 +3678,8 @@ c        --- loop over particle blocks
             end if
          enddo
       enddo
+
+      endif
 
 c     --- enforce axial periodicity
       if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0)
@@ -3810,8 +3836,9 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: ith,nti
       real(kind=8):: cl_const(ns),jton(ns),vzconst(ns)
       real(kind=8):: substarttime,wtime
-      real(kind=8):: zmin_tmp, zmax_tmp
+      real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp
       integer(ISZ):: spreadx, spready
+      integer(ISZ), external :: oneiftrue
       if (lw3dtimesubs) substarttime = wtime()
 
       dxi = 1./inj_dx
@@ -4292,15 +4319,21 @@ c           --- injected at edges of the grid that are not symmetry planes.
                 signy(4) = -1.
               endif
             elseif(solvergeom==RZgeom) then
-              load_fac = 4
-              signx(2) = -1.
-              signx(3) = -1.
-              signx(4) = +1.
-              signy(2) = -1.
-              signy(3) = +1.
-              signy(4) = -1.
-              spreadx = 1
-              spready = 1
+              if(.not. l_inj_rz) then
+                load_fac = 4
+                signx(2) = -1.
+                signx(3) = -1.
+                signx(4) = +1.
+                signy(2) = -1.
+                signy(3) = +1.
+                signy(4) = -1.
+                spreadx = 1
+                spready = 1
+              else
+                load_fac = 1
+                spreadx = 1
+                spready = 1
+              end if
             elseif(solvergeom==XZgeom) then
               load_fac = 1
               spreadx = 1
@@ -4321,7 +4354,11 @@ c           --- injected at edges of the grid that are not symmetry planes.
 c             --- The factor to convert current density to particle number.
 c             --- The absolute value is taken of sq so the factor is always
 c             --- positive.
-              jton(is) = inj_dx*inj_dy*dt/abs(sq(is))/sw(is)
+              if(l_inj_rz) then
+                jton(is) = inj_dx*dt/abs(sq(is))/sw(is)
+              else
+                jton(is) = inj_dx*inj_dy*dt/abs(sq(is))/sw(is)
+              end if
 
 c             --- This constant terms includes corrections for injection off
 c             --- of a concentric spheres.  See I. Langmuir,
@@ -4347,7 +4384,7 @@ c             --- is only strictly correct for planar emission.
             enddo
 
 c           --- Load particles one grid cell at a time.
-            do iy=0,inj_ny
+            do iy=0,inj_ny * oneiftrue(.not. l_inj_rz)
               do ix=0,inj_nx
 
 c               --- Mesh location
@@ -4389,6 +4426,7 @@ c                   --- Gauss's law
      &                    (inj_dz*abs(inj_d(ij)))-0.5*inj_rho(ix,iy,inj_ij)*inj_dz)*
      &                  inj_dx*inj_dy/sq(is)/sw(is)/cos(inj_angl(ix,iy,inj_ij))
                   endif
+                  if(l_inj_rz .and. ix==0) rnn = 0.5*rnn
 
 c                 --- Make sure that rnn is >= 0.
 c                 --- Don't cycle at this point even if rnn is zero since
@@ -4403,8 +4441,7 @@ c                 --- Average the number of particles for this step with
 c                 --- that of the previous step. This helps the relaxation
 c                 --- toward a steady state, especially in the Egun style
 c                 --- iterative mode.
-                  if(inj_prev(ix,iy,inj_ij,inj_is)>0)
-     &            rnn = (inj_param*rnn +
+                  rnn = (inj_param*rnn +
      &                  (1. - inj_param)*inj_prev(ix,iy,inj_ij,inj_is))
 
 c                 --- Force injected current to be between the range
@@ -4455,8 +4492,12 @@ c                 --- half-planes.
                       if (iy == 0) ilf = ilf/2
                     end if
                   elseif(solvergeom==RZgeom) then
-                    if (ix == 0) ilf = ilf/2
-                    if (iy == 0) ilf = ilf/2
+                    if(.not. l_inj_rz) then
+                      if (ix == 0) ilf = ilf/2
+                      if (iy == 0) ilf = ilf/2
+                    else
+                      ilf = 1
+                    end if
                   elseif(solvergeom==XZgeom) then
                     if(l2symtry .or. l4symtry) then
                       if (ix == 0) ilf = ilf/2
@@ -4473,6 +4514,13 @@ c                     --- calculate x, y and z of new particle
 c                     --- if within injection source load it, else skip it
                       xp(ii)=signx(il)*xm+spreadx*(rnrev(injctcnt,dig1)-.5)*inj_dx*2.
                       yp(ii)=signy(il)*ym+spready*(rnrev(injctcnt,dig2)-.5)*inj_dy*2.
+                      if(l_inj_rz) then
+                        r_tmp=abs(xp(ii))
+                        theta_tmp = 2.*pi*wranf()
+                        xp(ii) = r_tmp*cos(theta_tmp)
+                        yp(ii) = r_tmp*sin(theta_tmp)
+                        pid(ii,wpid) = 2.*pi*r_tmp
+                      end if
 
 c                     --- Check if particle is within the elliptical annulus
 c                     --- with outer major and minor radii of ainject and
@@ -4525,7 +4573,6 @@ c                     --- The fractions are chosen using the digit reversed
 c                     --- number generator and not particle number since they
 c                     --- are correlated with transverse position.
                       pid(ii,1) = rnrev(injctcnt,dig5)
-                      if(npid>1) pid(ii,2) = time
 
 c                     --- Get the normal velocity for this particle. This is
 c                     --- based on the Child-Langmuir solution, given a
@@ -4990,6 +5037,10 @@ c=============================================================================
           inj_dx = dx
           inj_dy = dx
           inj_dz = dz
+        end if
+        if(l_inj_rz) then
+c          inj_ny = 0
+c          inj_dy = 1.
         end if
       end if
       inj_dz0 = inj_dz
