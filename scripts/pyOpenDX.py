@@ -9,7 +9,10 @@ viewparticles: views particles
 DXImage: views a OpenDX object using a nice interactor handler
 """
 from warp import *
-from wxPython.wx import *
+try:
+  from wxPython.wx import *
+except:
+  pass
 import __main__
 selectbox = 1
 
@@ -20,7 +23,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.16 2004/11/24 22:52:31 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.17 2004/11/30 00:47:24 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
