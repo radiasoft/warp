@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.24 $, $Date: 2001/09/12 21:59:24 $
+c@(#) File W3D.M, version $Revision: 3.25 $, $Date: 2001/09/19 22:45:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -746,8 +746,8 @@ c     --- handle sexts
       call applysext(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,ex,ey,bx,by)
 
 c     --- handle hard-edge electric and magnetic multipoles
-      call applyhele(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,.false.,
-     &               ey,ez,bx,by,bz)
+      call applyhele(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,
+     &               ex,ey,ez,bx,by,bz)
 
 c     --- fold in coordinate transformation associated with bends
       call applybend(np,xp,uzp,np,bendres,bendradi,m,q,.false.,by)
@@ -1794,7 +1794,8 @@ c============================================================================
       subroutine edamp(eomdamp,it,itdamp,center,np,
      &                 ex,ey,ez,exold,eyold,ezold,exlag,eylag,ezlag)
       use Subtimers
-      integer(ISZ):: eomdamp,it,itdamp,np
+      real(kind=8):: eomdamp
+      integer(ISZ):: it,itdamp,np
       real(kind=8):: ex(np), ey(np), ez(np), exold(np), eyold(np), ezold(np)
       real(kind=8):: exlag(np), eylag(np), ezlag(np)
       character(*):: center
@@ -3721,7 +3722,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: vtx,vty
       real(kind=8):: zmid,zleni,ztilt,gamma
       real(kind=8):: zinjmin,zinjmax
-      integer(ISZ):: load_fac,il,ilf,ixi,iyi
+      integer(ISZ):: load_fac,il,ilf
       real(kind=8):: signx(4),signy(4)
       real(kind=8):: p2x,p2y,p2z,w2x,w2y,w2z,area
       integer(ISZ):: i2x,i2y,i2z
@@ -4175,8 +4176,6 @@ c           --- Set some temporaries.
             xpinj = xpinject(ij)
             ypinj = ypinject(ij)
             rinji = 1./rinject(ij)
-            ixi = (xinj - xmmin)*dxi
-            iyi = (yinj - ymmin)*dyi
 
 c           --- The potential drop in front of the surface is now
 c           --- calculated by a call to getinj_phi from padvnc3d.
@@ -5465,7 +5464,7 @@ c to get zp.
 
       integer(ISZ):: ij,ix,iy,i2r,i2z
       real(kind=8):: dxi,dyi
-      real(kind=8):: ainj,binj,ainjsqi,binjsqi,xinj,yinj
+      real(kind=8):: ainjsqi,binjsqi,xinj,yinj
       real(kind=8):: rrsq,aa,p2x,p2y,p2r,p2z,w2r,w2z
 
 #ifdef PARALLEL
@@ -5480,8 +5479,6 @@ c     --- loop over injection sources
       do ij=1,ninject
 
 c       --- Set some temporaries.
-        ainj = ainject(ij)
-        binj = binject(ij)
         ainjsqi = 1./(ainject(ij) + 2.*dx)**2
         binjsqi = 1./(binject(ij) + 2.*dx)**2
         xinj = xinject(ij)
@@ -5671,7 +5668,7 @@ c the tangential fields near the emitting surface can also be included.
 c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
-      integer(ISZ):: ip,ix,iy,iz,ij,jx,jy,jz,jxm1,jym1
+      integer(ISZ):: ip,ix,iy,iz,ij
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd,ca,zii
       real(kind=8):: aa,az,atx,aty,px,py,pz,wx,wy,wz,en,etx,ety
       real(kind=8):: dxi,dyi,dzi,inj_di
@@ -5690,9 +5687,6 @@ c any conductor surface.
 
 c     --- Loop over particles
       do ip=ipmin,ipmin+npart-1
-        jx = int(abs(xp(ip) - xmmin)*dxi)
-        jy = int(abs(yp(ip) - ymmin)*dyi)
-        jz = int(   (zp(ip) - zmmin)*dzi)
 
 c       --- Get number of injection source of particle.  The particle id
 c       --- has the number of the injection source the particle was
@@ -5976,7 +5970,7 @@ c the grid cell.
 
       integer(ISZ):: is,ip,ix,iy,ij,j,ij1
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd
-      real(kind=8):: aa,az,px,py,wx1,wx0,ww
+      real(kind=8):: az,px,py,wx1,wx0,ww
       real(kind=8):: dxi,dyi,dzi
       real(kind=8):: substarttime,wtime
       real(kind=8):: invvol(0:nx)
@@ -6035,9 +6029,6 @@ c           --- When zz>rinj, a seperate equation is needed.
 
 c         --- Only deposit charge of particles close to emitting surface.
           if (dd < 1. .and. uzp(ip) > 0.) then
-
-c           --- angle of point in transverse plane
-            aa = 0.
 
 c           --- angle relative to z axis
             az = atan2(sqrt(rr2),rinj-zz)
