@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.18 2004/09/09 19:44:55 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.19 2004/11/04 19:22:29 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -666,30 +666,30 @@ Visualize surface of revolution
       tyrght += [0.]
 
     # --- Now set end points
-    if rendzmin == largepos: rendzmin = 2.*max(max(rxleft),max(rxrght),
-                                               max(ryleft),max(ryrght))
-    if rendzmax == largepos: rendzmax = 2.*max(max(rxleft),max(rxrght),
-                                               max(ryleft),max(ryrght))
-    if rendzmin is not None:
+    if rxendzmin == largepos: rxendzmin = 2.*max(max(rxleft),max(rxrght))
+    if ryendzmin == largepos: ryendzmin = 2.*max(max(ryleft),max(ryrght))
+    if rxendzmax == largepos: rxendzmax = 2.*max(max(rxleft),max(rxrght))
+    if ryendzmax == largepos: ryendzmax = 2.*max(max(ryleft),max(ryrght))
+    if rxendzmin is not None and ryendzmin is not None:
       zzleft[0] = zzmin
       zzrght[0] = zzleft[1]
-      rxleft[0] = rendzmin
+      rxleft[0] = rxendzmin
       rxrght[0] = rxleft[1]
       txleft[0] = pi *(normalsign > 0.)
       txrght[0] = pi *(normalsign > 0.)
-      ryleft[0] = rendzmin
+      ryleft[0] = ryendzmin
       ryrght[0] = ryleft[1]
       tyleft[0] = pi *(normalsign > 0.)
       tyrght[0] = pi *(normalsign > 0.)
-    if rendzmax is not None:
+    if ryendzmax is not None and ryendzmax is not None:
       zzleft[-1] = zzrght[-2]
       zzrght[-1] = zzmax
       rxleft[-1] = rxrght[-2]
-      rxrght[-1] = rendzmax
+      rxrght[-1] = rxendzmax
       txleft[-1] = 0. + pi*(normalsign < 0.)
       txrght[-1] = 0. + pi*(normalsign < 0.)
       ryleft[-1] = ryrght[-2]
-      ryrght[-1] = rendzmax
+      ryrght[-1] = ryendzmax
       tyleft[-1] = 0. + pi*(normalsign < 0.)
       tyrght[-1] = 0. + pi*(normalsign < 0.)
 
