@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.159 $, $Date: 2004/07/02 23:29:55 $
+c@(#) File W3D.F, version $Revision: 3.160 $, $Date: 2004/07/08 19:20:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9450,6 +9450,8 @@ c   4  2d fft in transverse plane, tridiag solve in z
      &   solvergeom==Zgeom) fstype=10
       if(solvergeom==AMRgeom) fstype = 11
       if (solvergeom == XYZgeomMR) fstype = 12
+
+      if (iwhich==0 .or. iwhich==1) call execuser('initfieldsolver')
 
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
