@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.6 2001/03/03 01:49:20 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.7 2001/03/03 02:02:14 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -681,8 +681,10 @@ def plotlatticeelement(color,gridframe,axis,iquad,nquad,
       zzr = 0.5*(eze[i] + ezs[i]) + 0.5*(rodlen+gaplen) + zz + \
             top.zlatstrt
       if gridframe:
-        rr1 = rr1/w3d.dx
-        rr2 = rr2/w3d.dx
+        rrl1 = rrl1/w3d.dx
+        rrl2 = rrl2/w3d.dx
+        rrr1 = rrr1/w3d.dx
+        rrr2 = rrr2/w3d.dx
         zzl = (zzl - w3d.zmmin)/w3d.dz
         zzr = (zzr - w3d.zmmin)/w3d.dz
       plg(rrl1,zzl,color=color)
