@@ -36,7 +36,7 @@ from warp import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.20 2003/08/05 16:46:57 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.21 2003/08/05 17:03:38 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -89,8 +89,8 @@ elements.
   def derivedquantities(self):
     self.expand()
     for e in self.elemslist: e.derivedquantities()
-  def expand(self):
-    if self.elemslist: return self.elemslist
+  def expand(self,lredo=0):
+    if self.elemslist and not lredo: return self.elemslist
     for e in self.elems:
       self.elemslist.append(e.expand())
     # --- Unravel any imbedded lists.
@@ -167,7 +167,7 @@ list of the parameters which are changed.
     self.derivedquantities()
   def deepexpand(self):
     return copy.deepcopy(self)
-  def expand(self):
+  def expand(self,lredo=0):
     return self
   def __getattr__(self,name):
     return eval('self.parent.'+name,locals())
@@ -220,7 +220,7 @@ Base class for the lattice classes. Should never be directly called.
     return 0
   def deepexpand(self):
     return copy.deepcopy(self)
-  def expand(self):
+  def expand(self,lredo=0):
     return self
   def getattr(self,a):
     return self.__dict__[a]
