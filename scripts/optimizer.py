@@ -1,6 +1,6 @@
 from warp import *
 import RandomArray
-optimizer_version = "$Id: optimizer.py,v 1.3 2002/02/27 23:26:11 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.4 2002/02/28 21:17:37 dave Exp $"
 """
 This file contains several optimizers, including:
   Simultaneaous Perturbation Stochastic Approximation
@@ -58,9 +58,9 @@ Creates an instance of the Spsa class.
   def gradloss(self):
   # --- Calculated the approximated gradient of the loss function.
     deltak = (2*RandomArray.random(self.nparams)).astype(Int) - .5
-    self.func(self.params + self.ck()*deltak)
+    self.func(self.constrainparams(self.params + self.ck()*deltak))
     lplus = self.loss()
-    self.func(self.params - self.ck()*deltak)
+    self.func(self.constrainparams(self.params - self.ck()*deltak))
     lminus = self.loss()
     return (lplus - lminus)/(2.*self.ck()*deltak)
   def printerror(self,err):
@@ -75,6 +75,11 @@ Creates an instance of the Spsa class.
     """Returns the max limit of parameters."""
     if type(self.paramsmax) is FunctionType: return self.paramsmax(self)
     return self.paramsmax
+  def constrainparams(self,params):
+    "Makes sure all params are within bounds"
+    params = maximum(params,self.getparamsmin())
+    params = minimum(params,self.getparamsmax())
+    return params
 
   def iter(self,err=1.e-9,imax=10000,kprint=10):
     """
@@ -93,12 +98,8 @@ Function to do iterations.
         print "ak = %f" % self.ak()
         print "gradloss = " + repr(dp)
         print "params = " + repr(self.params)
-      self.params = self.params - self.ak()*dp
-      # --- Makes sure all params are within bounds
-      self.params = maximum(self.params,self.getparamsmin())
-      self.params = minimum(self.params,self.getparamsmax())
-      if self.verbose:
-        print "new params = " + repr(self.params)
+      self.params = self.constrainparams(self.params - self.ak()*dp)
+      if self.verbose: print "new params = " + repr(self.params)
       # --- Calculate function with new params
       self.func(self.params)
       # --- Save the latest value of the loss function.
