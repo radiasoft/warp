@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.34 2001/03/14 21:51:21 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.35 2001/03/21 01:29:11 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1707,7 +1707,7 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
 ##########################################################################
 # This routine allows plotting of multi-dimensioned arrays.
 def pla(y,x=None,color="fg",linetype="solid",marks=0,marker=None,msize=1.0,
-        width=1.,decomposed=1):
+        width=1.,decomposed=0):
   "Same as plg but can plot multidimensional array"
   if x:
     if shape(x)!=shape(y) and (len(shape(x))==1 and shape(x)[0]!=shape(y)[0]):
