@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.12 2001/08/13 20:44:22 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.13 2001/08/14 16:21:34 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -294,6 +294,16 @@ of the domains.
 
 #########################################################################
 def _adjustz():
+
+  #---------------------------------------------------------------------------
+  # --- If space-charge limited injection is turned on, then add additional
+  # --- grid cells to the first processor so it will have the injection
+  # --- surface completely covered.
+  if inject > 1:
+    zinjmax = top.ainject**2/(top.rinject+sqrt(top.rinject**2-top.ainject**2))
+    nzinj = int(max(top.zinject + zinjmax - w3d.zmmin)/w3d.dz + w3d.inj_d) + 1
+    top.nzpslave[0] = max(top.nzpslave[0],nzinj)
+
   #---------------------------------------------------------------------------
   # --- Set the axial extent of each slaves domain to include
   # --- both the particle and field solve domain.
