@@ -24,7 +24,7 @@ class MultiGrid(object):
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
-  __topinputs__ = ['pbound0','pboundnz','pboundxy','nslaves']
+  __topinputs__ = ['pbound0','pboundnz','pboundxy','efetch','nslaves']
   __flaginputs__ = {'forcesymmetries':1}
 
   def __init__(self,**kw):
@@ -127,6 +127,10 @@ class MultiGrid(object):
     self.rho = fzeros((1+self.nx,1+self.ny,1+self.nz),'d')
     self.phi = fzeros((1+self.nx,1+self.ny,3+self.nz),'d')
     self.rstar = fzeros(3+self.nz,'d')
+    if self.efetch == 3:
+      self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
+    else:
+      self.selfe = 0.
 
     # --- Create a conductor object, which by default is empty.
     self.conductors = ConductorType()
@@ -160,7 +164,8 @@ class MultiGrid(object):
   def fetchefrompositions(self,x,y,z,ex,ey,ez):
     n = len(x)
     if n == 0: return
-    sete3d(self.phi,0.,n,x,y,z,top.zgridprv,self.xmmin,self.ymmin,self.zmmin,
+    sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
+           self.xmmin,self.ymmin,self.zmmin,
            self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,1,ex,ey,ez,
            self.l2symtry,self.l4symtry)
 
@@ -261,6 +266,10 @@ class MultiGrid(object):
                      self.gridmode,
                      self.conductors,
                      top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
+    if self.efetch == 3:
+      getselfe3d(self.phi,self.nx,self.ny,self.nz,
+                 self.selfe,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
+                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
 
   ##########################################################################
   # Define the basic plot commands
