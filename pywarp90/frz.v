@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.33 $, $Date: 2004/02/17 18:55:04 $
+#@(#) File FRZ.V, version $Revision: 3.34 $, $Date: 2004/02/18 16:18:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.33 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.34 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -153,8 +153,7 @@ advsc    (schrg:real,eta:real,a:real,kzsq:real,dt:real,dr:real,dz:real,
          #  to time t+dt in Fourier space
 advect   (schrg:real, vbeam:real, dt:real, nz, dz, tmp:real)        subroutine
          #  Advects surface charge with the moving window.
-multigridrzf(phi:real,rho:real,nx:integer,nz:integer,dx:real,dz:real,
-             mgridrz_accuracy:real) subroutine
+multigridrzf(iwhich:integer,phi:real,rho:real,nx:integer,nz:integer) subroutine
          # Multigrid Poisson solver (using "full-multigrid" method, i.e. the 
          # solution is calculatedd at each level using a multigrid procedure 
          # and used as an approximated solution to start the calculation at 
@@ -200,8 +199,8 @@ get_rho_rz(rho:real,nr:integer,nz:integer,id:integer,rhop:integer) subroutine
          # get rho of grid id
 reset_rzmgrid_rho() subroutine
          # sets rho to zero.
-fieldweightz(zp:real,uzp:real,ez:real,np:integer,zgrid:real) subroutine
-fieldweightrz(xp:real,yp:real,zp:real,uzp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real) subroutine
+fieldweightz(zp:real,ez:real,np:integer,zgrid:real) subroutine
+fieldweightrz(xp:real,yp:real,zp:real,ex:real,ey:real,ez:real,np:integer,zgrid:real) subroutine
 dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
            xmin:real,zmin:real) subroutine
          # makes rho deposition on RZ grid
@@ -295,18 +294,30 @@ dr                real
 dz                real
 zmin              real
 zmax              real
-v(1:nr+1,1:nz+1)  _integer # 
+v(1:nr+1,1:nz+1)  _integer  
 vlocs_j(nvlocs)   _integer
 vlocs_k(nvlocs)   _integer
-cndfirst             _CONDtype
-cndlast              _CONDtype
+cndfirst          _CONDtype
+cndlast           _CONDtype
 next              _BNDtype
 prev              _BNDtype
+
+%%%%%%%% OVERLAPtype:
+gid(1)               _integer +fassign
+rmin                  real
+rmax                  real
+zmin                  real
+zmax                  real
+index                 integer
+nr                    integer
+nz                    integer
+rho(1:nr+1,1:nz+1,2) _real +fassign
+next                 _OVERLAPtype
 
 %%%%%%%% GRIDtype:
 nguardx                   integer 
 nguardz                   integer  
-gid integer 
+gid(1) _integer 
 nlevels integer
 nr integer
 nz integer
@@ -354,11 +365,14 @@ guard_min_z integer
 guard_max_z integer
 mgparam real
 bndfirst _BNDtype
-bndlast _BNDtype
+bndlast  _BNDtype
 next _GRIDtype
 prev _GRIDtype
 down _GRIDtype
 up   _GRIDtype
+neighbors _OVERLAPtype
+parents   _OVERLAPtype
+childs    _OVERLAPtype
 
 %%%%%%%% GRDPTRtype:
 grid _GRIDtype
