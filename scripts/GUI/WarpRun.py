@@ -1,4 +1,4 @@
-#Boa:Frame:wxFrame1
+#Boa:Frame:WarpRun
 
 from wxPython.wx import *
 from wxPython.lib.anchors import LayoutAnchors
@@ -7,110 +7,91 @@ import ParticlePlotsGUI
 import EnvelopeGUI
 import LatticeGUI
 import DocGUI
+import MatchingGUI
+import ConsoleClass
+import PzplotsGUI
+import txtEditorDialog
 import newstdout
 import gist
+import code
+import __main__
 
 from warp import *
 from errorcheck import *
 
 def create(parent):
-    return wxFrame1(parent)
+    return WarpRun(parent)
 
-[wxID_WXFRAME1, wxID_WXFRAME1CONT, wxID_WXFRAME1DOC, wxID_WXFRAME1ENV, 
- wxID_WXFRAME1FMA, wxID_WXFRAME1HCP, wxID_WXFRAME1LAT, 
- wxID_WXFRAME1MESSAGEWINDOW, wxID_WXFRAME1NEXT, wxID_WXFRAME1NOTEBOOK1, 
- wxID_WXFRAME1PANEL1, wxID_WXFRAME1START, wxID_WXFRAME1STATUSBAR1, 
- wxID_WXFRAME1STEP, wxID_WXFRAME1TXTEDITOR, wxID_WXFRAME1WINON, 
+[wxID_WARPRUN, wxID_WARPRUNCONT, wxID_WARPRUNDOC, wxID_WARPRUNENV, 
+ wxID_WARPRUNFMA, wxID_WARPRUNHCP, wxID_WARPRUNLAT, wxID_WARPRUNMESSAGEWINDOW, 
+ wxID_WARPRUNNEXT, wxID_WARPRUNNOTEBOOK1, wxID_WARPRUNPANEL1, 
+ wxID_WARPRUNSTART, wxID_WARPRUNSTATUSBAR1, wxID_WARPRUNSTEP, 
+ wxID_WARPRUNTXTEDITOR, wxID_WARPRUNWINON, 
 ] = map(lambda _init_ctrls: wxNewId(), range(16))
 
-[wxID_WXFRAME1TOOLBAR2TOOLS0, wxID_WXFRAME1TOOLBAR2TOOLS1, wxID_WXFRAME1TOOLBAR2TOOLS2, wxID_WXFRAME1TOOLBAR2TOOLS3] = map(lambda _init_coll_toolBar2_Tools: wxNewId(), range(4))
+[wxID_WARPRUNTOOLBAR2TOOLS0, wxID_WARPRUNTOOLBAR2TOOLS1, wxID_WARPRUNTOOLBAR2TOOLS2,
+ wxID_WARPRUNTOOLBAR2TOOLS3] = map(lambda _init_coll_toolBar2_Tools: wxNewId(), range(4))
 
-[wxID_WXFRAME1TOOLBAR1TOOLS0, wxID_WXFRAME1TOOLBAR1TOOLS1, 
- wxID_WXFRAME1TOOLBAR1TOOLS2, wxID_WXFRAME1TOOLBAR1TOOLS3, 
- wxID_WXFRAME1TOOLBAR1TOOLS4, wxID_WXFRAME1TOOLBAR1TOOLS5, 
- wxID_WXFRAME1TOOLBAR1TOOLS6, 
+[wxID_WARPRUNTOOLBAR1TOOLS0, wxID_WARPRUNTOOLBAR1TOOLS1, 
+ wxID_WARPRUNTOOLBAR1TOOLS2, wxID_WARPRUNTOOLBAR1TOOLS3, 
+ wxID_WARPRUNTOOLBAR1TOOLS4, wxID_WARPRUNTOOLBAR1TOOLS5, 
+ wxID_WARPRUNTOOLBAR1TOOLS6, 
 ] = map(lambda _init_coll_toolBar1_Tools: wxNewId(), range(7))
 
-[wxID_WXFRAME1MNUERRORCHECKCHECKALL, wxID_WXFRAME1MNUERRORCHECKENVELOPE, 
- wxID_WXFRAME1MNUERRORCHECKIBPUSH, wxID_WXFRAME1MNUERRORCHECKPARTICLELOAD, 
- wxID_WXFRAME1MNUERRORCHECKSYMMETRY, 
+[wxID_WARPRUNMNUERRORCHECKCHECKALL, wxID_WARPRUNMNUERRORCHECKENVELOPE, 
+ wxID_WARPRUNMNUERRORCHECKIBPUSH, wxID_WARPRUNMNUERRORCHECKPARTICLELOAD, 
+ wxID_WARPRUNMNUERRORCHECKSYMMETRY, 
 ] = map(lambda _init_coll_mnuErrorCheck_Items: wxNewId(), range(5))
 
-[wxID_WXFRAME1MNUPACKAGE3D, wxID_WXFRAME1MNUPACKAGEENV, 
- wxID_WXFRAME1MNUPACKAGEXY, 
+[wxID_WARPRUNMNUPACKAGE3D, wxID_WARPRUNMNUPACKAGEENV, 
+ wxID_WARPRUNMNUPACKAGEXY, 
 ] = map(lambda _init_coll_mnuPackage_Items: wxNewId(), range(3))
 
-[wxID_WXFRAME1MNUFILEEXEC, wxID_WXFRAME1MNUFILEEXIT, wxID_WXFRAME1MNUFILEOPEN, 
- wxID_WXFRAME1MNUFILEOPENEXEC, wxID_WXFRAME1MNUFILESAVE, 
- wxID_WXFRAME1MNUFILESAVEAS, 
+[wxID_WARPRUNMNUFILEEXEC, wxID_WARPRUNMNUFILEEXIT, wxID_WARPRUNMNUFILEOPEN, 
+ wxID_WARPRUNMNUFILEOPENEXEC, wxID_WARPRUNMNUFILESAVE, 
+ wxID_WARPRUNMNUFILESAVEAS, 
 ] = map(lambda _init_coll_mnuFile_Items: wxNewId(), range(6))
 
-[wxID_WXFRAME1MNUDUMPDUMP, wxID_WXFRAME1MNUDUMPDUMPAS, wxID_WXFRAME1MNUDUMPRESTORE, 
- wxID_WXFRAME1MNUDUMPRESTART, 
+[wxID_WARPRUNMNUDUMPDUMP, wxID_WARPRUNMNUDUMPDUMPAS, wxID_WARPRUNMNUDUMPRESTORE, 
+ wxID_WARPRUNMNUDUMPRESTART, 
 ] = map(lambda _init_coll_mnuFile_Items: wxNewId(), range(4))
 
-[wxID_WXFRAME1MNUHELPABOUT] = map(lambda _init_coll_mnuHelp_Items: wxNewId(), range(1))
+[wxID_WARPRUNMNUDUMPDUMP, wxID_WARPRUNMNUDUMPDUMPAS, 
+ wxID_WARPRUNMNUDUMPRESTART, wxID_WARPRUNMNUDUMPRESTORE, 
+] = map(lambda _init_coll_mnuDump_Items: wxNewId(), range(4))
 
-class wxFrame1(wxFrame):
-    def _init_coll_mnuPackage_Items(self, parent):
-        # generated method, don't edit
+[wxID_WARPRUNMNUHELPABOUT] = map(lambda _init_coll_mnuHelp_Items: wxNewId(), range(1))
 
-        parent.Append(helpString='Select 3-D code',
-              id=wxID_WXFRAME1MNUPACKAGE3D, item='3-D', kind=wxITEM_CHECK)
-        parent.Append(helpString='Select slice code',
-              id=wxID_WXFRAME1MNUPACKAGEXY, item='X-Y', kind=wxITEM_CHECK)
-        parent.Append(helpString='Select envelope code',
-              id=wxID_WXFRAME1MNUPACKAGEENV, item='Envelope',
-              kind=wxITEM_CHECK)
-        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGE3D, self.OnMnupackage3dMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGEXY, self.OnMnupackageXYMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGEENV, self.OnMnupackageEnvMenu)
-
+class WarpRun(wxFrame):
     def _init_coll_mnuHelp_Items(self, parent):
         # generated method, don't edit
 
-        parent.Append(helpString='Display info', id=wxID_WXFRAME1MNUHELPABOUT,
+        parent.Append(helpString='Display info', id=wxID_WARPRUNMNUHELPABOUT,
               item='About', kind=wxITEM_NORMAL)
-        EVT_MENU(self, wxID_WXFRAME1MNUHELPABOUT, self.OnMnuhelpAboutMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUHELPABOUT, self.OnMnuhelpAboutMenu)
 
     def _init_coll_mnuFile_Items(self, parent):
         # generated method, don't edit
 
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUFILEOPEN, item='Open',
+        parent.Append(helpString='', id=wxID_WARPRUNMNUFILEOPEN, item='Open',
               kind=wxITEM_NORMAL)
         parent.Append(helpString='Opens and Executes file',
-              id=wxID_WXFRAME1MNUFILEOPENEXEC, item='Open/Execfile',
+              id=wxID_WARPRUNMNUFILEOPENEXEC, item='Open/Execfile',
               kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUFILESAVE, item='Save',
+        parent.Append(helpString='', id=wxID_WARPRUNMNUFILESAVE, item='Save',
               kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUFILESAVEAS,
+        parent.Append(helpString='', id=wxID_WARPRUNMNUFILESAVEAS,
               item='Save As', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUFILEEXEC,
+        parent.Append(helpString='', id=wxID_WARPRUNMNUFILEEXEC,
               item='ExecFile', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUFILEEXIT, item='Exit',
+        parent.Append(helpString='', id=wxID_WARPRUNMNUFILEEXIT, item='Exit',
               kind=wxITEM_NORMAL)
-        EVT_MENU(self, wxID_WXFRAME1MNUFILEOPEN, self.OnMnuOpenMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUFILESAVE, self.OnMnufileSaveMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUFILESAVEAS, self.OnMnufileSaveAsMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUFILEEXIT, self.OnMnufileExitMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUFILEEXEC, self.OnMnufileexecfileMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUFILEOPENEXEC, self.OnMnufileOpenExecMenu)
-
-    def _init_coll_mnuDump_Items(self, parent):
-        # generated method, don't edit
-
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUDUMPRESTORE, item='Restore',
-              kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUDUMPRESTART,
-              item='Restart', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUDUMPDUMP, item='Dump',
-              kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUDUMPDUMPAS, item='Dump As',
-              kind=wxITEM_NORMAL)
-        EVT_MENU(self, wxID_WXFRAME1MNUDUMPRESTORE, self.OnMnudumpRestore)
-        EVT_MENU(self, wxID_WXFRAME1MNUDUMPRESTART, self.OnMnudumpRestart)
-        EVT_MENU(self, wxID_WXFRAME1MNUDUMPDUMP,    self.OnMnudumpDump)
-        EVT_MENU(self, wxID_WXFRAME1MNUDUMPDUMPAS,  self.OnMnudumpDumpAs)
+        EVT_MENU(self, wxID_WARPRUNMNUFILEOPEN, self.OnMnuOpenMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUFILESAVE, self.OnMnufileSaveMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUFILESAVEAS, self.OnMnufileSaveAsMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUFILEEXIT, self.OnMnufileExitMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUFILEEXEC, self.OnMnufileexecfileMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUFILEOPENEXEC, self.OnMnufileOpenExecMenu)
 
     def _init_coll_menuBar1_Menus(self, parent):
         # generated method, don't edit
@@ -122,28 +103,57 @@ class wxFrame1(wxFrame):
         parent.Append(menu=self.mnuPackage, title='Package')
         parent.Append(menu=self.mnuPalette, title='Palette')
 
+    def _init_coll_mnuPackage_Items(self, parent):
+        # generated method, don't edit
+
+        parent.Append(helpString='Select 3-D code', id=wxID_WARPRUNMNUPACKAGE3D,
+              item='3-D', kind=wxITEM_CHECK)
+        parent.Append(helpString='Select slice code',
+              id=wxID_WARPRUNMNUPACKAGEXY, item='X-Y', kind=wxITEM_CHECK)
+        parent.Append(helpString='Select envelope code',
+              id=wxID_WARPRUNMNUPACKAGEENV, item='Envelope', kind=wxITEM_CHECK)
+        EVT_MENU(self, wxID_WARPRUNMNUPACKAGE3D, self.OnMnupackage3dMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUPACKAGEXY, self.OnMnupackageXYMenu)
+        EVT_MENU(self, wxID_WARPRUNMNUPACKAGEENV, self.OnMnupackageEnvMenu)
+
+    def _init_coll_mnuDump_Items(self, parent):
+        # generated method, don't edit
+
+        parent.Append(helpString='', id=wxID_WARPRUNMNUDUMPRESTORE,
+              item='Restore', kind=wxITEM_NORMAL)
+        parent.Append(helpString='', id=wxID_WARPRUNMNUDUMPRESTART,
+              item='Restart', kind=wxITEM_NORMAL)
+        parent.Append(helpString='', id=wxID_WARPRUNMNUDUMPDUMP, item='Dump',
+              kind=wxITEM_NORMAL)
+        parent.Append(helpString='', id=wxID_WARPRUNMNUDUMPDUMPAS,
+              item='Dump As', kind=wxITEM_NORMAL)
+        EVT_MENU(self, wxID_WARPRUNMNUDUMPRESTORE, self.OnMnudumpRestore)
+        EVT_MENU(self, wxID_WARPRUNMNUDUMPRESTART, self.OnMnudumpRestart)
+        EVT_MENU(self, wxID_WARPRUNMNUDUMPDUMP, self.OnMnudumpDump)
+        EVT_MENU(self, wxID_WARPRUNMNUDUMPDUMPAS, self.OnMnudumpDumpAs)
+
     def _init_coll_mnuErrorCheck_Items(self, parent):
         # generated method, don't edit
 
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKSYMMETRY,
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKSYMMETRY,
               item='Symmetry', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKPARTICLELOAD,
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
               item='ParticleLoad', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKENVELOPE,
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKENVELOPE,
               item='Envelope', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKIBPUSH,
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKIBPUSH,
               item='Ibpush', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKCHECKALL,
+        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKCHECKALL,
               item='CheckAll', kind=wxITEM_NORMAL)
-        EVT_MENU(self, wxID_WXFRAME1MNUERRORCHECKSYMMETRY,
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKSYMMETRY,
               self.OnMnuerrorchecksymmetryMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUERRORCHECKPARTICLELOAD,
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
               self.OnMnuerrorcheckparticleloadMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUERRORCHECKENVELOPE,
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKENVELOPE,
               self.OnMnuerrorcheckenvelopeMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUERRORCHECKIBPUSH,
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKIBPUSH,
               self.OnMnuerrorcheckibpushMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUERRORCHECKCHECKALL,
+        EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKCHECKALL,
               self.OnMnuerrorcheckallMenu)
 
     def _init_coll_notebook1_Pages(self, parent):
@@ -185,66 +195,65 @@ class wxFrame1(wxFrame):
 
     def _init_ctrls(self, prnt):
         # generated method, don't edit
-        wxFrame.__init__(self, id=wxID_WXFRAME1, name='', parent=prnt,
-              pos=wxPoint(520, 164), size=wxSize(600, 700),
+        wxFrame.__init__(self, id=wxID_WARPRUN, name='WarpRun', parent=prnt,
+              pos=wxPoint(520, 164), size=wxSize(600, 604),
               style=wxDEFAULT_FRAME_STYLE, title='WARP')
         self._init_utils()
-        self.SetClientSize(wxSize(600, 676))
+        self.SetClientSize(wxSize(600, 580))
         self.SetMenuBar(self.menuBar1)
         EVT_IDLE(self, self.OnWxframe1Idle)
 
-        self.statusBar1 = wxStatusBar(id=wxID_WXFRAME1STATUSBAR1,
+        self.statusBar1 = wxStatusBar(id=wxID_WARPRUNSTATUSBAR1,
               name='statusBar1', parent=self, style=0)
         self.statusBar1.SetSize(wxSize(550, 25))
         self.statusBar1.SetPosition(wxPoint(0, 596))
         self._init_coll_statusBar1_Fields(self.statusBar1)
         self.SetStatusBar(self.statusBar1)
 
-        self.panel1 = wxPanel(id=wxID_WXFRAME1PANEL1, name='panel1',
-              parent=self, pos=wxPoint(0, 0), size=wxSize(600, 24),
-              style=wxTAB_TRAVERSAL)
+        self.panel1 = wxPanel(id=wxID_WARPRUNPANEL1, name='panel1', parent=self,
+              pos=wxPoint(0, 0), size=wxSize(600, 24), style=wxTAB_TRAVERSAL)
 
-        self.winon = wxButton(id=wxID_WXFRAME1WINON, label='win', name='winon',
+        self.winon = wxButton(id=wxID_WARPRUNWINON, label='win', name='winon',
               parent=self.panel1, pos=wxPoint(0, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.winon, wxID_WXFRAME1WINON, self.OnWinonButton)
+        EVT_BUTTON(self.winon, wxID_WARPRUNWINON, self.OnWinonButton)
 
-        self.fma = wxButton(id=wxID_WXFRAME1FMA, label='fma', name='fma',
+        self.fma = wxButton(id=wxID_WARPRUNFMA, label='fma', name='fma',
               parent=self.panel1, pos=wxPoint(40, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.fma, wxID_WXFRAME1FMA, self.OnFmaButton)
+        EVT_BUTTON(self.fma, wxID_WARPRUNFMA, self.OnFmaButton)
 
-        self.hcp = wxButton(id=wxID_WXFRAME1HCP, label='hcp', name='hcp',
+        self.hcp = wxButton(id=wxID_WARPRUNHCP, label='hcp', name='hcp',
               parent=self.panel1, pos=wxPoint(80, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.hcp, wxID_WXFRAME1HCP, self.OnHcpButton)
+        EVT_BUTTON(self.hcp, wxID_WARPRUNHCP, self.OnHcpButton)
 
-        self.env = wxButton(id=wxID_WXFRAME1ENV, label='env', name='env',
+        self.env = wxButton(id=wxID_WARPRUNENV, label='env', name='env',
               parent=self.panel1, pos=wxPoint(120, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.env, wxID_WXFRAME1ENV, self.OnEnvButton)
+        EVT_BUTTON(self.env, wxID_WARPRUNENV, self.OnEnvButton)
 
-        self.lat = wxButton(id=wxID_WXFRAME1LAT, label='lat', name='lat',
+        self.lat = wxButton(id=wxID_WARPRUNLAT, label='lat', name='lat',
               parent=self.panel1, pos=wxPoint(160, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.lat, wxID_WXFRAME1LAT, self.OnLatButton)
+        EVT_BUTTON(self.lat, wxID_WARPRUNLAT, self.OnLatButton)
 
-        self.doc = wxButton(id=wxID_WXFRAME1DOC, label='doc', name='doc',
+        self.doc = wxButton(id=wxID_WARPRUNDOC, label='doc', name='doc',
               parent=self.panel1, pos=wxPoint(200, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.doc, wxID_WXFRAME1DOC, self.OnDocButton)
+        EVT_BUTTON(self.doc, wxID_WARPRUNDOC, self.OnDocButton)
 
-        self.notebook1 = wxNotebook(id=wxID_WXFRAME1NOTEBOOK1, name='notebook1',
+        self.notebook1 = wxNotebook(id=wxID_WARPRUNNOTEBOOK1, name='notebook1',
               parent=self, pos=wxPoint(0, 24), size=wxSize(600, 350), style=0)
-        EVT_NOTEBOOK_PAGE_CHANGED(self.notebook1, wxID_WXFRAME1NOTEBOOK1,
+        EVT_NOTEBOOK_PAGE_CHANGED(self.notebook1, wxID_WARPRUNNOTEBOOK1,
               self.OnNotebook1NotebookPageChanged)
 
-        self.txtEditor = wxTextCtrl(id=wxID_WXFRAME1TXTEDITOR, name='txtEditor',
+        self.txtEditor = wxTextCtrl(id=wxID_WARPRUNTXTEDITOR, name='txtEditor',
               parent=self.notebook1, pos=wxPoint(0, 0), size=wxSize(596, 316),
               style=wxTE_MULTILINE, value='')
         self.txtEditor.SetToolTipString('Text Editor')
 
-        self.MessageWindow = wxTextCtrl(id=wxID_WXFRAME1MESSAGEWINDOW,
+        self.MessageWindow = wxTextCtrl(id=wxID_WARPRUNMESSAGEWINDOW,
               name='MessageWindow', parent=self, pos=wxPoint(2, 376),
               size=wxSize(596, 208), style=wxTE_READONLY | wxTE_MULTILINE,
               value='')
@@ -252,25 +261,25 @@ class wxFrame1(wxFrame):
               false, ''))
         self.MessageWindow.SetBackgroundColour(wxColour(192, 192, 192))
 
-        self.Step = wxButton(id=wxID_WXFRAME1STEP, label='Step', name='Step',
+        self.Step = wxButton(id=wxID_WARPRUNSTEP, label='Step', name='Step',
               parent=self.panel1, pos=wxPoint(280, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.Step, wxID_WXFRAME1STEP, self.OnStepButton)
+        EVT_BUTTON(self.Step, wxID_WARPRUNSTEP, self.OnStepButton)
 
-        self.Next = wxButton(id=wxID_WXFRAME1NEXT, label='Next', name='Next',
+        self.Next = wxButton(id=wxID_WARPRUNNEXT, label='Next', name='Next',
               parent=self.panel1, pos=wxPoint(320, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.Next, wxID_WXFRAME1NEXT, self.OnNextButton)
+        EVT_BUTTON(self.Next, wxID_WARPRUNNEXT, self.OnNextButton)
 
-        self.Start = wxButton(id=wxID_WXFRAME1START, label='Start',
-              name='Start', parent=self.panel1, pos=wxPoint(240, 0),
-              size=wxSize(40, 22), style=0)
-        EVT_BUTTON(self.Start, wxID_WXFRAME1START, self.OnStartButton)
+        self.Start = wxButton(id=wxID_WARPRUNSTART, label='Start', name='Start',
+              parent=self.panel1, pos=wxPoint(240, 0), size=wxSize(40, 22),
+              style=0)
+        EVT_BUTTON(self.Start, wxID_WARPRUNSTART, self.OnStartButton)
 
-        self.Cont = wxButton(id=wxID_WXFRAME1CONT, label='Cont', name='Cont',
+        self.Cont = wxButton(id=wxID_WARPRUNCONT, label='Cont', name='Cont',
               parent=self.panel1, pos=wxPoint(360, 0), size=wxSize(40, 22),
               style=0)
-        EVT_BUTTON(self.Cont, wxID_WXFRAME1CONT, self.OnContButton)
+        EVT_BUTTON(self.Cont, wxID_WARPRUNCONT, self.OnContButton)
 
         self._init_coll_notebook1_Pages(self.notebook1)
 
@@ -284,18 +293,14 @@ class wxFrame1(wxFrame):
         self.linenum = 0
         self.EdPos = 0
         self.startrun = 1
-        import code
-        import __main__
         self.inter = code.InteractiveConsole(__main__.__dict__)
-        import ConsoleClass
         self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.notebook1, inter=self.inter)
         self.Console = self.ConsolePanel.Console
         self.prefix = ''
         self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self.notebook1)
-        import PzplotsGUI
         self.PzplotsGUI = PzplotsGUI.Pzplots(self.notebook1)
+        self.MatchingGUI = MatchingGUI.MatchingGUI(self.notebook1)
         self.notebook1.SetSelection(0) # open notebook on Editor
-        import txtEditorDialog
         self.FileExecDialog = txtEditorDialog.txtEditorDialog(self)      
         self.FileExec = self.FileExecDialog.txtEditor  
 #        self.FileExec.Show(1)
@@ -304,10 +309,6 @@ class wxFrame1(wxFrame):
             self.AddPalette(Palettes[i])
    
     def HandleGistEvents(self):
-      """
-Checks version of gist and handles events accordingly
-Old version does not have __version__ defined.
-      """
       try:
         v = gist.__version__
         pyg_pending()
@@ -316,10 +317,10 @@ Old version does not have __version__ defined.
         ygdispatch()
 
     def AddPalette(self,name):
-        exec("[wxID_WXFRAME1MNUPALLETTE"+name+"] = map(lambda _init_coll_mnuPalette_Items: wxNewId(), range(1))")
-        exec("self.mnuPalette.Append(helpString='', id=wxID_WXFRAME1MNUPALLETTE"+name+", item='"+name+"',kind=wxITEM_NORMAL)")
+        exec("[wxID_WARPRUNMNUPALLETTE"+name+"] = map(lambda _init_coll_mnuPalette_Items: wxNewId(), range(1))")
+        exec("self.mnuPalette.Append(helpString='', id=wxID_WARPRUNMNUPALLETTE"+name+", item='"+name+"',kind=wxITEM_NORMAL)")
         exec("def OnMnuPalette"+name+"(event):palette('"+name+".gp')")
-        exec("EVT_MENU(self, wxID_WXFRAME1MNUPALLETTE"+name+", OnMnuPalette"+name+")")
+        exec("EVT_MENU(self, wxID_WARPRUNMNUPALLETTE"+name+", OnMnuPalette"+name+")")
 
     def OnMnuhelpAboutMenu(self, event):
         dlg = WarpGUIInfo.WarpGUIInfo(self)
@@ -574,17 +575,17 @@ Old version does not have __version__ defined.
     def mnuPackageUpdate(self):
         currpkg = package()[0]
         if currpkg == 'w3d':
-          self.mnuPackage.Check(wxID_WXFRAME1MNUPACKAGE3D,true)
+          self.mnuPackage.Check(wxID_WARPRUNMNUPACKAGE3D,true)
         else:
-          self.mnuPackage.Check(wxID_WXFRAME1MNUPACKAGE3D,false)
+          self.mnuPackage.Check(wxID_WARPRUNMNUPACKAGE3D,false)
         if currpkg == 'wxy':
-          self.mnuPackage.Check(wxID_WXFRAME1MNUPACKAGEXY,true)
+          self.mnuPackage.Check(wxID_WARPRUNMNUPACKAGEXY,true)
         else:
-          self.mnuPackage.Check(wxID_WXFRAME1MNUPACKAGEXY,false)
+          self.mnuPackage.Check(wxID_WARPRUNMNUPACKAGEXY,false)
         if currpkg == 'env':
-          self.mnuPackage.Check(wxID_WXFRAME1MNUPACKAGEENV,true)
+          self.mnuPackage.Check(wxID_WARPRUNMNUPACKAGEENV,true)
         else:
-          self.mnuPackage.Check(wxID_WXFRAME1MNUPACKAGEENV,false)
+          self.mnuPackage.Check(wxID_WARPRUNMNUPACKAGEENV,false)
 
     def OnMnupackage3dMenu(self, event):
         package('w3d')
