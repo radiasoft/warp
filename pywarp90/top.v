@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.26 $, $Date: 2001/10/25 01:23:15 $
+#@(#) File TOP.V, version $Revision: 3.27 $, $Date: 2001/11/02 19:27:52 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -240,7 +240,7 @@ quadpa(0:nquad)   _real [m]   # End plate aperture of electrostatic quadrupole
 quadpr(0:nquad)   _real [m]   # End plate max radius
 quadsl(0:nquad)   _real [m]   # Slant of rod which makes it a cone
 quadol(0:nquad)   _integer    # Overlap level of the element (autoset)
-dodec              real [1]   # relative strength of dodecopole at pole tip
+quaddo(0:nquad)   _real [1]   # Relative strength of dodecopole at pole tip
 qdelglx(0:nquad)  _real [m]   # Change in gap length on x axis
 qdelgly(0:nquad)  _real [m]   # Change in gap length on y axis
 qdelaxp(0:nquad)  _real [m]   # Change in aperture of rod on plus  x axis
@@ -617,7 +617,7 @@ linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.26 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.27 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"

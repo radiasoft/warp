@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.26 $, $Date: 2001/10/25 01:23:14 $
+c@(#) File TOP.M, version $Revision: 3.27 $, $Date: 2001/11/02 19:27:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1656,6 +1656,7 @@ c       celemzs(j-1)  celemze(j-1) celemzs(j)          celemze(j)
 c                                  celemzs(j+1)        celemze(j+1)
 
       integer(ISZ):: ii
+      real(kind=8):: zc
 
 c The Lattice is only needed for zlatstrt and zlatperi.
 
@@ -1692,12 +1693,15 @@ c --- Make ii consistent with id
       ii = oelemio(id)
 
 c --- Scan sequentially through the list until the element is found.
-c --- Note that there is a potential memory access error here when
-c --- id=nelem, but the loop will exit anyway.
-      do while (ii < oelemnn .and.
-     &          z > 0.5*(elemze(id) + elemzs(oelemoi(ii+1))) + offset)
+c --- Note that loop is written in this way so that if ii reaches oelemnn
+c --- there is not an out of bounds reference (oelemoi(ii+1)). The initial
+c --- statement, zc = 0., is just to insure the zc has value.
+      zc = 0.
+      if (ii < oelemnn) zc = 0.5*(elemze(id) + elemzs(oelemoi(ii+1))) + offset
+      do while (ii < oelemnn .and. z > zc)
         ii = ii + 1
         id = oelemoi(ii)
+        if (ii < oelemnn) zc = 0.5*(elemze(id) + elemzs(oelemoi(ii+1))) + offset
       end do
 
       return
@@ -2074,6 +2078,7 @@ c   bx, by   quadrupole magnetic field
 
       integer(ISZ):: io,ip,iz
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xpmqoff,ypmqoff
+      real(kind=8):: dodec
       real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. quads) return
@@ -2139,6 +2144,7 @@ c         --- set the field
             by(ip) = by(ip) + cquaddb(iz,io)*frac*xpmqoff
             ex(ip) = ex(ip) + cquadde(iz,io)*frac*xpmqoff
             ey(ip) = ey(ip) - cquadde(iz,io)*frac*ypmqoff
+            dodec = quaddo(cquadid(iz,io))
             if (dodec .ne. 0.) then
               ex(ip) = ex(ip) + dodec*cquadde(iz,io)*frac*
      &                 (6.*xpmqoff**5 - 60.*xpmqoff**3*ypmqoff**2 +
