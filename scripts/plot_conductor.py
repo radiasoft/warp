@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.10 2001/03/21 00:43:40 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.11 2001/03/21 01:05:48 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -133,6 +133,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
+    if lparallel: zmmin = top.izslave[me]
   if iy == None: iy = w3d.iy_axis
   if plotphi:
     xx = iota(0,w3d.nx)*dx + xmmin
@@ -176,6 +177,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     dz = 1.*signz
     ymmin = 0.
     zmmin = 0.
+    if lparallel: zmmin = top.izslave[me]
   if ix == None: ix = w3d.ix_axis
   if plotphi:
     yy = iota(0,w3d.ny)*dy + ymmin
@@ -399,6 +401,7 @@ in Z-X plane
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
+    if lparallel: zmmin = top.izslave[me]
   if not iy: iy = w3d.iy_axis
   if plotphi:
     xx=iota(0,w3d.nx)[:,NewAxis]*ones(w3d.nz+1,'d')*dx + xmmin
@@ -450,6 +453,7 @@ in Z-Y plane
     dz = 1.*signz
     ymmin = 0.
     zmmin = 0.
+    if lparallel: zmmin = top.izslave[me]
   if not ix: ix = w3d.ix_axis
   if plotphi:
     yy=iota(0,w3d.ny)[:,NewAxis]*ones(w3d.nz+1,'d')*dy + ymmin
