@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.45 2004/07/12 18:33:07 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.46 2004/07/22 23:48:11 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -568,10 +568,13 @@ Constructor arguments:
                       for more info.
   - dfill=2: parameter passed to installconductors in 3d. sets how much the
              interior of conductors are filled.
+  - lclearconductors=1: When true, in the 3d case, all conductor data is cleared
+                        out. If false, it is up to the user to clear out the
+                        data.
   """
   #----------------------------------------------------------------------------
   def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=1,
-                    dfill=2):
+                    dfill=2,lclearconductors=1):
     global _realboundarycount
     # --- Only allow one instance of this class.
     if _realboundarycount > 0:
@@ -583,6 +586,7 @@ Constructor arguments:
     self.lscrapeparticles = lscrapeparticles
     self.scrapermglevel = scrapermglevel
     self.dfill = dfill
+    self.lclearconductors = lclearconductors
 
     # --- Keep a global lists of all matrices. With a global lists of matrices,
     # --- recalculation of a matrix can be avoided if one with the same values
@@ -639,10 +643,11 @@ Constructor arguments:
       # --- Make sure that an appropriate field solver is turned on.
       if top.fstype not in [3,7]: top.fstype = 7
       # --- Make sure the gridmode is set properly
-      f3d.gridmode = 0
-      # --- Turn off the call to setconductor in the fortran
-      try:    f3d.lbuildquads = false
-      except: pass
+      f3d.gridmode = 1
+    # # --- Turn off the call to setconductor in the fortran
+    # try:    f3d.lbuildquads = false
+    # except: pass
+      self.setboundary()
     elif currpkg == 'wxy':
       if w3d.solvergeom==w3d.XYgeom:
         top.fstype = 10
@@ -677,8 +682,8 @@ Constructor arguments:
         uninstallbeforestep(self.setboundary)
       if isinstalledbeforefs(self.initialsetboundary):
         uninstallbeforefs(self.initialsetboundary)
-      if isinstalledaddconductor(self.setboundary):
-        uninstalladdconductor(self.setboundary)
+      if isinstalledbeforefs(self.setboundary):
+        uninstallbeforefs(self.setboundary)
       top.fstype = 0
     except:
       pass
@@ -691,7 +696,7 @@ Constructor arguments:
     # --- routine, which then removes itself from that list.
     currpkg = getcurrpkg()
     if currpkg == 'w3d':
-      installaddconductor(self.setboundary)
+      installbeforefs(self.setboundary)
     elif currpkg == 'wxy':
       installbeforestep(self.setboundary)
 
@@ -879,12 +884,29 @@ in the celemid array. It returns each element only once.
         yield (id,zs,ze)
   #----------------------------------------------------------------------------
   def setboundary(self):
+    # --- The lattice element conductors are only setup if the beam frame
+    # --- has moved or if a new field solver is being used. This saves the
+    # --- previous beam frame location and field solver to compare against
+    # --- the current one.
+    try:
+      self.lastzbeam
+    except:
+      self.lastzbeam = top.zbeam/2. - 1.
+      self.lastsolver = None
+    solver = getregisteredsolver()
+    if self.lastzbeam == top.zbeam and self.lastsolver == solver: return
+    self.lastzbeam = top.zbeam
+    self.lastsolver = solver
+
+    # --- Empty the list of conductors
     self.conductors = None
+
     if w3d.solvergeom==w3d.XYgeom: del_conductors()
+
     # --- Go through each element type and chose the first one covers the
     # --- current location.
     #--------------------------------------------------------------------------
-    if top.quads:
+    if top.nquadol > 0:
       for qid,qzs,qze in self.elemlist(top.nquadol,top.cquadid,
                                        top.cquadzs,top.cquadze):
         if (abs(top.quadde[qid]) > 0. or
@@ -902,14 +924,14 @@ in the celemid array. It returns each element only once.
                             top.qoffx,top.qoffy,self.quadcm):
             return
     #--------------------------------------------------------------------------
-    if top.accls:
+    if top.nacclol > 0:
       for aid,azs,aze in self.elemlist(top.nacclol,top.cacclid,
                                        top.cacclzs,top.cacclze):
         if self.roundpipe(aid,azs,aze,top.acclap,top.acclax,top.acclay,
                           top.acclox,top.accloy,self.acclcm):
           return
     #--------------------------------------------------------------------------
-    if top.emlts:
+    if top.nemltol > 0:
       for eid,ezs,eze in self.elemlist(top.nemltol,top.cemltid,
                                        top.cemltzs,top.cemltze):
         if self.quadrods(eid,ezs,eze,top.emltap[eid],
@@ -919,7 +941,7 @@ in the celemid array. It returns each element only once.
                          top.emltox[eid],top.emltoy[eid],self.emltcm):
           return
     #--------------------------------------------------------------------------
-    if top.mmlts:
+    if top.nmmltol > 0:
       for mid,mzs,mze in self.elemlist(top.nmmltol,top.cmmltid,
                                        top.cmmltzs,top.cmmltze):
         if top.mmltas[mid] != top.mmltze[mid]:
@@ -932,7 +954,7 @@ in the celemid array. It returns each element only once.
                           top.mmltox,top.mmltoy,self.mmltcm):
           return
     #--------------------------------------------------------------------------
-    if top.pgrds:
+    if top.npgrdol > 0:
       for pid,pzs,pze in self.elemlist(top.npgrdol,top.cpgrdid,
                                        top.cpgrdzs,top.cpgrdze):
         if self.quadrods(pid,pzs,pze,top.pgrdap[pid],
@@ -942,14 +964,14 @@ in the celemid array. It returns each element only once.
                          top.pgrdox[pid],top.pgrdoy[pid],self.pgrdcm):
           return
     #--------------------------------------------------------------------------
-    if top.bgrds:
+    if top.nbgrdol > 0:
       for bid,bzs,bze in self.elemlist(top.nbgrdol,top.cbgrdid,
                                        top.cbgrdzs,top.cbgrdze):
         if self.roundpipe(bid,bzs,bze,top.bgrdap,top.bgrdax,top.bgrday,
                           top.bgrdox,top.bgrdoy,self.bgrdcm):
           return
     #--------------------------------------------------------------------------
-    if top.heles:
+    if top.nheleol > 0:
       for hid,hzs,hze in self.elemlist(top.nheleol,top.cheleid,
                                        top.chelezs,top.cheleze):
         if (max(abs(top.heleae[:,hid])) > 0. or
@@ -966,7 +988,7 @@ in the celemid array. It returns each element only once.
                          top.heleox,top.heleoy,self.helecm):
             return
     #--------------------------------------------------------------------------
-    if top.bends:
+    if top.nbendol > 0:
       cbendid = transpose([top.cbendid])
       cbendzs = transpose([top.cbendzs])
       cbendze = transpose([top.cbendze])
@@ -976,14 +998,14 @@ in the celemid array. It returns each element only once.
                           top.bendox,top.bendoy,self.bendcm):
           return
     #--------------------------------------------------------------------------
-    if top.dipos:
+    if top.ndipool > 0:
       for did,dzs,dze in self.elemlist(top.ndipool,top.cdipoid,
                                        top.cdipozs,top.cdipoze):
         if self.roundpipe(did,dzs,dze,top.dipoap,top.dipoax,top.dipoay,
                           top.dipoox,top.dipooy,self.dipocm):
           return
     #--------------------------------------------------------------------------
-    if top.sexts:
+    if top.nsextol > 0:
       for sid,szs,sze in self.elemlist(top.nsextol,top.csextid,
                                        top.csextzs,top.csextze):
         if self.roundpipe(sid,szs,sze,0.,0.,0., #top.sextap,
@@ -992,18 +1014,30 @@ in the celemid array. It returns each element only once.
     #--------------------------------------------------------------------------
     # --- Drifts are checked for last in case the other elements might extend
     # --- into the neighboring drifts.
-    if top.drfts:
+    if top.ndrftol > 0:
       for did,dzs,dze in self.elemlist(top.ndrftol,top.cdrftid,
                                        top.cdrftzs,top.cdrftze):
         if self.roundpipe(did,dzs,dze,top.drftap,top.drftax,top.drftay,
                           top.drftox,top.drftoy,self.drftcm):
           return
+
     # --- If this part of the code is reached, then there are no applicable
     # --- boundaries, so turn the capacity matrix field solver off.
     self.nopipe(0,self.nonecm)
     # --- This place is always reached in the 3d case.
+    if self.lclearconductors:
+      if solver is None:
+        f3d.conductors.interior.n = 0
+        f3d.conductors.evensubgrid.n = 0
+        f3d.conductors.oddsubgrid.n = 0
+      else:
+        solver.clearconductors()
     if self.conductors is not None:
-      installconductors(self.conductors,dfill=self.dfill,gridmode=0)
+      if solver is None:
+        installconductors(self.conductors,dfill=self.dfill,gridmode=0)
+      else:
+        print "installing conductor"
+        solver.installconductor(self.conductors,dfill=self.dfill)
       if self.lscrapeparticles:
         try:
           self.scraper.disable()
