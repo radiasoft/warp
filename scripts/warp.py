@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.66 2004/07/29 17:32:33 dave Exp $"
+warp_version = "$Id: warp.py,v 1.67 2004/08/06 23:36:18 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -365,6 +365,48 @@ package. Only w3d and wxy have field solves defined.
         getinj_phi()
       except NameError:
         pass
+
+
+#=============================================================================
+# --- Setup routines which give access to the fortran any field solver
+_fieldsolver = [None]
+def registersolver(solver):
+  """
+Registers the solver to be used in the particle simulation.
+ - solver: is the solver object. It must have the methods loadrho, solve, and
+           fetche defined
+  """
+  _fieldsolver[0] = solver
+def getregisteredsolver():
+  return _fieldsolver[0]
+def loadrhoMR():
+  assert _fieldsolver[0] is not None,"No solver has been registered"
+  _fieldsolver[0].loadrho()
+def fieldsolMR():
+  assert _fieldsolver[0] is not None,"No solver has been registered"
+  _fieldsolver[0].solve()
+def fetcheMR():
+  assert _fieldsolver[0] is not None,"No solver has been registered"
+  _fieldsolver[0].fetche()
+def fetchphiMR():
+  assert _fieldsolver[0] is not None,"No solver has been registered"
+  _fieldsolver[0].fetchphi()
+def initfieldsolver():
+    if w3d.AMRlevels>0:
+      if 'AMRtree' not in __main__.__dict__:
+        import AMR
+        AMRtree=AMR.AMRTree()
+        __main__.__dict__['AMRtree'] = AMRtree
+        gchange('AMR')
+      w3d.AMRcoalescing=0.8
+      if getcurrpkg()=='w3d' and w3d.solvergeom==w3d.XYZgeomMR:
+        AMRtree = __main__.__dict__['AMRtree']
+        registersolver(AMRtree.blocks)
+__main__.__dict__['loadrhoMR'] = loadrhoMR
+__main__.__dict__['fieldsolMR'] = fieldsolMR
+__main__.__dict__['fetcheMR'] = fetcheMR
+__main__.__dict__['fetchphiMR'] = fetchphiMR
+__main__.__dict__['initfieldsolver'] = initfieldsolver
 
 ##############################################################################
 ##############################################################################
