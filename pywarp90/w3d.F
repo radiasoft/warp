@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.6 $, $Date: 2001/05/16 22:28:34 $
+c@(#) File W3D.M, version $Revision: 3.7 $, $Date: 2001/05/17 01:24:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -665,9 +665,8 @@ c  Finally, moment diagnostic printout and history storage
       return
       end
 c=============================================================================
-      subroutine exteb3d (np,xp,yp,zp,uzp,gaminv,dtl,dtr,
-     &           bx,by,bz,ex,ey,ez,m,q,bendres,bendradi,
-     &           gammabar,dt)
+      subroutine exteb3d(np,xp,yp,zp,uzp,gaminv,dtl,dtr,
+     &                   bx,by,bz,ex,ey,ez,m,q,bendres,bendradi,gammabar,dt)
       use Subtimers
       use Timers
       integer(ISZ):: np
@@ -721,11 +720,11 @@ c     --- handle acceleration (and calculate position correction)
       call applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,ez)
 
 c     --- handle electrostatic multipole components
-      call applyemlt(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,ez)
+      call applyemlt(np,xp,yp,np,zp,dtl,dtr,dt,ex,ey,ez)
 
 c     --- handle magnetostatic multipole components
-      call applymmlt(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,bx,by,bz)
-      call applymmlt2(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,bx,by,bz)
+      call applymmlt(np,xp,yp,np,zp,dtl,dtr,dt,bx,by,bz)
+      call applymmlt2(np,xp,yp,np,zp,dtl,dtr,dt,bx,by,bz)
 
 c     --- handle magnetic fields from 3-D grid
       call applybgrd(np,xp,yp,np,zp,bx,by,bz)
