@@ -4,7 +4,7 @@
 
 from Numeric import *
 import mpi
-parallel_version = "$Id: parallel.py,v 1.5 2001/02/08 00:11:27 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.6 2001/05/03 22:40:06 dave Exp $"
 me = mpi.rank
 npes = mpi.procs
 
@@ -194,7 +194,8 @@ def globalave(a):
   s = globalop(a,sum,mpi.SUM,0.)
   if type(a) in [type(0.),type(0)]: a = [a]
   n = globalsum(len(a))
-  return s/n
+  if n > 0: return s/n
+  else:     return 0.
 
 # Generic parallel element-by-element operation on a distributed array.
 # Note that this would be rather slow on large array. The mpi.allreduce
