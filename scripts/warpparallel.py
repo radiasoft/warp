@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.29 2002/06/28 22:14:52 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.30 2002/07/10 17:42:27 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -627,9 +627,8 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             else:
               # --- The rest are domain decomposed Z arrays
               # --- Assuming they have the same decomposition as the particles.
-              iz1 = top.izpslave[me] - top.izslave[me]
-              if me < npes-1: iz2 = top.izpslave[me+1] - top.izslave[me]
-              else:           iz2 = iz1 + top.nzpslave[me] + 1
+              iz1 = 0
+              iz2 = top.nzpslave[me] + 1
               ff.write(pdbname,v[iz1:iz2],indx=(top.izpslave[me],))
 
   # --- Everybody closes the file at this point
