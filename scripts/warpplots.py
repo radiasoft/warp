@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.59 2001/12/19 21:12:26 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.60 2001/12/20 00:16:30 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1334,8 +1334,8 @@ def ppmultispecies(pp,args,kw):
       if js == -1: js = range(top.ns)
       if 'color' in kw.keys(): color = kw['color']
       else: color = range(0,240,240/len(js))
-      for i in js:
-        kw['js'] = i
+      for i in xrange(len(js)):
+        kw['js'] = js[i]
         kw['color'] = color[i]
         apply(pp,args,kw)
       return true
@@ -1583,7 +1583,7 @@ if sys.version[:5] != "1.5.1":
 def ppxpyp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots X'-Y'. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppxpyp,(iw,particles),kw): return
+  if ppmultispecies(ppxpyp,(iw,iz,slope,offset,particles),kw): return
   if type(slope) == type(''):
     (xslope,xoffset,vz) = getxxpslope(iw=iw,iz=iz)
     (yslope,yoffset,vz) = getyypslope(iw=iw,iz=iz)
