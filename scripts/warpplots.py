@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.41 2001/06/16 00:26:45 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.42 2001/06/18 20:12:43 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1048,7 +1048,6 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
   if contours and filled:
-    print shape(grid1),shape(ymesh),shape(xmesh)
     plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
           color=ccolor,contours=contours,filled=filled)
 
