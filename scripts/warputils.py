@@ -19,7 +19,7 @@ averagezdata(): Does local averaging over the first dimension of the input
 """
 from warp import *
 
-warputils_version = "$Id: warputils.py,v 1.7 2004/09/02 21:50:23 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.8 2005/01/13 19:21:29 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -144,6 +144,7 @@ dimension.
   - istep=max(1,n2/nlines):
   - includezeros=false: by default, only non-zero data is averaged over.
   """
+  if shape(qty)[0] < navg+navg+1: return qty
   if navg == 0 or nlines == 0: return qty
   if len(shape(qty)) == 1:
     fixqty = 1
@@ -164,7 +165,7 @@ dimension.
                            - where(qty[j-navg-1,::istep]==0,0,1))
   nn = where(nn==0,1,nn)
   hl = where(qty[:,::istep]==0.,0.,hl)
-  hl[navg+1:n1-navg-1,:] = hl[navg+1:n1-navg-1,:]/nn[navg+1:n1-navg-1,:]
+  hl[navg:n1-navg-1,:] = hl[navg:n1-navg-1,:]/nn[navg:n1-navg-1,:]
   if fixqty: qty.shape = (shape(qty)[0],)
   if n2 > 1: return hl
   else: return hl[:,0]
