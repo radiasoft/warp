@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.28 $, $Date: 2003/07/22 18:02:43 $
+#@(#) File FRZ.V, version $Revision: 3.29 $, $Date: 2003/07/28 23:35:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.28 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.29 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -282,7 +282,6 @@ nvlocsred         integer
 izlbnd            integer
 izrbnd            integer
 nworkpproc        integer
-l_lshift          logical
 l_powerof2        logical
 l_merged          logical
 dr                real
@@ -292,7 +291,6 @@ zmax              real
 v(1:nr+1,1:nz+1)  _integer # 
 vlocs_j(nvlocs)   _integer
 vlocs_k(nvlocs)   _integer
-lshift(0:nr+2)    _integer
 cndfirst             _CONDtype
 cndlast              _CONDtype
 next              _BNDtype
