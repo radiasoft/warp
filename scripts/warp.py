@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.28 2001/07/19 20:30:14 dave Exp $"
+warp_version = "$Id: warp.py,v 1.29 2001/07/24 00:57:50 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -157,7 +157,7 @@ printtimers: Print timers in a nice annotated format
 derivqty()
 
 #=============================================================================
-# --- Setup mechanism for before and after field-solve python scripts
+# --- Setup mechanism for "before" and "after" python scripts
 beforefsfuncs = []
 afterfsfuncs = []
 def beforefs():
@@ -298,18 +298,31 @@ The default is to zero out rho.
   elif (currpkg == "wxy"):
     loadrhoxy(ins_i,nps_i,is_i,lzero)
 #=============================================================================
-def fieldsol(iwhich=0):
+def fieldsol(iwhich=0,lbeforefs=false,lafterfs=false):
   """
-  # --- This routine provides a simple call from the interpreter to do
-  # --- the fieldsol.
-  # --- Call the appropriate compiled interface routine based on the
-  # --- current package
+This routine provides a simple call from the interpreter to do the fieldsol.
+It calls the appropriate compiled interface routine based on the current
+package. Only w3d and wxy have field solves defined.
+ - iwhich=0: specifies what action to take
+ - lbeforefs=false: when true, call functions installed be installbeforefs
+ - lafterfs=false:  when true, call functions installed be installafterfs
   """
+  if lbeforefs: beforefs()
   currpkg = package()[0]
-  if (currpkg == "w3d"):
-    fieldsol3d(iwhich)
-  elif (currpkg == "wxy"):
-    fieldsolxy(iwhich)
+  if   (currpkg == "w3d"): fieldsol3d(iwhich)
+  elif (currpkg == "wxy"): fieldsolxy(iwhich)
+  if lafterfs: afterfs()
+  # --- Now do extra work, updating arrays which depend directly on phi,
+  # --- but only when a complete field solve was done.
+  if iwhich == -1 or iwhich == 0:
+    if top.efetch == 3:
+      call getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
+                      w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
+                      w3d.dx,w3d.dy,w3d.dz)
+    if top.inject > 0:
+      call getinj_phi(w3d.nx,w3d.ny,w3d.nz,w3d.phi[:,:,1:-1],
+                      w3d.dx,w3d.dy,w3d.dz,w3d.xmmin,w3d.ymmin)
+
 #=============================================================================
 
 # --- Dump command
@@ -383,19 +396,19 @@ Reads in data from file, redeposits charge density and does field solve
   package(__main__.__dict__["currpkg"])
   # --- Allocate all arrays appropriately
   gchange("*")
-  # --- Load the charge density (since it was not saved)
-  loadrho()
-  # --- Recalculate the fields (since it was not saved)
-  fieldsol(0)
+  # --- Reinitialize some injection stuff if it is needed.
+  # --- This is really only needed for the parallel version since some of the
+  # --- data saved is only valid for PE0.
+  if top.inject > 0: fill_inj(w3d.dx,w3d.dy,w3d.dz,w3d.ix_axis,w3d.iy_axis)
   # --- Set the lattice internal variables. Only needed if reading in a dump
   # --- that was made before the overlapping elements was implemented.
   # --- Otherwise is doesn't hurt anything.
   resetlat()
   setlatt()
-  # --- Reinitialize some injection stuff if it is needed.
-  # --- This is really only needed for the parallel version since some of the
-  # --- data saved is only valid for PE0.
-  if top.inject > 0: fill_inj(w3d.dx,w3d.dy,w3d.dz,w3d.ix_axis,w3d.iy_axis)
+  # --- Load the charge density (since it was not saved)
+  loadrho()
+  # --- Recalculate the fields (since it was not saved)
+  fieldsol(0)
   # --- Call setup if it is needed.
   if me == 0 and current_window() == -1: setup()
 
