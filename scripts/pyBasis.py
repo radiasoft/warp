@@ -13,7 +13,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.10 2001/06/18 18:05:01 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.11 2001/06/21 23:11:12 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -293,20 +293,22 @@ Restores all of the variables in the specified file.
   ff = PR.PR(fname)
   # --- Get a list of all of the variables in the file, loop over that list
   vlist = ff.inquire_ls()
+  # --- vlist is looped over twice. The first time reads in all of the scalar
+  # --- variables and the python variables. The second reads in the arrays.
+  # --- This is done so that the integers which specify the dimensions of
+  # --- of arrays are read in before the array itself is. In some cases,
+  # --- not having the integers read in first would cause problems
+  # --- (so far only in the f90 version).
   for v in vlist:
-    if verbose: print v
     # --- If the variable has the suffix '@pkg' then it is a warp variable.
     if len(v) > 4 and v[-4]=='@':
       try:
         # --- get the package that the variable is in
         pkg = eval(v[-3:],__main__.__dict__)
         # --- Array assignment is different than scalar assignment.
-        if type(ff.__getattr__(v)) == type(array([])):
-          # --- forceassign is used, allowing the array read in to have a
-          # --- different size than the current size of the warp array.
-          pkg.forceassign(v[:-4],ff.__getattr__(v))
-        else:
+        if type(ff.__getattr__(v)) != type(array([])):
           # --- Simple assignment is done for scalars, using the exec command
+          if verbose: print v
           exec(v[-3:]+'.'+v[:-4]+'=ff.__getattr__(v)',
                __main__.__dict__,locals())
       except:
@@ -320,6 +322,7 @@ Restores all of the variables in the specified file.
       # --- in put in the main dictionary.
       try:
         #exec('__main__.__dict__[v[:-7]]=ff.read(v)',locals())
+        if verbose: print v
         exec('%s=ff.__getattr__("%s");__main__.__dict__["%s"]=%s'%
              (v[:-7],v,v[:-7],v[:-7]))
       except:
@@ -330,9 +333,22 @@ Restores all of the variables in the specified file.
       # --- the variable in put in the main dictionary.
       try:
         #exec('__main__.__dict__["%s"]=ff.%s'%(v,v)) # This should work
+        if verbose: print v
         exec('%s=ff.%s;__main__.__dict__["%s"]=%s'%(v,v,v,v))
       except:
         pass
+  # --- Now loop again to read in the arrays.
+  for v in vlist:
+    if len(v) > 4 and v[-4]=='@':
+      try:
+        pkg = eval(v[-3:],__main__.__dict__)
+        if type(ff.__getattr__(v)) == type(array([])):
+          # --- forceassign is used, allowing the array read in to have a
+          # --- different size than the current size of the warp array.
+          if verbose: print v
+          pkg.forceassign(v[:-4],ff.__getattr__(v))
+      except:
+        print "Warning: There was problem restoring %s"% (v[-3:]+'.'+v[:-4])
   ff.close()
 
 # --- create an alias for pyrestore
