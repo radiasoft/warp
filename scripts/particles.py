@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.14 2003/07/09 21:27:45 dave Exp $"
+particles_version = "$Id: particles.py,v 1.15 2003/10/07 21:53:04 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -103,11 +103,13 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   - zl=None: When specified, lower range of selection region
   - zu=None: When specified, upper range of selection region
   - zc=None: When specified, picks particles within zc+-wz*dz
+  - ii=None: If ii is supplied, it is just returned.
   """
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None,"zc":None,'checkargs':0,'allowbadargs':0}
+                "zl":None,"zu":None,"zc":None,"ii":None,
+                'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
   # --- ignoring keywords not listed in kwdefaults.
@@ -129,6 +131,10 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   if checkargs: return badargs
   if badargs and not allowbadargs:
     raise "bad argument ",string.join(badargs.keys())
+
+  # --- If ii is defined, then just return it. This allows the 'get' routines
+  # --- to do the take operation with a pre-defined ii.
+  if ii is not None: return ii
 
   # --- If jslist defined, call selectparticles repeatedly for each species
   # --- on the list
