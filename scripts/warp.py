@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.12 2001/01/22 22:00:10 dave Exp $"
+warp_version = "$Id: warp.py,v 1.13 2001/01/31 21:28:11 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -58,6 +58,7 @@ if lparallel:
 import sys
 sys.path = sys.path + ['/home/ife1/dave/warp/scripts']
 
+#=============================================================================
 # --- Set physical constants which depend on others.
 # --- Magnetic constant = 4*pi*1.e-7
 top.mu0 = 4*top.pi/10000000
@@ -75,6 +76,34 @@ euler   = top.euler
 jperev  = top.jperev
 mu0     = top.mu0
 
+#=============================================================================
+# --- Setup and make initial printout of the versions of the packages.
+def printversion(v):
+  v = arraytostr(v)
+  lenv = 12
+  for i in range(11,19):
+    if v[i] == "$": lenv = i
+  return v[11:lenv-1]
+
+def versionstext():
+  "Returns a string which has the version information of packages loaded."
+  r = 'Python WARP\n'
+  pkg = package()
+  fmt = '******  %s version %s\n'
+  if 'fxy' in pkg: r=r+fmt%('Fieldsolver FXY',printversion(fxy.versfxy))
+  if 'frz' in pkg: r=r+fmt%('Fieldsolver FRZ',printversion(frz.versfrz))
+  if 'f3d' in pkg: r=r+fmt%('Fieldsolver F3D',printversion(f3d.versf3d))
+  if 'env' in pkg: r=r+fmt%('Envelope solver ENV',printversion(env.versenv))
+  if 'cir' in pkg: r=r+fmt%('Envelope solver CIR',printversion(cir.verscir))
+  if 'wxy' in pkg: r=r+fmt%('Particle package WXY',printversion(wxy.verswxy))
+  if 'wrz' in pkg: r=r+fmt%('Particle package WRZ',printversion(wrz.verswrz))
+  if 'w3d' in pkg: r=r+fmt%('Particle package W3D',printversion(w3d.versw3d))
+  if 'top' in pkg: r=r+fmt%('Main package TOP',printversion(top.verstop))
+  return r
+print versionstext()[:-1] # --- skip last line feed
+print 'For more help, type warphelp()'
+
+#=============================================================================
 # --- Import the convenience routines for plotting various slices and
 # --- projections of particles as well as some line plots.
 from warpplots import *
@@ -89,6 +118,7 @@ from printparameters import *
 from printparameters3d import *
 from printparametersrz import *
 
+#=============================================================================
 # --- Declare the documentation for the warp module.
 def warpdoc():
   print """
@@ -114,37 +144,11 @@ gethzarrays: Fixes the ordering of hlinechg and hvzofz data from a paralle run
 printtimers: Print timers in a nice annotated format
   """
 
-def printversion(v):
-  v = arraytostr(v)
-  lenv = 12
-  for i in range(11,19):
-    if v[i] == "$": lenv = i
-  return v[11:lenv-1]
-
-print 'Python WARP'
-print '******  Fieldsolver FXY version %s' % printversion(fxy.versfxy)
-try:
-  print '******  Fieldsolver FRZ version %s' % printversion(frz.versfrz)
-except:
-  pass
-print '******  Fieldsolver F3D version %s' % printversion(f3d.versf3d)
-print '******  Envelope solver ENV version %s' % printversion(env.versenv)
-try:
-  print '******  Envelope solver CIR version %s' % printversion(cir.verscir)
-except:
-  pass
-print '******  Particle package WXY version %s' % printversion(wxy.verswxy)
-try:
-  print '******  Particle package WRZ version %s' % printversion(wrz.verswrz)
-except:
-  pass
-print '******  Particle package W3D version %s' % printversion(w3d.versw3d)
-print '******  Main package TOP version %s' % printversion(top.verstop)
-print 'For more help, type warphelp()'
-
+#=============================================================================
 # --- Call derivqty to calculate eps0 and jperev
 derivqty()
 
+#=============================================================================
 # --- Setup mechanism for before and after field-solve python scripts
 beforefsfuncs = []
 afterfsfuncs = []
@@ -193,11 +197,11 @@ def uninstallafterstep(f):
   else:
     raise 'Warning: uninstallafterstep: no such function had been installed'
 
+#=============================================================================
 # --- Convenience function for random numbers.
 def setseed(x=0,y=0):
   RandomArray.seed(long(x),long(y))
     
-# --- Uniform distribution
 # --- Uniform distribution
 def ranf(x=None,i1=None,nbase=None):
   if not i1:
