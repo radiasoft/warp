@@ -39,7 +39,7 @@ from warp import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.24 2003/12/13 01:39:11 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.25 2004/01/24 00:55:03 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -193,7 +193,7 @@ class Elem:
   """
 Base class for the lattice classes. Should never be directly called.
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,
                offset_x=0,offset_y=0,error_type=''):
     self.l = l
     self.length = length
@@ -202,6 +202,8 @@ Base class for the lattice classes. Should never be directly called.
     self.type = ''
     self.zshift = zshift
     self.ap = ap
+    self.ax = ax
+    self.ay = ay
     self.offset_x = offset_x
     self.offset_y = offset_y
     self.error_type = error_type
@@ -260,14 +262,17 @@ Creates an instance of a Drft lattice element.
   - l (or length) =0 drift length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type=''):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Drft'
   def install(self,zz):
@@ -280,6 +285,8 @@ Creates an instance of a Drft lattice element.
     top.drftzs[top.ndrft] = zz + self.zshift
     top.drftze[top.ndrft] = top.drftzs[top.ndrft] + self.length
     top.drftap[top.ndrft] = self.ap
+    top.drftax[top.ndrft] = self.ax
+    top.drftay[top.ndrft] = self.ay
     top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
     top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
     return top.drftze[top.ndrft]
@@ -291,16 +298,19 @@ Creates an instance of a Bend lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - rc=1.e36 radius of curvature of the bend
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                rc=1.e36):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Bend'
     self.rc = rc
@@ -315,6 +325,8 @@ Creates an instance of a Bend lattice element.
     top.bendzs[top.nbend] = zz + self.zshift
     top.bendze[top.nbend] = top.bendzs[top.nbend] + self.length
     top.bendap[top.nbend] = self.ap
+    top.bendax[top.nbend] = self.ax
+    top.benday[top.nbend] = self.ay
     #top.bendox[top.nbend] = self.offset_x*errordist(self.error_type)
     #top.bendoy[top.nbend] = self.offset_y*errordist(self.error_type)
     top.bendrc[top.nbend] = self.rc
@@ -327,6 +339,8 @@ Creates an instance of a Dipo lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -346,11 +360,12 @@ Creates an instance of a Dipo lattice element.
   - w1=0 width of first electric plate
   - w2=0 width of second electric plate
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                ex=0,ey=0,bx=0,by=0,ta=0,tb=0,
                x1=0,x2=0,v1=0,v2=0,l1=0,l2=0,w1=0,w2=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Dipo'
     for xx in ['ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
@@ -368,7 +383,7 @@ Creates an instance of a Dipo lattice element.
     top.dipoze[top.ndipo] = top.dipozs[top.ndipo] + self.length
     #top.dipoox[top.ndipo] = self.offset_x*errordist(self.error_type)
     #top.dipooy[top.ndipo] = self.offset_y*errordist(self.error_type)
-    for xx in ['ap','ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
+    for xx in ['ap','ax','ay','ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
                'l1','l2','w1','w2']:
       aa = top.getpyobject('dipo'+xx)
       aa[top.ndipo] = self.__dict__[xx]
@@ -381,6 +396,8 @@ Creates an instance of a Quad lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -397,10 +414,11 @@ Creates an instance of a Quad lattice element.
   - pa=0 plate aperture of an electric quad
   - pr=0 plate outer radius of an electric quad
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                de=0,db=0,vx=0,vy=0,rr=0,rl=0,gl=0,gp=0,pw=0,pa=0,pr=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Quad'
     for xx in ['de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
@@ -417,7 +435,8 @@ Creates an instance of a Quad lattice element.
     top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
     top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
     top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
-    for xx in ['ap','de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
+    for xx in ['ap','ax','ay','de','db','vx','vy','rr','rl','gl','gp',
+               'pw','pa','pr']:
       aa = top.getpyobject('quad'+xx)
       aa[top.nquad] = self.__dict__[xx]
     return top.quadze[top.nquad]
@@ -429,6 +448,8 @@ Creates an instance of a Sext lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -436,10 +457,11 @@ Creates an instance of a Sext lattice element.
   - de=0 electric field gradient
   - db=0 magnetic field gradient
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                de=0,db=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Sext'
     self.de = de
@@ -454,7 +476,7 @@ Creates an instance of a Sext lattice element.
       top.nsext = isext
     top.sextzs[top.nsext] = zz + self.zshift
     top.sextze[top.nsext] = top.sextzs[top.nsext] + self.length
-    top.sextap[top.nsext] = self.ap
+   #top.sextap[top.nsext] = self.ap
     top.sextox[top.nsext] = self.offset_x*errordist(self.error_type)
     top.sextoy[top.nsext] = self.offset_y*errordist(self.error_type)
     top.sextde[top.nsext] = self.de
@@ -468,6 +490,8 @@ Creates an instance of a Hele lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -487,11 +511,12 @@ Creates an instance of a Hele lattice element.
   - pw=0 plate with of an electric quad
   - pa=0 plate aperture of an electric quad
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                nn=[],vv=[],ae=[],am=[],ep=[],mp=[],pe=[],pm=[],
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Hele'
     self.nn = nn
@@ -531,6 +556,8 @@ Creates an instance of a Hele lattice element.
     top.helezs[top.nhele] = zz + self.zshift
     top.heleze[top.nhele] = top.helezs[top.nhele] + self.length
     top.heleap[top.nhele] = self.ap
+    top.heleax[top.nhele] = self.ax
+    top.heleay[top.nhele] = self.ay
     top.heleox[top.nhele] = self.offset_x*errordist(self.error_type)
     top.heleoy[top.nhele] = self.offset_y*errordist(self.error_type)
     top.helerr[top.nhele] = self.rr
@@ -556,6 +583,8 @@ Creates an instance of a Accl lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -567,10 +596,11 @@ Creates an instance of a Accl lattice element.
   - ts=0 initial time of time dependent accelerating gradient
   - dt=0 time increment in the time dependent accelerating gradient data (s)
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                ez=0,xw=0,sw=0,et=[],ts=0,dt=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Accl'
     self.ez = ez
@@ -596,6 +626,8 @@ Creates an instance of a Accl lattice element.
     top.acclzs[top.naccl] = zz + self.zshift
     top.acclze[top.naccl] = top.acclzs[top.naccl] + self.length
     top.acclap[top.naccl] = self.ap
+    top.acclax[top.naccl] = self.ax
+    top.acclay[top.naccl] = self.ay
     top.acclox[top.naccl] = self.offset_x*errordist(self.error_type)
     top.accloy[top.naccl] = self.offset_y*errordist(self.error_type)
     top.acclez[top.naccl] = self.ez
@@ -614,6 +646,8 @@ Creates an instance of a Emlt lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -638,12 +672,13 @@ Or specify the data set
   - nn=[] n indices
   - vv=[] v indices
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                id=None,dz=0,e=[],ep=[],eph=[],nn=[],vv=[],ph=0,sf=0,sc=1,
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     assert (e or ep) or (id is not None),"A data set or id must be given"
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Emlt'
     self.dz = dz
@@ -713,6 +748,8 @@ Or specify the data set
     top.emltzs[top.nemlt] = zz + self.zshift
     top.emltze[top.nemlt] = top.emltzs[top.nemlt] + self.length
     top.emltap[top.nemlt] = self.ap
+    top.emltax[top.nemlt] = self.ax
+    top.emltay[top.nemlt] = self.ay
     top.emltox[top.nemlt] = self.offset_x*errordist(self.error_type)
     top.emltoy[top.nemlt] = self.offset_y*errordist(self.error_type)
     top.emltph[top.nemlt] = self.ph
@@ -734,6 +771,8 @@ Creates an instance of a Mmlt lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -753,11 +792,12 @@ Or specify the data set
   - nn=[] n indices
   - vv=[] v indices
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                id=None,dz=0,m=[],mp=[],mph=[],nn=[],vv=[],ph=0,sf=0,sc=1):
     assert (m or mp) or (id is not None),"A data set or id must be given"
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Mmlt'
     self.dz = dz
@@ -821,6 +861,8 @@ Or specify the data set
     top.mmltzs[top.nmmlt] = zz + self.zshift
     top.mmltze[top.nmmlt] = top.mmltzs[top.nmmlt] + self.length
     top.mmltap[top.nmmlt] = self.ap
+    top.mmltax[top.nmmlt] = self.ax
+    top.mmltay[top.nmmlt] = self.ay
     top.mmltox[top.nmmlt] = self.offset_x*errordist(self.error_type)
     top.mmltoy[top.nmmlt] = self.offset_y*errordist(self.error_type)
     top.mmltph[top.nmmlt] = self.ph
@@ -836,6 +878,8 @@ Creates an instance of a Bgrd lattice element.
   - length=0 alternate form of the element length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -854,11 +898,12 @@ Or specify the data set
   - dy=0 y increment size (m)
   - dz=0 z increment size (m)
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                id=None,sf=0,sc=1,bx=[],by=[],bz=[],dx=0,dy=0,dz=0):
     assert (bx or by or bz) or (id is not None),"A data set or id must be given"
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Bgrd'
     self.sf = sf
@@ -908,6 +953,8 @@ Or specify the data set
     top.bgrdzs[top.nbgrd] = zz + self.zshift
     top.bgrdze[top.nbgrd] = top.bgrdzs[top.nbgrd] + self.length
     top.bgrdap[top.nbgrd] = self.ap
+    top.bgrdax[top.nbgrd] = self.ax
+    top.bgrday[top.nbgrd] = self.ay
     top.bgrdox[top.nbgrd] = self.offset_x*errordist(self.error_type)
     top.bgrdoy[top.nbgrd] = self.offset_y*errordist(self.error_type)
     top.bgrdsf[top.nbgrd] = self.sf
@@ -922,6 +969,8 @@ Creates an instance of a Pgrd lattice element.
   - length=0 alternate form of the elemenet length
   - zshift=0 start of element relative to current lattice location
   - ap=0 aperture (can affect location of transverse boundaries)
+  - ax=0 aperture in x (can affect location of transverse boundaries)
+  - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
   - error_type='' type of error distribution to apply
@@ -946,12 +995,13 @@ Or specify the data set
   - dy=0 y increment size (m)
   - dz=0 z increment size (m)
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
                error_type='',
                id=None,sf=0,sc=1,pp=[],xs=0,ys=0,dx=0,dy=0,dz=0,
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     assert (pp) or (id is not None),"A data set or id must be given"
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
+                  ap=ap,ax=ax,ay=ay,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Pgrd'
     self.sf = sf
@@ -1000,6 +1050,8 @@ Or specify the data set
     top.pgrdzs[top.npgrd] = zz + self.zshift
     top.pgrdze[top.npgrd] = top.pgrdzs[top.npgrd] + self.length
     top.pgrdap[top.npgrd] = self.ap
+    top.pgrdax[top.npgrd] = self.ax
+    top.pgrday[top.npgrd] = self.ay
     top.pgrdxs[top.npgrd] = self.xs
     top.pgrdys[top.npgrd] = self.ys
     top.pgrdox[top.npgrd] = self.offset_x*errordist(self.error_type)
@@ -1292,7 +1344,7 @@ def getlattice(file):
 
 # ----------------------------------------------------------------------------
 # --- DRFT --- XXX
-def addnewdrft(zs,ze,ap=0.,ox=0.,oy=0.):
+def addnewdrft(zs,ze,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.):
   """
 Adds a new drft element to the lattice. The element will be placed at the
 appropriate location.
@@ -1332,7 +1384,8 @@ drft arrays with the same suffices:
   # --- Setup dictionary relating lattice array with input argument names.
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
-  edict={'zs':top.drftzs,'ze':top.drftze,'ap':top.drftap,
+  edict={'zs':top.drftzs,'ze':top.drftze,
+         'ap':top.drftap,'ax':top.drftax,'ay':top.drftay,
          'ox':top.drftox,'oy':top.drftoy}
 
   # --- Shift the existing data in the arrays to open up a space for the
@@ -1349,7 +1402,7 @@ drft arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- BEND --- XXX
-def addnewbend(zs,ze,rc,ap=0.,ox=0.,oy=0.):
+def addnewbend(zs,ze,rc,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.):
   """
 Adds a new bend element to the lattice. The element will be placed at the
 appropriate location.
@@ -1390,7 +1443,8 @@ bend arrays with the same suffices:
   # --- Setup dictionary relating lattice array with input argument names.
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
-  edict={'zs':top.bendzs,'ze':top.bendze,'rc':top.bendrc,'ap':top.bendap,
+  edict={'zs':top.bendzs,'ze':top.bendze,'rc':top.bendrc,
+         'ap':top.bendap,'ax':top.bendax,'ay':top.benday,
          'ox':top.bendox,'oy':top.bendoy}
 
   # --- Shift the existing data in the arrays to open up a space for the
@@ -1407,8 +1461,8 @@ bend arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- DIPO --- XXX
-def addnewdipo(zs,ze,by=0.,bx=0.,ta=0.,tb=0.,ex=0.,ey=0.,ap=0.,x1=0.,x2=0.,
-               v1=0.,v2=0.,l1=0.,l2=0.,w1=0.,w2=0.):
+def addnewdipo(zs,ze,by=0.,bx=0.,ta=0.,tb=0.,ex=0.,ey=0.,ap=0.,ax=0.,ay=0.,
+               x1=0.,x2=0.,v1=0.,v2=0.,l1=0.,l2=0.,w1=0.,w2=0.):
   """
 Adds a new dipo element to the lattice. The element will be placed at the
 appropriate location.
@@ -1450,7 +1504,7 @@ dipo arrays with the same suffices:
   # --- refer to the updated memory locations after the gchange.
   edict={'zs':top.dipozs,'ze':top.dipoze,'by':top.dipoby,'bx':top.dipobx,
          'ta':top.dipota,'tb':top.dipotb,'ex':top.dipoex,'ey':top.dipoey,
-         'ap':top.dipoap,
+         'ap':top.dipoap,'ax':top.dipoax,'ay':top.dipoay,
          'x1':top.dipox1,'x2':top.dipox2,'v1':top.dipov1,'v2':top.dipov2,
          'l1':top.dipol1,'l2':top.dipol2,'w1':top.dipow1,'w2':top.dipow2}
 
@@ -1468,7 +1522,8 @@ dipo arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- QUAD --- XXX
-def addnewquad(zs,ze,db=0.,de=0.,et=0.,bt=0.,ts=0.,dt=0.,vx=0.,vy=0.,ap=0.,
+def addnewquad(zs,ze,db=0.,de=0.,et=0.,bt=0.,ts=0.,dt=0.,vx=0.,vy=0.,
+               ap=0.,ax=0.,ay=0.,
                rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,pr=0.,sl=0.,ox=0.,oy=0.,
                do=0.,
                glx=0.,gly=0.,axp=0.,axm=0.,ayp=0.,aym=0.,rxp=0.,rxm=0.,
@@ -1516,7 +1571,9 @@ quad and qdel arrays with the same suffices:
   # --- refer to the updated memory locations after the gchange.
   edict={'zs':top.quadzs,'ze':top.quadze,'db':top.quaddb,'de':top.quadde,
        'et':top.quadet,'bt':top.quadbt,'ts':top.quadts,'dt':top.quaddt,
-       'vx':top.quadvx,'vy':top.quadvy,'ap':top.quadap,'rr':top.quadrr,
+       'vx':top.quadvx,'vy':top.quadvy,
+       'ap':top.quadap,'ax':top.quadax,'ay':top.quaday,
+       'rr':top.quadrr,
        'rl':top.quadrl,'gl':top.quadgl,'gp':top.quadgp,'pw':top.quadpw,
        'pa':top.quadpa,'pr':top.quadpr,'sl':top.quadsl,'do':top.quaddo,
        'glx':top.qdelglx,'gly':top.qdelgly,'axp':top.qdelaxp,'axm':top.qdelaxm,
@@ -1605,8 +1662,8 @@ sext arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- HELE --- XXX
-def addnewhele(zs,ze,ap=0.,ox=0.,oy=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
-               ae=0.,am=0.,ep=0.,mp=0.,nn=0.,vv=0.,pe=0.,pm=0.):
+def addnewhele(zs,ze,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,rr=0.,rl=0.,gl=0.,gp=0.,
+               pw=0.,pa=0.,ae=0.,am=0.,ep=0.,mp=0.,nn=0.,vv=0.,pe=0.,pm=0.):
   """
 Adds a new hele element to the lattice. The element will be placed at the
 appropriate location.
@@ -1658,7 +1715,8 @@ hele arrays with the same suffices:
   # --- Setup dictionary relating lattice array with input argument names.
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
-  edict={'zs':top.helezs,'ze':top.heleze,'ap':top.heleap,
+  edict={'zs':top.helezs,'ze':top.heleze,
+         'ap':top.heleap,'ax':top.heleax,'ay':top.heleay,
          'ox':top.heleox,'oy':top.heleoy,'rr':top.helerr,'rl':top.helerl,
          'gl':top.helegl,'gp':top.helegp,'pw':top.helepw,'pa':top.helepa,
          'ae':top.heleae,'am':top.heleam,'ep':top.heleep,'mp':top.helemp,
@@ -1686,7 +1744,7 @@ hele arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- EMLT --- XXX
-def addnewemlt(zs,ze,ap=0.,ph=0.,sf=0.,sc=1.,id=None,
+def addnewemlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,
                ox=0.,oy=0.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
                es=None,esp=None,phz=None,phpz=None,nn=None,vv=None):
   """
@@ -1754,7 +1812,9 @@ emlt arrays with the same suffices:
   # --- Setup dictionary relating lattice array with input argument names.
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
-  edict = {'zs':top.emltzs,'ze':top.emltze,'ap':top.emltap,'ph':top.emltph,
+  edict = {'zs':top.emltzs,'ze':top.emltze,
+           'ap':top.emltap,'ax':top.emltax,'ay':top.emltay,
+           'ph':top.emltph,
            'sf':top.emltsf,'sc':top.emltsc,
            'ox':top.emltox,'oy':top.emltoy,'rr':top.emltrr,'rl':top.emltrl,
            'gl':top.emltgl,'gp':top.emltgp,'pw':top.emltpw,'pa':top.emltpa}
@@ -1848,7 +1908,7 @@ emlt arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- MMLT --- XXX
-def addnewmmlt(zs,ze,ap=0.,ph=0.,sf=0.,sc=1.,id=None,ox=0.,oy=0.,
+def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,ox=0.,oy=0.,
                ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None):
   """
 Adds a new mmlt element to the lattice. The element will be placed at the
@@ -1912,7 +1972,9 @@ mmlt arrays with the same suffices:
   # --- Setup dictionary relating lattice array with input argument names.
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
-  edist = {'zs':top.mmltzs,'ze':top.mmltze,'ap':top.mmltap,'ph':top.mmltph,
+  edist = {'zs':top.mmltzs,'ze':top.mmltze,
+           'ap':top.mmltap,'ax':top.mmltax,'ay':top.mmltay,
+           'ph':top.mmltph,
            'sf':top.mmltsf,'sc':top.mmltsc,'ox':top.mmltox,'oy':top.mmltoy}
 
   # --- Shift the existing data in the arrays to open up a space for the
@@ -2004,7 +2066,8 @@ mmlt arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- ACCL --- XXX
-def addnewaccl(zs,ze,ez=0.,ap=0.,ox=0.,oy=0.,xw=0.,sw=0.,et=0.,ts=0.,dt=0.):
+def addnewaccl(zs,ze,ez=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,xw=0.,sw=0.,
+               et=0.,ts=0.,dt=0.):
   """
 Adds a new accl element to the lattice. The element will be placed at the
 appropriate location.
@@ -2042,7 +2105,8 @@ accl arrays with the same suffices:
   # --- Setup dictionary relating lattice array with input argument names.
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
-  edict={'zs':top.acclzs,'ze':top.acclze,'ez':top.acclez,'ap':top.acclap,
+  edict={'zs':top.acclzs,'ze':top.acclze,'ez':top.acclez,
+         'ap':top.acclap,'ax':top.acclax,'ay':top.acclay,
          'ox':top.acclox,'oy':top.accloy,'xw':top.acclxw,'sw':top.acclsw,
          'et':top.acclet,'ts':top.acclts,'dt':top.accldt}
 
@@ -2068,7 +2132,8 @@ accl arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- BGRD --- XXX
-def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ox=0.,oy=0.,ph=0.,sp=0.,cp=0.,
+def addnewbgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
+               ph=0.,sp=0.,cp=0.,
                sf=0.,sc=1.,sy=0,dx=None,dy=None,bx=None,by=None,bz=None):
   """
 Adds a new bgrd element to the lattice. The element will be placed at the
@@ -2118,7 +2183,8 @@ bgrd arrays with the same suffices:
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
   edict = {'zs':top.bgrdzs,'ze':top.bgrdze,'xs':top.bgrdxs,'ys':top.bgrdys,
-           'ap':top.bgrdap,'ox':top.bgrdox,'oy':top.bgrdoy,'ph':top.bgrdph,
+           'ap':top.bgrdap,'ax':top.bgrdax,'ay':top.bgrday,
+           'ox':top.bgrdox,'oy':top.bgrdoy,'ph':top.bgrdph,
            'sp':top.bgrdsp,'cp':top.bgrdcp,'sf':top.bgrdsf,'sc':top.bgrdsc,
            'sy':top.bgrdsy}
 
@@ -2165,7 +2231,8 @@ bgrd arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- PGRD --- XXX
-def addnewpgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ox=0.,oy=0.,ph=0.,sp=0.,cp=0.,
+def addnewpgrd(zs,ze,id=None,xs=0.,ys=0.,ap=0.,ax=0.,ay=0.,ox=0.,oy=0.,
+               ph=0.,sp=0.,cp=0.,
                sf=0.,sc=1.,rr=0.,rl=0.,gl=0.,gp=0.,pw=0.,pa=0.,
                dx=None,dy=None,phi=None):
 
@@ -2217,7 +2284,8 @@ pgrd arrays with the same suffices:
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
   edict = {'zs':top.pgrdzs,'ze':top.pgrdze,'xs':top.pgrdxs,'ys':top.pgrdys,
-           'ap':top.pgrdap,'ox':top.pgrdox,'oy':top.pgrdoy,'ph':top.pgrdph,
+           'ap':top.pgrdap,'ax':top.pgrdax,'ay':top.pgrday,
+           'ox':top.pgrdox,'oy':top.pgrdoy,'ph':top.pgrdph,
            'sp':top.pgrdsp,'cp':top.pgrdcp,'id':top.pgrdid,'sf':top.pgrdsf,
            'sc':top.pgrdsc,'rr':top.pgrdrr,'rl':top.pgrdrl,'gl':top.pgrdgl,
            'gp':top.pgrdgp,'pw':top.pgrdpw,'pa':top.pgrdpa}
