@@ -28,7 +28,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.22 2004/12/21 21:43:19 jlvay Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.23 2004/12/22 16:04:31 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -202,7 +202,7 @@ def viewvparticles(x,y,z,vx,vy,vz,labels=None,name=None,
   if stride==1:
     x = gatherarray(x)
     y = gatherarray(y)
-    z = gatherarray(z)*0.1
+    z = gatherarray(z)
     vx = gatherarray(vx)
     vy = gatherarray(vy)
     vz = gatherarray(vz)
@@ -218,7 +218,7 @@ def viewvparticles(x,y,z,vx,vy,vz,labels=None,name=None,
     vx = vx/ave(abs(vx))
     vy = vy/ave(abs(vy))
     vz = vz/ave(abs(vz))
-    
+
   # --- First combine particle data and create a DX array
   n = len(x)
   p = zeros((n,3),'d')
