@@ -54,7 +54,10 @@ LOGICAL(ISZ) :: l_verbose
 TYPE(GRIDtype), POINTER :: bg
 TYPE(BNDtype), POINTER :: b
 
-  WRITE(0,*) 'enter init_basegrid'
+  if (l_verbose) then
+    WRITE(0,*) 'enter init_basegrid'
+  endif
+
   IF(associated(basegrid)) return
 
   basegrid => NewGRIDType()
@@ -204,7 +207,9 @@ TYPE(BNDtype), POINTER :: b
   END do
 
   call mk_grids_ptr()
-  WRITE(0,*) 'exit init_basegrid'
+  if (l_verbose) then
+    WRITE(0,*) 'exit init_basegrid'
+  endif
 
 return
 end subroutine init_basegrid
