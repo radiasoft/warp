@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.6 $, $Date: 2001/05/26 00:49:00 $
+c@(#) File ENV.M, version $Revision: 3.7 $, $Date: 2001/05/30 22:38:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -185,7 +185,6 @@ c  Interpolate to get envelope values
 c=======================================================================
       subroutine envx
       use ENVvars
-      use Constant
       use Beam_acc
       use InGen
 
@@ -615,21 +614,14 @@ c  linear space-charge forces.
 
       real(kind=8):: zl,fracl 
       real(kind=8):: zr,fracr
-      real(kind=8):: eelededrl,eeledbdxl,eelededxl
-      real(kind=8):: eelededrr,eeledbdxr,eelededxr
       real(kind=8):: fuzz
       real(kind=8):: frac,ez,ke,de,db
       real(kind=8):: dedrr,dbdxq,dedxq,xdbdx,xdedx,ydbdx,ydedx
-      real(kind=8):: equadde,equaddb,equadox,equadoy
-      real(kind=8):: ehelededx,eheledbdx,ehelededr,eheleox,eheleoy
-      real(kind=8):: eemltdedx,eemltdedr,eemltox,eemltoy
-      real(kind=8):: emmltdbdx,emmltox,emmltoy
       real(kind=8):: fux,fuy,fq,feself,fexself,feyself 
       real(kind=8):: wie,wim
-      integer(ISZ):: io,iquader,imulter
+      integer(ISZ):: io
       integer(ISZ):: ii,iie,iim,iem,imm
-      integer(ISZ):: iquad,ihele,iemlt,immlt,iaccl
-      save    iquad,ihele,iemlt,immlt,iaccl
+      integer(ISZ):: ihele,iemlt,immlt,iaccl
 
       zl = z - 0.5 * dz
       zr = z + 0.5 * dz
@@ -678,7 +670,6 @@ c         --- quadrupole fields, including residence fraction
         enddo
 
       endif 
-
 
 c     --- Hard edge multipoles, can include linearly focusing 
 c     --- quadrupole or azimuthally symmetric field 
