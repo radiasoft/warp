@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.162 $, $Date: 2004/07/28 23:28:14 $
+#@(#) File W3D.V, version $Revision: 3.163 $, $Date: 2004/07/29 17:27:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.162 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.163 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -665,6 +665,19 @@ sortparticlesbyindex(n:integer,indx:real,x:real,y:real,z:real,uz:real,
                      nblocks:integer,
                      xout:real,yout:real,zout:real,uzout:real,pcounts:integer)
       subroutine
+sortparticlesbyindexgetisort(n:integer,indx:real,x:real,y:real,z:real,
+                             nblocks:integer,
+                             xout:real,yout:real,zout:real,isort:integer,
+                             pcounts:integer)
+      subroutine
+getgridngp3dpositiveonly(np:integer,x:real,y:real,z:real,f:real,
+                         nx:integer,ny:integer,nz:integer,grid:real,
+                         xmin:real,xmax:real,ymin:real,ymax:real,
+                         zmin:real,zmax:real,
+                         zgrid:real,l2symtry:logical,l4symtry:logical)
+      subroutine # Gathers data from a 3-D grid using nearest grid point.
+                 # Only gathers positive values.
+
 
 ******** Subtimers3d:
 lw3dtimesubs logical /.false./
