@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.10 2002/08/26 16:57:53 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.11 2002/12/02 19:16:25 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -2206,3 +2206,15 @@ Plots the field of the emlt element
     plg(top.msmmlt[:nz+1,m,id],zz,color=color)
   else:
     plg(top.msmmltp[:nz+1,m,id],zz,color=color)
+
+def plotacclet(ia,color='fg'):
+  """
+Plots the time dependent field of the accl element
+  - ia: the element to plot
+  - color='fg': color of plot
+  """
+  dt = top.accldt[ia]
+  nt = top.ntaccl
+  tt = top.acclts[ia] + iota(0,nt)*dt
+  plg(top.acclet[:,ia],tt,color=color)
+
