@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.2 2001/10/29 17:27:19 dave Exp $"
 from warp import *
 
 def generate():
@@ -37,6 +37,8 @@ def step(n=1):
     for f in afterstepfuncs: f()
     # --- Get step time
     top.steptime = wtime() - top.starttime - top.gentime
+    # --- Flush the stdout buffer
+    sys.stdout.flush()
   #except:
     #pass
 
