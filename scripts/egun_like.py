@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.17 2003/04/25 18:29:01 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.18 2003/04/29 17:31:26 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -369,7 +369,7 @@ Performs steady-state iterations
   stepid(gun_iter,gun_time,top.zbeam)
 
   # --- Set some additional diagnostic data
-  top.vzofz = top.vzbarz
+  if top.nzzarr == top.nzmmnt: top.vzofz[:] = top.vzbarz
 
   # --- Return variables to their original values
   top.fstype = _ofstype
