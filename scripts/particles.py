@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.12 2003/07/04 00:08:21 dave Exp $"
+particles_version = "$Id: particles.py,v 1.13 2003/07/08 22:26:15 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -466,11 +466,11 @@ Adds particles to the simulation
 
   # --- Set extent of domain
   if not lparallel:
-    if zmmin is None: zmmin = w3d.zmmin
-    if zmmax is None: zmmax = w3d.zmmax
+    if zmmin is None: zmmin = w3d.zmmin + top.zbeam
+    if zmmax is None: zmmax = w3d.zmmax + top.zbeam
   else:
-    if zmmin is None: zmmin = top.zpslmin[me]
-    if zmmax is None: zmmax = top.zpslmax[me]
+    if zmmin is None: zmmin = top.zpslmin[me] + top.zbeam
+    if zmmax is None: zmmax = top.zpslmax[me] + top.zbeam
 
   # --- Now data can be passed into the fortran addparticles routine.
   addpart(maxlen,top.npid,x,y,z,vx,vy,vz,gi,pid,js+1,lallindomain,zmmin,zmmax,lmomentum)
