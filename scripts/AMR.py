@@ -506,7 +506,7 @@ class AMRtree(Visualizable):
       if w3d.solvergeom<>w3d.XYZgeomMR:
         g = frz.basegrid
         adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
-#      loadrho()
+      loadrho()
 
     def draw_blocks2d(self,level=None,color='black',width=1.,allmesh=0,f=1):
       for i,blocks in enumerate(self.listblocks[1:]):
