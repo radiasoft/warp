@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.4 2003/03/13 17:10:40 jlvay Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.5 2003/03/19 18:04:08 haber Exp $"
 
 class PlaneSave:
   """
@@ -20,9 +20,12 @@ Input:
   - allways_save=false: if set to true, particles and potential are saved
                         at all time step. Default is false: saving starts
                         when first particle cross zplane.
+  - deltaz: z grid cell size of simulation where the data will be restored.
+            Defaults to w3d.dz, must be an integer multiple of w3d.dz. 
+
   """
 
-  def __init__(self,zplane,filename=None,js=None,allways_save=None):
+  def __init__(self,zplane,filename=None,js=None,allways_save=None,deltaz=None):
 
     self.zplane = nint(zplane/w3d.dz)*w3d.dz
 
@@ -33,6 +36,9 @@ Input:
       self.allways_save = false
     else:
       self.allways_save = true
+    # set distance between saved phi planes
+    if self.deltaz is None: self.deltaz = w3d.dz
+    self.izz = nint(self.deltaz/w3d.dz)
 
     # --- Arrays to find particles which cross the plane
     self.old_zp = zeros(top.zp.shape[0],'d')
@@ -70,7 +76,8 @@ Input:
     self.f.ymmin     = w3d.ymmin
     self.f.ymmax     = w3d.ymmax
     self.f.dt        = top.dt
-
+    self.f.deltaz    = self.deltaz
+     
     # set sym_plane and write it out
     if (w3d.l4symtry):
       sym_plane = 4
@@ -122,7 +129,7 @@ Input:
 
       # get the two planes of phi to be saved
       iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
-      self.f.write('phiplane%08d'%self.it,w3d.phi[self.nx0:self.nxm+1,self.ny0:self.nym+1,iz-1:iz+1])
+      self.f.write('phiplane%08d'%self.it,w3d.phi[self.nx0:self.nxm+1,self.ny0:self.nym+1,iz-self.izz:iz+1:self.izz])
 
     # close file
     self.f.set_verbosity(0)
