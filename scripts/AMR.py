@@ -4,6 +4,16 @@ from MeshRefinement import *
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox,DXImage
 import time
 
+try:
+  enumerate
+except:
+  def enumerate(ll):
+    tt = []
+    for i in range(len(ll)):
+      tt.append((i,ll[i]))
+    return tt
+
+
 class AMRtree(Visualizable):
     """
   Adaptive Mesh Refinement class.
