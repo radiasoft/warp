@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.44 2004/07/02 23:16:20 jlvay Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.45 2004/07/12 18:33:07 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -925,8 +925,9 @@ in the celemid array. It returns each element only once.
         if top.mmltas[mid] != top.mmltze[mid]:
           # --- Use aperture start and end, adding the same offset that was
           # --- added to mmltzs to get cmmltzs.
-          mzs = top.mmltas[mid] + (top.cmmltzs[0,io] - top.mmltzs[mid])
-          mze = top.mmltae[mid] + (top.cmmltzs[0,io] - top.mmltzs[mid])
+          tempmzs = mzs
+          mzs = top.mmltas[mid] + (tempmzs - top.mmltzs[mid])
+          mze = top.mmltae[mid] + (tempmzs - top.mmltzs[mid])
         if self.roundpipe(mid,mzs,mze,top.mmltap,top.mmltax,top.mmltay,
                           top.mmltox,top.mmltoy,self.mmltcm):
           return
