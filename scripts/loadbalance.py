@@ -5,13 +5,15 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.13 2001/08/14 16:21:34 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.14 2001/08/14 18:25:03 dave Exp $"
 
 def loadbalancedoc():
   print """
 Various routines for doing loading balancing for the parallel version
 setparticledomains: Applies decomposition given a list of domain sizes
 loadbalanceparticles: Load balances the particles based on pnumz
+loadbalancesor: Load balances the SOR solver, balancing the total work in
+                the solver including the work specifying the conductors.
   """
 
 #########################################################################
@@ -32,12 +34,12 @@ that has already been done.
   assert min(zslave) > 0.,"The length of all particle domains must be > 0."
 
   # --- Save some data which will need to be redistributed
-  eearsofz = _gatherallzarray(top.eearsofz)
-  prwallz  = _gatherallzarray(top.prwallz)
-  prwallxz = _gatherallzarray(top.prwallxz)
-  prwallyz = _gatherallzarray(top.prwallyz)
-  prwelips = _gatherallzarray(top.prwelips)
-  lostpars = _gatherallzarray(top.lostpars,'i')
+  eearsofz = gatherallzarray(top.eearsofz)
+  prwallz  = gatherallzarray(top.prwallz)
+  prwallxz = gatherallzarray(top.prwallxz)
+  prwallyz = gatherallzarray(top.prwallyz)
+  prwelips = gatherallzarray(top.prwelips)
+  lostpars = gatherallzarray(top.lostpars,'i')
   phi = w3d.phi + 0.
   rho = w3d.rho + 0.
 
@@ -75,7 +77,7 @@ that has already been done.
     top.nzpslave[i] = int((top.zpslmax[i] - top.zmslmin[0])/w3d.dz) - \
                       top.izpslave[i] + 1
 
-  # --- Make sure that the last processors doesn't have grid cells
+  # --- Make sure that the last processor doesn't have grid cells
   # --- sticking out the end.
   top.nzpslave[-1] = w3d.nzfull - top.izpslave[-1]
 
@@ -96,12 +98,12 @@ that has already been done.
   w3d.rho[:,:,newiz1:newiz2] = rho[:,:,oldiz1:oldiz2]
 
   # --- Restore some data which needed to be redistributed
-  top.eearsofz[:] = _scatterallzarray(eearsofz)
-  top.prwallz[:]  = _scatterallzarray(prwallz)
-  top.prwallxz[:] = _scatterallzarray(prwallxz)
-  top.prwallyz[:] = _scatterallzarray(prwallyz)
-  top.prwelips[:] = _scatterallzarray(prwelips)
-  top.lostpars[:] = _scatterallzarray(lostpars)
+  top.eearsofz[:] = scatterallzarray(eearsofz)
+  top.prwallz[:]  = scatterallzarray(prwallz)
+  top.prwallxz[:] = scatterallzarray(prwallxz)
+  top.prwallyz[:] = scatterallzarray(prwallyz)
+  top.prwelips[:] = scatterallzarray(prwelips)
+  top.lostpars[:] = scatterallzarray(lostpars)
 
   # --- Correct the locations of conductor points for the field-solver.
   newiz = top.izslave[me]
@@ -299,7 +301,7 @@ def _adjustz():
   # --- If space-charge limited injection is turned on, then add additional
   # --- grid cells to the first processor so it will have the injection
   # --- surface completely covered.
-  if inject > 1:
+  if top.inject > 1:
     zinjmax = top.ainject**2/(top.rinject+sqrt(top.rinject**2-top.ainject**2))
     nzinj = int(max(top.zinject + zinjmax - w3d.zmmin)/w3d.dz + w3d.inj_d) + 1
     top.nzpslave[0] = max(top.nzpslave[0],nzinj)
