@@ -44,7 +44,7 @@ from warp import *
 import operator
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.35 2003/11/21 22:42:55 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.36 2003/11/22 03:19:50 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1416,6 +1416,31 @@ Plate from beamlet pre-accelerator
 
 #============================================================================
 #============================================================================
+def findcirclecenter(zz,rr,rad,zc,rc):
+  """Utility routine for surface of revoluation routines.
+Given two points and a radius, this finds the center of the cirlce.
+  """
+  for i in range(len(zz)-1):
+    if rad[i] == largepos:
+      zc[i] = 0.
+      rc[i] = 0.
+    elif zc[i] is None or rc[i] is None:
+      assert rad[i]**2 > ((zz[i] - zz[i+1])**2 + (rr[i] - rr[i+1])**2),\
+             "Radius of circle must be larger than the distance between points"
+      zm = 0.5*(zz[i] + zz[i+1])
+      rm = 0.5*(rr[i] + rr[i+1])
+      dbm = sqrt((zm - zz[i+1])**2 + (rm - rr[i+1])**2)
+      dcm = sqrt(rad[i]**2 - dbm**2)
+      angle1 = arcsin((rm - rr[i+1])/dbm)
+      if rad[i] < 0:
+        zc[i] = zm + dcm*sin(angle1)
+        rc[i] = rm + dcm*cos(angle1)
+      else:
+        zc[i] = zm - dcm*sin(angle1)
+        rc[i] = rm - dcm*cos(angle1)
+  zc[-1] = 0.
+  rc[-1] = 0.
+#============================================================================
 class ZSrfrvOut(Assembly):
   """
 Outside of a surface of revolution
@@ -1427,11 +1452,18 @@ Outside of a surface of revolution
   - condid=1: conductor id of cone, must be integer
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
+      raddata[i] is radius for segment from zdata[i] to zdata[i+1]
+  - zcdata=None: z center of circle or curved segment
+  - rcdata=None: r center of circle or curved segment
+  - raddata=None: optional radius of curvature of segments
+      The centers of the circles will be calculated automatically if
+      not supplied.
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofzfunc,zmin,zmax,rmax=largepos,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
-                    rofzdata=None,zdata=None):
+                    rofzdata=None,zdata=None,raddata=None,
+                    zcdata=None,rcdata=None):
     kwlist = ['rofzfunc','zmin','zmax','rmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvoutconductorf,zsrfrvoutconductord)
@@ -1442,20 +1474,26 @@ Outside of a surface of revolution
 
     # --- Deal with tablized data.
     # --- Make sure the input is consistent
-    assert ((rofzdata is None and zdata is None)
-            or (operator.isSequenceType(rofzdata) and
-                operator.isSequenceType(zdata))),\
-           ("Either neither of rofzdata and zdata or both must be given, "+
-            "and if given, they must be sequences.")
     if operator.isSequenceType(rofzdata):
-      assert (len(rofzdata) == len(zdata)),\
-             "rofzdata and zdata must be the same length"
       self.usedata = true
-      # --- Make sure that the data is an array.
-      self.rofzdata = array(rofzdata,typecode='d',copy=0)
-      self.zdata = array(zdata,typecode='d',copy=0)
+      self.zdata = zdata
+      self.rofzdata = self.checkdata(rofzdata,zdata,rmax)
+      self.raddata = self.checkdata(raddata,zdata,largepos)
+      self.zcdata = self.checkdata(zcdata,zdata,None)
+      self.rcdata = self.checkdata(rcdata,zdata,None)
+      findcirclecenter(self.zdata,self.rofzdata,self.raddata,
+                       self.zcdata,self.rcdata)
+      self.rofzfunc = ' '
     else:
       self.usedata = false
+
+  def checkdata(self,data,zdata,default):
+    if data is None:
+      data = len(zdata)*[default]
+    else:
+      assert len(data) == len(zdata),\
+             "All input arrays for each of min and max must be the same size"
+    return data
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
@@ -1477,6 +1515,9 @@ Outside of a surface of revolution
       f3d.npnts_sr = len(self.zdata)
       f3d.forceassign('z_sr',self.zdata)
       f3d.forceassign('r_sr',self.rofzdata)
+      f3d.forceassign('rad_sr',self.raddata)
+      f3d.forceassign('zc_sr',self.zcdata)
+      f3d.forceassign('rc_sr',self.rcdata)
     else:
       f3d.lsrlinr = false
 
@@ -1494,11 +1535,18 @@ Inside of a surface of revolution
   - condid=1: conductor id of cone, must be integer
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
+  - raddata=None: optional radius of curvature of segments
+      raddata[i] is radius for segment from zdata[i] to zdata[i+1]
+  - zcdata=None: z center of circle or curved segment
+  - rcdata=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied.
     Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofzfunc,zmin,zmax,rmin=0,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
-                    rofzdata=None,zdata=None):
+                    rofzdata=None,zdata=None,raddata=None,
+                    zcdata=None,rcdata=None):
     kwlist = ['rofzfunc','zmin','zmax','rmin','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinconductorf,zsrfrvinconductord)
@@ -1509,21 +1557,27 @@ Inside of a surface of revolution
 
     # --- Deal with tablized data.
     # --- Make sure the input is consistent
-    assert ((rofzdata is None and zdata is None)
-            or (operator.isSequenceType(rofzdata) and
-                operator.isSequenceType(zdata))),\
-           ("Either neither of rofzdata and zdata or both must be given, "+
-            "and if given, they must be sequences.")
     if operator.isSequenceType(rofzdata):
-      assert (len(rofzdata) == len(zdata)),\
-             "rofzdata and zdata must be the same length"
       self.usedata = true
-      # --- Make sure that the data is an array.
-      self.rofzdata = array(rofzdata,typecode='d',copy=0)
-      self.zdata = array(zdata,typecode='d',copy=0)
+      self.zdata = zdata
+      self.rofzdata = self.checkdata(rofzdata,zdata,rmin)
+      self.raddata = self.checkdata(raddata,zdata,largepos)
+      self.zcdata = self.checkdata(zcdata,zdata,None)
+      self.rcdata = self.checkdata(rcdata,zdata,None)
+      findcirclecenter(self.zdata,self.rofzdata,self.raddata,
+                       self.zcdata,self.rcdata)
+      self.rofzfunc = ' '
     else:
       self.usedata = false
 
+  def checkdata(self,data,zdata,default):
+    if data is None:
+      data = len(zdata)*[default]
+    else:
+      assert len(data) == len(zdata),\
+             "All input arrays for each of min and max must be the same size"
+    return data
+        
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
     # --- Make sure the rofzfunc is in main.
@@ -1544,6 +1598,9 @@ Inside of a surface of revolution
       f3d.npnts_sr = len(self.zdata)
       f3d.forceassign('z_sr',self.zdata)
       f3d.forceassign('r_sr',self.rofzdata)
+      f3d.forceassign('rad_sr',self.raddata)
+      f3d.forceassign('zc_sr',self.zcdata)
+      f3d.forceassign('rc_sr',self.rcdata)
     else:
       f3d.lsrlinr = false
 
@@ -1559,12 +1616,20 @@ Betweem surfaces of revolution
   - condid=1: conductor id of cone, must be integer
   - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
   - zmindata,zmaxdata=None: optional tablized data of z locations of r data
+  - radmindata,radmaxdata=None: optional radius of curvature of segments
+      radmindata[i] is radius for segment from zmindata[i] to zmindata[i+1]
+  - zcmindata,zcmaxdata=None: z center of circle or curved segment
+  - rcmindata,rcmaxdata=None: r center of circle or curved segment
+      The centers of the circles will be calculated automatically if
+      not supplied.
     Note that if tablized data is given, the first two arguments are ignored.
   """
   def __init__(self,rminofz,rmaxofz,zmin,zmax,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
-                    rminofzdata=None,zmindata=None,
-                    rmaxofzdata=None,zmaxdata=None):
+                    rminofzdata=None,zmindata=None,radmindata=None,
+                    rcmindata=None,zcmindata=None,
+                    rmaxofzdata=None,zmaxdata=None,radmaxdata=None,
+                    rcmaxdata=None,zcmaxdata=None):
     kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinoutconductorf,zsrfrvinoutconductord)
@@ -1574,36 +1639,42 @@ Betweem surfaces of revolution
     self.zmax = zmax
 
     # --- Deal with tablized data.
-    # --- Make sure the input is consistent
-    assert ((rminofzdata is None and zmindata is None)
-            or (operator.isSequenceType(rminofzdata) and
-                operator.isSequenceType(zmindata))),\
-           ("Either neither of rminofzdata and zmindata or both must be "+
-            "given, and if given, they must be sequences.")
-    if operator.isSequenceType(rminofzdata):
-      assert (len(rminofzdata) == len(zmindata)),\
-             "rminofzdata and zmindata must be the same length"
+    # --- Making sure the input is consistent
+    if operator.isSequenceType(zmindata):
       self.usemindata = true
-      # --- Make sure that the data is an array.
-      self.rminofzdata = array(rminofzdata,typecode='d',copy=0)
-      self.zmindata = array(zmindata,typecode='d',copy=0)
+      self.zmindata = zmindata
+      self.rminofzdata = self.checkdata(rminofzdata,zmindata,0.)
+      self.radmindata = self.checkdata(radmindata,zmindata,largepos)
+      self.rcmindata = self.checkdata(rcmindata,zmindata,None)
+      self.zcmindata = self.checkdata(zcmindata,zmindata,None)
+      findcirclecenter(self.zmindata,self.rminofzdata,self.radmindata,
+                       self.zcmindata,self.rcmindata)
+      self.rminofz = ' '
+      self.rmaxofz = ' '
     else:
       self.usemindata = false
 
-    assert ((rmaxofzdata is None and zmaxdata is None)
-            or (operator.isSequenceType(rmaxofzdata) and
-                operator.isSequenceType(zmaxdata))),\
-           ("Either neither of rmaxofzdata and zmaxdata or both must be "+
-            "given, and if given, they must be sequences.")
-    if operator.isSequenceType(rmaxofzdata):
-      assert (len(rmaxofzdata) == len(zmaxdata)),\
-             "rmaxofzdata and zmaxdata must be the same length"
+    if operator.isSequenceType(zmaxdata):
       self.usemaxdata = true
-      # --- Make sure that the data is an array.
-      self.rmaxofzdata = array(rmaxofzdata,typecode='d',copy=0)
-      self.zmaxdata = array(zmaxdata,typecode='d',copy=0)
+      self.zmaxdata = zmaxdata
+      self.rmaxofzdata = self.checkdata(rmaxofzdata,zmaxdata,largepos)
+      self.radmaxdata = self.checkdata(radmaxdata,zmaxdata,largepos)
+      self.rcmaxdata = self.checkdata(rcmaxdata,zmaxdata,None)
+      self.zcmaxdata = self.checkdata(zcmaxdata,zmaxdata,None)
+      findcirclecenter(self.zmaxdata,self.rmaxofzdata,self.radmaxdata,
+                       self.zcmaxdata,self.rcmaxdata)
+      self.rminofz = ' '
+      self.rmaxofz = ' '
     else:
       self.usemaxdata = false
+
+  def checkdata(self,data,zdata,default):
+    if data is None:
+      data = len(zdata)*[default]
+    else:
+      assert len(data) == len(zdata),\
+             "All input arrays for each of min and max must be the same size"
+    return data
 
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
@@ -1630,6 +1701,9 @@ Betweem surfaces of revolution
       f3d.npnts_srmin = len(self.zmindata)
       f3d.forceassign('z_srmin',self.zmindata)
       f3d.forceassign('r_srmin',self.rminofzdata)
+      f3d.forceassign('rad_srmin',self.radmindata)
+      f3d.forceassign('zc_srmin',self.zcmindata)
+      f3d.forceassign('rc_srmin',self.rcmindata)
     else:
       f3d.lsrminlinr = false
 
@@ -1638,6 +1712,9 @@ Betweem surfaces of revolution
       f3d.npnts_srmax = len(self.zmaxdata)
       f3d.forceassign('z_srmax',self.zmaxdata)
       f3d.forceassign('r_srmax',self.rmaxofzdata)
+      f3d.forceassign('rad_srmax',self.radmaxdata)
+      f3d.forceassign('zc_srmax',self.zcmaxdata)
+      f3d.forceassign('rc_srmax',self.rcmaxdata)
     else:
       f3d.lsrmaxlinr = false
 
