@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.95 $, $Date: 2003/03/25 22:52:37 $
+c@(#) File W3D.M, version $Revision: 3.96 $, $Date: 2003/03/26 17:39:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3942,6 +3942,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: substarttime,wtime
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
       integer(ISZ):: spreadx, spready
+      integer(ISZ):: ixmin,ixmax,iymin,iymax
       integer(ISZ), external :: oneiftrue
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -4467,6 +4468,9 @@ c           --- injected at edges of the grid that are not symmetry planes.
 
             do is=1,ns
 
+c             --- Don't bother doing anything if finject is 0.
+              if (finject(ij,is) == 0.) cycle
+
 c             --- The factor to convert current density to particle number.
 c             --- The absolute value is taken of sq so the factor is always
 c             --- positive.
@@ -4500,8 +4504,12 @@ c             --- is only strictly correct for planar emission.
             enddo
 
 c           --- Load particles one grid cell at a time.
-            do iy=0,inj_ny * oneiftrue(.not. l_inj_rz)
-              do ix=0,inj_nx
+            ixmin = max(0,     int((xinj-ainj-xmmin)/dx-1))
+            ixmax = min(inj_nx,int((xinj+ainj-xmmin)/dx+2))
+            iymin = max(0,     int((yinj-binj-ymmin)/dy-1))*oneiftrue(.not. l_inj_rz)
+            iymax = min(inj_ny,int((yinj+binj-ymmin)/dy+2))*oneiftrue(.not. l_inj_rz)
+            do iy=iymin,iymax
+              do ix=ixmin,ixmax
 
 c               --- Mesh location
                 xm = xmmin + ix*inj_dx
