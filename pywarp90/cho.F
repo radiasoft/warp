@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.12 $, $Date: 2003/01/07 18:32:56 $
+c@(#) File CHO.F, version $Revision: 1.13 $, $Date: 2003/05/22 00:13:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -66,7 +66,7 @@ c Interface to the Chombo/AMR fieldsolver.
       real(kind=8):: x0(3)
       integer(ISZ):: domain(3,2)
       integer(ISZ):: subdomains(3,2,0:maxslaves-1)
-      integer(ISZ):: refratios(cho_nlevels-1)
+      integer(ISZ):: refratios(cho_nlevels)
 
 #ifdef WITHCHOMBO
       call amrfieldsolve(iwhich)
@@ -75,12 +75,27 @@ c Interface to the Chombo/AMR fieldsolver.
 #ifdef WITHCHP
       if (iwhich == 0 .or. iwhich == 1) then
 
+c       if (cho_handle /= 0) then
+c         --- If the handle is already set, destroy the old one.
+c         call chp_destroy(cho_handle,cho_status)
+c         if (cho_status > 0) then
+c           print*,"Warning from chp_destroy, status = ",cho_status
+c         else if (cho_status < 0) then
+c           print*,"Fatal error from chp_destroy, status = ",cho_status
+c           stop
+c         endif
+c       endif
+
+c       --- Create a handle refering to an instance of the Chombo solver
         call chp_create(cho_handle,cho_status)
-        if (cho_status < 0) then
-          print*,"Fatal error from chp_create"
+        if (cho_status > 0) then
+          print*,"Warning from chp_create, status = ",cho_status
+        else if (cho_status < 0) then
+          print*,"Fatal error from chp_create, status = ",cho_status
           stop
         endif
 
+c       --- Initialize data describing the mesh and pass it to Chombo.
         x0(1) = xmmin
         x0(2) = ymmin
         x0(3) = zmminglobal
@@ -92,35 +107,54 @@ c Interface to the Chombo/AMR fieldsolver.
         subdomains(1,2,:) = nx
         subdomains(2,1,:) = 0
         subdomains(2,2,:) = ny
+#ifdef MPIPARALLEL
         subdomains(3,1,:) = izpslave
         subdomains(3,2,:) = izpslave + nzpslave
+#else
+        subdomains(3,1,:) = 0
+        subdomains(3,2,:) = nz
+#endif
         refratios = cho_refratio
         call chp_setgridparams(cho_handle,x0,dx,domain,subdomains,
      &                         cho_nlevels,refratios,cho_maxparticlespercell,
+     &                         cho_tagsbuffercells,cho_fillratio,
      &                         cho_status)
-        if (cho_status < 0) then
-          print*,"Fatal error from chombo"
+        if (cho_status > 0) then
+          print*,"Warning from chp_setgridparams, status = ",cho_status
+        else if (cho_status < 0) then
+          print*,"Fatal error from chp_setgridparams, status = ",cho_status
           stop
         endif
 
+c       --- Setup arrays describing the boundary conditions and pass them to
+c       --- Chombo.
         if (l2symtry) then
           cho_bcflags(2,1) = 1
+          cho_bcvals(2,1) = 0.
         elseif (l4symtry) then
           cho_bcflags(1,1) = 1
           cho_bcflags(2,1) = 1
+          cho_bcvals(1,1) = 0.
+          cho_bcvals(2,1) = 0.
         endif
-        call chp_solverparams(cho_handle,cho_tol,cho_bcflags,cho_status)
-        if (cho_status < 0) then
-          print*,"Fatal error from chp_solverparams"
+        call chp_setsolveparams(cho_handle,cho_tol,cho_bcflags,cho_bcvals,
+     &                          cho_chargeinterptype,cho_debug,cho_status)
+        if (cho_status > 0) then
+          print*,"Warning from chp_solverparams, status = ",cho_status
+        else if (cho_status < 0) then
+          print*,"Fatal error from chp_solverparams, status = ",cho_status
           stop
         endif
 
       endif
 
       if (iwhich == 0 .or. iwhich == -1) then
-        call chp_solve(cho_handle)
-        if (cho_status < 0) then
-          print*,"Fatal error from chp_solve"
+c       --- Make the call to Chombo to do the field solve.
+        call chp_solve(cho_handle,cho_status)
+        if (cho_status > 0) then
+          print*,"Warning from chp_solve, status = ",cho_status
+        else if (cho_status < 0) then
+          print*,"Fatal error from chp_solve, status = ",cho_status
           stop
         endif
       endif
@@ -131,6 +165,7 @@ c Interface to the Chombo/AMR fieldsolver.
       end
 c=============================================================================
       subroutine cho_setrho3d(np,xp,yp,zp,zgrid,sq,sw,js,ip)
+      use Constant
       use CHOHandle
       integer(ISZ):: np
       real(kind=8):: xp(np),yp(np),zp(np)
@@ -157,10 +192,12 @@ c     --- grid frame. Though this does avoid a large temporary
 c     --- array, there maybe a small problem with roundoff.
       zp = zp - zgrid
 
-      call chp_putparticles(cho_handle,cho_bunchid,sq*sw,np,1,xp,yp,zp,
+      call chp_putparticles(cho_handle,cho_bunchid,sq*sw/eps0,np,1,xp,yp,zp,
      &                      cho_status)
-      if (cho_status < 0) then
-        print*,"Fatal error from chp_putparticles"
+      if (cho_status > 0) then
+        print*,"Warning from chp_putparticles, status = ",cho_status
+      else if (cho_status < 0) then
+        print*,"Fatal error from chp_putparticles, status = ",cho_status
         stop
       endif
 
@@ -202,8 +239,10 @@ c     --- array, there maybe a small problem with roundoff.
 
       call chp_getefield(cho_handle,cho_bunchid,np,1,xp,yp,zp,ex,ey,ez,
      &                   cho_status)
-      if (cho_status < 0) then
-        print*,"Fatal error from chp_getefield"
+      if (cho_status > 0) then
+        print*,"Warning from chp_getefield, status = ",cho_status
+      else if (cho_status < 0) then
+        print*,"Fatal error from chp_getefield, status = ",cho_status
         stop
       endif
 
@@ -244,8 +283,10 @@ c     --- array, there maybe a small problem with roundoff.
       zp = zp - zgrid
 
       call chp_getphi(cho_handle,cho_bunchid,np,1,xp,yp,zp,p,cho_status)
-      if (cho_status < 0) then
-        print*,"Fatal error from chp_getphi"
+      if (cho_status > 0) then
+        print*,"Warning from chp_getphi, status = ",cho_status
+      else if (cho_status < 0) then
+        print*,"Fatal error from chp_getphi, status = ",cho_status
         stop
       endif
 
@@ -285,9 +326,12 @@ c     --- grid frame. Though this does avoid a large temporary
 c     --- array, there maybe a small problem with roundoff.
       zp = zp - zgrid
 
-      call chp_getrho(cho_handle,cho_bunchid,np,1,xp,yp,zp,r,cho_status)
-      if (cho_status < 0) then
-        print*,"Fatal error from chp_getrho"
+CCCCCCcall chp_getrho(cho_handle,cho_bunchid,np,1,xp,yp,zp,r,cho_status)
+      print*,"Error: Not yet implemented!!!"
+      if (cho_status > 0) then
+        print*,"Warning from chp_getrho, status = ",cho_status
+      else if (cho_status < 0) then
+        print*,"Fatal error from chp_getrho, status = ",cho_status
         stop
       endif
 
