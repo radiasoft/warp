@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.24 2003/05/06 01:05:24 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.25 2004/01/24 00:53:58 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -103,7 +103,7 @@ Constructor arguments
       s.cmatxy = m
     else:
       if s.newmesh:
-        s.getmesh(s,min(x),max(x),min(y),max(y),max(x),ave(x),ave(y))
+        s.getmesh(s,min(x),max(x),min(y),max(y),ave(x),ave(y))
       s.getmatrix()
   #----------------------------------------------------------------------------
   def getmatrix(s):
@@ -171,18 +171,20 @@ Constructor arguments
                                logical_and(greater(y,w3d.ymmin+yfuzz),
                                            greater(w3d.ymmax-yfuzz,y))),1,0)
   #----------------------------------------------------------------------------
-  def setparticleboundary(s,rpart,xcent,ycent):
+  def setparticleboundary(s,ax,ay,xcent,ycent):
     """
 Sets particle scraping boundaries.
     """
-    top.prwall = rpart
+    top.prwall = ax
+    top.prwelip = ay/ax
     top.prwallx = xcent
     top.prwally = ycent
     top.prwallz = top.prwall
     top.prwallxz = top.prwallx
     top.prwallyz = top.prwally
+    top.prwelipz = top.prwelip
   #----------------------------------------------------------------------------
-  def getmesh(s,xmin,xmax,ymin,ymax,rpart,xcent,ycent):
+  def getmesh(s,xmin,xmax,ymin,ymax,xcent,ycent):
     # --- This routine redefines the mesh to match the size of the element.
     # --- Extend far enough to cover the conductor plus a little extra space to
     # --- keep the conducting points away from the mesh edge.
@@ -264,11 +266,18 @@ Constructor arguments:
             conductor points (implies that the matrix will be calculated)
   """
   #----------------------------------------------------------------------------
-  def __init__(s,ap,v=0.,ox=0.,oy=0.,newmesh=0):
+  def __init__(s,ap,ax=0.,ay=0.,v=0.,ox=0.,oy=0.,newmesh=0):
+    # --- ax and ay take precedence over ap.
+    # --- These lines are repeated in issame.
+    if ax == 0.: ax = ap
+    if ay == 0.: ay = ap
+    if ap == 0.: ap = ax
     # --- Check that the radius is positive
-    if ap <= 0.: raise "Radius must be greater than zero"
+    assert ax > 0. and ay > 0.,"Aperture data is inconsistent - either ap must > 0 or both of ax and ay must be > 0"
     # --- Save the input values
     s.ap = ap
+    s.ax = ax
+    s.ay = ay
     s.v = v
     s.ox = ox
     s.oy = oy
@@ -276,34 +285,38 @@ Constructor arguments:
     # --- Reset the mesh if requested. If this is done, there is no need for
     # --- the error checking.
     if s.newmesh:
-      s.getmesh(ox-ap,ox+ap,oy-ap,oy+ap,ap,ox,oy)
+      s.getmesh(ox-ax,ox+ax,oy-ay,oy+ay,ox,oy)
     else:
       w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
       w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
       # --- Check that the whole pipe circle is within the grid
-      if (ox+ap > w3d.xmmax - w3d.dx) or (oy+ap > w3d.ymmax - w3d.dy):
-        raise "All of round pipe must be within one grid cell of the grid edge"
+      if (ox+ax > w3d.xmmax - w3d.dx) or (oy+ay > w3d.ymmax - w3d.dy):
+        raise "All of round pipe must not be within one grid cell of the grid edge"
       if w3d.l2symtry and \
-         ((ox-ap < w3d.xmmin + w3d.dx) or (oy-ap < -w3d.ymmax + w3d.dy)):
-        raise "All of round pipe must be within one grid cell of the grid edge"
+         ((ox-ax < w3d.xmmin + w3d.dx) or (oy-ay < -w3d.ymmax + w3d.dy)):
+        raise "All of round pipe must not be within one grid cell of the grid edge"
       if w3d.l4symtry and \
-         ((ox-ap < -w3d.xmmax + w3d.dx) or (oy-ap < -w3d.ymmax + w3d.dy)):
-        raise "All of round pipe must be within one grid cell of the grid edge"
+         ((ox-ax < -w3d.xmmax + w3d.dx) or (oy-ay < -w3d.ymmax + w3d.dy)):
+        raise "All of round pipe must not be within one grid cell of the grid edge"
       if (not w3d.l2symtry and not w3d.l4symtry) and \
-         ((ox-ap < w3d.xmmin + w3d.dx) or (oy-ap < w3d.ymmin + w3d.dy)):
-        raise "All of round pipe must be within one grid cell of the grid edge"
+         ((ox-ax < w3d.xmmin + w3d.dx) or (oy-ay < w3d.ymmin + w3d.dy)):
+        raise "All of round pipe must not be within one grid cell of the grid edge"
     # --- Get the symmetry factor
     symm_fact = 1.
     if (w3d.l2symtry): symm_fact = 0.5
     if (w3d.l4symtry): symm_fact = 0.25
     # --- Now, estimate what a good number of points would be.
     # --- The minimum distance between two points that gaurantess that they
-    # --- are not in the same cell is sqrt(dx**2+dy**2). Take as the minimum
-    # --- angle then sqrt(dx**2+dy**2)/r, and divide the circle up evenly.
-    n = int(2*pi*symm_fact*ap/sqrt(w3d.dx**2 + w3d.dy**2))
+    # --- are not in the same cell is sqrt(dx**2+dy**2). Divide the
+    # --- circumference into pieces of that size.
+    # --- The circumference of an ellipse is approximated using a formula
+    # --- from S. Ramanujan.
+    h = (ax - ay)**2/(ax + ay)**2
+    circum = pi*(ax + ay)*(1. + 3.*h/(10. + sqrt(4. - 3.*h)))
+    n = int(symm_fact*circum/sqrt(w3d.dx**2 + w3d.dy**2))
     # --- Now, get the points on the round pipe
-    s.xcond = ap*cos(2.*pi*symm_fact*arange(n)/n) + ox
-    s.ycond = ap*sin(2.*pi*symm_fact*arange(n)/n) + oy
+    s.xcond = ax*cos(2.*pi*symm_fact*arange(n)/n) + ox
+    s.ycond = ay*sin(2.*pi*symm_fact*arange(n)/n) + oy
     s.vcond = s.v*ones(n,'d')
     # --- and the matrix using those points
     s.getmatrix() 
@@ -311,11 +324,16 @@ Constructor arguments:
   def setmatrix(s,v=None):
     if v is not None: s.vcond[:] = v
     CapacityMatrix.setmatrix(s,s.vcond)
-    s.setparticleboundary(s.ap,s.ox,s.oy)
+    s.setparticleboundary(s.ax,s.ay,s.ox,s.oy)
   #----------------------------------------------------------------------------
-  def issame(s,ap,ox,oy):
+  def issame(s,ap,ax,ay,ox,oy):
+    # --- ax and ay take precedence over ap.
+    # --- These lines must be idenitcal to the ones at the top of init.
+    if ax == 0.: ax = ap
+    if ay == 0.: ay = ap
+    if ap == 0.: ap = ax
     # --- Checks if the input values would return the same matrix
-    if s.ap == ap:
+    if s.ap == ap and s.ax == ax and s.ay == ay:
       if s.ox == ox and s.oy == oy:
         return 1
     return 0
@@ -362,8 +380,7 @@ Constructor arguments:
       # --- Set gridmax to be big enough to include the specified amount
       # --- of the quadrupole rods
       gridmax = s.ap + s.rr*2*s.rodfract
-      s.getmesh(s.ox-gridmax,s.ox+gridmax,s.oy-gridmax,s.oy+gridmax,
-                s.ap,s.ox,s.oy)
+      s.getmesh(s.ox-gridmax,s.ox+gridmax,s.oy-gridmax,s.oy+gridmax,s.ox,s.oy)
     else:
       # --- The grid cell sizes are calculated here explicitly in case
       # --- they havn't yet been calculated.
@@ -433,7 +450,7 @@ Constructor arguments:
       except AttributeError:
         pass
     CapacityMatrix.setmatrix(s,s.vcond)
-    s.setparticleboundary(s.ap,s.ox,s.oy)
+    s.setparticleboundary(s.ap,s.ap,s.ox,s.oy)
   #----------------------------------------------------------------------------
   def issame(s,ap,rr,withx,withy,ox,oy):
     # --- Checks if the input values would return the same matrix
@@ -532,13 +549,13 @@ Constructor arguments:
     m.setmatrix(v)
     s.current = m
   #----------------------------------------------------------------------------
-  def getpipematrix(s,ap,v,ox,oy):
+  def getpipematrix(s,ap,ax,ay,v,ox,oy):
     # --- This searches through the list of matrices checking if one with the
     # --- same parameters has already be created. If so, just return that one.
     for m in s.pipematrixlist:
-      if m.issame(ap,ox,oy): return m
+      if m.issame(ap,ax,ay,ox,oy): return m
     # --- None was found, so create a new one, adding it to the list.
-    m = RoundPipe(ap,v,ox,oy,s.newmesh)
+    m = RoundPipe(ap,ax,ay,v,ox,oy,s.newmesh)
     s.pipematrixlist.append(m)
     return m
   #----------------------------------------------------------------------------
@@ -552,7 +569,7 @@ Constructor arguments:
     s.rodmatrixlist.append(m)
     return m
   #----------------------------------------------------------------------------
-  def roundpipe(s,id,zs,ze,ap,ox,oy,cm):
+  def roundpipe(s,id,zs,ze,ap,ax,ay,ox,oy,cm):
     # --- Only apply matrix is the z location is within the current element
     if zs <= top.zbeam < ze:
       # --- Check if there is a matrix for this element
@@ -560,8 +577,8 @@ Constructor arguments:
         # --- If the list is too short, add some None's in.
         while len(cm) < id+1: cm.append(None)
         # --- Now, add the capacity matrix.
-        if ap[id] > 0.:
-          cm[id] = s.getpipematrix(ap[id],0.,ox[id],oy[id])
+        if ap[id] > 0. or ax[id] > 0. or ay[id] > 0.:
+          cm[id] = s.getpipematrix(ap[id],ax[id],ay[id],0.,ox[id],oy[id])
         else:
           return 0
       s.setmatrix(cm[id],0.)
@@ -690,7 +707,7 @@ Constructor arguments:
                         top.qoffx[qid],top.qoffy[qid],s.quadcm):
             return
         else:
-          if s.roundpipe(qid,qzs,qze,top.quadap,
+          if s.roundpipe(qid,qzs,qze,top.quadap,top.quadax,top.quaday,
                          top.qoffx,top.qoffy,s.quadcm):
             return
     #--------------------------------------------------------------------------
@@ -699,7 +716,7 @@ Constructor arguments:
         aid = top.cacclid[0,io]
         azs = top.cacclzs[0,io]
         aze = top.cacclze[0,io]
-        if s.roundpipe(aid,azs,aze,top.acclap,
+        if s.roundpipe(aid,azs,aze,top.acclap,top.acclax,top.acclay,
                        top.acclox,top.accloy,s.acclcm):
           return
     #--------------------------------------------------------------------------
@@ -719,7 +736,7 @@ Constructor arguments:
         mid = top.cmmltid[0,io]
         mzs = top.cmmltzs[0,io]
         mze = top.cmmltze[0,io]
-        if s.roundpipe(mid,mzs,mze,top.mmltap,
+        if s.roundpipe(mid,mzs,mze,top.mmltap,top.mmltax,top.mmltay,
                        top.mmltox,top.mmltoy,s.mmltcm):
           return
     #--------------------------------------------------------------------------
@@ -739,7 +756,7 @@ Constructor arguments:
         bid = top.cbgrdid[0,io]
         bzs = top.cbgrdzs[0,io]
         bze = top.cbgrdze[0,io]
-        if s.roundpipe(bid,bzs,bze,top.bgrdap,
+        if s.roundpipe(bid,bzs,bze,top.bgrdap,top.bgrdax,top.bgrday,
                        top.bgrdox,top.bgrdoy,s.bgrdcm):
           return
     #--------------------------------------------------------------------------
@@ -757,7 +774,7 @@ Constructor arguments:
                         top.heleox[hid],top.heleoy[hid],s.helecm):
             return
         else:
-          if s.roundpipe(hid,hzs,hze,top.heleap,
+          if s.roundpipe(hid,hzs,hze,top.heleap,top.heleax,top.heleay,
                          top.heleox,top.heleoy,s.helecm):
             return
     #--------------------------------------------------------------------------
@@ -765,7 +782,7 @@ Constructor arguments:
       bid = top.cbendid[0]
       bzs = top.cbendzs[0]
       bze = top.cbendze[0]
-      if s.roundpipe(bid,bzs,bze,top.bendap,
+      if s.roundpipe(bid,bzs,bze,top.bendap,top.bendax,top.benday,
                      top.bendox,top.bendoy,s.bendcm):
         return
     #--------------------------------------------------------------------------
@@ -774,7 +791,7 @@ Constructor arguments:
         did = top.cdipoid[0,io]
         dzs = top.cdipozs[0,io]
         dze = top.cdipoze[0,io]
-        if s.roundpipe(did,dzs,dze,top.dipoap,
+        if s.roundpipe(did,dzs,dze,top.dipoap,top.dipoax,top.dipoay,
                        top.dipoox,top.dipooy,s.dipocm):
           return
     #--------------------------------------------------------------------------
@@ -783,7 +800,7 @@ Constructor arguments:
         sid = top.csextid[0,io]
         szs = top.csextzs[0,io]
         sze = top.csextze[0,io]
-        if s.roundpipe(sid,szs,sze,top.sextap,
+        if s.roundpipe(sid,szs,sze,0., #top.sextap,
                        top.sextox,top.sextoy,s.sextcm):
           return
     #--------------------------------------------------------------------------
@@ -794,7 +811,7 @@ Constructor arguments:
         did = top.cdrftid[0,io]
         dzs = top.cdrftzs[0,io]
         dze = top.cdrftze[0,io]
-        if s.roundpipe(did,dzs,dze,top.drftap,
+        if s.roundpipe(did,dzs,dze,top.drftap,top.drftax,top.drftay,
                        top.drftox,top.drftoy,s.drftcm):
           return
     # --- If this part of the code is reached, then there are no applicable
@@ -843,16 +860,16 @@ Makes a plot of the conductor.
     # --- Plot the edge of the mesh last
     if plotedge:
       if w3d.l4symtry and plotsym:
-        plg([-w3d.xmmax, w3d.xmmax,w3d.xmmax,-w3d.xmmax,-w3d.xmmax],
-            [-w3d.ymmax,-w3d.ymmax,w3d.ymmax, w3d.ymmax,-w3d.ymmax],
+        plg([-w3d.ymmax, w3d.ymmax,w3d.ymmax,-w3d.ymmax,-w3d.ymmax],
+            [-w3d.xmmax,-w3d.xmmax,w3d.xmmax, w3d.xmmax,-w3d.xmmax],
             color=ecolor)
       elif w3d.l2symtry and plotsym:
-        plg([ w3d.xmmin, w3d.xmmax,w3d.xmmax, w3d.xmmin, w3d.xmmin],
-            [-w3d.ymmax,-w3d.ymmax,w3d.ymmax, w3d.ymmax,-w3d.ymmax],
+        plg([ w3d.ymmin, w3d.ymmax,w3d.ymmax, w3d.ymmin, w3d.ymmin],
+            [-w3d.xmmax,-w3d.xmmax,w3d.xmmax, w3d.xmmax,-w3d.xmmax],
             color=ecolor)
       else:
-        plg([ w3d.xmmin, w3d.xmmax,w3d.xmmax, w3d.xmmin, w3d.xmmin],
-            [ w3d.ymmin, w3d.ymmin,w3d.ymmax, w3d.ymmax, w3d.ymmin],
+        plg([ w3d.ymmin, w3d.ymmax,w3d.ymmax, w3d.ymmin, w3d.ymmin],
+            [ w3d.xmmin, w3d.xmmin,w3d.xmmax, w3d.xmmax, w3d.xmmin],
             color=ecolor)
 
 
