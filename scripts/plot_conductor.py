@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.8 2001/03/03 02:08:49 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.9 2001/03/05 21:18:05 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -636,11 +636,11 @@ def plotelementoutline(color,gridframe,axis,iquad,nquad,
     rodap = eap[i]
     if erl[i] > 0.:
       rodlen = erl[i]
-      gp = egp[i]
+      gp = egp[i]*gpsign
       gaplen = egl[i]
     else:
       rodlen = (eze[i] - ezs[i])
-      gp = 1
+      gp = 1*gpsign
       gaplen = 0.
     if err[i] > 0.: rodrr = err[i]
     else:           rodrr = 8./7.*eap[i]
@@ -648,7 +648,7 @@ def plotelementoutline(color,gridframe,axis,iquad,nquad,
     else:           offset = eoy[i]
     if rodap > 0. and rodlen > 0.:
       rr = rodap + rodrr + rodrr*array([1.,1.,-1.,-1.,1.])
-      zz = gpsign*(-0.5*(rodlen+gaplen) + rodlen*array([0.,1.,1.,0.,0.]))
+      zz = gp*(-0.5*(rodlen+gaplen) + rodlen*array([0.,1.,1.,0.,0.]))
       rr1 = offset + rr
       rr2 = offset - rr
       zz = 0.5*(eze[i] + ezs[i]) + top.zlatstrt + zz
