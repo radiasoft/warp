@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.40 2001/05/14 20:02:08 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.41 2001/06/16 00:26:45 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -837,6 +837,8 @@ def pptitleright(iw=0,kwdict={},**kw):
 #############################################################################
 def ppgeneric_doc(x,y):
   doc = selectparticles.__doc__ + """
+  - z: optional third particle data quantity - when supplied, it is deposited
+       on a grid and that is used for contour levels.
   - grid: optional grid to plot (instead of deriving grid from particle data)
   - nx, ny: grid size, defaults to 20x20
   - slope=0.: slope to subtract from %(y)s coordinate (%(y)s-slope*%(x)s)
@@ -880,7 +882,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   - y, x: optional particle data (instead of using inputted grid)
   """
   # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {'grid':None,'nx':20,'ny':20,'slope':0.,
+  kwdefaults = {'z':None,'grid':None,'nx':20,'ny':20,'slope':0.,
                 'offset':0.,'titles':1,'lframe':0,
                 'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
@@ -917,7 +919,11 @@ Note that either the x and y coordinates or the grid must be passed in.
          "both x and y must be specified if particles are to be plotted"
   assert ((type(x) != ArrayType and type(y) != ArrayType) or len(x) == len(y)),\
          "both x and y must be of the same length"
+  assert (type(z) == NoneType) or (type(z) == ArrayType and len(z) == len(x)),\
+         "z must be the same length as x"
   assert (type(slope) != StringType),"slope must be a number"
+  assert (type(z) == NoneType) or (type(grid) == NoneType),\
+         "only one of z and grid can be specified"
 
   # -- Set the plotting view window
   plsys(view)
@@ -977,15 +983,36 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- it from the inputted particle data (if there was any)
   if type(grid) != ArrayType and \
      (hash or contours or color=='density' or chopped):
-    densitygrid = 1
-    # --- Create space for data
-    grid = fzeros((1+nx,1+ny),'d')
+    if type(z) == NoneType:
+      densitygrid = 1
 
-    # --- Deposit the density onto the grid.
-    setgrid2d(len(x),x,yms,nx,ny,grid,xmin,xmax,ymin,ymax)
+      # --- Create space for data
+      grid = fzeros((1+nx,1+ny),'d')
 
-    # --- If parallel, do a reduction on the grid
-    if lparallel: grid = parallelsum(grid)
+      # --- Deposit the density onto the grid.
+      setgrid2d(len(x),x,yms,nx,ny,grid,xmin,xmax,ymin,ymax)
+
+      # --- If parallel, do a reduction on the grid
+      if lparallel: grid = parallelsum(grid)
+
+    else:
+      densitygrid = 0
+
+      # --- Create space for data
+      grid = fzeros((1+nx,1+ny),'d')
+      gridcount = fzeros((1+nx,1+ny),'d')
+
+      # --- Deposit the data onto the grid. itask is 1 so that the parallel
+      # --- version can be done properly.
+      deposgrid2d(1,len(x),x,yms,z,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
+
+      # --- If parallel, do a reduction on the grid
+      if lparallel:
+        grid = parallelsum(grid)
+        gridcount = parallelsum(gridcount)
+
+      # --- Divide out the particle counts by hand.
+      grid = grid/where(greater(gridcount,0.),gridcount,1.)
 
   elif (hash or contours or color=='density' or chopped):
     densitygrid = 0
@@ -1021,6 +1048,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
   if contours and filled:
+    print shape(grid1),shape(ymesh),shape(xmesh)
     plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
           color=ccolor,contours=contours,filled=filled)
 
