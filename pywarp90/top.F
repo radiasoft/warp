@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.23 $, $Date: 2001/09/20 00:50:31 $
+c@(#) File TOP.M, version $Revision: 3.24 $, $Date: 2001/10/16 20:48:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4054,37 +4054,39 @@ c       --- CRAY C90.  WARNING: if NUMZMMNT changes, this loop needs to be
 c       --- adjusted to reflect that change.  Note that the similar loops
 c       --- below are still faster in their present form.
         do ip=1,np
-c         do im=1,NUMZMMNT
-c           zmmnts0(im) = zmmnts0(im) + pmmnts(ip,im)
-c         enddo
-          zmmnts0( 1) = zmmnts0( 1) + pmmnts( 1,ip)
-          zmmnts0( 2) = zmmnts0( 2) + pmmnts( 2,ip)
-          zmmnts0( 3) = zmmnts0( 3) + pmmnts( 3,ip)
-          zmmnts0( 4) = zmmnts0( 4) + pmmnts( 4,ip)
-          zmmnts0( 5) = zmmnts0( 5) + pmmnts( 5,ip)
-          zmmnts0( 6) = zmmnts0( 6) + pmmnts( 6,ip)
-          zmmnts0( 7) = zmmnts0( 7) + pmmnts( 7,ip)
-          zmmnts0( 8) = zmmnts0( 8) + pmmnts( 8,ip)
-          zmmnts0( 9) = zmmnts0( 9) + pmmnts( 9,ip)
-          zmmnts0(10) = zmmnts0(10) + pmmnts(10,ip)
-          zmmnts0(11) = zmmnts0(11) + pmmnts(11,ip)
-          zmmnts0(12) = zmmnts0(12) + pmmnts(12,ip)
-          zmmnts0(13) = zmmnts0(13) + pmmnts(13,ip)
-          zmmnts0(14) = zmmnts0(14) + pmmnts(14,ip)
-          zmmnts0(15) = zmmnts0(15) + pmmnts(15,ip)
-          zmmnts0(16) = zmmnts0(16) + pmmnts(16,ip)
-          zmmnts0(17) = zmmnts0(17) + pmmnts(17,ip)
-          zmmnts0(18) = zmmnts0(18) + pmmnts(18,ip)
-          zmmnts0(19) = zmmnts0(19) + pmmnts(19,ip)
-          zmmnts0(20) = zmmnts0(20) + pmmnts(20,ip)
-          zmmnts0(21) = zmmnts0(21) + pmmnts(21,ip)
-          zmmnts0(22) = zmmnts0(22) + pmmnts(22,ip)
-          zmmnts0(23) = zmmnts0(23) + pmmnts(23,ip) 
-          zmmnts0(24) = zmmnts0(24) + pmmnts(24,ip) 
-          zmmnts0(25) = zmmnts0(25) + pmmnts(25,ip) 
-          zmmnts0(26) = zmmnts0(26) + pmmnts(26,ip) 
-          zmmnts0(27) = zmmnts0(27) + pmmnts(27,ip) 
-          zmmnts0(28) = zmmnts0(28) + pmmnts(28,ip) 
+          if (pp(0,ip) > 0.) then
+c           do im=1,NUMZMMNT
+c             zmmnts0(im) = zmmnts0(im) + pmmnts(ip,im)
+c           enddo
+            zmmnts0( 1) = zmmnts0( 1) + pmmnts( 1,ip)
+            zmmnts0( 2) = zmmnts0( 2) + pmmnts( 2,ip)
+            zmmnts0( 3) = zmmnts0( 3) + pmmnts( 3,ip)
+            zmmnts0( 4) = zmmnts0( 4) + pmmnts( 4,ip)
+            zmmnts0( 5) = zmmnts0( 5) + pmmnts( 5,ip)
+            zmmnts0( 6) = zmmnts0( 6) + pmmnts( 6,ip)
+            zmmnts0( 7) = zmmnts0( 7) + pmmnts( 7,ip)
+            zmmnts0( 8) = zmmnts0( 8) + pmmnts( 8,ip)
+            zmmnts0( 9) = zmmnts0( 9) + pmmnts( 9,ip)
+            zmmnts0(10) = zmmnts0(10) + pmmnts(10,ip)
+            zmmnts0(11) = zmmnts0(11) + pmmnts(11,ip)
+            zmmnts0(12) = zmmnts0(12) + pmmnts(12,ip)
+            zmmnts0(13) = zmmnts0(13) + pmmnts(13,ip)
+            zmmnts0(14) = zmmnts0(14) + pmmnts(14,ip)
+            zmmnts0(15) = zmmnts0(15) + pmmnts(15,ip)
+            zmmnts0(16) = zmmnts0(16) + pmmnts(16,ip)
+            zmmnts0(17) = zmmnts0(17) + pmmnts(17,ip)
+            zmmnts0(18) = zmmnts0(18) + pmmnts(18,ip)
+            zmmnts0(19) = zmmnts0(19) + pmmnts(19,ip)
+            zmmnts0(20) = zmmnts0(20) + pmmnts(20,ip)
+            zmmnts0(21) = zmmnts0(21) + pmmnts(21,ip)
+            zmmnts0(22) = zmmnts0(22) + pmmnts(22,ip)
+            zmmnts0(23) = zmmnts0(23) + pmmnts(23,ip) 
+            zmmnts0(24) = zmmnts0(24) + pmmnts(24,ip) 
+            zmmnts0(25) = zmmnts0(25) + pmmnts(25,ip) 
+            zmmnts0(26) = zmmnts0(26) + pmmnts(26,ip) 
+            zmmnts0(27) = zmmnts0(27) + pmmnts(27,ip) 
+            zmmnts0(28) = zmmnts0(28) + pmmnts(28,ip) 
+          endif
         enddo
 
 #else
