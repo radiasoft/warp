@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.22 2002/06/19 21:52:35 jlvay Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.23 2002/06/20 21:00:19 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -181,7 +181,7 @@ needed since some processors may have more conductor points than others.
   # --- Make sure that the conductor arrays are allocated.
   if f3d.ncondmax == 0: f3d.ncondmax = 1
   if f3d.ncndmax == 0: f3d.ncndmax = 1
-  gchange("PSOR3d")
+  gchange("Conductor3d")
     
   # --- Gather the field solve weights. For each z plane, sum the number of
   # --- grid cells, subgrid points, and conductor points, appropriately
@@ -364,8 +364,6 @@ def _adjustz():
   gchange("LatticeInternal")
   gchange("Z_Moments")
   gchange("Hist")
-  if(w3d.solvergeom == w3d.XYZgeom):
-    if top.fstype in [3,7] or f3d.nsorerr > 0: gchange("PSOR3d")
   w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
   top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
   top.zlmesh[:] = top.zlmin + iota(0,top.nzl)*top.dzl
@@ -383,7 +381,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
     # --- Make things easier to deal with by ensuring that all arrays
     # --- are allocated.
     f3d.ncondmax = f3d.ncond + 1
-    gchange("PSOR3d")
+    gchange("Conductor3d")
 
     # --- Shift the data to be relative to the global system
     f3d.izcond[:] = f3d.izcond[:] + oldiz[me]
@@ -401,7 +399,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
     # --- Change array sizes and copy the data, localizing it.
     f3d.ncond = len(results[0])
     f3d.ncondmax = f3d.ncond
-    gchange("PSOR3d")
+    gchange("Conductor3d")
     if f3d.ncond > 0:
       f3d.ixcond[:] = results[0]
       f3d.iycond[:] = results[1]
@@ -413,7 +411,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
     # --- Make things easier to deal with by ensuring that all arrays
     # --- are allocated.
     f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy) + 1
-    gchange("PSOR3d")
+    gchange("Conductor3d")
 
     # --- Shift the data to be relative to the global system
     f3d.iecndz[:] = f3d.iecndz[:] + oldiz[me]
@@ -438,7 +436,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
     f3d.necndbdy = len(results[0])
     if f3d.necndbdy > f3d.ncndmax:
       f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy)
-      gchange("PSOR3d")
+      gchange("Conductor3d")
     if f3d.necndbdy > 0:
       f3d.iecndx[:f3d.necndbdy] = results[0]
       f3d.iecndy[:f3d.necndbdy] = results[1]
@@ -456,7 +454,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
     # --- Make things easier to deal with by ensuring that all arrays
     # --- are allocated.
     f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy) + 1
-    gchange("PSOR3d")
+    gchange("Conductor3d")
 
     # --- Shift the data to be relative to the global system
     f3d.iocndz[:] = f3d.iocndz[:] + oldiz[me]
@@ -481,7 +479,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
     f3d.nocndbdy = len(results[0])
     if f3d.nocndbdy > f3d.ncndmax:
       f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy)
-      gchange("PSOR3d")
+      gchange("Conductor3d")
     if f3d.nocndbdy > 0:
       f3d.iocndx[:f3d.nocndbdy] = results[0]
       f3d.iocndy[:f3d.nocndbdy] = results[1]

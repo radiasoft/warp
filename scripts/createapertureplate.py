@@ -5,7 +5,7 @@ ParticleScraper: class for creating particle scraping
 """
 from warp import *
 
-createapertureplate_version = "$Id: createapertureplate.py,v 1.1 2002/02/22 19:59:07 dave Exp $"
+createapertureplate_version = "$Id: createapertureplate.py,v 1.2 2002/06/20 21:00:19 dave Exp $"
 def createapertureplatedoc():
   import createapertureplate
   print createapertureplate.__doc__
@@ -30,7 +30,7 @@ Generate conductor data for field solver
   izplanesperplate = nint(platewid/w3d.dz)
   f3d.ncondmax = f3d.ncond + w3d.nx*w3d.ny*(izplanesperplate+1)
   f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy) + w3d.nx*3*4
-  gchange('PSOR3d')
+  gchange('Conductor3d')
 
   if platemax is None:
     platemax = sqrt(w3d.xmmax**2 + w3d.ymmax**2) + max(w3d.dx,w3d.dy)
@@ -117,7 +117,7 @@ def addzsubgridpoints(ix,iy,iz,volt,mz,pz):
   iodd  = compress((ix+iy+iz)%2 == 1,arange(len(ix)))
   if max(f3d.necndbdy+len(ieven),f3d.nocndbdy+len(iodd)) > f3d.ncndmax:
     f3d.ncndmax = max(f3d.necndbdy+len(ieven),f3d.nocndbdy+len(iodd))
-    gchange("PSOR3d")
+    gchange("Conductor3d")
   f3d.iecndx[f3d.necndbdy:f3d.necndbdy+len(ieven)] = take(ix,ieven)
   f3d.iecndy[f3d.necndbdy:f3d.necndbdy+len(ieven)] = take(iy,ieven)
   f3d.iecndz[f3d.necndbdy:f3d.necndbdy+len(ieven)] = iz
