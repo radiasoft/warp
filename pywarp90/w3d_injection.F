@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.10 $, $Date: 2004/11/23 19:15:15 $
+c@(#) File w3d_injection.F, version $Revision: 1.11 $, $Date: 2004/11/24 18:19:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -751,7 +751,7 @@ c                   --- elliptical annulus with outer major and minor
 c                   --- size of ainject and binject and inner size of
 c                   --- ainjmin and binjmin.
                     if(linj_rectangle) then
-                      if (abs(xp(ii)) > ainji .or. abs(yp(ii) > binji)) cycle
+                      if (abs(xp(ii)) > ainji .or. abs(yp(ii)) > binji) cycle
                       if (abs(xp(ii)) < ainjmin(ij) .or.
      &                    abs(yp(ii)) < binjmin(ij)) cycle
                     else
