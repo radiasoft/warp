@@ -70,7 +70,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.45 2004/01/16 20:07:58 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.46 2004/01/16 22:45:56 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -432,18 +432,19 @@ has already been called.
 Installs the data into the WARP database
     """
 
-    # --- If the RZ solver is being used, then clear out an existing
-    # --- conductor data in the f3d database first. At the end of the install,
-    # --- the install_conductor_rz routine will copy data back from the RZ
-    # --- database to the f3d database. Note that if this is not done, then
-    # --- data from conductor objects can be copied in the RZ database
-    # --- multiple time if multiple objects are installed separately.
-    # --- This is slightly inefficient since for each object installed,
-    # --- all of the accumulated data will be copied back into the f3d
-    # --- database. The way around that is to make the call to 
-    # --- install_conductors_rz only after all of the objects have been
-    # --- installed.
-    if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
+    # --- If the RZ solver is being used and the data is to be installed,
+    # --- then clear out an existing conductor data in the f3d database first.
+    # --- If this is not done, then data from conductor
+    # --- objects will be copied in the RZ database multiple time if
+    # --- multiple objects are installed separately.
+    # --- At the end of the install, the install_conductor_rz routine
+    # --- will copy data back from the RZ database to the f3d database.
+    # --- This is slightly inefficient since for each object installed, all
+    # --- of the accumulated data will be copied back into the f3d database.
+    # --- The way around that is to make the call to install_conductors_rz
+    # --- only after all of the objects have been installed.
+    if(installrz and
+       (w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom)):
       f3d.ncond = 0
       f3d.necndbdy = 0
       f3d.nocndbdy = 0
