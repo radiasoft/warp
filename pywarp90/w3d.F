@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.136 $, $Date: 2003/10/23 23:26:40 $
+c@(#) File W3D.F, version $Revision: 3.137 $, $Date: 2003/10/30 19:23:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5074,9 +5074,10 @@ c                   --- for vnorm below.
 
                     if(l_inj_exact .or. l_inj_rz) then
 c                     --- calculate injection surface axial location exactly
-                      zp(ii) = (xp(ii)**2+yp(ii)**2)/
-     &                       (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
-     &                       + inj_addfdz*inj_dz
+                      zm = (xp(ii)**2+yp(ii)**2)/
+     &                  (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
+                      if (rinject(ij) < 0.) zm = -zm
+                      zp(ii) = zm + inj_addfdz*inj_dz
                       az = asin(sqrt(xp(ii)**2 + yp(ii)**2)/rinject(ij))
                     else
 c                     --- find injection surface axial location by interpolation
@@ -6052,7 +6053,8 @@ c             --- subtraction of large, similar numbers when rinject is large.
 c             inj_grid(ix,iy,ij) = (rinject(ij) -
 c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
               inj_grid(ix,iy,ij) = (xx**2 +  yy**2)/
-     &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
+     &         (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
+              if (rinject(ij) < 0.) inj_grid(ix,iy,ij) = -inj_grid(ix,iy,ij)
               inj_angl(ix,iy,ij) = asin(sqrt(xx**2 + yy**2)/rinject(ij))
 
 c             --- Calculate fraction of grid cell which is within the emitting
@@ -6195,7 +6197,8 @@ c             --- subtraction of large, similar numbers when rinject is large.
 c             inj_grid(ix,0,ij) = zinject(ij) + (rinject(ij) -
 c    &               sqrt(max(0.,rinject(ij)**2 - xx**2)))
               inj_grid(ix,0,ij) = xx**2 /
-     &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2)))
+     &         (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - xx**2)))
+              if (rinject(ij) < 0.) inj_grid(ix,0,ij) = -inj_grid(ix,0,ij)
               inj_angl(ix,0,ij) = asin(abs(xx)/rinject(ij))
 
 c             --- Calculate fraction of grid cell which is within the emitting
@@ -6872,9 +6875,10 @@ c         --- namely zz.
 c         dd = rinj - sqrt(rr2 + (rinj - zz(ip))**2)
           dd = (2.*zz(ip) - (zz(ip)**2 + rr2)*rinji)/
      &         (1. + sqrt(rr2*rinji**2 + (1. - zz(ip)*rinji)**2))
+          if (rinj < 0.) dd = -dd
         else
 c         --- When zz>rinj, a seperate equation is needed.
-          dd = rinj + sqrt(rr2 + (zz(ip) - rinj)**2)
+          dd = abs(rinj) + sqrt(rr2 + (zz(ip) - rinj)**2)
         endif
         dd = dd*dzi
 
@@ -7169,9 +7173,10 @@ c           --- namely zp(ip).
 c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
             dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
      &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
+            if (rinj < 0.) dd = -dd
           else
 c           --- When zp(ip)>rinj, a seperate equation is needed.
-            dd = rinj + sqrt(rr2 + (zp(ip) - rinj)**2)
+            dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
           endif
           dd = dd*dzi
 
@@ -7427,9 +7432,10 @@ c           --- namely zp(ip).
 c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
             dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
      &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
+            if (rinj < 0.) dd = -dd
           else
 c           --- When zp(ip)>rinj, a seperate equation is needed.
-            dd = rinj + sqrt(rr2 + (zp(ip) - rinj)**2)
+            dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
           endif
           dd = dd/deltaz(ij)
 
@@ -7814,9 +7820,10 @@ c           --- namely zp(ip).
 c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
             dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
      &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
+            if (rinj < 0.) dd = -dd
           else
 c           --- When zp(ip)>rinj, a seperate equation is needed.
-            dd = rinj + sqrt(rr2 + (zp(ip) - rinj)**2)
+            dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
           endif
           dd = dd/deltaz(ij)
 
@@ -7949,9 +7956,10 @@ c           --- namely zp(ip).
 c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
             dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
      &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
+            if (rinj < 0.) dd = -dd
           else
 c           --- When zp(ip)>rinj, a seperate equation is needed.
-            dd = rinj + sqrt(rr2 + (zp(ip) - rinj)**2)
+            dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
           endif
           dd = dd/deltaz(ij)
 
@@ -8327,9 +8335,10 @@ c         --- namely zz.
 c         dd = rinj - sqrt(rr2 + (rinj - zz(ip))**2)
           dd = (2.*zz(ip) - (zz(ip)**2 + rr2)*rinji)/
      &         (1. + sqrt(rr2*rinji**2 + (1. - zz(ip)*rinji)**2))
+          if (rinj < 0.) dd = -dd
         else
 c         --- When zz>rinj, a seperate equation is needed.
-          dd = rinj + sqrt(rr2 + (zz(ip) - rinj)**2)
+          dd = abs(rinj) + sqrt(rr2 + (zz(ip) - rinj)**2)
         endif
         dd = dd/deltaz(ij)
 
