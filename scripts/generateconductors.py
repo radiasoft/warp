@@ -77,11 +77,10 @@ if not lparallel:
     pass
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.67 2004/05/25 21:39:40 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.68 2004/05/27 22:59:42 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
-
 
 ##############################################################################
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
@@ -986,27 +985,30 @@ Creates a grid object which can generate conductor data.
     dx = self.dx*self.mglevellx[mglevel]
     dy = self.dy*self.mglevelly[mglevel]
     dz = self.dz*self.mglevellz[mglevel]
-    nx = self.nx/self.mglevellx[mglevel]
-    ny = self.ny/self.mglevelly[mglevel]
-    nz = self.nz/self.mglevellz[mglevel]
+    nx = nint(self.nx/self.mglevellx[mglevel])
+    ny = nint(self.ny/self.mglevelly[mglevel])
+    nz = nint(self.nz/self.mglevellz[mglevel])
     iz = self.mgleveliz[mglevel]
     return dx,dy,dz,nx,ny,nz,iz
 
-  def getmesh(self,mglevel=0):
+  def getmesh(self,mglevel=0,extent=None):
     dx,dy,dz,nx,ny,nz,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
+
+    xmin,ymin,zmin = self.xmin,self.ymin,self.zmin
+    xmax,ymax,zmax = self.xmax,self.ymax,self.zmax
+    if extent is not None:
+      xmin,ymin,zmin = maximum(array(extent.mins),array([xmin,ymin,zmin]))
+      xmax,ymax,zmax = minimum(array(extent.maxs),array([xmax,ymax,zmax]))
 
     zmmin = self.zmmin + iz*dz
 
     xmesh = self.xmmin + dx*arange(nx+1)
     ymesh = self.ymmin + dy*arange(ny+1)
     zmesh =      zmmin + dz*arange(nz+1) + self.zbeam
-    xmesh = compress(logical_and(self.xmin-dx <= xmesh,
-                                                 xmesh <= self.xmax+dx),xmesh)
-    ymesh = compress(logical_and(self.ymin-dy <= ymesh,
-                                                 ymesh <= self.ymax+dy),ymesh)
-    zmesh = compress(logical_and(self.zmin-dz <= zmesh,
-                                                 zmesh <= self.zmax+dz),zmesh)
+    xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
+    ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
+    zmesh = compress(logical_and(zmin-dz <= zmesh,zmesh <= zmax+dz),zmesh)
     x = ravel(xmesh[:,NewAxis]*ones(len(ymesh)))
     y = ravel(ymesh*ones(len(xmesh))[:,NewAxis])
     z = zeros(len(xmesh)*len(ymesh),'d')
@@ -1025,10 +1027,11 @@ Assembly on this grid.
     """
     starttime = wtime()
     tt2 = zeros(8,'d')
+    aextent = a.getextent()
     self.dall = Delta()
     for i in range(self.mglevels):
       tt1 = wtime()
-      ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(i)
+      ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(i,aextent)
 
       tt2[0] = tt2[0] + wtime() - tt1
       if len(x) == 0: continue
