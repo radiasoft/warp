@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.28 2002/05/15 00:21:28 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.29 2002/06/28 22:14:52 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -268,7 +268,7 @@ def getlabmoments():
 # dump to be use by jobs with differing numbers of processors (not implemented
 # yet). To do that, global values of scalars are written out and arrays are
 # written out in the same format as serial dump.
-def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
+def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                  verbose=false):
   getwin_moments()
   gethist()
@@ -448,6 +448,9 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
                 ff.write('histz@parallel',histz)
                 if not histz:
                   # --- This is a temporary solution.
+                  # --- This method can lead to erroneaously large
+                  # --- dump files if the decomposition is not nearly
+                  # --- uniform.
                   ff.defent(vname+'@parallel',v,
                             (top.nslaves,max(1+top.nzpslave),top.lenhist+1))
                 elif histz == 1:
@@ -839,7 +842,7 @@ def parallelrestore(fname,verbose=false,skip=[]):
           try:
             histz = ff.read("histz@parallel")
           except:
-            histz = 0
+            histz = 2
           if histz == 0:
             # --- This is a temporary but fast solution.
             itriple = array([me,me,1,0,top.nzpslave[me],1,0,top.lenhist,1])
