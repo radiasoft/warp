@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.5 $, $Date: 2001/05/16 22:28:35 $
+c@(#) File WXY.M, version $Revision: 3.6 $, $Date: 2001/05/22 20:26:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1006,9 +1006,8 @@ c           --- mesh effect
             call exbendcorxy(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       zpo,ds,bendres,bendradi,lexbend)
 c           --- Correct position advance for slanted dipole entry/exit
-            call sledgcorxy(ip,xp(ipmin),yp(ipmin),zbeam+vbeam*dt,zbeam,
-     &                      uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                      sm(is),sq(is),dt,zbeam,vbeam,dipos) 
+            call sledgcor(ip,xp(ipmin),yp(ipmin),1,zbeam+vbeam*dt,zbeam,
+     &                    uxp(ipmin),uyp(ipmin),vbeam,1.,sm(is),sq(is))
 c         --- PUSHV
           elseif (center == "pushv") then
 c           --- Add in ears and uniform focusing E field pieces
@@ -1481,57 +1480,6 @@ c  at smaller radii, zones are closer together, so field is larger.
 
       return
       end      
-c=========================================================================== 
-      subroutine sledgcorxy(np,xp,yp,zp,zpo,uxp,uyp,uzp,gaminv,m,q,dt,zbeam,
-     &                      vbeam,dipos) 
-      use LatticeInternal
-      integer(ISZ):: np
-      real(kind=8):: xp(np), yp(np), zp, zpo 
-      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np) 
-      real(kind=8):: q, m, dt, zbeam, vbeam
-      logical(ISZ):: dipos 
-
-c Applies position and velocity jump corrections on entry/exit of dipoles 
-c with slanted faces.  (Must be called after all z advancement is done this 
-c timestep, so that entry/exit of the bend is detected exactly once.)    
-c Accounts for the fact that the jumped velocities act on the particles for 
-c less than the entire andvance step on entry/exit of the dipole.  
-
-      integer(ISZ):: ip,j
-      real(kind=8):: vz,vzi,qoverm
-
-      qoverm = q/m
-
-      if (.not.dipos) return
-
-      vz = vbeam
-      vzi = 1./dvnz(vz)
-c     --- All particles lie at the same z-cell
-      j = 0
-      if ((zpo < cdipozs(j)) .and. (zp >= cdipozs(j))) then 
-c       --- entered dipole
-        do ip = 1,np
-          uxp(ip) = uxp(ip) + xp(ip)*cdipoby(j)*cdipota(j)*qoverm
-          uyp(ip) = uyp(ip) - yp(ip)*cdipoby(j)*cdipota(j)*qoverm
-          xp(ip)  = xp(ip) + (zp-cdipozs(j))*vzi*
-     &                       xp(ip)*cdipoby(j)*cdipota(j)*qoverm
-          yp(ip)  = yp(ip) - (zp-cdipozs(j))*vzi*
-     &                       yp(ip)*cdipoby(j)*cdipota(j)*qoverm
-        enddo
-      elseif ((zpo < cdipoze(j)).and.(zp >= cdipoze(j))) then  
-c       --- exited dipole
-        do ip = 1,np
-          uxp(ip) = uxp(ip) + xp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-          uyp(ip) = uyp(ip) - yp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-          xp(ip)  = xp(ip) + (zp-cdipoze(j))*vzi*
-     &                        xp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-          yp(ip)  = yp(ip) - (zp-cdipoze(j))*vzi*
-     &                       yp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-        enddo
-      endif 
-
-      return
-      end
 c=========================================================================== 
       subroutine exbendcorxy(np,xp,zp,uxp,uzp,zpo,ds,bendres,bendradi,lexbend)
       integer(ISZ):: np

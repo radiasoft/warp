@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.5 $, $Date: 2001/05/16 22:28:35 $
+#@(#) File WXY.V, version $Revision: 3.6 $, $Date: 2001/05/22 20:26:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.5 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.6 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 npmaxxy    integer # Number of particles - same as npmax from TOP

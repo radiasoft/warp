@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.7 $, $Date: 2001/05/17 01:24:18 $
+c@(#) File W3D.M, version $Revision: 3.8 $, $Date: 2001/05/22 20:26:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -127,8 +127,8 @@ c  Also allocate the dynamic internal lattice arrays.
 
       call remark(" ---  Resetting lattice array sizes")
       call resetlat
-      if (nzlmax == 0) nzlmax = nz
-      if (nzl    == 0 .or. nzl > nzlmax) nzl = nzlmax
+      if (nzlmax <= 2) nzlmax = nz
+      if (nzl    <= 2 .or. nzl > nzlmax) nzl = nzlmax
       call gallot("LatticeInternal", 0)
       if (zlmin == 0.) zlmin = zmmin
       if (zlmax == 0.) zlmax = zmmax
@@ -1263,9 +1263,9 @@ c              --- Correct position advance for warped mesh effect
                call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       gaminv(ipmin),dt,bendres,bendradi,bends,linbend)
 c              --- Correct position advance for slanted dipole entry/exit
-               call sledgcor(ip,xp(ipmin),yp(ipmin),zp(ipmin),zpo,
+               call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
      &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       sm(is),sq(is),dt,zbeam,dipos) 
+     &                       sm(is),sq(is))
 
 c           --- HALFV
             elseif (center == "halfv") then
@@ -1312,9 +1312,9 @@ c              --- Correct position advance for warped mesh effect
                call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       gaminv(ipmin),dt,bendres,bendradi,bends,linbend)
 c              --- Correct position advance for slanted dipole entry/exit
-               call sledgcor(ip,xp(ipmin),yp(ipmin),zp(ipmin),zpo,
+               call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
      &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       sm(is),sq(is),dt,zbeam,dipos) 
+     &                       sm(is),sq(is))
 
 c           --- SYNCHV or GEN
             elseif (center == "synchv" .or. center == "gen") then
@@ -1881,61 +1881,6 @@ c  at smaller radii, zones are closer together, so field is larger.
       if (lw3dtimesubs) timebendez3d = timebendez3d + wtime() - substarttime
       return
       end      
-c=========================================================================== 
-      subroutine sledgcor(np,xp,yp,zp,zpo,uxp,uyp,uzp,gaminv,m,q,dt,zbeam,
-     &                    dipos) 
-      use Subtimers
-      use LatticeInternal
-      integer(ISZ):: np
-      real(kind=8):: xp(np), yp(np), zp(np), zpo(np) 
-      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np) 
-      real(kind=8):: q, m, dt, zbeam  
-      logical(ISZ):: dipos 
-
-c Applies position and velocity jump corrections on entry/exit of dipoles 
-c with slanted faces.  (Must be called after all z advancement is done this 
-c timestep, so that entry/exit of the bend is detected exactly once.)    
-c Accounts for the fact that the jumped velocities act on the particles for 
-c less than the entire andvance step on entry/exit of the dipole.  
-
-      integer(ISZ):: ip,j
-      real(kind=8):: vz,vzi,qoverm
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
-      qoverm = q/m
-
-      if (.not.dipos) then
-        if (lw3dtimesubs) timesledgcor = timesledgcor + wtime() - substarttime
-        return
-      endif
-      do ip = 1,np
-         vz = uzp(ip)*gaminv(ip)
-         vzi = 1./dvnz(vz)
-c        --- find z-cell in which particle lies
-         j = min(nzl,int(max(0., (zp(ip) - zlmin - zbeam)*dzli + 0.5)))
-         if ((zpo(ip) .lt. cdipozs(j)) .and. (zp(ip) .ge. cdipozs(j))) then 
-c          --- entered dipole
-           uxp(ip) = uxp(ip) + xp(ip)*cdipoby(j)*cdipota(j)*qoverm
-           uyp(ip) = uyp(ip) - yp(ip)*cdipoby(j)*cdipota(j)*qoverm
-           xp(ip)  = xp(ip) + (zp(ip)-cdipozs(j))*vzi*
-     &                        xp(ip)*cdipoby(j)*cdipota(j)*qoverm
-           yp(ip)  = yp(ip) - (zp(ip)-cdipozs(j))*vzi*
-     &                        yp(ip)*cdipoby(j)*cdipota(j)*qoverm
-         elseif ((zpo(ip) .lt. cdipoze(j)).and.(zp(ip) .ge. cdipoze(j))) then  
-c          --- exited dipole
-           uxp(ip) = uxp(ip) + xp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-           uyp(ip) = uyp(ip) - yp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-           xp(ip)  = xp(ip) + (zp(ip)-cdipoze(j))*vzi*
-     &                        xp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-           yp(ip)  = yp(ip) - (zp(ip)-cdipoze(j))*vzi*
-     &                        yp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-         endif 
-      enddo
-
-      if (lw3dtimesubs) timesledgcor = timesledgcor + wtime() - substarttime
-      return
-      end
 c=========================================================================== 
       subroutine zbendcor(np,xp,zp,uxp,uzp,gaminv,ddt,bendres,bendradi,bends,
      &                    linbend)
@@ -3652,7 +3597,6 @@ c  Also ensures that particles are at least on the grid as well.
 c=============================================================================
       subroutine setrstar(rstar,nz,dz,zmmin,zgrid)
       use Subtimers
-      use Lattice
       integer(ISZ):: nz
       real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: dz,zmmin,zgrid
@@ -3660,35 +3604,29 @@ c=============================================================================
 c  Loads radius of curvature of reference orbit into rstar array, so that
 c  r_star is known on mesh points for purposes of field solution.
 
-
-      integer(ISZ):: k,ib
-      real(kind=8):: z,offset,bres,bradi
-      real(kind=8):: zl,fl,zr,fr
+      integer(ISZ):: iz
+      real(kind=8):: zz(-1:nz+1),vz(-1:nz+1),gi(-1:nz+1)
+      real(kind=8):: bendres(-1:nz+1)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      ib = 0
-      do k = -1, nz+1
-         z = zmmin + k*dz + zgrid
-         call getelemid(z,offset,nbend,bendzs(0),bendze(0),ib)
-c        --- "left" end of velocity advance step
-         zl = z - 0.5*dz
-         fl = 0.
-         if (zl >= bendzs(ib) .and. zl < bendze(ib)) fl = 1.
-c        --- "right" end of velocity advance step
-         zr = z + 0.5*dz
-         fr = 0.
-         if (zr >= bendzs(ib) .and. zr < bendze(ib)) fr = 1.
-c        --- residence fraction; set to all-in or all-out, possibly override
-         if (fr == fl) then
-            bres = fl
-         elseif (fr > fl) then
-            bres = (zr - bendzs(ib))/dz
-         else
-            bres = (bendze(ib) - zl)/dz
-         endif
-         rstar(k) = bendrc(ib)/dvnz(bres)
-         if (bendrc(ib) == 0.) rstar(k) = LARGEPOS
+c     --- Fill temporary arrays. Note that getbend expects the pair vz and dt,
+c     --- but this passes in the pair 1 and dz which is equivalent.
+      do iz = -1,nz+1
+        zz(iz) = zmmin + iz*dz + zgrid
+        vz(iz) = 1.
+        gi(iz) = 1.
+      enddo
+
+c     --- Get the bend radius of curvature and residence fraction at the
+c     --- list of z points.
+      call getbend(nz+3,nz+3,zz,vz,gi,bendres,rstar,-0.5*dz,0.5*dz)
+
+c     --- Scale the radius by the reciprical of the residence fraction.
+c     --- Also, make sure the rstar is non-zero.
+      do iz = -1,nz+1
+        if (bendres(iz) > 0.) rstar(iz) = rstar(iz)/bendres(iz)
+        if (rstar(iz) == 0.) rstar(iz) = LARGEPOS
       enddo
 
       if (lw3dtimesubs) timesetrstar = timesetrstar + wtime() - substarttime
