@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.15 2004/01/24 01:26:07 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.16 2004/02/17 18:55:41 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -38,7 +38,7 @@ time.
     return
   if(w3d.solvergeom == w3d.Zgeom): return
   if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
-    frz.find_mgparam_rz()
+    frz.find_mgparam_rz(lsavephi)
     return
   
   # --- Save the cuurrent value of phi to be used as the initial value
