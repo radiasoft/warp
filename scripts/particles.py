@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.8 2003/04/17 22:18:16 dave Exp $"
+particles_version = "$Id: particles.py,v 1.9 2003/04/22 16:29:21 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -289,6 +289,14 @@ def getrp(iw=0,gather=1,**kw):
   ii = selectparticles(iw=iw,kwdict=kw)
   tt = arctan2(take(top.yp,ii),take(top.xp,ii))
   result = (take(top.uxp,ii)*cos(tt)+take(top.uyp,ii)*sin(tt))/take(top.uzp,ii)
+  if lparallel and gather: return gatherarray(result)
+  else: return result
+#-------------------------------------------------------------------------
+def gettp(iw=0,gather=1,**kw):
+  "Returns the azimuthal velocity over the Z velocity (R')."
+  ii = selectparticles(iw=iw,kwdict=kw)
+  tt = arctan2(take(top.yp,ii),take(top.xp,ii))
+  result = (-take(top.uxp,ii)*sin(tt)+take(top.uyp,ii)*cos(tt))/take(top.uzp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
