@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.8 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.9 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -66,6 +66,117 @@ c       --- dfill is assumed to be passed in as a positive number.
 
       return
       end
+c=======================================================================
+c=======================================================================
+      subroutine getconductorfacets(condid,nc,icnd,dels,gridn,griddd,gridmin)
+      integer(ISZ):: condid
+      integer(ISZ):: nc
+      integer(ISZ):: icnd(0:2,nc)
+      real(kind=8):: dels(0:5,nc)
+      integer(ISZ):: gridn(0:2)
+      real(kind=8):: griddd(0:2)
+      real(kind=8):: gridmin(0:2)
+
+      integer(ISZ):: iii(gridn(0)+1,gridn(1)+1,gridn(2)+1)
+      integer(ISZ):: ic,ix,iy,iz,ox,oy,oz
+
+      do ic=1,nc
+        iii(icnd(0,ic),icnd(1,ic),icnd(2,ic)) = ic
+      enddo
+
+c     oos = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]]
+c     dds = [[+1,0,0],[-1,0,0],[+1,0,0],[-1,0,0],
+c            [+1,0,0],[-1,0,0],[+1,0,0],[-1,0,0]]
+
+c     do iz=0,gridn(2)-1
+c       do iy=0,gridn(1)-1
+c         do ix=0,gridn(0)-1
+
+c         do oz=0,1
+c         do oy=0,1
+c         do ox=0,1
+
+c       for oo,dd in map(None,oos,dds):
+c         if iii[ix+oo[0],iy+oo[1],iz+oo[2]] > 0:
+c           pp = newfacet(ix,iy,iz,oo,dd,+1,iii,dels,gridmin,griddd)
+c           if len(pp) == 0:
+c             pp = newfacet(ix,iy,iz,oo,dd,0,iii,dels,gridmin,griddd)
+c           if len(pp) > 0:
+c             model.FacetedPolygon(pp,color=color)
+c       iii[ix:ix+2,iy:iy+2,iz:iz+2] = abs(iii[ix:ix+2,iy:iy+2,iz:iz+2])
+c model.Display()
+c return model.scene
+
+cef nextdir(position,direction,parity):
+c parity = (sum(array(position)) + parity + 1) % 2
+c newdirection = [0,0,0]
+c if direction[0] != 0:   newdirection[1+parity] = 1
+c elif direction[1] != 0: newdirection[2-2*parity] = 1
+c elif direction[2] != 0: newdirection[parity] = 1
+c if position[0] == 1: newdirection[0] = -newdirection[0]
+c if position[1] == 1: newdirection[1] = -newdirection[1]
+c if position[2] == 1: newdirection[2] = -newdirection[2]
+c return newdirection
+
+c --- This would be a little less painful is lists were hashable.
+cef newfacet(ix,iy,iz,oo,dd,parity,iii,dels,gridmin,griddd,
+c dddict = {211:[+1,0,0],121:[0,+1,0],112:[0,0,+1],
+c            11:[-1,0,0],101:[0,-1,0],110:[0,0,-1]},
+c dirdict = {  0:[{211:0,112:1,121:2},{0:211,1:112,2:121}],
+c            100:[{112:0, 11:1,121:2},{0:112,1: 11,2:121}],
+c             10:[{211:0,101:1,112:2},{0:211,1:101,2:112}],
+c            110:[{ 11:0,112:1,101:2},{0: 11,1:112,2:101}],
+c              1:[{211:0,121:1,110:2},{0:211,1:121,2:110}],
+c            101:[{110:0,121:1, 11:2},{0:110,1:121,2: 11}],
+c             11:[{211:0,110:1,101:2},{0:211,1:110,2:101}],
+c            111:[{ 11:0,101:1,110:2},{0: 11,1:101,2:110}]},
+c delsdict = { 11:0,211:1,101:2,121:3,110:4,112:5},
+c too = lambda oo : 100*oo[0] + 10*oo[1] + oo[2],
+c tdd = lambda dd : 100*(1+dd[0]) + 10*(1+dd[1]) + (1+dd[2])):
+c """
+cork routine used by visualizeconductors.
+c """
+c pp = []
+c done = 0
+c currentoo = oo
+c currentdd = dd
+c ncorners = 1
+c while not done:
+c   ic = abs(iii[ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]])
+c   iii[ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]] = -ic
+c   if ic != 0 and dels[delsdict[tdd(currentdd)],ic-1] <= 1.000001:
+c     newpoint = (array([ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]]) +
+c                       dels[delsdict[tdd(currentdd)],ic-1]*array(currentdd))
+c     pp.append(newpoint*griddd+gridmin)
+c     #dirs = dirdict[too(currentoo)]
+c     #currentddnum = dirs[0][tdd(currentdd)]
+c     #nextddnum = (currentddnum + 2*parity-1) % 3
+c     #nextdd = dddict[dirs[1][nextddnum]]
+c     nextdd = nextdir(currentoo,currentdd,parity)
+c     nextoo = currentoo
+c   else:
+c     nextoo = list(array(currentoo) + array(currentdd))
+c     #nextdirs = dirdict[too(nextoo)]
+c     #nextddnum = (nextdirs[0][tdd(list(-array(currentdd)))] + 2*parity-1) % 3
+c     #nextdd = dddict[nextdirs[1][nextddnum]]
+c     nextdd = nextdir(nextoo,-array(currentdd),parity)
+c     ncorners = ncorners + 1
+c   currentoo = nextoo
+c   currentdd = nextdd
+c   if ncorners > 8: done = 1
+c   if len(pp) > 6:
+c     pp = []
+c     done = 1
+c   if currentoo == oo and currentdd == dd: done = 1
+c return pp
+
+
+
+
+
+      return
+      end
+c=======================================================================
 c=======================================================================
       subroutine ZPlaneConductorF(zcent,zsign,
      &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
@@ -1145,36 +1256,36 @@ c         --- Get the two points of intersection
           zl = min(z1,z2)
           zu = max(z1,z2)
 c         --- Get the point where the z-line intersects the end planes
-          z1 = (zcent-lenhalf - xx*stheta*cphi - yy*sphi)*cci
-          z2 = (zcent+lenhalf - xx*stheta*cphi - yy*sphi)*cci
+          z1 = (-lenhalf - xx*stheta*cphi - yy*sphi)*cci
+          z2 = (+lenhalf - xx*stheta*cphi - yy*sphi)*cci
           zlend = min(z1,z2)
           zuend = max(z1,z2)
 c         --- Now, get distances to surface
-          if (z(i) < zl) then
-            if (zl <= zlend .and. zlend <= zu) delpz(i) = zlend - z(i)
-            if (zlend <= zl .and. zl <= zuend) delpz(i) = zl - z(i)
-          else if (zl <= z(i) .and. z(i) <= zu) then
-            if (zl <= zlend .and. zlend <= zu .and. z(i) <= zuend) then
-              if (z(i) <= zlend) then
-                delpz(i) = zlend - z(i)
+          if (zz < zl) then
+            if (zl <= zlend .and. zlend <= zu) delpz(i) = zlend - zz
+            if (zlend <= zl .and. zl <= zuend) delpz(i) = zl - zz
+          else if (zl <= zz .and. zz <= zu) then
+            if (zl <= zlend .and. zlend <= zu .and. zz <= zuend) then
+              if (zz <= zlend) then
+                delpz(i) = zlend - zz
               else
-                delpz(i) = z(i) - min(zu,zuend)
-                delmz(i) = zlend - z(i)
+                delpz(i) = zz - min(zu,zuend)
+                delmz(i) = zlend - zz
               endif
             else if (zlend <= zl .and. zu <= zuend) then
-              delmz(i) = zl - z(i)
-              delpz(i) = z(i) - zu
+              delmz(i) = zl - zz
+              delpz(i) = zz - zu
             else if (zl <= zuend .and. zuend <= zu) then
-              if (z(i) <= zuend) then
-                delpz(i) = z(i) - zuend
-                delmz(i) = max(zl,zlend) - z(i)
+              if (zz <= zuend) then
+                delpz(i) = zz - zuend
+                delmz(i) = max(zl,zlend) - zz
               else
-                delmz(i) = z(i) - zuend
+                delmz(i) = zz - zuend
               endif
             endif
-          else if (zu < z(i)) then
-            if (zu >= zuend .and. zuend >= zl) delmz(i) = z(i) - zuend
-            if (zuend >= zu .and. zu >= zlend) delmz(i) = z(i) - zu
+          else if (zu < zz) then
+            if (zu >= zuend .and. zuend >= zl) delmz(i) = zz - zuend
+            if (zuend >= zu .and. zu >= zlend) delmz(i) = zz - zu
           endif
         endif
 
@@ -1194,36 +1305,36 @@ c       --- delta x
           xl = min(x1,x2)
           xu = max(x1,x2)
 c         --- Get the point where the x-line intersects the end planes
-          x1 = (zcent-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
-          x2 = (zcent+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          x1 = (-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          x2 = (+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
           xlend = min(x1,x2)
           xuend = max(x1,x2)
 c         --- Now, get distances to surface
-          if (x(i) < xl) then
-            if (xl <= xlend .and. xlend <= xu) delpx(i) = xlend - x(i)
-            if (xlend <= xl .and. xl <= xuend) delpx(i) = xl - x(i)
-          else if (xl <= x(i) .and. x(i) <= xu) then
-            if (xl <= xlend .and. xlend <= xu .and. x(i) <= xuend) then
-              if (x(i) <= xlend) then
-                delpx(i) = xlend - x(i)
+          if (xx < xl) then
+            if (xl <= xlend .and. xlend <= xu) delpx(i) = xlend - xx
+            if (xlend <= xl .and. xl <= xuend) delpx(i) = xl - xx
+          else if (xl <= xx .and. xx <= xu) then
+            if (xl <= xlend .and. xlend <= xu .and. xx <= xuend) then
+              if (xx <= xlend) then
+                delpx(i) = xlend - xx
               else
-                delpx(i) = x(i) - min(xu,xuend)
-                delmx(i) = xlend - x(i)
+                delpx(i) = xx - min(xu,xuend)
+                delmx(i) = xlend - xx
               endif
             else if (xlend <= xl .and. xu <= xuend) then
-              delmx(i) = xl - x(i)
-              delpx(i) = x(i) - xu
+              delmx(i) = xl - xx
+              delpx(i) = xx - xu
             else if (xl <= xuend .and. xuend <= xu) then
-              if (x(i) <= xuend) then
-                delpx(i) = x(i) - xuend
-                delmx(i) = max(xl,xlend) - x(i)
+              if (xx <= xuend) then
+                delpx(i) = xx - xuend
+                delmx(i) = max(xl,xlend) - xx
               else
-                delmx(i) = x(i) - xuend
+                delmx(i) = xx - xuend
               endif
             endif
-          else if (xu < x(i)) then
-            if (xu >= xuend .and. xuend >= xl) delmx(i) = x(i) - xuend
-            if (xuend >= xu .and. xu >= xlend) delmx(i) = x(i) - xu
+          else if (xu < xx) then
+            if (xu >= xuend .and. xuend >= xl) delmx(i) = xx - xuend
+            if (xuend >= xu .and. xu >= xlend) delmx(i) = xx - xu
           endif
         endif
 
@@ -1244,37 +1355,288 @@ c       --- delta y
           yl = min(y1,y2)
           yu = max(y1,y2)
 c         --- Get the point where the z-line intersects the end planes
-          y1 = (zcent-lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
-          y2 = (zcent+lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+          y1 = (-lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+          y2 = (+lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
           ylend = min(y1,y2)
           yuend = max(y1,y2)
 c         --- Now, get distances to surface
-          if (y(i) < yl) then
-            if (yl <= ylend .and. ylend <= yu) delpy(i) = ylend - y(i)
-            if (ylend <= yl .and. yl <= yuend) delpy(i) = yl - y(i)
-          else if (yl <= y(i) .and. y(i) <= yu) then
-            if (yl <= ylend .and. ylend <= yu .and. y(i) <= yuend) then
-              if (y(i) <= ylend) then
-                delpy(i) = ylend - y(i)
+          if (yy < yl) then
+            if (yl <= ylend .and. ylend <= yu) delpy(i) = ylend - yy
+            if (ylend <= yl .and. yl <= yuend) delpy(i) = yl - yy
+          else if (yl <= yy .and. yy <= yu) then
+            if (yl <= ylend .and. ylend <= yu .and. yy <= yuend) then
+              if (yy <= ylend) then
+                delpy(i) = ylend - yy
               else
-                delpy(i) = y(i) - min(yu,yuend)
-                delmy(i) = ylend - y(i)
+                delpy(i) = yy - min(yu,yuend)
+                delmy(i) = ylend - yy
               endif
             else if (ylend <= yl .and. yu <= yuend) then
-              delmy(i) = yl - y(i)
-              delpy(i) = y(i) - yu
+              delmy(i) = yl - yy
+              delpy(i) = yy - yu
             else if (yl <= yuend .and. yuend <= yu) then
-              if (y(i) <= yuend) then
-                delpy(i) = y(i) - yuend
-                delmy(i) = max(yl,ylend) - y(i)
+              if (yy <= yuend) then
+                delpy(i) = yy - yuend
+                delmy(i) = max(yl,ylend) - yy
               else
-                delmy(i) = y(i) - yuend
+                delmy(i) = yy - yuend
               endif
             endif
-          else if (yu < y(i)) then
-            if (yu >= yuend .and. yuend >= yl) delmy(i) = y(i) - yuend
-            if (yuend >= yu .and. yu >= ylend) delmy(i) = y(i) - yu
+          else if (yu < yy) then
+            if (yu >= yuend .and. yuend >= yl) delmy(i) = yy - yuend
+            if (yuend >= yu .and. yu >= ylend) delmy(i) = yy - yu
           endif
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+c=======================================================================
+      subroutine ConeConductorF(r_zmin,r_zmax,length,theta,phi,
+     &                          xcent,ycent,zcent,
+     &                          n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                          fuzz)
+      real(kind=8):: r_zmin,r_zmax,length,theta,phi,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a cylinder at an arbitrary
+c angle.
+c The notation is that a negative distance means that the point is inside.
+c
+c Write equation of surface as xx^2 + yy^2 = (r1 + (zz-z1)/(z2-z1)*(r2-r1))^2
+c                              xx^2 + yy^2 = (s1 + s2*zz)^2
+c Here, xx, yy, zz are in frame relative to cone axis. Conversion from
+c frame of mesh, xg, yg, zg
+c       xx = xg*cos(theta) - zg*sin(theta)
+c       yy = yg*cos(phi) - zg*cos(theta)*sin(phi) - xg*sin(theta)*sin(phi)
+c       zz = zg*cos(theta)*cos(phi) + xg*sin(theta)*cos(phi) + yg*sin(phi)
+
+      integer(ISZ):: i
+      real(kind=8):: ctheta,stheta,cphi,sphi,ss,cci,sci,si,lenhalf
+      real(kind=8):: xx,yy,zz,zcross
+      real(kind=8):: s1,s2,t1,t2,t3
+      real(kind=8):: a,b,c
+      real(kind=8):: z1,z2,zgcross,zl,zu,zlend,zuend,zi1,zi2
+      real(kind=8):: x1,x2,xgcross,xl,xu,xlend,xuend,xi1,xi2
+      real(kind=8):: y1,y2,ygcross,yl,yu,ylend,yuend,yi1,yi2
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+      cci = 1./dvnz(ctheta*cphi)
+      sci = 1./dvnz(stheta*cphi)
+      si  = 1./dvnz(sphi)
+      lenhalf = length/2.
+
+      s1 = r_zmin - (-lenhalf)*(r_zmax - r_zmin)/length
+      s2 = (r_zmax - r_zmin)/length
+      zcross = -s1/dvnz(s2)
+
+      do i=1,n
+
+c       --- Set defaults
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Set temps
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+
+c       --- delta z
+        t1 = xx*ctheta
+        t2 = yy*cphi - xx*stheta*sphi
+        t3 = xx*stheta*cphi + yy*sphi
+c       --- Coefficients of the quadratic
+        a = stheta**2 + (ctheta*sphi)**2 - (s2*ctheta*cphi)**2
+        b = -2*t1*stheta - 2*t2*ctheta*sphi - 2*(s1+s2*t3)*s2*ctheta*cphi
+        c = t1**2 + t2**2 - (s1+s2*t3)**2
+c       --- Check if z-line intersects the cone
+        if (b**2 - 4*a*c >= -fuzz) then
+c         --- Get the two points of intersection
+          if (a == 0) then
+            z1 = -c/b
+            z2 = z1
+          else
+            ss = sqrt(max(0.,b**2 - 4*a*c))
+            z1 = (-b-ss)/(2*a)
+            z2 = (-b+ss)/(2*a)
+          endif
+          zl = min(z1,z2)
+          zu = max(z1,z2)
+c         --- Get the point where the z-line intersects the end planes
+          z1 = (-lenhalf - xx*stheta*cphi - yy*sphi)*cci
+          z2 = (+lenhalf - xx*stheta*cphi - yy*sphi)*cci
+          zlend = min(z1,z2)
+          zuend = max(z1,z2)
+          zgcross = (zcross - xx*stheta*cphi - yy*sphi)*cci
+c         --- Now, get distances to surface
+          zi1 = +LARGEPOS
+          zi2 = -LARGEPOS
+          if (zl <= zgcross .and. zgcross <= zu .and.
+     &        (zlend <= zl .or. zu <= zuend)) then
+            if (zl < zlend) then
+              zi1 = max(zu,zlend)
+              zi2 = zuend
+            else if (zu > zuend) then
+              zi1 = zlend
+              zi2 = min(zl,zuend)
+            else if (zz <= zl) then
+              zi1 = zlend
+              zi2 = zl
+            else if (zz <= zu) then
+              zi2 = zl
+              zi1 = zu
+            else if (zu <= zz) then
+              zi1 = zu
+              zi2 = zuend
+            endif
+          else if (((zl <= zgcross .and. zu <= zgcross) .or.
+     &              (zl >= zgcross .and. zu >= zgcross)) .and.
+     &             (zl <= zuend .and. zlend <= zu)) then
+            zi1 = max(zl,zlend)
+            zi2 = min(zu,zuend)
+          endif
+            
+          if (zz <= zi1) delpz(i) = zi1 - zz
+          if (zi1 <= zz .and. zz <= zi2) then
+            delmz(i) = zi1 - zz
+            delpz(i) = zz - zi2
+          endif
+          if (zi2 <= zz) delmz(i) = zz - zi2
+        endif
+
+
+c       --- delta x
+        t1 = zz*stheta
+        t2 = yy*cphi - zz*ctheta*sphi
+        t3 = zz*ctheta*cphi + yy*sphi
+        a = (ctheta)**2 + (stheta*sphi)**2 - (s2*stheta*cphi)**2
+        b = -2*t1*ctheta - 2*t2*stheta*sphi - 2*(s1+s2*t3)*s2*stheta*cphi
+        c = t1**2 + t2**2 - (s1 + s2*t3)**2
+        if (b**2 - 4*a*c >= 0) then
+          if (a == 0) then
+            x1 = -c/b
+            x2 = x1
+          else
+            ss = sqrt(b**2 - 4*a*c)
+            x1 = (-b-ss)/(2*a)
+            x2 = (-b+ss)/(2*a)
+          endif
+          xl = min(x1,x2)
+          xu = max(x1,x2)
+c         --- Get the point where the x-line intersects the end planes
+          x1 = (-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          x2 = (+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          xlend = min(x1,x2)
+          xuend = max(x1,x2)
+          xgcross = (zcross - zz*ctheta*cphi - yy*sphi)*sci
+c         --- Now, get distances to surface
+          xi1 = +LARGEPOS
+          xi2 = -LARGEPOS
+          if (xl < xgcross .and. xgcross < xu .and.
+     &        (xlend <= xl .or. xu <= xuend)) then
+            if (xl < xlend) then
+              xi1 = max(xu,xlend)
+              xi2 = xuend
+            else if (xu > xuend) then
+              xi1 = xlend
+              xi2 = min(xl,xuend)
+            else if (xx <= xl) then
+              xi1 = xlend
+              xi2 = xl
+            else if (xx <= xu) then
+              xi2 = xl
+              xi1 = xu
+            else if (xu <= xx) then
+              xi1 = xu
+              xi2 = xuend
+            endif
+          else if (((xl <= xgcross .and. xu <= xgcross) .or.
+     &              (xl >= xgcross .and. xu >= xgcross)) .and.
+     &             (xl <= xuend .and. xlend <= xu)) then
+            xi1 = max(xl,xlend)
+            xi2 = min(xu,xuend)
+          endif
+            
+          if (xx <= xi1) delpx(i) = xi1 - xx
+          if (xi1 <= xx .and. xx <= xi2) then
+            delmx(i) = xi1 - xx
+            delpx(i) = xx - xi2
+          endif
+          if (xi2 <= xx) delmx(i) = xx - xi2
+        endif
+
+c       --- delta y
+        t1 = xx*ctheta - zz*stheta
+        t2 = zz*ctheta*sphi + xx*stheta*sphi
+        t3 = zz*ctheta*cphi + xx*stheta*cphi
+        a = (cphi)**2 - (s2*sphi)**2
+        b = -2*t2*cphi - 2*(s1+s2*t3)*s2*sphi
+        c = t1**2 + t2**2 - (s1+s2*t3)**2
+        if (b**2 - 4*a*c >= 0) then
+          if (a == 0) then
+            y1 = -c/b
+            y2 = y1
+          else
+            ss = sqrt(b**2 - 4*a*c)
+            y1 = (-b-ss)/(2*a)
+            y2 = (-b+ss)/(2*a)
+          endif
+          yl = min(y1,y2)
+          yu = max(y1,y2)
+c         --- Get the point where the z-line intersects the end planes
+          y1 = (-lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+          y2 = (+lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+          ylend = min(y1,y2)
+          yuend = max(y1,y2)
+          ygcross = (zcross - zz*ctheta*cphi - xx*stheta*cphi)*si
+c         --- Now, get distances to surface
+          yi1 = +LARGEPOS
+          yi2 = -LARGEPOS
+          if (yl < ygcross .and. ygcross < yu .and.
+     &        (ylend <= yl .or. yu <= yuend)) then
+            if (yl < ylend) then
+              yi1 = max(yu,ylend)
+              yi2 = yuend
+            else if (yu > yuend) then
+              yi1 = ylend
+              yi2 = min(yl,yuend)
+            else if (yy <= yl) then
+              yi1 = ylend
+              yi2 = yl
+            else if (yy <= yu) then
+              yi2 = yl
+              yi1 = yu
+            else if (yu <= yy) then
+              yi1 = yu
+              yi2 = yuend
+            endif
+          else if (((yl <= ygcross .and. yu <= ygcross) .or.
+     &              (yl >= ygcross .and. yu >= ygcross)) .and.
+     &             (yl <= yuend .and. ylend <= yu)) then
+            yi1 = max(yl,ylend)
+            yi2 = min(yu,yuend)
+          endif
+            
+          if (yy <= yi1) delpy(i) = yi1 - yy
+          if (yi1 <= yy .and. yy <= yi2) then
+            delmy(i) = yi1 - yy
+            delpy(i) = yy - yi2
+          endif
+          if (yi2 <= yy) delmy(i) = yy - yi2
         endif
 
       enddo
