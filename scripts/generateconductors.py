@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.103 2005/01/25 19:50:52 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.104 2005/01/26 16:55:08 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -192,9 +192,7 @@ Should never be directly created by the user.
     self.lostparticles_data = []
     self.emitparticles_data = []
     self.imageparticles_data = []
-    if not isinstalledafterfs(self.accuimagecharge):
-      installafterfs(self.accuimagecharge)
-
+    
   def getkwlist(self):
     kwlist = []
     for k in self.kwlist:
@@ -312,6 +310,14 @@ Should never be directly created by the user.
     time,current=self.get_current_history(js=js,l_lost=l_lost,l_emit=l_emit,l_accu=l_accu,tmin=tmin,tmax=tmax,nt=nt)
     plg(current,time,color=color,width=width,type=type)
     ptitles('Current history at '+self.name,'time (s)','I (A)')
+
+  def enable_accuimagecharge(self): 
+    if not isinstalledafterfs(self.accuimagecharge):
+      installafterfs(self.accuimagecharge)
+
+  def disable_accuimagecharge(self): 
+    if isinstalledafterfs(self.accuimagecharge):
+      uninstallafterfs(self.accuimagecharge)
 
   def accuimagecharge(self,doplot=false,l_verbose=false):
     """
