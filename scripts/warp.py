@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.61 2004/01/28 23:44:33 dave Exp $"
+warp_version = "$Id: warp.py,v 1.62 2004/04/26 23:53:53 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -604,7 +604,7 @@ Reads in data from file, redeposits charge density and does field solve
   # --- Reinitialize some injection stuff if it is needed.
   # --- This is really only needed for the parallel version since some of the
   # --- data saved is only valid for PE0.
-  if top.inject > 0: fill_inj(w3d.dx,w3d.dy,w3d.dz,w3d.ix_axis,w3d.iy_axis)
+  if top.inject > 0: fill_inj()
   # --- Set the lattice internal variables. Only needed if reading in a dump
   # --- that was made before the overlapping elements was implemented.
   # --- Otherwise is doesn't hurt anything.
