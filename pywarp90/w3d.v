@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.76 $, $Date: 2002/10/25 00:00:00 $
+#@(#) File W3D.V, version $Revision: 3.77 $, $Date: 2002/10/26 00:26:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.76 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.77 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -293,9 +293,11 @@ inj_xmmin            real [m] /0./ # Min x extent of injection mesh
 inj_ymmin            real [m] /0./ # Min y extent of injection mesh
 inj_nx               integer  /0/  # size injection arrays in x
 inj_ny               integer  /0/  # size injection arrays in y
+inj_nz               integer  /0/  # size injection arrays in z 
 inj_dx               real [m] /0./ # mesh spacing in x for injection
 inj_dy               real [m] /0./ # mesh spacing in y for injection
 inj_dz               real [m] /0./ # mesh spacing in z for injection
+inj_dz0              real [m] /0./ # mesh spacing in z for injection
 inj_ninj             integer  # Auto set to either 1 or ninject. Set to 1
                               # when no emitting source are within two grid
                               # cells of each other.
@@ -321,6 +323,16 @@ inj_ex(0:inj_nx,0:inj_ny,inj_ninj)  _real
 inj_ey(0:inj_nx,0:inj_ny,inj_ninj)  _real
 inj_area(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Inverse of the fraction of the grid cell's area within the emitting surface
+inj_q(0:inj_nx,0:inj_ny,0:inj_nz,inj_ninj)  _real
+   # Charge in bins in the emitting region.
+inj_phi_3d(0:inj_nx,0:inj_ny,0:inj_nz,inj_ninj)  _real
+   # Electrostatic potential in the emitting region.
+inj_ex_3d(0:inj_nx,0:inj_ny,0:inj_nz,inj_ninj)  _real
+   # Tangential field in the emitting region.
+inj_ey_3d(0:inj_nx,0:inj_ny,0:inj_nz,inj_ninj)  _real
+   # Tangential field in the emitting region.
+inj_ez_3d(0:inj_nx,0:inj_ny,0:inj_nz,inj_ninj)  _real
+   # Normal field in the emitting region.
 
 *********** Setpwork3d:
 # Scratch arrays for subroutine setptcls
@@ -466,7 +478,7 @@ inj_smoother(nx:integer,ny:integer,inj_phi:real,dx:real,dy:real,
              xmmin:real,ymmin:real,x0:real,y0:real,a0:real,b0:real,
              inj_nsmooth:integer) subroutine
 getinj_phi() subroutine
-
+test_inj_setq(nn:integer,xp:real,yp:real,zp:real,base:real) subroutine
 ******** Subtimers:
 lw3dtimesubs logical /.false./
 timew3dinit real /0./
