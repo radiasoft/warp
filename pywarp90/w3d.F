@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.36 $, $Date: 2001/12/19 21:13:43 $
+c@(#) File W3D.M, version $Revision: 3.37 $, $Date: 2002/01/03 00:19:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -870,10 +870,9 @@ c=============================================================================
       use Z_arrays
       use InDiag3d
 
-c  Calculate the electrostatic energy, sum of rho*phi*dx*dy*dz/2
-c  Includes external fields: Uniform focusing and eears for cigars
-c  This does it in a partially vectorized manner.
-
+c Calculate the electrostatic energy, sum of rho*phi*dx*dy*dz/2
+c Includes external fields: Uniform focusing and eears for cigars
+c This does it in a partially vectorized manner.
 
       integer(ISZ):: ix,iy,iz,izb
       real(kind=8):: zm,zz,phiextun,wzb
@@ -922,6 +921,20 @@ c         --- the field solver.
           enddo
         enddo
       enddo
+
+c     --- Apply appropriate multiplication factors for symmetries
+      if (l4symtry) then
+c       --- Center point is unchanged
+c       --- Edges are doubled
+c       --- Bulk is quadrupoled
+        scrtch(0,1:ny) = 2.*scrtch(0,1:ny)
+        scrtch(1:nx,0) = 2.*scrtch(1:nx,0)
+        scrtch(1:nx,1:ny) = 4.*scrtch(1:nx,1:ny)
+      else if (l2symtry) then
+c       --- Edge is unchanged
+c       --- Bulk is doubled
+        scrtch(1:nx,0:ny) = 2.*scrtch(1:nx,0:ny)
+      endif
 
       do iy=1,ny
         do ix=0,nx
