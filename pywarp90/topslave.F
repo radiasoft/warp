@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.9 $, $Date: 2002/03/27 21:30:03 $
+c TOPSLAVE.M, version $Revision: 1.10 $, $Date: 2002/04/18 21:34:42 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -247,7 +247,7 @@ c       --- Make sure that there is space for the incoming data.
      &      call copyarry(buffer3(1+7*nrecvleft),pid(ip),nrecvleft)
           ins(is) = ins(is) - nrecvleft
           nps(is) = nps(is) + nrecvleft
-	endif
+        endif
 
         if (nrecvright > 0) then
           ip = ins(is) + nps(is)
@@ -261,7 +261,7 @@ c       --- Make sure that there is space for the incoming data.
           if (npmaxi > 0)
      &      call copyarry(buffer4(1+7*nrecvright),pid(ip),nrecvright)
           nps(is) = nps(is) + nrecvright
-	endif
+        endif
 
 c What follows (but is commented out) is the preferred version, but
 c is causes a core dump for some unknown reason.
@@ -640,6 +640,15 @@ c Broadcast the data to all processors.
       call MPI_BCAST(data,ndata,MPI_DOUBLE_PRECISION,
      &               root,MPI_COMM_WORLD,mpierror)
 
+      return
+      end
+c==========================================================================
+c==========================================================================
+      subroutine parallelbarrier()
+c Calls MPI barrier
+      integer(ISZ):: mpierror
+      include "mpif.h"
+      call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
       return
       end
 c==========================================================================
