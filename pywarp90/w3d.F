@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.111 $, $Date: 2003/06/03 23:07:18 $
+c@(#) File W3D.M, version $Revision: 3.112 $, $Date: 2003/06/10 18:27:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1233,7 +1233,6 @@ c  and also loads RHO at the new time level.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-
 c  Zero the bend radius and residence arrays
 c     call zeroarry (bendres,nparpgrp)
 c     call zeroarry (bendradi,nparpgrp)
@@ -1524,7 +1523,6 @@ c       --- Note that zgridprv is also set at the beginning of w3dexe
 
         time = time + dt
       endif
-
 
       if (lw3dtimesubs) timepadvnc3d = timepadvnc3d + wtime() - substarttime
       return
@@ -3735,6 +3733,7 @@ c  whose field solve region overlap its particle region.
       end
 c=============================================================================
       subroutine setupFields3dParticles()
+      use Picglb3d
       use InMesh3d
       use Fields3d
       use Fields3dParticles
@@ -6376,6 +6375,7 @@ c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
       real(kind=8):: xx(npart),yy(npart),zz(npart)
+      real(kind=8):: tex(npart),tey(npart),tez(npart)
       integer(ISZ):: ijp(npart)
       integer(ISZ):: ip,ix,iy,iz,ij
       real(kind=8):: rinj,rinji,rr2,dd,ca,zii
@@ -6405,6 +6405,9 @@ c any conductor surface.
         spready = 0
       end if
       if (l_inj_rz) spready = 0
+      tex = 0.
+      tey = 0.
+      tez = 0.
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -6494,9 +6497,14 @@ c           --- Scale the normal E field to match the Child-Langmuir solution
 
 c         --- Set the particle's electric field based off of the normal
 c         --- electric fields.
-          ex(ip) = -en*sin(az)*cos(aa)
-          ey(ip) = -en*sin(az)*sin(aa)
-          ez(ip) =  en*cos(az)
+          tex(ip) = -en*sin(az)*cos(aa)
+          tey(ip) = -en*sin(az)*sin(aa)
+          tez(ip) =  en*cos(az)
+
+c         --- Zero out the original data
+          ex(ip) = 0.
+          ey(ip) = 0.
+          ez(ip) = 0.
 
           if (linj_eperp .and. .not.l_inj_rz) then
 c           --- Add in the tangential fields if requested.
@@ -6518,13 +6526,23 @@ c           --- (i.e. zero) and the value on the secondary surface.
      &                            inj_ey(ix        ,iy+spready,ij)*(1.-wx)*    wy  +
      &                            inj_ey(ix+spreadx,iy+spready,ij)*    wx *    wy   )
 
-            ex(ip) = ex(ip) + etx*cos(atx)
-            ey(ip) = ey(ip) + ety*cos(aty)
-            ez(ip) = ez(ip) + etx*sin(atx) + ety*sin(aty)
+            tex(ip) = tex(ip) + etx*cos(atx)
+            tey(ip) = tey(ip) + ety*cos(aty)
+            tez(ip) = tez(ip) + etx*sin(atx) + ety*sin(aty)
           endif
 
         endif
       enddo
+
+c     --- Transform E field from injection source frame to lab frame
+      call inj_transform(npart,tex,tey,tez,npart,ijp,1,.false.)
+
+c     --- Copy the temporary arrays into the original. Note that for
+c     --- particles near the source, the original was zero-ed out.
+c     --- For particles not near the source, the temp arrays are zero.
+      ex = ex + tex
+      ey = ey + tey
+      ez = ez + tez
 
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
       return
@@ -7576,6 +7594,7 @@ c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
       real(kind=8):: xx(npart),yy(npart),zz(npart)
+      real(kind=8):: tex(npart),tey(npart),tez(npart)
       integer(ISZ):: ijp(npart)
       integer(ISZ):: ip,ix,iy,iz,ij
       real(kind=8):: rinj,rinji,rr2,dd,ca,dzmin,deltaz(ninject)
@@ -7605,6 +7624,9 @@ c any conductor surface.
         spready = 0
       end if
       if (l_inj_rz) spready = 0
+      tex = 0.
+      tey = 0.
+      tez = 0.
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
@@ -7722,9 +7744,12 @@ c         --- Child-Langmuir solution (for planar surfaces) is used.
 
 c         --- Set the particle's electric field based off of the normal
 c         --- electric fields.
-          ex(ip) = -en*sin(az)*cos(aa)
-          ey(ip) = -en*sin(az)*sin(aa)
-          ez(ip) =  en*cos(az)
+          tex(ip) = -en*sin(az)*cos(aa)
+          tey(ip) = -en*sin(az)*sin(aa)
+          tez(ip) =  en*cos(az)
+          ex(ip) = 0.
+          ey(ip) = 0.
+          ez(ip) = 0.
 
           if (linj_eperp .and. .not.l_inj_rz) then
 c           --- Add in the tangential fields if requested.
@@ -7754,13 +7779,18 @@ c           --- (i.e. zero) and the value on the secondary surface.
      &                inj_ey_3d(ix        ,iy+spready,iz+1,ij)*(1.-wx)*    wy *    wz  +
      &                inj_ey_3d(ix+spreadx,iy+spready,iz+1,ij)*    wx *    wy *    wz  )
 
-            ex(ip) = ex(ip) + etx*cos(atx)
-            ey(ip) = ey(ip) + ety*cos(aty)
-            ez(ip) = ez(ip) + etx*sin(atx) + ety*sin(aty)
+            tex(ip) = tex(ip) + etx*cos(atx)
+            tey(ip) = tey(ip) + ety*cos(aty)
+            tez(ip) = tez(ip) + etx*sin(atx) + ety*sin(aty)
           endif
 
         endif
       enddo
+
+      call inj_transform(npart,tex,tey,tez,npart,ijp,-1,.true.)
+      ex = ex + tex
+      ey = ey + tey
+      ez = ez + tez
 
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
       return
