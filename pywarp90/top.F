@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.62 $, $Date: 2002/11/06 01:20:05 $
+c@(#) File TOP.M, version $Revision: 3.63 $, $Date: 2002/11/06 17:32:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4956,7 +4956,7 @@ c         --- to the moments grid cell centers.
                 uzep(nep(iw,is),iw,is) = pp(11,ip)
               else if (iz(ip)+1 == izepwin(iw) .and.
      &                 nep(iw,is) < nepmax .and.
-     &                 pp(0,ip) > 0.) then
+     &                 wp(ip) > 0.) then
                 nep(iw,is) = nep(iw,is) + 1
                 tep(nep(iw,is),iw,is) = pp(17,ip) + time
                 xep(nep(iw,is),iw,is) = pp(2,ip)
