@@ -13,9 +13,9 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.7 2001/04/04 17:38:37 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.8 2001/06/01 21:56:13 dave Exp $"
 
-if sys.platform in ['sn960510','linux-i386']:
+if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
   false = 0
 else:
