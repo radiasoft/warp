@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.61 $, $Date: 2002/07/17 17:35:21 $
+#@(#) File W3D.V, version $Revision: 3.62 $, $Date: 2002/07/23 21:04:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.61 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.62 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top

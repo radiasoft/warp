@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.63 $, $Date: 2002/07/22 23:13:02 $
+c@(#) File W3D.M, version $Revision: 3.64 $, $Date: 2002/07/23 21:04:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1242,9 +1242,10 @@ c       rho = 0.
       end if
 
 c  Zero curr if center is synchv or if using gaps
-      if (center == "synchv" .or. ifgap .and. .not. laccumulate_rho)
-     &  call zeroarry(curr(0),nzzarr+1)
-c    &  curr = 0.
+      if ((center == "synchv" .or. ifgap) .and. .not. laccumulate_rho) then
+        call zeroarry(curr(0),nzzarr+1)
+c       curr = 0.
+      endif
 
 c  Zero the moments if center is synchv
       if (center == "synchv" .or. center == "gen") then
