@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.81 $, $Date: 2004/11/03 20:56:22 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.82 $, $Date: 2004/11/03 22:58:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -13,6 +13,7 @@ c=============================================================================
      &                        rstar,linbend,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                        xmmin,ymmin,zmmin,zbeam,zgrid)
+      use GlobalVars
       use PSOR3d
       use Conductor3d
       use Multigrid3d
@@ -35,10 +36,13 @@ c     --- copy boundary positions from bound0, boundnz, and boundxy
       bounds(4) = bound0
       bounds(5) = boundnz
       if (l2symtry) then
-        bounds(2) = 1
+        bounds(2) = neumann
+        if (boundxy == 2) bounds(3) = neumann
       else if (l4symtry) then
-        bounds(0) = 1
-        bounds(2) = 1
+        bounds(0) = neumann
+        bounds(2) = neumann
+        if (boundxy == 2) bounds(1) = neumann
+        if (boundxy == 2) bounds(3) = neumann
       endif
 
       call multigrid3dsolve(iwhich,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
