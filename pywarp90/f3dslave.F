@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.10 $, $Date: 2002/09/12 23:29:25 $
+c F3DSLAVE.M, version $Revision: 1.11 $, $Date: 2002/09/12 23:42:50 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1174,7 +1174,7 @@ c can print its data.
 
 c The file needs to be reopened each time since there is no coordination in how
 c the processors deal with files.
-      open(22,action="write",access="append",file="out4")
+      open(22,action="write",position="append",file="out4")
       do iz=firstz,lastz
         do iy=0,ny
           do ix=0,nx
