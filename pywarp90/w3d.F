@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.188 $, $Date: 2005/02/16 18:33:37 $
+c@(#) File W3D.F, version $Revision: 3.189 $, $Date: 2005/02/24 21:29:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1288,7 +1288,7 @@ c       --- Add on linear pressure term
       return
       end
 c=============================================================================
-      subroutine padvnc3d(center)
+      subroutine padvnc3d(center_in)
       use GlobalVars
       use Subtimers3d
       use InMesh3d
@@ -1315,8 +1315,8 @@ c=============================================================================
       use GridBoundary3d
       use DKInterp
       use DKInterptmp
-      character(*):: center
-      character(len=len(center)):: center_copy
+      character(*):: center_in
+      character(len=len(center_in)):: center
 
 c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
@@ -1344,7 +1344,7 @@ c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       if (lw3dtimesubs) substarttime = wtime()
 
       halfdt = 0.5*dt
-      center_copy=center
+      center = center_in
 
 c  Zero the bend radius and residence arrays
 c     call zeroarry (bendres,nparpgrp)
@@ -1395,10 +1395,10 @@ c  Advance species according to subcycling rule governed by ndts.
           cycle
         else
           if (ndts(is)==1) then
-            center = center_copy
+            center = center_in
           else
-            if (center_copy=="fullv" .and. ldts(is)) center="halfv"
-            if (center_copy=="synchv") then
+            if (center_in=="fullv" .and. ldts(is)) center="halfv"
+            if (center_in=="synchv") then
               ldts(is)=.true.
             else
               ldts(is)=.false.
