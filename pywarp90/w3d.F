@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.172 $, $Date: 2004/11/12 23:38:48 $
+c@(#) File W3D.F, version $Revision: 3.173 $, $Date: 2004/11/13 01:34:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4861,7 +4861,6 @@ c=============================================================================
       use InMesh3d
       use Fields3d
       use Fields3dParticles
-      use GridBoundary3d
 
 #ifndef MPIPARALLEL
 
@@ -4879,6 +4878,8 @@ c     --- If rhop is not associated with rho, then copy the data.
 
 #else
 
+      use Parallel
+
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
@@ -4886,10 +4887,33 @@ c  whose field solve region overlap its particle region.
       else if(solvergeom==Zgeom) then
         call getrhoforfieldsolvez(nz,rho(0,0,0))
       elseif (solvergeom==XYZgeom) then
-        call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,bound0)
-        call getrhoforfieldsolve3d(nx,ny,nz,rho(0,0,0),
-     &                             nxp,nyp,nzp,rhop(0,0,0))
+        call getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
+     &                             my_index,nslaves,
+     &                             izfsslave,nzfsslave,izpslave,nzpslave)
       end if
+
+#endif
+
+      return
+      end
+c=============================================================================
+      subroutine getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
+     &                                 my_index,nslaves,
+     &                                 izfsslave,nzfsslave,izpslave,nzpslave)
+      integer(ISZ):: nx,ny,nz,nxp,nyp,nzp
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
+
+#ifdef MPIPARALLEL
+
+      call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,
+     &                              my_index,nslaves,izpslave,nzpslave)
+      call getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
+     &                                    my_index,nslaves,
+     &                                    izfsslave,nzfsslave,izpslave,nzpslave)
 
 #endif
 
