@@ -35,7 +35,7 @@ madtowarp(lattice)
 from warp import *
 import __main__
 import RandomArray
-lattice_version = "$Id: lattice.py,v 1.17 2003/04/25 18:27:20 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.18 2003/04/25 22:59:46 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -927,6 +927,8 @@ Or specify the data set
       top.pgrddz[id-1] = self.dz
       sp = shape(self.pp)
       top.pgrd[:sp[0],:sp[1],1:sp[2]+1,id-1] = self.pp
+      top.pgrd[:sp[0],:sp[1],0,id-1] = top.pgrd[:sp[0],:sp[1],1,id-1]
+      top.pgrd[:sp[0],:sp[1],sp[2]+1,id-1] = top.pgrd[:sp[0],:sp[1],sp[2],id-1]
   def derivedquantities(_self,self):
     self.pp = array(self.pp)
   def install(self,zz):
