@@ -5469,7 +5469,7 @@ end subroutine srfrvinoutrz
 subroutine setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz, &
                       l2symtry_in,l4symtry_in)
 use Conductor3d
-USE multigridrz
+USE multigridrz, zgridmod => zgrid
 integer(ISZ):: nx,ny,nz
 real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
 logical(ISZ):: l2symtry_in,l4symtry_in
