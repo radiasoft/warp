@@ -70,11 +70,14 @@ SRFRVLA_rnd_rectangle(name,c,l,h,r)
 from warp import *
 import operator
 if not lparallel:
-  import VPythonobjects
-  import pyOpenDX
+  try:
+    import VPythonobjects
+    import pyOpenDX
+  except ImportError:
+    pass
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.61 2004/05/19 19:54:28 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.62 2004/05/20 15:53:33 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
