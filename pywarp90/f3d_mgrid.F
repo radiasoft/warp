@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.78 $, $Date: 2004/10/21 01:08:53 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.79 $, $Date: 2004/10/22 15:49:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -378,6 +378,36 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
       return
       end
 c=============================================================================
+      real(kind=8) function mggetarraysum(nx,ny,nz,delt,delz,a,
+     &                                    izfsslave,npes,my_index)
+      integer(ISZ):: nx,ny,nz,delt,delz,npes,my_index
+      integer(ISZ):: izfsslave(0:npes-1)
+      real(kind=8):: a(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
+
+#ifdef MPIPARALLEL
+
+      integer(ISZ):: i1,i2
+      real(kind=8):: sss(1)
+
+      i1 = 0
+      if (my_index < npes-1) then
+        i2 = izfsslave(my_index+1) - izfsslave(my_index) - 1
+      else
+        i2 = nz
+      endif
+      sss(1) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
+      call parallelsumrealarray(sss,1)
+      mggetarraysum = sss(1)
+
+#else
+
+      mggetarraysum = sum(sum(sum(a,1),1),1)
+
+#endif
+
+      return
+      end
+c=============================================================================
       RECURSIVE subroutine vcycle(mglevel,nx,ny,nz,nzfull,dx,dy,dz,
      &                            phi,rho,rstar,linbend,bendx,globalbounds,
      &                            mgparam,mgform,
@@ -550,7 +580,7 @@ c         --- Add in resulting error.
 #ifdef MPIPARALLEL
 c         --- Find domains in coarser grid
           call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
-     &                    nzfull,nzfullcoarse,dz/dzcoarse)
+     &                    nzfull,nzfullcoarse)
 c         --- Reset value to corrected one
           nzcoarse = nzfsslavec(my_index)
 c         --- Difference between starts and ends of coarse and fine grids.
@@ -626,7 +656,6 @@ c     message added by petermc, 1 Oct 2002
       if (.false.) print *, 'DOING ', uppasses,
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
-
 
       do i=1,uppasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
@@ -2433,7 +2462,7 @@ c     --- processor can get a different value if dz == 4./3.*dx.
 #ifdef MPIPARALLEL
 c       --- Find domains in coarser grid
         call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
-     &                  nzfull,nzfullcoarse,dz/dzcoarse)
+     &                  nzfull,nzfullcoarse)
 c       --- Set new value of nz
         nzcoarse = nzfsslavec(my_index)
 #else
