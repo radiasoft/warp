@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.4 $, $Date: 2001/05/15 01:51:02 $
+c@(#) File ENV.M, version $Revision: 3.5 $, $Date: 2001/05/22 20:31:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -32,7 +32,7 @@ c=============================================================================
       use ENVvars
       use Beam_acc
       use InGen
-      use Lattice
+      use LatticeInternal
 
 c  Invoked by the GENERATE command, it allocates storage
 c  for the envelope code.
@@ -51,6 +51,9 @@ c     --- allocate dynamic arrays ("group allot")
 
 c     --- reset Lattice arrays to final size
       call resetlat
+      nzlmax = 2
+      nzl = 2
+      call gchange("LatticeInternal",0)
 
 c     --- Set default values for region over which the tune is calculated.
       if (tunezs == tuneze) then
@@ -184,7 +187,6 @@ c=======================================================================
       use Constant
       use Beam_acc
       use InGen
-      use Lattice
 
 c  Interface to ENVELOPE, using variables from the database for
 c  package ENV, and global variables from package TOP.
@@ -219,8 +221,6 @@ c=======================================================================
       use ENVtune
       use Constant
       use InGen
-      use Lattice
-      use Mult_data
       integer(ISZ):: nenv
       logical(ISZ):: lrelativ
       real(kind=8):: ibeam
@@ -354,7 +354,7 @@ c        --- store data for this step
          fuyenv(istep) = fuyplot 
 c        --- Check if just before starting point of region over which the tune
 c        --- is to be calculated.
-         if (tunezs-dz .lt. z .and. z .le. tunezs) then
+         if (tunezs-dz < z .and. z <= tunezs) then
            astart    = a
            apstart   = ap
            bstart    = b
@@ -381,7 +381,7 @@ c
 c        --- Check if just after starting point of region over which the tune
 c        --- is to be calculated.  Linear interpolate to find values at the
 c        --- starting point.
-         if (tunezs .lt. z .and. z .lt. tunezs+dz) then
+         if (tunezs < z .and. z < tunezs+dz) then
            wz = 1. - (z - tunezs)/dz
            astart    = astart   *(1. - wz) + a   *wz
            apstart   = apstart  *(1. - wz) + ap  *wz
@@ -408,7 +408,7 @@ c
          endif
 c        --- Check if just before ending point of region over which the tune
 c        --- is to be calculated.
-         if (tuneze-dz .lt. z .and. z .le. tuneze) then
+         if (tuneze-dz < z .and. z <= tuneze) then
            aend    = a
            apend   = ap
            bend    = b
@@ -435,7 +435,7 @@ c
 c        --- Check if just after ending point of region over which the tune
 c        --- is to be calculated.  Linear interpolate to find values at the
 c        --- ending point.
-         if (tuneze .lt. z .and. z .lt. tuneze+dz) then
+         if (tuneze < z .and. z < tuneze+dz) then
            wz = 1. - (z - tuneze)/dz
            aend    = aend   *(1. - wz) + a   *wz
            apend   = apend  *(1. - wz) + ap  *wz
@@ -539,7 +539,7 @@ c       --- compute the undepressed x-tune (phase adv / cell)
         cossig0x = max(-1., min(1.,cossig0x))
         tansig0x = sqrt(1. - cossig0x**2)/dvnz(cossig0x)
         sig0x = (180./pi) * atan(tansig0x)
-        if (sig0x .lt. 0.) sig0x = sig0x + 180.
+        if (sig0x < 0.) sig0x = sig0x + 180.
 
 c       --- compute the depressed x-tune (phase adv / cell)
         mx11 = (xp1start*x2end -   x1end*  xp2start)/
@@ -550,7 +550,7 @@ c       --- compute the depressed x-tune (phase adv / cell)
         cossigx = max(-1., min(1.,cossigx))
         tansigx = sqrt(1. - cossigx**2)/dvnz(cossigx)
         sigx = (180./pi) * atan(tansigx)
-        if (sigx .lt. 0.) sigx = sigx + 180.
+        if (sigx < 0.) sigx = sigx + 180.
 
 c       --- compute the undepressed y-tune (phase adv / cell)
         my110 = (y0p1start*y02end -   y01end*  y0p2start)/
@@ -561,7 +561,7 @@ c       --- compute the undepressed y-tune (phase adv / cell)
         cossig0y = max(-1., min(1.,cossig0y))
         tansig0y = sqrt(1. - cossig0y**2)/dvnz(cossig0y)
         sig0y = (180./pi) * atan(tansig0y)
-        if (sig0y .lt. 0.) sig0y = sig0y + 180.
+        if (sig0y < 0.) sig0y = sig0y + 180.
 
 c       --- compute the depressed y-tune (phase adv / cell)
         my11 = (yp1start*y2end -   y1end*  yp2start)/
@@ -572,7 +572,7 @@ c       --- compute the depressed y-tune (phase adv / cell)
         cossigy = max(-1., min(1.,cossigy))
         tansigy = sqrt(1. - cossigy**2)/dvnz(cossigy)
         sigy = (180./pi) * atan(tansigy)
-        if (sigy .lt. 0.) sigy = sigy + 180.
+        if (sigy < 0.) sigy = sigy + 180.
 
 c       --- compute quantities that serve as measures of "matchedness"
         deltaa  = aend  - astart
@@ -593,6 +593,7 @@ c=======================================================================
       use Constant
       use InGen
       use Lattice
+      use LatticeInternal
       use Mult_data
       real(kind=8):: z,time,zion,aion,gamma,vz,ek,dz
       real(kind=8):: dedr,dexdx,deydy,dbdr,p,a,b,x,y,x1,x2,x01,x02,y1,y2,y01,y02
@@ -611,19 +612,19 @@ c  E-field proportional to the radial coodrinate r), and
 c  linear space-charge forces.  
 
 
-      real(kind=8):: zl,offsetl,fracl 
-      real(kind=8):: zr,offsetr,fracr
-      real(kind=8):: celezsl,celezel,celededrl,celedbdxl,celededxl
-      real(kind=8):: celezsr,celezer,celededrr,celedbdxr,celededxr
+      real(kind=8):: zl,fracl 
+      real(kind=8):: zr,fracr
+      real(kind=8):: eelededrl,eeledbdxl,eelededxl
+      real(kind=8):: eelededrr,eeledbdxr,eelededxr
       real(kind=8):: fuzz
       real(kind=8):: frac,dedrr,dbdxq,dedxq,ez,ke
-      real(kind=8):: cquadde,cquaddb,cquadox,cquadoy
-      real(kind=8):: chelededx,cheledbdx,chelededr,cheleox,cheleoy
-      real(kind=8):: cemltdedx,cemltdedr,cemltox,cemltoy
-      real(kind=8):: cmmltdbdx,cmmltox,cmmltoy
-      real(kind=8):: cmmlt2dbdx,cmmlt2ox,cmmlt2oy
+      real(kind=8):: equadde,equaddb,equadox,equadoy
+      real(kind=8):: ehelededx,eheledbdx,ehelededr,eheleox,eheleoy
+      real(kind=8):: eemltdedx,eemltdedr,eemltox,eemltoy
+      real(kind=8):: emmltdbdx,emmltox,emmltoy
+      real(kind=8):: emmlt2dbdx,emmlt2ox,emmlt2oy
       real(kind=8):: fux,fuy,fq,feself,fexself,feyself 
-      real(kind=8):: offset,wie,wim
+      real(kind=8):: wie,wim
       integer(ISZ):: iquader,imulter
       integer(ISZ):: ii,iie,iim,iem,imm
       integer(ISZ):: iquad,ihele,iemlt,immlt,immlt2,iaccl
@@ -632,66 +633,48 @@ c  linear space-charge forces.
       zl = z - 0.5 * dz
       zr = z + 0.5 * dz
 
+c     --- Set internal lattice mesh so that the z's at 0 and 2 are zl and zr,
+c     --- and the z at 1 is z.
+      zlmin = zl
+      zlmax = zr
+      dzl = (zlmax - zlmin)/nzl
+      call setlattzt(0.,time,0)
+
 c     --- Hard edge quadrupoles
 
-      cquadde = 0.
-      cquaddb = 0.
-      cquadox = 0.
-      cquadoy = 0.
+      equadde = 0.
+      equaddb = 0.
+      equadox = 0.
+      equadoy = 0.
       if (quads) then
 
 c        --- Find quad at left edge of velocity advance step.
-         call getelemid(zl,offsetl,nquad,quadzs,quadze,iquad)
-         celezsl = quadzs(iquad) + offsetl
-         celezel = quadze(iquad) + offsetl
-         celedbdxl = quaddb(iquad)
-         celededxl = quadde(iquad)
          fracl = 0.
-         if ((zl .lt. celezel) .and. (celezsl .lt. zl)) then
+         if ((zl < cquadze(0)) .and. (cquadzs(0) < zl)) then
            fracl = 1.
-           if (zlatperi > 0.) then
-             iquader = iquad + (int(10.+(zl-zlatstrt)/zlatperi)-10)*nquad
-           else
-             iquader = iquad
-           endif
-           iquader = mod(iquader, nqerr)
-           if (iquader < 0) iquader = nqerr + iquader
-           cquadox = qoffx(iquader)
-           cquadoy = qoffy(iquader)
+           equadox = cqoffx(0)
+           equadoy = cqoffy(0)
          endif
         
 c        --- Find quad at right edge of velocity advance step.
-         call getelemid(zr,offsetr,nquad,quadzs,quadze,iquad)
-         celezsr = quadzs(iquad) + offsetr
-         celezer = quadze(iquad) + offsetr
-         celedbdxr = quaddb(iquad)
-         celededxr = quadde(iquad) 
          fracr = 0.
-         if ((zr .lt. celezer) .and. (celezsr .lt. zr)) then
+         if ((zr < cquadze(2)) .and. (cquadzs(2) < zr)) then
            fracr = 1.
-           if (zlatperi > 0.) then
-             iquader = iquad + (int(10.+(zr-zlatstrt)/zlatperi)-10)*nquad
-           else
-             iquader = iquad
-           endif
-           iquader = mod(iquader, nqerr)
-           if (iquader < 0) iquader = nqerr + iquader
-           cquadox = qoffx(iquader)
-           cquadoy = qoffy(iquader)
+           equadox = cqoffx(2)
+           equadoy = cqoffy(2)
          endif
 
 c        --- Calculate residence fraction.
          frac = fracl
-         if (fracl .gt. fracr) frac = (celezel - zl) / dz
-         if (fracr .gt. fracl) frac = (zr - celezsr) / dz
+         if (fracl > fracr) frac = (cquadze(0) - zl) / dz
+         if (fracr > fracl) frac = (zr - cquadzs(2)) / dz
 
-c        --- quadrupole fields, including residence fraction, 
-c        --- add in with any previous fields calculated 
-         cquaddb = celedbdxl * frac 
-         cquadde = celededxl * frac
-         if (fracr .gt. fracl) then 
-           cquaddb = celedbdxr * frac 
-           cquadde = celededxr * frac
+c        --- quadrupole fields, including residence fraction
+         equaddb = cquaddb(0)*frac 
+         equadde = cquadde(0)*frac
+         if (fracr > fracl) then 
+           equaddb = cquaddb(2)*frac 
+           equadde = cquadde(2)*frac
          endif
 
       endif 
@@ -700,93 +683,89 @@ c        --- add in with any previous fields calculated
 c     --- Hard edge multipoles, can include linearly focusing 
 c     --- quadrupole or azimuthally symmetric field 
  
-      chelededr = 0.
-      chelededx = 0.
-      cheledbdx = 0.
-      cheleox = 0.
-      cheleoy = 0.
+      ehelededr = 0.
+      ehelededx = 0.
+      eheledbdx = 0.
+      eheleox = 0.
+      eheleoy = 0.
       if (heles) then
 
          fuzz = 1.e-3
 
 c        --- Find multipole at left edge of velocity advance step.
-         call getelemid(zl,offsetl,nhele,helezs,heleze,ihele)
+         ihele = cheleid(0)
 c        --- data for multipole at left edge
-         celezsl = helezs(ihele) + offsetl
-         celezel = heleze(ihele) + offsetl
-         celededrl = 0.
-         celedbdxl = 0.
-         celededxl = 0.
+         eelededrl = 0.
+         eeledbdxl = 0.
+         eelededxl = 0.
          do ii = 1, max(helenm(ihele),helene(ihele))
            if (  (nint(hele_n(ii,ihele)) == 2) .and.
      &           (nint(hele_v(ii,ihele)) == 0)) then
 c             --- quadrupole field
-              if ( abs(cos(helepm(ii,ihele))*sin(helepm(ii,ihele))) .gt. fuzz ) 
+              if ( abs(cos(helepm(ii,ihele))*sin(helepm(ii,ihele))) > fuzz ) 
      &         call remark("Warning: magnetic multipole structure incompatible")
-              if ( abs(cos(helepe(ii,ihele))*sin(helepe(ii,ihele))) .gt. fuzz ) 
+              if ( abs(cos(helepe(ii,ihele))*sin(helepe(ii,ihele))) > fuzz ) 
      &         call remark("Warning: electric multipole structure incompatible")
-              celedbdxl = celedbdxl + heleam(ii,ihele)*cos(helepm(ii,ihele))
-              celededxl = celededxl + heleae(ii,ihele)*cos(helepe(ii,ihele))
+              eeledbdxl = eeledbdxl + heleam(ii,ihele)*cos(helepm(ii,ihele))
+              eelededxl = eelededxl + heleae(ii,ihele)*cos(helepe(ii,ihele))
            endif
            if (  (nint(hele_n(ii,ihele)) == 0) .and.
      &           (nint(hele_v(ii,ihele)) == 0)) then
 c             --- uniform field
-              celededrl = celededrl - 0.5*heleep(ii,ihele)
+              eelededrl = eelededrl - 0.5*heleep(ii,ihele)
            endif
          enddo
          fracl = 0.
-         if ((zl .lt. celezel) .and. (celezsl .lt. zl)) then
+         if ((zl < cheleze(0)) .and. (chelezs(0) < zl)) then
            fracl = 1.
-           cheleox = heleox(ihele)
-           cheleoy = heleoy(ihele)
+           eheleox = heleox(ihele)
+           eheleoy = heleoy(ihele)
          endif
 
 c        --- Find multipole at right edge of velocity advance step.
-         call getelemid(zr,offsetr,nhele,helezs,heleze,ihele)
+         ihele = cheleid(2)
 c        --- data for multipole at left edge
-         celezsr = helezs(ihele) + offsetr
-         celezer = heleze(ihele) + offsetr
-         celededrr = 0.
-         celedbdxr = 0.
-         celededxr = 0.
+         eelededrr = 0.
+         eeledbdxr = 0.
+         eelededxr = 0.
          do ii = 1, max(helenm(ihele),helene(ihele)) 
            if (  (nint(hele_n(ii,ihele)) == 2) .and. 
      &           (nint(hele_v(ii,ihele)) == 0)) then
 c             --- quadrupole field  
-              if ( abs(cos(helepm(ii,ihele))*sin(helepm(ii,ihele))) .gt. fuzz ) 
+              if ( abs(cos(helepm(ii,ihele))*sin(helepm(ii,ihele))) > fuzz ) 
      &         call remark("Warning: magnetic multipole structure incompatible")
-              if ( abs(cos(helepe(ii,ihele))*sin(helepe(ii,ihele))) .gt. fuzz ) 
+              if ( abs(cos(helepe(ii,ihele))*sin(helepe(ii,ihele))) > fuzz ) 
      &         call remark("Warning: electric multipole structure incompatible")
-              celedbdxr = celedbdxr + heleam(ii,ihele)*cos(helepm(ii,ihele))
-              celededxr = celededxr + heleae(ii,ihele)*cos(helepe(ii,ihele))
+              eeledbdxr = eeledbdxr + heleam(ii,ihele)*cos(helepm(ii,ihele))
+              eelededxr = eelededxr + heleae(ii,ihele)*cos(helepe(ii,ihele))
            endif 
            if (  (nint(hele_n(ii,ihele)) == 0) .and.
      &           (nint(hele_v(ii,ihele)) == 0)) then
 c             --- uniform field
-              celededrr = celededrr + 0.5*heleep(ii,ihele)
+              eelededrr = eelededrr + 0.5*heleep(ii,ihele)
            endif
          enddo
          fracr = 0.
-         if ((zr .lt. celezer) .and. (celezsr .lt. zr)) then
+         if ((zr < cheleze(2)) .and. (chelezs(2) < zr)) then
            fracr = 1.
-           cheleox = heleox(ihele)
-           cheleoy = heleoy(ihele)
+           eheleox = heleox(ihele)
+           eheleoy = heleoy(ihele)
          endif
 
 c        --- Calculate residence fraction.
          frac = fracl
-         if (fracl .gt. fracr) frac = (celezel - zl) / dz
-         if (fracr .gt. fracl) frac = (zr - celezsr) / dz
+         if (fracl > fracr) frac = (cheleze(0) - zl) / dz
+         if (fracr > fracl) frac = (zr - chelezs(2)) / dz
 
 c        --- quadrupole and radial fields, including residence 
 c        --- fraction, add in with any previous fields calculated 
-         chelededr = celededrl*frac
-         cheledbdx = celedbdxl*frac
-         chelededx = celededxl*frac
-         if (fracr .gt. fracl) then
-           chelededr = celededrr*frac
-           cheledbdx = celedbdxr*frac
-           chelededx = celededxr*frac
+         ehelededr = eelededrl*frac
+         eheledbdx = eeledbdxl*frac
+         ehelededx = eelededxl*frac
+         if (fracr > fracl) then
+           ehelededr = eelededrr*frac
+           eheledbdx = eeledbdxr*frac
+           ehelededx = eelededxr*frac
          endif
 
       endif 
@@ -794,55 +773,48 @@ c        --- fraction, add in with any previous fields calculated
 c     --- Extract any linear focusing field component from the multipole 
 c     --- elements.
 
-      cemltdedr = 0.
-      cemltdedx = 0.
-      cemltox = 0.
-      cemltoy = 0.
+      eemltdedr = 0.
+      eemltdedx = 0.
+      eemltox = 0.
+      eemltoy = 0.
       if (emlts) then
 
 c       --- Find which element the z location is in, if any.
-        call getelemid(z,offset,nemlt,emltzs,emltze,iemlt)
+        iemlt = cemltid(1)
 
 c       --- If z is within an element, fetch the field.
-        if (emltzs(iemlt)+offset <= z .and. z < emltze(iemlt)+offset) then
+        if (cemltzs(1) <= z .and. z < cemltze(1)) then
 
 c         --- Make sure the element was defined.
           iem = emltid(iemlt)
           if (iem > 0) then
 
 c           --- Find location of z in the electric multipole grid.
-            iie = int((z - emltzs(iemlt) - offset)/dzemlt(iem))
-            wie =     (z - emltzs(iemlt) - offset)/dzemlt(iem) - iie
+            iie = int((z - cemltzs(1))/dzemlt(iem))
+            wie =     (z - cemltzs(1))/dzemlt(iem) - iie
 
 c           --- Zero out the field components.
-            cemltdedr = 0. 
-            cemltdedx = 0. 
+            eemltdedr = 0. 
+            eemltdedx = 0. 
 
 c           --- Lookup field strengths with linear interpolation.
             do ii=1,nesmult
               if ((nint(emlt_n(ii)) == 2) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
-                cemltdedx = (esemlt(iie  ,ii,iem)*(1.-wie)+
-     &                       esemlt(iie+1,ii,iem)*wie)*
+                eemltdedx = eemltdedx + (esemlt(iie  ,ii,iem)*(1.-wie)+
+     &                                   esemlt(iie+1,ii,iem)*wie)*
      &                      (emltsc(iemlt) + emltsf(iemlt))
               endif
               if ((nint(emlt_n(ii)) == 0) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
-                cemltdedr = - 0.5*(esemltp(iie  ,ii,iem)*(1.-wie)+
-     &                             esemltp(iie+1,ii,iem)*wie)*
+                eemltdedr = eemltdedr - 0.5*(esemltp(iie  ,ii,iem)*(1.-wie)+
+     &                                       esemltp(iie+1,ii,iem)*wie)*
      &                          (emltsc(iemlt) + emltsf(iemlt))
               endif
             enddo
 
-            if (zlatperi > 0.) then
-              imulter = iemlt + (int(10.+(z-zlatstrt)/zlatperi)-10)*nemlt
-            else
-              imulter = iemlt
-            endif
-            imulter = mod(imulter, neerr)
-            if (imulter < 0) imulter = neerr + imulter
-            cemltox = emltox(imulter)
-            cemltoy = emltoy(imulter)
+            eemltox = cemltox(1)
+            eemltoy = cemltoy(1)
 
           endif
 
@@ -850,47 +822,40 @@ c           --- Lookup field strengths with linear interpolation.
 
       endif
 
-      cmmltdbdx = 0.
-      cmmltox = 0.
-      cmmltoy = 0.
+      emmltdbdx = 0.
+      emmltox = 0.
+      emmltoy = 0.
       if (mmlts) then
 
 c       --- Find which element the z location is in, if any.
-        call getelemid(z,offset,nmmlt,mmltzs,mmltze,immlt)
+        immlt = cmmltid(1)
 
 c       --- If z is within an element, fetch the field.
-        if (mmltzs(immlt)+offset <= z .and. z < mmltze(immlt)+offset) then
+        if (cmmltzs(1) <= z .and. z < cmmltze(1)) then
 
 c         --- Make sure the element was defined.
           imm = mmltid(immlt)
           if (imm > 0) then
 
 c           --- Find location of z in the magnetic multipole grid.
-            iim = int((z - mmltzs(immlt) - offset)/dzmmlt(imm))
-            wim =     (z - mmltzs(immlt) - offset)/dzmmlt(imm) - iim
+            iim = int((z - cmmltzs(1))/dzmmlt(imm))
+            wim =     (z - cmmltzs(1))/dzmmlt(imm) - iim
 
 c           --- Zero out the field component.
-            cmmltdbdx = 0.  
+            emmltdbdx = 0.  
 
 c           --- Lookup field strength with linear interpolation.
             do ii=1,nmsmult
               if ((nint(mmlt_n(ii)) == 2) .and. 
      &            (nint(mmlt_v(ii)) == 0)) then
-                cmmltdbdx = (msmmlt(iim  ,ii,imm)*(1.-wim)+
-     &                       msmmlt(iim+1,ii,imm)*wim)*
+                emmltdbdx = emmltdbdx + (msmmlt(iim  ,ii,imm)*(1.-wim)+
+     &                                   msmmlt(iim+1,ii,imm)*wim)*
      &                      (mmltsc(immlt) + mmltsf(immlt))
               endif
             enddo
 
-            if (zlatperi > 0.) then
-              imulter = immlt + (int(10.+(z-zlatstrt)/zlatperi)-10)*nmmlt
-            else
-              imulter = immlt
-            endif
-            imulter = mod(imulter, nmerr)
-            if (imulter < 0) imulter = nmerr + imulter
-            cmmltox = mmltox(imulter)
-            cmmltoy = mmltoy(imulter)
+            emmltox = cmmltox(1)
+            emmltoy = cmmltoy(1)
 
           endif
 
@@ -898,47 +863,40 @@ c           --- Lookup field strength with linear interpolation.
 
       endif
 
-      cmmlt2dbdx = 0.
-      cmmlt2ox = 0.
-      cmmlt2oy = 0.
+      emmlt2dbdx = 0.
+      emmlt2ox = 0.
+      emmlt2oy = 0.
       if (mmlt2s) then
 
 c       --- Find which element the z location is in, if any.
-        call getelemid(z,offset,nmmlt2,mmlt2zs,mmlt2ze,immlt2)
+        immlt2 = cmmlt2id(1)
 
 c       --- If z is within an element, fetch the field.
-        if (mmlt2zs(immlt2)+offset <= z .and. z < mmlt2ze(immlt2)+offset) then
+        if (cmmlt2zs(1) <= z .and. z < cmmlt2ze(1)) then
 
 c         --- Make sure the element was defined.
           imm = mmlt2id(immlt2)
           if (imm > 0) then
 
 c           --- Find location of z in the magnetic multipole grid.
-            iim = int((z - mmlt2zs(immlt2) - offset)/dzmmlt(imm))
-            wim =     (z - mmlt2zs(immlt2) - offset)/dzmmlt(imm) - iim
+            iim = int((z - cmmlt2zs(1))/dzmmlt(imm))
+            wim =     (z - cmmlt2zs(1))/dzmmlt(imm) - iim
 
 c           --- Zero out the field component.
-            cmmlt2dbdx = 0.  
+            emmlt2dbdx = 0.  
 
 c           --- Lookup field strength with linear interpolation.
             do ii=1,nmsmult
               if ((nint(mmlt_n(ii)) == 2) .and. 
      &            (nint(mmlt_v(ii)) == 0)) then
-                cmmlt2dbdx = (msmmlt(iim  ,ii,imm)*(1.-wim)+
-     &                        msmmlt(iim+1,ii,imm)*wim)*
+                emmlt2dbdx = emmlt2dbdx + (msmmlt(iim  ,ii,imm)*(1.-wim)+
+     &                                     msmmlt(iim+1,ii,imm)*wim)*
      &                       (mmlt2sc(immlt2) + mmlt2sf(immlt2))
               endif
             enddo
 
-            if (zlatperi > 0.) then
-              imulter = immlt2 + (int(10.+(z-zlatstrt)/zlatperi)-10)*nmmlt2
-            else
-              imulter = immlt2
-            endif
-            imulter = mod(imulter, nmerr)
-            if (imulter < 0) imulter = nmerr + imulter
-            cmmlt2ox = mmlt2ox(imulter)
-            cmmlt2oy = mmlt2oy(imulter)
+            emmlt2ox = cmmlt2ox(1)
+            emmlt2oy = cmmlt2oy(1)
 
           endif
 
@@ -951,26 +909,22 @@ c     --- Get accelerating gradient from accl gaps.
       if (accls) then
 
 c        --- Find accl at left edge of velocity advance step.
-         call getelemid(zl,offsetl,naccl,acclzs,acclze,iaccl)
-         celezsl = acclzs(iaccl) + offsetl
-         celezel = acclze(iaccl) + offsetl
+         iaccl = cacclid(0)
          fracl = 0.
-         if ((zl .lt. celezel) .and. (celezsl .lt. zl)) fracl = 1.
+         if (zl < cacclze(0) .and. cacclzs(0) < zl) fracl = 1.
 
 c        --- Find accl at right edge of velocity advance step.
-         call getelemid(zr,offsetr,naccl,acclzs,acclze,iaccl)
-         celezsr = acclzs(iaccl) + offsetr
-         celezer = acclze(iaccl) + offsetr
+         iaccl = cacclid(2)
          fracr = 0.
-         if ((zr .lt. celezer) .and. (celezsr .lt. zr)) fracr = 1.
+         if (zr < cacclze(2) .and. cacclzs(2) < zr) fracr = 1.
 
 c        --- Calculate residence fraction.
          frac = fracl
-         if (fracl .gt. fracr) frac = (celezel - zl) / dz
-         if (fracr .gt. fracl) frac = (zr - celezsr) / dz
+         if (fracl > fracr) frac = (cacclze(0) - zl) / dz
+         if (fracr > fracl) frac = (zr - cacclzs(2)) / dz
 
          ez = acclez(iaccl)*frac
-         if (fracr .gt. fracl) ez = acclez(iaccl)*frac
+         if (fracr > fracl) ez = acclez(iaccl)*frac
 
          if (ez .ne. 0) then
            ek = ek + ez*dz
@@ -1001,9 +955,9 @@ c          --- conversion from d/dt to d/dz
 
       endif
 
-      dedrr = dedr + chelededr + cemltdedr
-      dbdxq = cquaddb + cheledbdx + cmmltdbdx + cmmlt2dbdx
-      dedxq = cquadde + chelededx + cemltdedx
+      dedrr = dedr + ehelededr + eemltdedr
+      dbdxq = equaddb + eheledbdx + emmltdbdx + emmlt2dbdx
+      dedxq = equadde + ehelededx + eemltdedx
 
 c     --- Compute external uniform focusing (proportional to r and 
 c     --- azimuthally symmetric) and quadrupole focusing strengths
@@ -1019,16 +973,16 @@ c     --- Calculate forces for advancing envelope and test particles
       fa = ( fq + fux) * a + feself + (emitnx_l*clight/(vz*gamma))**2 / a**3
       fb = (-fq + fuy) * b + feself + (emitny_l*clight/(vz*gamma))**2 / b**3
       fx = zion*echarge/(aion*amu*gamma*vz**2)*(
-     &      cquadde*(x-cquadox)+chelededx*(x-cheleox)+cemltdedx*(x-cemltox)
-     &    -(cquaddb*(x-cquadox)+cheledbdx*(x-cheleox)+cmmltdbdx*(x-cmmltox)
-     &    +cmmlt2dbdx*(x-cmmlt2ox))*vz
-     &    +chelededr*(x-cheleox) + cemltdedr*(x-cemltox) +
+     &      equadde*(x-equadox)+ehelededx*(x-eheleox)+eemltdedx*(x-eemltox)
+     &    -(equaddb*(x-equadox)+eheledbdx*(x-eheleox)+emmltdbdx*(x-emmltox)
+     &    +emmlt2dbdx*(x-emmlt2ox))*vz
+     &    +ehelededr*(x-eheleox) + eemltdedr*(x-eemltox) +
      &    (dedr + dexdx - dbdr*vz)*x)
       fy = zion*echarge/(aion*amu*gamma*vz**2)*(
-     &    -(cquadde*(y-cquadoy)+chelededx*(y-cheleoy)+cemltdedx*(y-cemltoy))
-     &    +(cquaddb*(y-cquadoy)+cheledbdx*(y-cheleoy)+cmmltdbdx*(y-cmmltoy)
-     &    +cmmlt2dbdx*(y-cmmlt2oy))*vz
-     &    +chelededr*(y-cheleoy) + cemltdedr*(y-cemltoy) +
+     &    -(equadde*(y-equadoy)+ehelededx*(y-eheleoy)+eemltdedx*(y-eemltoy))
+     &    +(equaddb*(y-equadoy)+eheledbdx*(y-eheleoy)+emmltdbdx*(y-emmltoy)
+     &    +emmlt2dbdx*(y-emmlt2oy))*vz
+     &    +ehelededr*(y-eheleoy) + eemltdedr*(y-eemltoy) +
      &    (dedr + deydy - dbdr*vz)*y)
 c
       fexself = feself / a
@@ -1066,15 +1020,15 @@ c     --- may have been turned off.
 c     --- Do some checks on consistency.
       if (lefofz) then
 c       --- First set mesh range to the default if it hasn't been set yet.
-        if (zlefofz .eq. zuefofz) then
+        if (zlefofz == zuefofz) then
           zlefofz = zl
           zuefofz = zu
         endif
 
 c       --- Check value of dzefofz.  If not set, and if nzefofz is not
 c       --- set, get value from dzenv, otherwize calculate new value.
-        if (dzefofz .le. 0.) then
-          if (nzefofz .le. 0) then
+        if (dzefofz <= 0.) then
+          if (nzefofz <= 0) then
             dzefofz = dzenv
           else
             dzefofz = (zuefofz - zlefofz)/nzefofz
@@ -1082,7 +1036,7 @@ c       --- set, get value from dzenv, otherwize calculate new value.
         endif
 
 c       --- Make sure that nzefofz is set correctly.
-        if (nzefofz .le. 0) then
+        if (nzefofz <= 0) then
           nzefofz = nenv
         endif
 
@@ -1118,7 +1072,6 @@ c=======================================================================
       use Constant
       use Beam_acc
       use InGen
-      use Lattice
       use ENVvars
       use ENVfofz
       real(kind=8):: z,p,vz,emitnx_l,emitny_l,gamma
@@ -1138,24 +1091,24 @@ c     --- Get location in mesh
       wz = (z - zlefofz)/dzefofz - iz
 
 c     --- If current location outside of mesh, return
-      if (iz .lt. 0 .or. nzefofz .lt. iz) return
+      if (iz < 0 .or. nzefofz < iz) return
 
 c     --- Update the current.
       ibeam_z = ibeam
       if (libeame_z) then
-        if (iz .lt. nzefofz) then
+        if (iz < nzefofz) then
           ibeam_z = ibeame_z(iz)*(1.-wz)+ibeame_z(iz+1)*wz
-        elseif (iz .eq. nzefofz) then
+        elseif (iz == nzefofz) then
           ibeam_z = ibeame_z(iz)
         endif
       endif
 
 c     --- Update the normalized emittance
       if (lemitne_z) then
-        if (iz .lt. nzefofz) then
+        if (iz < nzefofz) then
           emitnx_l = emitnxe_z(iz)*(1.-wz)+emitnxe_z(iz+1)*wz
           emitny_l = emitnye_z(iz)*(1.-wz)+emitnye_z(iz+1)*wz
-        elseif (iz .eq. nzefofz) then
+        elseif (iz == nzefofz) then
           emitnx_l = emitnxe_z(iz)
           emitny_l = emitnye_z(iz)
         endif
@@ -1265,7 +1218,7 @@ c Press, 1986, pg 292, Ch 10
       mpts=ndim+1
       iter=0
 1     ilo=1
-      if(y(1).gt.y(2))then
+      if(y(1) > y(2))then
         ihi=1
         inhi=2
       else
@@ -1273,20 +1226,20 @@ c Press, 1986, pg 292, Ch 10
         inhi=1
       endif
       do 11 i=1,mpts
-        if(y(i).lt.y(ilo)) ilo=i
-        if(y(i).gt.y(ihi))then
+        if(y(i) < y(ilo)) ilo=i
+        if(y(i) > y(ihi))then
           inhi=ihi
           ihi=i
-        else if(y(i).gt.y(inhi))then
+        else if(y(i) > y(inhi))then
           if(i.ne.ihi) inhi=i
         endif
 11    continue
       rtol=2.*abs(y(ihi)-y(ilo))/(abs(y(ihi))+abs(y(ilo)))
-      if(rtol.lt.ftol) then
+      if(rtol < ftol) then
         print*,'Envelope match search reached tolerence'
         return
       endif
-      if(iter.eq.itmax) then
+      if(iter == itmax) then
         print*,'Envelope match reached maximum iterations.'
         return
       endif
@@ -1306,12 +1259,12 @@ c Press, 1986, pg 292, Ch 10
         pr(j)=(1.+alpha)*pbar(j)-alpha*p(ihi,j)
 15    continue
       ypr=mtchfunc(pr)
-      if(ypr.le.y(ilo))then
+      if(ypr <= y(ilo))then
         do 16 j=1,ndim
           prr(j)=gamma*pr(j)+(1.-gamma)*pbar(j)
 16      continue
         yprr=mtchfunc(prr)
-        if(yprr.lt.y(ilo))then
+        if(yprr < y(ilo))then
           do 17 j=1,ndim
             p(ihi,j)=prr(j)
 17        continue
@@ -1322,8 +1275,8 @@ c Press, 1986, pg 292, Ch 10
 18        continue
           y(ihi)=ypr
         endif
-      else if(ypr.ge.y(inhi))then
-        if(ypr.lt.y(ihi))then
+      else if(ypr >= y(inhi))then
+        if(ypr < y(ihi))then
           do 19 j=1,ndim
             p(ihi,j)=pr(j)
 19        continue
@@ -1333,7 +1286,7 @@ c Press, 1986, pg 292, Ch 10
           prr(j)=beta*p(ihi,j)+(1.-beta)*pbar(j)
 21      continue
         yprr=mtchfunc(prr)
-        if(yprr.lt.y(ihi))then
+        if(yprr < y(ihi))then
           do 22 j=1,ndim
             p(ihi,j)=prr(j)
 22        continue
