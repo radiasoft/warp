@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.82 2004/09/02 23:08:16 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.83 2004/09/07 20:04:40 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1773,170 +1773,6 @@ Cones
                            [+xmax,+ymax,max(self.zcent+self.length/2.)])
 
 #============================================================================
-class ZCone(Assembly):
-  """
-Cone
-  - r_zmin: radius at z min
-  - r_zmax: radius at z max
-  - length: length
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
-  """
-  def __init__(self,r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
-    kwlist = ['r_zmin','r_zmax','length']
-    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zconeconductorf,zconeconductord,zconeintercept)
-    self.r_zmin = r_zmin
-    self.r_zmax = r_zmax
-    self.length = length
-
-  def getextent(self):
-    rmax = max(self.r_zmin,self.r_zmax)
-    return Assembly.getextent(self,[-rmax,-rmax,-self.length/2.],
-                                   [+rmax,+rmax,+self.length/2.])
-
-  def createdxobject(self,kwdict={},**kw):
-    kw.update(kwdict)
-    v = VPythonobjects.VisualRevolution(
-                       zzmin=-self.length/2.,zzmax=+self.length/2.,
-                       rendzmin=0.,rendzmax=0.,
-                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
-                       rofzdata=[self.r_zmin,self.r_zmax],
-                       zdata=[-self.length/2.,+self.length/2.],
-                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
-                       kwdict=kw)
-    self.dxobject = v
-
-#============================================================================
-class ZConeSlope(Assembly):
-  """
-Cone
-  - slope: ratio of radius at zmax minus radius at zmin over length
-  - intercept: location where line defining cone crosses the axis, relative
-               to zcent
-  - length: length
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
-  """
-  def __init__(self,slope,intercept,length,voltage=0.,
-                    xcent=0.,ycent=0.,zcent=0.,condid=1):
-    kwlist = ['r_zmin','r_zmax','length']
-    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zconeconductorf,zconeconductord,zconeintercept)
-    self.slope = slope
-    self.intercept = intercept
-    self.length = length
-  def getkwlist(self):
-    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
-    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
-    return Assembly.getkwlist(self)
-
-  def getextent(self):
-    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
-    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
-    rmax = max(self.r_zmin,self.r_zmax)
-    return Assembly.getextent(self,[-rmax,-rmax,-self.length/2.],
-                                   [+rmax,+rmax,+self.length/2.])
-
-  def createdxobject(self,kwdict={},**kw):
-    kw.update(kwdict)
-    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
-    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
-    v = VPythonobjects.VisualRevolution(
-                       zzmin=-self.length/2.,zzmax=+self.length/2.,
-                       rendzmin=0.,rendzmax=0.,
-                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
-                       rofzdata=[self.r_zmin,self.r_zmax],
-                       zdata=[-self.length/2.,+self.length/2.],
-                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
-                       kwdict=kw)
-    self.dxobject = v
-
-#============================================================================
-class ZConeOut(Assembly):
-  """
-Cone outside
-  - r_zmin: radius at z min
-  - r_zmax: radius at z max
-  - length: length
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
-  """
-  def __init__(self,r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
-                    condid=1):
-    kwlist = ['r_zmin','r_zmax','length']
-    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zconeoutconductorf,zconeoutconductord,zconeoutintercept)
-    self.r_zmin = r_zmin
-    self.r_zmax = r_zmax
-    self.length = length
-
-  def getextent(self):
-    return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
-                                   [+largepos,+largepos,+self.length/2.])
-
-  def createdxobject(self,rend=1.,kwdict={},**kw):
-    kw.update(kwdict)
-    v = VPythonobjects.VisualRevolution(
-                       zzmin=-self.length/2.,zzmax=+self.length/2.,
-                       rendzmin=rend,rendzmax=rend,
-                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
-                       rofzdata=[self.r_zmin,self.r_zmax],
-                       zdata=[-self.length/2.,+self.length/2.],
-                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
-                       normalsign=-1,
-                       kwdict=kw)
-    self.dxobject = v
-
-#============================================================================
-class ZConeOutSlope(Assembly):
-  """
-Cone outside
-  - slope: ratio of radius at zmax minus radius at zmin over length
-  - intercept: location where line defining cone crosses the axis, relative
-               to zcent
-  - length: length
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
-  """
-  def __init__(self,slope,intercept,length,voltage=0.,
-                    xcent=0.,ycent=0.,zcent=0.,condid=1):
-    kwlist = ['r_zmin','r_zmax','length']
-    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zconeoutconductorf,zconeoutconductord,zconeoutintercept)
-    self.slope = slope
-    self.intercept = intercept
-    self.length = length
-  def getkwlist(self):
-    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
-    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
-    return Assembly.getkwlist(self)
-
-  def getextent(self):
-    return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
-                                   [+largepos,+largepos,+self.length/2.])
-
-  def createdxobject(self,rend=1.,kwdict={},**kw):
-    kw.update(kwdict)
-    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
-    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
-    v = VPythonobjects.VisualRevolution(
-                       zzmin=-self.length/2.,zzmax=+self.length/2.,
-                       rendzmin=rend,rendzmax=rend,
-                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
-                       rofzdata=[self.r_zmin,self.r_zmax],
-                       zdata=[-self.length/2.,+self.length/2.],
-                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
-                       normalsign=-1,
-                       kwdict=kw)
-    self.dxobject = v
-
-#============================================================================
 class ZTorus(Assembly):
   """
 Torus
@@ -2598,6 +2434,124 @@ Creates an Annulus as a surface of revolution.
     self.rcmaxdata = [largepos,largepos]
     self.zcmaxdata = [largepos,largepos]
     self.rmaxofz = ' '
+
+#============================================================================
+class ZCone(ZSrfrvIn):
+  """
+Cone
+  - r_zmin: radius at z min
+  - r_zmax: radius at z max
+  - length: length
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,r_zmin,r_zmax,length,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+
+    self.r_zmin = r_zmin
+    self.r_zmax = r_zmax
+    self.length = length
+
+    zmin = -length/2.
+    zmax = +length/2.
+    zdata = [zmin,zmax]
+    rofzdata = [r_zmin,r_zmax]
+
+    ZSrfrvIn.__init__(self,' ',zmin,zmax,
+                      voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
+                      condid=condid,
+                      rofzdata=rofzdata,zdata=zdata)
+
+#============================================================================
+class ZConeSlope(ZSrfrvIn):
+  """
+Cone
+  - slope: ratio of radius at zmax minus radius at zmin over length
+  - intercept: location where line defining cone crosses the axis, relative
+               to zcent
+  - length: length
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,slope,intercept,length,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+
+    self.slope = slope
+    self.intercept = intercept
+    self.length = length
+
+    r_zmin = self.slope*(-self.length/2. - self.intercept)
+    r_zmax = self.slope*(+self.length/2. - self.intercept)
+    zmin = -length/2.
+    zmax = +length/2.
+    zdata = [zmin,zmax]
+    rofzdata = [r_zmin,r_zmax]
+
+    ZSrfrvIn.__init__(self,' ',zmin,zmax,
+                      voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
+                      condid=condid,
+                      rofzdata=rofzdata,zdata=zdata)
+
+#============================================================================
+class ZConeOut(ZSrfrvOut):
+  """
+Cone outside
+  - r_zmin: radius at z min
+  - r_zmax: radius at z max
+  - length: length
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,r_zmin,r_zmax,length,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+
+    self.r_zmin = r_zmin
+    self.r_zmax = r_zmax
+    self.length = length
+
+    zmin = -length/2.
+    zmax = +length/2.
+    zdata = [zmin,zmax]
+    rofzdata = [r_zmin,r_zmax]
+
+    ZSrfrvOut.__init__(self,' ',zmin,zmax,
+                       voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
+                       condid=condid,
+                       rofzdata=rofzdata,zdata=zdata)
+
+#============================================================================
+class ZConeOutSlope(ZSrfrvOut):
+  """
+Cone outside
+  - slope: ratio of radius at zmax minus radius at zmin over length
+  - intercept: location where line defining cone crosses the axis, relative
+               to zcent
+  - length: length
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,slope,intercept,length,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+
+    self.slope = slope
+    self.intercept = intercept
+    self.length = length
+
+    r_zmin = self.slope*(-self.length/2. - self.intercept)
+    r_zmax = self.slope*(+self.length/2. - self.intercept)
+    zmin = -length/2.
+    zmax = +length/2.
+    zdata = [zmin,zmax]
+    rofzdata = [r_zmin,r_zmax]
+
+    ZSrfrvOut.__init__(self,' ',zmin,zmax,
+                       voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
+                       condid=condid,
+                       rofzdata=rofzdata,zdata=zdata)
 
 #============================================================================
 #============================================================================
