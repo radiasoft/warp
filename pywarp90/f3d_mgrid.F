@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.29 $, $Date: 2002/05/06 19:36:26 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.30 $, $Date: 2002/05/06 20:21:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -409,9 +409,7 @@ c         --- Continue at the next coarsest level.
 c         --- Add in resulting error.
           call expand3d(nx/2,ny/2,nznew,nz,nzfull/2,phi2,phi,
      &                  boundxy,localb0,localbnz,lparity,rparity,
-     &                  my_index,nslaves,izfsslave,nzfsslave,
-     &                  whosendingleft,izsendingleft,
-     &                  whosendingright,izsendingright)
+     &                  my_index,nslaves,izfsslave,whosendingleft)
 
           deallocate(phi2,rho2)
         endif
@@ -666,17 +664,13 @@ c         --- Expand iy=ny plane.
 c=============================================================================
       subroutine expand3d(nx,ny,nz,nz2,nzfull,p2h,ph,boundxy,localb0,localbnz,
      &                    lparity,rparity,
-     &                    my_index,nslaves,izfsslave,nzfsslave,
-     &                    whosendingleft,izsendingleft,
-     &                    whosendingright,izsendingright)
+     &                    my_index,nslaves,izfsslave,whosendingleft)
       integer(ISZ):: nx,ny,nz,nz2,nzfull
       real(kind=8):: p2h(0:nx,0:ny,-1:nz+1)
       real(kind=8):: ph(0:nx*2,0:ny*2,-1:nz2+1)
       integer(ISZ):: boundxy,localb0,localbnz,lparity,rparity
       integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: whosendingleft(*), izsendingleft(*)
-      integer(ISZ):: whosendingright(*),izsendingright(*)
+      integer(ISZ):: izfsslave(0:nslaves-1),whosendingleft(*)
 
 c Add the error on the coarser grid to the current value on the finer grid.
 c The expansion is done along all axis.
@@ -790,10 +784,8 @@ c         --- Expand iy=ny plane.
       if (localb0  == 2) ph(:,:,-1) = ph(:,:,nz2-1)
       if (localbnz == 2) ph(:,:,nz2+1) = ph(:,:,1)
 #else
-      call mgexchange_phi(2*nx,2*ny,nz2,2*nzfull,ph,localb0,localbnz,-1,
-     &                    my_index,nslaves,izfsslave,nzfsslave,
-     &                    whosendingleft,izsendingleft,
-     &                    whosendingright,izsendingright)
+      call mgexchange_phiperiodic(2*nx,2*ny,nz2,2*nzfull,ph,localb0,localbnz,1,
+     &                            my_index,nslaves,izfsslave,whosendingleft)
 #endif
 
       return
@@ -926,21 +918,7 @@ c     --- Set starting and ending parity.
 c     --- do loop to cover even and odd points
       do parity=s_parity,e_parity,e_parity-s_parity
 
-c       --- Set guard planes in z appropriately for the boundary conditions
-c       --- For periodic boundaries, this need not be done for the
-c       --- parallel version since it automatically happens in exchange_phi
-
-        if (localb0  == 1) phi(:,:,izl-2) = phi(:,:,izl)
-        if (localbnz == 1) phi(:,:,izr) = phi(:,:,izr-2)
-#ifndef MPIPARALLEL
-        if (localb0  == 2) phi(:,:,izl-2) = phi(:,:,izr-2)
-        if (localbnz == 2) phi(:,:,izr) = phi(:,:,izl)
-#else
-        call mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,0,
-     &                      my_index,nslaves,izfsslave,nzfsslave,
-     &                      whosendingleft,izsendingleft,
-     &                      whosendingright,izsendingright)
-#endif
+c       --- guard planes in z are already set
 
 c       --- Loop over the rest of the array. Boundary points are calculated
 c       --- too, even though the equation is wrong.  They are recalculated
@@ -1065,11 +1043,17 @@ c       --- surface of the conductor boundaries.
 c       --- Put desired potential onto conductors in phi array.
         call cond_potmg(nx,ny,nz,phi,levelxy,levelz,.false.,mgform,.false.)
 
-c       --- Force periodioity of phi (needed here to update the values
-c       --- changed by the subgrid and conductors)
+c       --- set phi in the z guard planes
+        if (localb0  == 1) phi(:,:,izl-2) = phi(:,:,izl)
+        if (localbnz == 1) phi(:,:,izr) = phi(:,:,izr-2)
 #ifndef MPIPARALLEL
-        if (localbnz == 2) phi(:,:,nz) = phi(:,:,0)
+        if (localb0  == 2) phi(:,:,izl-2) = phi(:,:,izr-2)
+        if (localbnz == 2) phi(:,:,nz:nz+1) = phi(:,:,0:1)
 #else
+        call mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,0,
+     &                      my_index,nslaves,izfsslave,nzfsslave,
+     &                      whosendingleft,izsendingleft,
+     &                      whosendingright,izsendingright)
         call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localb0,localbnz,1,
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft)
@@ -1078,17 +1062,8 @@ c       --- changed by the subgrid and conductors)
 c     --- end of loop over even and odd points
       enddo
 
-c     --- set phi in the z guard planes
-      if (localb0  == 1) phi(:,:,izl-2) = phi(:,:,izl)
-      if (localbnz == 1) phi(:,:,izr) = phi(:,:,izr-2)
-#ifndef MPIPARALLEL
-      if (localb0  == 2) phi(:,:,izl-2) = phi(:,:,izr-2)
-      if (localbnz == 2) phi(:,:,izr) = phi(:,:,izl)
-#else
-      call mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,0,
-     &                    my_index,nslaves,izfsslave,nzfsslave,
-     &                    whosendingleft,izsendingleft,
-     &                    whosendingright,izsendingright)
+#ifdef MPIPARALLEL
+c     --- Exchange phi in the z guard planes
       call mgexchange_phi(nx,ny,nz,nzfull,phi,localb0,localbnz,-1,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
@@ -1565,14 +1540,14 @@ c     --- Longitudinal boundaries
       if (localbnz == 0) res(:,:,nz:nz+1) = 0.
       if (localb0  == 1) res(:,:,-1) = res(:,:,1)
       if (localbnz == 1) res(:,:,nz+1) = res(:,:,nz-1)
-#ifdef MPIPARALLEL
+#ifndef MPIPARALLEL
+      if (localb0  == 2) res(:,:,-1) = res(:,:,nz-1)
+      if (localbnz == 2) res(:,:,nz+1) = res(:,:,1)
+#else
       call mgexchange_phi(nx,ny,nz,nzfull,res,localb0,localbnz,-1,
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
-#else
-      if (localb0  == 2) res(:,:,-1) = res(:,:,nz-1)
-      if (localbnz == 2) res(:,:,nz+1) = res(:,:,1)
 #endif
 
       return
