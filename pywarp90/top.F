@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.12 $, $Date: 2001/06/01 22:36:51 $
+c@(#) File TOP.M, version $Revision: 3.13 $, $Date: 2001/06/08 23:42:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3665,7 +3665,7 @@ c           --- Note that the max's inside the sqrt are for idiot proofing.
             endif
 c           --- do correction on position
             zbeamnew = zbeam
-            call zgapcorr(1,zbeamnew,0.,vbeamfrm,1.,zbeamnew,-dt*0.5,dt*0.5,dt,
+            call zgapcorr(1,zbeamnew,0.,vbeamfrm,1.,-dt*0.5,dt*0.5,dt,
      &                    sm(1),sq(1),time)
             zcorrection = zcorrection + zbeamnew - zbeam
 c           --- add acceleration to beam frame velocity
