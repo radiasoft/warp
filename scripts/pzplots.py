@@ -3,6 +3,7 @@ RMS:
   pzxrms: Plot RMS X versus Z
   pzyrms: Plot RMS Y versus Z
   pzzrms: Plot RMS Z versus Z
+  pzrrms: Plot RMS R versus Z
   pzxprms: Plot RMS X' versus Z
   pzyprms: Plot RMS Y' versus Z
   pzvxrms: Plot true RMS Vx versus Z
@@ -75,7 +76,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.12 2003/02/24 18:00:04 jlvay Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.13 2003/06/27 23:21:18 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -1070,6 +1071,36 @@ def pzzrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   warpplg(zrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("RMS Z versus Z",titleb,"(m)")
+
+##########################################################################
+def pzrrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
+            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
+            varsuffix=None):
+  """Plots rrmsz along z-axis
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + zmntmesh/zscale
+  - scale=1.: factor to scale data by
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles
+  - varsuffix=None: When specified, variables with that suffix are used
+                    instead of the fortran variables"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  rrmsz = _extractvar('rrmsz',varsuffix,'top')*scale
+  zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
+  warpplg(rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("RMS R versus Z",titleb,"(m)")
 
 ##########################################################################
 def pzxprms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
