@@ -2332,7 +2332,7 @@ INTEGER(ISZ), INTENT(IN) :: nxnew, nznew
 REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
 REAL(8), DIMENSION(1:nxnew+1,1:nznew+1), INTENT(OUT) :: unew
 REAL(8), INTENT(IN) :: xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew
-REAL(8) :: rap(1:nxnew+1,1:nznew+1)
+REAL(8),allocatable :: rap(:,:)
 
 INTEGER(ISZ) :: nxold, nzold
 INTEGER(ISZ) :: jold, kold, j, k, jp, kp
@@ -2357,11 +2357,13 @@ nzold = SIZE(uold,2) - 1
 
 ALLOCATE(ddx(nxold+1), ddz(nzold+1), oddx(nxold+1), oddz(nzold+1), &
          jnew(nxold+1), knew(nzold+1), jnewp(nxold+1), knewp(nzold+1))
+ALLOCATE(rap(1:nxnew+1,1:nznew+1))
 
 invdxnew = nxnew / (xmaxnew-xminnew)
 invdznew = nznew / (zmaxnew-zminnew)
 dxold = (xmaxold-xminold) / nxold
 dzold = (zmaxold-zminold) / nzold
+
 
 unew = 0._8
 rap = 0._8
@@ -2429,6 +2431,7 @@ do k = 1, nznew+1
 end do
 
 DEALLOCATE(ddx, ddz, oddx, oddz, jnew, knew, jnewp, knewp)
+DEALLOCATE(rap)
 
 IF(l_mgridrz_debug) then
   write(o_line,*) 'exit restrict, level = ',level
@@ -3823,7 +3826,7 @@ END subroutine relaxbndxzwguard
   end subroutine merge_work
 #endif
 
-function residbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,rmin,voltfact,l_zerolastz, ixrbnd, izlbnd, izrbnd)
+subroutine residbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,rmin,voltfact,l_zerolastz, ixrbnd, izlbnd, izrbnd,res)
 ! evaluate residue. Grid is assumed to have guard cells, but residue does not.
 implicit none
 
@@ -3832,7 +3835,7 @@ REAL(8), INTENT(IN) :: f(0:nr+2,0:nz+2)
 REAL(8), INTENT(IN) :: rhs(nr+1,nz+1)
 TYPE(BNDtype) :: bnd
 REAL(8), INTENT(IN) :: dr, dz,voltfact, rmin
-REAL(8), DIMENSION(nr+1,nz+1) :: residbndrzwguard
+REAL(8), DIMENSION(nr+1,nz+1) :: res
 LOGICAL(ISZ) :: l_zerolastz
 
 INTEGER(ISZ) :: i, j, l, ii, ic, nrf, nzi, nzf
@@ -3854,7 +3857,7 @@ do j = 2, nr+1
 !  cfrm(j) = (1._8-0.5_8/REAL(j-1,8)) / dr**2
 end do
 
-residbndrzwguard = 0._8
+res = 0._8
 
 do ic = 1, bnd%nb_conductors
   IF(ic==1) then
@@ -3863,7 +3866,7 @@ do ic = 1, bnd%nb_conductors
     c => c%next
   END if
   do i = 1, c%ncond
-    residbndrzwguard(c%jcond(i),c%kcond(i)) = 0._8
+    res(c%jcond(i),c%kcond(i)) = 0._8
   end do
 END do
 
@@ -3888,11 +3891,11 @@ IF(vlocs) then
     j = bnd%vlocs_j(ii)
     l = bnd%vlocs_k(ii)
     IF(j==1) then! origin
-      residbndrzwguard(j,l) = (cf0-2._8/dr**2) * f(j,l) + 4._8*f(j+1,l)/dr**2   &
+      res(j,l) = (cf0-2._8/dr**2) * f(j,l) + 4._8*f(j+1,l)/dr**2   &
                             + cfz*(f(j,l+1)+f(j,l-1)) &
                             + rhs(j,l)*inveps0
     else
-      residbndrzwguard(j,l) = cf0 * f(j,l) + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
+      res(j,l) = cf0 * f(j,l) + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
                             + cfz*(f(j,l+1)+f(j,l-1)) &
                             + rhs(j,l)*inveps0
     END if
@@ -3901,13 +3904,13 @@ else
  do l = nzi, nzf+1
   j = 1
   IF(bnd%v(j,l)==v_vacuum) &
-  residbndrzwguard(j,l) = (cf0-2._8/dr**2) * f(j,l) + 4._8*f(j+1,l)/dr**2   &
+  res(j,l) = (cf0-2._8/dr**2) * f(j,l) + 4._8*f(j+1,l)/dr**2   &
                                  + cfz*(f(j,l+1)+f(j,l-1)) &
                                  + rhs(j,l)*inveps0
 
   do j = 2, nrf+1
      IF(bnd%v(j,l)==v_vacuum) &
-       residbndrzwguard(j,l) = cf0 * f(j,l) + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
+       res(j,l) = cf0 * f(j,l) + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
                                       + cfz*(f(j,l+1)+f(j,l-1)) &
                                       + rhs(j,l)*inveps0
   end do
@@ -3925,7 +3928,7 @@ do ic = 1, bnd%nb_conductors
     l = c%kk(ii)
     IF(j==1) then
       IF(bnd%v(j,l)==v_bnd.and.c%docalc(ii)) &
-      residbndrzwguard(j,l) = c%cf0(ii)*f(j,l) &
+      res(j,l) = c%cf0(ii)*f(j,l) &
                         + c%cfxp(ii)*f(j+1,l) &
                         + c%cfzp(ii)*f(j,l+1)+c%cfzm(ii)*f(j,l-1) &
                         + voltfact*(c%phi0xp(ii) &
@@ -3933,7 +3936,7 @@ do ic = 1, bnd%nb_conductors
                         + rhs(j,l)*inveps0
     else
       IF(bnd%v(j,l)==v_bnd.and.c%docalc(ii)) &
-      residbndrzwguard(j,l) = c%cf0(ii)*f(j,l) &
+      res(j,l) = c%cf0(ii)*f(j,l) &
                         + c%cfxp(ii)*f(j+1,l)+c%cfxm(ii)*f(j-1,l) &
                         + c%cfzp(ii)*f(j,l+1)+c%cfzm(ii)*f(j,l-1) &
                         + voltfact*(c%phi0xp(ii)+c%phi0xm(ii) &
@@ -3943,16 +3946,16 @@ do ic = 1, bnd%nb_conductors
   ENDDO
 END do
 
-IF(l_zerolastz) residbndrzwguard(:,nz+1) = 0._8
+IF(l_zerolastz) res(:,nz+1) = 0._8
 
 IF(ixrbnd==dirichlet .or. ixrbnd==patchbnd) then
-  residbndrzwguard(nr+1,:) = 0.
+  res(nr+1,:) = 0.
 END if
 IF(izlbnd==dirichlet .or. izlbnd==patchbnd) then
-  residbndrzwguard(:,1) = 0.
+  res(:,1) = 0.
 END if
 IF(izrbnd==dirichlet .or. izrbnd==patchbnd) then
-  residbndrzwguard(:,nz+1) = 0.
+  res(:,nz+1) = 0.
 END if
 
 IF(l_mgridrz_debug) then
@@ -3961,7 +3964,7 @@ IF(l_mgridrz_debug) then
 END if
 
 return
-end function residbndrzwguard
+end subroutine residbndrzwguard
 
 subroutine residbndrzwguard_list(res,jlocs,klocs,nvlocs,f,rhs,bnd,nr,nz,dr,dz,rmin,voltfact)
 ! evaluate residue. Grid is assumed to have guard cells, but residue does not.
@@ -4175,7 +4178,7 @@ REAL(8) :: dr, dz, mgparam, rmin
 TYPE(BNDtype), pointer :: bnd
 LOGICAL(ISZ), INTENT(IN) :: sub, relax_only
 
-REAL(8), DIMENSION(:,:), allocatable :: res, v
+REAL(8), DIMENSION(:,:), allocatable :: res, v, ressub
 INTEGER(ISZ) :: i,jj,ll
 INTEGER :: nrnext, nznext, nzresmin, nzresmax, nzres
 REAL(8) :: drnext, dznext, voltf
@@ -4250,11 +4253,14 @@ else
     IF(vlocs) then
       call restrictlist(res(1,nzresmin), u, rhs, bnd, nrnext, nzres, nr, nz, voltf,dr,dz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
     else
+      allocate(ressub(nr+1,nz+1))
+      call residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz, &
+              dr=dr,dz=dz,rmin=rmin,voltfact=voltf,l_zerolastz=.false., &
+              ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=ressub)
       call subrestrict(res(1,nzresmin), &
-                             residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz, &
-                             dr=dr,dz=dz,rmin=rmin,voltfact=voltf,l_zerolastz=.false., &
-                             ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd), &
+                             ressub, &
                              nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+      deallocate(ressub)
     END if
   else ! solvergeom==XZgeom or solvergeom==XYgeom
     res(:,nzresmin:nzresmax) = restrict( &
@@ -4339,9 +4345,9 @@ END if
 
 voltf = 1._8
 inveps0 = 1./eps0
-res = residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz, &
-                       dr=dr,dz=dz,rmin=rmin,voltfact=voltf,l_zerolastz=.false., &
-                       ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
+call residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz, &
+                 dr=dr,dz=dz,rmin=rmin,voltfact=voltf,l_zerolastz=.false., &
+                 ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd,res=res)
 v = 0.
 voltf = 0._8
 inveps0 = 1.
