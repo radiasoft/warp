@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.129 2004/09/09 23:02:43 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.130 2004/09/10 17:29:52 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -974,7 +974,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       xrange = 1.5*max(abs(xmin),abs(xmax))
       yrange = 1.5*max(abs(ymin),abs(ymax))
       zrange = 1.5*maxnd(abs(grid1))
-      vo = VPythonobjects.VisualMesh(zvalues=grid1,title=default_titlet,
+      vo = VPythonobjects.VisualMesh(zvalues=grid1,display=1,twoSided=0,
                                      color=scolor,vrange=(xrange,yrange,zrange))
       vpythonscenelist.append(vo.scene)
     except ImportError:
