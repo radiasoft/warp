@@ -2,7 +2,7 @@
 Defines class Subcycle, which does periodic fieldsolves.
 """
 from warp import *
-subcycle_version = "$Id: subcycle.py,v 1.6 2002/06/12 20:46:37 dave Exp $"
+subcycle_version = "$Id: subcycle.py,v 1.7 2002/07/18 01:02:25 dave Exp $"
 
 def subcycledoc():
   import subcycle
@@ -61,7 +61,8 @@ fieldsolve is done every timestep.
     """
 Turns off charge deposition (and zeroing of rho). Saves user's values.
     """
-    s.depossave = top.depos.copy()
+    #s.depossave = top.depos.copy()
+    s.depossave = top.depos + ''
     s.laccumulate_rhosave = top.laccumulate_rho
     top.depos = "none"
     top.laccumulate_rho = true
