@@ -1,6 +1,6 @@
 from warp import *
 import string
-egun_like_version = "$Id: egun_like.py,v 1.9 2002/07/25 23:11:14 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.10 2002/08/08 18:13:22 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -195,7 +195,7 @@ Performs steady-state iterations
     if (npssum == 0): raise 'No particles injected'
 
     # --- only save particles on last iteration
-    if (i == iter-1 and _ipsave > 0):
+    if (i == iter-1 and _ipsave > 0 and _ipstep > 0):
 
       # --- Set ins and nps for saved particles
       # --- This only creates the arrays - the actual values don't
@@ -258,7 +258,7 @@ Performs steady-state iterations
       step()
       tmp_gun_steps = tmp_gun_steps + 1
       # --- only save particles on last iteration
-      if (i == iter-1 and _ipsave > 0):
+      if (i == iter-1 and _ipsave > 0 and _ipstep > 0):
         for js in xrange(top.ns):
           # --- Make sure that there are actually particles to save
           if (top.nps[js] > 0):
@@ -328,7 +328,7 @@ Performs steady-state iterations
   # --- end of multiple iterations
 
   # --- Set saved particles to be live particles (for diagnostics only).
-  if (_ipsave > 0):
+  if (_ipsave > 0 and _ipstep > 0):
     top.ins[:] = ins_save
     top.nps[:] = nps_save
 
