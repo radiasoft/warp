@@ -247,6 +247,28 @@ chopymodule.c cho.p.F90:cho.v
 	$(PYMAC) -a cho.v top.v
 
 
+
+#----------------------------------------------------------------------------
+#--- Build commands for opendx wrapper.
+DX = /usr/local/dx
+DXLIBS =   -L$(DX)/lib_linux -lDXcallm -lDXlite -lGL -lGLU -L/usr/X11R6/lib -lX11 -lXm -lXt -lMagick -ldl -lnetcdf -ldf -lcdf
+DXPYTHONLIB = -L$(PYTHON)/lib/python$(PYVERS)/config -lpython$(PYVERS) -ldl -lutil -lpthread
+
+LDLIBFLAGS = -shared
+SYSLIBS  = -lm -lc
+
+pyDXObject.so: pyDXObject.o
+	$(CC) -shared -o pyDXObject.so pyDXObject.o $(DXLIBS) $(DXPYTHONLIB) -lm -lc
+	cp pyDXObject.so $(WARPSCRIPTS)
+
+pyDXObject.o: pyDXObject.c
+	$(CC) -c pyDXObject.c -O -Dlinux -I$(DX)/include  -I$(PYTHON)/include/python$(PYVERS)
+#----------------------------------------------------------------------------
+
+
+
+
+
 clean:
 	rm -f *.mod *.o *.p.F90 *module.c *.scalars *.$(SO) pybasis*
 cleanfortranobjects:
