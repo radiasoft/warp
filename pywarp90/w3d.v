@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.68 $, $Date: 2002/08/23 23:17:39 $
+#@(#) File W3D.V, version $Revision: 3.69 $, $Date: 2002/08/27 23:16:24 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.68 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.69 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -53,7 +53,7 @@ izfsmax    integer    /0/ +parallel # Right boundary for partial field solve.
 solvergeom integer    /0/  # Geometry of field solver
 XYZgeom    integer    /0/  # 3D-XYZ geometry will be used if 3Dsolver=XYZgeom
 RZgeom     integer    /1/  # axisymmetric RZ geometry will be used if 3Dsolver=RZgeom
-
+AMRgeom    integer    /2/  # 3D geometry using AMR if 3Dsolver=AMRgeom
  
 *********** InDiag3d dump:
 lgetese3d logical /.true./ # Sets whether electrostatic-energy is calculated,
@@ -218,15 +218,17 @@ emityofz(0:nemitofz)       _real
 
 *********** InMesh3d dump:
 # Mesh specifications (input qtys)
-xmmin  real  [m]  /0./            #  Lower limit of mesh
-xmmax  real  [m]  /0./            #  Upper limit of mesh
-ymmin  real  [m]  /0./            #  Lower limit of mesh
-ymmax  real  [m]  /0./            #  Upper limit of mesh
-zmmin  real  [m]  /0./ +parallel  #  Lower limit of mesh
-zmmax  real  [m]  /0./ +parallel  #  Upper limit of mesh
-nx     integer    /2/             #  Mesh points are 0,...,nx
-ny     integer    /2/             #  Mesh points are 0,...,ny
-nz     integer    /2/  +parallel  #  Mesh points are 0,...,nz
+xmmin  real  [m]  /0./            # Lower limit of mesh
+xmmax  real  [m]  /0./            # Upper limit of mesh
+ymmin  real  [m]  /0./            # Lower limit of mesh
+ymmax  real  [m]  /0./            # Upper limit of mesh
+zmmin  real  [m]  /0./ +parallel  # Lower limit of mesh
+zmmax  real  [m]  /0./ +parallel  # Upper limit of mesh
+nx     integer    /2/             # Mesh points are 0,...,nx
+ny     integer    /2/             # Mesh points are 0,...,ny
+nz     integer    /2/  +parallel  # Mesh points are 0,...,nz
+zmminglobal real [m]              # Global value of zmmin
+zmmaxglobal real [m]              # Global value of zmmax
 
 *********** Damped_eom dump:
 # All quantities associated with the damped mover algorithm

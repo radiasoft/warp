@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.68 $, $Date: 2002/08/23 23:17:39 $
+c@(#) File W3D.M, version $Revision: 3.69 $, $Date: 2002/08/27 23:16:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -62,7 +62,6 @@ c=============================================================================
       use Moments
       use Damped_eom
       use Hist
-c     use Pspwork
       use InjectVars
       use FRZmgrid
 
@@ -86,7 +85,14 @@ c  Put ny to zero for RZ geometry
       if(solvergeom==RZgeom) then
         ny=0
         fstype=10
+      elseif(solvergeom==AMRgeom) then
+        fstype = 11
       endif
+
+c  Set global values of zmmin and zmmax before the decomposition is done
+c  for the parallel code.
+      zmminglobal = zmmin
+      zmmaxglobal = zmmax
 
 c------- Parallel only -----------------------------------------------------
 #ifdef MPIPARALLEL
@@ -198,7 +204,7 @@ c  Set the value of prwall, radius at which particles are lost
 c  Calculate mesh dimensioning quantities
 
       dx = (xmmax - xmmin) / nx
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         dy = (ymmax - ymmin) / ny
       elseif(solvergeom==RZgeom) then
         dy = dx
@@ -221,7 +227,7 @@ c  Initialize base grid for RZ solver
 
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
       ix_axis = nint(-xmmin/dx)
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         iy_axis = nint(-ymmin/dy)
       elseif(solvergeom==RZgeom) then
         iy_axis = 0
@@ -248,28 +254,7 @@ c  Load the particles, calculate the charge density
       call stptcl3d
       call setgamma(lrelativ)
       call remark(" ---  Setting charge density")
-      call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
-      if(solvergeom==RZgeom) call reset_rzmgrid_rho()
-      call zeroarry(curr(0),nzzarr+1)
-c     rho = 0.
-c     curr = 0.
-      do is=1,ns
-         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-           if(solvergeom==XYZgeom) then
-              call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
-     &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
-            elseif(solvergeom==RZgeom) then
-              call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
-     &                         sq(is)*sw(is),nx,nz,dx,dz,zmmin)
-            end if
-         enddo
-      enddo
-      call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
-      if(solvergeom==RZgeom) then
-        call distribute_rho_rz()
-        call get_rho_rz(rho(0,0,0),nx,nz,1,0)
-      end if
+      call loadrho3d(-1,-1,-1,.true.)
 c  Set up for injection
       if (inject > 0) call injctint
 
@@ -1170,19 +1155,6 @@ c     call zeroarry (bendradi,nparpgrp)
       bendres = 0.
       bendradi = 0.
 
-c  Zero rho only if particles are advanced
-      if (center == "fullv" .or. center == "halfv" .and. .not. laccumulate_rho) then
-        call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
-        if(solvergeom==RZgeom) call reset_rzmgrid_rho()
-c       rho = 0.
-      end if
-
-c  Zero curr if center is synchv or if using gaps
-      if ((center == "synchv" .or. ifgap) .and. .not. laccumulate_rho) then
-        call zeroarry(curr(0),nzzarr+1)
-c       curr = 0.
-      endif
-
 c  Zero the moments if center is synchv
       if (center == "synchv" .or. center == "gen") then
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
@@ -1208,7 +1180,11 @@ c           --- Obtain the self-field from the electrostatic potential
      &                    efetch,ex,ey,ez,l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
                call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ex,ey,ez,ip)
+            elseif(solvergeom==AMRgeom) then
+              call cho_gete3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgridprv,
+     &                        ex,ey,ez,is,(ipmin-ins(is))/nparpgrp)
             endif
+
 c           --- Get E field for particles near the  injection surface.
             if (inject > 0) then
              call inj_sete3d(ip,ipmin,xmmin,ymmin,zmmin,inj_dx,inj_dy,inj_dz,ex,ey,ez)
@@ -1403,6 +1379,8 @@ c       --- load rho diagnostic quantities
       endif
 
       if (center == "synchv" .or. center == "gen" .or. ifgap) then
+        if (.not. laccumulate_rho) call zeroarry(curr(0),nzzarr+1)
+
 c       --- Calculate current
         do is=1,ns
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
@@ -1416,7 +1394,7 @@ c       --- Calculate current
 
 c----------------------------------------------------------------------------
       if (center == "fullv" .or. center == "halfv") then
-c       --- Inject more particles. This addes particles and alters ins and nps.
+c       --- Inject more particles. This adds particles and alters ins and nps.
         if (inject > 0) call inject3d(1)
 
 c       --- Apply particle boundary conditions
@@ -1433,27 +1411,8 @@ c       --- Apply particle boundary conditions
      &                     l2symtry,l4symtry,lostpars(0),zzmin,dzzi)
         enddo
 
-c       --- Collect charge density (3d) and current (1d)
-        do is=1,ns
-          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
-            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-            if(solvergeom==XYZgeom) then
-              call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
-     &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
-            elseif(solvergeom==RZgeom) then
-              call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
-     &                         sq(is)*sw(is),nx,nz,dx,dz,zmmin)
-            endif
-          enddo
-        enddo
-
-c       --- Make rho periodic if periodic in z (if not accumulating rho)
-        if (.not. laccumulate_rho)
-     &    call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
-        if(solvergeom==RZgeom) then
-          call distribute_rho_rz()
-          call get_rho_rz(rho(0,0,0),nx,nz,1,0)
-        end if
+c       --- Collect charge density (3d)
+        call loadrho3d(-1,-1,-1,.not. laccumulate_rho)
 
         if (lbeamcom) then
 c         --- Set zbeam so that it follows the center of mass of the beam.
@@ -1503,7 +1462,7 @@ c  sets slice at nz+1 equal to the slice at 1
 c=============================================================================
       subroutine perrho3d(rho,nx,ny,nz,periinz)
       use Subtimers
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       logical(ISZ):: periinz
@@ -1514,19 +1473,22 @@ c=============================================================================
 c  Sums the first and last slices of rho for periodicity
 c  and puts the result into both slices.
 
+      if (solvergeom==AMRgeom) return
 
 c Parallel version makes call to special routine perrho3d_slave
 #ifdef MPIPARALLEL
 
       if(solvergeom==RZgeom) then
         call getrhoforfieldsolverz(nx,nz,rho(0,0,0))
-      else
+      elseif (solvergeom==XYZgeom) then
+
 c This sums rho in the overlapping region of neighboring processes.
         call perrho3d_slave(rho(0,0,0),nx,ny,nz,periinz)
 
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
         call getrhoforfieldsolve(nx,ny,nz,rho(0,0,0))
+
       end if
 
 #else
@@ -3534,7 +3496,6 @@ c --- This routine provides a simple call from the interpreter to load the
 c --- rho array.  The value '-1' is used as a flag in the input to use
 c --- all of the particles, otherwise the specified particles are loaded.
 
-
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2
       integer(ISZ):: ip,ipmin,is
@@ -3578,6 +3539,9 @@ c        --- loop over particle blocks
             elseif(solvergeom==RZgeom) then
               call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
      &                         sq(is)*sw(is),nx,nz,dx,dz,zmmin)
+            elseif(solvergeom==AMRgeom) then
+              call cho_setrho3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
+     &                          sq(is),sw(is),is,(ipmin-ins(is))/nparpgrp)
             end if
          enddo
       enddo
@@ -4174,7 +4138,7 @@ c         --- Copy inj_np to inj_prev, and zero inj_np
 
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
-            if(solvergeom==XYZgeom) then
+            if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
               call inj_setrho3d(xmmin,ymmin,inj_dx,inj_dy,inj_dz,inj_nx,inj_ny,
      &                          l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
@@ -4821,22 +4785,13 @@ c         --- load new particles into rho
 c         --- This must be done after all of the particles for this timestep
 c         --- are injected.
           do is=1,ns
-            do ipmin=ins(is)-npinje_s(is)-ntinject(is),
-     &               ins(is)-npinje_s(is)-1,nparpgrp
-              ip = min(nparpgrp, ins(is) - npinje_s(is) - ipmin)
-              if(solvergeom==XYZgeom) then
-                call setrho3d (rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                         zgrid, uzp(ipmin), sq(is), sw(is), depos)
-              elseif(solvergeom==RZgeom) then
-                call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
-     &                           sq(is)*sw(is),nx,nz,inj_dx,inj_dz,zmmin)
-              end if
-            enddo
+            call loadrho3d(ins(is)-npinje_s(is)-ntinject(is),
+     &                     ins(is)-npinje_s(is)-1,is,.false.)
           enddo
-          if(solvergeom==RZgeom) then
-            call distribute_rho_rz()
-            call get_rho_rz(rho(0,0,0),nx,nz,1,0)
-          end if
+c         if(solvergeom==RZgeom) then
+c           call distribute_rho_rz()
+c           call get_rho_rz(rho(0,0,0),nx,nz,1,0)
+c         end if
 
         elseif (itask == 3) then
 c         --- Only include new particles now, after rest of particles have
@@ -4882,7 +4837,7 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         inj_nx = nx
         inj_ny = ny
         inj_dx = dx
@@ -5326,7 +5281,7 @@ c to get zp.
 #ifdef MPIPARALLEL
       real(kind=8):: zmin_injphi, zmax_injphi
 
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
         zmin_injphi = zpslmin(my_index)
         zmax_injphi = zpslmax(my_index)
       elseif(solvergeom==RZgeom) then
@@ -5457,6 +5412,8 @@ c     --- Call the appropriate routine to get the phi
         call setphi3d(n,x,y,z,p)
       elseif(solvergeom==RZgeom) then
         call setphirz(n,x,y,z,p)
+      elseif(solvergeom==AMRgeom) then
+        call cho_getphi3d(n,x,y,z,0.,p,-1,-1)
       endif
 
       return
@@ -6600,9 +6557,10 @@ c         The loop is in bendfieldsol3d
 c     --- If no field solve, return 
       if ( fstype == -1) return 
 
-      if (fstype == 3 .or. fstype == 7) then
+      if (fstype == 3 .or. fstype == 7 .or. fstype == 11) then
 c       --- SOR and multigrid field solvers - deal with bends directly and set
 c       --- axial boundary conditions (call to perphi3d is not needed)
+c       --- Chombo knows nothing of bends and does its own b.c.'s
         call vp3d (iwhich)
 
       else if (.not. linbend) then
@@ -6627,7 +6585,7 @@ c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
       if(solvergeom==RZgeom) then
         call getphiforparticlesrz()
-      else
+      elseif (solvergeom==XYZgeom) then
         call getphiforparticles(nx,ny,nz,phi(0,0,-1))
       end if
 #endif
@@ -6636,9 +6594,6 @@ c     --- particle domain.
       fstime = fstime + (wtime() - timetemp)
       return
       end
-
-
-
 c=============================================================================
       subroutine vp3d (iwhich)
       use Subtimers
@@ -6667,7 +6622,8 @@ c   2  3d fft and 3d capacity matrix for internal quadrupole conductors
 c   3  3d SOR field solve 
 c   4  2d fft in transverse plane, tridiag solve in z
 
-      if(solvergeom==RZgeom) fstype=10
+      if(solvergeom==RZgeom) fstype = 10
+      if(solvergeom==AMRgeom) fstype = 11
 
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
@@ -6777,7 +6733,8 @@ c         --- RZ full-multigrid solver
 c       case (11)
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
-          call amrfieldsolve(iwhich)
+        call cho_solve3d(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
+     &                   l2symtry,l4symtry,xmmin,ymmin,zmmin,zmminglobal)
 c     endselect
       endif
 
