@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.6 2001/12/06 21:16:21 rcohen Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.7 2002/05/31 23:19:38 dave Exp $"
 
 def warpscriptsdoc():
   print """
@@ -16,6 +16,7 @@ appendablearray.py: declares an array class which can be appended to
 cir_match.py: routines for matching beam using the circe module
 cirplots.py: routines for plotting circe ouput
 ctl.py: step and generate commands (automatically imported)
+drawlattice.py: routine for drawing the lattice (automatically imported)
 drifts.py: routine to create drift elements in blank spots in the lattice
 egun_like.py: routine for steady-state calculations (like diode problems)
 env_match.py: routines for matching beam using the env module
