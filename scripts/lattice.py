@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.12 2003/02/06 20:25:53 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.13 2003/04/01 01:59:50 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -2180,6 +2180,7 @@ def plotemlt(ie,m=0,p=0,color='fg'):
 Plots the field of the emlt element
   - ie: the element to plot
   - m=0: the multipole number to plot
+  - p=0: when true, plot z-derivative (emltp)
   - color='fg': color of plot
   """
   id = top.emltid[ie] - 1
@@ -2196,6 +2197,7 @@ def plotmmlt(im,m=0,p=0,color='fg'):
 Plots the field of the emlt element
   - im: the element to plot
   - m=0: the multipole number to plot
+  - p=0: when true, plot z-derivative (mmltp)
   - color='fg': color of plot
   """
   id = top.mmltid[im] - 1
