@@ -196,6 +196,7 @@ class panel(wxPanel):
         self.Move(wxPoint(0,0))
 
     def OnPanelEnterWindow(self, event):
+      try:
         self.Mode.SetSelection(__main__.dxwindow.interactor)
         self.Rendering.SetSelection(__main__.dxwindow.l_hardware_acceleration)
         self.NewWindow.SetValue(__main__.l_dxnewwindow)
@@ -216,6 +217,8 @@ class panel(wxPanel):
           self.Window.SetStringSelection('All')
         else:
           self.Window.SetStringSelection(__main__.dxwindow.name)
+        event.Skip()
+      except:
         event.Skip()
 
     def OnModeChoice(self, event):
