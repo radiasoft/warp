@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.11 $, $Date: 2001/08/31 22:36:40 $
+#@(#) File F3D.V, version $Revision: 3.12 $, $Date: 2001/09/14 00:16:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.11 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.12 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -139,6 +139,7 @@ ixcond(ncondmax) _integer # X coordinate of points in conductor
 iycond(ncondmax) _integer # Y coordinate of points in conductor
 izcond(ncondmax) _integer # Y coordinate of points in conductor
 condvolt(ncondmax) _real  # voltage of points in conductor
+condnumb(ncondmax) _integer # Number of the conductor the points are in
 lplates          logical  # Sets whether or not quadruple endplates are included
 rodfract        real /1./ # Fraction of quadrupole rod which is used
 islctype(-1:nzpsor+1) _integer -dump # Type of structure at each z slice,
@@ -165,6 +166,7 @@ ecdelpx (ncndmax)     _real # distance in x of surface with higher x, even
 ecdelpy (ncndmax)     _real # distance in y of surface with higher y, even
 ecdelpz (ncndmax)     _real # distance in z of surface with higher z, even
 ecvolt  (ncndmax)     _real # voltage of points for even sub-grid boundaries
+ecnumb  (ncndmax)  _integer # Number of the conductor the even points are in
 nocndbdy        integer # Number of points for odd sub-grid boundaries
 ocndpvph(ncndmax)     _real -dump # Saves phi for odd sub-grid boundaries
 iocndx  (ncndmax)  _integer # location of points for odd sub-grid boundaries
@@ -177,20 +179,33 @@ ocdelpx (ncndmax)     _real # distance in x of surface with higher x, odd
 ocdelpy (ncndmax)     _real # distance in y of surface with higher y, odd
 ocdelpz (ncndmax)     _real # distance in z of surface with higher z, odd
 ocvolt  (ncndmax)     _real # voltage of points for odd sub-grid boundaries
+ocnumb  (ncndmax)  _integer # Number of the conductor the odd points are in
 
 *********** MultigridConductor3d dump parallel:
-ecvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction
-ecvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction
-ecvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction
-ecvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction
-ecvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction
-ecvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction
-ocvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction
-ocvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction
-ocvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction
-ocvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction
-ocvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction
-ocvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction
+ecvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction, even
+ecvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction, even
+ecvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction, even
+ecvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction, even
+ecvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction, even
+ecvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction, even
+ecnumbmx(ncndmax)  _integer # Number of the conductor in minus x direction, even
+ecnumbpx(ncndmax)  _integer # Number of the conductor in plus  x direction, even
+ecnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, even
+ecnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, even
+ecnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, even
+ecnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, even
+ocvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction, odd
+ocvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction, odd
+ocvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction, odd
+ocvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction, odd
+ocvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction, odd
+ocvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction, odd
+ocnumbmx(ncndmax)  _integer # Number of the conductor in minus x direction, odd
+ocnumbpx(ncndmax)  _integer # Number of the conductor in plus  x direction, odd
+ocnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, odd
+ocnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, odd
+ocnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, odd
+ocnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, odd
 icondlxy(ncondmax) _integer # Coarseness level at which the point is on grid
 icondlz (ncondmax) _integer # Coarseness level at which the point is on grid
 iecndlxy(ncndmax)  _integer # Coarseness level at which the point is on grid
