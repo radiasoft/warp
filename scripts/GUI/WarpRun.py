@@ -506,11 +506,17 @@ class WarpRun(wxFrame):
         opn=0
         if len(sys.argv)>1 and (sys.argv[1] == '--last'):opn=1
         pype.frame = pype.MainWindow(self, wxNewId(), "PyPE %s"%pype.VERSION, sys.argv[1+opn:])
+        def resize_dummy(self,e=None):
+            pass
+        resize=pype.frame.OnResize
+        pype.frame.OnResize=resize_dummy
         if self.FileName is not None:
             pype.frame.OnDrop([self.FileName])
         self.pype = pype
         self.menuBar1.Remove(0)
         pype.frame.SetSize(self.GetSize())
+        sys.stderr.flush()
+        sys.stdout.flush()
         self.SetPosition((0,0))
         pype.frame.SetPosition(self.GetPosition()+(10,10))
         if sys.platform <> 'win32':
@@ -528,6 +534,7 @@ class WarpRun(wxFrame):
              size.SetHeight(size.GetHeight()-25)
              win.SetSize(size)
           EVT_SIZE(panel,OnCpSize)
+        pype.frame.OnResize=resize_dummy
        
         def testfollowpanel():
          panel = WarpPanel.panel(self.notebook1)
@@ -822,7 +829,8 @@ class WarpRun(wxFrame):
                 if(len(firstword)>=1):
                     if(firstword[0]=='#'): 
                         docomment=true
-                if self.prefix is '... ':
+#                if self.prefix is '... ':
+                elif self.prefix is '... ':
                     if(self.line[0]<>' '):
                         if(len(self.line)>=4):
                             if(self.line[:4]<>'else' and self.line[:4]<>'elif'):
@@ -956,7 +964,7 @@ class WarpRun(wxFrame):
 #       time.sleep(0.1)
 #       event.RequestMore(1)
 
-    def OnWinonButton(self, event):
+    def OnWinonButton(self, event=None):
         if not self.isgistwindowon:
             winon()
             if sys.platform <> 'win32':
@@ -1025,7 +1033,7 @@ class WarpRun(wxFrame):
         if(not l_standard_out): sys.stderr = newstdout.newstdout(self.MessageWindow)
 
     def OnNotebook1NotebookPageChanged(self, event):
-        if event.GetSelection() == 1:
+        if event.GetSelection() == 0:
             self.OutToConsole()
         else:
             self.OutToMessageWindow()
