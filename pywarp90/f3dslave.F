@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.14 $, $Date: 2003/05/30 17:41:46 $
+c F3DSLAVE.M, version $Revision: 1.15 $, $Date: 2004/05/04 21:48:28 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -329,7 +329,7 @@ c=============================================================================
 c=============================================================================
       subroutine lantzsolver(iwhich,a,kxsq,kysq,kzsq,attx,atty,attz,
      &                       filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,
-     &                       l2symtry,l4symtry)
+     &                       l2symtry,l4symtry,bound0,boundnz,boundxy)
       use Constant
       use Parallel
       use LantzSolverTemp
@@ -340,6 +340,7 @@ c=============================================================================
       real(kind=8):: filt(5,3)
       real(kind=8):: lx,ly,lz,scrtch(*),xywork(*),zwork(2,0:nx,0:nz)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: bound0,boundnz,boundxy
 
 c Poisson solver based on the method developed by Stephen Lantz.
 c First, FFT's are applied to the transverse planes, reducing Poisson's
@@ -377,7 +378,7 @@ c     --- Allocate space if needed or requested
 c       --- Initialize the k's
         call vpois3d(1,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &               filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
-     &               l2symtry,l4symtry)
+     &               l2symtry,l4symtry,bound0,boundnz,boundxy)
       endif
 
       if (iwhich == 1) return
@@ -386,7 +387,7 @@ c       --- Initialize the k's
 c     --- Apply FFT's to transverse planes.
       call vpois3d(12,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
-     &             l2symtry,l4symtry)
+     &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       print*,1,a(4,5,4)
 c     --- Minimum index of kxsq and kysq that is used
@@ -555,7 +556,7 @@ c     --- Calculate remaining values
 c     --- Apply inverse FFT's to transverse planes.
       call vpois3d(13,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
-     &             l2symtry,l4symtry)
+     &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       print*,6,a(4,5,4)
       return
@@ -600,7 +601,8 @@ c=============================================================================
 c=============================================================================
 c=============================================================================
       subroutine paralleltridiag(a,kxsq,kysq,kzsq,attx,atty,attz,filt,lx,ly,lz,
-     &                           nx,ny,nz,scrtch,xywork,zwork,l2symtry,l4symtry)
+     &                     nx,ny,nz,scrtch,xywork,zwork,l2symtry,l4symtry,
+     &                     bound0,boundnz,boundxy)
       use Constant
       integer(ISZ):: nx,ny,nz
       real(kind=8):: a(0:nx,0:ny,-1:nz+1)
@@ -609,6 +611,7 @@ c=============================================================================
       real(kind=8):: filt(5,3)
       real(kind=8):: lx,ly,lz,scrtch(*),xywork(0:nx,0:ny),zwork(2,0:nx,0:nz)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: bound0,boundnz,boundxy
 
 c Experimental parallel Poisson solver. The tridiag solver is used only
 c locally. Iteration is done, exchange boundary information. The hope
@@ -627,7 +630,7 @@ c than the tolerance.
 c     --- Apply FFT's to transverse planes.
       call vpois3d(12,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &                filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
-     &                l2symtry,l4symtry)
+     &                l2symtry,l4symtry,bound0,boundnz,boundxy)
 
 c     --- Minimum index of kxsq and kysq that is used
       ikxmin = 1
@@ -671,7 +674,7 @@ c       --- Get error
 c     --- Apply inverse FFT's to transverse planes.
       call vpois3d(13,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
-     &             l2symtry,l4symtry)
+     &             l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       return
       end
