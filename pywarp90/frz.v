@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.24 $, $Date: 2003/03/05 02:18:57 $
+#@(#) File FRZ.V, version $Revision: 3.25 $, $Date: 2003/03/06 01:55:32 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.24 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.25 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -52,9 +52,12 @@ mgridrz_workfact          integer /4/   # weight factor for grid merging/procs
 mgridrz_mgiters           real /0/      # actual number of iterations for a solve
 mgridrz_sub_accuracy      real /1.e-1/  # average accuracy for a sublevel
 mgridrz_deform            logical /.false./ # flag for use of elliptic deformation
-mgridrz_nz                integer       # 
-mgridrz_xfact(0:mgridrz_nz) _real       # array for deformation factor in X
-mgridrz_yfact(0:mgridrz_nz) _real       # array for deformation factor in Y
+mgridrz_nx                integer  /0/  # 
+mgridrz_ny                integer  /0/  # 
+mgridrz_nz                integer  /0/  # 
+mgridrz_xfact(0:mgridrz_nz+2) _real     # array for deformation factor in X
+mgridrz_yfact(0:mgridrz_nz+2) _real     # array for deformation factor in Y
+mgridrz_phi3d(0:mgridrz_nx,0:mgridrz_ny,-1:mgridrz_nz) _real # array containing '3D' phi
 mgridrz_ngrids            integer  /1/  # number of grids (useful when using mesh refinement)
 mgridrz_grid_is(mgridrz_ngrids)   _integer # array id grid associated with grid species 
 ngrids                    integer  /1/  # number of grids (includes base grid + patches)
@@ -62,36 +65,75 @@ nrg(ngrids)               _integer      # number of mesh in R for each grid
 nzg(ngrids)               _integer      # number of mesh in Z for each grid
 drg(ngrids)               _real         # number of mesh in R for each grid
 dzg(ngrids)               _real         # number of mesh in Z for each grid
-l_change_grid             logical  /.false./
-ngrids_cg                 integer  /0/
-id_cg(ngrids_cg,2)        _integer
-nr_cg(ngrids_cg)          _integer  
-nz_cg(ngrids_cg)          _integer 
-dr_cg(ngrids_cg)          _real    
-dz_cg(ngrids_cg)          _real    
-rmin_cg(ngrids_cg)        _real    
-zmin_cg(ngrids_cg)        _real    
-guard_min_r_cg(ngrids_cg) _integer
-guard_max_r_cg(ngrids_cg) _integer
-guard_min_z_cg(ngrids_cg) _integer
-guard_max_z_cg(ngrids_cg) _integer
-l_change_loc_part         logical  /.false./
-nz_rmc                    integer
-rmc(nz_rmc+1)             _integer
-l_get_field_from_base     logical  /.false./
-l_get_injphi_from_base    logical  /.false./
-l_dep_rho_on_base         logical  /.false./
-l_distribute              logical  /.true./
+l_change_grid             logical  /.false./ # change grid patches during step if true
+ngrids_cg                 integer  /0/       # nb grid patches to change
+id_cg(ngrids_cg,2)        _integer           # IDs grid patches to change
+nr_cg(ngrids_cg)          _integer           # new nr grid patch change
+nz_cg(ngrids_cg)          _integer           # new nz grid patch change
+dr_cg(ngrids_cg)          _real              # new dr grid patch change
+dz_cg(ngrids_cg)          _real              # new dz grid patch change
+rmin_cg(ngrids_cg)        _real              # new rmin grid patch change
+zmin_cg(ngrids_cg)        _real              # new zmin grid patch change
+guard_min_r_cg(ngrids_cg) _integer  # new min guard in r grid patch change (helps reduce spurious force)
+guard_max_r_cg(ngrids_cg) _integer  # new max guard in r grid patch change (helps reduce spurious force)
+guard_min_z_cg(ngrids_cg) _integer  # new min guard in z grid patch change (helps reduce spurious force)
+guard_max_z_cg(ngrids_cg) _integer  # new max guard in z grid patch change (helps reduce spurious force)
+l_change_loc_part         logical  /.false./ # if true, loc_part is changed according to array rmc at next step
+nz_rmc                    integer            # size array rmc
+rmc(nz_rmc+1)             _integer           # minimum radius for field gathering  
+l_get_field_from_base     logical  /.false./ # if true, gather field from base grid only
+l_get_injphi_from_base    logical  /.false./ # if true, gather injphi from base grid only
+l_dep_rho_on_base         logical  /.false./ # if true, deposit rho on base grid only
+l_distribute              logical  /.true./  # if true, distribute rho between high level to low level patches
+nguardx                   integer /1/        # number of guard cell in x/r
+nguardz                   integer /1/        # number of guard cell in z
+grids_nids                integer            # number of grid IDs
+n_avail_ids               integer            # number of available IDs
+avail_ids(100)            _integer           # array of grid IDs
+level_del_grid            integer            # level of deleted grid
+
+*********** multigrid_common_base dump:
+l_mgridrz_debug  logical  /.false./
+l_timing_rz      logical  /.true./
+restrictwbnd     logical  /.true./
+vlocs            logical  /.false./
+l_print_timing   logical  /.false./
+l_jump           logical  /.false./
+t_relax          real
+t_restrict       real
+t_expand         real
+t_before         real
+t_apply_voltage  real
+t_updateguard    real
+t_allocate       real
+inveps0          real
+o_line           character*(240) # line for output
+bndy_allocated   logical  /.false./ # flag set to true if bndy is allocated
+ixlbndi          integer  /0/
+ixrbndi          integer  /0/
+izlbndi          integer  /0/
+izrbndi          integer  /0/
+ixlbnd           integer  /0/
+ixrbnd           integer  /0/
+izlbnd           integer  /0/
+izrbnd           integer  /0/
+bnd_method       integer  /0/
+nlevels          integer      # number of multigrid levels
+level            integer      # current multigrid level
+nb_iters         integer      # actual number of iterations used for a solve
+
+*********** FRZmgrid_ptrs dump:
+basegrid _GRIDtype  # primary grid for RZ solver
 
 *********** InjectVars_eq dump:
 # variables and functions needed for getting voltage risetime from assumption of 
 # constant injection (works with inj_d=2).
-inj_phi_eq   real # Electrostatic potential at the emitting surface at equilibrium.
+inj_phi_eq           real # Electrostatic potential at the emitting surface at equilibrium.
 v_max                real /0./
 l_find_rise_time     logical /.false./
 afact                real /1./
 calc_a               integer  /1/  # determines way of calculating voltage factor for rise time
-l_verbose              logical /.true./
+l_verbose            logical /.true./
 init_gridinit() subroutine #
 
 *********** FRZsubs:
@@ -117,12 +159,6 @@ multigridrzf(phi:real,rho:real,nx:integer,nz:integer,dx:real,dz:real,
          # solution is calculatedd at each level using a multigrid procedure 
          # and used as an approximated solution to start the calculation at 
          # the next level)
-save_bndstructure_rz(filename:string) subroutine
-         # save internal conductor boundary coefficients for each multigrid
-         # level
-read_bndstructure_rz(filename:string) subroutine
-         # read internal conductor boundary coefficients for each multigrid
-         # level
 get_cond_rz(grid:integer,level:integer) subroutine
          # get internal conductors locations from RZ multigrid solver
 setconductorvoltagerz(volt:real,nz:integer,zmmin:real,dz:real,discrete:logical)
@@ -134,20 +170,20 @@ calcfact_deform(dz:real,zmin:real,
                 xfact:real,yfact:real,nz:integer,ns:integer,is:integer,
                 ins:integer,nps:integer,ws:real) subroutine
          # computes factors for elliptical deformation in X and Y planes
-init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real) subroutine
-         # initializes the base grid
+init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real,l_verbose:logical) subroutine
+         # initializes the base grid for RZ solver
 del_base() subroutine
          # removes the base grid
 add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
             rmin:real,zmin:real,
             guard_min_r:integer,guard_max_r:integer,
-            guard_min_z:integer,guard_max_z:integer) subroutine
+            guard_min_z:integer,guard_max_z:integer,l_verbose:logical) subroutine
          # add a subgrid to the grid id
 del_subgrid(id:integer) subroutine
          # delete a subgrid and all its 'children'
+del_conductors() subroutine
+         # delete all conductors data on RZ grids
 get_phi_subgrid(id:integer,phi:real,nr:integer,nz:integer) subroutine
-         # get the potential of grid id
-get_array_subgrid(id:integer,phi:real,nr:integer,nz:integer,which:string) subroutine
          # get the potential of grid id
 set_rho_rz(rho:real,nr:integer,nz:integer,id:integer) subroutine
          # set rho of grid id       
@@ -158,6 +194,7 @@ get_rho_rz(rho:real,nr:integer,nz:integer,id:integer,rhop:integer) subroutine
 reset_rzmgrid_rho() subroutine
          # sets rho to zero.
 fieldweightz(zp:real,uzp:real,ez:real,np:integer) subroutine
+fieldweightrz(xp:real,yp:real,zp:real,uzp:real,ex:real,ey:real,ez:real,np:integer) subroutine
 dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
            xmin:real,zmin:real) subroutine
          # makes rho deposition on RZ grid
@@ -181,3 +218,142 @@ set_patches_around_emitter(id:integer,np:integer,ij:integer,nz:integer,
             guard_min_r:integer,guard_max_r:integer,
             guard_min_z:integer,guard_max_z:integer) subroutine
          # add patches around emitter
+
+%%%%%%%% CONDtype:
+# structure for potential calculation close to conductors.
+# The stencil for the iterative calculation of the potential f is given by
+#     i = 1 -> nbbnd
+#        j=jj(i); l=kk(i)
+#        f(j,l) = dt*(cf0(i)   * f(j  ,l  )
+#               +     cfxp(i)  * f(j+1,l  )
+#               +     cfxm(i)  * f(j-1,l  )
+#               +     cfzp(i)  * f(j  ,l+1)
+#               +     cfzm(i)  * f(j  ,l-1)
+#               +     phi0xp(i)
+#               +     phi0xm(i)
+#               +     phi0zp(i)
+#               +     phi0zm(i)
+#               +     rhs(j,l))
+# for the ith grid point being close to the considered conductor and located
+# at (j,l) on the grid. If there is a conductor boundary lying for example
+# between j and j+1, cfxp(i) is set to zero while phi0xp(i) is set to
+# the voltage of the nearest conductor.
+ncond            integer  # number of nodes inside conductor
+nbbnd            integer  # number of "red" nodes near conductor (for red-black gauss-seidel)
+nbbndred         integer  # number of nodes inside conductor
+voltage(ncond)  _real     # conductors voltage
+condid(ncond)   _integer  # conductors ID
+cf0(nbbnd)      _real     # stencil coefficients for relaxation iteration at node  
+cfxm(nbbnd)     _real     # stencil coefficients for relaxation iteration at j-1
+cfxp(nbbnd)     _real     # stencil coefficients for relaxation iteration at j+1
+cfzm(nbbnd)     _real     # stencil coefficients for relaxation iteration at l-1
+cfzp(nbbnd)     _real     # stencil coefficients for relaxation iteration at l+1
+dt(nbbnd)       _real     # overall coefficient for relaxation
+phi0xm(nbbnd)   _real     # phi in conductor at j-1 (phi0xm=cfxm*volt0xm)
+phi0xp(nbbnd)   _real     # phi in conductor at j+1 (phi0xp=cfxp*volt0xp)
+phi0zm(nbbnd)   _real     # phi in conductor at l-1 (phi0zm=cfzm*volt0zm)
+phi0zp(nbbnd)   _real     # phi in conductor at l+1 (phi0zp=cfzp*volt0zp)
+volt0xm(nbbnd)  _real     # voltage in conductor at j-1
+volt0xp(nbbnd)  _real     # voltage in conductor at j+1
+volt0zm(nbbnd)  _real     # voltage in conductor at l-1
+volt0zp(nbbnd)  _real     # voltage in conductor at l+1
+condidxm(nbbnd) _integer  # conductor ID at j-1
+condidxp(nbbnd) _integer  # conductor ID at j+1
+condidzm(nbbnd) _integer  # conductor ID at l-1
+condidzp(nbbnd) _integer  # conductor ID at l+1
+dxm(nbbnd)      _real     # distance from node to conductor at j-1
+dxp(nbbnd)      _real     # distance from node to conductor at j+1
+dzm(nbbnd)      _real     # distance from node to conductor at l-1
+dzp(nbbnd)      _real     # distance from node to conductor at l+1
+jj(nbbnd)       _integer  # location node in x points near conductor
+kk(nbbnd)       _integer  # location node in z points near conductor
+docalc(nbbnd)   _logical  # performs calculation if set to .true.
+jcond(ncond)    _integer  # location node in x points in conductor
+kcond(ncond)    _integer  # location node in z points in conductor
+next            _CONDtype # next conductor element in linked list
+prev            _CONDtype # previous conductor element in linked list
+
+%%%%%%%% BNDtype:
+nb_conductors     integer
+nr                integer 
+nz                integer
+nvlocs            integer
+nvlocsred         integer
+izlbnd            integer
+izrbnd            integer
+nworkpproc        integer
+l_lshift          logical
+l_powerof2        logical
+l_merged          logical
+dr                real
+dz                real
+zmin              real
+zmax              real
+v(1:nr+1,1:nz+1)  _integer # 
+vlocs_j(nvlocs)   _integer
+vlocs_k(nvlocs)   _integer
+lshift(0:nr+2)    _integer
+cndfirst             _CONDtype
+cndlast              _CONDtype
+next              _BNDtype
+prev              _BNDtype
+
+%%%%%%%% GRIDtype:
+nguardx                   integer 
+nguardz                   integer  
+gid integer 
+nlevels integer
+nr integer
+nz integer
+nzp integer
+nrpar integer
+nzpar integer
+jmin integer
+jmax integer
+lmin integer
+lmax integer
+ixlbnd integer
+ixrbnd integer
+izlbnd integer
+izrbnd integer
+rmin real
+rmax real
+xmin real
+xmax real
+zmin real
+zmax real
+dr real
+dz real
+invdr real
+invdz real
+zminp real
+invvol(1:nr+1) _real
+rho(1:nr+1,1:nz+1) _real
+phi(1-nguardx:nr+nguardx+1,1-nguardz:nz+nguardz+1) _real        # potential
+rhop(1:nrpar+1,1:nzpar+1) _real
+phip(1-nguardx:nrpar+nguardx+1,1-nguardz:nzpar+nguardz+1) _real #
+rhominr real
+rhomaxr real
+rhominz real
+rhomaxz real
+loc_part(1:nr+1,1:nzp+1) _integer
+loc_part_fd(1:nr+1,1:nzp+1) _integer
+npre integer
+npost integer
+ncycles integer
+ncmax integer
+npmin integer
+guard_min_r integer
+guard_max_r integer
+guard_min_z integer
+guard_max_z integer
+mgparam real
+bndfirst _BNDtype
+bndlast _BNDtype
+next _GRIDtype
+prev _GRIDtype
+down _GRIDtype
+up   _GRIDtype
+
+%%%%%%%% GRDPTRtype:
+grid _GRIDtype
