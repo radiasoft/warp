@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.18 2004/07/22 23:42:08 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.19 2004/09/18 05:45:27 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -100,6 +100,7 @@ conductors are an argument.
         self.savecondid(js)
 
   def scrape(self,js):
+    if top.nps[js] == 0: return
     dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
     xmin = self.grid.xmin
     xmax = self.grid.xmax
