@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.19 2003/07/04 00:04:53 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.20 2003/07/04 00:07:17 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -240,7 +240,7 @@ def gatherarray(a,root=0,othersempty=0,bcast=0):
   # --- Root processor reshapes the data, removing the first dimension
   # --- Do it bit by bit since the data passed by the other processors may
   # --- not be all the same size.
-  if me == root
+  if me == root:
     newlen = 0
     for i in range(npes):
       newlen = newlen + shape(result[i])[0]
