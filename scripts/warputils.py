@@ -19,7 +19,7 @@ averagezdata(): Does local averaging over the first dimension of the input
 """
 from warp import *
 
-warputils_version = "$Id: warputils.py,v 1.1 2004/02/04 23:33:28 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.2 2004/03/15 17:47:15 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -101,12 +101,12 @@ def arrayappend(x,a):
   ashape = list(shape(a))
   if len(xshape)==1 and len(ashape)==1:
     xshape[0] = xshape[0] + ashape[0]
-    y = zeros(xshape,x.typecode())
+    y = fzeros(xshape,x.typecode())
     y[0:xshape[0]-ashape[0]] = x
     y[xshape[0]-ashape[0]:] = a
   elif len(xshape) == len(ashape)+1 and xshape[:-1] == ashape:
     xshape[-1] = xshape[-1] + 1
-    y = zeros(xshape,x.typecode())
+    y = fzeros(xshape,x.typecode())
     y[...,0:-1] = x
     y[...,-1] = a
   return y
