@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.127 $, $Date: 2004/09/17 22:32:37 $
+#@(#) File TOP.V, version $Revision: 3.128 $, $Date: 2004/10/27 23:38:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.127 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.128 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1127,6 +1127,8 @@ vinject(ninject)  _real    # Voltage on the injection source
 npinject     integer /0/   # Number of particles injected each step
 npinje_s(ns) _integer      # Number of particles injected each step
                            # for each species
+rnpinje_s(ns) _real        # Number of particles injected each step
+                           # for each species (do not need to be integers)
 npinjtmp(ns,ninject) _integer # Temporary for saving actual number of
                            # particles injected for inject=1. Only meaningful
                            # in parallel version.
