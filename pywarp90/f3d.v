@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.112 $, $Date: 2004/07/29 00:09:19 $
+#@(#) File F3D.V, version $Revision: 3.113 $, $Date: 2004/08/13 22:20:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.112 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.113 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -234,22 +234,23 @@ residual(nx:integer,ny:integer,nz:integer,nzfull:integer,
          lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
    subroutine
    # Calculates the residual
-restrict2d(nx:integer,ny:integer,nz:integer,nzfull:integer,
-           res:real,rho2:real,ff:real,
-           bounds:integer)
+restrict2d(nx:integer,ny:integer,nz:integer,res:real,
+           nxcoarse:integer,nycoarse:integer,rhocoarse:real,
+           ff:integer,bounds:integer)
    subroutine
    # Restricts phi in 2 transverse dimensions
-expand2d(nx:integer,ny:integer,nz:integer,nzfull:integer,
-         phi2:real,phi:real,bounds:integer)
+expand2d(nx:integer,ny:integer,nz:integer,phi:real,
+         nxcoarse:integer,nycoarse:integer,phicoarse:real,bounds:integer)
    subroutine
    # Expands phi in 2 transverse dimensiosn
-restrict3d(nx:integer,ny:integer,nz:integer,nznew:integer,nzfull:integer,
-           res:real,rho2:real,bounds2:integer,bounds:integer,
-           lparity:integer,rparity:integer)
+restrict3d(nx:integer,ny:integer,nz:integer,res:real,
+           nxcoarse:integer,nycoarse:integer,nzcoarse:integer,rhocoarse:real,
+           bounds:integer,boundscoarse:integer,lparity:integer,rparity:integer)
    subroutine
    # Restricts phi in 3 dimensions
-expand3d(nx:integer,ny:integer,nznew:integer,nz:integer,nzfull:integer,
-         phi2:real,phi:real,bounds:integer,lparity:integer,rparity:integer)
+expand3d(nx:integer,ny:integer,nz:integer,phi:real,
+         nxcoarse:integer,nycoarse:integer,nzcoarse:integer,phicoarse:real,
+         bounds:integer,lparity:integer,rparity:integer)
    subroutine
    # Expands phi in 3 dimensiosn
 sorhalfpass3d(parity:integer,mglevel:integer,
