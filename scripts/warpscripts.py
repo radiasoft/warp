@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.5 2001/12/05 21:23:49 ramiak Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.6 2001/12/06 21:16:21 rcohen Exp $"
 
 def warpscriptsdoc():
   print """
@@ -43,6 +43,8 @@ noparens.py: allows functions to be called without the parenthesis '()'
 optimizer.py: implementation various minimization algorithms
 plot_conductor.py: routines for ploting internal conductors (automatically
                    imported)
+plarr3d.py: routines to plot 3-D array of points with or without connecting
+            lines
 ptob.py: routine to save multi-dimensional array in a basis readable pdb file
 pyBasis.py: defines routines to emulate basis functionality
             (automatically imported)
