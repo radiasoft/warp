@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.43 $, $Date: 2002/04/24 21:37:49 $
+#@(#) File TOP.V, version $Revision: 3.44 $, $Date: 2002/04/26 15:51:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.43 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.44 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -974,7 +974,7 @@ inj_param real       /1./  # Relaxation parameter for inject.  Mainly used
                            # dependent injection, 0 for steady-state injection.
 ninject   integer    /1/   # Number of injection sources
 leninjct  real       /0./  # Length of region into which partcls are injected
-zinject   real       /0./  # Z Start of injection in lab frame
+zinject(ninject)  _real /0./  # Z Start of injection in lab frame
 rinject(ninject)  _real /LARGEPOS/ # Radius of source curvature
 ainject(ninject)  _real    # Width of injection in x
 binject(ninject)  _real    # Width of injection in y
@@ -986,7 +986,15 @@ xinject(ninject)  _real    # X location of injection source
 yinject(ninject)  _real    # Y location of injection source
 xpinject(ninject) _real    # X angle of injection source
 ypinject(ninject) _real    # Y angle of injection source
+vzinject(ninject) _real /0./ [m/s] # Starting velocity.
+                                   # For inject == 1, autoset to vbeam
 finject(ninject,ns) _real  # Species fraction for each source
+inj_zstart(ninject) _real /0./ [m] # Starting location relative to the emitting
+                                   # surface location.
+inj_d(ninject)      _real /1./ # Distance from surface where phi is fetched.
+                               # In units of dz.
+inj_f(ninject)      _real /1./ # Scaling factor on the number of particles
+                               # injected.
 lvinject logical /.false./ # Sets whether injection source is included
                            # in field solve
 vinject(ninject)  _real    # Voltage on the injection source
@@ -998,8 +1006,10 @@ npinjtmp(ns,ninject) _integer # Temporary for saving actual number of
                            # in parallel version.
 injctspc  integer    /0/   # Extra space added to particle arrays
 injctcnt  integer          # Count for random number generators
-jmininj   real /0/         # Minimum current density emited from the source.
-jmaxinj   real /LARGEPOS/  # Maximum current density emittable from the source.
+jmininj(ninject) _real /0/        # Minimum current density emited from the
+                                  # source.
+jmaxinj(ninject) _real /LARGEPOS/ # Maximum current density emittable from
+                                  # the source.
 inj_nsmooth integer /0/    # Number of smoothing iterations to do on the
                            # E field in front of the emitting surface.
 linj_spherical logical /.true./ # Flags whether or not to include the
@@ -1027,6 +1037,8 @@ vtinject(ntinj)    _real   # Voltage on transverse emitting surface.
 ftinject(ns,ntinj) _real   # Species fractions for transverse emitting surface
 xtinject(ntinj)    _real   # X location of center of transverse emitting surface
 ytinject(ntinj)    _real   # Y location of center of transverse emitting surface
+vztinject(ntinj) _real /0./ [m/s] # Starting velocity.
+                                  # For inject == 1, autoset to vbeam
 ntinject(ns)      _integer # Number of particles injected off of the
                            # transverse injection sources.
 jmaxtinj(ntinj)    _real   # Maximum injected current for transverse injection.
