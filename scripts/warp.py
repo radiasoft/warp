@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.29 2001/07/24 00:57:50 dave Exp $"
+warp_version = "$Id: warp.py,v 1.30 2001/07/24 16:49:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -316,12 +316,16 @@ package. Only w3d and wxy have field solves defined.
   # --- but only when a complete field solve was done.
   if iwhich == -1 or iwhich == 0:
     if top.efetch == 3:
-      call getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
-                      w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
-                      w3d.dx,w3d.dy,w3d.dz)
+      getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
+                 w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
+                 w3d.dx,w3d.dy,w3d.dz)
     if top.inject > 0:
-      call getinj_phi(w3d.nx,w3d.ny,w3d.nz,w3d.phi[:,:,1:-1],
-                      w3d.dx,w3d.dy,w3d.dz,w3d.xmmin,w3d.ymmin)
+      try:
+        # --- This routine is not defined in pywarp77
+        getinj_phi(w3d.nx,w3d.ny,w3d.nz,w3d.phi[:,:,1:-1],
+                   w3d.dx,w3d.dy,w3d.dz,w3d.xmmin,w3d.ymmin)
+      except NameError:
+        pass
 
 #=============================================================================
 
