@@ -484,7 +484,7 @@ class AMRTree(Visualizable):
     the charge density. If self.f is null, an error message is raised.
       """
       # return if not time to generate a new set of blocks
-      if(top.it%w3d.AMRgenerate_frequency<>0):return
+      if(top.it%w3d.AMRgenerate_periodicity<>0):return
       print 'generate grids at it = ',top.it
       
       # check if w3d.AMRlevels set properly and set defaut variables
