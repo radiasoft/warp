@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.49 2004/01/27 17:26:53 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.50 2004/01/27 18:02:53 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -794,7 +794,20 @@ def pyrestorepybssisobject(ff,gname,vlist,fobjdict,varsuffix,verbose,doarrays):
     fullname = gname + '.' + vname
     vpdbname = vname + '@' + gpdbname
 
-    if fullname in renamed.keys(): fullname = renamed[fullname]
+    # --- Check for renamed variables.
+    if fullname in renamed.keys():
+      newname = renamed[fullname]
+      namesplit = string.split(newname,'.')
+      pkg = eval(string.join(namesplit[:-1],'.'),__main__.__dict__)
+      # --- Only change the name if the new name exists. This prevents
+      # --- problems if an old executable is being used (from before
+      # --- the name change).
+      if namesplit[-1] in pkg.varlist():
+        fullname = newname
+        vname = namesplit[-1]
+        grp = string.join(namesplit[:-1],'.')
+    else:
+      grp = gname
 
     # --- Add suffix to name if given.
     # --- varsuffix is wrapped in str in case a nonstring was passed in.
@@ -806,10 +819,10 @@ def pyrestorepybssisobject(ff,gname,vlist,fobjdict,varsuffix,verbose,doarrays):
         if verbose: print "reading in "+fullname
         exec(fullname+'=ff.__getattr__(vpdbname)',__main__.__dict__,locals())
       elif type(ff.__getattr__(vpdbname)) == ArrayType and doarrays:
-        pkg = eval(gname,__main__.__dict__)
+        pkg = eval(grp,__main__.__dict__)
         # --- forceassign is used, allowing the array read in to have a
         # --- different size than the current size of the warp array.
-        if verbose: print "reading in "+gname+"."+fullname
+        if verbose: print "reading in "+grp+"."+fullname
         pkg.forceassign(vname,ff.__getattr__(vpdbname))
     except:
       # --- The catches errors in cases where the variable is not an
