@@ -4,6 +4,7 @@
 from wxPython.wx import *
 from warp import *
 import WarpRun
+import __main__
 
 modules ={'ConsoleClass':     [0, '', 'ConsoleClass.py'],
           'wxDialog_proto':   [0, '', 'wxDialog_proto.py'],
@@ -31,6 +32,8 @@ def add_panel(panel,name):
 def process_gui_events():
     while(wgui.Pending()):
         wgui.Dispatch()
+__main__.process_gui_events = process_gui_events
+__main__.wgui = wgui
 
 def gui():
   wgui.main.init()
