@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.56 $, $Date: 2002/09/11 01:00:41 $
+c@(#) File F3D.M, version $Revision: 3.57 $, $Date: 2002/09/14 01:15:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6630,7 +6630,7 @@ c Sets points on injection source.
 
       integer(ISZ):: ij,inj_ij,ix,iy,iz,npoints,nsgpoints
       integer(ISZ):: ixmin,ixmax,iymin,iymax
-      real(kind=8):: xx,yy,zz,rmaxsq,ao_dx,bo_dy,ai_dx,bi_dy
+      real(kind=8):: xx,yy,zz,ao_dx,bo_dy,ai_dx,bi_dy
       real(kind=8):: delmx,delpx,delmy,delpy,delmz,delpz,rrsq
       real(kind=8):: fuzz
 
@@ -6677,8 +6677,7 @@ c       --- Loop over transverse points
             yy = (iy-iy_axis)*dy - yinject(ij)
 c           --- skip points not on the surface
             if (((xx*bo_dy)**2 + (yy*ao_dx)**2 > (ao_dx*bo_dy)**2) .or.
-     &          ((xx*bi_dy)**2 + (yy*ai_dx)**2 < (ai_dx*bi_dy)**2) .or.
-     &          ((xx**2 + yy**2) > rmaxsq)) cycle
+     &          ((xx*bi_dy)**2 + (yy*ai_dx)**2 < (ai_dx*bi_dy)**2)) cycle
 
 c           --- If rinject is not set by the user, rely on inj_grid (surface
 c           --- will be piecewise linear), otherwise make the surface spherical.
@@ -7168,6 +7167,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
+		  if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
                   f(i) = srfrv_f(x(i),rofzfunc,0) - rad
                   iterrf = iterrf + 1
@@ -7224,6 +7224,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
+		  if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
                   f(i) = srfrv_f(x(i),rofzfunc,0) - rad
                   iterrf = iterrf + 1
@@ -7764,6 +7765,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
+		  if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
                   f(i) = srfrv_f(x(i),rofzfunc,0) - rad
                   iterrf = iterrf + 1
@@ -7820,6 +7822,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
+		  if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
                   f(i) = srfrv_f(x(i),rofzfunc,0) - rad
                   iterrf = iterrf + 1
@@ -8318,6 +8321,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
+		  if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
                   f(i) = srfrv_f(x(i),rminofz,1) - rad
                   iterrf = iterrf + 1
@@ -8364,6 +8368,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
+		  if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
                   f(i) = rad - srfrv_f(x(i),rmaxofz,2)
                   iterrf = iterrf + 1
@@ -8421,6 +8426,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
+		  if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
                   f(i) = srfrv_f(x(i),rminofz,1) - rad
                   iterrf = iterrf + 1
@@ -8467,6 +8473,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
+		  if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
                   f(i) = rad - srfrv_f(x(i),rmaxofz,2)
                   iterrf = iterrf + 1

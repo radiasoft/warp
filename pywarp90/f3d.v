@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.55 $, $Date: 2002/09/11 01:00:41 $
+#@(#) File F3D.V, version $Revision: 3.56 $, $Date: 2002/09/14 01:15:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.55 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.56 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -146,7 +146,7 @@ iycond(ncondmax) _integer # Y coordinate of points in conductor
 izcond(ncondmax) _integer # Y coordinate of points in conductor
 condvolt(ncondmax) _real  # voltage of points in conductor
 condnumb(ncondmax) _integer # Number of the conductor the points are in
-icondlevel(ncondmax) _integer # Coarseness level at which the point is on grid
+icondlevel(ncondmax) _integer /-1/ # Coarseness level at which the point is on grid
 icondlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
 icondlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
@@ -176,7 +176,7 @@ ecnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, even
 ecnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, even
 ecnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, even
 ecnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, even
-iecndlevel(ncndmax)  _integer # Coarseness level at which the point is on grid
+iecndlevel(ncndmax)  _integer /-1/ # Coarseness level at which the point is on grid
 iecndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
 iecndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
@@ -205,7 +205,7 @@ ocnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, odd
 ocnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, odd
 ocnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, odd
 ocnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, odd
-iocndlevel(ncndmax)  _integer # Coarseness level at which the point is on grid
+iocndlevel(ncndmax)  _integer /-1/ # Coarseness level at which the point is on grid
 iocndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
 iocndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
