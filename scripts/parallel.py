@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.10 2001/08/09 22:08:46 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.11 2001/08/16 21:21:14 dave Exp $"
 
 from Numeric import *
 # --- Try import mpi - if not found, then run in serial mode
@@ -15,6 +15,22 @@ except ImportError:
 
 if npes > 0: lparallel = 1
 else:        lparallel = 0
+
+# --- The interface has changed some in the newest version of pyMPI.
+try:
+  mpiallreduce = mpi.allreduce
+  def mpirecv(pe=0,ms=0):
+    return mpi.recv(pe,ms)
+except (AttributeError,NameError):
+  pass
+
+try:
+  mpiallreduce = mpi.nativeAllreduce
+  def mpirecv(pe=0,ms=0):
+    result,stat = mpi.recv(pe,ms)
+    return result
+except (AttributeError,NameError):
+  pass
 
 # ---------------------------------------------------------------------------
 # --- By default, set so that only PE0 sends output to the terminal.
@@ -75,7 +91,7 @@ def getarray(src,v,dest=0):
   if mpi.rank == src:
     mpi.send(v,dest)
   elif mpi.rank == dest:
-    return mpi.recv(src)
+    return mpirecv(src)
   return v
 
 # ---------------------------------------------------------------------------
@@ -92,8 +108,8 @@ def plotarray(f,z,color="fg",linetype="solid",marks=0,marker="none",msize=1.0,
 #   y = [z]
 #   # --- Append rest of PE's data to list
 #   for i in range(1,mpi.procs):
-#     x.append(mpi.recv(i,2))
-#     y.append(mpi.recv(i,2))
+#     x.append(mpirecv(i,2))
+#     y.append(mpirecv(i,2))
 #   # --- Get total number of elements in list
 #   l = 0
 #   for i in range(0,mpi.procs):
@@ -134,8 +150,8 @@ def plotpart(f,z,color="fg",linetype="none",marker="\1",msize=1.0,**kw):
     if len(f) > 0 and len(f)==len(z):
       apply(plg,(f,z),kw)
     for i in range(1,mpi.procs):
-      x = mpi.recv(i,3)
-      y = mpi.recv(i,3)
+      x = mpirecv(i,3)
+      y = mpirecv(i,3)
       if len(x) > 0 and len(y)==len(x):
         apply(plg,(x,y),kw)
   else:
@@ -152,7 +168,7 @@ def gather(obj,dest=0):
       if i == dest:
         result.append(obj)
       else:
-        result.append(mpi.recv(i))
+        result.append(mpirecv(i))
     return result
   else:
     mpi.send(obj,dest)
@@ -240,7 +256,7 @@ def globalop(a,localop,mpiop,defaultval):
   else:
     local = defaultval
   if not lparallel: return local
-  return mpi.allreduce(local,eval("mpi."+mpiop))
+  return mpiallreduce(local,eval("mpi."+mpiop))
 
 # ---------------------------------------------------------------------------
 # Specific operations on a distributed array.
@@ -266,11 +282,11 @@ def parallelop(a,mpiop):
   if type(a) == type(array([])):
     a1d = ravel(a) + 0
     for i in range(len(a1d)):
-      a1d[i] = mpi.allreduce(a1d[i],eval("mpi."+mpiop))
+      a1d[i] = mpiallreduce(a1d[i],eval("mpi."+mpiop))
     a1d.shape = shape(a)
     return a1d
   else:
-    return mpi.allreduce(a,eval("mpi."+mpiop))
+    return mpiallreduce(a,eval("mpi."+mpiop))
 
 # ---------------------------------------------------------------------------
 # Specific parallel element-by-element operations on a distributed array.
