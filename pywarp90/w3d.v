@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.69 $, $Date: 2002/08/27 23:16:24 $
+#@(#) File W3D.V, version $Revision: 3.70 $, $Date: 2002/08/29 17:54:15 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.69 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.70 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -54,6 +54,8 @@ solvergeom integer    /0/  # Geometry of field solver
 XYZgeom    integer    /0/  # 3D-XYZ geometry will be used if 3Dsolver=XYZgeom
 RZgeom     integer    /1/  # axisymmetric RZ geometry will be used if 3Dsolver=RZgeom
 AMRgeom    integer    /2/  # 3D geometry using AMR if 3Dsolver=AMRgeom
+XZgeom     integer    /3/  # 2-D sheath geometry
+Zgeom      integer    /4/  # 1-D planar geometry
  
 *********** InDiag3d dump:
 lgetese3d logical /.true./ # Sets whether electrostatic-energy is calculated,
@@ -460,9 +462,6 @@ inj_smoother(nx:integer,ny:integer,inj_phi:real,dx:real,dy:real,
              xmmin:real,ymmin:real,x0:real,y0:real,a0:real,b0:real,
              inj_nsmooth:integer) subroutine
 getinj_phi() subroutine
-
-
-
 
 ******** Subtimers:
 lw3dtimesubs logical /.false./
