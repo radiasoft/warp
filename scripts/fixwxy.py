@@ -1,6 +1,7 @@
+"""Fixes beam so that it exactly agress with the specified beam paramters
+"""
 from warp import *
-fixwxy_version = "$Id: fixwxy.py,v 1.5 2003/06/27 22:23:35 dave Exp $"
-# Fixes beam so that it exactly agress with the specified beam paramters
+fixwxy_version = "$Id: fixwxy.py,v 1.6 2004/05/21 23:57:53 dave Exp $"
 
 # --- Fixes 1st and 2nd moments
 def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None, 
@@ -63,11 +64,11 @@ def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None,
   top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - slopex*top.xp,0.)
   top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - slopey*top.yp,0.)
   # --- Scale to get correct thermal spread
-  top.uxp[:] = top.uxp[:]*(emitx/top.a0)/(top.epsx[0]/(2.*top.xrms[0]))
-  top.uyp[:] = top.uyp[:]*(emity/top.b0)/(top.epsy[0]/(2.*top.yrms[0]))
+  top.uxp[:] = top.uxp[:]*(emitx/a)/(top.epsx[0]/(2.*top.xrms[0]))
+  top.uyp[:] = top.uyp[:]*(emity/b)/(top.epsy[0]/(2.*top.yrms[0]))
   # --- Added back in specified coherent velocity and average
-  slopex = top.ap0/top.a0*top.vbeam
-  slopey = top.bp0/top.b0*top.vbeam
+  slopex = ap/a*top.vbeam
+  slopey = bp/b*top.vbeam
   top.uxp[:]=where(not_equal(top.uzp,0.),top.uxp+slopex*top.xp+vx,0.)
   top.uyp[:]=where(not_equal(top.uzp,0.),top.uyp+slopey*top.yp+vy,0.)
 
