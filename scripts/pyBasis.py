@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.44 2003/10/30 01:13:03 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.45 2003/11/18 17:10:48 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -180,11 +180,15 @@ def arrayappend(x,a):
 
 # Convenience function which returns true if variable exists
 def exists(x):
-  try:
-    xtemp = eval(x,locals(),globals())
-    return true
-  except NameError:
-    return false
+  """
+Checks whether or not the variable whose name is specified exists in the
+main dictionary.
+ - x: Name of variable - must be a string.
+  """
+  if x in __main__.__dict__.keys(): return true
+  if x in locals().keys(): return true
+  if x in globals().keys(): return true
+  return false
 
 # Returns the average of the input array
 def ave(x,index=0):
