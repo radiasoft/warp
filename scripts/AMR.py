@@ -18,10 +18,6 @@ class AMRTree(Visualizable):
   Adaptive Mesh Refinement class.
     """
     def __init__(self,MRfact=2,ntransit=2):
-      if w3d.solvergeom==w3d.XYZgeomMR:
-        self.blocks = MRBlock()
-      else:
-        self.blocks = [frz.basegrid]
       self.MRfact  = MRfact
       self.ntransit = ntransit
       self.nblocks  = 0
@@ -115,14 +111,16 @@ class AMRTree(Visualizable):
         g = where(g>g3,g,g3)
       return g
 
-    def getnbcell_edges(self,f,dx,dy,dz,threshold,RMR):
+    def getnbcell_edges(self,f,dx,dy,dz,threshold,Rgrad):
       """
     Returns array with non-zero value RMR at edges, zero elsewhere.
     For each line (horizontals and verticals), the values which
     are above threshold*max(values of f in line) are selected as edges.
       """
+      if Rgrad<=1: return 0*f
       fg = self.getedges_byslice(f,dx,dy,dz,threshold)
-      return where(fg>0.,int(RMR),0)
+      m = maxnd(fg)
+      return where(fg>1.e-10*m,int(Rgrad),0)
 
     def getnbcell_rho(self,f,Rdens,MRfact):
       """
@@ -130,6 +128,7 @@ class AMRTree(Visualizable):
     (default=2) and maximum number of refined cells per coarse cell nmax (along
     one dimension).
       """
+      if Rdens<=1: return 0*f
       # get dimension (2-D or 3-D)
       dim = rank(f)
       # get number of refinement levels
@@ -376,10 +375,14 @@ class AMRTree(Visualizable):
 
 
     def setblocks(self):
+      self.nblocks=0
       if w3d.solvergeom == w3d.XYZgeomMR:
+        self.blocks = MRBlock()
         mothergrid = self.blocks
       else:
+        self.blocks = [frz.basegrid]
         mothergrid = self.blocks[0]
+        self.del_blocks2d()
       xmin0 = w3d.xmmin; xmax0 = w3d.xmmax; dx = w3d.dx
       if w3d.solvergeom == w3d.XYZgeomMR:
         ymin0 = w3d.ymmin; ymax0 = w3d.ymmax; dy = w3d.dy
@@ -451,19 +454,19 @@ class AMRTree(Visualizable):
     def del_blocks2d(self,g=None):
       if g==None: g=frz.basegrid
       try:
-        del_blocks(g.next)
+        self.del_blocks2d(g.next)
       except:
         try:
-          del_blocks(g.down)
+          self.del_blocks2d(g.down)
         except:
           pass    
       if g is not frz.basegrid:
         del_subgrid(g.gid[0])
       else:
         frz.ngrids=1
-        g=[frz.basegrid]
-        g[0].loc_part=g[0].gid[0]
-        g[0].loc_part_fd=g[0].gid[0]
+        self.nblocks=0
+        g.loc_part=g.gid[0]
+        g.loc_part_fd=g.gid[0]
 
     def generate(self,f=None,Rdens=2,Rgrad=None,threshold=0.8,r=[0.8],l_removesinglecells=1,lmax=4):
       if f is None:
