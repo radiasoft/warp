@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.35 2002/07/11 01:15:31 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.36 2002/07/11 21:41:03 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1570,12 +1570,22 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
-def setconductorvoltage(voltage,condid=0):
+def setconductorvoltage(voltage,condid=0,discrete=false):
   """
 Sets the voltage on a conductor, given an id.
  - voltage: voltage on conductor
  - condid=0: conductor id number
+ - discrete=false: when true, z locations for plus/minus z subgrid
+                   points are round up/down.
   """
+
+  print "in setconductorvoltage"
+  if w3d.solvergeom == w3d.RZgeom:
+    assert type(voltage) in [ListType,TupleType,ArrayType], \
+           "voltage must be a sequential object, such as a 1-d array"
+    setconductorvoltagerz(voltage,w3d.nzfull,top.zmslmin[0],w3d.dz,discrete)
+    return
+
   if f3d.ncond == 0: return
 
   if type(voltage) in [ListType,TupleType,ArrayType]:
@@ -1602,16 +1612,19 @@ Sets the voltage on a conductor, given an id.
     ecvpy = ecv
 
     # --- For conductors to the left, find the location of the conductor
-    # --- and linear interpolate from the voltage data.
+    # --- and linear interpolate from the voltage data. If the discrete flag
+    # --- is set, then round down to the nearest grid point.
     ecmz = iecz + where(f3d.ecdelmz < 1.,-f3d.ecdelmz,0)*iecl
     iecmz = ecmz.astype(Int)
-    wecmz = ecmz - iecmz
+    if discrete: wecmz = 0.
+    else:        wecmz = ecmz - iecmz
     ecvmz = take(voltage,iecmz)*(1.-wecmz) + take(voltage,iecmz+1)*wecmz
 
-    # --- Same for conductors to the right.
+    # --- Same for conductors to the right. If discrete is set, round up.
     ecpz = iecz + where(f3d.ecdelpz < 1.,-f3d.ecdelpz,0)*iecl
     iecpz = ecpz.astype(Int)
-    wecpz = ecpz - iecpz
+    if discrete: wecpz = 1.
+    else:        wecpz = ecpz - iecpz
     ecvpz = take(voltage,iecpz)*(1.-wecpz) + take(voltage,iecpz+1)*wecpz
 
     # --- Repeat for odd conductor points.
@@ -1626,12 +1639,14 @@ Sets the voltage on a conductor, given an id.
 
     ocmz = iocz + where(f3d.ocdelmz < 1.,-1,0)*iocl
     iocmz = ocmz.astype(Int)
-    wocmz = ocmz - iocmz
+    if discrete: wocmz = 0.
+    else:        wocmz = ocmz - iocmz
     ocvmz = take(voltage,iocmz)*(1.-wocmz) + take(voltage,iocmz+1)*wocmz
 
     ocpz = iocz + where(f3d.ocdelpz < 1.,-1,0)*iocl
     iocpz = ocpz.astype(Int)
-    wocpz = ocpz - iocpz
+    if discrete: wocpz = 0.
+    else:        wocpz = ocpz - iocpz
     ocvpz = take(voltage,iocpz)*(1.-wocpz) + take(voltage,iocpz+1)*wocpz
   elif type(voltage) == FunctionType:
     # --- Assumes that voltage is a function which takes 3 arguments, the
