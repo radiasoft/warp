@@ -46,8 +46,8 @@ MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
                 cirpymodule.c herpymodule.c chopymodule.c \
                 pybasisC.c
 
-public:
-	publishpywarp90.py
+public: warp static
+	publishpywarp90.py $(PUBLICHOME)
 
 config.o:
 	python makeconfig.py
