@@ -1,12 +1,12 @@
 # This sets up a runcounter that can keep track of a runnumber from run to
 # run. The run number is save in a file in between runs.
-import warp
+from warp import *
 import time
 import string
-runcounter_version = "$Id: runcounter.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.2 2002/07/17 16:54:51 dave Exp $"
 
 def runcounter(init=0,delta=1,suffix=None,sleep=0):
-  if not suffix: suffix = warp.arraytostr(warp.top.runid)
+  if not suffix: suffix = arraytostr(top.runid)
   
   try:
     # --- Try to open the runnumber file
@@ -18,10 +18,10 @@ def runcounter(init=0,delta=1,suffix=None,sleep=0):
     runnumber = init
 
   # --- Make sure that every processor has read in runnumber already
-  if warp.npes>0: warp.mpi.barrier()
+  if npes>0: mpi.barrier()
 
   # --- PE0 (or serial job) can now write out the next value
-  if warp.me == 0:
+  if me == 0:
     runnumberfile = open(suffix+"_runnumber","w")
     runnumberfile.write("%d\n"%(runnumber))
     runnumberfile.close()
@@ -33,3 +33,17 @@ def runcounter(init=0,delta=1,suffix=None,sleep=0):
 
   return runnumber
 
+def accumulatedata(filename,datadict):
+  actualdata = {}
+  try:
+    ff = PR.PR(filename)
+    for k,v in map(None,datadict.keys(),datadict.values())
+      d = ff.read(k)
+      actualdata[k] = arrayappend(d,eval(v,globals()))
+  except IOError:
+    for k,v in map(None,datadict.keys(),datadict.values())
+      actualdata[k] = eval(v,globals())
+  ff = PW.PW(filename)
+  for k,v in map(None,actualdata.keys(),actualdata.values())
+    ff.write(k,v)
+  ff.close()
