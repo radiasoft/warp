@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.125 $, $Date: 2004/07/22 23:18:39 $
+#@(#) File TOP.V, version $Revision: 3.126 $, $Date: 2004/08/30 19:44:41 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.125 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.126 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -77,16 +77,17 @@ absorb    integer /0/        # constant for particle absorption at boundaries
 reflect   integer /1/        # constant for particle reflection at boundaries
 
 *********** Timers dump parallel:
-starttime   real /0./ # CPU start time (in seconds)
-gentime     real /0./ # CPU for generate (in seconds)
-steptime    real /0./ # Total CPU run time minus gentime (in seconds)
-plottime    real /0./ # Time making automatic plots (in seconds)
-momentstime real /0./ # Time to calculate the moments (in seconds)
-fstime      real /0./ # Time to do the field solve, including beforefs and
-                      # afterfs (in seconds)
-latticetime real /0./ # Time to apply the fields from the lattice
-dumptime    real /0./ # Time to do the data dumps, using the dump command
-                      # (in seconds)
+starttime       real /0./ -dump # CPU start time (in seconds)
+starttimedump   real /0./ # CPU start time (in seconds)
+gentime         real /0./ # CPU for generate (in seconds)
+steptime        real /0./ # Total CPU run time minus gentime (in seconds)
+plottime        real /0./ # Time making automatic plots (in seconds)
+momentstime     real /0./ # Time to calculate the moments (in seconds)
+fstime          real /0./ # Time to do the field solve, including beforefs and
+                          # afterfs (in seconds)
+latticetime     real /0./ # Time to apply the fields from the lattice
+dumptime        real /0./ # Time to do the data dumps, using the dump command
+                          # (in seconds)
 temperaturestime real /0./ # Time to calculate the temperatures (in seconds)
 
 *********** Beam_acc dump:
