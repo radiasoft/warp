@@ -6,7 +6,8 @@ PYTHON = /usr/local
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
 PROF = #-Mprof=lines
-OPT = -O3 -xK -tpp6 -ip -unroll -prefetch
+#OPT = -O3 -xK -tpp6 -ip -unroll -prefetch # for Pentium III
+OPT = -O3 -xW -tpp7 -ip -unroll -prefetch # for Pentium IV
 #OPT = -g
 POPT = -O0
 PYMODULEOPT = -O1
@@ -28,9 +29,11 @@ OLD = OLD1
 
 WARPSCRIPTS = $(HOME)/scripts
 OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB)
+OTHERSOS = $(PYTHON)/lib/python$(PYVERS)/site-packages/*/*.so \
+	  #$(PYTHON)/lib/python$(PYVERS)/site-packages/*/*/*.so
 
 warp: warpC.$(SO)
-	cp warpC.$(SO) $(WARPSCRIPTS)
+	#cp warpC.$(SO) $(WARPSCRIPTS)
 
 static: build_static
 
@@ -38,9 +41,7 @@ include Makefile.dependencies
 
 build_static: $(MODULEOBJECTS) $(WARPOBJECTS) config.o $(RNGOBJ)
 	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) \
-	config.o $(RNGOBJ) \
-	$(PYTHON)/lib/python2.1/site-packages/*/*.so \
-	$(PYTHON)/lib/python2.1/site-packages/*/*/*.so \
+	config.o $(RNGOBJ) $(OTHERSOS) \
 	$(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) $(EXPORT)
 
 warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
