@@ -41,9 +41,10 @@ installconductors(a): generates the data needed for the fieldsolve
 # Delta
 
 from warp import *
+import operator
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.33 2003/08/20 15:38:55 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.34 2003/11/20 00:22:25 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1424,9 +1425,13 @@ Outside of a surface of revolution
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
   - condid=1: conductor id of cone, must be integer
+  - rofzdata=None: optional tablized data of radius of surface
+  - zdata=None: optional tablized data of z locations of rofzdata
+    Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofzfunc,zmin,zmax,rmax=largepos,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rofzdata=None,zdata=None):
     kwlist = ['rofzfunc','zmin','zmax','rmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvoutconductorf,zsrfrvoutconductord)
@@ -1435,12 +1440,29 @@ Outside of a surface of revolution
     self.zmax = zmax
     self.rmax = rmax
 
+    # --- Deal with tablized data.
+    # --- Make sure the input is consistent
+    assert ((rofzdata is None and zdata is None)
+            or (operator.isSequenceType(rofzdata) and
+                operator.isSequenceType(zdata))),\
+           ("Either neither of rofzdata and zdata or both must be given, "+
+            "and if given, they must be sequences.")
+    if operator.isSequenceType(rofzdata):
+      assert (len(rofzdata) == len(zdata)),\
+             "rofzdata and zdata must be the same length"
+      self.usedata = true
+      # --- Make sure that the data is an array.
+      self.rofzdata = array(rofzdata,typecode='d',copy=0)
+      self.zdata = array(zdata,typecode='d',copy=0)
+    else:
+      self.usedata = false
+
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
     # --- Make sure the rofzfunc is in main.
     # --- Note that this can only really work if a reference to the function
     # --- is passed in (instead of the name).
-    if not f3d.lsrlinr and type(self.rofzfunc) == FunctionType:
+    if type(self.rofzfunc) == FunctionType:
       import __main__
       __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
 
@@ -1449,7 +1471,17 @@ Outside of a surface of revolution
     if type(self.rofzfunc) == FunctionType:
       self.rofzfunc = self.rofzfunc.__name__
 
+    # --- If data arrays are specified, then put the data in the right place
+    if self.usedata:
+      f3d.lsrlinr = true
+      f3d.npnts_sr = len(self.zdata)
+      f3d.forceassign('z_sr',self.zdata)
+      f3d.forceassign('r_sr',self.rofzdata)
+    else:
+      f3d.lsrlinr = false
+
     return Assembly.getkwlist(self)
+
 #============================================================================
 class ZSrfrvIn(Assembly):
   """
@@ -1460,9 +1492,13 @@ Inside of a surface of revolution
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
   - condid=1: conductor id of cone, must be integer
+  - rofzdata=None: optional tablized data of radius of surface
+  - zdata=None: optional tablized data of z locations of rofzdata
+    Note that if tablized data is given, the first argument is ignored.
   """
   def __init__(self,rofzfunc,zmin,zmax,rmin=0,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rofzdata=None,zdata=None):
     kwlist = ['rofzfunc','zmin','zmax','rmin','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinconductorf,zsrfrvinconductord)
@@ -1471,12 +1507,29 @@ Inside of a surface of revolution
     self.zmax = zmax
     self.rmin = rmin
 
+    # --- Deal with tablized data.
+    # --- Make sure the input is consistent
+    assert ((rofzdata is None and zdata is None)
+            or (operator.isSequenceType(rofzdata) and
+                operator.isSequenceType(zdata))),\
+           ("Either neither of rofzdata and zdata or both must be given, "+
+            "and if given, they must be sequences.")
+    if operator.isSequenceType(rofzdata):
+      assert (len(rofzdata) == len(zdata)),\
+             "rofzdata and zdata must be the same length"
+      self.usedata = true
+      # --- Make sure that the data is an array.
+      self.rofzdata = array(rofzdata,typecode='d',copy=0)
+      self.zdata = array(zdata,typecode='d',copy=0)
+    else:
+      self.usedata = false
+
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
     # --- Make sure the rofzfunc is in main.
     # --- Note that this can only really work if a reference to the function
     # --- is passed in (instead of the name).
-    if not f3d.lsrlinr and type(self.rofzfunc) == FunctionType:
+    if type(self.rofzfunc) == FunctionType:
       import __main__
       __main__.__dict__[self.rofzfunc.__name__] = self.rofzfunc
 
@@ -1484,6 +1537,15 @@ Inside of a surface of revolution
     # --- was passed in.
     if type(self.rofzfunc) == FunctionType:
       self.rofzfunc = self.rofzfunc.__name__
+
+    # --- If data arrays are specified, then put the data in the right place
+    if self.usedata:
+      f3d.lsrlinr = true
+      f3d.npnts_sr = len(self.zdata)
+      f3d.forceassign('z_sr',self.zdata)
+      f3d.forceassign('r_sr',self.rofzdata)
+    else:
+      f3d.lsrlinr = false
 
     return Assembly.getkwlist(self)
 #============================================================================
@@ -1495,9 +1557,14 @@ Betweem surfaces of revolution
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
   - condid=1: conductor id of cone, must be integer
+  - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
+  - zmindata,zmaxdata=None: optional tablized data of z locations of r data
+    Note that if tablized data is given, the first two arguments are ignored.
   """
   def __init__(self,rminofz,rmaxofz,zmin,zmax,
-                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1,
+                    rminofzdata=None,zmindata=None,
+                    rmaxofzdata=None,zmaxdata=None):
     kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zsrfrvinoutconductorf,zsrfrvinoutconductord)
@@ -1506,15 +1573,47 @@ Betweem surfaces of revolution
     self.zmin = zmin
     self.zmax = zmax
 
+    # --- Deal with tablized data.
+    # --- Make sure the input is consistent
+    assert ((rminofzdata is None and zmindata is None)
+            or (operator.isSequenceType(rminofzdata) and
+                operator.isSequenceType(zmindata))),\
+           ("Either neither of rminofzdata and zmindata or both must be "+
+            "given, and if given, they must be sequences.")
+    if operator.isSequenceType(rminofzdata):
+      assert (len(rminofzdata) == len(zmindata)),\
+             "rminofzdata and zmindata must be the same length"
+      self.usemindata = true
+      # --- Make sure that the data is an array.
+      self.rminofzdata = array(rminofzdata,typecode='d',copy=0)
+      self.zmindata = array(zmindata,typecode='d',copy=0)
+    else:
+      self.usemindata = false
+
+    assert ((rmaxofzdata is None and zmaxdata is None)
+            or (operator.isSequenceType(rmaxofzdata) and
+                operator.isSequenceType(zmaxdata))),\
+           ("Either neither of rmaxofzdata and zmaxdata or both must be "+
+            "given, and if given, they must be sequences.")
+    if operator.isSequenceType(rmaxofzdata):
+      assert (len(rmaxofzdata) == len(zmaxdata)),\
+             "rmaxofzdata and zmaxdata must be the same length"
+      self.usemaxdata = true
+      # --- Make sure that the data is an array.
+      self.rmaxofzdata = array(rmaxofzdata,typecode='d',copy=0)
+      self.zmaxdata = array(zmaxdata,typecode='d',copy=0)
+    else:
+      self.usemaxdata = false
+
   def getkwlist(self):
     self.griddz = _griddzkludge[0]
     # --- Make sure the rminofz and rmaxofz are in main.
     # --- Note that this can only really work if a reference to the function
     # --- is passed in (instead of the name).
-    if not f3d.lsrlinr and type(self.rminofz) == FunctionType:
+    if type(self.rminofz) == FunctionType:
       import __main__
       __main__.__dict__[self.rminofz.__name__] = self.rminofz
-    if not f3d.lsrlinr and type(self.rmaxofz) == FunctionType:
+    if type(self.rmaxofz) == FunctionType:
       import __main__
       __main__.__dict__[self.rmaxofz.__name__] = self.rmaxofz
 
@@ -1524,5 +1623,22 @@ Betweem surfaces of revolution
       self.rminofz = self.rminofz.__name__
     if type(self.rmaxofz) == FunctionType:
       self.rmaxofz = self.rmaxofz.__name__
+
+    # --- If data arrays are specified, then put the data in the right place
+    if self.usemindata:
+      f3d.lsrminlinr = true
+      f3d.npnts_srmin = len(self.zmindata)
+      f3d.forceassign('z_srmin',self.zmindata)
+      f3d.forceassign('r_srmin',self.rminofzdata)
+    else:
+      f3d.lsrminlinr = false
+
+    if self.usemaxdata:
+      f3d.lsrmaxlinr = true
+      f3d.npnts_srmax = len(self.zmaxdata)
+      f3d.forceassign('z_srmax',self.zmaxdata)
+      f3d.forceassign('r_srmax',self.rmaxofzdata)
+    else:
+      f3d.lsrmaxlinr = false
 
     return Assembly.getkwlist(self)
