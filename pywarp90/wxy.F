@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.15 $, $Date: 2001/12/19 22:11:39 $
+c@(#) File WXY.M, version $Revision: 3.16 $, $Date: 2002/01/17 22:51:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1893,6 +1893,7 @@ c FFT/bend iterative field solver.
 
       integer(ISZ):: i,j
       real(kind=8):: r,x,dxi,phiref
+      real(kind=8):: phisave(0:nx,0:ny)
       character(120):: outstr
 
       dxi = 1./dx
@@ -1901,18 +1902,16 @@ c FFT/bend iterative field solver.
       do while ((bndferr > bndftol) .and. (bndfit < bndfitmx))
         bndfit = bndfit + 1
 
-c       --- save phi for error measure, can save it into scrtch
-c       --- since that isn't used for much
-        call copyarry(phi(0,0,0),scrtch(0,0),(nx+1)*(ny+1))
+c       --- save phi for error measure
+        call copyarry(phi(0,0,0),phisave(0,0),(nx+1)*(ny+1))
 
 c       --- add curvature terms to the source (rho) as a correction
-c       --- (remember that the previous phi is stored in scrtch)
         do i = 1, nx-1
           x = xmmin + i*dx
           r = 1./(rstar(0) + x)
           do j = 0, ny
             phi(i,j,0) = rho(i,j,0)*rstar(0)*r
-     &               + eps0*(scrtch(i+1,j) - scrtch(i-1,j))*0.5*dxi*r
+     &               + eps0*(phisave(i+1,j) - phisave(i-1,j))*0.5*dxi*r
           enddo
         enddo
 
@@ -1924,7 +1923,7 @@ c       --- compute error
         phiref = 0.
         do i = 0, nx
            do j = 0, ny
-              bndferr = max( bndferr, abs(phi(i,j,0)-scrtch(i,j)) )
+              bndferr = max( bndferr, abs(phi(i,j,0)-phisave(i,j)) )
               phiref = max( phiref, phi(i,j,0) )
            enddo
         enddo
@@ -2029,14 +2028,14 @@ c       --- Otherwise, use 2d field solver
         if (fstype == 0) then
           call vpois2d (iwhich, phi(0,0,0), phi(0,0,0), kxsq, kysq,
      &       attx, atty, filt, xmmax-xmmin, ymmax-ymmin,
-     &       nx, ny, phi(0,0,1), 0, l2symtry,l4symtry)
+     &       nx, ny, scrtch, phi(0,0,1), 0, l2symtry,l4symtry)
 
         elseif (fstype == 1 .or. fstype == 2) then
 c         --- Note that phi(,,-1) and phi(,,1) are passed in as
 c         --- scratch space.
           call capmatxyf(iwhich,phi(0,0,0),kxsq,kysq,attx,atty,
      &             filt,xmmax-xmmin,ymmax-ymmin,nx,ny,dx,dy,xmmin,ymmin,
-     &             phi(0,0,-1),phi(0,0,1),l2symtry,l4symtry)
+     &             scrtch,phi(0,0,-1),phi(0,0,1),l2symtry,l4symtry)
         elseif (fstype == 7) then
 c         --- Multigrid solver
           call multigridxyf(iwhich,nx,ny,dx,dy,phi(0,0,0),rho(0,0,0),
