@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.24 2002/07/18 01:05:24 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.25 2003/01/24 13:55:57 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -336,16 +336,9 @@ def _adjustz():
   #---------------------------------------------------------------------------
   # --- Reset local values
   w3d.nz     = top.nzslave[me]
-  top.nzzarr = top.nzpslave[me]
-  top.nzl    = top.nzpslave[me]
-  top.nzlmax = top.nzpslave[me]
   top.nzmmnt = top.nzpslave[me]
   zpmin = top.zmslmin[0] + top.izpslave[me]*w3d.dz
   zpmax = (top.izpslave[me]+top.nzpslave[me])*w3d.dz + top.zmslmin[0]
-  top.zzmin = zpmin
-  top.zzmax = zpmax
-  top.zlmin = zpmin
-  top.zlmax = zpmax
   top.zmmntmin = zpmin
   top.zmmntmax = zpmax
   w3d.izfsmin = top.izfsslave[me] - top.izslave[me]
@@ -360,8 +353,6 @@ def _adjustz():
   gchange("Z_Moments")
   gchange("Hist")
   w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
-  top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
-  top.zlmesh[:] = top.zlmin + iota(0,top.nzl)*top.dzl
   top.zmntmesh[:] = top.zmmntmin + iota(0,top.nzmmnt)*top.dzm
   
   # --- Reset the lattice
