@@ -28,7 +28,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.32 2003/05/22 00:17:40 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.33 2003/06/27 23:18:26 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -405,7 +405,7 @@ Dump data into a pdb file
          "Either a filename must be specified or a pdb file pointer"
   # --- Open the file if the file object was not passed in.
   # --- If the file object was passed in, then don't close it.
-  if not ff:
+  if ff is None:
     ff = PW.PW(fname)
     closefile = 1
   else:
@@ -496,25 +496,34 @@ Dump data into a pdb file
 # in of python variables is put in a 'try' command to make it idiot proof.
 # More fancy foot work is done to get new variables read in into the
 # global dictionary.
-def pyrestore(filename=None,fname=None,verbose=0,skip=[],varsuffix=None,ls=0):
+def pyrestore(filename=None,fname=None,verbose=0,skip=[],ff=None,varsuffix=None,ls=0):
   """
 Restores all of the variables in the specified file.
   - filename: file to read in from (assumes PDB format)
   - verbose=0: When true, prints out the names of variables which are read in
   - skip=[]: list of variables to skip
+  - ff=None: Allows passing in of a file object so that pydump can be called
+       multiple times to pass data into the same file. Note that
+       the file must be explicitly closed by the user.
   - varsuffix: when set, all variables read in will be given the suffix
                Note that fortran variables are then read into python vars
   - ls=0: when true, prints a list of the variables in the file
           when 1 prints as tuple
           when 2 prints in a column
   """
-  # --- The original had fname, but changed to filename to be consistent
-  # --- with restart and dump.
-  if filename is None: filename = fname
-  # --- Make sure a filename was input.
-  assert filename is not None,"A filename must be specified"
-  # --- open pdb file
-  ff = PR.PR(filename)
+  assert filename is not None or fname is not None or ff is not None,\
+         "Either a filename must be specified or a pdb file pointer"
+  if ff is None:
+    # --- The original had fname, but changed to filename to be consistent
+    # --- with restart and dump.
+    if filename is None: filename = fname
+    # --- Make sure a filename was input.
+    assert filename is not None,"A filename must be specified"
+    # --- open pdb file
+    ff = PR.PR(filename)
+    closefile = 1
+  else:
+    closefile = 0
   # --- Get a list of all of the variables in the file, loop over that list
   vlist = ff.inquire_ls()
   # --- Print list of variables
@@ -603,7 +612,8 @@ Restores all of the variables in the specified file.
   for gname in groups.keys():
     pyrestorepybssisobject(ff,gname,groups[gname],fobjdict,varsuffix,
                            verbose,doarrays=1)
-  ff.close()
+
+  if closefile: ff.close()
 
 def _sortvarsbysuffix(vlist,skip):
   # --- Sort the variables, collecting them in groups based on there suffix.
