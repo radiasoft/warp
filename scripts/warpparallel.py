@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.14 2001/07/02 20:18:16 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.15 2001/07/10 21:22:44 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -325,17 +325,11 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
                 # --- A WARPxy particle array
                 if wxy.npmaxxy > 0 and sum(sum(nps_p)) > 0:
                   ff.defent(pdbname,v,(sum(sum(nps_p)),))
-              elif p == 'top' and vname in \
-               ['hlinechg','hvzofz','hepsxz','hepsyz','hepsnxz','hepsnyz',
-                'hepsgz','hepshz','hepsngz','hepsnhz','hxbarz','hybarz',
-                'hxybarz','hxrmsz','hyrmsz','hxprmsz','hyprmsz','hxsqbarz',
-                'hysqbarz','hvxbarz','hvybarz','hvzbarz','hxpbarz','hypbarz',
-                'hvxrmsz','hvyrmsz','hvzrmsz','hxpsqbarz','hypsqbarz',
-                'hxxpbarz','hyypbarz','hxypbarz','hyxpbarz','hxpypbarz',
-                'hxvzbarz','hyvzbarz','hvxvzbarz','hvyvzbarz']:
+              elif re.search('zhist',a):
+                # --- z moments histories
                 ff.write('histz@parallel',histz)
                 if not histz:
-                # --- This is a temporary solution.
+                  # --- This is a temporary solution.
                   ff.defent(vname+'@parallel',v,
                             (top.nslaves,max(1+top.nzpslave),top.lenhist+1))
                 elif histz == 1:
@@ -445,14 +439,8 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
                   ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
                   ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1],
                            indx=(ipmin,))
-            elif p == 'top' and vname in \
-               ['hlinechg','hvzofz','hepsxz','hepsyz','hepsnxz','hepsnyz',
-                'hepsgz','hepshz','hepsngz','hepsnhz','hxbarz','hybarz',
-                'hxybarz','hxrmsz','hyrmsz','hxprmsz','hyprmsz','hxsqbarz',
-                'hysqbarz','hvxbarz','hvybarz','hvzbarz','hxpbarz','hypbarz',
-                'hvxrmsz','hvyrmsz','hvzrmsz','hxpsqbarz','hypsqbarz',
-                'hxxpbarz','hyypbarz','hxypbarz','hyxpbarz','hxpypbarz',
-                'hxvzbarz','hyvzbarz','hvxvzbarz','hvyvzbarz']:
+            elif re.search('zhist',a):
+              # --- z moments histories
               if not histz:
                 # --- Write out the data as one chunk.
                 ff.write(vname+'@parallel',array([v]),indx=(me,0,0))
@@ -715,14 +703,8 @@ def parallelrestore(fname,verbose=false):
               ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1]'
               exec(pname+ip+' = ff.read_part(v,itriple)',
                    __main__.__dict__,locals())
-        elif p == 'top' and vname in \
-             ['hlinechg','hvzofz','hepsxz','hepsyz','hepsnxz','hepsnyz',
-              'hepsgz','hepshz','hepsngz','hepsnhz','hxbarz','hybarz',
-              'hxybarz','hxrmsz','hyrmsz','hxprmsz','hyprmsz','hxsqbarz',
-              'hysqbarz','hvxbarz','hvybarz','hvzbarz','hxpbarz','hypbarz',
-              'hvxrmsz','hvyrmsz','hvzrmsz','hxpsqbarz','hypsqbarz',
-              'hxxpbarz','hyypbarz','hxypbarz','hyxpbarz','hxpypbarz',
-              'hxvzbarz','hyvzbarz','hvxvzbarz','hvyvzbarz']:
+        elif re.search('zhist',a):
+          # --- z moments histories
           try:
             histz = ff.read("histz@parallel")
           except:
