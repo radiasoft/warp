@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.8 2001/07/24 23:31:08 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.9 2001/07/25 00:21:47 dave Exp $"
 
 from Numeric import *
 # --- Try import mpi - if not found, then run in serial mode
@@ -223,39 +223,6 @@ def gatherarray(a,root=0,othersempty=0):
   #result.shape = snew
   ## --- Return the result
   #return result
-
-# ---------------------------------------------------------------------------
-def gatherallzarray(a,zaxis=0):
-  """Gathers and broadcasts the data in a z-array. Each processor contributes
-the data from within the particle decomposition region it owns. This works
-with any array from the groups Z_arrays and Z_Moments.
- - first argument is the z-array
- - zaxis: axis which is decomposed in z
-  """
-  if not lparallel: return a
-  # --- Get start and end of particle decomposition region
-  iz1 = 0
-  if me < npes-1: iz2 = top.izpslave[me+1] - 1 - top.izpslave[me]
-  else:           iz2 = -1
-  # --- Rearrange array to put the decomposed axis first
-  if zaxis != 0: a = swapaxes(a,0,zaxis)
-  # --- Gather and broadcast it
-  result = gatherarray(a[iz1:iz2+1,...])
-  result = broadcast(result)
-  # --- Rearrange array to put the decomposed axis back where it started
-  if zaxis != 0: result = swapaxes(result,0,zaxis)
-  return result
- 
-# ---------------------------------------------------------------------------
-def scatterallzarray(a,zaxis=0):
-  if not lparallel: return a
-  # --- Rearrange array to put the decomposed axis first
-  if zaxis != 0: a = swapaxes(a,0,zaxis)
-  # --- Get the appropriate subsection
-  result = a[top.izpslave[me]:top.izpslave[me]+top.nzpslave[me] + 1,...]
-  # --- Rearrange array to put the decomposed axis back where it started
-  if zaxis != 0: result = swapaxes(result,0,zaxis)
-  return result
 
 # ---------------------------------------------------------------------------
 # Generic global operation on a distributed array.
