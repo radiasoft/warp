@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.25 2005/01/24 13:54:57 jlvay Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.26 2005/02/16 00:29:19 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -100,6 +100,7 @@ conductors are an argument.
   def scrapeall(self,clear=0):
     if len(self.conductors)==0 or sum(top.nps)==0: return
     for js in xrange(top.ns):
+     if top.it%top.ndts[js]==0:
       self.scrape(js)
       if clear or self.lsavecondid:
         processlostpart(js+1,top.clearlostpart,top.time,top.zbeam)
