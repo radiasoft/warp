@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.90 $, $Date: 2003/12/13 00:03:16 $
+c@(#) File F3D.M, version $Revision: 3.91 $, $Date: 2003/12/17 17:28:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1700,6 +1700,7 @@ c-----------------------------------------------------------------------------
       real(kind=8):: klast, kdxb2, kdyb2, kdx, kdy
       real(kind=8):: dx,dy,pib2,norm
       real(kind=8):: atemp(0:ny,0:nx)
+      real(kind=8):: w1(0:2,0:ny),w2(0:2,0:ny)
 
 c  Error checking; so far, only possible error is non-power-of-2 nx,ny
 
@@ -1893,7 +1894,13 @@ c       --- Invoke the transform routines for the current z-slice
         if (l4symtry .or. l2symtry) then
 !$OMP DO
           do ix = ixstart,ixend,2
-            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,0,-1)
+c           --- The arrays are copied into temporary arrays to get around
+c           --- a bug in the intel compiler, version 8.
+            w1 = a(ix:ix+2,0:ny)
+            w2 = xywork(ix:ix+2,0:ny)
+            call cosqy(w1,w2,w(icoy),2,ny,0,-1)
+            a(ix:ix+2,0:ny) = w1
+            xywork(ix:ix+2,0:ny) = w2
           enddo
 !$OMP END DO NOWAIT
         else
@@ -1960,7 +1967,13 @@ c         --- factor of 2./lx for vsftx and .25/ly for cosqy
 c         --- Invoke the inverse transform routines for the current z-slice
 !$OMP DO
           do ix = ixstart,ixend,2
-            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,0,1)
+c           --- The arrays are copied into temporary arrays to get around
+c           --- a bug in the intel compiler, version 8.
+            w1 = a(ix:ix+2,0:ny)
+            w2 = xywork(ix:ix+2,0:ny)
+            call cosqy(w1,w2,w(icoy),2,ny,0,1)
+            a(ix:ix+2,0:ny) = w1
+            xywork(ix:ix+2,0:ny) = w2
           enddo
 !$OMP END DO NOWAIT
         else
