@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.42 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -31,7 +31,7 @@ c  dels(5,:) -> delpz
 
       integer(ISZ):: i,iparity
       integer(ISZ),parameter:: outside = 999
-      
+
       do i=1,nn
         parity(i) = outside
 
@@ -1263,7 +1263,7 @@ c The notation is that a negative distance means that the point is inside.
         else
           distance(i) = sqrt((zz - z2)**2 + (rr - (rad - rad2))**2) - rad2
         endif
-          
+
       enddo
 
       return
@@ -1666,7 +1666,7 @@ c The notation is that a negative distance means that the point is inside.
         else
           distance(i) = sqrt((zz - z2)**2 + (rr - (rad + rad2))**2) - rad2
         endif
-          
+
       enddo
 
       return
@@ -1789,7 +1789,7 @@ c The notation is that a negative distance means that the point is inside.
         yy = y(i) - ycent
         zz = z(i) - zcent
         rr = sqrt(xx**2 + yy**2 + zz**2)
-        
+
         distance(i) = rr - rad
 
       enddo
@@ -2007,11 +2007,11 @@ c normal angle of the surface at that point.
 
       zmin = zcent - r2
       zmax = zcent + r2
-      
+
       do i=1,n
         vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
         if (vsq == 0.) cycle
-        
+
 c       --- This check on whether a point is inside may be removed at a
 c       --- future time.
 c       rr = sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2)
@@ -2175,7 +2175,7 @@ c normal angle of the surface at that point.
 
       call ztorus_intercept(r1,r2,xcent,ycent,zcent,
      &                      n,x,y,z,vx,vy,vz,tt,theta,phi)
-      
+
       do i=1,n
 
         if (tt(i) == LARGEPOS) cycle
@@ -2505,7 +2505,7 @@ c     --- sizes from the input coordinates.
         dy = 1.
         ny = 0
       endif
-      
+
       dx = x(ny+2) - x(1)
       xmin = minval(x)
       xmax = maxval(x)
@@ -3155,7 +3155,7 @@ c     --- sizes from the input coordinates.
         dy = 1.
         ny = 0
       endif
-      
+
       xmin = minval(x)
       xmax = maxval(x)
       dx = x(ny+2) - x(1)
@@ -3828,7 +3828,7 @@ c near the surface, the distance has the correct sign.
 
         if (zmin <= zz .and. zz <= zmax) then
           rsrf = srfrv_f(zz,rofzfunc,0,0)
-          if (rr <= rsrf) then 
+          if (rr <= rsrf) then
             distance(i) = rsrf - rr
           elseif (rr < rmax) then
             zd = max(zmin-zz,zz-zmax)
@@ -4405,7 +4405,7 @@ c near the surface, the distance has the correct sign.
 
         if (zmin <= zz .and. zz <= zmax) then
           rsrf = srfrv_f(zz,rofzfunc,0,0)
-          if (rr >= rsrf) then 
+          if (rr >= rsrf) then
             distance(i) = rr - rsrf
           elseif (rr > rmin) then
             zd = max(zmin-zz,zz-zmax)
@@ -5058,7 +5058,7 @@ c near the surface, the distance has the correct sign.
         if (zmin <= zz .and. zz <= zmax) then
           rmin = srfrv_f(zz,rminofz,1,0)
           rmax = srfrv_f(zz,rmaxofz,2,0)
-          if (rr >= rmax) then 
+          if (rr >= rmax) then
             distance(i) = rr - rmax
           elseif (rr > rmin) then
             zd = max(zmin-zz,zz-zmax)
@@ -5184,3 +5184,140 @@ c       --- First, check if trajectory hits conductor end.
       return
       end
 c=======================================================================
+      subroutine solvequartic(a0,a1,a2,a3,x1,x2,x3,x4)
+      real(kind=8):: a0,a1,a2,a3
+c
+c     subroutine to solve for the double precision roots of a quartic
+c     equation of the form x**4+a3*x**3+a2*x**2+a1*x+a0.  method is
+c     from abromowitz and stegun p. 17.
+c
+c
+      real(kind=8):: zero,one,two,b0,b1,b2,r1,r0,p1,p0
+      real(kind=8):: sq1,sq0,arg,c1m,c1p,c0m,c0p
+      integer(ISZ):: noreal,noroot
+      complex*16 x1,x2,x3,x4,u1,u2,u3,ci,dcmplx
+      one=1.d0
+      zero=0.d0
+      two=2.d0
+      ci=dcmplx(zero,one)
+c     calculate the coefficients of the auxilliary cubic
+      b0=-(a1**2+a0*a3**2-4.d0*a0*a2)
+      b1=a1*a3-4.d0*a0
+      b2=-a2
+c      calculate the roots of the cubic
+      call solvecubic(b0,b1,b2,u1,u2,u3,noreal)
+c     calculate the coefficients of the auxilliary quadratic
+      no root=0
+   10 r1=(a3/two)**2+u1-a2
+      r0=(u1/2)**2-a0
+      no root=no root+1
+c     if roots are all real seek the root which makes the coefficients real
+      if(noreal.eq.1) go to 20
+      p1=r1
+      p0=r0
+      if(p1.ge.zero.and.p0.ge.zero) go to 20
+      u1=u2
+      if(noroot.eq.1) go to 10
+      u1=u3
+      if(noroot.eq.2) go to 10
+      write(6,60)
+   60 format('   no real quadratics found')
+   20 continue
+      if(r0.lt.zero) go to 100
+      if(r1.lt.zero) go to 200
+   30 sq0=dsqrt(r0)
+      sq1=dsqrt(r1)
+      arg=a3*u1/two-a1
+      if(arg.ne.zero) sq1=dsign(sq1,arg)
+      c1m=a3/two-sq1
+      c1p=a3/two+sq1
+      c0m=u1/two-sq0
+      c0p=u1/two+sq0
+c      calculate the actual roots from the quadratics
+      call solvequadratic(c0m,c1m,x1,x2)
+      call solvequadratic(c0p,c1p,x3,x4)
+      return
+  100 write(6,65)
+      r0=zero
+   65 format('   r0 set to zero')
+      go to 30
+  200 write(6,70)
+   70 format('   r1 set to zero')
+      r1=zero
+      go to 30
+      end
+      subroutine solvequadratic(a0,a1,x1,x2)
+      real(kind=8):: a0,a1
+      complex*16 x1,x2,rt,ci,dcmplx
+      real(kind=8):: zero,two,r
+      zero=0.d0
+      two=2.d0
+      ci=dcmplx(0.d0,1.d0)
+      r=a1**2-4.d0*a0
+      if (r.ge.zero) rt=dsqrt(r)
+      if(r.lt.zero) rt=ci*dsqrt(-r)
+      x1=(-a1+rt)/two
+      x2=(-a1-rt)/two
+      return
+      end
+      subroutine solvecubic(a0,a1,a2,x1,x2,x3,noreal)
+      real(kind=8):: a0,a1,a2
+      integer(ISZ):: noreal
+c
+c     subroutine to find double precision roots of a cubic equation
+c     of the form  x**3+a2*x**2+a1*x+a0=0.  the roots are returned in the
+c     complex numbers x1,x2,x3.  from abromiwitz and stegun p. 17.
+c     noreal is the number of real roots.
+c
+c
+      real(kind=8):: one,two,three,third,root3,sixth,a2d3,q,r,t,roott,arg
+      real(kind=8):: s1,s2,re,ai,phi,amp
+      complex*16 x1,x2,x3,ci,dcmplx
+      one=1.d0
+      two=2.d0
+      three=3.d0
+      third=one/three
+      root3=dsqrt(three)
+      third=one/three
+      sixth=one/6.d0
+      ci=dcmplx(0.d0,1.d0)
+      a2d3=a2*third
+      q=a1/3.d0-a2**2/9.d0
+      r=(a1*a2-3.d0*a0)/6.d0-a2**3/27.d0
+c
+c     test to find character of roots
+c
+      t=q**3+r**2
+      no real=1
+      if(t.le.0.d0) no real=3
+      if(t.lt.0.d0) go to 100
+c
+c     complex roots or degenerate real roots
+c
+      roott=dsqrt(t)
+      arg=r+roott
+      if(arg.ge.0.d0) s1=arg**third
+      if(arg.lt.0.d0) s1=-((-arg)**third)
+      arg=r-roott
+      if(arg.ge.0.d0) s2=arg**third
+      if(arg.lt.0.d0) s2=-((-arg)**third)
+      re=s1+s2
+      ai=root3/two*(s1-s2)
+      x1=re-a2d3
+      x2=-re/two-a2d3+ci*ai
+      x3=-re/two-a2d3-ci*ai
+      return
+c
+c     three real roots
+c
+  100 phi=datan2(dsqrt(-t),r)*third
+      amp=(r**2-t)**sixth
+      re=amp*dcos(phi)
+      ai=amp*dsin(phi)
+      x1=two*re-a2d3
+      x2=-re-a2d3-root3*ai
+      x3=-re-a2d3+root3*ai
+      return
+      end
+
+
