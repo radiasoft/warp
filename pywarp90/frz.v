@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.11 $, $Date: 2002/04/12 20:25:06 $
+#@(#) File FRZ.V, version $Revision: 3.12 $, $Date: 2002/04/12 21:11:02 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.11 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.12 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -102,3 +102,5 @@ set_rho_rz(rho:real,nr:integer,nz:integer,id:integer) subroutine
          # set rho of grid id       
 get_rho_rz(rho:real,nr:integer,nz:integer,id:integer) subroutine
          # get rho of grid id
+find_mgparam_rz() subroutine
+         # RZ version of find_mgparam. Does the search for each subgrid.
