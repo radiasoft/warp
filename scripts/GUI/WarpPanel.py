@@ -17,6 +17,7 @@ class panel(wxPanel):
               style=wxTAB_TRAVERSAL)
         self._init_utils()
         self.SetClientSize(wxSize(596, 315))
+        self.SetAutoLayout(True)
 
     def __init__(self, parent):
         self._init_ctrls(parent)
