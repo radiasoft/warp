@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.39 2005/03/12 00:52:30 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.40 2005/03/24 01:45:18 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -338,6 +338,7 @@ routines (such as ppxxp).
         pid = gatherarray(top.pidep[:nn,:,id,js],othersempty=1)
       else:
         pid = zeros((nn,0),'d')
+      if me != 0: continue
       if self.laccumulate and not self.dumptofile:
         self.tep[js].append(t+0.)
         self.xep[js].append(x+0.)
