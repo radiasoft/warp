@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.120 $, $Date: 2003/07/16 00:30:43 $
+c@(#) File W3D.M, version $Revision: 3.121 $, $Date: 2003/07/21 22:45:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1276,13 +1276,14 @@ c  and also loads RHO at the new time level.
       real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
-!$    real(kind=8):: threadmaxp(6,16),threadminp(6,16)
-!$    real(kind=8):: threadzmmnts0(NUMZMMNT,16)
-!$    real(kind=8):: threadzmmnts(0:nzmmnt,NUMZMMNT,16)
-!$    real(kind=8):: sharedcurr(0:nzzarr,16)
-!$    integer(ISZ):: ithread,omp_get_thread_num
-!$    integer(ISZ):: nthread,omp_get_num_threads
-!$    real(kind=8):: aa(16),bb(16)
+#ifdef _OPENMP
+      real(kind=8):: threadmaxp(6,16),threadminp(6,16)
+      real(kind=8):: threadzmmnts0(NUMZMMNT,16)
+      real(kind=8):: threadzmmnts(0:nzmmnt,NUMZMMNT,16)
+      real(kind=8):: sharedcurr(0:nzzarr,16)
+      integer(ISZ):: ithread,omp_get_thread_num
+      integer(ISZ):: nthread,omp_get_num_threads
+#endif
       real(kind=8):: maxp(6),minp(6)
       real(kind=8):: zmmnts0(NUMZMMNT)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
@@ -1514,24 +1515,28 @@ c              --- Calculate moments over particles, now that we're sync'd
 
       enddo
 
-!$    if (center == "synchv" .or. center == "gen") then
-!$      ithread = omp_get_thread_num() + 1
-!$      nthread = omp_get_num_threads()
-!$      threadmaxp(:,ithread) = maxp
-!$      threadminp(:,ithread) = minp
-!$      threadzmmnts0(:,ithread) = zmmnts0
-!$      threadzmmnts(:,:,ithread) = zmmnts
-!$    endif
+#ifdef _OPENMP
+      if (center == "synchv" .or. center == "gen") then
+        ithread = omp_get_thread_num() + 1
+        nthread = omp_get_num_threads()
+        threadmaxp(:,ithread) = maxp
+        threadminp(:,ithread) = minp
+        threadzmmnts0(:,ithread) = zmmnts0
+        threadzmmnts(:,:,ithread) = zmmnts
+      endif
+#endif
 
 !$OMP END PARALLEL
 
 c----------------------------------------------------------------------------
 c     ---  Do final stuff for moments calculation
       if (center == "synchv" .or. center == "gen" .and. npmax>0) then
-!$      maxp = maxval(threadmaxp(:,1:nthread),2)
-!$      minp = minval(threadminp(:,1:nthread),2)
-!$      zmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
-!$      zmmnts = sum(threadzmmnts(:,:,1:nthread),3)
+#ifdef _OPENMP
+        maxp = maxval(threadmaxp(:,1:nthread),2)
+        minp = minval(threadminp(:,1:nthread),2)
+        zmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
+        zmmnts = sum(threadzmmnts(:,:,1:nthread),3)
+#endif
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,
      &                1,ns,maxp,minp,zmmnts0,zmmnts)
@@ -2816,7 +2821,9 @@ c       --- Get number of particles to be loaded for this species.
         zleni = 1./zlen
         ip = ins(is) - 1
 !$OMP SINGLE
-!$      iptotal = ins(is) - 1
+#ifdef _OPENMP
+        iptotal = ins(is) - 1
+#endif
 !$OMP END SINGLE
 
 c       --- Inverse of the number of particles. When multiplied by the particle
@@ -3223,8 +3230,10 @@ c          --- Modify radial velocity distribution
            endif
 
 !$OMP CRITICAL (STPTCL3D1)
-!$         ip = iptotal
-!$         iptotal = iptotal + j
+#ifdef _OPENMP
+           ip = iptotal
+           iptotal = iptotal + j
+#endif
 !$OMP END CRITICAL (STPTCL3D1)
 
 c          --- unnormalize everything and load into particle arrays
@@ -3310,8 +3319,10 @@ c          --- fetch random numbers and put into xt,yt, & uxt  temporarily
            endif
 
 !$OMP CRITICAL (STPTCL3D2)
-!$         ip = iptotal
-!$         iptotal = iptotal + i1-k+1
+#ifdef _OPENMP
+           ip = iptotal
+           iptotal = iptotal + i1-k+1
+#endif
 !$OMP END CRITICAL (STPTCL3D2)
 
 c          --- load x,y,ux, and uy evenly onto a 4-D ellipsoid
@@ -3384,7 +3395,9 @@ c  Set particle number, indices, etc.
 
 !$OMP BARRIER
 !$OMP MASTER
-!$    ip = iptotal
+#ifdef _OPENMP
+      ip = iptotal
+#endif
       nps(is) = ip - ins(is) + 1
 !$OMP END MASTER
 

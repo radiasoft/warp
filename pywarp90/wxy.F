@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.36 $, $Date: 2003/07/18 23:25:19 $
+c@(#) File WXY.M, version $Revision: 3.37 $, $Date: 2003/07/21 22:45:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -893,13 +893,15 @@ c  and also loads RHO at the new time level.
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
       real(kind=8):: gaminvo(nparpgrp)
       real(kind=8):: bendres, bendradi
-!$    real(kind=8):: threadmaxp(6,16),threadminp(6,16)
-!$    real(kind=8):: threadzmmnts0(NUMZMMNT,16)
-!$    real(kind=8):: threadzmmnts(0:nzmmnt,NUMZMMNT,16)
-!$    real(kind=8):: sharedcurr(0:nzzarr,16)
-!$    integer(ISZ):: ithread,omp_get_thread_num
-!$    integer(ISZ):: nthread,omp_get_num_threads
-!$    real(kind=8):: aa(16),bb(16)
+#ifdef _OPENMP
+      real(kind=8):: threadmaxp(6,16),threadminp(6,16)
+      real(kind=8):: threadzmmnts0(NUMZMMNT,16)
+      real(kind=8):: threadzmmnts(0:nzmmnt,NUMZMMNT,16)
+      real(kind=8):: sharedcurr(0:nzzarr,16)
+      integer(ISZ):: ithread,omp_get_thread_num
+      integer(ISZ):: nthread,omp_get_num_threads
+      real(kind=8):: aa(16),bb(16)
+#endif
       real(kind=8):: maxp(6),minp(6)
       real(kind=8):: zmmnts0(NUMZMMNT)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
@@ -1199,14 +1201,16 @@ c            --- Calculate current
       enddo
 c     --- End loop over species
 
-!$    if (center == "synchv" .or. center == "gen") then
-!$      ithread = omp_get_thread_num() + 1
-!$      nthread = omp_get_num_threads()
-!$      threadmaxp(:,ithread) = maxp
-!$      threadminp(:,ithread) = minp
-!$      threadzmmnts0(:,ithread) = zmmnts0
-!$      threadzmmnts(:,:,ithread) = zmmnts
-!$    endif
+#ifdef _OPENMP
+      if (center == "synchv" .or. center == "gen") then
+        ithread = omp_get_thread_num() + 1
+        nthread = omp_get_num_threads()
+        threadmaxp(:,ithread) = maxp
+        threadminp(:,ithread) = minp
+        threadzmmnts0(:,ithread) = zmmnts0
+        threadzmmnts(:,:,ithread) = zmmnts
+      endif
+#endif
 !$OMP END PARALLEL
 
       if (center == "halfv") then
@@ -1259,10 +1263,12 @@ c     ---  Do final stuff for moments calculation and fix current
       if (center == "synchv" .or. center == "gen") then
 
         if (ldiag) then
-!$        maxp = maxval(threadmaxp(:,1:nthread),2)
-!$        minp = minval(threadminp(:,1:nthread),2)
-!$        zmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
-!$        zmmnts = sum(threadzmmnts(:,:,1:nthread),3)
+#ifdef _OPENMP
+          maxp = maxval(threadmaxp(:,1:nthread),2)
+          minp = minval(threadminp(:,1:nthread),2)
+          zmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
+          zmmnts = sum(threadzmmnts(:,:,1:nthread),3)
+#endif
           call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                  sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns,
      &                  maxp,minp,zmmnts0,zmmnts)
