@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.97 2003/03/18 23:22:53 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.98 2003/03/25 19:33:04 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -111,18 +111,25 @@ never = top.never
 cgmlogfile = None
 numframes = 0
 if me == 0: pldefault(marks=0) # --- Set plot defaults, no line marks
-def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments=''):
+def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments='',
+          cgmfilesize=100000):
   """
 Does the work needed to start writing plots to a file automatically
   - makepsfile=0: allows the specification of a ps file instead of cgm
   - prefix=None: optional prefix to use for plotfile name instead of runid
   - cgmlog=1: Set to 0 to inhibit cgmlog file creation
   - runcomments='': Additional comments to print on the first plot page
+  - cgmfilesize=100000: Max cgmfilesize in units of MBytes.
   """
   # --- cgmlogfile is needed elsewhere
   global cgmlogfile
   # --- Only PE0 (or serial processor) should run this routine.
   if me > 0: return
+  # --- Set cgmfilesize
+  try:
+    pldefault(cgmfilesize=cgmfilesize)
+  except:
+    pass
   # --- Get next available plot file name.
   if not prefix: prefix = arraytostr(top.runid)
   if makepsfile:
