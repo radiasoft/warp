@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.40 2005/03/24 01:45:18 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.41 2005/03/27 18:34:05 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -81,7 +81,7 @@ routines (such as ppxxp).
       self.nepmax = 10000
       if top.allocated("pnumz") and 0 <= self.getiz() <= top.nzmmnt:
         if top.pnumz[self.getiz()] > 0:
-          self.nepmax = top.pnumz[self.getiz(),-1]*3
+          self.nepmax = nint(top.pnumz[self.getiz(),-1]*3)
     else:
       self.nepmax = nepmax
     # --- Add this new window to the ExtPart group in top
