@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.31 $, $Date: 2001/12/06 18:41:22 $
+#@(#) File TOP.V, version $Revision: 3.32 $, $Date: 2002/01/15 19:53:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -58,6 +58,10 @@ M_SUM        = M_GET_RHO + 1
 *********** Code_version:
 # -------- CVS updates this when a new major "release" occurs ------------
 codeid   character*8  /"warp r2"/     # Name of code, and major version
+
+*********** TOPversion:
+# Version control for global commons
+verstop character*19 /"$Revision: 3.32 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -615,10 +619,6 @@ linmmlt(0:nmmltol)        _logical         # Flag for when mmlt element in mesh
 linaccl(0:nacclol)        _logical         # Flag for when accl element in mesh
 linbgrd(0:nbgrdol)        _logical         # Flag for when bgrd element in mesh
 linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
-
-*********** TOPversion:
-# Version control for global commons
-verstop character*19 /"$Revision: 3.31 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
