@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.5 $, $Date: 2003/06/25 00:22:45 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.6 $, $Date: 2004/01/24 00:43:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -120,6 +120,9 @@ c     --- Make a print out.
         print*,"Multigrid: Maximum number of iterations reached"
       endif
       print*,"Multigrid: Error converged to ",maxerr," in ",mgiters," v-cycles"
+
+c     --- Deallocate the res array.
+      deallocate(res)
 
       return
       end
