@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.63 $, $Date: 2002/11/06 17:32:06 $
+c@(#) File TOP.M, version $Revision: 3.64 $, $Date: 2003/01/23 21:21:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3789,31 +3789,10 @@ c zcorrection is returned so that it can be dealt with in a reasonable way
 c by the calling routine.
 
       integer(ISZ):: io,id,astat
-      integer(ISZ),allocatable:: aid(:)
       real(kind=8):: offset,zs,ze,zc
       real(kind=8):: gapez,z1,z2,vn,frac,qoverm
       real(kind=8):: zl,zr,vbeamfrmo,deltav
       real(kind=8):: zbeamnew
-      save aid
-
-      if (.not. allocated(aid)) then
-        allocate(aid(nacclol),stat=astat)
-        if (astat .ne. 0) then
-          print*,"ERROR: acclbfrm: not enough space to allocate temp"
-          print*,"array. Array size needed is ",nacclol
-          stop
-        endif
-        aid = oaccloi(oacclii)
-      else if (size(aid) < nacclol) then
-        deallocate(aid)
-        allocate(aid(nacclol),stat=astat)
-        if (astat .ne. 0) then
-          print*,"ERROR: acclbfrm: not enough space to allocate temp"
-          print*,"array. Array size needed is ",nacclol
-          stop
-        endif
-        aid = oaccloi(oacclii)
-      endif
 
       qoverm = sq(1)/sm(1)
       zcorrection = 0.
@@ -3822,12 +3801,7 @@ c by the calling routine.
 
         do io=1,nacclol
 
-c         --- index of accl element in center of beam frame
-c         --- The id is saved in order to minize the time searching for the
-c         --- next accl element from call to call.
-          call getelemid(zbeam,offset,naccl,acclzs,acclze,acclol(0),
-     &                   oacclnn(io),oaccloi(oacclii(io)),oacclio,aid(io),io)
-          id = aid(io)
+          id = cacclid(nzlmax/2,io)
 
 c         --- Check if this gap should accelerate the beam frame.
           if (acclsw(id) .ne. 0) cycle
@@ -5313,15 +5287,15 @@ c=============================================================================
 
 c Make current periodic.
 
-c Parallel version makes call to special routine percurr_slave
 #ifdef MPIPARALLEL
-      call percurr_slave(curr,nzzarr,bound0)
-#else
+c Parallel version sums curr over all processors.
+      call parallelsumrealarray(curr,nzzarr+1)
+#endif
+
       if (bound0==periodic) then
         curr(0) = curr(0) + curr(nzzarr)
         curr(nzzarr) = curr(0)
       endif
-#endif
 
       return
       end

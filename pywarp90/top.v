@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.63 $, $Date: 2002/11/06 17:32:06 $
+#@(#) File TOP.V, version $Revision: 3.64 $, $Date: 2003/01/23 21:21:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.63 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.64 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1119,7 +1119,7 @@ lambdab0x         real [m]         # Undepressed X-betatron wavelength
 lambdaby          real [m]         # Depressed   Y-betatron wavelength
 lambdab0y         real [m]         # Undepressed Y-betatron wavelength
 
-*********** Z_arrays dump parallel:
+*********** Z_arrays dump:
 # 1d arrays used by >1 pkg
 # nzzarr is usually set to nz by pkg w3d (etc.) at generation
 dzz                     real   [m]     # Z_arrays mesh grid cell size
