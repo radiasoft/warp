@@ -1,5 +1,5 @@
 cho
-#@(#) File CHO.V, version $Revision: 1.6 $, $Date: 2002/08/28 16:15:48 $
+#@(#) File CHO.V, version $Revision: 1.7 $, $Date: 2002/09/18 17:02:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package cho of code WARP6
@@ -9,7 +9,7 @@ cho
 }
 
 *********** CHOversion:
-verscho character*19 /"$Revision: 1.6 $"/#  Code version version is set by CVS
+verscho character*19 /"$Revision: 1.7 $"/#  Code version version is set by CVS
 
 *********** CHOHandle:
 cho_handle integer # Handle to the ChomboPIC package
@@ -24,13 +24,13 @@ cho_tol real /1.e-8/ # Tolerance on field solution
 cho_bcflags(3,2) integer /6*0/ # Boundary conditions. 0 Dirichlet, 1 Nuemman
 
 *********** CHOsubs:
-#setamrgrids(nx:integer, ny:integer, nz:integer, dx:real, xmmin:real,
-#           ymmin:real, zmmin:real,numLevels:integer, refratio:integer,
-#           i:integer, j:integer, k:integer, level:integer, numtags:integer,
-#           bcxlo:integer, bcxhi:integer, bcylo:integer, bcyhi:integer,
-#           bczlo:integer, bczhi:integer) subroutine
-#returnphi(phiout:real) subroutine
-#returnrho(rhoout:real) subroutine
+setamrgrids(nx:integer, ny:integer, nz:integer, dx:real, xmmin:real,
+           ymmin:real, zmmin:real,numLevels:integer, refratio:integer,
+           i:integer, j:integer, k:integer, level:integer, numtags:integer,
+           bcxlo:integer, bcxhi:integer, bcylo:integer, bcyhi:integer,
+           bczlo:integer, bczhi:integer) subroutine
+returnphi(phiout:real) subroutine
+returnrho(rhoout:real) subroutine
 cho_solve3d(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
             dx:real,dy:real,dz:real,l2symtry,l4symtry,
             xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real) subroutine

@@ -1,12 +1,38 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.6 $, $Date: 2002/08/28 16:15:48 $
+c@(#) File CHO.F, version $Revision: 1.7 $, $Date: 2002/09/18 17:02:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
 c  David P. Grote, LLNL, (510)495-2961
 c=============================================================================
 c=============================================================================
+c=============================================================================
+#ifndef WITHCHOMBO
+      subroutine setamrgrids(nx, ny, nz, dx, xmmin, ymmin, zmmin,
+     &       numLevels, refratio, i, j, k, level, numtags,
+     &       bcxlo, bcxhi, bcylo, bcyhi, bczlo, bczhi)
+      integer(ISZ) nx, ny, nz, numlevels
+      integer(ISZ) i(*), j(*), k(*), refratio(*)
+      double precision dx, xmmin, ymmin, zmmin
+      integer(ISZ) level(*), numtags
+      integer(ISZ) bcxlo, bcxhi, bcylo, bcyhi, bczlo, bczhi
+      print*,"no chombo routines"
+      return
+      end
+
+      subroutine returnphi(phiout)
+      double precision phiout(*)
+      print*,"no chombo routines"
+      return
+      end
+
+      subroutine returnrho(rhoout)
+      double precision rhoout(*)
+      print*,"no chombo routines"
+      return
+      end
+#endif
 c=============================================================================
       subroutine cho_solve3d(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
      &                       l2symtry,l4symtry,xmmin,ymmin,zmmin,zmminglobal)
@@ -27,8 +53,11 @@ c Interface to the Chombo/AMR fieldsolver.
       integer(ISZ):: subdomains(3,2,0:maxslaves-1)
       integer(ISZ):: refratios(cho_nlevels-1)
 
-#ifdef CHOMBO
+#ifdef WITHCHOMBO
+      call amrfieldsolve(iwhich)
+#endif
 
+#ifdef WITHCHP
       if (iwhich == 0 .or. iwhich == 1) then
 
         call chp_create(cho_handle,cho_status)
@@ -95,7 +124,7 @@ c=============================================================================
 
 c Interface to the chp_putparticles routine.
 
-#ifdef CHOMBO
+#ifdef WITHCHP
 
 c     --- Update bunchid. If this is the first batch of particles, then
 c     --- set bunchid = 1, otherwise increment it. If js == -1, then
@@ -138,7 +167,7 @@ c=============================================================================
 
 c Interface to the chp_getefield routine.
 
-#ifdef CHOMBO
+#ifdef WITHCHP
 
 c     --- Update bunchid. If this is the first batch of particles, then
 c     --- set bunchid = 1, otherwise increment it. If js == -1, then
@@ -181,7 +210,7 @@ c=============================================================================
 
 c Interface to the chp_getphi routine.
 
-#ifdef CHOMBO
+#ifdef WITHCHP
 
 c     --- Update bunchid. If this is the first batch of particles, then
 c     --- set bunchid = 1, otherwise increment it. If js == -1, then
@@ -223,7 +252,7 @@ c=============================================================================
 
 c Interface to the chp_getrho routine.
 
-#ifdef CHOMBO
+#ifdef WITHCHP
 
 c     --- Update bunchid. If this is the first batch of particles, then
 c     --- set bunchid = 1, otherwise increment it. If js == -1, then
