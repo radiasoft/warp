@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.25 $, $Date: 2001/10/18 20:27:34 $
+c@(#) File TOP.M, version $Revision: 3.26 $, $Date: 2001/10/25 01:23:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1402,7 +1402,11 @@ c            --- THIS NEEDS CHECKING, especially when iqerr is nonzero.
                iquadert = id
              endif
              iquaderu = max(iquadert, 0)
-             iquaderr = mod(iquaderu, nqerr) 
+             if (nqerr == 0) then
+               iquaderr = 0
+             else
+               iquaderr = mod(iquaderu, nqerr) 
+             endif
              cqoffx(iz,io) = qoffx(iquaderr)
              cqoffy(iz,io) = qoffy(iquaderr)
              if (cquadzs(iz,io) <= zlmax+zbeam+zlatbuffer .and.
@@ -1506,7 +1510,11 @@ c            --- THIS NEEDS CHECKING
                imultert = id
              endif
              imulteru = max(imultert, 0)
-             imulterr = mod(imulteru, neerr)
+             if (neerr == 0) then
+               imulterr = 0
+             else
+               imulterr = mod(imulteru, neerr)
+             endif
              cemltox(iz,io) = emltox(imulterr)
              cemltoy(iz,io) = emltoy(imulterr)
            enddo
@@ -1543,7 +1551,11 @@ c            --- THIS NEEDS CHECKING
                imultert = id
              endif
              imulteru = max(imultert, 0)
-             imulterr = mod(imulteru, nmerr)
+             if (nmerr == 0) then
+               imulterr = 0
+             else
+               imulterr = mod(imulteru, nmerr)
+             endif
              cmmltox(iz,io) = mmltox(imulterr)
              cmmltoy(iz,io) = mmltoy(imulterr)
            enddo
@@ -5458,7 +5470,7 @@ c=============================================================================
       do ii=1,nn
         write(27,20) arry(ii)
       enddo
- 20   format(x,e10.3)
+ 20   format(1x,e10.3)
 
       close(27)
 

@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.25 $, $Date: 2001/10/18 20:27:34 $
+c@(#) File DTOP.M, version $Revision: 3.26 $, $Date: 2001/10/25 01:23:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -340,9 +340,9 @@ c     --- Call script version of this routine.
       call execuser("printparameters")
 
 c  Write to plot frame
-   20 format(x,a,1pe11.4,a)
-   40 format(x,a,1pe11.4,a,1pe11.4,a)
-   30 format(x,a,i8,a)
+   20 format(1x,a,1pe11.4,a)
+   40 format(1x,a,1pe11.4,a,1pe11.4,a)
+   30 format(1x,a,i8,a)
       write (textline,20) "Atomic number of ion = ",aion," "
       call remark  (textline)
       write (textline,20) "Charge state of ion  = ",zion," "
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.25 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.26 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
