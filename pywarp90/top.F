@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.92 $, $Date: 2003/06/04 16:55:26 $
+c@(#) File TOP.M, version $Revision: 3.93 $, $Date: 2003/06/11 21:40:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5161,7 +5161,7 @@ c       --- assuming nhist=1. That then needs to be scale by how often the
 c       --- data is collected.
         if (ntlabwn == 0) ntlabwn = max(1,ntlabwnestimate/itlabwn)
       endif
-      call gallot("Lab_Moments", 0)
+      call gchange("Lab_Moments", 0)
 
       return
       end
