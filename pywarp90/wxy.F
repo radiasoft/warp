@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.35 $, $Date: 2003/07/18 22:16:19 $
+c@(#) File WXY.M, version $Revision: 3.36 $, $Date: 2003/07/18 23:25:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1798,7 +1798,6 @@ c       --- Call 3d version.
 ! I don't know why it works, but it does.
 !$OMP PARALLEL PRIVATE(ipmin,nptmp,f,i,j,u1,u0,v1,v0,ir,ip,ind0,indx,gyfact,gxfact,s,m,ii,jj),FIRSTPRIVATE(np)
 
-!$OMP DO
 
 c  Set up offset array for vectorized deposition:
 
@@ -1822,6 +1821,7 @@ c       --- transverse boundaries.
         g = g*0.25
       endif
 
+!$OMP DO
       do ipmin = 1,np,nparpgrp
         nptmp = min(nparpgrp, np+1-ipmin)
 
