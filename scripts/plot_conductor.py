@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.21 2001/08/13 19:08:41 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.22 2001/11/01 17:29:50 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -32,8 +32,9 @@ cleanconductors: not a plot routine, buts removes conductor points not
 ######################################################################
 
 # --- Convenience function to plot the sub-grid data
-def plotsubgrid(iz,nn,ixc,iyc,izc,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,
-                color,subgridlen):
+def plotsubgrid(iz,nn,ixc,iyc,izc,delmx,delmy,delpx,delpy,
+                numb,numbmx,numbmy,numbpx,numbpy,
+                xmin,ymin,dx,dy,color,subgridlen):
   ii = compress(equal(izc[:nn],iz),arange(nn))
   xx = take(ixc,ii)*dx+xmin
   yy = take(iyc,ii)*dy+ymin
@@ -41,6 +42,11 @@ def plotsubgrid(iz,nn,ixc,iyc,izc,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,
   delmy = take(delmy,ii)*dy
   delpx = take(delpx,ii)*dx
   delpy = take(delpy,ii)*dy
+  if numb != -1:
+    numbmx = take(numbmx,ii)
+    numbmy = take(numbmy,ii)
+    numbpx = take(numbpx,ii)
+    numbpy = take(numbpy,ii)
   if lparallel:
     xx = gatherarray(xx)
     yy = gatherarray(yy)
@@ -49,13 +55,13 @@ def plotsubgrid(iz,nn,ixc,iyc,izc,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,
     delpx = gatherarray(delpx)
     delpy = gatherarray(delpy)
   for i in xrange(len(xx)):
-    if (abs(delmx[i]) < abs(dx)*subgridlen):
+    if (abs(delmx[i]) < abs(dx)*subgridlen) and (numb==-1 or numb==numbmx[i]):
       plg([xx[i],xx[i]-delmx[i]],[yy[i],yy[i]],color=color)
-    if (abs(delmy[i]) < abs(dy)*subgridlen):
+    if (abs(delmy[i]) < abs(dy)*subgridlen) and (numb==-1 or numb==numbmy[i]):
       plg([xx[i],xx[i]],[yy[i],yy[i]-delmy[i]],color=color)
-    if (abs(delpx[i]) < abs(dx)*subgridlen):
+    if (abs(delpx[i]) < abs(dx)*subgridlen) and (numb==-1 or numb==numbpx[i]):
       plg([xx[i],xx[i]+delpx[i]],[yy[i],yy[i]],color=color)
-    if (abs(delpy[i]) < abs(dy)*subgridlen):
+    if (abs(delpy[i]) < abs(dy)*subgridlen) and (numb==-1 or numb==numbpy[i]):
       plg([xx[i],xx[i]],[yy[i],yy[i]+delpy[i]],color=color)
 
 # x-y plane
@@ -76,6 +82,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   # --- This logic is needed since in the parallel version, iz_axis already
   # --- has izslave subtracted from it. If the user passes in a value,
@@ -112,18 +119,22 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     if f3d.necndbdy > 0:
       plotsubgrid(izlocal,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
                   f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
+                  -1,[],[],[],[],
                   ymmin,xmmin,dy,dx,evencolor,subgridlen)
     else:
       plotsubgrid(izlocal,0,[0],[0],[0],
                   [2.],[2.],[2.],[2.],
+                  -1,[],[],[],[],
                   ymmin,xmmin,dy,dx,evencolor,subgridlen)
     if f3d.nocndbdy > 0:
       plotsubgrid(izlocal,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
                   f3d.ocdelmy,f3d.ocdelmx,f3d.ocdelpy,f3d.ocdelpx,
+                  -1,[],[],[],[],
                   ymmin,xmmin,dy,dx,oddcolor,subgridlen)
     else:
       plotsubgrid(izlocal,0,[0],[0],[0],
                   [2.],[2.],[2.],[2.],
+                  -1,[],[],[],[],
                   ymmin,xmmin,dy,dx,oddcolor,subgridlen)
 
 # z-x plane
@@ -132,6 +143,7 @@ def pfzx(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
          oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
+
   - iy=w3d.iy_axis y index of plane
   - contours=8 optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
@@ -144,6 +156,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if iyf is not None: iy = iyf
   if iy is None: iy = w3d.iy_axis
@@ -180,18 +193,22 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     if f3d.necndbdy > 0:
       plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
                   f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
+                  -1,[],[],[],[],
                   xmmin,zmmin,dx,dz,evencolor,subgridlen)
     else:
       plotsubgrid(iy,0,[0],[0],[0],
                   [2.],[2.],[2.],[2.],
+                  -1,[],[],[],[],
                   xmmin,zmmin,dx,dz,evencolor,subgridlen)
     if f3d.nocndbdy > 0:
       plotsubgrid(iy,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
                   f3d.ocdelmx,f3d.ocdelmz,f3d.ocdelpx,f3d.ocdelpz,
+                  -1,[],[],[],[],
                   xmmin,zmmin,dx,dz,oddcolor,subgridlen)
     else:
       plotsubgrid(iy,0,[0],[0],[0],
                   [2.],[2.],[2.],[2.],
+                  -1,[],[],[],[],
                   xmmin,zmmin,dx,dz,oddcolor,subgridlen)
 
 # z-y plane
@@ -212,6 +229,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if ixf is not None: ix = ixf
   if ix is None: ix = w3d.ix_axis
@@ -245,18 +263,22 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     if f3d.necndbdy > 0:
       plotsubgrid(ix,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
                   f3d.ecdelmy,f3d.ecdelmz,f3d.ecdelpy,f3d.ecdelpz,
+                  -1,[],[],[],[],
                   ymmin,zmmin,dy,dz,evencolor,subgridlen)
     else:
       plotsubgrid(ix,0,[0],[0],[0],
                   [2.],[2.],[2.],[2.],
+                  -1,[],[],[],[],
                   ymmin,zmmin,dy,dz,evencolor,subgridlen)
     if f3d.nocndbdy > 0:
       plotsubgrid(ix,f3d.nocndbdy,f3d.iocndy,f3d.iocndz,f3d.iocndx,
                   f3d.ocdelmy,f3d.ocdelmz,f3d.ocdelpy,f3d.ocdelpz,
+                  -1,[],[],[],[],
                   ymmin,zmmin,dy,dz,oddcolor,subgridlen)
     else:
       plotsubgrid(ix,0,[0],[0],[0],
                   [2.],[2.],[2.],[2.],
+                  -1,[],[],[],[],
                   ymmin,zmmin,dy,dz,oddcolor,subgridlen)
 
 ######################################################################
@@ -282,6 +304,7 @@ frame
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if izf is not None: iz = izf
   pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=0,signx=signx,signy=signy,
@@ -307,6 +330,7 @@ frame
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if iyf is not None: iy = iyf
   pfzx(iy=iy,contours=contours,plotsg=plotsg,scale=0,signz=signz,signx=signx,
@@ -332,6 +356,7 @@ frame
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if ixf is not None: ix = ixf
   pfzy(ix=ix,contours=contours,plotsg=plotsg,scale=0,signz=signz,signy=signy,
@@ -362,6 +387,7 @@ Plots conductors and contours of electrostatic potential in Z-(-X) plane
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if iyf is not None: iy = iyf
   pfzx(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signx=-1,
@@ -386,6 +412,7 @@ Plots conductors and contours of electrostatic potential in Z-(-Y) plane
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if ixf is not None: ix = ixf
   pfzy(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signy=-1,
@@ -410,6 +437,7 @@ plotting data in all four quadrants
   - condcolor=cyan color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if izf is not None: iz = izf
   pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=+1,signy=+1,
@@ -451,6 +479,7 @@ in X-Y plane
   - filled=0 when true, plots filled contours
   - phicolor=blue color of phi contours
   - condcolor=cyan color of conductor points inside conductors
+  - subgridlen=1 maximum length of subgrid line which are plotted
   """
   if izf is not None: iz = izf
   if not iz: iz = w3d.iz_axis
@@ -638,6 +667,73 @@ in Z-(-Y) plane
 
 
 ############################################################################
+# These plots plot the conductor points colored based on the conductor
+# number. The list of colors is input by the user.
+
+# --- convenience function
+def findunique(i):
+  ii = sort(i)
+  result = list(compress(ii[:-1]!=ii[1:],ii[:-1])) + [ii[-1]]
+  return result
+
+def plotcondn(iz,nc,cx,cy,cz,cn,dx,dy,xmmin,ymmin,marker,color):
+  ncolor = len(color)
+  if f3d.ncond > 0:
+    ii = compress(equal(cz[0:nc],iz),arange(nc))
+    xx = take(cx[0:nc],ii)*dx+xmmin
+    yy = take(cy[0:nc],ii)*dy+ymmin
+    nn = take(cn[0:nc],ii)
+  else:
+    xx = array([])
+    yy = array([])
+    nn = array([])
+  nlist = gatherarray(nn)
+  nlist = findunique(nlist)
+  nlist = broadcast(nlist)
+  for i in range(len(nlist)):
+    x = compress(equal(nn,nlist[i]),xx)
+    y = compress(equal(nn,nlist[i]),yy)
+    warpplp(y,x,color=color[i%ncolor],marker=marker)
+
+def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
+          scale=1,signz=1,signx=1,subgridlen=1.):
+  if iy is None: iy = w3d.iy_axis
+  if iy < 0 or w3d.ny < iy: return
+  if colors is None: colors = color
+  if scale:
+    dx = w3d.dx*signx
+    dz = w3d.dz*signz
+    xmmin = w3d.xmmin
+    zmmin = w3d.zmmin
+  else:
+    dx = 1.*signx
+    dz = 1.*signz
+    xmmin = 0.
+    zmmin = 0.
+    if lparallel: zmmin = top.izslave[me]
+  plotcondn(iy,f3d.ncond,f3d.izcond,f3d.ixcond,f3d.iycond,f3d.condnumb,
+            dx,dz,xmmin,zmmin,cmarker,color)
+  ncolor = len(colors)
+  nlist = gatherarray(f3d.ecnumb[:f3d.necndbdy])
+  nlist = findunique(nlist)
+  nlist.remove(0)
+  nlist = broadcast(nlist)
+  for i in range(len(nlist)):
+      plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
+                  f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
+                  nlist[i],f3d.ecnumbmx,f3d.ecnumbmz,f3d.ecnumbpx,f3d.ecnumbpz,
+                  xmmin,zmmin,dx,dz,colors[i%ncolor],subgridlen)
+  nlist = gatherarray(f3d.ocnumb[:f3d.nocndbdy])
+  nlist = findunique(nlist)
+  nlist = broadcast(nlist)
+  for i in range(len(nlist)):
+      plotsubgrid(iy,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
+                  f3d.ocdelmx,f3d.ocdelmz,f3d.ocdelpx,f3d.ocdelpz,
+                  nlist[i],f3d.ocnumbmx,f3d.ocnumbmz,f3d.ocnumbpx,f3d.ocnumbpz,
+                  xmmin,zmmin,dx,dz,colors[i%ncolor],subgridlen)
+
+
+############################################################################
 # These plot the conductors in laboratory frame, using the tolabfrm routine
 # to convert from code frame to lab frame.  There is also a routine to plot
 # the computational x-z grid in lab frame.
@@ -746,7 +842,8 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
 
 
 #####################################################################
-def plotelementoutline(color,gridframe,axis,iquad,nquad,
+#####################################################################
+def plotelementoutline(color,gridframe,axis,ie,ne,
                        ezs,eze,eap,err,erl,egl,egp,eox,eoy,epa,epr,epw,
                        dpal,dpar):
   """Plots the outline of electrostatic elements
@@ -756,7 +853,7 @@ def plotelementoutline(color,gridframe,axis,iquad,nquad,
   """
   if axis == 'x': gpsign = 1
   else:           gpsign = -1
-  for i in range(iquad,iquad+nquad+1):
+  for i in range(ie,ie+ne):
     # --- plot rods
     # --- If aperture is zero, then this quad is skipped
     rodap = eap[i]
@@ -817,21 +914,37 @@ def plotelementoutline(color,gridframe,axis,iquad,nquad,
       plg(rrr2,zzr,color=color)
 
 
-#####################################################################
-def plotquadoutline(iquad=0,nquad=None,color='fg',gridframe=0,axis='x'):
+#---------------------------------------------------------------------------
+def plotquadoutline(iq=0,nq=None,color='fg',gridframe=0,axis='x'):
   """Plots the outline of quadrupole elements
-  - iquad=0: starting quad to plot
-  - nquad=top.nquad: number of quads to plot
+  - iq=0: starting quad to plot
+  - nq=top.nquad+1: number of quads to plot
   - color='fg': line color
   - gridframe=0: when true, make plot in grid coordinates
   - axis='x': selects axis to plot, either 'x' or 'y'
   """
-  if nquad is None: nquad = top.nquad
-  plotelementoutline(color,gridframe,axis,iquad,nquad,
+  if nq is None: nq = top.nquad + 1
+  plotelementoutline(color,gridframe,axis,iq,nq,
                      top.quadzs,top.quadze,top.quadap,top.quadrr,top.quadrl,
                      top.quadgl,top.quadgp,top.qoffx,top.qoffy,
                      top.quadpa,top.quadpr,top.quadpw,
                      top.qdelpal,top.qdelpar)
+
+#---------------------------------------------------------------------------
+def plotemltoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x'):
+  """Plots the outline of emlt elements
+  - ie=0: starting emlt to plot
+  - ne=top.nemlt+1: number of emlts to plot
+  - color='fg': line color
+  - gridframe=0: when true, make plot in grid coordinates
+  - axis='x': selects axis to plot, either 'x' or 'y'
+  """
+  if ne is None: ne = top.nemlt + 1
+  plotelementoutline(color,gridframe,axis,ie,ne,
+                     top.emltzs,top.emltze,top.emltap,top.emltrr,top.emltrl,
+                     top.emltgl,top.emltgp,top.emltox,top.emltoy,
+                     top.emltpa,zeros(top.nemlt+1,'d'),top.emltpw,
+                     zeros(top.nemlt+1,'d'),zeros(top.nemlt+1,'d'))
 
 
 
