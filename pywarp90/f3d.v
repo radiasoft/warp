@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.100 $, $Date: 2004/04/08 19:20:27 $
+#@(#) File F3D.V, version $Revision: 3.101 $, $Date: 2004/04/13 20:33:04 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.100 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.101 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -144,6 +144,7 @@ istart(0:100)   integer # Start of the conductor data for each MG level
 interior ConductorInteriorType   # Interior of the conductors
 evensubgrid ConductorSubGridType # Even subgrid data for conductors
 oddsubgrid ConductorSubGridType  # Odd subgrid data for conductors
+levels          integer  # Number of coarsening levels
 leveliz(0:100)  integer  # List of iz for the levels of coarsening
 levellx(0:100)  real /1/ # List of coarsening factors in x
 levelly(0:100)  real /1/ # List of coarsening factors in y
@@ -165,7 +166,6 @@ checkconductors(nx:integer,ny:integer,nz:integer,nzfull:integer,
                 conductors:ConductorType) subroutine
 
 *********** MGLevels3d:
-mgmaxlevels           integer /101/ # Minimum grid size in x-y to coarsen to
 mglevels              integer /0/  # Number of coarsening levels
 mglevelsnx(0:100)     integer      # List of nx for the levels of coarsening
 mglevelsny(0:100)     integer      # List of ny for the levels of coarsening
@@ -178,15 +178,16 @@ mglevelslz(0:100)     real /101*1/ # List of coarsening factors in z
 mglevelspart(0:100)   logical      # List of flags for whether full or partial
                                    # coarsening is done: 0 is full, 1 is partial
 *********** Multigrid3d dump:
-mgparam    real    /1.2/ # Acceleration parameter for multigrid fieldsolver
-mgmaxiters integer /100/ # Maximum number of iterations
-mgiters    integer       # Actual number of iterations
-mgtol      real  /1.e-6/ # Absolute tolerance in change in last iteration
-mgerror    real          # Maximum error after convergence
-mgform     integer /1/   # When 1, MG operates on phi (and rho),
-                         # when 2, MG operates on error (and residual)
-downpasses integer /1/   # Number of downpasses
-uppasses   integer /1/   # Number of uppasses
+mgparam     real    /1.2/ # Acceleration parameter for multigrid fieldsolver
+mgmaxiters  integer /100/ # Maximum number of iterations
+mgmaxlevels integer /101/ # Minimum grid size in x-y to coarsen to
+mgiters     integer       # Actual number of iterations
+mgtol       real  /1.e-6/ # Absolute tolerance in change in last iteration
+mgerror     real          # Maximum error after convergence
+mgform      integer /1/   # When 1, MG operates on phi (and rho),
+                          # when 2, MG operates on error (and residual)
+downpasses  integer /1/   # Number of downpasses
+uppasses    integer /1/   # Number of uppasses
 mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                            80,96,112,128,160,192,224,256,320,384,448,512,
                            640,768,896,1024,1280,1536,1792,2048,2560,3072,
@@ -196,8 +197,8 @@ mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                          # A list of good numbers to use for the grid
                          # dimension. This is an ordered list of powers of two
                          # times 1, 3, 5, and 7.
-setmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
-            dx:real,dy:real,dz:real)
+getmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
+            dx:real,dy:real,dz:real,conductors:ConductorType)
    subroutine
    # Calculates levels of coarsening. Note that mglevels
    # must be zero when calling this routine.
