@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.12 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1558,7 +1558,6 @@ c Finds distances along the axis of the points from a list of cylinders at
 c arbitrary angles.
 c The notation is that a negative distance means that the point is inside.
 
-      integer(ISZ):: ix(n),iy(n)
       integer(ISZ):: nx,ny,ic
       real(kind=8):: dx,dy
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -1570,17 +1569,20 @@ c The notation is that a negative distance means that the point is inside.
 
 c     --- Very kludgy code to extract number of grid points and cell
 c     --- sizes from the input coordinates.
-      dy = y(2) - y(1)
       ymin = minval(y)
       ymax = maxval(y)
-      iy = int((y - ymin)/dy)
-      ny = maxval(iy)
+      dy = y(2) - y(1)
+      if (dy /= 0.) then
+        ny = maxval(int((y - ymin)/dy))
+      else
+        dy = 1.
+        ny = 0
+      endif
       
       dx = x(ny+2) - x(1)
       xmin = minval(x)
       xmax = maxval(x)
-      ix = int((x - xmin)/dx)
-      nx = maxval(ix)
+      nx = maxval(int((x - xmin)/dx))
 
       delmx = LARGEPOS
       delpx = LARGEPOS
@@ -1954,7 +1956,6 @@ c Finds distances along the axis of the points from a list of cones at
 c arbitrary angles.
 c The notation is that a negative distance means that the point is inside.
 
-      integer(ISZ):: ix(n),iy(n)
       integer(ISZ):: nx,ny,ic
       real(kind=8):: dx,dy
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -1966,17 +1967,20 @@ c The notation is that a negative distance means that the point is inside.
 
 c     --- Very kludgy code to extract number of grid points and cell
 c     --- sizes from the input coordinates.
-      dy = y(2) - y(1)
       ymin = minval(y)
       ymax = maxval(y)
-      iy = int((y - ymin)/dy)
-      ny = maxval(iy)
+      dy = y(2) - y(1)
+      if (dy /= 0.) then
+        ny = maxval(int((y - ymin)/dy))
+      else
+        dy = 1.
+        ny = 0
+      endif
       
-      dx = x(ny+2) - x(1)
       xmin = minval(x)
       xmax = maxval(x)
-      ix = int((x - xmin)/dx)
-      nx = maxval(ix)
+      dx = x(ny+2) - x(1)
+      nx = maxval(int((x - xmin)/dx))
 
       delmx = LARGEPOS
       delpx = LARGEPOS
