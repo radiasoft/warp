@@ -70,7 +70,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.46 2004/01/16 22:45:56 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.47 2004/03/03 16:42:28 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1473,9 +1473,9 @@ class ZTorus(Assembly):
 Torus
   - r1: toroidal radius
   - r2: poloidal radius
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - voltage=0: torus voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of torus
+  - condid=1: conductor id of torus, must be integer
   """
   def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r1','r2']
@@ -1492,9 +1492,9 @@ Plate from beamlet pre-accelerator
   - zb: location of spherical center in the y-plane
   - z0: location of the center of the plate on the z-axis
   - thickness: thickness of the plate
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - voltage=0: beamlet plate voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of beamlet plate
+  - condid=1: conductor id of beamlet plate, must be integer
   """
   def __init__(self,za,zb,z0,thickness,voltage=0.,
                xcent=0.,ycent=0.,zcent=0.,condid=1):
@@ -1655,9 +1655,9 @@ Outside of a surface of revolution
   - rofzfunc: name of python function describing surface
   - zmin,zmax: z-extent of the surface
   - rmax=largepos: max radius of the surface
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
       raddata[i] is radius for segment from zdata[i] to zdata[i+1]
@@ -1733,9 +1733,9 @@ Inside of a surface of revolution
   - rofzfunc: name of python function describing surface
   - zmin,zmax: z-extent of the surface
   - rmin=0: min radius of the surface
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
   - rofzdata=None: optional tablized data of radius of surface
   - zdata=None: optional tablized data of z locations of rofzdata
   - raddata=None: optional radius of curvature of segments
@@ -1807,12 +1807,12 @@ Inside of a surface of revolution
 #============================================================================
 class ZSrfrvInOut(Srfrv):
   """
-Betweem surfaces of revolution
+Between surfaces of revolution
   - rminofz,rmaxofz: names of python functions describing surfaces
   - zmin,zmax: z-extent of the surface
-  - voltage=0: cone voltage
-  - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=1: conductor id of cone, must be integer
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
   - rminofzdata,rmaxofzdata=None: optional tablized data of radii of surface
   - zmindata,zmaxdata=None: optional tablized data of z locations of r data
   - radmindata,radmaxdata=None: optional radius of curvature of segments
@@ -1853,7 +1853,6 @@ Betweem surfaces of revolution
       self.checkarcs(self.zmindata,self.rminofzdata,self.radmindata,
                      self.zcmindata,self.rcmindata)
       self.rminofz = ' '
-      self.rmaxofz = ' '
     else:
       assert type(self.rminofz) in [FunctionType,StringType],\
              'The rminofz is not properly specified'
@@ -1879,7 +1878,6 @@ Betweem surfaces of revolution
       self.zcmaxdata = self.setdatadefaults(zcmaxdata,len(zmaxdata)-1,None)
       self.checkarcs(self.zmaxdata,self.rmaxofzdata,self.radmaxdata,
                      self.zcmaxdata,self.rcmaxdata)
-      self.rminofz = ' '
       self.rmaxofz = ' '
     else:
       assert type(self.rminofz) in [FunctionType,StringType],\
@@ -1923,6 +1921,117 @@ Betweem surfaces of revolution
     return Assembly.getkwlist(self)
 
 #============================================================================
+class ZAnnulus(ZSrfrvInOut):
+  """
+Creates an Annulus as a surface of revolution.
+  - rmin,rmax: Inner and outer radii
+  - zmin,zmax: z-extent of the surface
+  - voltage=0: conductor voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of conductor
+  - condid=1: conductor id of conductor, must be integer
+  """
+  def __init__(self,rmin,rmax,length,
+                    voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
+    kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      zsrfrvinoutconductorf,zsrfrvinoutconductord,
+                      zsrfrvinoutintercept)
+    self.rmin = rmin
+    self.rmax = rmax
+    self.length = length
+    self.zmin = zcent - length/2.
+    self.zmax = zcent + length/2.
+
+    # --- Setup tablized data.
+    self.usemindata = true
+    self.zmindata = [self.zmin,self.zmax]
+    self.rminofzdata = [rmin,rmin]
+    self.radmindata = [largepos,largepos]
+    self.rcmindata = [largepos,largepos]
+    self.zcmindata = [largepos,largepos]
+    self.rminofz = ' '
+
+    self.usemaxdata = true
+    self.zmaxdata = [self.zmin,self.zmax]
+    self.rmaxofzdata = [rmax,rmax]
+    self.radmaxdata = [largepos,largepos]
+    self.rcmaxdata = [largepos,largepos]
+    self.zcmaxdata = [largepos,largepos]
+    self.rmaxofz = ' '
+
+#============================================================================
+#============================================================================
+#============================================================================
+def Quadrupole(ap=None,rl=None,rr=None,gl=None,gp=None,
+               pa=None,pw=None,pr=None,vx=None,vy=None,
+               xcent=0.,ycent=0.,zcent=0.,condid=None,elemid=None):
+  """
+Creates an interdigited quadrupole structure.
+Either specify the quadrupole structure...
+  - ap: pole tip aperture
+  - rl: rod length
+  - rr: rod radius
+  - gl: gap length between rod end and end plate
+  - gp: sign of gap location in x plane
+  - pa: aperture of end plate
+  - pw: width of end plate
+  - pr: outer radius of end plate
+  - vx: voltage of rod in x plane
+  - vy: voltage of rod in y plane
+  - xcent=0.,ycent=0.,zcent=0.: center of quadrupole
+  - condid=1: conductor id of quadrupole, must be integer
+Or give the quadrupole id to use...
+  - elemid: gets data from quad element.
+  """
+  if elemid is None:
+    assert ap is not None,'ap must be specified'
+    assert rl is not None,'rl must be specified'
+    assert rr is not None,'rr must be specified'
+    assert gl is not None,'gl must be specified'
+    assert gp is not None,'gp must be specified'
+    assert pa is not None,'pa must be specified'
+    assert pw is not None,'pw must be specified'
+    assert pr is not None,'pr must be specified'
+    assert vx is not None,'vx must be specified'
+    assert vy is not None,'vy must be specified'
+    if condid is None: condid = 0
+  else:
+    ap = top.quadap[elemid]
+    rl = top.quadrl[elemid]
+    rr = top.quadrr[elemid]
+    gl = top.quadgl[elemid]
+    gp = top.quadgp[elemid]
+    pa = top.quadpa[elemid]
+    pw = top.quadpw[elemid]
+    pr = top.quadpr[elemid]
+    vx = top.quadvx[elemid]
+    vy = top.quadvy[elemid]
+    xcent = top.qoffx[elemid]
+    ycent = top.qoffy[elemid]
+    zcent = 0.5*(top.quadzs[elemid] + top.quadze[elemid])
+    if condid is None: condid = elemid
+
+  # --- Create x and y rods
+  xrod1 = ZCylinder(rr,rl,vx,xcent+ap+rr,ycent,zcent+gp*gl/2.,condid)
+  xrod2 = ZCylinder(rr,rl,vx,xcent-ap-rr,ycent,zcent+gp*gl/2.,condid)
+  yrod1 = ZCylinder(rr,rl,vy,xcent,ycent+ap+rr,zcent-gp*gl/2.,condid)
+  yrod2 = ZCylinder(rr,rl,vy,xcent,ycent-ap-rr,zcent-gp*gl/2.,condid)
+
+  # --- Create end plates
+  if gp > 0.:
+    v1 = vx
+    v2 = vy
+  else:
+    v1 = vy
+    v2 = vx
+  plate1 = ZAnnulus(pa,pr,pw,v1,xcent,ycent,zcent-0.5*(rl+gl)-pw/2.,condid)
+  plate2 = ZAnnulus(pa,pr,pw,v2,xcent,ycent,zcent+0.5*(rl+gl)+pw/2.,condid)
+
+  # --- Create the combined object
+  quad = xrod1 + xrod2 + yrod1 + yrod2 + plate1 + plate2
+  return quad
+
+#============================================================================
 #============================================================================
 #============================================================================
 try:
@@ -1936,6 +2045,7 @@ except:
 
 class SRFRVLApart:
   """
+    condid
 Class for creating a surface of revolution conductor part using lines and arcs as primitives.  
  - name:   name of conductor part
  - data:   list of lines and arcs (this must be a continuous curve)
