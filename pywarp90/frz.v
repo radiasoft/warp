@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.3 $, $Date: 2001/04/30 20:04:40 $
+#@(#) File FRZ.V, version $Revision: 3.4 $, $Date: 2001/08/21 23:28:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.3 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.4 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -35,6 +35,16 @@ scrtch2(0:nz)             _real        #  workspace for resistive wall
 phikold(0:nz)             _real        #  FT of phi at old time step for C
 err1(0:nr,0:nz)           _real
 
+*********** FRZmgrid:
+mgridrz_accuracy          real /1.e-8/  # average accuracy of multigrid solver
+mgridrz_ncmax             integer /100/ # maximum number of full multigrid 
+                                        # cycles
+mgridrz_npre              integer /4/   # number of relaxations steps before 
+                                        # coarsening, in multigrid solver
+mgridrz_npost             integer /4/   # number of relaxations steps after 
+                                        # coarsening, in multigrid solver  
+mgridrz_ncycles           integer /2/   # number of multigrid cycles per level
+                                          
 
 *********** FRZsubs:
 #  Callable subroutines in the FRZ package
@@ -53,3 +63,17 @@ advsc    (schrg:real,eta:real,a:real,kzsq:real,dt:real,dr:real,dz:real,
          #  to time t+dt in Fourier space
 advect   (schrg:real, vbeam:real, dt:real, nz, dz, tmp:real)        subroutine
          #  Advects surface charge with the moving window.
+multigridrzf(phi:real,rho:real,nx:integer,nz:integer,dx:real,dz:real,
+             boundxy:integer,bound0:integer,boundnz:integer,
+             mgridrz_accuracy:real,mgridrz_ncmax:integer,mgridrz_npre:integer,
+             mgridrz_npost:integer,mgridrz_ncycles:integer) subroutine
+         # Multigrid Poisson solver (using "full-multigrid" method, i.e. the 
+         # solution is calculatedd at each level using a multigrid procedure 
+         # and used as an approximated solution to start the calculation at 
+         # the next level)
+save_bndstructure_rz(filename:string) subroutine
+         # save internal conductor boundary coefficients for each multigrid
+         # level
+read_bndstructure_rz(filename:string) subroutine
+         # read internal conductor boundary coefficients for each multigrid
+         # level
