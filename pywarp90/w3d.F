@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.54 $, $Date: 2002/04/25 16:49:58 $
+c@(#) File W3D.M, version $Revision: 3.55 $, $Date: 2002/04/26 16:11:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3781,7 +3781,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,ez,vznorm,rp
       real(kind=8):: clightsqi
       real(kind=8):: xinj,yinj,ainj,ainji,ainjmini,binj,binji,binjmini
-      real(kind=8):: apinj,bpinj,xpinj,ypinj,rinj,rinji
+      real(kind=8):: apinj,bpinj,xpinj,ypinj,rinj,rinji,vzinj
       real(kind=8):: sphericalcorrection
       real(kind=8):: vtx,vty
       real(kind=8):: zmid,zleni,ztilt,gamma
@@ -3867,6 +3867,7 @@ c         --- Zero out temp array.
 
 c         --- loop over injection sources
           do ij=1,ninject
+            inj_ij = min(ij,inj_ninj)
             ainj = ainject(ij)
             binj = binject(ij)
             ainji = 1./ainject(ij)
@@ -3877,6 +3878,7 @@ c         --- loop over injection sources
             bpinj = bpinject(ij)
             xpinj = xpinject(ij)
             ypinj = ypinject(ij)
+            vzinj = vzinject(ij)
 
 c         --- Loop over species.
           do is=1,ns
@@ -3980,7 +3982,7 @@ c           --- Load particles into initial positions.
 c           --- Shifts axial position by values in inj_grid.
 c           --- uses beam envelope of ainject, binject, apinject and bpinject
 c           --- (data is loaded into particle arrays)
-            zmid = 0.5*(zimax_s(is) - zimin_s(is)) - vbeam_s(is)*dt*(it+1)
+            zmid = 0.5*(zimax_s(is) - zimin_s(is)) - vzinj*dt*(it+1)
             zleni = 1./dvnz(zimax_s(is) - zimin_s(is))
             do ip=1,nn
               ii = ins(is) - 1 - npinjtmp(is,ij)
@@ -3992,20 +3994,20 @@ c             --- The absolute values are needed for the cases of symmetry.
               iyy = abs(yp(ii) - ymmin)*dyi
               wxx = abs(xp(ii) - xmmin)*dxi - ixx
               wyy = abs(yp(ii) - ymmin)*dyi - iyy
-              zz = inj_grid(ixx  ,iyy  )*(1. - wxx)*(1. - wyy) +
-     &             inj_grid(ixx+1,iyy  )*      wxx *(1. - wyy) +
-     &             inj_grid(ixx  ,iyy+1)*(1. - wxx)*      wyy  +
-     &             inj_grid(ixx+1,iyy+1)*      wxx *      wyy
+              zz = inj_grid(ixx  ,iyy  ,inj_ij)*(1. - wxx)*(1. - wyy) +
+     &             inj_grid(ixx+1,iyy  ,inj_ij)*      wxx *(1. - wyy) +
+     &             inj_grid(ixx  ,iyy+1,inj_ij)*(1. - wxx)*      wyy  +
+     &             inj_grid(ixx+1,iyy+1,inj_ij)*      wxx *      wyy
 c             --- Only save particle if it is within the injection region.
               if (zinjmin <= zz .and. zz < zinjmax) then
                 zp(ii) = zz
-                vtx = vbeam_s(is)*0.5*emitx_s(is)*ainji + vthperp_s(is)
-                vty = vbeam_s(is)*0.5*emity_s(is)*binji + vthperp_s(is)
-                uxp(ii) = vbeam_s(is)*(apinj*(xp(ii)-xinj)*ainji + xpinj) +
+                vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
+                vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
+                uxp(ii) = vzinj*(apinj*(xp(ii)-xinj)*ainji + xpinj) +
      &                    vtx*uxt(ip)
-                uyp(ii) = vbeam_s(is)*(bpinj*(yp(ii)-yinj)*binji + ypinj) +
+                uyp(ii) = vzinj*(bpinj*(yp(ii)-yinj)*binji + ypinj) +
      &                    vty*uyt(ip)
-                uzp(ii) = vbeam_s(is) + 0.5*vthz_s(is)*uzt(ip)
+                uzp(ii) = vzinj + 0.5*vthz_s(is)*uzt(ip)
                 if (lrelativ) then
                   gaminv(ii) = sqrt(1.-
      &                           (uxp(ii)**2+uyp(ii)**2+uzp(ii)**2)*clightsqi)
@@ -4062,8 +4064,8 @@ c           --- Add in a velocity tilt (this is dependent on the fractional
 c           --- time step and so must be done here).
             do ip=1,nn
               ii = ins(is) - 1 + ip
-              ztilt = bpt(ip)*vbeam_s(is)
-              uzp(ii) = uzp(ii)-vbeam_s(is)*vtilt_s(is)*(zmid+ztilt)*zleni
+              ztilt = bpt(ip)*vzinj
+              uzp(ii) = uzp(ii)-vzinj*vtilt_s(is)*(zmid+ztilt)*zleni
             enddo
 
 c           --- do half velocity advance with E fields
@@ -4241,6 +4243,7 @@ c           --- Set some temporaries.
             bpinj = bpinject(ij)
             xpinj = xpinject(ij)
             ypinj = ypinject(ij)
+            vzinj = vzinject(ij)
             rinji = 1./rinject(ij)
 
 c           --- The potential drop in front of the surface is now
@@ -4284,19 +4287,20 @@ c             --- K. Blodgett, "Currents Limited by Space Charge Between
 c             --- Concentric Spheres", PhysRev, 1924.
               if (inject == 2) then
                 if (linj_spherical) then
-                  zz = (inj_dz*inj_d)*rinji
+                  zz = (inj_dz*inj_d(ij))*rinji
                   sphericalcorrection = (1. + 1.6*zz + 2.06*zz**2)
                 else
                   sphericalcorrection = 1.
                 endif
                 cl_const(is) = 4./9.*eps0*(2.*abs(sq(is))/sm(is))**.5/
-     &                        ((inj_dz*inj_d)**2*sphericalcorrection)*jton(is)
+     &                    ((inj_dz*inj_d(ij))**2*sphericalcorrection)*jton(is)
               endif
 
 c             --- The constant terms in the expression for the normal
 c             --- velocity from the Child-Langmuir solution. Note that does
 c             --- is only strictly correct for planar emission.
-              vzconst(is)=2./9.*sqrt(2.)*(abs(sq(is))/sm(is))**1.5/(inj_dz*inj_d)**2
+              vzconst(is) = 2./9.*sqrt(2.)*(abs(sq(is))/sm(is))**1.5/
+     &                      (inj_dz*inj_d(ij))**2
 
             enddo
 
@@ -4313,8 +4317,8 @@ c               --- Only inject particles if within 2 grid cells of the source
      &              ((ym-yinj)*(ainj+2.*inj_dx))**2 .gt.
      &              ((ainj+2.*inj_dx)*(binj+2.*inj_dy))**2) cycle
 c               --- Only inject from cells within the grid
-                if (inj_grid(ix,iy) < zinjmin-inj_dz .or.
-     &              inj_grid(ix,iy) >= zinjmax) cycle
+                if (inj_grid(ix,iy,inj_ij) < zinjmin-inj_dz .or.
+     &              inj_grid(ix,iy,inj_ij) >= zinjmax) cycle
 
 c               --- Loop over the species
                 do is=1,ns
@@ -4326,14 +4330,14 @@ c                 --- Skip this species if the fraction is zero.
 c                 --- number of particles injected in grid cell
                   if (inject == 2) then
 c                   --- Child-Langmuir
-                    rnn = cl_const(is)*abs(inj_phi(ix,iy))**1.5/
-     &                    cos(inj_angl(ix,iy))
-                    rnn = sign(rnn,sq(is)*inj_phi(ix,iy))
+                    rnn = cl_const(is)*abs(inj_phi(ix,iy,inj_ij))**1.5/
+     &                    cos(inj_angl(ix,iy,inj_ij))
+                    rnn = sign(rnn,sq(is)*inj_phi(ix,iy,inj_ij))
                   elseif (inject == 3) then
 c                   --- Gauss's law
-                    rnn = (eps0*inj_phi(ix,iy)/
-     &                    (inj_dz*abs(inj_d)) - inj_rho(ix,iy,inj_ij)*inj_dz)*
-     &                    inj_dx*inj_dy/sq(is)/sw(is)/cos(inj_angl(ix,iy))
+                    rnn = (eps0*inj_phi(ix,iy,inj_ij)/
+     &                    (inj_dz*abs(inj_d(ij)))-inj_rho(ix,iy,inj_ij)*inj_dz)*
+     &                  inj_dx*inj_dy/sq(is)/sw(is)/cos(inj_angl(ix,iy,inj_ij))
                   endif
 
 c                 --- Make sure that rnn is >= 0.
@@ -4343,7 +4347,7 @@ c                 --- give a positive value.
                   if (rnn < 0.) rnn = 0.
 
 c                 --- Apply ad-hoc scaling factor
-                  rnn = rnn*inj_f
+                  rnn = rnn*inj_f(ij)
 
 c                 --- Average the number of particles for this step with
 c                 --- that of the previous step. This helps the relaxation
@@ -4356,8 +4360,8 @@ c                 --- Force injected current to be between the range
 c                 --- jmininj to jmaxinj.  The absolute values are used
 c                 --- so that this works with either positive ions
 c                 --- and electron.
-                  rnn = min(rnn,jmaxinj*jton(is))
-                  rnn = max(rnn,jmininj*jton(is))
+                  rnn = min(rnn,jmaxinj(ij)*jton(is))
+                  rnn = max(rnn,jmininj(ij)*jton(is))
 
 c                 --- Scale the number of particles by the fraction of the
 c                 --- total for this species.
@@ -4421,20 +4425,20 @@ c                     --- find injection surface axial location by interpolation
                       iyy = abs(yp(ii) - ymmin)*dyi
                       wxx = abs(xp(ii) - xmmin)*dxi - ixx
                       wyy = abs(yp(ii) - ymmin)*dyi - iyy
-                      zp(ii) = inj_grid(ixx  ,iyy  )*(1.-wxx)*(1.-wyy) +
-     &                         inj_grid(ixx+1,iyy  )*    wxx *(1.-wyy) +
-     &                         inj_grid(ixx  ,iyy+1)*(1.-wxx)*    wyy  +
-     &                         inj_grid(ixx+1,iyy+1)*    wxx *    wyy  +
-     &                         inj_zstart
+                      zp(ii) = inj_grid(ixx  ,iyy  ,inj_ij)*(1.-wxx)*(1.-wyy) +
+     &                         inj_grid(ixx+1,iyy  ,inj_ij)*    wxx *(1.-wyy) +
+     &                         inj_grid(ixx  ,iyy+1,inj_ij)*(1.-wxx)*    wyy  +
+     &                         inj_grid(ixx+1,iyy+1,inj_ij)*    wxx *    wyy  +
+     &                         inj_zstart(ij)
 
 c                     --- Only inject particles within the injection region.
                       if (zp(ii) < zinjmin .or. zp(ii) >= zinjmax) cycle
 
 c                     --- find injection angle due to curvature by interpolation
-                      az = inj_angl(ixx  ,iyy  )*(1. - wxx)*(1. - wyy) +
-     &                     inj_angl(ixx+1,iyy  )*      wxx *(1. - wyy) +
-     &                     inj_angl(ixx  ,iyy+1)*(1. - wxx)*      wyy  +
-     &                     inj_angl(ixx+1,iyy+1)*      wxx *      wyy
+                      az = inj_angl(ixx  ,iyy  ,inj_ij)*(1. - wxx)*(1. - wyy) +
+     &                     inj_angl(ixx+1,iyy  ,inj_ij)*      wxx *(1. - wyy) +
+     &                     inj_angl(ixx  ,iyy+1,inj_ij)*(1. - wxx)*      wyy  +
+     &                     inj_angl(ixx+1,iyy+1,inj_ij)*      wxx *      wyy
 
 c                     --- Calculate transverse angle
                       aa = atan2(yp(ii)-yinj,xp(ii)-xinj)
@@ -4456,12 +4460,12 @@ c                     --- Get the normal velocity for this particle. This is
 c                     --- based on the Child-Langmuir solution, given a
 c                     --- voltage drop, vnorm, and a time since emission,
 c                     --- pid(ii)*dt.
-                      vnorm = inj_phi(ixx  ,iyy  )*(1. - wxx)*(1. - wyy) +
-     &                        inj_phi(ixx+1,iyy  )*      wxx *(1. - wyy) +
-     &                        inj_phi(ixx  ,iyy+1)*(1. - wxx)*      wyy  +
-     &                        inj_phi(ixx+1,iyy+1)*      wxx *      wyy
+                      vnorm = inj_phi(ixx  ,iyy  ,inj_ij)*(1. - wxx)*(1. - wyy) +
+     &                        inj_phi(ixx+1,iyy  ,inj_ij)*      wxx *(1. - wyy) +
+     &                        inj_phi(ixx  ,iyy+1,inj_ij)*(1. - wxx)*      wyy  +
+     &                        inj_phi(ixx+1,iyy+1,inj_ij)*      wxx *      wyy
                       vznorm = vzconst(is)*abs(vnorm)**1.5*(pid(ii)*dt)**2
-                      if (inj_d < 0.) vznorm = -vznorm
+                      if (inj_d(ij) < 0.) vznorm = -vznorm
 
 c                     --- Set transverse coordinates. The emittance term
 c                     --- is probably not correct since it depends on vbeam.
@@ -4471,14 +4475,14 @@ c                     --- component of the normal velocity and the specified
 c                     --- vbeam (which is also taken to be normal).
 c                     --- Like the emittance term, the term with ap (and bp)
 c                     --- are probably not correct.
-                      vtx = vbeam_s(is)*0.5*emitx_s(is)*ainji + vthperp_s(is)
-                      vty = vbeam_s(is)*0.5*emity_s(is)*binji + vthperp_s(is)
-                      uxp(ii)=vbeam_s(is)*(signx(il)*apinj*(xp(ii)-xinj)*ainji
+                      vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
+                      vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
+                      uxp(ii)=vzinj*(signx(il)*apinj*(xp(ii)-xinj)*ainji
      &                        + xpinj) + vtx*rnorm()
-     &                        - (vznorm + vbeam_s(is))*sin(az)*cos(aa)
-                      uyp(ii)=vbeam_s(is)*(signy(il)*bpinj*(yp(ii)-yinj)*binji
+     &                        - (vznorm + vzinj)*sin(az)*cos(aa)
+                      uyp(ii)=vzinj*(signy(il)*bpinj*(yp(ii)-yinj)*binji
      &                        + ypinj) + vty*rnorm()
-     &                        - (vznorm + vbeam_s(is))*sin(az)*sin(aa)
+     &                        - (vznorm + vzinj)*sin(az)*sin(aa)
 
 c                     --- Include the user specified vbeam (assumed to be a
 c                     --- normal), the thermal velocity, and the term from
@@ -4486,7 +4490,7 @@ c                     --- the Child-Langmuir solution.
 c                     --- SMALLPOS is also added so that the field gathering
 c                     --- routines don't treat the newly injected particles
 c                     --- as dead particles when the other terms are zero.
-                      uzp(ii) = vbeam_s(is)*cos(az) + vthz_s(is)*rnorm() +
+                      uzp(ii) = vzinj*cos(az) + vthz_s(is)*rnorm() +
      &                          vznorm*cos(az) + SMALLPOS
 
 c                     --- Calculate gamma inverse and reset the particle
@@ -4801,8 +4805,8 @@ c                   --- calculate position of new particle
                     t = aa + (rnrev(injctcnt,dig3) - .5)*2.*pi/nttinj(ij)
                     xp(ii) = xtinject(ij) + rp*cos(t)
                     yp(ii) = ytinject(ij) + rp*sin(t)
-                    vtx = 0.5*vbeam_s(is)*emitx_s(is)*rinji + vthperp_s(is)
-                    vty = 0.5*vbeam_s(is)*emity_s(is)*rinji + vthperp_s(is)
+                    vtx = 0.5*vztinject(ij)*emitx_s(is)*rinji + vthperp_s(is)
+                    vty = 0.5*vztinject(ij)*emity_s(is)*rinji + vthperp_s(is)
                     uxp(ii) = vnorm*cos(t) + vtx*rnorm()
                     uyp(ii) = vnorm*sin(t) + vty*rnorm()
                     uzp(ii) = vthz_s(is)*rnorm() + vznorm*rr
@@ -4903,6 +4907,7 @@ c=============================================================================
       use Setpwork3d
       use Picglb3d
       use FRZmgrid
+      use Obsolete3d,obs_inj_d=>inj_d,obs_inj_f=>inj_f
 
       integer(ISZ):: is,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
@@ -4929,6 +4934,27 @@ c in case the user changes ninject or ns but doesn't explicitly allocate
 c the additional needed space.
       call gchange("InjectVars",0)
 
+c Check if the user has set the obsolete values of inj_d or inj_f.
+c If so, then copy values to the new variables in top.
+      if (obs_inj_d /= 0.) then
+        inj_d = obs_inj_d
+        call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        call remark("Notice: The variable inj_d has been moved to the top")
+        call remark("        package. Please fix your input files accordingly.")
+        call remark("        Your simulation will run ok now, but in future")
+        call remark("        versions, it will stop with an error.")
+        call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      endif
+      if (obs_inj_f /= 0.) then
+        inj_f = obs_inj_f
+        call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        call remark("Notice: The variable inj_f has been moved to the top")
+        call remark("        package. Please fix your input files accordingly.")
+        call remark("        Your simulation will run ok now, but in future")
+        call remark("        versions, it will stop with an error.")
+        call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      endif
+
 c Initialize beam size from initial envelope parameters if beam size not set
 c One problem with this is that if the user ever wants apinject or bpinject
 c to be zero while ap0 or bp0 not be zero.  The user would have to reset
@@ -4938,6 +4964,15 @@ c apinject or bpinject back to zero after the generate.
         if (binject(ij)  == 0.) binject(ij)  = b0
         if (apinject(ij) == 0.) apinject(ij) = ap0
         if (bpinject(ij) == 0.) bpinject(ij) = bp0
+      enddo
+
+c Set value of vzinject for inject==1 if not already set. For other
+c types of injection, vzinject is assumed to be zero, since the starting
+c velocity is calculated from the local fields.
+      do ij=1,ninject
+        if (inject == 1 .and. vzinject(ij) == 0.) then
+          vzinject(ij) = vbeam
+        endif
       enddo
 
 c Set the injection length and start, normally the length of one time step
@@ -4951,7 +4986,7 @@ c       --- at each time step.
         do is=1,ns
           if (npinje_s(is) == 0) then
             do ip=ins(is),ins(is)+nps(is)-1
-              if (zinject .lt. zp(ip) .and. zp(ip) .lt. zinject + leninjct)
+              if (zinject(1) < zp(ip) .and. zp(ip) < zinject(1) + leninjct)
      &          npinje_s(is) = npinje_s(is) + 1
             enddo
           endif
@@ -5096,6 +5131,12 @@ c         --- too close
           inj_ninj = ninject
         enddo
       enddo
+c     --- Also check if sources are at different z locations. If so, then
+c     --- save data for each source seperately. Checks if RMS of zinject
+c     --- is zero.
+      if (sum(zinject**2) - sum(zinject)**2/ninject /= 0.) then
+        inj_ninj = ninject
+      endif
 
 c Allocate inject arrays and fill with source location information.
 c Note that gchange is called instead of gallot since some the of arrays
@@ -5146,7 +5187,7 @@ c     --- The array inj_angl holds the angle due to the curvature of the source
 c     --- as a function of the transverse coordinates.
 
 
-      integer(ISZ):: ij,ix,iy
+      integer(ISZ):: ij,ix,iy,inj_ij
       real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
       real(kind=8):: xl,yl,xu,yu,x1,x2,txl,tyl,txu,tyu
       real(kind=8):: ainji,binji
@@ -5160,6 +5201,7 @@ c     --- as a function of the transverse coordinates.
 
 c Loop over the injection sources.
       do ij=1,ninject
+        inj_ij = min(ij,inj_ninj)
 c       --- Calculate the extent of the source plus guard cells.
         ainj    = ainject(ij)
         binj    = binject(ij)
@@ -5178,14 +5220,13 @@ c           --- transverse coordinate relative to center of source
 c           --- If the point is within source or guard cells, calculate both
 c           --- axial distance and angle of curvature.
             if ((xx*bi_dy)**2 + (yy*ai_dx)**2 - (ai_dx*bi_dy)**2 <= 0.) then
-              inj_id(ix,iy) = ij
 c             --- Write the expression for inj_grid so as to avoid
 c             --- subtraction of large, similar numbers when rinject is large.
-c             inj_grid(ix,iy) = zinject + (rinject(ij) -
+c             inj_grid(ix,iy,inj_ij) = zinject(ij) + (rinject(ij) -
 c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
-              inj_grid(ix,iy) = zinject + (xx**2 +  yy**2)/
+              inj_grid(ix,iy,inj_ij) = zinject(ij) + (xx**2 +  yy**2)/
      &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
-              inj_angl(ix,iy) = asin(sqrt(xx**2 + yy**2)/rinject(ij))
+              inj_angl(ix,iy,inj_ij) = asin(sqrt(xx**2 + yy**2)/rinject(ij))
 
 c             --- Calculate fraction of grid cell which is within the emitting
 c             --- surface.  Used to scale the charge density on the emitting
@@ -5299,7 +5340,7 @@ c     --- The array inj_angl holds the angle due to the curvature of the source
 c     --- as a function of the transverse coordinates.
 
 
-      integer(ISZ):: ij,ix,iy
+      integer(ISZ):: ij,ix,iy,inj_ij
       real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
       real(kind=8):: xl,yl,xu,yu,x1,x2
       real(kind=8):: ainji,binji
@@ -5313,6 +5354,7 @@ c     --- as a function of the transverse coordinates.
 
 c Loop over the injection sources.
       do ij=1,ninject
+        inj_ij = min(ij,inj_ninj)
 c       --- Calculate the extent of the source plus guard cells.
         ainj    = ainject(ij)
         binj    = binject(ij)
@@ -5329,14 +5371,13 @@ c           --- transverse coordinate relative to center of source
 c           --- If the point is within source or guard cells, calculate both
 c           --- axial distance and angle of curvature.
             if ((xx*bi_dy)**2 + (yy*ai_dx)**2 - (ai_dx*bi_dy)**2 .le. 0.) then
-              inj_id(ix,iy) = ij
 c             --- Write the expression for inj_grid so as to avoid
 c             --- subtraction of large, similar numbers when rinject is large.
-c             inj_grid(ix,iy) = zinject + (rinject(ij) -
+c             inj_grid(ix,iy,inj_ij) = zinject(ij) + (rinject(ij) -
 c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
-              inj_grid(ix,iy) = zinject + (xx**2 +  yy**2)/
+              inj_grid(ix,iy,inj_ij) = zinject(ij) + (xx**2 +  yy**2)/
      &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
-              inj_angl(ix,iy) = asin(sqrt(xx**2 + yy**2)/rinject(ij))
+              inj_angl(ix,iy,inj_ij) = asin(sqrt(xx**2 + yy**2)/rinject(ij))
 
 c             --- Calculate fraction of grid cell which is within the emitting
 c             --- surface.  Used to scale the charge density on the emitting
@@ -5425,10 +5466,10 @@ c full axial extent since points which are outside of the
 c injection region maybe needed for the interlopation below
 c to get zp.
 
-      integer(ISZ):: ij,ix,iy,i2x,i2y,i2z
+      integer(ISZ):: ij,inj_ij,ix,iy,i2x,i2y,i2z
       real(kind=8):: dxi,dyi
       real(kind=8):: ainj,binj,ainjsqi,binjsqi,xinj,yinj
-      real(kind=8):: rrsq,aa,p2x,p2y,p2z,w2x,w2y,w2z
+      real(kind=8):: rrsq,aa,az,p2x,p2y,p2z,w2x,w2y,w2z
       real(kind=8):: xx((1+inj_nx)*(1+inj_ny))
       real(kind=8):: yy((1+inj_nx)*(1+inj_ny))
       real(kind=8):: zz((1+inj_nx)*(1+inj_ny))
@@ -5447,6 +5488,7 @@ c     --- In the parallel version, only processor 0 calculates inj_phi.
 
 c     --- loop over injection sources
       do ij=1,ninject
+        inj_ij = min(ij,inj_ninj)
 
 c       --- Set some temporaries.
         ainj = ainject(ij)
@@ -5472,13 +5514,14 @@ c             --- Save coordinates relative to injection grid.
 c             --- angle of point in transverse plane
               aa = atan2(iy*inj_dy + inj_ymmin - yinj,
      &              dvnz(ix*inj_dx + inj_xmmin - xinj))
+              az = inj_angl(ix,iy,inj_ij)
 
 c             --- Find coordinates of the point a distance dz in front
 c             --- of the source along a line perpendicular to the
 c             --- emitting surface.
-              p2x = ix*inj_dx - inj_dz*cos(aa)*sin(inj_angl(ix,iy))*inj_d
-              p2y = iy*inj_dy - inj_dz*sin(aa)*sin(inj_angl(ix,iy))*inj_d
-              p2z = inj_grid(ix,iy) + cos(inj_angl(ix,iy))*inj_d*inj_dz
+              p2x = ix*inj_dx - inj_dz*cos(aa)*sin(az)*inj_d(ij)
+              p2y = iy*inj_dy - inj_dz*sin(aa)*sin(az)*inj_d(ij)
+              p2z = inj_grid(ix,iy,inj_ij) + cos(az)*inj_d(ij)*inj_dz
 
 c             --- Save coordinates relative to the lab frame.
               xx(nn) = inj_xmmin + p2x
@@ -5493,12 +5536,12 @@ c             --- Save coordinates relative to the lab frame.
         do ii=1,nn
 c         --- Calculate the difference between phi at that point and phi on
 c         --- the emitting surface.
-          inj_phi(xi(ii),yi(ii)) = vinject(ij) - pp(ii)
+          inj_phi(xi(ii),yi(ii),inj_ij) = vinject(ij) - pp(ii)
         enddo
 
 c       --- Smooth out inj_phi for this emitting surface.
         if (inj_nsmooth > 0) then
-          call inj_smoother(inj_nx,inj_ny,inj_phi,inj_dx,inj_dy,
+          call inj_smoother(inj_nx,inj_ny,inj_phi(:,:,inj_ij),inj_dx,inj_dy,
      &                      inj_xmmin,inj_ymmin,
      &                      xinj,yinj,ainj,binj,inj_nsmooth)
         endif
@@ -5509,22 +5552,24 @@ c       --- Smooth out inj_phi for this emitting surface.
       endif
 c     --- The result calculated by processor 0 is broadcast to the rest
 c     --- of the processors.
-      call parallelbroadcastrealarray(inj_phi,(inj_nx+1)*(inj_ny+1),0)
+      call parallelbroadcastrealarray(inj_phi,(inj_nx+1)*(inj_ny+1)*inj_ninj,0)
 #endif
 
 c     --- Calculate the transverse fields
       if (linj_eperp) then
-        do iy = 1,inj_ny-1
-          do ix = 1,inj_nx-1
-            inj_ex(ix,iy) = (inj_phi(ix-1,iy  ) - inj_phi(ix+1,iy  ))*dxi*0.5
-            inj_ey(ix,iy) = (inj_phi(ix  ,iy-1) - inj_phi(ix  ,iy+1))*dyi*0.5
+        do ij = 1,inj_ninj
+          do iy = 1,inj_ny-1
+            do ix = 1,inj_nx-1
+              inj_ex(ix,iy,ij)=(inj_phi(ix-1,iy  ,ij)-inj_phi(ix+1,iy  ,ij))*dxi*0.5
+              inj_ey(ix,iy,ij)=(inj_phi(ix  ,iy-1,ij)-inj_phi(ix  ,iy+1,ij))*dyi*0.5
+            enddo
           enddo
-        enddo
-        do ix = 1,inj_nx-1
-          inj_ex(ix,0) = (inj_phi(ix-1,0) - inj_phi(ix+1,0))*dxi*0.5
-        enddo
-        do iy = 1,inj_ny-1
-          inj_ey(0,iy) = (inj_phi(0,iy-1) - inj_phi(0,iy+1))*dyi*0.5
+          do ix = 1,inj_nx-1
+            inj_ex(ix,0,ij) = (inj_phi(ix-1,0,ij) - inj_phi(ix+1,0,ij))*dxi*0.5
+          enddo
+          do iy = 1,inj_ny-1
+            inj_ey(0,iy,ij) = (inj_phi(0,iy-1,ij) - inj_phi(0,iy+1,ij))*dyi*0.5
+          enddo
         enddo
       endif
 
@@ -5701,7 +5746,7 @@ c the tangential fields near the emitting surface can also be included.
 c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
-      integer(ISZ):: ip,ix,iy,iz,ij
+      integer(ISZ):: ip,ix,iy,iz,ij,inj_ij
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd,ca,zii
       real(kind=8):: aa,az,atx,aty,px,py,pz,wx,wy,wz,en,etx,ety
       real(kind=8):: dxi,dyi,dzi,inj_di
@@ -5713,8 +5758,6 @@ c any conductor surface.
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
-      zii = 1./(dz*inj_d)
-      inj_di = 1./inj_d
       fourthirds = 4./3.
       onethird = 1./3.
 
@@ -5726,11 +5769,14 @@ c       --- has the number of the injection source the particle was
 c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
         ij = int(pid(ip))
+        inj_ij = min(ij,inj_ninj)
+        zii = 1./(dz*inj_d(ij))
+        inj_di = 1./inj_d(ij)
 
 c       --- set temporaries
         xinj = xinject(ij)
         yinj = yinject(ij)
-        zinj = zinject
+        zinj = zinject(ij)
         rinj = rinject(ij)
         rinji = 1./rinj
 
@@ -5753,7 +5799,7 @@ c         --- When zz>rinj, a seperate equation is needed.
         dd = dd*dzi
 
 c       --- Only calculate E-field if particle close to emitting surface.
-        if (0.0 <= abs(dd) .and. abs(dd) <= abs(inj_d)) then
+        if (0.0 <= abs(dd) .and. abs(dd) <= abs(inj_d(ij))) then
 c         --- The check if a particle is within the radial area of the
 c         --- source is probably not needed. It has been removed since there
 c         --- are some cases which this check is incorrect - for example
@@ -5783,10 +5829,10 @@ c         --- emitting surface.
 c         --- Calculate the normal electric field from the potential drop in
 c         --- front of the emitting surface. The normal field given by the
 c         --- Child-Langmuir solution (for planar surfaces) is used.
-          en = zii*(inj_phi(ix  ,iy  )*(1.-wx)*(1.-wy) +
-     &              inj_phi(ix+1,iy  )*    wx *(1.-wy) +
-     &              inj_phi(ix  ,iy+1)*(1.-wx)*    wy  +
-     &              inj_phi(ix+1,iy+1)*    wx *    wy   )
+          en = zii*(inj_phi(ix  ,iy  ,inj_ij)*(1.-wx)*(1.-wy) +
+     &              inj_phi(ix+1,iy  ,inj_ij)*    wx *(1.-wy) +
+     &              inj_phi(ix  ,iy+1,inj_ij)*(1.-wx)*    wy  +
+     &              inj_phi(ix+1,iy+1,inj_ij)*    wx *    wy   )
           if (linj_enormcl) then
 c           --- Scale the normal E field to match the Child-Langmuir solution
             en = en*fourthirds*(dd*inj_di)**onethird
@@ -5809,14 +5855,14 @@ c           --- (i.e. zero) and the value on the secondary surface.
             sy = 1.
             if (xp(ip) < xmmin) sx = -1.
             if (yp(ip) < ymmin) sy = -1.
-            etx = (dd/inj_d)*sx*(inj_ex(ix  ,iy  )*(1.-wx)*(1.-wy) +
-     &                           inj_ex(ix+1,iy  )*    wx *(1.-wy) +
-     &                           inj_ex(ix  ,iy+1)*(1.-wx)*    wy  +
-     &                           inj_ex(ix+1,iy+1)*    wx *    wy   )
-            ety = (dd/inj_d)*sy*(inj_ey(ix  ,iy  )*(1.-wx)*(1.-wy) +
-     &                           inj_ey(ix+1,iy  )*    wx *(1.-wy) +
-     &                           inj_ey(ix  ,iy+1)*(1.-wx)*    wy  +
-     &                           inj_ey(ix+1,iy+1)*    wx *    wy   )
+            etx = (dd*inj_di)*sx*(inj_ex(ix  ,iy  ,inj_ij)*(1.-wx)*(1.-wy) +
+     &                            inj_ex(ix+1,iy  ,inj_ij)*    wx *(1.-wy) +
+     &                            inj_ex(ix  ,iy+1,inj_ij)*(1.-wx)*    wy  +
+     &                            inj_ex(ix+1,iy+1,inj_ij)*    wx *    wy   )
+            ety = (dd*inj_di)*sy*(inj_ey(ix  ,iy  ,inj_ij)*(1.-wx)*(1.-wy) +
+     &                            inj_ey(ix+1,iy  ,inj_ij)*    wx *(1.-wy) +
+     &                            inj_ey(ix  ,iy+1,inj_ij)*(1.-wx)*    wy  +
+     &                            inj_ey(ix+1,iy+1,inj_ij)*    wx *    wy   )
 
             ex(ip-ipmin+1) = ex(ip-ipmin+1) + etx*cos(atx)
             ey(ip-ipmin+1) = ey(ip-ipmin+1) + ety*cos(aty)
@@ -5885,7 +5931,7 @@ c         --- set temporaries
           rinj = rinject(ij)
           xinj = xinject(ij)
           yinj = yinject(ij)
-          zinj = zinject
+          zinj = zinject(ij)
 
 c         --- Calculate distance of particle from the emitting surface
           zz = zp(ip) - zinj
@@ -6040,7 +6086,7 @@ c         --- set temporaries
           rinj = rinject(ij)
           xinj = xinject(ij)
           yinj = yinject(ij)
-          zinj = zinject
+          zinj = zinject(ij)
 
 c         --- Calculate distance of particle from the emitting surface
           zz = zp(ip) - zinj

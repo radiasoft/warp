@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.54 $, $Date: 2002/04/25 16:49:58 $
+#@(#) File W3D.V, version $Revision: 3.55 $, $Date: 2002/04/26 16:11:38 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,11 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.54 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.55 $"/ # Current code version, set by CVS
+
+*********** Obsolete3d:
+inj_d                real /0/ # Obsolete, now see inj_d in top
+inj_f                real /0/ # Obsolete, now see inj_f in top
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -294,28 +298,20 @@ inj_ninj             integer  # Auto set to either 1 or ninject. Set to 1
 inj_ns               integer  # Auto set to either 1 or ns. Set to 1
                               # when only one species is being injected from
                               # each source.
-inj_d                real /1./
-   # Distance from surface where phi is fetched. In units of dz.
-inj_f                real /1./
-   # Scaling factor on the number of particles injected.
-inj_zstart           real /0./ [m]
-   # Starting location relative to the emitting surface location.
-inj_grid(0:inj_nx,0:inj_ny) _real [m]
+inj_grid(0:inj_nx,0:inj_ny,inj_ninj) _real [m]
    # Grid giving axial field grid location of injection sources in the lab frame
-inj_angl(0:inj_nx,0:inj_ny) _real
+inj_angl(0:inj_nx,0:inj_ny,inj_ninj) _real
    # Grid giving angle of injection sources for each transverse location
 inj_np(0:inj_nx,0:inj_ny,inj_ninj,inj_ns)   _real
    # Grid holding number of particles injected on the current time step.
 inj_prev(0:inj_nx,0:inj_ny,inj_ninj,inj_ns) _real
    # Grid holding number of particles injected on previous time step.
-inj_id(0:inj_nx,0:inj_ny)   _integer
-   # Grid holding the number of the injection source for each transvere cell
 inj_rho(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Surface charge density at the emitting surface.
-inj_phi(0:inj_nx,0:inj_ny)  _real
+inj_phi(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Electrostatic potential at the emitting surface.
-inj_ex(0:inj_nx,0:inj_ny)  _real
-inj_ey(0:inj_nx,0:inj_ny)  _real
+inj_ex(0:inj_nx,0:inj_ny,inj_ninj)  _real
+inj_ey(0:inj_nx,0:inj_ny,inj_ninj)  _real
 inj_area(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Inverse of the fraction of the grid cell's area within the emitting surface
 
