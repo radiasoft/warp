@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.22 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3585,8 +3585,8 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          rmin = srfrv_f(zz,rminofz,0,0)
-          rmax = srfrv_f(zz,rmaxofz,0,0)
+          rmin = srfrv_f(zz,rminofz,1,0)
+          rmax = srfrv_f(zz,rmaxofz,2,0)
           ximin = sqrt(max(0.,rmin**2 - yy**2))
           yimin = sqrt(max(0.,rmin**2 - xx**2))
           ximax = sqrt(max(0.,rmax**2 - yy**2))
@@ -3645,12 +3645,12 @@ c       --- conductor or within the max radius.
           zlower = max(zz-griddz,zmin)
           zhigher = min(zz+griddz,zmax)
 
-          rmin = srfrv_f(zzz,rminofz,0,0)
-          rmax = srfrv_f(zzz,rmaxofz,0,0)
-          rminlower = srfrv_f(zlower,rminofz,0,0)
-          rminhigher = srfrv_f(zhigher,rminofz,0,0)
-          rmaxlower = srfrv_f(zlower,rmaxofz,0,0)
-          rmaxhigher = srfrv_f(zhigher,rmaxofz,0,0)
+          rmin = srfrv_f(zzz,rminofz,1,0)
+          rmax = srfrv_f(zzz,rmaxofz,2,0)
+          rminlower = srfrv_f(zlower,rminofz,1,0)
+          rminhigher = srfrv_f(zhigher,rminofz,2,0)
+          rmaxlower = srfrv_f(zlower,rmaxofz,1,0)
+          rmaxhigher = srfrv_f(zhigher,rmaxofz,2,0)
           rfuzz = max(rmin,rmax,rminlower,rminhigher,rmaxlower,rmaxhigher)*1.e-12
 
           if (zz < zmin .or. rr < min(rminlower,rmin) .or.
@@ -3683,7 +3683,7 @@ c             --- that point.
                 if (abs(ri(2)) > abs(ri(1))) ii = 2
                 if (ri(1) == ri(2)) exit
                 zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
-                ri(ii) = srfrv_f(zi(ii),rminofz,0,0) - rr
+                ri(ii) = srfrv_f(zi(ii),rminofz,1,0) - rr
                 iterrf = iterrf + 1
               end do
               if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -3701,7 +3701,7 @@ c               --- 10% in the delta and slowing down the code.
                 znew = zlower
                 do iterrf=1,32
                   znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,0,0)
+                  rnew = srfrv_f(znew,rminofz,1,0)
                   if (rnew > rr) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew <= rr) then
@@ -3733,7 +3733,7 @@ c             --- that point.
                 if (abs(ri(2)) > abs(ri(1))) ii = 2
                 if (ri(1) == ri(2)) exit
                 zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
-                ri(ii) = srfrv_f(zi(ii),rmaxofz,0,0) - rr
+                ri(ii) = srfrv_f(zi(ii),rmaxofz,2,0) - rr
                 iterrf = iterrf + 1
               end do
               if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -3751,7 +3751,7 @@ c               --- 10% in the delta and slowing down the code.
                 znew = zlower
                 do iterrf=1,32
                   znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,0,0)
+                  rnew = srfrv_f(znew,rmaxofz,2,0)
                   if (rnew > rr) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew <= rr) then
@@ -3802,7 +3802,7 @@ c             --- that point.
                 if (abs(ri(2)) > abs(ri(1))) ii = 2
                 if (ri(1) == ri(2)) exit
                 zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
-                ri(ii) = srfrv_f(zi(ii),rminofz,0,0) - rr
+                ri(ii) = srfrv_f(zi(ii),rminofz,1,0) - rr
                 iterrf = iterrf + 1
               end do
               if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -3820,7 +3820,7 @@ c               --- 10% in the delta and slowing down the code.
                 znew = zhigher
                 do iterrf=1,32
                   znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,0,0)
+                  rnew = srfrv_f(znew,rminofz,1,0)
                   if (rnew <= rr) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew > rr) then
@@ -3851,7 +3851,7 @@ c             --- that point.
                 if (abs(ri(2)) > abs(ri(1))) ii = 2
                 if (ri(1) == ri(2)) exit
                 zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
-                ri(ii) = srfrv_f(zi(ii),rmaxofz,0,0) - rr
+                ri(ii) = srfrv_f(zi(ii),rmaxofz,2,0) - rr
                 iterrf = iterrf + 1
               end do
               if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
@@ -3869,7 +3869,7 @@ c               --- 10% in the delta and slowing down the code.
                 znew = zhigher
                 do iterrf=1,32
                   znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,0,0)
+                  rnew = srfrv_f(znew,rmaxofz,2,0)
                   if (rnew <= rr) then
                     ddz = -abs(ddz)*0.5
                   else if (rnew > rr) then
@@ -3925,8 +3925,8 @@ c near the surface, the distance has the correct sign.
         rr = sqrt(xx**2 + yy**2)
 
         if (zmin <= zz .and. zz <= zmax) then
-          rmin = srfrv_f(zz,rminofz,0,0)
-          rmax = srfrv_f(zz,rmaxofz,0,0)
+          rmin = srfrv_f(zz,rminofz,1,0)
+          rmax = srfrv_f(zz,rmaxofz,2,0)
           if (rr >= rmax) then 
             distance(i) = rr - rmax
           elseif (rr > rmin) then
@@ -3938,8 +3938,8 @@ c near the surface, the distance has the correct sign.
           endif
 
         elseif (zz < zmin) then
-          rmin = srfrv_f(zmin,rminofz,0,0)
-          rmax = srfrv_f(zmin,rmaxofz,0,0)
+          rmin = srfrv_f(zmin,rminofz,1,0)
+          rmax = srfrv_f(zmin,rmaxofz,2,0)
           if (rr < rmin) then
             distance(i) = sqrt((zmin-zz)**2 + (rr-rmin)**2)
           else if (rr <= rmax) then
@@ -3949,8 +3949,8 @@ c near the surface, the distance has the correct sign.
           endif
 
         else
-          rmin = srfrv_f(zmax,rminofz,0,0)
-          rmax = srfrv_f(zmax,rmaxofz,0,0)
+          rmin = srfrv_f(zmax,rminofz,1,0)
+          rmax = srfrv_f(zmax,rmaxofz,2,0)
           if (rr < rmin) then
             distance(i) = sqrt((zz-zmax)**2 + (rr-rmin)**2)
           else if (rr <= rmax) then
