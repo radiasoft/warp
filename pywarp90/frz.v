@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.4 $, $Date: 2001/08/21 23:28:05 $
+#@(#) File FRZ.V, version $Revision: 3.5 $, $Date: 2001/09/05 23:25:31 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.4 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.5 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -39,12 +39,14 @@ err1(0:nr,0:nz)           _real
 mgridrz_accuracy          real /1.e-8/  # average accuracy of multigrid solver
 mgridrz_ncmax             integer /100/ # maximum number of full multigrid 
                                         # cycles
-mgridrz_npre              integer /4/   # number of relaxations steps before 
+mgridrz_npre              integer /2/   # number of relaxations steps before 
                                         # coarsening, in multigrid solver
-mgridrz_npost             integer /4/   # number of relaxations steps after 
+mgridrz_npost             integer /2/   # number of relaxations steps after 
                                         # coarsening, in multigrid solver  
 mgridrz_ncycles           integer /2/   # number of multigrid cycles per level
-                                          
+mgridrz_nlevels_max       integer /100/ # maximum number of multigrid levels
+mgridrz_nrecurs_min       integer /3/   # minimum level for multigrid recursion
+mgridrz_sub_accuracy      real /1.e-4/  # average accuracy for a sublevel
 
 *********** FRZsubs:
 #  Callable subroutines in the FRZ package
