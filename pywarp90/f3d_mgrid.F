@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.79 $, $Date: 2004/10/22 15:49:47 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.80 $, $Date: 2004/11/02 01:32:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -199,7 +199,7 @@ c     --- If using residual correction form, need to save the original rho.
 c     --- Also setup parallel arrays.
       if (mgform == 2) then
 !$OMP SINGLE
-        allocate(rhosave(0:nx,0:ny,0:nz),res(-1:nx+1,-1:ny+1,-1:nz+1))
+        allocate(rhosave(0:nx,0:ny,0:nz),res(-1:nx+1,-1:ny+1,-2:nz+2))
 !$OMP END SINGLE
         rhosave = rho
 #ifdef MPIPARALLEL
@@ -241,11 +241,11 @@ c       --- correction form since it is operating on the error.
      &                  0,localbounds,mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,2,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,2,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -272,11 +272,11 @@ c       --- those planes are only set with the error of phi.
           if (localbounds(4) == 2) phi(:,:,-1) = phi(:,:,nz-1)
           if (localbounds(5) == 2) phi(:,:,nz+1) = phi(:,:,1)
 #else
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,
+          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,
+          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
@@ -378,35 +378,49 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
       return
       end
 c=============================================================================
-      real(kind=8) function mggetarraysum(nx,ny,nz,delt,delz,a,
-     &                                    izfsslave,npes,my_index)
+      module formggetarraysuminterface
+      contains
+      function mggetarraysum(nx,ny,nz,delt,delz,a,
+     &                       izfsslave,nzfsslave,npes,my_index)
+      real(kind=8),dimension(2):: mggetarraysum
       integer(ISZ):: nx,ny,nz,delt,delz,npes,my_index
-      integer(ISZ):: izfsslave(0:npes-1)
+      integer(ISZ):: izfsslave(0:npes-1),nzfsslave(0:npes-1)
       real(kind=8):: a(-delt:nx+delt,-delt:ny+delt,-delz:nz+delz)
 
 #ifdef MPIPARALLEL
 
       integer(ISZ):: i1,i2
-      real(kind=8):: sss(1)
+      real(kind=8):: sss(2)
 
-      i1 = 0
+      i1 = -delz
       if (my_index < npes-1) then
-        i2 = izfsslave(my_index+1) - izfsslave(my_index) - 1
+        i2 = izfsslave(my_index+1) - izfsslave(my_index) - 1 - delz
       else
-        i2 = nz
+        i2 = nz + delz
       endif
       sss(1) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
-      call parallelsumrealarray(sss,1)
-      mggetarraysum = sss(1)
+
+      if (my_index > 0) then
+        i1 = izfsslave(my_index-1) + nzfsslave(my_index-1) -
+     &       izfsslave(my_index) + 1 + delz
+      else
+        i1 = 0 - delz
+      endif
+      i2 = nz + delz
+      sss(2) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
+
+      call parallelsumrealarray(sss,2)
+      mggetarraysum = sss
 
 #else
 
-      mggetarraysum = sum(sum(sum(a,1),1),1)
+      mggetarraysum(1) = sum(sum(sum(a,1),1),1)
 
 #endif
 
       return
-      end
+      end function mggetarraysum
+      end module formggetarraysuminterface
 c=============================================================================
       RECURSIVE subroutine vcycle(mglevel,nx,ny,nz,nzfull,dx,dy,dz,
      &                            phi,rho,rstar,linbend,bendx,globalbounds,
@@ -415,6 +429,7 @@ c=============================================================================
      &                            lcndbndy,icndbndy,conductors,
      &                            my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
+      use formggetarraysuminterface
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
@@ -437,13 +452,13 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8):: dxsqi,dysqi,dzsqi
       logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
       integer(ISZ):: i
       real(kind=8):: ff
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse
       real(kind=8):: dxcoarsesqi,dycoarsesqi,dzcoarsesqi
-      integer(ISZ):: localbounds(0:5),localbounds2(0:5)
+      integer(ISZ):: localbounds(0:5),localboundsc(0:5)
       real(kind=8):: lzoffsetall(0:nslaves-1),rzoffsetall(0:nslaves-1)
       real(kind=8):: lzoffset,rzoffset
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -468,6 +483,9 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
      &                      whosendingright,izsendingright)
       if (izfsslave(my_index) > 0) localbounds(4) = -1
       if (izfsslave(my_index)+nz < nzfull) localbounds(5) = -1
+#else
+      izfsslave = 0
+      nzfsslave = nz
 #endif
 
 c     added by petermc, 26 Sep 2002
@@ -510,11 +528,15 @@ c       --- Get the residual on the current grid.
      &                mglevel,localbounds,mgparam,mgform,.false.,
      &                lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,2,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-2,1,2,
+     &                        my_index,nslaves,izfsslave,nzfsslave,
+     &                        whosendingleft,izsendingleft,
+     &                        whosendingright,izsendingright)
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,2,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -575,7 +597,7 @@ c         --- Add in resulting error.
           deallocate(phicoarse,rhocoarse)
         else
 
-          localbounds2 = globalbounds
+          localboundsc = globalbounds
 
 #ifdef MPIPARALLEL
 c         --- Find domains in coarser grid
@@ -600,11 +622,13 @@ c         --- Get processor with which to exchange data on coarse grid
      &                          lzoffsetall,rzoffsetall,
      &                          whosendingleftc,izsendingleftc,
      &                          whosendingrightc,izsendingrightc)
-          if (izfsslavec(my_index) > 0) localbounds2(4) = -1
-          if (izfsslavec(my_index) + nzcoarse < nzfullcoarse) localbounds2(5) = -1
+          if (izfsslavec(my_index) > 0) localboundsc(4) = -1
+          if (izfsslavec(my_index) + nzcoarse < nzfullcoarse) localboundsc(5) = -1
 #else
           lzoffset = 0.
           rzoffset = 0.
+          izfsslavec = 0
+          nzfsslavec = nzcoarse
 #endif
 
 c         --- Alloate new work space
@@ -618,13 +642,13 @@ c         --- routine.
           ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzcoarsesqi)
           call restrict3d(nx,ny,nz,nzfull,res,
      &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
-     &                    localbounds2,localbounds,lzoffset,rzoffset)
+     &                    localbounds,localboundsc,lzoffset,rzoffset)
 #ifdef MPIPARALLEL
-          call mgexchange_rho(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
-     &                        my_index,nslaves,izfsslavec,nzfsslavec,
-     &                        lzoffsetall,rzoffsetall,
-     &                        whosendingleftc,izsendingleftc,
-     &                        whosendingrightc,izsendingrightc)
+c         call mgexchange_rho(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
+c    &                        my_index,nslaves,izfsslavec,nzfsslavec,
+c    &                        lzoffsetall,rzoffsetall,
+c    &                        whosendingleftc,izsendingleftc,
+c    &                        whosendingrightc,izsendingrightc)
 #endif
 
 c         --- Continue at the next coarsest level.
@@ -640,7 +664,7 @@ c         --- Add in resulting error.
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
      &                  localbounds,lzoffset,rzoffset)
 #ifdef MPIPARALLEL
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -680,7 +704,7 @@ c=============================================================================
      &                      ff,bounds)
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nxcoarse,nycoarse
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
       real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nz)
       real(kind=8):: ff
       integer(ISZ):: bounds(0:5)
@@ -771,7 +795,7 @@ c=============================================================================
      &                      ff,bounds,boundscoarse,lzoffset,rzoffset)
       integer(ISZ):: nx,ny,nz,nzfull
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
       real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse)
       real(kind=8):: ff
       integer(ISZ):: bounds(0:5)
@@ -801,8 +825,8 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(1) == 1) ixcoarsemax = nxcoarse
       if (bounds(2) >  0) iycoarsemin = 0
       if (bounds(3) == 1) iycoarsemax = nycoarse
-      if (bounds(4) == 0 .or. lzoffset > 0.) izcoarsemin = 1
-      if (bounds(5) == 0 .or. rzoffset > 0.) izcoarsemax = nzcoarse - 1
+      if (bounds(4) == 0) izcoarsemin = 1
+      if (bounds(5) == 0) izcoarsemax = nzcoarse - 1
 
       dx = 1.*nx/nxcoarse
       dy = 1.*ny/nycoarse
@@ -861,8 +885,8 @@ c     --- Set appropriate boundary values
       if (bounds(3) == 0) rhocoarse(:,nycoarse,:) = 0.
       if (bounds(3) == 2) rhocoarse(:,nycoarse,:) = rhocoarse(:,0,:)
 
-      if (boundscoarse(4) == 0 .or. lzoffset > 0.) rhocoarse(:,:,0) = 0.
-      if (boundscoarse(5) == 0 .or. rzoffset > 0.) rhocoarse(:,:,nzcoarse) = 0.
+      if (boundscoarse(4) == 0) rhocoarse(:,:,0) = 0.
+      if (boundscoarse(5) == 0) rhocoarse(:,:,nzcoarse) = 0.
 
       return
       end
@@ -1102,11 +1126,11 @@ c     --- do loop to cover even and odd points
         if (bounds(4) == 2) phi(:,:,-1) = phi(:,:,nz-1)
         if (bounds(5) == 2) phi(:,:,nz:nz+1) = phi(:,:,0:1)
 #else
-        call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,
+        call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,1,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,
+        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,1,
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
 #endif
@@ -1116,7 +1140,7 @@ c     --- end of loop over even and odd points
 
 #ifdef MPIPARALLEL
 c         --- Exchange phi in the z guard planes
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,0,
+          call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,0,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
@@ -1647,7 +1671,7 @@ c=============================================================================
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nz,mglevel,mgform
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
       logical(ISZ):: mgform2init
 
 c Set conductor points to the desired potential.
@@ -1943,7 +1967,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
       real(kind=8):: rdx2,rdy2,rdz2,mgparam
       integer(ISZ):: bounds(0:5),cstart(0:100),mgform,icndbndy
       logical(ISZ):: mgform2init
@@ -2240,10 +2264,10 @@ c=============================================================================
      &                    mglevel,bounds,mgparam,mgform,mgform2init,
      &                    lcndbndy,icndbndy,conductors)
       use ConductorTypemodule
-      integer(ISZ):: nx,ny,nz,nzfull,my_index
+      integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
       integer(ISZ):: mglevel,bounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgform
@@ -2551,9 +2575,9 @@ c       --- Set the grid parameters for this level
         dx1 = dx*conductors%levellx(il)
         dy1 = dy*conductors%levelly(il)
         dz1 = dz*conductors%levellz(il)
-        nx1 = nx/conductors%levellx(il)
-        ny1 = ny/conductors%levelly(il)
-        nz1 = nz/conductors%levellz(il)
+        nx1 = nint(nx/conductors%levellx(il))
+        ny1 = nint(ny/conductors%levelly(il))
+        nz1 = conductors%levelnz(il)
         nzfull1 = nzfull/conductors%levellx(il)
         zmmin1 = zmminglobal + dz1*conductors%leveliz(il)
         localb0 = globalb0
@@ -2641,9 +2665,9 @@ c       --- Set the grid parameters for this level
         dx1 = dx*conductors%levellx(il)
         dy1 = dy*conductors%levelly(il)
         dz1 = dz*conductors%levellz(il)
-        nx1 = nx/conductors%levellx(il)
-        ny1 = ny/conductors%levelly(il)
-        nz1 = nz/conductors%levellz(il)
+        nx1 = nint(nx/conductors%levellx(il))
+        ny1 = nint(ny/conductors%levelly(il))
+        nz1 = conductors%levelnz(il)
         zmmin1 = zmminglobal + dz1*conductors%leveliz(il)
         zmmax1 = zmmin1 + dz1*nz1
         ix_axis1 = ix_axis/conductors%levellx(il)
@@ -2717,9 +2741,9 @@ c       --- Set the grid parameters for this level
         dx1 = dx*conductors%levellx(il)
         dy1 = dy*conductors%levelly(il)
         dz1 = dz*conductors%levellz(il)
-        nx1 = nx/conductors%levellx(il)
-        ny1 = ny/conductors%levelly(il)
-        nz1 = nz/conductors%levellz(il)
+        nx1 = nint(nx/conductors%levellx(il))
+        ny1 = nint(ny/conductors%levelly(il))
+        nz1 = conductors%levelnz(il)
         zmmin1 = zmminglobal + dz1*conductors%leveliz(il)
         zmmax1 = zmmin1 + dz1*nz1
         ix_axis1 = ix_axis/conductors%levellx(il)
@@ -2793,9 +2817,9 @@ c       --- Set the grid parameters for this level
         dx1 = dx*conductors%levellx(il)
         dy1 = dy*conductors%levelly(il)
         dz1 = dz*conductors%levellz(il)
-        nx1 = nx/conductors%levellx(il)
-        ny1 = ny/conductors%levelly(il)
-        nz1 = nz/conductors%levellz(il)
+        nx1 = nint(nx/conductors%levellx(il))
+        ny1 = nint(ny/conductors%levelly(il))
+        nz1 = conductors%levelnz(il)
         zmmin1 = zmminglobal + dz1*conductors%leveliz(il)
         zmmax1 = zmmin1 + dz1*nz1
         ix_axis1 = ix_axis/conductors%levellx(il)
@@ -2853,9 +2877,9 @@ c     --- Call the work routine for each level
         dx1 = dx*conductors%levellx(il)
         dy1 = dy*conductors%levelly(il)
         dz1 = dz*conductors%levellz(il)
-        nx1 = nx/conductors%levellx(il)
-        ny1 = ny/conductors%levelly(il)
-        nz1 = nz/conductors%levellz(il)
+        nx1 = nint(nx/conductors%levellx(il))
+        ny1 = nint(ny/conductors%levelly(il))
+        nz1 = conductors%levelnz(il)
         call checkconductors_work(conductors%interior,
      &                            conductors%evensubgrid,conductors%oddsubgrid,
      &                            nx1,ny1,nz1,dx1,dy1,dz1,il)
