@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.79 $, $Date: 2002/11/06 01:37:02 $
+c@(#) File W3D.M, version $Revision: 3.80 $, $Date: 2002/11/06 01:46:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -64,6 +64,7 @@ c=============================================================================
       use Damped_eom
       use Hist
       use InjectVars
+      use InjectVars3d
       use FRZmgrid
 
 c  Invoked by the GENERATE command, it sets up the problem
