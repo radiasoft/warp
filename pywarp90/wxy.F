@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.52 $, $Date: 2005/03/08 00:47:45 $
+c@(#) File WXY.M, version $Revision: 3.53 $, $Date: 2005/03/24 00:16:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -418,16 +418,19 @@ c  Note that dt is only changed if the grid frame velocity was changed.
       zbeam = zbeam0
 
 c  set timestep counter, time, and advance grid frame
+c  Note that at the end of padvncxy, zbeam was set equal to zgrid.
+c  With zgridprv=zbeam, the user only needs to set zbeam. zgrid and zgridprv
+c  are then set from that.
 
       it = it + 1
       time = time + dt
       if (lgridqnt) then
 c       --- zgrid is integer number of dz's
-        zgridprv = zgrid
+        zgridprv = zbeam
         zgrid = int((zbeam + dt*vbeamfrm + zcorrection)/dz + .5)*dz
       else
 c       --- zgrid is the same as the beam frame
-        zgridprv = zgrid
+        zgridprv = zbeam
         zgrid = zbeam + dt*vbeamfrm + zcorrection
       endif
       call stepid (it, time, zgrid)
@@ -1332,7 +1335,7 @@ c       --- Advance beam frame location using the nominal beam frame velocity.
 
 c       --- zgridprv needs to be updated for the "synchv" step
 c       --- Note that zgridprv is also set at the beginning of wxyexe
-        zgridprv = zgrid
+        zgridprv = zbeam
 
       endif
 
