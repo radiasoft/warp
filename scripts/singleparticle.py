@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.5 2001/08/24 21:57:57 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.6 2001/09/06 23:53:52 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -48,6 +48,7 @@ Available methods...
                     maxsteps=1000,savedata=1,zerophi=1,resettime=0,js=0):
     global _first_instance
     # --- Do some global initialization
+    top.allspecl = true
     self.js = js
     if _first_instance:
       top.ins[self.js] = top.npmax_s[self.js] + 1
