@@ -17,11 +17,17 @@ class AMRTree(Visualizable):
     """
   Adaptive Mesh Refinement class.
     """
-    def __init__(self,MRfact=2,ntransit=2):
-      self.MRfact  = MRfact
-      self.ntransit = ntransit
-      self.nblocks  = 0
-      self.colors=['yellow','red','blue','green','cyan','magenta','white']
+    def __init__(self):
+      self.nblocks      = 0
+      self.f            = None
+      self.nbcells_user = None
+      if getcurrpkg()=='w3d' and (w3d.solvergeom==w3d.XYZgeom or w3d.solvergeom==w3d.XYZgeomMR):
+        w3d.solvergeom = w3d.XYZgeomMR
+        self.blocks=MRBlock()     
+      self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
+      self.conductors   = []
+      self.conds_installed_onbasegrid = []
+      installbeforefs(self.generate)
         
     def getabsgrad(self,f,dx,dy,dz):
       """
@@ -139,13 +145,14 @@ class AMRTree(Visualizable):
       return MRfact**int(log(fg)/log(dim**MRfact))
 #      return b**int(log(fg)/log(b**dim))
 
-    def getnbcells(self,f,dx,dy,dz,Rdens,threshold,Rgrad,MRfact=2,l_removesinglecells=1,lmax=4):
+    def getnbcells(self,f,dx,dy,dz,Rdens,threshold,Rgrad,MRfact=2,lmax=4):
+      if maxnd(abs(self.f))==0: return None
       fg1 = self.getnbcell_edges(f,dx,dy,dz,threshold,Rgrad)
       fg2 = self.getnbcell_rho(f,Rdens,MRfact)
       f = int(where(fg1>fg2,fg1,fg2))
       # next loop removes isolated blocks of lmax cells or less
       # this needs improvements and is only 2-D for now
-      if(l_removesinglecells and rank(f)==2):
+      if(lmax>0 and rank(f)==2):
         nr=shape(f)[0]
         nz=shape(f)[1]
         t = fzeros([nr,nz])
@@ -468,35 +475,99 @@ class AMRTree(Visualizable):
         g.loc_part=g.gid[0]
         g.loc_part_fd=g.gid[0]
 
-    def generate(self,f=None,Rdens=2,Rgrad=None,threshold=0.8,r=[0.8],l_removesinglecells=1,lmax=4):
-      if f is None:
+    def generate(self):
+      """
+    Generate AMR blocks based on values and gradients of self.f. If self.f is None, its default is 
+    the charge density. If self.f is null, an error message is raised.
+      """
+      # return if not time to generate a new set of blocks
+      if(top.it%w3d.AMRgenerate_frequency<>0):return
+      print 'generate grids at it = ',top.it
+      
+      # check if w3d.AMRlevels set properly and set defaut variables
+      if w3d.AMRlevels<=0: raise('Error: AMRTree.generate called with w3d.AMRlevels<=0/')
+      self.MRfact   = w3d.AMRrefinement
+      self.ntransit = w3d.AMRtransit
+      
+      # generate nbcells from self.f or use self.nbcells_user if provided
+      if self.nbcells_user==None:
+        l_nbcellsnone=1
+        # set self.f to the charge density array by default
+        if self.f is None:
+          if w3d.solvergeom==w3d.XYZgeomMR:
+            self.f = self.blocks.rho
+          else:
+            self.f = frz.basegrid.rho
+          
+        # set cell dimensions of mother grid according to geometry
+        dx = w3d.dx
+        dz = w3d.dz
+        if w3d.solvergeom==w3d.XYZgeomMR or w3d.solvergeom==w3d.XYgeom:
+          dy = w3d.dy
+        if w3d.solvergeom==w3d.XZgeom or w3d.solvergeom==w3d.RZgeom:
+          dy = w3d.dz
+        
+        # set parameters controlling the automatic generation of blocks        
+        if w3d.AMRmaxlevel_density ==-1: w3d.AMRmaxlevel_density =w3d.AMRlevels
+        if w3d.AMRmaxlevel_gradient==-1: w3d.AMRmaxlevel_gradient=w3d.AMRlevels
+        self.Rdens = w3d.AMRrefinement**w3d.AMRmaxlevel_density
+        self.Rgrad = w3d.AMRrefinement**w3d.AMRmaxlevel_gradient
+        self.threshold = w3d.AMRthreshold_gradient
         if w3d.solvergeom==w3d.XYZgeomMR:
-          f = w3d.rho
+          self.maxcells_isolated_blocks = w3d.AMRmaxsize_isolated_blocks**3
         else:
-          f = frz.basegrid.rho
-      dx = w3d.dx
-      dz = w3d.dz
-      if w3d.solvergeom==w3d.XYZgeomMR or w3d.solvergeom==w3d.XYgeom:
-        dy = w3d.dy
-      if w3d.solvergeom==w3d.XZgeom or w3d.solvergeom==w3d.RZgeom:
-        dy = w3d.dz
-      self.Rdens=Rdens
-      if Rgrad is None:
-        self.Rgrad = Rdens
+          self.maxcells_isolated_blocks = w3d.AMRmaxsize_isolated_blocks**2
+        self.nbcells=self.getnbcells(self.f,dx,dy,dz,self.Rdens,self.threshold,self.Rgrad,
+                                     MRfact=self.MRfact,lmax=self.maxcells_isolated_blocks)
+        nbcells=self.nbcells
       else:
-        self.Rgrad = Rgrad
-      self.threshold = threshold
-      if(maxnd(abs(f))==0.):
-        raise('Error in AMRTree.generate: f is null.')
-      self.nbcells=self.getnbcells(f,dx,dy,dz,self.Rdens,self.threshold,self.Rgrad,
-                                   MRfact=self.MRfact,l_removesinglecells=l_removesinglecells,lmax=lmax)
-      self.setlist(self.nbcells[:-1,:-1],r,2,true)
-      self.setblocks()
+        nbcells=self.nbcells_user
+                                   
+      if nbcells is not None:
+        # generate list of blocks from array nbcells
+        self.setlist(nbcells[:-1,:-1],w3d.AMRcoalescing,self.MRfact,true)
+ 
+        # allocate blocks from list self.listblocks
+        self.setblocks()
+      
+        # clear inactive regions in each blocks
+        if w3d.solvergeom==w3d.XYZgeomMR:
+          self.blocks.clearinactiveregions(self.nbcells)
+        else:
+          g = frz.basegrid
+          adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
+      
+      # set conductor data
       if w3d.solvergeom==w3d.XYZgeomMR:
-        self.blocks.clearinactiveregions(self.nbcells)
+        pass # to be done
       else:
-        g = frz.basegrid
-        adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
+        # this loop is needed so that the grid are correctly registered when installing conductors
+        if self.nblocks>0:
+          g = frz.basegrid
+          for idummy in range(frz.ngrids-1):
+            rdummy=g.nr
+            try:    
+                g=g.next
+            except:
+                try:
+                    g=g.down
+                except:
+                    pass
+        for cond in self.conductors:
+          g = frz.basegrid
+          for condbase in self.conds_installed_onbasegrid:
+            if cond == condbase:
+              try:
+                g = g.down
+              except:
+                g = None
+              break  
+          if g is not None: 
+            cond.install(g)
+          if g==frz.basegrid:self.conds_installed_onbasegrid += [cond] 
+        get_cond_rz(1)
+      
+      # load charge density on new set of blocks
       loadrho()
 
     def draw_blocks2d(self,level=None,color='black',width=1.,allmesh=0,f=1):
@@ -584,7 +655,8 @@ def draw_mesh(nx,ny,xmin,ymin,dx,dy,color='black',width=1):
 def plphirz(grid=None,which='phi',cmin=None,cmax=None,
                  border=1,bordercolor='yellow',borderwidth=1,
                  mesh=0,meshcolor='white',meshwidth=1,meshr=1,
-                 siblings=1,children=1,firstcall=1,level=1,maxlevel=0,delay=0):
+                 siblings=1,children=1,firstcall=1,level=1,maxlevel=0,
+                 delay=0,transit=0):
     if grid is None:
         g = frz.basegrid
     else:
@@ -594,12 +666,13 @@ def plphirz(grid=None,which='phi',cmin=None,cmax=None,
     rmin = g.rmin-0.5*g.dr
     zmax = zmin+(g.nz+1)*g.dz
     rmax = rmin+(g.nr+1)*g.dr
+    if not transit:
+      zmin = zmin+g.transit_min_z*g.dz
+      zmax = zmax-g.transit_max_z*g.dz
+      rmin = rmin+g.transit_min_r*g.dr
+      rmax = rmax-g.transit_max_r*g.dr
     if(which=='phi'):
       f = g.phi[g.nguardx:-g.nguardx,g.nguardz:-g.nguardz]
-#      zmin = zmin-g.nguardz*g.dz
-#      zmax = zmax+g.nguardz*g.dz
-#      rmin = rmin-g.nguardx*g.dr
-#      rmax = rmax+g.nguardx*g.dr
     if(which=='rho'):
       f = g.rho
     if(which=='lp'):
