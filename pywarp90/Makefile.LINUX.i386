@@ -81,7 +81,8 @@ static: $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) config.o
 	pgf90 -Mnomain -o pywarp $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o $(RNGOBJ) /home/dave/Python-2.1/lib/python2.1/site-packages/*/*.so \
 	-lm $(XLIB) -lX11 $(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) \
 	-ldl -lpthread -lutil -ldb1 -Wl,-export-dynamic
-config.o:config.c
+config.o:config.c.$(PYVERS)
+	cp config.c.$(PYVERS) config.c
 	$(CC) -c config.c $(INCLUDE)
 $(RNGOBJ):$(RNGSRC)
 	$(CC) -O -c $(RNGSRC)
