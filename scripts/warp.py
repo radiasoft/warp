@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.36 2002/03/07 00:30:30 dave Exp $"
+warp_version = "$Id: warp.py,v 1.37 2002/04/30 21:34:34 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -337,8 +337,7 @@ package. Only w3d and wxy have field solves defined.
     if top.inject > 0:
       try:
         # --- This routine is not defined in pywarp77
-        getinj_phi(w3d.nx,w3d.ny,w3d.nz,w3d.phi[:,:,1:-1],
-                   w3d.dx,w3d.dy,w3d.dz,w3d.xmmin,w3d.ymmin)
+        getinj_phi()
       except NameError:
         pass
 
@@ -588,6 +587,7 @@ def printtimers(file=None):
 # --- projections of particles, histories, as well as some line plots.
 # --- Import these here near the end so the functions defined above are
 # --- included in their dictionaries.
+from particles import *
 from warpplots import *
 from histplots import *
 from pzplots import *
