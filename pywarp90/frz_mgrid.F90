@@ -152,7 +152,7 @@ INTEGER(ISZ) :: i,j
   grids%npost = mgridrz_npost
   grids%ncycles = mgridrz_ncycles
   grids%ncmax = mgridrz_ncmax
-  grids%npmin = 1
+  grids%npmin = mgridrz_levels_min
   grids%phi=0.
   grids%rho=0.
   grids%guard_min_r = 0
@@ -254,7 +254,7 @@ REAL(8) :: dr,dz,rmin,zmin
   newgrid%npost = basegrid%npost
   newgrid%ncycles = basegrid%ncycles
   newgrid%ncmax = basegrid%ncmax
-  newgrid%npmin = 1
+  newgrid%npmin = basegrid%npmin
   newgrid%guard_min_r = guard_min_r
   newgrid%guard_max_r = guard_max_r
   newgrid%guard_min_z = guard_min_z
@@ -2453,9 +2453,9 @@ nb_iters=j
 IF(j<grid%ncmax.and..not.do_calc.and.maxerr >= accuracy) nb_iters=grid%ncmax
 call updateguardcellsrz(f=grid%phi,level=nlevels)
 
-!IF(nrecurs_min/=npmin) then
-!  WRITE(0,'("WARNING multigridrz, nrecurs_min = ",i2,", npmin = ",i2,". Setting nrecurs_min = ",i2,".")') nrecurs_min, npmin, npmin
-!  nrecurs_min = npmin
+!IF(levels_min/=npmin) then
+!  WRITE(0,'("WARNING multigridrz, levels_min = ",i2,", npmin = ",i2,". Setting levels_min = ",i2,".")') levels_min, npmin, npmin
+!  levels_min = npmin
 !END if
 
 DEALLOCATE(uold)
@@ -2534,7 +2534,7 @@ INTEGER(ISZ) :: npreinit, npostinit
     write(0,*) "mgparam     = ",grid%mgparam
     write(0,*) "npre        = ",grid%npre
     write(0,*) "npost       = ",grid%npost
-    write(0,*) "nrecurs_min = ",grid%npmin
+    write(0,*) "levels_min  = ",grid%npmin
   END if
 
   IF(associated(grid%down)) call find_mgparam_rz_1grid(grid%down)
@@ -2675,7 +2675,7 @@ REAL(8), EXTERNAL :: wranf
 END function ffind_mgparam
 
 function findnrecursmin(grid,prevtime)
-!Optimize nrecurs_min, minimizing the fieldsolve time.
+!Optimize levels_min, minimizing the fieldsolve time.
 implicit none
 REAL(8) :: findnrecursmin
 TYPE(grdptr) :: grid
@@ -2692,7 +2692,7 @@ REAL(8) :: nexttime, prvtime
     grid%npmin = grid%npmin + 1
     nexttime = time_field_solve(grid)
     write(0,*) "Field solve time = ",nexttime
-    write(0,*) "frz.mgridrz_nrecurs_min = ",grid%npmin
+    write(0,*) "frz.mgridrz_levels_min = ",grid%npmin
     IF(nb_iters == grid%ncmax) prvtime=2*nexttime
     IF(nexttime > prvtime) then
       ! --- Reset the values to the previous ones (which were the best)
