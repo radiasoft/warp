@@ -26,7 +26,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.3 2002/06/26 00:55:57 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.4 2002/07/16 00:58:56 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -368,6 +368,8 @@ Installs the data into the WARP database
       f3d.ocvolt[no:no+nn] = take(self.vs[0,:],ii)
       f3d.ocnumb[no:no+nn] = take(self.ns[0,:],ii)
       f3d.iocndlevel[no:no+nn] = take(self.mglevel,ii)
+    if(w3d.solvergeom == w3d.RZgeom):
+      frz.install_conductors_rz()  
 
   def __neg__(self):
     "Delta not operator."
@@ -442,11 +444,17 @@ Call installdata() to install the data into the WARP database.
     # --- Calculate dx, dy, and dz in case this is called before
     # --- the generate.
     self.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
-    self.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
+    if(w3d.solvergeom==w3d.RZgeom):
+      self.dy = self.dx
+    else:
+      self.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
     self.dz = (w3d.zmmax - w3d.zmmin)/w3d.nz
 
-    if top.fstype in [7,11]:
-      setmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz)
+    if top.fstype in [7,11,10]:
+      if top.fstype in [7,11]:
+        setmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz)
+      if top.fstype == 10:
+        init_base(self.nx,self.nz,self.dx,self.dz,0.,self.zmin)
       self.mglevels = f3d.mglevels
       self.mglevelsnx = f3d.mglevelsnx[:f3d.mglevels]
       self.mglevelsny = f3d.mglevelsny[:f3d.mglevels]
@@ -575,8 +583,8 @@ Cylinder class
     Assembly.__init__(self,voltage,xcent,ycent,zcent)
     self.radius = radius
     self.length = length
-    self.theta = theta
-    self.phi = phi
+    self.theta  = theta
+    self.phi    = phi
     self.condid = condid
 
   def distance(self,ix,iy,iz,xx,yy,zz):
