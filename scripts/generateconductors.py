@@ -74,7 +74,7 @@ if not lparallel:
   import pyOpenDX
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.59 2004/05/15 01:21:19 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.60 2004/05/19 16:29:41 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -156,6 +156,11 @@ Should never be directly created by the user.
     kwlist.append(self.__dict__['zcent'])
     return kwlist
 
+  def getextent(self,mins,maxs):
+    return ConductorExtent(
+               [self.xcent+mins[0],self.ycent+mins[1],self.zcent+mins[2]],
+               [self.xcent+maxs[0],self.ycent+maxs[1],self.zcent+maxs[2]])
+
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
                    generator=self.generatorf,kwlist=self.getkwlist())
@@ -177,7 +182,7 @@ Should never be directly created by the user.
                        kwlist=self.getkwlist())
     return result
 
-  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
+  def visualize(self,display=1,**kw):
     pass  # virtual function
 
   # Operations which return an Assembly expression.
@@ -210,6 +215,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
   def __init__(self,l):
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid)
     self.left = l
+  def getextent(self):
+    return (-self.left.getextent())
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     return (-(self.left.griddistance(ix,iy,iz,xx,yy,zz)))
   def distance(self,xx,yy,zz):
@@ -218,8 +225,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
     return (-(self.left.isinside(xx,yy,zz)))
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (-(self.left.intercept(xx,yy,zz,vx,vy,vz)))
-  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
-    self.left.visualize(xmin,xmax,ymin,ymax)
+  def visualize(self,display=1,**kw):
+    self.left.visualize(display=display,kwdict=kw)
 
 
 class AssemblyAnd(Assembly):
@@ -230,6 +237,8 @@ AssemblyAnd class.  Represents 'and' of assemblies.
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid)
     self.left = l
     self.right = r
+  def getextent(self):
+    return (self.left.getextent()*self.right.getextent())
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.griddistance(ix,iy,iz,xx,yy,zz) *
             self.right.griddistance(ix,iy,iz,xx,yy,zz))
@@ -242,9 +251,12 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) *
             self.right.intercept(xx,yy,zz,vx,vy,vz))
-  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
-    self.left.visualize(xmin,xmax,ymin,ymax)
-    self.right.visualize(xmin,xmax,ymin,ymax)
+  def visualize(self,display=1,**kw):
+    self.left.visualize(display=0,kwdict=kw)
+    self.right.visualize(display=0,kwdict=kw)
+    v = pyOpenDX.DXCollection(self.left,self.right)
+    if display: pyOpenDX.DXImage(v)
+    else:       self.dxobject = v
 
 
 class AssemblyPlus(Assembly):
@@ -255,6 +267,8 @@ AssemblyPlus class.  Represents 'or' of assemblies.
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid)
     self.left = l
     self.right = r
+  def getextent(self):
+    return (self.left.getextent()+self.right.getextent())
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.griddistance(ix,iy,iz,xx,yy,zz) +
             self.right.griddistance(ix,iy,iz,xx,yy,zz))
@@ -267,9 +281,12 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) +
             self.right.intercept(xx,yy,zz,vx,vy,vz))
-  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
-    self.left.visualize(xmin,xmax,ymin,ymax)
-    self.right.visualize(xmin,xmax,ymin,ymax)
+  def visualize(self,display=1,**kw):
+    self.left.visualize(display=0,kwdict=kw)
+    self.right.visualize(display=0,kwdict=kw)
+    v = pyOpenDX.DXCollection(self.left,self.right)
+    if display: pyOpenDX.DXImage(v)
+    else:       self.dxobject = v
 
 
 class AssemblyMinus(Assembly):
@@ -280,6 +297,8 @@ AssemblyMinus class.
     Assembly.__init__(self,0.,l.xcent,l.ycent,l.zcent,l.condid)
     self.left = l
     self.right = r
+  def getextent(self):
+    return (self.left.getextent()-self.right.getextent())
   def griddistance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.griddistance(ix,iy,iz,xx,yy,zz) -
             self.right.griddistance(ix,iy,iz,xx,yy,zz))
@@ -292,9 +311,34 @@ AssemblyMinus class.
   def intercept(self,xx,yy,zz,vx,vy,vz):
     return (self.left.intercept(xx,yy,zz,vx,vy,vz) -
             self.right.intercept(xx,yy,zz,vx,vy,vz))
-  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
-    self.left.visualize(xmin,xmax,ymin,ymax)
-    self.right.visualize(xmin,xmax,ymin,ymax)
+  def visualize(self,display=1,**kw):
+    self.left.visualize(display=0,kwdict=kw)
+    self.right.visualize(display=0,kwdict=kw)
+    v = pyOpenDX.DXCollection(self.left,self.right)
+    if display: pyOpenDX.DXImage(v)
+    else:       self.dxobject = v
+
+##############################################################################
+class ConductorExtent:
+  """
+Class to hold the extent of a conductor. This is somewhat overkill for a
+class, but it does provide a nice way of putting this into one spot.
+  """
+  def __init__(self,mins,maxs):
+    self.mins = mins
+    self.maxs = maxs
+  def __neg__(self):
+    "This one is doesn't help much"
+    return ConductorExtent([-largepos,-largepos,-largepos],
+                           [+largepos,+largepos,+largepos])
+  def __add__(self,right):
+    return ConductorExtent(minimum(self.mins,right.mins),
+                           maximum(self.maxs,right.maxs))
+  def __mul__(self,right):
+    return ConductorExtent(maximum(self.mins,right.mins),
+                           minimum(self.maxs,right.maxs))
+  def __sub__(self,right):
+    return ConductorExtent(self.mins,self.maxs)
 
 ##############################################################################
 
@@ -1154,6 +1198,11 @@ Plane class
     self.zsign = zsign
     self.theta = theta
     self.phi = phi
+  def getextent(self):
+    if self.theta == 0. and self.phi == 0.: z1,z2 = self.zcent,self.zcent
+    else:                                   z1,z2 = -largepos,+largepos
+    return ConductorExtent([-largepos,-largepos,z1],
+                           [+largepos,+largepos,z2])
 
 #============================================================================
 class Box(Assembly):
@@ -1172,6 +1221,10 @@ Box class
     self.xsize = xsize
     self.ysize = ysize
     self.zsize = zsize
+  def getextent(self):
+    return Assembly.getextent(self,
+                          [-self.xsize/2.,-self.ysize/2.,-self.zsize/2.],
+                          [+self.xsize/2.,+self.ysize/2.,+self.zsize/2.])
 
 #============================================================================
 class Cylinder(Assembly):
@@ -1195,6 +1248,11 @@ Cylinder class
     self.length = length
     self.theta  = theta
     self.phi    = phi
+
+  def getextent(self):
+    # --- This is the easiest thing to do without thinking.
+    ll = sqrt(self.radius**2 + (self.length/2.)**2)
+    return Assembly.getextent(self,[-ll,-ll,-ll],[+ll,+ll,+ll])
 
 #============================================================================
 class Cylinders(Assembly):
@@ -1236,6 +1294,14 @@ Cylinders class for a list of cylinders
     self.ycent  = self.ycent*ones(self.ncylinders)
     self.zcent  = self.zcent*ones(self.ncylinders)
 
+  def getextent(self):
+    return ConductorExtent([min(self.xcent-self.radius),
+                            min(self.ycent-self.radius),
+                            min(self.zcent-self.length/2.)],
+                           [max(self.xcent-self.radius),
+                            max(self.ycent-self.radius),
+                            max(self.zcent-self.length/2.)])
+
 #============================================================================
 class ZCylinder(Assembly):
   """
@@ -1253,6 +1319,21 @@ Cylinder aligned with z-axis
                            zcylinderintercept)
     self.radius = radius
     self.length = length
+
+  def getextent(self):
+    return Assembly.getextent(self,[-self.radius,-self.radius,-self.length/2.],
+                                   [+self.radius,+self.radius,+self.length/2.])
+
+  def visualize(self,display=1,**kw):
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=0.,rendzmax=0.,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=[self.radius,self.radius],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
 
 #============================================================================
 class ZRoundedCylinder(Assembly):
@@ -1274,6 +1355,31 @@ Cylinder with rounded corners aligned with z-axis
     self.length = length
     self.radius2 = radius2
 
+  def getextent(self):
+    return Assembly.getextent(self,[-self.radius,-self.radius,-self.length/2.],
+                                   [+self.radius,+self.radius,+self.length/2.])
+
+  def visualize(self,display=1,**kw):
+    rr = [self.radius-self.radius2,self.radius,
+          self.radius,self.radius-self.radius2],
+    zz = [-self.length/2.,-self.length/2.+self.radius2,
+          +self.length/2.-self.radius2,+self.length/2.]
+    rad = [self.radius2,None,self.radius2]
+    zc = [None,None,None]
+    rc = [None,None,None]
+    if zz[1] > zz[2]:
+      zz[1] = 0.5*(zz[1] + zz[2])
+      zz[2] = zz[1]
+      rr[1:3] = sqrt(self.radius2**2 - (self.radius2 - self.length/2.)**2)
+    Srfrv.checkarcs(self,zz,rr,rad,zc,rc)
+    
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=0.,rendzmax=0.,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
 
 #============================================================================
 class ZCylinderOut(Assembly):
@@ -1292,6 +1398,21 @@ Outside of a cylinder aligned with z-axis
                       zcylinderoutintercept)
     self.radius = radius
     self.length = length
+
+  def getextent(self):
+    return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
+                                   [+largepos,+largepos,+self.length/2.])
+
+  def visualize(self,rend=1.,display=1,**kw):
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=rend,rendzmax=rend,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=[self.radius,self.radius],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
 
 #============================================================================
 class ZRoundedCylinderOut(Assembly):
@@ -1314,6 +1435,34 @@ Outside of a cylinder with rounded corners aligned with z-axis
     self.length = length
     self.radius2 = radius2
 
+  def getextent(self):
+    return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
+                                   [+largepos,+largepos,+self.length/2.])
+
+  def visualize(self,rend=1.,display=1,**kw):
+
+    rr = [self.radius+self.radius2,self.radius,
+          self.radius,self.radius+self.radius2],
+    zz = [-self.length/2.,-self.length/2.+self.radius2,
+          +self.length/2.-self.radius2,+self.length/2.]
+    rad = [-self.radius2,None,-self.radius2]
+    zc = [None,None,None]
+    rc = [None,None,None]
+    if zz[1] > zz[2]:
+      zz[1] = 0.5*(zz[1] + zz[2])
+      zz[2] = zz[1]
+      rr[1:3] = (self.radius + self.radius2 -
+                 sqrt(self.radius2**2 - (self.radius2 - self.length/2.)**2))
+    Srfrv.checkarcs(self,zz,rr,rad,zc,rc)
+    
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=rend,rendzmax=rend,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=rr,zdata=zz,raddata=rad,zcdata=zc,rcdata=rc,
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
+
 #============================================================================
 class YCylinder(Assembly):
   """
@@ -1331,6 +1480,10 @@ Cylinder aligned with y-axis
                       ycylinderintercept)
     self.radius = radius
     self.length = length
+
+  def getextent(self):
+    return Assembly.getextent(self,[-self.radius,-self.length/2.,-self.radius],
+                                   [+self.radius,+self.length/2.,+self.radius])
 
 #============================================================================
 class XCylinder(Assembly):
@@ -1350,6 +1503,10 @@ Cylinder aligned with x-axis
     self.radius = radius
     self.length = length
 
+  def getextent(self):
+    return Assembly.getextent(self,[-self.length/2.,-self.radius,-self.radius],
+                                   [+self.length/2.,+self.radius,+self.radius])
+
 #============================================================================
 class Sphere(Assembly):
   """
@@ -1365,6 +1522,21 @@ Sphere
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       sphereconductorf,sphereconductord,sphereintercept)
     self.radius = radius
+
+  def getextent(self):
+    return Assembly.getextent(self,[-self.radius,-self.radius,-self.radius],
+                                   [+self.radius,+self.radius,+self.radius])
+
+  def visualize(self,display=1,**kw):
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.radius,zzmax=+self.radius,
+                       rendzmin=0.,rendzmax=0.,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=[0.,0.],
+                       zdata=[-self.radius,self.radius],
+                       raddata=[self.radius],zcdata=[0.],rcdata=[0.],
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
 
 #============================================================================
 class Cone(Assembly):
@@ -1390,6 +1562,12 @@ Cone
     self.theta = theta
     self.phi = phi
     self.length = length
+
+  def getextent(self):
+    rmax = max(sqrt(self.r_zmin**2+(self.length/2.)**2),
+               sqrt(self.r_zmax**2+(self.length/2.)**2))
+    return Assembly.getextent(self,[-rmax,-rmax,-self.length/2.],
+                                   [+rmax,+rmax,+self.length/2.])
 
 #============================================================================
 class ConeSlope(Assembly):
@@ -1421,6 +1599,14 @@ Cone
     self.r_zmin = self.slope*(-self.length/2. - self.intercept)
     self.r_zmax = self.slope*(+self.length/2. - self.intercept)
     return Assembly.getkwlist(self)
+
+  def getextent(self):
+    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
+    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
+    rmax = max(sqrt(self.r_zmin**2+(self.length/2.)**2),
+               sqrt(self.r_zmax**2+(self.length/2.)**2))
+    return Assembly.getextent(self,[-rmax,-rmax,-self.length/2.],
+                                   [+rmax,+rmax,+self.length/2.])
 
 #============================================================================
 class Cones(Assembly):
@@ -1465,6 +1651,12 @@ Cones
     self.ycent  = self.ycent*ones(self.ncones)
     self.zcent  = self.zcent*ones(self.ncones)
 
+  def getextent(self):
+    xmax = max(max(self.xcent+self.r_zmin),max(self.xcent+self.r_zmax))
+    ymax = max(max(self.ycent+self.r_zmin),max(self.ycent+self.r_zmax))
+    return ConductorExtent([-xmax,-ymax,min(self.zcent-self.length/2.)],
+                           [+xmax,+ymax,max(self.zcent+self.length/2.)])
+
 #============================================================================
 class ZCone(Assembly):
   """
@@ -1484,6 +1676,22 @@ Cone
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.length = length
+
+  def getextent(self):
+    rmax = max(self.r_zmin,self.r_zmax)
+    return Assembly.getextent(self,[-rmax,-rmax,-self.length/2.],
+                                   [+rmax,+rmax,+self.length/2.])
+
+  def visualize(self,display=1,**kw):
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=0.,rendzmax=0.,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=[self.r_zmin,self.r_zmax],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
 
 #============================================================================
 class ZConeSlope(Assembly):
@@ -1510,6 +1718,26 @@ Cone
     self.r_zmax = self.slope*(+self.length/2. - self.intercept)
     return Assembly.getkwlist(self)
 
+  def getextent(self):
+    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
+    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
+    rmax = max(self.r_zmin,self.r_zmax)
+    return Assembly.getextent(self,[-rmax,-rmax,-self.length/2.],
+                                   [+rmax,+rmax,+self.length/2.])
+
+  def visualize(self,display=1,**kw):
+    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
+    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=0.,rendzmax=0.,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=[self.r_zmin,self.r_zmax],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
+
 #============================================================================
 class ZConeOut(Assembly):
   """
@@ -1529,6 +1757,21 @@ Cone outside
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.length = length
+
+  def getextent(self):
+    return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
+                                   [+largepos,+largepos,+self.length/2.])
+
+  def visualize(self,rend=1.,display=1,**kw):
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=rend,rendzmax=rend,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=[self.r_zmin,self.r_zmax],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
 
 #============================================================================
 class ZConeOutSlope(Assembly):
@@ -1555,6 +1798,23 @@ Cone outside
     self.r_zmax = self.slope*(+self.length/2. - self.intercept)
     return Assembly.getkwlist(self)
 
+  def getextent(self):
+    return Assembly.getextent(self,[-largepos,-largepos,-self.length/2.],
+                                   [+largepos,+largepos,+self.length/2.])
+
+  def visualize(self,rend=1.,display=1,**kw):
+    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
+    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rendzmin=rend,rendzmax=rend,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=[self.r_zmin,self.r_zmax],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       raddata=[largepos],zcdata=[largepos],rcdata=[largepos],
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
+
 #============================================================================
 class ZTorus(Assembly):
   """
@@ -1571,6 +1831,23 @@ Torus
                       ztorusconductorf,ztorusconductord,ztorusintercept)
     self.r1 = r1
     self.r2 = r2
+
+  def getextent(self):
+    rmax = self.r1 + self.r2
+    return Assembly.getextent(self,[-rmax,-rmax,-self.r2],
+                                   [+rmax,+rmax,+self.r2])
+
+  def visualize(self,display=1,**kw):
+    v = VPythonobjects.VisualRevolution(
+                       zzmin=-self.r2,zzmax=+self.r2,
+                       rendzmin=self.r1,rendzmax=self.r1,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rofzdata=[self.r1,self.r1,self.r1],
+                       zdata=[-self.r2,self.r2,-self.r2],
+                       raddata=[self.r2,self.r2],
+                       zcdata=[0.,0.],rcdata=[self.r1,self.r1],
+                       display=display,kwdict=kw)
+    if not display: self.dxobject = v
 
 #============================================================================
 class Beamletplate(Assembly):
@@ -1594,6 +1871,11 @@ Plate from beamlet pre-accelerator
     self.zb = zb
     self.z0 = z0
     self.thickness = thickness
+
+  def getextent(self):
+    # --- Give a cheap result.
+    return Assembly.getextent(self,[-largepos,-largepos,-largepos],
+                                   [+largepos,+largepos,+largepos])
 
   def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None,
                 nx=None,ny=None,nz=None,
@@ -1822,19 +2104,19 @@ Outside of a surface of revolution
 
     return Assembly.getkwlist(self)
 
-  def visualize(self,rend=None,thmin=0.,thmax=2*pi,
-                     twoSided=1,color=None,scene=None,title=None,vrange=None,
-                     display=1):
+  def getextent(self):
+    return Assembly.getextent(self,[-self.rmax,-self.rmax,self.zmin],
+                                   [+self.rmax,+self.rmax,self.zmax])
+
+  def visualize(self,rend=None,display=1,**kw):
     if rend is None: rend = self.rmax
     v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
-                       thmin=thmin,thmax=thmax,
                        rendzmin=rend,rendzmax=rend,
-                       xoff=self.xcent,yoff=self.ycent,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rofzdata,zdata=self.zdata,
                        raddata=self.raddata,zcdata=self.zcdata,
                        rcdata=self.rcdata,
-                       twoSided=1,color=None,scene=None,title=None,vrange=None,
-                       display=display)
+                       display=display,kwdict=kw)
     if not display: self.dxobject = v
 
 #============================================================================
@@ -1915,18 +2197,20 @@ Inside of a surface of revolution
 
     return Assembly.getkwlist(self)
 
-  def visualize(self,thmin=0.,thmax=2*pi,
-                twoSided=1,color=None,scene=None,title=None,vrange=None,
-                display=1):
+  def getextent(self):
+    if self.usedata: rmax = max(self.rofzdata)
+    else:            rmax = largepos
+    return Assembly.getextent(self,[-rmax,-rmax,self.zmin],
+                                   [+rmax,+rmax,self.zmax])
+
+  def visualize(self,display=1,**kw):
     v = VPythonobjects.VisualRevolution(self.rofzfunc,self.zmin,self.zmax,
-                       thmin=thmin,thmax=thmax,
                        rendzmin=rend,rendzmax=rend,
-                       xoff=self.xcent,yoff=self.ycent,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rofzdata,zdata=self.zdata,
                        raddata=self.raddata,zcdata=self.zcdata,
                        rcdata=self.rcdata,
-                       twoSided=1,color=None,scene=None,title=None,vrange=None,
-                       display=display)
+                       display=display,kwdict=kw)
     if not display: self.dxobject = v
 
 #============================================================================
@@ -2044,9 +2328,13 @@ Between surfaces of revolution
 
     return Assembly.getkwlist(self)
 
-  def visualize(self,thmin=0.,thmax=2*pi,
-                     twoSided=1,color=None,scene=None,title=None,vrange=None,
-                     display=1):
+  def getextent(self):
+    if self.usemaxdata: rmax = max(self.rmaxofzdata)
+    else:               rmax = largepos
+    return Assembly.getextent(self,[-rmax,-rmax,self.zmin],
+                                   [+rmax,+rmax,self.zmax])
+
+  def visualize(self,display=1,**kw):
     if self.usemindata:
       rminzmin = self.rminofzdata[0]
       rminzmax = self.rminofzdata[-1]
@@ -2074,31 +2362,23 @@ Between surfaces of revolution
 
     vmin = VPythonobjects.VisualRevolution(self.rminofz,self.zmin,self.zmax,
                        rendzmin=rendzmin,rendzmax=rendzmax,
-                       thmin=thmin,thmax=thmax,
-                       xoff=self.xcent,yoff=self.ycent,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rminofzdata,zdata=self.zmindata,
                        raddata=self.radmindata,zcdata=self.zcmindata,
                        rcdata=self.rcmindata,
-                       twoSided=0,normalsign=+1,
-                       color=color,scene=None,title=None,vrange=None,
-                       display=0)
+                       display=0,kwdict=kw)
     vmax = VPythonobjects.VisualRevolution(self.rmaxofz,self.zmin,self.zmax,
                        rendzmin=rendzmin,rendzmax=rendzmax,
-                       thmin=thmin,thmax=thmax,
-                       xoff=self.xcent,yoff=self.ycent,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
                        rofzdata=self.rmaxofzdata,zdata=self.zmaxdata,
                        raddata=self.radmaxdata,zcdata=self.zcmaxdata,
                        rcdata=self.rcmaxdata,
-                       twoSided=0,normalsign=-1,
-                       color=color,scene=None,title=None,vrange=None,
-                       display=0)
+                       display=0,kwdict=kw)
     self.vmin = vmin
     self.vmax = vmax
     v = pyOpenDX.DXCollection(vmin.dxobject,vmax.dxobject)
-    if display:
-      pyOpenDX.DXImage(v)
-    else:
-      self.dxobject = v
+    if display: pyOpenDX.DXImage(v)
+    else:       self.dxobject = v
 
 #============================================================================
 class ZAnnulus(ZSrfrvInOut):
