@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.3 $, $Date: 2001/04/30 20:09:41 $
+c@(#) File CIR.M, version $Revision: 3.4 $, $Date: 2001/05/29 21:17:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -372,6 +372,7 @@ c Calculate the step size to the start (or end) of the next (current)
 c lattice element.
 
       real(kind=8):: dstoelement
+      integer(ISZ):: io
 
 c     --- Next step size can not go beyond of range of calculation.
       if (zlcir <= zucir) then
@@ -383,25 +384,49 @@ c       --- Backward simulation
       endif
 
 c     --- Hard edge quadrupoles
-      if (quads) ds = dstoelement(s,cquadzs(0),cquadze(0),ds)
+      if (quads) then
+        do io=1,nquadol
+          ds = dstoelement(s,cquadzs(0,io),cquadze(0,io),ds)
+        enddo
+      endif
 
 c     --- Hard edge multipoles, can include linearly focusing
 c     --- quadrupole or azimuthally symmetric field
-      if (heles) ds = dstoelement(s,chelezs(0),cheleze(0),ds)
+      if (heles) then
+        do io=1,nheleol
+          ds = dstoelement(s,chelezs(0,io),cheleze(0,io),ds)
+        enddo
+      endif
 
 c     --- Extract any linear focusing field component from the multipole
 c     --- (emlt and mmlt) elements.
-      if (emlts) ds = dstoelement(s,cemltzs(0),cemltze(0),ds)
-      if (mmlts) ds = dstoelement(s,cmmltzs(0),cmmltze(0),ds)
+      if (emlts) then
+        do io=1,nemltol
+          ds = dstoelement(s,cemltzs(0,io),cemltze(0,io),ds)
+        enddo
+      endif
+      if (mmlts) then
+        do io=1,nmmltol
+          ds = dstoelement(s,cmmltzs(0,io),cmmltze(0,io),ds)
+        enddo
+      endif
 
 c     --- Get accelerating gradient from accl gaps.
-      if (accls) ds = dstoelement(s,cacclzs(0),cacclze(0),ds)
+      if (accls) then
+        do io=1,nacclol
+          ds = dstoelement(s,cacclzs(0,io),cacclze(0,io),ds)
+        enddo
+      endif
 
 c     --- Get inverse radius of curvature from bend elements
       if (bends) ds = dstoelement(s,cbendzs(0),cbendze(0),ds)
 
 c     --- Get bending field from dipole elements
-      if (dipos) ds = dstoelement(s,cdipozs(0),cdipoze(0),ds)
+      if (dipos) then
+        do io=1,ndipool
+          ds = dstoelement(s,cdipozs(0,io),cdipoze(0,io),ds)
+        enddo
+      endif
 
       return
       end
@@ -441,7 +466,7 @@ c  But which end of the element is the start and which is the end depends on
 c  the sign of dz, whether the beam is moving forward or backward.
 
       real(kind=8):: dedrr,dbdxq,dedxq
-      integer(ISZ):: iele,ii,iem,imm,iim,iie,ia
+      integer(ISZ):: io,iele,ii,iem,imm,iim,iie,ia
       real(kind=8):: rotfuzz,wie,wim,wi
 
 c     --- Get the current lattice parameters
@@ -475,34 +500,36 @@ c     --- Hard edge quadrupoles
 
       if (quads) then
 
-c       --- If in a quad, get field, pipe, offset, and images.
-        if (((cquadzs(0) <= z .and. z <  cquadze(0)) .and. dz > 0.) .or.
-     &      ((cquadzs(0) <  z .and. z <= cquadze(0)) .and. dz < 0.)) then
-          iele = cquadid(0)
-          do ii=1,nit
-            dedx(ii) = dedx(ii) + quadde(iele)
-            dbdx(ii) = dbdx(ii) + quaddb(iele)
-          enddo
-          xpipeerr = cqoffx(0)
-          ypipeerr = cqoffy(0)
-          if (cquadde(0) .ne. 0) ipipetype = 1
-          if (quadap(iele) > 0.) rpipe = quadap(iele)
-
-c         --- Get time varying accelerating field.
-          if (ntquad > 0) then
+        do io=1,nquadol
+c         --- If in a quad, get field, pipe, offset, and images.
+          if (((cquadzs(0,io) <= z .and. z <  cquadze(0,io)) .and. dz>0.) .or.
+     &        ((cquadzs(0,io) <  z .and. z <= cquadze(0,io)) .and. dz<0.)) then
+            iele = cquadid(0,io)
             do ii=1,nit
-              ia = int((y(9,ii) - quadts(iele))/quaddt(iele))
-              if (0 <= ia .and. ia < ntquad) then
-                wi = (y(9,ii) - quadts(iele))/quaddt(iele) - ia
-                dedx(ii) = dedx(ii) + quadet(ia  ,iele)*(1. - wi) +
-     &                                quadet(ia+1,iele)*      wi
-                dbdx(ii) = dbdx(ii) + quadbt(ia  ,iele)*(1. - wi) +
-     &                                quadbt(ia+1,iele)*      wi
-              endif
+              dedx(ii) = dedx(ii) + quadde(iele)
+              dbdx(ii) = dbdx(ii) + quaddb(iele)
             enddo
-          endif
+            xpipeerr = cqoffx(0,io)
+            ypipeerr = cqoffy(0,io)
+            if (cquadde(0,io) .ne. 0) ipipetype = 1
+            if (quadap(iele) > 0.) rpipe = quadap(iele)
 
-        endif
+c           --- Get time varying accelerating field.
+            if (ntquad > 0) then
+              do ii=1,nit
+                ia = int((y(9,ii) - quadts(iele))/quaddt(iele))
+                if (0 <= ia .and. ia < ntquad) then
+                  wi = (y(9,ii) - quadts(iele))/quaddt(iele) - ia
+                  dedx(ii) = dedx(ii) + quadet(ia  ,iele)*(1. - wi) +
+     &                                  quadet(ia+1,iele)*      wi
+                  dbdx(ii) = dbdx(ii) + quadbt(ia  ,iele)*(1. - wi) +
+     &                                  quadbt(ia+1,iele)*      wi
+                endif
+              enddo
+            endif
+
+          endif
+        enddo
 
       endif 
 
@@ -512,42 +539,44 @@ c     --- quadrupole or azimuthally symmetric field
  
       if (heles) then
 
-        if (((chelezs(0) <= z .and. z <  cheleze(0)) .and. dz > 0.) .or.
-     &      ((chelezs(0) <  z .and. z <= cheleze(0)) .and. dz < 0.)) then
-          iele = cheleid(0)
-          if (heleap(iele) > 0.) rpipe = heleap(iele)
-          xpipeerr = heleox(iele)
-          ypipeerr = heleoy(iele)
+        do io=1,nheleol
+          if (((chelezs(0,io) <= z .and. z <  cheleze(0,io)) .and. dz>0.) .or.
+     &        ((chelezs(0,io) <  z .and. z <= cheleze(0,io)) .and. dz<0.)) then
+            iele = cheleid(0,io)
+            if (heleap(iele) > 0.) rpipe = heleap(iele)
+            xpipeerr = heleox(iele)
+            ypipeerr = heleoy(iele)
 
-          rotfuzz = 1.e-3
-          dbdxq = 0.
-          dedxq = 0.
-          dedrr = 0.
-          do ii = 1, max(helenm(iele),helene(iele)) 
-            if ((nint(hele_n(ii,iele)) == 2) .and. 
-     &          (nint(hele_v(ii,iele)) == 0)) then
-c             --- quadrupole field  
-              if ( abs(cos(helepm(ii,iele))*sin(helepm(ii,iele))) > rotfuzz )
+            rotfuzz = 1.e-3
+            dbdxq = 0.
+            dedxq = 0.
+            dedrr = 0.
+            do ii = 1, max(helenm(iele),helene(iele)) 
+              if ((nint(hele_n(ii,iele)) == 2) .and. 
+     &            (nint(hele_v(ii,iele)) == 0)) then
+c               --- quadrupole field  
+                if ( abs(cos(helepm(ii,iele))*sin(helepm(ii,iele))) > rotfuzz )
      &         call remark("Warning: magnetic multipole structure incompatible")
-              if ( abs(cos(helepe(ii,iele))*sin(helepe(ii,iele))) > rotfuzz )
+                if ( abs(cos(helepe(ii,iele))*sin(helepe(ii,iele))) > rotfuzz )
      &         call remark("Warning: electric multipole structure incompatible")
-              dbdxq = dbdxq + heleam(ii,iele)*cos(helepm(ii,iele))
-              dedxq = dedxq + heleae(ii,iele)*cos(helepe(ii,iele))
-              if (heleae(ii,iele) .ne. 0) ipipetype = 1
-            endif 
-            if ((nint(hele_n(ii,iele)) == 0) .and. 
-     &          (nint(hele_v(ii,iele)) == 0)) then 
-c             --- uniform field 
-              dedrr = dedrr - 0.5*heleep(ii,iele)
-            endif  
-          enddo             
+                dbdxq = dbdxq + heleam(ii,iele)*cos(helepm(ii,iele))
+                dedxq = dedxq + heleae(ii,iele)*cos(helepe(ii,iele))
+                if (heleae(ii,iele) .ne. 0) ipipetype = 1
+              endif 
+              if ((nint(hele_n(ii,iele)) == 0) .and. 
+     &            (nint(hele_v(ii,iele)) == 0)) then 
+c               --- uniform field 
+                dedrr = dedrr - 0.5*heleep(ii,iele)
+              endif  
+            enddo             
 
-          do ii=1,nit
-            dedx(ii) = dedx(ii) + dedxq
-            dbdx(ii) = dbdx(ii) + dbdxq
-          enddo
+            do ii=1,nit
+              dedx(ii) = dedx(ii) + dedxq
+              dbdx(ii) = dbdx(ii) + dbdxq
+            enddo
 
-        endif
+          endif
+        enddo
       endif 
 
 c---------------------------------------------------------------------------
@@ -556,112 +585,118 @@ c     --- (emlt and mmlt) elements.
 
       if (emlts) then
 
-c       --- If z is within an element, fetch the field.
-        if (((cemltzs(0) <= z .and. z <  cemltze(0)) .and. dz > 0.) .or.
-     &      ((cemltzs(0) <  z .and. z <= cemltze(0)) .and. dz < 0.)) then
-          iele = cemltid(0)
+        do io=1,nemltol
+c         --- If z is within an element, fetch the field.
+          if (((cemltzs(0,io) <= z .and. z <  cemltze(0,io)) .and. dz>0.) .or.
+     &        ((cemltzs(0,io) <  z .and. z <= cemltze(0,io)) .and. dz<0.)) then
+            iele = cemltid(0,io)
 
-c         --- Make sure the element was defined.
-          iem = emltid(iele)
-          if (iem > 0) then
-            if (emltap(iele) > 0.) rpipe = emltap(iele)
-            xpipeerr = cemltox(0)
-            ypipeerr = cemltoy(0)
-            ipipetype = 1
+c           --- Make sure the element was defined.
+            iem = emltid(iele)
+            if (iem > 0) then
+              if (emltap(iele) > 0.) rpipe = emltap(iele)
+              xpipeerr = cemltox(0,io)
+              ypipeerr = cemltoy(0,io)
+              ipipetype = 1
 
-c           --- Find location of z in the electric multipole grid.
-            iie = int((z + dz*dzfrac - cemltzs(0))/dzemlt(iem))
-            wie =     (z + dz*dzfrac - cemltzs(0))/dzemlt(iem) - iie
+c             --- Find location of z in the electric multipole grid.
+              iie = int((z + dz*dzfrac - cemltzs(0,io))/dzemlt(iem))
+              wie =     (z + dz*dzfrac - cemltzs(0,io))/dzemlt(iem) - iie
 
-c           --- Lookup field strengths with linear interpolation.
-            dedxq = 0.
-            dedrr = 0.
-            do ii=1,nesmult
-              if ((nint(emlt_n(ii)) == 2) .and. 
-     &            (nint(emlt_v(ii)) == 0)) then
-                dedxq = dedxq + (esemlt(iie  ,ii,iem)*(1.-wie)+
-     &                           esemlt(iie+1,ii,iem)*wie)*
-     &                          (emltsc(iele) + emltsf(iele))
-              endif
-              if ((nint(emlt_n(ii)) == 0) .and. 
-     &            (nint(emlt_v(ii)) == 0)) then
-                dedrr = dedrr - 0.5*(esemltp(iie  ,ii,iem)*(1.-wie)+
-     &                               esemltp(iie+1,ii,iem)*wie)*
-     &                              (emltsc(iele) + emltsf(iele))
-              endif
-            enddo
+c             --- Lookup field strengths with linear interpolation.
+              dedxq = 0.
+              dedrr = 0.
+              do ii=1,nesmult
+                if ((nint(emlt_n(ii)) == 2) .and. 
+     &              (nint(emlt_v(ii)) == 0)) then
+                  dedxq = dedxq + (esemlt(iie  ,ii,iem)*(1.-wie)+
+     &                             esemlt(iie+1,ii,iem)*wie)*
+     &                            (emltsc(iele) + emltsf(iele))
+                endif
+                if ((nint(emlt_n(ii)) == 0) .and. 
+     &              (nint(emlt_v(ii)) == 0)) then
+                  dedrr = dedrr - 0.5*(esemltp(iie  ,ii,iem)*(1.-wie)+
+     &                                 esemltp(iie+1,ii,iem)*wie)*
+     &                                (emltsc(iele) + emltsf(iele))
+                endif
+              enddo
 
-            do ii=1,nit
-              dedx(ii) = dedx(ii) + dedxq
-            enddo
+              do ii=1,nit
+                dedx(ii) = dedx(ii) + dedxq
+              enddo
 
+            endif
           endif
-        endif
+        enddo
       endif
 
       if (mmlts) then
 
-c       --- If z is within an element, fetch the field.
-        if (((cmmltzs(0) <= z .and. z <  cmmltze(0)) .and. dz > 0.) .or.
-     &      ((cmmltzs(0) <  z .and. z <= cmmltze(0)) .and. dz < 0.)) then
-          iele = cmmltid(0)
+        do io=1,nmmltol
+c         --- If z is within an element, fetch the field.
+          if (((cmmltzs(0,io) <= z .and. z <  cmmltze(0,io)) .and. dz>0.) .or.
+     &        ((cmmltzs(0,io) <  z .and. z <= cmmltze(0,io)) .and. dz<0.)) then
+            iele = cmmltid(0,io)
 
-c         --- Make sure the element was defined.
-          imm = mmltid(iele)
-          if (imm > 0) then
-            if (mmltap(iele) > 0.) rpipe = mmltap(iele)
-            xpipeerr = cmmltox(0)
-            ypipeerr = cmmltoy(0)
+c           --- Make sure the element was defined.
+            imm = mmltid(iele)
+            if (imm > 0) then
+              if (mmltap(iele) > 0.) rpipe = mmltap(iele)
+              xpipeerr = cmmltox(0,io)
+              ypipeerr = cmmltoy(0,io)
 
-c           --- Find location of z in the magnetic multipole grid.
-            iim = int((z + dz*dzfrac - cmmltzs(0))/dzmmlt(imm))
-            wim =     (z + dz*dzfrac - cmmltzs(0))/dzmmlt(imm) - iim
+c             --- Find location of z in the magnetic multipole grid.
+              iim = int((z + dz*dzfrac - cmmltzs(0,io))/dzmmlt(imm))
+              wim =     (z + dz*dzfrac - cmmltzs(0,io))/dzmmlt(imm) - iim
 
-c           --- Lookup field strength with linear interpolation.
-            dbdxq = 0.
-            do ii=1,nmsmult
-              if ((nint(mmlt_n(ii)) == 2) .and. 
-     &            (nint(mmlt_v(ii)) == 0)) then
-                dbdxq = dbdxq +  (msmmlt(iim  ,ii,imm)*(1.-wim)+
-     &                            msmmlt(iim+1,ii,imm)*wim)*
-     &                           (mmltsc(iele) + mmltsf(iele))
-              endif
-            enddo
+c             --- Lookup field strength with linear interpolation.
+              dbdxq = 0.
+              do ii=1,nmsmult
+                if ((nint(mmlt_n(ii)) == 2) .and. 
+     &              (nint(mmlt_v(ii)) == 0)) then
+                  dbdxq = dbdxq +  (msmmlt(iim  ,ii,imm)*(1.-wim)+
+     &                              msmmlt(iim+1,ii,imm)*wim)*
+     &                             (mmltsc(iele) + mmltsf(iele))
+                endif
+              enddo
 
-            do ii=1,nit
-              dbdx(ii) = dbdx(ii) + dbdxq
-            enddo
+              do ii=1,nit
+                dbdx(ii) = dbdx(ii) + dbdxq
+              enddo
 
+            endif
           endif
-        endif
+        enddo
       endif
 
 c---------------------------------------------------------------------------
 c     --- Get accelerating gradient from accl gaps.
       if (accls) then
 
-        if (((cacclzs(0) <= z .and. z <  cacclze(0)) .and. dz > 0.) .or.
-     &      ((cacclzs(0) <  z .and. z <= cacclze(0)) .and. dz < 0.)) then
-          iele = cacclid(0)
-          do ii=1,nit
-            ez(ii) = ez(ii) + acclez(iele)
-          enddo
-          if (acclap(iele) > 0.) rpipe = acclap(iele)
-
-c         --- Get time varying accelerating field.
-          if (ntaccl > 0) then
+        do io=1,nacclol
+          if (((cacclzs(0,io) <= z .and. z <  cacclze(0,io)) .and. dz>0.) .or.
+     &        ((cacclzs(0,io) <  z .and. z <= cacclze(0,io)) .and. dz<0.)) then
+            iele = cacclid(0,io)
             do ii=1,nit
-              ia = int((y(9,ii) - acclts(iele))/accldt(iele))
-              if (0 <= ia .and. ia < ntaccl) then
-                wi = (y(9,ii) - acclts(iele))/accldt(iele) - ia
-                ez(ii) = ez(ii) + acclet(ia  ,iele)*(1. - wi) +
-     &                            acclet(ia+1,iele)*      wi
-              endif
+              ez(ii) = ez(ii) + acclez(iele)
             enddo
+            if (acclap(iele) > 0.) rpipe = acclap(iele)
+
+c           --- Get time varying accelerating field.
+            if (ntaccl > 0) then
+              do ii=1,nit
+                ia = int((y(9,ii) - acclts(iele))/accldt(iele))
+                if (0 <= ia .and. ia < ntaccl) then
+                  wi = (y(9,ii) - acclts(iele))/accldt(iele) - ia
+                  ez(ii) = ez(ii) + acclet(ia  ,iele)*(1. - wi) +
+     &                              acclet(ia+1,iele)*      wi
+                endif
+              enddo
+            endif
+
           endif
 
-        endif
-
+        enddo
       endif
 
 c---------------------------------------------------------------------------
@@ -683,11 +718,13 @@ c---------------------------------------------------------------------------
 c     --- Get inverse radius of curvature from bend elements
       if (drfts) then
 
-        if (((cdrftzs(0) <= z .and. z <  cdrftze(0)) .and. dz > 0.) .or.
-     &      ((cdrftzs(0) <  z .and. z <= cdrftze(0)) .and. dz < 0.)) then
-          iele = cdrftid(0)
-          if (drftap(iele) > 0.) rpipe = drftap(iele)
-        endif
+        do io=1,ndrftol
+          if (((cdrftzs(0,io) <= z .and. z <  cdrftze(0,io)) .and. dz>0.) .or.
+     &        ((cdrftzs(0,io) <  z .and. z <= cdrftze(0,io)) .and. dz<0.)) then
+            iele = cdrftid(0,io)
+            if (drftap(iele) > 0.) rpipe = drftap(iele)
+          endif
+        enddo
 
       endif
 
@@ -695,18 +732,20 @@ c---------------------------------------------------------------------------
 c     --- Get bending field from dipole elements
       if (dipos) then
 
-        if (((cdipozs(0) <= z .and. z <  cdipoze(0)) .and. dz > 0.) .or.
-     &      ((cdipozs(0) <  z .and. z <= cdipoze(0)) .and. dz < 0.)) then
-          iele = cdipoid(0)
-          do ii=1,nit
-            ex(ii) = dipoex(iele)
-            ey(ii) = dipoey(iele)
-            bx(ii) = dipobx(iele)
-            by(ii) = dipoby(iele)
-          enddo
-          if (dipoap(iele) > 0.) rpipe = dipoap(iele)
-          if (dipoex(iele) .ne. 0) ipipetype = 2
-        endif
+        do io=1,ndipool
+          if (((cdipozs(0,io) <= z .and. z <  cdipoze(0,io)) .and. dz>0.) .or.
+     &        ((cdipozs(0,io) <  z .and. z <= cdipoze(0,io)) .and. dz<0.)) then
+            iele = cdipoid(0,io)
+            do ii=1,nit
+              ex(ii) = dipoex(iele)
+              ey(ii) = dipoey(iele)
+              bx(ii) = dipobx(iele)
+              by(ii) = dipoby(iele)
+            enddo
+            if (dipoap(iele) > 0.) rpipe = dipoap(iele)
+            if (dipoex(iele) .ne. 0) ipipetype = 2
+          endif
+        enddo
 
       endif
 
@@ -1879,7 +1918,7 @@ c     periodic focusing.
       real(kind=8):: alfcuri
 c     real(kind=8):: sig2
 
-c Print warning if there are not enought quad to make a lattice period
+c Print warning if there are not enough quads to make a lattice period
 
       if (nquad == 0) then
         call remark("warning: full period not found, phase advance unset")
@@ -1896,7 +1935,7 @@ c calculate quadrupole occupancy in nearest lattice period
 
       if (nquad > 0) then
         offset = 0.
-        iq1 = cquadid(0)
+        iq1 = minval(cquadid(0,:))
         iq2 = iq1 + 1
         if (iq2 > nquad) then
           if (zlatperi > 0.) then
@@ -1917,7 +1956,7 @@ c calculate quadrupole occupancy in nearest lattice period
 
       elseif (nhele > 0) then
         offset = 0.
-        iq1 = cheleid(0)
+        iq1 = minval(cheleid(0,:))
         iq2 = iq1 + 1
         if (iq2 > nhele) then
           if (zlatperi > 0.) then
