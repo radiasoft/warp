@@ -28,7 +28,8 @@ ZSrfrvInOut(rminofz,rmaxofz,zmin,zmax,...)
 Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1
 
-installconductors(a): generates the data needed for the fieldsolve
+installconductors(a,...): generates the data needed for the fieldsolve
+                          See its documentation for the additional arguments.
 
 All of the conductor objects have the following methods:
   distance(xx,yy,zz): calculates the shortest distance between each of the
@@ -70,7 +71,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.48 2004/03/05 14:57:18 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.49 2004/03/16 16:58:46 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -90,7 +91,11 @@ except:
 ##############################################################################
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         zmin=None,zmax=None,dfill=top.largepos,
-                        installrz=1,gridmode=1):
+                        zbeam=None,
+                        nx=None,ny=None,nz=None,nzfull=None,
+                        xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                        zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
+                        installrz=1,gridmode=1,solvergeom=None):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -100,13 +105,20 @@ Installs the given conductors.
     conductor
   - dfill=largepos: points at a depth in the conductor greater than dfill
                     are skipped.
+  - zbeam=top.zbeam: location of the beam frame
+  - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
+  - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
+                                         from w3d
+  - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
+                       from w3d
   """
   # First, create a grid object
-  g = Grid(xmin,xmax,ymin,ymax,zmin,zmax)
+  g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nzfull,
+           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry)
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
-  g.installdata(installrz,gridmode)
+  g.installdata(installrz,gridmode,solvergeom)
   
 ##############################################################################
 ##############################################################################
@@ -427,7 +439,7 @@ has already been called.
     self.mglevel[n1:n1+n2] = d.mglevel[:n2]
     self.ndata = n1 + n2
 
-  def install(self,installrz=1):
+  def install(self,installrz=1,solvergeom=None):
     """
 Installs the data into the WARP database
     """
@@ -443,8 +455,9 @@ Installs the data into the WARP database
     # --- of the accumulated data will be copied back into the f3d database.
     # --- The way around that is to make the call to install_conductors_rz
     # --- only after all of the objects have been installed.
+    if solvergeom is None: solvergeom = w3d.solvergeom
     if(installrz and
-       (w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom)):
+       (solvergeom == w3d.RZgeom or solvergeom == w3d.XZgeom)):
       f3d.ncond = 0
       f3d.necndbdy = 0
       f3d.nocndbdy = 0
@@ -539,7 +552,7 @@ Installs the data into the WARP database
     # --- database. This also copies all of the accumulated data back into
     # --- the f3d database to allow for plotting and diagnostics.
     if ntot > 0 and installrz:
-      if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
+      if(solvergeom == w3d.RZgeom or solvergeom == w3d.XZgeom):
         frz.install_conductors_rz()
 
   def __neg__(self):
@@ -811,39 +824,51 @@ Constructor arguments:
     for conductors where there are none. They can also be used to crop a
     conductor.
   - zbeam=top.zbeam: location of grid frame relative to lab frame
+  - nx,ny,nz: Number of grid cells in the mesh. Defaults to values from w3d
+  - xmmin,xmmax,ymmin,ymmax,zmmin,zmmax: extent of mesh. Defaults to values
+                                         from w3d
+  - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
+                       from w3d
 Call getdata(a,dfill) to generate the conductor data. 'a' is a geometry object.
 Call installdata(installrz,gridmode) to install the data into the WARP database.
   """
 
   def __init__(self,xmin=None,xmax=None,ymin=None,ymax=None,
-                    zmin=None,zmax=None,zbeam=None):
+                    zmin=None,zmax=None,zbeam=None,
+                    nx=None,ny=None,nz=None,nzfull=None,
+                    xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                    zmmin=None,zmmax=None,l2symtry=None,l4symtry=None):
     """
 Creates a grid object which can generate conductor data.
     """
-    self.zbeam = where(zbeam==None,top.zbeam,zbeam)[0]
-    self.xmin = where(xmin==None,w3d.xmmin,xmin)[0]
-    self.xmax = where(xmax==None,w3d.xmmax,xmax)[0]
-    self.ymin = where(ymin==None,w3d.ymmin,ymin)[0]
-    self.ymax = where(ymax==None,w3d.ymmax,ymax)[0]
-    self.zmin = where(zmin==None,w3d.zmmin+self.zbeam,zmin)[0]
-    self.zmax = where(zmax==None,w3d.zmmax+self.zbeam,zmax)[0]
+    _default = lambda x,d: (x,d)[x is None]
+    self.zbeam = _default(zbeam,top.zbeam)
 
-    self.nx = w3d.nx
-    self.ny = w3d.ny
-    self.nz = w3d.nz
-    self.nzfull = w3d.nzfull
-    self.xmmin = w3d.xmmin
-    self.ymmin = w3d.ymmin
-    self.zmmin = w3d.zmminglobal
-    self.xmmax = w3d.xmmax
-    self.ymmax = w3d.ymmax
-    self.zmmax = w3d.zmmaxglobal
+    self.nx = _default(nx,w3d.nx)
+    self.ny = _default(ny,w3d.ny)
+    self.nz = _default(nz,w3d.nz)
+    self.nzfull = _default(nzfull,w3d.nzfull)
+    self.xmmin = _default(xmmin,w3d.xmmin)
+    self.ymmin = _default(ymmin,w3d.ymmin)
+    self.zmmin = _default(zmmin,w3d.zmminglobal)
+    self.xmmax = _default(xmmax,w3d.xmmax)
+    self.ymmax = _default(ymmax,w3d.ymmax)
+    self.zmmax = _default(zmmax,w3d.zmmaxglobal)
+    self.l2symtry = _default(l2symtry,w3d.l2symtry)
+    self.l4symtry = _default(l4symtry,w3d.l4symtry)
+
+    self.xmin = _default(xmin,self.xmmin)
+    self.xmax = _default(xmax,self.xmmax)
+    self.ymin = _default(ymin,self.ymmin)
+    self.ymax = _default(ymax,self.ymmax)
+    self.zmin = _default(zmin,self.zmmin+self.zbeam)
+    self.zmax = _default(zmax,self.zmmax+self.zbeam)
 
     # --- Check for symmetries
-    if w3d.l2symtry:
+    if self.l2symtry:
       self.ymin = 0.
       self.ymmin = 0.
-    elif w3d.l4symtry:
+    elif self.l4symtry:
       self.xmin = 0.
       self.xmmin = 0.
       self.ymin = 0.
@@ -856,13 +881,11 @@ Creates a grid object which can generate conductor data.
     # --- Calculate dx, dy, and dz in case this is called before
     # --- the generate.
     self.dx = (self.xmmax - self.xmmin)/self.nx
-    if(w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom):
-      self.dy = self.dx
-    else:
-      self.dy = (self.ymmax - self.ymmin)/self.ny
+    self.dy = (self.ymmax - self.ymmin)/self.ny
+    if self.dy == 0.: self.dy = self.dx
     # --- z is different since it is not affected by transverse symmetries
     # --- but is affected by parallel decomposition.
-    self.dz = (w3d.zmmax - w3d.zmmin)/w3d.nz
+    self.dz = (self.zmmax - self.zmmin)/self.nz
 
     if top.fstype in [7,11,10]:
       if top.fstype in [7,11]:
@@ -961,11 +984,11 @@ Assembly on this grid.
     self.generatetime = endtime - starttime
     #print tt2
 
-  def installdata(self,installrz=1,gridmode=1):
+  def installdata(self,installrz=1,gridmode=1,solvergeom=None):
     """
 Installs the conductor data into the fortran database
     """
-    self.dall.install(installrz)
+    self.dall.install(installrz,solvergeom)
     if gridmode is not None:
       f3d.gridmode = gridmode
 
@@ -1514,26 +1537,35 @@ Plate from beamlet pre-accelerator
     self.z0 = z0
     self.thickness = thickness
 
-  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
-    xmin = where(xmin==None,w3d.xmmin,xmin)[0]
-    xmax = where(xmax==None,w3d.xmmax,xmax)[0]
-    ymin = where(ymin==None,w3d.ymmin,ymin)[0]
-    ymax = where(ymax==None,w3d.ymmax,ymax)[0]
-    nx = min(w3d.nx,20)
-    ny = min(w3d.ny,20)
-    nz = w3d.nz
-    xmmin = w3d.xmmin
-    ymmin = w3d.ymmin
-    zmmin = w3d.zmmin
-    xmmax = w3d.xmmax
-    ymmax = w3d.ymmax
-    zmmax = w3d.zmmax
+  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None,
+                nx=None,ny=None,nz=None,
+                xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                zmmin=None,zmmax=None,l2symtry=None,l4symtry=None):
+    _default = lambda x,d: (x,d)[x is None]
+    xmmin = _default(xmmin,w3d.xmmin)
+    xmmax = _default(xmmax,w3d.xmmax)
+    ymmin = _default(ymmin,w3d.ymmin)
+    ymmax = _default(ymmax,w3d.ymmax)
+    zmmin = _default(zmmin,w3d.zmmin)
+    zmmax = _default(zmmax,w3d.zmmax)
+    nx = _default(nx,w3d.nx)
+    ny = _default(ny,w3d.ny)
+    nz = _default(nz,w3d.nz)
+    l2symtry = _default(l2symtry,w3d.l2symtry)
+    l4symtry = _default(l4symtry,w3d.l4symtry)
+
+    xmin = _default(xmin,xmmin)
+    xmax = _default(xmax,xmmax)
+    ymin = _default(ymin,ymmin)
+    ymax = _default(ymax,ymmax)
+    nx = min(nx,20)
+    ny = min(ny,20)
 
     # --- Check for symmetries
-    if w3d.l2symtry:
+    if l2symtry:
       ymin = 0.
       ymmin = 0.
-    elif w3d.l4symtry:
+    elif l4symtry:
       xmin = 0.
       xmmin = 0.
       ymin = 0.
@@ -1544,8 +1576,7 @@ Plate from beamlet pre-accelerator
     dx = (xmmax - xmmin)/nx
     dy = (ymmax - ymmin)/ny
     dz = (zmmax - zmmin)/nz
-    if(w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom):
-      dy = dx
+    if dy == 0.: dy = dx
 
     xmesh = xmmin + dx*arange(nx+1)
     ymesh = ymmin + dy*arange(ny+1)
