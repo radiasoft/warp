@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.5 $, $Date: 2001/10/26 00:39:49 $
+c TOPSLAVE.M, version $Revision: 1.6 $, $Date: 2001/10/27 00:12:45 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -75,11 +75,11 @@ c         --- in the arrays.
             temp = gaminv(ip)
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
-	    if (npmaxi > 0) then
+            if (npmaxi > 0) then
               temp = pid(ip)
               pid(ip) = pid(idest)
               pid(idest) = temp
-	    endif
+            endif
 c         endif
 
 c         --- If particle exited to the right, switch with highest particle
@@ -109,11 +109,11 @@ c         --- in the arrays.
             temp = gaminv(ip)
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
-	    if (npmaxi > 0) then
+            if (npmaxi > 0) then
               temp = pid(ip)
               pid(ip) = pid(idest)
               pid(idest) = temp
-	    endif
+            endif
             ip = ip - 1
           endif
 
@@ -161,8 +161,8 @@ c       --- Make sure these are zero in case they are not set below.
 
 c       --- Number of quantities to be exchanged. Normally it is seven,
 c       --- but when npmaxi > 0, then it is 8 since pid is also exchanged.
-	nquant = 7
-	if (npmaxi > 0) nquant = 8
+        nquant = 7
+        if (npmaxi > 0) nquant = 8
 
 c       --- Copy particles being sent to the left to buffer1.
         if (periinz .or. my_index > 0) then
@@ -179,7 +179,7 @@ c       --- Copy particles being sent to the left to buffer1.
             call copyarry(uyp(ins_init),buffer1(1+4*nsendleft),nsendleft)
             call copyarry(uzp(ins_init),buffer1(1+5*nsendleft),nsendleft)
             call copyarry(gaminv(ins_init),buffer1(1+6*nsendleft),nsendleft)
-	    if (npmaxi > 0)
+            if (npmaxi > 0)
      &        call copyarry(pid(ins_init),buffer1(1+7*nsendleft),nsendleft)
           endif
         endif
@@ -200,7 +200,7 @@ c       --- Copy particles being sent to the right to buffer2.
             call copyarry(uyp(ip),buffer2(1+4*nsendright),nsendright)
             call copyarry(uzp(ip),buffer2(1+5*nsendright),nsendright)
             call copyarry(gaminv(ip),buffer2(1+6*nsendright),nsendright)
-	    if (npmaxi > 0)
+            if (npmaxi > 0)
      &        call copyarry(pid(ip),buffer2(1+7*nsendright),nsendright)
           endif
         endif
@@ -376,12 +376,12 @@ c     --- and last processors.
       if (my_index > 0) then
         left_iz = 0
         left_nz = izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)
-	left_nz = min(left_nz, 1)
+        left_nz = min(left_nz, 1)
       endif
       if (my_index < nslaves-1) then
         right_iz = izpslave(my_index+1) - izpslave(my_index)
         right_nz = nzpslave(my_index) - right_iz
-	right_nz = min(right_nz, 1)
+        right_nz = min(right_nz, 1)
       endif
 
 c     --- Share z moments data at overlapping PE boundaries.
@@ -481,12 +481,12 @@ c     --- Get number of planes to exchange.
       if (my_index > 0) then
         left_iz = 0
         left_nz = izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)
-	left_nz = min(left_nz, 1)
+        left_nz = min(left_nz, 1)
       endif
       if (my_index < nslaves-1) then
         right_iz = izpslave(my_index+1) - izpslave(my_index)
         right_nz = nzpslave(my_index) - right_iz
-	right_nz = min(right_nz, 1)
+        right_nz = min(right_nz, 1)
       endif
 
 c     --- This should never happen, but make sure that no more than 11
