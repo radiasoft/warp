@@ -42,7 +42,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.23 2003/04/25 00:38:53 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.24 2003/04/25 23:01:35 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -947,11 +947,27 @@ Cylinders class for a list of cylinders
     kwlist = ['ncylinders','radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                            f3d.cylindersconductorf,f3d.cylindersconductord)
-    self.ncylinders = len(radius)
+    self.ncylinders = 0
     self.radius = radius
     self.length = length
     self.theta  = theta
     self.phi    = phi
+    kwlist = self.getkwlist()
+    for k in kwlist:
+      try:
+        self.ncylinders = len(k)
+        break
+      except:
+        pass
+
+    assert self.ncylinders > 0,"At least on of the input arguments must be a list!"
+    self.radius = self.radius*ones(self.ncylinders)
+    self.length = self.length*ones(self.ncylinders)
+    self.theta  = self.theta*ones(self.ncylinders)
+    self.phi    = self.phi*ones(self.ncylinders)
+    self.xcent  = self.xcent*ones(self.ncylinders)
+    self.ycent  = self.ycent*ones(self.ncylinders)
+    self.zcent  = self.zcent*ones(self.ncylinders)
 
 #============================================================================
 class ZCylinder(Assembly):
@@ -1153,12 +1169,29 @@ Cones
     kwlist = ['ncones','r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       f3d.conesconductorf,f3d.conesconductord)
-    self.ncones = len(r_zmin)
+    self.ncones = 0
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
+    self.length = length
     self.theta = theta
     self.phi = phi
-    self.length = length
+    kwlist = self.getkwlist()
+    for k in kwlist:
+      try:
+        self.ncones = len(k)
+        break
+      except:
+        pass
+
+    assert self.ncones > 0,"At least on of the input arguments must be a list!"
+    self.r_zmin = self.r_zmin*ones(self.ncones)
+    self.r_zmax = self.r_zmax*ones(self.ncones)
+    self.length = self.length*ones(self.ncones)
+    self.theta  = self.theta*ones(self.ncones)
+    self.phi    = self.phi*ones(self.ncones)
+    self.xcent  = self.xcent*ones(self.ncones)
+    self.ycent  = self.ycent*ones(self.ncones)
+    self.zcent  = self.zcent*ones(self.ncones)
 
 #============================================================================
 class ZCone(Assembly):
