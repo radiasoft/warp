@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.10 $, $Date: 2001/08/09 18:27:23 $
+c@(#) File HER.M, version $Revision: 3.11 $, $Date: 2003/02/12 23:06:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -266,13 +266,11 @@ c       --- If in a quad, get field and pipe.
             vzi = 1./dvnz(vz)
 c           --- find z-cell in which particle lies
             j = max(0., (y(9,iz) - zlmin) * dzli + 0.5)
+            iele = cquadid(j,io)
 c           --- "left" end of velocity advance step
             zl = y(9,iz) - vz * dta / 2.
             fl = 0.
-            if (zl.ge.cquadzs(j,io) .and. zl.lt.cquadze(j,io)) then
-              fl = 1.
-              iele = cquadid(j,io)
-            endif
+            if (zl.ge.cquadzs(j,io) .and. zl.lt.cquadze(j,io)) fl = 1.
 c           --- "right" end of velocity advance step
             zr = y(9,iz) + vz * dta / 2.
             fr = 0.
@@ -298,7 +296,7 @@ c           --- set the field
             endif
 c           --- use current position to find the aperture, offset and rotation angle
             if (y(9,iz).ge.cquadzs(j,io) .and. y(9,iz).lt.cquadze(j,io)
-     &         .and. quadap(iele) > 0.) then
+     &          .and. quadap(iele) > 0.) then
               rpipe(iz) = quadap(iele)
               pipeox(iz) = qoffx(iele)
               pipeoy(iz) = qoffy(iele)
@@ -320,13 +318,11 @@ c     --- quadrupole or azimuthally symmetric field
             vzi = 1./dvnz(vz)
 c           --- find z-cell in which particle lies
             j = max(0., (y(9,iz) - zlmin) * dzli + 0.5)
+            iele = cheleid(j,io)
 c           --- "left" end of velocity advance step
             zl = y(9,iz) - vz * dta / 2.
             fl = 0.
-            if (zl.ge.chelezs(j,io) .and. zl.lt.cheleze(j,io)) then
-              fl = 1.
-              iele = cheleid(j,io)
-            endif
+            if (zl.ge.chelezs(j,io) .and. zl.lt.cheleze(j,io)) fl = 1.
 c           --- "right" end of velocity advance step
             zr = y(9,iz) + vz * dta / 2.
             fr = 0.
@@ -503,13 +499,11 @@ c       --- If in a quad, get field and pipe.
             vzi = 1./dvnz(vz)
 c           --- find z-cell in which particle lies
             j = max(0., (y(9,iz) - zlmin) * dzli + 0.5)
+            iele = cacclid(j,io)
 c           --- "left" end of velocity advance step
             zl = y(9,iz) - vz * dta / 2.
             fl = 0.
-            if (zl.ge.cacclzs(j,io) .and. zl.lt.cacclze(j,io)) then
-              fl = 1.
-              iele = cacclid(j,io)
-            endif
+            if (zl.ge.cacclzs(j,io) .and. zl.lt.cacclze(j,io)) fl = 1.
 c           --- "right" end of velocity advance step
             zr = y(9,iz) + vz * dta / 2.
             fr = 0.
@@ -572,13 +566,11 @@ c     --- Get bending field from dipole elements
           do iz=1,niz
 c           --- find z-cell in which particle lies
             j = max(0., (y(9,iz) - zlmin) * dzli + 0.5)
+            iele = cdipoid(j,io)
 c           --- "left" end of velocity advance step
             zl = y(9,iz) - vz * dta / 2.
             fl = 0.
-            if (zl.ge.cdipozs(j,io) .and. zl.lt.cdipoze(j,io)) then
-              fl = 1.
-              iele = cdipoid(j,io)
-            endif
+            if (zl.ge.cdipozs(j,io) .and. zl.lt.cdipoze(j,io)) fl = 1.
 c           --- "right" end of velocity advance step
             zr = y(9,iz) + vz * dta / 2.
             fr = 0.
@@ -637,7 +629,7 @@ c---------------------------------------------------------------------------
       do iz=1,niz
 c ---   Print warning if rpipe is zero
         if (rpipe(iz) == 0.) then
-          call remark("WARNING: rpipe is zero, make sure that either top.rwall and/or the lattice element apertures are set.")
+          call remark("WARNING: rpipe is zero, make sure that top.rwall and/or the lattice element apertures are set.")
         endif
       enddo
 
