@@ -1,5 +1,5 @@
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.5 2001/04/14 00:32:28 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.6 2001/07/11 22:40:16 dave Exp $"
 
 def adjustmesh3ddoc():
   print "adjustmeshz: Adjust the longitudinal length of the mesh."
@@ -83,30 +83,52 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
   if dofs:
     fieldsol(-1)
 
-#-------------------------------------------------------------------------
-# --- This reorganizes the particles for the parallel version after the mesh
-# --- has been changed. The compiled routine reorg_particles should probably
-# --- be called instead (but it is not callable from python yet).
-def reorgparticles():
-  lout = 1
-  while lout:
-    zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
-    lout = 0
-    for js in range(top.ns):
-      ii=compress(greater(top.uzp[top.ins[js]-1:top.ins[js]+top.nps[js]-1],0.),
-                  iota(top.ins[js]-1,top.ins[js]+top.nps[js]-2))
-      if len(ii) > 0:
-        if (min(take(top.zp,ii))-top.zgrid <  top.zpslmin[me] or
-            max(take(top.zp,ii))-top.zgrid >= top.zpslmax[me]):
-          lout = 1
- 
-     #ip1 = top.ins[js]-1
-     #ip2 = top.ins[js]+top.nps[js]-1
-     #if ip2 > ip1:
-     #  if logical_and(greater(top.uzp[ip1:ip1],0.),
-     #       logical_or(less(top.zp[ip1:ip1],top.zpslmin[me]+top.zgrid),
-     #         greater_equal(top.zp[ip1:ip1],top.zpslmax[me]+top.zgrid))):
-     #   lout = 1
-
-    lout = globalmax(lout)
+# -------------------------------------------------------------------------
+def adjustmeshxy(newsize,dorho=1,dofs=0,keepcentered=0):
+  """Adjust the longitudinal length of the mesh.
+  - newsize: the new transverse size of the mesh
+  - dorho=1: when true, the charge density is recalculated
+  - dofs=0: when true, the fieldsolver is called
+  - keepcentered=0: when true, the center of the mesh is unchanged, otherwise,
+                    zmmin and zmmax are simply scaled by the ratio of the
+                    new length to the old length
+  """
+  # --- Save old grid cell and mesh length
+  olddx = w3d.dx
+  olddy = w3d.dy
+  oldcenterx = 0.5*(w3d.xmmin + w3d.xmmax)
+  oldcentery = 0.5*(w3d.ymmin + w3d.ymmax)
+  # --- Set new mesh length by first scaling the min and max
+  w3d.dx = newsize/w3d.nx
+  w3d.dy = newsize/w3d.ny
+  w3d.xmmin = w3d.xmmin*w3d.dx/olddx
+  w3d.xmmax = w3d.xmmax*w3d.dx/olddx
+  w3d.ymmin = w3d.ymmin*w3d.dy/olddy
+  w3d.ymmax = w3d.ymmax*w3d.dy/olddy
+  # --- If requested, recenter the mesh about its old center.
+  if keepcentered:
+    newcenterx = 0.5*(w3d.xmmin + w3d.xmmax)
+    newcentery = 0.5*(w3d.ymmin + w3d.ymmax)
+    w3d.xmmin = w3d.xmmin + (oldcenterx - newcenterx)
+    w3d.xmmax = w3d.xmmax + (oldcenterx - newcenterx)
+    w3d.ymmin = w3d.ymmin + (oldcentery - newcentery)
+    w3d.ymmax = w3d.ymmax + (oldcentery - newcentery)
+  # --- Recalculate mesh
+  w3d.xmesh[:] = w3d.xmmin + iota(0,w3d.nx)*w3d.dx
+  w3d.ymesh[:] = w3d.ymmin + iota(0,w3d.ny)*w3d.dy
+  # --- Recheck particle boundary conditions
+  ###
+  # --- Reset field solve parameters (kxsq and kysq)
+  if top.fstype >= 0:
+    fstypesave = top.fstype
+    top.fstype = 0
+    fieldsol(1)
+    top.fstype = fstypesave
+  # --- Redeposit the charge density
+  if dorho:
+    w3d.rho = 0.
+    loadrho()
+  # --- Now ready for next field solve
+  if dofs:
+    fieldsol(-1)
 
