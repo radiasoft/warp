@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.18 $, $Date: 2001/08/09 00:57:46 $
+c@(#) File W3D.M, version $Revision: 3.19 $, $Date: 2001/08/09 20:21:30 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5598,7 +5598,7 @@ c=============================================================================
       use InPart
       use InjectVars
       use InjectVars3d
-      use Particles
+      use Particles, np_global => np
       integer(ISZ):: nx,ny,nz,np,ipmin
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -5771,7 +5771,7 @@ c=============================================================================
       use InPart
       use InjectVars
       use InjectVars3d
-      use Particles
+      use Particles, np_global => np
       integer(ISZ):: nx,nz,np,ipmin
       real(kind=8):: phi(0:nx,0:nz)
       real(kind=8):: ex(np),ey(np),ez(np)
