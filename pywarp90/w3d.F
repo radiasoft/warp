@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.93 $, $Date: 2003/03/13 17:54:49 $
+c@(#) File W3D.M, version $Revision: 3.94 $, $Date: 2003/03/25 21:49:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5295,12 +5295,17 @@ c Each species is stored in seperate parts of the particle arrays, the size of
 c which is based off the beam fraction of each species.  Check if there is
 c enough space in each of the species blocks.
 c Also set particle parameters: charge, mass and weight
-      total_frac = 0.
+      total_frac = sum(sp_fract)
+      if (maxval(nps) == 0) then
+        npmax = max(injctspc,npmax)
+        sp_fract = sp_fract/total_frac
+        call alotpart()
+        sp_fract = sp_fract*total_frac
+      endif
       do is=1,ns
-        total_frac = total_frac + sp_fract(is)
-      enddo
-      do is=1,ns
-        call chckpart(is,int(injctspc*sp_fract(is)/total_frac+1),0,.true.)
+        if (maxval(nps) /= 0) then
+          call chckpart(is,int(injctspc*sp_fract(is)/total_frac+1),0,.true.)
+        endif
         if (sq(is) == 0.) sq(is) = zion_s(is)*echarge
         if (sw(is) == 0.)
      &    sw(is)=(ibeam_s(is)*dt/(echarge*zion_s(is)))/npinje_s(is)*sp_fract(is)
