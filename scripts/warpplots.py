@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.109 2003/08/25 23:45:55 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.110 2003/09/23 19:35:27 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2953,8 +2953,9 @@ def psplots(freqflag=always,js=0):
   """Makes particle phase space plots which have been turned on
      - freqflag=always frequency flag, either always, seldom, or never
      - js=0 specifies the species of particles to plot"""
-# --- Phase space plots, both "frequent" ones and others
-# --- Do z-x,y 2-to-a-page subset and all-particle plots
+  # --- Phase space plots, both "frequent" ones and others
+  # --- Do z-x,y 2-to-a-page subset and all-particle plots
+  bb = wtime()
   # --- Save current device and set active device to window(0). This
   # --- ensures that plots created by this routine will be dumped to
   # --- the appropriate plot file.
@@ -2969,29 +2970,29 @@ def psplots(freqflag=always,js=0):
       ppzxy(i,lframe=true)
       fma()
 
-# --- Do z-x,y 2-to-a-page in color, skipping NSKIPCOL particles
+  # --- Do z-x,y 2-to-a-page in color, skipping NSKIPCOL particles
   if (top.ipzxyco == freqflag):
     ppzxyco(js,lframe=true)
     fma()
 
-# --- Do z-vz in color, skipping NSKIPCOL particles
+  # --- Do z-vz in color, skipping NSKIPCOL particles
   if (top.ipzvzco == freqflag):
     ppzvzco(js,lframe=true)
     fma()
 
-# --- Do x-xp in color, skipping NSKIPCOL particles
+  # --- Do x-xp in color, skipping NSKIPCOL particles
   for i in xrange(nwindows+1):
    if (top.ipxxpco[i] == freqflag):
      ppxxpco(i,lframe=true)
      fma()
 
-# --- Do y-yp in color, skipping NSKIPCOL particles
+  # --- Do y-yp in color, skipping NSKIPCOL particles
   for i in xrange(nwindows+1):
    if (top.ipyypco[i] == freqflag):
      ppyypco(i,lframe=true)
      fma()
 
-# --- Do z-x and z-xp subset and y-window plots
+  # --- Do z-x and z-xp subset and y-window plots
   for i in xrange(-nsubsets,nwindows+1):
     if (top.ipzx[i] == freqflag):
       ppzx(i,lframe=true)
@@ -3007,7 +3008,7 @@ def psplots(freqflag=always,js=0):
   #if (top.ipzxp4 == freqflag):
     #ppzxp4
 
-# --- Do z-y and z-yp subset and x-window plots
+  # --- Do z-y and z-yp subset and x-window plots
   for i in xrange(-nsubsets,nwindows+1):
     if (top.ipzy[i] == freqflag):
       ppzy(i,lframe=true)
@@ -3024,7 +3025,7 @@ def psplots(freqflag=always,js=0):
     #ppzyp4
     #fma()
 
-# --- Do z-vz subset and r-window plots
+  # --- Do z-vz subset and r-window plots
   for i in xrange(-nsubsets,nwindows+1):
     if (top.ipzvz[i] == freqflag):
       ppzvz(i,lframe=true)
@@ -3033,7 +3034,7 @@ def psplots(freqflag=always,js=0):
     #ppzvz4
     #fma()
 
-# --- Do transverse phase-space subset and z-window plots
+  # --- Do transverse phase-space subset and z-window plots
   for i in xrange(-nsubsets,nwindows+1):
     if (top.ipxy[i] == freqflag):
       ppxy(i,lframe=true)
@@ -3066,13 +3067,13 @@ def psplots(freqflag=always,js=0):
     #ppxpyp4
     #fma()
 
-# --- Do trace-space z-window plots
+  # --- Do trace-space z-window plots
   for i in xrange(nwindows+1):
     if (top.iptrace[i] == freqflag and i >= 0):
       pptrace(i,lframe=true)
       fma()
 
-# --- Do the user defined plots
+  # --- Do the user defined plots
   oldlimits = limits()
   if freqflag == always:
     for p in plalways:
@@ -3093,9 +3094,14 @@ def psplots(freqflag=always,js=0):
       fma()
       oldlimits = limits()
 
-# --- Reset the current window to it previous value.
+  # --- Reset the current window to it previous value.
   oldlimits = limits()
   window(currentwindow)
+
+  # --- Accumulate time
+  aa = wtime()
+  try: psplots.time = psplots.time + (aa - bb)
+  except: psplots.time = 0.
 
 # --- Thses are defined for the fortran interface. If WARP is not imported
 # --- main, then the functions and the always and seldom parameters will
