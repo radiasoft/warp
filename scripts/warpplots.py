@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.2 2000/11/21 19:55:44 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1212,7 +1212,14 @@ def pprrp(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
   rp = ((take(top.uxp,ii)/xpscale*cos(tt)+
          take(top.uyp,ii)/ypscale*sin(tt))/take(top.uzp,ii))
   if type(slope) == type(''):
-    slope = ave(rr*rp)/ave(rr**2)
+    if npes == 0:
+      aversq = ave(rr**2)
+    else:
+      aversq = globalave(rr**2)
+    if aversq > 0.:
+      slope = ave(rr*rp)/aversq
+    else:
+      slope = 0.
   warpplp(rp-slope*rr,rr,color=color,type="none",marker=marker,msize=msize)
   if titles: ptitles()
   settitles() 
