@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.26 $, $Date: 2002/03/27 21:17:38 $
+c@(#) File F3D.M, version $Revision: 3.27 $, $Date: 2002/04/08 13:27:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4704,71 +4704,60 @@ c write out number of iterations taken
 
 c Exchange phi at the boundaries, 0 and nz, one last time to ensure
 c consistency across processors. This has the side benefit of setting
-c planes -1 and nz+1 for the periodic case.
+c planes -1 and nz+1 for the periodic case. Also, exchange phi in the
+c guard planes, -1 and nz+1 for all processors.
 #ifdef MPIPARALLEL
 c*********************Parallel Routine*********************
 c     --- exchange phi on the boundary
       call exchange_phi(nx,ny,izfsmax-izfsmin,phi(0,0,izfsmin-1),
      &                  bound0,boundnz,0)
+      call exchange_phi(nx,ny,izfsmax-izfsmin,phi(0,0,izfsmin-1),
+     &                  bound0,boundnz,-1)
 c**********************************************************
 #endif
 
 c Set planes nz=-1 and nz=nz+1 based on type of boundary condition.
 c This is not done in the case of a partial field solve.
-c  Do this for both serial and parallel versions. It is correct for the serial
-c  version. In the parallel version, it is only correct for the first and last
-c  processors, but doesn't hurt any others since the planes -1 and nz+1 will
-c  be written over anyway by the appropriate values. The time spent here is
-c  minimal and adding if statements to prevent most processors from doing this
-c  would be rather messy. The periodic cases are skipped by the parallel
-c  version since that exchange_phi call above handles it.
-c  I don't remember why I wrote out the loops instead of calling copyaray.
+c Separate code is needed for the serial and parallel versions, since
+c in parallel, only the first and last processors set the guard cell
+c and only for Dirichlet and Nuemann boundary conditions. The periodic
+c cases are skipped by the parallel version since that exchange_phi call
+c above handles it.
+#ifndef MPIPARALLEL
       if (izfsmin == 0) then
         if (bound0 == 0) then
-          do ix=0,nx
-            do iy=0,ny
-              phi(ix,iy,-1) = phi(ix,iy,0)
-            enddo
-          enddo
+          phi(:,:,-1) = phi(:,:,0)
         else if (bound0 == 1) then
-          do ix=0,nx
-            do iy=0,ny
-              phi(ix,iy,-1) = phi(ix,iy,1)
-            enddo
-          enddo
-#ifndef MPIPARALLEL
+          phi(:,:,-1) = phi(:,:,1)
         else if (bound0 == 2) then
-          do ix=0,nx
-            do iy=0,ny
-              phi(ix,iy,-1) = phi(ix,iy,nz-1)
-            enddo
-          enddo
-#endif
+          phi(:,:,-1) = phi(:,:,nz-1)
         endif
       endif
       if (izfsmax == nz) then
         if (boundnz == 0) then
-          do ix=0,nx
-            do iy=0,ny
-              phi(ix,iy,nz+1) = phi(ix,iy,nz)
-            enddo
-          enddo
+          phi(:,:,nz+1) = phi(:,:,nz)
         else if (boundnz == 1) then
-          do ix=0,nx
-            do iy=0,ny
-              phi(ix,iy,nz+1) = phi(ix,iy,nz-1)
-            enddo
-          enddo
-#ifndef MPIPARALLEL
+          phi(:,:,nz+1) = phi(:,:,nz-1)
         else if (boundnz == 2) then
-          do ix=0,nx
-            do iy=0,ny
-              phi(ix,iy,nz+1) = phi(ix,iy,1)
-            enddo
-          enddo
-#endif
+          phi(:,:,nz+1) = phi(:,:,1)
         endif
       endif
+#else
+      if (izfsmin == 0) then
+        if (bound0 == 0 .and. my_index == 0) then
+          phi(:,:,-1) = phi(:,:,0)
+        else if (bound0 == 1 .and. my_index == 0) then
+          phi(:,:,-1) = phi(:,:,1)
+        endif
+      endif
+      if (izfsmax == nz) then
+        if (boundnz == 0 .and. my_index == nslaves-1) then
+          phi(:,:,nz+1) = phi(:,:,nz)
+        else if (boundnz == 1 .and. my_index == nslaves-1) then
+          phi(:,:,nz+1) = phi(:,:,nz-1)
+        endif
+      endif
+#endif
 
 c unset rho
       reps0c = 1./reps0c
@@ -5316,6 +5305,8 @@ c       return
       end if
 
       dxpsor = dx
+      nzpsor = nz
+      call gchange("PSOR3d",0)
 
 c     --- fuzz is used to prevent the distance from a point to the surface
 c     --- from being too small or zero.  Any point within fuzz of the surface
