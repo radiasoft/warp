@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.31 $, $Date: 2002/04/22 20:15:57 $
+c@(#) File F3D.M, version $Revision: 3.32 $, $Date: 2002/04/22 20:19:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -7722,7 +7722,7 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delmz = (zz - znew)*dzi
                 endif
-              elseif (rad > rrrlower .or. rad < max(rrr,rmin)+rfuzz) then
+              elseif (rad > rrrlower .or. rad < rmin) then
                 delmz = 2.
               endif
 
@@ -7778,7 +7778,7 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delpz = (znew - zz)*dzi
                 endif
-              elseif (rad > rrrhigher .or. rad < max(rrr,rmin)+rfuzz) then
+              elseif (rad > rrrhigher .or. rad < rmin) then
                 delpz = 2.
               endif
 
