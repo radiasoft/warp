@@ -388,6 +388,8 @@ TYPE(BNDtype), POINTER :: b
 ! initializes loc_part* arrays
 
   IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
+    lmin=1+nint((g%zmin-g%up%zmin)/g%up%dz)
+    lmax=1+nint((g%zmax-g%up%zmin)/g%up%dz)
     g%up%loc_part(1,lmin:lmax-1)=g%gid(1)
     g%up%loc_part_fd(1,lmin+transit_min_z:lmax-1-transit_max_z)=g%gid(1)
   else
@@ -586,6 +588,8 @@ TYPE(BNDtype), POINTER :: b
 ! initializes loc_part* arrays
 
   IF(solvergeom==Zgeom .or. solvergeom==Rgeom) then
+    lmin=1+nint((g%zmin-g%up%zmin)/g%up%dz)
+    lmax=1+nint((g%zmax-g%up%zmin)/g%up%dz)
     g%up%loc_part(1,lmin:lmax-1)=g%gid(1)
     g%up%loc_part_fd(1,lmin+transit_min_z:lmax-1-transit_max_z)=g%gid(1)
   else
