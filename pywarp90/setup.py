@@ -2,8 +2,9 @@
 # To use:
 #       python setup.py install
 #
-import sys,os,os.path
+import sys,os,os.path,string
 from Forthon.compilers import FCompiler
+import getopt
 
 try:
     import distutils
@@ -13,7 +14,18 @@ try:
 except:
     raise SystemExit, "Distutils problem"
 
-fcomp = FCompiler()
+optlist,args = getopt.getopt(sys.argv[1:],'gt:F:')
+machine = sys.platform
+debug   = 0
+fcomp   = None
+for o in optlist:
+  if   o[0] == '-g': debug = 1
+  elif o[0] == '-t': machine = o[1]
+  elif o[0] == '-F': fcomp = o[1]
+sys.argv = ['setup.py']+args
+fcompiler = FCompiler(machine=machine,
+                      debug=debug,
+                      fcompiler=fcomp)
 
 dummydist = Distribution()
 dummybuild = build(dummydist)
@@ -57,8 +69,9 @@ setup (name = "warpC",
                                  os.path.join(builddir,'Forthon.c'),
                                  'pmath_rng.c','ranf.c','ranffortran.c'],
                                 include_dirs=[builddir],
-                                library_dirs=fcomp.libdirs,
-                                libraries=fcomp.libs,
+                                library_dirs=fcompiler.libdirs,
+                                libraries=fcompiler.libs,
                                 extra_objects=warpobjects,
-                                extra_link_args=['-g'])]
+                                extra_link_args=['-g']+
+                                             fcompiler.extra_link_args)]
        )
