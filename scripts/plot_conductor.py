@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.80 2004/07/16 21:28:28 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.81 2004/07/22 23:43:09 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1782,6 +1782,7 @@ def plotquadoutline(zl=None,zu=None,iq=0,nq=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
+  if top.nquad < 0: return
   if nq is None: nq = top.nquad + 1
   plotelementoutline(color,gridframe,axis,zl,zu,iq,nq,outline,fillcolor,
                      top.quadzs,top.quadze,top.quadap,top.quadax,top.quaday,
@@ -1803,6 +1804,7 @@ def plotheleoutline(zl=None,zu=None,ih=0,nh=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
+  if top.nhele < 0: return
   if nh is None: nh = top.nhele + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ih,nh,outline,fillcolor,
                      top.helezs,top.heleze,top.heleap,top.heleax,top.heleay,
@@ -1824,6 +1826,7 @@ def plotemltoutline(zl=None,zu=None,ie=0,ne=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
+  if top.nemlt < 0: return
   if ne is None: ne = top.nemlt + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
                      top.emltzs,top.emltze,top.emltap,top.emltax,top.emltay,
@@ -1845,6 +1848,7 @@ def plotpgrdoutline(zl=None,zu=None,ip=0,np=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
+  if top.npgrd < 0: return
   if np is None: np = top.npgrd + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ip,np,outline,fillcolor,
                      top.pgrdzs,top.pgrdze,top.pgrdap,top.pgrdax,top.pgrday,
@@ -1866,6 +1870,7 @@ def plotaccloutline(zl=None,zu=None,ia=0,na=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
+  if top.naccl < 0: return
   if na is None: na = top.naccl + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ia,na,outline,fillcolor,
                      top.acclzs,top.acclze,top.acclap,top.acclax,top.acclay,
@@ -1884,6 +1889,7 @@ def plotdrftoutline(zl=None,zu=None,id=0,nd=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
+  if top.ndrft < 0: return
   if nd is None: nd = top.ndrft + 1
   plotelementoutline(color,gridframe,axis,zl,zu,id,nd,outline,fillcolor,
                      top.drftzs,top.drftze,top.drftap,top.drftax,top.drftay,
