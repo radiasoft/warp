@@ -30,6 +30,21 @@ voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1
 
 installconductors(a): generates the data needed for the fieldsolve
 
+All of the conductor objects have the following methods:
+  distance(xx,yy,zz): calculates the shortest distance between each of the
+                      points and the conductor. It returns an instance
+                      of a Distance object whichs contains the distance in
+                      an attribute named distance.
+  isinside(xx,yy,zz): determines whether or not each of the points is inside
+                      of the conductor. It returns an instance
+                      of an Isinside object whichs contains the flag in
+                      an attribute named isinside.
+  intercept(xx,yy,zz,vx,vy,vz): calculates the location were a particle with
+                                the given velocities most recently intersected
+                                a conductor. It returns an instance of an
+                                Intercept object whichs contains the data in
+                                the attributes xi, yi, zi, and angle.
+
 A set of classes for generating and manipulating surfaces of revolution
 using lines and arcs primitives (SRFRVLA) are available:
 SRFRVLAfromfile(filename,voltages,condids,zshifts=None,rshifts=None,install=1)
@@ -55,7 +70,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.40 2003/12/03 01:02:01 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.41 2003/12/09 02:42:18 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -545,6 +560,7 @@ class Distance:
 Class to hold the distance between points and a conductor
 Distances have the sign of the outward normal surface vector, i.e.
 distances outside the surface are positive, inside negative.
+The attribute 'distance' holds the calculated distance.
   """
 
   def __init__(self,xx=None,yy=None,zz=None,
@@ -612,6 +628,8 @@ distances outside the surface are positive, inside negative.
 class IsInside:
   """
 Class to hold flag whether or not a point is inside a conductor.
+The attribute 'distance' holds the calculated distance.
+The attribute 'isinside' holds the flag specifying whether a point is in or out
   """
 
   def __init__(self,xx=None,yy=None,zz=None,
@@ -666,6 +684,9 @@ Class to hold flag whether or not a point is inside a conductor.
 class Intercept:
   """
 Class to hold information about where a trajectory intercepted a conductor.
+The attributes xi, yi, and zi, hold the calculated intersection location.
+The attribute angle holds the angle relative to the normal of the surface
+at the intersection point.
   """
 
   def __init__(self,xx=None,yy=None,zz=None,vx=None,vy=None,vz=None,
