@@ -5,11 +5,14 @@ import os
 import string
 import re
 import RandomArray
-import PW
-import PR
+try:
+  import PW
+  import PR
+except ImportError:
+  pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.2 2000/10/26 21:18:12 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.3 2000/11/21 19:59:25 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
