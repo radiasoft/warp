@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.89 $, $Date: 2003/02/27 18:41:53 $
+c@(#) File W3D.M, version $Revision: 3.90 $, $Date: 2003/02/27 19:34:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1498,10 +1498,7 @@ c       --- absorb particles passing through semitransparent disc
      &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,yp(ins(is)),ymmax,
      &                     ymmin,dy,zp(ins(is)),zmmin,dz,uxp(ins(is)),
      &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
-     &                     zgrid,zbeam,nzzarr,
-     &                     prwallz(0),prwallxz(0),prwallyz(0),prwelips(0),
-     &                     l2symtry,l4symtry,zzmin,dzzi,
-     &                     pboundxy,xmaxz(0),xminz(0),ymaxz(0),yminz(0))
+     &                     zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
 
         enddo
 
@@ -3692,24 +3689,17 @@ c     --- enforce axial periodicity
       end
 c=============================================================================
       subroutine stckxy3d(np,xp,xmmax,xmmin,dx,yp,ymmax,ymmin,dy,
-     &                   zp,zmmin,dz,uxp,uyp,uzp,gaminv,zgrid,zbeam,
-     &                   nzzarr,prwallz,prwallxz,prwallyz,prwelips,
-     &                   l2symtry,l4symtry,zzmin,dzzi,
-     &                   pboundxy,xmaxz,xminz,ymaxz,yminz)
+     &                    zp,zmmin,dz,uxp,uyp,uzp,gaminv,zgrid,zbeam,
+     &                    l2symtry,l4symtry,pboundxy,lcountaslost)
       use Subtimers3d
       use GlobalVars
+      use Z_arrays
       use InGen3d, only: solvergeom, RZgeom, XZgeom, Zgeom
-      integer(ISZ):: np,nzzarr,pboundxy
+      integer(ISZ):: np,pboundxy
       real(kind=8):: xmmax,xmmin,dx,ymmax,ymmin,dy,zmmin,dz,zgrid,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
-      real(kind=8):: prwallz(0:nzzarr),prwallxz(0:nzzarr),prwallyz(0:nzzarr)
-      real(kind=8):: prwelips(0:nzzarr)
-      logical(ISZ):: l2symtry,l4symtry,lstckxy
-      real(kind=8):: zzmin,dzzi,xper,yper
-      real(kind=8):: xmaxz(0:nzzarr),xminz(0:nzzarr)
-      real(kind=8):: ymaxz(0:nzzarr),yminz(0:nzzarr)
-
+      logical(ISZ):: l2symtry,l4symtry,lcountaslost
 
 c Enforces transverse sticky boundary conditions.
 c Particles are considered stuck when outside a z-dependent aperture of
@@ -3724,10 +3714,15 @@ c If pboundxy == periodic applies periodic transverse bc.
 c Rectangular boundary capability added, where the values of the xmaxz,xminz,
 c ymaxz,yminz arrays are used as a rectangular sticky boundary when
 c their values(z) are within the grid.
+c If lcountaslost is not true, then the uzp of the lost particles is
+c set to zero - those particles then won't be added to the count of
+c lost particles.
 
 
       integer(ISZ):: ip,iz,izz
       real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: xper,yper
+      logical(ISZ):: lstckxy
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -3792,6 +3787,7 @@ c Check values of rectangular boundary arrays to see if they will be used.
      &        .or. xp(ip) <= xminz(iz)
      &        .or. yp(ip) <= yminz(iz) ) then
           gaminv(ip) = 0.
+          if (.not. lcountaslost) uzp(ip) = 0.
        endif
       enddo
       endif
@@ -3804,6 +3800,7 @@ c Check values of rectangular boundary arrays to see if they will be used.
      &      (xmin > xp(ip) .or. xp(ip) > xmax .or.
      &       ymin > yp(ip) .or. yp(ip) > ymax)) then
           gaminv(ip) = 0.
+          if (.not. lcountaslost) uzp(ip) = 0.
         endif
       enddo
 
@@ -4603,9 +4600,7 @@ c                     --- first quadrant.
                       xx = xp(ii)*signx(il)-xinj
                       yy = yp(ii)*signy(il)-yinj
                       if (((xx*ainji)**2 + (yy*binji)**2 > 1. .or.
-     &                     (xx*ainjmini)**2 + (yy*binjmini)**2 < 1. .or.
-     &                     xp(ii)*signx(il) < xmmin .or. xmmax < xp(ii) .or.
-     &                     yp(ii)*signy(il) < ymmin .or. ymmax < yp(ii)) .and.
+     &                     (xx*ainjmini)**2 + (yy*binjmini)**2 < 1.) .and.
      &                     solvergeom/=Zgeom) cycle
 c                     --- find injection surface axial location by interpolation
                       ixx = spreadx*(abs(xp(ii) - xmmin)*dxi)
@@ -4720,6 +4715,16 @@ c             --- end loop over ix
 c           --- end loop over iy
           enddo
 c         --- end of loop over injection sources
+
+c         --- Call transverse particle scraping routine to force
+c         --- removal of particles outside the grid. Note that
+          do is=1,ns
+            ii = ins(is) - npinje_s(is)
+            call stckxy3d(npinje_s(is),xp(ii),xmmax,xmmin,dx,yp(ii),ymmax,
+     &                    ymmin,dy,zp(ii),zmmin,dz,uxp(ii),
+     &                    uyp(ii),uzp(ii),gaminv(ii),
+     &                    zgrid,zbeam,l2symtry,l4symtry,absorb,.false.)
+          enddo
 
           do is=1,ns
 c           --- Sum npinje_s to get the total number of particles injected.
