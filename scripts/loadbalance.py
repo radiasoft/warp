@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.33 2003/10/08 21:30:36 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.34 2004/06/02 22:47:01 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -72,6 +72,18 @@ recalculated on a finer mesh to give better balancing.
       zz = None
       zminp = top.zminp
       zmaxp = top.zmaxp
+
+    # --- Special check when injection is turned on
+    if top.inject:
+      # --- Make sure that all of the injection sources are included.
+      # --- These are crude estimates of the min and max when xpinject
+      # --- and ypinject are nonzero.
+      rinj = sqrt(top.ainject**2 + top.binject**2)
+      rpinj = sqrt(top.xpinject**2 + top.ypinject**2)
+      zinjectmin = max(w3d.zmminglobal,min(top.zinject - rinj*rpinj))
+      zinjectmax = min(w3d.zmmaxglobal,max(top.zinject + rinj*rpinj))
+      zminp = minimum(zinjectmin,zminp)
+      zmaxp = maximum(zinjectmax,zmaxp)
 
     # --- Check if rightmost particle is close to edge of last processor
     # --- If so, then force a reloadbalance.
