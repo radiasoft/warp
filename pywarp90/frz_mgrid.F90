@@ -1,4 +1,4 @@
-!     Last change:  JLV  21 Aug 2001    3:56 pm
+!     Last change:  JLV  22 Aug 2001    3:46 pm
 #include "top.h"
 module multigridrz
 ! module containing RZ multigrid solver
@@ -46,9 +46,11 @@ end TYPE conductor_type
 TYPE bndptr
 ! type for potential calculation
   ! mask array on the grid, = .true. on nodes in vacuum (i.e. not near or in conductors)
-  LOGICAL(ISZ), POINTER:: v(:,:)
+  LOGICAL(ISZ), POINTER :: v(:,:)
+  LOGICAL(ISZ) :: l_powerof2 ! set to true if all grid dimensions (in number of meshes) are a power of two
+  INTEGER(ISZ) :: nr, nz
   ! mesh sizes
-  REAL(8) :: dx, dz
+  REAL(8) :: dr, dz
   ! number of conductors
   INTEGER(ISZ) :: nb_conductors
   ! linked-list of conductors
@@ -57,10 +59,10 @@ END TYPE bndptr
 
 TYPE(bndptr), pointer :: bndy(:)
 
-LOGICAL(ISZ) :: bndy_allocated=.FALSE., & ! flag set to true if bndy is allocated
-                l_powerof2=.true.         ! set to true if all grid dimensions (in number of meshes) are a power of two
+LOGICAL(ISZ) :: bndy_allocated=.FALSE. ! flag set to true if bndy is allocated
 
 REAL(8), parameter :: coefrelax=1._8, coefrelaxbnd=1._8 ! coefficients for relaxation steps
+INTEGER, parameter :: nmeshmin=2
 
 INTEGER(ISZ), parameter :: dirichlet=0, neumann=1, periodic=2  ! boundary condition types
 INTEGER(ISZ) :: ixlbnd=dirichlet, ixrbnd=dirichlet, izlbnd=dirichlet, izrbnd=dirichlet  ! boundary conditions for each side
@@ -68,29 +70,87 @@ INTEGER(ISZ) :: ixlbnd=dirichlet, ixrbnd=dirichlet, izlbnd=dirichlet, izrbnd=dir
 INTEGER(ISZ), parameter :: egun=0, ecb=1
 INTEGER(ISZ) :: bnd_method=egun
 
+INTEGER(ISZ) :: nlevels ! number of multigrid levels
+
 contains
 
-subroutine init_bnd(nlevels,nx,nz)
+subroutine init_bnd(nr,nz,dr,dz)
 ! intializes grid quantities according to the number of multigrid levels and grid sizes nx and nz.
 implicit none
-INTEGER(ISZ), INTENT(IN) :: nlevels, nx, nz
+INTEGER(ISZ), INTENT(IN) :: nr, nz
+REAL(8), INTENT(IN) :: dr, dz
 
-INTEGER(ISZ) :: i, nx2, nz2
+INTEGER(ISZ) :: i, nrp0, nzp0, nrc, nzc
+REAL(8) :: drc, dzc
+
+  nrc = nr
+  nzc = nz
+  drc = dr
+  dzc = dz
+  nlevels=1
+  do WHILE(nrc>nmeshmin.and.nzc>nmeshmin)
+    call evalnewgrid(nrc,nzc,drc,dzc)
+    nlevels = nlevels + 1
+  end do
 
   allocate(bndy(nlevels))
   bndy_allocated=.true.
 
-  nx2=nx; nz2=nz
+  nrc=nr
+  nzc=nz
+  drc = dr
+  dzc = dz
   do i = nlevels, 1, -1
+    IF(i/=nlevels) then
+      call evalnewgrid(nrc,nzc,drc,dzc)
+    END if
+    bndy(i)%nr = nrc
+    bndy(i)%nz = nzc
+    bndy(i)%dr = drc
+    bndy(i)%dz = dzc
     NULLIFY(bndy(i)%first)
     bndy(i)%nb_conductors = 0
-    bndy(i)%dx=1._8; bndy(i)%dz=1._8
-    ALLOCATE(bndy(i)%v(nx+1,nz+1))
+    ALLOCATE(bndy(i)%v(bndy(i)%nr+1,bndy(i)%nz+1))
     bndy(i)%v(:,:)=.true.
-    nx2=nx2/2; nz2=nz2/2
+    nrp0 = INT(LOG(REAL(bndy(i)%nr+1))/LOG(2.))
+    nzp0 = INT(LOG(REAL(bndy(i)%nz+1))/LOG(2.))
+    IF(2**nrp0/=bndy(i)%nr.or.2**nzp0/=bndy(i)%nr) THEN
+      bndy(i)%l_powerof2=.false.
+    else
+      bndy(i)%l_powerof2=.true.
+    END if
   end do
 
 end subroutine init_bnd
+
+subroutine evalnewgrid(nr,nz,dr,dz)
+! evaluate nr and nz at coarser level
+INTEGER(ISZ), INTENT(IN OUT) :: nr, nz
+REAL(8), INTENT(IN OUT) :: dr,dz
+
+REAL(8) :: rap
+INTEGER :: nrnew, nznew
+
+  rap = dr/dz
+  IF(rap>1.5_8) then
+    nznew = nz/2
+    dz = dz * REAL(nz,8)/REAL(nznew,8)
+    nz=nznew
+  ELSE IF(rap<0.3333333_8) then
+    nrnew = nr/2
+    dr = dr * REAL(nr,8)/REAL(nrnew,8)
+    nr=nrnew
+  ELSE
+    nrnew = nr/2
+    dr = dr * REAL(nr,8)/REAL(nrnew,8)
+    nznew = nz/2
+    dz = dz * REAL(nz,8)/REAL(nznew,8)
+    nr=nrnew
+    nz=nznew
+  END if
+
+  return
+end subroutine evalnewgrid
 
 subroutine init_bnd_sublevel(bndl,nbnd,ncond)
 ! initializes quantities for one grid level
@@ -456,7 +516,7 @@ return
 END subroutine relaxbndrzwguard
 
 function residbndrzwguard(f,rhs,bnd,nr,nz,dr,dz,voltfact)
-! evaluate residue. Grid is assumed to have guard cells.
+! evaluate residue. Grid is assumed to have guard cells, but residue does not.
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: nr, nz
@@ -547,9 +607,11 @@ REAL(8) :: dr, dz
 TYPE(bndptr) :: bnd(:)
 LOGICAL(ISZ), INTENT(IN) :: sub, relax_only
 
-REAL(8), DIMENSION((SIZE(u,1)-2+1)/2,(SIZE(u,2)-2+1)/2) :: res
-REAL(8), DIMENSION(0:(SIZE(u,1)-2+1)/2+1,0:(SIZE(u,2)-2+1)/2+1) :: v
+REAL(8), DIMENSION(:,:), allocatable :: res, v
 INTEGER(ISZ) :: i
+INTEGER :: nrnext, nznext
+REAL(8) :: drnext, dznext
+
 
 IF(j<=npmin .or. relax_only) then
   call updateguardcellsrz(f=u)
@@ -559,6 +621,11 @@ IF(j<=npmin .or. relax_only) then
     call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=1._8)
   END if
 else
+  nrnext = bnd(j-1)%nr
+  nznext = bnd(j-1)%nz
+  drnext = bnd(j-1)%dr
+  dznext = bnd(j-1)%dz
+  ALLOCATE(res(nrnext+1,nznext+1),v(0:nrnext+2,0:nznext+2))
   call updateguardcellsrz(f=u)
   IF(sub) then
     call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=0._8)
@@ -566,28 +633,28 @@ else
     call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=1._8)
   END if
   IF(sub) then
-    IF(l_powerof2) then
+    IF(bnd(j)%l_powerof2) then
       res = restrict(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=0._8))
     else
       res = restrict_any(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=0._8), &
-                         (SIZE(u,1)-2+1)/2-1,(SIZE(u,2)-2+1)/2-1,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+                         nrnext,nznext,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
     END if
   else
-    IF(l_powerof2) then
+    IF(bnd(j)%l_powerof2) then
       res = restrict(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=1._8))
     else
       res = restrict_any(residbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,voltfact=1._8), &
-                         (SIZE(u,1)-2+1)/2-1,(SIZE(u,2)-2+1)/2-1,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+                         nrnext,nznext,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
     END if
   END if
   call apply_voltage(res,bnd(j-1),0._8)
   v = 0.0_8
   do i = 1, ncycle  !(1=V cycles, 2=W cycle)
-    call mgbndrzwguard(j=j-1, u=v, rhs=res, bnd=bnd(1:j-1), nr=nr/2, nz=nz/2, dr=2._8*dr, dz=2._8*dz, npre=npre, npost=npost, &
+    call mgbndrzwguard(j=j-1, u=v, rhs=res, bnd=bnd(1:j-1), nr=nrnext, nz=nznext, dr=drnext, dz=dznext, npre=npre, npost=npost, &
                    ncycle=ncycle, sub=.TRUE., relax_only=.FALSE., npmin=npmin)
   end do
   call apply_voltagewguard(v,bnd(j-1),0._8)
-  IF(l_powerof2) then
+  IF(bnd(j)%l_powerof2) then
     u = u + expandwguard(v)
   else
     u = u + expandwguard_any(v,nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
@@ -603,6 +670,7 @@ else
   else
     call relaxbndrzwguard(f=u,rhs=rhs,bnd=bnd(j),nr=nr,nz=nz,dr=dr,dz=dz,nc=npost,voltfact=1._8)
   END if
+  DEALLOCATE(res,v)
 END if
 
 return
@@ -711,9 +779,9 @@ TYPE(bndptr), DIMENSION(:) :: bnd
 
 REAL(8), parameter :: pi = 3.14159265358979_8
 
-INTEGER(ISZ) :: i, j, l, np, nrc, nzc, npmin
+INTEGER(ISZ) :: i, j, l, nrc, nzc, npmin
 REAL(8), allocatable, DIMENSION(:,:) :: f, fold
-REAL(8) :: dr, dz
+REAL(8) :: dr, dz, drc, dzc, dr0, dz0
 TYPE rhoptr
   REAL(8), POINTER:: a(:,:)
 END TYPE rhoptr
@@ -725,55 +793,41 @@ INTEGER(ISZ), DIMENSION(:), ALLOCATABLE :: nr, nz
 do_calc=.true.
 has_diverged = .false.
 
-nrc = nr0
-nzc = nz0
-np=1
-do i = 1, 1000
-  nrc = nrc/2
-  nzc = nzc/2
-  np = np + 1
-  IF(nrc<=1.or.nzc<=1) exit
-end do
-ALLOCATE(nr(np),nz(np))
+dr0 = length_r/nr0
+dz0 = length_z/nz0
 
-ALLOCATE(f(0:nrc+2,0:nzc+2), rho(np))
-ALLOCATE(rho(np)%a(nr0+1,nz0+1))
+nrc = bnd(nlevels)%nr
+nzc = bnd(nlevels)%nz
 
-rho(np)%a = rhoinit
+ALLOCATE(f(0:bnd(1)%nr+2,0:bnd(1)%nz+2), rho(nlevels))
+ALLOCATE(rho(nlevels)%a(nrc+1,nzc+1))
+rho(nlevels)%a = rhoinit
 f = 0._8
-f(1:nrc+1,1:nzc+1) = restrict_any(uold=u, nxnew=nrc, nznew=nzc, &
+f(1:bnd(1)%nr+1,1:bnd(1)%nz+1) = restrict_any(uold=u, nxnew=bnd(1)%nr, nznew=bnd(1)%nz, &
                      xminold=0._8, xmaxold=length_r, zminold=0._8, zmaxold=length_z, &
                      xminnew=0._8, xmaxnew=length_r, zminnew=0._8, zmaxnew=length_z)
 
-nrc = nr0
-nzc = nz0
-nr(np)=nrc
-nz(np)=nzc
-do i = np-1, 1, -1
-  nrc = nrc/2
-  nzc = nzc/2
-  nr(i)=nrc
-  nz(i)=nzc
-  ALLOCATE(rho(i)%a(nrc+1,nzc+1))
+do i = nlevels-1, 1, -1
+  ALLOCATE(rho(i)%a(bnd(i)%nr+1,bnd(i)%nz+1))
   rho(i)%a = 0.
-  IF(l_powerof2) then
+  IF(bnd(i)%l_powerof2) then
     rho(i)%a = restrict(rho(i+1)%a)
   else
-    rho(i)%a = restrict_any(rho(i+1)%a,nrc,nzc,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
+    rho(i)%a = restrict_any(rho(i+1)%a,bnd(i)%nr,bnd(i)%nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
   END if
 end do
 
-main_loop: do i = 2, np
+main_loop: do i = 2, nlevels
   IF(ALLOCATED(fold)) DEALLOCATE(fold)
   ALLOCATE(fold(SIZE(f,1),SIZE(f,2)))
   fold = f
   DEALLOCATE(f)
-  nrc = nr(i)
-  nzc = nz(i)
-  dr = length_r/nrc
-  dz = length_z/nzc
+  nrc = bnd(i)%nr
+  nzc = bnd(i)%nz
+  dr = bnd(i)%dr
+  dz = bnd(i)%dz
   ALLOCATE(f(0:nrc+2,0:nzc+2))
-  IF(l_powerof2) then
+  IF(bnd(i)%l_powerof2) then
     f = expandwguard(fold)
   else
     f = expandwguard_any(fold,nrc,nzc, &
@@ -793,7 +847,11 @@ main_loop: do i = 2, np
   do while(do_calc)
     average_residue_init=SUM(ABS(residbndrzwguard(f=RESHAPE((/(0._8*j,j=1,(nrc+3)*(nzc+3))/), (/nrc+3,nzc+3/)) &
                              ,rhs=rho(i)%a,bnd=bnd(i),nr=nrc,nz=nzc,dr=dr,dz=dz,voltfact=1._8)))/(nrc*nzc)
-    if(average_residue_init==0._8) cycle main_loop
+    if(average_residue_init==0._8) then
+      average_residue=0.
+      average_residue_init=1.
+      cycle main_loop
+    END if
     average_residue_prev=average_residue_init
     do  j = 1, nc
       call mgbndrzwguard(j=i,u=f,rhs=rho(i)%a,bnd=bnd,nr=nrc,nz=nzc,dr=dr,dz=dz,npre=npre,npost=npost,ncycle=ncycle,sub=.FALSE., &
@@ -804,15 +862,15 @@ main_loop: do i = 2, np
         WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
         WRITE(0,*) '        average initial residue = ',average_residue_init
         WRITE(0,*) '        average current residue = ',average_residue
-        WRITE(0,*) '        level = ',i,' on ',np,' levels; npmin = ',npmin
+        WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
         f=fold
         do_calc=.true.
-        IF(npmin==i) do_calc=.false.
+        IF(npmin>=i) do_calc=.false.
         npmin=npmin+1
         IF(do_calc) WRITE(0,*) '        trying npmin = ',npmin
         exit
       END if
-      IF(i==np) then
+      IF(i==nlevels) then
         IF(average_residue/average_residue_init <= accuracy) then
           do_calc=.false.
           exit
@@ -833,59 +891,47 @@ WRITE(0,'("multigridrz: precision = ",e12.5, " after ",i5," iterations...")') av
 u = f
 call updateguardcellsrz(f=u)
 
-do i = np, 1, -1
+do i = nlevels, 1, -1
   DEALLOCATE(rho(i)%a)
 end do
-DEALLOCATE(f, rho, nr, nz)
+DEALLOCATE(f, rho)
 
 return
 end subroutine solve_multigridrz
 
 END module multigridrz
 
-subroutine multigridrzf(u0,rho0,nr0,nz0,dr0,dz0,rxbnd,lzbnd,rzbnd,accuracy,ncmax,npre,npost,ncycle)
+subroutine multigridrzf(iwhich,u0,rho0,nr0,nz0,dr0,dz0,rxbnd,lzbnd,rzbnd,accuracy,ncmax,npre,npost,ncycle)
 USE multigridrz
 implicit none
-INTEGER(ISZ), INTENT(IN) :: nr0, nz0, rxbnd, lzbnd, rzbnd,ncmax,npre,npost,ncycle
+INTEGER(ISZ), INTENT(IN) :: iwhich,nr0, nz0, rxbnd, lzbnd, rzbnd,ncmax,npre,npost,ncycle
 REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
 REAL(8), INTENT(IN) :: rho0(nr0+1,nz0+1)
-REAL(8), INTENT(IN) :: dr0, dz0,accuracy
+REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 
-INTEGER(ISZ) :: nrp0, nzp0, j, l, nrc, nzc, np, i
-
+INTEGER(ISZ) :: j, l, nrc, nzc, np, i
+REAL(8) :: drc, dzc
 REAL(8) :: wtime,timeinit
 real(8) :: u(0:nr0+2,0:nz0+2)
 
-nrp0 = INT(LOG(REAL(nr0+1))/LOG(2.))
-nzp0 = INT(LOG(REAL(nz0+1))/LOG(2.))
+  IF(iwhich==0.or.iwhich==1) then
+    if(.not.bndy_allocated) call init_bnd(nr0,nz0,dr0,dz0)
+  END if
 
-IF(2**nrp0/=nr0.or.2**nzp0/=nz0) THEN
-  l_powerof2=.false.
-else
-  l_powerof2=.true.
-END if
+  IF(iwhich==1) return
 
-nrc = nr0
-nzc = nz0
-np=1
-do i = 1, 1000
-  nrc = nrc/2
-  nzc = nzc/2
-  np = np + 1
-  IF(nrc<=1.or.nzc<=1) exit
-end do
-if(.not.bndy_allocated) call init_bnd(np,nr0,nz0)
+  ixrbnd = rxbnd
+  izlbnd = lzbnd
+  izrbnd = rzbnd
+  u(1:nr0+1,:)=u0(1:nr0+1,:)
+  u(0,:) = 0._8
+  u(nr0+2,:)=0._8
 
-ixrbnd = rxbnd
-izlbnd = lzbnd
-izrbnd = rzbnd
-u(1:nr0+1,:)=u0(1:nr0+1,:)
-u(0,:) = 0._8
-u(nr0+2,:)=0._8
   call solve_multigridrz(u=u,rhoinit=-rho0/eps0,bnd=bndy,nr0=nr0,nz0=nz0, &
                          length_r=nr0*dr0,length_z=nz0*dz0, &
                          accuracy=accuracy,nc=ncmax,npre=npre,npost=npost,ncycle=ncycle)
-u0(1:nr0+1,:)=u(1:nr0+1,:)
+
+  u0(1:nr0+1,:)=u(1:nr0+1,:)
 
 return
 end subroutine multigridrzf
@@ -908,32 +954,22 @@ real(kind=8):: zmmin,zmmax,zbeam,dx,dz
 INTEGER(ISZ):: nx,nz,ix_axis
 real(kind=8):: xmesh(0:nx)
 
-INTEGER(ISZ) :: i,ii,iii,iv,iiv,nxbnd,nzbnd,nrc,nzc,np,nrp0,nzp0, lfill_tmp,j,l
-REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz,voltxm,voltxp,voltzm,voltzp
+INTEGER(ISZ) :: i,ii,iii,iv,iiv,nxbnd,nzbnd,nrc,nzc,nrp0,nzp0, lfill_tmp,j,l
+REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz,voltxm,voltxp,voltzm,voltzp,drc,dzc
 
 TYPE(conductor_type), POINTER :: cndpnt
 
-nrc = nx
-nzc = nz
-np=1
-do i = 1, 1000
-  nrc = nrc/2
-  nzc = nzc/2
-  np = np + 1
-  IF(nrc<=1.or.nzc<=1) exit
-end do
-IF(.not.bndy_allocated) call init_bnd(np,nx,nz)
+IF(.not.bndy_allocated) call init_bnd(nx,nz,dx,dz)
 
-nrc = 2*nx
-nzc = 2*nz
-do i = np,1,-1
-  nrc = nrc/2
-  nzc = nzc/2
+do i = nlevels,1,-1
+  IF(i/=nlevels) call evalnewgrid(nrc,nzc,drc,dzc)
 
+  nrc = bndy(i)%nr
+  nzc = bndy(i)%nz
+  drc = bndy(i)%dr
+  dzc = bndy(i)%dz
   nxbnd=nrc+1
   nzbnd=nzc+1
-  bndy(i)%dx = (dx*nx)/nrc
-  bndy(i)%dz = (dz*nz)/nzc
 
   necndbdy=0
   nocndbdy=0
@@ -941,7 +977,7 @@ do i = np,1,-1
 
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill, &
                    xmin,xmax,lshell, &
-                   zmmin,zmmax,zbeam,bndy(i)%dx,bndy(i)%dz,nrc,nzc, &
+                   zmmin,zmmax,zbeam,bndy(i)%dr,bndy(i)%dz,nrc,nzc, &
                    ix_axis,xmesh,nz/(nzbnd-1))
 
   call init_bnd_sublevel(bndy(i),necndbdy+nocndbdy,ncond)
@@ -962,8 +998,8 @@ do i = np,1,-1
    bndy(i)%cnd%kk(ii)  = iecndz(ii)+1
    IF(iecndx(ii)>=0 .and. iecndx(ii)<=nxbnd-1 .and. iecndz(ii)>=0 .and. iecndz(ii)<=nzbnd-1) bndy(i)%cnd%docalc(ii)=.true.
    bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii)) = .false.
-   dxm = MIN(1._8,ecdelmx(ii))*bndy(i)%dx
-   dxp = MIN(1._8,ecdelpx(ii))*bndy(i)%dx
+   dxm = MIN(1._8,ecdelmx(ii))*bndy(i)%dr
+   dxp = MIN(1._8,ecdelpx(ii))*bndy(i)%dr
    dzm = MIN(1._8,ecdelmz(ii))*bndy(i)%dz
    dzp = MIN(1._8,ecdelpz(ii))*bndy(i)%dz
    voltxm=volt
@@ -980,11 +1016,11 @@ do i = np,1,-1
        do iiv=1,cndpnt%nbbndred
          IF(bndy(i)%cnd%jj(ii)==cndpnt%jj(iiv) .AND. bndy(i)%cnd%kk(ii)==cndpnt%kk(iiv)) then
            cndpnt%docalc(iiv)=.false.
-           IF(cndpnt%dxm(iiv)/=bndy(i)%dx) then
+           IF(cndpnt%dxm(iiv)/=bndy(i)%dr) then
              dxm=cndpnt%dxm(iiv)
              voltxm=cndpnt%voltage
            END if
-           IF(cndpnt%dxp(iiv)/=bndy(i)%dx) then
+           IF(cndpnt%dxp(iiv)/=bndy(i)%dr) then
              dxp=cndpnt%dxp(iiv)
              voltxp=cndpnt%voltage
            END if
@@ -1006,7 +1042,7 @@ do i = np,1,-1
    bndy(i)%cnd%dzp(ii)=dzp
    select case (bnd_method)
      case (egun)
-       dxx=bndy(i)%dx
+       dxx=bndy(i)%dr
        dzz=bndy(i)%dz
      case (ecb)
        dxx=0.5_8*(dxp+dxm)  !ecb
@@ -1014,7 +1050,7 @@ do i = np,1,-1
      case default
    end select
    IF(bndy(i)%cnd%jj(ii)==1) then
-     rp = 0.5_8*bndy(i)%dx
+     rp = 0.5_8*bndy(i)%dr
      dt = coefrelaxbnd/(4._8/(dxp*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      bndy(i)%cnd%cfxp(ii) = 4._8*dt/(dxp*dxx)
      bndy(i)%cnd%cfzm(ii) = dt/(dzm*dzz)
@@ -1027,7 +1063,7 @@ do i = np,1,-1
      bndy(i)%cnd%rcfrhs(ii) = 1._8
      bndy(i)%cnd%rcf0(ii)  = -bndy(i)%cnd%rcfxp(ii)-bndy(i)%cnd%rcfzm(ii)-bndy(i)%cnd%rcfzp(ii)
    else
-     r = (bndy(i)%cnd%jj(ii)-1)*bndy(i)%dx
+     r = (bndy(i)%cnd%jj(ii)-1)*bndy(i)%dr
      rm = r-0.5_8*dxx
      rp = r+0.5_8*dxx
      dt = coefrelaxbnd/((rm/dxm+rp/dxp)/(r*dxx)+(1._8/dzm+1._8/dzp)/dzz)
@@ -1088,8 +1124,8 @@ do i = np,1,-1
    IF(iocndx(ii)>=0 .and. iocndx(ii)<=nxbnd-1 .and. iocndz(ii)>=0 .and. iocndz(ii)<=nzbnd-1) bndy(i)%cnd%docalc(iii)=.true.
 
    bndy(i)%v(bndy(i)%cnd%jj(iii),bndy(i)%cnd%kk(iii)) = .false.
-   dxm = MIN(1._8,ocdelmx(ii))*bndy(i)%dx
-   dxp = MIN(1._8,ocdelpx(ii))*bndy(i)%dx
+   dxm = MIN(1._8,ocdelmx(ii))*bndy(i)%dr
+   dxp = MIN(1._8,ocdelpx(ii))*bndy(i)%dr
    dzm = MIN(1._8,ocdelmz(ii))*bndy(i)%dz
    dzp = MIN(1._8,ocdelpz(ii))*bndy(i)%dz
    voltxm=volt
@@ -1106,11 +1142,11 @@ do i = np,1,-1
        do iiv=1,cndpnt%nbbndred
          IF(bndy(i)%cnd%jj(iii)==cndpnt%jj(iiv) .AND. bndy(i)%cnd%kk(iii)==cndpnt%kk(iiv)) then
            cndpnt%docalc(iiv)=.false.
-           IF(cndpnt%dxm(iiv)/=bndy(i)%dx) then
+           IF(cndpnt%dxm(iiv)/=bndy(i)%dr) then
              dxm=cndpnt%dxm(iiv)
              voltxm=cndpnt%voltage
            END if
-           IF(cndpnt%dxp(iiv)/=bndy(i)%dx) then
+           IF(cndpnt%dxp(iiv)/=bndy(i)%dr) then
              dxp=cndpnt%dxp(iiv)
              voltxp=cndpnt%voltage
            END if
@@ -1132,7 +1168,7 @@ do i = np,1,-1
    bndy(i)%cnd%dzp(iii)=dzp
    select case (bnd_method)
      case (egun)
-       dxx=bndy(i)%dx
+       dxx=bndy(i)%dr
        dzz=bndy(i)%dz
      case (ecb)
        dxx=0.5_8*(dxp+dxm)  !ecb
@@ -1140,7 +1176,7 @@ do i = np,1,-1
      case default
    end select
    IF(bndy(i)%cnd%jj(iii)==1) then
-     rp = 0.5_8*bndy(i)%dx
+     rp = 0.5_8*bndy(i)%dr
      dt = coefrelaxbnd/(4._8/(dxp*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      bndy(i)%cnd%cfxp(iii) = 4._8*dt/(dxp*dxx)
      bndy(i)%cnd%cfzm(iii) = dt/(dzm*dzz)
@@ -1153,7 +1189,7 @@ do i = np,1,-1
      bndy(i)%cnd%rcfrhs(iii) = 1._8
      bndy(i)%cnd%rcf0(iii)  = -bndy(i)%cnd%rcfxp(iii)-bndy(i)%cnd%rcfzm(iii)-bndy(i)%cnd%rcfzp(iii)
    else
-     r = (bndy(i)%cnd%jj(iii)-1)*bndy(i)%dx
+     r = (bndy(i)%cnd%jj(iii)-1)*bndy(i)%dr
      rm = r-0.5_8*dxm
      rp = r+0.5_8*dxp
      dt = coefrelaxbnd/((rm/dxm+rp/dxp)/(r*dxx)+(1._8/dzm+1._8/dzp)/dzz)
@@ -1228,33 +1264,20 @@ real(kind=8):: zmmin,zmmax,zbeam,dx,dz
 INTEGER(ISZ):: nx,nz,ix_axis
 real(kind=8):: xmesh(0:nx)
 
-INTEGER(ISZ) :: i,ii,iii,iv,iiv,nxbnd,nzbnd,nrc,nzc,np,nrp0,nzp0, lfill_tmp,j,l
-REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz,voltxm,voltxp,voltzm,voltzp
+INTEGER(ISZ) :: i,ii,iii,iv,iiv,nxbnd,nzbnd,nrc,nzc,nrp0,nzp0, lfill_tmp,j,l
+REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz,voltxm,voltxp,voltzm,voltzp,drc,dzc
 
 TYPE(conductor_type), POINTER :: cndpnt
 
+IF(.not.bndy_allocated) call init_bnd(nx,nz,dx,dz)
 
-nrc = nx
-nzc = nz
-np=1
-do i = 1, 1000
-  nrc = nrc/2
-  nzc = nzc/2
-  np = np + 1
-  IF(nrc<=1.or.nzc<=1) exit
-end do
-IF(.not.bndy_allocated) call init_bnd(np,nx,nz)
-
-nrc = 2*nx
-nzc = 2*nz
-do i = np,1,-1
-  nrc = nrc/2
-  nzc = nzc/2
-
+do i = nlevels,1,-1
+  nrc = bndy(i)%nr
+  nzc = bndy(i)%nz
+  drc = bndy(i)%dr
+  dzc = bndy(i)%dz
   nxbnd=nrc+1
   nzbnd=nzc+1
-  bndy(i)%dx = (dx*nx)/nrc
-  bndy(i)%dz = (dz*nz)/nzc
 
   necndbdy=0
   nocndbdy=0
@@ -1262,7 +1285,7 @@ do i = np,1,-1
 
   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,   &
                         lzend,xmin,xmax,lshell,             &
-                        zmmin,zmmax,zbeam,bndy(i)%dx,bndy(i)%dz,nrc,nzc, &
+                        zmmin,zmmax,zbeam,bndy(i)%dr,bndy(i)%dz,nrc,nzc, &
                         ix_axis,xmesh)
 
   call init_bnd_sublevel(bndy(i),necndbdy+nocndbdy,ncond)
@@ -1283,8 +1306,8 @@ do i = np,1,-1
    bndy(i)%cnd%kk(ii)  = iecndz(ii)+1
    IF(iecndx(ii)>=0 .and. iecndx(ii)<=nxbnd-1 .and. iecndz(ii)>=0 .and. iecndz(ii)<=nzbnd-1) bndy(i)%cnd%docalc(ii)=.true.
    bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii)) = .false.
-   dxm = MIN(1._8,ecdelmx(ii))*bndy(i)%dx
-   dxp = MIN(1._8,ecdelpx(ii))*bndy(i)%dx
+   dxm = MIN(1._8,ecdelmx(ii))*bndy(i)%dr
+   dxp = MIN(1._8,ecdelpx(ii))*bndy(i)%dr
    dzm = MIN(1._8,ecdelmz(ii))*bndy(i)%dz
    dzp = MIN(1._8,ecdelpz(ii))*bndy(i)%dz
    voltxm=volt
@@ -1301,11 +1324,11 @@ do i = np,1,-1
        do iiv=1,cndpnt%nbbndred
          IF(bndy(i)%cnd%jj(ii)==cndpnt%jj(iiv) .AND. bndy(i)%cnd%kk(ii)==cndpnt%kk(iiv)) then
            cndpnt%docalc(iiv)=.false.
-           IF(cndpnt%dxm(iiv)/=bndy(i)%dx) then
+           IF(cndpnt%dxm(iiv)/=bndy(i)%dr) then
              dxm=cndpnt%dxm(iiv)
              voltxm=cndpnt%voltage
            END if
-           IF(cndpnt%dxp(iiv)/=bndy(i)%dx) then
+           IF(cndpnt%dxp(iiv)/=bndy(i)%dr) then
              dxp=cndpnt%dxp(iiv)
              voltxp=cndpnt%voltage
            END if
@@ -1327,7 +1350,7 @@ do i = np,1,-1
    bndy(i)%cnd%dzp(ii)=dzp
    select case (bnd_method)
      case (egun)
-       dxx=bndy(i)%dx
+       dxx=bndy(i)%dr
        dzz=bndy(i)%dz
      case (ecb)
        dxx=0.5_8*(dxp+dxm)  !ecb
@@ -1335,7 +1358,7 @@ do i = np,1,-1
      case default
    end select
    IF(bndy(i)%cnd%jj(ii)==1) then
-     rp = 0.5_8*bndy(i)%dx
+     rp = 0.5_8*bndy(i)%dr
      dt = coefrelaxbnd/(4._8/(dxp*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      bndy(i)%cnd%cfxp(ii) = 4._8*dt/(dxp*dxx)
      bndy(i)%cnd%cfzm(ii) = dt/(dzm*dzz)
@@ -1348,7 +1371,7 @@ do i = np,1,-1
      bndy(i)%cnd%rcfrhs(ii) = 1._8
      bndy(i)%cnd%rcf0(ii)  = -bndy(i)%cnd%rcfxp(ii)-bndy(i)%cnd%rcfzm(ii)-bndy(i)%cnd%rcfzp(ii)
    else
-     r = (bndy(i)%cnd%jj(ii)-1)*bndy(i)%dx
+     r = (bndy(i)%cnd%jj(ii)-1)*bndy(i)%dr
      rm = r-0.5_8*dxx
      rp = r+0.5_8*dxx
      dt = coefrelaxbnd/((rm/dxm+rp/dxp)/(r*dxx)+(1._8/dzm+1._8/dzp)/dzz)
@@ -1408,8 +1431,8 @@ do i = np,1,-1
    bndy(i)%cnd%kk(iii)  = iocndz(ii)+1
    IF(iocndx(ii)>=0 .and. iocndx(ii)<=nxbnd-1 .and. iocndz(ii)>=0 .and. iocndz(ii)<=nzbnd-1) bndy(i)%cnd%docalc(iii)=.true.
    bndy(i)%v(bndy(i)%cnd%jj(iii),bndy(i)%cnd%kk(iii)) = .false.
-   dxm = MIN(1._8,ocdelmx(ii))*bndy(i)%dx
-   dxp = MIN(1._8,ocdelpx(ii))*bndy(i)%dx
+   dxm = MIN(1._8,ocdelmx(ii))*bndy(i)%dr
+   dxp = MIN(1._8,ocdelpx(ii))*bndy(i)%dr
    dzm = MIN(1._8,ocdelmz(ii))*bndy(i)%dz
    dzp = MIN(1._8,ocdelpz(ii))*bndy(i)%dz
    voltxm=volt
@@ -1426,11 +1449,11 @@ do i = np,1,-1
        do iiv=1,cndpnt%nbbndred
          IF(bndy(i)%cnd%jj(iii)==cndpnt%jj(iiv) .AND. bndy(i)%cnd%kk(iii)==cndpnt%kk(iiv)) then
            cndpnt%docalc(iiv)=.false.
-           IF(cndpnt%dxm(iiv)/=bndy(i)%dx) then
+           IF(cndpnt%dxm(iiv)/=bndy(i)%dr) then
              dxm=cndpnt%dxm(iiv)
              voltxm=cndpnt%voltage
            END if
-           IF(cndpnt%dxp(iiv)/=bndy(i)%dx) then
+           IF(cndpnt%dxp(iiv)/=bndy(i)%dr) then
              dxp=cndpnt%dxp(iiv)
              voltxp=cndpnt%voltage
            END if
@@ -1452,7 +1475,7 @@ do i = np,1,-1
    bndy(i)%cnd%dzp(iii)=dzp
    select case (bnd_method)
      case (egun)
-       dxx=bndy(i)%dx
+       dxx=bndy(i)%dr
        dzz=bndy(i)%dz
      case (ecb)
        dxx=0.5_8*(dxp+dxm)  !ecb
@@ -1460,7 +1483,7 @@ do i = np,1,-1
      case default
    end select
    IF(bndy(i)%cnd%jj(iii)==1) then
-     rp = 0.5_8*bndy(i)%dx
+     rp = 0.5_8*bndy(i)%dr
      dt = coefrelaxbnd/(4._8/(dxp*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      bndy(i)%cnd%cfxp(iii) = 4._8*dt/(dxp*dxx)
      bndy(i)%cnd%cfzm(iii) = dt/(dzm*dzz)
@@ -1473,7 +1496,7 @@ do i = np,1,-1
      bndy(i)%cnd%rcfrhs(iii) = 1._8
      bndy(i)%cnd%rcf0(iii)  = -bndy(i)%cnd%rcfxp(iii)-bndy(i)%cnd%rcfzm(iii)-bndy(i)%cnd%rcfzp(iii)
    else
-     r = (bndy(i)%cnd%jj(iii)-1)*bndy(i)%dx
+     r = (bndy(i)%cnd%jj(iii)-1)*bndy(i)%dr
      rm = r-0.5_8*dxm
      rp = r+0.5_8*dxp
      dt = coefrelaxbnd/((rm/dxm+rp/dxp)/(r*dxx)+(1._8/dzm+1._8/dzp)/dzz)
@@ -1713,7 +1736,7 @@ INTEGER(ISZ) :: i,ic
     do i = 1, SIZE(bndy)
       WRITE(10,*) SIZE(bndy(i)%v,1),SIZE(bndy(i)%v,2)
       WRITE(10,*) bndy(i)%v
-      WRITE(10,*) bndy(i)%dx, bndy(i)%dz, bndy(i)%nb_conductors
+      WRITE(10,*) bndy(i)%dr, bndy(i)%dz, bndy(i)%nb_conductors
       do ic = 1, bndy(i)%nb_conductors
         IF(ic==1) then
           bndy(i)%cnd => bndy(i)%first
@@ -1758,7 +1781,7 @@ INTEGER(ISZ) :: nbndy,nx,nz,nbbnd,ncond,i,ic
       NULLIFY(bndy(i)%first)
       ALLOCATE(bndy(i)%v(nx,nz))
       read(10,*) bndy(i)%v
-      read(10,*) bndy(i)%dx, bndy(i)%dz, bndy(i)%nb_conductors
+      read(10,*) bndy(i)%dr, bndy(i)%dz, bndy(i)%nb_conductors
       do ic = 1, bndy(i)%nb_conductors
         read(10,*) nbbnd,ncond
         call init_bnd_sublevel(bndy(i),nbbnd,ncond)
