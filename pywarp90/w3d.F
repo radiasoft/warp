@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.148 $, $Date: 2004/03/17 16:58:16 $
+c@(#) File W3D.F, version $Revision: 3.149 $, $Date: 2004/03/29 15:11:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3384,8 +3384,11 @@ c          --- load x,y,ux, and uy evenly onto a 4-D ellipsoid
              phi1 = 2.*Pi*yt(i)
              phi2 = 2.*Pi*uxt(i)
 c            --- put position into particle arrays
-             xp(ip+i) = rr*cos(phi1)*at(i)*perpscal(i) + xct(i)
-             yp(ip+i) = rr*sin(phi1)*bt(i)*perpscal(i) + yct(i)
+c            --- Centroids are added in below, since positions are used
+c            --- to set the coherent velocity - the positions used for that
+c            --- are relative to the centroid.
+             xp(ip+i) = rr*cos(phi1)*at(i)*perpscal(i)
+             yp(ip+i) = rr*sin(phi1)*bt(i)*perpscal(i)
              zp(ip+i) = zt(i)
 c            --- Use optional axially varying vbeam and emittance
              if (nvbeamofz == 0) then
@@ -3421,6 +3424,11 @@ c            --- put velocity into particle arrays
      &                   vb*ypct(i)
              uzp(ip+i) = vb*(1. + vtilt_s(is)*(zmid - zt(i))*zleni) +
      &                   vtzz*uzt(i)
+c            --- The centroids are added to the transverse positions
+c            --- after the variables are used above to calculate the
+c            --- coherent velocity component.
+             xp(ip+i) = xp(ip+i) + xct(i)
+             yp(ip+i) = yp(ip+i) + yct(i)
            enddo
 
 c          --- add sinusoidal perturbation to uzp
