@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.142 $, $Date: 2005/01/24 14:31:50 $
+c@(#) File TOP.F, version $Revision: 3.143 $, $Date: 2005/01/25 19:37:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4394,14 +4394,14 @@ c       itask=3  divides by number of particles, calculates emittances and rms
       integer(ISZ):: im,izm,iw,ip,icell,i,js
       real(kind=8):: dti,dtip1,wz1,wz0,zwin
       real(kind=8):: oneondt,clighti,vzi
-      real(kind=8):: pnumi(0:nszmmnt)
-      real(kind=8):: delxsq(0:nszmmnt),delxxp(0:nszmmnt),delxpsq(0:nszmmnt)
-      real(kind=8):: delysq(0:nszmmnt),delyyp(0:nszmmnt),delypsq(0:nszmmnt)
-      real(kind=8):: delxy(0:nszmmnt),delxyp(0:nszmmnt)
-      real(kind=8):: delyxp(0:nszmmnt),delxpyp(0:nszmmnt)
-      real(kind=8):: delzsq(0:nszmmnt),delvzsq(0:nszmmnt),delzvz(0:nszmmnt)
-      real(kind=8):: delvxsq(0:nszmmnt),delvysq(0:nszmmnt)
-      real(kind=8):: tg(0:nszmmnt),th(0:nszmmnt)
+      real(kind=8):: pnumi
+      real(kind=8):: delxsq,delxxp,delxpsq
+      real(kind=8):: delysq,delyyp,delypsq
+      real(kind=8):: delxy,delxyp
+      real(kind=8):: delyxp,delxpyp
+      real(kind=8):: delzsq,delvzsq,delzvz
+      real(kind=8):: delvxsq,delvysq
+      real(kind=8):: tg,th
       real(kind=8):: gamma
       real(kind=8):: timetemp,wtime
 #ifdef J90
@@ -4938,80 +4938,82 @@ c       --- For slave, call routine which sums moments over processors.
 c       --- Complete the calculation of moments: divide by particle number
 
 c       --- Global moments first
-        pnumi = 1./(zmmnts0( 1,:)+SMALLPOS)
-        pnum(0,:)    = zmmnts0( 1,:)
-        xbar(0,:)    = zmmnts0( 2,:)*pnumi
-        ybar(0,:)    = zmmnts0( 3,:)*pnumi
-        zbar(0,:)    = zmmnts0( 4,:)*pnumi
-        xpbar(0,:)   = zmmnts0( 5,:)*pnumi
-        ypbar(0,:)   = zmmnts0( 6,:)*pnumi
-        vxbar(0,:)   = zmmnts0( 7,:)*pnumi
-        vybar(0,:)   = zmmnts0( 8,:)*pnumi
-        vzbar(0,:)   = zmmnts0( 9,:)*pnumi
-        xybar(0,:)   = zmmnts0(10,:)*pnumi
-        xpypbar(0,:) = zmmnts0(11,:)*pnumi
-        xsqbar(0,:)  = zmmnts0(12,:)*pnumi
-        ysqbar(0,:)  = zmmnts0(13,:)*pnumi
-        zsqbar(0,:)  = zmmnts0(14,:)*pnumi
-        xpsqbar(0,:) = zmmnts0(15,:)*pnumi
-        ypsqbar(0,:) = zmmnts0(16,:)*pnumi
-        vxsqbar(0,:) = zmmnts0(17,:)*pnumi
-        vysqbar(0,:) = zmmnts0(18,:)*pnumi
-        vzsqbar(0,:) = zmmnts0(19,:)*pnumi
-        xxpbar(0,:)  = zmmnts0(20,:)*pnumi
-        yypbar(0,:)  = zmmnts0(21,:)*pnumi
-        zvzbar(0,:)  = zmmnts0(22,:)*pnumi
-        xypbar(0,:)  = zmmnts0(23,:)*pnumi 
-        yxpbar(0,:)  = zmmnts0(24,:)*pnumi 
-        xvzbar(0,:)  = zmmnts0(25,:)*pnumi
-        yvzbar(0,:)  = zmmnts0(26,:)*pnumi
-        vxvzbar(0,:) = zmmnts0(27,:)*pnumi
-        vyvzbar(0,:) = zmmnts0(28,:)*pnumi
+        do js=0,nsmmnt
+          pnumi = 1./(zmmnts0( 1,js)+SMALLPOS)
+          pnum(0,js)    = zmmnts0( 1,js)
+          xbar(0,js)    = zmmnts0( 2,js)*pnumi
+          ybar(0,js)    = zmmnts0( 3,js)*pnumi
+          zbar(0,js)    = zmmnts0( 4,js)*pnumi
+          xpbar(0,js)   = zmmnts0( 5,js)*pnumi
+          ypbar(0,js)   = zmmnts0( 6,js)*pnumi
+          vxbar(0,js)   = zmmnts0( 7,js)*pnumi
+          vybar(0,js)   = zmmnts0( 8,js)*pnumi
+          vzbar(0,js)   = zmmnts0( 9,js)*pnumi
+          xybar(0,js)   = zmmnts0(10,js)*pnumi
+          xpypbar(0,js) = zmmnts0(11,js)*pnumi
+          xsqbar(0,js)  = zmmnts0(12,js)*pnumi
+          ysqbar(0,js)  = zmmnts0(13,js)*pnumi
+          zsqbar(0,js)  = zmmnts0(14,js)*pnumi
+          xpsqbar(0,js) = zmmnts0(15,js)*pnumi
+          ypsqbar(0,js) = zmmnts0(16,js)*pnumi
+          vxsqbar(0,js) = zmmnts0(17,js)*pnumi
+          vysqbar(0,js) = zmmnts0(18,js)*pnumi
+          vzsqbar(0,js) = zmmnts0(19,js)*pnumi
+          xxpbar(0,js)  = zmmnts0(20,js)*pnumi
+          yypbar(0,js)  = zmmnts0(21,js)*pnumi
+          zvzbar(0,js)  = zmmnts0(22,js)*pnumi
+          xypbar(0,js)  = zmmnts0(23,js)*pnumi 
+          yxpbar(0,js)  = zmmnts0(24,js)*pnumi 
+          xvzbar(0,js)  = zmmnts0(25,js)*pnumi
+          yvzbar(0,js)  = zmmnts0(26,js)*pnumi
+          vxvzbar(0,js) = zmmnts0(27,js)*pnumi
+          vyvzbar(0,js) = zmmnts0(28,js)*pnumi
 
-c       --- Compute second order moments with averages subtracted
-        delxsq = xsqbar(0,:) - xbar(0,:)*xbar(0,:)
-        delxxp = xxpbar(0,:) - xbar(0,:)*xpbar(0,:)
-        delxpsq = xpsqbar(0,:) - xpbar(0,:)*xpbar(0,:)
-        delysq = ysqbar(0,:) - ybar(0,:)*ybar(0,:)
-        delyyp = yypbar(0,:) - ybar(0,:)*ypbar(0,:)
-        delypsq = ypsqbar(0,:) - ypbar(0,:)*ypbar(0,:)
-        delxy = xybar(0,:) - xbar(0,:)*ybar(0,:)
-        delxyp = xypbar(0,:) - xbar(0,:)*ypbar(0,:)
-        delyxp = yxpbar(0,:) - ybar(0,:)*xpbar(0,:)
-        delxpyp = xpypbar(0,:) - xpbar(0,:)*ypbar(0,:)
+c         --- Compute second order moments with averages subtracted
+          delxsq = xsqbar(0,js) - xbar(0,js)*xbar(0,js)
+          delxxp = xxpbar(0,js) - xbar(0,js)*xpbar(0,js)
+          delxpsq = xpsqbar(0,js) - xpbar(0,js)*xpbar(0,js)
+          delysq = ysqbar(0,js) - ybar(0,js)*ybar(0,js)
+          delyyp = yypbar(0,js) - ybar(0,js)*ypbar(0,js)
+          delypsq = ypsqbar(0,js) - ypbar(0,js)*ypbar(0,js)
+          delxy = xybar(0,js) - xbar(0,js)*ybar(0,js)
+          delxyp = xypbar(0,js) - xbar(0,js)*ypbar(0,js)
+          delyxp = yxpbar(0,js) - ybar(0,js)*xpbar(0,js)
+          delxpyp = xpypbar(0,js) - xpbar(0,js)*ypbar(0,js)
 
-        delvxsq = vxsqbar(0,:) - vxbar(0,:)**2
-        delvysq = vysqbar(0,:) - vybar(0,:)**2
+          delvxsq = vxsqbar(0,js) - vxbar(0,js)**2
+          delvysq = vysqbar(0,js) - vybar(0,js)**2
 
-        delzsq = zsqbar(0,:) - zbar(0,:)**2
-        delvzsq = vzsqbar(0,:) - vzbar(0,:)**2
-        delzvz = zvzbar(0,:) - zbar(0,:)*vzbar(0,:)
+          delzsq = zsqbar(0,js) - zbar(0,js)**2
+          delvzsq = vzsqbar(0,js) - vzbar(0,js)**2
+          delzvz = zvzbar(0,js) - zbar(0,js)*vzbar(0,js)
 
-c       --- Compute overall true RMS positions
-        xrms(0,:) = sqrt(max(0.,delxsq))
-        yrms(0,:) = sqrt(max(0.,delysq))
-        zrms(0,:) = sqrt(max(0.,delzsq))
-        rrms(0,:) = sqrt(xrms(0,:)**2 + yrms(0,:)**2)
+c         --- Compute overall true RMS positions
+          xrms(0,js) = sqrt(max(0.,delxsq))
+          yrms(0,js) = sqrt(max(0.,delysq))
+          zrms(0,js) = sqrt(max(0.,delzsq))
+          rrms(0,js) = sqrt(xrms(0,js)**2 + yrms(0,js)**2)
 
-c       --- Compute overall true RMS velocities
-        xprms(0,:) = sqrt(max(0.,delxpsq))
-        yprms(0,:) = sqrt(max(0.,delypsq))
-        vxrms(0,:) = sqrt(max(0.,delvxsq))
-        vyrms(0,:) = sqrt(max(0.,delvysq))
-        vzrms(0,:) = sqrt(max(0.,delvzsq))
+c         --- Compute overall true RMS velocities
+          xprms(0,js) = sqrt(max(0.,delxpsq))
+          yprms(0,js) = sqrt(max(0.,delypsq))
+          vxrms(0,js) = sqrt(max(0.,delvxsq))
+          vyrms(0,js) = sqrt(max(0.,delvysq))
+          vzrms(0,js) = sqrt(max(0.,delvzsq))
 
-c       --- Compute overall emittances
-        epsx(0,:) = 4.*sqrt(max(0.,delxsq*delxpsq - delxxp**2))
-        epsy(0,:) = 4.*sqrt(max(0.,delysq*delypsq - delyyp**2))
-        epsz(0,:) = 4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))
-        epsnx(0,:) = epsx(0,:)*gamma*vzbar(0,:)*clighti*1.e6
-        epsny(0,:) = epsy(0,:)*gamma*vzbar(0,:)*clighti*1.e6
-        epsnz(0,:) = epsz(0,:)*gamma*vzbar(0,:)*clighti*1.e6
+c         --- Compute overall emittances
+          epsx(0,js) = 4.*sqrt(max(0.,delxsq*delxpsq - delxxp**2))
+          epsy(0,js) = 4.*sqrt(max(0.,delysq*delypsq - delyyp**2))
+          epsz(0,js) = 4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))
+          epsnx(0,js) = epsx(0,js)*gamma*vzbar(0,js)*clighti*1.e6
+          epsny(0,js) = epsy(0,js)*gamma*vzbar(0,js)*clighti*1.e6
+          epsnz(0,js) = epsz(0,js)*gamma*vzbar(0,js)*clighti*1.e6
 
-c       --- Compute generalized emittances
-        tg = 0.5*(epsx(0,:)**2 + epsy(0,:)**2) + 16*(delxy*delxpyp - delxyp*delyxp)
-        epsg(0,:) = sqrt(max(0.,tg))
-        th = epsx(0,:)**2*epsy(0,:)**2 +
+c         --- Compute generalized emittances
+          tg = 0.5*(epsx(0,js)**2 + epsy(0,js)**2) +
+     &             16*(delxy*delxpyp - delxyp*delyxp)
+          epsg(0,js) = sqrt(max(0.,tg))
+          th = epsx(0,js)**2*epsy(0,js)**2 +
      &       256*((delxy*delxpyp)**2 + (delxyp*delyxp)**2 -
      &       delxsq*delysq*(delxpyp)**2 - delxsq*delypsq*(delyxp)**2 -
      &       delxpsq*delysq*(delxyp)**2 - delxpsq*delypsq*(delxy)**2 -
@@ -5019,107 +5021,112 @@ c       --- Compute generalized emittances
      &       2*delxxp*delyyp*delxy*delxpyp - 2*delxxp*delyyp*delxyp*delyxp +
      &       2*delxpsq*delyyp*delxy*delxyp + 2*delxsq*delyyp*delyxp*delxpyp +
      &       2*delxxp*delysq*delxpyp*delxyp)
-        epsh(0,:) = sqrt(sqrt(max(0.,th)))
-        epsng(0,:) = epsg(0,:)*gamma*vzbar(0,:)*clighti*1.e6
-        epsnh(0,:) = epsh(0,:)*gamma*vzbar(0,:)*clighti*1.e6
+          epsh(0,js) = sqrt(sqrt(max(0.,th)))
+          epsng(0,js) = epsg(0,js)*gamma*vzbar(0,js)*clighti*1.e6
+          epsnh(0,js) = epsh(0,js)*gamma*vzbar(0,js)*clighti*1.e6
+
+c         ---  Axial z momentum in vbeam frame (classical)
+          pz(js) = m*w*pnum(0,js) * (vzbar(0,js)-vbeam)
+
+c         ---  Total Z kinetic energy in lab frame minus beam energy (classical)
+c         ---  using <vz^2>-vbeam^2;
+          ekzmbe(js) = 0.5*m*w*pnum(0,js) * (vzsqbar(0,js) - vbeam**2)
+
+c         ---  Z kinetic energy in beam frame (classical), using <(vz-vbeam)^2>;
+          ekzbeam(js) = 0.5*m*w*pnum(0,js)*
+     &                  (vzsqbar(0,js) - 2.*vzbar(0,js)*vbeam + vbeam**2)
+
+c         ---  Perp kinetic energy 
+          ekperp(js) =  0.5*m*w*pnum(0,js) * (vxsqbar(0,js) + vysqbar(0,js))
+
+c         --- Total kinetic energy in beam frame
+          ek(js) = ekzbeam(js) + ekperp(js)
+
+        enddo
 
 c       ---  Number of live particles (integer)
         if(wpid==0) nplive = pnum(0,nswind) + 0.5
 
-c       ---  Axial z momentum in vbeam frame (classical)
-        pz = m*w*pnum(0,:) * (vzbar(0,:)-vbeam)
-
-c       ---  Total Z kinetic energy in lab frame minus beam energy (classical)
-c       ---  using <vz^2>-vbeam^2;
-        ekzmbe = 0.5*m*w*pnum(0,:) * (vzsqbar(0,:) - vbeam**2)
-
-c       ---  Z kinetic energy in beam frame (classical), using <(vz-vbeam)^2>;
-        ekzbeam = 0.5*m*w*pnum(0,:)*(vzsqbar(0,:) - 2.*vzbar(0,:)*vbeam + vbeam**2)
-
-c       ---  Perp kinetic energy 
-        ekperp =  0.5*m*w*pnum(0,:) * (vxsqbar(0,:) + vysqbar(0,:))
-
-c       --- Total kinetic energy in beam frame
-        ek = ekzbeam + ekperp
 
 c       --- Now scale the full Z moments by particle number
         if (ifzmmnt == 2) then
-          do izm = 0, nzmmnt
-            pnumi = 1./(zmmnts(izm, 1,:)+SMALLPOS)
-            pnumz(izm,:)    = zmmnts(izm, 1,:)
-            xbarz(izm,:)    = zmmnts(izm, 2,:)*pnumi
-            ybarz(izm,:)    = zmmnts(izm, 3,:)*pnumi
-            zbarz(izm,:)    = zmmnts(izm, 4,:)*pnumi
-            xpbarz(izm,:)   = zmmnts(izm, 5,:)*pnumi
-            ypbarz(izm,:)   = zmmnts(izm, 6,:)*pnumi
-            vxbarz(izm,:)   = zmmnts(izm, 7,:)*pnumi
-            vybarz(izm,:)   = zmmnts(izm, 8,:)*pnumi
-            vzbarz(izm,:)   = zmmnts(izm, 9,:)*pnumi
-            xybarz(izm,:)   = zmmnts(izm,10,:)*pnumi
-            xpypbarz(izm,:) = zmmnts(izm,11,:)*pnumi
-            xsqbarz(izm,:)  = zmmnts(izm,12,:)*pnumi
-            ysqbarz(izm,:)  = zmmnts(izm,13,:)*pnumi
-            zsqbarz(izm,:)  = zmmnts(izm,14,:)*pnumi
-            xpsqbarz(izm,:) = zmmnts(izm,15,:)*pnumi
-            ypsqbarz(izm,:) = zmmnts(izm,16,:)*pnumi
-            vxsqbarz(izm,:) = zmmnts(izm,17,:)*pnumi
-            vysqbarz(izm,:) = zmmnts(izm,18,:)*pnumi
-            vzsqbarz(izm,:) = zmmnts(izm,19,:)*pnumi
-            xxpbarz(izm,:)  = zmmnts(izm,20,:)*pnumi
-            yypbarz(izm,:)  = zmmnts(izm,21,:)*pnumi
-            zvzbarz(izm,:)  = zmmnts(izm,22,:)*pnumi
-            xypbarz(izm,:)  = zmmnts(izm,23,:)*pnumi 
-            yxpbarz(izm,:)  = zmmnts(izm,24,:)*pnumi 
-            xvzbarz(izm,:)  = zmmnts(izm,25,:)*pnumi
-            yvzbarz(izm,:)  = zmmnts(izm,26,:)*pnumi
-            vxvzbarz(izm,:) = zmmnts(izm,27,:)*pnumi
-            vyvzbarz(izm,:) = zmmnts(izm,28,:)*pnumi
+          do js=0,nszmmnt
+            do izm = 0, nzmmnt
+              pnumi = 1./(zmmnts(izm, 1,js)+SMALLPOS)
+              pnumz(izm,js)    = zmmnts(izm, 1,js)
+              xbarz(izm,js)    = zmmnts(izm, 2,js)*pnumi
+              ybarz(izm,js)    = zmmnts(izm, 3,js)*pnumi
+              zbarz(izm,js)    = zmmnts(izm, 4,js)*pnumi
+              xpbarz(izm,js)   = zmmnts(izm, 5,js)*pnumi
+              ypbarz(izm,js)   = zmmnts(izm, 6,js)*pnumi
+              vxbarz(izm,js)   = zmmnts(izm, 7,js)*pnumi
+              vybarz(izm,js)   = zmmnts(izm, 8,js)*pnumi
+              vzbarz(izm,js)   = zmmnts(izm, 9,js)*pnumi
+              xybarz(izm,js)   = zmmnts(izm,10,js)*pnumi
+              xpypbarz(izm,js) = zmmnts(izm,11,js)*pnumi
+              xsqbarz(izm,js)  = zmmnts(izm,12,js)*pnumi
+              ysqbarz(izm,js)  = zmmnts(izm,13,js)*pnumi
+              zsqbarz(izm,js)  = zmmnts(izm,14,js)*pnumi
+              xpsqbarz(izm,js) = zmmnts(izm,15,js)*pnumi
+              ypsqbarz(izm,js) = zmmnts(izm,16,js)*pnumi
+              vxsqbarz(izm,js) = zmmnts(izm,17,js)*pnumi
+              vysqbarz(izm,js) = zmmnts(izm,18,js)*pnumi
+              vzsqbarz(izm,js) = zmmnts(izm,19,js)*pnumi
+              xxpbarz(izm,js)  = zmmnts(izm,20,js)*pnumi
+              yypbarz(izm,js)  = zmmnts(izm,21,js)*pnumi
+              zvzbarz(izm,js)  = zmmnts(izm,22,js)*pnumi
+              xypbarz(izm,js)  = zmmnts(izm,23,js)*pnumi 
+              yxpbarz(izm,js)  = zmmnts(izm,24,js)*pnumi 
+              xvzbarz(izm,js)  = zmmnts(izm,25,js)*pnumi
+              yvzbarz(izm,js)  = zmmnts(izm,26,js)*pnumi
+              vxvzbarz(izm,js) = zmmnts(izm,27,js)*pnumi
+              vyvzbarz(izm,js) = zmmnts(izm,28,js)*pnumi
 
-c           --- Compute second order moments with averages subtracted
-            delxsq = xsqbarz(izm,:) - xbarz(izm,:)*xbarz(izm,:)
-            delxxp = xxpbarz(izm,:) - xbarz(izm,:)*xpbarz(izm,:)
-            delxpsq = xpsqbarz(izm,:) - xpbarz(izm,:)*xpbarz(izm,:)
-            delysq = ysqbarz(izm,:) - ybarz(izm,:)*ybarz(izm,:)
-            delyyp = yypbarz(izm,:) - ybarz(izm,:)*ypbarz(izm,:)
-            delypsq = ypsqbarz(izm,:) - ypbarz(izm,:)*ypbarz(izm,:)
-            delxy = xybarz(izm,:) - xbarz(izm,:)*ybarz(izm,:)
-            delxyp = xypbarz(izm,:) - xbarz(izm,:)*ypbarz(izm,:)
-            delyxp = yxpbarz(izm,:) - ybarz(izm,:)*xpbarz(izm,:)
-            delxpyp = xpypbarz(izm,:) - xpbarz(izm,:)*ypbarz(izm,:)
+c             --- Compute second order moments with averages subtracted
+              delxsq = xsqbarz(izm,js) - xbarz(izm,js)*xbarz(izm,js)
+              delxxp = xxpbarz(izm,js) - xbarz(izm,js)*xpbarz(izm,js)
+              delxpsq = xpsqbarz(izm,js) - xpbarz(izm,js)*xpbarz(izm,js)
+              delysq = ysqbarz(izm,js) - ybarz(izm,js)*ybarz(izm,js)
+              delyyp = yypbarz(izm,js) - ybarz(izm,js)*ypbarz(izm,js)
+              delypsq = ypsqbarz(izm,js) - ypbarz(izm,js)*ypbarz(izm,js)
+              delxy = xybarz(izm,js) - xbarz(izm,js)*ybarz(izm,js)
+              delxyp = xypbarz(izm,js) - xbarz(izm,js)*ypbarz(izm,js)
+              delyxp = yxpbarz(izm,js) - ybarz(izm,js)*xpbarz(izm,js)
+              delxpyp = xpypbarz(izm,js) - xpbarz(izm,js)*ypbarz(izm,js)
 
-            delvxsq = vxsqbarz(izm,:) - vxbarz(izm,:)**2
-            delvysq = vysqbarz(izm,:) - vybarz(izm,:)**2
+              delvxsq = vxsqbarz(izm,js) - vxbarz(izm,js)**2
+              delvysq = vysqbarz(izm,js) - vybarz(izm,js)**2
 
-            delzsq = zsqbarz(izm,:) - zbarz(izm,:)**2
-            delvzsq = vzsqbarz(izm,:) - vzbarz(izm,:)**2
-            delzvz = zvzbarz(izm,:) - zbarz(izm,:)*vzbarz(izm,:)
+              delzsq = zsqbarz(izm,js) - zbarz(izm,js)**2
+              delvzsq = vzsqbarz(izm,js) - vzbarz(izm,js)**2
+              delzvz = zvzbarz(izm,js) - zbarz(izm,js)*vzbarz(izm,js)
 
-c           --- Compute overall true RMS positions
-            xrmsz(izm,:) = sqrt(max(0.,delxsq))
-            yrmsz(izm,:) = sqrt(max(0.,delysq))
-            zrmsz(izm,:) = sqrt(max(0.,delzsq))
-            rrmsz(izm,:) = sqrt(xrmsz(izm,:)**2 + yrmsz(izm,:)**2)
+c             --- Compute overall true RMS positions
+              xrmsz(izm,js) = sqrt(max(0.,delxsq))
+              yrmsz(izm,js) = sqrt(max(0.,delysq))
+              zrmsz(izm,js) = sqrt(max(0.,delzsq))
+              rrmsz(izm,js) = sqrt(xrmsz(izm,js)**2 + yrmsz(izm,js)**2)
 
-c           --- Compute overall true RMS velocities
-            xprmsz(izm,:) = sqrt(max(0.,delxpsq))
-            yprmsz(izm,:) = sqrt(max(0.,delypsq))
-            vxrmsz(izm,:) = sqrt(max(0.,delvxsq))
-            vyrmsz(izm,:) = sqrt(max(0.,delvysq))
-            vzrmsz(izm,:) = sqrt(max(0.,delvzsq))
+c             --- Compute overall true RMS velocities
+              xprmsz(izm,js) = sqrt(max(0.,delxpsq))
+              yprmsz(izm,js) = sqrt(max(0.,delypsq))
+              vxrmsz(izm,js) = sqrt(max(0.,delvxsq))
+              vyrmsz(izm,js) = sqrt(max(0.,delvysq))
+              vzrmsz(izm,js) = sqrt(max(0.,delvzsq))
 
-c           --- Compute overall emittances
-            epsxz(izm,:) = 4.*sqrt(max(0.,delxsq*delxpsq - delxxp**2))
-            epsyz(izm,:) = 4.*sqrt(max(0.,delysq*delypsq - delyyp**2))
-            epszz(izm,:) = 4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))
-            epsnxz(izm,:) = epsxz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
-            epsnyz(izm,:) = epsyz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
-            epsnzz(izm,:) = epszz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
+c             --- Compute overall emittances
+              epsxz(izm,js) = 4.*sqrt(max(0.,delxsq*delxpsq - delxxp**2))
+              epsyz(izm,js) = 4.*sqrt(max(0.,delysq*delypsq - delyyp**2))
+              epszz(izm,js) = 4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))
+              epsnxz(izm,js) = epsxz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
+              epsnyz(izm,js) = epsyz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
+              epsnzz(izm,js) = epszz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
 
-c           --- Compute generalized emittances
-            tg = 0.5*(epsxz(izm,:)**2 + epsyz(izm,:)**2) +
+c             --- Compute generalized emittances
+              tg = 0.5*(epsxz(izm,js)**2 + epsyz(izm,js)**2) +
      &           16*(delxy*delxpyp - delxyp*delyxp)
-            epsgz(izm,:) = sqrt(max(0.,tg))
-            th = epsxz(izm,:)**2*epsyz(izm,:)**2 +
+              epsgz(izm,js) = sqrt(max(0.,tg))
+              th = epsxz(izm,js)**2*epsyz(izm,js)**2 +
      &          256*((delxy*delxpyp)**2 + (delxyp*delyxp)**2 -
      &          delxsq*delysq*(delxpyp)**2 - delxsq*delypsq*(delyxp)**2 -
      &          delxpsq*delysq*(delxyp)**2 - delxpsq*delypsq*(delxy)**2 -
@@ -5127,69 +5134,71 @@ c           --- Compute generalized emittances
      &          2*delxxp*delyyp*delxy*delxpyp - 2*delxxp*delyyp*delxyp*delyxp +
      &          2*delxpsq*delyyp*delxy*delxyp + 2*delxsq*delyyp*delyxp*delxpyp +
      &          2*delxxp*delysq*delxpyp*delxyp)
-            epshz(izm,:) = sqrt(sqrt(max(0.,th)))
-            epsngz(izm,:) = epsgz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
-            epsnhz(izm,:) = epshz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
+              epshz(izm,js) = sqrt(sqrt(max(0.,th)))
+              epsngz(izm,js) = epsgz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
+              epsnhz(izm,js) = epshz(izm,js)*gamma*vzbarz(izm,js)*clighti*1.e6
 
-          enddo
+            enddo
 
-c         --- Save window moments.  Linearly interpolate the Z moments data
-c         --- to the Z window center.
-c         --- If the zwindow is outside the zmoments range, don't set anything.
-          do iw = 1,nzwind
-            zwin = 0.5*(zwindows(1,iw) + zwindows(2,iw))
-            if (zmmntmin <= zwin .and. zwin < zmmntmax) then
-              icell = int((zwin - zmmntmin)*dzmi)
-              wz0 = (zwin - zmmntmin)*dzmi - icell
-              wz1 = 1. - wz0
-              pnum(iw,:)    = pnumz(icell,:)*wz1    + pnumz(icell+1,:)*wz0
-              xbar(iw,:)    = xbarz(icell,:)*wz1    + xbarz(icell+1,:)*wz0
-              ybar(iw,:)    = ybarz(icell,:)*wz1    + ybarz(icell+1,:)*wz0
-              zbar(iw,:)    = zbarz(icell,:)*wz1    + zbarz(icell+1,:)*wz0
-              xpbar(iw,:)   = xpbarz(icell,:)*wz1   + xpbarz(icell+1,:)*wz0
-              ypbar(iw,:)   = ypbarz(icell,:)*wz1   + ypbarz(icell+1,:)*wz0
-              vxbar(iw,:)   = vxbarz(icell,:)*wz1   + vxbarz(icell+1,:)*wz0
-              vybar(iw,:)   = vybarz(icell,:)*wz1   + vybarz(icell+1,:)*wz0
-              vzbar(iw,:)   = vzbarz(icell,:)*wz1   + vzbarz(icell+1,:)*wz0
-              xybar(iw,:)   = xybarz(icell,:)*wz1   + xybarz(icell+1,:)*wz0
-              xypbar(iw,:)  = xypbarz(icell,:)*wz1  + xypbarz(icell+1,:)*wz0
-              yxpbar(iw,:)  = yxpbarz(icell,:)*wz1  + yxpbarz(icell+1,:)*wz0
-              xpypbar(iw,:) = xpypbarz(icell,:)*wz1 + xpypbarz(icell+1,:)*wz0
-              xsqbar(iw,:)  = xsqbarz(icell,:)*wz1  + xsqbarz(icell+1,:)*wz0
-              ysqbar(iw,:)  = ysqbarz(icell,:)*wz1  + ysqbarz(icell+1,:)*wz0
-              zsqbar(iw,:)  = zsqbarz(icell,:)*wz1  + zsqbarz(icell+1,:)*wz0
-              xpsqbar(iw,:) = xpsqbarz(icell,:)*wz1 + xpsqbarz(icell+1,:)*wz0
-              ypsqbar(iw,:) = ypsqbarz(icell,:)*wz1 + ypsqbarz(icell+1,:)*wz0
-              vxsqbar(iw,:) = vxsqbarz(icell,:)*wz1 + vxsqbarz(icell+1,:)*wz0
-              vysqbar(iw,:) = vysqbarz(icell,:)*wz1 + vysqbarz(icell+1,:)*wz0
-              vzsqbar(iw,:) = vzsqbarz(icell,:)*wz1 + vzsqbarz(icell+1,:)*wz0
-              xxpbar(iw,:)  = xxpbarz(icell,:)*wz1  + xxpbarz(icell+1,:)*wz0
-              yypbar(iw,:)  = yypbarz(icell,:)*wz1  + yypbarz(icell+1,:)*wz0
-              xvzbar(iw,:)  = xvzbarz(icell,:)*wz1  + xvzbarz(icell+1,:)*wz0
-              yvzbar(iw,:)  = yvzbarz(icell,:)*wz1  + yvzbarz(icell+1,:)*wz0
-              zvzbar(iw,:)  = zvzbarz(icell,:)*wz1  + zvzbarz(icell+1,:)*wz0
-              vxvzbar(iw,:) = vxvzbarz(icell,:)*wz1 + vxvzbarz(icell+1,:)*wz0
-              vyvzbar(iw,:) = vyvzbarz(icell,:)*wz1 + vyvzbarz(icell+1,:)*wz0
-              xrms(iw,:)    = xrmsz(icell,:)*wz1    + xrmsz(icell+1,:)*wz0
-              yrms(iw,:)    = yrmsz(icell,:)*wz1    + yrmsz(icell+1,:)*wz0
-              zrms(iw,:)    = zrmsz(icell,:)*wz1    + zrmsz(icell+1,:)*wz0
-              rrms(iw,:)    = rrmsz(icell,:)*wz1    + rrmsz(icell+1,:)*wz0
-              xprms(iw,:)   = xprmsz(icell,:)*wz1   + xprmsz(icell+1,:)*wz0
-              yprms(iw,:)   = yprmsz(icell,:)*wz1   + yprmsz(icell+1,:)*wz0
-              epsx(iw,:)    = epsxz(icell,:)*wz1    + epsxz(icell+1,:)*wz0
-              epsy(iw,:)    = epsyz(icell,:)*wz1    + epsyz(icell+1,:)*wz0
-              epsz(iw,:)    = epszz(icell,:)*wz1    + epszz(icell+1,:)*wz0
-              epsnx(iw,:)   = epsnxz(icell,:)*wz1   + epsnxz(icell+1,:)*wz0
-              epsny(iw,:)   = epsnyz(icell,:)*wz1   + epsnyz(icell+1,:)*wz0
-              epsnz(iw,:)   = epsnzz(icell,:)*wz1   + epsnzz(icell+1,:)*wz0
-              epsg(iw,:)    = epsgz(icell,:)*wz1    + epsgz(icell+1,:)*wz0
-              epsh(iw,:)    = epshz(icell,:)*wz1    + epshz(icell+1,:)*wz0
-              epsng(iw,:)   = epsngz(icell,:)*wz1   + epsngz(icell+1,:)*wz0
-              epsnh(iw,:)   = epsnhz(icell,:)*wz1   + epsnhz(icell+1,:)*wz0
-              vxrms(iw,:)   = vxrmsz(icell,:)*wz1   + vxrmsz(icell+1,:)*wz0
-              vyrms(iw,:)   = vyrmsz(icell,:)*wz1   + vyrmsz(icell+1,:)*wz0
-              vzrms(iw,:)   = vzrmsz(icell,:)*wz1   + vzrmsz(icell+1,:)*wz0
-            endif
+c           --- Save window moments.  Linearly interpolate the Z moments data
+c           --- to the Z window center.
+c           --- If the zwindow is outside the zmoments range, don't set
+c           --- anything.
+            do iw = 1,nzwind
+              zwin = 0.5*(zwindows(1,iw) + zwindows(2,iw))
+              if (zmmntmin <= zwin .and. zwin < zmmntmax) then
+                icell = int((zwin - zmmntmin)*dzmi)
+                wz0 = (zwin - zmmntmin)*dzmi - icell
+                wz1 = 1. - wz0
+                pnum(iw,js)   =pnumz(icell,js)*wz1    + pnumz(icell+1,js)*wz0
+                xbar(iw,js)   =xbarz(icell,js)*wz1    + xbarz(icell+1,js)*wz0
+                ybar(iw,js)   =ybarz(icell,js)*wz1    + ybarz(icell+1,js)*wz0
+                zbar(iw,js)   =zbarz(icell,js)*wz1    + zbarz(icell+1,js)*wz0
+                xpbar(iw,js)  =xpbarz(icell,js)*wz1   + xpbarz(icell+1,js)*wz0
+                ypbar(iw,js)  =ypbarz(icell,js)*wz1   + ypbarz(icell+1,js)*wz0
+                vxbar(iw,js)  =vxbarz(icell,js)*wz1   + vxbarz(icell+1,js)*wz0
+                vybar(iw,js)  =vybarz(icell,js)*wz1   + vybarz(icell+1,js)*wz0
+                vzbar(iw,js)  =vzbarz(icell,js)*wz1   + vzbarz(icell+1,js)*wz0
+                xybar(iw,js)  =xybarz(icell,js)*wz1   + xybarz(icell+1,js)*wz0
+                xypbar(iw,js) =xypbarz(icell,js)*wz1  + xypbarz(icell+1,js)*wz0
+                yxpbar(iw,js) =yxpbarz(icell,js)*wz1  + yxpbarz(icell+1,js)*wz0
+                xpypbar(iw,js)=xpypbarz(icell,js)*wz1 + xpypbarz(icell+1,js)*wz0
+                xsqbar(iw,js) =xsqbarz(icell,js)*wz1  + xsqbarz(icell+1,js)*wz0
+                ysqbar(iw,js) =ysqbarz(icell,js)*wz1  + ysqbarz(icell+1,js)*wz0
+                zsqbar(iw,js) =zsqbarz(icell,js)*wz1  + zsqbarz(icell+1,js)*wz0
+                xpsqbar(iw,js)=xpsqbarz(icell,js)*wz1 + xpsqbarz(icell+1,js)*wz0
+                ypsqbar(iw,js)=ypsqbarz(icell,js)*wz1 + ypsqbarz(icell+1,js)*wz0
+                vxsqbar(iw,js)=vxsqbarz(icell,js)*wz1 + vxsqbarz(icell+1,js)*wz0
+                vysqbar(iw,js)=vysqbarz(icell,js)*wz1 + vysqbarz(icell+1,js)*wz0
+                vzsqbar(iw,js)=vzsqbarz(icell,js)*wz1 + vzsqbarz(icell+1,js)*wz0
+                xxpbar(iw,js) =xxpbarz(icell,js)*wz1  + xxpbarz(icell+1,js)*wz0
+                yypbar(iw,js) =yypbarz(icell,js)*wz1  + yypbarz(icell+1,js)*wz0
+                xvzbar(iw,js) =xvzbarz(icell,js)*wz1  + xvzbarz(icell+1,js)*wz0
+                yvzbar(iw,js) =yvzbarz(icell,js)*wz1  + yvzbarz(icell+1,js)*wz0
+                zvzbar(iw,js) =zvzbarz(icell,js)*wz1  + zvzbarz(icell+1,js)*wz0
+                vxvzbar(iw,js)=vxvzbarz(icell,js)*wz1 + vxvzbarz(icell+1,js)*wz0
+                vyvzbar(iw,js)=vyvzbarz(icell,js)*wz1 + vyvzbarz(icell+1,js)*wz0
+                xrms(iw,js)   =xrmsz(icell,js)*wz1    + xrmsz(icell+1,js)*wz0
+                yrms(iw,js)   =yrmsz(icell,js)*wz1    + yrmsz(icell+1,js)*wz0
+                zrms(iw,js)   =zrmsz(icell,js)*wz1    + zrmsz(icell+1,js)*wz0
+                rrms(iw,js)   =rrmsz(icell,js)*wz1    + rrmsz(icell+1,js)*wz0
+                xprms(iw,js)  =xprmsz(icell,js)*wz1   + xprmsz(icell+1,js)*wz0
+                yprms(iw,js)  =yprmsz(icell,js)*wz1   + yprmsz(icell+1,js)*wz0
+                epsx(iw,js)   =epsxz(icell,js)*wz1    + epsxz(icell+1,js)*wz0
+                epsy(iw,js)   =epsyz(icell,js)*wz1    + epsyz(icell+1,js)*wz0
+                epsz(iw,js)   =epszz(icell,js)*wz1    + epszz(icell+1,js)*wz0
+                epsnx(iw,js)  =epsnxz(icell,js)*wz1   + epsnxz(icell+1,js)*wz0
+                epsny(iw,js)  =epsnyz(icell,js)*wz1   + epsnyz(icell+1,js)*wz0
+                epsnz(iw,js)  =epsnzz(icell,js)*wz1   + epsnzz(icell+1,js)*wz0
+                epsg(iw,js)   =epsgz(icell,js)*wz1    + epsgz(icell+1,js)*wz0
+                epsh(iw,js)   =epshz(icell,js)*wz1    + epshz(icell+1,js)*wz0
+                epsng(iw,js)  =epsngz(icell,js)*wz1   + epsngz(icell+1,js)*wz0
+                epsnh(iw,js)  =epsnhz(icell,js)*wz1   + epsnhz(icell+1,js)*wz0
+                vxrms(iw,js)  =vxrmsz(icell,js)*wz1   + vxrmsz(icell+1,js)*wz0
+                vyrms(iw,js)  =vyrmsz(icell,js)*wz1   + vyrmsz(icell+1,js)*wz0
+                vzrms(iw,js)  =vzrmsz(icell,js)*wz1   + vzrmsz(icell+1,js)*wz0
+              endif
+            enddo
           enddo
 
         endif
