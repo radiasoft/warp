@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.75 2004/07/27 22:02:46 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.76 2004/07/29 00:11:16 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -996,18 +996,18 @@ Creates a grid object which can generate conductor data.
     dz = self.dz*self.mglevellz[mglevel]
     nx = nint(self.nx/self.mglevellx[mglevel])
     ny = nint(self.ny/self.mglevelly[mglevel])
-    nz = nint(self.nz/self.mglevellz[mglevel])
     iz = self.mgleveliz[mglevel]
+    nz = self.mglevelnz[mglevel]
     return dx,dy,dz,nx,ny,nz,iz
 
   def getmesh(self,mglevel=0,extent=None):
     dx,dy,dz,nx,ny,nz,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
 
-    # --- Note: this need to be fixed for the parallel version since
-    # --- zmmin and zmmax depend in leveliz and levelnz
-    xmin,ymin,zmin = self.xmin,self.ymin,self.zmin
-    xmax,ymax,zmax = self.xmax,self.ymax,self.zmax
+    xmin,ymin = self.xmin,self.ymin
+    xmax,ymax = self.xmax,self.ymax
+    zmin = max(self.zmin,self.zmmin+iz*dz+top.zbeam)
+    zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+top.zbeam)
     if extent is not None:
       xmin,ymin,zmin = maximum(array(extent.mins),array([xmin,ymin,zmin]))
       xmax,ymax,zmax = minimum(array(extent.maxs),array([xmax,ymax,zmax]))
