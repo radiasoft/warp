@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.15 2004/05/29 01:04:00 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.16 2004/06/02 01:01:19 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -17,7 +17,8 @@ def VPythonobjectsdoc():
 class VisualModel(Visualizable):
   def __init__(self,twoSided=1,normalsign=1,scene=None,
                     name=None,labels=None,
-                    vrange=None,viewer=None):
+                    vrange=None,viewer=None,
+                    rscale=None,zscale=None):
     if viewer is None: viewer = 'OpenDX'
     self.viewer = viewer
     self.triangles = []
@@ -39,19 +40,49 @@ class VisualModel(Visualizable):
     else:            self.name = name
     self.labels = labels
     self.scene = scene
+    self.rscale = rscale
+    self.zscale = zscale
 
   def createdxobject(self,kwdict={},**kw):
 
     import pyOpenDX
 
     n = len(self.triangles)
-    p = array(self.triangles).astype(Float32)
+    p = array(self.triangles).copy()
+    ns = array(self.normals)*self.normalsign
+    if self.rscale is not None:
+      p[:,0] = p[:,0]*self.rscale
+      p[:,1] = p[:,1]*self.rscale
+      tt = arccos(ns[:,2])
+      ttp = arctan2(tan(tt),self.rscale)
+      stt = sin(tt)
+      sttp = sin(ttp)
+      ttp = where(sign(stt) == sign(sttp),ttp,ttp+pi)
+      stt = where(tt==0.,1.,sin(tt))
+      sttp = where(ttp==0.,1.,sin(ttp))
+      ns[:,0] = ns[:,0]*sttp/stt
+      ns[:,1] = ns[:,1]*sttp/stt
+      ns[:,2] = cos(ttp)
+    if self.zscale is not None:
+      p[:,2] = p[:,2]*self.zscale
+      tt = arccos(ns[:,2])
+      ttp = arctan(tan(tt)*self.zscale)
+      stt = sin(tt)
+      sttp = sin(ttp)
+      ttp = where(sign(stt) == sign(sttp),ttp,ttp+pi)
+      stt = where(tt==0.,1.,sin(tt))
+      sttp = where(ttp==0.,1.,sin(ttp))
+      ns[:,0] = ns[:,0]*sttp/stt
+      ns[:,1] = ns[:,1]*sttp/stt
+      ns[:,2] = cos(ttp)
+    p = p.astype(Float32)
+    ns = ns.astype(Float32)
+
     ss = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
     pyOpenDX.DXAddArrayData(ss,0,n,p)
 
-    normals = array(self.normals)*self.normalsign
     nn = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
-    pyOpenDX.DXAddArrayData(nn,0,n,normals.astype(Float32))
+    pyOpenDX.DXAddArrayData(nn,0,n,ns)
     pyOpenDX.DXSetStringAttribute(nn,'dep','positions')
 
     if not self.colors: colors = array(n*[[0.5,0.7,1.0]])
@@ -259,10 +290,12 @@ name='WARP viz': Display name - only used when new scene created.
   def __init__(self, xvalues=None, yvalues=None, zvalues=None,
                xscaled=0,zscaled=1,
                twoSided=1,normalsign=1,color=None,color1=None,color2=None,
-               scene=None,name=None,vrange=None,viewer=None):
+               scene=None,name=None,vrange=None,viewer=None,
+               rscale=None,zscale=None,display=0):
     VisualModel.__init__(self,twoSided=twoSided,normalsign=normalsign,
                               scene=scene,name=name,
-                              vrange=vrange,viewer=viewer,display=0)
+                              vrange=vrange,viewer=viewer,
+                              rscale=rscale,zscale=zscale)
 
     assert zvalues is not None,"zvalues must be specified"
 
@@ -354,11 +387,13 @@ Visualize surface of revolution
                     zcdata=None,rcdata=None,ntpts=5,
                     twoSided=0,normalsign=1,color=None,
                     scene=None,name=None,vrange=None,
+                    rscale=None,zscale=None,
                     viewer=None,display=0,kwdict={}):
     for arg in kwdict.keys(): exec(arg+" = kwdict['"+arg+"']")
     VisualModel.__init__(self,twoSided=twoSided,normalsign=1,
                               scene=scene,name=name,
-                              vrange=vrange,viewer=viewer)
+                              vrange=vrange,viewer=viewer,
+                              rscale=rscale,zscale=zscale)
 
     # --- If phimin and phimax are not given, then the ends never need
     # --- filling in
