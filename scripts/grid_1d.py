@@ -1,5 +1,5 @@
 from warp import *
-grid_1d_version = "$Id: grid_1d.py,v 1.3 2001/04/13 22:56:15 dave Exp $"
+grid_1d_version = "$Id: grid_1d.py,v 1.4 2001/06/18 20:45:54 dave Exp $"
 ############################################################################
 # This script contains two routines, one to gather particle data onto
 # a 1D grid, and the other to scatter data from a 1D grid to the particles.
@@ -46,14 +46,14 @@ ouput
   grid_1d = zeros(ng1d+1,'d')
   grid_1dmesh = zeros(ng1d+1,'d')
 
-  if (g1dmin == None):
+  if (g1dmin is None):
     g1dmin = min(location)
     g1dmin = g1dmin - (max(location)-g1dmin)/ng1d
-  if (g1dmax == None):
+  if (g1dmax is None):
     g1dmax = max(location)
     g1dmax = g1dmax + (g1dmax - g1dmin)/ng1d
   if (type(data)!=type(location)):
-    if (data == None):
+    if (data is None):
       data = 1.
       do_divide = false
   else:

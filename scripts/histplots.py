@@ -1,6 +1,6 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.8 2001/03/05 18:44:09 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.9 2001/06/18 20:45:54 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -181,8 +181,8 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   if badargs: raise "bad argument ",string.join(badargs.keys())
 
   # --- Some special arguments
-  if istep == None: istep = max(iend/20,1)
-  if jstep == None: jstep = max(jend/32,1)
+  if istep is None: istep = max(iend/20,1)
+  if jstep is None: jstep = max(jend/32,1)
 
   # --- Check through the possible keyword arguments
   for arg in kw.keys():

@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.12 2001/06/18 18:05:01 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.13 2001/06/18 20:45:55 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -65,7 +65,7 @@ def getwin_moments():
   # --- All of the moment data for each window is sent as a single array.
   for iw in range(1,top.nzwind+1):
     pe = convertiwtope(iw)
-    if pe != None:
+    if pe is not None:
       vdata = []
       for v in vlist:
         h = eval('top.'+v)
@@ -87,7 +87,7 @@ def gethist():
   # --- All of the history data for each window is sent as a single array.
   for iw in range(1,top.nzwind+1):
     pe = convertiwtope(iw)
-    if pe != None:
+    if pe is not None:
       vdata = []
       for v in vlist:
         h = eval('top.'+v)
@@ -191,7 +191,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
     # --- Write out the list of python variables to the file.
     # --- This assumes that all interpreted variables are the same on
     # --- all processors.
-    if varsuffix == None:
+    if varsuffix is None:
       suffix = ''
     else:
       suffix = varsuffix
@@ -221,7 +221,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
           # --- Get attributes of the variable
           a = pkg.getvarattr(vname)
           # --- Set name of variable in pdb file
-          if varsuffix == None:
+          if varsuffix is None:
             pdbname = vname+'@'+p
           else:
             pdbname = vname+varsuffix
@@ -406,7 +406,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
       v = pkg.getpyobject(vname)
       if v is not None:
         a = pkg.getvarattr(vname)
-        if varsuffix == None:
+        if varsuffix is None:
           pdbname = vname+'@'+p
         else:
           pdbname = vname+varsuffix

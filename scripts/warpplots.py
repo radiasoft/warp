@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.42 2001/06/18 20:12:43 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.43 2001/06/18 20:45:55 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -502,24 +502,24 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   ir1 = top.ins[js]-1
   ir2 = top.ins[js]+top.nps[js]-1
   if ir2 <= ir1: return array([])
-  if zl!=None or zu!=None:
-    if z == None: z = top.zp
-    if zl == None: zl = -top.largepos
-    if zu == None: zu = +top.largepos
+  if zl is not None or zu is not None:
+    if z is None: z = top.zp
+    if zl is None: zl = -top.largepos
+    if zu is None: zu = +top.largepos
     if zl > zu: print "Warning: zl > zu"
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
-  elif ix!=None:
+  elif ix is not None:
     xl = w3d.xmmin + ix*w3d.dx - wx*w3d.dx
     xu = w3d.xmmin + ix*w3d.dx + wx*w3d.dx
     ii=compress(logical_and(less(xl,top.xp[ir1:ir2]),less(top.xp[ir1:ir2],xu)),
                 arrayrange(ir1,ir2))
-  elif iy!=None:
+  elif iy is not None:
     yl = w3d.ymmin + iy*w3d.dy - wy*w3d.dy
     yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
     ii=compress(logical_and(less(yl,top.yp[ir1:ir2]),less(top.yp[ir1:ir2],yu)),
                 arrayrange(ir1,ir2))
-  elif iz!=None:
+  elif iz is not None:
     z = top.zp
     if lparallel:
       zl = top.zmslmin[0] + iz*w3d.dz - wz*w3d.dz + top.zbeam
@@ -536,9 +536,9 @@ from window 0, getting all of the live partilces (whose uzp > 0).
   elif iw == 0:
     ii = xrange(ir1,ir2)
   else:
-    if win == None: win = top.zwindows[:,iw] + top.zbeam
+    if win is None: win = top.zwindows[:,iw] + top.zbeam
     if len(shape(win)) == 2: win = win[:,iw]
-    if z == None: z = top.zp
+    if z is None: z = top.zp
     ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
                 arrayrange(ir1,ir2))
   ii = compress(not_equal(take(top.uzp,ii),0.),ii)
@@ -798,21 +798,21 @@ def pptitleright(iw=0,kwdict={},**kw):
     raise "bad argument ",string.join(badargs.keys())
 
   # --- Return appropriate right title
-  if zl!=None or zu!=None:
-    if z == None: prefix = ""
+  if zl is not None or zu is not None:
+    if z is None: prefix = ""
     else: prefix = "z "
-    if zl == None: zl = -top.largepos
-    if zu == None: zu = +top.largepos
+    if zl is None: zl = -top.largepos
+    if zu is None: zu = +top.largepos
     return prefix+"range (%9.4e, %9.4e)"%(zl,zu)
-  elif ix!=None:
+  elif ix is not None:
     xl = w3d.xmmin + ix*w3d.dx - wx*w3d.dx
     xu = w3d.xmmin + ix*w3d.dx + wx*w3d.dx
     return "ix = %d, x range (%9.4e, %9.4e)"%(ix,xl,xu)
-  elif iy!=None:
+  elif iy is not None:
     yl = w3d.ymmin + iy*w3d.dy - wy*w3d.dy
     yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
     return "iy = %d, y range (%9.4e, %9.4e)"%(iy,yl,yu)
-  elif iz!=None:
+  elif iz is not None:
     if lparallel:
       zl = top.zmslmin[0] + iz*w3d.dz - wz*w3d.dz + top.zbeam
       zu = top.zmslmin[0] + iz*w3d.dz + wz*w3d.dz + top.zbeam
@@ -824,7 +824,7 @@ def pptitleright(iw=0,kwdict={},**kw):
     if psubset==[]: setup_subsets()
     return "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
   else:
-    if win == None:
+    if win is None:
       win = top.zwindows[:,iw] + top.zbeam
       prefix = "z "
     else:
@@ -919,10 +919,10 @@ Note that either the x and y coordinates or the grid must be passed in.
          "both x and y must be specified if particles are to be plotted"
   assert ((type(x) != ArrayType and type(y) != ArrayType) or len(x) == len(y)),\
          "both x and y must be of the same length"
-  assert (type(z) == NoneType) or (type(z) == ArrayType and len(z) == len(x)),\
+  assert (z is None) or (type(z) == ArrayType and len(z) == len(x)),\
          "z must be the same length as x"
   assert (type(slope) != StringType),"slope must be a number"
-  assert (type(z) == NoneType) or (type(grid) == NoneType),\
+  assert (z is None) or (grid is None),\
          "only one of z and grid can be specified"
 
   # -- Set the plotting view window
@@ -940,40 +940,40 @@ Note that either the x and y coordinates or the grid must be passed in.
     yms = y - x*slope - offset
     # --- Get mins and maxs of particles that were not supplied by the user.
     if lparallel:
-      if xmin == None: xmintemp = globalmin(x)
-      if xmax == None: xmaxtemp = globalmax(x)
-      if ymin == None: ymintemp = globalmin(yms)
-      if ymax == None: ymaxtemp = globalmax(yms)
+      if xmin is None: xmintemp = globalmin(x)
+      if xmax is None: xmaxtemp = globalmax(x)
+      if ymin is None: ymintemp = globalmin(yms)
+      if ymax is None: ymaxtemp = globalmax(yms)
     else:
       xmintemp = 0.
       xmaxtemp = 0.
       ymintemp = 0.
       ymaxtemp = 0.
-      if xmin == None and len(x) > 0: xmintemp = min(x)
-      if xmax == None and len(x) > 0: xmaxtemp = max(x)
-      if ymin == None and len(yms) > 0: ymintemp = min(yms)
-      if ymax == None and len(yms) > 0: ymaxtemp = max(yms)
+      if xmin is None and len(x) > 0: xmintemp = min(x)
+      if xmax is None and len(x) > 0: xmaxtemp = max(x)
+      if ymin is None and len(yms) > 0: ymintemp = min(yms)
+      if ymax is None and len(yms) > 0: ymaxtemp = max(yms)
     # --- When neither the min or max are supplied by the user, extend
     # --- extrema by one grid cell so that all particles are within the
     # --- limits of the grid. This is the most common case.
-    if xmin == None and xmax == None:
+    if xmin is None and xmax is None:
       xmintemp = xmintemp - (xmaxtemp-xmintemp)/(nx-2)
       xmaxtemp = xmaxtemp + (xmaxtemp-xmintemp)/(nx-2)
-    if ymin == None and ymax == None:
+    if ymin is None and ymax is None:
       ymintemp = ymintemp - (ymaxtemp-ymintemp)/(ny-2)
       ymaxtemp = ymaxtemp + (ymaxtemp-ymintemp)/(ny-2)
     # --- Now set main versions of min and max
-    if xmin == None: xmin = xmintemp
-    if xmax == None: xmax = xmaxtemp
-    if ymin == None: ymin = ymintemp
-    if ymax == None: ymax = ymaxtemp
+    if xmin is None: xmin = xmintemp
+    if xmax is None: xmax = xmaxtemp
+    if ymin is None: ymin = ymintemp
+    if ymax is None: ymax = ymaxtemp
   else:
     # --- If no particles are inputted and the extrema are not set, then
     # --- can only make a guess.
-    if xmin == None: xmin = 0
-    if xmax == None: xmax = nx
-    if ymin == None: ymin = 0
-    if ymax == None: ymax = ny
+    if xmin is None: xmin = 0
+    if xmax is None: xmax = nx
+    if ymin is None: ymin = 0
+    if ymax is None: ymax = ny
 
   # --- Get grid cell sizes
   dx = (xmax-xmin)/nx
@@ -983,7 +983,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- it from the inputted particle data (if there was any)
   if type(grid) != ArrayType and \
      (hash or contours or color=='density' or chopped):
-    if type(z) == NoneType:
+    if z is None:
       densitygrid = 1
 
       # --- Create space for data
@@ -1068,8 +1068,8 @@ Note that either the x and y coordinates or the grid must be passed in.
         z1 = compress(ipick,z1)
     if color == 'density':
       # --- Plot particles with color based on the density from the grid.
-      if denmin == None: demmin = minnd(grid)
-      if denmax == None: demmax = maxnd(grid)
+      if denmin is None: demmin = minnd(grid)
+      if denmax is None: demmax = maxnd(grid)
       ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,lframe=0,
            xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax,zmin=denmin,zmax=denmax,
            ncolor=ncolor,usepalette=usepalette)
@@ -1500,7 +1500,7 @@ that plot.
                      (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax),
                      (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax),
                      (top.ypplmin,top.ypplmax,top.xpplmin,top.xpplmax)]
-  if pplimits == None:
+  if pplimits is None:
     pplimits = defaultpplimits
   else:
     if type(pplimits[0]) != type(()):
@@ -1547,9 +1547,9 @@ def ppzxco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
      - lframe=0 specifies whether or not to set plot limits
      - sys=1 specifies section of plot frame to use
      - titles=1 specifies whether or not to plot titles"""
-  if ncolor == None: ncolor = top.ncolor
-  if nskipcol == None: ncolor = top.nskipcol
-  if nstepcol == None: ncolor = top.nstepcol
+  if ncolor is None: ncolor = top.ncolor
+  if nskipcol is None: ncolor = top.nskipcol
+  if nstepcol is None: ncolor = top.nstepcol
   inp=top.nps[js]/ncolor
   istep=nskipcol*nstepcol
   #if (lframadv) nf
@@ -1589,9 +1589,9 @@ def ppzyco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
      - lframe=0 specifies whether or not to set plot limits
      - sys=1 specifies section of plot frame to use
      - titles=1 specifies whether or not to plot titles"""
-  if ncolor == None: ncolor = top.ncolor
-  if nskipcol == None: ncolor = top.nskipcol
-  if nstepcol == None: ncolor = top.nstepcol
+  if ncolor is None: ncolor = top.ncolor
+  if nskipcol is None: ncolor = top.nskipcol
+  if nstepcol is None: ncolor = top.nstepcol
   inp=top.nps[js]/ncolor
   istep=nskipcol*nstepcol
   #if (lframadv) nf
@@ -1646,9 +1646,9 @@ def ppzvzco(js=0,marker="\1",msize=1.0,lframe=0,titles=1,
      - msize=1.0 marker size
      - lframe=0 specifies whether or not to set plot limits
      - titles=1 specifies whether or not to plot titles"""
-  if ncolor == None: ncolor = top.ncolor
-  if nskipcol == None: ncolor = top.nskipcol
-  if nstepcol == None: ncolor = top.nstepcol
+  if ncolor is None: ncolor = top.ncolor
+  if nskipcol is None: ncolor = top.nskipcol
+  if nstepcol is None: ncolor = top.nstepcol
   inp=top.nps[js]/ncolor
   istep=nskipcol*nstepcol
   #if (lframadv) nf
@@ -1697,26 +1697,26 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
   ry = ravel(y)
   rz = ravel(z)
   if not lparallel:
-    if xmin == None and len(rx) > 0: xmin = min(rx)
-    if xmax == None and len(rx) > 0: xmax = max(rx)
-    if ymin == None and len(ry) > 0: ymin = min(ry)
-    if ymax == None and len(ry) > 0: ymax = max(ry)
-    if zmin == None and len(rz) > 0: zmin = min(rz)
-    if zmax == None and len(rz) > 0: zmax = max(rz)
-    if xmin == None: xmin = 0.
-    if xmax == None: xmax = 0.
-    if ymin == None: ymin = 0.
-    if ymax == None: ymax = 0.
-    if zmin == None: zmin = 0.
-    if zmax == None: zmax = 0.
+    if xmin is None and len(rx) > 0: xmin = min(rx)
+    if xmax is None and len(rx) > 0: xmax = max(rx)
+    if ymin is None and len(ry) > 0: ymin = min(ry)
+    if ymax is None and len(ry) > 0: ymax = max(ry)
+    if zmin is None and len(rz) > 0: zmin = min(rz)
+    if zmax is None and len(rz) > 0: zmax = max(rz)
+    if xmin is None: xmin = 0.
+    if xmax is None: xmax = 0.
+    if ymin is None: ymin = 0.
+    if ymax is None: ymax = 0.
+    if zmin is None: zmin = 0.
+    if zmax is None: zmax = 0.
   else:
-    if xmin == None: xmin = globalmin(rx)
-    if xmax == None: xmax = globalmax(rx)
-    if ymin == None: ymin = globalmin(ry)
-    if ymax == None: ymax = globalmax(ry)
-    if zmin == None: zmin = globalmin(rz)
-    if zmax == None: zmax = globalmax(rz)
-  if ncolor == None: ncolor = top.ncolor
+    if xmin is None: xmin = globalmin(rx)
+    if xmax is None: xmax = globalmax(rx)
+    if ymin is None: ymin = globalmin(ry)
+    if ymax is None: ymax = globalmax(ry)
+    if zmin is None: zmin = globalmin(rz)
+    if zmax is None: zmax = globalmax(rz)
+  if ncolor is None: ncolor = top.ncolor
   dd = (zmax - zmin)/ncolor
   #if (lframadv) nf
   for ic in xrange(1,ncolor+1):
@@ -1832,21 +1832,21 @@ to all three.
   - bcast=0 When 1, the result is broadcast to all of the processors
   """
   if not lparallel:
-    if ix == None and iy == None and iz == None:
+    if ix is None     and iy is None     and iz is None    :
       return w3d.rho
-    if ix != None and iy == None and iz == None:
+    if ix is not None and iy is None     and iz is None    :
       return w3d.rho[ix,:,:]
-    if ix == None and iy != None and iz == None:
+    if ix is None     and iy is not None and iz is None    :
       return w3d.rho[:,iy,:]
-    if ix == None and iy == None and iz != None:
+    if ix is None     and iy is None     and iz is not None:
       return w3d.rho[:,:,iz]
-    if ix != None and iy != None and iz == None:
+    if ix is not None and iy is not None and iz is None    :
       return w3d.rho[ix,iy,:]
-    if ix != None and iy == None and iz != None:
+    if ix is not None and iy is None     and iz is not None:
       return w3d.rho[ix,:,iz]
-    if ix == None and iy != None and iz != None:
+    if ix is None     and iy is not None and iz is not None:
       return w3d.rho[:,iy,iz]
-    if ix != None and iy != None and iz != None:
+    if ix is not None and iy is not None and iz is not None:
       return w3d.rho[ix,iy,iz]
   else:
     iz1 = top.izfsslave[me] - top.izslave[me]
@@ -1855,17 +1855,17 @@ to all three.
     else:
       iz2 = iz1 + top.nzfsslave[me] + 1
     ppp = w3d.rho[:,:,iz1:iz2]
-    if ix != None and iy == None:
+    if ix is not None and iy is None:
       ppp = ppp[ix,:,:]
-    elif ix == None and iy != None:
+    elif ix is None and iy is not None:
       ppp = ppp[:,iy,:]
-    elif ix != None and iy != None:
+    elif ix is not None and iy is not None:
       ppp = ppp[ix,iy,:]
-    if iz == None:
+    if iz is None:
       ppp = transpose(gatherarray(transpose(ppp)))
     else:
       pe = convertizfstope(iz)
-      if pe == None: return None
+      if pe is None: return None
       if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
       else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
@@ -1882,21 +1882,21 @@ to all three.
   - iz = None
   """
   if not lparallel:
-    if ix == None and iy == None and iz == None:
+    if ix is None     and iy is None     and iz is None    :
       w3d.rho[:,:,:] = val
-    if ix != None and iy == None and iz == None:
+    if ix is not None and iy is None     and iz is None    :
       w3d.rho[ix,:,:] = val
-    if ix == None and iy != None and iz == None:
+    if ix is None     and iy is not None and iz is None    :
       w3d.rho[:,iy,:] = val
-    if ix == None and iy == None and iz != None:
+    if ix is None     and iy is None     and iz is not None:
       w3d.rho[:,:,iz] = val
-    if ix != None and iy != None and iz == None:
+    if ix is not None and iy is not None and iz is None    :
       w3d.rho[ix,iy,:] = val
-    if ix != None and iy == None and iz != None:
+    if ix is not None and iy is None     and iz is not None:
       w3d.rho[ix,:,iz] = val
-    if ix == None and iy != None and iz != None:
+    if ix is None     and iy is not None and iz is not None:
       w3d.rho[:,iy,iz] = val
-    if ix != None and iy != None and iz != None:
+    if ix is not None and iy is not None and iz is not None:
       w3d.rho[ix,iy,iz] = val
   else:
     print "Warning, setrho this is not yet implemented in parallel"
@@ -1904,17 +1904,17 @@ to all three.
    #  ppp = w3d.rho[:,:,:-top.grid_overlap]
    #else:
    #  ppp = w3d.rho[:,:,:]
-   #if ix != None and iy == None:
+   #if ix is not None and iy is None    :
    #  ppp = ppp[ix,:,:]
-   #elif ix == None and iy != None:
+   #elif ix is None and iy is not None:
    #  ppp = ppp[:,iy,:]
-   #elif ix != None and iy != None:
+   #elif ix is not None and iy is not None:
    #  ppp = ppp[ix,iy,:]
-   #if iz == None:
+   #if iz is None:
    #  ppp = transpose(gatherarray(transpose(ppp)))
    #else:
    #  pe = convertiztope(iz)
-   #  if pe == None: return None
+   #  if pe is None: return None
    #  if me == pe: ppp = ppp[...,iz-top.izslave[me+1]+1]
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
    #if bcast: ppp = mpi.bcast(ppp)
@@ -1931,21 +1931,21 @@ be from none to all three.
   - bcast=0 When 1, the result is broadcast to all of the processors
   """
   if not lparallel:
-    if ix == None and iy == None and iz == None:
+    if ix is None     and iy is None     and iz is None    :
       return w3d.phi[:,:,1:-1]
-    if ix != None and iy == None and iz == None:
+    if ix is not None and iy is None     and iz is None    :
       return w3d.phi[ix,:,1:-1]
-    if ix == None and iy != None and iz == None:
+    if ix is None     and iy is not None and iz is None    :
       return w3d.phi[:,iy,1:-1]
-    if ix == None and iy == None and iz != None:
+    if ix is None     and iy is None     and iz is not None:
       return w3d.phi[:,:,iz+1]
-    if ix != None and iy != None and iz == None:
+    if ix is not None and iy is not None and iz is None    :
       return w3d.phi[ix,iy,1:-1]
-    if ix != None and iy == None and iz != None:
+    if ix is not None and iy is None     and iz is not None:
       return w3d.phi[ix,:,iz+1]
-    if ix == None and iy != None and iz != None:
+    if ix is None     and iy is not None and iz is not None:
       return w3d.phi[:,iy,iz+1]
-    if ix != None and iy != None and iz != None:
+    if ix is not None and iy is not None and iz is not None:
       return w3d.phi[ix,iy,iz+1]
   else:
     iz1 = top.izfsslave[me] - top.izslave[me]
@@ -1954,17 +1954,17 @@ be from none to all three.
     else:
       iz2 = iz1 + top.nzfsslave[me] + 1
     ppp = w3d.phi[:,:,iz1+1:iz2+1]
-    if ix != None and iy == None:
+    if ix is not None and iy is None:
       ppp = ppp[ix,:,:]
-    elif ix == None and iy != None:
+    elif ix is None and iy is not None:
       ppp = ppp[:,iy,:]
-    elif ix != None and iy != None:
+    elif ix is not None and iy is not None:
       ppp = ppp[ix,iy,:]
-    if iz == None:
+    if iz is None:
       ppp = transpose(gatherarray(transpose(ppp)))
     else:
       pe = convertizfstope(iz)
-      if pe == None: return None
+      if pe is None: return None
       if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
       else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
@@ -1982,21 +1982,21 @@ be from none to all three.
               from -1 to nz+1
   """
   if not lparallel:
-    if ix == None and iy == None and iz == None:
+    if ix is None     and iy is None     and iz is None    :
       w3d.phi[:,:,1:-1] = val
-    if ix != None and iy == None and iz == None:
+    if ix is not None and iy is None     and iz is None    :
       w3d.phi[ix,:,1:-1] = val
-    if ix == None and iy != None and iz == None:
+    if ix is None     and iy is not None and iz is None    :
       w3d.phi[:,iy,1:-1] = val
-    if ix == None and iy == None and iz != None:
+    if ix is None     and iy is None     and iz is not None:
       w3d.phi[:,:,iz+1] = val
-    if ix != None and iy != None and iz == None:
+    if ix is not None and iy is not None and iz is None    :
       w3d.phi[ix,iy,1:-1] = val
-    if ix != None and iy == None and iz != None:
+    if ix is not None and iy is None     and iz is not None:
       w3d.phi[ix,:,iz+1] = val
-    if ix == None and iy != None and iz != None:
+    if ix is None     and iy is not None and iz is not None:
       w3d.phi[:,iy,iz+1] = val
-    if ix != None and iy != None and iz != None:
+    if ix is not None and iy is not None and iz is not None:
       w3d.phi[ix,iy,iz+1] = val
   else:
     print "Warning, setphi this is not yet implemented in parallel"
@@ -2004,17 +2004,17 @@ be from none to all three.
    #  ppp = w3d.phi[:,:,1:w3d.nz-top.grid_overlap+2]
    #else:
    #  ppp = w3d.phi[:,:,1:-1]
-   #if ix != None and iy == None:
+   #if ix is not None and iy is None:
    #  ppp = ppp[ix,:,:]
-   #elif ix == None and iy != None:
+   #elif ix is None and iy is not None:
    #  ppp = ppp[:,iy,:]
-   #elif ix != None and iy != None:
+   #elif ix is not None and iy is not None:
    #  ppp = ppp[ix,iy,:]
-   #if iz == None:
+   #if iz is None:
    #  ppp = transpose(gatherarray(transpose(ppp)))
    #else:
    #  pe = convertiztope(iz)
-   #  if pe == None: return None
+   #  if pe is None: return None
    #  if me == pe: ppp = ppp[...,iz-top.izslave[me+1]+1]
    #  if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
    #if bcast: ppp = mpi.bcast(ppp)

@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.5 2001/05/29 20:41:20 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.6 2001/06/18 20:45:54 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -40,7 +40,7 @@ zmmnt(itask=0)
              top.nplive,uxpo,uypo,uzpo,1,top.ns)
 
   # Calculate the moments
-  if js == None:
+  if js is None:
     jsmin = 0
     jsmax = top.ns
   else:

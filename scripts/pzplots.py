@@ -1,5 +1,5 @@
 from warp import *
-pzplots_version = "$Id: pzplots.py,v 1.5 2001/03/22 19:04:22 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.6 2001/06/18 20:45:55 dave Exp $"
 
 def pzplotsdoc():
   print """
@@ -88,7 +88,7 @@ def pzpnum(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.pnumz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -112,7 +112,7 @@ def pzppcell(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   ppcell = top.pnumz/(pi*top.xrmsz*top.yrmsz/(w3d.dx*w3d.dy))
@@ -137,7 +137,7 @@ def pzxbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -161,7 +161,7 @@ def pzybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.ybarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -185,7 +185,7 @@ def pzzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.zbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -209,7 +209,7 @@ def pzxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xpbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -233,7 +233,7 @@ def pzypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.ypbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -257,7 +257,7 @@ def pzvxbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vxbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -281,7 +281,7 @@ def pzvybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vybarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -305,7 +305,7 @@ def pzvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -329,7 +329,7 @@ def pzxybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xybarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -353,7 +353,7 @@ def pzxypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xypbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -377,7 +377,7 @@ def pzyxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.yxpbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -401,7 +401,7 @@ def pzxpypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xpypbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -425,7 +425,7 @@ def pzxsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -449,7 +449,7 @@ def pzysqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.ysqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -473,7 +473,7 @@ def pzzsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.zsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -497,7 +497,7 @@ def pzxpsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xpsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -521,7 +521,7 @@ def pzypsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.ypsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -545,7 +545,7 @@ def pzvxsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vxsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -569,7 +569,7 @@ def pzvysqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vysqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -593,7 +593,7 @@ def pzvzsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vzsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -617,7 +617,7 @@ def pzxxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xxpbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -641,7 +641,7 @@ def pzyypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.yypbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -665,7 +665,7 @@ def pzzvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.zvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -689,7 +689,7 @@ def pzxvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -713,7 +713,7 @@ def pzyvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.yvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -737,7 +737,7 @@ def pzvxvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vxvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -761,7 +761,7 @@ def pzvyvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vyvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -785,7 +785,7 @@ def pzxrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -809,7 +809,7 @@ def pzyrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.yrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -833,7 +833,7 @@ def pzzrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.zrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -857,7 +857,7 @@ def pzxprms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xprmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -881,7 +881,7 @@ def pzyprms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.yprmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -905,7 +905,7 @@ def pzepsx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epsxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -929,7 +929,7 @@ def pzepsy(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epsyz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -953,7 +953,7 @@ def pzepsz(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epszz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -977,7 +977,7 @@ def pzepsnx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epsnxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1001,7 +1001,7 @@ def pzepsny(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epsnyz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1025,7 +1025,7 @@ def pzepsnz(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epsnzz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1049,7 +1049,7 @@ def pzepsg(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epsgz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1073,7 +1073,7 @@ def pzepsh(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epshz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1097,7 +1097,7 @@ def pzepsng(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epsngz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1122,7 +1122,7 @@ def pzepsnh(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.epsnhz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1147,7 +1147,7 @@ def pzvxrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vxrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1171,7 +1171,7 @@ def pzvyrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vyrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1195,7 +1195,7 @@ def pzvzrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vzrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1219,7 +1219,7 @@ def pzxxpslope(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   sxz = (top.xxpbarz - top.xbarz*top.xpbarz)/ \
@@ -1245,7 +1245,7 @@ def pzyypslope(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   syz = (top.yypbarz - top.ybarz*top.ypbarz)/ \
@@ -1271,7 +1271,7 @@ def pzrhomid(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.rhomidz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1295,7 +1295,7 @@ def pzrhomax(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.rhomaxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1319,7 +1319,7 @@ def pzcurr(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.curr,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1344,7 +1344,7 @@ def pzegap(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.egap,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1368,7 +1368,7 @@ def pzlchg(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.linechg,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1393,7 +1393,7 @@ def pzvzofz(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.vzofz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1418,7 +1418,7 @@ def pzezax(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.ezax,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1443,7 +1443,7 @@ def pzphiax(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.phiax,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1475,7 +1475,7 @@ def pzrhoax(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.rhoax,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1500,7 +1500,7 @@ def pzenvx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(2.*top.xrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1525,7 +1525,7 @@ def pzenvy(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(2.*top.yrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
@@ -1550,7 +1550,7 @@ def pzxedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.xbarz+2.*top.xrmsz,zoffset+top.zplmesh/zscale,color=color,
@@ -1576,7 +1576,7 @@ def pzyedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   warpplg(top.ybarz+2.*top.yrmsz,zoffset+top.zplmesh/zscale,color=color,
@@ -1602,7 +1602,7 @@ def pzenvxp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   sxz = 2.*(top.xxpbarz - top.xbarz*top.xpbarz)/ \
@@ -1628,7 +1628,7 @@ def pzenvyp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   - titleb="Z": bottom title
   - titles=1: specifies whether or not to plot titles"""
   if zscale == 0.: raise "zscale must be nonzero"
-  if titleb == None:
+  if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   syz = 2.*(top.yypbarz - top.ybarz*top.ypbarz)/ \

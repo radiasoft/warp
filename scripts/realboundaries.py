@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.6 2001/04/04 17:38:37 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.7 2001/06/18 20:45:55 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -355,8 +355,8 @@ Constructor arguments:
       w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
       w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
     # --- Check and save voltages
-    if vxm == None: vxm = vx
-    if vym == None: vym = vy
+    if vxm is None: vxm = vx
+    if vym is None: vym = vy
     s.vx = vx
     s.vy = vy
     s.vxm = vxm
@@ -522,7 +522,7 @@ Constructor arguments:
     # --- Only apply matrix is the z location is within the current element
     if zs <= top.zbeam < ze:
       # --- Check if there is a matrix for this element
-      if (len(cm) > id+1 and cm[id] == None) or len(cm) < id+1:
+      if (len(cm) > id+1 and cm[id] is None) or len(cm) < id+1:
         # --- If the list is too short, add some None's in.
         while len(cm) < id+1: cm.append(None)
         # --- Now, add the capacity matrix.
@@ -548,7 +548,7 @@ Constructor arguments:
     # --- Only apply matrix if the z location is within the current element
     if zl <= top.zbeam < zr and ap > 0.:
       # --- Check if the matrix has already been calculated.
-      if (len(cm) > id+1 and cm[id] == None) or len(cm) < id+1:
+      if (len(cm) > id+1 and cm[id] is None) or len(cm) < id+1:
         # --- If the list is too short, add some None's in.
         while len(cm) < id+1: cm.append(None)
         # --- Generate the matrix

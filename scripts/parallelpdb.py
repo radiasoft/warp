@@ -1,6 +1,6 @@
 from warp import *
 import PW
-parallelpdb_version = "$Id: parallelpdb.py,v 1.4 2001/02/08 00:11:27 dave Exp $"
+parallelpdb_version = "$Id: parallelpdb.py,v 1.5 2001/06/18 20:45:54 dave Exp $"
 
 # Routines to allow all processors to write data to one file.
 # The PE's sequentially append data to the file. When a file is open,
@@ -25,7 +25,7 @@ class ParallelPW(PW.PW):
     def write (self, name, quantity, record = 0, pe=None):
         """Write quantity to file as 'name'"""
 	# --- Only one processor is to write to the file.
-        if pe != None:
+        if pe is not None:
 	  # --- If it is not pe0, then pe0 should close the file and the other
 	  # --- should open it.
 	  if pe != 0:
@@ -92,7 +92,7 @@ class ParallelPWold(PW.PW):
 
     def write (self, name, quantity, record = 0, pe=None):
         """Write quantity to file as 'name'"""
-        if pe != None:
+        if pe is not None:
           if me == pe:
             PW.PW.write(self,name,quantity,record)
           return

@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.3 2001/02/02 01:16:15 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.4 2001/06/18 20:45:54 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -57,15 +57,15 @@ Mountain-range plots of quantities saved vs. z at every timestep
   if badargs: raise "bad argument ",string.join(badargs.keys())
 
   # --- Special arguments
-  if jhist == None: jhist = shape(qty)[1] - 1
-  if nz == None: nz = shape(qty)[0] - 1
+  if jhist is None: jhist = shape(qty)[1] - 1
+  if nz is None: nz = shape(qty)[0] - 1
 
-  if ord == None:
+  if ord is None:
     if ifvst:
       ord = dz/hvbeam[0]*(iota(nz+2,2,-1)-2)
     else:
       ord = dz*iota(0,nz)+zmmin
-  if istep == None: istep = max(1,jhist/nlines)
+  if istep is None: istep = max(1,jhist/nlines)
   sign = 1
   shift = offset
   titlet = qtyname
@@ -114,7 +114,7 @@ def averagezdata(qty,navg=0,nlines=100,jhist=None,istep=None,nz=None):
   if navg == 0 or nlines == 0: return qty
   if not nz: nz = shape(qty)[0] - 1
   if not jhist: jhist = shape(qty)[1] - 1
-  if istep == None: istep = max(1,jhist/nlines)
+  if istep is None: istep = max(1,jhist/nlines)
   hl = qty[:,::istep] + 0.
   hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::istep])
   for j in range(navg+1,nz-navg-1):

@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.17 2001/06/08 22:18:51 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.18 2001/06/18 20:45:54 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -73,8 +73,8 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- has izslave subtracted from it. If the user passes in a value,
   # --- it must be checked for consistency, otherwise coding below could lead
   # --- to a deadlock in the parallel version
-  if izf != None: iz = izf
-  if iz == None: iz = w3d.iz_axis
+  if izf is not None: iz = izf
+  if iz is None: iz = w3d.iz_axis
   if iz < 0 or w3d.nzfull < iz: return
   izlocal = iz - top.izslave[me]
   if scale:
@@ -125,8 +125,8 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if iyf != None: iy = iyf
-  if iy == None: iy = w3d.iy_axis
+  if iyf is not None: iy = iyf
+  if iy is None: iy = w3d.iy_axis
   if iy < 0 or w3d.ny < iy: return
   if scale:
     dx = w3d.dx*signx
@@ -177,8 +177,8 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if ixf != None: ix = ixf
-  if ix == None: ix = w3d.ix_axis
+  if ixf is not None: ix = ixf
+  if ix is None: ix = w3d.ix_axis
   if ix < 0 or w3d.nx < ix: return
   if scale:
     dy = w3d.dy*signy
@@ -234,7 +234,7 @@ frame
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if izf != None: iz = izf
+  if izf is not None: iz = izf
   pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=0,signx=signx,signy=signy,
        plotphi=plotphi,filled=filled)
 
@@ -252,7 +252,7 @@ frame
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if iyf != None: iy = iyf
+  if iyf is not None: iy = iyf
   pfzx(iy=iy,contours=contours,plotsg=plotsg,scale=0,signz=signz,signx=signx,
        plotphi=plotphi,filled=filled)
 
@@ -270,7 +270,7 @@ frame
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if ixf != None: ix = ixf
+  if ixf is not None: ix = ixf
   pfzy(ix=ix,contours=contours,plotsg=plotsg,scale=0,signz=signz,signy=signy,
        plotphi=plotphi,filled=filled)
 
@@ -293,7 +293,7 @@ Plots conductors and contours of electrostatic potential in Z-(-X) plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if iyf != None: iy = iyf
+  if iyf is not None: iy = iyf
   pfzx(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signx=-1,
        plotphi=plotphi,filled=filled)
 
@@ -310,7 +310,7 @@ Plots conductors and contours of electrostatic potential in Z-(-Y) plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if ixf != None: ix = ixf
+  if ixf is not None: ix = ixf
   pfzy(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signy=-1,
        plotphi=plotphi,filled=filled)
 
@@ -326,7 +326,7 @@ plotting data in all four quadrants
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if izf != None: iz = izf
+  if izf is not None: iz = izf
   pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=+1,signy=+1,
        plotphi=plotphi,filled=filled)
   if w3d.l2symtry or w3d.l4symtry:
@@ -357,7 +357,7 @@ in X-Y plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if izf != None: iz = izf
+  if izf is not None: iz = izf
   if not iz: iz = w3d.iz_axis
   if iz < 0 or w3d.nzfull < iz: return
   izlocal = iz - top.izslave[me]
@@ -406,7 +406,7 @@ in Z-X plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if iyf != None: iy = iyf
+  if iyf is not None: iy = iyf
   if not iy: iy = w3d.iy_axis
   if iy < 0 or w3d.ny < iy: return
   if scale:
@@ -456,7 +456,7 @@ in Z-Y plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if ixf != None: ix = ixf
+  if ixf is not None: ix = ixf
   if not ix: ix = w3d.ix_axis
   if ix < 0 or w3d.nx < ix: return
   if scale:
@@ -505,7 +505,7 @@ in Z-(-X) plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  if iyf != None: iy = iyf
+  if iyf is not None: iy = iyf
   pfzxbox(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
           signx=-1,plotphi=plotphi,filled=filled)
 
@@ -522,7 +522,7 @@ in Z-(-Y) plane
   - signz=1 sign of z, used for plotting symmetry planes
   - filled=0 when true, plots filled contours
   """
-  if ixf != None: ix = ixf
+  if ixf is not None: ix = ixf
   pfzybox(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
           signy=-1,plotphi=plotphi,filled=filled)
 
@@ -579,7 +579,7 @@ def pfzxlab(zz=None,iy=None):
   - zz=top.zbeam is the center position
   """
   if not zz: zz=top.zbeam
-  if iy == None: iy = w3d.iy_axis
+  if iy is None: iy = w3d.iy_axis
   # --- if zz is not equal to zbeam, then calculate conductors for new location
   if (zz != top.zbeam):
     z = top.zbeam
@@ -717,7 +717,7 @@ def plotquadoutline(iquad=0,nquad=None,color='fg',gridframe=0,axis='x'):
   - gridframe=0: when true, make plot in grid coordinates
   - axis='x': selects axis to plot, either 'x' or 'y'
   """
-  if nquad == None: nquad = top.nquad
+  if nquad is None: nquad = top.nquad
   plotelementoutline(color,gridframe,axis,iquad,nquad,
                      top.quadzs,top.quadze,top.quadap,top.quadrr,top.quadrl,
                      top.quadgl,top.quadgp,top.qoffx,top.qoffy,

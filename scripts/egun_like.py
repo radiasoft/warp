@@ -1,5 +1,5 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.5 2001/04/04 17:38:37 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.6 2001/06/18 20:45:54 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -105,7 +105,7 @@ Performs steady-state iterations
     _onztinjmx = top.nztinjmx
   _ifzmmnt = top.ifzmmnt
   _laccumulate_zmoments = top.laccumulate_zmoments
-  if laccumulate_zmoments==None: laccumulate_zmoments=top.laccumulate_zmoments
+  if laccumulate_zmoments is None: laccumulate_zmoments=top.laccumulate_zmoments
 
   if ipsave: _ipsave = ipsave
   if save_same_part: _save_same_part = save_same_part

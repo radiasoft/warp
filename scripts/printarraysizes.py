@@ -1,5 +1,5 @@
 from warp import *
-printarraysizes_version = "$Id: printarraysizes.py,v 1.1 2001/03/01 00:13:22 dave Exp $"
+printarraysizes_version = "$Id: printarraysizes.py,v 1.2 2001/06/18 20:45:55 dave Exp $"
 
 def printarraysizesdoc():
   print "printarraysizes: prints sizes of all allocated arrays"
@@ -9,7 +9,7 @@ def printarraysizes(filename=None,threshold=0):
   - filename=None: when specified, the data will be written to that file
   - threshold=0: only arrays with sizes greater than this will be listed
   """
-  if filename != None:
+  if filename is not None:
     ff = open(filename,'w')
     printtofile = 1
   else:
