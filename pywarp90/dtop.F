@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.70 $, $Date: 2003/03/03 20:04:21 $
+c@(#) File DTOP.M, version $Revision: 3.71 $, $Date: 2003/03/06 00:42:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.70 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.71 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1199,8 +1199,6 @@ c=============================================================================
       real(kind=8):: xmin,xmax,ymin,ymax
 
 c Lays particles down onto 2-D mesh.
-c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
-c This allows data to be accumulated to obtain better statistics.
 
       integer(ISZ):: ip,ix,iy
       real(kind=8):: gx,gy,dxi,dyi,wx,wy
@@ -1227,6 +1225,46 @@ c       --- if within grid, accumulate
           grid(ix+1,iy  ) = grid(ix+1,iy  ) +       wx *(1. - wy)
           grid(ix  ,iy+1) = grid(ix  ,iy+1) + (1. - wx)*      wy
           grid(ix+1,iy+1) = grid(ix+1,iy+1) +       wx *      wy
+        endif
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine setgrid2dw(np,x,y,w,nx,ny,grid,xmin,xmax,ymin,ymax)
+      integer(ISZ):: nx,ny,np
+      real(kind=8):: x(np), y(np), w(np)
+      real(kind=8):: grid(0:nx,0:ny)
+      real(kind=8):: xmin,xmax,ymin,ymax
+
+c Lays particles with variable weights down onto 2-D mesh.
+
+      integer(ISZ):: ip,ix,iy
+      real(kind=8):: gx,gy,dxi,dyi,wx,wy
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
+          ix = int(gx)
+          iy = int(gy)
+          wx = gx - ix
+          wy = gy - iy
+          grid(ix  ,iy  ) = grid(ix  ,iy  ) + (1. - wx)*(1. - wy) * w(ip)
+          grid(ix+1,iy  ) = grid(ix+1,iy  ) +       wx *(1. - wy) * w(ip)
+          grid(ix  ,iy+1) = grid(ix  ,iy+1) + (1. - wx)*      wy  * w(ip)
+          grid(ix+1,iy+1) = grid(ix+1,iy+1) +       wx *      wy  * w(ip)
         endif
 
       enddo
@@ -1282,6 +1320,73 @@ c       --- if within grid, accumulate
           gridcount(ix+1,iy  ) = gridcount(ix+1,iy  ) +       wx *(1. - wy)
           gridcount(ix  ,iy+1) = gridcount(ix  ,iy+1) + (1. - wx)*      wy
           gridcount(ix+1,iy+1) = gridcount(ix+1,iy+1) +       wx *      wy
+        endif
+
+      enddo
+
+c     --- Divide out the number of particles at each grid point, only if
+c     --- itask == 0.
+      if (itask == 0) then
+        do iy=0,ny
+          do ix=0,nx
+            if (gridcount(ix,iy) > 0.) then
+              grid(ix,iy) = grid(ix,iy)/gridcount(ix,iy)
+            endif
+          enddo
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine deposgrid2dw(itask,np,x,y,z,w,nx,ny,grid,gridcount,
+     &                       xmin,xmax,ymin,ymax)
+      integer(ISZ):: itask,nx,ny,np
+      real(kind=8):: x(np), y(np), z(np), w(np)
+      real(kind=8):: grid(0:nx,0:ny), gridcount(0:nx,0:ny)
+      real(kind=8):: xmin,xmax,ymin,ymax
+
+c Deposits particle data onto 2-D mesh.
+c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
+c Also, if itask is zero, then the data is divided by the number density
+c of particles.
+c This allows data to be accumulated to obtain better statistics.
+
+      integer(ISZ):: ip,ix,iy
+      real(kind=8):: gx,gy,dxi,dyi,wx,wy
+
+c     --- Reset grids if requested
+      if (itask == 0) then
+        grid = 0.
+        gridcount = 0.
+      endif
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny) then
+          ix = int(gx)
+          iy = int(gy)
+          wx = gx - ix
+          wy = gy - iy
+          grid(ix  ,iy  ) = grid(ix  ,iy  ) + z(ip)*(1. - wx)*(1. - wy) * w(ip)
+          grid(ix+1,iy  ) = grid(ix+1,iy  ) + z(ip)*      wx *(1. - wy) * w(ip)
+          grid(ix  ,iy+1) = grid(ix  ,iy+1) + z(ip)*(1. - wx)*      wy  * w(ip)
+          grid(ix+1,iy+1) = grid(ix+1,iy+1) + z(ip)*      wx *      wy  * w(ip)
+          gridcount(ix  ,iy  ) = gridcount(ix  ,iy  ) + (1. - wx)*(1. - wy) * w(ip)
+          gridcount(ix+1,iy  ) = gridcount(ix+1,iy  ) +       wx *(1. - wy) * w(ip)
+          gridcount(ix  ,iy+1) = gridcount(ix  ,iy+1) + (1. - wx)*      wy  * w(ip)
+          gridcount(ix+1,iy+1) = gridcount(ix+1,iy+1) +       wx *      wy  * w(ip)
         endif
 
       enddo
@@ -1387,6 +1492,88 @@ c       --- if within grid, accumulate
         endif
 
       enddo
+
+      return
+      end
+c=============================================================================
+      subroutine deposgrid3d(itask,np,x,y,z,q,nx,ny,nz,grid,gridcount,
+     &                       xmin,xmax,ymin,ymax,zmin,zmax)
+      integer(ISZ):: itask,nx,ny,nz,np
+      real(kind=8):: x(np), y(np), z(np), q(np)
+      real(kind=8):: grid(0:nx,0:ny,0:nz), gridcount(0:nx,0:ny,0:nz)
+      real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
+
+c Deposits particle data onto 3-D mesh.
+c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
+c Also, if itask is zero, then the data is divided by the number density
+c of particles.
+c This allows data to be accumulated to obtain better statistics.
+
+      integer(ISZ):: ip,ix,iy,iz
+      real(kind=8):: gx,gy,gz,dxi,dyi,dzi,wx,wy,wz
+
+c     --- Reset grids if requested
+      if (itask == 0) then
+        grid = 0.
+        gridcount = 0.
+      endif
+
+c     --- set grid cell inverse sizes
+      dxi = nx/(xmax - xmin)
+      dyi = ny/(ymax - ymin)
+      dzi = nz/(zmax - zmin)
+
+c     --- loop over particles
+      do ip=1,np
+
+c       --- find location on grid
+        gx = (x(ip) - xmin)*dxi
+        gy = (y(ip) - ymin)*dyi
+        gz = (z(ip) - zmin)*dzi
+
+c       --- if within grid, accumulate
+        if (0. <= gx .and. gx < nx .and.
+     &      0. <= gy .and. gy < ny .and.
+     &      0. <= gz .and. gz < nz) then
+          ix = int(gx)
+          iy = int(gy)
+          iz = int(gz)
+          wx = gx - ix
+          wy = gy - iy
+          wz = gz - iz
+          grid(ix  ,iy  ,iz)   = grid(ix  ,iy  ,iz)   + q(ip)*(1. - wx)*(1. - wy)*(1. - wz)
+          grid(ix+1,iy  ,iz)   = grid(ix+1,iy  ,iz)   + q(ip)*      wx *(1. - wy)*(1. - wz)
+          grid(ix  ,iy+1,iz)   = grid(ix  ,iy+1,iz)   + q(ip)*(1. - wx)*      wy *(1. - wz)
+          grid(ix+1,iy+1,iz)   = grid(ix+1,iy+1,iz)   + q(ip)*      wx *      wy *(1. - wz)
+          grid(ix  ,iy  ,iz+1) = grid(ix  ,iy  ,iz+1) + q(ip)*(1. - wx)*(1. - wy)*      wz
+          grid(ix+1,iy  ,iz+1) = grid(ix+1,iy  ,iz+1) + q(ip)*      wx *(1. - wy)*      wz
+          grid(ix  ,iy+1,iz+1) = grid(ix  ,iy+1,iz+1) + q(ip)*(1. - wx)*      wy *      wz
+          grid(ix+1,iy+1,iz+1) = grid(ix+1,iy+1,iz+1) + q(ip)*      wx *      wy *      wz 
+          gridcount(ix  ,iy  ,iz)   = gridcount(ix  ,iy  ,iz)   + (1. - wx)*(1. - wy)*(1. - wz)
+          gridcount(ix+1,iy  ,iz)   = gridcount(ix+1,iy  ,iz)   +       wx *(1. - wy)*(1. - wz)
+          gridcount(ix  ,iy+1,iz)   = gridcount(ix  ,iy+1,iz)   + (1. - wx)*      wy *(1. - wz)
+          gridcount(ix+1,iy+1,iz)   = gridcount(ix+1,iy+1,iz)   +       wx *      wy *(1. - wz)
+          gridcount(ix  ,iy  ,iz+1) = gridcount(ix  ,iy  ,iz+1) + (1. - wx)*(1. - wy)*      wz
+          gridcount(ix+1,iy  ,iz+1) = gridcount(ix+1,iy  ,iz+1) +       wx *(1. - wy)*      wz
+          gridcount(ix  ,iy+1,iz+1) = gridcount(ix  ,iy+1,iz+1) + (1. - wx)*      wy *      wz
+          gridcount(ix+1,iy+1,iz+1) = gridcount(ix+1,iy+1,iz+1) +       wx *      wy *      wz
+        endif
+
+      enddo
+
+c     --- Divide out the number of particles at each grid point, only if
+c     --- itask == 0.
+      if (itask == 0) then
+        do iz=0,nz
+          do iy=0,ny
+            do ix=0,nx
+              if (gridcount(ix,iy,iz) > 0.) then
+                grid(ix,iy,iz) = grid(ix,iy,iz)/gridcount(ix,iy,iz)
+              endif
+            enddo
+          enddo
+        enddo
+      endif
 
       return
       end
@@ -2312,4 +2499,80 @@ C440 format(1h ,"xsq,xpsq,xxp actual moments are:",3(1pe13.5,1x))
       return
       end
 c=============================================================================
+      subroutine grid2grid(unew, nxnew, nynew, xminnew, xmaxnew, yminnew, ymaxnew,
+     &                     uold, nxold, nyold, xminold, xmaxold, yminold, ymaxold)
+c project field from one grid to another
+
+      implicit none
+      INTEGER(ISZ), INTENT(IN) :: nxnew, nynew, nxold, nyold
+      REAL(8), INTENT(IN) :: uold(0:nxold,0:nyold)
+      REAL(8), INTENT(OUT) :: unew(0:nxnew,0:nynew)
+      REAL(8), INTENT(IN) :: xminold, xmaxold, yminold, ymaxold,
+     &                       xminnew, xmaxnew, yminnew, ymaxnew
+
+      INTEGER(ISZ) :: jnew, knew, j, k
+      REAL(8) :: x, y, xx, yy, dxold, dyold, dxnew, dynew, invdxold, invdyold, delx, dely
+      REAL(8) :: ddx(0:nxnew), ddy(0:nynew)
+      INTEGER(ISZ) :: jold(0:nxnew), kold(0:nynew)
+
+c --- computes mesh size for both grids
+      dxold = (xmaxold-xminold) / nxold
+      dyold = (ymaxold-yminold) / nyold
+      dxnew = (xmaxnew-xminnew) / nxnew
+      dynew = (ymaxnew-yminnew) / nynew
+
+c --- check if new grid boundaries enclosed into old grid
+c --- if not, issue error message and stop
+      if(xminnew<xminold .and. abs(xminnew-xminold)/dxnew>1.e-6) then
+        write(0,*) 'Error in grid2grid: xminnew < xminold'
+        stop
+      end if
+      if(xmaxnew>xmaxold .and. abs(xmaxnew-xmaxold)/dxnew>1.e-6) then
+        write(0,*) 'Error in grid2grid: xmaxnew > xmaxold'
+        stop
+      end if
+      if(yminnew<yminold .and. abs(yminnew-yminold)/dynew>1.e-6) then
+        write(0,*) 'Error in grid2grid: yminnew < yminold'
+        stop
+      end if
+      if(ymaxnew>ymaxold .and. abs(ymaxnew-ymaxold)/dynew>1.e-6) then
+        write(0,*) 'Error in grid2grid: ymaxnew > ymaxold'
+        stop
+      end if
+
+c --- computes temporaries
+
+      invdxold = 1./dxold
+      invdyold = 1./dyold
+
+      do knew = 0, nynew
+        y = yminnew+knew*dynew
+        yy = (y-yminold) * invdyold
+        kold(knew) = MIN(nyold-1,INT(yy))
+        ddy(knew) = yy-real(kold(knew))
+      END do
+      do jnew = 0, nxnew
+        x = xminnew+jnew*dxnew
+        xx = (x-xminold) * invdxold
+        jold(jnew) = MIN(nxold-1,INT(xx))
+        ddx(jnew) = xx-real(jold(jnew))
+      END do
+
+c --- interpolate field on new grid node using linear interpolation from coarse grid
+
+      do knew = 0, nynew
+        k = kold(knew)
+        dely = ddy(knew)
+        do jnew = 0, nxnew
+          j = jold(jnew)
+          delx = ddx(jnew)
+          unew(jnew,knew) = uold(j,  k)   * (1.-delx) * (1.-dely)
+     &                    + uold(j+1,k)   * delx      * (1.-dely)
+     &                    + uold(j,  k+1) * (1.-delx) * dely
+     &                    + uold(j+1,k+1) * delx      * dely
+        end do
+      END do
+
+      return
+      END subroutine grid2grid
 c=============================================================================
