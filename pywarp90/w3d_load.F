@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.15 $, $Date: 2004/12/22 22:51:31 $
+c@(#) File w3d_load.F, version $Revision: 1.16 $, $Date: 2004/12/23 05:27:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -76,18 +76,13 @@ c     Continuous focusing, matched rms equivlaent beam parameters
 
 c     Allocate dynamic variables used to define the gridded density 
 c     and check that the density grid has been defined.   
+      if (hl_nrdist .lt. 2) hl_nrdist = 500
       call gchange("W3Dload",0)
-      if (hl_nrdist .lt. 2) then
-        call remark("routine perp_cf_eq: hl_nrdist >= 2 must be set") 
-        call kaboom(0)  
-      endif 
       if (distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then
 c       --- work variables for calculation of TE density 
+        if (te_nrho .lt. 2) te_nrho = 500
+        if (te_exp_nterm .eq. 0) te_exp_nterm = 100 
         call gchange("W3DloadTE",0)
-        if (te_nrho .lt. 2) then
-          call remark("routine perp_cf_eq: te_nrho >= 2 must be set") 
-          call kaboom(0)  
-        endif 
       endif 
 
 c     Calculate gridded density for classes of equilbria 
@@ -746,8 +741,8 @@ c         --- acceptable at the particle radius r = r(ip)
 c         --- set particle x' and y' to be uniformly distributed within 
 c         --- a unit disk of radius u_max 
           ang_mag   = sqrt(abs(2.*u_max)*
-     &                     wrandom(xrandom,ip+kioff-1,dig3,1,1)) 
-          ang_phase = Pi*( 2.*wrandom(xrandom,ip+kioff-1,dig4,1,1) - 1. ) 
+     &                     wrandom(vtrandom,ip+kioff-1,dig3,1,1)) 
+          ang_phase = Pi*( 2.*wrandom(vtrandom,ip+kioff-1,dig4,1,1) - 1. ) 
 
           xp(ip) = ang_mag*cos(ang_phase)  
           yp(ip) = ang_mag*sin(ang_phase) 
@@ -764,16 +759,22 @@ c     --- thermal equilibrium
       elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
 
 
-c         --- use Gaussian random number generator to load distribution 
+c         --- Use Gaussian random number generator to load distribution 
 c         --- of angles.  This is independent of the particle coordinates 
 c         --- loaded for a thermal distribution.  
+c         --- Note: (very important)
+c         --- If the loops are not broken up for didgit reversed random 
+c         --- numbers, then the last argument to wrandomgauss() MUST be 
+c         --- false in order to the code to work properly.  Using false with 
+c         --- this unsplit structure is less efficient numerically due to the 
+c         --- structure of wrandomgauss()
 
         do ip = 1,np 
-          g_dist = wrandomgauss(xrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
+          g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
           xp(ip) = 0.5*(emit_b/r_b)*g_dist
         enddo 
         do ip = 1,np 
-          g_dist = wrandomgauss(xrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
+          g_dist = wrandomgauss(vtrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
           yp(ip) = 0.5*(emit_b/r_b)*g_dist
         enddo 
 
@@ -927,11 +928,13 @@ c     --- solve an axillary equation numerically to solve for "F".
       elseif (distrbtn == "GA0" .or. distrbtn == "Gaussian0") then
 
 c       --- Loop over particles to load 
-c       --- Because of the way wrandomgauss is written, the code runs somwhat
-c       --- more efficiently when the loops are broken up. Note, very
-c       --- important, if the loops are not broken up, then the last argument
-c       --- to wrandomgauss MUST be false in order to the code to work
-c       --- properly.
+c         --- Note: (very important)
+c         --- If the loops are not broken up for didgit reversed random 
+c         --- numbers, then the last argument to wrandomgauss() MUST be 
+c         --- false in order to the code to work properly.  Using false with 
+c         --- this unsplit structure is less efficient numerically due to the 
+c         --- structure of wrandomgauss()
+
         do ip = 1,np
           r = wrandomgauss(xrandom,ip+kioff-1,dig1,dig2,1,1,.true.)
           x(ip) = 0.5*rx(ip)*r
@@ -942,13 +945,13 @@ c       --- properly.
         enddo 
 
         do ip = 1,np
-          r = wrandomgauss(xrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
+          r = wrandomgauss(vtrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
           xp(ip) = 0.5*(epsx(ip)/rx(ip))*r + (rxp(ip)/rx(ip))*x(ip) 
         enddo 
         do ip = 1,np
 c         --- Note that dig7 and dig8 are already used for the longitudinal
 c         --- velocity spread.
-          r = wrandomgauss(xrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
+          r = wrandomgauss(vtrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
           yp(ip) = 0.5*(epsy(ip)/ry(ip))*r + (ryp(ip)/ry(ip))*y(ip)
         enddo 
 
