@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.70 2004/02/25 23:36:37 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.71 2004/03/16 17:14:13 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -34,23 +34,24 @@ cleanconductors: not a plot routine, buts removes conductor points not
 ######################################################################
 
 # --- Convenience function to plot the sub-grid data
-def plotcond(yy,xx,zz,iz,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx):
-  nn = f3d.ncond
+def plotcond(yy,xx,zz,iz,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx,
+             f3dcond,f3dmg):
+  nn = f3dcond.ncond
   if nn > 0:
-    lx = eval('f3d.mglevelsl'+xx)[mglevel]
-    ly = eval('f3d.mglevelsl'+yy)[mglevel]
-    lz = eval('f3d.mglevelsl'+zz)[mglevel]
-    ixc = eval('f3d.i'+xx+'cond')*signx*lx
-    iyc = eval('f3d.i'+yy+'cond')*signy*ly
-    izc = eval('f3d.i'+zz+'cond')      *lz
-    if xx == 'z': ixc = ixc + f3d.mglevelsiz[mglevel]*lx
-    if yy == 'z': iyc = iyc + f3d.mglevelsiz[mglevel]*ly
-    if zz == 'z': izc = izc + f3d.mglevelsiz[mglevel]*lz
-    cnumb = f3d.condnumb
+    lx = getattr(f3dmg,'mglevelsl'+xx)[mglevel]
+    ly = getattr(f3dmg,'mglevelsl'+yy)[mglevel]
+    lz = getattr(f3dmg,'mglevelsl'+zz)[mglevel]
+    ixc = getattr(f3dcond,'i'+xx+'cond')*signx*lx
+    iyc = getattr(f3dcond,'i'+yy+'cond')*signy*ly
+    izc = getattr(f3dcond,'i'+zz+'cond')      *lz
+    if xx == 'z': ixc = ixc + f3dmg.mglevelsiz[mglevel]*lx
+    if yy == 'z': iyc = iyc + f3dmg.mglevelsiz[mglevel]*ly
+    if zz == 'z': izc = izc + f3dmg.mglevelsiz[mglevel]*lz
+    cnumb = f3dcond.condnumb
     try:
-      level = equal(mglevel,f3d.icondlevel)
+      level = equal(mglevel,f3dcond.icondlevel)
     except:
-      level = ones(f3d.ncondmax)
+      level = ones(f3dcond.ncondmax)
   else:
     ixc = array([])
     iyc = array([])
@@ -66,40 +67,40 @@ def plotcond(yy,xx,zz,iz,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx):
   warpplp(yy,xx,color=color)
 
 def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
-                signy,signx):
+                signy,signx,f3dcond,f3dmg):
   assert (pp in [0,1]),"pp has invalid data"
-  pp = ((pp + f3d.mglevelsiz[mglevel]) % 2)
+  pp = ((pp + f3dmg.mglevelsiz[mglevel]) % 2)
   pp = ['e','o'][pp]
-  nn = eval('f3d.n'+pp+'cndbdy')
+  nn = getattr(f3dcond,'n'+pp+'cndbdy')
   if nn > 0:
-    lx = eval('f3d.mglevelsl'+xx)[mglevel]
-    ly = eval('f3d.mglevelsl'+yy)[mglevel]
-    lz = eval('f3d.mglevelsl'+zz)[mglevel]
-    ixc = eval('f3d.i'+pp+'cnd'+xx)*signx
-    iyc = eval('f3d.i'+pp+'cnd'+yy)*signy
-    izc = eval('f3d.i'+pp+'cnd'+zz)*lz
-    if xx == 'z': ixc = ixc + f3d.mglevelsiz[mglevel]
-    if yy == 'z': iyc = iyc + f3d.mglevelsiz[mglevel]
-    if zz == 'z': izc = izc + f3d.mglevelsiz[mglevel]
-    delmx = eval('f3d.'+pp+'cdelm'+xx)*signx
-    delpx = eval('f3d.'+pp+'cdelp'+xx)*signx
-    delmy = eval('f3d.'+pp+'cdelm'+yy)*signy
-    delpy = eval('f3d.'+pp+'cdelp'+yy)*signy
+    lx = getattr(f3dmg,'mglevelsl'+xx)[mglevel]
+    ly = getattr(f3dmg,'mglevelsl'+yy)[mglevel]
+    lz = getattr(f3dmg,'mglevelsl'+zz)[mglevel]
+    ixc = getattr(f3dcond,'i'+pp+'cnd'+xx)*signx
+    iyc = getattr(f3dcond,'i'+pp+'cnd'+yy)*signy
+    izc = getattr(f3dcond,'i'+pp+'cnd'+zz)*lz
+    if xx == 'z': ixc = ixc + f3dmg.mglevelsiz[mglevel]
+    if yy == 'z': iyc = iyc + f3dmg.mglevelsiz[mglevel]
+    if zz == 'z': izc = izc + f3dmg.mglevelsiz[mglevel]
+    delmx = getattr(f3dcond,pp+'cdelm'+xx)*signx
+    delpx = getattr(f3dcond,pp+'cdelp'+xx)*signx
+    delmy = getattr(f3dcond,pp+'cdelm'+yy)*signy
+    delpy = getattr(f3dcond,pp+'cdelp'+yy)*signy
     try:
-      numbmx = eval('f3d.'+pp+'cnumbm'+xx)
-      numbpx = eval('f3d.'+pp+'cnumbp'+xx)
-      numbmy = eval('f3d.'+pp+'cnumbm'+yy)
-      numbpy = eval('f3d.'+pp+'cnumbp'+yy)
+      numbmx = getattr(f3dcond,pp+'cnumbm'+xx)
+      numbpx = getattr(f3dcond,pp+'cnumbp'+xx)
+      numbmy = getattr(f3dcond,pp+'cnumbm'+yy)
+      numbpy = getattr(f3dcond,pp+'cnumbp'+yy)
     except:
-      numbmx = eval('f3d.'+pp+'cnumb')
-      numbpx = eval('f3d.'+pp+'cnumb')
-      numbmy = eval('f3d.'+pp+'cnumb')
-      numbpy = eval('f3d.'+pp+'cnumb')
+      numbmx = getattr(f3dcond,pp+'cnumb')
+      numbpx = getattr(f3dcond,pp+'cnumb')
+      numbmy = getattr(f3dcond,pp+'cnumb')
+      numbpy = getattr(f3dcond,pp+'cnumb')
     try:
-      lev = eval('f3d.i'+pp+'cndlevel')
+      lev = getattr(f3dcond,'i'+pp+'cndlevel')
       level = equal(mglevel,lev)
     except:
-      level = ones(f3d.ncndmax)
+      level = ones(f3dcond.ncndmax)
   else:
     lx = array([1])
     ly = array([1])
@@ -181,30 +182,31 @@ def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     pp = array(pp)
     pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color)
 
-def plotcondfill(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx):
+def plotcondfill(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx,
+                 f3dcond,f3dmg):
   """
 Plots conductors, filling them in with a solid color. The color is given
 by the conductor number.
   """
   # --- Get the numbers of conductor points
-  nc = f3d.ncond
-  ne = f3d.necndbdy
-  no = f3d.nocndbdy
+  nc = f3dcond.ncond
+  ne = f3dcond.necndbdy
+  no = f3dcond.nocndbdy
   ns = ne + no
-  lx = eval('f3d.mglevelsl'+xx)[mglevel]
-  ly = eval('f3d.mglevelsl'+yy)[mglevel]
-  lz = eval('f3d.mglevelsl'+zz)[mglevel]
+  lx = getattr(f3dmg,'mglevelsl'+xx)[mglevel]
+  ly = getattr(f3dmg,'mglevelsl'+yy)[mglevel]
+  lz = getattr(f3dmg,'mglevelsl'+zz)[mglevel]
   if nc > 0:
-    ixc = eval('f3d.i'+xx+'cond')[:nc]
-    iyc = eval('f3d.i'+yy+'cond')[:nc]
-    izc = eval('f3d.i'+zz+'cond')[:nc]
-    numb = f3d.condnumb[:nc]
+    ixc = getattr(f3dcond,'i'+xx+'cond')[:nc]
+    iyc = getattr(f3dcond,'i'+yy+'cond')[:nc]
+    izc = getattr(f3dcond,'i'+zz+'cond')[:nc]
+    numb = f3dcond.condnumb[:nc]
     # --- Add z offset of data. This only applies for the parallel version
-    if xx == 'z': ixc = ixc + f3d.mglevelsiz[mglevel]
-    if yy == 'z': iyc = iyc + f3d.mglevelsiz[mglevel]
-    if zz == 'z': izc = izc + f3d.mglevelsiz[mglevel]
+    if xx == 'z': ixc = ixc + f3dmg.mglevelsiz[mglevel]
+    if yy == 'z': iyc = iyc + f3dmg.mglevelsiz[mglevel]
+    if zz == 'z': izc = izc + f3dmg.mglevelsiz[mglevel]
     try:
-      levc = f3d.icondlevel[:nc]
+      levc = f3dcond.icondlevel[:nc]
       levelc = equal(mglevel,levc)
     except:
       levelc = ones(nc)
@@ -215,19 +217,19 @@ by the conductor number.
     numb = array([])
     levelc = array([])
   if ne > 0:
-    iexs = eval('f3d.iecnd'+xx)[:ne]
-    ieys = eval('f3d.iecnd'+yy)[:ne]
-    iezs = eval('f3d.iecnd'+zz)[:ne] 
-    ecdelmx = eval('f3d.ecdelm'+xx)[:ne]
-    ecdelpx = eval('f3d.ecdelp'+xx)[:ne]
-    ecdelmy = eval('f3d.ecdelm'+yy)[:ne]
-    ecdelpy = eval('f3d.ecdelp'+yy)[:ne]
-    enumbmx = eval('f3d.ecnumbm'+xx)[:ne]
-    enumbpx = eval('f3d.ecnumbp'+xx)[:ne]
-    enumbmy = eval('f3d.ecnumbm'+yy)[:ne]
-    enumbpy = eval('f3d.ecnumbp'+yy)[:ne]
+    iexs = getattr(f3dcond,'iecnd'+xx)[:ne]
+    ieys = getattr(f3dcond,'iecnd'+yy)[:ne]
+    iezs = getattr(f3dcond,'iecnd'+zz)[:ne] 
+    ecdelmx = getattr(f3dcond,'ecdelm'+xx)[:ne]
+    ecdelpx = getattr(f3dcond,'ecdelp'+xx)[:ne]
+    ecdelmy = getattr(f3dcond,'ecdelm'+yy)[:ne]
+    ecdelpy = getattr(f3dcond,'ecdelp'+yy)[:ne]
+    enumbmx = getattr(f3dcond,'ecnumbm'+xx)[:ne]
+    enumbpx = getattr(f3dcond,'ecnumbp'+xx)[:ne]
+    enumbmy = getattr(f3dcond,'ecnumbm'+yy)[:ne]
+    enumbpy = getattr(f3dcond,'ecnumbp'+yy)[:ne]
     try:
-      elevs = f3d.iecndlevel[:ne]
+      elevs = f3dcond.iecndlevel[:ne]
       elevels = equal(mglevel,elevs)
     except:
       elevels = ones(ne)
@@ -245,19 +247,19 @@ by the conductor number.
     enumbpy = array([])
     elevels = array([])
   if no > 0:
-    ioxs = eval('f3d.iocnd'+xx)[:no]
-    ioys = eval('f3d.iocnd'+yy)[:no]
-    iozs = eval('f3d.iocnd'+zz)[:no] 
-    ocdelmx = eval('f3d.ocdelm'+xx)[:no]
-    ocdelpx = eval('f3d.ocdelp'+xx)[:no]
-    ocdelmy = eval('f3d.ocdelm'+yy)[:no]
-    ocdelpy = eval('f3d.ocdelp'+yy)[:no]
-    onumbmx = eval('f3d.ocnumbm'+xx)[:no]
-    onumbpx = eval('f3d.ocnumbp'+xx)[:no]
-    onumbmy = eval('f3d.ocnumbm'+yy)[:no]
-    onumbpy = eval('f3d.ocnumbp'+yy)[:no]
+    ioxs = getattr(f3dcond,'iocnd'+xx)[:no]
+    ioys = getattr(f3dcond,'iocnd'+yy)[:no]
+    iozs = getattr(f3dcond,'iocnd'+zz)[:no] 
+    ocdelmx = getattr(f3dcond,'ocdelm'+xx)[:no]
+    ocdelpx = getattr(f3dcond,'ocdelp'+xx)[:no]
+    ocdelmy = getattr(f3dcond,'ocdelm'+yy)[:no]
+    ocdelpy = getattr(f3dcond,'ocdelp'+yy)[:no]
+    onumbmx = getattr(f3dcond,'ocnumbm'+xx)[:no]
+    onumbpx = getattr(f3dcond,'ocnumbp'+xx)[:no]
+    onumbmy = getattr(f3dcond,'ocnumbm'+yy)[:no]
+    onumbpy = getattr(f3dcond,'ocnumbp'+yy)[:no]
     try:
-      olevs = f3d.iocndlevel[:no]
+      olevs = f3dcond.iocndlevel[:no]
       olevels = equal(mglevel,olevs)
     except:
       olevels = ones(no)
@@ -280,9 +282,9 @@ by the conductor number.
   iys = array(list(ieys) + list(ioys))
   izs = array(list(iezs) + list(iozs))*lz
   # --- Add z offset of data. This only applies for the parallel version
-  if xx == 'z': ixs = ixs + f3d.mglevelsiz[mglevel]
-  if yy == 'z': iys = iys + f3d.mglevelsiz[mglevel]
-  if zz == 'z': izs = izs + f3d.mglevelsiz[mglevel]
+  if xx == 'z': ixs = ixs + f3dmg.mglevelsiz[mglevel]
+  if yy == 'z': iys = iys + f3dmg.mglevelsiz[mglevel]
+  if zz == 'z': izs = izs + f3dmg.mglevelsiz[mglevel]
 
   delmx = array(list(ecdelmx) + list(ocdelmx))
   delpx = array(list(ecdelpx) + list(ocdelpx))
@@ -441,30 +443,31 @@ cell. It must be called for each of the four corners of a grid cell.
         numb = nmsy[i0]
   return nn,numb
 
-def plotcondfillnew(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx):
+def plotcondfillnew(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx,
+                    f3dcond,f3dmg):
   """
 Plots conductors, filling them in with a solid color. The color is given
 by the conductor number.
   """
   # --- Get the numbers of conductor points
-  nc = f3d.ncond
-  ne = f3d.necndbdy
-  no = f3d.nocndbdy
+  nc = f3dcond.ncond
+  ne = f3dcond.necndbdy
+  no = f3dcond.nocndbdy
   ns = ne + no
-  lx = eval('f3d.mglevelsl'+xx)[mglevel]
-  ly = eval('f3d.mglevelsl'+yy)[mglevel]
-  lz = eval('f3d.mglevelsl'+zz)[mglevel]
+  lx = getattr(f3dmg,'mglevelsl'+xx)[mglevel]
+  ly = getattr(f3dmg,'mglevelsl'+yy)[mglevel]
+  lz = getattr(f3dmg,'mglevelsl'+zz)[mglevel]
   if nc > 0:
-    ixc = eval('f3d.i'+xx+'cond')[:nc]
-    iyc = eval('f3d.i'+yy+'cond')[:nc]
-    izc = eval('f3d.i'+zz+'cond')[:nc]
-    numb = f3d.condnumb[:nc]
+    ixc = getattr(f3dcond,'i'+xx+'cond')[:nc]
+    iyc = getattr(f3dcond,'i'+yy+'cond')[:nc]
+    izc = getattr(f3dcond,'i'+zz+'cond')[:nc]
+    numb = f3dcond.condnumb[:nc]
     # --- Add z offset of data. This only applies for the parallel version
-    if xx == 'z': ixc = ixc + f3d.mglevelsiz[mglevel]
-    if yy == 'z': iyc = iyc + f3d.mglevelsiz[mglevel]
-    if zz == 'z': izc = izc + f3d.mglevelsiz[mglevel]
+    if xx == 'z': ixc = ixc + f3dmg.mglevelsiz[mglevel]
+    if yy == 'z': iyc = iyc + f3dmg.mglevelsiz[mglevel]
+    if zz == 'z': izc = izc + f3dmg.mglevelsiz[mglevel]
     try:
-      levc = f3d.icondlevel[:nc]
+      levc = f3dcond.icondlevel[:nc]
       levelc = equal(mglevel,levc)
     except:
       levelc = ones(nc)
@@ -475,19 +478,19 @@ by the conductor number.
     numb = array([])
     levelc = array([])
   if ne > 0:
-    iexs = eval('f3d.iecnd'+xx)[:ne]
-    ieys = eval('f3d.iecnd'+yy)[:ne]
-    iezs = eval('f3d.iecnd'+zz)[:ne] 
-    ecdelmx = eval('f3d.ecdelm'+xx)[:ne]
-    ecdelpx = eval('f3d.ecdelp'+xx)[:ne]
-    ecdelmy = eval('f3d.ecdelm'+yy)[:ne]
-    ecdelpy = eval('f3d.ecdelp'+yy)[:ne]
-    enumbmx = eval('f3d.ecnumbm'+xx)[:ne]
-    enumbpx = eval('f3d.ecnumbp'+xx)[:ne]
-    enumbmy = eval('f3d.ecnumbm'+yy)[:ne]
-    enumbpy = eval('f3d.ecnumbp'+yy)[:ne]
+    iexs = getattr(f3dcond,'iecnd'+xx)[:ne]
+    ieys = getattr(f3dcond,'iecnd'+yy)[:ne]
+    iezs = getattr(f3dcond,'iecnd'+zz)[:ne] 
+    ecdelmx = getattr(f3dcond,'ecdelm'+xx)[:ne]
+    ecdelpx = getattr(f3dcond,'ecdelp'+xx)[:ne]
+    ecdelmy = getattr(f3dcond,'ecdelm'+yy)[:ne]
+    ecdelpy = getattr(f3dcond,'ecdelp'+yy)[:ne]
+    enumbmx = getattr(f3dcond,'ecnumbm'+xx)[:ne]
+    enumbpx = getattr(f3dcond,'ecnumbp'+xx)[:ne]
+    enumbmy = getattr(f3dcond,'ecnumbm'+yy)[:ne]
+    enumbpy = getattr(f3dcond,'ecnumbp'+yy)[:ne]
     try:
-      elevs = f3d.iecndlevel[:ne]
+      elevs = f3dcond.iecndlevel[:ne]
       elevels = equal(mglevel,elevs)
     except:
       elevels = ones(ne)
@@ -505,19 +508,19 @@ by the conductor number.
     enumbpy = array([])
     elevels = array([])
   if no > 0:
-    ioxs = eval('f3d.iocnd'+xx)[:no]
-    ioys = eval('f3d.iocnd'+yy)[:no]
-    iozs = eval('f3d.iocnd'+zz)[:no] 
-    ocdelmx = eval('f3d.ocdelm'+xx)[:no]
-    ocdelpx = eval('f3d.ocdelp'+xx)[:no]
-    ocdelmy = eval('f3d.ocdelm'+yy)[:no]
-    ocdelpy = eval('f3d.ocdelp'+yy)[:no]
-    onumbmx = eval('f3d.ocnumbm'+xx)[:no]
-    onumbpx = eval('f3d.ocnumbp'+xx)[:no]
-    onumbmy = eval('f3d.ocnumbm'+yy)[:no]
-    onumbpy = eval('f3d.ocnumbp'+yy)[:no]
+    ioxs = getattr(f3dcond,'iocnd'+xx)[:no]
+    ioys = getattr(f3dcond,'iocnd'+yy)[:no]
+    iozs = getattr(f3dcond,'iocnd'+zz)[:no] 
+    ocdelmx = getattr(f3dcond,'ocdelm'+xx)[:no]
+    ocdelpx = getattr(f3dcond,'ocdelp'+xx)[:no]
+    ocdelmy = getattr(f3dcond,'ocdelm'+yy)[:no]
+    ocdelpy = getattr(f3dcond,'ocdelp'+yy)[:no]
+    onumbmx = getattr(f3dcond,'ocnumbm'+xx)[:no]
+    onumbpx = getattr(f3dcond,'ocnumbp'+xx)[:no]
+    onumbmy = getattr(f3dcond,'ocnumbm'+yy)[:no]
+    onumbpy = getattr(f3dcond,'ocnumbp'+yy)[:no]
     try:
-      olevs = f3d.iocndlevel[:no]
+      olevs = f3dcond.iocndlevel[:no]
       olevels = equal(mglevel,olevs)
     except:
       olevels = ones(no)
@@ -540,9 +543,9 @@ by the conductor number.
   iys = array(list(ieys) + list(ioys))
   izs = array(list(iezs) + list(iozs))*lz
   # --- Add z offset of data. This only applies for the parallel version
-  if xx == 'z': ixs = ixs + f3d.mglevelsiz[mglevel]
-  if yy == 'z': iys = iys + f3d.mglevelsiz[mglevel]
-  if zz == 'z': izs = izs + f3d.mglevelsiz[mglevel]
+  if xx == 'z': ixs = ixs + f3dmg.mglevelsiz[mglevel]
+  if yy == 'z': iys = iys + f3dmg.mglevelsiz[mglevel]
+  if zz == 'z': izs = izs + f3dmg.mglevelsiz[mglevel]
 
   delmx = array(list(ecdelmx) + list(ocdelmx))
   delpx = array(list(ecdelpx) + list(ocdelpx))
@@ -783,19 +786,22 @@ by the conductor number.
 ######################################################################
 # x-y plane
 def pfxy(iz=None,izf=None,fullplane=1,
-         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-         subgridlen=1.,phicolor=blue,condcolor='fg',
-         oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
+         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
+         subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
+         oddcolor=red,evencolor=green,numb=None,mglevel=0,
+         f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
-  - iz=w3d.iz_axis z index of plane
+  - iz=nint(-zmmin/dz): z index of plane
   - fullplane=1: when true, plot all quandrants regardless of symmetries
   - cond=1: when true, plot grid point inside of conductors
   - plotsg=1: when true, plots subgrid data
   - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
-  - plotphi=1 when true, plot contours of potential
-  - phicolor=blue color of phi contours
+  - plotphi=1: when true, plot contours of potential
+  - plotrho=0: when true, plot contours of the charge density
+  - phicolor=blue: color of phi contours
+  - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
@@ -804,85 +810,91 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - mglevel=0: level of multigrid to plot data for
   """
   kw.update(kwdict)
-  # --- This logic is needed since in the parallel version, iz_axis already
-  # --- has izslave subtracted from it. If the user passes in a value,
-  # --- it must be checked for consistency, otherwise coding below could lead
-  # --- to a deadlock in the parallel version
+  # --- This logic is needed since in the parallel version, zmmin is local.
+  # --- If the user passes in a value, it must be checked for consistency,
+  # --- otherwise coding below could lead to a deadlock in the parallel version
   if izf is not None: iz = izf
-  if iz is None: iz = w3d.iz_axis + top.izslave[me]
-  if iz < 0 or w3d.nzfull < iz: return
+  if iz is None: iz = nint(-w3dgrid.zmmin/w3dgrid.dz) + top.izslave[me]
+  if iz < 0 or w3dgrid.nzfull < iz: return
   if scale:
-    dx = w3d.dx
-    dy = w3d.dy
-    xmmin = w3d.xmmin
-    ymmin = w3d.ymmin
-    xmmax = w3d.xmmax
-    ymmax = w3d.ymmax
+    dx = w3dgrid.dx
+    dy = w3dgrid.dy
+    xmmin = w3dgrid.xmmin
+    ymmin = w3dgrid.ymmin
+    xmmax = w3dgrid.xmmax
+    ymmax = w3dgrid.ymmax
   else:
     dx = 1.
     dy = 1.
     xmmin = 0.
     ymmin = 0.
-    xmmax = w3d.nx
-    ymmax = w3d.ny
-  if plotphi:
+    xmmax = w3dgrid.nx
+    ymmax = w3dgrid.ny
+  if plotphi or plotrho:
     if not scale:
       kw['xmin'] = 0
-      kw['xmax'] = w3d.nx
+      kw['xmax'] = w3dgrid.nx
       kw['ymin'] = 0
-      kw['ymax'] = w3d.ny
-    if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
-    apply(pcphixy,(iz,fullplane),kw)
+      kw['ymax'] = w3dgrid.ny
+    if plotphi:
+      kw['ccolor'] = phicolor
+      pcphixy(*(iz,fullplane,w3dgrid),**kw)
+    if plotrho:
+      kw['ccolor'] = rhocolor
+      pcrhoxy(*(iz,fullplane,w3dgrid),**kw)
   if fill:
-    plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,1,1)
-    if fullplane and (w3d.l2symtry or w3d.l4symtry):
-      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,1,-1)
-    if fullplane and w3d.l4symtry:
-      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,-1,1)
-      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,-1,-1)
+    plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,1,-1,f3dcond,f3dmg)
+    if fullplane and w3dgrid.l4symtry:
+      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,-1,1,f3dcond,f3dmg)
+      plotcondfill('y','x','z',iz,ymmin,xmmin,dy,dx,mglevel,-1,-1,f3dcond,f3dmg)
   if cond:
-    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,1)
-    if fullplane and (w3d.l2symtry or w3d.l4symtry):
-      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,1)
-    if fullplane and w3d.l4symtry:
-      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1)
-      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1)
+    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,1,f3dcond,f3dmg)
+    if fullplane and w3dgrid.l4symtry:
+      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1,f3dcond,f3dmg)
+      plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1,f3dcond,f3dmg)
   if plotsg:
     plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                subgridlen,mglevel,1,1)
+                subgridlen,mglevel,1,1,f3dcond,f3dmg)
     plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                subgridlen,mglevel,1,1)
-    if fullplane and (w3d.l2symtry or w3d.l4symtry):
+                subgridlen,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
       plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,1,-1)
+                  subgridlen,mglevel,1,-1,f3dcond,f3dmg)
       plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,1,-1)
-    if fullplane and w3d.l4symtry:
+                  subgridlen,mglevel,1,-1,f3dcond,f3dmg)
+    if fullplane and w3dgrid.l4symtry:
       plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,-1,1)
+                  subgridlen,mglevel,-1,1,f3dcond,f3dmg)
       plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,-1,1)
+                  subgridlen,mglevel,-1,1,f3dcond,f3dmg)
       plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
-                  subgridlen,mglevel,-1,-1)
+                  subgridlen,mglevel,-1,-1,f3dcond,f3dmg)
       plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
-                  subgridlen,mglevel,-1,-1)
+                  subgridlen,mglevel,-1,-1,f3dcond,f3dmg)
 
 # z-x plane
 def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
-         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-         subgridlen=1.,phicolor=blue,condcolor='fg',
-         oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
+         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
+         subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
+         oddcolor=red,evencolor=green,numb=None,mglevel=0,
+         f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
-  - iy=w3d.iy_axis y index of plane
+  - iy=nint(-ymmin/dy): y index of plane
   - fullplane=1: when true, plot all quadrants regardless of symmetries
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   - cond=1: when true, plot grid point inside of conductors
   - plotsg=1: when true, plots subgrid data
   - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
-  - plotphi=1 when true, plot contours of potential
-  - phicolor=blue color of phi contours
+  - plotphi=1: when true, plot contours of potential
+  - plotrho=0: when true, plot contours of the charge density
+  - phicolor=blue: color of phi contours
+  - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
@@ -892,63 +904,70 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   """
   kw.update(kwdict)
   if iyf is not None: iy = iyf
-  if iy is None: iy = w3d.iy_axis
-  if iy < 0 or w3d.ny < iy: return
+  if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
+  if iy < 0 or w3dgrid.ny < iy: return
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
   if scale:
-    dx = w3d.dx
-    dz = w3d.dz
-    xmmin = w3d.xmmin
-    zmmin = w3d.zmminglobal + zbeam
+    dx = w3dgrid.dx
+    dz = w3dgrid.dz
+    xmmin = w3dgrid.xmmin
+    zmmin = w3dgrid.zmminglobal + zbeam
   else:
     dx = 1.
     dz = 1.
     xmmin = 0.
     zmmin = 0.
-  if plotphi:
+  if plotphi or plotrho:
     if not scale:
       kw['xmin'] = 0
-      kw['xmax'] = w3d.nzfull
+      kw['xmax'] = w3dgrid.nzfull
       kw['ymin'] = 0.
-      kw['ymax'] = w3d.nx
-    if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
-    apply(pcphizx,(iy,fullplane,lbeamframe),kw)
+      kw['ymax'] = w3dgrid.nx
+    if plotphi:
+      kw['ccolor'] = phicolor
+      pcphizx(*(iy,fullplane,lbeamframe,w3dgrid),**kw)
+    if plotrho:
+      kw['ccolor'] = rhocolor
+      pcrhozx(*(iy,fullplane,lbeamframe,w3dgrid),**kw)
   if fill:
-    plotcondfill('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,1,1)
-    if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
-      plotcondfill('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,-1,1)
+    plotcondfill('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l4symtry or w3dgrid.solvergeom == w3d.RZgeom):
+      plotcondfill('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,-1,1,f3dcond,f3dmg)
   if plotsg:
     plotsubgrid('x','z','y',0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
-                subgridlen,mglevel,1,1)
+                subgridlen,mglevel,1,1,f3dcond,f3dmg)
     plotsubgrid('x','z','y',1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
-                subgridlen,mglevel,1,1)
-    if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
+                subgridlen,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l4symtry or w3dgrid.solvergeom == w3d.RZgeom):
       plotsubgrid('x','z','y',0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
-                  subgridlen,mglevel,-1,1)
+                  subgridlen,mglevel,-1,1,f3dcond,f3dmg)
       plotsubgrid('x','z','y',1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
-                  subgridlen,mglevel,-1,1)
+                  subgridlen,mglevel,-1,1,f3dcond,f3dmg)
   if cond:
-    plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,1,1)
-    if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
-      plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1)
+    plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l4symtry or w3dgrid.solvergeom == w3d.RZgeom):
+      plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1,f3dcond,f3dmg)
 
 # z-y plane
 def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
-         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-         subgridlen=1.,phicolor=blue,condcolor='fg',
-         oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
+         cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
+         subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
+         oddcolor=red,evencolor=green,numb=None,mglevel=0,
+         f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
-  - ix=w3d.ix_axis x index of plane
+  - ix=nint(-xmmin/dx): x index of plane
   - fullplane=1: when true, plot all quadrants regardless of symmetries
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   - cond=1: when true, plot grid point inside of conductors
   - plotsg=1: when true, plots subgrid data
   - fill=0: when true, fills in conductor
   - scale=1 when true, plots data in lab frame, otherwise grid frame
-  - plotphi=1 when true, plot contours of potential
-  - phicolor=blue color of phi contours
+  - plotphi=1: when true, plot contours of potential
+  - plotrho=0: when true, plot contours of the charge density
+  - phicolor=blue: color of phi contours
+  - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
@@ -958,46 +977,50 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   """
   kw.update(kwdict)
   if ixf is not None: ix = ixf
-  if ix is None: ix = w3d.ix_axis
-  if ix < 0 or w3d.nx < ix: return
+  if ix is None: ix = nint(-w3dgrid.xmmin/w3dgrid.dx)
+  if ix < 0 or w3dgrid.nx < ix: return
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
   if scale:
-    dy = w3d.dy
-    dz = w3d.dz
-    ymmin = w3d.ymmin
-    zmmin = w3d.zmminglobal + zbeam
+    dy = w3dgrid.dy
+    dz = w3dgrid.dz
+    ymmin = w3dgrid.ymmin
+    zmmin = w3dgrid.zmminglobal + zbeam
   else:
     dy = 1.
     dz = 1.
     ymmin = 0.
     zmmin = 0.
-  if plotphi:
+  if plotphi or plotrho:
     if not scale:
       kw['xmin'] = 0
-      kw['xmax'] = w3d.nzfull
+      kw['xmax'] = w3dgrid.nzfull
       kw['ymin'] = 0
-      kw['ymax'] = w3d.ny
-    if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
-    apply(pcphizy,(ix,fullplane,lbeamframe),kw)
+      kw['ymax'] = w3dgrid.ny
+    if plotphi:
+      kw['ccolor'] = phicolor
+      pcphizy(*(ix,fullplane,lbeamframe,w3dgrid),**kw)
+    if plotrho:
+      kw['ccolor'] = rhocolor
+      pcrhozy(*(ix,fullplane,lbeamframe,w3dgrid),**kw)
   if fill:
-    plotcondfill('y','z','x',ix,ymmin,zmmin,dy,dz,mglevel,1,1)
-    if fullplane and (w3d.l2symtry or w3d.l4symtry):
-      plotcondfill('y','z','x',ix,ymmin,zmmin,dy,dz,mglevel,-1,1)
+    plotcondfill('y','z','x',ix,ymmin,zmmin,dy,dz,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+      plotcondfill('y','z','x',ix,ymmin,zmmin,dy,dz,mglevel,-1,1,f3dcond,f3dmg)
   if cond:
-    plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,1,1)
-    if fullplane and (w3d.l2symtry or w3d.l4symtry):
-      plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-1,1)
+    plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+      plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-1,1,f3dcond,f3dmg)
   if plotsg:
     plotsubgrid('y','z','x',0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
-                subgridlen,mglevel,1,1)
+                subgridlen,mglevel,1,1,f3dcond,f3dmg)
     plotsubgrid('y','z','x',1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
-                subgridlen,mglevel,1,1)
-    if fullplane and (w3d.l2symtry or w3d.l4symtry):
+                subgridlen,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
       plotsubgrid('y','z','x',0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
-                  subgridlen,mglevel,-1,1)
+                  subgridlen,mglevel,-1,1,f3dcond,f3dmg)
       plotsubgrid('y','z','x',1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
-                  subgridlen,mglevel,-1,1)
+                  subgridlen,mglevel,-1,1,f3dcond,f3dmg)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
@@ -1006,9 +1029,10 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
 
 # x-y plane
 def pfxyg(iz=None,izf=None,fullplane=1,
-          cond=1,plotsg=1,fill=0,plotphi=1,
-          phicolor=blue,subgridlen=1.,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
+          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
+          phicolor=blue,rhocolor=red,subgridlen=1.,condcolor='fg',
+          oddcolor=red,evencolor=green,numb=None,mglevel=0,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
@@ -1016,16 +1040,18 @@ Same arguments as pfxy
   """
   if izf is not None: iz = izf
   pfxy(iz=iz,fullplane=fullplane,scale=0,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
        subgridlen=subgridlen,
-       phicolor=phicolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
+       f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
 
 # z-x plane
 def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,
-          cond=1,plotsg=1,fill=0,plotphi=1,
-          subgridlen=1.,phicolor=blue,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
+          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
+          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
+          oddcolor=red,evencolor=green,numb=None,mglevel=0,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
 frame
@@ -1033,16 +1059,18 @@ Same arguments as pfzx
   """
   if iyf is not None: iy = iyf
   pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
        subgridlen=subgridlen,
-       phicolor=phicolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
+       f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
 
 # z-y plane
 def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
-          cond=1,plotsg=1,fill=0,plotphi=1,
-          subgridlen=1.,phicolor=blue,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
+          cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
+          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
+          oddcolor=red,evencolor=green,numb=None,mglevel=0,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
 frame
@@ -1050,10 +1078,11 @@ Same arguments as pfzy
   """
   if ixf is not None: ix = ixf
   pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,scale=0,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
        subgridlen=subgridlen,
-       phicolor=phicolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
+       f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
@@ -1063,9 +1092,10 @@ Same arguments as pfzy
  
 # x-y plane
 def pfxyi(iz=None,izf=None,fullplane=1,
-          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-          phicolor=blue,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,**kw):
+          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
+          phicolor=blue,rhocolor=red,condcolor='fg',
+          oddcolor=red,evencolor=green,numb=None,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,**kw):
   """
 Plots conductors and contours of electrostatic potential in full X-Y plane,
 Same arguments as pfxy
@@ -1074,16 +1104,18 @@ Same arguments as pfxy
   print "        It does the identical thing as pfxy"
   if izf is not None: iz = izf
   pfxy(iz=iz,fullplane=fullplane,scale=scale,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
        subgridlen=subgridlen,
-       phicolor=phicolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor,numb=numb,
+       f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
 
 # z-x plane
 def pfzxi(iy=None,iyf=None,fullplane=1,lbeamframe=1,
-          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-          subgridlen=1.,phicolor=blue,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,**kw):
+          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
+          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
+          oddcolor=red,evencolor=green,numb=None,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,**kw):
   """
 Plots conductors and contours of electrostatic potential in full Z-X plane
 Same arguments as pfzx
@@ -1092,16 +1124,18 @@ Same arguments as pfzx
   print "        It does the identical thing as pfzx"
   if iyf is not None: iy = iyf
   pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
        scale=scale,subgridlen=subgridlen,
-       phicolor=phicolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor,numb=numb,
+       f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
 
 # z-y plane
 def pfzyi(ix=None,ixf=None,fullplane=1,lbeamframe=1,
-          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-          subgridlen=1.,phicolor=blue,condcolor='fg',
-          oddcolor=red,evencolor=green,numb=None,**kw):
+          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
+          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
+          oddcolor=red,evencolor=green,numb=None,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,**kw):
   """
 Plots conductors and contours of electrostatic potential in full Z-Y plane
 Same arguments as pfzy
@@ -1110,10 +1144,11 @@ Same arguments as pfzy
   print "        It does the identical thing as pfzy"
   if ixf is not None: ix = ixf
   pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,
-       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,
+       cond=cond,plotsg=plotsg,fill=fill,plotphi=plotphi,plotrho=plotrho,
        scale=scale,subgridlen=subgridlen,
-       phicolor=phicolor,condcolor=condcolor,
-       oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
+       phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor,numb=numb,
+       f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
 
 
 
@@ -1123,48 +1158,51 @@ Same arguments as pfzy
 
 # x-y plane
 def pfxybox(iz=None,izf=None,contours=8,plotsg=1,scale=1,signx=1,signy=1,
-            plotphi=1,filled=0,phicolor=blue,condcolor='fg',kwdict={},**kw):
+            plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+            condcolor='fg',f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict={},**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in X-Y plane
-  - iz=w3d.iz_axis z index of plane
+  - iz=nint(-zmmin/dz): z index of plane
   - contours=8 optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - signx=1 sign of x, used for plotting symmetry planes
   - signy=1 sign of y, used for plotting symmetry planes
-  - plotphi=1 when true, plot contours of potential
+  - plotphi=1: when true, plot contours of potential
+  - plotrho=0: when true, plot contours of the charge density
   - filled=0 when true, plots filled contours
-  - phicolor=blue color of phi contours
+  - phicolor=blue: color of phi contours
+  - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   - subgridlen=1 maximum length of subgrid line which are plotted
   """
   kw.update(kwdict)
   if izf is not None: iz = izf
-  if not iz: iz = w3d.iz_axis
-  if iz < 0 or w3d.nzfull < iz: return
+  if not iz: iz = nint(-w3dgrid.zmmin/w3dgrid.dz)
+  if iz < 0 or w3dgrid.nzfull < iz: return
   if scale:
-    dy = w3d.dy*signy
-    dx = w3d.dx*signx
-    ymmin = w3d.ymmin
-    xmmin = w3d.xmmin
+    dy = w3dgrid.dy*signy
+    dx = w3dgrid.dx*signx
+    ymmin = w3dgrid.ymmin
+    xmmin = w3dgrid.xmmin
   else:
     dy = 1.*signy
     dx = 1.*signx
     ymmin = 0.
     xmmin = 0.
-  if plotphi:
+  if plotphi or plotrho:
     ppp = getphi(iz=iz)
     if me == 0:
       if kw.has_key('cellarray') and kw['cellarray']: contours=None
       ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=xmmin,xmax=xmmin+w3d.nx*dx,
-                ymin=ymmin,ymax=ymmin+w3d.ny*dy,kwdict=kw)
-  if f3d.ncond > 0:
-    izc = f3d.izcond[0:f3d.ncond]+f3d.mglevelsiz[0]
-    ii = compress(equal(izc,iz),arange(f3d.ncond))
-    x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
-    y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
+                xmin=xmmin,xmax=xmmin+w3dgrid.nx*dx,
+                ymin=ymmin,ymax=ymmin+w3dgrid.ny*dy,kwdict=kw)
+  if f3dcond.ncond > 0:
+    izc = f3dcond.izcond[0:f3dcond.ncond]+f3dmg.mglevelsiz[0]
+    ii = compress(equal(izc,iz),arange(f3dcond.ncond))
+    x = take(f3dcond.ixcond[0:f3dcond.ncond],ii)*dx+xmmin
+    y = take(f3dcond.iycond[0:f3dcond.ncond],ii)*dy+ymmin
   else:
     x = array([])
     y = array([])
@@ -1178,47 +1216,50 @@ in X-Y plane
 
 # z-x plane
 def pfzxbox(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
-            plotphi=1,filled=0,phicolor=blue,condcolor='fg',kwdict={},**kw):
+            plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+            condcolor='fg',f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict={},**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-X plane
-  - iy=w3d.iy_axis y index of plane
+  - iy=nint(-ymmin/dy): y index of plane
   - contours=8 optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - signz=1 sign of z, used for plotting symmetry planes
   - signx=1 sign of x, used for plotting symmetry planes
-  - plotphi=1 when true, plot contours of potential
+  - plotphi=1: when true, plot contours of potential
+  - plotrho=0: when true, plot contours of the charge density
   - filled=0 when true, plots filled contours
-  - phicolor=blue color of phi contours
+  - phicolor=blue: color of phi contours
+  - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   """
   kw.update(kwdict)
   if iyf is not None: iy = iyf
-  if not iy: iy = w3d.iy_axis
-  if iy < 0 or w3d.ny < iy: return
+  if not iy: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
+  if iy < 0 or w3dgrid.ny < iy: return
   if scale:
-    dx = w3d.dx*signx
-    dz = w3d.dz*signz
-    xmmin = w3d.xmmin
-    zmmin = w3d.zmmin
+    dx = w3dgrid.dx*signx
+    dz = w3dgrid.dz*signz
+    xmmin = w3dgrid.xmmin
+    zmmin = w3dgrid.zmmin
   else:
     dx = 1.*signx
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-  if plotphi:
+  if plotphi or plotrho:
     ppp = getphi(iy=iy)
     ppp = transpose(ppp)
     if me == 0:
       if kw.has_key('cellarray') and kw['cellarray']: contours=None
       ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
-                ymin=xmmin,ymax=xmmin+w3d.nx*dx,kwdict=kw)
-  if (f3d.ncond > 0):
-    ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
-    x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
-    z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
+                xmin=zmmin,xmax=zmmin+w3dgrid.nzfull*dz,
+                ymin=xmmin,ymax=xmmin+w3dgrid.nx*dx,kwdict=kw)
+  if (f3dcond.ncond > 0):
+    ii = compress(equal(f3dcond.iycond[0:f3dcond.ncond],iy),arange(f3dcond.ncond))
+    x = take(f3dcond.ixcond[0:f3dcond.ncond],ii)*dx+xmmin
+    z = take(f3dcond.izcond[0:f3dcond.ncond],ii)*dz+zmmin
   else:
     x = array([])
     z = array([])
@@ -1232,47 +1273,50 @@ in Z-X plane
 
 # z-y plane
 def pfzybox(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
-            plotphi=1,filled=0,phicolor=blue,condcolor='fg',kwdict={},**kw):
+            plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+            condcolor='fg',f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict={},**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-Y plane
-  - ix=w3d.ix_axis x index of plane
+  - ix=nint(-xmmin/dx): x index of plane
   - contours=8 optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - signz=1 sign of z, used for plotting symmetry planes
   - signy=1 sign of y, used for plotting symmetry planes
-  - plotphi=1 when true, plot contours of potential
+  - plotphi=1: when true, plot contours of potential
+  - plotrho=0: when true, plot contours of the charge density
   - filled=0 when true, plots filled contours
-  - phicolor=blue color of phi contours
+  - phicolor=blue: color of phi contours
+  - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   """
   kw.update(kwdict)
   if ixf is not None: ix = ixf
-  if not ix: ix = w3d.ix_axis
-  if ix < 0 or w3d.nx < ix: return
+  if not ix: ix = nint(-w3dgrid.xmmin/w3dgrid.dx)
+  if ix < 0 or w3dgrid.nx < ix: return
   if scale:
-    dy = w3d.dy*signy
-    dz = w3d.dz*signz
-    ymmin = w3d.ymmin
-    zmmin = w3d.zmmin
+    dy = w3dgrid.dy*signy
+    dz = w3dgrid.dz*signz
+    ymmin = w3dgrid.ymmin
+    zmmin = w3dgrid.zmmin
   else:
     dy = 1.*signy
     dz = 1.*signz
     ymmin = 0.
     zmmin = 0.
-  if plotphi:
+  if plotphi or plotrho:
     ppp = getphi(ix=ix)
     ppp = transpose(ppp)
     if me == 0:
       if kw.has_key('cellarray') and kw['cellarray']: contours=None
       ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
-                ymin=ymmin,ymax=ymmin+w3d.ny*dy,kwdict=kw)
-  if (f3d.ncond > 0):
-    ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
-    y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
-    z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
+                xmin=zmmin,xmax=zmmin+w3dgrid.nzfull*dz,
+                ymin=ymmin,ymax=ymmin+w3dgrid.ny*dy,kwdict=kw)
+  if (f3dcond.ncond > 0):
+    ii = compress(equal(f3dcond.ixcond[0:f3dcond.ncond],ix),arange(f3dcond.ncond))
+    y = take(f3dcond.iycond[0:f3dcond.ncond],ii)*dy+ymmin
+    z = take(f3dcond.izcond[0:f3dcond.ncond],ii)*dz+zmmin
   else:
     y = array([])
     z = array([])
@@ -1286,44 +1330,53 @@ in Z-Y plane
 
 # z-x plane
 def pfzxboxi(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,
-             plotphi=1,filled=0,phicolor=blue,condcolor='fg',**kw):
+             plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+             condcolor='fg',f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-X) plane
-  - iy=w3d.iy_axis y index of plane
+  - iy=nint(-ymmin/dy): y index of plane
   - contours=8 optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - signz=1 sign of z, used for plotting symmetry planes
-  - plotphi=1 when true, plot contours of potential
+  - plotphi=1: when true, plot contours of potential
+  - plotrho=0: when true, plot contours of the charge density
   - filled=0 when true, plots filled contours
-  - phicolor=blue color of phi contours
+  - phicolor=blue: color of phi contours
+  - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   """
   if iyf is not None: iy = iyf
   pfzxbox(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
-          signx=-1,plotphi=plotphi,filled=filled,
-          phicolor=phicolor,condcolor=condcolor,kwdict=kw)
+          signx=-1,plotphi=plotphi,plotrho=plotrho,filled=filled,
+          phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
 
 # z-y plane
 def pfzyboxi(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=-1,
-             plotphi=1,filled=0,phicolor=blue,condcolor='fg',**kw):
+             plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
+             condcolor='fg',f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-Y) plane
-  - ix=w3d.ix_axis x index of plane
+  - ix=nint(-xmmin/dx): x index of plane
   - contours=8 optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - signz=1 sign of z, used for plotting symmetry planes
+  - plotphi=1: when true, plot contours of potential
+  - plotrho=0: when true, plot contours of the charge density
   - filled=0 when true, plots filled contours
-  - phicolor=blue color of phi contours
+  - phicolor=blue: color of phi contours
+  - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   """
   if ixf is not None: ix = ixf
   pfzybox(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
-          signy=-1,plotphi=plotphi,filled=filled,
-          phicolor=phicolor,condcolor=condcolor,kwdict=kw)
+          signy=-1,plotphi=plotphi,plotrho=plotrho,filled=filled,
+          phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d,kwdict=kw)
 
 
 
@@ -1338,55 +1391,56 @@ def findunique(i):
   result = list(compress(ii[:-1]!=ii[1:],ii[:-1])) + [ii[-1]]
   return result
 
-def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx):
+def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,f3dcond,f3dmg):
   ncolor = len(color)
-  if f3d.ncond > 0: nn = f3d.condnumb
+  if f3dcond.ncond > 0: nn = f3dcond.condnumb
   else:             nn = array([])
   nlist = gatherarray(nn)
   nlist = findunique(nlist)
   nlist = broadcast(nlist)
   for i in nlist:
     plotcond(yy,xx,zz,iz,i,ymmin,xmmin,dy,dx,color[i%ncolor],
-             mglevel,signy,signx)
+             mglevel,signy,signx,f3dcond,f3dmg)
 
 def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
-          scale=1,signz=1,signx=1,subgridlen=1.,fullplane=1,mglevel=0):
-  if iy is None: iy = w3d.iy_axis
-  if iy < 0 or w3d.ny < iy: return
+          scale=1,signz=1,signx=1,subgridlen=1.,fullplane=1,mglevel=0,
+          f3dcond=f3d,f3dmg=f3d,w3dgrid=w3d):
+  if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
+  if iy < 0 or w3dgrid.ny < iy: return
   if colors is None: colors = color
   if scale:
-    dx = w3d.dx*signx
-    dz = w3d.dz*signz
-    xmmin = w3d.xmmin
-    zmmin = w3d.zmmin
+    dx = w3dgrid.dx*signx
+    dz = w3dgrid.dz*signz
+    xmmin = w3dgrid.xmmin
+    zmmin = w3dgrid.zmmin
   else:
     dx = 1.*signx
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-  plotcondn('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,1,1)
-  if fullplane and w3d.l4symtry:
-    plotcondn('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,-1,1)
+  plotcondn('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,1,1,f3dcond,f3dmg)
+  if fullplane and w3dgrid.l4symtry:
+    plotcondn('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,-1,1,f3dcond,f3dmg)
   ncolor = len(colors)
-  nlist = gatherarray(f3d.ecnumb[:f3d.necndbdy])
+  nlist = gatherarray(f3dcond.ecnumb[:f3dcond.necndbdy])
   nlist = findunique(nlist)
   #nlist.remove(0)
   nlist = broadcast(nlist)
   for i in nlist:
     plotsubgrid('x','z','y',0,iy,i,xmmin,zmmin,dx,dz,
-                colors[i%ncolor],subgridlen,mglevel,1,1)
-    if fullplane and w3d.l4symtry:
+                colors[i%ncolor],subgridlen,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and w3dgrid.l4symtry:
       plotsubgrid('x','z','y',0,iy,i,xmmin,zmmin,dx,dz,
-                  colors[i%ncolor],subgridlen,mglevel,-1,1)
-  nlist = gatherarray(f3d.ocnumb[:f3d.nocndbdy])
+                  colors[i%ncolor],subgridlen,mglevel,-1,1,f3dcond,f3dmg)
+  nlist = gatherarray(f3dcond.ocnumb[:f3dcond.nocndbdy])
   nlist = findunique(nlist)
   nlist = broadcast(nlist)
   for i in nlist:
     plotsubgrid('x','z','y',1,iy,i,xmmin,zmmin,dx,dz,
-                colors[i%ncolor],subgridlen,mglevel,1,1)
-    if fullplane and w3d.l4symtry:
+                colors[i%ncolor],subgridlen,mglevel,1,1,f3dcond,f3dmg)
+    if fullplane and w3dgrid.l4symtry:
       plotsubgrid('x','z','y',1,iy,i,xmmin,zmmin,dx,dz,
-                  colors[i%ncolor],subgridlen,mglevel,-1,1)
+                  colors[i%ncolor],subgridlen,mglevel,-1,1,f3dcond,f3dmg)
 
 
 ############################################################################
@@ -1396,7 +1450,7 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
 ############################################################################
 
 # --- plot grid in lab frame (including bends)
-def plotgrid(zz=None,ii=2,plotcond=1):
+def plotgrid(zz=None,ii=2,plotcond=1,w3dgrid=w3d):
   """
 Plots Z-X grid in the lab frame (including bends)
   - zz=top.zbeam is the center position
@@ -1406,41 +1460,41 @@ Plots Z-X grid in the lab frame (including bends)
   """
   if not zz: zz=top.zbeam
   # --- declare temporary data space, 2 2-D arrays to hold grid coordinates
-  xxx = zeros((w3d.nx/ii+1,w3d.nz/ii+1),'d')
-  zzz = zeros((w3d.nx/ii+1,w3d.nz/ii+1),'d')
-  for iz in xrange(w3d.nz/ii+1):
-    xxx[:,iz] = w3d.xmesh[::ii]
-  for ix in xrange(w3d.nx/ii+1):
-    zzz[ix,:] = w3d.zmmin + iota(0,w3d.nz,ii)*w3d.dz + w3d.zz
+  xg = zeros((w3dgrid.nx/ii+1,w3dgrid.nz/ii+1),'d')
+  zg = zeros((w3dgrid.nx/ii+1,w3dgrid.nz/ii+1),'d')
+  for iz in xrange(w3dgrid.nz/ii+1):
+    xg[:,iz] = w3dgrid.xmesh[::ii]
+  for ix in xrange(w3dgrid.nx/ii+1):
+    zg[ix,:] = w3dgrid.zmmin + iota(0,w3dgrid.nz,ii)*w3dgrid.dz + zz
 
   # --- If in a bend, convert the grid data to the lab frame
   if top.linbend:
     # --- reshape arrays to make 1-D arrays to pass to tolabfrm
-    nn = int((w3d.nx/ii+1)*(w3d.nz/ii+1))
-    xxx.shape = (nn)
-    zzz.shape = (nn)
+    nn = int((w3dgrid.nx/ii+1)*(w3dgrid.nz/ii+1))
+    xg.shape = (nn)
+    zg.shape = (nn)
 
     # --- Convert data to lab frame
-    tolabfrm(zz,nn,xxx,zzz)
+    tolabfrm(zz,nn,xg,zg)
 
     # --- Reshape back into 2-D arrays
-    xxx.shape = (w3d.nx/ii+1,w3d.nz/ii+1)
-    zzz.shape = (w3d.nx/ii+1,w3d.nz/ii+1)
+    xg.shape = (w3dgrid.nx/ii+1,w3dgrid.nz/ii+1)
+    zg.shape = (w3dgrid.nx/ii+1,w3dgrid.nz/ii+1)
 
   # --- Make plots
-  pla(xxx,zzz,marks=0)
-  pla(transpose(xxx),transpose(zzz),marks=0)
+  pla(xg,zg,marks=0)
+  pla(transpose(xg),transpose(zg),marks=0)
 
   if plotcond: pfzxlab(zz)
 
 # --- Make pfzx plot in lab frame
-def pfzxlab(zz=None,iy=None,condcolor='fg'):
+def pfzxlab(zz=None,iy=None,condcolor='fg',f3dcond=f3d,w3dgrid=w3d):
   """Plots conductors in Z-X lab frame (including bends)
   - zz=top.zbeam is the center position
   - condcolor='fg' color of conductor points inside conductors
   """
   if not zz: zz=top.zbeam
-  if iy is None: iy = w3d.iy_axis
+  if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
   # --- if zz is not equal to zbeam, then calculate conductors for new location
   if (zz != top.zbeam):
     z = top.zbeam
@@ -1450,15 +1504,15 @@ def pfzxlab(zz=None,iy=None,condcolor='fg'):
     setlatt()
     fieldsol(1)
   # --- gather conductor data
-  if f3d.ncond > 0:
-    xxxx=compress(equal(f3d.iycond[0:f3d.ncond],iy),
-                        f3d.ixcond[0:f3d.ncond])*w3d.dx+w3d.xmmin
-    zzzz=compress(equal(f3d.iycond[0:f3d.ncond],iy),
-                        f3d.izcond[0:f3d.ncond])*w3d.dz+w3d.zmmin+zz
+  if f3dcond.ncond > 0:
+    xl=compress(equal(f3dcond.iycond[0:f3dcond.ncond],iy),
+                      f3dcond.ixcond[0:f3dcond.ncond])*w3dgrid.dx+w3dgrid.xmmin
+    zl=compress(equal(f3dcond.iycond[0:f3dcond.ncond],iy),
+                      f3dcond.izcond[0:f3dcond.ncond])*w3dgrid.dz+w3dgrid.zmmin+zz
     # --- convert to lab frame
-    tolabfrm(zz,len(xxxx),xxxx,zzzz)   
+    tolabfrm(zz,len(xl),xl,zl)   
     # --- make plot
-    plg(xxxx,zzzz,marker='\2',color=condcolor)
+    plg(xl,zl,marker='\2',color=condcolor)
   # --- restore original conductor data at zbeam
   if (zz != top.zbeam):
     top.zbeam = z
@@ -2239,8 +2293,8 @@ Output is put directly into the conductor arrays of Conductor3d.
   if nx is None: nx = w3d.nx
   if ny is None: ny = w3d.ny
   if nz is None: nz = w3d.nz
-  if ix_axis is None: ix_axis = w3d.ix_axis
-  if iy_axis is None: iy_axis = w3d.iy_axis
+  if ix_axis is None: ix_axis = nint(-w3d.xmmin/w3d.dx)
+  if iy_axis is None: iy_axis = nint(-w3d.ymmin/w3d.dy)
   if xmesh is None: xmesh = w3d.xmesh
   if ymesh is None: ymesh = w3d.ymesh
   if l2symtry is None: l2symtry = w3d.l2symtry
@@ -2329,8 +2383,8 @@ Output is put directly into the conductor arrays of Conductor3d.
   if nx is None: nx = w3d.nx
   if ny is None: ny = w3d.ny
   if nz is None: nz = w3d.nz
-  if ix_axis is None: ix_axis = w3d.ix_axis
-  if iy_axis is None: iy_axis = w3d.iy_axis
+  if ix_axis is None: ix_axis = nint(-w3d.xmmin/w3d.dx)
+  if iy_axis is None: iy_axis = nint(-w3d.ymmin/w3d.dy)
   if xmesh is None: xmesh = w3d.xmesh
   if ymesh is None: ymesh = w3d.ymesh
   if l2symtry is None: l2symtry = w3d.l2symtry
@@ -2417,8 +2471,8 @@ Output is put directly into the conductor arrays of Conductor3d.
   if nx is None: nx = w3d.nx
   if ny is None: ny = w3d.ny
   if nz is None: nz = w3d.nz
-  if ix_axis is None: ix_axis = w3d.ix_axis
-  if iy_axis is None: iy_axis = w3d.iy_axis
+  if ix_axis is None: ix_axis = nint(-w3d.xmmin/w3d.dx)
+  if iy_axis is None: iy_axis = nint(-w3d.ymmin/w3d.dy)
   if xmesh is None: xmesh = w3d.xmesh
   if ymesh is None: ymesh = w3d.ymesh
   if l2symtry is None: l2symtry = w3d.l2symtry
@@ -2467,8 +2521,8 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
   ixmax=w3d.nx: maximum value of ix
   iymin=0: minimum value of iy
   iymax=w3d.ny: maximum value of iy
-  ix_axis=w3d.ix_axis: x grid location of beam center
-  iy_axis=w3d.iy_axis: y grid location of beam center
+  ix_axis=nint(-xmmin/dx): x grid location of beam center
+  iy_axis=nint(-ymmin/dy): y grid location of beam center
   dx=w3d.dx: grid cell size in x
   dy=w3d.dy: grid cell size in y
   aper=0.: inner aperture of the plate
@@ -2486,8 +2540,8 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
   if ixmax is None: ixmax = w3d.nx
   if iymin is None: iymin = 0
   if iymax is None: iymax = w3d.ny
-  if ix_axis is None: ix_axis = w3d.ix_axis
-  if iy_axis is None: iy_axis = w3d.iy_axis
+  if ix_axis is None: ix_axis = nint(-w3d.xmmin/w3d.dx)
+  if iy_axis is None: iy_axis = nint(-w3d.ymmin/w3d.dy)
   if dx is None: dx = w3d.dx
   if dy is None: dy = w3d.dy
   if aper is None: aper = 0.
@@ -2517,7 +2571,8 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
-def setconductorvoltage(voltage,condid=0,discrete=false,setvinject=false):
+def setconductorvoltage(voltage,condid=0,discrete=false,setvinject=false,
+                        f3dcond=f3d,f3dmg=f3d):
   """
 Sets the voltage on a conductor, given an id.
  - voltage: voltage on conductor. Can be one of the following...
@@ -2529,6 +2584,8 @@ Sets the voltage on a conductor, given an id.
  - discrete=false: when true, z locations for plus/minus z subgrid
                    points are round up/down.
  - setvinject=false: when true, sets top.vinject
+ - f3dcond=f3d,f3dmg=f3d: allows alternate conductor to be visualized other
+                       than the fortran based ones
   """
 
   # --- Set vinject first is requested.
@@ -2551,7 +2608,7 @@ Sets the voltage on a conductor, given an id.
       setconductorvoltagerz_id(condid,voltage)
     return
 
-  if f3d.ncond == 0: return
+  if f3dcond.ncond == 0: return
 
   if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
@@ -2560,15 +2617,15 @@ Sets the voltage on a conductor, given an id.
     # --- Get z location of the conductor points (taking into account
     # --- the differing grid cell sizes for coarse levels). Use that to
     # --- gather the value of voltage at those locations.
-    icz = f3d.izcond*take(nint(f3d.mglevelslz),f3d.icondlevel) + \
-                     take(f3d.mglevelsiz,f3d.icondlevel)
+    icz = f3dcond.izcond*take(nint(f3dmg.mglevelslz),f3dcond.icondlevel) + \
+                     take(f3dmg.mglevelsiz,f3dcond.icondlevel)
     icz = minimum(icz,len(voltage)-2,icz)
     cv = take(voltage,icz)
 
     # --- Get z location of even points. For conductors in the transverse
     # --- plane, use the voltage at the grid cell locations.
-    iecl = take(nint(f3d.mglevelslz),f3d.iecndlevel)
-    iecz = f3d.iecndz*iecl + take(f3d.mglevelsiz,f3d.iecndlevel)
+    iecl = take(nint(f3dmg.mglevelslz),f3dcond.iecndlevel)
+    iecz = f3dcond.iecndz*iecl + take(f3dmg.mglevelsiz,f3dcond.iecndlevel)
     iecz = minimum(iecz,len(voltage)-2,iecz)
     ecv = take(voltage,iecz)
     ecvmx = ecv
@@ -2579,22 +2636,22 @@ Sets the voltage on a conductor, given an id.
     # --- For conductors to the left, find the location of the conductor
     # --- and linear interpolate from the voltage data. If the discrete flag
     # --- is set, then round down to the nearest grid point.
-    ecmz = iecz + where(f3d.ecdelmz < 1.,-f3d.ecdelmz,0)*iecl
+    ecmz = iecz + where(f3dcond.ecdelmz < 1.,-f3dcond.ecdelmz,0)*iecl
     iecmz = ecmz.astype(Int)
     if discrete: wecmz = 0.
     else:        wecmz = ecmz - iecmz
     ecvmz = take(voltage,iecmz)*(1.-wecmz) + take(voltage,iecmz+1)*wecmz
 
     # --- Same for conductors to the right. If discrete is set, round up.
-    ecpz = iecz + where(f3d.ecdelpz < 1.,-f3d.ecdelpz,0)*iecl
+    ecpz = iecz + where(f3dcond.ecdelpz < 1.,-f3dcond.ecdelpz,0)*iecl
     iecpz = ecpz.astype(Int)
     if discrete: wecpz = 1.
     else:        wecpz = ecpz - iecpz
     ecvpz = take(voltage,iecpz)*(1.-wecpz) + take(voltage,iecpz+1)*wecpz
 
     # --- Repeat for odd conductor points.
-    iocl = take(nint(f3d.mglevelslz),f3d.iocndlevel)
-    iocz = f3d.iocndz*iocl + take(f3d.mglevelsiz,f3d.iocndlevel)
+    iocl = take(nint(f3dmg.mglevelslz),f3dcond.iocndlevel)
+    iocz = f3dcond.iocndz*iocl + take(f3dmg.mglevelsiz,f3dcond.iocndlevel)
     iocz = minimum(iocz,len(voltage)-2,iocz)
     ocv = take(voltage,iocz)
     ocvmx = ocv
@@ -2602,13 +2659,13 @@ Sets the voltage on a conductor, given an id.
     ocvmy = ocv
     ocvpy = ocv
 
-    ocmz = iocz + where(f3d.ocdelmz < 1.,-1,0)*iocl
+    ocmz = iocz + where(f3dcond.ocdelmz < 1.,-1,0)*iocl
     iocmz = ocmz.astype(Int)
     if discrete: wocmz = 0.
     else:        wocmz = ocmz - iocmz
     ocvmz = take(voltage,iocmz)*(1.-wocmz) + take(voltage,iocmz+1)*wocmz
 
-    ocpz = iocz + where(f3d.ocdelpz < 1.,-1,0)*iocl
+    ocpz = iocz + where(f3dcond.ocdelpz < 1.,-1,0)*iocl
     iocpz = ocpz.astype(Int)
     if discrete: wocpz = 0.
     else:        wocpz = ocpz - iocpz
@@ -2618,29 +2675,29 @@ Sets the voltage on a conductor, given an id.
     # --- coordinates x, y, z, in meters relative to the beam frame.
 
     zmmin = w3d.zmminglobal
-    icx = f3d.ixcond*take(nint(f3d.mglevelslx),f3d.icondlevel)
-    icy = f3d.iycond*take(nint(f3d.mglevelsly),f3d.icondlevel)
-    icz = f3d.izcond*take(nint(f3d.mglevelslz),f3d.icondlevel) + \
-                     take(f3d.mglevelsiz,f3d.icondlevel)
+    icx = f3dcond.ixcond*take(nint(f3dmg.mglevelslx),f3dcond.icondlevel)
+    icy = f3dcond.iycond*take(nint(f3dmg.mglevelsly),f3dcond.icondlevel)
+    icz = f3dcond.izcond*take(nint(f3dmg.mglevelslz),f3dcond.icondlevel) + \
+                     take(f3dmg.mglevelsiz,f3dcond.icondlevel)
     cx = w3d.xmmin + icx*w3d.dx
     cy = w3d.ymmin + icy*w3d.dy
     cz =     zmmin + icz*w3d.dz
     cv = voltage(cx,cy,cz)
 
-    ieclx = take(nint(f3d.mglevelslx),f3d.iecndlevel)
-    iecly = take(nint(f3d.mglevelsly),f3d.iecndlevel)
-    ieclz = take(nint(f3d.mglevelslz),f3d.iecndlevel)
-    ecx = w3d.xmmin + w3d.dx*f3d.iecndx*ieclx
-    ecy = w3d.ymmin + w3d.dy*f3d.iecndy*iecly
-    ecz =     zmmin + w3d.dz*(f3d.iecndz*ieclz + \
-                              take(f3d.mglevelsiz,f3d.iecndlevel))
+    ieclx = take(nint(f3dmg.mglevelslx),f3dcond.iecndlevel)
+    iecly = take(nint(f3dmg.mglevelsly),f3dcond.iecndlevel)
+    ieclz = take(nint(f3dmg.mglevelslz),f3dcond.iecndlevel)
+    ecx = w3d.xmmin + w3d.dx*f3dcond.iecndx*ieclx
+    ecy = w3d.ymmin + w3d.dy*f3dcond.iecndy*iecly
+    ecz =     zmmin + w3d.dz*(f3dcond.iecndz*ieclz + \
+                              take(f3dmg.mglevelsiz,f3dcond.iecndlevel))
 
-    ecxmx = ecx - where(f3d.ecdelmx < 1.,f3d.ecdelmx,0)*ieclx*w3d.dx
-    ecxpx = ecx + where(f3d.ecdelpx < 1.,f3d.ecdelpx,0)*ieclx*w3d.dx
-    ecymy = ecy - where(f3d.ecdelmy < 1.,f3d.ecdelmy,0)*iecly*w3d.dy
-    ecypy = ecy + where(f3d.ecdelpy < 1.,f3d.ecdelpy,0)*iecly*w3d.dy
-    eczmz = ecz - where(f3d.ecdelmz < 1.,f3d.ecdelmz,0)*ieclz*w3d.dz
-    eczpz = ecz + where(f3d.ecdelpz < 1.,f3d.ecdelpz,0)*ieclz*w3d.dz
+    ecxmx = ecx - where(f3dcond.ecdelmx < 1.,f3dcond.ecdelmx,0)*ieclx*w3d.dx
+    ecxpx = ecx + where(f3dcond.ecdelpx < 1.,f3dcond.ecdelpx,0)*ieclx*w3d.dx
+    ecymy = ecy - where(f3dcond.ecdelmy < 1.,f3dcond.ecdelmy,0)*iecly*w3d.dy
+    ecypy = ecy + where(f3dcond.ecdelpy < 1.,f3dcond.ecdelpy,0)*iecly*w3d.dy
+    eczmz = ecz - where(f3dcond.ecdelmz < 1.,f3dcond.ecdelmz,0)*ieclz*w3d.dz
+    eczpz = ecz + where(f3dcond.ecdelpz < 1.,f3dcond.ecdelpz,0)*ieclz*w3d.dz
     ecvmx = voltage(ecxmx,ecy  ,ecz  )
     ecvpx = voltage(ecxpx,ecy  ,ecz  )
     ecvmy = voltage(ecx  ,ecymy,ecz  )
@@ -2648,20 +2705,20 @@ Sets the voltage on a conductor, given an id.
     ecvmz = voltage(ecx  ,ecy  ,eczmz)
     ecvpz = voltage(ecx  ,ecy  ,eczpz)
 
-    ioclx = take(nint(f3d.mglevelslx),f3d.iocndlevel)
-    iocly = take(nint(f3d.mglevelsly),f3d.iocndlevel)
-    ioclz = take(nint(f3d.mglevelslz),f3d.iocndlevel)
-    ocx = w3d.xmmin + w3d.dx*f3d.iocndx*ioclx
-    ocy = w3d.ymmin + w3d.dy*f3d.iocndy*iocly
-    ocz =     zmmin + w3d.dz*(f3d.iocndz*ioclz + \
-                              take(f3d.mglevelsiz,f3d.iocndlevel))
+    ioclx = take(nint(f3dmg.mglevelslx),f3dcond.iocndlevel)
+    iocly = take(nint(f3dmg.mglevelsly),f3dcond.iocndlevel)
+    ioclz = take(nint(f3dmg.mglevelslz),f3dcond.iocndlevel)
+    ocx = w3d.xmmin + w3d.dx*f3dcond.iocndx*ioclx
+    ocy = w3d.ymmin + w3d.dy*f3dcond.iocndy*iocly
+    ocz =     zmmin + w3d.dz*(f3dcond.iocndz*ioclz + \
+                              take(f3dmg.mglevelsiz,f3dcond.iocndlevel))
 
-    ocxmx = ocx - where(f3d.ocdelmx < 1.,f3d.ocdelmx,0)*ioclx*w3d.dx
-    ocxpx = ocx + where(f3d.ocdelpx < 1.,f3d.ocdelpx,0)*ioclx*w3d.dx
-    ocymy = ocy - where(f3d.ocdelmy < 1.,f3d.ocdelmy,0)*iocly*w3d.dy
-    ocypy = ocy + where(f3d.ocdelpy < 1.,f3d.ocdelpy,0)*iocly*w3d.dy
-    oczmz = ocz - where(f3d.ocdelmz < 1.,f3d.ocdelmz,0)*ioclz*w3d.dz
-    oczpz = ocz + where(f3d.ocdelpz < 1.,f3d.ocdelpz,0)*ioclz*w3d.dz
+    ocxmx = ocx - where(f3dcond.ocdelmx < 1.,f3dcond.ocdelmx,0)*ioclx*w3d.dx
+    ocxpx = ocx + where(f3dcond.ocdelpx < 1.,f3dcond.ocdelpx,0)*ioclx*w3d.dx
+    ocymy = ocy - where(f3dcond.ocdelmy < 1.,f3dcond.ocdelmy,0)*iocly*w3d.dy
+    ocypy = ocy + where(f3dcond.ocdelpy < 1.,f3dcond.ocdelpy,0)*iocly*w3d.dy
+    oczmz = ocz - where(f3dcond.ocdelmz < 1.,f3dcond.ocdelmz,0)*ioclz*w3d.dz
+    oczpz = ocz + where(f3dcond.ocdelpz < 1.,f3dcond.ocdelpz,0)*ioclz*w3d.dz
     ocvmx = voltage(ocxmx,ocy  ,ocz  )
     ocvpx = voltage(ocxpx,ocy  ,ocz  )
     ocvmy = voltage(ocx  ,ocymy,ocz  )
@@ -2675,24 +2732,25 @@ Sets the voltage on a conductor, given an id.
     ocvmx = ocvpx = ocvmy = ocvpy = ocvmz = ocvpz = voltage
 
   # --- Now, put the voltage data into the fortran arrays.
-  if f3d.ncond > 0:
-    f3d.condvolt[:] = where(equal(f3d.condnumb,condid),cv,f3d.condvolt)
-  if f3d.necndbdy > 0:
-    f3d.ecvolt[:]   = where(equal(f3d.ecnumb  ,condid),ecvmx,f3d.ecvolt)
-    f3d.ecvoltmx[:] = where(equal(f3d.ecnumbmx,condid),ecvmx,f3d.ecvoltmx)
-    f3d.ecvoltmy[:] = where(equal(f3d.ecnumbmy,condid),ecvmy,f3d.ecvoltmy)
-    f3d.ecvoltmz[:] = where(equal(f3d.ecnumbmz,condid),ecvmz,f3d.ecvoltmz)
-    f3d.ecvoltpx[:] = where(equal(f3d.ecnumbpx,condid),ecvpx,f3d.ecvoltpx)
-    f3d.ecvoltpy[:] = where(equal(f3d.ecnumbpy,condid),ecvpy,f3d.ecvoltpy)
-    f3d.ecvoltpz[:] = where(equal(f3d.ecnumbpz,condid),ecvpz,f3d.ecvoltpz)
-  if f3d.nocndbdy > 0:
-    f3d.ocvolt[:]   = where(equal(f3d.ocnumb  ,condid),ocvmx,f3d.ocvolt)
-    f3d.ocvoltmx[:] = where(equal(f3d.ocnumbmx,condid),ocvmx,f3d.ocvoltmx)
-    f3d.ocvoltmy[:] = where(equal(f3d.ocnumbmy,condid),ocvmy,f3d.ocvoltmy)
-    f3d.ocvoltmz[:] = where(equal(f3d.ocnumbmz,condid),ocvmz,f3d.ocvoltmz)
-    f3d.ocvoltpx[:] = where(equal(f3d.ocnumbpx,condid),ocvpx,f3d.ocvoltpx)
-    f3d.ocvoltpy[:] = where(equal(f3d.ocnumbpy,condid),ocvpy,f3d.ocvoltpy)
-    f3d.ocvoltpz[:] = where(equal(f3d.ocnumbpz,condid),ocvpz,f3d.ocvoltpz)
+  f = f3dcond
+  if f.ncond > 0:
+    f.condvolt[:] = where(equal(f.condnumb,condid),cv,f.condvolt)
+  if f.necndbdy > 0:
+    f.ecvolt[:]   = where(equal(f.ecnumb  ,condid),ecvmx,f.ecvolt)
+    f.ecvoltmx[:] = where(equal(f.ecnumbmx,condid),ecvmx,f.ecvoltmx)
+    f.ecvoltmy[:] = where(equal(f.ecnumbmy,condid),ecvmy,f.ecvoltmy)
+    f.ecvoltmz[:] = where(equal(f.ecnumbmz,condid),ecvmz,f.ecvoltmz)
+    f.ecvoltpx[:] = where(equal(f.ecnumbpx,condid),ecvpx,f.ecvoltpx)
+    f.ecvoltpy[:] = where(equal(f.ecnumbpy,condid),ecvpy,f.ecvoltpy)
+    f.ecvoltpz[:] = where(equal(f.ecnumbpz,condid),ecvpz,f.ecvoltpz)
+  if f.nocndbdy > 0:
+    f.ocvolt[:]   = where(equal(f.ocnumb  ,condid),ocvmx,f.ocvolt)
+    f.ocvoltmx[:] = where(equal(f.ocnumbmx,condid),ocvmx,f.ocvoltmx)
+    f.ocvoltmy[:] = where(equal(f.ocnumbmy,condid),ocvmy,f.ocvoltmy)
+    f.ocvoltmz[:] = where(equal(f.ocnumbmz,condid),ocvmz,f.ocvoltmz)
+    f.ocvoltpx[:] = where(equal(f.ocnumbpx,condid),ocvpx,f.ocvoltpx)
+    f.ocvoltpy[:] = where(equal(f.ocnumbpy,condid),ocvpy,f.ocvoltpy)
+    f.ocvoltpz[:] = where(equal(f.ocnumbpz,condid),ocvpz,f.ocvoltpz)
 
 #---------------------------------------------------------------------------
 
@@ -2700,17 +2758,20 @@ Sets the voltage on a conductor, given an id.
 #---------------------------------------------------------------------------
 def visualizeconductors(condid=None,color=None,mglevel=0,
                         scene=None,title="Conductor geometry",vrange=None,
-                        smooth=0):
+                        smooth=0,f3dcond=f3d,f3dmg=f3d):
   """
 Creates 3-D visualization of the conductors based off of the subgrid data.
-condid=None: optional conductor ID of object to draw
-color=None: color, in the form of a list, [r,g,b], e.g. [1,0,0] to get red
-mglevel=0: multigrid level to draw
-scene=None: scene to use - by default creates a new one.
+ - condid=None: optional conductor ID of object to draw
+ - color=None: color, in the form of a list, [r,g,b], e.g. [1,0,0] to get red
+ - mglevel=0: multigrid level to draw
+ - scene=None: scene to use - by default creates a new one.
             the scene is returned by the function
-title="Conductor geometry": window title
-vrange=None: range of each dimension - used to scale size of image, in form
+ - title="Conductor geometry": window title
+ - vrange=None: range of each dimension - used to scale size of image, in form
              [x,y,z]. e.g. to decrease z by 10, use [1,1,10]
+ - smooth=0: not yet supported
+ - f3dcond=f3d,f3dmg=f3d: allows alternate conductor to be visualized other
+                       than the fortran based ones
 
 Returns the scene use to draw the image
   """
@@ -2730,50 +2791,50 @@ Returns the scene use to draw the image
   nz = w3d.nz
 
   # --- Get conductors
-  ie = f3d.ecstart[mglevel  ] - 1
-  io = f3d.ocstart[mglevel  ] - 1
-  ne = f3d.ecstart[mglevel+1] - 1
-  no = f3d.ocstart[mglevel+1] - 1
+  ie = f3dcond.ecstart[mglevel  ] - 1
+  io = f3dcond.ocstart[mglevel  ] - 1
+  ne = f3dcond.ecstart[mglevel+1] - 1
+  no = f3dcond.ocstart[mglevel+1] - 1
   if condid is None:
     # --- Get all conductors
-    iecndx = f3d.iecndx[ie:ne]
-    iecndy = f3d.iecndy[ie:ne]
-    iecndz = f3d.iecndz[ie:ne]
-    ecdelmx = f3d.ecdelmx[ie:ne]
-    ecdelpx = f3d.ecdelpx[ie:ne]
-    ecdelmy = f3d.ecdelmy[ie:ne]
-    ecdelpy = f3d.ecdelpy[ie:ne]
-    ecdelmz = f3d.ecdelmz[ie:ne]
-    ecdelpz = f3d.ecdelpz[ie:ne]
-    iocndx = f3d.iocndx[io:no]
-    iocndy = f3d.iocndy[io:no]
-    iocndz = f3d.iocndz[io:no]
-    ocdelmx = f3d.ocdelmx[io:no]
-    ocdelpx = f3d.ocdelpx[io:no]
-    ocdelmy = f3d.ocdelmy[io:no]
-    ocdelpy = f3d.ocdelpy[io:no]
-    ocdelmz = f3d.ocdelmz[io:no]
-    ocdelpz = f3d.ocdelpz[io:no]
+    iecndx = f3dcond.iecndx[ie:ne]
+    iecndy = f3dcond.iecndy[ie:ne]
+    iecndz = f3dcond.iecndz[ie:ne]
+    ecdelmx = f3dcond.ecdelmx[ie:ne]
+    ecdelpx = f3dcond.ecdelpx[ie:ne]
+    ecdelmy = f3dcond.ecdelmy[ie:ne]
+    ecdelpy = f3dcond.ecdelpy[ie:ne]
+    ecdelmz = f3dcond.ecdelmz[ie:ne]
+    ecdelpz = f3dcond.ecdelpz[ie:ne]
+    iocndx = f3dcond.iocndx[io:no]
+    iocndy = f3dcond.iocndy[io:no]
+    iocndz = f3dcond.iocndz[io:no]
+    ocdelmx = f3dcond.ocdelmx[io:no]
+    ocdelpx = f3dcond.ocdelpx[io:no]
+    ocdelmy = f3dcond.ocdelmy[io:no]
+    ocdelpy = f3dcond.ocdelpy[io:no]
+    ocdelmz = f3dcond.ocdelmz[io:no]
+    ocdelpz = f3dcond.ocdelpz[io:no]
   else:
     # --- Get only points matching the specified condid
-    iecndx = compress(f3d.ecnumb[ie:ne]==condid,f3d.iecndx[ie:ne])
-    iecndy = compress(f3d.ecnumb[ie:ne]==condid,f3d.iecndy[ie:ne])
-    iecndz = compress(f3d.ecnumb[ie:ne]==condid,f3d.iecndz[ie:ne])
-    ecdelmx = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelmx[ie:ne])
-    ecdelpx = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelpx[ie:ne])
-    ecdelmy = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelmy[ie:ne])
-    ecdelpy = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelpy[ie:ne])
-    ecdelmz = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelmz[ie:ne])
-    ecdelpz = compress(f3d.ecnumb[ie:ne]==condid,f3d.ecdelpz[ie:ne])
-    iocndx = compress(f3d.ocnumb[io:no]==condid,f3d.iocndx[io:no])
-    iocndy = compress(f3d.ocnumb[io:no]==condid,f3d.iocndy[io:no])
-    iocndz = compress(f3d.ocnumb[io:no]==condid,f3d.iocndz[io:no])
-    ocdelmx = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelmx[io:no])
-    ocdelpx = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelpx[io:no])
-    ocdelmy = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelmy[io:no])
-    ocdelpy = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelpy[io:no])
-    ocdelmz = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelmz[io:no])
-    ocdelpz = compress(f3d.ocnumb[io:no]==condid,f3d.ocdelpz[io:no])
+    iecndx = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.iecndx[ie:ne])
+    iecndy = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.iecndy[ie:ne])
+    iecndz = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.iecndz[ie:ne])
+    ecdelmx = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.ecdelmx[ie:ne])
+    ecdelpx = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.ecdelpx[ie:ne])
+    ecdelmy = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.ecdelmy[ie:ne])
+    ecdelpy = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.ecdelpy[ie:ne])
+    ecdelmz = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.ecdelmz[ie:ne])
+    ecdelpz = compress(f3dcond.ecnumb[ie:ne]==condid,f3dcond.ecdelpz[ie:ne])
+    iocndx = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.iocndx[io:no])
+    iocndy = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.iocndy[io:no])
+    iocndz = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.iocndz[io:no])
+    ocdelmx = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.ocdelmx[io:no])
+    ocdelpx = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.ocdelpx[io:no])
+    ocdelmy = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.ocdelmy[io:no])
+    ocdelpy = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.ocdelpy[io:no])
+    ocdelmz = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.ocdelmz[io:no])
+    ocdelpz = compress(f3dcond.ocnumb[io:no]==condid,f3dcond.ocdelpz[io:no])
 
   nn = len(iecndx) + len(iocndx)
   if nn == 0: return
@@ -2793,12 +2854,12 @@ Returns the scene use to draw the image
                                      vrange=vrange)
 
   gridmin = array([w3d.xmmin,w3d.ymmin,w3d.zmmin])
-  griddd = array([w3d.dx*f3d.mglevelslx[mglevel],
-                  w3d.dy*f3d.mglevelsly[mglevel],
-                  w3d.dz*f3d.mglevelslz[mglevel]])
-  gridnn = array([f3d.mglevelsnx[mglevel],
-                  f3d.mglevelsny[mglevel],
-                  f3d.mglevelsnz[mglevel]])
+  griddd = array([w3d.dx*f3dmg.mglevelslx[mglevel],
+                  w3d.dy*f3dmg.mglevelsly[mglevel],
+                  w3d.dz*f3dmg.mglevelslz[mglevel]])
+  gridnn = array([f3dmg.mglevelsnx[mglevel],
+                  f3dmg.mglevelsny[mglevel],
+                  f3dmg.mglevelsnz[mglevel]])
     
   # --- This fortran routine generates the triangulated surface. It was
   # --- converted to fortran for speed.
