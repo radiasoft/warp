@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.44 2002/11/07 00:52:22 dave Exp $"
+warp_version = "$Id: warp.py,v 1.45 2003/01/31 14:37:56 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -368,7 +368,7 @@ package. Only w3d and wxy have field solves defined.
 
 # --- Dump command
 def dump(filename=None,suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
-         ff=None,varsuffix=None,histz=0,verbose=false):
+         ff=None,varsuffix=None,histz=0,resizeHist=1,verbose=false):
   """
 Creates a dump file
   - filename=(runid+'%06d'%top.it+suffix+'.dump')
@@ -382,9 +382,11 @@ Creates a dump file
   - ff=None: Optional file object. When passed in, write to that file instead
              of creating a new one. Note that the inputted file object must be
              closed by the user.
-  - varsuffix=None Suffix to add to the variable names. If none is specified,
-                   the suffix '@pkg' is used, where pkg is the package name
-                   that the variable is in.
+  - varsuffix=None: Suffix to add to the variable names. If none is specified,
+                    the suffix '@pkg' is used, where pkg is the package name
+                    that the variable is in.
+  - resizeHist=1: When true, resize history arrays so that unused locations
+                  are removed.
   """
   timetemp = wtime()
   if not filename:
@@ -407,6 +409,10 @@ Creates a dump file
     for l in __main__.__dict__.keys():
       if l not in initial_global_dict_keys:
         interpreter_variables.append(l)
+  # --- Resize history arrays if requested.
+  if resizeHist:
+    top.lenhist = top.jhist
+    gchange("Hist")
   # --- Call routine to make data dump
   if onefile and lparallel:
     paralleldump(filename,attr,interpreter_variables,serial=serial,
