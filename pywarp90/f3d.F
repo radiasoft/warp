@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.19 $, $Date: 2002/01/17 22:51:02 $
+c@(#) File F3D.M, version $Revision: 3.20 $, $Date: 2002/01/22 17:14:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1359,6 +1359,9 @@ c=============================================================================
       subroutine vpois2d(iwhich,a,ak,kxsq,kysq,attx,atty,filt,lx,ly,nx,ny,
      &                   w,xywork,ibc,l2symtry,l4symtry)
       use Constant
+#ifdef MPIPARALLEL
+      use Parallel
+#endif
       integer(ISZ):: iwhich,nx,ny,ibc
       real(kind=8)::  a(0:nx, 0:ny)
       real(kind=8):: ak(0:nx, 0:ny)
@@ -1420,12 +1423,28 @@ c        The j=nx (odd-even) term is absent because the boundary pts are zero.
 c
 c  This routine was inspired by Langdon's scalar sine-periodic solver "sppois"
 c-----------------------------------------------------------------------------
+c The parallel version works by having subgroups of processors that
+c cooperate on the calculation. Each processor on the group works on one
+c chunk of the array, and then a gatherall is done to redistribute the
+c result among all of the processors in the group. The coding is organized
+c so that during a complete field solve, the number of gathers is
+c minimized.  Note - if only one operation is done, i.e.  iwhich = 2, 3,
+c or 4, then the data returned has not been gathered, so none of the
+c processors has the complete result. The one exception is the inverse
+c FFT, iwhich = 5, which always calls the gather since it is the last
+c operation anyway.
+c The number of processors in each group is set by the variable
+c xynsubproc, which defaults to 16 (for the 16 processors per node on
+c NERSC's SP). The variable needs to be optimized through experimentation.
+c-----------------------------------------------------------------------------
 
 
       integer(ISZ):: iwxy,icmx,icpx,icmy,icpy,ikx,iky,ix,iy
       integer(ISZ):: icox,icoy,ikxmin,ikymin
+      integer(ISZ):: ixstart,ixend,iystart,iyend
       real(kind=8):: klast, kdxb2, kdyb2, kdx, kdy
       real(kind=8):: dx,dy,pib2,norm
+      real(kind=8):: atemp(0:ny,0:nx)
 
 c  Error checking; so far, only possible error is non-power-of-2 nx,ny
 
@@ -1457,6 +1476,22 @@ c  Minimum index of kxsq and kysq that is used
       if (l4symtry) ikxmin = 0
       ikymin = 1
       if (l2symtry .or. l4symtry) ikymin = 0
+
+c  Start and end of loops
+      ixstart = 0
+      ixend = nx-1
+      iystart = 0
+      iyend = ny-1
+#ifdef MPIPARALLEL
+      if (nx > xynsubproc) then
+        ixstart = mod(my_index,xynsubproc)*nx/xynsubproc
+        ixend = ixstart + nx/xynsubproc - 1
+      endif
+      if (ny > xynsubproc) then
+        iystart = mod(my_index,xynsubproc)*ny/xynsubproc
+        iyend = iystart + ny/xynsubproc - 1
+      endif
+#endif
 
 c ----------------------------------------------------------------------------
 c  For poisson equation, kxsq(ikx) is a discrete
@@ -1566,57 +1601,43 @@ c ----------------------------------------------------------------------------
 
         if (l4symtry) then
 c         --- factor of .5dx for cosqx and .5*dy for cosqy
-          norm = .25*dx*dy
-c         --- Normalize the array
-          do iy = 0, ny-1
-            do ix = 0, nx-1
-              a(ix,iy) = a(ix,iy) * norm
-            enddo
-          enddo
-c         --- Invoke the transform routines for the current z-slice
-          do iy = 0, ny-1,2
-            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,-1)
-          enddo
-          do ix = 0, nx-1,2
-            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,-1)
-          enddo
-c         call cosqx(a(0,0),xywork,w(icox),nx,ny,-1)
-c         call cosqy(a(0,0),xywork,w(icoy),nx,ny,-1)
+          norm = 0.25*dx*dy
         else if (l2symtry) then
 c         --- factor of .5*dy for cosqy
-          norm = .5*dx*dy
-c         --- Normalize the array
-          do iy = 0, ny-1
-            do ix = 0, nx-1
-              a(ix,iy) = a(ix,iy) * norm
-            enddo
+          norm = 0.5*dx*dy
+        else
+          norm = dx*dy
+        endif
+
+c       --- Normalize the array
+        do iy = iystart,iyend
+          a(:,iy) = a(:,iy)*norm
+        enddo
+
+c       --- Invoke the transform routines for the current z-slice
+        if (l4symtry) then
+          do iy = iystart,iyend,2
+            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,-1)
           enddo
-c         --- Invoke the transform routines for the current z-slice
-          do iy = 0, ny-1,2
+        else
+          do iy = iystart,iyend,2
             call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
           enddo
-          do ix = 0, nx-1,2
+        endif
+
+#ifdef MPIPARALLEL
+        if (ny > xynsubproc)
+     &    call parallelgatherall(a,(1+nx)*ny/xynsubproc,xynsubproc,1)
+#endif
+
+        if (l4symtry .or. l2symtry) then
+          do ix = ixstart,ixend,2
             call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,-1)
           enddo
-c         call vsftx(a(0,0),xywork,w(icpx),w(icmx),nx,ny,0)
-c         call cosqy(a(0,0),xywork,w(icoy),nx,ny,-1)
         else
-          norm = dx * dy
-c         --- Normalize the array
-          do iy = 0, ny-1
-            do ix = 0, nx-1
-              a(ix,iy) = a(ix,iy) * norm
-            enddo
-          enddo
-c         --- Invoke the transform routines for the current z-slice
-          do iy = 0, ny-1,2
-            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
-          enddo
-          do ix = 0, nx-1,2
+          do ix = ixstart,ixend,2
             call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
           enddo
-c         call vsftx ( a(0,0), xywork, w(icpx), w(icmx), nx, ny, 0)
-c         call vsfty ( a(0,0), xywork, w(icpy), w(icmy), nx, ny, 0)
         endif
 
       endif
@@ -1625,13 +1646,13 @@ c ----------------------------------------------------------------------------
 c  Apply k-space filter; attenuate mode-by-mode
 c ----------------------------------------------------------------------------
 
-      if (iwhich <= 0 .or. iwhich == 3) then
+      if ((iwhich <= 0 .or. iwhich == 3) .and. maxval(abs(filt)) > 0.) then
 
-      do iky = ikymin, ny-1
-        do ikx = ikxmin, nx-1
-         ak(ikx,iky) = ak(ikx,iky) * attx(ikx) * atty(iky)
+        do iky = ikymin, ny-1
+          do ikx = ixstart,ixend
+           ak(ikx,iky) = ak(ikx,iky) * attx(ikx) * atty(iky)
+          enddo
         enddo
-      enddo
 
       endif
 
@@ -1641,11 +1662,11 @@ c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 4) then
 
-      do iky = ikymin, ny-1
-        do ikx = ikxmin, nx-1
-         ak(ikx,iky) = ak(ikx,iky) / ( kxsq(ikx) + kysq(iky) )
+        do iky = ikymin, ny-1
+          do ikx = ixstart,ixend
+           ak(ikx,iky) = ak(ikx,iky)/(kxsq(ikx) + kysq(iky))
+          enddo
         enddo
-      enddo
 
       endif
 
@@ -1655,81 +1676,63 @@ c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 5) then
 
+
+        if (l4symtry .or. l2symtry) then
+c         --- Invoke the inverse transform routines for the current z-slice
+          do ix = ixstart,ixend,2
+            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,1)
+          enddo
+        else
+          do ix = ixstart,ixend,2
+            call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
+          enddo
+        endif
+
+#ifdef MPIPARALLEL
+        if (nx > xynsubproc) then
+          atemp = transpose(a)
+          call parallelgatherall(atemp,(1+ny)*nx/xynsubproc,xynsubproc,1)
+          a = transpose(atemp)
+        endif
+#endif
+
+        if (l4symtry) then
+          do iy = iystart,iyend,2
+            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,1)
+          enddo
+        else
+          do iy = iystart,iyend,2
+            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
+          enddo
+        endif
+
         if (l4symtry) then
 c         --- factor of .25/lx for cosqx and .25/ly for cosqy
           norm = .0625/(lx*ly)
-c         --- Invoke the inverse transform routines for the current z-slice
-          do iy = 0, ny-1,2
-            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,1)
-          enddo
-          do ix = 0, nx-1,2
-            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,1)
-          enddo
-c         call cosqx(a(0,0),xywork,w(icox),nx,ny,1)
-c         call cosqy(a(0,0),xywork,w(icoy),nx,ny,1)
-c         --- set boundary elements to zero
-          do iy = 1, ny
-            a(nx,iy) = 0.
-          enddo
-          do ix = 1, nx-1
-            a(ix,ny) = 0.
-          enddo
-c         --- Normalize the array
-          do iy = 0, ny-1
-            do ix = 0, nx-1
-              a(ix,iy) = a(ix,iy) * norm
-            enddo
-          enddo
         else if (l2symtry) then
 c         --- factor of 2./lx for vsftx and .25/ly for cosqy
           norm = .5/(lx*ly)
-c         --- Invoke the inverse transform routines for the current z-slice
-          do iy = 0, ny-1,2
-            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
-          enddo
-          do ix = 0, nx-1,2
-            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,1)
-          enddo
-c         call vsftx ( a(0,0), xywork, w(icpx), w(icmx), nx, ny, 0)
-c         call cosqy ( a(0,0), xywork, w(icoy), nx, ny, 1)
-c         --- set boundary elements to zero
-          do iy = 0, ny
-            a(0 ,iy) = 0.
-            a(nx,iy) = 0.
-          enddo
-          do ix = 1, nx-1
-            a(ix,ny) = 0.
-          enddo
-c         --- Normalize the array
-          do iy = 0, ny-1
-            do ix = 0, nx-1
-              a(ix,iy) = a(ix,iy) * norm
-            enddo
-          enddo
         else
-          norm = 4. / (lx * ly)
-c         --- Invoke the transform routines
-          do iy = 0, ny-1,2
-            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
-          enddo
-          do ix = 0, nx-1,2
-            call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
-          enddo
-c         call vsfty ( a(0,0), xywork, w(icpy), w(icmy), nx, ny, 0)
-c         call vsftx ( a(0,0), xywork, w(icpx), w(icmx), nx, ny, 0)
-c         --- Normalize the array, and set boundary elements to zero
-          do ix = 1, nx-1
-            a(ix,0 ) = 0.
-            a(ix,ny) = 0.
-          enddo
-          do iy = 1, ny-1
-            a(0 ,iy) = 0.
-            a(nx,iy) = 0.
-            do ix = 1, nx-1
-              a(ix,iy) = a(ix,iy) * norm
-            enddo
-          enddo
+          norm = 4./(lx*ly)
         endif
+
+        a(nx,:) = 0.
+        a(:,ny) = 0.
+        if (.not. l4symtry) then
+          a(0,:) = 0.
+        endif
+        if (.not. l2symtry .and. .not. l4symtry) then
+          a(:,0) = 0.
+        endif
+
+        do iy = iystart,iyend
+          a(:,iy) = a(:,iy)*norm
+        enddo
+
+#ifdef MPIPARALLEL
+        if (ny > xynsubproc)
+     &    call parallelgatherall(a,(1+nx)*ny/xynsubproc,xynsubproc,1)
+#endif
 
       endif
 
