@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.75 $, $Date: 2004/08/24 23:35:51 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.76 $, $Date: 2004/09/18 04:09:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -240,11 +240,11 @@ c       --- correction form since it is operating on the error.
      &                  0,localbounds,mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -271,11 +271,11 @@ c       --- those planes are only set with the error of phi.
           if (localbounds(4) == 2) phi(:,:,-1) = phi(:,:,nz-1)
           if (localbounds(5) == 2) phi(:,:,nz+1) = phi(:,:,1)
 #else
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,
+          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,
+          call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,-1,0,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
@@ -479,11 +479,11 @@ c       --- Get the residual on the current grid.
      &                mglevel,localbounds,mgparam,mgform,.false.,
      &                lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -608,7 +608,7 @@ c         --- Add in resulting error.
      &                  nxcoarse,nycoarse,nzcoarse,phicoarse,localbounds,
      &                  lparity,rparity)
 #ifdef MPIPARALLEL
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -1079,11 +1079,11 @@ c     --- do loop to cover even and odd points
         if (bounds(4) == 2) phi(:,:,-1) = phi(:,:,nz-1)
         if (bounds(5) == 2) phi(:,:,nz:nz+1) = phi(:,:,0:1)
 #else
-        call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,
+        call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
-        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,
+        call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,1,0,
      &                              my_index,nslaves,izfsslave,
      &                              whosendingleft,whosendingright)
 #endif
@@ -1093,7 +1093,7 @@ c     --- end of loop over even and odd points
 
 #ifdef MPIPARALLEL
 c         --- Exchange phi in the z guard planes
-          call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,
+          call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,-1,0,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
@@ -2264,6 +2264,7 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(4) == 0) izmin = 1
       if (bounds(5) == 0) izmax = nz-1
 
+      res = 0.
 c     --- Calculate the residual.
 !$OMP DO
       do iz=izmin,izmax
