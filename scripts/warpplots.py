@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.91 2003/01/15 19:44:01 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.92 2003/01/15 20:21:05 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -897,8 +897,13 @@ Note that either the x and y coordinates or the grid must be passed in.
   if surface and me == 0 and nx > 1 and ny > 1:
     try:
       import VPythonobjects
-      vo = VPythonobjects.VisualMesh(xmesh,ymesh,grid1)
-      vo.Display()
+      if type(color) != ListType: scolor = None
+      else:                       scolor = color
+      xrange = 1.5*max(abs(xmin),abs(xmax))
+      yrange = 1.5*max(abs(ymin),abs(ymax))
+      zrange = 1.5*maxnd(abs(grid1))
+      vo = VPythonobjects.VisualMesh(xmesh,ymesh,grid1,title=default_titlet,
+                                     color=scolor,vrange=(xrange,yrange,zrange))
       vpythonscenelist.append(vo.scene)
     except ImportError:
       pl3d.orient3()
