@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.33 2001/11/20 20:56:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.34 2001/12/06 18:42:37 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -87,14 +87,15 @@ top.jperev = top.echarge
 # --- Epsilon_0 calculated from speed of light and mu_0
 top.eps0 = 1/(top.mu0*top.clight*top.clight)
 # --- Create python versions of the constants
-amu     = top.amu
-clight  = top.clight
-echarge = top.echarge
-emass   = top.emass
-eps0    = top.eps0
-euler   = top.euler
-jperev  = top.jperev
-mu0     = top.mu0
+amu       = top.amu
+clight    = top.clight
+echarge   = top.echarge
+emass     = top.emass
+eps0      = top.eps0
+euler     = top.euler
+jperev    = top.jperev
+mu0       = top.mu0
+boltzmann = top.boltzmann
 
 #=============================================================================
 # --- Setup and make initial printout of the versions of the packages.
