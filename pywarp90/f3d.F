@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.80 $, $Date: 2003/08/22 22:47:25 $
+c@(#) File F3D.M, version $Revision: 3.81 $, $Date: 2003/08/26 23:51:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6022,8 +6022,8 @@ c       --- plate on left hand side of quad
         endif
 
 c       --- plate on right hand side of quad
-        if ((islctype(iz) == 5 .and. islctype(iz-1) /= 5) .or.
-     &      (iz == -1 .and. islctype(iz) == 5)) then
+        if ((iz == -1 .and. islctype(iz) == 5) .or.
+     &      (islctype(iz) == 5 .and. islctype(iz-1) /= 5)) then
 
           if (quadgp(iq) > 0.) then
             vvv = slicvy(iz) + qdelvyp(iq)
