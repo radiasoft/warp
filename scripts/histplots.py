@@ -1,6 +1,6 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.4 2001/02/02 17:48:29 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.5 2001/02/05 21:01:44 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -25,6 +25,7 @@ hpbasictext = """
   - marker=None: Marker to place on curve
   - msize=1.0: Marker size
   - width=1.0: Line width
+  - linetype='solid': Line type
   - titles=1: When false, no titles are printed
   - plsysval=1: Plot system to make plot in (quadrant plots for example)
     see work.gs for the plot system values."""
@@ -55,6 +56,8 @@ hpbasicconttext = (
   - marker=None: Marker to place on curve
   - msize=1.0: Marker size
   - titles=1: Line width
+  - width=1.0: Line width
+  - linetype='solid': Line type
   - levs=None: When false, no titles are printed
   - filled=0: When true, plot filled contours""")
 hpzarraytext = (
@@ -85,13 +88,13 @@ only required argument of course is the data to be plotted.
                 'lnormalized':0,'istart':0,'iend':top.jhist,'istep':1,
                 'lhzbeam':1,'lvsz':1,'logplot':0,
                 'color':'fg','marks':0,'marker':None,'msize':1.0,'titles':1,
-                'plsysval':1,'width':1.}
+                'plsysval':1,'width':1.,'linetype':'solid'}
   kwvalues = kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
   badargs = checkarguments(kwvalues,kwdefaults)
   if badargs: raise "bad argument ",string.join(badargs.keys())
+  for arg in kwvalues.keys(): exec(arg+" = kwvalues['"+arg+"']")
 
   # --- Now complete the setup
   if lnormalized:
@@ -124,7 +127,7 @@ only required argument of course is the data to be plotted.
 
   # --- Now actually make the plot after all of that ado.   
   pla(transpose(oord),absc,color=color,msize=msize,marks=marks,marker=marker,
-      width=width)
+      width=width,linetype=linetype)
   if titles: ptitles(titlet,titleb,titlel,titler,plsysval)
   limits(xmin,xmax,ymin,ymax)
   if logplot: logxy(0,0)
@@ -168,7 +171,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
                 'istart':0,'iend':top.jhist,'istep':None,'jstart':0,
                 'jend':top.nzzarr,'jstep':None,'lhzbeam':1,'logplot':0,
                 'color':'fg','marks':0,'marker':None,'msize':1.0,
-                'titles':1,'levs':10,'filled':0}
+                'titles':1,'levs':10,'filled':0,'width':1.,'linetype':'solid'}
   kwvalues = kwdefaults.copy()
   kwvalues.update(kw)
   kwvalues.update(kwdict)
@@ -223,7 +226,8 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   if filled:
     plotfc(oord,absc,oordmesh[jstart:jend+1:jstep],contours=levs)
   else:
-    plotc(oord,absc,oordmesh[jstart:jend+1:jstep],color=color,levs=levs)
+    plotc(oord,absc,oordmesh[jstart:jend+1:jstep],color=color,levs=levs,
+          width=width,linetype=linetype)
   if titles: ptitles(titlet,titleb,titlel,titler)
   if xmin == 'e': xmin = min(oordmesh[jstart:jend+1:jstep])
   if xmax == 'e': xmax = max(oordmesh[jstart:jend+1:jstep])
