@@ -1,4 +1,4 @@
-!     Last change:  JLV  12 Jun 2003    1:09 pm
+!     Last change:  JLV  19 Jun 2003    9:16 am
 #include "top.h"
 
 module multigrid_common
@@ -7,7 +7,6 @@ USE Constant
 USE multigrid_common_base
 USE PSOR3d, ONLY:boundxy,bound0,boundnz
 USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,Zgeom,l2symtry,l4symtry
-USE Picglb, ONLY:zgrid
 #ifdef MPIPARALLEL
   use Parallel
   use mpirz
@@ -5482,8 +5481,8 @@ end subroutine srfrvinoutrz
 
 subroutine setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz, &
                       l2symtry_in,l4symtry_in)
+USE multigridrz
 use Conductor3d
-USE multigridrz, zgridmod => zgrid
 integer(ISZ):: nx,ny,nz
 real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
 logical(ISZ):: l2symtry_in,l4symtry_in
@@ -6021,7 +6020,6 @@ end subroutine gtlchgrz
 subroutine dep_rho_rz(is,rho,nr,nz,dr,dz,xmin,zmin)
 USE Constant
 use Particles
-USE Picglb, ONLY:zgrid
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: is, nr, nz
@@ -6053,7 +6051,7 @@ LOGICAL(ISZ) :: l_sym
    do i = ins(is), ins(is) + nps(is) - 1
     IF(uzp(i)==0.) cycle
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr
-    zpos = (zp(i)-zmin-zgrid)*invdz
+    zpos = (zp(i)-zmin)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6071,7 +6069,7 @@ LOGICAL(ISZ) :: l_sym
    do i = ins(is), ins(is) + nps(is) - 1
     IF(uzp(i)==0.) cycle
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*invdr
-    zpos = (zp(i)-zmin-zgrid)*invdz
+    zpos = (zp(i)-zmin)*invdz
     jn = 1+INT(rpos)
     ln = 1+INT(zpos)
     ddr = rpos-REAL(jn-1)
@@ -6097,14 +6095,14 @@ END SUBROUTINE dep_rho_rz
 !     ******************************************************************
 
 
-subroutine rhoweightrz(xp,yp,zp,uzp,np,q,nr,nz,dr,dz,xmin,zmin)
+subroutine rhoweightrz(xp,yp,zp,uzp,np,q,nr,nz,dr,dz,zgrid)
 USE multigridrz
 USE FRZmgrid, ONLY: mgridrz_xfact, mgridrz_yfact
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp
-REAL(8), INTENT(IN) :: q, dr, dz, zmin, xmin
+REAL(8), INTENT(IN) :: q, dr, dz, zgrid
 
 REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr), invvolxz
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
@@ -6116,13 +6114,13 @@ IF(np==0) return
 if(mgridrz_deform) then
   call rhoweightrz_deform(xp(1),yp(1),zp(1),uzp(1),np, &
                           q,nr,nz,dr,dz, &
-                          mgridrz_xfact, mgridrz_yfact)
+                          mgridrz_xfact, mgridrz_yfact, zgrid)
   return
 END if
 
 IF(solvergeom==RZgeom) then
  IF(ngrids>1 .and. .not. l_dep_rho_on_base) then
-  call rhoweightrz_meshref(xp,yp,zp,uzp,np,q)
+  call rhoweightrz_meshref(xp,yp,zp,uzp,np,q, zgrid)
  else
   invdr = 1._8/dr
   invdz = 1._8/dz
@@ -6174,7 +6172,7 @@ else ! IF(solvergeom==XZgeom) then
    l_sym = .false.
  END if
  IF(ngrids>1) then
-!  call rhoweightrznew(xp,yp,zp,uzp,np,q)
+!  call rhoweightrznew(xp,yp,zp,uzp,np,q,zgrid)
   write(o_line,*) 'mesh refinement not yet supported in XZ.'
   call remark(trim(o_line))
   stop
@@ -6190,7 +6188,7 @@ else ! IF(solvergeom==XZgeom) then
     IF(l_sym) then
       rpos = abs(xp(i))*invdr
     else
-      rpos = (xp(i)-xmin)*invdr
+      rpos = (xp(i)-basegrid%xmin)*invdr
     END if
     zpos = (zp(i)-basegrid%zminp-zgrid)*invdz
     jn = 1+INT(rpos)
@@ -6223,14 +6221,14 @@ END if
 return
 END SUBROUTINE RHOWEIGHTRZ
 
-subroutine rhoweightrz_weights(xp,yp,zp,uzp,w,np,q,nr,nz,dr,dz,xmin,zmin)
+subroutine rhoweightrz_weights(xp,yp,zp,uzp,w,np,q,nr,nz,dr,dz,zgrid)
 USE multigridrz
 USE Subtimers3d
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp, w
-REAL(8), INTENT(IN) :: q, dr, dz, zmin, xmin
+REAL(8), INTENT(IN) :: q, dr, dz, zgrid
 
 REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr), invvolxz, qw
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp
@@ -6240,7 +6238,7 @@ IF(np==0) return
 
 IF(solvergeom==RZgeom) then
  IF(ngrids>1 .and. .not. l_dep_rho_on_base) then
-  call rhoweightrz_meshref_weights(xp,yp,zp,uzp,w,np,q)
+  call rhoweightrz_meshref_weights(xp,yp,zp,uzp,w,np,q,zgrid)
  else
   invdr = 1._8/dr
   invdz = 1._8/dz
@@ -6309,7 +6307,7 @@ else ! IF(solvergeom==XZgeom) then
     IF(l_sym) then
       rpos = abs(xp(i))*invdr
     else
-      rpos = (xp(i)-xmin)*invdr
+      rpos = (xp(i)-basegrid%xmin)*invdr
     END if
     zpos = (zp(i)-basegrid%zminp-zgrid)*invdz
     jn = 1+INT(rpos)
@@ -6343,7 +6341,7 @@ END if
 return
 END SUBROUTINE RHOWEIGHTRZ_weights
 
-subroutine rhoweightz(zp,uzp,np,q,nz,dz)
+subroutine rhoweightz(zp,uzp,np,q,nz,dz,zgrid)
 USE multigridrz
 implicit none
 
@@ -6351,7 +6349,7 @@ INTEGER(ISZ), INTENT(IN) :: np, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: zp, uzp
 REAL(8), INTENT(IN) :: q, dz
 
-REAL(8) :: zpos, ddz, oddz
+REAL(8) :: zpos, ddz, oddz, zgrid
 INTEGER(ISZ) :: i, ln, lnp, igrid
 REAL(8):: substarttime
 LOGICAL(ISZ) :: ingrid
@@ -6570,7 +6568,7 @@ REAL(8), DIMENSION(nz+1), INTENT(IN OUT) :: rho
 return
 end subroutine get_rho_z
 
-subroutine rhoweightrz_meshref(xp,yp,zp,uzp,np,q)
+subroutine rhoweightrz_meshref(xp,yp,zp,uzp,np,q,zgrid)
 USE multigridrz
 implicit none
 
@@ -6578,7 +6576,7 @@ INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp
 REAL(8), INTENT(IN) :: q
 
-REAL(8) :: rpos, zpos, ddr, ddz, oddr, oddz
+REAL(8) :: rpos, zpos, ddr, ddz, oddr, oddz, zgrid
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp, igrid
 LOGICAL(ISZ) :: ingrid
 TYPE(GRIDtype), pointer :: g
@@ -6639,13 +6637,13 @@ end do
   return
 END subroutine rhoweightrz_meshref
 
-subroutine rhoweightrz_meshref_weights(xp,yp,zp,uzp,wp,np,q)
+subroutine rhoweightrz_meshref_weights(xp,yp,zp,uzp,wp,np,q,zgrid)
 USE multigridrz
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp, wp
-REAL(8), INTENT(IN) :: q
+REAL(8), INTENT(IN) :: q, zgrid
 
 REAL(8) :: rpos, zpos, ddr, ddz, oddr, oddz, qw
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp, igrid
@@ -6755,14 +6753,14 @@ end subroutine reset_rzmgrid_rho
 !     *
 !     ******************************************************************
 
-subroutine rhoweightrz_deform(xp,yp,zp,uzp,np,q,nr,nz,dr,dz,xfact,yfact)
+subroutine rhoweightrz_deform(xp,yp,zp,uzp,np,q,nr,nz,dr,dz,xfact,yfact,zgrid)
 USE Constant
 USE multigridrz
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp
-REAL(8), INTENT(IN) :: q, dr, dz
+REAL(8), INTENT(IN) :: q, dr, dz, zgrid
 REAL(8), DIMENSION(0:nz+2), INTENT(INOUT) :: xfact,yfact
 
 REAL(8) :: invdr, invdz, rpos, zpos, ddr, ddz, oddr, oddz, invvol(0:nr)
@@ -7118,8 +7116,7 @@ end subroutine get_phip_from_phi
 
 #endif
 
-subroutine fieldweightrzold(xp,yp,zp,uzp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,calcselfe)
-USE Picglb, ONLY:zgrid
+subroutine fieldweightrzold(xp,yp,zp,uzp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,calcselfe,zgrid)
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -7127,7 +7124,7 @@ REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
 REAL(8), DIMENSION(1:2,0:nr,0:nz), INTENT(IN OUT) :: e
-REAL(8), INTENT(IN) :: dr, dz, zmin
+REAL(8), INTENT(IN) :: dr, dz, zmin, zgrid
 LOGICAL(ISZ), INTENT(IN) :: calcselfe
 
 REAL(8) :: invdr, invdz, rpos, zpos, invrpos, ddr, ddz, oddr, oddz, er
@@ -7208,13 +7205,14 @@ INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
   return
 end subroutine fieldweightrzold
 
-subroutine fieldweightrz(xp,yp,zp,uzp,ex,ey,ez,np)
+subroutine fieldweightrz(xp,yp,zp,uzp,ex,ey,ez,np,zgrid)
 USE multigridrz
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
+REAL(8) :: zgrid
 
 REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz, er
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
@@ -7331,13 +7329,14 @@ END if
   return
 end subroutine fieldweightrz
 
-subroutine fieldweightxz(xp,zp,uzp,ex,ez,np)
+subroutine fieldweightxz(xp,zp,uzp,ex,ez,np,zgrid)
 USE multigridrz
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, zp, uzp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ez
+REAL(8), INTENT(IN) :: zgrid
 
 REAL(8) :: rpos, zpos, invrpos, ddr, ddz, oddr, oddz
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
@@ -7460,13 +7459,14 @@ END if
   return
 end subroutine fieldweightxz
 
-subroutine fieldweightz(zp,uzp,ez,np)
+subroutine fieldweightz(zp,uzp,ez,np,zgrid)
 USE multigridrz
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: zp, uzp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ez
+REAL(8), INTENT(IN) :: zgrid
 
 REAL(8) :: zpos, ddz, oddz
 INTEGER(ISZ) :: i, l, ln, lnp, igrid
@@ -7548,16 +7548,15 @@ REAL(8) :: ddr, oddr, rpos
   return
 end subroutine calc_phi3d_from_phirz
 
-subroutine fieldweightrz_deform_old2(xp,yp,zp,uzp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin,xfact,yfact,calcphi,phi3d,selfe)
+subroutine fieldweightrz_deform_old2(xp,yp,zp,uzp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin,xfact,yfact,calcphi,phi3d,selfe,zgrid)
 USE Constant
-USE Picglb, ONLY:zgrid
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
-REAL(8), INTENT(IN) :: dr, dz, zmin
+REAL(8), INTENT(IN) :: dr, dz, zmin, zgrid
 REAL(8), DIMENSION(0:nz), INTENT(INOUT) :: xfact,yfact
 LOGICAL(ISZ) :: calcphi
 REAL(8), INTENT(INOUT) :: phi3d(0:nr,0:nr,-1:nz+1), selfe(3,0:nr,0:nr,0:nz)
@@ -7660,9 +7659,8 @@ endif
   return
 end subroutine fieldweightrz_deform_old2
 
-subroutine fieldweightrz_deform_old(xp,yp,zp,uzp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,xfact,yfact,calcselfe)
+subroutine fieldweightrz_deform_old(xp,yp,zp,uzp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,xfact,yfact,calcselfe,zgrid)
 USE Constant
-USE Picglb, ONLY:zgrid
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -7670,7 +7668,7 @@ REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp, uzp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: ex, ey, ez
 REAL(8), DIMENSION(0:nr,-1:nz+1), INTENT(IN) :: phi
 REAL(8), DIMENSION(1:2,0:nr,0:nz), INTENT(IN OUT) :: e
-REAL(8), INTENT(IN) :: dr, dz, zmin
+REAL(8), INTENT(IN) :: dr, dz, zmin, zgrid
 REAL(8), DIMENSION(0:nz), INTENT(INOUT) :: xfact,yfact
 LOGICAL(ISZ), INTENT(IN) :: calcselfe
 
@@ -7753,17 +7751,16 @@ INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp
 end subroutine fieldweightrz_deform_old
 
 !subroutine calcfact_deform(xp,yp,zp,np,dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
-subroutine calcfact_deform(dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
+subroutine calcfact_deform(dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws,zgrid)
 USE Constant
 USE Particles, ONLY: xp, yp, zp, uzp
 use FRZmgrid
-USE Picglb, ONLY:zgrid
 implicit none
 
 !INTEGER(ISZ), INTENT(IN) :: np, nz, ns
 INTEGER(ISZ), INTENT(IN) :: nz, ns
 !REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
-REAL(8), INTENT(IN) :: dz, zmin, ws(ns)
+REAL(8), INTENT(IN) :: dz, zmin, ws(ns), zgrid
 REAL(8), DIMENSION(0:nz+2), INTENT(INOUT) :: xfact, yfact
 INTEGER(ISZ), DIMENSION(ns), INTENT(IN) :: is, nps, ins
 
@@ -7822,13 +7819,14 @@ REAL(8) :: ddz, oddz, wddz, woddz, xrms, yrms, invdz, zpos, xp2, yp2
   return
 end subroutine calcfact_deform
 
-subroutine setphirz(np,xp,yp,zp,p)
+subroutine setphirz(np,xp,yp,zp,p,zgrid)
 USE multigridrz
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: xp, yp, zp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: p
+REAL(8), INTENT(IN) :: zgrid
 
 REAL(8) :: rpos, zpos, ddr, ddz, oddr, oddz
 INTEGER(ISZ) :: i, j, l, jn, ln, jnp, lnp, igrid
@@ -7892,13 +7890,14 @@ END if
   return
 end subroutine setphirz
 
-subroutine setphiz(np,zp,p)
+subroutine setphiz(np,zp,p,zgrid)
 USE multigridrz
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
 REAL(8), DIMENSION(np), INTENT(IN) :: zp
 REAL(8), DIMENSION(np), INTENT(IN OUT) :: p
+REAL(8), INTENT(IN) :: zgrid
 
 REAL(8) :: zpos, ddz, oddz
 INTEGER(ISZ) :: i, l, ln, lnp, igrid
@@ -7950,6 +7949,7 @@ subroutine setbnd_subgrid_to_inj_d()
 use multigridrz
 use InjectVars
 use InjectVars3d
+USE Picglb
 
 INTEGER(ISZ) :: ij, j, l, igrid, il
 REAL(8) :: rs, rc, r, z
