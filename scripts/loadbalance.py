@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.16 2001/09/04 21:21:09 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.17 2001/09/04 21:23:06 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -256,7 +256,7 @@ Returns an array of the same length which is which the relative length of each
 of the domains.
   """
   # --- Integrate weight, assuming linear variation between grid points
-  nz = len(weight)
+  nz = len(weight) - 1
   np = 0.5*weight[0] + sum(weight[1:-1]) + 0.5*weight[-1]
   npperpe = 1.*np/npes
 
@@ -279,18 +279,21 @@ of the domains.
       delta = 0.
       npint = npint + 0.5*(weight[iz]+weight[iz+1])
       iz = iz + 1
-      if iz == nz: break
-    if iz == nz: break
+      if iz == nz+1: break
+    if iz == nz+1: break
     # --- Add the last little bit to get to exactly npperpe.
+    delta1 = delta
     a = 0.5*weight[iz] - 0.5*weight[iz+1]
     b = weight[iz]
-    c = weight[iz]*(delta - 0.5*delta**2) + 0.5*weight[iz+1]*delta**2 + \
+    c = weight[iz]*(delta1 - 0.5*delta1**2) + 0.5*weight[iz+1]*delta1**2 + \
         npperpe - npint
     if b != 0.:
       delta = 2.*c/(sqrt(b**2 - 4.*a*c) + b)
     else:
       delta = sqrt(-c/a)
-    zslave[ip] = zslave[ip] + delta
+    #npint = npint + weight[iz]*((delta-delta1) + 0.5*(delta1**2-delta**2)) + \
+    #                weight[iz+1]*0.5*(delta**2 - delta1**2)
+    zslave[ip] = zslave[ip] + delta - delta1
 
   # --- The last processor gets everything left over
   zslave[-1] = nz - sum(zslave)
