@@ -6,7 +6,7 @@ VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
 from pyOpenDX import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.19 2004/11/04 19:22:29 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.20 2004/11/24 22:52:03 jlvay Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -136,8 +136,8 @@ class VisualModel(Visualizable):
         n = 2
         p = zeros((n,3),'d')
         p[:,0] = [w3d.xmmin,w3d.xmmax]
-        p[:,1] = [w3d.xmmin,w3d.xmmax]
-        p[:,2] = [w3d.xmmin,w3d.xmmax]
+        p[:,1] = [w3d.ymmin,w3d.ymmax]
+        p[:,2] = [w3d.zmmin,w3d.zmmax]
         dxp = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
         pyOpenDX.DXAddArrayData(dxp,0,n,p.astype(Float32))
         # --- Create a DX array for the data
@@ -277,7 +277,41 @@ class VisualModel(Visualizable):
 
   def Dot(self,v1,v2):
     return sum(array(v1)*array(v2))
-########################################################################
+
+  def SelectBox(self,xmin=None,xmax=None,ymin=None,ymax=None,zmin=None,zmax=None):
+    if xmin is None: 
+      if w3d.l4symtry or w3d.l2symtry:
+        xmin=-w3d.xmmax
+      else:
+        xmin=w3d.xmmin
+    if xmax is None: xmax=w3d.xmmax
+    if ymin is None: 
+      if w3d.l4symtry:
+        ymin=-w3d.ymmax
+      else:
+        ymin=w3d.ymmin
+    if ymax is None: ymax=w3d.ymmax
+    if zmin is None: zmin=w3d.zmmin
+    if zmax is None: zmax=w3d.zmmax
+    ntriangles = len(self.triangles)/3
+    at = array(self.triangles)
+    xt = at[:,0]
+    yt = at[:,1]
+    zt = at[:,2]
+    xin = where(bitwise_and(xt>=xmin,xt<=xmax),1,0)
+    yin = where(bitwise_and(yt>=ymin,yt<=ymax),1,0)
+    zin = where(bitwise_and(zt>=zmin,zt<=zmax),1,0)
+    tin = bitwise_and(bitwise_and(xin,yin),zin)
+    tin = sum(transpose(reshape(tin,[ntriangles,3])))
+    xt = reshape(xt,[ntriangles,3])
+    yt = reshape(yt,[ntriangles,3])
+    zt = reshape(zt,[ntriangles,3])
+    xt = ravel(compress(tin==3,xt,0))
+    yt = ravel(compress(tin==3,yt,0))
+    zt = ravel(compress(tin==3,zt,0))
+    self.triangles = transpose(reshape(concatenate([xt,yt,zt]),[3,shape(xt)[0]])).tolist()
+
+#########################################################################
 class VisualMesh (VisualModel):
   """
 xvalues, yvalues, zvalues: 2-D arrays containing the coordinates and data
