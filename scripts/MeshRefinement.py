@@ -2,6 +2,7 @@
 """
 from warp import *
 from multigrid import MultiGrid
+from pyOpenDX import Visualizable,DXCollection,viewboundingbox
 import __main__
 
 
@@ -27,7 +28,7 @@ class BlockOverlap:
     self.fullupper = fullupper
     self.notmine = notmine
 
-class MRBlock(MultiGrid):
+class MRBlock(MultiGrid,Visualizable):
   """
  - parent:
  - refinement=2:
@@ -743,4 +744,24 @@ be plotted.
     plg(self.rho[:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh)
     for child in self.children:
       child.plrhox(iy*child.refinement,iz*child.refinement)
+
+  def createdxobject(self,kwdict={},**kw):
+    """
+Create DX object drawing the object.
+  - withguards=1: when true, the guard cells are included in the bounding box
+    """
+    kw.update(kwdict)
+    withguards = kw.get('withguards',1)
+    xmin,xmax = self.xmmin,self.xmmax
+    ymin,ymax = self.ymmin,self.ymmax
+    zmin,zmax = self.zmmin,self.zmmax
+    if not withguards:
+      ng = self.nguard*self.refinement
+      xmin,xmax = xmin+ng*self.dx, xmax-ng*self.dx
+      ymin,ymax = ymin+ng*self.dy, ymax-ng*self.dy
+      zmin,zmax = zmin+ng*self.dz, zmax-ng*self.dz
+    dxlist = [viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax)]
+    for child in self.children:
+      dxlist.append(child.getdxobject(kwdict=kw))
+    self.dxobject = DXCollection(*dxlist)
 
