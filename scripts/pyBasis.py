@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.51 2004/02/03 23:56:38 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.52 2004/02/04 23:32:36 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -171,7 +171,7 @@ def arrayappend(x,a):
     y = zeros(xshape,x.typecode())
     y[0:xshape[0]-ashape[0]] = x
     y[xshape[0]-ashape[0]:] = a
-  elif len(xshape)>1 and len(ashape)==1 and xshape[-2]==ashape[0]:
+  elif len(xshape) == len(ashape)+1 and xshape[:-1] == ashape:
     xshape[-1] = xshape[-1] + 1
     y = zeros(xshape,x.typecode())
     y[...,0:-1] = x
