@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.43 2004/05/28 16:47:30 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.44 2004/07/02 23:16:20 jlvay Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -644,11 +644,14 @@ Constructor arguments:
       try:    f3d.lbuildquads = false
       except: pass
     elif currpkg == 'wxy':
-      # --- Make sure that fstype = 0 at this point, since fstype
-      # --- is set to the proper value by setboundary. This is done so that in
-      # --- case this is called before the generate and a user still is setting
-      # --- fstype=1 (or 2).
-      top.fstype = 0
+      if w3d.solvergeom==w3d.XYgeom:
+        top.fstype = 10
+      else:
+        # --- Make sure that fstype = 0 at this point, since fstype
+        # --- is set to the proper value by setboundary. This is done so that in
+        # --- case this is called before the generate and a user still is setting
+        # --- fstype=1 (or 2).
+        top.fstype = 0
       # --- Now make the call. This call is needed since it would noramally
       # --- be called at the beginning of the step, which has already passed.
       self.setboundary()
@@ -687,10 +690,11 @@ Constructor arguments:
     # --- during the generate.  This is done by the initialsetboundary
     # --- routine, which then removes itself from that list.
     currpkg = getcurrpkg()
-    if currpkg == 'wxy':
-      installbeforestep(self.setboundary)
-    elif currpkg == 'w3d':
+    if currpkg == 'w3d':
       installaddconductor(self.setboundary)
+    elif currpkg == 'wxy':
+      installbeforestep(self.setboundary)
+
   #----------------------------------------------------------------------------
   def setmatrix(self,m,v):
     if self.current == m: return
@@ -730,7 +734,9 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def nopipe(self,id,cm):
     currpkg = getcurrpkg()
-    if currpkg == 'wxy':
+    if currpkg == 'w3d' or (currpkg == 'wxy' and w3d.solvergeom==w3d.XYgeom):
+      return 0
+    elif currpkg == 'wxy':
       # --- Check if there is a matrix for this element
       if (len(cm) > id and cm[id] is None) or len(cm) < id+1:
         # --- If the list is too short, add some None's in.
@@ -739,15 +745,13 @@ Constructor arguments:
         cm[id] = self.getnomatrix()
       self.setmatrix(cm[id],0.)
       return 1
-    elif currpkg == 'w3d':
-      return 0
   #----------------------------------------------------------------------------
   def roundpipe(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
     currpkg = getcurrpkg()
-    if currpkg == 'wxy':
-      return self.roundpipexy(id,zs,ze,ap,ax,ay,ox,oy,cm)
-    elif currpkg == 'w3d':
+    if currpkg == 'w3d' or (currpkg == 'wxy' and w3d.solvergeom==w3d.XYgeom):
       return self.roundpipe3d(id,zs,ze,ap,ax,ay,ox,oy,cm)
+    elif currpkg == 'wxy':
+      return self.roundpipexy(id,zs,ze,ap,ax,ay,ox,oy,cm)
   #----------------------------------------------------------------------------
   def roundpipe3d(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
     if ze < w3d.zmmin+top.zbeam or zs > w3d.zmmax+top.zbeam: return 0
@@ -773,10 +777,10 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def quadrods(self,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy,cm):
     currpkg = getcurrpkg()
-    if currpkg == 'wxy':
-      return self.quadrodsxy(id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,ox,oy,cm)
-    elif currpkg == 'w3d':
+    if currpkg == 'w3d' or (currpkg == 'wxy' and w3d.solvergeom==w3d.XYgeom):
       return self.quadrods3d(id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy)
+    elif currpkg == 'wxy':
+      return self.quadrodsxy(id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,ox,oy,cm)
   #----------------------------------------------------------------------------
   def quadrods3d(self,id,zs,ze,ap,rr,rl,gl,gp,vx,vy,pa,pw,pr,ox,oy):
     zc = 0.5*(zs+ze)
@@ -876,6 +880,7 @@ in the celemid array. It returns each element only once.
   #----------------------------------------------------------------------------
   def setboundary(self):
     self.conductors = None
+    if w3d.solvergeom==w3d.XYgeom: del_conductors()
     # --- Go through each element type and chose the first one covers the
     # --- current location.
     #--------------------------------------------------------------------------
@@ -1082,7 +1087,7 @@ Save a class to the file filename.
   - filename
   """
   currpkg = getcurrpkg()
-  if currpkg != 'wxy': return
+  if currpkg != 'wxy' or (currpkg == 'wxy' and w3d.solvergeom==w3d.XYgeom):return
   # --- This is only do by the first processor on a parallel machine.
   if me == 0:
     ff = open(filename,'w')
@@ -1096,7 +1101,7 @@ Restore a class from the file filename.
 Returns the object
   """
   currpkg = getcurrpkg()
-  if currpkg != 'wxy': return
+  if currpkg != 'wxy' or (currpkg == 'wxy' and w3d.solvergeom==w3d.XYgeom):return
   ff = open(filename,'r')
   result = cPickle.load(ff)
   ff.close()
