@@ -1,4 +1,4 @@
-!     Last change:  JLV  28 Jul 2003    4:27 pm
+!     Last change:  JLV   6 Aug 2003    3:37 pm
 #include "top.h"
 
 module multigrid_common
@@ -4741,6 +4741,7 @@ INTEGER(ISZ) :: i, ic
     izlbnd = grid%izlbnd
     izrbnd = grid%izrbnd
     call solve_multigridrz(grid=grid, accuracy=accuracy, l_for_timing=.false.)
+
     IF(associated(grid%down)) call solve_mgridrz(grid%down,accuracy)
     IF(associated(grid%next)) call solve_mgridrz(grid%next,accuracy)
 
@@ -5385,15 +5386,16 @@ do iz=0,nzzarr
   izg = izg+1
 
   if (1 <= izg .and. izg <= nz+1) then
+   linechg(iz) = 0.
    do j = 1, basegrid%nr+1
-    linechg(iz) = basegrid%rho(j,izg)/(basegrid%invvol(j)*basegrid%dz)*(1. - wzg)
+    linechg(iz) = linechg(iz) + basegrid%rho(j,izg)/(basegrid%invvol(j)*basegrid%dz)*(1. - wzg)
    end do
   else
     linechg(iz) = 0.
   endif
   if (1 <= izg+1 .and. izg+1 <= nz+1) then
    do j = 1, basegrid%nr+1
-    linechg(iz) = linechg(iz) +  basegrid%rho(j,izg+1)/(basegrid%invvol(j)*basegrid%dz)*wzg
+    linechg(iz) = linechg(iz) + basegrid%rho(j,izg+1)/(basegrid%invvol(j)*basegrid%dz)*wzg
    end do
   endif
 
@@ -7451,18 +7453,12 @@ TYPE(BNDtype), POINTER :: b
     dz = 0.5*dz
     rmin = 0.
     zmin = b%zmin+INT((zinject(ij)-b%zmin)/b%dz)*b%dz
-    write(o_line,*) 'call add_grid'
-    call remark(trim(o_line))
-    write(o_line,*) 'nr = ',nr
-    call remark(trim(o_line))
-    write(o_line,*) 'nz = ',nz
-    call remark(trim(o_line))
-    write(o_line,*) 'dr = ',dr
-    call remark(trim(o_line))
-    write(o_line,*) 'dz = ',dz
-    call remark(trim(o_line))
-    write(o_line,*) 'zmin = ',zmin
-    call remark(trim(o_line))
+    write(o_line,*) 'call add_grid'; call remark(trim(o_line))
+    write(o_line,*) 'nr = ',nr;      call remark(trim(o_line))
+    write(o_line,*) 'nz = ',nz;      call remark(trim(o_line))
+    write(o_line,*) 'dr = ',dr;      call remark(trim(o_line))
+    write(o_line,*) 'dz = ',dz;      call remark(trim(o_line))
+    write(o_line,*) 'zmin = ',zmin;  call remark(trim(o_line))
     call add_grid(g,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z,.TRUE.)
     g => grids_ptr(ngrids)%grid
   end do
