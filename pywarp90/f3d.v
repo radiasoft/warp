@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.66 $, $Date: 2003/02/11 20:37:12 $
+#@(#) File F3D.V, version $Revision: 3.67 $, $Date: 2003/02/24 16:07:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.66 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.67 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -447,6 +447,10 @@ zroundedcylinderoutconductorf(rad:real,length:real,rad2:real,
 sphereconductorf(rad:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+coneconductorf(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 zconeconductorf(r_zmin:real,r_zmax:real,length:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
@@ -462,3 +466,16 @@ beamletplateconductorf(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+
+******** ConductorGeometryVisualization:
+maxtriangles integer/0/
+ntriangles integer /0/
+triangles(0:2,0:2,maxtriangles) _real
+normals(0:2,0:2,maxtriangles) _real
+getconductorfacets(nc:integer,icnd:integer,dels:real,
+                   gridn:integer,griddd:real,gridmin:real) subroutine
+getconductorsnewfacet(ix:integer,iy:integer,iz:integer,oo:integer,
+                      parity:integer,gridn:integer,iii:integer,nc:integer,
+                      dels:real,gridmin:real,griddd:real,pp:real,npp:integer)
+                      subroutine
+conductorsmoothshading() subroutine
