@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.3 $, $Date: 2001/04/30 20:06:21 $
+c@(#) File WXY.M, version $Revision: 3.4 $, $Date: 2001/05/15 01:49:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -790,38 +790,7 @@ c     --- "right" end of velocity advance step
       zr = zbeam + vz * dtr
 
 c     --- handle quads
-      if (quads) then
-c        --- "left" end of velocity advance step
-         fl = 0.
-         if (zl >= cquadzs(j) .and. zl < cquadze(j)) fl = 1.
-c        --- "right" end of velocity advance step
-         fr = 0.
-         if (zr >= cquadzs(j) .and. zr < cquadze(j)) fr = 1.
-c        --- residence fraction
-         frac = fl
-         if (fl > fr) frac = (cquadze(j)-zl) * vzi*dti
-         if (fr > fl) frac = (zr-cquadzs(j)) * vzi*dti
-c        --- set the field if inside a quad
-         if (frac > 0.) then
-           do ip = 1, np
-              xpmqoff  = xp(ip) - cqoffx(j)
-              ypmqoff  = yp(ip) - cqoffy(j)
-              bx(ip) = bx(ip) + cquaddb(j) * frac * ypmqoff
-              by(ip) = by(ip) + cquaddb(j) * frac * xpmqoff
-              ex(ip) = ex(ip) + cquadde(j) * frac * xpmqoff
-              ey(ip) = ey(ip) - cquadde(j) * frac * ypmqoff
-              if (dodec .ne. 0.) then
-                ex(ip) = ex(ip) + dodec*cquadde(j)*frac*
-     &                   (6.*xpmqoff**5 - 60.*xpmqoff**3*ypmqoff**2 + 
-     &                   30.*xpmqoff*ypmqoff**4)
-                ey(ip) = ey(ip) - dodec*cquadde(j)*frac*
-     &                   (6.*ypmqoff**5 - 60.*ypmqoff**3*xpmqoff**2 + 
-     &                   30.*ypmqoff*xpmqoff**4)
-              endif
-           enddo
-         endif
-      endif
-
+      call applyquad(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,ex,ey,bx,by)            
 c     --- handle dipos 
       if (dipos) then
 c        --- find points of entry/exit for "nearest" dipole
