@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.130 $, $Date: 2004/11/16 00:40:22 $
+c@(#) File DTOP.F, version $Revision: 3.131 $, $Date: 2004/11/19 22:16:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -647,7 +647,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.130 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.131 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1116,8 +1116,8 @@ c         --- find location on grid
           gh = (uxp(ip)/uzp(ip) - xp(ip)*slope - hmin)*dhi
 
 c         --- if within grid, accumulate
-          if (gw >= 0. .and. gw < nw .and.
-     &        gh >= 0. .and. gh < nh) then
+          if (gw >= 0. .and. gw <= nw .and.
+     &        gh >= 0. .and. gh <= nh) then
             iw = int(gw)
             ih = int(gh)
             ww = gw - iw
@@ -1243,7 +1243,7 @@ c       --- find location on grid
         gx = (x(ip) - xmin)*dxi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx < nx) then
+        if (0. <= gx .and. gx <= nx) then
           ix = int(gx)
           wx = gx - ix
           z(ip) = grid(ix  )*(1. - wx) + grid(ix+1)*wx
@@ -1492,8 +1492,8 @@ c       --- find location on grid
         gy = (y(ip) - ymin)*dyi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx < nx .and.
-     &      0. <= gy .and. gy < ny) then
+        if (0. <= gx .and. gx <= nx .and.
+     &      0. <= gy .and. gy <= ny) then
           ix = int(gx)
           iy = int(gy)
           wx = gx - ix
@@ -1532,8 +1532,8 @@ c       --- find location on grid
         gy = (y(ip) - ymin)*dyi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx < nx .and.
-     &      0. <= gy .and. gy < ny) then
+        if (0. <= gx .and. gx <= nx .and.
+     &      0. <= gy .and. gy <= ny) then
           ix = nint(gx)
           iy = nint(gy)
           z(ip) = grid(ix,iy)
@@ -1719,9 +1719,9 @@ c       --- find location on grid, taking into account any symmetries.
         gz = (z(ip) - zmin)*dzi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx < nx .and.
-     &      0. <= gy .and. gy < ny .and.
-     &      0. <= gz .and. gz < nz) then
+        if (0. <= gx .and. gx <= nx .and.
+     &      0. <= gy .and. gy <= ny .and.
+     &      0. <= gz .and. gz <= nz) then
           ix = int(gx)
           iy = int(gy)
           iz = int(gz)
@@ -1787,9 +1787,9 @@ c       --- find location on grid, taking into account any symmetries.
         gz = (z(ip) - zmin - zgrid)*dzi
 
 c       --- if within grid, gather
-        if (0. <= gx .and. gx < nx .and.
-     &      0. <= gy .and. gy < ny .and.
-     &      0. <= gz .and. gz < nz) then
+        if (0. <= gx .and. gx <= nx .and.
+     &      0. <= gy .and. gy <= ny .and.
+     &      0. <= gz .and. gz <= nz) then
           ix = nint(gx)
           iy = nint(gy)
           iz = nint(gz)
