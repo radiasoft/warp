@@ -1,0 +1,711 @@
+#include "top.h"
+c=============================================================================
+c F3DSLAVE.M, version $Revision: 1.1 $, $Date: 2001/04/30 22:41:32 $
+c Slave routines related to F3D package.
+c=============================================================================
+c=============================================================================
+      subroutine exchange_phi(nx,ny,nz,phi,bound0,boundnz,delz)
+      use Parallel
+      integer(ISZ):: nx,ny,nz,bound0,boundnz,delz
+      real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+
+c This routine sends out and receives boundary data for the SOR field solver.
+
+      integer(ISZ):: left_pe,right_pe
+      integer(ISZ):: left_recv,right_recv,left_send,right_send
+      integer(ISZ):: waitcount,waitstart
+
+      include "mpif.h"
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE,4),mpirequest(4),mpierror
+
+c     --- calculate index of the processors to the left and to the right,
+c     --- wrapping around at the ends.
+      left_pe = mod(nslaves+my_index-1,nslaves)
+      right_pe = mod(my_index+1,nslaves)
+
+c     --- Location where incoming phi plane is to be loaded.  Normally, it
+c     --- is put at the edge of the grid, either at iz=0 or iz=nz.  For
+c     --- periodic boundaries, it is put just outside the grid, at iz=-1
+c     --- or iz=nz+1.  For the above, delz=0.  At the end of the field solve,
+c     --- phi at the outside of the grid is passed, so phi is put at iz=-1 and
+c     --- iz=nz+1 so delz needs to be -1.
+      left_recv = delz
+      right_recv = delz
+      if (bound0 .eq. 2) left_recv = -1
+      if (boundnz .eq. 2) right_recv = -1
+
+c     --- Location from where incoming phi is obtained.  The same cases as
+c     --- above are used.
+      left_send = 1 - delz
+      right_send = 1 - delz
+      if (bound0 .eq. 2) left_send = 1
+      if (boundnz .eq. 2) right_send = 1
+
+      waitcount = 4
+      waitstart = 1
+      if (my_index .eq. 0 .and. bound0 .ne. 2) then
+        waitcount = 2
+        waitstart = 3
+      else if (my_index .eq. nslaves-1 .and. boundnz .ne. 2) then
+        waitcount = 2
+        waitstart = 1
+      endif
+
+c     --- Sends and receives can all be done synchronously since none
+c     --- of the data overlaps.
+      if (my_index .gt. 0 .or. bound0 .eq. 2) then
+        call MPI_ISEND(phi(0,0,left_send),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                 left_pe,0,MPI_COMM_WORLD,mpirequest(1),mpierror)
+        call MPI_IRECV(phi(0,0,left_recv),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                 left_pe,0,MPI_COMM_WORLD,mpirequest(2),mpierror)
+      endif
+
+      if (my_index .lt. nslaves-1 .or. boundnz .eq. 2) then
+        call MPI_ISEND(phi(0,0,nz-right_send),(nx+1)*(ny+1),
+     &                 MPI_DOUBLE_PRECISION,right_pe,0,
+     &                 MPI_COMM_WORLD,mpirequest(3),mpierror)
+        call MPI_IRECV(phi(0,0,nz-right_recv),(nx+1)*(ny+1),
+     &                 MPI_DOUBLE_PRECISION,right_pe,0,
+     &                 MPI_COMM_WORLD,mpirequest(4),mpierror)
+      endif
+
+c     --- Now wait for everything to finish
+      call MPI_WAITALL(waitcount,mpirequest(waitstart),mpistatus,mpierror)
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+      subroutine transpose(nx,ny,nz,phi,nx_tran,ny_tran)
+      use Parallel
+      use Transpose_work_space
+      integer(ISZ):: nx,ny,nz,nx_tran,ny_tran
+      real(kind=8):: phi(0:nx,0:ny,0:nz)
+
+c Transpose 3-D array.  Only the volume (0:nx-1,0:ny-1,0:nz-1) is transposed.
+c Transpose is NOT done in place but uses scratch array.
+c
+c NOTICE: In cases where (nx+ny) < nslaves, the size of the transposed
+c phi is LARGER than the size of phi. Extra padding must be added to the
+c end of phi of size
+c izextra = (nzfull - nzfull/nslaves*(nx+ny)/(nx*ny))
+c and with phi dimensions as
+c phi(0:nx,0:ny,0:nz+izextra)
+c
+c Algorithm assumes that all dimensions are powers of two and the number
+c of processors is a power of two.
+
+      integer(ISZ):: nn
+      integer(ISZ):: is,ix,iy,j,left_pe,right_pe
+      include "mpif.h"
+      integer(ISZ):: mpinewtype,mpierror
+c     integer(ISZ):: mpinewtype2,mpidoublesize
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE)
+c     integer(ISZ):: blen(2),bdisp(2),btype(2)
+      integer(ISZ),parameter:: M_TRANSPOSE=10
+
+c     --- Calculate what the dimensions of the grid will be after the
+c     --- transpose.  The dimensions will be (0:nx_tran,ny_tran).  The
+c     --- full x dimension is used since the z tridiag solver uses the
+c     --- elements ix=nx for scratch space.
+c     --- The work is divided up first along the y direction.  Since
+c     --- all dimensions and number of processors are powers of 2, ny/nslaves
+c     --- will always also be a power of 2 (or zero).
+c     --- If ny >= nslaves, set first dimension of array after transpose to
+c     --- be the same as nx, otherwise work has to also be divided along x.
+      if (ny .ge. nslaves) then
+        nx_tran = nx
+        ny_tran = ny/nslaves
+      else
+        nx_tran = nx*ny/nslaves
+        ny_tran = 1
+      endif
+      nn = (nx_tran+1)*ny_tran
+
+c     --- Allocate the temporary space to copy the transpose phi into.
+c     --- At the end, the data is copy back into the phi array.
+      if (phi_trnspssize < nn*nz*nslaves) then
+        phi_trnspssize = nn*nz*nslaves
+        call gallot("Transpose_work_space",0)
+      endif
+
+c     --- Create an MPI type to refer to the distributed pieces of data that
+c     --- are sent to each of the processors.
+      call MPI_TYPE_VECTOR(nz,nn,(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                     mpinewtype,mpierror)
+      call MPI_TYPE_COMMIT(mpinewtype,mpierror)
+
+
+c     --- The transpose is much less complicated when ny > nslaves.
+      if (ny .ge. nslaves) then
+
+c       On the T3E, the loop over slaves using SENDRECV is 20 to 50% faster
+c       than the ALLTOALL. Go figure.
+
+c       --- Create a second type so that the upper bound (and therefore) the
+c       --- extent of the new type can be set. The extent needs to be modified
+c       --- since the data being sent with the alltoall is interleaved.
+c       --- The extent is set to be equal to the byte length of the contiguous
+c       --- chunks of data, i.e. nn times number of bytes per real.
+c       call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
+c       blen(1) = 1
+c       blen(2) = 1
+c       bdisp(1) = 0
+c       bdisp(2) = nn*mpidoublesize
+c       btype(1) = mpinewtype
+c       btype(2) = MPI_UB
+c       call MPI_TYPE_STRUCT(2,blen,bdisp,btype,mpinewtype2,mpierror)
+c       call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
+
+c       --- Do all of the communication at once.
+c       call MPI_ALLTOALL(phi(0,0,0),1,mpinewtype2,
+c    &                    phi_trnsps,nn*nz,MPI_DOUBLE_PRECISION,
+c    &                    MPI_COMM_WORLD,mpierror)
+
+c       --- Free the data type
+c       call MPI_TYPE_FREE(mpinewtype2,mpierror)
+
+c       --- Loop over slaves
+        do is = 0,nslaves-1
+
+c         --- Send messages to slaves in increasing order.
+          right_pe = mod(my_index + is,nslaves)
+          left_pe = mod(my_index - is + nslaves,nslaves)
+
+c         --- Get the starting point of the data.
+          ix = 0
+          iy = right_pe*ny_tran
+
+c         --- The incoming data is be treated as a contiguous chunk when it
+c         --- is received into the phi_trnsps array.
+c         --- The data is put in order of process number (since the ordering
+c         --- in z is by process number).
+          j = left_pe*nn*nz + 1
+
+          call MPI_SENDRECV(phi(ix,iy,0),1,mpinewtype,right_pe,M_TRANSPOSE,
+     &           phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,left_pe,M_TRANSPOSE,
+     &           MPI_COMM_WORLD,mpistatus,mpierror)
+
+        enddo
+
+      else
+c       --- Things are very different with ny < nslaves
+c       --- The only way to do the transpose is to loop over the slaves
+c       --- since some of the data sent overlaps and some doesn't. (The
+c       --- chunks on the same ix overlap.) The MPI_ALLTOALL doesn't allow
+c       --- the data sent to different PE's to have different data types,
+c       --- which would be needed to do two different types of overlap.
+
+c       --- Loop over slaves
+        do is = 0,nslaves-1
+
+c         --- Send messages to slaves in increasing order.
+          right_pe = mod(my_index + is,nslaves)
+          left_pe = mod(my_index - is + nslaves,nslaves)
+
+c         --- Get the starting point of the data.
+          ix = mod(right_pe*nx_tran,nx)
+          iy = right_pe*ny/nslaves
+
+c         --- The incoming data is be treated as a contiguous chunk when it
+c         --- is received into the phi_trnsps array.
+c         --- The data is put in order of process number (since the ordering
+c         --- in z is by process number).
+          j = left_pe*nn*nz + 1
+
+          call MPI_SENDRECV(phi(ix,iy,0),1,mpinewtype,right_pe,M_TRANSPOSE,
+     &           phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,left_pe,M_TRANSPOSE,
+     &           MPI_COMM_WORLD,mpistatus,mpierror)
+
+        enddo
+
+      endif
+
+c     --- Free the data type
+      call MPI_TYPE_FREE(mpinewtype,mpierror)
+
+c     --- Now the array phi_trnsps contains 3-D data with dimensions
+c     --- (0:nx_tran,ny_tran,nz*nslaves).
+
+c     --- Copy phi_trnsps into phi (don't want field solving routine to use
+c     --- the temporary array phi_trnsps).  This is somewhat inefficient, but
+c     --- hopefully the transpose will eventually be done in place, avoiding
+c     --- the temp space.
+      call copyarry(phi_trnsps,phi,nn*nz*nslaves)
+
+c DONE!
+      return
+      end
+c=============================================================================
+      subroutine transposei(nx,ny,nz,phi,nx_tran,ny_tran)
+      use Parallel
+      use Transpose_work_space
+      integer(ISZ):: nx,ny,nz,nx_tran,ny_tran
+      real(kind=8):: phi(0:nx,0:ny,0:nz)
+
+c Undo above transpose of 3-D array.  Only the volume (0:nx-1,0:ny-1,0:nz-1)
+c is transposed back.  Now, nx_tran and ny_tran are used as input.
+c Transpose is NOT done in place but uses scratch array.
+c
+c See the NOTICE in transpose above.
+c
+c Algorithm assumes that all dimensions are powers of two and the number
+c of processors is a power of two.
+
+      integer(ISZ):: nn
+      integer(ISZ):: is,ix,iy,j,left_pe,right_pe
+      include "mpif.h"
+      integer(ISZ):: mpinewtype,mpierror
+c     integer(ISZ):: mpinewtype2,mpidoublesize
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE)
+c     integer(ISZ):: blen(2),bdisp(2),btype(2)
+      integer(ISZ),parameter:: M_TRANSPOSE=10
+
+c     --- Allocate the work space.
+      if (phi_trnspssize < (nx_tran+1)*ny_tran*nz*nslaves) then
+        phi_trnspssize = (nx_tran+1)*ny_tran*nz*nslaves
+        call gallot("Transpose_work_space",0)
+      endif
+
+c Copy phi into phi_trnsps array  (since field solving routine doesn't use
+c the temporary array phi_trnsps).  This is somewhat inefficient, but
+c hopefully the transpose will eventually be done in place, avoiding
+c the temp space.
+      nn = (nx_tran+1)*ny_tran
+      call copyarry(phi,phi_trnsps,nn*nz*nslaves)
+
+
+      call MPI_TYPE_VECTOR(nz,nn,(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                     mpinewtype,mpierror)
+      call MPI_TYPE_COMMIT(mpinewtype,mpierror)
+
+      if (ny .ge. nslaves) then
+
+c       call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
+c       blen(1) = 1
+c       blen(2) = 1
+c       bdisp(1) = 0
+c       bdisp(2) = nn*mpidoublesize
+c       btype(1) = mpinewtype
+c       btype(2) = MPI_UB
+c       call MPI_TYPE_STRUCT(2,blen,bdisp,btype,mpinewtype2,mpierror)
+
+c       --- Do all of the communication at once.
+c       call MPI_ALLTOALL(phi_trnsps,nn*nz,MPI_DOUBLE_PRECISION,
+c    &                    phi(0,0,0),1,mpinewtype2,
+c    &                    MPI_COMM_WORLD,mpierror)
+
+c       --- Free the data type
+c       call MPI_TYPE_FREE(mpinewtype2,mpierror)
+
+c       --- Loop over slaves
+        do is = 0,nslaves-1
+
+c         --- Send data to other processors in increasing order.
+          right_pe = mod(my_index + is,nslaves)
+          left_pe = mod(my_index - is + nslaves,nslaves)
+
+c         --- The data will be treated as a contiguous chunk when it is sent.
+c         --- The data is put in order of process number (since the ordering
+c         --- in z is by process number).
+          j = right_pe*nn*nz + 1
+
+c         --- Get the starting point of the data.
+          ix = 0
+          iy = left_pe*ny_tran
+
+          call MPI_SENDRECV(phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,
+     &                      right_pe,M_TRANSPOSE,
+     &                      phi(ix,iy,0),1,mpinewtype,left_pe,M_TRANSPOSE,
+     &                      MPI_COMM_WORLD,mpistatus,mpierror)
+
+        enddo
+
+      else
+
+c       --- Loop over slaves
+        do is = 0,nslaves-1
+
+c         --- Send data to other processors in increasing order.
+          right_pe = mod(my_index + is,nslaves)
+          left_pe = mod(my_index - is + nslaves,nslaves)
+
+c         --- The data will be treated as a contiguous chunk when it is sent.
+c         --- The data is put in order of process number (since the ordering
+c         --- in z is by process number).
+          j = right_pe*nn*nz + 1
+
+c         --- Get the starting point of the data.
+          ix = mod(left_pe*nx_tran,nx)
+          iy = left_pe*ny/nslaves
+
+          call MPI_SENDRECV(phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,
+     &                      right_pe,M_TRANSPOSE,
+     &                      phi(ix,iy,0),1,mpinewtype,left_pe,M_TRANSPOSE,
+     &                      MPI_COMM_WORLD,mpistatus,mpierror)
+
+        enddo
+
+      endif
+
+c     --- Free the data type
+      call MPI_TYPE_FREE(mpinewtype,mpierror)
+
+c     --- Now the array phi is returned to normal.
+
+c DONE!
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine lantzsolver(iwhich,a,kxsq,kysq,kzsq,attx,atty,attz,
+     &                       filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,
+     &                       l2symtry,l4symtry)
+      use Constant
+      use Parallel
+      use LantzSolverTemp
+      integer(ISZ):: iwhich,nx,ny,nz
+      real(kind=8):: a(0:nx,0:ny,-1:nz)
+      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz-1)
+      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz-1)
+      real(kind=8):: filt(5,3)
+      real(kind=8):: lx,ly,lz,scrtch(*),xywork(*),zwork(2,0:nx,0:nz)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Poisson solver based on the method developed by Stephen Lantz.
+c First, FFT's are applied to the transverse planes, reducing Poisson's
+c equation to a tridiagonal matrix. Then, row reduction is done on the
+c matrix in each process, changing the form of the matrix into one resembing
+c the capital letter 'N'. In this form, the first and last rows of the matrix
+c on each processor can be seperated out to form an independent tridiagonal
+c matrix of smaller size than the original. This smaller matrix is transposed,
+c solved and transposed back. The remaining interior elements can then be
+c directly calculated from the solution of the smaller tridiag system.
+c Finally, inverse FFT's are applied transversely.
+
+      integer(ISZ):: ikxmin,ikymin,ikxm,ikym,jx,jy
+      real(kind=8):: norm,t
+      integer(ISZ):: ix,iy,iz,nx_tran,ny_tran
+      logical(ISZ):: lalloted
+      data lalloted/.false./
+      save lalloted
+
+c     --- Allocate space if needed or requested
+      if (iwhich == 0 .or. iwhich == 1 .or. .not. lalloted) then
+        nxlan = nx
+        nylan = ny
+        nzlan = nz
+        nzfulllan = 2*nslaves
+        if (ny .ge. nslaves) then
+          nxtranlan = nx
+          nytranlan = ny/nslaves
+        else
+          nxtranlan = nx*ny/nslaves
+          nytranlan = 1
+        endif
+        call gchange("LantzSolverTemp",0)
+        lalloted = .true.
+c       --- Initialize the k's
+        call vpois3d(1,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+     &               filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+     &               l2symtry,l4symtry)
+      endif
+
+      if (iwhich .eq. 1) return
+
+      print*,0,a(4,5,4)
+c     --- Apply FFT's to transverse planes.
+      call vpois3d(12,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+     &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+     &             l2symtry,l4symtry)
+
+      print*,1,a(4,5,4)
+c     --- Minimum index of kxsq and kysq that is used
+      ikxmin = 1
+      if (l4symtry) ikxmin = 0
+      ikymin = 1
+      if (l2symtry .or. l4symtry) ikymin = 0
+
+c     --- Normalization factor
+      norm = (lz/nz)**2/eps0
+
+c     --- Initial setup for the solve
+      do iz=0,nz-1
+        do iy=ikymin,ny-1
+          do ix=ikxmin,nx-1
+c           --- the RHS is the transverse FFTs of rho times dz**2/eps0
+c           --- This multiply could actually be done within the tridiag
+c           --- solving loops below, making them somewhat more complicated.
+c           --- That saves a few percent in the run time.
+            a(ix,iy,iz) = a(ix,iy,iz)*norm
+          enddo
+        enddo
+      enddo
+c     --- set the end points using Dirichlet boundary conditions.
+      if (my_index == 0) then
+        do iy=ikymin,ny-1
+          do ix=ikxmin,nx-1
+            a(ix,iy,0) = a(ix,iy,0) + a(ix,iy,-1)
+          enddo
+        enddo
+      endif
+      if (my_index == nslaves-1) then
+        do iy=ikymin,ny-1
+          do ix=ikxmin,nx-1
+            a(ix,iy,nz-1) = a(ix,iy,nz-1) + a(ix,iy,nz)
+          enddo
+        enddo
+      endif
+      do iy=ikymin,ny-1
+        do ix=ikxmin,nx-1
+c         --- set some initial values for the matrix diagonals
+          blan(ix,iy,0) = 2. + (kxsq(ix)+kysq(iy))*norm
+          blan(ix,iy,1) = 2. + (kxsq(ix)+kysq(iy))*norm
+          alan(ix,iy,1) = -1.
+          clan(ix,iy,nz-2) = -1.
+        enddo
+      enddo
+c     --- Fill in the zeros since the generaltridiag
+c     --- solver requires all b's to be .ne. 0.
+c     do iy=0,ny
+c       blan(nx,iy,0) = 1.
+c       blan(nx,iy,nz-1) = 1.
+c     enddo
+c     do ix=0,nx
+c       blan(ix,ny,0) = 1.
+c       blan(ix,ny,nz-1) = 1.
+c     enddo
+c     if (ikxmin == 1) then
+c       do iy=0,ny
+c         blan(0,iy,0) = 1.
+c         blan(0,iy,nz-1) = 1.
+c       enddo
+c     endif
+c     if (ikymin == 1) then
+c       do ix=0,nx
+c         blan(ix,0,0) = 1.
+c         blan(ix,0,nz-1) = 1.
+c       enddo
+c     endif
+
+c     --- Downward row reduction
+      do iz=2,nz-1
+        do iy=ikymin,ny-1
+          do ix=ikxmin,nx-1
+            t = (-1.)/blan(ix,iy,iz-1)
+            alan(ix,iy,iz) = -alan(ix,iy,iz-1)*t
+            blan(ix,iy,iz) = blan(ix,iy,0) - (-1.)*t
+            a(ix,iy,iz) = a(ix,iy,iz) - a(ix,iy,iz-1)*t
+          enddo
+        enddo
+      enddo
+      print*,2,a(4,5,4)
+
+c     --- Upward row reduction
+      do iz=nz-1-2,0,-1
+        do iy=ikymin,ny-1
+          do ix=ikxmin,nx-1
+            t = (-1.)/blan(ix,iy,iz+1)
+            alan(ix,iy,iz) = alan(ix,iy,iz) - alan(ix,iy,iz+1)*t
+            clan(ix,iy,iz) = -clan(ix,iy,iz+1)*t
+            a(ix,iy,iz) = a(ix,iy,iz) - a(ix,iy,iz+1)*t
+          enddo
+        enddo
+      enddo
+      print*,3,a(4,5,4)
+
+c     --- Assemble reduced rhs
+      do iy=ikymin,ny-1
+        do ix=ikxmin,nx-1
+          dtranlan(ix,iy,0) = a(ix,iy,0)
+          dtranlan(ix,iy,1) = a(ix,iy,nz-1)
+        enddo
+      enddo
+
+c     --- Transpose reduced tridiagonal matrix
+      call transpose(nx,ny,2,dtranlan,nx_tran,ny_tran)
+
+c     --- Find location of transverse data relative to original dimensions.
+      jx = mod(my_index*nx_tran,nx)
+      jy = int(my_index*ny/real(nslaves))
+c     --- Check if work includes boundary points.  If so, use precalculated
+c     --- min's.
+      if (jx .eq. 0) then
+        ikxm = ikxmin
+      else
+        ikxm = 0
+      endif
+      if (jy .eq. 0) then
+        ikym = ikymin
+      else
+        ikym = 0
+      endif
+
+c     --- Assemble reduced matrix.
+      do iz=0,2*nslaves-1,2
+        do iy=ikym,ny_tran-1
+          do ix=ikxm,nx_tran-1
+            atranlan(ix,iy,0+iz) = -1.
+            atranlan(ix,iy,1+iz) = alan(jx+ix,jy+iy,nz-1)
+            btranlan(ix,iy,0+iz) = blan(jx+ix,jy+iy,0)
+            btranlan(ix,iy,1+iz) = blan(jx+ix,jy+iy,nz-1)
+            ctranlan(ix,iy,0+iz) = clan(jx+ix,jy+iy,0)
+            ctranlan(ix,iy,1+iz) = -1.
+          enddo
+        enddo
+      enddo
+
+c     --- Do tridiag solve
+      call generaltridiag(nx_tran,ny_tran-1,2*nslaves,atranlan,btranlan,
+     &                    ctranlan,dtranlan,ikxmin,ikymin,0)
+
+c     --- Transpose back
+      call transposei(nx,ny,2,dtranlan,nx_tran,ny_tran)
+
+c     --- Load solved values back into 'a' array.
+      do iy=ikymin,ny-1
+        do ix=ikxmin,nx-1
+          a(ix,iy,0) = dtranlan(ix,iy,0)
+          a(ix,iy,nz-1) = dtranlan(ix,iy,1)
+        enddo
+      enddo
+      print*,4,a(4,5,4)
+
+c     --- Calculate remaining values
+      do iz=1,nz-2
+        do iy=ikymin,ny-1
+          do ix=ikxmin,nx-1
+            a(ix,iy,iz) = (a(ix,iy,iz) - alan(ix,iy,iz)*a(ix,iy,0) -
+     &                                   clan(ix,iy,iz)*a(ix,iy,nz-1))/
+     &                     blan(ix,iy,iz)
+          enddo
+        enddo
+      enddo
+      print*,5,a(4,5,4)
+
+c     --- Apply inverse FFT's to transverse planes.
+      call vpois3d(13,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+     &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+     &             l2symtry,l4symtry)
+
+      print*,6,a(4,5,4)
+      return
+      end
+c=============================================================================
+      subroutine generaltridiag(nx,ny,nz,a,b,c,d,ikxmin,ikymin,jey)
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,jey
+      real(kind=8):: a(0:nx,0:ny,nz)
+      real(kind=8):: b(0:nx,0:ny,nz)
+      real(kind=8):: c(0:nx,0:ny,nz)
+      real(kind=8):: d(0:nx,0:ny,nz)
+
+      integer(ISZ):: ix,iy,iz
+      real(kind=8):: t
+
+      do iz = 2,nz
+        do iy=ikymin,ny-jey
+          do ix=ikxmin,nx-1
+            t = a(ix,iy,iz)/b(ix,iy,iz-1)
+            b(ix,iy,iz) = b(ix,iy,iz) - c(ix,iy,iz-1)*t
+            d(ix,iy,iz) = d(ix,iy,iz) - d(ix,iy,iz-1)*t
+          enddo
+        enddo
+      enddo
+
+      do iy=ikymin,ny-jey
+        do ix=ikxmin,nx-1
+          d(ix,iy,nz) = d(ix,iy,nz)/b(ix,iy,nz)
+        enddo
+      enddo
+      do iz = nz-1,1,-1
+        do iy=ikymin,ny-jey
+          do ix=ikxmin,nx-1
+            d(ix,iy,iz) = (d(ix,iy,iz) - c(ix,iy,iz)*d(ix,iy,iz+1))/b(ix,iy,iz)
+          enddo
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine paralleltridiag(a,kxsq,kysq,kzsq,attx,atty,attz,filt,lx,ly,lz,
+     &                           nx,ny,nz,scrtch,xywork,zwork,l2symtry,l4symtry)
+      use Constant
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: a(0:nx,0:ny,-1:nz+1)
+      real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz-1)
+      real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz-1)
+      real(kind=8):: filt(5,3)
+      real(kind=8):: lx,ly,lz,scrtch(*),xywork(0:nx,0:ny),zwork(2,0:nx,0:nz)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Experimental parallel Poisson solver. The tridiag solver is used only
+c locally. Iteration is done, exchange boundary information. The hope
+c is that few enough iterations can be used so that the extra time spent
+c on the iterations and communication time will be less than the time of
+c a global transpose of the matrix.
+c
+c The iterations continue until the change in the left hand plane is less
+c than the tolerance.
+
+      integer(ISZ):: ikxmin,ikymin
+      real(kind=8):: norm
+      real(kind=8):: achange,err
+      integer(ISZ):: ix,iy
+
+c     --- Apply FFT's to transverse planes.
+      call vpois3d(12,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+     &                filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+     &                l2symtry,l4symtry)
+
+c     --- Minimum index of kxsq and kysq that is used
+      ikxmin = 1
+      if (l4symtry) ikxmin = 0
+      ikymin = 1
+      if (l2symtry .or. l4symtry) ikymin = 0
+
+c     --- Normalization factor
+      norm = (lz/nz)**2/eps0
+
+c     --- Iteration loop
+      achange = LARGEPOS
+      do while (achange > 1.e-6)
+
+c       --- Save sample values
+        do iy=ikymin,ny-1
+          do ix=ikxmin,nx-1
+            xywork(ix,iy) = a(ix,iy,1)
+          enddo
+        enddo
+
+c       --- Exchange phi at the boundaries
+        call exchange_phi(nx,ny,nz,a,0,0,0)
+
+c       --- Do the tridiag solve
+        call tridiag(nx,ny,nz,nz/2,a(0,0,0),norm,kxsq,kysq,kzsq,
+     &               ikxmin,ikymin,1,zwork)
+
+c       --- Get error
+        achange = 0.
+        do iy=ikymin,ny-1
+          do ix=ikxmin,nx-1
+            err = abs(a(ix,iy,1) - xywork(ix,iy))
+            if (err > achange) achange = err
+          enddo
+        enddo
+        call parallelmax(achange,1)
+
+      enddo
+
+c     --- Apply inverse FFT's to transverse planes.
+      call vpois3d(13,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+     &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
+     &             l2symtry,l4symtry)
+
+      return
+      end
+c=============================================================================
