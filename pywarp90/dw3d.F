@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.F, version $Revision: 3.148 $, $Date: 2004/07/09 19:17:21 $
+c@(#) File DW3D.F, version $Revision: 3.149 $, $Date: 2004/09/15 21:32:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -38,7 +38,11 @@ c  Gather up various lattice qtys for printout
 
       if (nbend >= 1) then
          xrbend = bendrc(1)
-         xbbend = dipoby(1)
+         if (ndipo >= 1) then
+           xbbend = dipoby(1)
+         else
+           xbbend = 0.
+         endif
          xbendlen = bendze(1) - bendzs(1)
          xstralen = bendzs(1) - bendze(0)
          xz0bend = bendzs(1)
