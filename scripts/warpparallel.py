@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.10 2001/03/19 20:07:49 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.11 2001/03/22 01:18:43 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -68,45 +68,34 @@ def getwin_moments():
     if pe != None:
       vdata = []
       for v in vlist:
-        vdata.append(eval('top.'+v+'[iw]',__main__.__dict__,locals()))
+        h = eval('top.'+v)
+        vdata.append(h[iw])
       vdata = mpi.bcast(array(vdata),pe)
       i = 0
       for v in vlist:
-        exec('top.'+v+'[iw] = vdata[i]',__main__.__dict__,locals())
+        h = eval('top.'+v)
+        h[iw] = vdata[i]
         i = i + 1
 
 # --- Gathers windows history data onto PE0.
 # --- Still need to deal with linechg and hvzofz and other zmoments histories.
 def gethist():
-  varlist = top.varlist('Hist')
-  if me > 0:
-    zw = []
-    for iw in range(1,top.nzwind+1):
-      zz = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
-      if w3d.zmmin <= zz and zz < w3d.zmmax:
-        zw = zw + [iw]
-    mpi.send(len(zw),0,0)
-    for iw in zw:
-      mpi.send(iw,0,0)
-      for v in varlist:
+  # --- All zwindow histories have the attribute winhist.
+  vlist = top.varlist('winhist')
+  # --- Loop over the number of windows and get the pe that owns it.
+  # --- The processor is then the root for the broadcast call.
+  # --- All of the history data for each window is sent as a single array.
+  for iw in range(1,top.nzwind+1):
+    pe = convertiwtope(iw)
+    if pe != None:
+      vdata = []
+      for v in vlist:
         h = eval('top.'+v)
-        if type(h) == type(array([])) and \
-           shape(h) == (top.nzwind+1,top.lenhist+1):
-          mpi.send(h[iw,:top.jhist+1],0,0)
-      #mpi.send(top.linechg[0:nzzarr,:top.jhist+1],0,0)
-      #mpi.send(top.hvzofz[0:nzzarr,:top.jhist+1],0,0)
-  else:
-    for i in range(1,number_of_PE()):
-      n = mpi.recv(i,0)
-      for ii in range(n):
-        iw = mpi.recv(i,0)
-        for v in varlist:
-          h = eval('top.'+v)
-          if type(h) == type(array([])) and \
-             shape(h) == (top.nzwind+1,top.lenhist+1):
-            h[iw,:top.jhist+1] = mpi.recv(i,0)
-        #top.linechg[0:nzzarr,:top.jhist+1] = mpi.recv(i,0)
-        #top.hvzofz[0:nzzarr,:top.jhist+1] = mpi.recv(i,0)
+        vdata.append(h[iw,:top.jhist+1])
+      vdata = mpi.bcast(array(vdata),pe)
+      for i in range(len(vlist)):
+        h = eval('top.'+vlist[i])
+        h[iw,:top.jhist+1] = vdata[i]
 
 # --- Gather lab moments onto PE0. Note that after the moments are gathered,
 # --- more data can still be calculated if the run continues.
