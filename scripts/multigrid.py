@@ -77,17 +77,16 @@ class MultiGrid:
       else:
         setattr(pkg,name,dict[name])
 
+  def setrho(self,x,y,z,uz,q,w):
+    n = len(x)
+    setrho3d(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
+             self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
+             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
+
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
-    # --- First, save reference to w3d.rho and other fortran variables.
-    w3dvars = ['rho','nx','ny','nz','nzfull','dx','dy','dz',
-               'xmmin','ymmin','zmmin','l4symtry','l2symtry']
-    w3ddict = {}
-    self.copypkgtodict(w3d,w3dvars,w3ddict)
-    self.copydicttopkg(w3d,w3dvars,self.__dict__)
-    # --- Now load rho
-    loadrho(ins_i,nps_i,is_i,lzero)
-    # --- Restore w3d variables
-    self.copydicttopkg(w3d,w3dvars,w3ddict)
+    if lzero: self.rho[...] = 0.
+    for i,n,q,w in zip(top.ins,top.nps,top.sq,top.sw):
+      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
 
   def fetche(self,ipmin,ip,js,ex,ey,ez):
     # --- First, save reference to w3d.phi and other fortran variables.
