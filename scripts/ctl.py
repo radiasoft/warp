@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.6 2004/02/19 18:25:46 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.7 2004/03/16 17:20:26 dave Exp $"
 from warp import *
 import signal
 
@@ -34,33 +34,32 @@ def setinterrupt():
 
 
 #############################################################################
-def generate():
+def generate(command=None):
   "Generates the current package"
   #setinterrupt()
-  for p in package():
-    try:
-      exec 'command = '+p+'gen'
-      break
-    except:
-      pass
-  #try:
+  if command is None:
+    for p in package():
+      try:
+        exec 'command = %s.%sgen'%(p,p)
+        break
+      except:
+        pass
   command(1,1)
-  #except:
-    #pass
   # --- Get generate time
   top.gentime = wtime() - top.starttime
   #ruthere()
 
 beforestepfuncs = []
 afterstepfuncs = []
-def step(n=1,maxcalls=None):
+def step(n=1,maxcalls=None,command=None):
   b = wtime()
-  for p in package():
-    try:
-      exec 'command = '+p+'exe'
-      break
-    except:
-      pass
+  if command is None:
+    for p in package():
+      try:
+        exec 'command = %s.%sexe'%(p,p)
+        break
+      except:
+        pass
   if maxcalls is None: maxcalls = n
   top.maxcalls = maxcalls
   ncalls = n
@@ -94,14 +93,15 @@ def step(n=1,maxcalls=None):
   a = wtime()
   top.steptime = top.steptime + (a - b)
 
-def finish():
+def finish(command=None):
   #setinterrupt()
-  for p in package():
-    try:
-      exec 'command = '+p+'fin'
-      break
-    except:
-      pass
+  if command is None:
+    for p in package():
+      try:
+        exec 'command = %s.%sfin'%(p,p)
+        break
+      except:
+        pass
   try:
     command(1,1)
   except:
