@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.107 $, $Date: 2003/05/21 23:54:05 $
+c@(#) File W3D.M, version $Revision: 3.108 $, $Date: 2003/05/27 22:15:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1277,33 +1277,7 @@ c  Loop over particle blocks; move each block separately
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
 c           --- Obtain the self-field from the electrostatic potential
-            if(solvergeom==XYZgeom) then
-              call sete3d(phip(0,0,-1),selfe(1,0,0,0),ip,
-     &                    xp(ipmin),yp(ipmin),zp(ipmin),
-     &                    zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
-     &                    efetch,ex,ey,ez,l2symtry,l4symtry)
-            elseif(solvergeom==RZgeom) then
-              if(.not.mgridrz_deform) then
-                call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ex,ey,ez,ip)
-              else
-                if(is==1 .and. ipmin==ins(is)) call calc_phi3d_from_phirz()
-                call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip,
-     &                      xp(ipmin),yp(ipmin),zp(ipmin),
-     &                      zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
-     &                      efetch,ex,ey,ez,l2symtry,l4symtry)
-              end if
-            elseif(solvergeom==XZgeom) then
-               call fieldweightxz(xp(ipmin),zp(ipmin),uzp(ipmin),ex,ez,ip)
-            elseif(solvergeom==Zgeom) then
-               call fieldweightz(zp(ipmin),uzp(ipmin),ez,ip)
-            elseif(solvergeom==AMRgeom) then
-              call cho_gete3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgridprv,
-     &                        ex,ey,ez,is,(ipmin-ins(is))/nparpgrp)
-            else
-              ex = 0.
-              ey = 0.
-              ez = 0.
-            endif
+            call fetche3d(ipmin,ip,is,ex,ey,ez)
 
 c           --- Get E field for particles near the  injection surface.
             if (inject > 0) then
@@ -3757,6 +3731,59 @@ c  whose field solve region overlap its particle region.
 
 #endif
 
+      return
+      end
+c=============================================================================
+      subroutine fetche3d(ipmin,ip,is,ex,ey,ez)
+      use GlobalVars
+      use Subtimers3d
+      use Picglb
+      use Picglb3d
+      use InGen
+      use InGen3d
+      use InMesh3d
+      use Particles
+      use Fields3d
+      use Fields3dParticles
+      use EFields3d
+      use FRZmgrid
+      integer(ISZ):: ipmin,ip,is
+      real(kind=8):: ex(ip),ey(ip),ez(ip)
+
+c     --- Obtain the self-field from the electrostatic potential
+
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+
+      if(solvergeom==XYZgeom) then
+        call sete3d(phip(0,0,-1),selfe(1,0,0,0),ip,
+     &              xp(ipmin),yp(ipmin),zp(ipmin),
+     &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
+     &              efetch,ex,ey,ez,l2symtry,l4symtry)
+      elseif(solvergeom==RZgeom) then
+        if(.not.mgridrz_deform) then
+          call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ex,ey,ez,ip)
+        else
+          if(is==1 .and. ipmin==ins(is)) call calc_phi3d_from_phirz()
+          call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip,
+     &                xp(ipmin),yp(ipmin),zp(ipmin),
+     &                zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                efetch,ex,ey,ez,l2symtry,l4symtry)
+        end if
+      elseif(solvergeom==XZgeom) then
+         call fieldweightxz(xp(ipmin),zp(ipmin),uzp(ipmin),ex,ez,ip)
+      elseif(solvergeom==Zgeom) then
+         call fieldweightz(zp(ipmin),uzp(ipmin),ez,ip)
+      elseif(solvergeom==AMRgeom) then
+        call cho_gete3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgridprv,
+     &                  ex,ey,ez,is,(ipmin-ins(is))/nparpgrp)
+      else
+        ex = 0.
+        ey = 0.
+        ez = 0.
+      endif
+
+      if (lw3dtimesubs) timefetche3d = timefetche3d + wtime() - substarttime
       return
       end
 c=============================================================================
