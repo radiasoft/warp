@@ -96,8 +96,10 @@ class MRBlock(MultiGrid,Visualizable):
         # --- The grid mins and maxs are input.
         self.mins = array(mins)
         self.maxs = array(maxs)
-        self.lower = nint((self.mins - self.root.mins)/self.deltas)
-        self.upper = nint((self.maxs - self.root.mins)/self.deltas)
+        self.lower = (nint((self.mins - self.root.mins)/parent.deltas)*
+                     self.refinement)
+        self.upper = (nint((self.maxs - self.root.mins)/parent.deltas)*
+                     self.refinement)
 
       else:
         # --- The grid lower and upper bounds are input. The bounds are
@@ -239,7 +241,8 @@ it knows whether to re-register itself.
         w3d.rhop = self.rho
         w3d.phip = self.phi
 
-  def addchild(self,lower,upper,mins=None,maxs=None,refinement=[2,2,2]):
+  def addchild(self,lower=None,upper=None,mins=None,maxs=None,
+                    refinement=[2,2,2]):
     """
 Add a mesh refined block to this block.
   -lower,upper,mins,maxs,refinement: All have same meanings as for the
