@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.46 $, $Date: 2002/04/18 21:46:46 $
+#@(#) File W3D.V, version $Revision: 3.47 $, $Date: 2002/04/23 13:58:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.46 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.47 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -283,6 +283,9 @@ iz_axis          integer [1] +parallel # z location of axis in mesh
 *********** InjectVars3d dump:
 inj_nx               integer  # size injection arrays in x
 inj_ny               integer  # size injection arrays in y
+inj_dx               real [m] /0./ # mesh spacing in x for injection
+inj_dy               real [m] /0./ # mesh spacing in y for injection
+inj_dz               real [m] /0./ # mesh spacing in z for injection
 inj_ninj             integer  # Auto set to either 1 or ninject. Set to 1
                               # when no emitting source are within two grid
                               # cells of each other.
