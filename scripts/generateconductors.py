@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.92 2004/10/21 18:43:04 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.93 2004/11/04 20:46:04 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1908,6 +1908,20 @@ Elliptical cylinder aligned with z-axis
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori)
 
+  def createdxobject(self,kwdict={},**kw):
+    kw.update(kwdict)
+    e = self.ellipticity
+    v = VPythonobjects.VisualRevolutionEllipse(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rxendzmin=0.,rxendzmax=0.,
+                       ryendzmin=0.,ryendzmax=0.,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rxofzdata=[self.radius,self.radius],
+                       ryofzdata=[e*self.radius,e*self.radius],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       kwdict=kw)
+    self.dxobject = v
+
 #============================================================================
 class ZCylinderEllipticOut(ZCylinderOut,EllipticAssembly):
   """
@@ -1925,6 +1939,20 @@ Outside an elliptical cylinder aligned with z-axis
     EllipticAssembly.__init__(self,ellipticity,
                               voltage,xcent,ycent,zcent,condid,self.kwlist,
                               self.generatorf,self.generatord,self.generatori)
+
+  def createdxobject(self,rend=1.,kwdict={},**kw):
+    kw.update(kwdict)
+    e = self.ellipticity
+    v = VPythonobjects.VisualRevolutionEllipse(
+                       zzmin=-self.length/2.,zzmax=+self.length/2.,
+                       rxendzmin=rend,rxendzmax=rend,
+                       ryendzmin=e*rend,ryendzmax=e*rend,
+                       xoff=self.xcent,yoff=self.ycent,zoff=self.zcent,
+                       rxofzdata=[self.radius,self.radius],
+                       ryofzdata=[e*self.radius,e*self.radius],
+                       zdata=[-self.length/2.,+self.length/2.],
+                       kwdict=kw)
+    self.dxobject = v
 
 #============================================================================
 class XCylinderElliptic(ZCylinder,EllipticAssembly,XAssembly):
