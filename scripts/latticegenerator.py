@@ -1,7 +1,7 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.2 2001/09/21 23:29:01 dave Exp $"
 ######################################################################
 # Lattice builder
 # 
@@ -10,29 +10,29 @@ uselattice = 0
 
 class LatticeGenerator:
   """Generates a lattice
-  ion_mass
-  beam_duration
-  ekinmid
-  charge_per_beam
-  gap_len=.01
-  ngappoints=1000 Number of slices in the beam
-  nendpoints=ngappoints/10 Additional points added to end of acclet array
-  loadandfire=1
-  firetime=0.
-  risetime=None
-  unfireandunload=1
-  stoptime=1.e36
-  falltime=None
-  accel_gradient=0.
-  firstquadsign=+1
-  lattice=None An existing lattice can be passed in
-  nhist=1
-  zhist=1
-  lverbose=1
-  maxgapgradient=1.e6
-  luservgap=None
-  straight=0.8 Fraction of the beam which is not ends (used in Eears calc)
-  icharge=4 CIRCE charge model to use in calculation of Ez for Eears
+  ion_mass:
+  beam_duration:
+  ekinmid:
+  charge_per_beam:
+  gap_len=.01:
+  ngappoints=1000: Number of slices in the beam
+  nendpoints=ngappoints/10: Additional points added to end of acclet array
+  loadandfire=1:
+  firetime=0.:
+  risetime=None:
+  unfireandunload=1:
+  stoptime=1.e36:
+  falltime=None:
+  accel_gradient=0.:
+  firstquadsign=+1:
+  lattice=None: An existing lattice can be passed in
+  nhist=1:
+  zhist=1:
+  lverbose=1:
+  maxgapgradient=1.e6:
+  luservgap=None:
+  straight=0.8: Fraction of the beam which is not ends (used in Eears calc)
+  icharge=4: CIRCE charge model to use in calculation of Ez for Eears
   """
   def __init__(s,ion_mass,beam_duration,ekinmid,charge_per_beam,gap_len=.01,
                ngappoints=1000,nendpoints=None,
@@ -48,7 +48,7 @@ class LatticeGenerator:
     s.charge_per_beam = charge_per_beam
     s.gap_len = gap_len
     s.ngappoints = ngappoints
-    if not nendpoints: s.nendpoints = ngappoints/10
+    if nendpoints is None: s.nendpoints = ngappoints/10
     else: s.nendpoints = nendpoints
     s.ntaccl = nendpoints + ngappoints + nendpoints
     s.loadandfire = loadandfire
@@ -287,7 +287,7 @@ class LatticeGenerator:
       s.perveancemid = s.linechgmid/(4.*pi*eps0*s.ekinmid)
       s.hlp = s.amean(s)*sqrt((1.-cos(s.sigma(s)*pi/180.))/(2.*s.perveancemid))
 
-      # --- beam length of end of this hlp (tilt and vzmid have changed)
+      # --- beam length at end of this hlp (tilt and vzmid have changed)
       oldbeam_duration = s.beam_duration
       s.beam_duration = s.beam_duration + \
                         s.hlp/s.vzmid*(1./(1.+s.tilt(s)/2)-1./(1.-s.tilt(s)/2.))
@@ -379,6 +379,7 @@ class LatticeGenerator:
   #-----------------------------------------------------------------------
   # --- Do some fine work
   def finalize(s):
+    # --- Install the lattice into the WARP database (the Lattice group)
     if uselattice:
       madtowarp(s.lattice)
     else:
@@ -404,6 +405,7 @@ class LatticeGenerator:
       top.acclts[:] = s.acclts
       top.accldt[:] = s.accldt
       top.acclet[:,:] = transpose(array(s.acclet))
+    # --- Convert histories into arrays
     s.hbeam_duration = array(s.hbeam_duration)
     s.hhlp = array(s.hhlp)
     s.hekinmid = array(s.hekinmid)
@@ -435,7 +437,7 @@ class LatticeGenerator:
   # --- Get vz from the position or from the ion energy
   def lafvz(s,z,t=None):
     m = s.ion_mass*amu*clight**2/jperev
-    if not t:
+    if t is None:
       return sqrt(s.laftt(z)*(2.*m+s.laftt(z)))/(s.laftt(z)+m)*clight
     else:
       return sqrt(t*(2.*m+t))/(t+m)*clight
