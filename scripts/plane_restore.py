@@ -24,7 +24,7 @@ specified z plane. The data have been saved by PlaneSave.
 The two simulations are linked together.
 """
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.3 2003/03/13 18:43:51 jlvay Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.4 2003/04/17 22:19:04 dave Exp $"
 
 class PlaneRestore:
   """
@@ -48,10 +48,7 @@ Input:
 
     # set self.zplane
     if zplane is None:
-      if not lparallel:
-        self.zplane = w3d.zmmin
-      else:
-        self.zplane = top.zmslmin[0]
+      self.zplane = w3d.zmminglobal
     else:
       self.zplane = zplane
 

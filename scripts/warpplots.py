@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.99 2003/04/16 23:30:50 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.100 2003/04/17 22:23:30 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -461,12 +461,8 @@ def pptitleright(iw=0,kwdict={},**kw):
     yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
     result = "iy = %d, y range (%9.4e, %9.4e)"%(iy,yl,yu)
   elif iz is not None:
-    if lparallel:
-      zl = top.zmslmin[0] + iz*w3d.dz - wz*w3d.dz + top.zbeam
-      zu = top.zmslmin[0] + iz*w3d.dz + wz*w3d.dz + top.zbeam
-    else:
-      zl = w3d.zmmin + iz*w3d.dz - wz*w3d.dz + top.zbeam
-      zu = w3d.zmmin + iz*w3d.dz + wz*w3d.dz + top.zbeam
+    zl = w3d.zmminglobal + iz*w3d.dz - wz*w3d.dz + top.zbeam
+    zu = w3d.zmminglobal + iz*w3d.dz + wz*w3d.dz + top.zbeam
     result = "iz = %d, z range (%9.4e, %9.4e)"%(iz,zl,zu)
   elif iw < 0:
     if psubset==[]: setup_subsets()
@@ -726,7 +722,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       else:
         setgrid2dw(len(x),x,yms,weights,nx,ny,grid,xmin,xmax,ymin,ymax)
       # --- If parallel, do a reduction on the grid
-      if lparallel: grid = parallelsum(grid)
+      grid = parallelsum(grid)
 
     else:
       densitygrid = 0
@@ -743,9 +739,8 @@ Note that either the x and y coordinates or the grid must be passed in.
         deposgrid2dw(1,len(x),x,yms,zz,weights,nx,ny,grid,gridcount,xmin,xmax,ymin,ymax)
 
       # --- If parallel, do a reduction on the grid
-      if lparallel:
-        grid = parallelsum(grid)
-        gridcount = parallelsum(gridcount)
+      grid = parallelsum(grid)
+      gridcount = parallelsum(gridcount)
 
       # --- Divide out the particle counts by hand.
       grid = grid/where(greater(gridcount,0.),gridcount,1.)
@@ -1661,12 +1656,8 @@ def pprrp(iw=0,scale=0,**kw):
   rp = xp*cos(tt) + yp*sin(tt)
   slope = kw.get('slope',0.)
   if type(slope) == type(''):
-    if lparallel:
-      aversq = globalave(rr**2)
-      averrp = globalave(rr*rp)
-    else:
-      aversq = ave(rr**2)
-      averrp = ave(rr*rp)
+    aversq = globalave(rr**2)
+    averrp = globalave(rr*rp)
     if aversq > 0.:
       slope = averrp/aversq
     else:
