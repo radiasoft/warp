@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.143 2005/01/19 21:23:40 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.144 2005/02/08 17:53:39 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -458,9 +458,10 @@ def settitles(titlet="",titleb="",titlel="",titler=""):
   default_titleb = titleb
   default_titlel = titlel
   default_titler = titler
-def ptitles(titlet="",titleb="",titlel="",titler="",v=1):
+def ptitles(titlet="",titleb="",titlel="",titler="",v=None):
   "Plots titles, either uses input or titles set by settitles"
   global framet,frameb,framel,framer
+  if v is None: v = plsys()
   if titlet=="" and default_titlet: titlet = default_titlet
   if titleb=="" and default_titleb: titleb = default_titleb
   if titlel=="" and default_titlel: titlel = default_titlel
