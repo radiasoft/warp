@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.38 2003/07/11 22:14:13 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.39 2003/08/27 20:32:34 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -152,6 +152,12 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   nps_p0 = zeros((top.nslaves+1,top.ns+1))
   nps_p0[1:,1:] = nps_p
 
+  # --- Same for npslost
+  npslost_p = gatherarray(top.npslost,bcast=1)
+  npslost_p.shape = (top.nslaves,top.ns)
+  npslost_p0 = zeros((top.nslaves+1,top.ns+1))
+  npslost_p0[1:,1:] = npslost_p
+
   # --- Need boundnz from the right most processor.
   boundnz_p = gatherarray(f3d.boundnz)
 
@@ -192,6 +198,8 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
     for a in attr:
       if re.search(a,top.getvarattr("nps")):
         ff.write('nps_p@parallel',nps_p)
+      if re.search(a,top.getvarattr("npslost")):
+        ff.write('npslost_p@parallel',npslost_p)
       if re.search(a,f3d.getvarattr("ncond")):
         ff.write('ncond_p@parallel',ncond_p)
       if re.search(a,f3d.getvarattr("necndbdy")):
@@ -241,23 +249,25 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         # --- dump.
         if type(v) != type(array([])):
           # --- First, deal with exceptions
-          if (p == 'w3d' and vname in ['zmmax','zmmaxp']):
+          if p == 'w3d' and vname in ['zmmax','zmmaxp']:
             ff.write(pdbname,w3d.zmmaxglobal)
-          elif (p == 'w3d' and vname in ['zmminp']):
+          elif p == 'w3d' and vname in ['zmminp']:
             ff.write(pdbname,w3d.zmminglobal)
-          elif (p == 'w3d' and vname in ['nz','izfsmax','nz_selfe','nzp']):
+          elif p == 'w3d' and vname in ['nz','izfsmax','nz_selfe','nzp']:
             ff.write(pdbname,w3d.nzfull)
           elif (p=='top' and vname in ['np','nplive','npmax','npmaxb',
                                        'npmaxi']) or\
                (p=='wxy' and vname in ['npmaxxy']):
             ff.write(pdbname,sum(nps_p)[0])
-          elif (p=='f3d' and vname in ['ncond','ncondmax']):
+          elif p=='top' and vname in ['npmaxlost']:
+            ff.write(pdbname,sum(npslost_p)[0])
+          elif p=='f3d' and vname in ['ncond','ncondmax']:
             ff.write(pdbname,sum(ncond_p))
-          elif (p=='f3d' and vname in ['necndbdy']):
+          elif p=='f3d' and vname in ['necndbdy']:
             ff.write(pdbname,sum(necndbdy_p))
-          elif (p=='f3d' and vname in ['nocndbdy']):
+          elif p=='f3d' and vname in ['nocndbdy']:
             ff.write(pdbname,sum(nocndbdy_p))
-          elif (p=='f3d' and vname in ['ncndmax']):
+          elif p=='f3d' and vname in ['ncndmax']:
             ff.write(pdbname,max(sum(necndbdy_p),sum(nocndbdy_p)))
           else:
             # --- Otherwise, write out value as is on PE0
@@ -304,13 +314,36 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- A WARPxy particle array
             if wxy.npmaxxy > 0 and sum(sum(nps_p)) > 0:
               ff.defent(pdbname,v,(sum(sum(nps_p)),))
+          elif vname == 'inslost' and p == 'top':
+            # --- This is set to be correct globally
+            iii = array([1])
+            if top.ns > 1:
+              iii = array([1]+list(cumsum(sum(npslost_p[:,:-1]))+array([1])))
+            ff.write(pdbname,iii)
+            ff.defent(vname+'@parallel',v,(top.nslaves,top.ns))
+          elif vname == 'npslost' and p == 'top':
+            # --- This is set to be correct globally
+            ff.write(pdbname,sum(npslost_p))
+            ff.defent(vname+'@parallel',v,(top.nslaves,top.ns))
+          elif p == 'top' and vname in ['xplost','yplost','zplost',
+                                        'uxplost','uyplost','uzplost',
+                                        'gaminvlost','tplost']:
+            # --- For the particle data, a space big enough to hold
+            # --- all of the data is created.
+            if sum(sum(npslost_p)) > 0:
+              ff.defent(pdbname,v,(sum(sum(npslost_p)),))
+          elif p == 'top' and vname == 'pidlost':
+            # --- For the particle data, a space big enough to hold
+            # --- all of the data is created.
+            if sum(sum(npslost_p)) > 0:
+              ff.defent(pdbname,v,(sum(sum(npslost_p)),top.npid))
           elif p == 'f3d' and vname == 'mglevelsiz':
             ff.defent(vname+'@parallel',v,(top.nslaves,len(v)))
             ff.write(pdbname,zeros(len(v)))
           elif p == 'f3d' and vname == 'mglevelsnz':
             ff.defent(vname+'@parallel',v,(top.nslaves,len(v)))
             ff.write(pdbname,f3d.mglevelsnzfull)
-          elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
+          elif p == 'f3d' and vname in ['ixcond','iycond','izcond',
                                        'condvolt','condnumb','icondlevel']:
             # --- The conductor data is gathered into one place
             if sum(ncond_p) > 0:
@@ -416,6 +449,25 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                 ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
                 ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:],
                          indx=(ipmin,0))
+        elif p == 'top' and vname in ['inslost','npslost']:
+          # --- Write out to parallel space
+          ff.write(vname+'@parallel',array([v]),indx=(me,0))
+        elif p == 'top' and vname in ['xplost','yplost','zplost',
+                                      'uxplost','uyplost','uzplost',
+                                      'gaminvlost','tplost']:
+          # --- Write out each species seperately.
+          for js in xrange(top.ns):
+            if top.npslost[js] > 0:
+              ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
+              ff.write(pdbname,v[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1],
+                       indx=(ipmin,))
+        elif p == 'top' and vname == 'pidlost':
+          # --- Write out each species seperately.
+          for js in xrange(top.ns):
+            if top.npslost[js] > 0:
+              ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
+              ff.write(pdbname,v[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:],
+                       indx=(ipmin,0))
         elif p == 'f3d' and vname == 'mglevelsiz':
           ff.write(vname+'@parallel',array([v]),indx=(me,0))
         elif p == 'f3d' and vname == 'mglevelsnz':
@@ -495,6 +547,8 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
   # --- Long list of parallel variables that are to be skipped in the serial
   # --- restore.
   skipparallel = ['xp','yp','zp','uxp','uyp','uzp','gaminv','dtp','pid',
+    'xplost','yplost','zplost','uxplost','uyplost','uzplost','gaminvlost',
+    'tplost','pidlost',
     'mglevelsiz','mglevelsnz',
     'ncondmax','ncndmax','ncond','necndbdy','nocndbdy',
     'ixcond','iycond','izcond','condvolt','condnumb','icondlevel'
@@ -542,6 +596,16 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
     top.ins[:] = ff.read_part('ins@parallel',itriple)[0,...]
   if 'nps@parallel' in vlist:
     top.nps[:] = ff.read_part('nps@parallel',itriple)[0,...]
+
+  if 'npslost_p@parallel' in vlist:
+    npslost_p = ff.read('npslost_p@parallel')
+    npslost_p0 = zeros((top.nslaves+1,top.ns+1))
+    npslost_p0[1:,1:] = npslost_p
+  itriple = array([me,me,1,0,top.ns-1,1])
+  if 'inslost@parallel' in vlist:
+    top.inslost[:] = ff.read_part('inslost@parallel',itriple)[0,...]
+  if 'npslost@parallel' in vlist:
+    top.npslost[:] = ff.read_part('npslost@parallel',itriple)[0,...]
 
   # --- Loop over the list of all of the variables in the restart file.
   # --- Read in all of the scalars first - this ensures that all of the
@@ -653,6 +717,38 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
               ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:]'
               exec(pname+ip+' = ff.read_part(v,itriple)',
                    __main__.__dict__,locals())
+      elif p == 'top' and vname in ['inslost','npslost']:
+        # --- These have already been restored above since they are
+        # --- needed to read in the lost particles.
+        s = 'pass'
+      elif p == 'top' and vname in ['xplost','yplost','zplost',
+                                    'uxplost','uyplost','uzplost',
+                                    'gaminvlost','tplost']:
+        # --- Read in each species seperately.
+        # --- The assumption is made that if wxy.dtp was written out,
+        # --- it has the same shape as the other particle arrays.
+        # --- The command is exec'ed here since a different command
+        # --- is needed for each species.  Errors are not caught.
+        s = 'pass'
+        for js in xrange(top.ns):
+          if top.npslost[js] > 0:
+            ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
+            itriple = array([ipmin,ipmin+top.npslost[js]-1,1])
+            ip = '[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1]'
+            exec(pname+ip+' = ff.read_part(v,itriple)',
+                 __main__.__dict__,locals())
+      elif p == 'top' and vname == 'pidlost':
+        # --- Read in each species seperately.
+        # --- The command is exec'ed here since a different command
+        # --- is needed for each species.  Errors are not caught.
+        s = 'pass'
+        for js in xrange(top.ns):
+          if top.npslost[js] > 0:
+            ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
+            itriple = array([ipmin,ipmin+top.npslost[js]-1,1,0,top.npid-1,1])
+            ip = '[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:]'
+            exec(pname+ip+' = ff.read_part(v,itriple)',
+                 __main__.__dict__,locals())
       elif p == 'f3d' and vname == 'mglevelsiz':
         itriple = array([me,me,1,0,len(f3d.mglevelsiz)-1,1])
         s = p+'.'+vname+'[:] = ff.read_part(vname+"@parallel",itriple)[0,...])'
