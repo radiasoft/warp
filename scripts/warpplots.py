@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.33 2001/03/08 02:37:14 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.34 2001/03/14 21:51:21 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -700,9 +700,9 @@ The product slope*vz gives the slope for x-vx.
       vz = top.vzbar[iiw]
   else:
     if 0 <= iz <= w3d.nzfull:
-      pe = convertiztope(iz)
+      pe = convertizptope(iz)
       if me == pe:
-        iz = iz - top.izslave[me+1]
+        iz = iz - top.izpslave[me]
         slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
         offset = top.xpbarz[iz]-slope*top.xbarz[iz]
         vz = top.vzbarz[iz]
@@ -739,9 +739,9 @@ The product slope*vz gives the slope for y-vy.
       vz = top.vzbar[iiw]
   else:
     if 0 <= iz <= w3d.nzfull:
-      pe = convertiztope(iz)
+      pe = convertizptope(iz)
       if me == pe:
-        iz = iz - top.izslave[me+1]
+        iz = iz - top.izpslave[me]
         slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
         offset = top.ypbarz[iz]-slope*top.ybarz[iz]
         vz = top.vzbarz[iz]
@@ -1807,10 +1807,12 @@ to all three.
     if ix != None and iy != None and iz != None:
       return w3d.rho[ix,iy,iz]
   else:
+    iz1 = top.izfsslave[me] - top.izslave[me]
     if me < npes-1:
-      ppp = w3d.rho[:,:,:-top.grid_overlap]
+      iz2 = top.izfsslave[me+1] - top.izslave[me]
     else:
-      ppp = w3d.rho[:,:,:]
+      iz2 = iz1 + top.nzfsslave[me] + 1
+    ppp = w3d.rho[:,:,iz1:iz2]
     if ix != None and iy == None:
       ppp = ppp[ix,:,:]
     elif ix == None and iy != None:
@@ -1820,9 +1822,9 @@ to all three.
     if iz == None:
       ppp = transpose(gatherarray(transpose(ppp)))
     else:
-      pe = convertiztope(iz)
+      pe = convertizfstope(iz)
       if pe == None: return None
-      if me == pe: ppp = ppp[...,iz-top.izslave[me+1]]
+      if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
       else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
     if bcast: ppp = mpi.bcast(ppp)
@@ -1904,10 +1906,12 @@ be from none to all three.
     if ix != None and iy != None and iz != None:
       return w3d.phi[ix,iy,iz+1]
   else:
+    iz1 = top.izfsslave[me] - top.izslave[me]
     if me < npes-1:
-      ppp = w3d.phi[:,:,1:w3d.nz-top.grid_overlap+2]
+      iz2 = top.izfsslave[me+1] - top.izslave[me]
     else:
-      ppp = w3d.phi[:,:,1:-1]
+      iz2 = iz1 + top.nzfsslave[me] + 1
+    ppp = w3d.phi[:,:,iz1+1:iz2+1]
     if ix != None and iy == None:
       ppp = ppp[ix,:,:]
     elif ix == None and iy != None:
@@ -1917,9 +1921,9 @@ be from none to all three.
     if iz == None:
       ppp = transpose(gatherarray(transpose(ppp)))
     else:
-      pe = convertiztope(iz)
+      pe = convertizfstope(iz)
       if pe == None: return None
-      if me == pe: ppp = ppp[...,iz-top.izslave[me+1]]
+      if me == pe: ppp = ppp[...,iz-top.izfsslave[me]]
       else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
     if bcast: ppp = mpi.bcast(ppp)
@@ -2008,7 +2012,7 @@ def pcrhoxy(iz=None,contours=20,titles=1,filled=1,color=None):
   xx=w3d.xmesh*ones(w3d.nx+1,'d')[:,NewAxis]
   yy=w3d.ymesh[:,NewAxis]*ones(w3d.ny+1,'d')
   ireg=ones((w3d.nx+1,w3d.ny+1))
-  plotc(getrho(iz=iz),w3d.ymesh,w3d.xmesh,
+  plotc(transpose(getrho(iz=iz)),w3d.ymesh,w3d.xmesh,
         contours=contours,filled=filled,color=color)
   if titles: ptitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
 ##########################################################################
@@ -2047,7 +2051,7 @@ def pcphixy(iz=None,contours=20,titles=1,filled=1,color=None):
   xx=w3d.xmesh*ones(w3d.nx+1,'d')[:,NewAxis]
   yy=w3d.ymesh[:,NewAxis]*ones(w3d.ny+1,'d')
   ireg=ones((w3d.nx+1,w3d.ny+1))
-  plotc(getphi(iz=iz),w3d.ymesh,w3d.xmesh,
+  plotc(transpose(getphi(iz=iz)),w3d.ymesh,w3d.xmesh,
         contours=contours,filled=filled,color=color)
   if titles: ptitles("Potential in x-y plane","X","Y","iz = "+repr(iz))
 ##########################################################################
