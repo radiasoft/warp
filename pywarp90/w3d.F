@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.114 $, $Date: 2003/06/11 21:23:38 $
+c@(#) File W3D.M, version $Revision: 3.115 $, $Date: 2003/06/13 23:46:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1261,7 +1261,8 @@ c           --- Obtain the self-field from the electrostatic potential
 
 c           --- Get E field for particles near the  injection surface.
             if (inject > 0) then
-             call inj_sete3d(ip,ipmin,inj_dz,ex,ey,ez)
+             call inj_sete3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                       pid(ipmin,injpid),inj_dz,ex,ey,ez)
              if(l_inj_delay_temp) call inj_addtemp3d(ip,ipmin,dz)
             endif
 c           --- Get transverse E field for particles near any defined apertures.
@@ -4031,8 +4032,8 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: is,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,ijz
       integer(ISZ):: inj_is
       real(kind=8):: rnpinjct,rnn,t
-      real(kind=8):: rr,ehalf,vnorm,zz,wxx,wyy,aa,az,wz,xx,yy,xxi,xm,ym,zm
-      real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,ez,vznorm,rp
+      real(kind=8):: rr,ehalf,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rrr,rri
+      real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,vznorm,rp
       real(kind=8):: clightsqi
       real(kind=8):: xinj,yinj,zinj,ainj,ainji,ainjmini,binj,binji,binjmini
       real(kind=8):: apinj,bpinj,rinj,rinji,vzinj
@@ -4044,10 +4045,13 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: wranf
       integer(ISZ):: ith,nti
       real(kind=8):: cl_const(ns),jton(ns),vzconst(ns)
-      real(kind=8):: substarttime,wtime
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
       integer(ISZ):: spreadx, spready
       integer(ISZ):: ixmin,ixmax,iymin,iymax
+      real(kind=8),pointer:: xx(:),yy(:),zz(:),ux(:),uy(:),uz(:),id(:),gg(:)
+      real(kind=8),pointer:: ex(:),ey(:),ez(:),bx(:),by(:),bz(:)
+      real(kind=8),pointer:: bendres(:),bendradi(:),mask(:)
+      real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
       dxi = 1./inj_dx
@@ -4249,17 +4253,17 @@ c             --- The absolute values are needed for the cases of symmetry.
               iyy = abs(yt(ip) - ymmin)*dyi
               wxx = abs(xt(ip) - xmmin)*dxi - ixx
               wyy = abs(yt(ip) - ymmin)*dyi - iyy
-              zz = inj_grid(ixx  ,iyy  ,ij)*(1. - wxx)*(1. - wyy) +
+              zs = inj_grid(ixx  ,iyy  ,ij)*(1. - wxx)*(1. - wyy) +
      &             inj_grid(ixx+1,iyy  ,ij)*      wxx *(1. - wyy) +
      &             inj_grid(ixx  ,iyy+1,ij)*(1. - wxx)*      wyy  +
      &             inj_grid(ixx+1,iyy+1,ij)*      wxx *      wyy  +
      &             zinj
 c             --- Only save particle if it is within the injection region.
-              if (inj_zmmin <= zz .and. zz < inj_zmmax) then
+              if (inj_zmmin <= zs .and. zs < inj_zmmax) then
                 ii = ins(is) - 1 - npinjtmp(is,ij)
                 xp(ii) = xt(ip)
                 yp(ii) = yt(ip)
-                zp(ii) = zz
+                zp(ii) = zs
                 vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
                 vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
                 uxp(ii) = vzinj*(apinj*(xp(ii)-xinj)*ainji) +
@@ -4292,7 +4296,8 @@ c           --- make injected particles live particles
             nps(is) = nps(is) + nn
 
 c           --- get E self-field at initial positions
-            call inj_sete3d(nn,ins(is),inj_dz,at(1),bt(1),apt(1))
+            call inj_sete3d(nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
+     &                      pid(ins(is),injpid),inj_dz,at,bt,apt)
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -4382,7 +4387,8 @@ c           --- Make sure there is enough temp space
             endif
 
 c           --- calculate new E self-fields
-            call inj_sete3d(nn,ipmin,inj_dz,at(1),bt(1),apt(1))
+            call inj_sete3d(nn,xp(ipmin),yp(ipmin),zp(ipmin),pid(ipmin,injpid),
+     &                      inj_dz,at,bt,apt)
 
 c           --- get external fields at current positions
             do ip=1,nn
@@ -4551,8 +4557,8 @@ c             --- K. Blodgett, "Currents Limited by Space Charge Between
 c             --- Concentric Spheres", PhysRev, 1924.
               if (inject == 2) then
                 if (linj_spherical) then
-                  zz = (inj_dz*inj_d(ij))*rinji
-                  sphericalcorrection = (1. + 1.6*zz + 2.06*zz**2)
+                  zs = (inj_dz*inj_d(ij))*rinji
+                  sphericalcorrection = (1. + 1.6*zs + 2.06*zs**2)
                 else
                   sphericalcorrection = 1.
                 endif
@@ -4700,11 +4706,9 @@ c                   --- with outer major and minor radii of ainject and
 c                   --- binject and inner radii of ainjmin and binjmin.
 c                   --- The signs of x and y are adjusted to be in the
 c                   --- first quadrant.
-                    xx = xp(ii)
-                    yy = yp(ii)
-                    if ((xx*ainji)**2 + (yy*binji)**2 > 1.) cycle
+                    if ((xp(ii)*ainji)**2 + (yp(ii)*binji)**2 > 1.) cycle
                     if(solvergeom/=Zgeom .and. ainjmin(ij)>0.  .and. binjmin(ij)>0.) then
-                       if((xx*ainjmini)**2 + (yy*binjmini)**2 < 1.) cycle
+                       if((xp(ii)*ainjmini)**2 + (yp(ii)*binjmini)**2 < 1.) cycle
                     end if
                     if(l_inj_regular) then
                       if(l_inj_rz) then
@@ -4888,7 +4892,7 @@ c               --- and the particle arrays are unallocated.
 c         --- end of loop over injection sources
 
 c         --- Call transverse particle scraping routine to force
-c         --- removal of particles outside the grid. Note that
+c         --- removal of particles outside the grid.
           do is=1,ns
             ii = ins(is) - npinje_s(is)
             if (npinje_s(is) > 0) then
@@ -4907,6 +4911,7 @@ c           --- make injected particles live particles
             ins(is) = ins(is) - npinje_s(is)
             nps(is) = nps(is) + npinje_s(is)
           enddo
+
 c         --- Now, advance the particles off of the emitting surface using
 c         --- isochronous leapfrog.  Each particle has it's own time step
 c         --- size, uniformly distributed between 0 and dt.
@@ -4920,45 +4925,56 @@ c           --- Make sure that there is enough room in the temporary arrays.
               call gchange("Setpwork3d",0)
             endif
 
+c           --- Make equivalences so names make sense below
+            ex => at
+            ey => bt
+            ez => apt
+            bx => bpt
+            by => xct
+            bz => xpct
+            bendres => yct
+            bendradi => ypct
+
+c           --- Zero the B field which is accumulated below
+            bx = 0.
+            by = 0.
+            bz = 0.
+
+c           --- Assume that injection will never be done inside a bend.
+            bendres = 0.
+            bendradi = 1.
+
+c           --- Create equivalences
+c           --- In this section of code, this is purely for convenience
+c           --- and to make the following code look cleaner.
+            nn = npinje_s(is)
+            xx => xp(ins(is):ins(is)+npinje_s(is)-1)
+            yy => yp(ins(is):ins(is)+npinje_s(is)-1)
+            zz => zp(ins(is):ins(is)+npinje_s(is)-1)
+            ux => uxp(ins(is):ins(is)+npinje_s(is)-1)
+            uy => uyp(ins(is):ins(is)+npinje_s(is)-1)
+            uz => uzp(ins(is):ins(is)+npinje_s(is)-1)
+            gg => gaminv(ins(is):ins(is)+npinje_s(is)-1)
+            id => pid(ins(is):ins(is)+npinje_s(is)-1,injpid)
+
 c           --- get E self-field at initial positions
-            call inj_sete3d(npinje_s(is),ins(is),inj_dz,at(1),bt(1),apt(1))
+            call inj_sete3d(nn,xx,yy,zz,id,inj_dz,ex,ey,ez)
 
 c           --- get external fields at initial positions
-c           --- (Assumes that injection will never be done inside a bend.)
-            do ip=1,npinje_s(is)
-              xt(ip) = 0.
-              yt(ip) = 0.
-              zt(ip) = 0.
-              uxt(ip) = 0.
-              uyt(ip) = 1.
-            enddo
-            do ipmin = ins(is),ins(is)+npinje_s(is)-1,nparpgrp
-              ip = min(nparpgrp, ins(is)+npinje_s(is)-ipmin)
-              ii = ipmin - ins(is) + 1
-              call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                     gaminv(ipmin),0.,dt*0.5,
-     &                     xt(ii),yt(ii),zt(ii),at(ii),bt(ii),apt(ii),
-     &                     sm(is),sq(is),uxt(ii),uyt(ii),1.,dt)
-            enddo
+            call exteb3d(nn,xx,yy,zz,uz,gg,0.,dt*0.5,bx,by,bz,ex,ey,ez,
+     &                   sm(is),sq(is),bendres,bendradi,1.,dt)
 
-c           --- Store the fractional timestep in bpt.
-            do ip=ins(is),ins(is)+npinje_s(is)-1
-              bpt(ip-ins(is)+1) = (pid(ip,injpid)-int(pid(ip,injpid)))*dt
-            enddo
+c           --- Fetch the time step size
+            tt(1:nn) = dt*(id - int(id))
 
 c           --- do half velocity advance with E fields
-            call epusht3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
+            call epusht3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),tt,0.5)
 
 c           --- do half velocity advance with B fields
-            call bpusht3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
-     &                    bpt(1),0.5,ibpush)
+            call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,sq(is),sm(is),tt,0.5,ibpush)
 
 c           --- do full position advance
-            call xpusht3d(npinje_s(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                    uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    gaminv(ins(is)),bpt(1))
+            call xpusht3d(nn,xx,yy,zz,ux,uy,uz,gg,tt)
 
 c           --- setrho is now done by the setrho call in padvnc3d.
           enddo
@@ -4975,58 +4991,113 @@ c with position, and then move velocity one half timestep back to match time
 c level of rest of particles.
 c         --- loop over species
           do is=1,ns
+
+#ifndef MPIPARALLEL
+c           --- Skip this if no particles of this species were injected.
             if(npinje_s(is)==0) cycle
+            nn = npinje_s(is)
+#else
+c           --- Find particles that were freshly injected. These
+c           --- are particles which still have noninteger pid(:,injpid).
+            allocate(mask(nps(is)))
+            mask = ((pid(ins(is):ins(is)+nps(is)-1,injpid) -
+     &           int(pid(ins(is):ins(is)+nps(is)-1,injpid))))
+            nn = COUNT(mask > 0.)
+#endif
 
 c           --- Make sure that there is enough room in the temporary arrays.
-            if (npinje_s(is) > npgrp) then
-              npgrp = npinje_s(is)
+            if (nn > npgrp) then
+              npgrp = nn
               call gchange("Setpwork3d",0)
             endif
 
+c           --- Make equivalences so names make sense below
+            ex => at
+            ey => bt
+            ez => apt
+            bx => bpt
+            by => xct
+            bz => xpct
+            bendres => yct
+            bendradi => ypct
+
+c           --- Zero the B field which is accumulated below
+            bx = 0.
+            by = 0.
+            bz = 0.
+
+c           --- Assume that injection will never be done inside a bend.
+            bendres = 0.
+            bendradi = 1.
+
+#ifndef MPIPARALLEL
+c           --- Fetch time step size
+            tt = dt*(pid(ins(is):ins(is)+npinje_s(is)-1,injpid) -
+     &           int(pid(ins(is):ins(is)+npinje_s(is)-1,injpid)))
+c           --- Create equivalences
+            xx => xp(ins(is):ins(is)+npinje_s(is)-1)
+            yy => yp(ins(is):ins(is)+npinje_s(is)-1)
+            zz => zp(ins(is):ins(is)+npinje_s(is)-1)
+            ux => uxp(ins(is):ins(is)+npinje_s(is)-1)
+            uy => uyp(ins(is):ins(is)+npinje_s(is)-1)
+            uz => uzp(ins(is):ins(is)+npinje_s(is)-1)
+            gg => gaminv(ins(is):ins(is)+npinje_s(is)-1)
+            id => pid(ins(is):ins(is)+npinje_s(is)-1,injpid)
+#else
+c           --- Create equivalences
+            xx => xt(1:nn)
+            yy => yt(1:nn)
+            zz => zt(1:nn)
+            ux => uxt(1:nn)
+            uy => uxt(1:nn)
+            uz => uxt(1:nn)
+            gg => rt(1:nn)
+            id => perpscal(1:nn)
+c           --- Fetch time step size
+            tt(1:nn) = dt*PACK(mask,mask > 0.)
+c           --- Copy particle data into temporary arrays, collecting
+c           --- only particles that have been injected this time step.
+            xx = PACK(xp(ins(is):ins(is)+nps(is)-1),mask > 0.)
+            yy = PACK(yp(ins(is):ins(is)+nps(is)-1),mask > 0.)
+            zz = PACK(zp(ins(is):ins(is)+nps(is)-1),mask > 0.)
+            ux = PACK(uxp(ins(is):ins(is)+nps(is)-1),mask > 0.)
+            uy = PACK(uyp(ins(is):ins(is)+nps(is)-1),mask > 0.)
+            uz = PACK(uzp(ins(is):ins(is)+nps(is)-1),mask > 0.)
+            gg = PACK(gaminv(ins(is):ins(is)+nps(is)-1),mask > 0.)
+            id = PACK(pid(ins(is):ins(is)+nps(is)-1,injpid),mask > 0.)
+#endif
+
 c           --- calculate new E self-fields
-            call inj_sete3d(npinje_s(is),ins(is),inj_dz,at(1),bt(1),apt(1))
+            call inj_sete3d(nn,xx,yy,zz,id,inj_dz,ex,ey,ez)
 
-c           --- Get external fields at current positions, assuming that there
-c           --- is no bend.
-            do ip=1,npinje_s(is)
-              xt(ip) = 0.
-              yt(ip) = 0.
-              zt(ip) = 0.
-              uxt(ip) = 0.
-              uyt(ip) = 1.
-            enddo
-            do ip = 1,npinje_s(is),nparpgrp
-              ii = min(nparpgrp, npinje_s(is)+1-ip)
-              ipmin = ip+ins(is)-1
-              call exteb3d(ii,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                     gaminv(ipmin),-dt*0.5,0.,
-     &                     xt(ip),yt(ip),zt(ip),at(ip),bt(ip),apt(ip),
-     &                     sm(is),sq(is),uxt(ip),uyt(ip),1.,dt)
-            enddo
-
-c           --- Store the fractional timestep in bpt.
-            do ip=1,npinje_s(is)
-              bpt(ip) = (pid(ip-1+ins(is),injpid) - int(pid(ip-1+ins(is),injpid)))*dt
-            enddo
+c           --- Get external fields at current positions.
+            call exteb3d(nn,xx,yy,zz,uz,gg,-dt*0.5,0.,bx,by,bz,ex,ey,ez,
+     &                   sm(is),sq(is),bendres,bendradi,1.,dt)
 
 c           --- complete B advance
-            call bpusht3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
-     &                    bpt(1),0.5,ibpush)
+            call bpusht3d(nn,ux,uy,uz,gg,bx,by,bz,sq(is),sm(is),tt,0.5,ibpush)
 
 c           --- complete the E advance
-            call epusht3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
+            call epusht3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),tt,0.5)
 
 c           --- Now, move velocites back one half a step
 c           --- first half of a backward B advance
-            call bpush3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                   gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
-     &                   -0.5*dt,ibpush)
+            call bpush3d(nn,ux,uy,uz,gg,bx,by,bz,sq(is),sm(is),-0.5*dt,ibpush)
 
 c           --- then half of a backward E advance
-            call epush3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                   at(1),bt(1),apt(1),sq(is),sm(is),-0.5*dt)
+            call epush3d(nn,ux,uy,uz,ex,ey,ez,sq(is),sm(is),-0.5*dt)
+
+#ifdef MPIPARALLEL
+c           --- Copy data back into the particle arrays
+            xp(ins(is):ins(is)+nps(is)-1) = UNPACK(xx,mask>0.,xp(ins(is):ins(is)+nps(is)-1))
+            yp(ins(is):ins(is)+nps(is)-1) = UNPACK(yy,mask>0.,yp(ins(is):ins(is)+nps(is)-1))
+            zp(ins(is):ins(is)+nps(is)-1) = UNPACK(zz,mask>0.,zp(ins(is):ins(is)+nps(is)-1))
+            uxp(ins(is):ins(is)+nps(is)-1) = UNPACK(ux,mask>0.,uxp(ins(is):ins(is)+nps(is)-1))
+            uyp(ins(is):ins(is)+nps(is)-1) = UNPACK(uy,mask>0.,uyp(ins(is):ins(is)+nps(is)-1))
+            uzp(ins(is):ins(is)+nps(is)-1) = UNPACK(uz,mask>0.,uzp(ins(is):ins(is)+nps(is)-1))
+            pid(ins(is):ins(is)+nps(is)-1,injpid) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
+            deallocate(mask)
+#endif
 
 c        --- end of loop over species
          enddo
@@ -5072,8 +5143,8 @@ c             --- only if there is a positive number of injected particles.
                 ijz = iz - nztinjmn(ij)
                 rinj = abs(rtinject(ijz,ij))
                 rinji = 1./abs(rtinject(ijz,ij))
-                xx = sign(inj_dx,rtinject(ijz,ij))
-                xxi = 1./xx
+                rrr = sign(inj_dx,rtinject(ijz,ij))
+                rri = 1./rrr
 
 c               --- Area of section of emitting surface.
                 area = inj_dz*rinj*2.*pi/nttinj(ij)
@@ -5085,7 +5156,7 @@ c               --- Concentric Spheres", PhysRev, 1924.
                 if (inject == 2) then
                   const = 4./9.*eps0*(2.*abs(qoverm))**.5*dxi**2*
      &             dt*area/echarge/sw(is)/
-     &             (1. + 0.8*xx*rinji + 0.66*(xx*rinji)**2)
+     &             (1. + 0.8*rrr*rinji + 0.66*(rrr*rinji)**2)
                 endif
 
                 do ith=0,nttinj(ij)-1
@@ -5096,8 +5167,8 @@ c                 --- angle of point in transverse plane
 c                 --- Find coordinates of the point a distance inj_dx from
 c                 --- the source along a line perpendicular to the
 c                 --- emitting surface.
-                  p2x = abs(xtinject(ij) + (rinj - xx)*cos(aa) - xmmin)*dxi
-                  p2y = abs(ytinject(ij) + (rinj - xx)*sin(aa) - ymmin)*dyi
+                  p2x = abs(xtinject(ij) + (rinj - rrr)*cos(aa) - xmmin)*dxi
+                  p2y = abs(ytinject(ij) + (rinj - rrr)*sin(aa) - ymmin)*dyi
                   i2x = p2x
                   i2y = p2y
                   w2x = p2x - i2x
@@ -5105,7 +5176,7 @@ c                 --- emitting surface.
 
 c                 --- Fetch difference between phi at that point and phi on
 c                 --- the emitting surface.
-                  ehalf = xxi*(vtinject(ij) -
+                  ehalf = rri*(vtinject(ij) -
      &                     phip(i2x  ,i2y  ,iz)*(1.-w2x)*(1.-w2y) -
      &                     phip(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) -
      &                     phip(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  -
@@ -5114,15 +5185,14 @@ c                 --- the emitting surface.
 c                 --- normal velocity
                   vnorm = -dt*qoverm*ehalf
 
-c                 --- Calculate axial E field dx from surface.
-                  ez = 0.5*dzi*(
+c                 --- Axial velocity
+c                 --- Calculated using axial E field dx from surface.
+                  vznorm = dt*qoverm* 0.5*dzi*(
      &     (phip(i2x  ,i2y  ,iz-1) - phip(i2x  ,i2y  ,iz+1))*(1.-w2x)*(1.-w2y) +
      &     (phip(i2x+1,i2y  ,iz-1) - phip(i2x+1,i2y  ,iz+1))*    w2x *(1.-w2y) +
      &     (phip(i2x  ,i2y+1,iz-1) - phip(i2x  ,i2y+1,iz+1))*(1.-w2x)*    w2y  +
      &     (phip(i2x+1,i2y+1,iz-1) - phip(i2x+1,i2y+1,iz+1))*    w2x *    w2y)
 
-c                 --- Axial velocity
-                  vznorm = dt*qoverm*ez
 
 c                 --- Find coordinates of the point.
                   p2x = abs(xtinject(ij) + rinj*cos(aa) - xmmin)*dxi
@@ -5167,7 +5237,7 @@ c                   --- calculate position of new particle
                     wz = rnrev(injctcnt,dig1)
                     zp(ii) = zm + wz*inj_dz
                     rr = rnrev(injctcnt,dig2)
-                    rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz - rr*xx
+                    rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz - rr*rrr
                     t = aa + (rnrev(injctcnt,dig3) - .5)*2.*pi/nttinj(ij)
                     xp(ii) = xtinject(ij) + rp*cos(t)
                     yp(ii) = ytinject(ij) + rp*sin(t)
@@ -6352,15 +6422,15 @@ c     --- Do the smoothing.
       return
       end
 c=============================================================================
-      subroutine inj_sete3d(npart,ipmin,dz,ex,ey,ez)
+      subroutine inj_sete3d(npart,xp,yp,zp,pid,dz,ex,ey,ez)
       use Subtimers3d
       use InGen3d
       use InPart
       use InjectVars
       use InjectVars3d
-      use Particles
       use FRZmgrid
-      integer(ISZ):: nx,ny,nz,npart,ipmin
+      integer(ISZ):: npart
+      real(kind=8):: xp(npart),yp(npart),zp(npart),pid(npart)
       real(kind=8):: ex(npart),ey(npart),ez(npart)
       real(kind=8):: dz
 
@@ -6385,7 +6455,7 @@ c any conductor surface.
       integer(ISZ):: spreadx,spready
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(inj_nz>1) call inj_sete_3darray(npart,ipmin,dz,ex,ey,ez)
+      if(inj_nz>1) call inj_sete_3darray(npart,xp,yp,zp,pid,dz,ex,ey,ez)
 
       if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
         if(.not.l_inj_rz) then
@@ -6413,11 +6483,12 @@ c any conductor surface.
       fourthirds = 4./3.
       onethird = 1./3.
 
-c     --- Transform the particles into the frame of the injection source
-      xx = xp(ipmin:ipmin+npart-1)
-      yy = yp(ipmin:ipmin+npart-1)
-      zz = zp(ipmin:ipmin+npart-1)
-      ijp = int(pid(ipmin:ipmin+npart-1,injpid))
+c     --- Transform the particles into the frame of the injection source,
+c     --- copying particle data to temporary arrays.
+      xx = xp
+      yy = yp
+      zz = zp
+      ijp = int(pid)
       call inj_transform(npart,xx,yy,zz,npart,ijp,-1,.true.)
 
 c     --- Loop over particles
@@ -7571,15 +7642,15 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
       end
 
 c=============================================================================
-      subroutine inj_sete_3darray(npart,ipmin,dz,ex,ey,ez)
+      subroutine inj_sete_3darray(npart,xp,yp,zp,pid,dz,ex,ey,ez)
       use Subtimers3d
       use InGen3d
       use InPart
       use InjectVars
       use InjectVars3d
-      use Particles
       use FRZmgrid
-      integer(ISZ):: nx,ny,nz,npart,ipmin
+      integer(ISZ):: npart
+      real(kind=8):: xp(npart),yp(npart),zp(npart),pid(npart)
       real(kind=8):: ex(npart),ey(npart),ez(npart)
       real(kind=8):: dz
 
@@ -7653,10 +7724,10 @@ c         dz1 = 2.*dz1
       dz_local(inj_nz) = dz_local(inj_nz-1)
 
 c     --- Transform the particles into the frame of the injection source
-      xx = xp(ipmin:ipmin+npart-1)
-      yy = yp(ipmin:ipmin+npart-1)
-      zz = zp(ipmin:ipmin+npart-1)
-      ijp = int(pid(ipmin:ipmin+npart-1,injpid))
+      xx = xp
+      yy = yp
+      zz = zp
+      ijp = int(pid)
       call inj_transform(npart,xx,yy,zz,npart,ijp,-1,.true.)
 
 c     --- Loop over particles
@@ -7666,7 +7737,7 @@ c       --- Get number of injection source of particle.  The particle id
 c       --- has the number of the injection source the particle was
 c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
-        ij = int(pid(ip+ipmin-1,injpid))
+        ij = ijp(ip)
         if(ij==0) cycle
 
 c       --- set temporaries

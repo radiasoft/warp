@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.113 $, $Date: 2003/06/10 22:43:48 $
+#@(#) File W3D.V, version $Revision: 3.114 $, $Date: 2003/06/13 23:46:16 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.113 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.114 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -434,8 +434,8 @@ inject3d(itask:integer)
 injctint()   subroutine # Initialization for injection
 fill_inj()   subroutine # Initializes arrays describing the geometry of the
                         # emitting surface. Automatically called.
-inj_sete3d(np:integer,ipmin:integer,xmmin:real,ymmin:real,zmmin:real,
-           dx:real,dy:real,dz:real,ex:real,ey:real,ez)
+inj_sete3d(np:integer,xp:real,yp:real,zp:real,pid:real,dz:real,
+           ex:real,ey:real,ez)
              subroutine # Calculate the E field for particles near the
                         # emitting surface.
 loadrho3d(ins,nps,is,lzero:logical) 
