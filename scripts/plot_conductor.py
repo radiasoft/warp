@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.23 2002/01/10 19:52:28 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.24 2002/01/10 23:42:37 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -53,17 +53,17 @@ def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,
       numbmy = eval('f3d.'+pp+'cnumb')
       numbpy = eval('f3d.'+pp+'cnumb')
   else:
-    ixc = []
-    iyc = []
-    izc = []
-    delmx = []
-    delpx = []
-    delmy = []
-    delpy = []
-    numbmx = []
-    numbpx = []
-    numbmy = []
-    numbpy = []
+    ixc = array([])
+    iyc = array([])
+    izc = array([])
+    delmx = array([])
+    delpx = array([])
+    delmy = array([])
+    delpy = array([])
+    numbmx = array([])
+    numbpx = array([])
+    numbmy = array([])
+    numbpy = array([])
   ii = compress(equal(izc[:nn],iz),arange(nn))
   xx = take(ixc,ii)*dx+xmin
   yy = take(iyc,ii)*dy+ymin
@@ -86,17 +86,18 @@ def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,
   # --- This code combines all of the individual lines into the list pp.
   # --- This vectorized code avoids slower explicit loops.
   niota = arange(len(xx))
-  ii = compress(abs(delmy) < dy*subgridlen,niota)
+  ii = compress(less(abs(delmy),dy*subgridlen),niota)
   pp = map(lambda x,y,d:[y,y-d,x,x],take(xx,ii),take(yy,ii),take(delmy,ii))
-  ii = compress(abs(delmx) < dx*subgridlen,niota)
+  ii = compress(less(abs(delmx),dx*subgridlen),niota)
   pp = pp + map(lambda x,y,d:[y,y,x,x-d],take(xx,ii),take(yy,ii),take(delmx,ii))
-  ii = compress(abs(delpy) < dy*subgridlen,niota)
+  ii = compress(less(abs(delpy),dy*subgridlen),niota)
   pp = pp + map(lambda x,y,d:[y,y+d,x,x],take(xx,ii),take(yy,ii),take(delpy,ii))
-  ii = compress(abs(delpx) < dx*subgridlen,niota)
+  ii = compress(less(abs(delpx),dx*subgridlen),niota)
   pp = pp + map(lambda x,y,d:[y,y,x,x+d],take(xx,ii),take(yy,ii),take(delpx,ii))
   # --- Convert the list to an array and plot it
-  pp = array(pp)
-  pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color)
+  if len(pp) > 0:
+    pp = array(pp)
+    pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color)
 
 # x-y plane
 def pfxy(iz=None,izf=None,fullplane=1,plotsg=1,scale=1,
@@ -150,8 +151,8 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
   else:
-    yy = []
-    xx = []
+    yy = array([])
+    xx = array([])
   warpplp(yy,xx,color=condcolor)
   if fullplane and (w3d.l2symtry or w3d.l4symtry):
     warpplp(-yy,xx,color=condcolor)
@@ -226,8 +227,8 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
     zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
   else:
-    xx = []
-    zz = []
+    xx = array([])
+    zz = array([])
   warpplp(xx,zz,color=condcolor)
   if fullplane and w3d.l4symtry:
     warpplp(-xx,zz,color=condcolor)
@@ -290,8 +291,8 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
     zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
   else:
-    yy = []
-    zz = []
+    yy = array([])
+    zz = array([])
   warpplp(yy,zz,color=condcolor)
   if fullplane and (w3d.l2symtry or w3d.l4symtry):
     warpplp(-yy,zz,color=condcolor)
@@ -461,8 +462,8 @@ in X-Y plane
     x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
     y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
   else:
-    x = []
-    y = []
+    x = array([])
+    y = array([])
   if lparallel:
     x = gatherarray(x)
     y = gatherarray(y)
@@ -516,8 +517,8 @@ in Z-X plane
     x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
     z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
   else:
-    x = []
-    z = []
+    x = array([])
+    z = array([])
   if lparallel:
     x = gatherarray(x)
     z = gatherarray(z)
@@ -571,8 +572,8 @@ in Z-Y plane
     y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
     z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
   else:
-    y = []
-    z = []
+    y = array([])
+    z = array([])
   if lparallel:
     y = gatherarray(y)
     z = gatherarray(z)
