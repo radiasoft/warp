@@ -5180,7 +5180,7 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
       do i = 1, ngrids
         grids_ptr(i)%grid%phi=0.
       END do
-      call solve_mgridrz(basegrid,accuracy)
+      call solve_mgridrz(basegrid,accuracy,.true.)
       vinject=0.
       call getinj_phi()
       phirho = inj_phi(0,0,1)
@@ -5194,7 +5194,7 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
       do i = 1, ngrids
         grids_ptr(i)%grid%phi=0.
       END do
-      call solve_mgridrz(basegrid,accuracy)
+      call solve_mgridrz(basegrid,accuracy,.true.)
       vinject=0.
       call getinj_phi()
       phirho = SUM(inj_phi(0:max_j-1,0,1))/max_j
@@ -5210,7 +5210,7 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
       do i = 1, ngrids
         grids_ptr(i)%grid%phi=0.
       END do
-      call solve_mgridrz(basegrid,accuracy)
+      call solve_mgridrz(basegrid,accuracy,.true.)
       vinject=0.
       call getinj_phi()
       phirho = SUM(weights(1:max_j)*inj_phi(0:max_j-1,0,1))/wtot
@@ -5221,7 +5221,7 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
       do i = 1, ngrids
         grids_ptr(i)%grid%phi=0.
       END do
-      call solve_mgridrz(basegrid,accuracy)
+      call solve_mgridrz(basegrid,accuracy,.true.)
       vinject=0.
       call getinj_phi()
       phirho = inj_phi(max_j-2,0,1)
