@@ -3,7 +3,8 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.25 2004/03/26 16:04:13 dave Exp $"
+import __main__
+egun_like_version = "$Id: egun_like.py,v 1.26 2004/07/08 19:34:13 jlvay Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -47,6 +48,9 @@ _save_same_part = false
 # --- Save value of inject since it is changed during the iterations.
 _oinject = top.inject
 
+# counter for egundata arrays update
+_izdata = 1
+
 # --- Save values of nztinjmn and nztinjmx since they are changed also.
 if (top.ntinj > 0):
   _onztinjmn = top.nztinjmn
@@ -64,10 +68,28 @@ _vzfuzz = 1.e-20
 # --- particles.
 import getzmom
 
+def plottraces():
+  if w3d.solvergeom == w3d.XZgeom:
+    warpplp(top.xp[top.ins[0]:top.ins[0]+top.nps[0]],
+            top.zp[top.ins[0]:top.ins[0]+top.nps[0]])
+  elif w3d.solvergeom == w3d.RZgeom:
+    warpplp(sqrt(top.xp[top.ins[0]:top.ins[0]+top.nps[0]]**2+
+                 top.yp[top.ins[0]:top.ins[0]+top.nps[0]]**2),
+            top.zp[top.ins[0]:top.ins[0]+top.nps[0]])
+  else:
+    plsys(9)
+    warpplp(top.xp[top.ins[0]:top.ins[0]+top.nps[0]],
+            top.zp[top.ins[0]:top.ins[0]+top.nps[0]])
+    plsys(10)
+    warpplp(top.yp[top.ins[0]:top.ins[0]+top.nps[0]],
+            top.zp[top.ins[0]:top.ins[0]+top.nps[0]])
+  pyg_pending()
+  pyg_idler()
+  
 def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
-        ipstep=None):
+        ipstep=None,egundata_window=-1,plottraces_window=-1):
   """
 Performs steady-state iterations
   - iter=1 number of iterations to perform
@@ -85,12 +107,19 @@ Performs steady-state iterations
                    showing the status of the simulation.
   - insertbeforeiter=None: function to be called before each iteration.
   - insertafteriter=None: function to be called after each iteration.
+  - egundata_window=2: window in which to display egundata curves for z close 
+                       to w3d.zmmax. Set to a negative number to deactivate 
+                       plotting.
+  - plottraces_window=1: window in which to plot traces.Set to a negative 
+                         number to deactivate plotting.
   Note that ipsave and save_same_part are preserved in between calls
   """
   global _oinject,_ofstype,_onztinjmn,_onztinjmx
-  global _ipstep,_ipsave,_save_same_part
+  global _ipstep,_ipsave,_save_same_part, _izdata
   global gun_iter,gun_time,gun_steps
   global rhoprevious
+  global zd, egundata_curr, egundata_xrmsz, egundata_yrmsz
+  global egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz
 
   # --- Save general parameters which are modified in this routine
   _oinject = top.inject
@@ -130,6 +159,26 @@ Performs steady-state iterations
   w3d.lsphiax3d = false
   w3d.lsezax3d  = false
 
+  # --- setup egundata
+  if _izdata==1:
+    egundata_zmin = w3d.zmmin+0.01*(w3d.zmmax-w3d.zmmin)
+    egundata_zmax = w3d.zmmax-0.01*(w3d.zmmax-w3d.zmmin)
+    egundata_nz = 20
+    zd = egundata_zmin+arange(egundata_nz)*(egundata_zmax-egundata_zmin)/(egundata_nz-1)
+    ntot_iter = 100
+    egundata_curr   = zeros([ntot_iter,egundata_nz],Float)
+    egundata_xrmsz  = zeros([ntot_iter,egundata_nz],Float)
+    egundata_yrmsz  = zeros([ntot_iter,egundata_nz],Float)
+    egundata_xprmsz = zeros([ntot_iter,egundata_nz],Float)
+    egundata_yprmsz = zeros([ntot_iter,egundata_nz],Float)
+    egundata_epsnxz = zeros([ntot_iter,egundata_nz],Float)
+    egundata_epsnyz = zeros([ntot_iter,egundata_nz],Float)
+
+  # --- install plottraces
+  if plottraces_window>-1:
+    installafterstep(plottraces)
+
+
   # --- Set the attribute 'dump' on the rho array so it is automatically saved
   # --- on a dump. This is done since rho holds the current state of the
   # --- solution.
@@ -154,6 +203,20 @@ Performs steady-state iterations
 
   # --- make multiple iterations
   for i in xrange(iter):
+    
+    # --- plot field and conductors 
+    if plottraces_window>-1:
+      window(plottraces_window)
+      fma()
+      if w3d.solvergeom == w3d.XZgeom or w3d.solvergeom == w3d.RZgeom:
+        pfzx()
+        limits(w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
+      else:
+        pfzx(view=9)
+        plsys(9);limits(w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
+        pfzy(view=10)
+        plsys(10);limits(w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
+
     # --- call insertbeforeriter if defined
     if insertbeforeiter is not None:
        insertbeforeiter()
@@ -195,10 +258,13 @@ Performs steady-state iterations
        for ig in range(frz.ngrids):
          if(ig==0):
            g = frz.basegrid
-           rhoprevious = [g.rho]
+           rhoprevious = [g.rho.copy()]
          else:
-           g = g.next
-           rhoprevious = rhoprevious+[g.rho]
+           try:
+             g = g.next
+           except:
+             g = g.down
+           rhoprevious = rhoprevious+[g.rho.copy()]
 
     # --- Zero the charge density array
     w3d.rho = 0.
@@ -336,14 +402,22 @@ Performs steady-state iterations
      if(w3d.solvergeom<>w3d.RZgeom): 
       w3d.rho[:,:,:] = (1.-rhoparam)*w3d.rho + rhoparam*rhoprevious
      else:
-      frz.l_distribute = true
       frz.distribute_rho_rz()
-      frz.l_distribute = false
       for ig in range(frz.ngrids):
-       mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
+        if(ig==0):
+          g = frz.basegrid
+        else:
+          try:
+            g = g.next
+          except:
+            g = g.down
+        g.rho = rhoparam*g.rho + (1.-rhoparam)*rhoprevious[ig]
+#       mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
     # --- Do field solve including newly accumulated charge density.
     # --- The call to perrho3d is primarily needed for the parallel version.
+    if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None): frz.l_distribute = false
     perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,w3d.bound0,w3d.boundxy)
+    if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None): frz.l_distribute = true
     top.fstype = _ofstype
     fieldsol(-1)
     top.fstype = -1
@@ -354,7 +428,8 @@ Performs steady-state iterations
       getzmom.zmmnt(3)
 
     # --- Save the history data
-    if (gun_iter%nhist) == 0 and top.ifzmmnt > 0:
+    if nhist>0:
+     if (gun_iter%nhist) == 0 and top.ifzmmnt > 0:
       top.nhist = gun_iter
       minidiag(gun_iter,gun_time,false)
       top.nhist = 0
@@ -375,6 +450,42 @@ Performs steady-state iterations
     # --- call insertafteriter if defined
     if insertafteriter is not None:
        insertafteriter()
+
+    # update egundata arrays
+    zz = zd/w3d.dz
+    iz = int(zz)
+    dz = zz-iz
+    egundata_curr  [_izdata,:] = (1.-dz)*take(top.curr,  iz) + dz*take(top.curr,  iz+1)  
+    egundata_xrmsz [_izdata,:] = (1.-dz)*take(top.xrmsz, iz) + dz*take(top.xrmsz, iz+1)
+    egundata_yrmsz [_izdata,:] = (1.-dz)*take(top.yrmsz, iz) + dz*take(top.yrmsz, iz+1)
+    egundata_xprmsz[_izdata,:] = (1.-dz)*take(top.xprmsz,iz) + dz*take(top.xprmsz,iz+1)
+    egundata_yprmsz[_izdata,:] = (1.-dz)*take(top.yprmsz,iz) + dz*take(top.yprmsz,iz+1)
+    egundata_epsnxz[_izdata,:] = (1.-dz)*take(top.epsnxz,iz) + dz*take(top.epsnxz,iz+1)
+    egundata_epsnyz[_izdata,:] = (1.-dz)*take(top.epsnyz,iz) + dz*take(top.epsnyz,iz+1)
+    _izdata += 1
+  
+    # plot egundata 
+    if egundata_window>-1:
+      window(egundata_window)
+      fma()
+      plsys(3)
+      pla(egundata_curr  [:_izdata,-2]);
+      ptitles('Current','Z','',v=3) 
+      plsys(4)
+      pla(egundata_xrmsz [:_izdata,-2]);
+      pla(egundata_yrmsz [:_izdata,-2],color='red');
+      ptitles('X, Y RMS','Z','',v=4)
+      plsys(5)
+      pla(egundata_xprmsz[:_izdata,-2]);
+      pla(egundata_yprmsz[:_izdata,-2],color='red');
+      ptitles("X', Y' RMS",'Z','',v=5)
+      plsys(6)
+      pla(egundata_epsnxz[:_izdata,-2]);
+      pla(egundata_epsnyz[:_izdata,-2],color='red');
+      ptitles('X, Y norm. emittance','Z','',v=6)
+      pyg_pending()
+      pyg_idler()
+      window(0)
 
   # --- end of multiple iterations
 
@@ -399,6 +510,13 @@ Performs steady-state iterations
   top.ifzmmnt = _ifzmmnt
   top.laccumulate_zmoments = _laccumulate_zmoments
 
+  # --- install plottraces
+  if plottraces_window>-1:
+    uninstallafterstep(plottraces)
+
+  return  [egundata_curr, egundata_xrmsz, egundata_yrmsz, 
+          egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz]
+
 
 ########################################################################
 # Restart routine for gun calculations
@@ -421,7 +539,7 @@ def recovergun():
 def gunmg(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
-        nmg=0,set_objects=None):
+        nmg=0,conductors=None,egundata_window=2,plottraces_window=1):
   """
 Performs steady-state iterations in a cascade using different resolutions.
   - iter=1 number of iterations to perform
@@ -441,16 +559,23 @@ Performs steady-state iterations in a cascade using different resolutions.
   - insertbeforeiter=None: function to be called before each iteration.
   - insertafteriter=None: function to be called after each iteration.
   - nmg = 0: number of 'multigrid' levels (in addition to main level).
-  - set_objects: function to be used for regenerating objects onto grid.
+  - conductors: list of conductors.
+  - egundata_window=2: window in which to display egundata curves for z close 
+                       to w3d.zmmax. Set to a negative number to deactivate 
+                       plotting.
+  - plottraces_window=1: window in which to plot traces.Set to a negative 
+                         number to deactivate plotting.
   Note that ipsave and save_same_part are preserved in between calls
   """
   global rhonext,nrnex,nznext,dxnext,dznext
+  global zd, egundata_curr, egundata_xrmsz, egundata_yrmsz
+  global egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz
   # if nmg=0, do a normal gun solve
   if(nmg==0):
-    gun(iter,ipsave,save_same_part,maxtime,
+    return gun(iter,ipsave,save_same_part,maxtime,
         laccumulate_zmoments,rhoparam,
-        lstatusline,lppzx,lppzy,gunpreplot=gunpreplot)
-    return
+        lstatusline,insertbeforeiter,insertafteriter,
+        None,egundata_window,plottraces_window)
   # initialize itersub
   if itersub is None: itersub = iter
   iterlast = iter
@@ -499,7 +624,7 @@ Performs steady-state iterations in a cascade using different resolutions.
       top.npinje_s[:] = 0
       top.npinject = gunnpinject[i]
       # resize the mesh and associated arrays
-      adjustmesh3d.resizemesh(gunnx[i],0,gunnz[i],0,0,1,1,1,set_objects)
+      adjustmesh3d.resizemesh(gunnx[i],0,gunnz[i],0,0,1,1,1,conductors)
       # Except at the coarser level (i=0), the charge density is
       # copied from rhonext where it was stored from at last iteration
       # at the previous level.
@@ -526,13 +651,15 @@ Performs steady-state iterations in a cascade using different resolutions.
         # first iteration is performed with top.inj_param=1 (except i=0)
         gun(1,0,save_same_part,maxtime,
             laccumulate_zmoments,rhoparam,
-            lstatusline,insertbeforeiter,insertafteriter)
-        # remaining iterations but last one perfromed with inj_param=0.5
+            lstatusline,insertbeforeiter,insertafteriter,
+            None,egundata_window,plottraces_window)
+        # remaining iterations but last one performed with inj_param=0.5
         top.inj_param = 0.5
         if(iter>2):
           gun(iter-2,0,save_same_part,maxtime,
               laccumulate_zmoments,rhoparam,
-              lstatusline,insertbeforeiter,insertafteriter)
+              lstatusline,insertbeforeiter,insertafteriter,
+              None,egundata_window,plottraces_window)
       # For all sublevels, rhonext is created and setrhonext is installed
       # so that rhonext is eveluated during last iteration at current level.
       if i<nmg:
@@ -545,11 +672,82 @@ Performs steady-state iterations in a cascade using different resolutions.
       # perform last iteration
       gun(1,ipsave,save_same_part,maxtime,
           laccumulate_zmoments,rhoparam,
-          lstatusline,insertbeforeiter,insertafteriter)
+          lstatusline,insertbeforeiter,insertafteriter,
+          None,egundata_window,plottraces_window)
       # Uninstall setrhonext if necessary.
       if i<nmg:
          uninstallafterstep(setrhonext)
-      
+
+  return  [egundata_curr, egundata_xrmsz, egundata_yrmsz, 
+          egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz]
+
+########################################################################
+def gunamr(iter=1,itersub=None,ipsave=5000000,save_same_part=None,maxtime=None,
+        nmg=0,AMRlevels=0,
+        laccumulate_zmoments=None,rhoparam=None,
+        lstatusline=true,insertbeforeiter=None,insertafteriter=None,
+        conductors=None,egundata_window=2,plottraces_window=1):
+  """
+Performs steady-state iterations in a cascade using different resolutions.
+  - iter=1 number of iterations to perform
+  - itersub=1 number of iterations to perform at coarser levels (=iter by default)
+  - ipsave=5000000 number of particles to save from the last iteration
+  - save_same_part=0 when true, save same particles each time step instead
+    of random particles, i.e. saves particle trajectories
+  - maxtime=3*transittime maximum time each iteration will run
+  - laccumulate_zmoments=false: When set to true, z-moments are accumulated
+    over multiple iterations. Note that getzmom.zmmnt(3) must be called
+    by the user to finish the moments calculation.
+  - rhoparam=None: Amount of previous rho to mix in with the current rho. This
+    can help the relaxation toward a steady state. Caution should be used
+    when using this option.
+  - lstatusline=1: when try, a line is printed and continuously updated
+                   showing the status of the simulation.
+  - insertbeforeiter=None: function to be called before each iteration.
+  - insertafteriter=None: function to be called after each iteration.
+  - nmg = 0: number of 'multigrid' levels (in addition to main level).
+  - conductors: list of conductors.
+  - egundata_window=2: window in which to display egundata curves for z close 
+                       to w3d.zmmax. Set to a negative number to deactivate 
+                       plotting.
+  - plottraces_window=1: window in which to plot traces.Set to a negative 
+                         number to deactivate plotting.
+  Note that ipsave and save_same_part are preserved in between calls
+  """
+  global zd, egundata_curr, egundata_xrmsz, egundata_yrmsz
+  global egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz
+  if nmg>0:
+   gunmg(itersub,itersub,ipsave,save_same_part,maxtime,
+         laccumulate_zmoments,rhoparam,
+         lstatusline,insertbeforeiter,insertafteriter,
+         nmg,conductors,egundata_window,plottraces_window)
+  else:
+   gun(itersub,ipsave,save_same_part,maxtime,
+            laccumulate_zmoments,rhoparam,
+            lstatusline,insertbeforeiter,insertafteriter,
+            None,egundata_window,plottraces_window)
+  if AMRlevels>0:
+    w3d.AMRlevels = AMRlevels
+    fieldsol()
+    tmp = w3d.AMRgenerate_frequency 
+    w3d.AMRgenerate_frequency = 1
+    AMRtree = __main__.__dict__['AMRtree']
+    AMRtree.conductors += conductors
+    AMRtree.generate()
+    w3d.AMRgenerate_frequency = 1000000
+    fieldsol(-1)
+    gun(1,0,save_same_part,maxtime,
+        laccumulate_zmoments,None,
+        lstatusline,insertbeforeiter,insertafteriter,
+        None,egundata_window,plottraces_window)
+    gun(iter-1,ipsave,save_same_part,maxtime,
+        laccumulate_zmoments,rhoparam,
+        lstatusline,insertbeforeiter,insertafteriter,
+        None,egundata_window,plottraces_window)
+    w3d.AMRgenerate_frequency = tmp
+  return  [egundata_curr, egundata_xrmsz, egundata_yrmsz, 
+          egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz]
+
 ########################################################################
 def statusline():
   """
