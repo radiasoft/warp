@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.6 $, $Date: 2001/10/26 00:39:49 $
+c W3DSLAVE.M, version $Revision: 1.7 $, $Date: 2002/04/18 21:33:11 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -61,7 +61,7 @@ c     ---                               |_________|
 c     ---   for overlap=2        0 1 2 3 4 5 6 7 8
 c     ---                       |___________|
 c     ---                               |_________|
-      if (fstype == 3 .or. fstype == 8) then
+      if (fstype == 3 .or. fstype == 7 .or. fstype == 8) then
         overlap = 2
       else
         overlap = 1
@@ -74,7 +74,7 @@ c     --- The domain decomposition by default is done so that each processor
 c     --- has nearly the same number of z planes. If lautodecomp is false and
 c     --- fstype == 3, then the decomposition is supplied by the user (input
 c     --- through nzslave).
-      if (lfsautodecomp .or. fstype /= 3) then
+      if (lfsautodecomp .or. (fstype /= 3 .and. fstype /= 7)) then
 
 c       --- Calculate average number of z planes per processor, including the
 c       --- extra space for overlap.  For FFT, the minimum number of planes
