@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.21 2001/01/30 01:10:14 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.22 2001/01/31 21:31:03 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -111,7 +111,7 @@ never = top.never
 cgmlogfile = None
 numframes = 0
 if me == 0: pldefault(marks=0) # --- Set plot defaults, no line marks
-def setup(makepsfile=0,prefix=None,cgmlog=1):
+def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments=''):
   """
 Does the work needed to start writing plots to a file automatically
   - makepsfile=0 allows the specification of a ps file instead of cgm
@@ -139,6 +139,9 @@ Does the work needed to start writing plots to a file automatically
     plogname = getnextfilename(prefix,'cgmlog')
     cgmlogfile = open(plogname,"w")
     cgmlogfile.write("CGMLOG file for "+pname+"\n\n")
+  # --- Print the versions to the plot file.
+  plt(versionstext()+'\n'+runcomments,0.15,0.88,justify="LT")
+  fma()
 
 # --- Convenience function to open a window with default value specilized to
 # --- WARP. By default, this opens up a window on the current display. If
