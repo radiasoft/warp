@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.23 $, $Date: 2002/07/17 17:35:21 $
+c@(#) File WXY.M, version $Revision: 3.24 $, $Date: 2002/10/22 20:44:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1422,7 +1422,9 @@ c       --- This algorithm scales dt by the ratio of the desired ds and
 c       --- distance actually travelled.  Note that in a bend, the distance
 c       --- traveled is calculated as an angle around the bend.
 
-        if (bendres > 0. .and. lexbend) then
+c       --- bendres is compared to 0.5 since the only possible values are 0
+c       --- and 1 - this avoids potential problems with roundoff errors.
+        if (bendres > 0.5 .and. lexbend) then
 
           dtheta0 = ds/abs(bendradi)
 
@@ -1522,7 +1524,9 @@ c for either sign of bendradi.
       real(kind=8):: rr
       real(kind=8):: dtheta0,ty,sy,uxppr,uzppr
 
-      if (bendres > 0. .and. lexbend) then
+c       --- bendres is compared to 0.5 since the only possible values are 0
+c       --- and 1 - this avoids potential problems with roundoff errors.
+      if (bendres > 0.5 .and. lexbend) then
 
 c       --- constants for all the particles
         dtheta0 = ds/bendradi
@@ -1563,7 +1567,9 @@ c frame (when in a bend).
       integer(ISZ):: ip
       real(kind=8):: xprv,xc
 
-      if (bendres > 0. .and. .not. lexbend) then
+c       --- bendres is compared to 0.5 since the only possible values are 0
+c       --- and 1 - this avoids potential problems with roundoff errors.
+      if (bendres > 0.5 .and. .not. lexbend) then
 
         do ip=1,np
           xprv = xp(ip) - dtp(ip)*uxp(ip)*gaminv(ip)
