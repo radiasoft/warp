@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.18 2001/09/17 17:46:15 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.19 2001/11/02 19:38:42 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -354,6 +354,7 @@ def _adjustz():
   gchange("Z_arrays")
   gchange("LatticeInternal")
   gchange("Z_Moments")
+  gchange("Hist")
   if top.fstype in [3,7] or f3d.nsorerr > 0: gchange("PSOR3d")
   w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
   top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
