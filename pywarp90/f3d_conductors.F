@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.2 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.3 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -473,6 +473,121 @@ c       --- Point is outside the cone
           if (abs(xx) <= rcone) then
             if (yy > 0) delmy(i) = ( yy - sqrt(rcone**2 - xx*xx))
             if (yy < 0) delpy(i) = (-yy - sqrt(rcone**2 - xx*xx))
+          endif
+
+        else
+c         --- The point is on the cone exactly.
+          delmx(i) = 0.
+          delpx(i) = 0.
+          delmy(i) = 0.
+          delpy(i) = 0.
+          delmz(i) = 0.
+          delpz(i) = 0.
+
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZConeOutConductorF(r_zmin,r_zmax,length,xcent,ycent,zcent,
+     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                              fuzz)
+      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a cone aligned with
+c the z-axis.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: zmin,zmax
+      real(kind=8):: xx,yy,rsq,r,rcone,zcone
+
+c     --- First, find min and max extent of the cone.
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
+
+      do i=1,n
+
+c       --- Set defaults
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Find radius of point relative to cone axis
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        rsq = xx**2 + yy**2
+        r = sqrt(rsq)
+
+c       --- Find z location where transverse line through point intersects
+c       --- the cone.
+        zcone = zmin + (zmax - zmin)*(r - r_zmin)/(r_zmax - r_zmin)
+        if (r == r_zmax) zcone = zmax
+
+c       --- Calculate z deltas
+        if (r >= max(r_zmin,r_zmax)) then
+c         --- point is outside of larger radius
+          if (z(i) >= zmin) delmz(i) = zmin - z(i)
+          if (z(i) >= zmax) delmz(i) = z(i) - zmax
+          if (z(i) <= zmax) delpz(i) = z(i) - zmax
+          if (z(i) <= zmin) delpz(i) = zmin - z(i)
+        else if (r >= min(r_zmin,r_zmax)) then
+c         --- point is outside of smaller radius
+          if (r_zmin > r_zmax) then
+            if (z(i) < zcone) delpz(i) = zcone - z(i)
+            if (zcone <= z(i) .and. z(i) <= zmax) then
+              delmz(i) = zcone - z(i)
+              delpz(i) = z(i) - zmax
+            endif
+            if (z(i) > zmax) delmz(i) = z(i) - zmax
+          endif
+          if (r_zmin < r_zmax) then
+            if (z(i) > zcone) delmz(i) = z(i) - zcone
+            if (zcone >= z(i) .and. z(i) >= zmin) then
+              delpz(i) = z(i) - zcone
+              delmz(i) = zmin - z(i)
+            endif
+            if (z(i) < zmin) delpz(i) = zmin - z(i)
+          endif
+        endif
+
+c       --- If point outside the z-extent of the cone, then skip the next
+c       --- part.
+        if (z(i) < zmin - fuzz .or. zmax + fuzz < z(i)) cycle
+
+c       --- Calculate the radius of the cone at the z-location of the point
+        rcone = r_zmin + (r_zmax - r_zmin)*(z(i) - zmin)/(zmax - zmin)
+c       --- If z == zmax, the set rcone equal to r_zmax exactly since the
+c       --- expression above will have roundoff problems.
+        if (z(i) == zmax) rcone = r_zmax
+
+c       --- Point inside the cone
+        if (r < rcone) then
+          delmx(i) = (sqrt(rcone**2 - yy*yy) + xx)
+          delpx(i) = (sqrt(rcone**2 - yy*yy) - xx)
+          delmy(i) = (sqrt(rcone**2 - xx*xx) + yy)
+          delpy(i) = (sqrt(rcone**2 - xx*xx) - yy)
+
+c       --- Point is outside the cone
+        else if (r > rcone) then
+          if (abs(yy) <= rcone) then
+            if (xx > 0) delmx(i) = -( xx - sqrt(rcone**2 - yy*yy))
+            if (xx < 0) delpx(i) = -(-xx - sqrt(rcone**2 - yy*yy))
+          endif
+          if (abs(xx) <= rcone) then
+            if (yy > 0) delmy(i) = -( yy - sqrt(rcone**2 - xx*xx))
+            if (yy < 0) delpy(i) = -(-yy - sqrt(rcone**2 - xx*xx))
           endif
 
         else
