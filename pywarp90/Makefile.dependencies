@@ -155,7 +155,7 @@ frz.o:frz.F frz.p.o top.p.o
 frz_mgrid.o:frz_mgrid.F90 top.p.o
 	$(F90FREE) $(OPT) -c frz_mgrid.F90
 frzslave.o:frzslave.F90 frz.p.o top.p.o
-	$(F90FIXED) $(OPT) -c frzslave.F90
+	$(F90FREE) $(OPT) -c frzslave.F90
 
 frzpymodule.o:frzpymodule.c pybasis.h
 	$(CC) $(PYMODULEOPT) -c frzpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
