@@ -4,7 +4,7 @@ Modified by DPG
 
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.1 2003/01/15 20:20:37 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.2 2003/01/16 20:21:00 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -12,6 +12,7 @@ def VPythonobjectsdoc():
 
 ##########################################################################
 from visual import *
+import warp
 
 class VisualModel:
     def __init__(self,twoSided=true,scene=None,title='VPython',vrange=None):
@@ -111,7 +112,8 @@ color=None: can be specified as an [r,g,b] list
 scene=None: an already existing display scene. When None, create a new one.
 title='Mesh': Display title - only used when new scene created.
     """
-    def __init__(self, xvalues, yvalues, zvalues,twoSided=true,color=None,
+    def __init__(self, xvalues, yvalues, zvalues,
+                 twoSided=true,color=None,
                  scene=None,title=None,vrange=None):
         if not title: title = 'Mesh'
         VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
@@ -128,4 +130,36 @@ title='Mesh': Display title - only used when new scene created.
                                      points[i+1,j+1], points[i+1,j]],
                                     color=color)
         self.Display()
+
+########################################################################
+class VisualRevolution(VisualModel):
+  """
+Visualize surface of revolution
+  """
+  def __init__(self,srfrv,zzmin,zzmax,nz=20,nth=20,xoff=0,yoff=0,zoff=0,
+                    twoSided=true,color=None,
+                    scene=None,title=None,vrange=None):
+    if not title: title = 'Surface of revolution'
+    VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
+                              vrange=vrange)
+
+    zz = arange(0,nz+1)*(zzmax - zzmin)/nz + zzmin
+    rr = ones(nz+1,'d')
+    for i in range(nz+1):
+      warp.f3d.srfrv_z = zz[i]
+      srfrv()
+      rr[i] = warp.f3d.srfrv_r
+
+    xx = cos(2.*pi*arange(0,nth+1)/nth) + xoff
+    yy = sin(2.*pi*arange(0,nth+1)/nth) + yoff
+
+    for i in xrange(nz-1):
+      for j in xrange(len(xx)-1):
+        p1 = array([rr[i  ]*xx[j  ], rr[i  ]*yy[j  ], zz[i  ]+zoff])
+        p2 = array([rr[i  ]*xx[j+1], rr[i  ]*yy[j+1], zz[i  ]+zoff])
+        p3 = array([rr[i+1]*xx[j+1], rr[i+1]*yy[j+1], zz[i+1]+zoff])
+        p4 = array([rr[i+1]*xx[j  ], rr[i+1]*yy[j  ], zz[i+1]+zoff])
+        self.FacetedPolygon([p1,p2,p3,p4],color=color)
+    self.Display()
+
 
