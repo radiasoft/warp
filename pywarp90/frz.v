@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.6 $, $Date: 2001/09/19 22:33:53 $
+#@(#) File FRZ.V, version $Revision: 3.7 $, $Date: 2001/10/22 17:12:46 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.6 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.7 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -45,8 +45,13 @@ mgridrz_npost             integer /2/   # number of relaxations steps after
                                         # coarsening, in multigrid solver  
 mgridrz_ncycles           integer /2/   # number of multigrid cycles per level
 mgridrz_nlevels_max       integer /100/ # maximum number of multigrid levels
-mgridrz_nrecurs_min       integer /3/   # minimum level for multigrid recursion
+mgridrz_nrecurs_min       integer /1/   # minimum level for multigrid recursion
+mgridrz_nmeshmin          integer /8/   # minimum number of meshes in ech direction at coarsest level
 mgridrz_sub_accuracy      real /1.e-4/  # average accuracy for a sublevel
+mgridrz_deform            logical /.false./ # flag for use of elliptic deformation
+mgridrz_nz                integer       # 
+mgridrz_xfact(0:mgridrz_nz) _real         # array for deformation factor in X
+mgridrz_yfact(0:mgridrz_nz) _real         # array for deformation factor in Y
 
 *********** FRZsubs:
 #  Callable subroutines in the FRZ package
@@ -79,3 +84,8 @@ save_bndstructure_rz(filename:string) subroutine
 read_bndstructure_rz(filename:string) subroutine
          # read internal conductor boundary coefficients for each multigrid
          # level
+#calcfact_deform(xp:real,yp:real,zp:real,np:integer,dz:real,zmin:real,
+calcfact_deform(dz:real,zmin:real,
+                xfact:real,yfact:real,nz:integer,ns:integer,is:integer,
+                ins:integer,nps:integer,ws:real) subroutine
+         # computes factors for elliptical deformation in X and Y planes
