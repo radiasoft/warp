@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.20 $, $Date: 2002/07/30 18:34:58 $
+#@(#) File FRZ.V, version $Revision: 3.21 $, $Date: 2002/08/29 17:49:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.20 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.21 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -58,6 +58,17 @@ mgridrz_yfact(0:mgridrz_nz) _real       # array for deformation factor in Y
 mgridrz_ngrids            integer  /1/  # number of grids (useful when using mesh refinement)
 mgridrz_grid_is(mgridrz_ngrids)   _integer # array id grid associated with grid species 
 
+*********** InjectVars_eq dump:
+# variables and functions needed for getting voltage risetime from assumption of 
+# constant injection (works with inj_d=2).
+inj_phi_eq  _real # Electrostatic potential at the emitting surface at equilibrium.
+v_max                real /0./
+l_find_rise_time     logical /.false./
+afact                real /1./
+calc_a               integer  /1/  # determines way of calculating voltage factor for rise time
+l_verbose              logical /.true./
+init_gridinit() subroutine #
+
 *********** FRZsubs:
 #  Callable subroutines in the FRZ package
 vpoisrz  (iwhich, a:real, ak:real, kzsq:real,schrg:real, eta:real,
@@ -100,6 +111,8 @@ calcfact_deform(dz:real,zmin:real,
          # computes factors for elliptical deformation in X and Y planes
 init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real) subroutine
          # initializes the base grid
+del_base() subroutine
+         # removes the base grid
 add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
             rmin:real,zmin:real,
             guard_min_r:integer,guard_max_r:integer,
@@ -121,3 +134,8 @@ gchange_rhop_phip_rz() subroutine
          # reallocate rhop and phip arrays
 install_conductors_rz() subroutine
          # install conductors data into RZ arrays
+set_basegrid_phi() subroutine
+	 # set phi on basegrid using w3d.phi 
+setbnd_subgrid_to_inj_d() subroutine
+         # set indices for force gathering (locpart) to coarser grid 
+         # when grid point more than inj_d*grid%dz away from emitting surface
