@@ -11,8 +11,12 @@ ZRoundedCylinderOut(radius,length,radius2,...)
 YCylinder(radius,length,...)
 XCylinder(radius,length,...)
 Sphere(radius,...)
+Cone(r_zmin,r_zmax,length,theta=0.,phi=0.,...)
 ZCone(r_zmin,r_zmax,length,...)
 ZConeOut(r_zmin,r_zmax,length,...)
+ConeSlope(slope,intercept,length,theta=0.,phi=0.,...)
+ZConeSlope(slope,intercept,length,...)
+ZConeOutSlope(slope,intercept,length,...)
 ZTorus(r1,r2,...)
 Beamletplate(za,zb,z0,thickness,...)
 
@@ -34,7 +38,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.19 2003/04/16 22:47:13 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.20 2003/04/17 18:22:42 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1062,6 +1066,37 @@ Cone
     self.length = length
 
 #============================================================================
+class ConeSlope(Assembly):
+  """
+Cone
+  - slope: ratio of radius at zmax minus radius at zmin over length
+  - intercept: location where line defining cone crosses the axis, relative
+               to zcent
+  - r_zmax: radius at z max
+  - length: length
+  - theta=0,phi=0: angle of cylinder relative to z-axis
+    theta is angle in z-x plane
+    phi is angle in z-y plane
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,slope,length,theta,phi,voltage=0.,
+                    xcent=0.,ycent=0.,zcent=0.,condid=1):
+    kwlist = ['r_zmin','r_zmax','length','theta','phi']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      f3d.coneconductorf,f3d.coneconductord)
+    self.slope = slope
+    self.intercept = intercept
+    self.theta = theta
+    self.phi = phi
+    self.length = length
+  def getkwlist(self):
+    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
+    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
+    return Assembly.getkwlist(self)
+
+#============================================================================
 class Cones(Assembly):
   """
 Cones
@@ -1108,6 +1143,31 @@ Cone
     self.length = length
 
 #============================================================================
+class ZConeSlope(Assembly):
+  """
+Cone
+  - slope: ratio of radius at zmax minus radius at zmin over length
+  - intercept: location where line defining cone crosses the axis, relative
+               to zcent
+  - length: length
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,slope,intercept,length,voltage=0.,
+                    xcent=0.,ycent=0.,zcent=0.,condid=1):
+    kwlist = ['r_zmin','r_zmax','length']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      f3d.zconeconductorf,f3d.zconeconductord)
+    self.slope = slope
+    self.intercept = intercept
+    self.length = length
+  def getkwlist(self):
+    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
+    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
+    return Assembly.getkwlist(self)
+
+#============================================================================
 class ZConeOut(Assembly):
   """
 Cone outside
@@ -1126,6 +1186,31 @@ Cone outside
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.length = length
+
+#============================================================================
+class ZConeOutSlope(Assembly):
+  """
+Cone outside
+  - slope: ratio of radius at zmax minus radius at zmin over length
+  - intercept: location where line defining cone crosses the axis, relative
+               to zcent
+  - length: length
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=1: conductor id of cone, must be integer
+  """
+  def __init__(self,slope,intercept,length,voltage=0.,
+                    xcent=0.,ycent=0.,zcent=0.,condid=1):
+    kwlist = ['r_zmin','r_zmax','length']
+    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
+                      f3d.zconeoutconductorf,f3d.zconeoutconductord)
+    self.slope = slope
+    self.intercept = intercept
+    self.length = length
+  def getkwlist(self):
+    self.r_zmin = self.slope*(-self.length/2. - self.intercept)
+    self.r_zmax = self.slope*(+self.length/2. - self.intercept)
+    return Assembly.getkwlist(self)
 
 #============================================================================
 class ZTorus(Assembly):
