@@ -4,7 +4,7 @@ from warp import *
 import time
 import string
 import sys, copy
-runcounter_version = "$Id: runcounter.py,v 1.10 2004/02/13 16:26:34 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.11 2004/03/16 17:56:17 dave Exp $"
 
 def runcounter(init=0,delta=1,ensambles=[],prefix=None,suffix="_runcounter",
                sleep=0):
@@ -110,7 +110,8 @@ third ever increasing. Each run, the first number will be incremented, every
   else:
     return counter[0]
 
-def accumulatedata(filename,datadict,scalardict={},pe0only=1):
+def accumulatedata(filename,datadict,scalardict={},pe0only=1,
+                   sortname=None):
   """
 Accumulates data from multiple runs in a single file.
  - filename: name of the data file
@@ -126,6 +127,8 @@ Accumulates data from multiple runs in a single file.
                   call to this function.
  - pe0only=1: When true, only processor zero writes any data. Only effects
               parallel version.
+ - sortname=None: If specified, the data will be sorted based on this
+                  quantity.
   """
   if pe0only and me > 0: return
   # --- Dictionary of accumulated data to write to file.
@@ -191,6 +194,21 @@ Accumulates data from multiple runs in a single file.
 
   if f_in is not None: f_in.close()
 
+  # --- Sort data if requested.
+  if sortname is not None:
+    assert accumulateddata.has_key(sortname),"The quantity %s must be included for sorting."%sortname
+    s = accumulateddata[sortname]
+    i = argsort(s)
+    sorteddata = {}
+    for name,data in map(None,accumulateddata.keys(),accumulateddata.values()):
+      if len(transpose(data)) == len(s):
+        sorteddata[name] = transpose(take(transpose(data),i))
+      else:
+        print "Could not sort %s since its length is different than %s"%(name,sortname)
+        sorteddata[name] = data
+    accumulateddata = sorteddata
+
+  # --- Now write out the data.
   f_out = PW.PW(filename)
   for name,data in map(None,accumulateddata.keys(),accumulateddata.values()):
     f_out.write(name,data)
