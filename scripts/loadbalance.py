@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.10 2001/08/13 17:25:33 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.11 2001/08/13 18:15:54 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -473,14 +473,14 @@ def _reorgconductorarrays(arrays,z,oldiz,oldnz,oldizfs,oldnzfs,
     pe = compress(logical_and(less_equal(oldizfs,iz),
                   less_equal(iz,oldizfs+oldnzfs)),arange(npes))[-1]
     # --- Check if data at this iz is needed locally
-    if not (oldiz[me] <= iz <= oldiz[me]+oldnz[me]) and \
+    if not (oldizfs[me] <= iz <= oldizfs[me]+oldnzfs[me]) and \
            (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
       for i in range(len(arrays)):
         results[i] = results[i] + list(getarray(pe,0,me))
     elif me == pe:
       # --- Loop over processors to check which ones need data
       for ip in range(npes):
-        if not (oldiz[ip] <= iz <= oldiz[ip]+oldnz[ip]) and \
+        if not (oldizfs[ip] <= iz <= oldizfs[ip]+oldnzfs[ip]) and \
                (newizfs[ip] <= iz <= newizfs[ip]+newnzfs[ip]):
           ii = compress(equal(iz,z),arange(len(arrays[0])))
           for i in range(len(arrays)):
