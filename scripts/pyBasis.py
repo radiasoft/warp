@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.39 2003/09/11 18:20:22 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.40 2003/09/18 18:39:35 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -441,7 +441,7 @@ Dump data into a pdb file
         dumpsmode = 0
       except:
         pass
-      raise "Dump file cannot be opened, no data formats available"
+    assert ff is not None,"Dump file cannot be opened, no data formats available"
     closefile = 1
   else:
     closefile = 0
