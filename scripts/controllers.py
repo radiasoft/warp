@@ -47,7 +47,7 @@ installplalways, uninstallplalways, isinstalledplalways
 
 """
 from __future__ import generators
-controllers_version = "$Id: controllers.py,v 1.3 2004/07/29 17:31:46 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.4 2004/08/06 23:41:42 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
@@ -56,6 +56,7 @@ from warp import *
 from types import *
 import weakref
 import copy
+import time
 
 # --- Functions to handle the function lists.
 # --- Note that for functions passed in that are methods of a class instance,
@@ -122,7 +123,7 @@ def _isinstalledfuncinlist(flist,f):
       return 1
   return 0
 def _callfuncsinlist(flist):
-  bb = wtime()
+  bb = time.time()
   flistcopy = copy.copy(flist)
   for f in flistcopy:
     # --- If the function is a method of a class instance, then an element
@@ -138,7 +139,7 @@ def _callfuncsinlist(flist):
         flist.remove(f)
     else:
       f()
-  aa = wtime()
+  aa = time.time()
   return aa - bb
 
 #=============================================================================
@@ -341,17 +342,14 @@ def controllerscleanafterdump():
     count = __main__.__dict__['controllercount%s'%n]
     del __main__.__dict__['controllercount%s'%n]
     for i in range(count):
-      try:
-        # --- This won't work since the dump routine will write out a separate
-        # --- copy of the object, independent of the original
-        #del __main__.__dict__['controller%s_%d_ref'%(n,i)]
-        #del __main__.__dict__['controller%s_%d_name'%(n,i)]
-        pass
-      except KeyError:
+      if 'controller%s_%d_ref'%(n,i) in __main__.__dict__:
+        del __main__.__dict__['controller%s_%d_ref'%(n,i)]
+        del __main__.__dict__['controller%s_%d_name'%(n,i)]
+      if 'controller%s_%d'%(n,i) in __main__.__dict__:
         del __main__.__dict__['controller%s_%d'%(n,i)]
 def controllersrecreatelists():
   import __main__
-  for n,flist in controllerfuncs.iteritems():
+  for n,flist in _controllerfuncs.iteritems():
     count = __main__.__dict__['controllercount%s'%n]
     for i in range(count):
       if 'controller%s_%d_ref'%(n,i) in __main__.__dict__:
@@ -363,7 +361,7 @@ def controllersrecreatelists():
         #if not _isinstalledfuncinlist(flist,meth):
         #  _installfuncinlist(flist,meth)
         pass
-      else:
+      elif 'controller%s_%d'%(n,i) in __main__.__dict__:
         fname = __main__.__dict__['controller%s_%d'%(n,i)]
         func = __main__.__dict__[fname]
         if not _isinstalledfuncinlist(flist,func):
