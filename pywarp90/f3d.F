@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.8 $, $Date: 2001/08/03 00:20:16 $
+c@(#) File F3D.M, version $Revision: 3.9 $, $Date: 2001/08/28 01:16:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4330,7 +4330,8 @@ c Note that care has been taken with the boundaries.  Temps are set up
 c to hold icndx-1, icndx+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
-      real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom,denomi
+      real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom
+      real(kind=8):: denomi
       real(kind=8):: dxm,dxp,dym,dyp,dzm,dzp
       real(kind=8):: rhofix,rhovolume,dxyzi
       integer(ISZ):: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
@@ -5961,6 +5962,7 @@ c===========================================================================
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
+      use Surface_of_Rev
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       character(*) rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
@@ -6011,12 +6013,24 @@ c Output is put directly into the conductor arrays of PSOR3d.
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: jxmin,jxmax,jymin,jymax
       integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: x(2),f(2)
       real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
       real(kind=8):: delmz0,delpz0
       real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
       real(kind=8):: max_dxdy,dxi,dyi,dzi
+      real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
+
+c Table-ize the data if srfrv_pernz > 0.
+      if (srfrv_pernz > 0 .and. .not. lsrlinr) then
+        npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
+        zz = (zmax - zmin)/(npnts_sr - 1)
+        call gchange("Surface_of_Rev",0)
+        do i=1,npnts_sr
+          z_sr(i) = zmin + (i-1)*zz
+          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
+        enddo
+        lsrlinr = .true.
+      endif
 
       if(solvergeom==RZgeom) then
         call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,
@@ -6202,7 +6216,7 @@ c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
 c         --- in most cases, assuming that the conductor is far away in z.
 c         --- When zz > zmax, the delmz0 is set to the distance
 c         --- between the z plane and the end of the conductor.
-c         --- When zz < zmin, rrrlower is set to rrr so Regula-Falsi
+c         --- When zz < zmin, rrrlower is set to rrr so the
 c         --- iteration is not done.
           rrrlower = srfrv_f(zlower,rofzfunc,0)
           delmz0 = 2.
@@ -6216,7 +6230,7 @@ c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
 c         --- in most cases, assuming that the conductor is far away in z.
 c         --- When zz < zmin, the delmp0 is set to the distance
 c         --- between the z plane and the end of the conductor.
-c         --- When zz > zmax, rrrhigher is set to rrr so Regula-Falsi
+c         --- When zz > zmax, rrrhigher is set to rrr so the
 c         --- iteration is not done.
           rrrhigher = srfrv_f(zhigher,rofzfunc,0)
           delpz0 = 2.
@@ -6249,21 +6263,27 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = min(zz,zmax)
-                f(1) = rrr - rad
-                x(2) = zlower
-                f(2) = rrrlower - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
-                  iterrf = iterrf + 1
-                end do
-                delmz = (zz - x(i))*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rofzfunc,0)
+                  if (rnew > rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew < rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delmz = (zz - znew)*dzi
               elseif (rad < rrrlower+rfuzz .or.
      &                rad > min(rrr,rmax)-rfuzz) then
                 delmz = 2.
@@ -6279,21 +6299,27 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = max(zz,zmin)
-                f(1) = rrr - rad
-                x(2) = zhigher
-                f(2) = rrrhigher - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
-                  iterrf = iterrf + 1
-                end do
-                delpz = (x(i) - zz)*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rofzfunc,0)
+                  if (rnew < rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delpz = (znew - zz)*dzi
               elseif (rad < rrrhigher+rfuzz .or.
      &                rad > min(rrr,rmax)-rfuzz) then
                 delpz = 2.
@@ -6391,6 +6417,11 @@ c                 --- odd
         enddo
       endif
 
+c     --- Clean up the table-ized data.
+      if (srfrv_pernz > 0) then
+        lsrlinr = .false.
+      endif
+
       return
       end
 c========================================================================
@@ -6401,6 +6432,7 @@ c========================================================================
      &                   ix_axis,iy_axis,
      &                   xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
+      use Surface_of_Rev
       character(*) rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -6451,12 +6483,24 @@ c See comments in srfrvout.
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: jxmin,jxmax,jymin,jymax
       integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: x(2),f(2)
       real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
       real(kind=8):: delmz0,delpz0
       real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
       real(kind=8):: max_dxdy,dxi,dyi,dzi
+      real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
+
+c Table-ize the data if srfrv_pernz > 0.
+      if (srfrv_pernz > 0 .and. .not. lsrlinr) then
+        npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
+        zz = (zmax - zmin)/(npnts_sr - 1)
+        call gchange("Surface_of_Rev",0)
+        do i=1,npnts_sr
+          z_sr(i) = zmin + (i-1)*zz
+          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
+        enddo
+        lsrlinr = .true.
+      endif
 
       dxpsor = dx
       rminsq = rmin*rmin
@@ -6636,7 +6680,7 @@ c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
 c         --- in most cases, assuming that the conductor is far away in z.
 c         --- When zz > zmax, the delmz0 is set to the distance
 c         --- between the z plane and the end of the conductor.
-c         --- When zz < zmin, rrrlower is set to rrr so Regula-Falsi
+c         --- When zz < zmin, rrrlower is set to rrr so the
 c         --- iteration is not done.
           rrrlower = srfrv_f(zlower,rofzfunc,0)
           delmz0 = 2.
@@ -6650,7 +6694,7 @@ c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
 c         --- in most cases, assuming that the conductor is far away in z.
 c         --- When zz < zmin, the delpz0 is set to the distance
 c         --- between the z plane and the end of the conductor.
-c         --- When zz > zmax, rrrhigher is set to rrr so Regula-Falsi
+c         --- When zz > zmax, rrrhigher is set to rrr so the
 c         --- iteration is not done.
           rrrhigher = srfrv_f(zhigher,rofzfunc,0)
           delpz0 = 2.
@@ -6691,21 +6735,27 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delmz > zfuzz*dzi .and.
      &            xxmin <= xx .and. xx <= xxmax .and.
      &            yymin <= yy .and. yy <= yymax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = min(zz,zmax)
-                f(1) = rrr - rad
-                x(2) = zlower
-                f(2) = rrrlower - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
-                  iterrf = iterrf + 1
-                end do
-                delmz = (zz - x(i))*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rofzfunc,0)
+                  if (rnew < rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delmz = (zz - znew)*dzi
               elseif (rad > rrrlower-rfuzz .or.
      &                rad < max(rrr,rmin)+rfuzz) then
                 delmz = 2.
@@ -6721,19 +6771,20 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delpz > zfuzz*dzi .and.
      &            xxmin <= xx .and. xx <= xxmax .and.
      &            yymin <= yy .and. yy <= yymax) then
-                x(1) = max(zz,zmin)
-                f(1) = rrr - rad
-                x(2) = zhigher
-                f(2) = rrrhigher - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
-                  iterrf = iterrf + 1
-                end do
-                delpz = (x(i) - zz)*dzi
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rofzfunc,0)
+                  if (rnew > rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew < rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delpz = (znew - zz)*dzi
               elseif (rad > rrrhigher-rfuzz .or.
      &                rad < max(rrr,rmin)+rfuzz) then
                 delpz = 2.
@@ -6829,6 +6880,11 @@ c             -- Check if any of the distances are less than 1.
         enddo
       endif
 
+c     --- Clean up the table-ized data.
+      if (srfrv_pernz > 0) then
+        lsrlinr = .false.
+      endif
+
       return
       end
 c===========================================================================
@@ -6837,6 +6893,7 @@ c===========================================================================
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
+      use Surface_of_Rev
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       character(*) rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
@@ -6890,12 +6947,34 @@ c Output is put directly into the conductor arrays of PSOR3d.
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: jxmin,jxmax,jymin,jymax
       integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: x(2),f(2)
       real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
       real(kind=8):: delmz0,delpz0
       real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
       real(kind=8):: max_dxdy,dxi,dyi,dzi
+      real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
+
+c Table-ize the data if srfrv_pernz > 0.
+      if (srfrv_pernz > 0 .and. .not. lsrminlinr) then
+        npnts_srmin = (zmax - zmin)/dz*srfrv_pernz + 1
+        zz = (zmax - zmin)/(npnts_srmin - 1)
+        call gchange("Surface_of_Rev",0)
+        do i=1,npnts_srmin
+          z_srmin(i) = zmin + (i-1)*zz
+          r_srmin(i) = srfrv_f(z_srmin(i),rminofz,1)
+        enddo
+        lsrminlinr = .true.
+      endif
+      if (srfrv_pernz > 0 .and. .not. lsrmaxlinr) then
+        npnts_srmax = (zmax - zmin)/dz*srfrv_pernz + 1
+        zz = (zmax - zmin)/(npnts_srmax - 1)
+        call gchange("Surface_of_Rev",0)
+        do i=1,npnts_srmax
+          z_srmax(i) = zmin + (i-1)*zz
+          r_srmax(i) = srfrv_f(z_srmax(i),rmaxofz,2)
+        enddo
+        lsrmaxlinr = .true.
+      endif
 
       if(solvergeom==RZgeom) then
         call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,
@@ -7083,40 +7162,52 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = min(zz,zmax)
-                f(1) = rmin - rad
-                x(2) = zlower
-                f(2) = rrrminlower - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = srfrv_f(x(i),rminofz,1) - rad
-                  iterrf = iterrf + 1
-                end do
-                delmz = (zz - x(i))*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rminofz,1)
+                  if (rnew > rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew < rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delmz = (zz - znew)*dzi
               elseif (rrrmaxlower-rfuzz > rad .and. rad > rmax+rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = min(zz,zmax)
-                f(1) = rad - rmax
-                x(2) = zlower
-                f(2) = rad - rrrmaxlower
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
-                  iterrf = iterrf + 1
-                end do
-                delmz = (zz - x(i))*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rmaxofz,2)
+                  if (rnew < rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delmz = (zz - znew)*dzi
               elseif (rad < rrrminlower+rfuzz .or.
      &                rad > rrrmaxlower-rfuzz) then
                 delmz = 2.
@@ -7132,40 +7223,52 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = max(zz,zmin)
-                f(1) = rmin - rad
-                x(2) = zhigher
-                f(2) = rrrminhigher - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = srfrv_f(x(i),rminofz,1) - rad
-                  iterrf = iterrf + 1
-                end do
-                delpz = (x(i) - zz)*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rminofz,1)
+                  if (rnew < rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delpz = (znew - zz)*dzi
               elseif (rrrmaxhigher-rfuzz > rad .and. rad > rmax+rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = max(zz,zmin)
-                f(1) = rad - rmax
-                x(2) = zhigher
-                f(2) = rad - rrrmaxhigher
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
-                  iterrf = iterrf + 1
-                end do
-                delpz = (x(i) - zz)*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rmaxofz,2)
+                  if (rnew > rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew < rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delpz = (znew - zz)*dzi
               elseif (rad < rrrminhigher+rfuzz .or.
      &                rad > rrrmaxhigher-rfuzz) then
                 delpz = 2.
@@ -7258,6 +7361,12 @@ c                 --- odd
             enddo
           enddo
         enddo
+      endif
+
+c     --- Clean up the table-ized data.
+      if (srfrv_pernz > 0) then
+        lsrminlinr = .false.
+        lsrmaxlinr = .false.
       endif
 
       return
@@ -7406,11 +7515,11 @@ c Output is put directly into the conductor arrays of PSOR3d.
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: jxmin,jxmax,jymin,jymax
       integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: x(2),f(2)
       real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
       real(kind=8):: delmz0,delpz0
       real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
       real(kind=8):: max_dxdy,dxi,dyi,dzi
+      real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
 
       integer(ISZ) :: idz
@@ -7577,7 +7686,7 @@ c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
 c         --- in most cases, assuming that the conductor is far away in z.
 c         --- When zz > zmax, the delmz0 is set to the distance
 c         --- between the z plane and the end of the conductor.
-c         --- When zz < zmin, rrrlower is set to rrr so Regula-Falsi
+c         --- When zz < zmin, rrrlower is set to rrr so the
 c         --- iteration is not done.
           rrr_tmp=srfrv_f(zz,rofzfunc,0)
           do idz=1,ndz
@@ -7596,7 +7705,7 @@ c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
 c         --- in most cases, assuming that the conductor is far away in z.
 c         --- When zz < zmin, the delmp0 is set to the distance
 c         --- between the z plane and the end of the conductor.
-c         --- When zz > zmax, rrrhigher is set to rrr so Regula-Falsi
+c         --- When zz > zmax, rrrhigher is set to rrr so the
 c         --- iteration is not done.
           rrr_tmp=srfrv_f(zz,rofzfunc,0)
           do idz=1,ndz
@@ -7631,21 +7740,27 @@ c             --- ensures that a distance of zero is not calculated.
               if (rrrlower+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = min(zz,zmax)
-                f(1) = rrr - rad
-                x(2) = zlower
-                f(2) = rrrlower - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
-                  iterrf = iterrf + 1
-                end do
-                delmz = (zz - x(i))*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rofzfunc,0)
+                  if (rnew > rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew < rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delmz = (zz - znew)*dzi
               elseif (rad < rrrlower+rfuzz .or.
      &                rad > min(rrr,rmax)-rfuzz) then
                 delmz = 3.
@@ -7660,21 +7775,27 @@ c             --- ensures that a distance of zero is not calculated.
               if (rrrhigher+rfuzz < rad .and. rad < min(rrr,rmax)-rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = max(zz,zmin)
-                f(1) = rrr - rad
-                x(2) = zhigher
-                f(2) = rrrhigher - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
-                  iterrf = iterrf + 1
-                end do
-                delpz = (x(i) - zz)*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rofzfunc,0)
+                  if (rnew < rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delpz = (znew - zz)*dzi
               elseif (rad < rrrhigher+rfuzz .or.
      &                rad > min(rrr,rmax)-rfuzz) then
                 delpz = 3.
@@ -7749,8 +7870,6 @@ c                 --- odd
 
       return
       end
-c========================================================================
-
 c===========================================================================
       subroutine srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,
      &                      lzend,xmin,xmax,lshell,
@@ -7810,11 +7929,11 @@ c Output is put directly into the conductor arrays of PSOR3d.
       integer(ISZ):: ixmin,ixmax,izmin,izmax
       integer(ISZ):: jxmin,jxmax
       integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: x(2),f(2)
       real(kind=8):: fuzz,xfuzz,rfuzz,zfuzz,xx,zz
       real(kind=8):: delmz0,delpz0
       real(kind=8):: delmx,delmz,delpx,delpz
       real(kind=8):: max_dxdy,dxi,dzi
+      real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
 
       dxpsor = dx
@@ -7979,39 +8098,51 @@ c             --- ensures that a distance of zero is not calculated.
               if (rrrminlower+rfuzz < rad .and. rad < rmin-rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = min(zz,zmax)
-                f(1) = rmin - rad
-                x(2) = zlower
-                f(2) = rrrminlower - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = srfrv_f(x(i),rminofz,1) - rad
-                  iterrf = iterrf + 1
-                end do
-                delmz = (zz - x(i))*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rminofz,1)
+                  if (rnew > rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew < rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delmz = (zz - znew)*dzi
               elseif (rrrmaxlower-rfuzz > rad .and. rad > rmax+rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = min(zz,zmax)
-                f(1) = rad - rmax
-                x(2) = zlower
-                f(2) = rad - rrrmaxlower
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
-                  iterrf = iterrf + 1
-                end do
-                delmz = (zz - x(i))*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (min(zz,zmax) - zlower)*0.5
+                znew = zlower
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rmaxofz,2)
+                  if (rnew < rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delmz = (zz - znew)*dzi
               elseif (rad < rrrminlower+rfuzz .or.
      &                rad > rrrmaxlower-rfuzz) then
                 delmz = 2.
@@ -8026,39 +8157,51 @@ c             --- ensures that a distance of zero is not calculated.
               if (rrrminhigher+rfuzz < rad .and. rad < rmin-rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = max(zz,zmin)
-                f(1) = rmin - rad
-                x(2) = zhigher
-                f(2) = rrrminhigher - rad
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = srfrv_f(x(i),rminofz,1) - rad
-                  iterrf = iterrf + 1
-                end do
-                delpz = (x(i) - zz)*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rminofz,1)
+                  if (rnew < rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew > rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delpz = (znew - zz)*dzi
               elseif (rrrmaxhigher-rfuzz > rad .and. rad > rmax+rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax) then
-c               --- Regula-Falsi iteration is used to find distance in z
-c               --- to the surface.
-                x(1) = max(zz,zmin)
-                f(1) = rad - rmax
-                x(2) = zhigher
-                f(2) = rad - rrrmaxhigher
-                iterrf = 0
-                do while (abs(f(2)-f(1)) > rfuzz .and. iterrf < 100)
-                  i = 1
-                  if (abs(f(2)) > abs(f(1))) i = 2
-                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
-                  iterrf = iterrf + 1
-                end do
-                delpz = (x(i) - zz)*dzi
+c               --- A simple binary search is used to find distance in z
+c               --- to the surface. This is used since it is more robust
+c               --- than other root finding methods. The major problem
+c               --- occurs when the radius changes like a step function.
+c               --- The secant method (the original coding) converged
+c               --- very slowly in that case, leaving errors as large as
+c               --- 10% in the delta and slowing down the code.
+                ddz = (max(zz,zmin) - zhigher)*0.5
+                znew = zhigher
+                do iterrf=1,32
+                  znew = znew + ddz
+                  rnew = srfrv_f(znew,rmaxofz,2)
+                  if (rnew > rad) then
+                    ddz = -abs(ddz)*0.5
+                  else if (rnew < rad) then
+                    ddz = +abs(ddz)*0.5
+                  else
+                    exit
+                  endif
+                enddo
+                delpz = (znew - zz)*dzi
               elseif (rad < rrrminhigher+rfuzz .or.
      &                rad > rrrmaxhigher-rfuzz) then
                 delpz = 2.
@@ -8130,6 +8273,3 @@ c                 --- odd
       return
       end
 c========================================================================
-
-
-
