@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.7 $, $Date: 2002/09/18 17:02:20 $
+c@(#) File CHO.F, version $Revision: 1.8 $, $Date: 2002/09/19 20:18:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -8,8 +8,7 @@ c  David P. Grote, LLNL, (510)495-2961
 c=============================================================================
 c=============================================================================
 c=============================================================================
-#ifndef WITHCHOMBO
-      subroutine setamrgrids(nx, ny, nz, dx, xmmin, ymmin, zmmin,
+      subroutine cho_setamrgrids(nx, ny, nz, dx, xmmin, ymmin, zmmin,
      &       numLevels, refratio, i, j, k, level, numtags,
      &       bcxlo, bcxhi, bcylo, bcyhi, bczlo, bczhi)
       integer(ISZ) nx, ny, nz, numlevels
@@ -17,10 +16,20 @@ c=============================================================================
       double precision dx, xmmin, ymmin, zmmin
       integer(ISZ) level(*), numtags
       integer(ISZ) bcxlo, bcxhi, bcylo, bcyhi, bczlo, bczhi
-      print*,"no chombo routines"
+      
+c     --- Warning: the following call will not work in parallel!
+      call checkconductors(nx,ny,nz,nz,dx,dx,dx,.false.,.false.)
+
+#ifdef WITHCHOMBO
+      call setamrgrids(nx, ny, nz, dx, xmmin, ymmin, zmmin,
+     &       numLevels, refratio, i, j, k, level, numtags,
+     &       bcxlo, bcxhi, bcylo, bcyhi, bczlo, bczhi)
+#endif
+
       return
       end
 
+#ifndef WITHCHOMBO
       subroutine returnphi(phiout)
       double precision phiout(*)
       print*,"no chombo routines"
