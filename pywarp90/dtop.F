@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.135 $, $Date: 2005/01/24 21:12:30 $
+c@(#) File DTOP.F, version $Revision: 3.136 $, $Date: 2005/02/11 19:28:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -671,7 +671,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.135 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.136 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -912,7 +912,10 @@ c Find bend to the left of zzzmin and to the right of zzzmax.
       enddo
 
 c Make array to index lattice elements.
-      numb = ibendr+1 + nint((nbend+1)*(offsetmx - offsetmn)/zlatperi) - ibendl
+      numb = ibendr+1 - ibendl
+      if (zlatperi > 0.) then
+        numb = numb + nint((nbend+1)*(offsetmx - offsetmn)/zlatperi)
+      endif
 
       allocate(ibend(numb),bendlats(numb),bendlate(numb),bend_a(numb))
       allocate(bends_sum(numb),cosbssum(numb),sinbssum(numb))
@@ -960,95 +963,103 @@ c Calculate index of bend left and right of frame center.
 
 c Calculate sum of bend angles from bends surrounding zcent up to the
 c bend previous to the current bend.
-      i = icentl
-      zz = min((bendlate(i)-bendlats(i)),(zcent - bendlats(i)))
-      bends_sum(i) = zz/bendrc(ibend(i))
-      bende_sum(i) = max(0.,(bendlate(i) - zcent))/bendrc(ibend(i))
-      cosbssum(i) = cos(bends_sum(i))
-      sinbssum(i) = sin(bends_sum(i))
-      cosbesum(i) = cos(bende_sum(i))
-      sinbesum(i) = sin(bende_sum(i))
-      do i = icentl-1,1,-1
-        bende_sum(i) = bends_sum(i+1)
-        bends_sum(i) = bende_sum(i) + bend_a(i)
+      if (icentl > 0) then
+        i = icentl
+        zz = min((bendlate(i)-bendlats(i)),(zcent - bendlats(i)))
+        bends_sum(i) = zz/bendrc(ibend(i))
+        bende_sum(i) = max(0.,(bendlate(i) - zcent))/bendrc(ibend(i))
         cosbssum(i) = cos(bends_sum(i))
         sinbssum(i) = sin(bends_sum(i))
         cosbesum(i) = cos(bende_sum(i))
         sinbesum(i) = sin(bende_sum(i))
-      enddo
+        do i = icentl-1,1,-1
+          bende_sum(i) = bends_sum(i+1)
+          bends_sum(i) = bende_sum(i) + bend_a(i)
+          cosbssum(i) = cos(bends_sum(i))
+          sinbssum(i) = sin(bends_sum(i))
+          cosbesum(i) = cos(bende_sum(i))
+          sinbesum(i) = sin(bende_sum(i))
+        enddo
+      endif
 
-      i = icentr
-      zz = min((bendlate(i)-bendlats(i)),(bendlate(i) - zcent))
-      bends_sum(i) = max(0.,(zcent - bendlats(i)))/bendrc(ibend(i))
-      bende_sum(i) = zz/bendrc(ibend(i))
-      cosbssum(i) = cos(bends_sum(i))
-      sinbssum(i) = sin(bends_sum(i))
-      cosbesum(i) = cos(bende_sum(i))
-      sinbesum(i) = sin(bende_sum(i))
-      do i=icentr+1,numb
-        bends_sum(i) = bende_sum(i-1)
-        bende_sum(i) = bends_sum(i) + bend_a(i)
+      if (icentr <= numb) then
+        i = icentr
+        zz = min((bendlate(i)-bendlats(i)),(bendlate(i) - zcent))
+        bends_sum(i) = max(0.,(zcent - bendlats(i)))/bendrc(ibend(i))
+        bende_sum(i) = zz/bendrc(ibend(i))
         cosbssum(i) = cos(bends_sum(i))
         sinbssum(i) = sin(bends_sum(i))
         cosbesum(i) = cos(bende_sum(i))
         sinbesum(i) = sin(bende_sum(i))
-      enddo
+        do i=icentr+1,numb
+          bends_sum(i) = bende_sum(i-1)
+          bende_sum(i) = bends_sum(i) + bend_a(i)
+          cosbssum(i) = cos(bends_sum(i))
+          sinbssum(i) = sin(bends_sum(i))
+          cosbesum(i) = cos(bende_sum(i))
+          sinbesum(i) = sin(bende_sum(i))
+        enddo
+      endif
 
 c Calculate location of starts and ends of bends in lab frame.
 c --- assumes that zcent is not in a bend
 c --- left of zcent
-      i = icentl
-      if (zcent >= bendlate(i)) then
-        labze(i) = bendlate(i)
-        labxe(i) = 0.
-        labzs(i) = labze(i) - bendrc(ibend(i))*sin(bend_a(i))
-        labxs(i) = labxe(i) - bendrc(ibend(i))*(1. - cos(bend_a(i)))
-        angle = bend_a(i)
-      else 
-        aa = (bendlate(i)-zcent)/bendrc(ibend(i))
-        labze(i) = zcent + bendrc(ibend(i))*sin(aa)
-        labxe(i) = 0. - bendrc(ibend(i))*(1. - cos(aa))
-        aa = (zcent - bendlats(i))/bendrc(ibend(i))
-        labzs(i) = zcent - bendrc(ibend(i))*sin(aa)
-        labxs(i) = 0. - bendrc(ibend(i))*(1. - cos(aa))
-        angle = aa
+      if (icentl > 0) then
+        i = icentl
+        if (zcent >= bendlate(i)) then
+          labze(i) = bendlate(i)
+          labxe(i) = 0.
+          labzs(i) = labze(i) - bendrc(ibend(i))*sin(bend_a(i))
+          labxs(i) = labxe(i) - bendrc(ibend(i))*(1. - cos(bend_a(i)))
+          angle = bend_a(i)
+        else 
+          aa = (bendlate(i)-zcent)/bendrc(ibend(i))
+          labze(i) = zcent + bendrc(ibend(i))*sin(aa)
+          labxe(i) = 0. - bendrc(ibend(i))*(1. - cos(aa))
+          aa = (zcent - bendlats(i))/bendrc(ibend(i))
+          labzs(i) = zcent - bendrc(ibend(i))*sin(aa)
+          labxs(i) = 0. - bendrc(ibend(i))*(1. - cos(aa))
+          angle = aa
+        endif
+        do i=icentl-1,1,-1
+          labze(i) = labzs(i+1) - (bendlats(i+1) - bendlate(i))*cos(angle)
+          labxe(i) = labxs(i+1) - (bendlats(i+1) - bendlate(i))*sin(angle)
+          labzs(i) = labze(i) - bendrc(ibend(i))*(sin(angle+bend_a(i)) -
+     &               sin(angle))
+          labxs(i) = labxe(i) - bendrc(ibend(i))*(cos(angle) -
+     &               cos(angle+bend_a(i)))
+          angle = angle + bend_a(i)
+        enddo
       endif
-      do i=icentl-1,1,-1
-        labze(i) = labzs(i+1) - (bendlats(i+1) - bendlate(i))*cos(angle)
-        labxe(i) = labxs(i+1) - (bendlats(i+1) - bendlate(i))*sin(angle)
-        labzs(i) = labze(i) - bendrc(ibend(i))*(sin(angle+bend_a(i)) -
-     &             sin(angle))
-        labxs(i) = labxe(i) - bendrc(ibend(i))*(cos(angle) -
-     &             cos(angle+bend_a(i)))
-        angle = angle + bend_a(i)
-      enddo
 
 c --- right of zcent
-      i = icentr
-      if (zcent <= bendlats(i)) then
-        labzs(i) = bendlats(i)
-        labxs(i) = 0.
-        labze(i) = labzs(i) + bendrc(ibend(i))*sin(bend_a(i))
-        labxe(i) = labxs(i) - bendrc(ibend(i))*(1. - cos(bend_a(i)))
-        angle = bend_a(i)
-      else 
-        aa = (zcent - bendlats(i))/bendrc(ibend(i))
-        labzs(i) = zcent - bendrc(ibend(i))*sin(aa)
-        labxs(i) = 0. - bendrc(ibend(i))*(1. - cos(aa))
-        aa = (bendlate(i)-zcent)/bendrc(ibend(i))
-        labze(i) = zcent + bendrc(ibend(i))*sin(aa)
-        labxe(i) = 0. - bendrc(ibend(i))*(1. - cos(aa))
-        angle = aa
+      if (icentr <= numb) then
+        i = icentr
+        if (zcent <= bendlats(i)) then
+          labzs(i) = bendlats(i)
+          labxs(i) = 0.
+          labze(i) = labzs(i) + bendrc(ibend(i))*sin(bend_a(i))
+          labxe(i) = labxs(i) - bendrc(ibend(i))*(1. - cos(bend_a(i)))
+          angle = bend_a(i)
+        else 
+          aa = (zcent - bendlats(i))/bendrc(ibend(i))
+          labzs(i) = zcent - bendrc(ibend(i))*sin(aa)
+          labxs(i) = 0. - bendrc(ibend(i))*(1. - cos(aa))
+          aa = (bendlate(i)-zcent)/bendrc(ibend(i))
+          labze(i) = zcent + bendrc(ibend(i))*sin(aa)
+          labxe(i) = 0. - bendrc(ibend(i))*(1. - cos(aa))
+          angle = aa
+        endif
+        do i=icentr+1,numb
+          labzs(i) = labze(i-1) + (bendlats(i) - bendlate(i-1))*cos(angle)
+          labxs(i) = labxe(i-1) - (bendlats(i) - bendlate(i-1))*sin(angle)
+          labze(i) = labzs(i) + bendrc(ibend(i))*(sin(angle+bend_a(i)) -
+     &               sin(angle))
+          labxe(i) = labxs(i) - bendrc(ibend(i))*(cos(angle) -
+     &               cos(angle+bend_a(i)))
+          angle = angle + bend_a(i)
+        enddo
       endif
-      do i=icentr+1,numb
-        labzs(i) = labze(i-1) + (bendlats(i) - bendlate(i-1))*cos(angle)
-        labxs(i) = labxe(i-1) - (bendlats(i) - bendlate(i-1))*sin(angle)
-        labze(i) = labzs(i) + bendrc(ibend(i))*(sin(angle+bend_a(i)) -
-     &             sin(angle))
-        labxe(i) = labxs(i) - bendrc(ibend(i))*(cos(angle) -
-     &             cos(angle+bend_a(i)))
-        angle = angle + bend_a(i)
-      enddo
 
 c Convert data to lab frame.
       do id=1,nn
