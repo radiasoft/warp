@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.9 2004/05/20 19:46:15 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.10 2004/05/20 20:11:40 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -38,6 +38,13 @@ class VisualModel:
     self.labels = labels
     self.scene = scene
     self.dxobject = None
+
+  def getdxobject(self):
+    try:
+      return self.dxobject
+    except AttributeError:
+      self.CreateDXObject()
+      return dxobject
 
   def CreateDXObject(self):
 
