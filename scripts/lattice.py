@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.41 2004/12/14 19:01:31 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.42 2005/01/26 18:41:24 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1879,9 +1879,9 @@ hele arrays with the same suffices:
   # --- Check top.nhmlt to see if the arrays are big enough for that number.
   nh = 1
   try: nh = len(ae)
-  except: pass
+  except TypeError: pass
   try: nh = len(am)
-  except: pass
+  except TypeError: pass
   if nh > top.nhmlt:
     top.nhmlt = nh
     gchange("Lattice")
