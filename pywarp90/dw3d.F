@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.119 $, $Date: 2003/07/09 21:19:59 $
+c@(#) File DW3D.M, version $Revision: 3.120 $, $Date: 2003/07/16 00:30:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -105,6 +105,7 @@ c  Sets rho window diagnostics (they need data from the 3d mesh)
 
       if (.not. lrhodia3d) return
 
+!$OMP PARALLEL DO PRIVATE(zwin,iz,z1,z0)
       do iwin = 0,NWINDOWS
         zwin = 0.5 * (zwindows(1,iwin) + zwindows(2,iwin))
         iz = (zwin + zbeam - zgrid - zmmin)/dz
@@ -123,6 +124,7 @@ c  Sets rho window diagnostics (they need data from the 3d mesh)
           enddo
         endif
       enddo
+!$OMP END PARALLEL DO
 
 c  Sets rho grid diagnostics (they need data from the 3d mesh)
       if (ifzmmnt > 0) then
@@ -140,6 +142,7 @@ c       --- max rho at each z (vectorized)
         do iz = 0,nzmmnt
            rhomaxz(iz) = -LARGEPOS
         enddo
+!$OMP PARALLEL DO PRIVATE(ii,ww)
         do iz = 0,nzmmnt
           ii = (zmntmesh(iz) + zbeam - zgrid - zmmin)/dz
           ww = (zmntmesh(iz) + zbeam - zgrid - zmmin)/dz - ii
@@ -158,6 +161,7 @@ c       --- max rho at each z (vectorized)
             enddo
           endif
         enddo
+!$OMP END PARALLEL DO
       endif
 
       return

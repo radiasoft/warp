@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.119 $, $Date: 2003/07/09 21:19:58 $
+c@(#) File W3D.M, version $Revision: 3.120 $, $Date: 2003/07/16 00:30:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -17,7 +17,9 @@ c  Called at first reference to package (not nec. a "run" etc.).
 
       call w3dvers (STDOUT)
 
+!$OMP MASTER
       if (lw3dtimesubs) timew3dinit = timew3dinit + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -29,7 +31,9 @@ c=============================================================================
       if (lw3dtimesubs) substarttime = wtime()
 c  Echoes code version, etc. to output files as they're created
       call printpkgversion(iout,"Particle package W3D",versw3d)
+!$OMP MASTER
       if (lw3dtimesubs) timew3dvers = timew3dvers + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -443,7 +447,9 @@ c  Set up Eears of z
 
       call seteears()
 
+!$OMP MASTER
       if (lw3dtimesubs) timew3dgen = timew3dgen + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -509,7 +515,9 @@ c  Have we reached the end of the run or run out of particles?
 
       if ( lfinishd ) then
          call remark("w3dexe: problem completed.")
+!$OMP MASTER
          if (lw3dtimesubs) timew3dexe = timew3dexe + wtime() - substarttime
+!$OMP END MASTER
          return
       elseif (nplive <= 0) then
 c Check if there are any live particles left.
@@ -519,13 +527,17 @@ c injection, there may not be any particles yet but still want to run.
            nplive = 1
          else
            print*," *** W3DEXE: stopping, nplive =",nplive
+!$OMP MASTER
            if (lw3dtimesubs) timew3dexe = timew3dexe + wtime() - substarttime
+!$OMP END MASTER
            return
          endif
       endif
 
 c  Continue to run.
+!$OMP MASTER
       if (lw3dtimesubs) timew3dexe = timew3dexe + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -586,7 +598,9 @@ c  release storage
 c     call gfree ("Pspwork")
       call gfree ("Z_arrays")
 
+!$OMP MASTER
       if (lw3dtimesubs) timew3dfin = timew3dfin + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -791,7 +805,9 @@ c  Finally, moment diagnostic printout and history storage
 
       if (caller == "w3dgen" .or. lspecial)
      &  call minidiag (it,time,lmoments)
+!$OMP MASTER
       if (lw3dtimesubs) timestep3d = timestep3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -871,9 +887,13 @@ c     --- Set E to zero for lost particles
       enddo
 
 c     --- Accumulate time for applying the fields of the lattice
+!$OMP MASTER
       latticetime = latticetime + (wtime() - timetemp)
+!$OMP END MASTER
 
+!$OMP MASTER
       if (lw3dtimesubs) timeexteb3d = timeexteb3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -946,7 +966,9 @@ c     --- azimuthal magnetic field
         enddo
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timeothere3d = timeothere3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -974,7 +996,9 @@ c This does it in a partially vectorized manner.
       if (lw3dtimesubs) substarttime = wtime()
 
       if (.not. lgetese3d) then
+!$OMP MASTER
         if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
+!$OMP END MASTER
         return
       endif
 
@@ -990,6 +1014,14 @@ c     conversion factor to go from grid frame to beam frame
         enddo
       enddo
 
+c     --- Loop order switched for the OpenMP parallel version - this
+c     --- avoids requiring the accumulation into scrtch to be put
+c     --- into a critical section.
+!$OMP PARALLEL
+!$OMP DO PRIVATE(phiextun,izb,wzb,ix,iy,iz)
+#ifdef _OPENMP
+      do iy=0,ny
+#endif
       do iz=izfsmin,izfsmax-1
         phiextun = 0.
         if (ifeears == 1) then
@@ -1005,7 +1037,9 @@ c         --- the field solver.
           if (0 <= iz .and. iz < nzzarr)
      &      phiextun = eearsofz(izb)*(1. - wzb) + eearsofz(izb+1)*wzb
         endif
+#ifndef _OPENMP
         do iy=0,ny
+#endif
           do ix=0,nx
             scrtch(ix,iy) = scrtch(ix,iy) + rho(ix,iy,iz)*(phi(ix,iy,iz)
      &                       - dedr*.5*((ix*dx+xmmin)**2 + (iy*dy+ymmin)**2)
@@ -1015,6 +1049,8 @@ c         --- the field solver.
           enddo
         enddo
       enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
 c     --- Apply appropriate multiplication factors for symmetries
       if (l4symtry) then
@@ -1042,7 +1078,9 @@ c       --- Bulk is doubled
 
       ese = dx*dy*dz*0.5*ese
 
+!$OMP MASTER
       if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1076,6 +1114,7 @@ c     conversion factor to go from grid frame to beam frame
 
 c First, sum up the charge density in each axial plane.
 
+!$OMP PARALLEL DO
       do iz=0,nz
 
         if (l2symtry) then
@@ -1094,6 +1133,7 @@ c         --- no symmetries...
         endif
 
       enddo
+!$OMP END PARALLEL DO
 
 c Then, linearly interpolate the data into the beam frame array, linechg.
 
@@ -1118,7 +1158,9 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
       call parallelnonzerorealarray(linechg,nzzarr+1)
 #endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timegtlchg3d = timegtlchg3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1191,7 +1233,9 @@ c       --- Add on linear pressure term
         endif
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timeseteears = timeseteears + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1213,6 +1257,7 @@ c=============================================================================
       use Picglb3d
       use Beam_acc
       use Z_arrays
+      use Z_Moments, only: nzmmnt
       use Damped_eom
       use InjectVars
       use InjectVars3d
@@ -1231,6 +1276,16 @@ c  and also loads RHO at the new time level.
       real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
+!$    real(kind=8):: threadmaxp(6,16),threadminp(6,16)
+!$    real(kind=8):: threadzmmnts0(NUMZMMNT,16)
+!$    real(kind=8):: threadzmmnts(0:nzmmnt,NUMZMMNT,16)
+!$    real(kind=8):: sharedcurr(0:nzzarr,16)
+!$    integer(ISZ):: ithread,omp_get_thread_num
+!$    integer(ISZ):: nthread,omp_get_num_threads
+!$    real(kind=8):: aa(16),bb(16)
+      real(kind=8):: maxp(6),minp(6)
+      real(kind=8):: zmmnts0(NUMZMMNT)
+      real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1244,16 +1299,22 @@ c  Zero the moments if center is synchv
       if (center == "synchv" .or. center == "gen" .and. npmax>0) then
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),dt*0.5,1,
-     &                nplive,uxpo,uypo,uzpo,1,ns)
+     &                nplive,uxpo,uypo,uzpo,1,ns,maxp,minp,zmmnts0,zmmnts)
       endif
 
 c  Set the transverse E fields near any defined apertures.
       if (napertures > 0) call set_aperture_e()
 
+!$OMP PARALLEL
+!$OMP&PRIVATE(ip,zpo,ex,ey,ez,bx,by,bz,uxpo,uypo,uzpo,bendres,bendradi,
+!$OMP&        uxpadv,uypadv,uzpadv)
+!$OMP&FIRSTPRIVATE(maxp,minp,zmmnts0,zmmnts)
+
 c  Loop over species
       do is=1,ns
 
 c  Loop over particle blocks; move each block separately
+!$OMP DO
          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
@@ -1439,25 +1500,41 @@ c              --- Calculate moments over particles, now that we're sync'd
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),sq(is),sm(is),sw(is),dt*0.5,2,nplive,
-     &                         uxpo,uypo,uzpo,is,ns)
+     &                         uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
                else
                  call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),pid(ipmin,wpid),
      &                         sq(is),sm(is),sw(is),dt*0.5,2,nplive,
-     &                         uxpo,uypo,uzpo,is,ns)
+     &                         uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
                endif
             endif
          enddo
+!$OMP END DO
 
       enddo
+
+!$    if (center == "synchv" .or. center == "gen") then
+!$      ithread = omp_get_thread_num() + 1
+!$      nthread = omp_get_num_threads()
+!$      threadmaxp(:,ithread) = maxp
+!$      threadminp(:,ithread) = minp
+!$      threadzmmnts0(:,ithread) = zmmnts0
+!$      threadzmmnts(:,:,ithread) = zmmnts
+!$    endif
+
+!$OMP END PARALLEL
 
 c----------------------------------------------------------------------------
 c     ---  Do final stuff for moments calculation
       if (center == "synchv" .or. center == "gen" .and. npmax>0) then
+!$      maxp = maxval(threadmaxp(:,1:nthread),2)
+!$      minp = minval(threadminp(:,1:nthread),2)
+!$      zmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
+!$      zmmnts = sum(threadzmmnts(:,:,1:nthread),3)
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
-     &                sq(1),sm(1),sw(1),
-     &                dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns)
+     &                sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,
+     &                1,ns,maxp,minp,zmmnts0,zmmnts)
         call getlabwn()
 c       --- load rho diagnostic quantities
         call rhodia3d
@@ -1467,7 +1544,9 @@ c       --- load rho diagnostic quantities
         if (.not. laccumulate_rho) call zeroarry(curr(0),nzzarr+1)
 
 c       --- Calculate current
+!$OMP PARALLEL PRIVATE(ip)
         do is=1,ns
+!$OMP DO
           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             if(wpid==0) then
@@ -1478,7 +1557,9 @@ c       --- Calculate current
      &                     sq(is),sw(is),zbeam,dzz,zzmin)
             end if
           enddo
+!$OMP END DO
         enddo
+!$OMP END PARALLEL
         call percurr(curr(0),nzzarr,bound0)
       endif
 
@@ -1526,7 +1607,9 @@ c       --- Note that zgridprv is also set at the beginning of w3dexe
         time = time + dt
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timepadvnc3d = timepadvnc3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1560,7 +1643,9 @@ c  sets slice at nz+1 equal to the slice at 1
       enddo
 #endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timeperphi3d = timeperphi3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1609,7 +1694,9 @@ c  Enforce longitudinal periodicity.
 #endif
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timeperrho3d = timeperrho3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1634,7 +1721,9 @@ c  Push the particle velocity with E field
         uzp(ip) = uzp(ip) + ez(ip)*const
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timeepush3d = timeepush3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -1661,7 +1750,9 @@ c each particle.
         uzp(ip) = uzp(ip) + ez(ip)*const*dtp(ip)
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timeepusht3d = timeepusht3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c============================================================================= 
@@ -1717,7 +1808,9 @@ c        --- tan(alpha) / alpha algorithm
          enddo
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timebpush3d = timebpush3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c============================================================================= 
@@ -1775,7 +1868,9 @@ c        --- tan(alpha) / alpha algorithm
          enddo
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timebpusht3d = timebpusht3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=========================================================================== 
@@ -1797,7 +1892,9 @@ c  Advance particle positions
         zp(ip) = zp(ip) + uzp(ip)*ddt*gaminv(ip)
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timexpush3d = timexpush3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c===========================================================================
@@ -1819,7 +1916,9 @@ c  Advance particle positions
         zp(ip) = zp(ip) + uzp(ip)*gaminv(ip)*dtp(ip)
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timexpusht3d = timexpusht3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c============================================================================
@@ -1843,7 +1942,9 @@ c Applies the first order relativistic correction to the self E-field.
         ey(ip) = ey(ip)*gammabarisq
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timesete3d_relativity = timesete3d_relativity + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c============================================================================ 
@@ -1866,7 +1967,9 @@ c    never after "synchv" since they are needed by the "halfv" to come.
       if (lw3dtimesubs) substarttime = wtime()
 
       if (eomdamp == 0.) then
+!$OMP MASTER
         if (lw3dtimesubs) timeedamp = timeedamp + wtime() - substarttime
+!$OMP END MASTER
         return
       endif
 
@@ -1952,7 +2055,9 @@ c        --- don't use modified field if too early in run
          endif
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timeedamp = timeedamp + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c============================================================================ 
@@ -1971,7 +2076,9 @@ c  at smaller radii, zones are closer together, so field is larger.
       if (lw3dtimesubs) substarttime = wtime()
 
       if (.not. (bends.and.bnezflag) .or. .not. linbend) then
+!$OMP MASTER
         if (lw3dtimesubs) timebendez3d = timebendez3d + wtime() - substarttime
+!$OMP END MASTER
         return
       endif
 
@@ -1979,7 +2086,9 @@ c  at smaller radii, zones are closer together, so field is larger.
          ez(ip) = ez(ip)*(1. - bendres(ip)*xp(ip)/(bendradi(ip) + xp(ip)))
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timebendez3d = timebendez3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end      
 c=========================================================================== 
@@ -2001,7 +2110,9 @@ c  "along the centerline."
       if (lw3dtimesubs) substarttime = wtime()
 
       if (.not. bends .or. .not. linbend) then
+!$OMP MASTER
         if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
+!$OMP END MASTER
         return
       endif
 
@@ -2012,7 +2123,9 @@ c  "along the centerline."
      &                    *(bendradi(ip)/(bendradi(ip) + xc) - 1.)
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
+!$OMP END MASTER
       return
       end      
 c=========================================================================== 
@@ -2448,7 +2561,9 @@ c           --- Adjust sign of E field for appropriate quadrant.
 
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=========================================================================== 
@@ -2519,7 +2634,9 @@ c     --- Axial self field does not depend on the transverse boundary condition
       selfe(3,1:nx-1,ny,0:nz) = tdzi*(phi(1:nx-1,ny,-1:nz-1) -
      &                                phi(1:nx-1,ny,1:nz+1))
 
+!$OMP MASTER
       if (lw3dtimesubs) timegetselfe3d = timegetselfe3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -2534,7 +2651,6 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Particles
-      use Setpwork3d
       use Picglb
       use Picglb3d
 #ifdef MPIPARALLEL
@@ -2564,6 +2680,14 @@ c  Picglb is included only to use zbeam
       integer(ISZ):: envxport
       character(72):: errline
       real(kind=8):: wranf,rnorm,rnrev
+
+      logical(ISZ):: firstk
+      integer(ISZ):: npgrp,iptotal
+      integer(ISZ),allocatable,dimension(:):: indx
+      real(kind=8),allocatable,dimension(:):: xt,yt,zt,rt,tt,uxt,uyt,uzt
+      real(kind=8),allocatable,dimension(:):: perpscal,at,apt,bt,bpt,xct,xpct
+      real(kind=8),allocatable,dimension(:):: yct,ypct
+
 #ifdef MPIPARALLEL
       real(kind=8):: zmin,zmax
 #endif
@@ -2572,11 +2696,13 @@ c  Picglb is included only to use zbeam
 
 c  If distrbtn is not set by the user, exit
       if (distrbtn == "none") then
+!$OMP MASTER
         if (lw3dtimesubs) timestptcl3d = timestptcl3d + wtime() - substarttime
+!$OMP END MASTER
         return
       endif
 
-c  Set npgrp so Setpwork3d arrays are correct size
+c  Set npgrp so arrays are correct size
       if (xrandom == "fibonacc" .or.
      &    xrandom == "digitrev" .or.
      &    xrandom == "pseudo") then
@@ -2604,9 +2730,6 @@ c  Set npm to loop through all possible particles
 c  If not loading any particles, skip the next big section, but still calculate
 c  values for sq and sm. For parallel version, also update the value for sw.
       if (npm > 0) then
-
-c  Allocate scratch space for load
-      call gallot("Setpwork3d",0)
 
 c  Prepare for arbitrary particle distribution in z.  This coding will only
 c  load a beam approximately matching the distribution.  A gathering of
@@ -2661,6 +2784,20 @@ c----------------------------------
 c  Begin main loop over species
 c----------------------------------
 
+!$OMP PARALLEL
+!$OMP+PRIVATE(k,i,j,ipp,i1,izz,nzstri_s,izstripe,vtz,iz,wz,irr,ii,rp,rpp,r0)
+!$OMP+PRIVATE(firstk)
+!$OMP+PRIVATE(ir,wr,vthr,vrbar,vb,vtzz,emx,emy,vtx,vty,ip,rr,phi1,phi2)
+!$OMP+PRIVATE(indx,xt,yt,zt,rt,tt,uxt,uyt,uzt,perpscal,at,apt,bt,bpt)
+!$OMP+PRIVATE(xct,xpct,yct,ypct,icheck,nfib2,nfib3,nfib4,nxstri_s,nystri_s)
+!$OMP+SHARED(iptotal)
+
+c  Allocate scratch space for load. Must be done in the parallel block
+      allocate(indx(npgrp),xt(npgrp),yt(npgrp),zt(npgrp),rt(npgrp),tt(npgrp))
+      allocate(uxt(npgrp),uyt(npgrp),uzt(npgrp),perpscal(npgrp),at(npgrp))
+      allocate(apt(npgrp),bt(npgrp),bpt(npgrp),xct(npgrp),xpct(npgrp))
+      allocate(yct(npgrp),ypct(npgrp))
+
       do is = 1, ns
 
 c       --- Get number of particles to be loaded for this species.
@@ -2678,6 +2815,9 @@ c       --- Get number of particles to be loaded for this species.
         zlen = zimax_s(is) - zimin_s(is)
         zleni = 1./zlen
         ip = ins(is) - 1
+!$OMP SINGLE
+!$      iptotal = ins(is) - 1
+!$OMP END SINGLE
 
 c       --- Inverse of the number of particles. When multiplied by the particle
 c       --- index and added to the normalized value of zmin, the normalized
@@ -2719,15 +2859,25 @@ c       --- Make sure that there is enough room to load the particles.
 c       --- This is only needed here in the parallel version since it is
 c       --- difficult to gaurantee that there is room when an arbitrary
 c       --- domain decomposition is allowed.
+!$OMP MASTER
         call chckpart(is,0,npm,.false.)
+!$OMP END MASTER
 #endif
 
 c       --- Shift ioff by randoffset so that the seed for the quiet start
 c       --- random number generators can be controlled.
         ioff = ioff + randoffset
 
+c       --- Set firstk = true. This is needed so that the code knows that it
+c       --- is in the first iteration of the loop over k. It is for the
+c       --- OpenMP code since there, each processor won't execute the
+c       --- iteration where k=1 and so some things would otherwise not be
+c       --- initialized properly, for example the code for a cylinder beam.
+        firstk = .true.
+
 c  MAIN INITIALIZATION LOOP
 
+!$OMP DO
       do k = 1, npm, npgrp
          i1 = min(npm, k+npgrp-1)
 
@@ -2775,8 +2925,8 @@ c              --- the range [0,1].
          endif
 
 c        --- zero vz if vthz is zero only the first time through
-         if (vthz_s(is) == 0. .and. k == 1) then
-           do i=1,i1-k+1
+         if (vthz_s(is) == 0. .and. firstk) then
+           do i=1,npgrp
               uzt(i) = 0.
            enddo
          endif
@@ -2845,8 +2995,8 @@ c          --- load uzt with gaussian distribution (mean 0, variance 1)
              endif
            endif
 c          --- set perpscal to one first time through
-           if (k == 1) then
-             do i=1,i1-k+1
+           if (firstk) then
+             do i=1,npgrp
                perpscal(i) = 1.0
              enddo
            endif
@@ -2879,8 +3029,8 @@ c        --- fetch envelope
            endif
          else
 c          --- set only first time through
-           if (k == 1) then
-             do i=1,i1-k+1
+           if (firstk) then
+             do i=1,npgrp
                at(i)   = a0_s(is)
                bt(i)   = b0_s(is)
                apt(i)  = ap0_s(is)
@@ -3072,6 +3222,11 @@ c          --- Modify radial velocity distribution
              enddo
            endif
 
+!$OMP CRITICAL (STPTCL3D1)
+!$         ip = iptotal
+!$         iptotal = iptotal + j
+!$OMP END CRITICAL (STPTCL3D1)
+
 c          --- unnormalize everything and load into particle arrays
            do i=1,j
              ii = indx(i)
@@ -3154,6 +3309,11 @@ c          --- fetch random numbers and put into xt,yt, & uxt  temporarily
              call kaboom (0)
            endif
 
+!$OMP CRITICAL (STPTCL3D2)
+!$         ip = iptotal
+!$         iptotal = iptotal + i1-k+1
+!$OMP END CRITICAL (STPTCL3D2)
+
 c          --- load x,y,ux, and uy evenly onto a 4-D ellipsoid
            do i=1,i1-k+1
              rr = sqrt(xt(i))
@@ -3216,18 +3376,25 @@ c          --- increment number of particles by size of current group
            call kaboom (0)
          endif
 
+        firstk = .false.
       enddo
+!$OMP END DO
 
 c  Set particle number, indices, etc.
 
+!$OMP BARRIER
+!$OMP MASTER
+!$    ip = iptotal
       nps(is) = ip - ins(is) + 1
+!$OMP END MASTER
+
       enddo
+!$OMP END PARALLEL
 
 c--------------------------------
 c  End main loop over species
 c--------------------------------
 
-        call gfree ("Setpwork3d")
 c     --- end of if checking for positive npm
       endif
 
@@ -3285,12 +3452,15 @@ c     --- Apply particle boundary conditions
         call processlostpart(is,clearlostpart,time,zbeam)
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timestptcl3d = timestptcl3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
       subroutine setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
      &                    nx,ny,nz,xmmin,ymmin,zmmin)
+      use GlobalVars
       use Subtimers3d
       use InGen3d
       use Fields3d
@@ -3320,22 +3490,17 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:7), indx(0:7,np)
+      integer(ISZ):: moff(0:7), indx(0:7,0:nparpgrp-1)
       save moff
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:np-1), jj(0:np-1), kk(0:np-1)
+      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1)
 c     --- For both algorithms
-      real(kind=8):: s(0:7,np)
+      real(kind=8):: s(0:7,0:nparpgrp-1)
 
-      integer(ISZ):: ip,i,j,k,ind0,m,ir
+      integer(ISZ):: ipmin,nptmp,ip,i,j,k,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
-
-c--------------------------------------
-c  Begin vectorized deposition loop
-c--------------------------------------
-      if (depos == "vector") then
 
 c  Set up offset array for vectorized deposition:
 
@@ -3350,19 +3515,40 @@ c  Set up offset array for vectorized deposition:
         moff(7) = (nx+1)*(ny+1)+nx+2
       endif
 
-c  Begin main loop over species
-
       g = wght * q / (dx * dy * dz)
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+! np was made FIRSTPRIVATE to get around a bug when the expression
+! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
+! I don't know why it works, but it does.
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,gyfact,gxfact,s,m,ii,jj,kk),FIRSTPRIVATE(np)
+
+!$OMP DO
+      do ipmin = 1,np,nparpgrp
+        nptmp = min(nparpgrp, np+1-ipmin)
+
+c--------------------------------------
+c  Begin vectorized deposition loop
+c--------------------------------------
+      if (depos == "vector") then
+
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
 c       --- special loop for 2-fold symmetry
 c       --- The particle weight is reduced by a factor of 2 except near the
 c       --- transverse boundaries.
-        g = g*0.5
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
            i  = int((xp(ip) - xmmin) * dxi)
            u1 = (xp(ip) - xmmin) * dxi - i
            u0 = 1. - u1
@@ -3372,32 +3558,32 @@ c       --- transverse boundaries.
            k  = int((zp(ip) - zgrid - zmmin) * dzi)
            w1 = (zp(ip) - zgrid - zmmin) * dzi - k
            w0 = 1. - w1
+           ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ip) = ind0 + moff(0)
-           indx(1,ip) = ind0 + moff(1)
-           indx(2,ip) = ind0 + moff(2)
-           indx(3,ip) = ind0 + moff(3)
-           indx(4,ip) = ind0 + moff(4)
-           indx(5,ip) = ind0 + moff(5)
-           indx(6,ip) = ind0 + moff(6)
-           indx(7,ip) = ind0 + moff(7)
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
+           indx(4,ir) = ind0 + moff(4)
+           indx(5,ir) = ind0 + moff(5)
+           indx(6,ir) = ind0 + moff(6)
+           indx(7,ir) = ind0 + moff(7)
            gyfact = 1.
            if (j == 0) gyfact = 2.
-           s(0,ip) = u0 * v0 * w0 * g*gyfact
-           s(1,ip) = u1 * v0 * w0 * g*gyfact
-           s(2,ip) = u0 * v1 * w0 * g
-           s(3,ip) = u1 * v1 * w0 * g
-           s(4,ip) = u0 * v0 * w1 * g*gyfact
-           s(5,ip) = u1 * v0 * w1 * g*gyfact
-           s(6,ip) = u0 * v1 * w1 * g
-           s(7,ip) = u1 * v1 * w1 * g
+           s(0,ir) = u0 * v0 * w0 * g*gyfact
+           s(1,ir) = u1 * v0 * w0 * g*gyfact
+           s(2,ir) = u0 * v1 * w0 * g
+           s(3,ir) = u1 * v1 * w0 * g
+           s(4,ir) = u0 * v0 * w1 * g*gyfact
+           s(5,ir) = u1 * v0 * w1 * g*gyfact
+           s(6,ir) = u0 * v1 * w1 * g
+           s(7,ir) = u1 * v1 * w1 * g
         enddo
       elseif (l4symtry) then
 c       --- special loop for 4-fold symmetry
 c       --- The particle weight is reduced by a factor of 4 except near the
 c       --- transverse boundaries.
-        g = g*0.25
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
            i  = int(abs(xp(ip))*dxi)
            u1 = abs(xp(ip))*dxi - i
            u0 = 1. - u1
@@ -3407,31 +3593,32 @@ c       --- transverse boundaries.
            k  = int((zp(ip) - zgrid - zmmin) * dzi)
            w1 = (zp(ip) - zgrid - zmmin) * dzi - k
            w0 = 1. - w1
+           ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ip) = ind0 + moff(0)
-           indx(1,ip) = ind0 + moff(1)
-           indx(2,ip) = ind0 + moff(2)
-           indx(3,ip) = ind0 + moff(3)
-           indx(4,ip) = ind0 + moff(4)
-           indx(5,ip) = ind0 + moff(5)
-           indx(6,ip) = ind0 + moff(6)
-           indx(7,ip) = ind0 + moff(7)
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
+           indx(4,ir) = ind0 + moff(4)
+           indx(5,ir) = ind0 + moff(5)
+           indx(6,ir) = ind0 + moff(6)
+           indx(7,ir) = ind0 + moff(7)
            gxfact = 1.
            gyfact = 1.
            if (i == 0) gxfact = 2.
            if (j == 0) gyfact = 2.
-           s(0,ip) = u0 * v0 * w0 * g*gxfact*gyfact
-           s(1,ip) = u1 * v0 * w0 * g*gyfact
-           s(2,ip) = u0 * v1 * w0 * g*gxfact
-           s(3,ip) = u1 * v1 * w0 * g
-           s(4,ip) = u0 * v0 * w1 * g*gxfact*gyfact
-           s(5,ip) = u1 * v0 * w1 * g*gyfact
-           s(6,ip) = u0 * v1 * w1 * g*gxfact
-           s(7,ip) = u1 * v1 * w1 * g
+           s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
+           s(1,ir) = u1 * v0 * w0 * g*gyfact
+           s(2,ir) = u0 * v1 * w0 * g*gxfact
+           s(3,ir) = u1 * v1 * w0 * g
+           s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
+           s(5,ir) = u1 * v0 * w1 * g*gyfact
+           s(6,ir) = u0 * v1 * w1 * g*gxfact
+           s(7,ir) = u1 * v1 * w1 * g
         enddo
       else
 c       --- normal loop
-        do ip = 1, np
+        do ip = ipmin,ipmin+nptmp-1
            i  = int((xp(ip) - xmmin) * dxi)
            u1 = (xp(ip) - xmmin) * dxi - i
            u0 = 1. - u1
@@ -3441,34 +3628,37 @@ c       --- normal loop
            k  = int((zp(ip) - zgrid - zmmin) * dzi)
            w1 = (zp(ip) - zgrid - zmmin) * dzi - k
            w0 = 1. - w1
+           ir = ip - ipmin
            ind0 = i + j*(nx+1) + k*(nx+1)*(ny+1)
-           indx(0,ip) = ind0 + moff(0)
-           indx(1,ip) = ind0 + moff(1)
-           indx(2,ip) = ind0 + moff(2)
-           indx(3,ip) = ind0 + moff(3)
-           indx(4,ip) = ind0 + moff(4)
-           indx(5,ip) = ind0 + moff(5)
-           indx(6,ip) = ind0 + moff(6)
-           indx(7,ip) = ind0 + moff(7)
-           s(0,ip) = u0 * v0 * w0 * g
-           s(1,ip) = u1 * v0 * w0 * g
-           s(2,ip) = u0 * v1 * w0 * g
-           s(3,ip) = u1 * v1 * w0 * g
-           s(4,ip) = u0 * v0 * w1 * g
-           s(5,ip) = u1 * v0 * w1 * g
-           s(6,ip) = u0 * v1 * w1 * g
-           s(7,ip) = u1 * v1 * w1 * g
+           indx(0,ir) = ind0 + moff(0)
+           indx(1,ir) = ind0 + moff(1)
+           indx(2,ir) = ind0 + moff(2)
+           indx(3,ir) = ind0 + moff(3)
+           indx(4,ir) = ind0 + moff(4)
+           indx(5,ir) = ind0 + moff(5)
+           indx(6,ir) = ind0 + moff(6)
+           indx(7,ir) = ind0 + moff(7)
+           s(0,ir) = u0 * v0 * w0 * g
+           s(1,ir) = u1 * v0 * w0 * g
+           s(2,ir) = u0 * v1 * w0 * g
+           s(3,ir) = u1 * v1 * w0 * g
+           s(4,ir) = u0 * v0 * w1 * g
+           s(5,ir) = u1 * v0 * w1 * g
+           s(6,ir) = u0 * v1 * w1 * g
+           s(7,ir) = u1 * v1 * w1 * g
         enddo
       endif
 c     --- vectorized deposition over the 8 cells touched;
 c     --- there'd be a hazard if we interchanged the loops.
-      do ip = 1, np
-         if (uzp(ip) /= 0) then
-         do m = 0, 7
-            rho1d(indx(m,ip)) = rho1d(indx(m,ip)) + s(m,ip)
-         enddo
-         endif
+!$OMP CRITICAL (CRITICAL_SETRHO3D1)
+      do ir = 0,nptmp-1
+        if (uzp(ir+ipmin) /= 0.) then
+          do m = 0, 7
+             rho1d(indx(m,ir)) = rho1d(indx(m,ir)) + s(m,ir)
+          enddo
+        endif
       enddo
+!$OMP END CRITICAL (CRITICAL_SETRHO3D1)
 
 c--------------------------------------
 c  Begin scalar deposition loop
@@ -3477,15 +3667,10 @@ c--------------------------------------
 
 c  Begin main loop over species
 
-      g = wght * q / (dx * dy * dz)
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
-        g = g*0.5
-        do ip = 1, np
-          ir = ip - 1
+        do ip = ipmin,ipmin+nptmp-1
+          ir = ip - ipmin
           ii(ir) = int((xp(ip) - xmmin) * dxi)
           u1     = (xp(ip) - xmmin) * dxi - ii(ir)
           u0     = 1. - u1
@@ -3497,19 +3682,18 @@ c     --- vectorized loop to compute indices, weights
           w0     = 1. - w1
           gyfact = 1.
           if (jj(ir) == 0) gyfact = 2.
-          s(0,ip) = u0 * v0 * w0 * g*gyfact
-          s(1,ip) = u1 * v0 * w0 * g*gyfact
-          s(2,ip) = u0 * v1 * w0 * g
-          s(3,ip) = u1 * v1 * w0 * g
-          s(4,ip) = u0 * v0 * w1 * g*gyfact
-          s(5,ip) = u1 * v0 * w1 * g*gyfact
-          s(6,ip) = u0 * v1 * w1 * g
-          s(7,ip) = u1 * v1 * w1 * g
+          s(0,ir) = u0 * v0 * w0 * g*gyfact
+          s(1,ir) = u1 * v0 * w0 * g*gyfact
+          s(2,ir) = u0 * v1 * w0 * g
+          s(3,ir) = u1 * v1 * w0 * g
+          s(4,ir) = u0 * v0 * w1 * g*gyfact
+          s(5,ir) = u1 * v0 * w1 * g*gyfact
+          s(6,ir) = u0 * v1 * w1 * g
+          s(7,ir) = u1 * v1 * w1 * g
         enddo
       elseif (l4symtry) then
-        g = g*0.25
-        do ip = 1, np
-          ir = ip - 1
+        do ip = ipmin,ipmin+nptmp-1
+          ir = ip - ipmin
           ii(ir) = int(abs(xp(ip))*dxi)
           u1     = abs(xp(ip))*dxi - ii(ir)
           u0     = 1. - u1
@@ -3523,19 +3707,19 @@ c     --- vectorized loop to compute indices, weights
           gyfact = 1.
           if (ii(ir) == 0) gxfact = 2.
           if (jj(ir) == 0) gyfact = 2.
-          s(0,ip) = u0 * v0 * w0 * g*gxfact*gyfact
-          s(1,ip) = u1 * v0 * w0 * g*gyfact
-          s(2,ip) = u0 * v1 * w0 * g*gxfact
-          s(3,ip) = u1 * v1 * w0 * g
-          s(4,ip) = u0 * v0 * w1 * g*gxfact*gyfact
-          s(5,ip) = u1 * v0 * w1 * g*gyfact
-          s(6,ip) = u0 * v1 * w1 * g*gxfact
-          s(7,ip) = u1 * v1 * w1 * g
+          s(0,ir) = u0 * v0 * w0 * g*gxfact*gyfact
+          s(1,ir) = u1 * v0 * w0 * g*gyfact
+          s(2,ir) = u0 * v1 * w0 * g*gxfact
+          s(3,ir) = u1 * v1 * w0 * g
+          s(4,ir) = u0 * v0 * w1 * g*gxfact*gyfact
+          s(5,ir) = u1 * v0 * w1 * g*gyfact
+          s(6,ir) = u0 * v1 * w1 * g*gxfact
+          s(7,ir) = u1 * v1 * w1 * g
         enddo
       else
 c       --- normal loop
-        do ip = 1, np
-          ir = ip - 1
+        do ip = ipmin,ipmin+nptmp-1
+          ir = ip - ipmin
           ii(ir) = int((xp(ip) - xmmin) * dxi)
           u1     = (xp(ip) - xmmin) * dxi - ii(ir)
           u0     = 1. - u1
@@ -3545,39 +3729,38 @@ c       --- normal loop
           kk(ir) = int((zp(ip) - zgrid - zmmin) * dzi)
           w1     = (zp(ip) - zgrid - zmmin) * dzi - kk(ir)
           w0     = 1. - w1
-          s(0,ip) = u0 * v0 * w0 * g
-          s(1,ip) = u1 * v0 * w0 * g
-          s(2,ip) = u0 * v1 * w0 * g
-          s(3,ip) = u1 * v1 * w0 * g
-          s(4,ip) = u0 * v0 * w1 * g
-          s(5,ip) = u1 * v0 * w1 * g
-          s(6,ip) = u0 * v1 * w1 * g
-          s(7,ip) = u1 * v1 * w1 * g
+          s(0,ir) = u0 * v0 * w0 * g
+          s(1,ir) = u1 * v0 * w0 * g
+          s(2,ir) = u0 * v1 * w0 * g
+          s(3,ir) = u1 * v1 * w0 * g
+          s(4,ir) = u0 * v0 * w1 * g
+          s(5,ir) = u1 * v0 * w1 * g
+          s(6,ir) = u0 * v1 * w1 * g
+          s(7,ir) = u1 * v1 * w1 * g
         enddo
       endif
 c     --- scalar loop does the actual deposition
-      do ir = 0, np-1
-         if (uzp(ir+1) /= 0) then
-         rho(ii(ir)  ,jj(ir)  ,kk(ir)  )
-     &  =rho(ii(ir)  ,jj(ir)  ,kk(ir)  ) + s(0,ir+1)
-         rho(ii(ir)+1,jj(ir)  ,kk(ir)  )
-     &  =rho(ii(ir)+1,jj(ir)  ,kk(ir)  ) + s(1,ir+1)
-         rho(ii(ir)  ,jj(ir)+1,kk(ir)  )
-     &  =rho(ii(ir)  ,jj(ir)+1,kk(ir)  ) + s(2,ir+1)
-         rho(ii(ir)+1,jj(ir)+1,kk(ir)  )
-     &  =rho(ii(ir)+1,jj(ir)+1,kk(ir)  ) + s(3,ir+1)
-         rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)
-     &  =rho(ii(ir)  ,jj(ir)  ,kk(ir)+1) + s(4,ir+1)
-         rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)
-     &  =rho(ii(ir)+1,jj(ir)  ,kk(ir)+1) + s(5,ir+1)
-         rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)
-     &  =rho(ii(ir)  ,jj(ir)+1,kk(ir)+1) + s(6,ir+1)
-         rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)
-     &  =rho(ii(ir)+1,jj(ir)+1,kk(ir)+1) + s(7,ir+1)
+!$OMP CRITICAL (CRITICAL_SETRHO3D2)
+      do ir = 0, nptmp-1
+         if (uzp(ir+ipmin) /= 0) then
+         rho(ii(ir)  ,jj(ir)  ,kk(ir)  )=rho(ii(ir)  ,jj(ir)  ,kk(ir)  )+s(0,ir)
+         rho(ii(ir)+1,jj(ir)  ,kk(ir)  )=rho(ii(ir)+1,jj(ir)  ,kk(ir)  )+s(1,ir)
+         rho(ii(ir)  ,jj(ir)+1,kk(ir)  )=rho(ii(ir)  ,jj(ir)+1,kk(ir)  )+s(2,ir)
+         rho(ii(ir)+1,jj(ir)+1,kk(ir)  )=rho(ii(ir)+1,jj(ir)+1,kk(ir)  )+s(3,ir)
+         rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)=rho(ii(ir)  ,jj(ir)  ,kk(ir)+1)+s(4,ir)
+         rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)=rho(ii(ir)+1,jj(ir)  ,kk(ir)+1)+s(5,ir)
+         rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)=rho(ii(ir)  ,jj(ir)+1,kk(ir)+1)+s(6,ir)
+         rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)=rho(ii(ir)+1,jj(ir)+1,kk(ir)+1)+s(7,ir)
         endif
       enddo
+!$OMP END CRITICAL (CRITICAL_SETRHO3D2)
 
       endif
+
+      enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
       if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
       return
       end
@@ -3653,27 +3836,34 @@ c        --- get loop limits for particles if needed
          if (nps_i == -1) nps_u = nps(is)
 
 c        --- loop over particle blocks
-         do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
-            ip = min(nparpgrp, ins_u+nps_u-ipmin)
-            if(solvergeom==XYZgeom) then
-              call setrho3d (rhop(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
-     &                       zgrid, uzp(ipmin), sq(is), sw(is), depos,
-     &                       nxp,nyp,nzp,xmmin,ymmin,zmminp)
-            elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+         if(solvergeom==XYZgeom) then
+           ipmin = ins_u
+           call setrho3d(rhop(0,0,0),nps_u,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                   zgrid,uzp(ipmin),sq(is),sw(is),depos,
+     &                   nxp,nyp,nzp,xmmin,ymmin,zmminp)
+         elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+             ip = min(nparpgrp, ins_u+nps_u-ipmin)
              if(wpid==0) then
-              call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
-     &                         sq(is)*sw(is),nx,nz,dx,dz,zgrid)
+               call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
+     &                          sq(is)*sw(is),nx,nz,dx,dz,zgrid)
              else
-              call rhoweightrz_weights(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),pid(ipmin,wpid),ip,
-     &                         sq(is)*sw(is),nx,nz,dx,dz,zgrid)
+               call rhoweightrz_weights(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),pid(ipmin,wpid),ip,
+     &                          sq(is)*sw(is),nx,nz,dx,dz,zgrid)
              end if
-            elseif(solvergeom==Zgeom) then
+           enddo
+         elseif(solvergeom==Zgeom) then
+           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+              ip = min(nparpgrp, ins_u+nps_u-ipmin)
               call rhoweightz(zp(ipmin),uzp(ipmin),ip,sq(is)*sw(is),nz,dz,zgrid)
-            elseif(solvergeom==AMRgeom) then
+           enddo
+         elseif(solvergeom==AMRgeom) then
+           do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+              ip = min(nparpgrp, ins_u+nps_u-ipmin)
               call cho_setrho3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
      &                          sq(is),sw(is),is,(ipmin-ins(is))/nparpgrp)
-            end if
-         enddo
+           enddo
+         end if
       enddo
 
       endif
@@ -3690,7 +3880,9 @@ c     --- periodicity can over be enforced on rho which does cover the full
 c     --- system.
       if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0,boundxy)
 
+!$OMP MASTER
       if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -3831,7 +4023,9 @@ c     --- Obtain the self-field from the electrostatic potential
         ez = 0.
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timefetche3d = timefetche3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -3921,6 +4115,7 @@ c Check values of rectangular boundary arrays to see if they will be used.
       endif
       
 
+!$OMP PARALLEL DO PRIVATE(iz)
       do ip=1,np
         iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
         if (((xp(ip)-prwallxz(iz))**2 +
@@ -3931,8 +4126,11 @@ c Check values of rectangular boundary arrays to see if they will be used.
           if (.not. lcountaslost) uzp(ip) = 0.
         endif
       enddo
+!$OMP END PARALLEL DO
 
+!$OMP MASTER
       if (lw3dtimesubs) timestckxy3d = timestckxy3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -4000,7 +4198,9 @@ c     --- Also, make sure the rstar is non-zero.
         if (rstar(iz) == 0.) rstar(iz) = LARGEPOS
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timesetrstar = timesetrstar + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -5318,7 +5518,9 @@ c         --- make injected particles live particles
       endif
 c     --- End of transverse injection
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinject3d = timeinject3d + wtime() - substarttime
+!$OMP END MASTER
 
       return
       end
@@ -5657,7 +5859,9 @@ c When using constant current injection, turn off the flag that specifies
 c use of the normal E field with the Child-Langmuir profile
       if (inject == 1) linj_enormcl = .false.
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinjctint = timeinjctint + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -5804,7 +6008,9 @@ c             --- the min is always ij.
         enddo
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timefill_inj = timefill_inj + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -5899,7 +6105,9 @@ c             --- the min is always ij.
         enddo
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timefill_inj = timefill_inj + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -5974,7 +6182,9 @@ c     --- If transforming from coordinates of source, add source center
         enddo
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinj_transform = timeinj_transform + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -6139,7 +6349,9 @@ c     --- be since inj_phi is actually vinject - phi, with an extra minus sign.
         enddo
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timegetinj_phi = timegetinj_phi + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -6617,7 +6829,9 @@ c     --- For particles not near the source, the temp arrays are zero.
       ey = ey + tey
       ez = ez + tez
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -6734,7 +6948,9 @@ c     --- Transform thermal velocities to lab frame
       uyp(ipmin:ipmin+npart-1) = uyp(ipmin:ipmin+npart-1) + vy
       uzp(ipmin:ipmin+npart-1) = uzp(ipmin:ipmin+npart-1) + vz
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinj_addtemp3d = timeinj_addtemp3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -6878,7 +7094,9 @@ c       --- rho only on the right side of the emitting surface.
 
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -6957,7 +7175,9 @@ c       --- Transform the particles back into the lab frame
 
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
@@ -7641,7 +7861,9 @@ c          wz1 = dd*2.**(inj_nz-iz)-1.
         deallocate(rhs,ab)
       end do
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 
@@ -7866,7 +8088,9 @@ c           --- (i.e. zero) and the value on the secondary surface.
       ey = ey + tey
       ez = ez + tez
 
+!$OMP MASTER
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c===========================================================================
@@ -8008,7 +8232,9 @@ c       --- End of if checking if aperture is within the grid
 c     --- End of loop over apertures
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timesete3d_aperture = timesete3d_aperture + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c===========================================================================
@@ -8431,7 +8657,9 @@ c       --- End of if checking if aperture is within the grid
 c     --- End of loop over apertures
       enddo
 
+!$OMP MASTER
       if (lw3dtimesubs) timeset_aperture_e = timeset_aperture_e + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c===========================================================================
@@ -8647,7 +8875,9 @@ c     --- Distribute phi among the processes so each has phi in its
 c     --- particle domain.
       call getphiforparticles()
 
+!$OMP MASTER
       if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
+!$OMP END MASTER
       fstime = fstime + (wtime() - timetemp)
       return
       end
@@ -8787,7 +9017,9 @@ c         --- Chombo AMR  full-multigrid solver
      &                   l2symtry,l4symtry,xmmin,ymmin,zmmin,zmminglobal)
       endif
 
+!$OMP MASTER
       if (lw3dtimesubs) timevp3d = timevp3d + wtime() - substarttime
+!$OMP END MASTER
       return
       end
 c=============================================================================
