@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.12 2002/11/07 21:26:12 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.13 2003/02/27 19:36:00 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -188,9 +188,8 @@ initial data.
              top.yp[ip1:ip2],w3d.ymmax,w3d.ymmin,
              w3d.dy,top.zp[ip1:ip2],w3d.zmmin,w3d.dz,
              top.uxp[ip1:ip2],top.uyp[ip1:ip2],top.uzp[ip1:ip2],
-             top.gaminv[ip1:ip2],top.zgrid,top.zbeam,top.nzzarr,
-             top.prwallz,top.prwallxz,top.prwallyz,
-             top.prwelips,w3d.l2symtry,w3d.l4symtry,top.zzmin,top.dzzi)
+             top.gaminv[ip1:ip2],top.zgrid,top.zbeam,
+             w3d.l2symtry,w3d.l4symtry,top.pboundxy,true)
     # --- Add routine after step to save data
     installafterstep(self.spsavedata)
 
