@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.76 2004/07/29 00:11:16 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.77 2004/07/29 17:17:19 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -968,6 +968,7 @@ Creates a grid object which can generate conductor data.
                   conductors)
       self.mglevels = conductors.levels
       self.mgleveliz = conductors.leveliz[:self.mglevels].copy()
+      self.mglevelnz = conductors.levelnz[:self.mglevels].copy()
       self.mglevellx = conductors.levellx[:self.mglevels].copy()
       self.mglevelly = conductors.levelly[:self.mglevels].copy()
       self.mglevellz = conductors.levellz[:self.mglevels].copy()
@@ -976,12 +977,14 @@ Creates a grid object which can generate conductor data.
       setmglevels_rz(gridrz)
       self.mglevels = f3d.mglevels
       self.mgleveliz = f3d.mglevelsiz[:f3d.mglevels].copy()
+      self.mglevelnz = f3d.mglevelsnz[:f3d.mglevels].copy()
       self.mglevellx = f3d.mglevelslx[:f3d.mglevels].copy()
       self.mglevelly = f3d.mglevelsly[:f3d.mglevels].copy()
       self.mglevellz = f3d.mglevelslz[:f3d.mglevels].copy()
     else:
       self.mglevels = 1
       self.mgleveliz = [top.izfsslave[me]]
+      self.mglevelnz = [self.nz]
       self.mglevellx = [1]
       self.mglevelly = [1]
       self.mglevellz = [1]
@@ -1032,6 +1035,27 @@ Creates a grid object which can generate conductor data.
     iz = zeros(len(xmesh)*len(ymesh))
     return ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh
 
+  def checkoverlap(self,mglevel,extent):
+    if extent is None: return 1
+
+    xmin,ymin = self.xmin,self.ymin
+    xmax,ymax = self.xmax,self.ymax
+    if lparallel:
+      dz = self.dz*self.mglevellz[mglevel]
+      nz = self.mglevelnz[mglevel]
+      iz = self.mgleveliz[mglevel]
+      zmin = max(self.zmin,self.zmmin+iz*dz+top.zbeam)
+      zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+top.zbeam)
+    else:
+      zmin = self.zmin
+      zmax = self.zmax
+
+    xmin,ymin,zmin = maximum(array(extent.mins),array([xmin,ymin,zmin]))
+    xmax,ymax,zmax = minimum(array(extent.maxs),array([xmax,ymax,zmax]))
+
+    if zmin > zmax or xmin > xmax or ymin > ymax: return 0
+    return 1
+
   def getdata(self,a,dfill=top.largepos,fuzzsign=-1):
     """
 Given an Assembly, accumulate the appropriate data to represent that
@@ -1047,6 +1071,20 @@ Assembly on this grid.
     if type(a) == ListType:
       for c in a: self.getdata(c,dfill=dfill,fuzzsign=fuzzsign)
       return
+
+    # --- Check if total conductor overlaps with the grid. If it doesn't,
+    # --- then there is no need to check any individual pieces.
+    if not lparallel:
+      aextent = a.getextent()
+      if not self.checkoverlap(0,aextent): return
+    else:
+      # --- Note that for the parallel version, each level must be checked
+      # --- since the levels can have a difference z extent.
+      doesoverlap = 0
+      aextent = a.getextent()
+      for i in range(self.mglevels):
+        if self.checkoverlap(i,aextent): doesoverlap = 1
+      if not doesoverlap: return
 
     # --- If 'a' is an AssemblyPlus, save time by generating the conductor
     # --- data for each part separately. Time is saved since only data within
@@ -2504,6 +2542,11 @@ Creates an Annulus as a surface of revolution.
 #============================================================================
 def Quadrupole(ap=None,rl=None,rr=None,gl=None,gp=None,
                pa=None,pw=None,pr=None,vx=None,vy=None,
+               glx=None,gly=None,axp=None,axm=None,ayp=None,aym=None,
+               rxp=None,rxm=None,ryp=None,rym=None,
+               vxp=None,vxm=None,vyp=None,vym=None,
+               oxp=None,oxm=None,oyp=None,oym=None,
+               pwl=None,pwr=None,pal=None,par=None,prl=None,prr=None,
                xcent=0.,ycent=0.,zcent=0.,condid=None,
                elemid=None,elem='quad'):
   """
@@ -2519,6 +2562,30 @@ Either specify the quadrupole structure...
   - pr: outer radius of end plate
   - vx: voltage of rod in x plane
   - vy: voltage of rod in y plane
+  - glx: Change in gap length on x axis
+  - gly: Change in gap length on y axis
+  - axp: Change in aperture of rod on plus  x axis
+  - axm: Change in aperture of rod on minus x axis
+  - ayp: Change in aperture of rod on plus  y axis
+  - aym: Change in aperture of rod on minus y axis
+  - rxp: Change in radius of rod on plus  x axis
+  - rxm: Change in radius of rod on minus x axis
+  - ryp: Change in radius of rod on plus  y axis
+  - rym: Change in radius of rod on minus y axis
+  - vxp: Change in voltage of rod on plus  x axis
+  - vxm: Change in voltage of rod on minus x axis
+  - vyp: Change in voltage of rod on plus  y axis
+  - vym: Change in voltage of rod on minus y axis
+  - oxp: Perpendicular offset of rod on plus  x axis
+  - oxm: Perpendicular offset of rod on minus x axis
+  - oyp: Perpendicular offset of rod on plus  y axis
+  - oym: Perpendicular offset of rod on minus y axis
+  - pwl: Change on left  plate width
+  - pwr: Change on right plate width
+  - pal: Change on left  plate aperture
+  - par: Change on right plate aperture
+  - prl: Change on left  plate max radius
+  - prr: Change on right plate max radius
   - xcent=0.,ycent=0.,zcent=0.: center of quadrupole
   - condid=1: conductor id of quadrupole, must be integer
 Or give the quadrupole id to use...
@@ -2562,13 +2629,27 @@ Or give the quadrupole id to use...
                    getattr(top,elem+'ze')[elemid])
     if condid is None: condid = elemid
 
+    dels = ['glx','gly','axp','axm','ayp','aym','rxp','rxm','ryp','rym',
+            'vxp','vxm','vyp','vym','oxp','oxm','oyp','oym',
+            'pwl','pwr','pal','par','prl','prr']
+    if elemid is None or elem != 'quad':
+      for d in dels:
+        if locals()[d] is None: exec('%s = 0.'%d)
+    else:
+      edel = 'qdel'
+      for d in dels:
+        if locals()[d] is None: exec('%s = top.qdel%s[elemid]'%(d,d))
 
   # --- Create x and y rods
   if ap > 0. and rr > 0. and rl > 0.:
-    xrod1 = ZCylinder(rr,rl,vx,xcent+ap+rr,ycent,zcent-gp*gl/2.,condid)
-    xrod2 = ZCylinder(rr,rl,vx,xcent-ap-rr,ycent,zcent-gp*gl/2.,condid)
-    yrod1 = ZCylinder(rr,rl,vy,xcent,ycent+ap+rr,zcent+gp*gl/2.,condid)
-    yrod2 = ZCylinder(rr,rl,vy,xcent,ycent-ap-rr,zcent+gp*gl/2.,condid)
+    xrod1 = ZCylinder(rr+rxp,rl-glx,vx+vxp,xcent+ap+rr+axp,ycent+oxp,
+                      zcent-gp*gl/2.,condid)
+    xrod2 = ZCylinder(rr+rxm,rl-glx,vx+vxm,xcent-ap-rr-axm,ycent+oxm,
+                      zcent-gp*gl/2.,condid)
+    yrod1 = ZCylinder(rr+ryp,rl-gly,vy+vyp,xcent+oyp,ycent+ap+rr+ayp,
+                      zcent+gp*gl/2.,condid)
+    yrod2 = ZCylinder(rr+rym,rl-gly,vy+vym,xcent+oym,ycent-ap-rr-aym,
+                      zcent+gp*gl/2.,condid)
     quad = xrod1 + xrod2 + yrod1 + yrod2
   else:
     quad = None
@@ -2578,17 +2659,21 @@ Or give the quadrupole id to use...
     if pa == 0.: pa = ap
     if pr == 0.: pr = 2*w3d.xmmax
     if gp > 0.:
-      v1 = vx
-      v2 = vy
+      v1 = vx+vxp
+      v2 = vy+vyp
     else:
-      v1 = vy
-      v2 = vx
+      v1 = vy+vyp
+      v2 = vx+vxp
     if pr < 1.4142*w3d.xmmax:
-      plate1 = ZAnnulus(pa,pr,pw,v1,xcent,ycent,zcent-0.5*(rl+gl)-pw/2.,condid)
-      plate2 = ZAnnulus(pa,pr,pw,v2,xcent,ycent,zcent+0.5*(rl+gl)+pw/2.,condid)
+      plate1 = ZAnnulus(pa+pal,pr+prl,pw+pwl,v1,xcent,ycent,
+                        zcent-0.5*(rl+gl)-pw/2.,condid)
+      plate2 = ZAnnulus(pa+par,pr+prr,pw+pwr,v2,xcent,ycent,
+                        zcent+0.5*(rl+gl)+pw/2.,condid)
     else:
-      plate1 = ZCylinderOut(pa,pw,v1,xcent,ycent,zcent-0.5*(rl+gl)-pw/2.,condid)
-      plate2 = ZCylinderOut(pa,pw,v2,xcent,ycent,zcent+0.5*(rl+gl)+pw/2.,condid)
+      plate1 = ZCylinderOut(pa+pal,pw+pwl,v1,xcent,ycent,
+                            zcent-0.5*(rl+gl)-pw/2.,condid)
+      plate2 = ZCylinderOut(pa+par,pw+pwr,v2,xcent,ycent,
+                            zcent+0.5*(rl+gl)+pw/2.,condid)
     quad = quad + plate1 + plate2
     
   return quad
