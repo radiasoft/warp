@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.74 $, $Date: 2004/08/24 00:09:54 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.75 $, $Date: 2004/08/24 23:35:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -362,7 +362,7 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
         do iz=0,nz
           rs = rstar(iz)
           do ix=0,nx
-            x  = xmmin + i*dx
+            x  = xmmin + ix*dx
             r  = rs + x
             rho(ix,:,iz) = rho(ix,:,iz)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
           enddo
@@ -407,7 +407,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
       real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
-      integer(ISZ):: i
+      integer(ISZ):: i,nznew
       real(kind=8):: ff
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse
