@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.85 $, $Date: 2003/11/22 03:22:13 $
+c@(#) File F3D.M, version $Revision: 3.86 $, $Date: 2003/11/25 23:29:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -8860,9 +8860,11 @@ c       --- Calculate r from z.
      &                       (r_sr(ii-2) - r_sr(ii-1))/(z_sr(ii-2) - z_sr(ii-1))
               else
                 if (rad_sr(ii-2) > 0) then
-                  srfrv_r = rc_sr(ii-2) + sqrt(rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2)
+                  srfrv_r = rc_sr(ii-2)
+     &                 + sqrt(max(0.,rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2))
                 else
-                  srfrv_r = rc_sr(ii-2) - sqrt(rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2)
+                  srfrv_r = rc_sr(ii-2)
+     &                 - sqrt(max(0.,rad_sr(ii-2)**2 - (zz - zc_sr(ii-2))**2))
                 endif
               endif
             endif
@@ -8872,9 +8874,11 @@ c       --- Calculate r from z.
      &                     (r_sr(ii+1) - r_sr(ii))/(z_sr(ii+1) - z_sr(ii))
             else
               if (rad_sr(ii) > 0) then
-                srfrv_r = rc_sr(ii) + sqrt(rad_sr(ii)**2 - (zz - zc_sr(ii))**2)
+                srfrv_r = rc_sr(ii)
+     &                 + sqrt(max(0.,rad_sr(ii)**2 - (zz - zc_sr(ii))**2))
               else
-                srfrv_r = rc_sr(ii) - sqrt(rad_sr(ii)**2 - (zz - zc_sr(ii))**2)
+                srfrv_r = rc_sr(ii)
+     &                 - sqrt(max(0.,rad_sr(ii)**2 - (zz - zc_sr(ii))**2))
               endif
             endif
           endif
@@ -8913,9 +8917,11 @@ c         --- Calculate r from z.
      &              (r_srmin(ii+1) - r_srmin(ii))/(z_srmin(ii+1) - z_srmin(ii))
             else
               if (rad_srmin(ii) > 0) then
-                srfrv_r = rc_srmin(ii) + sqrt(rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2)
+                srfrv_r = rc_srmin(ii)
+     &                + sqrt(max(0.,rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2))
               else
-                srfrv_r = rc_srmin(ii) - sqrt(rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2)
+                srfrv_r = rc_srmin(ii)
+     &                - sqrt(max(0.,rad_srmin(ii)**2 - (zz - zc_srmin(ii))**2))
               endif
             endif
           endif
@@ -8928,7 +8934,7 @@ c         --- Find which piece z is in.
             ii = 1
           else if (zz == z_srmin(npnts_srmin)) then
             ii = npnts_srmin
-          else
+          else if (zz < z_srmin(npnts_srmin)) then
             iz = (zz - z_srmin(1))*dzi_srmin
             do i=i_srmin(iz),i_srmin(iz+1)
               if (zz >= z_srmin(i)) ii = i
@@ -8947,9 +8953,11 @@ c         --- Calculate r from z.
      &         (r_srmin(ii-1) - r_srmin(ii))/(z_srmin(ii-1) - z_srmin(ii))
             else
               if (rad_srmin(ii-1) > 0) then
-                srfrv_r = rc_srmin(ii-1) + sqrt(rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2)
+                srfrv_r = rc_srmin(ii-1)
+     &            + sqrt(max(0.,rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2))
               else
-                srfrv_r = rc_srmin(ii-1) - sqrt(rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2)
+                srfrv_r = rc_srmin(ii-1)
+     &            - sqrt(max(0.,rad_srmin(ii-1)**2 - (zz - zc_srmin(ii-1))**2))
               endif
             endif
           endif
@@ -8989,9 +8997,11 @@ c         --- Calculate r from z.
      &              (r_srmax(ii+1) - r_srmax(ii))/(z_srmax(ii+1) - z_srmax(ii))
             else
               if (rad_srmax(ii) > 0) then
-                srfrv_r = rc_srmax(ii) + sqrt(rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2)
+                srfrv_r = rc_srmax(ii)
+     &                + sqrt(max(0.,rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2))
               else
-                srfrv_r = rc_srmax(ii) - sqrt(rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2)
+                srfrv_r = rc_srmax(ii)
+     &                - sqrt(max(0.,rad_srmax(ii)**2 - (zz - zc_srmax(ii))**2))
               endif
             endif
           endif
@@ -9004,7 +9014,7 @@ c         --- Find which piece z is in.
             ii = 1
           else if (zz == z_srmax(npnts_srmax)) then
             ii = npnts_srmax
-          else
+          else if (zz < z_srmax(npnts_srmax)) then
             iz = (zz - z_srmax(1))*dzi_srmax
             do i=i_srmax(iz),i_srmax(iz+1)
               if (zz >= z_srmax(i)) ii = i
@@ -9023,9 +9033,11 @@ c         --- Calculate r from z.
      &         (r_srmax(ii-1) - r_srmax(ii))/(z_srmax(ii-1) - z_srmax(ii))
             else
               if (rad_srmax(ii-1) > 0) then
-                srfrv_r = rc_srmax(ii-1) + sqrt(rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2)
+                srfrv_r = rc_srmax(ii-1)
+     &            + sqrt(max(0.,rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2))
               else
-                srfrv_r = rc_srmax(ii-1) - sqrt(rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2)
+                srfrv_r = rc_srmax(ii-1)
+     &            - sqrt(max(0.,rad_srmax(ii-1)**2 - (zz - zc_srmax(ii-1))**2))
               endif
             endif
           endif
