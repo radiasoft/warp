@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.110 $, $Date: 2003/06/03 21:38:03 $
+c@(#) File W3D.M, version $Revision: 3.111 $, $Date: 2003/06/03 23:07:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -60,7 +60,6 @@ c=============================================================================
       use Z_arrays
       use Win_Moments
       use Z_Moments
-      use Lab_Moments
       use Moments
       use Damped_eom
       use Hist
@@ -75,7 +74,7 @@ c  mesh, initializes arrays for the field solver and sets the mesh arrays,
 c  does the initial field solve, and sets up other arrays that are needed.
 
 
-      integer(ISZ):: i,j,k,is,ipmin,ip,iwin
+      integer(ISZ):: i,j,k,is,ipmin,ip,iwin,nl
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -393,27 +392,12 @@ c  Create the dynamic arrays for z moments
 c  Create the dynamic arrays for lab frame moments
 
       call remark(" ---  Allocating Lab_Moments")
-      nlabwn = 0
-      do iwin = 1, MAXNUMLW
-         if (zlw(iwin) /= 0.) nlabwn = nlabwn + 1
-      enddo
-      if (nlabwn == 0) iflabwn = 0
-      if (iflabwn /= 0) then
-c       --- Note that the original code used abs(nhist), but it was giving
-c       --- the HPUX f90 compiler fits. The negative nhist feature was
-c       --- made obsolete anyway.
-        if (itlabwn == 0) itlabwn = max(1,nhist)
-        if (ntlabwn == 0) then
-          if (vbeam*dt /= 0.) then
-            ntlabwn = (zmmax-zmmin)/(vbeam*dt*itlabwn) +.5
-          else
-            call remark("WARNING: Unable to calculate lab windows array sizes")
-            call remark("since either vbeam and/or dt are zero.")
-            ntlabwn = 1
-          endif
-        endif
-        if (iflabwn /= 0) call gallot("Lab_Moments", 0)
+      if (vbeam*dt /= 0.) then
+        nl = (zmmax-zmmin)/(vbeam*dt) +.5
+      else
+        nl = 1
       endif
+      call initlabwn(nl)
 
 c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
