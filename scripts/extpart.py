@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.22 2003/09/16 01:15:51 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.23 2003/09/16 17:42:27 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -207,10 +207,12 @@ routines (such as ppxxp).
     if me != 0: return
     if max(top.nep) == 0: return
     ff = None
-    try:
-      ff = PWpyt.PW(self.name+'_ep.pyt','a',verbose=0)
-    except:
-      ff = PW.PW(self.name+'_ep.pdb','a',verbose=0)
+#   try:
+#     --- For now, pytables doesn't work since it has a limit of the number
+#     --- of arrays that can be written out.
+#     ff = PWpyt.PW(self.name+'_ep.pyt','a',verbose=0)
+#   except:
+    ff = PW.PW(self.name+'_ep.pdb','a',verbose=0)
     if ff is None:
        print "ExtPart: %s unable to dump data to file."%self.name
        return
