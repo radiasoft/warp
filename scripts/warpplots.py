@@ -1,8 +1,9 @@
 from warp import *
+from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.15 2001/01/22 21:12:03 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.16 2001/01/24 00:16:51 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -933,7 +934,9 @@ Note that either the x and y coordinates or the grid must be passed in.
       # --- That value 0.1 is used since values any smaller do not have
       # --- much meaning since a value of 1.0 means that there is already
       # --- only one particle in that cell.
-      grid1 = log(where(less(grid,0.1),0.1,grid))
+      grid1 = log10(where(less(grid,0.1),0.1,grid))
+      dmax = maxnd(grid1)
+      dmin = -1.
     else:
       # --- Before taking the log of the user supplied grid data, make sure
       # --- that there are no negative values. Zero is ok since they will
@@ -943,7 +946,11 @@ Note that either the x and y coordinates or the grid must be passed in.
       if dmin <= 0.:
         raise "Can't take log since the grid has negative values"
       grid1 = log(where(less(grid,dmin/10.),dmin/10.,grid))
+      dmax = maxnd(grid1)
+      dmin = minnd(grid1)
   else:
+    dmax = maxnd(grid)
+    dmin = minnd(grid)
     grid1 = grid
 
   # --- Get grid mesh if it is needed
@@ -998,6 +1005,12 @@ Note that either the x and y coordinates or the grid must be passed in.
       for iy in range(ny+1):
         plg(ymesh[ix,iy]+zeros(2),xmesh[ix,iy]+array([0.,sss*grid1[ix,iy]]),
             color=hcolor,width=width)
+
+  # --- Add colorbar if needed
+  if (contours and filled==1) or color == 'density':
+    if (contours and filled==1): nc = contours + 1
+    else: nc = ncolor
+    color_bar(dmin,dmax,uselog=uselog,ncolor=nc)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
   if titles: ptitles(v=view)
