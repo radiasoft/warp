@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.8 2003/01/24 13:55:19 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.9 2003/02/24 14:26:12 jlvay Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -39,7 +39,8 @@ Warning - this does not yet work in parallel
   w3d.nmxy  = max(w3d.nx,w3d.ny)
   w3d.nmxyz = max(w3d.nx,w3d.ny,w3d.nzfull)
   w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
-  w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
+  if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
+    w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
   w3d.dz = (w3d.zmmax - w3d.zmmin)/w3d.nz
 
   # --- Reallocate the fields
@@ -47,10 +48,14 @@ Warning - this does not yet work in parallel
     gallot("SelfFieldGrid3d")
   except:
     gallot("Fields3d")
+  if w3d.solvergeom is w3d.RZgeom:
+    frz.del_base()
+    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin,false)
 
   # --- Calculate the mesh points
   w3d.xmesh[:] = w3d.xmmin + arange(w3d.nx+1)*w3d.dx
-  w3d.ymesh[:] = w3d.ymmin + arange(w3d.ny+1)*w3d.dy
+  if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
+    w3d.ymesh[:] = w3d.ymmin + arange(w3d.ny+1)*w3d.dy
   w3d.zmesh[:] = w3d.zmmin + arange(w3d.nz+1)*w3d.dz
 
   # --- Find the grid axis
