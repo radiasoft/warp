@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.3 2001/08/31 18:06:18 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.4 2001/08/31 18:29:08 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -30,9 +30,15 @@ def find_mgparam():
 Optimize both mgparam and up and down passes, minimizing the fieldsolve
 time.
   """
+  # --- Do some error checking first
+  if f3d.downpasses == 0: f3d.downpasses = 1
+  if f3d.uppasses == 0: f3d.uppasses = 1
+  # --- Get initial field solve time
   nexttime = field_solve()
   prevtime = 2*nexttime
+  # --- Loop, increasing the number of passes until the time is minimized.
   while nexttime < prevtime:
+    prevparam = f3d.mgparam
     prevtime = nexttime
     nexttime = _find_mgparam()
     print "Field solve time = ",nexttime
@@ -43,8 +49,23 @@ time.
       f3d.downpasses = f3d.downpasses + 1
       f3d.uppasses = f3d.uppasses + 1
     else:
+      # --- Reset the values to the previous ones (which were the best)
+      f3d.mgparam = prevparam
       f3d.downpasses = f3d.downpasses - 1
       f3d.uppasses = f3d.uppasses - 1
+  # --- Print error message if maximum iterations is reached.
+  if f3d.mgiters == f3d.mgmaxiters:
+    print """Notice: the maximum number of iterations has been reached, so
+the values above are unlikely to be optimal. Try increasing the
+tolerance, increasing the maximum number of iterations, or making a
+better initial guess of mgparam."""
+  else:
+    print "-----------------------------------------"
+    print "The optimized values:"
+    print "Field solve time = ",prevtime
+    print "f3d.mgparam = ",f3d.mgparam
+    print "f3d.downpasses = ",f3d.downpasses
+    print "f3d.uppasses = ",f3d.uppasses
 
 def field_solve():
   ixmin = 1
