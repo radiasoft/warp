@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.67 2004/02/03 00:14:36 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.68 2004/02/09 16:23:41 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -625,9 +625,11 @@ by the conductor number.
   # --- Zero out data for all points internal to a conductor
   iiisum = zeros((3+nx,3+ny))
   iiisum[1:-1,1:-1] = sum(iii,axis=0)
+  iiisums = zeros((3+nx,3+ny))
+  iiisums[1:-1,1:-1] = sum(iii[1:,:,:],axis=0)
   iiisurf = where(((iiisum[:-2,1:-1]>0)&(iiisum[1:-1,:-2]>0)&
                    (iiisum[2:,1:-1]>0)&(iiisum[1:-1,2:]>0)),
-                  0,iiisum[1:-1,1:-1])
+                  iiisums[1:-1,1:-1],iiisum[1:-1,1:-1])
   iiis = zeros((5,1+nx,1+ny))
   for i in range(5):
     iiis[i,:,:] = where(iiisurf>0,iii[i,:,:],0)
@@ -648,6 +650,8 @@ by the conductor number.
     n.append(0)
     while 1:
       if iiis[0,ix,iy] > 0:
+        ixprev = ix
+        iyprev = iy
         i0 = iiis[0,ix,iy] - 1
         iiis[0,ix,iy] = 0
         iiisurf[ix,iy] = 0
@@ -655,36 +659,39 @@ by the conductor number.
         y.append(yyc[i0])
         z[-1] = numb[i0]
         n[-1] = n[-1] + 1
-        if ix>0 and iiis[px,ix-1,iy] > 0: ix = ix - 1
-        elif ix>0 and iiis[0,ix-1,iy] > 0: ix = ix - 1
-        elif ix>0 and iiis[py,ix-1,iy] > 0: ix = ix - 1
-        elif ix>0 and iy<ny and iiis[my,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
-        elif ix>0 and iy<ny and iiis[0,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
-        elif ix>0 and iy<ny and iiis[px,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
-        elif iy<ny and iiis[mx,ix,iy+1] > 0: iy = iy + 1
-        elif iy<ny and iiis[0,ix,iy+1] > 0: iy = iy + 1
-        elif iy<ny and iiis[my,ix,iy+1] > 0: iy = iy + 1
-        elif iy<ny and iiis[px,ix,iy+1] > 0: iy = iy + 1
-        elif ix<nx and iy<ny and iiis[mx,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
-        elif ix<nx and iy<ny and iiis[0,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
-        elif ix<nx and iy<ny and iiis[my,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
-        elif ix<nx and iiis[py,ix+1,iy] > 0: ix = ix + 1
-        elif ix<nx and iiis[0,ix+1,iy] > 0: ix = ix + 1
-        elif ix<nx and iiis[mx,ix+1,iy] > 0: ix = ix + 1
-        elif ix<nx and iiis[my,ix+1,iy] > 0: ix = ix + 1
-        elif ix<nx and iy>0 and iiis[py,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
-        elif ix<nx and iy>0 and iiis[0,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
-        elif ix<nx and iy>0 and iiis[mx,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
-        elif iy>0 and iiis[px,ix,iy-1] > 0: iy = iy - 1
-        elif iy>0 and iiis[0,ix,iy-1] > 0: iy = iy - 1
-        elif iy>0 and iiis[py,ix,iy-1] > 0: iy = iy - 1
-        elif iy>0 and iiis[mx,ix,iy-1] > 0: iy = iy - 1
-        elif ix>0 and iy>0 and iiis[px,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
-        elif ix>0 and iy>0 and iiis[0,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
-        elif ix>0 and iy>0 and iiis[py,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        if ix>0 and iiis[0,ix-1,iy] > 0: ix = ix - 1
+        elif ix>0 and iiis[px,ix-1,iy] > 0: ix = ix - 1
         elif ix>0 and iiis[my,ix-1,iy] > 0: ix = ix - 1
+        elif ix>0 and iy>0 and iiis[py,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        elif ix>0 and iy>0 and iiis[0,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        elif ix>0 and iy>0 and iiis[px,ix-1,iy-1] > 0: ix,iy = ix - 1,iy - 1
+        elif iy>0 and iiis[mx,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and iiis[py,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and iiis[0,ix,iy-1] > 0: iy = iy - 1
+        elif iy>0 and iiis[px,ix,iy-1] > 0: iy = iy - 1
+        elif ix<nx and iy>0 and iiis[mx,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
+        elif ix<nx and iy>0 and iiis[0,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
+        elif ix<nx and iy>0 and iiis[py,ix+1,iy-1] > 0: ix,iy = ix + 1,iy - 1
+        elif ix<nx and iiis[my,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iiis[mx,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iiis[0,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iiis[py,ix+1,iy] > 0: ix = ix + 1
+        elif ix<nx and iy<ny and iiis[my,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
+        elif ix<nx and iy<ny and iiis[0,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
+        elif ix<nx and iy<ny and iiis[mx,ix+1,iy+1] > 0: ix,iy = ix + 1,iy + 1
+        elif iy<ny and iiis[px,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and iiis[my,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and iiis[0,ix,iy+1] > 0: iy = iy + 1
+        elif iy<ny and iiis[mx,ix,iy+1] > 0: iy = iy + 1
+        elif ix>0 and iy<ny and iiis[px,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
+        elif ix>0 and iy<ny and iiis[0,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
+        elif ix>0 and iy<ny and iiis[my,ix-1,iy+1] > 0: ix,iy = ix - 1,iy + 1
+        elif ix>0 and iiis[py,ix-1,iy] > 0: ix = ix - 1
         continue
-      if iiis[mx,ix,iy] > 0:
+      if iiis[mx,ix,iy] > 0 and not (ixprev == ix+1 or
+         (ixprev == ix and iiis[my,ix,iy] > 0)):
+        ixprev = ix
+        iyprev = iy
         i0 = iiis[mx,ix,iy] - 1
         iiis[mx,ix,iy] = 0
         iiisurf[ix,iy] = 0
@@ -702,6 +709,8 @@ by the conductor number.
         elif ix>0 and iiis[px,ix-1,iy] > 0: ix = ix - 1
         continue
       if iiis[py,ix,iy] > 0:
+        ixprev = ix
+        iyprev = iy
         i0 = iiis[py,ix,iy] - 1
         iiis[py,ix,iy] = 0
         iiisurf[ix,iy] = 0
@@ -719,6 +728,8 @@ by the conductor number.
         elif iy<ny and iiis[my,ix,iy+1] > 0: iy = iy + 1
         continue
       if iiis[px,ix,iy] > 0:
+        ixprev = ix
+        iyprev = iy
         i0 = iiis[px,ix,iy] - 1
         iiis[px,ix,iy] = 0
         iiisurf[ix,iy] = 0
@@ -736,6 +747,8 @@ by the conductor number.
         elif ix<nx and iiis[mx,ix+1,iy] > 0: ix = ix + 1
         continue
       if iiis[my,ix,iy] > 0:
+        ixprev = ix
+        iyprev = iy
         i0 = iiis[my,ix,iy] - 1
         iiis[my,ix,iy] = 0
         iiisurf[ix,iy] = 0
@@ -763,6 +776,8 @@ by the conductor number.
     z = array(z)
     z = z.astype('b')
     plfp(z,y,x,n)
+    plp([y[0]],[x[0]],marker=circle,color=green)
+    plg(y,x,color=red)
 
 ######################################################################
 ######################################################################
