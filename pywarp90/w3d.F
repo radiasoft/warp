@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.112 $, $Date: 2003/06/10 18:27:36 $
+c@(#) File W3D.M, version $Revision: 3.113 $, $Date: 2003/06/10 22:43:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4732,17 +4732,22 @@ c                     --- if inject only radially, use variable weights and assi
                       end if
                     end if
 
+c                   --- Find location of particle relative to source
+c                   --- grid. This is needed for zp and az, as well as
+c                   --- for vnorm below.
+                    ixx = spreadx*(abs(xp(ii) - inj_xmmin(ij))*dxi)
+                    iyy = spready*(abs(yp(ii) - inj_ymmin(ij))*dyi)
+                    wxx = spreadx*(abs(xp(ii) - inj_xmmin(ij))*dxi - ixx)
+                    wyy = spready*(abs(yp(ii) - inj_ymmin(ij))*dyi - iyy)
+
                     if(l_inj_exact .or. l_inj_rz) then
+c                     --- calculate injection surface axial location exactly
                       zp(ii) = (xp(ii)**2+yp(ii)**2)/
      &                       (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
      &                       + inj_addfdz*inj_dz
                       az = asin(sqrt(xp(ii)**2 + yp(ii)**2)/rinject(ij))
                     else
 c                     --- find injection surface axial location by interpolation
-                      ixx = spreadx*(abs(xp(ii) - inj_xmmin(ij))*dxi)
-                      iyy = spready*(abs(yp(ii) - inj_ymmin(ij))*dyi)
-                      wxx = spreadx*(abs(xp(ii) - inj_xmmin(ij))*dxi - ixx)
-                      wyy = spready*(abs(yp(ii) - inj_ymmin(ij))*dyi - iyy)
                       zp(ii) = inj_grid(ixx        ,iyy        ,ij)*(1.-wxx)*(1.-wyy) +
      &                         inj_grid(ixx+spreadx,iyy        ,ij)*    wxx *(1.-wyy) +
      &                         inj_grid(ixx        ,iyy+spready,ij)*(1.-wxx)*    wyy  +
@@ -5549,7 +5554,7 @@ c in InjectVars3d may have been allocated by the user for specialized
 c control of injection.
       call gchange("InjectVars3d",0)
       if(l_inj_rz) then
-        call fill_inj_rz(inj_dx,inj_dz,ix_axis)
+        call fill_inj_rz()
       else
         call fill_inj()
       end if
@@ -5599,7 +5604,7 @@ c     --- as a function of the transverse coordinates.
 
 
       integer(ISZ):: ij,ix,iy
-      real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
+      real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi
       real(kind=8):: xl,yl,xu,yu,x1,x2,txl,tyl,txu,tyu
       real(kind=8):: ainji,binji
       real(kind=8):: area
@@ -5608,7 +5613,6 @@ c     --- as a function of the transverse coordinates.
 
       dxi = 1./inj_dx
       dyi = 1./inj_dy
-      dzi = 1./inj_dz
 
 c Loop over the injection sources.
       do ij=1,ninject
@@ -5620,8 +5624,6 @@ c       --- Calculate the extent of the source plus guard cells.
         ai_dx = ainject(ij) + 2.*inj_dx
         bi_dy = binject(ij) + 2.*inj_dy
 c       --- Loop over transverse plane.
-c        do iy = 0,ny
-c          do ix = 0,nx
         do iy = 0,inj_ny
           do ix = 0,inj_nx
 c           --- transverse coordinate relative to center of source
@@ -5733,14 +5735,12 @@ c             --- the min is always ij.
       return
       end
 c=============================================================================
-      subroutine fill_inj_rz(dx,dz,ix_axis)
+      subroutine fill_inj_rz()
       use Subtimers3d
       use InPart
       use InMesh3d
       use InjectVars
       use InjectVars3d
-      real(kind=8):: dx,dz
-      integer(ISZ):: ix_axis
 
 c     --- Fill the injection grid array.  A padding of 2 grid cells is also
 c     --- set.
@@ -5750,24 +5750,22 @@ c     --- The array inj_angl holds the angle due to the curvature of the source
 c     --- as a function of the transverse coordinates.
 
 
-      integer(ISZ):: ij,ix,iy,inj_ij
-      real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
-      real(kind=8):: xl,yl,xu,yu,x1,x2,txl,tyl,txu,tyu
-      real(kind=8):: ainji,binji
+      integer(ISZ):: ij,ix
+      real(kind=8):: xx,ainj,ai_dx,dxi
+      real(kind=8):: xl,xu
+      real(kind=8):: ainji
       real(kind=8):: area
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      dxi = 1./dx
-      dzi = 1./dz
+      dxi = 1./inj_dx
 
 c Loop over the injection sources.
       do ij=1,ninject
-        inj_ij = min(ij,inj_ninj)
 c       --- Calculate the extent of the source plus guard cells.
         ainj    = ainject(ij)
         ainji   = 1./ainj
-        ai_dx = ainject(ij) + 2.*dx
+        ai_dx = ainject(ij) + 2.*inj_dx
 c       --- Loop over transverse plane.
         do ix = 0,inj_nx
 c           --- transverse coordinate relative to center of source
@@ -5777,11 +5775,11 @@ c           --- axial distance and angle of curvature.
             if (xx - ai_dx <= 0.) then
 c             --- Write the expression for inj_grid so as to avoid
 c             --- subtraction of large, similar numbers when rinject is large.
-c             inj_grid(ix,iy,inj_ij) = zinject(ij) + (rinject(ij) -
-c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
-              inj_grid(ix,0,inj_ij) = xx**2 /
+c             inj_grid(ix,0,ij) = zinject(ij) + (rinject(ij) -
+c    &               sqrt(max(0.,rinject(ij)**2 - xx**2)))
+              inj_grid(ix,0,ij) = xx**2 /
      &         (rinject(ij) + sqrt(max(0.,rinject(ij)**2 - xx**2)))
-              inj_angl(ix,0,inj_ij) = asin(abs(xx)/rinject(ij))
+              inj_angl(ix,0,ij) = asin(abs(xx)/rinject(ij))
 
 c             --- Calculate fraction of grid cell which is within the emitting
 c             --- surface.  Used to scale the charge density on the emitting
@@ -5793,8 +5791,8 @@ c             --- the grid point which is inside the emitting surface.
 
 c             --- First, put the grid point in the first quadrant and scale it.
 c             --- The max(0,) chop off any part that crosses the x or y axis.
-              xl = max(0.,(abs(xx) - dx)*ainji)
-              xu =        (abs(xx) + dx)*ainji
+              xl = max(0.,(abs(xx) - inj_dx)*ainji)
+              xu =        (abs(xx) + inj_dx)*ainji
 
 c             --- If the two by two block is completely outside emitting
 c             --- surface, set the area to zero.
@@ -5822,7 +5820,7 @@ c             --- coding above, primarily because of the third index here.
 c             --- Note that the min works, since inj_ninj is either 1 or
 c             --- ninject: if 1, then the min is always 1, if ninject, then
 c             --- the min is always ij.
-              inj_area(ix,iy,min(ij,inj_ninj)) = area
+              inj_area(ix,0,min(ij,inj_ninj)) = area
 
             endif
         enddo
