@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.22 $, $Date: 2002/04/03 20:58:20 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.23 $, $Date: 2002/04/15 18:33:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -48,6 +48,7 @@ c All dimensions, nx, ny, and nz, must be powers of 2.
       integer(ISZ):: tnx,tny,tnz
       integer(ISZ):: i,ii,k
       real(kind=8):: rs,x,r
+      real(kind=8),allocatable:: rhosave(:)
 
 c     --- If iwhich equals zero or one, do initialization.
 c     --- psorinit does the same things that mginit would do
@@ -149,6 +150,13 @@ c       --- Change rstar if using Nuemann boundary conditions
         if (boundnz == 1) rstar(nz+1) = rstar(nz-1)
       endif
 
+c     --- If using residual correction form, need to save and extra copy
+c     --- of the modified rho since rho_temp is used to hold the residual.
+      if (mgform == 2) then
+        allocate(rhosave(nxyz))
+        rhosave = rho_temp(1:nxyz)
+      endif
+
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
 c     --- very few iterations are done.
       mgiters = 0
@@ -160,10 +168,28 @@ c       --- Zero out the coarse grid data area.
 c       call zeroarry(phi_temp(nxyz3+1),tempsize-nxyz3)
         phi_temp(nxyz3+1:) = 0.
 
+c       --- If using residual correction form, calculate the residual and
+c       --- copy it into rho_temp. Also, zero phi_temp (the initial error).
+c       --- Note that the last argument (mgform) is actually 1 since in this
+c       --- case, the residual needs to be calculated with the inhomogeneous
+c       --- boundary conditions. (Residual uses mgform as a flag setting
+c       --- whether to set boundaries to zero or to voltages.)
+        if (mgform == 2) then
+          call residual(nx,ny,nz,dxsqi,dysqi,dzsqi,phi1d(1),rhosave(1),
+     &                  res(1),1,1,l2symtry,l4symtry,1)
+          rho_temp(1:nxyz) = res(1:nxyz)
+          phi_temp = 0.
+        endif
+
 c       --- Do one vcycle.
         call vcycle(1,1,nx,ny,nz,dxsqi,dysqi,dzsqi,phi_temp(1),rho_temp(1),res(1),
      &              rstar(-1),linbends,l2symtry,l4symtry,scrtch,
      &              boundxy,bound0,boundnz)
+
+c       --- If using residual correction form, add the error to phi.
+        if (mgform == 2) then
+          phi_temp(1:nxyz3) = phi1d(1:nxyz3) + phi_temp(1:nxyz3)
+        endif
 
 c       --- Calculate the change in phi.
         maxerr = 0.
@@ -247,7 +273,7 @@ c       --- Location of the next block of data.
 
 c       --- Get the residual on the current grid.
         call residual(nx,ny,nz,dxsqi,dysqi,dzsqi,phi(1),rho(1),res(1),
-     &                levelxy,levelz,l2symtry,l4symtry)
+     &                levelxy,levelz,l2symtry,l4symtry,mgform)
 
 c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
 c       --- all axis.
@@ -770,7 +796,7 @@ c     --- boundary conditions, do not solve for the potential on the end planes.
       if (boundnz == 0) izr = izr - 1
 
 c     --- Put desired potential onto conductors in phi array.
-      call cond_potmg(nx,ny,nz,phi(0,0,0),levelxy,levelz,.false.)
+      call cond_potmg(nx,ny,nz,phi(0,0,0),levelxy,levelz,.false.,mgform)
 
 c     --- Save values on the transverse boundaries.
 c     --- Both even and odd points are saved for all transverse boundaries.
@@ -960,7 +986,7 @@ c       --- surface of the conductor boundaries.
      &                    iecndlxy(1),iecndlz(1),
      &                    ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),ecvoltmz(1),ecvoltpz(1),
      &                    ecndpvph(1),bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                    levelxy,levelz,parity)
+     &                    levelxy,levelz,parity,mgform)
           endif
           if (parity == 1 .and. (levelxy == 1 .or. levelz == 1)) then
            call condbndymg(nx,ny,nz,phi(0,0,-1),rho(0,0,0),rdx2c,rdy2c,rdz2c,spm1,mgparam,
@@ -969,12 +995,12 @@ c       --- surface of the conductor boundaries.
      &                    iocndlxy(1),iocndlz(1),
      &                    ocvoltmx(1),ocvoltpx(1),ocvoltmy(1),ocvoltpy(1),ocvoltmz(1),ocvoltpz(1),
      &                    ocndpvph(1),bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                    levelxy,levelz,parity)
+     &                    levelxy,levelz,parity,mgform)
           endif
         endif
 
 c       --- Put desired potential onto conductors in phi array.
-        call cond_potmg(nx,ny,nz,phi(0,0,0),levelxy,levelz,.false.)
+        call cond_potmg(nx,ny,nz,phi(0,0,0),levelxy,levelz,.false.,mgform)
 
 c       --- Force periodioity of phi (needed here to update the values
 c       --- changed by the subgrid and conductors)
@@ -988,10 +1014,10 @@ c     --- end of loop over even and odd points
       return
       end
 c=============================================================================
-      subroutine cond_potmg(nx,ny,nz,phi,levelxy,levelz,lresidual)
+      subroutine cond_potmg(nx,ny,nz,phi,levelxy,levelz,lresidual,mgform)
       use PSOR3d
       use MultigridConductor3d
-      integer(ISZ):: nx,ny,nz,levelxy,levelz
+      integer(ISZ):: nx,ny,nz,levelxy,levelz,mgform
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       logical(ISZ):: lresidual
 
@@ -1002,7 +1028,7 @@ c Set conductor points to the desired potential.
 
 c     --- When at the finest level and not calculating the residual, set
 c     --- phi to the voltage of the conductor, otherwise, set it to zero.
-      if (levelxy == 1 .and. levelz == 1 .and. .not. lresidual) then
+      if (levelxy == 1 .and. levelz == 1 .and. .not. lresidual .and. mgform == 1) then
         do ic = 1,ncond
           phi(ixcond(ic),iycond(ic),izcond(ic)) = condvolt(ic)
         enddo
@@ -1024,8 +1050,8 @@ c=============================================================================
      &                      cdelpz,icndx,icndy,icndz,icndlxy,icndlz,
      &                      cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                      cndpvph,bound0,boundnz,boundxy,
-     &                      l2symtry,l4symtry,levelxy,levelz,parity)
-      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity
+     &                      l2symtry,l4symtry,levelxy,levelz,parity,mgform)
+      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity,mgform
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax), cdelmz(ncndmax)
@@ -1124,7 +1150,7 @@ c           --- Set temporaries with initial values.
 
 c           --- Only use actual voltage on finest level. Set to zero for
 c           --- coarser levels since solver for the residuals.
-            if (levelxy == 1 .and. levelz == 1) then
+            if (levelxy == 1 .and. levelz == 1 .and. mgform == 1) then
               voltfac = 1.
             else
               voltfac = 0.
@@ -1192,8 +1218,8 @@ c=============================================================================
      &                       cdelpz,icndx,icndy,icndz,icndlxy,icndlz,
      &                       cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                       cndpvph,bound0,boundnz,boundxy,
-     &                       l2symtry,l4symtry,levelxy,levelz,parity)
-      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity
+     &                       l2symtry,l4symtry,levelxy,levelz,parity,mgform)
+      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity,mgform
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rho(0:nx,0:ny,0:nz), res(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2,rdy2,rdz2,mgparam
@@ -1298,7 +1324,7 @@ c           --- set temporaries with initial values
 
 c           --- Only use actual voltage on finest level. Set to zero for
 c           --- coarser levels since solver for the residuals.
-            if (levelxy == 1 .and. levelz == 1) then
+            if (levelxy == 1 .and. levelz == 1 .and. mgform == 1) then
               voltfac = 1.
             else
               voltfac = 0.
@@ -1362,7 +1388,7 @@ c             rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
       end
 c=============================================================================
       subroutine residual(nx,ny,nz,dxsqi,dysqi,dzsqi,phi,rho,res,levelxy,levelz,
-     &                    l2symtry,l4symtry)
+     &                    l2symtry,l4symtry,mgformarg)
       use PSOR3d
       use MultigridConductor3d
       use Multigrid3d
@@ -1370,7 +1396,7 @@ c=============================================================================
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(0:nx,0:ny,0:nz)
-      integer(ISZ):: levelxy,levelz
+      integer(ISZ):: levelxy,levelz,mgformarg
       logical(ISZ):: l2symtry,l4symtry
 
 c Calculate the residual on the grid. Residual = r.h.s. - l.h.s.
@@ -1464,7 +1490,7 @@ c     --- Make copies for the periodic boundaries.
       endif
 
 c     --- Zero the residual inside conductors.
-      call cond_potmg(nx,ny,nz,res(0,0,0),levelxy,levelz,.true.)
+      call cond_potmg(nx,ny,nz,res(0,0,0),levelxy,levelz,.true.,mgformarg)
 
       if (lcndbndy) then
 c     --- Calculate the residual near the conductor. Note that the odd points
@@ -1477,7 +1503,7 @@ c     --- that level.
      &                ocdelpz(1),iocndx(1),iocndy(1),iocndz(1),iocndlxy(1),iocndlz(1),
      &                ocvoltmx(1),ocvoltpx(1),ocvoltmy(1),ocvoltpy(1),ocvoltmz(1),ocvoltpz(1),
      &                ocndpvph(1),bound0,boundnz,boundxy,
-     &                l2symtry,l4symtry,levelxy,levelz,1)
+     &                l2symtry,l4symtry,levelxy,levelz,1,mgformarg)
       endif
       if (levelxy > 1 .or. levelz > 1) then
         call condbndyres(nx,ny,nz,phi(0,0,-1),rho(0,0,0),res(0,0,0),dxsqi,dysqi,dzsqi,mgparam,
@@ -1485,14 +1511,14 @@ c     --- that level.
      &                ecdelpz(1),iecndx(1),iecndy(1),iecndz(1),iecndlxy(1),iecndlz(1),
      &                ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),ecvoltmz(1),ecvoltpz(1),
      &                ecndpvph(1),bound0,boundnz,boundxy,
-     &                l2symtry,l4symtry,levelxy,levelz,1)
+     &                l2symtry,l4symtry,levelxy,levelz,1,mgformarg)
       endif
       call condbndyres(nx,ny,nz,phi(0,0,-1),rho(0,0,0),res(0,0,0),dxsqi,dysqi,dzsqi,mgparam,
      &                ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),ecdelmz(1),ecdelpx(1),ecdelpy(1),
      &                ecdelpz(1),iecndx(1),iecndy(1),iecndz(1),iecndlxy(1),iecndlz(1),
      &                ecvoltmx(1),ecvoltpx(1),ecvoltmy(1),ecvoltpy(1),ecvoltmz(1),ecvoltpz(1),
      &                ecndpvph(1),bound0,boundnz,boundxy,
-     &                l2symtry,l4symtry,levelxy,levelz,0)
+     &                l2symtry,l4symtry,levelxy,levelz,0,mgformarg)
 
       endif
 
