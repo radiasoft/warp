@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.81 $, $Date: 2002/11/06 17:15:04 $
+c@(#) File W3D.M, version $Revision: 3.82 $, $Date: 2003/01/23 21:17:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -187,34 +187,6 @@ c  Print values of input variables, other interesting things to text file
         call edit (warpout, "InMesh3d")
       endif
 
-c  Create the dynamic arrays in Z_arrays; set the z mesh
-
-      if (nzzarr == 0) nzzarr = nz
-      call gchange("Z_arrays", 0)
-      if (zzmin == 0.) zzmin = zmmin
-      if (zzmax == 0.) zzmax = zmmax
-      dzz = (zzmax - zzmin)/nzzarr
-      dzzi = 1./dzz
-      do k = 0, nzzarr
-         zplmesh(k) = zzmin + k*dzz
-      enddo
-
-c  Re-size the dynamic arrays for the lattice (scan for true length, first).
-c  Also allocate the dynamic internal lattice arrays.
-
-      call remark(" ---  Resetting lattice array sizes")
-      call resetlat
-      if (nzlmax == 0) nzlmax = nz
-      if (nzl    == 0 .or. nzl > nzlmax) nzl = nzlmax
-      call gchange("LatticeInternal", 0)
-      if (zlmin == 0.) zlmin = zmmin
-      if (zlmax == 0.) zlmax = zmmax
-      dzl = (zlmax - zlmin)/nzl
-      dzli = 1./dzl
-      do k = 0, nzl
-         zlmesh(k) = zlmin + k*dzl
-      enddo
-
 c  Create the dynamic arrays for fields, contour plot workspace
 c  Also set vbeamfrm, adjust x and ymmin for symmetries and set
 c  so that by default izfsmax = nz (for full field solve).
@@ -242,6 +214,43 @@ c  so that by default izfsmax = nz (for full field solve).
       endif
       if (izfsmax == 0) izfsmax = nz
 
+c  Create the dynamic arrays in Z_arrays; set the z mesh
+
+      if (nzzarr == 0) nzzarr = nzfull
+      call gchange("Z_arrays", 0)
+      if (zzmin == 0.) zzmin = zmminglobal
+      if (zzmax == 0.) zzmax = zmmaxglobal
+      dzz = (zzmax - zzmin)/nzzarr
+      dzzi = 1./dzz
+      do k = 0, nzzarr
+         zplmesh(k) = zzmin + k*dzz
+      enddo
+
+c  Set the value of prwall, radius at which particles are lost
+      if (prwall == 0.) prwall = xmmax - dx
+      do k=0,nzzarr
+        prwallz(k) = prwall
+        if (prwallxz(k) == 0.) prwallxz(k) = prwallx
+        if (prwallyz(k) == 0.) prwallyz(k) = prwally
+        if (prwelips(k) == 0.) prwelips(k) = 1.
+      enddo
+
+c  Re-size the dynamic arrays for the lattice (scan for true length, first).
+c  Also allocate the dynamic internal lattice arrays.
+
+      call remark(" ---  Resetting lattice array sizes")
+      call resetlat
+      if (nzlmax == 0) nzlmax = nzfull
+      if (nzl    == 0 .or. nzl > nzlmax) nzl = nzlmax
+      call gchange("LatticeInternal", 0)
+      if (zlmin == 0.) zlmin = zmminglobal
+      if (zlmax == 0.) zlmax = zmmaxglobal
+      dzl = (zlmax - zlmin)/nzl
+      dzli = 1./dzl
+      do k = 0, nzl
+         zlmesh(k) = zlmin + k*dzl
+      enddo
+
 c Allocate space for the selfe array, which contains the finite differenced
 c phi (Ex, Ey, Ez) on the mesh.
       if (efetch == 3) then
@@ -253,20 +262,11 @@ c phi (Ex, Ey, Ez) on the mesh.
         call gallot("Efields3d",0)
       endif
 
-c  Set the value of prwall, radius at which particles are lost
-      if (prwall == 0.) prwall = xmmax - dx
-      do k=0,nzzarr
-        prwallz(k) = prwall
-        if (prwallxz(k) == 0.) prwallxz(k) = prwallx
-        if (prwallyz(k) == 0.) prwallyz(k) = prwally
-        if (prwelips(k) == 0.) prwelips(k) = 1.
-      enddo
-
 c  Calculate mesh dimensioning quantities
 
       dx = (xmmax - xmmin) / nx
       dy = (ymmax - ymmin) / ny
-      dz = (zmmax - zmmin) / nz
+      dz = (zmmaxglobal - zmminglobal) / nzfull
       if(solvergeom==RZgeom) then
         dy = dx
       elseif(solvergeom==XZgeom) then
@@ -335,8 +335,8 @@ c  damped mover.  They are always allocated, but with length 1 if not used.
 c  Create the dynamic arrays for "window" moments
 
       call remark(" ---  Allocating Win_Moments")
-      zwindows(1,0) = zmmin
-      zwindows(2,0) = zmmax
+      zwindows(1,0) = zmminglobal
+      zwindows(2,0) = zmmaxglobal
       nzwind = 0
       do iwin = 1, NWINDOWS
          if (zwindows(1,iwin) /= zwindows(2,iwin)) nzwind = nzwind + 1
@@ -1043,7 +1043,7 @@ c=============================================================================
 
 c  Calculates the line charge density from rho.
 
-      real(kind=8):: zz,wzg,dzi
+      real(kind=8):: zz,zg,wzg,dzi
       integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -1084,8 +1084,9 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
 
       do iz=0,nzzarr
 
-        izg = (iz*dzz - zz)*dzi
-        wzg = (iz*dzz - zz)*dzi - izg
+        zg = (iz*dzz - zz)*dzi
+        izg = int(zg + nz) - nz
+        wzg = zg - izg
 
         if (0 <= izg .and. izg <= nz) then
           linechg(iz) = scrtch(izg,0)*dx*dy*(1. - wzg)
@@ -1097,6 +1098,10 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
         endif
 
       enddo
+
+#ifdef MPIPARALLEL
+      call parallelnonzerorealarray(linechg,nzzarr+1)
+#endif
 
       if (lw3dtimesubs) timegtlchg3d = timegtlchg3d + wtime() - substarttime
       return
@@ -1123,10 +1128,8 @@ c Calculated for first species.
 
 
       real(kind=8):: zm
-#ifndef MPIPARALLEL
       integer(ISZ):: nzla,nzlb,nzma,nzmb,iz
       real(kind=8):: zs,zl,eearsprs
-#endif
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1139,12 +1142,7 @@ c     set to be linear in z (eears is actually slope of Eears)
      &                  - sm(1)*vbeam**2*emitlong**2/(sq(1)*zm**4))
 
       elseif (ifeears == 2) then
-c     --- For Parallel slave, message passing must be done so seperate
-c     --- routine is used.  Note that second half of ifelse macro
-c     --- includes the next 30 lines.
-#ifdef MPIPARALLEL
-        call seteears_slave(zwork(1,0,0))
-#else
+
 c     set to initial field on axis (with the center part zero)
 c     the '5' is just a guestimate, it should be nz dependent
 c     The ends (beyond the beam) are set with the E at the end of the beam
@@ -1176,7 +1174,6 @@ c       --- Add on linear pressure term
             eearsofz(iz) = eearsofz(iz) + eearsprs*(zplmesh(iz) - zs)
           enddo
         endif
-#endif
       endif
 
       if (lw3dtimesubs) timeseteears = timeseteears + wtime() - substarttime
@@ -7700,21 +7697,22 @@ c       case (0)
       if (fstype == 0) then
           call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq(0),kysq(0),kzsq(0),
      &                 attx(0),atty(0),attz(0),filt(1,1),xmmax-xmmin,ymmax-ymmin,
-     &                 (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
+     &                 (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
      &                 scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
 c       case (1)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
-     &                nx,ny,izfsmax-izfsmin,scrtch(0,0),xywork(0,0),
+     &                nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),xywork(0,0),
      &                zwork(1,0,0),l2symtry,l4symtry)
 c       case (2)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
-     &                nx,ny,izfsmax-izfsmin,scrtch(0,0),xywork(0,0),zwork,
+     &                nx,ny,izfsmax-izfsmin,nzfull,
+     &                scrtch(0,0),xywork(0,0),zwork,
      &                xmmax,zmmin+izfsmin*dz,zgrid,pipeshpe,bound0,
      &                l2symtry,l4symtry)
 c       case (3)
@@ -7730,21 +7728,21 @@ c       case (4)
           if (iwhich == 1 .or. iwhich == 0) then
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
+     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
      &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
             call vpois3d(12,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
+     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
      &                   scrtch(0,0),xywork(0,0),zwork,izfsmin,l2symtry,l4symtry)
             call vpois3d(14,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
+     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
      &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
             call vpois3d(13,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
+     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
      &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
           endif
 
@@ -7753,7 +7751,7 @@ c       case (5)
 c         --- General capacity matrix solver in kz space
           call capmatkz3d(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
      &                    filt,xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
-     &                    nx,ny,izfsmax-izfsmin,dx,dy,dz,
+     &                    nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                    xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
      &                    xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
 c       case (6)
@@ -7761,7 +7759,7 @@ c       case (6)
 c         --- General capacity matrix solver
           call capmat3df(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
      &                  filt,xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
-     &                  nx,ny,izfsmax-izfsmin,dx,dy,dz,
+     &                  nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                  xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
      &                  xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
 

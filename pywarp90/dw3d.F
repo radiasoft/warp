@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.78 $, $Date: 2002/11/06 17:15:05 $
+c@(#) File DW3D.M, version $Revision: 3.79 $, $Date: 2003/01/23 21:17:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -207,21 +207,25 @@ c  Sets 1d array for the charge density on the axis
       iy = iy_axis
       zz = zzmin + zbeam - zgrid - zmmin
 
-      if (nz == nzzarr .and. abs(zz) == dz*1.e-5) then
+      if (nz == nzzarr .and. abs(zz) <= dz*1.e-5) then
         do iz=0,nzzarr
           rhoax(iz) = rho(ix,iy,iz)
         enddo
       else
         do iz=0,nzzarr
           izg = int((iz*dzz + zz)*dzi)
-          wzg =     (iz*dzz + zz)*dzi  - izg
           if (0 <= izg .and. izg < nz) then
+            wzg =   (iz*dzz + zz)*dzi  - izg
             rhoax(iz) = rho(ix,iy,izg)*(1. - wzg) + rho(ix,iy,izg+1)*wzg
           else if (izg == nz) then
             rhoax(iz) = rho(ix,iy,izg)
           endif
         enddo
       endif
+
+#ifdef MPIPARALLEL
+      call parallelnonzerorealarray(rhoax,nzzarr+1)
+#endif
 
       return
       end
@@ -244,21 +248,25 @@ c  Sets 1d array for the potential on the axis
       iy = iy_axis
       zz = zzmin + zbeam - zgrid - zmmin
 
-      if (nz == nzzarr .and. abs(zz) == dz*1.e-5) then
+      if (nz == nzzarr .and. abs(zz) <= dz*1.e-5) then
         do iz=0,nzzarr
           phiax(iz) = phi(ix,iy,iz)
         enddo
       else
         do iz=0,nzzarr
           izg = int((iz*dzz + zz)*dzi)
-          wzg =     (iz*dzz + zz)*dzi  - izg
           if (0 <= izg .and. izg < nz) then
+            wzg =   (iz*dzz + zz)*dzi  - izg
             phiax(iz) = phi(ix,iy,izg)*(1. - wzg) + phi(ix,iy,izg+1)*wzg
           else if (izg == nz) then
             phiax(iz) = phi(ix,iy,izg)
           endif
         enddo
       endif
+
+#ifdef MPIPARALLEL
+      call parallelnonzerorealarray(phiax,nzzarr+1)
+#endif
 
       return
       end
@@ -288,15 +296,18 @@ c  Sets 1d array for the space charge E field on the axis
       if ((xmmax == -xmmin .and.  ymmax == -ymmin) .or.
      &    (wx == 0. .and. wy == 0.)) then
         do iz=0,nzzarr
-          izg = min(nz-1, max(0, int((iz*dzz + zz)*dzi)))
-          wzg = min(nz-1, max(0, int((iz*dzz + zz)*dzi))) - izg
-          ezax(iz)=((phi(ix,iy,izg-1)-phi(ix,iy,izg+1))*(1.-wzg)+
-     &              (phi(ix,iy,izg  )-phi(ix,iy,izg+2))*    wzg )*0.5*dzi
+          izg = int((iz*dzz + zz)*dzi)
+          if (0 <= izg .and. izg <= nz) then
+            wzg = int((iz*dzz + zz)*dzi) - izg
+            ezax(iz)=((phi(ix,iy,izg-1)-phi(ix,iy,izg+1))*(1.-wzg)+
+     &                (phi(ix,iy,izg  )-phi(ix,iy,izg+2))*    wzg )*0.5*dzi
+          endif
         enddo
       else
         do iz=0,nzzarr
-          izg = min(nz-1, max(0, int((iz*dzz + zz)*dzi)))
-          wzg = min(nz-1, max(0, int((iz*dzz + zz)*dzi))) - izg
+          izg = int((iz*dzz + zz)*dzi)
+          if (0 <= izg .and. izg <= nz) then
+            wzg = int((iz*dzz + zz)*dzi) - izg
         ezax(iz)=((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1*(1.-wzg)+
      &            (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1*(1.-wzg)+
      &            (phi(ix  ,iy+1,izg-1)-phi(ix  ,iy+1,izg+1))*wx1*wy *(1.-wzg)+
@@ -306,8 +317,13 @@ c  Sets 1d array for the space charge E field on the axis
      &            (phi(ix  ,iy+1,izg  )-phi(ix  ,iy+1,izg+2))*wx1*wy *    wzg +
      &            (phi(ix+1,iy+1,izg  )-phi(ix+1,iy+1,izg+2))*wx *wy *    wzg )
      &            *0.5*dzi
+          endif
         enddo
       endif
+
+#ifdef MPIPARALLEL
+      call parallelnonzerorealarray(ezax,nzzarr+1)
+#endif
 
       return
       end
