@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.15 $, $Date: 2002/06/19 22:35:26 $
+#@(#) File FRZ.V, version $Revision: 3.16 $, $Date: 2002/06/26 18:36:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.15 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.16 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -48,6 +48,7 @@ mgridrz_nlevels_max       integer /100/ # maximum number of multigrid levels
 mgridrz_levels_min        integer /1/   # lowest level of coarsening
 mgridrz_nmeshmin          integer /8/   # minimum number of meshes in each direction at coarsest level
 mgridrz_mgparam           real /1.8/    # SOR parameter
+mgridrz_workfact          integer /4/   # weight factor for grid merging/procs 
 mgridrz_mgiters           real /0/      # actual number of iterations for a solve
 mgridrz_sub_accuracy      real /1.e-1/  # average accuracy for a sublevel
 mgridrz_deform            logical /.false./ # flag for use of elliptic deformation
