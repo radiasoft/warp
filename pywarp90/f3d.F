@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.72 $, $Date: 2003/04/02 18:25:46 $
+c@(#) File F3D.M, version $Revision: 3.73 $, $Date: 2003/04/09 01:57:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5866,8 +5866,8 @@ c       --- calculate (in lab frame) start and end of quad
         qe = qdcenter + 0.5*(quadrl(iq) + quadgl(iq))
 
 c       --- plate on left hand side of quad
-        if ((islctype(iz) == 4 .and. islctype(iz-1) /= 4) .or.
-     &      (iz == -1 .and. islctype(iz) == 4)) then
+        if ((iz == -1 .and. islctype(iz) == 4) .or.
+     &      (islctype(iz) == 4 .and. islctype(iz-1) /= 4)) then
 
           if (quadgp(iq) < 0.) then
             vvv = slicvy(iz) + qdelvyp(iq)
@@ -6697,21 +6697,21 @@ c           --- skip points not on the surface
 c           --- If rinject is not set by the user, rely on inj_grid (surface
 c           --- will be piecewise linear), otherwise make the surface spherical.
             if (rinject(ij) == LARGEPOS) then
-              iz = int((inj_grid(ix,iy,inj_ij) - zmmin)/dz + 1)
+              iz = int((inj_grid(ix,iy,inj_ij) + zinject(ij) - zmmin)/dz + 1)
               zz = zmmin + iz*dz
               delmx = 2.
               delpx = 2.
               delmy = 2.
               delpy = 2.
-              delmz = iz - (inj_grid(ix,iy,inj_ij) - zmmin)/dz
+              delmz = iz - (inj_grid(ix,iy,inj_ij) + zinject(ij) - zmmin)/dz
               delpz = 2.
-              if (inj_grid(ix-1,iy,inj_ij) > zz)
+              if (inj_grid(ix-1,iy,inj_ij) + zinject(ij) > zz)
      &          delmx = delmz/(inj_grid(ix-1,iy,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
-              if (inj_grid(ix+1,iy,inj_ij) > zz)
+              if (inj_grid(ix+1,iy,inj_ij) + zinject(ij) > zz)
      &          delpx = delmz/(inj_grid(ix+1,iy,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
-              if (inj_grid(ix,iy-1,inj_ij) > zz)
+              if (inj_grid(ix,iy-1,inj_ij) + zinject(ij) > zz)
      &          delmy = delmz/(inj_grid(ix,iy-1,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
-              if (inj_grid(ix,iy+1,inj_ij) > zz)
+              if (inj_grid(ix,iy+1,inj_ij) + zinject(ij) > zz)
      &          delpy = delmz/(inj_grid(ix,iy+1,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
             else
               zz = (zinject(ij) - zmmin) + (xx**2 + yy**2)/

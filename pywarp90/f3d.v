@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.70 $, $Date: 2003/04/02 18:25:46 $
+#@(#) File F3D.V, version $Revision: 3.71 $, $Date: 2003/04/09 01:57:11 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.70 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.71 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -96,7 +96,7 @@ quadvlt(nendmax)       _real limited (numends)   # voltage of quad
 vshift(nendmax)        _real limited (numends)   # shift in focusing voltage
 kkkk(4*ncndpts)          _integer # Pivot points for matrix solve
 
-*********** PSOR3d dump parallel:
+*********** PSOR3d dump:
 sorparam  real    /1.88/ # Overrelaxation parameter, default value is a
                          # reasonable choice, but it should be optimized for
                          # the particular configuration.
@@ -123,7 +123,7 @@ boundnz   integer /0/  # Type of boundary condition at plane z=nz
 boundxy   integer /0/  # Type of boundary condition at sides
                        # 0 is constant potential, 1 is zero normal derivative,
                        # and 2 is periodic
-zparity   integer /0/  # iz parity, used in the parallel version so that the
+zparity   integer /0/ +parallel # iz parity, used in the parallel version so that the
                        # parity of the subgrid conductor points can be
                        # relative to the full grid.
 dxfine    real         # Size of transverse grid cells are finest level
