@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.71 $, $Date: 2002/08/29 18:21:57 $
+c@(#) File W3D.M, version $Revision: 3.72 $, $Date: 2002/09/04 18:10:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3553,6 +3553,10 @@ c     --- (will be changed if necessary in the loop)
 c     --- loop over species
       do is=is1,is2
 
+c        --- For the AMR/Chombo version, all of the dead particles must be
+c        --- cleared out.
+         if (solvergeom == AMRgeom) call cleardeadpart(is,0)
+
 c        --- get loop limits for particles if needed
          if (ins_i == -1) ins_u = ins(is)
          if (nps_i == -1) nps_u = nps(is)
@@ -3754,17 +3758,8 @@ c Print warning if vbeamfrm is not zero
        call remark("A core dump will result if the emitting surface moves off of the field grid.")
       endif
 
-c Reset particle index so that dead particles at end of particle block are
-c taken out of action.  Also zero out the array npinje_s.
-      if (itask == 1) then
-        do is=1,ns
-          if (nps(is) == 0) cycle
-          do while (uzp(ins(is) + nps(is)-1) == 0. .and. nps(is) > 0)
-            nps(is) = nps(is) - 1
-            if(nps(is)==0) exit
-          enddo
-        enddo
-      endif
+c Clear out the dead particles.
+      if (itask == 1) call cleardeadpart(-1,1)
 
 c Set inject z min and max. This is only really needed for
 c the parallel version, but is useful for the serial version to
