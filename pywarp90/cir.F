@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.6 $, $Date: 2001/07/13 16:59:18 $
+c@(#) File CIR.M, version $Revision: 3.7 $, $Date: 2001/07/18 23:54:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -76,6 +76,8 @@ c     --- Initialize the LatticeInternal arrays
         call gchange("LatticeInternal",0)
       else
         nzl = 0
+        zlmin = 0.
+        zlmax = 0.
       endif
       call setlattzt(zlcir,time,0)
 
@@ -328,6 +330,8 @@ c up the lattice.
         dzli = 1./dzl
       else
         nzl = 0
+        zlmin = 0.
+        zlmax = 0.
       endif
 
       call setlattzt(z,time,0)

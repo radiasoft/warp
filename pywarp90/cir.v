@@ -1,5 +1,5 @@
 cir
-#@(#) File CIR.V, version $Revision: 3.6 $, $Date: 2001/07/13 16:59:19 $
+#@(#) File CIR.V, version $Revision: 3.7 $, $Date: 2001/07/18 23:54:05 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for CIRCE.
@@ -10,7 +10,7 @@ cir
 
 *********** CIRversion:
 # Version control for cir package
-verscir  character*19 /"$Revision: 3.6 $"/  # Current code version, set by CVS
+verscir  character*19 /"$Revision: 3.7 $"/  # Current code version, set by CVS
 
 *********** CIRvars dump:
 # Variables needed by the package CIR
