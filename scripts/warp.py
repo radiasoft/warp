@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.41 2002/10/25 20:32:35 dave Exp $"
+warp_version = "$Id: warp.py,v 1.42 2002/10/26 00:09:27 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -100,6 +100,13 @@ euler     = top.euler
 jperev    = top.jperev
 mu0       = top.mu0
 boltzmann = top.boltzmann
+dirichlet = top.dirichlet
+neumann   = top.neumann
+periodic  = top.periodic
+absorb    = top.absorb
+reflect   = top.reflect
+
+# --- Create 
 
 # --- Create python version of dvnz (divisor not zero)
 def dvnz(x):
