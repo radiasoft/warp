@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.13 $, $Date: 2001/11/06 22:18:17 $
+c@(#) File WXY.M, version $Revision: 3.14 $, $Date: 2001/12/04 23:09:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1982,7 +1982,9 @@ c       --- 2D fieldsolver
 
         if (.not. linbend .or. iwhich > 0) then
 c         --- if not in a bend, then make direct call to vpxy
-          call copyarry(rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
+          if (fstype == 0 .or. fstype == 1 .or. fstype == 2) then
+            call copyarry(rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
+          endif
           call vpxy(iwhich)
 
         else
@@ -2035,6 +2037,10 @@ c         --- scratch space.
           call capmatxyf(iwhich,phi(0,0,0),kxsq,kysq,attx,atty,
      &             filt,xmmax-xmmin,ymmax-ymmin,nx,ny,dx,dy,xmmin,ymmin,
      &             phi(0,0,-1),phi(0,0,1),l2symtry,l4symtry)
+        elseif (fstype == 7) then
+c         --- Multigrid solver
+          call multigridxyf(iwhich,nx,ny,dx,dy,phi(0,0,0),rho(0,0,0),
+     &                      l2symtry,l4symtry,xmmin,ymmin)
         endif
 
       endif
