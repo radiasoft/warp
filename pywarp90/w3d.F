@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.149 $, $Date: 2004/03/29 15:11:04 $
+c@(#) File W3D.F, version $Revision: 3.150 $, $Date: 2004/04/27 20:12:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6302,7 +6302,7 @@ c vice versa.
 c When tsign = +1, transform from source frame to lab frame
 c      tsign = -1, transform from lab frame to source frame
 
-      real(kind=8):: ct,st,cp,sp
+      real(kind=8):: theta,phi,ct,st,cp,sp
       real(kind=8):: xp,yp,zp
       integer(ISZ):: i,ij
       real(kind=8):: substarttime,wtime
@@ -6323,23 +6323,50 @@ c     --- If transforming to coordinates of source, subtract source center
       if (maxval(abs(xpinject)) > 0. .or. maxval(abs(ypinject)) > 0.) then
         if (maxval(ijp) == minval(ijp)) then
           ij = ijp(1)
-          ct = cos(xpinject(ij))
-          st = sin(xpinject(ij)*tsign)
-          cp = cos(ypinject(ij))
-          sp = sin(ypinject(ij)*tsign)
+c         --- Convert xpinject and ypinject into the theta and phi angles.
+c         --- In the transformation from the source to the lab frame,
+c         --- for points along the axis in the source frame, the slopes
+c         --- in the lab frame must be preserved. So, for two points
+c         --- (0,0,-z) and (0,0,z) in the source frame, the slopes are given by
+c         --- xpinject = (x2 - x1)/(z2 - z1) and
+c         --- ypinject = (y2 - y1)/(z2 - z1)
+c         --- where (x1,y1,z1) and (x2,y2,z2) are the two points rotated into
+c         --- the lab frame. Plugging in the transformation equations below
+c         --- produces and inverting produces the following result.
+          theta = atan(xpinject(ij))
+          phi = atan(ypinject(ij)*cos(theta))
+          ct = cos(theta)
+          st = sin(theta)
+          cp = cos(phi)
+          sp = sin(phi)
         endif
         do i=1,np
           ij = ijp(min(i,ni))
           if (ij > 0) then
             if (ni > 1) then
-              ct = cos(xpinject(ij))
-              st = sin(xpinject(ij)*tsign)
-              cp = cos(ypinject(ij))
-              sp = sin(ypinject(ij)*tsign)
+c             --- See comments above.
+              theta = atan(xpinject(ij))
+              phi = atan(ypinject(ij)*cos(theta))
+              ct = cos(theta)
+              st = sin(theta)
+              cp = cos(phi)
+              sp = sin(phi)
             endif
-            xp = x(i)*ct + z(i)*st
-            yp = y(i)*cp + z(i)*ct*sp - x(i)*st*sp
-            zp = z(i)*ct*cp - x(i)*st*cp - y(i)*sp
+            if (tsign == -1) then
+c             --- Transform from lab frame to source frame
+c             --- This transformation is a rotation about the y axis by theta,
+c             --- followed by a rotation about the new x axis by phi.
+              xp = +x(i)*ct              - z(i)*st
+              yp = -x(i)*st*sp + y(i)*cp - z(i)*ct*sp
+              zp = +x(i)*st*cp + y(i)*sp + z(i)*ct*cp
+            else
+c             --- Transform from source frame to lab frame
+c             --- This transformation is a rotation about the x axis by phi,
+c             --- followed by a rotation about the new y axis by theta.
+              xp = +x(i)*ct - y(i)*st*sp + z(i)*st*cp
+              yp =          + y(i)*cp    + z(i)*sp
+              zp = -x(i)*st - y(i)*ct*sp + z(i)*ct*cp
+            endif
             x(i) = xp
             y(i) = yp
             z(i) = zp
