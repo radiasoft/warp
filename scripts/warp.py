@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.26 2001/07/02 20:17:09 dave Exp $"
+warp_version = "$Id: warp.py,v 1.27 2001/07/11 22:54:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -268,7 +268,7 @@ def rnormarray(x,i1=None,nbase1=None,nbase2=None):
     return result
 
 #=============================================================================
-def loadrho(ins_i=-1,nps_i=-1,is_i=-1,lzero=1):
+def loadrho(ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
   """
 loadrho(ins_i=-1,nps_i=-1,is_i=-1,lzero=1)
 This routine provides a simple call from the interpreter to load the
