@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.26 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -995,6 +995,7 @@ c The notation is that a negative distance means that the point is inside.
 c=======================================================================
       subroutine ZCylinderIntercept(rad,length,xcent,ycent,zcent,
      &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+      use Constant
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
@@ -1004,13 +1005,95 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
+      real(kind=8):: zmin,zmax,vv,tt,theta,phi
+      real(kind=8):: ttemp,xx,yy,zz,rr,rrsq,t1,t2,a,b,c,d1,d2
+
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
 
       do i=1,n
+
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = zcent
         angle(i) = 0.
         distance(i) = LARGEPOS
+
+        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+        if (vv == 0.) cycle
+
+        tt = LARGEPOS
+        theta = 0.
+        phi = 0.
+
+c       --- First, check if trajectory hits conductor end.
+        if (vz(i) .ne. 0.) then
+          ttemp = -(zmin - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (rrsq <= rad**2) then
+            if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
+     &          (ttemp > tt .and. tt < 0.)) then
+              tt = ttemp
+              theta = 0.
+              phi = 0.
+            endif
+          endif
+
+          ttemp = -(zmax - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (rrsq <= rad**2) then
+            if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
+     &          (ttemp > tt .and. tt < 0.)) then
+              tt = ttemp
+              theta = 0.
+              phi = 0.
+            endif
+          endif
+        endif
+
+c       --- Check if it hits the cylinder.
+        a = vx(i)**2 + vy(i)**2
+        if (a > 0.) then
+          b = -2*(vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+          c = (x(i)-xcent)**2 + (y(i)-ycent)**2 - rad**2
+          if ((b**2 - 4*a*c) > 0.) then
+            t1 = (-b-sqrt(b**2 - 4*a*c))/(2*a)
+            t2 = (-b+sqrt(b**2 - 4*a*c))/(2*a)
+            if (t1 > 0. .and. t2 > 0.) then
+              ttemp = min(t1,t2)
+            else
+              ttemp = max(t1,t2)
+            endif
+            zz = -vz(i)*ttemp + z(i)
+            if (zmin <= zz .and. zz <= zmax) then
+              if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
+     &            (ttemp > tt .and. tt < 0.)) then
+                tt = ttemp
+                xx = -vx(i)*ttemp + x(i) - xcent
+                yy = -vy(i)*ttemp + y(i) - ycent
+                rr = sqrt(xx**2 + yy**2)
+                theta = pi/2.*xx/dvnz(rr)
+                phi = pi/2.*yy/dvnz(rr)
+              endif
+            endif
+          endif
+        endif
+
+        xi(i) = -vx(i)*tt + x(i)
+        yi(i) = -vy(i)*tt + y(i)
+        zi(i) = -vz(i)*tt + z(i)
+        distance(i) = sqrt((x(i) - xi(i))**2 +
+     &                     (y(i) - yi(i))**2 +
+     &                     (z(i) - zi(i))**2)
+        d1 = vv
+        d2 = vx(i)*sin(theta)*cos(phi) + vy(i)*sin(phi) +
+     &       vz(i)*cos(theta)*cos(phi)
+        angle(i) = acos(abs(d2)/d1)
+
       enddo
 
       return
@@ -1312,6 +1395,7 @@ c The notation is that a negative distance means that the point is inside.
 c=======================================================================
       subroutine ZCylinderOutIntercept(rad,length,xcent,ycent,zcent,
      &                                 n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+      use Constant
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
@@ -1321,13 +1405,95 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
+      real(kind=8):: zmin,zmax,vv,tt,theta,phi
+      real(kind=8):: ttemp,xx,yy,zz,rr,rrsq,t1,t2,a,b,c,d1,d2
+
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
 
       do i=1,n
+
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = zcent
         angle(i) = 0.
         distance(i) = LARGEPOS
+
+        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+        if (vv == 0.) cycle
+
+        tt = LARGEPOS
+        theta = 0.
+        phi = 0.
+
+c       --- First, check if trajectory hits conductor end.
+        if (vz(i) .ne. 0.) then
+          ttemp = -(zmin - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (rrsq >= rad**2) then
+            if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
+     &          (ttemp > tt .and. tt < 0.)) then
+              tt = ttemp
+              theta = 0.
+              phi = 0.
+            endif
+          endif
+
+          ttemp = -(zmax - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (rrsq >= rad**2) then
+            if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
+     &          (ttemp > tt .and. tt < 0.)) then
+              tt = ttemp
+              theta = 0.
+              phi = 0.
+            endif
+          endif
+        endif
+
+c       --- Check if it hits the cylinder.
+        a = vx(i)**2 + vy(i)**2
+        if (a > 0.) then
+          b = -2*(vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+          c = (x(i)-xcent)**2 + (y(i)-ycent)**2 - rad**2
+          if ((b**2 - 4*a*c) > 0.) then
+            t1 = (-b-sqrt(b**2 - 4*a*c))/(2*a)
+            t2 = (-b+sqrt(b**2 - 4*a*c))/(2*a)
+            if (t1 > 0. .and. t2 > 0.) then
+              ttemp = min(t1,t2)
+            else
+              ttemp = max(t1,t2)
+            endif
+            zz = -vz(i)*ttemp + z(i)
+            if (zmin <= zz .and. zz <= zmax) then
+              if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
+     &            (ttemp > tt .and. tt < 0.)) then
+                tt = ttemp
+                xx = -vx(i)*ttemp + x(i) - xcent
+                yy = -vy(i)*ttemp + y(i) - ycent
+                rr = sqrt(xx**2 + yy**2)
+                theta = pi/2.*xx/dvnz(rr)
+                phi = pi/2.*yy/dvnz(rr)
+              endif
+            endif
+          endif
+        endif
+
+        xi(i) = -vx(i)*tt + x(i)
+        yi(i) = -vy(i)*tt + y(i)
+        zi(i) = -vz(i)*tt + z(i)
+        distance(i) = sqrt((x(i) - xi(i))**2 +
+     &                     (y(i) - yi(i))**2 +
+     &                     (z(i) - zi(i))**2)
+        d1 = vv
+        d2 = vx(i)*sin(theta)*cos(phi) + vy(i)*sin(phi) +
+     &       vz(i)*cos(theta)*cos(phi)
+        angle(i) = acos(abs(d2)/d1)
+
       enddo
 
       return
@@ -1736,7 +1902,7 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
-      real(kind=8):: xx,yy,zz,vv
+      real(kind=8):: xx,yy,zz
       real(kind=8):: a,b,c,t1,t2,tt
       real(kind=8):: d1,d2,theta,phi
       real(kind=8):: ctheta,stheta,cphi,sphi
@@ -1758,10 +1924,10 @@ c relative to a plane normal to the surface at that point.
         else
           t1 = (-b + sqrt(b**2 - 4*a*c))/(2*a)
           t2 = (-b - sqrt(b**2 - 4*a*c))/(2*a)
-          if (t1 > 0.) then
-            tt = t1
+          if (t1 > 0. .and. t2 > 0.) then
+            tt = min(t1,t2)
           else
-            tt = t2
+            tt = max(t1,t2)
           endif
           xi(i) = -vx(i)*tt + x(i)
           yi(i) = -vy(i)*tt + y(i)
@@ -1775,7 +1941,7 @@ c relative to a plane normal to the surface at that point.
           cphi = abs(zi(i) - zcent)/dvnz(d1)
           sphi = abs(yi(i) - ycent)/dvnz(d1)
 
-          d1 = vv
+          d1 = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
           d2 = vx(i)*stheta*cphi + vy(i)*sphi + vz(i)*ctheta*cphi
           angle(i) = acos(d2/d1)
           distance(i) = sqrt((x(i) - xi(i))**2 +
@@ -3867,9 +4033,149 @@ c near the surface, the distance has the correct sign.
       return
       end
 c=======================================================================
+      subroutine zsrfrv_intercept(rofzfunc,zmin,zmax,xcent,ycent,zcent,
+     &                            lsrlinr,npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
+     &                              n,x,y,z,vx,vy,vz,tt,theta,phi)
+      character(*):: rofzfunc
+      real(kind=8):: zmin,zmax,xcent,ycent,zcent
+      logical(ISZ):: lsrlinr
+      integer(ISZ):: npnts_sr
+      real(kind=8):: z_sr(npnts_sr),r_sr(npnts_sr)
+      real(kind=8):: rad_sr(npnts_sr-1),zc_sr(npnts_sr-1),rc_sr(npnts_sr-1)
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
+      real(kind=8):: tt(n),theta(n),phi(n)
+
+c Finds place where particle inside intercepted the surface and the angle
+c relative to a plane normal to the surface at that point.
+
+      integer(ISZ):: i,ii,il,niter
+      real(kind=8):: vv,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp,a1,a2
+      real(kind=8):: a,b,c,s,p,d1,d2
+      real(kind=8):: r_zmin,r_zmax
+      real(kind=8):: t(2),d(2)
+      real(kind=8):: srfrv_f
+
+      if (lsrlinr) then
+
+        do i=1,n
+
+          vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+          if (vv == 0.) cycle
+
+c         --- Loop over the line segments and calculate the intersection of
+c         --- each with the trajectory. Pick the one where the intersect
+c         --- z value is within the segment.
+          do il=1,npnts_sr
+            if (rad_sr(il) == LARGEPOS) then
+              s = (r_sr(il+1) - r_sr(il))/(z_sr(il+1) - z_sr(il))
+              p = r_sr(il) - s*z_sr(il)
+              a = (s*vz(i))**2 - vx(i)**2 - vy(i)**2
+              b = 2*(-s*vz(i)*(s*(z(i)-zcent)+p) +
+     &            vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+              c = (s*(z(i)-zcent)+p)**2 - (x(i)-xcent)**2 - (y(i)-ycent)**2
+              if ((b**2 - 4*a*c) > 0.) then
+                if (a .ne. 0.) then
+                  t1 = (-b - sqrt(b**2 - 4*a*c))/(2*a)
+                  t2 = (-b + sqrt(b**2 - 4*a*c))/(2*a)
+                else
+                  t1 = -c/b
+                  t2 = t1
+                endif
+                if (t1 > 0. .and. t2 > 0.) then
+                  ttemp = min(t1,t2)
+                else
+                  ttemp = max(t1,t2)
+                endif
+                zz = -vz(i)*ttemp + z(i)
+              else
+                zz = LARGEPOS
+              endif
+              if (z_sr(il) <= zz .and. zz <= z_sr(il+1)) then
+                if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &              (ttemp > tt(i) .and. tt(i) < 0.)) then
+                  tt(i) = ttemp
+                  a1 = -atan2((z_sr(il+1) - z_sr(il)),(r_sr(il+1) - r_sr(il)))
+                  xx = -vx(i)*ttemp + x(i) - xcent
+                  yy = -vy(i)*ttemp + y(i) - ycent
+                  rr = sqrt(xx**2 + yy**2)
+c                 --- These angles need to be verified.
+                  theta(i) = a1*xx/dvnz(rr)
+                  phi(i) = a1*yy/dvnz(rr)
+                endif
+              endif
+c           else
+            endif
+          enddo
+
+        enddo
+
+      else
+
+c       --- WARNING!! This code is not yet complete and almost certainly
+c       --- will not work!!!
+        do i=1,n
+
+c         --- Set parameter to initial guess.
+          tt(i) = LARGEPOS
+          theta(i) = 0.
+          phi(i) = 0.
+
+          vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+          if (vv == 0.) cycle
+
+c         --- Do a search to find the intersection.
+
+c         --- Find the shortest distance of the point to the surface
+c         call ZSrfrvOutConductorD(rofzfunc,zmin,zmax,rmax,1.,
+c    &                             xcent,ycent,zcent,1,x(i),y(i),z(i),dd)
+
+          t(1) = 0.
+          d(1) = dd
+
+          t(2) = dd/vv
+          xx = -vx(i)*t(2) + x(i)
+          yy = -vy(i)*t(2) + y(i)
+          zz = -vz(i)*t(2) + z(i)
+c         call ZSrfrvOutConductorD(rofzfunc,zmin,zmax,rmax,1.,
+c    &                             xcent,ycent,zcent,1,xx,yy,zz,dd)
+          d(2) = dd
+
+          niter = 0
+          if (d(1) == 0. .or. d(2) == 0) niter = 12
+          ii = 1
+          do while ((abs(d(1))+abs(d(2))) > 1.e-8 .and. niter < 12)
+            ii = 1
+            if (abs(d(2)) > abs(d(1))) ii = 2
+            if (d(1) == d(2)) exit
+            t(ii) = (t(1)*d(2)-t(2)*d(1))/(d(2)-d(1))
+            xx = -vx(i)*t(ii) + x(i)
+            yy = -vy(i)*t(ii) + y(i)
+            zz = -vz(i)*t(ii) + z(i)
+            zz = max(zmin,min(zmax,zz))
+c           call ZSrfrvOutConductorD(rofzfunc,zmin,zmax,rmax,griddz,
+c    &                               xcent,ycent,zcent,1,xx,yy,zz,d(ii))
+            niter = niter + 1
+          enddo
+          if (abs(d(2))+abs(d(1)) < 1.e-8) then
+            tt(i) = t(ii)
+c           --- !!!!!!! not correct !!!!!!
+            theta(i) = 0.
+            phi(i) = 0.
+          endif
+
+        enddo
+
+      endif
+
+      return
+      end
+c=======================================================================
       subroutine ZSrfrvOutIntercept(rofzfunc,zmin,zmax,rmax,griddz,
      &                              xcent,ycent,zcent,
      &                              n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+      use Constant
+      use Surface_of_Rev
       character(*):: rofzfunc
       real(kind=8):: zmin,zmax,rmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
@@ -3880,13 +4186,103 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
+      real(kind=8):: tt(n),theta(n),phi(n)
+      real(kind=8):: vv,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp,a1,a2
+      real(kind=8):: a,b,c,s,p,d1,d2
+      real(kind=8):: r_zmin,r_zmax
+      real(kind=8):: srfrv_f
+
+      r_zmin = srfrv_f(zmin,rofzfunc,0,0)
+      r_zmax = srfrv_f(zmax,rofzfunc,0,0)
+
+      tt = LARGEPOS
+      theta = 0.
+      phi = 0.
+
+      call zsrfrv_intercept(rofzfunc,zmin,zmax,xcent,ycent,zcent,
+     &                      lsrlinr,npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
+     &                      n,x,y,z,vx,vy,vz,tt,theta,phi)
 
       do i=1,n
+
+c       --- Set parameter to LARGEPOS as an initial guess.
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = zcent
         angle(i) = 0.
         distance(i) = LARGEPOS
+
+        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+        if (vv == 0.) cycle
+
+c       --- First, check if trajectory hits conductor end.
+        if (vz(i) .ne. 0.) then
+          ttemp = -(zmin - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (r_zmin**2 <= rrsq .and. rrsq <= rmax**2) then
+            if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &          (ttemp > tt(i) .and. tt(i) < 0.)) then
+              tt(i) = ttemp
+              theta(i) = 0.
+              phi(i) = 0.
+            endif
+          endif
+
+          ttemp = -(zmax - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (r_zmax**2 <= rrsq .and. rrsq <= rmax**2) then
+            if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &          (ttemp > tt(i) .and. tt(i) < 0.)) then
+              tt(i) = ttemp
+              theta(i) = 0.
+              phi(i) = 0.
+            endif
+          endif
+        endif
+
+c       --- Check if it hits the outer cylinder.
+        a = vx(i)**2 + vy(i)**2
+        if (a > 0.) then
+          b = -2*(vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+          c = (x(i)-xcent)**2 + (y(i)-ycent)**2 - rmax**2
+          if ((b**2 - 4*a*c) > 0.) then
+            t1 = (-b-sqrt(b**2 - 4*a*c))/(2*a)
+            t2 = (-b+sqrt(b**2 - 4*a*c))/(2*a)
+            if (t1 > 0. .and. t2 > 0.) then
+              ttemp = min(t1,t2)
+            else
+              ttemp = max(t1,t2)
+            endif
+            zz = -vz(i)*ttemp + z(i)
+            if (zmin <= zz .and. zz <= zmax) then
+              if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &            (ttemp > tt(i) .and. tt(i) < 0.)) then
+                tt(i) = ttemp
+                xx = -vx(i)*ttemp + x(i) - xcent
+                yy = -vy(i)*ttemp + y(i) - ycent
+                rr = sqrt(xx**2 + yy**2)
+                theta(i) = pi/2.*xx/dvnz(rr)
+                phi(i) = pi/2.*yy/dvnz(rr)
+              endif
+            endif
+          endif
+        endif
+
+        xi(i) = -vx(i)*tt(i) + x(i)
+        yi(i) = -vy(i)*tt(i) + y(i)
+        zi(i) = -vz(i)*tt(i) + z(i)
+        distance(i) = sqrt((x(i) - xi(i))**2 +
+     &                     (y(i) - yi(i))**2 +
+     &                     (z(i) - zi(i))**2)
+        d1 = vv
+        d2 = vx(i)*sin(theta(i))*cos(phi(i)) + vy(i)*sin(phi(i)) +
+     &       vz(i)*cos(theta(i))*cos(phi(i))
+        angle(i) = acos(abs(d2)/d1)
+
       enddo
 
       return
@@ -4184,6 +4580,8 @@ c=======================================================================
       subroutine ZSrfrvInIntercept(rofzfunc,zmin,zmax,rmin,griddz,
      &                             xcent,ycent,zcent,
      &                             n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+      use Constant
+      use Surface_of_Rev
       character(*):: rofzfunc
       real(kind=8):: zmin,zmax,rmin,griddz,xcent,ycent,zcent
       integer(ISZ):: n
@@ -4194,22 +4592,176 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
+      real(kind=8):: tt(n),theta(n),phi(n)
+      real(kind=8):: vv,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp,a1,a2
+      real(kind=8):: a,b,c,s,p,d1,d2
+      real(kind=8):: r_zmin,r_zmax
+      real(kind=8):: srfrv_f
+
+      r_zmin = srfrv_f(zmin,rofzfunc,0,0)
+      r_zmax = srfrv_f(zmax,rofzfunc,0,0)
+
+      tt = LARGEPOS
+      theta = 0.
+      phi = 0.
+
+      call zsrfrv_intercept(rofzfunc,zmin,zmax,xcent,ycent,zcent,
+     &                      lsrlinr,npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
+     &                      n,x,y,z,vx,vy,vz,tt,theta,phi)
 
       do i=1,n
+
+c       --- Set parameter to LARGEPOS as an initial guess.
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = zcent
         angle(i) = 0.
         distance(i) = LARGEPOS
+
+        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+        if (vv == 0.) cycle
+
+c       --- First, check if trajectory hits conductor end.
+        if (vz(i) .ne. 0.) then
+          ttemp = -(zmin - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (r_zmin**2 >= rrsq .and. rrsq >= rmin**2) then
+            if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &          (ttemp > tt(i) .and. tt(i) < 0.)) then
+              tt(i) = ttemp
+              theta(i) = 0.
+              phi(i) = 0.
+            endif
+          endif
+
+          ttemp = -(zmax - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (r_zmax**2 >= rrsq .and. rrsq >= rmin**2) then
+            if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &          (ttemp > tt(i) .and. tt(i) < 0.)) then
+              tt(i) = ttemp
+              theta(i) = 0.
+              phi(i) = 0.
+            endif
+          endif
+        endif
+
+c       --- Check if it hits the inner cylinder.
+        a = vx(i)**2 + vy(i)**2
+        if (a > 0.) then
+          b = -2*(vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+          c = (x(i)-xcent)**2 + (y(i)-ycent)**2 - rmin**2
+          if ((b**2 - 4*a*c) > 0.) then
+            t1 = (-b-sqrt(b**2 - 4*a*c))/(2*a)
+            t2 = (-b+sqrt(b**2 - 4*a*c))/(2*a)
+            if (t1 > 0. .and. t2 > 0.) then
+              ttemp = min(t1,t2)
+            else
+              ttemp = max(t1,t2)
+            endif
+            zz = -vz(i)*ttemp + z(i)
+            if (zmin <= zz .and. zz <= zmax) then
+              if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &            (ttemp > tt(i) .and. tt(i) < 0.)) then
+                tt(i) = ttemp
+                xx = -vx(i)*ttemp + x(i) - xcent
+                yy = -vy(i)*ttemp + y(i) - ycent
+                rr = sqrt(xx**2 + yy**2)
+                theta(i) = pi/2.*xx/dvnz(rr)
+                phi(i) = pi/2.*yy/dvnz(rr)
+              endif
+            endif
+          endif
+        endif
+
+        xi(i) = -vx(i)*tt(i) + x(i)
+        yi(i) = -vy(i)*tt(i) + y(i)
+        zi(i) = -vz(i)*tt(i) + z(i)
+        distance(i) = sqrt((x(i) - xi(i))**2 +
+     &                     (y(i) - yi(i))**2 +
+     &                     (z(i) - zi(i))**2)
+        d1 = vv
+        d2 = vx(i)*sin(theta(i))*cos(phi(i)) + vy(i)*sin(phi(i)) +
+     &       vz(i)*cos(theta(i))*cos(phi(i))
+        angle(i) = acos(abs(d2)/d1)
+
       enddo
 
       return
       end
 c=======================================================================
 c=======================================================================
+      real(kind=8) function linrzintersection(zz,rr,npnts_sr,z_sr,r_sr,
+     &                               rad_sr,zc_sr,rc_sr,i1,i2,istep)
+      real(kind=8):: zz,rr
+      integer(ISZ):: npnts_sr
+      real(kind=8):: z_sr(npnts_sr),r_sr(npnts_sr)
+      real(kind=8):: rad_sr(npnts_sr-1),zc_sr(npnts_sr-1),rc_sr(npnts_sr-1)
+      integer(ISZ):: i1,i2,istep
+
+c This searches throught the line segments to find the one that the z-line
+c will intersect. From that, the location of the z intersection can be
+c calculated directly.
+
+      integer(ISZ):: ii
+      real(kind=8):: r1,r2,zi
+      logical(ISZ):: done
+
+c     --- Find the line segment which covers the range of z where the point is.
+      do ii=i1,i2,istep
+        if (z_sr(ii) > zz .and. istep == +1) exit
+        if (z_sr(ii) < zz .and. istep == -1) exit
+      enddo
+      if (ii > npnts_sr .and. istep == +1) ii = npnts_sr
+      if (ii < 1        .and. istep == -1) ii = 1
+      if (istep == 1) ii = ii - 1
+
+c     --- Search up (or down) in the line segments to find one which crosses
+c     --- the r of the point.
+      done = .false.
+      do while (.not. done)
+        r1 = min(r_sr(ii+1),r_sr(ii))
+        r2 = max(r_sr(ii+1),r_sr(ii))
+        if (rad_sr(ii) < LARGEPOS .and.
+     &      (z_sr(ii) < zc_sr(ii) .and. zc_sr(ii) < z_sr(ii+1))) then
+          if (rad_sr(ii) < 0.) then
+            r1 = rc_sr(ii) + rad_sr(ii)
+          else
+            r2 = rc_sr(ii) + rad_sr(ii)
+          endif
+        endif
+        if (r1 <= rr .and. rr <= r2) then
+          done = .true.
+        else
+          ii = ii - istep
+        endif
+      enddo
+
+c     --- Once the segment if found, the z intersection can be calculated
+c     --- directly.
+      if (rad_sr(ii) == LARGEPOS) then
+        zi = (rr - r_sr(ii))*(z_sr(ii+1) - z_sr(ii))/
+     &       (r_sr(ii+1) - r_sr(ii)) + z_sr(ii)
+      else
+        zi = zc_sr(ii) + sqrt(max(0.,rad_sr(ii)**2 - (rr-rc_sr(ii))**2))
+        if (zi > zz) then
+          zi = zc_sr(ii) - sqrt(max(0.,rad_sr(ii)**2 - (rr-rc_sr(ii))**2))
+        endif
+      endif
+
+      linrzintersection = zi
+
+      return
+      end
+c=======================================================================
       subroutine ZSrfrvInOutConductorF(rminofz,rmaxofz,zmin,zmax,griddz,
      &                                 xcent,ycent,zcent,n,x,y,z,
      &                                 delmx,delpx,delmy,delpy,delmz,delpz,fuzz)
+      use Surface_of_Rev
       character(*):: rminofz,rmaxofz
       real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
@@ -4225,8 +4777,9 @@ c=======================================================================
       real(kind=8):: ximin,yimin,ximax,yimax
       real(kind=8):: zzz,zlower,zhigher,rfuzz
       real(kind=8):: rminlower,rminhigher,rmaxlower,rmaxhigher
-      real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
+      real(kind=8):: ddz,znew,rnew,zi(2),ri(2),r1,r2
       real(kind=8):: delmz1,delpz1
+      real(kind=8):: linrzintersection
 
       do i=1,n
         delmx(i) = LARGEPOS
@@ -4322,102 +4875,116 @@ c       --- conductor or within the max radius.
           else
             delmz(i) = LARGEPOS
             if (min(rminlower,rmin) <= rr .and. rr <= max(rminlower,rmin)) then
-c             --- If grid location is between rmin and rminlower find
-c             --- intersection point.
-c             --- First, try Regula-Falsi (secant method) iteration to
-c             --- find distance in z to the surface. If that doesn't
-c             --- converge rapidly, then go to the brute force binary search.
-c             --- Empirically, it was found that stopping at 12 iterations
-c             --- gives the best performance, with a broad minimum around
-c             --- that point.
-              zi(1) = zzz
-              ri(1) = rmin - rr
-              zi(2) = zlower
-              ri(2) = rminlower - rr
-              iterrf = 0
-              if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
-              ii = 1
-              do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
-                ii = 1
-                if (abs(ri(2)) > abs(ri(1))) ii = 2
-                if (ri(1) == ri(2)) exit
-                zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
-                ri(ii) = srfrv_f(zi(ii),rminofz,1,0) - rr
-                iterrf = iterrf + 1
-              end do
-              if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
-     &            zlower <= zi(ii) .and. zi(ii) < zz) then
-                delmz(i) = zz - zi(ii)
-              else
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,1,0)
-                  if (rnew > rr) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew <= rr) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
+              if (lsrminlinr) then
+                znew = linrzintersection(zz,rr,npnts_srmin,z_srmin,r_srmin,
+     &                                   rad_srmin,zc_srmin,rc_srmin,
+     &                                   2,npnts_srmin,1)
                 delmz(i) = zz - znew
+              else
+c               --- If grid location is between rmin and rminlower find
+c               --- intersection point.
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                zi(1) = zzz
+                ri(1) = rmin - rr
+                zi(2) = zlower
+                ri(2) = rminlower - rr
+                iterrf = 0
+                if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+                ii = 1
+                do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+                  ii = 1
+                  if (abs(ri(2)) > abs(ri(1))) ii = 2
+                  if (ri(1) == ri(2)) exit
+                  zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
+                  ri(ii) = srfrv_f(zi(ii),rminofz,1,0) - rr
+                  iterrf = iterrf + 1
+                end do
+                if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &              zlower <= zi(ii) .and. zi(ii) < zz) then
+                  delmz(i) = zz - zi(ii)
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (min(zz,zmax) - zlower)*0.5
+                  znew = zlower
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rminofz,1,0)
+                    if (rnew > rr) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew <= rr) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delmz(i) = zz - znew
+                endif
               endif
               if (rr >= rmin) delmz(i) = -delmz(i)
             endif
             if (min(rmaxlower,rmax) <= rr .and. rr <= max(rmaxlower,rmax)) then
-c             --- If grid location is between rmax and rmaxlower find
-c             --- intersection point.
-c             --- First, try Regula-Falsi (secant method) iteration to
-c             --- find distance in z to the surface. If that doesn't
-c             --- converge rapidly, then go to the brute force binary search.
-c             --- Empirically, it was found that stopping at 12 iterations
-c             --- gives the best performance, with a broad minimum around
-c             --- that point.
-              zi(1) = zzz
-              ri(1) = rmax - rr
-              zi(2) = zlower
-              ri(2) = rmaxlower - rr
-              iterrf = 0
-              if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
-              ii = 1
-              do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
-                ii = 1
-                if (abs(ri(2)) > abs(ri(1))) ii = 2
-                if (ri(1) == ri(2)) exit
-                zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
-                ri(ii) = srfrv_f(zi(ii),rmaxofz,2,0) - rr
-                iterrf = iterrf + 1
-              end do
-              if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
-     &            zlower <= zi(ii) .and. zi(ii) < zz) then
-                delmz1 = zz - zi(ii)
-              else
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,2,0)
-                  if (rnew > rr) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew <= rr) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
+              if (lsrmaxlinr) then
+                znew = linrzintersection(zz,rr,npnts_srmax,z_srmax,r_srmax,
+     &                                   rad_srmax,zc_srmax,rc_srmax,
+     &                                   2,npnts_srmax,1)
                 delmz1 = zz - znew
+              else
+c               --- If grid location is between rmax and rmaxlower find
+c               --- intersection point.
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                zi(1) = zzz
+                ri(1) = rmax - rr
+                zi(2) = zlower
+                ri(2) = rmaxlower - rr
+                iterrf = 0
+                if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+                ii = 1
+                do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+                  ii = 1
+                  if (abs(ri(2)) > abs(ri(1))) ii = 2
+                  if (ri(1) == ri(2)) exit
+                  zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
+                  ri(ii) = srfrv_f(zi(ii),rmaxofz,2,0) - rr
+                  iterrf = iterrf + 1
+                end do
+                if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &              zlower <= zi(ii) .and. zi(ii) < zz) then
+                  delmz1 = zz - zi(ii)
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (min(zz,zmax) - zlower)*0.5
+                  znew = zlower
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rmaxofz,2,0)
+                    if (rnew > rr) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew <= rr) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delmz1 = zz - znew
+                endif
               endif
               if (delmz1 < abs(delmz(i))) then
                 if (rr <= rmax) then
@@ -4443,99 +5010,113 @@ c         --- Calculate distance to conductor at higher z.
             delpz(i) = LARGEPOS
             if (min(rminhigher,rmin) <= rr .and.
      &          rr <= max(rminhigher,rmin)) then
-c             --- First, try Regula-Falsi (secant method) iteration to
-c             --- find distance in z to the surface. If that doesn't
-c             --- converge rapidly, then go to the brute force binary search.
-c             --- Empirically, it was found that stopping at 12 iterations
-c             --- gives the best performance, with a broad minimum around
-c             --- that point.
-              zi(1) = zzz
-              ri(1) = rmin - rr
-              zi(2) = zhigher
-              ri(2) = rminhigher - rr
-              iterrf = 0
-              if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
-              ii = 1
-              do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
-                ii = 1
-                if (abs(ri(2)) > abs(ri(1))) ii = 2
-                if (ri(1) == ri(2)) exit
-                zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
-                ri(ii) = srfrv_f(zi(ii),rminofz,1,0) - rr
-                iterrf = iterrf + 1
-              end do
-              if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
-     &            zz < zi(ii) .and. zi(ii) <= zhigher) then
-                delpz(i) = zi(ii) - zz
-              else
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,1,0)
-                  if (rnew <= rr) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew > rr) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
+              if (lsrminlinr) then
+                znew = linrzintersection(zz,rr,npnts_srmin,z_srmin,r_srmin,
+     &                                   rad_srmin,zc_srmin,rc_srmin,
+     &                                   npnts_srmin-1,1,-1)
                 delpz(i) = znew - zz
+              else
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                zi(1) = zzz
+                ri(1) = rmin - rr
+                zi(2) = zhigher
+                ri(2) = rminhigher - rr
+                iterrf = 0
+                if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+                ii = 1
+                do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+                  ii = 1
+                  if (abs(ri(2)) > abs(ri(1))) ii = 2
+                  if (ri(1) == ri(2)) exit
+                  zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
+                  ri(ii) = srfrv_f(zi(ii),rminofz,1,0) - rr
+                  iterrf = iterrf + 1
+                end do
+                if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &              zz < zi(ii) .and. zi(ii) <= zhigher) then
+                  delpz(i) = zi(ii) - zz
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (max(zz,zmin) - zhigher)*0.5
+                  znew = zhigher
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rminofz,1,0)
+                    if (rnew <= rr) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew > rr) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delpz(i) = znew - zz
+                endif
               endif
               if (rr >= rmin) delpz(i) = -delpz(i)
             endif
             if (min(rmaxhigher,rmax) <= rr .and.
      &          rr <= max(rmaxhigher,rmax)) then
-c             --- First, try Regula-Falsi (secant method) iteration to
-c             --- find distance in z to the surface. If that doesn't
-c             --- converge rapidly, then go to the brute force binary search.
-c             --- Empirically, it was found that stopping at 12 iterations
-c             --- gives the best performance, with a broad minimum around
-c             --- that point.
-              zi(1) = zzz
-              ri(1) = rmax - rr
-              zi(2) = zhigher
-              ri(2) = rmaxhigher - rr
-              iterrf = 0
-              if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
-              ii = 1
-              do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
-                ii = 1
-                if (abs(ri(2)) > abs(ri(1))) ii = 2
-                if (ri(1) == ri(2)) exit
-                zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
-                ri(ii) = srfrv_f(zi(ii),rmaxofz,2,0) - rr
-                iterrf = iterrf + 1
-              end do
-              if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
-     &            zz < zi(ii) .and. zi(ii) <= zhigher) then
-                delpz1 = zi(ii) - zz
-              else
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,2,0)
-                  if (rnew <= rr) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew > rr) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
+              if (lsrmaxlinr) then
+                znew = linrzintersection(zz,rr,npnts_srmax,z_srmax,r_srmax,
+     &                                   rad_srmax,zc_srmax,rc_srmax,
+     &                                   npnts_srmax-1,1,-1)
                 delpz1 = znew - zz
+              else
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                zi(1) = zzz
+                ri(1) = rmax - rr
+                zi(2) = zhigher
+                ri(2) = rmaxhigher - rr
+                iterrf = 0
+                if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+                ii = 1
+                do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+                  ii = 1
+                  if (abs(ri(2)) > abs(ri(1))) ii = 2
+                  if (ri(1) == ri(2)) exit
+                  zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
+                  ri(ii) = srfrv_f(zi(ii),rmaxofz,2,0) - rr
+                  iterrf = iterrf + 1
+                end do
+                if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &              zz < zi(ii) .and. zi(ii) <= zhigher) then
+                  delpz1 = zi(ii) - zz
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (max(zz,zmin) - zhigher)*0.5
+                  znew = zhigher
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rmaxofz,2,0)
+                    if (rnew <= rr) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew > rr) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delpz1 = znew - zz
+                endif
               endif
               if (delpz1 < abs(delpz(i))) then
                 if (rr <= rmax) then
@@ -4627,6 +5208,7 @@ c=======================================================================
       subroutine ZSrfrvInOutIntercept(rminofz,rmaxofz,zmin,zmax,griddz,
      &                                xcent,ycent,zcent,
      &                                n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
+      use Surface_of_Rev
       character(*):: rminofz,rmaxofz
       real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
       integer(ISZ):: n
@@ -4637,13 +5219,83 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
+      real(kind=8):: tt(n),theta(n),phi(n)
+      real(kind=8):: vv,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp,a1,a2
+      real(kind=8):: a,b,c,s,p,d1,d2
+      real(kind=8):: rmin_zmin,rmin_zmax
+      real(kind=8):: rmax_zmin,rmax_zmax
+      real(kind=8):: srfrv_f
+
+      rmin_zmin = srfrv_f(zmin,rminofz,1,0)
+      rmin_zmax = srfrv_f(zmax,rminofz,1,0)
+      rmax_zmin = srfrv_f(zmin,rmaxofz,2,0)
+      rmax_zmax = srfrv_f(zmax,rmaxofz,2,0)
+
+      tt = LARGEPOS
+      theta = 0.
+      phi = 0.
+
+      call zsrfrv_intercept(rminofz,zmin,zmax,xcent,ycent,zcent,
+     &                      lsrminlinr,npnts_srmin,z_srmin,r_srmin,
+     &                      rad_srmin,zc_srmin,rc_srmin,
+     &                      n,x,y,z,vx,vy,vz,tt,theta,phi)
+      call zsrfrv_intercept(rmaxofz,zmin,zmax,xcent,ycent,zcent,
+     &                      lsrmaxlinr,npnts_srmax,z_srmax,r_srmax,
+     &                      rad_srmax,zc_srmax,rc_srmax,
+     &                      n,x,y,z,vx,vy,vz,tt,theta,phi)
 
       do i=1,n
+
+c       --- Set parameter to LARGEPOS as an initial guess.
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
         zi(i) = zcent
         angle(i) = 0.
         distance(i) = LARGEPOS
+
+        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+        if (vv == 0.) cycle
+
+c       --- First, check if trajectory hits conductor end.
+        if (vz(i) .ne. 0.) then
+          ttemp = -(zmin - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (rmin_zmin**2 <= rrsq .and. rrsq <= rmax_zmin**2) then
+            if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &          (ttemp > tt(i) .and. tt(i) < 0.)) then
+              tt(i) = ttemp
+              theta(i) = 0.
+              phi(i) = 0.
+            endif
+          endif
+
+          ttemp = -(zmax - z(i))/vz(i)
+          xx = -vx(i)*ttemp + x(i)
+          yy = -vy(i)*ttemp + y(i)
+          rrsq = xx**2 + yy**2
+          if (rmin_zmax**2 <= rrsq .and. rrsq <= rmax_zmin**2) then
+            if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &          (ttemp > tt(i) .and. tt(i) < 0.)) then
+              tt(i) = ttemp
+              theta(i) = 0.
+              phi(i) = 0.
+            endif
+          endif
+        endif
+
+        xi(i) = -vx(i)*tt(i) + x(i)
+        yi(i) = -vy(i)*tt(i) + y(i)
+        zi(i) = -vz(i)*tt(i) + z(i)
+        distance(i) = sqrt((x(i) - xi(i))**2 +
+     &                     (y(i) - yi(i))**2 +
+     &                     (z(i) - zi(i))**2)
+        d1 = vv
+        d2 = vx(i)*sin(theta(i))*cos(phi(i)) + vy(i)*sin(phi(i)) +
+     &       vz(i)*cos(theta(i))*cos(phi(i))
+        angle(i) = acos(abs(d2)/d1)
+
       enddo
 
       return
