@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.141 2005/01/19 20:27:34 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.142 2005/01/19 20:40:32 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -211,6 +211,7 @@ def plotruninfo():
 # with one that prints informative text at the bottom of each frame just
 # before the normal gist fma is called. Also created are alternate (Basis
 # like) names for fma and redraw.
+gistplg = plg
 gistfma = fma
 gisthcp = hcp
 def fma(legend=1):
@@ -250,49 +251,17 @@ nf = fma
 sf = redraw
 
 ##########################################################################
-# Create the plotting routines. It is different in the serial and parallel
-# versions.
-if not lparallel:
-  def warpplp(y,x,linetype="none",marker="\1",msize=1.0,**kw):
-    "Plots particles, same as plg but with different defaults"
-    kw.setdefault('type',linetype)
-    kw['marker'] = marker
-    kw['msize'] = msize
-    if len(y) > 0: plg(y,x,**kw)
-  def warpplg(y,x,linetype="solid",**kw):
-    "Same as plg but with different defaults"
-    kw.setdefault('type',linetype)
-    if len(y) > 0: plg(y,x,**kw)
-else:
-  warpplp = plotpart
-  warpplg = plotarray
-
-# --- Plot particles
-circle = '\4'
-star = '\3'
-plus = '\2'
-point = '\1'
-def plp(y,x=None,linetype='none',marker="\1",msize=1.0,**kw):
-  """Plots particles, same as plg but with different defaults so it plots
-markers instead of lines"""
-  if len(y) == 0: return
-  kw.setdefault('type',linetype)
-  kw['marker'] = marker
-  kw['msize'] = msize
-  if x is not None:
-    plg(y,x,**kw)
-  else:
-    plg(y,**kw)
-
-##########################################################################
 # This routine allows plotting of multi-dimensioned arrays.
 # It replaces the plg from gist, which can only plot 1-d arrays.
-gistplg = plg
 def pla(y,x=None,linetype="solid",decomposed=0,**kw):
   """This comment is replaced with gistplg.__doc__. The linetype argument is
   only needed for backward compatibility."""
   kw.setdefault('type',linetype)
+  if type(y) in [FloatType,IntType]: y = [y]
+  if type(x) in [FloatType,IntType]: x = [x]
+  y = array(y)
   if x is not None:
+    x = array(x)
     # --- This is the only constraint on the input arrays.
     assert shape(x)[0]==shape(y)[0],\
       'The first dimensions of the two input arrays must be of the same length'
@@ -340,6 +309,43 @@ def pla(y,x=None,linetype="solid",decomposed=0,**kw):
 
 pla.__doc__ = gistplg.__doc__
 plg = pla
+
+##########################################################################
+# Create the plotting routines. It is different in the serial and parallel
+# versions.
+if not lparallel:
+  def warpplp(y,x,linetype="none",marker="\1",msize=1.0,**kw):
+    "Plots particles, same as plg but with different defaults"
+    kw.setdefault('type',linetype)
+    kw['marker'] = marker
+    kw['msize'] = msize
+    if len(y) > 0: gistplg(y,x,**kw)
+  def warpplg(y,x,linetype="solid",**kw):
+    "Same as plg but with different defaults"
+    kw.setdefault('type',linetype)
+    if len(y) > 0: gistplg(y,x,**kw)
+else:
+  warpplp = plotpart
+  warpplg = plotarray
+
+# --- Plot particles
+circle = '\4'
+star = '\3'
+plus = '\2'
+point = '\1'
+def plp(y,x=None,linetype='none',marker="\1",msize=1.0,**kw):
+  """Plots particles, same as plg but with different defaults so it plots
+markers instead of lines"""
+  if type(y) in [FloatType,IntType]: y = [y]
+  if type(x) in [FloatType,IntType]: x = [x]
+  if len(y) == 0: return
+  kw.setdefault('type',linetype)
+  kw['marker'] = marker
+  kw['msize'] = msize
+  if x is not None:
+    plg(y,x,**kw)
+  else:
+    plg(y,**kw)
 
 # --- Plot history data. Convenience function that is only needed until
 # --- the 'limited' capability is implemented.
