@@ -25,7 +25,7 @@ import socket
 import time
 import re
 import md5
-monitor_version = "$Id: monitor.py,v 1.5 2003/12/02 02:39:57 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.6 2003/12/04 23:24:11 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -61,15 +61,26 @@ Creates a monitor for a running job.
     self.md5passwd = md5.new(passwd)
     self.hexdigestpasswd = self.md5passwd.hexdigest()
     self.port = port
-    self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    self.sock.bind(("",port))
-    self.sock.getsockname()
-    self.sock.listen(1)
-    self.sock.setblocking(0)
+    self.initializesocket()
     self.client = []
     self.gettingcommands = 0
-    installafterfs(self.checksocket)
-    installafterstep(self.getcommands)
+    if self.sock is not None:
+      installafterfs(self.checksocket)
+      installafterstep(self.getcommands)
+    else:
+      raise "Error: quiting since socket could not be created"
+
+  def initializesocket(self):
+    try:
+      self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+      self.sock.bind(("",self.port))
+      self.sock.getsockname()
+      self.sock.listen(1)
+      self.sock.setblocking(0)
+    except:
+      self.sock = None
+      print "Warning: socket could not be created"
+
   def checksocket(self):
     """
 Check if anyone has opened the port. If so, get the socket and set up
@@ -85,13 +96,19 @@ commands, then don't do anything.
       if self.client: self.client.close()
       self.client = []
       return
-    self.sock.setblocking(1)
-    #self.sock.setblocking(0)
-    # --- Not sure why this first send is needed, but it doesn't seem to 
-    # --- work if it is not done, especially if the passwd is not ok.
-    socketsend(self.client,'0')
-    socketsend(self.client,self.hexdigestpasswd)
-    passwdok = socketrecv(self.client)
+    passwdok = 0
+    try:
+      # --- Catch all exceptions so running job isn't interrupted if a problem
+      # --- occurs.
+      self.sock.setblocking(1)
+      #self.sock.setblocking(0)
+      # --- Not sure why this first send is needed, but it doesn't seem to 
+      # --- work if it is not done, especially if the passwd is not ok.
+      socketsend(self.client,'0')
+      socketsend(self.client,self.hexdigestpasswd)
+      passwdok = socketrecv(self.client)
+    except:
+      pass
     if passwdok == 'ok':
       self.lspecialsave = top.lspecial
       top.lspecial = 1
@@ -99,12 +116,19 @@ commands, then don't do anything.
       self.ncallsave = top.ncall
       return
     else:
-      print "Access not authorized"
-     #socketsend(self.client,"Access not authorized")
-      self.sock.setblocking(0)
-      self.client.close()
+      print "Error"
+      try:
+        socketsend(self.client,"Error")
+      except:
+        pass
+      try:
+        self.sock.setblocking(0)
+        self.client.close()
+      except:
+        pass
       self.client = []
       return
+
   def getcommands(self):
     """
 Get commands from a remote job. Checks if a client socket has been created,
@@ -114,38 +138,56 @@ and if so, get commands from it.
     import __main__
     if self.client:
       print "Ready for input."
-      socketsend(self.client,"Ready for input.")
-      self.gettingcommands = 1
       done = false
+      try:
+        socketsend(self.client,"Ready for input.")
+        self.gettingcommands = 1
+      except:
+        print "Problem with socket - continuing job"
+        done = true
+
+      # --- Continue receiving commands until user finishes.
       while not done:
+
+        # --- Get the command, check for errors in the socket.
         try:
           comm = socketrecv(self.client)
-        except:
+        except socket.error:
+          print "Problem with socket - continuing job"
           break
+
         if comm == "EOF":
+          # --- The user has finished.
           done = true
-          print "Continuing"
-          socketsend(self.client,"Continuing")
-        elif comm == "exec":
-          try:
-            socketsend(self.client,"go")
-            comm = socketrecv(self.client)
-            print 'exec('+comm+')'
-          except:
-            break
-          try:
-            exec(comm,__main__.__dict__)
-            socketsend(self.client,"OK")
-          except:
-            socketsend(self.client,"Error")
+          result = "Continuing"
         else:
           try:
-            print 'eval('+comm+')'
+            # --- First, try to evaluate the command
             rrr = eval(comm,__main__.__dict__)
-            print rrr
-            socketsend(self.client,repr(rrr))
+            print 'eval('+comm+')'
+            result = repr(rrr)
+          except SyntaxError:
+            # --- If there was a syntax error, try to exec it.
+            # --- The error might mean that this is an assignment.
+            # --- Still, catch any errors in case there really are syntax
+            # --- or other errors in the command.
+            print 'exec('+comm+')'
+            try:
+              exec(comm,__main__.__dict__)
+              result = "OK"
+            except:
+              result = "Error"
           except:
-            socketsend(self.client,"Error")
+            result = "Error"
+
+        # --- Print the result and send it back to the client.
+        print result
+        try:
+          socketsend(self.client,result)
+        except socket.error:
+          print "Problem with socket - continuing job"
+          break
+
         # --- Handle any gist events
         try:
           v = gist.__version__
@@ -153,10 +195,14 @@ and if so, get commands from it.
           pyg_idler()
         except:
           ygdispatch()
+
       # --- When done, release the socket and return some variables
       # --- back to normal.
       self.client.close()
-      self.sock.setblocking(0)
+      try:
+        self.sock.setblocking(0)
+      except:
+        pass
       self.client = []
       top.lspecial = self.lspecialsave
       top.maxcalls = self.maxcallssave
@@ -176,23 +222,10 @@ Creates a monitor for a running job.
 ###########################################################################
 # --- Create functions for client side
 
-# --- Send command to eval
-def sendeval(s):
-  global _sock
-  socketsend(_sock,s)
-  print socketrecv(_sock)
-
-# --- Send command to exec
-def sendexec(s):
-  global _sock
-  socketsend(_sock,'exec')
-  r = socketrecv(_sock)
-  socketsend(_sock,s)
-  print socketrecv(_sock)
-
 # --- Send continue command
 def sendcont():
-  sendeval('EOF')
+  socketsend(_sock,'EOF')
+  print socketrecv(_sock)
 
 # --- Reads command from stdin and sends them off. Assumes that anything
 # --- containing an '=' should be exec'ed, otherwise eval'ed. That
@@ -203,7 +236,8 @@ def sendcommands():
       s = raw_input('+++ ')
     except EOFError:
       try:
-        sendeval('EOF')
+        socketsend(_sock,'EOF')
+        print socketrecv(_sock)
       except socket.error:
         pass
       break
@@ -211,14 +245,17 @@ def sendcommands():
       if not s:
         pass
       elif s == 'EOF':
-        sendeval('EOF')
+        socketsend(_sock,'EOF')
+        print socketrecv(_sock)
         break
-      elif re.search('=',s):
-        sendexec(s)
       elif s[:6] == 'print ':
-        sendeval(s[6:])
+        # --- Print is special since normally the quantity would only be
+        # --- printed to the output of the remotely running job.
+        socketsend(_sock,s[6:])
+        print socketrecv(_sock)
       else:
-        sendeval(s)
+        socketsend(_sock,s)
+        print socketrecv(_sock)
     except socket.error:
       break
 
@@ -254,7 +291,7 @@ Make a connection to a running job with a monitor.
     socketsend(_sock,'ok')
   else:
     socketsend(_sock,'nope')
-    print "Access not authorized"
+    print "Error"
     _sock.close()
     return
   print socketrecv(_sock)
