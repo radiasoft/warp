@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.7 $, $Date: 2001/10/22 17:12:46 $
+#@(#) File FRZ.V, version $Revision: 3.8 $, $Date: 2002/03/14 19:19:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.7 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.8 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -36,18 +36,20 @@ phikold(0:nz)             _real        #  FT of phi at old time step for C
 err1(0:nr,0:nz)           _real
 
 *********** FRZmgrid:
-mgridrz_accuracy          real /1.e-8/  # average accuracy of multigrid solver
+mgridrz_accuracy          real /1.e-3/  # average accuracy of multigrid solver
 mgridrz_ncmax             integer /100/ # maximum number of full multigrid 
                                         # cycles
-mgridrz_npre              integer /2/   # number of relaxations steps before 
+mgridrz_npre              integer /4/   # number of relaxations steps before 
                                         # coarsening, in multigrid solver
-mgridrz_npost             integer /2/   # number of relaxations steps after 
+mgridrz_npost             integer /4/   # number of relaxations steps after 
                                         # coarsening, in multigrid solver  
 mgridrz_ncycles           integer /2/   # number of multigrid cycles per level
 mgridrz_nlevels_max       integer /100/ # maximum number of multigrid levels
 mgridrz_nrecurs_min       integer /1/   # minimum level for multigrid recursion
 mgridrz_nmeshmin          integer /8/   # minimum number of meshes in ech direction at coarsest level
-mgridrz_sub_accuracy      real /1.e-4/  # average accuracy for a sublevel
+mgridrz_mgparam           real /1.8/    # SOR parameter
+mgridrz_mgiters           real /0/      # actual number of iterations for a solve
+mgridrz_sub_accuracy      real /1.e-1/  # average accuracy for a sublevel
 mgridrz_deform            logical /.false./ # flag for use of elliptic deformation
 mgridrz_nz                integer       # 
 mgridrz_xfact(0:mgridrz_nz) _real         # array for deformation factor in X
