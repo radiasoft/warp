@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.157 $, $Date: 2004/06/24 20:56:06 $
+c@(#) File W3D.F, version $Revision: 3.158 $, $Date: 2004/06/29 06:51:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3640,7 +3640,7 @@ c     --- For both algorithms
 
 c  Set up offset array for vectorized deposition:
 
-      if (moff(4) /= (nx+1)*(ny+1)) then
+c     if (moff(4) /= (nx+1)*(ny+1)) then
         moff(0) = 0
         moff(1) = 1
         moff(2) = nx+1
@@ -3649,7 +3649,7 @@ c  Set up offset array for vectorized deposition:
         moff(5) = (nx+1)*(ny+1)+1
         moff(6) = (nx+1)*(ny+1)+nx+1
         moff(7) = (nx+1)*(ny+1)+nx+2
-      endif
+c     endif
 
       g = wght * q / (dx * dy * dz)
       dxi = 1./dx
