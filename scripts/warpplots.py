@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.72 2002/02/22 19:57:48 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.73 2002/03/07 20:42:00 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -908,6 +908,7 @@ def ppgeneric_doc(x,y):
   - filled=0: when true, plot filled contours (assumes contours is set)
   - ccolor='fg': contour color (when not filled)
   - cellarray=0: when true, plot grid as cell array
+  - centering='node': centering of cells with cellarray, other option are 'cell'                      and 'old' (for old incorrect scaling)
   - ctop=240, cmin=minnd(grid), cmax=maxnd(grid): control palette of cellarray
   - ldensityscale=0: when true, scale the density by its max.
   - view=1: view window to use (experts only)
@@ -937,7 +938,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
                 'contours':None,'filled':0,'ccolor':'fg',
-                'cellarray':0,'ctop':199,
+                'cellarray':0,'centering':'node','ctop':199,
                 'cmin':None,'cmax':None,
                 'ldensityscale':0,
                 'view':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
@@ -973,6 +974,8 @@ Note that either the x and y coordinates or the grid must be passed in.
   assert (type(slope) != StringType),"slope must be a number"
   assert (zz is None) or (grid is None),\
          "only one of zz and grid can be specified"
+  assert (centering == 'node' or centering == 'cell' or centering == 'old'),\
+         "centering must take one of the values 'node', 'cell', or 'old'"
 
   # --- If there are no particles and no grid to plot, just return
   if type(x) == ArrayType and type(y) == ArrayType: np = globalsum(len(x))
@@ -1129,11 +1132,27 @@ Note that either the x and y coordinates or the grid must be passed in.
             color=ccolor,contours=contours,filled=filled)
 
   # --- Make cell-array plot. This also is done early since it covers anything
-  # --- done before it.
+  # --- done before it. The min and max are adjusted so that the patch for
+  # --- each grid cell has the correct centering.
   if cellarray:
     if cmin is None: cmin = minnd(grid1)
     if cmax is None: cmax = maxnd(grid1)
-    pli(transpose(grid1),xmin,ymin,xmax,ymax,top=ctop,cmin=cmin,cmax=cmax)
+    if centering == 'node':
+      xminc = xmin
+      xmaxc = xmax + dx
+      yminc = ymin
+      ymaxc = ymax + dy
+    elif centering == 'cell':
+      xminc = xmin - dx/2.
+      xmaxc = xmax + dx/2.
+      yminc = ymin - dy/2.
+      ymaxc = ymax + dy/2.
+    elif centering == 'old':
+      xminc = xmin
+      xmaxc = xmax
+      yminc = ymin
+      ymaxc = ymax
+    pli(transpose(grid1),xminc,yminc,xmaxc,ymaxc,top=ctop,cmin=cmin,cmax=cmax)
 
   # --- Plot particles
   if particles:
