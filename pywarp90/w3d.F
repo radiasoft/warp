@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.60 $, $Date: 2002/06/28 22:20:06 $
+c@(#) File W3D.M, version $Revision: 3.61 $, $Date: 2002/07/17 16:09:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -270,13 +270,13 @@ c     curr = 0.
         call get_rho_rz(rho(0,0,0),nx,nz,1,0)
       end if
 c  Set up for injection
-      if (inject .gt. 0) call injctint
+      if (inject > 0) call injctint
 
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
 
       npdamp = 1
-      if (eomdamp .ne. 0.) npdamp = npmax
+      if (eomdamp /= 0.) npdamp = npmax
       call gallot("Damped_eom", 0)
 
 c  Create the dynamic arrays for "window" moments
@@ -286,7 +286,7 @@ c  Create the dynamic arrays for "window" moments
       zwindows(2,0) = zmmax
       nzwind = 0
       do iwin = 1, NWINDOWS
-         if (zwindows(1,iwin) .ne. zwindows(2,iwin)) nzwind = nzwind + 1
+         if (zwindows(1,iwin) /= zwindows(2,iwin)) nzwind = nzwind + 1
       enddo
       call gallot("Win_Moments", 0)
 
@@ -308,16 +308,16 @@ c  Create the dynamic arrays for lab frame moments
       call remark(" ---  Allocating Lab_Moments")
       nlabwn = 0
       do iwin = 1, MAXNUMLW
-         if (zlw(iwin) .ne. 0.) nlabwn = nlabwn + 1
+         if (zlw(iwin) /= 0.) nlabwn = nlabwn + 1
       enddo
       if (nlabwn == 0) iflabwn = 0
-      if (iflabwn .ne. 0) then
+      if (iflabwn /= 0) then
 c       --- Note that the original code used abs(nhist), but it was giving
 c       --- the HPUX f90 compiler fits. The negative nhist feature was
 c       --- made obsolete anyway.
         if (itlabwn == 0) itlabwn = max(1,nhist)
         if (ntlabwn == 0) then
-          if (vbeam*dt .ne. 0.) then
+          if (vbeam*dt /= 0.) then
             ntlabwn = (zmmax-zmmin)/(vbeam*dt*itlabwn) +.5
           else
             call remark("WARNING: Unable to calculate lab windows array sizes")
@@ -325,7 +325,7 @@ c       --- made obsolete anyway.
             ntlabwn = 1
           endif
         endif
-        if (iflabwn .ne. 0) call gallot("Lab_Moments", 0)
+        if (iflabwn /= 0) call gallot("Lab_Moments", 0)
       endif
 
 c  Create the scratch arrays for phase space plots (permanent, for now)
@@ -347,13 +347,13 @@ c  Choose which particles will be plotted in "subset" plots
 
 c  Setup history mechanism
 
-      if (nhist .gt. 0) then
+      if (nhist > 0) then
 c       --- create the dynamic arrays for history data; set pointer into them
         call remark(" ---  Allocating history arrays")
         if (lenhist == 0) lenhist = min ( nt/nhist + 1, 100)
         call gallot("Hist", 0)
         jhist = -1
-      elseif (nhist .lt. 0) then
+      elseif (nhist < 0) then
 c       --- call interpreter routine to setup hst package
 c       --- setup_hst is in bas.wrp
         call execuser("setup_hst")
@@ -444,7 +444,7 @@ c  Have we reached the end of the run or run out of particles?
          call remark("w3dexe: problem completed.")
          if (lw3dtimesubs) timew3dexe = timew3dexe + wtime() - substarttime
          return
-      elseif (nplive .le. 0) then
+      elseif (nplive <= 0) then
 c Check if there are any live particles left.
 c If on first time step, set nplive to one and continue running since if using
 c injection, there may not be any particles yet but still want to run.
@@ -604,8 +604,8 @@ c  Set logical flags to determine if "always" or "seldom" phase space
 c  plots, restart dumps, final timesteps, and moment accumulations should 
 c  be done at the end of this step.
 
-      lfinishd = (it .ge. nt) .or. (time .ge. tstop*(1.-MACHEPS)) .or.
-     &                             (zbeam .ge. zstop)
+      lfinishd = (it >= nt) .or. (time >= tstop*(1.-MACHEPS)) .or.
+     &                             (zbeam >= zstop)
       lalways  = thisstep (it           ,itplalways,NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzplalways,NCONTROL) .or.
      &           thisstep (it           ,itplfreq,  NCONTROL) .or.
@@ -616,12 +616,16 @@ c  be done at the end of this step.
      &           thiszbeam(zbeaml,zbeamr,zzplps,    NCONTROL)
       lmoments = thisstep (it           ,itmomnts,NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzmomnts,NCONTROL)
-      lhist    = mod(it,nhist) .eq. 0
-      ldump    = mod(it, itdump) .eq. 0
+      if (nhist /= 0) then
+        lhist  = mod(it,nhist) == 0
+      else
+        lhist  = .false.
+      endif
+      ldump    = mod(it, itdump) == 0
       llabwn   = dolabwn()
       lspecial = (lfinishd .or. lalways .or. lseldom .or. ldump .or.
      &            lmoments .or. lhist .or. llabwn .or. llast .or.
-     &            (it .eq. 0) .or. allspecl)
+     &            (it == 0) .or. allspecl)
 
 c  Set the "gap" electric field. 
 
@@ -830,9 +834,9 @@ c  Apply axial confining ears for finite beam.
       if (ifeears == 1) then
         zs = (zimax - zimin)*straight*0.5
         do ip=1,np
-          if ((zp(ip)-zbeam) .gt. zs) then
+          if ((zp(ip)-zbeam) > zs) then
             ez(ip) = ez(ip) + eears*(zp(ip) - zbeam - zs)
-          elseif ((zp(ip)-zbeam) .lt. -zs) then
+          elseif ((zp(ip)-zbeam) < -zs) then
             ez(ip) = ez(ip) + eears*(zp(ip) - zbeam + zs)
           endif
         enddo
@@ -843,7 +847,7 @@ c  axial confining ears for finite beam as a function of z
       if (ifeears == 2) then
         do ip=1,np
           iz = (zp(ip) - zbeam - zzmin)*dzzi
-          if (0 .le. iz .and. iz .le. nzzarr) then
+          if (0 <= iz .and. iz <= nzzarr) then
             wz = (zp(ip) - zbeam - zzmin)*dzzi - iz
             ez(ip) = ez(ip) + eearsofz(iz)*(1.-wz) + eearsofz(iz+1)*wz
           endif
@@ -853,21 +857,21 @@ c  axial confining ears for finite beam as a function of z
 c  uniform focusing forces
 
 c     --- radial electric field
-      if (dedr .ne. 0.) then
+      if (dedr /= 0.) then
         do ip=1,np
           ex(ip) = ex(ip) + dedr*xp(ip)
           ey(ip) = ey(ip) + dedr*yp(ip)
         enddo
       endif
 c     --- x- and y-electric fields
-      if ((dexdx .ne. 0.) .or. (deydy .ne. 0.)) then
+      if ((dexdx /= 0.) .or. (deydy /= 0.)) then
         do ip=1,np
           ex(ip) = ex(ip) + dexdx*xp(ip)
           ey(ip) = ey(ip) + deydy*yp(ip)
         enddo
       endif
 c     --- azimuthal magnetic field
-      if (dbdr .ne. 0.) then
+      if (dbdr /= 0.) then
         do ip=1,np
           bx(ip) = bx(ip) - dbdr*yp(ip)
           by(ip) = by(ip) + dbdr*xp(ip)
@@ -921,8 +925,8 @@ c     conversion factor to go from grid frame to beam frame
       do iz=izfsmin,izfsmax-1
         phiextun = 0.
         if (ifeears == 1) then
-          if (iz*dz+zz .lt. -zm) phiextun=eears*.5*(iz*dz+zz+zm)**2
-          if (iz*dz+zz .gt.  zm) phiextun=eears*.5*(iz*dz+zz-zm)**2
+          if (iz*dz+zz < -zm) phiextun=eears*.5*(iz*dz+zz+zm)**2
+          if (iz*dz+zz >  zm) phiextun=eears*.5*(iz*dz+zz-zm)**2
         elseif (ifeears == 2) then
 c         --- This is not quite right for the parallel version since
 c         --- the longitudinal extent of eearsofz (the same as the extent
@@ -930,7 +934,7 @@ c         --- of the particles) will not necessarily overlap the extent of
 c         --- the field solver.
           izb = (iz*dz+zz-zzmin)*dzzi
           wzb = (iz*dz+zz-zzmin)*dzzi - izb
-          if (0 .le. iz .and. iz .lt. nzzarr)
+          if (0 <= iz .and. iz < nzzarr)
      &      phiextun = eearsofz(izb)*(1. - wzb) + eearsofz(izb+1)*wzb
         endif
         do iy=0,ny
@@ -1089,12 +1093,12 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
         izg = (iz*dzz - zz)*dzi
         wzg = (iz*dzz - zz)*dzi - izg
 
-        if (0 .le. izg .and. izg .le. nz) then
+        if (0 <= izg .and. izg <= nz) then
           linechg(iz) = scrtch(izg,0)*dx*dy*(1. - wzg)
         else
           linechg(iz) = 0.
         endif
-        if (0 .le. izg+1 .and. izg+1 .le. nz) then
+        if (0 <= izg+1 .and. izg+1 <= nz) then
           linechg(iz) = linechg(iz) + scrtch(izg+1,0)*dx*dy*wzg
         endif
 
@@ -1169,7 +1173,7 @@ c     The ends (beyond the beam) are set with the E at the end of the beam
           eearsofz(iz) = - ezax(nzlb)
         enddo
 c       --- Add on linear pressure term
-        if (emitlong .ne. 0.) then
+        if (emitlong /= 0.) then
           eearsprs = - sm(1)*vbeam**2*emitlong**2/(sq(1)*zm**4)
           do iz=0,nzma
             eearsofz(iz) = eearsofz(iz) + eearsprs*(zplmesh(iz) + zs)
@@ -1271,7 +1275,7 @@ c           --- Get E field for particles near the  injection surface.
              call inj_sete3d(ip,ipmin,xmmin,ymmin,zmmin,inj_dx,inj_dy,inj_dz,ex,ey,ez)
             endif
 c           --- Get transverse E field for particles near any defined apertures.
-            if (napertures .gt. 0)
+            if (napertures > 0)
      &        call sete3d_aperture(phi(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                             zgridprv,xmmin,ymmin,zmmin,zmmax,dx,dy,dz,
      &                             nx,ny,nz,ex,ey,l2symtry,l4symtry)
@@ -1287,7 +1291,7 @@ c           --- Zero out B field arrays
                bz(i) = 0.
             enddo
 c           --- Compute lag average for experimental damping algorithm
-            if (eomdamp .ne. 0.)
+            if (eomdamp /= 0.)
      &        call edamp (eomdamp,it,itdamp,center,ip,ex,ey,ez,
      &                    exold(ipmin),eyold(ipmin),ezold(ipmin),
      &                    exlag(ipmin),eylag(ipmin),ezlag(ipmin))
@@ -1474,7 +1478,7 @@ c       --- Calculate current
 c----------------------------------------------------------------------------
       if (center == "fullv" .or. center == "halfv") then
 c       --- Inject more particles. This addes particles and alters ins and nps.
-        if (inject .gt. 0) call inject3d(1)
+        if (inject > 0) call inject3d(1)
 
 c       --- Apply particle boundary conditions
         call zpartbnd(zmmax,zmmin,dz,zgrid)
@@ -1879,8 +1883,8 @@ c  Main loop to set e, and perhaps update old and lag qtys
 
       if (center == "synchv") then
 c        --- only modify e if late enough that lags are well established
-         if (it .ge. itdamp) then
-            if (eomdamp .gt. 0.) then
+         if (it >= itdamp) then
+            if (eomdamp > 0.) then
 c              --- second order scheme
                do ip = 1, np
                   ex(ip) = 0.5 * ( (2.+0.5*eomdamp)*ex(ip) - exold(ip)
@@ -1901,7 +1905,7 @@ c              --- first order backward biased scheme
          endif
       else
 c        --- modify e and update old and lag qtys
-         if (eomdamp .gt. 0.) then
+         if (eomdamp > 0.) then
 c           --- second order scheme
             do ip = 1, np
                exip = ex(ip)
@@ -1935,7 +1939,7 @@ c           --- first order backward biased scheme
             enddo
          endif
 c        --- don't use modified field if too early in run
-         if (it .lt. itdamp+1) then
+         if (it < itdamp+1) then
             do ip = 1, np
                ex(ip) = exold(ip)
                ey(ip) = eyold(ip)
@@ -2058,7 +2062,7 @@ c  local arrays are SAVE'd. nnxy is added to all offsets to account for
 c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
 c  of phi(0,0,0) is equivalent to phi1d(nnxy).
 
-      if (noff(1) .ne. -nnxy) then
+      if (noff(1) /= -nnxy) then
          noff(1)  = nnxy - nnxy
          noff(2)  = nnxy - nnxy   + 1
          noff(3)  = nnxy - nnxy   + nnx
@@ -2190,8 +2194,8 @@ c          --- for points off the axis is zero.
 c          --- Adjust sign of E field for appropriate quadrant.
            xsign = tdxi
            ysign = tdyi
-           if (xp(ip) .lt. 0.) xsign = sx*tdxi
-           if (yp(ip) .lt. 0.) ysign = sy*tdyi
+           if (xp(ip) < 0.) xsign = sx*tdxi
+           if (yp(ip) < 0.) ysign = sy*tdyi
 
           ex(ip)=xsign*(u0*v0*w0*(phi1d(noff( 7)+ind0+ox)-phi1d(noff( 9)+ind0))
      &                + u1*v0*w0*(phi1d(noff( 8)+ind0   )-phi1d(noff(10)+ind0))
@@ -2404,8 +2408,8 @@ c         --- special loop symmetry is used
 c           --- Adjust sign of E field for appropriate quadrant.
             xsign = +1.
             ysign = +1.
-            if (xp(ip) .lt. 0.) xsign = sx
-            if (yp(ip) .lt. 0.) ysign = sy
+            if (xp(ip) < 0.) xsign = sx
+            if (yp(ip) < 0.) ysign = sy
 
             ex(ip) = xsign*(u0*v0*w0*selfe(1,i  ,j  ,k  )
      &                    + u1*v0*w0*selfe(1,i+1,j  ,k  )
@@ -2460,7 +2464,7 @@ c Calculate the self-E via finite differences of phi.
       if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Do some checking first.
-      if (nx .ne. nx_selfe .or. ny .ne. ny_selfe .or. nz .ne. nz_selfe) then
+      if (nx /= nx_selfe .or. ny /= ny_selfe .or. nz /= nz_selfe) then
         call remark("ERROR: the dimensions of phi and selfe must be the same")
         call kaboom(1)
       endif
@@ -2603,7 +2607,7 @@ c  Set npm to loop through all possible particles
 c  If not loading any particles, skip the next big section, but still calculate
 c  values for sq and sm.  For parallel version, also call reorg_particles to
 c  get a value for sw.
-      if (npm .gt. 0) then
+      if (npm > 0) then
 
 c  Allocate scratch space for load
       call gallot("Setpwork3d",0)
@@ -2612,7 +2616,7 @@ c  Prepare for arbitrary particle distribution in z.  This coding will only
 c  load a beam approximately matching the distribution.  A gathering of
 c  the particles on a z mesh will not exactly reproduce the z distribution.
 c  This problem is being studied.
-      if (nzdist .gt. 0) then
+      if (nzdist > 0) then
 c       --- Find sum of zdist so it can be normalized
         sumzdist = 0.5*zdist(0)
         do iz=1,nzdist-1
@@ -2634,7 +2638,7 @@ c  Prepare for arbitrary particle distribution in r.  This coding will only
 c  load a beam approximately matching the distribution.  A gathering of
 c  the particles on a r mesh will not exactly reproduce the r distribution.
 c  This problem is being studied.
-      if (nrdist .gt. 0) then
+      if (nrdist > 0) then
         call gchange("InPart3d",0)
 c       --- Multiply rdist by r.
         do ir=0,nrdist
@@ -2691,7 +2695,7 @@ c       --- Resetting izz here and starting each particle with its previous
 c       --- value only works since the initial uniform z positions are
 c       --- monotinically increasing.  Using this feature greatly increases
 c       --- the speed of the code.
-        if (nzdist .gt. 0) izz = 0
+        if (nzdist > 0) izz = 0
 
 c       --- Calculate zoff, the axial offset of particles for processors, and
 c       --- ioff, the offset for the random number generators for processors.
@@ -2741,11 +2745,11 @@ c        --- load normalized z (0 < z < 1)
            enddo
 c          --- Transform the longitudinal positions to match the specified
 c          --- longitudinal distribution.
-           if (nzdist .gt. 0) then
+           if (nzdist > 0) then
              do ipp=k,i1
 c              --- Find what grid cell the particle is in.
 c              --- Note that the previous value of izz is used (see note above)
-               do while (zt(ipp-k+1) .gt. intzdist(izz+1))
+               do while (zt(ipp-k+1) > intzdist(izz+1))
                  izz = izz + 1
                enddo
 c              --- Do the transformation.  The transformation assumes a
@@ -2785,7 +2789,7 @@ c        --- zero vz if vthz is zero only the first time through
 c          --- set vtz to vthz*2 since vtz is vz_max - vz_bar for cigar
            vtz = 2.*vthz_s(is)
 c          --- load uzt with linear distribution (-.5 < uzt < .5)
-           if (vtz .ne. 0.) then
+           if (vtz /= 0.) then
              if (vzrandom == "pseudo") then
                do i=1,i1-k+1
                  uzt(i) = wranf() - .5
@@ -2830,7 +2834,7 @@ c          --- non-cigar load
 c          --- set vtz to vthz
            vtz = vthz_s(is)
 c          --- load uzt with gaussian distribution (mean 0, variance 1)
-           if (vtz .ne. 0.) then
+           if (vtz /= 0.) then
              if (vzrandom == "pseudo") then
                do i=1,i1-k+1
                  uzt(i) = rnorm()
@@ -2935,10 +2939,10 @@ c          --- use random numbers to load particles in polar coordinates
 
 c              --- Transform the radial positions to match the specified
 c              --- distribution.
-               if (nrdist .gt. 0) then
+               if (nrdist > 0) then
 c                --- Find what grid cell the particle is in.
                  irr = 0
-                 do while (rt(i) .gt. intrdist(irr+1))
+                 do while (rt(i) > intrdist(irr+1))
                    irr = irr + 1
                  enddo
 c                --- Do the transformation.  The transformation assumes a
@@ -2978,7 +2982,7 @@ c              --- Now convert radius and theta to x and y.
 c            --- carve into cylinder
              j=0
              do i=1,i1-k+1
-               if (xt(i)**2 + yt(i)**2 .lt. 1.) then
+               if (xt(i)**2 + yt(i)**2 < 1.) then
                  rt(i) = sqrt(xt(i)**2 + yt(i)**2)
                  tt(i) = atan2(yt(i),xt(i))
                  j=j+1
@@ -2996,7 +3000,7 @@ c            --- the same as in the uniform beam
                  ii = indx(i)
                  rp = sqrt(xt(ii)**2 + yt(ii)**2)
                  rpp = sqrt(0.5*sqrt(rp**2))
-                 if (rp .gt. 0.5) rpp = sqrt(1. - 0.5*sqrt(3. - 3.*rp**2))
+                 if (rp > 0.5) rpp = sqrt(1. - 0.5*sqrt(3. - 3.*rp**2))
                  xt(ii) = rpp*xt(ii)/rp*1.08
                  yt(ii) = rpp*yt(ii)/rp*1.08
                enddo
@@ -3008,7 +3012,7 @@ c            --- carve into normalized envelope
              r0 = max(a0_s(is),b0_s(is))
              do i=1,i1-k+1
                if ((xt(i)*bt(i))**2 + (yt(i)*at(i))**2
-     &                                .lt. (at(i)*bt(i)/r0)**2) then
+     &                                < (at(i)*bt(i)/r0)**2) then
                  j=j+1
                  indx(j) = i
                  xt(i) = xt(i)*r0/at(i)
@@ -3115,7 +3119,7 @@ c            --- put velocity into particle arrays
            enddo
 
 c          --- add sinusoidal perturbation to uzp
-           if (vzperamp .ne. 0.) then
+           if (vzperamp /= 0.) then
              do i=ip+1,ip+j
                uzp(i) = uzp(i) + vzperamp*sin(2.*pi*zp(i)/vzperlam + vzperphs)
              enddo
@@ -3200,7 +3204,7 @@ c            --- put velocity into particle arrays
            enddo
 
 c          --- add sinusoidal perturbation to uzp
-           if (vzperamp .ne. 0.) then
+           if (vzperamp /= 0.) then
              do i=ip+1,ip+i1-k+1
                uzp(i) = uzp(i) + vzperamp*sin(2.*pi*zp(i)/vzperlam + vzperphs)
              enddo
@@ -3232,10 +3236,10 @@ c     --- end of if checking for positive npm
       endif
 
 c     --- Find maximum of zdist, which is used to scale sw.  See below.
-      if (nzdist .gt. 0) then
+      if (nzdist > 0) then
         zdistmax = nrmzdist(0)
         do iz=1,nzdist
-          if (nrmzdist(iz) .gt. zdistmax) zdistmax = nrmzdist(iz)
+          if (nrmzdist(iz) > zdistmax) zdistmax = nrmzdist(iz)
         enddo
       endif
 
@@ -3244,7 +3248,7 @@ c     --- calculate values for sm, sq, and sw for each species.
         sq(is) = zion_s(is) * echarge
         sm(is) = aion_s(is) * amu
         zlen = zimax_s(is) - zimin_s(is)
-        if (vbeam_s(is) .ne. 0. .and. nps(is) .ne. 0) then
+        if (vbeam_s(is) /= 0. .and. nps(is) /= 0) then
           sw(is)=ibeam_s(is)*zlen*sp_fract(is)/
      &                   (vbeam_s(is)*echarge*zion_s(is)*nps(is))
         else
@@ -3262,7 +3266,7 @@ c       --- sum of zdist and the the product of the max of zdist and the
 c       --- number of grid points in zdist.  That is the ratio of the loaded
 c       --- linecharge and what the linecharge would have been with a uniform
 c       --- distribution.
-        if (nzdist .gt. 0) then
+        if (nzdist > 0) then
           sw(is) = sw(is)/(zdistmax*nzdist)
         endif
 
@@ -3326,7 +3330,7 @@ c--------------------------------------
 
 c  Set up offset array for vectorized deposition:
 
-      if (moff(4) .ne. (nx+1)*(ny+1)) then
+      if (moff(4) /= (nx+1)*(ny+1)) then
         moff(0) = 0
         moff(1) = 1
         moff(2) = nx+1
@@ -3809,7 +3813,7 @@ c injection.  The third part is for space-charge limited injection.
       if (lrelativ) clightsqi = 1./clight**2
 
 c Print warning if vbeamfrm is not zero
-      if (abs(vbeamfrm) .gt. 0.) then
+      if (abs(vbeamfrm) > 0.) then
        call remark("WARNING: vbeamfrm is not zero and injection is being used.")
        call remark("A core dump will result if the emitting surface moves off of the field grid.")
       endif
@@ -4322,7 +4326,7 @@ c               --- Mesh location
 
 c               --- Only inject particles if within 2 grid cells of the source
                 if (((xm-xinj)*(binj+2.*inj_dy))**2 +
-     &              ((ym-yinj)*(ainj+2.*inj_dx))**2 .gt.
+     &              ((ym-yinj)*(ainj+2.*inj_dx))**2 >
      &              ((ainj+2.*inj_dx)*(binj+2.*inj_dy))**2) cycle
 c               --- Only inject from cells within the grid
 c                if (inj_grid(ix,iy,inj_ij) < zinjmin-inj_dz .or.
@@ -4695,8 +4699,8 @@ c Injection off of a tranverse facing surface.
 c Uses any of the three methods implemented, based off the value of
 c the variable 'inject'.
 
-      if (ntinj .gt. 0 .and.
-     &    1 .le. inject .and. inject .le. 3) then
+      if (ntinj > 0 .and.
+     &    1 <= inject .and. inject <= 3) then
 
         if (itask == 1) then
 
@@ -4893,7 +4897,7 @@ c         --- gone through 'synchv' so position and velocity are at same time
 c         --- level.
 
 c         --- make injected particles live particles
-          if (ntinj .gt. 0) then
+          if (ntinj > 0) then
             do is=1,ns
               ins(is) = ins(is) - ntinject(is)
               nps(is) = nps(is) + ntinject(is)
@@ -5176,7 +5180,7 @@ c timestep for each particle upon emission.
 c Check if the voltages were specified.  If so, set so conductor will be
 c set up for source.
 c      do ij=1,ninject
-c        if (vinject(ij) .ne. 0) lvinject = .true.
+c        if (vinject(ij) /= 0) lvinject = .true.
 c      enddo
 
 c Set vbeamfrm to zero so that the grid does not move off of the source,
@@ -5609,7 +5613,7 @@ c     --- Do the smoothing.
           do ix = 0,nx
             rrsq1 = (ix*dx + xmmin - xinj)**2*ainjsqi1 +
      &              (iy*dy + ymmin - yinj)**2*binjsqi1
-            if (rrsq1 < 1. .and. (ix .ne. ix0 .or. iy .ne. iy0)) then
+            if (rrsq1 < 1. .and. (ix /= ix0 .or. iy /= iy0)) then
               ixm1 = ix - 1
               ixp1 = ix + 1
               iym1 = iy - 1
@@ -5711,9 +5715,9 @@ c         --- source is probably not needed. It has been removed since there
 c         --- are some cases which this check is incorrect - for example
 c         --- in a source with a diverging beam. The particles spread out
 c         --- beyond the edge of the source and would not pass this check.
-c    &    (((xp(ip)-xinj)*binject(ij))**2 + ((yp(ip)-yinj)*ainject(ij))**2 .le.
+c    &    (((xp(ip)-xinj)*binject(ij))**2 + ((yp(ip)-yinj)*ainject(ij))**2 <=
 c    &    (ainject(ij)*binject(ij))**2) .and.
-c    &    (((xp(ip)-xinj)*binjmin(ij))**2 + ((yp(ip)-yinj)*ainjmin(ij))**2 .ge.
+c    &    (((xp(ip)-xinj)*binjmin(ij))**2 + ((yp(ip)-yinj)*ainjmin(ij))**2 >=
 c    &    (ainjmin(ij)*binjmin(ij))**2) ) then
 
 c         --- angle of point in transverse plane
@@ -6155,8 +6159,8 @@ c           --- special loop symmetry is used
 c               --- Adjust sign of E field for approiate quadrant.
                 xsign = 1.
                 ysign = 1.
-                if (xp(ip) .lt. 0.) xsign = sx
-                if (yp(ip) .lt. 0.) ysign = sy
+                if (xp(ip) < 0.) xsign = sx
+                if (yp(ip) < 0.) ysign = sy
 
                 ex(ip) = xsign*(u0*v0*w0*aper_ex(i  ,j  ,k-izs  ,ia)
      &                        + u1*v0*w0*aper_ex(i+1,j  ,k-izs  ,ia)
