@@ -119,6 +119,11 @@ def gather(obj,dest=0):
     mpi.send(obj,dest)
     return obj
     
+# Gather an object from all processors into a list and scatter back to all
+def gatherall(obj):
+  obj = gather(obj)
+  return mpi.bcast(obj)
+    
 # General gatherarray which returns an array object combining the
 # first dimension.
 def gatherarray(a,root=0):
