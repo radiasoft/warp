@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.76 $, $Date: 2003/06/24 22:44:50 $
+c@(#) File F3D.M, version $Revision: 3.77 $, $Date: 2003/07/16 00:33:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -256,6 +256,7 @@ c=============================================================================
      &                   lx,ly,lzfull,nx,ny,nz,nzfull,w,xywork,zwork,
      &                   ibc,l2symtry,l4symtry)
       use Constant
+      use Timers
       use GridBoundary3d
 #ifdef MPIPARALLEL
       use Parallel
@@ -542,6 +543,8 @@ c ----------------------------------------------------------------------------
 
       endif
 
+!$OMP PARALLEL PRIVATE(xywork,zwork,aa,bb,pid)
+
 c ----------------------------------------------------------------------------
 c  Do the forward transform
 c ----------------------------------------------------------------------------
@@ -556,6 +559,7 @@ c  at nz for the single task's scratch, and so need no other.
       if (l4symtry) then
 c       factor of .5dx for cosqx and .5*dy for cosqy
         norm = .125*dx*dy*dz
+!$OMP DO
         do iz = 0, nz-1
 c          --- Normalize the array
            do iy = 0, ny-1
@@ -567,9 +571,11 @@ c          --- Invoke the transform routines for the current z-slice
            call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,-1)
            call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
+!$OMP END DO
       else if (l2symtry) then
 c       factor of .5*dy for cosqy
         norm = .25*dx*dy*dz
+!$OMP DO
         do iz = 0, nz-1
 c          --- Normalize the array
            do iy = 0, ny-1
@@ -581,8 +587,10 @@ c          --- Invoke the transform routines for the current z-slice
            call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
            call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
+!$OMP END DO
       else
         norm = .5 * dx * dy * dz
+!$OMP DO
         do iz = 0, nz-1
 c          --- Normalize the array
            do iy = 0, ny-1
@@ -594,6 +602,7 @@ c          --- Invoke the transform routines for the current z-slice
            call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
            call vsfty(a(0,0,iz),xywork,w(icpy),w(icmy),nx,ny,0)
         enddo
+!$OMP END DO
       endif
 
 c  Here we perform the periodic transforms in z, two y's at a time.
@@ -640,6 +649,7 @@ c  at nz for the single task's scratch, and so need no other.
       if (l4symtry) then
 c       factor of .5*dx for cosqx and .5*dy for cosqy
         norm = .25*dx*dy
+!$OMP DO
         do iz = 0, nz-1
 c          --- Normalize the array
            do iy = 0, ny-1
@@ -651,9 +661,11 @@ c          --- Invoke the transform routines for the current z-slice
            call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,-1)
            call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
+!$OMP END DO
       else if (l2symtry) then
 c       factor of .5*dy for cosqy
         norm = .5*dx*dy
+!$OMP DO
         do iz = 0, nz-1
 c          --- Normalize the array
            do iy = 0, ny-1
@@ -665,8 +677,10 @@ c          --- Invoke the transform routines for the current z-slice
            call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
            call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
+!$OMP END DO
       else
         norm = dx * dy
+!$OMP DO
         do iz = 0, nz-1
 c          --- Normalize the array
            do iy = 0, ny-1
@@ -678,6 +692,7 @@ c          --- Invoke the transform routines for the current z-slice
            call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
            call vsfty(a(0,0,iz),xywork,w(icpy),w(icmy),nx,ny,0)
         enddo
+!$OMP END DO
       endif
 
       endif
@@ -845,6 +860,7 @@ c  inverse transform and normalization in xy.  We should multitask this loop.
       if (l4symtry) then
 c       factor of .25/lx for cosqx and .25/ly for cosqy
         norm = .0625/(lx*ly*lzfull)
+!$OMP DO
         do iz = 0, nz-1
 c          --- Invoke the inverse transform routines for the current z-slice
            call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
@@ -863,9 +879,11 @@ c          --- Normalize the array
              enddo
            enddo
         enddo
+!$OMP END DO
       else if (l2symtry) then
 c       factor of 2./lx for vsftx and .25/ly for cosqy
         norm = .5/(lx*ly*lzfull)
+!$OMP DO
         do iz = 0, nz-1
 c          --- Invoke the inverse transform routines for the current z-slice
            call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
@@ -885,8 +903,10 @@ c          --- Normalize the array
              enddo
            enddo
         enddo
+!$OMP END DO
       else
         norm = 4. / (lx * ly * lzfull)
+!$OMP DO
         do iz = 0, nz-1
 c          --- Invoke the transform routines
            call vsfty ( a(0,0,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
@@ -904,6 +924,7 @@ c          --- Normalize the array, and set boundary elements to zero
              enddo
            enddo
          enddo
+!$OMP END DO
       endif
 
 c  Enforce periodic bc's in z (now done in w3d)
@@ -921,6 +942,7 @@ c  inverse transform and normalization in xy.  We should multitask this loop.
         if (l4symtry) then
 c         factor of .25/lx for cosqx and .25/ly for cosqy
           norm = .0625/(lx*ly)
+!$OMP DO
           do iz = 0, nz-1
 c            --- Invoke the inverse transform routines for the current z-slice
              call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
@@ -939,9 +961,11 @@ c            --- Normalize the array
                enddo
              enddo
           enddo
+!$OMP END DO
         else if (l2symtry) then
 c         factor of .25/ly for cosqy
           norm = .5/(lx*ly)
+!$OMP DO
           do iz = 0, nz-1
 c            --- Invoke the inverse transform routines for the current z-slice
              call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
@@ -961,8 +985,10 @@ c            --- Normalize the array
                enddo
              enddo
           enddo
+!$OMP END DO
         else
           norm = 4. / (lx * ly)
+!$OMP DO
           do iz = 0, nz-1
 c            --- Invoke the transform routines
              call vsfty ( a(0,0,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
@@ -980,6 +1006,7 @@ c            --- Normalize the array, and set boundary elements to zero
                enddo
              enddo
            enddo
+!$OMP END DO
 
         endif
 
@@ -1103,6 +1130,8 @@ c  Serial version
 
       endif
 
+!$OMP END PARALLEL
+
 c ----------------------------------------------------------------------------
 c  End of VPOIS3D
 c ----------------------------------------------------------------------------
@@ -1173,6 +1202,7 @@ c     --- different from last time (deallocating if needed).
       call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
      &          aux1,naux1,aux2,naux2)
  
+!$OMP DO FIRSTPRIVATE(norm)
       do iy = 0, ny-2+(1-esy), 2
 c       --- shift k-space origin to middle and apply normalization factor
 c       --- if non-zero.
@@ -1210,6 +1240,7 @@ c       --- do the transforms
         enddo
 
       enddo
+!$OMP END DO
 
       return
       end
@@ -1262,6 +1293,7 @@ c     --- different from last time (deallocating if needed).
       call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
      &          aux1,naux1,aux2,naux2)
 
+!$OMP DO FIRSTPRIVATE(norm)
       do iy = 0, ny-2+(1-esy), 2
 
         do iz = 0, nz-1
@@ -1299,6 +1331,7 @@ c       --- if non-zero.
           enddo
         endif
       enddo
+!$OMP END DO
 
       return
       end
@@ -1323,6 +1356,7 @@ c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
+!$OMP DO FIRSTPRIVATE(norm)
       do iy = 0, ny-2+(1-esy), 2
 c       --- shift k-space origin to middle and apply normalization factor
 c       --- if non-zero.
@@ -1359,6 +1393,7 @@ c       --- do the transforms
         enddo
 
       enddo
+!$OMP END DO
 
       return
       end
@@ -1375,6 +1410,7 @@ c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
+!$OMP DO FIRSTPRIVATE(norm)
       do iy = 0, ny-2+(1-esy), 2
 
         do iz = 0, nz-1
@@ -1411,6 +1447,7 @@ c       --- if non-zero.
           enddo
         endif
       enddo
+!$OMP END DO
 
       return
       end
@@ -1429,6 +1466,7 @@ c grid dimensions passed are not the true grid dimensions.
 
       integer(ISZ):: ikx,iky,ikz
 
+!$OMP DO
       do ikz = 0, nz-1
         do iky = ikymin, ny-esy
           do ikx = ikxmin, nx-esx
@@ -1436,6 +1474,7 @@ c grid dimensions passed are not the true grid dimensions.
           enddo
         enddo
       enddo
+!$OMP END DO
 
       return
       end
@@ -1450,6 +1489,7 @@ c grid dimensions passed are not the true grid dimensions.
 
       integer(ISZ):: ikx,iky,ikz
 
+!$OMP DO
       do ikz = 0, nz-1
         do iky = ikymin, ny-esy
           do ikx = ikxmin, nx-esx
@@ -1457,6 +1497,7 @@ c grid dimensions passed are not the true grid dimensions.
           enddo
         enddo
       enddo
+!$OMP END DO
 
       return
       end
@@ -1472,6 +1513,7 @@ c grid dimensions passed are not the true grid dimensions.
       integer(ISZ):: ikx,iky,ikz
       real(kind=8):: oneok
 
+!$OMP DO
       do ikz = 0, nz-1
         do iky = ikymin, ny-esy
           do ikx = ikxmin, nx-esx
@@ -1480,6 +1522,7 @@ c grid dimensions passed are not the true grid dimensions.
           enddo
         enddo
       enddo
+!$OMP END DO
 
       return
       end
@@ -1494,6 +1537,7 @@ c grid dimensions passed are not the true grid dimensions.
 
       integer(ISZ):: ikx,iky,ikz
 
+!$OMP DO
       do ikz = 0, nz-1
         do iky = ikymin, ny-esy
           do ikx = ikxmin, nx-esx
@@ -1501,6 +1545,7 @@ c grid dimensions passed are not the true grid dimensions.
           enddo
         enddo
       enddo
+!$OMP END DO
 
       return
       end
@@ -1528,6 +1573,7 @@ c     --- (signed DPG)
 
       integer(ISZ):: ix,iy,iz
 
+!$OMP DO
       do iy=ikymin,ny-esy
         do iz=1,nz-1
           do ix=ikxmin,nx-1
@@ -1565,6 +1611,7 @@ c       --- do tridiag matrix solve
         enddo
 
       enddo
+!$OMP END DO
 
       return
       end
@@ -1808,6 +1855,8 @@ c ----------------------------------------------------------------------------
 
       endif
 
+!$OMP PARALLEL PRIVATE(xywork,aa,bb,pid)
+
 c ----------------------------------------------------------------------------
 c  Do the forward transform
 c ----------------------------------------------------------------------------
@@ -1824,36 +1873,43 @@ c         --- factor of .5*dy for cosqy
           norm = dx*dy
         endif
 
-c       --- Normalize the array
-        do iy = iystart,iyend
-          a(:,iy) = a(:,iy)*norm
-        enddo
-
 c       --- Invoke the transform routines for the current z-slice
         if (l4symtry) then
+!$OMP DO
           do iy = iystart,iyend,2
+            a(:,iy:iy+1) = a(:,iy:iy+1)*norm
             call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,0,-1)
           enddo
+!$OMP END DO NOWAIT
         else
+!$OMP DO
           do iy = iystart,iyend,2
+            a(:,iy:iy+1) = a(:,iy:iy+1)*norm
             call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
           enddo
+!$OMP END DO NOWAIT
         endif
 
 #ifdef MPIPARALLEL
         if (ny > xynppgroup .and. xynppgroup > 1)
      &    call parallelgatherall(a,(1+nx)*ny/xynppgroup,xynppgroup,1)
 #endif
+!$OMP FLUSH (a)
 
         if (l4symtry .or. l2symtry) then
+!$OMP DO
           do ix = ixstart,ixend,2
             call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,0,-1)
           enddo
+!$OMP END DO NOWAIT
         else
+!$OMP DO
           do ix = ixstart,ixend,2
             call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
           enddo
+!$OMP END DO NOWAIT
         endif
+!$OMP FLUSH (a)
 
       endif
 
@@ -1863,11 +1919,13 @@ c ----------------------------------------------------------------------------
 
       if ((iwhich <= 0 .or. iwhich == 3) .and. maxval(abs(filt)) > 0.) then
 
+!$OMP DO
         do iky = ikymin, ny-1
           do ikx = ixstart,ixend
            ak(ikx,iky) = ak(ikx,iky) * attx(ikx) * atty(iky)
           enddo
         enddo
+!$OMP END DO NOWAIT
 
       endif
 
@@ -1877,11 +1935,14 @@ c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 4) then
 
+!$OMP DO
         do iky = ikymin, ny-1
           do ikx = ixstart,ixend
            ak(ikx,iky) = ak(ikx,iky)/(kxsq(ikx) + kysq(iky))
           enddo
         enddo
+!$OMP END DO NOWAIT
+!$OMP FLUSH (a)
 
       endif
 
@@ -1890,35 +1951,6 @@ c  Do the inverse transform
 c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 5) then
-
-        if (l4symtry .or. l2symtry) then
-c         --- Invoke the inverse transform routines for the current z-slice
-          do ix = ixstart,ixend,2
-            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,0,1)
-          enddo
-        else
-          do ix = ixstart,ixend,2
-            call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
-          enddo
-        endif
-
-#ifdef MPIPARALLEL
-        if (nx > xynppgroup .and. xynppgroup > 1) then
-          atemp = transpose(a)
-          call parallelgatherall(atemp,(1+ny)*nx/xynppgroup,xynppgroup,1)
-          a = transpose(atemp)
-        endif
-#endif
-
-        if (l4symtry) then
-          do iy = iystart,iyend,2
-            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,0,1)
-          enddo
-        else
-          do iy = iystart,iyend,2
-            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
-          enddo
-        endif
 
         if (l4symtry) then
 c         --- factor of .25/lx for cosqx and .25/ly for cosqy
@@ -1930,6 +1962,49 @@ c         --- factor of 2./lx for vsftx and .25/ly for cosqy
           norm = 4./(lx*ly)
         endif
 
+        if (l4symtry .or. l2symtry) then
+c         --- Invoke the inverse transform routines for the current z-slice
+!$OMP DO
+          do ix = ixstart,ixend,2
+            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,0,1)
+          enddo
+!$OMP END DO NOWAIT
+        else
+!$OMP DO
+          do ix = ixstart,ixend,2
+            call vsfty(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icpy),w(icmy),2,ny,0)
+          enddo
+!$OMP END DO NOWAIT
+        endif
+
+#ifdef MPIPARALLEL
+        if (nx > xynppgroup .and. xynppgroup > 1) then
+          atemp = transpose(a)
+          call parallelgatherall(atemp,(1+ny)*nx/xynppgroup,xynppgroup,1)
+          a = transpose(atemp)
+        endif
+#endif
+
+!$OMP FLUSH (a)
+
+        if (l4symtry) then
+!$OMP DO
+          do iy = iystart,iyend,2
+            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,0,1)
+            a(:,iy:iy+1) = a(:,iy:iy+1)*norm
+          enddo
+!$OMP END DO NOWAIT
+        else
+!$OMP DO
+          do iy = iystart,iyend,2
+            call vsftx(a(0,iy),xywork(0,iy),w(icpx),w(icmx),nx,2,0)
+            a(:,iy:iy+1) = a(:,iy:iy+1)*norm
+          enddo
+!$OMP END DO NOWAIT
+        endif
+
+!$OMP FLUSH (a)
+!$OMP SINGLE
         a(nx,:) = 0.
         a(:,ny) = 0.
         if (.not. l4symtry) then
@@ -1938,10 +2013,7 @@ c         --- factor of 2./lx for vsftx and .25/ly for cosqy
         if (.not. l2symtry .and. .not. l4symtry) then
           a(:,0) = 0.
         endif
-
-        do iy = iystart,iyend
-          a(:,iy) = a(:,iy)*norm
-        enddo
+!$OMP END SINGLE
 
 #ifdef MPIPARALLEL
         if (ny > xynppgroup .and. xynppgroup > 1)
@@ -1960,11 +2032,13 @@ c ----------------------------------------------------------------------------
 
       if (iwhich == 8) then
 
+!$OMP DO
       do iky = ikymin, ny-1
         do ikx = ikxmin, nx-1
           ak(ikx,iky) = ak(ikx,iky) / (attx(ikx) * atty(iky))
         enddo
       enddo
+!$OMP END DO
 
       endif
 
@@ -1975,17 +2049,21 @@ c ----------------------------------------------------------------------------
 
       if (iwhich == 9) then
 
+!$OMP DO
       do iky = ikymin, ny-1
         do ikx = ikxmin, nx-1
           ak(ikx,iky) = ak(ikx,iky) * ( kxsq(ikx) + kysq(iky) )
         enddo
       enddo
+!$OMP END DO
 
       endif
 
 c ----------------------------------------------------------------------------
 c  End of VPOIS2D
 c ----------------------------------------------------------------------------
+
+!$OMP END PARALLEL
 
       return
       end
@@ -2257,30 +2335,19 @@ c  copy the data back to the original array.
       integer(ISZ):: k,kc,ix,iy,ii,jj
 
       integer(ISZ):: naux1,naux2
-      integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
-      data maxnaux1/0/,maxnaux2/0/
-      save maxnaux1,maxnaux2,aux1,aux2
  
-c     --- If needed, allocate and initialize auxiliary arrays.
 c     --- Calculate how much space is needed.
       naux1 = 20000
       if (nx > 2048) naux1 = naux1 + 2.28*nx
       naux2 = 20000
       if (nx > 2048) naux2 = naux2 + 2.28*nx
 
-c     --- Only allocate if it is larger than last time (deallocating
-c     --- if needed).
-      if (naux1 > maxnaux1) then
-        maxnaux1 = naux1
-        if (allocated(aux1)) deallocate(aux1)
-        allocate(aux1(maxnaux1))
-      endif
-      if (naux2 > maxnaux2) then
-        maxnaux2 = naux2
-        if (allocated(aux2)) deallocate(aux2)
-        allocate(aux2(maxnaux2))
-      endif
+c     --- Allocate the work space needed by dcft
+c     --- Note that since this happens inside a OpenMP parallel construct, each thread
+c     --- must allocate the work space each time.
+      allocate(aux1(naux1))
+      allocate(aux2(naux2))
 
 c     --- Initialize the auxiliary arrays
       call dcft(1,w,1,nx+1,w,1,nx+1,nx,ny/2,-isign,1.,aux1,naux1,aux2,naux2)
@@ -2371,6 +2438,9 @@ c     do backward transform
 
       endif
 
+      deallocate(aux1)
+      deallocate(aux2)
+
       return
       end
 c=======================================================================
@@ -2395,32 +2465,19 @@ c  copy the data back to the original array.
       integer(ISZ):: k,kc,ix,iy,ii,jj
 
       integer(ISZ):: naux1,naux2
-      integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
-      data maxnaux1/0/,maxnaux2/0/
-      save maxnaux1,maxnaux2,aux1,aux2
  
 c Setup and make call to the ESSL routine for Fourier-transforms
 
-c     --- If needed, allocate and initialize auxiliary arrays.
 c     --- Calculate how much space is needed.
       naux1 = 20000
       if (ny > 2048) naux1 = naux1 + 2.28*ny
       naux2 = 20000
       if (ny > 2048) naux2 = naux2 + 2.28*ny
 
-c     --- Only allocate if it is larger than last time (deallocating
-c     --- if needed).
-      if (naux1 > maxnaux1) then
-        maxnaux1 = naux1
-        if (allocated(aux1)) deallocate(aux1)
-        allocate(aux1(maxnaux1))
-      endif
-      if (naux2 > maxnaux2) then
-        maxnaux2 = naux2
-        if (allocated(aux2)) deallocate(aux2)
-        allocate(aux2(maxnaux2))
-      endif
+c     --- Allocate the work space needed by dcft
+      allocate(aux1(naux1))
+      allocate(aux2(naux2))
 
 c     --- Initialize the auxiliary arrays
       call dcft(1,w,1,ny+1,w,1,ny+1,ny,nx/2,-isign,1.,aux1,naux1,aux2,naux2)
@@ -2510,6 +2567,9 @@ c     do backward transform
         enddo
 
       endif
+
+      deallocate(aux1)
+      deallocate(aux2)
 
       return
       end
@@ -4373,17 +4433,22 @@ c conditions, do not solve for the potential on the end planes.
       if (bound0 == 0) izl = izl + 1
       if (boundnz== 0) izr = izr - 1
 
+!$OMP PARALLEL
+
 c Do work that is bend dependent.
 c Preset rho to increase performance.  (It is then reset at end of routine).
 c For bends, also set up scrtch arrays.
       if (.not. linbends) then
 c       --- no bends  
+!$OMP DO
         do ii=nxy*izfsmin+1,nxy*izfsmax+nxy
           rho1d(ii) = rho1d(ii)*reps0c
         enddo
+!$OMP END DO
       else 
 c       --- bends, also include curvature corrections.  Comment: Timing tests 
 c       --- show that the use of 1d array is slightly faster than a 3d array.  
+!$OMP DO PRIVATE(i,k,rs,x,r)
         do ii=nxy*izfsmin+1,nxy*izfsmax+nxy
           i = mod(ii-1,nx+1) 
           k = (ii-1)/nxy
@@ -4396,6 +4461,7 @@ c    &                ( 1. + (x/r)*((x/r)-2.)*rdel )
           rho1d(ii) = rho1d(ii)*rs*r*reps0c/
      &                ( r*r + x*(x-2.*r)*rdel )
         enddo
+!$OMP END DO
 c       --- Fill scratch array with x values so it can be looked up
 c       --- in the bent beam loop instead of calculated.
         do ii = 1, nxy
@@ -4470,14 +4536,18 @@ c Put desired potential onto conductors in phi array.
 
 c main loop for sor iterations,  Errors are checked every isorerr iterations.
 
+!$OMP SINGLE
       sorerror = 1.
       soriter = 0
+!$OMP END SINGLE
       do while (sorerror > sortol .and. soriter < sormaxit)
 
 c     --- Do isorerr iterations, checking error only on the last iteration.
 c     --- This is done so the error isn't checked on every iteration.
         do ie = 1,isorerr
+!$OMP SINGLE
           soriter = soriter + 1
+!$OMP END SINGLE
 
 c         --- If calculating error, save some of current phi into error array.
 c         --- This takes a sampling of phi to check for the change in this 
@@ -4487,14 +4557,17 @@ c         --- The factor of 1. in the integer causes the calculcation to be done
 c         --- with real(kind=8):: numbers so that there is not an integer overflow.
 
           if (ie == isorerr) then
+!$OMP DO
             do i=1,nsorerr
               phisave(i) = phi1d(nxy*izl +
      &                int(1.*i*nxy*(izr-izl+1)*nsorerri+.5) )
             enddo
+!$OMP END DO
           endif
 
 c         --- Save values on the transverse boundaries.
 c         --- Both even and odd points are saved for all transverse boundaries.
+!$OMP DO
           do iz=izl-1,izr-1
             do ix=0,nx
               boundarrx(ix,1,iz) = phi(ix,0,iz)
@@ -4505,19 +4578,25 @@ c         --- Both even and odd points are saved for all transverse boundaries.
               boundarry(iy,2,iz) = phi(nx,iy,iz)
             enddo
           enddo
+!$OMP END DO
 
 c         --- Save values just outside conductor surfaces.
 c         --- Again, both even and odd points are saved.
           if (lcndbndy) then
+!$OMP DO
             do ic=1,necndbdy
               ecndpvph(ic) = phi(iecndx(ic),iecndy(ic),iecndz(ic))
             enddo
+!$OMP END DO
+!$OMP DO
             do ic=1,nocndbdy
               ocndpvph(ic) = phi(iocndx(ic),iocndy(ic),iocndz(ic))
             enddo
+!$OMP END DO
           endif
 
 c do loop to cover even and odd points
+!$OMP SINGLE
 #ifdef MPIPARALLEL
           s_parity = mod(izfsslave(my_index),2)
           e_parity = mod(s_parity+1,2)
@@ -4525,13 +4604,16 @@ c do loop to cover even and odd points
           s_parity = 0
           e_parity = 1
 #endif
+!$OMP END SINGLE
           do parity=s_parity,e_parity,e_parity-s_parity
 
 #ifdef MPIPARALLEL
 c*********************Parallel Routine*********************
 c           --- exchange phi on the boundary
+!$OMP SINGLE
             call exchange_phi(nx,ny,izfsmax-izfsmin,phi(0,0,izfsmin-1),
      &                        bound0,boundnz,0)
+!$OMP END SINGLE
 c**********************************************************
 #endif
 
@@ -4690,6 +4772,7 @@ c           --- Put desired potential onto conductors in phi array.
 
 c           --- do Chebyshev acceleration
             if (lchebshv) then
+!$OMP SINGLE
               sorparam = 1./(1.-pjacobi**2*sorparam*.25)
               const = sorparam*0.5/(rdx2 + rdy2 + rdz2)
               rdx2c = rdx2*const
@@ -4697,6 +4780,7 @@ c           --- do Chebyshev acceleration
               rdz2c = rdz2*const
               reps0c = reps0*const
               spm1 = 1. - sorparam
+!$OMP END SINGLE
             endif
 
 c         --- end of loop over even and odd points
@@ -4711,17 +4795,21 @@ c         --- done with real(kind=8):: numbers so that there is not an integer o
 
           if (ie == isorerr) then
             sorerror = 0.
+!$OMP DO REDUCTION(MAX:sorerror)
             do i=1,nsorerr
               phisave(i)=abs(phi1d(nxy*izl +
      &              int(1.*i*nxy*(izr-izl+1)*nsorerri+.5)) - phisave(i))
               if (phisave(i) > sorerror) sorerror = phisave(i)
             enddo
+!$OMP END DO
 #ifdef MPIPARALLEL
+!$OMP SINGLE
 c*********************Parallel Routine*********************
 c           --- calculate global sorerror
             call parallelmaxrealarray(sorerror,1)
 c           write(STDERR,*) "global error = ",sorerror
 c**********************************************************
+!$OMP END SINGLE
 #endif
           endif
 
@@ -4730,6 +4818,32 @@ c       --- end of group of iterations
 
 c end of all iterations
       end do
+
+c unset rho
+      reps0c = 1./reps0c
+      if (.not. linbends) then
+c       --- no bends 
+!$OMP DO
+        do ii=nxy*(izfsmin)+1,nxy*(izfsmax+1)
+          rho1d(ii) = rho1d(ii)*reps0c
+        enddo
+!$OMP END DO
+      else 
+c       --- bends.  Comment: Timing tests show that the use of a 1d array 
+c       --- is slightly faster than a 3d array. 
+!$OMP DO PRIVATE(i,k,rs,x,r)
+        do ii=nxy*(izfsmin)+1,nxy*(izfsmax+1)
+          i = mod(ii-1,nx+1)
+          k = (ii-1)/nxy
+          rs = rstar(k) 
+          x  = xmmin + i*dx 
+          r  = rs + x
+          rho1d(ii) = rho1d(ii)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
+        enddo
+!$OMP END DO
+      endif 
+
+!$OMP END PARALLEL
 
 c printout warning that maximum iterations have been exceeded
       if (soriter > sormaxit) then
@@ -4800,26 +4914,6 @@ c above handles it.
       endif
 #endif
 
-c unset rho
-      reps0c = 1./reps0c
-      if (.not. linbends) then 
-c       --- no bends 
-        do ii=nxy*(izfsmin)+1,nxy*(izfsmax+1)
-          rho1d(ii) = rho1d(ii)*reps0c
-        enddo
-      else 
-c       --- bends.  Comment: Timing tests show that the use of a 1d array 
-c       --- is slightly faster than a 3d array. 
-        do ii=nxy*(izfsmin)+1,nxy*(izfsmax+1)
-          i = mod(ii-1,nx+1)
-          k = (ii-1)/nxy
-          rs = rstar(k) 
-          x  = xmmin + i*dx 
-          r  = rs + x
-          rho1d(ii) = rho1d(ii)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
-        enddo
-      endif 
-
 c     --- clean up the work area
       deallocate(phisave)
 
@@ -4881,9 +4975,11 @@ c on HIF, an HP 735 workstation.
       real(kind=8):: x,rs,r,xfact,del2bndc,dh,dxi
 
       if (.not. linbends) then 
-        do iz=izl,izr,izstep
+        if (izl == izr) then
+          iz=izl
           parity = mod(i_parity*s_parity + (iz-1)*nxy + ii1-1,2)
           if (iistep == 2) then
+!$OMP DO
             do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, 2
               phi1d(ii) = rho1d(ii-nxy) +
      &                  (phi1d(ii+iimx) + phi1d(ii+iipx))*rdx2c +
@@ -4891,7 +4987,9 @@ c on HIF, an HP 735 workstation.
      &                  (phi1d(ii+iimz) + phi1d(ii+iipz))*rdz2c +
      &                  spm1*phi1d(ii)
             enddo
+!$OMP END DO
           else
+!$OMP DO
             do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
               phi1d(ii) = rho1d(ii-nxy) +
      &                  (phi1d(ii+iimx) + phi1d(ii+iipx))*rdx2c +
@@ -4899,12 +4997,37 @@ c on HIF, an HP 735 workstation.
      &                  (phi1d(ii+iimz) + phi1d(ii+iipz))*rdz2c +
      &                  spm1*phi1d(ii)
             enddo
+!$OMP END DO
           endif
-        enddo
+        else
+!$OMP DO
+          do iz=izl,izr,izstep
+            parity = mod(i_parity*s_parity + (iz-1)*nxy + ii1-1,2)
+            if (iistep == 2) then
+              do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, 2
+                phi1d(ii) = rho1d(ii-nxy) +
+     &                    (phi1d(ii+iimx) + phi1d(ii+iipx))*rdx2c +
+     &                    (phi1d(ii+iimy) + phi1d(ii+iipy))*rdy2c +
+     &                    (phi1d(ii+iimz) + phi1d(ii+iipz))*rdz2c +
+     &                    spm1*phi1d(ii)
+              enddo
+            else
+              do ii = parity*s_parity + iz*nxy + ii1, iz*nxy + ii2, iistep
+                phi1d(ii) = rho1d(ii-nxy) +
+     &                    (phi1d(ii+iimx) + phi1d(ii+iipx))*rdx2c +
+     &                    (phi1d(ii+iimy) + phi1d(ii+iipy))*rdy2c +
+     &                    (phi1d(ii+iimz) + phi1d(ii+iipz))*rdz2c +
+     &                    spm1*phi1d(ii)
+              enddo
+            endif
+          enddo
+!$OMP END DO
+        endif
       else
 c       --- bends, loop over z slices.  Comment: timing tests indicate that 
 c       --- use of a 1d array is faster than a 3d array.   
         dxi = 1./dx
+!$OMP DO
         do iz=izl,izr,izstep
           parity = mod(i_parity*s_parity + (iz-1)*nxy + ii1-1,2)
           rs  = rstar(iz+1)
@@ -4972,6 +5095,7 @@ c           --- current z-slice is in a bend only
             endif
           endif 
         enddo 
+!$OMP END DO
       endif 
 
       return
@@ -4985,9 +5109,11 @@ c Set conductor points to the desired potential.
       integer(ISZ):: ic
 
 c sets phi to the desired potential on conductors
+!$OMP DO
       do ic = 1,ncond
         phi(ixcond(ic),iycond(ic),izcond(ic)) = condvolt(ic)
       enddo
+!$OMP END DO
 
       return
       end
@@ -5042,6 +5168,7 @@ c EGUN style interpolation at conductor boundaries
         rdz2cos = rdz2c/srp
 
 c       --- loop over points near surface of rods
+!$OMP DO
         do ic = 1,ncndbdy
 c         --- set temporaries for boundaries
           icndxp1 = icndx(ic) + 1
@@ -5134,6 +5261,7 @@ c         rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
      &         (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
      &         spm1*cndpvph(ic)
         enddo
+!$OMP END DO
 
 c -------------------------------------------------------------------------
       else if (icndbndy == 2) then
@@ -5142,6 +5270,7 @@ c EBC style interpolation, uses non-centered finite difference
         dxyzi = 1./(dx*dy*dz)
 
 c       --- loop over points near surface of rods
+!$OMP DO
         do ic = 1,ncndbdy
 c         --- set temporaries for boundaries
           icndxp1 = icndx(ic) + 1
@@ -5230,6 +5359,7 @@ c         rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125*dxyzi
      &         pzm*2./(dzm*(dzm+dzp)) + pzp*2./(dzp*(dzm+dzp)))*srp*denomi +
      &        spm1*cndpvph(ic)
         enddo
+!$OMP END DO
 
       endif
 c -------------------------------------------------------------------------
