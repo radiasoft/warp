@@ -1,16 +1,17 @@
-from warp import *
-from appendablearray import *
-import cPickle
-extpart_version = "$Id: extpart.py,v 1.14 2003/08/28 22:57:56 dave Exp $"
-
-def extpartdoc():
-  print """
-Creates a class for handling extrapolated particle windows, ExtPart. Type
-doc(ExtPart) for more help.
+"""Creates a class for handling extrapolated particle windows, ExtPart.
+Type doc(ExtPart) for more help.
 Two functions are available for saving the object in a file.
  - dumpExtPart(object,filename)
  - restoreExtPart(object,filename)
-  """
+"""
+from warp import *
+from appendablearray import *
+import cPickle
+extpart_version = "$Id: extpart.py,v 1.15 2003/08/28 23:02:01 dave Exp $"
+
+def extpartdoc():
+  import extpart
+  print extpart.__doc__
 
 ############################################################################
 class ExtPart:
@@ -81,7 +82,25 @@ routines (such as ppxxp).
       self.uxep = []
       self.uyep = []
       self.uzep = []
-      for js in xrange(top.ns):
+      for js in range(top.ns):
+        bump = self.nepmax
+        self.tep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.xep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.yep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.uxep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+    else:
+      self.tep = top.ns*[None]
+      self.xep = top.ns*[None]
+      self.yep = top.ns*[None]
+      self.uxep = top.ns*[None]
+      self.uyep = top.ns*[None]
+      self.uzep = top.ns*[None]
+
+  def addspecies(self):
+    if self.laccumulate:
+      for js in range(len(self.tep),top.ns):
         bump = self.nepmax
         self.tep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
         self.xep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
@@ -102,7 +121,7 @@ routines (such as ppxxp).
 
   def getid(self):
     assert self.enabled,"This window is disabled and there is no associated id"
-    for i in xrange(top.nepwin):
+    for i in range(top.nepwin):
       if top.izepwin[i] == self.iz and self.iz >= 0: return i
       if top.zzepwin[i] == self.zz and self.iz == -1: return i
     raise "Uh Ooh! Somehow the window was deleted! I can't continue!"
@@ -130,7 +149,7 @@ routines (such as ppxxp).
     uninstallafterstep(self.accumulate)
     # --- Remove this window from the list.
     top.nepwin = top.nepwin - 1
-    for i in xrange(self.getid(),top.nepwin):
+    for i in range(self.getid(),top.nepwin):
       top.izepwin[i] = top.izepwin[i+1]
       top.zzepwin[i] = top.zzepwin[i+1]
       top.wzepwin[i] = top.wzepwin[i+1]
@@ -139,6 +158,7 @@ routines (such as ppxxp).
 
   def accumulate(self):
     if top.nepwin == 0: return
+    if top.ns > self.getns(): self.addspecies()
     if globalmax(maxnd(top.nep)) == top.nepmax:
       print "************* WARNING *************"
       print "**** Not enough space was allocated for the ExtPart arrays."
@@ -157,7 +177,7 @@ routines (such as ppxxp).
         top.nepmax = max(2*top.nepmax,guess)
         err = gchange("ExtPart")
       return
-    for js in xrange(top.ns):
+    for js in range(top.ns):
       id = self.getid()
       # --- Gather the data.
       # --- In parallel, the data is gathered in PE0, return empty arrays
@@ -189,6 +209,7 @@ routines (such as ppxxp).
     self.laccumulate = v
     if self.laccumulate: self.setuparrays()
 
+  def getns(self): return len(self.tep)
   def gett(self,js=0): return self.tep[js][:]
   def getx(self,js=0): return self.xep[js][:]
   def gety(self,js=0): return self.yep[js][:]
@@ -494,7 +515,7 @@ that plot.
       if type(pplimits[0]) != type(()):
         pplimits = 4*[pplimits]
       else:
-        for i in xrange(4):
+        for i in range(4):
           if i == len(pplimits): pplimits.append(defaultpplimits[i])
           if not pplimits[i]: pplimits[i] = defaultpplimits[i]
  
