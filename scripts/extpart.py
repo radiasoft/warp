@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.36 2005/02/15 01:24:59 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.37 2005/02/15 19:56:32 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -304,6 +304,9 @@ routines (such as ppxxp).
     # --- Loop over species, collecting only ones where some particles
     # --- were saved.
     for js in range(top.ns):
+      # --- Check if npidepmax has changed. Update pidep appropriately
+      if top.npidepmax != shape(self.pidep[js])[-1]:
+        self.pidep[js].reshape((top.npidepmax,))
       # --- Gather the data.
       # --- In parallel, the data is gathered in PE0, return empty arrays
       # --- on other processors. In serial, the arrays are just returned as is.
