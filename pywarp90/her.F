@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:08 $
+c@(#) File HER.M, version $Revision: 3.2 $, $Date: 2001/04/24 20:58:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -1071,8 +1071,8 @@ c ---     following Python-convention for array indexing
           lfail = .true.
           return
         endif
-        dlna = (fact1*(y(1,ii+1)-y(1,ii)) + fact2*(y(1,ii)-y(1,ii-1)))/y(1,ii)
-        dlnb = (fact1*(y(3,ii+1)-y(3,ii)) + fact2*(y(3,ii)-y(3,ii-1)))/y(3,ii)
+        dlna = (fact1*(y(1,ii+1)-y(1,ii)) + fact2*(y(1,ii)-y(1,ii-1)))/dvnz(y(1,ii))
+        dlnb = (fact1*(y(3,ii+1)-y(3,ii)) + fact2*(y(3,ii)-y(3,ii-1)))/dvnz(y(3,ii))
         y(15,ii) = (1.0-part1)*denmid(ii-1) + part1*denmid(ii)
         y(13,ii) = y(15,ii) * y(10,ii) *clight
         denv(ii) = 0.5*y(15,ii)*(dlna + dlnb)
