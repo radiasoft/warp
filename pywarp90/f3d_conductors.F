@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.36 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -594,7 +594,7 @@ c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
       integer(ISZ):: i
-      real(kind=8):: xx,yy,zz,vv,tt,zp0,zp1
+      real(kind=8):: xx,yy,zz,vsq,tt,zp0,zp1
       real(kind=8):: ctheta,stheta,cphi,sphi
 
       ctheta = cos(theta)
@@ -604,8 +604,8 @@ c normal angle of the surface at that point.
 
       do i=1,n
 
-        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-        if (vv == 0.) then
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) then
           xi(i) = LARGEPOS
           yi(i) = LARGEPOS
           zi(i) = LARGEPOS
@@ -764,7 +764,7 @@ c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
       integer(ISZ):: i
-      real(kind=8):: vv
+      real(kind=8):: vsq
       real(kind=8):: distance
       real(kind=8):: tx,xix,yix,zix,dix
       real(kind=8):: ty,xiy,yiy,ziy,diy
@@ -781,8 +781,8 @@ c normal angle of the surface at that point.
 
       do i=1,n
 
-        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-        if (vv == 0.) then
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) then
           xi(i) = LARGEPOS
           yi(i) = LARGEPOS
           zi(i) = LARGEPOS
@@ -1007,7 +1007,7 @@ c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
       integer(ISZ):: i
-      real(kind=8):: zmin,zmax,vv,tt,theta,phi
+      real(kind=8):: zmin,zmax,vsq,tt,theta,phi
       real(kind=8):: ttemp,xx,yy,zz,rr,rrsq,t1,t2,a,b,c
 
       zmin = zcent - length/2.
@@ -1021,8 +1021,8 @@ c normal angle of the surface at that point.
         itheta(i) = 0.
         iphi(i) = 0.
 
-        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-        if (vv == 0.) cycle
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) cycle
 
         tt = LARGEPOS
         theta = 0.
@@ -1405,7 +1405,7 @@ c Finds place where particle inside intercepted the surface and the
 c normal angle of the surface at that point.
 
       integer(ISZ):: i
-      real(kind=8):: zmin,zmax,vv,tt,theta,phi
+      real(kind=8):: zmin,zmax,vsq,tt,theta,phi
       real(kind=8):: ttemp,xx,yy,zz,rr,rrsq,t1,t2,a,b,c
 
       zmin = zcent - length/2.
@@ -1419,8 +1419,8 @@ c normal angle of the surface at that point.
         itheta(i) = 0.
         iphi(i) = 0.
 
-        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-        if (vv == 0.) cycle
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) cycle
 
         tt = LARGEPOS
         theta = 0.
@@ -2489,7 +2489,7 @@ c normal angle of the surface at that point.
 
       integer(ISZ):: i,nhit,ii
       real(kind=8):: zmin,zmax
-      real(kind=8):: vv,d1,d2
+      real(kind=8):: vsq,d1,d2
       real(kind=8):: xx,yy,zz,rr,dd,rrsq,t0,ttemp(4)
       real(kind=8):: a,b,c
       real(kind=8):: v(2),f(2)
@@ -2499,8 +2499,8 @@ c normal angle of the surface at that point.
       zmax = zcent + r2
       
       do i=1,n
-        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-        if (vv == 0.) cycle
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) cycle
         
 c       --- This check on whether a point is inside may be removed at a
 c       --- future time.
@@ -4348,7 +4348,7 @@ c When inside is == +1, conductor is inside the surface, -1 outside.
 c This is only needed to get the correct orientation of the surface normal.
 
       integer(ISZ):: i,ii,il,niter
-      real(kind=8):: vv,dd,xx,yy,zz,rr,rrsq,t1,t2,z1,z2,ttemp,a1,a2
+      real(kind=8):: vsq,vv,dd,xx,yy,zz,rr,rrsq,t1,t2,z1,z2,ttemp,a1,a2
       real(kind=8):: a,b,c,s,p
       real(kind=8):: r_zmin,r_zmax
       real(kind=8):: t(2),d(2)
@@ -4358,8 +4358,8 @@ c This is only needed to get the correct orientation of the surface normal.
 
         do i=1,n
 
-          vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-          if (vv == 0.) cycle
+          vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+          if (vsq == 0.) cycle
 
 c         --- Loop over the line segments and calculate the intersection of
 c         --- each with the trajectory. Pick the one where the intersect
@@ -4456,8 +4456,9 @@ c         --- Set parameter to initial guess.
           itheta(i) = 0.
           iphi(i) = 0.
 
-          vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-          if (vv == 0.) cycle
+          vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+          if (vsq == 0.) cycle
+          vv = sqrt(vsq)
 
 c         --- Do a search to find the intersection.
 
@@ -4522,7 +4523,7 @@ c normal angle of the surface at that point.
 
       integer(ISZ):: i
       real(kind=8):: tt(n)
-      real(kind=8):: vv,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp
+      real(kind=8):: vsq,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp
       real(kind=8):: a,b,c,s,p
       real(kind=8):: r_zmin,r_zmax
       real(kind=8):: srfrv_f
@@ -4543,8 +4544,8 @@ c normal angle of the surface at that point.
 
       do i=1,n
 
-        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-        if (vv == 0.) cycle
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) cycle
 
 c       --- First, check if trajectory hits conductor end.
         if (vz(i) .ne. 0.) then
@@ -4919,7 +4920,7 @@ c normal angle of the surface at that point.
 
       integer(ISZ):: i
       real(kind=8):: tt(n)
-      real(kind=8):: vv,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp
+      real(kind=8):: vsq,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp
       real(kind=8):: a,b,c,s,p
       real(kind=8):: r_zmin,r_zmax
       real(kind=8):: srfrv_f
@@ -4940,8 +4941,8 @@ c normal angle of the surface at that point.
 
       do i=1,n
 
-        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-        if (vv == 0.) cycle
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) cycle
 
 c       --- First, check if trajectory hits conductor end.
         if (vz(i) .ne. 0.) then
@@ -5577,7 +5578,7 @@ c normal angle of the surface at that point.
 
       integer(ISZ):: i
       real(kind=8):: tt(n)
-      real(kind=8):: vv,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp
+      real(kind=8):: vsq,dd,xx,yy,zz,rr,rrsq,t1,t2,ttemp
       real(kind=8):: a,b,c,s,p
       real(kind=8):: rmin_zmin,rmin_zmax
       real(kind=8):: rmax_zmin,rmax_zmax
@@ -5606,8 +5607,8 @@ c normal angle of the surface at that point.
 
       do i=1,n
 
-        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
-        if (vv == 0.) cycle
+        vsq = vx(i)**2 + vy(i)**2 + vz(i)**2
+        if (vsq == 0.) cycle
 
 c       --- First, check if trajectory hits conductor end.
         if (vz(i) .ne. 0.) then
