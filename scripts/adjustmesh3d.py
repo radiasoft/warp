@@ -1,5 +1,5 @@
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.2 2001/02/08 00:11:50 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.3 2001/04/12 21:50:35 dave Exp $"
 
 def adjustmesh3ddoc():
   print "adjustmeshz: Adjust the longitudinal length of the mesh."
@@ -14,16 +14,35 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
                     zmmin and zmmax are simply scaled by the ratio of the
                     new length to the old length
   """
-  # --- Set new mesh length
+  # --- Save old grid cell and mesh length
   olddz = w3d.dz
-  oldcenter = 0.5*(w3d.zmmin + w3d.zmmax)
+  if not lparallel:
+    oldcenter = 0.5*(w3d.zmmin + w3d.zmmax)
+  else:
+    oldcenter = 0.5*(w3d.zslmin[0] + w3d.zslmax[-1])
+  # --- Set new mesh length by first scaling the min and max
   w3d.dz = newlen/w3d.nzfull
   w3d.zmmin = w3d.zmmin*w3d.dz/olddz
   w3d.zmmax = w3d.zmmax*w3d.dz/olddz
+  if lparallel:
+    top.zmslmin[:] = top.zmslmin*w3d.dz/olddz
+    top.zmslmax[:] = top.zmslmax*w3d.dz/olddz
+    top.zpslmin[:] = top.zpslmin*w3d.dz/olddz
+    top.zpslmax[:] = top.zpslmax*w3d.dz/olddz
+  # --- If requested, recenter the mesh about its old center.
   if keepcentered:
-    newcenter = 0.5*(w3d.zmmin + w3d.zmmax)
+    if not lparallel:
+      newcenter = 0.5*(w3d.zmmin + w3d.zmmax)
+    else:
+      newcenter = 0.5*(w3d.zslmin[0] + w3d.zslmax[-1])
     w3d.zmmin = w3d.zmmin + (oldcenter - newcenter)
     w3d.zmmax = w3d.zmmax + (oldcenter - newcenter)
+    if lparallel:
+      top.zmslmin[:] = top.zmslmin + (oldcenter - newcenter)
+      top.zmslmax[:] = top.zmslmax + (oldcenter - newcenter)
+      top.zpslmin[:] = top.zpslmin + (oldcenter - newcenter)
+      top.zpslmax[:] = top.zpslmax + (oldcenter - newcenter)
+  # --- Recalculate zmesh
   w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
   # --- Adjust all of the axial meshes
   if top.nzl == w3d.nz:
@@ -47,15 +66,6 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
     top.zmntmesh[:] = top.zmmntmin + iota(0,top.nzmmnt)*top.dzm
   # --- Rearrange the particles
   if npes > 0:
-    top.zmslmin[:] = top.zmslmin*w3d.dz/olddz
-    top.zmslmax[:] = top.zmslmax*w3d.dz/olddz
-    top.zpslmin[:] = top.zpslmin*w3d.dz/olddz
-    top.zpslmax[:] = top.zpslmax*w3d.dz/olddz
-    if keepcentered:
-      top.zmslmin[:] = top.zmslmin + (oldcenter - newcenter)
-      top.zmslmax[:] = top.zmslmax + (oldcenter - newcenter)
-      top.zpslmin[:] = top.zpslmin + (oldcenter - newcenter)
-      top.zpslmax[:] = top.zpslmax + (oldcenter - newcenter)
     reorgparticles()
   else:
     zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
