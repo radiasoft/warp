@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.32 2001/09/22 00:09:10 dave Exp $"
+warp_version = "$Id: warp.py,v 1.33 2001/11/20 20:56:31 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -220,6 +220,9 @@ returns a digit reversed random number.
   if not i1:
     if x is None:
       # --- Try various versions of ranf.
+      # --- RandomArray only returns single precision
+      # --- Ranf is left over from original version of Numeric
+      # --- RNG is best and most recent. Returns double precision
       try: return RNG.ranf()
       except: pass
       try: return Ranf.ranf()
@@ -243,8 +246,16 @@ returns a digit reversed random number.
 
 # --- Gaussian distribution
 # --- This was in pyBasis but had to be moved here in order to use rnormdig.
+# --- First, try and define a normal generator from the RNG module.
+try:
+  _normaldistribution = RNG.NormalDistribution(0.,1.)
+  _normalgenerator = RNG.CreateGenerator(-1,_normaldistribution)
+except:
+  _normalgenerator = None
 def rnormarray(x,i1=None,nbase1=None,nbase2=None):
   if not i1:
+    if _normalgenerator is not None:
+      return reshape(_normalgenerator.sample(product(array(shape(x)))),shape(x))
     try:
       return RandomArray.standard_normal(x)
     except:
