@@ -69,8 +69,8 @@ Input for constructor:
     self.applyvoltage()
     installbeforefs(self.applyvoltage)
 
-  def applyvoltage(self):
-    time = top.time
+  def applyvoltage(self,time=None):
+    if time is None: time = top.time
     volt = self.getvolt(time)
     for c in self.condid:
       setconductorvoltage(volt,c,discrete=self.discrete,
