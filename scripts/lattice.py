@@ -35,7 +35,7 @@ madtowarp(lattice)
 from warp import *
 import __main__
 import RandomArray
-lattice_version = "$Id: lattice.py,v 1.16 2003/04/17 22:54:53 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.17 2003/04/25 18:27:20 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2215,7 +2215,7 @@ Plots the field of the emlt element
   else:
     plg(top.esemltp[:nz+1,m,id],zz,color=color)
 
-def plotmmlt(im,m=0,p=0,color='fg'):
+def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,color='fg',getfield=0):
   """
 Plots the field of the emlt element
   - im: the element to plot
@@ -2227,10 +2227,39 @@ Plots the field of the emlt element
   dz = top.dzmmlt[id]
   nz = top.nzmmlt[id]
   zz = top.mmltzs[im] + iota(0,nz)*dz
-  if p == 0:
-    plg(top.msmmlt[:nz+1,m,id],zz,color=color)
+  ss = top.mmltsc[im] + top.mmltsf[im]
+  nn = top.mmlt_n[m]
+  vv = top.mmlt_v[m]
+  tt = top.mmltph[im] + top.msmmltph[:,m,id]
+  ttp = top.msmmltphp[im]
+  cc = 1.
+  if br:
+    if not p:
+      if nn == 0: cc = 0.
+      else:       cc = ss*(1. + 2*vv/nn)*r**(nn-1+2*vv)*cos(nn*t + tt)
+    else:
+      if nn == 0: cc = ss*1./(2*(vv + 1))*r**(2*vv+1)
+      else:       cc = 0.
+  elif bt:
+    if not p:
+      if nn == 0: cc = 0.
+      else:       cc = ss*r**(nn-1+2*vv)*sin(nn*t + tt)
+    else:
+      if nn == 0: cc = 0.
+      else:       cc = 0.
+  elif bz:
+    if p:
+      if nn == 0: cc = 0.
+      else:       cc = ss*(1. + 2*vv/nn)*r**(nn-1+2*vv)*cos(nn*t + tt)
+    else:
+      if nn == 0: cc = ss*r**(2*vv)
+      else:       cc = ss*(-1./nn)*ttp*r**(nn+2*vv)*sin(nn*t + tt)
+  if not p:
+    mm = top.msmmlt[:nz+1,m,id]
   else:
-    plg(top.msmmltp[:nz+1,m,id],zz,color=color)
+    mm = top.msmmltp[:nz+1,m,id]
+  plg(cc*mm,zz,color=color)
+  if getfield: return cc*mm,zz
 
 def plotacclet(ia=None,oscale=1.,ascale=1.,tcentered=0,color='fg'):
   """
