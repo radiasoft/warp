@@ -18,8 +18,8 @@ for pubhome in pubhomes:
   executecommand('cp warpC.so '+pubhome+'/warpC'+date+'.so')
   executecommand('cd '+pubhome+';chmod go+rx warpC'+date+'.so')
   executecommand('cd '+pubhome+';ln -sf warpC'+date+'.so warpC.so')
-  executecommand('cd '+pubhome+'/source/pywarp90;cvs update')
-  executecommand('cd '+pubhome+'/scripts;cvs update')
+  executecommand('cd '+pubhome+'/source/pywarp90;cvs update -d')
+  executecommand('cd '+pubhome+'/scripts;cvs update -d')
 
 #for pubhome in pubhomes:
 #  executecommand('cp pywarp90 '+pubhome+'/pywarp90'+date)
@@ -27,6 +27,6 @@ for pubhome in pubhomes:
 #  executecommand('cd '+pubhome+';chmod go+rx pywarp90'+date+' warpC'+date+'.so')
 #  executecommand('cd '+pubhome+';ln -sf pywarp90'+date+' pywarp90')
 #  executecommand('cd '+pubhome+';ln -sf warpC'+date+'.so warpC.so')
-#  executecommand('cd '+pubhome+'/source/pywarp90;cvs update')
-#  executecommand('cd '+pubhome+'/scripts;cvs update')
+#  executecommand('cd '+pubhome+'/source/pywarp90;cvs update -d')
+#  executecommand('cd '+pubhome+'/scripts;cvs update -d')
 
