@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.46 2003/12/17 21:08:29 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.47 2004/01/16 20:16:53 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -486,6 +486,13 @@ Dump data into a pdb file
     assert ff is not None,"Dump file cannot be opened, no data formats available"
     closefile = 1
   else:
+    try:
+      if ff.file_type == "HDF":
+        dumpsmode = 1
+      else:
+        dumpsmode = 0
+    except:
+      dumpsmode = 0
     closefile = 0
   # --- Make sure the file has a file_type. Older versions of the pdb
   # --- wrappers did not define a file type.
