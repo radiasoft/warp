@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.36 2003/06/27 21:12:28 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.37 2003/07/08 22:28:53 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -249,13 +249,17 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                (p=='wxy' and vname in ['npmaxxy']):
             ff.write(pdbname,sum(nps_p)[0])
           elif (p=='f3d' and vname in ['ncond','ncondmax']):
-            ff.write(pdbname,sum(ncond_p))
+#           ff.write(pdbname,sum(ncond_p))
+            pass
           elif (p=='f3d' and vname in ['necndbdy']):
-            ff.write(pdbname,sum(necndbdy_p))
+#           ff.write(pdbname,sum(necndbdy_p))
+            pass
           elif (p=='f3d' and vname in ['nocndbdy']):
-            ff.write(pdbname,sum(nocndbdy_p))
+#           ff.write(pdbname,sum(nocndbdy_p))
+            pass
           elif (p=='f3d' and vname in ['ncndmax']):
-            ff.write(pdbname,max(sum(necndbdy_p),sum(nocndbdy_p)))
+#           ff.write(pdbname,max(sum(necndbdy_p),sum(nocndbdy_p)))
+            pass
           else:
             # --- Otherwise, write out value as is on PE0
             ff.write(pdbname,v)
@@ -482,6 +486,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
   # --- Long list of parallel variables that are to be skipped in the serial
   # --- restore.
   skipparallel = ['xp','yp','zp','uxp','uyp','uzp','gaminv','dtp','pid',
+    'ncondmax','ncndmax','ncond','necndbdy','nocndbdy',
     'ixcond','iycond','izcond','condvolt','condnumb','icondlevel'
     'iecndx','iecndy','iecndz',
     'ecdelmx','ecdelpx','ecdelmy','ecdelpy','ecdelmz','ecdelpz',
@@ -526,21 +531,6 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
   if 'nps@parallel' in vlist:
     top.nps[:] = ff.read_part('nps@parallel',itriple)[0,...]
 
-  # --- These arrays need to be read in to get the indices for the
-  # --- correct data for each processor.
-  if 'ncond_p@parallel' in vlist:
-    ncond_p = ff.read('ncond_p@parallel')
-    ncond_p0 = array([0] + list(ncond_p))
-    f3d.ncond = ncond_p[me]
-  if 'necndbdy_p@parallel' in vlist:
-    necndbdy_p = ff.read('necndbdy_p@parallel')
-    necndbdy_p0 = array([0] + list(necndbdy_p))
-    f3d.necndbdy = necndbdy_p[me]
-  if 'nocndbdy_p@parallel' in vlist:
-    nocndbdy_p = ff.read('nocndbdy_p@parallel')
-    nocndbdy_p0 = array([0] + list(nocndbdy_p))
-    f3d.nocndbdy = nocndbdy_p[me]
-
   # --- Loop over the list of all of the variables in the restart file.
   # --- Read in all of the scalars first - this ensures that all of the
   # --- integers which describe the size of dynamics arrays are read in
@@ -556,7 +546,6 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
       # --- or not. When the length of the shape is zero, then the
       # --- variable is a scalar.
       if len(ff.inquire_shape(v)) != 0: continue
-      if verbose: print "reading "+p+"."+vname
       # --- Make sure that the variable is still valid. If not
       # --- (e.g. it has been deleted) then don't try to restore it.
       try:
@@ -565,12 +554,28 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         print "Warning: There was a problem %s - it can't be found."%(pname)
       parallelvar = re.search('parallel',a)
       if not parallelvar: continue
+      if verbose: print "reading "+p+"."+vname
       # --- Get data saved with parallel suffix.
       s = pname+'= ff.read_part(vname+"@parallel",array([me,me,1]))[0]'
       try:
         exec(s,__main__.__dict__,locals())
       except:
         print "Warning: There was a problem restoring %s"%(pname)
+
+  # --- These arrays need to be read in to get the indices for the
+  # --- correct data for each processor.
+  if 'ncond_p@parallel' in vlist:
+    ncond_p = ff.read('ncond_p@parallel')
+    ncond_p0 = array([0] + list(ncond_p))
+    f3d.ncond = ncond_p[me]
+  if 'necndbdy_p@parallel' in vlist:
+    necndbdy_p = ff.read('necndbdy_p@parallel')
+    necndbdy_p0 = array([0] + list(necndbdy_p))
+    f3d.necndbdy = necndbdy_p[me]
+  if 'nocndbdy_p@parallel' in vlist:
+    nocndbdy_p = ff.read('nocndbdy_p@parallel')
+    nocndbdy_p0 = array([0] + list(nocndbdy_p))
+    f3d.nocndbdy = nocndbdy_p[me]
 
   # --- Allocate any groups with parallel arrays
   gchange("Particles")
