@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.10 2001/01/18 21:51:25 dave Exp $"
+warp_version = "$Id: warp.py,v 1.11 2001/01/19 01:24:05 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -280,7 +280,7 @@ def fieldsol(iwhich=0):
 
 # --- Dump command
 def dump(filename=None,suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
-         ff=None,varsuffix=None):
+         ff=None,varsuffix=None,histz=0):
   """
 Creates a dump file
   - filename=(runid+'%06d'%top.it+suffix+'.dump')
@@ -318,7 +318,7 @@ Creates a dump file
   # --- Call routine to make data dump
   if onefile and lparallel:
     paralleldump(filename,attr,interpreter_variables,serial=serial,
-                 varsuffix=varsuffix)
+                 varsuffix=varsuffix,histz=histz)
   else:
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
            varsuffix=varsuffix)
