@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.19 2001/02/27 19:30:35 dave Exp $"
+warp_version = "$Id: warp.py,v 1.20 2001/03/28 22:17:59 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -117,6 +117,7 @@ print 'For more help, type warphelp()'
 from warpplots import *
 from histplots import *
 from pzplots import *
+from plot_conductor import *
 
 # --- Import some online documentation modules.
 from warphelp import *
