@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.8 2001/11/08 20:33:45 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.9 2002/01/29 22:30:02 dave Exp $"
 
 def extpartdoc():
   print """
@@ -69,12 +69,13 @@ routines (such as ppxxp).
       self.uyep = []
       self.uzep = []
       for js in xrange(top.ns):
-        self.tep.append(AppendableArray(self.nepmax,'d',self.nepmax))
-        self.xep.append(AppendableArray(self.nepmax,'d',self.nepmax))
-        self.yep.append(AppendableArray(self.nepmax,'d',self.nepmax))
-        self.uxep.append(AppendableArray(self.nepmax,'d',self.nepmax))
-        self.uyep.append(AppendableArray(self.nepmax,'d',self.nepmax))
-        self.uzep.append(AppendableArray(self.nepmax,'d',self.nepmax))
+        bump = self.nepmax
+        self.tep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.xep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.yep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.uxep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.uyep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
+        self.uzep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
     else:
       self.tep = top.ns*[None]
       self.xep = top.ns*[None]
