@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.111 $, $Date: 2003/12/11 01:33:40 $
+c@(#) File TOP.F, version $Revision: 3.112 $, $Date: 2004/01/15 21:25:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3225,6 +3225,190 @@ c           --- tranverse field
      &                                    u1*v0*w1*bgrdbz(i+1,j  ,k+1,ib) +
      &                                    u0*v1*w1*bgrdbz(i  ,j+1,k+1,ib) +
      &                                    u1*v1*w1*bgrdbz(i+1,j+1,k+1,ib))
+
+          endif
+
+        enddo
+      enddo
+
+      return
+      end
+c=========================================================================== 
+      subroutine applybgrd2(np,xp,yp,npz,zp,lslice,b)
+      use Lattice
+      use LatticeInternal
+      use BGRDdata
+      integer(ISZ):: np,npz
+      real(kind=8):: xp(np),yp(np),zp(npz)
+      logical(ISZ):: lslice
+      real(kind=8):: b(bgrdnc,np)
+
+c  Sets magnetic field for particles from data sets
+c  containing Bx, By, and Bz on 3-D grids. Grid can also contain
+c  additional vector information. It is assumed that the additional
+c  information has the same symmetry as the magnetic field.
+c  Calling arguments:
+c     np          number of particles
+c     npz         number of z position data values (must be either 1 or == np)
+c     xp,yp,zp    coordinates of particles
+c  Output:
+c     b           magnetic field and additional information
+
+c  The field is:
+c     b(:,ip) = u0 * v0 * w0 * bgrd(:,i  ,j  ,k  ,bgrdid)
+c             + u1 * v0 * w0 * bgrd(:,i+1,j  ,k  ,bgrdid)
+c             + u0 * v1 * w0 * bgrd(:,i  ,j+1,k  ,bgrdid)
+c             + ...
+
+      integer(ISZ):: io,ip,i,j,k,iz,ii,ib,ic
+      real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
+      real(kind=8):: tb(bgrdnc)
+
+c  Evaluation of B, vectorized over particles
+
+      if (.not. bgrds .or. .not. linbgrd(0)) return
+
+      do io=1,nbgrdol
+        if (.not. linbgrd(io)) cycle
+
+        if (lslice) then
+c         --- All particles are in the same z-cell
+          zz = zp(1)
+          iz = 0
+          ii = cbgrdid(iz,io)
+          ib = bgrdid(ii)
+          k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
+c         --- skip field accumulation if particles are outside of axial grid
+          if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
+        endif
+
+        do ip = 1, np
+
+          if (.not. lslice) then
+            zz = zp(ip)
+c           --- find the location of the particle in the internal lattice arrays
+            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
+            ii = cbgrdid(iz,io)
+            ib = bgrdid(ii)
+            if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
+          endif
+
+c         --- find transverse particle coordinate in frame of gridded field 
+c         --- transverse offsets
+          txp = xp(ip) - bgrdox(ii)
+          typ = yp(ip) - bgrdoy(ii)
+c         --- transverse rotation to take into account an active rotation 
+c         --- of the field element.  Particles are rotated in that oposite 
+c         --- sense of the element. Later the field components accumulated 
+c         --- must be rotated back. 
+          if ( bgrdph(ii) .ne. 0. ) then
+            temp = txp  
+            txp =  temp*bgrdcp(ii) + typ*bgrdsp(ii) 
+            typ = -temp*bgrdsp(ii) + typ*bgrdcp(ii) 
+          endif 
+
+c         --- Shift coordinates to measure from the edge of the field grid
+          txp = txp - bgrdxs(ii)
+          typ = typ - bgrdys(ii)
+
+c         --- Set default sign of B field
+          xsign = 1.
+          ysign = 1.
+          zsign = 1.
+
+c         --- If B is quadrupolar symmetric, make transformations.
+c         --- When the particle is in one of the even quadrants (either
+c         --- x<0 or y<0 but not both), the transformation is done by
+c         --- swapping x and y, and by swapping Bx and By (done at the end
+c         --- of the loop). The sign of Bz is also changed. In the third
+c         --- quadrant, the signs of both Bx and By are changed.
+c                 Quadrupole symmetries on field grid
+c           
+c             Quadrant      B_x            B_y             B_z 
+c             --------------------------------------------------------
+c                I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
+c                II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)  
+c                III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
+c                IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
+
+          if (bgrdsy(ii) == 2) then
+c           --- Get quadrant that the particle is in.
+            if (txp < 0.) then
+              xsign = -1.
+              txp = -txp
+            endif
+            if (typ < 0.) then
+              ysign = -1.
+              typ = -typ
+            endif
+c           --- If in even quadrant...
+            if (xsign*ysign < 0.) then
+c             --- Switch sign of Bz.
+              zsign = -1.
+c             --- Swap x and y
+              temp = txp
+              txp = typ
+              typ = temp
+            endif
+          endif
+
+c         --- find location of particle in B field grid
+          i =  txp*bgrddxi(ib)
+          j =  typ*bgrddyi(ib)
+          k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
+
+c         --- Calculate linear weights
+          u1 = txp*bgrddxi(ib) - i
+          v1 = typ*bgrddyi(ib) - j
+          w1 = (zz - cbgrdzs(iz,io))*bgrddzi(ib) - k
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+
+c         --- Only calculate for particles inside the B field grid
+          if (0 <= i .and. i < bgrdnx .and.
+     &        0 <= j .and. j < bgrdny .and.
+     &        0 <= k .and. k < bgrdnz) then
+
+            bfac = bgrdsc(ii) + bgrdsf(ii)
+
+            tb = bfac*(u0*v0*w0*bgrd(:,i  ,j  ,k  ,ib) +
+     &                 u1*v0*w0*bgrd(:,i+1,j  ,k  ,ib) +
+     &                 u0*v1*w0*bgrd(:,i  ,j+1,k  ,ib) +
+     &                 u1*v1*w0*bgrd(:,i+1,j+1,k  ,ib) +
+     &                 u0*v0*w1*bgrd(:,i  ,j  ,k+1,ib) +
+     &                 u1*v0*w1*bgrd(:,i+1,j  ,k+1,ib) +
+     &                 u0*v1*w1*bgrd(:,i  ,j+1,k+1,ib) +
+     &                 u1*v1*w1*bgrd(:,i+1,j+1,k+1,ib))
+
+
+            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
+              do ic=0,bgrdnc/3-1
+                tb(1+ic*3) = xsign*tb(1+ic*3)
+                tb(2+ic*3) = ysign*tb(2+ic*3)
+                tb(3+ic*3) = zsign*tb(3+ic*3)
+              enddo
+              if (xsign*ysign < 0.) then
+                do ic=0,bgrdnc/3-1
+                  temp = tb(1+ic*3)
+                  tb(1+ic*3) = tb(2+ic*3)
+                  tb(2+ic*3) = temp
+                enddo
+              endif 
+            endif 
+
+c           --- rotate transverse field componets for correct lab frame 
+c               orientation if the element is rotated.  
+            if ( bgrdph(ii) .ne. 0. ) then
+              do ic=0,bgrdnc/3-1
+                temp = tb(1+ic*3)
+                tb(1+ic*3) = temp*bgrdcp(ii) - tb(2+ic*3)*bgrdsp(ii) 
+                tb(2+ic*3) = temp*bgrdsp(ii) + tb(2+ic*3)*bgrdcp(ii)         
+              enddo
+            endif 
+
+c           --- Accumulate the interpolated field.
+            b(:,ip) = b(:,ip) + tb
 
           endif
 

@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.111 $, $Date: 2003/12/11 01:33:40 $
+#@(#) File TOP.V, version $Revision: 3.112 $, $Date: 2004/01/15 21:25:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.111 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.112 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -417,6 +417,14 @@ mmlts     logical             # Flag for existence of mmlts (auto set)
 bgrds     logical             # Flag for existence of bgrds (auto set)
 pgrds     logical             # Flag for existence of pgrds (auto set)
 diposet   logical  /.true./   # Auto-set dipoles from bend locations and radii 
+applybgrd(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
+          bx:real,by:real,bz:real) subroutine
+  # Applies the bgrd element at the locations passed in.
+applybgrd2(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
+           b:real) subroutine
+  # Applies the bgrd element at the locations passed in using the alternate
+  # form of the gridded data (top.bgrd array). The returned array b must be
+  # shaped (bgrdnc,np).
 
 ******** Mult_data dump:
 nemltsets          integer /0/  # Number of different electrostatic data sets
@@ -465,6 +473,7 @@ bgrdnx integer /0/ # Number of X cells
 bgrdny integer /0/ # Number of Y cells
 bgrdnz integer /0/ # Number of Z cells
 bgrdns integer /0/ # Number of data sets
+bgrdnc integer /0/ # Number of components stored in bgrd
 bgrddx(bgrdns)                      _real [m]   # X cell size
 bgrddy(bgrdns)                      _real [m]   # Y cell size
 bgrddz(bgrdns)                      _real [m]   # Z cell size
@@ -474,6 +483,9 @@ bgrddzi(bgrdns)                     _real [1/m] # 1 over Z cell size (autoset)
 bgrdbx(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # Bx
 bgrdby(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # By
 bgrdbz(0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real [T] # Bz
+bgrd(bgrdnc,0:bgrdnx,0:bgrdny,0:bgrdnz,bgrdns) _real
+  # B field stored in interleaved array. First dimension is changable,
+  # allowing option of storing additional data.
 
 ******** PGRDdata dump:
 # Data for the 3-D potential lattice element
