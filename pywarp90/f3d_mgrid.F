@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.12 $, $Date: 2001/09/14 00:13:03 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.13 $, $Date: 2001/09/19 22:36:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -42,22 +42,12 @@ c All dimensions, nx, ny, and nz, must be powers of 2.
 
 
       integer(ISZ):: nxy,nxyz,nxyz3
-      integer(ISZ):: log2nx,log2ny,log2nz
       real(kind=8):: maxerr
       real(kind=8):: dxsqi,dysqi,dzsqi,reps0c,rdel
       real(kind=8):: tdx,tdy,tdz
       integer(ISZ):: tnx,tny,tnz
-      integer(ISZ):: i,ii,minlog,k
+      integer(ISZ):: i,ii,k
       real(kind=8):: rs,x,r
-
-c     --- Make sure that all dimensions are powers of 2.
-      log2nx = log(real(nx))/log(2.)+0.5
-      log2ny = log(real(ny))/log(2.)+0.5
-      log2nz = log(real(nz))/log(2.)+0.5
-c     if (2**log2nx .ne. nx .or. 2**log2ny .ne. ny .or. 2**log2nz .ne. nz) then
-c       print*,"Multigrid: nx, ny, and nz must be powers of 2"
-c       return
-c     endif
 
 c     --- If iwhich equals zero or one, do initialization.
 c     --- psorinit does the same things that mginit would do
@@ -74,7 +64,6 @@ c     --- Initialize temporaries
       dzsqi=1./dz**2
       reps0c = mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
       rdel = dzsqi/(dxsqi + dysqi + dzsqi)
-      minlog = min(log2nx,log2ny,log2nz)
 
 c     --- Allocate the res array.
       if (iwhich == 0 .or. iwhich == 1) then
@@ -736,7 +725,7 @@ c
 c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
 
-      real(kind=8):: rdel,reps0,const,rdx2c,rdy2c,rdz2c,spm1,dx
+      real(kind=8):: rdel,const,rdx2c,rdy2c,rdz2c,spm1,dx
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
       integer(ISZ):: ii,ix,iy,iz,ic
       integer(ISZ):: s_parity,e_parity
@@ -748,7 +737,6 @@ c     --- Macro for common arguments to the psor_loop calls
 c     --- Set temporary variables (these are used to increase performance)
       dx = 1./sqrt(rdx2)
       rdel = rdz2/(rdx2 + rdy2 + rdz2)
-      reps0 = 1./eps0
       const = mgparam*0.5/(rdx2 + rdy2 + rdz2)
       rdx2c = rdx2*const
       rdy2c = rdy2*const
