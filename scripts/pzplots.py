@@ -1,5 +1,5 @@
 from warp import *
-pzplots_version = "$Id: pzplots.py,v 1.4 2001/03/22 19:03:16 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.5 2001/03/22 19:04:22 dave Exp $"
 
 def pzplotsdoc():
   print """
@@ -67,8 +67,8 @@ pzxedge: Plot beam X envelope (twice Xrms) versus Z
 pzyedge: Plot beam Y envelope (twice Yrms) versus Z
 pzxedges: Plot beam X edges (centroid +- twice Xrms) versus Z
 pzyedges: Plot beam Y edges (centroid +- twice Yrms) versus Z
-pzenvxp: Plot beam X' envelope (xxpbar/xrms) versus Z
-pzenvyp: Plot beam Y' envelope (yypbar/yrms) versus Z
+pzenvxp: Plot beam X' envelope (2*xxpbar/xrms) versus Z
+pzenvyp: Plot beam Y' envelope (2*yypbar/yrms) versus Z
   """
 
 ##########################################################################
@@ -1588,7 +1588,7 @@ def pzyedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
 ##########################################################################
 def pzenvxp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
-  """Plot beam X' envelope (xxpbar/xrms) versus Z
+  """Plot beam X' envelope (2*xxpbar/xrms) versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + top.zplmesh/zscale
@@ -1605,7 +1605,7 @@ def pzenvxp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb == None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  sxz = (top.xxpbarz - top.xbarz*top.xpbarz)/ \
+  sxz = 2.*(top.xxpbarz - top.xbarz*top.xpbarz)/ \
         where(greater(top.xrmsz,0.),top.xrmsz,1.)
   warpplg(sxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
@@ -1614,7 +1614,7 @@ def pzenvxp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
 ##########################################################################
 def pzenvyp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
-  """Plot beam Y' envelope (yypbar/yrms) versus Z
+  """Plot beam Y' envelope (2*yypbar/yrms) versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + top.zplmesh/zscale
@@ -1631,7 +1631,7 @@ def pzenvyp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb == None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  syz = (top.yypbarz - top.ybarz*top.ypbarz)/ \
+  syz = 2.*(top.yypbarz - top.ybarz*top.ypbarz)/ \
         where(greater(top.yrmsz,0.),top.yrmsz,1.)
   warpplg(syz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
