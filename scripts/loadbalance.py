@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.3 2001/07/18 17:12:44 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.4 2001/07/23 19:36:11 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -160,6 +160,10 @@ that has already been done.
   if f3d.nocndbdy > 0:
     f3d.iocndz[:f3d.nocndbdy] = f3d.iocndz[:f3d.nocndbdy] + oldiz - newiz
   cleanconductors()
+
+  # --- Correct location of injection source.
+  if top.inject > 0:
+    w3d.inj_grid[:,:] = w3d.inj_grid + oldiz - newiz
 
   # --- Do some additional work if requested
   if lloadrho: loadrho()
