@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.54 2001/10/16 23:30:37 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.55 2001/10/22 18:51:20 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2340,6 +2340,47 @@ def pcphixy(iz=None,contours=20,titles=1,filled=1,color=None):
   plotc(transpose(getphi(iz=iz)),w3d.ymesh,w3d.xmesh,
         contours=contours,filled=filled,color=color)
   if titles: ptitles("Potential in x-y plane","X","Y","iz = "+repr(iz))
+##########################################################################
+##########################################################################
+def ppdecomposition(scale=1.,minscale=0.,gap=0.2):
+  """Shows the domain decomposition in a graphical way. For each
+processor, the total mesh extent is plotted as a filled rectangle
+covering the z-length and with height determined by 'scale' and the
+number of processors. Another filled rectangle is plotted in the top
+half showing the particle domains, and one on the lower half shows the
+field domain.
+  - scale=1.: the maximum vertical extent of the graph
+  - minscale=0.: the minimum vertical extent of the graph
+  - gap=0.2: fractional vertical gap between rectangles
+  """
+  z = []
+  x = []
+  y = []
+  dd = 1.*scale/top.maxslaves
+  mm = 1. - gap
+  for i in xrange(top.maxslaves):
+    z = z + [1.]
+    zmin = top.zmslmin[i]
+    zmax = top.zmslmax[i]
+    x = x + [zmin,zmax,zmax,zmin,zmin]
+    y = y + list(i*dd + 0.5*dd*array([-mm,-mm,mm,mm,-mm]))
+  for i in xrange(top.maxslaves):
+    z = z + [2.]
+    zmin = top.zpslmin[i]
+    zmax = top.zpslmax[i]
+    x = x + [zmin,zmax,zmax,zmin,zmin]
+    y = y + list(i*dd + 0.5*dd*array([0,0,mm,mm,0]))
+  for i in xrange(top.maxslaves):
+    z = z + [3.]
+    zmin = top.izfsslave[i]*w3d.dz
+    zmax = top.izfsslave[i]*w3d.dz + top.nzfsslave[i]*w3d.dz
+    x = x + [zmin,zmax,zmax,zmin,zmin]
+    y = y + list(i*dd + 0.5*dd*array([-mm,-mm,0,0,-mm]))
+  plfp(array(z),y,x,5*ones(len(z)),cmin=0,cmax=4)
+  for i in xrange(len(z)):
+    pldj(x[i*5:i*5+4],y[i*5:i*5+4],x[i*5+1:i*5+5],y[i*5+1:i*5+5])
+      
+
 ##########################################################################
 ##########################################################################
 plps = []
