@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.1 $, $Date: 2001/04/30 22:41:32 $
+c F3DSLAVE.M, version $Revision: 1.2 $, $Date: 2002/01/22 17:24:02 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -705,6 +705,45 @@ c     --- Apply inverse FFT's to transverse planes.
       call vpois3d(13,a(0,0,0),a(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,lx,ly,lz,nx,ny,nz,scrtch,xywork,zwork,0,
      &             l2symtry,l4symtry)
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      subroutine parallelgatherall(data,ndata,nproc,nstep)
+      use Parallel
+      integer(ISZ):: ndata,nproc,nstep
+      real(kind=8):: data(ndata,nproc,nstep)
+c Gathers data in subgroups of processors
+      include "mpif.h"
+      integer(ISZ):: isend
+      integer:: datatype,subcomm,ierror
+
+c     --- First, create subgroups of processors
+      if (nproc < nslaves) then
+        call MPI_COMM_SPLIT(MPI_COMM_WORLD,my_index/nproc,0,subcomm,ierror)
+      else
+        call MPI_COMM_DUP(MPI_COMM_WORLD,subcomm,ierror)
+      endif
+
+c     --- First nstep > 1, create new data type
+      if (nstep > 1) then
+c       --- NOTE: thist coding is not complete
+        call MPI_TYPE_VECTOR(nproc,ndata,ndata*nproc,MPI_DOUBLE_PRECISION,
+     &                       datatype,ierror)
+        call MPI_TYPE_COMMIT(datatype)
+      else
+        datatype = MPI_DOUBLE_PRECISION
+      endif
+
+c     --- Gather the data
+      isend = mod(my_index,nproc) + 1
+      call MPI_ALLGATHER(data(1:ndata,isend,1),ndata,MPI_DOUBLE_PRECISION,
+     &                   data,ndata,MPI_DOUBLE_PRECISION,subcomm,ierror)
+
+c     --- Delete the subgroup communicator
+      call MPI_COMM_FREE(subcomm,ierror)
 
       return
       end
