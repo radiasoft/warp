@@ -408,7 +408,12 @@ class WarpRun(wxFrame):
         self.notebook1.DeletePage(0)
         self.launch_pype()
         # start console
-        self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.notebook1, inter=self.inter)
+        if 1:
+          self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.splitterWindow1,inter=self.inter)
+          self.splitterWindow1.ReplaceWindow(self.MessageWindow,self.ConsolePanel)
+          self.MessageWindow=self.ConsolePanel.Console
+        else:
+          self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.notebook1, inter=self.inter, in_notebook=1)
         self.Console = self.ConsolePanel.Console
         self.prefix = ''
         self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self.notebook1)
