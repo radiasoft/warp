@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:12 $
+c@(#) File WXY.M, version $Revision: 3.1 $, $Date: 2001/04/19 23:43:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1929,7 +1929,7 @@ c            --- Calculate moments over particles, now that we're sync'd
      &                       gaminv(ipmin),sq(1),sm(is),sw(is),dt*0.5,2,
      &                       nplive,uxpo,uypo,uzpo,is,ns)
 c            --- Calculate current
-             call setcurrxy(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+             call setcurrxy(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                      sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)
           endif
 
@@ -1952,7 +1952,7 @@ c            --- Collect charge density (xy) and current (1d)
      &                     uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
 
              if (ifgap) 
-     &         call setcurrxy(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &         call setcurrxy(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                        sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)
           endif
         enddo

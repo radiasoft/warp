@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:11 $
+c@(#) File W3D.M, version $Revision: 3.1 $, $Date: 2001/04/19 23:44:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1940,7 +1940,7 @@ c     --- For Parallel slave, message passing must be done so seperate
 c     --- routine is used.  Note that second half of ifelse macro
 c     --- includes the next 30 lines.
 #ifdef PARALLEL
-        call seteears_slave(zwork)
+        call seteears_slave(zwork(1,0,0))
 #else
 c     set to initial field on axis (with the center part zero)
 c     the '5' is just a guestimate, it should be nz dependent
@@ -2086,7 +2086,7 @@ c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap,dzz)
+               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
 c              --- Add in ears and uniform focusing E field pieces
                call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                        zbeam,zimax,zimin,straight,ifeears,eears,
@@ -2138,7 +2138,7 @@ c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap,dzz)
+               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
 c              --- Add in ears and uniform focusing E field pieces
                call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                        zbeam,zimax,zimin,straight,ifeears,eears,
@@ -2190,7 +2190,7 @@ c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
-               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap,dzz)
+               call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
 c              --- Add in ears and uniform focusing E field pieces
                call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                        zbeam,zimax,zimin,straight,ifeears,eears,
@@ -2247,7 +2247,7 @@ c       --- Calculate current
         do is=1,ns
           do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
             ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
-            call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+            call setcurr(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                   sq(is),sw(is),zbeam,dzz,zzmin)
           enddo
         enddo
@@ -7500,20 +7500,20 @@ c       case (0)
           call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                 attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
      &                 (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
-     &                 scrtch,xywork,zwork,0,l2symtry,l4symtry)
+     &                 scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
 c       case (1)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
-     &                nx,ny,izfsmax-izfsmin,scrtch,xywork,zwork,
-     &                l2symtry,l4symtry)
+     &                nx,ny,izfsmax-izfsmin,scrtch(0,0),xywork(0,0),
+     &                zwork(1,0,0),l2symtry,l4symtry)
 c       case (2)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
-     &                nx,ny,izfsmax-izfsmin,scrtch,xywork,zwork,
+     &                nx,ny,izfsmax-izfsmin,scrtch(0,0),xywork(0,0),zwork,
      &                xmmax,zmmin+izfsmin*dz,zgrid,pipeshpe,periinz,
      &                l2symtry,l4symtry)
 c       case (3)
@@ -7523,28 +7523,28 @@ c          --- izfsmin and izfsmax allow field solves on a partial grid.
            call psor3df(iwhich,nx,ny,nz,phi(0,0,-1),rho(0,0,0),
      &                 phi(0,0,-1),rho(0,0,0),rstar, 
      &                 dx,dy,dz,xmmin,ymmin,zmmin,zbeam,zgrid,linbend,
-     &                 l2symtry,l4symtry,scrtch,izfsmin,izfsmax)
+     &                 l2symtry,l4symtry,scrtch(0,0),izfsmin,izfsmax)
 c       case (4)
       elseif (fstype == 4) then
           if (iwhich == 1 .or. iwhich == 0) then
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
      &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry)
+     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
             call vpois3d(12,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
      &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
-     &                   scrtch,xywork,zwork,izfsmin,l2symtry,l4symtry)
+     &                   scrtch(0,0),xywork(0,0),zwork,izfsmin,l2symtry,l4symtry)
             call vpois3d(14,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
      &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry)
+     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
             call vpois3d(13,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
      &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
-     &                   scrtch,xywork,zwork,0,l2symtry,l4symtry)
+     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
           endif
 
 c       case (5)
@@ -7553,21 +7553,21 @@ c         --- General capacity matrix solver in kz space
           call capmatkz3d(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
      &                    filt,xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
      &                    nx,ny,izfsmax-izfsmin,dx,dy,dz,
-     &                    xmmin,ymmin,zmmin+izfsmin*dz,scrtch,
-     &                    xywork,zwork,l2symtry,l4symtry)
+     &                    xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
+     &                    xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
 c       case (6)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
           call capmat3df(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
      &                  filt,xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
      &                  nx,ny,izfsmax-izfsmin,dx,dy,dz,
-     &                  xmmin,ymmin,zmmin+izfsmin*dz,scrtch,
-     &                  xywork,zwork,l2symtry,l4symtry)
+     &                  xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
+     &                  xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
 
 c       case (7)
       elseif (fstype == 7) then
           call multigrid3df(iwhich,nx,ny,nz,dx,dy,dz,phi(0,0,-1),rho(0,0,0),
-     &                     rstar,linbend,l2symtry,l4symtry,scrtch,
+     &                     rstar,linbend,l2symtry,l4symtry,scrtch(0,0),
      &                     xmmin,ymmin,zmmin,zbeam,zgrid)
 
 #ifdef PARALLEL
@@ -7579,7 +7579,7 @@ c         --- boundary data.
           call paralleltridiag(phi(0,0,izfsmin-1),kxsq,kysq,kzsq,
      &                         attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
      &                         (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
-     &                         scrtch,xywork,zwork,l2symtry,l4symtry)
+     &                         scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry)
 c       case (9)
       elseif (fstype == 9) then
 c         --- Experimental parallel solver based on the method
@@ -7587,7 +7587,7 @@ c         --- put forward by Lantz
           call lantzsolver(iwhich,phi(0,0,izfsmin-1),kxsq,kysq,kzsq,
      &                     attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
      $                     (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
-     &                     scrtch,xywork,zwork,l2symtry,l4symtry)
+     &                     scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry)
 
 #endif
 c     endselect
