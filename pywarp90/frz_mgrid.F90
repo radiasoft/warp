@@ -1,4 +1,4 @@
-!     Last change:  JLV  16 Jul 2002    1:26 pm
+!     Last change:  JLV  23 Jul 2002    9:37 am
 #include "top.h"
 
 module multigrid_common
@@ -3041,9 +3041,9 @@ REAL(8), INTENT(IN) :: dr0, dz0, accuracy
 
 !  call distribute_rho(basegrid)
 
-  if (basegrid%ixrbnd==dirichlet) basegrid%phi(nr0+1,:) = u0(nr0+1,:)
-  if (basegrid%izlbnd==dirichlet) basegrid%phi(:,1)     = u0(:,1)
-  if (basegrid%izrbnd==dirichlet) basegrid%phi(:,nz0+1) = u0(:,nz0+1)
+  if (basegrid%ixrbnd==dirichlet) basegrid%phi(nr0+1,:)       = u0(nr0+1,:)
+  if (basegrid%izlbnd==dirichlet) basegrid%phi(1:nr0+1,1)     = u0(1:nr0+1,1)
+  if (basegrid%izrbnd==dirichlet) basegrid%phi(1:nr0+1,nz0+1) = u0(1:nr0+1,nz0+1)
 
   call solve_mgridrz(basegrid,accuracy)
 
@@ -3529,8 +3529,15 @@ TYPE(conductor_type), POINTER :: cndpnt
      bndy(i)%cnd%cf0(ii)  = -bndy(i)%cnd%cfxp(ii)-bndy(i)%cnd%cfzm(ii)-bndy(i)%cnd%cfzp(ii)
    else
      r = (bndy(i)%cnd%jj(ii)-1)*bndy(i)%dr
-     rm = r-0.5_8*dxx
-     rp = r+0.5_8*dxx
+     select case (bnd_method)
+       case (egun)
+         rm = r-0.5_8*bndy(i)%dr
+         rp = r+0.5_8*bndy(i)%dr
+       case (ecb)
+         rm = r-0.5_8*dxm
+         rp = r+0.5_8*dxp
+       case default
+     end select
      bndy(i)%cnd%dt(ii) = 1._8/((rm/dxm+rp/dxp)/(r*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      bndy(i)%cnd%cfxm(ii) = rm/(r*dxm*dxx)
      bndy(i)%cnd%cfxp(ii) = rp/(r*dxp*dxx)
@@ -3637,8 +3644,15 @@ TYPE(conductor_type), POINTER :: cndpnt
      bndy(i)%cnd%cf0(iii)  = -bndy(i)%cnd%cfxp(iii)-bndy(i)%cnd%cfzm(iii)-bndy(i)%cnd%cfzp(iii)
    else
      r = (bndy(i)%cnd%jj(iii)-1)*bndy(i)%dr
-     rm = r-0.5_8*dxm
-     rp = r+0.5_8*dxp
+     select case (bnd_method)
+       case (egun)
+         rm = r-0.5_8*bndy(i)%dr
+         rp = r+0.5_8*bndy(i)%dr
+       case (ecb)
+         rm = r-0.5_8*dxm
+         rp = r+0.5_8*dxp
+       case default
+     end select
      bndy(i)%cnd%dt(iii) = 1._8/((rm/dxm+rp/dxp)/(r*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      bndy(i)%cnd%cfxm(iii) = rm/(r*dxm*dxx)
      bndy(i)%cnd%cfxp(iii) = rp/(r*dxp*dxx)
@@ -5082,14 +5096,20 @@ do igrid=1,ngrids
         case default
       end select
       IF(cndpnt%jj(ic)==1) then
-        rp = 0.5_8*bndy(i)%dr
         cndpnt%cfxp(ic) = 4._8/(dxp*dxx)
         cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
         cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
       else
         r = (cndpnt%jj(ic)-1)*bndy(i)%dr
-        rm = r-0.5_8*dxx
-        rp = r+0.5_8*dxx
+        select case (bnd_method)
+          case (egun)
+            rm = r-0.5_8*bndy(i)%dr
+            rp = r+0.5_8*bndy(i)%dr
+          case (ecb)
+            rm = r-0.5_8*dxm
+            rp = r+0.5_8*dxp
+          case default
+        end select
         cndpnt%cfxm(ic) = rm/(r*dxm*dxx)
         cndpnt%cfxp(ic) = rp/(r*dxp*dxx)
         cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
