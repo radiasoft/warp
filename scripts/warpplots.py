@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.60 2001/12/20 00:16:30 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.61 2001/12/21 16:27:20 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2326,7 +2326,7 @@ def pcrhozy(ix=None,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   rrr = getrho(ix=ix)
-  if rrr is None: return
+  if rrr is None: rrr = zeros((w3d.ny,w3d.nzfull),'d')
   ppgeneric(grid=transpose(rrr),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
@@ -2346,7 +2346,7 @@ def pcrhozx(iy=None,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   rrr = getrho(iy=iy)
-  if rrr is None: return
+  if rrr is None: rrr = zeros((w3d.nx,w3d.nzfull),'d')
   ppgeneric(grid=transpose(rrr),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
@@ -2366,7 +2366,7 @@ def pcrhoxy(iz=None,**kw):
     kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
   rrr = getrho(iz=iz)
-  if rrr is None: return
+  if rrr is None: rrr = zeros((w3d.nx,w3d.ny),'d')
   ppgeneric(grid=rrr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
@@ -2386,7 +2386,7 @@ def pcphizy(ix=None,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix)
-  if ppp is None: return
+  if ppp is None: ppp = zeros((w3d.ny,w3d.nzfull),'d')
   ppgeneric(grid=transpose(ppp),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
@@ -2406,7 +2406,7 @@ def pcphizx(iy=None,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy)
-  if ppp is None: return
+  if ppp is None: ppp = zeros((w3d.nx,w3d.nzfull),'d')
   ppgeneric(grid=transpose(ppp),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
@@ -2426,7 +2426,7 @@ def pcphixy(iz=None,**kw):
     kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
   ppp = getphi(iz=iz)
-  if ppp is None: return
+  if ppp is None: ppp = zeros((w3d.nx,w3d.ny),'d')
   ppgeneric(grid=ppp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
