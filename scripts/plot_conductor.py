@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.57 2003/04/05 01:58:07 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.58 2003/04/24 16:41:28 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -418,7 +418,7 @@ cell. It must be called for each of the four corners of a grid cell.
 # x-y plane
 def pfxy(iz=None,izf=None,fullplane=1,
          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-         subgridlen=1.,phicolor=blue,condcolor=cyan,
+         subgridlen=1.,phicolor=blue,condcolor='fg',
          oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
@@ -430,7 +430,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
   - phicolor=blue color of phi contours
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
   - subgridlen=1 maximum length of subgrid line which are plotted
@@ -504,7 +504,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
 # z-x plane
 def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-         subgridlen=1.,phicolor=blue,condcolor=cyan,
+         subgridlen=1.,phicolor=blue,condcolor='fg',
          oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
@@ -517,7 +517,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
   - phicolor=blue color of phi contours
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
   - subgridlen=1 maximum length of subgrid line which are plotted
@@ -570,7 +570,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
 # z-y plane
 def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-         subgridlen=1.,phicolor=blue,condcolor=cyan,
+         subgridlen=1.,phicolor=blue,condcolor='fg',
          oddcolor=red,evencolor=green,numb=None,mglevel=0,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
@@ -583,7 +583,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
   - phicolor=blue color of phi contours
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   - oddcolor=red color of odd subgrid points
   - evencolor=green color of even subgrid points
   - subgridlen=1 maximum length of subgrid line which are plotted
@@ -641,7 +641,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
 # x-y plane
 def pfxyg(iz=None,izf=None,fullplane=1,
           cond=1,plotsg=1,fill=0,plotphi=1,
-          phicolor=blue,subgridlen=1.,condcolor=cyan,
+          phicolor=blue,subgridlen=1.,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
@@ -658,7 +658,7 @@ Same arguments as pfxy
 # z-x plane
 def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,plotphi=1,
-          subgridlen=1.,phicolor=blue,condcolor=cyan,
+          subgridlen=1.,phicolor=blue,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
@@ -675,7 +675,7 @@ Same arguments as pfzx
 # z-y plane
 def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,plotphi=1,
-          subgridlen=1.,phicolor=blue,condcolor=cyan,
+          subgridlen=1.,phicolor=blue,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,mglevel=0,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
@@ -698,7 +698,7 @@ Same arguments as pfzy
 # x-y plane
 def pfxyi(iz=None,izf=None,fullplane=1,
           cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-          phicolor=blue,condcolor=cyan,
+          phicolor=blue,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in full X-Y plane,
@@ -716,7 +716,7 @@ Same arguments as pfxy
 # z-x plane
 def pfzxi(iy=None,iyf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-          subgridlen=1.,phicolor=blue,condcolor=cyan,
+          subgridlen=1.,phicolor=blue,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in full Z-X plane
@@ -734,7 +734,7 @@ Same arguments as pfzx
 # z-y plane
 def pfzyi(ix=None,ixf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,scale=1,plotphi=1,
-          subgridlen=1.,phicolor=blue,condcolor=cyan,
+          subgridlen=1.,phicolor=blue,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in full Z-Y plane
@@ -757,7 +757,7 @@ Same arguments as pfzy
 
 # x-y plane
 def pfxybox(iz=None,izf=None,contours=8,plotsg=1,scale=1,signx=1,signy=1,
-            plotphi=1,filled=0,phicolor=blue,condcolor=cyan,kwdict={},**kw):
+            plotphi=1,filled=0,phicolor=blue,condcolor='fg',kwdict={},**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in X-Y plane
@@ -770,7 +770,7 @@ in X-Y plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   - phicolor=blue color of phi contours
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   - subgridlen=1 maximum length of subgrid line which are plotted
   """
   kw.update(kwdict)
@@ -812,7 +812,7 @@ in X-Y plane
 
 # z-x plane
 def pfzxbox(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
-            plotphi=1,filled=0,phicolor=blue,condcolor=cyan,kwdict={},**kw):
+            plotphi=1,filled=0,phicolor=blue,condcolor='fg',kwdict={},**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-X plane
@@ -825,7 +825,7 @@ in Z-X plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   - phicolor=blue color of phi contours
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   """
   kw.update(kwdict)
   if iyf is not None: iy = iyf
@@ -866,7 +866,7 @@ in Z-X plane
 
 # z-y plane
 def pfzybox(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
-            plotphi=1,filled=0,phicolor=blue,condcolor=cyan,kwdict={},**kw):
+            plotphi=1,filled=0,phicolor=blue,condcolor='fg',kwdict={},**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-Y plane
@@ -879,7 +879,7 @@ in Z-Y plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   - phicolor=blue color of phi contours
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   """
   kw.update(kwdict)
   if ixf is not None: ix = ixf
@@ -920,7 +920,7 @@ in Z-Y plane
 
 # z-x plane
 def pfzxboxi(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,
-             plotphi=1,filled=0,phicolor=blue,condcolor=cyan,**kw):
+             plotphi=1,filled=0,phicolor=blue,condcolor='fg',**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-X) plane
@@ -932,7 +932,7 @@ in Z-(-X) plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   - phicolor=blue color of phi contours
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   """
   if iyf is not None: iy = iyf
   pfzxbox(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
@@ -941,7 +941,7 @@ in Z-(-X) plane
 
 # z-y plane
 def pfzyboxi(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=-1,
-             plotphi=1,filled=0,phicolor=blue,condcolor=cyan,**kw):
+             plotphi=1,filled=0,phicolor=blue,condcolor='fg',**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-Y) plane
@@ -952,7 +952,7 @@ in Z-(-Y) plane
   - signz=1 sign of z, used for plotting symmetry planes
   - filled=0 when true, plots filled contours
   - phicolor=blue color of phi contours
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   """
   if ixf is not None: ix = ixf
   pfzybox(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
@@ -1068,10 +1068,10 @@ Plots Z-X grid in the lab frame (including bends)
   if plotcond: pfzxlab(zz)
 
 # --- Make pfzx plot in lab frame
-def pfzxlab(zz=None,iy=None,condcolor=cyan):
+def pfzxlab(zz=None,iy=None,condcolor='fg'):
   """Plots conductors in Z-X lab frame (including bends)
   - zz=top.zbeam is the center position
-  - condcolor=cyan color of conductor points inside conductors
+  - condcolor='fg' color of conductor points inside conductors
   """
   if not zz: zz=top.zbeam
   if iy is None: iy = w3d.iy_axis
