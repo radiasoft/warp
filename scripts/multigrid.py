@@ -154,7 +154,8 @@ class MultiGrid(object):
     self.mgiters = zeros(1)
     self.mgerror = zeros(1,'d')
 
-    # --- Note that at this time, bends are not supported.
+    # --- At the start, assume that there are no bends. This is corrected
+    # --- in the solve method when there are bends.
     self.linbend = false
 
     # --- Turn of build quads option
@@ -284,6 +285,20 @@ class MultiGrid(object):
       my_index = 0
       izfsslave = zeros(1)
       nzfsslave = zeros(1)
+
+    # --- Setup data for bends.
+    if top.bends:
+
+      # --- This commented out code does the same thing as the line below
+      # --- setting linbend but is a bit more complicated. It is preserved
+      # --- in case of some unforeseen problem with the code below.
+      #ii = (top.cbendzs <= self.zmmax+top.zgrid and
+      #                     self.zmmin+top.zgrid <= top.cbendze)
+      #self.linbend = sometrue(ii)
+
+      setrstar(self.rstar,self.nz,self.dz,self.zmmin,top.zgrid)
+      self.linbend = min(self.rstar) < largepos
+
     multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                      self.dx,self.dy,self.dz,self.phi,self.rho,
                      self.rstar,self.linbend,self.bounds,
@@ -296,6 +311,7 @@ class MultiGrid(object):
                      self.gridmode,
                      self.conductors,
                      top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
+
     if self.efetch == 3:
       MultiGrid.getselfe(self,recalculate=1)
 
