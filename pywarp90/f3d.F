@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.46 $, $Date: 2002/06/21 23:02:11 $
+c@(#) File F3D.M, version $Revision: 3.47 $, $Date: 2002/06/26 00:37:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6827,25 +6827,19 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrlinr = .true.
       endif
 
-c     --- Copy volt into srfrv_v. This is actually a bad way of doing this
-c     --- since it is using side effects of a function call. The user set
-c     --- function, rofzfunc, can set srfrv_v, and then in the actual
-c     --- srfrvoutXX routine, the variable volt is then changed.
-      srfrv_v = volt
-
 c     --- Call the appropriate version of the routine.
       if(solvergeom==RZgeom) then
-        call srfrvoutrz(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmax,lfill,
+        call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       else if (fstype == 7 .or. fstype == 11) then
-        call srfrvout3dmg(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmax,lfill,
+        call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       else
-        call srfrvout3d(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmax,lfill,
+        call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                  xmin,xmax,ymin,ymax,lshell,
      &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
@@ -6910,7 +6904,6 @@ c Output is put directly into the conductor arrays of Conductor3d.
 
       integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy,iz,i
-      real(kind=8):: voltiz,voltminiz,voltmaxiz,voltz
       real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
       real(kind=8):: rmaxsq,zgmin,zgmax,r_zmin,r_zmax
       real(kind=8):: rrrlower,rrrhigher,zlower,zhigher
@@ -7002,7 +6995,6 @@ c       --- Make sure there is enough room in the arrays.
 c       --- Calculate the surface radius at iz.
         rrr = srfrv_f(zz,rofzfunc,0)
         rrrsq = rrr*rrr
-        voltiz = volt
 c       --- Calculate the maximum radius to be filled.
 c       --- If not filling the whole conductor, set rrrmax large enough so
 c       --- that enough conductor is filled to match neighboring points in iz.
@@ -7043,7 +7035,7 @@ c           --- unfilled conductor.
               ixcond(ncond) = ix
               iycond(ncond) = iy
               izcond(ncond) = iz
-              condvolt(ncond) = voltiz
+              condvolt(ncond) = volt
               condnumb(ncond) = condid
             endif
           enddo
@@ -7056,9 +7048,7 @@ c Set subgrid scale arrays
 
 c       --- Calculate r at zmin and zmax.
         r_zmin = srfrv_f(zmin,rofzfunc,0)
-        voltminiz = volt
         r_zmax = srfrv_f(zmax,rofzfunc,0)
-        voltmaxiz = volt
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
@@ -7106,7 +7096,6 @@ c         --- be large so that transverse subgrid resolution will not be done.
             rrr = srfrv_f(zz,rofzfunc,0)
             rrrsq = rrr*rrr
             rrrsq1 = rrrsq
-            voltiz = volt
           endif
 
 c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
@@ -7145,14 +7134,6 @@ c         --- Find minimum of rrr and radius of surface at nearby z points.
               xx = (ix-ix_axis)*dx-xcent
               yy = (iy-iy_axis)*dy-ycent
               rad = sqrt(xx**2 + yy**2)
-
-              if (zz < zmin-zfuzz) then
-                voltz = voltminiz
-              elseif (zz > zmax+zfuzz) then
-                voltz = voltmaxiz
-              else
-                voltz = voltiz
-              endif
 
 c             --- Calculate distances in z first.  Select points which
 c             --- are transversely near the surface of revolution and
@@ -7210,7 +7191,6 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delmz = (zz - znew)*dzi
                 endif
-                voltz = volt
               elseif (rad < rrrlower .or. rad > rmax) then
                 delmz = 2.
               endif
@@ -7267,7 +7247,6 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delpz = (znew - zz)*dzi
                 endif
-                voltz = volt
               elseif (rad < rrrhigher .or. rad > rmax) then
                 delpz = 2.
               endif
@@ -7343,7 +7322,7 @@ c                 --- even
                   ecdelpx(necndbdy) = delpx
                   ecdelpy(necndbdy) = delpy
                   ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = voltz
+                  ecvolt(necndbdy) = volt
                   ecnumb(necndbdy) = condid
                 else
 c                 --- odd
@@ -7357,7 +7336,7 @@ c                 --- odd
                   ocdelpx(nocndbdy) = delpx
                   ocdelpy(nocndbdy) = delpy
                   ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = voltz
+                  ocvolt(nocndbdy) = volt
                   ocnumb(nocndbdy) = condid
                 endif
               endif
@@ -7436,18 +7415,15 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrlinr = .true.
       endif
 
-c     --- Copy volt into srfrv_v
-      srfrv_v = volt
-
       if (fstype == 7 .or. fstype == 11) then
-        call srfrvin3dmg(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmin,lfill,
+        call srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
      &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                 ix_axis,iy_axis,
      &                 xmesh,ymesh,l2symtry,l4symtry,condid)
       else
 c     --- Call the appropriate routine
-        call srfrvin3d(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmin,lfill,
+        call srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
      &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                 ix_axis,iy_axis,
@@ -8041,22 +8017,19 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrmaxlinr = .true.
       endif
 
-c     --- Copy volt into srfrv_v
-      srfrv_v = volt
-
 c     --- Call the appropriate routine
       if(solvergeom==RZgeom) then
-         call srfrvinoutrz(rminofz,rmaxofz,srfrv_v,zmin,zmax,xcent,ycent,
+         call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       else if (fstype == 7 .or. fstype == 11) then
-        call srfrvinout3dmg(rminofz,rmaxofz,srfrv_v,zmin,zmax,xcent,ycent,
+        call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       else
-        call srfrvinout3d(rminofz,rmaxofz,srfrv_v,zmin,zmax,xcent,ycent,
+        call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                    lzend,xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.45 $, $Date: 2002/06/21 23:02:11 $
+#@(#) File F3D.V, version $Revision: 3.46 $, $Date: 2002/06/26 00:37:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.45 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.46 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -136,9 +136,9 @@ icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 2 EBC style (non-centered finite-difference)
 
 *********** Conductor3d dump parallel:
-icstart(100)  integer # Start of the conductor points for each MG level
-ecstart(100)  integer # Start of the even conductor points for each MG level
-ocstart(100)  integer # Start of the odd conductor points for each MG level
+icstart(0:100)  integer # Start of the conductor points for each MG level
+ecstart(0:100)  integer # Start of the even conductor points for each MG level
+ocstart(0:100)  integer # Start of the odd conductor points for each MG level
 ncondmax          integer # Maximum number of points in conductor
 ncond             integer # Number of points within conductors
 ixcond(ncondmax) _integer # X coordinate of points in conductor
@@ -146,10 +146,11 @@ iycond(ncondmax) _integer # Y coordinate of points in conductor
 izcond(ncondmax) _integer # Y coordinate of points in conductor
 condvolt(ncondmax) _real  # voltage of points in conductor
 condnumb(ncondmax) _integer # Number of the conductor the points are in
-icondlxy(ncondmax) _integer # Coarseness level at which the point is on grid
-icondlz (ncondmax) _integer # Coarseness level at which the point is on grid
-ncndmax       integer /0/   # Maximum number of points for sub-grid boundaries
+icondlevel(ncondmax) _integer # Coarseness level at which the point is on grid
+icondlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
+icondlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
+ncndmax       integer /0/   # Maximum number of points for sub-grid boundaries
 necndbdy      integer /0/   # Number of points for even sub-grid boundaries
 ecndpvph(ncndmax)     _real -dump # Saves phi for even sub-grid boundaries
 iecndx  (ncndmax)  _integer # location of points for even sub-grid boundaries
@@ -175,8 +176,9 @@ ecnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, even
 ecnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, even
 ecnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, even
 ecnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, even
-iecndlxy(ncndmax)  _integer # Coarseness level at which the point is on grid
-iecndlz (ncndmax)  _integer # Coarseness level at which the point is on grid
+iecndlevel(ncndmax)  _integer # Coarseness level at which the point is on grid
+iecndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
+iecndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
 nocndbdy      integer /0/   # Number of points for odd sub-grid boundaries
 ocndpvph(ncndmax)     _real -dump # Saves phi for odd sub-grid boundaries
@@ -203,26 +205,29 @@ ocnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, odd
 ocnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, odd
 ocnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, odd
 ocnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, odd
-iocndlxy(ncndmax)  _integer # Coarseness level at which the point is on grid
-iocndlz (ncndmax)  _integer # Coarseness level at which the point is on grid
+iocndlevel(ncndmax)  _integer # Coarseness level at which the point is on grid
+iocndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
+iocndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
 *********** Multigrid3d dump:
 mgparam    real    /1.2/ # Acceleration parameter for multigrid fieldsolver
 mgmaxiters integer /100/ # Maximum number of iterations
 mgiters    integer       # Actual number of iterations
 mgtol      real  /1.e-6/ # Absolute tolerance in change in last iteration
-mgminlevelxy integer /4/   # Minimum grid size in x-y to coarsen to
-mgminlevelz  integer /4/   # Minimum grid size in z to coarsen to
+mgmaxlevels integer /101/   # Minimum grid size in x-y to coarsen to
 mgform     integer /1/   # When 1, MG operates on phi (and rho),
                          # when 2, MG operates on error (and residual)
 downpasses integer /1/   # Number of downpasses
 uppasses   integer /1/   # Number of uppasses
-mglevels   integer /0/   # Number of coarsening levels
-mglevelsnx(20) integer   # List of nx for the levels of coarsening
-mglevelsny(20) integer   # List of ny for the levels of coarsening
-mglevelsnzfull(20) integer # List of nzfull for the levels of coarsening
-mglevelsiz(20) integer   # List of iz for the levels of coarsening
-mglevelsnz(20) integer   # List of nz for the levels of coarsening
+mglevels   integer /0/      # Number of coarsening levels
+mglevelsnx(0:100) integer     # List of nx for the levels of coarsening
+mglevelsny(0:100) integer     # List of ny for the levels of coarsening
+mglevelsnzfull(0:100) integer # List of nzfull for the levels of coarsening
+mglevelsiz(0:100) integer     # List of iz for the levels of coarsening
+mglevelsnz(0:100) integer     # List of nz for the levels of coarsening
+mglevelslx(0:100) integer /1/ # List of coarsening factors in x
+mglevelsly(0:100) integer /1/ # List of coarsening factors in y
+mglevelslz(0:100) integer /1/ # List of coarsening factors in z
 mggoodnumbers(40) integer /4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,80,96,112,
                            128,160,192,224,256,320,384,448,512,640,768,896,
                            1024,1280,1536,1792,2048,2560,3072,3584,5120,7168/
@@ -236,12 +241,8 @@ subgrid_sor_to_mg(nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
                   l2symtry:logical,l4symtry:logical) subroutine
   # Converts a set of points generated for the SOR fieldsolver into the set of
   # points needed for the multigrid fieldsolver.
-getmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
-            dx:real,dy:real,dz:real,
-            mgminlevelxy:integer,mgminlevelz:integer,
-            mglevels:integer,
-            mglevelsnx:integer,mglevelsny:integer,mglevelsnzfull:integer,
-            mglevelsiz:integer,mglevelsnz:integer)
+setmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
+            dx:real,dy:real,dz:real)
             subroutine   # Calculates levels of coarsening. Note that mglevels
                          # must be zero when calling this routine.
 
@@ -256,7 +257,6 @@ iii(0:wnx,0:wny,0:wnz) _integer
 srfrv_pernz            integer  /0/ # Number of points per nz for tablized data
 srfrv_z                real # Value of z passed to srfrv_f
 srfrv_r                real # Value of r returned by srfrv_f
-srfrv_v                real # Value of voltage, can be set in srfrv_f
 lsrlinr                logical /.false./ # Use piecewise-linear curve.
 npnts_sr               integer /0/ # Number points in piecewise-linear curve.
 z_sr(npnts_sr)         _real # Z of points in piecewise-linear curve
@@ -407,34 +407,33 @@ nodalcoefficients(dx:real,coeffs:real,xlo:integer,ylo:integer,zlo:integer,
 
 ******** ConductorGeometryGenerators:
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
-                   delmx:real,delpx:real,delmy:real,delpy:real,
-                  delmz:real,delpz:real,parity:integer,fuzz:real) subroutine
+                   dels:real,parity:integer,fuzz:real) subroutine
 zplaneconductorf(zcent:real,zsign,
-                 n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-                 delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 boxconductorf(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
-              n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-              delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 cylinderconductorf(rad:real,length:real,theta:real,phi:real,
-                   xcent:real,ycent:real,zcent:real,
-                   n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-                   delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 xcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-                    n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-                    delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 ycylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-                    n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-                    delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 zcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
-                    n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-                    delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 sphereconductorf(rad:real,xcent:real,ycent:real,zcent:real,
-                 n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-                 delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 zconeconductorf(r_zmin:real,r_zmax:real,length:real,
-                xcent:real,ycent:real,zcent:real,
-                n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-                delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 ztorusconductorf(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
-                 n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
-                 delmy:real,delpy:real,delmz:real,delpz:real) subroutine
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
