@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.34 $, $Date: 2001/12/04 23:52:42 $
+c@(#) File W3D.M, version $Revision: 3.35 $, $Date: 2001/12/06 18:06:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3601,10 +3601,18 @@ c=============================================================================
       integer(ISZ):: lostpars(0:nzzarr)
       real(kind=8):: zzmin,dzzi
 
-c  Enforces sticky b.c.'s on the x and y walls
-c  Particles considered stuck when radius is greater than PRWALL
-c  sets zp to almost dz to the left of the grid
-c  Also ensures that particles are at least on the grid as well.
+c Enforces transverse sticky boundary conditions.
+c Particles are considered stuck when outside a z-dependent aperture of
+c radius prwallz, centered at (prwallxz, prwallyz). Particles are also
+c lost if outside of the computational domain.
+c Lost particles are moved to the edge transversely and to the left end of
+c the grid longitudinally, as well as having the velocity set to zero. Zero
+c longitudinal velocity is the flag for lost particles. Note that particles
+c previously lost are continually moved to the left end of the grid (which
+c is important with a moving grid).
+c The array lostpars keeps track of where particles are lost (in the beam
+c frame). A check is done so that already lost particles don't contribute to
+c lostpars.
 
       integer(ISZ):: ip,iz
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -3632,7 +3640,7 @@ c  Also ensures that particles are at least on the grid as well.
      &       (yp(ip)-prwallyz(iz)*prwelips(iz))**2) >= prwallz(iz)**2 .or.
      &      (xmin > xp(ip) .or. xp(ip) > xmax .or.
      &       ymin > yp(ip) .or. yp(ip) > ymax)) then
-          lostpars(iz) = lostpars(iz) + 1
+          if (uzp(ip) .ne. 0.) lostpars(iz) = lostpars(iz) + 1
           xp(ip) = xmmax - .1*dx
           yp(ip) = ymmax - .1*dy
           zp(ip) = zmmin - .9999*dz + zgrid
