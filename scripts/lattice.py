@@ -35,7 +35,7 @@ madtowarp(lattice)
 from warp import *
 import __main__
 import RandomArray
-lattice_version = "$Id: lattice.py,v 1.15 2003/04/17 22:26:01 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.16 2003/04/17 22:54:53 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -481,7 +481,6 @@ Creates an instance of a Hele lattice element.
     top.helegp[top.nhele] = self.gp
     top.helepw[top.nhele] = self.pw
     top.helepa[top.nhele] = self.pa
-    print shape(top.hele_n[:,self.ihele]),shape(self.nn)
     top.hele_n[:len(self.nn),self.ihele] = self.nn
     top.hele_v[:len(self.vv),self.ihele] = self.vv
     top.heleae[:len(self.ae),self.ihele] = self.ae
