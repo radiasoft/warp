@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.9 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -68,8 +68,31 @@ c       --- dfill is assumed to be passed in as a positive number.
       end
 c=======================================================================
 c=======================================================================
-      subroutine getconductorfacets(condid,nc,icnd,dels,gridn,griddd,gridmin)
-      integer(ISZ):: condid
+      subroutine getconductorsnextdir(position,direction,parity,newdirection)
+      integer(ISZ):: position(0:2)
+      integer(ISZ):: direction(0:2)
+      integer(ISZ):: parity
+      integer(ISZ):: newdirection(0:2)
+      integer(ISZ):: iparity
+
+      iparity = mod(sum(position) + parity + 1, 2)
+      newdirection = 0
+      if (direction(0) /= 0) then
+        newdirection(1+iparity) = 1
+      else if (direction(1) /= 0) then
+        newdirection(2-2*iparity) = 1
+      else if (direction(2) /= 0) then
+        newdirection(iparity) = 1
+      endif
+      if (position(0) == 1) newdirection(0) = -newdirection(0)
+      if (position(1) == 1) newdirection(1) = -newdirection(1)
+      if (position(2) == 1) newdirection(2) = -newdirection(2)
+
+      return
+      end
+c=======================================================================
+      subroutine getconductorfacets(nc,icnd,dels,gridn,griddd,gridmin)
+      use ConductorGeometryVisualization
       integer(ISZ):: nc
       integer(ISZ):: icnd(0:2,nc)
       real(kind=8):: dels(0:5,nc)
@@ -77,102 +100,251 @@ c=======================================================================
       real(kind=8):: griddd(0:2)
       real(kind=8):: gridmin(0:2)
 
-      integer(ISZ):: iii(gridn(0)+1,gridn(1)+1,gridn(2)+1)
-      integer(ISZ):: ic,ix,iy,iz,ox,oy,oz
+c Generates a triangulated surface from the subgrid data.
+c That surface can be viewed using some visualization tool, such as OpenDX.
 
+      integer(ISZ):: iii(0:gridn(0),0:gridn(1),0:gridn(2))
+      integer(ISZ):: ic,ix,iy,iz,ox,oy,oz,it,t1,t2
+      integer(ISZ):: oo(0:2)
+      integer(ISZ):: npp
+      real(kind=8):: pp(0:2,0:5)
+      real(kind=8):: v1(0:2),v2(0:2),tnorm(0:2),nm
+
+c     --- First, register all of the conductors in a mesh. This list will
+c     --- be used to give the conductor number at each grid point.
+      iii = 0
       do ic=1,nc
         iii(icnd(0,ic),icnd(1,ic),icnd(2,ic)) = ic
       enddo
 
-c     oos = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]]
-c     dds = [[+1,0,0],[-1,0,0],[+1,0,0],[-1,0,0],
-c            [+1,0,0],[-1,0,0],[+1,0,0],[-1,0,0]]
+c     --- Loop over all grid points
+      do iz=0,gridn(2)-1
+        do iy=0,gridn(1)-1
+          do ix=0,gridn(0)-1
 
-c     do iz=0,gridn(2)-1
-c       do iy=0,gridn(1)-1
-c         do ix=0,gridn(0)-1
+c         --- For each grid point, loop over the eight corners. This is
+c         --- done so that no surfaces are missed.
+          do oz=0,1
+          do oy=0,1
+          do ox=0,1
 
-c         do oz=0,1
-c         do oy=0,1
-c         do ox=0,1
+c           --- oo holds the offset relative to the current grid point.
+            oo(0) = ox
+            oo(1) = oy
+            oo(2) = oz
 
-c       for oo,dd in map(None,oos,dds):
-c         if iii[ix+oo[0],iy+oo[1],iz+oo[2]] > 0:
-c           pp = newfacet(ix,iy,iz,oo,dd,+1,iii,dels,gridmin,griddd)
-c           if len(pp) == 0:
-c             pp = newfacet(ix,iy,iz,oo,dd,0,iii,dels,gridmin,griddd)
-c           if len(pp) > 0:
-c             model.FacetedPolygon(pp,color=color)
-c       iii[ix:ix+2,iy:iy+2,iz:iz+2] = abs(iii[ix:ix+2,iy:iy+2,iz:iz+2])
-c model.Display()
-c return model.scene
+c         --- If there is a conductor at this grid point, try to generate
+c         --- the surface.
+          if (iii(ix+ox,iy+oy,iz+oz) > 0) then
+c           --- Generate the surface use one search order.
+            call getconductorsnewfacet(ix,iy,iz,oo,1,gridn,iii,nc,dels,
+     &                                 gridmin,griddd,pp,npp)
+            t1 = 1
+            t2 = 2
+            if (npp == 0) then
+c             --- If a surface was not found, try the other search order.
+              call getconductorsnewfacet(ix,iy,iz,oo,0,gridn,iii,nc,dels,
+     &                                   gridmin,griddd,pp,npp)
+              t1 = 2
+              t2 = 1
+            endif
+            if (npp > 0) then
+c             --- If a surface was found, triangulate it.
+              if (ntriangles + (npp-2) > maxtriangles) then
+                maxtriangles = maxtriangles + 999
+                call gchange("ConductorGeometryVisualization",0)
+              endif
+c             --- Triangles are generated from the starting point and each
+c             --- subsequent pair of points. Note that the order in which
+c             --- the points are saved is important. The order is switched
+c             --- depending on the seach order used to find the surface
+c             --- (the order is set by t1 and t2).
+              do it=0,npp-3
+                ntriangles = ntriangles + 1
+                triangles(:,0,ntriangles) = pp(:,0)
+                triangles(:,1,ntriangles) = pp(:,it+t1)
+                triangles(:,2,ntriangles) = pp(:,it+t2)
+c               --- For each triangle, the normal to it is saved.
+                v1 = pp(:,it+t1) - pp(:,0)
+                v2 = pp(:,it+t2) - pp(:,0)
+                tnorm(0) = v1(1)*v2(2) - v1(2)*v2(1)
+                tnorm(1) = v1(2)*v2(0) - v1(0)*v2(2)
+                tnorm(2) = v1(0)*v2(1) - v1(1)*v2(0)
+                nm = sqrt(sum(tnorm**2))
+                tnorm = tnorm/dvnz(nm)
+                normals(:,0,ntriangles) = tnorm
+                normals(:,1,ntriangles) = tnorm
+                normals(:,2,ntriangles) = tnorm
+              enddo
+            endif
+          endif
 
-cef nextdir(position,direction,parity):
-c parity = (sum(array(position)) + parity + 1) % 2
-c newdirection = [0,0,0]
-c if direction[0] != 0:   newdirection[1+parity] = 1
-c elif direction[1] != 0: newdirection[2-2*parity] = 1
-c elif direction[2] != 0: newdirection[parity] = 1
-c if position[0] == 1: newdirection[0] = -newdirection[0]
-c if position[1] == 1: newdirection[1] = -newdirection[1]
-c if position[2] == 1: newdirection[2] = -newdirection[2]
-c return newdirection
+          enddo
+          enddo
+          enddo
 
-c --- This would be a little less painful is lists were hashable.
-cef newfacet(ix,iy,iz,oo,dd,parity,iii,dels,gridmin,griddd,
-c dddict = {211:[+1,0,0],121:[0,+1,0],112:[0,0,+1],
-c            11:[-1,0,0],101:[0,-1,0],110:[0,0,-1]},
-c dirdict = {  0:[{211:0,112:1,121:2},{0:211,1:112,2:121}],
-c            100:[{112:0, 11:1,121:2},{0:112,1: 11,2:121}],
-c             10:[{211:0,101:1,112:2},{0:211,1:101,2:112}],
-c            110:[{ 11:0,112:1,101:2},{0: 11,1:112,2:101}],
-c              1:[{211:0,121:1,110:2},{0:211,1:121,2:110}],
-c            101:[{110:0,121:1, 11:2},{0:110,1:121,2: 11}],
-c             11:[{211:0,110:1,101:2},{0:211,1:110,2:101}],
-c            111:[{ 11:0,101:1,110:2},{0: 11,1:101,2:110}]},
-c delsdict = { 11:0,211:1,101:2,121:3,110:4,112:5},
-c too = lambda oo : 100*oo[0] + 10*oo[1] + oo[2],
-c tdd = lambda dd : 100*(1+dd[0]) + 10*(1+dd[1]) + (1+dd[2])):
-c """
-cork routine used by visualizeconductors.
-c """
-c pp = []
-c done = 0
-c currentoo = oo
-c currentdd = dd
-c ncorners = 1
-c while not done:
-c   ic = abs(iii[ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]])
-c   iii[ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]] = -ic
-c   if ic != 0 and dels[delsdict[tdd(currentdd)],ic-1] <= 1.000001:
-c     newpoint = (array([ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]]) +
-c                       dels[delsdict[tdd(currentdd)],ic-1]*array(currentdd))
-c     pp.append(newpoint*griddd+gridmin)
-c     #dirs = dirdict[too(currentoo)]
-c     #currentddnum = dirs[0][tdd(currentdd)]
-c     #nextddnum = (currentddnum + 2*parity-1) % 3
-c     #nextdd = dddict[dirs[1][nextddnum]]
-c     nextdd = nextdir(currentoo,currentdd,parity)
-c     nextoo = currentoo
-c   else:
-c     nextoo = list(array(currentoo) + array(currentdd))
-c     #nextdirs = dirdict[too(nextoo)]
-c     #nextddnum = (nextdirs[0][tdd(list(-array(currentdd)))] + 2*parity-1) % 3
-c     #nextdd = dddict[nextdirs[1][nextddnum]]
-c     nextdd = nextdir(nextoo,-array(currentdd),parity)
-c     ncorners = ncorners + 1
-c   currentoo = nextoo
-c   currentdd = nextdd
-c   if ncorners > 8: done = 1
-c   if len(pp) > 6:
-c     pp = []
-c     done = 1
-c   if currentoo == oo and currentdd == dd: done = 1
-c return pp
+c         --- The calls getconductorsnewfacet change the sign of the iii data
+c         --- to flag grid points which where included in the surfaces.
+c         --- This line resets the signs.
+          iii(ix:ix+1,iy:iy+1,iz:iz+1) = abs(iii(ix:ix+1,iy:iy+1,iz:iz+1))
 
+          enddo
+        enddo
+      enddo
 
+c     --- This is only for convenience.
+      maxtriangles = ntriangles
+      call gchange("ConductorGeometryVisualization",0)
 
+      return
+      end
+c=======================================================================
+      subroutine getconductorsnewfacet(ix,iy,iz,oo,parity,gridn,iii,nc,dels,
+     &                                 gridmin,griddd,pp,npp)
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: oo(0:2)
+      integer(ISZ):: parity
+      integer(ISZ):: gridn(0:2)
+      integer(ISZ):: iii(0:gridn(0),0:gridn(1),0:gridn(2))
+      integer(ISZ):: nc
+      real(kind=8):: dels(0:5,nc)
+      real(kind=8):: gridmin(0:2)
+      real(kind=8):: griddd(0:2)
+      real(kind=8):: pp(0:2,0:5)
+      integer(ISZ):: npp
 
+c Work routine used by visualizeconductors. Given a grid point and an offset
+c relative to that point, it searches for a closed surface in the grid cell.
+c The parity determines the search order. This is important since there are
+c some cases where a search in one order will not properly find the surface.
+c (i.e. when the surface slices the cell in half, with four grid points on one
+c side. With one direction of search, the algorithm gets stuck in a loop
+c cycling about those four points without ever using the subgrid info. The
+c other search direction works OK.)
+
+      logical(ISZ):: done
+      integer(ISZ):: dd(0:2),currentoo(0:2),currentdd(0:2)
+      real(kind=8):: newpoint(0:2)
+      integer(ISZ):: nextoo(0:2),nextdd(0:2)
+      integer(ISZ):: ncorners,ic,id
+
+c     --- Pick the starting direction to be along the x axis.
+      dd = 0
+      if (oo(0) == 0) dd(0) = +1
+      if (oo(0) == 1) dd(0) = -1
+
+      npp = 0
+      done = .false.
+      currentoo = oo
+      currentdd = dd
+      ncorners = 1
+      do while (.not. done)
+        ic = abs(iii(ix+currentoo(0),iy+currentoo(1),iz+currentoo(2)))
+c       --- Flag this grid point as already checked.
+        iii(ix+currentoo(0),iy+currentoo(1),iz+currentoo(2)) = -ic
+c       --- Depending on the current search direction, set which
+c       --- subgrid data is to be used.
+        if (currentdd(0) == -1) id = 0
+        if (currentdd(0) == +1) id = 1
+        if (currentdd(1) == -1) id = 2
+        if (currentdd(1) == +1) id = 3
+        if (currentdd(2) == -1) id = 4
+        if (currentdd(2) == +1) id = 5
+        if (ic /= 0 .and. dels(id,ic) <= 1.000001) then
+c         --- This next  point is part of the surface so include its data.
+          newpoint(0) = ix + currentoo(0) + dels(id,ic)*currentdd(0)
+          newpoint(1) = iy + currentoo(1) + dels(id,ic)*currentdd(1)
+          newpoint(2) = iz + currentoo(2) + dels(id,ic)*currentdd(2)
+          if (npp <= 5) pp(:,npp) = newpoint*griddd + gridmin
+          npp = npp + 1
+c         --- Get the next direction to check (relative to the same grid point).
+          call getconductorsnextdir(currentoo,currentdd,parity,nextdd)
+          nextoo = currentoo
+        else
+c         --- This point is not on the surface so get the next grid point to
+c         --- check.
+          nextoo = currentoo + currentdd
+          call getconductorsnextdir(nextoo,-currentdd,parity,nextdd)
+          ncorners = ncorners + 1
+        endif
+        currentoo = nextoo
+        currentdd = nextdd
+c       --- If the number of corners counter is too large, then the algorithm
+c       --- is stuck in an infinite loop, so just quit.
+        if (ncorners > 8) return
+c       --- If the current point is the same as the original, then all grid
+c       --- points have been checked, so return.
+        if (all(currentoo == oo) .and. all(currentdd == dd)) return
+c       --- If more than six points have been found on the surface, then
+c       --- there is an error. Clear the point and return. Note that this
+c       --- should never happen, but is here as a leftover from code
+c       --- debugging. If is left in case some unusual data set foils
+c       --- the algorithm.
+        if (npp > 6) then
+          npp = 0
+          return
+        endif
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine conductorsmoothshading()
+      use ConductorGeometryVisualization
+
+c Modify the normals of the data so that a smoother surface will be drawn.
+c For each set of point which have the same coordinates, this averages
+c the normals.
+c A much, much better way of doing this is to sort the data first.
+
+      integer(ISZ):: i1,i2,j1,j2
+      real(kind=8):: nmsum(0:2)
+      integer(ISZ):: nn
+      integer(ISZ):: done(3,ntriangles)
+      integer(ISZ):: nlist,ilist(100),jlist(100),il
+
+c     --- The 'done' array is used to keep track of which points have had
+c     --- their normals averaged.
+      done = 0
+
+c     --- Loop over all points of all triangles.
+      do i1=1,ntriangles
+        do j1=0,2
+
+c         --- Skip points which have already been treated.
+          if (done(j1,i1) == 1) cycle
+
+c         --- Begin accumulating the normals.
+          nmsum = normals(:,j1,i1)
+          nlist = 0
+
+c         --- Loop over the points of the rest of the triangles.
+          do i2=i1+1,ntriangles
+            do j2=0,2
+
+c             --- If the coordinates are the same (i.e. within some tolerance)
+c             --- then add this point to the list.
+              if (all(abs(triangles(:,j1,i1)-triangles(:,j2,i2)) < 1.e-10)) then
+                done(j2,i2) = 1
+                nmsum = nmsum + normals(:,j2,i2)
+                nlist = nlist + 1
+                ilist(nlist) = i2
+                jlist(nlist) = j2
+              endif
+            enddo
+          enddo
+
+c         --- Renormalize the summed normals are reset the normals in the list.
+          if (nlist > 0) then
+            nmsum = nmsum/dvnz(sqrt(sum(nmsum**2)))
+            normals(:,j1,i1) = nmsum
+            do il=1,nlist
+              normals(:,jlist(il),ilist(il)) = nmsum
+            enddo
+          endif
+
+        enddo
+      enddo
 
       return
       end
