@@ -3,7 +3,7 @@
 
 module multigrid_common
 
-USE constant
+USE Constant
 USE multigrid_common_base
 USE PSOR3d, ONLY:boundxy,bound0,boundnz
 USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom,Zgeom,l2symtry,l4symtry
@@ -4997,7 +4997,7 @@ USE InPart
 USE InMesh3d
 USE Particles
 USE InjectVars
-USE InjectVars3D
+USE InjectVars3d
 USE InjectVars_eq, ONLY: inj_phi_eq,v_max,afact,calc_a,l_verbose
 USE multigridrz
 implicit none
@@ -6004,7 +6004,7 @@ return
 end subroutine gtlchgrz
 
 subroutine dep_rho_rz(is,rho,nr,nz,dr,dz,xmin,zmin)
-USE constant
+USE Constant
 use Particles
 implicit none
 
@@ -6740,7 +6740,7 @@ end subroutine reset_rzmgrid_rho
 !     ******************************************************************
 
 subroutine rhoweightrz_deform(xp,yp,zp,uzp,np,q,nr,nz,dr,dz,xfact,yfact)
-USE constant
+USE Constant
 USE multigridrz
 implicit none
 
@@ -7532,7 +7532,7 @@ REAL(8) :: ddr, oddr, rpos
 end subroutine calc_phi3d_from_phirz
 
 subroutine fieldweightrz_deform_old2(xp,yp,zp,uzp,ex,ey,ez,np,phi,nr,nz,dr,dz,zmin,xfact,yfact,calcphi,phi3d,selfe)
-USE constant
+USE Constant
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -7643,7 +7643,7 @@ endif
 end subroutine fieldweightrz_deform_old2
 
 subroutine fieldweightrz_deform_old(xp,yp,zp,uzp,ex,ey,ez,np,phi,e,nr,nz,dr,dz,zmin,xfact,yfact,calcselfe)
-USE constant
+USE Constant
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -7735,7 +7735,7 @@ end subroutine fieldweightrz_deform_old
 
 !subroutine calcfact_deform(xp,yp,zp,np,dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
 subroutine calcfact_deform(dz,zmin,xfact,yfact,nz,ns,is,ins,nps,ws)
-USE constant
+USE Constant
 USE Particles, ONLY: xp, yp, zp, uzp
 use FRZmgrid
 implicit none
@@ -8278,7 +8278,7 @@ END subroutine get_phi_subgrid
 
 subroutine set_basegrid_phi()
 USE multigridrz
-USE Fields3D
+USE Fields3d
 implicit none
 
   basegrid%phi(1:basegrid%nr+1,:) = phi(:,0,:)
