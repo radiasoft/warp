@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.21 $, $Date: 2002/06/04 17:20:19 $
+c@(#) File WXY.M, version $Revision: 3.22 $, $Date: 2002/06/12 23:54:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -636,10 +636,12 @@ c  be done at the end of this step.
      &           thiszbeam(zbeaml,zbeamr,zzplps,    NCONTROL)
       lmoments = thisstep (it           ,itmomnts,NCONTROL) .or.
      &           thiszbeam(zbeaml,zbeamr,zzmomnts,NCONTROL)
+      lhist    = mod(it, nhist) .eq. 0
       ldump    = mod(it, itdump) .eq. 0
       llabwn   = (mod(it,itlabwn) .eq. 0) .and. dolabwn()
-      lspecial = (lfinishd .or. lalways .or. lseldom .or. ldump .or. lmoments
-     &            .or. llabwn .or. llast .or. (it .eq. 0) .or. allspecl)
+      lspecial = (lfinishd .or. lalways .or. lseldom .or. ldump .or.
+     &            lmoments .or. lhist .or. llabwn .or. llast .or.
+     &            (it .eq. 0) .or. allspecl)
 
 c  Set the "gap" electric field. 
 
