@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.48 2004/08/06 21:36:01 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.49 2004/08/06 23:38:57 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -635,8 +635,9 @@ Constructor arguments:
 
     # --- Fetch the initial values of the mesh parameters. This can only be
     # --- done here since they must have been set by the user at this point.
-    _initialmeshparams = [w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
-                          0.5*(w3d.xmmax+w3d.xmmin),0.5*(w3d.ymmax+w3d.ymmin)]
+    if _initialmeshparams is None:
+      _initialmeshparams = [w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
+                            0.5*(w3d.xmmax+w3d.xmmin),0.5*(w3d.ymmax+w3d.ymmin)]
 
     currpkg = getcurrpkg()
     if currpkg == 'w3d':
@@ -699,6 +700,10 @@ Constructor arguments:
       installbeforefs(self.setboundary)
     elif currpkg == 'wxy':
       installbeforestep(self.setboundary)
+  #----------------------------------------------------------------------------
+  def __setstate__(self,dict):
+    self.__dict__.update(dict)
+    installbeforefs(self.initialsetboundary)
 
   #----------------------------------------------------------------------------
   def setmatrix(self,m,v):
