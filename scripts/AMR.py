@@ -1,6 +1,7 @@
 from warp import *
 from copy import *
 from MeshRefinement import *
+from generateconductors import installconductors
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox,DXImage
 import time
 import MLab
@@ -650,7 +651,15 @@ class AMRTree(object,Visualizable):
                 g = None
               break  
           if g is not None: 
-            cond.install(g)
+            #cond.install(g)
+            try:
+              cc = cond.cond
+            except AttributeError:
+              cc = cond
+            installconductors(cc,nx=g.nr,ny=0,nz=g.nz,nzfull=g.nz,
+                              xmmin=g.xmin,xmmax=g.xmax,
+                              zmmin=g.zmin,zmmax=g.zmax,
+                              gridrz=g)
           if g==frz.basegrid:self.conds_installed_onbasegrid += [cond] 
         get_cond_rz(1)
       
