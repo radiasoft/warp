@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.5 2001/01/11 00:20:13 dave Exp $"
+warp_version = "$Id: warp.py,v 1.6 2001/01/11 22:49:31 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -104,6 +104,7 @@ uninstallbeforestep: Uninstall the function called before a step
 installafterstep: Install a function which will be called after a step
 uninstallafterstep: Uninstall the function called after a step
 gethzarrays: Fixes the ordering of hlinechg and hvzofz data from a paralle run
+printtimers: Print timers in a nice annotated format
   """
 
 def printversion(v):
@@ -292,6 +293,7 @@ Creates a dump file
                    the suffix '@pkg' is used, where pkg is the package name
                    that the variable is in.
   """
+  timetemp = wtime()
   if not filename:
     # --- Setup default filename based on time step and processor number.
     if serial:
@@ -315,6 +317,7 @@ Creates a dump file
   else:
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
            varsuffix=varsuffix)
+  top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
 def restart(filename,onefile=1):
@@ -394,6 +397,104 @@ def gethzarrays(filename,verbose=0):
       for i in range(npes):
         v[i*(nz/npes):(i+1)*(nz/npes)+1,:] = d[i,:,:]
   ff.close()
+
+##############################################################################
+def printtimers(file=None):
+  """Print timers in a nice annotated format
+  - file Optional input file. If it is not include, stdout is used. It can
+         either be a file name, or a file object. If a file name, a file
+	 with that name is created. If a file object, the data is written
+	 to that file (the file remains open).
+  """
+  if file == None:
+    ff = sys.stdout
+    closeit = 0
+  elif type(file) == type(""):
+    ff = open(file,"w")
+    closeit = 1
+  else:
+    ff = file
+    closeit = 0
+  if npes == 0:
+    ff.write('                 Total time')
+    if top.it > 0: ff.write('        Time per step')
+    ff.write('\n')
+    ff.write('                        (s)')
+    if top.it > 0: ff.write('                  (s)')
+    ff.write('\n')
+    ff.write('Generate time    %10.4f'%top.gentime)
+    ff.write('\n')
+    ff.write('Step time        %10.4f'%top.steptime)
+    if top.it > 0: ff.write('           %10.4f'%(top.steptime/top.it))
+    ff.write('\n')
+    ff.write('Plot time        %10.4f'%top.plottime)
+    if top.it > 0: ff.write('           %10.4f'%(top.plottime/top.it))
+    ff.write('\n')
+    ff.write('Moments time     %10.4f'%top.momentstime)
+    if top.it > 0: ff.write('           %10.4f'%(top.momentstime/top.it))
+    ff.write('\n')
+    ff.write('Field Solve time %10.4f'%top.fstime)
+    if top.it > 0: ff.write('           %10.4f'%(top.fstime/top.it))
+    ff.write('\n')
+    if top.dumptime > 0.:
+      ff.write('Dump time        %10.4f'%top.dumptime)
+      if top.it > 0: ff.write('           %10.4f'%(top.dumptime/top.it))
+      ff.write('\n')
+  else:
+    timers = [['Generate time',    top.gentime],
+              ['Step time',        top.steptime],
+              ['Plot time',        top.plottime],
+              ['Moments time',     top.momentstime],
+              ['Field Solve time', top.fstime],
+              ['Dump time',        top.dumptime]]
+    timelists = []
+    totaltimes = []
+    timedevs = []
+    for t in timers: timelists.append(array(gather(t[1]))) 
+    for t in timelists: totaltimes.append(sum(t))
+    for t in timelists: timedevs.append(sqrt(ave(t**2) - ave(t)**2))
+    h1a = '                        Total time         Deviation'
+    h2a = '                  (all CPUs)   (per CPU)            '
+    h3a = '                      (s)         (s)         (s)   '
+    h1b = '  Time per step'
+    h2b = '    (per CPU)'
+    h3b = '       (s)'
+    f1a = '%16s  %10.4f  %10.4f  %10.4f'
+    f1b = '   %10.4f'
+    if top.it > 0:
+       h1 = h1a + h1b + '\n'
+       h2 = h2a + h2b + '\n'
+       h3 = h3a + h3b + '\n'
+       f1 = f1a + '\n'
+       f2 = f1a + f1b + '\n'
+       tt = []
+       format = []
+       tt.append((timers[0][0],totaltimes[0],totaltimes[0]/npes,timedevs[0]))
+       format.append(f1)
+       for i in range(1,len(timelists)):
+         tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,timedevs[i],
+                    totaltimes[i]/npes/top.it))
+         format.append(f2)
+    else:
+       h1 = h1a + '\n'
+       h2 = h2a + '\n'
+       h3 = h3a + '\n'
+       f1 = f1a + '\n'
+       f2 = f1a + '\n'
+       tt = []
+       format = []
+       for i in range(0,len(timelists)):
+         tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,timedevs[i]))
+         format.append(f1)
+    ff.write(h1)
+    ff.write(h2)
+    ff.write(h3)
+    for i in range(len(timelists)):
+      ff.write(format[i]%tt[i])
+  if closeit:
+    ff.close()
+
+
 
 ##############################################################################
 ######  Don't put anything below this line!!! ################################
