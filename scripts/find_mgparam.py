@@ -1,5 +1,6 @@
+from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.2 2001/08/30 23:30:07 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -37,7 +38,7 @@ def field_solve():
   if (f3d.boundxy > 0): iymax = w3d.ny
   if (f3d.bound0  > 0): izmin = 0
   if (f3d.boundnz > 0): izmax = w3d.ny
-  phi[ixmin:ixmax+1,iymin:iymax+1,izmin:izmax+1] = 0.
+  w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
   vp3d(-1)
 
 def find_mgparam():
