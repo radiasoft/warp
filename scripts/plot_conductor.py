@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.31 2002/05/03 22:50:31 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.32 2002/05/06 14:47:20 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1322,7 +1322,7 @@ Output is put directly into the conductor arrays of PSOR3d.
   # --- Note that this can only really work if a reference to the function
   # --- is passed in (instead of the name).
   if not f3d.lsrlinr and type(rofzfunc) == FunctionType:
-    __main__.__dict__[rofzfunc] = rofzfunc
+    __main__.__dict__[rofzfunc.__name__] = rofzfunc
 
   # --- Get the name of the input function if a reference to the function
   # --- was passed in.
@@ -1395,7 +1395,7 @@ Output is put directly into the conductor arrays of PSOR3d.
   # --- Note that this can only really work if a reference to the function
   # --- is passed in (instead of the name).
   if not f3d.lsrlinr and type(rofzfunc) == FunctionType:
-    __main__.__dict__[rofzfunc] = rofzfunc
+    __main__.__dict__[rofzfunc.__name__] = rofzfunc
 
   # --- Get the name of the input function if a reference to the function
   # --- was passed in.
@@ -1466,9 +1466,9 @@ Output is put directly into the conductor arrays of PSOR3d.
   # --- Note that this can only really work if a reference to the function
   # --- is passed in (instead of the name).
   if not f3d.lsrlinr and type(rminofz) == FunctionType:
-    __main__.__dict__[rminofz] = rminofz
+    __main__.__dict__[rminofz.__name__] = rminofz
   if not f3d.lsrlinr and type(rmaxofz) == FunctionType:
-    __main__.__dict__[rmaxofz] = rmaxofz
+    __main__.__dict__[rmaxofz.__name__] = rmaxofz
 
   # --- Get the name of the input function if a reference to the function
   # --- was passed in.
