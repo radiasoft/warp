@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.112 $, $Date: 2004/01/15 21:25:34 $
+c@(#) File TOP.F, version $Revision: 3.113 $, $Date: 2004/01/23 22:18:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7144,12 +7144,12 @@ c=============================================================================
         return
       end function oneiftrue
 c=============================================================================
-      subroutine gettemperature(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,itask,uxpo,uypo,uzpo,is,wp,lw)
+      subroutine gettemperature(np,xp,yp,zp,uxp,uyp,uzp,gaminv,q,m,w,dt,
+     &                          itask,uxpo,uypo,uzpo,is,wp,lw,laxisymmetric)
 c     computes temperature in slices.
       use Constant
       use Beam_acc
       use InDiag
-      use InGen3d
       use Picglb
       use ExtPart
       use Temperatures
@@ -7159,7 +7159,7 @@ c     computes temperature in slices.
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np)
-      logical(ISZ):: lw
+      logical(ISZ):: lw,laxisymmetric
 
 c     Three parts
 c     When itask=1  zeros out all moments
@@ -7244,7 +7244,7 @@ c             --- collapse slice in z
               vypt = uyp(ip) * gaminv(ip)
               vzpt = uzp(ip) * gaminv(ip)
             end if
-            if(solvergeom==RZgeom) then
+            if(laxisymmetric) then
               rpt = sqrt(xpt**2+ypt**2)
               if(rpt>SMALLPOS) then
                 cost = xpt/rpt
@@ -7480,22 +7480,25 @@ c             --- Compute temperatures
       return
       end
 c=============================================================================
-      subroutine gett(is,itask)
+      subroutine gett(is,itask,laxisymmetric)
         use InGen
         use Particles
-        integer(ISZ) :: is, ipmin, itask
+        integer(ISZ):: is, ipmin, itask
+        logical(ISZ):: laxisymmetric
 
         ipmin = ins(is)
         if(wpid>0) then
           call gettemperature(nps(is),xp(ipmin),yp(ipmin),zp(ipmin),
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                           gaminv(ipmin),sq(is),sm(is),sw(is),dt,itask,
-     &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),is,pid(ipmin,wpid),.true.)
+     &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),is,
+     7                           pid(ipmin,wpid),.true.,laxisymmetric)
         else
           call gettemperature(nps(is),xp(ipmin),yp(ipmin),zp(ipmin),
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                           gaminv(ipmin),sq(is),sm(is),sw(is),dt,itask,
-     &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),is,pid(ipmin,1),.false.)
+     &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),is,
+     7                           pid(ipmin,1),.false.,laxisymmetric)
         end if
         return
       end

@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.112 $, $Date: 2004/01/15 21:25:34 $
+#@(#) File TOP.V, version $Revision: 3.113 $, $Date: 2004/01/23 22:18:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.112 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.113 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -206,6 +206,8 @@ npgrd     integer /NELEMENT/  # No. of elements with potential on a 3-D grid
 drftzs(0:ndrft)   _real [m]   # Z's of drift starts
 drftze(0:ndrft)   _real [m]   # Z's of drift ends
 drftap(0:ndrft)   _real [m]   # Aperture in drifts
+drftax(0:ndrft)   _real [m]   # Aperture in drifts in x
+drftay(0:ndrft)   _real [m]   # Aperture in drifts in y
 drftox(0:ndrft)   _real [m]   # X-offsets of drifts
 drftoy(0:ndrft)   _real [m]   # Y-offsets of drifts
 drftol(0:ndrft)   _integer    # Overlap level of the element (autoset)
@@ -213,6 +215,8 @@ bendzs(0:nbend)   _real [m]   # Z's of bend starts
 bendze(0:nbend)   _real [m]   # Z's of bend ends
 bendrc(0:nbend)   _real [m]   # Radii of curvature of bends
 bendap(0:nbend)   _real [m]   # Aperture in bends
+bendax(0:nbend)   _real [m]   # Aperture in bends in x
+benday(0:nbend)   _real [m]   # Aperture in bends in y
 bendox(0:nbend)   _real [m]   # X-offsets of bends (for aperture only)
 bendoy(0:nbend)   _real [m]   # Y-offsets of bends (for aperture only)
 bendol(0:nbend)   _integer    # Overlap level of the element (autoset)
@@ -225,6 +229,8 @@ dipotb(0:ndipo)   _real [1]   # Tan of dipo exit  face angle (auto-set if 0)
 dipoex(0:ndipo)   _real [V/m] # Ex's of dipos
 dipoey(0:ndipo)   _real [V/m] # Ey's of dipos
 dipoap(0:ndipo)   _real [m]   # Aperture in dipoles
+dipoax(0:ndipo)   _real [m]   # Aperture in dipoles in x
+dipoay(0:ndipo)   _real [m]   # Aperture in dipoles in y
 dipox1(0:ndipo)   _real [m]   # X location of first dipole plates
 dipox2(0:ndipo)   _real [m]   # X location of second dipole plates
 dipov1(0:ndipo)   _real [V]   # Voltage of first dipole plates
@@ -247,6 +253,8 @@ quaddt(0:nquad)   _real [t]   # Delta t for quad field data in quadet, quadbt
 quadvx(0:nquad)   _real [V]   # Voltage of electric quad on x axis
 quadvy(0:nquad)   _real [V]   # Voltage of electric quad on y axis
 quadap(0:nquad)   _real [m]   # Aperture of quad
+quadax(0:nquad)   _real [m]   # Aperture of quad in x
+quaday(0:nquad)   _real [m]   # Aperture of quad in y
 quadrr(0:nquad)   _real [m]   # Radius of electrostatic quadrupole rod
 quadrl(0:nquad)   _real [m]   # Length of electrostatic quadrupole rod
 quadgl(0:nquad)   _real [m]   # Length of electrostatic quadrupole gap
@@ -291,6 +299,8 @@ sextol(0:nsext)   _integer    # Overlap level of the element (autoset)
 helezs(0:nhele)   _real   [m] # Z's of hard-edge (h.e.) multipole starts
 heleze(0:nhele)   _real   [m] # Z's of hard-edge (h.e.) multipole ends
 heleap(0:nhele)   _real [m]   # Aperture in hard-edge elements
+heleax(0:nhele)   _real [m]   # Aperture in hard-edge elements in x
+heleay(0:nhele)   _real [m]   # Aperture in hard-edge elements in y
 heleae(1:nhmlt,0:nhele)   _real    [var]
                               # amplitude of h.e. electric multipoles
 heleam(1:nhmlt,0:nhele)   _real    [var]
@@ -323,6 +333,8 @@ heleol(0:nhele)   _integer    # Overlap level of the element (autoset)
 emltzs(0:nemlt)   _real [m]   # Z's of electric multipole element starts
 emltze(0:nemlt)   _real [m]   # Z's of electric multipole element ends
 emltap(0:nemlt)   _real [m]   # Aperture in electric multipole elements
+emltax(0:nemlt)   _real [m]   # Aperture in electric multipole elements in x
+emltay(0:nemlt)   _real [m]   # Aperture in electric multipole elements in y
 emltph(0:nemlt)   _real [rad] # Phase angle of electric multipole element field
 emltsf(0:nemlt)   _real [1] /0./ # Scale factor for electric multipole element
                                  # Field is scaled by (emltsc+emltsf)
@@ -341,6 +353,8 @@ emltol(0:nemlt)   _integer    # Overlap level of the element (autoset)
 mmltzs(0:nmmlt)   _real [m]   # Z's of magnetic multipole element starts
 mmltze(0:nmmlt)   _real [m]   # Z's of magnetic multipole element ends
 mmltap(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements
+mmltax(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements in x
+mmltay(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements in y
 mmltph(0:nmmlt)   _real [rad] # Phase angle of magnetic multipole element field
 mmltsf(0:nmmlt)   _real [1] /0./ # Scale factor for magnetic multipole element
                                  # Field is scaled by (mmltsc+mmltsf)
@@ -354,6 +368,8 @@ acclzs(0:naccl)   _real [m]   # Z's of acceleration gap starts
 acclze(0:naccl)   _real [m]   # Z's of acceleration gap ends
 acclez(0:naccl)   _real [V/m] # Ez's of acceleration gaps, constant part
 acclap(0:naccl)   _real [m]   # Aperture in acceleration gaps
+acclax(0:naccl)   _real [m]   # Aperture in acceleration gaps in x
+acclay(0:naccl)   _real [m]   # Aperture in acceleration gaps in y
 acclox(0:naccl)   _real [m]   # Offset in x of accl elements
 accloy(0:naccl)   _real [m]   # Offset in y of accl elements
 acclxw(0:naccl) _real [V/m^2] # Weights for linear x components of gap Ez's
@@ -369,6 +385,8 @@ bgrdze(0:nbgrd)   _real [m]   # Z ends of 3-D grid of B field data (BGRDdata)
 bgrdxs(0:nbgrd)   _real [m]   # X starts of 3-D grid of B field data (BGRDdata)
 bgrdys(0:nbgrd)   _real [m]   # Y starts of 3-D grid of B field data (BGRDdata)
 bgrdap(0:nbgrd)   _real [m]   # Aperture in bgrd elements
+bgrdax(0:nbgrd)   _real [m]   # Aperture in bgrd elements in x
+bgrday(0:nbgrd)   _real [m]   # Aperture in bgrd elements in y
 bgrdox(0:nbgrd)   _real [m]   # Offset in x of bgrd elements
 bgrdoy(0:nbgrd)   _real [m]   # Offset in y of bgrd elements
 bgrdph(0:nbgrd)   _real [rad] # Phase angle of bgrd elements 
@@ -388,6 +406,8 @@ pgrdze(0:npgrd)   _real [m]   # Z ends of 3-D grid of potential data(PGRDdata)
 pgrdxs(0:npgrd)   _real [m]   # X starts of 3-D grid of potential data(PGRDdata)
 pgrdys(0:npgrd)   _real [m]   # Y starts of 3-D grid of potential data(PGRDdata)
 pgrdap(0:npgrd)   _real [m]   # Aperture in pgrd elements
+pgrdax(0:npgrd)   _real [m]   # Aperture in pgrd elements in x
+pgrday(0:npgrd)   _real [m]   # Aperture in pgrd elements in y
 pgrdox(0:npgrd)   _real [m]   # Offset in x of pgrd elements
 pgrdoy(0:npgrd)   _real [m]   # Offset in y of pgrd elements
 pgrdph(0:npgrd)   _real [rad] # Phase angle of pgrd elements
@@ -417,6 +437,33 @@ mmlts     logical             # Flag for existence of mmlts (auto set)
 bgrds     logical             # Flag for existence of bgrds (auto set)
 pgrds     logical             # Flag for existence of pgrds (auto set)
 diposet   logical  /.true./   # Auto-set dipoles from bend locations and radii 
+
+applyuniformfields(np:integer,ez:real,bz:real) subroutine
+  # Applies the uniform fields at the locations passed in.
+applybend(np:integer,xp:real,uzp:real,npz:integer,bendres:real,bendradi:real,
+          m:real,q:real,lslice:logical,by:real) subroutine
+  # Applies the bend element at the locations passed in.
+applyquad(np:integer,xp:real,yp:real,npz:integer,zp:real,uzp:real,gaminv:real,
+          dtl:real,dtr:real,dt:real,lslice:logical,ex:real,ey:real,bx:real,
+          by:real) subroutine
+  # Applies the quad element at the locations passed in.
+applydipo(np:integer,npz:integer,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
+          dt:real,lslice:logical,ex:real,ey:real,bx:real,by:real) subroutine
+  # Applies the dipo element at the locations passed in.
+applysext(np:integer,xp:real,yp:real,npz:integer,zp:real,uzp:real,gaminv:real,
+          dtl:real,dtr:real,dt:real,lslice:logical,ex:real,ey:real,bx:real,
+          by:real) subroutine
+  # Applies the sext element at the locations passed in.
+applyhele(np:integer,xp:real,yp:real,npz:integer,zp:real,uzp:real,gaminv:real,
+          dtl:real,dtr:real,dt:real,lslice:logical,ex:real,ey:real,ez:real,
+          bx:real,by:real,bz:real) subroutine
+  # Applies the hele element at the locations passed in.
+applyemlt(np:integer,xp:real,yp:real,npz:integer,zp:real,dtl:real,dtr:real,
+          dt:real,lslice:logical,ex:real,ey:real,ez:real) subroutine
+  # Applies the emlt element at the locations passed in.
+applymmlt(np:integer,xp:real,yp:real,npz:integer,zp:real,dtl:real,dtr:real,
+          dt:real,lslice:logical,bx:real,by:real,bz:real) subroutine
+  # Applies the mmlt element at the locations passed in.
 applybgrd(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
           bx:real,by:real,bz:real) subroutine
   # Applies the bgrd element at the locations passed in.
@@ -425,6 +472,16 @@ applybgrd2(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,
   # Applies the bgrd element at the locations passed in using the alternate
   # form of the gridded data (top.bgrd array). The returned array b must be
   # shaped (bgrdnc,np).
+applypgrd(np:integer,xp:real,yp:real,npz:integer,zp:real,lslice:logical,ex:real,
+          ey:real,ez:real) subroutine
+  # Applies the pgrd element at the locations passed in.
+applyaccl(np:integer,xp:real,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
+          dt:real,qoverm:real,lslice:logical,ez:real) subroutine
+  # Applies the accl element at the locations passed in.
+applyacclxy(np:integer,xp:real,zp:real,uzp:real,gaminv:real,dtp:real,dtl:real,
+          dtr:real,m:real,q:real,dt:real,lslice:logical,ez:real) subroutine
+  # Applies the accl element for slice code at the locations passed in.
+
 
 ******** Mult_data dump:
 nemltsets          integer /0/  # Number of different electrostatic data sets
@@ -2125,7 +2182,8 @@ tslice_locator(nztlocator,ntlmax) _integer # locator array for temperature array
 tloc_zmin  real # min locator temperature array 
 tloc_zmax  real # max locator temperature array 
 tloc_dzi   real # inverse mesh size locator temperature array 
-gett(is:integer,itask:integer) subroutine # get temperature for species is 
+gett(is:integer,itask:integer,laxisymmetric:logical) subroutine
+     # get temperature for species is 
 setregulartgrid(nx:integer,ny:integer,nz:integer,
                 xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
                 dz:real,nzloc:integer,lcollapse:logical,lcorrel:logical) subroutine 
