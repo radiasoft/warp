@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.138 $, $Date: 2004/12/22 22:20:26 $
+c@(#) File TOP.F, version $Revision: 3.139 $, $Date: 2005/01/07 17:01:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3759,11 +3759,14 @@ c   qoverm   charge over mass
 c Output:
 c   ez       axial electric field
 
-      real(kind=8):: dti,vz,gapez,frac,z1,z2,vn,zl,zr,cacclz,caccll
+      real(kind=8):: dti,vz,gapez,frac,z1,z2,vn,zl,zr,cacclz,caccll,vni
       real(kind=8):: frac1,frac2
       integer(ISZ):: io,ip,iz
 
       if (.not. accls .or. .not. linaccl(0)) return
+
+c     --- XXX This code needs to be fixed for the case of backwards moving
+c     --- XXX particles. A partial fix has been made to prevent some errors.
 
       dti = 1./(dtr-dtl)
 
@@ -3800,7 +3803,12 @@ c           --- Calculate the fraction of time in the gap.  Cases inside
 c           --- and outside are included implicitly in the max and min calls.
 c           --- Note that the max's inside the sqrt are for idiot proofing.
             if (zp(ip) <= cacclzs(iz,io)) then
-              frac = max((dtr + (zp(ip) - cacclzs(iz,io))/vn)*dti , 0.)
+              vni = 1./vn
+              if (vn > 0.) then
+                frac = max((+dtr + (zp(ip) - cacclzs(iz,io))*vni)*dti , 0.)
+              else
+                frac = max((-dtl - (zp(ip) - cacclzs(iz,io))*vni)*dti , 0.)
+              endif
             elseif (zp(ip) <= cacclze(iz,io)) then
               frac1 = min((dtr + 2.*(zp(ip) - cacclzs(iz,io))/
      &                    (vz + vn))*dti, 1.)
@@ -3809,7 +3817,12 @@ c           --- Note that the max's inside the sqrt are for idiot proofing.
      &                (cacclze(iz,io) - zp(ip)))) + vn))*dti, 1.)
               frac = min(frac1,frac2)
             else
-              frac = max((-dtl - (zp(ip) - cacclze(iz,io))/vn)*dti , 0.)
+              vni = 1./vn
+              if (vn > 0.) then
+                frac = max((-dtl - (zp(ip) - cacclze(iz,io))*vni)*dti , 0.)
+              else
+                frac = max((+dtr + (zp(ip) - cacclze(iz,io))*vni)*dti , 0.)
+              endif
             endif
 c           --- add acceleration field to Ez field
             ez(ip) = ez(ip) + gapez*frac
