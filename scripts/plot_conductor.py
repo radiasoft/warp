@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.79 2004/07/08 19:39:42 jlvay Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.80 2004/07/16 21:28:28 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -48,9 +48,9 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx,
     lx = getattr(conductors,'levell'+sx)[mglevel]
     ly = getattr(conductors,'levell'+sy)[mglevel]
     lz = getattr(conductors,'levell'+sz)[mglevel]
-    ixc = interior.indx[ix,:]*signx*lx
-    iyc = interior.indx[iy,:]*signy*ly
-    izc = interior.indx[iz,:]      *lz
+    ixc = interior.indx[ix,:]*lx
+    iyc = interior.indx[iy,:]*ly
+    izc = interior.indx[iz,:]*lz
     if ix == 2: ixc = ixc + conductors.leveliz[mglevel]*lx
     if iy == 2: iyc = iyc + conductors.leveliz[mglevel]*ly
     if iz == 2: izc = izc + conductors.leveliz[mglevel]*lz
@@ -66,8 +66,8 @@ def plotcond(iy,ix,iz,izp,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx,
   if numb is not None:
     cnumb = take(cnumb,ii)
     ii = compress(equal(cnumb,numb),ii)
-  xx = take(ixc,ii)*dx+xmin
-  yy = take(iyc,ii)*dy+ymin
+  xx = (take(ixc,ii)*dx+xmin)*signx
+  yy = (take(iyc,ii)*dy+ymin)*signy
   warpplp(yy,xx,color=color)
 
 def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
@@ -82,16 +82,16 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     lx = getattr(conductors,'levell'+sx)[mglevel]
     ly = getattr(conductors,'levell'+sy)[mglevel]
     lz = getattr(conductors,'levell'+sz)[mglevel]
-    ixc = subgrid.indx[ix,:]*signx
-    iyc = subgrid.indx[iy,:]*signy
+    ixc = subgrid.indx[ix,:]
+    iyc = subgrid.indx[iy,:]
     izc = subgrid.indx[iz,:]*lz
     if ix == 2: ixc = ixc + conductors.leveliz[mglevel]
     if iy == 2: iyc = iyc + conductors.leveliz[mglevel]
     if iz == 2: izc = izc + conductors.leveliz[mglevel]
-    delmx = subgrid.dels[2*ix  ]*signx
-    delpx = subgrid.dels[2*ix+1]*signx
-    delmy = subgrid.dels[2*iy  ]*signy
-    delpy = subgrid.dels[2*iy+1]*signy
+    delmx = subgrid.dels[2*ix  ]
+    delpx = subgrid.dels[2*ix+1]
+    delmy = subgrid.dels[2*iy  ]
+    delpy = subgrid.dels[2*iy+1]
     numbmx = subgrid.numb[2*ix  ]
     numbpx = subgrid.numb[2*ix+1]
     numbmy = subgrid.numb[2*iy  ]
@@ -116,12 +116,12 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
   ii = compress(logical_and(equal(izc[:nn],izp),equal(level[:nn],1)),arange(nn))
   dx = dx*lx
   dy = dy*ly
-  xx = take(ixc,ii)*dx+xmin
-  yy = take(iyc,ii)*dy+ymin
-  delmx = take(delmx,ii)*dx
-  delpx = take(delpx,ii)*dx
-  delmy = take(delmy,ii)*dy
-  delpy = take(delpy,ii)*dy
+  xx = (take(ixc,ii)*dx+xmin)*signx
+  yy = (take(iyc,ii)*dy+ymin)*signy
+  delmx = take(delmx,ii)*dx*signx
+  delpx = take(delpx,ii)*dx*signx
+  delmy = take(delmy,ii)*dy*signy
+  delpy = take(delpy,ii)*dy*signy
   if numb is not None:
     numbmx = take(numbmx,ii)
     numbpx = take(numbpx,ii)
@@ -298,8 +298,8 @@ by the conductor number.
   dy = dy*ly*signy
   ixc = take(ixc,iic)
   iyc = take(iyc,iic)
-  xxc = ixc*dx+xmin
-  yyc = iyc*dy+ymin
+  xxc = ixc*dx+xmin*signx
+  yyc = iyc*dy+ymin*signy
   numb = take(numb,iic)
   ixs = take(ixs,iis)
   iys = take(iys,iis)
@@ -559,8 +559,8 @@ by the conductor number.
   dy = dy*ly*signy
   ixc = take(ixc,iic)
   iyc = take(iyc,iic)
-  xxc = ixc*dx+xmin
-  yyc = iyc*dy+ymin
+  xxc = ixc*dx+xmin*signx
+  yyc = iyc*dy+ymin*signy
   numb = take(numb,iic)
   ixs = take(ixs,iis)
   iys = take(iys,iis)
