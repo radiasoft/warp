@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.40 2002/09/20 22:08:04 dave Exp $"
+warp_version = "$Id: warp.py,v 1.41 2002/10/25 20:32:35 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -108,7 +108,7 @@ def dvnz(x):
 #=============================================================================
 # --- Setup and make initial printout of the versions of the packages.
 def printversion(v):
-  v = arraytostr(v)
+  v = arraytostr(v,strip=false)
   lenv = 12
   for i in range(11,19):
     if v[i] == "$": lenv = i
