@@ -18,7 +18,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.10 2004/05/25 22:06:05 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.11 2004/06/02 01:09:03 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -33,13 +33,20 @@ def ppxxpy(iw = 0,labels=1,display=1,**kw):
                        take(top.yp,ii),(take(top.uyp,ii)/take(top.uzp,ii)),
                        labels,name='WARP viz',display=display)
 
-def ppxyz(iw = 0,labels=1,display=1,**kw):
+def ppxyz(iw = 0,labels=1,display=1,rscale=None,zscale=None,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
   if labels == 1: labels = ['X','Y','Z']
-  return viewparticles(take(top.xp,ii),take(top.yp,ii),take(top.zp,ii),
-                       take(top.uxp,ii),
+  xx = take(top.xp,ii)
+  yy = take(top.yp,ii)
+  zz = take(top.zp,ii)
+  if rscale is not None:
+    xx = xx*rscale
+    yy = yy*rscale
+  if zscale is not None:
+    zz = zz*zscale
+  return viewparticles(xx,yy,zz,take(top.uxp,ii),
                        labels,name='WARP viz',display=display)
 
 ###########################################################################
