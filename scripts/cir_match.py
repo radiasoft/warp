@@ -1,5 +1,6 @@
+"""Functions to find matched beam parameters for a periodic lattice using Circe."""
 from warp import *
-cir_match_version = "$Id: cir_match.py,v 1.2 2001/01/16 17:22:46 dave Exp $"
+cir_match_version = "$Id: cir_match.py,v 1.3 2003/08/07 19:00:58 dave Exp $"
 
 print " "
 print "This scripts finds matched beam parameters for a periodic lattice."

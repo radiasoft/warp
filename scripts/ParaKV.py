@@ -1,4 +1,5 @@
-"""Module ParaKV.py
+"""Generates Thermal KV distribution
+Module ParaKV.py
 
  by: Rami A. Kishek
  Date: June 5, 2001
@@ -41,7 +42,7 @@
 
 from warp import *
 
-ParaKV_version = "$Id: ParaKV.py,v 1.2 2002/08/14 21:08:05 ramiak Exp $"
+ParaKV_version = "$Id: ParaKV.py,v 1.3 2003/08/07 19:00:57 dave Exp $"
 def ParaKVdoc():
   import ParaKV
   print ParaKV.__doc__

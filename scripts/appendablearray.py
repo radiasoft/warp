@@ -1,7 +1,9 @@
+"""Array type which can be appended to in an efficient way.
+"""
 from warp import *
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.5 2002/01/30 18:37:06 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.6 2003/08/07 19:00:58 dave Exp $"
 
 class AppendableArray:
   def __init__(self,initlen,shape=None,type='i',autobump=100):

@@ -1,11 +1,9 @@
-# Copyright (c) 1996, 1997, The Regents of the University of California.
-# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-
 """
-HDF basic writer class PW by David Grote, LLNL
+HDF self-describing file format writer class PW
+by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWhdf.py,v 1.2 2003/08/05 16:47:24 dave Exp $
+$Id: PWhdf.py,v 1.3 2003/08/07 19:00:57 dave Exp $
 """
 import _pyhl
 from Numeric import *

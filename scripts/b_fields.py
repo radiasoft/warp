@@ -1,4 +1,4 @@
-"""
+"""Generate B field data for solenoids for bgrd element
 # Module b_fields.py
 #
 # by: Rami A. Kishek (based on algorithm by I. Haber)
@@ -21,7 +21,7 @@
 #
 # ==================
 """
-b_fields_version = "$Id: b_fields.py,v 1.2 2002/08/14 21:01:27 ramiak Exp $"
+b_fields_version = "$Id: b_fields.py,v 1.3 2003/08/07 19:00:58 dave Exp $"
 from warp import *
 from rami_scripts import *
 

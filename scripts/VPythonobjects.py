@@ -1,11 +1,11 @@
-"""
+"""Utility routines for doing 3-d visualization using the VPython module.
 Partly taken from VPython demos.
 Modified by DPG
 
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.4 2003/02/24 16:13:16 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.5 2003/08/07 19:00:58 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects

@@ -1,5 +1,7 @@
+"""Predefined history plots for Circe package.
+"""
 from warp import *
-cirplots_version = "$Id: cirplots.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+cirplots_version = "$Id: cirplots.py,v 1.2 2003/08/07 19:00:58 dave Exp $"
 
 ##############################################################################
 # Handy plots for the circe package

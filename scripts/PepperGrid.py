@@ -1,4 +1,5 @@
-""" Module PepperGrid.py
+"""Pepper-pot style diagnostics
+Module PepperGrid.py
 by Rami A. Kishek
 created: Mar. 7, 2002
 
@@ -16,7 +17,7 @@ apply_grid  ... Rectangular Grid
 """
 from warp import *
 
-PepperGrid_version = "$Id: PepperGrid.py,v 1.1 2002/08/14 21:08:14 ramiak Exp $"
+PepperGrid_version = "$Id: PepperGrid.py,v 1.2 2003/08/07 19:00:58 dave Exp $"
 def PepperGriddoc():
   import PepperGrid
   print PepperGrid.__doc__
