@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.19 $, $Date: 2002/07/17 17:36:55 $
+#@(#) File FRZ.V, version $Revision: 3.20 $, $Date: 2002/07/30 18:34:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.19 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.20 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -35,7 +35,7 @@ scrtch2(0:nz)             _real        #  workspace for resistive wall
 phikold(0:nz)             _real        #  FT of phi at old time step for C
 err1(0:nr,0:nz)           _real
 
-*********** FRZmgrid:
+*********** FRZmgrid dump:
 mgridrz_accuracy          real /1.e-3/  # average accuracy of multigrid solver
 mgridrz_ncmax             integer /100/ # maximum number of full multigrid 
                                         # cycles
@@ -92,6 +92,8 @@ get_cond_rz(grid:integer,level:integer) subroutine
 setconductorvoltagerz(volt:real,nz:integer,zmmin:real,dz:real,discrete:logical)
          subroutine
          # set voltage on conductors from a z-grid
+setconductorvoltagerz_id(id:integer,volt:real) subroutine
+         # set voltage on conductor given its ID
 calcfact_deform(dz:real,zmin:real,
                 xfact:real,yfact:real,nz:integer,ns:integer,is:integer,
                 ins:integer,nps:integer,ws:real) subroutine
