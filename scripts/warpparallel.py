@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.13 2001/06/18 20:45:55 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.14 2001/07/02 20:18:16 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -139,7 +139,8 @@ def getlabmoments():
 # dump to be use by jobs with differing numbers of processors (not implemented
 # yet). To do that, global values of scalars are written out and arrays are
 # written out in the same format as serial dump.
-def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
+def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
+                 verbose=false):
   getwin_moments()
   gethist()
   getlabmoments()
@@ -200,6 +201,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
         vval = eval(v,__main__.__dict__,locals())
         if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
           raise "cannot dump zero length arrays"
+        if verbose: print "writing python variable "+v+" as "+v+suffix
         exec('ff.'+v+suffix+'='+v,__main__.__dict__,locals())
       except:
         pass
@@ -218,6 +220,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
         # --- the getpyobject routine returns None.
         v = pkg.getpyobject(vname)
         if v is not None:
+          if verbose: print "writing "+p+"."+vname+" as "+pdbname+" -first pass"
           # --- Get attributes of the variable
           a = pkg.getvarattr(vname)
           # --- Set name of variable in pdb file
@@ -405,6 +408,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
     for vname in vlist:
       v = pkg.getpyobject(vname)
       if v is not None:
+        if verbose: print "writing "+p+"."+vname+" as "+pdbname+" -second pass"
         a = pkg.getvarattr(vname)
         if varsuffix is None:
           pdbname = vname+'@'+p
@@ -532,7 +536,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
 #    needed in the second step
 #  2 Read the rest of the data in
 #
-def parallelrestore(fname):
+def parallelrestore(fname,verbose=false):
   # --- All PE's open the file for reading.
   ff = PR.PR(fname)
 
@@ -600,6 +604,9 @@ def parallelrestore(fname):
     top.jhist = ff.read('jhist@top')
 
   # --- Loop over the list of all of the variables in the restart file.
+  # --- Read in all of the scalars first - this ensures that all of the
+  # --- integers which describe the size of dynamics arrays are read in
+  # --- before the arrays, a requirement of the f90 version.
   for v in vlist:
     if len(v) > 4 and v[-4]=='@':
       # --- Variable is a fortran variable
@@ -607,6 +614,11 @@ def parallelrestore(fname):
       p = v[-3:]
       pkg = eval(p,__main__.__dict__)
       pname = p+'.'+vname
+      # --- The shape is used determine whether the variable is an array
+      # --- or not. When the length of the shape is zero, then the
+      # --- variable is a scalar.
+      if len(ff.inquire_shape(v)) != 0: continue
+      if verbose: "reading "+p+"."+vname
       # --- Make sure that the variable is still valid. If not
       # --- (e.g. it has been deleted) then don't try to restore it.
       try:
@@ -614,168 +626,188 @@ def parallelrestore(fname):
       except pybasisC.error:
         print "Warning: There was a problem %s - it can't be found."(pname)
       parallelvar = re.search('parallel',a)
-      # --- The shape is used determine whether the variable is an array
-      # --- or not. When the length of the shape is zero, then the
-      # --- variable is a scalar.
-      varshape = ff.inquire_shape(v)
-      is_array = len(varshape)
       if not parallelvar:
         # --- Simply read variable directly in.
-        if is_array:
-          s = p+'.forceassign(vname,ff.__getattr__(v))'
-        else:
-          s = pname+'=ff.__getattr__(v)'
+        s = pname+'=ff.__getattr__(v)'
       else:
-        if not is_array:
-          # --- Scalars: get data saved with parallel suffix.
-          itriple = array([me,me,1])
-          s = pname+'= ff.read_part(vname+"@parallel",itriple)[0]'
-        else:
-          # --- Many arrays need special handling. These are dealt with first.
-          if p == 'top' and vname in ['sm','sw','sq']:
-            # --- These arrays are not actually parallel and so can just
-            # --- be read in.
-            s = p+'.forceassign(vname,ff.__getattr__(v))'
-          elif (p == 'top' and vname in ['zmmnts0','zmmnts']) or \
-               (p == 'f3d' and vname in ['sorerrar','boundarr']):
-            # --- These arrays don't need to be restored.
-            s = 'pass'
-          elif vname == 'zwindows' and p == 'top':
-            # --- This doesn't want to work
-            #itriple = array([me,me,1,0,1,1,0,9,1])
-            #s = p+'.forceassign(vname,\
-            #       ff.read_part(vname+"@parallel",itriple)[0,...])'
-            zwin = ff.read(vname+"@parallel")
-            top.zwindows[:,:] = zwin[me,...]
-            s = 'pass'
-          elif vname == 'npmax_s' and p == 'top':
-            itriple = array([me,me,1,0,top.ns,1])
-            s = p+'.forceassign(vname,\
-                   ff.read_part(vname+"@parallel",itriple)[0,...])'
-          elif p == 'top' and vname in ['ins','nps']:
-            # --- These have already been restored above since they are
-            # --- needed to read in the particles.
-            s = 'pass'
-          elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
-                                        'gaminv']) or \
-               (p == 'wxy' and vname in ['dtp']):
-            # --- Read in each species seperately.
-            # --- The assumption is made that if wxy.dtp was written out,
-            # --- it has the same shape as the other particle arrays.
-            # --- The command is exec'ed here since a different command
-            # --- is needed for each species.  Errors are not caught.
-            s = 'pass'
-            for js in xrange(top.ns):
-              if top.nps[js] > 0:
-                ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
-                itriple = array([ipmin,ipmin+top.nps[js]-1,1])
-                ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1]'
-                exec(pname+ip+' = ff.read_part(v,itriple)',
-                     __main__.__dict__,locals())
-          elif p == 'top' and vname in \
-               ['hlinechg','hvzofz','hepsxz','hepsyz','hepsnxz','hepsnyz',
-                'hepsgz','hepshz','hepsngz','hepsnhz','hxbarz','hybarz',
-                'hxybarz','hxrmsz','hyrmsz','hxprmsz','hyprmsz','hxsqbarz',
-                'hysqbarz','hvxbarz','hvybarz','hvzbarz','hxpbarz','hypbarz',
-                'hvxrmsz','hvyrmsz','hvzrmsz','hxpsqbarz','hypsqbarz',
-                'hxxpbarz','hyypbarz','hxypbarz','hyxpbarz','hxpypbarz',
-                'hxvzbarz','hyvzbarz','hvxvzbarz','hvyvzbarz']:
-            try:
-              histz = ff.read("histz@parallel")
-            except:
-              histz = 0
-            if histz == 0:
-              # --- This is a temporary but fast solution.
-              itriple = array([me,me,1,0,top.nzpslave[me],1,0,top.lenhist,1])
-              s = p+'.forceassign(vname,\
-                    ff.read_part(vname+"@parallel",itriple)[0,...])'
-            elif histz == 1:
-              # --- The proper solution would have to read the data in
-              # --- in chunks for each time step.
-              itriple = array([top.izpslave[me],
-                               top.izpslave[me]+top.nzpslave[me],1,0,0,0])
-              tmp = zeros((1+top.nzpslave[me],1+top.lenhist),'d')
-              for ih in xrange(top.jhist+1):
-                itriple[3:] = [ih,ih,1]
-                tmp[:,ih] = ff.read_part(vname+"@parallel",itriple)
-              s = p+'.forceassign(vname,tmp)'
-            elif histz == 2:
-              # --- Read in data and untranspose it.
-              itriple = array([0,top.lenhist,1,
-                          top.izpslave[me],top.izpslave[me]+top.nzpslave[me],1])
-              tmp = ff.read_part(vname+"@parallel",itriple)
-              s = p+'.forceassign(vname,transpose(tmp))'
-          elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
-                                        'condvolt','icondlxy','icondlz']:
-            # --- The conductor data was gathered into one place
-            if ncond_p[me] > 0:
-              imin = sum(ncond_p0[:me+1])
-              itriple = array([imin,imin+ncond_p[me]-1,1])
-              s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-              if vname == 'izcond':
-                s = s + ';f3d.izcond[:]=f3d.izcond[:]-top.izslave[me]'
-            else:
-              s = 'pass'
-          elif p == 'f3d' and \
-               vname in ['ecndpvph','iecndx','iecndy','iecndz',
-                         'ecdelmx','ecdelmy','ecdelmz','ecdelpx',
-                         'ecdelpy','ecdelpz','ecvolt','ecvoltmx',
-                         'ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz',
-                         'ecvoltpz','iecndlxy','iecndlz']:
-            # --- The conductor data was gathered into one place
-            if necndbdy_p[me] > 0:
-              imin = sum(necndbdy_p0[:me+1])
-              itriple = array([imin,imin+necndbdy_p[me]-1,1])
-              s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-              if vname == 'iecndz':
-                s = s + ';f3d.iecndz[:]=f3d.iecndz[:]-top.izslave[me]'
-            else:
-              s = 'pass'
-          elif p == 'f3d' and \
-               vname in ['ocndpvph','iocndx','iocndy','iocndz',
-                         'ocdelmx','ocdelmy','ocdelmz','ocdelpx',
-                         'ocdelpy','ocdelpz','ocvolt','ocvoltmx',
-                         'ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz',
-                         'ocvoltpz','iocndlxy','iocndlz']:
-            # --- The conductor data was gathered into one place
-            if nocndbdy_p[me] > 0:
-              imin = sum(nocndbdy_p0[:me+1])
-              itriple = array([imin,imin+nocndbdy_p[me]-1,1])
-              s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-              if vname == 'iocndz':
-                s = s + ';f3d.iocndz[:]=f3d.iocndz[:]-top.izslave[me]'
-            else:
-              s = 'pass'
-          elif p == 'w3d' and vname in ['rho']:
-            itriple = array([0,w3d.nx,1,0,w3d.ny,1,
-                        top.izpslave[me],top.izpslave[me]+top.nzpslave[me],1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-          elif p == 'w3d' and vname in ['phi']:
-            itriple = array([0,w3d.nx,1,0,w3d.ny,1,
-                top.izfsslave[me]-1+1,top.izfsslave[me]+top.nzfsslave[me]+2,1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-          else:
-            # --- The rest are domain decomposed Z arrays
-            itriple = array([top.izpslave[me],
-                             top.izpslave[me]+top.nzpslave[me],1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-
+        # --- Scalars: get data saved with parallel suffix.
+        itriple = array([me,me,1])
+        s = pname+'= ff.read_part(vname+"@parallel",itriple)[0]'
       try:
         exec(s,__main__.__dict__,locals())
       except AttributeError:
         print "Warning: There was a problem restoring %s" (pname)
-
     elif v[-7:] == '@global':
       try:
+        if verbose: print "reading python variable "+v[:-7]
         exec('%s=ff.__getattr__("%s");__main__.__dict__["%s"]=%s'%
              (v[:-7],v,v[:-7],v[:-7]))
       except:
         pass
     else:
       try:
+        if verbose: print "reading python variable "+v
         exec('%s=ff.%s;__main__.__dict__["%s"]=%s'%(v,v,v,v))
       except:
         pass
+  # --- Now read in the arrays.
+  for v in vlist:
+    if len(v) > 4 and v[-4]=='@':
+      # --- Variable is a fortran variable
+      vname = v[:-4]
+      p = v[-3:]
+      pkg = eval(p,__main__.__dict__)
+      pname = p+'.'+vname
+      # --- The shape is used determine whether the variable is an array
+      # --- or not. When the length of the shape is zero, then the
+      # --- variable is a scalar.
+      if len(ff.inquire_shape(v)) == 0: continue
+      if verbose: "reading "+p+"."+vname
+      # --- Make sure that the variable is still valid. If not
+      # --- (e.g. it has been deleted) then don't try to restore it.
+      try:
+        a = pkg.getvarattr(vname)
+      except pybasisC.error:
+        print "Warning: There was a problem %s - it can't be found."(pname)
+      parallelvar = re.search('parallel',a)
+      if not parallelvar:
+        # --- Simply read variable directly in.
+        s = p+'.forceassign(vname,ff.__getattr__(v))'
+      else:
+        # --- Many arrays need special handling. These are dealt with first.
+        if p == 'top' and vname in ['sm','sw','sq']:
+          # --- These arrays are not actually parallel and so can just
+          # --- be read in.
+          s = p+'.forceassign(vname,ff.__getattr__(v))'
+        elif (p == 'top' and vname in ['zmmnts0','zmmnts']) or \
+             (p == 'f3d' and vname in ['sorerrar','boundarr']):
+          # --- These arrays don't need to be restored.
+          s = 'pass'
+        elif vname == 'zwindows' and p == 'top':
+          # --- This doesn't want to work
+          #itriple = array([me,me,1,0,1,1,0,9,1])
+          #s = p+'.forceassign(vname,\
+          #       ff.read_part(vname+"@parallel",itriple)[0,...])'
+          zwin = ff.read(vname+"@parallel")
+          top.zwindows[:,:] = zwin[me,...]
+          s = 'pass'
+        elif vname == 'npmax_s' and p == 'top':
+          itriple = array([me,me,1,0,top.ns,1])
+          s = p+'.forceassign(vname,\
+                 ff.read_part(vname+"@parallel",itriple)[0,...])'
+        elif p == 'top' and vname in ['ins','nps']:
+          # --- These have already been restored above since they are
+          # --- needed to read in the particles.
+          s = 'pass'
+        elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
+                                      'gaminv']) or \
+             (p == 'wxy' and vname in ['dtp']):
+          # --- Read in each species seperately.
+          # --- The assumption is made that if wxy.dtp was written out,
+          # --- it has the same shape as the other particle arrays.
+          # --- The command is exec'ed here since a different command
+          # --- is needed for each species.  Errors are not caught.
+          s = 'pass'
+          for js in xrange(top.ns):
+            if top.nps[js] > 0:
+              ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
+              itriple = array([ipmin,ipmin+top.nps[js]-1,1])
+              ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1]'
+              exec(pname+ip+' = ff.read_part(v,itriple)',
+                   __main__.__dict__,locals())
+        elif p == 'top' and vname in \
+             ['hlinechg','hvzofz','hepsxz','hepsyz','hepsnxz','hepsnyz',
+              'hepsgz','hepshz','hepsngz','hepsnhz','hxbarz','hybarz',
+              'hxybarz','hxrmsz','hyrmsz','hxprmsz','hyprmsz','hxsqbarz',
+              'hysqbarz','hvxbarz','hvybarz','hvzbarz','hxpbarz','hypbarz',
+              'hvxrmsz','hvyrmsz','hvzrmsz','hxpsqbarz','hypsqbarz',
+              'hxxpbarz','hyypbarz','hxypbarz','hyxpbarz','hxpypbarz',
+              'hxvzbarz','hyvzbarz','hvxvzbarz','hvyvzbarz']:
+          try:
+            histz = ff.read("histz@parallel")
+          except:
+            histz = 0
+          if histz == 0:
+            # --- This is a temporary but fast solution.
+            itriple = array([me,me,1,0,top.nzpslave[me],1,0,top.lenhist,1])
+            s = p+'.forceassign(vname,\
+                  ff.read_part(vname+"@parallel",itriple)[0,...])'
+          elif histz == 1:
+            # --- The proper solution would have to read the data in
+            # --- in chunks for each time step.
+            itriple = array([top.izpslave[me],
+                             top.izpslave[me]+top.nzpslave[me],1,0,0,0])
+            tmp = zeros((1+top.nzpslave[me],1+top.lenhist),'d')
+            for ih in xrange(top.jhist+1):
+              itriple[3:] = [ih,ih,1]
+              tmp[:,ih] = ff.read_part(vname+"@parallel",itriple)
+            s = p+'.forceassign(vname,tmp)'
+          elif histz == 2:
+            # --- Read in data and untranspose it.
+            itriple = array([0,top.lenhist,1,
+                        top.izpslave[me],top.izpslave[me]+top.nzpslave[me],1])
+            tmp = ff.read_part(vname+"@parallel",itriple)
+            s = p+'.forceassign(vname,transpose(tmp))'
+        elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
+                                      'condvolt','icondlxy','icondlz']:
+          # --- The conductor data was gathered into one place
+          if ncond_p[me] > 0:
+            imin = sum(ncond_p0[:me+1])
+            itriple = array([imin,imin+ncond_p[me]-1,1])
+            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+            if vname == 'izcond':
+              s = s + ';f3d.izcond[:]=f3d.izcond[:]-top.izslave[me]'
+          else:
+            s = 'pass'
+        elif p == 'f3d' and \
+             vname in ['ecndpvph','iecndx','iecndy','iecndz',
+                       'ecdelmx','ecdelmy','ecdelmz','ecdelpx',
+                       'ecdelpy','ecdelpz','ecvolt','ecvoltmx',
+                       'ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz',
+                       'ecvoltpz','iecndlxy','iecndlz']:
+          # --- The conductor data was gathered into one place
+          if necndbdy_p[me] > 0:
+            imin = sum(necndbdy_p0[:me+1])
+            itriple = array([imin,imin+necndbdy_p[me]-1,1])
+            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+            if vname == 'iecndz':
+              s = s + ';f3d.iecndz[:]=f3d.iecndz[:]-top.izslave[me]'
+          else:
+            s = 'pass'
+        elif p == 'f3d' and \
+             vname in ['ocndpvph','iocndx','iocndy','iocndz',
+                       'ocdelmx','ocdelmy','ocdelmz','ocdelpx',
+                       'ocdelpy','ocdelpz','ocvolt','ocvoltmx',
+                       'ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz',
+                       'ocvoltpz','iocndlxy','iocndlz']:
+          # --- The conductor data was gathered into one place
+          if nocndbdy_p[me] > 0:
+            imin = sum(nocndbdy_p0[:me+1])
+            itriple = array([imin,imin+nocndbdy_p[me]-1,1])
+            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+            if vname == 'iocndz':
+              s = s + ';f3d.iocndz[:]=f3d.iocndz[:]-top.izslave[me]'
+          else:
+            s = 'pass'
+        elif p == 'w3d' and vname in ['rho']:
+          itriple = array([0,w3d.nx,1,0,w3d.ny,1,
+                      top.izpslave[me],top.izpslave[me]+top.nzpslave[me],1])
+          s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+        elif p == 'w3d' and vname in ['phi']:
+          itriple = array([0,w3d.nx,1,0,w3d.ny,1,
+              top.izfsslave[me]-1+1,top.izfsslave[me]+top.nzfsslave[me]+2,1])
+          s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+        else:
+          # --- The rest are domain decomposed Z arrays
+          itriple = array([top.izpslave[me],
+                           top.izpslave[me]+top.nzpslave[me],1])
+          s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+
+      try:
+        exec(s,__main__.__dict__,locals())
+      except AttributeError:
+        print "Warning: There was a problem restoring %s" (pname)
+
   ff.close()
 
 
