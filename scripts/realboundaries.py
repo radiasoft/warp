@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.50 2004/09/03 00:10:50 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.51 2004/09/09 00:51:05 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -646,8 +646,8 @@ Constructor arguments:
       # --- Make sure the gridmode is set properly
       f3d.gridmode = 1
     # # --- Turn off the call to setconductor in the fortran
-    # try:    f3d.lbuildquads = false
-    # except: pass
+      try:    f3d.lbuildquads = false
+      except: pass
       self.setboundary()
     elif currpkg == 'wxy':
       if w3d.solvergeom==w3d.XYgeom:
@@ -765,7 +765,13 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def roundpipe3d(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
     if ze < w3d.zmmin+top.zbeam or zs > w3d.zmmax+top.zbeam: return 0
-    pipe = ZCylinderOut(ap[id],ze-zs,0.,ox[id],oy[id],0.5*(zs+ze))
+    ax = ax[id]
+    ay = ay[id]
+    ap = ap[id]
+    if ax == 0.: ax = ap
+    if ay == 0.: ay = ap
+    if ax == 0. or ay == 0.: return 0
+    pipe = ZCylinderEllipticOut(ay/ax,ax,ze-zs,0.,ox[id],oy[id],0.5*(zs+ze))
     self.conductors += pipe
     return 0
   #----------------------------------------------------------------------------
@@ -1046,7 +1052,7 @@ in the celemid array. It returns each element only once.
         solver.clearconductors()
     if self.conductors is not None:
       if solver is None:
-        installconductors(self.conductors,dfill=self.dfill,gridmode=0)
+        installconductors(self.conductors,dfill=self.dfill,gridmode=1)
       else:
         print "installing conductor"
         solver.installconductor(self.conductors,dfill=self.dfill)
