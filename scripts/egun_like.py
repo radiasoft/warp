@@ -1,5 +1,6 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.8 2002/07/23 21:07:04 dave Exp $"
+import string
+egun_like_version = "$Id: egun_like.py,v 1.9 2002/07/25 23:11:14 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -28,10 +29,6 @@ print "before doing more iterations."
 # one without the underscor is only used as input arguments.
 ##############################################################################
 
-# --- Set injection relaxation parameter if it has not already been set by
-# --- the user.
-if top.inj_param == 1.: top.inj_param = 0.5
-
 gun_iter = 0
 gun_steps = 0
 
@@ -57,27 +54,12 @@ _ofstype = top.fstype
 
 # --- Vz fuzz, particles with uzp bigger are selected.  It should be small
 # --- since uzp may be small for newly injected particles.
-vzfuzz = 1.e-20
+_vzfuzz = 1.e-20
 
 # --- Read in getzmom script. Only used to make final and initial calls to
 # --- getzmmnt routine. Moments are calculated during timesteps and include all
 # --- particles.
 import getzmom
-
-# --- Set logical so that the charge density is accumulated over
-# --- all of the time steps for each iteration.
-top.laccumulate_rho = true
-
-# --- Turn off rho-diagnostic and calculation of ese
-w3d.lrhodia3d = 0
-w3d.lgetese3d = 0
-
-# --- Set the attribute 'dump' on the rho array so it is automatically saved
-# --- on a dump. This is done since rho holds the current state of the solution.
-w3d.addvarattr("rho","dump")
-
-# --- Set verbosity so that the one line diagnostic is not printed out.
-top.verbosity = 1
 
 def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None):
@@ -108,14 +90,36 @@ Performs steady-state iterations
     _onztinjmx = top.nztinjmx
   _ifzmmnt = top.ifzmmnt
   _laccumulate_zmoments = top.laccumulate_zmoments
-  if laccumulate_zmoments is None: laccumulate_zmoments=top.laccumulate_zmoments
+  if laccumulate_zmoments is None:
+    laccumulate_zmoments = top.laccumulate_zmoments
 
   if ipsave: _ipsave = ipsave
   if save_same_part: _save_same_part = save_same_part
 
   # --- Save current value of top.nhist
-  _nhist = top.nhist
+  nhist = top.nhist
   top.nhist = 0
+
+  # --- Set injection relaxation parameter if it has not already been set by
+  # --- the user.
+  if top.inj_param == 1.: top.inj_param = 0.5
+
+  # --- Set logical so that the charge density is accumulated over
+  # --- all of the time steps for each iteration.
+  top.laccumulate_rho = true
+
+  # --- Turn off rho-diagnostic and calculation of ese
+  w3d.lrhodia3d = 0
+  w3d.lgetese3d = 0
+
+  # --- Set the attribute 'dump' on the rho array so it is automatically saved
+  # --- on a dump. This is done since rho holds the current state of the
+  # --- solution.
+  if 'dump' not in string.split(w3d.getvarattr('rho')):
+    w3d.addvarattr("rho","dump")
+
+  # --- Set verbosity so that the one line diagnostic is not printed out.
+  top.verbosity = 1
 
   # --- Estimate the time that will be required for the particles
   # --- to propagate through the system. It is based off of the Child-Langmuir
@@ -141,7 +145,6 @@ Performs steady-state iterations
       else: npisum = sum(top.npinje_s)
       _ipstep = gun_steps*npisum/_ipsave
       if (_ipstep < 1): _ipstep = 1
-      #print "_ipstep = ",_ipstep,gun_steps,npisum,_ipsave
 
     # --- set number of particles to zero.
     top.nps = 0
@@ -165,7 +168,7 @@ Performs steady-state iterations
 
     # --- If this is the final iteration and if zmoments are being calculated,
     # --- make the initial call to zero the arrays.
-    if ((i == iter-1 or (gun_iter%_nhist) == 0) and _ifzmmnt > 0):
+    if ((i == iter-1 or (gun_iter%nhist) == 0) and _ifzmmnt > 0):
       top.ifzmmnt = _ifzmmnt
       getzmom.zmmnt(1)
       # --- Make sure that moments are calculated on each time step. This is
@@ -206,17 +209,6 @@ Performs steady-state iterations
         # --- This only needs to be done if there are particles now.
         if (top.nps[js] > 0):
           copypart(top.npmax_s[js]+1,top.nps[js],0,top.ins[js])
-#         ip1 = top.ins[js]-1
-#         ip2 = top.ins[js]+top.nps[js]-1
-#         ip01 = top.npmax_s[js]
-#         ip02 = top.npmax_s[js]+top.nps[js]
-#         top.xp[ip01:ip02] = top.xp[ip1:ip2]
-#         top.yp[ip01:ip02] = top.yp[ip1:ip2]
-#         top.zp[ip01:ip02] = top.zp[ip1:ip2]
-#         top.uxp[ip01:ip02] = top.uxp[ip1:ip2]
-#         top.uyp[ip01:ip02] = top.uyp[ip1:ip2]
-#         top.uzp[ip01:ip02] = top.uzp[ip1:ip2]
-#         top.gaminv[ip01:ip02] = top.gaminv[ip1:ip2]
 
         # --- Reset particles counters.
         # --- This always needs to be done since particles may be added
@@ -231,36 +223,21 @@ Performs steady-state iterations
             ip1 = top.ins[js]
             ip2 = top.ins[js]+top.nps[js]-1
             ip3 = _ipstep
-            ii = compress(greater(top.uzp[ip1-1:ip2:ip3],vzfuzz),
+            ii = compress(greater(top.uzp[ip1-1:ip2:ip3],_vzfuzz),
                           iota(ip1,ip2,ip3))
           else:
             ip1 = top.ins[js]
             ip2 = top.ins[js]+top.nps[js]-1
             ip3 = 1
-            ii = compress(greater(top.uzp[ip1-1:ip2:ip3],vzfuzz),
+            ii = compress(greater(top.uzp[ip1-1:ip2:ip3],_vzfuzz),
                           iota(ip1,ip2,ip3))
             ii = compress(less(ranf(ii),1./_ipstep),ii)
 
           # --- save data of just injected particles
           if (len(ii) > 0):
-            #chckpart(js+1,0,int(_ipsave*sum(top.finject[:,js])*1.5)+len(ii),
-                     #false)
             chckpart(js+1,0,int(1.5*gun_steps*top.npinje_s[js]/_ipstep)+len(ii),
                      false)
             copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
-#           ip1 = ins_save[js]+nps_save[js] - 1
-#           ip2 = ins_save[js]+nps_save[js]+len(ii) - 1
-#           top.xp[ip1:ip2]  = take( top.xp,ii)
-#           top.yp[ip1:ip2]  = take( top.yp,ii)
-#           top.zp[ip1:ip2]  = take( top.zp,ii)
-#           top.uxp[ip1:ip2] = take(top.uxp,ii)
-#           top.uyp[ip1:ip2] = take(top.uyp,ii)
-#           top.uzp[ip1:ip2] = take(top.uzp,ii)
-#           if (top.lrelativ):
-#             top.gaminv[ip1:ip2] = take(top.gaminv,ii)
-#           else:
-#             top.gaminv[ip1:ip2] = 1.
-#           print nps_save[js],len(ii)
             nps_save[js] = nps_save[js] + len(ii)
 
     # --- Turn injection off for remaing time steps. inject is set to a value
@@ -275,13 +252,10 @@ Performs steady-state iterations
     # --- solves).  Accumulation of charge density and particle moments is done
     # --- automatically in the code.  Save particle data each time step on last
     # --- iteration only.
-    #while (sum(top.nps) > 0 and max(top.uzp)>vzfuzz):
-    maxvz = 2.*vzfuzz+1.
-    while (npssum > 0 and maxvz>vzfuzz and
+    maxvz = 2.*_vzfuzz+1.
+    while (npssum > 0 and maxvz>_vzfuzz and
            top.time-gun_time < maxtime):
       step()
-      #print top.nps
-      #print max(top.uzp)
       tmp_gun_steps = tmp_gun_steps + 1
       # --- only save particles on last iteration
       if (i == iter-1 and _ipsave > 0):
@@ -292,13 +266,13 @@ Performs steady-state iterations
               ip1 = top.ins[js]
               ip2 = top.ins[js]+top.nps[js]-1
               ip3 = _ipstep
-              ii = compress(greater(top.uzp[ip1-1:ip2:ip3],vzfuzz),
+              ii = compress(greater(top.uzp[ip1-1:ip2:ip3],_vzfuzz),
                             iota(ip1,ip2,ip3))
             else:
               ip1 = top.ins[js]
               ip2 = top.ins[js]+top.nps[js]-1
               ip3 = 1
-              ii = compress(greater(top.uzp[ip1-1:ip2:ip3],vzfuzz),
+              ii = compress(greater(top.uzp[ip1-1:ip2:ip3],_vzfuzz),
                             iota(ip1,ip2,ip3))
               ii = compress(less(ranf(ii),1./_ipstep),ii)
 
@@ -306,18 +280,6 @@ Performs steady-state iterations
             if (len(ii) > 0):
               chckpart(js+1,0,nps_save[js]+len(ii),false)
               copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
-#             ip1 = ins_save[js]+nps_save[js] - 1
-#             ip2 = ins_save[js]+nps_save[js]+len(ii) - 1
-#             top.xp[ip1:ip2]  = take( top.xp,ii)
-#             top.yp[ip1:ip2]  = take( top.yp,ii)
-#             top.zp[ip1:ip2]  = take( top.zp,ii)
-#             top.uxp[ip1:ip2] = take(top.uxp,ii)
-#             top.uyp[ip1:ip2] = take(top.uyp,ii)
-#             top.uzp[ip1:ip2] = take(top.uzp,ii)
-#             if (top.lrelativ):
-#               top.gaminv[ip1:ip2] = take(top.gaminv,ii)
-#             else:
-#               top.gaminv[ip1:ip2] = 1.
               nps_save[js] = nps_save[js] + len(ii)
 
       if lparallel:
@@ -340,12 +302,12 @@ Performs steady-state iterations
     top.fstype = -1
 
     # --- Do final work for zmoments calculation
-    if ((i == iter-1 or (gun_iter%_nhist) == 0) and top.ifzmmnt > 0):
+    if ((i == iter-1 or (gun_iter%nhist) == 0) and top.ifzmmnt > 0):
       top.laccumulate_zmoments = laccumulate_zmoments
       getzmom.zmmnt(3)
 
     # --- Save the history data
-    if (gun_iter%_nhist) == 0 and top.ifzmmnt > 0:
+    if (gun_iter%nhist) == 0 and top.ifzmmnt > 0:
       top.nhist = gun_iter
       minidiag(gun_iter,gun_time,false)
       top.nhist = 0
@@ -382,7 +344,7 @@ Performs steady-state iterations
     top.nztinjmn = _onztinjmn
     top.nztinjmx = _onztinjmx
   top.inject = _oinject
-  top.nhist = _nhist
+  top.nhist = nhist
   top.ifzmmnt = _ifzmmnt
   top.laccumulate_zmoments = _laccumulate_zmoments
 
