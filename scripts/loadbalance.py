@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.27 2003/05/28 20:24:07 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.28 2003/06/27 23:19:56 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -17,7 +17,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
   """
 
 #########################################################################
-def setparticledomains(zslave,lloadrho=1,dofs=1,padleft=0.,padright=0.):
+def setparticledomains(zslave,lloadrho=1,dofs=1,padleft=0.,padright=0.,reorg=0):
   """
 Sets the particles domains from the input, zslave, in the same way as done
 with top.zslave during the generate. This is only meant to be used after
@@ -27,6 +27,10 @@ that has already been done.
  - dofs=1: when true, the fields are recalculated
  - padleft=0, padright=0: extra space added on to leftmost and rightmost
                           domains (up to edge of system) in units of meters
+ - reorg=0: when true, call reorg_particles which is fastest when particles
+            are to be shifted across multiple processors, otherwise use
+            zpartbnd which is fastest when particles are to be shifted only to
+            nearest neighbors.
   """
   if not lparallel: return
   # --- It is assumed that the user supplied decomposition is specified
@@ -57,7 +61,10 @@ that has already been done.
   #_adjustz()
 
   # --- Reorganize the particles
-  reorgparticles()
+  if reorg:
+    reorgparticles()
+  else:
+    zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
 
   # --- Update sizes of arrays for particles
   if(w3d.solvergeom == w3d.XYZgeom):
@@ -75,7 +82,7 @@ that has already been done.
 
 #########################################################################
 def loadbalanceparticles(lloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
-                         pnumz=None,zmin=None,dz=None):
+                         reorg=0,pnumz=None,zmin=None,dz=None):
   """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -86,6 +93,10 @@ grid points.
  - spread=1.: fraction of processors to spread the work among
  - padleft=0, padright=0: extra space added on to leftmost and rightmost
                           domains (up to edge of system) in units of meters
+ - reorg=0: when true, call reorg_particles which is fastest when particles
+            are to be shifted across multiple processors, otherwise use
+            zpartbnd which is fastest when particles are to be shifted only to
+            nearest neighbors.
  - pnumz=top.pznum: the particle distribution to base the load balancing on
   """
   if not lparallel: return
@@ -111,7 +122,7 @@ grid points.
 
   # --- Apply the new domain decomposition.
   setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs,
-                     padleft=padleft,padright=padright)
+                     padleft=padleft,padright=padright,reorg=reorg)
   endtime = wtime()
   print "Load balance time = ",endtime - starttime
 
