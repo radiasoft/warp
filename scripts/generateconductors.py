@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.102 2005/01/24 13:49:47 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.103 2005/01/25 19:50:52 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1670,6 +1670,7 @@ Installs the conductor data into the fortran database
     """
     conductors.levels = self.mglevels
     conductors.leveliz[:self.mglevels] = self.mgleveliz
+    conductors.levelnz[:self.mglevels] = self.mglevelnz
     conductors.levellx[:self.mglevels] = self.mglevellx
     conductors.levelly[:self.mglevels] = self.mglevelly
     conductors.levellz[:self.mglevels] = self.mglevellz
