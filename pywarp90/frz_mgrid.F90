@@ -258,7 +258,10 @@ WRITE(0,*) '******** Basegrid allocated.',nr,nz
   ixrbnd = boundxy
   izlbnd = bound0
   izrbnd = boundnz
-  IF(l2symtry .or. l4symtry .or. solvergeom==RZgeom) ixlbnd=neumann
+  IF(l2symtry .or. l4symtry .or. solvergeom==RZgeom) then
+    ixlbndi=neumann
+    ixlbnd =neumann
+  endif
   grids%ixlbnd = ixlbndi
   grids%ixrbnd = ixrbndi
   grids%izlbnd = izlbndi
