@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.133 $, $Date: 2005/01/12 17:04:57 $
+#@(#) File TOP.V, version $Revision: 3.134 $, $Date: 2005/01/21 21:17:23 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.133 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.134 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1346,16 +1346,18 @@ rhomax(0:nzwind)           _real [C/m^3] # Charge dens. max-over-X,Y at ctr of w
 *********** Z_Moments dump:
 # Particle and field moment data (including emittances) at current timestep
 # as a function of Z 
-zmmntmax             real         # Moments grid maximum in Z
-zmmntmin             real         # Moments grid minimum in Z
-nzmmnt               integer /0/  # Number of points in z moments grid
-nszmmnt              integer /0/  # Number of species z moments data is
-                                  # calculated for. Defaults to zero, unless
-                                  # lspeciesmoments is true, then it defaults
-                                  # to top.ns.
-dzm                  real         # Moments grid cell size
-dzmi                 real         # Moments grid cell size inverse
-numzmmnt             integer /NUMZMMNT/ # Number of moments calculated
+zmmntmax         real         # Moments grid maximum in Z
+zmmntmin         real         # Moments grid minimum in Z
+nzmmnt           integer /0/  # Number of points in z moments grid
+nszmmnt          integer /0/  # Number of species z moments data is
+                              # calculated for. Defaults to zero, unless
+                              # lspeciesmoments is true, then it defaults
+                              # to top.ns.
+dzm              real         # Moments grid cell size
+dzmi             real         # Moments grid cell size inverse
+numzmmnt         integer /NUMZMMNT/ # Number of moments calculated
+zmmntdtextmax    real /LARGEPOS/ # Cutoff of time step for extrapolation of
+                                 # particles, in units of top.dt.
 zmntmesh(0:nzmmnt)  _real [m]     # Z mesh associated with Z moments
 pnumz(0:nzmmnt,0:nszmmnt)    _real [1]     # No. of (physical) ions at grid point
 xbarz(0:nzmmnt,0:nszmmnt)    _real [m]     # Mean X coordinate at grid point
@@ -1878,7 +1880,7 @@ zp(npmax)      _real  [m]        # Z-positions of particles
 uxp(npmaxb)    _real  [m/s]      # gamma * X-velocities of particles
 uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
-pid(npmaxi,npidmax) _real [1]    # Particle index - user for various purposes
+pid(npmaxi,npidmax) _real [1]    # Particle ID - used for various purposes
 
 *********** Scraped_Particles dump parallel:
 # Arrays for scraped particles
@@ -1911,7 +1913,7 @@ uyplost(npmaxlost) _real [m/s]  # gamma * Y-velocities of lost particles
 uzplost(npmaxlost) _real [m/s]  # gamma * Z-velocities of lost particles
 gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
 tplost(npmaxlost)  _real [s]    # time particles were lost
-pidlost(npmaxlost,npidlostmax) _real [1] # Particle index of lost particles
+pidlost(npmaxlost,npidlostmax) _real [1] # Particle ID of lost particles
 
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation
@@ -1957,6 +1959,7 @@ izepwin(nepwin)        _integer /-1/ # List of grid locations (indx of zmntmesh)
 zzepwin(nepwin)        _real        # List of lab frame locations
 wzepwin(nepwin)        _real        # List of lab frame widths
 nepmax                  integer /0/ # Maximum number of particles
+npidepmax               integer /0/ # Max number of columns in pidep
 nep(nepwin,ns)         _integer     # Number of particles in each grid location
 tep(nepmax,nepwin,ns)  _real        # time of particles at grid cell centers
 xep(nepmax,nepwin,ns)  _real        # X coordinates at grid cell centers
@@ -1964,6 +1967,7 @@ yep(nepmax,nepwin,ns)  _real        # Y coordinates at grid cell centers
 uxep(nepmax,nepwin,ns) _real        # X velocities at grid cell centers
 uyep(nepmax,nepwin,ns) _real        # Y velocities at grid cell centers
 uzep(nepmax,nepwin,ns) _real        # Z velocities at grid cell centers
+$pidep(nepmax,npidepmax,nepwin,ns) _real # Particle ID XXX Not yet implemented
 
 *********** Pspwork:
 # Scratch arrays for phase space plots

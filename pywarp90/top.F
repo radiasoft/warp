@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.140 $, $Date: 2005/01/12 17:04:57 $
+c@(#) File TOP.F, version $Revision: 3.141 $, $Date: 2005/01/21 21:17:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3760,6 +3760,7 @@ c Output:
 c   ez       axial electric field
 
       real(kind=8):: dti,vz,gapez,frac,z1,z2,vn,zl,zr,cacclz,caccll,vni
+      real(kind=8):: zs,ze,zz
       real(kind=8):: frac1,frac2
       integer(ISZ):: io,ip,iz
 
@@ -3784,48 +3785,63 @@ c         --- time level n.
 c           --- find z-cell in which particle lies
             iz = int(max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5))
             gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
-            z1 = zp(ip) + dtl*vz - 0.5*gapez*qoverm*dtl**2
-            z2 = zp(ip) + dtl*vz
-            if (zp(ip) <= cacclzs(iz,io)) then
+
+            if (vz >= 0.) then
+              zz = zp(ip)
+              zs = cacclzs(iz,io)
+              ze = cacclze(iz,io)
+            else
+c             --- If a particle is moving backwards, flip the z orientation
+c             --- around. This is done so that the comparisons in the if
+c             --- statements below are correct. They assume that a particle is
+c             --- moving in the direction from zs to ze.
+              zz = -zp(ip)
+              vz = -vz
+              gapez = -gapez
+              zs = -cacclze(iz,io)
+              ze = -cacclzs(iz,io)
+            endif
+
+            z1 = zz + dtl*vz - 0.5*gapez*qoverm*dtl**2
+            z2 = zz + dtl*vz
+            if (zz <= zs) then
               vn = vz
-            elseif (z1 < cacclzs(iz,io)) then
-              vn = sqrt(vz**2 + 2.*gapez*qoverm*(zp(ip) - cacclzs(iz,io)))
-            elseif (zp(ip) <= cacclze(iz,io)) then
+            elseif (z1 < zs) then
+              vn = sqrt(vz**2 + 2.*gapez*qoverm*(zz - zs))
+            elseif (zz <= ze) then
               vn = vz - gapez*qoverm*dtl
-            elseif (z2 < cacclze(iz,io)) then
+            elseif (z2 < ze) then
               vn = 0.5*(vz + 0.5*gapez*qoverm*dt + sqrt((vz +
      &             0.5*gapez*qoverm*dt)**2 -
-     &             4.*gapez*qoverm*(zp(ip) - cacclze(iz,io))))
+     &             4.*gapez*qoverm*(zz - ze)))
             else
               vn = vz
             endif
+
 c           --- Calculate the fraction of time in the gap.  Cases inside
 c           --- and outside are included implicitly in the max and min calls.
 c           --- Note that the max's inside the sqrt are for idiot proofing.
-            if (zp(ip) <= cacclzs(iz,io)) then
+            if (zz <= zs) then
               vni = 1./vn
-              if (vn > 0.) then
-                frac = max((+dtr + (zp(ip) - cacclzs(iz,io))*vni)*dti , 0.)
-              else
-                frac = max((-dtl - (zp(ip) - cacclzs(iz,io))*vni)*dti , 0.)
-              endif
-            elseif (zp(ip) <= cacclze(iz,io)) then
-              frac1 = min((dtr + 2.*(zp(ip) - cacclzs(iz,io))/
-     &                    (vz + vn))*dti, 1.)
-              frac2 = min((-dtl + 2.*(cacclze(iz,io) - zp(ip))/
+              frac = max((+dtr + (zz - zs)*vni)*dti , 0.)
+            elseif (zz <= ze) then
+              frac1 = max(0.,min(1.,(dtr + 2.*(zz - zs)/
+     &                    (vz + vn))*dti))
+              frac2 = max(0.,min(1.,(-dtl + 2.*(ze - zz)/
      &                (sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
-     &                (cacclze(iz,io) - zp(ip)))) + vn))*dti, 1.)
+     &                (ze - zz))) + vn))*dti))
               frac = min(frac1,frac2)
             else
               vni = 1./vn
-              if (vn > 0.) then
-                frac = max((-dtl - (zp(ip) - cacclze(iz,io))*vni)*dti , 0.)
-              else
-                frac = max((+dtr + (zp(ip) - cacclze(iz,io))*vni)*dti , 0.)
-              endif
+              frac = max((-dtl - (zz - ze)*vni)*dti , 0.)
             endif
+
 c           --- add acceleration field to Ez field
+c           --- gapez is recalculated since its sign above is sometimes
+c           --- changed (for a backward moving particle).
+            gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
             ez(ip) = ez(ip) + gapez*frac
+
           enddo
         enddo
 
@@ -3838,10 +3854,14 @@ c         --- Zero length gaps
           do ip = 1, np
             vz = uzp(ip)*gaminv(ip)
             iz = max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5)
-c           --- "left" end of velocity advance step
-            zl = zp(ip) + vz*dtl
-c           --- "right" end of velocity advance step
-            zr = zp(ip) + vz*dtr
+c           --- "left" and "right" end of velocity advance step
+            if (vz >= 0.) then
+              zl = zp(ip) + vz*dtl
+              zr = zp(ip) + vz*dtr
+            else
+              zl = zp(ip) + vz*dtr
+              zr = zp(ip) + vz*dtl
+            endif
 c           --- Gap center and length
             cacclz = 0.5*(cacclzs(iz,io) + cacclze(iz,io))
             caccll = cacclze(iz,io) - cacclzs(iz,io)
@@ -3870,6 +3890,7 @@ c===========================================================================
 
       integer(ISZ):: io,ip,iz
       real(kind=8):: gapez,zp2,delta,qoverm,cacclz,caccll,deltav,zr
+      real(kind=8):: zz,zs,ze
       real(kind=8):: vz(np),vzi(np)
 
       qoverm = q/m
@@ -3891,27 +3912,43 @@ c     --- Finite length gap
 c           --- find index of nearest accl element
             iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
             gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+
+            if (vz(ip) >= 0.) then
+              zz = zp(ip)
+              zs = cacclzs(iz,io)
+              ze = cacclze(iz,io)
+            else
+              zz = -zp(ip)
+              zs = -cacclze(iz,io)
+              ze = -cacclzs(iz,io)
+              gapez = -gapez
+              vz(ip) = -vz(ip)
+              vzi(ip) = -vzi(ip)
+            endif
+
 c           --- Approximate position of particle on next step
 c           --- with simple residence correction for gaps.
 c           --- Calculate time of entrance or exit, delta.
 c           --- Space charge forces are ignored.
-            zp2 = zp(ip) + vz(ip)*dt
+            zp2 = zz + vz(ip)*dt
             delta = 0
-            if (zp(ip) <= cacclzs(iz,io) .and. cacclzs(iz,io) <= zp2) then
-              delta = (cacclzs(iz,io) - zp(ip))*vzi(ip)
-            elseif (cacclzs(iz,io) < zp(ip) .and. zp(ip) <= cacclze(iz,io)
-     &          .and. cacclze(iz,io) <= zp2 + gapez*qoverm*dt*(dtr-dtl)) then
-              delta = 2.*(cacclze(iz,io) - zp(ip))/
+
+            if (zz <= zs .and. zs <= zp2) then
+              delta = (zs - zz)*vzi(ip)
+            elseif (zs < zz .and. zz <= ze
+     &          .and. ze <= zp2 + gapez*qoverm*dt*(dtr-dtl)) then
+              delta = 2.*(ze - zz)/
      &                (sqrt((vz(ip) - gapez*qoverm*dtl)**2 +
-     &                2.*(cacclze(iz,io) - zp(ip))*gapez*qoverm) +
+     &                2.*(ze - zz)*gapez*qoverm) +
      &                vz(ip) - gapez*qoverm*dtl)
               zp2 = zp2 + gapez*qoverm*dt*(dtr-dtl)
             endif
 c           --- calculate correction on particle position
+            gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
             if (delta > 0.5*dt) delta = dt - delta
-            if (zp(ip) <= cacclzs(iz,io) .and. cacclzs(iz,io) <= zp2) then
+            if (zz <= zs .and. zs <= zp2) then
               zp(ip) = zp(ip) + 0.5*gapez*qoverm*delta**2
-            elseif (zp(ip) <= cacclze(iz,io) .and. cacclze(iz,io) <= zp2) then
+            elseif (zz <= ze .and. ze <= zp2) then
               zp(ip) = zp(ip) - 0.5*gapez*qoverm*delta**2
             endif
           enddo
@@ -4596,6 +4633,7 @@ c         --- extrapolate to two nearest cells
             vzi = 1./(uzp(ip)*gaminv(ip)+SMALLPOS)
             iz(ip)  = (zp(ip) - zbeam - zmmntmin)*dzmi*pp(0,ip)
             dti = (iz(ip)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+            dti = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dti))
             pp(3,ip) = uxp(ip)*(1. + dti*oneondt) - uxpo(ip)*dti*oneondt
             pp(7,ip) = uyp(ip)*(1. + dti*oneondt) - uypo(ip)*dti*oneondt
             pp(11,ip) = uzp(ip)*(1. + dti*oneondt) - uzpo(ip)*dti*oneondt
@@ -4605,6 +4643,7 @@ c         --- extrapolate to two nearest cells
 c           pp(9,ip) = iz(ip)*dzm + zbeam + zmmntmin
 
             dtip1=((iz(ip)+1)*dzm-zp(ip)+zbeam+zmmntmin)*vzi
+            dtip1 = max(-zmmntdtextmax*dt,min(zmmntdtextmax*dt,dtip1))
             pp(4,ip) = uxp(ip)*(1. + dtip1*oneondt) - uxpo(ip)*dtip1*oneondt
             pp(8,ip) = uyp(ip)*(1. + dtip1*oneondt) - uypo(ip)*dtip1*oneondt
             pp(12,ip) = uzp(ip)*(1. + dtip1*oneondt) - uzpo(ip)*dtip1*oneondt
@@ -4625,6 +4664,17 @@ c         --- This allows access to the particle data when it is extrapolated
 c         --- to the moments grid cell centers.
           do iw=1,nepwin
             if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
+
+c            --- Make sure that there is enough room - assuming that all
+c            --- particles could be saved.
+             if (nep(iw,is)+np > nepmax) then
+               nepmax = nep(iw,is)+np
+               call gchange("ExtPart",0)
+             endif
+c            if (npidepmax .ne. npidmax) then
+c              call gchange("ExtPart",0)
+c            endif
+
             do ip=1,np
               if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
      &            pp(0,ip) > 0.) then
@@ -4636,6 +4686,7 @@ c         --- to the moments grid cell centers.
                 uxep(nep(iw,is),iw,is) = pp(3,ip)
                 uyep(nep(iw,is),iw,is) = pp(7,ip)
                 uzep(nep(iw,is),iw,is) = pp(11,ip)
+c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
               else if (iz(ip)+1 == izepwin(iw) .and.
      &                 nep(iw,is) < nepmax .and.
      &                 pp(0,ip) > 0.) then
@@ -4647,6 +4698,7 @@ c         --- to the moments grid cell centers.
                 uxep(nep(iw,is),iw,is) = pp(4,ip)
                 uyep(nep(iw,is),iw,is) = pp(8,ip)
                 uzep(nep(iw,is),iw,is) = pp(12,ip)
+c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
               endif
             enddo
           enddo
@@ -4918,29 +4970,29 @@ c       --- Compute second order moments with averages subtracted
         delzvz = zvzbar(0,:) - zbar(0,:)*vzbar(0,:)
 
 c       --- Compute overall true RMS positions
-        xrms(0,:) = sqrt(max(SMALLPOS,delxsq))
-        yrms(0,:) = sqrt(max(SMALLPOS,delysq))
-        zrms(0,:) = sqrt(max(SMALLPOS,delzsq))
+        xrms(0,:) = sqrt(max(0.,delxsq))
+        yrms(0,:) = sqrt(max(0.,delysq))
+        zrms(0,:) = sqrt(max(0.,delzsq))
         rrms(0,:) = sqrt(xrms(0,:)**2 + yrms(0,:)**2)
 
 c       --- Compute overall true RMS velocities
-        xprms(0,:) = sqrt(max(SMALLPOS,delxpsq))
-        yprms(0,:) = sqrt(max(SMALLPOS,delypsq))
-        vxrms(0,:) = sqrt(max(SMALLPOS,delvxsq))
-        vyrms(0,:) = sqrt(max(SMALLPOS,delvysq))
-        vzrms(0,:) = sqrt(max(SMALLPOS,delvzsq))
+        xprms(0,:) = sqrt(max(0.,delxpsq))
+        yprms(0,:) = sqrt(max(0.,delypsq))
+        vxrms(0,:) = sqrt(max(0.,delvxsq))
+        vyrms(0,:) = sqrt(max(0.,delvysq))
+        vzrms(0,:) = sqrt(max(0.,delvzsq))
 
 c       --- Compute overall emittances
-        epsx(0,:) = 4.*sqrt(max(SMALLPOS,delxsq*delxpsq - delxxp**2))
-        epsy(0,:) = 4.*sqrt(max(SMALLPOS,delysq*delypsq - delyyp**2))
-        epsz(0,:) = 4.*sqrt(max(SMALLPOS,delzsq*delvzsq - delzvz**2))
+        epsx(0,:) = 4.*sqrt(max(0.,delxsq*delxpsq - delxxp**2))
+        epsy(0,:) = 4.*sqrt(max(0.,delysq*delypsq - delyyp**2))
+        epsz(0,:) = 4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))
         epsnx(0,:) = epsx(0,:)*gamma*vzbar(0,:)*clighti*1.e6
         epsny(0,:) = epsy(0,:)*gamma*vzbar(0,:)*clighti*1.e6
         epsnz(0,:) = epsz(0,:)*gamma*vzbar(0,:)*clighti*1.e6
 
 c       --- Compute generalized emittances
         tg = 0.5*(epsx(0,:)**2 + epsy(0,:)**2) + 16*(delxy*delxpyp - delxyp*delyxp)
-        epsg(0,:) = sqrt(max(SMALLPOS,tg))
+        epsg(0,:) = sqrt(max(0.,tg))
         th = epsx(0,:)**2*epsy(0,:)**2 +
      &       256*((delxy*delxpyp)**2 + (delxyp*delyxp)**2 -
      &       delxsq*delysq*(delxpyp)**2 - delxsq*delypsq*(delyxp)**2 -
@@ -4949,7 +5001,7 @@ c       --- Compute generalized emittances
      &       2*delxxp*delyyp*delxy*delxpyp - 2*delxxp*delyyp*delxyp*delyxp +
      &       2*delxpsq*delyyp*delxy*delxyp + 2*delxsq*delyyp*delyxp*delxpyp +
      &       2*delxxp*delysq*delxpyp*delxyp)
-        epsh(0,:) = sqrt(sqrt(max(SMALLPOS,th)))
+        epsh(0,:) = sqrt(sqrt(max(0.,th)))
         epsng(0,:) = epsg(0,:)*gamma*vzbar(0,:)*clighti*1.e6
         epsnh(0,:) = epsh(0,:)*gamma*vzbar(0,:)*clighti*1.e6
 
@@ -5025,22 +5077,22 @@ c           --- Compute second order moments with averages subtracted
             delzvz = zvzbarz(izm,:) - zbarz(izm,:)*vzbarz(izm,:)
 
 c           --- Compute overall true RMS positions
-            xrmsz(izm,:) = sqrt(max(SMALLPOS,delxsq))
-            yrmsz(izm,:) = sqrt(max(SMALLPOS,delysq))
-            zrmsz(izm,:) = sqrt(max(SMALLPOS,delzsq))
+            xrmsz(izm,:) = sqrt(max(0.,delxsq))
+            yrmsz(izm,:) = sqrt(max(0.,delysq))
+            zrmsz(izm,:) = sqrt(max(0.,delzsq))
             rrmsz(izm,:) = sqrt(xrmsz(izm,:)**2 + yrmsz(izm,:)**2)
 
 c           --- Compute overall true RMS velocities
-            xprmsz(izm,:) = sqrt(max(SMALLPOS,delxpsq))
-            yprmsz(izm,:) = sqrt(max(SMALLPOS,delypsq))
-            vxrmsz(izm,:) = sqrt(max(SMALLPOS,delvxsq))
-            vyrmsz(izm,:) = sqrt(max(SMALLPOS,delvysq))
-            vzrmsz(izm,:) = sqrt(max(SMALLPOS,delvzsq))
+            xprmsz(izm,:) = sqrt(max(0.,delxpsq))
+            yprmsz(izm,:) = sqrt(max(0.,delypsq))
+            vxrmsz(izm,:) = sqrt(max(0.,delvxsq))
+            vyrmsz(izm,:) = sqrt(max(0.,delvysq))
+            vzrmsz(izm,:) = sqrt(max(0.,delvzsq))
 
 c           --- Compute overall emittances
-            epsxz(izm,:) = 4.*sqrt(max(SMALLPOS,delxsq*delxpsq - delxxp**2))
-            epsyz(izm,:) = 4.*sqrt(max(SMALLPOS,delysq*delypsq - delyyp**2))
-            epszz(izm,:) = 4.*sqrt(max(SMALLPOS,delzsq*delvzsq - delzvz**2))
+            epsxz(izm,:) = 4.*sqrt(max(0.,delxsq*delxpsq - delxxp**2))
+            epsyz(izm,:) = 4.*sqrt(max(0.,delysq*delypsq - delyyp**2))
+            epszz(izm,:) = 4.*sqrt(max(0.,delzsq*delvzsq - delzvz**2))
             epsnxz(izm,:) = epsxz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
             epsnyz(izm,:) = epsyz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
             epsnzz(izm,:) = epszz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
@@ -5048,7 +5100,7 @@ c           --- Compute overall emittances
 c           --- Compute generalized emittances
             tg = 0.5*(epsxz(izm,:)**2 + epsyz(izm,:)**2) +
      &           16*(delxy*delxpyp - delxyp*delyxp)
-            epsgz(izm,:) = sqrt(max(SMALLPOS,tg))
+            epsgz(izm,:) = sqrt(max(0.,tg))
             th = epsxz(izm,:)**2*epsyz(izm,:)**2 +
      &          256*((delxy*delxpyp)**2 + (delxyp*delyxp)**2 -
      &          delxsq*delysq*(delxpyp)**2 - delxsq*delypsq*(delyxp)**2 -
@@ -5057,7 +5109,7 @@ c           --- Compute generalized emittances
      &          2*delxxp*delyyp*delxy*delxpyp - 2*delxxp*delyyp*delxyp*delyxp +
      &          2*delxpsq*delyyp*delxy*delxyp + 2*delxsq*delyyp*delyxp*delxpyp +
      &          2*delxxp*delysq*delxpyp*delxyp)
-            epshz(izm,:) = sqrt(sqrt(max(SMALLPOS,th)))
+            epshz(izm,:) = sqrt(sqrt(max(0.,th)))
             epsngz(izm,:) = epsgz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
             epsnhz(izm,:) = epshz(izm,:)*gamma*vzbarz(izm,:)*clighti*1.e6
 
@@ -5401,6 +5453,17 @@ c         --- This allows access to the particle data when it is extrapolated
 c         --- to the moments grid cell centers.
           do iw=1,nepwin
             if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
+
+c            --- Make sure that there is enough room - assuming that all
+c            --- particles could be saved.
+             if (nep(iw,is)+np > nepmax) then
+               nepmax = nep(iw,is)+np
+               call gchange("ExtPart",0)
+             endif
+c            if (npidepmax .ne. npidmax) then
+c              call gchange("ExtPart",0)
+c            endif
+
             do ip=1,np
               if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
      &            wp(ip) > 0.) then
@@ -5412,6 +5475,7 @@ c         --- to the moments grid cell centers.
                 uxep(nep(iw,is),iw,is) = pp(3,ip)
                 uyep(nep(iw,is),iw,is) = pp(7,ip)
                 uzep(nep(iw,is),iw,is) = pp(11,ip)
+c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
               else if (iz(ip)+1 == izepwin(iw) .and.
      &                 nep(iw,is) < nepmax .and.
      &                 wp(ip) > 0.) then
@@ -5423,6 +5487,7 @@ c         --- to the moments grid cell centers.
                 uxep(nep(iw,is),iw,is) = pp(4,ip)
                 uyep(nep(iw,is),iw,is) = pp(8,ip)
                 uzep(nep(iw,is),iw,is) = pp(12,ip)
+c               if (npid > 0) pidep(nep(iw,is),:,iw,is) = pid(ip,:)
               endif
             enddo
           enddo
@@ -5634,6 +5699,10 @@ c --- X extrapolated using constant V and estimated A
 
       oneondt = 1./dt
 
+c     if (npidepmax .ne. npidmax) then
+c       call gchange("ExtPart",0)
+c     endif
+
 c     --- Loop over windows
       do iw=1,nepwin
 
@@ -5677,6 +5746,7 @@ c         if (nep(iw,is) == nepmax) cycle
           uxep(nn,iw,is) = vx + ax*dtstar
           uyep(nn,iw,is) = vy + ay*dtstar
           uzep(nn,iw,is) = vz + az*dtstar
+c         if (npid > 0) pidep(nn,:,iw,is) = pid(ip,:)
 
         enddo
       enddo
