@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.150 2005/03/12 00:46:17 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.151 2005/03/31 19:43:59 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -474,10 +474,10 @@ default_titler=""
 def settitles(titlet="",titleb="",titlel="",titler=""):
   "Sets titles which are plotted by ptitles"
   global default_titlet,default_titleb,default_titlel,default_titler
-  default_titlet = titlet
-  default_titleb = titleb
-  default_titlel = titlel
-  default_titler = titler
+  if titlet is not None: default_titlet = titlet
+  if titleb is not None: default_titleb = titleb
+  if titlel is not None: default_titlel = titlel
+  if titler is not None: default_titler = titler
 def ptitles(titlet="",titleb="",titlel="",titler="",v=None):
   "Plots titles, either uses input or titles set by settitles"
   global framet,frameb,framel,framer
@@ -605,6 +605,8 @@ def ppgeneric_doc(x,y):
   - xscale=1.: scaling factor applied to x data
   - yscale=1.: scaling factor applied to y data
   - titles=1: when true, plot the titles
+  - titlet,titleb,titlel,titler=None: If specified, added to plot, overriding
+                                      other title settings.
   - lframe=0: when true, the plot limits are set to the plmin and plmax input
               arguments, which default to the plmin and plmax variables from
               the group InDiag
@@ -668,8 +670,9 @@ Note that either the x and y coordinates or the grid must be passed in.
   kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'nx':20,'ny':20,'slope':0.,
                 'xoffset':0.,'yoffset':0.,'offset':0.,
-                'xscale':1.,'yscale':1.,'titles':1,'lframe':0,
-                'xmin':None,'xmax':None,'ymin':None,'ymax':None,
+                'xscale':1.,'yscale':1.,'titles':1,
+                'titlet':None,'titleb':None,'titlel':None,'titler':None,
+                'lframe':0,'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
                 'particles':0,'uselog':0,'color':'fg','ncolor':top.ncolor,
                 'usepalette':1,'marker':'\1','msize':1.0,
@@ -1103,7 +1106,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       #limits(xmin3,xmax3,ymin3,ymax3)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
-  if titles: ptitles(v=view)
+  if titles: ptitles(titlet,titleb,titlel,titler,v=view)
   settitles() 
   if (lframe):
     ppp = list(pplimits)
@@ -1980,7 +1983,7 @@ def pprrp(iw=0,scale=0,slopejs=-1,**kw):
                  -1 means use data combined from all species.
   """
   checkparticleplotarguments(kw)
-  if ppmultispecies(pprrp,(iw,scale),kw): return
+  if ppmultispecies(pprrp,(iw,scale,slopejs),kw): return
   xscale = 1.
   yscale = 1.
   xpscale = 1.
@@ -2027,7 +2030,7 @@ def pprtp(iw=0,scale=0,slopejs=-1,**kw):
                  -1 means use data combined from all species.
   """
   checkparticleplotarguments(kw)
-  if ppmultispecies(pprtp,(iw,scale),kw): return
+  if ppmultispecies(pprtp,(iw,scale,slopejs),kw): return
   xscale = 1.
   yscale = 1.
   xpscale = 1.
