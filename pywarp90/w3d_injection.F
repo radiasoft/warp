@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.13 $, $Date: 2004/11/30 19:35:31 $
+c@(#) File w3d_injection.F, version $Revision: 1.14 $, $Date: 2004/12/17 18:26:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -272,6 +272,11 @@ c             --- Only save particle if it is within the injection region.
                 endif
 c               --- Save the ID of the injection source.
                 pid(ii,injpid) = ij
+c               --- Save SSN 
+                if spid>0 then
+                  pid(ii,spid) = ssn
+                  ssn = ssn+1
+                end if
 c               --- increment particle counter
                 npinjtmp(is,ij) = npinjtmp(is,ij) + 1
               endif
@@ -890,6 +895,12 @@ c                   --- number and the fraction of the timestep the
 c                   --- particle is advanced.
                     pid(ii,injpid) = pid(ii,injpid) + ij
 
+c                   --- Save SSN 
+                    if spid>0 then
+                      pid(ii,spid) = ssn
+                      ssn = ssn+1
+                    end if
+
 c                   --- increment particle counter
                     npinje_s(is) = npinje_s(is) + 1
                     npinjtmp(is,ij) = npinjtmp(is,ij) + 1
@@ -1291,6 +1302,11 @@ c                   --- calculate position of new particle
                     endif
 c                   --- increment particle counter
                     nti = nti + 1
+c                   --- Save SSN 
+                    if spid>0 then
+                      pid(ii,spid) = ssn
+                      ssn = ssn+1
+                    end if
 c                   --- increment random number counter
                     injctcnt = injctcnt + 1
                   enddo
