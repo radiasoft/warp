@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.2 $, $Date: 2001/04/30 20:06:21 $
+c@(#) File WRZ.M, version $Revision: 3.3 $, $Date: 2001/09/19 22:30:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -50,13 +50,14 @@ c=============================================================================
       use FFTDiagrz
       use Sortrz
       use LinearBeam
+      use Pspwork
  
 c  Invoked by the GENERATE command, it sets up the problem
  
 
 c  declare scratch space for getzmmnt
        
-       integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,npsplt,nzma
+       integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,nzma
        integer(ISZ):: nzmb,ieearmax,ieearmin,ir
        real(kind=8):: time1,time2,er,et,ez,frext,zm,zs,eearsprs,eearmax,eearmin
        real(kind=8):: uxpo(NPARPGRP), uypo(NPARPGRP), uzpo(NPARPGRP)
@@ -623,7 +624,7 @@ c  we'll do a half-advance now to bring v to t.l. it
 
       if (lspecial) then
       call getvzofz
-      call setegap (dz)
+      call setegap
       call sphiaxrz
       call sezaxrz
       endif
@@ -773,16 +774,16 @@ c  axial confining ears for finite beam as a function of z and r
         dzi = 1./dz
         dri = 1./dr
         do ip = 1, np
-         i =  (xp(ip) - rmmin) / dr
-         k =  (zp(ip) - zbeam - zmmin) / dz
+         i =  (xp(ip) - rmmin) * dri
+         k =  (zp(ip) - zbeam - zmmin) * dzi
          r1 = (xp(ip) - rmmin)  - i*dr
          w1 = (zp(ip) - zbeam - zmmin)  - k*dz
          r2 = dr - r1
          w2 = dz - w1
-         w1 = w1 / dz
-         w2 = w2 / dz
-         r1 = r1 / dr
-         r2 = r2 / dr
+         w1 = w1 * dzi
+         w2 = w2 * dzi
+         r1 = r1 * dri
+         r2 = r2 * dri
          ez(ip) = ez(ip) + (r2 *  w2 * eearsrz(i,k)
      &                   +  r1 *  w2 * eearsrz(i+1,k)
      &                   +  r2 *  w1 * eearsrz(i,k+1)
@@ -870,7 +871,7 @@ c=============================================================================
  
 
       real(kind=8):: density,sumr,sumr2,sume,sumer,sume2,denom,slope,yint
-      integer(ISZ):: icount,ir,iz,nz2,irsave,irz,nbeam
+      integer(ISZ):: icount,ir,iz,irsave,irz,nbeam
  
 c  Calculate the linear external force which balances the space-charge
 c  force of the beam particles.
@@ -908,7 +909,6 @@ c  use this to calculate the force
  
       if (frcetype .eq. "regress") then
          dr = rmesh(3) - rmesh(2)
-         nz2 = nz/2
          do ir = 0,nr-1
             rhalf(ir) = 0.5*(rmesh(ir+1)+rmesh(ir))
          enddo
@@ -2268,7 +2268,7 @@ c=============================================================================
       use Sortrz
        integer(ISZ):: npart
        real(kind=8):: zbeam,dz
-       integer(ISZ):: mask,n,ic,isgn,ivmin,ivmax,ignme,ignmo,ignold
+       integer(ISZ):: n,ic,isgn,ivmin,ivmax,ignme,ignmo,ignold
        integer(ISZ):: ign
 
 c      call zeroarry(npic,nz+1)
@@ -2276,7 +2276,6 @@ c      call zeroarry(npic,nz+1)
 c   Put each particle in a group.  The particles in odd cells go into
 c   ``positive'' groups while the particles in even cells go into
 c   ``negative'' groups.  nig is number of particles per cell here.
-       mask = 1
        do n=1,npart
           ic = (zp(n) - zbeam - zmmin)/dz
           npic(ic) = npic(ic) + 1
@@ -2462,7 +2461,7 @@ c=============================================================================
       use Particles
 
        integer(ISZ):: is,iz
-       real(kind=8):: zlen,gfact,z0,deltar
+       real(kind=8):: zlen,gfact,z0
 
        zlen = zimax - zimin
        np = npmax
@@ -2488,7 +2487,6 @@ c  Load particles in a shell, one particle per cell
           yp(iz) = 0.
        enddo
        elseif (vzpert .gt. 0.) then
-       deltar = - (a0 + dr/2.) * vzpert 
        do iz = 1,nz
           zp(iz) = zimin + dz*(iz-1) + dz/2.
           xp(iz) = a0 + dr/2. 
@@ -2530,7 +2528,7 @@ c=============================================================================
       use Particles
 
 
-       integer(ISZ):: izso2,izendo2,izlen,ia,ipart,iz,isame,ir,ip,is
+       integer(ISZ):: izso2,izendo2,ia,ipart,iz,isame,ir,ip,is
        real(kind=8):: zlen,zs,zends,gfact,z0,z02,zmid,zt,aend
 
        zlen = zimax - zimin
@@ -2541,7 +2539,6 @@ c  Load particles
        zends = zlen*(1.-straight)
        izso2 = int(zs/(2.*dz)) -1
        izendo2 = int(zends/(2.*dz))
-       izlen = int(zlen/dz)
        ia = int(a0/dr)
        ipart = 0
        gfact = log(rmmax/((ia+1)*dr))/(2.*pi*eps0)
@@ -2550,9 +2547,9 @@ c  Load particles
        endif
        if (kzpert .ne. 0.) then
        z0 = 1./kzpert
-       z02 = (1./kzpert)**2
+c      z02 = (1./kzpert)**2
        endif
-       zmid = 0.5*(zimax + zimin)
+c      zmid = 0.5*(zimax + zimin)
 
 c  Load the particles in the straight section
        do iz = nz/2, nz/2 + izso2
@@ -2792,8 +2789,8 @@ c  set up the constants that are needed
       gfact = log(rmmax/a0)/(2.*pi*eps0)
       lamb0 = ibeam/vbeam
       eoverm = q/m
-      taumdt = 2.*taurc - dt
-      taupdt = 2.*taurc + dt
+c     taumdt = 2.*taurc - dt
+c     taupdt = 2.*taurc + dt
       tauodt = taurc/dt
       vphase = sqrt(eoverm*gfact*lamb0)
 
