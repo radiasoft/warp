@@ -1,7 +1,7 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.3 2001/11/03 01:18:14 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.4 2002/11/27 00:31:34 dave Exp $"
 ######################################################################
 # Lattice builder
 # 
@@ -50,7 +50,7 @@ class LatticeGenerator:
     s.ngappoints = ngappoints
     if nendpoints is None: s.nendpoints = ngappoints/10
     else: s.nendpoints = nendpoints
-    s.ntaccl = nendpoints + ngappoints + nendpoints
+    s.ntaccl = s.nendpoints + s.ngappoints + s.nendpoints
     s.loadandfire = loadandfire
     s.firetime = firetime
     s.risetime = risetime
