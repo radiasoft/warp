@@ -1,7 +1,23 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.2 2000/10/16 20:03:16 dave Exp $"
+
+def getzmomdoc():
+  print """
+zmmnt  makes appropriate calls to compiled code to calculate the
+       particle moments
+  """
 
 def zmmnt(itask=0):
+  """
+zmmnt(itask=0)
+  makes appropriate calls to compiled code to calculate the
+  particle moments
+  - itask=0 task to carry out
+    0 All steps to calculate moments (doing steps 1, 2, and 3 below)
+    1 initialization, zeros out moments variables
+    2 gather moments
+    3 final processing of moments, averaging and derived moments
+  """
   uxpo = top.uxp
   uypo = top.uyp
   uzpo = top.uzp
