@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.6 2001/02/10 02:48:57 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.7 2001/02/26 20:08:51 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -177,6 +177,9 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
       suffix = varsuffix
     for v in vars:
       try:
+        vval = eval(v,__main__.__dict__,locals())
+        if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
+          raise "cannot dump zero length arrays"
         exec('ff.'+v+suffix+'='+v,__main__.__dict__,locals())
       except:
         pass
