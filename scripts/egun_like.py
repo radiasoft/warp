@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.31 2004/12/02 17:28:35 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.32 2004/12/22 22:17:56 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -89,7 +89,8 @@ def plottraces():
 def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
-        ipstep=None,egundata_window=-1,plottraces_window=-1):
+        ipstep=None,egundata_window=-1,plottraces_window=-1,
+        egundata_nz=None,egundata_zmin=None,egundata_zmax=None):
   """
 Performs steady-state iterations
   - iter=1 number of iterations to perform
@@ -160,10 +161,11 @@ Performs steady-state iterations
   w3d.lsezax3d  = false
 
   # --- setup egundata
-  if _izdata==1:
-    egundata_zmin = w3d.zmmin+0.01*(w3d.zmmax-w3d.zmmin)
-    egundata_zmax = w3d.zmmax-0.01*(w3d.zmmax-w3d.zmmin)
-    egundata_nz = 20
+  if egundata_nz is not None:
+    if egundata_zmin is None:
+      egundata_zmin = w3d.zmmin+0.01*(w3d.zmmax-w3d.zmmin)
+    if egundata_zmax is None:
+      egundata_zmax = w3d.zmmax-0.01*(w3d.zmmax-w3d.zmmin)
     zd = egundata_zmin+arange(egundata_nz)*(egundata_zmax-egundata_zmin)/(egundata_nz-1)
     # --- Store the data in lists. This allows an arbitrary number of
     # --- iterations since the next data is just appended.
@@ -400,6 +402,13 @@ Performs steady-state iterations
     # --- over.
     if lstatusline: print ''
 
+    # --- The call to perrho3d is primarily needed for the parallel version.
+    if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None):
+      frz.l_distribute = false
+    perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,w3d.bound0,w3d.boundxy)
+    if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None):
+      frz.l_distribute = true
+
     # --- If rhoparam is not None, mix in the previous rho with the
     # --- new rho
     if rhoparam is not None:
@@ -415,13 +424,10 @@ Performs steady-state iterations
             g = g.next
           except:
             g = g.down
-        g.rho = rhoparam*g.rho + (1.-rhoparam)*rhoprevious[ig]
+        g.rho = (1. - rhoparam)*g.rho + rhoparam*rhoprevious[ig]
 #       mix_rho_rz(rhoprevious[ig],frz.nrg[ig],frz.nzg[ig],ig+1,rhoparam)  
+
     # --- Do field solve including newly accumulated charge density.
-    # --- The call to perrho3d is primarily needed for the parallel version.
-    if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None): frz.l_distribute = false
-    perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,w3d.bound0,w3d.boundxy)
-    if(w3d.solvergeom==w3d.RZgeom and rhoparam is not None): frz.l_distribute = true
     top.fstype = _ofstype
     fieldsol(-1)
     top.fstype = -1
@@ -449,27 +455,33 @@ Performs steady-state iterations
     gun_steps = tmp_gun_steps
     gun_iter = gun_iter + 1
     gun_time = top.time - gun_time
+
+    gun.steps = gun_steps
+    gun.iter = gun_iter
+    gun.time = gun_time
+
     print "Number of iterations = %d"%gun_iter
 
     # --- call insertafteriter if defined
     if insertafteriter is not None:
        insertafteriter()
 
-    # update egundata arrays
-    zz = zd/w3d.dz
-    iz = int(zz)
-    dz = zz-iz
-    egundata_curr.append((1.-dz)*take(top.curr,iz)+dz*take(top.curr,iz+1))
-    egundata_xrmsz.append((1.-dz)*take(top.xrmsz,iz)+dz*take(top.xrmsz,iz+1))
-    egundata_yrmsz.append((1.-dz)*take(top.yrmsz,iz)+dz*take(top.yrmsz,iz+1))
-    egundata_xprmsz.append((1.-dz)*take(top.xprmsz,iz)+dz*take(top.xprmsz,iz+1))
-    egundata_yprmsz.append((1.-dz)*take(top.yprmsz,iz)+dz*take(top.yprmsz,iz+1))
-    egundata_epsnxz.append((1.-dz)*take(top.epsnxz,iz)+dz*take(top.epsnxz,iz+1))
-    egundata_epsnyz.append((1.-dz)*take(top.epsnyz,iz)+dz*take(top.epsnyz,iz+1))
-    _izdata += 1
+    # --- update egundata arrays
+    if egundata_nz is not None:
+      zz = zd/w3d.dz
+      iz = int(zz)
+      dz = zz-iz
+      egundata_curr.append((1.-dz)*take(top.curr,iz)+dz*take(top.curr,iz+1))
+      egundata_xrmsz.append((1.-dz)*take(top.xrmsz,iz)+dz*take(top.xrmsz,iz+1))
+      egundata_yrmsz.append((1.-dz)*take(top.yrmsz,iz)+dz*take(top.yrmsz,iz+1))
+      egundata_xprmsz.append((1.-dz)*take(top.xprmsz,iz)+dz*take(top.xprmsz,iz+1))
+      egundata_yprmsz.append((1.-dz)*take(top.yprmsz,iz)+dz*take(top.yprmsz,iz+1))
+      egundata_epsnxz.append((1.-dz)*take(top.epsnxz,iz)+dz*take(top.epsnxz,iz+1))
+      egundata_epsnyz.append((1.-dz)*take(top.epsnyz,iz)+dz*take(top.epsnyz,iz+1))
+      _izdata += 1
   
     # plot egundata 
-    if egundata_window>-1:
+    if egundata_nz is not None and egundata_window>-1:
       window(egundata_window)
       fma()
       plsys(3)
@@ -519,9 +531,11 @@ Performs steady-state iterations
   if plottraces_window>-1:
     uninstallafterstep(plottraces)
 
-  return  [array(egundata_curr), array(egundata_xrmsz), array(egundata_yrmsz), 
-           array(egundata_xprmsz), array(egundata_yprmsz),
-           array(egundata_epsnxz), array(egundata_epsnyz)]
+  if egundata_nz is not None:
+    return  [array(egundata_curr),
+             array(egundata_xrmsz), array(egundata_yrmsz), 
+             array(egundata_xprmsz), array(egundata_yprmsz),
+             array(egundata_epsnxz), array(egundata_epsnyz)]
 
 
 ########################################################################
@@ -689,11 +703,11 @@ Performs steady-state iterations in a cascade using different resolutions.
            array(egundata_epsnxz), array(egundata_epsnyz)]
 
 ########################################################################
-def gunamr(iter=1,itersub=None,ipsave=5000000,save_same_part=None,maxtime=None,
+def gunamr(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
         nmg=0,AMRlevels=0,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
-        conductors=None,egundata_window=2,plottraces_window=1):
+        conductors=None,egundata_window=-1,plottraces_window=-1):
   """
 Performs steady-state iterations in a cascade using different resolutions.
   - iter=1 number of iterations to perform
@@ -739,7 +753,8 @@ Performs steady-state iterations in a cascade using different resolutions.
     tmp = w3d.AMRgenerate_periodicity 
     w3d.AMRgenerate_periodicity = 1
     AMRtree = __main__.__dict__['AMRtree']
-    AMRtree.conductors += conductors
+    if conductors is not None:
+      AMRtree.conductors += conductors
     AMRtree.generate()
     w3d.AMRgenerate_periodicity = 1000000
     fieldsol(-1)
