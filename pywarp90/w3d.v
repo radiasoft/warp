@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.161 $, $Date: 2004/07/23 17:04:40 $
+#@(#) File W3D.V, version $Revision: 3.162 $, $Date: 2004/07/28 23:28:14 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.161 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.162 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -570,9 +570,13 @@ inj_transform(np:integer,x:real,y:real,z:real,ni:integer,ijp:integer,
               tsign:integer,lshift:logical)
              subroutine # Transforms coordinates into and out of frame
                         # of injection sources
-loadrho3d(ins,nps,is,lzero:logical) 
+loadrho3d(ins:integer,nps:integer,is:integer,lzero:logical) 
              subroutine # Provides a simple interface to the charge density
                         # loading routine setrho3d
+fetchphi(n:integer,x:real,y:real,z:real,p:real)
+             subroutine # Fetches the electrostatic potential at the given
+                        # list of locations. It uses whatever geometry and
+                        # field solver that is active.
 setupfields3dparticles()
              subroutine # Sets up the Fields3dParticles group
 getrhoforfieldsolve()
