@@ -1,5 +1,5 @@
 env
-#@(#) File ENV.V, version $Revision: 3.24 $, $Date: 2003/07/18 17:26:09 $
+#@(#) File ENV.V, version $Revision: 3.25 $, $Date: 2003/10/21 21:23:40 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package ENV of the WARP code.
@@ -13,7 +13,7 @@ env
 
 *********** ENVversion:
 # Version control for env package
-versenv character*19 /"$Revision: 3.24 $"/  # Current code version, set by CVS
+versenv character*19 /"$Revision: 3.25 $"/  # Current code version, set by CVS
 
 *********** ENVvars dump:
 # Variables needed by the package ENV
@@ -173,3 +173,14 @@ printzzz() subroutine
 iqiq integer
 xqxq(iqiq) _real +fassign
 iqtest(iqiq:integer) subroutine
+
+%%%%%% MEMtesttype:
+nn integer /100000/
+xx(nn) _real
+mm _MEMtesttype
+
+****** MEMtester:
+mm _MEMtesttype
+testmem1(nn:integer) subroutine
+testmem2() subroutine
+testmem3(nn:integer) subroutine

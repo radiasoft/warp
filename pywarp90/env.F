@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.24 $, $Date: 2003/07/18 17:26:09 $
+c@(#) File ENV.M, version $Revision: 3.25 $, $Date: 2003/10/21 21:23:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1339,3 +1339,30 @@ c=========================================================================
       xqxq => nn
       return
       end
+      subroutine testmem1(nn)
+      use MEMtester
+      integer(ISZ):: nn
+      mm => NewMEMtesttype()
+      mm%nn = nn
+      call MEMtesttypeallot(mm)
+      return
+      end
+      subroutine testmem2()
+      use MEMtester
+      call MEMtesttypefree(mm)
+      return
+      end
+      subroutine testmem3(nn)
+      use MEMtester
+      integer(ISZ):: nn,ii
+      TYPE(MEMtesttype),POINTER:: aa
+      aa => mm
+      do ii=1,5
+        aa%mm => NewMEMtesttype()
+        aa%mm%nn = nn
+        call MEMtesttypeallot(aa%mm)
+        aa => aa%mm
+      enddo
+      return
+      end
+      
