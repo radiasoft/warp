@@ -13,8 +13,7 @@ except:
       tt.append((i,ll[i]))
     return tt
 
-
-class AMRtree(Visualizable):
+class AMRTree(Visualizable):
     """
   Adaptive Mesh Refinement class.
     """
@@ -400,22 +399,9 @@ class AMRtree(Visualizable):
         for patch in blocks:
           self.nblocks+=1
           if w3d.solvergeom == w3d.XYZgeomMR:
-            nx = nint(patch[3]*r)
-            ny = nint(patch[4]*r)
-            nz = nint(patch[5]*r)
-            dxnew = dx/r
-            dynew = dy/r
-            dznew = dz/r
-            dxmother = dxnew*self.MRfact
-            dymother = dynew*self.MRfact
-            dzmother = dznew*self.MRfact
-            xmin = xmin0 + patch[0]*dx
-            xmax = xmin  + nx*dxnew
-            ymin = ymin0 + patch[1]*dy
-            ymax = ymin  + ny*dynew
-            zmin = zmin0 + patch[2]*dz
-            zmax = zmin  + nz*dznew
-            mothergrid.addchild(None,None,[xmin,ymin,zmin,],[xmax,ymax,zmax,])
+            lower = nint(array(patch[:3])*r)
+            upper = lower + nint(array(patch[3:])*r)
+            mothergrid.addchild(lower,upper)
           else:
             nx = nint(patch[2]*r)
             ny = nint(patch[3]*r)
@@ -498,12 +484,14 @@ class AMRtree(Visualizable):
         self.Rgrad = Rgrad
       self.threshold = threshold
       if(maxnd(abs(f))==0.):
-        raise('Error in AMRtree.generate: f is null.')
+        raise('Error in AMRTree.generate: f is null.')
       self.nbcells=self.getnbcells(f,dx,dy,dz,self.Rdens,self.threshold,self.Rgrad,
                                    MRfact=self.MRfact,l_removesinglecells=l_removesinglecells,lmax=lmax)
       self.setlist(self.nbcells[:-1,:-1],r,2,true)
       self.setblocks()
-      if w3d.solvergeom<>w3d.XYZgeomMR:
+      if w3d.solvergeom==w3d.XYZgeomMR:
+        self.blocks.clearinactiveregions(self.nbcells)
+      else:
         g = frz.basegrid
         adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
       loadrho()
