@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FRZ.M, version $Revision: 3.2 $, $Date: 2001/04/27 21:38:59 $
+c@(#) File FRZ.M, version $Revision: 3.3 $, $Date: 2001/04/30 20:04:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Written by Debbie Callahan
@@ -55,13 +55,9 @@ c  Bring in the common block; allocate dynamic arrays ("group allot")
       integer(ISZ):: nr2,nz2,ir,iz
       real(kind=8):: dr,dz,sz,cz,fact1,fact2,rjph,rjmh,dr2j,dr20
       real(kind=8):: errmax,error,dz2,delsq,dt,a0,temp
-      integer(ISZ):: gallot
       real(kind=8):: wtimeoff,wranf
 
-      if ( gallot("FRZvars",0) == ERR ) then
-         call remark ("---> Cannot allocate space in group FRZvars")
-         return
-      endif
+      call gallot("FRZvars",0)
 
 c  Check for improper input; we're using power-of-2 fft's
 
@@ -97,21 +93,23 @@ c      phi(r,z) = (lr**4 - r**4)*(sin(6*pi*iz/nz)+cos(4.*pi*iz/nz))
       cz = 4.*pi/nz
       fact1 = (2./dz*sin(sz/2.))**2
       fact2 = (2./dz*sin(cz/2.))**2
-      do 98 iz=0,nz
-      do 98 ir=0,nr
-      bsav(ir,iz) = (lr4 - r(ir)**4)
-98    continue
-      do 100 ir = 1, nr-1
+      do iz=0,nz
+        do ir=0,nr
+          bsav(ir,iz) = (lr4 - r(ir)**4)
+        enddo
+      enddo
+      do ir = 1, nr-1
          rjph = 0.5*(r(ir+1) + r(ir))
          rjmh = 0.5*(r(ir) + r(ir-1))
          dr2j = rjph**2 - rjmh**2
-      do 100 iz = 0, nz
-         b(ir,iz) =(-2.*rjph/(dr2j*dr)*(bsav(ir+1,iz) - bsav(ir,iz))
-     &             +2.*rjmh/(dr2j*dr)*(bsav(ir,iz) - bsav(ir-1,iz)))
-     &             *(sin(sz*iz)+cos(cz*iz))
-     &             +bsav(ir,iz)*(fact1*sin(sz*iz)+fact2*cos(cz*iz))
-         b(ir,iz) = b(ir,iz)*eps0
-  100 continue
+         do iz = 0, nz
+            b(ir,iz) =(-2.*rjph/(dr2j*dr)*(bsav(ir+1,iz) - bsav(ir,iz))
+     &                +2.*rjmh/(dr2j*dr)*(bsav(ir,iz) - bsav(ir-1,iz)))
+     &                *(sin(sz*iz)+cos(cz*iz))
+     &                +bsav(ir,iz)*(fact1*sin(sz*iz)+fact2*cos(cz*iz))
+            b(ir,iz) = b(ir,iz)*eps0
+         enddo
+      enddo
       do 101 iz = 0,nz
          dr20 = (0.5*r(1))**2
          b(0,iz) = (-r(1)/(dr20*dr)*(bsav(1,iz) - bsav(0,iz)))
@@ -131,11 +129,12 @@ c     --- Call the solver
       time1 = wtimeoff()
 c     --- Subtract the analytic solution to get the error
       errmax = 1.0e-30
-      do 200 ir = 0, nr
-      do 200 iz = 0, nz
-         error = b(ir,iz) - bsav(ir,iz)*(sin(sz*iz)+cos(cz*iz))
-         errmax = max(errmax,abs(error))
-  200 continue
+      do ir = 0, nr
+        do iz = 0, nz
+          error = b(ir,iz) - bsav(ir,iz)*(sin(sz*iz)+cos(cz*iz))
+          errmax = max(errmax,abs(error))
+        enddo
+      enddo
 
       write(STDOUT,26)
 26    format("Testing analytic solution -- ")
@@ -180,17 +179,18 @@ c         solve.
 c     --- check using 5 point finite difference form of Poisson's equation
       errmax = 1.0e-30
       dz2 = dz*dz
-      do 400 ir = 1, nr-1
+      do ir = 1, nr-1
          rjph = 0.5*(r(ir+1) + r(ir))
          rjmh = 0.5*(r(ir) + r(ir-1))
          dr2j = rjph**2 - rjmh**2
-      do 400 iz = 1, nz-1
-         delsq =(-2.*rjph/(dr2j*dr)*(b(ir+1,iz) - b(ir,iz))
-     &             +2.*rjmh/(dr2j*dr)*(b(ir,iz) - b(ir-1,iz)))
-     &           - 1./dz2*(b(ir,iz+1)-2.*b(ir,iz)+b(ir,iz-1))
-         error = delsq - bsav(ir,iz)
-         errmax = max(errmax,abs(error))
-  400 continue
+        do iz = 1, nz-1
+           delsq =(-2.*rjph/(dr2j*dr)*(b(ir+1,iz) - b(ir,iz))
+     &               +2.*rjmh/(dr2j*dr)*(b(ir,iz) - b(ir-1,iz)))
+     &             - 1./dz2*(b(ir,iz+1)-2.*b(ir,iz)+b(ir,iz-1))
+           error = delsq - bsav(ir,iz)
+           errmax = max(errmax,abs(error))
+        enddo
+      enddo
       do 401 iz = 1,nz-1
          dr20 = (0.5*r(1))**2
          delsq = (-r(1)/(dr20*dr)*(b(1,iz) - b(0,iz)))
@@ -585,21 +585,24 @@ c        --- compute z direction coefficients---
 
 
 c        --- spatial filtering in z; binomial filter, or unity
-         do 360 ikz = 0, nz2
+         do ikz = 0, nz2
             kdz = 2. * pi * ikz / nz
-  360       attz(ikz) = (1.+2.*filt(5)*cos(kdz)) / (1.+2.*filt(5))
+            attz(ikz) = (1.+2.*filt(5)*cos(kdz)) / (1.+2.*filt(5))
+         enddo
          if (filt(1) .ne. 0. .or. filt(2) .ne. 0.) then
 c           --- compute first form of spatial filtering
-            do 370 ikz = 0, nz2
+            do ikz = 0, nz2
                kdzb2 = pi * ikz / nz
-  370          attz(ikz) = attz(ikz) * (exp( filt(1)*(sin(kdzb2))**2
+               attz(ikz) = attz(ikz) * (exp( filt(1)*(sin(kdzb2))**2
      &          - filt(2)*(tan(kdzb2))**4 ))**2
+         enddo
          endif
          if (filt(3) .ne. 0.) then
 c           --- compute second form of spatial filtering
             klast = filt(3) * nz / (2. * pi)
-            do 380 ikz = 0, nz2
-  380          attz(ikz) = attz(ikz) * exp(-(ikz/klast)**filt(4))
+            do ikz = 0, nz2
+               attz(ikz) = attz(ikz) * exp(-(ikz/klast)**filt(4))
+           enddo
          endif
 
       endif
@@ -612,10 +615,11 @@ c ----------------------------------------------------------------------------
 
       norm = .5 * dz
 c        --- Normalize the array
-      do 500 iz = 0, nz-1
-      do 500 ir = 0, nr
-            a(ir,iz) = a(ir,iz) * norm
-  500 continue
+      do iz = 0, nz-1
+        do ir = 0, nr
+          a(ir,iz) = a(ir,iz) * norm
+        enddo
+      enddo
       if (eta .ne. 0.) then
 c        --- Normalize the surface charge too.
          do iz = 0,nz-1
@@ -627,10 +631,11 @@ c        --- Normalize the surface charge too.
 c  Here we perform the periodic transforms in z, two r's at a time.
 
 c        --- shift k-space origin to middle.
-         do 600 iz = 1, nz-1, 2
-         do 600 ir = 0, nr
-            a(ir,iz) = -a(ir,iz)
-  600    continue
+         do iz = 1, nz-1, 2
+           do ir = 0, nr
+             a(ir,iz) = -a(ir,iz)
+           enddo
+         enddo
          if (eta .ne. 0.) then
             do iz = 1, nz-1, 2
                schrg(iz) = - schrg(iz)
@@ -675,11 +680,12 @@ c ----------------------------------------------------------------------------
 
       if (iwhich.le.0 .or. iwhich.eq.3) then
 
-         do 740 ikz = 1, nz2-1
-         do 740 ikr = 1, nr
-            ak(ikr,-ikz) = ak(ikr,-ikz)*attz(ikz)
-            ak(ikr, ikz) = ak(ikr, ikz)*attz(ikz)
-  740 continue
+         do ikz = 1, nz2-1
+           do ikr = 1, nr
+             ak(ikr,-ikz) = ak(ikr,-ikz)*attz(ikz)
+             ak(ikr, ikz) = ak(ikr, ikz)*attz(ikz)
+           enddo
+         enddo
 
       endif
 
@@ -707,13 +713,13 @@ c   (phi(nr+1)=0), so set nrlast.
          rfsmat(0,2,ikz) =  4. + kzsq(ikz)
          rfsmat(0,3,ikz) = -4.
       enddo
-      do 750 ikr = 1, nrlast-1
+      do ikr = 1, nrlast-1
         do ikz = 0,nz
             rfsmat(ikr,1,ikz) = -1. + 1./(2.*ikr)
             rfsmat(ikr,2,ikz) =  2. + kzsq(ikz)
             rfsmat(ikr,3,ikz) = -1. - 1./(2.*ikr)
         enddo
- 750  continue
+      enddo
       if (eta .eq. 0.) then
          do ikz = 0,nz
             rfsmat(nrlast,1,ikz) = -1. + 1./(2.*nrlast)
@@ -749,44 +755,44 @@ c   equation
 
 c   Multiply rho by dr*dr and divide by epsilon_0...
 
-      do 90 ikr=0,nrlast
-      do ikz = 0,nz
-         a(ikr,ikz) = a(ikr,ikz)*dr2/eps0
+      do ikr=0,nrlast
+        do ikz = 0,nz
+           a(ikr,ikz) = a(ikr,ikz)*dr2/eps0
+        enddo
       enddo
- 90   continue
 
 c   Eliminate the lower diagonal from the matrix... 
-      do 100 ikr=1,nrlast
-      do ikz = 0,nz
-         rfsmat(ikr,2,ikz) = rfsmat(ikr,2,ikz)
-     &                       - rfsmat(ikr-1,3,ikz)*rfsmat(ikr,1,ikz
-     &                       )/rfsmat(ikr-1,2,ikz)
-         a(ikr,ikz) = a(ikr,ikz)
-     &              - a(ikr-1,ikz)*rfsmat(ikr,1,ikz)/rfsmat(ikr-1,2,ikz)
-         rfsmat(ikr,1,ikz) = 0.
+      do ikr=1,nrlast
+        do ikz = 0,nz
+          rfsmat(ikr,2,ikz) = rfsmat(ikr,2,ikz)
+     &                        - rfsmat(ikr-1,3,ikz)*rfsmat(ikr,1,ikz
+     &                        )/rfsmat(ikr-1,2,ikz)
+          a(ikr,ikz) = a(ikr,ikz)
+     &               - a(ikr-1,ikz)*rfsmat(ikr,1,ikz)/rfsmat(ikr-1,2,ikz)
+          rfsmat(ikr,1,ikz) = 0.
+        enddo
       enddo
- 100  continue
 
 
 c   Divide each row by the diagonal...
 c   If we're using resistivity, take care of the last radial cell
 c   separately
       if (eta .eq. 0.) then
-      do 110 ikr=0,nrlast
-      do ikz = 0,nz
-         rfsmat(ikr,3,ikz) = rfsmat(ikr,3,ikz)/rfsmat(ikr,2,ikz)
-         a(ikr,ikz) = a(ikr,ikz)/rfsmat(ikr,2,ikz)
-         rfsmat(ikr,2,ikz) = 1.
+      do ikr=0,nrlast
+        do ikz = 0,nz
+          rfsmat(ikr,3,ikz) = rfsmat(ikr,3,ikz)/rfsmat(ikr,2,ikz)
+          a(ikr,ikz) = a(ikr,ikz)/rfsmat(ikr,2,ikz)
+          rfsmat(ikr,2,ikz) = 1.
+        enddo
       enddo
- 110  continue
       else
-      do 111 ikr=0,nrlast-1
-      do ikz = 0,nz
-         rfsmat(ikr,3,ikz) = rfsmat(ikr,3,ikz)/rfsmat(ikr,2,ikz)
-         a(ikr,ikz) = a(ikr,ikz)/rfsmat(ikr,2,ikz)
-         rfsmat(ikr,2,ikz) = 1.
+      do ikr=0,nrlast-1
+        do ikz = 0,nz
+          rfsmat(ikr,3,ikz) = rfsmat(ikr,3,ikz)/rfsmat(ikr,2,ikz)
+          a(ikr,ikz) = a(ikr,ikz)/rfsmat(ikr,2,ikz)
+          rfsmat(ikr,2,ikz) = 1.
+        enddo
       enddo
- 111  continue
       do ikz = 0,nz/2 -1
          rfsmat(nrlast,3,ikz) = rfsmat(nrlast,3,ikz)/rfsmat(nrlast,2,ikz)
          a(nrlast,ikz) = a(nrlast,ikz)/rfsmat(nrlast,2,ikz)
@@ -806,20 +812,20 @@ c   potential at the wall
       endif
 
 c   Back substitute to get the solution
-      do 120 ikr=(nrlast-1),0,-1
-      do ikz = 0,nz
-         a(ikr,ikz) = a(ikr,ikz) - a(ikr+1,ikz)*rfsmat(ikr,3,ikz)
-         rfsmat(ikr,3,ikz) = 0.
+      do ikr=(nrlast-1),0,-1
+        do ikz = 0,nz
+           a(ikr,ikz) = a(ikr,ikz) - a(ikr+1,ikz)*rfsmat(ikr,3,ikz)
+           rfsmat(ikr,3,ikz) = 0.
+        enddo
       enddo
- 120  continue
 
 c   Set boundary condition -- phi = 0 at r = r_wall if eta = 0.
 c   Otherwise we've used d phi/dr (r_wall+dr) = 0.
 
       if (eta .eq. 0.) then
-      do 799 ikz = 0,nz
+        do ikz = 0,nz
           a(nr,ikz) = 0.
- 799  continue
+        enddo
       endif
 
 
@@ -873,10 +879,11 @@ c        --- do the transform of the nr'th row of a
          endif
 
 c        --- shift k-space origin back.
-         do 900 iz = 1, nz-1, 2
-         do 900 ir = 0, nr
+         do iz = 1, nz-1, 2
+           do ir = 0, nr
             a(ir,iz) = -a(ir,iz)
-  900 continue
+           enddo
+         enddo
          if (eta .ne. 0.) then
             do iz = 1, nz-1, 2
                schrg(iz) = -schrg(iz)
@@ -886,10 +893,11 @@ c        --- shift k-space origin back.
 c  Re-normalize the array
 
       norm = 1. / lz
-         do 1000 ir = 0, nr
-         do 1000 iz = 0, nz-1
+         do ir = 0, nr
+           do iz = 0, nz-1
                a(ir,iz) = a(ir,iz) * norm
- 1000 continue
+           enddo
+         enddo
          if (eta .ne. 0.) then
             do iz = 0, nz-1
                schrg(iz) = schrg(iz) * norm
@@ -898,9 +906,9 @@ c  Re-normalize the array
 
 c  Enforce periodic bc's in z
 
-      do 1100 ir = 0, nr
+      do ir = 0, nr
          a(ir,nz) = a(ir,0)
- 1100 continue
+      enddo
 
       schrg(nz) = schrg(0)
 c  Advect the surface charge with the moving window.
@@ -989,26 +997,26 @@ c======================================================================
       real(kind=8):: amat(0:nr,3),rhs(0:nr,0:nz)
       integer(ISZ):: i
 
-      do 90 i=0,n
+      do i=0,n
          rhs(i,ibn) = rhs(i,ibn)*dr2/eps0
- 90   continue
+      enddo
 
-      do 100 i=1,n
+      do i=1,n
          amat(i,2) = amat(i,2) - amat(i-1,3)*amat(i,1)/amat(i-1,2)
          rhs(i,ibn) = rhs(i,ibn) - rhs(i-1,ibn)*amat(i,1)/amat(i-1,2)
          amat(i,1) = 0.
- 100  continue
+      enddo
 
-      do 110 i=0,n
+      do i=0,n
          amat(i,3) = amat(i,3)/amat(i,2)
          rhs(i,ibn) = rhs(i,ibn)/amat(i,2)
          amat(i,2) = 1.
- 110  continue
+      enddo
 
-      do 120 i=n-1,0,-1
+      do i=n-1,0,-1
          rhs(i,ibn) = rhs(i,ibn) - rhs(i+1,ibn)*amat(i,3)
          amat(i,3) = 0.
- 120  continue
+      enddo
 
       return
       end

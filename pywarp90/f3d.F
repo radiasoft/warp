@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.3 $, $Date: 2001/04/27 22:17:12 $
+c@(#) File F3D.M, version $Revision: 3.4 $, $Date: 2001/04/30 20:04:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -94,15 +94,17 @@ c  Check 3d forward transform on known modes
       cx =    pi/nx
       cy =    pi/ny
       cz = 2.*pi/nz
-      do 100 ix = 1, nx-1
-      do 100 iy = 1, ny-1
-      do 100 iz = 0, nz-1
-         b(ix,iy,iz)=0.
-         b(ix,iy,iz)=b(ix,iy,iz)+   sin(cx*ix*1.)*sin(cy*iy)*cos(cz*iz*3.)
-         b(ix,iy,iz)=b(ix,iy,iz)+2.*sin(cx*ix*2.)*sin(cy*iy*3.)
-         b(ix,iy,iz)=b(ix,iy,iz)+3.*sin(cx*ix*3.)*sin(cy*iy)*sin(cz*iz*1.)
-         b(ix,iy,iz)=b(ix,iy,iz)+4.*sin(cx*ix*1.)*sin(cy*iy)*(-1.)**iz
-  100 continue
+      do ix = 1, nx-1
+        do iy = 1, ny-1
+          do iz = 0, nz-1
+            b(ix,iy,iz)=0.
+            b(ix,iy,iz)=b(ix,iy,iz)+   sin(cx*ix*1.)*sin(cy*iy)*cos(cz*iz*3.)
+            b(ix,iy,iz)=b(ix,iy,iz)+2.*sin(cx*ix*2.)*sin(cy*iy*3.)
+            b(ix,iy,iz)=b(ix,iy,iz)+3.*sin(cx*ix*3.)*sin(cy*iy)*sin(cz*iz*1.)
+            b(ix,iy,iz)=b(ix,iy,iz)+4.*sin(cx*ix*1.)*sin(cy*iy)*(-1.)**iz
+          enddo
+        enddo
+      enddo
 c     --- Call the solver asking for just a forward transform
       call vpois3d (2,b,b,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &              lx,ly,lz,nx,ny,nz,work,work2d,zwork,0,.false.,.false.)
@@ -112,42 +114,49 @@ c     --- Subtract off correct mode amplitudes.
       b(3,1,nz2+1) = b(3,1,nz2+1) - lx*ly*lz * .375
       b(1,1,0    ) = b(1,1,0    ) - lx*ly*lz * 1.
       call remark("Incorrect modes, if any: ")
-      do 200 ix = 1, nx-1
-      do 200 iy = 1, ny-1
-      do 200 iz = 0, nz-1
-         kx = ix
-         ky = iy
-         kz = iz-nz2
-         aa = b(ix,iy,iz)
-         if( abs(aa) > 1.e-6*lx*ly*lz ) print*,kx, ky, kz, aa
-  200 continue
+      do ix = 1, nx-1
+        do iy = 1, ny-1
+          do iz = 0, nz-1
+            kx = ix
+            ky = iy
+            kz = iz-nz2
+            aa = b(ix,iy,iz)
+            if( abs(aa) > 1.e-6*lx*ly*lz ) print*,kx, ky, kz, aa
+          enddo
+        enddo
+      enddo
 
 c  check 3d transform and inverse on 1-point-source and random data.
 
-      do 600 itest = 0,1
+      do itest = 0,1
          sumsq=0.
-         do 300 ix = 0, nx-1
-         do 300 iy = 0, ny-1
-         do 300 iz = 0, nz
-            b(ix,iy,iz) = 0.
-            if (itest==1 .and. ix > 0 .and. iy > 0) then
-               if (iz < nz) b(ix,iy,iz) = wranf() - .5
-            elseif (ix==nx2 .and. iy==ny2 .and. iz==nz2) then
-               b(ix,iy,iz) = 1.
-            endif
-            bsav(ix,iy,iz) = b(ix,iy,iz)
-            sumsq = sumsq + dx*dy*dz*b(ix,iy,iz)**2
-  300    continue
+         do ix = 0, nx-1
+           do iy = 0, ny-1
+             do iz = 0, nz
+               b(ix,iy,iz) = 0.
+               if (itest==1 .and. ix > 0 .and. iy > 0) then
+                  if (iz < nz) b(ix,iy,iz) = wranf() - .5
+               elseif (ix==nx2 .and. iy==ny2 .and. iz==nz2) then
+                  b(ix,iy,iz) = 1.
+               endif
+               bsav(ix,iy,iz) = b(ix,iy,iz)
+               sumsq = sumsq + dx*dy*dz*b(ix,iy,iz)**2
+             enddo
+           enddo
+         enddo
 c        --- Call the solver asking for just a forward transform
          call vpois3d (2,b,b,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                 lx,ly,lz,nx,ny,nz,work,work2d,zwork,0,.false.,.false.)
 c        --- sum of squares from fourier mode amplitudes.
          sqm = 0.
-         do 400 ix = 1, nx-1
-         do 400 iy = 1, ny-1
+         do ix = 1, nx-1
+         do iy = 1, ny-1
             sqm = sqm + ( b(ix,iy,nz2)**2 + b(ix,iy,0)**2 )
-            do 400 iz = 1, nz2-1
-  400          sqm = sqm + 2. * ( b(ix,iy,nz2+iz)**2 + b(ix,iy,nz2-iz)**2 )
+            do iz = 1, nz2-1
+               sqm = sqm + 2. * ( b(ix,iy,nz2+iz)**2 + b(ix,iy,nz2-iz)**2 )
+            enddo
+         enddo
+         enddo
          sqm = sqm * 4. / (lx * ly * lz)
          err = sumsq - sqm
          print*,"Sums of squares: sumsq =",sumsq," sqm =",sqm," err =",err
@@ -155,29 +164,34 @@ c        --- Call the solver asking for just an inverse transform
          call vpois3d (5,b,b,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                 lx,ly,lz,nx,ny,nz,work,work2d,zwork,0,.false.,.false.)
          errmax = 0.
-         do 500 iz = 0,nz-1
-         do 500 ix = 1,nx-1
-         do 500 iy = 1,ny-1
-            if (abs(b(ix,iy,iz)-bsav(ix,iy,iz)) > 1.e-5) then
-              print*,ix,iy,iz,bsav(ix,iy,iz),b(ix,iy,iz)
-            endif
-  500       errmax = max( errmax,abs( b(ix,iy,iz) - bsav(ix,iy,iz) ) )
+         do iz = 0,nz-1
+           do ix = 1,nx-1
+             do iy = 1,ny-1
+              if (abs(b(ix,iy,iz)-bsav(ix,iy,iz)) > 1.e-5) then
+                print*,ix,iy,iz,bsav(ix,iy,iz),b(ix,iy,iz)
+              endif
+              errmax = max( errmax,abs( b(ix,iy,iz) - bsav(ix,iy,iz) ) )
+           enddo
+           enddo
+         enddo
          print*,"Maximum error in inverse =",errmax
-  600 continue
+      enddo
 
 c  Check the fieldsolver on random data
 
 c     --- Dummy call to get k-squared set up and show it works more than once.
       call vpois3d (0,b,b,kxsq,kysq,kzsq,attx,atty,attz,filt,
      &              lx,ly,lz,nx,ny,nz,work,work2d,zwork,0,.false.,.false.)
-      do 700 ix = 0, nx-1
-      do 700 iy = 0, ny-1
-      do 700 iz = 0, nz
+      do ix = 0, nx-1
+      do iy = 0, ny-1
+      do iz = 0, nz
          b(ix,iy,iz) = 0.
          if (ix > 0.and.iy > 0.and.iz < nz) b(ix,iy,iz)=wranf()-.5
 c*****   if (ix==nx2.and.iy==ny2.and.iz==nz2) b(ix,iy,iz) = 1.
          bsav(ix,iy,iz) = b(ix,iy,iz)
-  700 continue
+      enddo
+      enddo
+      enddo
       call wtimeon
 c     --- call the fieldsolver, asserting the k-squared arrays are already set
       call vpois3d (-1,b,b,kxsq,kysq,kzsq,attx,atty,attz,filt,
@@ -185,21 +199,23 @@ c     --- call the fieldsolver, asserting the k-squared arrays are already set
       time = wtimeoff()
 c     --- check using 7 point poisson difference equation.
       errmax = 0.
-      do 800 ix = 1, nx-1
-      do 800 iy = 1, ny-1
+      do ix = 1, nx-1
+      do iy = 1, ny-1
          delsq=(b(ix+1,iy  ,0)-2.*b(ix,iy,0)+b(ix-1,iy  ,0   ))/dx**2
      &        +(b(ix  ,iy+1,0)-2.*b(ix,iy,0)+b(ix  ,iy-1,0   ))/dy**2
      &        +(b(ix  ,iy  ,1)-2.*b(ix,iy,0)+b(ix  ,iy  ,nz-1))/dz**2
          bsav(ix,iy,0) = bsav(ix,iy,0) + bsav(ix,iy,nz)
      &                   + delsq*eps0
          errmax = max(errmax, abs(bsav(ix,iy,0)))
-         do 800 iz = 1, nz-1
+         do iz = 1, nz-1
             delsq=( b(ix+1,iy,iz)-2.*b(ix,iy,iz)+b(ix-1,iy,iz) )/dx**2
      &           +( b(ix,iy+1,iz)-2.*b(ix,iy,iz)+b(ix,iy-1,iz) )/dy**2
      &           +( b(ix,iy,iz+1)-2.*b(ix,iy,iz)+b(ix,iy,iz-1) )/dz**2
             bsav(ix,iy,iz) = bsav(ix,iy,iz) + delsq*eps0
             errmax = max(errmax, abs(bsav(ix,iy,iz)))
- 800  continue
+         enddo
+      enddo
+      enddo
       print*,"poisson time=",time," milliseconds"
       print*,"check by 7 point formula; residual max=",errmax
 
@@ -411,24 +427,30 @@ c ----------------------------------------------------------------------------
       if (iwhich == 0 .or. iwhich == 1) then
 
 c        --- compute x direction rho-to-phi coefficients ---
-         do 100 ikx = ikxmin, nx-1
-  100       kxsq(ikx) = ikx
+         do ikx = ikxmin, nx-1
+            kxsq(ikx) = ikx
+         enddo
          if (l4symtry) then
-           do 111 ikx = 0, nx-1
-  111         kxsq(ikx) = 2./dx**2*(1.-cos(pib2*(2.*kxsq(ikx)+1.)/nx)) * eps0
+           do ikx = 0, nx-1
+              kxsq(ikx) = 2./dx**2*(1.-cos(pib2*(2.*kxsq(ikx)+1.)/nx)) * eps0
+           enddo
          else
-           do 110 ikx = 1, nx-1
-  110         kxsq(ikx) = (2./dx*sin(pib2*kxsq(ikx)/nx))**2 * eps0
+           do ikx = 1, nx-1
+              kxsq(ikx) = (2./dx*sin(pib2*kxsq(ikx)/nx))**2 * eps0
+           enddo
          endif
 c        --- compute y direction coefficients ---
-         do 120 iky = ikymin, ny-1
-  120       kysq(iky) = iky
+         do iky = ikymin, ny-1
+            kysq(iky) = iky
+         enddo
          if (l2symtry .or. l4symtry) then
-           do 131 iky = 0, ny-1
-  131         kysq(iky) = 2./dy**2*(1.-cos(pib2*(2.*kysq(iky)+1.)/ny)) * eps0
+           do iky = 0, ny-1
+              kysq(iky) = 2./dy**2*(1.-cos(pib2*(2.*kysq(iky)+1.)/ny)) * eps0
+           enddo
          else
-           do 130 iky = 1, ny-1
-  130         kysq(iky) = (2./dy*sin(pib2*kysq(iky)/ny))**2 * eps0
+           do iky = 1, ny-1
+              kysq(iky) = (2./dy*sin(pib2*kysq(iky)/ny))**2 * eps0
+           enddo
          endif
 c        --- compute z direction coefficients (note differences from x,y) ---
          do ikz = 0, nz2
@@ -437,39 +459,45 @@ c        --- compute z direction coefficients (note differences from x,y) ---
          enddo
 
 c        --- spatial filtering in x; binomial filter, or unity
-         do 160 ikx = ikxmin, nx-1
+         do ikx = ikxmin, nx-1
             kdx = pi * ikx / nx
-  160       attx(ikx) = (1.+2.*filt(5,1)*cos(kdx)) / (1.+2.*filt(5,1))
+            attx(ikx) = (1.+2.*filt(5,1)*cos(kdx)) / (1.+2.*filt(5,1))
+         enddo
          if (filt(1,1) .ne. 0. .or. filt(2,1) .ne. 0.) then
 c           --- compute first form of spatial filtering
-            do 170 ikx = ikxmin, nx-1
+            do ikx = ikxmin, nx-1
                kdxb2 = pi * ikx / (2.*nx)
-  170          attx(ikx) = attx(ikx) * (exp( filt(1,1)*(sin(kdxb2))**2
+               attx(ikx) = attx(ikx) * (exp( filt(1,1)*(sin(kdxb2))**2
      &          - filt(2,1)*(tan(kdxb2))**4 ))**2
+            enddo
          endif
          if (filt(3,1) .ne. 0.) then
 c           --- compute second form of spatial filtering
             klast = filt(3,1) * nx / pi
-            do 180 ikx = ikxmin, nx-1
-  180          attx(ikx) = attx(ikx) * exp(-(ikx/klast)**filt(4,1))
+            do ikx = ikxmin, nx-1
+               attx(ikx) = attx(ikx) * exp(-(ikx/klast)**filt(4,1))
+            enddo
          endif
 
 c        --- spatial filtering in y; binomial filter, or unity
-         do 260 iky = ikymin, ny-1
+         do iky = ikymin, ny-1
             kdy = pi * iky / ny
-  260       atty(iky) = (1.+2.*filt(5,2)*cos(kdy)) / (1.+2.*filt(5,2))
+            atty(iky) = (1.+2.*filt(5,2)*cos(kdy)) / (1.+2.*filt(5,2))
+         enddo
          if (filt(1,2) .ne. 0. .or. filt(2,2) .ne. 0.) then
 c           --- compute first form of spatial filtering
-            do 270 iky = ikymin, ny-1
+            do iky = ikymin, ny-1
                kdyb2 = pi * iky / (2.*ny)
-  270          atty(iky) = atty(iky) * (exp( filt(1,2)*(sin(kdyb2))**2
+               atty(iky) = atty(iky) * (exp( filt(1,2)*(sin(kdyb2))**2
      &          - filt(2,2)*(tan(kdyb2))**4 ))**2
+            enddo
          endif
          if (filt(3,2) .ne. 0.) then
 c           --- compute second form of spatial filtering
             klast = filt(3,2) * ny / pi
-            do 280 iky = ikymin, ny-1
-  280          atty(iky) = atty(iky) * exp(-(iky/klast)**filt(4,2))
+            do iky = ikymin, ny-1
+               atty(iky) = atty(iky) * exp(-(iky/klast)**filt(4,2))
+            enddo
          endif
 
 c        --- spatial filtering in z; binomial filter, or unity
@@ -560,7 +588,7 @@ c          --- Invoke the transform routines for the current z-slice
         enddo
       else
         norm = .5 * dx * dy * dz
-        do 500 iz = 0, nz-1
+        do iz = 0, nz-1
 c          --- Normalize the array
            do iy = 0, ny-1
              do ix = 0, nx-1
@@ -570,7 +598,7 @@ c          --- Normalize the array
 c          --- Invoke the transform routines for the current z-slice
            call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
            call vsfty(a(0,0,iz),xywork,w(icpy),w(icmy),nx,ny,0)
-  500   continue
+        enddo
       endif
 
 c  Here we perform the periodic transforms in z, two y's at a time.
@@ -644,7 +672,7 @@ c          --- Invoke the transform routines for the current z-slice
         enddo
       else
         norm = dx * dy
-        do 512 iz = 0, nz-1
+        do iz = 0, nz-1
 c          --- Normalize the array
            do iy = 0, ny-1
              do ix = 0, nx-1
@@ -654,7 +682,7 @@ c          --- Normalize the array
 c          --- Invoke the transform routines for the current z-slice
            call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
            call vsfty(a(0,0,iz),xywork,w(icpy),w(icmy),nx,ny,0)
-  512   continue
+        enddo
       endif
 
       endif
@@ -1461,60 +1489,72 @@ c ----------------------------------------------------------------------------
       if (iwhich == 0 .or. iwhich == 1) then
 
 c        --- compute x direction rho-to-phi coefficients ---
-         do 100 ikx = ikxmin, nx-1
-  100      kxsq(ikx) = ikx
-           if (l4symtry) then
-             do 111 ikx = 0, nx-1
-  111           kxsq(ikx) = 2./dx**2*(1.-cos(pib2*(2.*kxsq(ikx)+1.)/nx)) * eps0
-           else
-             do 110 ikx = 1, nx-1
-  110           kxsq(ikx) = (2./dx*sin(pib2*kxsq(ikx)/nx))**2 * eps0
-           endif
+         do ikx = ikxmin, nx-1
+           kxsq(ikx) = ikx
+         enddo
+         if (l4symtry) then
+           do ikx = 0, nx-1
+             kxsq(ikx) = 2./dx**2*(1.-cos(pib2*(2.*kxsq(ikx)+1.)/nx)) * eps0
+           enddo
+         else
+           do ikx = 1, nx-1
+             kxsq(ikx) = (2./dx*sin(pib2*kxsq(ikx)/nx))**2 * eps0
+           enddo
+         endif
 c        --- compute y direction coefficients ---
-         do 120 iky = ikymin, ny-1
-  120      kysq(iky) = iky
-           if (l2symtry .or. l4symtry) then
-             do 131 iky = 0, ny-1
-  131           kysq(iky) = 2./dy**2*(1.-cos(pib2*(2.*kysq(iky)+1.)/ny)) * eps0
-           else
-             do 130 iky = 1, ny-1
-  130           kysq(iky) = (2./dy*sin(pib2*kysq(iky)/ny))**2 * eps0
-           endif
+         do iky = ikymin, ny-1
+           kysq(iky) = iky
+         enddo
+         if (l2symtry .or. l4symtry) then
+           do iky = 0, ny-1
+             kysq(iky) = 2./dy**2*(1.-cos(pib2*(2.*kysq(iky)+1.)/ny)) * eps0
+           enddo
+         else
+           do iky = 1, ny-1
+              kysq(iky) = (2./dy*sin(pib2*kysq(iky)/ny))**2 * eps0
+           enddo
+         endif
 
 c        --- spatial filtering in x; binomial filter, or unity
-         do 160 ikx = ikxmin, nx-1
+         do ikx = ikxmin, nx-1
             kdx = pi * ikx / nx
-  160       attx(ikx) = (1.+2.*filt(5,1)*cos(kdx)) / (1.+2.*filt(5,1))
+            attx(ikx) = (1.+2.*filt(5,1)*cos(kdx)) / (1.+2.*filt(5,1))
+         enddo
          if (filt(1,1) .ne. 0. .or. filt(2,1) .ne. 0.) then
 c           --- compute first form of spatial filtering
-            do 170 ikx = ikxmin, nx-1
+            do ikx = ikxmin, nx-1
                kdxb2 = pi * ikx / (2.*nx)
-  170          attx(ikx) = attx(ikx) * (exp( filt(1,1)*(sin(kdxb2))**2
+               attx(ikx) = attx(ikx) * (exp( filt(1,1)*(sin(kdxb2))**2
      &          - filt(2,1)*(tan(kdxb2))**4 ))**2
+            enddo
          endif
          if (filt(3,1) .ne. 0.) then
 c           --- compute second form of spatial filtering
             klast = filt(3,1) * nx / pi
-            do 180 ikx = ikxmin, nx-1
-  180          attx(ikx) = attx(ikx) * exp(-(ikx/klast)**filt(4,1))
+            do ikx = ikxmin, nx-1
+               attx(ikx) = attx(ikx) * exp(-(ikx/klast)**filt(4,1))
+            enddo
          endif
 
 c        --- spatial filtering in y; binomial filter, or unity
-         do 260 iky = ikymin, ny-1
+         do iky = ikymin, ny-1
             kdy = pi * iky / ny
-  260       atty(iky) = (1.+2.*filt(5,2)*cos(kdy)) / (1.+2.*filt(5,2))
+            atty(iky) = (1.+2.*filt(5,2)*cos(kdy)) / (1.+2.*filt(5,2))
+         enddo
          if (filt(1,2) .ne. 0. .or. filt(2,2) .ne. 0.) then
 c           --- compute first form of spatial filtering
-            do 270 iky = ikymin, ny-1
+            do iky = ikymin, ny-1
                kdyb2 = pi * iky / (2.*ny)
-  270          atty(iky) = atty(iky) * (exp( filt(1,2)*(sin(kdyb2))**2
+               atty(iky) = atty(iky) * (exp( filt(1,2)*(sin(kdyb2))**2
      &          - filt(2,2)*(tan(kdyb2))**4 ))**2
+            enddo
          endif
          if (filt(3,2) .ne. 0.) then
 c           --- compute second form of spatial filtering
             klast = filt(3,2) * ny / pi
-            do 280 iky = ikymin, ny-1
-  280          atty(iky) = atty(iky) * exp(-(iky/klast)**filt(4,2))
+            do iky = ikymin, ny-1
+               atty(iky) = atty(iky) * exp(-(iky/klast)**filt(4,2))
+            enddo
          endif
 
       endif
@@ -1571,10 +1611,11 @@ c         --- Invoke the transform routines for the current z-slice
         else
           norm = dx * dy
 c         --- Normalize the array
-          do 400 iy = 0, ny-1
-            do 400 ix = 0, nx-1
+          do iy = 0, ny-1
+            do ix = 0, nx-1
               a(ix,iy) = a(ix,iy) * norm
-  400     continue
+            enddo
+          enddo
 c         --- Invoke the transform routines for the current z-slice
           call vsftx ( a(0,0), w(iwxy), w(icpx), w(icmx), nx, ny, 0)
           call vsfty ( a(0,0), w(iwxy), w(icpy), w(icmy), nx, ny, 0)
@@ -1588,10 +1629,11 @@ c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 3) then
 
-      do 720 iky = ikymin, ny-1
-      do 720 ikx = ikxmin, nx-1
+      do iky = ikymin, ny-1
+        do ikx = ikxmin, nx-1
          ak(ikx,iky) = ak(ikx,iky) * attx(ikx) * atty(iky)
-  720 continue
+        enddo
+      enddo
 
       endif
 
@@ -1601,10 +1643,11 @@ c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 4) then
 
-      do 800 iky = ikymin, ny-1
-      do 800 ikx = ikxmin, nx-1
+      do iky = ikymin, ny-1
+        do ikx = ikxmin, nx-1
          ak(ikx,iky) = ak(ikx,iky) / ( kxsq(ikx) + kysq(iky) )
-  800 continue
+        enddo
+      enddo
 
       endif
 
@@ -1684,10 +1727,11 @@ c ----------------------------------------------------------------------------
 
       if (iwhich == 8) then
 
-      do 1740 iky = ikymin, ny-1
-      do 1740 ikx = ikxmin, nx-1
-         ak(ikx,iky) = ak(ikx,iky) / (attx(ikx) * atty(iky))
- 1740 continue
+      do iky = ikymin, ny-1
+        do ikx = ikxmin, nx-1
+          ak(ikx,iky) = ak(ikx,iky) / (attx(ikx) * atty(iky))
+        enddo
+      enddo
 
       endif
 
@@ -1698,10 +1742,11 @@ c ----------------------------------------------------------------------------
 
       if (iwhich == 9) then
 
-      do 1800 iky = ikymin, ny-1
-      do 1800 ikx = ikxmin, nx-1
-         ak(ikx,iky) = ak(ikx,iky) * ( kxsq(ikx) + kysq(iky) )
- 1800 continue
+      do iky = ikymin, ny-1
+        do ikx = ikxmin, nx-1
+          ak(ikx,iky) = ak(ikx,iky) * ( kxsq(ikx) + kysq(iky) )
+        enddo
+      enddo
 
       endif
 
@@ -1735,19 +1780,19 @@ c Written by Alex Friedman, LLNL, April 1989.
 c Initialize
       if (isetup == 1) then
          nx2 = nx / 2
-         do 100 ix = 1, nx2-1
+         do ix = 1, nx2-1
             cp(ix) = 1. / ( 8.*sin(pi/nx * ix) ) + .25
             cm(ix) = 1. / ( 8.*sin(pi/nx * ix) ) - .25
-  100    continue
+         enddo
          return
       endif
 
 c Set up for transform
-      do 200 iy = 0, ny-1
+      do iy = 0, ny-1
          w(0,iy) = 2. * a(1,iy)
-  200 continue
-      do 300 iy = 0, ny-2, 2
-         do 400 ix = 1, nx2-1
+      enddo
+      do iy = 0, ny-2, 2
+         do ix = 1, nx2-1
             ix2 = 2 * ix
             aa = a(ix2,iy)
             bb = a(ix2+1,iy+1) - a(ix2-1,iy+1)
@@ -1757,27 +1802,27 @@ c Set up for transform
             bb = a(ix2,iy+1)
             w(ix   ,iy) = aa - bb
             w(nx-ix,iy) = aa + bb
-  400    continue
-  300 continue
-      do 500 iy = 0, ny-1
+         enddo
+      enddo
+      do iy = 0, ny-1
          w(nx2,iy) = -2. * a(nx-1,iy)
-  500 continue
+      enddo
 
 c Do vector complex periodic transform
       call vcpft ( w(0,1), w(0,0), nx, 1, 1, ny/2, 2*(nx+1) )
 
 c Separate sine coefficients
-      do 600 iy = 0, ny-1
-         do 700 ix = 1, nx2-1
+      do iy = 0, ny-1
+         do ix = 1, nx2-1
             aa = w(ix   ,iy)
             bb = w(nx-ix,iy)
             a(ix   ,iy) = cp(ix)*aa + cm(ix)*bb
             a(nx-ix,iy) = cm(ix)*aa + cp(ix)*bb
-  700    continue
-  600 continue
-      do 800 iy = 0, ny-1
+         enddo
+      enddo
+      do iy = 0, ny-1
          a(nx2,iy) = .25 * w(nx2,iy)
-  800 continue
+      enddo
 
       return
       end
@@ -1805,20 +1850,20 @@ c Written by Alex Friedman, LLNL, April 1989.
 c Initialize
       if (isetup == 1) then
          ny2 = ny / 2
-         do 100 iy = 1, ny2-1
+         do iy = 1, ny2-1
             cp(iy) = 1. / ( 8.*sin(pi/ny * iy) ) + .25
             cm(iy) = 1. / ( 8.*sin(pi/ny * iy) ) - .25
-  100    continue
+         enddo
          return
       endif
 
 c Set up for transform
-      do 200 ix = 0, nx-1
+      do ix = 0, nx-1
          w(ix,0) = 2. * a(ix,1)
-  200 continue
-      do 400 iy = 1, ny2-1
+      enddo
+      do iy = 1, ny2-1
          iy2 = 2 * iy
-         do 300 ix = 0, nx-2, 2
+         do ix = 0, nx-2, 2
             aa = a(ix,iy2)
             bb = a(ix+1,iy2+1) - a(ix+1,iy2-1)
             w(ix+1,iy   ) = bb + aa
@@ -1827,27 +1872,27 @@ c Set up for transform
             bb = a(ix+1,iy2)
             w(ix,iy   ) = aa - bb
             w(ix,ny-iy) = aa + bb
-  300    continue
-  400 continue
-      do 500 ix = 0, nx-1
+         enddo
+      enddo
+      do ix = 0, nx-1
          w(ix,ny2) = -2. * a(ix,ny-1)
-  500 continue
+      enddo
 
 c Do vector complex periodic transform
       call vcpft ( w(1,0), w(0,0), ny, nx+1, 1, nx/2, 2 )
 
 c Separate sine coefficients
-      do 700 iy = 1, ny2-1
-         do 600 ix = 0, nx-1
+      do iy = 1, ny2-1
+         do ix = 0, nx-1
             aa = w(ix,iy   )
             bb = w(ix,ny-iy)
             a(ix,iy   ) = cp(iy)*aa + cm(iy)*bb
             a(ix,ny-iy) = cm(iy)*aa + cp(iy)*bb
-  600    continue
-  700 continue
-      do 800 ix = 0, nx-1
+         enddo
+      enddo
+      do ix = 0, nx-1
          a(ix,ny2) = .25 * w(ix,ny2)
-  800 continue
+      enddo
 
       return
       end
@@ -2594,7 +2639,7 @@ c===========================================================================
      &                  l2symtry,l4symtry)
       use Pipe3d
       integer(ISZ):: iwhich,nx,ny,nz
-      character*(*):: pipeshpe
+      character(*):: pipeshpe
       real(kind=8):: rho(0:nx,0:ny,0:nz), phi(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
@@ -2635,7 +2680,7 @@ c=======================================================================
      &                    l2symtry,l4symtry)
       use Constant
       integer(ISZ):: nx,ny,nz
-      character*(*):: pipeshpe
+      character(*):: pipeshpe
       real(kind=8):: cap(2*(nx+ny),*)
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
@@ -2814,7 +2859,7 @@ c==============================================================================
      &                   piperadi,pipen,pipenz,pipenz2,pipe8th,pipex,pipey,
      &                   pipephi,pipeq,cap3d,kpvt,l2symtry,l4symtry)
       integer(ISZ):: iwhich,nx,ny,nz
-      character*(*):: pipeshpe
+      character(*):: pipeshpe
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
@@ -3110,7 +3155,7 @@ c==========================================================================
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: xlen, ylen, zlen, filt(5,3), xmmax
-      character*(*):: pipeshpe
+      character(*):: pipeshpe
       logical(ISZ):: periinz
       logical(ISZ):: l2symtry,l4symtry
 
@@ -3295,7 +3340,7 @@ c==========================================================================
       real(kind=8):: quadx(ncndpts,4), quady(ncndpts,4), quadz(ncndpts)
       real(kind=8):: quadv(ncndpts,4)
       real(kind=8):: xmmax,dx,dy,quadradi,quadcent,qdslclen
-      character*(*):: pipeshpe
+      character(*):: pipeshpe
       logical(ISZ):: loadquad
 
 c  Calculate set of points representing the conductor
@@ -3492,7 +3537,7 @@ c=============================================================================
       real(kind=8):: filt(5,3), scrtch(*), xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: xlen, ylen, zlen
       real(kind=8):: xmmax,zmmin,zgrid
-      character*(*):: pipeshpe
+      character(*):: pipeshpe
       logical(ISZ):: periinz
       logical(ISZ):: l2symtry,l4symtry
  
@@ -3595,7 +3640,7 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       integer(ISZ):: i,k,ii,ie,ix,iy,iz,ic
       real(kind=8):: rs,x,r,nsorerri
       integer(ISZ):: s_parity,e_parity
-      character*72:: errline
+      character(72):: errline
 
 c Macro for common arguments to the psor_loop calls
 #define LOOP_ARGS iimz,iipz,phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends, \
@@ -5920,7 +5965,7 @@ c===========================================================================
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
-      character*(*) rofzfunc
+      character(*) rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -6351,7 +6396,7 @@ c========================================================================
      &                   ix_axis,iy_axis,
      &                   xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
-      character*(*) rofzfunc
+      character(*) rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
       logical(ISZ):: lfill,lshell
@@ -6787,7 +6832,7 @@ c===========================================================================
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
-      character*(*) rminofz,rmaxofz
+      character(*) rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -7209,7 +7254,7 @@ c========================================================================
       use Surface_of_Rev
       real(kind=8):: zz
       integer(ISZ):: icase
-      character*(*) rofzfunc
+      character(*) rofzfunc
 c     This function returns the value of radius as a function of z.
 c     That can be calculated either from a piecewise-linear curve, or from
 c     the basis routine rofzfunc.

@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.2 $, $Date: 2001/04/27 21:38:58 $
+#@(#) File FRZ.V, version $Revision: 3.3 $, $Date: 2001/04/30 20:04:40 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.2 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.3 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
