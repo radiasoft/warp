@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.8 2002/03/14 18:34:55 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.9 2002/03/14 23:05:01 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -7,7 +7,7 @@ zmmnt  makes appropriate calls to compiled code to calculate the
        particle moments
   """
 
-def zmmnt(itask=0,js=None,jslist=None,groupsize=None):
+def zmmnt(itask=0,js=None,jslist=None,groupsize=256):
   """
 zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   makes appropriate calls to compiled code to calculate the
