@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.33 2004/02/25 21:01:29 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.34 2004/03/03 16:51:14 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -305,11 +305,7 @@ Constructor arguments:
   """
   #----------------------------------------------------------------------------
   def __init__(s,ap,ax=0.,ay=0.,v=0.,ox=0.,oy=0.,newmesh=0):
-    # --- ax and ay take precedence over ap.
-    # --- These lines are repeated in issame.
-    if ax == 0.: ax = ap
-    if ay == 0.: ay = ap
-    if ap == 0.: ap = ax
+    ap,ax,ay = s.setaperture(ap,ax,ay)
     # --- Check that the radius is positive
     assert ax > 0. and ay > 0.,"Aperture data is inconsistent - either ap must > 0 or both of ax and ay must be > 0"
     # --- Save the input values
@@ -320,25 +316,12 @@ Constructor arguments:
     s.ox = ox
     s.oy = oy
     s.newmesh = newmesh
-    # --- Reset the mesh if requested. If this is done, there is no need for
-    # --- the error checking.
+    # --- Check to make sure that the parameters are OK.
+    assert s.paramsok(ap,ax,ay,ox,oy,newmesh),\
+           "Error in input - either aperture is zero or too big to fit mesh"
+    # --- Reset the mesh if requested.
     if s.newmesh:
       s.getmesh(ox-ax,ox+ax,oy-ay,oy+ay,ox,oy)
-    else:
-      w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
-      w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
-      # --- Check that the whole pipe circle is within the grid
-      if (ox+ax > w3d.xmmax - w3d.dx) or (oy+ay > w3d.ymmax - w3d.dy):
-        raise "All of round pipe must not be within one grid cell of the grid edge"
-      if w3d.l2symtry and \
-         ((ox-ax < w3d.xmmin + w3d.dx) or (oy-ay < -w3d.ymmax + w3d.dy)):
-        raise "All of round pipe must not be within one grid cell of the grid edge"
-      if w3d.l4symtry and \
-         ((ox-ax < -w3d.xmmax + w3d.dx) or (oy-ay < -w3d.ymmax + w3d.dy)):
-        raise "All of round pipe must not be within one grid cell of the grid edge"
-      if (not w3d.l2symtry and not w3d.l4symtry) and \
-         ((ox-ax < w3d.xmmin + w3d.dx) or (oy-ay < w3d.ymmin + w3d.dy)):
-        raise "All of round pipe must not be within one grid cell of the grid edge"
     # --- Get the symmetry factor
     symm_fact = 1.
     if (w3d.l2symtry): symm_fact = 0.5
@@ -359,22 +342,48 @@ Constructor arguments:
     # --- and the matrix using those points
     s.getmatrix() 
   #----------------------------------------------------------------------------
+  def setaperture(s,ap,ax,ay):
+    # --- ax and ay take precedence over ap.
+    if ax == 0.: ax = ap
+    if ay == 0.: ay = ap
+    if ap == 0.: ap = ax
+    return ap,ax,ay
+  #----------------------------------------------------------------------------
   def setmatrix(s,v=None):
     if v is not None: s.vcond[:] = v
     CapacityMatrix.setmatrix(s,s.vcond)
     s.setparticleboundary(s.ax,s.ay,s.ox,s.oy)
   #----------------------------------------------------------------------------
   def issame(s,ap,ax,ay,ox,oy):
-    # --- ax and ay take precedence over ap.
-    # --- These lines must be idenitcal to the ones at the top of init.
-    if ax == 0.: ax = ap
-    if ay == 0.: ay = ap
-    if ap == 0.: ap = ax
+    ap,ax,ay = s.setaperture(ap,ax,ay)
     # --- Checks if the input values would return the same matrix
     if s.ap == ap and s.ax == ax and s.ay == ay:
       if s.ox == ox and s.oy == oy:
         return 1
     return 0
+  #----------------------------------------------------------------------------
+  def paramsok(s,ap,ax,ay,ox,oy,newmesh):
+    "Check validity of parameter"
+    ap,ax,ay = s.setaperture(ap,ax,ay)
+    if newmesh:
+      # --- If mesh will be resized, only check that aperture is > 0.
+      if (ap > 0. or (ax > 0. and ay > 0.)): return 1
+      else:                                  return 0
+    else:
+      # --- If mesh will not be resized, need to check if the aperture will
+      # --- fit within the mesh.
+      if (ap == 0. and (ax == 0. or ay == 0.)): return 0
+      # --- Check if the whole pipe circle is within the grid
+      xmax = w3d.xmmax - w3d.dx
+      ymax = w3d.ymmax - w3d.dy
+      xmin = w3d.xmmin + w3d.dx
+      ymin = w3d.ymmin + w3d.dy
+      if w3d.l4symtry: xmin = -w3d.xmmax + w3d.dx
+      if w3d.l2symtry or w3d.l4symtry: ymin = -w3d.ymmax + w3d.dy
+      if ox+ax > xmax or ox-ax < xmin or oy+ay > ymax or oy-ay < ymin:
+        return 0
+      else:
+        return 1
   #----------------------------------------------------------------------------
   def plotcond(s,color='fg',xscale=1.,yscale=1.):
     tt = span(0.,2*pi,101)
@@ -656,9 +665,9 @@ Constructor arguments:
         # --- If the list is too short, add some None's in.
         while len(cm) < id+1: cm.append(None)
         # --- Now, add the capacity matrix.
-        if ap[id] > 0. or ax[id] > 0. or ay[id] > 0.:
+        try:
           cm[id] = s.getpipematrix(ap[id],ax[id],ay[id],0.,ox[id],oy[id])
-        else:
+        except:
           return 0
       s.setmatrix(cm[id],0.)
       return 1
