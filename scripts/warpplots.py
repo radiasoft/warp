@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.111 2003/10/07 21:53:26 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.112 2004/02/06 23:22:21 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2231,7 +2231,7 @@ Plots b envelope +/- x centroid
 ##########################################################################
 # --- These functions returns or sets slices of phi and rho.
 ##########################################################################
-def getrho(ix=None,iy=None,iz=None,bcast=0):
+def getrho(ix=None,iy=None,iz=None,bcast=0,local=0):
   """Returns slices of rho, the charge density array. The shape of the object
 returned depends on the number of arguments specified, which can be from none
 to all three.
@@ -2240,9 +2240,12 @@ to all three.
   - iz = None:
   - bcast=0: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of phi - no communication is done. Has no effect for serial
+             version.
   """
   if iy is None and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if not lparallel:
+  if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       return w3d.rho
     if ix is not None and iy is None     and iz is None    :
@@ -2332,7 +2335,7 @@ to all three.
    #if bcast: ppp = broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
-def getphi(ix=None,iy=None,iz=None,bcast=0):
+def getphi(ix=None,iy=None,iz=None,bcast=0,local=0):
   """Returns slices of phi, the electrostatic potential array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -2342,9 +2345,12 @@ be from none to all three.
                from -1 to nz+1
   - bcast=0: When 1, the result is broadcast to all of the processors
              (otherwise returns None to all but PE0
+  - local=0: When 1, in the parallel version, each process will get its local
+             value of phi - no communication is done. Has no effect for serial
+             version.
   """
   if iy is None and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if not lparallel:
+  if local or not lparallel:
     if ix is None     and iy is None     and iz is None    :
       return w3d.phi[:,:,1:-1]
     if ix is not None and iy is None     and iz is None    :
