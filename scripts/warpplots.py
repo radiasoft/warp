@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.90 2002/11/25 20:59:22 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.91 2003/01/15 19:44:01 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -56,8 +56,11 @@ pcrhozy(), pcrhozx(), pcrhoxy()
 pcphizy(), pcphizx(), pcphixy()
 pcselfezy(), pcselfezx(), pcselfexy()
 
-Dynamically view any 3-D surface plot
+Dynamically view any gist 3-D surface plot
 viewsurface
+
+Remove extra surface plots
+hidesurfaces()
 """
 ##########################################################################
 warpplotsdocmore = """
@@ -478,6 +481,7 @@ def ppmoments(text):
 
 #############################################################################
 #############################################################################
+vpythonscenelist = []
 #############################################################################
 def ppgeneric_doc(x,y):
   doc = selectparticles.__doc__ + """
@@ -528,7 +532,8 @@ def ppgeneric_doc(x,y):
                     otherwise each contour level gets an equal sized area.
                     Only in effect when a list of colorbars is specified.
   - surface=0: when true, a 3-d surface plot is made of the gridded data
-               The view can be changed dynamically with the function viewsurface
+               Note: to remove window, use the hidesurfaces() command
+                     rather than closing the window.
   - returngrid=0: when true, and when particle data is passed in and a plot
                   which requires a grid is requested (such as a contour
                   plot), no plotting is done and the grid and extrema
@@ -890,11 +895,17 @@ Note that either the x and y coordinates or the grid must be passed in.
 
   # --- Make surface plot
   if surface and me == 0 and nx > 1 and ny > 1:
-    pl3d.orient3()
-    pl3d.light3()
-    plwf.plwf(grid1,xmesh,ymesh,fill=grid1,edges=0)
-    [xmin3,xmax3,ymin3,ymax3] = pl3d.draw3(1)
-    #limits(xmin3,xmax3,ymin3,ymax3)
+    try:
+      import VPythonobjects
+      vo = VPythonobjects.VisualMesh(xmesh,ymesh,grid1)
+      vo.Display()
+      vpythonscenelist.append(vo.scene)
+    except ImportError:
+      pl3d.orient3()
+      pl3d.light3()
+      plwf.plwf(grid1,xmesh,ymesh,fill=grid1,edges=0)
+      [xmin3,xmax3,ymin3,ymax3] = pl3d.draw3(1)
+      #limits(xmin3,xmax3,ymin3,ymax3)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
   if titles: ptitles(v=view)
@@ -1203,6 +1214,11 @@ When finished, press return in the python window.
     ymax3max = max(ymax3max,ymax3)
     limits(xmin3min,xmax3max,ymin3min,ymax3max)
   pl3d.gnomon(gnomon)
+
+#############################################################################
+def hidesurfaces():
+  for scene in vpythonscenelist:
+    scene.visible = 0
 
 #############################################################################
 #############################################################################
