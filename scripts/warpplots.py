@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.144 2005/02/08 17:53:39 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.145 2005/02/15 01:27:17 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -142,6 +142,8 @@ Does the work needed to start writing plots to a file automatically
     pname = getnextfilename(prefix,'ps')
   else:
     pname = getnextfilename(prefix,'cgm')
+  # --- Save the plotfile name, since it is not retreivable from gist.
+  setup.pname = pname
   # --- Create window(0), but have it only dump to the file pname for now.
   # --- Note that only plots made to window(0) are dumped to the file.
   window(0,display='',hcp=pname,dump=1)
@@ -149,7 +151,7 @@ Does the work needed to start writing plots to a file automatically
   # --- Set so all fma's dump plot to file.
   hcpon()
   if cgmlog:
-    # --- Create plot log file and write headint to it.
+    # --- Create plot log file and write heading to it.
     plogname = getnextfilename(prefix,'cgmlog')
     cgmlogfile = open(plogname,"w")
     cgmlogfile.write("CGMLOG file for "+pname+"\n\n")
