@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.54 2004/10/19 22:13:21 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.55 2004/10/20 19:46:48 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -706,8 +706,11 @@ Constructor arguments:
     self.__dict__.update(dict)
     installbeforefs(self.initialsetboundary)
     # --- Restore these quantities which are otherwise not saved.
-    _initialmeshparams = self._initialmeshparams
-    _realboundarycount = self._realboundarycount
+    try:
+      _initialmeshparams = self._initialmeshparams
+      _realboundarycount = self._realboundarycount
+    except AttributeError:
+      _realboundarycount = 1
 
   #----------------------------------------------------------------------------
   def setmatrix(self,m,v):
