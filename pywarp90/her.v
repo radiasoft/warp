@@ -1,5 +1,5 @@
 her
-#@(#) File HER.V, version $Revision: 3.10 $, $Date: 2001/08/09 18:27:23 $
+#@(#) File HER.V, version $Revision: 3.11 $, $Date: 2003/02/14 07:25:19 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for HERMES.
@@ -9,7 +9,7 @@ her
 
 *********** HERversion:
 # Version control for her package
-versher       character*19 /"$Revision: 3.10 $"/  # Current code version, set by SCCS
+versher       character*19 /"$Revision: 3.11 $"/  # Current code version, set by SCCS
 
 *********** HERvars dump:
 # Variables needed by the package HER
@@ -42,7 +42,6 @@ lcurgrid   logical /.false./ # If true, calculate the line charge density and
                              # the current using the grid
                              # For icharge == 7 only
 lviscous   logical /.false./ # If true, artificial viscosity is added
-lsavehist  logical /.true./ # Turns on saving of history of envelope
 iprofile   integer /0/ # line-charge profile flag
                        # 0 uses hyperbolic-tangent profile (not implemented in Hermes so far)
                        # 1 uses flat-top profile with linear fall-off
