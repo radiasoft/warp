@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.126 $, $Date: 2004/07/23 22:20:18 $
+c@(#) File TOP.F, version $Revision: 3.127 $, $Date: 2004/07/30 00:35:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4133,10 +4133,13 @@ c by the calling routine.
       real(kind=8):: zz,zl,zr,vbeamfrmo,deltav
       real(kind=8):: zznew
 
+c     --- This must be set to zero even if there are no elements since
+c     --- it may be used in the calling code.
+      zcorrection = 0.
+
       if (.not. accls .or. .not. linaccl(0) .or. vbeamfrm == 0.) return
 
       qoverm = sq(1)/sm(1)
-      zcorrection = 0.
 
       if (acclbeamframe .ne. 0.) then
         zz = acclbeamframe + zlframe
