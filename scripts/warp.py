@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.79 2004/12/03 18:01:07 dave Exp $"
+warp_version = "$Id: warp.py,v 1.80 2005/01/12 17:09:03 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -644,6 +644,7 @@ Reads in data from file, redeposits charge density and does field solve
 # This routine reads in and rearranges the history arrays from
 # a parallel run so that they can be interpreted from a serial run.
 def gethzarrays(filename,verbose=0):
+  """OBSOLETE - is not needed now"""
   # --- Open file and get some numbers
   ff = PR.PR(filename)
   npes = len(ff.read('nps_p@parallel'))
