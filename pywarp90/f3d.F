@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.48 $, $Date: 2002/06/26 18:15:56 $
+c@(#) File F3D.M, version $Revision: 3.49 $, $Date: 2002/07/02 23:15:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4271,7 +4271,6 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
       real(kind=8):: boundarrx(0:nx,2,0:nz)
       real(kind=8):: boundarry(0:ny,2,0:nz)
-      real(kind=8):: phisave(int((nx+1)*(ny+1)*(nz+1)/(.9*nx-1)))
       real(kind=8):: rdx2,rdy2,rdz2,rdel,reps0,const
       real(kind=8):: rdx2c,rdy2c,rdz2c,reps0c,spm1
       real(kind=8):: ecdelmxi(necndbdy),ecdelmyi(necndbdy),ecdelmzi(necndbdy)
@@ -4284,6 +4283,7 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       real(kind=8):: rs,x,r,nsorerri
       integer(ISZ):: s_parity,e_parity
       character(72):: errline
+      real(kind=8),allocatable:: phisave(:)
 
 c Macro for common arguments to the psor_loop calls
 #define LOOP_ARGS iimz,iipz,phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends, \
@@ -4321,6 +4321,7 @@ c (.9*nx-1) was chosen somewhat randomly. Note that the same expression
 c must be used as the one above for the shape of phisave.
       nsorerr = (nx+1)*(ny+1)*(nz+1)/(.9*nx-1)
       nsorerri = 1./nsorerr
+      allocate(phisave(nsorerr))
 
 c Set temporary variables (these are used to increase performance)
       rdx2 = dx**(-2)
@@ -4799,6 +4800,9 @@ c       --- is slightly faster than a 3d array.
           rho1d(ii) = rho1d(ii)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
         enddo
       endif 
+
+c     --- clean up the work area
+      deallocate(phisave)
 
       return
       end
