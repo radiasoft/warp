@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.129 $, $Date: 2003/08/29 17:30:14 $
+c@(#) File W3D.M, version $Revision: 3.130 $, $Date: 2003/08/29 20:12:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1306,10 +1306,10 @@ c  Zero the moments if center is synchv
      &                sq(1),sm(1),sw(1),dt*0.5,1,
      &                nplive,uxpo,uypo,uzpo,1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
-        maxp = tempmaxp
-        minp = tempminp
-        zmmnts0 = tempzmmnts0
-        zmmnts = tempzmmnts
+        maxp = 0.
+        minp = 0.
+        zmmnts0 = 0.
+        zmmnts = 0.
       endif
 
 c  Set the transverse E fields near any defined apertures.
@@ -1546,10 +1546,10 @@ c----------------------------------------------------------------------------
 c     ---  Do final stuff for moments calculation
       if (center == "synchv" .or. center == "gen" .and. npmax>0) then
 #ifdef _OPENMP
-        tempmaxp = maxval(threadmaxp(:,1:nthread),2)
-        tempminp = minval(threadminp(:,1:nthread),2)
-        tempzmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
-        tempzmmnts = sum(threadzmmnts(:,:,1:nthread),3)
+        tempmaxp = max(tempmaxp,maxval(threadmaxp(:,1:nthread),2))
+        tempminp = min(tempminp,minval(threadminp(:,1:nthread),2))
+        tempzmmnts0 = tempzmmnts0 + sum(threadzmmnts0(:,1:nthread),2)
+        tempzmmnts = tempzmmnts + sum(threadzmmnts(:,:,1:nthread),3)
 #else
         tempmaxp = maxp
         tempminp = minp
