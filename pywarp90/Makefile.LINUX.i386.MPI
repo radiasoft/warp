@@ -5,17 +5,18 @@ PYVERS = 2.1
 PYTHON = /home/dave/Python-$(PYVERS)
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
+MPIHOME = /home/dave/mpich
 PROF = #-Mprof=lines
 OPT = -fast -Mcache_align $(PROF)
 #OPT = -g
 POPT =  -Mcache_align
 PYMODULEOPT = -O1
 CHECKS = #-Mbounds -Mchkfpstk
-F90FREE  = mpif90 -Mextend -Mdclchk -r8 -fpic $(CHECKS) -DPARALLEL
-F90FIXED = mpif90 -Mextend -Mdclchk -r8 -fpic $(CHECKS) -DPARALLEL
-CC = mpicc -fpic
+F90FREE  = $(MPIHOME)/bin/mpif90 -Mextend -Mdclchk -r8 -fpic $(CHECKS) -DPARALLEL
+F90FIXED = $(MPIHOME)/bin/mpif90 -Mextend -Mdclchk -r8 -fpic $(CHECKS) -DPARALLEL
+CC = $(MPIHOME)/bin/mpicc -fpic
 SO = so
-LD = mpif90 -shared $(PROF)
+LD = $(MPIHOME)/bin/mpif90 -shared $(PROF)
 FORTLIB = 
 LINKLIB = 
 DLLIB = -ldl
@@ -46,7 +47,7 @@ warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPSLAVEOBJECTS) $(WARPOBJECTS) $(RNGOB
 	$(RNGOBJ) $(OTHERLIBS)
 
 build_static: $(MODULEOBJECTS) $(WARPSLAVEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) config.o
-	mpif90 $(PROF) -Mnomain -o pywarp90 $(PYTHONOBJ) $(WARPSLAVEOBJECTS) $(WARPOBJECTS) $(MODULEOBJECTS) config.o $(RNGOBJ) /home/dave/Python-2.1/lib/python2.1/site-packages/*/*.so \
+	$(MPIHOME)/bin/mpif90 $(PROF) -Mnomain -o pywarp90 $(PYTHONOBJ) $(WARPSLAVEOBJECTS) $(WARPOBJECTS) $(MODULEOBJECTS) config.o $(RNGOBJ) /home/dave/Python-2.1/lib/python2.1/site-packages/*/*.so \
 	-lm $(XLIB) -lX11 $(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) \
 	-ldl -lpthread -lutil -Wl,-export-dynamic
 	#-ldl -lpthread -lutil -ldb1 -Wl,-export-dynamic -Wl,-Bstatic
