@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.77 2004/04/16 22:04:16 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.78 2004/04/16 23:02:18 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2729,7 +2729,8 @@ Sets the voltage on a conductor, given an id.
 #---------------------------------------------------------------------------
 def visualizeconductors(condid=None,color=None,mglevel=0,
                         scene=None,title="Conductor geometry",vrange=None,
-                        smooth=0,conductors=f3d.conductors):
+                        smooth=0,showgrid=0,showaxes=0,
+                        conductors=f3d.conductors):
   """
 Creates 3-D visualization of the conductors based off of the subgrid data.
  - condid=None: optional conductor ID of object to draw
@@ -2741,6 +2742,8 @@ Creates 3-D visualization of the conductors based off of the subgrid data.
  - vrange=None: range of each dimension - used to scale size of image, in form
              [x,y,z]. e.g. to decrease z by 10, use [1,1,10]
  - smooth=0: not yet supported
+ - showgrid=0: When true, displays field grid box
+ - showaxes=0: When true, displays the axes
  - conductors=f3d.conductors: allows alternate conductor to be visualized other
                               than the default ones
 
@@ -2855,6 +2858,6 @@ Returns the scene use to draw the image
   if color is not None:
     model.colors = (3*f3d.ntriangles)*[color]
 
-  model.Display()
+  model.Display(showgrid=showgrid,showaxes=showaxes)
   return model
 
