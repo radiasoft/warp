@@ -5,7 +5,7 @@ PYVERS = 2.1
 PYTHON = /home/dave/Python-$(PYVERS)
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
-PROF = #-Mprof=lines
+#PROF = -Mprof=lines
 OPT = -fast -Mcache_align $(PROF)
 #OPT = -g
 POPT =  -Mcache_align
@@ -15,25 +15,24 @@ F90FREE  = pgf90 -Mextend -Mdclchk -r8 -fpic $(CHECKS)
 F90FIXED = pgf90 -Mextend -Mdclchk -r8 -fpic $(CHECKS)
 CC = cc -fpic
 SO = so
-LD = pgf90 -shared $(PROF)
+LD = pgf90 -Mnomain $(PROF) $(OPT)
+EXPORT = -Wl,-export-dynamic
 FORTLIB = 
-LINKLIB = 
+LINKLIB = -ldl -lutil -lpthread
 DLLIB = -ldl
 XLIB = -L/usr/X11R6/lib
-PACTLIB = -L/usr/local/pact/lib
-YORICKLIB = -L/usr/local/lib/yorick/1.4/lib
+PACTLIB = -L/usr/local/pact/lib -lpdb -lpml -lscore
+YORICKLIB = -L/usr/local/lib/yorick/1.4/lib -lgist
 TCLLIB = 
-LAPACKLIB = 
+LAPACKLIB = -llapack -lblas
 NUMPYINCLUDE = -I$(PYTHON)/include/python$(PYVERS)/Numeric
 OLD = OLD1
 
 WARPSCRIPTS = $(HOME)/scripts
-OTHERLIBS = $(PACTLIB) -lpdb -lpml -lscore \
-            $(YORICKLIB) -lgist \
-            $(LAPACKLIB) -llapack -lblas
+OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB)
 
 warp: warpC.$(SO)
-	#cp warpC.$(SO) $(WARPSCRIPTS)
+	cp warpC.$(SO) $(WARPSCRIPTS)
 
 static: build_static
 
@@ -41,11 +40,11 @@ include Makefile.dependencies
 
 warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
 	cc -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
-	$(LD) -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
+	$(LD) -shared -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
 	$(RNGOBJ) $(OTHERLIBS)
 
 build_static: $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) config.o
-	pgf90 $(PROF) -Mnomain -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o $(RNGOBJ) /home/dave/Python-2.1/lib/python2.1/site-packages/*/*.so \
-	-lm $(XLIB) -lX11 $(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) \
-	-ldl -lpthread -lutil -ldb1 -Wl,-export-dynamic -Wl,-Bstatic
+	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) \
+        config.o $(RNGOBJ) $(PYTHON)/lib/python2.1/site-packages/*/*.so \
+	$(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) $(EXPORT)
 
