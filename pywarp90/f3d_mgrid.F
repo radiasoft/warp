@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.62 $, $Date: 2004/04/08 20:15:24 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.63 $, $Date: 2004/04/13 20:31:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -32,7 +32,7 @@ c=============================================================================
      &                            bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                            xmmin,ymmin,zmmin,zbeam,zgrid,
      &                            mgparam,mgform,mgiters,mgmaxiters,
-     &                            mgerror,mgtol,
+     &                            mgmaxlevels,mgerror,mgtol,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,gridmode,
      &                            conductors)
@@ -45,7 +45,7 @@ c=============================================================================
      &                            bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                            xmmin,ymmin,zmmin,zbeam,zgrid,
      &                            mgparam,mgform,mgiters,mgmaxiters,
-     &                            mgerror,mgtol,
+     &                            mgmaxlevels,mgerror,mgtol,
      &                            downpasses,uppasses,
      &                            lcndbndy,laddconductor,icndbndy,gridmode,
      &                            conductors)
@@ -63,7 +63,7 @@ c=============================================================================
       logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
       real(kind=8):: mgparam
-      integer(ISZ):: mgform,mgiters,mgmaxiters
+      integer(ISZ):: mgform,mgiters,mgmaxiters,mgmaxlevels
       real(kind=8):: mgerror,mgtol
       integer(ISZ):: downpasses,uppasses
       logical(ISZ):: lcndbndy,laddconductor
@@ -117,9 +117,6 @@ c     --- Initialize temporaries
       dzsqi  = 1./dz**2
       reps0c = mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
       rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
-
-c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nz,nzfull,dx,dy,dz)
 
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
@@ -242,10 +239,10 @@ c       --- correction form since it is operating on the error.
         endif
 
 c       --- Do one vcycle.
-        call vcycle(0,nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,
+        call vcycle(0,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &              rstar,linbend,l2symtry,l4symtry,bendx,
-     &              boundxy,bound0,boundnz,mgform,downpasses,uppasses,
-     &              lcndbndy,icndbndy,conductors,
+     &              boundxy,bound0,boundnz,mgform,mgmaxlevels,
+     &              downpasses,uppasses,lcndbndy,icndbndy,conductors,
      &              my_index,nslaves,izfsslave,nzfsslave)
 
 c       --- If using residual correction form, add the resulting error to phi.
@@ -364,121 +361,23 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
       return
       end
 c=============================================================================
-      subroutine setmglevels(nx,ny,nz,nzfull,dx,dy,dz)
-      use Parallel
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: dx,dy,dz
-
-      integer(ISZ):: savenx=0,saveny=0,savenz=0,savenzfull=0
-      save savenx,saveny,savenz,savenzfull
-
-c     --- Only do this calculation if one of these parameters changed. This
-c     --- is for parallel version. There, this is a global operation and if
-c     --- it is not needed, it would be an unneccesary synchronization point.
-c     --- This is still not quite correct since nz could change on a few
-c     --- processors and need not change on all. If that happens, only those
-c     --- processors where nz changed would call getmglevelsrecur, leading
-c     --- to a freeze up. Unfortunately, the whole idea here is to avoid
-c     --- global communication so there is no easy solution.
-      if (savenx == nx .and.
-     &    saveny == ny .and.
-     &    savenz == nz .and.
-     &    savenzfull == nzfull) return
-
-      savenx = nx
-      saveny = ny
-      savenz = nz
-      savenzfull = nzfull
-
-      call setmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,0,1,1,1,
-     &                      my_index,nslaves,izfsslave,nzfsslave)
-
-      return
-      end
-c=============================================================================
-      RECURSIVE subroutine setmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,
-     &                                      mglevel,lx,ly,lz,
-     &                                     my_index,nslaves,izfsslave,nzfsslave)
-      use MGLevels3d
-      integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: dx,dy,dz
-      integer(ISZ):: mglevel,lx,ly,lz
-      integer(ISZ):: my_index,nslaves
-      integer(ISZ):: izfsslave(0:nslaves),nzfsslave(0:nslaves)
-
-c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
-
-      integer(ISZ):: izfsslave2(0:nslaves),nzfsslave2(0:nslaves)
-      integer(ISZ):: nznew
-
-      mglevelsnx(mglevel) = nx
-      mglevelsny(mglevel) = ny
-      mglevelsnzfull(mglevel) = nzfull
-      mglevelsiz(mglevel) = izfsslave(my_index)
-      mglevelsnz(mglevel) = nz
-      mglevelslx(mglevel) = lx
-      mglevelsly(mglevel) = ly
-      mglevelslz(mglevel) = lz
-      mglevels = mglevel + 1
-
-      if (mod(nx,4) /= 0 .or.
-     &    mod(ny,4) /= 0 .or.
-     &    mod(nzfull,4) /= 0 .or.
-     &    mglevel == mgmaxlevels) return
-
-c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
-c     --- all axis.
-      mglevelspart(mglevel+1) = (dz > 4./3.*dx)
-
-#ifdef MPIPARALLEL
-c     --- This must be a global operation since, due to roundoff, each
-c     --- processor can get a different value if dz == 4./3.*dx.
-      call parallellor(mglevelspart(mglevel+1))
-#endif
-
-      if (mglevelspart(mglevel+1)) then
-        call setmglevelsrecur(nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
-     &                        mglevel+1,lx*2,ly*2,lz,
-     &                        my_index,nslaves,izfsslave,nzfsslave)
-      else
-
-#ifdef MPIPARALLEL
-c       --- Find domains in coarser grid
-        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
-     &                  nzfull)
-c       --- Set new value of nz
-        nznew = nzfsslave2(my_index)
-#else
-        izfsslave2 = 0
-        nznew = nz/2
-#endif
-
-        call setmglevelsrecur(nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
-     &                        mglevel+1,lx*2,ly*2,lz*2,
-     &                        my_index,nslaves,izfsslave2,nzfsslave2)
-      endif
-
-      return
-      end
-c=============================================================================
-      RECURSIVE subroutine vcycle(mglevel,nx,ny,nz,nzfull,
-     &                            dxsqi,dysqi,dzsqi,
+      RECURSIVE subroutine vcycle(mglevel,nx,ny,nz,nzfull,dx,dy,dz,
      &                            phi,rho,rstar,linbend,l2symtry,l4symtry,
      &                            bendx,boundxy,globalb0,globalbnz,mgform,
-     &                            downpasses,uppasses,
+     &                            mgmaxlevels,downpasses,uppasses,
      &                            lcndbndy,icndbndy,conductors,
      &                            my_index,nslaves,izfsslave,nzfsslave)
-      use MGLevels3d
       use ConductorTypemodule
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
-      real(kind=8):: dxsqi,dysqi,dzsqi
+      real(kind=8):: dx,dy,dz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: bendx((nx+1)*(ny+1))
       logical(ISZ):: linbend
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: boundxy,globalb0,globalbnz,mgform,downpasses,uppasses
+      integer(ISZ):: boundxy,globalb0,globalbnz,mgform
+      integer(ISZ):: mgmaxlevels,downpasses,uppasses
       type(ConductorType):: conductors
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
@@ -487,6 +386,8 @@ c=============================================================================
 
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
+      real(kind=8):: dxsqi,dysqi,dzsqi
+      logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phi2(:,:,:),rho2(:,:,:)
       real(kind=8):: res(0:nx,0:ny,-1:nz+1)
       integer(ISZ):: i
@@ -501,6 +402,10 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
       integer(ISZ):: whosendingright2(0:nslaves-1),izsendingright2(0:nslaves-1)
       integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+
+      dxsqi = 1./dx**2
+      dysqi = 1./dy**2
+      dzsqi = 1./dz**2
 
 #ifdef MPIPARALLEL
       lparityall = 0
@@ -549,12 +454,12 @@ c     message added by petermc, 1 Oct 2002
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
 
+c     --- Check if this is the finest level. If so, then don't do any further
+c     --- coarsening. This is the same check that is done in getmglevels.
 c     --- If grid is not at its coarsest level in any of the axis or and
 c     --- all dimensions are even, continue the coarsening.
-c     if (mod(nx,4) == 0 .and. mod(ny,4) == 0 .and. mod(nzfull,4) == 0) then
-c     --- Check if this is the finest level. If so, then don't do any further
-c     --- coarsening.
-      if (mglevel < mglevels-1) then
+      if (mod(nx,4) == 0 .and. mod(ny,4) == 0 .and. mod(nzfull,4) == 0 .and.
+     &    mglevel < mgmaxlevels) then
 
 c       --- Get the residual on the current grid.
         call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
@@ -571,10 +476,15 @@ c       --- Get the residual on the current grid.
 #endif
 
 c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
-c       --- all axis.
+c       --- all axis.  This is the same check that is done in getmglevels.
 c       --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
-c       if (0.5625*dxsqi > dzsqi) then
-        if (mglevelspart(mglevel+1)) then
+        partialcoarsening = (dz > 4./3.*dx)
+#ifdef MPIPARALLEL
+c       --- This must be a global operation since, due to roundoff, each
+c       --- processor can get a different value if dz == 4./3.*dx.
+        call parallellor(partialcoarsening)
+#endif
+        if (partialcoarsening) then
 
 c         --- Alloate new work space
           allocate(phi2(0:nx/2,0:ny/2,-1:nz+1),rho2(0:nx/2,0:ny/2,0:nz))
@@ -589,9 +499,10 @@ c         --- the restriction.
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nz,nzfull,
-     &                dxsqi*0.25,dysqi*0.25,dzsqi,phi2,rho2(0,0,0),
+     &                dx*2,dy*2,dz,phi2,rho2(0,0,0),
      &                rstar,linbend,l2symtry,l4symtry,bendx,
-     &                boundxy,globalb0,globalbnz,mgform,downpasses,uppasses,
+     &                boundxy,globalb0,globalbnz,mgform,
+     &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslave,nzfsslave)
 
@@ -657,9 +568,10 @@ c         --- routine.
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
-     &                dxsqi*0.25,dysqi*0.25,dzsqi*0.25,phi2,rho2(0,0,0),
+     &                dx*2,dy*2,dz*2,phi2,rho2(0,0,0),
      &                rstar,linbend,l2symtry,l4symtry,bendx,
-     &                boundxy,globalb0,globalbnz,mgform,downpasses,uppasses,
+     &                boundxy,globalb0,globalbnz,mgform,
+     &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslave2,nzfsslave2)
 
@@ -2146,10 +2058,100 @@ c     --- Longitudinal boundaries
 c=============================================================================
 c=============================================================================
 c=============================================================================
+      subroutine getmglevels(nx,ny,nz,nzfull,dx,dy,dz,conductors)
+      use Parallel
+      use ConductorTypemodule
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: dx,dy,dz
+      type(ConductorType):: conductors
+
+c     --- Only do this calculation if it is needed. This
+c     --- is for parallel version. There, this is a global operation and
+c     --- if it is not needed, it would be an unneccesary synchronization
+c     --- point.  If any of the levels is greater than one, then this
+c     --- operation has already been done for this set of conductors, so
+c     --- skip it.
+      if (maxval(conductors%levellx) > 1 .or.
+     &    maxval(conductors%levelly) > 1 .or.
+     &    maxval(conductors%levellz) > 1) return
+
+      call getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,0,1,1,1,
+     &                      conductors,
+     &                      my_index,nslaves,izfsslave,nzfsslave)
+
+      return
+      end
+c=============================================================================
+      RECURSIVE subroutine getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,
+     &                                      mglevel,lx,ly,lz,
+     &                                      conductors,
+     &                                     my_index,nslaves,izfsslave,nzfsslave)
+      use ConductorTypemodule
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: dx,dy,dz
+      integer(ISZ):: mglevel,lx,ly,lz
+      type(ConductorType):: conductors
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves),nzfsslave(0:nslaves)
+
+c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
+
+      integer(ISZ):: izfsslave2(0:nslaves),nzfsslave2(0:nslaves)
+      integer(ISZ):: nznew
+      logical(ISZ):: partialcoarsening
+
+      conductors%leveliz(mglevel) = izfsslave(my_index)
+      conductors%levellx(mglevel) = lx
+      conductors%levelly(mglevel) = ly
+      conductors%levellz(mglevel) = lz
+      conductors%levels = mglevel + 1
+
+      if (mod(nx,4) /= 0 .or.
+     &    mod(ny,4) /= 0 .or.
+     &    mod(nzfull,4) /= 0 .or.
+     &    mglevel == 100) return
+
+c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+c     --- all axis.
+      partialcoarsening = (dz > 4./3.*dx)
+
+#ifdef MPIPARALLEL
+c     --- This must be a global operation since, due to roundoff, each
+c     --- processor can get a different value if dz == 4./3.*dx.
+      call parallellor(partialcoarsening)
+#endif
+
+      if (partialcoarsening) then
+        call getmglevelsrecur(nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
+     &                        mglevel+1,lx*2,ly*2,lz,conductors,
+     &                        my_index,nslaves,izfsslave,nzfsslave)
+      else
+
+#ifdef MPIPARALLEL
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                  nzfull)
+c       --- Set new value of nz
+        nznew = nzfsslave2(my_index)
+#else
+        izfsslave2 = 0
+        nznew = nz/2
+#endif
+
+        call getmglevelsrecur(nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
+     &                        mglevel+1,lx*2,ly*2,lz*2,conductors,
+     &                        my_index,nslaves,izfsslave2,nzfsslave2)
+
+      endif
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
       subroutine setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                        conductors)
-      use MGLevels3d
       use ConductorTypemodule
       use Parallel
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
@@ -2183,30 +2185,25 @@ c     --- above. But, they can be obtained from local info
       globalbnz = boundnz
 
 c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz)
+      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors)
 
-      do il=0,mglevels-1
+      do il=0,conductors%levels-1
 
 c       --- Set the grid parameters for this level
-        dx1 = dx*mglevelslx(il)
-        dy1 = dy*mglevelsly(il)
-        dz1 = dz*mglevelslz(il)
-        nx1 = mglevelsnx(il)
-        ny1 = mglevelsny(il)
-        nz1 = mglevelsnz(il)
-        nzfull1 = mglevelsnzfull(il)
-        zmmin1 = zmminglobal + dz1*mglevelsiz(il)
+        dx1 = dx*conductors%levellx(il)
+        dy1 = dy*conductors%levelly(il)
+        dz1 = dz*conductors%levellz(il)
+        nx1 = nx/conductors%levellx(il)
+        ny1 = ny/conductors%levelly(il)
+        nz1 = nz/conductors%levellz(il)
+        nzfull1 = nzfull/conductors%levellx(il)
+        zmmin1 = zmminglobal + dz1*conductors%leveliz(il)
         localb0 = globalb0
         localbnz = globalbnz
 #ifdef MPIPARALLEL
-        if (mglevelsiz(il) > 0) localb0 = -1
-        if (mglevelsiz(il)+nz1 < nzfull1) localbnz = -1
+        if (conductors%leveliz(il) > 0) localb0 = -1
+        if (conductors%leveliz(il)+nz1 < nzfull1) localbnz = -1
 #endif
-
-        conductors%leveliz(il) = mglevelsiz(il)
-        conductors%levellx(il) = mglevelslx(il)
-        conductors%levelly(il) = mglevelsly(il)
-        conductors%levellz(il) = mglevelslz(il)
 
 c       --- Get the conductors for this level
         ic1 = conductors%interior%n + 1
@@ -2236,7 +2233,6 @@ c=============================================================================
      &                        zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                        condid,conductors)
-      use MGLevels3d
       use ConductorTypemodule
       use Parallel
       character(*):: rofzfunc
@@ -2272,26 +2268,21 @@ c     --- above. But, they can be obtained from local info
 #endif
 
 c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz)
+      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors)
 
-      do il=0,mglevels-1
+      do il=0,conductors%levels-1
 
 c       --- Set the grid parameters for this level
-        dx1 = dx*mglevelslx(il)
-        dy1 = dy*mglevelsly(il)
-        dz1 = dz*mglevelslz(il)
-        nx1 = mglevelsnx(il)
-        ny1 = mglevelsny(il)
-        nz1 = mglevelsnz(il)
-        zmmin1 = zmminglobal + dz1*mglevelsiz(il)
+        dx1 = dx*conductors%levellx(il)
+        dy1 = dy*conductors%levelly(il)
+        dz1 = dz*conductors%levellz(il)
+        nx1 = nx/conductors%levellx(il)
+        ny1 = ny/conductors%levelly(il)
+        nz1 = nz/conductors%levellz(il)
+        zmmin1 = zmminglobal + dz1*conductors%leveliz(il)
         zmmax1 = zmmin1 + dz1*nz1
-        ix_axis1 = ix_axis/mglevelslx(il)
-        iy_axis1 = iy_axis/mglevelsly(il)
-
-        conductors%leveliz(il) = mglevelsiz(il)
-        conductors%levellx(il) = mglevelslx(il)
-        conductors%levelly(il) = mglevelsly(il)
-        conductors%levellz(il) = mglevelslz(il)
+        ix_axis1 = ix_axis/conductors%levellx(il)
+        iy_axis1 = iy_axis/conductors%levelly(il)
 
 c       --- Get the conductors for this level
         ic1 = conductors%interior%n + 1
@@ -2318,7 +2309,6 @@ c=============================================================================
      &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                       condid,conductors)
-      use MGLevels3d
       use ConductorTypemodule
       use Parallel
       character(*):: rofzfunc
@@ -2354,26 +2344,21 @@ c     --- above. But, they can be obtained from local info
 #endif
 
 c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz)
+      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors)
 
-      do il=0,mglevels-1
+      do il=0,conductors%levels-1
 
 c       --- Set the grid parameters for this level
-        dx1 = dx*mglevelslx(il)
-        dy1 = dy*mglevelsly(il)
-        dz1 = dz*mglevelslz(il)
-        nx1 = mglevelsnx(il)
-        ny1 = mglevelsny(il)
-        nz1 = mglevelsnz(il)
-        zmmin1 = zmminglobal + dz1*mglevelsiz(il)
+        dx1 = dx*conductors%levellx(il)
+        dy1 = dy*conductors%levelly(il)
+        dz1 = dz*conductors%levellz(il)
+        nx1 = nx/conductors%levellx(il)
+        ny1 = ny/conductors%levelly(il)
+        nz1 = nz/conductors%levellz(il)
+        zmmin1 = zmminglobal + dz1*conductors%leveliz(il)
         zmmax1 = zmmin1 + dz1*nz1
-        ix_axis1 = ix_axis/mglevelslx(il)
-        iy_axis1 = iy_axis/mglevelsly(il)
-
-        conductors%leveliz(il) = mglevelsiz(il)
-        conductors%levellx(il) = mglevelslx(il)
-        conductors%levelly(il) = mglevelsly(il)
-        conductors%levellz(il) = mglevelslz(il)
+        ix_axis1 = ix_axis/conductors%levellx(il)
+        iy_axis1 = iy_axis/conductors%levelly(il)
 
 c       --- Get the conductors for this level
         ic1 = conductors%interior%n + 1
@@ -2400,7 +2385,6 @@ c=============================================================================
      &                          zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                          ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                          condid,conductors)
-      use MGLevels3d
       use ConductorTypemodule
       use Parallel
       character(*):: rminofz,rmaxofz
@@ -2436,26 +2420,21 @@ c     --- above. But, they can be obtained from local info
 #endif
 
 c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz)
+      call getmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz,conductors)
 
-      do il=0,mglevels-1
+      do il=0,conductors%levels-1
 
 c       --- Set the grid parameters for this level
-        dx1 = dx*mglevelslx(il)
-        dy1 = dy*mglevelsly(il)
-        dz1 = dz*mglevelslz(il)
-        nx1 = mglevelsnx(il)
-        ny1 = mglevelsny(il)
-        nz1 = mglevelsnz(il)
-        zmmin1 = zmminglobal + dz1*mglevelsiz(il)
+        dx1 = dx*conductors%levellx(il)
+        dy1 = dy*conductors%levelly(il)
+        dz1 = dz*conductors%levellz(il)
+        nx1 = nx/conductors%levellx(il)
+        ny1 = ny/conductors%levelly(il)
+        nz1 = nz/conductors%levellz(il)
+        zmmin1 = zmminglobal + dz1*conductors%leveliz(il)
         zmmax1 = zmmin1 + dz1*nz1
-        ix_axis1 = ix_axis/mglevelslx(il)
-        iy_axis1 = iy_axis/mglevelsly(il)
-
-        conductors%leveliz(il) = mglevelsiz(il)
-        conductors%levellx(il) = mglevelslx(il)
-        conductors%levelly(il) = mglevelsly(il)
-        conductors%levellz(il) = mglevelslz(il)
+        ix_axis1 = ix_axis/conductors%levellx(il)
+        iy_axis1 = iy_axis/conductors%levelly(il)
 
 c       --- Get the conductors for this level
         ic1 = conductors%interior%n + 1
@@ -2483,7 +2462,6 @@ c=============================================================================
 c=============================================================================
       RECURSIVE subroutine checkconductors(nx,ny,nz,nzfull,dx,dy,dz,
      &                                     l2symtry,l4symtry,conductors)
-      use MGLevels3d
       use Parallel
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
@@ -2500,17 +2478,17 @@ c various mesh resolutions needed by the MG solver.
       real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: dx1,dy1,dz1
-      integer(ISZ):: nx1,ny1,nz1
+      integer(ISZ):: nx1,ny1,nz1,levels
       integer(ISZ):: ix_axis1,iy_axis1
 
 c     --- Call the work routine for each level
-      do il=0,mglevels-1
-        dx1 = dx*mglevelslx(il)
-        dy1 = dy*mglevelsly(il)
-        dz1 = dz*mglevelslz(il)
-        nx1 = mglevelsnx(il)
-        ny1 = mglevelsny(il)
-        nz1 = mglevelsnz(il)
+      do il=0,conductors%levels-1
+        dx1 = dx*conductors%levellx(il)
+        dy1 = dy*conductors%levelly(il)
+        dz1 = dz*conductors%levellz(il)
+        nx1 = nx/conductors%levellx(il)
+        ny1 = ny/conductors%levelly(il)
+        nz1 = nz/conductors%levellz(il)
         call checkconductors_work(conductors%interior,
      &                            conductors%evensubgrid,conductors%oddsubgrid,
      &                            nx1,ny1,nz1,dx1,dy1,dz1,l2symtry,l4symtry,il)
@@ -2519,6 +2497,7 @@ c     --- Call the work routine for each level
       conductors%interior%istart = 1
       conductors%evensubgrid%istart = 1
       conductors%oddsubgrid%istart = 1
+      levels = conductors%levels
 
 c     --- Sort the conductor data by level number
 c     --- First, sort conductor points
@@ -2526,8 +2505,8 @@ c     --- First, sort conductor points
         allocate(isort(conductors%interior%n))
         nn = conductors%interior%n
         call isortconductor(nn,conductors%interior%ilevel,isort,
-     &                      conductors%interior%istart,mglevels)
-        conductors%interior%n = conductors%interior%istart(mglevels) - 1
+     &                      conductors%interior%istart,levels)
+        conductors%interior%n = conductors%interior%istart(levels) - 1
         na = conductors%interior%n
         call iswapconductor(na,isort,nn,3,conductors%interior%indx)
         call iswapconductor(na,isort,nn,1,conductors%interior%numb)
@@ -2541,8 +2520,8 @@ c     --- Sort even subgrid points
         allocate(isort(conductors%evensubgrid%n))
         nn = conductors%evensubgrid%n
         call isortconductor(nn,conductors%evensubgrid%ilevel,isort,
-     &                      conductors%evensubgrid%istart,mglevels)
-        conductors%evensubgrid%n = conductors%evensubgrid%istart(mglevels) - 1
+     &                      conductors%evensubgrid%istart,levels)
+        conductors%evensubgrid%n = conductors%evensubgrid%istart(levels) - 1
         na = conductors%evensubgrid%n
         call iswapconductor(na,isort,nn,3,conductors%evensubgrid%indx)
         call rswapconductor(na,isort,nn,6,conductors%evensubgrid%dels)
@@ -2557,8 +2536,8 @@ c     --- Sort odd subgrid points
         allocate(isort(conductors%oddsubgrid%n))
         nn = conductors%oddsubgrid%n
         call isortconductor(nn,conductors%oddsubgrid%ilevel,isort,
-     &                      conductors%oddsubgrid%istart,mglevels)
-        conductors%oddsubgrid%n = conductors%oddsubgrid%istart(mglevels) - 1
+     &                      conductors%oddsubgrid%istart,levels)
+        conductors%oddsubgrid%n = conductors%oddsubgrid%istart(levels) - 1
         na = conductors%oddsubgrid%n
         call iswapconductor(na,isort,nn,3,conductors%oddsubgrid%indx)
         call rswapconductor(na,isort,nn,6,conductors%oddsubgrid%dels)
@@ -2796,14 +2775,4 @@ c       --- than the other point. If so, reset data for the other point.
       end
 c=============================================================================
 c=============================================================================
-c=============================================================================
-      subroutine subgrid_sor_to_mg(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: dx,dy,dz
-      logical(ISZ):: l2symtry,l4symtry
-
-c This routine now is not needed.
-
-      return
-      end
 c=============================================================================
