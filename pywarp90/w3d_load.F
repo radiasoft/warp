@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.12 $, $Date: 2004/12/21 12:45:31 $
+c@(#) File w3d_load.F, version $Revision: 1.13 $, $Date: 2004/12/22 18:38:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -246,7 +246,7 @@ c
 c=============================================================================
       real(kind=8) function te_constr(delta)
 
-      use w3dloadTE  
+      use W3DloadTE  
       real(kind=8):: delta
 
 c te_constr returns a scaled constraint equation assoicated with 
@@ -1330,7 +1330,7 @@ c
 c=============================================================================
       real(kind=8) function te_constr_test(sc_param,delta)
 
-      use w3dloadTE  
+      use W3DloadTE  
       real(kind=8):: sc_param, delta
 
 c Test interface to te_constr to verify that it is ok
@@ -1352,7 +1352,7 @@ c     of delta occurs when te_constr = 0.
 c=============================================================================
       real(kind=8) function te_delta_root_test(sc_param,delta_1,delta_2,tol)
 
-      use w3dloadTE  
+      use W3DloadTE  
       real(kind=8):: sc_param, delta_1, delta_2, tol 
       real(kind=8):: zbrent
       external te_constr
