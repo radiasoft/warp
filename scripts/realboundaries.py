@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.17 2002/05/15 18:18:04 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.18 2002/05/15 18:41:48 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -669,191 +669,130 @@ Constructor arguments:
       # --- The exception handling is done to allow for the two different
       # --- versions of the code, the f90 which allows element overlapping
       # --- and the f77 which does not.
-      try:
-        qid = top.cquadid[0,0]
-        qzs = top.cquadzs[0,0]
-        qze = top.cquadze[0,0]
-      except IndexError:
-        qid = top.cquadid[0]
-        qzs = top.cquadzs[0]
-        qze = top.cquadze[0]
-      if (abs(top.quadde[qid]) > 0. or
-          abs(top.quadvx[qid]) > 0. or abs(top.quadvy[qid]) > 0.):
-        if s.quadrods(qid,qzs,qze,top.quadap[qid],
-                      top.quadrr[qid],top.quadrl[qid],top.quadgl[qid],
-                      top.quadgp[qid],top.quadvx[qid],top.quadvy[qid],
-                      top.quadpa[qid],top.quadpw[qid],
-                      top.qoffx[qid],top.qoffy[qid],s.quadcm):
-          return
-      else:
-        if s.roundpipe(qid,qzs,qze,top.quadap,
-                       top.qoffx,top.qoffy,s.quadcm):
-          return
+      for io in xrange(top.quadol):
+        qid = top.cquadid[0,io]
+        qzs = top.cquadzs[0,io]
+        qze = top.cquadze[0,io]
+        if (abs(top.quadde[qid]) > 0. or
+            abs(top.quadvx[qid]) > 0. or abs(top.quadvy[qid]) > 0.):
+          if s.quadrods(qid,qzs,qze,top.quadap[qid],
+                        top.quadrr[qid],top.quadrl[qid],top.quadgl[qid],
+                        top.quadgp[qid],top.quadvx[qid],top.quadvy[qid],
+                        top.quadpa[qid],top.quadpw[qid],
+                        top.qoffx[qid],top.qoffy[qid],s.quadcm):
+            return
+        else:
+          if s.roundpipe(qid,qzs,qze,top.quadap,
+                         top.qoffx,top.qoffy,s.quadcm):
+            return
     #--------------------------------------------------------------------------
     if top.accls:
-      try:
-        aid = top.cacclid[0,0]
-        azs = top.cacclzs[0,0]
-        aze = top.cacclze[0,0]
-      except IndexError:
-        aid = top.cacclid[0]
-        azs = top.cacclzs[0]
-        aze = top.cacclze[0]
-      if s.roundpipe(aid,azs,aze,top.acclap,
-                     top.acclox,top.accloy,s.acclcm):
-        return
+      for io in xrange(top.acclol):
+        aid = top.cacclid[0,io]
+        azs = top.cacclzs[0,io]
+        aze = top.cacclze[0,io]
+        if s.roundpipe(aid,azs,aze,top.acclap,
+                       top.acclox,top.accloy,s.acclcm):
+          return
     #--------------------------------------------------------------------------
     if top.emlts:
-      try:
-        eid = top.cemltid[0,0]
-        ezs = top.cemltzs[0,0]
-        eze = top.cemltze[0,0]
-      except IndexError:
-        eid = top.cemltid[0]
-        ezs = top.cemltzs[0]
-        eze = top.cemltze[0]
-      if s.quadrods(eid,ezs,eze,top.emltap[eid],
-                    top.emltrr[eid],top.emltrl[eid],top.emltgl[eid],
-                    top.emltgp[eid],0.,0.,top.emltpa[eid],top.emltpw[eid],
-                    top.emltox[eid],top.emltoy[eid],s.emltcm):
-        return
+      for io in xrange(top.nemltol):
+        eid = top.cemltid[0,io]
+        ezs = top.cemltzs[0,io]
+        eze = top.cemltze[0,io]
+        if s.quadrods(eid,ezs,eze,top.emltap[eid],
+                      top.emltrr[eid],top.emltrl[eid],top.emltgl[eid],
+                      top.emltgp[eid],0.,0.,top.emltpa[eid],top.emltpw[eid],
+                      top.emltox[eid],top.emltoy[eid],s.emltcm):
+          return
     #--------------------------------------------------------------------------
     if top.mmlts:
-      try:
-        mid = top.cmmltid[0,0]
-        mzs = top.cmmltzs[0,0]
-        mze = top.cmmltze[0,0]
-      except IndexError:
-        mid = top.cmmltid[0]
-        mzs = top.cmmltzs[0]
-        mze = top.cmmltze[0]
-      if s.roundpipe(mid,mzs,mze,top.mmltap,
-                     top.mmltox,top.mmltoy,s.mmltcm):
-        return
-    #--------------------------------------------------------------------------
-    try:
-      if top.mmlt2s:
-        if s.roundpipe(top.cmmlt2id[0],top.cmmlt2zs[0],top.cmmlt2ze[0],
-                       top.mmlt2ap,top.mmlt2ox,top.mmlt2oy,s.mmlt2cm):
+      for io in xrange(top.nmmltol):
+        mid = top.cmmltid[0,io]
+        mzs = top.cmmltzs[0,io]
+        mze = top.cmmltze[0,io]
+        if s.roundpipe(mid,mzs,mze,top.mmltap,
+                       top.mmltox,top.mmltoy,s.mmltcm):
           return
-    except:
-      pass
     #--------------------------------------------------------------------------
     if top.pgrds:
-      try:
-        pid = top.cpgrdid[0,0]
-        pzs = top.cpgrdzs[0,0]
-        pze = top.cpgrdze[0,0]
-      except IndexError:
-        pid = top.cpgrdid[0]
-        pzs = top.cpgrdzs[0]
-        pze = top.cpgrdze[0]
-      if s.quadrods(pid,pzs,pze,top.pgrdap[pid],
-                    top.pgrdrr[pid],top.pgrdrl[pid],top.pgrdgl[pid],
-                    top.pgrdgp[pid],0.,0.,top.pgrdpa[pid],top.pgrdpw[pid],
-                    top.pgrdox[pid],top.pgrdoy[pid],s.pgrdcm):
-        return
+      for io in xrange(top.pgrdol):
+        pid = top.cpgrdid[0,io]
+        pzs = top.cpgrdzs[0,io]
+        pze = top.cpgrdze[0,io]
+        if s.quadrods(pid,pzs,pze,top.pgrdap[pid],
+                      top.pgrdrr[pid],top.pgrdrl[pid],top.pgrdgl[pid],
+                      top.pgrdgp[pid],0.,0.,top.pgrdpa[pid],top.pgrdpw[pid],
+                      top.pgrdox[pid],top.pgrdoy[pid],s.pgrdcm):
+          return
     #--------------------------------------------------------------------------
     if top.bgrds:
-      try:
-        bid = top.cbgrdid[0,0]
-        bzs = top.cbgrdzs[0,0]
-        bze = top.cbgrdze[0,0]
-      except IndexError:
-        bid = top.cbgrdid[0]
-        bzs = top.cbgrdzs[0]
-        bze = top.cbgrdze[0]
-      if s.roundpipe(bid,bzs,bze,top.bgrdap,
-                     top.bgrdox,top.bgrdoy,s.bgrdcm):
-        return
-    #--------------------------------------------------------------------------
-    try:
-      if top.bgrd2s:
-        if s.roundpipe(top.cbgrd2id[0],top.cbgrd2zs[0],top.cbgrd2ze[0],
-                       top.bgrd2ap,top.bgrd2ox,top.bgrd2oy,s.bgrd2cm):
+      for io in xrange(top.bgrdol):
+        bid = top.cbgrdid[0,io]
+        bzs = top.cbgrdzs[0,io]
+        bze = top.cbgrdze[0,io]
+        if s.roundpipe(bid,bzs,bze,top.bgrdap,
+                       top.bgrdox,top.bgrdoy,s.bgrdcm):
           return
-    except:
-      pass
     #--------------------------------------------------------------------------
     if top.heles:
-      try:
-        hid = top.cheleid[0,0]
-        hzs = top.chelezs[0,0]
-        hze = top.cheleze[0,0]
-      except IndexError:
-        hid = top.cheleid[0]
-        hzs = top.chelezs[0]
-        hze = top.cheleze[0]
-      if max(abs(top.heleae[:,hid])) > 0.:
-        if s.quadrods(hid,hzs,hze,top.heleap[hid],
-                      top.helerr[hid],top.helerl[hid],top.helegl[hid],
-                      top.helegp[hid],0.,0.,top.helepa[hid],top.helepw[hid],
-                      top.heleox[hid],top.heleoy[hid],s.helecm):
-          return
-      else:
-        if s.roundpipe(hid,top.chelezs[0],top.cheleze[0],top.heleap,
-                       top.heleox,top.heleoy,s.helecm):
-          return
+      for io in xrange(top.heleol):
+        hid = top.cheleid[0,io]
+        hzs = top.chelezs[0,io]
+        hze = top.cheleze[0,io]
+        if max(abs(top.heleae[:,hid])) > 0.:
+          if s.quadrods(hid,hzs,hze,top.heleap[hid],
+                        top.helerr[hid],top.helerl[hid],top.helegl[hid],
+                        top.helegp[hid],0.,0.,top.helepa[hid],top.helepw[hid],
+                        top.heleox[hid],top.heleoy[hid],s.helecm):
+            return
+        else:
+          if s.roundpipe(hid,top.chelezs[0],top.cheleze[0],top.heleap,
+                         top.heleox,top.heleoy,s.helecm):
+            return
     #--------------------------------------------------------------------------
     if top.bends:
-      try:
-        bid = top.cbendid[0,0]
-        bzs = top.cbendzs[0,0]
-        bze = top.cbendze[0,0]
-      except IndexError:
-        bid = top.cbendid[0]
-        bzs = top.cbendzs[0]
-        bze = top.cbendze[0]
+      bid = top.cbendid[0]
+      bzs = top.cbendzs[0]
+      bze = top.cbendze[0]
       if s.roundpipe(bid,bzs,bze,top.bendap,
                      top.bendox,top.bendoy,s.bendcm):
         return
     #--------------------------------------------------------------------------
     if top.dipos:
-      try:
-        did = top.cdipoid[0,0]
-        dzs = top.cdipozs[0,0]
-        dze = top.cdipoze[0,0]
-      except IndexError:
-        did = top.cdipoid[0]
-        dzs = top.cdipozs[0]
-        dze = top.cdipoze[0]
-      if s.roundpipe(did,dzs,dze,top.dipoap,
-                     top.dipoox,top.dipooy,s.dipocm):
-        return
+      for io in xrange(top.dipool):
+        did = top.cdipoid[0,io]
+        dzs = top.cdipozs[0,io]
+        dze = top.cdipoze[0,io]
+        if s.roundpipe(did,dzs,dze,top.dipoap,
+                       top.dipoox,top.dipooy,s.dipocm):
+          return
     #--------------------------------------------------------------------------
     if top.sexts:
-      try:
-        sid = top.csextid[0,0]
-        szs = top.csextzs[0,0]
-        sze = top.csextze[0,0]
-      except IndexError:
-        sid = top.csextid[0]
-        szs = top.csextzs[0]
-        sze = top.csextze[0]
-      if s.roundpipe(sid,szs,sze,top.sextap,
-                     top.sextox,top.sextoy,s.sextcm):
-        return
+      for io in xrange(top.sextol):
+        sid = top.csextid[0,io]
+        szs = top.csextzs[0,io]
+        sze = top.csextze[0,io]
+        if s.roundpipe(sid,szs,sze,top.sextap,
+                       top.sextox,top.sextoy,s.sextcm):
+          return
     #--------------------------------------------------------------------------
     # --- Drifts are checked for last in case the other elements might extend
     # --- into the neighboring drifts.
     if top.drfts:
-      try:
-        did = top.cdrftid[0,0]
-        dzs = top.cdrftzs[0,0]
-        dze = top.cdrftze[0,0]
-      except IndexError:
-        did = top.cdrftid[0]
-        dzs = top.cdrftzs[0]
-        dze = top.cdrftze[0]
-      if s.roundpipe(did,dzs,dze,top.drftap,
-                     top.drftox,top.drftoy,s.drftcm):
-        return
+      for io in xrange(top.drftol):
+        did = top.cdrftid[0,io]
+        dzs = top.cdrftzs[0,io]
+        dze = top.cdrftze[0,io]
+        if s.roundpipe(did,dzs,dze,top.drftap,
+                       top.drftox,top.drftoy,s.drftcm):
+          return
     # --- If this part of the code is reached, then there are no applicable
     # --- boundaries, so turn the capacity matrix field solver off.
     top.fstype = 0
   #----------------------------------------------------------------------------
   def plotcond(s,plotphi=1,filled=0,plotedge=1,plotsym=1,ccolor='red',
-               ecolor='green'):
+               ecolor='green',phicolor='fg'):
     """
 Makes a plot of the conductor.
   - plotphi=1 when true, plots contours of phi
@@ -864,7 +803,8 @@ Makes a plot of the conductor.
     """
     # --- Plot phi first (so filled contours are on bottom)
     if plotphi:
-      plotc(transpose(getphi(iz=0)),w3d.ymesh,w3d.xmesh,filled=filled)
+      plotc(transpose(getphi(iz=0)),w3d.ymesh,w3d.xmesh,filled=filled,
+            color=phicolor)
     if plotsym:
       # --- Plot negative y
       if w3d.l2symtry or w3d.l4symtry:
