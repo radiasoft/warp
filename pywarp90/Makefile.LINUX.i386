@@ -241,3 +241,5 @@ herpymodule.c her.p.f90:her.v
 	$(PYMAC) -a her.v top.v
 
 
+clean:
+	rm -f *.mod *.o *.p.f90 *module.c *.scalars *.$(SO) pybasis*
