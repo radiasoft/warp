@@ -1,6 +1,7 @@
 #Boa:FramePanel:ConsoleClass
 
 from wxPython.wx import *
+from warp import *
 
 [wxID_CONSOLECLASS, wxID_CONSOLECLASSCONSOLE, 
 ] = map(lambda _init_ctrls: wxNewId(), range(2))
@@ -13,7 +14,7 @@ class ConsoleClass(wxPanel):
     def _init_ctrls(self, prnt):
         # generated method, don't edit
         wxPanel.__init__(self, id=wxID_CONSOLECLASS, name='', parent=prnt,
-              pos=wxPoint(0, 0), size=wxSize(596, 315),
+              pos=wxPoint(355, 226), size=wxSize(604, 339),
               style=wxMAXIMIZE_BOX | wxTAB_TRAVERSAL)
         self._init_utils()
         self.SetClientSize(wxSize(596, 315))
@@ -23,6 +24,7 @@ class ConsoleClass(wxPanel):
               style=wxTE_MULTILINE, value='')
         self.Console.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL, false,''))
         EVT_CHAR(self.Console, self.OnconsoleChar)
+        EVT_RIGHT_DOWN(self.Console, self.OnConsoleRightDown)
 
     def __init__(self, parent, inter):
         self._init_ctrls(parent)
@@ -36,6 +38,7 @@ class ConsoleClass(wxPanel):
         self.inter.push("sys.path.append('')")
         self.inter.push('from warp import *')
         self.Console.WriteText('>>> ')
+        self.ins_point = self.Console.GetInsertionPoint()
 
     def send_command_line(self):
         self.NoEntry = 0
@@ -77,23 +80,32 @@ class ConsoleClass(wxPanel):
             else:
               self.Console.WriteText(self.LineBuffer)
         elif(ascii_code == 316): # arrow left
-            ins_point = self.Console.GetInsertionPoint()
-            self.Console.SetInsertionPoint(max(ins_point-1,self.CursorMin))
+            self.ins_point = self.Console.GetInsertionPoint()
+            self.Console.SetInsertionPoint(max(self.ins_point-1,self.CursorMin))
         elif(ascii_code == 318): # arrow right
-            ins_point = self.Console.GetInsertionPoint()
-            self.Console.SetInsertionPoint(min(ins_point+1,self.Console.GetLastPosition()))
+            self.ins_point = self.Console.GetInsertionPoint()
+            self.Console.SetInsertionPoint(min(self.ins_point+1,self.Console.GetLastPosition()))
         elif(ascii_code == 8): # backspace
-            ins_point = self.Console.GetInsertionPoint()
-            rmv_point = max(ins_point-1,self.CursorMin)
+            self.ins_point = self.Console.GetInsertionPoint()
+            rmv_point = max(self.ins_point-1,self.CursorMin)
             self.Console.Remove(rmv_point,rmv_point+1)
         elif(ascii_code == 127): # delete
-            ins_point = self.Console.GetInsertionPoint()
-            rmv_point = min(ins_point,self.Console.GetLastPosition())
+            self.ins_point = self.Console.GetInsertionPoint()
+            rmv_point = min(self.ins_point,self.Console.GetLastPosition())
             self.Console.Remove(rmv_point,rmv_point+1)
         elif(ascii_code == 13): # return
             self.Console.SetInsertionPoint(self.Console.GetLastPosition())
             self.send_command_line()
         elif(ascii_code>=32 and ascii_code<255): # character       
+            self.ins_point=max(self.ins_point,self.CursorMin)
+            self.Console.SetInsertionPoint(self.ins_point)
             self.Console.WriteText(chr(ascii_code))
+            self.ins_point+=1
         else:
             pass
+
+    def OnConsoleRightDown(self, event):
+        self.GetParent().GetParent().OutToMessageWindow()
+        print doc(self.Console.GetStringSelection(),printit=0)
+        self.GetParent().GetParent().OutToConsole()
+        event.Skip()
