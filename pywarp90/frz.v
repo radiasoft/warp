@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.8 $, $Date: 2002/03/14 19:19:51 $
+#@(#) File FRZ.V, version $Revision: 3.9 $, $Date: 2002/03/21 19:50:46 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.8 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.9 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -54,6 +54,7 @@ mgridrz_deform            logical /.false./ # flag for use of elliptic deformati
 mgridrz_nz                integer       # 
 mgridrz_xfact(0:mgridrz_nz) _real         # array for deformation factor in X
 mgridrz_yfact(0:mgridrz_nz) _real         # array for deformation factor in Y
+mgridrz_lmr               logical /.false./ # flag for mesh refinement 
 
 *********** FRZsubs:
 #  Callable subroutines in the FRZ package
@@ -86,8 +87,13 @@ save_bndstructure_rz(filename:string) subroutine
 read_bndstructure_rz(filename:string) subroutine
          # read internal conductor boundary coefficients for each multigrid
          # level
-#calcfact_deform(xp:real,yp:real,zp:real,np:integer,dz:real,zmin:real,
+init_rzgrids(ng:integer,nr:integer,nz:integer,dr:real,dz:real,
+             rmin:real,zmin:real) subroutine
+         # initializes grids for RZ multigrid solver. It must be called 
+         # before any definition of internal boundary. 
 calcfact_deform(dz:real,zmin:real,
                 xfact:real,yfact:real,nz:integer,ns:integer,is:integer,
                 ins:integer,nps:integer,ws:real) subroutine
          # computes factors for elliptical deformation in X and Y planes
+testrz() subroutine
+	# subroutine
