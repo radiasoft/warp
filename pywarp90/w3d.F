@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.113 $, $Date: 2003/06/10 22:43:47 $
+c@(#) File W3D.M, version $Revision: 3.114 $, $Date: 2003/06/11 21:23:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6704,7 +6704,7 @@ c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
           ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(nps(is)),-1,.true.)
+     &                       nps(is),ijp(ins(is)),-1,.true.)
         endif
 
         ww = sq(is)*sw(is)*dxi*dyi*dzi
@@ -6772,7 +6772,7 @@ c           --- Deposit the particle's charge onto the emitting surface.
 c       --- Transform the particles back into the lab frame
         if (nps(is) > 0) then
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(nps(is)),1,.true.)
+     &                       nps(is),ijp(ins(is)),1,.true.)
         endif
 
       enddo
@@ -6849,7 +6849,7 @@ c       --- All that this should do is add zinject to zp.
         if (nps(is) > 0) then
           ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(nps(is)),-1,.true.)
+     &                       nps(is),ijp(ins(is)),-1,.true.)
         endif
 
         ww = 2.*sq(is)*sw(is)*dzi
@@ -6877,7 +6877,7 @@ c           --- Deposit the particle's charge onto the emitting surface.
 c       --- Transform the particles back into the lab frame
         if (nps(is) > 0) then
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(nps(is)),1,.true.)
+     &                       nps(is),ijp(ins(is)),1,.true.)
         endif
 
       enddo
@@ -6959,7 +6959,7 @@ c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
           ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(nps(is)),-1,.true.)
+     &                       nps(is),ijp(ins(is)),-1,.true.)
         endif
 
         ww = sq(is)*sw(is)*dxi*dyi
@@ -7042,7 +7042,7 @@ c           --- Deposit the particle's charge onto the emitting region.
 c       --- Transform the particles back into the lab frame
         if (nps(is) > 0) then
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(nps(is)),1,.true.)
+     &                       nps(is),ijp(ins(is)),1,.true.)
         endif
 
       enddo
@@ -7184,7 +7184,7 @@ c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
           ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(nps(is)),-1,.true.)
+     &                       nps(is),ijp(ins(is)),-1,.true.)
         endif
         wws = sq(is)*sw(is)*dxi*dyi
         do ip=ins(is),ins(is)+nps(is)-1
@@ -7272,7 +7272,7 @@ c           --- Deposit the particle's charge onto the emitting region.
 c       --- Transform the particles back into the lab frame
         if (nps(is) > 0) then
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
-     &                       nps(is),ijp(nps(is)),1,.true.)
+     &                       nps(is),ijp(ins(is)),1,.true.)
         endif
 
       enddo
@@ -7784,6 +7784,7 @@ c           --- (i.e. zero) and the value on the secondary surface.
 
         endif
       enddo
+      call inj_transform(npart,xx,yy,zz,npart,ijp,1,.true.)
 
       call inj_transform(npart,tex,tey,tez,npart,ijp,-1,.true.)
       ex = ex + tex
