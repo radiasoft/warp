@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.61 2003/06/30 19:42:07 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.62 2003/08/11 18:14:50 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2098,24 +2098,35 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
 def setconductorvoltage(voltage,condid=0,discrete=false,setvinject=false):
   """
 Sets the voltage on a conductor, given an id.
- - voltage: voltage on conductor
+ - voltage: voltage on conductor. Can be one of the following...
+     - list of voltages at z grid cell locations
+     - function which takes three arguments, x, y, z positions relative to lab
+       frame and returns the voltage
+     - a scalar voltage value
  - condid=0: conductor id number
  - discrete=false: when true, z locations for plus/minus z subgrid
                    points are round up/down.
  - setvinject=false: when true, sets top.vinject
   """
 
+  # --- Set vinject first is requested.
+  if setvinject:
+    if type(voltage) in [ListType,TupleType,ArrayType]:
+      # --- Set it to the voltage on the left edge
+      top.vinject = voltage[0]
+    elif type(voltage) == FunctionType:
+      # --- Set it to the voltage at the source center
+      top.vinject = voltage(top.xinject,top.yinject,top.zinject)
+    else:
+      top.vinject = voltage
+
   if w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom:
     if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
     # --- (in the global beam frame).
       setconductorvoltagerz(voltage,w3d.nzfull,top.zmslmin[0],w3d.dz,discrete)
-    # --- If setvinject is true, set it to the voltage on the left edge
-      if setvinject: top.vinject = voltage[0]
     else:
       setconductorvoltagerz_id(condid,voltage)
-    # --- If setvinject is true, set it to the voltage
-      if setvinject: top.vinject = voltage
     return
 
   if f3d.ncond == 0: return
@@ -2123,9 +2134,6 @@ Sets the voltage on a conductor, given an id.
   if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
     # --- (in the global beam frame).
-
-    # --- If setvinject is true, set it to the voltage on the left edge
-    if setvinject: top.vinject = voltage[0]
 
     # --- Get z location of the conductor points (taking into account
     # --- the differing grid cell sizes for coarse levels). Use that to
@@ -2187,9 +2195,6 @@ Sets the voltage on a conductor, given an id.
     # --- Assumes that voltage is a function which takes 3 arguments, the
     # --- coordinates x, y, z, in meters relative to the beam frame.
 
-    # --- If setvinject is true, set it to the voltage at the source center
-    if setvinject: top.vinject = voltage(top.xinject,top.yinject,top.zinject)
-
     zmmin = w3d.zmminglobal
     icx = f3d.ixcond*take(nint(f3d.mglevelslx),f3d.icondlevel)
     icy = f3d.iycond*take(nint(f3d.mglevelsly),f3d.icondlevel)
@@ -2243,9 +2248,6 @@ Sets the voltage on a conductor, given an id.
     ocvpz = voltage(ocx  ,ocy  ,oczpz)
 
   else:
-    # --- If setvinject is true, set it to the voltage
-    if setvinject: top.vinject = voltage
-
     cv = voltage
     ecvmx = ecvpx = ecvmy = ecvpy = ecvmz = ecvpz = voltage
     ocvmx = ocvpx = ocvmy = ocvpy = ocvmz = ocvpz = voltage
