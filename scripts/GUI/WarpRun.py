@@ -1,5 +1,6 @@
 #Boa:Frame:WarpRun
 
+from wx import py
 from wxPython.wx import *
 from wxPython.stc import *
 from wxPython.lib.anchors import LayoutAnchors
@@ -29,6 +30,7 @@ import pype
 
 # for debugging purpose, output is not redirected in GUI if true
 l_standard_out = 0
+l_PyShell = 1
 
 def create(parent):
     return WarpRun(parent)
@@ -405,18 +407,49 @@ class WarpRun(wxFrame):
         self.linenum = 0
         self.EdPos = 0
         self.startrun = 1
-        self.inter = code.InteractiveConsole(__main__.__dict__)
         # substitute default editor by pype
         self.notebook1.DeletePage(0)
         self.launch_pype()
         # start console
-        if 1:
+        if l_PyShell:
+	  def shortcuts(): 
+            print """
+* Key bindings:
+Home              Go to the beginning of the command or line.
+Shift+Home        Select to the beginning of the command or line.
+Shift+End         Select to the end of the line.
+End               Go to the end of the line.
+Ctrl+C            Copy selected text, removing prompts.
+Ctrl+Shift+C      Copy selected text, retaining prompts.
+Ctrl+X            Cut selected text.
+Ctrl+V            Paste from clipboard.
+Ctrl+Shift+V      Paste and run multiple commands from clipboard.
+Ctrl+Up Arrow     Retrieve Previous History item.
+Alt+P             Retrieve Previous History item.
+Ctrl+Down Arrow   Retrieve Next History item.
+Alt+N             Retrieve Next History item.
+Shift+Up Arrow    Insert Previous History item.
+Shift+Down Arrow  Insert Next History item.
+F8                Command-completion of History item.
+                  (Type a few characters of a previous command and press F8.)
+Ctrl+Enter        Insert new line into multiline command.
+Ctrl+]            Increase font size.
+Ctrl+[            Decrease font size.
+Ctrl+=            Default font size.
+"""
+
+	  __main__.shortcuts = shortcuts
+	  self.shell = py.shell.Shell(self.splitterWindow1,-1,introText='For help on:\n - WARP      - type "warphelp()",\n - shortcuts - type "shorcuts()".\n\n')
+	  self.shell.SetSize(self.splitterWindow1.GetSize())
+	  self.splitterWindow1.ReplaceWindow(self.MessageWindow,self.shell)
+          self.MessageWindow.Destroy()
+	else:
+          self.inter = code.InteractiveConsole(__main__.__dict__)
           self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.splitterWindow1,inter=self.inter)
           self.splitterWindow1.ReplaceWindow(self.MessageWindow,self.ConsolePanel)
           self.MessageWindow=self.ConsolePanel.Console
-        else:
-          self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.notebook1, inter=self.inter, in_notebook=1)
-        self.Console = self.ConsolePanel.Console
+          self.Console = self.ConsolePanel.Console
+# old:         self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.notebook1, inter=self.inter, in_notebook=1)
         self.prefix = ''
         self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self.notebook1)
         self.panels = {}
@@ -432,7 +465,7 @@ class WarpRun(wxFrame):
             self.AddPalette(Palettes[i])
         self.gist_timer = wxPyTimer(self.HandleGistEvents)
         self.gist_timer.Start(100)
-            
+	
     def launch_pype(self):
         def GetKeyPress(evt):
             keycode = evt.GetKeyCode()
