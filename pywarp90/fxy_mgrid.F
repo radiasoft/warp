@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.1 $, $Date: 2001/12/04 22:59:16 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.2 $, $Date: 2002/06/20 19:39:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -302,7 +302,7 @@ c=============================================================================
       subroutine sorpassxy(levelxy,nx,ny,phi,rho,phi1d,rho1d,
      &                     rdx2,rdy2,l2symtry,l4symtry)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       use Multigrid3d
       use Constant
       integer(ISZ):: levelxy,nx,ny
@@ -520,7 +520,7 @@ c=============================================================================
 c=============================================================================
       subroutine cond_potmgxy(nx,ny,phi,levelxy,lresidual)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       integer(ISZ):: nx,ny,levelxy
       real(kind=8):: phi(0:nx,0:ny)
       logical(ISZ):: lresidual
@@ -830,7 +830,7 @@ c=============================================================================
       subroutine residualxy(nx,ny,dxsqi,dysqi,phi,rho,res,levelxy,
      &                      l2symtry,l4symtry)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny
       real(kind=8):: dxsqi,dysqi
@@ -938,7 +938,7 @@ c     --- that level.
 c=============================================================================
       subroutine conductor_data_levelxy(nx,ny,dx,dy)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny
       real(kind=8):: dx,dy
@@ -1066,7 +1066,7 @@ c     --- Now, clear out all of the points which were not flagged as usable.
 c=============================================================================
       subroutine subgrid_sor_to_mgxy(nx,ny,dx,dy,l2symtry,l4symtry)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       integer(ISZ):: nx,ny
       real(kind=8):: dx,dy
       logical(ISZ):: l2symtry,l4symtry
@@ -1088,9 +1088,8 @@ c     --- The factor of 3 is an over estimate since the number of points
 c     --- should typically only double.
       if (ncndmax < 3*necndbdy) then
         ncndmax = 3*necndbdy
-        call gchange("PSOR3d",0)
+        call gchange("Conductor3d",0)
       endif
-      call gchange("MultigridConductor3d",0)
 
 c     --- Do the conversion.
       call subgrid_sor_to_mgxy_work(nx,ny,dx,dy,l2symtry,l4symtry)
@@ -1103,7 +1102,7 @@ c     --- Now, get the refinement level for all of the points.
 c=============================================================================
       subroutine subgrid_sor_to_mgxy_work(nx,ny,dx,dy,l2symtry,l4symtry)
       use PSOR3d
-      use MultigridConductor3d
+      use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny
       real(kind=8):: dx,dy
@@ -1297,8 +1296,7 @@ c     --- Increase size of conductor arrays if needed. Increase in size
 c     --- is only an estimate.
       if (necndbdy == ncndmax .or. nocndbdy == ncndmax) then
         ncndmax = 1.5*max(necndbdy,nocndbdy) + 1
-        call gchange("PSOR3d",0)
-        call gchange("MultigridConductor3d",0)
+        call gchange("Conductor3d",0)
       endif
 
 c     --- Loop until at least one of the axis is at the coarsest level.
@@ -1374,8 +1372,7 @@ c               --- Increase size of conductor arrays if needed.
 c               --- Increase in size is only an estimate.
                 if (ic >= ncndmax) then
                   ncndmax = 1.1*max(ic,nocndbdy) + 1
-                  call gchange("PSOR3d",0)
-                  call gchange("MultigridConductor3d",0)
+                  call gchange("Conductor3d",0)
                 endif
 
               endif
