@@ -563,11 +563,11 @@ Sets phi on the boundaries, using the values from the parent grid
       # --- this mesh extends beyond the parent's.
       l = maximum(parent.fulllower*self.refinement,self.fulllower)
       u = minimum(parent.fullupper*self.refinement,self.fullupper)
-      if sometrue(l > u): return
+      if sometrue(l > u): continue
       pl = l/self.refinement
       pu = u/self.refinement
       sphi = self.getphi(l,u)
-      pphi = self.getphi(pl,pu)
+      pphi = parent.getphi(pl,pu)
       if l[0] == self.fulllower[0]: sphi[ 0,::r,::r] = pphi[ 0,:,:]
       if u[0] == self.fullupper[0]: sphi[-1,::r,::r] = pphi[-1,:,:]
       if l[1] == self.fulllower[1]: sphi[::r, 0,::r] = pphi[:, 0,:]
@@ -726,8 +726,10 @@ Fetches the E field. This should only be called at the root level grid.
       
   def getphi(self,lower,upper):
     # --- Note that this takes into account the guard cells in z.
-    ix1,iy1,iz1 = lower - self.fulllower + 1
-    ix2,iy2,iz2 = upper - self.fulllower
+    ix1,iy1,iz1 = lower - self.fulllower
+    ix2,iy2,iz2 = upper - self.fulllower + 1 
+    iz1 = iz1 + 1
+    iz2 = iz2 + 1
     return self.phi[ix1:ix2,iy1:iy2,iz1:iz2]
   def getrho(self,lower,upper,r=1):
     ix1,iy1,iz1 = lower - self.fulllower
