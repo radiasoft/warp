@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.33 $, $Date: 2001/11/06 22:17:30 $
+c@(#) File W3D.M, version $Revision: 3.34 $, $Date: 2001/12/04 23:52:42 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6806,6 +6806,9 @@ c     --- particle domain.
       fstime = fstime + (wtime() - timetemp)
       return
       end
+
+
+
 c=============================================================================
       subroutine vp3d (iwhich)
       use Subtimers
@@ -6943,6 +6946,10 @@ c         --- RZ full-multigrid solver
      &                      mgridrz_npre,
      &                      mgridrz_npost,
      &                      mgridrz_ncycles)
+c       case (11)
+      elseif (fstype == 11) then
+c         --- Chombo AMR  full-multigrid solver
+          call amrfieldsolve(iwhich)
 c     endselect
       endif
 

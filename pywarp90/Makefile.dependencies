@@ -17,6 +17,7 @@ WARPOBJECTS = env.o \
               f3d.o \
               fxy.o \
               util.o \
+              w3d_chombodummy.o \
               w3d.o \
               dtop.o \
               f3d_mgrid.o \
@@ -102,6 +103,8 @@ w3d.p.o:w3d.p.F90
 	$(F90FREE) $(POPT) -c w3d.p.F90
 w3d.o:w3d.F w3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c w3d.F
+w3d_chombodummy.o: w3d_chombodummy.F
+	$(F90FIXED) $(OPT) -c w3d_chombodummy.F
 dw3d.o:dw3d.F w3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c dw3d.F
 w3dslave.o:w3dslave.F w3d.p.o top.p.o

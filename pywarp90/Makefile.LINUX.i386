@@ -1,9 +1,9 @@
+# -*- Mode: Makefile;  -*-
 ARCH = LINUX
 MACHINE = LINUX
-HOME = /home/dave
 PYVERS = 2.1
-PYTHON = /home/dave/Python-$(PYVERS)
-PYWRAPPERHOME = $(HOME)/pywrapper
+PYTHON = /usr/local/
+PYWRAPPERHOME = ../pywrapper
 PYWRAPPERARGS =
 #PROF = -Mprof=lines
 OPT = -fast -Mcache_align $(PROF)
@@ -21,20 +21,23 @@ FORTLIB =
 LINKLIB = -ldl -lutil -lpthread
 DLLIB = -ldl
 XLIB = -L/usr/X11R6/lib
-PACTLIB = -L/usr/local/pact/lib -lpdb -lpml -lscore
-YORICKLIB = -L/usr/local/lib/yorick/1.4/lib -lgist
+#PACTLIB = -L/usr/local/pact/lib -lpdb -lpml -lscore
+#YORICKLIB = -L/usr/local/lib/yorick/1.4/lib -lgist
 TCLLIB = 
 LAPACKLIB = -llapack -lblas
 NUMPYINCLUDE = -I$(PYTHON)/include/python$(PYVERS)/Numeric
 OLD = OLD1
 
-WARPSCRIPTS = $(HOME)/scripts
+WARPSCRIPTS = ../scriptsnew
 OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB)
 
-warp: warpC.$(SO)
+warp: warpC.$(SO) $(WARPSCRIPTS)
 	cp warpC.$(SO) $(WARPSCRIPTS)
 
-static: build_static
+static: pywarp90
+
+$(WARPSCRIPTS):
+	mkdir -p $(WARPSCRIPTS)
 
 include Makefile.dependencies
 
@@ -43,8 +46,8 @@ warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
 	$(LD) -shared -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
 	$(RNGOBJ) $(OTHERLIBS)
 
-build_static: $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) config.o
+pywarp90: $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) config.o
 	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) \
         config.o $(RNGOBJ) $(PYTHON)/lib/python2.1/site-packages/*/*.so \
 	$(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) $(EXPORT)
-
+	cp pywarp90 $(WARPSCRIPTS)

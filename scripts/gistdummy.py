@@ -1,14 +1,14 @@
 # Copyright (c) 1996, 1997, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-gistdummy_version = "$Id: gistdummy.py,v 1.6 2001/10/23 17:08:37 dave Exp $"
+gistdummy_version = "$Id: gistdummy.py,v 1.7 2001/12/04 23:52:42 bvs Exp $"
 from Numeric import *
 import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from gistC import *
 #import gistC
-from help import help
-from shapetest import *
-from arrayfns import *
-from types import *
+#from help import help
+#from shapetest import *
+#from arrayfns import *
+#from types import *
 
 def hcp_file(*x,**xx):
   pass

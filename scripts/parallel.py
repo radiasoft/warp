@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.11 2001/08/16 21:21:14 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.12 2001/12/04 23:52:43 bvs Exp $"
 
 from Numeric import *
 # --- Try import mpi - if not found, then run in serial mode
@@ -45,7 +45,10 @@ def get_rank():
   return mpi.rank
 
 if me == 0:
-  from gist import *
+  try:
+    from gist import *
+  except ImportError:
+    from gistdummy import *
 else:
   from gistdummy import *
 
