@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.28 $, $Date: 2004/02/09 22:59:44 $
+c@(#) File ENV.M, version $Revision: 3.29 $, $Date: 2004/03/11 14:54:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -663,6 +663,28 @@ c LatticeInternal since the id's must be saved and they must be known for
 c each level of overlap. It is easier to use those existing arrays rather
 c than to create new local ones.
 
+c Dipole forces are not consistently implemented for all elements in the 
+c present version.  This would require some work to make consistent with 
+c the presence of any bends. 
+
+c Sign conventions:
+c    quadde positive => defocusing in x,   focusing in y 
+c    quaddb positive =>   focusing in x, defocusing in y 
+c 
+c In centroid force accumulations, note that offsets to each element 
+c may be different and thus the x and y coordinates with shifts must be 
+c accumulated in each element.  Also for the CENTROID:
+c   electric:
+c    xdedx =  quadde*x = d E_x/dx * x     d E_x/dx = - d E_y/dy 
+c    ydedy = -quadde*y = d E_y/dy * y 
+c   magnetic:
+c    xdbdx =  quaddb*x = d B_y/dx * x     d B_y/dx = d B_x/dy 
+c    ydbdy =  quaddb*y = d B_x/dy * y     
+c
+c   F_x = const*( xdedx - xdbdx*v_z )    const = q/(m*gamma*v_z^2)
+c   F_x = const*( ydedy + ydbdy*v_z ) 
+
+
       real(kind=8):: z1,z2,zl,fracl,zr,fracr
       real(kind=8):: fuzz
       real(kind=8):: frac,ez,bz,ke,de,db
@@ -722,9 +744,9 @@ c         --- quadrupole fields, including residence fraction
             dbdxq = dbdxq + quaddb(iq)*frac 
             dedxq = dedxq + quadde(iq)*frac 
             xdbdx = xdbdx + quaddb(iq)*frac*(x - qoffx(iq))
-            xdedx = xdedx - quadde(iq)*frac*(x - qoffx(iq))
+            xdedx = xdedx + quadde(iq)*frac*(x - qoffx(iq))
             ydbdy = ydbdy + quaddb(iq)*frac*(y - qoffy(iq))
-            ydedy = ydedy + quadde(iq)*frac*(y - qoffy(iq))
+            ydedy = ydedy - quadde(iq)*frac*(y - qoffy(iq))
           endif
 
         enddo
@@ -767,9 +789,9 @@ c             --- quadrupole field
               dbdxq = dbdxq + db
               dedxq = dedxq + de
               xdbdx = xdbdx + db*(x - heleox(ih))
-              xdedx = xdedx - de*(x - heleox(ih))
+              xdedx = xdedx + de*(x - heleox(ih))
               ydbdy = ydbdy + db*(y - heleoy(ih))
-              ydedy = ydedy + de*(y - heleoy(ih))
+              ydedy = ydedy - de*(y - heleoy(ih))
             endif 
             if ((nint(hele_n(ii,ih)) == 0) .and.
      &          (nint(hele_v(ii,ih)) == 0)) then
@@ -816,8 +838,8 @@ c           --- Lookup field strengths with linear interpolation.
                 de = (esemlt(iie  ,ii,iem)*(1.-wie)+ esemlt(iie+1,ii,iem)*wie)*
      &               (emltsc(ie) + emltsf(ie))
                 dedxq = dedxq + de
-                xdedx = xdedx - de*(x - emltox(ie))
-                ydedy = ydedy + de*(y - emltoy(ie))
+                xdedx = xdedx + de*(x - emltox(ie))
+                ydedy = ydedy - de*(y - emltoy(ie))
               endif
               if ((nint(emlt_n(ii)) == 0) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
