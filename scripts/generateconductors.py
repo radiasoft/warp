@@ -42,10 +42,22 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.26 2003/04/29 16:12:20 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.27 2003/04/29 16:17:39 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
+
+
+# --- Temporary hack to allow use with older versions of source
+try:
+  ycylinderconductord
+except:
+  def ycylinderconductord(rad,length,xcent,ycent,zcent,
+                          n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,fuzz):
+    pass
+  def xcylinderconductord(rad,length,xcent,ycent,zcent,
+                          n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,fuzz):
+    pass
 
 ##############################################################################
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
