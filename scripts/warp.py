@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.8 2001/01/17 00:39:14 dave Exp $"
+warp_version = "$Id: warp.py,v 1.9 2001/01/18 00:10:48 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -81,6 +81,11 @@ from warpplots import *
 from warphelp import *
 from warpscripts import *
 from warpfortran import *
+
+# --- Import the printparameters modules (which are called from fortran)
+from printparameters import *
+from printparameters3d import *
+from printparametersrz import *
 
 # --- Declare the documentation for the warp module.
 def warpdoc():
