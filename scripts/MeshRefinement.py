@@ -94,11 +94,15 @@ class MRBlock(MultiGrid,Visualizable):
 
       if lower is None and upper is None:
         # --- The grid mins and maxs are input.
+        # --- The lower and upper are calculated to be an integer number of
+        # --- parent grid cells times the refinement factor. The lower is
+        # --- rounded down and upper rounded up to ensure that the patch
+        # --- includes the entire extent specified by mins and maxs.
         self.mins = array(mins)
         self.maxs = array(maxs)
-        self.lower = (nint((self.mins - self.root.mins)/parent.deltas)*
+        self.lower = (nint(floor((self.mins - self.root.mins)/parent.deltas))*
                      self.refinement)
-        self.upper = (nint((self.maxs - self.root.mins)/parent.deltas)*
+        self.upper = (nint(ceil((self.maxs - self.root.mins)/parent.deltas))*
                      self.refinement)
 
       else:
