@@ -12,7 +12,7 @@ from warp import *
 from pyDXObject import *
 import __main__
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.5 2004/05/15 01:16:58 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.6 2004/05/20 19:46:55 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -240,3 +240,43 @@ def DXNewImage():
 # only works for interactive sessions.
 __main__.__dict__['DXNewImage'] = DXNewImage
 
+
+def DXWriteImage(filename,object,camera=None,name='WARP viz',labels=None):
+
+  group = DXCollection(object)
+  dxobject = group.dxobject
+  if labels is None: labels = group.labels
+
+  if camera is None:
+    cameraadded = 1
+    DXReference(dxobject)
+    minput = {'object':dxobject}
+    moutput = ['camera']
+    (camera,) = DXCallModule('AutoCamera',minput,moutput)
+    DXReference(camera)
+  else:
+    cameraadded = 0
+
+  if labels is not None:
+    assert (len(labels) == 3),"Length of lables list must be three"
+    labelsadded = 1
+    labels = DXMakeStringList(labels)
+    minput = {'input':dxobject,'camera':camera,'labels':labels,
+              'ticks':3,'colors':'yellow'}
+    moutput = ['axes']
+    olddxobject = dxobject
+    (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
+    DXReference(dxobject)
+  else:
+    labelsadded = 0
+
+  minput = {'object':dxobject,'camera':camera}
+  moutput = ['image']
+  (image,) = DXCallModule('Render',minput,moutput)
+
+  minput = {'image':image,'name':filename,'format':'tiff'}
+  moutput = []
+  DXCallModule('WriteImage',minput,moutput)
+
+  if cameraadded: DXDelete(camera)
+  if labelsadded: DXDelete(olddxobject)
