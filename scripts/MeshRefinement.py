@@ -235,11 +235,13 @@ Given a block instance, installs it as a child.
   #--------------------------------------------------------------------------
 
   def installconductor(self,conductor,dfill=top.largepos):
+    if not self.isfirstcall(): return
     MultiGrid.installconductor(self,conductor,dfill=dfill)
     for child in self.children:
       child.installconductor(conductor,dfill=dfill)
 
   def clearconductors(self):
+    if not self.isfirstcall(): return
     MultiGrid.clearconductors(self)
     for child in self.children:
       child.clearconductors()
@@ -642,17 +644,19 @@ This is about as fast as the setrho_select. The sort still takes up about 40%
 of the time. Note that this depends on having ichilddomains filled with the
 blocknumber rather than the child number relative to the parent.
     """
-    ichild = zeros(len(x),'d')
-    # --- This assumes that the root block has blocknumber zero.
-    for child in self.children:
-      child.getichild_allsort(x,y,z,ichild)
-
-    # --- Take absolute value since the childdomains is signed.
-    # --- Can this be done in place to save memory?
-    ichild = abs(ichild)
-
     if len(self.children) > 0:
+
+      ichild = zeros(len(x),'d')
+      # --- This assumes that the root block has blocknumber zero.
+      for child in self.children:
+        child.getichild_allsort(x,y,z,ichild)
+
+      # --- Take absolute value since the childdomains is signed.
+      # --- Can this be done in place to save memory?
+      ichild = abs(ichild)
+
       x,y,z,uz,nperchild = self.sortbyichild(ichild,x,y,z,uz)
+
     else:
       nperchild = [len(x)]
 
@@ -956,10 +960,12 @@ Sets phi on the boundaries, using the values from the parent grid
     """
 Fetches the E field. This should only be called at the root level grid.
     """
-    self.fetchefrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                             w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                                     w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    #self.fetchefrompositions_gather(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+    #                                w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
 
-  def fetchefrompositions(self,x,y,z,ex,ey,ez):
+  def fetchefrompositions_gather(self,x,y,z,ex,ey,ez):
     if len(x) == 0: return
     if len(self.children) > 0:
 
@@ -991,7 +997,7 @@ Fetches the E field. This should only be called at the root level grid.
         if block == self:
           MultiGrid.fetchefrompositions(self,xc,yc,zc,tex,tey,tez)
         else:
-          block.fetchefrompositions(xc,yc,zc,tex,tey,tez)
+          block.fetchefrompositions_gather(xc,yc,zc,tex,tey,tez)
         # --- Put the E field into the passed in arrays
         put(ex,ii,tex)
         put(ey,ii,tey)
@@ -1001,6 +1007,105 @@ Fetches the E field. This should only be called at the root level grid.
 
       # --- Get e-field from this domain
       MultiGrid.fetchefrompositions(self,x,y,z,ex,ey,ez)
+
+  def getichild_positiveonly(self,x,y,z,ichild):
+    """
+Gathers the ichild for the fetche_allsort.
+    """
+    if not self.islastcall(): return
+    if len(x) == 0: return
+    if len(self.children) > 0:
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      getgridngp3dpositiveonly(len(x),x,y,z,ichild,
+                               self.nx,self.ny,self.nz,self.childdomains,
+                               self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                               self.zmmin,self.zmmax,top.zgrid,
+                               self.l2symtry,self.l4symtry)
+      for child in self.children:
+        child.getichild_positiveonly(x,y,z,ichild)
+
+  def sortbyichildgetisort(self,ichild,x,y,z):
+    if 0:
+      # --- Sort the list of which domain the particles are in.
+      ichildsorter = argsort(ichild)
+      ichildsorted = take(ichild,ichildsorter)
+
+      # --- Given a sorted list of child numbers, get how many of each number
+      # --- there are. This would probably be better done in compiled
+      # --- code. This should be efficient timewise, but uses two extra
+      # --- full-size arrays.  
+      ic1 = ichildsorted[1:] - ichildsorted[:-1]
+      nn = compress(ic1 > 0,iota(len(ichildsorted-1)))
+      #nperchild = zeros(1+len(self.children))
+      nperchild = zeros(len(MRBlock.listofblocks))
+      ss = 0
+      for n in nn:
+        nperchild[nint(ichildsorted[n-1])] = n - ss
+        ss += nperchild[nint(ichildsorted[n-1])]
+      nperchild[nint(ichildsorted[-1])] = len(ichildsorted) - sum(nperchild)
+
+      # --- Now use the same sorting on the particle quantities.
+      xout = take(x,ichildsorter)
+      yout = take(y,ichildsorter)
+      zout = take(z,ichildsorter)
+      isort = ichildsorter
+
+    else:
+      xout,yout,zout = zeros((3,len(x)),'d')
+      isort = zeros(len(x))
+      nperchild = zeros(MRBlock.totalnumberofblocks)
+      sortparticlesbyindexgetisort(len(x),ichild,x,y,z,
+                                   MRBlock.totalnumberofblocks,
+                                   xout,yout,zout,isort,nperchild)
+
+    return xout,yout,zout,isort,nperchild
+
+  def fetchefrompositions_allsort(self,x,y,z,ex,ey,ez):
+    """
+Given the list of particles, fetch the E fields.
+This first gets the blocknumber of the block where each of the particles are
+to be deposited. This is then sorted once. The loop is then over the list
+of blocks, rather than walking through the tree structure.
+This is about as fast as the setrho_select using the python sort. The sort
+takes up about 40% of the time. It is significantly faster using the fortran
+sort.
+Note that this depends on having ichilddomains filled with the
+blocknumber rather than the child number relative to the parent.
+    """
+    if len(self.children) > 0:
+
+      ichild = zeros(len(x),'d')
+      # --- This assumes that the root block has blocknumber zero.
+      for child in self.children:
+        child.getichild_positiveonly(x,y,z,ichild)
+
+      # --- Zero out places where childdomains < 0
+      ichild = where(ichild < 0.,0.,ichild)
+      
+      x,y,z,isort,nperchild = self.sortbyichildgetisort(ichild,x,y,z)
+
+      # --- Create temporary arrays to hold the E field
+      tex,tey,tez = zeros((3,len(x)),'d')
+
+    else:
+      isort = None
+      nperchild = [len(x)]
+      tex,tey,tez = ex,ey,ez
+
+    # --- For each block, pass to it the particles in it's domain.
+    i = 0
+    for block,n in zip(MRBlock.listofblocks,nperchild):
+      MultiGrid.fetchefrompositions(self,x[i:i+n],y[i:i+n],z[i:i+n],
+                                         tex[i:i+n],tey[i:i+n],tez[i:i+n])
+      i = i + n
+
+    # --- Now, put the E fields back into the original arrays, unsorting
+    # --- the data
+    if isort is not None:
+      put(ex,isort,tex)
+      put(ey,isort,tey)
+      put(ez,isort,tez)
 
   def fetchphi(self):
     """
