@@ -6,10 +6,12 @@ The following elements are defined:
 Box(xsize,ysize,zsize,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 Cylinder(radius,length,theta=0.,phi=0.,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 ZCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+ZCylinderOut(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 YCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 XCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 Sphere(radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 ZCone(r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+ZConeOut(r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 ZTorus(r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 
 installconductors(a): generates the data needed for the fieldsolve
@@ -26,7 +28,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.6 2002/08/26 20:29:48 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.7 2002/10/04 00:50:51 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -603,6 +605,7 @@ Cylinder class
                            self.xcent,self.ycent,self.zcent])
     return result
 
+#============================================================================
 class ZCylinder(Assembly):
   """
 Cylinder aligned with z-axis
@@ -626,6 +629,31 @@ Cylinder aligned with z-axis
                            self.xcent,self.ycent,self.zcent])
     return result
 
+#============================================================================
+class ZCylinderOut(Assembly):
+  """
+Outside of a cylinder aligned with z-axis
+  - radius,length: cylinder size
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=0: conductor id of cylinder
+  """
+
+  def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=0):
+    Assembly.__init__(self,voltage,xcent,ycent,zcent)
+    self.radius = radius
+    self.length = length
+    self.condid = condid
+
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
+                   generator=f3d.zcylinderoutconductorf,
+                   kwlist=[self.radius,self.length,
+                           self.xcent,self.ycent,self.zcent])
+    return result
+
+#============================================================================
 class YCylinder(Assembly):
   """
 Cylinder aligned with y-axis
@@ -649,6 +677,7 @@ Cylinder aligned with y-axis
                            self.xcent,self.ycent,self.zcent])
     return result
 
+#============================================================================
 class XCylinder(Assembly):
   """
 Cylinder aligned with x-axis
