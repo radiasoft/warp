@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.75 $, $Date: 2003/03/06 22:20:17 $
+c@(#) File TOP.M, version $Revision: 3.76 $, $Date: 2003/03/13 17:49:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5505,6 +5505,7 @@ c of semi-transparent disc location are checked for disc crossing.
      &              , zmind(n_STdiscs),zmaxd(n_STdiscs)
 
       if(n_STdiscs==0) return
+      if(clearlostpart==0) clearlostpart = 1
 
       do idisc = 1, n_STdiscs
         zmind(idisc) = z_STdiscs(idisc)-dz
@@ -5531,7 +5532,6 @@ c               --- test if particle passed through disc
 c                  --- randomly absorb particles according to transparency coefficient
                    if(wranf()>t_STdiscs(idisc)) then
                      gaminv(ip) = 0.
-                     uzp(ip) = 0.
                    end if
                 end if
               end if
