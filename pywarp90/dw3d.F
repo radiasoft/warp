@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.47 $, $Date: 2002/04/23 14:10:58 $
+c@(#) File DW3D.M, version $Revision: 3.53 $, $Date: 2002/04/24 21:38:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -367,7 +367,7 @@ c loop through particles
 c if particle within z grid cell and not dead, accumulate
         if (zmesh(iz)+zbeam < zp(ip) .and.
      &                           zp(ip) < zmesh(iz+1)+zbeam
-     &      .and. uzp(ip) .ne. 0.) then
+     &      .and. uzp(ip) /= 0.) then
           ix = (xp(ip) - xplmin)*ddxi
           iy = (yp(ip) - yplmin)*ddyi
 c         if within x grid, accumulate

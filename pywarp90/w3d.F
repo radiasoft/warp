@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.52 $, $Date: 2002/04/23 14:05:24 $
+c@(#) File W3D.M, version $Revision: 3.53 $, $Date: 2002/04/24 21:38:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3444,7 +3444,7 @@ c       --- normal loop
 c     --- vectorized deposition over the 8 cells touched;
 c     --- there'd be a hazard if we interchanged the loops.
       do ip = 1, np
-         if (uzp(ip).gt.0) then
+         if (uzp(ip) /= 0) then
          do m = 0, 7
             rho1d(indx(m,ip)) = rho1d(indx(m,ip)) + s(m,ip)
          enddo
@@ -3538,7 +3538,7 @@ c       --- normal loop
       endif
 c     --- scalar loop does the actual deposition
       do ir = 0, np-1
-         if (uzp(ir+1).gt.0) then
+         if (uzp(ir+1) /= 0) then
          rho(ii(ir)  ,jj(ir)  ,kk(ir)  )
      &  =rho(ii(ir)  ,jj(ir)  ,kk(ir)  ) + s(0,ir+1)
          rho(ii(ir)+1,jj(ir)  ,kk(ir)  )
@@ -3695,7 +3695,7 @@ c lostpars.
      &       (yp(ip)-prwallyz(iz)*prwelips(iz))**2) >= prwallz(iz)**2 .or.
      &      (xmin > xp(ip) .or. xp(ip) > xmax .or.
      &       ymin > yp(ip) .or. yp(ip) > ymax)) then
-          if (uzp(ip) .ne. 0.) lostpars(iz) = lostpars(iz) + 1
+          if (uzp(ip)  /=  0.) lostpars(iz) = lostpars(iz) + 1
           xp(ip) = xmmax - .1*dx
           yp(ip) = ymmax - .1*dy
           zp(ip) = zmmin - .9999*dz + zgrid
@@ -4334,7 +4334,7 @@ c                   --- Child-Langmuir
                   elseif (inject == 3) then
 c                   --- Gauss's law
                     rnn = (eps0*inj_phi(ix,iy)/
-     &                    (inj_dz*inj_d) - inj_rho(ix,iy,inj_ij)*inj_dz)*
+     &                    (inj_dz*abs(inj_d)) - inj_rho(ix,iy,inj_ij)*inj_dz)*
      &                    inj_dx*inj_dy/sq(is)/sw(is)/cos(inj_angl(ix,iy))
                   endif
 
@@ -4424,9 +4424,9 @@ c                     --- find injection surface axial location by interpolation
                       wxx = abs(xp(ii) - xmmin)*dxi - ixx
                       wyy = abs(yp(ii) - ymmin)*dyi - iyy
                       zp(ii)=zmmin+inj_dz*(inj_grid(ixx  ,iyy  )*(1.-wxx)*(1.-wyy)+
-     &                                 inj_grid(ixx+1,iyy  )*    wxx *(1.-wyy)+
-     &                                 inj_grid(ixx  ,iyy+1)*(1.-wxx)*    wyy +
-     &                                 inj_grid(ixx+1,iyy+1)*    wxx *    wyy)+
+     &                                     inj_grid(ixx+1,iyy  )*    wxx *(1.-wyy)+
+     &                                     inj_grid(ixx  ,iyy+1)*(1.-wxx)*    wyy +
+     &                                     inj_grid(ixx+1,iyy+1)*    wxx *    wyy)+
      &                       inj_zstart
 
 c                     --- Only inject particles within the injection region.
@@ -4462,7 +4462,8 @@ c                     --- pid(ii)*dt.
      &                        inj_phi(ixx+1,iyy  )*      wxx *(1. - wyy) +
      &                        inj_phi(ixx  ,iyy+1)*(1. - wxx)*      wyy  +
      &                        inj_phi(ixx+1,iyy+1)*      wxx *      wyy
-                      vznorm = vzconst(is)*vnorm**1.5*(pid(ii)*dt)**2
+                      vznorm = vzconst(is)*abs(vnorm)**1.5*(pid(ii)*dt)**2
+                      if (inj_d < 0.) vznorm = -vznorm
 
 c                     --- Set transverse coordinates. The emittance term
 c                     --- is probably not correct since it depends on vbeam.
@@ -4488,7 +4489,7 @@ c                     --- SMALLPOS is also added so that the field gathering
 c                     --- routines don't treat the newly injected particles
 c                     --- as dead particles when the other terms are zero.
                       uzp(ii) = vbeam_s(is)*cos(az) + vthz_s(is)*rnorm() +
-     &                          vznorm*cos(az) + SMALLPOS
+     &                          vznorm*cos(az) + SMALLPOS*inj_d
 
 c                     --- Calculate gamma inverse and reset the particle
 c                     --- massless momentums properly.
@@ -5683,7 +5684,7 @@ c       --- set temporaries
 c       --- Calculate distance of particle from the emitting surface
         zz = zp(ip) - zinj
         rr2 = (xp(ip) - xinj)**2 + (yp(ip) - yinj)**2
-        if (zz < rinj) then
+        if (abs(zz) < abs(rinj)) then
 c         --- The expression below for zz<rinj is mathematically identical
 c         --- to the commented out expression below.  That form is
 c         --- used so that for large values of rinj, i.e. a flat emitting
@@ -5699,7 +5700,7 @@ c         --- When zz>rinj, a seperate equation is needed.
         dd = dd*dzi
 
 c       --- Only calculate E-field if particle close to emitting surface.
-        if (0.0 <= dd .and. dd <= inj_d) then
+        if (0.0 <= abs(dd) .and. abs(dd) <= abs(inj_d)) then
 c         --- The check if a particle is within the radial area of the
 c         --- source is probably not needed. It has been removed since there
 c         --- are some cases which this check is incorrect - for example
@@ -5836,7 +5837,7 @@ c         --- set temporaries
 c         --- Calculate distance of particle from the emitting surface
           zz = zp(ip) - zinj
           rr2 = (xp(ip) - xinj)**2 + (yp(ip) - yinj)**2
-          if (zz < rinj) then
+          if (abs(zz) < abs(rinj)) then
 c           --- The expression below for zz<rinj is mathematically identical
 c           --- to the commented out expression below.  That form is
 c           --- used so that for large values of rinj, i.e. a flat emitting
@@ -5852,7 +5853,7 @@ c           --- When zz>rinj, a seperate equation is needed.
           dd = dd*dzi
 
 c         --- Only deposit charge of particles close to emitting surface.
-          if (dd < 1. .and. uzp(ip) > 0.) then
+          if (abs(dd) < 1. .and. uzp(ip) /= 0.) then
 
 c           --- angle of point in transverse plane
             aa = atan2(yp(ip)-yinj,dvnz(xp(ip)-xinj))
@@ -5991,7 +5992,7 @@ c         --- set temporaries
 c         --- Calculate distance of particle from the emitting surface
           zz = zp(ip) - zinj
           rr2 = (xp(ip) - xinj)**2 + (yp(ip) - yinj)**2
-          if (zz < rinj) then
+          if (abs(zz) < abs(rinj)) then
 c           --- The expression below for zz<rinj is mathematically identical
 c           --- to the commented out expression below.  That form is
 c           --- used so that for large values of rinj, i.e. a flat emitting
@@ -6007,7 +6008,7 @@ c           --- When zz>rinj, a seperate equation is needed.
           dd = dd*dzi
 
 c         --- Only deposit charge of particles close to emitting surface.
-          if (dd < 1. .and. uzp(ip) > 0.) then
+          if (dd < 1. .and. uzp(ip) /= 0.) then
 
 c           --- angle relative to z axis
             az = atan2(sqrt(rr2),rinj-zz)
