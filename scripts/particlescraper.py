@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.17 2004/06/03 20:57:53 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.18 2004/07/22 23:42:08 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -142,7 +142,7 @@ conductors are an argument.
     # --- Get conductor id that particles are near
     if w3d.solvergeom == w3d.XYZgeom:
       getgridngp3d(nn,xg,yg,zg,pp,
-                   nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
+                   nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)
     else:
       getgridngp2d(nn,xg,zg,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
@@ -212,7 +212,7 @@ conductors are an argument.
     # --- Get conductor id that particles are near
     if w3d.solvergeom == w3d.XYZgeom:
       getgridngp3d(nn,xg,yg,zg,pp,
-                   nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,
+                   nx,ny,nz,isinside,xmin,xmax,ymin,ymax,zmin,zmax,0.,
                    w3d.l2symtry,w3d.l4symtry)
     else:
       getgridngp2d(nn,xg,zg,pp,nx,nz,isinside,xmin,xmax,zmin,zmax)
