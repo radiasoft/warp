@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.51 $, $Date: 2003/08/15 23:09:40 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.52 $, $Date: 2003/08/22 22:46:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2221,6 +2221,7 @@ c=============================================================================
       logical(ISZ):: l2symtry,l4symtry
 
 c This checks the conductor dataset for consistency.
+c  - removes any points outside of the mesh
 c  - clean up data set, removing any subgrid points which may lie inside
 c    of a conductor (those points are harmless to SOR but are damaging
 c    to multigrid)
@@ -2241,6 +2242,12 @@ c     --- Set the conductor points.
       iii = 0
       do ic=1,ncond
         if (icondlevel(ic) /= mglevel) cycle
+        if (ixcond(ic) < 0 .or. nx < ixcond(ic) .or.
+     &      iycond(ic) < 0 .or. ny < iycond(ic) .or.
+     &      izcond(ic) < 0 .or. nz < izcond(ic)) then
+          icondlevel(ic) = -1
+          cycle
+        endif
         iii(ixcond(ic),iycond(ic),izcond(ic)) = ncndmax + 1
       enddo
 
@@ -2255,6 +2262,13 @@ c     ---   check for redundant point (multiple points at grid location)
         ix = iecndx(ic)
         iy = iecndy(ic)
         iz = iecndz(ic)
+
+        if (ix < 0 .or. nx < ix .or.
+     &      iy < 0 .or. ny < iy .or.
+     &      iz < 0 .or. nz < iz) then
+          iecndlevel(ic) = -1
+          cycle
+        endif
 
 c       --- If this point lies on a conductor point, kill it.
         if (iii(ix,iy,iz) == ncndmax+1) then
@@ -2334,6 +2348,13 @@ c     ---   check for redundant point (multiple points at grid location)
         ix = iocndx(ic)
         iy = iocndy(ic)
         iz = iocndz(ic)
+
+        if (ix < 0 .or. nx < ix .or.
+     &      iy < 0 .or. ny < iy .or.
+     &      iz < 0 .or. nz < iz) then
+          iocndlevel(ic) = -1
+          cycle
+        endif
 
 c       --- If this point lies on a conductor point, kill it.
         if (iii(ix,iy,iz) == ncndmax+1) then
