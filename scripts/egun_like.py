@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.28 2004/08/11 22:47:28 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.29 2004/08/18 19:49:16 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -165,14 +165,15 @@ Performs steady-state iterations
     egundata_zmax = w3d.zmmax-0.01*(w3d.zmmax-w3d.zmmin)
     egundata_nz = 20
     zd = egundata_zmin+arange(egundata_nz)*(egundata_zmax-egundata_zmin)/(egundata_nz-1)
-    ntot_iter = 100
-    egundata_curr   = zeros([ntot_iter,egundata_nz],Float)
-    egundata_xrmsz  = zeros([ntot_iter,egundata_nz],Float)
-    egundata_yrmsz  = zeros([ntot_iter,egundata_nz],Float)
-    egundata_xprmsz = zeros([ntot_iter,egundata_nz],Float)
-    egundata_yprmsz = zeros([ntot_iter,egundata_nz],Float)
-    egundata_epsnxz = zeros([ntot_iter,egundata_nz],Float)
-    egundata_epsnyz = zeros([ntot_iter,egundata_nz],Float)
+    # --- Store the data in lists. This allows an arbitrary number of
+    # --- iterations since the next data is just appended.
+    egundata_curr   = []
+    egundata_xrmsz  = []
+    egundata_yrmsz  = []
+    egundata_xprmsz = []
+    egundata_yprmsz = []
+    egundata_epsnxz = []
+    egundata_epsnyz = []
 
   # --- install plottraces
   if plottraces_window>-1:
@@ -458,13 +459,13 @@ Performs steady-state iterations
     zz = zd/w3d.dz
     iz = int(zz)
     dz = zz-iz
-    egundata_curr  [_izdata,:] = (1.-dz)*take(top.curr,  iz) + dz*take(top.curr,  iz+1)  
-    egundata_xrmsz [_izdata,:] = (1.-dz)*take(top.xrmsz, iz) + dz*take(top.xrmsz, iz+1)
-    egundata_yrmsz [_izdata,:] = (1.-dz)*take(top.yrmsz, iz) + dz*take(top.yrmsz, iz+1)
-    egundata_xprmsz[_izdata,:] = (1.-dz)*take(top.xprmsz,iz) + dz*take(top.xprmsz,iz+1)
-    egundata_yprmsz[_izdata,:] = (1.-dz)*take(top.yprmsz,iz) + dz*take(top.yprmsz,iz+1)
-    egundata_epsnxz[_izdata,:] = (1.-dz)*take(top.epsnxz,iz) + dz*take(top.epsnxz,iz+1)
-    egundata_epsnyz[_izdata,:] = (1.-dz)*take(top.epsnyz,iz) + dz*take(top.epsnyz,iz+1)
+    egundata_curr.append((1.-dz)*take(top.curr,iz)+dz*take(top.curr,iz+1))
+    egundata_xrmsz.append((1.-dz)*take(top.xrmsz,iz)+dz*take(top.xrmsz,iz+1))
+    egundata_yrmsz.append((1.-dz)*take(top.yrmsz,iz)+dz*take(top.yrmsz,iz+1))
+    egundata_xprmsz.append((1.-dz)*take(top.xprmsz,iz)+dz*take(top.xprmsz,iz+1))
+    egundata_yprmsz.append((1.-dz)*take(top.yprmsz,iz)+dz*take(top.yprmsz,iz+1))
+    egundata_epsnxz.append((1.-dz)*take(top.epsnxz,iz)+dz*take(top.epsnxz,iz+1))
+    egundata_epsnyz.append((1.-dz)*take(top.epsnyz,iz)+dz*take(top.epsnyz,iz+1))
     _izdata += 1
   
     # plot egundata 
@@ -472,19 +473,20 @@ Performs steady-state iterations
       window(egundata_window)
       fma()
       plsys(3)
-      pla(egundata_curr  [:_izdata,-2]);
+      # --- The data is plotted this way since it is a list of arrays.
+      plg([x[-2] for x in egundata_curr])
       ptitles('Current','Z','',v=3) 
       plsys(4)
-      pla(egundata_xrmsz [:_izdata,-2]);
-      pla(egundata_yrmsz [:_izdata,-2],color='red');
+      plg([x[-2] for x in egundata_xrmsz])
+      plg([x[-2] for x in egundata_yrmsz],color='red')
       ptitles('X, Y RMS','Z','',v=4)
       plsys(5)
-      pla(egundata_xprmsz[:_izdata,-2]);
-      pla(egundata_yprmsz[:_izdata,-2],color='red');
+      plg([x[-2] for x in egundata_xprmsz])
+      plg([x[-2] for x in egundata_yprmsz],color='red')
       ptitles("X', Y' RMS",'Z','',v=5)
       plsys(6)
-      pla(egundata_epsnxz[:_izdata,-2]);
-      pla(egundata_epsnyz[:_izdata,-2],color='red');
+      plg([x[-2] for x in egundata_epsnxz])
+      plg([x[-2] for x in egundata_epsnyz],color='red')
       ptitles('X, Y norm. emittance','Z','',v=6)
       pyg_pending()
       pyg_idler()
@@ -517,8 +519,9 @@ Performs steady-state iterations
   if plottraces_window>-1:
     uninstallafterstep(plottraces)
 
-  return  [egundata_curr, egundata_xrmsz, egundata_yrmsz, 
-          egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz]
+  return  [array(egundata_curr), array(egundata_xrmsz), array(egundata_yrmsz), 
+           array(egundata_xprmsz), array(egundata_yprmsz),
+           array(egundata_epsnxz), array(egundata_epsnyz)]
 
 
 ########################################################################
@@ -681,8 +684,9 @@ Performs steady-state iterations in a cascade using different resolutions.
       if i<nmg:
          uninstallafterstep(setrhonext)
 
-  return  [egundata_curr, egundata_xrmsz, egundata_yrmsz, 
-          egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz]
+  return  [array(egundata_curr), array(egundata_xrmsz), array(egundata_yrmsz), 
+           array(egundata_xprmsz), array(egundata_yprmsz),
+           array(egundata_epsnxz), array(egundata_epsnyz)]
 
 ########################################################################
 def gunamr(iter=1,itersub=None,ipsave=5000000,save_same_part=None,maxtime=None,
@@ -748,8 +752,9 @@ Performs steady-state iterations in a cascade using different resolutions.
         lstatusline,insertbeforeiter,insertafteriter,
         None,egundata_window,plottraces_window)
     w3d.AMRgenerate_periodicity = tmp
-  return  [egundata_curr, egundata_xrmsz, egundata_yrmsz, 
-          egundata_xprmsz, egundata_yprmsz, egundata_epsnxz, egundata_epsnyz]
+  return  [array(egundata_curr), array(egundata_xrmsz), array(egundata_yrmsz), 
+           array(egundata_xprmsz), array(egundata_yprmsz),
+           array(egundata_epsnxz), array(egundata_epsnyz)]
 
 ########################################################################
 def statusline():
