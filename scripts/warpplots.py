@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.20 2001/01/30 01:08:33 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.21 2001/01/30 01:10:14 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -817,6 +817,7 @@ def ppgeneric_doc(x,y):
   - filled=0: when true, plot filled contours (assumes contours is set)
   - ccolor='fg': contour color (when not filled)
   - view=1: view window to use (experts only)
+  - colbarunitless=0: when true, color-bar scale is unitless
   """
   return doc%vars()
 #-------------------------------------------------------------------------
