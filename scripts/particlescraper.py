@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.16 2004/05/03 20:47:21 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.17 2004/06/03 20:57:53 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -47,8 +47,8 @@ conductors are an argument.
   def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,mglevel=0,
                     install=1): 
     self.mglevel = mglevel
-    # --- Create grid
-    self.grid = Grid()
+    # --- Don't create the grid until it is needed.
+    self.grid = None
     # --- register any initial conductors
     self.conductors = []
     self.registerconductors(conductors)
@@ -74,6 +74,7 @@ conductors are an argument.
       uninstallparticlescraper(self.scrapeall)
 
   def registerconductors(self,newconductors):
+    if self.grid is None: self.grid = Grid()
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
       self.conductors.append(c)
@@ -90,6 +91,7 @@ conductors are an argument.
       self.grid.removeisinside(conductor)
 
   def scrapeall(self,clear=0):
+    if len(self.conductors) == 0: return
     for js in xrange(top.ns):
       self.scrape(js)
       if clear or self.lsavecondid:
