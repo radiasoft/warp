@@ -104,6 +104,7 @@ class MRBlock(MultiGrid,Visualizable):
 
       # --- First, just use same boundary conditions as root.
       self.bounds = self.root.bounds.copy()
+      self.pbounds = self.root.pbounds.copy()
 
       # --- Check if the mesh doesn't reach the edge of the root grid.
       # --- If not, switch to Dirichlet boundary.
@@ -112,6 +113,9 @@ class MRBlock(MultiGrid,Visualizable):
                                 0,self.bounds[1::2])
       self.l2symtry = self.root.l2symtry
       self.l4symtry = self.root.l4symtry
+      self.pbounds[::2] = where(self.fulllower > 0,0,self.pbounds[::2])
+      self.pbounds[1::2] = where(self.fullupper < self.rootdims,
+                                0,self.pbounds[1::2])
 
     # --- Set individual quantities based on the values in the arrays,
     # --- if they have been set.
@@ -259,7 +263,7 @@ Given a block instance, installs it as a child.
     """
 Sets the regions that are covered by the children.
     """
-    if not self.islastcall(): return
+    if not self.isfirstcall(): return
     # --- Loop over the children, first calling each, then setting
     # --- childdomain appropriately.
     for child,ichild in zip(self.children,range(1,1+len(self.children))):
@@ -629,6 +633,8 @@ blocknumber rather than the child number relative to the parent.
     """
 Gathers the ichild for the setrho_allsort.
     """
+    # --- This must wait until all of the parents have have set ichild
+    # --- so that the value in the children takes precedence.
     if not self.islastcall(): return
     if len(x) == 0: return
     if len(self.children) > 0:
@@ -664,7 +670,7 @@ Python version.
       u = minimum(child.fullupper/r,self.fullupper)
 
       # --- Check for any Nuemann boundaries
-      dobounds = (sometrue(child.bounds == 1) and
+      dopbounds = (sometrue(child.pbounds == 1) and
                   sometrue(l == 0) and
                   sometrue(u == self.rootdims))
 
@@ -691,18 +697,18 @@ Python version.
             # --- Multiply by the weight in place.
             multiply(rh,self.w[i+1,j+1,k+1],rh)
             # --- Adjust for symmetries
-            if dobounds:
-              if child.bounds[0] == 1 and i > 0 and l[0] == 0:
+            if dopbounds:
+              if child.pbounds[0] == 1 and i > 0 and l[0] == 0:
                 rh[0,:,:] = 2.*rh[0,:,:]
-              if child.bounds[1] == 1 and i < 0 and u[0] == self.rootdims[0]:
+              if child.pbounds[1] == 1 and i < 0 and u[0] == self.rootdims[0]:
                 rh[-1,:,:] = 2.*rh[-1,:,:]
-              if child.bounds[2] == 1 and j > 0 and l[1] == 0:
+              if child.pbounds[2] == 1 and j > 0 and l[1] == 0:
                 rh[:,0,:] = 2.*rh[:,0,:]
-              if child.bounds[3] == 1 and j < 0 and u[1] == self.rootdims[1]:
+              if child.pbounds[3] == 1 and j < 0 and u[1] == self.rootdims[1]:
                 rh[:,-1,:] = 2.*rh[:,-1,:]
-              if child.bounds[4] == 1 and k > 0 and l[2] == 0:
+              if child.pbounds[4] == 1 and k > 0 and l[2] == 0:
                 rh[:,:,0] = 2.*rh[:,:,0]
-              if child.bounds[5] == 1 and k < 0 and u[2] == self.rootdims[2]:
+              if child.pbounds[5] == 1 and k < 0 and u[2] == self.rootdims[2]:
                 rh[:,:,-1] = 2.*rh[:,:,-1]
 
             # --- Now add in the contribution (in place)
@@ -730,15 +736,15 @@ Fortran version
       u = minimum(child.fullupper/r,self.fullupper)
 
       # --- Check for any Nuemann boundaries
-      dobounds = (sometrue(child.bounds == 1) and
-                  sometrue(l == 0) and
-                  sometrue(u == self.rootdims))
+      dopbounds = (sometrue(child.pbounds == 1) and
+                  (sometrue(l == 0) or
+                   sometrue(u == self.rootdims)))
 
       gatherrhofromchild(self.rho,self.dims[0],self.dims[1],self.dims[2],
                          child.rho,child.dims[0],child.dims[1],child.dims[2],
                          l,u,self.fulllower,child.fulllower,child.fullupper,
                          child.refinement,self.w,child.siblingdomains,
-                         dobounds,child.bounds,self.rootdims)
+                         dopbounds,child.pbounds,self.rootdims)
 
   def gatherrhofromchildren_reversed(self):
     """
@@ -764,7 +770,7 @@ Python version with the loop over the child nodes as the inner loop
       u = minimum(child.fullupper/r,self.fullupper)
 
       # --- Check for any Nuemann boundaries
-      dobounds = (sometrue(child.bounds == 1) and
+      dopbounds = (sometrue(child.pbounds == 1) and
                   sometrue(l == 0) and
                   sometrue(u == self.rootdims))
 
@@ -798,18 +804,18 @@ Python version with the loop over the child nodes as the inner loop
             multiply(rh,w,rh)
 
             # --- Adjust for symmetries
-            if dobounds:
-              if child.bounds[0] == 1 and ix == 0:
+            if dopbounds:
+              if child.pbounds[0] == 1 and ix == 0:
                 rh[1:,:,:] = 2.*rh[1:,:,:]
-              if child.bounds[1] == 1 and ix == self.rootdims[0]:
+              if child.pbounds[1] == 1 and ix == self.rootdims[0]:
                 rh[:-1,:,:] = 2.*rh[:-1,:,:]
-              if child.bounds[2] == 1 and iy == 0:
+              if child.pbounds[2] == 1 and iy == 0:
                 rh[:,1:,:] = 2.*rh[:,1:,:]
-              if child.bounds[3] == 1 and iy == self.rootdims[1]:
+              if child.pbounds[3] == 1 and iy == self.rootdims[1]:
                 rh[:,:-1,:] = 2.*rh[:,:-1,:]
-              if child.bounds[4] == 1 and iz == 0:
+              if child.pbounds[4] == 1 and iz == 0:
                 rh[:,:,1:] = 2.*rh[:,:,1:]
-              if child.bounds[5] == 1 and iz == self.rootdims[2]:
+              if child.pbounds[5] == 1 and iz == self.rootdims[2]:
                 rh[:,:,:-1] = 2.*rh[:,:,:-1]
 
             # --- Now add in the contribution (in place)
@@ -821,7 +827,7 @@ Loop over overlapping siblings and collect the rho from them from regions that
 are owned by this instance.
     """
     # --- This should only be done once.
-    if not self.islastcall(): return
+    if not self.isfirstcall(): return
     for child in self.children:
       child.accumulaterhofromsiblings()
     for other in self.overlaps:
@@ -836,7 +842,7 @@ are owned by this instance.
     """
 Get rho from overlapping siblings where they own the region.
     """
-    if not self.islastcall(): return
+    if not self.isfirstcall(): return
     for child in self.children:
       child.getrhofromsiblings()
     for other in self.overlaps:
@@ -906,7 +912,7 @@ Sets phi on the boundaries, using the values from the parent grid
                              slice[ :-1:r,2:  :r] + slice[2:  :r,2:  :r])
 
   def optimizeconvergence(self,resetpasses=1):
-    if not self.islastcall(): return
+    if not self.isfirstcall(): return
     MultiGrid.optimizeconvergence(self,resetpasses=resetpasses)
     for child in self.children:
       child.optimizeconvergence(resetpasses=resetpasses)
@@ -919,10 +925,10 @@ Sets phi on the boundaries, using the values from the parent grid
     """
 Fetches the E field. This should only be called at the root level grid.
     """
-    #self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-    #                                 w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
-    self.fetchefrompositions_gather(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
-                                    w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    self.fetchefrompositions_allsort(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+                                     w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
+    #self.fetchefrompositions_gather(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,
+    #                                w3d.exfsapi,w3d.eyfsapi,w3d.ezfsapi)
 
   def fetchefrompositions_gather(self,x,y,z,ex,ey,ez):
     if len(x) == 0: return
@@ -971,6 +977,8 @@ Fetches the E field. This should only be called at the root level grid.
     """
 Gathers the ichild for the fetche_allsort.
     """
+    # --- This must wait until all of the parents have have set ichild
+    # --- so that the value in the children takes precedence.
     if not self.islastcall(): return
     if len(x) == 0: return
     if len(self.children) > 0:
@@ -1039,9 +1047,6 @@ blocknumber rather than the child number relative to the parent.
       for child in self.children:
         child.getichild_positiveonly(x,y,z,ichild)
 
-     ## --- Zero out places where childdomains < 0
-     #ichild = where(ichild < 0.,0.,ichild)
-      
       x,y,z,isort,nperchild = self.sortbyichildgetisort(ichild,x,y,z)
 
       # --- Create temporary arrays to hold the E field
@@ -1154,7 +1159,7 @@ Fetches the potential, given a list of positions
       child.setname(name,ichild)
 
   def getmem(self):
-    if not self.islastcall(): return
+    if not self.isfirstcall(): return
     memtot = product(self.dims + 1)
     for child in self.children:
       memtot = memtot + child.getmem()
@@ -1330,10 +1335,13 @@ be plotted.
       i02 = self.root.mins[ii[0]] + self.upper[ii[0]]*self.deltas[ii[0]]
       i11 = self.root.mins[ii[1]] + self.lower[ii[1]]*self.deltas[ii[1]]
       i12 = self.root.mins[ii[1]] + self.upper[ii[1]]*self.deltas[ii[1]]
-    xx = [i01,i01,i02,i02,i01]
-    yy = [i11,i12,i12,i11,i11]
-    if idim==2: xx,yy = yy,xx
-    plg(xx,yy,color=color[0])
+    yy = [i01,i01,i02,i02,i01]
+    xx = [i11,i12,i12,i11,i11]
+    if idim==2:
+      yy,xx = xx,yy
+    else:
+      xx = array(xx) + top.zbeam
+    plg(yy,xx,color=color[0])
     for child in self.children:
       child.drawbox(ip=ip*child.refinement,idim=idim,withguards=withguards,
                     color=color[1:])
