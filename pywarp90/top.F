@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.69 $, $Date: 2003/02/10 01:08:43 $
+c@(#) File TOP.M, version $Revision: 3.70 $, $Date: 2003/02/10 17:54:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5482,8 +5482,6 @@ c                 (only need if moving backward in time).
 #endif
 c --- end of ifelse above for paralle version.
 
-      call semitransparent_disc()
-
       return
       end
       
@@ -5493,28 +5491,29 @@ c --- end of ifelse above for paralle version.
       use InMesh3d
       use InPart
       use Picglb3d 
-      use STdisc
+      use SemiTransparentDisc
 c randomly absorb particles passing through a semitranparent disc
 
-      integer(ISZ) :: is, ip, izp, idisc, izmin(n_STdiscs),izmax(n_STdiscs)
+      integer(ISZ) :: is, ip, izd, idisc
       real(kind=8) :: zpold, dtcross, xpatdisc, ypatdisc, r, wranf
+     &              , zmind(n_STdiscs),zmaxd(n_STdiscs)
 
       if(n_STdiscs==0) return
 
       do idisc = 1, n_STdiscs
-        izmin(idisc) = int(z_STdiscs(idisc)-zmmin)-1 
-        izmax(idisc) = izmin(idisc)+2
+        izd = int((z_STdiscs(idisc)-zmmin)/dz)-1
+        zmind(idisc) = zmmin+izd*dz
+        zmaxd(idisc) = zmind(idisc)+2.*dz
       end do
 
 c     --- loop on species
       do is=1,ns
 c       --- loop on particles
         do ip=ins(is),ins(is)+nps(is)-1
-          izp = int((zp(ip)-zmmin)/dz)
 c         --- loop on number of discs
           do idisc = 1, n_STdiscs
 c           --- do only the work for particles close to disc location
-            if(izp>=izmin(idisc) .and. izp<=izmax(idisc)) then
+            if(zp(ip)>=zmind(idisc) .and. zp(ip)<=zmaxd(idisc)) then
               zpold = zp(ip)-dt*uzp(ip)*gaminv(ip)
 c             --- test if particle crossed disc location
               if(zpold<z_STdiscs(idisc) .and. zp(ip)>=z_STdiscs(idisc)) then
@@ -5526,10 +5525,8 @@ c               --- test if particle passed through disc
                 if(r<=r_STdiscs(idisc)) then
 c                  --- randomly absorb particles according to transparency coefficient
                    if(wranf()>t_STdiscs(idisc)) then
-                     uxp(ip) = 0.
-                     uyp(ip) = 0.
-                     uzp(ip) = 0.
                      gaminv(ip) = 0.
+                     uzp(ip) = 0.
                    end if
                 end if
               end if
