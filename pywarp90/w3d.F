@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.187 $, $Date: 2005/02/16 00:18:40 $
+c@(#) File W3D.F, version $Revision: 3.188 $, $Date: 2005/02/16 18:33:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1840,9 +1840,17 @@ c  Advance species according to subcycling rule governed by ndts.
 
          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
-                call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                         halfdt_s,uxp(ipmin),uyp(ipmin),uzp(ipmin),is,time,zbeam)
+                if (npid > 0) then
+                  call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                           npidmax,pid(ipmin:ipmin+ip-1,:),
+     &                           halfdt_s,uxp(ipmin),uyp(ipmin),uzp(ipmin),is,time,zbeam)
+                else
+                  call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                           0,0.,
+     &                           halfdt_s,uxp(ipmin),uyp(ipmin),uzp(ipmin),is,time,zbeam)
+                endif
          enddo
        enddo
 
