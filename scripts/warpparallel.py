@@ -4,7 +4,7 @@ Most important ones are the paralleldump and parallelrestore functions.
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.42 2003/10/08 21:31:04 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.43 2003/10/30 01:14:17 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -577,7 +577,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
             skip=skip+skipparallel)
 
   # --- Get list of all of the variables in the restart file
-  vlist = ff.inquire_ls()
+  vlist = ff.inquire_names()
 
   # --- Remove skipped variables from vlist
   vlistcopy = 1*vlist

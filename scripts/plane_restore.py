@@ -23,7 +23,7 @@ The two simulations are linked together.
 ###########################################################################
 
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.6 2003/08/12 00:47:50 dave Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.7 2003/10/30 01:14:18 dave Exp $"
 
 class PlaneRestore:
   """
@@ -172,7 +172,7 @@ Input:
     # put restored data into particle arrays, adjusting the z location
     # Check if data was written for this step.
     suffix = '%d_%d'%(it,js)
-    if 'xp'+suffix in self.f.inquire_ls():
+    if 'xp'+suffix in self.f.inquire_names():
       xx = self.f.read('xp'+suffix)
       yy = self.f.read('yp'+suffix)
       zz = self.f.read('zp'+suffix)+self.zshift
@@ -206,7 +206,7 @@ Input:
     if self.l_restore_phi is 0: return
     
     # --- Read in the phi data if it is available
-    if 'phiplane%d'%it not in self.f.inquire_ls(): return
+    if 'phiplane%d'%it not in self.f.inquire_names(): return
     savedphi = self.f.read('phiplane%d'%it)
 
     if self.solvergeom == w3d.solvergeom:

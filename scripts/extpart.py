@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.28 2003/10/07 21:51:41 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.29 2003/10/30 01:14:18 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -333,7 +333,7 @@ feature.
     # --- Get total number of particles
     ntot = []
     jsmax = 0
-    varlist = list(ff.inquire_ls())
+    varlist = list(ff.inquire_names())
     varlist.sort()
     for var in varlist:
       if var[0] == 'n':

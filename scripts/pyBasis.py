@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.43 2003/10/30 00:09:27 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.44 2003/10/30 01:13:03 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -610,7 +610,7 @@ Note that it will automatically detect whether the file is PDB or HDF.
   except:
     ff.file_type = "oldPDB"
   # --- Get a list of all of the variables in the file, loop over that list
-  vlist = ff.inquire_ls()
+  vlist = ff.inquire_names()
   # --- Print list of variables
   if ls:
     if ls == 1:
