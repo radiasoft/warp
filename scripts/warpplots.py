@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.76 2002/03/27 15:12:30 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.77 2002/04/30 21:32:24 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -27,15 +27,6 @@ plotc(): contour plots 2-D data
 plotfc(): contour plots 2-D data with colored contour levels
 limits(): sets plot limits in order left, right, bottom, top
 mouse commmands: left button zoom in, middle shifts, right zoom out
-
-These commands returns particle info based on selection criteria.
-selectparticles(): return list of indices of particles selected
-getn(): get number of particles selected
-getx(), gety(), getz(), getr(), gettheta(): get particle position
-getvx(), getvy(), getvz(): get particle velocity
-getux(), getuy(), getuz(): get particle momentum/mass
-getxp(), getyp(), getrp(): get tranverse normalized velocities
-getgaminv(): get gamma inverse
 
 These return or set a slice out of the rho or phi array.
 getrho(), getphi(), setrho(), setphi()
@@ -468,335 +459,6 @@ def checkarguments(input,arglist):
   for i in inputcopy.keys():
     if i in arglist.keys(): del inputcopy[i]
   return inputcopy
-
-
-#-------------------------------------------------------------------------
-# This returns the indices of the particles selected.
-def selectparticles(iw=0,kwdict={},**kw):
-  """
-Selects particles based on either subsets or windows. By default it selects
-from window 0, getting all of the live partilces (whose uzp > 0).
-  - iw=0: Window to chose from
-  - js=0: Species to chose from
-  - jslist=None: List of Species to choose from, e.g. [0,3,4]; -1 for all specs
-  - win=top.zwindows+top.zbeam: Windows to use (in lab frame)
-  - z=top.zp: Coordinate for range selection
-  - ix=-1: When 0 <= ix <= nx, picks particles within xmesh[ix]+-wx*dx
-  - wx=1.: Width of window around xmesh[ix]
-  - iy=-1: When 0 <= iy <= ny, picks particles within ymesh[iy]+-wy*dy
-  - wy=1.: Width of window around ymesh[iy]
-  - iz=-1: When 0 <= iz <= nz, picks particles within zmesh[iz]+-wz*dz
-  - wz=1.: Width of window around zmesh[iz]
-  - zl=None: When specified, lower range of selection region
-  - zu=None: When specified, upper range of selection region
-  """
-  # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
-                "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None,'checkargs':0,'allowbadargs':0}
-
-  # --- Create dictionary of local values and copy it into local dictionary,
-  # --- ignoring keywords not listed in kwdefaults.
-  kwvalues = kwdefaults.copy()
-  kwvalues.update(kw)
-  kwvalues.update(kwdict)
-  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
-
-  # --- Check the argument list for bad arguments.
-  # --- 'checkargs' allows this routine to be called only to check the
-  # --- input for bad arguments.
-  # --- 'allowbadargs' allows this routine to be called with bad arguments.
-  # --- These are intentionally undocumented features.
-  badargs = checkarguments(kwvalues,kwdefaults)
-  if checkargs: return badargs
-  if badargs and not allowbadargs:
-    raise "bad argument ",string.join(badargs.keys())
-
-#  If jslist defined, call selectparticles repeatedly for each species on the list
-
-  del kwvalues['jslist']    # Remove list so selectparticles is subsequently
-                            # called with one species at a time
-  if jslist is not None:
-    if jslist == -1:    jslist = range(0,top.ns)
-    partlist = array([])
-    for js in jslist:
-        kwvalues['js'] = js
-        newparts = selectparticles(iw, kwvalues)
-        partlist = array(list(partlist)+list(newparts))
-    return partlist
-
-  ir1 = top.ins[js]-1
-  ir2 = top.ins[js]+top.nps[js]-1
-  if ir2 <= ir1: return array([])
-  if zl is not None or zu is not None:
-    if z is None: z = top.zp
-    if zl is None: zl = -top.largepos
-    if zu is None: zu = +top.largepos
-    if zl > zu: print "Warning: zl > zu"
-    ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
-                arrayrange(ir1,ir2))
-  elif ix is not None:
-    xl = w3d.xmmin + ix*w3d.dx - wx*w3d.dx
-    xu = w3d.xmmin + ix*w3d.dx + wx*w3d.dx
-    ii=compress(logical_and(less(xl,top.xp[ir1:ir2]),less(top.xp[ir1:ir2],xu)),
-                arrayrange(ir1,ir2))
-  elif iy is not None:
-    yl = w3d.ymmin + iy*w3d.dy - wy*w3d.dy
-    yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
-    ii=compress(logical_and(less(yl,top.yp[ir1:ir2]),less(top.yp[ir1:ir2],yu)),
-                arrayrange(ir1,ir2))
-  elif iz is not None:
-    z = top.zp
-    if lparallel:
-      zl = top.zmslmin[0] + iz*w3d.dz - wz*w3d.dz + top.zbeam
-      zu = top.zmslmin[0] + iz*w3d.dz + wz*w3d.dz + top.zbeam
-    else:
-      zl = w3d.zmmin + iz*w3d.dz - wz*w3d.dz + top.zbeam
-      zu = w3d.zmmin + iz*w3d.dz + wz*w3d.dz + top.zbeam
-    ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
-                arrayrange(ir1,ir2))
-  elif iw < 0:
-    if psubset==[]: setup_subsets()
-    if -iw > len(psubset): raise "Bad window number"
-    ii = ir1 + compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
-  elif iw == 0:
-    ii = xrange(ir1,ir2)
-  else:
-    if win is None: win = top.zwindows[:,iw] + top.zbeam
-    if len(shape(win)) == 2: win = win[:,iw]
-    if z is None: z = top.zp
-    ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
-                arrayrange(ir1,ir2))
-  ii = compress(not_equal(take(top.uzp,ii),0.),ii)
-  return ii
-
-#-------------------------------------------------------------------------
-# The following return a specific coordinate of the selected particles
-# More documetation added after they are declared.
-#-------------------------------------------------------------------------
-def getn(iw=0,gather=1,**kw):
-  "Returns number of particles in selection."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  if lparallel and gather: return globalsum(len(ii))
-  else: return len(ii)
-#-------------------------------------------------------------------------
-def getx(iw=0,gather=1,**kw):
-  "Returns the X positions."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.xp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def gety(iw=0,gather=1,**kw):
-  "Returns the Y positions."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.yp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getz(iw=0,gather=1,**kw):
-  "Returns the Z positions."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.zp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getr(iw=0,gather=1,**kw):
-  "Returns the R postions."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def gettheta(iw=0,gather=1,**kw):
-  "Returns the theta postions."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = arctan2(take(top.yp,ii),take(top.xp,ii))
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getvx(iw=0,gather=1,**kw):
-  "Returns the X velocity."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uxp*top.gaminv,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getvy(iw=0,gather=1,**kw):
-  "Returns the Y velocity."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uyp*top.gaminv,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getvz(iw=0,gather=1,**kw):
-  "Returns the Z velocity."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uzp*top.gaminv,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getux(iw=0,gather=1,**kw):
-  "Returns the X momentum over mass."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uxp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getuy(iw=0,gather=1,**kw):
-  "Returns the Y momentum over mass."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uyp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getuz(iw=0,gather=1,**kw):
-  "Returns the Z momentum over mass."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getxp(iw=0,gather=1,**kw):
-  "Returns the X velocity over the Z velocity (X')."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uxp,ii)/take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getyp(iw=0,gather=1,**kw):
-  "Returns the Y velocity over the Z velocity (Y')."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uyp,ii)/take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getrp(iw=0,gather=1,**kw):
-  "Returns the radial velocity over the Z velocity (R')."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-  result = (take(top.uxp,ii)*cos(tt)+take(top.uyp,ii)*sin(tt))/take(top.uzp,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-def getgaminv(iw=0,gather=1,**kw):
-  "Returns the gamma inverse."
-  ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.gaminv,ii)
-  if lparallel and gather: return gatherarray(result)
-  else: return result
-#-------------------------------------------------------------------------
-# Add the selectparticles documentation to each of the routines.
-if sys.version[:5] != "1.5.1":
-  if lparallel:
-    _gatherdoc = "  gather=1 When 1, all data is gathered to PE0"
-  else:
-    _gatherdoc = ""
-  getn.__doc__ = getn.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getx.__doc__ = getx.__doc__ + selectparticles.__doc__ + _gatherdoc
-  gety.__doc__ = gety.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getz.__doc__ = getz.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getr.__doc__ = getr.__doc__ + selectparticles.__doc__ + _gatherdoc
-  gettheta.__doc__ = gettheta.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getvx.__doc__ = getvx.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getvy.__doc__ = getvy.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getvz.__doc__ = getvz.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getux.__doc__ = getux.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getuy.__doc__ = getuy.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getuz.__doc__ = getuz.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getxp.__doc__ = getxp.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getyp.__doc__ = getyp.__doc__ + selectparticles.__doc__ + _gatherdoc
-  getrp.__doc__ = getrp.__doc__ + selectparticles.__doc__ + _gatherdoc
-#-------------------------------------------------------------------------
-
-##########################################################################
-def getxxpslope(iw=0,iz=-1):
-  """
-Calculates the x-x' slope based on either the window moments in window iw
-or the zmoments at iz. This returns a tuple containing (slope,offset,vz).
-The product slope*vz gives the slope for x-vx.
-  """
-  if not lparallel:
-    if 0 <= iz <= w3d.nz:
-      slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
-      offset = top.xpbarz[iz]-slope*top.xbarz[iz]
-      vz = top.vzbarz[iz]
-    else:
-      iiw = max(0,iw)
-      slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
-      offset = top.xpbar[iiw]-slope*top.xbar[iiw]
-      vz = top.vzbar[iiw]
-  else:
-    if 0 <= iz <= w3d.nzfull:
-      pe = convertizptope(iz)
-      if me == pe:
-        iz = iz - top.izpslave[me]
-        slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
-        offset = top.xpbarz[iz]-slope*top.xbarz[iz]
-        vz = top.vzbarz[iz]
-      else:
-        (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
-    else:
-      iiw = max(0,iw)
-      pe = convertiwtope(iiw)
-      if me == pe:
-        slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
-        offset = top.xpbar[iiw]-slope*top.xbar[iiw]
-        vz = top.vzbar[iiw]
-      else:
-        (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
-  return (slope,offset,vz)
-#-------------------------------------------------------------------------
-def getyypslope(iw=0,iz=-1):
-  """
-Calculates the y-y' slope based on either the window moments in window iw
-or the zmoments at iz. This returns a tuple containing (slope,offset,vz).
-The product slope*vz gives the slope for y-vy.
-  """
-  if not lparallel:
-    if 0 <= iz <= w3d.nz:
-      slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
-      offset = top.ypbarz[iz]-slope*top.ybarz[iz]
-      vz = top.vzbarz[iz]
-    else:
-      iiw = max(0,iw)
-      slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
-      offset = top.ypbar[iiw]-slope*top.ybar[iiw]
-      vz = top.vzbar[iiw]
-  else:
-    if 0 <= iz <= w3d.nzfull:
-      pe = convertizptope(iz)
-      if me == pe:
-        iz = iz - top.izpslave[me]
-        slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
-        offset = top.ypbarz[iz]-slope*top.ybarz[iz]
-        vz = top.vzbarz[iz]
-      else:
-        (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
-    else:
-      iiw = max(0,iw)
-      pe = convertiwtope(iiw)
-      if me == pe:
-        slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
-        offset = top.ypbar[iiw]-slope*top.ybar[iiw]
-        vz = top.vzbar[iiw]
-      else:
-        (slope,offset,vz) = (0.,0.,0.)
-      (slope,offset,vz) = tuple(broadcast(array([slope,offset,vz]),pe))
-  return (slope,offset,vz)
-#-------------------------------------------------------------------------
-def getvzrange():
-  "Returns a tuple containg the Vz range for plots"
-  if (top.vzrng != 0.):
-     vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
-     vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
-  else:
-     vzmax = top.vzmaxp + 0.1*(top.vzmaxp-top.vzminp)
-     vzmin = top.vzminp - 0.1*(top.vzmaxp-top.vzminp)
-  return (vzmin,vzmax)
 
 ##########################################################################
 def pptitleright(iw=0,kwdict={},**kw):
@@ -2641,8 +2303,8 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,**kw):
   if ix is None: ix = w3d.ix_axis
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin + zbeam
-  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax + zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = top.zplmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = top.zplmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
@@ -2650,7 +2312,7 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,**kw):
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.ymmin,w3d.ymmax)
+    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   rrr = getrho(ix=ix)
   if me > 0: rrr = zeros((w3d.ny+1,w3d.nzfull+1),'d')
@@ -2673,8 +2335,8 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,**kw):
   if iy is None: iy = w3d.iy_axis
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin + zbeam
-  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax + zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = top.zplmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = top.zplmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
@@ -2682,7 +2344,7 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,**kw):
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.xmmin,w3d.xmmax)
+    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   rrr = getrho(iy=iy)
   if me > 0: rrr = zeros((w3d.nx+1,w3d.nzfull+1),'d')
@@ -2743,8 +2405,8 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,**kw):
   if ix is None: ix = w3d.ix_axis
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin + zbeam
-  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax + zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = top.zplmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = top.zplmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
@@ -2752,7 +2414,7 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,**kw):
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.ymmin,w3d.ymmax)
+    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.ymmin,w3d.ymmax)
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix)
   if me > 0: ppp = zeros((w3d.ny+1,w3d.nzfull+1),'d')
@@ -2775,8 +2437,8 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,**kw):
   if iy is None: iy = w3d.iy_axis
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin + zbeam
-  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax + zbeam
+  if not kw.has_key('xmin'): kw['xmin'] = top.zplmin + zbeam
+  if not kw.has_key('xmax'): kw['xmax'] = top.zplmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
@@ -2784,7 +2446,7 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,**kw):
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.xmmin,w3d.xmmax)
+    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.xmmin,w3d.xmmax)
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy)
   if me > 0: ppp = zeros((w3d.nx+1,w3d.nzfull+1),'d')
