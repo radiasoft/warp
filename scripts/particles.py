@@ -9,6 +9,7 @@ getvx(), getvy(), getvz(): get particle velocity
 getux(), getuy(), getuz(): get particle momentum/mass
 getxp(), getyp(), getrp(): get tranverse normalized velocities
 getgaminv(): get gamma inverse
+getpid(): get particle identification number
 
 getxxpslope(), getyypslope(): get x-x' and y-y' slopes
 
@@ -19,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.3 2002/05/09 14:06:03 dave Exp $"
+particles_version = "$Id: particles.py,v 1.4 2002/09/27 16:40:48 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -299,6 +300,16 @@ def getgaminv(iw=0,gather=1,**kw):
   "Returns the gamma inverse."
   ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.gaminv,ii)
+  if lparallel and gather: return gatherarray(result)
+  else: return result
+#-------------------------------------------------------------------------
+def getpid(iw=0,gather=1,**kw):
+  "Returns particle id number."
+  if top.npmaxi != 0:
+    ii = selectparticles(iw=iw,kwdict=kw)
+    result = take(top.pid,ii)
+  else:
+    result = array([])
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
