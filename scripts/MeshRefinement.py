@@ -268,7 +268,7 @@ Given a block instance, installs it as a child.
   def hasconductors(self):
     return self.conductors.interior.n > 0
 
-  def getconductors(self,alllevels=0,result=None):
+  def getconductors(self,alllevels=1,result=None):
     if result is None: result = []
     result.append(self.conductors)
     if alllevels:
