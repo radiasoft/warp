@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.30 2002/05/03 21:05:45 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.31 2002/05/03 22:50:31 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1252,8 +1252,6 @@ grid that data is to be used for.
   f3d.iocndlxy[:f3d.nocndbdy] = take(icndlxynew,oo)
   f3d.iocndlz[:f3d.nocndbdy] = take(icndlznew,oo)
 
-
-
 #########################################################################
 #########################################################################
 #########################################################################
@@ -1263,12 +1261,41 @@ grid that data is to be used for.
 # The presence of these allows changing the argument lists of the fortran
 # versions without breaking code.
 #########################################################################
-def pysrfrvout(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
+def srfrvout(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
              rmax=top.largepos,lfill=false,
              xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
              zmmin=None,zmmax=None,zbeam=None,dx=None,dy=None,dz=None,
              nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
              xmesh=None,ymesh=None,l2symtry=None,l4symtry=None):
+  """
+Sets up a conductor represented by the outside of a surface of revolution.
+The routine rofzfunc should be of the form
+   def rofz():
+     f3d.srfrv_r = f(f3d.srfrv_z)
+where f() is the radius as a function of z and srfrv_z and srfrv_r are
+compiled variables which pass data into and out of rofz.
+The begining of the calling sequence would then be
+srfrvout(rofz,...)
+
+Input:
+  rofzfunc=" ": routine which calculates the radius as function of z.
+  volt=0.: voltage on the conductor.
+  zmin=w3d.zmmin: minimum z of the conductor.
+  zmax=w3d.zmmax: maximum z of the conductor.
+  xcent=0.: x center of the conductor.
+  ycent=0.: y center of the conductor.
+  rmax=LargePos: maximum radius of the conductor.
+  lfill=false: logical requesting that the whole conductor be filled
+               with points.
+  lshell=true: logical requesting that the shell be subgrid resolved
+  xmin,xmax,ymin,ymax: min and max transverse extent of conductor.
+                       default to w3d.xmmin,xmmax,ymmin,ymmax
+  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+  xmesh,ymesh,l2symtry,l4symtry:
+           are all variables describing the grid. Default to variables in w3d
+           and top with the same name.
+Output is put directly into the conductor arrays of PSOR3d.
+  """
   if zmin is None: zmin = w3d.zmmin
   if zmax is None: zmax = w3d.zmmax
   if xmin is None: xmin = w3d.xmmin
@@ -1291,8 +1318,15 @@ def pysrfrvout(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
   if l2symtry is None: l2symtry = w3d.l2symtry
   if l4symtry is None: l4symtry = w3d.l4symtry
 
-  # --- Make sure the rofzfunc is in main
-  if not f3d.lsrlinr: __main__.__dict__[rofzfunc] = eval(rofzfunc)
+  # --- Make sure the rofzfunc is in main.
+  # --- Note that this can only really work if a reference to the function
+  # --- is passed in (instead of the name).
+  if not f3d.lsrlinr and type(rofzfunc) == FunctionType:
+    __main__.__dict__[rofzfunc] = rofzfunc
+
+  # --- Get the name of the input function if a reference to the function
+  # --- was passed in.
+  if type(rofzfunc) == FunctionType: rofzfunc = rofzfunc.__name__
 
   # --- Now call the fortran version
   f3d.srfrvout(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
@@ -1300,12 +1334,41 @@ def pysrfrvout(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
                nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
 #---------------------------------------------------------------------------
-def pysrfrvin(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
+def srfrvin(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
             rmin=0.,lfill=false,
             xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
             zmmin=None,zmmax=None,zbeam=None,dx=None,dy=None,dz=None,
             nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
             xmesh=None,ymesh=None,l2symtry=None,l4symtry=None):
+  """
+Sets up a conductor represented by the inside of a surface of revolution.
+The routine rofzfunc should be of the form
+   def rofz():
+     f3d.srfrv_r = f(f3d.srfrv_z)
+where f() is the radius as a function of z and srfrv_z and srfrv_r are
+compiled variables which pass data into and out of rofz.
+The begining of the calling sequence would then be
+srfrvout(rofz,...)
+
+Input:
+  rofzfunc=" ": routine which calculates the radius as function of z.
+  volt=0.: voltage on the conductor.
+  zmin=w3d.zmmin: minimum z of the conductor.
+  zmax=w3d.zmmax: maximum z of the conductor.
+  xcent=0.: x center of the conductor.
+  ycent=0.: y center of the conductor.
+  rmin=0.: minimum radius of the conductor.
+  lfill=false: logical requesting that the whole conductor be filled
+               with points.
+  lshell=true: logical requesting that the shell be subgrid resolved
+  xmin,xmax,ymin,ymax: min and max transverse extent of conductor.
+                       default to w3d.xmmin,xmmax,ymmin,ymmax
+  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+  xmesh,ymesh,l2symtry,l4symtry:
+           are all variables describing the grid. Default to variables in w3d
+           and top with the same name.
+Output is put directly into the conductor arrays of PSOR3d.
+  """
   if zmin is None: zmin = w3d.zmmin
   if zmax is None: zmax = w3d.zmmax
   if xmin is None: xmin = w3d.xmmin
@@ -1328,8 +1391,15 @@ def pysrfrvin(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
   if l2symtry is None: l2symtry = w3d.l2symtry
   if l4symtry is None: l4symtry = w3d.l4symtry
 
-  # --- Make sure the rofzfunc is in main
-  if not f3d.lsrlinr: __main__.__dict__[rofzfunc] = eval(rofzfunc)
+  # --- Make sure the rofzfunc is in main.
+  # --- Note that this can only really work if a reference to the function
+  # --- is passed in (instead of the name).
+  if not f3d.lsrlinr and type(rofzfunc) == FunctionType:
+    __main__.__dict__[rofzfunc] = rofzfunc
+
+  # --- Get the name of the input function if a reference to the function
+  # --- was passed in.
+  if type(rofzfunc) == FunctionType: rofzfunc = rofzfunc.__name__
 
   # --- Now call the fortran version
   f3d.srfrvin(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
@@ -1337,12 +1407,39 @@ def pysrfrvin(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
               nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
 #---------------------------------------------------------------------------
-def pysrfrvinout(rminofz=" ",rmaxofz=" ",volt=0.,zmin=None,zmax=None,
+def srfrvinout(rminofz=" ",rmaxofz=" ",volt=0.,zmin=None,zmax=None,
                xcent=0.,ycent=0.,lzend=true,
                xmin=None,xmax=None,ymin=None,ymax=None,lshell=true,
                zmmin=None,zmmax=None,zbeam=None,dx=None,dy=None,dz=None,
                nx=None,ny=None,nz=None,ix_axis=None,iy_axis=None,
                xmesh=None,ymesh=None,l2symtry=None,l4symtry=None):
+  """
+Sets up a conductor between two surfaces of revolution.
+The routines rminofz and rmaxofz should be of the form
+   def rofz():
+     f3d.srfrv_r = f(f3d.srfrv_z)
+where f() is the radius as a function of z and srfrv_z and srfrv_r are
+compiled variables which pass data into and out of rofz.
+
+Input:
+  rminofz=" ": routine which calculates the inner radius as function of z.
+  rmaxofz=" ": routine which calculates the outer radius as function of z.
+  volt=0.: voltage on the conductor.
+  zmin=w3d.zmmin: minimum z of the conductor.
+  zmax=w3d.zmmax: maximum z of the conductor.
+  xcent=0.: x center of the conductor.
+  ycent=0.: y center of the conductor.
+  rmin=0.: minimum radius of the conductor.
+  lzend=true: logical requesting that the end of the conductor be included
+  lshell=true: logical requesting that the shell be subgrid resolved
+  xmin,xmax,ymin,ymax: min and max transverse extent of conductor.
+                       default to w3d.xmmin,xmmax,ymmin,ymmax
+  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+  xmesh,ymesh,l2symtry,l4symtry:
+           are all variables describing the grid. Default to variables in w3d
+           and top with the same name.
+Output is put directly into the conductor arrays of PSOR3d.
+  """
   if zmin is None: zmin = w3d.zmmin
   if zmax is None: zmax = w3d.zmmax
   if xmin is None: xmin = w3d.xmmin
@@ -1365,13 +1462,80 @@ def pysrfrvinout(rminofz=" ",rmaxofz=" ",volt=0.,zmin=None,zmax=None,
   if l2symtry is None: l2symtry = w3d.l2symtry
   if l4symtry is None: l4symtry = w3d.l4symtry
 
-  # --- Make sure the rofzfunc is in main
-  if not f3d.lsrminlinr: __main__.__dict__[rminofz] = eval(rminofz)
-  if not f3d.lsrmaxlinr: __main__.__dict__[rmaxofz] = eval(rmaxofz)
+  # --- Make sure the rofzfunc is in main.
+  # --- Note that this can only really work if a reference to the function
+  # --- is passed in (instead of the name).
+  if not f3d.lsrlinr and type(rminofz) == FunctionType:
+    __main__.__dict__[rminofz] = rminofz
+  if not f3d.lsrlinr and type(rmaxofz) == FunctionType:
+    __main__.__dict__[rmaxofz] = rmaxofz
+
+  # --- Get the name of the input function if a reference to the function
+  # --- was passed in.
+  if type(rminofz) == FunctionType: rminofz = rminofz.__name__
+  if type(rmaxofz) == FunctionType: rmaxofz = rmaxofz.__name__
 
   # --- Now call the fortran version
   f3d.srfrvinout(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,lzend,
                  xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
                  nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+
+#---------------------------------------------------------------------------
+def  platepnt(ixmin=None,ixmax=None,iymin=None,iymax=None,
+              ix_axis=None,iy_axis=None,dx=None,dy=None,
+              aper=None,rmax=None,vvv=None,xoff=None,yoff=None,
+              delz_in=None,iz=None,lz_in_plate=None,fuzz=None):
+  """
+Python interface for the platepnt routine. This now just calls
+the srfrvout routine. Note that the option lz_in_plate is now ignored.
+  ixmin=0: minimum value of ix
+  ixmax=w3d.nx: maximum value of ix
+  iymin=0: minimum value of iy
+  iymax=w3d.ny: maximum value of iy
+  ix_axis=w3d.ix_axis: x grid location of beam center
+  iy_axis=w3d.iy_axis: y grid location of beam center
+  dx=w3d.dx: grid cell size in x
+  dy=w3d.dy: grid cell size in y
+  aper=0.: inner aperture of the plate
+  rmax=LargePos: maximum radius of the plate
+  vvv=0.: voltage on the plate
+  xoff=0.: x offset of aperture
+  yoff=0.: y offset of aperture
+  delz_in=0.: fraction of cell, when outside of plate, to edge of plate
+  iz=0: axial grid location of the plate
+  fuzz=1.e-5*w3d.dz: number smalled compared to grid cell size, used
+                     to prevent precision problems
+  """
+  if ixmin is None: ixmin = 0
+  if ixmax is None: ixmax = w3d.nx
+  if iymin is None: iymin = 0
+  if iymax is None: iymax = w3d.ny
+  if ix_axis is None: ix_axis = w3d.ix_axis
+  if iy_axis is None: iy_axis = w3d.iy_axis
+  if dx is None: dx = w3d.dx
+  if dy is None: dy = w3d.dy
+  if aper is None: aper = 0.
+  if rmax is None: rmax = top.largepos
+  if vvv is None: vvv = 0.
+  if xoff is None: xoff = 0.
+  if yoff is None: yoff = 0.
+  if delz_in is None: delz_in = 0.
+  if iz is None: iz = 0
+  if lz_in_plate is None: lz_in_plate = false
+  if fuzz is None: fuzz = 1.e-5*w3d.dz
+  
+  f3d.lsrlinr = true
+  f3d.npnts_sr = 2
+  gchange("Surface_of_Rev")
+  f3d.z_sr[0] = w3d.zmmin + iz*w3d.dz - 1.e-11*w3d.dz
+  f3d.z_sr[1] = w3d.zmmin + iz*w3d.dz + 1.e-11*w3d.dz
+  f3d.r_sr[:] = aper
+  srfrvout(" ",vvv,f3d.z_sr[0],f3d.z_sr[1],xoff,yoff,rmax,true,
+           w3d.xmmin+ixmin*w3d.dx,w3d.xmmin+ixmax*w3d.dx,
+           w3d.ymmin+iymin*w3d.dy,w3d.ymmin+iymax*w3d.dy,true,
+           w3d.zmmin,w3d.zmmax,top.zbeam,dx,dy,w3d.dz,
+           w3d.nx,w3d.ny,w3d.nz,ix_axis,iy_axis)
+
+  lsrlinr = false
 
 #---------------------------------------------------------------------------
