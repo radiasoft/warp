@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.15 $, $Date: 2001/10/22 17:46:57 $
+c@(#) File F3D.M, version $Revision: 3.16 $, $Date: 2001/10/26 18:09:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -7517,7 +7517,6 @@ c===========================================================================
       use Lattice
       use InPart
       use InjectVars
-      USE multigridrz
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
@@ -9160,7 +9159,6 @@ c===========================================================================
       use Lattice
       use InPart
       use InjectVars
-      USE multigridrz
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
