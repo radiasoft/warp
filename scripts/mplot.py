@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.7 2003/02/04 18:04:01 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.8 2003/10/07 21:55:51 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -109,21 +109,6 @@ Mountain-range plots of quantities saved vs. z at every timestep
     j = j + 1
     plg(i*shift+abscissascale*sign*(hl[:,j]-hl0),ord+i*ordoffset,color=color)
 
-
-############################################################################
-# --- This returns data averaged in the same way as done above in mountain
-# --- plot
-def averagezdata(qty,navg=0,nlines=100,jhist=None,istep=None,nz=None):
-  if navg == 0 or nlines == 0: return qty
-  if not nz: nz = shape(qty)[0] - 1
-  if not jhist: jhist = shape(qty)[1] - 1
-  if istep is None: istep = max(1,jhist/nlines)
-  hl = qty[:,::istep] + 0.
-  hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::istep])
-  for j in range(navg+1,nz-navg-1):
-    hl[j,:] = hl[j-1,:] + (qty[j+navg,::istep] -
-                           qty[j-navg-1,::istep])/(2*navg+1)
-  return hl
 
 ### PMLCHG - plot line charge
 def pmlchg(ifdelta=1,ifordt=0,ifneg=0,nlines=100,ifvst=1,navg=0,offset=5.e-9,
