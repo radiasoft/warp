@@ -15,9 +15,9 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.23 2002/07/09 23:54:10 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.24 2002/08/06 21:52:38 dave Exp $"
 
-if sys.platform in ['sn960510','linux-i386','linux2']:
+if sys.platform in ['sn960510','linux-i386']:
   true = -1
   false = 0
 else:
@@ -165,33 +165,45 @@ def getnextfilename(root,suffix):
   return name
 
 # --- Prints out the documentation of the subroutine or variable.
-def doc(f):
-  if type(f) == StringType:
-    # --- Check if it is a WARP variable
-    try:
-      listvar(f)
-      return
-    except NameError:
-      pass
-    # --- Check if it is a module name
-    try:
-      exec(f+'doc()',__main__.__dict__)
-      return
-    except:
-      pass
-    # --- Try to get the actual value of the object
-    try:
-      f = eval(f,__main__.__dict__)
-    except:
-      print "Name not found"
-      return
-  # --- Check if it has a doc string
-  try:
-    print f.__doc__
-    return
-  except:
-    pass
-  print "No documentation found"
+def doc(f,printit=1):
+  # --- The for loop only gives the code something to break out of. There's
+  # --- probably a better way of doing this.
+  for i in range(1):
+    if type(f) == StringType:
+        # --- Check if it is a WARP variable
+        try:
+          d = listvar(f)
+          break
+        except NameError:
+          pass
+        # --- Check if it is a module name
+        try:
+          m = __import__(f)
+          try:
+            d = m.__dict__[f+'doc']()
+            if d is None: d = ''
+          except KeyError:
+            d = m.__doc__
+          break
+        except ImportError:
+          pass
+        # --- Try to get the actual value of the object
+        try:
+          v = __main__.__dict__[f]
+          d = v.__doc__
+          break
+        except KeyError:
+          d = "Name not found"
+        except AttributeError:
+          d = "No documentation found"
+    else:
+      # --- Check if it has a doc string
+      try:
+        d = f.__doc__
+      except AttributeError:
+        d = "No documentation found"
+  if printit: print d
+  else:       return d
 
 ##############################################################################
 # Python version of the dump routine. This uses the varlist command to
