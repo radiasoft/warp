@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.11 $, $Date: 2001/07/10 19:01:38 $
+c@(#) File W3D.M, version $Revision: 3.12 $, $Date: 2001/07/18 23:50:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -514,13 +514,22 @@ c --- this point (it is redundant most of the time, the next call to
 c --- setlatt in this subroutine is sufficient). There are cases where
 c --- this is required for consistency. Since it is cheap (time wise),
 c --- it is better to make sure the data is consistent than to save a
-c --- little bit of time. The value of nzl must be checked since other
+c --- little bit of time. The value of nzl etc must be checked since other
 c --- packages (like WXY or ENV) may have reset it. For example, if the
 c --- ENV package is generated after the W3D package, nzl will be set to
 c --- zero. Switching back to W3D and running step, the internal lattice
 c --- would still be setup for the ENV package and so the step would produce
 c --- erroneaous results.
-      if (nzl == 0) nzl = nzlmax
+      if (nzl == 0) then
+        nzl = nzlmax
+        zlmin = zmmin
+        zlmax = zmmax
+        dzl = (zlmax - zlmin)/nzl
+        dzli = 1./dzl
+        do k = 0, nzl
+          zlmesh(k) = zlmin + k*dzl
+        enddo
+      endif
       call setlatt()
 
 c  Main particle advance: x to t.l. it; v to t.l. it-1/2
