@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.144 $, $Date: 2005/02/03 20:38:08 $
+c@(#) File TOP.F, version $Revision: 3.145 $, $Date: 2005/02/03 20:41:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6121,7 +6121,7 @@ c  positions, then uses it to augment the individual particle Ez's.
            kk = (zp(ip) - zbeam - zzmin) * dzzi
            w1 = (zp(ip) - zbeam - zzmin) * dzzi - kk
            w0 = 1. - w1
-           if (kk < 0 .or. kk+1 > nzzarr) cycle
+c          if (kk < 0 .or. kk+1 > nzzarr) cycle
            ez(ip) = ez(ip) + w0*egap(kk) + w1*egap(kk+1)
         enddo
 
