@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.119 2004/07/02 22:56:58 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.120 2004/07/09 19:02:32 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -541,6 +541,8 @@ def ppgeneric_doc(x,y):
   - centering='node': centering of cells with cellarray, other option are 'cell'                      and 'old' (for old incorrect scaling)
   - ctop=199: max color index for cellarray plot
   - ldensityscale=0: when true, scale the density by its max.
+  - flipxaxis=0: when true, flips gridded data about the x-axis
+  - flipyaxis=0: when true, flips gridded data about the y-axis
   - view=1: view window to use (experts only)
   - lcolorbar=1: when plotting colorized data, include a colorbar
   - colbarunitless=0: when true, color-bar scale is unitless
@@ -579,7 +581,8 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'cellarray':0,'centering':'node','ctop':199,
                 'cmin':None,'cmax':None,'ireg':None,
                 'xbound':dirichlet,'ybound':dirichlet,
-                'ldensityscale':0,'view':1,
+                'ldensityscale':0,'flipxaxis':0,'flipyaxis':0,
+                'view':1,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'xmesh':None,'ymesh':None,
                 'returngrid':0,
@@ -826,6 +829,17 @@ Note that either the x and y coordinates or the grid must be passed in.
       grid1 = log(where(less(grid,dmin/10.),dmin/10.,grid))
   else:
     grid1 = grid
+
+  # --- Flip data and plot limits about axis if requested.
+  # --- Note that iregt had already been transposed.
+  if flipxaxis:
+    xmin = -xmin
+    xmax = -xmax
+    dx = -dx
+  if flipyaxis:
+    ymin = -ymin
+    ymax = -ymax
+    dy = -dy
 
   # --- Get grid min and max and generate contour levels if needed.
   if (hash or contours or color=='density' or chopped or surface or cellarray):
@@ -2572,7 +2586,6 @@ be from none to all three.
     return eee
 
 ##########################################################################
-##########################################################################
 def pcrhozy(ix=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   """Plots contours of charge density in the Z-Y plane
   - ix=nint(-xmmin/dx): X index of plane
@@ -2596,13 +2609,10 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
   rrr = getrho(ix=ix,w3dgrid=w3dgrid)
   if me > 0: rrr = zeros((w3dgrid.ny+1,w3dgrid.nzfull+1),'d')
+  rrr = transpose(rrr)
+  ppgeneric(grid=rrr,kwdict=kw)
   if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
-    rr1 = zeros((2*w3dgrid.ny+1,w3dgrid.nzfull+1),'d')
-    rr1[w3dgrid.ny:,:] = rrr
-    rr1[w3dgrid.ny::-1,:] = rrr
-    rrr = rr1
-    kw['ymin'] = - kw['ymax']
-  ppgeneric(grid=transpose(rrr),kwdict=kw)
+    ppgeneric(grid=rrr,kwdict=kw,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
@@ -2629,13 +2639,10 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
   rrr = getrho(iy=iy,w3dgrid=w3dgrid)
   if me > 0: rrr = zeros((w3dgrid.nx+1,w3dgrid.nzfull+1),'d')
+  rrr = transpose(rrr)
+  ppgeneric(grid=rrr,kwdict=kw)
   if fullplane and w3dgrid.l4symtry:
-    rr1 = zeros((2*w3dgrid.nx+1,w3dgrid.nzfull+1),'d')
-    rr1[w3dgrid.nx:,:] = rrr
-    rr1[w3dgrid.nx::-1,:] = rrr
-    rrr = rr1
-    kw['ymin'] = - kw['ymax']
-  ppgeneric(grid=transpose(rrr),kwdict=kw)
+    ppgeneric(grid=rrr,kwdict=kw,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
@@ -2658,22 +2665,13 @@ def pcrhoxy(iz=None,fullplane=1,w3dgrid=w3d,**kw):
   settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
   rrr = getrho(iz=iz,w3dgrid=w3dgrid)
   if me > 0: rrr = zeros((w3dgrid.nx+1,w3dgrid.ny+1),'d')
-  if fullplane and w3dgrid.l4symtry:
-    rr1 = zeros((2*w3dgrid.nx+1,2*w3dgrid.ny+1),'d')
-    rr1[w3dgrid.nx:,w3dgrid.ny:] = rrr
-    rr1[w3dgrid.nx::-1,w3dgrid.ny:] = rrr
-    rr1[w3dgrid.nx:,w3dgrid.ny::-1] = rrr
-    rr1[w3dgrid.nx::-1,w3dgrid.ny::-1] = rrr
-    rrr = rr1
-    kw['ymin'] = - kw['ymax']
-    kw['xmin'] = - kw['xmax']
-  elif fullplane and w3dgrid.l2symtry:
-    rr1 = zeros((w3dgrid.nx+1,2*w3dgrid.ny+1),'d')
-    rr1[:,w3dgrid.ny:] = rrr
-    rr1[:,w3dgrid.ny::-1] = rrr
-    rrr = rr1
-    kw['ymin'] = - kw['ymax']
   ppgeneric(grid=rrr,kwdict=kw)
+  if fullplane and w3dgrid.l4symtry:
+    ppgeneric(grid=rrr,kwdict=kw,flipxaxis=1,flipyaxis=0)
+    ppgeneric(grid=rrr,kwdict=kw,flipxaxis=0,flipyaxis=1)
+    ppgeneric(grid=rrr,kwdict=kw,flipxaxis=1,flipyaxis=1)
+  elif fullplane and w3dgrid.l2symtry:
+    ppgeneric(grid=rrr,kwdict=kw,flipxaxis=0,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
@@ -2700,13 +2698,10 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   settitles("Electrostatic potential in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix,w3dgrid=w3dgrid)
   if me > 0: ppp = zeros((w3dgrid.ny+1,w3dgrid.nzfull+1),'d')
+  ppp = transpose(ppp)
+  ppgeneric(grid=ppp,kwdict=kw)
   if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
-    pp1 = zeros((2*w3dgrid.ny+1,w3dgrid.nzfull+1),'d')
-    pp1[w3dgrid.ny:,:] = ppp
-    pp1[w3dgrid.ny::-1,:] = ppp
-    ppp = pp1
-    kw['ymin'] = - kw['ymax']
-  ppgeneric(grid=transpose(ppp),kwdict=kw)
+    ppgeneric(grid=ppp,kwdict=kw,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
@@ -2733,13 +2728,10 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,w3dgrid=w3d,**kw):
   settitles("Electrostatic potential in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy,w3dgrid=w3dgrid)
   if me > 0: ppp = zeros((w3dgrid.nx+1,w3dgrid.nzfull+1),'d')
+  ppp = transpose(ppp)
+  ppgeneric(grid=ppp,kwdict=kw)
   if fullplane and (w3dgrid.l4symtry or w3dgrid.solvergeom == w3d.RZgeom):
-    pp1 = zeros((2*w3dgrid.nx+1,w3dgrid.nzfull+1),'d')
-    pp1[w3dgrid.nx:,:] = ppp
-    pp1[w3dgrid.nx::-1,:] = ppp
-    ppp = pp1
-    kw['ymin'] = - kw['ymax']
-  ppgeneric(grid=transpose(ppp),kwdict=kw)
+    ppgeneric(grid=ppp,kwdict=kw,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
@@ -2762,22 +2754,13 @@ def pcphixy(iz=None,fullplane=1,w3dgrid=w3d,**kw):
   settitles("Electrostatic potential in x-y plane","X","Y","iz = "+repr(iz))
   ppp = getphi(iz=iz,w3dgrid=w3dgrid)
   if me > 0: ppp = zeros((w3dgrid.nx+1,w3dgrid.ny+1),'d')
+  ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=0)
   if fullplane and w3dgrid.l4symtry:
-    pp1 = zeros((2*w3dgrid.nx+1,2*w3dgrid.ny+1),'d')
-    pp1[w3dgrid.nx:,w3dgrid.ny:] = ppp
-    pp1[w3dgrid.nx::-1,w3dgrid.ny:] = ppp
-    pp1[w3dgrid.nx:,w3dgrid.ny::-1] = ppp
-    pp1[w3dgrid.nx::-1,w3dgrid.ny::-1] = ppp
-    ppp = pp1
-    kw['ymin'] = - kw['ymax']
-    kw['xmin'] = - kw['xmax']
+    ppgeneric(grid=ppp,kwdict=kw,flipxaxis=1,flipyaxis=0)
+    ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=1)
+    ppgeneric(grid=ppp,kwdict=kw,flipxaxis=1,flipyaxis=1)
   elif fullplane and w3dgrid.l2symtry:
-    pp1 = zeros((w3dgrid.nx+1,2*w3dgrid.ny+1),'d')
-    pp1[:,w3dgrid.ny:] = ppp
-    pp1[:,w3dgrid.ny::-1] = ppp
-    ppp = pp1
-    kw['ymin'] = - kw['ymax']
-  ppgeneric(grid=ppp,kwdict=kw)
+    ppgeneric(grid=ppp,kwdict=kw,flipxaxis=0,flipyaxis=1)
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
