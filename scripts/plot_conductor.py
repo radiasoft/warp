@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.55 2003/04/01 02:01:21 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.56 2003/04/05 01:07:55 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -498,8 +498,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     dx = w3d.dx
     dz = w3d.dz
     xmmin = w3d.xmmin
-    zmmin = w3d.zmmin + zbeam
-    if lparallel: zmmin = top.zmslmin[0]
+    zmmin = w3d.zmminglobal + zbeam
   else:
     dx = 1.
     dz = 1.
@@ -565,8 +564,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     dy = w3d.dy
     dz = w3d.dz
     ymmin = w3d.ymmin
-    zmmin = w3d.zmmin + zbeam
-    if lparallel: zmmin = top.zmslmin[0]
+    zmmin = w3d.zmminglobal + zbeam
   else:
     dy = 1.
     dz = 1.
@@ -807,7 +805,6 @@ in Z-X plane
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-    if lparallel: zmmin = f3d.mglevelsiz[0]
   if plotphi:
     ppp = getphi(iy=iy)
     ppp = transpose(ppp)
@@ -862,7 +859,6 @@ in Z-Y plane
     dz = 1.*signz
     ymmin = 0.
     zmmin = 0.
-    if lparallel: zmmin = f3d.mglevelsiz[0]
   if plotphi:
     ppp = getphi(ix=ix)
     ppp = transpose(ppp)
@@ -966,7 +962,6 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-    if lparallel: zmmin = f3d.mglevelsiz[0]
   plotcondn('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,1,1)
   if fullplane and w3d.l4symtry:
     plotcondn('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,-1,1)
@@ -2141,8 +2136,7 @@ Sets the voltage on a conductor, given an id.
     # --- If setvinject is true, set it to the voltage at the source center
     if setvinject: top.vinject = voltage(top.xinject,top.yinject,top.zinject)
 
-    if lparallel: zmmin = top.zmslmin[0]
-    else:         zmmin = w3d.zmmin
+    zmmin = w3d.zmminglobal
     icx = f3d.ixcond*take(nint(f3d.mglevelslx),f3d.icondlevel)
     icy = f3d.iycond*take(nint(f3d.mglevelsly),f3d.icondlevel)
     icz = f3d.izcond*take(nint(f3d.mglevelslz),f3d.icondlevel) + \
