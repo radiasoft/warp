@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.70 2004/06/04 16:24:45 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.71 2004/07/02 23:17:43 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -86,7 +86,7 @@ def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                         zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
                         installrz=1,gridmode=1,solvergeom=None,
-                        conductors=f3d.conductors):
+                        conductors=f3d.conductors,gridrz=None):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -105,11 +105,11 @@ Installs the given conductors.
   """
   # First, create a grid object
   g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nzfull,
-           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry)
+           xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry,gridrz)
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
-  g.installdata(installrz,gridmode,solvergeom,conductors)
+  g.installdata(installrz,gridmode,solvergeom,conductors,gridrz)
   
 ##############################################################################
 ##############################################################################
@@ -495,7 +495,7 @@ has already been called.
     self.mglevel[n1:n1+n2] = d.mglevel[:n2]
     self.ndata = n1 + n2
 
-  def install(self,installrz=1,solvergeom=None,conductors=None):
+  def install(self,installrz=1,solvergeom=None,conductors=None,grid=None):
     """
 Installs the data into the WARP database
     """
@@ -518,7 +518,7 @@ Installs the data into the WARP database
     # --- only after all of the objects have been installed.
     if solvergeom is None: solvergeom = w3d.solvergeom
     if(installrz and
-       (solvergeom == w3d.RZgeom or solvergeom == w3d.XZgeom)):
+       (solvergeom==w3d.RZgeom or solvergeom==w3d.XZgeom or solvergeom==w3d.XYgeom)):
       conductors.interior.n = 0
       conductors.evensubgrid.n = 0
       conductors.oddsubgrid.n = 0
@@ -575,12 +575,15 @@ Installs the data into the WARP database
       conductors.oddsubgrid.numb[:,no:no+nn] = take(self.ns,ii,1)
       conductors.oddsubgrid.ilevel[no:no+nn] = take(self.mglevel,ii)
 
-    # --- If the RZ solver is being used, the copy the data into that
+    # --- If the RZ solver is being used, then copy the data into that
     # --- database. This also copies all of the accumulated data back into
     # --- the database to allow for plotting and diagnostics.
     if ntot > 0 and installrz:
-      if(solvergeom == w3d.RZgeom or solvergeom == w3d.XZgeom):
-        frz.install_conductors_rz(conductors)
+      if(solvergeom==w3d.RZgeom or solvergeom==w3d.XZgeom or solvergeom==w3d.XYgeom):
+        if grid is None:
+          frz.install_conductors_rz(conductors,frz.basegrid)
+        else:
+          frz.install_conductors_rz(conductors,grid)
 
   def __neg__(self):
     "Delta not operator."
@@ -895,6 +898,7 @@ Constructor arguments:
                                          from w3d
   - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
                        from w3d
+  - gridrz: RZ grid block to consider
 Call getdata(a,dfill) to generate the conductor data. 'a' is a geometry object.
 Call installdata(installrz,gridmode) to install the data into the WARP database.
   """
@@ -903,7 +907,7 @@ Call installdata(installrz,gridmode) to install the data into the WARP database.
                     zmin=None,zmax=None,zbeam=None,
                     nx=None,ny=None,nz=None,nzfull=None,
                     xmmin=None,xmmax=None,ymmin=None,ymmax=None,
-                    zmmin=None,zmmax=None,l2symtry=None,l4symtry=None):
+                    zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,gridrz=None):
     """
 Creates a grid object which can generate conductor data.
     """
@@ -922,7 +926,11 @@ Creates a grid object which can generate conductor data.
     self.zmmax = _default(zmmax,w3d.zmmaxglobal)
     self.l2symtry = _default(l2symtry,w3d.l2symtry)
     self.l4symtry = _default(l4symtry,w3d.l4symtry)
-
+    
+    if w3d.solvergeom==w3d.XYgeom and not wxy.lthick:
+        self.zmmin=-smallpos
+        self.zmmax=-self.zmmin
+    
     self.xmin = _default(xmin,self.xmmin)
     self.xmax = _default(xmax,self.xmmax)
     self.ymin = _default(ymin,self.ymmin)
@@ -951,8 +959,9 @@ Creates a grid object which can generate conductor data.
     else:           self.dy = self.dx
     # --- z is different since it is not affected by transverse symmetries
     # --- but is affected by parallel decomposition.
-    self.dz = (self.zmmax - self.zmmin)/self.nzfull
-
+    if self.nz > 0: self.dz = (self.zmmax - self.zmmin)/self.nzfull
+    else:           self.dz = (self.zmmax - self.zmmin)
+#    if w3d.solvergeom==w3d.XYgeom:self.dz=1.
     if top.fstype in [7,11,10]:
       if top.fstype in [7,11]:
         conductors = ConductorType()
@@ -964,7 +973,8 @@ Creates a grid object which can generate conductor data.
         self.mglevelly = conductors.levelly[:self.mglevels]
         self.mglevellz = conductors.levellz[:self.mglevels]
       if top.fstype == 10:
-        setmglevels_rz()
+        if gridrz is None:gridrz=frz.basegrid
+        setmglevels_rz(gridrz)
         self.mglevels = f3d.mglevels
         self.mgleveliz = f3d.mglevelsiz[:f3d.mglevels]
         self.mglevellx = f3d.mglevelslx[:f3d.mglevels]
@@ -1050,7 +1060,6 @@ Assembly on this grid.
     for i in range(self.mglevels):
       tt1 = wtime()
       ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(i,aextent)
-
       tt2[0] = tt2[0] + wtime() - tt1
       if len(x) == 0: continue
       for zz in zmesh:
@@ -1081,7 +1090,7 @@ Assembly on this grid.
     #print tt2
 
   def installdata(self,installrz=1,gridmode=1,solvergeom=None,
-                  conductors=f3d.conductors):
+                  conductors=f3d.conductors,gridrz=None):
     """
 Installs the conductor data into the fortran database
     """
@@ -1091,7 +1100,7 @@ Installs the conductor data into the fortran database
     conductors.levelly[:self.mglevels] = self.mglevelly
     conductors.levellz[:self.mglevels] = self.mglevellz
     for d in self.dlist:
-      d.install(installrz,solvergeom,conductors)
+      d.install(installrz,solvergeom,conductors,gridrz)
     self.dlistinstalled += self.dlist
     self.dlist = []
     if gridmode is not None:
@@ -2550,7 +2559,7 @@ Or give the quadrupole id to use...
     quad = xrod1 + xrod2 + yrod1 + yrod2
   else:
     quad = None
-
+  
   # --- Add end plates
   if pw > 0. and (ap > 0. or pa > 0.):
     if pa == 0.: pa = ap
@@ -2568,7 +2577,7 @@ Or give the quadrupole id to use...
       plate1 = ZCylinderOut(pa,pw,v1,xcent,ycent,zcent-0.5*(rl+gl)-pw/2.,condid)
       plate2 = ZCylinderOut(pa,pw,v2,xcent,ycent,zcent+0.5*(rl+gl)+pw/2.,condid)
     quad = quad + plate1 + plate2
-
+    
   return quad
 
 #============================================================================
@@ -2677,6 +2686,7 @@ Class for creating a surface of revolution conductor part using lines and arcs a
       y[i]=yc+r*sin(theta)
     return [x,y]
 
+
 class SRFRVLAcond:
   """
 Class for creating Surface of revolution conductor using lines and arcs as primitives.
@@ -2688,7 +2698,7 @@ containing a list of primitives.
  - condid:  conductor part ID
  - install=1 (optional): flag for installation of conductors immediately after creation.
   """
-  def __init__(self,name,parts,voltage,condid,install=1):
+  def __init__(self,name,parts,voltage,condid,install=1,l_verbose=1):
     """
   Register SRFRVLA conductor parts using ZSrfrvIn, ZSrfrvOut or ZSrfrvInOut.
     """
@@ -2770,7 +2780,7 @@ containing a list of primitives.
         r_srmax=take(r_srmax,args)
         zc_srmax=take(zc_srmax,argsc)
         rc_srmax=take(rc_srmax,argsc)
-
+      
       # Register parts.
       if(l_t==1 and l_b==1):
         part.installed = ZSrfrvInOut('','',
@@ -2787,6 +2797,10 @@ containing a list of primitives.
                               zcmindata=zc_srmin,
                               zcmaxdata=zc_srmax,
                               )
+        part.zmin = min(z_srmax)
+        part.zmax = max(z_srmax)
+        part.rmin = min(r_srmin)
+        part.rmax = max(r_srmax)
 
       elif(l_b==1):
         part.installed = ZSrfrvOut('',
@@ -2796,6 +2810,10 @@ containing a list of primitives.
                             condid =condid,
                             rofzdata=r_srmin,
                             zdata=z_srmin)
+        part.zmin = min(z_srmin)
+        part.zmax = max(z_srmin)
+        part.rmin = min(r_srmin)
+        part.rmax = max(r_srmin)
 
       elif(l_t==1):
         part.installed = ZSrfrvIn('',
@@ -2805,22 +2823,46 @@ containing a list of primitives.
                             condid =condid,
                             rofzdata=r_srmax,
                             zdata=z_srmax)
+        part.zmin = min(z_srmax)
+        part.zmax = max(z_srmax)
+        part.rmin = min(r_srmax)
+        part.rmax = max(r_srmax)
 
       # store installed conductor in a list
       if i == 0:
         self.cond = self.parts[i].installed
       else:    
         self.cond += self.parts[i].installed
-    if(install):self.install()
+    if(install):self.install(l_verbose)
     
-  def install(self):
+  def install(self,grid=None,l_verbose=1,l_recursive=1):
     """
   Install SRFRVLA conductors.
     """
-    print 'installing',self.name,'( ID=',self.condid,')...'
-    for part in self.parts:
-      installconductors(part.installed)
-    
+    if l_verbose:print 'installing',self.name,'( ID=',self.condid,')...'
+    if w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom:
+        if grid is None:grid=frz.basegrid
+        for part in self.parts:
+            installconductors(part.installed,xmin=part.rmin,xmax=part.rmax,
+                        zmin=part.zmin,zmax=part.zmax,
+                         nx=grid.nr,nz=grid.nz,nzfull=grid.nz,
+                         xmmin=grid.xmin,xmmax=grid.xmax,
+                         zmmin=grid.zmin,zmmax=grid.zmax,
+                        gridrz=grid)
+        if(l_recursive):
+          try:
+            self.install(grid.next,l_verbose=0)
+          except:
+            try:
+              self.install(grid.down,l_verbose=0)
+            except:
+              pass
+    else:
+      for part in self.parts:
+        installconductors(part.installed,xmin=part.rmin,xmax=part.rmax,
+                        ymin=part.rmin,ymax=part.rmax,
+                        zmin=part.zmin,zmax=part.zmax) 
+
   def draw(self,ncirc=50,scx=1.,scy=1.,colort='blue',colorb='red',
                  color='none',signx=1.,width=1.):
     """
@@ -2859,7 +2901,7 @@ A SRFRVLA contains two lists:
   - SRFRVLAconds which is the list of SRFRVLA conductors (SRFRVLAcond).
   - conds which is the list of conductors, as defined in generateconductors.py.
   """
-  def __init__(self,SRFRVLAconds,install=1):
+  def __init__(self,SRFRVLAconds):
     self.conds = []
     self.SRFRVLAconds = SRFRVLAconds
     for SRFRVLAcond in SRFRVLAconds:
@@ -2911,7 +2953,7 @@ Class for reading SRFRVLA data from file.
   - rshifts=None (optional): list of shifts in R to apply to conductor parts 
   - install=1 (optional): flag for installation of conductors immediately after reading 
   """
-  def __init__(self,filename,voltages,condids,zshifts=None,rshifts=None,install=1):
+  def __init__(self,filename,voltages,condids,zshifts=None,rshifts=None,install=1,l_verbose=1):
     """
   Reads SRFRVLA conductors from external file. The series of conductors which is stored in a list.
     """
@@ -2958,11 +3000,20 @@ Class for reading SRFRVLA data from file.
       elif(line[0]=='End'):
         cont=0
     f.close()
-    # create conductors
-    SRFRVLAconds = []
-    for i,parts in enumerate(conds):
-      SRFRVLAconds += [SRFRVLAcond(condnames[i],parts,voltages[i],condids[i],install)]
-    SRFRVLAsystem.__init__(self,SRFRVLAconds)
+    self.conductors = conds
+    self.condnames = condnames
+    self.voltages = voltages
+    self.condids = condids
+    self.SRFRVLAconds = []
+    for i,parts in enumerate(self.conductors):
+      self.SRFRVLAconds += [SRFRVLAcond(self.condnames[i],parts,self.voltages[i],self.condids[i],install=0)]
+    SRFRVLAsystem.__init__(self,self.SRFRVLAconds)
+    if install:self.install(l_verbose=l_verbose)
+    
+  def install(self,l_verbose=1,grid=None,l_recursive=1):
+    # Install conductors
+    for conductor in self.SRFRVLAconds:
+        conductor.install(l_verbose=l_verbose,grid=grid,l_recursive=l_recursive)
 
 class SRFRVLA_circle(SRFRVLApart):
   """
