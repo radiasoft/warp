@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.30 2001/07/24 16:49:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.31 2001/08/14 18:27:52 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -519,7 +519,7 @@ def printtimers(file=None):
     for t in timers: timelists.append(array(gather(t[1]))) 
     if me > 0: return
     for t in timelists: totaltimes.append(sum(t))
-    for t in timelists: timedevs.append(sqrt(ave(t**2) - ave(t)**2))
+    for t in timelists: timedevs.append(sqrt(max(0.,ave(t**2) - ave(t)**2)))
     h1a = '                          Total time         Deviation'
     h2a = '                    (all CPUs)   (per CPU)            '
     h3a = '                        (s)         (s)         (s)   '
