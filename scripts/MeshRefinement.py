@@ -2,6 +2,23 @@
 """
 from warp import *
 from multigrid import MultiGrid
+import __main__
+
+
+# ---------------------------------------------------------------------------
+MRsolver = [None]
+def registersolver(solver):
+  MRsolver[0] = solver
+def loadrhoMR():
+  MRsolver[0].loadrho()
+def fieldsolMR():
+  MRsolver[0].solve()
+def fetcheMR():
+  MRsolver[0].fetche()
+__main__.__dict__['loadrhoMR'] = loadrhoMR
+__main__.__dict__['fieldsolMR'] = fieldsolMR
+__main__.__dict__['fetcheMR'] = fetcheMR
+# ---------------------------------------------------------------------------
 
 class BlockOverlap:
   def __init__(self,block,fulllower,fullupper,notmine):
@@ -143,17 +160,28 @@ class MRBlock(MultiGrid):
     self.addblockaschild(child)
 
   def addblockaschild(self,block):
-    self.children.append(block)
-    ix1,iy1,iz1 = maximum(0,block.fulllower/block.refinement - self.fulllower)
-    ix2,iy2,iz2 =           block.fullupper/block.refinement - self.fulllower
     if self.idomains is None:
       self.idomains = fzeros((self.nx+1,self.ny+1,self.nz+1),'d')
+    self.children.append(block)
+    # --- Set full domain to negative of child number first.
+    ix1,iy1,iz1 = maximum(0,block.fulllower/block.refinement - self.fulllower)
+    ix2,iy2,iz2 =           block.fullupper/block.refinement - self.fulllower
     # --- If the child extends to the edge of the parent mesh, it claims the
     # --- grid points on the upper edges.
     if ix2 == self.dims[0]: ix2 += 1
     if iy2 == self.dims[1]: iy2 += 1
     if iz2 == self.dims[2]: iz2 += 1
-    self.idomains[ix1:ix2,iy1:iy2,iz1:iz2] = len(self.children)
+    ii = self.idomains[ix1:ix2,iy1:iy2,iz1:iz2]
+    ii[:,:,:] = where(ii==0.,-len(self.children),ii)
+    # --- Set interior to positive child number.
+    ix1,iy1,iz1 = maximum(0,block.lower/block.refinement - self.fulllower)
+    ix2,iy2,iz2 =           block.upper/block.refinement - self.fulllower
+    # --- If the child extends to the edge of the parent mesh, it claims the
+    # --- grid points on the upper edges.
+    if ix2 == self.dims[0]: ix2 += 1
+    if iy2 == self.dims[1]: iy2 += 1
+    if iz2 == self.dims[2]: iz2 += 1
+    self.idomains[ix1:ix2,iy1:iy2,iz1:iz2] = +len(self.children)
 
   def setrhoboundaries(self):
     """
@@ -261,6 +289,9 @@ efficient timewise, but uses two extra full-size arrays.
                    self.nx,self.ny,self.nz,self.idomains,
                    self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                    self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
+      # --- Take absolute value since the idomains is signed.
+      # --- Can this be done in place to save memory?
+      ichild = abs(ichild)
       # --- Sort the list of which domain the particles are in.
       ichildsorter = argsort(ichild)
       ichildsorted = take(ichild,ichildsorter)
@@ -338,7 +369,7 @@ efficient timewise, but uses two extra full-size arrays.
             # --- if its doesn't own it.
             ix1,iy1,iz1 = i1
             ix2,iy2,iz2 = i2 + pp - pm + 1
-            d = self.idomains[ix1:ix2,iy1:iy2,iz1:iz2]
+            d = abs(self.idomains[ix1:ix2,iy1:iy2,iz1:iz2])
             ld = (d == ichild)
             # --- For the upper edges of the childs domain, if no other
             # --- children own the cells, this child must contribute rho to
@@ -419,7 +450,7 @@ efficient timewise, but uses two extra full-size arrays.
       ix3,iy3,iz3 = pld - parent.fulllower
       ix4,iy4,iz4 = pud - parent.fulllower + 1
       notmineslice = notmine[ix1:ix2,iy1:iy2,iz1:iz2]
-      idomainsslice = parent.idomains[ix3:ix4,iy3:iy4,iz3:iz4]
+      idomainsslice = abs(parent.idomains[ix3:ix4,iy3:iy4,iz3:iz4])
       # --- For the cells owned by this instance, set notmine to zero.
       iii = where(idomainsslice==ichild,0,notmineslice[::r,::r,::r])
       # --- That array is relative to the parents mesh size. Copy to each
@@ -492,6 +523,96 @@ the top level grid.
     self.gatherrhofromchildren()
     self.setrhoboundaries()
 
+  def gete(self,x,y,z,ex,ey,ez):
+    if len(x) == 0: return
+    if len(self.children) > 0:
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      ichild = zeros(len(x),'d')
+      getgridngp3d(len(x),x,y,z,ichild,
+                   self.nx,self.ny,self.nz,self.idomains,
+                   self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                   self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
+      # --- Zero out places where idomains < 0
+      ichild = where(ichild < 0.,0.,ichild)
+      # --- Sort the list of which domain the particles are in.
+      ichildsorter = argsort(ichild)
+      ichildsorted = take(ichild,ichildsorter)
+      nperchild = self.getnperchild(ichildsorted)
+      # --- Now use the same sorting on the particle quantities.
+      x = take(x,ichildsorter)
+      y = take(y,ichildsorter)
+      z = take(z,ichildsorter)
+      # --- Create temporary arrays to hold the E field
+      tex,tey,tez = zeros(len(x),'d'),zeros(len(x),'d'),zeros(len(x),'d')
+      # --- For each child, pass to it the particles in it's domain.
+      i = nperchild[0]
+      for child,n in zip(self.children,nperchild[1:]):
+        if n > 0:
+          child.gete(x[i:i+n],y[i:i+n],z[i:i+n],
+                     tex[i:i+n],tey[i:i+n],tez[i:i+n])
+        i = i + n
+      # --- Get e-field from this domain
+      n = nperchild[0]
+      MultiGrid.gete(self,x[:n],y[:n],z[:n],tex[:n],tey[:n],tez[:n])
+      # --- Put the E field into the passed in arrays
+      put(ex,ichildsorter,tex)
+      put(ey,ichildsorter,tey)
+      put(ez,ichildsorter,tez)
+    else:
+      # --- Get e-field from this domain
+      MultiGrid.gete(self,x,y,z,ex,ey,ez)
+
+  def setphi(self,x,y,z,phi):
+    if len(x) == 0: return
+    if len(self.children) > 0:
+      # --- Find out whether the particles are in the local domain or one of
+      # --- the children's.
+      ichild = zeros(len(x),'d')
+      getgridngp3d(len(x),x,y,z,ichild,
+                   self.nx,self.ny,self.nz,self.idomains,
+                   self.xmmin,self.xmmax,self.ymmin,self.ymmax,
+                   self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
+      # --- Zero out places where idomains < 0
+      ichild = where(ichild < 0.,0.,ichild)
+      # --- Sort the list of which domain the particles are in.
+      ichildsorter = argsort(ichild)
+      ichildsorted = take(ichild,ichildsorter)
+      nperchild = self.getnperchild(ichildsorted)
+      # --- Now use the same sorting on the particle quantities.
+      x = take(x,ichildsorter)
+      y = take(y,ichildsorter)
+      z = take(z,ichildsorter)
+      # --- Create temporary arrays to hold the E field
+      tphi = zeros(len(x),'d')
+      # --- For each child, pass to it the particles in it's domain.
+      i = nperchild[0]
+      for child,n in zip(self.children,nperchild[1:]):
+        if n > 0:
+          child.setphi(x[i:i+n],y[i:i+n],z[i:i+n],tphi[i:i+n])
+        i = i + n
+      # --- Get e-field from this domain
+      n = nperchild[0]
+      MultiGrid.setphi(self,x[:n],y[:n],z[:n],tphi[:n])
+      # --- Put the phi into the passed in arrays
+      put(phi,ichildsorter,tphi)
+    else:
+      # --- Get e-field from this domain
+      MultiGrid.setphi(self,x,y,z,phi)
+
+  def fetche(self):
+    """
+Fetches the E field. This should only be called for
+the top level grid.
+    """
+#   ex,ey,ez = zeros(top.npmax,'d'),zeros(top.npmax,'d'),zeros(top.npmax,'d')
+#   for i,n in zip(top.ins-1,top.nps):
+#     self.gete(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],
+#               ex[i:i+n],ey[i:i+n],ez[i:i+n])
+#   return ex,ey,ez
+    self.gete(w3d.xefield,w3d.yefield,w3d.zefield,
+              w3d.exefield,w3d.eyefield,w3d.ezefield)
+
   def solve(self,iwhich=0):
     # --- Wait until all of the parents have called here until actually
     # --- doing the solve. This ensures that the phiboundaries obtained
@@ -527,6 +648,8 @@ be plotted.
       if ip is None: ip = nint(-self.mins[idim]/self.deltas[idim])
     else:
       ip = ip*self.refinement
+      kw['cmin'] = ppgeneric.cmin
+      kw['cmax'] = ppgeneric.cmax
     # --- If that plane is not in the domain, then don't do anything
     if ip < self.fulllower[idim] or self.fullupper[idim] < ip: return
     # --- Create the ireg array, which will be set to zero in the domain
@@ -535,9 +658,12 @@ be plotted.
     del ss[idim]
     ireg = zeros(ss)
     if self.idomains is not None:
-      if idim==0: ireg[1:,1:]=equal(self.idomains[ip-self.fulllower[0],:-1,:-1],0)
-      if idim==1: ireg[1:,1:]=equal(self.idomains[:-1,ip-self.fulllower[1],:-1],0)
-      if idim==2: ireg[1:,1:]=equal(self.idomains[:-1,:-1,ip-self.fulllower[2]],0)
+      if idim==0:
+        ireg[1:,1:]=equal(self.idomains[ip-self.fulllower[0],:-1,:-1],0)
+      if idim==1:
+        ireg[1:,1:]=equal(self.idomains[:-1,ip-self.fulllower[1],:-1],0)
+      if idim==2:
+        ireg[1:,1:]=equal(self.idomains[:-1,:-1,ip-self.fulllower[2]],0)
     else:
       ireg[1:,1:] = 1
     if idim != 2: ireg = transpose(ireg)
@@ -555,14 +681,40 @@ be plotted.
 
 
   def plphiz(self,ix=None,iy=None):
+    if ix < self.fulllower[0]: return
+    if iy < self.fulllower[1]: return
+    if ix > self.fullupper[0]: return
+    if iy > self.fullupper[1]: return
     plg(self.phi[ix-self.fulllower[0],iy-self.fulllower[1],1:-1],
         self.mins[2]+arange(self.dims[2]+1)*self.deltas[2])
     for child in self.children:
       child.plphiz(ix*child.refinement,iy*child.refinement)
 
+  def plphix(self,iy=None,iz=None):
+    if iy < self.fulllower[1]: return
+    if iz < self.fulllower[2]: return
+    if iy > self.fullupper[1]: return
+    if iz > self.fullupper[2]: return
+    plg(self.phi[:,iy-self.fulllower[1],iz-self.fulllower[2]+1],self.xmesh)
+    for child in self.children:
+      child.plphix(iy*child.refinement,iz*child.refinement)
+
   def plrhoz(self,ix=None,iy=None):
+    if ix < self.fulllower[0]: return
+    if iy < self.fulllower[1]: return
+    if ix > self.fullupper[0]: return
+    if iy > self.fullupper[1]: return
     plg(self.rho[ix-self.fulllower[0],iy-self.fulllower[1],:],
         self.mins[2]+arange(self.dims[2]+1)*self.deltas[2])
     for child in self.children:
       child.plrhoz(ix*child.refinement,iy*child.refinement)
+
+  def plrhox(self,iy=None,iz=None):
+    if iy < self.fulllower[1]: return
+    if iz < self.fulllower[2]: return
+    if iy > self.fullupper[1]: return
+    if iz > self.fullupper[2]: return
+    plg(self.rho[:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh)
+    for child in self.children:
+      child.plrhox(iy*child.refinement,iz*child.refinement)
 
