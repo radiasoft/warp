@@ -238,6 +238,14 @@ Given a block instance, installs it as a child.
   def hasconductors(self):
     return self.conductors.interior.n > 0
 
+  def getconductors(self,alllevels=0,result=None):
+    if result is None: result = []
+    result.append(self.conductors)
+    if alllevels:
+      for child in self.children:
+        child.getconductors(alllevels,result)
+    return result
+
   #--------------------------------------------------------------------------
   # --- The next several methods handle initialization that is done after
   # --- all blocks have been added.
@@ -1310,67 +1318,73 @@ be plotted.
     self.genericpf(kwdict,0,pfzyg)
 
 
-  def plphiz(self,ix=None,iy=None,color='fg'):
+  def plphiz(self,ix=None,iy=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
     if iy < self.fulllower[1]: return
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
     plg(self.phi[ix-self.fulllower[0],iy-self.fulllower[1],1:-1],self.zmesh,
         color=color)
-    for child in self.children:
-      child.plphiz(ix*child.refinement,iy*child.refinement,color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plphiz(ix*child.refinement,iy*child.refinement,color=color)
 
-  def plphix(self,iy=None,iz=None,color='fg'):
+  def plphix(self,iy=None,iz=None,color='fg',selfonly=0):
     if iy < self.fulllower[1]: return
     if iz < self.fulllower[2]: return
     if iy > self.fullupper[1]: return
     if iz > self.fullupper[2]: return
     plg(self.phi[:,iy-self.fulllower[1],iz-self.fulllower[2]+1],self.xmesh,
         color=color)
-    for child in self.children:
-      child.plphix(iy*child.refinement,iz*child.refinement,color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plphix(iy*child.refinement,iz*child.refinement,color=color)
 
-  def plphiy(self,ix=None,iz=None,color='fg'):
+  def plphiy(self,ix=None,iz=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
     if iz < self.fulllower[2]: return
     if ix > self.fullupper[0]: return
     if iz > self.fullupper[2]: return
     plg(self.phi[ix-self.fulllower[0],:,iz-self.fulllower[2]+1],self.ymesh,
         color=color)
-    for child in self.children:
-      child.plphiy(ix*child.refinement,iz*child.refinement,color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plphiy(ix*child.refinement,iz*child.refinement,color=color)
 
-  def plrhoz(self,ix=None,iy=None,color='fg'):
+  def plrhoz(self,ix=None,iy=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
     if iy < self.fulllower[1]: return
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
     plg(self.rho[ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmesh,
         color=color)
-    for child in self.children:
-      child.plrhoz(ix*child.refinement,iy*child.refinement,color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plrhoz(ix*child.refinement,iy*child.refinement,color=color)
 
-  def plrhox(self,iy=None,iz=None,color='fg'):
+  def plrhox(self,iy=None,iz=None,color='fg',selfonly=0):
     if iy < self.fulllower[1]: return
     if iz < self.fulllower[2]: return
     if iy > self.fullupper[1]: return
     if iz > self.fullupper[2]: return
     plg(self.rho[:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh,
         color=color)
-    for child in self.children:
-      child.plrhox(iy*child.refinement,iz*child.refinement,color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plrhox(iy*child.refinement,iz*child.refinement,color=color)
 
-  def plrhoy(self,ix=None,iz=None,color='fg'):
+  def plrhoy(self,ix=None,iz=None,color='fg',selfonly=0):
     if ix < self.fulllower[0]: return
     if iz < self.fulllower[2]: return
     if ix > self.fullupper[0]: return
     if iz > self.fullupper[2]: return
     plg(self.rho[ix-self.fulllower[0],:,iz-self.fulllower[2]],self.ymesh,
         color=color)
-    for child in self.children:
-      child.plrhoy(ix*child.refinement,iz*child.refinement,color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plrhoy(ix*child.refinement,iz*child.refinement,color=color)
 
-  def drawbox(self,ip=None,idim=2,withguards=1,color=[]):
+  def drawbox(self,ip=None,idim=2,withguards=1,color=[],selfonly=0):
     if len(color)==0: color=['red', 'green', 'blue', 'cyan', 'magenta','yellow']
     if ip is None: ip = self.dims[idim]/2
     if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
@@ -1393,18 +1407,19 @@ be plotted.
     else:
       xx = array(xx) + top.zbeam
     plg(yy,xx,color=color[0])
-    for child in self.children:
-      child.drawbox(ip=ip*child.refinement,idim=idim,withguards=withguards,
-                    color=color[1:])
+    if not selfonly:
+      for child in self.children:
+        child.drawbox(ip=ip*child.refinement,idim=idim,withguards=withguards,
+                      color=color[1:])
 
-  def drawboxzy(self,ix=None,withguards=1,color=[]):
-    self.drawbox(ip=ix,idim=0,withguards=withguards,color=[])
-  def drawboxzx(self,iy=None,withguards=1,color=[]):
-    self.drawbox(ip=iy,idim=1,withguards=withguards,color=[])
-  def drawboxxy(self,iz=None,withguards=1,color=[]):
-    self.drawbox(ip=iz,idim=2,withguards=withguards,color=[])
+  def drawboxzy(self,ix=None,withguards=1,color=[],selfonly=0):
+    self.drawbox(ip=ix,idim=0,withguards=withguards,color=[],selfonly=selfonly)
+  def drawboxzx(self,iy=None,withguards=1,color=[],selfonly=0):
+    self.drawbox(ip=iy,idim=1,withguards=withguards,color=[],selfonly=selfonly)
+  def drawboxxy(self,iz=None,withguards=1,color=[],selfonly=0):
+    self.drawbox(ip=iz,idim=2,withguards=withguards,color=[],selfonly=selfonly)
 
-  def drawfilledbox(self,ip=None,idim=2,withguards=1,ibox=None):
+  def drawfilledbox(self,ip=None,idim=2,withguards=1,ibox=None,selfonly=0):
     if ip is None: ip = self.dims[idim]/2
     if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
     ii = [0,1,2]
@@ -1425,9 +1440,10 @@ be plotted.
     if ibox is None: ibox = ones(1,'b')
     else:            ibox = (ibox+1).astype('b')
     plfp(ibox,yy,xx,[5])
-    for child in self.children:
-      child.drawfilledbox(ip=ip*child.refinement,idim=idim,
-                          withguards=withguards,ibox=ibox)
+    if not selfonly:
+      for child in self.children:
+        child.drawfilledbox(ip=ip*child.refinement,idim=idim,
+                            withguards=withguards,ibox=ibox)
 
   def createdxobject(self,kwdict={},**kw):
     """
