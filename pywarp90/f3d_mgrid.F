@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.47 $, $Date: 2002/11/05 22:03:35 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.48 $, $Date: 2003/03/13 17:24:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1183,7 +1183,7 @@ c       --- end of transverse boundaries
 
 c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
-        if (lcndbndy) then
+        if (lcndbndy .and. ncndmax>0) then
           if (parity == 0) then
            call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
      &                    ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,
