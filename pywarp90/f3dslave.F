@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.15 $, $Date: 2004/05/04 21:48:28 $
+c F3DSLAVE.M, version $Revision: 1.16 $, $Date: 2004/07/12 22:10:20 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -762,12 +762,12 @@ c       --- then to write the code to exchange the data for that case.
       end
 c=============================================================================
       subroutine mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-     &                            bound0,boundnz,nzfull,lparity,rparity,
+     &                            bounds,nzfull,lparity,rparity,
      &                            whosendingleft,izsendingleft,
      &                            whosendingright,izsendingright)
       integer(ISZ):: nslaves,my_index
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: bound0,boundnz,nzfull
+      integer(ISZ):: bounds(0:5),nzfull
       integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1)
@@ -826,7 +826,7 @@ c         --- end of this processor.
           enddo
           ie = ie - 1
 
-        elseif (boundnz == 2) then
+        elseif (bounds(5) == 2) then
 c         --- Now, treat the right most processor.
 
 c         --- Find all processors who data extent overlaps the right
@@ -907,7 +907,7 @@ c         --- end of this processor.
           enddo
           ie = ie + 1
 
-        elseif (bound0 == 2) then
+        elseif (bounds(4) == 2) then
 c         --- Now, treat the left most processor.
 
 c         --- Find all processors who data extent overlaps the left
@@ -959,12 +959,13 @@ c       --- Increment the number of sends that processor makes.
       return
       end
 c=============================================================================
-      subroutine mgexchange_phi(nx,ny,nz,nzfull,phi,bound0,boundnz,delz,
+      subroutine mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,delz,
      &                          my_index,nslaves,izfsslave,nzfsslave,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
-      integer(ISZ):: nx,ny,nz,nzfull,bound0,boundnz,delz
+      integer(ISZ):: nx,ny,nz,nzfull,delz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
@@ -988,16 +989,16 @@ c     --- phi at the outside of the grid is passed, so phi is put at iz=-1 and
 c     --- iz=nz+1 so delz needs to be -1.
       lr = delz
       rr = nz - delz
-      if (bound0 == 2) lr = -1
-      if (boundnz == 2) rr = nz + 1
+      if (bounds(4) == 2) lr = -1
+      if (bounds(5) == 2) rr = nz + 1
 
 c     --- The actual value of delz used depends on the boundary conditions.
 c     --- For periodic boundary conditions, processors which are on the ends
 c     --- of the mess, always send the same data, independent of what delz is.
       leftdelta = delz
       rightdelta = delz
-      if (izfsslave(my_index) == 0 .and. bound0 == 2) leftdelta = 0
-      if (izfsslave(my_index)+nzfsslave(my_index) == nzfull .and. boundnz == 2)
+      if (izfsslave(my_index) == 0 .and. bounds(4) == 2) leftdelta = 0
+      if (izfsslave(my_index)+nzfsslave(my_index) == nzfull .and. bounds(5) == 2)
      &  rightdelta = 0
 
 c     --- Set count to zero
@@ -1043,11 +1044,12 @@ c     --- Now wait for everything to finish
       return
       end
 c=============================================================================
-      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bound0,boundnz,delz,
+      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bounds,delz,
      &                                  my_index,nslaves,izfsslave,
      &                                  whosendingleft,whosendingright)
-      integer(ISZ):: nx,ny,nz,nzfull,bound0,boundnz,delz
+      integer(ISZ):: nx,ny,nz,nzfull,delz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: bounds(0:5)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1),whosendingright(0:nslaves-1)
@@ -1062,7 +1064,7 @@ c This only sends plane iz=0 when there are periodic boundary conditions.
       integer(ISZ):: mpirequest(nslaves),mpierror
 
 c     --- Does nothing if boundaries are not periodic.
-      if (.not. (bound0 == 2 .or. boundnz == 2)) return
+      if (.not. (bounds(4) == 2 .or. bounds(5) == 2)) return
 
 c     --- Set count to zero
       w = 0
