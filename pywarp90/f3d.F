@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.67 $, $Date: 2003/01/23 21:23:47 $
+c@(#) File F3D.M, version $Revision: 3.68 $, $Date: 2003/02/03 16:39:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6845,7 +6845,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         call gchange("Surface_of_Rev",0)
         do i=1,npnts_sr
           z_sr(i) = zmin + (i-1)*zz
-          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
+          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0,0)
         enddo
         lsrlinr = .true.
       endif
@@ -7017,7 +7017,7 @@ c       --- Make sure there is enough room in the arrays.
           call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
-        rrr = srfrv_f(zz,rofzfunc,0)
+        rrr = srfrv_f(zz,rofzfunc,0,0)
         rrrsq = rrr*rrr
 c       --- Calculate the maximum radius to be filled.
 c       --- If not filling the whole conductor, set rrrmax large enough so
@@ -7026,8 +7026,8 @@ c       --- that enough conductor is filled to match neighboring points in iz.
           rrrmax = rmax
         else
           rrrmax = max((rrr+max_dxdy),
-     &              (srfrv_f(zlower,rofzfunc,0)+max_dxdy),
-     &              (srfrv_f(zhigher,rofzfunc,0)+max_dxdy))
+     &              (srfrv_f(zlower,rofzfunc,0,0)+max_dxdy),
+     &              (srfrv_f(zhigher,rofzfunc,0,0)+max_dxdy))
         endif
 c       --- Loop over transverse plane.
         do ix=ixmin,ixmax
@@ -7071,8 +7071,8 @@ c Set subgrid scale arrays
       if (lcndbndy) then
 
 c       --- Calculate r at zmin and zmax.
-        r_zmin = srfrv_f(zmin,rofzfunc,0)
-        r_zmax = srfrv_f(zmax,rofzfunc,0)
+        r_zmin = srfrv_f(zmin,rofzfunc,0,0)
+        r_zmax = srfrv_f(zmax,rofzfunc,0,0)
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
@@ -7117,7 +7117,7 @@ c         --- be large so that transverse subgrid resolution will not be done.
             endif
             rrrsq1 = LARGEPOS
           else
-            rrr = srfrv_f(zz,rofzfunc,0)
+            rrr = srfrv_f(zz,rofzfunc,0,0)
             rrrsq = rrr*rrr
             rrrsq1 = rrrsq
           endif
@@ -7128,7 +7128,7 @@ c         --- When zz > zmax, the delmz0 is set to the distance
 c         --- between the z plane and the end of the conductor.
 c         --- When zz < zmin, rrrlower is set to rrr so the
 c         --- iteration is not done.
-          rrrlower = srfrv_f(zlower,rofzfunc,0)
+          rrrlower = srfrv_f(zlower,rofzfunc,0,-1)
           delmz0 = 2.
           if (zz < zmin) then
             rrrlower = rrr
@@ -7142,7 +7142,7 @@ c         --- When zz < zmin, the delmp0 is set to the distance
 c         --- between the z plane and the end of the conductor.
 c         --- When zz > zmax, rrrhigher is set to rrr so the
 c         --- iteration is not done.
-          rrrhigher = srfrv_f(zhigher,rofzfunc,0)
+          rrrhigher = srfrv_f(zhigher,rofzfunc,0,+1)
           delpz0 = 2.
           if (zz > zmax) then
             rrrhigher = rrr
@@ -7184,12 +7184,13 @@ c               --- that point.
                 x(2) = zlower
                 f(2) = rrrlower - rad
                 iterrf = 0
+                if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
                   if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  f(i) = srfrv_f(x(i),rofzfunc,0,0) - rad
                   iterrf = iterrf + 1
                 end do
                 if (abs(f(2))+abs(f(1)) < rfuzz .and.
@@ -7207,7 +7208,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zlower
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rofzfunc,0)
+                    rnew = srfrv_f(znew,rofzfunc,0,0)
                     if (rnew > rad) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew <= rad) then
@@ -7241,12 +7242,13 @@ c               --- that point.
                 x(2) = zhigher
                 f(2) = rrrhigher - rad
                 iterrf = 0
+                if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
                   if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  f(i) = srfrv_f(x(i),rofzfunc,0,0) - rad
                   iterrf = iterrf + 1
                 end do
                 if (abs(f(2))+abs(f(1)) < rfuzz .and.
@@ -7264,7 +7266,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zhigher
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rofzfunc,0)
+                    rnew = srfrv_f(znew,rofzfunc,0,0)
                     if (rnew <= rad) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew > rad) then
@@ -7437,7 +7439,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         call gchange("Surface_of_Rev",0)
         do i=1,npnts_sr
           z_sr(i) = zmin + (i-1)*zz
-          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
+          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0,0)
         enddo
         lsrlinr = .true.
       endif
@@ -7605,13 +7607,13 @@ c       --- Make sure there is enough room in the arrays.
           call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
-        rrr = srfrv_f(zz,rofzfunc,0)
+        rrr = srfrv_f(zz,rofzfunc,0,0)
         if (lfill .or. (lshell .and. (iz == izmin .or. iz == izmax))) then
           rrrmin = rmin
         else
           rrrmin = min((rrr-max_dxdy),
-     &              (srfrv_f(zlower,rofzfunc,0)-max_dxdy),
-     &              (srfrv_f(zhigher,rofzfunc,0)-max_dxdy))
+     &              (srfrv_f(zlower,rofzfunc,0,0)-max_dxdy),
+     &              (srfrv_f(zhigher,rofzfunc,0,0)-max_dxdy))
         endif
 c       --- Calculate transverse bounds for this iz plane.
         jxmin = max(ixmin, int((-rrr+xcent)*dxi)+ix_axis)
@@ -7661,8 +7663,8 @@ c Set subgrid scale arrays
       if (lcndbndy) then
 
 c       --- Calculate r at zmin and zmax.
-        r_zmin = srfrv_f(zmin,rofzfunc,0)
-        r_zmax = srfrv_f(zmax,rofzfunc,0)
+        r_zmin = srfrv_f(zmin,rofzfunc,0,0)
+        r_zmax = srfrv_f(zmax,rofzfunc,0,0)
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
@@ -7707,7 +7709,7 @@ c         --- be small so that transverse subgrid resolution will not be done.
             endif
             rrrsq1 = 0.
           else
-            rrr = srfrv_f(zz,rofzfunc,0)
+            rrr = srfrv_f(zz,rofzfunc,0,0)
             rrrsq = rrr*rrr
             rrrsq1 = rrrsq
           endif
@@ -7718,7 +7720,7 @@ c         --- When zz > zmax, the delmz0 is set to the distance
 c         --- between the z plane and the end of the conductor.
 c         --- When zz < zmin, rrrlower is set to rrr so the
 c         --- iteration is not done.
-          rrrlower = srfrv_f(zlower,rofzfunc,0)
+          rrrlower = srfrv_f(zlower,rofzfunc,0,-1)
           delmz0 = 2.
           if (zz < zmin) then
             rrrlower = rrr
@@ -7732,7 +7734,7 @@ c         --- When zz < zmin, the delpz0 is set to the distance
 c         --- between the z plane and the end of the conductor.
 c         --- When zz > zmax, rrrhigher is set to rrr so the
 c         --- iteration is not done.
-          rrrhigher = srfrv_f(zhigher,rofzfunc,0)
+          rrrhigher = srfrv_f(zhigher,rofzfunc,0,+1)
           delpz0 = 2.
           if (zz > zmax) then
             rrrhigher = rrr
@@ -7782,12 +7784,13 @@ c               --- that point.
                 x(2) = zlower
                 f(2) = rrrlower - rad
                 iterrf = 0
+                if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
                   if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  f(i) = srfrv_f(x(i),rofzfunc,0,0) - rad
                   iterrf = iterrf + 1
                 end do
                 if (abs(f(2))+abs(f(1)) < rfuzz .and.
@@ -7805,7 +7808,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zlower
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rofzfunc,0)
+                    rnew = srfrv_f(znew,rofzfunc,0,0)
                     if (rnew < rad) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew >= rad) then
@@ -7839,12 +7842,13 @@ c               --- that point.
                 x(2) = zhigher
                 f(2) = rrrhigher - rad
                 iterrf = 0
+                if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
                   if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  f(i) = srfrv_f(x(i),rofzfunc,0,0) - rad
                   iterrf = iterrf + 1
                 end do
                 if (abs(f(2))+abs(f(1)) < rfuzz .and.
@@ -7862,7 +7866,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zhigher
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rofzfunc,0)
+                    rnew = srfrv_f(znew,rofzfunc,0,0)
                     if (rnew >= rad) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew < rad) then
@@ -8031,7 +8035,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         call gchange("Surface_of_Rev",0)
         do i=1,npnts_srmin
           z_srmin(i) = zmin + (i-1)*zz
-          r_srmin(i) = srfrv_f(z_srmin(i),rminofz,1)
+          r_srmin(i) = srfrv_f(z_srmin(i),rminofz,1,0)
         enddo
         lsrminlinr = .true.
       endif
@@ -8041,7 +8045,7 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         call gchange("Surface_of_Rev",0)
         do i=1,npnts_srmax
           z_srmax(i) = zmin + (i-1)*zz
-          r_srmax(i) = srfrv_f(z_srmax(i),rmaxofz,2)
+          r_srmax(i) = srfrv_f(z_srmax(i),rmaxofz,2,0)
         enddo
         lsrmaxlinr = .true.
       endif
@@ -8124,7 +8128,8 @@ c Output is put directly into the conductor arrays of Conductor3d.
 
       integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy,iz,i
-      real(kind=8):: rad,rrrmax,rrrmin,rmin,rmax
+      real(kind=8):: rad,rrrmax,rrrmin
+      real(kind=8):: rminleft,rminright,rmaxleft,rmaxright,rmin,rmax
       real(kind=8):: zgmin,zgmax
       real(kind=8):: rmin_zmin,rmin_zmax
       real(kind=8):: rmax_zmin,rmax_zmax
@@ -8215,8 +8220,8 @@ c       --- Make sure there is enough room in the arrays.
           call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
-        rrrmin = srfrv_f(zz,rminofz,1)
-        rrrmax = srfrv_f(zz,rmaxofz,2)
+        rrrmin = srfrv_f(zz,rminofz,1,0)
+        rrrmax = srfrv_f(zz,rmaxofz,2,0)
 c       --- Loop over transverse plane.
         do ix=ixmin,ixmax
           do iy=iymin,iymax
@@ -8245,10 +8250,10 @@ c Set subgrid scale arrays
       if (lcndbndy) then
 
 c       --- Calculate r at zmin and zmax.
-        rmin_zmin = srfrv_f(zmin,rminofz,1)
-        rmin_zmax = srfrv_f(zmax,rminofz,1)
-        rmax_zmin = srfrv_f(zmin,rmaxofz,2)
-        rmax_zmax = srfrv_f(zmax,rmaxofz,2)
+        rmin_zmin = srfrv_f(zmin,rminofz,1,0)
+        rmin_zmax = srfrv_f(zmax,rminofz,1,0)
+        rmax_zmin = srfrv_f(zmin,rmaxofz,2,0)
+        rmax_zmax = srfrv_f(zmax,rmaxofz,2,0)
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
@@ -8271,22 +8276,28 @@ c         --- Calculate radius of the surface.
 c         --- When zz is outside the conductor, get radius at end of
 c         --- conductor.
           if (zz < zmin-zfuzz) then
-            rmin = rmin_zmin
-            rmax = rmax_zmin
+            rminleft = srfrv_f(zmin,rminofz,1,-1)
+            rmaxleft = srfrv_f(zmin,rmaxofz,2,-1)
+            rminright = srfrv_f(zmin,rminofz,1,+1)
+            rmaxright = srfrv_f(zmin,rmaxofz,2,+1)
           elseif (zz > zmax+zfuzz) then
-            rmin = rmin_zmax
-            rmax = rmax_zmax
+            rminleft = srfrv_f(zmax,rminofz,1,-1)
+            rmaxleft = srfrv_f(zmax,rmaxofz,2,-1)
+            rminright = srfrv_f(zmax,rminofz,1,+1)
+            rmaxright = srfrv_f(zmax,rmaxofz,2,+1)
           else
-            rmin = srfrv_f(zz,rminofz,1)
-            rmax = srfrv_f(zz,rmaxofz,2)
+            rminleft = srfrv_f(zz,rminofz,1,0)
+            rmaxleft = srfrv_f(zz,rmaxofz,2,0)
+            rminright = srfrv_f(zz,rminofz,1,0)
+            rmaxright = srfrv_f(zz,rmaxofz,2,0)
           endif
 
 c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
 c         --- in most cases, assuming that the conductor is far away in z.
 c         --- When zz > zmax, the delmz0 is set to the distance
 c         --- between the z plane and the end of the conductor.
-          rrrminlower = srfrv_f(zlower,rminofz,1)
-          rrrmaxlower = srfrv_f(zlower,rmaxofz,2)
+          rrrminlower = srfrv_f(zlower,rminofz,1,-1)
+          rrrmaxlower = srfrv_f(zlower,rmaxofz,2,-1)
           delmz0 = 2.
           if (zz > zmax .and. lzend) then
             delmz0 = (zz - zmax)*dzi
@@ -8296,14 +8307,16 @@ c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
 c         --- in most cases, assuming that the conductor is far away in z.
 c         --- When zz < zmin, the delmp0 is set to the distance
 c         --- between the z plane and the end of the conductor.
-          rrrminhigher = srfrv_f(zhigher,rminofz,1)
-          rrrmaxhigher = srfrv_f(zhigher,rmaxofz,2)
+          rrrminhigher = srfrv_f(zhigher,rminofz,1,+1)
+          rrrmaxhigher = srfrv_f(zhigher,rmaxofz,2,+1)
           delpz0 = 2.
           if (zz < zmin .and. lzend) then
             delpz0 = (zmin - zz)*dzi
           endif
 
 c         --- Find minimum of rrr and radius of surface at nearby z points.
+          rmin = rminleft
+          rmax = rmaxright
           rrrmin = min(rmin-max_dxdy,rrrminlower,rrrminhigher)
           rrrmax = max(rmax+max_dxdy,rrrmaxlower,rrrmaxhigher)
 
@@ -8323,7 +8336,7 @@ c             --- Calculate distance to conductor at lower z.
 c             --- If grid location is between rrr and rrrlower and between
 c             --- rmax and rrrlower, find intersection point.  The fuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrminlower <= rad .and. rad < rmin-rfuzz
+              if (rrrminlower <= rad .and. rad <= rminleft
      &            .and. delmz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -8334,16 +8347,17 @@ c               --- Empirically, it was found that stopping at 12 iterations
 c               --- gives the best performance, with a broad minimum around
 c               --- that point.
                 x(1) = min(zz,zmax)
-                f(1) = rmin - rad
+                f(1) = rminleft - rad
                 x(2) = zlower
                 f(2) = rrrminlower - rad
                 iterrf = 0
+                if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
                   if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = srfrv_f(x(i),rminofz,1) - rad
+                  f(i) = srfrv_f(x(i),rminofz,1,0) - rad
                   iterrf = iterrf + 1
                 end do
                 if (abs(f(2))+abs(f(1)) < rfuzz .and.
@@ -8361,7 +8375,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zlower
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rminofz,1)
+                    rnew = srfrv_f(znew,rminofz,1,0)
                     if (rnew > rad) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew <= rad) then
@@ -8370,7 +8384,7 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delmz = (zz - znew)*dzi
                 endif
-              elseif (rrrmaxlower >= rad .and. rad > rmax+rfuzz
+              elseif (rrrmaxlower >= rad .and. rad >= rmaxleft
      &            .and. delmz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -8381,16 +8395,17 @@ c               --- Empirically, it was found that stopping at 12 iterations
 c               --- gives the best performance, with a broad minimum around
 c               --- that point.
                 x(1) = min(zz,zmax)
-                f(1) = rad - rmax
+                f(1) = rad - rmaxleft
                 x(2) = zlower
                 f(2) = rad - rrrmaxlower
                 iterrf = 0
+                if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
                   if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
-                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
+                  f(i) = rad - srfrv_f(x(i),rmaxofz,2,0)
                   iterrf = iterrf + 1
                 end do
                 if (abs(f(2))+abs(f(1)) < rfuzz .and.
@@ -8408,7 +8423,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zlower
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rmaxofz,2)
+                    rnew = srfrv_f(znew,rmaxofz,2,0)
                     if (rnew < rad) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew >= rad) then
@@ -8428,7 +8443,7 @@ c             --- Calculate distance to conductor at higher z.
 c             --- If grid location is between rrr and rrrhigher and between
 c             --- rmax and rrrhigher, find intersection point.  The fuzz
 c             --- ensures that a distance of zero is not calculated.
-              if (rrrminhigher <= rad .and. rad < rmin-rfuzz
+              if (rrrminhigher <= rad .and. rad <= rminright
      &            .and. delpz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -8439,16 +8454,17 @@ c               --- Empirically, it was found that stopping at 12 iterations
 c               --- gives the best performance, with a broad minimum around
 c               --- that point.
                 x(1) = max(zz,zmin)
-                f(1) = rmin - rad
+                f(1) = rminright - rad
                 x(2) = zhigher
                 f(2) = rrrminhigher - rad
                 iterrf = 0
+                if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
                   if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = srfrv_f(x(i),rminofz,1) - rad
+                  f(i) = srfrv_f(x(i),rminofz,1,0) - rad
                   iterrf = iterrf + 1
                 end do
                 if (abs(f(2))+abs(f(1)) < rfuzz .and.
@@ -8466,7 +8482,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zhigher
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rminofz,1)
+                    rnew = srfrv_f(znew,rminofz,1,0)
                     if (rnew <= rad) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew > rad) then
@@ -8475,7 +8491,7 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delpz = (znew - zz)*dzi
                 endif
-              elseif (rrrmaxhigher >= rad .and. rad > rmax+rfuzz
+              elseif (rrrmaxhigher >= rad .and. rad >= rmaxright
      &            .and. delpz > fuzz .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
@@ -8486,16 +8502,17 @@ c               --- Empirically, it was found that stopping at 12 iterations
 c               --- gives the best performance, with a broad minimum around
 c               --- that point.
                 x(1) = max(zz,zmin)
-                f(1) = rad - rmax
+                f(1) = rad - rmaxright
                 x(2) = zhigher
                 f(2) = rad - rrrmaxhigher
                 iterrf = 0
+                if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
                   if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
-                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
+                  f(i) = rad - srfrv_f(x(i),rmaxofz,2,0)
                   iterrf = iterrf + 1
                 end do
                 if (abs(f(2))+abs(f(1)) < rfuzz .and.
@@ -8513,7 +8530,7 @@ c                 --- 10% in the delta and slowing down the code.
                   znew = zhigher
                   do iterrf=1,32
                     znew = znew + ddz
-                    rnew = srfrv_f(znew,rmaxofz,2)
+                    rnew = srfrv_f(znew,rmaxofz,2,0)
                     if (rnew >= rad) then
                       ddz = -abs(ddz)*0.5
                     else if (rnew < rad) then
@@ -8623,10 +8640,10 @@ c                 --- odd
       return
       end
 c========================================================================
-      real(kind=8) function srfrv_f(zz,rofzfunc,icase)
+      real(kind=8) function srfrv_f(zz,rofzfunc,icase,izflag)
       use Surface_of_Rev
       real(kind=8):: zz
-      integer(ISZ):: icase
+      integer(ISZ):: icase,izflag
       character(*):: rofzfunc
 c     This function returns the value of radius as a function of z.
 c     That can be calculated either from a piecewise-linear curve, or from
@@ -8642,7 +8659,7 @@ c       --- Calculate r(z) from a piecewise-linear curve.
 c       --- Find which piece z is in.
         ii = 0
         do i=1,npnts_sr
-          if (zz > z_sr(i)) ii = i
+          if (zz >= z_sr(i)) ii = i
         enddo
 
 c       --- Calculate r from z.
@@ -8651,48 +8668,111 @@ c       --- Calculate r from z.
         elseif (ii == npnts_sr) then
           srfrv_r = r_sr(npnts_sr)
         else
-          srfrv_r = r_sr(ii) + (zz - z_sr(ii))*
+          if (ii > 1 .and.
+     &        z_sr(ii-1) == z_sr(ii) .and. zz == z_sr(ii) .and.
+     &        izflag == 1) then
+            if (ii-1 == 1) then
+              srfrv_r = r_sr(1)
+            else
+              srfrv_r = r_sr(ii-2) + (zz - z_sr(ii-1))*
+     &                     (r_sr(ii-2) - r_sr(ii-1))/(z_sr(ii-2) - z_sr(ii-1))
+            endif
+          else
+            srfrv_r = r_sr(ii) + (zz - z_sr(ii))*
      &                   (r_sr(ii+1) - r_sr(ii))/(z_sr(ii+1) - z_sr(ii))
+          endif
         endif
 
       elseif (lsrminlinr .and. icase == 1) then
 
 c       --- Calculate rmin(z) from a piecewise-linear curve.
+c       --- Depeding on which direction is being looked, the order in which
+c       --- the points are searched changes. This only really matters when
+c       --- the conductor description includes step function in r(z), i.e.
+c       --- where two neighboring points have the same z value.
 
-c       --- Find which piece z is in.
-        ii = 0
-        do i=1,npnts_srmin
-          if (zz > z_srmin(i)) ii = i
-        enddo
+        if (izflag <= 0) then
 
-c       --- Calculate r from z.
-        if (ii == 0) then
-          srfrv_r = r_srmin(1)
-        elseif (ii == npnts_srmin) then
-          srfrv_r = r_srmin(npnts_srmin)
-        else
-          srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
+c         --- Find which piece z is in.
+          ii = 0
+          do i=1,npnts_srmin
+            if (zz >= z_srmin(i)) ii = i
+          enddo
+
+c         --- Calculate r from z.
+          if (ii == 0) then
+            srfrv_r = r_srmin(1)
+          elseif (ii == npnts_srmin) then
+            srfrv_r = r_srmin(npnts_srmin)
+          else
+              srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
      &              (r_srmin(ii+1) - r_srmin(ii))/(z_srmin(ii+1) - z_srmin(ii))
+          endif
+
+        else
+
+c         --- Find which piece z is in.
+          ii = npnts_srmin+1
+          do i=npnts_srmin,1,-1
+            if (zz <= z_srmin(i)) ii = i
+          enddo
+
+c         --- Calculate r from z.
+          if (ii == npnts_srmin+1) then
+            srfrv_r = r_srmin(1)
+          elseif (ii == 1) then
+            srfrv_r = r_srmin(1)
+          else
+            srfrv_r = r_srmin(ii) + (zz - z_srmin(ii))*
+     &       (r_srmin(ii-1) - r_srmin(ii))/(z_srmin(ii-1) - z_srmin(ii))
+          endif
+
         endif
 
       elseif (lsrmaxlinr .and. icase == 2) then
 
 c       --- Calculate rmax(z) from a piecewise-linear curve.
+c       --- Depeding on which direction is being looked, the order in which
+c       --- the points are searched changes. This only really matters when
+c       --- the conductor description includes step function in r(z), i.e.
+c       --- where two neighboring points have the same z value.
 
-c       --- Find which piece z is in.
-        ii = 0
-        do i=1,npnts_srmax
-          if (zz > z_srmax(i)) ii = i
-        enddo
+        if (izflag <= 0) then
 
-c       --- Calculate r from z.
-        if (ii == 0) then
-          srfrv_r = r_srmax(1)
-        elseif (ii == npnts_srmax) then
-          srfrv_r = r_srmax(npnts_srmax)
-        else
-          srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
+c         --- Find which piece z is in.
+          ii = 0
+          do i=1,npnts_srmax
+            if (zz >= z_srmax(i)) ii = i
+          enddo
+
+c         --- Calculate r from z.
+          if (ii == 0) then
+            srfrv_r = r_srmax(1)
+          elseif (ii == npnts_srmax) then
+            srfrv_r = r_srmax(npnts_srmax)
+          else
+              srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
      &              (r_srmax(ii+1) - r_srmax(ii))/(z_srmax(ii+1) - z_srmax(ii))
+          endif
+
+        else
+
+c         --- Find which piece z is in.
+          ii = npnts_srmax+1
+          do i=npnts_srmax,1,-1
+            if (zz <= z_srmax(i)) ii = i
+          enddo
+
+c         --- Calculate r from z.
+          if (ii == npnts_srmax+1) then
+            srfrv_r = r_srmax(1)
+          elseif (ii == 1) then
+            srfrv_r = r_srmax(1)
+          else
+            srfrv_r = r_srmax(ii) + (zz - z_srmax(ii))*
+     &       (r_srmax(ii-1) - r_srmax(ii))/(z_srmax(ii-1) - z_srmax(ii))
+          endif
+
         endif
 
       else
