@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.18 $, $Date: 2002/04/03 23:08:15 $
+c@(#) File WXY.M, version $Revision: 3.19 $, $Date: 2002/04/24 21:37:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1405,7 +1405,7 @@ c       --- traveled is calculated as an angle around the bend.
           dtheta0 = ds/abs(bendradi)
 
           do ip=1,np
-            if (uzp(ip) .ne. 0.) then
+            if (uzp(ip) /= 0.) then
               rr = sqrt((bendradi+xp(ip))**2 + (zp(ip) - zpo(ip))**2)
               dtheta = asin((zp(ip) - zpo(ip))/rr)
               dtp(ip) = dtp(ip)*dtheta0/dtheta
@@ -1416,7 +1416,7 @@ c       --- traveled is calculated as an angle around the bend.
 
 c         --- with no bends...
           do ip=1,np
-            if (uzp(ip) .ne. 0.) then
+            if (uzp(ip) /= 0.) then
               dtp(ip) = dtp(ip)*ds/(zp(ip) - zpo(ip))
             endif
           enddo
@@ -1698,7 +1698,7 @@ c       --- normal loop
 c     --- vectorized deposition over the 8 cells touched;
 c     --- there'd be a hazard if we interchanged the loops.
       do ip = 1, np
-         if (uzp(ip) > 0) then
+         if (uzp(ip) /= 0) then
          do m = 0, 3
             rho1d(indx(m,ip)) = rho1d(indx(m,ip)) + s(m,ip)
          enddo
@@ -1774,7 +1774,7 @@ c       --- normal loop
       endif
 c     --- scalar loop does the actual deposition
       do ir = 0, np-1
-         if (uzp(ir+1) > 0) then
+         if (uzp(ir+1) /= 0) then
          rho(ii(ir)  ,jj(ir)  ,0) = rho(ii(ir)  ,jj(ir)  ,0) + s(0,ir+1)
          rho(ii(ir)+1,jj(ir)  ,0) = rho(ii(ir)+1,jj(ir)  ,0) + s(1,ir+1)
          rho(ii(ir)  ,jj(ir)+1,0) = rho(ii(ir)  ,jj(ir)+1,0) + s(2,ir+1)
