@@ -1,6 +1,6 @@
 from warp import *
 import string
-egun_like_version = "$Id: egun_like.py,v 1.12 2002/10/29 01:59:14 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.13 2003/02/27 15:19:29 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -299,7 +299,7 @@ Performs steady-state iterations
 
     # --- Do field solve including newly accumulated charge density.
     # --- The call to perrho3d is primarily needed for the parallel version.
-    perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,top.periinz)
+    perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,f3d.bound0,f3d.boundxy)
     top.fstype = _ofstype
     fieldsol(-1)
     top.fstype = -1
