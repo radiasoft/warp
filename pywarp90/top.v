@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.72 $, $Date: 2003/02/12 15:22:02 $
+#@(#) File TOP.V, version $Revision: 3.73 $, $Date: 2003/02/24 18:50:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.72 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.73 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1042,6 +1042,8 @@ linj_enormcl logical /.true./ # Flags whether or not the normal E field
                            # as in the Child-Langmuir solution or is uniform.
 linj_eperp logical /.false./ # Flags whether or not to include the tangential
                            # electric field near the emitting surface.
+linj_rectangle logical /.false./ # Flags whether injection is over a rectangular region and not 
+# elliptical  
 
 ntinj          integer /0/ # Number of transverse emitting surfaces.
 nztinjmn(ntinj)   _integer # Minimum z extent of transverse injection.
@@ -1144,6 +1146,16 @@ prwelips(0:nzzarr)     _real   [1]     # ellipticity of cylindrical wall
 lostpars(0:nzzarr)  _integer           # number of lost particles by zcells
 lamkreal(0:nzzarr)     _real   [C/m]   # Real part of FFT of lambda
 lamkimag(0:nzzarr)     _real   [C/m]   # Imaginary part of FFT of lambda
+
+
+xmaxz(0:nzzarr)        _real   [m]   /+LARGEPOS/ # z-dependent locations used 
+# to remove particles outside a rectangular region. 
+xminz(0:nzzarr)        _real   [m]   /-LARGEPOS/ # z-dependent locations used
+# to remove particles outside a rectangular region.
+ymaxz(0:nzzarr)        _real   [m]   /+LARGEPOS/ # z-dependent locations used
+# to remove particles outside a rectangular region.
+yminz(0:nzzarr)        _real   [m]   /-LARGEPOS/ # z-dependent locations used 
+# to remove particles outside a rectangular region.
 
 *********** Io dump:
 # Quantities associated with input / output
