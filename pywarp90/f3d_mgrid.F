@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.64 $, $Date: 2004/04/24 01:21:52 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.65 $, $Date: 2004/04/27 20:13:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -504,7 +504,7 @@ c         --- the restriction.
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nz,nzfull,
-     &                dx*2,dy*2,dz,phi2,rho2(0,0,0),
+     &                dx*2,dy*2,dz,phi2,rho2,
      &                rstar,linbend,l2symtry,l4symtry,bendx,
      &                boundxy,globalb0,globalbnz,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
@@ -573,7 +573,7 @@ c         --- routine.
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
-     &                dx*2,dy*2,dz*2,phi2,rho2(0,0,0),
+     &                dx*2,dy*2,dz*2,phi2,rho2(:,:,0:nznew),
      &                rstar,linbend,l2symtry,l4symtry,bendx,
      &                boundxy,globalb0,globalbnz,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
@@ -1128,7 +1128,7 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
 c     --- Macro for common arguments to the psor_loop calls
 #define LOOP_ARGS iimz,iipz,phi,rho,nxy,rdx2c,rdy2c,rdz2c,spm1,linbend, \
-      rstar(-1),dx,rdx2,rdy2,rdz2,rdel,const,bendx
+      rstar,dx,rdx2,rdy2,rdz2,rdel,const,bendx
 
 c     --- Set temporary variables (these are used to increase performance)
       dx = 1./sqrt(rdx2)
