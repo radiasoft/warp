@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.50 2004/01/27 18:02:53 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.51 2004/02/03 23:56:38 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -608,6 +608,8 @@ Note that it will automatically detect whether the file is PDB or HDF.
     if filename is None: filename = fname
     # --- Make sure a filename was input.
     assert filename is not None,"A filename must be specified"
+    # --- Check if file exists
+    assert os.access(filename,os.F_OK),"File %s does not exist"%filename
     # --- open pdb file
     try:
       ff = PR.PR(filename)
