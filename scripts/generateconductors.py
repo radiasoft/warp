@@ -26,7 +26,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.5 2002/07/16 19:54:08 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.6 2002/08/26 20:29:48 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -551,6 +551,10 @@ Installs the conductor data into the fortran database
 class Box(Assembly):
   """
 Box class
+  - xsize,ysize,zsize: box size
+  - voltage=0: box voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of box
+  - condid=0: conductor id of box
   """
 
   xsize = 0.
@@ -576,6 +580,11 @@ Box class
 class Cylinder(Assembly):
   """
 Cylinder class
+  - radius,length: cylinder size
+  - theta=0,phi=0: angle of cylinder relative to z-axis
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=0: conductor id of cylinder
   """
 
   def __init__(self,radius,length,theta=0.,phi=0.,
@@ -596,7 +605,11 @@ Cylinder class
 
 class ZCylinder(Assembly):
   """
-ZCylinder
+Cylinder aligned with z-axis
+  - radius,length: cylinder size
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=0: conductor id of cylinder
   """
 
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -615,7 +628,11 @@ ZCylinder
 
 class YCylinder(Assembly):
   """
-YCylinder
+Cylinder aligned with y-axis
+  - radius,length: cylinder size
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=0: conductor id of cylinder
   """
 
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -634,7 +651,11 @@ YCylinder
 
 class XCylinder(Assembly):
   """
-XCylinder
+Cylinder aligned with x-axis
+  - radius,length: cylinder size
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=0: conductor id of cylinder
   """
 
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -655,6 +676,10 @@ XCylinder
 class Spheroid(Assembly):
   """
 Spheroid class
+  - xradius,yradius,zradius: radii
+  - voltage=0: spheroid voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of spheroid
+  - condid=0: conductor id of spheroid
   """
 
   def __init__(self,xradius,yradius,zradius,
@@ -665,9 +690,16 @@ Spheroid class
     self.zradius = zradius
     self.condid = condid
 
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    raise "unimplemented"
+
 class Sphere(Spheroid):
   """
 Sphere
+  - radius: radius
+  - voltage=0: sphere voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of sphere
+  - condid=0: conductor id of sphere
   """
 
   def __init__(self,radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -685,6 +717,12 @@ Sphere
 class ZCone(Assembly):
   """
 Cone
+  - r_zmin: radius at z min
+  - r_zmax: radius at z max
+  - length: length
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=0: conductor id of cone
   """
 
   def __init__(self,r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -705,7 +743,13 @@ Cone
 #============================================================================
 class ZConeOut(Assembly):
   """
-Cone
+Cone outside
+  - r_zmin: radius at z min
+  - r_zmax: radius at z max
+  - length: length
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=0: conductor id of cone
   """
 
   def __init__(self,r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -726,7 +770,12 @@ Cone
 #============================================================================
 class ZTorus(Assembly):
   """
-Cone
+Torus
+  - r1: toroidal radius
+  - r2: poloidal radius
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=0: conductor id of cone
   """
 
   def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0):
