@@ -225,7 +225,9 @@ class panel(wxPanel):
         except:
           pass
         try:
-          self.marker_letter.SetValue(plist['marker'])
+	  marker = plist['marker']
+	  if marker=='\\':marker='.'
+          self.marker_letter.SetValue(marker)
         except:
           pass
         try:
@@ -256,16 +258,16 @@ class panel(wxPanel):
     def OnUpdateButton(self, event):
         if(self.nelements<1):return
         if(self.setcolor): 
-            pledit(self.element,color=self.Color.GetStringSelection())
+	    pledit(self.element,color=str(self.Color.GetStringSelection()))
             self.setcolor=0
         if(self.setwidth): 
             pledit(self.element,width=self.width_slider.GetValue())
             self.setwidth=0  
         if(self.settype):  
-            pledit(self.element,type =self.Type.GetStringSelection())
+            pledit(self.element,type =str(self.Type.GetStringSelection()))
             self.settype=0  
         if(self.setmarker): 
-            pledit(self.element,marker=self.marker_letter.GetValue())
+            pledit(self.element,marker=str(self.marker_letter.GetValue()))
             self.setmarker=0
         if(self.setmarks): 
             pledit(self.element,marks=self.Marks.GetValue())
@@ -280,16 +282,16 @@ class panel(wxPanel):
             pledit(self.element,mspace=self.mspace.GetValue()*0.01)
             self.setmspace=0  
         if(self.setfontlabel or self.setboldlabel or self.setitaliclabel):
-            set_label(font=self.FontLabel.GetStringSelection(), \
+            set_label(font=str(self.FontLabel.GetStringSelection()), \
                       bold=self.BoldLabel.GetValue() , \
                       italic=self.ItalicLabel.GetValue(),\
-                      axis=self.LabelAxis.GetStringSelection()) 
+                      axis=str(self.LabelAxis.GetStringSelection())) 
             self.setfontlabel=0  
             self.setboldlabel=0  
             self.setitaliclabel=0  
         if(self.setheightlabel):
             set_label(height=self.HeightLabel.GetValue()*0.0003, \
-                      axis=self.LabelAxis.GetStringSelection()) 
+                      axis=str(self.LabelAxis.GetStringSelection())) 
             self.setheightlabel=0  
         event.Skip()
 
