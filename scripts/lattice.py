@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.42 2005/01/26 18:41:24 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.43 2005/01/31 18:12:33 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2101,6 +2101,7 @@ emlt arrays with the same suffices:
 # ----------------------------------------------------------------------------
 # --- MMLT --- XXX
 def addnewmmlt(zs,ze,ap=0.,ax=0.,ay=0.,ph=0.,sf=0.,sc=1.,id=None,ox=0.,oy=0.,
+               as=0.,ae=0.,ol=0,
                ms=None,msp=None,phz=None,phpz=None,nn=None,vv=None):
   """
 Adds a new mmlt element to the lattice. The element will be placed at the
@@ -2137,8 +2138,8 @@ mmlt arrays with the same suffices:
   # --- Make sure that at least some of the element is in the proper range,
   # --- z >= 0., and if zlatperi != 0, z <= zlatperi.
   assert (zs < ze),"element start must be less than element end"
-  assert (ze > 0.),"element end must be greater than zero"
-  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
+  assert (top.zlatperi == 0.) or (ze > 0.),"element end must be greater than zero if top.zlatperi is nonzero"
+  assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi if top.zlatperi is nonzero"
 
   # --- Get a dict of the input arguments and their values.
   ldict = locals()
@@ -2164,10 +2165,11 @@ mmlt arrays with the same suffices:
   # --- Setup dictionary relating lattice array with input argument names.
   # --- This is done here so that the references to the lattice arrays
   # --- refer to the updated memory locations after the gchange.
-  edist = {'zs':top.mmltzs,'ze':top.mmltze,
+  edict = {'zs':top.mmltzs,'ze':top.mmltze,
            'ap':top.mmltap,'ax':top.mmltax,'ay':top.mmltay,
            'ph':top.mmltph,
-           'sf':top.mmltsf,'sc':top.mmltsc,'ox':top.mmltox,'oy':top.mmltoy}
+           'sf':top.mmltsf,'sc':top.mmltsc,'ox':top.mmltox,'oy':top.mmltoy,
+           'as':top.mmltas,'ae':top.mmltae,'ol':top.mmltol}
 
   # --- Shift the existing data in the arrays to open up a space for the
   # --- new element.
