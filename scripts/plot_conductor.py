@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.76 2004/04/14 17:37:54 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.77 2004/04/16 22:04:16 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2754,7 +2754,7 @@ Returns the scene use to draw the image
 
   # --- Make sure that the conductor data is properly installed.
   checkconductors(w3d.nx,w3d.ny,w3d.nz,w3d.nzfull,w3d.dx,w3d.dy,w3d.dz,
-                  w3d.l2symtry,w3d.l4symtry)
+                  w3d.l2symtry,w3d.l4symtry,conductors)
 
   # --- Save grid size
   nx = w3d.nx
@@ -2832,9 +2832,9 @@ Returns the scene use to draw the image
   griddd = array([w3d.dx*conductors.levellx[mglevel],
                   w3d.dy*conductors.levelly[mglevel],
                   w3d.dz*conductors.levellz[mglevel]])
-  gridnn = array([w3d.nx/conductors.levellx[mglevel],
-                  w3d.ny/conductors.levelly[mglevel],
-                  w3d.nz/conductors.levellz[mglevel]])
+  gridnn = array([nint(w3d.nx/conductors.levellx[mglevel]),
+                  nint(w3d.ny/conductors.levelly[mglevel]),
+                  nint(w3d.nz/conductors.levellz[mglevel])])
     
   # --- This fortran routine generates the triangulated surface. It was
   # --- converted to fortran for speed.
