@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.26 2001/02/02 19:25:24 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.27 2001/02/05 21:02:28 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -222,15 +222,15 @@ sf = redraw
 # Create the plotting routines. It is different in the serial and parallel
 # versions.
 if not lparallel:
-  def warpplp(y,x,color="fg",type="none",marker="\1",msize=1.0):
+  def warpplp(y,x,color="fg",linetype="none",marker="\1",msize=1.0):
     "Plots particles, same as plg but with different defaults"
     if len(y) > 0:
-      plg(y,x,color=color,type=type,marker=marker,msize=msize)
-  def warpplg(y,x,color="fg",type="solid",marks=0,marker=None,msize=1.0,
+      plg(y,x,color=color,type=linetype,marker=marker,msize=msize)
+  def warpplg(y,x,color="fg",linetype="solid",marks=0,marker=None,msize=1.0,
               width=1.0):
     "Same as plg but with different defaults"
     if len(y) > 0:
-      plg(y,x,color=color,type=type,marks=marks,marker=marker,msize=msize,
+      plg(y,x,color=color,type=linetype,marks=marks,marker=marker,msize=msize,
           width=width)
 else:
   warpplp = plotpart
@@ -261,7 +261,7 @@ Plots any history versus z
 # --- Simple interface to contour plotting. Only requires the 2-D array
 # --- to be plotted.
 def plotc(zz,xx=None,yy=None,ireg=None,color=None,levs=None,contours=8,
-          filled=0):
+          filled=0,width=1.,linetype='solid'):
   """
 Simple interface to contour plotting, same arguments as plc
   - zz 2-D array to be plotted
@@ -295,9 +295,9 @@ Simple interface to contour plotting, same arguments as plc
         mx = maxnd(zz)
         mn = minnd(zz)
         levs = iota(0,levs)*(mx-mn)/levs + mn
-      plc(zz,xx,yy,color=color,levs=levs)
+      plc(zz,xx,yy,color=color,levs=levs,width=width,type=linetype)
     else:
-      plc(zz,xx,yy,color=color)
+      plc(zz,xx,yy,color=color,width=width,type=linetype)
 def plotfc(zz,xx=None,yy=None,ireg=None,contours=8):
   """
 Simple interface to filled contour plotting, same arguments as plfc
@@ -1473,7 +1473,7 @@ def ppzxco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
       ii = (ii-istart-ij-inp*(ic-1))/istep
       warpplp(take(top.xp[irs1:irs2:irs3],ii),
               take(top.zp[irs1:irs2:irs3],ii),
-            color=color[ic%len(color)],type="none",marker=marker,msize=msize)
+          color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
     for ic in xrange(ncolor,0,-1):
       irs1 = istart+ij+nskipcol+inp*(ic-1)
       irs2 = istart+inp*ic
@@ -1483,7 +1483,7 @@ def ppzxco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
       ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
       warpplp(take(top.xp[irs1:irs2:irs3],ii),
               take(top.zp[irs1:irs2:irs3],ii),
-          color=color[ic%len(color)],type="none",marker=marker,msize=msize)
+          color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
   if titles: ptitles(" ","Z","X"," ",sys)
   if (lframe):
     limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.xplmin,top.xplmax)
@@ -1515,7 +1515,7 @@ def ppzyco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
       ii = (ii-istart-ij-inp*(ic-1))/istep
       warpplp(take(top.yp[irs1:irs2:irs3],ii),
               take(top.zp[irs1:irs2:irs3],ii),
-            color=color[ic%len(color)],type="none",marker=marker,msize=msize)
+         color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
     for ic in xrange(ncolor,0,-1):
       irs1 = istart+ij+nskipcol+inp*(ic-1)
       irs2 = istart+inp*ic
@@ -1525,7 +1525,7 @@ def ppzyco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
       ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
       warpplp(take(top.yp[irs1:irs2:irs3],ii),
               take(top.zp[irs1:irs2:irs3],ii),
-           color=color[ic%len(color)],type="none",marker=marker,msize=msize)
+           color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
   if titles: ptitles(" ","Z","Y"," ",sys)
   if (lframe):
     limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.yplmin,top.yplmax)
@@ -1572,7 +1572,7 @@ def ppzvzco(js=0,marker="\1",msize=1.0,lframe=0,titles=1,
       ii = (ii-istart-ij-inp*(ic-1))/istep
       warpplp(take(top.uzp[irs1:irs2:irs3]*top.gaminv[irs1:irs2:irs3],ii),
               take(top.zp[irs1:irs2:irs3],ii),
-            color=color[ic%len(color)],type="none",marker=marker,msize=msize)
+         color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
     for ic in xrange(ncolor,0,-1):
       irs1 = istart+ij+nskipcol+inp*(ic-1)
       irs2 = istart+inp*ic
@@ -1582,7 +1582,7 @@ def ppzvzco(js=0,marker="\1",msize=1.0,lframe=0,titles=1,
       ii = (ii-istart-ij-nskipcol-inp*(ic-1))/istep
       warpplp(take(top.uzp[irs1:irs2:irs3]*top.gaminv[irs1:irs2:irs3],ii),
               take(top.zp[irs1:irs2:irs3],ii),
-            color=color[ic%len(color)],type="none",marker=marker,msize=msize)
+         color=color[ic%len(color)],linetype="none",marker=marker,msize=msize)
   if titles: ptitles("Vz vs Z","Z","Vz"," ")
   if (lframe): limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
 
@@ -1636,7 +1636,7 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
     else:
       c = color[ic%len(color)]
     warpplp(take(y,ii),take(x,ii),
-            color=c,type="none",marker=marker,msize=msize)
+            color=c,linetype="none",marker=marker,msize=msize)
   if (lframe): limits(xmin,xmax,ymin,ymax)
 
 ##########################################################################
@@ -1747,7 +1747,7 @@ def pprhoax(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
 
 ##########################################################################
 # This routine allows plotting of multi-dimensioned arrays.
-def pla(y,x=None,color="fg",type="solid",marks=0,marker=None,msize=1.0,
+def pla(y,x=None,color="fg",linetype="solid",marks=0,marker=None,msize=1.0,
         width=1.):
   "Same as plg but can plot multidimensional array"
   if x:
@@ -1787,7 +1787,7 @@ def pla(y,x=None,color="fg",type="solid",marks=0,marker=None,msize=1.0,
     yy=y[:,NewAxis]
   n = shape(xx)[1]
   for i in xrange(yy.shape[1]):
-    warpplg(yy[:,i],xx[:,i%n],color=color,type=type,
+    warpplg(yy[:,i],xx[:,i%n],color=color,linetype=linetype,
             marks=marks,marker=marker,msize=msize,width=width)
 
 ##########################################################################
