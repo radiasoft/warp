@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.169 $, $Date: 2004/09/15 21:34:59 $
+c@(#) File W3D.F, version $Revision: 3.170 $, $Date: 2004/09/25 00:37:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2980,7 +2980,7 @@ c  Picglb is included only to use zbeam
       integer(ISZ):: nfib2,nfib3,nfib4,ii,ioff
       real(kind=8):: rnpmi,zmid,zlen,zleni,vtx,vty,vtz,rr,r0,rpp,phi1,phi2,rp,wz,wr
       real(kind=8):: vthr,vrbar
-      real(kind=8):: zoff,vb,emx,emy,vtzz
+      real(kind=8):: zoff
       real(kind=8):: sumzdist,zdistmax
       real(kind=8):: sumrdist
       integer(ISZ):: iz,ipp,izz
@@ -2993,8 +2993,9 @@ c  Picglb is included only to use zbeam
       integer(ISZ):: npgrp,iptotal
       integer(ISZ),allocatable,dimension(:):: indx
       real(kind=8),allocatable,dimension(:):: xt,yt,zt,rt,tt,uxt,uyt,uzt
-      real(kind=8),allocatable,dimension(:):: perpscal,at,apt,bt,bpt,xct,xpct
-      real(kind=8),allocatable,dimension(:):: yct,ypct
+      real(kind=8),allocatable,dimension(:):: perpscal,at,apt,bt,bpt
+      real(kind=8),allocatable,dimension(:):: epsxt,epsyt,vzt,vtzt,ibeamt
+      real(kind=8),allocatable,dimension(:):: xct,xpct,yct,ypct
 
 #ifdef MPIPARALLEL
       real(kind=8):: zmin,zmax
@@ -3096,16 +3097,18 @@ c----------------------------------
 !$OMP PARALLEL
 !$OMP+PRIVATE(k,i,j,ipp,i1,izz,nzstri_s,izstripe,vtz,iz,wz,irr,ii,rp,rpp,r0)
 !$OMP+PRIVATE(firstk)
-!$OMP+PRIVATE(ir,wr,vthr,vrbar,vb,vtzz,emx,emy,vtx,vty,ip,rr,phi1,phi2)
+!$OMP+PRIVATE(ir,wr,vthr,vrbar,vtx,vty,ip,rr,phi1,phi2)
 !$OMP+PRIVATE(indx,xt,yt,zt,rt,tt,uxt,uyt,uzt,perpscal,at,apt,bt,bpt)
 !$OMP+PRIVATE(xct,xpct,yct,ypct,icheck,nfib2,nfib3,nfib4,nxstri_s,nystri_s)
+!$OMP+PRIVATE(epsxt,epsyt,vzt,vtzt,ibeamt)
 !$OMP+SHARED(iptotal)
 
 c  Allocate scratch space for load. Must be done in the parallel block
       allocate(indx(npgrp),xt(npgrp),yt(npgrp),zt(npgrp),rt(npgrp),tt(npgrp))
-      allocate(uxt(npgrp),uyt(npgrp),uzt(npgrp),perpscal(npgrp),at(npgrp))
-      allocate(apt(npgrp),bt(npgrp),bpt(npgrp),xct(npgrp),xpct(npgrp))
-      allocate(yct(npgrp),ypct(npgrp))
+      allocate(uxt(npgrp),uyt(npgrp),uzt(npgrp),perpscal(npgrp))
+      allocate(at(npgrp),apt(npgrp),bt(npgrp),bpt(npgrp))
+      allocate(epsxt(npgrp),epsyt(npgrp),vzt(npgrp),vtzt(npgrp),ibeamt(npgrp))
+      allocate(xct(npgrp),xpct(npgrp),yct(npgrp),ypct(npgrp))
 
       do is = 1, ns
 
@@ -3131,8 +3134,9 @@ c       --- Get number of particles to be loaded for this species.
 !$OMP END SINGLE
 
 c       --- Inverse of the number of particles. When multiplied by the particle
-c       --- index and added to the normalized value of zmin, the normalized
-c       --- location of the particle in the beam, between 0 and 1, results.
+c       --- index and added to the normalized value of zmin, the normalized 
+c       --- axial location of the particle in the beam, between 0 and 1, 
+c       --- results.
         rnpmi = 1./dvnz(real(npm,kind=8))
 
 c       --- Reset counter for arbitrary particle distribution in z.
@@ -3140,7 +3144,7 @@ c       --- It is reset for each species since each species has its own
 c       --- initial uniform distribution.
 c       --- Resetting izz here and starting each particle with its previous
 c       --- value only works since the initial uniform z positions are
-c       --- monotinically increasing.  Using this feature greatly increases
+c       --- monotonically increasing.  Using this feature greatly increases
 c       --- the speed of the code.
         if (nzdist > 0) izz = 0
 
@@ -3318,26 +3322,39 @@ c        --- unormalize z to fetch envelope
            zt(i) = zbeam + zimin_s(is) + zlen*zt(i)
          enddo
 
-c        --- fetch envelope
+c        --- fetch envelope, centroid, and emittance.  Reset values 
+c        --- after initial set if axial varying emittance, axial velocity, 
+c        --- and axial thermal velocity are input
          if (nenvofz > 0) then
            do i=1,i1-k+1
+c            --- envelope interpolations 
              iz = (zt(i) - zimin_s(is) - zbeam)*zleni*nenvofz
              wz = (zt(i) - zimin_s(is) - zbeam)*zleni*nenvofz - iz
+c            --- envelope 
              at(i)  = aofz(iz)*(1.-wz)  + aofz(iz+1)*wz
              bt(i)  = bofz(iz)*(1.-wz)  + bofz(iz+1)*wz
              apt(i) = apofz(iz)*(1.-wz) + apofz(iz+1)*wz
              bpt(i) = bpofz(iz)*(1.-wz) + bpofz(iz+1)*wz
+c            --- centroid 
              xct(i)  = xofz(iz)*(1.-wz)  + xofz(iz+1)*wz
              yct(i)  = yofz(iz)*(1.-wz)  + yofz(iz+1)*wz
              xpct(i) = xpofz(iz)*(1.-wz) + xpofz(iz+1)*wz
              ypct(i) = ypofz(iz)*(1.-wz) + ypofz(iz+1)*wz
            enddo
          elseif (.not. cylinder) then
-           icheck = envxport(i1-k+1,zt,at,apt,bt,bpt,xct,xpct,yct,ypct)
+           icheck = envxport(i1-k+1,zt,at,apt,bt,bpt,xct,xpct,yct,ypct,
+     &                       vzt,epsxt,epsyt,ibeamt)
            if (icheck == 1) then
               call remark ("ERROR: out-of-range z sent to ENVXPORT")
               call kaboom (0)
            endif
+c          --- set axial thermal velocity based on species .... note that 
+c          --- at present this is inconsistent with envxport not knowing about 
+c          --- individual species.  Eventually this might be fixed with a 
+c          --- generalized envelope solver 
+           do i=1,npgrp
+             vtzt(i) = vthz_s(is)
+           enddo 
          else
 c          --- set only first time through
            if (firstk) then
@@ -3346,18 +3363,64 @@ c          --- set only first time through
                bt(i)   = b0_s(is)
                apt(i)  = ap0_s(is)
                bpt(i)  = bp0_s(is)
+c
                xct(i)  = x0_s(is)  + xcent_s(is)
                yct(i)  = y0_s(is)  + ycent_s(is)
                xpct(i) = xp0_s(is) + xpcent_s(is)
                ypct(i) = yp0_s(is) + ypcent_s(is)
+c
+               epsxt(i) = emitx_s(is) 
+               epsyt(i) = emity_s(is) 
+c
+               vzt(i)  = vbeam_s(is) 
+               vtzt(i) = vthz_s(is) 
+c
+               ibeamt(i) = ibeam_s(is)
              enddo
            endif
          endif
+c        --- reset emittance interpolations               
+         if (nemitofz > 0) then 
+           do i=1,i1-k+1
+             iz = (zt(i) - zimin_s(is) - zbeam)*zleni*nemitofz
+             wz = (zt(i) - zimin_s(is) - zbeam)*zleni*nemitofz - iz
+c
+             epsxt(i) = emitxofz(iz)*(1.-wz) + emitxofz(iz+1)*wz
+             epsyt(i) = emityofz(iz)*(1.-wz) + emityofz(iz+1)*wz
+           enddo
+         endif  
+c        --- reset axial velocity interpolations 
+         if (nvbeamofz > 0) then 
+           do i=1,i1-k+1
+c
+             iz = (zt(i) - zimin_s(is) - zbeam)*zleni*nvbeamofz
+             wz = (zt(i) - zimin_s(is) - zbeam)*zleni*nvbeamofz - iz
+c
+             vzt(i) = vbeamofz(iz)*(1.-wz) + vbeamofz(iz+1)*wz
+           enddo 
+         endif 
+c        --- reset axial thermal velocity interpolations 
+         if (nvthzofz > 0) then 
+           do i=1,i1-k+1
+c
+             iz = (zt(i) - zimin_s(is) - zbeam)*zleni*nvthzofz
+             wz = (zt(i) - zimin_s(is) - zbeam)*zleni*nvthzofz - iz
+c
+             vtzt(i) = vthzofz(iz)*(1.-wz) + vthzofz(iz+1)*wz
+           enddo
+         endif 
+c        --- XXX beam current interpolations (placeholder)  
+c         if () then 
+c           do i=1,i1-k+1 
+c             ibeamt(i) = .... 
+c           enddo 
+c         endif  
 
 
 c  Load tranverse stuff
 c  semi-gaussian distribution
-         if (distrbtn == "semigaus") then
+         if (distrbtn == "semigaus" .or. distrbtn == "SG" .or. 
+     &       distrbtn == "SemiGaussian") then
 
 c          --- load normalized tranverse space variables
            if (xrandom == "pseudo") then
@@ -3547,39 +3610,15 @@ c            --- put position into particle arrays
              xp(ip+i) = at(ii)*xt(ii)*perpscal(ii) + xct(ii)
              yp(ip+i) = bt(ii)*yt(ii)*perpscal(ii) + yct(ii)
              zp(ip+i) = zt(ii)
-c            --- Use optional axially varying vbeam and emittance
-             if (nvbeamofz == 0) then
-               vb = vbeam_s(is)
-             else
-               iz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nvbeamofz
-               wz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nvbeamofz - iz
-               vb = vbeamofz(iz)*(1.-wz) + vbeamofz(iz+1)*wz
-             endif
-             if (nvthzofz == 0) then
-               vtzz = vtz
-             else
-               iz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nvthzofz
-               wz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nvthzofz - iz
-               vtzz = vthzofz(iz)*(1.-wz) + vthzofz(iz+1)*wz
-             endif
-             if (nemitofz == 0) then
-               emx = emitx_s(is)
-               emy = emity_s(is) 
-             else
-               iz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nemitofz
-               wz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nemitofz - iz
-               emx = emitxofz(iz)*(1.-wz) + emitxofz(iz+1)*wz
-               emy = emityofz(iz)*(1.-wz) + emityofz(iz+1)*wz
-             endif
 c            --- put velocity into particle arrays
-             vtx = .5*vb*emx/at(ii)*perpscal(ii) + vthperp_s(is)
-             vty = .5*vb*emy/bt(ii)*perpscal(ii) + vthperp_s(is)
-             uxp(ip+i) = vb*apt(ii)*xt(ii)*perpscal(ii) + vtx*uxt(ii) +
-     &                   vb*xpct(ii)
-             uyp(ip+i) = vb*bpt(ii)*yt(ii)*perpscal(ii) + vty*uyt(ii) +
-     &                   vb*ypct(ii)
-             uzp(ip+i) = vb*(1. + vtilt_s(is)*(zmid - zt(ii))*zleni) +
-     &                   vtzz*uzt(ii)
+             vtx = .5*vzt(ii)*epsxt(ii)/at(ii)*perpscal(ii) + vthperp_s(is)
+             vty = .5*vzt(ii)*epsyt(ii)/bt(ii)*perpscal(ii) + vthperp_s(is)
+             uxp(ip+i) = vzt(ii)*apt(ii)*xt(ii)*perpscal(ii) + vtx*uxt(ii) +
+     &                   vzt(ii)*xpct(ii)
+             uyp(ip+i) = vzt(ii)*bpt(ii)*yt(ii)*perpscal(ii) + vty*uyt(ii) +
+     &                   vzt(ii)*ypct(ii)
+             uzp(ip+i) = vzt(ii)*(1. + vtilt_s(is)*(zmid - zt(ii))*zleni) +
+     &                   vtzt(ii)*uzt(ii)
            enddo
 
 c          --- add sinusoidal perturbation to uzp
@@ -3592,8 +3631,8 @@ c          --- add sinusoidal perturbation to uzp
 c          --- increment number of particles by size of current group
            ip = ip + j
 
-c  K-V distribution
-         elseif (distrbtn == "K-V") then
+c        --- K-V distribution
+         elseif (distrbtn == "K-V" .or. distrbtn == "KV") then
 
 c          --- fetch random numbers and put into xt,yt, & uxt  temporarily
            if (xrandom == "pseudo") then
@@ -3617,8 +3656,8 @@ c          --- fetch random numbers and put into xt,yt, & uxt  temporarily
                yt(i)  = rnrev(i+k-1+ioff,dig2)
                uxt(i) = rnrev(i+k-1+ioff,dig3)
              enddo
-           else
-             call remark ("ERROR: xrandom cannot be grid for K-V load.")
+           elseif (xrandom == "grid") then 
+             call remark ("ERROR: xrandom cannot be grid for KV load.")
              call kaboom (0)
            endif
 
@@ -3641,45 +3680,93 @@ c            --- are relative to the centroid.
              xp(ip+i) = rr*cos(phi1)*at(i)*perpscal(i)
              yp(ip+i) = rr*sin(phi1)*bt(i)*perpscal(i)
              zp(ip+i) = zt(i)
-c            --- Use optional axially varying vbeam and emittance
-             if (nvbeamofz == 0) then
-               vb = vbeam_s(is)
-             else
-               iz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nvbeamofz
-               wz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nvbeamofz - iz
-               vb = vbeamofz(iz)*(1.-wz) + vbeamofz(iz+1)*wz
-             endif
-             if (nvthzofz == 0) then
-               vtzz = vtz
-             else
-               iz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nvthzofz
-               wz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nvthzofz - iz
-               vtzz = vthzofz(iz)*(1.-wz) + vthzofz(iz+1)*wz
-             endif
-             if (nemitofz == 0) then
-               emx = emitx_s(is)
-               emy = emity_s(is) 
-             else
-               iz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nemitofz
-               wz = (zp(ip+i) - zimin_s(is) - zbeam)*zleni*nemitofz - iz
-               emx = emitxofz(iz)*(1.-wz) + emitxofz(iz+1)*wz
-               emy = emityofz(iz)*(1.-wz) + emityofz(iz+1)*wz
-             endif
 c            --- put velocity into particle arrays
              rr = sqrt(1.-rr*rr)
-             vtx = vb*emx/at(i)*perpscal(i) + vthperp_s(is)
-             vty = vb*emy/bt(i)*perpscal(i) + vthperp_s(is)
-             uxp(ip+i) = vb*xp(ip+i)*apt(i)/at(i) + vtx*rr*cos(phi2) +
-     &                   vb*xpct(i)
-             uyp(ip+i) = vb*yp(ip+i)*bpt(i)/bt(i) + vty*rr*sin(phi2) +
-     &                   vb*ypct(i)
-             uzp(ip+i) = vb*(1. + vtilt_s(is)*(zmid - zt(i))*zleni) +
-     &                   vtzz*uzt(i)
+             vtx = vzt(i)*epsxt(i)/at(i)*perpscal(i) + vthperp_s(is)
+             vty = vzt(i)*epsyt(i)/bt(i)*perpscal(i) + vthperp_s(is)
+             uxp(ip+i) = vzt(i)*xp(ip+i)*apt(i)/at(i) + vtx*rr*cos(phi2) +
+     &                   vzt(i)*xpct(i)
+             uyp(ip+i) = vzt(i)*yp(ip+i)*bpt(i)/bt(i) + vty*rr*sin(phi2) +
+     &                   vzt(i)*ypct(i)
+             uzp(ip+i) = vzt(i)*(1. + vtilt_s(is)*(zmid - zt(i))*zleni) +
+     &                   vtzt(i)*uzt(i)
 c            --- The centroids are added to the transverse positions
 c            --- after the variables are used above to calculate the
 c            --- coherent velocity component.
              xp(ip+i) = xp(ip+i) + xct(i)
              yp(ip+i) = yp(ip+i) + yct(i)
+           enddo
+
+c          --- add sinusoidal perturbation to uzp
+           if (vzperamp /= 0.) then
+             do i=ip+1,ip+i1-k+1
+               uzp(i) = uzp(i) + vzperamp*sin(2.*pi*zp(i)/vzperlam + vzperphs)
+             enddo
+           endif
+
+c          --- increment number of particles by size of current group
+           ip = ip + i1-k+1
+
+c        --- Load various transverse distributions 
+c        --- using local Courant-Snyder zero-current invariants (0 suffixes) 
+c        --- appropriate for periodic focusing channels or 
+
+         elseif (distrbtn == "WB"  .or. distrbtn == "Waterbag"  .or.  
+     &           distrbtn == "PA"  .or. distrbtn == "Parabolic" .or. 
+     &           distrbtn == "GA"  .or. distrbtn == "Gaussian"  .or. 
+     &           distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium" .or. 
+     &           distrbtn == "KV0" .or. 
+     &           distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.  
+     &           distrbtn == "PA0" .or. distrbtn == "Parabolic0" .or. 
+     &           distrbtn == "GA0" .or. distrbtn == "Gaussian0"  .or. 
+     &           distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") 
+     &           then 
+
+c          --- Load transverse particles in x-x', y-y' phase space using 
+c          --- the local beam envelope and emittance in the slice of each 
+c          --- particle 
+
+           if (distrbtn == "WB" .or. distrbtn == "Waterbag"  .or.  
+     &         distrbtn == "PA" .or. distrbtn == "Parabolic" .or. 
+     &         distrbtn == "GA" .or. distrbtn == "Gaussian"  .or. 
+     &         distrbtn == "TE" .or. distrbtn == "ThermalEquilibrium") then 
+c            --- use transforms of continuous focusing equilibria 
+             call loadperpdist(i1-k+1,xt,yt,uxt,uyt,
+     &                         at,bt,apt,bpt,epsxt,epsyt,distrbtn) 
+           elseif (distrbtn == "KV0" .or. 
+     &             distrbtn == "WB0" .or. distrbtn == "Waterbag0"  .or.  
+     &             distrbtn == "PA0" .or. distrbtn == "Parabolic0" .or. 
+     &             distrbtn == "GA0" .or. distrbtn == "Gaussian0") then 
+c            --- use zero applied field Courant-Snyder invariants 
+             call loadperpdist0(i1-k+1,xt,yt,uxt,uyt,
+     &                          at,bt,apt,bpt,epsxt,epsyt,distrbtn) 
+           endif 
+
+!$OMP CRITICAL (STPTCL3D2)
+#ifdef _OPENMP
+           ip = iptotal
+           iptotal = iptotal + i1-k+1
+#endif
+!$OMP END CRITICAL (STPTCL3D2)
+
+c          --- load coordinates 
+           do i=1,i1-k+1
+
+c            --- set longitudinal particle coordinates 
+c                  1st term: distribution about centroid 
+c                  2nd term: centroid component  
+             xp(ip+i) = xt(i) + xct(i)
+             yp(ip+i) = yt(i) + yct(i)
+c            --- set the longitudinal particle coordinate 
+             zp(ip+i) = zt(i)
+c            --- set transverse particle gamma*velocity   
+c                  1st term: rescale uxp returned in x' units to uxp  
+c                  2nd term: centroid component 
+             uxp(ip+i) = vzt(i)*uxt(i) + vzt(i)*xpct(i)
+             uyp(ip+i) = vzt(i)*uyt(i) + vzt(i)*ypct(i)
+c            --- set longitudinal particle gamma*velocity 
+             uzp(ip+i) = vzt(i)*(1. + vtilt_s(is)*(zmid - zt(i))*zleni) +
+     &                   vtzt(i)*uzt(i)
            enddo
 
 c          --- add sinusoidal perturbation to uzp
@@ -3699,6 +3786,7 @@ c          --- increment number of particles by size of current group
            call kaboom (0)
          endif
 
+c        --- Set flag to indicate that the loop has been passed through once
         firstk = .false.
       enddo
 !$OMP END DO
@@ -3713,6 +3801,14 @@ c  Set particle number, indices, etc.
 !$OMP END MASTER
 
       enddo
+
+c     deallocate scratch space for load
+c      deallocate(indx,xt,yt,zt,rt,tt)
+c      deallocate(uxt,uyt,uzt,perpscal)
+c      deallocate(at,apt,bt,bpt)
+c      deallocate(epsxt,epsyt,vzt,vtzt,ibeamt)
+c      deallocate(xct,xpct,yct,ypct)
+
 !$OMP END PARALLEL
 
 c--------------------------------
@@ -3781,6 +3877,216 @@ c     --- Apply particle boundary conditions
 !$OMP END MASTER
       return
       end
+c=============================================================================
+      subroutine loadperpdist(np,x,y,xp,yp,rx,ry,rxp,ryp,
+     &                        epsx,epsy,distrbtn)
+
+      use Constant
+      integer(ISZ):: np
+      real(kind=8):: x(np), y(np), xp(np), yp(np)
+      real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
+      real(kind=8):: epsx(np), epsy(np) 
+      character(18) distrbtn
+c
+c Load a transverse distribution of particles based on transformation of 
+c an "equivalent" Hamiltonian defined beam equilibrium in a continuous 
+c focusing channel.  Each particle can have 
+c separate envelope coordinates and emittances so the script can be used 
+c in 2D or 3D loads.  The continuous focused equilibrium is tranformed 
+c consistent with KV like elliptical beam cross-sections and flutter to 
+c better match a focusing channel with axially varying focusing forces.  
+c These loads are not strict equilibria of such focusing channels but in 
+c many situaitons can provide reasonable approximate initial beam 
+c distributions.  
+c   
+c Particle coordinates loaded:
+c   np = number of particles to load 
+c   x,y    = x, y  coordinates of particle 
+c   xp,yp  = x',y' coordinates of particle
+c
+c Each particle can be in different parts of the beam envelope and the 
+c beam envelope in the axial slice of the each particle (note the 
+c z-coordinates of the particles are unknown within this routine) are 
+c defined by the arrays:
+c
+c   rx,   ry    = x- and y-envelope coordinates of beam: r_x,   r_y    
+c   rxp,  ryp   = x- and y-envelope angles      of beam: r_x',  r_y' 
+c   emitx,emity = x- and y-emittances           of beam: eps_x, eps_y 
+c
+c The method can be applied to an infinity of distributions.  Forms 
+c implemented include:
+c   distrbtn = "WB" or "Waterbag":  waterbag form (theta function) 
+c            = "PA" or "Parabolic": parabolic form 
+c            = "GA" or "Gaussian":  Gaussian form 
+c            = "TE" or "ThermalEquilibrium": Thermal Equilibrium form 
+c
+c
+
+c      integer(ISZ):: ip
+c      real(kind=8):: X1, X2, Y1, Y2
+c      real(kind=8):: F0, F, G
+      real(kind=8):: eps
+c      real(kind=8):: Ax, Ay, betax, betay 
+c      real(kind=8):: wranf     
+c      real(kind=8):: a, b, c, fa, fc
+c      character(72):: errline  
+
+c     Tolerances for iternative constraint solves 
+      eps = 1.e-6
+
+      call remark ("Load Option not yet implemented in routine loadperpdist") 
+      call kaboom (0)
+      
+c     --- Loop over particles to load 
+c      do ip = 1,np
+c
+c      enddo 
+
+      return 
+      end 
+c=============================================================================
+      subroutine loadperpdist0(np,x,y,xp,yp,rx,ry,rxp,ryp,
+     &                         epsx,epsy,distrbtn)
+
+      use Constant
+      integer(ISZ):: np
+      real(kind=8):: x(np), y(np), xp(np), yp(np)
+      real(kind=8):: rx(np), ry(np), rxp(np), ryp(np)
+      real(kind=8):: epsx(np), epsy(np)
+      character(20) distrbtn
+c
+c Load a transverse distribution of particles based Courant-Snyder invariants 
+c in applied fields.  Each particle can have 
+c separate envelope coordinates and emittances so the script can be used 
+c in 2D or 3D loads.  The method employed here parallels T. Kikuchi's 
+c implementation of a procedure first developed by:
+c   Y.R. Batygin, "Particle Distribution generator in 4D Phase-Space"
+c   AIP Conf. Proc. 297 (1994) pp. 419-426  
+c The method uses local Courant-Snyder invariant type forms to define 
+c distributions that should be direct analogs to the equilibrium forms in 
+c continuous focusing channels. These distributions are equilibria in 
+c periodic focusing lattices for beams of zero current.  Because the
+c equilibria are defined in terms of functions of Courant Snyder invariants 
+c of the linear forcusing lattice with axially varying applied fields, the 
+c forms automatically hit the target envelope coordinates r_x, r_y, 
+c r_x', r_y' and emittances emitx, emity.   These forms are consitent only 
+c for linear total forces within the ellptic symmetry beam core.  Consequently 
+c the forms only reflect rms equivalent beam compensations and can be far 
+c from equilibrium form for strong space-charge depressions where the internal 
+c beam space-charge structure is Debye screened.  The case 
+c KV0 is correct for finite beam current because the internal forces are linear
+c in this case.  This loading method thereby provides an alternative 
+c loading method for a KV beam of arbitrary current/space-charge strength to 
+c the option "K-V" or "KV" which is implemented differently.  
+c   
+c Particle coordinates loaded:
+c   np = number of particles to load 
+c   x,y    = x, y  coordinates of particle 
+c   xp,yp  = x',y' coordinates of particle
+c
+c Each particle can be in different parts of the beam envelope and the 
+c beam envelope in the axial slice of the each particle (note the 
+c z-coordinates of the particles are unknown within this routine) are 
+c defined by the arrays:
+c
+c   rx,  ry   =   x- and y-envelope coordinates of beam: r_x,   r_y   
+c   rxp, ryp  =   x- and y-envelope angles      of beam: r_x',  r_y' 
+c   epsx,epsy =   x- and y-emittances           of beam: eps_x, eps_y
+c
+c The method can be applied to an infinity of distributions.  Forms 
+c presently implemented include:
+c   distrbtn = "KV0":  KV or Kapchinskij-Vladimirskij (delta function) 
+c            = "WB0" or "Waterbag0":  waterbag form (theta function) 
+c            = "PA0" or "Parabolic0": parabolic form 
+c            = "GA0" or "Gaussian0":  Gaussian form 
+c
+      integer(ISZ):: ip
+      real(kind=8):: alphax, alphay, alphaxp, alphayp
+      real(kind=8):: F0, F, G
+      real(kind=8):: Ax, Ay, betax, betay 
+      real(kind=8):: wranf, rnorm 
+      real(kind=8):: alpha3
+      character(72):: errline  
+
+      
+      if (distrbtn == "KV0" .or. 
+     &    distrbtn == "WB0" .or. distrbtn == "Waterbag0" .or. 
+     &    distrbtn == "PA0" .or. distrbtn == "Parabolic0") then 
+
+c       --- Loop over particles to load 
+        do ip = 1,np
+
+c         --- phase ellipse variables (see Batygin papers and Fortran 
+c         --- subroutine PDS1 for initializing particles) used in defining 
+c         --- local KV like linear force psudo-invariants
+          alphax = rx(ip)/sqrt(epsx(ip))
+          alphay = ry(ip)/sqrt(epsy(ip))
+          alphaxp = rxp(ip)/sqrt(epsx(ip))
+          alphayp = ryp(ip)/sqrt(epsy(ip))
+
+c         --- calculate value of F0, F 
+          if (distrbtn == "KV0") then
+            F0 = epsx(ip)
+            F  = F0 
+
+          elseif (distrbtn == "WB0" .or. distrbtn == "Waterbag0") then
+            F0 = 1.5*epsx(ip)
+            F  = F0*sqrt( wranf() ) 
+
+          elseif (distrbtn == "PA0" .or. distrbtn == "Parabolic0") then 
+
+            F0 = 2.0*epsx(ip)
+          
+            G = wranf() 
+
+            alpha3 = ( acos( 1.-2.*G ) )/3.
+            F = (F0/2.)*( 1.-2.*cos( alpha3 - 2.*Pi/3. ) )
+            if (G .eq. 0.) F = 0. 
+            if (G .eq. 1.) F = F0
+          endif 
+
+c         --- Set particle coordinates 
+          Ax = sqrt( F*wranf() )
+          Ay = sqrt( (F - Ax*Ax)*epsy(ip)/epsx(ip) )
+
+          betax = 2.0*pi*wranf()
+          betay = 2.0*pi*wranf()
+
+          x(ip) = Ax * alphax * cos( betax )
+          y(ip) = Ay * alphay * cos( betay )
+
+          xp(ip) = Ax * ( alphaxp * cos( betax ) - sin( betax ) / alphax )
+          yp(ip) = Ay * ( alphayp * cos( betay ) - sin( betay ) / alphay )
+
+        enddo 
+      
+c     --- Implement Gaussian as a special case using a Gaussian distributed 
+c     --- random number generator with unit sigma.  This alternative 
+c     --- implementation is equivalent to loading the Courant-Snyder type 
+c     --- psudoinvariants but saves numerical work in avoiding the need to 
+c     --- solve an axillary equation numerically to solve for "F".  
+      elseif (distrbtn == "GA0" .or. distrbtn == "Gaussian0") then
+
+c       --- Loop over particles to load 
+        do ip = 1,np
+         
+          x(ip) = 0.5*rx(ip)*rnorm()
+          y(ip) = 0.5*ry(ip)*rnorm()
+
+          xp(ip) = 0.5*(epsx(ip)/rx(ip))*rnorm() + (rxp(ip)/rx(ip))*x(ip) 
+          yp(ip) = 0.5*(epsy(ip)/ry(ip))*rnorm() + (ryp(ip)/ry(ip))*y(ip)
+
+        enddo 
+
+      else 
+        write (errline,'("ERROR: distrbtn has an improper value = ",a8)')
+     &        distrbtn
+        call remark (errline)
+        call kaboom (0)
+      endif
+
+      return 
+      end 
 c=============================================================================
       subroutine setrho3d(rho,rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
      &                    nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,l2symtry,l4symtry)

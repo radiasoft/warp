@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.13 $, $Date: 2003/10/23 23:26:41 $
+c@(#) File WRZ.M, version $Revision: 3.14 $, $Date: 2004/09/25 00:37:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -1694,7 +1694,8 @@ c        --- unormalize z to fetch envelope
 
 c        --- fetch envelope
          if (.not. cylinder) then
-           icheck = envxport(i1-k+1,zt,at,apt,bt,bpt,xct,xpct,yct,ypct)
+           icheck = envxport(i1-k+1,zt,at,apt,bt,bpt,xct,xpct,yct,ypct,
+     &                       vzt,epsxt,epsyt,ibeamt)
            if (icheck .eq. 1) then
               call remark ("ERROR: out-of-range z sent to ENVXPORT")
               call kaboom (0)

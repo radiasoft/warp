@@ -1,5 +1,5 @@
 wrz
-#@(#) File WRZ.V, version $Revision: 3.10 $, $Date: 2003/10/23 23:26:41 $ 
+#@(#) File WRZ.V, version $Revision: 3.11 $, $Date: 2004/09/25 00:37:55 $ 
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WRZ of code WARP
@@ -10,7 +10,7 @@ wrz
  
 *********** WRZversion dump:
 # Quantities associated with version control 
-verswrz character*19 /"$Revision: 3.10 $"/ # Current code version, set by CVS
+verswrz character*19 /"$Revision: 3.11 $"/ # Current code version, set by CVS
  
 *********** InPltCtlrz dump:
 # Controls for when the various plots are made
@@ -201,6 +201,10 @@ xct(npgrp)      _real
 xpct(npgrp)     _real
 yct(npgrp)      _real
 ypct(npgrp)     _real
+vzt(npgrp)      _real
+epsxt(npgrp)    _real
+epsyt(npgrp)    _real
+ibeamt(npgrp)   _real
 
 *********** FFTDiagrz dump:
 # Arrays used for the Fourier transform diagnostic

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.30 $, $Date: 2004/04/13 22:22:25 $
+c@(#) File ENV.M, version $Revision: 3.31 $, $Date: 2004/09/25 00:37:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -150,12 +150,17 @@ c  Deallocates dynamic storage used by test driver
       return
       end
 c=======================================================================
-      integer function envxport(np,z,a,ap,b,bp,x,xp,y,yp)
+      integer function envxport(np,z,a,ap,b,bp,x,xp,y,yp,vz,
+     &                          epsx,epsy,ib)
       use ENVvars
+      use Beam_acc
+      use ENVfofz
+      use Constant
       integer(ISZ):: np
       real(kind=8):: z(np)
       real(kind=8):: a(np),ap(np),b(np),bp(np)
       real(kind=8):: x(np),xp(np),y(np),yp(np)
+      real(kind=8):: vz(np),epsx(np),epsy(np),ib(np) 
 
 c  Export routine from envelope package:
 c      envelope parameters at a set of z values passed in
@@ -165,10 +170,11 @@ c      is defined.
 c  Inputs:  np, z(1:np)
 c  Outputs: a(1:np), ap(1:np), b(1:np), bp(1:np)
 c           x(1:np), xp(1:np), y(1:np), yp(1:np)
+c           vz(1:np), epsx(1:np), epsy(1:np), ib(1:np) 
 
 
       integer(ISZ):: i,ip
-      real(kind=8):: zpmin,zpmax,w0,w1
+      real(kind=8):: zpmin,zpmax,w0,w1,gammabeta
 
 c  Check if there is any envelope data
       if (.not. ASSOCIATED(aenv)) then
@@ -180,30 +186,56 @@ c  Validity check on input
 
       zpmin = 1.e6
       zpmax = -1.e6
-      do 500 ip=1,np
+      do ip = 1,np
          zpmin = min(zpmin, z(ip))
          zpmax = max(zpmax, z(ip))
-  500 continue
+      enddo
       if (zpmin < zl .or. zpmax > zu) then
          envxport = 1
          return
       endif
 
-c  Interpolate to get envelope values
+c  Interpolate to get envelope values and as a first pass load constant 
+c  values for the beam emittance and current 
 
       do ip=1,np
         i = int((z(ip)-zl)/dzenv)
         w1 = (z(ip)-zl)/dzenv - i
         w0 = 1. - w1
-        a(ip)  = w0*aenv(i)  + w1*aenv(i+1)
-        ap(ip) = w0*apenv(i) + w1*apenv(i+1)
-        b(ip)  = w0*benv(i)  + w1*benv(i+1)
-        bp(ip) = w0*bpenv(i) + w1*bpenv(i+1)
-        x(ip)  = w0*xenv(i)  + w1*xenv(i+1)
-        xp(ip) = w0*xpenv(i) + w1*xpenv(i+1)
-        y(ip)  = w0*yenv(i)  + w1*yenv(i+1)
-        yp(ip) = w0*ypenv(i) + w1*ypenv(i+1)
-      enddo
+        a(ip)     = w0*aenv(i)  + w1*aenv(i+1)
+        ap(ip)    = w0*apenv(i) + w1*apenv(i+1)
+        b(ip)     = w0*benv(i)  + w1*benv(i+1)
+        bp(ip)    = w0*bpenv(i) + w1*bpenv(i+1)
+        x(ip)     = w0*xenv(i)  + w1*xenv(i+1)
+        xp(ip)    = w0*xpenv(i) + w1*xpenv(i+1)
+        y(ip)     = w0*yenv(i)  + w1*yenv(i+1)
+        yp(ip)    = w0*ypenv(i) + w1*ypenv(i+1)
+        vz(ip)    = w0*vzenv(i) + w1*vzenv(i+1)
+        epsx(ip) = emitx 
+        epsy(ip) = emity 
+        ib(ip)   = ibeam 
+      enddo 
+
+c If the beam emittance and current is varied in s, reset the 
+c exported values consistently
+
+      if (lefofz) then
+        do ip=1,np 
+          i = int((z(ip)-zlefofz)/dzefofz)
+          w1 = (z(ip)-zlefofz)/dzefofz - i
+          w0 = 1. - w1
+          if (lemitne_z) then 
+            if (lrelativ) then
+              gammabeta = (vz(ip)/clight)/sqrt( 1. - (vz(ip)/clight)**2 )
+            else
+              gammabeta = vz(ip)/clight 
+            endif 
+            epsx(ip) = ( w0*emitnxe_z(i) + w1*emitnxe_z(i+1) )/gammabeta
+            epsy(ip) = ( w0*emitnye_z(i) + w1*emitnye_z(i+1) )/gammabeta
+          endif 
+          if (libeame_z) ib(ip) = w0*ibeame_z(i) + w1*ibeame_z(i+1) 
+        enddo
+      endif 
 
       envxport = 0
       return

@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.167 $, $Date: 2004/09/14 02:29:09 $
+#@(#) File W3D.V, version $Revision: 3.168 $, $Date: 2004/09/25 00:37:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.167 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.168 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -86,8 +86,23 @@ lsezax3d  logical /.true./ # Sets wether the longitudinal electric field on axis
 # Particle input quantities (input qtys)
 zjig                      real  [1]    /0./
    # Controls "jiggling" of initial positions in z, for grid loading
-distrbtn                  character*8  /"none"/
-   # particle distribution, either "semigaus" or "K-V"
+distrbtn                  character*20  /"none"/
+   # transvese particle distribution: 
+   #  "none"  = no distribution (user must define in interpreter)  
+   #  "semigaus" or "SG" or "SemiGaussian" = semi-Gaussian
+   #  "K-V" or "KV" = Kapchinskij-Vladimirskij
+   #  "KV0" = alternative Kapchinskij-Vladimirskij 
+   #  Based on transformations of Hamiltonian defined equilibria in continuous 
+   #  applied focusing channels (not presently implemented, future addition):
+   #    "WB" or "Waterbag" = water-bag
+   #    "PA" or "Parabolic" = parabolic
+   #    "GA" or "Gaussian" = Gaussian  
+   #    "TE" or "ThermalEquilibrium" = thermal equilibrium
+   #  Based on zero-space-charge Courant-Snyder invariants of lattices with  
+   #  axially varying linear applied focusing: 
+   #    "WB0" or "Waterbag0" = water-bag  
+   #    "PA0" or "Parabolic0" = parabolic
+   #    "GA0" or "Gaussian0" = Gaussian
 distr_l                   character*8  /"neuffer"/
    # longitudinal velocity distribution for cigar load: either "neuffer"
    # for hard edged distribution (Vlasov equilibrium), or "gaussian" for
@@ -545,11 +560,12 @@ w3dfin() subroutine
 divxy(iz,ndiv,divx:real,divy:real,divvx:real,divvx2:real,divvy:real,
       divvy2:real,wnpx:real,wnpy:real,itask)
              subroutine # calculates RMS vx and vy versus x and y
-exteb3d(np,xp:real,yp:real,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
+exteb3d(np:integer,xp:real,yp:real,zp:real,uzp:real,gaminv:real,
+        dtl:real,dtr:real,
         bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
         m:real,q:real,bendres:real,bendradi:real,gammabar:real,dt:real)
              subroutine # Sets external E and B fields
-othere3d(np,xp:real,yp:real,zp:real,zbeam:real,zimax:real,zimin:real,
+othere3d(np:integer,xp:real,yp:real,zp:real,zbeam:real,zimax:real,zimin:real,
          straight:real,ifeears,eears:real,eearsofz:real,dzzi:real,nzzarr,
          zzmin:real,dedr:real,dexdx:real,deydy:real,dbdr:real,
          ex:real,ey:real,ez:real,
@@ -659,6 +675,12 @@ getinj_phi() subroutine
 getinj_phi_3d() subroutine
 fetche3d(ipmin:integer,ip:integer,is:integer) subroutine
 particleboundaries3d() subroutine
+loadperpdist0(np:integer,x:real,y:real,xp:real,yp:real,
+              rx:real,ry:real,rxp:real,ryp:real,emitx:real,emity:real,
+              distrbtn:string) subroutine
+loadperpdist(np:integer,x:real,y:real,xp:real,yp:real,
+             rx:real,ry:real,rxp:real,ryp:real,emitx:real,emity:real,
+             distrbtn:string) subroutine
 
 *********** W3Dutilities:
 sortparticlesbyindex(n:integer,indx:integer,x:real,y:real,z:real,uz:real,

@@ -1,5 +1,5 @@
 env
-#@(#) File ENV.V, version $Revision: 3.30 $, $Date: 2004/04/13 22:22:25 $
+#@(#) File ENV.V, version $Revision: 3.31 $, $Date: 2004/09/25 00:37:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package ENV of the WARP code.
@@ -13,7 +13,7 @@ env
 
 *********** ENVversion:
 # Version control for env package
-versenv character*19 /"$Revision: 3.30 $"/  # Current code version, set by CVS
+versenv character*19 /"$Revision: 3.31 $"/  # Current code version, set by CVS
 
 *********** ENVvars dump:
 # Variables needed by the package ENV
@@ -144,7 +144,8 @@ envexe() subroutine
 envx()   subroutine
          # Python-level interface to ENVELOPE, using ENV database variables.
 envxport(np,z:real,a:real,ap:real,b:real,bp:real,
-         x:real,xp:real,y:real,yp:real) integer function
+         x:real,xp:real,y:real,yp:real,vz:real,
+         emitx,emity,ibeam:real) integer function
          # Export routine with envelope data at z(1:np)
 
 
