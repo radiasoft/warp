@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.20 2001/03/28 22:17:59 dave Exp $"
+warp_version = "$Id: warp.py,v 1.21 2001/04/23 22:58:39 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -24,6 +24,12 @@ try:
     from gist import *
   else:
     from gistdummy import *
+except ImportError:
+  pass
+
+# Try importing the warpC shared object which contains all of WARP and pybasisC
+try:
+  from warpC import *
 except ImportError:
   pass
 
