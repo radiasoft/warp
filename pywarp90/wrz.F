@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.8 $, $Date: 2002/10/25 00:00:01 $
+c@(#) File WRZ.M, version $Revision: 3.9 $, $Date: 2002/10/26 00:29:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -1152,7 +1152,7 @@ c        --- calculate rho diagnostics
       return
       end
 c=============================================================================
-      subroutine perphirz(phi,nr,nz)
+      subroutine perphirzold(phi,nr,nz)
       integer(ISZ):: nr,nz
       real(kind=8):: phi(0:nr,-1:nz+1)
  
@@ -1168,7 +1168,7 @@ c  Sets the first and last slices of phi for periodicity
       return
       end
 c=============================================================================
-      subroutine perrhorz(rho,nr,nz)
+      subroutine perrhorzold(rho,nr,nz)
       integer(ISZ):: nr,nz
       real(kind=8):: rho(0:nr,0:nz)
  
