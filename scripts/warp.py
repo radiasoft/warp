@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.37 2002/04/30 21:34:34 dave Exp $"
+warp_version = "$Id: warp.py,v 1.38 2002/05/31 23:20:03 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -134,7 +134,10 @@ print 'For more help, type warphelp()'
 def warpdoc():
   print """
 Imports the basic modules needed to run WARP, including
-Numeric, gist, warpplots, histplots, pzplots
+Numeric, gist, warpplots
+
+as well as additional modules
+histplots, pzplots, plot_conductors, drawlattice
 
 Create python versions of the constants
 amu, clight, echarge, emass, eps0, euler, jperev, mu0
@@ -592,6 +595,7 @@ from warpplots import *
 from histplots import *
 from pzplots import *
 from plot_conductor import *
+from drawlattice import *
 
 # --- Import some online documentation modules.
 from warphelp import *
