@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.123 $, $Date: 2004/05/13 17:14:46 $
+c@(#) File TOP.F, version $Revision: 3.124 $, $Date: 2004/06/23 22:20:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4621,7 +4621,7 @@ c         --- End of Z moments accumulation
 
 c       --- For slave, call routine which sums moments over processors.
 #ifdef MPIPARALLEL
-        call sum_mmnts(zmmnts0,zmmnts)
+        call parallel_sum_mmnts(zmmnts0,zmmnts)
 #endif
 
 c       --- Complete the calculation of moments: divide by particle number
@@ -7199,7 +7199,6 @@ c=============================================================================
       return
       end
 c=============================================================================
-
       subroutine accumulate_temperature(np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,dt,
      &                          uxpo,uypo,uzpo,is,wp,lw,lrtheta,l2symtry,l4symtry)
 c     Compute temperature in Z-slices for species 'is' on a 3-D grid:
@@ -7463,11 +7462,9 @@ c===========================================================================
       real(kind=8):: delzsq,delvzsq,delzvz
       timetemp = wtime()
 
-c     --- For slave, call routine which sums moments over processors.
 #ifdef MPIPARALLEL
-c     call sum_mmnts
-      write(0,*) 'Error in gettemperature. This is not yet implemented in parallel.'
-      stop
+c     --- For slave, call routine which sums moments over processors.
+      call parallel_sum_temperature
 #endif
 
 c     --- set multiplying factor for proper units

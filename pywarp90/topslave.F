@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.25 $, $Date: 2004/05/25 22:55:30 $
+c TOPSLAVE.M, version $Revision: 1.26 $, $Date: 2004/06/23 22:20:45 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -655,7 +655,7 @@ c outside the mesh.
       end
 c=============================================================================
 c=============================================================================
-      subroutine sum_mmnts(zmmnts0,zmmnts)
+      subroutine parallel_sum_mmnts(zmmnts0,zmmnts)
       use Parallel
       use Moments
       use Z_Moments
@@ -712,6 +712,40 @@ c     --- This is done minimizing the amount of interprocessor communication
       vxminp = mines2(4)
       vyminp = mines2(5)
       vzminp = mines2(6)
+
+      return
+      end
+c=============================================================================
+      subroutine parallel_sum_temperature()
+      use Temperatures
+      integer(ISZ):: nn
+
+c Do a global sum of the data used to calculate local temperatures.
+
+      nn = (1+nxtslices)*(1+nytslices)*nztslices
+      call parallelsumrealarray(pnumt,nn)
+      call parallelsumrealarray(pnumtw,nn)
+      call parallelsumrealarray(vxbart,nn)
+      call parallelsumrealarray(vybart,nn)
+      call parallelsumrealarray(vzbart,nn)
+      call parallelsumrealarray(vxsqbart,nn)
+      call parallelsumrealarray(vysqbart,nn)
+      call parallelsumrealarray(vzsqbart,nn)
+
+      if (l_temp_rmcorrelations) then
+
+        nn = (1+nxtslicesc)*(1+nytslicesc)*nztslicesc
+        call parallelsumrealarray(xbart,nn)
+        call parallelsumrealarray(ybart,nn)
+        call parallelsumrealarray(zbart,nn)
+        call parallelsumrealarray(xsqbart,nn)
+        call parallelsumrealarray(ysqbart,nn)
+        call parallelsumrealarray(zsqbart,nn)
+        call parallelsumrealarray(xvxbart,nn)
+        call parallelsumrealarray(yvybart,nn)
+        call parallelsumrealarray(zvzbart,nn)
+
+      endif
 
       return
       end
