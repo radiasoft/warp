@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.53 2004/10/18 22:58:03 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.54 2004/10/19 22:13:21 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -161,8 +161,8 @@ Constructor arguments
     else:
       # --- If no points, turn off capacity matrix field solver
       top.fstype = 0
-    # --- Recalculate the fields
-    fieldsol(-1)
+    # --- Recalculate the fields XXX This is now not needed since setmatrix
+    #fieldsol(-1)                    is calledimmediately before a field solve
   #----------------------------------------------------------------------------
   def ingrid(s,x,y):
     # --- Determines whether the data points are within the grid.
@@ -585,6 +585,7 @@ Constructor arguments:
     if _realboundarycount > 0:
       raise "There can only be one instance of the RealBoundary class"
     _realboundarycount = 1
+    self._realboundarycount = _realboundarycount
     # --- Save the input arguments
     self.newmesh = newmesh
     self.rodfract = rodfract
@@ -644,6 +645,7 @@ Constructor arguments:
     if _initialmeshparams is None:
       _initialmeshparams = [w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
                             0.5*(w3d.xmmax+w3d.xmmin),0.5*(w3d.ymmax+w3d.ymmin)]
+      self._initialmeshparams = _initialmeshparams
 
     currpkg = getcurrpkg()
     if currpkg == 'w3d':
@@ -654,7 +656,6 @@ Constructor arguments:
     # # --- Turn off the call to setconductor in the fortran
       try:    f3d.lbuildquads = false
       except: pass
-      self.setboundary()
     elif currpkg == 'wxy':
       if w3d.solvergeom==w3d.XYgeom:
         top.fstype = 10
@@ -666,7 +667,9 @@ Constructor arguments:
         top.fstype = 0
       # --- Now make the call. This call is needed since it would noramally
       # --- be called at the beginning of the step, which has already passed.
-      self.setboundary()
+
+    # --- Make initial call to setboundary
+    self.setboundary()
 
     # --- Turn on the realboundaries for normal operation.
     self.enable()
@@ -685,8 +688,6 @@ Constructor arguments:
     try:
       # --- Just try uninstalling everything, independent of what package
       # --- is active.
-      if isinstalledbeforestep(self.setboundary):
-        uninstallbeforestep(self.setboundary)
       if isinstalledbeforefs(self.initialsetboundary):
         uninstallbeforefs(self.initialsetboundary)
       if isinstalledbeforefs(self.setboundary):
@@ -697,19 +698,16 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def enable(self):
     # --- Turns on the realboundaries
-    # --- The routine setboundary will be called at the start of every
-    # --- time step.  It also must be called just be the field solve
-    # --- during the generate.  This is done by the initialsetboundary
-    # --- routine, which then removes itself from that list.
-    currpkg = getcurrpkg()
-    if currpkg == 'w3d':
-      installbeforefs(self.setboundary)
-    elif currpkg == 'wxy':
-      installbeforestep(self.setboundary)
+    # --- The routine setboundary will be called before every field-solve.
+    installbeforefs(self.setboundary)
   #----------------------------------------------------------------------------
   def __setstate__(self,dict):
+    global _initialmeshparams,_realboundarycount
     self.__dict__.update(dict)
     installbeforefs(self.initialsetboundary)
+    # --- Restore these quantities which are otherwise not saved.
+    _initialmeshparams = self._initialmeshparams
+    _realboundarycount = self._realboundarycount
 
   #----------------------------------------------------------------------------
   def setmatrix(self,m,v):
