@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.2 $, $Date: 2001/04/27 21:38:05 $
+#@(#) File F3D.V, version $Revision: 3.3 $, $Date: 2001/04/27 22:17:12 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.2 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.3 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -128,6 +128,7 @@ boundxy   integer /0/  # Type of boundary condition at sides
 zparity   integer /0/  # iz parity, used in the parallel version so that the
                        # parity of the subgrid conductor points can be
                        # relative to the full grid.
+dxpsor    real         # Size of transverse grid cells.
 nxpsor    integer /0/  # Maximum number of transverse grid points
 nzpsor    integer      # Number of z grid points
 boundarr(0:nxpsor,4,0:nzpsor) _real -dump # Array used to preserve boundaries

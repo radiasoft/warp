@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.2 $, $Date: 2001/04/27 21:38:05 $
+c@(#) File F3D.M, version $Revision: 3.3 $, $Date: 2001/04/27 22:17:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4593,6 +4593,8 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
       real(kind=8):: fuzz,zfuzz
       logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
 
+      dxpsor = dx
+
 c     --- fuzz is used to prevent the distance from a point to the surface
 c     --- from being too small or zero.  Any point within fuzz of the surface
 c     --- is counted to be within the conductor
@@ -5344,6 +5346,7 @@ c     --- points.
       endif
 
 c     --- set temporaries
+      dxpsor = dx
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
@@ -5573,6 +5576,7 @@ c              to prevent precision problems
       real(kind=8):: r2fuzz
       integer(ISZ):: npoints,nsgpoints
  
+      dxpsor = dx
       dxi = 1./dx
       dyi = 1./dy
       pradsq = rmax**2
@@ -5858,6 +5862,8 @@ c Sets points on injection source.
       integer(ISZ):: ix,iy,iz,npoints,nsgpoints
       real(kind=8):: xx,yy,rminsq,ao_dx,bo_dy,ai_dx,bi_dy
 
+      dxpsor = dx
+
 c     --- Make sure there is enough space. npoints is the maximum
 c     --- number of points that could be needed. nsgpoints is 
 c     --- big enough to always be larger than the number of subgrid
@@ -5970,6 +5976,7 @@ c Output is put directly into the conductor arrays of PSOR3d.
       real(kind=8):: max_dxdy,dxi,dyi,dzi
       real(kind=8):: srfrv_f
 
+      dxpsor = dx
       rmaxsq = rmax*rmax
       max_dxdy = max(dx,dy)
       dxi = 1./dx
@@ -6401,6 +6408,7 @@ c See comments in srfrvout.
       real(kind=8):: max_dxdy,dxi,dyi,dzi
       real(kind=8):: srfrv_f
 
+      dxpsor = dx
       rminsq = rmin*rmin
       max_dxdy = max(dx,dy)
       dxi = 1./dx
@@ -6825,7 +6833,8 @@ c Output is put directly into the conductor arrays of PSOR3d.
       real(kind=8):: zgmin,zgmax
       real(kind=8):: rmin_zmin,rmin_zmax
       real(kind=8):: rmax_zmin,rmax_zmax
-      real(kind=8):: rrrminlower,rrrminhigher,rrrmaxlower,rrrmaxhigher,zlower,zhigher
+      real(kind=8):: rrrminlower,rrrminhigher,rrrmaxlower,rrrmaxhigher
+      real(kind=8):: zlower,zhigher
       real(kind=8):: xxmin,xxmax,yymin,yymax
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
       integer(ISZ):: jxmin,jxmax,jymin,jymax
@@ -6837,6 +6846,7 @@ c Output is put directly into the conductor arrays of PSOR3d.
       real(kind=8):: max_dxdy,dxi,dyi,dzi
       real(kind=8):: srfrv_f
 
+      dxpsor = dx
       max_dxdy = max(dx,dy)
       dxi = 1./dx
       dyi = 1./dy
