@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.39 $, $Date: 2003/10/23 23:26:41 $
+#@(#) File WXY.V, version $Revision: 3.40 $, $Date: 2003/12/18 00:13:17 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.39 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.40 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 npmaxxy    integer # Number of particles - same as npmax from TOP
@@ -59,7 +59,7 @@ epushxy(np,uxp:real,uyp:real,uzp:real,ex:real,ey:real,ez:real,q:real,m:real,
         dtp:real,fdt:real)
              subroutine # Particle velocity advance from E field
 bpushxy(np,uxp:real,uyp:real,uzp:real,gaminv:real,bx:real,by:real,bz:real,
-        q:real,m:real,dtp:real,fdt:real,bpush:real)
+        q:real,m:real,dtp:real,fdt:real,ibpush:integer)
              subroutine # Particle velocity advance from B field
 xpushxy(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
         dtp:real)

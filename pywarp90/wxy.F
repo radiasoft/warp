@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.40 $, $Date: 2003/10/23 23:26:41 $
+c@(#) File WXY.M, version $Revision: 3.41 $, $Date: 2003/12/18 00:13:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1425,6 +1425,7 @@ c=============================================================================
 c  Push the particle velocity with B field
 
       integer(ISZ):: ip
+      real(kind=8):: btot,btotinv,tanalpha
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
       real(kind=8):: const
       real(kind=8):: substarttime,wtime
@@ -1451,9 +1452,13 @@ c        --- fast b-field rotation algorithm
       elseif (ibpush == 2) then
 c        --- tan(alpha) / alpha algorithm
          do ip=1,np
-            tx = tan (gaminv(ip)*bx(ip)*const*dtp(ip))
-            ty = tan (gaminv(ip)*by(ip)*const*dtp(ip))
-            tz = tan (gaminv(ip)*bz(ip)*const*dtp(ip))
+            btot = sqrt(bx(ip)**2 + by(ip)**2 + bz(ip)**2)
+            if (btot == 0.) cycle
+            btotinv = 1./btot
+            tanalpha = tan(gaminv(ip)*btot*const*dtp(ip))
+            tx = bx(ip)*tanalpha*btotinv
+            ty = by(ip)*tanalpha*btotinv
+            tz = bz(ip)*tanalpha*btotinv
             tsqi = 2./(1. + tx**2 + ty**2 + tz**2)
             sx = tx*tsqi
             sy = ty*tsqi
