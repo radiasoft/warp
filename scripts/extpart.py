@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.25 2003/09/30 18:19:20 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.26 2003/10/03 16:44:35 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -391,18 +391,27 @@ feature.
     return len(self.gett(js,tc,wt,tp))
 
   def xxpslope(self,js=0,tc=None,wt=None,tp=None):
-    return ((ave(self.getx(js,tc,wt,tp)*self.getxp(js,tc,wt,tp)) -
-             ave(self.getx(js,tc,wt,tp))*ave(self.getxp(js,tc,wt,tp)))/
-            (ave(self.getx(js,tc,wt,tp)*self.getx(js,tc,wt,tp)) -
-             ave(self.getx(js,tc,wt,tp))*ave(self.getx(js,tc,wt,tp))))
+    if self.getn(js,tc,wt,tp) == 0:
+      return 0.
+    else:
+      return ((ave(self.getx(js,tc,wt,tp)*self.getxp(js,tc,wt,tp)) -
+               ave(self.getx(js,tc,wt,tp))*ave(self.getxp(js,tc,wt,tp)))/
+              (ave(self.getx(js,tc,wt,tp)*self.getx(js,tc,wt,tp)) -
+               ave(self.getx(js,tc,wt,tp))*ave(self.getx(js,tc,wt,tp))))
   def yypslope(self,js=0,tc=None,wt=None,tp=None):
-    return ((ave(self.gety(js,tc,wt,tp)*self.getyp(js,tc,wt,tp)) -
-             ave(self.gety(js,tc,wt,tp))*ave(self.getyp(js,tc,wt,tp)))/
-            (ave(self.gety(js,tc,wt,tp)*self.gety(js,tc,wt,tp)) -
-             ave(self.gety(js,tc,wt,tp))*ave(self.gety(js,tc,wt,tp))))
+    if self.getn(js,tc,wt,tp) == 0:
+      return 0.
+    else:
+      return ((ave(self.gety(js,tc,wt,tp)*self.getyp(js,tc,wt,tp)) -
+               ave(self.gety(js,tc,wt,tp))*ave(self.getyp(js,tc,wt,tp)))/
+              (ave(self.gety(js,tc,wt,tp)*self.gety(js,tc,wt,tp)) -
+               ave(self.gety(js,tc,wt,tp))*ave(self.gety(js,tc,wt,tp))))
   def rrpslope(self,js=0,tc=None,wt=None,tp=None):
-    return (ave(self.getr(js,tc,wt,tp)*self.getrp(js,tc,wt,tp))/
-            ave(self.getr(js,tc,wt,tp)**2))
+    if self.getn(js,tc,wt,tp) == 0:
+      return 0.
+    else:
+      return (ave(self.getr(js,tc,wt,tp)*self.getrp(js,tc,wt,tp))/
+              ave(self.getr(js,tc,wt,tp)**2))
 
   ############################################################################
   ############################################################################
@@ -454,8 +463,12 @@ functions.
     x = self.getx(js,tc,wt,tp)
     xp = self.getxp(js,tc,wt,tp)
     if type(slope) == type(''):
-      slope = (ave(x*xp)-ave(x)*ave(xp))/(ave(x*x) - ave(x)**2)
-      offset = ave(xp)-slope*ave(x)
+      if len(x) > 0:
+        slope = (ave(x*xp)-ave(x)*ave(xp))/(ave(x*x) - ave(x)**2)
+        offset = ave(xp)-slope*ave(x)
+      else:
+        slope = 0.
+        offset = 0.
     kw['slope'] = slope
     kw['offset'] = offset
     kw['particles'] = particles
@@ -474,8 +487,12 @@ functions.
     y = self.gety(js,tc,wt,tp)
     yp = self.getyp(js,tc,wt,tp)
     if type(slope) == type(''):
-      slope = (ave(y*yp)-ave(y)*ave(yp))/(ave(y*y) - ave(y)**2)
-      offset = ave(yp)-slope*ave(y)
+      if len(y) > 0:
+        slope = (ave(y*yp)-ave(y)*ave(yp))/(ave(y*y) - ave(y)**2)
+        offset = ave(yp)-slope*ave(y)
+      else:
+        slope = 0.
+        offset = 0.
     kw['slope'] = slope
     kw['offset'] = offset
     kw['particles'] = particles
@@ -525,7 +542,11 @@ functions.
     r = sqrt(x**2 + y**2)
     t = arctan2(y,x)
     rp = xp*cos(t) + yp*sin(t)
-    if type(slope) == type(''): slope = ave(r*rp)/ave(r*r)
+    if type(slope) == type(''):
+      if len(r) > 0:
+        slope = ave(r*rp)/ave(r*r)
+      else:
+        slope = 0.
     kw['slope'] = slope
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
@@ -705,14 +726,14 @@ that plot.
     kw['view'] = 4
     kw['pplimits'] = pplimits[1]
     if type(slope)==type(''):
-      kw['slope'] = (ave(y*yp)-ave(y)*ave(yp))/(ave(y*y) - ave(y)**2)
+      kw['slope'] = (ave(y*yp)-ave(y)*ave(yp))/dvnz(ave(y*y) - ave(y)**2)
     settitles("Y' vs Y","Y","Y'",titler)
     ppgeneric(yp,y,kwdict=kw)
 
     kw['view'] = 5
     kw['pplimits'] = pplimits[2]
     if type(slope)==type(''):
-      kw['slope'] = (ave(x*xp)-ave(x)*ave(xp))/(ave(x*x) - ave(x)**2)
+      kw['slope'] = (ave(x*xp)-ave(x)*ave(xp))/dvnz(ave(x*x) - ave(x)**2)
     settitles("X' vs X","X","X'",titler)
     ppgeneric(xp,x,kwdict=kw)
  
