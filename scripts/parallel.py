@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.15 2002/09/23 20:32:19 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.16 2002/09/27 17:21:50 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -20,15 +20,12 @@ else:        lparallel = 0
 # --- The interface has changed some in the newest version of pyMPI.
 # --- Check the interface to the mpi.recv command. The newer versions
 # --- return a tuple instead of just the data itself.
-# --- There must be a better way of doing this!
+# --- Is there a better way of doing this?
 if lparallel:
-  if me == 1: mpi.send(1,0)
-  if me == 0:
-    _i = mpi.recv(1)
-    if type(_i) == TupleType: _newpympi = mpi.bcast(1,0)
-    else:                     _newpympi = mpi.bcast(0,0)
-  else:
-     _newpympi = mpi.bcast(0,0)
+  mpi.send(me,me)
+  _i = mpi.recv(me)
+  if type(_i) == TupleType: _newpympi = 1
+  else:                     _newpympi = 0
 else:
   _newpympi = 1
 
