@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.7 $, $Date: 2001/05/30 22:38:25 $
+c@(#) File ENV.M, version $Revision: 3.8 $, $Date: 2001/07/18 23:51:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -51,10 +51,12 @@ c     --- allocate dynamic arrays ("group allot")
       call gallot("ENVvars",0)
 
 c     --- reset Lattice arrays to final size
+c     --- This is not really needed since it is also done in envexe below.
       zlatbuffer = dzenv
       call resetlat
       nzl = 0
-      call gchange("LatticeInternal",0)
+      zlmin = 0.
+      zlmin = 0.
 
 c     --- Set default values for region over which the tune is calculated.
       if (tunezs == tuneze) then
@@ -85,6 +87,13 @@ c  Send a startup message to the standard output
       if (lenvout) then
         call remark(" ***  envelope solver package ENV running")
       endif
+
+c     --- reset Lattice arrays to final size
+      zlatbuffer = dzenv
+      call resetlat
+      nzl = 0
+      zlmin = 0.
+      zlmin = 0.
 
 c  Execute evelope solve, and time it
       call wtimeon
