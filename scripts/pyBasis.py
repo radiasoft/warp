@@ -25,7 +25,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.26 2002/10/25 20:22:25 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.27 2002/10/26 00:45:20 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -325,7 +325,7 @@ Dump data into a pdb file
       try:
         source = inspect.getsource(vval)
         #if verbose:
-        print "writing python function "+v+" as "+v+varsuffix+'@function'
+        if verbose: print "writing python function "+v+" as "+v+varsuffix+'@function'
         ff.write(v+varsuffix+'@function',source)
       except IOError:
         if verbose: print "could not write python function "+v
