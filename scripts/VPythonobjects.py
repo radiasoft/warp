@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.8 2004/05/19 19:42:57 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.9 2004/05/20 19:46:15 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -160,19 +160,44 @@ class VisualModel:
     for t in range(len(v)-2):
       self.FacetedTriangle( vv=[v[0], v[t+1], v[t+2]],
                             nn=[n[0], n[t+1], n[t+2]], color=color)
-   # --- This is a small attempt to fill in areas that are concave without
-   # --- having triangles sticking outside. It doesn't help.
-   #ss = 0
-   #ee = len(v) - 1
-   #for t in range(len(v)-2):
-   #  if (t % 2) == 0:
-   #    self.FacetedTriangle(vv=[v[ss], v[ss+1], v[ee]],
-   #                         nn=[n[ss], n[ss+1], n[ee]], color=color)
-   #    ss += 1
-   #  else:
-   #    self.FacetedTriangle(vv=[v[ss], v[ee-1], v[ee]],
-   #                         nn=[n[ss], n[ee-1], n[ee]], color=color)
-   #    ee -= 1
+   # --- This is an attempt to fill in areas that are concave without
+   # --- having triangles sticking outside. It doesn't work yet.
+   ## --- Get norm of first triangle
+   #n1 = self.Norm( self.Cross(v[1]-v[0], v[2]-v[0]) )
+   #starti = 0
+   #startlen = len(v)
+   #while 1:
+   #  tilist = []
+   #  badlist = []
+   #  ilist = range(len(v))
+   #  i = starti
+   #  normsign = +1
+   #  while len(ilist) > 2:
+   #    n = len(ilist)
+   #    i0 = ilist[(i  )%n]
+   #    i1 = ilist[(i+1)%n]
+   #    i2 = ilist[(i+2)%n]
+   #    if [i0,i1,i2] in badlist:
+   #      break
+   #    ni = self.Norm( self.Cross(v[i1]-v[i0], v[i2]-v[i0]) )
+   #    if self.Dot(n1,ni)*normsign >= 0.:
+   #      tilist.append([i0,i1,i2])
+   #      del ilist[(i+1)%n]
+   #    else:
+   #      badlist.append([i0,i1,i2])
+   #      i += 1
+   #  if len(ilist) < 3:
+   #    break
+   #  print starti,startlen,ilist
+   #  starti += 1
+   #  if starti == startlen:
+   #    if normsign == -1: break
+   #    starti = 0
+   #    normsign = -1
+   #for ti in tilist:
+   #  self.FacetedTriangle( vv=[v[ti[0]], v[ti[1]], v[ti[2]]],
+   #                        nn=[n[ti[0]], n[ti[1]], n[ti[2]]], color=color)
+     
 
   def DoSmoothShading(self):
     rsq = sum(self.triangles**2,1)
@@ -227,6 +252,8 @@ class VisualModel:
     if magv != 0.: return v/magv
     else:          return v
 
+  def Dot(self,v1,v2):
+    return sum(array(v1)*array(v2))
 ########################################################################
 class VisualMesh (VisualModel):
   """
