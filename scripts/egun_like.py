@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.15 2003/03/06 00:23:47 jlvay Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.16 2003/04/17 22:12:31 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -161,8 +161,7 @@ Performs steady-state iterations
     # --- assumes the variable 'it' has only been advanced in egun mode and
     # --- that at least one iteration has already been done
     if (_ipsave > 0 and gun_iter > 0):
-      if lparallel: npisum = sum(parallelsum(top.npinje_s))
-      else: npisum = sum(top.npinje_s)
+      npisum = sum(parallelsum(top.npinje_s))
       _ipstep = gun_steps*npisum/_ipsave
       if (_ipstep < 1): _ipstep = 1
 
@@ -220,8 +219,7 @@ Performs steady-state iterations
     print "Number of particles injected = %d"%(top.npinject)
 
     # --- check if any particles were injected
-    if lparallel: npssum = sum(parallelsum(top.nps))
-    else: npssum = sum(top.nps)
+    npssum = sum(parallelsum(top.nps))
     if (npssum == 0): raise 'No particles injected'
 
     # --- only save particles on last iteration
@@ -316,12 +314,8 @@ Performs steady-state iterations
               copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
               nps_save[js] = nps_save[js] + len(ii)
 
-      if lparallel:
-        npssum = sum(parallelsum(top.nps))
-        maxvz = parallelmax(top.vzmaxp)
-      else:
-        npssum = sum(top.nps)
-        maxvz = top.vzmaxp
+      npssum = sum(parallelsum(top.nps))
+      maxvz = parallelmax(top.vzmaxp)
 
     # --- If rhoparam is not None, mix in the previous rho with the
     # --- new rho
