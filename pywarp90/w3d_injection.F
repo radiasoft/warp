@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.8 $, $Date: 2004/10/27 23:39:27 $
+c@(#) File w3d_injection.F, version $Revision: 1.9 $, $Date: 2004/11/05 18:55:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1517,9 +1517,8 @@ c       --- at each time step.
 c       --- Calculate number of particles to inject for each species if
 c       --- not set by the user.
         do is=1,ns
-          if (npinje_s(is) == 0) then
-            npinje_s(is) = npinject*sp_fract(is)
-          endif
+          if (npinje_s(is) == 0) npinje_s(is) = npinject*sp_fract(is)
+          if (rnpinje_s(is) == 0.) rnpinje_s(is) = npinje_s(is)
         enddo
       endif
 
