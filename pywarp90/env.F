@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.10 $, $Date: 2001/08/10 16:44:31 $
+c@(#) File ENV.M, version $Revision: 3.11 $, $Date: 2001/08/10 18:38:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -216,8 +216,8 @@ c  Work around compiler bug on Sun that leads to missing VAR_SEG7
      & dedr, dexdx, deydy, dbdr, zl, zu,
      & tunezs, tuneze, 
      & sig0x, sigx, sig0y, sigy, deltaa, deltaap, deltab, deltabp,
-     & aenv, apenv, benv, bpenv, vzenv, xorb, xporb, yorb, yporb,
-     & fqxenv, fqyenv, fuxenv, fuyenv, xenv, yenv, xpenv, ypenv, zenv)
+     & aenv(0), apenv(0), benv(0), bpenv(0), vzenv(0), xorb(0), xporb(0), yorb(0), yporb(0),
+     & fqxenv(0), fqyenv(0), fuxenv(0), fuyenv(0), xenv(0), yenv(0), xpenv(0), ypenv(0), zenv(0))
  
       return
       end
@@ -615,31 +615,37 @@ c=======================================================================
       real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
       logical(ISZ):: lrelativ
 
-c  Computes the forces needed for the general-lattice envelope calculation.
-c  Inlcudes both residence corrected hard edged quadrupole elements 
-c  and hard-edge multipole elements, and elements defined by their 
-c  multipoles.  Only linear forces consistent with a truncated second-order 
-c  envelope formulation are calculated.  These include a linear applied 
-c  forces (electric and magnetic quadrupole fields, and a radial 
-c  E-field proportional to the radial coodrinate r), and 
-c  linear space-charge forces.  
+c Computes the forces needed for the general-lattice envelope calculation.
+c Inlcudes both residence corrected hard edged quadrupole elements 
+c and hard-edge multipole elements, and elements defined by their 
+c multipoles.  Only linear forces consistent with a truncated second-order 
+c envelope formulation are calculated.  These include a linear applied 
+c forces (electric and magnetic quadrupole fields, and a radial 
+c E-field proportional to the radial coodrinate r), and 
+c linear space-charge forces.  
 
+c Note that this routine makes calls directly to getquadid etc instead of
+c relying on a call to setlattzt. This is done since it is significantly
+c faster, though this only really matters in cases where the envelope code is
+c called many times. The increase is speed is essentially non-noticable
+c if the envelope code is called once. It still uses the celemid arrays from
+c LatticeInternal since the id's must be saved and they must be known for
+c each level of overlap. It is easier to use those existing arrays rather
+c than to create new local ones.
 
-      real(kind=8):: zl,fracl 
-      real(kind=8):: zr,fracr
+      real(kind=8):: zl,fracl,zr,fracr
       real(kind=8):: fuzz
       real(kind=8):: frac,ez,ke,de,db
       real(kind=8):: dedrr,dbdxq,dedxq,xdbdx,xdedx,ydbdx,ydedx
       real(kind=8):: fux,fuy,fq,feself,fexself,feyself 
       real(kind=8):: wie,wim
+      real(kind=8):: offset
       integer(ISZ):: io
       integer(ISZ):: ii,iie,iim,iem,imm
-      integer(ISZ):: ihele,iemlt,immlt,iaccl
+      integer(ISZ):: iq,ih,ie,im,ia
 
       zl = z - 0.5 * dz
       zr = z + 0.5 * dz
-
-      call setlattzt(z,time,0)
 
 c     --- Initialize variables to the values from the uniform fields.
       dedrr = dedr
@@ -655,29 +661,30 @@ c     --- Hard edge quadrupoles
       if (quads) then
 
         do io=1,nquadol
-          if (.not. linquad(io)) cycle
+          call getquadid(z,offset,cquadid(0,io),io)
+          iq = cquadid(0,io)
 
 c         --- Find quad at left edge of velocity advance step.
           fracl = 0.
-          if (cquadzs(0,io) < zl .and. zl < cquadze(0,io)) fracl = 1.
+          if (quadzs(iq)+offset < zl .and. zl < quadze(iq)+offset) fracl = 1.
 
 c         --- Find quad at right edge of velocity advance step.
           fracr = 0.
-          if (cquadzs(0,io) < zr .and. zr < cquadze(0,io)) fracr = 1.
+          if (quadzs(iq)+offset < zr .and. zr < quadze(iq)+offset) fracr = 1.
 
 c         --- Calculate residence fraction.
           frac = fracl
-          if (fracl > fracr) frac = (cquadze(0,io) - zl) / dz
-          if (fracr > fracl) frac = (zr - cquadzs(0,io)) / dz
+          if (fracl > fracr) frac = (quadze(iq)+offset - zl) / dz
+          if (fracr > fracl) frac = (zr - quadzs(iq)-offset) / dz
 
 c         --- quadrupole fields, including residence fraction
           if (frac > 0.) then
-            dbdxq = dbdxq + cquaddb(0,io)*frac 
-            dedxq = dedxq + cquadde(0,io)*frac 
-            xdbdx = xdbdx + cquaddb(0,io)*frac*(x - cqoffx(0,io))
-            xdedx = xdedx + cquadde(0,io)*frac*(x - cqoffx(0,io))
-            ydbdx = ydbdx + cquaddb(0,io)*frac*(y - cqoffy(0,io))
-            ydedx = ydedx + cquadde(0,io)*frac*(y - cqoffy(0,io))
+            dbdxq = dbdxq + quaddb(iq)*frac 
+            dedxq = dedxq + quadde(iq)*frac 
+            xdbdx = xdbdx + quaddb(iq)*frac*(x - qoffx(iq))
+            xdedx = xdedx + quadde(iq)*frac*(x - qoffx(iq))
+            ydbdx = ydbdx + quaddb(iq)*frac*(y - qoffy(iq))
+            ydedx = ydedx + quadde(iq)*frac*(y - qoffy(iq))
           endif
 
         enddo
@@ -691,45 +698,45 @@ c     --- quadrupole or azimuthally symmetric field
 
         fuzz = 1.e-3
         do io=1,nheleol
-          if (.not. linhele(io)) cycle
+          call getheleid(z,offset,cheleid(0,io),io)
+          ih = cheleid(0,io)
 
 c         --- Find multipole at left edge of velocity advance step.
-          ihele = cheleid(0,io)
           fracl = 0.
-          if ((zl < cheleze(0,io)) .and. (chelezs(0,io) < zl)) fracl = 1.
+          if (zl < heleze(ih)+offset .and. helezs(ih)+offset < zl) fracl = 1.
           fracr = 0.
-          if ((zr < cheleze(0,io)) .and. (chelezs(0,io) < zr)) fracr = 1.
+          if (zr < heleze(ih)+offset .and. helezs(ih)+offset < zr) fracr = 1.
 
 c         --- Calculate residence fraction.
           frac = fracl
-          if (fracl > fracr) frac = (cheleze(0,io) - zl) / dz
-          if (fracr > fracl) frac = (zr - chelezs(0,io)) / dz
+          if (fracl > fracr) frac = (heleze(ih)+offset - zl) / dz
+          if (fracr > fracl) frac = (zr - helezs(ih)-offset) / dz
           if (frac == 0.) cycle
 
 c         --- Get only the quadrupole and uniform components
-          do ii = 1, max(helenm(ihele),helene(ihele)) 
-            if ((nint(hele_n(ii,ihele)) == 2) .and. 
-     &          (nint(hele_v(ii,ihele)) == 0)) then
+          do ii = 1, max(helenm(ih),helene(ih)) 
+            if ((nint(hele_n(ii,ih)) == 2) .and. 
+     &          (nint(hele_v(ii,ih)) == 0)) then
 c             --- quadrupole field  
-              if ( abs(cos(helepm(ii,ihele))*sin(helepm(ii,ihele))) > fuzz ) 
+              if ( abs(cos(helepm(ii,ih))*sin(helepm(ii,ih))) > fuzz ) 
      &         call remark("Warning: magnetic multipole structure incompatible")
-              if ( abs(cos(helepe(ii,ihele))*sin(helepe(ii,ihele))) > fuzz ) 
+              if ( abs(cos(helepe(ii,ih))*sin(helepe(ii,ih))) > fuzz ) 
      &         call remark("Warning: electric multipole structure incompatible")
-              db = heleam(ii,ihele)*cos(helepm(ii,ihele))*frac
-              de = heleae(ii,ihele)*cos(helepe(ii,ihele))*frac
+              db = heleam(ii,ih)*cos(helepm(ii,ih))*frac
+              de = heleae(ii,ih)*cos(helepe(ii,ih))*frac
               dbdxq = dbdxq + db
               dedxq = dedxq + de
-              xdbdx = xdbdx + db*(x - heleox(ihele))
-              xdedx = xdedx + de*(x - heleox(ihele))
-              ydbdx = ydbdx + db*(y - heleoy(ihele))
-              ydedx = ydedx + de*(y - heleoy(ihele))
+              xdbdx = xdbdx + db*(x - heleox(ih))
+              xdedx = xdedx + de*(x - heleox(ih))
+              ydbdx = ydbdx + db*(y - heleoy(ih))
+              ydedx = ydedx + de*(y - heleoy(ih))
             endif 
-            if ((nint(hele_n(ii,ihele)) == 0) .and.
-     &          (nint(hele_v(ii,ihele)) == 0)) then
+            if ((nint(hele_n(ii,ih)) == 0) .and.
+     &          (nint(hele_v(ii,ih)) == 0)) then
 c             --- uniform field
-              dedrr = dedrr + 0.5*heleep(ii,ihele)*frac
-              xdedx = xdedx + 0.5*heleep(ii,ihele)*frac*(x - heleox(ihele))
-              ydedx = ydedx + 0.5*heleep(ii,ihele)*frac*(y - heleoy(ihele))
+              dedrr = dedrr + 0.5*heleep(ii,ih)*frac
+              xdedx = xdedx + 0.5*heleep(ii,ih)*frac*(x - heleox(ih))
+              ydedx = ydedx + 0.5*heleep(ii,ih)*frac*(y - heleoy(ih))
             endif
           enddo
 
@@ -743,40 +750,38 @@ c     --- elements.
       if (emlts) then
 
         do io=1,nemltol
-          if (.not. linemlt(io)) cycle
-
-c         --- Find which element the z location is in, if any.
-          iemlt = cemltid(0,io)
+          call getemltid(z,offset,cemltid(0,io),io)
+          ie = cemltid(0,io)
 
 c         --- If z is within an element, fetch the field.
-          if (cemltzs(0,io) <= z .and. z < cemltze(0,io)) then
+          if (emltzs(ie)+offset <= z .and. z < emltze(ie)+offset) then
 
 c           --- Make sure the element was defined.
-            iem = emltid(iemlt)
+            iem = emltid(ie)
             if (iem == 0) cycle
 
 c           --- Find location of z in the electric multipole grid.
-            iie = int((z - cemltzs(0,io))/dzemlt(iem))
-            wie =     (z - cemltzs(0,io))/dzemlt(iem) - iie
+            iie = int((z - emltzs(ie)-offset)/dzemlt(iem))
+            wie =     (z - emltzs(ie)-offset)/dzemlt(iem) - iie
 
 c           --- Lookup field strengths with linear interpolation.
             do ii=1,nesmult
               if ((nint(emlt_n(ii)) == 2) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
                 de = (esemlt(iie  ,ii,iem)*(1.-wie)+ esemlt(iie+1,ii,iem)*wie)*
-     &               (emltsc(iemlt) + emltsf(iemlt))
+     &               (emltsc(ie) + emltsf(ie))
                 dedxq = dedxq + de
-                xdedx = xdedx + de*(x - cemltox(0,io))
-                ydedx = ydedx + de*(y - cemltoy(0,io))
+                xdedx = xdedx + de*(x - emltox(ie))
+                ydedx = ydedx + de*(y - emltoy(ie))
               endif
               if ((nint(emlt_n(ii)) == 0) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
                 de = 0.5*(esemltp(iie  ,ii,iem)*(1.-wie) +
      &                    esemltp(iie+1,ii,iem)*wie)*
-     &                   (emltsc(iemlt) + emltsf(iemlt))
+     &                   (emltsc(ie) + emltsf(ie))
                 dedrr = dedrr - de
-                xdedx = xdedx - de*(x - cemltox(0,io))
-                ydedx = ydedx - de*(y - cemltoy(0,io))
+                xdedx = xdedx - de*(x - emltox(ie))
+                ydedx = ydedx - de*(y - emltoy(ie))
               endif
             enddo
 
@@ -789,31 +794,29 @@ c           --- Lookup field strengths with linear interpolation.
       if (mmlts) then
 
         do io=1,nmmltol
-          if (.not. linmmlt(io)) cycle
-
-c         --- Find which element the z location is in, if any.
-          immlt = cmmltid(0,io)
+          call getmmltid(z,offset,cmmltid(0,io),io)
+          im = cmmltid(0,io)
 
 c         --- If z is within an element, fetch the field.
-          if (cmmltzs(0,io) <= z .and. z < cmmltze(0,io)) then
+          if (mmltzs(im)+offset <= z .and. z < mmltze(im)+offset) then
 
 c           --- Make sure the element was defined.
-            imm = mmltid(immlt)
+            imm = mmltid(im)
             if (imm == 0) cycle
 
 c           --- Find location of z in the electric multipole grid.
-            iim = int((z - cmmltzs(0,io))/dzmmlt(imm))
-            wim =     (z - cmmltzs(0,io))/dzmmlt(imm) - iim
+            iim = int((z - mmltzs(im)-offset)/dzmmlt(imm))
+            wim =     (z - mmltzs(im)-offset)/dzmmlt(imm) - iim
 
 c           --- Lookup field strengths with linear interpolation.
             do ii=1,nmsmult
               if ((nint(mmlt_n(ii)) == 2) .and. 
      &            (nint(mmlt_v(ii)) == 0)) then
                 db = (msmmlt(iim  ,ii,imm)*(1.-wim)+ msmmlt(iim+1,ii,imm)*wim)*
-     &               (mmltsc(immlt) + mmltsf(immlt))
+     &               (mmltsc(im) + mmltsf(im))
                 dbdxq = dbdxq + db
-                xdbdx = xdbdx + db*(x - cmmltox(0,io))
-                ydbdx = ydbdx + db*(y - cmmltoy(0,io))
+                xdbdx = xdbdx + db*(x - mmltox(im))
+                ydbdx = ydbdx + db*(y - mmltoy(im))
               endif
             enddo
 
@@ -828,23 +831,23 @@ c     --- Get accelerating gradient from accl gaps.
       if (accls) then
 
         do io=1,nacclol
-          if (.not. linaccl(io)) cycle
+          call getacclid(z,offset,cacclid(0,io),io)
+          ia = cacclid(0,io)
 
-          iaccl = cacclid(0,io)
 c         --- Find accl at left edge of velocity advance step.
           fracl = 0.
-          if (zl < cacclze(0,io) .and. cacclzs(0,io) < zl) fracl = 1.
+          if (zl < acclze(ia)+offset .and. acclzs(ia)+offset < zl) fracl = 1.
 
 c         --- Find accl at right edge of velocity advance step.
           fracr = 0.
-          if (zr < cacclze(0,io) .and. cacclzs(0,io) < zr) fracr = 1.
+          if (zr < acclze(ia)+offset .and. acclzs(ia)+offset < zr) fracr = 1.
 
 c         --- Calculate residence fraction.
           frac = fracl
-          if (fracl > fracr) frac = (cacclze(0,io) - zl) / dz
-          if (fracr > fracl) frac = (zr - cacclzs(0,io)) / dz
+          if (fracl > fracr) frac = (acclze(ia)+offset - zl) / dz
+          if (fracr > fracl) frac = (zr - acclzs(ia)-offset) / dz
 
-          ez = acclez(iaccl)*frac
+          ez = acclez(ia)*frac
 
           if (ez .ne. 0) then
             ek = ek + ez*dz
