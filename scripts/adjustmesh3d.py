@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.15 2004/07/02 23:20:17 jlvay Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.16 2004/07/08 19:27:10 jlvay Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -14,7 +14,7 @@ def adjustmesh3ddoc():
 
 # -------------------------------------------------------------------------
 def resizemesh(nx=None,ny=None,nz=None,lloadrho=1,lfieldsol=1,
-               linj=0,lzmom=0,lzarray=0,setobjects=None):
+               linj=0,lzmom=0,lzarray=0,conductors=None):
   """
 Changes the number of grid points in the mesh.
 Warning - this does not yet work in parallel
@@ -78,9 +78,9 @@ Warning - this does not yet work in parallel
 
   # --- if requested, resize injection arrays accordingly
   if(linj):
-    w3d.inj_nx = w3d.inj_nx*rx
-    w3d.inj_ny = w3d.inj_ny*ry
-    w3d.inj_nz = w3d.inj_nz*rz
+    w3d.inj_nx = nint(w3d.inj_nx*rx)
+    w3d.inj_ny = nint(w3d.inj_ny*ry)
+    w3d.inj_nz = nint(w3d.inj_nz*rz)
     w3d.inj_dx = w3d.inj_dx/rx 
     w3d.inj_dy = w3d.inj_dy/ry 
     w3d.inj_dz = w3d.inj_dz/rz 
@@ -88,7 +88,7 @@ Warning - this does not yet work in parallel
 
   # --- if requested, resize Z_Moments arrays accordingly 
   if(lzmom):
-    top.nzmmnt = top.nzmmnt*rz
+    top.nzmmnt = nint(top.nzmmnt*rz)
     gchange('Z_Moments')
     top.dzm = top.dzm/rz
     top.dzmi = 1./top.dzm
@@ -97,7 +97,7 @@ Warning - this does not yet work in parallel
 
   # --- if requested, resize Z_arrays accordingly
   if(lzarray):
-    top.nzzarr = top.nzzarr*rz
+    top.nzzarr = nint(top.nzzarr*rz)
     gchange('Z_arrays')
     top.dzz = top.dzz/rz
     top.dzzi = 1./top.dzz
@@ -106,14 +106,15 @@ Warning - this does not yet work in parallel
         top.prwallz[k] = top.prwall
         top.prwallxz[k] = top.prwallx
         top.prwallyz[k] = top.prwally
-        top.prwelips[k] = 1.
+        top.prwelipz[k] = 1.
 
   # --- Re-initialize any field solve parameters
   fieldsol(1)
 
-  # --- Call subroutine for setting objects if provided
-  if setobjects is not None:
-    setobjects()
+  # --- Reinstall conductors
+  if conductors is not None:
+    for conductor in conductors:
+        conductor.install()
 
   # --- If requested, reload rho
   if lloadrho:
