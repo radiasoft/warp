@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.109 $, $Date: 2004/06/03 21:55:52 $
+#@(#) File F3D.V, version $Revision: 3.110 $, $Date: 2004/07/09 19:21:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.109 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.110 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -162,8 +162,7 @@ laddconductor logical /.false./ # When true, the python function
                           # calladdconductor is called at the beginning of the 
                           # field solve.
 checkconductors(nx:integer,ny:integer,nz:integer,nzfull:integer,
-                dx:real,dy:real,dz:real,l2symtry:logical,l4symtry:logical,
-                conductors:ConductorType) subroutine
+                dx:real,dy:real,dz:real,conductors:ConductorType) subroutine
 
 *********** MGLevels3d:
 mglevels              integer /0/  # Number of coarsening levels
@@ -188,6 +187,8 @@ mgform      integer /1/   # When 1, MG operates on phi (and rho),
                           # when 2, MG operates on error (and residual)
 downpasses  integer /1/   # Number of downpasses
 uppasses    integer /1/   # Number of uppasses
+bounds(0:5) integer /6*0/ # Type of boundaries at edge of mesh, in order of
+                          # lower, upper for x, y, z.
 mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                            80,96,112,128,160,192,224,256,320,384,448,512,
                            640,768,896,1024,1280,1536,1792,2048,2560,3072,
@@ -215,9 +216,7 @@ multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
    # from the f3d package to control the iterations and conductors.
 multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
                  dx:real,dy:real,dz:real,phi:real,rho:real,
-                 rstar:real,linbend:logical,
-                 bound0:integer,boundnz:integer,boundxy:integer,
-                 l2symtry:logical,l4symtry:logical,
+                 rstar:real,linbend:logical,bounds:integer,
                  xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
                  mgparam:real,mgform:integer,mgiters:integer,
                  mgmaxiters:integer,mgmaxlevels:integer,mgerror:real,mgtol:real,
@@ -229,39 +228,33 @@ multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
    # through the argument list.
 residual(nx:integer,ny:integer,nz:integer,nzfull:integer,
          dxsqi:real,dysqi:real,dzsqi:real,phi:real,rho:real,res:real,
-         mglevel:integer,localb0:integer,localbnz:integer,boundxy:integer,
-         l2symtry:logical,l4symtry:logical,
+         mglevel:integer,bounds:integer,
          mgparam:real,mgform:integer,mgform2init:logical,
          lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
    subroutine
    # Calculates the residual
 restrict2d(nx:integer,ny:integer,nz:integer,nzfull:integer,
            res:real,rho2:real,ff:real,
-           boundxy:integer,localb0:integer,localbnz:integer,
-           l2symtry:logical,l4symtry:logical)
+           bounds:integer)
    subroutine
    # Restricts phi in 2 transverse dimensions
 expand2d(nx:integer,ny:integer,nz:integer,nzfull:integer,
-         phi2:real,phi:real,boundxy:integer,localb0:integer,localbnz:integer)
+         phi2:real,phi:real,bounds:integer)
    subroutine
    # Expands phi in 2 transverse dimensiosn
 restrict3d(nx:integer,ny:integer,nz:integer,nznew:integer,nzfull:integer,
-           res:real,rho2:real,boundxy:integer,
-           local2b0:integer,local2bnz:integer,localb0:integer,localbnz:integer,
-           lparity:integer,rparity:integer,l2symtry:logical,l4symtry:logical)
+           res:real,rho2:real,bounds2:integer,bounds:integer,
+           lparity:integer,rparity:integer)
    subroutine
    # Restricts phi in 3 dimensions
 expand3d(nx:integer,ny:integer,nznew:integer,nz:integer,nzfull:integer,
-         phi2:real,phi:real,
-         boundxy:integer,localb0:integer,localbnz:integer,
-         lparity:integer,rparity:integer)
+         phi2:real,phi:real,bounds:integer,lparity:integer,rparity:integer)
    subroutine
    # Expands phi in 3 dimensiosn
 sorhalfpass3d(parity:integer,mglevel:integer,
               nx:integer,ny:integer,nz:integer,nzfull:integer,
               phi:real,rho:real,rstar:real,dxsqi:real,dysqi:real,dzsqi:real,
-              linbend:logical,l2symtry:logical,l4symtry:logical,bendx:real,
-              localb0:integer,localbnz:integer,boundxy:integer,
+              linbend:logical,bendx:real,bounds:integer,
               mgparam:real,mgform:integer,
               lcndbndy:logical,icndbndy:integer,conductors:ConductorType)
    subroutine
