@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.9 $, $Date: 2004/12/14 12:41:34 $
+c@(#) File w3d_load.F, version $Revision: 1.10 $, $Date: 2004/12/16 17:32:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -13,6 +13,7 @@ c=============================================================================
       use Beam_acc
       use InPart3d
       use W3Dload
+      use W3DloadTE
 
 c Calculate the density profile of a continuous focused f(H) equilibrium 
 c distribution that will be used to load an rms equivalent beam.  
@@ -43,10 +44,12 @@ c     --- beam rms descriptions
       real(kind=8):: r_x, r_y, emit_x, emit_y
       integer(ISZ):: ir
 c     --- waterbag equilibrium 
-      real(kind=8):: sc_param, k1re1, k1re2, rho
+      real(kind=8):: sc_param_wb, k1re1, k1re2, rho
       real(kind=8):: zbrent, bessi0, bessi
-      external wbagconstr
-      common /wbagconstrcom/ sc_param
+      external wb_constr
+      common /wbagconstrcom/ sc_param_wb 
+c     --- thermal equilibrium 
+      real(kind=8):: sc_param_te
 c     --- distribution loading 
       real(kind=8):: hl_sumrdist
 
@@ -73,6 +76,14 @@ c     and check that the density grid has been defined.
         call remark("routine perp_cf_eq: hl_nrdist >= 2 must be set") 
         call kaboom(0)  
       endif 
+      if (distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then
+c       --- work variables for calculation of TE density 
+        call gchange("W3DloadTE",0)  
+        if (te_nrho .lt. 2) then
+          call remark("routine perp_cf_eq: te_nrho >= 2 must be set") 
+          call kaboom(0)  
+        endif 
+      endif 
 
 c     Calculate gridded density for classes of equilbria 
 c     --- waterbag equilibrium 
@@ -82,13 +93,14 @@ c       --- calculate k1re = k1*r_e using bracketed brent numerical root
 c           find method in zbrent  
 c             k1re1 = left  bracket established from small argument exapansion 
 c             k1re2 = right bracket set to a point where the bessel function 
-c                     part of waterbagconstr() changes sign for sc_param = 0.
+c                     part of waterbagconstr() changes sign for 
+c                     sc_param_wb = 0.
 
-        sc_param = (r_b*k_beta0)**2/q_perv
-        k1re1 = (64./sc_param)**0.25
-        k1re2 = 2. + 4./(sc_param-1.)  
+        sc_param_wb = (r_b*k_beta0)**2/q_perv
+        k1re1 = (64./sc_param_wb)**0.25
+        k1re2 = 2. + 4./(sc_param_wb-1.)  
 
-        k1re = zbrent(wbagconstr,k1re1,k1re2,1.e-6,1000)
+        k1re = zbrent(wb_constr,k1re1,k1re2,1.e-6,1000)
 
 c       --- calculate properties of the distribution 
 c             r_e = edge radius where the density falls to zero 
@@ -120,10 +132,29 @@ c     --- parabolic equilibrium
 c     --- thermal equilibrium 
       elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
 
-        call remark("routine perp_cf_eq: Thermal Equilibrium not implemented") 
-        call kaboom(0) 
+c       --- calculate simentionless space charge parameter 
+        sc_param_te = 4.*(k_beta0*emit_b/q_perv)**2 
 
-c       --- undefined option trap 
+c       --- calculate needed value of dimensionless equilibrium parameter 
+c       --- delta for a consistent rms equivalent equilbrium 
+
+c        delta = .... 
+
+c       --- calculate normalized density profile based on delta 
+
+        call te_radial_den(delta)
+
+c       --- calculate paramters based on value of delta calculated 
+        glambdad = sqrt( q_perv*( 1.+delta )*
+     &                   ( sqrt(1.+sc_param_te)-1. ) 
+     &                 )/(4.*k_beta0) 
+        tscaled  = q_perv*( sqrt(1.+sc_param_te)- 1. )/8.  
+
+c       --- set the hl_rdist variable used to load particles based on 
+c       --- the thermal equilibrium density profile calculated using 
+c       --- interpolation and scaling
+
+c     --- undefined option trap 
       else 
 
         call remark("routine perp_cf_eq: distrbtn option not implemented") 
@@ -159,11 +190,11 @@ c     --- Also, normalize rdist.
       return 
       end 
 c=============================================================================
-      real(kind=8) function wbagconstr(k1re)
+      real(kind=8) function wb_constr(k1re)
 
       real(kind=8):: k1re
 
-c watbagconstr returns a scaled constraint equation assoicated with 
+c wb_constr returns a scaled constraint equation assoicated with 
 c a matched waterbag equilbrium distribution function in a continuous 
 c focusing channel.  
 c
@@ -172,16 +203,322 @@ c                           r_e = beam edge radius
 c
 
       real(kind=8):: bessi0,bessi
-      real(kind=8):: sc_param
-      common /wbagconstrcom/ sc_param
+      real(kind=8):: sc_param_wb
+      common /wbagconstrcom/ sc_param_wb 
 
-      wbagconstr = sc_param - bessi0(k1re)**2/bessi(2,k1re)**2 + 
+      wb_constr = sc_param_wb - bessi0(k1re)**2/bessi(2,k1re)**2 + 
      &  4./(k1re**2)*( 2.*bessi(2,k1re)/bessi0(k1re) +
      &                 k1re*bessi0(k1re)*bessi(3,k1re)/(bessi(2,k1re))**2
      &               )
 
       return 
       end 
+c=============================================================================
+      subroutine te_den_exp_coeff(delta,nterm,alpha)
+
+      real(kind=8):: delta
+      integer(ISZ):: nterm 
+      real(kind=8):: alpha(0:nterm) 
+
+c te_den_exp_coeff calculates power series expansion coefficients for 
+c an expansion of the radial density profile corresponding to a 
+c continuous focused thermal equilibrium distribution.  
+c
+c     delta = dimensionless thermal equilibrium parameter 
+c     nterm = max expansion coefficent to calculate 0:nterm 
+c     alpha(0:nterm) = expansion coefficients  
+c
+c This expansion is developed in: 
+c   Davidson and Lund, Advances in Plasma Physics, edited by N. Fisch 
+c   (American Institute of Physics Conference Proceedings, 1994) vol 314, p 1.
+c Numerical tests show that the alpha coefficients tend to decrease 
+c extremely rapidly for small alpha.    
+c 
+
+      real(kind=8):: sum 
+      integer(ISZ):: i,j 
+
+      alpha(0) = 1./(1. + delta) 
+
+      do i = 1,nterm
+  
+        sum = 0. 
+        do j = 0,i-1
+          sum = sum + alpha(j)*alpha(i-1-j)/float((j+1)*(i-j))  
+        enddo 
+
+        alpha(i) = -alpha(i-1)/float(i) + float(i+1)*sum/float(2*i) 
+  
+      enddo 
+
+      return 
+      end 
+c=============================================================================
+      real(kind=8) function te_den_exp(rho,delta,nterm,alpha,tol)
+
+      real(kind=8):: rho, delta, tol 
+      integer(ISZ):: nterm 
+      real(kind=8):: alpha(0:nterm) 
+
+c te_den_exp calculates power series expansion of the normalized 
+c radial density profile corresponding to a continuous focused 
+c thermal equilibrium distribution.  The routine employs expansion 
+c coefficients alpha that are passed in the argument that must be 
+c pre-calculated for a consistent value of delta with the subroutine 
+c te_den_exp_coeff.  
+c
+c     te_den_exp = density normalized by the on-axis value
+c                  as calculated by series expansion  
+c
+c     delta = dimensionless thermal equilibrium parameter 
+c     nterm = max expansion coefficent to calculate 0:nterm 
+c     alpha(0:nterm) = expansion coefficients  
+c
+c     tol = tolerance parameter set as fraction of unit (on-axis) 
+c           density.  This parameter should be set to very small 
+c           positive values in applications: say 1.e-10 typical 
+c
+c This expansion is developed in: 
+c   Davidson and Lund, Advances in Plasma Physics, edited by N. Fisch 
+c   (American Institute of Physics Conference Proceedings, 1994) vol 314, p 1.
+c Numerical tests show that the series is valid for small delta out to 
+c near the edge of the beam where it quickly breaks down.   
+
+      real(kind=8):: rhoscaled, te_den_exp_im1 
+      integer(ISZ):: i 
+       
+
+      rhoscaled = (1. + delta)*rho**2/4.  
+
+      te_den_exp_im1 = 0.  
+      te_den_exp = 1. 
+      do i = 1,nterm
+
+        te_den_exp = te_den_exp + (1.+delta)*alpha(i)*rhoscaled**i
+
+        if (abs((te_den_exp-te_den_exp_im1)/te_den_exp) .lt. tol) goto 100  
+        te_den_exp_im1 = te_den_exp 
+
+      enddo 
+
+      call remark("routine te_den_exp: WARNING requested tol not reached") 
+c      call kaboom(0) 
+
+ 100  continue 
+
+      return 
+      end 
+c=============================================================================
+      real(kind=8) function te_denp_exp(rho,delta,nterm,alpha,tol)
+
+      real(kind=8):: rho, delta, tol 
+      integer(ISZ):: nterm 
+      real(kind=8):: alpha(0:nterm) 
+
+c te_denp_exp calculates power series expansion of the perivative with 
+c respect to rho of the normalized 
+c radial density profile corresponding to a continuous focused 
+c thermal equilibrium distribution.  The routine employs expansion 
+c coefficients alpha that are passed in the argument that must be 
+c pre-calculated for a consistent value of delta with the subroutine 
+c te_den_exp_coeff.  
+c
+c     te_denp_exp = rho derivative of the density normalized by the 
+c                   on-axis value as calculated by series expansion  
+c
+c     delta = dimensionless thermal equilibrium parameter 
+c     nterm = max expansion coefficent to calculate 0:nterm 
+c     alpha(0:nterm) = expansion coefficients  
+c
+c     tol = tolerance parameter set as fraction of unit (on-axis) 
+c           density.  This parameter should be set to very small 
+c           positive values in applications: say 1.e-10 typical 
+c
+c This expansion is developed in: 
+c   Davidson and Lund, Advances in Plasma Physics, edited by N. Fisch 
+c   (American Institute of Physics Conference Proceedings, 1994) vol 314, p 1.
+
+      real(kind=8):: rhoscaled, te_denp_exp_im1 
+      integer(ISZ):: i 
+       
+      if (rho .eq. 0.) then
+        te_denp_exp = 0. 
+        return  
+      endif 
+
+      rhoscaled = (1. + delta)*rho**2/4.  
+
+      te_denp_exp_im1 = 1.  
+      te_denp_exp = 0. 
+      do i = 1,nterm
+
+        te_denp_exp = te_denp_exp + 
+     &                ((1.+delta)**2*rho/2.)*alpha(i)*rhoscaled**(i-1)
+
+        if (abs(te_denp_exp-te_denp_exp_im1) .lt. tol) goto 200  
+        te_denp_exp_im1 = te_denp_exp 
+
+      enddo 
+
+      call remark("routine te_denp_exp: WARNING requested tol not reached") 
+c      call kaboom(0) 
+
+ 200  continue 
+
+      return 
+      end 
+c=============================================================================
+      real(kind=8) function te_rho_max(delta,frac)
+
+      use Constant
+      real(kind=8):: delta, frac 
+
+c te_rho_max estimates the maximum value of rho where the thermal 
+c equilibrium density profile becomes exponentially small.  This 
+c routine contains unpublished formulas that were developed by Ed 
+c Startsev (PPPL) and Steven Lund (LLNL).  
+c
+c   te_rho_max  = est of rho where n(rho) = frac 
+c   delta       = dimensionless parameter describing thermal equilibrium 
+c   frac        = value of density at rho limit, i.e., 
+c                   where n(rho=te_rho_max) = frac 
+c
+
+c     Parameter error traps 
+
+      if (frac .gt. 1 .or. frac .le. 0.) then 
+        call remark("routine te_rho_max: frac input not physical") 
+        call kaboom(0) 
+      endif 
+      if (delta .lt. 0.) then
+        call remark("routine te_rho_max: delta input not physical") 
+        call kaboom(0) 
+      endif  
+
+      if (delta .gt. 0.5) then  
+c       --- weak space charge estimate based on applied field only 
+
+        te_rho_max = sqrt( -4.*log(frac)/(1.+delta) ) 
+
+      else 
+
+c       --- intermediate to strong space-charge estimate based work 
+c       --- by Startsev and Lund 
+c       --- *** temporary place holder to be fixed ***
+
+        te_rho_max = 1.5*log(Pi/delta) 
+
+      endif 
+
+      return 
+      end 
+c=============================================================================
+      subroutine te_radial_den(delta)
+
+      use Constant
+      use W3DloadTE
+      real(kind=8):: delta
+
+c te_radial_den returns a continuous focusing thermal equilibrium density 
+c profile on a radial grid for a dimensionless space-charge parameter 
+c value of delta.
+
+      integer(ISZ):: ir, ir_trans
+      integer(ISZ):: ir_steps 
+      real(kind=8):: frac, rho, drho, tden, tdenp
+      real(kind=8):: xdelta   
+      real(kind=8):: te_rho_max, te_den_exp, te_denp_exp
+      common /tedensity/ xdelta 
+      external te_den_derivs 
+
+c     Calculate max value of rho to setup a radial grid.  Set this using 
+c     routine te_rho_max which uses approxmate analytical formulas to 
+c     set the value of rho where the normalized density = frac of the 
+c     unit on-axis value.    
+
+      frac   =  1.e-8
+      te_rhomax =  te_rho_max(delta,frac)
+      drho   = te_rhomax/float(te_nrho)
+      do ir = 0,te_nrho
+        te_rho(ir) = drho*float(ir) 
+      enddo 
+
+c     Set analytical values for den and d(den)/d(rho) at rho = 0.  
+
+      te_den(1,0) = 1. 
+      te_den(2,0) = 0. 
+
+c     Calculate den(rho) and d(den)/d(rho) using a series expansion 
+c     within the core of the beam till the density starts to 
+c     vary significantly near the edge.  Comment:  d(den)/d(rho) 
+c     is not really needed other than at rho = te_rho(ir_trans) 
+c     as an intial value to seed a numerical integration to the right.  
+c     However, if speed is not an issue it is useful to calculate for 
+c     debugging purposes.  The series breaks down near the edge and 
+c     cannot be used where the density starts to roll over rapidly.  
+ 
+c     --- calculate needed series expansion coefficients 
+      call te_den_exp_coeff(delta,te_exp_nterm,te_exp_alpha)
+
+c     --- calculate den and d(den)/d(rho) at radial rho grid points using 
+c     --- series expansions until -d(den)/d(rho) starts to increase, 
+c     --- indicating that the edge is being approached and save this 
+c     --- transition value of rho 
+      do ir = 1,te_nrho 
+
+        rho = te_rho(ir)
+        tden  =  te_den_exp(rho,delta,te_exp_nterm,te_exp_alpha,1.e-10)
+        tdenp = te_denp_exp(rho,delta,te_exp_nterm,te_exp_alpha,1.e-10)
+   
+        te_den(1,ir) = tden 
+        te_den(2,ir) = tdenp
+
+        if (abs(tdenp) .gt. te_denptrans) goto 500
+
+      enddo       
+
+ 500  continue 
+      ir_trans = ir 
+      te_rhotrans = drho*float(ir_trans)
+
+c     Calculate solution to the right of the transition using 
+c     Runge-Kutta numerical integration on the rho grid 
+
+      xdelta = delta 
+      ir_steps = te_nrho-ir_trans
+      call rk_adv(te_den(1:2,ir_trans:te_nrho),
+     &            2,ir_steps,te_rhotrans,te_rhomax,te_den_derivs)
+
+      return 
+      end 
+c=============================================================================
+      subroutine te_den_derivs(rho,den,ddendrho)
+      
+      integer(ISZ),parameter:: NEQ=2
+      real(kind=8):: rho 
+      real(kind=8):: den(NEQ),ddendrho(NEQ) 
+      
+c calculates derivatives ddendrho at rho,den for a thermal equilibrium density 
+c profile
+c    rho        = independent coordinate: dimensionless radius 
+c    den(nvar)  = dependant variable:
+c                   den(1) = density 
+c                   den(2) = d(density)/d(rho)   
+c    dydx(nvar) = derivatives at rho, and den(1),den(2) evaluated at rho   
+c
+
+      real(kind=8):: delta 
+      common /tedensity/ delta 
+
+c     --- calculate derivates while protecting against a zero divide for 
+c     --- when the density becomes small near the edge of the beam.  
+
+      ddendrho(1) = den(2) 
+      ddendrho(2) = den(2)*den(2)/dvnz(den(1)) - den(2)/rho + 
+     &              den(1)*den(1) - (1.+delta)*den(1)  
+      
+      return
+      end
 c=============================================================================
       subroutine loadperpdist(kioff,np,x,y,r,t,xp,yp,rx,ry,rxp,ryp,
      &                        epsx,epsy)
@@ -744,10 +1081,11 @@ c=============================================================================
 
       integer(ISZ):: n 
       real(kind=8):: x,h
-      real(kind=8):: y(n),dydx(n),yout(n) 
-      external derivs 
+      real(kind=8):: y(n),dydx(n),yout(n)
+      external derivs
 
 c 4th order Runge-Kutta advance 
+c   n          number of first-order equations 
 c   x          initial coordinate 
 c   y(1:n)     initial y values at x 
 c   dydx(1:n)  initial dy/dx derivaties at x 
@@ -755,7 +1093,7 @@ c   h          step
 c   yout(1:n)  final y values at x + h
 c                y and yout need not be distinct  
 c
-c   external user supplied subroutine derivs(x,y,dydx) 
+c   external user supplied subroutine derivs(x,n,y,dydx) 
 c   returns the derivatives dydx evaluated at x, y(x) 
 c   where y and dydx have dimension nvar.     
 c
@@ -763,47 +1101,49 @@ c The routine is slightly modified from the one presented in:
 c    Numerical Recipes The Art of Scientific Computing, 1st Edition 
 c    Press, Flannery, Teukolsky, and Vetterling (1986)
 
-      integer(ISZ),parameter:: NMAX=10
-      real(kind=8):: YT(NMAX),DYT(NMAX),DYM(NMAX)
+      integer(ISZ),parameter:: NEQ=2
+      real(kind=8):: YT(NEQ),DYT(NEQ),DYM(NEQ)
       integer(ISZ):: I
       real(kind=8):: HH,H6,XH
 
-      HH=H*0.5
-      H6=H/6.
-      XH=X+HH
+      HH=h*0.5
+      H6=h/6.
+      XH=x+HH
 
 c     First step
       do I=1,n
         YT(I)=y(I)+HH*dydx(I)
       enddo
 c     Second step
-      call derivs(XH,n,YT,DYT)
-      do I=1,N
-        YT(I)=Y(I)+HH*DYT(I)
+      call derivs(XH,YT,DYT)
+      do I=1,n
+        YT(I)=y(I)+HH*DYT(I)
       enddo 
 c     Third step 
-      call derivs(XH,n,YT,DYM)
-      do I=1,N
-        YT(I)=Y(I)+H*DYM(I)
+      call derivs(XH,YT,DYM)
+      do I=1,n
+        YT(I)=y(I)+h*DYM(I)
         DYM(I)=DYT(I)+DYM(I)
       enddo
 c     Fourth step 
-      call derivs(X+H,n,YT,DYT)
-      do I=1,N
-        YOUT(I)=Y(I)+H6*(DYDX(I)+DYT(I)+2.*DYM(I))
+      call derivs(x+h,YT,DYT)
+c     Accumulate weights for total 4th order Runge-Kutta step 
+      do I=1,n
+        yout(I)=y(I)+H6*(dydx(I)+DYT(I)+2.*DYM(I))
       enddo
 
       return
       end
 c=============================================================================
-      subroutine rkdumb(y,x,nvar,nstep,x1,x2,y_work,dy_work,derivs)
+      subroutine rk_adv(y,nvar,nstep,x1,x2,derivs)
 
       integer(ISZ):: nvar,nstep 
       real(kind=8):: x1,x2
-      real(kind=8):: y(nvar,nstep),x(nstep),y_work(nvar),dy_work(nvar)
+      real(kind=8):: y(nvar,0:nstep)
       external derivs 
 
-c 4th order Runge-Kutta advance with uniform step size  
+c 4th order Runge-Kutta advance with uniform step size to advance 
+c y(nvar,0:nstep) in nstep equal steps from x1 to x2  
 c
 c   external user supplied subroutine derivs(x,y,dydx) 
 c   returns the derivatives dydx evaluated at x, y(x) 
@@ -813,42 +1153,55 @@ c The routine is slightly modified from the one presented in:
 c    Numerical Recipes The Art of Scientific Computing, 1st Edition 
 c    Press, Flannery, Teukolsky, and Vetterling (1986)
 
+      integer(ISZ),parameter:: NEQ=2
       integer(ISZ):: I,K
-      real(kind=8):: H,XX 
+      real(kind=8):: H,X 
+      real(kind=8):: y_work(NEQ),dy_work(NEQ)
 
 c     load starting values 
       do I=1,nvar
-        y_work(I)=y(I,1)
+        y_work(I)=y(I,0)
       enddo 
-      X(1)=X1
-      XX=X1
-      H=(X2-X1)/float(nstep)
+      X=x1
+      H=(x2-x1)/float(nstep)
+      if(X+H .eq. X) then
+        call remark('Stepsize not significant in rk_adv') 
+        call kaboom(1) 
+      endif 
 c     take nstep 4th order Runge-Kutta steps using rk4
-      do K=1,NSTEP
-        call derivs(XX,nvar,y_work,dy_work)
-        call rk4(y_work,dy_work,nvar,XX,H,y_work,DERIVS)
-        if(XX+H .eq. XX) then
-          call remark('Stepsize not significant in rkdumb') 
-          call kaboom(1) 
-        endif 
+      do K=1,nstep
+        call derivs(X,y_work,dy_work)
+        call rk4(y_work,dy_work,nvar,X,H,y_work,derivs)
 c       store intermediate steps 
-        XX=XX+H
-        x(K+1)=XX
-        do I=1,NVAR
-          y(I,K+1)=y_work(I)
+        X=X+H
+        do I=1,nvar
+          y(I,K)=y_work(I)
         enddo
       enddo 
 
       return
       end
 c=============================================================================
-      subroutine derivs_cf(x,nvar,y,dydx)
+      subroutine integrate_test(y,nvar,nstep,x1,x2)
+
+      integer(ISZ):: nvar,nstep 
+      real(kind=8):: x1,x2
+      real(kind=8):: y(nvar,nstep)
+      external derivs_test 
+
+      call rk_adv(y,nvar,nstep,x1,x2,derivs_test)
       
-      integer(ISZ):: nvar
+      return
+      end
+c=============================================================================
+      subroutine derivs_test(x,y,dydx)
+      
+      integer(ISZ),parameter:: NEQ=2
       real(kind=8):: x 
-      real(kind=8):: y(nvar),dydx(nvar) 
+      real(kind=8):: y(NEQ),dydx(NEQ) 
       
-c calculates derivatives dydx at x,y
+c calculates derivatives dydx at x,y for continuous focusing to provide 
+c an integrator check 
 c    nvar       = number equations 
 c    x          = independent coordinate 
 c    y(nvar)    = dependant variable at x 
@@ -856,19 +1209,7 @@ c    dydx(nvar) = derivatives at x,y
 c
 
       dydx(1) =  y(2) 
-      dydx(2) = -y(1) 
-      
-      return
-      end
-c=============================================================================
-      subroutine integrate_test(y,x,nvar,nstep,x1,x2,y_work,dy_work)
-
-      integer(ISZ):: nvar,nstep 
-      real(kind=8):: x1,x2
-      real(kind=8):: y(nvar,nstep),x(nstep),y_work(nvar),dy_work(nvar)
-      external derivs_cf 
-
-      call rkdumb(y,x,nvar,nstep,x1,x2,y_work,dy_work,derivs_cf)
+      dydx(2) = -y(1)
       
       return
       end

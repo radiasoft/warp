@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.179 $, $Date: 2004/12/08 15:32:44 $
+#@(#) File W3D.V, version $Revision: 3.180 $, $Date: 2004/12/16 17:31:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.179 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.180 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -753,13 +753,16 @@ putsortedefield(n:integer,isort:integer,tex:real,tey:real,tez:real,
 
 
 *********** W3Dload:
-r_b     real [m]     /0./ # Code set: CFE rms equivalent beam radius 
-emit_b  real [m-rad] /0./ # Code set: CFE rms equivalent beam emittance  
-q_perv  real [1]     /0./ # Code set: CFE rms equivalent beam perveance 
-k_beta0 real [m^-1]  /0./ # Code set: CFE rms equivalent beam foc. wavenumber
-k1re    real [1]     /0./ # Code set: CFE waterbag distribution k_1*r_e 
-f_2     real [m^-2]  /0./ # Code set: CFE waterbag distribution norm f_2 
-r_e     real [m]     /0./ # Code set: CFE waterbag distribution edge radius 
+r_b      real [m]     /0./ # Code set: CFE rms equivalent beam radius 
+emit_b   real [m-rad] /0./ # Code set: CFE rms equivalent beam emittance  
+q_perv   real [1]     /0./ # Code set: CFE rms equivalent beam perveance 
+k_beta0  real [m^-1]  /0./ # Code set: CFE rms equivalent beam foc. wavenumber
+k1re     real [1]     /0./ # Code set: CFE WB distribution k_1*r_e 
+f_2      real [m^-2]  /0./ # Code set: CFE WB distribution norm f_2 
+r_e      real [m]     /0./ # Code set: CFE WB distribution edge radius 
+delta    real [1]     /0./ # Code set: CFE TE distribution delta parameter 
+glambdad real [1]     /0./ # Code set: CFE TE distribution gamma*lambda_Debye 
+tscaled  real [1]     /0./ # Code set: CFE TE distribution scaled temperature
 hl_rmax   real  [m] # maximum radius of continuous focusing (CF) equivalent 
                     #  Hamiltonian equilibrium density and angle spreads  
 hl_nrdist integer   # number of radial data points of CF Hamiltonian eq 
@@ -774,6 +777,38 @@ bessi0(x:real) real function # Modified Bessel function I_0(x) for real x
 bessi1(x:real) real function # Modified Bessel function I_1(x) for real x
 bessi(n:integer,x:real) real function # Modified Bessel function I_n(x) 
                                       #  for real x and integer n >= 2
+
+*********** W3DloadTE:
+te_delta     real  [1] # Code set: TE dimensionless space charge parameter 
+te_rhomax    real  [1] # Code set: max value of norm radius rho to use for TE
+te_rhotrans  real  [1] # Code set: transition value of rho in norm density calc
+te_denptrans real  [1] /1.e-3/  
+                       # Value of d den/d rho at transition in TE density calc 
+te_nrho integer       # number of radial grid points in rho to use for TE 
+te_rho(0:te_nrho)    _real 
+   # Code set: normalized radial coordinate grid ranging from 0 to te_rhomax 
+te_den(2,0:te_nrho)  _real
+   # Code set: 
+te_exp_nterm integer  # max number of terms to use in series expansion for 
+                      #   TE density.  Should set this to at least 100.
+te_exp_alpha(0:te_exp_nterm) _real 
+   # Code set: Coefficients of series expansion for TE density profile
+te_den_exp_coeff(delta:real,nterm:integer,alpha:real) subroutine 
+   # Calculate expansion coefficients for CF TE density profile
+te_den_exp(rho:real,delta:real,nterm:integer,alpha:real,tol:real) 
+   real function 
+   # Calculate the density of a CF TE using a series expansion
+te_denp_exp(rho:real,delta:real,nterm:integer,alpha:real,tol:real) 
+   real function 
+   # Calculate the derivative with respect of rho of the density of a 
+   #   CF TE using a series expansion
+te_rho_max(delta:real,frac:real) real function 
+   # Estimate max value of norm radius rho where norm density = frac for CF TE
+te_radial_den(delta:real) subroutine 
+   # Calculate the normalized radial density profile of TE for dimensionless 
+   #   space-charge parameter delta 
+integrate_test(y:real,nvar:integer,nstep:integer,x1:real,x2:real) subroutine 
+   # temp routine link for debugging 
 
 
 ******** Subtimers3d dump:
