@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.117 $, $Date: 2003/06/23 18:58:05 $
+c@(#) File W3D.M, version $Revision: 3.118 $, $Date: 2003/06/25 00:05:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -47,7 +47,7 @@ c=============================================================================
       use Fields3d
       use Fields3dParticles
       use Efields3d
-      use PSOR3d
+      use GridBoundary3d
       use Multipole
       use Io
       use Lattice
@@ -607,6 +607,7 @@ c=============================================================================
       use Picglb3d
       use InjectVars
       use LatticeInternal
+      use GridBoundary3d
       use Timers
       character(*):: caller
       logical(ISZ):: thisstep,thiszbeam,dolabwn
@@ -733,7 +734,7 @@ c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
       if (efetch == 3)
      &  call getselfe3d(phip(0,0,-1),nxp,nyp,nzp,selfe(1,0,0,0),
-     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy)
+     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,boundxy)
 c  Set the potential near the emitting surface.
       if (inject > 0 .and. inject < 4) then
         call getinj_phi()
@@ -1216,7 +1217,7 @@ c=============================================================================
       use InjectVars
       use InjectVars3d
       use Apertures
-      use PSOR3d
+      use GridBoundary3d
       use FRZmgrid
       character(*):: center
 
@@ -2452,14 +2453,14 @@ c           --- Adjust sign of E field for appropriate quadrant.
       end
 c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
-     &                      dx,dy,dz,pboundxy)
+     &                      dx,dy,dz,boundxy)
       use GlobalVars
       use Subtimers3d
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nx_selfe,ny_selfe,nz_selfe
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),selfe(3,0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz
-      integer(ISZ):: pboundxy
+      integer(ISZ):: boundxy
 
 c Calculate the self-E via finite differences of phi.
 
@@ -2498,12 +2499,12 @@ c     --- of the guard cells.
       selfe(1,1:nx-1,ny,:) = tdxi*(phi(0:nx-2,ny,:) - phi(2:nx,ny,:))
       selfe(2, 0,1:ny-1,:) = tdyi*(phi( 0,0:ny-2,:) - phi( 0,2:ny,:))
       selfe(2,nx,1:ny-1,:) = tdyi*(phi(nx,0:ny-2,:) - phi(nx,2:ny,:))
-      if (pboundxy == absorb .or. pboundxy == reflect) then
+      if (boundxy == dirichlet .or. boundxy == neumann) then
         selfe(1, 0, :,:) = 0.
         selfe(1,nx, :,:) = 0.
         selfe(2, :, 0,:) = 0.
         selfe(2, :,ny,:) = 0.
-      else if (pboundxy == periodic) then
+      else if (boundxy == periodic) then
         selfe(1, 0, :,:) = tdxi*(phi(nx-1,:,:) - phi(1,:,:))
         selfe(1,nx, :,:) = selfe(1, 0,:,:)
         selfe(2, :, 0,:) = tdyi*(phi(:,ny-1,:) - phi(:,1,:))
@@ -3593,7 +3594,7 @@ c=============================================================================
       use Particles
       use Fields3d
       use Fields3dParticles
-      use PSOR3d
+      use GridBoundary3d
       use FRZmgrid
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
@@ -3694,11 +3695,12 @@ c     --- system.
       end
 c=============================================================================
       subroutine getrhoforfieldsolve()
+      use InGen
       use InGen3d
       use InMesh3d
-      use PSOR3d, ONLY: bound0
       use Fields3d
       use Fields3dParticles
+      use GridBoundary3d
 
 #ifndef MPIPARALLEL
 
@@ -8594,10 +8596,10 @@ c===========================================================================
       use Picglb3d
       use Fields3d
       use Fields3dParticles
-      use PSOR3d
       use Efields3d
       use LatticeInternal
       use InjectVars
+      use GridBoundary3d
       integer(ISZ):: iwhich
 
 c  Field solver for 3d warped Cartesian geometry. 
@@ -8659,7 +8661,6 @@ c=============================================================================
       use Picglb
       use Fields3d
       use LatticeInternal
-      use PSOR3d
       use FRZmgrid
       use Parallel
       integer(ISZ):: iwhich
@@ -8689,30 +8690,25 @@ c fits and so was replaced with if statements.
       ylen = ymmax - ymmin
       zlen = zmmaxglobal - zmminglobal
 
-c     select case (fstype)
-c       case (0)
       if (fstype == 0) then
           call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq(0),kysq(0),kzsq(0),
      &                 attx(0),atty(0),attz(0),filt(1,1),xlen,ylen,zlen,
      &                 nx,ny,izfsmax-izfsmin,nzfull,
      &                 scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
-c       case (1)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,
      &                nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),xywork(0,0),
      &                zwork(1,0,0),l2symtry,l4symtry)
-c       case (2)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,
      &                nx,ny,izfsmax-izfsmin,nzfull,
      &                scrtch(0,0),xywork(0,0),zwork,
-     &                xmmax,zmmin+izfsmin*dz,zgrid,pipeshpe,bound0,
+     &                xmmax,zmmin+izfsmin*dz,zgrid,pipeshpe,
      &                l2symtry,l4symtry)
-c       case (3)
       elseif (fstype == 3) then
 c          --- Note that by default, izfsmax=nz, and izfsmin=0.
 c          --- izfsmin and izfsmax allow field solves on a partial grid.
@@ -8720,19 +8716,18 @@ c          --- izfsmin and izfsmax allow field solves on a partial grid.
      &                 phi(0,0,-1),rho(0,0,0),rstar, 
      &                 dx,dy,dz,xmmin,ymmin,zmmin,zbeam,zgrid,linbend,
      &                 l2symtry,l4symtry,scrtch(0,0),izfsmin,izfsmax)
-c       case (4)
       elseif (fstype == 4) then
           if (iwhich == 1 .or. iwhich == 0) then
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
-     &                   nx,ny,izfsmax-izfsmin,nzfull,
-     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
+     &                   nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),
+     &                   xywork(0,0),zwork,0,l2symtry,l4symtry)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
             call vpois3d(12,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,
-     &                   scrtch(0,0),xywork(0,0),zwork,izfsmin,l2symtry,l4symtry)
+     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
             call vpois3d(14,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,
@@ -8743,7 +8738,6 @@ c       case (4)
      &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
           endif
 
-c       case (5)
       elseif (fstype == 5) then
 c         --- General capacity matrix solver in kz space
           call capmatkz3d(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
@@ -8751,7 +8745,6 @@ c         --- General capacity matrix solver in kz space
      &                    nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                    xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
      &                    xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
-c       case (6)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
           call capmat3df(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
@@ -8760,7 +8753,6 @@ c         --- General capacity matrix solver
      &                  xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
      &                  xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
 
-c       case (7)
       elseif (fstype == 7) then
           call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &            phi(0,0,izfsmin-1),rho(0,0,izfsmin),rstar(izfsmin-1),
@@ -8768,7 +8760,6 @@ c       case (7)
      &            xmmin,ymmin,zmmin,zbeam,zgrid)
 
 #ifdef MPIPARALLEL
-c       case (8)
       elseif (fstype == 8) then
 c         --- Experimental parallel solver
 c         --- Combines local tridiag solves with iteration to exchange
@@ -8777,7 +8768,6 @@ c         --- boundary data.
      &                         attx,atty,attz,filt,xlen,ylen,zlen,
      &                         nx,ny,izfsmax-izfsmin,
      &                         scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry)
-c       case (9)
       elseif (fstype == 9) then
 c         --- Experimental parallel solver based on the method
 c         --- put forward by Lantz
@@ -8787,16 +8777,13 @@ c         --- put forward by Lantz
      &                     scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry)
 
 #endif
-c       case (10)
       elseif (fstype == 10) then
 c         --- RZ full-multigrid solver
        call multigridrzf(iwhich,phi(0,0,-1),rho(0,0,0),nx,nz,dx,dz,mgridrz_accuracy)
-c       case (11)
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
         call cho_solve3d(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
      &                   l2symtry,l4symtry,xmmin,ymmin,zmmin,zmminglobal)
-c     endselect
       endif
 
       if (lw3dtimesubs) timevp3d = timevp3d + wtime() - substarttime
