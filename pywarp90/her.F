@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.5 $, $Date: 2001/07/12 00:03:59 $
+c@(#) File HER.M, version $Revision: 3.6 $, $Date: 2001/07/13 00:37:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -77,6 +77,7 @@ c     --- reset Lattice arrays to final size
       call resetlat
       
 c     --- Initialize the LatticeInternal arrays
+c     --- The choice for nzl is arbitrary; better choices may exist.
       nzl = niz + 2
       nzlmax = nzl
       dzl = (zimax - zimin)/niz
@@ -148,7 +149,7 @@ c       --- Start at time = 0.
 c       --- Save the initial history
         call savehermesvars(time,var,niz,it,lsavehist)
 c       --- Find initial forces
-        call getderivs(time,dt,var,dy,niz,aion,zion,fviscous,icharge,
+        call getderivs(time,dt,var,dy,niz,aion,zion,fviscous,icharge,iimage,
      &            lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail)
         if (lfail) return
         if (lherout) then
@@ -162,7 +163,7 @@ c     --- Run the HERMES kernel
       time = time + dt
 c     --- Advance the envelope and orbits (one step)
       call stephr (var,dy,niz,time,dt,aion,zion,fviscous,
-     &              icharge,lezbeam,lperveance,lemittance,lallez,lezcenter,
+     &              icharge,iimage,lezbeam,lperveance,lemittance,lallez,lezcenter,
      &              lviscous,lcurgrid,lfail)
       if (lfail) return
       call copyhermesvars()
@@ -239,7 +240,7 @@ c     dt   is the size of the current time step
 c     y    is the array hold the envelope information
 c     niz  is the number of slices
 
-      real(kind=8):: vz,vzi,zl,zr,fl,fr,frac,dta,dzi,mltsf,rotfuzz
+      real(kind=8):: vz,vzi,zl,zr,fl,fr,frac,dta,dzi,mltsf,angle,rotfuzz
       integer(ISZ):: io,iele,iz,ii,izm,j
       
       dta = abs(dt)
@@ -312,9 +313,14 @@ c           --- set the field
      &                                quadbt(ii+1,iele)*frac*    fr
               endif
             endif
-c           --- use current position to find the aperture
-            if (y(9,iz).ge.cquadzs(j,io) .and. y(9,iz).lt.cquadze(j,io) .and. quadap(iele) > 0.)
-     &        rpipe(iz) = quadap(iele)
+c           --- use current position to find the aperture, offset and rotation angle
+            if (y(9,iz).ge.cquadzs(j,io) .and. y(9,iz).lt.cquadze(j,io)
+     &         .and. quadap(iele) > 0.) then
+              rpipe(iz) = quadap(iele)
+              pipeox(iz) = qoffx(iele)
+              pipeoy(iz) = qoffy(iele)
+              pipeph(iz) = 0.
+            endif
           enddo
         enddo
       endif
@@ -359,6 +365,8 @@ c                 --- quadrupole field
      &              call remark("Warning: electric multipole structure incompatible")
                   dbdx(iz) = dbdx(iz) + heleam(ii,iele)*cos(helepm(ii,iele)) * frac
                   dedx(iz) = dedx(iz) + heleae(ii,iele)*cos(helepe(ii,iele)) * frac
+c                 --- using the rotation of the electrostatic multipole for the pipe rotation
+                  angle = helepe(ii,iele)
                 else if ((nint(hele_n(ii,iele)) == 0) .and.
      &                   (nint(hele_v(ii,iele)) == 0)) then
 c                 --- radial field
@@ -370,9 +378,14 @@ c                 --- longitudinal field
                 endif
               enddo
             endif           
-c           --- use current position to find the aperture
-            if (y(9,iz).ge.chelezs(j,io) .and. y(9,iz).lt.cheleze(j,io) .and. heleap(iele) > 0.)
-     &        rpipe(iz) = heleap(iele)
+            if (y(9,iz).ge.chelezs(j,io) .and. y(9,iz).lt.cheleze(j,io)
+     &          .and. heleap(iele) > 0.) then
+c                  --- use current position to find the aperture, offset and rotation angle
+              rpipe(iz) = heleap(iele)
+              pipeox(iz) = heleox(iele)
+              pipeoy(iz) = heleoy(iele)
+              pipeph(iz) = angle
+            endif
           enddo
         enddo
       endif
@@ -418,9 +431,15 @@ c                 --- Apply the rest of the multipoles.
                 endif
               endif
             enddo
-c           --- use current position to find the aperture
-            if (y(9,iz).ge.cemltzs(j,io) .and. y(9,iz).lt.cemltze(j,io) .and. emltap(iele) > 0.)
-     &        rpipe(iz) = emltap(iele)
+c           --- use current position to find the aperture, offset and rotation angle
+
+            if (y(9,iz).ge.cemltzs(j,io) .and. y(9,iz).lt.cemltze(j,io)
+     &         .and. emltap(iele) > 0.) then
+              rpipe(iz) = emltap(iele)
+              pipeox(iz) = emltox(iele)
+              pipeoy(iz) = emltoy(iele)
+              pipeph(iz) = emltph(iele)
+            endif
           enddo
         enddo
       endif
@@ -462,9 +481,14 @@ c                 --- Apply the rest of the multipoles.
                 endif
               endif
             enddo
-c           --- use current position to find the aperture
-            if (y(9,iz).ge.cmmltzs(j,io) .and. y(9,iz).lt.cmmltze(j,io) .and. mmltap(iele) > 0.)
-     &        rpipe(iz) = mmltap(iele)
+c           --- use current position to find the aperture, offset and rotation angle
+            if (y(9,iz).ge.cmmltzs(j,io) .and. y(9,iz).lt.cmmltze(j,io)
+     &          .and. mmltap(iele) > 0.) then
+              rpipe(iz) = mmltap(iele)
+              pipeox(iz) = mmltox(iele)
+              pipeoy(iz) = mmltoy(iele)
+              pipeph(iz) = mmltph(iele)
+            endif
           enddo
         enddo
       endif
@@ -508,9 +532,14 @@ c           --- Get time varying accelerating field.
      &                            acclet(ii+1,iele)*frac*    fr
               endif
             endif
-c           --- use current position to find the aperture
-            if (y(9,iz).ge.cacclzs(j,io) .and. y(9,iz).lt.cacclze(j,io) .and. acclap(iele) > 0.)
-     &        rpipe(iz) = acclap(iele)
+c           --- use current position to find the aperture, offset and rotation angle
+            if (y(9,iz).ge.cacclzs(j,io) .and. y(9,iz).lt.cacclze(j,io)
+     &          .and. acclap(iele) > 0.) then
+              rpipe(iz) = acclap(iele)
+              pipeox(iz) = acclox(iele)
+              pipeoy(iz) = accloy(iele)
+              pipeph(iz) = 0.
+            endif
           enddo
         enddo
       endif
@@ -523,13 +552,16 @@ c       --- Get aperture from drift elements
           do iz=1,niz
 c           --- find z-cell in which particle lies
             j = max(0., (y(9,iz) - zlmin) * dzli + 0.5)
-c            --- use current position to find the aperture
+c            --- use current position to find the aperture, offset and rotation angle
             if (y(9,iz).ge.cdrftzs(j,io) .and. y(9,iz).lt.cdrftze(j,io)) then
               iele = cdrftid(j,io)
-              if (drftap(iele) > 0.)
-     &          rpipe(iz) = drftap(iele)
-         endif
-
+              if (drftap(iele) > 0.) then
+                rpipe(iz) = drftap(iele)
+                pipeox(iz) = drftox(iele)
+                pipeoy(iz) = drftoy(iele)
+                pipeph(iz) = 0.
+              endif
+            endif
           enddo
         enddo
         
@@ -540,17 +572,15 @@ c---------------------------------------------------------------------------
       do iz=1,niz
 c ---   Print warning if rpipe is zero
         if (rpipe(iz) == 0.) then
-          call remark("WARNING: rpipe is zero, make sure that either top.rwall")
-          call remark("and/or the lattice element apertures are set.")
+          call remark("WARNING: rpipe is zero, make sure that either top.rwall and/or the lattice element apertures are set.")
         endif
-        
       enddo
 
       return
       end
 c=============================================================================
       subroutine getderivs(t,dt,y,dy,niz,aion,zion,fviscous,
-     &                  icharge,lezbeam,lperveance,lemittance,lallez,
+     &                  icharge,iimage,lezbeam,lperveance,lemittance,lallez,
      &                  lezcenter,lviscous,lcurgrid,lfail)
       use Constant
       use HERfield
@@ -558,7 +588,7 @@ c=============================================================================
       real(kind=8):: t,dt,y(16,niz),dy(16,niz)
       real(kind=8):: aion,zion
       real(kind=8):: fviscous
-      integer(ISZ):: icharge
+      integer(ISZ):: icharge,iimage
       logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail
 
 c  Computes the forces needed for the general-lattice envelope calculation.
@@ -575,7 +605,7 @@ c  longitudinal electric and magnetic field), and linear space-charge forces.
       real(kind=8):: y1i,y3i,y1py3i,gamma,gambeta
       real(kind=8):: rigidityi,quadfld,perv
       real(kind=8):: xemit,yemit,dsdt,dlnbeta,dbetadt
-      real(kind=8):: rpipei2
+      real(kind=8):: xval,yval,rpipei2
       real(kind=8):: aviscous(niz)
       
 
@@ -600,6 +630,12 @@ c     --- Get self axial fields of beam.
       call fieldsolhr (niz,y,ezbeam,rpipe,icharge,lezbeam,lezcenter,lfail)
       if (lfail) return
       
+c     --- Get the image effect on the beam envelope
+      if (iimage > 0) then
+        call getimage(y,niz,iimage,lfail)
+        if (lfail) return
+      endif
+      
       if (lviscous .and. lezbeam) then
         call getviscous(y,niz,aviscous,fviscous)
       endif
@@ -611,6 +647,8 @@ c---------------------------------------------------------------------------
 c     --- Loop over time slices of beam
       do ii=1,niz
 
+        xval = y(5,ii) - pipeox(ii)
+        yval = y(7,ii) - pipeoy(ii)
         rpipei2 = 1./rpipe(ii)**2
       
 c       --- Beam size reciprocals
@@ -636,6 +674,7 @@ c       --- magnetic rigidity reciprocal
 
 c       --- quadrupole-force coefficient
         quadfld = ( - dedx(ii)/dsdt + dbdx(ii))*rigidityi
+c       --- er,br,bz ignored for now
 
 c       --- perveance perv (labeled K in the envelope equation)
         if (lperveance) then
@@ -654,7 +693,7 @@ c       --- normalized emittance to unnormalized emittance
         endif
 
         if (lallez) then
-          dbetadt = ezbeam(ii)*zion*echarge/(aion*amu*clight*gamma**3)
+          dbetadt = (ezbeam(ii)+ez(ii))*zion*echarge/(aion*amu*clight*gamma**3)
         else
           dbetadt = 0.
         endif
@@ -671,26 +710,37 @@ c       --- da/dt
         dy(1,ii) = y(2,ii)*dsdt
 
 c       --- d(da/ds)/dt
-        dy(2,ii) = (- quadfld*y(1,ii) + 2.0*perv*y1py3i + xemit**2*y1i**3) * dsdt - dlnbeta*y(2,ii)
+        dy(2,ii) = (- quadfld*y(1,ii)
+     &              + 2.0*perv*y1py3i
+     &              + xemit**2*y1i**3
+     &              + fx(ii)*perv*y(1,ii)*rpipei2) * dsdt
+     &              - dlnbeta*y(2,ii)
 
 c       --- db/dt
         dy(3,ii) = y(4,ii)*dsdt
 
 c       --- d(db/ds)/dt
-        dy(4,ii) = (quadfld*y(3,ii) + 2.0*perv*y1py3i + yemit**2*y3i**3) * dsdt - dlnbeta*y(4,ii)
+        dy(4,ii) = (quadfld*y(3,ii)
+     &              + 2.0*perv*y1py3i
+     &              + yemit**2*y3i**3
+     &              + fy(ii)*perv*y(3,ii)*rpipei2) * dsdt
+     &              - dlnbeta*y(4,ii)
 
 c       --- dx/ds
         dy(5,ii) = y(6,ii)*dsdt
 
 c       --- d(dx/ds)/dt
-        dy(6,ii) = 0.
-c       --- Centroid motion is not implemented in HERMES
+        dy(6,ii) = (- quadfld*xval
+     &              + perv*(gxx(ii)*xval + gxy(ii)*yval)*rpipei2) * dsdt
+     &                 - dlnbeta*y(6,ii)
 
 c       --- dy/dt
         dy(7,ii) = y(8,ii)*dsdt
 
 c       --- d(dy/ds)/ds
-        dy(8,ii) = 0.
+        dy(8,ii) = (+ quadfld*yval
+     &              + perv*(gyx(ii)*xval + gyy(ii)*yval)*rpipei2) * dsdt
+     &                 - dlnbeta*y(8,ii)
 
 c       --- ds/dt
         dy(9,ii) = dsdt
@@ -704,14 +754,14 @@ c       --- dbeta/dt
       end
 c=============================================================================
       subroutine stephr(y,dy,niz,t,dt,aion,zion,fviscous,
-     &            icharge,lezbeam,lperveance,lemittance,lallez,lezcenter,
+     &            icharge,iimage,lezbeam,lperveance,lemittance,lallez,lezcenter,
      &            lviscous,lcurgrid,lfail)
       use Constant
       integer(ISZ):: niz
       real(kind=8):: y(16,niz),dy(16,niz)
       real(kind=8):: t,dt,aion,zion
       real(kind=8):: fviscous
-      integer(ISZ):: icharge
+      integer(ISZ):: icharge,iimage
       logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail
 
 c STEPHR  advances the set of the envelope equations using the
@@ -726,6 +776,8 @@ c isochronous leapfrog algorithm.
       do j=1,niz
         y( 2,j) = y( 2,j) + halfdt*dy( 2,j)
         y( 4,j) = y( 4,j) + halfdt*dy( 4,j)
+        y( 6,j) = y( 6,j) + halfdt*dy( 6,j)
+        y( 8,j) = y( 8,j) + halfdt*dy (8,j)
         y(10,j) = y(10,j) + halfdt*dy(10,j)
       enddo
       
@@ -733,6 +785,8 @@ c isochronous leapfrog algorithm.
         ds = y(10,j) * dslight
         y(1,j) = y(1,j) + y(2,j) * ds
         y(3,j) = y(3,j) + y(4,j) * ds
+        y(5,j) = y(5,j) + y(6,j) * ds
+        y(7,j) = y(7,j) + y(8,j) * ds
         y(9,j) = y(9,j) + ds
       enddo
       
@@ -749,13 +803,15 @@ c isochronous leapfrog algorithm.
         endif
       enddo
       
-      call getderivs(t,dt,y,dy,niz,aion,zion,fviscous,icharge,
+      call getderivs(t,dt,y,dy,niz,aion,zion,fviscous,icharge,iimage,
      &            lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lcurgrid,lfail)
       if (lfail) return
 
       do j=1,niz
         y( 2,j) = y( 2,j) + halfdt*dy( 2,j)
         y( 4,j) = y( 4,j) + halfdt*dy( 4,j)
+        y( 6,j) = y( 6,j) + halfdt*dy( 6,j)
+        y( 8,j) = y( 8,j) + halfdt*dy (8,j)
         y(10,j) = y(10,j) + halfdt*dy(10,j)
       enddo
      
@@ -1417,3 +1473,195 @@ c     --- Resize history arrays
 
 c=============================================================================
 
+      subroutine getimage(y,niz,iimage,lfail)
+      use Constant
+      use HERfield
+      integer(ISZ):: niz
+      real(kind=8):: y(16,niz)
+      integer(ISZ):: iimage
+      logical(ISZ):: lfail
+
+c GETIMAGE calculates image-field coefficients for the different
+c slice boundaries for the pipe type ipipetype.
+c   0 round pipe (default)
+c   1 electric quadrupole rods (hyperbolic sufaces)
+c   2 dipole plates (parallel plates)
+c Current values of a, b, X, and Y from 'y' are used.
+c The assumed forms for the image-field components scaled by
+c rigidity*beta*clight*gamma**2 are
+c   Ex = (K/R**2)*(Fxx*(x-X) + Fxy*(y-Y) + Gxx*X + Gxy*Y)
+c   Ey = (K/R**2)*(Fyx*(x-X) + Fyy*(y-Y) + Gyx*X + Gyy*Y).
+c Fxy and Fyx do not to contribute to the averaged equations, and
+c the remaining coefficients are stored in common block HERtmp as...
+c   fx(ii) = Fxx
+c   fy(ii) = Fyy
+c   gxx(ii) = Gxx
+c   gxy(ii) = Gxy
+c   gyx(ii) = Gyx
+c   gyy(ii) = Gyy
+c
+c The integer flag iimage determines to what order image effects are included
+c If iimage == 0, then image effects are neglected
+c If iimage == 1, only linear terms are included. Terms of the order of 
+c                 (a,b,X,Y)**2/rpipe**2 in the image coefficients are discarded.
+c If iimage == 2, these terms are retained.
+c
+c Image coefficients are zero if the centroid displacement
+c X**2 + Y**2 exceeds rpipe**2.
+c
+c This subroutine was copied from Circe and modified for Hermes.
+c It has not been checked yet.
+
+      integer(ISZ):: iz
+      real(kind=8):: logcon
+      real(kind=8):: pi2,cosrot,sinrot,cosrot2,sinrot2
+      real(kind=8):: xval,yval,xyrpipe,abrpipe,geomfac
+      real(kind=8):: f1,f2,g1,g2
+      real(kind=8):: dispx,dispy
+      real(kind=8):: c0,c1,c2,d0,d1
+      real(kind=8):: arg0,arg1,arg2
+
+c     --- Check if images are to be applied. If not, zero arrays and return.
+      if ((iimage <= 0) .or. (iimage > 2) 
+     &  .or. (ipipetype < 0) .or. (ipipetype > 2)) then
+        do iz=1,niz
+          fx(iz) = 0.0
+          fy(iz) = 0.0
+          gxx(iz) = 0.0
+          gxy(iz) = 0.0
+          gyx(iz) = 0.0
+          gyy(iz) = 0.0
+        enddo
+        return
+      endif
+
+c     --- Constants
+      pi2 = pi**2
+
+c     --- Setup image coefficients
+
+      if (ipipetype == 0) then
+c       --- set image coefficients for circular pipe
+        do iz=1,niz
+          xval = y(5,iz) - pipeox(iz)
+          yval = y(7,iz) - pipeoy(iz)
+          arg0 = (y(1,iz)**2-y(3,iz)**2)/(4.0*rpipe(iz)**2)
+          arg1 = (xval**2 - yval**2)/rpipe(iz)**2
+          arg2 = (xval**2 + yval**2)/rpipe(iz)**2
+c         --- turn off image force if X**2+Y**2 >= rpipe**2
+          displace = arg2
+          if (displace > 1.0) then
+            fx(iz)  = 0.0
+            fy(iz)  = 0.0
+            gxx(iz) = 0.0
+            gxy(iz) = 0.0
+            gyx(iz) = 0.0
+            gyy(iz) = 0.0
+          else
+            if (iimage == 1) then
+              fx(iz)  = 0.
+              fy(iz)  = 0.
+              gxx(iz) = 1.
+              gxy(iz) = 0.
+              gyx(iz) = 0.
+              gyy(iz) = 1.
+            elseif (iimage == 2) then
+              f1 = arg1 + arg0*(1.0 + 6.0*arg2 + 6.0*arg0*arg1)
+              g1 = arg1 + arg0*(1.0 + 3.0*arg2 + 2.0*arg0*arg1)
+              g2 = 2.0*(1.0-2.0*arg0**2)*xval*yval/rpipe(iz)**2
+              fx(iz)  = f1
+              fy(iz)  = -f1
+              gxx(iz) = 1.0 + g1
+              gxy(iz) = g2
+              gyx(iz) = g2
+              gyy(iz) = 1.0 - g1
+            endif
+          endif
+        enddo
+       
+      elseif (ipipetype == 1) then
+c     --- Set image coefficients for electric quadrupoles
+c     --- Laslett formulation is used here
+
+        do iz=1,niz
+          if ((y(1,iz) <= 0.0).or.(y(3,iz) <= 0.0)) then
+            call remark ("ERROR: In getimage: beam radius less than zero")
+            lfail = .true.
+            return
+          endif
+          
+          xval = y(5,iz) - pipeox(iz)
+          yval = y(7,iz) - pipeox(iz)
+          dispx = xval**2/rpipe(iz)**2
+          dispy = yval**2/rpipe(iz)**2
+
+          displace = dispx + dispy
+          if (displace > 1.0) then
+            fx(iz) = 0.0
+            fy(iz) = 0.0
+            gxx(iz) = 0.0
+            gxy(iz) = 0.0
+            gyx(iz) = 0.0
+            gyy(iz) = 0.0
+          else
+            logcon = y(1,iz)*y(3,iz)*log10(y(1,iz)/y(3,iz))/rpipe(iz)**2
+            c0 = 0.785 + 3.0*logcon
+            d0 = 0.785 - 3.0*logcon
+            c1 = 0.834 + 3.0*logcon
+            d1 = 0.834 - 3.0*logcon
+            c2 = - (2.486 + (6.5*logcon)**2)
+            fx(iz) = 0.0
+            fy(iz) = 0.0
+            gxx(iz) = c0 + 2.0*c1*dispx + c2*dispy
+            gxy(iz) = 0.0
+            gyx(iz) = 0.0
+            gyy(iz) = d0 + 2.0*d1*dispy + c2*dispx
+          endif
+        enddo
+
+      elseif (ipipetype == 2) then
+c       --- Image forces for dipoles (parallel plates)
+        do iz=1,niz
+          xval = y(5,iz) - pipeox(iz)
+          yval = y(7,iz) - pipeoy(iz)
+          if (xval**2 + yval**2 > rpipe(iz)**2) then
+            fx(iz) = 0.
+            fy(iz) = 0.
+            gxx(iz) = 0.
+            gxy(iz) = 0.
+            gyx(iz) = 0.
+            gyy(iz) = 0.
+          else
+            geomfac = pi2/24.0
+            cosrot = cos(pipeph(iz))
+            sinrot = sin(pipeph(iz))
+            cosrot2 = cosrot**2
+            sinrot2 = sinrot**2
+            if (iimage == 1) then
+              fx(iz) = geomfac*cosrot2
+              fy(iz) = geomfac*sinrot2
+              gxx(iz) = 3.0*geomfac*cosrot2
+              gxy(iz) = 3.0*geomfac*sinrot*cosrot
+              gyx(iz) = 3.0*geomfac*sinrot*cosrot
+              gyy(iz) = 3.0*geomfac*sinrot2
+            elseif (iimage == 2) then
+              xyrpipe = ((xval*cosrot + yval*sinrot)/rpipe(iz))**2
+              abrpipe = (y(1,iz)**2 - y(3,iz)**2)/rpipe(iz)**2
+              g1 = 1.0 - (pi2/12.0)*(xyrpipe + 0.1875*abrpipe*(cosrot2 - sinrot2))
+              f1 = 1.0 - 0.375*pi2*xyrpipe
+              f2 = 0.025*pi2*abrpipe
+              fx(iz) = geomfac*cosrot2*(f1 - f2*(1.0 - 0.25*sinrot2))
+              fy(iz) = geomfac*sinrot2*(f1 + f2*(1.0 - 0.25*cosrot2))
+              gxx(iz) = 3.0*geomfac*cosrot2*g1
+              gxy(iz) = 3.0*geomfac*sinrot*cosrot*g1
+              gyx(iz) = 3.0*geomfac*sinrot*cosrot*g1
+              gyy(iz) = 3.0*geomfac*sinrot2*g1
+            endif
+          endif
+        enddo
+
+      endif
+
+      return
+      end
+c=============================================================================
