@@ -28,7 +28,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.33 2003/06/27 23:18:26 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.34 2003/07/08 23:03:20 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -84,8 +84,12 @@ def nint(x):
     if x >= 0: return int(x+0.5)
     else: return -int(abs(x)+0.5)
 
-# --- Replicate the sign function
-def sign(x,y):
+# --- Replicate the sign function with two arguments. If only one is
+# --- given, return the value from the Numeric sign function.
+# --- This should realy be removed.
+numericsign = sign
+def sign(x,y=None):
+  if y is None: return numericsign(x)
   if type(x) == ArrayType:
     result = where(greater(y,0.),abs(x),-abs(x))
     result = where(equal(y,0.),0.,result)
