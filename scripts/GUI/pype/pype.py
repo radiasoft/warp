@@ -307,12 +307,12 @@ if 1:
     if 1:
         cn = 'Courier New'
         if wxPlatform == '__WXMSW__':
-            faces = {'times': cn, 'mono' : cn, 'helv' : cn, 'other': cn,
-                     'size' : 10, 'size2': 9}
+           faces = {'times': cn, 'mono' : cn, 'helv' : cn, 'other': cn,
+                    'size' : 10, 'size2': 9}
         else:
-            faces = {'times': 'Courier', 'mono' : 'Courier',
-                     'helv' : 'Courier', 'other': 'Courier', 'size' : 10,
-                     'size2': 10 }
+           faces = {'times': 'Courier', 'mono' : 'Courier',
+                    'helv' : 'Courier', 'other': 'Courier', 'size' : 10,
+                    'size2': 10 }
         del cn
 
 #---------------------- Frame that contains everything -----------------------
@@ -2236,7 +2236,8 @@ class PythonSTC(wxStyledTextCtrl):
         
         EVT_STC_CHARADDED(self, ID, self.key_up)
         EVT_STC_CHANGE(self, ID, self.cha)
-        EVT_STC_POSCHANGED(self, ID, self.pos)
+        #unavailable in 2.5.1.2, didn't work in previous versions of wxPython
+        # EVT_STC_POSCHANGED(self, ID, self.pos)
         EVT_STC_SAVEPOINTREACHED(self, ID, self.MakeClean)
         EVT_STC_SAVEPOINTLEFT(self, ID, self.MakeDirty)
         self.SetModEventMask(wxSTC_MOD_INSERTTEXT|wxSTC_MOD_DELETETEXT|wxSTC_PERFORMED_USER|wxSTC_PERFORMED_UNDO|wxSTC_PERFORMED_REDO)
