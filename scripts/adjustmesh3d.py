@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.10 2003/03/06 00:28:35 jlvay Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.11 2003/04/17 22:11:25 dave Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -136,10 +136,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
   """
   # --- Save old grid cell and mesh length
   olddz = w3d.dz
-  if not lparallel:
-    oldcenter = 0.5*(w3d.zmmin + w3d.zmmax)
-  else:
-    oldcenter = 0.5*(top.zmslmin[0] + top.zmslmax[-1])
+  oldcenter = 0.5*(w3d.zmminglobal + w3d.zmmaxglobal)
   # --- Set new mesh length by first scaling the min and max
   w3d.dz = newlen/w3d.nzfull
   w3d.zmmin = w3d.zmmin*w3d.dz/olddz
@@ -151,10 +148,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
     top.zpslmax[:] = top.zpslmax*w3d.dz/olddz
   # --- If requested, recenter the mesh about its old center.
   if keepcentered:
-    if not lparallel:
-      newcenter = 0.5*(w3d.zmmin + w3d.zmmax)
-    else:
-      newcenter = 0.5*(top.zmslmin[0] + top.zmslmax[-1])
+    newcenter = 0.5*(w3d.zmminglobal + w3d.zmmaxglobal)
     w3d.zmmin = w3d.zmmin + (oldcenter - newcenter)
     w3d.zmmax = w3d.zmmax + (oldcenter - newcenter)
     if lparallel:
@@ -163,11 +157,12 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
       top.zpslmin[:] = top.zpslmin + (oldcenter - newcenter)
       top.zpslmax[:] = top.zpslmax + (oldcenter - newcenter)
   # --- Reset the global values of the mesh extent
-  w3d.zmminglobal = w3d.zmmin
-  w3d.zmmaxglobal = w3d.zmmax
   if lparallel:
     w3d.zmminglobal = top.zmslmin[0]
     w3d.zmmaxglobal = top.zmslmax[-1]
+  else:
+    w3d.zmminglobal = w3d.zmmin
+    w3d.zmmaxglobal = w3d.zmmax
   # --- Recalculate zmesh
   w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
   # --- Adjust all of the axial meshes
@@ -184,7 +179,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
     top.zzmin = w3d.zmminglobal
     top.zzmax = w3d.zmmaxglobal
     top.zplmesh[:] = top.zzmin + iota(0,top.nzzarr)*top.dzz
-  if top.nzmmnt == w3d.nz:
+  if top.nzmmnt == w3d.nzfull:
     top.dzm = w3d.dz
     top.dzmi = 1./w3d.dz
     top.zmmntmin = w3d.zmmin
