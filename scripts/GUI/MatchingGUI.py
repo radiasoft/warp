@@ -245,12 +245,14 @@ class MatchingGUI(wxPanel):
     def OnMatchendButton(self, event):
         savestdout = sys.stdout
         sys.stdout = newstdout.newstdout(self.EndMatchOutput)
-        matchenv.matchenv(self.endmatchquads,self.afinal,self.bfinal,self.apfinal,self.bpfinal,
-                          usequad=self.usequad,usehele=self.usehele,useemlt=self.emlt,usemmlt=self.mmlt)
+        matchenv.matchenv(self.endmatchquads,self.afinal,self.bfinal,
+                          self.apfinal,self.bpfinal,
+                          usequad=self.usequad,usehele=self.usehele,
+                          useemlt=self.useemlt,usemmlt=self.usemmlt)
         sys.stdout = savestdout
         if self.plotafterendmatch:
-            fma()
-            penv()
+            warp.fma()
+            warp.penv()
 
     def OnPlotendmatchCheckbox(self, event):
         self.plotafterendmatch = self.PlotEndMatch.GetValue()
