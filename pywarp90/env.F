@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.27 $, $Date: 2004/02/06 19:42:28 $
+c@(#) File ENV.M, version $Revision: 3.28 $, $Date: 2004/02/09 22:59:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -637,6 +637,7 @@ c=======================================================================
       use Lattice
       use LatticeInternal
       use Mult_data
+      use SemiTransparentDisc
       real(kind=8):: z,time,zion,aion,gamma,vz,ek,dz
       real(kind=8):: dedr,dexdx,deydy,dbdr,p,a,b,x,y,x1,x2,x01,x02,y1,y2,y01,y02
       real(kind=8):: emitnx_l,emitny_l 
@@ -673,6 +674,7 @@ c than to create new local ones.
       integer(ISZ):: io
       integer(ISZ):: ii,iie,iim,iem,imm
       integer(ISZ):: iq,ih,ie,im,ia
+      real(kind=8):: pscale,maxpscale,sscale,maxsscale,maxzscale,rscale
 
       z1 = z - 0.5 * dz
       z2 = z + 0.5 * dz
@@ -945,6 +947,33 @@ c       --- conversion from d/dt to d/dz
 
       endif
 
+c     --- Apply scaling on the perveance to model the shorting of the self
+c     --- fields near a conducting plate. This, for example, is used to correct
+c     --- the envelope calculation as the beam impinges on the slit plate
+c     --- of an emittance scanner.
+      pscale = 1.
+      if (n_STdiscs > 0) then
+        do ii=1,n_STdiscs
+c         --- Skip this disk if the fix is not to be applied.
+          if (.not. lenvfix_STdisc(ii)) cycle
+c         --- Calculate the z range over which the fix is to be applied
+          rscale = sqrt(a*b)
+          maxzscale = max(envfixzscale_STdisc(ii),
+     &                    envfixsscale_STdisc(ii)*sqrt(a*b))
+c         --- If the z is outside that range, then skip this disk
+          if (abs(z - z_STdiscs(ii)) > maxzscale) cycle
+c         --- Apply the fix. Note that fixes from multipe disks will be
+c         --- multiplied.
+c         --- The fix is scaled by the scale factor at the max distance
+c         --- away from the plate that the fix is applied. This is done so
+c         --- at the point, the scale factor converges to one.
+          maxsscale = maxzscale/rscale
+          maxpscale = maxsscale/sqrt(1.+maxsscale**2)
+          sscale = abs(z - z_STdiscs(ii))/rscale
+          pscale = pscale*(sscale/sqrt(1.+sscale**2))/maxpscale
+        enddo
+      endif
+
 c     --- Compute external uniform focusing (proportional to r and 
 c     --- azimuthally symmetric) and quadrupole focusing strengths
       fux = zion*echarge*(dedrr + dexdx - dbdrr*vz)/(aion*amu*gamma*vz**2)
@@ -953,7 +982,7 @@ c     --- azimuthally symmetric) and quadrupole focusing strengths
       fsol = (zion*echarge*bz/(2.*aion*amu*gamma*vz))**2
 
 c     --- Calculate forces for advancing envelope, centroid, and test particles
-      feself = 2.*p/(a + b)
+      feself = 2.*p*pscale/(a + b)
       fa = ( fq + fux - fsol)*a + feself + (emitnx_l*clight/(vz*gamma))**2/a**3
       fb = (-fq + fuy - fsol)*b + feself + (emitny_l*clight/(vz*gamma))**2/b**3
       fx = zion*echarge/(aion*amu*gamma*vz**2)*(xdedx - xdbdx*vz + xex)

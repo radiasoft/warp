@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.118 $, $Date: 2004/02/06 21:37:03 $
+#@(#) File TOP.V, version $Revision: 3.119 $, $Date: 2004/02/09 22:59:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.118 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.119 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2130,12 +2130,23 @@ buffer2d(0:b2d1,0:b2d2,2) _real
 
 ******* SemiTransparentDisc dump:
 # semitransparent disc data
-n_STdiscs             integer /0/         # Number of semitransparent discs
-z_STdiscs(n_STdiscs)  _real               # Positions of semitransparent discs
-r_STdiscs(n_STdiscs)  _real               # Radii of semitransparent discs
-t_STdiscs(n_STdiscs)  _real               # Transparency of semitransparent discs
-semitransparent_disc(dz:real) subroutine # Randomly absorb particles passing through disc based on data in group SemiTransparentDisc.
-					 # dz is the maximum distance traveled by particles in one time step.
+n_STdiscs             integer /0/  # Number of semitransparent discs
+z_STdiscs(n_STdiscs)  _real        # Positions of semitransparent discs
+r_STdiscs(n_STdiscs)  _real        # Radii of semitransparent discs
+t_STdiscs(n_STdiscs)  _real        # Transparency of semitransparent discs
+semitransparent_disc(dz:real) subroutine
+    # Randomly absorb particles passing through disc based on data in group
+    # SemiTransparentDisc. dz is the maximum distance traveled by particles
+    # in one time step.
+lenvfix_STdisc(n_STdiscs)  _logical
+    # When true, the perveance is scaled as the beam nears the disc to model
+    # the shorting out of the self fields.
+envfixzscale_STdisc(n_STdiscs) _real /LARGEPOS/ [m]
+    # Length (in meters) over which the perveance correction is applied
+    # to the envelope calculation.
+envfixsscale_STdisc(n_STdiscs) _real /LARGEPOS/ [1]
+    # Length (in beam radii) over which the perveance correction is applied
+    # to the envelope calculation.
 
 *********** Temperatures dump:
 nstmp integer /1/ # nb species
