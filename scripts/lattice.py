@@ -35,7 +35,7 @@ madtowarp(lattice)
 from warp import *
 import __main__
 import RandomArray
-lattice_version = "$Id: lattice.py,v 1.18 2003/04/25 22:59:46 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.19 2003/06/12 22:36:18 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1688,6 +1688,9 @@ emlt arrays with the same suffices:
   if ie > top.nemlt or top.emltid[-1] != 0:
     top.nemlt = top.nemlt + 100
     top.neerr = top.neerr + 100
+    gchange("Lattice")
+  if top.neerr < 0:
+    top.neerr = top.nemlt
     gchange("Lattice")
 
   # --- Setup dictionary relating lattice array with input argument names.
