@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.27 $, $Date: 2002/11/05 23:23:23 $
+c@(#) File WXY.M, version $Revision: 3.28 $, $Date: 2002/11/06 01:39:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1165,11 +1165,20 @@ c              --- for interpolation in moments calculation
                enddo
              endif
 c            --- Calculate moments over particles, now that we're sync'd
-             if (ldiag)
-     &         call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),sq(1),sm(is),sw(is),dt*0.5,2,
-     &                       nplive,uxpo,uypo,uzpo,is,ns)
+             if (ldiag) then
+               if(wpid==0) then
+                 call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                         gaminv(ipmin),sq(1),sm(is),sw(is),dt*0.5,2,
+     &                         nplive,uxpo,uypo,uzpo,is,ns)
+               else
+                 call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                         gaminv(ipmin),pid(ipmin,wpid),
+     &                         sq(1),sm(is),sw(is),dt*0.5,2,
+     &                         nplive,uxpo,uypo,uzpo,is,ns)
+               endif
+             endif
 c            --- Calculate current
              call setcurrxy(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                      sq(is),sw(is),zbeam,dzz,zzmin,dz,lthick)

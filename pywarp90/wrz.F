@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.10 $, $Date: 2002/11/05 22:36:44 $
+c@(#) File WRZ.M, version $Revision: 3.11 $, $Date: 2002/11/06 01:38:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -255,10 +255,17 @@ c             --- Use t=0 u data also as "old" data for extraps
               call copyarry (uxp(ipmin),uxpo,num)
               call copyarry (uyp(ipmin),uypo,num)
               call copyarry (uzp(ipmin),uzpo,num)
-              call getzmmnt(num,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                      uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                      gaminv(ipmin),sq(1),sm(1),sw(1),dt/2.,2,nplive,
-     &                      uxpo,uypo,uzpo,is,ns)
+              if(wpid==0) then
+                call getzmmnt(num,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                        uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                        gaminv(ipmin),sq(1),sm(1),sw(1),dt/2.,2,nplive,
+     &                        uxpo,uypo,uzpo,is,ns)
+              else
+                call getzmmnt_weights(num,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                        uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                        gaminv(ipmin),pid(ipmin,wpid),sq(1),sm(1),sw(1),dt/2.,2,nplive,
+     &                        uxpo,uypo,uzpo,is,ns)
+              endif
            enddo
            call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),dt/2.,
      &                   3,nplive,uxpo,uypo,uzpo,1,ns)
@@ -1094,10 +1101,18 @@ c             --- z moments
 c              call getemits(ip,xp(ipmin),yp(ipmin),zp(ipmin),
 c    &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),
 c    &                       gaminv(ipmin),sm(is),sw(is),2,nplive)
-               call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),sq(1),sm(is),sw(is),dt/2.,2,nplive,
-     &                       uxpo,uypo,uzpo,is,ns)
+               if(wpid==0) then
+                 call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                         gaminv(ipmin),sq(1),sm(is),sw(is),dt/2.,2,nplive,
+     &                         uxpo,uypo,uzpo,is,ns)
+               else
+                 call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
+     &                         gaminv(ipmin),pid(ipmin,wpid),
+     &                         sq(1),sm(is),sw(is),dt/2.,2,nplive,
+     &                         uxpo,uypo,uzpo,is,ns)
+               endif
                call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                      sq(is),sw(is),zgrid,dz,zmmin)
             endif
