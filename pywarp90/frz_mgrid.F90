@@ -1,4 +1,4 @@
-!     Last change:  JLV  19 Jun 2003    9:16 am
+!     Last change:  JLV   9 Jul 2003    2:31 pm
 #include "top.h"
 
 module multigrid_common
@@ -474,6 +474,7 @@ TYPE(GRIDtype), pointer :: g
 LOGICAL(ISZ),OPTIONAL :: next_too
 INTEGER(ISZ):: i
 TYPE(BNDtype), pointer :: b
+TYPE(GRIDtype), pointer :: gup
 
   IF(associated(g%down)) call del_grid(g%down,.true.)
   IF(PRESENT(next_too)) then
@@ -8461,10 +8462,10 @@ do igrid=1,ngrids
         endif
       endif
 
-      dxm = c%dxm(ic)
-      dxp = c%dxp(ic)
-      dzm = c%dzm(ic)
-      dzp = c%dzp(ic)
+      dxm = MIN(b%dr,c%dxm(ic))
+      dxp = MIN(b%dr,c%dxp(ic))
+      dzm = MIN(b%dz,c%dzm(ic))
+      dzp = MIN(b%dz,c%dzp(ic))
       select case (bnd_method)
         case (egun)
           dxx=b%dr
@@ -8582,10 +8583,10 @@ do igrid=1,ngrids
      END if
 
      IF(l_change) then
-      dxm = c%dxm(ic)
-      dxp = c%dxp(ic)
-      dzm = c%dzm(ic)
-      dzp = c%dzp(ic)
+      dxm = MIN(b%dr,c%dxm(ic))
+      dxp = MIN(b%dr,c%dxp(ic))
+      dzm = MIN(b%dz,c%dzm(ic))
+      dzp = MIN(b%dz,c%dzp(ic))
       select case (bnd_method)
         case (egun)
           dxx=b%dr
