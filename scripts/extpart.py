@@ -7,7 +7,7 @@ Two functions are available for saving the object in a file.
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.19 2003/09/04 23:41:59 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.20 2003/09/05 19:05:37 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -132,7 +132,7 @@ routines (such as ppxxp).
     for i in range(top.nepwin):
       if top.izepwin[i] == self.iz and self.iz >= 0: return i
       if top.zzepwin[i] == self.zz and self.iz == -1: return i
-    raise "Uh Ooh! Somehow the window was deleted! I can't continue!"
+    raise "Uh Ooh! Somehow the window was deleted! I can't continue! "+self.titleright(None,None)
 
   def setupid(self):
     top.nepwin = top.nepwin + 1
@@ -257,60 +257,60 @@ routines (such as ppxxp).
     if self.laccumulate: self.setuparrays()
 
   ############################################################################
-  def selectparticles(self,val,js=0,t=None,wt=None,tp=None):
-    if t is None: return val[js][:]
+  def selectparticles(self,val,js=0,tc=None,wt=None,tp=None):
+    if tc is None: return val[js][:]
     if wt is None: wt = self.dt
     if tp is None: tp = self.tep[js][:]
-    ii = compress((t-wt<tp)&(tp<t+wt),aranage(len(tp)))
+    ii = compress((tc-wt<tp)&(tp<tc+wt),arange(len(tp)))
     return take(val[js][:],ii)
 
   def getns(self): return len(self.tep)
-  def gett(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.tep,t,wt,tp)
-  def getx(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.xep,t,wt,tp)
-  def gety(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.yep,t,wt,tp)
-  def getux(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.uxep,t,wt,tp)
-  def getuy(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.uyep,t,wt,tp)
-  def getuz(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.uzep,t,wt,tp)
-  def getvx(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.uxep,t,wt,tp)
-  def getvy(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.uyep,t,wt,tp)
-  def getvz(self,js=0,t=None,wt=None,tp=None):
-    return self.selectparticles(self.uzep,t,wt,tp)
+  def gett(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.tep,js,tc,wt,tp)
+  def getx(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.xep,js,tc,wt,tp)
+  def gety(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.yep,js,tc,wt,tp)
+  def getux(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.uxep,js,tc,wt,tp)
+  def getuy(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.uyep,js,tc,wt,tp)
+  def getuz(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.uzep,js,tc,wt,tp)
+  def getvx(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.uxep,js,tc,wt,tp)
+  def getvy(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.uyep,js,tc,wt,tp)
+  def getvz(self,js=0,tc=None,wt=None,tp=None):
+    return self.selectparticles(self.uzep,js,tc,wt,tp)
 
-  def getxp(self,js=0,t=None,wt=None,tp=None):
-    return self.getux(js,t,wt,tp)/self.getuz(js,t,wt,tp)
-  def getyp(self,js=0,t=None,wt=None,tp=None):
-    return self.getuy(js,t,wt,tp)/self.getuz(js,t,wt,tp)
-  def getr(self,js=0,t=None,wt=None,tp=None):
-    return sqrt(self.getx(js,t,wt,tp)**2 + self.gety(js,t,wt,tp)**2)
-  def gettheta(self,js=0,t=None,wt=None,tp=None):
-    return arctan2(self.gety(js,t,wt,tp),self.getx(js,t,wt,tp))
-  def getrp(self,js=0,t=None,wt=None,tp=None):
-    return (self.getxp(js,t,wt,tp)*cos(self.gettheta(js,t,wt,tp)) +
-            self.getyp(js,t,wt,tp)*sin(self.gettheta(js,t,wt,tp)))
-  def getn(self,js=0,t=None,wt=None,tp=None):
-    return len(self.gett(js,t,wt,tp))
+  def getxp(self,js=0,tc=None,wt=None,tp=None):
+    return self.getux(js,tc,wt,tp)/self.getuz(js,tc,wt,tp)
+  def getyp(self,js=0,tc=None,wt=None,tp=None):
+    return self.getuy(js,tc,wt,tp)/self.getuz(js,tc,wt,tp)
+  def getr(self,js=0,tc=None,wt=None,tp=None):
+    return sqrt(self.getx(js,tc,wt,tp)**2 + self.gety(js,tc,wt,tp)**2)
+  def gettheta(self,js=0,tc=None,wt=None,tp=None):
+    return arctan2(self.gety(js,tc,wt,tp),self.getx(js,tc,wt,tp))
+  def getrp(self,js=0,tc=None,wt=None,tp=None):
+    return (self.getxp(js,tc,wt,tp)*cos(self.gettheta(js,tc,wt,tp)) +
+            self.getyp(js,tc,wt,tp)*sin(self.gettheta(js,tc,wt,tp)))
+  def getn(self,js=0,tc=None,wt=None,tp=None):
+    return len(self.gett(js,tc,wt,tp))
 
-  def xxpslope(self,js=0,t=None,wt=None,tp=None):
-    return ((ave(self.getx(js,t,wt,tp)*self.getxp(js,t,wt,tp)) -
-             ave(self.getx(js,t,wt,tp))*ave(self.getxp(js,t,wt,tp)))/
-            (ave(self.getx(js,t,wt,tp)*self.getx(js,t,wt,tp)) -
-             ave(self.getx(js,t,wt,tp))*ave(self.getx(js,t,wt,tp))))
-  def yypslope(self,js=0,t=None,wt=None,tp=None):
-    return ((ave(self.gety(js,t,wt,tp)*self.getyp(js,t,wt,tp)) -
-             ave(self.gety(js,t,wt,tp))*ave(self.getyp(js,t,wt,tp)))/
-            (ave(self.gety(js,t,wt,tp)*self.gety(js,t,wt,tp)) -
-             ave(self.gety(js,t,wt,tp))*ave(self.gety(js,t,wt,tp))))
-  def rrpslope(self,js=0,t=None,wt=None,tp=None):
-    return (ave(self.getr(js,t,wt,tp)*self.getrp(js,t,wt,tp))/
-            ave(self.getr(js,t,wt,tp)**2))
+  def xxpslope(self,js=0,tc=None,wt=None,tp=None):
+    return ((ave(self.getx(js,tc,wt,tp)*self.getxp(js,tc,wt,tp)) -
+             ave(self.getx(js,tc,wt,tp))*ave(self.getxp(js,tc,wt,tp)))/
+            (ave(self.getx(js,tc,wt,tp)*self.getx(js,tc,wt,tp)) -
+             ave(self.getx(js,tc,wt,tp))*ave(self.getx(js,tc,wt,tp))))
+  def yypslope(self,js=0,tc=None,wt=None,tp=None):
+    return ((ave(self.gety(js,tc,wt,tp)*self.getyp(js,tc,wt,tp)) -
+             ave(self.gety(js,tc,wt,tp))*ave(self.getyp(js,tc,wt,tp)))/
+            (ave(self.gety(js,tc,wt,tp)*self.gety(js,tc,wt,tp)) -
+             ave(self.gety(js,tc,wt,tp))*ave(self.gety(js,tc,wt,tp))))
+  def rrpslope(self,js=0,tc=None,wt=None,tp=None):
+    return (ave(self.getr(js,tc,wt,tp)*self.getrp(js,tc,wt,tp))/
+            ave(self.getr(js,tc,wt,tp)**2))
 
   ############################################################################
   ############################################################################
@@ -328,36 +328,39 @@ functions.
     kw['allowbadargs'] = 1
     if badargs: raise "bad arguments ",string.join(badargs.keys())
 
-  def titleright(self,t,wt):
-    if t is None: ttext = ''
-    else:         ttext = "  time = %f ^+_-%f"%(t,wt)
+  def titleright(self,tc,wt):
+    if tc is None:
+      ttext = ''
+    else:
+      if wt is None: wt = self.dt
+      ttext = "  time = %f ^+_-%f"%(tc,wt)
     if self.iz >= 0:
       ztext =  "iz = %d (z = %f m)"%(self.iz,w3d.zmminglobal+self.iz*w3d.dz)
     else:
-      ztext =  "z = %f m"%self.f
+      ztext =  "z = %f m"%self.zz
     return ztext + ttext
 
   ############################################################################
-  def pxy(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def pxy(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots X-Y for extraploated particles"""
     self.checkplotargs(kw)
-    x = self.getx(js,t,wt,tp)
-    y = self.gety(js,t,wt,tp)
+    x = self.getx(js,tc,wt,tp)
+    y = self.gety(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     else:
       kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
-    settitles("Y vs X","X","Y",self.titleright(t,wt))
+    settitles("Y vs X","X","Y",self.titleright(tc,wt))
     ppgeneric(y,x,kwdict=kw)
 
   ############################################################################
-  def pxxp(self,js=0,t=None,wt=None,tp=None,slope=0.,offset=0.,particles=1,
+  def pxxp(self,js=0,tc=None,wt=None,tp=None,slope=0.,offset=0.,particles=1,
            **kw):
     """Plots X-X' for extraploated particles"""
     self.checkplotargs(kw)
-    x = self.getx(js,t,wt,tp)
-    xp = self.getxp(js,t,wt,tp)
+    x = self.getx(js,tc,wt,tp)
+    xp = self.getxp(js,tc,wt,tp)
     if type(slope) == type(''):
       slope = (ave(x*xp)-ave(x)*ave(xp))/(ave(x*x) - ave(x)**2)
       offset = ave(xp)-slope*ave(x)
@@ -368,16 +371,16 @@ functions.
       kw['lframe'] = 1
     else:
       kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
-    settitles("X' vs X","X","X'",self.titleright(t,wt))
+    settitles("X' vs X","X","X'",self.titleright(tc,wt))
     ppgeneric(xp,x,kwdict=kw)
 
   ############################################################################
-  def pyyp(self,js=0,t=None,wt=None,tp=None,slope=0.,offset=0.,particles=1,
+  def pyyp(self,js=0,tc=None,wt=None,tp=None,slope=0.,offset=0.,particles=1,
            **kw):
     """Plots Y-Y' for extraploated particles"""
     self.checkplotargs(kw)
-    y = self.gety(js,t,wt,tp)
-    yp = self.getyp(js,t,wt,tp)
+    y = self.gety(js,tc,wt,tp)
+    yp = self.getyp(js,tc,wt,tp)
     if type(slope) == type(''):
       slope = (ave(y*yp)-ave(y)*ave(yp))/(ave(y*y) - ave(y)**2)
       offset = ave(yp)-slope*ave(y)
@@ -388,32 +391,32 @@ functions.
       kw['lframe'] = 1
     else:
       kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
-    settitles("Y' vs Y","Y","Y'",self.titleright(t,wt))
+    settitles("Y' vs Y","Y","Y'",self.titleright(tc,wt))
     ppgeneric(yp,y,kwdict=kw)
 
   ############################################################################
-  def pxpyp(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def pxpyp(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots X'-Y' for extraploated particles"""
     self.checkplotargs(kw)
-    xp = self.getxp(js,t,wt,tp)
-    yp = self.getyp(js,t,wt,tp)
+    xp = self.getxp(js,tc,wt,tp)
+    yp = self.getyp(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     else:
       kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
-    settitles("Y' vs X'","X'","Y'",self.titleright(t,wt))
+    settitles("Y' vs X'","X'","Y'",self.titleright(tc,wt))
     ppgeneric(yp,xp,kwdict=kw)
 
   ############################################################################
-  def prrp(self,js=0,t=None,wt=None,tp=None,scale=0.,slope=0.,offset=0.,
+  def prrp(self,js=0,tc=None,wt=None,tp=None,scale=0.,slope=0.,offset=0.,
            particles=1,**kw):
     """Plots R-R' for extraploated particles"""
     self.checkplotargs(kw)
-    x = self.getx(js,t,wt,tp)
-    y = self.gety(js,t,wt,tp)
-    xp = self.getxp(js,t,wt,tp)
-    yp = self.getyp(js,t,wt,tp)
+    x = self.getx(js,tc,wt,tp)
+    y = self.gety(js,tc,wt,tp)
+    xp = self.getxp(js,tc,wt,tp)
+    yp = self.getyp(js,tc,wt,tp)
     xscale = 1.
     yscale = 1.
     xpscale = 1.
@@ -438,139 +441,139 @@ functions.
     else:
       kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
                         top.xpplmin/xpscale,top.xpplmax/ypscale)
-    settitles("R' vs R","R","R'",self.titleright(t,wt))
+    settitles("R' vs R","R","R'",self.titleright(tc,wt))
     ppgeneric(rp,r,kwdict=kw)
 
   ############################################################################
-  def ptx(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptx(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-X for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    x = self.getx(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    x = self.getx(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     else:
       kw['pplimits'] = ('e','e',top.xplmin,top.xplmax)
-    settitles("X vs time","time","X",self.titleright(t,wt))
+    settitles("X vs time","time","X",self.titleright(tc,wt))
     ppgeneric(x,t,kwdict=kw)
 
   ############################################################################
-  def pty(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def pty(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-Y for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    y = self.gety(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    y = self.gety(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     else:
       kw['pplimits'] = ('e','e',top.yplmin,top.yplmax)
-    settitles("Y vs time","time","Y",self.titleright(t,wt))
+    settitles("Y vs time","time","Y",self.titleright(tc,wt))
     ppgeneric(y,t,kwdict=kw)
 
   ############################################################################
-  def ptxp(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptxp(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-X' for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    xp = self.getxp(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    xp = self.getxp(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     else:
       kw['pplimits'] = ('e','e',top.xpplmin,top.xpplmax)
-    settitles("X' vs time","time","X'",self.titleright(t,wt))
+    settitles("X' vs time","time","X'",self.titleright(tc,wt))
     ppgeneric(xp,t,kwdict=kw)
 
   ############################################################################
-  def ptyp(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptyp(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-Y' for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    yp = self.getyp(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    yp = self.getyp(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
     else:
       kw['pplimits'] = ('e','e',top.ypplmin,top.ypplmax)
-    settitles("Y' vs time","time","Y'",self.titleright(t,wt))
+    settitles("Y' vs time","time","Y'",self.titleright(tc,wt))
     ppgeneric(yp,t,kwdict=kw)
 
   ############################################################################
-  def ptux(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptux(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-ux for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    ux = self.getux(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    ux = self.getux(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
-    settitles("ux vs time","time","ux",self.titleright(t,wt))
+    settitles("ux vs time","time","ux",self.titleright(tc,wt))
     ppgeneric(ux,t,kwdict=kw)
 
   ############################################################################
-  def ptuy(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptuy(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-uy for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    uy = self.getuy(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    uy = self.getuy(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
-    settitles("uy vs time","time","uy",self.titleright(t,wt))
+    settitles("uy vs time","time","uy",self.titleright(tc,wt))
     ppgeneric(uy,t,kwdict=kw)
 
   ############################################################################
-  def ptuz(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptuz(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-uz for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    uz = self.getuz(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    uz = self.getuz(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
-    settitles("uz vs time","time","uz",self.titleright(t,wt))
+    settitles("uz vs time","time","uz",self.titleright(tc,wt))
     ppgeneric(uz,t,kwdict=kw)
 
   ############################################################################
-  def ptvx(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptvx(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-Vx for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    vx = self.getvx(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    vx = self.getvx(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
-    settitles("Vx vs time","time","Vx",self.titleright(t,wt))
+    settitles("Vx vs time","time","Vx",self.titleright(tc,wt))
     ppgeneric(vx,t,kwdict=kw)
 
   ############################################################################
-  def ptvy(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptvy(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-Vy for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    vy = self.getvy(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    vy = self.getvy(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
-    settitles("Vy vs time","time","Vy",self.titleright(t,wt))
+    settitles("Vy vs time","time","Vy",self.titleright(tc,wt))
     ppgeneric(vy,t,kwdict=kw)
 
   ############################################################################
-  def ptvz(self,js=0,t=None,wt=None,tp=None,particles=1,**kw):
+  def ptvz(self,js=0,tc=None,wt=None,tp=None,particles=1,**kw):
     """Plots time-Vz for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.gett(js,t,wt,tp)
-    vz = self.getvz(js,t,wt,tp)
+    t = self.gett(js,tc,wt,tp)
+    vz = self.getvz(js,tc,wt,tp)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
-    settitles("Vz vs time","time","Vz",self.titleright(t,wt))
+    settitles("Vz vs time","time","Vz",self.titleright(tc,wt))
     ppgeneric(vz,t,kwdict=kw)
 
   ############################################################################
-  def ptrace(self,js=0,t=None,wt=None,tp=None,slope=0.,particles=1,
+  def ptrace(self,js=0,tc=None,wt=None,tp=None,slope=0.,particles=1,
              pplimits=None,**kw):
     """
 Plots X-Y, X-X', Y-Y', Y'-X' in single page
@@ -580,11 +583,11 @@ If any of the tuples are empty, the limits used will be the usual ones for
 that plot.
     """
     self.checkplotargs(kw)
-    x = self.getx(js,t,wt,tp)
-    y = self.gety(js,t,wt,tp)
-    xp = self.getxp(js,t,wt,tp)
-    yp = self.getyp(js,t,wt,tp)
-    titler = self.titleright(t,wt)
+    x = self.getx(js,tc,wt,tp)
+    y = self.gety(js,tc,wt,tp)
+    xp = self.getxp(js,tc,wt,tp)
+    yp = self.getyp(js,tc,wt,tp)
+    titler = self.titleright(tc,wt)
     kw['particles'] = particles
     defaultpplimits = [(top.xplmin,top.xplmax,top.yplmin,top.yplmax),
                        (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax),
