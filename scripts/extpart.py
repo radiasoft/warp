@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.3 2001/07/12 00:39:21 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.4 2001/07/19 20:33:52 dave Exp $"
 
 def extpartdoc():
   print """
@@ -45,11 +45,12 @@ routines (such as ppxxp).
   def __init__(self,iz,nepmax=None,laccumulate=0):
     # --- Save input values, getting default values when needed
     self.iz = iz
+    self.izlocal = iz - top.izslave[me]
     self.laccumulate = laccumulate
     if nepmax is None:
       self.nepmax = 10000
-      if top.allocated("pnumz"):
-        if top.pnumz[iz] > 0: self.nepmax = top.pnumz[iz]*3
+      if top.allocated("pnumz") and 0 <= self.izlocal <= top.nzmmnt:
+        if top.pnumz[self.izlocal] > 0: self.nepmax = top.pnumz[self.izlocal]*3
     else:
       self.nepmax = nepmax
     # --- Add this new window to the ExtPart group in top
@@ -88,8 +89,8 @@ routines (such as ppxxp).
   def getid(self):
     assert self.enabled,"This window is disabled and there is no associated id"
     for i in xrange(top.nepwin):
-      if top.izepwin[i] == self.iz: return i
-    raise "Oh Ooh! Somehow the window was deleted! I can't continue!"
+      if top.izepwin[i] == self.izlocal: return i
+    raise "Uh Ooh! Somehow the window was deleted! I can't continue!"
 
   def enable(self):
     # --- Add this window to the list
@@ -101,7 +102,7 @@ routines (such as ppxxp).
     top.nepwin = top.nepwin + 1
     if top.nepmax < self.nepmax: top.nepmax = self.nepmax
     err = gchange("ExtPart")
-    top.izepwin[-1] = self.iz
+    top.izepwin[-1] = self.izlocal
     # --- Set so accumulate method is called after time steps
     installafterstep(self.accumulate)
     self.enabled = 1
@@ -118,39 +119,51 @@ routines (such as ppxxp).
     self.enabled = 0
 
   def accumulate(self):
-    if maxnd(top.nep) == top.nepmax:
+    if globalmax(maxnd(top.nep) == top.nepmax):
       print "************* WARNING *************"
       print "**** Not enough space was allocated for the ExtPart arrays."
       print "**** The data will not be correct and will not be saved."
       print "**** A guess will be made as to how much to increase the size"
       print "**** of the arrays. Please run another timestep to accumulate new"
       print "**** data"
-      if top.allocated('pnumz'): guess = 3*top.pnumz[self.iz]
-      else:                       guess = 0
-      top.nepmax = max(2*top.nepmax,guess)
-      err = gchange("ExtPart")
+      if top.allocated("pnumz") and 0 <= self.izlocal <= top.nzmmnt:
+        guess = 3*top.pnumz[self.izlocal]
+      else:
+        guess = 0
+      # --- Only do this on if the relation is true. This avoids unnecessarily
+      # --- increasing the size of the arrays on processors where no data
+      # --- is gathered.
+      if maxnd(top.nep) == top.nepmax:
+        top.nepmax = max(2*top.nepmax,guess)
+        err = gchange("ExtPart")
       return
-    id = self.getid()
-    if self.laccumulate:
-      for js in xrange(top.ns):
-        nn = top.nep[id,js]
-        if nn > 0:
-          self.tep[js].append(top.tep[:nn,id,js])
-          self.xep[js].append(top.xep[:nn,id,js])
-          self.yep[js].append(top.yep[:nn,id,js])
-          self.uxep[js].append(top.uxep[:nn,id,js])
-          self.uyep[js].append(top.uyep[:nn,id,js])
-          self.uzep[js].append(top.uzep[:nn,id,js])
-    else:
-      for js in xrange(top.ns):
-        nn = top.nep[id,js]
-        if nn > 0:
-          self.tep[js] = top.tep[:nn,id,js] + 0.
-          self.xep[js] = top.xep[:nn,id,js] + 0.
-          self.yep[js] = top.yep[:nn,id,js] + 0.
-          self.uxep[js] = top.uxep[:nn,id,js] + 0.
-          self.uyep[js] = top.uyep[:nn,id,js] + 0.
-          self.uzep[js] = top.uzep[:nn,id,js] + 0.
+    for js in xrange(top.ns):
+      id = self.getid()
+      # --- Gather the data.
+      # --- In parallel, the data is gathered in PE0, return empty arrays
+      # --- on other processors. In serial, the arrays are just returned as is.
+      nn = top.nep[id,js]
+      t = gatherarray(top.tep[:nn,id,js]+0.,othersempty=1)
+      x = gatherarray(top.xep[:nn,id,js]+0.,othersempty=1)
+      y = gatherarray(top.yep[:nn,id,js]+0.,othersempty=1)
+      ux = gatherarray(top.uxep[:nn,id,js]+0.,othersempty=1)
+      uy = gatherarray(top.uyep[:nn,id,js]+0.,othersempty=1)
+      uz = gatherarray(top.uzep[:nn,id,js]+0.,othersempty=1)
+      if len(t) > 0:
+        if self.laccumulate:
+          self.tep[js].append(t)
+          self.xep[js].append(x)
+          self.yep[js].append(y)
+          self.uxep[js].append(ux)
+          self.uyep[js].append(uy)
+          self.uzep[js].append(uz)
+        else:
+          self.tep[js] = t
+          self.xep[js] = x
+          self.yep[js] = y
+          self.uxep[js] = ux
+          self.uyep[js] = uy
+          self.uzep[js] = uz
 
   def setaccumulate(self,v=1):
     self.laccumulate = v
@@ -169,8 +182,8 @@ routines (such as ppxxp).
   def yp(self,js=0): return self.uy(js)/self.uz(js)
   def r(self,js=0): return sqrt(self.x(js)**2 + self.y(js)**2)
   def theta(self,js=0): return arctan2(self.y(js),self.x(js))
-  def rp(self,js=0):
-    return self.xp(js)*cos(self.theta(js)) + self.yp(js)*sin(self.theta(js))
+  def rp(self,js=0): return self.xp(js)*cos(self.theta(js)) + \
+                            self.yp(js)*sin(self.theta(js))
   def nep(self,js=0): return len(self.tep[js][:])
 
   ############################################################################
@@ -483,16 +496,30 @@ def dumpExtPart(object,filename):
   """Dump the saved extrapolated data to a file
  - filename: The name of the file to save the data in"""
   if me == 0:
+    # --- Only PE0 writes the object to the file since it is the processor
+    # --- where the data is gathered.
     ff = open(filename,'w')
     cPickle.dump(object,ff,1)
     ff.close()
 
 def restoreExtPart(object,filename):
   """Restore extrapolated data from the given file"""
-  ff = open(filename,'r')
-  result = cPickle.load(ff)
-  result.enable()
-  ff.close()
+  if me == 0:
+    # --- Only PE0 wrote the object to the file since it is the processor
+    # --- where the data was gathered.
+    ff = open(filename,'r')
+    result = cPickle.load(ff)
+    ff.close()
+    result.enable()
+    # --- Get the value of iz
+    iz = result.iz
+  else:
+    # --- Create temp iz
+    iz = 0
+  # --- PE0 broadcasts its value of iz to all of the other processors
+  # --- whcih create new instances of the ExtPart class.
+  iz = broadcast(iz)
+  if me > 0: result = ExtPart(iz)
   return result
 
 
