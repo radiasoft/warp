@@ -1,7 +1,7 @@
 from warp import *
 from grid_1d import *
 from grid_2d import *
-emittance_version = "$Id: emittance.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+emittance_version = "$Id: emittance.py,v 1.2 2002/04/30 21:36:08 dave Exp $"
 
 def emit1(threshold=0.05,js=0):
   (gg,ggmesh) = gather_1d(top.xp[top.ins[js]-1:top.ins[js]+top.nps[js]-1])
@@ -68,7 +68,7 @@ Output:
   i2 = top.ins[js]+top.nps[js]-1
   zw0 = top.zwindows[0,iw]+top.zbeam
   zw1 = top.zwindows[1,iw]+top.zbeam
-  ii = compress(logical_and(greater(top.uzp[i1:i2],0.),
+  ii = compress(logical_and(not_equal(top.uzp[i1:i2],0.),
                  logical_and(less(zw0,top.zp[i1:i2]),less(top.zp[i1:i2],zw1))),
                 arange(i1,i2))
   xx = take(top.xp,ii)
@@ -150,7 +150,7 @@ Output:
   i2 = top.ins[js]+top.nps[js]-1
   zw0 = top.zwindows[0,iw]+top.zbeam
   zw1 = top.zwindows[1,iw]+top.zbeam
-  ii = compress(logical_and(greater(top.uzp[i1:i2],0.),
+  ii = compress(logical_and(not_equal(top.uzp[i1:i2],0.),
                  logical_and(less(zw0,top.zp[i1:i2]),less(top.zp[i1:i2],zw1))),
                 arange(i1,i2))
   xx = take(top.xp,ii)
