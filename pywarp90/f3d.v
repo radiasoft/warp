@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.22 $, $Date: 2002/01/24 21:11:59 $
+#@(#) File F3D.V, version $Revision: 3.23 $, $Date: 2002/03/07 21:27:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.22 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.23 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -387,3 +387,12 @@ vcap3d   (iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
           nx,ny,nz,scrtch:real,xmmax:real,zmmin:real,zgrid:real,
           pipeshpe:string,periinz:logical,l2symtry:logical,l4symtry:logical)
      subroutine # External routine for capacity matrix field solve
+
+
+****** Chombosubs:
+reachablenodes(dx:real,mask:integer,xlo:integer,ylo:integer,zlo:integer,
+               xhi:integer,yhi:integer,zhi:integer,ncomp:integer) subroutine
+coverednodes(dx:real,mask:integer,xlo:integer,ylo:integer,zlo:integer,
+             xhi:integer,yhi:integer,zhi:integer) subroutine
+nodalcoefficients(dx:real,coeffs:real,xlo:integer,ylo:integer,zlo:integer,
+                  xhi:integer,yhi:integer,zhi:integer,ncomp:integer) subroutine
