@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.1 $, $Date: 2001/04/19 23:44:01 $
+c@(#) File DW3D.M, version $Revision: 3.2 $, $Date: 2001/04/20 00:22:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -18,7 +18,7 @@ c=============================================================================
       use Picglb3d
       use Io
       use Ch_var
-      logical     :: lprntpara
+      logical(ISZ):: lprntpara
 
 c  Prints out various parameters to a plot frame and an output file or tty
 
@@ -98,7 +98,7 @@ c=============================================================================
       use Win_Moments
       use Z_Moments
 
-      integer     :: iwin,ix,iy,iz,ii
+      integer(ISZ):: iwin,ix,iy,iz,ii
       real(kind=8):: zwin,z0,z1,ww
 
 c  Sets rho window diagnostics (they need data from the 3d mesh)
@@ -168,13 +168,13 @@ c=============================================================================
       use InPltCtl3d
       use Timers
       character*3:: fld
-      integer     :: freqflag
+      integer(ISZ):: freqflag
 
 c  Master control for doing field plots
 
 
       real(kind=8):: timetemp,wtime
-      integer     :: i
+      integer(ISZ):: i
 
       timetemp = wtime()
 
@@ -198,7 +198,7 @@ c  Sets 1d array for the charge density on the axis
       use Fields3d
       use Z_arrays
 
-      integer     :: ix,iy,iz,izg
+      integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: zz,wzg,dzi
 
       dzi = 1./dz
@@ -235,7 +235,7 @@ c  Sets 1d array for the potential on the axis
       use Picglb3d
       use Fields3d
 
-      integer     :: ix,iy,iz,izg
+      integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: zz,wzg,dzi
 
       dzi = 1./dz
@@ -272,7 +272,7 @@ c  Sets 1d array for the space charge E field on the axis
       use Z_arrays
       use Fields3d
 
-      integer     :: ix,iy,iz,izg
+      integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: wx,wy,zz,wzg,wx1,wy1,dzi
 
       dzi = 1./dz
@@ -324,7 +324,7 @@ c=============================================================================
       use Picglb
       use Picglb3d
       use Fields3d
-      integer     :: iz,ndiv,itask
+      integer(ISZ):: iz,ndiv,itask
       real(kind=8):: divx(0:ndiv), divy(0:ndiv)
       real(kind=8):: divvx(0:ndiv), divvx2(0:ndiv)
       real(kind=8):: divvy(0:ndiv), divvy2(0:ndiv)
@@ -342,7 +342,7 @@ c arrays are not cleared out.
 
 
 
-      integer     :: i,ip,ix,iy
+      integer(ISZ):: i,ip,ix,iy
       real(kind=8):: ddxi,ddyi,wx,wy
 
 c Clear everything if requested
@@ -408,11 +408,11 @@ c=============================================================================
      &                    nmult,nres,tol)
       use InMesh3d
       use Multipole
-      integer     :: nlmod, irpowmx
+      integer(ISZ):: nlmod, irpowmx
       real(kind=8):: aper, xcen, ycen 
-      integer     :: lmod(nlmod) 
-      logical     :: lcosex, lsinex 
-      integer     :: nmult,nres
+      integer(ISZ):: lmod(nlmod) 
+      logical(ISZ):: lcosex, lsinex 
+      integer(ISZ):: nmult,nres
       real(kind=8):: tol
 
 c Calculates the multipole moments as an axial function of z from the 
@@ -465,7 +465,7 @@ c   2 (as a consequence of Maxwell's equations).
 c         
 
 
-      integer     :: l, k
+      integer(ISZ):: l, k
 
 c     --- find the total number of moments nmom to be calculated and 
 c     --- resize dynamic arrays in the common block Multipole 
@@ -494,11 +494,11 @@ c=============================================================================
       use Picglb3d
       use Fields3d
       use Multipole
-      integer     :: nlmod, irpowmx
+      integer(ISZ):: nlmod, irpowmx
       real(kind=8):: aper, xcen, ycen 
-      integer     :: lmod(nlmod) 
-      logical     :: lcosex, lsinex 
-      integer     :: nmult,nres
+      integer(ISZ):: lmod(nlmod) 
+      logical(ISZ):: lcosex, lsinex 
+      integer(ISZ):: nmult,nres
       real(kind=8):: tol
 
 c Work routine for the calculation of multipole moments as an axial 
@@ -507,11 +507,11 @@ c general method descriptions.
 c Standard values for nmult=2, nres=10, tol=1.e-5.
 
      
-      integer     :: nptsmx, nfitmx 
+      integer(ISZ):: nptsmx, nfitmx 
       parameter(nfitmx = 20, nptsmx = 500)
      
-      integer     :: k, l, iz, imom, lfund, nfit, npts, ngmin 
-      integer     :: np, ith, ipow, ifit, nth, ix, iy    
+      integer(ISZ):: k, l, iz, imom, lfund, nfit, npts, ngmin 
+      integer(ISZ):: np, ith, ipow, ifit, nth, ix, iy    
       real(kind=8):: ds, xsymin, ysymin, dth, xc, yc, phiinter, chisq   
       real(kind=8):: rdat(nptsmx), basis(nptsmx,nfitmx)
       real(kind=8):: usvd(nptsmx,nfitmx), vsvd(nfitmx,nfitmx), wsvd(nfitmx)

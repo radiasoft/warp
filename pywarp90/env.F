@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:08 $
+c@(#) File ENV.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -21,7 +21,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine envvers (iout)
       use ENVversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version,etc. to output files when they're created
       call printpkgversion(iout,"Envelope solver",versenv)
       return
@@ -38,7 +38,7 @@ c  Invoked by the GENERATE command, it allocates storage
 c  for the envelope code.
 
 
-      integer     :: gallot
+      integer(ISZ):: gallot
 
 c  Send a startup message to the standard output
 
@@ -134,7 +134,7 @@ c  Deallocates dynamic storage used by test driver
 c=======================================================================
       integer function envxport(np,z,a,ap,b,bp,x,xp,y,yp)
       use ENVvars
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: z(np)
       real(kind=8):: a(np),ap(np),b(np),bp(np)
       real(kind=8):: x(np),xp(np),y(np),yp(np)
@@ -149,7 +149,7 @@ c  Outputs: a(1:np), ap(1:np), b(1:np), bp(1:np)
 c           x(1:np), xp(1:np), y(1:np), yp(1:np)
 
 
-      integer     :: i,ip
+      integer(ISZ):: i,ip
       real(kind=8):: zpmin,zpmax,w0,w1
 
 c  Validity check on input
@@ -197,7 +197,7 @@ c  package ENV, and global variables from package TOP.
 
 
 c  Work around compiler bug on Sun that leads to missing VAR_SEG7
-      integer     :: junk
+      integer(ISZ):: junk
       junk = 1
 
       call envelatt (
@@ -227,8 +227,8 @@ c=======================================================================
       use InGen
       use Lattice
       use Mult_data
-      integer     :: nenv
-      logical     :: lrelativ
+      integer(ISZ):: nenv
+      logical(ISZ):: lrelativ
       real(kind=8):: ibeam
       real(kind=8):: mx11,mx22,mx110,mx220
       real(kind=8):: my11,my22,my110,my220
@@ -250,7 +250,7 @@ c  of packages ENV and TOP.  The package takes linear focusing components
 c  from various lattice and multipole arrays.  Any linear field componets 
 c  imported as gridded data will be missed.  
 
-      integer     :: istep
+      integer(ISZ):: istep
       real(kind=8):: p,gamma,emitnx_l, emitny_l
       real(kind=8):: dz,z,vz,ek
       real(kind=8):: a,ap,b,bp,fa,fb
@@ -602,7 +602,7 @@ c=======================================================================
       real(kind=8):: emitnx_l,emitny_l 
       real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
       real(kind=8):: fqxplot,fqyplot,fuxplot,fuyplot
-      logical     :: lrelativ
+      logical(ISZ):: lrelativ
 
 c  Computes the forces needed for the general-lattice envelope calculation.
 c  Inlcudes both residence corrected hard edged quadrupole elements 
@@ -627,9 +627,9 @@ c  linear space-charge forces.
       real(kind=8):: cmmlt2dbdx,cmmlt2ox,cmmlt2oy
       real(kind=8):: fux,fuy,fq,feself,fexself,feyself 
       real(kind=8):: offset,wie,wim
-      integer     :: iquader,imulter
-      integer     :: ii,iie,iim,iem,imm
-      integer     :: iquad,ihele,iemlt,immlt,immlt2,iaccl
+      integer(ISZ):: iquader,imulter
+      integer(ISZ):: ii,iie,iim,iem,imm
+      integer(ISZ):: iquad,ihele,iemlt,immlt,immlt2,iaccl
       save    iquad,ihele,iemlt,immlt,immlt2,iaccl
 
       zl = z - 0.5 * dz
@@ -1129,7 +1129,7 @@ c=======================================================================
 c Updates quantities which are specified to vary with z.
 
 
-      integer     :: iz
+      integer(ISZ):: iz
       real(kind=8):: wz
       real(kind=8):: ibeam_z
 
@@ -1177,7 +1177,7 @@ c=========================================================================
       use ENVvars
       use Match
 c Initialize the envelope match search
-      integer     :: i,ienv,envexe
+      integer(ISZ):: i,ienv,envexe
 
 c set up match arrays with initial deltas
       do i=1,7
@@ -1227,7 +1227,7 @@ c=========================================================================
 c function that is called by the minimization routine, ameoba, to find
 c a matched envelope solution
       real(kind=8):: xx(6)
-      integer     :: ienv,envexe
+      integer(ISZ):: ienv,envexe
 
 c set envelope values and print them
       a0    = xx(1)
@@ -1256,14 +1256,14 @@ c This is a multidimensional function minimization routine that was
 c taken from Numerical Recipes, William H. Press et. al., Cambridge University
 c Press, 1986, pg 292, Ch 10
       subroutine amoeba(p,y,mp,np,ndim,ftol,itmax)
-      integer     :: mp,np,ndim,itmax
+      integer(ISZ):: mp,np,ndim,itmax
       real(kind=8):: ftol
       real(kind=8):: p(mp,np),y(mp)
-      integer     :: nmax
+      integer(ISZ):: nmax
       real(kind=8):: alpha,beta,gamma
       parameter (nmax=20,alpha=1.0,beta=0.5,gamma=2.0)
       real(kind=8):: pr(nmax),prr(nmax),pbar(nmax)
-      integer     :: mpts,iter,ilo,ihi,inhi,i,j
+      integer(ISZ):: mpts,iter,ilo,ihi,inhi,i,j
       real(kind=8):: rtol,ypr,yprr
       real(kind=8):: mtchfunc
       mpts=ndim+1

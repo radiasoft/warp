@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DWRZ.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:08 $
+c@(#) File DWRZ.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package WRZ of code WARP
@@ -14,7 +14,7 @@ c=============================================================================
       use InMeshrz
       use Io
       use Ch_var
-      logical     :: lprntpara
+      logical(ISZ):: lprntpara
  
 c  Prints out various parameters to a plot frame and an output file or tty
  
@@ -42,7 +42,7 @@ c=============================================================================
       subroutine pltfldrz(fld,freqflag)
       use InPltCtlrz
       character*3:: fld
-      integer     :: freqflag
+      integer(ISZ):: freqflag
  
 c  Master control for doing field plots
  
@@ -55,7 +55,7 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
 c  Sets 1d array for the charge density on the axis
-      integer     :: i
+      integer(ISZ):: i
       do i=0,nz
         rhoax(i) = rho(0,i)
       enddo
@@ -68,7 +68,7 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
 c  Sets 1d array for the potential on the axis
-      integer     :: i
+      integer(ISZ):: i
       do i=0,nz
         phiax(i) = phi(0,i) + eoffrz*zmesh(i) - phiresist(i)
       enddo
@@ -81,7 +81,7 @@ c=============================================================================
       use Fieldsrz
       use Picglbrz
 c  Sets 1d array for the space charge E field on the axis
-      integer     :: i
+      integer(ISZ):: i
       do i=0,nz
         ezax(i) = ezfld(0,i)
       enddo
@@ -98,7 +98,7 @@ c=============================================================================
       use Z_Moments
       use Win_Moments
 
-      integer     :: iwin,iz,ir,ifwindow
+      integer(ISZ):: iwin,iz,ir,ifwindow
       real(kind=8):: z1,z0,zwin
 
 c  Sets rho window diagnostics (they need data from the rz mesh)

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:08 $
+c@(#) File F3D.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -39,7 +39,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine f3dvers (iout)
       use F3Dversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version,etc. to output files when they're created
       call printpkgversion(iout,"Fieldsolver F3D",versf3d)
       return
@@ -57,7 +57,7 @@ c  Bring in the common block; allocate dynamic arrays ("group allot")
 
 
       real(kind=8):: dx,dy,dz,cx,cy,cz,aa,sumsq,sqm,errmax,time,delsq,err
-      integer     :: nx2,ny2,nz2,ix,iy,iz,kx,ky,kz,itest
+      integer(ISZ):: nx2,ny2,nz2,ix,iy,iz,kx,ky,kz,itest
       real(kind=8):: wranf,wtimeoff
 
       nx = 64
@@ -219,7 +219,7 @@ c  Deallocates dynamic storage used by test driver
 c=======================================================================
       subroutine vp3x (iwhich)
       use F3Dvars
-      integer     :: iwhich
+      integer(ISZ):: iwhich
 
 c  BASIS interface to VPOIS3D, using variables from the database for
 c  package F3D.  The user's application package should contain a
@@ -236,7 +236,7 @@ c  To avoid confusion, it should have a different name, say "vp3"
 c=======================================================================
       subroutine vp2x (iwhich)
       use F3Dvars
-      integer     :: iwhich
+      integer(ISZ):: iwhich
 
 c  BASIS interface to VPOIS2D, using variables from the database for
 c  package F3D.  The user's application package should contain a
@@ -260,13 +260,13 @@ c=============================================================================
 #ifdef PARALLEL
       use Parallel
 #endif
-      integer     :: iwhich,nx,ny,nz,ibc
+      integer(ISZ):: iwhich,nx,ny,nz,ibc
       real(kind=8)::  a(0:nx, 0:ny, 0:nz)
       real(kind=8):: ak(0:nx, 0:ny, -nz/2:nz/2)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz), filt(5,3)
       real(kind=8):: lx, ly, lz, w(*), xywork(*), zwork(2,0:nx,0:nz)
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
       
 c-----------------------------------------------------------------------------
 c               Vectorized 3d Poisson solver:
@@ -336,17 +336,17 @@ c  is not transposed.
 c-----------------------------------------------------------------------------
 
 
-      integer     :: icmx,icpx,icmy,icpy,icox,icoy,nz2,ikxmin,ikymin
-      integer     :: ikx,iky,ikz,ix,iy,iz
+      integer(ISZ):: icmx,icpx,icmy,icpy,icox,icoy,nz2,ikxmin,ikymin
+      integer(ISZ):: ikx,iky,ikz,ix,iy,iz
       real(kind=8):: klast, kdxb2, kdyb2, kdzb2, kdx, kdy, kdz
       real(kind=8):: dx,dy,dz,pib2,twopi,fourpi,norm
-      integer     :: fullnz
+      integer(ISZ):: fullnz
       real(kind=8):: fulllz
-      integer     :: i,j
-      logical     :: lattenuate
+      integer(ISZ):: i,j
+      logical(ISZ):: lattenuate
 #ifdef PARALLEL
-      integer     :: nx_tran,ny_tran,ikxm,ikym
-      logical     :: transposed
+      integer(ISZ):: nx_tran,ny_tran,ikxm,ikym
+      logical(ISZ):: transposed
 #endif
 
       fullnz = nz
@@ -1088,7 +1088,7 @@ c ----------------------------------------------------------------------------
       end
 c=============================================================================
       subroutine vsftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
-      integer     :: nx,ny,nz,esx,esy,nxy
+      integer(ISZ):: nx,ny,nz,esx,esy,nxy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
@@ -1097,7 +1097,7 @@ c
 c esx and esy are the amount of extra space at the ends of the dimensions.
 c nxy is the size of the transverse planes.
 
-      integer     :: ix,iy,iz
+      integer(ISZ):: ix,iy,iz
 
       do iy = 0, ny-2+(1-esy), 2
 c       --- shift k-space origin to middle and apply normalization factor
@@ -1142,7 +1142,7 @@ c       call vrpft2(a(0,iy,0), a(0,iy+1,0), nz, nxy,   nx+(1-esx),1)
       end
 c=============================================================================
       subroutine vsftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
-      integer     :: nx,ny,nz,esx,esy,nxy
+      integer(ISZ):: nx,ny,nz,esx,esy,nxy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
@@ -1151,7 +1151,7 @@ c
 c esx and esy are the amount of extra space at the ends of the dimensions.
 c nxy is the size of the transverse planes.
 
-      integer     :: ix,iy,iz
+      integer(ISZ):: ix,iy,iz
 
       do iy = 0, ny-2+(1-esy), 2
 
@@ -1196,14 +1196,14 @@ c       --- if non-zero.
       end
 c=============================================================================
       subroutine attenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,esx,esy)
-      integer     :: nx,ny,nz,ikxmin,ikymin,esx,esy
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
       real(kind=8):: a(0:nx,0:ny,0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 
-      integer     :: ikx,iky,ikz
+      integer(ISZ):: ikx,iky,ikz
 
       do ikz = 0, nz-1
         do iky = ikymin, ny-esy
@@ -1217,14 +1217,14 @@ c grid dimensions passed are not the true grid dimensions.
       end
 c=============================================================================
       subroutine unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,esx,esy)
-      integer     :: nx,ny,nz,ikxmin,ikymin,esx,esy
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
       real(kind=8):: a(0:nx,0:ny,0:nz-1)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 
-      integer     :: ikx,iky,ikz
+      integer(ISZ):: ikx,iky,ikz
 
       do ikz = 0, nz-1
         do iky = ikymin, ny-esy
@@ -1238,14 +1238,14 @@ c grid dimensions passed are not the true grid dimensions.
       end
 c=============================================================================
       subroutine rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy)
-      integer     :: nx,ny,nz,ikxmin,ikymin,esx,esy
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
       real(kind=8):: a(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 
-      integer     :: ikx,iky,ikz
+      integer(ISZ):: ikx,iky,ikz
       real(kind=8):: oneok
 
       do ikz = 0, nz-1
@@ -1261,14 +1261,14 @@ c grid dimensions passed are not the true grid dimensions.
       end
 c=============================================================================
       subroutine phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy)
-      integer     :: nx,ny,nz,ikxmin,ikymin,esx,esy
+      integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
       real(kind=8):: a(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
 
-      integer     :: ikx,iky,ikz
+      integer(ISZ):: ikx,iky,ikz
 
       do ikz = 0, nz-1
         do iky = ikymin, ny-esy
@@ -1283,7 +1283,7 @@ c grid dimensions passed are not the true grid dimensions.
 c=============================================================================
       subroutine tridiag(nx,ny,nz,nz2,a,norm,kxsq,kysq,kzsq,ikxmin,ikymin,esy,
      &                   zwork)
-      integer     :: nx,ny,nz,nz2,ikxmin,ikymin,esy
+      integer(ISZ):: nx,ny,nz,nz2,ikxmin,ikymin,esy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: zwork(0:nx,0:nz)
@@ -1302,7 +1302,7 @@ c     --- for the transverse FFTs, and without using the planes at ix=iy=0
 c     --- since those planes are used when there are transverse symmetries.
 c     --- (signed DPG)
 
-      integer     :: ix,iy,iz
+      integer(ISZ):: ix,iy,iz
 
       do iy=ikymin,ny-esy
         do iz=1,nz-1
@@ -1350,13 +1350,13 @@ c=============================================================================
       subroutine vpois2d(iwhich,a,ak,kxsq,kysq,attx,atty,filt,lx,ly,nx,ny,w,
      &                   ibc,l2symtry,l4symtry)
       use Constant
-      integer     :: iwhich,nx,ny,ibc
+      integer(ISZ):: iwhich,nx,ny,ibc
       real(kind=8)::  a(0:nx, 0:ny)
       real(kind=8):: ak(0:nx, 0:ny)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), filt(5,2)
       real(kind=8):: lx, ly, w(*)
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
       
 c-----------------------------------------------------------------------------
 c               Vectorized 2d Poisson solver:
@@ -1413,8 +1413,8 @@ c  This routine was inspired by Langdon's scalar sine-periodic solver "sppois"
 c-----------------------------------------------------------------------------
 
 
-      integer     :: iwxy,icmx,icpx,icmy,icpy,ikx,iky,ix,iy
-      integer     :: icox,icoy,ikxmin,ikymin
+      integer(ISZ):: iwxy,icmx,icpx,icmy,icpy,ikx,iky,ix,iy
+      integer(ISZ):: icox,icoy,ikxmin,ikymin
       real(kind=8):: klast, kdxb2, kdyb2, kdx, kdy
       real(kind=8):: dx,dy,pib2,twopi,fourpi,norm
 
@@ -1714,7 +1714,7 @@ c ----------------------------------------------------------------------------
 c======================================================================
       subroutine vsftx (a, w, cp, cm, nx, ny, isetup)
       use Constant
-      integer     :: nx,ny,isetup
+      integer(ISZ):: nx,ny,isetup
       real(kind=8):: a(0:nx,0:ny), w(0:nx,0:ny)
       real(kind=8):: cp(nx/2-1), cm(nx/2-1)
 
@@ -1729,7 +1729,7 @@ c Written by Alex Friedman, LLNL, April 1989.
 
 
       real(kind=8):: aa,bb
-      integer     :: nx2,ix,iy,ix2
+      integer(ISZ):: nx2,ix,iy,ix2
       save nx2
 
 c Initialize
@@ -1785,7 +1785,7 @@ c Separate sine coefficients
 c======================================================================
       subroutine vsfty (a, w, cp, cm, nx, ny, isetup)
       use Constant
-      integer     :: nx,ny,isetup
+      integer(ISZ):: nx,ny,isetup
       real(kind=8):: a(0:nx,0:ny), w(0:nx,0:ny)
       real(kind=8):: cp(ny/2-1), cm(ny/2-1)
 
@@ -1800,7 +1800,7 @@ c Written by Alex Friedman, LLNL, April 1989.
 
 
       real(kind=8):: aa,bb
-      integer     :: ny2,ix,iy,iy2
+      integer(ISZ):: ny2,ix,iy,iy2
       save ny2
 
 c Initialize
@@ -1855,7 +1855,7 @@ c Separate sine coefficients
       end
 c=======================================================================
       subroutine cosqx(a,w,c,nx,ny,isign)
-      integer     :: nx,ny,isign
+      integer(ISZ):: nx,ny,isign
       real(kind=8):: a(0:nx,0:ny),w(0:nx,0:ny),c(nx-1)
 
 c  This routine does Fourier transforms with only odd cosines.
@@ -1871,7 +1871,7 @@ c  scratch arrays.  This avoids an additional loop over the arrays to
 c  copy the data back to the original array.
 
       real(kind=8):: pih,dt,fk
-      integer     :: k,kc,ix,iy
+      integer(ISZ):: k,kc,ix,iy
 
 c     do setup
       if (isign == 0) then
@@ -1946,7 +1946,7 @@ c     do backward transform
       end
 c=======================================================================
       subroutine cosqy(a,w,c,nx,ny,isign)
-      integer     :: nx,ny,isign
+      integer(ISZ):: nx,ny,isign
       real(kind=8):: a(0:nx,0:ny),w(0:nx,0:ny),c(ny-1)
 
 c  This routine does Fourier transforms with only odd cosines.
@@ -1962,7 +1962,7 @@ c  scratch arrays.  This avoids an additional loop over the arrays to
 c  copy the data back to the original array.
 
       real(kind=8):: pih,dt,fk
-      integer     :: k,kc,ix,iy
+      integer(ISZ):: k,kc,ix,iy
 
 c     do setup
       if (isign == 0) then
@@ -2050,13 +2050,13 @@ c=======================================================================
      &                   xlen,ylen,zlen,nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                   scrtch,xywork,zwork,l2symtry,l4symtry)
       use CapMat3d
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
       real(kind=8):: xlen,ylen,zlen,dx,dy,dz,xmmin,ymmin,zmmin
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Sets up capacity matrix for 3d fieldsolver. Note that the capacity matrix
 c is calculated using field solves which do not do any filtering.
@@ -2066,7 +2066,7 @@ c matrix is very ill-conditioned and so the capacity matrix becomes garbled.)
 
       real(kind=8):: wx,wy,wz,cx,cy
 c     real(kind=8):: tt1,tt2
-      integer     :: ix,iy,iz,i,j,info
+      integer(ISZ):: ix,iy,iz,i,j,info
 
 c find capacity matrix
 
@@ -2176,14 +2176,14 @@ c==============================================================================
      &                    xmmin,ymmin,zmmin,scrtch,xywork,zwork,
      &                    l2symtry,l4symtry)
       use CapMat3d
-      integer     :: iwhich,nx,ny,nz
+      integer(ISZ):: iwhich,nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
       real(kind=8):: xlen,ylen,zlen,dx,dy,dz,xmmin,ymmin,zmmin
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Applies the capacity matrix for 3d code electrostatic field solver.
 c Multiplies phi by cap to get induced rho.
@@ -2194,7 +2194,7 @@ c applied to the induced charge.
 
       real(kind=8):: wx,wy,wz,cx,cy
       real(kind=8):: wx0,wy0,wz0
-      integer     :: ix,iy,iz,i,j
+      integer(ISZ):: ix,iy,iz,i,j
 
 c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then
@@ -2306,13 +2306,13 @@ c=======================================================================
      &                     xlen,ylen,zlen,nx,ny,nz,dx,dy,dz,xmmin,ymmin,zmmin,
      &                     scrtch,xywork,zwork,l2symtry,l4symtry)
       use CapMat3d
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
       real(kind=8):: xlen,ylen,zlen,dx,dy,dz,xmmin,ymmin,zmmin
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Sets up capacity matrix for 3d fieldsolver. Note that the capacity matrix
 c is calculated using field solves which do not do any filtering.
@@ -2322,7 +2322,7 @@ c matrix is very ill-conditioned and so the capacity matrix becomes garbled.)
 
       real(kind=8):: wx,wy,cx,cy
 c     real(kind=8):: tt1,tt2
-      integer     :: ix,iy,iz,i,j,info
+      integer(ISZ):: ix,iy,iz,i,j,info
 
 c find capacity matrix
 
@@ -2439,14 +2439,14 @@ c==============================================================================
      &                      xmmin,ymmin,zmmin,scrtch,xywork,zwork,
      &                      l2symtry,l4symtry)
       use CapMat3d
-      integer     :: iwhich,nx,ny,nz
+      integer(ISZ):: iwhich,nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1),kzsq(0:nz)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(*)
       real(kind=8):: xlen,ylen,zlen,dx,dy,dz,xmmin,ymmin,zmmin
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Applies the capacity matrix for 3d code electrostatic field solver.
 c Multiplies phi by cap to get induced rho.
@@ -2464,7 +2464,7 @@ c could be cut is half if careful load balancing were done.)
 
       real(kind=8):: wx,wy,cx,cy
       real(kind=8):: wx0,wy0
-      integer     :: ix,iy,iz,i,j,iiz
+      integer(ISZ):: ix,iy,iz,i,j,iiz
 
 c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then
@@ -2595,14 +2595,14 @@ c===========================================================================
      &                  filt,xlen,ylen,zlen,nx,ny,nz,scrtch,xywork,zwork,
      &                  l2symtry,l4symtry)
       use Pipe3d
-      integer     :: iwhich,nx,ny,nz
+      integer(ISZ):: iwhich,nx,ny,nz
       character*(*):: pipeshpe
       real(kind=8):: rho(0:nx,0:ny,0:nz), phi(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: filt(5,3), scrtch(*),xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: xlen, ylen, zlen
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
  
 c  External interface to capacity matrix field solver.
 c  Passes external and local variables to field solver routines.
@@ -2636,7 +2636,7 @@ c=======================================================================
      &                    piperadi,pipen,pipenz2,pipe8th,pipex,pipey,cap3d,kpvt,
      &                    l2symtry,l4symtry)
       use Constant
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       character*(*):: pipeshpe
       real(kind=8):: cap(2*(nx+ny),*)
       real(kind=8):: phi(0:nx,0:ny,0:nz)
@@ -2644,10 +2644,10 @@ c=======================================================================
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: filt(5,3), scrtch(*),xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: xlen, ylen, zlen, piperadi
-      integer     :: pipen,pipenz2,pipe8th
+      integer(ISZ):: pipen,pipenz2,pipe8th
       real(kind=8):: pipex(pipen+1), pipey(pipen+1), cap3d(pipen,pipe8th,0:pipenz2)
       real(kind=8):: kpvt(pipen)
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c sets up stuff for capacity matrix
 c CAP is a work array, it must be at least 4*(nx+ny)**2 in size
@@ -2655,7 +2655,7 @@ c PHI can be used since both CAP and PHI are not used at the same time
 
 
       real(kind=8):: yymax,xx,yy,tt1,tt2
-      integer     :: ix,iy,iz,i,j,info
+      integer(ISZ):: ix,iy,iz,i,j,info
 
       if (piperadi == 0) piperadi = nx/2 - 1.
 
@@ -2815,7 +2815,7 @@ c==============================================================================
      &                   filt,xlen,ylen,zlen,nx,ny,nz,scrtch,xywork,zwork,
      &                   piperadi,pipen,pipenz,pipenz2,pipe8th,pipex,pipey,
      &                   pipephi,pipeq,cap3d,kpvt,l2symtry,l4symtry)
-      integer     :: iwhich,nx,ny,nz
+      integer(ISZ):: iwhich,nx,ny,nz
       character*(*):: pipeshpe
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: phi(0:nx,0:ny,0:nz)
@@ -2823,18 +2823,18 @@ c==============================================================================
       real(kind=8):: attx(0:nx-1),atty(0:ny-1),attz(0:nz)
       real(kind=8):: filt(5,3),scrtch(*),xywork(*),zwork(2,0:nx,0:nz)
       real(kind=8):: xlen,ylen,zlen,piperadi
-      integer     :: pipen,pipenz,pipenz2,pipe8th
+      integer(ISZ):: pipen,pipenz,pipenz2,pipe8th
       real(kind=8):: pipex(pipen+1),pipey(pipen+1),cap3d(pipen,pipe8th,0:pipenz2)
       real(kind=8):: kpvt(pipen)
       real(kind=8):: pipephi(pipen,0:pipenz-1),pipeq(pipen,0:pipenz-1)
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c applies capacity matrix, for round pipe electrostatic solver.
 c multiplies phi by cap to get rho.
 c assumes that rho has been set, and copied into phi.
 
       real(kind=8):: xx,yy
-      integer     :: ix,iy,iz,iiz,i,j
+      integer(ISZ):: ix,iy,iz,iiz,i,j
 
 c initialize capacity matrix and arrays for poisson solve
       if (iwhich == 1 .or. iwhich == 0) then
@@ -2995,17 +2995,17 @@ c==============================================================================
       subroutine setcap3d(ncndpts,quadx,quady,quadz,quadcap,kpvt,nx,ny,nz,
      &                    phi,work,xywork,zwork,kxsq,kysq,kzsq,attx,atty,attz,
      &                    xlen,ylen,zlen,filt,l2symtry,l4symtry)
-      integer     :: ncndpts,nx,ny,nz
+      integer(ISZ):: ncndpts,nx,ny,nz
       real(kind=8):: quadx(ncndpts,4), quady(ncndpts,4), quadz(ncndpts)
       real(kind=8):: quadcap(4*ncndpts,4*ncndpts)
-      integer     :: kpvt(4*ncndpts)
+      integer(ISZ):: kpvt(4*ncndpts)
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: work(nx+ny-4),xywork(*),zwork(2,0:nx,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: filt(5,3)
       real(kind=8):: xlen, ylen, zlen
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c  Calculates the capacity matrix for a single lens, which consists of a block
 c  of four conductors.
@@ -3024,7 +3024,7 @@ c
 c  rest of variables are input and have the standard meanings.
 
       real(kind=8):: xx,yy,zz,dx,dy,dz
-      integer     :: ix,iy,iz,i,j,ic,info
+      integer(ISZ):: ix,iy,iz,i,j,ic,info
 
       dx = xlen/nx
       dy = ylen/ny
@@ -3106,15 +3106,15 @@ c==========================================================================
      &                 work,workz,xywork,zwork,xmmax,pipeshpe,periinz,
      &                 l2symtry,l4symtry)
       use Capvars
-      integer     :: iwhich,nx,ny,nz
+      integer(ISZ):: iwhich,nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,0:nz), rho(0:nx,0:ny,0:nz)
       real(kind=8):: work(nx+ny-4), workz(*),xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: xlen, ylen, zlen, filt(5,3), xmmax
       character*(*):: pipeshpe
-      logical     :: periinz
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: periinz
+      logical(ISZ):: l2symtry,l4symtry
 
 c  Capacity matrix field solve routine
 c  input:
@@ -3124,7 +3124,7 @@ c  rest of variables have the standard meanings
 c  using common block since needs too many arguments to be handled by basis
 
       real(kind=8):: xx,yy,zz,dx,dy,dz,dxi,dyi,dzi
-      integer     :: iend,iquad,ic,iq,ix,iy,iz
+      integer(ISZ):: iend,iquad,ic,iq,ix,iy,iz
 
       dx = xlen/nx
       dy = ylen/ny
@@ -3293,12 +3293,12 @@ c==========================================================================
       subroutine cndctr3d(nx,ny,xmmax,dx,dy,quadradi,quadcent, ncndpts,
      &                    quadx, quady, quadz, quadv, nzpts, nendquad,nzquad,
      &                    qdslclen, pipeshpe, loadquad)
-      integer     :: nx,ny,ncndpts,nzpts,nendquad,nzquad
+      integer(ISZ):: nx,ny,ncndpts,nzpts,nendquad,nzquad
       real(kind=8):: quadx(ncndpts,4), quady(ncndpts,4), quadz(ncndpts)
       real(kind=8):: quadv(ncndpts,4)
       real(kind=8):: xmmax,dx,dy,quadradi,quadcent,qdslclen
       character*(*):: pipeshpe
-      logical     :: loadquad
+      logical(ISZ):: loadquad
 
 c  Calculate set of points representing the conductor
 c  Only calculate one quarter, rest are found by symmetry.
@@ -3306,7 +3306,7 @@ c  (Same with user inputed points if loadquad is false)
 
       real(kind=8):: theta0,theta,rad
       real(kind=8):: piperadi,yymax,qcmge
-      integer     :: i,j,iend,iquad,ixmin,ixmax,iymin,iymax,iystep,iq,ncndptst,ix,iy
+      integer(ISZ):: i,j,iend,iquad,ixmin,ixmax,iymin,iymax,iystep,iq,ncndptst,ix,iy
 
       if (loadquad) then
 
@@ -3448,7 +3448,7 @@ c=============================================================================
      &                    zmmin,zgrid,nz,dz,
      &                    numends,nendmax,quadend,quadvlt,
      &                    vshift,quadcent,quadradi)
-      integer     :: nquad,nz,numends,nendmax
+      integer(ISZ):: nquad,nz,numends,nendmax
       real(kind=8):: quadzs(0:nquad), quadze(0:nquad), quadde(0:nquad)
       real(kind=8):: quadvx(0:nquad), quadvy(0:nquad)
       real(kind=8):: quadvlt(nendmax), quadend(nendmax), vshift(nendmax)
@@ -3459,7 +3459,7 @@ c  Also sets array vshift
 c  dependent upon quad variables
 
       real(kind=8):: offset
-      integer     :: iz,iq,iqprev
+      integer(ISZ):: iz,iq,iqprev
 
 c  get rest of quads within mesh
       iq = 0
@@ -3486,7 +3486,7 @@ c=============================================================================
      &   l2symtry,l4symtry)
       use Capvars
       use Lattice
-      integer     :: iwhich,nx,ny,nz
+      integer(ISZ):: iwhich,nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
@@ -3495,8 +3495,8 @@ c=============================================================================
       real(kind=8):: xlen, ylen, zlen
       real(kind=8):: xmmax,zmmin,zgrid
       character*(*):: pipeshpe
-      logical     :: periinz
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: periinz
+      logical(ISZ):: l2symtry,l4symtry
  
 c  External interface to capacity matrix field solver.
 c  Passes external and local variables to field solver routines.
@@ -3504,7 +3504,7 @@ c  If iwhich is '0' or '1', also allocates local variables
 
 
       real(kind=8):: dz,offset
-      integer     :: iq
+      integer(ISZ):: iq
 
       dz = zlen/nz
 
@@ -3551,12 +3551,12 @@ c===========================================================================
 #ifdef PARALLEL
       use Parallel
 #endif
-      integer     :: iwhich,nx,ny,nz,izfsmin,izfsmax
+      integer(ISZ):: iwhich,nx,ny,nz,izfsmin,izfsmax
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
       real(kind=8):: phi1d(*),rho1d(*),scrtch(*)
       real(kind=8):: dx,dy,dz,xmmin,ymmin,zmmin,zbeam,zgrid
-      logical     :: linbends
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: linbends
+      logical(ISZ):: l2symtry,l4symtry
 
 c This routine does a 3D field solve using point SOR with even-odd (red-black)
 c ordering.  It makes call to the routine cond_pot which sets voltages at
@@ -3593,10 +3593,10 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
       real(kind=8):: rdx2,rdy2,rdz2,rdel,reps0,const
       real(kind=8):: rdx2c,rdy2c,rdz2c,reps0c,spm1
-      integer     :: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
-      integer     :: i,k,ii,ie,ix,iy,iz,ic
+      integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
+      integer(ISZ):: i,k,ii,ie,ix,iy,iz,ic
       real(kind=8):: rs,x,r,nsorerri
-      integer     :: s_parity,e_parity
+      integer(ISZ):: s_parity,e_parity
       character*72:: errline
 
 c Macro for common arguments to the psor_loop calls
@@ -4095,10 +4095,10 @@ c===========================================================================
      &                     phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends,
      &                     rstar,xmmin,dx,rdx2,rdy2,rdz2,rdel,const,xx)
       real(kind=8):: phi1d(*),rho1d(*),rstar(*),xx(*)
-      integer     :: i_parity,s_parity,izl,izr,izstep,nxy,ii1,ii2,iistep
-      integer     :: iimx,iipx,iimy,iipy,iimz,iipz
+      integer(ISZ):: i_parity,s_parity,izl,izr,izstep,nxy,ii1,ii2,iistep
+      integer(ISZ):: iimx,iipx,iimy,iipy,iimz,iipz
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,xmmin,dx,rdx2,rdy2,rdz2,rdel,const
-      logical     :: linbends
+      logical(ISZ):: linbends
 
 c This routine provides the loops over the phi array which solves the 
 c iterative equation.  The loops are set up to do an outer loop over
@@ -4141,7 +4141,7 @@ c The if test (iistep == 2) is needed for the workstation version.  Without
 c the loop stride explicitly given, there is about a 50% performance reduction
 c on HIF, an HP 735 workstation.
 
-      integer     :: iz,ii,parity
+      integer(ISZ):: iz,ii,parity
       real(kind=8):: x,rs,r,xfact,del2bndc,dh,dxi
 
       if (.not. linbends) then 
@@ -4243,10 +4243,10 @@ c           --- current z-slice is in a bend only
 c===========================================================================
       subroutine cond_pot(nx,ny,nz,phi)
       use PSOR3d
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
 c Set conductor points to the desired potential.
-      integer     :: ic
+      integer(ISZ):: ic
 
 c sets phi to the desired potential on conductors
       do ic = 1,ncond
@@ -4261,18 +4261,18 @@ c===========================================================================
      &                    cdelpz,icndx,icndy,icndz,cvolt,cndpvph,
      &                    nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    izfsmin,izfsmax,dx,dy,dz,icndbndy)
-      integer     :: nx,ny,nz,ncndmax,ncndbdy,nzpsor
+      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,nzpsor
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax), cdelmz(ncndmax)
       real(kind=8):: cdelpx(ncndmax), cdelpy(ncndmax), cdelpz(ncndmax)
-      integer     :: icndx(ncndmax), icndy(ncndmax), icndz(ncndmax)
+      integer(ISZ):: icndx(ncndmax), icndy(ncndmax), icndz(ncndmax)
       real(kind=8):: cvolt(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
-      integer     :: bound0,boundnz,boundxy,izfsmin,izfsmax
-      logical     :: l2symtry,l4symtry
+      integer(ISZ):: bound0,boundnz,boundxy,izfsmin,izfsmax
+      logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: dx,dy,dz
-      integer     :: icndbndy
+      integer(ISZ):: icndbndy
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -4290,7 +4290,7 @@ c points on the boundary.
       real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom,denomi
       real(kind=8):: dxm,dxp,dym,dyp,dzm,dzp
       real(kind=8):: rhofix,rhovolume,dxyzi
-      integer     :: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
+      integer(ISZ):: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
 
 c -------------------------------------------------------------------------
 c EGUN style interpolation at conductor boundaries
@@ -4502,13 +4502,13 @@ c===========================================================================
 #ifdef PARALLEL
       use Parallel
 #endif
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 c Allocate various arrays
 
 
-      integer     :: nc,iq
+      integer(ISZ):: nc,iq
 
 #ifdef PARALLEL
 c Fix longitudinal boundary conditions for the parallel version.
@@ -4574,9 +4574,9 @@ c===========================================================================
       use LatticeInternal
       use InPart
       use InjectVars
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c  Find type of slice, and put quad voltage into slicvx,slicvy.
 c  This routine is dependent upon quad variables.
@@ -4585,15 +4585,15 @@ c  rather than a circular cylinder. (modified by I. Haber)
 c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 
 
-      integer     :: ix,iz,iq,ix_axis,iy_axis
-      integer     :: izp1,izm1
-      integer     :: ixmin,ixmax,iymin,iymax,izmin,izmax,ichange,id,ij
-      integer     :: ix_near,nxinj,nyinj
+      integer(ISZ):: ix,iz,iq,ix_axis,iy_axis
+      integer(ISZ):: izp1,izm1
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax,ichange,id,ij
+      integer(ISZ):: ix_near,nxinj,nyinj
       real(kind=8):: zz,offset,qdcenter,qs,qe,rs,re,xmax0,ymax0
       real(kind=8):: rodrrsq,rodmxsq,rminsq,rrr,delz,rodx,rody,rodap,delz_p
       real(kind=8):: vvv,aper,rmax,prevcent,dipocent,delx
       real(kind=8):: fuzz,zfuzz
-      logical     :: lnotice,lz_in_rod,lz_in_plate
+      logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
 
 c     --- fuzz is used to prevent the distance from a point to the surface
 c     --- from being too small or zero.  Any point within fuzz of the surface
@@ -5278,10 +5278,10 @@ c===========================================================================
      &      lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz_in,
      &      quadsl,rodap,fuzz,qzs,dz,iz,voltage)
       use PSOR3d
-      integer     :: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
       real(kind=8):: dx,dy,rodx,rody,rminsq,rodrrsq,rrr,rodmxsq,delz_in,quadsl
       real(kind=8):: rodap,fuzz,qzs,dz,voltage
-      logical     :: lz_in_rod
+      logical(ISZ):: lz_in_rod
 
 c Subroutine that calculates conductor points for rods.  It actually only
 c calculates the points for a circle on the plane iz.  To produce a rod, call
@@ -5299,7 +5299,7 @@ c   ixmin,ixmax,iymin,iymax: rectangle which surrounds the circle (coordinates
 c                            relative to zero on axis)
 c   dx,dy:                   grid cell sizes
 c   rodx,rody:               distance of rod center from axis
-c   lz_in_rod:               logical     ::, true if iz within rod
+c   lz_in_rod:               logical, true if iz within rod
 c   rminsq:                  inner radius of hollow cylinder squared
 c   rodrrsq:                 rod radius squared
 c   ix_axis,iy_axis:         grid cell indices of beam center
@@ -5322,7 +5322,7 @@ c WARNING: The coding for the conical rod most likely does not work.  It was
 c          put in but never fully tested.
 
 
-      integer     :: ix,iy,npoints,nsgpoints
+      integer(ISZ):: ix,iy,npoints,nsgpoints
       real(kind=8):: radsq,delx,dely,delz,rodxsq,rodysq,dxi,dyi,dzi,quadsli
       real(kind=8):: x2fuzz,y2fuzz,r2fuzz
 
@@ -5545,9 +5545,9 @@ c===========================================================================
       subroutine platepnt(ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,dx,dy,
      &                    aper,rmax,vvv,xoff,yoff,delz_in,iz,lz_in_plate,fuzz)
       use PSOR3d
-      integer     :: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
       real(kind=8):: dx,dy,aper,rmax,vvv,xoff,yoff,delz_in,fuzz
-      logical     :: lz_in_plate
+      logical(ISZ):: lz_in_plate
 
 c Set points which are on a tranverse plate.
 c
@@ -5570,10 +5570,10 @@ c     fuzz     number smalled compared to grid cell size, used
 c              to prevent precision problems
 
 
-      integer     :: ix,iy
+      integer(ISZ):: ix,iy
       real(kind=8):: rad,pradsq,prmxsq,paprsq,papmsq,delx,dely,delz,dxi,dyi
       real(kind=8):: r2fuzz
-      integer     :: npoints,nsgpoints
+      integer(ISZ):: npoints,nsgpoints
  
       dxi = 1./dx
       dyi = 1./dy
@@ -5734,7 +5734,7 @@ c     --- Print warning if conductor arrays filled up.
 c===========================================================================
       subroutine dipopnt(iymin,iymax,izmin,izmax,vvv,ix_near,ix,delx)
       use PSOR3d
-      integer     :: iymin,iymax,izmin,izmax,ix_near,ix
+      integer(ISZ):: iymin,iymax,izmin,izmax,ix_near,ix
       real(kind=8):: vvv,delx
 
 c Set points which are on a dipole plate.  This needs to be in a subroutine
@@ -5751,7 +5751,7 @@ c If not using sub-grid boundaries, that places conductor points, otherwise
 c saves data for sub-grid boundaries.
 
 
-      integer     :: iy,iz,npoints,nsgpoints
+      integer(ISZ):: iy,iz,npoints,nsgpoints
 
 c     --- Make sure there is enough space. npoints is the maximum
 c     --- number of points that could be needed. nsgpoints is 
@@ -5852,12 +5852,12 @@ c===========================================================================
       use PSOR3d
       real(kind=8):: rinject,ainject,binject,ainjmin,binjmin
       real(kind=8):: xinject,yinject,dx,dy,dz,vvv
-      integer     :: izmin,izmax,ixmin,ixmax,iymin,iymax,ix_axis,iy_axis
+      integer(ISZ):: izmin,izmax,ixmin,ixmax,iymin,iymax,ix_axis,iy_axis
 
 c Sets points on injection source.
 
 
-      integer     :: ix,iy,iz,npoints,nsgpoints
+      integer(ISZ):: ix,iy,iz,npoints,nsgpoints
       real(kind=8):: xx,yy,rminsq,ao_dx,bo_dy,ai_dx,bi_dy
 
 c     --- Make sure there is enough space. npoints is the maximum
@@ -5918,12 +5918,12 @@ c===========================================================================
       use PSOR3d
       character*(*) rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
-      logical     :: lfill,lshell
+      logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
-      integer     :: nx,ny,nz,ix_axis,iy_axis
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Sets up a conductor represented by the outside of a surface of revolution.
 c The Basis routine rofzfunc should be of the form
@@ -5957,14 +5957,14 @@ c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of PSOR3d.
 
 
-      integer     :: ix,iy,iz,i
+      integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
       real(kind=8):: rmaxsq,zgmin,zgmax,r_zmin,r_zmax
       real(kind=8):: rrrlower,rrrhigher,zlower,zhigher
       real(kind=8):: xxmin,xxmax,yymin,yymax
-      integer     :: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer     :: jxmin,jxmax,jymin,jymax
-      integer     :: izbmin,izbmax,iterrf
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: jxmin,jxmax,jymin,jymax
+      integer(ISZ):: izbmin,izbmax,iterrf
       real(kind=8):: x(2),f(2)
       real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
       real(kind=8):: delmz0,delpz0
@@ -6349,11 +6349,11 @@ c========================================================================
       character*(*) rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
-      logical     :: lfill,lshell
+      logical(ISZ):: lfill,lshell
       real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
-      integer     :: nx,ny,nz,ix_axis,iy_axis
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Sets up a conductor represented by the inside of a surface of revolution.
 c The Basis routine rofzfunc should be of the form
@@ -6388,14 +6388,14 @@ c Output is put directly into the conductor arrays of PSOR3d.
 c See comments in srfrvout.
 
 
-      integer     :: ix,iy,iz,i
+      integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
       real(kind=8):: rminsq,zgmin,zgmax,r_zmin,r_zmax
       real(kind=8):: rrrlower,rrrhigher,zlower,zhigher
       real(kind=8):: xxmin,xxmax,yymin,yymax
-      integer     :: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer     :: jxmin,jxmax,jymin,jymax
-      integer     :: izbmin,izbmax,iterrf
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: jxmin,jxmax,jymin,jymax
+      integer(ISZ):: izbmin,izbmax,iterrf
       real(kind=8):: x(2),f(2)
       real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
       real(kind=8):: delmz0,delpz0
@@ -6783,12 +6783,12 @@ c===========================================================================
       use PSOR3d
       character*(*) rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
-      logical     :: lzend,lshell
+      logical(ISZ):: lzend,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
-      integer     :: nx,ny,nz,ix_axis,iy_axis
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Sets up a conductor represented by the outside of a surface of revolution.
 c The Basis routines rminofz and rmaxofz should be of the form
@@ -6822,16 +6822,16 @@ c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of PSOR3d.
 
 
-      integer     :: ix,iy,iz,i
+      integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rad,rrrmax,rrrmin,rmin,rmax
       real(kind=8):: zgmin,zgmax
       real(kind=8):: rmin_zmin,rmin_zmax
       real(kind=8):: rmax_zmin,rmax_zmax
       real(kind=8):: rrrminlower,rrrminhigher,rrrmaxlower,rrrmaxhigher,zlower,zhigher
       real(kind=8):: xxmin,xxmax,yymin,yymax
-      integer     :: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer     :: jxmin,jxmax,jymin,jymax
-      integer     :: izbmin,izbmax,iterrf
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: jxmin,jxmax,jymin,jymax
+      integer(ISZ):: izbmin,izbmax,iterrf
       real(kind=8):: x(2),f(2)
       real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
       real(kind=8):: delmz0,delpz0
@@ -7200,14 +7200,14 @@ c========================================================================
       use PSOR3d
       use Surface_of_Rev
       real(kind=8):: zz
-      integer     :: icase
+      integer(ISZ):: icase
       character*(*) rofzfunc
 c     This function returns the value of radius as a function of z.
 c     That can be calculated either from a piecewise-linear curve, or from
 c     the basis routine rofzfunc.
 c     The radius returned is always greater than or equal to zero.
 
-      integer     :: i,ii
+      integer(ISZ):: i,ii
 
       if (lsrlinr .and. icase == 0) then
 

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:07 $
+c@(#) File CIR.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -20,7 +20,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine cirvers (iout)
       use CIRversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version,etc. to output files when they're created
       call printpkgversion(iout,"CIRCE",verscir)
       return
@@ -188,7 +188,7 @@ c=============================================================================
 c  For convenience, this routine accesses the lattice database and is not
 c  linked to the universe solely by its calling sequence.
 
-      integer     :: ii
+      integer(ISZ):: ii
 
 c     --- Main loop of envelope code
 c     --- Run the CIRCE kernel
@@ -227,18 +227,18 @@ c=============================================================================
       use CIRvartmp
       use CIRfield
       use CIRhist
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: zlcir,zucir,dscir,aion,zion
-      integer     :: icharge
-      logical     :: lezbeam,lperveance,lemittance,lallez,llinear,limage
-      logical     :: lendzero,lsavehist,lfixed
+      integer(ISZ):: icharge
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,llinear,limage
+      logical(ISZ):: lendzero,lsavehist,lfixed
 
 c Run the CIRCE kernel, using the inputted array, y and the starting data.
 
       real(kind=8):: s,ds
-      integer     :: nscir,il
-      logical     :: ltdependent = .false.
+      integer(ISZ):: nscir,il
+      logical(ISZ):: ltdependent = .false.
 
 c     --- Make sure that the sign of the step size and the relation
 c     --- between zlcir and zucir are consistent.
@@ -414,7 +414,7 @@ c=============================================================================
       use LatticeInternal
       use Mult_data
       use CIRfield
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: z,dz,dzfrac,y(16,nit)
 
 c  Computes the forces needed for the general-lattice envelope calculation.
@@ -441,7 +441,7 @@ c  But which end of the element is the start and which is the end depends on
 c  the sign of dz, whether the beam is moving forward or backward.
 
       real(kind=8):: dedrr,dbdxq,dedxq
-      integer     :: iele,ii,iem,imm,iim,iie,ia
+      integer(ISZ):: iele,ii,iem,imm,iim,iie,ia
       real(kind=8):: rotfuzz,wie,wim,wi
 
 c     --- Get the current lattice parameters
@@ -727,12 +727,12 @@ c=============================================================================
       use Constant
       use CIRfield
       use CIRtmp
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: s,ds,dsfrac,y(16,nit),dy(16,nit)
       real(kind=8):: aion,zion
-      integer     :: icharge
-      logical     :: lezbeam,lperveance,lemittance,lallez,llinear,limage,lendzero
-      logical     :: lfixed
+      integer(ISZ):: icharge
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,llinear,limage,lendzero
+      logical(ISZ):: lfixed
 
 c  Computes the forces needed for the general-lattice envelope calculation.
 c  Includes both residence corrected hard edged quadrupole elements 
@@ -745,13 +745,13 @@ c  linear space-charge forces.
 
 c  Note: CIRtmp is needed for the fixed field solve only
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: alfcuri, denom
       real(kind=8):: y1i,y3i,y1py3i,vval,vvali,xval,yval,gam2,gam2i,gambetai
       real(kind=8):: rigidityi,bendfldx,bendfldy,bendex,bendey,quadfld,perv
       real(kind=8):: xemit,yemit,xbend,dtds,bend,dlnbeta,dbetads
       real(kind=8):: rpipei2
-      logical     :: lfailed
+      logical(ISZ):: lfailed
 
       lfailed = .false.
       
@@ -926,11 +926,11 @@ c=============================================================================
       subroutine integrt(y,yt,dy1,dy2,dy3,nit,s,ds,aion,zion,
      &            icharge,lezbeam,lperveance,lemittance,lallez,llinear,limage,
      &            lendzero,lfixed)
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit),yt(16,nit),dy1(16,nit),dy2(16,nit),dy3(16,nit)
       real(kind=8):: s,ds,aion,zion
-      integer     :: icharge
-      logical     :: lezbeam,lperveance,lemittance,lallez,llinear,limage,lendzero,lfixed
+      integer(ISZ):: icharge
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,llinear,limage,lendzero,lfixed
 
 c INTEGRT advances the set of the envelope equations using a fourth-order
 c Runge-Kutta method. The routine is adapted from the subroutine RK4 from
@@ -938,7 +938,7 @@ c Numerical Recipes by Press et al. and differs mainly in the use
 c of two dimensional arrays rather than linear arrays.
 
       real(kind=8):: halfds,sixthds
-      integer     :: i,j
+      integer(ISZ):: i,j
 
       halfds = 0.5*ds
       sixthds = ds/6.0
@@ -999,11 +999,11 @@ c     call checkenvelope(yt,nit)
       end
 c=============================================================================
       subroutine checkenvelope(y,nit)
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
 c     real(kind=8):: temp
 c Checks to make sure that the envelope is positive
-      integer     :: i
+      integer(ISZ):: i
       do i=1,nit
         if (y(1,i) <= 0.) then
           y(1,i) = -y(1,i)
@@ -1028,9 +1028,9 @@ c=============================================================================
       subroutine getimage(y,nit,llinear,limage,lendzero)
       use Constant
       use CIRfield
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
-      logical     :: llinear,limage,lendzero
+      logical(ISZ):: llinear,limage,lendzero
 
 c GETIMAGE calculates image-field coefficients as functions of
 c time for the pipe type ipipetype.
@@ -1057,14 +1057,14 @@ c
 c Image coefficients are zero if the centroid displacement
 c X**2 + Y**2 exceeds rpipe**2.
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: logcon
       real(kind=8):: pi2,cosrot2,sinrot2,xval,yval,xyrpipe,abrpipe,displace,geomfac
       real(kind=8):: f1,f2,g1,g2
       real(kind=8):: dispx,dispy
       real(kind=8):: c0,c1,c2,d0,d1
       real(kind=8):: arg0,arg1,arg2
-      logical     :: lzeroenv = .false.
+      logical(ISZ):: lzeroenv = .false.
       save lzeroenv
 
 c     --- Check if images are to be applied. If not, zero arrays and return.
@@ -1200,10 +1200,10 @@ c=============================================================================
       use Constant
       use CIRtmp
       use CIRbessdata
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit),eval(nit),rpipe
-      integer     :: icharge
-      logical     :: lezbeam,lendzero,lfixed,lfailed
+      integer(ISZ):: icharge
+      logical(ISZ):: lezbeam,lendzero,lfixed,lfailed
 
 c GETEZBEAM calculates the axial space-charge field of a beam
 c using various approximations.
@@ -1228,12 +1228,12 @@ c boundaries and for electrostatic quadrupoles.
       real(kind=8):: endval,exfact,zetapeak,gval,zeron,denomn,zetafact
       real(kind=8):: part0,rad0,bet0,den0,dden0,denv0,arg0
       real(kind=8):: part1,rad1,bet1,den1,dden1,denv1,arg1
-      integer     :: ii,istart,istop,ii0,ii1,iimid,n
+      integer(ISZ):: ii,istart,istop,ii0,ii1,iimid,n
       real(kind=8):: bessp0,bessp1,bessp2,con0,con1,bessfun0,bessfun1,bessfun2,bessfun3
       real(kind=8):: bess0,bess1,bess2
       real(kind=8):: bessj0,bessj1
       real(kind=8):: didt,dvdt
-      logical     :: lzeroenv = .false.
+      logical(ISZ):: lzeroenv = .false.
       save lzeroenv
 
       iimid = max(1,(nit+1)/2)
@@ -1770,9 +1770,9 @@ c     approximations.  The routine is taken from Numerical Recipes.
 c=============================================================================
       subroutine savehistcir(s,y,nit,nscir,lsavehist)
       use CIRhist
-      integer     :: nit,nscir
+      integer(ISZ):: nit,nscir
       real(kind=8):: s,y(16,nit)
-      logical     :: lsavehist
+      logical(ISZ):: lsavehist
 
 c     --- Check if saving history
       if (lsavehist) then
@@ -1792,10 +1792,10 @@ c       --- Check if saving history this step. Requires (nhcir > 0).
 c=============================================================================
       subroutine savehistcir1(s,y,nit)
       use CIRhist
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: s,y(16,nit)
 
-      integer     :: i,ii
+      integer(ISZ):: i,ii
       real(kind=8):: ri,ristep
 
       jhcir = jhcir + 1
@@ -1833,7 +1833,7 @@ c=============================================================================
       subroutine getphase(sig0,sig1,hlp,betaval,curval,tval,sval,emitx,emity,
      &                    aion,zion,lperveance)
       real(kind=8):: sig0,sig1,hlp,betaval,curval,tval,sval,emitx,emity,aion,zion
-      logical     :: lperveance
+      logical(ISZ):: lperveance
 
 c Calls getphaset for one slice.
 
@@ -1855,9 +1855,9 @@ c=============================================================================
       use Constant
       use Lattice
       use LatticeInternal
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: sig0(nit),sig1(nit),hlp,y(16,nit),sval,aion,zion
-      logical     :: lperveance
+      logical(ISZ):: lperveance
 
 c     GETPHASE estimates the undepressed phase advance sig0 in radians
 c     per lattice period and the depressed phase advance sig1 using
@@ -1872,7 +1872,7 @@ c     The principle omissions from this formulation are the absence
 c     of the effects of bend magnets and the presumption of simple
 c     periodic focusing.
 
-      integer     :: iq1,iq2,ii
+      integer(ISZ):: iq1,iq2,ii
       real(kind=8):: offset
       real(kind=8):: gambeta,rigidity,eta,fstr,focus,arg
       real(kind=8):: betafreq,emitavg,radavg,perv
@@ -2000,14 +2000,14 @@ c=============================================================================
      &                   time,zbeam,aion,zion,
      &                   icurload,iprofile,ivelload,igrid,iemload,lperveance,
      &                   lendzero)
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: a0,b0,ap0,bp0,x0,y0,xp0,yp0
       real(kind=8):: ibeam,currise,curfall,deltbeam,footrise,tfoot,curfoot
       real(kind=8):: beta,gammabar,tilt,tiltmid,tiltlen
       real(kind=8):: emitx,emity,time,zbeam,aion,zion
-      integer     :: icurload,iprofile,ivelload,igrid,iemload
-      logical     :: lperveance,lendzero
+      integer(ISZ):: icurload,iprofile,ivelload,igrid,iemload
+      logical(ISZ):: lperveance,lendzero
 c Sets up beam data based on input arguments
       call settval(nit,y,deltbeam,time,igrid)
       call setenvelope(nit,y,a0,b0,ap0,bp0,x0,y0,xp0,yp0,lendzero)
@@ -2021,14 +2021,14 @@ c Sets up beam data based on input arguments
       end
 c=============================================================================
       subroutine setenvelope(nit,y,a0,b0,ap0,bp0,x0,y0,xp0,yp0,lendzero)
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: a0,b0,ap0,bp0,x0,y0,xp0,yp0
-      logical     :: lendzero
+      logical(ISZ):: lendzero
 
 c Sets envelope size and centroid
 
-      integer     :: ii
+      integer(ISZ):: ii
 
       do ii=1,nit
         y(1,ii) = a0
@@ -2069,12 +2069,12 @@ c=============================================================================
      &                  beta,tilt,tiltmid,tiltlen,
      &                  ivelload)
       use Constant
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: ibeam,currise,curfall,deltbeam,footrise,tfoot,curfoot
-      integer     :: icurload,iprofile
+      integer(ISZ):: icurload,iprofile
       real(kind=8):: beta,tilt,tiltmid,tiltlen
-      integer     :: ivelload
+      integer(ISZ):: ivelload
 
 c     SETCUR calculates the initial velocity and current profiles as 
 c     functions of slice arrival time t.  
@@ -2084,7 +2084,7 @@ c     The line-charge profile is controlled by flag iprofile,
 c     The flag icurload controls whether the line charge
 c     is set up as a function of t or axial distance s.
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: valmax,part,arg1,arg2,trise,tfall,expfact,offset
       real(kind=8):: head,tail,tfootrise,tflat,sbeam,srise,sfall,sval
 
@@ -2232,10 +2232,10 @@ c       --- set charge per slice dq
 c=========================================================================
       subroutine setbeta(beta,nit,y,tilt,tiltmid,tiltlen,ivelload)
       real(kind=8):: beta
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: tilt,tiltmid,tiltlen
-      integer     :: ivelload
+      integer(ISZ):: ivelload
 
 c     SETBETA sets initial beta values at nit arrival times given in
 c     array tval and stores them in array betaval.  
@@ -2248,7 +2248,7 @@ c     variation, which reverts to a linear variation when the scale
 c     length tiltlen is much larger than unity and the tilt midpoint
 c     tiltmid is 0.5.  The 
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: duration,tmid,tscale,c0
 
 c calculate beam midpoint
@@ -2286,14 +2286,14 @@ c   note: this algorithm still uses a linear tilt
       end
 c===========================================================================
       subroutine settval(nit,y,deltbeam,time0,igrid)
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: deltbeam,time0
-      integer     :: igrid
+      integer(ISZ):: igrid
 
 c Set initial arrival times
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: con0
 
       if(igrid <= 0)then
@@ -2330,11 +2330,11 @@ c===========================================================================
      &                   aion,zion,iemload,lperveance)
       use Constant
       use Lattice
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: emitx,emity,beta,gammabar,ibeam,time,zbeam,aion,zion
-      integer     :: iemload
-      logical     :: lperveance
+      integer(ISZ):: iemload
+      logical(ISZ):: lperveance
 
 c     SETEMIT sets the initial beam emittance depending on the flag
 c     iemload. Allowed options are
@@ -2344,7 +2344,7 @@ c       iemload = 2 constant beam charge-dentsity
 c       iemload = 3 constant beam radius
 c     Expressions used here are based on a smooth-focusing model. 
 
-      integer     :: k,ii
+      integer(ISZ):: k,ii
       real(kind=8):: radcon,ratio,dencon,emitcon,pervcon,perv0,tempcon,gamcon
       real(kind=8):: sig0,sig1,hlp,s
       real(kind=8):: emitnx0,emitny0,alfcuri
@@ -2454,10 +2454,10 @@ c===========================================================================
       use LatticeInternal
       use CIRtmp
       use CIRfield
-      integer     :: nit,ntval
+      integer(ISZ):: nit,ntval
       real(kind=8):: y(16,nit),earval(ntval), tval(ntval),z
-      integer     :: iearset,iearform,icharge,ieargap
-      logical     :: lendzero, lfixed
+      integer(ISZ):: iearset,iearform,icharge,ieargap
+      logical(ISZ):: lendzero, lfixed
 
 c     SETEARS calculates ear-voltage values at nit times specified 
 c     in array tval are stored in array earval.  Times are specified 
@@ -2489,14 +2489,14 @@ c     If ieargap = 2, the ear magnitude is based on the
 c        average of the distance from the last ear cell and that to 
 c        next to account for varying spacing of ear cells.
 
-      integer     :: inextear,ii,i,iear
+      integer(ISZ):: inextear,ii,i,iear
       real(kind=8):: sear,slastear,snextear,amin,bmin,del0,del1,del2
       real(kind=8):: fact1,fact2,epsfact,part0,part1,aval,bval,betaval
       real(kind=8):: ddenval,denval,gval
       real(kind=8):: offset
-      logical     :: lfailed
+      logical(ISZ):: lfailed
       real(kind=8):: eargap = -1.0
-      logical     :: printnow = .true.
+      logical(ISZ):: printnow = .true.
       save printnow
   
 c     --- Update internal lattice and get a value for rpipe.
@@ -2695,13 +2695,13 @@ c       endif
 c===========================================================================
       subroutine getlen(nit,y,beamlen)
       use Constant
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: beamlen
 
 c     GETLEN calculates the beam length beamlen in meters
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: sum0
 
 c calculate beam length in meters
@@ -2721,19 +2721,19 @@ c===========================================================================
      &                   llinear,limage,lendzero,lfixed)
       use Constant
       use CIRvartmp
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit),s
       real(kind=8):: beamtemp,delv,aion,zion
-      integer     :: icharge
-      logical     :: lezbeam,lperveance,lemittance,lallez,llinear,limage,lendzero
-      logical     :: lfixed
+      integer(ISZ):: icharge
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,llinear,limage,lendzero
+      logical(ISZ):: lfixed
 
 c     GETTEMP estimates the beam longitudinal "temperature" in eV
 c     beamtemp from the mean-squared deviation of beta from that 
 c     of a drifting distribution with beta-avg(beta) proportional to
 c     z-avg(z).
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: sum0,sum1,sum2,sum3,c0,c1,c2,weight
       real(kind=8):: qtot
       real(kind=8):: boltzcon = 1.3807e-23
@@ -2806,7 +2806,7 @@ c===========================================================================
       use Constant
       use Lattice
       use LatticeInternal
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: aion,zion
       character*(*):: inout
@@ -2824,7 +2824,7 @@ c     Making changes in array var rather than var0 is appropriate
 c     with the present integrator.
 c     The present version is incorrect for dipole with fringe fields.
 
-      integer     :: idipo,ii
+      integer(ISZ):: idipo,ii
       real(kind=8):: dipov,vslope,factor,betaold,betanew,ratio
 
 c check bend class
@@ -2877,13 +2877,13 @@ c===========================================================================
       use Lattice
       use CIRsetacc
       character*(*):: schedule
-      integer     :: nit
+      integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: ekinstart,ekinend,zlcir,zucir,deltbeam
       real(kind=8):: curmax,currise,curfall,footrise,tfoot,curfoot
-      integer     :: icurload,iprofile,ivelload
+      integer(ISZ):: icurload,iprofile,ivelload
       real(kind=8):: beta0,tilt,tiltmid,tiltlen,aion,zion
-      logical     :: lperveance
+      logical(ISZ):: lperveance
 
 c     SETACC uses a modified version of Kim-Smith theory to set up
 c     acceleration voltages in all cells.
@@ -2905,7 +2905,7 @@ c Assumes that space for accl elements has been fully allocated.
       real(kind=8):: delbetaold,delsi,delbetahead,delbetatail,cdelti,pervfact
       real(kind=8):: beti,gambeti,pervi,gammold,delbeta
       real(kind=8):: alfcuri,snextbend,hlp,rpipe
-      integer     :: i,ibend0,ibend,iacc,inextacc,iezmid,ib
+      integer(ISZ):: i,ibend0,ibend,iacc,inextacc,iezmid,ib
 
 c check parameters
       if(naccl == 0)then

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:12 $
+c@(#) File WRZ.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -20,7 +20,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine wrzvers (iout)
       use WRZversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version, etc. to output files as they're created
       call printpkgversion(iout,"Particle package WRZ",verswrz)
       return
@@ -56,8 +56,8 @@ c  Invoked by the GENERATE command, it sets up the problem
 
 c  declare scratch space for getzmmnt
        
-       integer     :: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,npsplt,nzma
-       integer     :: nzmb,ieearmax,ieearmin,ir
+       integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,npsplt,nzma
+       integer(ISZ):: nzmb,ieearmax,ieearmin,ir
        real(kind=8):: time1,time2,er,et,ez,frext,zm,zs,eearsprs,eearmax,eearmin
        real(kind=8):: uxpo(NPARPGRP), uypo(NPARPGRP), uzpo(NPARPGRP)
        real(kind=8):: wtimeoff
@@ -66,7 +66,7 @@ c    Heap check on NLTSS
 c      ierr = mzparam("check",1)
 c      write(STDOUT,*)"Ierr = ",ierr
 c    Heap check on NERSC
-c      integer     :: list(7)
+c      integer(ISZ):: list(7)
 c      do ilist = 1,6
 c      list(ilist)=-1
 c      enddo
@@ -106,7 +106,7 @@ c  Print values of input variables, other interesting things to text file
       endif
  
 c  Create the dynamic arrays for fields, contour plot workspace
-      nmrz  = max0 (nr, nz)
+      nmrz  = max(nr, nz)
       nrz = (nr+1) * (nz+1)
       call gallot ("Fieldsrz", 0)
  
@@ -169,7 +169,7 @@ c     call zeroarry(curr,nz+1)
       call wtimeon 
       do is=1,ns
          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
             call setrhorz (rho,ip,xp(ipmin),zp(ipmin),zbeam,
      &                     uzp(ipmin),sq(is),sw(is),depos)
             call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
@@ -225,7 +225,7 @@ c  Create the dynamic arrays for particle moments; calculate moments
 c     call getemits(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sm(1),sw(1),1,nplive)
 c     do is=1,ns
 c        do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-c           ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+c           ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
 c           nplive = ip
 c           call getemits(ip,xp(ipmin),yp(ipmin),zp(ipmin),
 c    &                    uxp(ipmin),uyp(ipmin),uzp(ipmin),
@@ -248,7 +248,7 @@ c  Create the dynamic arrays for z moments; calculate moments
      &                nplive,uxpo,uypo,uzpo,1,ns)
         do is=1,ns
            do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-              num = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+              num = min(NPARPGRP, ins(is)+nps(is)-ipmin)
 c             --- Use t=0 u data also as "old" data for extraps
               call copyarry (uxp(ipmin),uxpo,num)
               call copyarry (uyp(ipmin),uypo,num)
@@ -266,7 +266,7 @@ c             --- Use t=0 u data also as "old" data for extraps
 c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
  
-      npsplt = min0 (NPARPGRP, npmax)
+      npsplt = min(NPARPGRP, npmax)
       call gallot ("Pspwork", 0)
       if (xplmin .eq. 0.) xplmin = rmmin
       if (xplmax .eq. 0.) xplmax = rmmax
@@ -393,7 +393,7 @@ c=============================================================================
 c  Takes a time step, returns status OK, ERR, or DONE
  
 
-      integer     :: is,ipmin,ip
+      integer(ISZ):: is,ipmin,ip
  
  
 c  Announce that we're running
@@ -409,7 +409,7 @@ c        call zeroarry(rho,nrz)
          rho = 0.
          do is=1,ns
             do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-               ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+               ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
                call setrhorz (rho,ip,xp(ipmin),zp(ipmin),zbeam,
      &                        uzp(ipmin),sq(is),sw(is),depos)
             enddo
@@ -523,7 +523,7 @@ c=============================================================================
       use Z_arrays
       use FFTDiagrz
       character*(*):: caller
-      logical     :: thisstep,thiszbeam
+      logical(ISZ):: thisstep,thiszbeam
  
 c  Advances the system forward in time, when called by WRZEXE
 c  Takes a step of zero size, to compute fields, diagnostics,
@@ -666,13 +666,13 @@ c=============================================================================
       subroutine extbrz (np,rp,tp,zp,uzp,gaminv,br,bt,bz)
       use Beam_acc
       use InGen
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: rp(np), tp(np), zp(np)
       real(kind=8):: uzp(np), gaminv(np)
       real(kind=8):: br(np), bt(np), bz(np)
  
 
-      integer     :: ip
+      integer(ISZ):: ip
  
  
 c -- Set Bz to axial field
@@ -688,7 +688,7 @@ c -- Set Bz to axial field
       end
 c=============================================================================
       subroutine exterz (np,zp,uzp,zbeam,rp,ez0,er,et,ez,dedr)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: zbeam,ez0,dedr
       real(kind=8):: zp(np), uzp(np), rp(np)
       real(kind=8):: er(np), et(np), ez(np)
@@ -696,7 +696,7 @@ c=============================================================================
 c  Set the electric fields from the quads etc.
 c  Also zeros the electric field if particle is dead (uzp(ip)=0).
 
-      integer     :: ip
+      integer(ISZ):: ip
  
       do ip=1,np
 
@@ -725,7 +725,7 @@ c=============================================================================
       subroutine othererz (np,xp,yp,zp,zbeam,zimax,zimin,straight,
      &                   ifeears,eears,eearsofz,dr,dz,nr,nz,zmmin,
      &                   ex,ey,ez,eearsrz,rmmin,ezext)
-      integer     :: np,ifeears,nr,nz
+      integer(ISZ):: np,ifeears,nr,nz
       real(kind=8):: zbeam,zimax,zimin,straight,eears,dr,dz,zmmin,rmmin
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: ex(np), ey(np), ez(np)
@@ -733,7 +733,7 @@ c=============================================================================
 
 c  Set the electric fields from external sources
 
-      integer     :: ip,iz,i,k
+      integer(ISZ):: ip,iz,i,k
       real(kind=8):: zs,dzi,wz,r1,w1,r2,w2,dri
 
 c  average axial confining ears for finite beam
@@ -812,7 +812,7 @@ c  This does it in a partially vectorized manner.
  
 
       real(kind=8):: zm,phiextun
-      integer     :: ir,iz
+      integer(ISZ):: ir,iz
  
       ese = 0.
       zm = (zimax - zimin)*(1. - straight)/2.
@@ -872,7 +872,7 @@ c=============================================================================
  
 
       real(kind=8):: density,sumr,sumr2,sume,sumer,sume2,denom,slope,yint
-      integer     :: icount,ir,iz,nz2,irsave,irz,nbeam
+      integer(ISZ):: icount,ir,iz,nz2,irsave,irz,nbeam
  
 c  Calculate the linear external force which balances the space-charge
 c  force of the beam particles.
@@ -995,7 +995,7 @@ c=============================================================================
 c  Calculates the line charge density from rho.
 
 
-      integer     :: iz,ir
+      integer(ISZ):: iz,ir
  
       do iz=0,nz
         linechg(iz) = 0.0
@@ -1029,7 +1029,7 @@ c  Advances the particles position and velocity according to CENTER,
 c  and also advances RHO.
  
  
-      integer     :: is,ipmin,ip,i
+      integer(ISZ):: is,ipmin,ip,i
       real(kind=8):: er(NPARPGRP), et(NPARPGRP), ez(NPARPGRP)
       real(kind=8):: br(NPARPGRP), bt(NPARPGRP), bz(NPARPGRP)
       real(kind=8):: frext(NPARPGRP)
@@ -1066,7 +1066,7 @@ c  Call seterz to fill E_z and E_r arrays
  
 c  Loop over particle block, and move each block seperately
          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
             call seterz (1,phi,force,ip,xp(ipmin),zp(ipmin),zbeam,
      &                   rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                   efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
@@ -1147,12 +1147,12 @@ c        --- calculate rho diagnostics
       end
 c=============================================================================
       subroutine perphirz(phi,nr,nz)
-      integer     :: nr,nz
+      integer(ISZ):: nr,nz
       real(kind=8):: phi(0:nr,-1:nz+1)
  
 c  Sets the first and last slices of phi for periodicity
 
-      integer     :: ir
+      integer(ISZ):: ir
  
       do ir=0,nr
           phi(ir,-1)   = phi(ir,nz-1)
@@ -1163,12 +1163,12 @@ c  Sets the first and last slices of phi for periodicity
       end
 c=============================================================================
       subroutine perrhorz(rho,nr,nz)
-      integer     :: nr,nz
+      integer(ISZ):: nr,nz
       real(kind=8):: rho(0:nr,0:nz)
  
 c  Adds the first and last slices of rho for periodicity
 
-      integer     :: ir
+      integer(ISZ):: ir
  
       do ir=0,nr
        rho(ir,0)  = (rho(ir,0) + rho(ir,nz))
@@ -1184,7 +1184,7 @@ c=============================================================================
       use Beam_acc
       use InMeshrz
       character*(*):: center ,gamadv
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: rp(np), tp(np), zp(np), urp(np), utp(np), uzp(np), gaminv(np)
       real(kind=8):: er(np), et(np), ez(np), br(np), bt(np), bz(np), frext(np)
       real(kind=8):: q,m,dt
@@ -1193,7 +1193,7 @@ c=============================================================================
 c  Advances the particles
  
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: tr,tt,tz,tsq,sr,st,sz,urppr,utppr,uzppr,urppl,utppl,uzppl
       real(kind=8):: urpmi,utpmi,uzpmi
       real(kind=8):: x2p,y2p
@@ -1335,14 +1335,14 @@ c=============================================================================
       use Constant
       use LinearBeam
       use InPart
-      integer     :: np,itask,nr,nz
+      integer(ISZ):: np,itask,nr,nz
       real(kind=8):: zbeam,rmmin,zmmin,zmmax,dr,dz,eoffrz
       real(kind=8):: phi(0:nr,-1:nz+1), force(0:nr,0:nz), rp(np), zp(np)
       real(kind=8):: er(np), et(np), ez(np), frext(np)
       real(kind=8):: erfld(0:nr,0:nz), ezfld(0:nr,0:nz)
-      integer     :: efetch
+      integer(ISZ):: efetch
  
-      integer     :: ip,iz,ir,i,k
+      integer(ISZ):: ip,iz,ir,i,k
       real(kind=8):: tdri,tdzi,r1,w1,r2,w2
 
 c  Sets electric field and external force for a group of up to 64 particles
@@ -1484,7 +1484,7 @@ c   Sets up the initial surface charge on the walls, using the average
 c   charge density at each z point.
 
 
-      integer     :: iz,ir
+      integer(ISZ):: iz,ir
       real(kind=8):: vol
  
          vol = 2.*dz*dr*dr*pi
@@ -1517,15 +1517,15 @@ c=============================================================================
       use Fieldsrz
       use Particles
       use Setpworkrz
-      integer     :: envxport
+      integer(ISZ):: envxport
       character*72:: errline
  
 c  Loads particles; sets npmax, np, etc.
 c  Note that species 1 is the main (beam) ion species, and obtains
 c  its charge, mass, etc. from global quantities such as aion, zion.
  
-      integer     :: npm,ip,np_main,is,k_outer,i1_outer,k,i1,i,izstripe,icheck
-      integer     :: nfib2,nfib3,nfib4,j,ii,ipart,ipmin,ipt
+      integer(ISZ):: npm,ip,np_main,is,k_outer,i1_outer,k,i1,i,izstripe,icheck
+      integer(ISZ):: nfib2,nfib3,nfib4,j,ii,ipart,ipmin,ipt
       real(kind=8):: rnpmi,strgt,zmid,zlen,zleft,vtz,rr,th,r0,rp,rpp,vtx,vty
       real(kind=8):: phi1,phi2,r,vr,vt,gfact,z0
       real(kind=8):: uxpert(0:NPARPGRP),uzpert(0:NPARPGRP)
@@ -1570,12 +1570,12 @@ c  ADDED LOOP AROUND MAIN LOOP TO ALLOW FOR A SECOND GROUP OF PARTICLES
 c  CODE CURRENTLY IMPLEMENT FOR semi-gauss, cigar LOADING
       do 1001 k_outer = 1, npm, np_main
 c
-      i1_outer = min0(npm, k_outer+np_main-1)
+      i1_outer = min(npm, k_outer+np_main-1)
 c 
 c  MAIN INITIALIZATION LOOP
 c 
       do k = k_outer, i1_outer, npgrp
-         i1 = min0(i1_outer, k+npgrp-1)
+         i1 = min(i1_outer, k+npgrp-1)
 c
 c  Load longitudinal stuff
 c        --- load normalized z (0 < z < 1)
@@ -1936,7 +1936,7 @@ c   Add perturbation in velocity
          gfact = log(rmmax/a0)/(2.*pi*eps0)
          vphase = sqrt(gfact*sq(1)*ibeam/(vbeam*sm(1)))
          do ipmin = 1,np,NPARPGRP
-            ipt = min0(NPARPGRP,np - ipmin + 1)
+            ipt = min(NPARPGRP,np - ipmin + 1)
             do ipart=0,ipt-1
             uxpert(ipart) = 0.5*xp(ipart+ipmin)*vzpert*kzpert*
      &                   sin(kzpert*zp(ipart+ipmin))
@@ -1997,7 +1997,7 @@ c=============================================================================
       use Picglbrz
       use InGenrz
       use Fieldsrz
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: zbeam,q,wght
       real(kind=8):: rho1d (0:*)
       real(kind=8):: rp(np), zp(np), uzp(np)
@@ -2019,13 +2019,13 @@ c  gather-add-scatter loop.  It seems about 3% slower than the present way.
 c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
  
-      integer     :: ip,ir,i,k,ind0,m
+      integer(ISZ):: ip,ir,i,k,ind0,m
       real(kind=8):: g,r1,r2,w1,w2
 
 c     --- For vectorized algorithm
-      integer     :: moff(0:3), indx(0:3,0:256-1)
+      integer(ISZ):: moff(0:3), indx(0:3,0:256-1)
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer     :: ii(0:256-1), kk(0:256-1)
+      integer(ISZ):: ii(0:256-1), kk(0:256-1)
 c     --- For both algorithms
       real(kind=8):: s(0:3,0:256-1)
  
@@ -2149,14 +2149,14 @@ c  Put rmesh(0) back
 c=============================================================================
       subroutine stckyrz(np,rp,rmmax,rmmin,dr,
      &                   zp,zmmin,dz,urp,utp,uzp,zgrid,ipmin,it)
-      integer     :: np,ipmin,it
+      integer(ISZ):: np,ipmin,it
       real(kind=8):: rmmax,rmmin,dr,zmmin,dz,zgrid
       real(kind=8):: rp(np), zp(np)
       real(kind=8):: urp(np), utp(np), uzp(np)
  
 c  Enforces sticky b.c.'s on the r wall
 
-      integer     :: ip
+      integer(ISZ):: ip
  
       do ip=1,np
         if (rp(ip).ge.rmmax-dr) then
@@ -2176,7 +2176,7 @@ c=============================================================================
       use InMeshrz
       use Picglbrz
       use Fieldsrz
-      integer     :: iwhich
+      integer(ISZ):: iwhich
 
 c Does the complete fieldsolver, including copying rho into phi and setting
 c boundary conditions.
@@ -2195,7 +2195,7 @@ c=============================================================================
       use Beam_acc
       use InGen
       use Fieldsrz
-      integer     :: iwhich
+      integer(ISZ):: iwhich
  
 c  Interface to VPOISRZ using variables from database of package RZ
  
@@ -2208,12 +2208,12 @@ c  Interface to VPOISRZ using variables from database of package RZ
       end
 c=============================================================================
       subroutine getindx(kzsq,kzpert,indxk,nz,dr)
-      integer     :: nz,indxk
+      integer(ISZ):: nz,indxk
       real(kind=8):: dr
       real(kind=8):: kzsq(0:nz)
       real(kind=8):: kzpert
 
-      integer     :: nz2,ikz
+      integer(ISZ):: nz2,ikz
       real(kind=8):: xkm2,diff,diffmax
 
       nz2 = nz/2
@@ -2237,7 +2237,7 @@ c=============================================================================
       use FFTDiagrz
       use Z_arrays
 
-      integer     :: iz
+      integer(ISZ):: iz
       
       do iz = 0,nzfft
          xreal(iz) = linechg(iz)
@@ -2268,10 +2268,10 @@ c=============================================================================
       use Particles
       use InMeshrz
       use Sortrz
-       integer     :: npart
+       integer(ISZ):: npart
        real(kind=8):: zbeam,dz
-       integer     :: mask,n,ic,isgn,ivmin,ivmax,ignme,ignmo,ignold
-       integer     :: ign
+       integer(ISZ):: mask,n,ic,isgn,ivmin,ivmax,ignme,ignmo,ignold
+       integer(ISZ):: ign
 
 c      call zeroarry(npic,nz+1)
        npic = 0
@@ -2351,7 +2351,7 @@ c--------------------------------------
 c  Begin vectorized deposition loop
 c--------------------------------------
 
-      integer     :: ign,m,ip,ioffset,npart
+      integer(ISZ):: ign,m,ip,ioffset,npart
       real(kind=8):: g,dzi,w0,w1
  
       g = wght * q / dz
@@ -2395,7 +2395,7 @@ c=============================================================================
 c  Sets charge density
  
       real(kind=8):: rmesh(0:nr)
-      integer     :: ign,npart,ioffset,ip,i,k,ind0,m
+      integer(ISZ):: ign,npart,ioffset,ip,i,k,ind0,m
       real(kind=8):: g,r1,r2,w1,w2
 
 c   Set rmesh(0) to dr/8 so that the first loop vectorizes
@@ -2463,7 +2463,7 @@ c=============================================================================
       use InGenrz
       use Particles
 
-       integer     :: is,iz
+       integer(ISZ):: is,iz
        real(kind=8):: zlen,gfact,z0,deltar
 
        zlen = zimax - zimin
@@ -2532,7 +2532,7 @@ c=============================================================================
       use Particles
 
 
-       integer     :: izso2,izendo2,izlen,ia,ipart,iz,isame,ir,ip,is
+       integer(ISZ):: izso2,izendo2,izlen,ia,ipart,iz,isame,ir,ip,is
        real(kind=8):: zlen,zs,zends,gfact,z0,z02,zmid,zt,aend
 
        zlen = zimax - zimin
@@ -2736,7 +2736,7 @@ c--------------------------------------------------------------------
       use InGenrz
       use Beam_acc
       use Particles
-      integer     :: nstep
+      integer(ISZ):: nstep
       call fluidrz(dt,nstep,vbeam,ibeam,sq(1),sm(1),a0)
       nfrstrz = nstep + nfrstrz
       return
@@ -2750,9 +2750,9 @@ c--------------------------------------------------------------------
       use InGenrz
       use InFluidrz
       use Fluidsrz
-      integer     :: nstep
+      integer(ISZ):: nstep
       real(kind=8):: dt,vbeam,ibeam,q,m,a0
-      integer     :: iz,istp,ikz
+      integer(ISZ):: iz,istp,ikz
       real(kind=8):: lamb0,gfact,eoverm,taumdt,taupdt,tauodt,growthrate
       
 c   This routine solves the 1-d fluid equations with resistance and
@@ -2887,13 +2887,13 @@ c  update the velocity
       end
 c----------------------------------------------------------------------------
       subroutine forward(arryr,arryi,nz,dz)
-      integer     :: nz
+      integer(ISZ):: nz
       real(kind=8):: dz
       real(kind=8):: arryr(0:nz),arryi(0:nz)
 c ----------------------------------------------------------------------------
 c  Do the forward transform
 c ----------------------------------------------------------------------------
-      integer     :: iz
+      integer(ISZ):: iz
       real(kind=8):: znorm
 c        --- shift k-space origin to middle.
          do 600 iz = 1, nz-1, 2
@@ -2913,10 +2913,10 @@ c        --- do the transforms
       end
 
       subroutine backward(arryr,arryi,nz,dz,zmmax,zmmin)
-      integer     :: nz
+      integer(ISZ):: nz
       real(kind=8):: dz,zmmax,zmmin
       real(kind=8):: arryr(0:nz),arryi(0:nz)
-      integer     :: iz
+      integer(ISZ):: iz
       real(kind=8):: znorm
     
 c        --- do the back transforms
@@ -2941,9 +2941,9 @@ c---------------------------------------------------------------
       use Fieldsrz
       use InGenrz
       use Z_arrays
-      integer     :: it,nr,nz
+      integer(ISZ):: it,nr,nz
       real(kind=8):: dt,dz,vbeam
-      integer     :: iz,nl
+      integer(ISZ):: iz,nl
 
       if (it .eq. 0) then
          do iz = 0,nz

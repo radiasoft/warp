@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FRZ.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:09 $
+c@(#) File FRZ.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Written by Debbie Callahan
@@ -34,7 +34,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine frzvers (iout)
       use FRZversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version,etc. to output files when they're created
       call printpkgversion(iout,"Fieldsolver FRZ",versfrz)
       return
@@ -52,10 +52,10 @@ c  and the next few lines).
 
 c  Bring in the common block; allocate dynamic arrays ("group allot")
 
-      integer     :: nr2,nz2,ir,iz
+      integer(ISZ):: nr2,nz2,ir,iz
       real(kind=8):: dr,dz,sz,cz,fact1,fact2,rjph,rjmh,dr2j,dr20
       real(kind=8):: errmax,error,dz2,delsq,dt,a0,temp
-      integer     :: gallot
+      integer(ISZ):: gallot
       real(kind=8):: wtimeoff,wranf
 
       if ( gallot("FRZvars",0) == ERR ) then
@@ -437,7 +437,7 @@ c=======================================================================
       subroutine vprzx (iwhich,dt)
       use FRZvars
       use Constant
-      integer     :: iwhich
+      integer(ISZ):: iwhich
       real(kind=8):: dt
 
 c  BASIS interface to VPOISRZ, using variables from the database for
@@ -456,7 +456,7 @@ c=======================================================================
      & taurc, attz, filt, dt, vbeam, lr, lz, nr, nz, rfsmat, 
      & scrtch, scrtch2, ibc)
       use Constant
-      integer     :: iwhich,nr,nz,ibc
+      integer(ISZ):: iwhich,nr,nz,ibc
       real(kind=8):: eta,taurc,dt,vbeam
       real(kind=8)::  a(0:nr, 0:nz)
       real(kind=8):: ak(0:nr,  -nz/2:nz/2)
@@ -542,7 +542,7 @@ c-----------------------------------------------------------------------------
 
 c  Use of both a and ak simplifies subscripting of the Fourier coefficients:
 
-      integer     :: ikz,ikr,iz,ir,nrlast,nz2,nr2
+      integer(ISZ):: ikz,ikr,iz,ir,nrlast,nz2,nr2
       real(kind=8):: klast,kdzb2,kdz
       real(kind=8):: dr,dz,norm,dr2,pib2,twopi,fourpi
 c  Error checking; so far, only possible error is non-power-of-2 nz
@@ -987,10 +987,10 @@ c ----------------------------------------------------------------------------
 c======================================================================
       subroutine tridi(amat,rhs,n,ibn,dr2,nr,nz,ierr)
       use Constant
-      integer     :: n,ibn,nz,nr,ierr
+      integer(ISZ):: n,ibn,nz,nr,ierr
       real(kind=8):: dr2
       real(kind=8):: amat(0:nr,3),rhs(0:nr,0:nz)
-      integer     :: i
+      integer(ISZ):: i
 
       do 90 i=0,n
          rhs(i,ibn) = rhs(i,ibn)*dr2/eps0
@@ -1018,13 +1018,13 @@ c======================================================================
 
 c======================================================================
       subroutine advsc(schrg,eta,a,kzsq,dt,dr,dz,nr,nz,phikold,taurc)
-      integer     :: nr,nz
+      integer(ISZ):: nr,nz
       real(kind=8):: eta,dt,dr,dz,taurc
       real(kind=8):: schrg(0:nz), kzsq(0:nz), a(0:nr,0:nz)
       real(kind=8):: phikold(0:nz)
 c  Advance the surface charge using the Fourier transform of 
 c  d Q/dt = (dz/eta) * (d^2 Phi/dz^2 - eta*C d/dt( d^2 Phi/dz^2))
-      integer     :: iz
+      integer(ISZ):: iz
 
       do iz = 0,nz
          schrg(iz) = schrg(iz) - (dt*dz)/eta * kzsq(iz)/(dr*dr) * 
@@ -1036,11 +1036,11 @@ c  d Q/dt = (dz/eta) * (d^2 Phi/dz^2 - eta*C d/dt( d^2 Phi/dz^2))
 
 c======================================================================
       subroutine advect(schrg,a,phikold,vbeam,taurc,dt,nr,nz,dz,scrtch)
-      integer     :: nr,nz
+      integer(ISZ):: nr,nz
       real(kind=8):: vbeam,taurc,dt,dz
       real(kind=8):: schrg(0:nz),scrtch(0:nz),a(0:nr,0:nz),phikold(0:nz)
 c  Maps the surface charge along as the mesh moves
-      integer     :: nl,iz
+      integer(ISZ):: nl,iz
       
       nl = int(vbeam*dt/dz)
 

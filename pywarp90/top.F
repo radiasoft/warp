@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.2 $, $Date: 2001/04/19 23:46:12 $
+c@(#) File TOP.M, version $Revision: 3.3 $, $Date: 2001/04/20 00:22:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -37,7 +37,7 @@ c=============================================================================
       subroutine topvers (iout)
       use Topversion
 c  Echoes code version,etc. to output files when they're created
-      integer     :: iout
+      integer(ISZ):: iout
       call printpkgversion(iout,"Main package TOP",verstop)
       return
       end
@@ -45,7 +45,7 @@ c=============================================================================
       subroutine cigar(np,zunifrm,zpunifrm,z,zp,perpscal,straight,
      &                 szp,phi,zpm,zpms)
       use Constant
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: straight
       real(kind=8):: zunifrm(np),zpunifrm(np),z(np),zp(np),perpscal(np)
       real(kind=8):: szp(np),phi(np),zpm(np),zpms(np)
@@ -105,7 +105,7 @@ c     storage is non-volatile.
 c
       real(kind=8):: pion2,oneonpi,twoonpi,zs,zend,zendr,zmap,zl,zendi,a1,a2
       real(kind=8):: third,sixth,root3,q
-      integer     :: i
+      integer(ISZ):: i
 
       pion2 = pi*0.5
       oneonpi = 1./pi
@@ -198,7 +198,7 @@ c Sets up species related quantities which were not set by the user, based
 c on the rest of the user's input.    
 
 
-      integer     :: is
+      integer(ISZ):: is
 
 c     First, set parameters for whole beam (for envelope solver).  If
 c     they are unset, set to parameters of species 1.
@@ -422,7 +422,7 @@ c=============================================================================
 c  Sets globally derived quantities that need computation.
 
 
-      integer     :: is
+      integer(ISZ):: is
       real(kind=8):: ke,u
 
 c     Set species data 
@@ -578,9 +578,9 @@ c  Resizes the lattice arrays to the final lengths needed by the actual data.
 c  Sets dipole field, lattice element 0, flags for bends, etc.
 
 
-      integer     :: idrft,ib,id,iq,is,ih,ii,ia,im,ip
-      integer     :: nndrft,nnbend,nndipo,nnquad,nnsext 
-      integer     :: nnhele,nnhmlt,nnaccl,nnemlt,nnmmlt,nnmmlt2,nnbgrd,nnbgrd2,nnpgrd
+      integer(ISZ):: idrft,ib,id,iq,is,ih,ii,ia,im,ip
+      integer(ISZ):: nndrft,nnbend,nndipo,nnquad,nnsext 
+      integer(ISZ):: nnhele,nnhmlt,nnaccl,nnemlt,nnmmlt,nnmmlt2,nnbgrd,nnbgrd2,nnpgrd
 
 c     Find size of lattice element arrays for resizing 
 c     --- initialize counting variables  
@@ -695,7 +695,7 @@ c============================================================================
 
 c  work routine for the resizing of lattice arrays by routine resetlat  
 
-      integer     :: i,idrft,ib,id,iq,is,ih,ii,ia,ie,im,iz,l
+      integer(ISZ):: i,idrft,ib,id,iq,is,ih,ii,ia,ie,im,iz,l
       real(kind=8):: rnorm,emax,mmax,ephmax,mphmax,dzio2
 
 c     --- if autoset dipoles are specified, then derive dipole locations 
@@ -1136,7 +1136,7 @@ c============================================================================
       use Lattice
       use LatticeInternal
       real(kind=8):: zbeam,time
-      integer     :: fstype
+      integer(ISZ):: fstype
 
 c  Sets the lattice data at zbeam and time into 1d arrays.
 
@@ -1159,8 +1159,8 @@ c          dipozs(i)  dipoze(i)    dipozs(i+1)         dipoze(i+1)
 c       cdipozs(j-1)  cdipoze(j-1) cdipozs(j)          cdipoze(j)
 c                                  cdipozs(j+1)        cdipoze(j+1)
 
-      integer     :: iz,iquadert,iquaderu,iquaderr,ii,imultert,imulteru,imulterr
-      integer     :: id
+      integer(ISZ):: iz,iquadert,iquaderu,iquaderr,ii,imultert,imulteru,imulterr
+      integer(ISZ):: id
       real(kind=8):: zcellc,offset,wi
 
 c     --- Save the z location and time at which the internal lattice frame
@@ -1467,7 +1467,7 @@ c     --- are in a bend.  There is probably a better way of doing this.
 c=============================================================================
       subroutine getelemid(z,offset,nelem,elemzs,elemze,id)
       use Lattice
-      integer     :: nelem,id
+      integer(ISZ):: nelem,id
       real(kind=8):: z,offset,elemzs(0:nelem),elemze(0:nelem)
 
 c Given information about the starts and stops of lattice elements, this
@@ -1535,7 +1535,7 @@ c=============================================================================
       subroutine applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,ez)
       use Lattice
       use LatticeInternal
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np),zp(np),uzp(np),gaminv(np)
       real(kind=8):: dtl,dtr,dt,qoverm
       real(kind=8):: ez(np)
@@ -1556,7 +1556,7 @@ c   ez       axial electric field
 
 
       real(kind=8):: dti,vz,gapez,frac,z1,z2,vn,zl,zr,cacclz
-      integer     :: ip,j
+      integer(ISZ):: ip,j
 
       if (.not. accls) return
 
@@ -1646,7 +1646,7 @@ c=============================================================================
       use Picglb
       use ExtPart
       use Timers
-      integer     :: np,itask,nplive,is,ns
+      integer(ISZ):: np,itask,nplive,is,ns
       real(kind=8):: q,m,w,dt
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
@@ -1669,8 +1669,8 @@ c       itask=3  divides by number of particles, calculates emittances and rms
 
 
       real(kind=8):: pp(0:16,NPARPGRP)
-      integer     :: iz(NPARPGRP)
-      integer     :: im,izm,iw,ip,icell,i
+      integer(ISZ):: iz(NPARPGRP)
+      integer(ISZ):: im,izm,iw,ip,icell,i
       real(kind=8):: dti,dtip1,wz1,wz0,zwin,tg,th
       real(kind=8):: oneondt,clighti,vzi,pnumi,vbeami
       real(kind=8):: delxsq,delxxp,delxpsq,delysq,delyyp,delypsq
@@ -2415,7 +2415,7 @@ c  The data is only saved every itlabwn steps, even if the moments
 c  are actually calculated more or less often.
 
       real(kind=8):: w0,w1
-      integer     :: i,ilw,iz
+      integer(ISZ):: i,ilw,iz
 
       if (iflabwn .eq. 0) return
       if (mod(it,itlabwn) .gt. 0) return
@@ -2450,16 +2450,16 @@ c  are actually calculated more or less often.
 c=============================================================================
       subroutine gammaadv(np,gaminv,uxp,uyp,uzp,gamadv,lrelativ)
       use Constant
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: gaminv(np),uxp(np),uyp(np),uzp(np)
       character*8 :: gamadv
-      logical     :: lrelativ
+      logical(ISZ):: lrelativ
 
 c  Advance Gamma Inverse from it-3/2 to it-1/2 using method given by gamadv
 
 
       real(kind=8):: clghtisq,usq
-      integer     :: ip
+      integer(ISZ):: ip
 
 c  If not using relativity then don't do anything
       if (lrelativ) then
@@ -2495,16 +2495,16 @@ c  Fast gamma advance, version 2, fastest, but least accurate
       end
 c=============================================================================
       subroutine setcurr (curr,np,zp,uzp,gaminv,q,wght,zbeam,dzz,zzmin)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: q,wght,zbeam,dzz,zzmin
       real(kind=8):: curr(0:*), zp(np), uzp(np), gaminv(np)
 
 c  Sets 1d beam current as a function of z, directly from particle data
 
       real(kind=8):: s0(NPARPGRP), s1(NPARPGRP)
-      integer     :: kk(NPARPGRP)
+      integer(ISZ):: kk(NPARPGRP)
       real(kind=8):: g,w1,w0,dzzi
-      integer     :: ip
+      integer(ISZ):: ip
 
       g = wght * q / dzz
       dzzi = 1. / dzz
@@ -2528,9 +2528,9 @@ c     --- scalar loop
       end
 c=============================================================================
       subroutine percurr(curr,nzzarr,periinz)
-      integer     :: nzzarr
+      integer(ISZ):: nzzarr
       real(kind=8):: curr(0:nzzarr)
-      logical     :: periinz
+      logical(ISZ):: periinz
 c Make current periodic.
 
 c Parallel version makes call to special routine percurr_slave
@@ -2551,7 +2551,7 @@ c=============================================================================
 
 c  Computes the mean beam z velocity from the current and line charge density
 
-      integer     :: i
+      integer(ISZ):: i
 
       do i = 0, nzzarr
          vzofz(i) = curr(i) / dvnz(linechg(i))
@@ -2569,7 +2569,7 @@ c  Computes the "gap" electric field as a function of z, using the "smeared gap"
 c  approximation.  We sweep back from head of beam, since that's the direction
 c  in which information moves.
 
-      integer     :: i
+      integer(ISZ):: i
       real(kind=8):: d
 
       if (ifgap) then
@@ -2591,7 +2591,7 @@ c  in which information moves.
 c=============================================================================
       subroutine gapfield (np,zp,ez,zbeam,zzmin,egap,dzz)
       use InGaps
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: zbeam,zzmin,dzz
       real(kind=8):: zp(np),ez(np),egap(0:*)
 
@@ -2599,7 +2599,7 @@ c  Interpolates the spatially averaged gap electric field onto the particle
 c  positions, then uses it to augment the individual particle Ez's.
 
       real(kind=8):: dzzi,w1,w0
-      integer     :: ip,kk
+      integer(ISZ):: ip,kk
 
       if (ifgap) then
 
@@ -2620,12 +2620,12 @@ c=============================================================================
       use Constant
       use InPart
       use Particles
-      logical     :: lrelativ
+      logical(ISZ):: lrelativ
 c  Converts v to u, sets inverse gamma factor for all particles
 
 
       real(kind=8):: clghtisq,gamma
-      integer     :: is,ip
+      integer(ISZ):: is,ip
 
       if (lrelativ) then
         clghtisq = 1./clight**2
@@ -2659,7 +2659,7 @@ c=============================================================================
 c  Impose boundary conditions on zp
 
       real(kind=8):: syslen
-      integer     :: is,ip
+      integer(ISZ):: is,ip
 
 c Parallel version makes call to special routine zpartbnd_slave
 #ifdef PARALLEL
@@ -2712,14 +2712,14 @@ c The following two subroutines are made obsolete by zpartbnd above, but
 c are maintained for use by the wrz and wxy packages.
 c=============================================================================
       subroutine periz(np,zp,zgrid,zmmax,zmmin)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: zgrid,zmmax,zmmin
       real(kind=8):: zp(np)
 
 c  Imposes periodic boundary conditions on zp
 
       real(kind=8):: syslen,sysleni
-      integer     :: ip
+      integer(ISZ):: ip
 
       syslen = zmmax - zmmin
       sysleni = 1./syslen
@@ -2734,7 +2734,7 @@ c  Imposes periodic boundary conditions on zp
       end
 c=============================================================================
       subroutine stckyz(np,zp,zmmax,zmmin,dz,uxp,uyp,uzp,zgrid)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: zmmax,zmmin,dz,zgrid
       real(kind=8):: zp(np)
       real(kind=8):: uxp(np),uyp(np),uzp(np)
@@ -2742,7 +2742,7 @@ c=============================================================================
 c  Enforces sticky b.c.'s on the z walls.
 c  Particles stick at the extreme edges of the grid.
 
-      integer     :: ip
+      integer(ISZ):: ip
 
       do ip=1,np
         if ((zp(ip)-zgrid).ge.zmmax) then
@@ -2774,7 +2774,7 @@ c=============================================================================
 c Calculate the center of mass of the beam along the z axis from the particles
 
 
-      integer     :: is,ip
+      integer(ISZ):: is,ip
       real(kind=8):: totz,totmass
 
       totz = 0.
@@ -2800,7 +2800,7 @@ c=============================================================================
 c Allocate space for particles and set up associated arrays.
 
 
-      integer     :: is
+      integer(ISZ):: is
 
 c     --- Set one of npmax and np_s from the other. If they are both set,
 c     --- then do nothing. That is not an error since the two variables
@@ -2841,8 +2841,8 @@ c=============================================================================
       subroutine chckpart(is,nlower,nhigher,lfullshft)
       use InPart
       use Particles
-      integer     :: is,nlower,nhigher
-      logical     :: lfullshft
+      integer(ISZ):: is,nlower,nhigher
+      logical(ISZ):: lfullshft
 
 c Make sure that there is enough space in the particle arrays for nlower
 c new particles below and nhigher above the live particles.  Returns if
@@ -2854,7 +2854,7 @@ c enough space, add more to the arrays. Particle data is shifted
 c appropriately.
 
 
-      integer     :: nadd,i,ishft
+      integer(ISZ):: nadd,i,ishft
 
 c     --- If there is already enough space, then return.
       if (ins(is)-npmax_s(is-1)-1 .ge. nlower .and.
@@ -2909,7 +2909,7 @@ c=============================================================================
       subroutine shftpart(is,ishft)
       use InPart
       use Particles
-      integer     :: is,ishft
+      integer(ISZ):: is,ishft
 
 c Shift particles by 'ishft'.  All of the data from the low end of the
 c species block to the top of the live particles are moved.  The area
@@ -2920,7 +2920,7 @@ c shift without clobbering other particles or going past the ends of
 c the arrays.
 
 
-      integer     :: ip
+      integer(ISZ):: ip
 
 c     --- return if shift is zero
       if (ishft .eq. 0) return
@@ -2979,12 +2979,12 @@ c=============================================================================
       subroutine copypart(it,nn,ii,istart)
       use InPart
       use Particles
-      integer     :: it,nn,istart
-      integer     :: ii(0:nn-1)
+      integer(ISZ):: it,nn,istart
+      integer(ISZ):: ii(0:nn-1)
 c Copies particle data from locations given by ii to the locations starting
 c at 'it', or if istart > 0, copy sequential particles from locations
 c starting at 'it' to locations starting at 'istart'.
-      integer     :: i,in,ij
+      integer(ISZ):: i,in,ij
       if (istart > 0) then
         do i=0,nn-1
           ij = istart + i
@@ -3017,9 +3017,9 @@ c=============================================================================
 c  VARIOUS UTILITIES
 c=============================================================================
       subroutine copyarry (source, target, nwords)
-      integer     :: nwords
+      integer(ISZ):: nwords
       real(kind=8):: source(nwords), target(nwords)
-      integer     :: i
+      integer(ISZ):: i
 
       do 100 i = 1, nwords
          target(i) = source(i)
@@ -3029,9 +3029,9 @@ c=============================================================================
       end
 c=============================================================================
       subroutine sumarry (source, target, nwords)
-      integer     :: nwords
+      integer(ISZ):: nwords
       real(kind=8):: source(nwords), target(nwords)
-      integer     :: i
+      integer(ISZ):: i
 
       do 100 i = 1, nwords
          target(i) = target(i) + source(i)
@@ -3041,11 +3041,11 @@ c=============================================================================
       end
 c=============================================================================
       subroutine zeroarry (arry,n)
-      integer     :: n
+      integer(ISZ):: n
       real(kind=8):: arry(*)
 
 c  Sets ARRY to zero
-      integer     :: i
+      integer(ISZ):: i
       do i=1,n
         arry(i) = 0.0
       enddo
@@ -3054,10 +3054,10 @@ c  Sets ARRY to zero
       end
 c=============================================================================
       subroutine writarry(nn,arry,filename)
-      integer     :: nn
+      integer(ISZ):: nn
       real(kind=8):: arry(nn)
       character*(*):: filename
-      integer     :: ii
+      integer(ISZ):: ii
 
       open(unit=27,file=filename,status='new')
 
@@ -3072,7 +3072,7 @@ c=============================================================================
       end
 c=============================================================================
       real(kind=8) function fnice(i,e10)
-      integer     :: i
+      integer(ISZ):: i
       real(kind=8):: e10
 c this is used to pick nice numbers; also gives next larger power of 10.
 c for: i =  -4 -3 -2 -1 0  1  2  3   4   5
@@ -3081,7 +3081,7 @@ c    e10 =  .1 .1  1  1 1 10 10 10 100 100
 c     i3 =   2  3  1  2 3  1  2  3   1   2
 c    i10 =  -1 -1  0  0 0  1  1  1   2   2
 
-      integer     :: i10,i3
+      integer(ISZ):: i10,i3
       real(kind=8):: a(3) = (/.2,.5,1./)
       i10=i/3
       if(i.gt.0) i10=(i+2)/3
@@ -3092,10 +3092,10 @@ c    i10 =  -1 -1  0  0 0  1  1  1   2   2
       end
 c=============================================================================
       subroutine psumx(a,b,n)
-      integer     :: n
+      integer(ISZ):: n
       real(kind=8):: a(n), b(n)
 c     b := partial sum of a
-      integer     :: i
+      integer(ISZ):: i
       b(1) = a(1)
       do i = 2, n
         b(i) = a(i) + b(i-1)
@@ -3104,9 +3104,9 @@ c     b := partial sum of a
       end
 c=============================================================================
       logical function inlist (list, listlen, text)
-      integer     :: listlen
+      integer(ISZ):: listlen
       character*8 :: text, list(listlen)
-      integer     :: i
+      integer(ISZ):: i
 
       inlist = .false.
       do i = 1,listlen
@@ -3176,14 +3176,14 @@ c  is the value of r2rev on the NEXT call.
       end
 c=============================================================================
       real(kind=8) function rnrev(i,nbase)
-      integer     :: i,nbase
+      integer(ISZ):: i,nbase
 c  Returns a fraction (0 <= rnrev <= 1) representing the
 c  nbase-reversed number corresponding to i; i.e.
 c  for i written in base nbase as n4n3n2n1.0, this returns
 c  rnrev = 0.n1n2n3n4, where n1, n2.. are the digits in base n.
 c  Disregards roundoff errors for nbase not a power of 2.
 c  From N. Otani, 1985
-      integer     :: j,n,jnext
+      integer(ISZ):: j,n,jnext
       real(kind=8):: powern
       rnrev = 0.
       j = i
@@ -3198,12 +3198,12 @@ c  From N. Otani, 1985
       end
 c=============================================================================
       subroutine rnrevarray(n,x,i,nbase)
-      integer     :: n,i,nbase
+      integer(ISZ):: n,i,nbase
       real(kind=8):: x(n)
 c Fills an array with uniformly distributed digit reversed numbers.
 c The numbers range from 0 to 1.
       real(kind=8):: rnrev
-      integer     :: j
+      integer(ISZ):: j
       do j=1,n
         x(j) = rnrev(i+j-1,nbase)
       enddo
@@ -3212,12 +3212,12 @@ c The numbers range from 0 to 1.
 c=============================================================================
       subroutine sphere4(a,b,c,d,n)
       use Constant
-      integer     :: n
+      integer(ISZ):: n
       real(kind=8):: a(n), b(n), c(n), d(n)
 c   Distribute points on surface of a 4-d unit sphere.
 c   (a*a + b*b) increases, and (c*c + d*d) decreases, monotonically.
       real(kind=8):: xsrev,rr,phi,r2rev,rnrev
-      integer     :: i
+      integer(ISZ):: i
 
       xsrev = 0.                ! get same sequence if call again
       do i = 1,n
@@ -3235,11 +3235,11 @@ c   (a*a + b*b) increases, and (c*c + d*d) decreases, monotonically.
 c=============================================================================
       subroutine sphere4f(a,b,c,d,g1,g2,g3)
       use Constant
-      integer     :: g1,g2,g3
+      integer(ISZ):: g1,g2,g3
       real(kind=8):: a(g1), b(g1), c(g1), d(g1)
 c   Distribute points on surface of a 4-d unit sphere using fibonacci numbers.
 c   (a*a + b*b) increases, and (c*c + d*d) decreases, monotonically.
-      integer     :: i
+      integer(ISZ):: i
       real(kind=8):: rr,phi
 
       do i = 1,g1
@@ -3267,7 +3267,7 @@ c  Alex Friedman, July 1989 (after an earlier version).
 c     --- This common block necessary to preserve state memory:
       real(kind=8):: y,v1,v2,sq,x,wranf
 c     real(kind=8):: s
-      integer     :: iflag = -1
+      integer(ISZ):: iflag = -1
       save y, iflag
 
       iflag = -iflag
@@ -3297,7 +3297,7 @@ c     rnorm = x
 c=============================================================================
       subroutine rnormdig (i1,n,nbase1,nbase2,dx,x)
       use Constant
-      integer     :: i1,n,nbase1,nbase2
+      integer(ISZ):: i1,n,nbase1,nbase2
       real(kind=8):: dx
       real(kind=8):: x(n)
 
@@ -3308,7 +3308,7 @@ c  Uses Box-Muller-Marsaglia method:
 c  See Knuth, vol. 2, p.104 (first ed.), p.117 (second ed.)
 c  Alex Friedman, July 1989 (after an earlier version).
 c  David P. Grote, Febuary 1990 (added digit reversed stuff)
-      integer     :: i
+      integer(ISZ):: i
       real(kind=8):: s,phi,sq,rnrev
 
       do i=i1,i1+n-2,2
@@ -3343,10 +3343,10 @@ c  A similar one (used in some older AF codes) adds 12 variates, subtracts 6.
       end
 c=============================================================================
       subroutine rma(a,n)
-      integer     :: n
+      integer(ISZ):: n
       real(kind=8):: a(n)
 c   From interpreter, rma(&a,n) returns n Gaussian random numbers.
-      integer     :: i
+      integer(ISZ):: i
       real(kind=8):: rm
 
       do i = 1,n
@@ -3357,7 +3357,7 @@ c   From interpreter, rma(&a,n) returns n Gaussian random numbers.
 c=============================================================================
 c=============================================================================
       subroutine load2d(np,x,y,nx,ny,n,dx,dy)
-      integer     :: np,nx,ny
+      integer(ISZ):: np,nx,ny
       real(kind=8):: x(np),y(np),n(0:nx,0:ny)
       real(kind=8):: dx,dy
 

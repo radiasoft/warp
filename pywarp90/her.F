@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:10 $
+c@(#) File HER.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -24,7 +24,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine hervers (iout)
       use HERversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version,etc. to output files when they're created
       call printpkgversion(iout,"HERMES",versher)
       return
@@ -46,7 +46,7 @@ c=============================================================================
 c  Invoked by the GENERATE command, it allocates storage
 c  for HERMES.
 
-      integer     :: ii
+      integer(ISZ):: ii
 
 c  Send a startup message to the standard output
 
@@ -90,7 +90,7 @@ c ---   Allocate space for the RZ field solver
         call remark (" ***  field solver package RZ generating for Hermes  ***")
 
 c ---   Create the dynamic arrays for fields
-        nmrz  = max0 (nr, nz)
+        nmrz  = max(nr, nz)
         nrz = (nr+1) * (nz+1)
         call gallot ("Fieldsrz", 0)
  
@@ -180,8 +180,8 @@ c=============================================================================
 c  For convenience, this routine accesses the lattice database and is not
 c  linked to the universe solely by its calling sequence.
 
-      integer     :: ii,il
-      logical     :: lfail
+      integer(ISZ):: ii,il
+      logical(ISZ):: lfail
 
 c     --- Make sure that the sign of the step size and the relation
 c     --- between zlher and zuher are consistent.
@@ -243,18 +243,18 @@ c=============================================================================
       use HERvartmp
       use HERfield
       use HERhist
-      integer     :: niz,nther
+      integer(ISZ):: niz,nther
       real(kind=8):: y(16,niz)
       real(kind=8):: dther,aion,zion,zlher,zuher
       real(kind=8):: fviscous
-      integer     :: icharge,islice,nsteps
-      logical     :: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous
-      logical     :: lsavehist,lfail
+      integer(ISZ):: icharge,islice,nsteps
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous
+      logical(ISZ):: lsavehist,lfail
 
 c Run the HERMES kernel, using the inputted array, y and the starting data.
 
       real(kind=8):: t
-      integer     :: i
+      integer(ISZ):: i
       
       t = 0.
 c     --- Start at time = 0
@@ -315,7 +315,7 @@ c=============================================================================
       use LatticeInternal
       use Mult_data
       use HERfield
-      integer     :: niz
+      integer(ISZ):: niz
       real(kind=8):: t,dt,y(16,niz)
 
 c  Computes the forces needed for the general-lattice envelope calculation.
@@ -333,7 +333,7 @@ c     y    is the array hold the envelope information
 c     niz  is the number of slices
 
       real(kind=8):: vz,vzi,zl,zr,fl,fr,frac,dta
-      integer     :: iele,ii,j
+      integer(ISZ):: iele,ii,j
       
       dta = abs(dt)
       
@@ -428,12 +428,12 @@ c=============================================================================
      &                  lezcenter,lviscous,lfail)
       use Constant
       use HERfield
-      integer     :: niz
+      integer(ISZ):: niz
       real(kind=8):: t,dt,y(16,niz),dy(16,niz)
       real(kind=8):: aion,zion
       real(kind=8):: fviscous
-      integer     :: icharge
-      logical     :: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lfail
+      integer(ISZ):: icharge
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lfail
 
 c  Computes the forces needed for the general-lattice envelope calculation.
 c  Includes both residence corrected hard edged quadrupole elements 
@@ -444,7 +444,7 @@ c  forces (electric and magnetic quadrupole fields, and a radial
 c  E-field proportional to the radial coordinate r), and 
 c  linear space-charge forces.  
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: alfcur
       real(kind=8):: y1i,y3i,y1py3i,gamma,gambeta
       real(kind=8):: rigidityi,quadfld,perv
@@ -567,18 +567,18 @@ c=============================================================================
      &            icharge,lezbeam,lperveance,lemittance,lallez,lezcenter,
      &            lviscous,lfail)
       use Constant
-      integer     :: niz
+      integer(ISZ):: niz
       real(kind=8):: y(16,niz),dy(16,niz)
       real(kind=8):: t,dt,aion,zion
       real(kind=8):: fviscous
-      integer     :: icharge
-      logical     :: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lfail
+      integer(ISZ):: icharge
+      logical(ISZ):: lezbeam,lperveance,lemittance,lallez,lezcenter,lviscous,lfail
 
 c ONESTEP  advances the set of the envelope equations using the
 c isochronous leapfrog algorithm.
 
       real(kind=8):: halfdt, ds, dslight
-      integer     :: j
+      integer(ISZ):: j
       
      
       halfdt = 0.5*dt
@@ -631,10 +631,10 @@ c=============================================================================
       use InMeshrz
       use Picglbrz
       use Fieldsrz
-      integer     :: niz
+      integer(ISZ):: niz
       real(kind=8):: y(16,niz),eval(niz),rpipe(niz)
-      integer     :: icharge
-      logical     :: lezbeam,lezcenter,lfail
+      integer(ISZ):: icharge
+      logical(ISZ):: lezbeam,lezcenter,lfail
 
 c GETSELFFIELD calculates the axial space-charge field of a beam
 c using various approximations.
@@ -657,7 +657,7 @@ c   icharge = 7 uses WARP's RZ solver
       real(kind=8):: kr, arg, besselterm(niz), left, right
       real(kind=8):: sl,su
 
-      integer     :: ii,ir,irm,iz,izl,izr
+      integer(ISZ):: ii,ir,irm,iz,izl,izr
 
       call gethertmp(y,niz,rpipe,icharge,lfail)
       if (lfail) return
@@ -930,7 +930,7 @@ c ---   Find Ez on slices
 c=============================================================================
 
       subroutine getbesselterms(niz,kr,rad,besselterm)
-      integer     :: niz
+      integer(ISZ):: niz
       real(kind=8):: kr
       real(kind=8):: rad(niz)
       real(kind=8):: besselterm(niz)
@@ -966,7 +966,7 @@ c     The routine is based on bessj1 from Numerical Recipes.
       real(kind=8):: q5 = 0.105787412e-06
 
       real(kind=8):: y,z,x,xx
-      integer     :: ii
+      integer(ISZ):: ii
       
       do ii=1,niz
         x = kr*rad(ii)
@@ -990,11 +990,11 @@ c=============================================================================
       subroutine gethertmp(y,niz,rpipe,icharge,lfail)
       use HERtmp
       use Constant
-      integer     :: niz,icharge
+      integer(ISZ):: niz,icharge
       real(kind=8):: y(16,niz), rpipe(niz)
-      logical     :: lfail
+      logical(ISZ):: lfail
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: del1, del2, part1, fact1, fact2
       real(kind=8):: rmin,abmin,aval,bval,dlna, dlnb
 c --- calculate line-charge density inside the slices
@@ -1109,12 +1109,12 @@ c ---   don't bother otherwise
 c=============================================================================
       subroutine getviscous(y,niz,aviscous,fviscous)
       use Constant
-      integer     :: niz
+      integer(ISZ):: niz
       real(kind=8):: y(16,niz),aviscous(niz),fviscous
 
 c add artificial viscosity to the Ez field
 
-      integer     :: ii
+      integer(ISZ):: ii
       real(kind=8):: del1, del2, fact
       real(kind=8):: dzviscous
       real(kind=8):: dbetadz(niz)
@@ -1158,9 +1158,9 @@ c       because this is what we actually need
 c=============================================================================
       subroutine savehisther(t,y,niz,nther,lsavehist)
       use HERhist
-      integer     :: niz,nther
+      integer(ISZ):: niz,nther
       real(kind=8):: t,y(16,niz)
-      logical     :: lsavehist
+      logical(ISZ):: lsavehist
 
 c     --- Check if saving history
       if (lsavehist) then
@@ -1180,9 +1180,9 @@ c       --- Check if saving history this step. Requires (nhher > 0).
 c=============================================================================
       subroutine savehisther1(t,y,niz)
       use HERhist
-      integer     :: niz
+      integer(ISZ):: niz
       real(kind=8):: t,y(16,niz)
-      integer     :: ii
+      integer(ISZ):: ii
 
       jhher = jhher + 1
       hther(jhher) = t
@@ -1211,7 +1211,7 @@ c=============================================================================
       subroutine readbessel
       use HERbessel
       
-      logical     :: lread = .false.
+      logical(ISZ):: lread = .false.
       save lread
 
 c --- This subroutine reads in the zeros of the Bessel function J0, as well as

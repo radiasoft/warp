@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.2 $, $Date: 2001/04/19 23:46:12 $
+c@(#) File DTOP.M, version $Revision: 3.3 $, $Date: 2001/04/20 00:22:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -16,16 +16,16 @@ c=============================================================================
       use Z_Moments
       use Hist
       use Moments
-      integer     :: itt
+      integer(ISZ):: itt
       real(kind=8):: tim
-      logical     :: lmoments
+      logical(ISZ):: lmoments
 
 c  Printout particle moments and field qty, writes into history buffers, etc.
 c  Send one-liner to print file, and possibly to tty.
 c  Makes call to hstall to utilize the hst package.
 
 
-      logical     :: lgchange,checkzhistarray
+      logical(ISZ):: lgchange,checkzhistarray
 
       if (warpout > -1) then
         call oneliner (warpout,itt,tim,pz,ese,ek)
@@ -107,8 +107,8 @@ c  Make call to hst routine to utilize the hst package
       end
 c============================================================================
       logical function checkzhistarray(lhzarray,ihzarray)
-      logical     :: lhzarray
-      integer     :: ihzarray
+      logical(ISZ):: lhzarray
+      integer(ISZ):: ihzarray
 c For histories of moments versus z, checks whether gchange should be called
 c to allocate space. If the flag is turned on but the multiplier is zero,
 c then space must be allocated for the history.  Also sets the multiplier
@@ -131,7 +131,7 @@ c============================================================================
       use Hist
       real(kind=8):: tim
 c  Save results of this time step in history buffers
-      integer     :: iw,iz
+      integer(ISZ):: iw,iz
 
       jhist = jhist + 1
       thist(jhist) = tim
@@ -235,7 +235,7 @@ c     --- Collect only those z histories specified by the user.
 c=============================================================================
       subroutine oneliner (iunit,it,time,pz,ese,ek)
       use Io
-      integer     :: iunit,it
+      integer(ISZ):: iunit,it
       real(kind=8):: time,pz,ese,ek
 
 
@@ -262,7 +262,7 @@ c=============================================================================
       use OutParams
       use Beam_acc
       real(kind=8):: dxperp,dyperp,dz
-      logical     :: lprntpara
+      logical(ISZ):: lprntpara
 
 c  Calculates various parameters and optionally prints them out to a plot
 c  frame and an output file or tty
@@ -532,7 +532,7 @@ c  The same subsets are used for all time, since we don't want
 c  movies to flicker as subsets change.
 
 
-      integer     :: iset,ip,ndone,nnew
+      integer(ISZ):: iset,ip,ndone,nnew
       real(kind=8):: fracplot,wranf
 
       do iset = 1, NSUBSETS
@@ -572,13 +572,13 @@ c============================================================================
       use InDiag
       use InPltCtl
       use Timers
-      integer     :: freqflag
+      integer(ISZ):: freqflag
 
 c  Phase space plots, both "frequent" ones and others
 
 
       real(kind=8):: timetemp,wtime
-      integer     :: i
+      integer(ISZ):: i
 
       timetemp = wtime()
 
@@ -597,7 +597,7 @@ c=============================================================================
       use InDiag
       use InPltCtl
       use Timers
-      integer     :: freqflag
+      integer(ISZ):: freqflag
 c  Plots all 1d (z dependent) quantities vs z
       real(kind=8):: timetemp,wtime
       timetemp = wtime()
@@ -616,16 +616,16 @@ c=============================================================================
 c  OTHER-THAN-PHYSICS-OR-GRAPHICS ROUTINES
 c=============================================================================
       subroutine printpkgversion(iout,package,version)
-      integer     :: iout
+      integer(ISZ):: iout
       character*(*):: package
       character*(19):: version
 c Prints out the package name and version number. This routine is only
 c used for the printing of the version number at the start up of the code.
-      integer     :: i,lenv
+      integer(ISZ):: i,lenv
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.2 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.3 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -641,7 +641,7 @@ c=============================================================================
       subroutine parvers(iunit)
       use Code_version
       use Ch_var
-      integer     :: iunit
+      integer(ISZ):: iunit
       character*79:: version
       character*72:: author
       common /cverpar/ version, author
@@ -665,7 +665,7 @@ c  We pervert it for other info.
 c=============================================================================
       subroutine stepid (it, time, zbeam)
       use Ch_var
-      integer     :: it
+      integer(ISZ):: it
       real(kind=8):: time,zbeam
 
 c  Loads character variable PLINE3 with time-dependent simulation params
@@ -688,10 +688,10 @@ c  of identifying information on each plot frame.
       end
 c=============================================================================
       logical function thisstep (it, icontrol, ncontrol)
-      integer     :: it,ncontrol
-      integer     :: icontrol(ncontrol)
+      integer(ISZ):: it,ncontrol
+      integer(ISZ):: icontrol(ncontrol)
 
-      integer     :: istart,iend,iinc,i
+      integer(ISZ):: istart,iend,iinc,i
 
       istart = icontrol(1)
       iend   = icontrol(2)
@@ -716,7 +716,7 @@ c=============================================================================
 c=============================================================================
       logical function thiszbeam(zbeaml,zbeamr,control,ncontrol)
       real(kind=8):: zbeaml,zbeamr
-      integer     :: ncontrol
+      integer(ISZ):: ncontrol
       real(kind=8):: control(ncontrol)
 
 c Given a z range and a control array, this subroutine checks if a value
@@ -730,7 +730,7 @@ c Otherwise, the expression for il returns a negative number which is rounded
 c up to zero and so is equal to ir.
 
       real(kind=8):: zstart,zend,zinc
-      integer     :: i,il,ir
+      integer(ISZ):: i,il,ir
 
       zstart = control(1)
       zend   = control(2)
@@ -769,7 +769,7 @@ c   Have the correct number of timestep been passed?
 c   Are there any lab windows in the beam frame?
 
 
-      integer     :: il
+      integer(ISZ):: il
 
       dolabwn = .false.
 
@@ -791,7 +791,7 @@ c=============================================================================
 c=============================================================================
       subroutine tolabfrm(zcent,nn,xxx,zzz)
       use Lattice
-      integer     :: nn
+      integer(ISZ):: nn
       real(kind=8):: zcent
       real(kind=8):: xxx(nn), zzz(nn)
 
@@ -815,17 +815,17 @@ c   labze        Z location of bend ends in lab frame
 c   labxe        X location of bend ends in lab frame
 
 
-      integer     :: maxnumb
+      integer(ISZ):: maxnumb
       parameter (maxnumb=100)
-      integer     :: ibend(maxnumb)
+      integer(ISZ):: ibend(maxnumb)
       real(kind=8):: bendlats(maxnumb), bendlate(maxnumb)
       real(kind=8):: bend_a(maxnumb), bend_sum(0:maxnumb+1)
       real(kind=8):: cosbsum(0:maxnumb+1), sinbsum(0:maxnumb+1)
       real(kind=8):: labzs(maxnumb), labxs(maxnumb)
       real(kind=8):: labze(maxnumb), labxe(maxnumb)
       real(kind=8):: offset,zzzmin,zzzmax,offsetmx,offsetmn,angle,aa,tz
-      integer     :: i,ib,numb,icentl,icentr,id,ibendl,ibendr,il,ir
-      integer     :: ibendmn,ibendmx
+      integer(ISZ):: i,ib,numb,icentl,icentr,id,ibendl,ibendr,il,ir
+      integer(ISZ):: ibendmn,ibendmx
 
 c Return if there are no bends
       if (.not. bends) return
@@ -1022,7 +1022,7 @@ c=============================================================================
 c=============================================================================
       subroutine getpsgrd(np,xp,uxp,nw,nh,psgrd,
      &                    wmin,wmax,hmin,hmax,zl,zr,zp,uzp,slope)
-      integer     :: nw,nh,np
+      integer(ISZ):: nw,nh,np
       real(kind=8):: xp(np), zp(np), uxp(np), uzp(np)
       real(kind=8):: psgrd(0:nw,0:nh)
       real(kind=8):: slope,wmax,wmin,hmax,hmin,zl,zr
@@ -1035,7 +1035,7 @@ c When itask is zero, psgrd is reset, when not zero, psgrd is not reset.
 c This allows data to be accumulated over several time steps to obtain
 c better statistics.
 
-      integer     :: ip,iw,ih
+      integer(ISZ):: ip,iw,ih
       real(kind=8):: dwi,dhi,ww,wh
 
 c set grid cell inverse sizes
@@ -1070,7 +1070,7 @@ c         if within grid, accumulate
       end
 c=============================================================================
       subroutine setgrid2d(np,x,y,nx,ny,grid,xmin,xmax,ymin,ymax)
-      integer     :: nx,ny,np
+      integer(ISZ):: nx,ny,np
       real(kind=8):: x(np), y(np)
       real(kind=8):: grid(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -1079,7 +1079,7 @@ c Lays particles down onto 2-D mesh.
 c When itask is zero, grid is reset to zero, when not zero, grid is not reset.
 c This allows data to be accumulated to obtain better statistics.
 
-      integer     :: ip,ix,iy
+      integer(ISZ):: ip,ix,iy
       real(kind=8):: dxi,dyi,wx,wy
 
 c     --- set grid cell inverse sizes
@@ -1110,14 +1110,14 @@ c       --- if within grid, accumulate
       end
 c=============================================================================
       subroutine getgrid2d(np,x,y,z,nx,ny,grid,xmin,xmax,ymin,ymax)
-      integer     :: nx,ny,np
+      integer(ISZ):: nx,ny,np
       real(kind=8):: x(np), y(np), z(np)
       real(kind=8):: grid(0:nx,0:ny)
       real(kind=8):: xmin,xmax,ymin,ymax
 
 c Gathers data from a 2-D mesh onto particle positions.
 
-      integer     :: ip,ix,iy
+      integer(ISZ):: ip,ix,iy
       real(kind=8):: dxi,dyi,wx,wy
 
 c     --- set grid cell inverse sizes
@@ -1156,7 +1156,7 @@ c===========================================================================
       use Win_Moments
       use Particles
       real(kind=8):: threshold
-      integer     :: js,iw,ngridw,ngridh,zeromesh
+      integer(ISZ):: js,iw,ngridw,ngridh,zeromesh
       real(kind=8):: xxpmesh(0:ngridw,0:ngridh)
       real(kind=8):: yypmesh(0:ngridw,0:ngridh)
       real(kind=8):: tepsx,tepsy
@@ -1177,7 +1177,7 @@ c --- Output:
 c ---   - tepsx,tepsy
 
 
-      integer     :: i1,i2,ip,i,j,jw,jh,npx,npy
+      integer(ISZ):: i1,i2,ip,i,j,jw,jh,npx,npy
       real(kind=8):: zw1,zw2,vms,ww,wh,density
       real(kind=8):: slopex,mmaxx,dwx,dhx
       real(kind=8):: slopey,mmaxy,dwy,dhy
@@ -1370,14 +1370,14 @@ c=============================================================================
      &                    fracbin,emitbin,npts,emitbinmax,
      &                    tx,txp,emitp,rwork,iwork) 
       use Constant
-      integer     :: np,npts
+      integer(ISZ):: np,npts
       real(kind=8):: xp(np),uxp(np),uzp(np)
       real(kind=8):: xbar,xsqbar,xxpbar,xpsqbar,xpbar
       real(kind=8):: fracbin(0:npts),emitbin(0:npts)
       real(kind=8):: emitbinmax 
       real(kind=8):: tx(np),txp(np),emitp(np)
       real(kind=8):: rwork(3,npts)
-      integer     :: iwork(npts)
+      integer(ISZ):: iwork(npts)
 
 c This subroutine calculates the points for a graph of emittance vs. 
 c the fraction of the beam particles in phase space enclosed by 
@@ -1448,8 +1448,8 @@ c                   iwork(npts) = sum of particles in elliptical shell
 c
 
 
-      integer     :: ip,ipt,aindex
-      integer     :: tnptot,nplive 
+      integer(ISZ):: ip,ipt,aindex
+      integer(ISZ):: tnptot,nplive 
       real(kind=8):: emitmax,eps,epsinvsq
       real(kind=8):: txsqbar,txpsqbar,txxpbar,txrms,txprms
       real(kind=8):: txp2,txxp,tx2
@@ -1560,7 +1560,7 @@ c=============================================================================
      &                xsqbar,xpsqbar,xxpbar,xbar,xpbar,
      &                tx,txp,
      &                txsqbar,txpsqbar,txxpbar)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np),uxp(np),uzp(np)
       real(kind=8):: xsqbar,xpsqbar,xxpbar,xbar,xpbar
       real(kind=8):: tx(np),txp(np)
@@ -1599,7 +1599,7 @@ c   txxpbar  = <x*x'>  of rotated particle distribution (mixed units)
 
       real(kind=8):: theta,sint,cost,sintcost,sint2,cost2
       real(kind=8):: txsqoff,txpsqoff,txxpoff
-      integer     :: ip
+      integer(ISZ):: ip
 
 c Find rotation angle to make ellipse upright 
 
@@ -1644,14 +1644,14 @@ c=============================================================================
      &                       xpsqbar,xpbar,npts,vbeam,gamma,percent,emitt,
      &                       xp,xprime,area,x2sum,xp2sum,xxpsum,xsum,xpsum,
      &                       upercent,uemitt,nshell)
-      integer     :: npart,npts
+      integer(ISZ):: npart,npts
       real(kind=8):: xpshear(npart),vxgam(npart)
       real(kind=8):: xbar,xsqbar,xxpbar,xpsqbar,xpbar,vbeam,gamma
       real(kind=8):: percent(0:npts),emitt(0:npts)
       real(kind=8):: xp(npart),xprime(npart),area(npart)
       real(kind=8):: x2sum(npts),xp2sum(npts),xxpsum(npts),xsum(npts),xpsum(npts)
       real(kind=8):: upercent(0:npts),uemitt(0:npts)
-      integer     :: nshell(npts)
+      integer(ISZ):: nshell(npts)
 
 c Comments:  This subroutine calculates the points for a graph of
 c emittance vs. percent of the beam current enclosed by nested ellipses in
@@ -1695,7 +1695,7 @@ c   nshell
 c Local:
 c   xrms = sqrt(<x**2>-<x>**2)
 
-      integer     :: i,ipart,ipt,areaindex,ntotal
+      integer(ISZ):: i,ipart,ipt,areaindex,ntotal
       real(kind=8):: areamax,beta,ellipticity,xcentroid,xpcentroid
       real(kind=8):: xp2,xxp,x2,xrms,xprms
       real(kind=8):: x2total,xp2total,xxptotal,xsumtotal,xpsumtotal
@@ -1872,7 +1872,7 @@ C      end do
 c=============================================================================
       subroutine unshear(xp,xprime,npart,xsqbar,xpsqbar,xxpbar,xbar,xpbar,xun,
      &                   xpun,vbeam,gamma)
-      integer     :: npart
+      integer(ISZ):: npart
       real(kind=8):: xp(npart),xprime(npart),xun(npart),xpun(npart)
       real(kind=8):: xsqbar,xpsqbar,xxpbar,xbar,xpbar,vbeam,gamma
 
@@ -1901,7 +1901,7 @@ c   xpun = array of dimension = npart, containing final distribution v/vz values
 
       real(kind=8):: numerator,denominator,theta,sint,cost,vfac
       real(kind=8):: x2ck,xp2ck,xxpck,sintcost,sint2,cost2,xsqoff,xpsqoff,xxpoff
-      integer     :: i
+      integer(ISZ):: i
       
       vfac=1.0e0/(gamma*vbeam)
 

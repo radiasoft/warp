@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.1 $, $Date: 2001/04/19 23:43:17 $
+c@(#) File WXY.M, version $Revision: 3.2 $, $Date: 2001/04/20 00:22:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -19,7 +19,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine wxyvers (iout)
       use WXYversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version, etc. to output files as they're created
       call printpkgversion(iout,"Particle package WXY",verswxy)
       return
@@ -64,7 +64,7 @@ c  particle loader and does the initial load onto the charge density
 c  mesh, initializes arrays for the field solver and sets the mesh arrays,
 c  does the initial field solve, and sets up other arrays that are needed.
 
-      integer     :: i,j,k,is,ipmin,ip,iwin
+      integer(ISZ):: i,j,k,is,ipmin,ip,iwin
 
 c  Announce that we're starting up
 
@@ -252,12 +252,12 @@ c        --- not change if vz does not change.
          endif
 c        --- Set charge density
          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
             call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
      &                    uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
          enddo
       enddo
-      call fixrhoxy(rho,nx,ny,nz,periinz,lthick)
+      call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
 
 c  Create the dynamic arrays for the partcle qtys needed for the
 c  damped mover.  They are always allocated, but with length 1 if not used.
@@ -311,7 +311,7 @@ c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
 
       call remark(" ---  Allocating scratch space for plots")
-      npsplt = min0 (NPARPGRP-1, npmax)
+      npsplt = min(NPARPGRP-1, npmax)
       if (npsplt == 0) npsplt = NPARPGRP-1
       call gallot("Pspwork", 0)
       if (xplmin == 0.) xplmin = -xmmax
@@ -372,8 +372,8 @@ c  the routine STEPXY to do the step.
 
       real(kind=8):: vbeamfrm0,zbeam0
       real(kind=8):: ds0,zz,zcorrection
-      integer     :: is,ip,i
-      logical     :: lbendend
+      integer(ISZ):: is,ip,i
+      logical(ISZ):: lbendend
 
 c  Announce that we're running
 
@@ -587,7 +587,7 @@ c=============================================================================
       use LatticeInternal
       use Timers
       character*(*):: caller
-      logical     :: thisstep,thiszbeam,dolabwn
+      logical(ISZ):: thisstep,thiszbeam,dolabwn
 
 c  When called by WXYEXE, stepxy advances the system forward in time one 
 c  timestep and gathers diagnostics.  When called by WXYGEN, stepxy takes 
@@ -733,13 +733,13 @@ c=============================================================================
       use BGRDdata
       use PGRDdata
       use Timers
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: dtl,dtr,dodec,bz0,m,q,gammabar,zbeam,vbeam,dt,time
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uzp(np), gaminv(np)
       real(kind=8):: bx(np), by(np), bz(np),bendres,bendradi
       real(kind=8):: ex(np), ey(np), ez(np)
-      logical     :: lexbend
+      logical(ISZ):: lexbend
 
 
 c  Calculates "external" E, B fields
@@ -753,12 +753,12 @@ c  since this routine is called more than once in the PADVNCXY loop on
 c  a single step at present.  Perhaps we will also have to compute
 c  B_self more than once.
 
-      integer     :: j,ip,in,iele,ii 
+      integer(ISZ):: j,ip,in,iele,ii 
       real(kind=8):: vz,zl,zr,fl,fr,frac
       real(kind=8):: xpmqoff,ypmqoff,qi
       real(kind=8):: vzi,dti
       real(kind=8):: n,v,f,fz,rpow,cosnt,sinnt,coeff,alpha,coeffp,alphap
-      integer     :: izm(NPARPGRP),imm(NPARPGRP)
+      integer(ISZ):: izm(NPARPGRP),imm(NPARPGRP)
       real(kind=8):: xxx(NPARPGRP),yyy(NPARPGRP),zzz(NPARPGRP),ttt(NPARPGRP)
       real(kind=8):: wzm(NPARPGRP),rr(NPARPGRP),tt(NPARPGRP)
       real(kind=8):: mltph(NPARPGRP),mltsf(NPARPGRP)
@@ -1337,19 +1337,19 @@ c=============================================================================
      &                    mltph,mltsf,
      &                    zlmin,zbeam,dzli,bends,linbend,
      &                    cbendzs,cbendze,cbendrc)
-      integer     :: np,nmltsets,nzl
+      integer(ISZ):: np,nmltsets,nzl
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: dzmlt(nmltsets)
-      integer     :: nzmlt(nmltsets)
+      integer(ISZ):: nzmlt(nmltsets)
       real(kind=8):: cmltzs(0:nzl),cmltze(0:nzl),cmltph(0:nzl)
       real(kind=8):: cmltsf(0:nzl),cmltsc(0:nzl)
-      integer     :: cmltid(0:nzl)
+      integer(ISZ):: cmltid(0:nzl)
       real(kind=8):: cmltox(0:nzl),cmltoy(0:nzl)
       real(kind=8):: tx(np),ty(np),tz(np)
-      integer     :: imm(np),izm(np)
+      integer(ISZ):: imm(np),izm(np)
       real(kind=8):: wzm(np),xxx(np),yyy(np),zzz(np)
       real(kind=8):: ttt(np),rr(np),tt(np),mltph(np),mltsf(np)
-      logical     :: bends,linbend
+      logical(ISZ):: bends,linbend
       real(kind=8):: cbendzs(0:nzl),cbendze(0:nzl),cbendrc(0:nzl)
       real(kind=8):: zlmin,zbeam,dzli
 
@@ -1359,7 +1359,7 @@ c     --- warped coordinates (when a bend is between the
 c     --- particle and the nearest mult).
 c  Assumes that at most one bend will be between particle and the mult center.
 
-      integer     :: j,ip
+      integer(ISZ):: j,ip
       real(kind=8):: cent,dzi,rrr,bzs,bze
 
 c     --- All particles lie at the same z-cell
@@ -1494,7 +1494,7 @@ c=============================================================================
       subroutine acclxy(np,xp,zp,uzp,gaminv,dtp,dtl,dtr,ez,m,q,zbeam,dt)
       use Lattice
       use LatticeInternal
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: dtl,dtr,m,q,zbeam,dt
       real(kind=8):: xp(np), zp(np)
       real(kind=8):: uzp(np), gaminv(np), dtp(np)
@@ -1510,7 +1510,7 @@ c the accl elements was seperated out.
 
       real(kind=8):: dti,oneodt,qoverm,moverq,gapez,z1,z2,vn,frac,cacclz,zl,zr
       real(kind=8):: dtl_a,dtr_a,dti_a,vz_a
-      integer     :: j,ip
+      integer(ISZ):: j,ip
 
 c  --- Note that the accl elements in the slice code are slightly different
 c  --- than other hard edged elements since the residence correction is
@@ -1605,13 +1605,13 @@ c  ------------------------------------------------------------
       end
 c=============================================================================
       subroutine otherexy (np,xp,yp,dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: dedr,dexdx,deydy,dbdr
       real(kind=8):: xp(np), yp(np)
       real(kind=8):: ex(np), ey(np), ez(np)
       real(kind=8):: bx(np), by(np), bz(np)
 
-      integer     :: ip
+      integer(ISZ):: ip
 
 c  Set the electric fields from external sources,
 c  inculding uniform focusing fields.
@@ -1667,7 +1667,7 @@ c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
 
 
-      integer     :: is,ip,ipmin,i
+      integer(ISZ):: is,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
       real(kind=8):: ex(NPARPGRP), ey(NPARPGRP), ez(NPARPGRP), ezo(NPARPGRP)
       real(kind=8):: bx(NPARPGRP), by(NPARPGRP), bz(NPARPGRP)
@@ -1675,7 +1675,7 @@ c  and also loads RHO at the new time level.
       real(kind=8):: uxpo(NPARPGRP), uypo(NPARPGRP), uzpo(NPARPGRP)
       real(kind=8):: gaminvo(NPARPGRP)
       real(kind=8):: bendres, bendradi
-      integer     :: iter_dt
+      integer(ISZ):: iter_dt
 
 c  Zero the bend radius and residence fraction
       bendradi = 0.
@@ -1691,7 +1691,8 @@ c     if (center == "synchv" .or. ifgap) call zeroarry(curr,nzzarr+1)
 
 c  Zero the moments if center is synchv
       if (ldiag .and. (center == "synchv" .or. center == "gen")) then
-        call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),dt*0.5,1,
+        call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
+     &                sq(1),sm(1),sw(1),dt*0.5,1,
      &                nplive,uxpo,uypo,uzpo,1,ns)
       endif
 
@@ -1700,7 +1701,7 @@ c  Loop over species
 
 c  Loop over particle blocks; move each block separately
         do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-          ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+          ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
 
 c         --- Obtain the self-field from the electrostatic potential
           call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
@@ -1964,7 +1965,8 @@ c     ---  Do final stuff for moments calculation and fix current
       if (center == "synchv" .or. center == "gen") then
 
         if (ldiag) then
-          call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),
+          call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
+     &                  sq(1),sm(1),sw(1),
      &                  dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns)
           call getlabwn()
 c         --- load rho diagnostic qtys
@@ -1978,7 +1980,7 @@ c       --- Fix the current
 
       if (center == "halfv") then
 c       --- Make rho periodic if periodic in z
-        call fixrhoxy(rho,nx,ny,nz,periinz,lthick)
+        call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
 
 c       --- Fix the current if it was calculated
         if (ifgap) call fixcurrxy(curr,nzzarr,periinz,lthick)
@@ -2001,15 +2003,15 @@ c       --- Note that zgridprv is also set at the beginning of wxyexe
       end
 c=============================================================================
       subroutine fixrhoxy(rho,nx,ny,nz,periinz,lthick)
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      logical     :: periinz,lthick
+      logical(ISZ):: periinz,lthick
 
 c  Sums the first and last slices of rho for periodicity
 c  and puts the result into both slices.
 c  For thin slice model, average out rho along the axis.
 
-      integer     :: ix,iy,iz
+      integer(ISZ):: ix,iy,iz
       real(kind=8):: nzi
 
       if (periinz) then
@@ -2057,15 +2059,15 @@ c       --- Distribute rho to all z planes.
       end
 c=============================================================================
       subroutine fixcurrxy(curr,nzzarr,periinz,lthick)
-      integer     :: nzzarr
+      integer(ISZ):: nzzarr
       real(kind=8):: curr(0:nzzarr)
-      logical     :: periinz,lthick
+      logical(ISZ):: periinz,lthick
 
 c  Sums the first and last slices of curr for periodicity
 c  and puts the result into both slices.
 c  For thin slice model, distribute the current along the axis.
 
-      integer     :: iz
+      integer(ISZ):: iz
 
       if (periinz) then
 
@@ -2088,14 +2090,14 @@ c       --- Distribute the current.
       end
 c=============================================================================
       subroutine epushxy (np, uxp, uyp, uzp, ex, ey, ez, q, m, dtp, fdt)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: uxp(np), uyp(np), uzp(np)
       real(kind=8):: ex(np), ey(np), ez(np)
       real(kind=8):: q, m, dtp(np), fdt
 
 c  Push the particle velocity with E field
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: const
       const = q*fdt/m
 
@@ -2110,14 +2112,14 @@ c  Push the particle velocity with E field
 c============================================================================= 
       subroutine bpushxy (np, uxp, uyp, uzp, gaminv, bx, by, bz, q, m, dtp,
      &                    fdt, ibpush)
-      integer     :: np,ibpush
+      integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: bx(np), by(np), bz(np)
       real(kind=8):: q, m, dtp(np), fdt
 
 c  Push the particle velocity with B field
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
       real(kind=8):: const
       const = q*fdt*0.5/m
@@ -2162,13 +2164,13 @@ c        --- tan(alpha) / alpha algorithm
       end
 c=========================================================================== 
       subroutine xpushxy (np, xp, yp, zp, uxp, uyp, uzp, gaminv, dtp)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: dtp(np)
       real(kind=8):: xp(np), yp(np), zp(np), uxp(np), uyp(np), uzp(np), gaminv(np)
 
 c  Advance particle positions
 
-      integer     :: ip
+      integer(ISZ):: ip
 
       do ip=1,np
         xp(ip) = xp(ip) + uxp(ip)*dtp(ip)*gaminv(ip)
@@ -2181,7 +2183,7 @@ c  Advance particle positions
 c============================================================================ 
       subroutine setdtp(np,dtp,xp,zp,zpo,uzp,bendres,bendradi)
       use InGenxy
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: dtp(np),xp(np),zp(np),zpo(np),uzp(np)
       real(kind=8):: bendres,bendradi
 
@@ -2189,7 +2191,7 @@ c Set dt for each of the particles.  With changing vz, dt needs to be
 c recalculated for each particle each timestep.
 
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: dtheta0,dtheta,rr
 
       if (lvzchang) then
@@ -2235,7 +2237,7 @@ c============================================================================
 c Get distance to get to start or end of bend, which ever is closer.
 
 
-      integer     :: j
+      integer(ISZ):: j
 
       if (bends) then
 
@@ -2277,7 +2279,7 @@ c  Note that for the slice code, since the steps are arranged to always
 c  land at the edge of a bend, the residence fraction will always be
 c  either zero or one.
 
-      integer     :: j
+      integer(ISZ):: j
       real(kind=8):: vz,zl,fl,zr,fr,dti,vzi,br
 
       if (.not. bends .or. .not. linbend) return
@@ -2323,15 +2325,15 @@ c     --- bend radius
 c=========================================================================== 
       subroutine bendezxy (np, xp, zp, ez, bendres, bendradi, bends, bnezflag,
      &                     linbend)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), ez(np), bendres, bendradi
-      logical     :: bends, bnezflag, linbend
+      logical(ISZ):: bends, bnezflag, linbend
 
 c  Corrects axial electric field at particle position for warped geometry
 c  via multiplying by r_star/r = 1 - x/r, in a residence-corrected way;
 c  at smaller radii, zones are closer together, so field is larger.
 
-      integer     :: ip
+      integer(ISZ):: ip
 
       if (.not. (bends.and.bnezflag) .or. .not. linbend) return
 
@@ -2346,11 +2348,11 @@ c===========================================================================
       subroutine sledgcorxy(np,xp,yp,zp,zpo,uxp,uyp,uzp,gaminv,m,q,dt,zbeam,
      &                      vbeam,dipos) 
       use LatticeInternal
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np), yp(np), zp, zpo 
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np) 
       real(kind=8):: q, m, dt, zbeam, vbeam
-      logical     :: dipos 
+      logical(ISZ):: dipos 
 
 
 c Applies position and velocity jump corrections on entry/exit of dipoles 
@@ -2359,7 +2361,7 @@ c timestep, so that entry/exit of the bend is detected exactly once.)
 c Accounts for the fact that the jumped velocities act on the particles for 
 c less than the entire andvance step on entry/exit of the dipole.  
 
-      integer     :: ip,j
+      integer(ISZ):: ip,j
       real(kind=8):: vz,vzi,qoverm
 
       qoverm = q/m
@@ -2396,10 +2398,10 @@ c       --- exited dipole
       end
 c=========================================================================== 
       subroutine exbendcorxy(np,xp,zp,uxp,uzp,zpo,ds,bendres,bendradi,lexbend)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), zpo(np), uxp(np), uzp(np)
       real(kind=8):: ds,bendres,bendradi
-      logical     :: lexbend
+      logical(ISZ):: lexbend
 
 c Exact bend translation:
 c Translate the particle position and velocity to the new rotated
@@ -2407,7 +2409,7 @@ c frame (when in a bend).
 c The expression for translating xp is written in a way that is correct
 c for either sign of bendradi.
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: rr
       real(kind=8):: dtheta0,ty,sy,uxppr,uzppr
 
@@ -2440,16 +2442,16 @@ c         --- translate velocity
 c=========================================================================== 
       subroutine bendcorxy(np,xp,zp,uxp,uzp,gaminv,dtp,zpo,ds,
      &                     bendres,bendradi,lexbend)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), zpo(np), uxp(np), uzp(np), gaminv(np), dtp(np)
       real(kind=8):: ds,bendres,bendradi
-      logical     :: lexbend
+      logical(ISZ):: lexbend
 
 c Simple translation, same model as in 3-D code:
 c Translate the particle position and velocity to the new rotated
 c frame (when in a bend).
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: xprv,xc
 
       if (bendres > 0. .and. .not. lexbend) then
@@ -2469,14 +2471,14 @@ c===========================================================================
       subroutine zgapcorrxy(np,zp,xp,uzp,gaminv,dtp,zbeam,dtl,dtr,dt,m,q,time)
       use Lattice
       use LatticeInternal
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: zp(np), xp(np), uzp(np), gaminv(np), dtp(np)
       real(kind=8):: zbeam,dtl,dtr,dt,m,q,time
 
 c Add residence correction to particle position when acceleration is done
 
 
-      integer     :: ip,j
+      integer(ISZ):: ip,j
       real(kind=8):: gapez,zp2,delta,qoverm,vzi
       real(kind=8):: vz_a,dtl_a,dtr_a
       real(kind=8):: cacclz,zr,vz,deltav
@@ -2559,7 +2561,7 @@ c===========================================================================
      &                     bgrdsy,bgrdox,bgrdoy,bgrdph,bgrdsp,bgrdcp,  
      &                     bgrddxi,bgrddyi,bgrddzi,bgrdnx,bgrdny,bgrdnz,
      &                     bx,by,bz,id,nzl,zlmin,zbeam,dzli)
-      integer     :: nxyz,bgrdns,np,nbgrd,bgrdnx,bgrdny,bgrdnz,nzl
+      integer(ISZ):: nxyz,bgrdns,np,nbgrd,bgrdnx,bgrdny,bgrdnz,nzl
       real(kind=8):: bgrdbx(0:nxyz-1,bgrdns)
       real(kind=8):: bgrdby(0:nxyz-1,bgrdns)
       real(kind=8):: bgrdbz(0:nxyz-1,bgrdns)
@@ -2569,9 +2571,9 @@ c===========================================================================
       real(kind=8):: bgrdsf(0:nbgrd),bgrdsc(0:nbgrd)
       real(kind=8):: bgrdox(0:nbgrd),bgrdoy(0:nbgrd)
       real(kind=8):: bgrdph(0:nbgrd),bgrdsp(0:nbgrd),bgrdcp(0:nbgrd) 
-      integer     :: bgrdid(0:nbgrd),bgrdsy(0:nbgrd)
+      integer(ISZ):: bgrdid(0:nbgrd),bgrdsy(0:nbgrd)
       real(kind=8):: bgrddxi(bgrdns),bgrddyi(bgrdns),bgrddzi(bgrdns)
-      integer     :: id(0:nzl)
+      integer(ISZ):: id(0:nzl)
       real(kind=8):: zlmin,zbeam,dzli
 
 c  Sets magnetic field for a group of up to NPARPGRP particles from data sets
@@ -2618,10 +2620,10 @@ c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
 c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
 c        + ...
 
-      integer     :: nnx,nnxy,ip,i,j,k,ind0,iz,ii,ib
+      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,iz,ii,ib
       real(kind=8):: u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
       real(kind=8):: tbx,tby
-      integer     :: noff(8)
+      integer(ISZ):: noff(8)
       save noff
 
       nnx  = bgrdnx + 1
@@ -2792,7 +2794,7 @@ c===========================================================================
      &                     pgrdox,pgrdoy,pgrdph,pgrdsp,pgrdcp, 
      &                     pgrddxi,pgrddyi,pgrddzi,pgrdnx,pgrdny,pgrdnz,ex,ey,ez,
      &                     id,nzl,zlmin,zbeam,dzli)
-      integer     :: nxyz,pgrdns,np,npgrd,pgrdnx,pgrdny,pgrdnz,nzl
+      integer(ISZ):: nxyz,pgrdns,np,npgrd,pgrdnx,pgrdny,pgrdnz,nzl
       real(kind=8):: pgrdp(0:nxyz-1,pgrdns)
       real(kind=8):: xp(np),yp(np),zp
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -2800,9 +2802,9 @@ c===========================================================================
       real(kind=8):: pgrdsf(0:npgrd),pgrdsc(0:npgrd)
       real(kind=8):: pgrdox(0:npgrd),pgrdoy(0:npgrd) 
       real(kind=8):: pgrdph(0:npgrd),pgrdsp(0:npgrd),pgrdcp(0:npgrd)
-      integer     :: pgrdid(0:npgrd)
+      integer(ISZ):: pgrdid(0:npgrd)
       real(kind=8):: pgrddxi(pgrdns),pgrddyi(pgrdns),pgrddzi(pgrdns)
-      integer     :: id(0:nzl)
+      integer(ISZ):: id(0:nzl)
       real(kind=8):: zlmin,zbeam,dzli
 
 c  Sets electric field for a group of up to NPARPGRP particles from data
@@ -2856,11 +2858,11 @@ c  sete3d more complex and possibly slower.  Since the pgrd routine will not
 c  be used very often and sete3d is used always, the author felt it was better
 c  to have a seperate routine for pgrd.
 
-      integer     :: nnx,nnxy,ip,i,j,k,ind0,iz,ii,ib
+      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,iz,ii,ib
       real(kind=8):: u0,u1,v0,v1,w0,w1,xfac,yfac,zfac,txp,typ,temp
-      integer     :: indx05,indx06,indx07,indx11
-      integer     :: indx17,indx18,indx19,indx23
-      integer     :: noff(32)
+      integer(ISZ):: indx05,indx06,indx07,indx11
+      integer(ISZ):: indx17,indx18,indx19,indx23
+      integer(ISZ):: noff(32)
       save noff
 
       nnx  = pgrdnx + 1
@@ -3027,7 +3029,7 @@ c===========================================================================
       use InMesh3d
       use Fields3d
       use Picglb3d
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: q,wght,zgrid
       real(kind=8):: rho1d(0:*)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np), gaminv(np)
@@ -3054,13 +3056,13 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer     :: moff(0:3), indx(0:3,NPARPGRP)
+      integer(ISZ):: moff(0:3), indx(0:3,NPARPGRP)
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer     :: ii(0:NPARPGRP-1), jj(0:NPARPGRP-1)
+      integer(ISZ):: ii(0:NPARPGRP-1), jj(0:NPARPGRP-1)
 c     --- For both algorithms
       real(kind=8):: s(0:3,NPARPGRP)
 
-      integer     :: ip,i,j,ind0,m,ir
+      integer(ISZ):: ip,i,j,ind0,m,ir
       real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,gxfact,gyfact,f
 
       if (lthick) then
@@ -3264,16 +3266,16 @@ c=============================================================================
       use Particlesxy
       use InMesh3d
       use Fields3d
-      integer     :: ins_i,nps_i,is_i
-      logical     :: lzero
+      integer(ISZ):: ins_i,nps_i,is_i
+      logical(ISZ):: lzero
 
 c --- This routine provides a simple call from the interpreter to load the
 c --- rho array.  The value '-1' is used as a flag in the input to use
 c --- all of the particles, otherwise the specified particles are loaded.
 
-      integer     :: ins_u,nps_u
-      integer     :: is1,is2
-      integer     :: ip,ipmin,is
+      integer(ISZ):: ins_u,nps_u
+      integer(ISZ):: is1,is2
+      integer(ISZ):: ip,ipmin,is
 
 c     --- zero rho if requested
 c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
@@ -3309,24 +3311,24 @@ c        --- loop over particle blocks
       enddo
 
 c     --- enforce axial periodicity if rho was zeroed
-      if (lzero) call fixrhoxy(rho,nx,ny,nz,periinz,lthick)
+      if (lzero) call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
 
       return
       end
 c=============================================================================
       subroutine setcurrxy(curr,np,zp,uzp,gaminv,q,wght,zbeam,dzz,zzmin,dz,
      &                     lthick)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: q,wght,zbeam,dzz,zzmin,dz
       real(kind=8):: curr(0:*), zp(np), uzp(np), gaminv(np)
-      logical     :: lthick
+      logical(ISZ):: lthick
 
 c  Sets 1d beam current directly from particle data.
 c  If running slice version, puts all data at iz=0, else if running thick
 c  slice version, makes a call to the 3d version of setcurr.
 
       real(kind=8):: csum,g
-      integer     :: ip
+      integer(ISZ):: ip
 
       if (lthick) then
 c       --- Call 3d version.
@@ -3357,13 +3359,13 @@ c=============================================================================
       use InMesh3d
       use Fields3d
       use LatticeInternal
-      integer     :: iwhich
+      integer(ISZ):: iwhich
 
 c If using the 3D field solver, calls the fieldsol routine in package w3d,
 c otherwise only does a FFT field solve in 2D.
 
 
-      integer     :: i,j,iz
+      integer(ISZ):: i,j,iz
       real(kind=8):: r,x,dxi,phiref
       character*(120):: outstr
 
@@ -3381,7 +3383,7 @@ c       --- 2D fieldsolver
         if (.not. linbend .or. iwhich > 0) then
 
 c         --- if not in a bend, then make direct call to vpxy
-          call copyarry(rho, phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
+          call copyarry(rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
           call vpxy(iwhich)
 
         else
@@ -3463,7 +3465,7 @@ c=============================================================================
       use Picglb
       use Fields3d
 
-      integer     :: iwhich
+      integer(ISZ):: iwhich
 
 c  Interface to VPOIS2D and VPOIS3D using variables from database of package 3D
 

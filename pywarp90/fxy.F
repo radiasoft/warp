@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FXY.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:10 $
+c@(#) File FXY.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -23,7 +23,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine fxyvers (iout)
       use FXYversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version,etc. to output files when they're created
       call printpkgversion(iout,"Fieldsolver FXY",versfxy)
       return
@@ -58,13 +58,13 @@ c=======================================================================
       subroutine cmsetxy(phi,kxsq,kysq,attx,atty,filt,xlen,ylen,nx,ny,dx,dy,
      &                   xmmin,ymmin,scrtch1,scrtch2,l2symtry,l4symtry)
       use CapMatxy
-      integer     :: nx,ny
+      integer(ISZ):: nx,ny
       real(kind=8):: phi(0:nx,0:ny)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1)
       real(kind=8):: filt(5,2),scrtch1(0:nx,0:ny),scrtch2(*)
       real(kind=8):: xlen,ylen,dx,dy,xmmin,ymmin
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Sets up capacity matrix for xy fieldsolver. Note that the capacity matrix
 c is calculated using field solves which do not do any filtering.
@@ -73,7 +73,7 @@ c matrix is very ill-conditioned and so the capacity matrix becomes garbled.)
 
 
       real(kind=8):: wx,wy,tt1,tt2,cx,cy
-      integer     :: ix,iy,i,j,info
+      integer(ISZ):: ix,iy,i,j,info
 
 c     --- If the number of conductor points is zero, print a warning
 c     --- and return without doing anything
@@ -180,13 +180,13 @@ c==============================================================================
       subroutine capmatxyf(iwhich,phi,kxsq,kysq,attx,atty,filt,xlen,ylen,nx,ny,
      &                    dx,dy,xmmin,ymmin,scrtch1,scrtch2,l2symtry,l4symtry)
       use CapMatxy
-      integer     :: iwhich,nx,ny
+      integer(ISZ):: iwhich,nx,ny
       real(kind=8):: phi(0:nx,0:ny)
       real(kind=8):: kxsq(0:nx-1),kysq(0:ny-1)
       real(kind=8):: attx(0:nx-1),atty(0:ny-1)
       real(kind=8):: filt(5,2),scrtch1(0:nx,0:ny),scrtch2(*)
       real(kind=8):: xlen,ylen,dx,dy,xmmin,ymmin
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Applies the capacity matrix for xy code electrostatic field solver.
 c Multiplies phi by cap to get induced rho.
@@ -199,8 +199,8 @@ c the capacity matrix to be used in bends.
 
 
       real(kind=8):: wx,wy,cx,cy
-      integer     :: ix,iy,i,j
-      logical     :: lattenuate
+      integer(ISZ):: ix,iy,i,j
+      logical(ISZ):: lattenuate
 
 c     --- Initialize the arrays for poisson solve and the capacity matrix.
       if (iwhich == 1 .or. iwhich == 0) then

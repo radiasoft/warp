@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.1 $, $Date: 2001/04/19 23:48:36 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.2 $, $Date: 2001/04/20 00:22:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -16,14 +16,14 @@ c=============================================================================
       use PSOR3d
       use Multigrid3d
       use Multigrid3d_res
-      integer     :: iwhich
-      integer     :: nx,ny,nz
+      integer(ISZ):: iwhich
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: phi1d(*)
       real(kind=8):: rho1d(*)
       real(kind=8):: dx,dy,dz
       real(kind=8):: rstar(-1:nz+1)
-      logical     :: linbends
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: linbends
+      logical(ISZ):: l2symtry,l4symtry
       real(kind=8):: scrtch(*)
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid
 
@@ -41,13 +41,13 @@ c All dimensions, nx, ny, and nz, must be powers of 2.
 
 
 
-      integer     :: nxy,nxyz,nxyz3
-      integer     :: log2nx,log2ny,log2nz
+      integer(ISZ):: nxy,nxyz,nxyz3
+      integer(ISZ):: log2nx,log2ny,log2nz
       real(kind=8):: maxerr
       real(kind=8):: dxsqi,dysqi,dzsqi,reps0c,rdel
       real(kind=8):: tdx,tdy,tdz
-      integer     :: tnx,tny,tnz
-      integer     :: i,ii,minlog,k
+      integer(ISZ):: tnx,tny,tnz
+      integer(ISZ):: i,ii,minlog,k
       real(kind=8):: rs,x,r
 
 c     --- Make sure that all dimensions are powers of 2.
@@ -220,18 +220,18 @@ c=============================================================================
      &                            phi,rho,res,rstar,linbends,l2symtry,l4symtry,
      &                            scrtch,boundxy,bound0,boundnz)
       use Multigrid3d
-      integer     :: levelxy,levelz
-      integer     :: nx,ny,nz
+      integer(ISZ):: levelxy,levelz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(*),rho(*),res(*),rstar(*),scrtch(*)
-      logical     :: linbends
-      logical     :: l2symtry,l4symtry
-      integer     :: boundxy,bound0,boundnz
+      logical(ISZ):: linbends
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: boundxy,bound0,boundnz
 
 c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
 
-      integer     :: i2h,i
+      integer(ISZ):: i2h,i
       real(kind=8):: ff
 
 c     --- Do initial SOR passes.
@@ -303,21 +303,21 @@ c     --- Do final SOR passes.
 c=============================================================================
       subroutine restrict2d(nx,ny,nz,ph,p2h,ff,boundxy,bound0,boundnz,
      &                      l2symtry,l4symtry)
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: ph(0:nx,0:ny,0:nz)
       real(kind=8):: p2h(0:nx/2,0:ny/2,0:nz)
       real(kind=8):: ff
-      integer     :: boundxy,bound0,boundnz
-      logical     :: l2symtry,l4symtry
+      integer(ISZ):: boundxy,bound0,boundnz
+      logical(ISZ):: l2symtry,l4symtry
 
 c Restrict transversely to a coarser grid.  The factor of ff is needed
 c since the residual will be used as the source term in the next coarser
 c grid and it implicitly includes the factor 0.5/(dxsqi+dysqi+dzsqi)
 c which is ff times too small with the current values of dxsqi etc.
 
-      integer     :: ix,iy,iz
-      integer     :: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer     :: ixm1,ixp1,iym1,iyp1
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: ixm1,ixp1,iym1,iyp1
 
 c     --- Set the loop limits, including edges when appropriate.
       ixmin = 2
@@ -383,20 +383,20 @@ c     --- Make copies for the periodic boundaries.
 c=============================================================================
       subroutine restrict3d(nx,ny,nz,ph,p2h,boundxy,bound0,boundnz,
      &                      l2symtry,l4symtry)
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: ph(0:nx,0:ny,0:nz)
       real(kind=8):: p2h(0:nx/2,0:ny/2,0:nz/2)
-      integer     :: boundxy,bound0,boundnz
-      logical     :: l2symtry,l4symtry
+      integer(ISZ):: boundxy,bound0,boundnz
+      logical(ISZ):: l2symtry,l4symtry
 
 c Restrict to a coarser grid.  The factor of 4 is needed since the
 c residual will be used as the source term in the next coarser grid and
 c it implicitly includes the factor 0.5/(dxsqi+dysqi+dzsqi) which is 4
 c times too small with the current values of dxsqi etc.
 
-      integer     :: ix,iy,iz
-      integer     :: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer     :: ixm1,ixp1,iym1,iyp1,izm1,izp1
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
 
 c     --- Set the loop limits, including edges when appropriate.
       ixmin = 2
@@ -493,16 +493,16 @@ c     --- Make copies for the periodic boundaries.
       end
 c=============================================================================
       subroutine expand2d(nx,ny,nz,p2h,ph,boundxy,bound0,boundnz)
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: p2h(0:nx,0:ny,-1:nz+1)
       real(kind=8):: ph(0:nx*2,0:ny*2,-1:nz+1)
-      integer     :: boundxy,bound0,boundnz
+      integer(ISZ):: boundxy,bound0,boundnz
 
 c Add the error on the coarser grid to the current value on the finer grid.
 c The expansion is only transverse.
 
-      integer     :: ix,iy,iz
-      integer     :: izmin,izmax
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: izmin,izmax
 
 c     --- Set the loop limits, including edges when appropriate.
       izmin = 1
@@ -555,15 +555,15 @@ c         --- Expand iy=ny plane.
       end
 c=============================================================================
       subroutine expand3d(nx,ny,nz,p2h,ph,boundxy,boundnz)
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: p2h(0:nx,0:ny,-1:nz+1)
       real(kind=8):: ph(0:nx*2,0:ny*2,-1:nz*2+1)
-      integer     :: boundxy,boundnz
+      integer(ISZ):: boundxy,boundnz
 
 c Add the error on the coarser grid to the current value on the finer grid.
 c The expansion is done along all axis.
 
-      integer     :: ix,iy,iz
+      integer(ISZ):: ix,iy,iz
 
 c     --- Expand the bulk of the grid.
       do iz=0,nz-1
@@ -702,12 +702,12 @@ c=============================================================================
 #ifdef PARALLEL
       use Parallel
 #endif
-      integer     :: levelxy,levelz,nx,ny,nz
+      integer(ISZ):: levelxy,levelz,nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz),rstar(-1:nz+1)
       real(kind=8):: phi1d(*),rho1d(*),scrtch(*)
       real(kind=8):: rdx2,rdy2,rdz2
-      logical     :: linbends
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: linbends
+      logical(ISZ):: l2symtry,l4symtry
 
 c This routine does one pass of point SOR with even-odd (red-black)
 c ordering.  It makes calls to the routines which specify internal
@@ -733,9 +733,9 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
 
       real(kind=8):: rdel,reps0,const,rdx2c,rdy2c,rdz2c,spm1,dx
-      integer     :: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
-      integer     :: ii,ix,iy,iz,ic
-      integer     :: s_parity,e_parity
+      integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
+      integer(ISZ):: ii,ix,iy,iz,ic
+      integer(ISZ):: s_parity,e_parity
 
 c     --- Macro for common arguments to the psor_loop calls
 #define LOOP_ARGS iimz,iipz,phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends, \
@@ -985,14 +985,14 @@ c=============================================================================
       subroutine cond_potmg(nx,ny,nz,phi,levelxy,levelz,lresidual)
       use PSOR3d
       use MultigridConductor3d
-      integer     :: nx,ny,nz,levelxy,levelz
+      integer(ISZ):: nx,ny,nz,levelxy,levelz
       real(kind=8):: phi(0:nx,0:ny,0:nz)
-      logical     :: lresidual
+      logical(ISZ):: lresidual
 
 c Set conductor points to the desired potential.
 
 
-      integer     :: ic
+      integer(ISZ):: ic
 
 c     --- When at the finest level and not calculating the residual, set
 c     --- phi to the voltage of the conductor, otherwise, set it to zero.
@@ -1019,18 +1019,18 @@ c=============================================================================
      &                      cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                      cndpvph,bound0,boundnz,boundxy,
      &                      l2symtry,l4symtry,levelxy,levelz,parity)
-      integer     :: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity
+      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax), cdelmz(ncndmax)
       real(kind=8):: cdelpx(ncndmax), cdelpy(ncndmax), cdelpz(ncndmax)
-      integer     :: icndx(ncndmax), icndy(ncndmax), icndz(ncndmax)
-      integer     :: icndlxy(ncndmax), icndlz(ncndmax)
+      integer(ISZ):: icndx(ncndmax), icndy(ncndmax), icndz(ncndmax)
+      integer(ISZ):: icndlxy(ncndmax), icndlz(ncndmax)
       real(kind=8):: cvoltmx(ncndmax),cvoltmy(ncndmax),cvoltmz(ncndmax)
       real(kind=8):: cvoltpx(ncndmax),cvoltpy(ncndmax),cvoltpz(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
-      integer     :: bound0,boundnz,boundxy
-      logical     :: l2symtry,l4symtry
+      integer(ISZ):: bound0,boundnz,boundxy
+      logical(ISZ):: l2symtry,l4symtry
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -1046,9 +1046,9 @@ c to hold icndx-1, icndx+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
       real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom,voltfac
-      integer     :: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
-      integer     :: icdx,icdy,icdz
-      logical     :: dosubgrid
+      integer(ISZ):: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
+      integer(ISZ):: icdx,icdy,icdz
+      logical(ISZ):: dosubgrid
 
       rdx2cos = rdx2c/srp
       rdy2cos = rdy2c/srp
@@ -1164,18 +1164,18 @@ c=============================================================================
      &                       cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                       cndpvph,bound0,boundnz,boundxy,
      &                       l2symtry,l4symtry,levelxy,levelz,parity)
-      integer     :: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity
+      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz), res(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2,rdy2,rdz2,mgparam
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax), cdelmz(ncndmax)
       real(kind=8):: cdelpx(ncndmax), cdelpy(ncndmax), cdelpz(ncndmax)
-      integer     :: icndx(ncndmax), icndy(ncndmax), icndz(ncndmax)
-      integer     :: icndlxy(ncndmax), icndlz(ncndmax)
+      integer(ISZ):: icndx(ncndmax), icndy(ncndmax), icndz(ncndmax)
+      integer(ISZ):: icndlxy(ncndmax), icndlz(ncndmax)
       real(kind=8):: cvoltmx(ncndmax),cvoltmy(ncndmax),cvoltmz(ncndmax)
       real(kind=8):: cvoltpx(ncndmax),cvoltpy(ncndmax),cvoltpz(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
-      integer     :: bound0,boundnz,boundxy
-      logical     :: l2symtry,l4symtry
+      integer(ISZ):: bound0,boundnz,boundxy
+      logical(ISZ):: l2symtry,l4symtry
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
 c conductor boundaries for points near conductor surface.
@@ -1193,8 +1193,8 @@ c points on the boundary.
 
       real(kind=8):: const,rdx2c,rdy2c,rdz2c,pxm,pym,pzm,pxp,pyp,pzp,denom,voltfac
       real(kind=8):: rdx2cs,rdy2cs,rdz2cs,ppp
-      integer     :: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
-      integer     :: icdx,icdy,icdz
+      integer(ISZ):: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
+      integer(ISZ):: icdx,icdy,icdz
       real(kind=8):: levelxyi,levelzi
 
       const = 0.5/(rdx2+rdy2+rdz2)
@@ -1316,12 +1316,12 @@ c=============================================================================
       use PSOR3d
       use MultigridConductor3d
       use Multigrid3d
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(0:nx,0:ny,0:nz)
-      integer     :: levelxy,levelz
-      logical     :: l2symtry,l4symtry
+      integer(ISZ):: levelxy,levelz
+      logical(ISZ):: l2symtry,l4symtry
 
 c Calculate the residual on the grid. Residual = r.h.s. - l.h.s.
 c taking into account the premultiplication of rho by
@@ -1336,9 +1336,9 @@ c using the modified form of the finite differenced Poisson's equation near
 c the surface.
 
 
-      integer     :: ix,iy,iz
-      integer     :: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer     :: ixm1,ixp1,iym1,iyp1,izm1,izp1
+      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: ixm1,ixp1,iym1,iyp1,izm1,izp1
       real(kind=8):: const,dxsqic,dysqic,dzsqic
       const = 0.5/(dxsqi+dysqi+dzsqi)
       dxsqic = dxsqi*mgparam*const
@@ -1450,7 +1450,7 @@ c=============================================================================
       use PSOR3d
       use MultigridConductor3d
       use Multigrid3d
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
 
 c Set the coarsest level at which each conductor point is still on the grid.
@@ -1458,8 +1458,8 @@ c Also, remove subgrid data points which are not used - those points which are
 c not near a conducting surface at any level of refinement.
 
 
-      integer     :: ic,ne,no,levelxy,levelz
-      integer     :: tnx,tny,tnz
+      integer(ISZ):: ic,ne,no,levelxy,levelz
+      integer(ISZ):: tnx,tny,tnz
       real(kind=8):: tdx,tdy,tdz
 
 c     --- Zero arrays, assuming that no points are used.
@@ -1613,7 +1613,7 @@ c=============================================================================
       use PSOR3d
       use MultigridConductor3d
       use Multigrid3d_work
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
 
 c Convert subgrid data from the format used for the SOR field solver to the
@@ -1624,7 +1624,7 @@ c efficient since there will be extra points in the data set that the SOR
 c doesn't need).
 
 
-      integer     :: ix,iy,iz
+      integer(ISZ):: ix,iy,iz
 
 c     --- Make sure there is enough room for the extra data.
 c     --- The factor of 3 is an over estimate since the number of points
@@ -1667,7 +1667,7 @@ c=============================================================================
       use MultigridConductor3d
       use Multigrid3d
       use Multigrid3d_work
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: dx,dy,dz
 
 c This does the actual work of converting the subgrid data from the SOR format
@@ -1692,9 +1692,9 @@ c   - the value chosen for inside of conductors is large enough so that
 c     is will not be the same as a subgrid point
 
 
-      integer     :: icond,ix,iy,iz
-      integer     :: cds(3),maxcdel
-      integer     :: ic,ne,no,levelxy,levelz,tnx,tny,tnz
+      integer(ISZ):: icond,ix,iy,iz
+      integer(ISZ):: cds(3),maxcdel
+      integer(ISZ):: ic,ne,no,levelxy,levelz,tnx,tny,tnz
       real(kind=8):: tdx,tdy,tdz
 
 c     --- If there are not conductors, then immediately return.
@@ -1933,11 +1933,11 @@ c=============================================================================
       subroutine subgrid_scan_axis(ia,sgn,cds,limit,maxcdel,nx,ny,nz,iii,
      &                             ecdel,ocdel,cdel,cnd,icond,
      &                             condvolt,ecvolt,ocvolt,volt)
-      integer     :: ia,sgn,cds(3),limit,maxcdel,nx,ny,nz,icond
-      integer     :: iii(0:nx,0:ny,0:nz)
+      integer(ISZ):: ia,sgn,cds(3),limit,maxcdel,nx,ny,nz,icond
+      integer(ISZ):: iii(0:nx,0:ny,0:nz)
       real(kind=8):: ecdel(*),ocdel(*),condvolt(*),ecvolt(*),ocvolt(*)
       real(kind=8):: cdel,volt
-      integer     :: cnd
+      integer(ISZ):: cnd
 
 c Scan in the specified direction looking for a conductor or grid edge.
 c If a conductor is found, save the distance to and the voltage on the

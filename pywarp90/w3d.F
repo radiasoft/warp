@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.1 $, $Date: 2001/04/19 23:44:00 $
+c@(#) File W3D.M, version $Revision: 3.2 $, $Date: 2001/04/20 00:22:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -19,7 +19,7 @@ c  Called at first reference to package (not nec. a "run" etc.).
 c=============================================================================
       subroutine w3dvers (iout)
       use W3Dversion
-      integer     :: iout
+      integer(ISZ):: iout
 c  Echoes code version, etc. to output files as they're created
       call printpkgversion(iout,"Particle package W3D",versw3d)
       return
@@ -62,7 +62,7 @@ c  mesh, initializes arrays for the field solver and sets the mesh arrays,
 c  does the initial field solve, and sets up other arrays that are needed.
 
 
-      integer     :: i,j,k,is,ipmin,ip,iwin
+      integer(ISZ):: i,j,k,is,ipmin,ip,iwin
 
 c  Announce that we're starting up
 
@@ -213,7 +213,7 @@ c     call zeroarry(curr,nzzarr+1)
      &                    uzp(ipmin),sq(is),sw(is),depos)
          enddo
       enddo
-      call perrho3d(rho,nx,ny,nz,periinz)
+      call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
 
 c  Set up for injection
       if (inject .gt. 0) call injctint
@@ -474,7 +474,7 @@ c=============================================================================
       use LatticeInternal
       use Timers
       character*(*):: caller
-      logical     :: thisstep,thiszbeam,dolabwn
+      logical(ISZ):: thisstep,thiszbeam,dolabwn
 
 c  When called by W3DEXE, step3d advances the system forward in time one 
 c  timestep and gathers diagnostics.  When called by W3DGEN, step3d takes 
@@ -647,7 +647,7 @@ c=============================================================================
       use BGRDdata
       use PGRDdata
       use Timers
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: dtl,dtr,dodec,bz0,m,q,gammabar,zbeam,dt,time
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uzp(np), gaminv(np)
@@ -666,13 +666,13 @@ c  since this routine is called more than once in the PADVNC3D loop on
 c  a single step at present.  Perhaps we will also have to compute
 c  B_self more than once.
 
-      integer     :: j,ip,in,iele,ii
+      integer(ISZ):: j,ip,in,iele,ii
       real(kind=8):: vz,zl,zr,fl,fr,frac
       real(kind=8):: gapez,xpmqoff,ypmqoff,z1,z2,vn,qoverm,cacclz
       real(kind=8):: vzi,dti,qi
       real(kind=8):: n,v,f,fz,rpow,cosnt,sinnt,coeff,alpha,coeffp,alphap
-      integer     :: izm(NPARPGRP),imm(NPARPGRP)
-      integer     :: tiele(NPARPGRP)
+      integer(ISZ):: izm(NPARPGRP),imm(NPARPGRP)
+      integer(ISZ):: tiele(NPARPGRP)
       real(kind=8):: xxx(NPARPGRP),yyy(NPARPGRP),zzz(NPARPGRP),ttt(NPARPGRP)
       real(kind=8):: wzm(NPARPGRP),rr(NPARPGRP),tt(NPARPGRP)
       real(kind=8):: mltph(NPARPGRP),mltsf(NPARPGRP)
@@ -1348,19 +1348,19 @@ c=============================================================================
      &                    mltph,mltsf,
      &                    zlmin,zbeam,dzli,bends,linbend,
      &                    cbendzs,cbendze,cbendrc)
-      integer     :: np,nmltsets,nzl
+      integer(ISZ):: np,nmltsets,nzl
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: dzmlt(nmltsets)
-      integer     :: nzmlt(nmltsets)
+      integer(ISZ):: nzmlt(nmltsets)
       real(kind=8):: cmltzs(0:nzl),cmltze(0:nzl),cmltph(0:nzl)
       real(kind=8):: cmltsf(0:nzl),cmltsc(0:nzl)
-      integer     :: cmltim(0:nzl)
+      integer(ISZ):: cmltim(0:nzl)
       real(kind=8):: cmltox(0:nzl),cmltoy(0:nzl)
       real(kind=8):: tx(np),ty(np),tz(np)
-      integer     :: imm(np),izm(np)
+      integer(ISZ):: imm(np),izm(np)
       real(kind=8):: wzm(np),xxx(np),yyy(np),zzz(np)
       real(kind=8):: ttt(np),rr(np),tt(np),mltph(np),mltsf(np)
-      logical     :: bends,linbend
+      logical(ISZ):: bends,linbend
       real(kind=8):: cbendzs(0:nzl),cbendze(0:nzl),cbendrc(0:nzl)
       real(kind=8):: zlmin,zbeam,dzli
 
@@ -1370,7 +1370,7 @@ c     --- warped coordinates (when a bend is between the
 c     --- particle and the nearest mult).
 c  Assumes that at most one bend will be between particle and the mult center.
 
-      integer     :: j,ip
+      integer(ISZ):: j,ip
       real(kind=8):: cent,dzi,rrr,bzs,bze,bendrci
 
       if (.not. bends .or. .not. linbend) then
@@ -1508,7 +1508,7 @@ c=============================================================================
       subroutine othere3d (np,xp,yp,zp,zbeam,zimax,zimin,straight,
      &                     ifeears,eears,eearsofz,dzzi,nzzarr,zzmin,
      &                     dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
-      integer     :: np,ifeears,nzzarr
+      integer(ISZ):: np,ifeears,nzzarr
       real(kind=8):: zbeam,zimax,zimin,straight,eears,dzzi,zzmin
       real(kind=8):: dedr,dexdx,deydy,dbdr
       real(kind=8):: xp(np), yp(np), zp(np)
@@ -1516,7 +1516,7 @@ c=============================================================================
       real(kind=8):: bx(np), by(np), bz(np)
       real(kind=8):: eearsofz(0:nzzarr)
 
-      integer     :: ip,iz
+      integer(ISZ):: ip,iz
       real(kind=8):: zs,wz
 
 c  Set the electric fields from external sources,
@@ -1593,7 +1593,7 @@ c zcorrection is returned so that it can be dealt with in a reasonable way
 c by the calling routine.
 
 
-      integer     :: j,id = 0
+      integer(ISZ):: j,id = 0
       real(kind=8):: offset,zs,ze,zc
       real(kind=8):: gapez,z1,z2,vn,frac,qoverm
       real(kind=8):: zl,zr,vbeamfrmo,deltav
@@ -1719,7 +1719,7 @@ c  Includes external fields: Uniform focusing and eears for cigars
 c  This does it in a partially vectorized manner.
 
 
-      integer     :: ix,iy,iz,izb
+      integer(ISZ):: ix,iy,iz,izb
       real(kind=8):: zm,zz,phiextun,wzb
 
       if (.not. lgetese3d) return
@@ -1789,7 +1789,7 @@ c  Calculates the line charge density from rho.
 
 
       real(kind=8):: zz,wzg,dzi
-      integer     :: ix,iy,iz,izg
+      integer(ISZ):: ix,iy,iz,izg
 
       dzi = 1./dz
 
@@ -1923,7 +1923,7 @@ c Calculated for first species.
 
       real(kind=8):: zm
 #ifndef PARALLEL
-      integer     :: nzla,nzlb,nzma,nzmb,iz
+      integer(ISZ):: nzla,nzlb,nzma,nzmb,iz
       real(kind=8):: zs,zl,eearsprs
 #endif
 
@@ -2003,7 +2003,7 @@ c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
 
 
-      integer     :: is,ip,ipmin,i
+      integer(ISZ):: is,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
       real(kind=8):: zpo(NPARPGRP)
       real(kind=8):: ex(NPARPGRP), ey(NPARPGRP), ez(NPARPGRP)
@@ -2029,7 +2029,8 @@ c    &  call zeroarry(curr,nzzarr+1)
 
 c  Zero the moments if center is synchv
       if (center == "synchv" .or. center == "gen") then
-        call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),dt*0.5,1,
+        call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
+     &                sq(1),sm(1),sw(1),dt*0.5,1,
      &                nplive,uxpo,uypo,uzpo,1,ns)
       endif
 
@@ -2041,7 +2042,7 @@ c  Loop over species
 
 c  Loop over particle blocks; move each block separately
          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
 
 c           --- Obtain the self-field from the electrostatic potential
             call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
@@ -2235,7 +2236,8 @@ c              --- Calculate moments over particles, now that we're sync'd
 c----------------------------------------------------------------------------
 c     ---  Do final stuff for moments calculation
       if (center == "synchv" .or. center == "gen") then
-        call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),
+        call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
+     &                sq(1),sm(1),sw(1),
      &                dt*0.5,3,nplive,uxpo,uypo,uzpo,1,ns)
         call getlabwn()
 c       --- load rho diagnostic quantities
@@ -2246,7 +2248,7 @@ c       --- load rho diagnostic quantities
 c       --- Calculate current
         do is=1,ns
           do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
             call setcurr(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                   sq(is),sw(is),zbeam,dzz,zzmin)
           enddo
@@ -2273,7 +2275,7 @@ c       --- Apply particle boundary conditions
 c       --- Collect charge density (3d) and current (1d)
         do is=1,ns
           do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min0 (NPARPGRP, ins(is)+nps(is)-ipmin)
+            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
             call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
      &                     zgrid, uzp(ipmin), sq(is), sw(is), depos)
           enddo
@@ -2281,7 +2283,7 @@ c       --- Collect charge density (3d) and current (1d)
 
 c       --- Make rho periodic if periodic in z (if not accumulating rho)
         if (.not. laccumulate_rho)
-     &    call perrho3d(rho,nx,ny,nz,periinz)
+     &    call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
 
         if (lbeamcom) then
 c         --- Set zbeam so that it follows the center of mass of the beam.
@@ -2301,7 +2303,7 @@ c       --- Note that zgridprv is also set at the beginning of w3dexe
       end
 c=============================================================================
       subroutine perphi3d(phi,nx,ny,nz)
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
 
 c  Sets the slices on the exterior of phi for periodicity
@@ -2311,7 +2313,7 @@ c  sets slice at nz+1 equal to the slice at 1
 #ifdef PARALLEL
       call perphi3d_slave(phi,nx,ny,nz)
 #else
-      integer     :: ix,iy
+      integer(ISZ):: ix,iy
 
       do iy=0,ny
         do ix=0,nx
@@ -2326,9 +2328,9 @@ c  sets slice at nz+1 equal to the slice at 1
       end
 c=============================================================================
       subroutine perrho3d(rho,nx,ny,nz,periinz)
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      logical     :: periinz
+      logical(ISZ):: periinz
 
 c  Sums the first and last slices of rho for periodicity
 c  and puts the result into both slices.
@@ -2346,7 +2348,7 @@ c  whose field solve region overlap its particle region.
 
 #else
 
-      integer     :: ix,iy
+      integer(ISZ):: ix,iy
       if (periinz) then
 
         do iy=0,ny
@@ -2364,14 +2366,14 @@ c  whose field solve region overlap its particle region.
       end
 c=============================================================================
       subroutine epush3d (np, uxp, uyp, uzp, ex, ey, ez, q, m, ddt)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: uxp(np), uyp(np), uzp(np)
       real(kind=8):: ex(np), ey(np), ez(np)
       real(kind=8):: q, m, ddt
 
 c  Push the particle velocity with E field
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: const
       const = q*ddt/m
 
@@ -2385,7 +2387,7 @@ c  Push the particle velocity with E field
       end
 c=============================================================================
       subroutine epusht3d(np, uxp, uyp, uzp, ex, ey, ez, q, m, dtp, fdt)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: uxp(np), uyp(np), uzp(np)
       real(kind=8):: ex(np), ey(np), ez(np)
       real(kind=8):: dtp(np)
@@ -2394,7 +2396,7 @@ c=============================================================================
 c Push the particle velocity with E field using a different time step for
 c each particle.
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: const
       const = q*fdt/m
 
@@ -2409,14 +2411,14 @@ c each particle.
 c============================================================================= 
       subroutine bpush3d (np, uxp, uyp, uzp, gaminv, bx, by, bz, q, m, ddt,
      &                    ibpush)
-      integer     :: np,ibpush
+      integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: bx(np), by(np), bz(np)
       real(kind=8):: q, m, ddt
 
 c  Push the particle velocity with B field
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
       real(kind=8):: const
       const = q*ddt*0.5/m
@@ -2462,7 +2464,7 @@ c        --- tan(alpha) / alpha algorithm
 c============================================================================= 
       subroutine bpusht3d(np, uxp, uyp, uzp, gaminv, bx, by, bz, q, m,
      &                    dtp, fdt, ibpush)
-      integer     :: np,ibpush
+      integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: bx(np), by(np), bz(np)
       real(kind=8):: dtp(np)
@@ -2471,7 +2473,7 @@ c=============================================================================
 c Push the particle velocity with B field using a different time step
 c for each particle.
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
       real(kind=8):: const
       const = q*fdt*0.5/m
@@ -2516,13 +2518,13 @@ c        --- tan(alpha) / alpha algorithm
       end
 c=========================================================================== 
       subroutine xpush3d (np, xp, yp, zp, uxp, uyp, uzp, gaminv, ddt)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: ddt
       real(kind=8):: xp(np), yp(np), zp(np), uxp(np), uyp(np), uzp(np), gaminv(np)
 
 c  Advance particle positions
 
-      integer     :: ip
+      integer(ISZ):: ip
 
       do ip=1,np
         xp(ip) = xp(ip) + uxp(ip)*ddt*gaminv(ip)
@@ -2534,13 +2536,13 @@ c  Advance particle positions
       end
 c=========================================================================== 
       subroutine xpusht3d(np, xp, yp, zp, uxp, uyp, uzp, gaminv, dtp)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np), yp(np), zp(np), uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: dtp(np)
 
 c  Advance particle positions
 
-      integer     :: ip
+      integer(ISZ):: ip
 
       do ip=1,np
         xp(ip) = xp(ip) + uxp(ip)*gaminv(ip)*dtp(ip)
@@ -2553,13 +2555,13 @@ c  Advance particle positions
 c============================================================================ 
       subroutine sete3d_relativity(np,ex,ey,vbeam)
       use Constant
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: ex(np),ey(np)
       real(kind=8):: vbeam
 c Applies the first order relativistic correction to the self E-field.
 
       real(kind=8):: gammabarisq
-      integer     :: ip
+      integer(ISZ):: ip
 
       gammabarisq = 1. -  (vbeam/clight)**2
 
@@ -2573,7 +2575,7 @@ c Applies the first order relativistic correction to the self E-field.
 c============================================================================ 
       subroutine edamp (eomdamp,it,itdamp,center,np,
      &                  ex,ey,ez,exold,eyold,ezold,exlag,eylag,ezlag)
-      integer     :: eomdamp,it,itdamp,np
+      integer(ISZ):: eomdamp,it,itdamp,np
       real(kind=8):: ex(np), ey(np), ez(np), exold(np), eyold(np), ezold(np)
       real(kind=8):: exlag(np), eylag(np), ezlag(np)
       character*(*):: center
@@ -2582,7 +2584,7 @@ c  Computes modified electric field to apply "adjustably damped" mover.
 c  Updates "old" and "lag" qtys only after "fullv" or "halfv" advance,
 c    never after "synchv" since they are needed by the "halfv" to come.
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: exip,eyip,ezip
 
       if (eomdamp == 0.) return
@@ -2676,7 +2678,7 @@ c============================================================================
       use InGen
       use Lattice
       use LatticeInternal
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: dtl,dtr,zbeam
       real(kind=8):: zp(np), uzp(np), gaminv(np), bendres(np), bendradi(np)
 
@@ -2684,7 +2686,7 @@ c============================================================================
 c  Gets residence factor and radius for bends.
 c  For periodic runs, assumes mesh period length = lattice period length
 
-      integer     :: ip,j
+      integer(ISZ):: ip,j
       real(kind=8):: vz,zl,fl,zr,fr,dti,vzi
 
       if (.not. bends .or. .not. linbend) return
@@ -2726,15 +2728,15 @@ c        --- bend radius
 c=========================================================================== 
       subroutine bendez3d (np, xp, zp, ez, bendres, bendradi, bends, bnezflag,
      &                     linbend)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), ez(np), bendres(np), bendradi(np)
-      logical     :: bends, bnezflag, linbend
+      logical(ISZ):: bends, bnezflag, linbend
 
 c  Corrects axial electric field at particle position for warped geometry
 c  via multiplying by r_star/r = 1 - x/r, in a residence-corrected way;
 c  at smaller radii, zones are closer together, so field is larger.
 
-      integer     :: ip
+      integer(ISZ):: ip
 
       if (.not. (bends.and.bnezflag) .or. .not. linbend) return
 
@@ -2749,11 +2751,11 @@ c===========================================================================
       subroutine sledgcor(np,xp,yp,zp,zpo,uxp,uyp,uzp,gaminv,m,q,dt,zbeam,
      &                    dipos) 
       use LatticeInternal
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: xp(np), yp(np), zp(np), zpo(np) 
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np) 
       real(kind=8):: q, m, dt, zbeam  
-      logical     :: dipos 
+      logical(ISZ):: dipos 
 
 
 c Applies position and velocity jump corrections on entry/exit of dipoles 
@@ -2762,7 +2764,7 @@ c timestep, so that entry/exit of the bend is detected exactly once.)
 c Accounts for the fact that the jumped velocities act on the particles for 
 c less than the entire andvance step on entry/exit of the dipole.  
 
-      integer     :: ip,j
+      integer(ISZ):: ip,j
       real(kind=8):: vz,vzi,qoverm
 
       qoverm = q/m
@@ -2797,16 +2799,16 @@ c          --- exited dipole
 c=========================================================================== 
       subroutine zbendcor (np, xp, zp, uxp, uzp, 
      &                     gaminv, ddt, bendres, bendradi, bends, linbend)
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: ddt
       real(kind=8):: xp(np), zp(np), uxp(np), uzp(np), gaminv(np)
       real(kind=8):: bendres(np), bendradi(np)
-      logical     :: bends,linbend
+      logical(ISZ):: bends,linbend
 
 c  Corrects particle axial positions for bending; zp is position
 c  "along the centerline."
 
-      integer     :: ip
+      integer(ISZ):: ip
       real(kind=8):: xprv,xc
 
       if (.not. bends .or. .not. linbend) return
@@ -2824,12 +2826,12 @@ c===========================================================================
       subroutine zgapcorr(np,zp,xp,uzp,gaminv,zbeam,dtl,dtr,dt,m,q,time)
       use Lattice
       use LatticeInternal
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: zp(np), xp(np), uzp(np), gaminv(np)
       real(kind=8):: zbeam,dtl,dtr,dt,m,q,time
 
 
-      integer     :: ip,j
+      integer(ISZ):: ip,j
       real(kind=8):: vz,gapez,zp2,delta,qoverm,vzi,cacclz,deltav,zr
 
       qoverm = q/m
@@ -2906,12 +2908,12 @@ c           --- calculate correction on position
 c=========================================================================== 
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry)
-      integer     :: np,nx,ny,nz
+      integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
       real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:ny,0:nz),xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
-      integer     :: efetch
-      logical     :: l2symtry,l4symtry
+      integer(ISZ):: efetch
+      logical(ISZ):: l2symtry,l4symtry
 
 c  Sets self electric field for a group of up to NPARPGRP particles
 c  Note that the phi1d passed in is assumed to start at phi(0,0,-1).
@@ -2931,16 +2933,16 @@ c        + u1 * v0 * w0 * ex(i+1,j  ,k  )
 c        + u0 * v1 * w0 * ex(i  ,j+1,k  )
 c        + ...
 
-      integer     :: nnx,nnxy,ip,i,j,k,ind0,m
+      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,m
       real(kind=8):: dxi,dyi,dzi,tdxi,tdyi,tdzi,u0,u1,v0,v1,w0,w1,ysign,xsign
-      integer     :: ox,oy,sox,soy
+      integer(ISZ):: ox,oy,sox,soy
       real(kind=8):: sx,sy
-      integer     :: noff(32)
+      integer(ISZ):: noff(32)
       save noff
 
 c     --- For second version
 c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
-      integer     :: indx(33,NPARPGRP)
+      integer(ISZ):: indx(33,NPARPGRP)
       real(kind=8):: p(33,NPARPGRP), u1p(NPARPGRP), v1p(NPARPGRP), w1p(NPARPGRP)
 
       nnx  = nx + 1
@@ -3338,14 +3340,14 @@ c           --- Adjust sign of E field for appropriate quadrant.
 c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
      &                      dx,dy,dz)
-      integer     :: nx,ny,nz
-      integer     :: nx_selfe,ny_selfe,nz_selfe
+      integer(ISZ):: nx,ny,nz
+      integer(ISZ):: nx_selfe,ny_selfe,nz_selfe
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),selfe(3,0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz
 
 c Calculate the self-E via finite differences of phi.
 
-      integer     :: ix,iy,iz
+      integer(ISZ):: ix,iy,iz
       real(kind=8):: tdxi,tdyi,tdzi
 
 c     --- Do some checking first.
@@ -3417,7 +3419,7 @@ c===========================================================================
      &                   bgrdsy,bgrdox,bgrdoy,bgrdph,bgrdsp,bgrdcp,  
      &                   bgrddxi,bgrddyi,bgrddzi,bgrdnx,bgrdny,bgrdnz,
      &                   bx,by,bz,id,nzl,zlmin,zbeam,dzli)
-      integer     :: nxyz,bgrdns,np,nbgrd,bgrdnx,bgrdny,bgrdnz,nzl
+      integer(ISZ):: nxyz,bgrdns,np,nbgrd,bgrdnx,bgrdny,bgrdnz,nzl
       real(kind=8):: bgrdbx(0:nxyz-1,bgrdns)
       real(kind=8):: bgrdby(0:nxyz-1,bgrdns)
       real(kind=8):: bgrdbz(0:nxyz-1,bgrdns)
@@ -3427,9 +3429,9 @@ c===========================================================================
       real(kind=8):: bgrdsf(0:nbgrd),bgrdsc(0:nbgrd)
       real(kind=8):: bgrdox(0:nbgrd),bgrdoy(0:nbgrd)
       real(kind=8):: bgrdph(0:nbgrd),bgrdsp(0:nbgrd),bgrdcp(0:nbgrd) 
-      integer     :: bgrdid(0:nbgrd),bgrdsy(0:nbgrd)
+      integer(ISZ):: bgrdid(0:nbgrd),bgrdsy(0:nbgrd)
       real(kind=8):: bgrddxi(bgrdns),bgrddyi(bgrdns),bgrddzi(bgrdns)
-      integer     :: id(0:nzl)
+      integer(ISZ):: id(0:nzl)
       real(kind=8):: zlmin,zbeam,dzli
 
 c  Sets magnetic field for a group of up to NPARPGRP particles from data sets
@@ -3476,10 +3478,10 @@ c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
 c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
 c        + ...
 
-      integer     :: nnx,nnxy,ip,i,j,k,ind0,iz,ii,ib
+      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,iz,ii,ib
       real(kind=8):: u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
       real(kind=8):: tbx,tby
-      integer     :: noff(8)
+      integer(ISZ):: noff(8)
       save noff
 
       nnx  = bgrdnx + 1
@@ -3645,7 +3647,7 @@ c===========================================================================
      &                   pgrdox,pgrdoy,pgrdph,pgrdsp,pgrdcp, 
      &                   pgrddxi,pgrddyi,pgrddzi,pgrdnx,pgrdny,pgrdnz,ex,ey,ez,
      &                   id,nzl,zlmin,zbeam,dzli)
-      integer     :: nxyz,pgrdns,np,npgrd,pgrdnx,pgrdny,pgrdnz,nzl
+      integer(ISZ):: nxyz,pgrdns,np,npgrd,pgrdnx,pgrdny,pgrdnz,nzl
       real(kind=8):: pgrdp(0:nxyz-1,pgrdns)
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -3653,9 +3655,9 @@ c===========================================================================
       real(kind=8):: pgrdsf(0:npgrd),pgrdsc(0:npgrd)
       real(kind=8):: pgrdox(0:npgrd),pgrdoy(0:npgrd) 
       real(kind=8):: pgrdph(0:npgrd),pgrdsp(0:npgrd),pgrdcp(0:npgrd)
-      integer     :: pgrdid(0:npgrd)
+      integer(ISZ):: pgrdid(0:npgrd)
       real(kind=8):: pgrddxi(pgrdns),pgrddyi(pgrdns),pgrddzi(pgrdns)
-      integer     :: id(0:nzl)
+      integer(ISZ):: id(0:nzl)
       real(kind=8):: zlmin,zbeam,dzli
 
 c  Sets electric field for a group of up to NPARPGRP particles from data
@@ -3709,11 +3711,11 @@ c  sete3d more complex and possibly slower.  Since the pgrd routine will not
 c  be used very often and sete3d is used always, the author felt it was better
 c  to have a seperate routine for pgrd.
 
-      integer     :: nnx,nnxy,ip,i,j,k,ind0,iz,ii,ib
+      integer(ISZ):: nnx,nnxy,ip,i,j,k,ind0,iz,ii,ib
       real(kind=8):: u0,u1,v0,v1,w0,w1,xfac,yfac,zfac,txp,typ,temp
-      integer     :: indx05,indx06,indx07,indx11
-      integer     :: indx17,indx18,indx19,indx23
-      integer     :: noff(32)
+      integer(ISZ):: indx05,indx06,indx07,indx11
+      integer(ISZ):: indx17,indx18,indx19,indx23
+      integer(ISZ):: noff(32)
       save noff
 
       nnx  = pgrdnx + 1
@@ -3890,16 +3892,16 @@ c
 c  Picglb is included only to use zbeam
 
 
-      integer     :: npm,ip,is,i,j,k,i1,nxstri_s,nystri_s,nzstri_s,izstripe,icheck
-      integer     :: nfib2,nfib3,nfib4,ii,ioff
+      integer(ISZ):: npm,ip,is,i,j,k,i1,nxstri_s,nystri_s,nzstri_s,izstripe,icheck
+      integer(ISZ):: nfib2,nfib3,nfib4,ii,ioff
       real(kind=8):: rnpmi,zmid,zlen,zleni,vtx,vty,vtz,rr,r0,rpp,phi1,phi2,rp,wz,wr
       real(kind=8):: vthr,vrbar
       real(kind=8):: zoff,vb,emx,emy,vtzz
       real(kind=8):: sumzdist,zdistmax
       real(kind=8):: sumrdist
-      integer     :: iz,ipp,izz
-      integer     :: ir,irr
-      integer     :: envxport
+      integer(ISZ):: iz,ipp,izz
+      integer(ISZ):: ir,irr
+      integer(ISZ):: envxport
       character*72:: errline
       real(kind=8):: wranf,rnorm,rnrev
 #ifdef PARALLEL
@@ -4063,7 +4065,7 @@ c       --- random number generators can be controlled.
 c  MAIN INITIALIZATION LOOP
 
       do k = 1, npm, npgrp
-         i1 = min0(npm, k+npgrp-1)
+         i1 = min(npm, k+npgrp-1)
 
 c  Load longitudinal stuff
 c        --- load normalized z (0 < z < 1)
@@ -4616,7 +4618,7 @@ c=============================================================================
       use InMesh3d
       use Fields3d
       use Picglb3d
-      integer     :: np
+      integer(ISZ):: np
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho1d(0:*)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
@@ -4639,14 +4641,14 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer     :: moff(0:7), indx(0:7,NPARPGRP)
+      integer(ISZ):: moff(0:7), indx(0:7,NPARPGRP)
       save moff
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer     :: ii(0:NPARPGRP-1), jj(0:NPARPGRP-1), kk(0:NPARPGRP-1)
+      integer(ISZ):: ii(0:NPARPGRP-1), jj(0:NPARPGRP-1), kk(0:NPARPGRP-1)
 c     --- For both algorithms
       real(kind=8):: s(0:7,NPARPGRP)
 
-      integer     :: ip,i,j,k,ind0,m,ir
+      integer(ISZ):: ip,i,j,k,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
 
 c--------------------------------------
@@ -4906,17 +4908,17 @@ c=============================================================================
       use Picglb3d
       use Particles
       use Fields3d
-      integer     :: ins_i,nps_i,is_i
-      logical     :: lzero
+      integer(ISZ):: ins_i,nps_i,is_i
+      logical(ISZ):: lzero
 
 c --- This routine provides a simple call from the interpreter to load the
 c --- rho array.  The value '-1' is used as a flag in the input to use
 c --- all of the particles, otherwise the specified particles are loaded.
 
 
-      integer     :: ins_u,nps_u
-      integer     :: is1,is2
-      integer     :: ip,ipmin,is
+      integer(ISZ):: ins_u,nps_u
+      integer(ISZ):: is1,is2
+      integer(ISZ):: ip,ipmin,is
 
 c     --- zero rho if requested
 c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
@@ -4952,7 +4954,7 @@ c        --- loop over particle blocks
       enddo
 
 c     --- enforce axial periodicity
-      if (lzero) call perrho3d(rho,nx,ny,nz,periinz)
+      if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
 
       return
       end
@@ -4961,14 +4963,14 @@ c=============================================================================
      &                   zp,zmmin,dz,uxp,uyp,uzp,zgrid,zbeam,
      &                   nzzarr,prwallz,prwallxz,prwallyz,prwelips,
      &                   l2symtry,l4symtry,lostpars,zzmin,dzzi)
-      integer     :: np,nzzarr
+      integer(ISZ):: np,nzzarr
       real(kind=8):: xmmax,xmmin,dx,ymmax,ymmin,dy,zmmin,dz,zgrid,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np)
       real(kind=8):: prwallz(0:nzzarr),prwallxz(0:nzzarr),prwallyz(0:nzzarr)
       real(kind=8):: prwelips(0:nzzarr)
-      logical     :: l2symtry,l4symtry
-      integer     :: lostpars(0:nzzarr)
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: lostpars(0:nzzarr)
       real(kind=8):: zzmin,dzzi
 
 c  Enforces sticky b.c.'s on the x and y walls
@@ -4976,7 +4978,7 @@ c  Particles considered stuck when radius is greater than PRWALL
 c  sets zp to almost dz to the left of the grid
 c  Also ensures that particles are at least on the grid as well.
 
-      integer     :: ip,iz
+      integer(ISZ):: ip,iz
       real(kind=8):: xmin,xmax,ymin,ymax
 
       xmin = xmmin
@@ -5011,7 +5013,7 @@ c  Also ensures that particles are at least on the grid as well.
 c=============================================================================
       subroutine setrstar(rstar,nz,dz,zmmin,zgrid)
       use Lattice
-      integer     :: nz
+      integer(ISZ):: nz
       real(kind=8):: rstar(-1:nz+1)
       real(kind=8):: dz,zmmin,zgrid
 
@@ -5019,7 +5021,7 @@ c  Loads radius of curvature of reference orbit into rstar array, so that
 c  r_star is known on mesh points for purposes of field solution.
 
 
-      integer     :: k,ib
+      integer(ISZ):: k,ib
       real(kind=8):: z,offset,bres,bradi
       real(kind=8):: zl,fl,zr,fr
 
@@ -5068,7 +5070,7 @@ c=============================================================================
 #ifdef PARALLEL
       use Parallel
 #endif
-      integer     :: itask
+      integer(ISZ):: itask
 
 c This routine does the injection of particles.  It has three main parts, the
 c first cleans up the particle arrays and makes sure that there is enough room
@@ -5076,7 +5078,7 @@ c for the new particles.  The second is the coding for constant current
 c injection.  The third part is for space-charge limited injection.
 
 
-      integer     :: is,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,ijz
+      integer(ISZ):: is,ij,ii,ip,nn,ix,iy,iz,ipmin,ixx,iyy,ijz
       real(kind=8):: rnpinjct,rnn,t
       real(kind=8):: rr,ehalf,vnorm,zz,wxx,wyy,aa,az,wz,xx,xxi
       real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,ez,vznorm,rp,clightsqi
@@ -5084,12 +5086,12 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: vtx,vty
       real(kind=8):: zmid,zleni,ztilt,gamma
       real(kind=8):: zinjmin,zinjmax
-      integer     :: load_fac,il,ilf,ixi,iyi
+      integer(ISZ):: load_fac,il,ilf,ixi,iyi
       real(kind=8):: signx(4),signy(4)
       real(kind=8):: p2x,p2y,p2z,w2x,w2y,w2z,area
-      integer     :: i2x,i2y,i2z
+      integer(ISZ):: i2x,i2y,i2z
       real(kind=8):: wranf
-      integer     :: ith,nti
+      integer(ISZ):: ith,nti
 
       dxi = 1./dx
       dyi = 1./dy
@@ -6154,7 +6156,7 @@ c=============================================================================
       use Setpwork3d
       use Picglb3d
 
-      integer     :: is,ip,ij,nn,nnmax
+      integer(ISZ):: is,ip,ij,nn,nnmax
       real(kind=8):: total_frac
 
 c Make sure that space has been allocated for the arrays. This is needed
@@ -6298,7 +6300,7 @@ c=============================================================================
       use InjectVars
       use InjectVars3d
       real(kind=8):: dx,dy,dz
-      integer     :: ix_axis,iy_axis
+      integer(ISZ):: ix_axis,iy_axis
 
 c     --- Fill the injection grid array.  A padding of 2 grid cells is also
 c     --- set.
@@ -6308,7 +6310,7 @@ c     --- The array inj_angl holds the angle due to the curvature of the source
 c     --- as a function of the transverse coordinates.
 
 
-      integer     :: ij,ix,iy
+      integer(ISZ):: ij,ix,iy
       real(kind=8):: xx,yy,zz,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
       real(kind=8):: xl,yl,xu,yu,x1,x2
       real(kind=8):: ainji,binji
@@ -6439,7 +6441,7 @@ c=============================================================================
       use InPart
       use InjectVars
       use InjectVars3d
-      integer     :: nx,ny,nz,np
+      integer(ISZ):: nx,ny,nz,np
       real(kind=8):: phi(0:nx,0:ny,0:nz)
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -6455,7 +6457,7 @@ c Eventually this routine could be expanded to calculate the E field near
 c any conductor surface.
 
 
-      integer     :: ip,ix,iy,iz,ij,jx,jy,jz,jxm1,jym1
+      integer(ISZ):: ip,ix,iy,iz,ij,jx,jy,jz,jxm1,jym1
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd,ca,zi,zii
       real(kind=8):: aa,az,px,py,pz,wx,wy,wz,en
       real(kind=8):: dxi,dyi,dzi
@@ -6611,10 +6613,10 @@ c=============================================================================
       use InjectVars
       use InjectVars3d
       use Particles
-      integer     :: nx,ny,nz
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: zgrid,xmmin,ymmin,dx,dy,dz
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Calculate the charge density on the emitting surface.  The particles are
 c mapped onto the surface assuming a spherical emitter.  The charge density
@@ -6627,7 +6629,7 @@ c will have charge in it, but the charge is divided by the area of all of
 c the grid cell.
 
 
-      integer     :: is,ip,ix,iy,ij
+      integer(ISZ):: is,ip,ix,iy,ij
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd
       real(kind=8):: aa,az,px,py,wx,wy,ww
       real(kind=8):: dxi,dyi,dzi
@@ -6749,11 +6751,11 @@ c===========================================================================
      &                           zmmax,dx,dy,dz,nx,ny,nz,ex,ey,
      &                           l2symtry,l4symtry)
       use Apertures
-      integer     :: np,nx,ny,nz
+      integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,zmmax,dx,dy,dz
       real(kind=8):: phi1d(0:*), xp(np), yp(np), zp(np)
       real(kind=8):: ex(np), ey(np)
-      logical     :: l2symtry,l4symtry
+      logical(ISZ):: l2symtry,l4symtry
 
 c Replaces the transverse E field for particles near an aperture described by
 c the variables in the group Apertures. This relys on the routine
@@ -6761,7 +6763,7 @@ c set_aperture_e being called to fill the aper_ex and aper_ey arrays.
 
 
       real(kind=8):: zs,ze
-      integer     :: ip,i,j,k,ia,izs,ize
+      integer(ISZ):: ip,i,j,k,ia,izs,ize
       real(kind=8):: dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       real(kind=8):: sx,sy
 
@@ -6916,10 +6918,10 @@ c     from the two points off to one side along the axis perpendicular to the
 c     E-field.
 
 
-      integer     :: midx,midy,minx,maxx,miny,maxy
-      integer     :: minxm1,maxxp1,minym1,maxyp1
-      integer     :: ixmin,ixmax,iymin,iymax
-      integer     :: ia,ix,iy,iz,ixs,iys,izs,ize,iza
+      integer(ISZ):: midx,midy,minx,maxx,miny,maxy
+      integer(ISZ):: minxm1,maxxp1,minym1,maxyp1
+      integer(ISZ):: ixmin,ixmax,iymin,iymax
+      integer(ISZ):: ia,ix,iy,iz,ixs,iys,izs,ize,iza
       real(kind=8):: zs,ze,xx,yy,wx,wy
       real(kind=8):: tdxi,tdyi,dzi
 
@@ -7312,7 +7314,7 @@ c===========================================================================
       use Picglb3d
       use Lattice
       use LatticeInternal
-      integer     :: iwhich
+      integer(ISZ):: iwhich
 
 c  Field solver for 3d warped Cartesian geometry. 
 c  Enter with charge density in rho array, old potential in phi array.
@@ -7323,7 +7325,7 @@ c      1) Call to an SOR field solver.
 c      2) Iteration loop for a perturbative calculation of fields. 
 
 
-      integer     :: i,j,k
+      integer(ISZ):: i,j,k
       real(kind=8):: ccmult,rs,dhdz,cutoff,x,r,phiref,rskm1,rskp1,dxi,dzi
       character*(80):: outstr
 
@@ -7356,7 +7358,7 @@ c  -------------------------------
          if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
      &       fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
      &       fstype == 8 .or. fstype == 9) then
-           call copyarry (rho, phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
+           call copyarry (rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
          endif
          call vp3d (iwhich)
          if (periinz) call perphi3d(phi(0,0,-1),nx,ny,nz)
@@ -7478,7 +7480,7 @@ c=============================================================================
       use Picglb
       use Fields3d
       use LatticeInternal
-      integer     :: iwhich
+      integer(ISZ):: iwhich
 
 c  Interface to VPOIS3D using variables from database of package 3D
 
