@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.31 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -5055,8 +5055,8 @@ c       --- Set temps
 
         if (zmin <= zz .and. zz <= zmax) then
 c         --- Point inside the z-extent
-          rmin = srfrv_f(zz,rminofz,1,0)
-          rmax = srfrv_f(zz,rmaxofz,2,0)
+          rmin = min(srfrv_f(zz,rminofz,1,-1),srfrv_f(zz,rminofz,1,+1))
+          rmax = max(srfrv_f(zz,rmaxofz,2,-1),srfrv_f(zz,rmaxofz,2,+1))
           ximin = sqrt(max(0.,rmin**2 - yy**2))
           yimin = sqrt(max(0.,rmin**2 - xx**2))
           ximax = sqrt(max(0.,rmax**2 - yy**2))
