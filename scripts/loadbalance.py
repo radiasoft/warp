@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.8 2001/08/11 22:37:43 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.9 2001/08/11 23:44:02 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -183,28 +183,26 @@ needed since some processors may have more conductor points than others.
   zslave = decompose(weight,npes)
 
   # --- Set domain of each processor.
-  round = 1.0
-  cost = 10000.
-  costprev = 20000.
-  while (cost <= costprev):
-    zlast = 0
-    for i in range(npes):
-      top.izfsslave[i] = zlast
-      top.nzfsslave[i] = int(zslave[i]+round) + 1
-      zlast = top.izfsslave[i] + top.nzfsslave[i] - 1
-    top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
-    costprev = cost
-    cost = max(top.nzfsslave-zslave) - min(top.nzfsslave-zslave) + \
-           10000.*(min(top.nzfsslave) < 2)
-    round = round - 0.05
-
-  round = round + 0.05*2
+  # --- This coding ensures that all of the processors have nzfsslave at least
+  # --- 2 or greater and that the last processor isn't left with too few cells.
+  # --- In cases where all of the processors have values only slightly
+  # --- greater than 2, the last processor will likely end up with too few
+  # --- cells because of the accumulation of rounding up. Find the processors
+  # --- which have the largest amount of roundup and take away one of their
+  # --- grid cells until the last processor has enough.
   zlast = 0
   for i in range(npes):
     top.izfsslave[i] = zlast
-    top.nzfsslave[i] = int(zslave[i]+round) + 1
+    top.nzfsslave[i] = max(nint(zslave[i]) + 1,2)
     zlast = top.izfsslave[i] + top.nzfsslave[i] - 1
   top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
+  while (zslave[-1]-top.nzfsslave[-1]) > max(zslave[:-1]-top.nzfsslave[:-1]) \
+         or top.nzfsslave[-1] < 2:
+    i = argmax(where(greater(top.nzfsslave[:-1],2),
+                     top.nzfsslave[:-1]-zslave[:-1],-10000.))
+    top.nzfsslave[i] = top.nzfsslave[i] - 1
+    top.izfsslave[i+1:] = top.izfsslave[i+1:] - 1
+    top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
 
   # --- Adjust the Z data
   _adjustz()
