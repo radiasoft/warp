@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.29 2001/02/09 22:23:56 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.30 2001/02/09 22:25:55 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1699,8 +1699,9 @@ def pla(y,x=None,color="fg",linetype="solid",marks=0,marker=None,msize=1.0,
       warpplg(yy[:,i],xx[:,i%n],color=color,linetype=linetype,
               marks=marks,marker=marker,msize=msize,width=width)
     else:
-      plg(yy[:,i],xx[:,i%n],color=color,type=linetype,
-          marks=marks,marker=marker,msize=msize,width=width)
+      if len(yy[:,i]) > 0:
+        plg(yy[:,i],xx[:,i%n],color=color,type=linetype,
+            marks=marks,marker=marker,msize=msize,width=width)
 
 ##########################################################################
 ##########################################################################
