@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.11 $, $Date: 2002/05/13 21:10:16 $
+c TOPSLAVE.M, version $Revision: 1.12 $, $Date: 2002/10/24 21:36:43 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -137,11 +137,15 @@ c       --- their z adjusted.
             zp(ip) = zp(ip) - syslen
           enddo
 c       --- Sticky boundary condition: particles picked out are not passed.
+c       --- Instead, they are marked as dead particles and ins and nps are
+c       --- reset to include them.
         elseif (my_index == 0 .and. stickyz) then
-          nps_init = nps_init - (ins(is) - ins_init)
-          ins_init = ins(is)
+          gaminv(ins_init:ins(is)-1) = 0.
+          nps(is) = nps(is) + (ins(is) - ins_init)
+          ins(is) = ins_init
         elseif (my_index == nslaves-1 .and. stickyz) then
-          nps_init = nps(is) + (ins(is) - ins_init)
+          gaminv(ins(is)+nps(is):ins_init+nps_init-1) = 0.
+          nps(is) = ins_init + nps_init - ins(is)
         endif
 
 c Here is what happens...
