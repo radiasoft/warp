@@ -2567,8 +2567,8 @@ has_diverged = .false.
       uold=grid%phi
       call mgbndrzwguard(j=nlevels,u=grid%phi,rhs=-grid%rho/eps0,bnd=grid%bnd,nr=grid%nr,nz=grid%nz,dr=grid%dr,dz=grid%dz, &
                          npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=grid%npmin, &
-!                         npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=nlevels-0, &
                          mgparam=grid%mgparam)
+!                         npre=grid%npre,npost=grid%npost,ncycle=grid%ncycles,sub=.FALSE., relax_only=.false.,npmin=nlevels-0, &
       maxerr_old = maxerr
       maxerr = maxval(abs(grid%phi-uold))
 #ifdef MPIPARALLEL
@@ -2707,10 +2707,10 @@ INTEGER(ISZ) :: npreinit, npostinit
     write(0,*) "-----------------------------------------"
     write(0,*) "The optimized values:"
     write(0,*) "Field solve time = ",prevtime
-    write(0,*) "mgparam     = ",grid%mgparam
-    write(0,*) "npre        = ",grid%npre
-    write(0,*) "npost       = ",grid%npost
-    write(0,*) "levels_min  = ",grid%npmin
+    write(0,*) "frz.mgridrz_mgparam     = ",grid%mgparam
+    write(0,*) "frz.mgridrz_npre        = ",grid%npre
+    write(0,*) "frz.mgridrz_npost       = ",grid%npost
+    write(0,*) "frz.mgridrz_levels_min  = ",grid%npmin
   END if
 
   IF(associated(grid%down)) call find_mgparam_rz_1grid(grid%down)
@@ -4668,8 +4668,7 @@ TYPE(bndptr), pointer :: bnd
      icc=icc+1
      ixcond(icc) = bnd%cnd%jcond(i)-1
      izcond(icc) = bnd%cnd%kcond(i)-1
-     icondlxy(icc) = 2**(ic-1)
-     icondlz(icc) = 2**(ic-1)
+     icondlevel(icc) = ic
    end do
    do i = 1, bnd%cnd%nbbndred
     IF(bnd%v(bnd%cnd%jj(i),bnd%cnd%kk(i))==v_bnd) then
@@ -4680,8 +4679,7 @@ TYPE(bndptr), pointer :: bnd
      ecdelpx(ice) = bnd%cnd%dxp(i)/bnd%dr
      ecdelmz(ice) = bnd%cnd%dzm(i)/bnd%dz
      ecdelpz(ice) = bnd%cnd%dzp(i)/bnd%dz
-     iecndlxy(ice) = 2**(ic-1)
-     iecndlz(ice) = 2**(ic-1)
+     iecndlevel(ice) = ic
     END if
    end do
    do i = bnd%cnd%nbbndred+1, bnd%cnd%nbbnd
@@ -4693,8 +4691,7 @@ TYPE(bndptr), pointer :: bnd
      ocdelpx(ico) = bnd%cnd%dxp(i)/bnd%dr
      ocdelmz(ico) = bnd%cnd%dzm(i)/bnd%dz
      ocdelpz(ico) = bnd%cnd%dzp(i)/bnd%dz
-     iocndlxy(ico) = 2**(ic-1)
-     iocndlz(ico) = 2**(ic-1)
+     iocndlevel(ico) = ic
     END if
    end do
  END do
