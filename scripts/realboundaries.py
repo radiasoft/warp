@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.12 2002/02/08 22:05:18 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.13 2002/02/19 22:35:28 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -415,7 +415,12 @@ Constructor arguments:
     s.getmatrix()
   #----------------------------------------------------------------------------
   def setmatrix(s,vlist):
-    s.vcond[:] = 1.*choose(s.vcondunit,vlist)
+    # --- The exception handling is needed in cases when a RoundRod class
+    # --- instance is restore from a run done before vcondunit was added.
+    try:
+      s.vcond[:] = 1.*choose(s.vcondunit,vlist)
+    except AttributeError:
+      pass
     CapacityMatrix.setmatrix(s)
   #----------------------------------------------------------------------------
   def issame(s,ap,rr,withx,withy,ox,oy):
