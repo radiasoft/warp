@@ -327,14 +327,14 @@ c       igradb=2, calculate assuming pure quadrupole field,
 c         ignoring dB^2/dz
 c       igradb=3, calculate transverse components from pure
 c          quadrupole; dB^2/dz from interpolation of lookup table.
-c       To use igradb=3 efficiently, should invoke setup of top.bgrd
+c       To use igradb=3 efficiently, should invoke setup of top.bsqgrad
 c         with "zonly" set to true, so that only the dB^2/dz data
 c         is stored and fetched.  In this case also w3d.ngrdb should
-c         be set to 1 and BGRDdata gchanged.
+c         be set to 1 and BSQGRADdata gchanged.
       use DKInterp
       use DKInterptmp
       use InGen
-      use BGRDdata
+      use BSQGRADdata
       integer(ISZ):: np,is,ipmin
       real(kind=8):: x(np),y(np),z(np)
       integer(ISZ):: i,ip
@@ -387,9 +387,9 @@ c         calculate interpolation parameter, 0 if magnetized, 1 if not
 
       if (igradb == 1) then
 c       igradb == 1, get data from lookup table.
-c       Must zero the array first, as applybgrd2 accumulates
+c       Must zero the array first, as applybsqgrad accumulates
         grdbsq(:,1:np)=0.
-        call applybgrd2(np,x,y,np,z,.false.,grdbsq)
+        call applybsqgrad(np,x,y,np,z,.false.,grdbsq)
       elseif (igradb == 2) then
         do i=1,np
           twobbrsqi = 2.*bsq(i)/(x(i)**2+y(i)**2+dksmall)
@@ -401,13 +401,13 @@ c          dbsqdz(i) = 0.
           grdbsq(3,i)=twobbrsqi*y(i)
         enddo
       elseif (igradb == 3) then
-c       fetch dB^2/dz.  We need only this from the bgrd array.
-c       Verified, this works OK whether bgrdnc is 1 or 3; no
-c       harm in dimensioning grdbsq(3,..) even if bgrdnc is 1.
-c       Warning if bgrdnc isn't 1 or 3, dbsq/dz undefined.
-        call applybgrd2(np,x,y,np,z,.false.,grdbsq)
+c       fetch dB^2/dz.  We need only this from the bsqgrad array.
+c       Verified, this works OK whether bsqgradnc is 1 or 3; no
+c       harm in dimensioning grdbsq(3,..) even if bsqgradnc is 1.
+c       Warning if bsqgradnc isn't 1 or 3, dbsq/dz undefined.
+        call applybsqgrad(np,x,y,np,z,.false.,grdbsq)
         do i=1,np
-c         Note grdbsq(1,:) directly set by applybgrd2
+c         Note grdbsq(1,:) directly set by applybsqgrad
           twobbrsqi = 2.*bsq(i)/(x(i)**2+y(i)**2+dksmall)
           grdbsq(2,i)=twobbrsqi*x(i)
           grdbsq(3,i)=twobbrsqi*y(i)
