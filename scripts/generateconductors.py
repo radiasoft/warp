@@ -99,7 +99,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.86 2004/09/13 18:28:48 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.87 2004/09/13 22:31:01 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -473,7 +473,7 @@ Assembly aligned along X axis
     tphi = arglist[-1]
     itheta = arctan2(sqrt(cos(ttheta)**2 + (cos(tphi)*sin(ttheta))**2),
                      sin(tphi)*sin(ttheta))
-    iphi = atan2(cos(tphi)*sin(ttheta),cos(ttheta))
+    iphi = arctan2(cos(tphi)*sin(ttheta),cos(ttheta))
     argtuple[-2][:] = itheta
     argtuple[-1][:] = iphi
 
@@ -532,9 +532,9 @@ Assembly aligned along Y axis
     # --- Undo the surface normals
     ttheta = arglist[-2]
     tphi = arglist[-1]
-    itheta = atan2(sqrt((sin(tphi)*sin(ttheta))**2 + cos(ttheta)**2),
+    itheta = arctan2(sqrt((sin(tphi)*sin(ttheta))**2 + cos(ttheta)**2),
                    cos(tphi)*sin(ttheta))
-    iphi = atan2(cos(ttheta),sin(tphi)*sin(ttheta))
+    iphi = arctan2(cos(ttheta),sin(tphi)*sin(ttheta))
     argtuple[-2][:] = itheta
     argtuple[-1][:] = iphi
 
@@ -3101,32 +3101,26 @@ Creates an Annulus as a surface of revolution.
   """
   def __init__(self,rmin,rmax,length,
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
-    kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
-    Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zsrfrvinoutconductorf,zsrfrvinoutconductord,
-                      zsrfrvinoutintercept)
+
     self.rmin = rmin
     self.rmax = rmax
     self.length = length
-    self.zmin = -length/2.
-    self.zmax = +length/2.
 
-    # --- Setup tablized data.
-    self.usemindata = true
-    self.zmindata = [self.zmin,self.zmax]
-    self.rminofzdata = [rmin,rmin]
-    self.radmindata = [largepos,largepos]
-    self.rcmindata = [largepos,largepos]
-    self.zcmindata = [largepos,largepos]
-    self.rminofz = ' '
+    # --- Setup dat for surface of revolution
+    zmin = -length/2.
+    zmax = +length/2.
 
-    self.usemaxdata = true
-    self.zmaxdata = [self.zmin,self.zmax]
-    self.rmaxofzdata = [rmax,rmax]
-    self.radmaxdata = [largepos,largepos]
-    self.rcmaxdata = [largepos,largepos]
-    self.zcmaxdata = [largepos,largepos]
-    self.rmaxofz = ' '
+    zmindata = [zmin,zmax]
+    rminofzdata = [rmin,rmin]
+
+    zmaxdata = [zmin,zmax]
+    rmaxofzdata = [rmax,rmax]
+
+    ZSrfrvInOut.__init__(self,' ',' ',zmin,zmax,
+                         voltage=voltage,xcent=xcent,ycent=ycent,zcent=zcent,
+                         condid=condid,
+                         rminofzdata=rminofzdata,zmindata=zmindata,
+                         rmaxofzdata=rmaxofzdata,zmaxdata=zmaxdata)
 
 #============================================================================
 class ZCone(ZSrfrvIn):
