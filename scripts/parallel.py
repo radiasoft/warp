@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.12 2001/12/04 23:52:43 bvs Exp $"
+parallel_version = "$Id: parallel.py,v 1.13 2002/07/25 21:59:22 dave Exp $"
 
 from Numeric import *
 # --- Try import mpi - if not found, then run in serial mode
@@ -48,9 +48,13 @@ if me == 0:
   try:
     from gist import *
   except ImportError:
-    from gistdummy import *
+    #from gistdummy import *
+    pass
 else:
-  from gistdummy import *
+  try:
+    from gistdummy import *
+  except ImportError:
+    pass
 
 # ---------------------------------------------------------------------------
 # Enable output from all processors
