@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.14 $, $Date: 2002/10/26 00:27:15 $
+c W3DSLAVE.M, version $Revision: 1.15 $, $Date: 2002/11/05 21:54:52 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -453,7 +453,7 @@ c     --- Check if data being sent overlaps with data being received.
 c     --- If so, wait for the incoming data first.
       if (my_index > 0 .and. right_iz <= left_iz+left_nz) then
         call MPI_RECV(buffer2d,left_nz*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
-     &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                left_pe,50,MPI_COMM_WORLD,mpistatus,mpierror)
 
 c       --- Sum the two planes. The utility call sumarry is used since
 c       --- with the gchange above, the local dimension of buffer2d may not
@@ -466,7 +466,7 @@ c     --- Send rho to the process to the right
       if (my_index < nslaves-1 .or. bound0==periodic) then
         call MPI_ISEND(rho(0,0,right_iz),right_nz*(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,
-     &                 right_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 right_pe,50,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
 
 c     --- If there is no overlap, wait for the data after sending so
@@ -474,13 +474,18 @@ c     --- that processors to the right do not have to also wait.
       if ((my_index > 0 .and. right_iz > left_iz+left_nz) .or.
      &    (my_index == 0 .and. bound0==periodic)) then
         call MPI_RECV(buffer2d,left_nz*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
-     &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                left_pe,50,MPI_COMM_WORLD,mpistatus,mpierror)
 
 c       --- Sum the two planes. The utility call sumarry is used since
 c       --- with the gchange above, the local dimension of buffer2d may not
 c       --- be correct, so explicitly writing out the loops may not work.
         call sumarry(buffer2d,rho(0,0,left_iz),left_nz*(nx+1)*(ny+1))
 
+      endif
+
+c     --- Now, wait just to make sure that the send was recv'ed
+      if (my_index < nslaves-1 .or. bound0==periodic) then
+        call MPI_WAIT(mpirequest,mpistatus,mpierror)
       endif
 
       return
@@ -499,10 +504,13 @@ c only responsible for sending out the rho is owns.
       integer(ISZ):: i,right_nz
       integer(ISZ):: izsend,nzsend,izrecv,nzrecv
       include "mpif.h"
-      integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
+      integer(ISZ):: mpirequest(nslaves)
+      integer(ISZ):: w
 
 c     --- First, send the data out to processors that need it.
       right_nz = 1
+      w = 0
       if (my_index < nslaves-1)
      &  right_nz=izpslave(my_index)+nzpslave(my_index)-izpslave(my_index+1)+1
       do i=0,nslaves-1
@@ -512,9 +520,10 @@ c     --- First, send the data out to processors that need it.
      &                 izfsslave(i)+nzfsslave(i))
      &             - max(izpslave(my_index),izfsslave(i)) + 1
           if (nzsend > 0) then
+            w = w + 1
             call MPI_ISEND(rho(0,0,izsend),nzsend*(nx+1)*(ny+1),
      &                     MPI_DOUBLE_PRECISION,
-     &                     i,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                     i,60,MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
         endif
       enddo
@@ -532,7 +541,7 @@ c     --- Then, gather up the data sent to this processor.
           if (nzrecv > 0) then
             call MPI_RECV(rho(0,0,izrecv),nzrecv*(nx+1)*(ny+1),
      &                    MPI_DOUBLE_PRECISION,
-     &                    i,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                    i,60,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
         endif
       enddo
@@ -540,7 +549,8 @@ c     --- Then, gather up the data sent to this processor.
 c     --- This is needed since the sends are done without buffering. This
 c     --- only matters though for the SOR field solver which modifies rho
 c     --- for optimization purposes.
-      call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
 
       return
       end
@@ -558,18 +568,22 @@ c  Only first and last processors do anything.
  
       if (my_index == 0) then
         call MPI_ISEND(phi(0,0,0),2*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
-     &                 nslaves-1,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 nslaves-1,70,MPI_COMM_WORLD,mpirequest,mpierror)
       else if (my_index == nslaves-1) then
         call MPI_ISEND(phi(0,0,nz-1),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
-     &                 0,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                 0,70,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
  
       if (my_index == 0) then
         call MPI_RECV(phi(0,0,-1),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
-     &                nslaves-1,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                nslaves-1,70,MPI_COMM_WORLD,mpistatus,mpierror)
       else if (my_index == nslaves-1) then
         call MPI_RECV(phi(0,0,nz),2*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
-     &                0,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                0,70,MPI_COMM_WORLD,mpistatus,mpierror)
+      endif
+
+      if (my_index == 0 .or. my_index == nslaves-1) then
+        call MPI_WAIT(mpirequest,mpistatus,mpierror)
       endif
  
       return
@@ -589,9 +603,11 @@ c iz=-1 and +1.
       integer(ISZ):: izglobal,izmaxp,izmaxfs
       integer(ISZ):: izsend,nzsend,izrecv,nzrecv
       include "mpif.h"
-      integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
+      integer(ISZ):: mpierror,w
 
 c     --- First, send the data out to processors that need it.
+      w = 0
       do i=0,nslaves-1
         if ( i /= my_index) then
 
@@ -608,9 +624,10 @@ c    &             - max(izfsslave(my_index),izpslave(i)-1) + 1
           nzsend   = min(izmaxp,izmaxfs) - izglobal + 1
 
           if (nzsend > 0) then
+            w = w + 1
             call MPI_ISEND(phi(0,0,izsend),nzsend*(nx+1)*(ny+1),
      &                     MPI_DOUBLE_PRECISION,
-     &                     i,0,MPI_COMM_WORLD,mpirequest,mpierror)
+     &                     i,80,MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
         endif
       enddo
@@ -634,14 +651,15 @@ c    &             - max(izpslave(my_index)-1,izfsslave(i)) + 1
           if (nzrecv > 0) then
             call MPI_RECV(phi(0,0,izrecv),nzrecv*(nx+1)*(ny+1),
      &                    MPI_DOUBLE_PRECISION,
-     &                    i,0,MPI_COMM_WORLD,mpistatus,mpierror)
+     &                    i,80,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
         endif
       enddo
  
 c     --- This is needed since the sends are done without buffering.
 c     --- No problems have been seem without it, but this just for robustness.
-      call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
 
       return
       end                                                                       
