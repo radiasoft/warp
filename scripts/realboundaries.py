@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.49 2004/08/06 23:38:57 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.50 2004/09/03 00:10:50 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -799,7 +799,8 @@ Constructor arguments:
     zc = 0.5*(zs+ze)
     if (zc+0.5*(rl+gl)+pw < w3d.zmmin+top.zbeam or
         zc-0.5*(rl+gl)-pw > w3d.zmmax+top.zbeam): return 0
-    quad = Quadrupole(zcent=zc,condid=elemid,elem=elem,elemid=elemid)
+    quad = Quadrupole(zcent=zc,condid=100+elemid,elem=elem,elemid=elemid,
+                      splitrodids=1)
     if quad is not None:
       self.conductors += quad
     return 0
