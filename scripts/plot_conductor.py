@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.38 2002/07/18 00:53:59 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.39 2002/07/22 20:46:46 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1329,8 +1329,15 @@ Output is put directly into the conductor arrays of Conductor3d.
   # --- was passed in.
   if type(rofzfunc) == FunctionType: rofzfunc = rofzfunc.__name__
 
+  # --- Get srfrv function - in older versions of the code the final 'f'
+  # --- was not there
+  try:
+    srfrvfunc = f3d.srfrvoutf
+  except AttributeError:
+    srfrvfunc = f3d.srfrvout
+
   # --- Now call the fortran version
-  f3d.srfrvoutf(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+  srfrvfunc(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
                 xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
                 nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
@@ -1412,8 +1419,15 @@ Output is put directly into the conductor arrays of Conductor3d.
   # --- was passed in.
   if type(rofzfunc) == FunctionType: rofzfunc = rofzfunc.__name__
 
+  # --- Get srfrv function - in older versions of the code the final 'f'
+  # --- was not there
+  try:
+    srfrvfunc = f3d.srfrvinf
+  except AttributeError:
+    srfrvfunc = f3d.srfrvin
+
   # --- Now call the fortran version
-  f3d.srfrvinf(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+  srfrvfunc(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
                xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
                nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
@@ -1496,8 +1510,15 @@ Output is put directly into the conductor arrays of Conductor3d.
   if type(rminofz) == FunctionType: rminofz = rminofz.__name__
   if type(rmaxofz) == FunctionType: rmaxofz = rmaxofz.__name__
 
+  # --- Get srfrv function - in older versions of the code the final 'f'
+  # --- was not there
+  try:
+    srfrvfunc = f3d.srfrvinoutf
+  except AttributeError:
+    srfrvfunc = f3d.srfrvinout
+
   # --- Now call the fortran version
-  f3d.srfrvinoutf(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,lzend,
+  srfrvfunc(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,lzend,
                   xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
                   nx,ny,nz,ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
