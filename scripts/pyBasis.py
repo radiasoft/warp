@@ -15,7 +15,7 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.22 2002/05/22 20:28:11 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.23 2002/07/09 23:54:10 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -59,14 +59,14 @@ def remark(s):
 # --- Allows int operation on arrrays
 builtinint = int
 def int(x):
-  if type(x) == type(array([])):
+  if type(x) == ArrayType:
     return x.astype(Int)
   else:
     return builtinint(x)
 
 # --- Return the nearest integer
 def nint(x):
-  if type(x) == type(array([])):
+  if type(x) == ArrayType:
     return where(greater(x,0),int(x+0.5),-int(abs(x)+0.5))
   else:
     if x >= 0: return int(x+0.5)
@@ -74,7 +74,7 @@ def nint(x):
 
 # --- Replicate the sign function
 def sign(x,y):
-  if type(x) == type(array([])):
+  if type(x) == ArrayType:
     result = where(greater(y,0.),abs(x),-abs(x))
     result = where(equal(y,0.),0.,result)
     return result
@@ -109,9 +109,9 @@ def fzeros(shape,typecode=Int):
 # --- It is not very efficient since it creates a whole new array each time.
 def arrayappend(x,a):
   xshape = list(shape(x))
-  if type(a) == type(array([])):
+  if type(a) == ArrayType:
     pass
-  elif type(a) == type([]):
+  elif type(a) == ListType:
     a = array(a)
   else:
     a = array([a])
@@ -166,7 +166,7 @@ def getnextfilename(root,suffix):
 
 # --- Prints out the documentation of the subroutine or variable.
 def doc(f):
-  if type(f) == type(''):
+  if type(f) == StringType:
     # --- Check if it is a WARP variable
     try:
       listvar(f)
@@ -207,28 +207,25 @@ def doc(f):
 # used, allowing names with an '@' in them. The writing of python variables
 # is put into a 'try' command since some variables cannot be written to
 # a pdb file.
-# Some fancy foot work is done in the exec and eval commands to get access
-# to the global name space. The exec also needed to have the local name
-# space explicitly included.
-# Note that attr can be a list of attributes and group names.
 def pydump(fname=None,attr=["dump"],vars=[],serial=0,ff=None,varsuffix=None,
            verbose=false):
   """
 Dump data into a pdb file
-  - fname dump file name
-  - attr attribute or list of attributes of variables to dump
-         Any items that are not strings are skipped. To write no variables,
-         use attr=None.
-  - vars list of python variables to dump
-  - serial switch between parallel and serial versions
-  - ff=None Allows passing in of a file object so that pydump can be called
-            multiple times to pass data into the same file. Note that
-            the file must be explicitly closed by the user.
-  - varsuffix=None Suffix to add to the variable names. If none is specified,
-                the suffix '@pkg' is used, where pkg is the package name
-                that the variable is in.
-  - verbose=false When true, prints out the names of the variables as they are
-                  written to the dump file
+  - fname: dump file name
+  - attr=["dump"]: attribute or list of attributes of variables to dump
+       Any items that are not strings are skipped. To write no variables,
+       use attr=None.
+  - vars=[]: list of python variables to dump
+  - serial=0: switch between parallel and serial versions
+  - ff=None: Allows passing in of a file object so that pydump can be called
+       multiple times to pass data into the same file. Note that
+       the file must be explicitly closed by the user.
+  - varsuffix=None: Suffix to add to the variable names. If none is specified,
+       the suffix '@pkg' is used, where pkg is the package name that the
+       variable is in. Note that if varsuffix is specified, the simulation
+       cannot be restarted from the dump file.
+  - verbose=false: When true, prints out the names of the variables as they are
+       written to the dump file
   """
   assert fname is not None or ff is not None,\
          "Either a filename must be specified or a pdb file pointer"
@@ -240,16 +237,19 @@ Dump data into a pdb file
   else:
     closefile = 0
   # --- Convert attr into a list if needed
-  if not (type(attr) == type([])): attr = [attr]
-  # --- Loop through all of the packages in reverse order (getting pkg object)
-  # --- Reverse order is used so that if a varsuffix is specified and when
-  # --- a variable that have the same names in different packages is written,
-  # --- the one in the package with higher precedence is used.
+  if not (type(attr) == ListType): attr = [attr]
+  # --- Loop through all of the packages (getting pkg object).
+  # --- When varsuffix is specified, the list of variables already written
+  # --- is created. This solves two problems. It gives proper precedence to
+  # --- variables of the same name in different packages. It also fixes
+  # --- an obscure bug in the pdb package - writing two different arrays with
+  # --- the same name causes a problem and the pdb file header is not
+  # --- properly written. The pdb code should really be fixed.
   pkgsuffix = varsuffix
   packagelist = package()
-  packagelist.reverse()
+  writtenvars = []
   for pname in packagelist:
-    pkg = eval(pname,__main__.__dict__)
+    pkg = __main__.__dict__[pname]
     if varsuffix is None: pkgsuffix = '@' + pname
     # --- Get variables in this package which have attribute attr.
     vlist = []
@@ -270,23 +270,35 @@ Dump data into a pdb file
             writevar = 0
         # --- Check if variable is a complex array. Currently, these
         # --- can not be written out.
-        if type(v) == type(array([0.])) and v.typecode() == Complex:
+        if type(v) == ArrayType and v.typecode() == Complex:
           writevar = 0
         # --- Write out the variable.
         if writevar:
+          if varsuffix is not None:
+            if vname in writtenvars:
+              if verbose: print "variable "+pname+"."+vname+" skipped since other variable would have same name in the file"
+              continue
+            writtenvars.append(vname)
           if verbose: print "writing "+pname+"."+vname+" as "+vname+pkgsuffix
           ff.write(vname+pkgsuffix,v)
+
   # --- Now, write out the python variables (that can be written out).
   # --- If supplied, the varsuffix is append to the names here too.
   if varsuffix is None: varsuffix = ''
   for v in vars:
-    vval = eval(v,__main__.__dict__,locals())
+    # --- Skip python variables that would overwrite fortran variables.
+    if len(writtenvars) > 0:
+      if v in writtenvars:
+        if verbose: print "variable "+v+" skipped since other variable would have same name in the file"
+        continue
+    # --- Get the value of the variable.
+    vval = __main__.__dict__[v]
     # --- Don't try to write out functions or classes. (They don't seem to
     # --- cause problems but this avoids potential problems. The function
     # --- or class body wouldn't be written out anyway.)
     if type(vval) in [FunctionType,ClassType]: continue
     # --- Zero length arrays cannot by written out.
-    if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
+    if type(vval) == ArrayType and product(array(shape(vval))) == 0:
       continue
     # --- Try writing as normal variable.
     # --- The docontinue temporary is needed since python1.5.2 doesn't
@@ -305,7 +317,7 @@ Dump data into a pdb file
         print "writing python variable "+v+" as "+v+varsuffix+'@pickle'
       ff.write(v+varsuffix+'@pickle',cPickle.dumps(vval,0))
       docontinue = 1
-    except:
+    except cPickle.PicklingError:
       pass
     if docontinue: continue
     # --- All attempts failed so write warning message
@@ -386,7 +398,7 @@ Restores all of the variables in the specified file.
       vname = v[-3:]+'.'+v[:-4]
       try:
         # --- On this pass, only assign to scalars.
-        if type(ff.__getattr__(v)) != type(array([])):
+        if type(ff.__getattr__(v)) != ArrayType:
           # --- Simple assignment is done for scalars, using the exec command
           if verbose: print "reading in "+vname
           exec(vname+'=ff.__getattr__(v)',__main__.__dict__,locals())
@@ -446,7 +458,7 @@ Restores all of the variables in the specified file.
       if len(v) > 4 and v[-4]=='@':
         try:
           pkg = eval(v[-3:],__main__.__dict__)
-          if type(ff.__getattr__(v)) == type(array([])):
+          if type(ff.__getattr__(v)) == ArrayType:
             # --- forceassign is used, allowing the array read in to have a
             # --- different size than the current size of the warp array.
             if verbose: print "reading in "+v[-3:]+"."+v[:-4]
@@ -463,7 +475,7 @@ def restoreold(fname):
   vlist = ff.inquire_ls()
   for v in vlist:
     if len(v) > 4 and v[3]=='@':
-      if type(eval('ff.__getattr__("'+v+'")')) == type(array([])):
+      if type(eval('ff.__getattr__("'+v+'")')) == ArrayType:
         exec(v[0:3]+'.forceassign("'+v[4:]+'",ff.__getattr__("'+v+'"))',
              __main__.__dict__,locals())
       else:
