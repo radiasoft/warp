@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.150 $, $Date: 2005/03/17 18:07:27 $
+c@(#) File TOP.F, version $Revision: 3.151 $, $Date: 2005/04/01 23:05:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6626,12 +6626,15 @@ c Calculate the center of mass of the beam along the z axis from the particles
       end
 c=============================================================================
       subroutine alotpart
+      use Subtimerstop
       use InPart
       use Particles
 
 c Allocate space for particles and set up associated arrays.
 
       integer(ISZ):: is
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- Set one of npmax and np_s from the other. If they are both set,
 c     --- then do nothing. That is not an error since the two variables
@@ -6672,10 +6675,15 @@ c     --- setup npmax_s array
         nps(is) = 0
       enddo
 
+!$OMP MASTER
+      if (ltoptimesubs) timealotpart = timealotpart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine chckpart(is,nlower,nhigher,lfullshft)
+      use Subtimerstop
       use InPart
       use Particles
       integer(ISZ):: is,nlower,nhigher
@@ -6691,6 +6699,8 @@ c enough space, add more to the arrays. Particle data is shifted
 c appropriately.
 
       integer(ISZ):: nadd,i,ishft
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- If there is already enough space, then return.
       if (ins(is)-npmax_s(is-1)-1 >= nlower .and.
@@ -6745,6 +6755,10 @@ c     --- ishft is zero.
       endif
       call shftpart(is,ishft)
 
+!$OMP MASTER
+      if (ltoptimesubs) timechckpart = timechckpart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
@@ -6759,6 +6773,7 @@ c=============================================================================
 c=============================================================================
       subroutine shftpartwork(is,ishft,npmax,npmaxi,ns,npmax_s,ins,nps,npid,
      &                        xp,yp,zp,uxp,uyp,uzp,gaminv,pid)
+      use Subtimerstop
       integer(ISZ):: is,ishft
       integer(ISZ):: npmax,npmaxi,ns,npmax_s(0:ns),ins(ns),nps(ns),npid
       real(kind=8):: xp(npmax),yp(npmax),zp(npmax)
@@ -6774,6 +6789,8 @@ c shift without clobbering other particles or going past the ends of
 c the arrays.
 
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- return if shift is zero
       if (ishft == 0) return
@@ -6836,10 +6853,15 @@ c         --- change lower bound only
 
       endif
 
+!$OMP MASTER
+      if (ltoptimesubs) timeshftpartwork = timeshftpartwork + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine copypart(it,nn,ii,istart)
+      use Subtimerstop
       use InPart
       use Particles
       integer(ISZ):: it,nn,istart
@@ -6850,6 +6872,9 @@ c at 'it', or if istart > 0, copy sequential particles from locations
 c starting at 'istart' to locations starting at 'it'.
 
       integer(ISZ):: i,in,ij
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
       if (istart > 0) then
         do i=0,nn-1
           ij = istart + i
@@ -6881,11 +6906,17 @@ c starting at 'istart' to locations starting at 'it'.
           endif
         enddo
       endif
+
+!$OMP MASTER
+      if (ltoptimesubs) timecopypart = timecopypart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine addpart(nn,nnpid,x,y,z,vx,vy,vz,gi,ppid,is,lallindomain,zmmin,zmmax,
      &                   lmomentum)
+      use Subtimerstop
       use Constant
       use Particles
       use Beam_acc
@@ -6906,6 +6937,8 @@ c              when input as massless momentum. Only used when lrelativ is
 c              true.
 
       integer(ISZ):: ip,n1,i1,i2,i
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- Make sure that the particles are within the z extent of the domain,
 c     --- unless the input declares this to be so. Note that no check is made
@@ -6961,10 +6994,15 @@ c     --- Now, copy data into arrays
       end if
       nps(is) = nps(is) + n1
 
+!$OMP MASTER
+      if (ltoptimesubs) timeaddpart = timeaddpart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine clearpart(js,fillmethod)
+      use Subtimerstop
       use InPart
       use Particles
       integer(ISZ):: js,fillmethod
@@ -6978,6 +7016,8 @@ c   2 : shift particles above down (they keep the same order)
 
       integer(ISZ):: js1,js2,j,ip
       integer(ISZ):: ips,ds,ipslimit
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (js < 0) then
         js1 = 1
@@ -7058,10 +7098,56 @@ c       --- Live particles are shifted downward to fill in the empty spaces
 
       endif
 
+!$OMP MASTER
+      if (ltoptimesubs) timeclearpart = timeclearpart + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine shrinkpart()
+      use Subtimerstop
+      use InPart
+      use Particles
+
+c Removes all unused space from the particle arrays. Particles are shifted
+c down and then gchange is called to free the left over space.
+
+      integer(ISZ):: is,oldnpmax
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+      oldnpmax = npmax
+
+      call shftpart(1,1-ins(1))
+      ins(1) = 1
+      npmax_s(1) = ins(1) + nps(1) - 1
+
+      do is=2,ns
+        call shftpart(is,ins(is-1)+nps(is-1)-ins(is))
+        ins(is) = ins(is-1)+nps(is-1)
+        npmax_s(is) = ins(is) + nps(is) - 1
+      enddo
+
+      npmax = npmax_s(ns)
+
+c     --- Force npmax to change to ensure that the particles arrays are
+c     --- reallocated.
+      if (npmax == oldnpmax) npmax = npmax + 1
+
+      npmaxb = npmax
+      if (npid > 0) npmaxi = npmax
+      call gchange("Particles",0)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeshrinkpart = timeshrinkpart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine processlostpart(is,clearlostpart,time,zbeam)
+      use Subtimerstop
       use Constant
       use Beam_acc
       use InPart
@@ -7079,6 +7165,8 @@ c the routine which clears out the lost particles is called.
       integer(ISZ):: nlost,i1,i2,js
       integer(ISZ):: ip,iz
       real(kind=8):: usq
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       if (lsavelostpart) then
 
@@ -7161,10 +7249,15 @@ c         --- Zero out the velocity, the flag for a lost particle.
 
       call clearpart(is,clearlostpart)
 
+!$OMP MASTER
+      if (ltoptimesubs) timeprocesslostpart = timeprocesslostpart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine alotlostpart
+      use Subtimerstop
       use InPart
       use Particles
       use LostParticles
@@ -7172,6 +7265,8 @@ c=============================================================================
 c Allocate space for lost particles and set up associated arrays.
 
       integer(ISZ):: is
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
       npidlostmax = max(npidmax,npidlostmax)
       call gchange("LostParticles",0)
@@ -7183,10 +7278,15 @@ c Allocate space for lost particles and set up associated arrays.
         npslost(is) = 0
       enddo
 
+!$OMP MASTER
+      if (ltoptimesubs) timealotlostpart = timealotlostpart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine chcklostpart(is,nlower,nhigher)
+      use Subtimerstop
       use InPart
       use LostParticles
       integer(ISZ):: is,nlower,nhigher
@@ -7199,6 +7299,8 @@ c appropriately. If there is not enough space, add more to the arrays.
 c Particle data is shifted appropriately.
 
       integer(ISZ):: nadd,i,ishft
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
 
 c     --- If there is already enough space, then return.
       if (inslost(is)-npmaxlost_s(is-1)-1 >= nlower .and.
@@ -7238,20 +7340,321 @@ c     --- Now, there is enough room to shift the particles appropriately.
      &        min(0,(npmaxlost_s(is)-inslost(is)-npslost(is)+1) - nhigher)
       call shftlostpart(is,ishft)
 
+!$OMP MASTER
+      if (ltoptimesubs) timechcklostpart = timechcklostpart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
 c=============================================================================
       subroutine shftlostpart(is,ishft)
+      use Subtimerstop
       use InPart
       use LostParticles
       use Particles
       integer(ISZ):: is,ishft
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
       call shftpartwork(is,ishft,npmaxlost,npmaxlost,ns,npmaxlost_s,
      &                  inslost,npslost,npid,
      &                  xplost,yplost,zplost,uxplost,uyplost,uzplost,
      &                  gaminvlost,pidlost)
+
+!$OMP MASTER
+      if (ltoptimesubs) timeshftlostpart = timeshftlostpart + wtime() - substarttime
+!$OMP END MASTER
+
       return
       end
+c=============================================================================
+c Routines for handling particle blocks
+c=============================================================================
+      subroutine checkparticleblock(block,is,nlower,nhigher)
+      use Subtimerstop
+      use ParticleBlockModule
+      type(ParticleBlock):: block
+      integer(ISZ):: is,nlower,nhigher
+
+c Make sure that there is enough space in the particle arrays for nlower
+c new particles below and nhigher above the live particles.  Returns if
+c there is already enough space above and below.  If there is enough total
+c space but not enough room above or below, the particles are shifted
+c appropriately.  If lfullshft is true, the particles are shifted all the
+c way to the end of the species block minus nhigher.  If there is not
+c enough space, add more to the arrays. Particle data is shifted
+c appropriately.
+
+      integer(ISZ):: ilower,ihigher,spacebelow,spaceabove
+      integer(ISZ):: naddbelow,naddabove,i,ishft
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+c     --- If there is already enough space, then return.
+      if (is == 1) then
+        ilower = 0
+      else
+        ilower = block%ins(is-1) + block%nps(is-1) - 1
+      endif
+      if (is == block%ns) then
+        ihigher = block%npmax + 1
+      else
+        ihigher = block%ins(is+1)
+      endif
+      spacebelow = block%ins(is) - ilower - 1
+      spaceabove = ihigher - block%ins(is) - block%nps(is)
+      if (spacebelow >= nlower .and.
+     &    spaceabove >= nhigher) return
+
+c     --- If there is not enough space, then allocate new space.
+      if (spacebelow + spaceabove < nlower + nhigher) then
+
+c       --- Amount of new space to add: this is calculated to be a sizable
+c       --- chunk, but not too big.  By default, add 10 times the space needed.
+c       --- Limit that to 10000, except, if the space needed is greater than
+c       --- 10000, add the amount of space needed.
+        naddbelow = max(0,nlower - spacebelow)
+        naddbelow = min(10*naddbelow, max(10000, naddbelow))
+        naddabove = max(0,nhigher - spaceabove)
+        naddabove = min(10*naddabove, max(10000, naddabove))
+
+c       --- change the particle array dimension variables and allot space
+        block%npmax = block%npmax + naddbelow + naddabove
+        call ParticleBlockchange(block)
+
+c       --- Loop over species species above 'is', shifting
+c       --- them up to make space below for species is.
+        do i=block%ns,is+1,-1
+          call shiftparticleblock(block,i,naddbelow + naddabove)
+        enddo
+
+      endif
+
+c     --- Now, there is enough room to shift the particles appropriately.
+c     --- Note that in some cases no shift will be needed.  In those cases,
+c     --- ishft comes out to be zero and shftpart returns immediately when
+c     --- ishft is zero.
+      if (is == 1) then
+        ilower = 0
+      else
+        ilower = block%ins(is-1) + block%nps(is-1) - 1
+      endif
+      if (is == block%ns) then
+        ihigher = block%npmax + 1
+      else
+        ihigher = block%ins(is+1)
+      endif
+      spacebelow = block%ins(is) - ilower - 1
+      spaceabove = ihigher - block%ins(is) - block%nps(is)
+      ishft = max(0,nlower - spacebelow) + min(0,spaceabove - nhigher)
+      call shiftparticleblock(block,is,ishft)
+
+!$OMP MASTER
+      if (ltoptimesubs) timecheckparticleblock = timecheckparticleblock + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine shiftparticleblock(block,is,ishft)
+      use Subtimerstop
+      use ParticleBlockModule
+      type(ParticleBlock):: block
+      integer(ISZ):: is,ishft
+
+c Shift particles by 'ishft'.
+c Assumes that the is enough space in the particle arrays to make the
+c shift without clobbering other particles or going past the ends of
+c the arrays.
+
+      integer(ISZ):: ip,ilower
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+c     --- return if shift is zero
+      if (ishft == 0) return
+
+c     --- Positive and negative shifts are treated differently since
+c     --- a negative shift may result in lost data.
+      if (ishft > 0) then
+
+c       --- Loop only over live particles
+        do ip=block%ins(is)+block%nps(is)-1, block%ins(is), -1
+          block%xp(ip+ishft) = block%xp(ip)
+          block%yp(ip+ishft) = block%yp(ip)
+          block%zp(ip+ishft) = block%zp(ip)
+          block%uxp(ip+ishft) = block%uxp(ip)
+          block%uyp(ip+ishft) = block%uyp(ip)
+          block%uzp(ip+ishft) = block%uzp(ip)
+          block%gaminv(ip+ishft) = block%gaminv(ip)
+          if (block%npid > 0) then
+            block%pid(ip+ishft,:) = block%pid(ip,:)
+c           block%pid(ip,:) = 0
+          endif
+c         block%uzp(ip) = 0.
+        enddo
+
+c       --- change lower bound of live particles
+        block%ins(is) = block%ins(is) + ishft
+
+      else
+c       --- Loop only over live particles.
+c       --- Note that particles will be clobbered if shifted onto species below.
+        if (is == 1) then
+          ilower = 0
+        else
+          ilower = block%ins(is-1) + block%nps(is-1) - 1
+        endif
+        if (block%ins(is) - ilower - 1 < -ishft) then
+          print*,"WARNING: shiftparticleblock: particle data will be lost"
+          print*,"         since there is  not enough space in the arrays."
+        endif
+
+        do ip=block%ins(is), block%ins(is)+block%nps(is)-1
+          block%xp(ip+ishft) = block%xp(ip)
+          block%yp(ip+ishft) = block%yp(ip)
+          block%zp(ip+ishft) = block%zp(ip)
+          block%uxp(ip+ishft) = block%uxp(ip)
+          block%uyp(ip+ishft) = block%uyp(ip)
+          block%uzp(ip+ishft) = block%uzp(ip)
+          block%gaminv(ip+ishft) = block%gaminv(ip)
+          if (block%npid > 0) then
+            block%pid(ip+ishft,:) = block%pid(ip,:)
+c           block%pid(ip,:) = 0
+          endif
+c         block%uzp(ip) = 0.
+        enddo
+
+c       --- change number of particles if data is lost
+        if (block%ins(is) - ilower - 1 < -ishft) then
+          block%nps(is) = block%nps(is) - (-ishft - (block%ins(is) - ilower - 1))
+          block%ins(is) = ilower + 1
+        else
+c         --- change lower bound only
+          block%ins(is) = block%ins(is) + ishft
+        endif
+
+      endif
+
+!$OMP MASTER
+      if (ltoptimesubs) timeshiftparticleblock = timeshiftparticleblock + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine copyparttoblock(nn,ii,istart,block,it)
+      use Subtimerstop
+      use InPart
+      use Particles
+      use ParticleBlockModule
+      integer(ISZ):: it,nn,istart
+      integer(ISZ):: ii(0:nn-1)
+      type(ParticleBlock):: block
+
+c Copies particle data from locations given by ii to the locations starting
+c at 'it', or if istart > 0, copy sequential particles from locations
+c starting at 'istart' to locations starting at 'it'.
+
+      integer(ISZ):: i,in,ij
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+      if (istart > 0) then
+        do i=0,nn-1
+          ij = istart + i
+          in = it + i
+          block%xp(in) = xp(ij)
+          block%yp(in) = yp(ij)
+          block%zp(in) = zp(ij)
+          block%uxp(in) = uxp(ij)
+          block%uyp(in) = uyp(ij)
+          block%uzp(in) = uzp(ij)
+          block%gaminv(in) = gaminv(ij)
+          if (npid > 0) then
+            block%pid(in,:) = pid(ij,:)
+          endif
+        enddo
+      else
+        do i=0,nn-1
+          ij = ii(i)
+          in = it + i
+          block%xp(in) = xp(ij)
+          block%yp(in) = yp(ij)
+          block%zp(in) = zp(ij)
+          block%uxp(in) = uxp(ij)
+          block%uyp(in) = uyp(ij)
+          block%uzp(in) = uzp(ij)
+          block%gaminv(in) = gaminv(ij)
+          if (npid > 0) then
+            block%pid(in,:) = pid(ij,:)
+          endif
+        enddo
+      endif
+
+!$OMP MASTER
+      if (ltoptimesubs) timecopyparttoblock = timecopyparttoblock + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
+      subroutine copyblocktopart(nn,ii,istart,block,it)
+      use Subtimerstop
+      use InPart
+      use Particles
+      use ParticleBlockModule
+      integer(ISZ):: it,nn,istart
+      integer(ISZ):: ii(0:nn-1)
+      type(ParticleBlock):: block
+
+c Copies particle data from locations given by ii to the locations starting
+c at 'it', or if istart > 0, copy sequential particles from locations
+c starting at 'istart' to locations starting at 'it'.
+
+      integer(ISZ):: i,in,ij
+      real(kind=8):: substarttime,wtime
+      if (ltoptimesubs) substarttime = wtime()
+
+      if (istart > 0) then
+        do i=0,nn-1
+          ij = istart + i
+          in = it + i
+          xp(in) = block%xp(ij)
+          yp(in) = block%yp(ij)
+          zp(in) = block%zp(ij)
+          uxp(in) = block%uxp(ij)
+          uyp(in) = block%uyp(ij)
+          uzp(in) = block%uzp(ij)
+          gaminv(in) = block%gaminv(ij)
+          if (npid > 0) then
+            pid(in,:) = block%pid(ij,:)
+          endif
+        enddo
+      else
+        do i=0,nn-1
+          ij = ii(i)
+          in = it + i
+          xp(in) = block%xp(ij)
+          yp(in) = block%yp(ij)
+          zp(in) = block%zp(ij)
+          uxp(in) = block%uxp(ij)
+          uyp(in) = block%uyp(ij)
+          uzp(in) = block%uzp(ij)
+          gaminv(in) = block%gaminv(ij)
+          if (npid > 0) then
+            pid(in,:) = block%pid(ij,:)
+          endif
+        enddo
+      endif
+
+!$OMP MASTER
+      if (ltoptimesubs) timecopyblocktopart = timecopyblocktopart + wtime() - substarttime
+!$OMP END MASTER
+
+      return
+      end
+c=============================================================================
 c=============================================================================
 c  VARIOUS UTILITIES
 c=============================================================================

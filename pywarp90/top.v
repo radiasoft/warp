@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.139 $, $Date: 2005/03/17 18:07:27 $
+#@(#) File TOP.V, version $Revision: 3.140 $, $Date: 2005/04/01 23:05:38 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.139 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.140 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1939,6 +1939,31 @@ uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
 pid(npmaxi,npidmax) _real [1]    # Particle ID - used for various purposes
 
+%%%%%%%%%%% ParticleBlock:
+# Dynamic particle arrays, and related data
+ns     integer    /1/  # Number of species
+npmax  integer    /0/  # Size of data arrays
+npid   integer    /0/  # number of columns for pid.
+sm(ns) _real [kg] /0./ # Species mass
+sq(ns) _real [C]  /0./ # Species charge
+sw(ns) _real [1]  /0./ # Species weight
+                       # (real particles per simulation particles)
+ins(ns)  _integer /1/  # Index of first particle in species
+nps(ns)  _integer /0/  # Number of particles in species
+ndts(ns) _integer /1/  # Stride for time step advance for each species
+ldts(ns) _logical /1/
+dtscale(ns) _real /1./ # Scale factor applied to time step size for each
+                       # species. Only makes sense in steaday and and
+                       # transverse slice modes.
+gaminv(npmax)   _real [1]  /1./ # inverse relativistic gamma factor
+xp(npmax)       _real [m]       # X-positions of particles
+yp(npmax)       _real [m]       # Y-positions of particles
+zp(npmax)       _real [m]       # Z-positions of particles
+uxp(npmax)      _real [m/s]     # gamma * X-velocities of particles
+uyp(npmax)      _real [m/s]     # gamma * Y-velocities of particles
+uzp(npmax)      _real [m/s]     # gamma * Z-velocities of particles
+pid(npmax,npid) _real [1]       # Particle ID - used for various purposes
+
 *********** Scraped_Particles dump parallel:
 # Arrays for scraped particles
 scr_np             integer  /0/   # Total no. of scraped particles. 
@@ -2237,10 +2262,23 @@ addpart(nn:integer,npid:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
              subroutine # Adds new particles to the simulation
 clearpart(js:integer,fillmethod:integer)
              subroutine # Clears away lost particles.
+shrinkpart() subroutine # Removes unused space in the particle arrays
 processlostpart(is:integer,clearlostpart:integer,time:real,zbeam:real)
              subroutine # Processes lost particles (particles which have
                         # gaminv set to zero).
 alotlostpart() subroutine # Allocate space for saving lost particles
+checkparticleblock(block:ParticleBlock,is:integer,
+                   nlower:integer,nhigher:integer)
+             subroutine # Makes sure there is enough space for nn particles in
+                        # the given particle block.
+copyparttoblock(nn:integer,ii:integer,istart:integer,block:ParticleBlock,
+                it:integer)
+             subroutine # Copies particle data from base particle arrays into
+                        # the specified block.
+copyblocktopart(nn:integer,ii:integer,istart:integer,block:ParticleBlock,
+                it:integer)
+             subroutine # Copies particle data from the specified block into
+                        # the base particle arrays
 load2d(np,x:real,y:real,nx,ny,n:real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
 shftpart(is:integer,ishft:integer) subroutine
@@ -2454,6 +2492,21 @@ impact_ion(is1:integer,is2:integer,nbp:real,w:real,
 
 ******** Subtimerstop:
 ltoptimesubs logical /.false./
+timealotpart                   real /0./
+timechckpart                   real /0./
+timeshftpartwork               real /0./
+timecopypart                   real /0./
+timeaddpart                    real /0./
+timeclearpart                  real /0./
+timeshrinkpart                 real /0./
+timeprocesslostpart            real /0./
+timealotlostpart               real /0./
+timechcklostpart               real /0./
+timeshftlostpart               real /0./
+timecheckparticleblock         real /0./
+timeshiftparticleblock         real /0./
+timecopyparttoblock            real /0./
+timecopyblocktopart            real /0./
 timezpartbnd_slave             real /0./
 timereorgparticles_parallel    real /0./
 timecheckzpartbnd              real /0./
