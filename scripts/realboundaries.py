@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.3 2000/11/30 22:03:16 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.4 2000/12/05 01:34:16 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -726,7 +726,8 @@ Constructor arguments:
     # --- boundaries, so turn the capacity matrix field solver off.
     top.fstype = 0
   #----------------------------------------------------------------------------
-  def plotcond(s,plotphi=1,filled=0,plotedge=1,plotsym=1):
+  def plotcond(s,plotphi=1,filled=0,plotedge=1,plotsym=1,ccolor='red',
+               ecolor='green'):
     """
 Makes a plot of the conductor.
   - plotphi when true, plots contours of phi
@@ -750,26 +751,30 @@ Makes a plot of the conductor.
         if plotphi:
           plotc(transpose(getphi(iz=0)),-w3d.ymesh,-w3d.xmesh,filled=filled)
     # --- Plot conductor points next.
-    plp(fxy.ycond[:fxy.ncxy],fxy.xcond[:fxy.ncxy],color='red',msize=2.)
-    if plotsym:
-      # --- Plot negative y
-      if w3d.l2symtry or w3d.l4symtry:
-        plp(-fxy.ycond[:fxy.ncxy],fxy.xcond[:fxy.ncxy],color='red',msize=2.)
-      # --- Plot negative x
-      if w3d.l4symtry:
-        plp(fxy.ycond[:fxy.ncxy],-fxy.xcond[:fxy.ncxy],color='red',msize=2.)
-        plp(-fxy.ycond[:fxy.ncxy],-fxy.xcond[:fxy.ncxy],color='red',msize=2.)
+    if fxy.ncxy > 0 and top.fstype == 1:
+      plp(fxy.ycond[:fxy.ncxy],fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
+      if plotsym:
+        # --- Plot negative y
+        if w3d.l2symtry or w3d.l4symtry:
+          plp(-fxy.ycond[:fxy.ncxy],fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
+        # --- Plot negative x
+        if w3d.l4symtry:
+          plp(fxy.ycond[:fxy.ncxy],-fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
+          plp(-fxy.ycond[:fxy.ncxy],-fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
     # --- Plot the edge of the mesh last
     if plotedge:
       if w3d.l4symtry and plotsym:
         plg([-w3d.xmmax, w3d.xmmax,w3d.xmmax,-w3d.xmmax,-w3d.xmmax],
-            [-w3d.ymmax,-w3d.ymmax,w3d.ymmax, w3d.ymmax,-w3d.ymmax],color=green)
+            [-w3d.ymmax,-w3d.ymmax,w3d.ymmax, w3d.ymmax,-w3d.ymmax],
+            color=ecolor)
       elif w3d.l2symtry and plotsym:
         plg([ w3d.xmmin, w3d.xmmax,w3d.xmmax, w3d.xmmin, w3d.xmmin],
-            [-w3d.ymmax,-w3d.ymmax,w3d.ymmax, w3d.ymmax,-w3d.ymmax],color=green)
+            [-w3d.ymmax,-w3d.ymmax,w3d.ymmax, w3d.ymmax,-w3d.ymmax],
+            color=ecolor)
       else:
         plg([ w3d.xmmin, w3d.xmmax,w3d.xmmax, w3d.xmmin, w3d.xmmin],
-            [ w3d.ymmin, w3d.ymmin,w3d.ymmax, w3d.ymmax, w3d.ymmin],color=green)
+            [ w3d.ymmin, w3d.ymmin,w3d.ymmax, w3d.ymmax, w3d.ymmin],
+            color=ecolor)
 
 
 
