@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.47 2003/02/13 14:36:17 dave Exp $"
+warp_version = "$Id: warp.py,v 1.48 2003/02/24 16:29:54 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -108,6 +108,8 @@ euler     = top.euler
 jperev    = top.jperev
 mu0       = top.mu0
 boltzmann = top.boltzmann
+largepos  = top.largepos
+smallpos  = top.smallpos
 try:
   dirichlet = top.dirichlet
   neumann   = top.neumann
