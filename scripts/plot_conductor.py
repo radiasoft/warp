@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.12 2001/05/14 19:47:24 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.13 2001/05/14 19:56:47 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -94,7 +94,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     #xx=iota(0,w3d.nx)*dx + xmmin
     #yy=iota(0,w3d.ny)*dy + ymmin
     ppp = getphi(iz=iz+top.izslave[me])
-    ppp = transpose(ppp)
+    #ppp = transpose(ppp)
     #plotc(ppp,yy,xx,contours=contours,filled=filled,color=blue)
     ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
               xmin=xmmin,xmax=xmmin+w3d.nx*dx,
@@ -143,6 +143,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     #zz = iota(0,w3d.nzfull)*dz + zmmin
     ppp = getphi(iy=iy)
     #plotc(ppp,xx,zz,contours=contours,filled=filled,color=blue)
+    ppp = transpose(ppp)
     ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
               xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
               ymin=xmmin,ymax=xmmin+w3d.nx*dx)
@@ -190,6 +191,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     #zz = iota(0,w3d.nzfull)*dz + zmmin
     ppp = getphi(ix=ix)
     #plotc(ppp,yy,zz,contours=contours,filled=filled,color=blue)
+    ppp = transpose(ppp)
     ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
               xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
               ymin=ymmin,ymax=ymmin+w3d.ny*dy)
