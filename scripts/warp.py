@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.50 2003/02/27 15:24:03 dave Exp $"
+warp_version = "$Id: warp.py,v 1.51 2003/04/01 02:02:41 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -246,7 +246,7 @@ def uninstallafterstep(f):
 #=============================================================================
 # --- Convenience function for random numbers.
 def setseed(x=0,y=0):
-  RandomArray.seed(long(x),long(y))
+  RandomArray.seed(x,y)
     
 # --- Uniform distribution
 def ranf(x=None,i1=None,nbase=None):
