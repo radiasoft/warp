@@ -24,7 +24,7 @@ specified z plane. The data have been saved by PlaneSave.
 The two simulations are linked together.
 """
 from warp import *
-plane_restore_version = "$Id: plane_restore.py,v 1.2 2003/03/13 17:14:22 jlvay Exp $"
+plane_restore_version = "$Id: plane_restore.py,v 1.3 2003/03/13 18:43:51 jlvay Exp $"
 
 class PlaneRestore:
   """
@@ -32,14 +32,15 @@ Saves the particle data and phi to a file just after the
 field solve is finished. The positions and velocities are staggered.
 It is automatically called every time step after the field solve
 Input:
+  - filename=runid.plane: filename where data is stored
   - zplane: location where simulations are linked together. Units of meters
             relative to the lab frame. Note zplane must lie on a grid cell.
-  - filename=runid.plane: filename where data is stored
   - js: species which are saved. Defaults to all species. Can be single
         integer or a list of integers.
+  - l_restore_phi=1: flag for restoring phi or not.
   """
 
-  def __init__(self,filename,zplane=None,js=None):
+  def __init__(self,filename,zplane=None,js=None,l_restore_phi=1):
 
     # --- Make sure that vbeamfrm is set to zero so that the grid doesn't move
     # --- out from under the restoration plane.
@@ -53,6 +54,8 @@ Input:
         self.zplane = top.zmslmin[0]
     else:
       self.zplane = zplane
+
+    self.l_restore_phi = l_restore_phi
 
     ##############################
     # Initialization stuff
@@ -196,6 +199,9 @@ Input:
   # are the same.
   def restore_phi(self,iz,it):
 
+    # return if flag indicates phi not to be restored
+    if self.l_restore_phi is 0: return
+    
     #  phi(nx0_r:nxm_r,ny0_r:nym_r,iz-1:iz)=pfb.phi_plane(nx0_s:nxm_s,ny0_s:nym_s,)
     for i in range(2):
       grid2grid(w3d.phi[self.nx0_r:self.nxm_r+1,self.ny0_r:self.nym_r+1,iz-1+i],w3d.nx,w3d.ny,
