@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.24 2002/01/10 23:42:37 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.25 2002/01/29 22:44:41 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -371,7 +371,7 @@ def pfxyi(iz=None,izf=None,fullplane=1,plotsg=1,scale=1,plotphi=1,
 Plots conductors and contours of electrostatic potential in full X-Y plane,
 Same arguments as pfxy
   """
-  print "Notice: This function is obsolete is should no longer be used"
+  print "Notice: pfxyi is obsolete is should no longer be used"
   print "        It does the identical thing as pfxy"
   if izf is not None: iz = izf
   pfxy(iz=iz,fullplane=fullplane,plotsg=plotsg,scale=scale,
@@ -387,7 +387,7 @@ def pfzxi(iy=None,iyf=None,fullplane=1,plotsg=1,scale=1,plotphi=1,
 Plots conductors and contours of electrostatic potential in full Z-X plane
 Same arguments as pfzx
   """
-  print "Notice: This function is obsolete is should no longer be used"
+  print "Notice: pfzxi is obsolete is should no longer be used"
   print "        It does the identical thing as pfzx"
   if iyf is not None: iy = iyf
   pfzx(iy=iy,fullplane=fullplane,plotsg=plotsg,scale=scale,
@@ -403,7 +403,7 @@ def pfzyi(ix=None,ixf=None,fullplane=1,plotsg=1,scale=1,plotphi=1,
 Plots conductors and contours of electrostatic potential in full Z-Y plane
 Same arguments as pfzy
   """
-  print "Notice: This function is obsolete is should no longer be used"
+  print "Notice: pfzyi is obsolete is should no longer be used"
   print "        It does the identical thing as pfzy"
   if ixf is not None: ix = ixf
   pfzy(ix=ix,fullplane=fullplane,plotsg=plotsg,scale=scale,
