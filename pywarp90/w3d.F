@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.115 $, $Date: 2003/06/13 23:46:15 $
+c@(#) File W3D.M, version $Revision: 3.116 $, $Date: 2003/06/18 17:37:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3661,13 +3661,13 @@ c        --- loop over particle blocks
             elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
              if(wpid==0) then
               call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
-     &                         sq(is)*sw(is),nx,nz,dx,dz,zmmin)
+     &                         sq(is)*sw(is),nx,nz,dx,dz,zgrid)
              else
               call rhoweightrz_weights(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),pid(ipmin,wpid),ip,
-     &                         sq(is)*sw(is),nx,nz,dx,dz,zmmin)
+     &                         sq(is)*sw(is),nx,nz,dx,dz,zgrid)
              end if
             elseif(solvergeom==Zgeom) then
-              call rhoweightz(zp(ipmin),uzp(ipmin),ip,sq(is)*sw(is),nz,dz)
+              call rhoweightz(zp(ipmin),uzp(ipmin),ip,sq(is)*sw(is),nz,dz,zgrid)
             elseif(solvergeom==AMRgeom) then
               call cho_setrho3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
      &                          sq(is),sw(is),is,(ipmin-ins(is))/nparpgrp)
@@ -3808,7 +3808,7 @@ c     --- Obtain the self-field from the electrostatic potential
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
       elseif(solvergeom==RZgeom) then
         if(.not.mgridrz_deform) then
-          call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ex,ey,ez,ip)
+          call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ex,ey,ez,ip,zgridprv)
         else
           if(is==1 .and. ipmin==ins(is)) call calc_phi3d_from_phirz()
           call sete3d(mgridrz_phi3d(0,0,-1),selfe(1,0,0,0),ip,
@@ -3817,9 +3817,9 @@ c     --- Obtain the self-field from the electrostatic potential
      &                efetch,ex,ey,ez,l2symtry,l4symtry)
         end if
       elseif(solvergeom==XZgeom) then
-         call fieldweightxz(xp(ipmin),zp(ipmin),uzp(ipmin),ex,ez,ip)
+         call fieldweightxz(xp(ipmin),zp(ipmin),uzp(ipmin),ex,ez,ip,zgridprv)
       elseif(solvergeom==Zgeom) then
-         call fieldweightz(zp(ipmin),uzp(ipmin),ez,ip)
+         call fieldweightz(zp(ipmin),uzp(ipmin),ez,ip,zgridprv)
       elseif(solvergeom==AMRgeom) then
         call cho_gete3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),zgridprv,
      &                  ex,ey,ez,is,(ipmin-ins(is))/nparpgrp)
@@ -6142,6 +6142,7 @@ c     --- be since inj_phi is actually vinject - phi, with an extra minus sign.
 c=============================================================================
       subroutine setphi(n,x,y,z,p)
       use InGen3d
+      use Picglb
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),p(n)
 
@@ -6149,9 +6150,9 @@ c     --- Call the appropriate routine to get the phi
       if(solvergeom==XYZgeom) then
         call setphi3d(n,x,y,z,p)
       elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call setphirz(n,x,y,z,p)
+        call setphirz(n,x,y,z,p,zgrid)
       elseif(solvergeom==Zgeom) then
-        call setphiz(n,z,p)
+        call setphiz(n,z,p,zgrid)
       elseif(solvergeom==AMRgeom) then
         call cho_getphi3d(n,x,y,z,0.,p,-1,-1)
       endif
@@ -7599,14 +7600,14 @@ c           --- Obtain the self-field from the electrostatic potential
      &                    ex_tmp(1),
      &                    ey_tmp(1),
      &                    ez_tmp(1),
-     &                    nn)
+     &                    nn,zgridprv)
             elseif(solvergeom==XZgeom) then
                call fieldweightxz(xxp(1),zzp(1),(/(1._8,i=1,nn)/),
      &                    ex_tmp(1),
      &                    ez_tmp(1),
-     &                    nn)
+     &                    nn,zgridprv)
             elseif(solvergeom==Zgeom) then
-               call fieldweightz(zzp(1),(/(1._8,i=1,nn)/),ez_tmp(1),nn)
+               call fieldweightz(zzp(1),(/(1._8,i=1,nn)/),ez_tmp(1),nn,zgridprv)
             elseif(solvergeom==AMRgeom) then
               call cho_gete3d(nn,xxp(1),yyp(1),zzp(1),zgridprv,
      &                    ex_tmp(1),
