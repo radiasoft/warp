@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.41 2003/10/07 21:55:14 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.42 2003/10/16 21:09:51 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -193,17 +193,41 @@ def ave(x,index=0):
   else:
     return 0.
 
-def averagezdata(qty,navg=0,nlines=100,jhist=None,istep=None,nz=None):
+def averagezdata(qty,navg=0,nlines=100,n1=None,n2=None,istep=None,
+                 includezeros=false):
+  """
+Averages data over local region. It also can down select data in the other
+dimension.
+  - qty: Data to be smoothed. Can be either a 1-D or 2-D array.
+  - navg=0: number of data points to average over
+  - nlines=100: number of lines from second dimension to choose.
+  - n1=shape(qty)[0]-1:
+  - n2=shape(qty)[1]-1:
+  - istep=max(1,n2/nlines):
+  - includezeros=false: by default, only non-zero data is averaged over.
+  """
   if navg == 0 or nlines == 0: return qty
-  if len(shape(qty)) == 1: qty.shape = (len(qty),1)
-  if not nz: nz = shape(qty)[0] - 1
-  if not jhist: jhist = shape(qty)[1] - 1
-  if istep is None: istep = max(1,jhist/nlines)
+  if len(shape(qty)) == 1:
+    fixqty = 1
+    qty.shape = (len(qty),1)
+  else:
+    fixqty = 0
+  if not n1: n1 = shape(qty)[0] - 1
+  if not n2: n2 = shape(qty)[1] - 1
+  if istep is None: istep = max(1,n2/nlines)
   hl = qty[:,::istep] + 0.
-  hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::istep])
-  for j in range(navg+1,nz-navg-1):
-    hl[j,:] = hl[j-1,:] + (qty[j+navg,::istep] -
-                           qty[j-navg-1,::istep])/(2*navg+1)
+  hl[navg,:] = sum(qty[navg-navg:navg+navg+1,::istep])
+  nn = 2*navg+1 + zeros(shape(hl))
+  if not includezeros:
+    nn[navg,:] = sum(where(qty[navg-navg:navg+navg+1,::istep]==0.,0,1),0)
+  for j in range(navg+1,n1-navg-1):
+    hl[j,:] = hl[j-1,:] + (qty[j+navg,::istep] - qty[j-navg-1,::istep])
+    nn[j,:] = nn[j-1,:] + (+ where(qty[j+navg,::istep]==0,0,1)
+                           - where(qty[j-navg-1,::istep]==0,0,1))
+  nn = where(nn==0,1,nn)
+  hl = where(qty[:,::istep]==0.,0.,hl)
+  hl[navg+1:n1-navg-1,:] = hl[navg+1:n1-navg-1,:]/nn[navg+1:n1-navg-1,:]
+  if fixqty: qty.shape = shape(qty)[0]
   if shape(qty)[1] > 1: return hl
   else: return hl[:,0]
 
