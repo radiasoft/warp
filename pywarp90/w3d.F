@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.45 $, $Date: 2002/03/21 19:53:00 $
+c@(#) File W3D.M, version $Revision: 3.46 $, $Date: 2002/03/27 21:33:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5479,7 +5479,7 @@ c       --- Smooth out inj_phi for this emitting surface.
       endif
 c     --- The result calculated by processor 0 is broadcast to the rest
 c     --- of the processors.
-      call parallelbroadcast(inj_phi,(nx+1)*(ny+1),0)
+      call parallelbroadcastrealarray(inj_phi,(nx+1)*(ny+1),0)
 #endif
 
 c     --- Calculate the transverse fields
@@ -5587,7 +5587,7 @@ c        endif
       endif
 c     --- The result calculated by processor 0 is broadcast to the rest
 c     --- of the processors.
-      call parallelbroadcast(inj_phi,(nx+1)*(nx+1),0)
+      call parallelbroadcastrealarray(inj_phi,(nx+1)*(nx+1),0)
 #endif
 
 c     --- Calculate the transverse fields
@@ -6772,11 +6772,11 @@ c     --- compute error
 
 c     --- For the parallel version, find global max of errors.
 #ifdef MPIPARALLEL
-      call parallelmax(phiref,1)
+      call parallelmaxrealarray(phiref,1)
 #endif
       bndferr = bndferr / dvnz(phiref)
 #ifdef MPIPARALLEL
-      call parallelmax(bndferr,1)
+      call parallelmaxrealarray(bndferr,1)
 #endif
 
 c     --- for debug, print out the error
@@ -6971,6 +6971,10 @@ c       case (7)
           call multigrid3df(iwhich,nx,ny,nz,dx,dy,dz,phi(0,0,-1),rho(0,0,0),
      &                     rstar,linbend,l2symtry,l4symtry,scrtch(0,0),
      &                     xmmin,ymmin,zmmin,zbeam,zgrid)
+c         call multigrid3df(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
+c    &            phi(0,0,izfsmin-1:izfsmax+1),rho(0,0,izfsmin:izfsmax),
+c    &            rstar(izfsmin:izfsmax),linbend,l2symtry,l4symtry,scrtch(0,0),
+c    &            xmmin,ymmin,zmmin,zbeam,zgrid)
 
 #ifdef MPIPARALLEL
 c       case (8)

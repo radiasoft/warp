@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.16 $, $Date: 2002/01/17 22:51:53 $
+c@(#) File WXY.M, version $Revision: 3.17 $, $Date: 2002/03/27 21:33:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1228,7 +1228,7 @@ c  For thin slice model, average out rho along the axis.
 #ifdef MPIPARALLEL
 c     --- Sum up rho over the processors.
       if (.not. lthick) then
-        call parallelsum(rho(0,0,0),(1+nx)*(1+ny))
+        call parallelsumrealarray(rho(0,0,0),(1+nx)*(1+ny))
       endif
 #endif
 
