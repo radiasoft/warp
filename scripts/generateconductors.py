@@ -33,7 +33,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.15 2003/02/18 20:29:49 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.16 2003/03/18 21:14:52 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -480,7 +480,7 @@ Call installdata() to install the data into the WARP database.
       if top.fstype in [7,11]:
         setmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz)
       if top.fstype == 10:
-        init_base(self.nx,self.nz,self.dx,self.dz,0.,self.zmin)
+        init_base(self.nx,self.nz,self.dx,self.dz,0.,self.zmin,false)
       self.mglevels = f3d.mglevels
       self.mglevelsnx = f3d.mglevelsnx[:f3d.mglevels]
       self.mglevelsny = f3d.mglevelsny[:f3d.mglevels]
