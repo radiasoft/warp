@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.122 $, $Date: 2003/07/22 17:49:06 $
+c@(#) File W3D.M, version $Revision: 3.123 $, $Date: 2003/07/22 19:35:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1545,6 +1545,11 @@ c     ---  Do final stuff for moments calculation
         tempminp = minval(threadminp(:,1:nthread),2)
         tempzmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
         tempzmmnts = sum(threadzmmnts(:,:,1:nthread),3)
+#else
+        tempmaxp = maxp
+        tempminp = minp
+        tempzmmnts0 = zmmnts0
+        tempzmmnts = zmmnts
 #endif
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,
