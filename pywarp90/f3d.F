@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.83 $, $Date: 2003/10/23 23:26:40 $
+c@(#) File F3D.M, version $Revision: 3.84 $, $Date: 2003/11/08 00:36:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5399,7 +5399,7 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 
 c     --- Call the appropriate routine.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+        call setcndtrrz(xmmin,zmmin,zbeam,zgrid,nx,nz,dx,dz,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
       else if (fstype == 7 .or. solvergeom==AMRgeom) then
         call setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
@@ -6962,10 +6962,10 @@ c     --- Table-ize the data if srfrv_pernz > 0.
 c     --- Call the appropriate version of the routine.
       if(solvergeom==Zgeom) return
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-     &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+        call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,
+     &                    xmin,xmax,lshell,
+     &                    zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                    ix_axis,xmesh,l2symtry,l4symtry,condid)
       else if (fstype == 7 .or. solvergeom==AMRgeom) then
         call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
@@ -8156,10 +8156,10 @@ c     --- Table-ize the data if srfrv_pernz > 0.
 c     --- Call the appropriate routine
       if(solvergeom==Zgeom) return
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-         call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                     lzend,xmin,xmax,ymin,ymax,lshell,
-     &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+         call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,
+     &                     lzend,xmin,xmax,lshell,
+     &                     zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                     ix_axis,xmesh,l2symtry,l4symtry,condid)
       else if (fstype == 7 .or. solvergeom==AMRgeom) then
         call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
@@ -8957,62 +8957,62 @@ c points with indices in the range i1 and i2.
       return
       end
 c===========================================================================
-      subroutine setcndtr_rz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+      subroutine setcndtr_rz(xmmin,zmmin,zbeam,zgrid,nx,nz,dx,dz,
      &                       bound0,boundnz,boundxy,l2symtry,l4symtry)
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      integer(ISZ):: nx,nz
+      real(kind=8):: xmmin,zmmin,zbeam,zgrid,dx,dz
       integer(ISZ):: bound0,boundnz,boundxy
       logical(ISZ):: l2symtry,l4symtry
 
       l4symtry = .true.
-      call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+      call setcndtr3d(xmmin,0.,zmmin,zbeam,zgrid,nx,0,nz,dx,dx,dz,
      &                bound0,boundnz,boundxy,l2symtry,l4symtry)
 
       return
       end
 c===========================================================================
-      subroutine srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-     &                       xmin,xmax,ymin,ymax,lshell,
-     &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+      subroutine srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,
+     &                       xmin,xmax,lshell,
+     &                       zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                       ix_axis,xmesh,l2symtry,l4symtry,
      &                       condid)
       character(*):: rofzfunc
-      real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
+      real(kind=8):: volt,zmin,zmax,xcent,rmax
       logical(ISZ):: lfill,lshell
-      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: xmin,xmax
       real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
-      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
-      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      integer(ISZ):: nx,nz,ix_axis
+      real(kind=8):: xmesh(0:nx)
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: condid
 
-      call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-     &                xmin,xmax,ymin,ymax,lshell,
-     &                zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+      call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,0.,rmax,lfill,
+     &                xmin,xmax,0.,0.,lshell,
+     &                zmmin,zmmax,zbeam,dx,dx,dz,nx,0,nz,
+     &                ix_axis,0,xmesh,0.,l2symtry,l4symtry,condid)
 
       return
       end
 c===========================================================================
-      subroutine srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                      lzend,xmin,xmax,ymin,ymax,lshell,
-     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+      subroutine srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,
+     &                      lzend,xmin,xmax,lshell,
+     &                      zmmin,zmmax,zbeam,dx,dz,nx,nz,
+     &                      ix_axis,xmesh,l2symtry,l4symtry,
      &                      condid)
       character(*):: rminofz,rmaxofz
-      real(kind=8):: volt,zmin,zmax,xcent,ycent
+      real(kind=8):: volt,zmin,zmax,xcent
       logical(ISZ):: lzend,lshell
-      real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
-      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
-      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      real(kind=8):: xmin,xmax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dz
+      integer(ISZ):: nx,nz,ix_axis
+      real(kind=8):: xmesh(0:nx)
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: condid
 
-      call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                  lzend,xmin,xmax,ymin,ymax,lshell,
-     &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
+      call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,0.,
+     &                  lzend,xmin,xmax,0.,0.,lshell,
+     &                  zmmin,zmmax,zbeam,dx,dx,dz,nx,0,nz,
+     &                  ix_axis,0,xmesh,0.,l2symtry,l4symtry,condid)
 
       return
       end
