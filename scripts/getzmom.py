@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.7 2001/08/06 18:51:03 ramiak Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.8 2002/03/14 18:34:55 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -7,7 +7,7 @@ zmmnt  makes appropriate calls to compiled code to calculate the
        particle moments
   """
 
-def zmmnt(itask=0,js=None, jslist=xrange(0,top.ns)):
+def zmmnt(itask=0,js=None,jslist=None,groupsize=None):
   """
 zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   makes appropriate calls to compiled code to calculate the
@@ -20,6 +20,10 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   - js: select species over which to calculate moments,
         None: calculates moments over range 0 .. top.nx or,
         alternatively, over list of moments specified in jslist
+  - jslist: list of species to calculate moments for
+  - groupsize=256: size of particle groups sent to getzmmnt
+                   Use caution since temp variables are used that are
+                   18*groupsize in size.
   """
   uxpo = top.uxp
   uypo = top.uyp
@@ -43,14 +47,15 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
              top.nplive,uxpo,uypo,uzpo,1,top.ns)
 
   # Calculate the moments
-  if js is None:
-    pass
-  else:
-    jslist = [js]
+  if jslist is None:
+    if js is None:
+      jslist = xrange(top.ns)
+    else:
+      jslist = [js]
   if (itask == 0 or itask == 2):
     for js in jslist:
-      for ipmin in xrange(top.ins[js]-1,top.ins[js]+top.nps[js]-1,256):
-         ip = min(256, top.ins[js]+top.nps[js]-ipmin-1)
+      for ipmin in xrange(top.ins[js]-1,top.ins[js]+top.nps[js]-1,groupsize):
+         ip = min(groupsize, top.ins[js]+top.nps[js]-ipmin-1)
          getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
                   top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
                   top.gaminv[ipmin:],top.sq[js],top.sm[js],top.sw[js],
