@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:07 $
+c@(#) File F3D.M, version $Revision: 3.2 $, $Date: 2001/04/27 21:38:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1747,7 +1747,6 @@ c Set up for transform
          w(0,iy) = 2. * a(1,iy)
   200 continue
       do 300 iy = 0, ny-2, 2
-cdir$ ivdep
          do 400 ix = 1, nx2-1
             ix2 = 2 * ix
             aa = a(ix2,iy)
@@ -1819,7 +1818,6 @@ c Set up for transform
   200 continue
       do 400 iy = 1, ny2-1
          iy2 = 2 * iy
-cdir$ ivdep
          do 300 ix = 0, nx-2, 2
             aa = a(ix,iy2)
             bb = a(ix+1,iy2+1) - a(ix+1,iy2-1)
