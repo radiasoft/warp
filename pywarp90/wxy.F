@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.29 $, $Date: 2003/02/24 19:02:01 $
+c@(#) File WXY.M, version $Revision: 3.30 $, $Date: 2003/02/27 19:34:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1201,10 +1201,7 @@ c         --- Apply particle boundary conditions
      &                     yp(ins(is)),ymmax,ymmin,dy,
      &                     zp(ins(is)),zmmin,dz,uxp(ins(is)),
      &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
-     &                     zgrid,zbeam,
-     &                     nzzarr,prwallz,prwallxz,prwallyz,prwelips,
-     &                     l2symtry,l4symtry,zzmin,dzzi,
-     &                     pboundxy,xmaxz(0),xminz(0),ymaxz(0),yminz(0))
+     &                     zgrid,zbeam,l2symtry,l4symtry,pboundxy,.true.)
           call processlostpart(is,clearlostpart,time,zbeam)
         enddo
 
