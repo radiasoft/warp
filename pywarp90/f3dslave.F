@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.7 $, $Date: 2002/05/09 21:40:06 $
+c F3DSLAVE.M, version $Revision: 1.8 $, $Date: 2002/07/17 16:32:47 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -99,10 +99,12 @@ c of processors is a power of two.
       integer(ISZ):: is,ix,iy,j,left_pe,right_pe
       include "mpif.h"
       integer(ISZ):: mpinewtype,mpierror
-c     integer(ISZ):: mpinewtype2,mpidoublesize
+      integer(ISZ):: mpinewtype2,mpidoublesize
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE)
-c     integer(ISZ):: blen(2),bdisp(2),btype(2)
-      integer(ISZ),parameter:: M_TRANSPOSE=10
+      integer(ISZ):: blen(2),bdisp(2),btype(2)
+      integer(ISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
+      integer(ISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
+c     integer(ISZ),parameter:: M_TRANSPOSE=10
 
 c     --- Calculate what the dimensions of the grid will be after the
 c     --- transpose.  The dimensions will be (0:nx_tran,ny_tran).  The
@@ -141,83 +143,102 @@ c     --- The transpose is much less complicated when ny > nslaves.
 
 c       On the T3E, the loop over slaves using SENDRECV is 20 to 50% faster
 c       than the ALLTOALL. Go figure.
+c       On the SP, the SENDRECV is only as fast as the call to ALLTOALL.
+c       That is now used since it has the potential of improving if the
+c       MPI implementation is further optimized.
 
 c       --- Create a second type so that the upper bound (and therefore) the
 c       --- extent of the new type can be set. The extent needs to be modified
 c       --- since the data being sent with the alltoall is interleaved.
 c       --- The extent is set to be equal to the byte length of the contiguous
 c       --- chunks of data, i.e. nn times number of bytes per real.
-c       call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
-c       blen(1) = 1
-c       blen(2) = 1
-c       bdisp(1) = 0
-c       bdisp(2) = nn*mpidoublesize
-c       btype(1) = mpinewtype
-c       btype(2) = MPI_UB
-c       call MPI_TYPE_STRUCT(2,blen,bdisp,btype,mpinewtype2,mpierror)
-c       call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
+        call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
+        blen(1) = 1
+        blen(2) = 1
+        bdisp(1) = 0
+        bdisp(2) = nn*mpidoublesize
+        btype(1) = mpinewtype
+        btype(2) = MPI_UB
+        call MPI_TYPE_STRUCT(2,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Do all of the communication at once.
-c       call MPI_ALLTOALL(phi(0,0,0),1,mpinewtype2,
-c    &                    phi_trnsps,nn*nz,MPI_DOUBLE_PRECISION,
-c    &                    MPI_COMM_WORLD,mpierror)
+        call MPI_ALLTOALL(phi(0,0,0),1,mpinewtype2,
+     &                    phi_trnsps,nn*nz,MPI_DOUBLE_PRECISION,
+     &                    MPI_COMM_WORLD,mpierror)
 
 c       --- Free the data type
-c       call MPI_TYPE_FREE(mpinewtype2,mpierror)
+        call MPI_TYPE_FREE(mpinewtype2,mpierror)
 
+c       --- Old version ---
 c       --- Loop over slaves
-        do is = 0,nslaves-1
-
+c       do is = 0,nslaves-1
 c         --- Send messages to slaves in increasing order.
-          right_pe = mod(my_index + is,nslaves)
-          left_pe = mod(my_index - is + nslaves,nslaves)
-
+c         right_pe = mod(my_index + is,nslaves)
+c         left_pe = mod(my_index - is + nslaves,nslaves)
 c         --- Get the starting point of the data.
-          ix = 0
-          iy = right_pe*ny_tran
-
+c         ix = 0
+c         iy = right_pe*ny_tran
 c         --- The incoming data is be treated as a contiguous chunk when it
 c         --- is received into the phi_trnsps array.
 c         --- The data is put in order of process number (since the ordering
 c         --- in z is by process number).
-          j = left_pe*nn*nz + 1
-
-          call MPI_SENDRECV(phi(ix,iy,0),1,mpinewtype,right_pe,M_TRANSPOSE,
-     &           phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,left_pe,M_TRANSPOSE,
-     &           MPI_COMM_WORLD,mpistatus,mpierror)
-
-        enddo
+c         j = left_pe*nn*nz + 1
+c         call MPI_SENDRECV(phi(ix,iy,0),1,mpinewtype,right_pe,M_TRANSPOSE,
+c    &           phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,left_pe,M_TRANSPOSE,
+c    &           MPI_COMM_WORLD,mpistatus,mpierror)
+c       enddo
 
       else
 c       --- Things are very different with ny < nslaves
-c       --- The only way to do the transpose is to loop over the slaves
-c       --- since some of the data sent overlaps and some doesn't. (The
-c       --- chunks on the same ix overlap.) The MPI_ALLTOALL doesn't allow
-c       --- the data sent to different PE's to have different data types,
-c       --- which would be needed to do two different types of overlap.
+c       --- Note though that the ALLTOALL code would actually work just as
+c       --- well for ny >= nslaves.
 
-c       --- Loop over slaves
+c       --- Create a copy of the new data type, but defined with an upper
+c       --- bound so that the extent is equal to the size a one double.
+        call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
+        blen(1) = 1
+        blen(2) = 1
+        bdisp(1) = 0
+        bdisp(2) = mpidoublesize
+        btype(1) = mpinewtype
+        btype(2) = MPI_UB
+        call MPI_TYPE_STRUCT(2,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
+
+c       --- Setup displacement arrays.
         do is = 0,nslaves-1
+          ix = mod(is*nx_tran,nx)
+          iy = is*ny/nslaves
+          sdispls(is) = ix + iy*(ny+1)
+          sendcounts(is) = 1
+          rdispls(is) = is*nn*nz
+          recvcounts(is) = nn*nz
+        enddo
 
+c       --- Do all of the communication at once.
+        call MPI_ALLTOALLV(phi(0,0,0),sendcounts,sdispls,mpinewtype2,
+     &                     phi_trnsps,recvcounts,rdispls,MPI_DOUBLE_PRECISION,
+     &                     MPI_COMM_WORLD,mpierror)
+
+c       --- Old version ---
+c       --- Loop over slaves
+c       do is = 0,nslaves-1
 c         --- Send messages to slaves in increasing order.
-          right_pe = mod(my_index + is,nslaves)
-          left_pe = mod(my_index - is + nslaves,nslaves)
-
+c         right_pe = mod(my_index + is,nslaves)
+c         left_pe = mod(my_index - is + nslaves,nslaves)
 c         --- Get the starting point of the data.
-          ix = mod(right_pe*nx_tran,nx)
-          iy = right_pe*ny/nslaves
-
+c         ix = mod(right_pe*nx_tran,nx)
+c         iy = right_pe*ny/nslaves
 c         --- The incoming data is be treated as a contiguous chunk when it
 c         --- is received into the phi_trnsps array.
 c         --- The data is put in order of process number (since the ordering
 c         --- in z is by process number).
-          j = left_pe*nn*nz + 1
-
-          call MPI_SENDRECV(phi(ix,iy,0),1,mpinewtype,right_pe,M_TRANSPOSE,
-     &           phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,left_pe,M_TRANSPOSE,
-     &           MPI_COMM_WORLD,mpistatus,mpierror)
-
-        enddo
+c         j = left_pe*nn*nz + 1
+c         call MPI_SENDRECV(phi(ix,iy,0),1,mpinewtype,right_pe,M_TRANSPOSE,
+c    &           phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,left_pe,M_TRANSPOSE,
+c    &           MPI_COMM_WORLD,mpistatus,mpierror)
+c       enddo
 
       endif
 
@@ -256,10 +277,12 @@ c of processors is a power of two.
       integer(ISZ):: is,ix,iy,j,left_pe,right_pe
       include "mpif.h"
       integer(ISZ):: mpinewtype,mpierror
-c     integer(ISZ):: mpinewtype2,mpidoublesize
+      integer(ISZ):: mpinewtype2,mpidoublesize
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE)
-c     integer(ISZ):: blen(2),bdisp(2),btype(2)
-      integer(ISZ),parameter:: M_TRANSPOSE=10
+      integer(ISZ):: blen(2),bdisp(2),btype(2)
+      integer(ISZ):: sdispls(0:nslaves-1),rdispls(0:nslaves-1)
+      integer(ISZ):: sendcounts(0:nslaves-1),recvcounts(0:nslaves-1)
+c     integer(ISZ),parameter:: M_TRANSPOSE=10
 
 c     --- Allocate the work space.
       if (phi_trnspssize < (nx_tran+1)*ny_tran*nz*nslaves) then
@@ -281,70 +304,90 @@ c the temp space.
 
       if (ny .ge. nslaves) then
 
-c       call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
-c       blen(1) = 1
-c       blen(2) = 1
-c       bdisp(1) = 0
-c       bdisp(2) = nn*mpidoublesize
-c       btype(1) = mpinewtype
-c       btype(2) = MPI_UB
-c       call MPI_TYPE_STRUCT(2,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
+        blen(1) = 1
+        blen(2) = 1
+        bdisp(1) = 0
+        bdisp(2) = nn*mpidoublesize
+        btype(1) = mpinewtype
+        btype(2) = MPI_UB
+        call MPI_TYPE_STRUCT(2,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
 
 c       --- Do all of the communication at once.
-c       call MPI_ALLTOALL(phi_trnsps,nn*nz,MPI_DOUBLE_PRECISION,
-c    &                    phi(0,0,0),1,mpinewtype2,
-c    &                    MPI_COMM_WORLD,mpierror)
+        call MPI_ALLTOALL(phi_trnsps,nn*nz,MPI_DOUBLE_PRECISION,
+     &                    phi(0,0,0),1,mpinewtype2,
+     &                    MPI_COMM_WORLD,mpierror)
 
 c       --- Free the data type
-c       call MPI_TYPE_FREE(mpinewtype2,mpierror)
+        call MPI_TYPE_FREE(mpinewtype2,mpierror)
 
+c       --- Old version ---
 c       --- Loop over slaves
-        do is = 0,nslaves-1
-
+c       do is = 0,nslaves-1
 c         --- Send data to other processors in increasing order.
-          right_pe = mod(my_index + is,nslaves)
-          left_pe = mod(my_index - is + nslaves,nslaves)
-
+c         right_pe = mod(my_index + is,nslaves)
+c         left_pe = mod(my_index - is + nslaves,nslaves)
 c         --- The data will be treated as a contiguous chunk when it is sent.
 c         --- The data is put in order of process number (since the ordering
 c         --- in z is by process number).
-          j = right_pe*nn*nz + 1
-
+c         j = right_pe*nn*nz + 1
 c         --- Get the starting point of the data.
-          ix = 0
-          iy = left_pe*ny_tran
-
-          call MPI_SENDRECV(phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,
-     &                      right_pe,M_TRANSPOSE,
-     &                      phi(ix,iy,0),1,mpinewtype,left_pe,M_TRANSPOSE,
-     &                      MPI_COMM_WORLD,mpistatus,mpierror)
-
-        enddo
+c         ix = 0
+c         iy = left_pe*ny_tran
+c         call MPI_SENDRECV(phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,
+c    &                      right_pe,M_TRANSPOSE,
+c    &                      phi(ix,iy,0),1,mpinewtype,left_pe,M_TRANSPOSE,
+c    &                      MPI_COMM_WORLD,mpistatus,mpierror)
+c       enddo
 
       else
 
-c       --- Loop over slaves
+c       --- Create a copy of the new data type, but defined with an upper
+c       --- bound so that the extent is equal to the size a one double.
+        call MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION,mpidoublesize,mpierror)
+        blen(1) = 1
+        blen(2) = 1
+        bdisp(1) = 0
+        bdisp(2) = mpidoublesize
+        btype(1) = mpinewtype
+        btype(2) = MPI_UB
+        call MPI_TYPE_STRUCT(2,blen,bdisp,btype,mpinewtype2,mpierror)
+        call MPI_TYPE_COMMIT(mpinewtype2,mpierror)
+
+c       --- Setup displacement arrays.
         do is = 0,nslaves-1
+          sdispls(is) = is*nn*nz
+          sendcounts(is) = nn*nz
+          ix = mod(is*nx_tran,nx)
+          iy = is*ny/nslaves
+          rdispls(is) = ix + iy*(ny+1)
+          recvcounts(is) = 1
+        enddo
 
+c       --- Do all of the communication at once.
+        call MPI_ALLTOALLV(phi_trnsps,sendcounts,sdispls,MPI_DOUBLE_PRECISION,
+     &                     phi(0,0,0),recvcounts,rdispls,mpinewtype2,
+     &                     MPI_COMM_WORLD,mpierror)
+
+c       --- Old version ---
+c       --- Loop over slaves
+c       do is = 0,nslaves-1
 c         --- Send data to other processors in increasing order.
-          right_pe = mod(my_index + is,nslaves)
-          left_pe = mod(my_index - is + nslaves,nslaves)
-
+c         right_pe = mod(my_index + is,nslaves)
+c         left_pe = mod(my_index - is + nslaves,nslaves)
 c         --- The data will be treated as a contiguous chunk when it is sent.
 c         --- The data is put in order of process number (since the ordering
 c         --- in z is by process number).
-          j = right_pe*nn*nz + 1
-
+c         j = right_pe*nn*nz + 1
 c         --- Get the starting point of the data.
-          ix = mod(left_pe*nx_tran,nx)
-          iy = left_pe*ny/nslaves
-
-          call MPI_SENDRECV(phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,
-     &                      right_pe,M_TRANSPOSE,
-     &                      phi(ix,iy,0),1,mpinewtype,left_pe,M_TRANSPOSE,
-     &                      MPI_COMM_WORLD,mpistatus,mpierror)
-
-        enddo
+c         ix = mod(left_pe*nx_tran,nx)
+c         iy = left_pe*ny/nslaves
+c         call MPI_SENDRECV(phi_trnsps(j),nn*nz,MPI_DOUBLE_PRECISION,
+c    &                      right_pe,M_TRANSPOSE,
+c    &                      phi(ix,iy,0),1,mpinewtype,left_pe,M_TRANSPOSE,
+c    &                      MPI_COMM_WORLD,mpistatus,mpierror)
+c       enddo
 
       endif
 
