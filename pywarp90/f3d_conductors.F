@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.15 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -289,62 +289,99 @@ c       --- the algorithm.
       return
       end
 c=======================================================================
-      subroutine conductorsmoothshading()
+      subroutine conductorsmoothshading(tt,ii)
       use ConductorGeometryVisualization
+      real(kind=8):: tt(3*ntriangles)
+      integer(ISZ):: ii(3*ntriangles)
 
 c Modify the normals of the data so that a smoother surface will be drawn.
 c For each set of point which have the same coordinates, this averages
 c the normals.
 c A much, much better way of doing this is to sort the data first.
 
-      integer(ISZ):: i1,i2,j1,j2
-      real(kind=8):: nmsum(0:2)
-      integer(ISZ):: nn
-      integer(ISZ):: done(3,ntriangles)
-      integer(ISZ):: nlist,ilist(100),jlist(100),il
+      integer(ISZ):: ip,iq,i1,j1,i2,j2
+
+      maxpoints = 3*ntriangles
+      call gchange("ConductorGeometryVisualization")
+      npoints = 0
+      ip = 1
+      do while (ip < 3*ntriangles)
+        i1 = ii(ip)/3 + 1
+        j1 = ii(ip) - i1*3
+        npoints = npoints + 1
+        points(:,npoints) = triangles(:,j1,i1)
+        pnormals(:,npoints) = normals(:,j1,j1)
+        connections(j1,i1) = npoints
+        iq = ip + 1
+        do while (abs(tt(iq) - tt(ip)) < 1.e-10)
+          i2 = ii(iq)/3 + 1
+          j2 = ii(iq) - i2*3
+          if (all(abs(triangles(:,j1,i1)-triangles(:,j2,i2)) < 1.e-10)) then
+            pnormals(:,npoints) = pnormals(:,npoints) + normals(:,j2,i2)
+            connections(j2,i2) = npoints
+          endif
+          iq = iq + 1
+        end do
+        pnormals(:,npoints) = pnormals(:,npoints)/dvnz(sqrt(sum(pnormals(:,npoints)**2)))
+        ip = ip + 1
+        i2 = ii(ip)/3 + 1
+        j2 = ii(ip) - i2*3
+        do while (all(abs(triangles(:,j1,i1)-triangles(:,j2,i2)) < 1.e-10))
+          ip = ip + 1
+          i2 = ii(ip)/3 + 1
+          j2 = ii(ip) - i2*3
+        end do
+      end do
+
+
+c     integer(ISZ):: i1,i2,j1,j2
+c     real(kind=8):: nmsum(0:2)
+c     integer(ISZ):: nn
+c     integer(ISZ):: done(3,ntriangles)
+c     integer(ISZ):: nlist,ilist(100),jlist(100),il
 
 c     --- The 'done' array is used to keep track of which points have had
 c     --- their normals averaged.
-      done = 0
+c     done = 0
 
 c     --- Loop over all points of all triangles.
-      do i1=1,ntriangles
-        do j1=0,2
+c     do i1=1,ntriangles
+c       do j1=0,2
 
 c         --- Skip points which have already been treated.
-          if (done(j1,i1) == 1) cycle
+c         if (done(j1,i1) == 1) cycle
 
 c         --- Begin accumulating the normals.
-          nmsum = normals(:,j1,i1)
-          nlist = 0
+c         nmsum = normals(:,j1,i1)
+c         nlist = 0
 
 c         --- Loop over the points of the rest of the triangles.
-          do i2=i1+1,ntriangles
-            do j2=0,2
+c         do i2=i1+1,ntriangles
+c           do j2=0,2
 
 c             --- If the coordinates are the same (i.e. within some tolerance)
 c             --- then add this point to the list.
-              if (all(abs(triangles(:,j1,i1)-triangles(:,j2,i2)) < 1.e-10)) then
-                done(j2,i2) = 1
-                nmsum = nmsum + normals(:,j2,i2)
-                nlist = nlist + 1
-                ilist(nlist) = i2
-                jlist(nlist) = j2
-              endif
-            enddo
-          enddo
+c             if (all(abs(triangles(:,j1,i1)-triangles(:,j2,i2)) < 1.e-10)) then
+c               done(j2,i2) = 1
+c               nmsum = nmsum + normals(:,j2,i2)
+c               nlist = nlist + 1
+c               ilist(nlist) = i2
+c               jlist(nlist) = j2
+c             endif
+c           enddo
+c         enddo
 
 c         --- Renormalize the summed normals are reset the normals in the list.
-          if (nlist > 0) then
-            nmsum = nmsum/dvnz(sqrt(sum(nmsum**2)))
-            normals(:,j1,i1) = nmsum
-            do il=1,nlist
-              normals(:,jlist(il),ilist(il)) = nmsum
-            enddo
-          endif
+c         if (nlist > 0) then
+c           nmsum = nmsum/dvnz(sqrt(sum(nmsum**2)))
+c           normals(:,j1,i1) = nmsum
+c           do il=1,nlist
+c             normals(:,jlist(il),ilist(il)) = nmsum
+c           enddo
+c         endif
 
-        enddo
-      enddo
+c       enddo
+c     enddo
 
       return
       end

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.72 $, $Date: 2003/04/16 23:07:18 $
+#@(#) File F3D.V, version $Revision: 3.73 $, $Date: 2003/04/22 23:04:05 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.72 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.73 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -527,6 +527,11 @@ maxtriangles integer/0/
 ntriangles integer /0/
 triangles(0:2,0:2,maxtriangles) _real
 normals(0:2,0:2,maxtriangles) _real
+connections(0:2,maxtriangles) _integer
+maxpoints integer /0/
+npoints integer
+points(0:2,maxpoints) _real
+pnormals(0:2,maxpoints) _real
 getconductorfacets(nc:integer,icnd:integer,dels:real,
                    gridn:integer,griddd:real,gridmin:real) subroutine
 getconductorsnewfacet(ix:integer,iy:integer,iz:integer,oo:integer,
