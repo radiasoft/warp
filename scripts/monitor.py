@@ -25,7 +25,7 @@ import socket
 import time
 import re
 import md5
-monitor_version = "$Id: monitor.py,v 1.6 2003/12/04 23:24:11 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.7 2004/02/19 19:06:17 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -282,7 +282,11 @@ Make a connection to a running job with a monitor.
   except:
     pass
   _sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-  _sock.connect((machine,port))
+  try:
+    _sock.connect((machine,port))
+  except socket.error:
+    _sock.close()
+    raise
   md5passwd = md5.new(passwd)
   hexdigestpasswd = md5passwd.hexdigest()
   r = socketrecv(_sock)
