@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.55 $, $Date: 2002/04/26 16:11:38 $
+c@(#) File W3D.M, version $Revision: 3.56 $, $Date: 2002/04/30 21:46:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -662,11 +662,7 @@ c  after the call to afterfs in case some manipulation is done to phi.
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz)
 c  Set the potential near the emitting surface.
       if (inject > 0) then
-        if(solvergeom==XYZgeom) then
-          call getinj_phi()
-        elseif(solvergeom==RZgeom) then
-          call getinj_phi_rz_ng()
-        endif
+        call getinj_phi()
       endif
 c  Complete constant current and axially directed space-charge limited
 c  injection with new fields including injected particles.
@@ -4924,9 +4920,15 @@ c=============================================================================
         inj_xmmin = xmmin
         inj_ymmin = ymmin
       elseif(solvergeom==RZgeom) then
+        if(inj_nx==0) then
+          inj_nx = nx
+          inj_ny = nx
+          inj_dx = dx
+          inj_dy = dx
+          inj_dz = dz
+        end if
         inj_xmmin = xmmin
         inj_ymmin = ymmin
-        call assign_injdxdy_rz(inj_nx,inj_ny,inj_dx,inj_dy,inj_dz)
       end if
 
 c Make sure that space has been allocated for the arrays. This is needed
@@ -5584,8 +5586,8 @@ c=============================================================================
 c     --- Call the appropriate routine to get the phi
       if(solvergeom==XYZgeom) then
         call setphi3d(n,x,y,z,p)
-c     elseif(solvergeom==RZgeom) then
-c       call setphirz(n,x,y,z)
+      elseif(solvergeom==RZgeom) then
+        call setphirz(n,x,y,z,p)
       endif
 
       return
