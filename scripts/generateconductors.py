@@ -72,7 +72,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.55 2004/04/23 00:05:30 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.56 2004/05/03 20:04:38 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -180,13 +180,25 @@ Should never be directly created by the user.
 
   # Operations which return an Assembly expression.
   def __mul__(self,right):
+    if right is None: return self
     return AssemblyAnd(self,right)
   def __add__(self,right):
+    if right is None: return self
     return AssemblyPlus(self,right)
   def __sub__(self,right):
+    if right is None: return self
     return AssemblyMinus(self,right)
   def __neg__(self):
     return AssemblyNot(self)
+  def __pos__(self):
+    return self
+
+  def __rmul__(self,left):
+    return self*left
+  def __radd__(self,left):
+    return self+left
+  def __rsub__(self,left):
+    return (-self)+left
 
 
 class AssemblyNot(Assembly):
@@ -1052,6 +1064,25 @@ grid points.
     self.generatetime = endtime - starttime
     #print tt2
 
+  def resetisinside(self,mglevel=0):
+    """
+Clears out any data in isinside by recreating the array.
+    """
+    ix,iy,iz,x,y,z,zmmin,dx,dy,dz,nx,ny,nz,zmesh = self.getmesh(mglevel)
+    self.isinside = fzeros((1+nx,1+ny,1+nz),'d')
+    
+  def removeisinside(self,a,nooverlap=0):
+    """
+Removes an assembly from the isinside data. This assumes that that assembly
+does not overlap any others. The flag nooverlap must be set as a reminder.
+    """
+    if nooverlap:
+      self.isinside = where(self.isinside==a.condid,0,self.isinside)
+    else:
+      print "removeisinside only works when the assembly does not overlap any others"
+      print 'Set the nooverlap flag to true is this is the case.'
+      raise ''
+
   def getisinside(self,a,mglevel=0):
     """
 Given an Assembly, set flag for each grid point whether it is inside the
@@ -1066,7 +1097,7 @@ assembly.
     try:
       self.isinside[0,0,0]
     except:
-      self.isinside = fzeros((1+nx,1+ny,1+nz),'d')
+      self.resetisinside(mglevel)
     ix1 = min(ix)
     ix2 = max(ix)
     iy1 = min(iy)
@@ -2024,7 +2055,8 @@ Creates an Annulus as a surface of revolution.
 #============================================================================
 def Quadrupole(ap=None,rl=None,rr=None,gl=None,gp=None,
                pa=None,pw=None,pr=None,vx=None,vy=None,
-               xcent=0.,ycent=0.,zcent=0.,condid=None,elemid=None):
+               xcent=0.,ycent=0.,zcent=0.,condid=None,
+               elemid=None,elem='quad'):
   """
 Creates an interdigited quadrupole structure.
 Either specify the quadrupole structure...
@@ -2041,7 +2073,9 @@ Either specify the quadrupole structure...
   - xcent=0.,ycent=0.,zcent=0.: center of quadrupole
   - condid=1: conductor id of quadrupole, must be integer
 Or give the quadrupole id to use...
-  - elemid: gets data from quad element.
+  - elem='quad': element type to get data from
+  - elemid: gets data from quad element. The above quantities can be specified
+            as well to override the value from elemid.
   """
   if elemid is None:
     assert ap is not None,'ap must be specified'
@@ -2056,39 +2090,58 @@ Or give the quadrupole id to use...
     assert vy is not None,'vy must be specified'
     if condid is None: condid = 0
   else:
-    ap = top.quadap[elemid]
-    rl = top.quadrl[elemid]
-    rr = top.quadrr[elemid]
-    gl = top.quadgl[elemid]
-    gp = top.quadgp[elemid]
-    pa = top.quadpa[elemid]
-    pw = top.quadpw[elemid]
-    pr = top.quadpr[elemid]
-    vx = top.quadvx[elemid]
-    vy = top.quadvy[elemid]
-    xcent = top.qoffx[elemid]
-    ycent = top.qoffy[elemid]
-    zcent = 0.5*(top.quadzs[elemid] + top.quadze[elemid])
+    if ap is None: ap = getattr(top,elem+'ap')[elemid]
+    if rl is None: rl = getattr(top,elem+'rl')[elemid]
+    if rr is None: rr = getattr(top,elem+'rr')[elemid]
+    if gl is None: gl = getattr(top,elem+'gl')[elemid]
+    if gp is None: gp = getattr(top,elem+'gp')[elemid]
+    if pa is None: pa = getattr(top,elem+'pa')[elemid]
+    if pw is None: pw = getattr(top,elem+'pw')[elemid]
+    if elem == 'quad':
+      if pr is None: pr = getattr(top,elem+'pr')[elemid]
+      if vx is None: vx = top.quadvx[elemid]
+      if vy is None: vy = top.quadvy[elemid]
+      if xcent is None: xcent = top.qoffx[elemid]
+      if ycent is None: ycent = top.qoffy[elemid]
+    else:
+      if vx is None: vx = 0.
+      if vy is None: vy = 0.
+      if xcent is None: xcent = getattr(top,elem+'ox')[elemid]
+      if ycent is None: ycent = getattr(top,elem+'oy')[elemid]
+    if zcent is None:
+      zcent = 0.5*(getattr(top,elem+'zs')[elemid] +
+                   getattr(top,elem+'ze')[elemid])
     if condid is None: condid = elemid
 
+
   # --- Create x and y rods
-  xrod1 = ZCylinder(rr,rl,vx,xcent+ap+rr,ycent,zcent+gp*gl/2.,condid)
-  xrod2 = ZCylinder(rr,rl,vx,xcent-ap-rr,ycent,zcent+gp*gl/2.,condid)
-  yrod1 = ZCylinder(rr,rl,vy,xcent,ycent+ap+rr,zcent-gp*gl/2.,condid)
-  yrod2 = ZCylinder(rr,rl,vy,xcent,ycent-ap-rr,zcent-gp*gl/2.,condid)
-
-  # --- Create end plates
-  if gp > 0.:
-    v1 = vx
-    v2 = vy
+  if ap > 0. and rr > 0. and rl > 0.:
+    xrod1 = ZCylinder(rr,rl,vx,xcent+ap+rr,ycent,zcent-gp*gl/2.,condid)
+    xrod2 = ZCylinder(rr,rl,vx,xcent-ap-rr,ycent,zcent-gp*gl/2.,condid)
+    yrod1 = ZCylinder(rr,rl,vy,xcent,ycent+ap+rr,zcent+gp*gl/2.,condid)
+    yrod2 = ZCylinder(rr,rl,vy,xcent,ycent-ap-rr,zcent+gp*gl/2.,condid)
+    quad = xrod1 + xrod2 + yrod1 + yrod2
   else:
-    v1 = vy
-    v2 = vx
-  plate1 = ZAnnulus(pa,pr,pw,v1,xcent,ycent,zcent-0.5*(rl+gl)-pw/2.,condid)
-  plate2 = ZAnnulus(pa,pr,pw,v2,xcent,ycent,zcent+0.5*(rl+gl)+pw/2.,condid)
+    quad = None
 
-  # --- Create the combined object
-  quad = xrod1 + xrod2 + yrod1 + yrod2 + plate1 + plate2
+  # --- Add end plates
+  if pw > 0. and (ap > 0. or pa > 0.):
+    if pa == 0.: pa = ap
+    if pr == 0.: pr = 2*w3d.xmmax
+    if gp > 0.:
+      v1 = vx
+      v2 = vy
+    else:
+      v1 = vy
+      v2 = vx
+    if pr < 1.4142*w3d.xmmax:
+      plate1 = ZAnnulus(pa,pr,pw,v1,xcent,ycent,zcent-0.5*(rl+gl)-pw/2.,condid)
+      plate2 = ZAnnulus(pa,pr,pw,v2,xcent,ycent,zcent+0.5*(rl+gl)+pw/2.,condid)
+    else:
+      plate1 = ZCylinderOut(pa,pw,v1,xcent,ycent,zcent-0.5*(rl+gl)-pw/2.,condid)
+      plate2 = ZCylinderOut(pa,pw,v2,xcent,ycent,zcent+0.5*(rl+gl)+pw/2.,condid)
+    quad = quad + plate1 + plate2
+
   return quad
 
 #============================================================================
