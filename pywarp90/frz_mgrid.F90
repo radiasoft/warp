@@ -1,4 +1,4 @@
-!     Last change:  JLV  12 Apr 2002    4:23 pm
+!     Last change:  JLV  15 Apr 2002    2:23 pm
 #include "top.h"
 
 module multigrid_common
@@ -107,6 +107,7 @@ TYPE grdptr
   INTEGER(ISZ) :: ixlbnd, ixrbnd, izlbnd, izrbnd  ! boundary conditions for each side
   TYPE(bndptr), pointer :: bnd(:)
   INTEGER(ISZ) :: npre, npost, ncycles, ncmax, npmin
+  INTEGER(ISZ) :: guard_min_r,guard_max_r,guard_min_z,guard_max_z
   REAL(8) :: mgparam
   TYPE(grdptr), pointer :: next, prev, down, up
 END TYPE grdptr
@@ -115,7 +116,7 @@ TYPE grd_ptr
   TYPE(grdptr), POINTER :: grid
 END TYPE grd_ptr
 TYPE(grd_ptr), DIMENSION(:), ALLOCATABLE :: grids_ptr
-INTEGER(ISZ) :: ngrids,grids_nids,n_avail_ids,avail_ids(100),level_del_grid,grid_nguard
+INTEGER(ISZ) :: ngrids,grids_nids,n_avail_ids,avail_ids(100),level_del_grid
 
 contains
 
@@ -149,6 +150,10 @@ INTEGER(ISZ) :: i,j
   grids%npmin = 1
   grids%phi=0.
   grids%rho=0.
+  grids%guard_min_r = 0
+  grids%guard_max_r = 0
+  grids%guard_min_z = 0
+  grids%guard_max_z = 0
   basegrid => grids
   bndy => grids%bnd
   ngrids=1
@@ -184,10 +189,10 @@ INTEGER(ISZ) :: i,j
 return
 end subroutine init_basegrid
 
-subroutine add_grid(grid,nr,nz,dr,dz,rmin,zmin)
+subroutine add_grid(grid,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z)
 implicit none
 TYPE(grdptr), pointer :: grid
-INTEGER(ISZ), INTENT(IN) :: nr, nz
+INTEGER(ISZ), INTENT(IN) :: nr, nz, guard_min_r, guard_max_r, guard_min_z, guard_max_z
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 TYPE(grdptr), pointer :: newgrid
 INTEGER(ISZ) :: i,j,l,jmin,jmax,lmin,lmax
@@ -220,6 +225,10 @@ REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
   newgrid%ncycles = basegrid%ncycles
   newgrid%ncmax = basegrid%ncmax
   newgrid%npmin = 1
+  newgrid%guard_min_r = guard_min_r
+  newgrid%guard_max_r = guard_max_r
+  newgrid%guard_min_z = guard_min_z
+  newgrid%guard_max_z = guard_max_z
   IF(associated(grid%down)) then
     IF(associated(grid%down%next)) then
       grid%down%next%prev => newgrid
@@ -235,37 +244,38 @@ REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
 
   call mk_grids_ptr()
 
-  rminguard=newgrid%rmin+grid_nguard*newgrid%up%dr
-  rmaxguard=newgrid%rmax-grid_nguard*newgrid%up%dr
-  zminguard=newgrid%zmin+grid_nguard*newgrid%up%dz
-  zmaxguard=newgrid%zmax-grid_nguard*newgrid%up%dz
+  rminguard=newgrid%rmin+guard_min_r*newgrid%up%dr
+  rmaxguard=newgrid%rmax-guard_max_r*newgrid%up%dr
+  zminguard=newgrid%zmin+guard_min_z*newgrid%up%dz
+  zmaxguard=newgrid%zmax-guard_max_z*newgrid%up%dz
 
   jmin = (rminguard-newgrid%up%rmin)/newgrid%up%dr
   jmax = (rmaxguard-newgrid%up%rmin)/newgrid%up%dr
   lmin = (zminguard-newgrid%up%zmin)/newgrid%up%dz
   lmax = (zmaxguard-newgrid%up%zmin)/newgrid%up%dz
 
-  IF(lmin*dz+zmin<zminguard) lmin=lmin+1
-  IF(lmax*dz+zmin>zmaxguard) lmax=lmax-1
-  IF(jmin*dz+rmin<rminguard) jmin=jmin+1
-  IF(jmax*dr+rmin>rmaxguard) jmax=jmax-1
+  IF(lmin*newgrid%up%dz+newgrid%up%zmin<zminguard) lmin=lmin+1
+  IF(lmax*newgrid%up%dz+newgrid%up%zmin>zmaxguard) lmax=lmax-1
+  IF(jmin*newgrid%up%dr+newgrid%up%rmin<rminguard) jmin=jmin+1
+  IF(jmax*newgrid%up%dr+newgrid%up%rmin>rmaxguard) jmax=jmax-1
 
-  IF(lmin*dz+zmin<zminguard) then
+  IF(lmin*newgrid%up%dz+newgrid%up%zmin<zminguard) then
     WRITE(0,*) 'Error in add_grid:lmin*dz+zmin<zminguard'
     stop
   END if
-  IF(lmax*dz+zmin>zmaxguard) then
+  IF(lmax*newgrid%up%dz+newgrid%up%zmin>zmaxguard) then
     WRITE(0,*) 'Error in add_grid:lmax*dz+zmin>zmaxguard'
     stop
   END if
-  IF(jmin*dz+rmin<rminguard) then
+  IF(jmin*newgrid%up%dr+newgrid%up%rmin<rminguard) then
     WRITE(0,*) 'Error in add_grid:jmin*dr+rmin<rminguard'
     stop
   END if
-  IF(jmax*dr+rmin>rmaxguard) then
+  IF(jmax*newgrid%up%dr+newgrid%up%rmin>rmaxguard) then
     WRITE(0,*) 'Error in add_grid:jmax*dr+rmin>rmaxguard'
     stop
   END if
+  newgrid%up%loc_part(jmin+1:jmax+1,lmin+1:lmax+1)=newgrid%id
 
   IF(ABS(newgrid%rmax-grid%rmax)<0.1*grid%dr) then
     newgrid%ixrbnd = grid%ixrbnd
@@ -282,8 +292,6 @@ REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
   else
     newgrid%izrbnd = dirichlet
   END if
-
-  newgrid%up%loc_part(jmin+1:jmax+1,lmin+1:lmax+1)=newgrid%id
 
   newgrid%invdr = 1._8/dr
   newgrid%invdz = 1._8/dz
@@ -334,24 +342,38 @@ TYPE(grdptr), pointer :: grid
 INTEGER(ISZ) :: j,l,jmin,jmax,lmin,lmax
 REAL(8) :: rminguard, rmaxguard, zminguard, zmaxguard, rpos, zpos
 
-  rminguard=grid%rmin+grid_nguard*grid%up%dr
-  rmaxguard=grid%rmax-grid_nguard*grid%up%dr
-  zminguard=grid%zmin+grid_nguard*grid%up%dz
-  zmaxguard=grid%zmax-grid_nguard*grid%up%dz
+  rminguard=grid%rmin+grid%guard_min_r*grid%up%dr
+  rmaxguard=grid%rmax-grid%guard_max_r*grid%up%dr
+  zminguard=grid%zmin+grid%guard_min_z*grid%up%dz
+  zmaxguard=grid%zmax-grid%guard_max_z*grid%up%dz
+
   jmin = (rminguard-grid%up%rmin)/grid%up%dr
   jmax = (rmaxguard-grid%up%rmin)/grid%up%dr
   lmin = (zminguard-grid%up%zmin)/grid%up%dz
   lmax = (zmaxguard-grid%up%zmin)/grid%up%dz
 
-  do l = lmin, lmax
-    zpos = l*grid%dz+grid%zmin
-    IF(zpos<zminguard.or.zpos>zmaxguard) cycle
-    do j = jmin, jmax
-      rpos = j*grid%dr+grid%rmin
-      IF(rpos<rminguard.or.rpos>rmaxguard) cycle
-      grid%up%loc_part=grid%up%id
-    end do
-  end do
+  IF(lmin*grid%up%dz+grid%up%zmin<zminguard) lmin=lmin+1
+  IF(lmax*grid%up%dz+grid%up%zmin>zmaxguard) lmax=lmax-1
+  IF(jmin*grid%up%dr+grid%up%rmin<rminguard) jmin=jmin+1
+  IF(jmax*grid%up%dr+grid%up%rmin>rmaxguard) jmax=jmax-1
+
+  IF(lmin*grid%up%dz+grid%up%zmin<zminguard) then
+    WRITE(0,*) 'Error in add_grid:lmin*dz+zmin<zminguard'
+    stop
+  END if
+  IF(lmax*grid%up%dz+grid%up%zmin>zmaxguard) then
+    WRITE(0,*) 'Error in add_grid:lmax*dz+zmin>zmaxguard'
+    stop
+  END if
+  IF(jmin*grid%up%dr+grid%up%rmin<rminguard) then
+    WRITE(0,*) 'Error in add_grid:jmin*dr+rmin<rminguard'
+    stop
+  END if
+  IF(jmax*grid%up%dr+grid%up%rmin>rmaxguard) then
+    WRITE(0,*) 'Error in add_grid:jmax*dr+rmin>rmaxguard'
+    stop
+  END if
+  grid%up%loc_part(jmin+1:jmax+1,lmin+1:lmax+1)=grid%up%id
 
   level_del_grid=level_del_grid+1
   IF(associated(grid%next)) then
@@ -2502,7 +2524,7 @@ INTEGER(ISZ) :: npreinit, npostinit
   DO WHILE(nexttime < prevtime)
     prevparam = grid%mgparam
     prevtime = nexttime
-    nexttime = _find_mgparam(grid)
+    nexttime = ffind_mgparam(grid)
     WRITE(0,*) "Field solve time = ",nexttime
     write(0,*) "mgparam = ",grid%mgparam
     write(0,*) "npre    = ",grid%npre
@@ -2570,9 +2592,9 @@ REAL(8), EXTERNAL :: wtime
   return
 END function time_field_solve
 
-function _find_mgparam(grid)
+function ffind_mgparam(grid)
 implicit none
-REAL(8) :: _find_mgparam
+REAL(8) :: ffind_mgparam
 TYPE(grdptr):: grid
 
 INTEGER(ISZ) :: icount, mgiters_prev, up_old, s
@@ -2593,7 +2615,7 @@ REAL(8), EXTERNAL :: wranf
   mgparam_init=grid%mgparam
  
 ! --- do initial field solve
-  _find_mgparam = time_field_solve(grid)
+  ffind_mgparam = time_field_solve(grid)
 
 ! --- set initail values for 'previous' quantities
   mgparam_prev = grid%mgparam
@@ -2618,7 +2640,7 @@ REAL(8), EXTERNAL :: wranf
 
 !   --- do field solve (which prints out number of field solve iterations)
     up_old = grid%npre
-    _find_mgparam = time_field_solve(grid)
+    ffind_mgparam = time_field_solve(grid)
 
 !   --- If field solve took more iterations than previous field solve, change
 !   --- direction of the increment and reduce its size.  Reducing its size
@@ -2652,10 +2674,10 @@ REAL(8), EXTERNAL :: wranf
 !   --- increment iteration counter
     icount = icount + 1
 
-    if(grid%npre <> up_old) then
-      write(0,*) "resetting _find_mgparam"
+    if(grid%npre /= up_old) then
+      write(0,*) "resetting ffind_mgparam"
       icount=0
-      _find_mgparam = time_field_solve(grid)
+      ffind_mgparam = time_field_solve(grid)
       mgparam_prev = mgparam_init
       mgiters_prev = nb_iters
       sincr = .05
@@ -2673,7 +2695,7 @@ REAL(8), EXTERNAL :: wranf
   END if
 
   return
-END function _find_mgparam
+END function ffind_mgparam
 
 function findnrecursmin(grid,prevtime)
 !Optimize nrecurs_min, minimizing the fieldsolve time.
@@ -3348,11 +3370,10 @@ REAL(8) :: rpos, zpos, ddr, ddz, oddr, oddz
 INTEGER(ISZ) :: i, j, jn, ln, jnp, lnp, grid_id
 LOGICAL(ISZ) :: ingrid
 
-  grids => basegrid
   ! make charge deposition using CIC weighting
   do i = 1, np
     IF(zp(i)<grids%zmin) cycle
-    grids => grids_ptr(1)%grid
+    grids => basegrid
     ingrid=.false.
     rpos = SQRT(xp(i)*xp(i)+yp(i)*yp(i))*grids%invdr
     zpos = (zp(i)-grids%zmin)*grids%invdz
@@ -3911,13 +3932,13 @@ REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
  return
 END subroutine init_base
 
-subroutine add_subgrid(id,nr,nz,dr,dz,rmin,zmin)
+subroutine add_subgrid(id,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z)
 USE multigridrz
 implicit none
-INTEGER(ISZ), INTENT(IN) :: id,nr,nz
+INTEGER(ISZ), INTENT(IN) :: id,nr,nz,guard_min_r,guard_max_r,guard_min_z,guard_max_z
 REAL(8), INTENT(IN) :: dr,dz,rmin,zmin
 
-  call add_grid(grids_ptr(id)%grid,nr,nz,dr,dz,rmin,zmin)
+  call add_grid(grids_ptr(id)%grid,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z)
 
 return
 END subroutine add_subgrid
