@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.105 2003/07/09 18:51:10 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.106 2003/08/04 19:49:17 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1247,6 +1247,8 @@ With button 1 pushed, the horizontal movement changes the z angle, and
 vertical the y angle. With button 2 pressed, horizontal changes the x angle.
 When finished, press return in the python window.
   - scale=4.: multiplicative factor to convert mouse movement to angle change
+Returns the final values of the parameters that can be passed to pl3d.rot3
+to reproduce the same orientation.
   """
   pl3d.gnomon(gnomon)
   [xmin3min,xmax3max,ymin3min,ymax3max,sys] = limits()
@@ -1267,6 +1269,7 @@ When finished, press return in the python window.
     ymax3max = max(ymax3max,ymax3)
     limits(xmin3min,xmax3max,ymin3min,ymax3max)
   pl3d.gnomon(gnomon)
+  print xa,ya,za
 
 def _viewsurfacetest(scale=4.,gnomon=1):
   """
