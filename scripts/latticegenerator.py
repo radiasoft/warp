@@ -1,12 +1,11 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.7 2003/01/24 18:03:55 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.8 2003/08/19 16:37:51 dave Exp $"
 ######################################################################
 # Lattice builder
 # 
 ######################################################################
-uselattice = 0
 
 class LatticeGenerator:
   """Generates a lattice
@@ -41,10 +40,11 @@ class LatticeGenerator:
                nhlpswithoutgaps=0,
                loadandfire=1,firetime=0.,risetime=None,
                unfireandunload=1,stoptime=1.e36,falltime=None,
-               accel_gradient=0.,firstquadsign=+1,lattice=None,
+               accel_gradient=0.,firstquadsign=+1,
+               lattice=None,uselattice=0,
                nhist=1,zhist=1,lverbose=1,
                maxgapgradient=1.e6,luservgap=None,
-               straight=0.8,icharge=4,lfixed=false):
+               straight=0.8,icharge=4,lfixed=false,setears=1):
     s.ion_mass = ion_mass
     s.beam_duration = beam_duration
     s.ekinmid = ekinmid
@@ -64,6 +64,8 @@ class LatticeGenerator:
     s.accel_gradient = accel_gradient
     s.firstquadsign = firstquadsign
     s.lattice = lattice
+    s.uselattice = uselattice
+    if s.lattice is not None: s.uselattice = 1
     s.nhist = nhist
     s.zhist = zhist
     s.lverbose = lverbose
@@ -72,12 +74,13 @@ class LatticeGenerator:
     s.straight = straight
     s.icharge = icharge
     s.lfixed = lfixed
+    s.setears = setears
     # --- element counters
     s.iquad = 0
     s.iaccl = 0
     s.idrft = 0
     # --- Setup element attributes
-    if not uselattice:
+    if not s.uselattice:
       s.latlast = 0.
       s.drftzs = []
       s.drftze = []
@@ -205,7 +208,7 @@ class LatticeGenerator:
   # quad.
   def adddrft(s,l):
     s.idrft = s.idrft + 1
-    if uselattice:
+    if s.uselattice:
       if s.lattice:
         s.lattice = s.lattice + Drft(l=l,ap=s.aperture(s))
       else:
@@ -229,7 +232,7 @@ class LatticeGenerator:
     else:
       quadsign = -(1-2*(s.iquad%2))*s.firstquadsign
       quad_stren = dedx*quadsign
-    if uselattice:
+    if s.uselattice:
       if s.lmagnetic(s):
         quad = Hele(l=s.occupancy(s)*hlp,nn=[2],vv=[0],am=[quad_stren],
                     ap=s.aperture(s))
@@ -256,7 +259,7 @@ class LatticeGenerator:
     accl_dt = (s.beamtime[-1] - s.beamtime[0])/s.ngappoints
     accl_ts = s.beamtime[0] - s.nendpoints*accl_dt
     s.geteears(accl_ts,accl_dt)
-    if uselattice:
+    if s.uselattice:
       s.accl = Accl(l=s.gap_len,dt=accl_dt,ts=accl_ts,et=gapez+s.eears,
                     ap=s.aperture(s))
       s.lattice = s.lattice + s.accl
@@ -412,9 +415,10 @@ class LatticeGenerator:
   # --- Do some fine work
   def finalize(s):
     # --- Install the lattice into the WARP database (the Lattice group)
-    if uselattice:
-      madtowarp(s.lattice)
-    else:
+   #if s.uselattice:
+   #  madtowarp(s.lattice)
+   #else:
+    if not s.uselattice:
       top.ndrft = len(s.drftzs) - 1
       top.nhele = len(s.helezs) - 1
       top.nhmlt = 1
@@ -597,19 +601,28 @@ class LatticeGenerator:
     # --- This is needed since the user supplied subroutines cannot be
     # --- pickled properly.
     odict = s.__dict__.copy()
-    del odict['endcondition']
-    del odict['midpulsegapvoltage']
-    del odict['tilt']
-    del odict['occupancy']
-    del odict['amean']
-    del odict['sigma']
-    del odict['aperture']
-    del odict['lmagnetic']
+    try: del odict['endcondition']
+    except: pass
+    try: del odict['midpulsegapvoltage']
+    except: pass
+    try: del odict['tilt']
+    except: pass
+    try: del odict['occupancy']
+    except: pass
+    try: del odict['amean']
+    except: pass
+    try: del odict['sigma']
+    except: pass
+    try: del odict['aperture']
+    except: pass
+    try: del odict['lmagnetic']
+    except: pass
     return odict
 
   ######################################################################
   # --- Routines to get the ear fields
   def earsinit(s):
+    if not s.setears: return
     # --- Allocate temporary arrays used by getezbeam
     cir.nittmp = s.nn+1
     gchange("CIRtmp")
@@ -631,6 +644,7 @@ class LatticeGenerator:
     s.charge[:] = s.charge*s.chargemid
 
   def geteears(s,accl_ts,accl_dt):
+    if not s.setears: return
     if s.icharge == -1:
       s.eears[:] = 0.
       return
