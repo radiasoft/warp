@@ -1,5 +1,5 @@
 from warp import *
-fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.2 2000/11/29 03:07:22 dave Exp $"
+fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.3 2001/04/23 21:19:59 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -10,7 +10,7 @@ def cot(x):
   return cos(x)/sin(x)
 
 def fringedquads(fringelen=4.5e-2,fringescale=0.5,nderivs=2,
-                 usequads=false,firstfringe=0,npoints=100,
+                 usequads=false,firstfringe=0,npoints=1000,
                  lclear=true,lscale=true,fringe=None):
   """
 Set up quadrupoles with fringes based on hard edged quadrupoles, either
@@ -23,7 +23,7 @@ essentially a linear falloff with rounded corners to match derivatives.
                 which includes first axial component and the pseudooctopole
   - usequads = false, when true, forces the use of quad elements
   - firstfringe = 0, first quad which should have fringes added
-  - npoints = 100, total number of points in axial profile
+  - npoints = 1000, total number of points in axial profile
   - lclear = true, forces the hard edged element to be zerod out
   - lscale = true, scales field so that the integral of the quad strength
                   over the element is the same as the hard edged element.
