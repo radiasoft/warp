@@ -2,11 +2,12 @@ ARCH = LINUX
 MACHINE = LINUX
 HOME = /home/dave
 PYVERS = 2.1
-PYTHON = /home/dave/Python-$(PYVERS)
+PYTHON = /usr/local
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
 PROF = #-Mprof=lines
 OPT = -O3 -xK -tpp6 -ip -unroll -prefetch
+#OPT = -g
 POPT = -O0
 PYMODULEOPT = -O1
 F90FREE  = ifc -132 -r8 -DIFC -FR -fpp -implicitnone -C90 -Zp8 $(ARGS)
@@ -37,7 +38,9 @@ include Makefile.dependencies
 
 build_static: $(MODULEOBJECTS) $(WARPOBJECTS) config.o $(RNGOBJ)
 	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) \
-	config.o $(RNGOBJ) $(PYTHON)/lib/python2.1/site-packages/*/*.so \
+	config.o $(RNGOBJ) \
+	$(PYTHON)/lib/python2.1/site-packages/*/*.so \
+	$(PYTHON)/lib/python2.1/site-packages/*/*/*.so \
 	$(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) $(EXPORT)
 
 warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
