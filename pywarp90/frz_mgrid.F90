@@ -1,4 +1,4 @@
-!     Last change:  JLV  13 Mar 2003    2:00 pm
+!     Last change:  JLV  16 May 2003    8:36 am
 #include "top.h"
 
 module multigrid_common
@@ -5042,41 +5042,35 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
   phi0 = v_max
   phiref = inj_phi_eq
 
-  IF(inj_nz==1) then
-    vinject = 0.
-  else
-    vinject = v_max
-    nps_tmp = nps
-    nps = 0
-  END if
+  vinject = v_max
+  nps_tmp = nps
+  nps = 0
   call getinj_phi()
-  IF(inj_nz/=1) then
-    nps = nps_tmp
-  END if
+  nps = nps_tmp
   select case (calc_a)
     case (center)
-      phiv = vinject(1)-inj_phi(0,0,1)
+      phiv = inj_phi(0,0,1)
       do i = 1, ngrids
         grids_ptr(i)%grid%phi=0.
       END do
       call solve_mgridrz(basegrid,accuracy)
       vinject=0.
       call getinj_phi()
-      phirho = -inj_phi(0,0,1)
+      phirho = inj_phi(0,0,1)
 !      IF(inject==3) then
 !        phirho = phirho + inj_dz*abs(inj_d(1))*0.5*inj_rho(0,0,1)*inj_dz*inveps0
 !        phiref = phiref - inj_dz*abs(inj_d(1))*0.5*inj_rho_eq(0,0,1)*inj_dz*inveps0
 !      END if
     case (average_source)
       max_j = 1+INT(ainject(1)/inj_dx)
-      phiv = vinject(1)-SUM(inj_phi(0:max_j-1,0,1))/max_j
+      phiv = SUM(inj_phi(0:max_j-1,0,1))/max_j
       do i = 1, ngrids
         grids_ptr(i)%grid%phi=0.
       END do
       call solve_mgridrz(basegrid,accuracy)
       vinject=0.
       call getinj_phi()
-      phirho = -SUM(inj_phi(0:max_j-1,0,1))/max_j
+      phirho = SUM(inj_phi(0:max_j-1,0,1))/max_j
     case (weighted_average_source)
       max_j = 1+INT(ainject(1)/inj_dx)
       ALLOCATE(weights(max_j))
@@ -5085,29 +5079,29 @@ INTEGER(ISZ), parameter :: center=1,average_source=2,weighted_average_source=3,b
         weights(j) = 2.*pi*(j-1)*inj_dx**2
       end do
       wtot = SUM(weights(1:max_j))
-      phiv = vinject(1)-SUM(weights(1:max_j)*inj_phi(0:max_j-1,0,1))/wtot
+      phiv = SUM(weights(1:max_j)*inj_phi(0:max_j-1,0,1))/wtot
       do i = 1, ngrids
         grids_ptr(i)%grid%phi=0.
       END do
       call solve_mgridrz(basegrid,accuracy)
       vinject=0.
       call getinj_phi()
-      phirho = -SUM(weights(1:max_j)*inj_phi(0:max_j-1,0,1))/wtot
+      phirho = SUM(weights(1:max_j)*inj_phi(0:max_j-1,0,1))/wtot
       DEALLOCATE(weights)
     case (border)
       max_j = 1+INT(ainject(1)/inj_dx)
-      phiv = vinject(1)-inj_phi(max_j-2,0,1)
+      phiv = inj_phi(max_j-2,0,1)
       do i = 1, ngrids
         grids_ptr(i)%grid%phi=0.
       END do
       call solve_mgridrz(basegrid,accuracy)
       vinject=0.
       call getinj_phi()
-      phirho = -inj_phi(max_j-2,0,1)
+      phirho = inj_phi(max_j-2,0,1)
     case default
   end select
 
-  afact = (phiref+phirho)/(phi0-phiv)
+  afact = (phiref-phirho)/phiv
 
 !  basegrid%phi(1:nr0+1,:) = basegrid%phi(1:nr0+1,:) + a*phi_init(:,1,:)
   do i = 1, ngrids
