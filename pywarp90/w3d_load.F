@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.10 $, $Date: 2004/12/16 17:32:20 $
+c@(#) File w3d_load.F, version $Revision: 1.11 $, $Date: 2004/12/17 15:11:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -47,9 +47,12 @@ c     --- waterbag equilibrium
       real(kind=8):: sc_param_wb, k1re1, k1re2, rho
       real(kind=8):: zbrent, bessi0, bessi
       external wb_constr
-      common /wbagconstrcom/ sc_param_wb 
+      common /wbconstrcom/ sc_param_wb 
 c     --- thermal equilibrium 
-      real(kind=8):: sc_param_te
+      real(kind=8):: sc_param_te, delta_est, delta_1, delta_2
+      real(kind=8):: te_delta_est 
+      external te_constr
+      common /teconstrcom/ sc_param_te 
 c     --- distribution loading 
       real(kind=8):: hl_sumrdist
 
@@ -138,7 +141,16 @@ c       --- calculate simentionless space charge parameter
 c       --- calculate needed value of dimensionless equilibrium parameter 
 c       --- delta for a consistent rms equivalent equilbrium 
 
-c        delta = .... 
+        delta_est = te_delta_est(sc_param_te)
+        delta_1 = delta_est*10.
+        delta_2 = delta_est/10.
+
+c        write(0,*) "sc_param_te =", sc_param_te 
+c        write(0,*) "delta_est = ", delta_est
+c        write(0,*) "delta_1 = ", delta_1 
+c        write(0,*) "delta_2 = ", delta_2  
+ 
+        delta = zbrent(te_constr,delta_1,delta_2,1.e-10,1000)
 
 c       --- calculate normalized density profile based on delta 
 
@@ -149,10 +161,21 @@ c       --- calculate paramters based on value of delta calculated
      &                   ( sqrt(1.+sc_param_te)-1. ) 
      &                 )/(4.*k_beta0) 
         tscaled  = q_perv*( sqrt(1.+sc_param_te)- 1. )/8.  
+        den0     = aion*amu*gammabar**3*(vbeam*k_beta0/(zion*echarge))**2/
+     &             (2.*Pi*(1.+delta))
 
 c       --- set the hl_rdist variable used to load particles based on 
 c       --- the thermal equilibrium density profile calculated using 
 c       --- interpolation and scaling
+c           *** For now just use same grid ... fix this later.  Will 
+c               presently only work when hl_nrmax = te_nrho or there 
+c               will be a bomb.  Ultimately, it is derireable to use 
+c               two grids to allow a range of numerical approx ****
+
+        hl_rmax = glambdad*te_rhomax
+        do ir = 0,hl_nrdist
+          hl_rdist(ir) = den0*te_den(1,ir)
+        enddo 
 
 c     --- undefined option trap 
       else 
@@ -204,12 +227,52 @@ c
 
       real(kind=8):: bessi0,bessi
       real(kind=8):: sc_param_wb
-      common /wbagconstrcom/ sc_param_wb 
+      common /wbconstrcom/ sc_param_wb 
 
       wb_constr = sc_param_wb - bessi0(k1re)**2/bessi(2,k1re)**2 + 
      &  4./(k1re**2)*( 2.*bessi(2,k1re)/bessi0(k1re) +
      &                 k1re*bessi0(k1re)*bessi(3,k1re)/(bessi(2,k1re))**2
      &               )
+
+      return 
+      end 
+c=============================================================================
+      real(kind=8) function te_constr(delta)
+
+      use w3dloadTE  
+      real(kind=8):: delta
+
+c te_constr returns a scaled constraint equation assoicated with 
+c a matched thermal equilbrium distribution function in a continuous 
+c focusing channel.  
+c
+c    delta = dimensionless parameter descibing the scaled density 
+c            profile of a thermal equilibrium beam. 
+
+      real(kind=8):: sc_param_te 
+      common /teconstrcom/ sc_param_te
+
+c     Calculate normalized thermal equilibrium density on a radial rho grid 
+c     and the integral of rho*den(rho) from rho = 0 to rho = infinity (approx)
+      call te_radial_den(delta)
+
+c     Calculate the constraint equation.   An rms equivalent consistent value 
+c     of delta occurs when te_constr = 0.   
+      te_constr = (sqrt( 1.+sc_param_te ) - 1.)*te_rhodenint - 8.   
+
+      return 
+      end 
+c=============================================================================
+      real(kind=8) function te_constr_log(logdelta)
+
+      real(kind=8):: logdelta
+
+c te_constr_log filters te_constr(delta) to pass the argument in 
+c terms of the log of delta
+
+      real(kind=8):: te_constr
+
+      te_constr_log = te_constr(exp(logdelta))
 
       return 
       end 
@@ -413,6 +476,38 @@ c       --- *** temporary place holder to be fixed ***
       return 
       end 
 c=============================================================================
+      real(kind=8) function te_delta_est(sc_param)
+
+      use Constant
+      real(kind=8):: sc_param
+
+c te_delta_est estimates the value of dimensionless delta for thermal 
+c equilibrium for rms equivlancy.  It is based on analytical formulas.  
+
+      real(kind=8):: delta_trans, sc_param_trans, rho_edge
+
+      delta_trans = 0.5 
+      sc_param_trans = (5. + 4.*delta_trans)**2 - 1. 
+
+      if (sc_param .gt. sc_param_trans) then  
+c       --- weak space charge estimate based on applied field only 
+
+        te_delta_est = (sqrt(1.+4.*sc_param) - 1.)/4. - 1. 
+
+      else 
+
+c       --- intermediate to strong space-charge estimate based work 
+c       --- by Startsev and Lund 
+c       --- *** temporary place holder to be fixed ***
+
+        rho_edge = 4./sqrt( sqrt( 1.+sc_param ) - 1. ) 
+        te_delta_est = exp( (1.2*log(Pi) - rho_edge)/1.2 )  
+
+      endif 
+
+      return 
+      end 
+c=============================================================================
       subroutine te_radial_den(delta)
 
       use Constant
@@ -482,12 +577,22 @@ c     --- transition value of rho
       te_rhotrans = drho*float(ir_trans)
 
 c     Calculate solution to the right of the transition using 
-c     Runge-Kutta numerical integration on the rho grid 
+c     4th order Runge-Kutta numerical integration with uniform step size 
+c     on the rho grid 
 
       xdelta = delta 
       ir_steps = te_nrho-ir_trans
       call rk_adv(te_den(1:2,ir_trans:te_nrho),
      &            2,ir_steps,te_rhotrans,te_rhomax,te_den_derivs)
+
+
+c     Calculate integral of rho*den(rho) on the rho grid from rho = 0 
+c     to rho = te_rho_max using the trapezoidal rule. 
+      te_rhodenint = 0.5*te_rho(te_nrho)*te_den(1,te_nrho)
+      do ir = 1,te_nrho-1
+        te_rhodenint = te_rhodenint + te_rho(ir)*te_den(1,ir)
+      enddo 
+      te_rhodenint = te_rhodenint*drho
 
       return 
       end 
@@ -1213,4 +1318,48 @@ c
       
       return
       end
+c=============================================================================
+      real(kind=8) function te_constr_test(sc_param,delta)
+
+      use w3dloadTE  
+      real(kind=8):: sc_param, delta
+
+c Test interface to te_constr to verify that it is ok
+
+      real(kind=8):: sc_param_te 
+      common /teconstrcom/ sc_param_te
+
+      sc_param_te = sc_param 
+
+c     Calculate normalized thermal equilibrium density on a radial rho grid 
+      call te_radial_den(delta)
+
+c     Calculate the constraint equation.   An rms equivalent consistent value 
+c     of delta occurs when te_constr = 0.   
+      te_constr_test = ( sqrt( 1.+sc_param_te ) - 1.)*te_rhodenint - 8.   
+
+      return 
+      end 
+c=============================================================================
+      real(kind=8) function te_delta_root_test(sc_param,delta_1,delta_2,tol)
+
+      use w3dloadTE  
+      real(kind=8):: sc_param, delta_1, delta_2, tol 
+      real(kind=8):: zbrent
+      external te_constr
+
+c Test root finding 
+
+      real(kind=8):: sc_param_te 
+      common /teconstrcom/ sc_param_te
+
+      sc_param_te = sc_param 
+
+c       --- calculate needed value of dimensionless equilibrium parameter 
+c       --- delta for a consistent rms equivalent equilbrium 
+
+      te_delta_root_test = zbrent(te_constr,delta_1,delta_2,tol,1000)
+
+      return 
+      end 
 c=============================================================================
