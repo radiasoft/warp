@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.15 2004/04/26 21:32:28 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.16 2004/05/03 20:47:21 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -27,13 +27,26 @@ Class for creating particle scraper for conductors
                    pidlost[:,-4].
                    Note that the condid where the particle is lost is also
                    saved in pidlost[:,-1].
+ - mglevel=0: Coarsening level for index grid which is used to determine
+              which conductors particles are near. This grid is a full size,
+              3d (or 2d) array and can require a not insignificant amount of
+              time to compute. If it is expected that few particles will be
+              lost, using a coarser grid can substantially reduce the memory
+              and time requirements for this grid. However, a coarser grid
+              will mean that more particles will be flagged as being near the
+              conductors, and the detailed check required for these particles
+              will be more expensive.  A trade off is required that can really
+              only be optimized empirically. A value of 0, 1, or 2 are
+              probably optimal.
  - install=1: flag whether or not to install the scraper so that the scraping
               automatically happens every time step.
 After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
-  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,install=1): 
+  def __init__(self,conductors,lsavecondid=0,lsaveintercept=0,mglevel=0,
+                    install=1): 
+    self.mglevel = mglevel
     # --- Create grid
     self.grid = Grid()
     # --- register any initial conductors
@@ -56,11 +69,25 @@ conductors are an argument.
     # --- Install the call to scrape particles
     installparticlescraper(self.scrapeall)
 
+  def disable(self):
+    if isinstalledparticlescraper(self.scrapeall):
+      uninstallparticlescraper(self.scrapeall)
+
   def registerconductors(self,newconductors):
     if type(newconductors) is not ListType: newconductors = [newconductors]
     for c in newconductors:
       self.conductors.append(c)
-      self.grid.getisinside(c)
+      self.grid.getisinside(c,mglevel=self.mglevel)
+
+  def unregisterconductors(self,conductor,nooverlap=0):
+    self.conductors.remove(conductor)
+    if not nooverlap:
+      # --- This is horribly inefficient!!!
+      self.grid.resetgrid()
+      for c in self.conductors:
+        self.grid.getisinside(c,mglevel=self.mglevel)
+    else:
+      self.grid.removeisinside(conductor)
 
   def scrapeall(self,clear=0):
     for js in xrange(top.ns):
@@ -71,12 +98,7 @@ conductors are an argument.
         self.savecondid(js)
 
   def scrape(self,js):
-    dx = self.grid.dx
-    dy = self.grid.dy
-    dz = self.grid.dz
-    nx = self.grid.nx
-    ny = self.grid.ny
-    nz = self.grid.nz
+    dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
     xmin = self.grid.xmin
     xmax = self.grid.xmax
     ymin = self.grid.ymin
@@ -151,12 +173,7 @@ conductors are an argument.
 
     # --- Much of this code is duplicated from scrape above so if it changes,
     # --- this should change as well.
-    dx = self.grid.dx
-    dy = self.grid.dy
-    dz = self.grid.dz
-    nx = self.grid.nx
-    ny = self.grid.ny
-    nz = self.grid.nz
+    dx,dy,dz,nx,ny,nz,iz = self.grid.getmeshsize(self.mglevel)
     xmin = self.grid.xmin
     xmax = self.grid.xmax
     ymin = self.grid.ymin
