@@ -1,4 +1,5 @@
 from generateconductors import *
+from particlescraper import *
 
 class GeneratePlates:
   """
@@ -45,7 +46,8 @@ vplate,zplate
                     zplate = None,
                     rplate = None,
                     columnlen=None,
-                    reset=0):
+                    reset=0,
+                    lscraper = 0):
 
     assert vplate is not None,"vplate must be specified"
     assert zplate is not None,"zplate must be specified"
@@ -77,6 +79,7 @@ vplate,zplate
     self.vplate = vplate
     self.zplate = zplate
     self.rplate = rplate
+    self.lscraper = lscraper
 
     self.inittemps()
 
@@ -94,10 +97,9 @@ vplate,zplate
 
     self.createconductors()
 
-    #self.snx,self.sny,self.snz,self.distances = self.createparticlescraper()
-    #installbeforefs(self.scrapeparticles)
+    self.createparticlescraper()
 
-    #self.setupcurvaturemockup()
+    self.setupcurvaturemockup()
 
   def inittemps(s):
     # --- Preallocate the conductor arrays, making very rough guesses
@@ -356,74 +358,12 @@ vplate,zplate
 
   ########################################################
   def createparticlescraper(s):
-    # --- Create the particle scraper using griddedparticlescraper.
-    # --- Make particle scraper arrays only as big as plate
-    if w3d.l4symtry:
-      snx = int(s.platesize/w3d.dx) + 1
-      sny = int(s.platesize/w3d.dy) + 1
-      snz = w3d.nz
-    elif w3d.l2symtry:
-      snx = int(2*s.platesize/w3d.dx) + 1
-      sny = int(s.platesize/w3d.dy) + 1
-      snz = w3d.nz
-    else:
-      snx = int(2*s.platesize/w3d.dx)
-      sny = int(2*s.platesize/w3d.dy)
-      snz = w3d.nz
-    snx = min(snx,w3d.nx)
-    sny = min(sny,w3d.ny)
-    snz = min(snz,w3d.nz)
+    if s.lscraper:
+      s.scraper = ParticleScraper(conductors=s.plates)
 
-    # --- Set distances to the grid plates
-    distances = fzeros((snx+1,sny+1,snz+1),'d') + 2.*min(w3d.dx,w3d.dy,w3d.dz)
-    ddtemp = fzeros((snx+1,sny+1),'d')
-    # --- Get locations of the grid points
-    ix = reshape(fromfunction(lambda i,j:i,(snx+1,sny+1)),((snx+1)*(sny+1),))
-    iy = reshape(fromfunction(lambda i,j:j,(snx+1,sny+1)),((snx+1)*(sny+1),))
-    xxx = w3d.xmmin + ix*w3d.dx
-    yyy = w3d.ymmin + iy*w3d.dy
-    ddlist = zeros(len(ix),'d')
-    fuzz = 1.e-8
-    # --- Loop over plates
-    for ip in range(len(s.zplate)):
-      if w3d.zmmin < s.zplate[ip] - s.platewid and \
-                     s.zplate[ip] + s.platewid < w3d.zmmax:
-        # --- Get location of apertures.
-        xx = top.xinject + (s.zplate[ip]-top.zinject)*top.xpinject
-        yy = top.yinject + (s.zplate[ip]-top.zinject)*top.ypinject
-        # --- Get location of plate center
-        izl = int((s.zplate[ip] - s.platewid/2. - w3d.zmmin)/w3d.dz + fuzz)
-        izr = w3d.nz - int((w3d.zmmax - s.zplate[ip] - s.platewid/2.)/w3d.dz + fuzz)
-        # --- Loop over grid points
-        for ii in xrange(len(ix)):
-          dd = s.rplate[ip] - sqrt((xxx[ii] - xx)**2 + (yyy[ii] - yy)**2)
-          ddlist[ii] = max(dd)
-  
-        ddtemp[:,:] = 2.*min(w3d.dx,w3d.dy,w3d.dz)
-        for (iix,iiy,dd) in map(None,ix,iy,ddlist): ddtemp[iix,iiy] = dd
-        for iz in iota(izl,izr):
-          dd = max(s.zplate[ip] - s.platewid/2. - w3d.zmesh[iz],
-                   w3d.zmesh[iz] - s.zplate[ip] - s.platewid/2.)
-          if 1.-fuzz > dd > fuzz:
-            distances[:,:,iz] = maximum(ddtemp,dd)
-          elif dd < fuzz:
-            distances[:,:,iz] = where(greater(ddtemp,-w3d.dx),ddtemp,dd)
-    return (snx,sny,snz,distances)
-
-  def plotparticlescraper(s,runlen):
-    gg = gatherarray(transpose(s.distances[:,0,:]))
-    ppgeneric(grid=gg,contours=10,filled=1,
-              xmin=0.,ymin=0.,xmax=runlen,ymax=s.snx*w3d.dx)
-    pfzx()
-
-  def scrapeparticles(s):
-    # --- Create the particle scraper and install it
-    for js in xrange(top.ns):
-      griddedparticlescraper(js+1,s.distances,s.snx,s.sny,s.snz,
-                             w3d.dx,w3d.dy,w3d.dz,w3d.xmmin,w3d.ymmin,w3d.zmmin,
-                             top.zbeam,w3d.l2symtry,w3d.l4symtry)
-
+  ########################################################
   def setupcurvaturemockup(s):
+    if not s.lcurvaturemockup: return
     # --- Add a uniform focusing element to model the transverse focusing the
     # --- would occur with the correctly spherical plates.
     if s.lcurvaturemockup and s.ap0full != 0.:
