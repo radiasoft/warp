@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.23 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -3647,10 +3647,10 @@ c       --- conductor or within the max radius.
 
           rmin = srfrv_f(zzz,rminofz,1,0)
           rmax = srfrv_f(zzz,rmaxofz,2,0)
-          rminlower = srfrv_f(zlower,rminofz,1,0)
-          rminhigher = srfrv_f(zhigher,rminofz,2,0)
-          rmaxlower = srfrv_f(zlower,rmaxofz,1,0)
-          rmaxhigher = srfrv_f(zhigher,rmaxofz,2,0)
+          rminlower = srfrv_f(zlower,rminofz,1,-1)
+          rminhigher = srfrv_f(zhigher,rminofz,1,+1)
+          rmaxlower = srfrv_f(zlower,rmaxofz,2,-1)
+          rmaxhigher = srfrv_f(zhigher,rmaxofz,2,+1)
           rfuzz = max(rmin,rmax,rminlower,rminhigher,rmaxlower,rmaxhigher)*1.e-12
 
           if (zz < zmin .or. rr < min(rminlower,rmin) .or.
