@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.88 $, $Date: 2005/01/12 16:56:54 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.89 $, $Date: 2005/01/25 21:46:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -3209,11 +3209,11 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,cnx,cny,cnz
       integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
       integer(ISZ):: childlower(0:2),childupper(0:2)
-      integer(ISZ):: r
+      integer(ISZ):: r(0:2)
       integer(ISZ):: dopbounds,pbounds(0:5),rootdims(0:2)
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       real(kind=8):: childrho(0:cnx,0:cny,0:cnz)
-      real(kind=8):: weights(-r+1:r-1,-r+1:r-1,-r+1:r-1)
+      real(kind=8):: weights(-r(0)+1:r(0)-1,-r(1)+1:r(1)-1,-r(2)+1:r(2)-1)
       integer(ISZ):: owndomain(0:cnx,0:cny,0:cnz)
 
       integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
@@ -3225,25 +3225,25 @@ c=============================================================================
 
       do iz=l(2),u(2)
         iz0 = iz - fulllower(2)
-        iz1 = max(iz*r - r + 1,childlower(2))
-        iz2 = min(iz*r + r - 1,childupper(2))
-        iwz1 = iz1 - iz*r
-        iwz2 = iz2 - iz*r
-        icz = iz*r - childlower(2)
+        iz1 = max(iz*r(2) - r(2) + 1,childlower(2))
+        iz2 = min(iz*r(2) + r(2) - 1,childupper(2))
+        iwz1 = iz1 - iz*r(2)
+        iwz2 = iz2 - iz*r(2)
+        icz = iz*r(2) - childlower(2)
         do iy=l(1),u(1)
           iy0 = iy - fulllower(1)
-          iy1 = max(iy*r - r + 1,childlower(1))
-          iy2 = min(iy*r + r - 1,childupper(1))
-          iwy1 = iy1 - iy*r
-          iwy2 = iy2 - iy*r
-          icy = iy*r - childlower(1)
+          iy1 = max(iy*r(1) - r(1) + 1,childlower(1))
+          iy2 = min(iy*r(1) + r(1) - 1,childupper(1))
+          iwy1 = iy1 - iy*r(1)
+          iwy2 = iy2 - iy*r(1)
+          icy = iy*r(1) - childlower(1)
           do ix=l(0),u(0)
             ix0 = ix - fulllower(0)
-            ix1 = max(ix*r - r + 1,childlower(0))
-            ix2 = min(ix*r + r - 1,childupper(0))
-            iwx1 = ix1 - ix*r
-            iwx2 = ix2 - ix*r
-            icx = ix*r - childlower(0)
+            ix1 = max(ix*r(0) - r(0) + 1,childlower(0))
+            ix2 = min(ix*r(0) + r(0) - 1,childupper(0))
+            iwx1 = ix1 - ix*r(0)
+            iwx2 = ix2 - ix*r(0)
+            icx = ix*r(0) - childlower(0)
 
             do iwz=iwz1,iwz2
               do iwy=iwy1,iwy2
