@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.103 2003/05/27 22:54:07 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.104 2003/05/28 20:25:06 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2420,14 +2420,14 @@ be from none to all three.
   if top.efetch != 3 or w3d.nx_selfe == 0:
     # --- If not already using selfe, then allocate it and set it.
     # --- Note that this could be an unexpected expense for a user.
-    w3d.nx_selfe = w3d.nx
-    w3d.ny_selfe = w3d.ny
-    w3d.nz_selfe = w3d.nz
+    w3d.nx_selfe = w3d.nxp
+    w3d.ny_selfe = w3d.nyp
+    w3d.nz_selfe = w3d.nzp
     if w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom:
       w3d.ny_selfe = 0
     if w3d.solvergeom==w3d.Zgeom: w3d.nx_selfe = 0
     gchange("Efields3d")
-    getselfe3d(w3d.phip,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
+    getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfe,
                w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,w3d.dx,w3d.dy,w3d.dz,
                top.pboundxy)
   ic = ['x','y','z'].index(comp)
@@ -2449,11 +2449,11 @@ be from none to all three.
     elif ix is not None and iy is not None and iz is not None:
       eee = w3d.selfe[ic,ix,iy,iz]
   else:
-    iz1 = top.izfsslave[me] - top.izslave[me]
+    iz1 = top.izpslave[me] - top.izslave[me]
     if me < npes-1:
-      iz2 = top.izfsslave[me+1] - top.izslave[me]
+      iz2 = top.izpslave[me+1] - top.izslave[me]
     else:
-      iz2 = iz1 + top.nzfsslave[me] + 1
+      iz2 = iz1 + top.nzpslave[me] + 1
     eee = w3d.selfe[ic,:,:,iz1:iz2]
     if ix is not None and iy is None:
       eee = eee[ix,:,:]
@@ -2464,9 +2464,9 @@ be from none to all three.
     if iz is None:
       eee = transpose(gatherarray(transpose(eee)))
     else:
-      pe = convertizfstope(iz)
+      pe = convertizptope(iz)
       if pe is None: return None
-      if me == pe: eee = eee[...,iz-top.izfsslave[me]]
+      if me == pe: eee = eee[...,iz-top.izpslave[me]]
       else:        eee = zeros(shape(eee[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): eee = getarray(pe,eee,0)
     if bcast: eee = broadcast(eee)
