@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.5 $, $Date: 2001/09/05 23:25:31 $
+#@(#) File FRZ.V, version $Revision: 3.6 $, $Date: 2001/09/19 22:33:53 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,11 +10,11 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.5 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.6 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
-ibc                  character*8 /" "/ #  Boundary conditions-future use
+ibc                       integer /0/  #  Boundary conditions-future use
 lr                        real /0.7/   #  System length in r (arbitrary units)
 lz                        real /1.6/   #  System length in z (arbitrary units)
 eta                       real /0.0/   #  Resistivity of wall (ohm/m)

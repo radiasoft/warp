@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FRZ.M, version $Revision: 3.4 $, $Date: 2001/08/21 23:28:05 $
+c@(#) File FRZ.M, version $Revision: 3.5 $, $Date: 2001/09/19 22:33:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Written by Debbie Callahan
@@ -52,7 +52,7 @@ c  and the next few lines).
 
 c  Bring in the common block; allocate dynamic arrays ("group allot")
 
-      integer(ISZ):: nr2,nz2,ir,iz
+      integer(ISZ):: ir,iz
       real(kind=8):: dr,dz,sz,cz,fact1,fact2,rjph,rjmh,dr2j,dr20
       real(kind=8):: errmax,error,dz2,delsq,dt,a0,temp
       real(kind=8):: wtimeoff,wranf
@@ -78,8 +78,6 @@ c  Set constants: pi, grid spacing
 
       dr = lr / nr
       dz = lz / nz
-      nr2 = nr / 2
-      nz2 = nz / 2
 
 c **** Test on a known function ****
 c      phi(r,z) = (lr**4 - r**4)*(sin(6*pi*iz/nz)+cos(4.*pi*iz/nz))
@@ -125,7 +123,7 @@ c     --- No resistivity
 c     --- Call the solver
       call wtimeon
       call vpoisrz (0,b,b,kzsq,schrg,eta,phikold,taurc,attz,filt,
-     &              0.,0.,lr,lz,nr,nz,rfsmat,scrtch,scrtch2," ")
+     &              0.,0.,lr,lz,nr,nz,rfsmat,scrtch,scrtch2,0)
       time1 = wtimeoff()
 c     --- Subtract the analytic solution to get the error
       errmax = 1.0e-30
@@ -169,11 +167,11 @@ c         solve.
       call wtimeon
       call vpoisrz (1,b,b,kzsq,schrg,eta,phikold,taurc,attz,
      &              filt,0.,0.,
-     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2," ")
+     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2,0)
       time1 = wtimeoff()
       call vpoisrz (-1,b,b,kzsq,schrg,eta,phikold,taurc,attz,
      &              filt,0.,0.,
-     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2," ")
+     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2,0)
       time2 = wtimeoff()
 
 c     --- check using 5 point finite difference form of Poisson's equation
@@ -288,11 +286,11 @@ c         solve.
       call wtimeon
       call vpoisrz (1,b,b,kzsq,schrg,eta,phikold,taurc,attz,
      &              filt,dt,0.,
-     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2," ")
+     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2,0)
       time1 = wtimeoff()
       call vpoisrz (-1,b,b,kzsq,schrg,eta,phikold,taurc,attz,
      &              filt,dt,0.,
-     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2," ")
+     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2,0)
       time2 = wtimeoff()
 
 c  Adjust the potential at the wall
@@ -356,12 +354,12 @@ c  Test resistive wall with random data ...
       call wtimeon
       call vpoisrz (1,b,b,kzsq,schrg,eta,phikold,taurc,attz,
      &              filt,dt,0.,
-     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2," ")
+     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2,0)
       time1 = wtimeoff()
 
       call vpoisrz (-1,b,b,kzsq,schrg,eta,phikold,taurc,attz,
      &              filt,dt,0.,
-     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2," ")
+     &              lr,lz,nr,nz,rfsmat,scrtch,scrtch2,0)
       time2 = wtimeoff()
 
 c  Check the solution using a 5 point Poisson formula
@@ -544,7 +542,7 @@ c  Use of both a and ak simplifies subscripting of the Fourier coefficients:
 
       integer(ISZ):: ikz,ikr,iz,ir,nrlast,nz2,nr2
       real(kind=8):: klast,kdzb2,kdz
-      real(kind=8):: dr,dz,norm,dr2,pib2,twopi,fourpi
+      real(kind=8):: dr,dz,norm,dr2
 c  Error checking; so far, only possible error is non-power-of-2 nz
 
       if  ( nz .ne. 2**int( .5 + log(real(nz)) / log(2.) ) ) then
@@ -558,9 +556,6 @@ c  Set useful constants
       dr = lr / nr
       dr2 = dr*dr
       dz = lz / nz
-      pib2 = .5 * pi
-      twopi = 2. * pi
-      fourpi = 4. * pi
 
 c ----------------------------------------------------------------------------
 c  For poisson equation, kzsq(ikz) is a discrete
