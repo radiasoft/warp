@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.17 $, $Date: 2001/07/14 00:46:06 $
+c@(#) File DTOP.M, version $Revision: 3.18 $, $Date: 2001/08/02 23:56:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.17 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.18 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1487,9 +1487,9 @@ c
 c   npts = number of nested ellipses into which to divide phase space
 c
 c Output:
-c   fracbin(npts) = fraction beam within an ellipse with emittance emit(npts) 
-c                  nested with beam rms emittance ellipse
-c   emitbin(npts) = Emittance of particles within an ellipse
+c   fracbin(0:npts) = fraction beam within an ellipse with emittance emit(npts) 
+c                     nested with beam rms emittance ellipse
+c   emitbin(0:npts) = Emittance of particles within an ellipse
 c
 c   tx(np)    = transformed x  coordinates of the particles (mixed units) 
 c   txp(np)   = transformed x' coordinates of the particles (mixed units)

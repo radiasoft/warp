@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.17 $, $Date: 2001/07/14 00:46:06 $
+c@(#) File TOP.M, version $Revision: 3.18 $, $Date: 2001/08/02 23:56:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3872,7 +3872,7 @@ c       --- This method is faster for vectorized machines, primarily the J90.
 c       --- put particle moments into pmmnts array for total moments
         do ip=1,np
           vzi = 1./(uzp(ip)+SMALLPOS)
-          if (pp(0,ip) > 1.) then
+          if (pp(0,ip) > 0.) then
             pmmnts( 1,ip) = 1.
             pmmnts( 2,ip) = xp(ip)
             pmmnts( 3,ip) = yp(ip)
@@ -3914,15 +3914,15 @@ c       --- below are still faster in their present form.
 c         do im=1,NUMZMMNT
 c           zmmnts0(im) = zmmnts0(im) + pmmnts(ip,im)
 c         enddo
-          zmmnts0(01) = zmmnts0(01) + pmmnts(01,ip)
-          zmmnts0(02) = zmmnts0(02) + pmmnts(02,ip)
-          zmmnts0(03) = zmmnts0(03) + pmmnts(03,ip)
-          zmmnts0(04) = zmmnts0(04) + pmmnts(04,ip)
-          zmmnts0(05) = zmmnts0(05) + pmmnts(05,ip)
-          zmmnts0(06) = zmmnts0(06) + pmmnts(06,ip)
-          zmmnts0(07) = zmmnts0(07) + pmmnts(07,ip)
-          zmmnts0(08) = zmmnts0(08) + pmmnts(08,ip)
-          zmmnts0(09) = zmmnts0(09) + pmmnts(09,ip)
+          zmmnts0( 1) = zmmnts0( 1) + pmmnts( 1,ip)
+          zmmnts0( 2) = zmmnts0( 2) + pmmnts( 2,ip)
+          zmmnts0( 3) = zmmnts0( 3) + pmmnts( 3,ip)
+          zmmnts0( 4) = zmmnts0( 4) + pmmnts( 4,ip)
+          zmmnts0( 5) = zmmnts0( 5) + pmmnts( 5,ip)
+          zmmnts0( 6) = zmmnts0( 6) + pmmnts( 6,ip)
+          zmmnts0( 7) = zmmnts0( 7) + pmmnts( 7,ip)
+          zmmnts0( 8) = zmmnts0( 8) + pmmnts( 8,ip)
+          zmmnts0( 9) = zmmnts0( 9) + pmmnts( 9,ip)
           zmmnts0(10) = zmmnts0(10) + pmmnts(10,ip)
           zmmnts0(11) = zmmnts0(11) + pmmnts(11,ip)
           zmmnts0(12) = zmmnts0(12) + pmmnts(12,ip)
@@ -3951,14 +3951,14 @@ c       --- This method is faster for RISC and pentium machines.
 c       --- sum particle moments into total moments
         do ip=1,np
           vzi = 1./(uzp(ip)+SMALLPOS)
-          if (pp(0,ip) > 0) then
-            zmmnts0(01) = zmmnts0(01) + 1.
-            zmmnts0(02) = zmmnts0(02) + xp(ip)
-            zmmnts0(03) = zmmnts0(03) + yp(ip)
-            zmmnts0(04) = zmmnts0(04) + zp(ip)
-            zmmnts0(07) = zmmnts0(07) + uxp(ip)*gaminv(ip)
-            zmmnts0(08) = zmmnts0(08) + uyp(ip)*gaminv(ip)
-            zmmnts0(09) = zmmnts0(09) + uzp(ip)*gaminv(ip)
+          if (pp(0,ip) > 0.) then
+            zmmnts0( 1) = zmmnts0( 1) + 1.
+            zmmnts0( 2) = zmmnts0( 2) + xp(ip)
+            zmmnts0( 3) = zmmnts0( 3) + yp(ip)
+            zmmnts0( 4) = zmmnts0( 4) + zp(ip)
+            zmmnts0( 7) = zmmnts0( 7) + uxp(ip)*gaminv(ip)
+            zmmnts0( 8) = zmmnts0( 8) + uyp(ip)*gaminv(ip)
+            zmmnts0( 9) = zmmnts0( 9) + uzp(ip)*gaminv(ip)
             zmmnts0(10) = zmmnts0(10) + xp(ip)*yp(ip)
             zmmnts0(12) = zmmnts0(12) + xp(ip)**2
             zmmnts0(13) = zmmnts0(13) + yp(ip)**2
@@ -3971,8 +3971,8 @@ c       --- sum particle moments into total moments
             zmmnts0(26) = zmmnts0(26) + yp(ip)*uzp(ip)*gaminv(ip)
             zmmnts0(27) = zmmnts0(27) + uxp(ip)*uzp(ip)*gaminv(ip)**2
             zmmnts0(28) = zmmnts0(28) + uyp(ip)*uzp(ip)*gaminv(ip)**2
-            zmmnts0(05) = zmmnts0(05) + uxp(ip)*vzi
-            zmmnts0(06) = zmmnts0(06) + uyp(ip)*vzi
+            zmmnts0( 5) = zmmnts0( 5) + uxp(ip)*vzi
+            zmmnts0( 6) = zmmnts0( 6) + uyp(ip)*vzi
             zmmnts0(11) = zmmnts0(11) + uxp(ip)*uyp(ip)*vzi**2
             zmmnts0(15) = zmmnts0(15) + (uxp(ip)*vzi)**2
             zmmnts0(16) = zmmnts0(16) + (uyp(ip)*vzi)**2
