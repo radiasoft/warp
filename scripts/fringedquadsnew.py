@@ -1,5 +1,5 @@
 from warp import *
-fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.6 2002/08/19 22:17:21 dave Exp $"
+fringedquadsnew_version = "$Id: fringedquadsnew.py,v 1.7 2003/04/10 20:30:13 dave Exp $"
 # --- Set up quadrupoles with fringes.
 # --- Currently uses form proportional to tanh(cot(z)), which is essentially
 # --- a linear falloff with rounded corners to match derivatives.
@@ -10,7 +10,7 @@ def cot(x):
   return cos(x)/sin(x)
 
 def fringedquads(fringelen=4.5e-2,fringescale=0.5,nderivs=2,
-                 usequads=false,firstfringe=0,npoints=1000,
+                 usequads=false,mult=0,firstfringe=0,npoints=1000,
                  lclear=true,lscale=true,fringe=None):
   """
 Set up quadrupoles with fringes based on hard edged quadrupoles, either
@@ -22,6 +22,7 @@ essentially a linear falloff with rounded corners to match derivatives.
   - nderivs = 2, number of derivative terms to include, default value is 2,
                 which includes first axial component and the pseudooctopole
   - usequads = false, when true, forces the use of quad elements
+  - mult = 0: when using hele elements, index of fundemental multiple
   - firstfringe = 0, first quad which should have fringes added
   - npoints = 1000, total number of points in axial profile
   - lclear = true, forces the hard edged element to be zerod out
@@ -65,6 +66,8 @@ not, then the derivatives will be done with a finite difference of fringe.
     quadpa = top.quadpa[firstfringe:]
     quadpe = zeros(top.nquad+1-firstfringe,'d')
     quadpm = zeros(top.nquad+1-firstfringe,'d')
+    quadnn = zeros(top.nquad+1-firstfringe) + 2
+    quadvv = zeros(top.nquad+1-firstfringe)
   elif top.heles:
     heles = true
     quadzs = []
@@ -82,25 +85,26 @@ not, then the derivatives will be done with a finite difference of fringe.
     quadpa = []
     quadpe = []
     quadpm = []
+    quadnn = []
+    quadvv = []
     for ih in xrange(firstfringe,top.nhele+1):
-      for im in xrange(top.nhmlt):
-        if top.hele_n[im,ih]==2 and top.hele_v[im,ih]==0:
-          quadzs.append(top.helezs[ih])
-          quadze.append(top.heleze[ih])
-          quadap.append(top.heleap[ih])
-          quadde.append(top.heleae[im,ih])
-          quaddb.append(top.heleam[im,ih])
-          quadox.append(top.heleox[ih])
-          quadoy.append(top.heleoy[ih])
-          quadrr.append(top.helerr[ih])
-          quadrl.append(top.helerl[ih])
-          quadgl.append(top.helegl[ih])
-          quadgp.append(top.helegp[ih])
-          quadpw.append(top.helepw[ih])
-          quadpa.append(top.helepa[ih])
-          quadpe.append(top.helepe[im,ih])
-          quadpm.append(top.helepm[im,ih])
-          break # --- Just to prevent overlapping elements.
+      quadzs.append(top.helezs[ih])
+      quadze.append(top.heleze[ih])
+      quadap.append(top.heleap[ih])
+      quadde.append(top.heleae[mult,ih])
+      quaddb.append(top.heleam[mult,ih])
+      quadox.append(top.heleox[ih])
+      quadoy.append(top.heleoy[ih])
+      quadrr.append(top.helerr[ih])
+      quadrl.append(top.helerl[ih])
+      quadgl.append(top.helegl[ih])
+      quadgp.append(top.helegp[ih])
+      quadpw.append(top.helepw[ih])
+      quadpa.append(top.helepa[ih])
+      quadpe.append(top.helepe[mult,ih])
+      quadpm.append(top.helepm[mult,ih])
+      quadnn.append(top.hele_n[mult,ih])
+      quadvv.append(top.hele_v[mult,ih])
     quadzs = array(quadzs)
     quadze = array(quadze)
     quadap = array(quadap)
@@ -116,6 +120,8 @@ not, then the derivatives will be done with a finite difference of fringe.
     quadpa = array(quadpa)
     quadpe = array(quadpe)
     quadpm = array(quadpm)
+    quadnn = array(quadnn)
+    quadvv = array(quadvv)
   else:
     raise "No quad elements were specified, maybe need to pass usequads=true"
 
@@ -148,12 +154,12 @@ not, then the derivatives will be done with a finite difference of fringe.
   # --- Set parameters constant for all elements
   if len(nonzero(quadde)) > 0:
     top.nzemlt = npoints
-    top.emlt_n[0:nderivs/2+1] = 2.
-    top.emlt_v[0:nderivs/2+1] = arange(0,nderivs/2+1)
+    top.emlt_n[0:nderivs/2+1] = quadnn[0]
+    top.emlt_v[0:nderivs/2+1] = quadvv[0] + arange(0,nderivs/2+1)
   if len(nonzero(quaddb)) > 0:
     top.nzmmlt = npoints
-    top.mmlt_n[0:nderivs/2+1] = 2.
-    top.mmlt_v[0:nderivs/2+1] = arange(0,nderivs/2+1)
+    top.mmlt_n[0:nderivs/2+1] = quadnn[0]
+    top.mmlt_v[0:nderivs/2+1] = quadvv[0] + arange(0,nderivs/2+1)
 
   # --- Function that defines the profile of the fringe fields
   # --- This function should have the following properties
