@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.31 2004/01/28 21:15:51 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.32 2004/04/14 17:58:14 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -194,7 +194,12 @@ routines (such as ppxxp).
     if not self.laccumulate and not self.dumptofile: return
     if self.iz >= 0: return
     if self.zz+self.wz > w3d.zmminglobal+top.zbeam: return
-    if me == 0:
+    # --- Check if there is any data. If there is none, then don't make
+    # --- a dump.
+    ntot = 0
+    for js in range(self.getns()):
+      ntot = ntot + self.getn(js=js)
+    if ntot > 0 and me == 0:
       ff = None
       try:
         ff = PWpyt.PW(self.name+'_epdump.pyt')
