@@ -6,7 +6,7 @@ import getopt
 import hibeamlattice
 import string
 from hibeamdefaults import *
-hibeam_version = "$Id: hibeam.py,v 1.3 2003/08/07 18:44:10 dave Exp $"
+hibeam_version = "$Id: hibeam.py,v 1.4 2004/12/03 23:55:41 dave Exp $"
 
 
 # --- Get the command line options.
@@ -129,7 +129,7 @@ for e in line:
     top.drftox[idrft] = e.offset_x*errordist(e.error_type)
     top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
     zz = zz + e.length
-    if idrft = top.ndrft:
+    if idrft == top.ndrft:
       top.ndrft = top.ndrft + 100
       gchange("Lattice")
   elif e.type == 'box':
@@ -140,7 +140,7 @@ for e in line:
     top.drftox[idrft] = e.offset_x*errordist(e.error_type)
     top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
     zz = zz + e.length
-    if idrft = top.ndrft:
+    if idrft == top.ndrft:
       top.ndrft = top.ndrft + 100
       gchange("Lattice")
   elif e.type == 'wire':
@@ -151,7 +151,7 @@ for e in line:
     top.drftox[idrft] = e.offset_x*errordist(e.error_type)
     top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
     zz = zz + e.length
-    if idrft = top.ndrft:
+    if idrft == top.ndrft:
       top.ndrft = top.ndrft + 100
       gchange("Lattice")
 
