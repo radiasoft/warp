@@ -1,11 +1,11 @@
 from warp import *
 import RandomArray
-optimizer_version = "$Id: optimizer.py,v 1.5 2002/03/06 23:54:46 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.6 2002/03/14 16:20:27 dave Exp $"
 """
 This file contains several optimizers, including:
-  Simultaneaous Perturbation Stochastic Approximation
-  Evolution
-  simple search
+  Spsa: Simultaneaous Perturbation Stochastic Approximation
+  Evolution: Genetic based algorithm
+  Simpleoptimizer: simple search
 """
 
 class Spsa:
@@ -15,7 +15,7 @@ minimization algorithm. To use, create an instance of the Spsa class
 and then call the iter method.
   """
   def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
-               paramsmin=None,paramsmax=None,verbose=0):
+               paramsmin=None,paramsmax=None,verbose=0,errmax=top.largepos):
     """
 Creates an instance of the Spsa class.
   - nparams: Number of params to vary
@@ -32,6 +32,8 @@ Creates an instance of the Spsa class.
   - paramsmax=+1.e+36: Max value of the parameters. This can be a function
                        which takes the params as its single argument.
   - verbose=0: when true, print diagnostics
+  - errmax=+1.e36: Maximum acceptable value of the error. If the error
+                   is greater, the iteration is skipped.
     """
     self.nparams = nparams
     self.params = params
@@ -43,6 +45,7 @@ Creates an instance of the Spsa class.
     self.c1 = c1
     self.verbose = verbose
     self.hloss = []
+    self.errmax = errmax
     if paramsmin is None:
       self.paramsmin = -ones(nparams)*1.e+36
     else:
@@ -81,27 +84,35 @@ Creates an instance of the Spsa class.
     params = minimum(params,self.getparamsmax(params))
     return params
 
-  def iter(self,err=1.e-9,imax=10000,kprint=10):
+  def iter(self,err=1.e-9,imax=10000,kprint=10,verbose=None):
     """
 Function to do iterations.
-  - err=err=1.e-9 Convergence criteria
-  - imax=10000 Maximum number of iterations
-  - kprint=10 exponential scale for printing out current status
+  - err=err=1.e-9: Convergence criteria
+  - imax=10000: Maximum number of iterations
+  - kprint=10: exponential scale for printing out current status
+  - verbose=None: can override main value of verbose
     """
+    if verbose is None: verbose = self.verbose
     i = 0
     while (self.loss()>err and i < imax):
       i = i + 1
       # --- calculate new parameters
       #self.params = self.params - self.ak()*self.gradloss()
       dp = self.gradloss()
-      if self.verbose:
+      if verbose:
         print "ak = %f" % self.ak()
         print "gradloss = " + repr(dp)
         print "params = " + repr(self.params)
+      oldparams = self.params + 0.
       self.params = self.constrainparams(self.params - self.ak()*dp)
-      if self.verbose: print "new params = " + repr(self.params)
+      if verbose: print "new params = " + repr(self.params)
       # --- Calculate function with new params
       self.func(self.params)
+      # --- Check if loss it too great.
+      if self.loss() > self.errmax:
+        self.params = oldparams
+        if verbose: print "Skipping"
+        continue
       # --- Save the latest value of the loss function.
       self.hloss.append(self.loss())
       # --- Increment the counter
@@ -208,9 +219,9 @@ Output:
 Function to initialize the population.
 Picks parameters randomly distributed by deltas about a base sample set of
 parameters.
-  - sample is the initial set of parameters
-  - delta=0.01 is the fractional variation about the sample
-    It can either be a scalar or an array the same size as sample.
+  - sample: is the initial set of parameters
+  - delta=0.01: is the fractional variation about the sample
+                It can either be a scalar or an array the same size as sample.
     """
     if deltas is None:             deltas = ones(shape(sample),'d')*0.01
     elif type(deltas) == type(1.): deltas = ones(shape(sample),'d')*deltas
