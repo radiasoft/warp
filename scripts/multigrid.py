@@ -202,12 +202,20 @@ class MultiGrid(object):
     if self.pbounds[2] == 2 or self.pbounds[3] == 2:
       self.rho[:,0,:] = self.rho[:,0,:] + self.rho[:,-1,:]
       self.rho[:,-1,:] = self.rho[:,0,:]
+    if self.pbounds[0] == 1 and not self.l4symtry:
+       self.rho[0,:,:] = 2.*self.rho[0,:,:]
+    if self.pbounds[1] == 1: self.rho[-1,:,:] = 2.*self.rho[-1,:,:]
+    if self.pbounds[2] == 1 and not (self.l2symtry or self.l4symtry):
+       self.rho[:,0,:] = 2.*self.rho[:,0,:]
+    if self.pbounds[3] == 1: self.rho[:,-1,:] = 2.*self.rho[:,-1,:]
     if self.pbounds[4] == 2 or self.pbounds[5] == 2:
       if self.nslaves > 1:
         self.makerhoperiodic_parallel()
       else:
         self.rho[:,:,0] = self.rho[:,:,0] + self.rho[:,:,-1]
         self.rho[:,:,-1] = self.rho[:,:,0]
+    if self.pbounds[4] == 1: self.rho[:,:,0] = 2.*self.rho[:,:,0]
+    if self.pbounds[5] == 1: self.rho[:,:,-1] = 2.*self.rho[:,:,-1]
 
   def getrhoforfieldsolve(self):
     if self.nslaves > 1:
