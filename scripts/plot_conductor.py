@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.11 2001/03/21 01:05:48 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.12 2001/05/14 19:47:24 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -91,11 +91,14 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     xmmin = 0.
     ymmin = 0.
   if plotphi:
-    xx=iota(0,w3d.nx)*dx + xmmin
-    yy=iota(0,w3d.ny)*dy + ymmin
+    #xx=iota(0,w3d.nx)*dx + xmmin
+    #yy=iota(0,w3d.ny)*dy + ymmin
     ppp = getphi(iz=iz+top.izslave[me])
     ppp = transpose(ppp)
-    plotc(ppp,yy,xx,contours=contours,filled=filled,color=blue)
+    #plotc(ppp,yy,xx,contours=contours,filled=filled,color=blue)
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+              xmin=xmmin,xmax=xmmin+w3d.nx*dx,
+              ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   ii = compress(equal(f3d.izcond[0:f3d.ncond],iz),arange(f3d.ncond))
   yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
   xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
@@ -136,10 +139,13 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     if lparallel: zmmin = top.izslave[me]
   if iy == None: iy = w3d.iy_axis
   if plotphi:
-    xx = iota(0,w3d.nx)*dx + xmmin
-    zz = iota(0,w3d.nzfull)*dz + zmmin
+    #xx = iota(0,w3d.nx)*dx + xmmin
+    #zz = iota(0,w3d.nzfull)*dz + zmmin
     ppp = getphi(iy=iy)
-    plotc(ppp,xx,zz,contours=contours,filled=filled,color=blue)
+    #plotc(ppp,xx,zz,contours=contours,filled=filled,color=blue)
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+              xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
+              ymin=xmmin,ymax=xmmin+w3d.nx*dx)
   ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
   xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
   zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
@@ -180,10 +186,13 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     if lparallel: zmmin = top.izslave[me]
   if ix == None: ix = w3d.ix_axis
   if plotphi:
-    yy = iota(0,w3d.ny)*dy + ymmin
-    zz = iota(0,w3d.nzfull)*dz + zmmin
+    #yy = iota(0,w3d.ny)*dy + ymmin
+    #zz = iota(0,w3d.nzfull)*dz + zmmin
     ppp = getphi(ix=ix)
-    plotc(ppp,yy,zz,contours=contours,filled=filled,color=blue)
+    #plotc(ppp,yy,zz,contours=contours,filled=filled,color=blue)
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+              xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
+              ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
   yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
   zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
