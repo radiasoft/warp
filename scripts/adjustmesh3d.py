@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.9 2003/02/24 14:26:12 jlvay Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.10 2003/03/06 00:28:35 jlvay Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -13,7 +13,8 @@ def adjustmesh3ddoc():
 
 
 # -------------------------------------------------------------------------
-def resizemesh(nx=None,ny=None,nz=None,lloadrho=1,lfieldsol=1):
+def resizemesh(nx=None,ny=None,nz=None,lloadrho=1,lfieldsol=1,
+               linj=0,lzmom=0,lzarray=0,setobjects=None):
   """
 Changes the number of grid points in the mesh.
 Warning - this does not yet work in parallel
@@ -29,6 +30,16 @@ Warning - this does not yet work in parallel
 
   # --- If nothing changes, then just return
   if nx == w3d.nx and ny == w3d.ny and nz == w3d.nz: return
+
+  if(w3d.nx>0):
+    rx = float(nx)/float(w3d.nx)
+  else:
+    rx = 1.
+  if(w3d.ny>0):
+    ry = float(ny)/float(w3d.ny)
+  else:
+    ry = 1.
+  rz = float(nz)/float(w3d.nz)
 
   # --- Set scalars
   w3d.nx = nx
@@ -64,8 +75,44 @@ Warning - this does not yet work in parallel
     w3d.iy_axis = nint(-w3d.ymmin/w3d.dy)
   w3d.iz_axis = nint(-w3d.zmmin/w3d.dz)
 
+  # --- if requested, resize injection arrays accordingly
+  if(linj):
+    w3d.inj_nx = w3d.inj_nx*rx
+    w3d.inj_ny = w3d.inj_ny*ry
+    w3d.inj_nz = w3d.inj_nz*rz
+    w3d.inj_dx = w3d.inj_dx/rx 
+    w3d.inj_dy = w3d.inj_dy/ry 
+    w3d.inj_dz = w3d.inj_dz/rz 
+    injctint()
+
+  # --- if requested, resize Z_Moments arrays accordingly 
+  if(lzmom):
+    top.nzmmnt = top.nzmmnt*rz
+    gchange('Z_Moments')
+    top.dzm = top.dzm/rz
+    top.dzmi = 1./top.dzm
+    for k in range(0,top.nzmmnt+1):
+        top.zmntmesh[k] = top.zmmntmin + k*top.dzm
+
+  # --- if requested, resize Z_arrays accordingly
+  if(lzarray):
+    top.nzzarr = top.nzzarr*rz
+    gchange('Z_arrays')
+    top.dzz = top.dzz/rz
+    top.dzzi = 1./top.dzz
+    for k in range(0,top.nzzarr+1):
+        top.zplmesh[k] = top.zzmin + k*top.dzz
+        top.prwallz[k] = top.prwall
+        top.prwallxz[k] = top.prwallx
+        top.prwallyz[k] = top.prwally
+        top.prwelips[k] = 1.
+
   # --- Re-initialize any field solve parameters
   fieldsol(1)
+
+  # --- Call subroutine for setting objects if provided
+  if setobjects is not None:
+    setobjects()
 
   # --- If requested, reload rho
   if lloadrho:
