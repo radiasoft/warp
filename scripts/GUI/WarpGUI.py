@@ -23,9 +23,18 @@ class BoaApp(wxApp):
         self.SetTopWindow(self.main)
         return true
 
+panels=[]
+
+def add_panel(panel,name):
+    global panels
+    panels+=[[panel,name]]
+
 def gui():
-    application = BoaApp(0)
-    application.MainLoop()
+  wgui=BoaApp(0)
+  for i in panels:
+    wgui.main.add_panel(i[0],i[1])
+
+  wgui.MainLoop()
 
 if __name__ == '__main__':
     gui()
