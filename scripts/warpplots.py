@@ -1,4 +1,5 @@
 from warp import *
+import controllers
 import RandomArray
 import re
 import os
@@ -11,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.126 2004/08/30 19:45:58 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.127 2004/09/02 22:43:10 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -215,9 +216,9 @@ for before and after plot commands.
   - legend=1: when set to 0, the text at the frame bottom is omitted
   """
   if legend: plotruninfo()
-  callafterplotfuncs()
+  controllers.callafterplotfuncs()
   gistfma()
-  callbeforeplotfuncs()
+  controllers.callbeforeplotfuncs()
   oldlimits = limits()
 def hcp(legend=1):
   """
@@ -225,9 +226,9 @@ Hardcopy - plots run info on the bottom of the frame and sends image to hard
 copy file.
   - legend=1: when set to 0, the text at the frame bottom is omitted
   """
-  callafterplotfuncs()
+  controllers.callafterplotfuncs()
   if legend: plotruninfo()
-  callbeforeplotfuncs()
+  controllers.callbeforeplotfuncs()
   gisthcp()
 
 nf = fma
@@ -3081,8 +3082,8 @@ def psplots(freqflag=always,js=0):
       fma()
 
   # --- Do the user defined plots
-  if freqflag == always: callplalwaysfuncs()
-  if freqflag == seldom: callplseldomfuncs()
+  if freqflag == always: controllers.callplalwaysfuncs()
+  if freqflag == seldom: controllers.callplseldomfuncs()
 
   # --- Reset the current window to it previous value.
   window(currentwindow)
