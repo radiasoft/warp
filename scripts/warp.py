@@ -1,10 +1,14 @@
-warp_version = "$Id: warp.py,v 1.73 2004/09/16 00:57:52 dave Exp $"
+warp_version = "$Id: warp.py,v 1.74 2004/10/15 18:11:03 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
+import MA
 import sys
 import os.path
 import time
+
+# --- Set this to a more reasonable value
+MA.set_print_limit(10000)
 
 # --- Import the RNG module. Older versions have ranf in a seperate module
 # --- called Ranf. In newer versions, ranf is part of RNG.
