@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.102 2003/05/27 22:48:31 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.103 2003/05/27 22:54:07 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1005,7 +1005,7 @@ Note that both the x and y grids must be passed in.
   xx,yy = getmesh2d(xmin,dx,nx,ymin,dy,ny)
 
   # --- Compute scale
-  scale = scale*min(dx,dy)/max(maxnd(abs(gridx)),maxnd(abs(gridy)))
+  scale = scale*min(dx,dy)/dvnz(max(maxnd(abs(gridx)),maxnd(abs(gridy))))
   print scale
 
   # --- Make plot
