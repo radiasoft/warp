@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.42 $, $Date: 2002/09/14 01:09:41 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.43 $, $Date: 2002/09/20 18:16:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -57,6 +57,7 @@ c     --- The following only used when mgform == 2
       real(kind=8),allocatable:: rhosave(:),res(:)
       integer(ISZ):: localb0,localbnz
       integer(ISZ):: local2b0,local2bnz
+      integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
       integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
@@ -131,8 +132,11 @@ c     --- Also setup parallel arrays.
         allocate(rhosave(nxyz),res((nx+1)*(ny+1)*(nz+3)))
         rhosave = rho1d(1:nxyz)
 #ifdef MPIPARALLEL
+        lparity = 0
+        rparity = 0
         call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                        bound0,boundnz,nzfull,
+     &                        lparity,rparity,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
         localb0 = bound0
@@ -355,9 +359,10 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8):: res(0:nx,0:ny,-1:nz+1)
       integer(ISZ):: i
       real(kind=8):: ff
-      integer(ISZ):: nznew,lparity,rparity
+      integer(ISZ):: nznew
       integer(ISZ):: localb0,localbnz
       integer(ISZ):: local2b0,local2bnz
+      integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
       integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
@@ -365,8 +370,11 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
 
 #ifdef MPIPARALLEL
+      lparity = 0
+      rparity = 0
       call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                      globalb0,globalbnz,nzfull,
+     &                      lparity,rparity,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
       localb0 = globalb0
@@ -380,6 +388,10 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
 
 c     --- Do initial SOR passes.
 c     print *, 'vcycle on dimensions ', nx, ny, nzfull,my_index
+c     call printarray3d(nx,ny,nz,0,0,izfsslave(my_index),rho,my_index,nslaves,
+c    &                  "RHO",mglevel)
+c     call printarray3d(nx,ny,nz,0,1,izfsslave(my_index),rho,my_index,nslaves,
+c    &                  "RHO",mglevel)
       do i=1,downpasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,scrtch,
@@ -437,16 +449,16 @@ c         --- Find domains in coarser grid
      &                    nzfull)
 c         --- Set new value of nz
           nznew = nzfsslave2(my_index)
+c         --- Difference between starts and ends of coarse and fine grids.
+c         --- Should only be in the range 0-2.
+          lparity = izfsslave - 2*izfsslave2
+          rparity = 2*(izfsslave2 + nzfsslave2) - (izfsslave + nzfsslave)
 c         --- Get processor with which to exchange data on coarse grid
           call mggetexchangepes(nslaves,izfsslave2,nzfsslave2,my_index,
      &                          globalb0,globalbnz,nzfull/2,
+     &                          lparity,rparity,
      &                          whosendingleft2,izsendingleft2,
      &                          whosendingright2,izsendingright2)
-c         --- Difference between starts and ends of coarse and fine grids.
-c         --- Should only be in the range 0-2.
-          lparity = izfsslave(my_index) - 2*izfsslave2(my_index)
-          rparity = 2*(izfsslave2(my_index)+nzfsslave2(my_index)) -
-     &                (izfsslave(my_index)+nzfsslave(my_index))
           local2b0 = globalb0
           local2bnz = globalbnz
           if (izfsslave2(my_index) > 0) local2b0 = -1
@@ -470,9 +482,11 @@ c         --- 4 for full-coarsening and is compiled into the restriction
 c         --- routine.
           call restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,boundxy,
      &                    local2b0,local2bnz,localb0,localbnz,
-     &                    lparity,rparity,l2symtry,l4symtry,
+     &                    lparity(my_index),rparity(my_index),l2symtry,l4symtry,
      &                    my_index,nslaves,
-     &                    izfsslave,nzfsslave,izfsslave2,nzfsslave2)
+     &                    izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                    whosendingleft2,izsendingleft2,
+     &                    whosendingright2,izsendingright2)
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
@@ -483,7 +497,8 @@ c         --- Continue at the next coarsest level.
 
 c         --- Add in resulting error.
           call expand3d(nx/2,ny/2,nznew,nz,nzfull/2,phi2,phi,
-     &                  boundxy,localb0,localbnz,lparity,rparity,
+     &                  boundxy,localb0,localbnz,
+     &                  lparity(my_index),rparity(my_index),
      &                  my_index,nslaves,izfsslave,
      &                  whosendingleft,whosendingright)
 
@@ -585,7 +600,9 @@ c=============================================================================
      &                      local2b0,local2bnz,localb0,localbnz,
      &                      lparity,rparity,l2symtry,l4symtry,
      &                      my_index,nslaves,
-     &                      izfsslave,nzfsslave,izfsslave2,nzfsslave2)
+     &                      izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                      whosendingleft2,izsendingleft2,
+     &                      whosendingright2,izsendingright2)
       integer(ISZ):: nx,ny,nz,nznew,nzfull
       real(kind=8):: res(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rho2(0:nx/2,0:ny/2,-1:nznew+1)
@@ -595,6 +612,8 @@ c=============================================================================
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
+      integer(ISZ):: whosendingright2(0:nslaves-1),izsendingright2(0:nslaves-1)
 
 c Restrict to a coarser grid.  The factor of 4 is needed since the
 c residual will be used as the source term in the next coarser grid and
@@ -669,8 +688,10 @@ c     --- Make copies for the periodic boundaries.
       if (local2b0  == 0) rho2(:,:,0) = 0.
       if (local2bnz == 0) rho2(:,:,nznew) = 0.
 #ifdef MPIPARALLEL
-      call mgexchange_res(nx/2,ny/2,nznew,nzfull/2,rho2,my_index,nslaves,
-     &                    izfsslave,nzfsslave,izfsslave2,nzfsslave2)
+      call mgexchange_phi(nx/2,ny/2,nznew,nzfull/2,rho2,local2b0,local2bnz,0,
+     &                    my_index,nslaves,izfsslave2,nzfsslave2,
+     &                    whosendingleft2,izsendingleft2,
+     &                    whosendingright2,izsendingright2)
 #endif
 
       return
@@ -1561,7 +1582,6 @@ c     --- Calculate the residual.
           enddo
         enddo
       enddo
-
 
 c     --- Zero the residual inside conductors.
       call cond_potmg(nx,ny,nz,res,mglevel,.true.,mgform,.false.)
