@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.25 2002/01/29 22:44:41 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.26 2002/02/22 19:55:51 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -180,12 +180,14 @@ Plots conductors and contours of electrostatic potential in X-Y plane
                   subgridlen,-1,-1)
 
 # z-x plane
-def pfzx(iy=None,iyf=None,fullplane=1,plotsg=1,scale=1,
+def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,plotsg=1,scale=1,
          plotphi=1,subgridlen=1.,phicolor=blue,condcolor=cyan,
          oddcolor=red,evencolor=green,numb=None,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
   - iy=w3d.iy_axis y index of plane
+  - fullplane=1: when true, plots all quadrants regardless of symmetries
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
@@ -200,13 +202,15 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   if iyf is not None: iy = iyf
   if iy is None: iy = w3d.iy_axis
   if iy < 0 or w3d.ny < iy: return
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
   if scale:
     dx = w3d.dx
     dz = w3d.dz
     xmmin = w3d.xmmin
-    zmmin = w3d.zmmin
+    zmmin = w3d.zmmin + zbeam
     xmmax = w3d.xmmax
-    zmmax = w3d.zmmax
+    zmmax = w3d.zmmax + zbeam
   else:
     dx = 1.
     dz = 1.
@@ -221,7 +225,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     kw['ymin'] = xmmin
     kw['ymax'] = xmmax
     if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
-    apply(pcphizx,(iy,fullplane),kw)
+    apply(pcphizx,(iy,fullplane,lbeamframe),kw)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
@@ -244,12 +248,14 @@ Plots conductors and contours of electrostatic potential in Z-X plane
                   subgridlen,-1,1)
 
 # z-y plane
-def pfzy(ix=None,ixf=None,fullplane=1,plotsg=1,scale=1,
+def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,plotsg=1,scale=1,
          plotphi=1,subgridlen=1.,phicolor=blue,condcolor=cyan,
          oddcolor=red,evencolor=green,numb=None,kwdict={},**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
   - ix=w3d.ix_axis x index of plane
+  - fullplane=1: when true, plots all quadrants regardless of symmetries
+  - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
@@ -264,13 +270,15 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   if ixf is not None: ix = ixf
   if ix is None: ix = w3d.ix_axis
   if ix < 0 or w3d.nx < ix: return
+  if lbeamframe: zbeam = 0.
+  else:          zbeam = top.zbeam
   if scale:
     dy = w3d.dy
     dz = w3d.dz
     ymmin = w3d.ymmin
-    zmmin = w3d.zmmin
+    zmmin = w3d.zmmin + zbeam
     ymmax = w3d.ymmax
-    zmmax = w3d.zmmax
+    zmmax = w3d.zmmax + zbeam
   else:
     dy = 1.
     dz = 1.
@@ -285,7 +293,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     kw['ymin'] = ymmin
     kw['ymax'] = ymmax
     if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
-    apply(pcphizy,(ix,fullplane),kw)
+    apply(pcphizy,(ix,fullplane,lbeamframe),kw)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
@@ -328,7 +336,7 @@ Same arguments as pfxy
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
 
 # z-x plane
-def pfzxg(iy=None,iyf=None,fullplane=1,plotsg=1,plotphi=1,
+def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,plotsg=1,plotphi=1,
           subgridlen=1.,phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
@@ -337,13 +345,13 @@ frame
 Same arguments as pfzx
   """
   if iyf is not None: iy = iyf
-  pfzx(iy=iy,fullplane=fullplane,plotsg=plotsg,scale=0,
+  pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,plotsg=plotsg,scale=0,
        plotphi=plotphi,subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
 
 # z-y plane
-def pfzyg(ix=None,ixf=None,fullplane=1,plotsg=1,plotphi=1,
+def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,plotsg=1,plotphi=1,
           subgridlen=1.,phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
@@ -352,7 +360,7 @@ frame
 Same arguments as pfzy
   """
   if ixf is not None: ix = ixf
-  pfzy(ix=ix,fullplane=fullplane,plotsg=plotsg,scale=0,
+  pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,plotsg=plotsg,scale=0,
        plotphi=plotphi,subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
@@ -380,7 +388,7 @@ Same arguments as pfxy
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
 
 # z-x plane
-def pfzxi(iy=None,iyf=None,fullplane=1,plotsg=1,scale=1,plotphi=1,
+def pfzxi(iy=None,iyf=None,fullplane=1,lbeamframe=1,plotsg=1,scale=1,plotphi=1,
           subgridlen=1.,phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
@@ -390,13 +398,13 @@ Same arguments as pfzx
   print "Notice: pfzxi is obsolete is should no longer be used"
   print "        It does the identical thing as pfzx"
   if iyf is not None: iy = iyf
-  pfzx(iy=iy,fullplane=fullplane,plotsg=plotsg,scale=scale,
-       plotphi=plotphi,subgridlen=subgridlen,
+  pfzx(iy=iy,fullplane=fullplane,lbeamframe=lbeamframe,plotsg=plotsg,
+       scale=scale,plotphi=plotphi,subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
 
 # z-y plane
-def pfzyi(ix=None,ixf=None,fullplane=1,plotsg=1,scale=1,plotphi=1,
+def pfzyi(ix=None,ixf=None,fullplane=1,lbeamframe=1,plotsg=1,scale=1,plotphi=1,
           subgridlen=1.,phicolor=blue,condcolor=cyan,
           oddcolor=red,evencolor=green,numb=None,**kw):
   """
@@ -406,8 +414,8 @@ Same arguments as pfzy
   print "Notice: pfzyi is obsolete is should no longer be used"
   print "        It does the identical thing as pfzy"
   if ixf is not None: ix = ixf
-  pfzy(ix=ix,fullplane=fullplane,plotsg=plotsg,scale=scale,
-       plotphi=plotphi,subgridlen=subgridlen,
+  pfzy(ix=ix,fullplane=fullplane,lbeamframe=lbeamframe,plotsg=plotsg,
+       scale=scale,plotphi=plotphi,subgridlen=subgridlen,
        phicolor=phicolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,kwdict=kw)
 
