@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.95 $, $Date: 2004/03/03 17:50:26 $
+#@(#) File F3D.V, version $Revision: 3.96 $, $Date: 2004/03/11 10:40:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.95 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.96 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -138,8 +138,8 @@ izcond(ncondmax) _integer # Y coordinate of points in conductor
 condvolt(ncondmax) _real  # voltage of points in conductor
 condnumb(ncondmax) _integer # Number of the conductor the points are in
 icondlevel(ncondmax) _integer /-1/ # Coarseness level at which the point is on grid
-icondlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
-icondlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
+#icondlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
+#icondlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
 fuzzsign      integer /-1/ # When -1, subgrid points with distances == 1 are
                            # skipped, when +1 not skipped.
@@ -170,8 +170,8 @@ ecnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, even
 ecnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, even
 ecnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, even
 iecndlevel(ncndmax)  _integer /-1/ # Coarseness level at which the point is on grid
-iecndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
-iecndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
+#iecndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
+#iecndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 
 nocndbdy      integer /0/   # Number of points for odd sub-grid boundaries
 ocndpvph(ncndmax)     _real -dump # Saves phi for odd sub-grid boundaries
@@ -199,8 +199,8 @@ ocnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, odd
 ocnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, odd
 ocnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, odd
 iocndlevel(ncndmax)  _integer /-1/ # Coarseness level at which the point is on grid
-iocndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
-iocndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
+#iocndlxy(ncondmax) _integer # Obsolete array, only used to recover old datasets
+#iocndlz(ncondmax) _integer # Obsolete array, only used to recover old datasets
 checkconductors(nx:integer,ny:integer,nz:integer,nzfull:integer,dx:real,dy:real,dz:real,l2symtry:logical,l4symtry:logical) subroutine
 
 *********** Multigrid3d dump:
