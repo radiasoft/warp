@@ -322,18 +322,18 @@ do redblack = 1, 2
       j = bnd%cnd%jj(ii)
       l = bnd%cnd%kk(ii)
       IF(j==1) then
+!        f(j,l) =  &
         IF(bnd%cnd%docalc(ii)) &
         f(j,l) = bnd%cnd%cf0(ii)*f(j,l) &
-!        f(j,l) =  &
                + bnd%cnd%cfxp(ii)*f(j+1,l) &
                + bnd%cnd%cfyp(ii)*f(j,l+1)+bnd%cnd%cfym(ii)*f(j,l-1) &
                + voltfact*(bnd%cnd%phi0xp(ii) &
                + bnd%cnd%phi0ym(ii)+bnd%cnd%phi0yp(ii)) &
                + bnd%cnd%cfrhs(ii)*rhs(j,l)
       else
+!        f(j,l) =  &
         IF(bnd%cnd%docalc(ii)) &
         f(j,l) = bnd%cnd%cf0(ii)*f(j,l) &
-!        f(j,l) =  &
                + bnd%cnd%cfxp(ii)*f(j+1,l)+bnd%cnd%cfxm(ii)*f(j-1,l) &
                + bnd%cnd%cfyp(ii)*f(j,l+1)+bnd%cnd%cfym(ii)*f(j,l-1) &
                + voltfact*(bnd%cnd%phi0xm(ii)+bnd%cnd%phi0xp(ii) &
@@ -345,17 +345,17 @@ do redblack = 1, 2
   do l = 1, nz+1
     IF(jsw==2) then! origin
       j = 1
+!      f(j,l) =  &
       IF(bnd%v(j,l)) &
       f(j,l) = (1._8-4._8*dt0/dr**2-2._8*dt0/dz**2) * f(j,l) &
-!      f(j,l) =  &
                                  + 4._8*dt0*f(j+1,l)/dr**2   &
                                  + (dt0/dz**2)*(f(j,l+1)+f(j,l-1)) &
                                  - dt0*rhs(j,l)
     END if
     do j = jsw+1, nr+1, 2
+!        f(j,l) =  &
       IF(bnd%v(j,l)) &
         f(j,l) = cf0 * f(j,l) &
-!        f(j,l) =  &
                                  + cfrp(j)*f(j+1,l)+cfrm(j)*f(j-1,l)   &
                                  + cfz*(f(j,l+1)+f(j,l-1)) &
                                  + cfrhs*rhs(j,l)
