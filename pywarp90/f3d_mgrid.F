@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.9 $, $Date: 2001/08/27 18:12:27 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.10 $, $Date: 2001/09/07 20:57:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -123,7 +123,7 @@ c     --- converted and expanded for the multigrid solver.
       if (gridmode == 0 .or. iwhich == -2) then
         call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                l2symtry,l4symtry)
-        call subgrid_sor_to_mg(nx,ny,nz,dx,dy,dz)
+        call subgrid_sor_to_mg(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
       endif
 
 c     --- Copy phi to the temporary array and zero out rho_temp.
