@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.40 2004/12/14 18:58:20 jlvay Exp $"
+lattice_version = "$Id: lattice.py,v 1.41 2004/12/14 19:01:31 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -136,7 +136,6 @@ Returns a new instance with the reverse flag switched.
         self.elemslistshallow[i:i+1] = self.elemslistshallow[i]
       else:
         i = i + 1
-      return self.elems
     if self.reverse: self.elemslistshallow.reverse()
     return self.elemslistshallow
   def deepexpand(self,lredo=0):
