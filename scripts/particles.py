@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.22 2005/02/26 01:34:46 dave Exp $"
+particles_version = "$Id: particles.py,v 1.23 2005/03/03 00:53:21 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -408,7 +408,7 @@ def getvx(iw=0,gather=1,bcast=0,**kw):
   suffix = (kw.get('lost',0) and 'lost') or ''
   if len(ii) > 0:
     ux = getattrwithsuffix(top,'uxp',suffix)
-    uy = getattrwithsuffix(top,'uyp',suffix)
+    gaminv = getattrwithsuffix(top,'gaminv',suffix)
     result = take(ux,ii)*take(gaminv,ii)
   else:
     result = array([],'d')
