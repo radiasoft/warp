@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.14 $, $Date: 2001/07/24 00:48:43 $
+c@(#) File W3D.M, version $Revision: 3.15 $, $Date: 2001/08/01 00:47:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5078,8 +5078,6 @@ c             --- the emitting surface.
      &                 phi(i2x+1,i2y,  i2z+1)*    w2x *(1.-w2y)*    w2z  -
      &                 phi(i2x  ,i2y+1,i2z+1)*(1.-w2x)*    w2y *    w2z  -
      &                 phi(i2x+1,i2y+1,i2z+1)*    w2x *    w2y *    w2z
-            else
-              inj_phi(ix,iy) = 0.
             endif
           enddo
         enddo
