@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.130 $, $Date: 2004/10/07 19:50:40 $
+c@(#) File TOP.F, version $Revision: 3.131 $, $Date: 2004/10/27 23:41:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2122,9 +2122,10 @@ c   bx, by   quadrupole magnetic field
       integer(ISZ):: io,ip,iz
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xpmqoff,ypmqoff
       real(kind=8):: dodec
-      real(kind=8):: vz(npz),dzi(npz)
+      real(kind=8), allocatable:: vz(:),dzi(:)
 
       if (.not. quads .or. .not. linquad(0)) return
+      allocate(vz(npz),dzi(npz))
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2202,6 +2203,7 @@ c         --- set the field
           endif
         enddo
       enddo
+      deallocate(vz,dzi)
 
       return
       end
@@ -2702,13 +2704,14 @@ c  and not once per particle per multipole component.
 
       integer(ISZ):: io,in,ip
       real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
-      integer(ISZ):: izm(np),imm(np)
-      real(kind=8):: xxx(np),yyy(np),zzz(np),ttt(np)
-      real(kind=8):: wzm(np),rr(np),tt(np)
-      real(kind=8):: mltph(np),mltsf(np)
-      real(kind=8):: tex(np),tey(np),tez(np)
+      integer(ISZ), allocatable:: izm(:), imm(:)
+      real(kind=8), allocatable, dimension(:):: xxx, yyy, zzz, ttt, wzm, rr, tt,
+     &                                          mltph, mltsf, tex, tey, tez
 
       if (.not. emlts .or. .not. linemlt(0)) return
+
+      allocate(izm(np), imm(np), xxx(np), yyy(np), zzz(np), ttt(np), wzm(np), 
+     &         rr(np), tt(np), mltph(np), mltsf(np), tex(np), tey(np), tez(np))
 
       do io=1,nemltol
         if (.not. linemlt(io)) cycle
@@ -2791,6 +2794,8 @@ c       --- do coordinate transform on fields back to warped coordinates
         endif
 
       enddo
+      deallocate(izm, imm, xxx, yyy, zzz, ttt, wzm, 
+     &           rr, tt, mltph, mltsf, tex, tey, tez)
 
       return
       end
@@ -2843,13 +2848,14 @@ c  and not once per particle per multipole component.
 
       integer(ISZ):: io,in,ip
       real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
-      integer(ISZ):: izm(np),imm(np)
-      real(kind=8):: xxx(np),yyy(np),zzz(np),ttt(np)
-      real(kind=8):: wzm(np),rr(np),tt(np)
-      real(kind=8):: mltph(np),mltsf(np)
-      real(kind=8):: tbx(np),tby(np),tbz(np)
+      integer(ISZ), allocatable:: izm(:), imm(:)
+      real(kind=8), allocatable, dimension(:):: xxx, yyy, zzz, ttt, wzm, rr, tt,
+     &                                          mltph, mltsf, tbx, tby, tbz
 
       if (.not. mmlts .or. .not. linmmlt(0)) return
+
+      allocate(izm(np), imm(np), xxx(np), yyy(np), zzz(np), ttt(np), wzm(np), 
+     &         rr(np), tt(np), mltph(np), mltsf(np), tbx(np), tby(np), tbz(np))
 
       do io=1,nmmltol
         if (.not. linmmlt(io)) cycle
@@ -2932,6 +2938,8 @@ c       --- do coordinate transform on fields back to warped coordinates
         endif
 
       enddo
+      deallocate(izm, imm, xxx, yyy, zzz, ttt, wzm, 
+     &           rr, tt, mltph, mltsf, tbx, tby, tbz)
 
       return
       end
