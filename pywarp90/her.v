@@ -1,5 +1,5 @@
 her
-#@(#) File HER.V, version $Revision: 3.8 $, $Date: 2001/07/19 23:10:01 $
+#@(#) File HER.V, version $Revision: 3.9 $, $Date: 2001/07/30 22:58:19 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for HERMES.
@@ -9,11 +9,11 @@ her
 
 *********** HERversion:
 # Version control for her package
-versher       character*19 /"$Revision: 3.8 $"/  # Current code version, set by SCCS
+versher       character*19 /"$Revision: 3.9 $"/  # Current code version, set by SCCS
 
 *********** HERvars dump:
 # Variables needed by the package HER
-niz       integer [1]    # Number of point along beam
+niz       integer [1]    # Number of slice boundaries
 var(16,niz) _real        # Copy of envelope data, all in one place.
 fviscous   real  /0.0/ [1]    # Typical shock width as a fraction of the beam length
 
@@ -23,7 +23,7 @@ hertime    real              # Total runtime
 
 *********** HERflags dump:
 icharge    integer /1/ # The space-charge model...
-                       # 0: uses simpel g-factor model with a fixed g-factor (initialized to 2 ln(1.6) in the generate)
+                       # 0: uses simple g-factor model with a fixed g-factor (initialized to 2 ln(1.6) in the generate)
                        # 1: uses simple g-factor space-charge model
                        # 2: includes envelope variation in space-charge model
                        # 3: g-factor model with end effects (placeholder; not implemented)
@@ -44,7 +44,7 @@ lcurgrid   logical /.false./ # If true, calculate the line charge density and
 lviscous   logical /.false./ # If true, artificial viscosity is added
 lsavehist  logical /.true./ # Turns on saving of history of envelope
 iprofile   integer /0/ # line-charge profile flag
-                       # 0 uses hyperbolic-tangent profile
+                       # 0 uses hyperbolic-tangent profile (not implemented in Hermes so far)
                        # 1 uses flat-top profile with linear fall-off
                        # 2 uses flat-top profile with quadratic fall-off
                        # 3 uses flat-top profile with cubic fall-off
@@ -105,10 +105,11 @@ besselfactor(1024) _real # (J1(x))^(-2) in which x is a zero of the Bessel
                          # function J0
 
 *********** HERhist dump:
-lhher integer
-nhher integer /1/
-jhher integer /-1/
-nizhist integer
+lhher integer        # Size of the history arrays
+nhher integer /1/    # History is saved every nhher steps
+jhher integer /-1/   # Number of times history was saved (minus one)
+nizhist integer      # Number of slice boundaries for which the history is saved
+                     # (always equal to niz)
 hther(0:lhher)        _real [s]   limited(0:jhher)     # Time
 haher(nizhist,0:lhher)   _real [m]   limited(nizhist,0:jhher)
 hapher(nizhist,0:lhher)  _real [m]   limited(nizhist,0:jhher)

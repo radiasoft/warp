@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.8 $, $Date: 2001/07/19 23:10:01 $
+c@(#) File HER.M, version $Revision: 3.9 $, $Date: 2001/07/30 22:58:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -92,6 +92,12 @@ c --- Set the g-factor for the constant g-factor model
         do ii=1,niz
           gtemp(ii) = 2*log(1.6)
         enddo
+      endif
+
+      if (icharge == 3 .or. icharge == 4) then
+        call remark ("Error in hergen: icharge == 3 and icharge == 4 are not implemented in Hermes")
+        lfail = .true.
+        return
       endif
 
       if (icharge == 5 .or. icharge == 6) then
@@ -1072,6 +1078,11 @@ c       general g-factor model
         do ii=1,niz
           eval(ii) = (- gtemp(ii)*dden(ii) + y(15,ii)*denv(ii)) / frpieps
         enddo
+
+      elseif(icharge == 3 .or. icharge == 4)then
+        call remark ("Error in hergen: icharge == 3 and icharge == 4 are not implemented in Hermes")
+        lfail = .true.
+        return
       
       elseif(icharge == 5)then
 c       Bessel series expansion with a flat line charge density within each slice
