@@ -31,6 +31,25 @@ s1, s2, and s3.
 
 lattice = s1 + s2 + s3
 madtowarp(lattice)
+
+
+The following functions are also available:
+getlattice: Reads in a MAD style file, and created the lattice
+addnewdrft: Adds a new drft element
+addnewbend: Adds a new bend element
+addnewdipo: Adds a new dipo element
+addnewquad: Adds a new quadnelement
+addnewsext: Adds a new sext element
+addnewhele: Adds a new hele element
+addnewemlt: Adds a new emlt element
+addnewmmlt: Adds a new mmlt element
+addnewaccl: Adds a new accl element
+addnewbgrd: Adds a new bgrd element
+addnewpgrd: Adds a new pgrd element
+plotemlt: plots the multipole components
+plotmmlt: plots the multipole components
+plotacclet: plots the time depenedent accl field
+plotbgrd: plots components of the B field
 """
 
 todo = """ Add comment attribute to elements """
@@ -40,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.32 2004/08/13 00:00:27 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.33 2004/09/16 16:56:56 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1088,6 +1107,7 @@ Or specify the data set
     top.bgrdsc[top.nbgrd] = self.sc
     top.bgrdid[top.nbgrd] = self.id
     return top.bgrdze[top.nbgrd]
+    
 
 class Pgrd(Elem):
   """
@@ -2546,4 +2566,54 @@ Plots the time dependent field of the accl element
     tt = iota(0,top.ntaccl)*top.accldt[ii]
     if not tcentered: tt = top.acclts[ii] + tt
     plg(top.acclet[:,ii]*ascale,tt*oscale,color=color)
+
+def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,**kw):
+  """
+Plots the one of the field components in one of the planes
+ - component: Component to plot, one of 'x', 'y', or 'z'.
+ - ix, iy, iz: When one is set, plots the in the plane a that value.
+               Each is an integer between 0 and bgrdnx, bgrdny, or bgrdnz.
+Accepts any keywords from ppgeneric for controller how the grid is plotted,
+such as contours, and cellarray.
+  """
+  assert component in ['x','y','z'],\
+         "component to plot must be one of 'x', 'y', or 'z'"
+  assert (ix is not None) or (iy is not None) or (iz is not None),\
+         "One of ix, iy, iz must be specified"
+
+  id = top.bgrdid[ib] - 1
+
+  bb = getattr(top,'bgrdb'+component)
+  if ix is not None:
+    bb = bb[ix,:,:,id]
+    ys = top.bgrdys[ib]+top.bgrdoy[ib]
+    ny = top.bgrdny
+    dy = top.bgrddy[id]
+    xs = top.bgrdzs[ib]
+    nx = top.bgrdnz
+    dx = top.bgrddz[id]
+  if iy is not None:
+    bb = bb[:,iy,:,id]
+    ys = top.bgrdxs[ib]+top.bgrdox[ib]
+    ny = top.bgrdnx
+    dy = top.bgrddx[id]
+    xs = top.bgrdzs[ib]
+    nx = top.bgrdnz
+    dx = top.bgrddz[id]
+  if iz is not None:
+    bb = bb[:,:,iz,id]
+    ys = top.bgrdys[ib]+top.bgrdoy[ib]
+    ny = top.bgrdny
+    dy = top.bgrddy[id]
+    xs = top.bgrdxs[ib]+top.bgrdox[ib]
+    nx = top.bgrdnx
+    dx = top.bgrddx[id]
+
+  xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
+
+  if iy is not None and top.bends: tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+
+  kw['xmesh'] = xm
+  kw['ymesh'] = ym
+  ppgeneric(gridt=bb,kwdict=kw)
 
