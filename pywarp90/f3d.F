@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.44 $, $Date: 2002/06/05 01:23:50 $
+c@(#) File F3D.M, version $Revision: 3.45 $, $Date: 2002/06/20 19:35:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4224,6 +4224,7 @@ c===========================================================================
      &                  xmmin,ymmin,zmmin,zbeam,zgrid,linbends,
      &                  l2symtry,l4symtry,scrtch,izfsmin,izfsmax)
       use PSOR3d
+      use Conductor3d
       use Constant
 #ifdef MPIPARALLEL
       use Parallel
@@ -4955,6 +4956,7 @@ c           --- current z-slice is in a bend only
 c===========================================================================
       subroutine cond_pot(nx,ny,nz,phi)
       use PSOR3d
+      use Conductor3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
 c Set conductor points to the desired potential.
@@ -5240,16 +5242,12 @@ c     --- it defaults to 0.
       zparity = mod(izslave(my_index),2)
 #endif
 
-c Now allocate all of the needed space.
-      call gchange("PSOR3d",0)
-
       return
       end
 c===========================================================================
 c===========================================================================
       subroutine setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    l2symtry,l4symtry)
-      use PSOR3d
       use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       integer(ISZ):: nx,ny,nz
@@ -5285,6 +5283,7 @@ c===========================================================================
       use Constant
       use Surface_of_Rev
       use PSOR3d
+      use Conductor3d
       use Lattice
       use InjectVars
       integer(ISZ):: nx,ny,nz
@@ -5297,6 +5296,7 @@ c  If quadrr is negative for that electrode a hyperbolic shape is asssumed
 c  rather than a circular cylinder. (modified by I. Haber)
 c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 
+      integer(ISZ):: istart,iestart,iostart
       integer(ISZ):: islctype(-1:nz+1)
       real(kind=8):: slicvx(-1:nz+1),slicvy(-1:nz+1)
       integer(ISZ):: ix,iz,iq,ix_axis,iy_axis,nc,nceo
@@ -5309,6 +5309,11 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
       real(kind=8):: xcent,ycent
       real(kind=8):: fuzz,zfuzz
       logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
+
+c     --- Save starting value of ncond, necndbdy, and nocndbdy
+      istart = ncond
+      iestart = necndbdy
+      iostart = nocndbdy
 
 c     --- fuzz is used to prevent the distance from a point to the surface
 c     --- from being too small or zero.  Any point within fuzz of the surface
@@ -5426,7 +5431,7 @@ c     --- end loop over z which fills islctype
 c     --- Change the memory allocated based on the estimates made above.
       ncondmax = max(ncondmax,ncond + nc)
       ncndmax = max(ncndmax,max(necndbdy,nocndbdy) + nceo)
-      call gchange("PSOR3d",0)
+      call gchange("Conductor3d",0)
 
 c Set slicv in planes at ends of quads to allow for sub-grid placement of
 c boundaries. This also takes care of the boundary planes.
@@ -5816,7 +5821,7 @@ c       --- of the changes can be made at once.
           ncndmax = max(necndbdy,nocndbdy) + 3*max(nx,ny)
           ichange = 1
         endif
-        if (ichange == 1) call gchange("PSOR3d",0)
+        if (ichange == 1) call gchange("Conductor3d",0)
 
 c     --- end loop over z
       enddo
@@ -5863,7 +5868,7 @@ c       --- plate on left hand side of quad
           call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
      &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
      &                    zmmin,zmmin+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,0,0,l2symtry,l4symtry)
+     &                    ix_axis,iy_axis,0,0,l2symtry,l4symtry,0)
           lsrlinr = .false.
 
         endif
@@ -5888,7 +5893,7 @@ c       --- plate on right hand side of quad
           call srfrvout3d(" ",vvv,z_sr(1),z_sr(2),qoffx(iq),qoffy(iq),rmax,
      &                    .false.,xmmin,xmmin+nx*dx,ymmin,ymmin+ny*dy,.true.,
      &                    zmmin,zmmin+nz*dz,zgrid,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,0,0,l2symtry,l4symtry)
+     &                    ix_axis,iy_axis,0,0,l2symtry,l4symtry,0)
           lsrlinr = .false.
 
         endif
@@ -5911,7 +5916,7 @@ c       --- of the changes can be made at once.
           ncndmax = max(necndbdy,nocndbdy) + 3*max(nx,ny)
           ichange = 1
         endif
-        if (ichange == 1) call gchange("PSOR3d",0)
+        if (ichange == 1) call gchange("Conductor3d",0)
 
       enddo
 
@@ -5956,7 +5961,7 @@ c             --- within the field mesh)
 c             --- add more space to the arrays if necessary
               if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
                 ncondmax = ncond + (iymax-iymin+1)*(izmax-izmin+1)
-                call gchange("PSOR3d",0)
+                call gchange("Conductor3d",0)
               endif
 
               call dipopnt(iymin,iymax,izmin,izmax,dipov1(id),ix_near,ix,delx)
@@ -5974,7 +5979,7 @@ c           --- now do the same for the second dipole plate
               izmin = max(0,int((dipocent - dipol2(id)*0.5)/dz + 0.5))
               if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
                 ncondmax = ncond + (iymax-iymin+1)*(izmax-izmin+1)
-                call gchange("PSOR3d",0)
+                call gchange("Conductor3d",0)
               endif
               call dipopnt(iymin,iymax,izmin,izmax,dipov2(id),ix_near,ix,delx)
             endif
@@ -5992,6 +5997,9 @@ c +++++++++++++++++++++++++++
 c Include injection source
       call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
 
+c     --- Now fill in the rest of the conductor data
+      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+
       return
       end
 c===========================================================================
@@ -5999,6 +6007,7 @@ c===========================================================================
      &      lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz_in,
      &      quadsl,rodap,fuzz,qzs,dz,iz,voltage)
       use PSOR3d
+      use Conductor3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
       real(kind=8):: dx,dy,rodx,rody,rminsq,rodrrsq,rrr,rodmxsq,delz_in,quadsl
@@ -6070,7 +6079,7 @@ c     --- points.
         if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
         if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
      &    ncndmax = max(necndbdy,nocndbdy) + nsgpoints
-          call gchange("PSOR3d",0)
+          call gchange("Conductor3d",0)
       endif
 
 c     --- set temporaries
@@ -6273,6 +6282,7 @@ c===========================================================================
       subroutine platepnt(ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,dx,dy,
      &                    aper,rmax,vvv,xoff,yoff,delz_in,iz,lz_in_plate,fuzz)
       use PSOR3d
+      use Conductor3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
       real(kind=8):: dx,dy,aper,rmax,vvv,xoff,yoff,delz_in,fuzz
@@ -6298,12 +6308,15 @@ c     iz       axial grid location of the plate
 c     fuzz     number smalled compared to grid cell size, used
 c              to prevent precision problems
 
-
+      integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy
       real(kind=8):: rad,pradsq,prmxsq,paprsq,papmsq,delx,dely,delz,dxi,dyi
       real(kind=8):: r2fuzz
       integer(ISZ):: npoints,nsgpoints
       logical(ISZ):: lout
+
+      iestart = necndbdy
+      iostart = nocndbdy
 
 c      if(solvergeom==RZgeom) then
 c        call platepntrz(ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,dx,dy,
@@ -6343,7 +6356,7 @@ c     --- points.
         if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
         if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
      &    ncndmax = max(necndbdy,nocndbdy) + nsgpoints
-          call gchange("PSOR3d",0)
+          call gchange("Conductor3d",0)
       endif
 
 c     --- loop over transverse plane
@@ -6474,11 +6487,14 @@ c     --- Print warning if conductor arrays filled up.
         call remark("         In function platepnt.")
       endif
 
+      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+
       return
       end
 c===========================================================================
       subroutine dipopnt(iymin,iymax,izmin,izmax,vvv,ix_near,ix,delx)
       use PSOR3d
+      use Conductor3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       integer(ISZ):: iymin,iymax,izmin,izmax,ix_near,ix
       real(kind=8):: vvv,delx
@@ -6515,7 +6531,7 @@ c     --- points.
         if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
         if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
      &    ncndmax = max(necndbdy,nocndbdy) + nsgpoints
-          call gchange("PSOR3d",0)
+          call gchange("Conductor3d",0)
       endif
 
 c     --- loop over plate to fill in data
@@ -6599,6 +6615,7 @@ c===========================================================================
       subroutine injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
       use Constant
       use PSOR3d
+      use Conductor3d
       use InjectVars
       use InjectVars3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
@@ -6646,7 +6663,7 @@ c       --- points.
           if (ncond+npoints > ncondmax) ncondmax = ncond + npoints
           if (necndbdy+nsgpoints > ncndmax .or. nocndbdy+nsgpoints > ncndmax)
      &      ncndmax = max(necndbdy,nocndbdy) + nsgpoints
-          call gchange("PSOR3d",0)
+          call gchange("Conductor3d",0)
         endif
 
 c       --- Loop over transverse points
@@ -6709,7 +6726,7 @@ c             --- a conductor point.
      &               delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
      &               delmz < 1.-fuzz) then
 c             --- Add subgrid point
-              if (mod(ix+iy+iz,2) == 0) then
+              if (mod(ix+iy+iz+zparity,2) == 0) then
 c               --- even
                 necndbdy = necndbdy + 1
                 iecndx(necndbdy) = ix
@@ -6745,11 +6762,11 @@ c               --- odd
       end
 c===========================================================================
 c===========================================================================
-      subroutine srfrvout(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-     &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-      use PSOR3d
+      subroutine srfrvoutf(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                     xmin,xmax,ymin,ymax,lshell,
+     &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                     condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
@@ -6761,6 +6778,7 @@ c===========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Sets up a conductor represented by the outside of a surface of revolution.
 c The Basis routine rofzfunc should be of the form
@@ -6791,7 +6809,7 @@ c             min and max transverse extent of conductor.
 c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
+c Output is put directly into the conductor arrays of Conductor3d.
 
       real(kind=8):: zz
       integer(ISZ):: i
@@ -6809,22 +6827,28 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrlinr = .true.
       endif
 
+c     --- Copy volt into srfrv_v. This is actually a bad way of doing this
+c     --- since it is using side effects of a function call. The user set
+c     --- function, rofzfunc, can set srfrv_v, and then in the actual
+c     --- srfrvoutXX routine, the variable volt is then changed.
+      srfrv_v = volt
+
 c     --- Call the appropriate version of the routine.
       if(solvergeom==RZgeom) then
-        call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+        call srfrvoutrz(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       else if (fstype == 7 .or. fstype == 11) then
-        call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+        call srfrvout3dmg(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       else
-        call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+        call srfrvout3d(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmax,lfill,
      &                  xmin,xmax,ymin,ymax,lshell,
      &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       end if
 
 c     --- Clean up the table-ized data.
@@ -6839,8 +6863,10 @@ c===========================================================================
       subroutine srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                      xmin,xmax,ymin,ymax,lshell,
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                      condid)
       use PSOR3d
+      use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
@@ -6849,6 +6875,7 @@ c===========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Sets up a conductor represented by the outside of a surface of revolution.
 c The Basis routine rofzfunc should be of the form
@@ -6879,9 +6906,11 @@ c             min and max transverse extent of conductor.
 c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
+c Output is put directly into the conductor arrays of Conductor3d.
 
+      integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy,iz,i
+      real(kind=8):: voltiz,voltminiz,voltmaxiz,voltz
       real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
       real(kind=8):: rmaxsq,zgmin,zgmax,r_zmin,r_zmax
       real(kind=8):: rrrlower,rrrhigher,zlower,zhigher
@@ -6896,6 +6925,9 @@ c Output is put directly into the conductor arrays of PSOR3d.
       real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
+
+      iestart = necndbdy
+      iostart = nocndbdy
 
       rmaxsq = rmax*rmax
       max_dxdy = max(dx,dy)
@@ -6965,11 +6997,12 @@ c Set conductor points.  If lfill or at end, set all points outside radius.
 c       --- Make sure there is enough room in the arrays.
         if (ncond + (1+nx)*(1+ny) > ncondmax) then
           ncondmax = ncond + (1+nx)*(1+ny)
-          call gchange("PSOR3d",0)
+          call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
         rrr = srfrv_f(zz,rofzfunc,0)
         rrrsq = rrr*rrr
+        voltiz = volt
 c       --- Calculate the maximum radius to be filled.
 c       --- If not filling the whole conductor, set rrrmax large enough so
 c       --- that enough conductor is filled to match neighboring points in iz.
@@ -7010,7 +7043,8 @@ c           --- unfilled conductor.
               ixcond(ncond) = ix
               iycond(ncond) = iy
               izcond(ncond) = iz
-              condvolt(ncond) = volt
+              condvolt(ncond) = voltiz
+              condnumb(ncond) = condid
             endif
           enddo
         enddo
@@ -7022,7 +7056,9 @@ c Set subgrid scale arrays
 
 c       --- Calculate r at zmin and zmax.
         r_zmin = srfrv_f(zmin,rofzfunc,0)
+        voltminiz = volt
         r_zmax = srfrv_f(zmax,rofzfunc,0)
+        voltmaxiz = volt
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
@@ -7038,7 +7074,7 @@ c       -- Set all points along and just outside conductor.
           if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
      &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
             ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
-            call gchange("PSOR3d",0)
+            call gchange("Conductor3d",0)
           endif
 
 c         --- Calculate radius of the surface.
@@ -7070,6 +7106,7 @@ c         --- be large so that transverse subgrid resolution will not be done.
             rrr = srfrv_f(zz,rofzfunc,0)
             rrrsq = rrr*rrr
             rrrsq1 = rrrsq
+            voltiz = volt
           endif
 
 c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
@@ -7108,6 +7145,14 @@ c         --- Find minimum of rrr and radius of surface at nearby z points.
               xx = (ix-ix_axis)*dx-xcent
               yy = (iy-iy_axis)*dy-ycent
               rad = sqrt(xx**2 + yy**2)
+
+              if (zz < zmin-zfuzz) then
+                voltz = voltminiz
+              elseif (zz > zmax+zfuzz) then
+                voltz = voltmaxiz
+              else
+                voltz = voltiz
+              endif
 
 c             --- Calculate distances in z first.  Select points which
 c             --- are transversely near the surface of revolution and
@@ -7165,6 +7210,7 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delmz = (zz - znew)*dzi
                 endif
+                voltz = volt
               elseif (rad < rrrlower .or. rad > rmax) then
                 delmz = 2.
               endif
@@ -7221,6 +7267,7 @@ c                 --- 10% in the delta and slowing down the code.
                   enddo
                   delpz = (znew - zz)*dzi
                 endif
+                voltz = volt
               elseif (rad < rrrhigher .or. rad > rmax) then
                 delpz = 2.
               endif
@@ -7296,7 +7343,8 @@ c                 --- even
                   ecdelpx(necndbdy) = delpx
                   ecdelpy(necndbdy) = delpy
                   ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = volt
+                  ecvolt(necndbdy) = voltz
+                  ecnumb(necndbdy) = condid
                 else
 c                 --- odd
                   nocndbdy = nocndbdy + 1
@@ -7309,7 +7357,8 @@ c                 --- odd
                   ocdelpx(nocndbdy) = delpx
                   ocdelpy(nocndbdy) = delpy
                   ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = volt
+                  ocvolt(nocndbdy) = voltz
+                  ocnumb(nocndbdy) = condid
                 endif
               endif
             enddo
@@ -7317,16 +7366,17 @@ c                 --- odd
         enddo
       endif
 
+      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+
       return
       end
 c========================================================================
 c========================================================================
-      subroutine srfrvin(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
-     &                   xmin,xmax,ymin,ymax,lshell,
-     &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                   ix_axis,iy_axis,
-     &                   xmesh,ymesh,l2symtry,l4symtry)
-      use PSOR3d
+      subroutine srfrvinf(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+     &                    xmin,xmax,ymin,ymax,lshell,
+     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    ix_axis,iy_axis,
+     &                    xmesh,ymesh,l2symtry,l4symtry,condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
       character(*):: rofzfunc
@@ -7337,6 +7387,7 @@ c========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Sets up a conductor represented by the inside of a surface of revolution.
 c The Basis routine rofzfunc should be of the form
@@ -7367,7 +7418,7 @@ c             min and max transverse extent of conductor.
 c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
+c Output is put directly into the conductor arrays of Conductor3d.
 c See comments in srfrvout.
 
       real(kind=8):: zz,srfrv_f
@@ -7385,19 +7436,22 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrlinr = .true.
       endif
 
+c     --- Copy volt into srfrv_v
+      srfrv_v = volt
+
       if (fstype == 7 .or. fstype == 11) then
-        call srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+        call srfrvin3dmg(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
      &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                 ix_axis,iy_axis,
-     &                 xmesh,ymesh,l2symtry,l4symtry)
+     &                 xmesh,ymesh,l2symtry,l4symtry,condid)
       else
 c     --- Call the appropriate routine
-        call srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+        call srfrvin3d(rofzfunc,srfrv_v,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
      &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                 ix_axis,iy_axis,
-     &                 xmesh,ymesh,l2symtry,l4symtry)
+     &                 xmesh,ymesh,l2symtry,l4symtry,condid)
       endif
 
 c     --- Clean up the table-ized data.
@@ -7412,8 +7466,9 @@ c========================================================================
      &                     xmin,xmax,ymin,ymax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,
-     &                     xmesh,ymesh,l2symtry,l4symtry)
+     &                     xmesh,ymesh,l2symtry,l4symtry,condid)
       use PSOR3d
+      use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -7422,6 +7477,7 @@ c========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Sets up a conductor represented by the inside of a surface of revolution.
 c The Basis routine rofzfunc should be of the form
@@ -7452,10 +7508,10 @@ c             min and max transverse extent of conductor.
 c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
+c Output is put directly into the conductor arrays of Conductor3d.
 c See comments in srfrvout.
 
-
+      integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
       real(kind=8):: rminsq,zgmin,zgmax,r_zmin,r_zmax
@@ -7471,6 +7527,9 @@ c See comments in srfrvout.
       real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
+
+      iestart = necndbdy
+      iostart = nocndbdy
 
       rminsq = rmin*rmin
       max_dxdy = max(dx,dy)
@@ -7540,7 +7599,7 @@ c Set conductor points.  If lfill or at end, set all points inside radius.
 c       --- Make sure there is enough room in the arrays.
         if (ncond + (1+nx)*(1+ny) > ncondmax) then
           ncondmax = ncond + (1+nx)*(1+ny)
-          call gchange("PSOR3d",0)
+          call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
         rrr = srfrv_f(zz,rofzfunc,0)
@@ -7588,6 +7647,7 @@ c           --- unfilled conductor.
               iycond(ncond) = iy
               izcond(ncond) = iz
               condvolt(ncond) = volt
+              condnumb(ncond) = condid
             endif
           enddo
         enddo
@@ -7615,7 +7675,7 @@ c       -- Loop over z planes
           if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
      &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
             ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
-            call gchange("PSOR3d",0)
+            call gchange("Conductor3d",0)
           endif
 
 c         --- Calculate radius of the surface.
@@ -7881,6 +7941,7 @@ c             -- Check if any of the distances are less than 1.
                   ecdelpy(necndbdy) = delpy
                   ecdelpz(necndbdy) = delpz
                   ecvolt(necndbdy) = volt
+                  ecnumb(necndbdy) = condid
                 else
                   nocndbdy = nocndbdy + 1
                   iocndx(nocndbdy) = ix
@@ -7893,6 +7954,7 @@ c             -- Check if any of the distances are less than 1.
                   ocdelpy(nocndbdy) = delpy
                   ocdelpz(nocndbdy) = delpz
                   ocvolt(nocndbdy) = volt
+                  ocnumb(nocndbdy) = condid
                 endif
               endif
             enddo
@@ -7900,14 +7962,16 @@ c             -- Check if any of the distances are less than 1.
         enddo
       endif
 
+      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+
       return
       end
 c===========================================================================
-      subroutine srfrvinout(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                      lzend,xmin,xmax,ymin,ymax,lshell,
-     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-      use PSOR3d
+      subroutine srfrvinoutf(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+     &                       lzend,xmin,xmax,ymin,ymax,lshell,
+     &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                       condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
@@ -7919,6 +7983,7 @@ c===========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Sets up a conductor represented by the outside of a surface of revolution.
 c The Basis routines rminofz and rmaxofz should be of the form
@@ -7949,7 +8014,7 @@ c             min and max transverse extent of conductor.
 c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
+c Output is put directly into the conductor arrays of Conductor3d.
 
       real(kind=8):: zz,srfrv_f
       integer(ISZ):: i,nc,nceo
@@ -7976,27 +8041,25 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrmaxlinr = .true.
       endif
 
+c     --- Copy volt into srfrv_v
+      srfrv_v = volt
+
 c     --- Call the appropriate routine
       if(solvergeom==RZgeom) then
-         call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+         call srfrvinoutrz(rminofz,rmaxofz,srfrv_v,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       else if (fstype == 7 .or. fstype == 11) then
-        call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                      lzend,xmin,xmax,ymin,ymax,lshell,
-     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-c     else if(fstype==11) then
-c        call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-c    &                   lzend,xmin,xmax,ymin,ymax,lshell,
-c    &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-c    &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+        call srfrvinout3dmg(rminofz,rmaxofz,srfrv_v,zmin,zmax,xcent,ycent,
+     &                     lzend,xmin,xmax,ymin,ymax,lshell,
+     &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       else
-        call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+        call srfrvinout3d(rminofz,rmaxofz,srfrv_v,zmin,zmax,xcent,ycent,
      &                    lzend,xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       end if
 
 c     --- Clean up the table-ized data.
@@ -8011,8 +8074,10 @@ c===========================================================================
       subroutine srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                        lzend,xmin,xmax,ymin,ymax,lshell,
      &                        zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                        condid)
       use PSOR3d
+      use Conductor3d
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
@@ -8021,6 +8086,7 @@ c===========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
 c Sets up a conductor represented by the outside of a surface of revolution.
 c The Basis routines rminofz and rmaxofz should be of the form
@@ -8051,8 +8117,9 @@ c             min and max transverse extent of conductor.
 c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
 c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
+c Output is put directly into the conductor arrays of Conductor3d.
 
+      integer(ISZ):: iestart,iostart
       integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rad,rrrmax,rrrmin,rmin,rmax
       real(kind=8):: zgmin,zgmax
@@ -8071,6 +8138,9 @@ c Output is put directly into the conductor arrays of PSOR3d.
       real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
+
+      iestart = necndbdy
+      iostart = nocndbdy
 
       max_dxdy = max(dx,dy)
       dxi = 1./dx
@@ -8139,7 +8209,7 @@ c Set conductor points.
 c       --- Make sure there is enough room in the arrays.
         if (ncond + (1+nx)*(1+ny) > ncondmax) then
           ncondmax = ncond + (1+nx)*(1+ny)
-          call gchange("PSOR3d",0)
+          call gchange("Conductor3d",0)
         endif
 c       --- Calculate the surface radius at iz.
         rrrmin = srfrv_f(zz,rminofz,1)
@@ -8161,6 +8231,7 @@ c           --- of the conductor.
               iycond(ncond) = iy
               izcond(ncond) = iz
               condvolt(ncond) = volt
+              condnumb(ncond) = condid
             endif
           enddo
         enddo
@@ -8190,7 +8261,7 @@ c       -- Set all points along and just outside conductor.
           if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
      &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
             ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
-            call gchange("PSOR3d",0)
+            call gchange("Conductor3d",0)
           endif
 
 c         --- Calculate radius of the surface.
@@ -8518,6 +8589,7 @@ c                 --- even
                   ecdelpy(necndbdy) = delpy
                   ecdelpz(necndbdy) = delpz
                   ecvolt(necndbdy) = volt
+                  ecnumb(necndbdy) = condid
                 else
 c                 --- odd
                   nocndbdy = nocndbdy + 1
@@ -8531,6 +8603,7 @@ c                 --- odd
                   ocdelpy(nocndbdy) = delpy
                   ocdelpz(nocndbdy) = delpz
                   ocvolt(nocndbdy) = volt
+                  ocnumb(nocndbdy) = condid
                 endif
               endif
             enddo
@@ -8538,11 +8611,12 @@ c                 --- odd
         enddo
       endif
 
+      call setconductorvoltnumb(iestart,necndbdy,iostart,nocndbdy)
+
       return
       end
 c========================================================================
       real(kind=8) function srfrv_f(zz,rofzfunc,icase)
-      use PSOR3d
       use Surface_of_Rev
       real(kind=8):: zz
       integer(ISZ):: icase
@@ -8627,6 +8701,71 @@ c       --- Get r(z) from the basis function.
       return
       end
 c===========================================================================
+      subroutine setconductorvoltnumb(ie1,ie2,io1,io2)
+      use Conductor3d
+      integer(ISZ):: ie1,ie2,io1,io2
+c Sets the voltage voltage and number for each of the 6 directions, for the
+c points with indices in the range i1 and i2.
+
+      integer(ISZ):: i
+
+      do i=ie1,ie2
+        if (ecdelmx(i) < 1.) then
+          ecvoltmx(i) = ecvolt(i)
+          ecnumbmx(i) = ecnumb(i)
+        endif
+        if (ecdelmy(i) < 1.) then
+          ecvoltmy(i) = ecvolt(i)
+          ecnumbmy(i) = ecnumb(i)
+        endif
+        if (ecdelmz(i) < 1.) then
+          ecvoltmz(i) = ecvolt(i)
+          ecnumbmz(i) = ecnumb(i)
+        endif
+        if (ecdelpx(i) < 1.) then
+          ecvoltpx(i) = ecvolt(i)
+          ecnumbpx(i) = ecnumb(i)
+        endif
+        if (ecdelpy(i) < 1.) then
+          ecvoltpy(i) = ecvolt(i)
+          ecnumbpy(i) = ecnumb(i)
+        endif
+        if (ecdelpz(i) < 1.) then
+          ecvoltpz(i) = ecvolt(i)
+          ecnumbpz(i) = ecnumb(i)
+        endif
+      enddo
+
+      do i=io1,io2
+        if (ocdelmx(i) < 1.) then
+          ocvoltmx(i) = ocvolt(i)
+          ocnumbmx(i) = ocnumb(i)
+        endif
+        if (ocdelmy(i) < 1.) then
+          ocvoltmy(i) = ocvolt(i)
+          ocnumbmy(i) = ocnumb(i)
+        endif
+        if (ocdelmz(i) < 1.) then
+          ocvoltmz(i) = ocvolt(i)
+          ocnumbmz(i) = ocnumb(i)
+        endif
+        if (ocdelpx(i) < 1.) then
+          ocvoltpx(i) = ocvolt(i)
+          ocnumbpx(i) = ocnumb(i)
+        endif
+        if (ocdelpy(i) < 1.) then
+          ocvoltpy(i) = ocvolt(i)
+          ocnumbpy(i) = ocnumb(i)
+        endif
+        if (ocdelpz(i) < 1.) then
+          ocvoltpz(i) = ocvolt(i)
+          ocnumbpz(i) = ocnumb(i)
+        endif
+      enddo
+
+      return
+      end
+c===========================================================================
       subroutine setcndtr_rz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                       l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz
@@ -8643,7 +8782,8 @@ c===========================================================================
       subroutine srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                       xmin,xmax,ymin,ymax,lshell,
      &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                       condid)
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
@@ -8652,11 +8792,12 @@ c===========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
       call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                xmin,xmax,ymin,ymax,lshell,
      &                zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
       return
       end
@@ -8664,7 +8805,8 @@ c===========================================================================
       subroutine srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                      lzend,xmin,xmax,ymin,ymax,lshell,
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                      condid)
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
@@ -8673,11 +8815,12 @@ c===========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
       call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                  lzend,xmin,xmax,ymin,ymax,lshell,
      &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
       return
       end
@@ -8698,7 +8841,7 @@ c===========================================================================
       subroutine srfrvout_3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
@@ -8707,19 +8850,20 @@ c===========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
       call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                xmin,xmax,ymin,ymax,lshell,
      &                zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
       return
       end
 c===========================================================================
       subroutine srfrvinout_3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                      lzend,xmin,xmax,ymin,ymax,lshell,
-     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                     lzend,xmin,xmax,ymin,ymax,lshell,
+     &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
@@ -8728,11 +8872,12 @@ c===========================================================================
       integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: condid
 
       call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                  lzend,xmin,xmax,ymin,ymax,lshell,
      &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
       return
       end

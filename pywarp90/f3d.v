@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.43 $, $Date: 2002/06/05 01:23:50 $
+#@(#) File F3D.V, version $Revision: 3.44 $, $Date: 2002/06/20 19:35:34 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.43 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.44 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -127,13 +127,6 @@ zparity   integer /0/  # iz parity, used in the parallel version so that the
                        # parity of the subgrid conductor points can be
                        # relative to the full grid.
 dxfine    real         # Size of transverse grid cells are finest level
-ncondmax          integer # Maximum number of points in conductor
-ncond             integer # Number of points within conductors
-ixcond(ncondmax) _integer # X coordinate of points in conductor
-iycond(ncondmax) _integer # Y coordinate of points in conductor
-izcond(ncondmax) _integer # Y coordinate of points in conductor
-condvolt(ncondmax) _real  # voltage of points in conductor
-condnumb(ncondmax) _integer # Number of the conductor the points are in
 lplates          logical  # Sets whether or not quadruple endplates are included
 rodfract        real /1./ # Fraction of quadrupole rod which is used
 
@@ -141,7 +134,22 @@ lcndbndy logical /.true./ # Turns on sub-grid boundaries
 icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
                           # 2 EBC style (non-centered finite-difference)
+
+*********** Conductor3d dump parallel:
+icstart(100)  integer # Start of the conductor points for each MG level
+ecstart(100)  integer # Start of the even conductor points for each MG level
+ocstart(100)  integer # Start of the odd conductor points for each MG level
+ncondmax          integer # Maximum number of points in conductor
+ncond             integer # Number of points within conductors
+ixcond(ncondmax) _integer # X coordinate of points in conductor
+iycond(ncondmax) _integer # Y coordinate of points in conductor
+izcond(ncondmax) _integer # Y coordinate of points in conductor
+condvolt(ncondmax) _real  # voltage of points in conductor
+condnumb(ncondmax) _integer # Number of the conductor the points are in
+icondlxy(ncondmax) _integer # Coarseness level at which the point is on grid
+icondlz (ncondmax) _integer # Coarseness level at which the point is on grid
 ncndmax       integer /0/   # Maximum number of points for sub-grid boundaries
+
 necndbdy      integer /0/   # Number of points for even sub-grid boundaries
 ecndpvph(ncndmax)     _real -dump # Saves phi for even sub-grid boundaries
 iecndx  (ncndmax)  _integer # location of points for even sub-grid boundaries
@@ -154,7 +162,22 @@ ecdelpx (ncndmax)     _real # distance in x of surface with higher x, even
 ecdelpy (ncndmax)     _real # distance in y of surface with higher y, even
 ecdelpz (ncndmax)     _real # distance in z of surface with higher z, even
 ecvolt  (ncndmax)     _real # voltage of points for even sub-grid boundaries
+ecvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction, even
+ecvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction, even
+ecvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction, even
+ecvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction, even
+ecvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction, even
+ecvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction, even
 ecnumb  (ncndmax)  _integer # Number of the conductor the even points are in
+ecnumbmx(ncndmax)  _integer # Number of the conductor in minus x direction, even
+ecnumbpx(ncndmax)  _integer # Number of the conductor in plus  x direction, even
+ecnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, even
+ecnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, even
+ecnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, even
+ecnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, even
+iecndlxy(ncndmax)  _integer # Coarseness level at which the point is on grid
+iecndlz (ncndmax)  _integer # Coarseness level at which the point is on grid
+
 nocndbdy      integer /0/   # Number of points for odd sub-grid boundaries
 ocndpvph(ncndmax)     _real -dump # Saves phi for odd sub-grid boundaries
 iocndx  (ncndmax)  _integer # location of points for odd sub-grid boundaries
@@ -167,40 +190,19 @@ ocdelpx (ncndmax)     _real # distance in x of surface with higher x, odd
 ocdelpy (ncndmax)     _real # distance in y of surface with higher y, odd
 ocdelpz (ncndmax)     _real # distance in z of surface with higher z, odd
 ocvolt  (ncndmax)     _real # voltage of points for odd sub-grid boundaries
-ocnumb  (ncndmax)  _integer # Number of the conductor the odd points are in
-
-*********** MultigridConductor3d dump parallel:
-icstart(100)  integer # Start of the conductor points for each MG level
-ecstart(100)  integer # Start of the even conductor points for each MG level
-ocstart(100)  integer # Start of the odd conductor points for each MG level
-ecvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction, even
-ecvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction, even
-ecvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction, even
-ecvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction, even
-ecvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction, even
-ecvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction, even
-ecnumbmx(ncndmax)  _integer # Number of the conductor in minus x direction, even
-ecnumbpx(ncndmax)  _integer # Number of the conductor in plus  x direction, even
-ecnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, even
-ecnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, even
-ecnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, even
-ecnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, even
 ocvoltmx(ncndmax)     _real # Voltage on conductor in minus x direction, odd
 ocvoltpx(ncndmax)     _real # Voltage on conductor in plus  x direction, odd
 ocvoltmy(ncndmax)     _real # Voltage on conductor in minus y direction, odd
 ocvoltpy(ncndmax)     _real # Voltage on conductor in plus  y direction, odd
 ocvoltmz(ncndmax)     _real # Voltage on conductor in minus z direction, odd
 ocvoltpz(ncndmax)     _real # Voltage on conductor in plus  z direction, odd
+ocnumb  (ncndmax)  _integer # Number of the conductor the odd points are in
 ocnumbmx(ncndmax)  _integer # Number of the conductor in minus x direction, odd
 ocnumbpx(ncndmax)  _integer # Number of the conductor in plus  x direction, odd
 ocnumbmy(ncndmax)  _integer # Number of the conductor in minus y direction, odd
 ocnumbpy(ncndmax)  _integer # Number of the conductor in plus  y direction, odd
 ocnumbmz(ncndmax)  _integer # Number of the conductor in minus z direction, odd
 ocnumbpz(ncndmax)  _integer # Number of the conductor in plus  z direction, odd
-icondlxy(ncondmax) _integer # Coarseness level at which the point is on grid
-icondlz (ncondmax) _integer # Coarseness level at which the point is on grid
-iecndlxy(ncndmax)  _integer # Coarseness level at which the point is on grid
-iecndlz (ncndmax)  _integer # Coarseness level at which the point is on grid
 iocndlxy(ncndmax)  _integer # Coarseness level at which the point is on grid
 iocndlz (ncndmax)  _integer # Coarseness level at which the point is on grid
 
@@ -215,19 +217,33 @@ mgform     integer /1/   # When 1, MG operates on phi (and rho),
                          # when 2, MG operates on error (and residual)
 downpasses integer /1/   # Number of downpasses
 uppasses   integer /1/   # Number of uppasses
-tempsize   integer       # Size of work space (autoset)
+mglevels   integer /0/   # Number of coarsening levels
+mglevelsnx(20) integer   # List of nx for the levels of coarsening
+mglevelsny(20) integer   # List of ny for the levels of coarsening
+mglevelsnzfull(20) integer # List of nzfull for the levels of coarsening
+mglevelsiz(20) integer   # List of iz for the levels of coarsening
+mglevelsnz(20) integer   # List of nz for the levels of coarsening
 mggoodnumbers(40) integer /4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,80,96,112,
                            128,160,192,224,256,320,384,448,512,640,768,896,
                            1024,1280,1536,1792,2048,2560,3072,3584,5120,7168/
                          # A list of good numbers to use for the grid
                          # dimension. This is an ordered list of powers of two
                          # times 1, 3, 5, and 7.
+tempsize   integer       # Size of work space (autoset)
 phi_temp(tempsize) _real # Work space holding phi on all grid levels
 rho_temp(tempsize) _real # Work space holding source on all grid levels
 subgrid_sor_to_mg(nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
                   l2symtry:logical,l4symtry:logical) subroutine
   # Converts a set of points generated for the SOR fieldsolver into the set of
   # points needed for the multigrid fieldsolver.
+getmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
+            dx:real,dy:real,dz:real,
+            mgminlevelxy:integer,mgminlevelz:integer,
+            mglevels:integer,
+            mglevelsnx:integer,mglevelsny:integer,mglevelsnzfull:integer,
+            mglevelsiz:integer,mglevelsnz:integer)
+            subroutine   # Calculates levels of coarsening. Note that mglevels
+                         # must be zero when calling this routine.
 
 *********** Multigrid3d_work:
 # Temporary variables and array used by subgrid_sor_to_mg
@@ -240,6 +256,7 @@ iii(0:wnx,0:wny,0:wnz) _integer
 srfrv_pernz            integer  /0/ # Number of points per nz for tablized data
 srfrv_z                real # Value of z passed to srfrv_f
 srfrv_r                real # Value of r returned by srfrv_f
+srfrv_v                real # Value of voltage, can be set in srfrv_f
 lsrlinr                logical /.false./ # Use piecewise-linear curve.
 npnts_sr               integer /0/ # Number points in piecewise-linear curve.
 z_sr(npnts_sr)         _real # Z of points in piecewise-linear curve
@@ -292,31 +309,31 @@ platepnt(ixmin:integer,ixmax:integer,iymin:integer,iymax:integer,
          vvv:real,xoff:real,yoff:real,delz_in:real,iz:integer,
          lz_in_plate:logical,fuzz:real)
      subroutine # Set conductor points for a transverse plate
-srfrvout(rofzfunc:string,volt:real,zmin:real,zmax:real,
+srfrvoutf(rofzfunc:string,volt:real,zmin:real,zmax:real,
          xcent:real,ycent:real,rmax:real,lfill:logical,
          xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
          zmmin:real,zmmax:real,zbeam:real,
          dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
          ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
-         l2symtry:logical,l4symtry:logical)
+         l2symtry:logical,l4symtry:logical,condid:integer)
      subroutine # Set conductor points for a conductor that is the
                 # outside of a surface of revolution.
-srfrvin (rofzfunc:string,volt:real,zmin:real,zmax:real,
+srfrvinf(rofzfunc:string,volt:real,zmin:real,zmax:real,
          xcent:real,ycent:real,rmin:real,lfill:logical,
          xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
          zmmin:real,zmmax:real,zbeam:real,
          dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
          ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
-         l2symtry:logical,l4symtry:logical)
+         l2symtry:logical,l4symtry:logical,condid:integer)
      subroutine # Set conductor points for a conductor that is the
                 # inside of a surface of revolution.
-srfrvinout(rminofz:string,rmaxofz:string,volt:real,zmin:real,zmax:real,
+srfrvinoutf(rminofz:string,rmaxofz:string,volt:real,zmin:real,zmax:real,
          xcent:real,ycent:real,lzend:logical,
          xmin:real,xmax:real,ymin:real,ymax:real,lshell:logical,
          zmmin:real,zmmax:real,zbeam:real,
          dx:real,dy:real,dz:real,nx:integer,ny:integer,nz:integer,
          ix_axis:integer,iy_axis:integer,xmesh:real,ymesh:real,
-         l2symtry:logical,l4symtry:logical)
+         l2symtry:logical,l4symtry:logical,condid:integer)
      subroutine # Set conductor points for a conductor that is between two
                 # surfaces of revolution.
 
