@@ -5608,15 +5608,15 @@ mg_nocndbdy = 0
 ixlbnd = basegrid%ixlbnd
 ixrbnd = basegrid%ixrbnd
 do i = 1, ncond
-  ii = basegrid%nlevels-icondlevel(i)
+  ii = icondlevel(i) + 1
   mg_ncond(ii) = mg_ncond(ii) + 1
 end do
 do i = 1, necndbdy
-  ii = basegrid%nlevels-iecndlevel(i)
+  ii = iecndlevel(i) + 1
   mg_necndbdy(ii) = mg_necndbdy(ii) + 1
 end do
 do i = 1, nocndbdy
-  ii = basegrid%nlevels-iocndlevel(i)
+  ii = iocndlevel(i) + 1
   mg_nocndbdy(ii) = mg_nocndbdy(ii) + 1
 end do
 
@@ -5649,7 +5649,7 @@ end do
            ocvoltmxtmp(nocndbdytmp),ocvoltpxtmp(nocndbdytmp), ocvoltmztmp(nocndbdytmp),ocvoltpztmp(nocndbdytmp))
   itmp = 0
   do ii = 1, ncond
-    IF(basegrid%nlevels-icondlevel(ii)==i) then
+    IF(icondlevel(ii)+1==i) then
       itmp = itmp + 1
       ixcondtmp(itmp) = ixcond(ii)
       izcondtmp(itmp) = izcond(ii)
@@ -5659,7 +5659,7 @@ end do
   end do
   itmp = 0
   do ii = 1, necndbdy
-    IF(basegrid%nlevels-iecndlevel(ii)==i) then
+    IF(iecndlevel(ii)+1==i) then
       itmp = itmp + 1
       iecndxtmp(itmp) = iecndx(ii)
       iecndztmp(itmp) = iecndz(ii)
@@ -5679,7 +5679,7 @@ end do
   end do
   itmp = 0
   do ii = 1, nocndbdy
-    IF(basegrid%nlevels-iocndlevel(ii)==i) then
+    IF(iocndlevel(ii)+1==i) then
       itmp = itmp + 1
       iocndxtmp(itmp) = iocndx(ii)
       iocndztmp(itmp) = iocndz(ii)
