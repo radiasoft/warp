@@ -1,5 +1,5 @@
 from warp import *
-grid_1d_version = "$Id: grid_1d.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+grid_1d_version = "$Id: grid_1d.py,v 1.2 2001/04/13 20:50:59 dave Exp $"
 ############################################################################
 # This script contains two routines, one to gather particle data onto
 # a 1D grid, and the other to scatter data from a 1D grid to the particles.
@@ -9,10 +9,11 @@ grid_1d_version = "$Id: grid_1d.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
 ############################################################################
 # This routine gathers a 1-D set of data onto a grid.
 # Input:
-#   location            1-D array holding the location
+#   location            1-D array holding the coordinates to be binned
 #   data                1-D array holding the actual data (optional)
 #   g1dmin              Minimum value of data range (optional)
 #   g1dmax              Maximum value of data range (optional)
+#   ng1d                Number of grid points minus one
 # Output:
 #   ng1d                The number of grid points, default is 40.
 #   grid_1d(0:ng1d)     The 1-D array the holds the result.
@@ -28,24 +29,20 @@ grid_1d_version = "$Id: grid_1d.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
 #   The way the routine is written, any particles out of the range
 #   [g1dmin,g1dmax] are ignored.
 
-def gather_1d(location,data=None,g1dmin=None,g1dmax=None):
+def gather_1d(location,data=None,g1dmin=None,g1dmax=None,ng1d=40):
   """
 Bins data onto a 1-D mesh. When data is not present, returns normalized density.
-  - location is the location of the points
-  - data is the optional data to load onto the mesh
-  - g1dmin is the minimum extent of the mesh, defaults to min(location)
-  - g1dmax is the minimum extent of the mesh, defaults to max(location)
+  - location: the coordinates of the points to be binned
+  - data: the optional data to load onto the mesh
+  - g1dmin: the minimum extent of the mesh, defaults to min(location)
+  - g1dmax: the minimum extent of the mesh, defaults to max(location)
+  - ng1d=40: number of grid points minus one (grid min is at index 0, and grid
+             max is at index ng1d)
 ouput
   returns a tuple (grid_1d,grid_1dmesh)
   - grid_1d holds the binned data
   - grid_1dmesh holds the bin locations
   """
-  try:
-    ng1dtest = ng1d
-  except NameError:
-    ng1d = 40
-  #global grid_1d
-  #global grid_1dmesh
   grid_1d = zeros(ng1d+1,'d')
   grid_1dmesh = zeros(ng1d+1,'d')
 
