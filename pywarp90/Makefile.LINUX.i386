@@ -12,7 +12,8 @@ POPT =  -Mcache_align
 PYMODULEOPT = -O1
 CHECKS = #-Mbounds -Mchkfpstk
 F90FREE  = pgf90 -Mextend -Mdclchk -r8 -fpic $(CHECKS) $(XTRAF90FLAGS)
-F90FIXED = pgf90 -Mextend -Mdclchk -r8 -fpic $(CHECKS) $(XTRAF90FLAGS)
+# 9 June 2003, petermc, added -DWITHCHP to F90FIXED
+F90FIXED = pgf90 -Mextend -Mdclchk -r8 -fpic $(CHECKS) $(XTRAF90FLAGS) -DWITHCHP
 CC = cc -fpic
 SO = so
 LD = pgf90 -Mnomain $(PROF) $(OPT)
