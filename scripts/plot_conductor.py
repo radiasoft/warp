@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.66 2004/01/23 00:19:54 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.67 2004/02/03 00:14:36 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1620,7 +1620,7 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
 #####################################################################
 #####################################################################
 def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
-                       ezs,eze,eap,eox,eoy,
+                       ezs,eze,eap,eax,eay,eox,eoy,
                        err=None,erl=None,egl=None,egp=None,
                        epa=None,epr=None,epw=None,dpal=None,dpar=None,zoffset=None):
   """Plots the outline of electrostatic elements
@@ -1637,22 +1637,29 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
     if zl is None: zl = top.zlatstrt
     zoffset = floor((zl-top.zlatstrt)/top.zlatperi)*top.zlatperi
     while zoffset < zu:
-      z1 = max(zl,zoffset) - zoffset
-      z2 = min(zu,zoffset+top.zlatperi) - zoffset
+      #z1 = max(zl,zoffset) - zoffset
+      #z2 = min(zu,zoffset+top.zlatperi) - zoffset
       plotelementoutline(color,gridframe,axis,z1,z2,ie,ne,outline,fillcolor,
-                         ezs,eze,eap,eox,eoy,err,erl,egl,egp,
+                         ezs,eze,eap,eax,eay,eox,eoy,err,erl,egl,egp,
                          epa,epr,epw,dpal,dpar,zoffset=zoffset)
       zoffset = zoffset + top.zlatperi
     return
+  # --- Set the aperture radius.
+  if max(eax) == 0.: eax = eap
+  if max(eay) == 0.: eay = eap
+  if axis == 'x': eap = eax
+  else:           eap = eay
   # --- Set defaults for z-range
   if zl is None: zl = -largepos
   if zu is None: zu = +largepos
-  if zoffset is None: zoffset = top.zlatstrt
+  #if zoffset is None: zoffset = top.zlatstrt
+  if zoffset is None: zoffset = 0.
   if axis == 'x': gpsign = 1
   else:           gpsign = -1
   for i in range(ie,ie+ne):
     # --- Skip if outside the z-range
-    if eze[i] < zl or ezs[i] > zu: continue
+    if (eze[i]+top.zlatstrt+zoffset < zl or
+        ezs[i]+top.zlatstrt+zoffset > zu): continue
     # --- plot rods
     # --- If aperture is zero, then this quad is skipped
     rodap = eap[i]
@@ -1673,7 +1680,7 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
       zz = gp*(-0.5*(rodlen+gaplen) + rodlen*array([0.,1.,1.,0.,0.]))
       rr1 = offset + rr
       rr2 = offset - rr
-      zz = 0.5*(eze[i] + ezs[i]) + zoffset + zz
+      zz = 0.5*(eze[i] + ezs[i]) + top.zlatstrt + zoffset + zz
       if gridframe:
         rr1 = rr1/w3d.dx
         rr2 = rr2/w3d.dx
@@ -1701,10 +1708,10 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
       rrl2 = offset - rrl
       rrr1 = offset + rrr
       rrr2 = offset - rrr
-      zzl = 0.5*(eze[i] + ezs[i]) - 0.5*(rodlen+gaplen) - zz + \
-            zoffset
-      zzr = 0.5*(eze[i] + ezs[i]) + 0.5*(rodlen+gaplen) + zz + \
-            zoffset
+      zzl = (0.5*(eze[i] + ezs[i]) - 0.5*(rodlen+gaplen) - zz +
+            top.zlatstart + zoffset)
+      zzr = (0.5*(eze[i] + ezs[i]) + 0.5*(rodlen+gaplen) + zz +
+            top.zlatstart + zoffset)
       if gridframe:
         rrl1 = rrl1/w3d.dx
         rrl2 = rrl2/w3d.dx
@@ -1740,7 +1747,8 @@ def plotquadoutline(zl=None,zu=None,iq=0,nq=None,color='fg',gridframe=0,axis='x'
   """
   if nq is None: nq = top.nquad + 1
   plotelementoutline(color,gridframe,axis,zl,zu,iq,nq,outline,fillcolor,
-                     top.quadzs,top.quadze,top.quadap,top.qoffx,top.qoffy,
+                     top.quadzs,top.quadze,top.quadap,top.quadax,top.quaday,
+                     top.qoffx,top.qoffy,
                      top.quadrr,top.quadrl,top.quadgl,top.quadgp,
                      top.quadpa,top.quadpr,top.quadpw,
                      top.qdelpal,top.qdelpar)
@@ -1760,7 +1768,8 @@ def plotheleoutline(zl=None,zu=None,ih=0,nh=None,color='fg',gridframe=0,axis='x'
   """
   if nh is None: nh = top.nhele + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ih,nh,outline,fillcolor,
-                     top.helezs,top.heleze,top.heleap,top.heleox,top.heleoy,
+                     top.helezs,top.heleze,top.heleap,top.heleax,top.heleay,
+                     top.heleox,top.heleoy,
                      top.helerr,top.helerl,top.helegl,top.helegp,
                      top.helepa,zeros(top.nhele+1,'d'),top.helepw,
                      zeros(top.nhele+1,'d'),zeros(top.nhele+1,'d'))
@@ -1780,7 +1789,8 @@ def plotemltoutline(zl=None,zu=None,ie=0,ne=None,color='fg',gridframe=0,axis='x'
   """
   if ne is None: ne = top.nemlt + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
-                     top.emltzs,top.emltze,top.emltap,top.emltox,top.emltoy,
+                     top.emltzs,top.emltze,top.emltap,top.emltax,top.emltay,
+                     top.emltox,top.emltoy,
                      top.emltrr,top.emltrl,top.emltgl,top.emltgp,
                      top.emltpa,zeros(top.nemlt+1,'d'),top.emltpw,
                      zeros(top.nemlt+1,'d'),zeros(top.nemlt+1,'d'))
@@ -1800,8 +1810,9 @@ def plotpgrdoutline(zl=None,zu=None,ip=0,np=None,color='fg',gridframe=0,axis='x'
   """
   if ne is None: ne = top.npgrd + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ip,np,outline,fillcolor,
-                     top.pgrdzs,top.pgrdze,top.pgrdap,top.pgrdrr,top.pgrdrl,
-                     top.pgrdgl,top.pgrdgp,top.pgrdox,top.pgrdoy,
+                     top.pgrdzs,top.pgrdze,top.pgrdap,top.pgrdax,top.pgrday,
+                     top.pgrdox,top.pgrdoy,
+                     top.pgrdrr,top.pgrdrl,top.pgrdgl,top.pgrdgp,
                      top.pgrdpa,zeros(top.npgrd+1,'d'),top.pgrdpw,
                      zeros(top.npgrd+1,'d'),zeros(top.npgrd+1,'d'))
 
@@ -1820,7 +1831,7 @@ def plotaccloutline(zl=None,zu=None,ia=0,na=None,color='fg',gridframe=0,axis='x'
   """
   if ne is None: ne = top.naccl + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ia,na,outline,fillcolor,
-                     top.acclzs,top.acclze,top.acclap,
+                     top.acclzs,top.acclze,top.acclap,top.acclax,top.acclay,
                      top.acclox,top.accloy)
 
 #---------------------------------------------------------------------------
