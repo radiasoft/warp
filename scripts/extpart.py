@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.29 2003/10/30 01:14:18 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.30 2004/01/28 16:52:13 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -309,7 +309,7 @@ routines (such as ppxxp).
         self.uzep[js] = uz
     if self.dumptofile: self.dodumptofile()
     # --- Force nep to zero to ensure that particles are not saved twice.
-    top.nep = 0
+    top.nep[id,:] = 0
 
   def setaccumulate(self,v=1):
     self.laccumulate = v
