@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.51 2003/04/01 02:02:41 dave Exp $"
+warp_version = "$Id: warp.py,v 1.52 2003/04/08 17:50:53 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -367,114 +367,13 @@ package. Only w3d and wxy have field solves defined.
     if top.efetch == 3:
       getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
                  w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
-                 w3d.dx,w3d.dy,w3d.dz)
+                 w3d.dx,w3d.dy,w3d.dz,top.pboundxy)
     if top.inject > 0:
       try:
         # --- This routine is not defined in pywarp77
         getinj_phi()
       except NameError:
         pass
-
-#=============================================================================
-# --- Dump command
-def newdump(filename=None,suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
-         ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false):
-  """
-Creates a dump file
-  - filename=(runid+'%06d'%top.it+suffix+'.dump')
-  - attr='dump': All variables with the given attribute or group name are
-    written to the file. The default attribute makes a restartable dump file.
-  - serial=0: When 1, does a dump of only non-parallel data (parallel version
-    only).
-  - onefile=1: When 1, all processors dump to one file, otherwise each dumps to
-    seperate file. The processor number is appended to the dump filename.
-  - pyvars=1: When 1, saves user defined python variables to the file.
-  - ff=None: Optional file object. When passed in, write to that file instead
-             of creating a new one. Note that the inputted file object must be
-             closed by the user.
-  - varsuffix=None: Suffix to add to the variable names. If none is specified,
-                    the suffix '@pkg' is used, where pkg is the package name
-                    that the variable is in.
-  - resizeHist=1: When true, resize history arrays so that unused locations
-                  are removed.
-  """
-  timetemp = wtime()
-  if not filename:
-    # --- Setup default filename based on time step and processor number.
-    if serial:
-      s = '.sdump'
-    else:
-      s = '.dump'
-    if onefile or not lparallel:
-      filename=arraytostr(top.runid)+('%06d'%top.it)+suffix+s
-    else:
-      filename=arraytostr(top.runid)+('%06d_%05d'%(top.it,me))+suffix+s
-  else:
-    if not onefile and lparallel:
-      # --- Append the processor number to the user inputted filename
-      filename = filename + '%05d'%me
-  # --- Make list of all of the new python variables.
-  interpreter_variables = []
-  if pyvars:
-    for l in __main__.__dict__.keys():
-      if l not in initial_global_dict_keys:
-        interpreter_variables.append(l)
-  # --- Resize history arrays if requested.
-  if resizeHist:
-    top.lenhist = top.jhist
-    gchange("Hist")
-  # --- Call routine to make data dump
-  if onefile and lparallel:
-    paralleldump(filename,attr,interpreter_variables,serial=serial,
-                 varsuffix=varsuffix,histz=histz,verbose=verbose)
-  else:
-    newpydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
-           varsuffix=varsuffix,verbose=verbose)
-  top.dumptime = top.dumptime + (wtime() - timetemp)
-
-# --- Restart command
-def newrestart(filename,onefile=1,verbose=false,dofieldsol=true):
-  """
-Reads in data from file, redeposits charge density and does field solve
-  - filename: restart file name - when restoring parallel run from multiple
-              files, filename should only be prefix up to but not including
-              the '_' before the processor number.
-  - onefile=1: Restores from one file unless 0, then each processor restores
-               from seperate file.
-  - dofieldsol=true: When true, call fieldsol(0). This allows special cases
-                     where just calling fieldsol(0) is not appropriate or
-                     optimal
-  """
-  # --- If each processor is restoring from a seperate file, append
-  # --- appropriate suffix, assuming only prefix was passed in
-  if not onefile:
-    filename = filename + '_%05d.dump'%(me)
-  # --- Call different restore routine depending on context
-  if onefile and lparallel:
-    parallelrestore(filename,verbose=verbose)
-  else:
-    newpyrestore(filename,verbose=verbose)
-  # --- Now that the dump file has been read in, finish up the restart work.
-  # --- First set the current packge. Note that currpkg is only ever defined
-  # --- in the main dictionary.
-  package(__main__.__dict__["currpkg"])
-  # --- Allocate all arrays appropriately
-  gchange("*")
-  # --- Reinitialize some injection stuff if it is needed.
-  # --- This is really only needed for the parallel version since some of the
-  # --- data saved is only valid for PE0.
-  if top.inject > 0: fill_inj(w3d.dx,w3d.dy,w3d.dz,w3d.ix_axis,w3d.iy_axis)
-  # --- Set the lattice internal variables. Only needed if reading in a dump
-  # --- that was made before the overlapping elements was implemented.
-  # --- Otherwise is doesn't hurt anything.
-  resetlat()
-  setlatt()
-  # --- Load the charge density (since it was not saved)
-  loadrho()
-  # --- Recalculate the fields (since it was not saved)
-  if dofieldsol: fieldsol(0)
-  # --- Call setup if it is needed.
-  if me == 0 and current_window() == -1: setup()
 
 ##############################################################################
 ##############################################################################
