@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.59 2003/04/29 17:09:57 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.60 2003/06/19 20:33:20 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1269,8 +1269,9 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
 #####################################################################
 #####################################################################
 def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
-                       ezs,eze,eap,err,erl,egl,egp,eox,eoy,epa,epr,epw,
-                       dpal,dpar):
+                       ezs,eze,eap,eox,eoy,
+                       err=None,erl=None,egl=None,egp=None,
+                       epa=None,epr=None,epw=None,dpal=None,dpar=None):
   """Plots the outline of electrostatic elements
   - color: line color
   - gridframe: when true, make plot in grid coordinates
@@ -1282,7 +1283,7 @@ def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
     # --- plot rods
     # --- If aperture is zero, then this quad is skipped
     rodap = eap[i]
-    if erl[i] > 0.:
+    if erl is not None and erl[i] > 0.:
       rodlen = erl[i]
       gp = egp[i]*gpsign
       gaplen = egl[i]
@@ -1290,8 +1291,8 @@ def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
       rodlen = (eze[i] - ezs[i])
       gp = 1*gpsign
       gaplen = 0.
-    if err[i] > 0.: rodrr = err[i]
-    else:           rodrr = 8./7.*eap[i]
+    if err is not None and err[i] > 0.: rodrr = err[i]
+    else:                               rodrr = 8./7.*eap[i]
     if axis == 'x': offset = eox[i]
     else:           offset = eoy[i]
     if rodap > 0. and rodlen > 0.:
@@ -1312,8 +1313,8 @@ def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
         plfp(cc,rr1,zz,[5])
         plfp(cc,rr2,zz,[5])
     # --- Plot end plates
-    pw = epw[i]
-    if pw > 0.:
+    if epw is not None and epw[i] > 0.:
+      pw = epw[i]
       if epa[i] > 0.: pa = epa[i]
       else:           pa = eap[i]
       if epr[i] > 0.: pr = epr[i]
@@ -1365,8 +1366,8 @@ def plotquadoutline(iq=0,nq=None,color='fg',gridframe=0,axis='x',
   """
   if nq is None: nq = top.nquad + 1
   plotelementoutline(color,gridframe,axis,iq,nq,outline,fillcolor,
-                     top.quadzs,top.quadze,top.quadap,top.quadrr,top.quadrl,
-                     top.quadgl,top.quadgp,top.qoffx,top.qoffy,
+                     top.quadzs,top.quadze,top.quadap,top.qoffx,top.qoffy,
+                     top.quadrr,top.quadrl,top.quadgl,top.quadgp,
                      top.quadpa,top.quadpr,top.quadpw,
                      top.qdelpal,top.qdelpar)
 
@@ -1384,8 +1385,8 @@ def plotheleoutline(ih=0,nh=None,color='fg',gridframe=0,axis='x',
   """
   if nh is None: nh = top.nhele + 1
   plotelementoutline(color,gridframe,axis,ih,nh,outline,fillcolor,
-                     top.helezs,top.heleze,top.heleap,top.helerr,top.helerl,
-                     top.helegl,top.helegp,top.heleox,top.heleoy,
+                     top.helezs,top.heleze,top.heleap,top.heleox,top.heleoy,
+                     top.helerr,top.helerl,top.helegl,top.helegp,
                      top.helepa,zeros(top.nhele+1,'d'),top.helepw,
                      zeros(top.nhele+1,'d'),zeros(top.nhele+1,'d'))
 
@@ -1403,8 +1404,8 @@ def plotemltoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
   """
   if ne is None: ne = top.nemlt + 1
   plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
-                     top.emltzs,top.emltze,top.emltap,top.emltrr,top.emltrl,
-                     top.emltgl,top.emltgp,top.emltox,top.emltoy,
+                     top.emltzs,top.emltze,top.emltap,top.emltox,top.emltoy,
+                     top.emltrr,top.emltrl,top.emltgl,top.emltgp,
                      top.emltpa,zeros(top.nemlt+1,'d'),top.emltpw,
                      zeros(top.nemlt+1,'d'),zeros(top.nemlt+1,'d'))
 
@@ -1426,6 +1427,23 @@ def plotpgrdoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
                      top.pgrdgl,top.pgrdgp,top.pgrdox,top.pgrdoy,
                      top.pgrdpa,zeros(top.npgrd+1,'d'),top.pgrdpw,
                      zeros(top.npgrd+1,'d'),zeros(top.npgrd+1,'d'))
+
+#---------------------------------------------------------------------------
+def plotaccloutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
+                    outline=1,fillcolor=None):
+  """Plots the outline of accl elements
+ - ie=0: starting accl to plot
+ - ne=top.naccl+1: number of accls to plot
+ - color='fg': line color
+ - gridframe=0: when true, make plot in grid coordinates
+ - axis='x': selects axis to plot, either 'x' or 'y'
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
+  """
+  if ne is None: ne = top.naccl + 1
+  plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
+                     top.acclzs,top.acclze,top.acclap,
+                     top.acclox,top.accloy)
 
 #########################################################################
 #########################################################################
@@ -2362,7 +2380,15 @@ Returns the scene use to draw the image
   # --- converted to fortran for speed.
   f3d.ntriangles = 0
   getconductorfacets(nn,icnd,dels,gridnn,griddd,gridmin)
-  if smooth: conductorsmoothshading()
+  if smooth:
+    f3d.maxtriangles = f3d.ntrianges
+    gchange("ConductorGeometryVisualization")
+    tt = f3d.triangles - gridmin[:,NewAxis,NewAxis]
+    tt = tt[0,:,:]**2 + tt[1,:,:]**2 + tt[2,:,:]**2
+    tt = (tt/max(tt)*100000000).astype(Int)
+    tt.shape = (3*f3d.ntriangles,)
+    ii = argsort(tt)
+    conductorsmoothshading(tt,ii)
 
   model.triangles = reshape(transpose(f3d.triangles),(3*f3d.ntriangles,3))
   model.normals = reshape(transpose(f3d.normals),(3*f3d.ntriangles,3))
