@@ -104,7 +104,6 @@ TYPE(BNDtype), POINTER :: b
   bg%nguardx = nguardx
   bg%nguardz = nguardz
   call GRIDtypeallot(bg)
-  NULLIFY(bg%next,bg%prev,bg%down,bg%up,bg%bndfirst,bg%bndlast)
   bg%loc_part=1
   bg%loc_part_fd=1
   bg%mgparam = mgridrz_mgparam
@@ -242,9 +241,7 @@ TYPE(BNDtype), POINTER :: b
 
 ! allocate new grid
 
-  ALLOCATE(g)
-  call initGRIDtypepy(-1,g,g%id)
-  NULLIFY(g%next,g%prev,g%down,g%up,g%bndfirst,g%bndlast)
+  g => NewGRIDtype()
   IF(.not. PRESENT(lshifts)) then
     nzs = 0
 !    ALLOCATE(g%rho(nr+1,nz+1), &
@@ -304,24 +301,17 @@ TYPE(BNDtype), POINTER :: b
   g%nzpar = 0
 #endif
   call GRIDtypeallot(g)
-  NULLIFY(g%next,g%prev,g%down,g%up,g%bndfirst,g%bndlast)
   IF(associated(mothergrid%down)) then
     IF(associated(mothergrid%down%next)) then
       mothergrid%down%next%prev => g
-      CALL setattr(mothergrid%down%next%id,"prev",g%id)
       g%next => mothergrid%down%next
-      CALL setattr(g%id,"next",mothergrid%down%next%id)
     END if
     g%prev => mothergrid%down
-    CALL setattr(g%id,"prev",mothergrid%down%id)
     mothergrid%down%next => g
-    CALL setattr(mothergrid%down%id,"next",g%id)
   else
     mothergrid%down=>g
-    CALL setattr(mothergrid%id,"down",g%id)
   END if
   g%up => mothergrid
-  CALL setattr(g%id,"up",mothergrid%id)
   ngrids=ngrids+1
   mgridrz_ngrids = ngrids
   g%phi=0.
@@ -471,8 +461,8 @@ INTEGER(ISZ) :: i
   IF(associated(basegrid%down)) call del_grid(basegrid%down,.true.)
 
   call del_grid_conductors(basegrid)
-  NULLIFY(basegrid%bndfirst,basegrid%bndlast)
-  call tfree(basegrid%id)
+  call GRIDtypefree(basegrid)
+  call DelGRIDtype(basegrid)
   NULLIFY(basegrid)
 
 return
@@ -516,17 +506,17 @@ TYPE(BNDtype), pointer :: b
         b => g%bndlast
       else
         b => b%prev
-        call tfree(b%next%id)
-        DEALLOCATE(b%next)
+        call BNDtypefree(b%next)
+        call DelBNDtype(b%next)
       END if
       call del_cnds(b)
     end do
-    call tfree(b%id)
-    DEALLOCATE(b)
+    call BNDtypefree(b)
+    call DelBNDtype(b)
   END if
   NULLIFY(g%up%down)
-  call tfree(g%id)
-  DEALLOCATE(g)
+  call GRIDtypefree(g)
+  call DelGRIDtype(g)
 
   ngrids=ngrids-1
   mgridrz_ngrids = ngrids
@@ -632,25 +622,20 @@ TYPE(BNDtype), pointer :: b
   g%nlevels = nlevels
 
   g%bndfirst => NewBNDType()
-  CALL setattr(g%id,"bndfirst",g%bndfirst%id)
   g%bndlast => g%bndfirst
   b => g%bndfirst
   do i = 2, nlevels
     b%next => NewBNDType()
-    CALL setattr(b%id,"next",b%next%id)
     b%next%prev => b
-    CALL setattr(b%next%id,"prev",b%next%prev%id)
     b=>b%next
   end do
   g%bndlast => b
-  CALL setattr(g%id,"bndlast",g%bndlast%id)
 
 !  call GRIDtypechange(g)
 !  bndy => g%bnd
 !  do i = 1, nlevels
 !    call initBNDtypepy(-1,g%bnd(i),g%bnd(i)%id)
 !  end do
-!  CALL setattr(g%id,"bnd",g%bnd)
   bndy_allocated=.true.
 
   nrc = nr
@@ -709,12 +694,10 @@ TYPE(BNDtype), pointer :: b
     b%dr = drc
     b%dz = dzc
     b%nvlocs = 0
-    NULLIFY(b%cndfirst)
     b%nb_conductors = 0
 !    ALLOCATE(b%lshift(0:b%nr+2))
 !    ALLOCATE(b%v(b%nr+1,b%nz+1))
-    call tallot(b%id)
-!    call BNDtypeallot(b)
+    call BNDtypeallot(b)
     IF(PRESENT(lshifts)) then
       b%l_lshift = .true.
       IF(i==1) then
@@ -835,18 +818,12 @@ TYPE(CONDtype), POINTER :: c
 
 IF(.not.associated(bndl%cndfirst)) then
   bndl%cndfirst => NewCONDtype()
-  CALL setattr(bndl%id,"cndfirst",bndl%cndfirst%id)
-  NULLIFY(bndl%cndfirst%next,bndl%cndfirst%prev)
   bndl%cndlast => bndl%cndfirst
-  CALL setattr(bndl%id,"cndlast",bndl%cndfirst%id)
   bndl%nb_conductors = 1
 else
   c => NewCONDtype()
   bndl%cndlast%next => c
-  CALL setattr(bndl%cndlast%id,"next",bndl%cndlast%next%id)
   c%prev => bndl%cndlast
-  CALL setattr(c%id,"prev",bndl%cndlast%id)
-  NULLIFY(c%next)
   bndl%cndlast => c
   bndl%nb_conductors = bndl%nb_conductors + 1
 END if
@@ -854,23 +831,26 @@ END if
 bndl%cndlast%nbbnd = nbnd
 bndl%cndlast%nbbndred = nbnd
 bndl%cndlast%ncond = ncond
-call tallot(bndl%cndlast%id)
+call CONDtypeallot(bndl%cndlast)
 IF(nbnd>0) bndl%cndlast%docalc=.false.
 
 end subroutine init_bnd_sublevel
 
 subroutine del_grid_conductors(g)
 TYPE(GRIDtype), pointer :: g
-TYPE(BNDtype), POINTER :: b
+TYPE(BNDtype), POINTER :: b,bprev
 INTEGER :: i
 
   do i = 1, g%nlevels
     IF(i==1) then
       b => g%bndlast
     else
-      b => b%prev
+      b => bprev
     END if
+    if (i < g%nlevels) bprev => b%prev
     call del_cnds(b)
+    call BNDtypefree(b)
+    call DelBNDtype(b)
   end do
 
   return
@@ -912,8 +892,8 @@ subroutine del_cnd(c)
 implicit none
 TYPE(CONDtype), POINTER :: c
 
-  call tfree(c%id)
-  DEALLOCATE(c)
+  call CONDtypefree(c)
+  call DelCONDtype(c)
 
 end subroutine del_cnd
 
@@ -8176,7 +8156,7 @@ TYPE(BNDtype), POINTER :: b
         end do
       end do
 !      ALLOCATE(b%vlocs_j(b%nvlocs),b%vlocs_k(b%nvlocs))
-      call tchange(b%id)
+      call BNDtypechange(b)
       ilred = 0
       ilblack = b%nvlocsred
       jmax = 1
