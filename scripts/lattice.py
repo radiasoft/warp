@@ -40,7 +40,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.29 2004/05/25 21:39:40 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.30 2004/06/02 17:47:26 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -90,24 +90,26 @@ elements.
     self.elems = elems
     # --- initialize expanded list as a blank
     self.elemslist = []
+    self.elemslistshallow = []
   def derivedquantities(self):
     self.expand()
-    for e in self.elemslist: e.derivedquantities()
+    for e in self.elemslistshallow: e.derivedquantities()
   def expand(self,lredo=0):
-    if self.elemslist and not lredo: return self.elemslist
-    self.elemslist = []
+    if self.elemslistshallow and not lredo: return self.elemslistshallow
+    self.elemslistshallow = []
     for e in self.elems:
-      self.elemslist.append(e.expand())
+      self.elemslistshallow.append(e.expand())
     # --- Unravel any imbedded lists.
     i = 0
-    self.elemslist = list(self.elemslist)
-    while i < len(self.elemslist):
-      if type(self.elemslist[i]) == type([]):
-        self.elemslist[i:i+1] = self.elemslist[i]
+    self.elemslistshallow = list(self.elemslistshallow)
+    while i < len(self.elemslistshallow):
+      if type(self.elemslistshallow[i]) == type([]):
+        self.elemslistshallow[i:i+1] = self.elemslistshallow[i]
       else:
         i = i + 1
-    return self.elemslist
-  def deepexpand(self):
+    return self.elemslistshallow
+  def deepexpand(self,lredo=0):
+    if self.elemslist and not lredo: return self.elemslist
     # --- Clear existing elemslist
     self.elemslist = []
     for e in self.elems:
@@ -125,10 +127,13 @@ elements.
     for e in self.elems: e.walk(func)
   def setextent(self,zz):
     self.expand()
-    for e in self.elemslist: zz = e.setextent(zz)
+    for e in self.elemslistshallow: zz = e.setextent(zz)
     return zz
   def install(self,zz):
-    self.expand()
+    # --- Deepexpand is used so that every actual lattice element installed
+    # --- into the top Lattice arrays has a corresponding instance in
+    # --- elemslist.
+    self.deepexpand()
     for e in self.elemslist: zz = e.install(zz)
     return zz
   def __mul__(self,other):
@@ -144,17 +149,17 @@ elements.
     # --- This allows addition of elements
     return LINE(other,self)
   def __len__(self):
-    self.expand()
+    self.deepexpand()
     return len(self.elemslist)
   def __getitem__(self,key):
-    self.expand()
+    self.deepexpand()
     return self.elemslist.__getitem__(key)
   def __iter__(self):
-    self.expand()
+    self.deepexpand()
     return self.elemslist.__iter__()
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
-    self.expand()
+    self.deepexpand()
     dxlist = []
     for elem in self.elemslist:
       dxlist.append(elem.getdxobject(kwdict=kw))
