@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.37 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -660,12 +660,12 @@ c The notation is that a negative distance means that the point is inside.
       integer(ISZ):: i
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
 
-      xmin = xcent - xsize/2.
-      xmax = xcent + xsize/2.
-      ymin = ycent - ysize/2.
-      ymax = ycent + ysize/2.
-      zmin = zcent - zsize/2.
-      zmax = zcent + zsize/2.
+      xmin = xcent - xsize*0.5
+      xmax = xcent + xsize*0.5
+      ymin = ycent - ysize*0.5
+      ymax = ycent + ysize*0.5
+      zmin = zcent - zsize*0.5
+      zmax = zcent + zsize*0.5
 
       do i=1,n
 
@@ -738,9 +738,9 @@ c A positive zsign means that the conductor is the region above zcent.
       real(kind=8):: xd,yd,zd,dd
 
       do i=1,n
-        xd = abs(x(i) - xcent) - xsize/2.
-        yd = abs(y(i) - ycent) - ysize/2.
-        zd = abs(z(i) - zcent) - zsize/2.
+        xd = abs(x(i) - xcent) - xsize*0.5
+        yd = abs(y(i) - ycent) - ysize*0.5
+        zd = abs(z(i) - zcent) - zsize*0.5
 
         dd = sqrt(max(0.,xd)**2 + max(0.,yd)**2 + max(0.,zd)**2)
 
@@ -772,12 +772,12 @@ c normal angle of the surface at that point.
       real(kind=8):: ctheta,stheta,cphi,sphi
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
 
-      xmin = xcent - xsize/2.
-      xmax = xcent + xsize/2.
-      ymin = ycent - ysize/2.
-      ymax = ycent + ysize/2.
-      zmin = zcent - zsize/2.
-      zmax = zcent + zsize/2.
+      xmin = xcent - xsize*0.5
+      xmax = xcent + xsize*0.5
+      ymin = ycent - ysize*0.5
+      ymax = ycent + ysize*0.5
+      zmin = zcent - zsize*0.5
+      zmax = zcent + zsize*0.5
 
       do i=1,n
 
@@ -794,9 +794,9 @@ c normal angle of the surface at that point.
           if (vx(i) == 0.) then
             tx = LARGEPOS
           else
-            tx = -(xcent - xsize/2. - x(i))/vx(i)
+            tx = -(xcent - xsize*0.5 - x(i))/vx(i)
             if (tx < 0.) then
-              tx = -(xcent + xsize/2. - x(i))/vx(i)
+              tx = -(xcent + xsize*0.5 - x(i))/vx(i)
             endif
           endif
           xix = -vx(i)*tx + x(i)
@@ -812,9 +812,9 @@ c normal angle of the surface at that point.
           if (vy(i) == 0.) then
             ty = LARGEPOS
           else
-            ty = -(ycent - ysize/2. - y(i))/vy(i)
+            ty = -(ycent - ysize*0.5 - y(i))/vy(i)
             if (ty < 0.) then
-              ty = -(ycent + ysize/2. - y(i))/vy(i)
+              ty = -(ycent + ysize*0.5 - y(i))/vy(i)
             endif
           endif
           xiy = -vx(i)*ty + x(i)
@@ -830,9 +830,9 @@ c normal angle of the surface at that point.
           if (vz(i) == 0.) then
             tz = LARGEPOS
           else
-            tz = -(zcent - zsize/2. - z(i))/vz(i)
+            tz = -(zcent - zsize*0.5 - z(i))/vz(i)
             if (tz < 0.) then
-              tz = -(zcent + zsize/2. - z(i))/vz(i)
+              tz = -(zcent + zsize*0.5 - z(i))/vz(i)
             endif
           endif
           xiz = -vx(i)*tz + x(i)
@@ -851,9 +851,9 @@ c normal angle of the surface at that point.
             zi(i) = zix
             distance = dix
             if (xix > xcent) then
-              itheta(i) = +pi/2.
+              itheta(i) = +pi*0.5
             else
-              itheta(i) = -pi/2.
+              itheta(i) = -pi*0.5
             endif
             iphi(i) = 0.
           else
@@ -861,11 +861,11 @@ c normal angle of the surface at that point.
             yi(i) = yiy
             zi(i) = ziy
             distance = diy
-            itheta(i) = pi/2.
+            itheta(i) = pi*0.5
             if (xiy > ycent) then
-              iphi(i) = +pi/2.
+              iphi(i) = +pi*0.5
             else
-              iphi(i) = -pi/2.
+              iphi(i) = -pi*0.5
             endif
           endif
           if (diz < distance) then
@@ -905,8 +905,8 @@ c The notation is that a negative distance means that the point is inside.
       integer(ISZ):: i
       real(kind=8):: xx,yy,rsq
 
-      zmin = zcent - length/2.
-      zmax = zcent + length/2.
+      zmin = zcent - length*0.5
+      zmax = zcent + length*0.5
 
       do i=1,n
 
@@ -985,7 +985,7 @@ c The notation is that a negative distance means that the point is inside.
 
       do i=1,n
         rr = sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2) - rad
-        zz = abs(z(i) - zcent) - length/2.
+        zz = abs(z(i) - zcent) - length*0.5
 
         dd = sqrt(max(0.,rr)**2 + max(0.,zz)**2)
         if (dd == 0.) dd = max(rr,zz)
@@ -1010,8 +1010,8 @@ c normal angle of the surface at that point.
       real(kind=8):: zmin,zmax,vsq,tt,theta,phi
       real(kind=8):: ttemp,xx,yy,zz,rr,rrsq,t1,t2,a,b,c
 
-      zmin = zcent - length/2.
-      zmax = zcent + length/2.
+      zmin = zcent - length*0.5
+      zmax = zcent + length*0.5
 
       do i=1,n
 
@@ -1077,7 +1077,7 @@ c       --- Check if it hits the cylinder.
                 tt = ttemp
                 xx = -vx(i)*ttemp + x(i) - xcent
                 yy = -vy(i)*ttemp + y(i) - ycent
-                theta = pi/2
+                theta = pi*0.5
                 phi = atan2(yy,xx)
               endif
             endif
@@ -1117,8 +1117,8 @@ c The notation is that a negative distance means that the point is inside.
       integer(ISZ):: i
       real(kind=8):: xx,yy,rsq,rr,r,zround
 
-      zmin = zcent - length/2.
-      zmax = zcent + length/2.
+      zmin = zcent - length*0.5
+      zmax = zcent + length*0.5
 
       do i=1,n
 
@@ -1236,16 +1236,16 @@ c The notation is that a negative distance means that the point is inside.
       integer(ISZ):: i
       real(kind=8):: z2,rr,zz
 
-      z2 = max(length/2.-rad2,0.)
+      z2 = max(length*0.5-rad2,0.)
 
       do i=1,n
 
         rr = sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2)
         zz = abs(z(i) - zcent)
         if (zz >= z2 .and. rr <= rad-rad2) then
-          distance(i) = zz - length/2.
+          distance(i) = zz - length*0.5
         else if (zz <= z2) then
-          distance(i) = max(rr - rad,zz - length/2.)
+          distance(i) = max(rr - rad,zz - length*0.5)
         else
           distance(i) = sqrt((zz - z2)**2 + (rr - (rad - rad2))**2) - rad2
         endif
@@ -1299,8 +1299,8 @@ c The notation is that a negative distance means that the point is inside.
       integer(ISZ):: i
       real(kind=8):: xx,yy,rsq
 
-      zmin = zcent - length/2.
-      zmax = zcent + length/2.
+      zmin = zcent - length*0.5
+      zmax = zcent + length*0.5
 
       do i=1,n
 
@@ -1383,7 +1383,7 @@ c The notation is that a negative distance means that the point is inside.
 
       do i=1,n
         rr = rad - sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2)
-        zz = abs(z(i) - zcent) - length/2.
+        zz = abs(z(i) - zcent) - length*0.5
 
         dd = sqrt(max(0.,rr)**2 + max(0.,zz)**2)
         if (dd == 0.) dd = max(rr,zz)
@@ -1408,8 +1408,8 @@ c normal angle of the surface at that point.
       real(kind=8):: zmin,zmax,vsq,tt,theta,phi
       real(kind=8):: ttemp,xx,yy,zz,rr,rrsq,t1,t2,a,b,c
 
-      zmin = zcent - length/2.
-      zmax = zcent + length/2.
+      zmin = zcent - length*0.5
+      zmax = zcent + length*0.5
 
       do i=1,n
 
@@ -1475,7 +1475,7 @@ c       --- Check if it hits the cylinder.
                 tt = ttemp
                 xx = -vx(i)*ttemp + x(i) - xcent
                 yy = -vy(i)*ttemp + y(i) - ycent
-                theta = pi/2
+                theta = pi*0.5
                 phi = atan2(yy,xx)
               endif
             endif
@@ -1515,8 +1515,8 @@ c The notation is that a negative distance means that the point is inside.
       integer(ISZ):: i
       real(kind=8):: xx,yy,rsq,rr,r,zround
 
-      zmin = zcent - length/2.
-      zmax = zcent + length/2.
+      zmin = zcent - length*0.5
+      zmax = zcent + length*0.5
 
       do i=1,n
 
@@ -1639,16 +1639,16 @@ c The notation is that a negative distance means that the point is inside.
       integer(ISZ):: i
       real(kind=8):: z2,rr,zz
 
-      z2 = max(length/2.-rad2,0.)
+      z2 = max(length*0.5-rad2,0.)
 
       do i=1,n
 
         rr = sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2)
         zz = abs(z(i) - zcent)
         if (zz >= z2 .and. rr >= rad+rad2) then
-          distance(i) = zz - length/2.
+          distance(i) = zz - length*0.5
         else if (zz <= z2) then
-          distance(i) = max(rad - rr,zz - length/2.)
+          distance(i) = max(rad - rr,zz - length*0.5)
         else
           distance(i) = sqrt((zz - z2)**2 + (rr - (rad + rad2))**2) - rad2
         endif
@@ -1969,8 +1969,8 @@ c The notation is that a negative distance means that the point is inside.
       real(kind=8):: xx,yy,rsq,r,rcone,zcone
 
 c     --- First, find min and max extent of the cone.
-      zmin = zcent - length/2.
-      zmax = zcent + length/2.
+      zmin = zcent - length*0.5
+      zmax = zcent + length*0.5
 
       do i=1,n
 
@@ -2086,26 +2086,26 @@ c The notation is that a negative distance means that the point is inside.
         zz = z(i) - zcent
         rr = sqrt(xx**2 + yy**2)
 
-        d1 = sqrt((rr - r_zmin)**2 + (zz + length/2.)**2)
-        ang_zmin = atan2((rr - r_zmin),(zz + length/2.)) -
+        d1 = sqrt((rr - r_zmin)**2 + (zz + length*0.5)**2)
+        ang_zmin = atan2((rr - r_zmin),(zz + length*0.5)) -
      &         atan2((r_zmax - r_zmin),length)
         if (ang_zmin > +pi) ang_zmin = ang_zmin - 2*pi
         if (ang_zmin < -pi) ang_zmin = ang_zmin + 2*pi
         ang_zmax = atan2((r_zmin - r_zmax),-length) -
-     &          atan2((rr - r_zmax),(zz - length/2.))
+     &          atan2((rr - r_zmax),(zz - length*0.5))
         if (ang_zmax > +pi) ang_zmax = ang_zmax - 2*pi
         if (ang_zmax < -pi) ang_zmax = ang_zmax + 2*pi
         dd = d1*sin(ang_zmin)
-        dz = abs(zz) - length/2.
+        dz = abs(zz) - length*0.5
 
-        if (zz <= -length/2. .and. rr <= r_zmin) then
+        if (zz <= -length*0.5 .and. rr <= r_zmin) then
           distance(i) = dz
-        else if (ang_zmin >= pi/2.) then
-          distance(i) = sqrt((rr - r_zmin)**2 + (zz + length/2.)**2)
-        else if (zz >= length/2. .and. rr <= r_zmax) then
+        else if (ang_zmin >= pi*0.5) then
+          distance(i) = sqrt((rr - r_zmin)**2 + (zz + length*0.5)**2)
+        else if (zz >= length*0.5 .and. rr <= r_zmax) then
           distance(i) = dz
-        else if (ang_zmax >= pi/2.) then
-          distance(i) = sqrt((rr - r_zmax)**2 + (zz - length/2.)**2)
+        else if (ang_zmax >= pi*0.5) then
+          distance(i) = sqrt((rr - r_zmax)**2 + (zz - length*0.5)**2)
         else if (dd >= 0.) then
           distance(i) = dd
         else
@@ -2161,8 +2161,8 @@ c The notation is that a negative distance means that the point is inside.
       real(kind=8):: xx,yy,rsq,r,rcone,zcone
 
 c     --- First, find min and max extent of the cone.
-      zmin = zcent - length/2.
-      zmax = zcent + length/2.
+      zmin = zcent - length*0.5
+      zmax = zcent + length*0.5
 
       do i=1,n
 
@@ -2282,26 +2282,26 @@ c The notation is that a negative distance means that the point is inside.
         zz = z(i) - zcent
         rr = sqrt(xx**2 + yy**2)
 
-        d1 = sqrt((rr - r_zmin)**2 + (zz + length/2.)**2)
+        d1 = sqrt((rr - r_zmin)**2 + (zz + length*0.5)**2)
         ang_zmin = atan2((r_zmax - r_zmin),length) -
-     &         atan2((rr - r_zmin),(zz + length/2.))
+     &         atan2((rr - r_zmin),(zz + length*0.5))
         if (ang_zmin > +pi) ang_zmin = ang_zmin - 2*pi
         if (ang_zmin < -pi) ang_zmin = ang_zmin + 2*pi
-        ang_zmax = atan2((rr - r_zmax),(zz - length/2.)) -
+        ang_zmax = atan2((rr - r_zmax),(zz - length*0.5)) -
      &          atan2((r_zmin - r_zmax),-length)
         if (ang_zmax > +pi) ang_zmax = ang_zmax - 2*pi
         if (ang_zmax < -pi) ang_zmax = ang_zmax + 2*pi
         dd = d1*sin(ang_zmin)
-        dz = abs(zz) - length/2.
+        dz = abs(zz) - length*0.5
 
-        if (zz <= -length/2. .and. rr >= r_zmin) then
+        if (zz <= -length*0.5 .and. rr >= r_zmin) then
           distance(i) = dz
-        else if (ang_zmin >= pi/2.) then
-          distance(i) = sqrt((rr - r_zmin)**2 + (zz + length/2.)**2)
-        else if (zz >= length/2. .and. rr >= r_zmax) then
+        else if (ang_zmin >= pi*0.5) then
+          distance(i) = sqrt((rr - r_zmin)**2 + (zz + length*0.5)**2)
+        else if (zz >= length*0.5 .and. rr >= r_zmax) then
           distance(i) = dz
-        else if (ang_zmax >= pi/2.) then
-          distance(i) = sqrt((rr - r_zmax)**2 + (zz - length/2.)**2)
+        else if (ang_zmax >= pi*0.5) then
+          distance(i) = sqrt((rr - r_zmax)**2 + (zz - length*0.5)**2)
         else if (dd >= 0.) then
           distance(i) = dd
         else
@@ -2721,7 +2721,7 @@ c     --- approaches but does not equal to zero (or pi/2).
       cci = 1./(ctheta*cphi)
       sci = 1./(stheta*cphi)
       si  = 1./(sphi)
-      lenhalf = length/2.
+      lenhalf = length*0.5
 
       do i=1,n
 
@@ -2891,7 +2891,7 @@ c The notation is that a negative distance means that the point is inside.
         zp = zz*ctheta*cphi + xx*stheta*cphi + yy*sphi
 
         rr = sqrt(xp**2 + yp**2) - rad
-        zz = abs(zp) - length/2.
+        zz = abs(zp) - length*0.5
 
         dd = sqrt(max(0.,rr)**2 + max(0.,zz)**2)
         if (dd == 0.) dd = max(rr,zz)
@@ -3231,7 +3231,7 @@ c     --- approaches but does not equal to zero (or pi/2).
       cci = 1./dvnz(ctheta*cphi)
       sci = 1./dvnz(stheta*cphi)
       si  = 1./dvnz(sphi)
-      lenhalf = length/2.
+      lenhalf = length*0.5
 
       s1 = r_zmin - (-lenhalf)*(r_zmax - r_zmin)/length
       s2 = (r_zmax - r_zmin)/length
@@ -3494,26 +3494,26 @@ c       zz = zg*cos(theta)*cos(phi) + xg*sin(theta)*cos(phi) + yg*sin(phi)
         zp = zz*ctheta*cphi + xx*stheta*cphi + yy*sphi
         rp = sqrt(xp**2 + yp**2)
 
-        d1 = sqrt((rp - r_zmin)**2 + (zp + length/2.)**2)
-        ang_zmin = atan2((rp - r_zmin),(zp + length/2.)) -
+        d1 = sqrt((rp - r_zmin)**2 + (zp + length*0.5)**2)
+        ang_zmin = atan2((rp - r_zmin),(zp + length*0.5)) -
      &         atan2((r_zmax - r_zmin),length)
         if (ang_zmin > +pi) ang_zmin = ang_zmin - 2*pi
         if (ang_zmin < -pi) ang_zmin = ang_zmin + 2*pi
         ang_zmax = atan2((r_zmin - r_zmax),-length) -
-     &          atan2((rp - r_zmax),(zp - length/2.))
+     &          atan2((rp - r_zmax),(zp - length*0.5))
         if (ang_zmax > +pi) ang_zmax = ang_zmax - 2*pi
         if (ang_zmax < -pi) ang_zmax = ang_zmax + 2*pi
         dd = d1*sin(ang_zmin)
-        dz = abs(zp) - length/2.
+        dz = abs(zp) - length*0.5
 
-        if (zp <= -length/2. .and. rp <= r_zmin) then
+        if (zp <= -length*0.5 .and. rp <= r_zmin) then
           distance(i) = dz
-        else if (ang_zmin >= pi/2.) then
-          distance(i) = sqrt((rp - r_zmin)**2 + (zp + length/2.)**2)
-        else if (zp >= length/2. .and. rp <= r_zmax) then
+        else if (ang_zmin >= pi*0.5) then
+          distance(i) = sqrt((rp - r_zmin)**2 + (zp + length*0.5)**2)
+        else if (zp >= length*0.5 .and. rp <= r_zmax) then
           distance(i) = dz
-        else if (ang_zmax >= pi/2.) then
-          distance(i) = sqrt((rp - r_zmax)**2 + (zp - length/2.)**2)
+        else if (ang_zmax >= pi*0.5) then
+          distance(i) = sqrt((rp - r_zmax)**2 + (zp - length*0.5)**2)
         else if (dd >= 0.) then
           distance(i) = dd
         else
@@ -4006,7 +4006,7 @@ c           z2 = za - sqrt((za-zb+sqrt((zb-z0)**2-y1**2))**2 - x1**2)
         endif
 
         dd = sqrt((xx - x1)**2 + (yy - y1)**2 + (zz - zave)**2)
-        distance(i) = dd - thickness/2.
+        distance(i) = dd - thickness*0.5
 
       enddo
 
@@ -4597,7 +4597,7 @@ c       --- Check if it hits the outer cylinder.
                 xx = -vx(i)*ttemp + x(i) - xcent
                 yy = -vy(i)*ttemp + y(i) - ycent
                 rr = sqrt(xx**2 + yy**2)
-                itheta(i) = pi/2.
+                itheta(i) = pi*0.5
                 iphi(i) = atan2(yy,xx)
               endif
             endif
@@ -4994,7 +4994,7 @@ c       --- Check if it hits the inner cylinder.
                 xx = -vx(i)*ttemp + x(i) - xcent
                 yy = -vy(i)*ttemp + y(i) - ycent
                 rr = sqrt(xx**2 + yy**2)
-                itheta(i) = pi/2.
+                itheta(i) = pi*0.5
                 iphi(i) = atan2(yy,xx)
               endif
             endif
