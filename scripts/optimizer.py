@@ -1,6 +1,6 @@
 from warp import *
 import RandomArray
-optimizer_version = "$Id: optimizer.py,v 1.4 2002/02/28 21:17:37 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.5 2002/03/06 23:54:46 dave Exp $"
 """
 This file contains several optimizers, including:
   Simultaneaous Perturbation Stochastic Approximation
@@ -28,9 +28,9 @@ Creates an instance of the Spsa class.
        divided by c1)
   - a2=100.: Scale (in iteration numbers) over which c and a are decreased
   - paramsmin=-1.e+36: Min value of the parameters. This can be a function
-                       which takes self as its single argument.
+                       which takes the params as its single argument.
   - paramsmax=+1.e+36: Max value of the parameters. This can be a function
-                       which takes self as its single argument.
+                       which takes the params as its single argument.
   - verbose=0: when true, print diagnostics
     """
     self.nparams = nparams
@@ -67,18 +67,18 @@ Creates an instance of the Spsa class.
     print "iterations = %d  error = %e %e" %(self.k,self.loss(),self.loss()/err)
   def printparams(self):
     for i in xrange(self.nparams): print '%15.12e'%self.params[i]
-  def getparamsmin(self):
+  def getparamsmin(self,params):
     """Returns the min limit of parameters."""
-    if type(self.paramsmin) is FunctionType: return self.paramsmin(self)
+    if type(self.paramsmin) is FunctionType: return self.paramsmin(params)
     return self.paramsmin
-  def getparamsmax(self):
+  def getparamsmax(self,params):
     """Returns the max limit of parameters."""
-    if type(self.paramsmax) is FunctionType: return self.paramsmax(self)
+    if type(self.paramsmax) is FunctionType: return self.paramsmax(params)
     return self.paramsmax
   def constrainparams(self,params):
     "Makes sure all params are within bounds"
-    params = maximum(params,self.getparamsmin())
-    params = minimum(params,self.getparamsmax())
+    params = maximum(params,self.getparamsmin(params))
+    params = minimum(params,self.getparamsmax(params))
     return params
 
   def iter(self,err=1.e-9,imax=10000,kprint=10):
@@ -133,23 +133,29 @@ Differential Evolution
   Performs global optimization using genetic evolution algorithms.
   Algorithm taken from Dr Dobb's Journal, April 1997, K Price, R. Storn
   """
-  def __init__(self,npop,nparams,params,evaluate,crossover=.5,f=.7):
+  def __init__(self,npop,nparams,evaluate,params,deltas=None,
+               crossover=.5,f=.7,paramsmin=None,paramsmax=None):
     """
 Differential Evolution
 Input:
-  npop = size of population (must be greater than 3)
-  nparams = number of parameters
-  crossover = fraction of crossovers, in range [0,1)
-  f = differential factor, in range (0,1.2]
-  evaluate(params) is function, given a set of parameters, returns a score
+  - npop: size of population (must be greater than 3)
+  - nparams: number of parameters
+  - evaluate(params): is function, given a set of parameters, returns a score
+  - params: intial set of parameters
+  - deltas=0.01: fractional variation of parameters to fill initial population
+  - crossover=0.5: fraction of crossovers, in range [0,1)
+  - f=0.7: differential factor, in range (0,1.2]
+  - paramsmin=-1.e+36: Min value of the parameters. This can be a function
+                       which takes the params as its single argument.
+  - paramsmax=+1.e+36: Max value of the parameters. This can be a function
+                       which takes the params as its single argument.
 Output:
-  best_params = array hold parameters which give the lowest score
-The function evolve_init can be called before evolve to initialize
-the population or it can be done by hand.
+  best_params: returns parameters which give the lowest score
     """
     self.npop = npop
-    self.nparams = params
+    self.nparams = nparams
     self.crossover = crossover
+    self.f = f
     self.evaluate = evaluate
     if (crossover < 0. or crossover > 1.):
       print "Warning: crossover outside of the range [0,1)"
@@ -161,17 +167,43 @@ the population or it can be done by hand.
     self.x1 = zeros((npop,nparams),'d')
     self.x2 = zeros((npop,nparams),'d')
     self.cost = zeros(npop,'d')
+    self.count = 0
+    if paramsmin is None:
+      self.paramsmin = -ones(nparams)*1.e+36
+    else:
+      self.paramsmin = paramsmin
+    if paramsmax is None:
+      self.paramsmax = +ones(nparams)*1.e+36
+    else:
+      self.paramsmax = paramsmax
+    self.evolve_init(params,deltas)
   def best_params(self):
     "Function to return best set of parameters so far"
     imin = 0
-    costmin = cost[imin]
+    costmin = self.cost[imin]
     for i in xrange(1,self.npop):
-      if cost[i] <  costmin:
+      if self.cost[i] <  costmin:
         imin = i
-        costmin = cost[i]
+        costmin = self.cost[i]
     return self.x1[imin,:]
+  def printbestcost(self):
+    print "Generation %d, best cost %f worst cost %f"% \
+          (self.count,min(self.cost),max(self.cost))
+  def getparamsmin(self,params):
+    """Returns the min limit of parameters."""
+    if type(self.paramsmin) is FunctionType: return self.paramsmin(params)
+    return self.paramsmin
+  def getparamsmax(self,params):
+    """Returns the max limit of parameters."""
+    if type(self.paramsmax) is FunctionType: return self.paramsmax(params)
+    return self.paramsmax
+  def constrainparams(self,params):
+    "Makes sure all params are within bounds"
+    params = maximum(params,self.getparamsmin(params))
+    params = minimum(params,self.getparamsmax(params))
+    return params
 
-  def evolve_init(sample,deltas=None):
+  def evolve_init(self,sample,deltas=None):
     """
 Function to initialize the population.
 Picks parameters randomly distributed by deltas about a base sample set of
@@ -180,14 +212,14 @@ parameters.
   - delta=0.01 is the fractional variation about the sample
     It can either be a scalar or an array the same size as sample.
     """
-    if not deltas:
-      deltas = ones(shape(sample),'d')/100.
-    elif type(delta) == type(1.):
-      deltas = ones(shape(sample),'d')*deltas
-    self.x1[1,:] = sample
-    self.cost[1] = self.evaluate(sample)
-    for i in xrange(1,npop):
-      self.x1[i,:] = sample*(1.+2.*(RandomArray.random(self.nparams)-.5)*deltas)
+    if deltas is None:             deltas = ones(shape(sample),'d')*0.01
+    elif type(deltas) == type(1.): deltas = ones(shape(sample),'d')*deltas
+    elif type(deltas) == ListType: deltas = array(deltas)
+    self.x1[0,:] = sample
+    self.cost[0] = self.evaluate(sample)
+    for i in xrange(1,self.npop):
+      trial = sample*(1.+2.*(ranf(self.x1[i,:])-.5)*deltas)
+      self.x1[i,:] = self.constrainparams(trial)
       self.cost[i] = self.evaluate(self.x1[i,:])
 
   def evolve_reset(self):
@@ -195,15 +227,17 @@ parameters.
     for i in xrange(npop):
       cost[i] = evaluate(x1[i,:])
 
-  def evolve(self,gen_max=1):
+  def evolve(self,gen_max=1,nprint=100):
     """
     Do the optimization
-      - gen_max=1 maximum number of generations to run through
+      - gen_max=1: number of generations to run through
+      - nprint=100: base frequency to print cost
     """
     self.score = self.cost[0]
 
     # --- Loop over the generations
     for count in xrange(gen_max):
+      self.count = self.count + 1
 
       # --- loop through population
       for i in xrange(self.npop):
@@ -211,19 +245,19 @@ parameters.
         # Mutate/Recombine
 
         # --- Randomly pick three vectors different from each other and 'i'.
-        a=ranf()*self.npop
-        b=ranf()*self.npop
-        c=ranf()*self.npop
-        while (a == i): a=ranf()*self.npop
-        while (b == i or b == a): b=ranf()*self.npop
-        while (c == i or c == a or c == b): c=ranf()*self.npop
+        a = i
+        b = i
+        c = i
+        while (a == i):                     a = int(ranf()*self.npop)
+        while (b == i or b == a):           b = int(ranf()*self.npop)
+        while (c == i or c == a or c == b): c = int(ranf()*self.npop)
 
         # --- Randomly pick the first parameter
-        j = ranf()*self.nparams
+        j = int(ranf()*self.nparams)
 
         # --- Load parameters into trial, performing binomial trials
         for k in xrange(self.nparams):
-          if (ranf() < self.crossover or k == self.nparams):
+          if (ranf() < self.crossover or k == self.nparams-1):
             # --- Source for trial is a random vector plus weighted differential
             # --- The last parameter always comes from noisy vector
             self.trial[j] = self.x1[c,j] + self.f*(self.x1[a,j] - self.x1[b,j])
@@ -236,6 +270,7 @@ parameters.
         # Evaluate/Select
 
         # --- Evaluate trial function
+        self.trial = self.constrainparams(self.trial)
         self.score = self.evaluate(self.trial)
 
         if (self.score <= self.cost[i]):
@@ -249,6 +284,19 @@ parameters.
   
       # --- End of population loop, so copy new parameters into x1
       self.x1[...] = self.x2[...]
+
+      # --- Print out loss function
+      if (self.count <= nprint):
+        self.printbestcost()
+      elif ((self.count>nprint) and (self.count<=nprint**2) and
+            ((self.count%nprint)==0)):
+        self.printbestcost()
+      elif ( (self.count%(nprint**2)) == 0):
+        self.printbestcost()
+        print self.best_params()
+
+    self.printbestcost()
+    print self.best_params()
 
 
 ##############################################################################
