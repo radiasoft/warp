@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.10 $, $Date: 2001/06/21 18:41:05 $
+c@(#) File W3D.M, version $Revision: 3.11 $, $Date: 2001/07/10 19:01:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -706,34 +706,35 @@ c     --- handle uniform fields
       call applyuniformfields(np,ez,bz)
 
 c     --- handle quads
-      call applyquad(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,bx,by)
+      call applyquad(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,ex,ey,bx,by)
 
 c     --- handle dipos 
-      call applydipo(np,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,bx,by)
+      call applydipo(np,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,ex,ey,bx,by)
 
 c     --- handle sexts
-      call applysext(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,bx,by)
+      call applysext(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,.false.,ex,ey,bx,by)
 
 c     --- handle hard-edge electric and magnetic multipoles
-      call applyhele(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,ey,ez,bx,by,bz)
+      call applyhele(np,xp,yp,np,zp,uzp,gaminv,dtl,dtr,dt,ex,.false.,
+     &               ey,ez,bx,by,bz)
 
 c     --- fold in coordinate transformation associated with bends
-      call applybend(np,xp,uzp,np,bendres,bendradi,m,q,by)
+      call applybend(np,xp,uzp,np,bendres,bendradi,m,q,.false.,by)
 
 c     --- handle acceleration (and calculate position correction)
-      call applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,ez)
+      call applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,.false.,ez)
 
 c     --- handle electrostatic multipole components
-      call applyemlt(np,xp,yp,np,zp,dtl,dtr,dt,ex,ey,ez)
+      call applyemlt(np,xp,yp,np,zp,dtl,dtr,dt,.false.,ex,ey,ez)
 
 c     --- handle magnetostatic multipole components
-      call applymmlt(np,xp,yp,np,zp,dtl,dtr,dt,bx,by,bz)
+      call applymmlt(np,xp,yp,np,zp,dtl,dtr,dt,.false.,bx,by,bz)
 
 c     --- handle magnetic fields from 3-D grid
-      call applybgrd(np,xp,yp,np,zp,bx,by,bz)
+      call applybgrd(np,xp,yp,np,zp,.false.,bx,by,bz)
 
 c     --- handle electrostatic potential from 3-D grid
-      call applypgrd(np,xp,yp,np,zp,ex,ey,ez)
+      call applypgrd(np,xp,yp,np,zp,.false.,ex,ey,ez)
 
 c     --- Set E to zero for dead particles
       do ip=1,np
@@ -1224,7 +1225,7 @@ c           --- FULLV
                enddo 
 c              --- Obtain bend radii and residence factors
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
-     &                       bendradi,-dt*0.5,dt*0.5)
+     &                       bendradi,-dt*0.5,dt*0.5,.false.)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
@@ -1260,14 +1261,14 @@ c              --- Position advance
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
 c              --- Bend residence factor over POSITION advance step
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,-dt,0.)
+     &                       bendres,bendradi,-dt,0.,.false.)
 c              --- Correct position advance for warped mesh effect
                call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       gaminv(ipmin),dt,bendres,bendradi,bends,linbend)
 c              --- Correct position advance for slanted dipole entry/exit
                call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
      &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       sm(is),sq(is))
+     &                       sm(is),sq(is),.false.)
 
 c           --- HALFV
             elseif (center == "halfv") then
@@ -1276,7 +1277,7 @@ c           --- HALFV
                enddo 
 c              --- Obtain bend radii and residence factors
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,0.,dt*0.5)
+     &                       bendres,bendradi,0.,dt*0.5,.false.)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
@@ -1309,14 +1310,14 @@ c              --- Position advance
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
 c              --- Bend residence factor over POSITION advance step
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,-dt,0.)
+     &                       bendres,bendradi,-dt,0.,.false.)
 c              --- Correct position advance for warped mesh effect
                call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       gaminv(ipmin),dt,bendres,bendradi,bends,linbend)
 c              --- Correct position advance for slanted dipole entry/exit
                call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
      &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       sm(is),sq(is))
+     &                       sm(is),sq(is),.false.)
 
 c           --- SYNCHV or GEN
             elseif (center == "synchv" .or. center == "gen") then
@@ -1328,7 +1329,7 @@ c              --- Copy 'old' velocity into uxpo, uypo, and uzpo
                enddo
 c              --- Obtain bend radii and residence factors
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
-     &                       bendradi,-dt*0.5,0.)
+     &                       bendradi,-dt*0.5,0.,.false.)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
@@ -3622,7 +3623,7 @@ c     --- but this passes in the pair 1 and dz which is equivalent.
 
 c     --- Get the bend radius of curvature and residence fraction at the
 c     --- list of z points.
-      call getbend(nz+3,nz+3,zz,vz,gi,bendres,rstar,-0.5*dz,0.5*dz)
+      call getbend(nz+3,nz+3,zz,vz,gi,bendres,rstar,-0.5*dz,0.5*dz,.false.)
 
 c     --- Scale the radius by the reciprical of the residence fraction.
 c     --- Also, make sure the rstar is non-zero.
@@ -4250,6 +4251,7 @@ c                   --- Make sure there is room for more particles.  Estimate
 c                   --- total number of particles to be injected from the
 c                   --- source.
                     call chckpart(is,int(nn*ainj*binj*pi*dxi*dyi),0,.true.)
+                    call chckpart(is,nn*load_fac+npinje_s(is),0,.true.)
 
 c                   --- loop to load new particles
                     ilf = load_fac
@@ -4270,7 +4272,8 @@ c                     --- find injection surface axial location by interpolation
                       zp(ii)=zmmin+dz*(inj_grid(ixx  ,iyy  )*(1.-wxx)*(1.-wyy)+
      &                                 inj_grid(ixx+1,iyy  )*    wxx *(1.-wyy)+
      &                                 inj_grid(ixx  ,iyy+1)*(1.-wxx)*    wyy +
-     &                                 inj_grid(ixx+1,iyy+1)*    wxx *    wyy)
+     &                                 inj_grid(ixx+1,iyy+1)*    wxx * wyy)+
+     &                       inj_zstart
 
 c                     --- Check if particle is within the elliptical annulus
 c                     --- with outer major and minor radii of ainject and
@@ -4349,6 +4352,7 @@ c         --- generator and not particle number since the particle number
 c         --- is correlated with transverse position.  The timesteps are
 c         --- stored in the temporary array 'bpt'.
           do is=1,ns
+            if (npinje_s(is) == 0) cycle
 
 c           --- Make sure that there is enough room in the temporary arrays.
             if (npinje_s(is) > npgrp) then
@@ -4416,6 +4420,7 @@ c level of rest of particles.
 
 c         loop over species
           do is=1,ns
+            if (npinje_s(is) == 0) cycle
             qoverm = sq(is)/sm(is)
 
 c           --- Make sure that there is enough room in the temporary arrays.
@@ -4606,6 +4611,7 @@ c                 --- source.
                   call chckpart(is,npinje_s(is) +
      &                             nn*nttinj(ij)*(nztinjmx(ij)-nztinjmn(ij)),
      &                          0,.true.)
+                  call chckpart(is,nn,0,.true.)
 
                   do ip=1,nn
                     ii = ins(is) - npinje_s(is) - nti - 1
@@ -4771,7 +4777,7 @@ c Also set particle parameters: charge, mass and weight
         total_frac = total_frac + sp_fract(is)
       enddo
       do is=1,ns
-        call chckpart(is,int(injctspc*sp_fract(is)/total_frac),0,.true.)
+        call chckpart(is,int(injctspc*sp_fract(is)/total_frac+1),0,.true.)
         if (sq(is) == 0.) sq(is) = zion_s(is)*echarge
         if (sw(is) == 0.)
      &    sw(is)=(ibeam_s(is)*dt/(echarge*zion_s(is)))/npinje_s(is)*sp_fract(is)
@@ -5031,8 +5037,8 @@ c       --- Set some temporaries.
 
         do iy = 0,ny
           do ix = 0,nx
-            rrsq = (ix*dx + xmmin - xinj)**2/ainjsqi +
-     &             (iy*dy + ymmin - yinj)**2/binjsqi
+            rrsq = (ix*dx + xmmin - xinj)**2*ainjsqi +
+     &             (iy*dy + ymmin - yinj)**2*binjsqi
             if (rrsq < 1. .and.
      &          (-1 <= inj_grid(ix,iy) .and.
      &                 inj_grid(ix,iy) < nz)) then
@@ -5101,6 +5107,8 @@ c a grid cell of the edge. The points outside are also held fixed.
       real(kind=8):: rrsq1,rrsq2
       real(kind=8):: isum,fsum,xsum,xsqsum,fxsum,c1,c2
       real(kind=8):: s(0:nx,0:ny)
+      real(kind=8):: ainjsqi1,binjsqi1
+      real(kind=8):: ainjsqi2,binjsqi2
 
 c     --- Calculate the parameters for the least square fit.
       isum = 0.
@@ -5108,12 +5116,16 @@ c     --- Calculate the parameters for the least square fit.
       xsum = 0.
       xsqsum = 0.
       fxsum = 0.
+      ainjsqi1 = 1./ainj**2
+      binjsqi1 = 1./binj**2
+      ainjsqi2 = 1./(ainj - dx)**2
+      binjsqi2 = 1./(binj - dx)**2
       do iy = 0,ny
         do ix = 0,nx
-          rrsq1 = (ix*dx + xmmin - xinj)**2/ainj**2 +
-     &            (iy*dy + ymmin - yinj)**2/binj**2
-          rrsq2 = (ix*dx + xmmin - xinj)**2/(ainj - dx)**2 +
-     &            (iy*dy + ymmin - yinj)**2/(binj - dy)**2
+          rrsq1 = (ix*dx + xmmin - xinj)**2*ainjsqi1 +
+     &            (iy*dy + ymmin - yinj)**2*binjsqi1
+          rrsq2 = (ix*dx + xmmin - xinj)**2*ainjsqi2 +
+     &            (iy*dy + ymmin - yinj)**2*binjsqi2
           if (rrsq1 < 1. .and. rrsq2 > 1.) then
             isum = isum + 1.
             fsum = fsum + inj_phi(ix,iy)
@@ -5128,12 +5140,14 @@ c     --- Calculate the parameters for the least square fit.
 
 c     --- Set values for points just outside of the emitter edge, using
 c     --- the equation from the fit above.
+      ainjsqi2 = 1./(ainj + 2.*dx)**2
+      binjsqi2 = 1./(binj + 2.*dx)**2
       do iy = 0,ny
         do ix = 0,nx
-          rrsq1 = (ix*dx + xmmin - xinj)**2/ainj**2 +
-     &            (iy*dy + ymmin - yinj)**2/binj**2
-          rrsq2 = (ix*dx + xmmin - xinj)**2/(ainj + 2.*dx)**2 +
-     &            (iy*dy + ymmin - yinj)**2/(binj + 2.*dy)**2
+          rrsq1 = (ix*dx + xmmin - xinj)**2*ainjsqi1 +
+     &            (iy*dy + ymmin - yinj)**2*binjsqi1
+          rrsq2 = (ix*dx + xmmin - xinj)**2*ainjsqi2 +
+     &            (iy*dy + ymmin - yinj)**2*binjsqi2
           if (rrsq1 > 1. .and. rrsq2 < 1.) then
             inj_phi(ix,iy) = c1 + c2*sqrt(rrsq1)
           endif
@@ -5147,8 +5161,8 @@ c     --- Do the smoothing.
         s = inj_phi
         do iy = 0,ny
           do ix = 0,nx
-            rrsq1 = (ix*dx + xmmin - xinj)**2/ainj**2 +
-     &              (iy*dy + ymmin - yinj)**2/binj**2
+            rrsq1 = (ix*dx + xmmin - xinj)**2*ainjsqi1 +
+     &              (iy*dy + ymmin - yinj)**2*binjsqi1
             if (rrsq1 < 1. .and. (ix .ne. ix0 .or. iy .ne. iy0)) then
               ixm1 = ix - 1
               ixp1 = ix + 1
@@ -5167,14 +5181,6 @@ c     --- Do the smoothing.
           enddo
         enddo
       enddo
-
-c     --- Do an ad-hoc averaging with the transpose
-c     do iy = 1,ny
-c       do ix = 0,iy-1
-c         inj_phi(ix,iy) = 0.5*(inj_phi(ix,iy) + inj_phi(iy,ix))
-c         inj_phi(iy,ix) = inj_phi(ix,iy)
-c       enddo
-c     enddo
 
       return
       end
@@ -5202,7 +5208,7 @@ c any conductor surface.
 
 
       integer(ISZ):: ip,ix,iy,iz,ij,jx,jy,jz,jxm1,jym1
-      real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd,ca,zi,zii
+      real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd,ca,zii
       real(kind=8):: aa,az,px,py,pz,wx,wy,wz,en
       real(kind=8):: dxi,dyi,dzi
       real(kind=8):: sx,sy
@@ -5212,8 +5218,7 @@ c any conductor surface.
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
-      zi = dz
-      zii = 1./zi
+      zii = 1./(dz*inj_d)
 
 c     --- Loop over particles
       do ip=1,np
@@ -5254,18 +5259,11 @@ c         --- When zz>rinj, a seperate equation is needed.
         dd = dd*dzi
 
 c       --- Only calculate E-field if particle close to emitting surface.
-        if (0.0 .le. dd .and. dd .lt. 2.0 .and.
+        if (0.0 .le. dd .and. dd .lt. inj_d+1. .and.
      &    (((xp(ip)-xinj)*binject(ij))**2 + ((yp(ip)-yinj)*ainject(ij))**2 .le.
      &    (ainject(ij)*binject(ij))**2) .and.
      &    (((xp(ip)-xinj)*binjmin(ij))**2 + ((yp(ip)-yinj)*ainjmin(ij))**2 .ge.
      &    (ainjmin(ij)*binjmin(ij))**2) ) then
-
-          if (dd .lt. 1.) then
-            zi = dz*inj_d
-          else
-            zi = 2.*dz*inj_d
-          endif
-          zii = 1./zi
 
 c         --- angle of point in transverse plane
           aa = atan2(yp(ip)-yinj,dvnz(xp(ip)-xinj))
@@ -5273,15 +5271,16 @@ c         --- angle of point in transverse plane
 c         --- angle relative to z axis
           az = atan2(sqrt(rr2),rinj-zz)
 
-c         --- Find coordinates of the point a distance dz in front
-c         --- of the source along a line perpendicular to the
+c         --- Find coordinates of the point on
+c         --- the emitting surface along a line perpendicular to the
 c         --- emitting surface.
-          px = abs((rinj - zi)*sin(az)*cos(aa) + xinj - xmmin)*dxi
-          py = abs((rinj - zi)*sin(az)*sin(aa) + yinj - ymmin)*dyi
+          px = abs(rinj*sin(az)*cos(aa) + xinj - xmmin)*dxi
+          py = abs(rinj*sin(az)*sin(aa) + yinj - ymmin)*dyi
           ix = int(px)
           iy = int(py)
           wx = px - ix
           wy = py - iy
+
 c         --- Fetch difference between phi at that point and phi on
 c         --- the emitting surface, calculating the normal electric field.
 c         --- That has already been gathered into inj_phi.
@@ -5289,8 +5288,9 @@ c         --- That has already been gathered into inj_phi.
      &              inj_phi(ix+1,iy  )*    wx *(1.-wy) +
      &              inj_phi(ix  ,iy+1)*(1.-wx)*    wy  +
      &              inj_phi(ix+1,iy+1)*    wx *    wy   )
+          en = en*dz*inj_d/(dz*inj_d - (inj_zstart-zinj))
 
-          if (dd .le. 1.) then
+          if (dd .le. inj_d) then
 c           --- Now set the particle's electric field based off of the normal
 c           --- electric field.
             ex(ip) = -en*sin(az)*cos(aa)
@@ -5332,9 +5332,10 @@ c           --- calculated in sete3d.
      &           (phi(jx+1,jy+1,jz  )-phi(jx+1,jy+1,jz+2))*    wx *    wy )
 
 c           --- Do a linear weigthing between the En and sete3d fields.
-            ex(ip) = -en*sin(az)*cos(aa)*(2.-dd) + ex(ip)*(dd-1.)
-            ey(ip) = -en*sin(az)*sin(aa)*(2.-dd) + ey(ip)*(dd-1.)
-            ez(ip) =  en*cos(az)        *(2.-dd) + ez(ip)*(dd-1.)
+            wz = dd - inj_d
+            ex(ip) = -en*sin(az)*cos(aa)*(1. - wz) + ex(ip)*wz
+            ey(ip) = -en*sin(az)*sin(aa)*(1. - wz) + ey(ip)*wz
+            ez(ip) =  en*cos(az)        *(1. - wz) + ez(ip)*wz
           endif
 
         endif

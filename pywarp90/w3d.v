@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.10 $, $Date: 2001/06/21 18:41:05 $
+#@(#) File W3D.V, version $Revision: 3.11 $, $Date: 2001/07/10 19:01:39 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.10 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.11 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -278,6 +278,8 @@ inj_d                real /1./
    # Distance from surface where phi is fetched. In units of dz.
 inj_f                real /1./
    # Scaling factor on the number of particles injected.
+inj_zstart           real /0./
+   # Starting location relative to the emitting surface location.
 inj_grid(0:nx,0:ny) _real
    # Grid giving axial field grid location of injection sources
 inj_angl(0:nx,0:ny) _real
