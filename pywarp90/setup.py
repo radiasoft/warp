@@ -2,7 +2,7 @@
 # To use:
 #       python setup.py install
 #
-import os,os.path
+import sys,os,os.path
 from Forthon.compilers import FCompiler
 
 try:
@@ -14,7 +14,7 @@ except:
     raise SystemExit, "Distutils problem"
 
 lapacklibdir = ['/home/dave/lapack_ifc/LAPACK']
-lapacklibs = ['lapackifc8','blasifc8']
+lapacklibs = ['lapackifc','blasifc']
 
 fcomp = FCompiler()
 
@@ -25,8 +25,16 @@ builddir = dummybuild.build_temp
 
 warppkgs = ['top','env','w3d','f3d','wxy','fxy','wrz','frz','her','cir','cho']
 
+# --- The behavior of distutils changed from 2.2 to 2.3. In 2.3, the object
+# --- files are always put in a build/temp directory relative to where the
+# --- source file is, rather than relative to the main build directory.
+if sys.hexversion >= 0x020300f0:
+  pymodprefix = builddir
+else:
+  pymodprefix = ''
+
 def makeobjects(pkg):
-  return [pkg+'.o',pkg+'_p.o',pkg+'pymodule.o']
+  return [pkg+'.o',pkg+'_p.o',os.path.join(pymodprefix,pkg+'pymodule.o')]
 
 warpobjects = []
 for pkg in warppkgs:
