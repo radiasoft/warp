@@ -6,37 +6,30 @@ PYTHON = /home/dave/Python-$(PYVERS)
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
 PROF = #-Mprof=lines
-OPT = -O3 -unroll
-OPT = -O3
+OPT = -O3 -xK -tpp6 -ip -unroll -prefetch
 POPT = -O0
 PYMODULEOPT = -O1
-#ARGS = -common_args -doubletemps -fp -i4 -pc64
-#ARGS = -fp -i4 -pc64 -mp
-# -mp -mp1 -pad -prec_div -rcd
-# -save -auto -zero
 F90FREE  = ifc -132 -r8 -DIFC -FR -fpp -implicitnone -C90 -Zp8 $(ARGS)
 F90FIXED = ifc -132 -r8 -DIFC -FI -fpp -implicitnone -C90 -Zp8 $(ARGS)
-CC = cc -fpic
+CC = cc
 SO = so
-LD = ifc -Kpic -132 -r8 -C90 -Zp8 $(ARGS)
-FORTLIB = -L/opt/intel/compiler50/ia32/lib/ -lIEPCF90 -lCEPCF90 -lF90 -lintrins -limf -lsvml -lirc -lcxa
+LD = ifc -Bdynamic -132 -r8 -C90 -Zp8 $(ARGS)
+EXPORT = -Qoption,ld,-export-dynamic
+FORTLIB =
 LINKLIB = -ldl -lutil -lpthread
-DLLIB = -ldl
 XLIB = -L/usr/X11R6/lib
-PACTLIB = -L/usr/local/pact/lib
-YORICKLIB = -L/usr/local/lib/yorick/1.4/lib
+PACTLIB = -L/usr/local/pact/lib -lpdb -lpml -lscore
+YORICKLIB = -L/usr/local/lib/yorick/1.4/lib -lgist
 TCLLIB = 
-LAPACKLIB = -L/home/dave/lapack_ifc/LAPACK
+LAPACKLIB = -L/home/dave/lapack_ifc/LAPACK -llapackifc -lblasifc
 NUMPYINCLUDE = -I$(PYTHON)/include/python$(PYVERS)/Numeric
 OLD = OLD1
 
 WARPSCRIPTS = $(HOME)/scripts
-OTHERLIBS = $(PACTLIB) -lpdb -lpml -lscore \
-            $(YORICKLIB) -lgist \
-            $(LAPACKLIB) -llapackifc -lblasifc
+OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB)
 
 warp: warpC.$(SO)
-	#cp warpC.$(SO) $(WARPSCRIPTS)
+	cp warpC.$(SO) $(WARPSCRIPTS)
 
 static: build_static
 
@@ -45,10 +38,10 @@ include Makefile.dependencies
 build_static: $(MODULEOBJECTS) $(WARPOBJECTS) config.o $(RNGOBJ)
 	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) \
 	config.o $(RNGOBJ) $(PYTHON)/lib/python2.1/site-packages/*/*.so \
-	$(OTHERLIBS) $(XLIB) $(PYTHONLIB) $(FORTLIB) $(LINKLIB)
+	$(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) $(EXPORT)
 
 warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
-	cc -fpic -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
+	cc -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
 	$(LD) -shared -o warpC.$(SO) warpC.o $(MODULEOBJECTS) $(WARPOBJECTS) \
-	$(RNGOBJ) $(PYTHON)/lib/python2.1/site-packages/*/*.so $(OTHERLIBS)
+	$(RNGOBJ) $(OTHERLIBS)
 
