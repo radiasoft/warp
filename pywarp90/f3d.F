@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.6 $, $Date: 2001/06/01 22:37:15 $
+c@(#) File F3D.M, version $Revision: 3.7 $, $Date: 2001/06/19 01:05:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -3969,18 +3969,18 @@ c           --- surface of the conductor boundaries.
             if (lcndbndy) then
               if (parity == s_parity) then
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
-     &                        ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,
-     &                        ecdelpx,ecdelpy,ecdelpz,
-     &                        iecndx,iecndy,iecndz,ecvolt,ecndpvph,
-     &                        nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                        izfsmin,izfsmax,dx,dy,dz,icndbndy)
+     &                     ncndmax,necndbdy,ecdelmx(1),ecdelmy(1),ecdelmz(1),
+     &                     ecdelpx(1),ecdelpy(1),ecdelpz(1),
+     &                     iecndx(1),iecndy(1),iecndz(1),ecvolt(1),ecndpvph(1),
+     &                     nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
               else
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
-     &                        ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,
-     &                        ocdelpx,ocdelpy,ocdelpz,
-     &                        iocndx,iocndy,iocndz,ocvolt,ocndpvph,
-     &                        nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
-     &                        izfsmin,izfsmax,dx,dy,dz,icndbndy)
+     &                     ncndmax,nocndbdy,ocdelmx(1),ocdelmy(1),ocdelmz(1),
+     &                     ocdelpx(1),ocdelpy(1),ocdelpz(1),
+     &                     iocndx(1),iocndy(1),iocndz(1),ocvolt(1),ocndpvph(1),
+     &                     nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
               endif
             endif
 
