@@ -1,7 +1,6 @@
 from warp import *
-import Ranf
 import __main__
-lattice_version = "$Id: lattice.py,v 1.3 2001/01/19 20:26:06 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.4 2001/04/04 17:38:37 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -27,7 +26,7 @@ def errordist(etype):
     _errordist_next_number = result[1]
     return result[0]
   elif etype == 'UNIFORM':
-    return Ranf.ranf()
+    return ranf()
   elif etype == 'ABSOLUTE':
     return 1.
   else:

@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.35 2001/03/21 01:29:11 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.36 2001/04/04 17:38:38 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -904,18 +904,17 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- These are intentionally undocumented features.
   badargs = checkarguments(kwvalues,kwdefaults)
   if checkargs: return badargs
-  if badargs and not allowbadargs:
-    raise "bad argument ",string.join(badargs.keys())
+  assert (not badargs or allowbadargs), \
+         "bad argument %s"%string.join(badargs.keys())
 
   # --- Do some error checking on the consistency of the input
-  if grid == None and (x == None or y == None):
-    raise "either the grid and/or both x and y must be specified"
-  if particles and (x == None or y == None):
-    raise "both x and y must be specified if particles are to be plotted"
-  if (x != None and y != None) and len(x) != len(y):
-    raise "both x and y must be of the same length"
-  if type(slope) == type('a'):
-    raise "slope must be a number"
+  assert (grid != None or (x != None and y != None)), \
+         "either the grid and/or both x and y must be specified"
+  assert (not particles or (x != None and y != None)), \
+         "both x and y must be specified if particles are to be plotted"
+  assert ((x == None and y == None) or len(x) == len(y)), \
+         "both x and y must be of the same length"
+  assert (type(slope) != type('a')),"slope must be a number"
 
   # -- Set the plotting view window
   plsys(view)
@@ -1282,7 +1281,7 @@ if sys.version[:5] != "1.5.1":
 
 ##########################################################################
 def ppxpyp(iw=0,particles=1,**kw):
-  "Plots X'-Y'. If slope='auto', it is calculated from the moments."
+  "Plots X'-Y'."
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():

@@ -1,5 +1,5 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.4 2001/03/24 00:53:00 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.5 2001/04/04 17:38:37 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -79,7 +79,8 @@ w3d.addvarattr("rho","dump")
 # --- Set verbosity so that the one line diagnostic is not printed out.
 top.verbosity = 1
 
-def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None):
+def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
+        laccumulate_zmoments=None):
   """
 Performs steady-state iterations
   - iter=1 number of iterations to perform
@@ -87,6 +88,9 @@ Performs steady-state iterations
   - save_same_part=0 when true, save same particles each time step instead
     of random particles, i.e. saves particle trajectories
   - maxtime=3*transittime maximum time each iteration will run
+  - laccumulate_zmoments=false: When set to true, z-moments are accumulated
+    over multiple iterations. Note that getzmom.zmmnt(3) must be called
+    by the user to finish the moments calculation.
   Note that ipsave and save_same_part are preserved in between calls
   """
   global _oinject,_ofstype,_onztinjmn,_onztinjmx
@@ -101,6 +105,7 @@ Performs steady-state iterations
     _onztinjmx = top.nztinjmx
   _ifzmmnt = top.ifzmmnt
   _laccumulate_zmoments = top.laccumulate_zmoments
+  if laccumulate_zmoments==None: laccumulate_zmoments=top.laccumulate_zmoments
 
   if ipsave: _ipsave = ipsave
   if save_same_part: _save_same_part = save_same_part
@@ -323,7 +328,7 @@ Performs steady-state iterations
 
     # --- Do final work for zmoments calculation
     if ((i == iter-1 or (gun_iter%_nhist) == 0) and top.ifzmmnt > 0):
-      top.laccumulate_zmoments = _laccumulate_zmoments
+      top.laccumulate_zmoments = laccumulate_zmoments
       getzmom.zmmnt(3)
 
     # --- Save the history data

@@ -1,10 +1,11 @@
 # import all of the neccesary packages
 from Numeric import *
+import RNG
+import RandomArray
 from pybasisC import *
 import os
 import string
 import re
-import RandomArray
 try:
   import PW
   import PR
@@ -12,7 +13,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.6 2001/02/26 19:55:43 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.7 2001/04/04 17:38:37 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1

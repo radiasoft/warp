@@ -1,7 +1,7 @@
 from warp import *
 import LinearAlgebra
 import singleparticle
-wxy_match_version = "$Id: wxy_match.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+wxy_match_version = "$Id: wxy_match.py,v 1.2 2001/04/04 17:38:38 dave Exp $"
 ##############################################################################
 # Iterate toward a matched beam using the slice code (instead of the env     #
 # package).  It is currently setup to match a beam starting from the center  #
@@ -42,8 +42,10 @@ average of the initial and final values
   for i in xrange(imtch):
     top.a0=0.5*(top.a0+2.*top.xrms[0])
     top.b0=0.5*(top.b0+2.*top.yrms[0])
-    top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0]/top.vbeam),top.ap0)
-    top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0]/top.vbeam),top.bp0)
+    top.ap0=sign(0.5*(abs(top.ap0) +
+             2.*(top.xxpbar[0]-top.xbar[0]*top.xpbar[0])/top.xrms[0]),top.ap0)
+    top.bp0=sign(0.5*(abs(top.bp0) +
+             2.*(top.yypbar[0]-top.ybar[0]*top.ypbar[0])/top.yrms[0]),top.bp0)
     top.a0_s = top.a0
     top.b0_s = top.b0
     top.ap0_s = top.ap0
@@ -65,8 +67,10 @@ average of the initial and final values, then Y is set equal to X
   for i in xrange(imtch):
     top.a0=0.5*(top.a0+2.*top.xrms[0]) #xrms[0]+yrms[0]
     top.b0=top.a0
-    top.ap0=sign(0.5*(abs(top.ap0)+2.*top.vxrms[0]/top.vbeam),top.ap0)
-    top.bp0=sign(0.5*(abs(top.bp0)+2.*top.vyrms[0]/top.vbeam),top.bp0)
+    top.ap0=sign(0.5*(abs(top.ap0) +
+             2.*(top.xxpbar[0]-top.xbar[0]*top.xpbar[0])/top.xrms[0]),top.ap0)
+    top.bp0=sign(0.5*(abs(top.bp0) +
+             2.*(top.yypbar[0]-top.ybar[0]*top.ypbar[0])/top.yrms[0]),top.bp0)
     top.a0_s = top.a0
     top.b0_s = top.b0
     top.ap0_s = top.ap0

@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.5 2001/01/16 19:28:02 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.6 2001/04/04 17:38:37 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -508,11 +508,11 @@ Constructor arguments:
     s.pipematrixlist.append(m)
     return m
   #----------------------------------------------------------------------------
-  def getrodmatrix(s,ap,rr,vx,vy,vx,vy,withx,withy,ox,oy):
+  def getrodmatrix(s,ap,rr,vx,vy,vxm,vym,withx,withy,ox,oy):
     # --- This searches through the list of matrices checking if one with the
     # --- same parameters has already be created. If so, just return that one.
     for m in s.rodmatrixlist:
-      if m.issame(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy): return m
+      if m.issame(ap,rr,vx,vy,vxm,vym,withx,withy,ox,oy): return m
     # --- None was found, so create a new one, adding it to the list.
     m = RoundRods(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy,s.newmesh,s.rodfract)
     s.rodmatrixlist.append(m)
