@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.2 $, $Date: 2001/04/20 00:22:07 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.3 $, $Date: 2001/04/23 17:56:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1845,7 +1845,8 @@ c     --- is only an estimate.
 
 c     --- Loop until at least one of the axis is at the coarsest level.
       ic = necndbdy + 1
-      do while (tnx > 2 .and. tny > 2 .and. tnz > 2)
+      do while (tnx > 2 .and. tny > 2 .and. tnz > 2 .and.
+     &          mod(tnx,4) == 0 .and. mod(tny,4) == 0 .and. mod(tnz,4) == 0)
 
 c       --- Go to the next level of coarseness.
         tnx = tnx/2
