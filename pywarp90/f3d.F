@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.36 $, $Date: 2002/04/26 22:09:50 $
+c@(#) File F3D.M, version $Revision: 3.37 $, $Date: 2002/04/26 22:22:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6621,21 +6621,21 @@ c           --- skip points not on the surface
 c           --- If rinject is not set by the user, rely on inj_grid (surface
 c           --- will be piecewise linear), otherwise make the surface spherical.
             if (rinject(ij) == LARGEPOS) then
-              iz = int((inj_grid(ix,iy) - zmmin)/dz + 1)
+              iz = int((inj_grid(ix,iy,inj_ij) - zmmin)/dz + 1)
               zz = zmmin + iz*dz
               delmx = 2.
               delpx = 2.
               delmy = 2.
               delpy = 2.
-              delmz = iz - (inj_grid(ix,iy) - zmmin)/dz
+              delmz = iz - (inj_grid(ix,iy,inj_ij) - zmmin)/dz
               delpz = 2.
-              if (inj_grid(ix-1,iy) > zz)
+              if (inj_grid(ix-1,iy,inj_ij) > zz)
      &          delmx = delmz/(inj_grid(ix-1,iy,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
-              if (inj_grid(ix+1,iy) > zz)
+              if (inj_grid(ix+1,iy,inj_ij) > zz)
      &          delpx = delmz/(inj_grid(ix+1,iy,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
-              if (inj_grid(ix,iy-1) > zz)
+              if (inj_grid(ix,iy-1,inj_ij) > zz)
      &          delmy = delmz/(inj_grid(ix,iy-1,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
-              if (inj_grid(ix,iy+1) > zz)
+              if (inj_grid(ix,iy+1,inj_ij) > zz)
      &          delpy = delmz/(inj_grid(ix,iy+1,inj_ij)-inj_grid(ix,iy,inj_ij))*dz
             else
               zz = (zinject(ij) - zmmin) + (xx**2 + yy**2)/
