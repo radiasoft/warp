@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.33 2005/01/03 18:57:29 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.34 2005/01/12 01:26:20 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -713,7 +713,7 @@ def gunamr(iter=1,itersub=None,ipsave=None,save_same_part=None,maxtime=None,
         nmg=0,AMRlevels=0,
         laccumulate_zmoments=None,rhoparam=None,
         lstatusline=true,insertbeforeiter=None,insertafteriter=None,
-        conductors=None,egundata_window=-1,plottraces_window=-1,
+        conductors=None,ipstep=None,egundata_window=-1,plottraces_window=-1,
         egundata_nz=None,egundata_zmin=None,egundata_zmax=None):
   """
 Performs steady-state iterations in a cascade using different resolutions.
@@ -767,16 +767,25 @@ Performs steady-state iterations in a cascade using different resolutions.
     AMRtree.generate()
     w3d.AMRgenerate_periodicity = 1000000
     fieldsol(-1)
-    gun(1,0,save_same_part,maxtime,
-        laccumulate_zmoments,None,
-        lstatusline,insertbeforeiter,insertafteriter,
-        None,egundata_window,plottraces_window,
-        egundata_nz,egundata_zmin,egundata_zmax)
-    gun(iter-1,ipsave,save_same_part,maxtime,
-        laccumulate_zmoments,rhoparam,
-        lstatusline,insertbeforeiter,insertafteriter,
-        None,egundata_window,plottraces_window,
-        egundata_nz,egundata_zmin,egundata_zmax)
+    if rhoparam is not None:
+      if iter == 1:
+        ipsavetemp = ipsave
+        ipsteptemp = ipstep
+      else:
+        ipsavetemp = None
+        ipsteptemp = None
+      gun(1,ipsavetemp,save_same_part,maxtime,
+          laccumulate_zmoments,None,
+          lstatusline,insertbeforeiter,insertafteriter,
+          ipsteptemp,egundata_window,plottraces_window,
+          egundata_nz,egundata_zmin,egundata_zmax)
+      iter = iter - 1
+    if iter > 0:
+      gun(iter,ipsave,save_same_part,maxtime,
+          laccumulate_zmoments,rhoparam,
+          lstatusline,insertbeforeiter,insertafteriter,
+          None,egundata_window,plottraces_window,
+          egundata_nz,egundata_zmin,egundata_zmax)
     w3d.AMRgenerate_periodicity = tmp
   if egundata_nz is not None:
     return [array(egundata_curr),array(egundata_xrmsz),array(egundata_yrmsz), 
