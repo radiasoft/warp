@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.93 $, $Date: 2003/06/11 21:40:49 $
+#@(#) File TOP.V, version $Revision: 3.94 $, $Date: 2003/06/27 23:16:45 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.93 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.94 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1199,6 +1199,7 @@ vyvzbar(0:nzwind)       _real [m]     # Mean product of Vy and Vz in window
 xrms(0:nzwind)          _real [m]     # RMS X in window
 yrms(0:nzwind)          _real [m]     # RMS Y in window
 zrms(0:nzwind)          _real [m]     # RMS Z in window
+rrms(0:nzwind)          _real [m]     # RMS R in window
 xprms(0:nzwind)         _real [m]     # RMS X' in window
 yprms(0:nzwind)         _real [m]     # RMS Y' in window
 epsx(0:nzwind)          _real [m-rad] # X-X' emittance
@@ -1257,6 +1258,7 @@ vyvzbarz(0:nzmmnt)  _real [m]     # Mean product of Vy and Vz at grid point
 xrmsz(0:nzmmnt)     _real [m]     # RMS X at grid point
 yrmsz(0:nzmmnt)     _real [m]     # RMS Y at grid point
 zrmsz(0:nzmmnt)     _real [m]     # RMS Z at grid point
+rrmsz(0:nzmmnt)     _real [m]     # RMS R at grid point
 xprmsz(0:nzmmnt)    _real [m]     # RMS X' at grid point
 yprmsz(0:nzmmnt)    _real [m]     # RMS Y' at grid point
 epsxz(0:nzmmnt)     _real [m-rad] # X-X' emittance at grid point
@@ -1298,6 +1300,7 @@ vyrmslw(ntlabwn,nlabwn) _real # Vy RMS in lab frame
 vzrmslw(ntlabwn,nlabwn) _real # Vz RMS in lab frame
 xrmslw(ntlabwn,nlabwn)  _real # X RMS in lab frame
 yrmslw(ntlabwn,nlabwn)  _real # Y RMS in lab frame
+rrmslw(ntlabwn,nlabwn)  _real # R RMS in lab frame
 currlw(ntlabwn,nlabwn)  _real # Current in lab frame
 linechglw(ntlabwn,nlabwn)  _real # Line-charge in lab frame
 lostparslw(ntlabwn,nlabwn)  _real # Number of lost particles in lab frame
@@ -1407,6 +1410,8 @@ hxrms(0:nzwind,0:lenhist)     _real [m]     limited (0:nzwind,0:jhist) +winhist
    # True RMS x by window as a function of time
 hyrms(0:nzwind,0:lenhist)     _real [m]     limited (0:nzwind,0:jhist) +winhist
    # True RMS y by window as a function of time
+hrrms(0:nzwind,0:lenhist)     _real [m]     limited (0:nzwind,0:jhist) +winhist
+   # True RMS r by window as a function of time
 hxprms(0:nzwind,0:lenhist)    _real [m]     limited (0:nzwind,0:jhist) +winhist
    # True RMS x' by window as a function of time
 hyprms(0:nzwind,0:lenhist)    _real [m]     limited (0:nzwind,0:jhist) +winhist
@@ -1517,6 +1522,10 @@ lhyrmsz logical /.false./    # Turns on history of Y rms
 ihyrmsz integer /0 /         # Multiplier for hyrmsz memory size (autoset)
 hyrmsz(0:nzmmnt*ihyrmsz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
             +zhist           # Y rms versus space and time
+lhrrmsz logical /.false./    # Turns on history of X rms
+ihrrmsz integer /0 /         # Multiplier for hrrmsz memory size (autoset)
+hrrmsz(0:nzmmnt*ihrrmsz,0:lenhist)  _real [m] limited (0:nzmmnt,0:jhist)
+            +zhist           # X rms versus space and time
 lhxprmsz logical /.false./   # Turns on history of X' rms
 ihxprmsz integer /0 /        # Multiplier for hxprmsz memory size (autoset)
 hxprmsz(0:nzmmnt*ihxprmsz,0:lenhist)  _real [rad] limited (0:nzmmnt,0:jhist)
@@ -1624,9 +1633,9 @@ npmaxi integer    /1/  # Maximum no. of particles for pid.
 wpid   integer    /0/  # position of particle weights in array pid (FORTRAN indexed: based 1)
 tpid   integer    /0/  # position of particle creation time in array pid (FORTRAN indexed: based 1)
 rpid   integer    /0/  # position of particle initial radius in array pid (FORTRAN indexed: based 1)
-sm(ns) _real [kg] /0./ # Species mass
-sq(ns) _real [C]  /0./ # Species charge
-sw(ns) _real [1]  /0./ # Species weight
+sm(ns) _real [kg] /0./ -parallel # Species mass
+sq(ns) _real [C]  /0./ -parallel # Species charge
+sw(ns) _real [1]  /0./ -parallel # Species weight
                        # (real particles per simulation particles)
 ins(ns)  _integer /1/  # Index of first particle in species
 nps(ns)  _integer /0/  # Number of particles in species

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.93 $, $Date: 2003/06/11 21:40:49 $
+c@(#) File TOP.M, version $Revision: 3.94 $, $Date: 2003/06/27 23:16:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4474,6 +4474,7 @@ c       --- Compute overall true RMS positions
         xrms(0) = sqrt(max(SMALLPOS,delxsq))
         yrms(0) = sqrt(max(SMALLPOS,delysq))
         zrms(0) = sqrt(max(SMALLPOS,delzsq))
+        rrms(0) = sqrt(xrms(0)**2 + yrms(0)**2)
 
 c       --- Compute overall true RMS velocities
         xprms(0) = sqrt(max(SMALLPOS,delxpsq))
@@ -4580,6 +4581,7 @@ c           --- Compute overall true RMS positions
             xrmsz(izm) = sqrt(max(SMALLPOS,delxsq))
             yrmsz(izm) = sqrt(max(SMALLPOS,delysq))
             zrmsz(izm) = sqrt(max(SMALLPOS,delzsq))
+            rrmsz(izm) = sqrt(xrmsz(izm)**2 + yrmsz(izm)**2)
 
 c           --- Compute overall true RMS velocities
             xprmsz(izm) = sqrt(max(SMALLPOS,delxpsq))
@@ -4654,6 +4656,7 @@ c         --- If the zwindow is outside the zmoments range, don't set anything.
               xrms(iw)    = xrmsz(icell)*wz1    + xrmsz(icell+1)*wz0
               yrms(iw)    = yrmsz(icell)*wz1    + yrmsz(icell+1)*wz0
               zrms(iw)    = zrmsz(icell)*wz1    + zrmsz(icell+1)*wz0
+              rrms(iw)    = rrmsz(icell)*wz1    + rrmsz(icell+1)*wz0
               xprms(iw)   = xprmsz(icell)*wz1   + xprmsz(icell+1)*wz0
               yprms(iw)   = yprmsz(icell)*wz1   + yprmsz(icell+1)*wz0
               epsx(iw)    = epsxz(icell)*wz1    + epsxz(icell+1)*wz0
@@ -5202,6 +5205,9 @@ c  are actually calculated more or less often.
           pnumlw(ilw,i)  = w1*pnumz(iz)  + w0*pnumz(iz+1)
           xbarlw(ilw,i)  = w1*xbarz(iz)  + w0*xbarz(iz+1)
           ybarlw(ilw,i)  = w1*ybarz(iz)  + w0*ybarz(iz+1)
+          xrmslw(ilw,i)  = w1*xrmsz(iz)  + w0*xrmsz(iz+1)
+          yrmslw(ilw,i)  = w1*yrmsz(iz)  + w0*yrmsz(iz+1)
+          rrmslw(ilw,i)  = w1*rrmsz(iz)  + w0*rrmsz(iz+1)
           vzbarlw(ilw,i) = w1*vzbarz(iz) + w0*vzbarz(iz+1)
           epsxlw(ilw,i)  = w1*epsxz(iz)  + w0*epsxz(iz+1)
           epsylw(ilw,i)  = w1*epsyz(iz)  + w0*epsyz(iz+1)
@@ -5209,8 +5215,6 @@ c  are actually calculated more or less often.
           vxrmslw(ilw,i) = w1*vxrmsz(iz) + w0*vxrmsz(iz+1)
           vyrmslw(ilw,i) = w1*vyrmsz(iz) + w0*vyrmsz(iz+1)
           vzrmslw(ilw,i) = w1*vzrmsz(iz) + w0*vzrmsz(iz+1)
-          xrmslw(ilw,i)  = w1*xrmsz(iz)  + w0*xrmsz(iz+1)
-          yrmslw(ilw,i)  = w1*yrmsz(iz)  + w0*yrmsz(iz+1)
           iz = (zlw(i) - zbeam - zzmin)*dzzi
           w0 = (zlw(i) - zbeam - zzmin)*dzzi - iz
           w1 = 1. - w0

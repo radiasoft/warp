@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.92 $, $Date: 2003/06/11 21:40:49 $
+c@(#) File DTOP.M, version $Revision: 3.93 $, $Date: 2003/06/27 23:16:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -67,6 +67,7 @@ c       --- If so, space needs to be allocated for them.
         lgchange = checkzhistarray(lhxybarz,ihxybarz) .or. lgchange
         lgchange = checkzhistarray(lhxrmsz,ihxrmsz) .or. lgchange
         lgchange = checkzhistarray(lhyrmsz,ihyrmsz) .or. lgchange
+        lgchange = checkzhistarray(lhrrmsz,ihrrmsz) .or. lgchange
         lgchange = checkzhistarray(lhxprmsz,ihxprmsz) .or. lgchange
         lgchange = checkzhistarray(lhyprmsz,ihyprmsz) .or. lgchange
         lgchange = checkzhistarray(lhxsqbarz,ihxsqbarz) .or. lgchange
@@ -171,6 +172,7 @@ c  Save results of this time step in history buffers
         hybar(iw,jhist)    = ybar(iw)
         hxrms(iw,jhist)    = xrms(iw)
         hyrms(iw,jhist)    = yrms(iw)
+        hrrms(iw,jhist)    = rrms(iw)
         hxprms(iw,jhist)   = xprms(iw)
         hyprms(iw,jhist)   = yprms(iw)
         hxsqbar(iw,jhist)  = xsqbar(iw)
@@ -219,6 +221,7 @@ c     --- Collect only those z histories specified by the user.
         if (lhxybarz)   hxybarz(iz,jhist)   = xybarz(iz)
         if (lhxrmsz)    hxrmsz(iz,jhist)    = xrmsz(iz)
         if (lhyrmsz)    hyrmsz(iz,jhist)    = yrmsz(iz)
+        if (lhrrmsz)    hrrmsz(iz,jhist)    = rrmsz(iz)
         if (lhxprmsz)   hxprmsz(iz,jhist)   = xprmsz(iz)
         if (lhyprmsz)   hyprmsz(iz,jhist)   = yprmsz(iz)
         if (lhxsqbarz)  hxsqbarz(iz,jhist)  = xsqbarz(iz)
@@ -639,7 +642,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.92 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.93 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
