@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.6 $, $Date: 2004/09/24 22:21:37 $
+c@(#) File w3d_injection.F, version $Revision: 1.7 $, $Date: 2004/10/07 20:31:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -140,6 +140,7 @@ c         --- loop over injection sources
 c         --- Loop over species.
           do is=1,ns
             nn = npinje_s(is)*finject(ij,is)
+            if(nn==0) cycle
 
 c           --- Check if there is enough room for the new injected particles.
             call chckpart(is,nn,0,.true.)
@@ -265,7 +266,7 @@ c             --- The absolute values are needed for the cases of symmetry.
      &             inj_grid(ixx  ,iyy+1,ij)*(1. - wxx)*      wyy  +
      &             inj_grid(ixx+1,iyy+1,ij)*      wxx *      wyy
 c             --- Only save particle if it is within the injection region.
-              if (inj_zmmin <= zs .and. zs < inj_zmmax) then
+              if (inj_zmmin <= zs+zinj .and. zs+zinj < inj_zmmax) then
                 ii = ins(is) - 1 - npinjtmp(is,ij)
                 xp(ii) = xt(ip)
                 yp(ii) = yt(ip)
@@ -398,6 +399,7 @@ c         loop over species and injection sources
             ipmin = ipmin + nn
 c           --- Get number of particles injected
             nn = npinjtmp(is,ij)
+            if(nn==0) cycle
 
 c           --- Make sure there is enough temp space
             if (nn > npgrp) then
