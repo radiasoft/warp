@@ -3179,6 +3179,9 @@ do igrid=1,ngrids
 
  end do
 end do
+necndbdy=0
+nocndbdy=0
+ncond = 0
 return
 end subroutine srfrvoutrz
 
@@ -3238,6 +3241,9 @@ do igrid=1,ngrids
 
  end do
 end do
+necndbdy=0
+nocndbdy=0
+ncond = 0
 return
 end subroutine srfrvinoutrz
 
@@ -3283,6 +3289,9 @@ do igrid=1,ngrids
 
  end do
 end do
+necndbdy=0
+nocndbdy=0
+ncond = 0
 
 END subroutine setcndtrrz
 
@@ -4941,6 +4950,7 @@ TYPE(bndptr), pointer :: bnd
      ixcond(icc) = bnd%cnd%jcond(i)-1
      izcond(icc) = bnd%cnd%kcond(i)-1
      icondlevel(icc) = ilevel - 1
+     condvolt(icc) = bnd%cnd%voltage(i)
    end do
    do i = 1, bnd%cnd%nbbndred
     IF(bnd%v(bnd%cnd%jj(i),bnd%cnd%kk(i))==v_bnd) then
@@ -4952,6 +4962,11 @@ TYPE(bndptr), pointer :: bnd
      ecdelmz(ice) = bnd%cnd%dzm(i)/bnd%dz
      ecdelpz(ice) = bnd%cnd%dzp(i)/bnd%dz
      iecndlevel(ice) = ilevel - 1
+     ecvolt(ice) = bnd%cnd%volt0xm(i)
+     ecvoltmx(ice) = bnd%cnd%volt0xm(i)
+     ecvoltpx(ice) = bnd%cnd%volt0xp(i)
+     ecvoltmz(ice) = bnd%cnd%volt0zm(i)
+     ecvoltpz(ice) = bnd%cnd%volt0zp(i)
     END if
    end do
    do i = bnd%cnd%nbbndred+1, bnd%cnd%nbbnd
@@ -4964,6 +4979,11 @@ TYPE(bndptr), pointer :: bnd
      ocdelmz(ico) = bnd%cnd%dzm(i)/bnd%dz
      ocdelpz(ico) = bnd%cnd%dzp(i)/bnd%dz
      iocndlevel(ico) = ilevel - 1
+     ocvolt(ico) = bnd%cnd%volt0xm(i)
+     ocvoltmx(ico) = bnd%cnd%volt0xm(i)
+     ocvoltpx(ico) = bnd%cnd%volt0xp(i)
+     ocvoltmz(ico) = bnd%cnd%volt0zm(i)
+     ocvoltpz(ico) = bnd%cnd%volt0zp(i)
     END if
    end do
  END do
@@ -4981,69 +5001,127 @@ real(kind=8):: volt(0:nz)
 real(kind=8):: zmmin,dz
 logical(ISZ):: discrete
 
-INTEGER :: igrid,i,ic,icc,ice,ico
+INTEGER :: igrid,i,iv,ic,icc,ice,ico
 integer(ISZ):: iz
 real(kind=8):: zz,wz,vv
+TYPE(conductor_type), POINTER :: cndpnt
+real(kind=8):: dxm,dxp,dzm,dzp,dxx,dzz,r,rm,rp
 
 do igrid=1,ngrids
   nlevels=grids_ptr(igrid)%grid%nlevels
   bndy => grids_ptr(igrid)%grid%bnd
   do i = nlevels,1,-1
 
-    do ic=1,bndy(i)%cnd%ncond
-      zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kcond(ic)-1)
+   do iv=1, bndy(i)%nb_conductors
+     IF(iv==1) then
+       cndpnt => bndy(i)%first
+     else
+       cndpnt => cndpnt%next
+     END if
+
+    do ic=1,cndpnt%ncond
+      zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(cndpnt%kcond(ic)-1)
       if (zmmin <= zz .and. zz < zmmin + nz*dz) then
         iz = int(zz/dz)
         wz =     zz/dz - iz
-        bndy(i)%cnd%voltage(ic) = volt(iz)*(1.-wz) + volt(iz+1)*wz
+        cndpnt%voltage(ic) = volt(iz)*(1.-wz) + volt(iz+1)*wz
       else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
-        bndy(i)%cnd%voltage(ic) = volt(nz)
+        cndpnt%voltage(ic) = volt(nz)
       endif
     enddo
 
-    do ic = 1,bndy(i)%cnd%nbbnd
-      zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1)
+    do ic = 1,cndpnt%nbbnd
+      zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(cndpnt%kk(ic)-1)
       if (zmmin <= zz .and. zz < zmmin + nz*dz) then
         iz = int(zz/dz)
         wz =     zz/dz - iz
         vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
-        bndy(i)%cnd%volt0xm(ic) = vv
-        bndy(i)%cnd%volt0xp(ic) = vv
       else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
         vv = volt(nz)
-        bndy(i)%cnd%volt0xm(ic) = vv
-        bndy(i)%cnd%volt0xp(ic) = vv
       endif
-      if (bndy(i)%cnd%dzm(ic) < bndy(i)%dz) then
-        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1) &
-             - bndy(i)%cnd%dzm(ic)
+      if (cndpnt%dxm(ic) < bndy(i)%dr) cndpnt%volt0xm(ic) = vv
+      if (cndpnt%dxp(ic) < bndy(i)%dr) cndpnt%volt0xp(ic) = vv
+      if (cndpnt%dzm(ic) < bndy(i)%dz) then
+        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(cndpnt%kk(ic)-1) &
+             - cndpnt%dzm(ic)
         if (zmmin <= zz .and. zz < zmmin + nz*dz) then
           iz = int(zz/dz)
           wz =     zz/dz - iz
           if (discrete) wz = 0.
           vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
-          bndy(i)%cnd%volt0zm(ic) = vv
         else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
           vv = volt(nz)
-          bndy(i)%cnd%volt0zm(ic) = vv
         endif
+        cndpnt%volt0zm(ic) = vv
       endif
-      if (bndy(i)%cnd%dzp(ic) < bndy(i)%dz) then
-        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1) &
-             + bndy(i)%cnd%dzp(ic)
+      if (cndpnt%dzp(ic) < bndy(i)%dz) then
+        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(cndpnt%kk(ic)-1) &
+             + cndpnt%dzp(ic)
         if (zmmin <= zz .and. zz < zmmin + nz*dz) then
           iz = int(zz/dz)
           wz =     zz/dz - iz
           if (discrete) wz = 1.
           vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
-          bndy(i)%cnd%volt0zp(ic) = vv
         else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
           vv = volt(nz)
-          bndy(i)%cnd%volt0zp(ic) = vv
         endif
+        cndpnt%volt0zp(ic) = vv
       endif
-    enddo
 
+      dxm = cndpnt%dxm(ic)
+      dxp = cndpnt%dxp(ic)
+      dzm = cndpnt%dzm(ic)
+      dzp = cndpnt%dzp(ic)
+      select case (bnd_method)
+        case (egun)
+          dxx=bndy(i)%dr
+          dzz=bndy(i)%dz
+        case (ecb)
+          dxx=0.5_8*(dxp+dxm)  !ecb
+          dzz=0.5_8*(dzp+dzm)  !ecb
+        case default
+      end select
+      IF(cndpnt%jj(ic)==1) then
+        rp = 0.5_8*bndy(i)%dr
+        cndpnt%cfxp(ic) = 4._8/(dxp*dxx)
+        cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
+        cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
+      else
+        r = (cndpnt%jj(ic)-1)*bndy(i)%dr
+        rm = r-0.5_8*dxx
+        rp = r+0.5_8*dxx
+        cndpnt%cfxm(ic) = rm/(r*dxm*dxx)
+        cndpnt%cfxp(ic) = rp/(r*dxp*dxx)
+        cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
+        cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
+      END if
+      IF(dxm>=bndy(i)%dr) then
+        cndpnt%phi0xm(ic)=0._8
+      else
+        cndpnt%phi0xm(ic)=cndpnt%cfxm(ic)*cndpnt%volt0xm(ic)
+        cndpnt%cfxm(ic)=0._8
+      END if
+      IF(dxp>=bndy(i)%dr) then
+        cndpnt%phi0xp(ic)=0._8
+      else
+        cndpnt%phi0xp(ic)=cndpnt%cfxp(ic)*cndpnt%volt0xp(ic)
+        cndpnt%cfxp(ic)=0._8
+      END if
+      IF(dzm>=bndy(i)%dz) then
+        cndpnt%phi0zm(ic)=0._8
+      else
+        cndpnt%phi0zm(ic)=cndpnt%cfzm(ic)*cndpnt%volt0zm(ic)
+        cndpnt%cfzm(ic)=0._8
+      END if
+      IF(dzp>=bndy(i)%dz) then
+        cndpnt%phi0zp(ic)=0._8
+      else
+        cndpnt%phi0zp(ic)=cndpnt%cfzp(ic)*cndpnt%volt0zp(ic)
+        cndpnt%cfzp(ic)=0._8
+      END if
+
+    enddo
+   enddo
   enddo
 enddo
 return
