@@ -70,7 +70,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.44 2004/01/14 23:12:17 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.45 2004/01/16 20:07:58 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -431,6 +431,24 @@ has already been called.
     """
 Installs the data into the WARP database
     """
+
+    # --- If the RZ solver is being used, then clear out an existing
+    # --- conductor data in the f3d database first. At the end of the install,
+    # --- the install_conductor_rz routine will copy data back from the RZ
+    # --- database to the f3d database. Note that if this is not done, then
+    # --- data from conductor objects can be copied in the RZ database
+    # --- multiple time if multiple objects are installed separately.
+    # --- This is slightly inefficient since for each object installed,
+    # --- all of the accumulated data will be copied back into the f3d
+    # --- database. The way around that is to make the call to 
+    # --- install_conductors_rz only after all of the objects have been
+    # --- installed.
+    if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
+      f3d.ncond = 0
+      f3d.necndbdy = 0
+      f3d.nocndbdy = 0
+
+    # --- Install all of the conductor data into the f3d database.
     ntot = 0
     nc = f3d.ncond
     nn = sum(where(self.parity[:self.ndata] == -1,1,0))
@@ -515,6 +533,10 @@ Installs the data into the WARP database
       f3d.ocvolt[no:no+nn] = take(self.vs[0,:],ii)
       f3d.ocnumb[no:no+nn] = take(self.ns[0,:],ii)
       f3d.iocndlevel[no:no+nn] = take(self.mglevel,ii)
+
+    # --- If the RZ solver is being used, the copy the data into that
+    # --- database. This also copies all of the accumulated data back into
+    # --- the f3d database to allow for plotting and diagnostics.
     if ntot > 0 and installrz:
       if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
         frz.install_conductors_rz()
