@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.15 2001/06/08 21:11:35 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.16 2001/06/08 22:02:18 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -79,7 +79,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   else:
     if iz < 0 or w3d.nzfull < iz: return
     if lparallel:
-      iz = iz - top.izslave[me]
+  izlocal = iz - top.izslave[me]
   if scale:
     dx = w3d.dx*signx
     dy = w3d.dy*signy
@@ -93,24 +93,24 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   if plotphi:
     #xx=iota(0,w3d.nx)*dx + xmmin
     #yy=iota(0,w3d.ny)*dy + ymmin
-    ppp = getphi(iz=iz+top.izslave[me])
+    ppp = getphi(iz=iz)
     #ppp = transpose(ppp)
     #plotc(ppp,yy,xx,contours=contours,filled=filled,color=blue)
     ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
               xmin=xmmin,xmax=xmmin+w3d.nx*dx,
               ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if f3d.ncond > 0:
-    ii = compress(equal(f3d.izcond[0:f3d.ncond],iz),arange(f3d.ncond))
+    ii = compress(equal(f3d.izcond[0:f3d.ncond],izlocal),arange(f3d.ncond))
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
     warpplp(yy,xx,color=cyan)
   else:
     warpplp([],[],color=cyan)
   if (plotsg):
-    plotsubgrid(iz,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
+    plotsubgrid(izlocal,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
                 f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
                 ymmin,xmmin,dy,dx,green)
-    plotsubgrid(iz,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
+    plotsubgrid(izlocal,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
                 f3d.ocdelmy,f3d.ocdelmx,f3d.ocdelpy,f3d.ocdelpx,
                 ymmin,xmmin,dy,dx,red)
 
