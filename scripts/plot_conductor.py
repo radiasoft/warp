@@ -1,7 +1,7 @@
 from warp import *
 import __main__
 import copy
-plot_conductor_version = "$Id: plot_conductor.py,v 1.87 2004/11/19 00:50:05 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.88 2005/01/26 18:39:55 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -464,7 +464,7 @@ by the conductor number.
     try:
       levc = f3dcond.icondlevel[:nc]
       levelc = equal(mglevel,levc)
-    except:
+    except AttributeError:
       levelc = ones(nc)
   else:
     ixc = array([])
@@ -487,7 +487,7 @@ by the conductor number.
     try:
       elevs = f3dcond.iecndlevel[:ne]
       elevels = equal(mglevel,elevs)
-    except:
+    except AttributeError:
       elevels = ones(ne)
   else:
     iexs = array([])
@@ -517,7 +517,7 @@ by the conductor number.
     try:
       olevs = f3dcond.iocndlevel[:no]
       olevels = equal(mglevel,olevs)
-    except:
+    except AttributeError:
       olevels = ones(no)
   else:
     ioxs = array([])
