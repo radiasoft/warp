@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.48 2004/08/31 17:25:14 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.49 2004/09/20 22:46:23 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -449,8 +449,16 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
       # --- First, deal with scalars. Each processor writes out it's
       # --- own value of the scalars into a special array.
       if type(v) != type(array([])):
-        ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,))
-        # --- That was easy.
+
+        if p == 'f3d' and vname == 'conductors':
+          # --- Each process writes out its conductor object with the
+          # --- process number and '@parallel' appended.
+          vs = '@conductors%d@parallel'%me
+          pydumpforthonobject(ff,[''],'conductors',v,vs,[],[],0,verbose,0)
+
+        else:
+          ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,))
+          # --- That was easy.
 
       else:
         # --- Now arrays...
@@ -493,11 +501,11 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
               ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
               ff.write(pdbname,v[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:],
                        indx=(ipmin,0))
-        elif p == 'f3d' and vname == 'conductors':
-          # --- Each process writes out its conductor object with the
-          # --- process number and '@parallel' appended.
-          vs = '@conductors%d@parallel'%me
-          pydumpforthonobject(ff,[''],'conductors',v,vs,[],fobjlist,0,verbose,0)
+#       elif p == 'f3d' and vname == 'conductors':
+#         # --- Each process writes out its conductor object with the
+#         # --- process number and '@parallel' appended.
+#         vs = '@conductors%d@parallel'%me
+#         pydumpforthonobject(ff,[''],'conductors',v,vs,[],fobjlist,0,verbose,0)
 #       elif p == 'f3d' and vname == 'mglevelsiz':
 #         ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,0))
 #       elif p == 'f3d' and vname == 'mglevelsnz':
@@ -660,13 +668,14 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
 
   # --- Get a list of all of the conductor variables
   groups = sortrestorevarsbysuffix(vlistparallel,[])
-  vlistconductors = groups['conductors%d'%me]
-  pyrestoreforthonobject(ff,'f3d.conductors',vlistconductors,fobjdict,
-                         varsuffix,verbose,doarrays=0,
-                         gpdbname='conductors%d@parallel'%me)
-  pyrestoreforthonobject(ff,'f3d.conductors',vlistconductors,fobjdict,
-                         varsuffix,verbose,doarrays=1,
-                         gpdbname='conductors%d@parallel'%me)
+  if 'conductors%d'%me in groups.keys():
+    vlistconductors = groups['conductors%d'%me]
+    pyrestoreforthonobject(ff,'f3d.conductors',vlistconductors,fobjdict,
+                           varsuffix,verbose,doarrays=0,
+                           gpdbname='conductors%d@parallel'%me)
+    pyrestoreforthonobject(ff,'f3d.conductors',vlistconductors,fobjdict,
+                           varsuffix,verbose,doarrays=1,
+                           gpdbname='conductors%d@parallel'%me)
 
 # # --- These arrays need to be read in to get the indices for the
 # # --- correct data for each processor.
