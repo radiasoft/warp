@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.195 $, $Date: 2005/03/17 19:33:59 $
+c@(#) File W3D.F, version $Revision: 3.196 $, $Date: 2005/03/24 00:32:48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -519,13 +519,21 @@ c --- user has changed zbeam.
 
       it = it + 1
 c     time = time + dt ! Moved to end of padvnc3d
+      if (lbeamcom) then
+c       --- In this case, it is still up to the user to set zgrid if zbeam is
+c       --- set. Here, zbeam is not necessarily equal to zgrid.
+        zgridprv = zgrid
+      else
+c       --- Set zgridprv to zbeam so that the user only has to set zbeam.
+c       --- Otherwise, zbeam is the same as zgrid, as set at the
+c       --- end of padvnc3d.
+        zgridprv = zbeam
+      endif
       if (lgridqnt) then
 c       --- zgrid is integer number of dz's
-        zgridprv = zgrid
         zgrid = int((zbeam + dt*vbeamfrm + zcorrection)/dz + .5)*dz
       else
 c       --- zgrid is the same as the beam frame
-        zgridprv = zgrid
         zgrid = zbeam + dt*vbeamfrm + zcorrection
       endif
       call stepid (it, time+dt, zgrid)
