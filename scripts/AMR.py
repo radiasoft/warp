@@ -3,6 +3,7 @@ from copy import *
 from MeshRefinement import *
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox,DXImage
 import time
+import MLab
 
 try:
   enumerate
@@ -89,33 +90,42 @@ class AMRTree(Visualizable):
 
       dim = rank(f)
       # get edges using vertical lines
-      g1 = fzeros(shape(fg),Float)
-      if dim==2:
-        for j in range(shape(fg)[1]):
-          g1[:,j] = where(fg[:,j]>threshold*max(fg[:,j]),fg[:,j],0.)
-      else: #dim=3
-        for k in range(shape(fg)[2]):
-         for j in range(shape(fg)[1]):
-          g1[:,j,k] = where(fg[:,j,k]>threshold*max(fg[:,j,k]),fg[:,j,k],0.)
+      #g1 = fzeros(shape(fg),Float)
+      #if dim==2:
+      #  for j in range(shape(fg)[1]):
+      #    g1[:,j] = where(fg[:,j]>threshold*max(fg[:,j]),fg[:,j],0.)
+      #else: #dim=3
+      #  for k in range(shape(fg)[2]):
+      #   for j in range(shape(fg)[1]):
+      #    g1[:,j,k] = where(fg[:,j,k]>threshold*max(fg[:,j,k]),fg[:,j,k],0.)
+      maxfg = MLab.max(fg,0)
+      g1 = where(fg>threshold*maxfg[NewAxis,...],fg,0.)
         
       # get edges using horizontal lines
-      g2 = fzeros(shape(fg),Float)
+      #g2 = fzeros(shape(fg),Float)
+      #if dim==2:
+      #  for i in range(shape(fg)[0]):
+      #    g2[i,:] = where(fg[i,:]>threshold*max(fg[i,:]),fg[i,:],0.)
+      #else: #dim=3
+      #  for k in range(shape(fg)[2]):
+      #   for j in range(shape(fg)[0]):
+      #    g2[j,:,k] = where(fg[j,:,k]>threshold*max(fg[j,:,k]),fg[j,:,k],0.)
+      maxfg = MLab.max(fg,1)
       if dim==2:
-        for i in range(shape(fg)[0]):
-          g2[i,:] = where(fg[i,:]>threshold*max(fg[i,:]),fg[i,:],0.)
-      else: #dim=3
-        for k in range(shape(fg)[2]):
-         for j in range(shape(fg)[0]):
-          g2[j,:,k] = where(fg[j,:,k]>threshold*max(fg[j,:,k]),fg[j,:,k],0.)
+        g2 = where(fg>threshold*maxfg[:,NewAxis],fg,0.)
+      elif dim==3:
+        g2 = where(fg>threshold*maxfg[:,NewAxis,:],fg,0.)
 
       # take max of g1 and g2
       g = where(g1>g2,g1,g2)
 
       if dim==3:
-        g3 = fzeros(shape(fg),Float)
-        for k in range(shape(fg)[1]):
-         for j in range(shape(fg)[0]):
-          g3[j,k,:] = where(fg[j,k,:]>threshold*max(fg[j,k,:]),fg[j,k,:],0.)
+        #g3 = fzeros(shape(fg),Float)
+        #for k in range(shape(fg)[1]):
+        # for j in range(shape(fg)[0]):
+        #  g3[j,k,:] = where(fg[j,k,:]>threshold*max(fg[j,k,:]),fg[j,k,:],0.)
+        maxfg = MLab.max(fg,2)
+        g3 = where(fg>threshold*maxfg[...,NewAxis],fg,0.)
         # returns max of g and g3
         g = where(g>g3,g,g3)
       return g
