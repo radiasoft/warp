@@ -55,7 +55,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.39 2003/12/01 22:37:49 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.40 2003/12/03 01:02:01 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -116,7 +116,7 @@ Should never be directly created by the user.
   zcent = 0.
 
   def __init__(self,v=0.,x=0.,y=0.,z=0.,condid=1,kwlist=[],
-                    generatorf=None,generatord=None):
+                    generatorf=None,generatord=None,generatori=None):
     self.voltage = v
     self.xcent = x
     self.ycent = y
@@ -125,6 +125,7 @@ Should never be directly created by the user.
     self.kwlist = kwlist
     self.generatorf = generatorf
     self.generatord = generatord
+    self.generatori = generatori
 
   def getkwlist(self):
     kwlist = []
@@ -148,6 +149,11 @@ Should never be directly created by the user.
   def isinside(self,xx,yy,zz):
     result = IsInside(xx,yy,zz,generator=self.generatord,
                       condid=self.condid,kwlist=self.getkwlist())
+    return result
+
+  def intercept(self,xx,yy,zz,vx,vy,vz):
+    result = Intercept(xx,yy,zz,vx,vy,vz,generator=self.generatori,
+                       condid=self.condid,kwlist=self.getkwlist())
     return result
 
   def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
@@ -656,6 +662,85 @@ Class to hold flag whether or not a point is inside a conductor.
     return repr(self.isinside)
 
 ##############################################################################
+
+class Intercept:
+  """
+Class to hold information about where a trajectory intercepted a conductor.
+  """
+
+  def __init__(self,xx=None,yy=None,zz=None,vx=None,vy=None,vz=None,
+                    xi=None,yi=None,zi=None,angle=None,distance=None,
+                    generator=None,condid=1,kwlist=[]):
+    self.condid = condid
+    self.ndata = len(xx)
+    self.xx = xx
+    self.yy = yy
+    self.zz = zz
+    self.vx = vx
+    self.vy = vy
+    self.vz = vz
+    if generator is not None:
+      self.xi = zeros(self.ndata,'d')
+      self.yi = zeros(self.ndata,'d')
+      self.zi = zeros(self.ndata,'d')
+      self.angle = zeros(self.ndata,'d')
+      self.distance = zeros(self.ndata,'d')
+      apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
+                                self.vx,self.vy,self.vz,
+                                self.xi,self.yi,self.zi,self.angle,
+                                self.distance])
+    else:
+      self.xi = xi
+      self.yi = yi
+      self.zi = zi
+      self.angle = angle
+      self.distance = distance
+   
+  def __neg__(self):
+    "Delta not operator."
+    return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
+                     self.xi,self.yi,self.zi,self.angle,self.distance,
+                     condid=self.condid)
+
+  def __mul__(self,right):
+    "'and' operator, returns logical and."
+    c = less(self.distance,right.distance)
+    return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
+                     choose(c,(self.xi,right.xi)),
+                     choose(c,(self.yi,right.yi)),
+                     choose(c,(self.zi,right.zi)),
+                     choose(c,(self.angle,right.angle)),
+                     choose(c,(self.distance,right.distance)),
+                     condid=self.condid)
+
+  def __add__(self,right):
+    "'or' operator, returns logical or."
+    c = greater(self.distance,right.distance)
+    return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
+                     choose(c,(self.xi,right.xi)),
+                     choose(c,(self.yi,right.yi)),
+                     choose(c,(self.zi,right.zi)),
+                     choose(c,(self.angle,right.angle)),
+                     choose(c,(self.distance,right.distance)),
+                     condid=self.condid)
+
+  def __sub__(self,right):
+    "'or' operator, returns logical or."
+    c = greater(self.distance,right.distance)
+    return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
+                     choose(c,(self.xi,right.xi)),
+                     choose(c,(self.yi,right.yi)),
+                     choose(c,(self.zi,right.zi)),
+                     choose(c,(self.angle,right.angle)),
+                     choose(c,(self.distance,right.distance)),
+                     condid=self.condid)
+
+  def __str__(self):
+    "Prints out delta"
+    return (repr(self.xi)+' '+repr(self.yi)+' '+repr(self.zi)+' '+
+            repr(self.angle)+' '+repr(self.distance))
+
+##############################################################################
 ##############################################################################
 ##############################################################################
 
@@ -913,7 +998,7 @@ Plane class
                     condid=1):
     kwlist=['z0','zsign','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           planeconductorf,planeconductord)
+                           planeconductorf,planeconductord,planeintercept)
     self.z0 = z0
     self.zsign = zsign
     self.theta = theta
@@ -932,7 +1017,7 @@ Box class
                     condid=1):
     kwlist=['xsize','ysize','zsize']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           boxconductorf,boxconductord)
+                           boxconductorf,boxconductord,boxintercept)
     self.xsize = xsize
     self.ysize = ysize
     self.zsize = zsize
@@ -953,7 +1038,8 @@ Cylinder class
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           cylinderconductorf,cylinderconductord)
+                           cylinderconductorf,cylinderconductord,
+                           cylinderintercept)
     self.radius = radius
     self.length = length
     self.theta  = theta
@@ -975,7 +1061,8 @@ Cylinders class for a list of cylinders
                     voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['ncylinders','radius','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           cylindersconductorf,cylindersconductord)
+                           cylindersconductorf,cylindersconductord,
+                           cylindersintercept)
     self.ncylinders = 0
     self.radius = radius
     self.length = length
@@ -1011,7 +1098,8 @@ Cylinder aligned with z-axis
                     condid=1):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                           zcylinderconductorf,zcylinderconductord)
+                           zcylinderconductorf,zcylinderconductord,
+                           zcylinderintercept)
     self.radius = radius
     self.length = length
 
@@ -1029,7 +1117,8 @@ Cylinder with rounded corners aligned with z-axis
                     condid=1):
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zroundedcylinderconductorf,zroundedcylinderconductord)
+                      zroundedcylinderconductorf,zroundedcylinderconductord,
+                      zroundedcylinderintercept)
     self.radius = radius
     self.length = length
     self.radius2 = radius2
@@ -1048,7 +1137,8 @@ Outside of a cylinder aligned with z-axis
                     condid=1):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zcylinderoutconductorf,zcylinderoutconductord)
+                      zcylinderoutconductorf,zcylinderoutconductord,
+                      zcylinderoutintercept)
     self.radius = radius
     self.length = length
 
@@ -1067,7 +1157,8 @@ Outside of a cylinder with rounded corners aligned with z-axis
     kwlist = ['radius','length','radius2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
                       zroundedcylinderoutconductorf,
-                      zroundedcylinderoutconductord)
+                      zroundedcylinderoutconductord,
+                      zroundedcylinderoutintercept)
     self.radius = radius
     self.length = length
     self.radius2 = radius2
@@ -1085,7 +1176,8 @@ Cylinder aligned with y-axis
                     condid=1):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      ycylinderconductorf,ycylinderconductord)
+                      ycylinderconductorf,ycylinderconductord,
+                      ycylinderintercept)
     self.radius = radius
     self.length = length
 
@@ -1102,7 +1194,8 @@ Cylinder aligned with x-axis
                     condid=1):
     kwlist = ['radius','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      xcylinderconductorf,xcylinderconductord)
+                      xcylinderconductorf,xcylinderconductord,
+                      xcylinderintercept)
     self.radius = radius
     self.length = length
 
@@ -1119,7 +1212,7 @@ Sphere
                     condid=1):
     kwlist = ['radius']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      sphereconductorf,sphereconductord)
+                      sphereconductorf,sphereconductord,sphereintercept)
     self.radius = radius
 
 #============================================================================
@@ -1140,7 +1233,7 @@ Cone
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      coneconductorf,coneconductord)
+                      coneconductorf,coneconductord,coneintercept)
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.theta = theta
@@ -1167,7 +1260,7 @@ Cone
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      coneconductorf,coneconductord)
+                      coneconductorf,coneconductord,coneintercept)
     self.slope = slope
     self.intercept = intercept
     self.theta = theta
@@ -1196,7 +1289,7 @@ Cones
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['ncones','r_zmin','r_zmax','length','theta','phi']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      conesconductorf,conesconductord)
+                      conesconductorf,conesconductord,conesintercept)
     self.ncones = 0
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
@@ -1236,7 +1329,7 @@ Cone
                     condid=1):
     kwlist = ['r_zmin','r_zmax','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zconeconductorf,zconeconductord)
+                      zconeconductorf,zconeconductord,zconeintercept)
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.length = length
@@ -1257,7 +1350,7 @@ Cone
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r_zmin','r_zmax','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zconeconductorf,zconeconductord)
+                      zconeconductorf,zconeconductord,zconeintercept)
     self.slope = slope
     self.intercept = intercept
     self.length = length
@@ -1281,7 +1374,7 @@ Cone outside
                     condid=1):
     kwlist = ['r_zmin','r_zmax','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zconeoutconductorf,zconeoutconductord)
+                      zconeoutconductorf,zconeoutconductord,zconeoutintercept)
     self.r_zmin = r_zmin
     self.r_zmax = r_zmax
     self.length = length
@@ -1302,7 +1395,7 @@ Cone outside
                     xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r_zmin','r_zmax','length']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zconeoutconductorf,zconeoutconductord)
+                      zconeoutconductorf,zconeoutconductord,zconeoutintercept)
     self.slope = slope
     self.intercept = intercept
     self.length = length
@@ -1324,7 +1417,7 @@ Torus
   def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['r1','r2']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      ztorusconductorf,ztorusconductord)
+                      ztorusconductorf,ztorusconductord,ztorusintercept)
     self.r1 = r1
     self.r2 = r2
 
@@ -1344,7 +1437,8 @@ Plate from beamlet pre-accelerator
                xcent=0.,ycent=0.,zcent=0.,condid=1):
     kwlist = ['za','zb','z0','thickness']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      beamletplateconductorf,beamletplateconductord)
+                      beamletplateconductorf,beamletplateconductord,
+                      beamletplateintercept)
     self.za = za
     self.zb = zb
     self.z0 = z0
@@ -1510,7 +1604,8 @@ Outside of a surface of revolution
                     zcdata=None,rcdata=None):
     kwlist = ['rofzfunc','zmin','zmax','rmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zsrfrvoutconductorf,zsrfrvoutconductord)
+                      zsrfrvoutconductorf,zsrfrvoutconductord,
+                      zsrfrvoutintercept)
     self.rofzfunc = rofzfunc
     self.zmin = zmin
     self.zmax = zmax
@@ -1588,7 +1683,8 @@ Inside of a surface of revolution
                     zcdata=None,rcdata=None):
     kwlist = ['rofzfunc','zmin','zmax','rmin','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zsrfrvinconductorf,zsrfrvinconductord)
+                      zsrfrvinconductorf,zsrfrvinconductord,
+                      zsrfrvinintercept)
     self.rofzfunc = rofzfunc
     self.zmin = zmin
     self.zmax = zmax
@@ -1667,7 +1763,8 @@ Betweem surfaces of revolution
                     rcmaxdata=None,zcmaxdata=None):
     kwlist = ['rminofz','rmaxofz','zmin','zmax','griddz']
     Assembly.__init__(self,voltage,xcent,ycent,zcent,condid,kwlist,
-                      zsrfrvinoutconductorf,zsrfrvinoutconductord)
+                      zsrfrvinoutconductorf,zsrfrvinoutconductord,
+                      zsrfrvinoutintercept)
     self.rminofz = rminofz
     self.rmaxofz = rmaxofz
     self.zmin = zmin
@@ -1748,6 +1845,9 @@ Betweem surfaces of revolution
 
     return Assembly.getkwlist(self)
 
+#============================================================================
+#============================================================================
+#============================================================================
 class SRFRVLApart:
   """
 Class for creating a surface of revolution conductor part using lines and arcs as primitives.  
