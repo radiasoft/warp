@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.6 2001/08/10 21:17:04 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.7 2001/08/11 00:11:19 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -149,21 +149,30 @@ grid points.
   setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs)
 
 #########################################################################
-def loadbalancesor():
+def loadbalancesor(sgweight=7.0,condweight=2.0):
   """
 Load balance the SOR field solver based off of the current timings. This is
 needed since some processors may have more conductor points than others.
+ - sgweight=7.: weight (in timing) of subgrid points relative to weight of a
+                grid cell
+ - condweight=2.: weight (in timing) of a conductor points relative to weight
+                  of a grid cell
   """
-  # --- Gather the field solve timings
-  weight = gatherarray(top.fstime)
-  weight = broadcast(weight)
-
-  # --- Divide by nzfsslave to get the relative timings per nz
-  weight = weight/(top.nzfsslave-1)
+  # --- Gather the field solve weights. For each z plane, sum the number of
+  # --- grid cells, subgrid points, and conductor points, appropriately
+  # --- weighted.
+  weight = zeros(top.nzfsslave[me]+1,'d')
+  for iz in iota(w3d.izfsmin,w3d.izfsmax):
+    nec = len(nonzero(logical_not(f3d.iecndz[:f3d.necndbdy]-iz)))
+    noc = len(nonzero(logical_not(f3d.iocndz[:f3d.nocndbdy]-iz)))
+    nc  = len(nonzero(logical_not(f3d.izcond[:f3d.ncond]-iz)))
+    weight[iz-w3d.izfsmin] = (w3d.nx+1)*(w3d.ny+1) + \
+			     sgweight*(nec + noc) + \
+			     condweight*nc
+  weight = gatherallzfsarray(weight)
 
   # --- Convert to a decomposition and scale to w3d.nzfull
   zslave = decompose(weight,npes)
-  zslave = zslave/max(zslave)*w3d.nzfull
 
   # --- Save the old values
   oldiz = top.izslave + 0
@@ -179,7 +188,7 @@ needed since some processors may have more conductor points than others.
     top.izfsslave[i] = zlast
     top.nzfsslave[i] = nint(zslave[i]) + 1
     zlast = top.izfsslave[i] + top.nzfsslave[i] - 1
-  top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[i]
+  top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
 
   # --- Adjust the Z data
   _adjustz()
