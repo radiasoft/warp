@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.21 $, $Date: 2005/02/25 22:08:38 $
+c@(#) File w3d_injection.F, version $Revision: 1.22 $, $Date: 2005/03/03 21:44:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -275,6 +275,8 @@ c             --- Only save particle if it is within the injection region.
                 else
                   gaminv(ii) = 1.
                 endif
+c               --- Clear out any old data from pid
+                pid(ii,:) = 0.
 c               --- Save the ID of the injection source.
                 pid(ii,injpid) = ij
 c               --- Save SSN 
@@ -744,6 +746,10 @@ c                   --- ainjmin and binjmin.
                       if ((xp(ii)*binjmin(ij))**2 + (yp(ii)*ainjmin(ij))**2 <
      &                    ainjmin(ij)*binjmin(ij)) cycle
                     endif
+
+c                   --- Clear out any old data from pid. This is done here
+c                   --- before pid is used anywhere.
+                    pid(ii,:) = 0.
 
                     if(l_inj_regular) then
                       if(l_inj_rz) then
@@ -1328,6 +1334,9 @@ c                   --- calculate position of new particle
                     endif
 c                   --- increment particle counter
                     nti = nti + 1
+c                   --- Clear out any old data from pid. This is done here
+c                   --- before pid is used anywhere.
+                    pid(ii,:) = 0.
 c                   --- Save SSN 
                     if (spid>0) then
                       pid(ii,spid) = ssn

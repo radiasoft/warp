@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.190 $, $Date: 2005/02/25 22:08:38 $
+c@(#) File W3D.F, version $Revision: 3.191 $, $Date: 2005/03/03 21:44:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3726,6 +3726,7 @@ c            --- put velocity into particle arrays
      &                   vzt(ii)*ypct(ii)
              uzp(ip+i) = vzt(ii)*(1. + vtilt_s(is)*(zmid - zt(ii))*zleni) +
      &                   vtzt(ii)*uzt(ii)
+             if (npid > 0) pid(ip+i,:) = 0.
            enddo
 
 c          --- add sinusoidal perturbation to uzp
@@ -3855,6 +3856,7 @@ c                  2nd term: centroid component
 c            --- set longitudinal particle gamma*velocity 
              uzp(ip+i) = vzt(i)*(1. + vtilt_s(is)*(zmid - zt(i))*zleni) +
      &                   vtzt(i)*uzt(i)
+             if (npid > 0) pid(ip+i,:) = 0.
            enddo
 
 c          --- add sinusoidal perturbation to uzp
