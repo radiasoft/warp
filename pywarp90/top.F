@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.127 $, $Date: 2004/07/30 00:35:36 $
+c@(#) File TOP.F, version $Revision: 3.128 $, $Date: 2004/09/11 07:26:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2972,7 +2972,7 @@ c  Assumes that at most one bend will be between particle and the mult center.
         zz = zp(1)
         iz = 0
       endif
-      if (.not. bends .or. .not. linbend(0)) then
+      if (.not. bends .or. .not. linbend) then
         do ip=1,np
           if (.not. lslice) then
             zz = zp(ip)
