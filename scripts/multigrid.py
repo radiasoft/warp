@@ -16,14 +16,15 @@ except ImportError:
 ##############################################################################
 class MultiGrid(object):
   
-  __w3dinputs__ = ['nx','ny','nz',
+  __w3dinputs__ = ['nx','ny','nz','nzfull',
                    'xmmin','xmmax','ymmin','ymmax','zmmin','zmmax',
+                   'zmminglobal','zmmaxglobal',
                    'bound0','boundnz','boundxy','l2symtry','l4symtry',
                    'solvergeom']
   __f3dinputs__ = ['gridmode','mgparam','downpasses','uppasses',
                    'mgmaxiters','mgtol','mgmaxlevels','mgform',
                    'lcndbndy','icndbndy','laddconductor'] 
-  __topinputs__ = ['pbound0','pboundnz','pboundxy']
+  __topinputs__ = ['pbound0','pboundnz','pboundxy','nslaves']
   __flaginputs__ = {'forcesymmetries':1}
 
   def __init__(self,**kw):
@@ -106,12 +107,13 @@ class MultiGrid(object):
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
 
     # --- Set set parallel related paramters and calculate mesh sizes
-    self.nzfull = self.nz
-    self.zmminglobal = self.zmmin
-    self.zmmaxglobal = self.zmmax
+    if self.nslaves <= 1:
+      self.nzfull = self.nz
+      self.zmminglobal = self.zmmin
+      self.zmmaxglobal = self.zmmax
     self.dx = (self.xmmax - self.xmmin)/self.nx
     self.dy = (self.ymmax - self.ymmin)/self.ny
-    self.dz = (self.zmmax - self.zmmin)/self.nz
+    self.dz = (self.zmmaxglobal - self.zmminglobal)/self.nzfull
     self.xsymmetryplane = 0.
     self.ysymmetryplane = 0.
 
@@ -215,6 +217,14 @@ class MultiGrid(object):
     find_mgparam(resetpasses=resetpasses,solver=self)
 
   def solve(self,iwhich=0):
+    if self.nslaves > 1:
+      my_index = top.my_index
+      izfsslave = top.izfsslave
+      nzfsslave = top.nzfsslave
+    else:
+      my_index = 0
+      izfsslave = zeros(1)
+      nzfsslave = zeros(1)
     multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
                      self.dx,self.dy,self.dz,self.phi,self.rho,
                      self.rstar,self.linbend,self.bounds,
@@ -225,7 +235,8 @@ class MultiGrid(object):
                      self.lcndbndy,self.laddconductor,self.icndbndy,
                      self.lbuildquads,
                      self.gridmode,
-                     self.conductors)
+                     self.conductors,
+                     top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
   ##########################################################################
   # Define the basic plot commands
@@ -266,7 +277,8 @@ class MultiGrid(object):
     rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
 
     checkconductors(self.nx,self.ny,self.nz,self.nzfull,
-                    self.dx,self.dy,self.dz,self.conductors)
+                    self.dx,self.dy,self.dz,self.conductors,
+                    top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
 
     # --- Preset rho to increase performance (reducing the number of
     # --- multiplies in the main SOR sweep loop).
