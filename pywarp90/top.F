@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.10 $, $Date: 2001/05/26 00:48:58 $
+c@(#) File TOP.M, version $Revision: 3.11 $, $Date: 2001/06/01 20:20:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1685,6 +1685,78 @@ c --- id=nelem, but the loop will exit anyway.
         id = oelemoi(ii)
       end do
 
+      return
+      end
+c=============================================================================
+      subroutine getdipoid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the dipole at the z location zz and overlap
+c level io. If the overlap level is -1, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (io >= 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,ndipo,dipozs,dipoze,odiponn(io),
+     &                 odipooi(odipoii(io)),odipoio,id)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,ndipo,dipozs,dipoze,odiponn(1),
+     &                 odipooi(odipoii(1)),odipoio,id)
+c       --- Loop over rest of overlap levels looking for a dipo with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,ndipool
+          call getelemid(zz,offset_temp,ndipo,dipozs,dipoze,odiponn(ii),
+     &                   odipooi(odipoii(ii)),odipoio,id_temp)
+          if (dipozs(id_temp)+offset_temp < dipozs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
+      return
+      end
+c=============================================================================
+      subroutine getquadid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the quadrupole at the z location zz and overlap
+c level io. If the overlap level is -1, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (io >= 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,nquad,quadzs,quadze,oquadnn(io),
+     &                 oquadoi(oquadii(io)),oquadio,id)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,nquad,quadzs,quadze,oquadnn(1),
+     &                 oquadoi(oquadii(1)),oquadio,id)
+c       --- Loop over rest of overlap levels looking for a quad with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,nquadol
+          call getelemid(zz,offset_temp,nquad,quadzs,quadze,oquadnn(ii),
+     &                   oquadoi(oquadii(ii)),oquadio,id_temp)
+          if (quadzs(id_temp)+offset_temp < quadzs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
       return
       end
 c=============================================================================
