@@ -9,6 +9,7 @@ RNGSRC = pmath_rng.c  ranf.c
 
 SHAREDOBJECTS = envpy.$(SO) frzpy.$(SO) wxypy.$(SO) f3dpy.$(SO) fxypy.$(SO) \
                 w3dpy.$(SO) toppy.$(SO) wrzpy.$(SO) cirpy.$(SO) herpy.$(SO) \
+                chopy.$(SO) \
                 pybasisC.$(SO)
 
 WARPOBJECTS = env.o \
@@ -17,7 +18,6 @@ WARPOBJECTS = env.o \
               f3d.o \
               fxy.o \
               util.o \
-              w3d_chombodummy.o \
               w3d.o \
               dtop.o \
               f3d_mgrid.o \
@@ -30,20 +30,21 @@ WARPOBJECTS = env.o \
               top.o \
               wrz.o \
               cir.o \
-              her.o
+              her.o \
+              cho.o
 
 WARPSLAVEOBJECTS = topslave.o w3dslave.o f3dslave.o frzslave.o
 
 MODULEOBJECTS = toppymodule.o envpymodule.o w3dpymodule.o f3dpymodule.o \
                 wxypymodule.o fxypymodule.o wrzpymodule.o frzpymodule.o \
-                cirpymodule.o herpymodule.o \
-                top.p.o env.p.o w3d.p.o f3d.p.o wxy.p.o fxy.p.o cho.p.o \
-                wrz.p.o frz.p.o chopymodule.o \
-                cir.p.o her.p.o pybasisC.o
+                cirpymodule.o herpymodule.o chopymodule.o \
+                top.p.o env.p.o w3d.p.o f3d.p.o wxy.p.o fxy.p.o \
+                wrz.p.o frz.p.o \
+                cir.p.o her.p.o cho.p.o pybasisC.o
 MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
                 wxypymodule.c fxypymodule.c wrzpymodule.c frzpymodule.c \
-                cirpymodule.c herpymodule.c \
-                pybasisC.c chopymodule.c 
+                cirpymodule.c herpymodule.c chopymodule.c \
+                pybasisC.c
 
 config.o:config.c.$(PYVERS)
 	cp config.c.$(PYVERS) config.c
@@ -86,12 +87,6 @@ toppymodule.c top.p.F90:top.v
 envpy.$(SO):envpymodule.o env.p.o env.o
 	$(LD) -o envpy.$(SO) envpymodule.o env.p.o env.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
 
-chopymodule.o:chopymodule.c pybasis.h
-	$(CC) $(PYMODULEOPT) -c chopymodule.c $(INCLUDE) $(NUMPYINCLUDE)
-cho.p.o:cho.p.F90
-	$(F90FREE) $(POPT) -c cho.p.F90
-chopymodule.c cho.p.F90:cho.v
-	$(PYMAC) -a cho.v
 
 env.p.o:env.p.F90
 	$(F90FREE) $(POPT) -c env.p.F90
@@ -233,6 +228,20 @@ herpymodule.o:herpymodule.c pybasis.h
 	$(CC) $(PYMODULEOPT) -c herpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
 herpymodule.c her.p.F90:her.v
 	$(PYMAC) -a her.v top.v
+
+
+chopy.$(SO):chopymodule.o cho.p.o cho.o
+	$(LD) -o chopy.$(SO) chopymodule.o cho.p.o cho.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+cho.p.o:cho.p.F90
+	$(F90FREE) $(POPT) -c cho.p.F90
+cho.o:cho.F cho.p.o top.p.o f3d.p.o
+	$(F90FIXED) $(OPT) -c cho.F
+
+chopymodule.o:chopymodule.c pybasis.h
+	$(CC) $(PYMODULEOPT) -c chopymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+chopymodule.c cho.p.F90:cho.v
+	$(PYMAC) -a cho.v top.v
 
 
 clean:
