@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.17 2002/10/09 18:19:40 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.18 2003/06/27 23:27:59 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -612,6 +612,16 @@ if sys.version[:5] != "1.5.1":
   hpyrms.__doc__ = hpyrms.__doc__ + hpbasicwintext
 
 
+def hprrms(iw=0,kwdict={},**kw):
+  "True RMS r."
+  kw.update(kwdict)
+  kw['titlet']="True RMS r"
+  kw['titlel']="(m)"
+  hpbasicwin('hrrms',iw,kw)
+if sys.version[:5] != "1.5.1":
+  hprrms.__doc__ = hprrms.__doc__ + hpbasicwintext
+
+
 def hpxprms(iw=0,kwdict={},**kw):
   "True RMS x'."
   kw.update(kwdict)
@@ -1016,6 +1026,17 @@ if sys.version[:5] != "1.5.1":
   hpyrmsz.__doc__ = hpyrmsz.__doc__ + hpzarraytext
 
 
+def hprrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "R rms."
+  lhrrmsz = _extractvarkw('lhrrmsz',kw)
+  if not lhrrmsz: return
+  kw.update(kwdict)
+  kw['titlet']="R rms"
+  hpzarray('hrrmsz',contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hprrmsz.__doc__ = hprrmsz.__doc__ + hpzarraytext
+
+
 def hpxprmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   "X' rms."
   lhxprmsz = _extractvarkw('lhxprmsz',kw)
@@ -1394,6 +1415,17 @@ if sys.version[:5] != "1.5.1":
   hpypedge.__doc__ = hpypedge.__doc__ + hpbasicwintext
 
 
+def hpredge(iw=0,kwdict={},**kw):
+  "R Beam Edge."
+  kw.update(kwdict)
+  kw['titlet']="R Beam Edge"
+  kw['titlel']="(m)"
+  hrrms = _extractvarkw('hrrms',kw)
+  hpbasicwin(sqrt(2.)*hrrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpredge.__doc__ = hpredge.__doc__ + hpbasicwintext
+
+
 def hpxedges(iw=0,kwdict={},**kw):
   "X Beam Edges plus centroid."
   kw.update(kwdict)
@@ -1418,6 +1450,18 @@ def hpyedges(iw=0,kwdict={},**kw):
   hpbasicwin(-2.*hyrms+hybar,iw,kw)
 if sys.version[:5] != "1.5.1":
   hpyedge.__doc__ = hpyedge.__doc__ + hpbasicwintext
+
+
+def hpredges(iw=0,kwdict={},**kw):
+  "R Beam Edges."
+  kw.update(kwdict)
+  kw['titlet']="R Beam Edges"
+  kw['titlel']="(m)"
+  hrrms = _extractvarkw('hrrms',kw)
+  hpbasicwin(+sqrt(2.)*hrrms,iw,kw)
+  hpbasicwin(-sqrt(2.)*hrrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpredge.__doc__ = hpredge.__doc__ + hpbasicwintext
 
 
 def hpenvx(iw=0,kwdict={},**kw):
@@ -1474,8 +1518,10 @@ hpxedge(): X Beam Edge (twice rms)
 hpxpedge(): X' Beam Edge
 hpyedge(): Y Beam Edge (twice rms)
 hpypedge(): Y' Beam Edge
+hpredge(): R Beam Edge (root 2 rms)
 hpxedges(): X Beam Edges plus centroid
 hpyedges(): Y Beam Edges plus centroid
+hpredges(): R Beam Edges
 hpenvx = hpxedge
 hpenvy = hpyedge
 hpzbeam(): Beam frame location
@@ -1505,6 +1551,7 @@ hpybar(): True mean y
 hpxybar(): True mean xy
 hpxrms(): True RMS x
 hpyrms(): True RMS y
+hprrms(): True RMS r
 hpxprms(): True RMS x'
 hpyprms(): True RMS y'
 hpxsqbar(): Mean x squared
@@ -1543,6 +1590,7 @@ hpybarz(): Y bar
 hpxybarz(): XY bar
 hpxrmsz(): X rms
 hpyrmsz(): Y rms
+hprrmsz(): R rms
 hpxprmsz(): X' rms
 hpyprmsz(): Y' rms
 hpxsqbarz(): X**2 bar
@@ -1584,8 +1632,10 @@ Test all histplots
   apply(hpxpedge,(),kw);fma()
   apply(hpyedge,(),kw);fma()
   apply(hpypedge,(),kw);fma()
+  apply(hpredge,(),kw);fma()
   apply(hpxedges,(),kw);fma()
   apply(hpyedges,(),kw);fma()
+  apply(hpredges,(),kw);fma()
   apply(hpenvx,(),kw);fma()
   apply(hpenvy,(),kw);fma()
   apply(hpzbeam,(),kw);fma()
@@ -1615,6 +1665,7 @@ Test all histplots
   apply(hpxybar,(),kw);fma()
   apply(hpxrms,(),kw);fma()
   apply(hpyrms,(),kw);fma()
+  apply(hprrms,(),kw);fma()
   apply(hpxprms,(),kw);fma()
   apply(hpyprms,(),kw);fma()
   apply(hpxsqbar,(),kw);fma()
@@ -1653,6 +1704,7 @@ Test all histplots
   apply(hpxybarz,(),kw);fma()
   apply(hpxrmsz,(),kw);fma()
   apply(hpyrmsz,(),kw);fma()
+  apply(hprrmsz,(),kw);fma()
   apply(hpxprmsz,(),kw);fma()
   apply(hpyprmsz,(),kw);fma()
   apply(hpxsqbarz,(),kw);fma()
