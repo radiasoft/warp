@@ -15,7 +15,7 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.19 2001/12/06 00:47:02 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.20 2002/01/09 17:18:29 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -331,11 +331,12 @@ def pydumpold(fname,attr="dump",vars=[]):
 # in of python variables is put in a 'try' command to make it idiot proof.
 # More fancy foot work is done to get new variables read in into the
 # global dictionary.
-def pyrestore(filename=None,fname=None,verbose=0):
+def pyrestore(filename=None,fname=None,verbose=0,skip=[]):
   """
 Restores all of the variables in the specified file.
-  - filename file to read in from (assumes PDB format)
-  - verbose=0 When true, prints out the names of variables which are read in
+  - filename: file to read in from (assumes PDB format)
+  - verbose=0: When true, prints out the names of variables which are read in
+  - skip=[]: list of variables to skip
   """
   # --- The original had fname, but changed to filename to be consistent
   # --- with restart and dump.
@@ -353,11 +354,18 @@ Restores all of the variables in the specified file.
   # --- not having the integers read in first would cause problems
   # --- (so far only in the f90 version).
   for v in vlist:
+    # --- If v in the skip list, then continue
+    if v in skip:
+      if verbose: print "skipping "+v
+      continue
     # --- If the variable has the suffix '@pkg' then it is a warp variable.
     if len(v) > 4 and v[-4]=='@':
+      # --- If v in the skip list, then continue
+      if v[:-4] in skip or v[-3:]+'.'+v[:-4] in skip:
+        if verbose: print "skipping "+v
+        continue
       try:
         # --- get the package that the variable is in
-        #pkg = eval(v[-3:],__main__.__dict__)
         # --- Array assignment is different than scalar assignment.
         if type(ff.__getattr__(v)) != type(array([])):
           # --- Simple assignment is done for scalars, using the exec command
@@ -399,7 +407,15 @@ Restores all of the variables in the specified file.
         if verbose: print "error with variable "+v[:-7]
   # --- Now loop again to read in the arrays.
   for v in vlist:
+    # --- If v in the skip list, then continue
+    if v in skip:
+      if verbose: print "skipping "+v
+      continue
     if len(v) > 4 and v[-4]=='@':
+      # --- If v in the skip list, then continue
+      if v[:-4] in skip or v[-3:]+'.'+v[:-4] in skip:
+        if verbose: print "skipping "+v
+        continue
       try:
         pkg = eval(v[-3:],__main__.__dict__)
         if type(ff.__getattr__(v)) == type(array([])):
