@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.54 $, $Date: 2003/09/23 21:12:51 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.55 $, $Date: 2003/09/23 22:41:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -53,8 +53,6 @@ c     added by petermc, 26 Sep 2002
       real(kind=8):: maxres
 #endif
       real(kind=8):: dxsqi,dysqi,dzsqi,reps0c,rdel
-      real(kind=8):: tdx,tdy,tdz
-      integer(ISZ):: tnx,tny,tnz
       integer(ISZ):: i,ii,k,ix,iy,iz
       real(kind=8):: rs,x,r
       real(kind=8):: phisave(0:nx,0:ny,-1:nz+1)
@@ -100,15 +98,18 @@ c     --- converted and expanded for the multigrid solver.
       call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,l2symtry,l4symtry)
 
 !$OMP PARALLEL
-!$OMP&PRIVATE(ii,i,ix,iy,iz)
+!$OMP&PRIVATE(ii,i,k,rs,x,r,ix,iy,iz)
 
 c     --- Preset rho to increase performance (reducing the number of
 c     --- multiplies in the main SOR sweep loop).
       if (.not. linbend) then
+!OMP DO
         rho1d(1:nxyz) = rho1d(1:nxyz)*reps0c
+!OMP END DO
       else
 c       --- For bends, also include curvature corrections. Comment: Timing tests
 c       --- show that the use of 1d array is slightly faster than a 3d array.
+!$OMP DO
         do ii=1,nxyz
           i = mod(ii-1,nx+1)
           k = (ii-1)/nxy
@@ -120,11 +121,14 @@ c         --- rho1d(ii) = rho1d(ii)*(rs/r)*reps0c/
 c         ---             ( 1. + (x/r)*((x/r)-2.)*rdel )
           rho1d(ii) = rho1d(ii)*reps0c*rs*r/(r*r + x*(x-2.*r)*rdel)
         enddo
+!$OMP END DO
 c       --- Fill scratch array with x values so it can be looked up
 c       --- in the bent beam loop instead of calculated.
+!$OMP DO
         do ii = 1, nxy
           scrtch(ii) = xmmin + mod(ii-1,nx+1)*dx
         enddo
+!$OMP END DO
 c       --- Change rstar if using Nuemann boundary conditions
 #ifndef MPIPARALLEL
         if (bound0 == 1) rstar(-1) = rstar(1)
@@ -138,7 +142,9 @@ c       --- Change rstar if using Nuemann boundary conditions
 c     --- If using residual correction form, need to save the original rho.
 c     --- Also setup parallel arrays.
       if (mgform == 2) then
+!$OMP SINGLE
         allocate(rhosave(nxyz),res((nx+1)*(ny+1)*(nz+3)))
+!$OMP END SINGLE
         rhosave = rho1d(1:nxyz)
 #ifdef MPIPARALLEL
         lparity = 0
@@ -216,6 +222,7 @@ c       --- those planes are only set with the error of phi.
 
 c       --- Calculate the change in phi.
         mgerror = 0.
+!$OMP DO REDUCTION(MAX:mgerror)
         do iz=0,nz
           do iy=0,ny
             do ix=0,nx
@@ -223,14 +230,17 @@ c       --- Calculate the change in phi.
             enddo
           enddo
         enddo
+!$OMP END DO
 
 c     added by petermc, 26 Sep 2002
 #ifdef WITHCHOMBO
         maxres = 0.
         if (mgform == 2) then
+!$OMP DO REDUCTION(MAX:mgerror)
            do i=1+nxy,nxy+nxyz
               maxres = max(maxres, abs(res(i)))
            enddo
+!$OMP END DO
         endif
 #endif
 
@@ -651,6 +661,7 @@ c     --- Set the loop limits, including edges when appropriate.
       if (localbnz == 0) izmax = nz-1
 
 c     --- Do the loops.
+!$OMP DO
       do iz=izmin,izmax
         do iy=iymin,iymax,2
           iym1 = iy - 1
@@ -682,6 +693,7 @@ c     --- Do the loops.
           enddo
         enddo
       enddo
+!$OMP END DO
 
 c     --- Make copies for the periodic boundaries.
       if (boundxy == 2) then
@@ -738,6 +750,7 @@ c     --- Set the loop limits, including edges when appropriate.
       if (localbnz == 0 .or. rparity >= 1) izmax = nznew - 1
 
 c     --- Do the loops.
+!$OMP DO
       do iz=izmin,izmax
         izm1 = 2*iz - 1 - lparity
         izp1 = 2*iz + 1 - lparity
@@ -778,6 +791,7 @@ c     --- Do the loops.
           enddo
         enddo
       enddo
+!$OMP END DO
 
 c     --- Make copies for the periodic boundaries.
       if (boundxy == 2) then
@@ -815,6 +829,7 @@ c     --- Set the loop limits, including edges when appropriate.
       if (localbnz == 0) izmax = nz-1
 
 c     --- Do the loops.
+!$OMP DO
       do iz=izmin,izmax
         do iy=0,ny-1
           do ix=0,nx-1
@@ -831,8 +846,10 @@ c     --- Do the loops.
           enddo
         enddo
       enddo
+!$OMP END DO
 
       if (boundxy > 0) then
+!$OMP DO
         do iz=izmin,izmax
 
 c         --- Expand ix=nx, iy=ny line.
@@ -853,6 +870,7 @@ c         --- Expand iy=ny plane.
           enddo
 
         enddo
+!$OMP END DO
       endif
 
       return
@@ -884,6 +902,7 @@ c     --- Same for rparity.
       izmax = nz2 - mod(rparity,2)
 
 c     --- Expand the bulk of the grid.
+!$OMP DO
       do iz=izmin,izmax,2
         iz2 = (iz + lparity)/2
         do iy=0,ny-1
@@ -928,8 +947,10 @@ c     --- Expand the bulk of the grid.
           enddo
         enddo
       enddo
+!$OMP END DO
 
       if (boundxy > 0) then
+!$OMP DO
         do iz=izmin,izmax,2
           iz2 = (iz + lparity)/2
 
@@ -973,6 +994,7 @@ c         --- Expand iy=ny plane.
           enddo
 
         enddo
+!$OMP END DO
       endif
 
       if (localb0  == 1) ph(:,:,-1) = ph(:,:,1)
@@ -1287,13 +1309,17 @@ c     --- When at the finest level and not calculating the residual, set
 c     --- phi to the voltage of the conductor, otherwise, set it to zero.
       if (mglevel == 0 .and. .not. lresidual .and.
      &    (mgform == 1 .or. mgform2init)) then
+!$OMP DO
         do ic = icstart(mglevel),icstart(mglevel+1)-1
           phi(ixcond(ic),iycond(ic),izcond(ic)) = condvolt(ic)
         enddo
+!$OMP END DO
       else
+!$OMP DO
         do ic=icstart(mglevel),icstart(mglevel+1)-1
           phi(ixcond(ic),iycond(ic),izcond(ic)) = 0.
         enddo
+!$OMP END DO
       endif
 
       return
@@ -1342,6 +1368,7 @@ c points on the boundary.
       rdz2cos = rdz2c/srp
 
 c     --- loop over points near surface of conductors
+!$OMP DO
       do ic = cstart(mglevel),cstart(mglevel+1)-1
 
         icdx = icndx(ic)
@@ -1436,6 +1463,7 @@ c       --- calculate the new phi based on the boundary conditions
      &      spm1*cndpvph(ic)
         endif
       enddo
+!$OMP END DO
 
       return
       end
@@ -1503,6 +1531,7 @@ c points on the boundary.
       rdz2cs = mgparam*rdz2*const
 
 c     --- loop over points near surface of conductors
+!$OMP DO
       do ic = cstart(mglevel),cstart(mglevel+1)-1
 
         icdx = icndx(ic)
@@ -1599,6 +1628,7 @@ c       --- calculate the residual based on the boundary conditions
      &           - phi(icdx,icdy,icdz)*mgparam*denom)
         endif
       enddo
+!$OMP END DO
 
       return
       end
@@ -1658,6 +1688,7 @@ c     --- Set the loop limits, including edges when appropriate.
       if (localbnz == 0) izmax = nz-1
 
 c     --- Calculate the residual.
+!$OMP DO
       do iz=izmin,izmax
         izm1 = iz - 1
         izp1 = iz + 1
@@ -1687,6 +1718,7 @@ c     --- Calculate the residual.
           enddo
         enddo
       enddo
+!$OMP END DO
 
 c     --- Zero the residual inside conductors.
       call cond_potmg(nx,ny,nz,res,mglevel,.true.,mgform,.false.)
