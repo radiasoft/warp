@@ -45,11 +45,25 @@ def create(parent):
 [wxID_WXFRAME1MNUHELPABOUT] = map(lambda _init_coll_mnuHelp_Items: wxNewId(), range(1))
 
 class wxFrame1(wxFrame):
+    def _init_coll_mnuPackage_Items(self, parent):
+        # generated method, don't edit
+
+        parent.Append(helpString='Select 3-D code',
+              id=wxID_WXFRAME1MNUPACKAGE3D, item='3-D', kind=wxITEM_CHECK)
+        parent.Append(helpString='Select slice code',
+              id=wxID_WXFRAME1MNUPACKAGEXY, item='X-Y', kind=wxITEM_CHECK)
+        parent.Append(helpString='Select envelope code',
+              id=wxID_WXFRAME1MNUPACKAGEENV, item='Envelope',
+              kind=wxITEM_CHECK)
+        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGE3D, self.OnMnupackage3dMenu)
+        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGEXY, self.OnMnupackageXYMenu)
+        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGEENV, self.OnMnupackageEnvMenu)
+
     def _init_coll_mnuHelp_Items(self, parent):
         # generated method, don't edit
 
         parent.Append(helpString='Display info', id=wxID_WXFRAME1MNUHELPABOUT,
-              item='About',kind=wxITEM_NORMAL)
+              item='About', kind=wxITEM_NORMAL)
         EVT_MENU(self, wxID_WXFRAME1MNUHELPABOUT, self.OnMnuhelpAboutMenu)
 
     def _init_coll_mnuFile_Items(self, parent):
@@ -63,9 +77,9 @@ class wxFrame1(wxFrame):
         parent.Append(helpString='', id=wxID_WXFRAME1MNUFILESAVE, item='Save',
               kind=wxITEM_NORMAL)
         parent.Append(helpString='', id=wxID_WXFRAME1MNUFILESAVEAS,
-              item='Save As',kind=wxITEM_NORMAL)
+              item='Save As', kind=wxITEM_NORMAL)
         parent.Append(helpString='', id=wxID_WXFRAME1MNUFILEEXEC,
-              item='ExecFile',kind=wxITEM_NORMAL)
+              item='ExecFile', kind=wxITEM_NORMAL)
         parent.Append(helpString='', id=wxID_WXFRAME1MNUFILEEXIT, item='Exit',
               kind=wxITEM_NORMAL)
         EVT_MENU(self, wxID_WXFRAME1MNUFILEOPEN, self.OnMnuOpenMenu)
@@ -80,35 +94,22 @@ class wxFrame1(wxFrame):
 
         parent.Append(menu=self.mnuFile, title='File')
         parent.Append(menu=self.mnuHelp, title='Help')
-        parent.Append(menu=self.mnuErrorCheck,title='ErrorCheck')
+        parent.Append(menu=self.mnuErrorCheck, title='ErrorCheck')
         parent.Append(menu=self.mnuPackage, title='Package')
-
-    def _init_coll_mnuPackage_Items(self, parent):
-        # generated method, don't edit
-
-        parent.Append(helpString='Select 3-D code',
-              id=wxID_WXFRAME1MNUPACKAGE3D, item='3-D',kind=wxITEM_CHECK)
-        parent.Append(helpString='Select slice code',
-              id=wxID_WXFRAME1MNUPACKAGEXY, item='X-Y',kind=wxITEM_CHECK)
-        parent.Append(helpString='Select envelope code',
-              id=wxID_WXFRAME1MNUPACKAGEENV, item='Envelope',kind=wxITEM_CHECK)
-        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGE3D, self.OnMnupackage3dMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGEXY, self.OnMnupackageXYMenu)
-        EVT_MENU(self, wxID_WXFRAME1MNUPACKAGEENV, self.OnMnupackageEnvMenu)
 
     def _init_coll_mnuErrorCheck_Items(self, parent):
         # generated method, don't edit
 
         parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKSYMMETRY,
-              item='Symmetry',kind=wxITEM_NORMAL)
+              item='Symmetry', kind=wxITEM_NORMAL)
         parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKPARTICLELOAD,
-              item='ParticleLoad',kind=wxITEM_NORMAL)
+              item='ParticleLoad', kind=wxITEM_NORMAL)
         parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKENVELOPE,
-              item='Envelope',kind=wxITEM_NORMAL)
+              item='Envelope', kind=wxITEM_NORMAL)
         parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKIBPUSH,
-              item='Ibpush',kind=wxITEM_NORMAL)
+              item='Ibpush', kind=wxITEM_NORMAL)
         parent.Append(helpString='', id=wxID_WXFRAME1MNUERRORCHECKCHECKALL,
-              item='CheckAll',kind=wxITEM_NORMAL)
+              item='CheckAll', kind=wxITEM_NORMAL)
         EVT_MENU(self, wxID_WXFRAME1MNUERRORCHECKSYMMETRY,
               self.OnMnuerrorchecksymmetryMenu)
         EVT_MENU(self, wxID_WXFRAME1MNUERRORCHECKPARTICLELOAD,
@@ -131,34 +132,30 @@ class wxFrame1(wxFrame):
     def _init_coll_toolBar1_Tools(self, parent):
         # generated method, don't edit
 
-        parent.AddTool(bitmap=wxBitmap('images/winon.bmp',
-              wxBITMAP_TYPE_BMP), id=wxID_WXFRAME1TOOLBAR1TOOLS0,
-              isToggle=false, longHelpString='', pushedBitmap=wxNullBitmap,
-              shortHelpString='Open Gist Window')
-        parent.AddTool(bitmap=wxBitmap('images/fma.bmp',
-              wxBITMAP_TYPE_BMP), id=wxID_WXFRAME1TOOLBAR1TOOLS1,
-              isToggle=false, longHelpString='', pushedBitmap=wxNullBitmap,
-              shortHelpString='Frame Advance')
-        parent.AddTool(bitmap=wxBitmap('images/hcp.bmp',
-              wxBITMAP_TYPE_BMP), id=wxID_WXFRAME1TOOLBAR1TOOLS2,
-              isToggle=false, longHelpString='', pushedBitmap=wxNullBitmap,
-              shortHelpString='Hard Copy')
-        parent.AddTool(bitmap=wxBitmap('images/pplots.bmp',
-              wxBITMAP_TYPE_BMP), id=wxID_WXFRAME1TOOLBAR1TOOLS3,
-              isToggle=false, longHelpString='', pushedBitmap=wxNullBitmap,
-              shortHelpString='Particle Plots')
+        parent.AddTool(bitmap=wxBitmap('images/winon.bmp', wxBITMAP_TYPE_BMP),
+              id=wxID_WXFRAME1TOOLBAR1TOOLS0, isToggle=false, longHelpString='',
+              pushedBitmap=wxNullBitmap, shortHelpString='Open Gist Window')
+        parent.AddTool(bitmap=wxBitmap('images/fma.bmp', wxBITMAP_TYPE_BMP),
+              id=wxID_WXFRAME1TOOLBAR1TOOLS1, isToggle=false, longHelpString='',
+              pushedBitmap=wxNullBitmap, shortHelpString='Frame Advance')
+        parent.AddTool(bitmap=wxBitmap('images/hcp.bmp', wxBITMAP_TYPE_BMP),
+              id=wxID_WXFRAME1TOOLBAR1TOOLS2, isToggle=false, longHelpString='',
+              pushedBitmap=wxNullBitmap, shortHelpString='Hard Copy')
+        parent.AddTool(bitmap=wxBitmap('images/pplots.bmp', wxBITMAP_TYPE_BMP),
+              id=wxID_WXFRAME1TOOLBAR1TOOLS3, isToggle=false, longHelpString='',
+              pushedBitmap=wxNullBitmap, shortHelpString='Particle Plots')
         parent.AddTool(bitmap=wxBitmap('images/envelope.bmp',
               wxBITMAP_TYPE_BMP), id=wxID_WXFRAME1TOOLBAR1TOOLS4,
               isToggle=false, longHelpString='', pushedBitmap=wxNullBitmap,
               shortHelpString='Envelope Solver')
-        parent.AddTool(bitmap=wxBitmap('images/lattice.bmp',
-              wxBITMAP_TYPE_BMP), id=wxID_WXFRAME1TOOLBAR1TOOLS5,
-              isToggle=false, longHelpString='Opens lattice editting dialog',
+        parent.AddTool(bitmap=wxBitmap('images/lattice.bmp', wxBITMAP_TYPE_BMP),
+              id=wxID_WXFRAME1TOOLBAR1TOOLS5, isToggle=false,
+              longHelpString='Opens lattice editting dialog',
               pushedBitmap=wxNullBitmap, shortHelpString='Lattice')
-        parent.AddTool(bitmap=wxBitmap('images/doc.bmp',
-              wxBITMAP_TYPE_BMP), id=wxID_WXFRAME1TOOLBAR1TOOLS6,
-              isToggle=false, longHelpString='Opens doc window',
-              pushedBitmap=wxNullBitmap, shortHelpString='Doc window')
+        parent.AddTool(bitmap=wxBitmap('images/doc.bmp', wxBITMAP_TYPE_BMP),
+              id=wxID_WXFRAME1TOOLBAR1TOOLS6, isToggle=false,
+              longHelpString='Opens doc window', pushedBitmap=wxNullBitmap,
+              shortHelpString='Doc window')
         EVT_TOOL(self, wxID_WXFRAME1TOOLBAR1TOOLS0,
               self.OnToolbar1OpenWindowTool)
         EVT_TOOL(self, wxID_WXFRAME1TOOLBAR1TOOLS1, self.OnToolbar1fmaTool)
@@ -191,11 +188,12 @@ class wxFrame1(wxFrame):
     def _init_ctrls(self, prnt):
         # generated method, don't edit
         wxFrame.__init__(self, id=wxID_WXFRAME1, name='', parent=prnt,
-              pos=wxPoint(401, 448), size=wxSize(949, 562),
+              pos=wxPoint(186, 358), size=wxSize(949, 535),
               style=wxDEFAULT_FRAME_STYLE, title='WARP')
         self._init_utils()
-        self.SetClientSize(wxSize(949, 535))
+        self.SetClientSize(wxSize(949, 508))
         self.SetMenuBar(self.menuBar1)
+        EVT_IDLE(self, self.OnWxframe1Idle)
 
         self.statusBar1 = wxStatusBar(id=wxID_WXFRAME1STATUSBAR1,
               name='statusBar1', parent=self, style=0)
@@ -214,7 +212,7 @@ class wxFrame1(wxFrame):
         self.SetToolBar(self.toolBar1)
 
         self.txtEditor = wxTextCtrl(id=wxID_WXFRAME1TXTEDITOR, name='txtEditor',
-              parent=self, pos=wxPoint(0, 0), size=wxSize(949, 472),
+              parent=self, pos=wxPoint(0, 0), size=wxSize(949, 445),
               style=wxTE_MULTILINE, value='')
         self.txtEditor.SetToolTipString('Text Editor')
 
@@ -223,6 +221,7 @@ class wxFrame1(wxFrame):
         self.FileName = None
         #EVT_UPDATE_UI(,self.mnuPackageUpdate)
         self.mnuPackageUpdate()
+        self.isgistwindowon = 0
 
     def OnMnuhelpAboutMenu(self, event):
         dlg = WarpGUIInfo.WarpGUIInfo(self)
@@ -274,13 +273,14 @@ class wxFrame1(wxFrame):
 
     def OnToolbar1OpenWindowTool(self, event):
         winon()
-        dlg = wxMessageDialog(self, 'Press enter in the starting terminal window',
-          'Press enter', wxOK | wxICON_INFORMATION)
-        try:
-            dlg.ShowModal()
-        finally:
-            dlg.Destroy()
+#       dlg = wxMessageDialog(self, 'Press enter in the starting terminal window',
+#         'Press enter', wxOK | wxICON_INFORMATION)
+#       try:
+#           dlg.ShowModal()
+#       finally:
+#           dlg.Destroy()
         ygdispatch()
+        self.isgistwindowon = 1
 
     def OnToolbar1hcpTool(self, event):
         hcp()
@@ -385,5 +385,10 @@ class wxFrame1(wxFrame):
             self.LatticeDialog.Show(1)
         except:
             pass
+
+    def OnWxframe1Idle(self, event):
+        if self.isgistwindowon:
+          ygdispatch()
+          event.RequestMore(1)
 
 
