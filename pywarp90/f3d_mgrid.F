@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.82 $, $Date: 2004/11/03 22:58:32 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.83 $, $Date: 2004/11/05 00:34:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -206,6 +206,7 @@ c     --- Also setup parallel arrays.
         allocate(rhosave(0:nx,0:ny,0:nz),res(-1:nx+1,-1:ny+1,-2:nz+2))
 !$OMP END SINGLE
         rhosave = rho
+        localbounds = bounds
 #ifdef MPIPARALLEL
         lzoffset = 0.
         rzoffset = 0.
@@ -214,11 +215,8 @@ c     --- Also setup parallel arrays.
      &                        lzoffset,rzoffset,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-        localbounds = bounds
         if (izfsslave(my_index) > 0) localbounds(4) = -1
         if (izfsslave(my_index)+nz < nzfull) localbounds(5) = -1
-#else
-        localbounds = bounds
 #endif
       endif
 
@@ -272,10 +270,9 @@ c       --- those planes are only set with the error of phi.
         if (mgform == 2) then
           if (localbounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
           if (localbounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
-#ifndef MPIPARALLEL
-          if (localbounds(4) == 2) phi(:,:,-1) = phi(:,:,nz-1)
-          if (localbounds(5) == 2) phi(:,:,nz+1) = phi(:,:,1)
-#else
+          if (localbounds(4) == 2 .and. nz==nzfull) phi(:,:,-1) = phi(:,:,nz-1)
+          if (localbounds(5) == 2 .and. nz==nzfull) phi(:,:,nz+1) = phi(:,:,1)
+#ifdef MPIPARALLEL
           call mgexchange_phi(nx,ny,nz,nzfull,phi,localbounds,0,0,1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
@@ -312,14 +309,16 @@ c     added by petermc, 26 Sep 2002
 #endif
 
 #ifdef MPIPARALLEL
-c           --- calculate global sorerror
-        call parallelmaxrealarray(mgerror,1)
+        if (nslaves > 1) then
+c         --- calculate global sorerror
+          call parallelmaxrealarray(mgerror,1)
 c     added by petermc, 26 Sep 2002
 #ifdef WITHCHOMBO
-        if (mgform == 2) then
-           call parallelmaxrealarray(maxres,1)
-        endif
+          if (mgform == 2) then
+             call parallelmaxrealarray(maxres,1)
+          endif
 #endif
+        endif
 #endif
 c       print*,mgiters,mgerror
 
@@ -413,7 +412,7 @@ c=============================================================================
       i2 = nz + delz
       sss(2) = sum(sum(sum(a(:,:,i1:i2),1),1),1)
 
-      call parallelsumrealarray(sss,2)
+      if (nslaves > 1) call parallelsumrealarray(sss,2)
       mggetarraysum = sss
 
 #else
@@ -487,9 +486,6 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
      &                      whosendingright,izsendingright)
       if (izfsslave(my_index) > 0) localbounds(4) = -1
       if (izfsslave(my_index)+nz < nzfull) localbounds(5) = -1
-#else
-      izfsslave = 0
-      nzfsslave = nz
 #endif
 
 c     added by petermc, 26 Sep 2002
@@ -572,7 +568,7 @@ c       --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
 #ifdef MPIPARALLEL
 c       --- This must be a global operation since, due to roundoff, each
 c       --- processor can get a different value if dz == 4./3.*dx.
-        call parallellor(partialcoarsening)
+c       call parallellor(partialcoarsening)
 #endif
         if (partialcoarsening) then
 
@@ -631,8 +627,6 @@ c         --- Get processor with which to exchange data on coarse grid
 #else
           lzoffset = 0.
           rzoffset = 0.
-          izfsslavec = 0
-          nzfsslavec = nzcoarse
 #endif
 
 c         --- Alloate new work space
@@ -647,13 +641,6 @@ c         --- routine.
           call restrict3d(nx,ny,nz,nzfull,res,
      &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
      &                    localbounds,localboundsc,lzoffset,rzoffset)
-#ifdef MPIPARALLEL
-c         call mgexchange_rho(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
-c    &                        my_index,nslaves,izfsslavec,nzfsslavec,
-c    &                        lzoffsetall,rzoffsetall,
-c    &                        whosendingleftc,izsendingleftc,
-c    &                        whosendingrightc,izsendingrightc)
-#endif
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
@@ -1049,10 +1036,8 @@ c     --- Set the loop limits, including edges when appropriate.
 
       if (bounds(4) == 1) phi(:,:,-1) = phi(:,:,1)
       if (bounds(5) == 1) phi(:,:,nz+1) = phi(:,:,nz-1)
-#ifndef MPIPARALLEL
-      if (bounds(4) == 2) phi(:,:,-1) = phi(:,:,nz-1)
-      if (bounds(5) == 2) phi(:,:,nz+1) = phi(:,:,1)
-#endif
+      if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
+      if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz+1) = phi(:,:,1)
 
       return
       end
@@ -1126,10 +1111,9 @@ c     --- do loop to cover even and odd points
      &                     bounds,mgparam,mgform,
      &                     lcndbndy,icndbndy,conductors)
 
-#ifndef MPIPARALLEL
-        if (bounds(4) == 2) phi(:,:,-1) = phi(:,:,nz-1)
-        if (bounds(5) == 2) phi(:,:,nz:nz+1) = phi(:,:,0:1)
-#else
+        if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,-1) = phi(:,:,nz-1)
+        if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
+#ifdef MPIPARALLEL
         call mgexchange_phi(nx,ny,nz,nzfull,phi,bounds,0,0,1,
      &                      my_index,nslaves,izfsslave,nzfsslave,
      &                      whosendingleft,izsendingleft,
@@ -1444,10 +1428,8 @@ c     --- Put desired potential onto conductors in phi array.
 c     --- set phi in the z guard planes
       if (bounds(4) == 1) phi(:,:,izl-2) = phi(:,:,izl)
       if (bounds(5) == 1) phi(:,:,izr)   = phi(:,:,izr-2)
-#ifndef MPIPARALLEL
-      if (bounds(4) == 2) phi(:,:,izl-2) = phi(:,:,izr-2)
-      if (bounds(5) == 2) phi(:,:,nz:nz+1) = phi(:,:,0:1)
-#endif
+      if (bounds(4) == 2 .and. nz == nzfull) phi(:,:,izl-2) = phi(:,:,izr-2)
+      if (bounds(5) == 2 .and. nz == nzfull) phi(:,:,nz:nz+1) = phi(:,:,0:1)
 
       return
       end
@@ -2383,10 +2365,8 @@ c     --- Longitudinal boundaries
       if (bounds(5) == 0) res(:,:,nz:nz+1) = 0.
       if (bounds(4) == 1) res(:,:,-1) = res(:,:,1)
       if (bounds(5) == 1) res(:,:,nz+1) = res(:,:,nz-1)
-#ifndef MPIPARALLEL
-      if (bounds(4) == 2) res(:,:,-1) = res(:,:,nz-1)
-      if (bounds(5) == 2) res(:,:,nz+1) = res(:,:,1)
-#endif
+      if (bounds(4) == 2 .and. nz == nzfull) res(:,:,-1) = res(:,:,nz-1)
+      if (bounds(5) == 2 .and. nz == nzfull) res(:,:,nz+1) = res(:,:,1)
 
       return
       end
@@ -2478,7 +2458,7 @@ c     --- all axis.
 #ifdef MPIPARALLEL
 c     --- This must be a global operation since, due to roundoff, each
 c     --- processor can get a different value if dz == 4./3.*dx.
-      call parallellor(partialcoarsening)
+c     call parallellor(partialcoarsening)
 #endif
 
       if (partialcoarsening) then
@@ -2493,8 +2473,6 @@ c       --- Find domains in coarser grid
      &                  nzfull,nzfullcoarse)
 c       --- Set new value of nz
         nzcoarse = nzfsslavec(my_index)
-#else
-        izfsslavec = 0
 #endif
 
         call getmglevelsrecur(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
