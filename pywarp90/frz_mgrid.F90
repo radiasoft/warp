@@ -5992,7 +5992,7 @@ END SUBROUTINE RHOWEIGHTRZ
 
 subroutine rhoweightrz_weights(xp,yp,zp,uzp,w,np,q,nr,nz,dr,dz,xmin,zmin)
 USE multigridrz
-USE Subtimers
+USE Subtimers3d
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
