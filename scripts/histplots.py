@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.13 2002/07/02 17:45:19 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.14 2002/08/21 18:11:48 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -294,7 +294,7 @@ Plots data in various ways. By default, makes a mountain range plot.
   - For mountain range plot options, run doc(mountainplot1)
   """
   kw.update(kwdict)
-  kw['titleb']="Z"
+  kw.setdefault('titleb','Z')
   hzarray = _extractvarkw(hzarray,kw)
   zmntmesh = _extractvarkw('zmntmesh',kw)
   jhist = _extractvarkw('jhist',kw)
@@ -311,12 +311,12 @@ Plots data in various ways. By default, makes a mountain range plot.
     hpbasiccont(hzarray,zmntmesh,kw)
   elif overlay:
     zmesh = _extractvarkw('zmesh',kw,'w3d')
-    kw['istep'] = max(jhist/10,1)
-    kw['ord'] = zmesh
-    kw['jhist'] = jhist
+    kw.setdefault('istep',max(jhist/10,1))
+    kw.setdefault('ord',zmesh)
+    kw.setdefault('iend',jhist)
     mountainplot1(kw['titlet'],hzarray,kw)
   else:
-    kw['jhist'] = jhist
+    kw.setdefault('iend',jhist)
     mountainplot1(kw['titlet'],hzarray,kw)
 
 ###########################################################################
