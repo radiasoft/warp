@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.89 $, $Date: 2003/06/02 17:42:18 $
+c@(#) File TOP.M, version $Revision: 3.90 $, $Date: 2003/06/02 22:27:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7173,7 +7173,6 @@ c=============================================================================
         integer(ISZ) :: is, ipmin, itask
 
         ipmin = ins(is)
-        write(0,*) 'wpid = ',wpid
         if(wpid>0) then
           call gettemperature(nps(is),xp(ipmin),yp(ipmin),zp(ipmin),
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),
