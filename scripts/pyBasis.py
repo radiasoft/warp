@@ -4,6 +4,7 @@ from types import *
 import RNG
 import RandomArray
 from pybasisC import *
+import pybasisC
 import os
 import string
 import re
@@ -28,7 +29,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.34 2003/07/08 23:03:20 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.35 2003/08/25 23:08:13 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
