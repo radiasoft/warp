@@ -40,7 +40,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.30 2004/06/02 17:47:26 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.31 2004/07/22 23:41:22 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -1353,6 +1353,20 @@ def madtowarp(line,settunelen=1):
 Takes the inputted line obect and sets up the WARP lattice. Any existing
 information if the WARP lattice arrays is deleted.
   """
+  # --- Make sure that all of the lattice arrays are allocated
+  top.nquad = 100
+  top.ndrft = 100
+  top.nbend = 100
+  top.ndipo = 100
+  top.nhele = 100
+  top.naccl = 100
+  top.nemlt = 100
+  top.nmmlt = 100
+  top.nbgrd = 100
+  top.npgrd = 100
+  top.nsext = 100
+  gchange("Lattice")
+
   # --- Clear counts of all lattice elements and data array sizes.
   top.nquad = -1
   top.ndrft = -1
@@ -1371,19 +1385,6 @@ information if the WARP lattice arrays is deleted.
   # --- of data points is checked. Arrays are then later allocated and filled.
   zz = line.install(0.)
   
-  # --- Make sure element counts are at least zero.
-  if top.nquad == -1: top.nquad = 0
-  if top.ndrft == -1: top.ndrft = 0
-  if top.nbend == -1: top.nbend = 0
-  if top.ndipo == -1: top.ndipo = 0
-  if top.nhele == -1: top.nhele = 0
-  if top.naccl == -1: top.naccl = 0
-  if top.nemlt == -1: top.nemlt = 0
-  if top.nmmlt == -1: top.nmmlt = 0
-  if top.nbgrd == -1: top.nbgrd = 0
-  if top.npgrd == -1: top.npgrd = 0
-  if top.nsext == -1: top.nsext = 0
-
   # --- Finish by setting some general parameters.
   if settunelen:
     if top.nquad >= 2:
