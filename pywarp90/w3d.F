@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.12 $, $Date: 2001/07/18 23:50:05 $
+c@(#) File W3D.M, version $Revision: 3.13 $, $Date: 2001/07/19 19:58:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -506,6 +506,7 @@ c  of run.
 
 
       real(kind=8):: zbeaml,zbeamr,timetemp,wtime
+      integer(ISZ):: k
       real(kind=8):: substarttime
       if (lw3dtimesubs) substarttime = wtime()
 
