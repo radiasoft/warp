@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.11 2001/08/13 18:15:54 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.12 2001/08/13 20:44:22 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -180,8 +180,8 @@ needed since some processors may have more conductor points than others.
     noc = len(nonzero(logical_not(f3d.iocndz[:f3d.nocndbdy]-iz)))
     nc  = len(nonzero(logical_not(f3d.izcond[:f3d.ncond]-iz)))
     weight[iz-w3d.izfsmin] = (w3d.nx+1)*(w3d.ny+1) + \
-			     sgweight*(nec + noc) + \
-			     condweight*nc
+                             sgweight*(nec + noc) + \
+                             condweight*nc
   weight = gatherallzfsarray(weight)
 
   # --- Convert to a decomposition
@@ -466,34 +466,41 @@ def _reorgconductorarrays(arrays,z,oldiz,oldnz,oldizfs,oldnzfs,
   # --- Create list to save the incoming data in.
   results = len(arrays)*[[]]
 
-  # --- Loop over global extent of grid, gathering data from other processors
+  # --- Loop over global extent of grid, gathering data that is needed
   for iz in range(0,w3d.nzfull+1):
+
+    # --- If me has the data then get the indices of it.
+    if (oldizfs[me] <= iz <= oldizfs[me]+oldnzfs[me]):
+      ii = compress(equal(iz,z),arange(len(z)))
+
+      # --- If the data is needed by me, just copy it.
+      if (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
+        for i in range(len(arrays)):
+          results[i] = results[i] + list(take(arrays[i],ii))
+
     # --- Get the processor which "owns" the data, relative to the old
     # --- grid extents.
     pe = compress(logical_and(less_equal(oldizfs,iz),
                   less_equal(iz,oldizfs+oldnzfs)),arange(npes))[-1]
-    # --- Check if data at this iz is needed locally
-    if not (oldizfs[me] <= iz <= oldizfs[me]+oldnzfs[me]) and \
-           (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
-      for i in range(len(arrays)):
-        results[i] = results[i] + list(getarray(pe,0,me))
-    elif me == pe:
+
+    if me == pe:
       # --- Loop over processors to check which ones need data
+      # --- If the data is needed by others, then send it.
       for ip in range(npes):
         if not (oldizfs[ip] <= iz <= oldizfs[ip]+oldnzfs[ip]) and \
                (newizfs[ip] <= iz <= newizfs[ip]+newnzfs[ip]):
-          ii = compress(equal(iz,z),arange(len(arrays[0])))
           for i in range(len(arrays)):
             temp = getarray(me,take(arrays[i],ii),ip)
 
+    else:
+      # --- Get the data that is needed from other procesors.
+      if not (oldizfs[me] <= iz <= oldizfs[me]+oldnzfs[me]) and \
+             (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
+        for i in range(len(arrays)):
+          results[i] = results[i] + list(getarray(pe,0,me))
+
   # --- Make sure all processors are done before continuing
   barrier()
-
-  # --- Gather any data that is still local
-  for iz in range(newizfs[me],newizfs[me]+newnzfs[me]+1):
-    ii = compress(equal(iz,z),arange(len(arrays[0])))
-    for i in range(len(arrays)):
-      results[i] = results[i] + list(take(arrays[i],ii))
 
   for i in range(len(results)): results[i] = array(results[i])
   return results
