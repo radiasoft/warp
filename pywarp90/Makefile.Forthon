@@ -55,3 +55,13 @@ update:
 clean:
 	rm -rf build *.so
 
+
+#----------------------------------------------------------------------------
+#--- Build command for opendx wrapper.
+DX: pyDXObject.c
+	python DXsetup.py build --build-platlib .
+	cp pyDXObject.so $(WARPSCRIPTS)
+
+#----------------------------------------------------------------------------
+
+
