@@ -20,6 +20,7 @@ WARPOBJECTS = env.o \
               w3d.o \
               dtop.o \
               f3d_mgrid.o \
+              fxy_mgrid.o \
               frz_mgrid.o \
               dw3d.o \
               dwrz.o \
@@ -184,6 +185,8 @@ fxy.p.o:fxy.p.F90
 	$(F90FREE) $(POPT) -c fxy.p.F90
 fxy.o:fxy.F fxy.p.o top.p.o
 	$(F90FIXED) $(OPT) -c fxy.F
+fxy_mgrid.o:fxy_mgrid.F fxy.p.o f3d.p.o top.p.o
+	$(F90FIXED) $(OPT) -c fxy_mgrid.F
 
 fxypymodule.o:fxypymodule.c pybasis.h
 	$(CC) $(PYMODULEOPT) -c fxypymodule.c $(INCLUDE) $(NUMPYINCLUDE)
