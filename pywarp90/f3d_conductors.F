@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.18 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2226,107 +2226,22 @@ c=======================================================================
 c Finds distances from a list of cylinders at arbitrary angles.
 c The notation is that a negative distance means that the point is inside.
 
-      integer(ISZ):: nx,ny,ic
-      real(kind=8):: dx,dy
-      real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: xc(1),yc(1),zc(1),zz
-      real(kind=8):: mxc(1),pxc(1),myc(1),pyc(1),mzc(1),pzc(1)
-      integer(ISZ):: nt,ixmin,ixmax,iymin,iymax,tix,tiy,ii,id
-      real(kind=8):: xt(n),yt(n),zt(n)
-      real(kind=8):: ddt(n)
+c The very kludgy code used to calculate the deltas won't work here
+c since the coordinates passed in may not be regularly spaced.
+c This code assumes that the cylinders do not overlap transversely.
+c Otherwise, the cylinders can be at any angle.
 
-c     --- Very kludgy code to extract number of grid points and cell
-c     --- sizes from the input coordinates.
-      ymin = minval(y)
-      ymax = maxval(y)
-      dy = y(2) - y(1)
-      if (dy /= 0.) then
-        ny = maxval(int((y - ymin)/dy))
-      else
-        dy = 1.
-        ny = 0
-      endif
-      
-      dx = x(ny+2) - x(1)
-      xmin = minval(x)
-      xmax = maxval(x)
-      nx = maxval(int((x - xmin)/dx))
+      real(kind=8):: dd
+      integer(ISZ):: i,imin(1),ic
 
       distance = LARGEPOS
-
-c     --- This code assumes small angles
-      if (maxval(abs(theta)) > pi/4. .or. maxval(abs(phi)) > pi/4.) then
-        print*,"Error: The Cylinders object assumes small angles."
-        print*,"Cylinders with large angles must be treated independently"
-        stop
-      endif
-
-      do ic=1,ncylinders
-
-c       --- First, get extent of cylinder by getting deltas relative to
-c       --- center.
-c       --- Get x and y at center of object at z = z(1)
-        zz = z(1) - zcent(ic)
-        xc(1) = zz*tan(theta(ic)) + xcent(ic)
-        yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
-     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
-     &          ycent(ic)
-        zc(1) = z(1)
-        call CylinderConductorF(rad(ic),length(ic),theta(ic),phi(ic),
-     &                          xcent(ic),ycent(ic),zcent(ic),
-     &                          1,xc,yc,zc,mxc,pxc,myc,pyc,mzc,pzc,0.)
-c       --- Check if point outside of object.
-        if (mxc(1) > 0.) then
-c         --- Check distance in z to object. If the distance to left or right
-c         --- is less than LARGEPOS, then set z to that location and find
-c         --- x and y deltas there. Otherwise this conductor can be skipped.
-          if (mzc(1) < LARGEPOS) then
-            zz = z(1) - mzc(1)*1.000001
-          else if (pzc(1) < LARGEPOS) then
-            zz = z(1) + pzc(1)*1.000001
-          else
-            cycle
-          endif
-          xc(1) = zz*tan(theta(ic)) + xcent(ic)
-          yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
-     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
-     &            ycent(ic)
-          zc(1) = zz
-          call CylinderConductorF(rad(ic),length(ic),theta(ic),phi(ic),
-     &                        xcent(ic),ycent(ic),zcent(ic),
-     &                        1,xc,yc,zc,mxc,pxc,myc,pyc,mzc,pzc,0.)
-        endif
-c       --- Get extent relative to grid
-        ixmin = max(0 ,int((xcent(ic) - (-mxc(1)) - xmin)/dx) - 1)
-        ixmax = min(nx,int((xcent(ic) + (-pxc(1)) - xmin)/dx) + 2)
-        iymin = max(0 ,int((ycent(ic) - (-myc(1)) - ymin)/dy) - 1)
-        iymax = min(ny,int((ycent(ic) + (-pxc(1)) - ymin)/dy) + 2)
-c       --- Generate grid points within the circumscribing rectangle
-        ii = 0
-        do tix = ixmin,ixmax
-          do tiy = iymin,iymax
-            ii = ii + 1
-            xt(ii) = xmin + tix*dx
-            yt(ii) = ymin + tiy*dy
-            zt(ii) = z(1)
-          enddo
-        enddo
-
-c       --- Get deltas for points in that rectangle
+      do i=1,n
+        imin = minloc(abs(x(i) - xcent) + abs(y(i) - ycent))
+        ic = imin(1)
         call CylinderConductorD(rad(ic),length(ic),theta(ic),phi(ic),
      &                          xcent(ic),ycent(ic),zcent(ic),
-     &                          ii,xt,yt,zt,ddt)
-
-c       --- Fold the data into the arrays
-        ii = 0
-        do tix = ixmin,ixmax
-          do tiy = iymin,iymax
-            ii = ii + 1
-            id = tix*(ny+1) + tiy + 1
-            distance(id) = min(distance(id),ddt(ii))
-          enddo
-        enddo
-
+     &                          1,x(i),y(i),z(i),dd)
+        distance(i) = min(distance(i),dd)
       enddo
 
       return
@@ -2813,13 +2728,12 @@ c       --- Fold the data into the arrays
       return
       end
 c=======================================================================
-      subroutine ConesConductorD(ncones,r_zmin,r_zmax,length,theta,phi,fuzz,
+      subroutine ConesConductorD(ncones,r_zmin,r_zmax,length,theta,phi,
      &                           xcent,ycent,zcent,n,x,y,z,distance)
       use Constant
       integer(ISZ):: ncones
       real(kind=8):: r_zmin(ncones),r_zmax(ncones),length(ncones)
       real(kind=8):: theta(ncones),phi(ncones)
-      real(kind=8):: fuzz
       real(kind=8):: xcent(ncones),ycent(ncones),zcent(ncones)
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -2828,107 +2742,22 @@ c=======================================================================
 c Finds distances from a list of cones at arbitrary angles.
 c The notation is that a negative distance means that the point is inside.
 
-      integer(ISZ):: nx,ny,ic
-      real(kind=8):: dx,dy
-      real(kind=8):: xmin,xmax,ymin,ymax
-      real(kind=8):: xc(1),yc(1),zc(1),zz
-      real(kind=8):: mxc(1),pxc(1),myc(1),pyc(1),mzc(1),pzc(1)
-      integer(ISZ):: nt,ixmin,ixmax,iymin,iymax,tix,tiy,ii,id
-      real(kind=8):: xt(n),yt(n),zt(n)
-      real(kind=8):: ddt(n)
+c The very kludgy code used to calculate the deltas won't work here
+c since the coordinates passed in may not be regularly spaced.
+c This code assumes that the cones do not overlap transversely.
+c Otherwise, the cones can be at any angle.
 
-c     --- Very kludgy code to extract number of grid points and cell
-c     --- sizes from the input coordinates.
-      ymin = minval(y)
-      ymax = maxval(y)
-      dy = y(2) - y(1)
-      if (dy /= 0.) then
-        ny = maxval(int((y - ymin)/dy))
-      else
-        dy = 1.
-        ny = 0
-      endif
-      
-      xmin = minval(x)
-      xmax = maxval(x)
-      dx = x(ny+2) - x(1)
-      nx = maxval(int((x - xmin)/dx))
+      real(kind=8):: dd
+      integer(ISZ):: i,imin(1),ic
 
       distance = LARGEPOS
-
-c     --- This code assumes small angles
-      if (maxval(abs(theta)) > pi/4. .or. maxval(abs(phi)) > pi/4.) then
-        print*,"Error: The Cones object assumes small angles."
-        print*,"Cones with large angles must be treated independently"
-        stop
-      endif
-
-      do ic=1,ncones
-
-c       --- First, get extent of cone by getting deltas relative to
-c       --- center.
-c       --- Get x and y at center of object at z = z(1)
-        zz = z(1) - zcent(ic)
-        xc(1) = zz*tan(theta(ic)) + xcent(ic)
-        yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
-     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
-     &          ycent(ic)
-        zc(1) = z(1)
-        call ConeConductorF(r_zmin(ic),r_zmax(ic),length(ic),theta(ic),phi(ic),
-     &                      xcent(ic),ycent(ic),zcent(ic),
-     &                      1,xc,yc,zc,mxc,pxc,myc,pyc,mzc,pzc,
-     &                      fuzz)
-c       --- Check if point outside of object.
-        if (mxc(1) > 0.) then
-c         --- Check distance in z to object. If the distance to left or right
-c         --- is less than LARGEPOS, then set z to that location and find
-c         --- x and y deltas there. Otherwise this conductor can be skipped.
-          if (mzc(1) < LARGEPOS) then
-            zz = z(1) - mzc(1)*1.000001
-          else if (pzc(1) < LARGEPOS) then
-            zz = z(1) + pzc(1)*1.000001
-          else
-            cycle
-          endif
-          xc(1) = zz*tan(theta(ic)) + xcent(ic)
-          yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
-     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
-     &            ycent(ic)
-          zc(1) = zz
-          call ConeConductorF(r_zmin(ic),r_zmax(ic),length(ic),
-     &                        theta(ic),phi(ic),xcent(ic),ycent(ic),zcent(ic),
-     &                        1,xc,yc,zc,mxc,pxc,myc,pyc,mzc,pzc,fuzz)
-        endif
-c       --- Get extent relative to grid
-        ixmin = max(0 ,int((xcent(ic) - (-mxc(1)) - xmin)/dx) - 1)
-        ixmax = min(nx,int((xcent(ic) + (-pxc(1)) - xmin)/dx) + 2)
-        iymin = max(0 ,int((ycent(ic) - (-myc(1)) - ymin)/dy) - 1)
-        iymax = min(ny,int((ycent(ic) + (-pxc(1)) - ymin)/dy) + 2)
-c       --- Generate grid points within the circumscribing rectangle
-        ii = 0
-        do tix = ixmin,ixmax
-          do tiy = iymin,iymax
-            ii = ii + 1
-            xt(ii) = xmin + tix*dx
-            yt(ii) = ymin + tiy*dy
-            zt(ii) = z(1)
-          enddo
-        enddo
-
-c       --- Get deltas for points in that rectangle
+      do i=1,n
+        imin = minloc(abs(x(i) - xcent) + abs(y(i) - ycent))
+        ic = imin(1)
         call ConeConductorD(r_zmin(ic),r_zmax(ic),length(ic),theta(ic),phi(ic),
-     &                      xcent(ic),ycent(ic),zcent(ic),ii,xt,yt,zt,ddt)
-
-c       --- Fold the data into the arrays
-        ii = 0
-        do tix = ixmin,ixmax
-          do tiy = iymin,iymax
-            ii = ii + 1
-            id = tix*(ny+1) + tiy + 1
-            distance(id) = min(distance(id),ddt(ii))
-          enddo
-        enddo
-
+     &                      xcent(ic),ycent(ic),zcent(ic),
+     &                      1,x(i),y(i),z(i),dd)
+        distance(i) = min(distance(i),dd)
       enddo
 
       return
