@@ -1,5 +1,5 @@
 wrz
-#@(#) File WRZ.V, version $Revision: 3.6 $, $Date: 2002/07/17 17:35:21 $ 
+#@(#) File WRZ.V, version $Revision: 3.7 $, $Date: 2002/10/25 00:00:01 $ 
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WRZ of code WARP
@@ -10,7 +10,7 @@ wrz
  
 *********** WRZversion dump:
 # Quantities associated with version control 
-verswrz character*19 /"$Revision: 3.6 $"/ # Current code version, set by CVS
+verswrz character*19 /"$Revision: 3.7 $"/ # Current code version, set by CVS
  
 *********** InPltCtlrz dump:
 # Controls for when the various plots are made
@@ -129,7 +129,7 @@ zmesh(0:nz)               _real  [m]       # Z coordinates of mesh points
 scrtch(0:nz,0:nr)         _real            # Scratch for plots
 phi(0:nr,-1:nz+1)         _real  [V]       # Electrostatic potential
 rho(0:nr,0:nz)            _real  [C/m**3]  # Charge density
-    # Must come after scrtch, to protect dead particle phi lookup
+    # Must come after scrtch, to protect lost particle phi lookup
 rhov(0:nr,0:nz)           _real  [C/m**3]  # temporary rho
 currv(0:nz)               _real            # temporary current
 attz(0:nz/2)              _real            # Attenuation factor as fcn. of kz

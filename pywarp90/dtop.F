@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.57 $, $Date: 2002/10/24 21:28:21 $
+c@(#) File DTOP.M, version $Revision: 3.58 $, $Date: 2002/10/25 00:00:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.57 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.58 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -1045,7 +1045,7 @@ c set grid cell inverse sizes
 c loop over particles
       do ip=1,np
 
-c       --- if within z grid cell and not dead, include
+c       --- if within z grid cell and not lost, include
         if (zl < zp(ip) .and. zp(ip) < zr .and. uzp(ip) /= 0.) then
 
 c         --- find location on grid

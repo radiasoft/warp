@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.57 $, $Date: 2002/10/24 21:28:21 $
+c@(#) File TOP.M, version $Revision: 3.58 $, $Date: 2002/10/25 00:00:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3269,7 +3269,7 @@ c         --- find the location of the particle in the internal lattice arrays
 
         do ip = 1, np
 
-c         --- cycle if dead particle
+c         --- cycle if lost particle
           if(zp(ip)<0._8) cycle
 
           if (.not. lslice) then
@@ -3940,7 +3940,7 @@ c=============================================================================
 
 c  Sets moments for species 1 in as a function of z.
 c  Interpolation is done to grid centers
-c  Note that dead particles are to the left of the z grid.
+c  Note that lost particles are to the left of the z grid.
 c  Note: "window zero" includes all particles, and no extrapolation is done
 c  Note: zbar and zsqbar calculations are meaningless except for 
 c        window zero (WE SHOULD DELETE ?)
@@ -4005,7 +4005,7 @@ c       itask=3  divides by number of particles, calculates emittances and rms
 
       if (itask == 2) then
 c       --- Set maximum and minimum particle coordinate variables
-c       --- set multiplier so dead particles don't contribute
+c       --- set multiplier so lost particles don't contribute
         do ip = 1, np
           if (uzp(ip) /= 0.) then
             xmaxp  = max(xmaxp, xp(ip))
@@ -4035,7 +4035,7 @@ c       --- set multiplier so dead particles don't contribute
           endif
         enddo
 
-c       --- set multiplier so dead particles don't contribute
+c       --- set multiplier so lost particles don't contribute
 c       ---   not added to total moments
 c       ---   weights set to zero for z moments
 c       if (ifzmmnt == 1) then
@@ -5109,11 +5109,11 @@ c  Imposes periodic boundary conditions on zp
       return
       end
 c=============================================================================
-      subroutine stckyz(np,zp,zmmax,zmmin,dz,uxp,uyp,uzp,zgrid)
+      subroutine stckyz(np,zp,zmmax,zmmin,dz,uxp,uyp,uzp,gaminv,zgrid)
       integer(ISZ):: np
       real(kind=8):: zmmax,zmmin,dz,zgrid
       real(kind=8):: zp(np)
-      real(kind=8):: uxp(np),uyp(np),uzp(np)
+      real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
 
 c  Enforces sticky b.c.'s on the z walls.
 c  Particles stick at the extreme edges of the grid.
@@ -5122,19 +5122,9 @@ c  Particles stick at the extreme edges of the grid.
 
       do ip=1,np
         if ((zp(ip)-zgrid) >= zmmax) then
-          zp(ip) = zmmin - .9999*dz + zgrid
-          uxp(ip) = 0.0
-          uyp(ip) = 0.0
-          uzp(ip) = 0.0
+          gaminv(ip) = 0.
         elseif ((zp(ip)-zgrid) <= zmmin) then
-          zp(ip) = zmmin - .9999*dz + zgrid
-          uxp(ip) = 0.0
-          uyp(ip) = 0.0
-          uzp(ip) = 0.0
-        elseif (uzp(ip) == 0.) then
-c         --- Make sure dead particles stay dead and are not ressurrected
-c             (only need if moving backward in time).
-          zp(ip) = zmmin - .9999*dz + zgrid
+          gaminv(ip) = 0.
         endif
       enddo
 
@@ -5497,7 +5487,7 @@ c=============================================================================
       use Particles
       integer(ISZ):: js,fillmethod
 
-c Clears out all of the dead particles. If js < 0, the clears out all
+c Clears out all of the lost particles. If js < 0, the clears out all
 c species, otherwise only species requested.
 c The empty spaces can be fill in multiple ways, based on value of fillmethod
 c   0 : don't do anything
@@ -5586,25 +5576,25 @@ c       --- Live particles are shifted downward to fill in the empty spaces
       return
       end
 c=============================================================================
-      subroutine processdeadpart(is,cleardeadpart)
+      subroutine processlostpart(is,clearlostpart)
       use Particles
-      use DeadParticles
-      integer(ISZ):: is,cleardeadpart
+      use LostParticles
+      integer(ISZ):: is,clearlostpart
 
-      integer(ISZ):: ndead,i1,i2
+      integer(ISZ):: nlost,i1,i2
       integer(ISZ):: ip
 
-      if (lsavedeadpart) then
+      if (lsavelostpart) then
 
-c       --- Make sure the dead particles arrays are allocated.
-        call alotdeadpart
+c       --- Make sure the lost particles arrays are allocated.
+        call alotlostpart
 
-c       --- Get the number of dead particles and make sure there is
-c       --- enough space to save them in the DeadParticles arrays.
+c       --- Get the number of lost particles and make sure there is
+c       --- enough space to save them in the LostParticles arrays.
         i1 = ins(is)
         i2 = ins(is)+nps(is)-1
-        ndead = count((gaminv(i1:i2)==0 .and. uzp(i1:i2)/=0.))
-        call chckdeadpart(is,0,ndead)
+        nlost = count((gaminv(i1:i2)==0 .and. uzp(i1:i2)/=0.))
+        call chcklostpart(is,0,nlost)
 
       endif
 
@@ -5613,16 +5603,16 @@ c     --- set to zero, the flag for scraped particles.
       do ip=ins(is),ins(is)+nps(is)-1
         if (gaminv(ip) == 0.) then
 
-          if (lsavedeadpart .and. uzp(ip) /= 0.) then
-            i1 = insdead(is) + npsdead(is)
-            xpdead(i1) = xp(ip)
-            ypdead(i1) = yp(ip)
-            zpdead(i1) = zp(ip)
-            uxpdead(i1) = uxp(ip)
-            uypdead(i1) = uyp(ip)
-            uzpdead(i1) = uzp(ip)
-            if (npmaxi > 0) piddead(i1) = pid(ip)
-            npsdead(is) = npsdead(is) + 1
+          if (lsavelostpart .and. uzp(ip) /= 0.) then
+            i1 = inslost(is) + npslost(is)
+            xplost(i1) = xp(ip)
+            yplost(i1) = yp(ip)
+            zplost(i1) = zp(ip)
+            uxplost(i1) = uxp(ip)
+            uyplost(i1) = uyp(ip)
+            uzplost(i1) = uzp(ip)
+            if (npmaxi > 0) pidlost(i1) = pid(ip)
+            npslost(is) = npslost(is) + 1
           endif
 
           uxp(ip) = 0.0
@@ -5632,99 +5622,99 @@ c     --- set to zero, the flag for scraped particles.
         endif
       enddo
 
-      call clearpart(is,cleardeadpart)
+      call clearpart(is,clearlostpart)
 
       return
       end
 c=============================================================================
-      subroutine alotdeadpart
+      subroutine alotlostpart
       use InPart
-      use DeadParticles
+      use LostParticles
 
-c Allocate space for dead particles and set up associated arrays.
+c Allocate space for lost particles and set up associated arrays.
 
       integer(ISZ):: is
 
-c     --- If npmaxdead is already set, then this routine does need to do
+c     --- If npmaxlost is already set, then this routine does need to do
 c     --- anything.
-      if (npmaxdead > 0) return
+      if (npmaxlost > 0) return
 
-      npmaxdead = deadpartchunksize
-      call gchange("DeadParticles",0)
+      npmaxlost = lostpartchunksize
+      call gchange("LostParticles",0)
 
-      npmaxdead_s(0) = 0
+      npmaxlost_s(0) = 0
       do is=1,ns
-        npmaxdead_s(is) = npmaxdead_s(is-1) + npmaxdead*sp_fract(is)
-        insdead(is) = npmaxdead_s(is-1) + 1
-        npsdead(is) = 0
+        npmaxlost_s(is) = npmaxlost_s(is-1) + npmaxlost*sp_fract(is)
+        inslost(is) = npmaxlost_s(is-1) + 1
+        npslost(is) = 0
       enddo
 
       return
       end
 c=============================================================================
-      subroutine chckdeadpart(is,nlower,nhigher)
+      subroutine chcklostpart(is,nlower,nhigher)
       use InPart
-      use DeadParticles
+      use LostParticles
       integer(ISZ):: is,nlower,nhigher
 
-c Make sure that there is enough space in the dead particle arrays for nlower
-c new particles below and nhigher above the dead particles.  Returns if
+c Make sure that there is enough space in the lost particle arrays for nlower
+c new particles below and nhigher above the lost particles.  Returns if
 c there is already enough space above and below.  If there is enough total
-c space but not enough room above or below, the dead particles are shifted
+c space but not enough room above or below, the lost particles are shifted
 c appropriately. If there is not enough space, add more to the arrays.
 c Particle data is shifted appropriately.
 
       integer(ISZ):: nadd,i,ishft
 
 c     --- If there is already enough space, then return.
-      if (insdead(is)-npmaxdead_s(is-1)-1 >= nlower .and.
-     &    npmaxdead_s(is)-insdead(is)-npsdead(is)+1 >= nhigher) return
+      if (inslost(is)-npmaxlost_s(is-1)-1 >= nlower .and.
+     &    npmaxlost_s(is)-inslost(is)-npslost(is)+1 >= nhigher) return
 
 c     --- If there is not enough space, then allocate new space.
-      if (insdead(is)-npmaxdead_s(is-1)-1 +
-     &    npmaxdead_s(is)-insdead(is)-npsdead(is)+1 < nlower + nhigher) then
+      if (inslost(is)-npmaxlost_s(is-1)-1 +
+     &    npmaxlost_s(is)-inslost(is)-npslost(is)+1 < nlower + nhigher) then
 
 c       --- Amount of new space to add: this is calculated to be a sizable
 c       --- chunk, but not too big.  By default, add 10 times the space needed.
 c       --- Limit that to 10000, except, if the space needed is greater than
 c       --- 10000, add the amount of space needed.
         nadd = nlower + nhigher -
-     &         (insdead(is)-npmaxdead_s(is-1)-1 +
-     &          npmaxdead_s(is)-insdead(is)-npsdead(is)+1)
-        nadd = max(deadpartchunksize, nadd)
+     &         (inslost(is)-npmaxlost_s(is-1)-1 +
+     &          npmaxlost_s(is)-inslost(is)-npslost(is)+1)
+        nadd = max(lostpartchunksize, nadd)
 
 c       --- change the particle array dimension variables and allot space
-        npmaxdead = npmaxdead + nadd
-        call gchange("DeadParticles",0)
+        npmaxlost = npmaxlost + nadd
+        call gchange("LostParticles",0)
 
 c       --- Loop over species species above 'is', shifting
 c       --- them up to make space below for species is.
         do i=ns,is+1,-1
-          npmaxdead_s(i) = npmaxdead_s(i) + nadd
-          call shftdeadpart(i,nadd)
+          npmaxlost_s(i) = npmaxlost_s(i) + nadd
+          call shftlostpart(i,nadd)
         enddo
 
 c       --- Increase size of the block for species 'is'.
-        npmaxdead_s(is) = npmaxdead_s(is) + nadd
+        npmaxlost_s(is) = npmaxlost_s(is) + nadd
 
       endif
 
 c     --- Now, there is enough room to shift the particles appropriately.
-      ishft = max(0,nlower - (insdead(is)-npmaxdead_s(is-1)-1)) +
-     &        min(0,(npmaxdead_s(is)-insdead(is)-npsdead(is)+1) - nhigher)
-      call shftdeadpart(is,ishft)
+      ishft = max(0,nlower - (inslost(is)-npmaxlost_s(is-1)-1)) +
+     &        min(0,(npmaxlost_s(is)-inslost(is)-npslost(is)+1) - nhigher)
+      call shftlostpart(is,ishft)
 
       return
       end
 c=============================================================================
-      subroutine shftdeadpart(is,ishft)
+      subroutine shftlostpart(is,ishft)
       use InPart
-      use DeadParticles
+      use LostParticles
       integer(ISZ):: is,ishft
-      call shftpartwork(is,ishft,npmaxdead,npmaxdead,ns,npmaxdead_s,
-     &                  insdead,npsdead,
-     &                  xpdead,ypdead,zpdead,uxpdead,uypdead,uzpdead,
-     &                  gaminvdead,piddead)
+      call shftpartwork(is,ishft,npmaxlost,npmaxlost,ns,npmaxlost_s,
+     &                  inslost,npslost,
+     &                  xplost,yplost,zplost,uxplost,uyplost,uzplost,
+     &                  gaminvlost,pidlost)
       return
       end
 c=============================================================================

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.75 $, $Date: 2002/10/24 21:29:36 $
+c@(#) File DW3D.M, version $Revision: 3.76 $, $Date: 2002/10/25 00:00:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -364,7 +364,7 @@ c Set inverse grid cell lengths
 c loop through particles
       do ip=ins(1),ins(1)+nps(1)-1
 
-c if particle within z grid cell and not dead, accumulate
+c if particle within z grid cell and not lost, accumulate
         if (zmesh(iz)+zbeam < zp(ip) .and.
      &                           zp(ip) < zmesh(iz+1)+zbeam
      &      .and. uzp(ip) /= 0.) then

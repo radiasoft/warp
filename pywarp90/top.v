@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.57 $, $Date: 2002/10/24 21:28:21 $
+#@(#) File TOP.V, version $Revision: 3.58 $, $Date: 2002/10/24 23:59:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.57 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.58 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -833,8 +833,8 @@ lbeamcom                  logical    /.false./
 relativity                integer /0/
    # Level of relativitistic corrections.
    #  1: scale transverse self E-field by 1/gamma**2
-cleardeadpart             integer /0/
-   # When 0, do not clear dead particles, when 1, swap dead particles with
+clearlostpart             integer /0/
+   # When 0, do not clear lost particles, when 1, swap lost particles with
    # ones at the end of the array (much faster), when 2, shift particles to
    # fill in the gaps (much slower)
 
@@ -1559,7 +1559,7 @@ hvyvzbarz(0:nzmmnt*ihvyvzbarz,0:lenhist)  _real [(m/s)**2] limited (0:nzmmnt,0:j
 
 *********** Particles dump parallel:
 # Dynamic particle arrays, and related data
-np     integer    /0/  # Total no. of particles (including dead ones).
+np     integer    /0/  # Total no. of particles (including lost ones).
 nplive integer    /0/  # No. of "live" particles
 npmax  integer    /0/  # Maximum no. of particles
                        # (user input for some loadings)
@@ -1580,21 +1580,21 @@ uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
 pid(npmaxi)    _real    [1]      # Particle index - user for various purposes
 
-*********** DeadParticles dump parallel:
-lsavedeadpart logical /.false./ # Flag setting whether dead particles are saved
-npmaxdead           integer /0/ # Size of dead particle arrays
-deadpartchunksize   integer /1000/
-insdead(ns)        _integer /0/ # Index of first dead particles of species
-npsdead(ns)        _integer /0/ # Number of dead particles in species
-npmaxdead_s(0:ns)  _integer /0/ # Max index of dead particles for species
-xpdead(npmaxdead)  _real [m]    # X-positions of dead particles
-ypdead(npmaxdead)  _real [m]    # Y-positions of dead particles
-zpdead(npmaxdead)  _real [m]    # Z-positions of dead particles
-uxpdead(npmaxdead) _real [m/s]  # gamma * X-velocities of dead particles
-uypdead(npmaxdead) _real [m/s]  # gamma * Y-velocities of dead particles
-uzpdead(npmaxdead) _real [m/s]  # gamma * Z-velocities of dead particles
-gaminvdead(npmaxdead) _real [1] # gamma inverse of dead particles
-piddead(npmaxdead) _integer [1] # Particle index of dead particles
+*********** LostParticles dump parallel:
+lsavelostpart logical /.false./ # Flag setting whether lost particles are saved
+npmaxlost           integer /0/ # Size of lost particle arrays
+lostpartchunksize   integer /1000/
+inslost(ns)        _integer /0/ # Index of first lost particles of species
+npslost(ns)        _integer /0/ # Number of lost particles in species
+npmaxlost_s(0:ns)  _integer /0/ # Max index of lost particles for species
+xplost(npmaxlost)  _real [m]    # X-positions of lost particles
+yplost(npmaxlost)  _real [m]    # Y-positions of lost particles
+zplost(npmaxlost)  _real [m]    # Z-positions of lost particles
+uxplost(npmaxlost) _real [m/s]  # gamma * X-velocities of lost particles
+uyplost(npmaxlost) _real [m/s]  # gamma * Y-velocities of lost particles
+uzplost(npmaxlost) _real [m/s]  # gamma * Z-velocities of lost particles
+gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
+pidlost(npmaxlost) _integer [1] # Particle index of lost particles
 
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation
@@ -1691,7 +1691,7 @@ getelemid(z:real,offset:real,nelem:integer,elemzs:real,elemze:real,
             subroutine # Gets id of element located nearest z
 species()   subroutine # Sets species related arrays.
 stckyz(np,zp:real,zmmax:real,zmmin:real,dz:real,uxp:real,uyp:real,uzp:real,
-       zgrid:real)
+       gaminv:real,zgrid:real)
             subroutine # Enforces sticky z walls
 
 *********** TopDiag:
@@ -1807,7 +1807,7 @@ addpart(nn:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,gi:real,
         lmomentum:logical)
              subroutine # Adds new particles to the simulation
 clearpart(js:integer,fillmethod:integer)
-             subroutine # Clears away dead particles.
+             subroutine # Clears away lost particles.
 load2d(np,x:real,y:real,nx,ny,n:real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
 shftpart(is:integer,ishft:integer) subroutine

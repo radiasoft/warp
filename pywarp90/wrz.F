@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.7 $, $Date: 2002/08/29 18:26:04 $
+c@(#) File WRZ.M, version $Revision: 3.8 $, $Date: 2002/10/25 00:00:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -695,7 +695,7 @@ c=============================================================================
       real(kind=8):: er(np), et(np), ez(np)
  
 c  Set the electric fields from the quads etc.
-c  Also zeros the electric field if particle is dead (uzp(ip)=0).
+c  Also zeros the electric field if particle is lost (uzp(ip)=0).
 
       integer(ISZ):: ip
  
@@ -1101,22 +1101,27 @@ c    &                       gaminv(ipmin),sm(is),sw(is),2,nplive)
                call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                      sq(is),sw(is),zgrid,dz,zmmin)
             endif
-            if (center .eq. "fullv" .or. center .eq. "halfv") then
-               if (periinz) call periz(ip,zp(ipmin),zgrid,zmmax,zmmin)
-               if (stickyz)
-     &         call stckyz(ip,zp(ipmin),zmmax,zmmin,dz,uxp(ipmin),
-     &                        uyp(ipmin),uzp(ipmin),zgrid)
-               if (stickyxy) call stckyrz(ip,xp(ipmin),rmmax,rmmin,dr,
-     &                                     zp(ipmin),zmmin,dz,
-     &                                     uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                                     zgrid,ipmin,it)
+         enddo
+         if (center .eq. "fullv" .or. center .eq. "halfv") then
+            if (periinz) call periz(nps(is),zp(ins(is)),zgrid,zmmax,zmmin)
+            if (stickyz)
+     &         call stckyz(nps(is),zp(ins(is)),zmmax,zmmin,dz,uxp(ins(is)),
+     &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),zgrid)
+            if (stickyxy) call stckyrz(nps(is),xp(ins(is)),rmmax,rmmin,dr,
+     &                                 zp(ins(is)),zmmin,dz,
+     &                                 uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
+     &                                 gaminv(ins(is)),
+     &                                 zgrid,ins(is),it)
+            call processlostpart(is,clearlostpart)
+            do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+               ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
                call setrhorz (rho, ip, xp(ipmin), zp(ipmin), zgrid,
      &                        uzp(ipmin), sq(is), sw(is), depos)
               if (ifgap) 
      &         call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                      sq(is),sw(is),zgrid,dz,zmmin)
-            endif
-         enddo
+            enddo
+         endif
 
          if (vecrho) then
 c          call zeroarry(rhov,nrz)
@@ -2076,7 +2081,7 @@ c     --- vectorized loop to compute indices, weights
 c  The case of i=0 has been handled by setting rmesh(0) such that it
 c  comes out right.  Otherwise this loop won't vectorize.
 
-c  Set the weight ne to zero if the particle isn't "dead"
+c  Set the weight ne to zero if the particle isn't "lost"
         if (uzp(ip) /= 0.0) then
          s(0,ir) = g * r2 * w2 / (2.*rmesh(i))
          s(2,ir) = g * r2 * w1 / (2.*rmesh(i))
@@ -2151,24 +2156,25 @@ c  Put rmesh(0) back
       end
 c=============================================================================
       subroutine stckyrz(np,rp,rmmax,rmmin,dr,
-     &                   zp,zmmin,dz,urp,utp,uzp,zgrid,ipmin,it)
+     &                   zp,zmmin,dz,urp,utp,uzp,gaminv,zgrid,ipmin,it)
       integer(ISZ):: np,ipmin,it
       real(kind=8):: rmmax,rmmin,dr,zmmin,dz,zgrid
       real(kind=8):: rp(np), zp(np)
-      real(kind=8):: urp(np), utp(np), uzp(np)
+      real(kind=8):: urp(np), utp(np), uzp(np), gaminv(np)
  
 c  Enforces sticky b.c.'s on the r wall
 
       integer(ISZ):: ip
  
       do ip=1,np
-        if (rp(ip).ge.rmmax-dr) then
-          rp(ip) = rmmax - .1*dr
-          zp(ip) = zmmin - .9999*dz + zgrid
-          urp(ip) = 0.0
-          utp(ip) = 0.0
-          uzp(ip) = 0.0
-        endif
+        if (rp(ip).ge.rmmax-dr) gaminv(ip) = 0.
+c       if (rp(ip).ge.rmmax-dr) then
+c         rp(ip) = rmmax - .1*dr
+c         zp(ip) = zmmin - .9999*dz + zgrid
+c         urp(ip) = 0.0
+c         utp(ip) = 0.0
+c         uzp(ip) = 0.0
+c       endif
       enddo
  
       return

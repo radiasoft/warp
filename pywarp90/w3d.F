@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.75 $, $Date: 2002/10/24 21:29:36 $
+c@(#) File W3D.M, version $Revision: 3.76 $, $Date: 2002/10/25 00:00:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -787,7 +787,7 @@ c     --- handle magnetic fields from 3-D grid
 c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,np,zp,.false.,ex,ey,ez)
 
-c     --- Set E to zero for dead particles
+c     --- Set E to zero for lost particles
       do ip=1,np
         if (uzp(ip) == 0) then
           ex(ip) = 0.
@@ -1430,7 +1430,7 @@ c       --- Apply particle boundary conditions
         enddo
 
         do is=1,ns
-          call processdeadpart(is,cleardeadpart)
+          call processlostpart(is,clearlostpart)
         enddo
 
 c       --- Collect charge density (3d)
@@ -3558,7 +3558,7 @@ c     --- (will be changed if necessary in the loop)
 c     --- loop over species
       do is=is1,is2
 
-c        --- For the AMR/Chombo version, all of the dead particles must be
+c        --- For the AMR/Chombo version, all of the lost particles must be
 c        --- cleared out.
          if (solvergeom == AMRgeom) call clearpart(is,1)
 
@@ -3758,7 +3758,7 @@ c Print warning if vbeamfrm is not zero
        call remark("A core dump will result if the emitting surface moves off of the field grid.")
       endif
 
-c Clear out the dead particles.
+c Clear out the lost particles.
       if (itask == 1) call clearpart(-1,2)
 
 c Set inject z min and max. This is only really needed for
@@ -4490,7 +4490,7 @@ c                     --- normal), the thermal velocity, and the term from
 c                     --- the Child-Langmuir solution.
 c                     --- SMALLPOS is also added so that the field gathering
 c                     --- routines don't treat the newly injected particles
-c                     --- as dead particles when the other terms are zero.
+c                     --- as lost particles when the other terms are zero.
                       uzp(ii) = vzinj*cos(az) + vthz_s(is)*rnorm() +
      &                          vznorm*cos(az) + SMALLPOS
 

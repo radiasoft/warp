@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.25 $, $Date: 2002/10/24 21:31:17 $
+c@(#) File WXY.M, version $Revision: 3.26 $, $Date: 2002/10/25 00:00:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -779,7 +779,7 @@ c     --- handle magnetic fields from 3-D grid
 c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,1,zbeam,.true.,ex,ey,ez)
 
-c     --- Set E to zero for dead particles
+c     --- Set E to zero for lost particles
       do ip=1,np
         if (uzp(ip) == 0) then
           ex(ip) = 0.
@@ -1145,7 +1145,7 @@ c         --- Apply particle boundary conditions
      &                     zgrid,zbeam,
      &                     nzzarr,prwallz,prwallxz,prwallyz,prwelips,
      &                     l2symtry,l4symtry,lostpars,zzmin,dzzi)
-          call processdeadpart(is,cleardeadpart)
+          call processlostpart(is,clearlostpart)
         enddo
 
 c       --- Collect charge density (xy) and current (1d)
