@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.123 $, $Date: 2004/05/12 22:50:43 $
+#@(#) File TOP.V, version $Revision: 3.124 $, $Date: 2004/05/13 17:12:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.123 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.124 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -2178,7 +2178,11 @@ envfixsscale_STdisc(n_STdiscs) _real /LARGEPOS/ [1]
     # to the envelope calculation.
 
 *********** Temperatures dump:
-nstemp integer /1/ # nb species
+nstemp  integer /1/                                   # nb species
+evolt   integer /1/                                   # temperature units in evolt
+joule   integer /2/                                   # temperature units in joule
+kelvin  integer /3/                                   # temperature units in kelvin
+t_units integer /1/                                   # temperature units
 l_temp_collapseinz     logical /.false./              # collapse z-slices in temperature calculations
 l_temp_rmcorrelations  logical /.true./               # remove x*v correlations in temperature calculations
 nxtslices    integer    /0/                           # nb cells in x of temperature slices
@@ -2225,7 +2229,8 @@ tslice_locator(nztlocator,ntlmax) _integer            # locator array for temper
 tloc_zmin  real                                       # min locator temperature array 
 tloc_zmax  real                                       # max locator temperature array 
 tloc_dzi   real                                       # inverse mesh size locator temperature array 
-gett(is:integer,lrtheta:logical) subroutine           # get temperature for species is (r and theta temp. if lrtheta=true) 
+gett(is:integer,lrtheta:logical,
+     l2symtry:logical,l4symtry:logical) subroutine    # get temperature for species is (r and theta temp. if lrtheta=true) 
 setregulartgrid(nx:integer,ny:integer,nz:integer,
                 xmin:real,xmax:real,ymin:real,
                 ymax:real,zmin:real,zmax:real,
