@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.25 $, $Date: 2002/04/18 21:41:23 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.26 $, $Date: 2002/04/22 20:12:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -77,13 +77,13 @@ c       --- it defaults to 0.
       endif
 
 c     --- Initialize temporaries
-      nxy  =(nx+1)*(ny+1)
-      nxyz =(nx+1)*(ny+1)*(nz+1)
-      dxsqi=1./dx**2
-      dysqi=1./dy**2
-      dzsqi=1./dz**2
+      nxy    = (nx+1)*(ny+1)
+      nxyz   = (nx+1)*(ny+1)*(nz+1)
+      dxsqi  = 1./dx**2
+      dysqi  = 1./dy**2
+      dzsqi  = 1./dz**2
       reps0c = mgparam/(eps0*2.*(dxsqi+dysqi+dzsqi))
-      rdel = dzsqi/(dxsqi + dysqi + dzsqi)
+      rdel   = dzsqi/(dxsqi + dysqi + dzsqi)
 
 c     --- If doing initialization only, then exit.
       if (iwhich == 1) return
@@ -93,10 +93,13 @@ c     --- time and so should not be done if the grid is not moving in the lab
 c     --- frame.  Set gridmode to 1 to avoid this call. The data is then
 c     --- converted and expanded for the multigrid solver.
       if (gridmode == 0 .or. iwhich == -2) then
+        ncond = 0
+        necndbdy = 0
+        nocndbdy = 0
         call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                l2symtry,l4symtry)
-        call subgrid_sor_to_mg(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
       endif
+      call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,l2symtry,l4symtry)
 
 c     --- Preset rho to increase performance (reducing the number of
 c     --- multiplies in the main SOR sweep loop).
@@ -326,7 +329,9 @@ c     --- Do initial SOR passes.
 
 c     --- If grid is not at its coarsest level in any of the axis or and
 c     --- all dimensions are even, continue the coarsening.
-      if (mod(nx,4) == 0 .and. mod(ny,4) == 0 .and. mod(nzfull,4) == 0) then
+      if (mod(nx,mgminlevel) == 0 .and.
+     &    mod(ny,mgminlevel) == 0 .and.
+     &    mod(nzfull,mgminlevel) == 0) then
 
 c       --- Get the residual on the current grid.
         call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
@@ -918,21 +923,15 @@ c     --- subgrid points which are to be used at the current level of
 c     --- grid refinement.
       if (lcndbndy) then
         do ic=1,necndbdy
-          if (iecndlxy(ic) >= levelxy .and. iecndlz(ic) >= levelz) then
-            ecndpvph(ic) = phi(iecndx(ic)/levelxy,
-     &                         iecndy(ic)/levelxy,
-     &                         iecndz(ic)/levelz)
+          if (iecndlxy(ic) == levelxy .and. iecndlz(ic) == levelz) then
+            ecndpvph(ic) = phi(iecndx(ic),iecndy(ic),iecndz(ic))
           endif
         enddo
-        if (levelxy == 1 .or. levelz == 1) then
-          do ic=1,nocndbdy
-            if (iocndlxy(ic) >= levelxy .and. iocndlz(ic) >= levelz) then
-              ocndpvph(ic) = phi(iocndx(ic)/levelxy,
-     &                           iocndy(ic)/levelxy,
-     &                           iocndz(ic)/levelz)
-            endif
-          enddo
-        endif
+        do ic=1,nocndbdy
+          if (iocndlxy(ic) == levelxy .and. iocndlz(ic) == levelz) then
+            ocndpvph(ic) = phi(iocndx(ic),iocndy(ic),iocndz(ic))
+          endif
+        enddo
       endif
 
 c     --- Set starting and ending parity.
@@ -1063,23 +1062,23 @@ c       --- end of transverse boundaries
 c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
-          if (parity == 0 .or. (levelxy > 1 .or. levelz > 1)) then
+          if (parity == 0) then
            call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
      &                    ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,
      &                    ecdelpx,ecdelpy,ecdelpz,iecndx,iecndy,iecndz,
      &                    iecndlxy,iecndlz,
      &                    ecvoltmx,ecvoltpx,ecvoltmy,ecvoltpy,ecvoltmz,ecvoltpz,
      &                    ecndpvph,localb0,localbnz,boundxy,l2symtry,l4symtry,
-     &                    levelxy,levelz,parity,mgform)
+     &                    levelxy,levelz,ecstart,mgform)
           endif
-          if (parity == 1 .and. (levelxy == 1 .or. levelz == 1)) then
+          if (parity == 1) then
            call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
      &                    ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,
      &                    ocdelpx,ocdelpy,ocdelpz,iocndx,iocndy,iocndz,
      &                    iocndlxy,iocndlz,
      &                    ocvoltmx,ocvoltpx,ocvoltmy,ocvoltpy,ocvoltmz,ocvoltpz,
      &                    ocndpvph,localb0,localbnz,boundxy,l2symtry,l4symtry,
-     &                    levelxy,levelz,parity,mgform)
+     &                    levelxy,levelz,ocstart,mgform)
           endif
         endif
 
@@ -1129,21 +1128,24 @@ c=============================================================================
 
 c Set conductor points to the desired potential.
 
-      integer(ISZ):: ic
+      integer(ISZ):: ic,il
+      il = int(log(1.*levelxy)/log(2.) + 0.5) + 1
 
 c     --- When at the finest level and not calculating the residual, set
 c     --- phi to the voltage of the conductor, otherwise, set it to zero.
       if (levelxy == 1 .and. levelz == 1 .and. .not. lresidual .and.
      &    (mgform == 1 .or. mgform2init)) then
-        do ic = 1,ncond
-          phi(ixcond(ic),iycond(ic),izcond(ic)) = condvolt(ic)
+        do ic = icstart(il),icstart(il+1)-1
+          if (icondlxy(ic) == levelxy .and. icondlz(ic) == levelz) then
+            phi(ixcond(ic),iycond(ic),izcond(ic)) = condvolt(ic)
+          endif
         enddo
       else
-        do ic=1,ncond
+        do ic=icstart(il),icstart(il+1)-1
 c         --- Only set points which are on the coarse grid at the current
 c         --- level of refinement.
-          if (icondlxy(ic) >= levelxy .and. icondlz(ic) >= levelz) then
-            phi(ixcond(ic)/levelxy,iycond(ic)/levelxy,izcond(ic)/levelz) = 0.
+          if (icondlxy(ic) == levelxy .and. icondlz(ic) == levelz) then
+            phi(ixcond(ic),iycond(ic),izcond(ic)) = 0.
           endif
         enddo
       endif
@@ -1156,8 +1158,8 @@ c=============================================================================
      &                      cdelpz,icndx,icndy,icndz,icndlxy,icndlz,
      &                      cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                      cndpvph,localb0,localbnz,boundxy,
-     &                      l2symtry,l4symtry,levelxy,levelz,parity,mgform)
-      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity
+     &                      l2symtry,l4symtry,levelxy,levelz,cstart,mgform)
+      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax), cdelmz(ncndmax)
@@ -1167,7 +1169,7 @@ c=============================================================================
       real(kind=8):: cvoltmx(ncndmax),cvoltmy(ncndmax),cvoltmz(ncndmax)
       real(kind=8):: cvoltpx(ncndmax),cvoltpy(ncndmax),cvoltpz(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
-      integer(ISZ):: localb0,localbnz,boundxy,mgform
+      integer(ISZ):: localb0,localbnz,boundxy,cstart(100),mgform
       logical(ISZ):: l2symtry,l4symtry
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -1184,131 +1186,110 @@ c to hold icndx-1, icndx+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
       real(kind=8):: rdx2cos,rdy2cos,rdz2cos,pxm,pym,pzm,pxp,pyp,pzp,denom
-      real(kind=8):: dxm,dxp,dym,dyp,dzm,dzp
-      real(kind=8):: voltfac,rhovolume
-      real(kind=8):: levelxyi,levelzi
+      real(kind=8):: voltfac
       integer(ISZ):: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
-      integer(ISZ):: icdx,icdy,icdz
+      integer(ISZ):: icdx,icdy,icdz,il
       logical(ISZ):: dosubgrid
 
       rdx2cos = rdx2c/srp
       rdy2cos = rdy2c/srp
       rdz2cos = rdz2c/srp
-      levelxyi = 1./levelxy
-      levelzi = 1./levelz
+      il = int(log(1.*levelxy)/log(2.) + 0.5) + 1
 
 c     --- loop over points near surface of conductors
-      do ic = 1,ncndbdy
+      do ic = cstart(il),cstart(il+1)-1
 
-c       --- Only use point if it is usable at this level or higher
-c       --- and if the parity is correct.
-        if (icndlxy(ic) >= levelxy .and. icndlz(ic) >= levelz) then
+c       --- Only use point if it is usable at this level.
+        if (icndlxy(ic) == levelxy .and. icndlz(ic) == levelz) then
 
-          icdx = icndx(ic)/levelxy
-          icdy = icndy(ic)/levelxy
-          icdz = icndz(ic)/levelz
+          icdx = icndx(ic)
+          icdy = icndy(ic)
+          icdz = icndz(ic)
 
-          if (mod(icdx+icdy+icdz,2)==parity) then
+c         --- set temporaries for boundaries
+          icndxp1 = icdx + 1
+          icndxm1 = icdx - 1
+          icndyp1 = icdy + 1
+          icndym1 = icdy - 1
+          icndzp1 = icdz + 1
+          icndzm1 = icdz - 1
 
-c           --- set temporaries for boundaries
-            icndxp1 = icdx + 1
-            icndxm1 = icdx - 1
-            icndyp1 = icdy + 1
-            icndym1 = icdy - 1
-            icndzp1 = icdz + 1
-            icndzm1 = icdz - 1
+          if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
+          if (icndxm1 == -1 .and.
+     &       (boundxy == 1 .or. l2symtry .or. l4symtry)) icndxm1 = 1
+          if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
+          if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
+          if (icndxm1 == -1 .or. icndxp1 == nx+1) cycle
 
-            if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
-            if (icndxm1 == -1 .and.
-     &         (boundxy == 1 .or. l2symtry .or. l4symtry)) icndxm1 = 1
-            if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
-            if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
-            if (icndxm1 == -1 .or. icndxp1 == nx+1) cycle
+          if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
+          if (icndym1 == -1 .and.
+     &       (boundxy == 1 .or. l4symtry)) icndym1 = 1
+          if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
+          if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
+          if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
 
-            if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
-            if (icndym1 == -1 .and.
-     &         (boundxy == 1 .or. l4symtry)) icndym1 = 1
-            if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
-            if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
-            if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
+          if (icdz == 0  .and. localb0  < 1) cycle
+          if (icdz == nz .and. localbnz < 1) cycle
 
-            if (icdz == 0  .and. localb0  < 1) cycle
-            if (icdz == nz .and. localbnz < 1) cycle
+c         --- Set temporaries with initial values.
+          pxm = phi(icndxm1,icdy   ,icdz   )
+          pxp = phi(icndxp1,icdy   ,icdz   )
+          pym = phi(icdx   ,icndym1,icdz   )
+          pyp = phi(icdx   ,icndyp1,icdz   )
+          pzm = phi(icdx   ,icdy   ,icndzm1)
+          pzp = phi(icdx   ,icdy   ,icndzp1)
+          denom = 1.
+          dosubgrid = .false.
 
-c           --- Set temporaries with initial values.
-            pxm = phi(icndxm1,icdy   ,icdz   )
-            pxp = phi(icndxp1,icdy   ,icdz   )
-            pym = phi(icdx   ,icndym1,icdz   )
-            pyp = phi(icdx   ,icndyp1,icdz   )
-            pzm = phi(icdx   ,icdy   ,icndzm1)
-            pzp = phi(icdx   ,icdy   ,icndzp1)
-            denom = 1.
-            dosubgrid = .false.
-            dxm = 1.
-            dxp = 1.
-            dym = 1.
-            dyp = 1.
-            dzm = 1.
-            dzp = 1.
+c         --- Only use actual voltage on finest level. Set to zero for
+c         --- coarser levels since solver for the residuals.
+          if (levelxy == 1 .and. levelz == 1 .and. mgform == 1) then
+            voltfac = 1.
+          else
+            voltfac = 0.
+          endif
 
-c           --- Only use actual voltage on finest level. Set to zero for
-c           --- coarser levels since solver for the residuals.
-            if (levelxy == 1 .and. levelz == 1 .and. mgform == 1) then
-              voltfac = 1.
-            else
-              voltfac = 0.
-            endif
-
-c           --- the point lower in x is inside the conductor
-            if (cdelmx(ic) < levelxy) then
-              pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
-              denom = denom + (levelxy-cdelmx(ic))/cdelmx(ic)*rdx2cos
-              dxm = cdelmx(ic)*levelxyi
-              dosubgrid = .true.
-            endif
-c           --- the point higher in x is inside the conductor
-            if (cdelpx(ic) < levelxy) then
-              pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
-              denom = denom + (levelxy-cdelpx(ic))/cdelpx(ic)*rdx2cos
-              dxp = cdelpx(ic)*levelxyi
-              dosubgrid = .true.
-            endif
-c           --- the point lower in y is inside the conductor
-            if (cdelmy(ic) < levelxy) then
-              pym = voltfac*cvoltmy(ic)/cdelmy(ic)
-              denom = denom + (levelxy-cdelmy(ic))/cdelmy(ic)*rdy2cos
-              dym = cdelmy(ic)*levelxyi
-              dosubgrid = .true.
-            endif
-c           --- the point higher in y is inside the conductor
-            if (cdelpy(ic) < levelxy) then
-              pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
-              denom = denom + (levelxy-cdelpy(ic))/cdelpy(ic)*rdy2cos
-              dyp = cdelpy(ic)*levelxyi
-              dosubgrid = .true.
-            endif
-c           --- the point lower in z is inside the conductor
-            if (cdelmz(ic) < levelz) then
-              pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
-              denom = denom + (levelz-cdelmz(ic))/cdelmz(ic)*rdz2cos
-              dzm = cdelmz(ic)*levelzi
-              dosubgrid = .true.
-            endif
-c           --- the point lower in z is inside the conductor
-            if (cdelpz(ic) < levelz) then
-              pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
-              denom = denom + (levelz-cdelpz(ic))/cdelpz(ic)*rdz2cos
-              dzp = cdelpz(ic)*levelzi
-              dosubgrid = .true.
-            endif
-c           --- calculate the new phi based on the boundary conditions
-            if (dosubgrid) then
-c             rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
-              rhovolume = 1.
-              phi(icdx,icdy,icdz) = (rho(icdx,icdy,icdz)*rhovolume +
-     &          (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
-     &          spm1*cndpvph(ic)
-            endif
+c         --- the point lower in x is inside the conductor
+          if (cdelmx(ic) < 1.) then
+            pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
+            denom = denom + (1.-cdelmx(ic))/cdelmx(ic)*rdx2cos
+            dosubgrid = .true.
+          endif
+c         --- the point higher in x is inside the conductor
+          if (cdelpx(ic) < 1.) then
+            pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
+            denom = denom + (1.-cdelpx(ic))/cdelpx(ic)*rdx2cos
+            dosubgrid = .true.
+          endif
+c         --- the point lower in y is inside the conductor
+          if (cdelmy(ic) < 1.) then
+            pym = voltfac*cvoltmy(ic)/cdelmy(ic)
+            denom = denom + (1.-cdelmy(ic))/cdelmy(ic)*rdy2cos
+            dosubgrid = .true.
+          endif
+c         --- the point higher in y is inside the conductor
+          if (cdelpy(ic) < 1.) then
+            pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
+            denom = denom + (1.-cdelpy(ic))/cdelpy(ic)*rdy2cos
+            dosubgrid = .true.
+          endif
+c         --- the point lower in z is inside the conductor
+          if (cdelmz(ic) < 1.) then
+            pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
+            denom = denom + (1.-cdelmz(ic))/cdelmz(ic)*rdz2cos
+            dosubgrid = .true.
+          endif
+c         --- the point lower in z is inside the conductor
+          if (cdelpz(ic) < 1.) then
+            pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
+            denom = denom + (1.-cdelpz(ic))/cdelpz(ic)*rdz2cos
+            dosubgrid = .true.
+          endif
+c         --- calculate the new phi based on the boundary conditions
+          if (dosubgrid) then
+            phi(icdx,icdy,icdz) = (rho(icdx,icdy,icdz) +
+     &        (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
+     &        spm1*cndpvph(ic)
           endif
         endif
       enddo
@@ -1321,9 +1302,9 @@ c=============================================================================
      &                       cdelpz,icndx,icndy,icndz,icndlxy,icndlz,
      &                       cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                       cndpvph,localb0,localbnz,boundxy,
-     &                       l2symtry,l4symtry,levelxy,levelz,parity,
+     &                       l2symtry,l4symtry,levelxy,levelz,cstart,
      &                       mgform,mgform2init)
-      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz,parity
+      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,levelxy,levelz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rho(0:nx,0:ny,0:nz), res(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rdx2,rdy2,rdz2,mgparam
@@ -1334,7 +1315,7 @@ c=============================================================================
       real(kind=8):: cvoltmx(ncndmax),cvoltmy(ncndmax),cvoltmz(ncndmax)
       real(kind=8):: cvoltpx(ncndmax),cvoltpy(ncndmax),cvoltpz(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
-      integer(ISZ):: localb0,localbnz,boundxy,mgform
+      integer(ISZ):: localb0,localbnz,boundxy,cstart(100),mgform
       logical(ISZ):: l2symtry,l4symtry,mgform2init
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -1365,12 +1346,10 @@ c to hold icndx-1, icndx+1 etc which are are adjusted appopriately for
 c points on the boundary.
 
       real(kind=8):: const,rdx2c,rdy2c,rdz2c,pxm,pym,pzm,pxp,pyp,pzp,denom
-      real(kind=8):: dxm,dxp,dym,dyp,dzm,dzp,rhovolume
       real(kind=8):: voltfac
       real(kind=8):: rdx2cs,rdy2cs,rdz2cs,ppp
       integer(ISZ):: ic,icndxp1,icndxm1,icndyp1,icndym1,icndzp1,icndzm1
-      integer(ISZ):: icdx,icdy,icdz
-      real(kind=8):: levelxyi,levelzi
+      integer(ISZ):: icdx,icdy,icdz,il
 
       const = 0.5/(rdx2+rdy2+rdz2)
       rdx2c = rdx2*const
@@ -1379,123 +1358,104 @@ c points on the boundary.
       rdx2cs = mgparam*rdx2*const
       rdy2cs = mgparam*rdy2*const
       rdz2cs = mgparam*rdz2*const
-      levelxyi = 1./levelxy
-      levelzi = 1./levelz
+      il = int(log(1.*levelxy)/log(2.) + 0.5) + 1
 
 c     --- loop over points near surface of conductors
-      do ic = 1,ncndbdy
+      do ic = cstart(il),cstart(il+1)-1
 
-c       --- Only use point if it is usable at this level or higher
-c       --- and if the parity is correct.
-        if (icndlxy(ic) >= levelxy .and. icndlz(ic) >= levelz) then
+c       --- Only use point if it is designated for this level.
+        if (icndlxy(ic) == levelxy .and. icndlz(ic) == levelz) then
 
-          icdx = icndx(ic)/levelxy
-          icdy = icndy(ic)/levelxy
-          icdz = icndz(ic)/levelz
+          icdx = icndx(ic)
+          icdy = icndy(ic)
+          icdz = icndz(ic)
 
-          if (mod(icdx+icdy+icdz,2)==parity) then
+c         --- set temporaries for boundaries
+          icndxp1 = icdx + 1
+          icndxm1 = icdx - 1
+          icndyp1 = icdy + 1
+          icndym1 = icdy - 1
+          icndzp1 = icdz + 1
+          icndzm1 = icdz - 1
 
-c           --- set temporaries for boundaries
-            icndxp1 = icdx + 1
-            icndxm1 = icdx - 1
-            icndyp1 = icdy + 1
-            icndym1 = icdy - 1
-            icndzp1 = icdz + 1
-            icndzm1 = icdz - 1
+          if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
+          if (icndxm1 == -1 .and.
+     &       (boundxy == 1 .or. l2symtry .or. l4symtry)) icndxm1 = 1
+          if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
+          if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
+          if (icndxm1 == -1 .or. icndxp1 == nx+1) cycle
 
-            if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
-            if (icndxm1 == -1 .and.
-     &         (boundxy == 1 .or. l2symtry .or. l4symtry)) icndxm1 = 1
-            if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
-            if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
-            if (icndxm1 == -1 .or. icndxp1 == nx+1) cycle
+          if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
+          if (icndym1 == -1 .and.
+     &       (boundxy == 1 .or. l4symtry)) icndym1 = 1
+          if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
+          if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
+          if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
 
-            if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
-            if (icndym1 == -1 .and.
-     &         (boundxy == 1 .or. l4symtry)) icndym1 = 1
-            if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
-            if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
-            if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
+          if (icdz == 0  .and. localb0  < 1) cycle
+          if (icdz == nz .and. localbnz < 1) cycle
 
-            if (icdz == 0  .and. localb0  < 1) cycle
-            if (icdz == nz .and. localbnz < 1) cycle
+c         --- set temporaries with initial values
+          pxm = phi(icndxm1,icdy   ,icdz   )
+          pxp = phi(icndxp1,icdy   ,icdz   )
+          pym = phi(icdx   ,icndym1,icdz   )
+          pyp = phi(icdx   ,icndyp1,icdz   )
+          pzm = phi(icdx   ,icdy   ,icndzm1)
+          pzp = phi(icdx   ,icdy   ,icndzp1)
+          denom = 1.
+          ppp = 1.
 
-c           --- set temporaries with initial values
-            pxm = phi(icndxm1,icdy   ,icdz   )
-            pxp = phi(icndxp1,icdy   ,icdz   )
-            pym = phi(icdx   ,icndym1,icdz   )
-            pyp = phi(icdx   ,icndyp1,icdz   )
-            pzm = phi(icdx   ,icdy   ,icndzm1)
-            pzp = phi(icdx   ,icdy   ,icndzp1)
-            denom = 1.
-            ppp = 1.
-            dxm = 1.
-            dxp = 1.
-            dym = 1.
-            dyp = 1.
-            dzm = 1.
-            dzp = 1.
+c         --- Only use actual voltage on finest level. Set to zero for
+c         --- coarser levels since solver for the residuals.
+          if (levelxy == 1 .and. levelz == 1 .and.
+     &        (mgform == 1 .or. mgform2init)) then
+            voltfac = 1.
+          else
+            voltfac = 0.
+          endif
 
-c           --- Only use actual voltage on finest level. Set to zero for
-c           --- coarser levels since solver for the residuals.
-            if (levelxy == 1 .and. levelz == 1 .and.
-     &          (mgform == 1 .or. mgform2init)) then
-              voltfac = 1.
-            else
-              voltfac = 0.
-            endif
-
-c           --- the point lower in x is inside the conductor
-            if (cdelmx(ic) < levelxy) then
-              pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
-              denom = denom + (levelxy-cdelmx(ic))/cdelmx(ic)*rdx2c
-              dxm = cdelmx(ic)*levelxyi
-              ppp = min(ppp,cdelmx(ic)*levelxyi)
-            endif
-c           --- the point higher in x is inside the conductor
-            if (cdelpx(ic) < levelxy) then
-              pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
-              denom = denom + (levelxy-cdelpx(ic))/cdelpx(ic)*rdx2c
-              dxp = cdelpx(ic)*levelxyi
-              ppp = min(ppp,cdelpx(ic)*levelxyi)
-            endif
-c           --- the point lower in y is inside the conductor
-            if (cdelmy(ic) < levelxy) then
-              pym = voltfac*cvoltmy(ic)/cdelmy(ic)
-              denom = denom + (levelxy-cdelmy(ic))/cdelmy(ic)*rdy2c
-              dym = cdelmy(ic)*levelxyi
-              ppp = min(ppp,cdelmy(ic)*levelxyi)
-            endif
-c           --- the point higher in y is inside the conductor
-            if (cdelpy(ic) < levelxy) then
-              pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
-              denom = denom + (levelxy-cdelpy(ic))/cdelpy(ic)*rdy2c
-              dyp = cdelpy(ic)*levelxyi
-              ppp = min(ppp,cdelpy(ic)*levelxyi)
-            endif
-c           --- the point lower in z is inside the conductor
-            if (cdelmz(ic) < levelz) then
-              pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
-              denom = denom + (levelz-cdelmz(ic))/cdelmz(ic)*rdz2c
-              dzm = cdelmz(ic)*levelxyi
-              ppp = min(ppp,cdelmz(ic)*levelzi)
-            endif
-c           --- the point lower in z is inside the conductor
-            if (cdelpz(ic) < levelz) then
-              pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
-              denom = denom + (levelz-cdelpz(ic))/cdelpz(ic)*rdz2c
-              dzp = cdelpz(ic)*levelxyi
-              ppp = min(ppp,cdelpz(ic)*levelzi)
-            endif
-c           --- calculate the residual based on the boundary conditions
-            if (ppp < 1.) then
-c             rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
-              rhovolume = 1.
-              if (mgform2init) ppp = 1.
-              res(icdx,icdy,icdz) = ppp*(rho(icdx,icdy,icdz)*rhovolume
-     &               + (pxm+pxp)*rdx2cs + (pym+pyp)*rdy2cs + (pzm+pzp)*rdz2cs
-     &               - phi(icdx,icdy,icdz)*mgparam*denom)
-            endif
+c         --- the point lower in x is inside the conductor
+          if (cdelmx(ic) < 1.) then
+            pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
+            denom = denom + (1.-cdelmx(ic))/cdelmx(ic)*rdx2c
+            ppp = min(ppp,cdelmx(ic))
+          endif
+c         --- the point higher in x is inside the conductor
+          if (cdelpx(ic) < 1.) then
+            pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
+            denom = denom + (1.-cdelpx(ic))/cdelpx(ic)*rdx2c
+            ppp = min(ppp,cdelpx(ic))
+          endif
+c         --- the point lower in y is inside the conductor
+          if (cdelmy(ic) < 1.) then
+            pym = voltfac*cvoltmy(ic)/cdelmy(ic)
+            denom = denom + (1.-cdelmy(ic))/cdelmy(ic)*rdy2c
+            ppp = min(ppp,cdelmy(ic))
+          endif
+c         --- the point higher in y is inside the conductor
+          if (cdelpy(ic) < 1.) then
+            pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
+            denom = denom + (1.-cdelpy(ic))/cdelpy(ic)*rdy2c
+            ppp = min(ppp,cdelpy(ic))
+          endif
+c         --- the point lower in z is inside the conductor
+          if (cdelmz(ic) < 1.) then
+            pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
+            denom = denom + (1.-cdelmz(ic))/cdelmz(ic)*rdz2c
+            ppp = min(ppp,cdelmz(ic))
+          endif
+c         --- the point higher in z is inside the conductor
+          if (cdelpz(ic) < 1.) then
+            pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
+            denom = denom + (1.-cdelpz(ic))/cdelpz(ic)*rdz2c
+            ppp = min(ppp,cdelpz(ic))
+          endif
+c         --- calculate the residual based on the boundary conditions
+          if (ppp < 1.) then
+            if (mgform2init) ppp = 1.
+            res(icdx,icdy,icdz) = ppp*(rho(icdx,icdy,icdz)
+     &             + (pxm+pxp)*rdx2cs + (pym+pyp)*rdy2cs + (pzm+pzp)*rdz2cs
+     &             - phi(icdx,icdy,icdz)*mgparam*denom)
           endif
         endif
       enddo
@@ -1593,32 +1553,21 @@ c     --- Zero the residual inside conductors.
       call cond_potmg(nx,ny,nz,res,levelxy,levelz,.true.,mgform,.false.)
 
       if (lcndbndy) then
-c     --- Calculate the residual near the conductor. Note that the odd points
-c     --- are only used at the finest level. Also, for higher levels, the even
-c     --- points are passed down with an odd parity since they may be odd at
-c     --- that level.
-      if (levelxy == 1 .or. levelz == 1) then
-        call condbndyres(nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,
-     &                ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,
-     &                ocdelpz,iocndx,iocndy,iocndz,iocndlxy,iocndlz,
-     &                ocvoltmx,ocvoltpx,ocvoltmy,ocvoltpy,ocvoltmz,ocvoltpz,
-     &                ocndpvph,localb0,localbnz,boundxy,
-     &                l2symtry,l4symtry,levelxy,levelz,1,mgform,mgform2init)
-      endif
-      if (levelxy > 1 .or. levelz > 1) then
-        call condbndyres(nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,
-     &                ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,ecdelpx,ecdelpy,
-     &                ecdelpz,iecndx,iecndy,iecndz,iecndlxy,iecndlz,
-     &                ecvoltmx,ecvoltpx,ecvoltmy,ecvoltpy,ecvoltmz,ecvoltpz,
-     &                ecndpvph,localb0,localbnz,boundxy,
-     &                l2symtry,l4symtry,levelxy,levelz,1,mgform,mgform2init)
-      endif
+c     --- Calculate the residual near the conductor.
       call condbndyres(nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,
      &                ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,ecdelpx,ecdelpy,
      &                ecdelpz,iecndx,iecndy,iecndz,iecndlxy,iecndlz,
      &                ecvoltmx,ecvoltpx,ecvoltmy,ecvoltpy,ecvoltmz,ecvoltpz,
      &                ecndpvph,localb0,localbnz,boundxy,
-     &                l2symtry,l4symtry,levelxy,levelz,0,mgform,mgform2init)
+     &                l2symtry,l4symtry,levelxy,levelz,ecstart,
+     &                mgform,mgform2init)
+      call condbndyres(nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,
+     &                ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,
+     &                ocdelpz,iocndx,iocndy,iocndz,iocndlxy,iocndlz,
+     &                ocvoltmx,ocvoltpx,ocvoltmy,ocvoltpy,ocvoltmz,ocvoltpz,
+     &                ocndpvph,localb0,localbnz,boundxy,
+     &                l2symtry,l4symtry,levelxy,levelz,ocstart,
+     &                mgform,mgform2init)
 
       endif
 
@@ -1646,166 +1595,974 @@ c     --- Longitudinal boundaries
       return
       end
 c=============================================================================
-      subroutine conductor_data_level(nx,ny,nz,dx,dy,dz)
-      use PSOR3d
-      use MultigridConductor3d
-      use Multigrid3d
+c=============================================================================
+c=============================================================================
+      subroutine setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                        l2symtry,l4symtry)
+      use Parallel
+      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: dx,dy,dz
+      logical(ISZ):: l2symtry,l4symtry
 
-c Set the coarsest level at which each conductor point is still on the grid.
-c Also, remove subgrid data points which are not used - those points which are
-c not near a conducting surface at any level of refinement.
+c Makes call to the recursive routine which generates the conductors.
 
-      integer(ISZ):: ic,ne,no,levelxy,levelz
-      integer(ISZ):: tnx,tny,tnz
-      real(kind=8):: tdx,tdy,tdz
+      integer(ISZ):: nzfull
 
-c     --- Zero arrays, assuming that no points are used.
-c     call zeroarry(icondlxy,ncond)
-c     call zeroarry(icondlz ,ncond)
-c     call zeroarry(iecndlxy,necndbdy)
-c     call zeroarry(iecndlz ,necndbdy)
-c     call zeroarry(iocndlxy,nocndbdy)
-c     call zeroarry(iocndlz ,nocndbdy)
-      icondlxy(:ncond) = 0
-      icondlz(:ncond) = 0
-      iecndlxy(:necndbdy) = 0
-      iecndlz(:necndbdy) = 0
-      iocndlxy(:nocndbdy) = 0
-      iocndlz(:nocndbdy) = 0
+c     --- nzfull is needed, but difficult to pass down from above. But,
+c     --- it can be obtained from local info
+#ifdef MPIPARALLEL
+      nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
+#else
+      nzfull = nz
+#endif
 
-c     --- Initialize the temps
-      tnx = nx
-      tny = ny
-      tnz = nz
-      tdx = dx
-      tdy = dy
-      tdz = dz
-      levelxy = 1
-      levelz = 1
-
-c     --- Loop until at least one of the axis is at the coarsest level.
-      do while (mod(tnx,4) == 0 .and. mod(tny,4) == 0 .and. mod(tnz,4) == 0)
-
-c       --- Interior points
-        do ic=1,ncond
-c         --- Check if point is on the current grid.
-          if (mod(ixcond(ic),levelxy) == 0 .and.
-     &        mod(iycond(ic),levelxy) == 0 .and.
-     &        mod(izcond(ic),levelz ) == 0) then
-            icondlxy(ic) = levelxy
-            icondlz(ic)  = levelz
-          endif
-        enddo
-
-c       --- Even points
-        do ic=1,necndbdy
-c         --- Check if point is near a conductor.
-c         --- i.e. is within one grid cell of a conductor on the current grid.
-          if (ecdelmx(ic)/levelxy < 1. .or. ecdelpx(ic)/levelxy < 1. .or.
-     &        ecdelmy(ic)/levelxy < 1. .or. ecdelpy(ic)/levelxy < 1. .or.
-     &        ecdelmz(ic)/levelz  < 1. .or. ecdelpz(ic)/levelz  < 1.) then
-c           --- Now, check if point is on the current grid.
-            if (mod(iecndx(ic),levelxy) == 0 .and.
-     &          mod(iecndy(ic),levelxy) == 0 .and.
-     &          mod(iecndz(ic),levelz ) == 0) then
-              iecndlxy(ic) = levelxy
-              iecndlz(ic)  = levelz
-            endif
-          endif
-        enddo
-
-c       --- Odd points
-        do ic=1,nocndbdy
-c         --- Check if point is near a conductor.
-c         --- i.e. is within one grid cell of a conductor on the current grid.
-          if (ocdelmx(ic)/levelxy < 1. .or. ocdelpx(ic)/levelxy < 1. .or.
-     &        ocdelmy(ic)/levelxy < 1. .or. ocdelpy(ic)/levelxy < 1. .or.
-     &        ocdelmz(ic)/levelz  < 1. .or. ocdelpz(ic)/levelz  < 1.) then
-c           --- Now, check if point is on the current grid.
-            if (mod(iocndx(ic),levelxy) == 0 .and.
-     &          mod(iocndy(ic),levelxy) == 0 .and.
-     &          mod(iocndz(ic),levelz ) == 0) then
-              iocndlxy(ic) = levelxy
-              iocndlz(ic)  = levelz
-            endif
-          endif
-        enddo
-
-c       --- Go to the next level of coarseness.
-        tnx = tnx/2
-        tny = tny/2
-        tdx = tdx*2.
-        tdy = tdy*2.
-        levelxy = 2*levelxy
-        if (1.5*tdz < tdx) then
-          tnz = tnz/2
-          tdz = tdz*2.
-          levelz = 2*levelz
-        endif
-
-      enddo
-
-c     --- Now, clear out all of the points which were not flagged as usable.
-      ne = 0
-      do ic=1,necndbdy
-        if (iecndlxy(ic) > 0) then
-          ne = ne + 1
-          if (ne < ic) then
-            iecndx(ne)   = iecndx(ic)
-            iecndy(ne)   = iecndy(ic)
-            iecndz(ne)   = iecndz(ic)
-            ecdelmx(ne)  = ecdelmx(ic)
-            ecdelmy(ne)  = ecdelmy(ic)
-            ecdelmz(ne)  = ecdelmz(ic)
-            ecdelpx(ne)  = ecdelpx(ic)
-            ecdelpy(ne)  = ecdelpy(ic)
-            ecdelpz(ne)  = ecdelpz(ic)
-            ecvolt(ne)   = ecvolt(ic)
-            ecvoltmx(ne) = ecvoltmx(ic)
-            ecvoltpx(ne) = ecvoltpx(ic)
-            ecvoltmy(ne) = ecvoltmy(ic)
-            ecvoltpy(ne) = ecvoltpy(ic)
-            ecvoltmz(ne) = ecvoltmz(ic)
-            ecvoltpz(ne) = ecvoltpz(ic)
-            iecndlxy(ne) = iecndlxy(ic)
-            iecndlz(ne)  = iecndlz(ic)
-          endif
-        endif
-      enddo
-      necndbdy = ne
-
-      no = 0
-      do ic=1,nocndbdy
-        if (iocndlxy(ic) > 0) then
-          no = no + 1
-          if (no < ic) then
-            iocndx(no)   = iocndx(ic)
-            iocndy(no)   = iocndy(ic)
-            iocndz(no)   = iocndz(ic)
-            ocdelmx(no)  = ocdelmx(ic)
-            ocdelmy(no)  = ocdelmy(ic)
-            ocdelmz(no)  = ocdelmz(ic)
-            ocdelpx(no)  = ocdelpx(ic)
-            ocdelpy(no)  = ocdelpy(ic)
-            ocdelpz(no)  = ocdelpz(ic)
-            ocvolt(no)   = ocvolt(ic)
-            ocvoltmx(no) = ocvoltmx(ic)
-            ocvoltpx(no) = ocvoltpx(ic)
-            ocvoltmy(no) = ocvoltmy(ic)
-            ocvoltpy(no) = ocvoltpy(ic)
-            ocvoltmz(no) = ocvoltmz(ic)
-            ocvoltpz(no) = ocvoltpz(ic)
-            iocndlxy(no) = iocndlxy(ic)
-            iocndlz(no)  = iocndlz(ic)
-          endif
-        endif
-      enddo
-      nocndbdy = no
+      call setcndtr3dmgrecur(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,nzfull,
+     &                       dx,dy,dz,l2symtry,l4symtry,
+     &                       1,1,my_index,nslaves,izfsslave,nzfsslave)
 
       return
       end
+c=============================================================================
+      RECURSIVE subroutine setcndtr3dmgrecur(xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                      nx,ny,nz,nzfull,dx,dy,dz,l2symtry,l4symtry,
+     &                      levelxy,levelz,my_index,nslaves,izfsslave,nzfsslave)
+      use PSOR3d
+      use MultigridConductor3d
+      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,nzfull,levelxy,levelz
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+
+c Recursively calls the routine to generate the conductor data at the
+c various mesh resolutions needed by the MG solver.
+
+      real(kind=8):: newzmmin
+      integer(ISZ):: nznew
+      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      integer(ISZ):: ic1,ic2,ie1,ie2,io1,io2
+
+c     --- Get the conductors for this level
+      ic1 = ncond + 1
+      ie1 = necndbdy + 1
+      io1 = nocndbdy + 1
+      call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                l2symtry,l4symtry)
+      ic2 = ncond
+      ie2 = necndbdy
+      io2 = nocndbdy
+      call gchange("MultigridConductor3d",0)
+      icondlxy(ic1:ic2) = levelxy
+      icondlz(ic1:ic2) = levelz
+      iecndlxy(ie1:ie2) = levelxy
+      iecndlz(ie1:ie2) = levelz
+      iocndlxy(io1:io2) = levelxy
+      iocndlz(io1:io2) = levelz
+      ecvoltmx(ie1:ie2) = ecvolt(ie1:ie2)
+      ecvoltpx(ie1:ie2) = ecvolt(ie1:ie2)
+      ecvoltmy(ie1:ie2) = ecvolt(ie1:ie2)
+      ecvoltpy(ie1:ie2) = ecvolt(ie1:ie2)
+      ecvoltmz(ie1:ie2) = ecvolt(ie1:ie2)
+      ecvoltpz(ie1:ie2) = ecvolt(ie1:ie2)
+      ocvoltmx(io1:io2) = ocvolt(io1:io2)
+      ocvoltpx(io1:io2) = ocvolt(io1:io2)
+      ocvoltmy(io1:io2) = ocvolt(io1:io2)
+      ocvoltpy(io1:io2) = ocvolt(io1:io2)
+      ocvoltmz(io1:io2) = ocvolt(io1:io2)
+      ocvoltpz(io1:io2) = ocvolt(io1:io2)
+
+c     --- If grid is at its coarsest level in any of the axis or
+c     --- any dimensions are odd, then return
+      if (mod(nx,4) /= 0 .or. mod(ny,4) /= 0 .or. mod(nzfull,4) /= 0) return
+
+c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+c     --- all axis.
+c     --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
+      if (dz > 4./3.*dx) then
+
+c       --- Recursively call this routine for the next coarser level.
+c       --- Note the the srfrv routine does not actually use the xmesh
+c       --- and ymesh arguments so they don't need to be modified.
+        call setcndtr3dmgrecur(xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                         nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
+     &                         l2symtry,l4symtry,levelxy*2,levelz,
+     &                         my_index,nslaves,izfsslave,nzfsslave)
+
+      else
+
+#ifdef MPIPARALLEL
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                  nzfull)
+c       --- Set new value of nz
+        nznew = nzfsslave2(my_index)
+        newzmmin = zmmin - (izfsslave(my_index) - 2*izfsslave2(my_index))*dz
+#else
+        nznew = nz/2
+        newzmmin = zmmin
+#endif
+
+c       --- Recursively call this routine for the next coarser level.
+c       --- Note the the srfrv routine does not actually use the xmesh
+c       --- and ymesh arguments so they don't need to be modified.
+        call setcndtr3dmgrecur(xmmin,ymmin,zmmin,zbeam,zgrid,
+     &                         nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
+     &                         l2symtry,l4symtry,levelxy*2,levelz*2,
+     &                         my_index,nslaves,izfsslave2,nzfsslave2)
+
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                        xmin,xmax,ymin,ymax,lshell,
+     &                        zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      use Parallel
+      character(*):: rofzfunc
+      real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
+      logical(ISZ):: lfill,lshell
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Makes call to the recursive routine which generates the conductors.
+
+      integer(ISZ):: nzfull
+
+c     --- nzfull is needed, but difficult to pass down from above. But,
+c     --- it can be obtained from local info
+#ifdef MPIPARALLEL
+      nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
+#else
+      nzfull = nz
+#endif
+
+      call srfrvout3dmgrecur(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                       xmin,xmax,ymin,ymax,lshell,
+     &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
+     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                       1,1,my_index,nslaves,izfsslave,nzfsslave)
+
+      return
+      end
+c=============================================================================
+      RECURSIVE subroutine srfrvout3dmgrecur(rofzfunc,volt,zmin,zmax,
+     &                      xcent,ycent,rmax,lfill,xmin,xmax,ymin,ymax,lshell,
+     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
+     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                      levelxy,levelz,my_index,nslaves,izfsslave,nzfsslave)
+      use PSOR3d
+      use MultigridConductor3d
+      character(*):: rofzfunc
+      real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
+      logical(ISZ):: lfill,lshell
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,nzfull,ix_axis,iy_axis,levelxy,levelz
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+
+c Recursively calls the routine to generate the conductor data at the
+c various mesh resolutions needed by the MG solver.
+
+      real(kind=8):: newzmmin,newzmmax
+      integer(ISZ):: nznew
+      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      integer(ISZ):: ic1,ic2,ie1,ie2,io1,io2
+
+c     --- Get the conductors for this level
+      ic1 = ncond + 1
+      ie1 = necndbdy + 1
+      io1 = nocndbdy + 1
+      call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                xmin,xmax,ymin,ymax,lshell,
+     &                zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      ic2 = ncond
+      ie2 = necndbdy
+      io2 = nocndbdy
+      call gchange("MultigridConductor3d",0)
+      icondlxy(ic1:ic2) = levelxy
+      icondlz(ic1:ic2) = levelz
+      iecndlxy(ie1:ie2) = levelxy
+      iecndlz(ie1:ie2) = levelz
+      iocndlxy(io1:io2) = levelxy
+      iocndlz(io1:io2) = levelz
+      ecvoltmx(ie1:ie2) = volt
+      ecvoltpx(ie1:ie2) = volt
+      ecvoltmy(ie1:ie2) = volt
+      ecvoltpy(ie1:ie2) = volt
+      ecvoltmz(ie1:ie2) = volt
+      ecvoltpz(ie1:ie2) = volt
+      ocvoltmx(io1:io2) = volt
+      ocvoltpx(io1:io2) = volt
+      ocvoltmy(io1:io2) = volt
+      ocvoltpy(io1:io2) = volt
+      ocvoltmz(io1:io2) = volt
+      ocvoltpz(io1:io2) = volt
+
+c     --- If grid is at its coarsest level in any of the axis or
+c     --- any dimensions are odd, then return
+      if (mod(nx,4) /= 0 .or. mod(ny,4) /= 0 .or. mod(nzfull,4) /= 0) return
+
+c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+c     --- all axis.
+c     --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
+      if (dz > 4./3.*dx) then
+
+c       --- Recursively call this routine for the next coarser level.
+c       --- Note the the srfrv routine does not actually use the xmesh
+c       --- and ymesh arguments so they don't need to be modified.
+        call srfrvout3dmgrecur(rofzfunc,volt,zmin,zmax,
+     &                   xcent,ycent,rmax,lfill,xmin,xmax,ymin,ymax,lshell,
+     &                   zmmin,zmmax,zbeam,dx*2.,dy*2.,dz,nx/2,ny/2,nz,nzfull,
+     &                   ix_axis/2,iy_axis/2,xmesh,ymesh,l2symtry,l4symtry,
+     &                   levelxy*2,levelz,my_index,nslaves,izfsslave,nzfsslave)
+
+      else
+
+#ifdef MPIPARALLEL
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                  nzfull)
+c       --- Set new value of nz
+        nznew = nzfsslave2(my_index)
+        newzmmin = zmmin - (izfsslave(my_index) - 2*izfsslave2(my_index))*dz
+        newzmmax = newzmmin + nzfsslave2(my_index)*2*dz
+#else
+        nznew = nz/2
+        newzmmin = zmmin
+        newzmmax = zmmax
+#endif
+
+c       --- Recursively call this routine for the next coarser level.
+c       --- Note the the srfrv routine does not actually use the xmesh
+c       --- and ymesh arguments so they don't need to be modified.
+        call srfrvout3dmgrecur(rofzfunc,volt,zmin,zmax,
+     &                      xcent,ycent,rmax,lfill,xmin,xmax,ymin,ymax,lshell,
+     &                      newzmmin,newzmmax,zbeam,dx*2.,dy*2.,dz*2.,
+     &                      nx/2,ny/2,nznew,nzfull/2,ix_axis/2,iy_axis/2,
+     &                      xmesh,ymesh,l2symtry,l4symtry,levelxy*2,levelz*2,
+     &                      my_index,nslaves,izfsslave2,nzfsslave2)
+
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+     &                       xmin,xmax,ymin,ymax,lshell,
+     &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      use Parallel
+      character(*):: rofzfunc
+      real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
+      logical(ISZ):: lfill,lshell
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Makes call to the recursive routine which generates the conductors.
+
+      integer(ISZ):: nzfull
+
+c     --- nzfull is needed, but difficult to pass down from above. But,
+c     --- it can be obtained from local info
+#ifdef MPIPARALLEL
+      nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
+#else
+      nzfull = nz
+#endif
+
+      call srfrvin3dmgrecur(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+     &                      xmin,xmax,ymin,ymax,lshell,
+     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
+     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                      1,1,my_index,nslaves,izfsslave,nzfsslave)
+
+      return
+      end
+c=============================================================================
+      RECURSIVE subroutine srfrvin3dmgrecur(rofzfunc,volt,zmin,zmax,
+     &                      xcent,ycent,rmin,lfill,xmin,xmax,ymin,ymax,lshell,
+     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
+     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                      levelxy,levelz,my_index,nslaves,izfsslave,nzfsslave)
+      use PSOR3d
+      use MultigridConductor3d
+      character(*):: rofzfunc
+      real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
+      logical(ISZ):: lfill,lshell
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,nzfull,ix_axis,iy_axis,levelxy,levelz
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+
+c Recursively calls the routine to generate the conductor data at the
+c various mesh resolutions needed by the MG solver.
+
+      real(kind=8):: newzmmin,newzmmax
+      integer(ISZ):: nznew
+      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      integer(ISZ):: ic1,ic2,ie1,ie2,io1,io2
+
+c     --- Get the conductors for this level
+      ic1 = ncond + 1
+      ie1 = necndbdy + 1
+      io1 = nocndbdy + 1
+      call srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+     &               xmin,xmax,ymin,ymax,lshell,
+     &               zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &               ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      ic2 = ncond
+      ie2 = necndbdy
+      io2 = nocndbdy
+      call gchange("MultigridConductor3d",0)
+      icondlxy(ic1:ic2) = levelxy
+      icondlz(ic1:ic2) = levelz
+      iecndlxy(ie1:ie2) = levelxy
+      iecndlz(ie1:ie2) = levelz
+      iocndlxy(io1:io2) = levelxy
+      iocndlz(io1:io2) = levelz
+      ecvoltmx(ie1:ie2) = volt
+      ecvoltpx(ie1:ie2) = volt
+      ecvoltmy(ie1:ie2) = volt
+      ecvoltpy(ie1:ie2) = volt
+      ecvoltmz(ie1:ie2) = volt
+      ecvoltpz(ie1:ie2) = volt
+      ocvoltmx(io1:io2) = volt
+      ocvoltpx(io1:io2) = volt
+      ocvoltmy(io1:io2) = volt
+      ocvoltpy(io1:io2) = volt
+      ocvoltmz(io1:io2) = volt
+      ocvoltpz(io1:io2) = volt
+
+c     --- If grid is at its coarsest level in any of the axis or
+c     --- any dimensions are odd, then return
+      if (mod(nx,4) /= 0 .or. mod(ny,4) /= 0 .or. mod(nzfull,4) /= 0) return
+
+c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+c     --- all axis.
+c     --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
+      if (dz > 4./3.*dx) then
+
+c       --- Recursively call this routine for the next coarser level.
+c       --- Note the the srfrv routine does not actually use the xmesh
+c       --- and ymesh arguments so they don't need to be modified.
+        call srfrvin3dmgrecur(rofzfunc,volt,zmin,zmax,
+     &                    xcent,ycent,rmin,lfill,xmin,xmax,ymin,ymax,lshell,
+     &                    zmmin,zmmax,zbeam,dx*2.,dy*2.,dz,nx/2,ny/2,nz,nzfull,
+     &                    ix_axis/2,iy_axis/2,xmesh,ymesh,l2symtry,l4symtry,
+     &                    levelxy*2,levelz,my_index,nslaves,izfsslave,nzfsslave)
+
+      else
+
+#ifdef MPIPARALLEL
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                  nzfull)
+c       --- Set new value of nz
+        nznew = nzfsslave2(my_index)
+        newzmmin = zmmin - (izfsslave(my_index) - 2*izfsslave2(my_index))*dz
+        newzmmax = newzmmin + nzfsslave2(my_index)*2*dz
+#else
+        nznew = nz/2
+        newzmmin = zmmin
+        newzmmax = zmmax
+#endif
+
+c       --- Recursively call this routine for the next coarser level.
+c       --- Note the the srfrv routine does not actually use the xmesh
+c       --- and ymesh arguments so they don't need to be modified.
+        call srfrvin3dmgrecur(rofzfunc,volt,zmin,zmax,
+     &                      xcent,ycent,rmin,lfill,xmin,xmax,ymin,ymax,lshell,
+     &                      newzmmin,newzmmax,zbeam,dx*2.,dy*2.,dz*2.,
+     &                      nx/2,ny/2,nznew,nzfull/2,ix_axis/2,iy_axis/2,
+     &                      xmesh,ymesh,l2symtry,l4symtry,levelxy*2,levelz*2,
+     &                      my_index,nslaves,izfsslave2,nzfsslave2)
+
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,
+     &                          xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
+     &                          zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                          ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      use Parallel
+      character(*):: rminofz,rmaxofz
+      real(kind=8):: volt,zmin,zmax,xcent,ycent
+      logical(ISZ):: lzend,lshell
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Makes call to the recursive routine which generates the conductors.
+
+      integer(ISZ):: nzfull
+
+c     --- nzfull is needed, but difficult to pass down from above. But,
+c     --- it can be obtained from local info
+#ifdef MPIPARALLEL
+      nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
+#else
+      nzfull = nz
+#endif
+
+      call srfrvinout3dmgrecur(rminofz,rmaxofz,volt,zmin,zmax,
+     &                         xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
+     &                         zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
+     &                         ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                         1,1,my_index,nslaves,izfsslave,nzfsslave)
+
+      return
+      end
+c=============================================================================
+      RECURSIVE subroutine srfrvinout3dmgrecur(rminofz,rmaxofz,volt,zmin,zmax,
+     &                          xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
+     &                          zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,nzfull,
+     &                          ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
+     &                          levelxy,levelz,
+     &                          my_index,nslaves,izfsslave,nzfsslave)
+      use PSOR3d
+      use MultigridConductor3d
+      character(*):: rminofz,rmaxofz
+      real(kind=8):: volt,zmin,zmax,xcent,ycent
+      logical(ISZ):: lzend,lshell
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,nzfull,ix_axis,iy_axis,levelxy,levelz
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+
+c Recursively calls the routine to generate the conductor data at the
+c various mesh resolutions needed by the MG solver.
+
+      real(kind=8):: newzmmin,newzmmax
+      integer(ISZ):: nznew
+      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      integer(ISZ):: ic1,ic2,ie1,ie2,io1,io2
+
+c     --- Get the conductors for this level
+      ic1 = ncond + 1
+      ie1 = necndbdy + 1
+      io1 = nocndbdy + 1
+      call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+     &                  lzend,xmin,xmax,ymin,ymax,lshell,
+     &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      ic2 = ncond
+      ie2 = necndbdy
+      io2 = nocndbdy
+      call gchange("MultigridConductor3d",0)
+      icondlxy(ic1:ic2) = levelxy
+      icondlz(ic1:ic2) = levelz
+      iecndlxy(ie1:ie2) = levelxy
+      iecndlz(ie1:ie2) = levelz
+      iocndlxy(io1:io2) = levelxy
+      iocndlz(io1:io2) = levelz
+      ecvoltmx(ie1:ie2) = volt
+      ecvoltpx(ie1:ie2) = volt
+      ecvoltmy(ie1:ie2) = volt
+      ecvoltpy(ie1:ie2) = volt
+      ecvoltmz(ie1:ie2) = volt
+      ecvoltpz(ie1:ie2) = volt
+      ocvoltmx(io1:io2) = volt
+      ocvoltpx(io1:io2) = volt
+      ocvoltmy(io1:io2) = volt
+      ocvoltpy(io1:io2) = volt
+      ocvoltmz(io1:io2) = volt
+      ocvoltpz(io1:io2) = volt
+
+c     --- If grid is at its coarsest level in any of the axis or
+c     --- any dimensions are odd, then return
+      if (mod(nx,4) /= 0 .or. mod(ny,4) /= 0 .or. mod(nzfull,4) /= 0) return
+
+c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+c     --- all axis.
+c     --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
+      if (dz > 4./3.*dx) then
+
+c       --- Recursively call this routine for the next coarser level.
+c       --- Note the the srfrv routine does not actually use the xmesh
+c       --- and ymesh arguments so they don't need to be modified.
+        call srfrvinout3dmgrecur(rminofz,rmaxofz,volt,zmin,zmax,
+     &                    xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
+     &                    zmmin,zmmax,zbeam,dx*2.,dy*2.,dz,nx/2,ny/2,nz,nzfull,
+     &                    ix_axis/2,iy_axis/2,xmesh,ymesh,l2symtry,l4symtry,
+     &                    levelxy*2,levelz,
+     &                    my_index,nslaves,izfsslave,nzfsslave)
+
+      else
+
+#ifdef MPIPARALLEL
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                  nzfull)
+c       --- Set new value of nz
+        nznew = nzfsslave2(my_index)
+        newzmmin = zmmin - (izfsslave(my_index) - 2*izfsslave2(my_index))*dz
+        newzmmax = newzmmin + nzfsslave2(my_index)*2*dz
+#else
+        nznew = nz/2
+        newzmmin = zmmin
+        newzmmax = zmmax
+#endif
+
+c       --- Recursively call this routine for the next coarser level.
+c       --- Note the the srfrv routine does not actually use the xmesh
+c       --- and ymesh arguments so they don't need to be modified.
+        call srfrvinout3dmgrecur(rminofz,rmaxofz,volt,zmin,zmax,
+     &                      xcent,ycent,lzend,xmin,xmax,ymin,ymax,lshell,
+     &                      newzmmin,newzmmax,zbeam,dx*2.,dy*2.,dz*2.,
+     &                      nx/2,ny/2,nznew,nzfull/2,ix_axis/2,iy_axis/2,
+     &                      xmesh,ymesh,l2symtry,l4symtry,
+     &                      levelxy*2,levelz*2,
+     &                      my_index,nslaves,izfsslave2,nzfsslave2)
+
+      endif
+
+      return
+      end
+c=============================================================================
+c=============================================================================
+c=============================================================================
+      RECURSIVE subroutine checkconductors(nx,ny,nz,nzfull,dx,dy,dz,
+     &                                     l2symtry,l4symtry)
+      use PSOR3d
+      use MultigridConductor3d
+      use Parallel
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: dx,dy,dz
+      logical(ISZ):: l2symtry,l4symtry
+
+c Recursively calls the routine to generate the conductor data at the
+c various mesh resolutions needed by the MG solver.
+
+      integer(ISZ):: iii(0:nx,0:ny,0:nz)
+      integer(ISZ):: ic,ix,iy,iz,ii,nn
+      integer(ISZ),allocatable:: isort(:)
+
+c     --- Set the conductor points.
+      iii = 0
+      do ic=1,ncond
+        ix = ixcond(ic)*icondlxy(ic)
+        iy = iycond(ic)*icondlxy(ic)
+        iz = izcond(ic)*icondlz(ic)
+        iii(ix,iy,iz) = ncndmax + 1
+      enddo
+
+c     --- Make initial call to checkconductors1
+        call checkconductors1(nx,ny,nz,nzfull,dx,dy,dz,
+     &                        l2symtry,l4symtry,1,1,
+     &                        nx,ny,nz,iii,
+     &                        my_index,nslaves,izfsslave,nzfsslave)
+
+c     --- Sort the conductor data by level number
+c     --- First, sort conductor points
+      allocate(isort(ncond))
+      call isortconductor(ncond,icondlxy,isort,icstart)
+      nn = ncond
+      ncond = maxval(icstart) - 1
+      call iswapconductor(ncond,isort,nn,ixcond)
+      call iswapconductor(ncond,isort,nn,iycond)
+      call iswapconductor(ncond,isort,nn,izcond)
+      call iswapconductor(ncond,isort,nn,condnumb)
+      call rswapconductor(ncond,isort,nn,condvolt)
+      call iswapconductor(ncond,isort,nn,icondlxy)
+      call iswapconductor(ncond,isort,nn,icondlz)
+
+c     --- Sort even subgrid points
+      if (necndbdy > size(isort)) then
+        deallocate(isort)
+        allocate(isort(necndbdy))
+      endif
+      call isortconductor(necndbdy,iecndlxy,isort,ecstart)
+      nn = necndbdy
+      necndbdy = maxval(ecstart) - 1
+      call iswapconductor(necndbdy,isort,nn,iecndx)
+      call iswapconductor(necndbdy,isort,nn,iecndy)
+      call iswapconductor(necndbdy,isort,nn,iecndz)
+      call rswapconductor(necndbdy,isort,nn,ecdelmx)
+      call rswapconductor(necndbdy,isort,nn,ecdelmy)
+      call rswapconductor(necndbdy,isort,nn,ecdelmz)
+      call rswapconductor(necndbdy,isort,nn,ecdelpx)
+      call rswapconductor(necndbdy,isort,nn,ecdelpy)
+      call rswapconductor(necndbdy,isort,nn,ecdelpz)
+      call rswapconductor(necndbdy,isort,nn,ecvolt)
+      call iswapconductor(necndbdy,isort,nn,ecnumb)
+      call rswapconductor(necndbdy,isort,nn,ecvoltmx)
+      call rswapconductor(necndbdy,isort,nn,ecvoltpx)
+      call rswapconductor(necndbdy,isort,nn,ecvoltmy)
+      call rswapconductor(necndbdy,isort,nn,ecvoltpy)
+      call rswapconductor(necndbdy,isort,nn,ecvoltmz)
+      call rswapconductor(necndbdy,isort,nn,ecvoltpz)
+      call iswapconductor(necndbdy,isort,nn,ecnumbmx)
+      call iswapconductor(necndbdy,isort,nn,ecnumbpx)
+      call iswapconductor(necndbdy,isort,nn,ecnumbmy)
+      call iswapconductor(necndbdy,isort,nn,ecnumbpy)
+      call iswapconductor(necndbdy,isort,nn,ecnumbmz)
+      call iswapconductor(necndbdy,isort,nn,ecnumbpz)
+      call iswapconductor(necndbdy,isort,nn,iecndlxy)
+      call iswapconductor(necndbdy,isort,nn,iecndlz)
+    
+c     --- Sort odd subgrid points
+      if (nocndbdy > size(isort)) then
+        deallocate(isort)
+        allocate(isort(nocndbdy))
+      endif
+      call isortconductor(nocndbdy,iocndlxy,isort,ocstart)
+      nn = nocndbdy
+      nocndbdy = maxval(ocstart) - 1
+      call iswapconductor(nocndbdy,isort,nn,iocndx)
+      call iswapconductor(nocndbdy,isort,nn,iocndy)
+      call iswapconductor(nocndbdy,isort,nn,iocndz)
+      call rswapconductor(nocndbdy,isort,nn,ocdelmx)
+      call rswapconductor(nocndbdy,isort,nn,ocdelmy)
+      call rswapconductor(nocndbdy,isort,nn,ocdelmz)
+      call rswapconductor(nocndbdy,isort,nn,ocdelpx)
+      call rswapconductor(nocndbdy,isort,nn,ocdelpy)
+      call rswapconductor(nocndbdy,isort,nn,ocdelpz)
+      call rswapconductor(nocndbdy,isort,nn,ocvolt)
+      call iswapconductor(nocndbdy,isort,nn,ocnumb)
+      call rswapconductor(nocndbdy,isort,nn,ocvoltmx)
+      call rswapconductor(nocndbdy,isort,nn,ocvoltpx)
+      call rswapconductor(nocndbdy,isort,nn,ocvoltmy)
+      call rswapconductor(nocndbdy,isort,nn,ocvoltpy)
+      call rswapconductor(nocndbdy,isort,nn,ocvoltmz)
+      call rswapconductor(nocndbdy,isort,nn,ocvoltpz)
+      call iswapconductor(nocndbdy,isort,nn,ocnumbmx)
+      call iswapconductor(nocndbdy,isort,nn,ocnumbpx)
+      call iswapconductor(nocndbdy,isort,nn,ocnumbmy)
+      call iswapconductor(nocndbdy,isort,nn,ocnumbpy)
+      call iswapconductor(nocndbdy,isort,nn,ocnumbmz)
+      call iswapconductor(nocndbdy,isort,nn,ocnumbpz)
+      call iswapconductor(nocndbdy,isort,nn,iocndlxy)
+      call iswapconductor(nocndbdy,isort,nn,iocndlz)
+      deallocate(isort)
+
+      return
+      end
+c=============================================================================
+      subroutine isortconductor(nc,condlxy,isort,icstart)
+      integer(ISZ):: nc
+      integer(ISZ):: condlxy(nc),isort(nc),icstart(100)
+
+c     --- Sort the conductor data by level number
+      integer(ISZ):: ilevel,nlevel,ii,ic
+
+      icstart = 0
+      ilevel = 1
+      nlevel = 1
+      ii = 0
+      do while (nlevel > 0)
+        icstart(ilevel) = ii + 1
+        nlevel = ii
+        do ic=1,nc
+          if (condlxy(ic) == 2**(ilevel-1)) then
+            ii = ii + 1
+            isort(ii) = ic
+          endif
+        enddo
+        nlevel = ii - nlevel
+        ilevel = ilevel + 1
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine iswapconductor(nc,isort,nn,icond)
+      integer(ISZ):: nc,nn,isort(nc),icond(nn)
+c Utility function for sort conductors
+      integer(ISZ):: ic,itemp(nn)
+      itemp = icond
+      do ic=1,nc
+        icond(ic) = itemp(isort(ic))
+      enddo
+      return
+      end
+c=============================================================================
+      subroutine rswapconductor(nc,isort,nn,rcond)
+      integer(ISZ):: nc,nn,isort(nc)
+      real(kind=8):: rcond(nn)
+c Utility function for sort conductors
+      real(kind=8):: rtemp(nn)
+      integer(ISZ):: ic
+      rtemp = rcond
+      do ic=1,nc
+        rcond(ic) = rtemp(isort(ic))
+      enddo
+      return
+      end
+c=============================================================================
+      RECURSIVE subroutine checkconductors1(nx,ny,nz,nzfull,dx,dy,dz,
+     &                                      l2symtry,l4symtry,levelxy,levelz,
+     &                                      nxfine,nyfine,nzfine,iii,
+     &                                      my_index,nslaves,izfsslave,nzfsslave)
+      use PSOR3d
+      integer(ISZ):: nx,ny,nz,nzfull,levelxy,levelz
+      real(kind=8):: dx,dy,dz
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: nxfine,nyfine,nzfine
+      integer(ISZ):: iii(0:nxfine,0:nyfine,0:nzfine)
+
+c Recursively calls the routine to generate the conductor data at the
+c various mesh resolutions needed by the MG solver.
+
+      integer(ISZ):: nznew
+      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+
+c     --- Check the conductors for this level
+      call checkconductors_work(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry,
+     &                          levelxy,levelz,nxfine,nyfine,nzfine,iii)
+
+c     --- If grid is at its coarsest level in any of the axis or
+c     --- any dimensions are odd, then return
+      if (mod(nx,4) /= 0 .or. mod(ny,4) /= 0 .or. mod(nzfull,4) /= 0) return
+
+c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
+c     --- all axis.
+c     --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
+      if (dz > 4./3.*dx) then
+
+c       --- Recursively call this routine for the next coarser level.
+        call checkconductors1(nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
+     &                        l2symtry,l4symtry,levelxy*2,levelz,
+     &                        nxfine,nyfine,nzfine,iii,
+     &                        my_index,nslaves,izfsslave,nzfsslave)
+
+      else
+
+#ifdef MPIPARALLEL
+c       --- Find domains in coarser grid
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
+     &                  nzfull)
+c       --- Set new value of nz
+        nznew = nzfsslave2(my_index)
+#else
+        nznew = nz/2
+#endif
+
+c       --- Recursively call this routine for the next coarser level.
+        call checkconductors1(nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
+     &                        l2symtry,l4symtry,levelxy*2,levelz*2,
+     &                        nxfine,nyfine,nzfine,iii,
+     &                        my_index,nslaves,izfsslave2,nzfsslave2)
+
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine checkconductors_work(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry,
+     &                                levelxy,levelz,nxfine,nyfine,nzfine,iii)
+      use PSOR3d
+      use MultigridConductor3d
+      use Multigrid3d
+      integer(ISZ):: nx,ny,nz,levelxy,levelz
+      real(kind=8):: dx,dy,dz
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: nxfine,nyfine,nzfine
+      integer(ISZ):: iii(0:nxfine,0:nyfine,0:nzfine)
+
+c This checks the conductor dataset for consistency.
+c  - clean up data set, removing any subgrid points which may lie inside
+c    of a conductor (those points are harmless to SOR but are damaging
+c    to multigrid)
+c  - removes any redundant subgrid points
+c
+c The notation for the 3D work grid is...
+c   - all of the points inside of conductors are given a value larger
+c     than the index of any subgrid point
+c   - for all subgrid points, the index of that point is stored with a sign
+c     attached - positive for even points, negative for odd points
+c   - the value chosen for inside of conductors is large enough so that
+c     is will not be the same as a subgrid point
+
+      integer(ISZ):: ic,i,ix,iy,iz
+
+c     --- Scan through subgrid points:
+c     ---   remove points which lie inside of a conductor
+c     ---   register subgrid points in the work array iii
+c     ---   check for redundant point (multiple points at grid location)
+      do ic=1,necndbdy
+
+        if (iecndlxy(ic) /= levelxy .or. iecndlz(ic) /= levelz) cycle
+
+        ix = iecndx(ic)*iecndlxy(ic)
+        iy = iecndy(ic)*iecndlxy(ic)
+        iz = iecndz(ic)*iecndlz(ic)
+
+c       --- If this point lies on a conductor point, kill it.
+        if (iii(ix,iy,iz) == ncndmax+1) then
+          iecndlxy(ic) = -1
+          iecndlz(ic)  = -1
+          cycle
+        endif
+
+c       --- If iii == 0, then this data point is outside any conductors and
+c       --- is not redundant.
+        if (iii(ix,iy,iz) == 0) then
+          iii(ix,iy,iz) = ic
+          cycle
+        endif
+
+c       iii(ix,iy,iz) < ncndmax+1
+        i = iii(ix,iy,iz)
+
+        if (i < 0) then
+c         --- The point already there is odd so must be a different level
+          iii(ix,iy,iz) = ic
+          cycle
+        endif
+
+        if (iecndlxy(ic) /= iecndlxy(i) .or. iecndlz(ic) /= iecndlz(i)) then
+c         --- The point already there is on a different level
+          iii(ix,iy,iz) = ic
+          cycle
+        endif
+
+c       --- There is another subgrid point here. Combine the data
+c       --- of the two points.
+c       --- For each direction, check if a conductor is nearer to this point
+c       --- than the other point. If so, reset data for the other point.
+        if (ecdelmx(ic) < 1. .and. ecdelmx(ic) < ecdelmx(i)) then
+          ecdelmx(i)  = ecdelmx(ic)
+          ecvoltmx(i) = ecvoltmx(ic)
+          ecnumbmx(i) = ecnumbmx(ic)
+        endif
+        if (ecdelpx(ic) < 1. .and. ecdelpx(ic) < ecdelpx(i)) then
+          ecdelpx(i)  = ecdelpx(ic)
+          ecvoltpx(i) = ecvoltpx(ic)
+          ecnumbpx(i) = ecnumbpx(ic)
+        endif
+        if (ecdelmy(ic) < 1. .and. ecdelmy(ic) < ecdelmy(i)) then
+          ecdelmy(i)  = ecdelmy(ic)
+          ecvoltmy(i) = ecvoltmy(ic)
+          ecnumbmy(i) = ecnumbmy(ic)
+        endif
+        if (ecdelpy(ic) < 1. .and. ecdelpy(ic) < ecdelpy(i)) then
+          ecdelpy(i)  = ecdelpy(ic)
+          ecvoltpy(i) = ecvoltpy(ic)
+          ecnumbpy(i) = ecnumbpy(ic)
+        endif
+        if (ecdelmz(ic) < 1. .and. ecdelmz(ic) < ecdelmz(i)) then
+          ecdelmz(i)  = ecdelmz(ic)
+          ecvoltmz(i) = ecvoltmz(ic)
+          ecnumbmz(i) = ecnumbmz(ic)
+        endif
+        if (ecdelpz(ic) < 1. .and. ecdelpz(ic) < ecdelpz(i)) then
+          ecdelpz(i)  = ecdelpz(ic)
+          ecvoltpz(i) = ecvoltpz(ic)
+          ecnumbpz(i) = ecnumbpz(ic)
+        endif
+        iecndlxy(ic) = -1
+        iecndlz(ic)  = -1
+
+      enddo
+
+c     --- Do the same for the odd conductor points.
+c     --- Scan through subgrid points:
+c     ---   remove points which lie inside of a conductor
+c     ---   register subgrid points in the work array iii
+c     ---   check for redundant point (multiple points at grid location)
+      do ic=1,nocndbdy
+
+        if (iocndlxy(ic) /= levelxy .or. iocndlz(ic) /= levelz) cycle
+
+        ix = iocndx(ic)*iocndlxy(ic)
+        iy = iocndy(ic)*iocndlxy(ic)
+        iz = iocndz(ic)*iocndlz(ic)
+
+c       --- If this point lies on a conductor point, kill it.
+        if (iii(ix,iy,iz) == ncndmax+1) then
+          iocndlxy(ic) = -1
+          iocndlz(ic)  = -1
+          cycle
+        endif
+
+c       --- If iii == 0, then this data point is outside any conductors and
+c       --- is not redundant.
+        if (iii(ix,iy,iz) == 0) then
+          iii(ix,iy,iz) = -ic
+          cycle
+        endif
+
+c       iii(ix,iy,iz) < ncndmax+1
+        i = -iii(ix,iy,iz)
+
+        if (i < 0) then
+c         --- The point already there is even so must be a different level
+          iii(ix,iy,iz) = -ic
+          cycle
+        endif
+
+        if (iocndlxy(ic) /= iocndlxy(i) .or. iocndlz(ic) /= iocndlz(i)) then
+c         --- The point is on a different level
+          iii(ix,iy,iz) = -ic
+          cycle
+        endif
+
+c       --- There is another subgrid point here. Combine the data
+c       --- of the two points.
+c       --- For each direction, check if a conductor is nearer to this point
+c       --- than the other point. If so, reset data for the other point.
+        if (ocdelmx(ic) < 1. .and. ocdelmx(ic) < ocdelmx(i)) then
+          ocdelmx(i)  = ocdelmx(ic)
+          ocvoltmx(i) = ocvoltmx(ic)
+          ocnumbmx(i) = ocnumbmx(ic)
+        endif
+        if (ocdelpx(ic) < 1. .and. ocdelpx(ic) < ocdelpx(i)) then
+          ocdelpx(i)  = ocdelpx(ic)
+          ocvoltpx(i) = ocvoltpx(ic)
+          ocnumbpx(i) = ocnumbpx(ic)
+        endif
+        if (ocdelmy(ic) < 1. .and. ocdelmy(ic) < ocdelmy(i)) then
+          ocdelmy(i)  = ocdelmy(ic)
+          ocvoltmy(i) = ocvoltmy(ic)
+          ocnumbmy(i) = ocnumbmy(ic)
+        endif
+        if (ocdelpy(ic) < 1. .and. ocdelpy(ic) < ocdelpy(i)) then
+          ocdelpy(i)  = ocdelpy(ic)
+          ocvoltpy(i) = ocvoltpy(ic)
+          ocnumbpy(i) = ocnumbpy(ic)
+        endif
+        if (ocdelmz(ic) < 1. .and. ocdelmz(ic) < ocdelmz(i)) then
+          ocdelmz(i)  = ocdelmz(ic)
+          ocvoltmz(i) = ocvoltmz(ic)
+          ocnumbmz(i) = ocnumbmz(ic)
+        endif
+        if (ocdelpz(ic) < 1. .and. ocdelpz(ic) < ocdelpz(i)) then
+          ocdelpz(i)  = ocdelpz(ic)
+          ocvoltpz(i) = ocvoltpz(ic)
+          ocnumbpz(i) = ocnumbpz(ic)
+        endif
+        iocndlxy(ic) = -1
+        iocndlz(ic)  = -1
+      enddo
+
+      return
+      end
+c=============================================================================
+c=============================================================================
 c=============================================================================
       subroutine subgrid_sor_to_mg(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
       use PSOR3d
@@ -1815,6 +2572,7 @@ c=============================================================================
       real(kind=8):: dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
 
+c This routine now is not needed.
 c Convert subgrid data from the format used for the SOR field solver to the
 c the format used for multigrid. This includes expanding the data set for
 c use on the coarser grid levels. Note that after the conversion, the data
@@ -1822,556 +2580,9 @@ c set will still work for the SOR (though it will be slightly less
 c efficient since there will be extra points in the data set that the SOR
 c doesn't need).
 
-      integer(ISZ):: ix,iy,iz
-
-c     --- If there are not conductors, then immediately return.
-      if (ncond == 0 .and. necndbdy == 0 .and. nocndbdy == 0) return
-
-c     --- Make sure there is enough room for the extra data.
-c     --- The factor of 3 is an over estimate since the number of points
-c     --- should typically only double.
-      if (ncndmax < 3*necndbdy) then
-        ncndmax = 3*necndbdy
-        call gchange("PSOR3d",0)
-      endif
-      call gchange("MultigridConductor3d",0)
-
-c     --- Allocate the work space.
-      wnx = nx
-      wny = ny
-      wnz = nz
-      call gallot("Multigrid3d_work",0)
-c     --- Explicit loop to zero iii
-c     --- Note that zeroarry cannot be used since that routine assumes
-c     --- that the input array is of type real(kind=8):: with 64 bit presicion.
-c     --- iii is an integer which is not 64 bits long on all machines.
-      do iz=0,wnz
-        do iy=0,wny
-          do ix=0,wnx
-            iii(ix,iy,iz) = 0
-          enddo
-        enddo
-      enddo
-
-c     --- Do the conversion.
-      call subgrid_sor_to_mg_work(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
-
-c     --- Now, get the refinement level for all of the points.
-      call conductor_data_level(nx,ny,nz,dx,dy,dz)
-
-
       return
       end
 c=============================================================================
-      subroutine subgrid_sor_to_mg_work(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
-      use PSOR3d
-      use MultigridConductor3d
-      use Multigrid3d
-      use Multigrid3d_work
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: dx,dy,dz
-      logical(ISZ):: l2symtry,l4symtry
-
-c This does the actual work of converting the subgrid data from the SOR format
-c to the multigrid format. To do the conversion if does the following...
-c  - register the conducting points on a 3D grid (this just makes it easy
-c    to check for the presence of the conductor.
-c  - clean up data set, removing any subgrid points which may lie inside
-c    of a conductor (those points are harmless to SOR but are damaging
-c    to multigrid)
-c  - for existing data set, calculate fully the distances to conductors which
-c    are greater than the grid cell size.
-c  - register the subgrid points on the 3D grid
-c  - finally, scan through the grid at each coarse level of resolution, and
-c    save points which are within on grid cell of a conductor
-c
-c The notation for the 3D work grid is...
-c   - all of the points inside of conductors are given the same large integer
-c     value =((wnx+1)*(wny+1)*(wnz+1) + 1)
-c   - for all subgrid points, the index of that point is stored with a sign
-c     attached - positive for even points, negative for odd points
-c   - the value chosen for inside of conductors is large enough so that
-c     is will not be the same as a subgrid point
-
-      integer(ISZ):: icond,ix,iy,iz
-      integer(ISZ):: cds(3),maxcdel
-      integer(ISZ):: ic,i,ne,no,levelxy,levelz,tnx,tny,tnz
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      real(kind=8):: tdx,tdy,tdz
-
-c     --- Set the known conductor points.
-      icond = (wnx+1)*(wny+1)*(wnz+1) + 1
-      do ic=1,ncond
-        iii(ixcond(ic),iycond(ic),izcond(ic)) = icond + ic
-      enddo
-
-c     --- Scan through subgrid points:
-c     ---   remove points which lie inside of a conductor
-c     ---   reset distances which are greater than one to LARGEPOS
-c     ---   register subgrid points in the work array iii
-c     ---   copy the voltage and conductor number into the appropriate arrays.
-c     ---   check for redundant point (multiple points at grid location)
-      ne = 0
-      do ic=1,necndbdy
-c       --- If iii == 0, then this data point is outside any conductors and
-c       --- is not redundant.
-        if (iii(iecndx(ic),iecndy(ic),iecndz(ic)) == 0) then
-c         --- Increment the counter and register the point
-          ne = ne + 1
-          iii(iecndx(ic),iecndy(ic),iecndz(ic)) = ne
-c         --- If points have been skipped, copy current data point to
-c         --- free location.
-          if (ne < ic) then
-            iecndx(ne)   = iecndx(ic)
-            iecndy(ne)   = iecndy(ic)
-            iecndz(ne)   = iecndz(ic)
-            ecdelmx(ne)  = ecdelmx(ic)
-            ecdelmy(ne)  = ecdelmy(ic)
-            ecdelmz(ne)  = ecdelmz(ic)
-            ecdelpx(ne)  = ecdelpx(ic)
-            ecdelpy(ne)  = ecdelpy(ic)
-            ecdelpz(ne)  = ecdelpz(ic)
-            ecvolt(ne)   = ecvolt(ic)
-            ecnumb(ne)   = ecnumb(ic)
-          endif
-c         --- Reset distances > 1 to LARGEPOS (a number much greater than the
-c         --- grid extent).
-          if (ecdelmx(ne) > 1.) ecdelmx(ne) = LARGEPOS
-          if (ecdelpx(ne) > 1.) ecdelpx(ne) = LARGEPOS
-          if (ecdelmy(ne) > 1.) ecdelmy(ne) = LARGEPOS
-          if (ecdelpy(ne) > 1.) ecdelpy(ne) = LARGEPOS
-          if (ecdelmz(ne) > 1.) ecdelmz(ne) = LARGEPOS
-          if (ecdelpz(ne) > 1.) ecdelpz(ne) = LARGEPOS
-c         --- Set voltage and conductor number for conductors in each
-c         --- direction. Assumes that any surrounding conductors have
-c         --- same voltage and number.
-          if (ecdelmx(ne) < 1.) then
-            ecvoltmx(ne) = ecvolt(ne)
-            ecnumbmx(ne) = ecnumb(ne)
-          endif
-          if (ecdelpx(ne) < 1.) then
-            ecvoltpx(ne) = ecvolt(ne)
-            ecnumbpx(ne) = ecnumb(ne)
-          endif
-          if (ecdelmy(ne) < 1.) then
-            ecvoltmy(ne) = ecvolt(ne)
-            ecnumbmy(ne) = ecnumb(ne)
-          endif
-          if (ecdelpy(ne) < 1.) then
-            ecvoltpy(ne) = ecvolt(ne)
-            ecnumbpy(ne) = ecnumb(ne)
-          endif
-          if (ecdelmz(ne) < 1.) then
-            ecvoltmz(ne) = ecvolt(ne)
-            ecnumbmz(ne) = ecnumb(ne)
-          endif
-          if (ecdelpz(ne) < 1.) then
-            ecvoltpz(ne) = ecvolt(ne)
-            ecnumbpz(ne) = ecnumb(ne)
-          endif
-        else if (iii(iecndx(ic),iecndy(ic),iecndz(ic)) < icond) then
-c         --- This point is redundant - another subgrid point is at this
-c         --- location.
-c         --- For each direction, check if a conductor is nearer to this point
-c         --- than the other point. If so, reset data for the other point.
-c         --- This point will be discarded.
-          i = iii(iecndx(ic),iecndy(ic),iecndz(ic))
-          if (ecdelmx(ic) < 1. .and. ecdelmx(ic) < ecdelmx(i)) then
-            ecdelmx(i)  = ecdelmx(ic)
-            ecvoltmx(i) = ecvolt(ic)
-            ecnumbmx(i) = ecnumb(ic)
-          endif
-          if (ecdelpx(ic) < 1. .and. ecdelpx(ic) < ecdelpx(i)) then
-            ecdelpx(i)  = ecdelpx(ic)
-            ecvoltpx(i) = ecvolt(ic)
-            ecnumbpx(i) = ecnumb(ic)
-          endif
-          if (ecdelmy(ic) < 1. .and. ecdelmy(ic) < ecdelmy(i)) then
-            ecdelmy(i)  = ecdelmy(ic)
-            ecvoltmy(i) = ecvolt(ic)
-            ecnumbmy(i) = ecnumb(ic)
-          endif
-          if (ecdelpy(ic) < 1. .and. ecdelpy(ic) < ecdelpy(i)) then
-            ecdelpy(i)  = ecdelpy(ic)
-            ecvoltpy(i) = ecvolt(ic)
-            ecnumbpy(i) = ecnumb(ic)
-          endif
-          if (ecdelmz(ic) < 1. .and. ecdelmz(ic) < ecdelmz(i)) then
-            ecdelmz(i)  = ecdelmz(ic)
-            ecvoltmz(i) = ecvolt(ic)
-            ecnumbmz(i) = ecnumb(ic)
-          endif
-          if (ecdelpz(ic) < 1. .and. ecdelpz(ic) < ecdelpz(i)) then
-            ecdelpz(i)  = ecdelpz(ic)
-            ecvoltpz(i) = ecvolt(ic)
-            ecnumbpz(i) = ecnumb(ic)
-          endif
-        endif
-      enddo
-c     --- Reset the number of even conductor points (with points inside a
-c     --- conductor and redundant points excluded).
-      necndbdy = ne
-
-c     --- Do the same for the odd conductor points.
-      no = 0
-      do ic=1,nocndbdy
-c       --- If iii == 0, then this data point is outside any conductors and
-c       --- is not redundant.
-        if (iii(iocndx(ic),iocndy(ic),iocndz(ic)) == 0) then
-c         --- Increment the counter and register the point
-          no = no + 1
-          iii(iocndx(ic),iocndy(ic),iocndz(ic)) = -no
-c         --- If points have been skipped, copy current data point to
-c         --- free location.
-          if (no < ic) then
-            iocndx(no)   = iocndx(ic)
-            iocndy(no)   = iocndy(ic)
-            iocndz(no)   = iocndz(ic)
-            ocdelmx(no)  = ocdelmx(ic)
-            ocdelmy(no)  = ocdelmy(ic)
-            ocdelmz(no)  = ocdelmz(ic)
-            ocdelpx(no)  = ocdelpx(ic)
-            ocdelpy(no)  = ocdelpy(ic)
-            ocdelpz(no)  = ocdelpz(ic)
-            ocvolt(no)   = ocvolt(ic)
-            ocnumb(no)   = ocnumb(ic)
-          endif
-c         --- Reset distances > 1 to LARGEPOS (a number much greater than the
-c         --- grid extent).
-          if (ocdelmx(no) > 1.) ocdelmx(no) = LARGEPOS
-          if (ocdelpx(no) > 1.) ocdelpx(no) = LARGEPOS
-          if (ocdelmy(no) > 1.) ocdelmy(no) = LARGEPOS
-          if (ocdelpy(no) > 1.) ocdelpy(no) = LARGEPOS
-          if (ocdelmz(no) > 1.) ocdelmz(no) = LARGEPOS
-          if (ocdelpz(no) > 1.) ocdelpz(no) = LARGEPOS
-c         --- Set voltage and conductor number for conductors in each
-c         --- direction. Assumes that any surrounding conductors have
-c         --- same voltage and number.
-          if (ocdelmx(no) < 1.) then
-            ocvoltmx(no) = ocvolt(no)
-            ocnumbmx(no) = ocnumb(no)
-          endif
-          if (ocdelpx(no) < 1.) then
-            ocvoltpx(no) = ocvolt(no)
-            ocnumbpx(no) = ocnumb(no)
-          endif
-          if (ocdelmy(no) < 1.) then
-            ocvoltmy(no) = ocvolt(no)
-            ocnumbmy(no) = ocnumb(no)
-          endif
-          if (ocdelpy(no) < 1.) then
-            ocvoltpy(no) = ocvolt(no)
-            ocnumbpy(no) = ocnumb(no)
-          endif
-          if (ocdelmz(no) < 1.) then
-            ocvoltmz(no) = ocvolt(no)
-            ocnumbmz(no) = ocnumb(no)
-          endif
-          if (ocdelpz(no) < 1.) then
-            ocvoltpz(no) = ocvolt(no)
-            ocnumbpz(no) = ocnumb(no)
-          endif
-        else if (iii(iocndx(ic),iocndy(ic),iocndz(ic)) < icond) then
-c         --- This point is redundant - another conductor point is at this
-c         --- location.
-c         --- For each direction, check if a conductor is nearer to this point
-c         --- than the other point. If so, reset data for the other point.
-c         --- This point will be discarded.
-          i = -iii(iocndx(ic),iocndy(ic),iocndz(ic))
-          if (ocdelmx(ic) < 1. .and. ocdelmx(ic) < ocdelmx(i)) then
-            ocdelmx(i)  = ocdelmx(ic)
-            ocvoltmx(i) = ocvolt(ic)
-            ocnumbmx(i) = ocnumb(ic)
-          endif
-          if (ocdelpx(ic) < 1. .and. ocdelpx(ic) < ocdelpx(i)) then
-            ocdelpx(i)  = ocdelpx(ic)
-            ocvoltpx(i) = ocvolt(ic)
-            ocnumbpx(i) = ocnumb(ic)
-          endif
-          if (ocdelmy(ic) < 1. .and. ocdelmy(ic) < ocdelmy(i)) then
-            ocdelmy(i)  = ocdelmy(ic)
-            ocvoltmy(i) = ocvolt(ic)
-            ocnumbmy(i) = ocnumb(ic)
-          endif
-          if (ocdelpy(ic) < 1. .and. ocdelpy(ic) < ocdelpy(i)) then
-            ocdelpy(i)  = ocdelpy(ic)
-            ocvoltpy(i) = ocvolt(ic)
-            ocnumbpy(i) = ocnumb(ic)
-          endif
-          if (ocdelmz(ic) < 1. .and. ocdelmz(ic) < ocdelmz(i)) then
-            ocdelmz(i)  = ocdelmz(ic)
-            ocvoltmz(i) = ocvolt(ic)
-            ocnumbmz(i) = ocnumb(ic)
-          endif
-          if (ocdelpz(ic) < 1. .and. ocdelpz(ic) < ocdelpz(i)) then
-            ocdelpz(i)  = ocdelpz(ic)
-            ocvoltpz(i) = ocvolt(ic)
-            ocnumbpz(i) = ocnumb(ic)
-          endif
-        endif
-      enddo
-c     --- Reset the number of even conductor points (with points inside a
-c     --- conductor and redundant points excluded).
-      nocndbdy = no
-
-c     --- Check through all of the SOR points to reset any distances which
-c     --- should not be LARGEPOS.
-      maxcdel = max(nx,ny,nz) + 1
-      do ic=1,necndbdy
-        cds(1) = iecndx(ic)
-        cds(2) = iecndy(ic)
-        cds(3) = iecndz(ic)
-        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelmx(1),ocdelmx(1),condvolt(1),ecvoltmx(1),ocvoltmx(1),
-     &               condnumb(1),ecnumbmx(1),ocnumbmx(1),
-     &               iecndx(ic),ecdelmx(ic),ecvoltmx(ic),ecnumbmx(ic))
-        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelpx(1),ocdelpx(1),condvolt(1),ecvoltpx(1),ocvoltpx(1),
-     &               condnumb(1),ecnumbpx(1),ocnumbpx(1),
-     &               iecndx(ic),ecdelpx(ic),ecvoltpx(ic),ecnumbpx(ic))
-        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelmy(1),ocdelmy(1),condvolt(1),ecvoltmy(1),ocvoltmy(1),
-     &               condnumb(1),ecnumbmy(1),ocnumbmy(1),
-     &               iecndy(ic),ecdelmy(ic),ecvoltmy(ic),ecnumbmy(ic))
-        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelpy(1),ocdelpy(1),condvolt(1),ecvoltpy(1),ocvoltpy(1),
-     &               condnumb(1),ecnumbpy(1),ocnumbpy(1),
-     &               iecndy(ic),ecdelpy(ic),ecvoltpy(ic),ecnumbpy(ic))
-        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelmz(1),ocdelmz(1),condvolt(1),ecvoltmz(1),ocvoltmz(1),
-     &               condnumb(1),ecnumbmz(1),ocnumbmz(1),
-     &               iecndz(ic),ecdelmz(ic),ecvoltmz(ic),ecnumbmz(ic))
-        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelpz(1),ocdelpz(1),condvolt(1),ecvoltpz(1),ocvoltpz(1),
-     &               condnumb(1),ecnumbpz(1),ocnumbpz(1),
-     &               iecndz(ic),ecdelpz(ic),ecvoltpz(ic),ecnumbpz(ic))
-      enddo
-      do ic=1,nocndbdy
-        cds(1) = iocndx(ic)
-        cds(2) = iocndy(ic)
-        cds(3) = iocndz(ic)
-        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelmx(1),ocdelmx(1),condvolt(1),ecvoltmx(1),ocvoltmx(1),
-     &               condnumb(1),ecnumbmx(1),ocnumbmx(1),
-     &               iocndx(ic),ocdelmx(ic),ocvoltmx(ic),ocnumbmx(ic))
-        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelpx(1),ocdelpx(1),condvolt(1),ecvoltpx(1),ocvoltpx(1),
-     &               condnumb(1),ecnumbpx(1),ocnumbpx(1),
-     &               iocndx(ic),ocdelpx(ic),ocvoltpx(ic),ocnumbpx(ic))
-        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelmy(1),ocdelmy(1),condvolt(1),ecvoltmy(1),ocvoltmy(1),
-     &               condnumb(1),ecnumbmy(1),ocnumbmy(1),
-     &               iocndy(ic),ocdelmy(ic),ocvoltmy(ic),ocnumbmy(ic))
-        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelpy(1),ocdelpy(1),condvolt(1),ecvoltpy(1),ocvoltpy(1),
-     &               condnumb(1),ecnumbpy(1),ocnumbpy(1),
-     &               iocndy(ic),ocdelpy(ic),ocvoltpy(ic),ocnumbpy(ic))
-        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelmz(1),ocdelmz(1),condvolt(1),ecvoltmz(1),ocvoltmz(1),
-     &               condnumb(1),ecnumbmz(1),ocnumbmz(1),
-     &               iocndz(ic),ocdelmz(ic),ocvoltmz(ic),ocnumbmz(ic))
-        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
-     &               ecdelpz(1),ocdelpz(1),condvolt(1),ecvoltpz(1),ocvoltpz(1),
-     &               condnumb(1),ecnumbpz(1),ocnumbpz(1),
-     &               iocndz(ic),ocdelpz(ic),ocvoltpz(ic),ocnumbpz(ic))
-      enddo
-
-
-c     --- Now, scan the grid at each level of refinement to gather points
-c     --- which are within one grid cell of a conductor are the coarser
-c     --- grid levels.
-
-c     --- Initialize the temps
-      tnx = nx
-      tny = ny
-      tnz = nz
-      tdx = dx
-      tdy = dy
-      tdz = dz
-      levelxy = 1
-      levelz = 1
-
-c     --- Increase size of conductor arrays if needed. Increase in size
-c     --- is only an estimate.
-      if (necndbdy == ncndmax .or. nocndbdy == ncndmax) then
-        ncndmax = 1.5*max(necndbdy,nocndbdy) + 1
-        call gchange("PSOR3d",0)
-        call gchange("MultigridConductor3d",0)
-      endif
-
-c     --- Loop until at least one of the axis is at the coarsest level.
-      ic = necndbdy + 1
-      do while (tnx > 2 .and. tny > 2 .and. tnz > 2 .and.
-     &          mod(tnx,4) == 0 .and. mod(tny,4) == 0 .and. mod(tnz,4) == 0)
-
-c       --- Go to the next level of coarseness.
-        tnx = tnx/2
-        tny = tny/2
-        tdx = tdx*2.
-        tdy = tdy*2.
-        levelxy = 2*levelxy
-        if (1.5*tdz < tdx) then
-          tnz = tnz/2
-          tdz = tdz*2.
-          levelz = 2*levelz
-        endif
-
-c       --- Loop over current grid and scan in each direction to find the
-c       --- nearest conductor. If the resulting distances put it near a
-c       --- conductor on the coarse grid, then add it to the list of even
-c       --- points. (Odd points only appear on the finest level grid.)
-        ixmin = levelxy
-        ixmax = nx-levelxy
-        iymin = levelxy
-        iymax = ny-levelxy
-        izmin = levelz
-        izmax = nz-levelz
-        if (boundxy > 0 .or. l2symtry .or. l4symtry) ixmin = 0
-        if (boundxy == 1) ixmax = nx
-        if (boundxy > 0 .or. l4symtry) iymin = 0
-        if (boundxy == 1) iymax = ny
-        if (bound0 > 0) izmin = 0
-        if (boundnz == 1) izmax = nz
-        do iz=izmin,izmax,levelz
-          cds(3) = iz
-          do iy=iymin,iymax,levelxy
-            cds(2) = iy
-            do ix=ixmin,ixmax,levelxy
-              cds(1) = ix
-
-c             --- Check if there is already a conductor or subgrid point
-c             --- at this location.
-              if (iii(ix,iy,iz) == 0) then
-                ecdelmx(ic) = LARGEPOS
-                ecdelpx(ic) = LARGEPOS
-                ecdelmy(ic) = LARGEPOS
-                ecdelpy(ic) = LARGEPOS
-                ecdelmz(ic) = LARGEPOS
-                ecdelpz(ic) = LARGEPOS
-
-c               --- Scan along the 6 directions.
-                call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,icond,nx,ny,nz,
-     &                                 iii(0,0,0),ecdelmx(1),ocdelmx(1),
-     &                                 condvolt(1),ecvoltmx(1),ocvoltmx(1),
-     &                                 condnumb(1),ecnumbmx(1),ocnumbmx(1),
-     &                                 ix,ecdelmx(ic),ecvoltmx(ic),ecnumbmx(ic))
-                call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,icond,nx,ny,nz,
-     &                                 iii(0,0,0),ecdelpx(1),ocdelpx(1),
-     &                                 condvolt(1),ecvoltpx(1),ocvoltpx(1),
-     &                                 condnumb(1),ecnumbpx(1),ocnumbpx(1),
-     &                                 ix,ecdelpx(ic),ecvoltpx(ic),ecnumbpx(ic))
-                call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,icond,nx,ny,nz,
-     &                                 iii(0,0,0),ecdelmy(1),ocdelmy(1),
-     &                                 condvolt(1),ecvoltmy(1),ocvoltmy(1),
-     &                                 condnumb(1),ecnumbmy(1),ocnumbmy(1),
-     &                                 iy,ecdelmy(ic),ecvoltmy(ic),ecnumbmy(ic))
-                call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,icond,nx,ny,nz,
-     &                                 iii(0,0,0),ecdelpy(1),ocdelpy(1),
-     &                                 condvolt(1),ecvoltpy(1),ocvoltpy(1),
-     &                                 condnumb(1),ecnumbpy(1),ocnumbpy(1),
-     &                                 iy,ecdelpy(ic),ecvoltpy(ic),ecnumbpy(ic))
-                call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,icond,nx,ny,nz,
-     &                                 iii(0,0,0),ecdelmz(1),ocdelmz(1),
-     &                                 condvolt(1),ecvoltmz(1),ocvoltmz(1),
-     &                                 condnumb(1),ecnumbmz(1),ocnumbmz(1),
-     &                                 iz,ecdelmz(ic),ecvoltmz(ic),ecnumbmz(ic))
-                call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,icond,nx,ny,nz,
-     &                                 iii(0,0,0),ecdelpz(1),ocdelpz(1),
-     &                                 condvolt(1),ecvoltpz(1),ocvoltpz(1),
-     &                                 condnumb(1),ecnumbpz(1),ocnumbpz(1),
-     &                                 iz,ecdelpz(ic),ecvoltpz(ic),ecnumbpz(ic))
-
-c               --- If the point is near a conductor, save it.
-                if (ecdelmx(ic)/levelxy < 1. .or.
-     &              ecdelpx(ic)/levelxy < 1. .or.
-     &              ecdelmy(ic)/levelxy < 1. .or.
-     &              ecdelpy(ic)/levelxy < 1. .or.
-     &              ecdelmz(ic)/levelz  < 1. .or.
-     &              ecdelpz(ic)/levelz  < 1.) then
-                  iecndx(ic) = ix
-                  iecndy(ic) = iy
-                  iecndz(ic) = iz
-                  iii(ix,iy,iz) = ic
-                  ic = ic + 1
-
-c                 --- Increase size of conductor arrays if needed.
-c                 --- Increase in size is only an estimate.
-                  if (ic >= ncndmax) then
-                    ncndmax = 1.1*max(ic,nocndbdy) + 1
-                    call gchange("PSOR3d",0)
-                    call gchange("MultigridConductor3d",0)
-                  endif
-
-                endif
-
-              endif
-            enddo
-          enddo
-        enddo
-
-      enddo
-
-c     --- Reset necndbdy
-      necndbdy = ic - 1
- 
-      return
-      end
-c=============================================================================
-      subroutine subgrid_scan_axis(ia,sgn,cds,limit,maxcdel,icond,nx,ny,nz,iii,
-     &                             ecdel,ocdel,condvolt,ecvolt,ocvolt,
-     &                             condnumb,ecnumb,ocnumb,
-     &                             cnd,cdel,volt,numb)
-      integer(ISZ):: ia,sgn,cds(3),limit,maxcdel,nx,ny,nz,icond
-      integer(ISZ):: iii(0:nx,0:ny,0:nz)
-      real(kind=8):: ecdel(*),ocdel(*),condvolt(*),ecvolt(*),ocvolt(*)
-      integer(ISZ):: condnumb(*),ecnumb(*),ocnumb(*)
-      real(kind=8):: cdel,volt
-      integer(ISZ):: cnd,numb
-
-c Scan in the specified direction looking for a conductor or grid edge.
-c If a conductor is found, save the distance to and the voltage on the
-c conductor.
-
-      integer(ISZ):: ic(3),ival
-      ic = cds
-
-      do while (ic(ia) .ne. limit)
-        ival = iii(ic(1),ic(2),ic(3))
-
-        if (ival >= icond) then
-c         --- A point inside a conductor was found. That means that the
-c         --- conductor is aligned with the grid.
-          cdel = sgn*(ic(ia) - cnd)
-          volt = condvolt(ival-icond)
-          numb = condnumb(ival-icond)
-          return
-        elseif (ival > 0) then
-c         --- An even subgrid point was found. Check if it is near a
-c         --- conductor.
-          if (ecdel(ival) < maxcdel) then
-c           --- If it is near a conductor, save the info.
-            cdel = ecdel(ival) + sgn*(ic(ia) - cnd)
-            volt = ecvolt(ival)
-            numb = ecnumb(ival)
-            return
-          endif
-        elseif (ival < 0) then
-c         --- An odd subgrid point was found. Check if it is near a
-c         --- conductor.
-          if (ocdel(-ival) < maxcdel) then
-c           --- If it is near a conductor, save the info.
-            cdel = ocdel(-ival) + sgn*(ic(ia) - cnd)
-            volt = ocvolt(-ival)
-            numb = ocnumb(-ival)
-            return
-          endif
-        endif
-c       --- Otherwise, keep looking.
-        ic(ia) = ic(ia) + sgn
-      enddo
-
-      return
-      end
 c=============================================================================
 c=============================================================================
 c=============================================================================
@@ -2393,22 +2604,23 @@ c               5    1 if (i  , j  , k+1) is reachable from (i, j, k); else 0
 c               6    1 if (i  , j  , k-1) is reachable from (i, j, k); else 0
 
       integer(ISZ):: level
-      integer(ISZ):: ic,ix,iy,iz
+      integer(ISZ):: ic,ix,iy,iz,il
 
 c     --- Get level of coarseness
       level = nint(dx/dxfine)
+      il = int(log(1.*level)/log(2.) + 0.5) + 1
 
 c     --- By default, all points are within the domain and are reachable.
       mask = 1
 
 c     --- Check for point in conductors.
-      do ic=1,ncond
+      do ic=icstart(il),icstart(il+1)-1
 c       --- First check if the conductor point is on the grid at this
 c       --- level of refinement.
-        if (icondlxy(ic) >= level .and. icondlz(ic) >= level) then
-          ix = ixcond(ic)/level
-          iy = iycond(ic)/level
-          iz = izcond(ic)/level
+        if (icondlxy(ic) == level .and. icondlz(ic) == level) then
+          ix = ixcond(ic)
+          iy = iycond(ic)
+          iz = izcond(ic)
 c         --- Then check if the point is within the requested region.
 c         --- If so, set mask to 0.
           if (xlo <= ix .and. ix <= xhi .and.
@@ -2441,14 +2653,12 @@ c     --- Check points near boundary.
      &                        necndbdy,
      &                        ecdelmx,ecdelmy,ecdelmz,ecdelpx,ecdelpy,ecdelpz,
      &                        iecndx,iecndy,iecndz,iecndlxy,iecndlz,
-     &                        level)
-      if (level == 1) then
-        call ReachableNodeswork(mask,xlo,ylo,zlo,xhi,yhi,zhi,
-     &                          nocndbdy,
-     &                          ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,ocdelpz,
-     &                          iocndx,iocndy,iocndz,iocndlxy,iocndlz,
-     &                          level)
-      endif
+     &                        level,il,ecstart)
+      call ReachableNodeswork(mask,xlo,ylo,zlo,xhi,yhi,zhi,
+     &                        nocndbdy,
+     &                        ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,ocdelpz,
+     &                        iocndx,iocndy,iocndz,iocndlxy,iocndlz,
+     &                        level,il,ocstart)
 
       return
       end
@@ -2457,10 +2667,10 @@ c=============================================================================
      &                              ncndbdy,
      &                              cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,
      &                              cdelpz,icndx,icndy,icndz,icndlxy,icndlz,
-     &                              level)
+     &                              level,il,cstart)
       integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi
       integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi, 0:6)
-      integer(ISZ):: ncndbdy,level
+      integer(ISZ):: ncndbdy,level,il,cstart(100)
       real(kind=8):: cdelmx(ncndbdy), cdelmy(ncndbdy), cdelmz(ncndbdy)
       real(kind=8):: cdelpx(ncndbdy), cdelpy(ncndbdy), cdelpz(ncndbdy)
       integer(ISZ):: icndx(ncndbdy), icndy(ncndbdy), icndz(ncndbdy)
@@ -2473,37 +2683,37 @@ c into this routine.
       integer(ISZ):: ic,ix,iy,iz
 
 c     --- loop over points near surface of conductors
-      do ic = 1,ncndbdy
+      do ic = cstart(il),cstart(il+1)-1
  
 c       --- Only use point if it is usable at this level or higher
 c       --- and if the point is within the requested domain
-        if (icndlxy(ic) >= level .and. icndlz(ic) >= level) then
+        if (icndlxy(ic) == level .and. icndlz(ic) == level) then
  
-          ix = icndx(ic)/level
-          iy = icndy(ic)/level
-          iz = icndz(ic)/level
+          ix = icndx(ic)
+          iy = icndy(ic)
+          iz = icndz(ic)
  
           if (xlo <= ix .and. ix <= xhi .and.
      &        ylo <= iy .and. iy <= yhi .and.
      &        zlo <= iz .and. iz <= zhi) then
 
 c           --- the point higher in x is inside the conductor
-            if (cdelpx(ic) < level) mask(ix,iy,iz,1) = 0
+            if (cdelpx(ic) < 1.) mask(ix,iy,iz,1) = 0
 
 c           --- the point lower in x is inside the conductor
-            if (cdelmx(ic) < level) mask(ix,iy,iz,2) = 0
+            if (cdelmx(ic) < 1.) mask(ix,iy,iz,2) = 0
 
 c           --- the point higher in y is inside the conductor
-            if (cdelpy(ic) < level) mask(ix,iy,iz,3) = 0
+            if (cdelpy(ic) < 1.) mask(ix,iy,iz,3) = 0
 
 c           --- the point lower in y is inside the conductor
-            if (cdelmy(ic) < level) mask(ix,iy,iz,4) = 0
+            if (cdelmy(ic) < 1.) mask(ix,iy,iz,4) = 0
 
 c           --- the point lower in z is inside the conductor
-            if (cdelpz(ic) < level) mask(ix,iy,iz,5) = 0
+            if (cdelpz(ic) < 1.) mask(ix,iy,iz,5) = 0
 
 c           --- the point lower in z is inside the conductor
-            if (cdelmz(ic) < level) mask(ix,iy,iz,6) = 0
+            if (cdelmz(ic) < 1.) mask(ix,iy,iz,6) = 0
 
           endif
         endif
@@ -2533,13 +2743,13 @@ c     --- Zero out the mask
       do ic=1,ncond
 c       --- First check if the conductor point is on the grid at this
 c       --- level of refinement.
-        if (icondlxy(ic) >= level .and. icondlz(ic) >= level) then
+        if (icondlxy(ic) == level .and. icondlz(ic) == level) then
 c         --- Then check if the point is within the requested region.
-          if (xlo <= ixcond(ic)/level .and. ixcond(ic)/level <= xhi .and.
-     &        ylo <= iycond(ic)/level .and. iycond(ic)/level <= yhi .and.
-     &        zlo <= izcond(ic)/level .and. izcond(ic)/level <= zhi) then
+          if (xlo <= ixcond(ic) .and. ixcond(ic) <= xhi .and.
+     &        ylo <= iycond(ic) .and. iycond(ic) <= yhi .and.
+     &        zlo <= izcond(ic) .and. izcond(ic) <= zhi) then
 c           --- If so, set mask to 1.
-            mask(ixcond(ic)/level,iycond(ic)/level,izcond(ic)/level) = 1
+            mask(ixcond(ic),iycond(ic),izcond(ic)) = 1
           endif
         endif
       enddo
@@ -2557,7 +2767,7 @@ c Fills the array coeffs with the coeeficients of the 7-point finite
 c differenced Poisson's equation, taking into account the changed form of the
 c equation near a boundary using the subgrid-scale technique.
 
-      integer(ISZ):: ic,ix,iy,iz
+      integer(ISZ):: ic,ix,iy,iz,il
       integer(ISZ):: level
       real(kind=8):: rdx2,coeff0
 
@@ -2570,15 +2780,16 @@ c     --- First put in the default values
       
 c     --- Get level of coarseness
       level = nint(dx/dxfine)
+      il = int(log(1.*level)/log(2.) + 0.5) + 1
 
 c     --- Check for point in conductors.
-      do ic=1,ncond
+      do ic=icstart(il),icstart(il+1)-1
 c       --- First check if the conductor point is on the grid at this
 c       --- level of refinement.
-        if (icondlxy(ic) >= level .and. icondlz(ic) >= level) then
-          ix = ixcond(ic)/level
-          iy = iycond(ic)/level
-          iz = izcond(ic)/level
+        if (icondlxy(ic) == level .and. icondlz(ic) == level) then
+          ix = ixcond(ic)
+          iy = iycond(ic)
+          iz = izcond(ic)
 c         --- Then check if the point is within the requested region.
           if (xlo <= ix .and. ix <= xhi .and.
      &        ylo <= iy .and. iy <= yhi .and.
@@ -2597,19 +2808,16 @@ c     --- Get coefficients for even points.
      &                        iecndx,iecndy,iecndz,iecndlxy,iecndlz,
      &                        ecvoltmx,ecvoltpx,ecvoltmy,
      &                        ecvoltpy,ecvoltmz,ecvoltpz,
-     &                        level)
+     &                        level,il,ecstart)
 
-c     --- Get coefficients for odd points. Only needs to be done at the finest
-c     --- level.
-      if (level == 1) then
-        call NodalCoefficientswork(coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,
+c     --- Get coefficients for odd points.
+      call NodalCoefficientswork(coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,
      &                        nocndbdy,
      &                        ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,ocdelpz,
      &                        iocndx,iocndy,iocndz,iocndlxy,iocndlz,
      &                        ocvoltmx,ocvoltpx,ocvoltmy,
      &                        ocvoltpy,ocvoltmz,ocvoltpz,
-     &                        level)
-      endif
+     &                        level,il,ecstart)
 
       return
       end
@@ -2619,11 +2827,11 @@ c=============================================================================
      &                        cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,cdelpz,
      &                        icndx,icndy,icndz,icndlxy,icndlz,
      &                        cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
-     &                        level)
+     &                        level,il,cstart)
       integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi
       real(kind=8):: coeffs(xlo:xhi,ylo:yhi,zlo:zhi,0:7)
       real(kind=8):: rdx2
-      integer(ISZ):: ncndbdy,level
+      integer(ISZ):: ncndbdy,level,il,cstart(100)
       real(kind=8):: cdelmx(ncndbdy), cdelmy(ncndbdy), cdelmz(ncndbdy)
       real(kind=8):: cdelpx(ncndbdy), cdelpy(ncndbdy), cdelpz(ncndbdy)
       integer(ISZ):: icndx(ncndbdy), icndy(ncndbdy), icndz(ncndbdy)
@@ -2647,15 +2855,15 @@ c       voltswitch = 0.
 c     endif
 
 c     --- loop over points near surface of conductors
-      do ic = 1,ncndbdy
+      do ic = cstart(il),cstart(il+1)-1
  
 c       --- Only use point if it is usable at this level or higher
 c       --- and if the point is within the requested domain
-        if (icndlxy(ic) >= level .and. icndlz(ic) >= level) then
+        if (icndlxy(ic) == level .and. icndlz(ic) == level) then
  
-          ix = icndx(ic)/level
-          iy = icndy(ic)/level
-          iz = icndz(ic)/level
+          ix = icndx(ic)
+          iy = icndy(ic)
+          iz = icndz(ic)
  
           if (xlo <= ix .and. ix <= xhi .and.
      &        ylo <= iy .and. iy <= yhi .and.
@@ -2665,40 +2873,40 @@ c           --- Contributions of terms with no conductor boundary nearby.
             coeff0 = -rdx2
 
 c           --- the point higher in x is inside the conductor
-            if (cdelpx(ic) < level) then
-              coeff0(1) = -1./(cdelpx(ic)/level)*rdx2
+            if (cdelpx(ic) < 1.) then
+              coeff0(1) = -1./cdelpx(ic)*rdx2
               coeffs(ix,iy,iz,1) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpx(ic)/(cdelpx(ic)/level)*rdx2*voltswitch
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpx(ic)/cdelpx(ic)*rdx2*voltswitch
             endif
 c           --- the point lower in x is inside the conductor
-            if (cdelmx(ic) < level) then
-              coeff0(2) = -1./(cdelmx(ic)/level)*rdx2
+            if (cdelmx(ic) < 1.) then
+              coeff0(2) = -1./cdelmx(ic)*rdx2
               coeffs(ix,iy,iz,2) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmx(ic)/(cdelmx(ic)/level)*rdx2*voltswitch
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmx(ic)/cdelmx(ic)*rdx2*voltswitch
             endif
 c           --- the point higher in y is inside the conductor
-            if (cdelpy(ic) < level) then
-              coeff0(3) = -1./(cdelpy(ic)/level)*rdx2
+            if (cdelpy(ic) < 1.) then
+              coeff0(3) = -1./cdelpy(ic)*rdx2
               coeffs(ix,iy,iz,3) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpy(ic)/(cdelpy(ic)/level)*rdx2*voltswitch
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpy(ic)/cdelpy(ic)*rdx2*voltswitch
             endif
 c           --- the point lower in y is inside the conductor
-            if (cdelmy(ic) < level) then
-              coeff0(4) = -1./(cdelmy(ic)/level)*rdx2
+            if (cdelmy(ic) < 1.) then
+              coeff0(4) = -1./cdelmy(ic)*rdx2
               coeffs(ix,iy,iz,4) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmy(ic)/(cdelmy(ic)/level)*rdx2*voltswitch
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmy(ic)/cdelmy(ic)*rdx2*voltswitch
             endif
 c           --- the point lower in z is inside the conductor
-            if (cdelpz(ic) < level) then
-              coeff0(5) = -1./(cdelpz(ic)/level)*rdx2
+            if (cdelpz(ic) < 1.) then
+              coeff0(5) = -1./cdelpz(ic)*rdx2
               coeffs(ix,iy,iz,5) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpz(ic)/(cdelpz(ic)/level)*rdx2*voltswitch
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltpz(ic)/cdelpz(ic)*rdx2*voltswitch
             endif
 c           --- the point lower in z is inside the conductor
-            if (cdelmz(ic) < level) then
-              coeff0(6) = -1./(cdelmz(ic)/level)*rdx2
+            if (cdelmz(ic) < 1.) then
+              coeff0(6) = -1./cdelmz(ic)*rdx2
               coeffs(ix,iy,iz,6) = 0.
-              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmz(ic)/(cdelmz(ic)/level)*rdx2*voltswitch
+              coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - cvoltmz(ic)/cdelmz(ic)*rdx2*voltswitch
             endif
 
 c           --- Sum contributions to center term.
