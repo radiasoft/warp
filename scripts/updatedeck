@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+import sys
+import os
+import string
+
+storageflag = "#<"
+
+if len(sys.argv) == 1:
+  print """
+updatedeck deckname [storage_directory]
+
+The deckname must be specified.
+
+If storage directory is specified, and the file deckname exits, then the
+file will be modified to include the storage directory name and then
+copied to there directory. Note that in this case, a file with the same
+name in the storage directory will be overwritten. If the file deckname
+does not exist, then the file with that name in the storage directory
+will be retreived.  
+
+If the storage directory is not given, it will be obtained from the
+deck. If the deck is newer than the one in the storage directory, it
+will be copied to there. If the one in the storage directory is newer,
+that one will be retreived and overwrite the file.
+
+The copies rely on scp, so you may be prompted for passwords.
+  """
+  sys.exit(0)
+
+def main():
+  # --- Get deck and storage name
+  deck = sys.argv[1]
+  if len(sys.argv) > 2:
+    storage = sys.argv[2]
+    storagegiven = 1
+  else:
+    storage = getstoragename(deck)
+    storagegiven = 0
+  if storage[-1] != '/': storage = storage + '/'
+
+  # --- First check if the deck file exists.
+  if not os.access(deck,os.F_OK):
+    # --- If the deck doesn't exist, execute the command to retreive it.
+    print "Retreiving file from storge directory"
+    os.execlp('scp','scp','-p',storage+deck,deck)
+
+  # --- If file exists and storage directory specified, prepend
+  # --- line with storage information and copy deck to there
+  if storagegiven:
+    addstoragenametodeck(deck,storage)
+    print "Sending file to storage"
+    os.execlp('scp','scp','-p',deck,storage+deck)
+
+  # --- Get last modification date of the file
+  deckmoddate = os.stat(deck).st_mtime
+
+  # --- Get last modification date of the file in storage
+  # --- First make a temporary copy here and get the modification data
+  # --- from that file. Note if scp returns an error, the file was not
+  # --- found in storage, so set mod date to zero. If the scp failed
+  # --- because of an incorrect password, in which case it still returns
+  # --- zero but doesn't copy the file, quit.
+  print "Copying file from storage to here"
+  r = os.system('scp -p '+storage+deck+' '+deck+'XXXXXX')
+  if r == 0:
+    try:
+      stormoddate = os.stat(deck+'XXXXXX').st_mtime
+    except OSError:
+      sys.exit(1)
+  else:
+    stormoddate = 0
+
+  # --- If storage file is newer, overwrite deck
+  if stormoddate > deckmoddate:
+    os.system('mv '+deck+'XXXXXX '+deck)
+  else:
+    print "Sending file to storage"
+    os.system('scp -p '+deck+' '+storage)
+    if os.access(deck+'XXXXXX',os.F_OK):
+      os.system('rm '+deck+'XXXXXX')
+
+#------------------------------------------------------------------------
+def getstoragename(deck):
+  """
+Gets the storage directory name from comments in the deck.
+  """
+  try:
+    ff = open(deck,'r')
+  except IOError:
+    print "I don't know what you want. The file ",deck," doesn't exist and no"
+    print "storage directory was specified."
+    sys.exit(1)
+  lines = ff.readlines()
+  for l in lines:
+    if l[:2] == storageflag:
+      return string.strip(l[2:])
+  else:
+    print "Storage name not found in file %s"%deck
+    sys.exit(1)
+
+#------------------------------------------------------------------------
+def addstoragenametodeck(deck,storage):
+  ff = open(deck,'r')
+  lines = ff.readlines()
+  ff.close()
+  i = 0
+  # --- Strip out any existing storage lines
+  while i < len(lines):
+    if len(lines[i]) > 1 and lines[i][:2] == storageflag:
+      del lines[i]
+    else:
+      i = i + 1
+  # --- Prepend new storage line
+  lines[0:0] = [storageflag + " " + storage + '\n']
+  # --- Write out modified text
+  ff = open(deck,'w')
+  for l in lines: ff.write(l)
+  ff.close()
+
+
+
+if __name__ == '__main__':
+  main()
