@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:06 $
+c@(#) File CIR.M, version $Revision: 3.2 $, $Date: 2001/04/27 21:31:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -864,7 +864,7 @@ c       --- or the current limit was exceeded;
 c       --- if so, print the current position s
         if (lfailed) then
           print *, " at s =", s
-          call exit(-1)
+          stop
         endif
 
 c       --- Now, set derivatives
