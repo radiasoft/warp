@@ -1,36 +1,75 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.2 2001/01/25 22:10:34 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.3 2001/02/02 00:16:49 dave Exp $"
+
+hpbasictext = """
+  - absc: Data for the abscissa. Defaults to either thist or hzbeam
+  - xmin, xmax, ymin, ymax: Plot limits, defaults to extrema of data
+  - titlet, titleb, titlel, titler: Plot titles, defaults to blank except
+    titleb  which is set to name of bottom axis when absc not input
+  - xscale=1.0: Scale factor for abscissa
+  - xoffset=0.0: Offset for abscissa
+  - yscale=1.0: Scale factor for oordinate
+  - yoffset=0.0: Offset for oordinate
+  - lnormalized=0: When true, scales data by initial value
+  - istart=0: Time index at which to start the plots
+  - iend=top.jhist: Time index at which to end the plots
+  - istep=1: Step size of time data plotted
+  - lhzbeam=1: When true, plots data versus hzbeam instead of thist
+  - lvsz=1: Old name for lhzbeam
+  - lzshift=0: specifies whether the z-axis is shifted by the window
+              location
+  - logplot=0: When true, make a log plot
+  - color='fg': Color of the curve plotted
+  - marks=0: Marks to place on curve
+  - marker=None: Marker to place on curve
+  - msize=1.0: Marker size
+  - width=1.0: Line width
+  - titles=1: When false, no titles are printed
+  - plsysval=1: Plot system to make plot in (quadrant plots for example)
+    see work.gs for the plot system values."""
+hpbasicwintext = (
+"""  - iw=0: Window to chose from""" + hpbasictext +
+"""  - lzshift=0: specifies whether the z-axis is shifted by the window
+              location""")
+hpbasicconttext = (
+"""
+  - absc: Data for the abscissa. Defaults to either thist or hzbeam
+  - xmin, xmax, ymin, ymax: Plot limits, defaults to extrema of data
+  - titlet, titleb, titlel, titler: Plot titles, defaults to blank except
+    titleb  which is set to name of bottom axis when absc not input
+  - xscale=1.0: Scale factor for abscissa
+  - xoffset=0.0: Offset for abscissa
+  - yscale=1.0: Scale factor for oordinate
+  - yoffset=0.0: Offset for oordinate
+  - istart=0: Time index at which to start the plots
+  - iend=top.jhist: Time index at which to end the plots
+  - istep=max(iend/20,1): Step size of time data plotted
+  - jstart=0: Z index at which to start the plots
+  - jend=top.nzzarr: Z index at which to end the plots
+  - jstep=max(jend/32,1): Z step size of time data plotted
+  - lhzbeam=1: When true, plots data versus hzbeam instead of thist
+  - logplot=0: When true, make a log plot
+  - color='fg': Color of the curve plotted
+  - marks=0: Marks to place on curve
+  - marker=None: Marker to place on curve
+  - msize=1.0: Marker size
+  - titles=1: Line width
+  - levs=None: When false, no titles are printed
+  - filled=0: When true, plot filled contours""")
+hpzarraytext = (
+  """
+  - contour=0 when 1 plots contours
+  - overlay=0 when 1 overlays values from different times
+  - iz when specified, plots history at that location""" + hpbasicconttext +
+  """ - For mountain range plot options, run doc(mountainplot1)""")
 
 ###########################################################################
 def hpdoc():
-  """
+  print """
 What follows is a list of all possible arguments to any of the history
 plotting routines, along with their default values.
-  - absc Data for the abscissa. Defaults to either thist or hzbeam
-  - xmin, xmax, ymin, ymax Plot limits, defaults to extrema of data
-  - titlet, titleb, titlel, titler Plot titles, defaults to blank except
-    titleb which is set to name of bottom axis when absc not input
-  - xscale = 1.0 Scale factor for abscissa
-  - xoffset = 0.0 Offset for abscissa
-  - yscale = 1.0 Scale factor for oordinate
-  - yoffset = 0.0 Offset for oordinate
-  - lnormalized = 0 When true, scales data by initial value
-  - i1 = 0 Time index at which to start the plots
-  - i2 = top.jhist Time index at which to end the plots
-  - nnhp = 1 Step size of time data plotted
-  - lhzbeam = 0 When true, plots data versus hzbeam instead of thist
-  - logplot = 0 When true, make a log plot
-  - color = 'fg' Color of the curve plotted
-  - marks = 0 Marks to place on curve
-  - marker = None Marker to place on curve
-  - msize = 1.0 Marker size
-  - width = 1.0 Line width
-  - titles = 1 When false, no titles are printed
-  - plsysval = 1 Plot system to make plot in (quadrant plots for example)
-    see work.gs for the plot system values.
-  """
-  print hpdoc.__doc__
+  """ + hpbasictext
 
 ###########################################################################
 def hpbasic(oord,kwdict={},**kw):
@@ -40,69 +79,35 @@ parsing of the arguments is done in one place here and each of the history
 plot functions just passes most of the arguments into this function. The
 only required argument of course is the data to be plotted.
   """
-  keywords = ['absc','xmin','xmax','ymin','ymax','titlet','titleb','titlel',
-              'titler','xscale','xoffset','yscale','yoffset','lnormalized',
-              'i1','i2','nnhp','lhzbeam','logplot','color','marks','marker',
-              'msize','titles','plsysval','width']
-
-  # --- Add together dictionaries
-  kw.update(kwdict)
-
-  # --- Set the default values of input
-  absc = None
-  xmin = 'e'
-  xmax = 'e'
-  ymin = 'e'
-  ymax = 'e'
-  titlet = ''
-  titleb = ''
-  titlel = ''
-  titler = ''
-  xscale = 1.0
-  xoffset = 0.0
-  yscale = array([1.0])
-  yoffset = 0.0
-  lnormalized = 0
-  i1 = 0
-  i2 = top.jhist
-  nnhp = 1
-  lhzbeam = 0
-  logplot = 0
-  color = 'fg'
-  marks = 0
-  marker = None
-  msize = 1.0
-  titles = 1
-  plsysval = 1
-  width = 1.
-  # --- Check through the possible keyword arguments
-  for arg in kw.keys():
-    if arg in keywords:
-      exec(arg+" = kw['"+arg+"']")
-      del kw[arg]
-  # --- Raise an error if there are keywords left over
-  if len(kw) > 0:
-    badkwlist = 'unexpected keyword argument:'
-    if len(kw) > 1: badkwlist = badkwlist[:-1] + 's:'
-    for arg in kw.keys():
-      badkwlist = badkwlist + ' ' + arg
-    raise TypeError, badkwlist
+  kwdefaults = {'absc':None,'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
+                'titlet':'','titleb':'','titlel':'','titler':'',
+                'xscale':1.0,'xoffset':0.0,'yscale':array([1.0]),'yoffset':0.0,
+                'lnormalized':0,'istart':0,'iend':top.jhist,'istep':1,
+                'lhzbeam':1,'lvsz':1,'logplot':0,
+                'color':'fg','marks':0,'marker':None,'msize':1.0,'titles':1,
+                'plsysval':1,'width':1.}
+  kwvalues = kwdefaults.copy()
+  kwvalues.update(kw)
+  kwvalues.update(kwdict)
+  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  badargs = checkarguments(kwvalues,kwdefaults)
+  if badargs: raise "bad argument ",string.join(badargs.keys())
 
   # --- Now complete the setup
   if lnormalized:
-    yscale = 1./oord[...,i1]
+    yscale = 1./oord[...,istart]
     if not titlel: titlel = titlet + " over initial value"
   if type(yscale) != type(array([])): yscale = array([yscale])
   if not absc:
-    if (lhzbeam):
-      absc = top.hzbeam[i1:i2+1:nnhp]*xscale + xoffset
+    if (lhzbeam or lvsz):
+      absc = top.hzbeam[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
           titleb = "Z (m)"
         else:
           titleb = "Z"
     else:
-      absc = top.thist[i1:i2+1:nnhp]*xscale + xoffset
+      absc = top.thist[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
           titleb = "time (s)"
@@ -111,11 +116,11 @@ only required argument of course is the data to be plotted.
   if logplot:
     logxy(1,0)
     oord = log10(maximum(10e-12,
-                         oord[...,i1:i2+1:nnhp]*yscale[...,NewAxis]+yoffset))
+                 oord[...,istart:iend+1:istep]*yscale[...,NewAxis]+yoffset))
     if not titler:
       titler = "logarithmic scale"
   else:
-    oord = oord[...,i1:i2+1:nnhp]*yscale[...,NewAxis]+yoffset
+    oord = oord[...,istart:iend+1:istep]*yscale[...,NewAxis]+yoffset
 
   # --- Now actually make the plot after all of that ado.   
   pla(transpose(oord),absc,color=color,msize=msize,marks=marks,marker=marker,
@@ -129,6 +134,12 @@ only required argument of course is the data to be plotted.
 # Basic history plot for data in windows
 def hpbasicwin(oord,iw=0,kwdict={},**kw):
   kw.update(kwdict)
+  if 'lzshift' in kw.keys():
+    lzshift = kw['lzshift']
+    del kw['lzshift']
+  else:
+    lzshift = 0
+  if lzshift: kw['xoffset'] = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
   if iw == 0:
     kw['titlet'] = kw['titlet'] + " for whole beam"
     hpbasic(oord[iw,:],kw)
@@ -151,40 +162,24 @@ def hpbasicwin(oord,iw=0,kwdict={},**kw):
 # arguments into this function. The only required argument of course of the
 # data to be plotted.
 def hpbasiccont(oord,oordmesh,kwdict={},**kw):
-  kw.update(kwdict)
-  keywords = ['absc','xmin','xmax','ymin','ymax','titlet','titleb','titlel',
-              'titler','xscale','xoffset','yscale','yoffset','i1','i2','inct',
-              'j1','j2','incz','lhzbeam','logplot','color','marks','marker',
-              'msize','titles','levs','filled']
-  # --- Set the default values of input
-  absc = None
-  xmin = 'e'
-  xmax = 'e'
-  ymin = 'e'
-  ymax = 'e'
-  titlet = ''
-  titleb = ''
-  titlel = ''
-  titler = ''
-  xscale = 1.0
-  xoffset = 0.0
-  yscale = 1.0
-  yoffset = 0.0
-  i1 = 0
-  i2 = top.jhist
-  inct = max(i2/20,1)
-  j1 = 0
-  j2 = top.nzzarr
-  incz = max(j2/32,1)
-  lhzbeam = 0
-  logplot = 0
-  color = 'fg'
-  marks = 0
-  marker = None
-  msize = 1.0
-  titles = 1
-  levs = None
-  filled = 0
+  kwdefaults = {'absc':None,'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
+                'titlet':'','titleb':'','titlel':'','titler':'',
+                'xscale':1.0,'xoffset':0.0,'yscale':1.0,'yoffset':0.0,
+                'istart':0,'iend':top.jhist,'istep':None,'jstart':0,
+                'jend':top.nzzarr,'jstep':None,'lhzbeam':1,'logplot':0,
+                'color':'fg','marks':0,'marker':None,'msize':1.0,
+                'titles':1,'levs':10,'filled':0}
+  kwvalues = kwdefaults.copy()
+  kwvalues.update(kw)
+  kwvalues.update(kwdict)
+  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  badargs = checkarguments(kwvalues,kwdefaults)
+  if badargs: raise "bad argument ",string.join(badargs.keys())
+
+  # --- Some special arguments
+  if istep == None: istep = max(iend/20,1)
+  if jstep == None: jstep = max(jend/32,1)
+
   # --- Check through the possible keyword arguments
   for arg in kw.keys():
     if arg in keywords:
@@ -202,35 +197,36 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   # --- Now complete the setup
   if not absc:
     if (lhzbeam):
-      absc = top.hzbeam[i1:i2+1:inct]*xscale + xoffset
+      absc = top.hzbeam[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
           titleb = "Z (m)"
         else:
           titleb = "Z"
     else:
-      absc = top.thist[i1:i2+1:inct]*xscale + xoffset
+      absc = top.thist[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
           titleb = "time (s)"
         else:
           titleb = "time"
   if logplot:
-    oord = log10(maximum(10e-12,transpose(oord[j1:j2+1:incz,i1:i2+1:inct])*
-                                yscale+yoffset))
+    oord=log10(maximum(10e-12,
+               transpose(oord[jstart:jend+1:jstep,istart:iend+1:istep])*
+               yscale+yoffset))
     if not titler:
       titler = "logarithmic scale"
   else:
-    oord = transpose(oord[j1:j2+1:incz,i1:i2+1:inct]*yscale+yoffset)
+    oord=transpose(oord[jstart:jend+1:jstep,istart:iend+1:istep]*yscale+yoffset)
 
   # --- Now actually make the plot after all of that ado.   
   if filled:
-    plotfc(oord,absc,oordmesh[j1:j2+1:incz],color=color,contours=levs)
+    plotfc(oord,absc,oordmesh[jstart:jend+1:jstep],contours=levs)
   else:
-    plotc(oord,absc,oordmesh[j1:j2+1:incz],color=color,levs=levs)
+    plotc(oord,absc,oordmesh[jstart:jend+1:jstep],color=color,levs=levs)
   if titles: ptitles(titlet,titleb,titlel,titler)
-  if xmin == 'e': xmin = min(oordmesh[j1:j2+1:incz])
-  if xmax == 'e': xmax = max(oordmesh[j1:j2+1:incz])
+  if xmin == 'e': xmin = min(oordmesh[jstart:jend+1:jstep])
+  if xmax == 'e': xmax = max(oordmesh[jstart:jend+1:jstep])
   if ymin == 'e': ymin = min(absc)
   if ymax == 'e': ymax = max(absc)
   limits(xmin,xmax,ymin,ymax)
@@ -257,10 +253,12 @@ Plots data in various ways. By default, makes a mountain range plot.
   elif contour:
     hpbasiccont(hzarray,top.zmntmesh,kw)
   elif overlay:
-    kw['nnhp'] = max(top.jhist/10,1)
-    kw['absc'] = w3d.zmesh
-    hpbasic(hzarray,kw)
+    kw['istep'] = max(top.jhist/10,1)
+    kw['ord'] = w3d.zmesh
+    kw['jhist'] = top.jhist
+    mountainplot1(kw['titlet'],hzarray,kw)
   else:
+    kw['jhist'] = top.jhist
     mountainplot1(kw['titlet'],hzarray,kw)
 
 ###########################################################################
@@ -268,695 +266,874 @@ Plots data in various ways. By default, makes a mountain range plot.
 ###########################################################################
 
 def hpzbeam(kwdict={},**kw):
-  "Beam frame location. For a complete list of arguments, run hpdoc()."
+  "Beam frame location."
   kw.update(kwdict)
   kw['titlet']="Beam frame location"
   kw['titlel']="(m)"
   hpbasic(top.hzbeam,kw)
+if sys.version[:5] != "1.5.1":
+  hpzbeam.__doc__ = hpzbeam.__doc__ + hpbasictext
 
 
 def hpvbeam(kwdict={},**kw):
-  "Beam frame velocity. For a complete list of arguments, run hpdoc()."
+  "Beam frame velocity."
   kw.update(kwdict)
   kw['titlet']="Beam frame velocity"
   kw['titlel']="(m/s)"
   hpbasic(top.hvbeam,kw)
+if sys.version[:5] != "1.5.1":
+  hpvbeam.__doc__ = hpvbeam.__doc__ + hpbasictext
 
 
 def hpbmlen(kwdict={},**kw):
-  "RMS beam length. For a complete list of arguments, run hpdoc()."
+  "RMS beam length."
   kw.update(kwdict)
   kw['titlet']="RMS beam length"
   kw['titlel']="(m)"
   hpbasic(top.hbmlen,kw)
+if sys.version[:5] != "1.5.1":
+  hpbmlen.__doc__ = hpbmlen.__doc__ + hpbasictext
 
 
 def hpefld(kwdict={},**kw):
-  "Field energy. For a complete list of arguments, run hpdoc()."
+  "Field energy."
   kw.update(kwdict)
   kw['titlet']="Field energy"
   kw['titlel']="(J)"
   hpbasic(top.hefld,kw)
+if sys.version[:5] != "1.5.1":
+  hpefld.__doc__ = hpefld.__doc__ + hpbasictext
 
 
 def hpekzmbe(kwdict={},**kw):
-  "Total Z Kinetic energy minus beam energy. For a complete list of arguments, run hpdoc()."
+  "Total Z Kinetic energy minus beam energy."
   kw.update(kwdict)
   kw['titlet']="Total Z Kinetic energy minus beam energy"
   kw['titlel']="(J)"
   hpbasic(top.hekzmbe,kw)
+if sys.version[:5] != "1.5.1":
+  hpekzmbe.__doc__ = hpekzmbe.__doc__ + hpbasictext
 
 
 def hpekzbeam(kwdict={},**kw):
-  "Z Kinetic energy in the beam frame. For a complete list of arguments, run hpdoc()."
+  "Z Kinetic energy in the beam frame."
   kw.update(kwdict)
   kw['titlet']="Z Kinetic energy in the beam frame"
   kw['titlel']="(J)"
   hpbasic(top.hekzbeam,kw)
+if sys.version[:5] != "1.5.1":
+  hpekzbeam.__doc__=hpekzbeam.__doc__+hpbasictext
 
 
 def hpekperp(kwdict={},**kw):
-  "Perp Kinetic energy. For a complete list of arguments, run hpdoc()."
+  "Perp Kinetic energy."
   kw.update(kwdict)
   kw['titlet']="Perp Kinetic energy"
   kw['titlel']="(J)"
   hpbasic(top.hekperp,kw)
+if sys.version[:5] != "1.5.1":
+  hpekperp.__doc__ = hpekperp.__doc__ + hpbasictext
 
 
 def hpepsx(iw=0,kwdict={},**kw):
-  "X emittance. For a complete list of arguments, run hpdoc()."
+  "X emittance."
   kw.update(kwdict)
   kw['titlet']="X emittance"
   kw['titlel']="(pi-m-rad)"
   hpbasicwin(top.hepsx,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsx.__doc__ = hpepsx.__doc__ + hpbasicwintext
 
 
 def hpepsy(iw=0,kwdict={},**kw):
-  "Y emittance. For a complete list of arguments, run hpdoc()."
+  "Y emittance."
   kw.update(kwdict)
   kw['titlet']="Y emittance"
   kw['titlel']="(pi-m-rad)"
   hpbasicwin(top.hepsy,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsy.__doc__ = hpepsy.__doc__ + hpbasicwintext
 
 
 def hpepsz(iw=0,kwdict={},**kw):
-  "Z emittance. For a complete list of arguments, run hpdoc()."
+  "Z emittance."
   kw.update(kwdict)
   kw['titlet']="Z emittance"
   kw['titlel']="(pi-m-rad)"
   hpbasicwin(top.hepsz,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsz.__doc__ = hpepsz.__doc__ + hpbasicwintext
 
 
 def hpepsnx(iw=0,kwdict={},**kw):
-  "X normalized emittance. For a complete list of arguments, run hpdoc()."
+  "X normalized emittance."
   kw.update(kwdict)
   kw['titlet']="X normalized emittance"
   kw['titlel']="(pi-mm-mrad)"
   hpbasicwin(top.hepsnx,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnx.__doc__ = hpepsnx.__doc__ + hpbasicwintext
 
 
 def hpepsny(iw=0,kwdict={},**kw):
-  "Y normalized emittance. For a complete list of arguments, run hpdoc()."
+  "Y normalized emittance."
   kw.update(kwdict)
   kw['titlet']="Y normalized emittance"
   kw['titlel']="(pi-mm-mrad)"
   hpbasicwin(top.hepsny,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsny.__doc__ = hpepsny.__doc__ + hpbasicwintext
 
 
 def hpepsnz(iw=0,kwdict={},**kw):
-  "Z normalized emittance. For a complete list of arguments, run hpdoc()."
+  "Z normalized emittance."
   kw.update(kwdict)
   kw['titlet']="Z normalized emittance"
   kw['titlel']="(pi-mm-mrad)"
   hpbasicwin(top.hepsnz,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnz.__doc__ =  hpepsnz.__doc__ + hpbasicwintext
 
 
 def hpepsg(iw=0,kwdict={},**kw):
-  "Generalized emittance. For a complete list of arguments, run hpdoc()."
+  "Generalized emittance."
   kw.update(kwdict)
   kw['titlet']="Generalized emittance"
   kw['titlel']="(pi-m-rad)"
   hpbasicwin(top.hepsg,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsg.__doc__ = hpepsg.__doc__ + hpbasicwintext
 
 
 def hpepsh(iw=0,kwdict={},**kw):
-  "Generalized emittance. For a complete list of arguments, run hpdoc()."
+  "Generalized emittance."
   kw.update(kwdict)
   kw['titlet']="Generalized emittance"
   kw['titlel']="(pi-m-rad)"
   hpbasicwin(top.hepsh,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsh.__doc__ = hpepsh.__doc__ + hpbasicwintext
 
 
 def hpepsng(iw=0,kwdict={},**kw):
-  "Generalized normalized emittance. For a complete list of arguments, run hpdoc()."
+  "Generalized normalized emittance."
   kw.update(kwdict)
   kw['titlet']="Generalized normalized emittance"
   kw['titlel']="(pi-mm-mrad)"
   hpbasicwin(top.hepsng,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsng.__doc__ = hpepsng.__doc__ + hpbasicwintext
 
 
 def hpepsnh(iw=0,kwdict={},**kw):
-  "Generalized normalized emittance. For a complete list of arguments, run hpdoc()."
+  "Generalized normalized emittance."
   kw.update(kwdict)
   kw['titlet']="Generalized normalized emittance"
   kw['titlel']="(pi-mm-mrad)"
   hpbasicwin(top.hepsnh,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnh.__doc__ = hpepsnh.__doc__ + hpbasicwintext
 
 
 def hppnum(iw=0,kwdict={},**kw):
-  "Number of particles. For a complete list of arguments, run hpdoc()."
+  "Number of particles."
   kw.update(kwdict)
   kw['titlet']="Number of particles"
   kw['titlel']=""
   hpbasicwin(top.hpnum,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hppnum.__doc__ = hppnum.__doc__ + hpbasicwintext
 
 
 def hprhomid(iw=0,kwdict={},**kw):
-  "Charge density on axis. For a complete list of arguments, run hpdoc()."
+  "Charge density on axis."
   kw.update(kwdict)
   kw['titlet']="Charge density on axis"
   kw['titlel']="(C/m**3)"
   hpbasicwin(top.hrhomid,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hprhomid.__doc__ = hprhomid.__doc__ + hpbasicwintext
 
 
 def hprhomax(iw=0,kwdict={},**kw):
-  "Charge density max. For a complete list of arguments, run hpdoc()."
+  "Charge density max."
   kw.update(kwdict)
   kw['titlet']="Charge density max"
   kw['titlel']="(C/m**3)"
   hpbasicwin(top.hrhomax,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hprhomax.__doc__ = hprhomax.__doc__ + hpbasicwintext
 
 
 def hpxbar(iw=0,kwdict={},**kw):
-  "True mean x. For a complete list of arguments, run hpdoc()."
+  "True mean x."
   kw.update(kwdict)
   kw['titlet']="True mean x"
   kw['titlel']="(m)"
   hpbasicwin(top.hxbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxbar.__doc__ = hpxbar.__doc__ + hpbasicwintext
 
 
 def hpybar(iw=0,kwdict={},**kw):
-  "True mean y. For a complete list of arguments, run hpdoc()."
+  "True mean y."
   kw.update(kwdict)
   kw['titlet']="True mean y"
   kw['titlel']="(m)"
   hpbasicwin(top.hybar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpybar.__doc__ = hpybar.__doc__ + hpbasicwintext
 
 
 def hpxybar(iw=0,kwdict={},**kw):
-  "True mean xy. For a complete list of arguments, run hpdoc()."
+  "True mean xy."
   kw.update(kwdict)
   kw['titlet']="True mean xy"
   kw['titlel']="(m**2)"
   hpbasicwin(top.hxybar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxybar.__doc__ = hpxybar.__doc__ + hpbasicwintext
 
 
 def hpxrms(iw=0,kwdict={},**kw):
-  "True RMS x. For a complete list of arguments, run hpdoc()."
+  "True RMS x."
   kw.update(kwdict)
   kw['titlet']="True RMS x"
   kw['titlel']="(m)"
   hpbasicwin(top.hxrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxrms.__doc__ = hpxrms.__doc__ + hpbasicwintext
 
 
 def hpyrms(iw=0,kwdict={},**kw):
-  "True RMS y. For a complete list of arguments, run hpdoc()."
+  "True RMS y."
   kw.update(kwdict)
   kw['titlet']="True RMS y"
   kw['titlel']="(m)"
   hpbasicwin(top.hyrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyrms.__doc__ = hpyrms.__doc__ + hpbasicwintext
 
 
 def hpxprms(iw=0,kwdict={},**kw):
-  "True RMS x'. For a complete list of arguments, run hpdoc()."
+  "True RMS x'."
   kw.update(kwdict)
   kw['titlet']="True RMS x'"
   kw['titlel']="(rad)"
   hpbasicwin(top.hxprms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxprms.__doc__ = hpxprms.__doc__ + hpbasicwintext
 
 
 def hpyprms(iw=0,kwdict={},**kw):
-  "True RMS y'. For a complete list of arguments, run hpdoc()."
+  "True RMS y'."
   kw.update(kwdict)
   kw['titlet']="True RMS y'"
   kw['titlel']="(rad)"
   hpbasicwin(top.hyprms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyprms.__doc__ = hpyprms.__doc__ + hpbasicwintext
 
 
 def hpxsqbar(iw=0,kwdict={},**kw):
-  "Mean x squared. For a complete list of arguments, run hpdoc()."
+  "Mean x squared."
   kw.update(kwdict)
   kw['titlet']="Mean x squared"
   kw['titlel']="(m**2)"
   hpbasicwin(top.hxsqbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxsqbar.__doc__ = hpxsqbar.__doc__ + hpbasicwintext
 
 
 def hpysqbar(iw=0,kwdict={},**kw):
-  "Mean y squared. For a complete list of arguments, run hpdoc()."
+  "Mean y squared."
   kw.update(kwdict)
   kw['titlet']="Mean y squared"
   kw['titlel']="(m**2)"
   hpbasicwin(top.hysqbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpysqbar.__doc__ = hpysqbar.__doc__ + hpbasicwintext
 
 
 def hpvxbar(iw=0,kwdict={},**kw):
-  "Mean vx. For a complete list of arguments, run hpdoc()."
+  "Mean vx."
   kw.update(kwdict)
   kw['titlet']="Mean vx"
   kw['titlel']="(m/s)"
   hpbasicwin(top.hvxbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvxbar.__doc__ = hpvxbar.__doc__ + hpbasicwintext
 
 
 def hpvybar(iw=0,kwdict={},**kw):
-  "Mean vy. For a complete list of arguments, run hpdoc()."
+  "Mean vy."
   kw.update(kwdict)
   kw['titlet']="Mean vy"
   kw['titlel']="(m/s)"
   hpbasicwin(top.hvybar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvybar.__doc__ = hpvybar.__doc__ + hpbasicwintext
 
 
-def hpvzbar(iw=0,kwdict={},**kw):
-  "Mean vz. For a complete list of arguments, run hpdoc()."
+# --- plot mean z velocity in beam or lab frame vs time
+def hpvzbar(iw=0,beamframe=1,kwdict={},**kw):
+  """Mean Z Velocity (beam frame or lab frame)
+  - beamframe=1: when true, plot Vz relative to beam frame (vzbar - vbeam)"""
   kw.update(kwdict)
-  kw['titlet']="Mean vz"
   kw['titlel']="(m/s)"
-  hpbasicwin(top.hvzbar,iw,kw)
+  if beamframe:
+    kw['titlet']="Mean Z Velocity (beam frame)"
+    kw['titler']="vbeam = %6.3e"%top.vbeam
+    hpbasicwin(top.hvzbar-top.vbeam,iw,kw)
+  else:
+    kw['titlet']="Mean Z Velocity"
+    hpbasicwin(top.hvzbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvzbar.__doc__ = hpvzbar.__doc__ + hpbasicwintext
 
 
 def hpxpbar(iw=0,kwdict={},**kw):
-  "Mean x'. For a complete list of arguments, run hpdoc()."
+  "Mean x'."
   kw.update(kwdict)
   kw['titlet']="Mean x'"
   kw['titlel']="(rad)"
   hpbasicwin(top.hxpbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxpbar.__doc__ = hpxpbar.__doc__ + hpbasicwintext
 
 
 def hpypbar(iw=0,kwdict={},**kw):
-  "Mean y'. For a complete list of arguments, run hpdoc()."
+  "Mean y'."
   kw.update(kwdict)
   kw['titlet']="Mean y'"
   kw['titlel']="(rad)"
   hpbasicwin(top.hypbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpypbar.__doc__ = hpypbar.__doc__ + hpbasicwintext
 
 
 def hpvxrms(iw=0,kwdict={},**kw):
-  "True RMS vx. For a complete list of arguments, run hpdoc()."
+  "True RMS vx."
   kw.update(kwdict)
   kw['titlet']="True RMS vx"
   kw['titlel']="(m/s)"
   hpbasicwin(top.hvxrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvxrms.__doc__ = hpvxrms.__doc__ + hpbasicwintext
 
 
 def hpvyrms(iw=0,kwdict={},**kw):
-  "True RMS vy. For a complete list of arguments, run hpdoc()."
+  "True RMS vy."
   kw.update(kwdict)
   kw['titlet']="True RMS vy"
   kw['titlel']="(m/s)"
   hpbasicwin(top.hvyrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvyrms.__doc__ = hpvyrms.__doc__ + hpbasicwintext
 
 
 def hpvzrms(iw=0,kwdict={},**kw):
-  "True RMS vz. For a complete list of arguments, run hpdoc()."
+  "True RMS vz."
   kw.update(kwdict)
   kw['titlet']="True RMS vz"
   kw['titlel']="(m/s)"
   hpbasicwin(top.hvzrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvzrms.__doc__ = hpvzrms.__doc__ + hpbasicwintext
 
 
 def hpxpsqbar(iw=0,kwdict={},**kw):
-  "Mean x' squared. For a complete list of arguments, run hpdoc()."
+  "Mean x' squared."
   kw.update(kwdict)
   kw['titlet']="Mean x' squared"
   kw['titlel']="(rad**2)"
   hpbasicwin(top.hxpsqbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxpsqbar.__doc__ = hpxpsqbar.__doc__ + hpbasicwintext
 
 
 def hpypsqbar(iw=0,kwdict={},**kw):
-  "Mean y' squared. For a complete list of arguments, run hpdoc()."
+  "Mean y' squared."
   kw.update(kwdict)
   kw['titlet']="Mean y' squared"
   kw['titlel']="(rad**2)"
   hpbasicwin(top.hypsqbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpypsqbar.__doc__ = hpypsqbar.__doc__ + hpbasicwintext
 
 
 def hpxxpbar(iw=0,kwdict={},**kw):
-  "Mean x*x'. For a complete list of arguments, run hpdoc()."
+  "Mean x*x'."
   kw.update(kwdict)
   kw['titlet']="Mean x*x'"
   kw['titlel']="(m-rad)"
   hpbasicwin(top.hxxpbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxxpbar.__doc__ = hpxxpbar.__doc__ + hpbasicwintext
 
 
 def hpyypbar(iw=0,kwdict={},**kw):
-  "Mean y*y'. For a complete list of arguments, run hpdoc()."
+  "Mean y*y'."
   kw.update(kwdict)
   kw['titlet']="Mean y*y'"
   kw['titlel']="(m-rad)"
   hpbasicwin(top.hyypbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyypbar.__doc__ = hpyypbar.__doc__ + hpbasicwintext
 
 
 def hpxypbar(iw=0,kwdict={},**kw):
-  "Mean x*y'. For a complete list of arguments, run hpdoc()."
+  "Mean x*y'."
   kw.update(kwdict)
   kw['titlet']="Mean x*y'"
   kw['titlel']="(m-rad)"
   hpbasicwin(top.hxypbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxypbar.__doc__ = hpxypbar.__doc__ + hpbasicwintext
 
 
 def hpyxpbar(iw=0,kwdict={},**kw):
-  "Mean y*x'. For a complete list of arguments, run hpdoc()."
+  "Mean y*x'."
   kw.update(kwdict)
   kw['titlet']="Mean y*x'"
   kw['titlel']="(m**2)"
   hpbasicwin(top.hyxpbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyxpbar.__doc__ = hpyxpbar.__doc__ + hpbasicwintext
 
 
 def hpxpypbar(iw=0,kwdict={},**kw):
-  "Mean x'*y'. For a complete list of arguments, run hpdoc()."
+  "Mean x'*y'."
   kw.update(kwdict)
   kw['titlet']="Mean x'*y'"
   kw['titlel']="(rad**2)"
   hpbasicwin(top.hxpypbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxpypbar.__doc__ = hpxpypbar.__doc__ + hpbasicwintext
 
 
 def hpxvzbar(iw=0,kwdict={},**kw):
-  "Mean x*vz. For a complete list of arguments, run hpdoc()."
+  "Mean x*vz."
   kw.update(kwdict)
   kw['titlet']="Mean x*vz"
   kw['titlel']="(m-m/s)"
   hpbasicwin(top.hxvzbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxvzbar.__doc__ = hpxvzbar.__doc__ + hpbasicwintext
 
 
 def hpyvzbar(iw=0,kwdict={},**kw):
-  "Mean y*vz. For a complete list of arguments, run hpdoc()."
+  "Mean y*vz."
   kw.update(kwdict)
   kw['titlet']="Mean y*vz"
   kw['titlel']="(m-m/s)"
   hpbasicwin(top.hyvzbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyvzbar.__doc__ = hpyvzbar.__doc__ + hpbasicwintext
 
 
 def hpvxvzbar(iw=0,kwdict={},**kw):
-  "Mean vx*vz. For a complete list of arguments, run hpdoc()."
+  "Mean vx*vz."
   kw.update(kwdict)
   kw['titlet']="Mean vx*vz"
   kw['titlel']="((m/s)**2)"
   hpbasicwin(top.hvxvzbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvxvzbar.__doc__ = hpvxvzbar.__doc__ + hpbasicwintext
 
 
 def hpvyvzbar(iw=0,kwdict={},**kw):
-  "Mean vy*vz. For a complete list of arguments, run hpdoc()."
+  "Mean vy*vz."
   kw.update(kwdict)
   kw['titlet']="Mean vy*vz"
   kw['titlel']="((m/s)**2)"
   hpbasicwin(top.hvyvzbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpvyvzbar.__doc__ = hpvyvzbar.__doc__ + hpbasicwintext
 
 
 def hplinechg(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Line charge density. For more help, run hpdoc() or doc(hpzarray)."
+  "Line charge density."
   if not top.lhlinechg: return
   kw.update(kwdict)
   kw['titlet']="Line charge density"
   hpzarray(top.hlinechg,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hplinechg.__doc__ = hplinechg.__doc__ + hpzarraytext
 
 
 def hpvzofz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Vz versus space and time. For more help, run hpdoc() or doc(hpzarray)."
+  "Vz versus space and time."
   if not top.lhvzofz: return
   kw.update(kwdict)
   kw['titlet']="Vz versus space and time"
   hpzarray(top.hvzofz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvzofz.__doc__ = hpvzofz.__doc__ + hpzarraytext
 
 
 def hpepsxz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X emittance. For more help, run hpdoc() or doc(hpzarray)."
+  "X emittance."
   if not top.lhepsxz: return
   kw.update(kwdict)
   kw['titlet']="X emittance"
   hpzarray(top.hepsxz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsxz.__doc__ = hpepsxz.__doc__ + hpzarraytext
 
 
 def hpepsyz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Y emittance. For more help, run hpdoc() or doc(hpzarray)."
+  "Y emittance."
   if not top.lhepsyz: return
   kw.update(kwdict)
   kw['titlet']="Y emittance"
   hpzarray(top.hepsyz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsyz.__doc__ = hpepsyz.__doc__ + hpzarraytext
 
 
 def hpepsnxz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X normalized emittance. For more help, run hpdoc() or doc(hpzarray)."
+  "X normalized emittance."
   if not top.lhepsnxz: return
   kw.update(kwdict)
   kw['titlet']="X normalized emittance"
   hpzarray(top.hepsnxz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnxz.__doc__ = hpepsnxz.__doc__ + hpzarraytext
 
 
 def hpepsnyz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Y normalized emittance. For more help, run hpdoc() or doc(hpzarray)."
+  "Y normalized emittance."
   if not top.lhepsnyz: return
   kw.update(kwdict)
   kw['titlet']="Y normalized emittance"
   hpzarray(top.hepsnyz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnyz.__doc__ = hpepsnyz.__doc__ + hpzarraytext
 
 
 def hpepsgz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Generalized emittance. For more help, run hpdoc() or doc(hpzarray)."
+  "Generalized emittance."
   if not top.lhepsgz: return
   kw.update(kwdict)
   kw['titlet']="Generalized emittance"
   hpzarray(top.hepsgz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsgz.__doc__ = hpepsgz.__doc__ + hpzarraytext
 
 
 def hpepshz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Generalized emittance. For more help, run hpdoc() or doc(hpzarray)."
+  "Generalized emittance."
   if not top.lhepshz: return
   kw.update(kwdict)
   kw['titlet']="Generalized emittance"
   hpzarray(top.hepshz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepshz.__doc__ = hpepshz.__doc__ + hpzarraytext
 
 
 def hpepsngz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Generalized nrmlzd emittance. For more help, run hpdoc() or doc(hpzarray)."
+  "Generalized nrmlzd emittance."
   if not top.lhepsngz: return
   kw.update(kwdict)
   kw['titlet']="Generalized nrmlzd emittance"
   hpzarray(top.hepsngz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsngz.__doc__ = hpepsngz.__doc__ + hpzarraytext
 
 
 def hpepsnhz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Generalized nrmlzd emittance. For more help, run hpdoc() or doc(hpzarray)."
+  "Generalized nrmlzd emittance."
   if not top.lhepsnhz: return
   kw.update(kwdict)
   kw['titlet']="Generalized nrmlzd emittance"
   hpzarray(top.hepsnhz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnhz.__doc__ = hpepsnhz.__doc__ + hpzarraytext
 
 
 def hpxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X bar. For more help, run hpdoc() or doc(hpzarray)."
+  "X bar."
   if not top.lhxbarz: return
   kw.update(kwdict)
   kw['titlet']="X bar"
   hpzarray(top.hxbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxbarz.__doc__ = hpxbarz.__doc__ + hpzarraytext
 
 
 def hpybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Y bar. For more help, run hpdoc() or doc(hpzarray)."
+  "Y bar."
   if not top.lhybarz: return
   kw.update(kwdict)
   kw['titlet']="Y bar"
   hpzarray(top.hybarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpybarz.__doc__ = hpybarz.__doc__ + hpzarraytext
 
 
 def hpxybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "XY bar. For more help, run hpdoc() or doc(hpzarray)."
+  "XY bar."
   if not top.lhxybarz: return
   kw.update(kwdict)
   kw['titlet']="XY bar"
   hpzarray(top.hxybarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxybarz.__doc__ = hpxybarz.__doc__ + hpzarraytext
 
 
 def hpxrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X rms. For more help, run hpdoc() or doc(hpzarray)."
+  "X rms."
   if not top.lhxrmsz: return
   kw.update(kwdict)
   kw['titlet']="X rms"
   hpzarray(top.hxrmsz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxrmsz.__doc__ = hpxrmsz.__doc__ + hpzarraytext
 
 
 def hpyrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Y rms. For more help, run hpdoc() or doc(hpzarray)."
+  "Y rms."
   if not top.lhyrmsz: return
   kw.update(kwdict)
   kw['titlet']="Y rms"
   hpzarray(top.hyrmsz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpyrmsz.__doc__ = hpyrmsz.__doc__ + hpzarraytext
 
 
 def hpxprmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X' rms. For more help, run hpdoc() or doc(hpzarray)."
+  "X' rms."
   if not top.lhxprmsz: return
   kw.update(kwdict)
   kw['titlet']="X' rms"
   hpzarray(top.hxprmsz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxprmsz.__doc__ = hpxprmsz.__doc__ + hpzarraytext
 
 
 def hpyprmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Y' rms. For more help, run hpdoc() or doc(hpzarray)."
+  "Y' rms."
   if not top.lhyprmsz: return
   kw.update(kwdict)
   kw['titlet']="Y' rms"
   hpzarray(top.hyprmsz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpyprmsz.__doc__ = hpyprmsz.__doc__ + hpzarraytext
 
 
 def hpxsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X**2 bar. For more help, run hpdoc() or doc(hpzarray)."
+  "X**2 bar."
   if not top.lhxsqbarz: return
   kw.update(kwdict)
   kw['titlet']="X**2 bar"
   hpzarray(top.hxsqbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxsqbarz.__doc__ = hpxsqbarz.__doc__ + hpzarraytext
 
 
 def hpysqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Y**2 bar. For more help, run hpdoc() or doc(hpzarray)."
+  "Y**2 bar."
   if not top.lhysqbarz: return
   kw.update(kwdict)
   kw['titlet']="Y**2 bar"
   hpzarray(top.hysqbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpysqbarz.__doc__ = hpysqbarz.__doc__ + hpzarraytext
 
 
 def hpvxbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Vx bar. For more help, run hpdoc() or doc(hpzarray)."
+  "Vx bar."
   if not top.lhvxbarz: return
   kw.update(kwdict)
   kw['titlet']="Vx bar"
   hpzarray(top.hvxbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvxbarz.__doc__ = hpvxbarz.__doc__ + hpzarraytext
 
 
 def hpvybarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Vy bar. For more help, run hpdoc() or doc(hpzarray)."
+  "Vy bar."
   if not top.lhvybarz: return
   kw.update(kwdict)
   kw['titlet']="Vy bar"
   hpzarray(top.hvybarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvybarz.__doc__ = hpvybarz.__doc__ + hpzarraytext
 
 
 def hpvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Vz bar. For more help, run hpdoc() or doc(hpzarray)."
+  "Vz bar."
   if not top.lhvzbarz: return
   kw.update(kwdict)
   kw['titlet']="Vz bar"
   hpzarray(top.hvzbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvzbarz.__doc__ = hpvzbarz.__doc__ + hpzarraytext
 
 
 def hpxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X' bar. For more help, run hpdoc() or doc(hpzarray)."
+  "X' bar."
   if not top.lhxpbarz: return
   kw.update(kwdict)
   kw['titlet']="X' bar"
   hpzarray(top.hxpbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxpbarz.__doc__ = hpxpbarz.__doc__ + hpzarraytext
 
 
 def hpypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Y' bar. For more help, run hpdoc() or doc(hpzarray)."
+  "Y' bar."
   if not top.lhypbarz: return
   kw.update(kwdict)
   kw['titlet']="Y' bar"
   hpzarray(top.hypbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpypbarz.__doc__ = hpypbarz.__doc__ + hpzarraytext
 
 
 def hpvxrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Vx rms. For more help, run hpdoc() or doc(hpzarray)."
+  "Vx rms."
   if not top.lhvxrmsz: return
   kw.update(kwdict)
   kw['titlet']="Vx rms"
   hpzarray(top.hvxrmsz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvxrmsz.__doc__ = hpvxrmsz.__doc__ + hpzarraytext
 
 
 def hpvyrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Vy rms. For more help, run hpdoc() or doc(hpzarray)."
+  "Vy rms."
   if not top.lhvyrmsz: return
   kw.update(kwdict)
   kw['titlet']="Vy rms"
   hpzarray(top.hvyrmsz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvyrmsz.__doc__ = hpvyrmsz.__doc__ + hpzarraytext
 
 
 def hpvzrmsz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Vz rms. For more help, run hpdoc() or doc(hpzarray)."
+  "Vz rms."
   if not top.lhvzrmsz: return
   kw.update(kwdict)
   kw['titlet']="Vz rms"
   hpzarray(top.hvzrmsz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvzrmsz.__doc__ = hpvzrmsz.__doc__ + hpzarraytext
 
 
 def hpxpsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X'**2 bar. For more help, run hpdoc() or doc(hpzarray)."
+  "X'**2 bar."
   if not top.lhxpsqbarz: return
   kw.update(kwdict)
   kw['titlet']="X'**2 bar"
   hpzarray(top.hxpsqbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxpsqbarz.__doc__ = hpxpsqbarz.__doc__ + hpzarraytext
 
 
 def hpypsqbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Y'**2 bar. For more help, run hpdoc() or doc(hpzarray)."
+  "Y'**2 bar."
   if not top.lhypsqbarz: return
   kw.update(kwdict)
   kw['titlet']="Y'**2 bar"
   hpzarray(top.hypsqbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpypsqbarz.__doc__ = hpypsqbarz.__doc__ + hpzarraytext
 
 
 def hpxxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "XX' bar. For more help, run hpdoc() or doc(hpzarray)."
+  "XX' bar."
   if not top.lhxxpbarz: return
   kw.update(kwdict)
   kw['titlet']="XX' bar"
   hpzarray(top.hxxpbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxxpbarz.__doc__ = hpxxpbarz.__doc__ + hpzarraytext
 
 
 def hpyypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "YY' bar. For more help, run hpdoc() or doc(hpzarray)."
+  "YY' bar."
   if not top.lhyypbarz: return
   kw.update(kwdict)
   kw['titlet']="YY' bar"
   hpzarray(top.hyypbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpyypbarz.__doc__ = hpyypbarz.__doc__ + hpzarraytext
 
 
 def hpxypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "XY' bar. For more help, run hpdoc() or doc(hpzarray)."
+  "XY' bar."
   if not top.lhxypbarz: return
   kw.update(kwdict)
   kw['titlet']="XY' bar"
   hpzarray(top.hxypbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxypbarz.__doc__ = hpxypbarz.__doc__ + hpzarraytext
 
 
 def hpyxpbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "YX' bar. For more help, run hpdoc() or doc(hpzarray)."
+  "YX' bar."
   if not top.lhyxpbarz: return
   kw.update(kwdict)
   kw['titlet']="YX' bar"
   hpzarray(top.hyxpbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpyxpbarz.__doc__ = hpyxpbarz.__doc__ + hpzarraytext
 
 
 def hpxpypbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "X'Y' bar. For more help, run hpdoc() or doc(hpzarray)."
+  "X'Y' bar."
   if not top.lhxpypbarz: return
   kw.update(kwdict)
   kw['titlet']="X'Y' bar"
   hpzarray(top.hxpypbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxpypbarz.__doc__ = hpxpypbarz.__doc__ + hpzarraytext
 
 
 def hpxvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "XVz bar. For more help, run hpdoc() or doc(hpzarray)."
+  "XVz bar."
   if not top.lhxvzbarz: return
   kw.update(kwdict)
   kw['titlet']="XVz bar"
   hpzarray(top.hxvzbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpxvzbarz.__doc__ = hpxvzbarz.__doc__ + hpzarraytext
 
 
 def hpyvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "YVz bar. For more help, run hpdoc() or doc(hpzarray)."
+  "YVz bar."
   if not top.lhyvzbarz: return
   kw.update(kwdict)
   kw['titlet']="YVz bar"
   hpzarray(top.hyvzbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpyvzbarz.__doc__ = hpyvzbarz.__doc__ + hpzarraytext
 
 
 def hpvxvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "VxVz bar. For more help, run hpdoc() or doc(hpzarray)."
+  "VxVz bar."
   if not top.lhvxvzbarz: return
   kw.update(kwdict)
   kw['titlet']="VxVz bar"
   hpzarray(top.hvxvzbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvxvzbarz.__doc__ = hpvxvzbarz.__doc__ + hpzarraytext
 
 
 def hpvyvzbarz(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "VyVz bar. For more help, run hpdoc() or doc(hpzarray)."
+  "VyVz bar."
   if not top.lhvyvzbarz: return
   kw.update(kwdict)
   kw['titlet']="VyVz bar"
   hpzarray(top.hvyvzbarz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpvyvzbarz.__doc__ = hpvyvzbarz.__doc__ + hpzarraytext
 
 
 def hptotalke(kwdict={},**kw):
-  "Total Kinetic Energy. For a complete list of arguments, run hpdoc()."
+  "Total Kinetic Energy."
   kw.update(kwdict)
   kw['titlet']="Total Kinetic Energy"
   kw['titlel']="(J)"
@@ -964,7 +1141,7 @@ def hptotalke(kwdict={},**kw):
 
 
 def hptotale(kwdict={},**kw):
-  "Total Energy. For a complete list of arguments, run hpdoc()."
+  "Total Energy."
   kw.update(kwdict)
   kw['titlet']="Total Energy"
   kw['titlel']="(J)"
@@ -972,86 +1149,115 @@ def hptotale(kwdict={},**kw):
 
 
 def hpthermale(iw=0,kwdict={},**kw):
-  "Z Thermal Energy. For a complete list of arguments, run hpdoc()."
+  "Z Thermal Energy."
   kw.update(kwdict)
   kw['titlet']="Z Thermal Energy"
   kw['titlel']="(J)"
   hpbasicwin(0.5*sum(top.sm*top.sw*top.sp_fract)*top.hpnum*top.hvzrms**2,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpthermale.__doc__ = hpthermale.__doc__ + hpbasicwintext
 
 
 def hpeps6d(iw=0,kwdict={},**kw):
-  "6-D Emittance. For a complete list of arguments, run hpdoc()."
+  "6-D Emittance."
   kw.update(kwdict)
   kw['titlet']="6-D Emittance"
   kw['titlel']="((pi-m-rad)**3)"
   hpbasicwin(top.hepsx*top.hepsy*top.hepsz,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpeps6d.__doc__ = hpeps6d.__doc__ + hpbasicwintext
 
 
 def hpepst(iw=0,kwdict={},**kw):
-  "Transverse Emittance. For a complete list of arguments, run hpdoc()."
+  "Transverse Emittance."
   kw.update(kwdict)
   kw['titlet']="Transverse Emittance"
   kw['titlel']="(pi-m-rad)"
   hpbasicwin(sqrt(top.hepsx*top.hepsy),iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepst.__doc__ = hpepst.__doc__ + hpbasicwintext
 
 
 def hpepsnt(iw=0,kwdict={},**kw):
-  "Normalized Transverse Emittance. For a complete list of arguments, run hpdoc()."
+  "Normalized Transverse Emittance."
   kw.update(kwdict)
   kw['titlet']="Normalized Transverse Emittance"
   kw['titlel']="(pi-mm-mrad)"
   hpbasicwin(sqrt(top.hepsnx*top.hepsny),iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpepsnt.__doc__ = hpepsnt.__doc__ + hpbasicwintext
 
 
 def hpxedge(iw=0,kwdict={},**kw):
-  "X Beam Edge. For a complete list of arguments, run hpdoc()."
+  "X Beam Edge."
   kw.update(kwdict)
   kw['titlet']="X Beam Edge"
   kw['titlel']="(m)"
   hpbasicwin(2.*top.hxrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxedge.__doc__ = hpxedge.__doc__ + hpbasicwintext
 
 
 def hpyedge(iw=0,kwdict={},**kw):
-  "Y Beam Edge. For a complete list of arguments, run hpdoc()."
+  "Y Beam Edge."
   kw.update(kwdict)
   kw['titlet']="Y Beam Edge"
   kw['titlel']="(m)"
   hpbasicwin(2.*top.hyrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyedge.__doc__ = hpyedge.__doc__ + hpbasicwintext
+
+
+def hpxedges(iw=0,kwdict={},**kw):
+  "X Beam Edges plus centroid."
+  kw.update(kwdict)
+  kw['titlet']="X Beam Edges plus centroid"
+  kw['titlel']="(m)"
+  hpbasicwin(+2.*top.hxrms+top.hxbar,iw,kw)
+  hpbasicwin(-2.*top.hxrms+top.hxbar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxedge.__doc__ = hpxedge.__doc__ + hpbasicwintext
+
+
+def hpyedges(iw=0,kwdict={},**kw):
+  "Y Beam Edges plus centroid."
+  kw.update(kwdict)
+  kw['titlet']="Y Beam Edges plus centroid"
+  kw['titlel']="(m)"
+  hpbasicwin(+2.*top.hyrms+top.hybar,iw,kw)
+  hpbasicwin(-2.*top.hyrms+top.hybar,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpyedge.__doc__ = hpyedge.__doc__ + hpbasicwintext
 
 
 def hpenvx(iw=0,kwdict={},**kw):
-  "X Beam Edge. For a complete list of arguments, run hpdoc()."
+  "X Beam Edge."
   kw.update(kwdict)
   kw['titlet']="X Beam Edge"
   kw['titlel']="(m)"
   hpbasicwin(2.*top.hxrms,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpenvx.__doc__ = hpenvx.__doc__ + hpbasicwintext
 
 
 def hpenvy(iw=0,kwdict={},**kw):
-  "Y Beam Edge. For a complete list of arguments, run hpdoc()."
+  "Y Beam Edge."
   kw.update(kwdict)
   kw['titlet']="Y Beam Edge"
   kw['titlel']="(m)"
   hpbasicwin(2.*top.hyrms,iw,kw)
-
-# --- plot mean z velocity in beam frame vs time
-def hpvzbar(iw=0,beamframe=1,kwdict={},**kw):
-  kw.update(kwdict)
-  if beamframe:
-    t1="Mean Z Velocity (beam frame)"
-    kw['titler']="vbeam = %6.3e"%top.vbeam
-    hpbasicwin(top.hvzbar-top.vbeam,iw,t1,t1,t1,kw)
-  else:
-    t1="Mean Z Velocity (lab frame)"
-    hpbasicwin(top.hvzbar,iw,t1,t1,t1,kw)
+if sys.version[:5] != "1.5.1":
+  hpenvy.__doc__ = hpenvy.__doc__ + hpbasicwintext
 
 # --- Plots of current
 def hpcurr(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Current. For a complete list of arguments, run hpdoc()."
+  "Current."
   if not top.lhlinechg and not top.lhvzofz: return
   kw.update(kwdict)
   kw['titlet']="Current"
   hpzarray(top.hlinechg*top.hvzofz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpcurr.__doc__ = hpcurr.__doc__ + hpzarraytext
 
 def histplotsdoc():
   """
@@ -1064,6 +1270,8 @@ hpepst(): Transverse Emittance
 hpepsnt(): Normalized Transverse Emittance
 hpxedge(): X Beam Edge (twice rms)
 hpyedge(): Y Beam Edge (twice rms)
+hpxedges(): X Beam Edges plus centroid
+hpyedges(): Y Beam Edges plus centroid
 hpenvx = hpxedge
 hpenvy = hpyedge
 hpzbeam(): Beam frame location
@@ -1152,16 +1360,6 @@ hpxvzbarz(): XVz bar
 hpyvzbarz(): YVz bar
 hpvxvzbarz(): VxVz bar
 hpvyvzbarz(): VyVz bar
-hpptotalke(): Total Kinetic Energy
-hpptotale(): Total Energy
-hppthermale(): Z Thermal Energy
-hppeps6d(): 6-D Emittance
-hppepst(): Transverse Emittance
-hppepsnt(): Normalized Transverse Emittance
-hppxedge(): X Beam Edge
-hppyedge(): Y Beam Edge
-hppenvx(): X Beam Edge
-hppenvy(): Y Beam Edge
   """
   print histplotsdoc.__doc__
 
