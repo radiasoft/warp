@@ -24,6 +24,8 @@ class BoaApp(wxApp):
 panels=[]
 wgui=None
 wgui=BoaApp(0)
+wgui.initialized=False
+wgui.closed=False
 
 def add_panel(panel,name):
     global panels
@@ -36,13 +38,22 @@ __main__.process_gui_events = process_gui_events
 __main__.wgui = wgui
 
 def gui():
+  if wgui.initialized:
+    print 'The GUI is already running.'
+    return
+  if wgui.closed:
+    print 'The GUI has already been opened and closed once and cannot be reopened in this session. Sorry.'
+    return
   wgui.main.init()
-  wgui.main.Show(true)
-  wgui.SetTopWindow(wgui.main)
-  for i in panels:
-    wgui.main.add_panel(i[0],i[1])
-  installafterstep(process_gui_events)
+  wgui.main.Show()
+  if not wgui.initialized:
+    wgui.SetTopWindow(wgui.main)
+    for i in panels:
+      wgui.main.add_panel(i[0],i[1])
+    installafterstep(process_gui_events)
+    wgui.initialized=True
   wgui.MainLoop()
+  
 
 if __name__ == '__main__':
     gui()
