@@ -1,5 +1,5 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.3 2000/11/30 23:19:48 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.4 2001/03/24 00:53:00 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -59,14 +59,13 @@ _ofstype = top.fstype
 # --- since uzp may be small for newly injected particles.
 vzfuzz = 1.e-20
 
-# --- Read in getzmom script.  Only used to make final and initial calls to
-# --- getzmmnt routine.  Moments are calculated during timesteps and include all
+# --- Read in getzmom script. Only used to make final and initial calls to
+# --- getzmmnt routine. Moments are calculated during timesteps and include all
 # --- particles.
 import getzmom
 
-# --- Set logicals so that the zmoments and charge density are accumulated over
-# --- more than one timestep.
-top.laccumulate_zmoments = true
+# --- Set logical so that the charge density is accumulated over
+# --- all of the time steps for each iteration.
 top.laccumulate_rho = true
 
 # --- Turn off rho-diagnostic and calculation of ese
@@ -100,6 +99,8 @@ Performs steady-state iterations
   if (top.ntinj > 0):
     _onztinjmn = top.nztinjmn
     _onztinjmx = top.nztinjmx
+  _ifzmmnt = top.ifzmmnt
+  _laccumulate_zmoments = top.laccumulate_zmoments
 
   if ipsave: _ipsave = ipsave
   if save_same_part: _save_same_part = save_same_part
@@ -151,14 +152,18 @@ Performs steady-state iterations
 
     # --- If this is the final iteration and if zmoments are being calculated,
     # --- make the initial call to zero the arrays.
-    if ((i == iter-1 or (gun_iter%_nhist) == 0) and top.ifzmmnt > 0):
+    if ((i == iter-1 or (gun_iter%_nhist) == 0) and _ifzmmnt > 0):
+      top.ifzmmnt = _ifzmmnt
       getzmom.zmmnt(1)
       # --- Make sure that moments are calculated on each time step. This is
       # --- the only way that the data will make sense.
       top.itmomnts[0:4] = [0,top.nt,1,0]
+      # --- Make sure that the moments are accumulated.
+      top.laccumulate_zmoments = true
     else:
       # --- Make sure the zmoments are not calculated so the time isn't wasted.
       top.itmomnts[0:4] = [top.nt,top.nt,top.nt,0]
+      top.ifzmmnt = 0
 
     # --- Save current time
     gun_time = top.time
@@ -318,7 +323,8 @@ Performs steady-state iterations
 
     # --- Do final work for zmoments calculation
     if ((i == iter-1 or (gun_iter%_nhist) == 0) and top.ifzmmnt > 0):
-       getzmom.zmmnt(3)
+      top.laccumulate_zmoments = _laccumulate_zmoments
+      getzmom.zmmnt(3)
 
     # --- Save the history data
     if (gun_iter%_nhist) == 0 and top.ifzmmnt > 0:
@@ -360,6 +366,8 @@ Performs steady-state iterations
     top.nztinjmx = _onztinjmx
   top.inject = _oinject
   top.nhist = _nhist
+  top.ifzmmnt = _ifzmmnt
+  top.laccumulate_zmoments = _laccumulate_zmoments
 
 
 ########################################################################
