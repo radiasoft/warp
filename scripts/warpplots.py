@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.135 2004/11/18 01:59:35 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.136 2004/11/19 00:52:15 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -303,8 +303,10 @@ Simple interface to contour plotting, same arguments as plc
     yy = arange(s[1])*ones(s[0],'d')[:,NewAxis]
   elif len(shape(yy))==1:
     yy = yy*ones(s[0],'d')[:,NewAxis]
-  if not ireg:
+  if ireg is None:
     ireg = ones(s)
+  else:
+    assert shape(ireg) == shape(zz),"Shape of ireg must be the same as zz"
   if levs is not None: contours = levs
   if type(contours) == ListType: contours = array(contours)
   if type(contours) == TupleType: contours = array(contours)
@@ -2607,7 +2609,7 @@ be from none to all three.
    #if bcast: ppp = broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
-def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0):
+def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0,solver=w3d):
   """Returns slices of selfe, the electrostatic field array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -2619,45 +2621,50 @@ be from none to all three.
              (otherwise returns None to all but PE0
   """
   assert comp in ['x','y','z'],"comp must be one of 'x', 'y', or 'z'"
-  if iy is None and w3d.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
-  if top.efetch != 3 or w3d.nx_selfe == 0:
+  if iy is None and solver.solvergeom in [w3d.RZgeom,w3d.XZgeom,w3d.Zgeom]: iy=0
+  if top.efetch != 3 or solver.nx_selfe == 0:
     # --- If not already using selfe, then allocate it and set it.
     # --- Note that this could be an unexpected expense for a user.
-    w3d.nx_selfe = w3d.nxp
-    w3d.ny_selfe = w3d.nyp
-    w3d.nz_selfe = w3d.nzp
-    if w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom:
-      w3d.ny_selfe = 0
-    if w3d.solvergeom==w3d.Zgeom: w3d.nx_selfe = 0
-    gchange("Efields3d")
-    getselfe3d(w3d.phip,w3d.nxp,w3d.nyp,w3d.nzp,w3d.selfe,
-               w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,w3d.dx,w3d.dy,w3d.dz,
-               top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy)
-  ic = ['x','y','z'].index(comp)
+    solver.nx_selfe = solver.nxp
+    solver.ny_selfe = solver.nyp
+    solver.nz_selfe = solver.nzp
+    if solver.solvergeom==w3d.RZgeom or solver.solvergeom==w3d.XZgeom:
+      solver.ny_selfe = 0
+    if solver.solvergeom==w3d.Zgeom: solver.nx_selfe = 0
+    if solver is w3d:
+      gchange("Efields3d")
+      getselfe3d(solver.phip,solver.nxp,solver.nyp,solver.nzp,solver.selfe,
+                 solver.nx_selfe,solver.ny_selfe,solver.nz_selfe,
+                 solver.dx,solver.dy,solver.dz,
+                 solver.boundxy,solver.boundxy,solver.boundxy,solver.boundxy)
+    else:
+      solver.getselfe()
+  if type(comp) == IntType: ic = comp
+  else:                     ic = ['x','y','z'].index(comp)
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      eee = w3d.selfe[ic,:,:,:]
+      eee = solver.selfe[ic,:,:,:]
     elif ix is not None and iy is None     and iz is None    :
-      eee = w3d.selfe[ic,ix,:,:]
+      eee = solver.selfe[ic,ix,:,:]
     elif ix is None     and iy is not None and iz is None    :
-      eee = w3d.selfe[ic,:,iy,:]
+      eee = solver.selfe[ic,:,iy,:]
     elif ix is None     and iy is None     and iz is not None:
-      eee = w3d.selfe[ic,:,:,iz]
+      eee = solver.selfe[ic,:,:,iz]
     elif ix is not None and iy is not None and iz is None    :
-      eee = w3d.selfe[ic,ix,iy,:]
+      eee = solver.selfe[ic,ix,iy,:]
     elif ix is not None and iy is None     and iz is not None:
-      eee = w3d.selfe[ic,ix,:,iz]
+      eee = solver.selfe[ic,ix,:,iz]
     elif ix is None     and iy is not None and iz is not None:
-      eee = w3d.selfe[ic,:,iy,iz]
+      eee = solver.selfe[ic,:,iy,iz]
     elif ix is not None and iy is not None and iz is not None:
-      eee = w3d.selfe[ic,ix,iy,iz]
+      eee = solver.selfe[ic,ix,iy,iz]
   else:
     iz1 = top.izpslave[me] - top.izslave[me]
     if me < npes-1:
       iz2 = top.izpslave[me+1] - top.izslave[me]
     else:
       iz2 = iz1 + top.nzpslave[me] + 1
-    eee = w3d.selfe[ic,:,:,iz1:iz2]
+    eee = solver.selfe[ic,:,:,iz1:iz2]
     if ix is not None and iy is None:
       eee = eee[ix,:,:]
     elif ix is None and iy is not None:
@@ -2678,7 +2685,7 @@ be from none to all three.
     return eee
   else:
     ii = 0
-    if ix is None and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
+    if ix is None and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       ss = array(shape(eee))
       nn = ss[ii] - 1
       ss[ii] = 2*nn + 1
@@ -2689,7 +2696,7 @@ be from none to all three.
       ee1[nn::-1,...] = fsign*eee
       eee = ee1
     if ix is None: ii = ii + 1
-    if iy is None and (w3d.l2symtry or w3d.l4symtry):
+    if iy is None and (solver.l2symtry or solver.l4symtry):
       ss = array(shape(eee))
       nn = ss[ii] - 1
       ss[ii] = 2*nn + 1
@@ -2884,7 +2891,8 @@ def pcphixy(iz=None,fullplane=1,solver=w3d,**kw):
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcselfezy(comp='',ix=None,fullplane=1,lbeamframe=1,vec=0,sz=1,sy=1,**kw):
+def pcselfezy(comp='',ix=None,fullplane=1,solver=w3d,
+              lbeamframe=1,vec=0,sz=1,sy=1,**kw):
   """Plots contours of electrostatic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=nint(-xmmin/dx): X index of plane
@@ -2893,32 +2901,35 @@ def pcselfezy(comp='',ix=None,fullplane=1,lbeamframe=1,vec=0,sz=1,sy=1,**kw):
   - vec=0: when true, plots E field vectors
   - sz,sy=1: step size in grid for plotting fewer points
   """
-  if ix is None: ix = nint(-w3d.xmmin/w3d.dx)
+  if ix is None: ix = nint(-solver.xmmin/solver.dx)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',top.zplmin + zbeam)
-  kw.setdefault('xmax',top.zplmax + zbeam)
-  kw.setdefault('ymin',w3d.ymmin)
-  kw.setdefault('ymax',w3d.ymmax)
+  kw.setdefault('xmin',solver.zmmin + zbeam)
+  kw.setdefault('xmax',solver.zmmax + zbeam)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.ymmin,w3d.ymmax)
+    kw['pplimits']=(solver.zmmin+zbeam,solver.zmmax+zbeam,
+                    solver.ymmin,solver.ymmax)
   settitles("Electrostatic E%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
-  if fullplane and (w3d.l2symtry or w3d.l4symtry): kw['ymin'] = - kw['ymax']
+  if fullplane and (solver.l2symtry or solver.l4symtry):
+    kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,ix=ix,fullplane=fullplane)
+    eee = getselfe(comp=comp,ix=ix,fullplane=fullplane,solver=solver)
     ppgeneric(grid=transpose(eee),kwdict=kw)
   else:
-    ey = getselfe(comp='y',ix=ix,fullplane=fullplane)
-    ez = getselfe(comp='z',ix=ix,fullplane=fullplane)
+    ey = getselfe(comp='y',ix=ix,fullplane=fullplane,solver=solver)
+    ez = getselfe(comp='z',ix=ix,fullplane=fullplane,solver=solver)
     ppvector(transpose(ey[::sy,::sz]),transpose(ez[::sy,::sz]),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcselfezy.__doc__ = pcselfezy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcselfezx(comp=None,iy=None,fullplane=1,lbeamframe=1,vec=0,sz=1,sx=1,**kw):
+def pcselfezx(comp=None,iy=None,fullplane=1,solver=w3d,
+              lbeamframe=1,vec=0,sz=1,sx=1,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=nint(-ymmin/dy): Y index of plane
@@ -2927,33 +2938,34 @@ def pcselfezx(comp=None,iy=None,fullplane=1,lbeamframe=1,vec=0,sz=1,sx=1,**kw):
   - vec=0: when true, plots E field vectors
   - sz,sx=1: step size in grid for plotting fewer points
   """
-  if iy is None: iy = nint(-w3d.ymmin/w3d.dy)
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
-  kw.setdefault('xmin',top.zplmin + zbeam)
-  kw.setdefault('xmax',top.zplmax + zbeam)
-  kw.setdefault('ymin',w3d.xmmin)
-  kw.setdefault('ymax',w3d.xmmax)
+  kw.setdefault('xmin',solver.zmmin + zbeam)
+  kw.setdefault('xmax',solver.zmmax + zbeam)
+  kw.setdefault('ymin',solver.xmmin)
+  kw.setdefault('ymax',solver.xmmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.xmmin,w3d.xmmax)
+    kw['pplimits'] = (solver.zmmin+zbeam,solver.zmmax+zbeam,
+                      solver.xmmin,solver.xmmax)
   settitles("Electrostatic E%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
-  if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
+  if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
     kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,iy=iy,fullplane=fullplane)
+    eee = getselfe(comp=comp,iy=iy,fullplane=fullplane,solver=solver)
     ppgeneric(grid=transpose(eee),kwdict=kw)
   else:
-    ex = getselfe(comp='x',iy=iy,fullplane=fullplane)
-    ez = getselfe(comp='z',iy=iy,fullplane=fullplane)
+    ex = getselfe(comp='x',iy=iy,fullplane=fullplane,solver=solver)
+    ez = getselfe(comp='z',iy=iy,fullplane=fullplane,solver=solver)
     ppvector(transpose(ex[::sx,::sz]),transpose(ez[::sx,::sz]),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcselfezx.__doc__ = pcselfezx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcselfexy(comp=None,iz=None,fullplane=1,vec=0,sx=1,sy=1,**kw):
+def pcselfexy(comp=None,iz=None,fullplane=1,solver=w3d,vec=0,sx=1,sy=1,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iz=nint(-zmmin/dz): Z index of plane
@@ -2961,29 +2973,29 @@ def pcselfexy(comp=None,iz=None,fullplane=1,vec=0,sx=1,sy=1,**kw):
   - vec=0: when true, plots E field vectors
   - sx,sy=1: step size in grid for plotting fewer points
   """
-  if iz is None: iz = nint(-w3d.zmmin/w3d.dz) + top.izslave[me]
-  kw.setdefault('xmin',w3d.xmmin)
-  kw.setdefault('xmax',w3d.xmmax)
-  kw.setdefault('ymin',w3d.ymmin)
-  kw.setdefault('ymax',w3d.ymmax)
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
+  kw.setdefault('xmin',solver.xmmin)
+  kw.setdefault('xmax',solver.xmmax)
+  kw.setdefault('ymin',solver.ymmin)
+  kw.setdefault('ymax',solver.ymmax)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
-    kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
+    kw['pplimits'] = (solver.xmmin,solver.xmmax,solver.ymmin,solver.ymmax)
   settitles("Electrostatic E%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
-  if fullplane and w3d.l4symtry:
+  if fullplane and solver.l4symtry:
     kw['ymin'] = - kw['ymax']
     kw['xmin'] = - kw['xmax']
-  elif fullplane and w3d.l2symtry:
+  elif fullplane and solver.l2symtry:
     kw['ymin'] = - kw['ymax']
   if not vec:
     if kw.get('cellarray',1):
       kw.setdefault('contours',20)
-    eee = getselfe(comp=comp,iz=iz,fullplane=fullplane)
+    eee = getselfe(comp=comp,iz=iz,fullplane=fullplane,solver=solver)
     ppgeneric(grid=eee,kwdict=kw)
   else:
-    ex = getselfe(comp='x',iz=iz,fullplane=fullplane)
-    ey = getselfe(comp='y',iz=iz,fullplane=fullplane)
+    ex = getselfe(comp='x',iz=iz,fullplane=fullplane,solver=solver)
+    ey = getselfe(comp='y',iz=iz,fullplane=fullplane,solver=solver)
     ppvector(ey[::sx,::sy],ex[::sx,::sy],kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
