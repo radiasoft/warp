@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.145 2005/02/15 01:27:17 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.146 2005/02/25 22:31:40 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -38,7 +38,8 @@ These return or set a slice out of the rho or phi array.
 getrho(), getphi(), setrho(), setphi()
 
 The following plot various particles projections.
-ppzxy(), ppzx(), ppzy(), ppzr(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz()
+ppzxy(), ppzx(), ppzy(), ppzr()
+ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppzrp(), ppzvr()
 ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
 pptrace()
 pprrp(), pprtp(), pprvz()
@@ -574,7 +575,9 @@ def ppmoments(text):
 def ppgeneric_doc(x,y):
   doc = selectparticles.__doc__ + """
   - zz: optional third particle data quantity - when supplied, it is deposited
-       on a grid and that is used for contour levels.
+        on a grid and that is used for contour levels, except 
+        if color='density' is specified, then zz is used directly to color the
+        particles rather than depositing to a grid.
   - grid: optional grid to plot (instead of deriving grid from particle data)
   - gridt: optional grid to plot (instead of deriving grid from particle data)
            The transpose is the grid is plotted.
@@ -1735,6 +1738,23 @@ if sys.version[:5] != "1.5.1":
   ppzvz.__doc__ = ppzvz.__doc__ + ppgeneric_doc('z',"vz")
 
 ##########################################################################
+def ppzvr(iw=0,**kw):
+  "Plots Z-Vr"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzvr,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0): kw['weights'] = getpid(id=top.wpid-1,ii=ii,gather=0)
+  settitles("Vr vs Z","Z","Vr",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getvr(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzvr.__doc__ = ppzvr.__doc__ + ppgeneric_doc('z','vr')
+
+##########################################################################
 def ppzrp(iw=0,**kw):
   "Plots Z-R'"
   checkparticleplotarguments(kw)
@@ -1749,7 +1769,7 @@ def ppzrp(iw=0,**kw):
   settitles("R' vs Z","Z","R'",pptitleright(iw=iw,kwdict=kw))
   return ppgeneric(getrp(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
 if sys.version[:5] != "1.5.1":
-  ppzr.__doc__ = ppzr.__doc__ + ppgeneric_doc('z','r')
+  ppzrp.__doc__ = ppzrp.__doc__ + ppgeneric_doc('z',"r'")
 
 ##########################################################################
 def ppxy(iw=0,**kw):
