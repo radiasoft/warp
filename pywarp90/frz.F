@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FRZ.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:08 $
+c@(#) File FRZ.M, version $Revision: 3.2 $, $Date: 2001/04/27 21:38:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Written by Debbie Callahan
@@ -676,7 +676,6 @@ c ----------------------------------------------------------------------------
       if (iwhich.le.0 .or. iwhich.eq.3) then
 
          do 740 ikz = 1, nz2-1
-cdir$    ivdep
          do 740 ikr = 1, nr
             ak(ikr,-ikz) = ak(ikr,-ikz)*attz(ikz)
             ak(ikr, ikz) = ak(ikr, ikz)*attz(ikz)
@@ -943,7 +942,6 @@ c           ak(ikx,iky,-nz2) = ak(ikx,iky,-nz2)
 c    &       / (attx(ikx) * atty(iky) * attz(nz2))
 c1720    continue
 c        do 1740 ikz = 1, nz2-1
-cdir$    ivdep
 c        do 1740 ikx = 1, nx-1
 c           ak(ikx,iky,-ikz) = ak(ikx,iky,-ikz)
 c    &       / (attx(ikx) * atty(iky) * attz(ikz))
@@ -968,7 +966,6 @@ c           ak(ikx,iky,-nz2) = ak(ikx,iky,-nz2)
 c    &                            * ( kxsq(ikx) + kysq(iky) + kzsq(nz2) )
 c1800    continue
 c        do 1850 ikz = 1, nz2-1
-cdir$    ivdep
 c        do 1850 ikx = 1, nx-1
 c           ak(ikx,iky,-ikz) = ak(ikx,iky,-ikz)
 c    &                         * ( kxsq(ikx) + kysq(iky) + kzsq(ikz) )
