@@ -7,6 +7,7 @@ Box(xsize,ysize,zsize,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 Cylinder(radius,length,theta=0.,phi=0.,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 ZCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 ZCylinderOut(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+ZRoundedCylinderOut(radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 YCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 XCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
 Sphere(radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
@@ -28,7 +29,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.10 2002/10/31 17:20:46 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.11 2002/10/31 23:16:07 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -371,7 +372,7 @@ Installs the data into the WARP database
       f3d.ocnumb[no:no+nn] = take(self.ns[0,:],ii)
       f3d.iocndlevel[no:no+nn] = take(self.mglevel,ii)
     if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
-      frz.install_conductors_rz()  
+      frz.install_conductors_rz()
 
   def __neg__(self):
     "Delta not operator."
@@ -383,16 +384,16 @@ Installs the data into the WARP database
     c = less(self.dels,right.dels)
     return Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
                  choose(c,(self.dels,right.dels)),
-                 choose(c,(self.vs,right.vs)),
-                 choose(c,(self.ns,right.ns)))
+                 choose(c,(self.vs  ,right.vs)),
+                 choose(c,(self.ns  ,right.ns)))
 
   def __add__(self,right):
     "'or' operator, returns minimum of distances to surfaces."
     c = greater(self.dels,right.dels)
     return Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
                  choose(c,(self.dels,right.dels)),
-                 choose(c,(self.vs,right.vs)),
-                 choose(c,(self.ns,right.ns)))
+                 choose(c,(self.vs  ,right.vs)),
+                 choose(c,(self.ns  ,right.ns)))
 
   def __sub__(self,right):
     "'or' operator, returns minimum of distances to surfaces."
@@ -400,8 +401,8 @@ Installs the data into the WARP database
     c = less(self.dels,rdels)
     return Delta(self.ix,self.iy,self.iz,self.xx,self.yy,self.zz,
                  choose(c,(self.dels,rdels)),
-                 choose(c,(self.vs,right.vs)),
-                 choose(c,(self.ns,right.ns)))
+                 choose(c,(self.vs  ,right.vs)),
+                 choose(c,(self.ns  ,right.ns)))
 
   def __str__(self):
     "Prints out delta"
@@ -632,6 +633,32 @@ Cylinder aligned with z-axis
     return result
 
 #============================================================================
+class ZRoundedCylinder(Assembly):
+  """
+Cylinder with rounded corners aligned with z-axis
+  - radius,length: cylinder size
+  - radius2: radius of rounded corners
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=0: conductor id of cylinder
+  """
+
+  def __init__(self,radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=0):
+    Assembly.__init__(self,voltage,xcent,ycent,zcent)
+    self.radius = radius
+    self.length = length
+    self.radius2 = radius2
+    self.condid = condid
+
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
+                   generator=f3d.zroundedcylinderconductorf,
+                   kwlist=[self.radius,self.length,self.radius2,
+                           self.xcent,self.ycent,self.zcent])
+    return result
+
+#============================================================================
 class ZCylinderOut(Assembly):
   """
 Outside of a cylinder aligned with z-axis
@@ -652,6 +679,32 @@ Outside of a cylinder aligned with z-axis
     result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
                    generator=f3d.zcylinderoutconductorf,
                    kwlist=[self.radius,self.length,
+                           self.xcent,self.ycent,self.zcent])
+    return result
+
+#============================================================================
+class ZRoundedCylinderOut(Assembly):
+  """
+Outside of a cylinder with rounded corners aligned with z-axis
+  - radius,length: cylinder size
+  - radius2: radius of rounded corners
+  - voltage=0: cylinder voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cylinder
+  - condid=0: conductor id of cylinder
+  """
+
+  def __init__(self,radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
+                    condid=0):
+    Assembly.__init__(self,voltage,xcent,ycent,zcent)
+    self.radius = radius
+    self.length = length
+    self.radius2 = radius2
+    self.condid = condid
+
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
+                   generator=f3d.zroundedcylinderoutconductorf,
+                   kwlist=[self.radius,self.length,self.radius2,
                            self.xcent,self.ycent,self.zcent])
     return result
 
