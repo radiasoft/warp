@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.4 2001/08/31 18:29:08 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.5 2001/10/02 00:30:49 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -53,6 +53,9 @@ time.
       f3d.mgparam = prevparam
       f3d.downpasses = f3d.downpasses - 1
       f3d.uppasses = f3d.uppasses - 1
+      # --- Do some error checking first
+      if f3d.downpasses == 0: f3d.downpasses = 1
+      if f3d.uppasses == 0: f3d.uppasses = 1
   # --- Print error message if maximum iterations is reached.
   if f3d.mgiters == f3d.mgmaxiters:
     print """Notice: the maximum number of iterations has been reached, so
