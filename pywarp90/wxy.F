@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.32 $, $Date: 2003/06/02 17:44:16 $
+c@(#) File WXY.M, version $Revision: 3.33 $, $Date: 2003/06/03 23:06:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -59,7 +59,6 @@ c=============================================================================
       use Z_arrays
       use Win_Moments
       use Z_Moments
-      use Lab_Moments
       use Moments
       use Damped_eom
       use Hist
@@ -74,7 +73,7 @@ c  particle loader and does the initial load onto the charge density
 c  mesh, initializes arrays for the field solver and sets the mesh arrays,
 c  does the initial field solve, and sets up other arrays that are needed.
 
-      integer(ISZ):: i,j,k,is,ipmin,ip,iwin
+      integer(ISZ):: i,j,k,is,ipmin,ip,iwin,nl
       real(kind=8):: substarttime,wtime
       if (lwxytimesubs) substarttime = wtime()
 
@@ -297,14 +296,7 @@ c  thick slice model, though, should still calculate the zmoments.
 c  Create the dynamic arrays for lab frame moments
 
       call remark(" ---  Allocating Lab_Moments")
-      nlabwn = 0
-      do iwin = 1, MAXNUMLW
-         if (zlw(iwin) .ne. 0.) nlabwn = nlabwn + 1
-      enddo
-      if (nlabwn == 0) iflabwn = 0
-      if (itlabwn == 0) itlabwn = max(1,nhist)
-      ntlabwn = (zmmax-zmmin)/(vbeam*dt*itlabwn) +.5
-      if (iflabwn .ne. 0) call gallot("Lab_Moments", 0)
+      call initlabwn(1)
 
 c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
@@ -666,7 +658,7 @@ c  be done at the end of this step.
      &           thiszbeam(zbeaml,zbeamr,zzmomnts,NCONTROL)
       lhist    = mod(it, nhist) .eq. 0
       ldump    = mod(it, itdump) .eq. 0
-      llabwn   = (mod(it,itlabwn) .eq. 0) .and. dolabwn()
+      llabwn   = dolabwn()
       lspecial = (lfinishd .or. lalways .or. lseldom .or. ldump .or.
      &            lmoments .or. lhist .or. llabwn .or. llast .or.
      &            (it .eq. 0) .or. allspecl)
