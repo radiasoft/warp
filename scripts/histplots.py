@@ -1,6 +1,6 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.3 2001/02/02 00:16:49 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.4 2001/02/02 17:48:29 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -99,20 +99,20 @@ only required argument of course is the data to be plotted.
     if not titlel: titlel = titlet + " over initial value"
   if type(yscale) != type(array([])): yscale = array([yscale])
   if not absc:
-    if (lhzbeam or lvsz):
-      absc = top.hzbeam[istart:iend+1:istep]*xscale + xoffset
-      if not titleb:
-        if (xscale == 1.):
-          titleb = "Z (m)"
-        else:
-          titleb = "Z"
-    else:
+    if (not lhzbeam or not lvsz):
       absc = top.thist[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
         if (xscale == 1.):
           titleb = "time (s)"
         else:
           titleb = "time"
+    else:
+      absc = top.hzbeam[istart:iend+1:istep]*xscale + xoffset
+      if not titleb:
+        if (xscale == 1.):
+          titleb = "Z (m)"
+        else:
+          titleb = "Z"
   if logplot:
     logxy(1,0)
     oord = log10(maximum(10e-12,
