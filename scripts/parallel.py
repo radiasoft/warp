@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.21 2003/07/08 22:31:29 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.22 2003/07/08 23:08:08 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -263,7 +263,9 @@ def gatherarray(a,root=0,othersempty=0,bcast=0):
       i2 = i1 + shape(result[i])[0]
       newresult[i1:i2,...] = result[i]
       i1 = i2
-  if bcast: newresult = mpi.bcast(newresult,root=root)
+  else:
+    newresult = 0
+  if bcast: newresult = mpi.bcast(newresult,root)
   return newresult
   ## --- Old way
   ## --- Its easy if all of the arrays passed from the other processors
