@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.5 $, $Date: 2001/05/22 20:31:58 $
+c@(#) File ENV.M, version $Revision: 3.6 $, $Date: 2001/05/26 00:49:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -32,6 +32,7 @@ c=============================================================================
       use ENVvars
       use Beam_acc
       use InGen
+      use Lattice
       use LatticeInternal
 
 c  Invoked by the GENERATE command, it allocates storage
@@ -50,9 +51,9 @@ c     --- allocate dynamic arrays ("group allot")
       call gallot("ENVvars",0)
 
 c     --- reset Lattice arrays to final size
+      zlatbuffer = dzenv
       call resetlat
-      nzlmax = 2
-      nzl = 2
+      nzl = 0
       call gchange("LatticeInternal",0)
 
 c     --- Set default values for region over which the tune is calculated.
@@ -617,65 +618,64 @@ c  linear space-charge forces.
       real(kind=8):: eelededrl,eeledbdxl,eelededxl
       real(kind=8):: eelededrr,eeledbdxr,eelededxr
       real(kind=8):: fuzz
-      real(kind=8):: frac,dedrr,dbdxq,dedxq,ez,ke
+      real(kind=8):: frac,ez,ke,de,db
+      real(kind=8):: dedrr,dbdxq,dedxq,xdbdx,xdedx,ydbdx,ydedx
       real(kind=8):: equadde,equaddb,equadox,equadoy
       real(kind=8):: ehelededx,eheledbdx,ehelededr,eheleox,eheleoy
       real(kind=8):: eemltdedx,eemltdedr,eemltox,eemltoy
       real(kind=8):: emmltdbdx,emmltox,emmltoy
-      real(kind=8):: emmlt2dbdx,emmlt2ox,emmlt2oy
       real(kind=8):: fux,fuy,fq,feself,fexself,feyself 
       real(kind=8):: wie,wim
-      integer(ISZ):: iquader,imulter
+      integer(ISZ):: io,iquader,imulter
       integer(ISZ):: ii,iie,iim,iem,imm
-      integer(ISZ):: iquad,ihele,iemlt,immlt,immlt2,iaccl
-      save    iquad,ihele,iemlt,immlt,immlt2,iaccl
+      integer(ISZ):: iquad,ihele,iemlt,immlt,iaccl
+      save    iquad,ihele,iemlt,immlt,iaccl
 
       zl = z - 0.5 * dz
       zr = z + 0.5 * dz
 
-c     --- Set internal lattice mesh so that the z's at 0 and 2 are zl and zr,
-c     --- and the z at 1 is z.
-      zlmin = zl
-      zlmax = zr
-      dzl = (zlmax - zlmin)/nzl
-      call setlattzt(0.,time,0)
+      call setlattzt(z,time,0)
+
+c     --- Initialize variables to the values from the uniform fields.
+      dedrr = dedr
+      dbdxq = 0.
+      dedxq = 0.
+      xdbdx = dbdr*vz*x
+      xdedx = (dedr + dexdx)*x
+      ydbdx = dbdr*vz*y
+      ydedx = (dedr + deydy)*y
 
 c     --- Hard edge quadrupoles
 
-      equadde = 0.
-      equaddb = 0.
-      equadox = 0.
-      equadoy = 0.
       if (quads) then
 
-c        --- Find quad at left edge of velocity advance step.
-         fracl = 0.
-         if ((zl < cquadze(0)) .and. (cquadzs(0) < zl)) then
-           fracl = 1.
-           equadox = cqoffx(0)
-           equadoy = cqoffy(0)
-         endif
-        
-c        --- Find quad at right edge of velocity advance step.
-         fracr = 0.
-         if ((zr < cquadze(2)) .and. (cquadzs(2) < zr)) then
-           fracr = 1.
-           equadox = cqoffx(2)
-           equadoy = cqoffy(2)
-         endif
+        do io=1,nquadol
+          if (.not. linquad(io)) cycle
 
-c        --- Calculate residence fraction.
-         frac = fracl
-         if (fracl > fracr) frac = (cquadze(0) - zl) / dz
-         if (fracr > fracl) frac = (zr - cquadzs(2)) / dz
+c         --- Find quad at left edge of velocity advance step.
+          fracl = 0.
+          if (cquadzs(0,io) < zl .and. zl < cquadze(0,io)) fracl = 1.
 
-c        --- quadrupole fields, including residence fraction
-         equaddb = cquaddb(0)*frac 
-         equadde = cquadde(0)*frac
-         if (fracr > fracl) then 
-           equaddb = cquaddb(2)*frac 
-           equadde = cquadde(2)*frac
-         endif
+c         --- Find quad at right edge of velocity advance step.
+          fracr = 0.
+          if (cquadzs(0,io) < zr .and. zr < cquadze(0,io)) fracr = 1.
+
+c         --- Calculate residence fraction.
+          frac = fracl
+          if (fracl > fracr) frac = (cquadze(0,io) - zl) / dz
+          if (fracr > fracl) frac = (zr - cquadzs(0,io)) / dz
+
+c         --- quadrupole fields, including residence fraction
+          if (frac > 0.) then
+            dbdxq = dbdxq + cquaddb(0,io)*frac 
+            dedxq = dedxq + cquadde(0,io)*frac 
+            xdbdx = xdbdx + cquaddb(0,io)*frac*(x - cqoffx(0,io))
+            xdedx = xdedx + cquadde(0,io)*frac*(x - cqoffx(0,io))
+            ydbdx = ydbdx + cquaddb(0,io)*frac*(y - cqoffy(0,io))
+            ydedx = ydedx + cquadde(0,io)*frac*(y - cqoffy(0,io))
+          endif
+
+        enddo
 
       endif 
 
@@ -683,224 +683,139 @@ c        --- quadrupole fields, including residence fraction
 c     --- Hard edge multipoles, can include linearly focusing 
 c     --- quadrupole or azimuthally symmetric field 
  
-      ehelededr = 0.
-      ehelededx = 0.
-      eheledbdx = 0.
-      eheleox = 0.
-      eheleoy = 0.
       if (heles) then
 
-         fuzz = 1.e-3
+        fuzz = 1.e-3
+        do io=1,nheleol
+          if (.not. linhele(io)) cycle
 
-c        --- Find multipole at left edge of velocity advance step.
-         ihele = cheleid(0)
-c        --- data for multipole at left edge
-         eelededrl = 0.
-         eeledbdxl = 0.
-         eelededxl = 0.
-         do ii = 1, max(helenm(ihele),helene(ihele))
-           if (  (nint(hele_n(ii,ihele)) == 2) .and.
-     &           (nint(hele_v(ii,ihele)) == 0)) then
-c             --- quadrupole field
-              if ( abs(cos(helepm(ii,ihele))*sin(helepm(ii,ihele))) > fuzz ) 
-     &         call remark("Warning: magnetic multipole structure incompatible")
-              if ( abs(cos(helepe(ii,ihele))*sin(helepe(ii,ihele))) > fuzz ) 
-     &         call remark("Warning: electric multipole structure incompatible")
-              eeledbdxl = eeledbdxl + heleam(ii,ihele)*cos(helepm(ii,ihele))
-              eelededxl = eelededxl + heleae(ii,ihele)*cos(helepe(ii,ihele))
-           endif
-           if (  (nint(hele_n(ii,ihele)) == 0) .and.
-     &           (nint(hele_v(ii,ihele)) == 0)) then
-c             --- uniform field
-              eelededrl = eelededrl - 0.5*heleep(ii,ihele)
-           endif
-         enddo
-         fracl = 0.
-         if ((zl < cheleze(0)) .and. (chelezs(0) < zl)) then
-           fracl = 1.
-           eheleox = heleox(ihele)
-           eheleoy = heleoy(ihele)
-         endif
+c         --- Find multipole at left edge of velocity advance step.
+          ihele = cheleid(0,io)
+          fracl = 0.
+          if ((zl < cheleze(0,io)) .and. (chelezs(0,io) < zl)) fracl = 1.
+          fracr = 0.
+          if ((zr < cheleze(0,io)) .and. (chelezs(0,io) < zr)) fracr = 1.
 
-c        --- Find multipole at right edge of velocity advance step.
-         ihele = cheleid(2)
-c        --- data for multipole at left edge
-         eelededrr = 0.
-         eeledbdxr = 0.
-         eelededxr = 0.
-         do ii = 1, max(helenm(ihele),helene(ihele)) 
-           if (  (nint(hele_n(ii,ihele)) == 2) .and. 
-     &           (nint(hele_v(ii,ihele)) == 0)) then
+c         --- Calculate residence fraction.
+          frac = fracl
+          if (fracl > fracr) frac = (cheleze(0,io) - zl) / dz
+          if (fracr > fracl) frac = (zr - chelezs(0,io)) / dz
+          if (frac == 0.) cycle
+
+c         --- Get only the quadrupole and uniform components
+          do ii = 1, max(helenm(ihele),helene(ihele)) 
+            if ((nint(hele_n(ii,ihele)) == 2) .and. 
+     &          (nint(hele_v(ii,ihele)) == 0)) then
 c             --- quadrupole field  
               if ( abs(cos(helepm(ii,ihele))*sin(helepm(ii,ihele))) > fuzz ) 
      &         call remark("Warning: magnetic multipole structure incompatible")
               if ( abs(cos(helepe(ii,ihele))*sin(helepe(ii,ihele))) > fuzz ) 
      &         call remark("Warning: electric multipole structure incompatible")
-              eeledbdxr = eeledbdxr + heleam(ii,ihele)*cos(helepm(ii,ihele))
-              eelededxr = eelededxr + heleae(ii,ihele)*cos(helepe(ii,ihele))
-           endif 
-           if (  (nint(hele_n(ii,ihele)) == 0) .and.
-     &           (nint(hele_v(ii,ihele)) == 0)) then
+              db = heleam(ii,ihele)*cos(helepm(ii,ihele))*frac
+              de = heleae(ii,ihele)*cos(helepe(ii,ihele))*frac
+              dbdxq = dbdxq + db
+              dedxq = dedxq + de
+              xdbdx = xdbdx + db*(x - heleox(ihele))
+              xdedx = xdedx + de*(x - heleox(ihele))
+              ydbdx = ydbdx + db*(y - heleoy(ihele))
+              ydedx = ydedx + de*(y - heleoy(ihele))
+            endif 
+            if ((nint(hele_n(ii,ihele)) == 0) .and.
+     &          (nint(hele_v(ii,ihele)) == 0)) then
 c             --- uniform field
-              eelededrr = eelededrr + 0.5*heleep(ii,ihele)
-           endif
-         enddo
-         fracr = 0.
-         if ((zr < cheleze(2)) .and. (chelezs(2) < zr)) then
-           fracr = 1.
-           eheleox = heleox(ihele)
-           eheleoy = heleoy(ihele)
-         endif
+              dedrr = dedrr + 0.5*heleep(ii,ihele)*frac
+              xdedx = xdedx + 0.5*heleep(ii,ihele)*frac*(x - heleox(ihele))
+              ydedx = ydedx + 0.5*heleep(ii,ihele)*frac*(y - heleoy(ihele))
+            endif
+          enddo
 
-c        --- Calculate residence fraction.
-         frac = fracl
-         if (fracl > fracr) frac = (cheleze(0) - zl) / dz
-         if (fracr > fracl) frac = (zr - chelezs(2)) / dz
-
-c        --- quadrupole and radial fields, including residence 
-c        --- fraction, add in with any previous fields calculated 
-         ehelededr = eelededrl*frac
-         eheledbdx = eeledbdxl*frac
-         ehelededx = eelededxl*frac
-         if (fracr > fracl) then
-           ehelededr = eelededrr*frac
-           eheledbdx = eeledbdxr*frac
-           ehelededx = eelededxr*frac
-         endif
+        enddo
 
       endif 
 
 c     --- Extract any linear focusing field component from the multipole 
 c     --- elements.
 
-      eemltdedr = 0.
-      eemltdedx = 0.
-      eemltox = 0.
-      eemltoy = 0.
       if (emlts) then
 
-c       --- Find which element the z location is in, if any.
-        iemlt = cemltid(1)
+        do io=1,nemltol
+          if (.not. linemlt(io)) cycle
 
-c       --- If z is within an element, fetch the field.
-        if (cemltzs(1) <= z .and. z < cemltze(1)) then
+c         --- Find which element the z location is in, if any.
+          iemlt = cemltid(0,io)
 
-c         --- Make sure the element was defined.
-          iem = emltid(iemlt)
-          if (iem > 0) then
+c         --- If z is within an element, fetch the field.
+          if (cemltzs(0,io) <= z .and. z < cemltze(0,io)) then
+
+c           --- Make sure the element was defined.
+            iem = emltid(iemlt)
+            if (iem == 0) cycle
 
 c           --- Find location of z in the electric multipole grid.
-            iie = int((z - cemltzs(1))/dzemlt(iem))
-            wie =     (z - cemltzs(1))/dzemlt(iem) - iie
-
-c           --- Zero out the field components.
-            eemltdedr = 0. 
-            eemltdedx = 0. 
+            iie = int((z - cemltzs(0,io))/dzemlt(iem))
+            wie =     (z - cemltzs(0,io))/dzemlt(iem) - iie
 
 c           --- Lookup field strengths with linear interpolation.
             do ii=1,nesmult
               if ((nint(emlt_n(ii)) == 2) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
-                eemltdedx = eemltdedx + (esemlt(iie  ,ii,iem)*(1.-wie)+
-     &                                   esemlt(iie+1,ii,iem)*wie)*
-     &                      (emltsc(iemlt) + emltsf(iemlt))
+                de = (esemlt(iie  ,ii,iem)*(1.-wie)+ esemlt(iie+1,ii,iem)*wie)*
+     &               (emltsc(iemlt) + emltsf(iemlt))
+                dedxq = dedxq + de
+                xdedx = xdedx + de*(x - cemltox(0,io))
+                ydedx = ydedx + de*(y - cemltoy(0,io))
               endif
               if ((nint(emlt_n(ii)) == 0) .and. 
      &            (nint(emlt_v(ii)) == 0)) then
-                eemltdedr = eemltdedr - 0.5*(esemltp(iie  ,ii,iem)*(1.-wie)+
-     &                                       esemltp(iie+1,ii,iem)*wie)*
-     &                          (emltsc(iemlt) + emltsf(iemlt))
+                de = 0.5*(esemltp(iie  ,ii,iem)*(1.-wie) +
+     &                    esemltp(iie+1,ii,iem)*wie)*
+     &                   (emltsc(iemlt) + emltsf(iemlt))
+                dedrr = dedrr - de
+                xdedx = xdedx - de*(x - cemltox(0,io))
+                ydedx = ydedx - de*(y - cemltoy(0,io))
               endif
             enddo
 
-            eemltox = cemltox(1)
-            eemltoy = cemltoy(1)
-
           endif
 
-        endif
+        enddo
 
       endif
 
-      emmltdbdx = 0.
-      emmltox = 0.
-      emmltoy = 0.
       if (mmlts) then
 
-c       --- Find which element the z location is in, if any.
-        immlt = cmmltid(1)
+        do io=1,nmmltol
+          if (.not. linmmlt(io)) cycle
 
-c       --- If z is within an element, fetch the field.
-        if (cmmltzs(1) <= z .and. z < cmmltze(1)) then
+c         --- Find which element the z location is in, if any.
+          immlt = cmmltid(0,io)
 
-c         --- Make sure the element was defined.
-          imm = mmltid(immlt)
-          if (imm > 0) then
+c         --- If z is within an element, fetch the field.
+          if (cmmltzs(0,io) <= z .and. z < cmmltze(0,io)) then
 
-c           --- Find location of z in the magnetic multipole grid.
-            iim = int((z - cmmltzs(1))/dzmmlt(imm))
-            wim =     (z - cmmltzs(1))/dzmmlt(imm) - iim
+c           --- Make sure the element was defined.
+            imm = mmltid(immlt)
+            if (imm == 0) cycle
 
-c           --- Zero out the field component.
-            emmltdbdx = 0.  
+c           --- Find location of z in the electric multipole grid.
+            iim = int((z - cmmltzs(0,io))/dzmmlt(imm))
+            wim =     (z - cmmltzs(0,io))/dzmmlt(imm) - iim
 
-c           --- Lookup field strength with linear interpolation.
+c           --- Lookup field strengths with linear interpolation.
             do ii=1,nmsmult
               if ((nint(mmlt_n(ii)) == 2) .and. 
      &            (nint(mmlt_v(ii)) == 0)) then
-                emmltdbdx = emmltdbdx + (msmmlt(iim  ,ii,imm)*(1.-wim)+
-     &                                   msmmlt(iim+1,ii,imm)*wim)*
-     &                      (mmltsc(immlt) + mmltsf(immlt))
+                db = (msmmlt(iim  ,ii,imm)*(1.-wim)+ msmmlt(iim+1,ii,imm)*wim)*
+     &               (mmltsc(immlt) + mmltsf(immlt))
+                dbdxq = dbdxq + db
+                xdbdx = xdbdx + db*(x - cmmltox(0,io))
+                ydbdx = ydbdx + db*(y - cmmltoy(0,io))
               endif
             enddo
 
-            emmltox = cmmltox(1)
-            emmltoy = cmmltoy(1)
-
           endif
 
-        endif
-
-      endif
-
-      emmlt2dbdx = 0.
-      emmlt2ox = 0.
-      emmlt2oy = 0.
-      if (mmlt2s) then
-
-c       --- Find which element the z location is in, if any.
-        immlt2 = cmmlt2id(1)
-
-c       --- If z is within an element, fetch the field.
-        if (cmmlt2zs(1) <= z .and. z < cmmlt2ze(1)) then
-
-c         --- Make sure the element was defined.
-          imm = mmlt2id(immlt2)
-          if (imm > 0) then
-
-c           --- Find location of z in the magnetic multipole grid.
-            iim = int((z - cmmlt2zs(1))/dzmmlt(imm))
-            wim =     (z - cmmlt2zs(1))/dzmmlt(imm) - iim
-
-c           --- Zero out the field component.
-            emmlt2dbdx = 0.  
-
-c           --- Lookup field strength with linear interpolation.
-            do ii=1,nmsmult
-              if ((nint(mmlt_n(ii)) == 2) .and. 
-     &            (nint(mmlt_v(ii)) == 0)) then
-                emmlt2dbdx = emmlt2dbdx + (msmmlt(iim  ,ii,imm)*(1.-wim)+
-     &                                     msmmlt(iim+1,ii,imm)*wim)*
-     &                       (mmlt2sc(immlt2) + mmlt2sf(immlt2))
-              endif
-            enddo
-
-            emmlt2ox = cmmlt2ox(1)
-            emmlt2oy = cmmlt2oy(1)
-
-          endif
-
-        endif
+        enddo
 
       endif
 
@@ -908,95 +823,79 @@ c     --- Get accelerating gradient from accl gaps.
       faccl = 0.
       if (accls) then
 
-c        --- Find accl at left edge of velocity advance step.
-         iaccl = cacclid(0)
-         fracl = 0.
-         if (zl < cacclze(0) .and. cacclzs(0) < zl) fracl = 1.
+        do io=1,nacclol
+          if (.not. linaccl(io)) cycle
 
-c        --- Find accl at right edge of velocity advance step.
-         iaccl = cacclid(2)
-         fracr = 0.
-         if (zr < cacclze(2) .and. cacclzs(2) < zr) fracr = 1.
+          iaccl = cacclid(0,io)
+c         --- Find accl at left edge of velocity advance step.
+          fracl = 0.
+          if (zl < cacclze(0,io) .and. cacclzs(0,io) < zl) fracl = 1.
 
-c        --- Calculate residence fraction.
-         frac = fracl
-         if (fracl > fracr) frac = (cacclze(0) - zl) / dz
-         if (fracr > fracl) frac = (zr - cacclzs(2)) / dz
+c         --- Find accl at right edge of velocity advance step.
+          fracr = 0.
+          if (zr < cacclze(0,io) .and. cacclzs(0,io) < zr) fracr = 1.
 
-         ez = acclez(iaccl)*frac
-         if (fracr > fracl) ez = acclez(iaccl)*frac
+c         --- Calculate residence fraction.
+          frac = fracl
+          if (fracl > fracr) frac = (cacclze(0,io) - zl) / dz
+          if (fracr > fracl) frac = (zr - cacclzs(0,io)) / dz
 
-         if (ez .ne. 0) then
-           ek = ek + ez*dz
+          ez = acclez(iaccl)*frac
 
-c          --- Remove old vz and gamma from the perveance
-c          --- (Probably should completely recalculate the perveance, but
-c          --- that requires adding several more variables to the argument
-c          --- list.)
-           p = p*(vz*gamma)**3
+          if (ez .ne. 0) then
+            ek = ek + ez*dz
 
-c          --- Calculate the new vz and gamma
-           if (lrelativ) then
-             ke = jperev*ek/dvnz(aion*amu*clight**2)
-             gamma = 1. + ke
-             vz = clight*sqrt((2*ke+ke**2)/gamma**2)
-           else
-             vz = sqrt(2.*ek*jperev/dvnz(aion)/amu)
-           endif
+c           --- Remove old vz and gamma from the perveance
+c           --- (Probably should completely recalculate the perveance, but
+c           --- that requires adding several more variables to the argument
+c           --- list.)
+            p = p*(vz*gamma)**3
 
-c          --- Recalculate the perveance using update quantities
-           p = p/(vz*gamma)**3
+c           --- Calculate the new vz and gamma
+            if (lrelativ) then
+              ke = jperev*ek/dvnz(aion*amu*clight**2)
+              gamma = 1. + ke
+              vz = clight*sqrt((2*ke+ke**2)/gamma**2)
+            else
+              vz = sqrt(2.*ek*jperev/dvnz(aion)/amu)
+            endif
 
-c          --- "Force" to account for the dvz/dz term which appears in the
-c          --- conversion from d/dt to d/dz
-           faccl = 0.5*ez/ek
+c           --- Recalculate the perveance using update quantities
+            p = p/(vz*gamma)**3
 
-         endif
+c           --- "Force" to account for the dvz/dz term which appears in the
+c           --- conversion from d/dt to d/dz
+            faccl = faccl + 0.5*ez/ek
 
+          endif
+        enddo
       endif
-
-      dedrr = dedr + ehelededr + eemltdedr
-      dbdxq = equaddb + eheledbdx + emmltdbdx + emmlt2dbdx
-      dedxq = equadde + ehelededx + eemltdedx
 
 c     --- Compute external uniform focusing (proportional to r and 
 c     --- azimuthally symmetric) and quadrupole focusing strengths
-      fux = zion*echarge*(dedrr + dexdx - dbdr*vz) 
-     &                        / (aion * amu * gamma * vz**2)
-      fuy = zion*echarge*(dedrr + deydy - dbdr*vz) 
-     &                        / (aion * amu * gamma * vz**2)
-      fq  = zion*echarge*(dedxq - dbdxq*vz)
-     &                        / (aion * amu * gamma * vz**2)
+      fux = zion*echarge*(dedrr + dexdx - dbdr*vz)/(aion*amu*gamma*vz**2)
+      fuy = zion*echarge*(dedrr + deydy - dbdr*vz)/(aion*amu*gamma*vz**2)
+      fq  = zion*echarge*(dedxq - dbdxq*vz)/(aion*amu*gamma*vz**2)
 
 c     --- Calculate forces for advancing envelope and test particles
-      feself = 2. * p / (a + b)
-      fa = ( fq + fux) * a + feself + (emitnx_l*clight/(vz*gamma))**2 / a**3
-      fb = (-fq + fuy) * b + feself + (emitny_l*clight/(vz*gamma))**2 / b**3
-      fx = zion*echarge/(aion*amu*gamma*vz**2)*(
-     &      equadde*(x-equadox)+ehelededx*(x-eheleox)+eemltdedx*(x-eemltox)
-     &    -(equaddb*(x-equadox)+eheledbdx*(x-eheleox)+emmltdbdx*(x-emmltox)
-     &    +emmlt2dbdx*(x-emmlt2ox))*vz
-     &    +ehelededr*(x-eheleox) + eemltdedr*(x-eemltox) +
-     &    (dedr + dexdx - dbdr*vz)*x)
-      fy = zion*echarge/(aion*amu*gamma*vz**2)*(
-     &    -(equadde*(y-equadoy)+ehelededx*(y-eheleoy)+eemltdedx*(y-eemltoy))
-     &    +(equaddb*(y-equadoy)+eheledbdx*(y-eheleoy)+emmltdbdx*(y-emmltoy)
-     &    +emmlt2dbdx*(y-emmlt2oy))*vz
-     &    +ehelededr*(y-eheleoy) + eemltdedr*(y-eemltoy) +
-     &    (dedr + deydy - dbdr*vz)*y)
-c
-      fexself = feself / a
-      fx1  = (fq + fux + fexself) * x1
-      fx2  = (fq + fux + fexself) * x2
-      fx01 = (fq + fux) * x01
-      fx02 = (fq + fux) * x02
-c
-      feyself = feself / b
-      fy1  = (-fq + fuy + feyself) * y1
-      fy2  = (-fq + fuy + feyself) * y2
-      fy01 = (fq + fuy) * y01
-      fy02 = (fq + fuy) * y02
-c
+      feself = 2.*p/(a + b)
+      fa = ( fq + fux)*a + feself + (emitnx_l*clight/(vz*gamma))**2/a**3
+      fb = (-fq + fuy)*b + feself + (emitny_l*clight/(vz*gamma))**2/b**3
+      fx = zion*echarge/(aion*amu*gamma*vz**2)*(xdedx - xdbdx*vz)
+      fy = zion*echarge/(aion*amu*gamma*vz**2)*(ydedx - ydbdx*vz)
+
+      fexself = feself/a
+      fx1  = (fq + fux + fexself)*x1
+      fx2  = (fq + fux + fexself)*x2
+      fx01 = (fq + fux)*x01
+      fx02 = (fq + fux)*x02
+
+      feyself = feself/b
+      fy1  = (-fq + fuy + feyself)*y1
+      fy2  = (-fq + fuy + feyself)*y2
+      fy01 = (fq + fuy)*y01
+      fy02 = (fq + fuy)*y02
+
       fqxplot =  fq
       fqyplot = -fq
       fuxplot =  fux

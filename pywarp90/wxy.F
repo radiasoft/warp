@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.6 $, $Date: 2001/05/22 20:26:27 $
+c@(#) File WXY.M, version $Revision: 3.7 $, $Date: 2001/05/26 00:48:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -780,11 +780,9 @@ c     --- electrostatic multipole components
 
 c     --- magnetostatic multipole components
       call applymmlt(np,xp,yp,1,zbeam,dtl,dtr,dt,bx,by,bz)
-      call applymmlt2(np,xp,yp,1,zbeam,dtl,dtr,dt,bx,by,bz)
 
 c     --- handle magnetic fields from 3-D grid
       call applybgrd(np,xp,yp,1,zbeam,bx,by,bz)
-      call applybgrd2(np,xp,yp,1,zbeam,bx,by,bz)
 
 c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,1,zbeam,ex,ey,ez)

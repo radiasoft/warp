@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.9 $, $Date: 2001/05/22 20:27:49 $
+c@(#) File TOP.M, version $Revision: 3.10 $, $Date: 2001/05/26 00:48:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -577,11 +577,10 @@ c============================================================================
 c  Resizes the lattice arrays to the final lengths needed by the actual data.
 c  Sets dipole field, lattice element 0, flags for bends, etc.
 
-
       integer(ISZ):: idrft,ib,id,iq,is,ih,ii,ia,im,ip
       integer(ISZ):: nndrft,nnbend,nndipo,nnquad,nnsext 
-      integer(ISZ):: nnhele,nnhmlt,nnaccl,nnemlt,nnmmlt,nnmmlt2
-      integer(ISZ):: nnbgrd,nnbgrd2,nnpgrd
+      integer(ISZ):: nnhele,nnhmlt,nnaccl,nnemlt,nnmmlt
+      integer(ISZ):: nnbgrd,nnpgrd
 
 c     Find size of lattice element arrays for resizing 
 c     --- initialize counting variables  
@@ -595,9 +594,7 @@ c     --- initialize counting variables
       nnaccl = 0
       nnemlt = 0
       nnmmlt = 0
-      nnmmlt2 = 0 
       nnbgrd = 0
-      nnbgrd2 = 0 
       nnpgrd = 0
 c     --- count drfts 
       do idrft = 0, ndrft
@@ -641,15 +638,9 @@ c     --- count multipole data sets
       do im = 0, nmmlt
          if (mmltid(im) > 0) nnmmlt = im
       enddo
-      do im = 0, nmmlt2
-         if (mmlt2id(im) > 0) nnmmlt2 = im
-      enddo
 c     --- count bgridded field data sets 
       do ib = 0, nbgrd
          if (bgrdid(ib) > 0) nnbgrd = ib
-      enddo
-      do ib = 0, nbgrd2
-         if (bgrd2id(ib) > 0) nnbgrd2 = ib
       enddo
       do ip = 0, npgrd
          if (pgrdid(ip) > 0) nnpgrd = ip
@@ -665,9 +656,7 @@ c     --- set lengths equal to counted size
       naccl = nnaccl
       nemlt = nnemlt
       nmmlt = nnmmlt
-      nmmlt2 = nnmmlt2 
       nbgrd = nnbgrd
-      nbgrd2 = nnbgrd2
       npgrd = nnpgrd
 
 c     --- resize lattice arrays (use corrected ndipo size if autoset dipoles, 
@@ -681,6 +670,9 @@ c     --- multidimensional dynamics arrays (used for hard-edge multipole
 c     --- elements) and then using them in the same routine  
 
       call resetlat_work
+
+c     --- Get the overlap level of the lattice elements
+      call getoverlaps()
 
       return 
       end 
@@ -877,15 +869,6 @@ c       --- specified.
            mmltid(0) = mmltid(nmmlt)
            mmltap(0) = mmltap(nmmlt) 
         endif
-        if (mmlt2id(0) == 0) then
-           mmlt2zs(0) = mmlt2zs(nmmlt2) - zlatperi
-           mmlt2ze(0) = mmlt2ze(nmmlt2) - zlatperi
-           mmlt2ph(0) = mmlt2ph(nmmlt2)
-           mmlt2sf(0) = mmlt2sf(nmmlt2)
-           mmlt2sc(0) = mmlt2sc(nmmlt2)
-           mmlt2id(0) = mmlt2id(nmmlt2)
-           mmlt2ap(0) = mmlt2ap(nmmlt2) 
-        endif
         if (bgrdid(0) == 0) then
            bgrdzs(0) = bgrdzs(nbgrd) - zlatperi
            bgrdze(0) = bgrdze(nbgrd) - zlatperi
@@ -899,20 +882,6 @@ c       --- specified.
            bgrdoy(0) = bgrdoy(nbgrd)
            bgrdph(0) = bgrdph(nbgrd) 
            bgrdap(0) = bgrdap(nbgrd)
-        endif
-        if (bgrd2id(0) == 0) then
-           bgrd2zs(0) = bgrd2zs(nbgrd2) - zlatperi
-           bgrd2ze(0) = bgrd2ze(nbgrd2) - zlatperi
-           bgrd2xs(0) = bgrd2xs(nbgrd2)
-           bgrd2ys(0) = bgrd2ys(nbgrd2)
-           bgrd2id(0) = bgrd2id(nbgrd2)
-           bgrd2sf(0) = bgrd2sf(nbgrd2)
-           bgrd2sc(0) = bgrd2sc(nbgrd2)
-           bgrd2sy(0) = bgrd2sy(nbgrd2)
-           bgrd2ox(0) = bgrd2ox(nbgrd2)
-           bgrd2oy(0) = bgrd2oy(nbgrd2)
-           bgrd2ph(0) = bgrd2ph(nbgrd2) 
-           bgrd2ap(0) = bgrd2ap(nbgrd2)
         endif
         if (pgrdid(0) == 0) then
            pgrdzs(0) = pgrdzs(npgrd) - zlatperi
@@ -978,17 +947,9 @@ c     --- Set flags for existence of bends, dipos, quads, and mults.
       do im = 0, nmmlt
          if (mmltid(im).ne.0) mmlts = .true.
       enddo
-      mmlt2s = .false.
-      do im = 0, nmmlt2
-         if (mmlt2id(im).ne.0) mmlt2s = .true.
-      enddo
       bgrds = .false.
       do im = 0, nbgrd
          if (bgrdid(im).ne.0) bgrds = .true.
-      enddo
-      bgrd2s = .false.
-      do im = 0, nbgrd2
-         if (bgrd2id(im).ne.0) bgrd2s = .true.
       enddo
       pgrds = .false.
       do im = 0, npgrd
@@ -1020,12 +981,6 @@ c     --- Calculate sines and cosines of bgrdph for efficiency
       do i=0,nbgrd
         bgrdsp(i) = sin(bgrdph(i)) 
         bgrdcp(i) = cos(bgrdph(i)) 
-      enddo 
-
-c     --- Calculate sines and cosines of bgrd2ph for efficiency
-      do i=0,nbgrd2
-        bgrd2sp(i) = sin(bgrd2ph(i)) 
-        bgrd2cp(i) = cos(bgrd2ph(i)) 
       enddo 
 
 c     --- Calculate 1/pgrddx etc. for efficiency (minimizes divides)
@@ -1123,6 +1078,170 @@ c         --- the derivative by finite differencing the data.
       return
       end
 c============================================================================ 
+      subroutine getoverlaps()
+      use Lattice
+      use LatticeInternal
+
+c For each of the elements types, get the level of overlaps
+c zlatbuffer is the amount of space (on meters) around each element. It is
+c used so that elements right next to each other but not strictly overlapping
+c are considered to be overlapping.
+
+      call getelemoverlaps(ndrft,drftzs,drftze,drftol,zlatbuffer,ndrftol)
+      call getelemoverlaps(nbend,bendzs,bendze,bendol,zlatbuffer,nbendol)
+      call getelemoverlaps(ndipo,dipozs,dipoze,dipool,zlatbuffer,ndipool)
+      call getelemoverlaps(nquad,quadzs,quadze,quadol,zlatbuffer,nquadol)
+      call getelemoverlaps(nsext,sextzs,sextze,sextol,zlatbuffer,nsextol)
+      call getelemoverlaps(nhele,helezs,heleze,heleol,zlatbuffer,nheleol)
+      call getelemoverlaps(naccl,acclzs,acclze,acclol,zlatbuffer,nacclol)
+      call getelemoverlaps(nemlt,emltzs,emltze,emltol,zlatbuffer,nemltol)
+      call getelemoverlaps(nmmlt,mmltzs,mmltze,mmltol,zlatbuffer,nmmltol)
+      call getelemoverlaps(nbgrd,bgrdzs,bgrdze,bgrdol,zlatbuffer,nbgrdol)
+      call getelemoverlaps(npgrd,pgrdzs,pgrdze,pgrdol,zlatbuffer,npgrdol)
+
+c Now, setup indicing arrays in LatticeInternal
+      call gchange("LatticeInternal",0)
+
+      call getelemoverlapindices(ndrft,drftol,ndrftol,odrftoi,odrftio,odrftii,
+     &                           odrftnn)
+      call getelemoverlapindices(nbend,bendol,nbendol,obendoi,obendio,obendii,
+     &                           obendnn)
+      call getelemoverlapindices(ndipo,dipool,ndipool,odipooi,odipoio,odipoii,
+     &                           odiponn)
+      call getelemoverlapindices(nquad,quadol,nquadol,oquadoi,oquadio,oquadii,
+     &                           oquadnn)
+      call getelemoverlapindices(nsext,sextol,nsextol,osextoi,osextio,osextii,
+     &                           osextnn)
+      call getelemoverlapindices(nhele,heleol,nheleol,oheleoi,oheleio,oheleii,
+     &                           ohelenn)
+      call getelemoverlapindices(naccl,acclol,nacclol,oaccloi,oacclio,oacclii,
+     &                           oacclnn)
+      call getelemoverlapindices(nemlt,emltol,nemltol,oemltoi,oemltio,oemltii,
+     &                           oemltnn)
+      call getelemoverlapindices(nmmlt,mmltol,nmmltol,ommltoi,ommltio,ommltii,
+     &                           ommltnn)
+      call getelemoverlapindices(nbgrd,bgrdol,nbgrdol,obgrdoi,obgrdio,obgrdii,
+     &                           obgrdnn)
+      call getelemoverlapindices(npgrd,pgrdol,npgrdol,opgrdoi,opgrdio,opgrdii,
+     &                           opgrdnn)
+
+      return
+      end
+c============================================================================ 
+      subroutine getelemoverlaps(nelem,elemzs,elemze,elemol,zlatbuffer,nelemol)
+      integer(ISZ):: nelem,nelemol
+      real(kind=8):: elemzs(0:nelem),elemze(0:nelem)
+      integer(ISZ):: elemol(0:nelem)
+      real(kind=8):: zlatbuffer
+
+c Loops over lattice elements and for elements of the same type that overlap,
+c keep track of the level of overlaps.
+
+      integer(ISZ):: ie,ii,no,astat
+      logical(ISZ),allocatable:: overlaps(:)
+
+c     --- First set up space to save the overlap levels of elements which
+c     --- each element overlaps. At first, a value of 10 is assumed.
+      no = 10
+      allocate(overlaps(no),stat=astat)
+      if (astat .ne. 0) then
+        print*,"ERROR: getelemoverlaps: not enough space to allocate temp"
+        print*,"array. Array size needed is ",no
+        stop
+      endif
+
+c     --- The first element is always at the lowest overlap level.
+      elemol(0) = 1
+      nelemol = 1
+
+c     --- Loop over the rest of the elements...
+      do ie=1,nelem
+      
+c       --- First assume that this element doesn't overlap any others.
+        overlaps = .false.
+
+c       --- Loop over the previous elements and check which ones overlap the
+c       --- current one. For each overlap, set the corresponding overlap level
+c       --- to true.
+        do ii=0,ie-1
+          if (elemze(ie)+zlatbuffer > elemzs(ii) .and.
+     &        elemze(ii)+zlatbuffer > elemzs(ie)) then
+            overlaps(elemol(ii)) = .true.
+          endif
+        enddo
+
+c       --- Loop over the list of overlap levels, looking for the lowest
+c       --- level which has no overlap
+        ii = 1
+        do while (overlaps(ii) .and. ii <= no)
+          ii = ii + 1
+        enddo
+        elemol(ie) = ii
+        nelemol = max(nelemol,ii)
+
+c       --- If the number of overlapping levels is greater than the size of
+c       --- the overlap array, increase its size.
+        if (nelemol > no) then
+          deallocate(overlaps)
+          no = no*2
+          allocate(overlaps(no),stat=astat)
+          if (astat .ne. 0) then
+            print*,"ERROR: getelemoverlaps: not enough space to allocate temp"
+            print*,"array. Array size needed is ",no
+            stop
+          endif
+        endif
+
+      enddo
+
+c     --- Clean up the temp space
+      deallocate(overlaps)
+
+      return
+      end
+c============================================================================ 
+      subroutine getelemoverlapindices(nelem,elemol,
+     &                                 nelemol,oelemoi,oelemio,oelemii,oelemnn)
+      use Lattice
+      use LatticeInternal
+      integer(ISZ),intent(in):: nelem,nelemol
+      integer(ISZ),intent(in):: elemol(0:nelem)
+      integer(ISZ),intent(out):: oelemoi(0:nelem),oelemio(0:nelem)
+      integer(ISZ),intent(out):: oelemii(nelemol),oelemnn(nelemol)
+
+c Generate indicing information which is used to make finding elements
+c efficient.
+c    nelem    the number of elements
+c    elemol   the overlap level of each element
+c    nelemol  the number of overlapping levels
+c The output is
+c    oelemoi   a list of the element indices group by overlap level
+c    oelemio   revervse list of the element indices group by overlap level
+c    oelemii   the starting index in that list for each overlap level
+c    oelemnn   the number of elements in each overlap level
+
+      integer(ISZ):: io,ie,ii
+
+c     --- Loop over the number of levels of overlap. For each level, get
+c     --- the element indices that are at that level and increment
+c     --- the number of elements at that level.
+      ii = 0
+      do io=1,nelemol
+        oelemnn(io) = 0
+        oelemii(io) = ii
+        do ie=0,nelem
+          if (elemol(ie) == io) then
+            oelemoi(ii) = ie
+            oelemio(ie) = ii - oelemii(io) + 1
+            oelemnn(io) = oelemnn(io) + 1
+            ii = ii + 1
+          endif
+        enddo
+      enddo
+
+      return
+      end
+c============================================================================ 
       subroutine setlatt
       use InGen
       use Picglb
@@ -1160,23 +1279,27 @@ c          dipozs(i)  dipoze(i)    dipozs(i+1)         dipoze(i+1)
 c       cdipozs(j-1)  cdipoze(j-1) cdipozs(j)          cdipoze(j)
 c                                  cdipozs(j+1)        cdipoze(j+1)
 
-      integer(ISZ):: iz,iquadert,iquaderu,iquaderr,ii,imultert,imulteru,imulterr
+      integer(ISZ):: io,iz
+      integer(ISZ):: iquadert,iquaderu,iquaderr,ii,imultert,imulteru,imulterr
       integer(ISZ):: id
-      real(kind=8):: zcellc,offset,wi
+      real(kind=8):: zz,offset,wi
 
 c     --- Save the z location and time at which the internal lattice frame
 c     --- is set.
       zlframe = zbeam
       zltime = time
 
-c     --- Assume at the start that there are not any of the following elements
-c     --- in the mesh.
+c     --- Assume at the start that there are not any elements in the mesh.
+      lindrft = .false.
       linbend = .false.
+      lindipo = .false.
+      linquad = .false.
+      linsext = .false.
+      linhele = .false.
       linemlt = .false.
       linmmlt = .false.
-      linmmlt2 = .false. 
+      linaccl = .false.
       linbgrd = .false.
-      linbgrd2 = .false. 
       linpgrd = .false.
 
       do iz = 0, nzl
@@ -1184,29 +1307,41 @@ c        --- compute z of center of cell (may be off lattice)
 c        --- If nzl is zero, then find the elements at zbeam. Otherwise,
 c        --- find the elements at each of the grid points.
          if (nzl > 0) then
-           zcellc = iz*dzl + zlmin + zbeam + 0.5*dzl
+           zz = iz*dzl + zlmin + zbeam + 0.5*dzl
          else
-           zcellc = zbeam
+           zz = zbeam
          endif
 
 c        --- find index of nearest drft element
          if (drfts) then
-           call getelemid(zcellc,offset,ndrft,drftzs,drftze,cdrftid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
-           cdrftzs(iz) = drftzs(cdrftid(iz)) + offset
-           cdrftze(iz) = drftze(cdrftid(iz)) + offset
+           do io=1,ndrftol
+             call getelemid(zz,offset,ndrft,drftzs,drftze,odrftnn(io),
+     &                      odrftoi(odrftii(io)),odrftio,cdrftid(iz,io))
+c            --- load lattice info into comoving 1d array
+             cdrftzs(iz,io) = drftzs(cdrftid(iz,io)) + offset
+             cdrftze(iz,io) = drftze(cdrftid(iz,io)) + offset
+             if (cdrftzs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= cdrftze(iz,io))
+     &           lindrft(io) = .true.
+           enddo
          endif
 
 c        --- find index of nearest bend element
+c        --- Note that while some setup is done for overlapping bends, they
+c        --- are actually not supported since the idea of overlapping bends
+c        --- doesn't make much sense. The extra indexing is done so that the
+c        --- getelemid routine can still be used.
          if (bends) then
-           call getelemid(zcellc,offset,nbend,bendzs,bendze,cbendid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
+           call getelemid(zz,offset,nbend,bendzs,bendze,obendnn(1),
+     &                    obendoi(obendii(1)),obendio,cbendid(iz))
+c          --- load lattice info into comoving 1d array
            cbendzs(iz) = bendzs(cbendid(iz)) + offset
            cbendze(iz) = bendze(cbendid(iz)) + offset
            cbendrc(iz) = bendrc(cbendid(iz))
 c          --- Check whether this grid point is in the element.
 c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cbendzs(iz) <= zcellc+dzl .and. zcellc-dzl <= cbendze(iz))
+           if (cbendzs(iz) <= zz+zlatbuffer .and.
+     &                        zz-zlatbuffer <= cbendze(iz))
      &         linbend = .true.
          endif
 
@@ -1215,16 +1350,22 @@ c        --- The cdipo arrays calculated here are needed for residence
 c        --- corrections (when dipos is true), and internal conductors (when
 c        --- fstype is 3).
          if (dipos .or. fstype == 3) then
-           call getelemid(zcellc,offset,ndipo,dipozs,dipoze,cdipoid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
-           cdipozs(iz) = dipozs(cdipoid(iz)) + offset
-           cdipoze(iz) = dipoze(cdipoid(iz)) + offset
-           cdipoby(iz) = dipoby(cdipoid(iz))
-           cdipobx(iz) = dipobx(cdipoid(iz))
-           cdipota(iz) = dipota(cdipoid(iz))
-           cdipotb(iz) = dipotb(cdipoid(iz))
-           cdipoex(iz) = dipoex(cdipoid(iz))
-           cdipoey(iz) = dipoey(cdipoid(iz))
+           do io=1,ndipool
+             call getelemid(zz,offset,ndipo,dipozs,dipoze,odiponn(io),
+     &                      odipooi(odipoii(io)),odipoio,cdipoid(iz,io))
+c            --- load lattice info into comoving 1d array
+             cdipozs(iz,io) = dipozs(cdipoid(iz,io)) + offset
+             cdipoze(iz,io) = dipoze(cdipoid(iz,io)) + offset
+             cdipoby(iz,io) = dipoby(cdipoid(iz,io))
+             cdipobx(iz,io) = dipobx(cdipoid(iz,io))
+             cdipota(iz,io) = dipota(cdipoid(iz,io))
+             cdipotb(iz,io) = dipotb(cdipoid(iz,io))
+             cdipoex(iz,io) = dipoex(cdipoid(iz,io))
+             cdipoey(iz,io) = dipoey(cdipoid(iz,io))
+             if (cdipozs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= cdipoze(iz,io))
+     &           lindipo(io) = .true.
+           enddo
          endif
 
 c        --- find index of nearest quad element
@@ -1232,225 +1373,232 @@ c        --- The cquad arrays calculated here are needed for residence
 c        --- corrections (when quads is true) and the internal conductors (when
 c        --- fstype is either 2 or 3).
          if (quads .or. fstype == 2 .or. fstype == 3) then
-           call getelemid(zcellc,offset,nquad,quadzs,quadze,cquadid(iz))
-           id = cquadid(iz)
-c          --- load lattice info into comoving 1d array for easy accss by ptcls
-           cquadzs(iz) = quadzs(id) + offset
-           cquadze(iz) = quadze(id) + offset
-           cquaddb(iz) = quaddb(id)
-           cquadde(iz) = quadde(id)
-           cquadvx(iz) = quadvx(id)
-           cquadvy(iz) = quadvy(id)
-           if (quadts(id)<=time .and. time<quadts(id)+ntquad*quaddt(id)) then
-             ii = int((time - quadts(id))/quaddt(id))
-             wi = (time - quadts(id))/quaddt(id) - ii
-             cquadde(iz) = cquadde(iz) + quadet(ii  ,id)*(1. - wi) +
-     &                                   quadet(ii+1,id)*      wi 
-             cquaddb(iz) = cquaddb(iz) + quadbt(ii  ,id)*(1. - wi) +
-     &                                   quadbt(ii+1,id)*      wi 
-           endif
-c          --- set index for offset quads.  NOTE that this uses "nqerr"
-c          --- and not "nquad".  This gives us a choice of either:
-c          --- periodic errors (recirculator or ring) via nqerr=nquad, or
-c          --- aperiodic errors (straight lattice w/ repeat).
-c          --- THIS NEEDS CHECKING, especially when iqerr is nonzero.
-           if (zlatperi > 0.) then
-             iquadert = id + (int(10.+(zcellc-zlatstrt)/zlatperi)-10)*nquad
-           else
-             iquadert = id
-           endif
-           iquaderu = max(iquadert, 0)
-           iquaderr = mod(iquaderu, nqerr) 
-           cqoffx(iz) = qoffx(iquaderr)
-           cqoffy(iz) = qoffy(iquaderr)
+           do io=1,nquadol
+             call getelemid(zz,offset,nquad,quadzs,quadze,oquadnn(io),
+     &                      oquadoi(oquadii(io)),oquadio,cquadid(iz,io))
+             id = cquadid(iz,io)
+c            --- load lattice info into comoving 1d array
+             cquadzs(iz,io) = quadzs(id) + offset
+             cquadze(iz,io) = quadze(id) + offset
+             cquaddb(iz,io) = quaddb(id)
+             cquadde(iz,io) = quadde(id)
+             cquadvx(iz,io) = quadvx(id)
+             cquadvy(iz,io) = quadvy(id)
+             if (quadts(id)<=time .and. time<quadts(id)+ntquad*quaddt(id)) then
+               ii = int((time - quadts(id))/quaddt(id))
+               wi = (time - quadts(id))/quaddt(id) - ii
+               cquadde(iz,io) = cquadde(iz,io) + quadet(ii  ,id)*(1. - wi) +
+     &                                           quadet(ii+1,id)*      wi 
+               cquaddb(iz,io) = cquaddb(iz,io) + quadbt(ii  ,id)*(1. - wi) +
+     &                                           quadbt(ii+1,id)*      wi 
+             endif
+c            --- set index for offset quads.  NOTE that this uses "nqerr"
+c            --- and not "nquad".  This gives us a choice of either:
+c            --- periodic errors (recirculator or ring) via nqerr=nquad, or
+c            --- aperiodic errors (straight lattice w/ repeat).
+c            --- THIS NEEDS CHECKING, especially when iqerr is nonzero.
+             if (zlatperi > 0.) then
+               iquadert = id + (int(10.+(zz-zlatstrt)/zlatperi)-10)*nquad
+             else
+               iquadert = id
+             endif
+             iquaderu = max(iquadert, 0)
+             iquaderr = mod(iquaderu, nqerr) 
+             cqoffx(iz,io) = qoffx(iquaderr)
+             cqoffy(iz,io) = qoffy(iquaderr)
+             if (cquadzs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= cquadze(iz,io))
+     &           linquad(io) = .true.
+           enddo
          endif
 
 c        --- find index of nearest sext element
 c        --- The csext arrays calculated here are needed for residence
 c        --- corrections (when sexts is true).
          if (sexts) then
-           call getelemid(zcellc,offset,nsext,sextzs,sextze,csextid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls
-           csextzs(iz) = sextzs(csextid(iz)) + offset
-           csextze(iz) = sextze(csextid(iz)) + offset
-           csextdb(iz) = sextdb(csextid(iz))
-           csextde(iz) = sextde(csextid(iz))
+           do io=1,nsextol
+             call getelemid(zz,offset,nsext,sextzs,sextze,osextnn(io),
+     &                      osextoi(osextii(io)),osextio,csextid(iz,io))
+c            --- load lattice info into comoving 1d array
+             csextzs(iz,io) = sextzs(csextid(iz,io)) + offset
+             csextze(iz,io) = sextze(csextid(iz,io)) + offset
+             csextdb(iz,io) = sextdb(csextid(iz,io))
+             csextde(iz,io) = sextde(csextid(iz,io))
+             if (csextzs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= csextze(iz,io))
+     &           linsext(io) = .true.
+           enddo
          endif
 
 c        --- find index of nearest hard-edge multipole element
          if (heles) then
-           call getelemid(zcellc,offset,nhele,helezs,heleze,cheleid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls
-           chelezs(iz) = helezs(cheleid(iz)) + offset
-           cheleze(iz) = heleze(cheleid(iz)) + offset
+           do io=1,nheleol
+             call getelemid(zz,offset,nhele,helezs,heleze,ohelenn(io),
+     &                      oheleoi(oheleii(io)),oheleio,cheleid(iz,io))
+c            --- load lattice info into comoving 1d array
+             chelezs(iz,io) = helezs(cheleid(iz,io)) + offset
+             cheleze(iz,io) = heleze(cheleid(iz,io)) + offset
+             if (chelezs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= cheleze(iz,io))
+     &           linhele(io) = .true.
+           enddo
          endif
 
 c        --- find index of nearest acceleration element
          if (accls) then
-           call getelemid(zcellc,offset,naccl,acclzs,acclze,cacclid(iz))
-           id = cacclid(iz)
-           if (acclze(id) + offset > acclzstt) then
-             cacclzs(iz) = acclzs(id) + offset
-             cacclze(iz) = acclze(id) + offset
-             cacclez(iz) = acclez(id)
-             cacclxw(iz) = acclxw(id) 
-             cacclsw(iz) = acclsw(id) 
-             if (acclts(id) <= time .and.
-     &                         time < acclts(id)+ntaccl*accldt(id)) then
-               ii = int((time - acclts(id))/accldt(id))
-               wi = (time - acclts(id))/accldt(id) - ii
-               cacclez(iz) = cacclez(iz) + acclet(ii  ,id)*(1. - wi) +
-     &                                     acclet(ii+1,id)*      wi 
+           do io=1,nacclol
+             call getelemid(zz,offset,naccl,acclzs,acclze,oacclnn(io),
+     &                      oaccloi(oacclii(io)),oacclio,cacclid(iz,io))
+             id = cacclid(iz,io)
+             if (acclze(id) + offset > acclzstt) then
+               cacclzs(iz,io) = acclzs(id) + offset
+               cacclze(iz,io) = acclze(id) + offset
+               cacclez(iz,io) = acclez(id)
+               cacclxw(iz,io) = acclxw(id) 
+               cacclsw(iz,io) = acclsw(id) 
+               if (acclts(id) <= time .and.
+     &                           time < acclts(id)+ntaccl*accldt(id)) then
+                 ii = int((time - acclts(id))/accldt(id))
+                 wi = (time - acclts(id))/accldt(id) - ii
+                 cacclez(iz,io) = cacclez(iz,io) + acclet(ii  ,id)*(1. - wi) +
+     &                                       acclet(ii+1,id)*      wi 
+               endif
+               if (cacclzs(iz,io) <= zz+zlatbuffer .and.
+     &                               zz-zlatbuffer <= cacclze(iz,io))
+     &             linaccl(io) = .true.
+             else
+               cacclzs(iz,io) = 0.
+               cacclze(iz,io) = 0.
+               cacclez(iz,io) = 0.
+               cacclxw(iz,io) = 0.
+               cacclsw(iz,io) = 0.  
              endif
-           else
-             cacclzs(iz) = 0.
-             cacclze(iz) = 0.
-             cacclez(iz) = 0.
-             cacclxw(iz) = 0.
-             cacclsw(iz) = 0.  
-           endif
+           enddo
          endif
 
 c        --- find index of nearest emlt element
 c        --- The cemlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          if (emlts) then
-           call getelemid(zcellc,offset,nemlt,emltzs,emltze,cemltid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
-           cemltzs(iz) = emltzs(cemltid(iz)) + offset
-           cemltze(iz) = emltze(cemltid(iz)) + offset
-           cemltph(iz) = emltph(cemltid(iz))
-           cemltsf(iz) = emltsf(cemltid(iz))
-           cemltsc(iz) = emltsc(cemltid(iz))
-           cemltim(iz) = emltid(cemltid(iz))
-c          --- Check whether this grid point is in the element.
-c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cemltzs(iz) <= zcellc+dzl .and. zcellc-dzl <= cemltze(iz))
-     &         linemlt = .true.
-c          --- set index for offset emlts.  NOTE that this uses "neerr"
-c          --- and not "nemlt".  This gives us a choice of either:
-c          --- periodic errors (recirculator or ring) via neerr=nemlt, or
-c          --- aperiodic errors (straight lattice w/ repeat).
-c          --- THIS NEEDS CHECKING
-           if (zlatperi > 0.) then
-             imultert=cemltid(iz)+(int(10.+(zcellc-zlatstrt)/zlatperi)-10)*nemlt
-           else
-             imultert = cemltid(iz)
-           endif
-           imulteru = max(imultert, 0)
-           imulterr = mod(imulteru, neerr)
-           cemltox(iz) = emltox(imulterr)
-           cemltoy(iz) = emltoy(imulterr)
-
+           do io=1,nemltol
+             call getelemid(zz,offset,nemlt,emltzs,emltze,oemltnn(io),
+     &                      oemltoi(oemltii(io)),oemltio,cemltid(iz,io))
+c            --- load lattice info into comoving 1d array
+             id = cemltid(iz,io)
+             cemltzs(iz,io) = emltzs(id) + offset
+             cemltze(iz,io) = emltze(id) + offset
+             cemltph(iz,io) = emltph(id)
+             cemltsf(iz,io) = emltsf(id)
+             cemltsc(iz,io) = emltsc(id)
+             cemltim(iz,io) = emltid(id)
+c            --- Check whether this grid point is in the element.
+c            --- The grid points intentionally overlap to avoid roundoff errors.
+             if (cemltzs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= cemltze(iz,io))
+     &           linemlt(io) = .true.
+c            --- set index for offset emlts.  NOTE that this uses "neerr"
+c            --- and not "nemlt".  This gives us a choice of either:
+c            --- periodic errors (recirculator or ring) via neerr=nemlt, or
+c            --- aperiodic errors (straight lattice w/ repeat).
+c            --- THIS NEEDS CHECKING
+             if (zlatperi > 0.) then
+               imultert = id+(int(10.+(zz-zlatstrt)/zlatperi)-10)*nemlt
+             else
+               imultert = id
+             endif
+             imulteru = max(imultert, 0)
+             imulterr = mod(imulteru, neerr)
+             cemltox(iz,io) = emltox(imulterr)
+             cemltoy(iz,io) = emltoy(imulterr)
+           enddo
          endif
 
 c        --- find index of nearest mmlt element
 c        --- The cmmlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          if (mmlts) then
-           call getelemid(zcellc,offset,nmmlt,mmltzs,mmltze,cmmltid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
-           cmmltzs(iz) = mmltzs(cmmltid(iz)) + offset
-           cmmltze(iz) = mmltze(cmmltid(iz)) + offset
-           cmmltph(iz) = mmltph(cmmltid(iz))
-           cmmltsf(iz) = mmltsf(cmmltid(iz))
-           cmmltsc(iz) = mmltsc(cmmltid(iz))
-           cmmltim(iz) = mmltid(cmmltid(iz))
-c          --- Check whether this grid point is in the element.
-c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cmmltzs(iz) <= zcellc+dzl .and. zcellc-dzl <= cmmltze(iz))
-     &         linmmlt = .true.
-c          --- set index for offset mmlts.  NOTE that this uses "nmerr"
-c          --- and not "nmmlt".  This gives us a choice of either:
-c          --- periodic errors (recirculator or ring) via nmerr=nmmlt, or
-c          --- aperiodic errors (straight lattice w/ repeat).
-c          --- THIS NEEDS CHECKING
-           if (zlatperi > 0.) then
-             imultert=cmmltid(iz)+(int(10.+(zcellc-zlatstrt)/zlatperi)-10)*nmmlt
-           else
-             imultert = cmmltid(iz)
-           endif
-           imulteru = max(imultert, 0)
-           imulterr = mod(imulteru, nmerr)
-           cmmltox(iz) = mmltox(imulterr)
-           cmmltoy(iz) = mmltoy(imulterr)
-         endif
-
-c        --- find index of nearest mmlt2 element
-c        --- The cmmlt2 arrays calculated here are needed for the elements
-c        --- described in terms of their multipole components.
-         if (mmlt2s) then
-           call getelemid(zcellc,offset,nmmlt2,mmlt2zs,mmlt2ze,cmmlt2id(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
-           cmmlt2zs(iz) = mmlt2zs(cmmlt2id(iz)) + offset
-           cmmlt2ze(iz) = mmlt2ze(cmmlt2id(iz)) + offset
-           cmmlt2ph(iz) = mmlt2ph(cmmlt2id(iz))
-           cmmlt2sf(iz) = mmlt2sf(cmmlt2id(iz))
-           cmmlt2sc(iz) = mmlt2sc(cmmlt2id(iz))
-           cmmlt2im(iz) = mmlt2id(cmmlt2id(iz))
-c          --- Check whether this grid point is in the element.
-c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cmmlt2zs(iz) <= zcellc+dzl .and. zcellc-dzl <= cmmlt2ze(iz))
-     &         linmmlt2 = .true.
-c          --- set index for offset mmlt2s.  NOTE that this uses "nmerr"
-c          --- and not "nmmlt2".  This gives us a choice of either:
-c          --- periodic errors (recirculator or ring) via nmerr=nmmlt2, or
-c          --- aperiodic errors (straight lattice w/ repeat).
-c          --- THIS NEEDS CHECKING
-           if (zlatperi > 0.) then
-             imultert=cmmlt2id(iz)+(int(10.+(zcellc-zlatstrt)/zlatperi)-10)*nmmlt2
-           else
-             imultert = cmmlt2id(iz)
-           endif
-           imulteru = max(imultert, 0)
-           imulterr = mod(imulteru, nmerr)
-           cmmlt2ox(iz) = mmlt2ox(imulterr)
-           cmmlt2oy(iz) = mmlt2oy(imulterr)
+           do io=1,nmmltol
+             call getelemid(zz,offset,nmmlt,mmltzs,mmltze,ommltnn(io),
+     &                      ommltoi(ommltii(io)),ommltio,cmmltid(iz,io))
+c            --- load lattice info into comoving 1d array
+             id = cmmltid(iz,io)
+             cmmltzs(iz,io) = mmltzs(id) + offset
+             cmmltze(iz,io) = mmltze(id) + offset
+             cmmltph(iz,io) = mmltph(id)
+             cmmltsf(iz,io) = mmltsf(id)
+             cmmltsc(iz,io) = mmltsc(id)
+             cmmltim(iz,io) = mmltid(id)
+c            --- Check whether this grid point is in the element.
+c            --- The grid points intentionally overlap to avoid roundoff errors.
+             if (cmmltzs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= cmmltze(iz,io))
+     &           linmmlt(io) = .true.
+c            --- set index for offset mmlts.  NOTE that this uses "nmerr"
+c            --- and not "nmmlt".  This gives us a choice of either:
+c            --- periodic errors (recirculator or ring) via nmerr=nmmlt, or
+c            --- aperiodic errors (straight lattice w/ repeat).
+c            --- THIS NEEDS CHECKING
+             if (zlatperi > 0.) then
+               imultert = id+(int(10.+(zz-zlatstrt)/zlatperi)-10)*nmmlt
+             else
+               imultert = id
+             endif
+             imulteru = max(imultert, 0)
+             imulterr = mod(imulteru, nmerr)
+             cmmltox(iz,io) = mmltox(imulterr)
+             cmmltoy(iz,io) = mmltoy(imulterr)
+           enddo
          endif
 
 c        --- find index of nearest bgrd element
 c        --- The cbgrdid array calculated here is needed for the magnetic
 c        --- elements described by B field data on a 3-D grid.
          if (bgrds) then
-           call getelemid(zcellc,offset,nbgrd,bgrdzs,bgrdze,cbgrdid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
-           cbgrdzs(iz) = bgrdzs(cbgrdid(iz)) + offset
-           cbgrdze(iz) = bgrdze(cbgrdid(iz)) + offset
-c          --- Check whether this grid point is in the element.
-c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cbgrdzs(iz) <= zcellc+dzl .and. zcellc-dzl <= cbgrdze(iz))
-     &         linbgrd = .true.
-         endif
-
-c        --- find index of nearest bgrd2 element
-c        --- The cbgrd2id array calculated here is needed for the magnetic
-c        --- elements described by B field data on a 3-D grid.
-         if (bgrd2s) then
-           call getelemid(zcellc,offset,nbgrd2,bgrd2zs,bgrd2ze,cbgrd2id(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
-           cbgrd2zs(iz) = bgrd2zs(cbgrd2id(iz)) + offset
-           cbgrd2ze(iz) = bgrd2ze(cbgrd2id(iz)) + offset
-c          --- Check whether this grid point is in the element.
-c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cbgrd2zs(iz) <= zcellc+dzl .and. zcellc-dzl <= cbgrd2ze(iz))
-     &         linbgrd2 = .true.
+           do io=1,nbgrdol
+             call getelemid(zz,offset,nbgrd,bgrdzs,bgrdze,obgrdnn(io),
+     &                      obgrdoi(obgrdii(io)),obgrdio,cbgrdid(iz,io))
+c            --- load lattice info into comoving 1d array
+             cbgrdzs(iz,io) = bgrdzs(cbgrdid(iz,io)) + offset
+             cbgrdze(iz,io) = bgrdze(cbgrdid(iz,io)) + offset
+c            --- Check whether this grid point is in the element.
+c            --- The grid points intentionally overlap to avoid roundoff errors.
+             if (cbgrdzs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= cbgrdze(iz,io))
+     &           linbgrd(io) = .true.
+           enddo
          endif
 
 c        --- find index of nearest pgrd element
 c        --- The cpgrdid array calculated here is needed for the electrostatic
 c        --- elements described by potential data on a 3-D grid.
          if (pgrds) then
-           call getelemid(zcellc,offset,npgrd,pgrdzs,pgrdze,cpgrdid(iz))
-c          --- load lattice info into comoving 1d array for easy accss by ptcls.
-           cpgrdzs(iz) = pgrdzs(cpgrdid(iz)) + offset
-           cpgrdze(iz) = pgrdze(cpgrdid(iz)) + offset
-c          --- Check whether this grid point is in the element.
-c          --- The grid points intentionally overlap to avoid roundoff errors.
-           if (cpgrdzs(iz) <= zcellc+dzl .and. zcellc-dzl <= cpgrdze(iz))
-     &         linpgrd = .true.
+           do io=1,npgrdol
+             call getelemid(zz,offset,npgrd,pgrdzs,pgrdze,opgrdnn(io),
+     &                      opgrdoi(opgrdii(io)),opgrdio,cpgrdid(iz,io))
+c            --- load lattice info into comoving 1d array
+             cpgrdzs(iz,io) = pgrdzs(cpgrdid(iz,io)) + offset
+             cpgrdze(iz,io) = pgrdze(cpgrdid(iz,io)) + offset
+c            --- Check whether this grid point is in the element.
+c            --- The grid points intentionally overlap to avoid roundoff errors.
+             if (cpgrdzs(iz,io) <= zz+zlatbuffer .and.
+     &                             zz-zlatbuffer <= cpgrdze(iz,io))
+     &           linpgrd(io) = .true.
+           enddo
          endif
 
       enddo
+
+c     --- For each element type, check to see if any elements are in the mesh.
+      lindrft(0) = any(lindrft)
+      lindipo(0) = any(lindipo)
+      linquad(0) = any(linquad)
+      linsext(0) = any(linsext)
+      linhele(0) = any(linhele)
+      linemlt(0) = any(linemlt)
+      linmmlt(0) = any(linmmlt)
+      linaccl(0) = any(linaccl)
+      linbgrd(0) = any(linbgrd)
+      linpgrd(0) = any(linpgrd)
 
 c     --- All parallel slave processors must know if any processors
 c     --- are in a bend.  There is probably a better way of doing this.
@@ -1466,10 +1614,12 @@ c     --- are in a bend.  There is probably a better way of doing this.
       return
       end
 c=============================================================================
-      subroutine getelemid(z,offset,nelem,elemzs,elemze,id)
+      subroutine getelemid(z,offset,nelem,elemzs,elemze,
+     &                     oelemnn,oelemoi,oelemio,id)
       use Lattice
-      integer(ISZ):: nelem,id
+      integer(ISZ):: nelem,oelemnn,id
       real(kind=8):: z,offset,elemzs(0:nelem),elemze(0:nelem)
+      integer(ISZ):: oelemoi(oelemnn),oelemio(0:nelem)
 
 c Given information about the starts and stops of lattice elements, this
 c routine finds the number of the element closest to the specified z value.
@@ -1494,6 +1644,9 @@ c          elemzs(i)  elemze(i)    elemzs(i+1)         elemze(i+1)
 c       celemzs(j-1)  celemze(j-1) celemzs(j)          celemze(j)
 c                                  celemzs(j+1)        celemze(j+1)
 
+      integer(ISZ):: ii
+      ii = oelemio(id)
+
 c The Lattice is only needed for zlatstrt and zlatperi.
 
 c --- Offset of the lattice, for periodic repeat.
@@ -1503,9 +1656,9 @@ c --- Offset of the lattice, for periodic repeat.
         offset = zlatstrt
       endif
 
-c --- Check if there are more than one element. If not, return id=0.
-      if (nelem == 0) then
-        id = 0
+c --- Check if there is only one element. If so, return id is that element.
+      if (oelemnn == 1) then
+        id = oelemoi(1)
         return
       endif
 
@@ -1513,55 +1666,24 @@ c --- Check if z is somehow greater than the current element (id) location.
 c --- If so, reset it to 0 and start from the beginning. This happens if
 c --- during a periodic repeat of the lattice or if setlatt was called out
 c --- of order. Also, make sure that id is within the proper bounds.
-      if (id > 0) then
-        if (id > nelem) then
-          id = 0
-        else if (z < 0.5*(elemze(id-1) + elemzs(id)) + offset) then
-          id = 0
+      if (id > oelemoi(1)) then
+        if (id > oelemoi(oelemnn)) then
+          id = oelemoi(1)
+        else if (z < 0.5*(elemze(oelemoi(ii-1)) + elemzs(id)) + offset) then
+          id = oelemoi(1)
         endif
-      else if (id < 0) then
-        id = 0
+      else if (id < oelemoi(1)) then
+        id = oelemoi(1)
       endif
 
 c --- Scan sequentially through the list until the element is found.
 c --- Note that there is a potential memory access error here when
 c --- id=nelem, but the loop will exit anyway.
-      do while (id < nelem .and. z > 0.5*(elemze(id) + elemzs(id+1)) + offset)
-        id = id + 1
+      do while (ii < oelemnn .and.
+     &          z > 0.5*(elemze(id) + elemzs(oelemoi(ii+1))) + offset)
+        ii = ii + 1
+        id = oelemoi(ii)
       end do
-
-      return
-      end
-c=============================================================================
-      subroutine getresidence(z,vzg,gaminv,dtl,dtr,dti,
-     &                        nzl,celemzs,celemze,celemid,zlmin,zlframe,dzli,
-     &                        frac,j)
-      real(kind=8):: z,vzg,gaminv,dtl,dtr,dti
-      integer(ISZ):: nzl
-      real(kind=8):: celemzs(0:nzl),celemze(0:nzl)
-      integer(ISZ):: celemid(0:nzl)
-      real(kind=8):: zlmin,zlframe,dzli
-      real(kind=8):: frac
-      integer(ISZ):: j
-
-      real(kind=8):: vz,vzi,zl,zr,fl,fr
-
-      vz = vzg*gaminv
-      vzi = 1./dvnz(vz)
-c     --- find z-cell in which particle lies
-      j = max(0., (z - zlmin - zlframe)*dzli + 0.5)
-c     --- "left" end of velocity advance step
-      zl = z + vz*dtl
-      fl = 0.
-      if (zl >= celemzs(j) .and. zl < celemze(j)) fl = 1.
-c     --- "right" end of velocity advance step
-      zr = z + vz*dtr
-      fr = 0.
-      if (zr >= celemzs(j) .and. zr < celemze(j)) fr = 1.
-c     --- residence fraction
-      frac = fl
-      if (fl > fr) frac = (celemze(j)-zl)*vzi*dti
-      if (fr > fl) frac = (zr-celemzs(j))*vzi*dti
 
       return
       end
@@ -1592,32 +1714,56 @@ c============================================================================
 c  Gets residence factor and radius for bends.
 c  For periodic runs, assumes mesh period length = lattice period length
 
-      integer(ISZ):: ip,j
-      real(kind=8):: frac,dti
+      integer(ISZ):: ip,iz
+      real(kind=8):: zl,fl,zr,fr,frac
+      real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. bends .or. .not. linbend) return
 
-      dti = 1./(dtr-dtl)
+      vz  = uzp*gaminv
+      dzi = 1./(vz*(dtr-dtl))
 
 c  Extract the local bend properties for each particle off the general lattice
 
       if (npz == 1) then
-        call getresidence(zp(1),uzp(1),gaminv(1),dtl,dtr,dti,
-     &                    nzl,cbendzs,cbendze,cbendid,0.,zlframe,dzli,
-     &                    frac,j)
+c       --- find z-cell in which particle lies
+        iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c       --- "left" end of velocity advance step
+        zl = zp(1) + vz(1)*dtl
+        fl = 0.
+        if (zl >= cbendzs(iz) .and. zl < cbendze(iz)) fl = 1.
+c       --- "right" end of velocity advance step
+        zr = zp(1) + vz(1)*dtr
+        fr = 0.
+        if (zr >= cbendzs(iz) .and. zr < cbendze(iz)) fr = 1.
+c       --- residence fraction
+        frac = fl
+        if (fl > fr) frac = (cbendze(iz)-zl)*dzi(1)
+        if (fr > fl) frac = (zr-cbendzs(iz))*dzi(1)
         bendres(1) = frac
-        bendradi(1) = cbendrc(j)
+        bendradi(1) = cbendrc(iz)
         return
       endif
 
       do ip = 1, np
-        if (npz > 1) then
-          call getresidence(zp(ip),uzp(ip),gaminv(ip),dtl,dtr,dti,
-     &                      nzl,cbendzs,cbendze,cbendid,zlmin,zlframe,dzli,
-     &                      frac,j)
-        endif
+
+c       --- find z-cell in which particle lies
+        iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c       --- "left" end of velocity advance step
+        zl = zp(ip) + vz(ip)*dtl
+        fl = 0.
+        if (zl >= cbendzs(iz) .and. zl < cbendze(iz)) fl = 1.
+c       --- "right" end of velocity advance step
+        zr = zp(ip) + vz(ip)*dtr
+        fr = 0.
+        if (zr >= cbendzs(iz) .and. zr < cbendze(iz)) fr = 1.
+c       --- residence fraction
+        frac = fl
+        if (fl > fr) frac = (cbendze(iz)-zl)*dzi(ip)
+        if (fr > fl) frac = (zr-cbendzs(iz))*dzi(ip)
+
         bendres(ip) = frac
-        bendradi(ip) = cbendrc(j)
+        bendradi(ip) = cbendrc(iz)
       enddo
 
       return
@@ -1682,43 +1828,73 @@ c Output:
 c   ex, ey   quadrupole electric field
 c   bx, by   quadrupole magnetic field
 
-      integer(ISZ):: ip,j
-      real(kind=8):: dti,vz,vzi,zl,fl,zr,fr,frac,xpmqoff,ypmqoff
+      integer(ISZ):: io,ip,iz
+      real(kind=8):: zl,fl,zr,fr,frac,xpmqoff,ypmqoff
+      real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. quads) return
 
-      dti = 1./(dtr-dtl)
+      vz  = uzp*gaminv
+      dzi = 1./(vz*(dtr-dtl))
 
-      if (npz == 1) then
-        call getresidence(zp(1),uzp(1),gaminv(1),dtl,dtr,dti,
-     &                    nzl,cquadzs,cquadze,cquadid,0.,zlframe,dzli,
-     &                    frac,j)
-c       --- if frac is zero, just return since no field will be applied
-        if (frac == 0.) return
-      endif
-      do ip = 1, np
-        if (npz > 1) then
-          call getresidence(zp(ip),uzp(ip),gaminv(ip),dtl,dtr,dti,
-     &                      nzl,cquadzs,cquadze,cquadid,zlmin,zlframe,dzli,
-     &                      frac,j)
+      do io=1,nquadol
+        if (.not. linquad(io)) cycle
+
+        if (npz == 1) then
+c         --- find z-cell in which particle lies
+          iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c         --- "left" end of velocity advance step
+          zl = zp(1) + vz(1)*dtl
+          fl = 0.
+          if (zl >= cquadzs(iz,io) .and. zl < cquadze(iz,io)) fl = 1.
+c         --- "right" end of velocity advance step
+          zr = zp(1) + vz(1)*dtr
+          fr = 0.
+          if (zr >= cquadzs(iz,io) .and. zr < cquadze(iz,io)) fr = 1.
+c         --- residence fraction
+          frac = fl
+          if (fl > fr) frac = (cquadze(iz,io)-zl)*dzi(1)
+          if (fr > fl) frac = (zr-cquadzs(iz,io))*dzi(1)
+c         --- if frac is zero, just return since no field will be applied
+          if (frac == 0.) return
         endif
-c       --- set the field
-        if (frac > 0.) then
-          xpmqoff = xp(ip) - cqoffx(j)
-          ypmqoff = yp(ip) - cqoffy(j)
-          bx(ip) = bx(ip) + cquaddb(j)*frac*ypmqoff
-          by(ip) = by(ip) + cquaddb(j)*frac*xpmqoff
-          ex(ip) = ex(ip) + cquadde(j)*frac*xpmqoff
-          ey(ip) = ey(ip) - cquadde(j)*frac*ypmqoff
-          if (dodec .ne. 0.) then
-            ex(ip) = ex(ip) + dodec*cquadde(j)*frac*
-     &               (6.*xpmqoff**5 - 60.*xpmqoff**3*ypmqoff**2 +
-     &               30.*xpmqoff*ypmqoff**4)
-            ey(ip) = ey(ip) - dodec*cquadde(j)*frac*
-     &               (6.*ypmqoff**5 - 60.*ypmqoff**3*xpmqoff**2 +
-     &               30.*ypmqoff*xpmqoff**4)
+        do ip = 1, np
+
+          if (npz > 1) then
+c           --- find z-cell in which particle lies
+            iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c           --- "left" end of velocity advance step
+            zl = zp(ip) + vz(ip)*dtl
+            fl = 0.
+            if (zl >= cquadzs(iz,io) .and. zl < cquadze(iz,io)) fl = 1.
+c           --- "right" end of velocity advance step
+            zr = zp(ip) + vz(ip)*dtr
+            fr = 0.
+            if (zr >= cquadzs(iz,io) .and. zr < cquadze(iz,io)) fr = 1.
+c           --- residence fraction
+            frac = fl
+            if (fl > fr) frac = (cquadze(iz,io)-zl)*dzi(ip)
+            if (fr > fl) frac = (zr-cquadzs(iz,io))*dzi(ip)
           endif
-        endif
+      
+c         --- set the field
+          if (frac > 0.) then
+            xpmqoff = xp(ip) - cqoffx(iz,io)
+            ypmqoff = yp(ip) - cqoffy(iz,io)
+            bx(ip) = bx(ip) + cquaddb(iz,io)*frac*ypmqoff
+            by(ip) = by(ip) + cquaddb(iz,io)*frac*xpmqoff
+            ex(ip) = ex(ip) + cquadde(iz,io)*frac*xpmqoff
+            ey(ip) = ey(ip) - cquadde(iz,io)*frac*ypmqoff
+            if (dodec .ne. 0.) then
+              ex(ip) = ex(ip) + dodec*cquadde(iz,io)*frac*
+     &                 (6.*xpmqoff**5 - 60.*xpmqoff**3*ypmqoff**2 +
+     &                 30.*xpmqoff*ypmqoff**4)
+              ey(ip) = ey(ip) - dodec*cquadde(iz,io)*frac*
+     &                 (6.*ypmqoff**5 - 60.*ypmqoff**3*xpmqoff**2 +
+     &                 30.*ypmqoff*xpmqoff**4)
+            endif
+          endif
+        enddo
       enddo
 
       return
@@ -1747,33 +1923,63 @@ c Output:
 c   ex, ey   dipole electric field
 c   bx, by   dipole magnetic field
 
-      integer(ISZ):: ip,j
-      real(kind=8):: dti,frac
+      integer(ISZ):: io,ip,iz
+      real(kind=8):: zl,fl,zr,fr,frac
+      real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. dipos) return
 
-      dti = 1./(dtr-dtl)
+      vz  = uzp*gaminv
+      dzi = 1./(vz*(dtr-dtl))
 
-      if (npz == 1) then
-        call getresidence(zp(1),uzp(1),gaminv(1),dtl,dtr,dti,
-     &                    nzl,cdipozs,cdipoze,cdipoid,0.,zlframe,dzli,
-     &                    frac,j)
-c       --- if frac is zero, just return since no field will be applied
-        if (frac == 0.) return
-      endif
-      do ip = 1, np
-        if (npz > 1) then
-          call getresidence(zp(ip),uzp(ip),gaminv(ip),dtl,dtr,dti,
-     &                      nzl,cdipozs,cdipoze,cdipoid,zlmin,zlframe,dzli,
-     &                      frac,j)
+      do io=1,ndipool
+        if (.not. lindipo(io)) cycle
+
+        if (npz == 1) then
+c         --- find z-cell in which particle lies
+          iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c         --- "left" end of velocity advance step
+          zl = zp(1) + vz(1)*dtl
+          fl = 0.
+          if (zl >= cdipozs(iz,io) .and. zl < cdipoze(iz,io)) fl = 1.
+c         --- "right" end of velocity advance step
+          zr = zp(1) + vz(1)*dtr
+          fr = 0.
+          if (zr >= cdipozs(iz,io) .and. zr < cdipoze(iz,io)) fr = 1.
+c         --- residence fraction
+          frac = fl
+          if (fl > fr) frac = (cdipoze(iz,io)-zl)*dzi(1)
+          if (fr > fl) frac = (zr-cdipozs(iz,io))*dzi(1)
+c         --- if frac is zero, just return since no field will be applied
+          if (frac == 0.) return
         endif
-c       --- set the field
-        if (frac > 0.) then
-          by(ip) = by(ip) + cdipoby(j) * frac
-          bx(ip) = bx(ip) + cdipobx(j) * frac
-          ex(ip) = ex(ip) + cdipoex(j) * frac
-          ey(ip) = ey(ip) + cdipoey(j) * frac
-        endif
+        do ip = 1, np
+
+          if (npz > 1) then
+c           --- find z-cell in which particle lies
+            iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c           --- "left" end of velocity advance step
+            zl = zp(ip) + vz(ip)*dtl
+            fl = 0.
+            if (zl >= cdipozs(iz,io) .and. zl < cdipoze(iz,io)) fl = 1.
+c           --- "right" end of velocity advance step
+            zr = zp(ip) + vz(ip)*dtr
+            fr = 0.
+            if (zr >= cdipozs(iz,io) .and. zr < cdipoze(iz,io)) fr = 1.
+c           --- residence fraction
+            frac = fl
+            if (fl > fr) frac = (cdipoze(iz,io)-zl)*dzi(ip)
+            if (fr > fl) frac = (zr-cdipozs(iz,io))*dzi(ip)
+          endif
+
+c         --- set the field
+          if (frac > 0.) then
+            by(ip) = by(ip) + cdipoby(iz,io)*frac
+            bx(ip) = bx(ip) + cdipobx(iz,io)*frac
+            ex(ip) = ex(ip) + cdipoex(iz,io)*frac
+            ey(ip) = ey(ip) + cdipoey(iz,io)*frac
+          endif
+        enddo
       enddo
 
       return
@@ -1793,44 +1999,47 @@ c timestep, so that entry/exit of the bend is detected exactly once.)
 c Accounts for the fact that the jumped velocities act on the particles for 
 c less than the entire andvance step on entry/exit of the dipole.  
 
-      integer(ISZ):: ip,j
-      real(kind=8):: vz,vzi,qoverm
+      integer(ISZ):: io,ip,iz
+      real(kind=8):: vzi(np),qoverm
 
       if (.not.dipos) return
 
       qoverm = q/m
+      vzi = 1./dvnz(uzp*gaminv)
 
-      if (npz == 1) then
-        vz = uzp(1)*gaminv(1)
-        vzi = 1./dvnz(vz)
-        j = 0
-        if (.not. ((zpo(1) < cdipozs(j) .and. zp(1) >= cdipozs(j)) .or.
-     &             (zpo(1) < cdipoze(j) .and. zp(1) >= cdipoze(j)))) return
-      endif
-      do ip = 1,np
-        if (npz > 1) then
-          vz = uzp(ip)*gaminv(ip)
-          vzi = 1./dvnz(vz)
-c         --- find z-cell in which particle lies
-          j = min(nzl,int(max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)))
+      do io=1,ndipool
+        if (.not. lindipo(io)) cycle
+
+        if (npz == 1) then
+          iz = 0
+          if (.not.((zpo(1) < cdipozs(iz,io) .and. zp(1) >= cdipozs(iz,io)) .or.
+     &              (zpo(1) < cdipoze(iz,io) .and. zp(1) >= cdipoze(iz,io))))
+     &      return
         endif
-        if ((zpo(ip) < cdipozs(j)) .and. (zp(ip) >= cdipozs(j))) then 
-c         --- entered dipole
-          uxp(ip) = uxp(ip) + xp(ip)*cdipoby(j)*cdipota(j)*qoverm
-          uyp(ip) = uyp(ip) - yp(ip)*cdipoby(j)*cdipota(j)*qoverm
-          xp(ip)  = xp(ip) + (zp(ip)-cdipozs(j))*vzi*
-     &                       xp(ip)*cdipoby(j)*cdipota(j)*qoverm
-          yp(ip)  = yp(ip) - (zp(ip)-cdipozs(j))*vzi*
-     &                       yp(ip)*cdipoby(j)*cdipota(j)*qoverm
-        elseif ((zpo(ip) < cdipoze(j)).and.(zp(ip) >= cdipoze(j))) then  
-c         --- exited dipole
-          uxp(ip) = uxp(ip) + xp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-          uyp(ip) = uyp(ip) - yp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-          xp(ip)  = xp(ip) + (zp(ip)-cdipoze(j))*vzi*
-     &                       xp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-          yp(ip)  = yp(ip) - (zp(ip)-cdipoze(j))*vzi*
-     &                       yp(ip)*cdipoby(j)*cdipotb(j)*qoverm
-        endif 
+        do ip = 1,np
+          if (npz > 1) then
+c           --- find z-cell in which particle lies
+            iz = min(nzl,int(max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)))
+          endif
+          if ((zpo(ip) < cdipozs(iz,io)) .and. (zp(ip) >= cdipozs(iz,io))) then 
+c           --- entered dipole
+            uxp(ip) = uxp(ip) + xp(ip)*cdipoby(iz,io)*cdipota(iz,io)*qoverm
+            uyp(ip) = uyp(ip) - yp(ip)*cdipoby(iz,io)*cdipota(iz,io)*qoverm
+            xp(ip)  = xp(ip) + (zp(ip)-cdipozs(iz,io))*vzi(ip)*
+     &                         xp(ip)*cdipoby(iz,io)*cdipota(iz,io)*qoverm
+            yp(ip)  = yp(ip) - (zp(ip)-cdipozs(iz,io))*vzi(ip)*
+     &                         yp(ip)*cdipoby(iz,io)*cdipota(iz,io)*qoverm
+          elseif ((zpo(ip) <  cdipoze(iz,io)) .and.
+     &             (zp(ip) >= cdipoze(iz,io))) then  
+c           --- exited dipole
+            uxp(ip) = uxp(ip) + xp(ip)*cdipoby(iz,io)*cdipotb(iz,io)*qoverm
+            uyp(ip) = uyp(ip) - yp(ip)*cdipoby(iz,io)*cdipotb(iz,io)*qoverm
+            xp(ip)  = xp(ip) + (zp(ip)-cdipoze(iz,io))*vzi(ip)*
+     &                         xp(ip)*cdipoby(iz,io)*cdipotb(iz,io)*qoverm
+            yp(ip)  = yp(ip) - (zp(ip)-cdipoze(iz,io))*vzi(ip)*
+     &                         yp(ip)*cdipoby(iz,io)*cdipotb(iz,io)*qoverm
+          endif 
+        enddo
       enddo
 
       return
@@ -1861,35 +2070,66 @@ c Output:
 c   ex, ey   sextupole electric field
 c   bx, by   sextupole magnetic field
 
-      integer(ISZ):: ip,j
-      real(kind=8):: dti,frac,xpmqoff,ypmqoff
+      integer(ISZ):: io,ip,iz
+      real(kind=8):: xpmqoff,ypmqoff
+      real(kind=8):: zl,fl,zr,fr,frac
+      real(kind=8):: vz(npz),dzi(npz)
 
       if (.not. sexts) return
 
-      dti = 1./(dtr-dtl)
+      vz  = uzp*gaminv
+      dzi = 1./(vz*(dtr-dtl))
 
-      if (npz == 1) then
-        call getresidence(zp(1),uzp(1),gaminv(1),dtl,dtr,dti,
-     &                    nzl,csextzs,csextze,csextid,0.,zlframe,dzli,
-     &                    frac,j)
-c       --- if frac is zero, just return since no field will be applied
-        if (frac == 0.) return
-      endif
-      do ip = 1, np
-        if (npz > 1) then
-          call getresidence(zp(ip),uzp(ip),gaminv(ip),dtl,dtr,dti,
-     &                      nzl,csextzs,csextze,csextid,zlmin,zlframe,dzli,
-     &                      frac,j)
+      do io=1,nsextol
+        if (.not. linsext(io)) cycle
+
+        if (npz == 1) then
+c         --- find z-cell in which particle lies
+          iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c         --- "left" end of velocity advance step
+          zl = zp(1) + vz(1)*dtl
+          fl = 0.
+          if (zl >= csextzs(iz,io) .and. zl < csextze(iz,io)) fl = 1.
+c         --- "right" end of velocity advance step
+          zr = zp(1) + vz(1)*dtr
+          fr = 0.
+          if (zr >= csextzs(iz,io) .and. zr < csextze(iz,io)) fr = 1.
+c         --- residence fraction
+          frac = fl
+          if (fl > fr) frac = (csextze(iz,io)-zl)*dzi(1)
+          if (fr > fl) frac = (zr-csextzs(iz,io))*dzi(1)
+c         --- if frac is zero, just return since no field will be applied
+          if (frac == 0.) return
         endif
-c       --- set the field
-        if (frac > 0.) then
-          xpmqoff = xp(ip)
-          ypmqoff = yp(ip)
-          bx(ip) = bx(ip) + csextdb(j)*frac*3.*(xpmqoff**2 - ypmqoff**2)
-          by(ip) = by(ip) + csextdb(j)*frac*(-6.)*xpmqoff*ypmqoff
-          ex(ip) = ex(ip) + csextde(j)*frac*3.*(xpmqoff**2 - ypmqoff**2)
-          ey(ip) = ey(ip) + csextde(j)*frac*(-6.)*xpmqoff*ypmqoff
-        endif
+        do ip = 1, np
+
+          if (npz > 1) then
+c           --- find z-cell in which particle lies
+            iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c           --- "left" end of velocity advance step
+            zl = zp(ip) + vz(ip)*dtl
+            fl = 0.
+            if (zl >= csextzs(iz,io) .and. zl < csextze(iz,io)) fl = 1.
+c           --- "right" end of velocity advance step
+            zr = zp(ip) + vz(ip)*dtr
+            fr = 0.
+            if (zr >= csextzs(iz,io) .and. zr < csextze(iz,io)) fr = 1.
+c           --- residence fraction
+            frac = fl
+            if (fl > fr) frac = (csextze(iz,io)-zl)*dzi(ip)
+            if (fr > fl) frac = (zr-csextzs(iz,io))*dzi(ip)
+          endif
+
+c         --- set the field
+          if (frac > 0.) then
+            xpmqoff = xp(ip)
+            ypmqoff = yp(ip)
+            bx(ip) = bx(ip) + csextdb(iz,io)*frac*3.*(xpmqoff**2 - ypmqoff**2)
+            by(ip) = by(ip) + csextdb(iz,io)*frac*(-6.)*xpmqoff*ypmqoff
+            ex(ip) = ex(ip) + csextde(iz,io)*frac*3.*(xpmqoff**2 - ypmqoff**2)
+            ey(ip) = ey(ip) + csextde(iz,io)*frac*(-6.)*xpmqoff*ypmqoff
+          endif
+        enddo
       enddo
 
       return
@@ -1920,8 +2160,10 @@ c Output:
 c   ex, ey, ez   electric field
 c   bx, by, bz   magnetic field
 
-      integer(ISZ):: ip,j,iele,ii
-      real(kind=8):: dti,frac,n,v,f,rpow,cosnt,sinnt
+      integer(ISZ):: io,ip,iz,iele,ii
+      real(kind=8):: zl,fl,zr,fr,frac
+      real(kind=8):: vz(npz),dzi(npz)
+      real(kind=8):: n,v,f,rpow,cosnt,sinnt
       real(kind=8):: xpmqoff,ypmqoff
       integer(ISZ):: tiele(NPARPGRP)
       real(kind=8):: tfrac(NPARPGRP),txpmqoff(NPARPGRP),typmqoff(NPARPGRP)
@@ -1929,49 +2171,77 @@ c   bx, by, bz   magnetic field
 
       if (.not. heles) return
 
-      dti = 1./(dtr-dtl)
+      vz  = uzp*gaminv
+      dzi = 1./(vz*(dtr-dtl))
 
-c     --- calculate coordinates, element indices, and residence
-c     --- fractions over particle block and store in temp arrays
-c     --- These factors will be used repeatedly when the fields
-c     --- are accumulated at each particle resulting from
-      if (npz == 1) then
-        call getresidence(zp(1),uzp(1),gaminv(1),dtl,dtr,dti,
-     &                    nzl,chelezs,cheleze,cheleid,0.,zlframe,dzli,
-     &                    frac,j)
-c       --- if frac is zero, just return since no field will be applied
-        if (frac == 0.) return
-      endif
-      do ip = 1, np
-        if (npz > 1) then
-          call getresidence(zp(ip),uzp(ip),gaminv(ip),dtl,dtr,dti,
-     &                      nzl,chelezs,cheleze,cheleid,zlmin,zlframe,dzli,
-     &                      frac,j)
+      do io=1,nheleol
+        if (.not. linhele(io)) cycle
+
+c       --- calculate coordinates, element indices, and residence
+c       --- fractions over particle block and store in temp arrays
+c       --- These factors will be used repeatedly when the fields
+c       --- are accumulated at each particle resulting from
+        if (npz == 1) then
+c         --- find z-cell in which particle lies
+          iz = max(0., (zp(1) - zlmin - zlframe)*dzli + 0.5)
+c         --- "left" end of velocity advance step
+          zl = zp(1) + vz(1)*dtl
+          fl = 0.
+          if (zl >= chelezs(iz,io) .and. zl < cheleze(iz,io)) fl = 1.
+c         --- "right" end of velocity advance step
+          zr = zp(1) + vz(1)*dtr
+          fr = 0.
+          if (zr >= chelezs(iz,io) .and. zr < cheleze(iz,io)) fr = 1.
+c         --- residence fraction
+          frac = fl
+          if (fl > fr) frac = (cheleze(iz,io)-zl)*dzi(1)
+          if (fr > fl) frac = (zr-chelezs(iz,io))*dzi(1)
+c         --- if frac is zero, just return since no field will be applied
+          if (frac == 0.) return
         endif
-c       --- find element index
-        iele = cheleid(j)
-        tiele(ip) = iele
-        tfrac(ip) = frac
-c       --- set the field
-        if (frac > 0.) then
-c         --- x,y coordinates about multipole center
-          xpmqoff = xp(ip) - heleox(iele)
-          ypmqoff = yp(ip) - heleoy(iele)
-          txpmqoff(ip) = xpmqoff
-          typmqoff(ip) = ypmqoff
-c         --- r,theta coordinates about multipole center
-          trpmqoff(ip) = sqrt(xpmqoff**2 + ypmqoff**2)
-          ttpmqoff(ip) = atan2(ypmqoff,dvnz(xpmqoff))
-        endif
-      enddo
-c     --- accumulate field contributions at each particle in
-c     --- block looping (outermost) over each multipole component
-c     --- for vectorization
-      do ii = 1, nhmlt
-c       --- loop over particle block using stored coordinates, element
-c       --- indices, and residence fractions
-        do ip = 1,np
-          if (tfrac(ip) > 0.) then
+        do ip = 1, np
+
+          if (npz > 1) then
+c           --- find z-cell in which particle lies
+            iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+c           --- "left" end of velocity advance step
+            zl = zp(ip) + vz(ip)*dtl
+            fl = 0.
+            if (zl >= chelezs(iz,io) .and. zl < cheleze(iz,io)) fl = 1.
+c           --- "right" end of velocity advance step
+            zr = zp(ip) + vz(ip)*dtr
+            fr = 0.
+            if (zr >= chelezs(iz,io) .and. zr < cheleze(iz,io)) fr = 1.
+c           --- residence fraction
+            frac = fl
+            if (fl > fr) frac = (cheleze(iz,io)-zl)*dzi(ip)
+            if (fr > fl) frac = (zr-chelezs(iz,io))*dzi(ip)
+          endif
+
+c         --- find element index
+          iele = cheleid(iz,io)
+          tiele(ip) = iele
+          tfrac(ip) = frac
+c         --- set the field
+          if (frac > 0.) then
+c           --- x,y coordinates about multipole center
+            xpmqoff = xp(ip) - heleox(iele)
+            ypmqoff = yp(ip) - heleoy(iele)
+            txpmqoff(ip) = xpmqoff
+            typmqoff(ip) = ypmqoff
+c           --- r,theta coordinates about multipole center
+            trpmqoff(ip) = sqrt(xpmqoff**2 + ypmqoff**2)
+            ttpmqoff(ip) = atan2(ypmqoff,dvnz(xpmqoff))
+          endif
+        enddo
+c       --- accumulate field contributions at each particle in
+c       --- block looping (outermost) over each multipole component
+c       --- for vectorization
+        do ii = 1, nhmlt
+c         --- loop over particle block using stored coordinates, element
+c         --- indices, and residence fractions
+          do ip = 1,np
+            if (tfrac(ip) == 0.) cycle
             iele = tiele(ip)
             n = hele_n(ii,iele)
             v = hele_v(ii,iele)
@@ -2022,7 +2292,7 @@ c               --- rest of components
      &                         (f*typmqoff(ip)*sinnt + txpmqoff(ip)*cosnt)
               endif
             endif
-          endif
+          enddo
         enddo
       enddo
 
@@ -2075,7 +2345,7 @@ c  factors are added together (in mltlocat) and multiply the applied field.
 c  The addition is done in mltlocat so that it is only done once per particle
 c  and not once per particle per multipole component.
 
-      integer(ISZ):: in,ip
+      integer(ISZ):: io,in,ip
       real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
       integer(ISZ):: izm(NPARPGRP),imm(NPARPGRP)
       real(kind=8):: xxx(NPARPGRP),yyy(NPARPGRP),zzz(NPARPGRP),ttt(NPARPGRP)
@@ -2083,64 +2353,68 @@ c  and not once per particle per multipole component.
       real(kind=8):: mltph(NPARPGRP),mltsf(NPARPGRP)
       real(kind=8):: tex(NPARPGRP),tey(NPARPGRP),tez(NPARPGRP)
 
-      if (.not. emlts .or. .not. linemlt) return
+      if (.not. emlts .or. .not. linemlt(0)) return
 
-c     --- Get location of particle relative to moment data.
-      call mltlocat(np,xp,yp,npz,zp,nemltsets,dzemlt,nzemlt,
-     &              nzl,cemltzs,cemltze,cemltph,cemltsf,cemltsc,
-     &              cemltim,cemltox,cemltoy,
-     &              tex,tey,tez,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
-     &              mltph,mltsf,
-     &              zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
+      do io=1,nemltol
+        if (.not. linemlt(io)) cycle
 
-c     --- accumulate the E field of the electrostatic multipoles
-      do in=1,nesmult
-        n = emlt_n(in)
-        v = emlt_v(in)
-        if (n == 0) then
-c         --- Apply accelerating field and it's pseudomultipoles.
-          f = 1./(2.*v+2.)
-          do ip=1,np
-            if (imm(ip) > 0) then
-              coeffp = mltsf(ip)*
-     &                   (esemltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
-     &                    esemltp(izm(ip)+1,in,imm(ip))*wzm(ip))
-              coeff = mltsf(ip)*
-     &                   (esemlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                    esemlt(izm(ip)+1,in,imm(ip))*wzm(ip))
-              rpow = dvnz(rr(ip))**(2*v)
-              tex(ip) = tex(ip) - coeffp*rpow*f*xxx(ip)
-              tey(ip) = tey(ip) - coeffp*rpow*f*yyy(ip)
-              tez(ip) = tez(ip) + coeff*rpow
-            endif
-          enddo
-        else
-c         --- Apply the rest of the multipoles.
-          f = 1. + 2.*v/n
-          fz = 1./n
-          do ip=1,np
-            if (imm(ip) > 0) then
-              alpha = tt(ip) - mltph(ip) -
-     &                    esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
-     &                    esemltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
-              alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                    esemltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
-              coeff = mltsf(ip)*
-     &                   (esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
-     &                    esemlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-              coeffp = mltsf(ip)*
-     &                   (esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                    esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
-              cosnt = cos(n*alpha)
-              sinnt = sin(n*alpha)
-              rpow = dvnz(rr(ip))**(n-2+2*v)
-              tex(ip)=tex(ip) + coeff*rpow*(f*xxx(ip)*cosnt + yyy(ip)*sinnt)
-              tey(ip)=tey(ip) + coeff*rpow*(f*yyy(ip)*cosnt - xxx(ip)*sinnt)
-              tez(ip)=tez(ip) + fz*dvnz(rr(ip))**(n+2*v)*
-     &                          (coeffp*cosnt - alphap*coeff*sinnt)
-            endif
-          enddo
-        endif
+c       --- Get location of particle relative to moment data.
+        call mltlocat(np,xp,yp,npz,zp,nemltsets,dzemlt,nzemlt,
+     &                nzl,nemltol,io,cemltzs,cemltze,cemltph,cemltsf,cemltsc,
+     &                cemltim,cemltox,cemltoy,
+     &                tex,tey,tez,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
+     &                mltph,mltsf,
+     &                zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
+
+c       --- accumulate the E field of the electrostatic multipoles
+        do in=1,nesmult
+          n = emlt_n(in)
+          v = emlt_v(in)
+          if (n == 0) then
+c           --- Apply accelerating field and it's pseudomultipoles.
+            f = 1./(2.*v+2.)
+            do ip=1,np
+              if (imm(ip) > 0) then
+                coeffp = mltsf(ip)*
+     &                     (esemltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                      esemltp(izm(ip)+1,in,imm(ip))*wzm(ip))
+                coeff = mltsf(ip)*
+     &                     (esemlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      esemlt(izm(ip)+1,in,imm(ip))*wzm(ip))
+                rpow = dvnz(rr(ip))**(2*v)
+                tex(ip) = tex(ip) - coeffp*rpow*f*xxx(ip)
+                tey(ip) = tey(ip) - coeffp*rpow*f*yyy(ip)
+                tez(ip) = tez(ip) + coeff*rpow
+              endif
+            enddo
+          else
+c           --- Apply the rest of the multipoles.
+            f = 1. + 2.*v/n
+            fz = 1./n
+            do ip=1,np
+              if (imm(ip) > 0) then
+                alpha = tt(ip) - mltph(ip) -
+     &                      esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                      esemltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
+                alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      esemltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeff = mltsf(ip)*
+     &                     (esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                      esemlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeffp = mltsf(ip)*
+     &                     (esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                cosnt = cos(n*alpha)
+                sinnt = sin(n*alpha)
+                rpow = dvnz(rr(ip))**(n-2+2*v)
+                tex(ip)=tex(ip) + coeff*rpow*(f*xxx(ip)*cosnt + yyy(ip)*sinnt)
+                tey(ip)=tey(ip) + coeff*rpow*(f*yyy(ip)*cosnt - xxx(ip)*sinnt)
+                tez(ip)=tez(ip) + fz*dvnz(rr(ip))**(n+2*v)*
+     &                            (coeffp*cosnt - alphap*coeff*sinnt)
+              endif
+            enddo
+          endif
+        enddo
       enddo
 
 c     --- do coordinate transform on fields back to warped coordinates
@@ -2206,7 +2480,7 @@ c  factors are added together (in mltlocat) and multiply the applied field.
 c  The addition is done in mltlocat so that it is only done once per particle
 c  and not once per particle per multipole component.
 
-      integer(ISZ):: in,ip
+      integer(ISZ):: io,in,ip
       real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
       integer(ISZ):: izm(NPARPGRP),imm(NPARPGRP)
       real(kind=8):: xxx(NPARPGRP),yyy(NPARPGRP),zzz(NPARPGRP),ttt(NPARPGRP)
@@ -2214,195 +2488,68 @@ c  and not once per particle per multipole component.
       real(kind=8):: mltph(NPARPGRP),mltsf(NPARPGRP)
       real(kind=8):: tbx(NPARPGRP),tby(NPARPGRP),tbz(NPARPGRP)
 
-      if (.not. mmlts .or. .not. linmmlt) return
+      if (.not. mmlts .or. .not. linmmlt(0)) return
 
-c     --- Get location of particle relative to moment data.
-      call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,
-     &              nzl,cmmltzs,cmmltze,cmmltph,cmmltsf,cmmltsc,
-     &              cmmltim,cmmltox,cmmltoy,
-     &              tbx,tby,tbz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
-     &              mltph,mltsf,
-     &              zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
+      do io=1,nmmltol
+        if (.not. linmmlt(io)) cycle
 
-c     --- accumulate the B field of the magnetostatic multipoles
-      do in=1,nmsmult
-        n = mmlt_n(in)
-        v = mmlt_v(in)
-        if (n == 0) then
-c         --- Apply solenoidal field component and it's pseudomultipoles.
-          f = 1./(2.*v+2.)
-          do ip=1,np
-            if (imm(ip) > 0) then
-              coeffp = mltsf(ip)*
-     &                  (msmmltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
-     &                   msmmltp(izm(ip)+1,in,imm(ip))*wzm(ip))
-              coeff = mltsf(ip)*
-     &                  (msmmlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                   msmmlt(izm(ip)+1,in,imm(ip))*wzm(ip))
-              rpow = dvnz(rr(ip))**(2*v)
-              tbx(ip) = tbx(ip) - coeffp*rpow*f*xxx(ip)
-              tby(ip) = tby(ip) - coeffp*rpow*f*yyy(ip)
-              tbz(ip) = tbz(ip) + coeff*rpow
-            endif
-          enddo
-        else
-c         --- Apply the rest of the multipoles.
-          f = 1. + 2.*v/n
-          fz = 1./n
-          do ip=1,np
-            if (imm(ip) > 0) then
-              alpha = tt(ip) - mltph(ip) -
-     &                    msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
-     &                    msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
-              alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                    msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
-              coeff = mltsf(ip)*
-     &                   (msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
-     &                    msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-              coeffp = mltsf(ip)*
-     &                   (msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                    msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
-              cosnt = cos(n*alpha)
-              sinnt = sin(n*alpha)
-              rpow = dvnz(rr(ip))**(n-2+2*v)
-              tbx(ip)=tbx(ip) + coeff*rpow*(f*xxx(ip)*sinnt - yyy(ip)*cosnt)
-              tby(ip)=tby(ip) + coeff*rpow*(f*yyy(ip)*sinnt + xxx(ip)*cosnt)
-              tbz(ip)=tbz(ip) + fz*dvnz(rr(ip))**(n+2*v)*
-     &                          (coeffp*sinnt + alphap*coeff*cosnt)
-            endif
-          enddo
-        endif
-      enddo
+c       --- Get location of particle relative to moment data.
+        call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,
+     &                nzl,nmmltol,io,cmmltzs,cmmltze,cmmltph,cmmltsf,cmmltsc,
+     &                cmmltim,cmmltox,cmmltoy,
+     &                tbx,tby,tbz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
+     &                mltph,mltsf,
+     &                zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
 
-c     --- do coordinate transform on fields back to warped coordinates
-      if (bends .and. linbend) then
-        do ip=1,np
-          bx(ip) = bx(ip) + tbx(ip)*cos(ttt(ip)) - tbz(ip)*sin(ttt(ip))
-          by(ip) = by(ip) + tby(ip)
-          bz(ip) = bz(ip) + tbx(ip)*sin(ttt(ip)) + tbz(ip)*cos(ttt(ip))
+c       --- accumulate the B field of the magnetostatic multipoles
+        do in=1,nmsmult
+          n = mmlt_n(in)
+          v = mmlt_v(in)
+          if (n == 0) then
+c           --- Apply solenoidal field component and it's pseudomultipoles.
+            f = 1./(2.*v+2.)
+            do ip=1,np
+              if (imm(ip) > 0) then
+                coeffp = mltsf(ip)*
+     &                    (msmmltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                     msmmltp(izm(ip)+1,in,imm(ip))*wzm(ip))
+                coeff = mltsf(ip)*
+     &                    (msmmlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                     msmmlt(izm(ip)+1,in,imm(ip))*wzm(ip))
+                rpow = dvnz(rr(ip))**(2*v)
+                tbx(ip) = tbx(ip) - coeffp*rpow*f*xxx(ip)
+                tby(ip) = tby(ip) - coeffp*rpow*f*yyy(ip)
+                tbz(ip) = tbz(ip) + coeff*rpow
+              endif
+            enddo
+          else
+c           --- Apply the rest of the multipoles.
+            f = 1. + 2.*v/n
+            fz = 1./n
+            do ip=1,np
+              if (imm(ip) > 0) then
+                alpha = tt(ip) - mltph(ip) -
+     &                      msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                      msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
+                alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeff = mltsf(ip)*
+     &                     (msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                      msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                coeffp = mltsf(ip)*
+     &                     (msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                      msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+                cosnt = cos(n*alpha)
+                sinnt = sin(n*alpha)
+                rpow = dvnz(rr(ip))**(n-2+2*v)
+                tbx(ip)=tbx(ip) + coeff*rpow*(f*xxx(ip)*sinnt - yyy(ip)*cosnt)
+                tby(ip)=tby(ip) + coeff*rpow*(f*yyy(ip)*sinnt + xxx(ip)*cosnt)
+                tbz(ip)=tbz(ip) + fz*dvnz(rr(ip))**(n+2*v)*
+     &                            (coeffp*sinnt + alphap*coeff*cosnt)
+              endif
+            enddo
+          endif
         enddo
-      else
-        do ip=1,np
-          bx(ip) = bx(ip) + tbx(ip)
-          by(ip) = by(ip) + tby(ip)
-          bz(ip) = bz(ip) + tbz(ip)
-        enddo
-      endif
-
-      return
-      end
-c=============================================================================
-      subroutine applymmlt2(np,xp,yp,npz,zp,dtl,dtr,dt,bx,by,bz)
-      use Lattice
-      use LatticeInternal
-      use Mult_data
-      integer(ISZ):: np,npz
-      real(kind=8):: xp(np),yp(np),zp(npz)
-      real(kind=8):: dtl,dtr,dt
-      real(kind=8):: bx(np),by(np),bz(np)
-
-c Apply the element mmlt2.
-c Input:
-c   np       number of particles
-c   xp       x position of the particles
-c   yp       y position of the particles
-c   npz      number of z position data values (must be either 1 or == np)
-c   zp       z position of the particles
-c   dtl      size of left half of time step
-c   dtr      size of right half of time step
-c   dt       full step size
-c Output:
-c   bx, by, bz   magnetic field
-
-c  See HIF-note 96-10, equation D17, with -n*psi-pi/2 replacing psi.
-c  Field is of the following form, where n and v are integers, n>0, v>=0
-c    Br = - sum_v  [ B'0v/(2*v+2)*r**(2*v+1) ] +
-c         sum_nv [ Bnv*(1+2*v/n)*r**(n-1+2*v)*sin(n*(theta-psi)) ]
-c    Bt = sum_nv [ Bnv*r**(n-1+2*v)*cos(n*(theta-psi)) ]
-c    Bz = sum_v  [ B0v*r**(2*v) ] +
-c         sum_nv [ B'nv/n*r**(2*v)*sin(n*(theta-psi)) ]
-c
-c    Bx = Br*cos(theta) - Bt*sin(theta)
-c    By = Br*sin(theta) + Bt*cos(theta)
-c
-c  Note that the total phase angle has two parts, one associated with the
-c  multipole data, and one associated with the lattice element.  This allows
-c  an element with multipoles with different phases to be physically rotated
-c  by changing only one variable, the phase associated with the element.
-c  This allows the same set of data to be used by lattice elements with
-c  different errors in the angle.
-c  Additional scale factors are included in the field, allowing different
-c  elements to use the same data set scaled to different values.  The scale
-c  factors are added together (in mltlocat) and multiply the applied field.
-c  The addition is done in mltlocat so that it is only done once per particle
-c  and not once per particle per multipole component.
-
-      integer(ISZ):: in,ip
-      real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
-      integer(ISZ):: izm(NPARPGRP),imm(NPARPGRP)
-      real(kind=8):: xxx(NPARPGRP),yyy(NPARPGRP),zzz(NPARPGRP),ttt(NPARPGRP)
-      real(kind=8):: wzm(NPARPGRP),rr(NPARPGRP),tt(NPARPGRP)
-      real(kind=8):: mltph(NPARPGRP),mltsf(NPARPGRP)
-      real(kind=8):: tbx(NPARPGRP),tby(NPARPGRP),tbz(NPARPGRP)
-
-      if (.not. mmlt2s .or. .not. linmmlt2) return
-
-c     --- Get location of particle relative to moment data.
-      call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,
-     &              nzl,cmmlt2zs,cmmlt2ze,cmmlt2ph,cmmlt2sf,cmmlt2sc,
-     &              cmmlt2im,cmmlt2ox,cmmlt2oy,
-     &              tbx,tby,tbz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
-     &              mltph,mltsf,
-     &              zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
-
-c     --- accumulate the B field of the magnetostatic multipoles
-      do in=1,nmsmult
-        n = mmlt_n(in)
-        v = mmlt_v(in)
-        if (n == 0) then
-c         --- Apply solenoidal field component and it's pseudomultipoles.
-          f = 1./(2.*v+2.)
-          do ip=1,np
-            if (imm(ip) > 0) then
-              coeffp = mltsf(ip)*
-     &                  (msmmltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
-     &                   msmmltp(izm(ip)+1,in,imm(ip))*wzm(ip))
-              coeff = mltsf(ip)*
-     &                  (msmmlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                   msmmlt(izm(ip)+1,in,imm(ip))*wzm(ip))
-              rpow = dvnz(rr(ip))**(2*v)
-              tbx(ip) = tbx(ip) - coeffp*rpow*f*xxx(ip)
-              tby(ip) = tby(ip) - coeffp*rpow*f*yyy(ip)
-              tbz(ip) = tbz(ip) + coeff*rpow
-            endif
-          enddo
-        else
-c         --- Apply the rest of the multipoles.
-          f = 1. + 2.*v/n
-          fz = 1./n
-          do ip=1,np
-            if (imm(ip) > 0) then
-              alpha = tt(ip) - mltph(ip) -
-     &                    msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
-     &                    msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
-              alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                    msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
-              coeff = mltsf(ip)*
-     &                   (msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
-     &                    msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
-              coeffp = mltsf(ip)*
-     &                   (msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
-     &                    msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
-              cosnt = cos(n*alpha)
-              sinnt = sin(n*alpha)
-              rpow = dvnz(rr(ip))**(n-2+2*v)
-              tbx(ip)=tbx(ip) + coeff*rpow*(f*xxx(ip)*sinnt - yyy(ip)*cosnt)
-              tby(ip)=tby(ip) + coeff*rpow*(f*yyy(ip)*sinnt + xxx(ip)*cosnt)
-              tbz(ip)=tbz(ip) + fz*dvnz(rr(ip))**(n+2*v)*
-     &                          (coeffp*sinnt + alphap*coeff*cosnt)
-            endif
-          enddo
-        endif
       enddo
 
 c     --- do coordinate transform on fields back to warped coordinates
@@ -2424,20 +2571,20 @@ c     --- do coordinate transform on fields back to warped coordinates
       end
 c=============================================================================
       subroutine mltlocat(np,xp,yp,npz,zp,nmltsets,dzmlt,nzmlt,
-     &                    nzl,cmltzs,cmltze,cmltph,cmltsf,cmltsc,
+     &                    nzl,nol,io,cmltzs,cmltze,cmltph,cmltsf,cmltsc,
      &                    cmltim,cmltox,cmltoy,
      &                    tx,ty,tz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
      &                    mltph,mltsf,
      &                    zlmin,zlframe,dzli,bends,linbend,
      &                    cbendzs,cbendze,cbendrc)
-      integer(ISZ):: np,npz,nmltsets,nzl
+      integer(ISZ):: np,npz,nmltsets,nzl,nol,io
       real(kind=8):: xp(np),yp(np),zp(npz)
       real(kind=8):: dzmlt(nmltsets)
       integer(ISZ):: nzmlt(nmltsets)
-      real(kind=8):: cmltzs(0:nzl),cmltze(0:nzl),cmltph(0:nzl)
-      real(kind=8):: cmltsf(0:nzl),cmltsc(0:nzl)
-      integer(ISZ):: cmltim(0:nzl)
-      real(kind=8):: cmltox(0:nzl),cmltoy(0:nzl)
+      real(kind=8):: cmltzs(0:nzl,nol),cmltze(0:nzl,nol),cmltph(0:nzl,nol)
+      real(kind=8):: cmltsf(0:nzl,nol),cmltsc(0:nzl,nol)
+      integer(ISZ):: cmltim(0:nzl,nol)
+      real(kind=8):: cmltox(0:nzl,nol),cmltoy(0:nzl,nol)
       real(kind=8):: tx(np),ty(np),tz(np)
       integer(ISZ):: imm(np),izm(np)
       real(kind=8):: wzm(np),xxx(np),yyy(np),zzz(np)
@@ -2452,31 +2599,31 @@ c     --- warped coordinates (when a bend is between the
 c     --- particle and the nearest mult).
 c  Assumes that at most one bend will be between particle and the mult center.
 
-      integer(ISZ):: j,ip
+      integer(ISZ):: iz,ip
       real(kind=8):: zz,cent,dzi,rrr,bzs,bze,bendrci
 
       if (npz == 1) then
         zz = zp(1)
-        j = 0
+        iz = 0
       endif
       if (.not. bends .or. .not. linbend) then
         do ip=1,np
           if (npz == np) then
             zz = zp(ip)
 c           --- find z-cell in which particle lies
-            j = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
+            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
           endif
-          imm(ip) = cmltim(j)
+          imm(ip) = cmltim(iz,io)
           dzi = 1./dzmlt(imm(ip))
-          mltph(ip) = cmltph(j)
-          mltsf(ip) = cmltsc(j) + cmltsf(j)
+          mltph(ip) = cmltph(iz,io)
+          mltsf(ip) = cmltsc(iz,io) + cmltsf(iz,io)
 c         --- zero temporary field arrays
           tx(ip) = 0.
           ty(ip) = 0.
           tz(ip) = 0.
 c         --- find z location relative to multipole data
-          izm(ip) = int((zz-cmltzs(j))*dzi)
-          wzm(ip) =     (zz-cmltzs(j))*dzi - izm(ip)
+          izm(ip) = int((zz-cmltzs(iz,io))*dzi)
+          wzm(ip) =     (zz-cmltzs(iz,io))*dzi - izm(ip)
           if (izm(ip) < 1) then
             izm(ip) = 1
             wzm(ip) = 0
@@ -2489,8 +2636,8 @@ c         --- find z location relative to multipole data
 c         --- Set temporary coordinates and add offset if particle within
 c         --- an element.
           if (imm(ip) > 0) then
-            xxx(ip) = xp(ip) - cmltox(j)
-            yyy(ip) = yp(ip) - cmltoy(j)
+            xxx(ip) = xp(ip) - cmltox(iz,io)
+            yyy(ip) = yp(ip) - cmltoy(iz,io)
             zzz(ip) = zz
             rr(ip) = sqrt(xxx(ip)**2 + yyy(ip)**2)
             tt(ip) = atan2(yyy(ip),dvnz(xxx(ip)))
@@ -2501,12 +2648,12 @@ c         --- an element.
           if (npz == np) then
             zz = zp(ip)
 c           --- find z-cell in which particle lies
-            j = max(0., (zz - zlmin - zlframe)*dzli)
+            iz = max(0., (zz - zlmin - zlframe)*dzli)
           endif
 c         --- set temporaries
-          imm(ip) = cmltim(j)
+          imm(ip) = cmltim(iz,io)
           dzi = 1./dzmlt(imm(ip))
-          cent = 0.5*(cmltzs(j) + cmltze(j))
+          cent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
           xxx(ip) = xp(ip)
           zzz(ip) = zz
 c         --- zero temporary field arrays
@@ -2514,67 +2661,67 @@ c         --- zero temporary field arrays
           ty(ip) = 0.
           tz(ip) = 0.
           ttt(ip) = 0.
-          if (cmltzs(j) <= zz .and. zz <= cmltze(j)) then
-            mltph(ip) = cmltph(j)
-            mltsf(ip) = cmltsc(j) + cmltsf(j)
-c           --- apply coordinate change left of mult, using index of (j)
+          if (cmltzs(iz,io) <= zz .and. zz <= cmltze(iz,io)) then
+            mltph(ip) = cmltph(iz,io)
+            mltsf(ip) = cmltsc(iz,io) + cmltsf(iz,io)
+c           --- apply coordinate change left of mult, using index of (iz)
             if (zz <= cent) then
-              bendrci = 1./cbendrc(j)
+              bendrci = 1./cbendrc(iz)
 c             --- find end of bend: if bend extends beyond center of mult, use
 c             --- that as the end of the bend since moments are in coordinate
 c             --- system at the center of the mult
-              if (cbendze(j) < cent) then
-                bze = cbendze(j)
+              if (cbendze(iz) < cent) then
+                bze = cbendze(iz)
               else
                 bze = cent
               endif
 c             --- if particle is not in bend and full bend is between particle
 c             --- and mult
-              rrr = xp(ip) + cbendrc(j)
-              if (zz < cbendzs(j) .and. cbendzs(j) < cent) then
-                ttt(ip) = (bze - cbendzs(j))*bendrci
+              rrr = xp(ip) + cbendrc(iz)
+              if (zz < cbendzs(iz) .and. cbendzs(iz) < cent) then
+                ttt(ip) = (bze - cbendzs(iz))*bendrci
                 zzz(ip) = bze - rrr*sin(ttt(ip)) -
-     &                    (cbendzs(j) - zz)*cos(ttt(ip))
-                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(j) -
-     &                    (cbendzs(j) - zz)*sin(ttt(ip))
+     &                    (cbendzs(iz) - zz)*cos(ttt(ip))
+                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz) -
+     &                    (cbendzs(iz) - zz)*sin(ttt(ip))
 c             --- if particle is in bend
-              elseif (zz < bze .and. cbendzs(j) < cent) then
+              elseif (zz < bze .and. cbendzs(iz) < cent) then
                 ttt(ip) = (bze - zz)*bendrci
                 zzz(ip) = bze - rrr*sin(ttt(ip))
-                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(j)
+                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz)
               endif
-c           --- apply coordinate change right of mult, using index of (j+1)
+c           --- apply coordinate change right of mult, using index of (iz+1)
             elseif (zz >= cent) then
-              bendrci = 1./cbendrc(j+1)
+              bendrci = 1./cbendrc(iz+1)
 c             --- find start of bend: if bend extends beyond center of mult, use
 c             --- that as the start of the bend since moments are in coordinate
 c             --- system at the center of the mult
-              if (cbendzs(j+1) < cent) then
+              if (cbendzs(iz+1) < cent) then
                 bzs = cent
               else
-                bzs = cbendzs(j+1)
+                bzs = cbendzs(iz+1)
               endif
 c             --- if particle is not in bend and full bend is between particle
 c             --- and mult
-              rrr = xp(ip) + cbendrc(j+1)
-              if (zz > cbendze(j+1) .and. cbendze(j+1) > cent) then
-                ttt(ip) =  - (cbendze(j+1) - bzs)*bendrci
+              rrr = xp(ip) + cbendrc(iz+1)
+              if (zz > cbendze(iz+1) .and. cbendze(iz+1) > cent) then
+                ttt(ip) =  - (cbendze(iz+1) - bzs)*bendrci
                 zzz(ip) = bzs - rrr*sin(ttt(ip)) +
-     &                    (zz - cbendze(j+1))*cos(ttt(ip))
-                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(j+1) +
-     &                    (zz - cbendze(j+1))*sin(ttt(ip))
+     &                    (zz - cbendze(iz+1))*cos(ttt(ip))
+                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz+1) +
+     &                    (zz - cbendze(iz+1))*sin(ttt(ip))
 c             --- if particle is in bend
-              elseif (zz > bzs .and. cbendze(j+1) > cent) then
+              elseif (zz > bzs .and. cbendze(iz+1) > cent) then
                 ttt(ip) = - (zz - bzs)*bendrci
                 zzz(ip) = bzs - rrr*sin(ttt(ip))
-                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(j+1)
+                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(iz+1)
               endif
             endif
           endif
 c         --- end of coordinate transformation
 
-          izm(ip) = int((zzz(ip)-cmltzs(j))*dzi)
-          wzm(ip) =     (zzz(ip)-cmltzs(j))*dzi - izm(ip)
+          izm(ip) = int((zzz(ip)-cmltzs(iz,io))*dzi)
+          wzm(ip) =     (zzz(ip)-cmltzs(iz,io))*dzi - izm(ip)
           if (izm(ip) < 1) then
             izm(ip) = 1
             wzm(ip) = 0
@@ -2586,8 +2733,8 @@ c         --- end of coordinate transformation
           endif
 c         --- Add offset
           if (imm(ip) > 0) then
-            xxx(ip) = xxx(ip) - cmltox(j)
-            yyy(ip) = yp(ip) -  cmltoy(j)
+            xxx(ip) = xxx(ip) - cmltox(iz,io)
+            yyy(ip) = yp(ip) -  cmltoy(iz,io)
             rr(ip) = sqrt(xxx(ip)**2 + yyy(ip)**2)
             tt(ip) = atan2(yyy(ip),dvnz(xxx(ip)))
           endif
@@ -2620,344 +2767,165 @@ c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
 c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
 c        + ...
 
-      integer(ISZ):: ip,i,j,k,iz,ii,ib
+      integer(ISZ):: io,ip,i,j,k,iz,ii,ib
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
       real(kind=8):: tbx,tby
 
 c  Evaluation of B, vectorized over particles
 
-      if (.not. bgrds .or. .not. linbgrd) return
+      if (.not. bgrds .or. .not. linbgrd(0)) return
 
-      if (npz == 1) then
-c       --- All particles are in the same z-cell
-        zz = zp(1)
-        iz = 0
-        ii = cbgrdid(iz)
-        ib = bgrdid(ii)
-        k = (zz - cbgrdzs(iz))*bgrddzi(ib)
-c       --- Exit field accumulation if particles are outside of axial grid
-        if (k < 0 .or. k >= bgrdnz) return
-      endif
+      do io=1,nbgrdol
+        if (.not. linbgrd(io)) cycle
 
-      do ip = 1, np
-
-        if (npz == np) then
-          zz = zp(ip)
-c         --- find the location of the particle in the internal lattice arrays
-          iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-          ii = cbgrdid(iz)
+        if (npz == 1) then
+c         --- All particles are in the same z-cell
+          zz = zp(1)
+          iz = 0
+          ii = cbgrdid(iz,io)
           ib = bgrdid(ii)
+          k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
+c         --- Exit field accumulation if particles are outside of axial grid
+          if (k < 0 .or. k >= bgrdnz) return
         endif
 
-c       --- find transverse particle coordinate in frame of gridded field 
-c       --- transverse offsets
-        txp = xp(ip) - bgrdox(ii)
-        typ = yp(ip) - bgrdoy(ii)
-c       --- transverse rotation to take into account an active rotation 
-c       --- of the field element.  Particles are rotated in that oposite 
-c       --- sense of the element. Later the field components accumulated 
-c       --- must be rotated back. 
-        if ( bgrdph(ii) .ne. 0. ) then
-          temp = txp  
-          txp =  temp*bgrdcp(ii) + typ*bgrdsp(ii) 
-          typ = -temp*bgrdsp(ii) + typ*bgrdcp(ii) 
-        endif 
+        do ip = 1, np
 
-c       --- Shift coordinates to measure from the edge of the field grid
-        txp = txp - bgrdxs(ii)
-        typ = typ - bgrdys(ii)
-
-c       --- Set default sign of B field
-        xsign = 1.
-        ysign = 1.
-        zsign = 1.
-
-c       --- If B is quadrupolar symmetric, make transformations.
-c       --- When the particle is in one of the even quadrants (either
-c       --- x<0 or y<0 but not both), the transformation is done by
-c       --- swapping x and y, and by swapping Bx and By (done at the end
-c       --- of the loop). The sign of Bz is also changed. In the third
-c       --- quadrant, the signs of both Bx and By are changed.
-c               Quadrupole symmetries on field grid
-c         
-c           Quadrant      B_x            B_y             B_z 
-c           --------------------------------------------------------
-c              I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
-c              II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)  
-c              III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
-c              IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
-
-        if (bgrdsy(ii) == 2) then
-c         --- Get quadrant that the particle is in.
-          if (txp < 0.) then
-            xsign = -1.
-            txp = -txp
+          if (npz == np) then
+            zz = zp(ip)
+c           --- find the location of the particle in the internal lattice arrays
+            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
+            ii = cbgrdid(iz,io)
+            ib = bgrdid(ii)
           endif
-          if (typ < 0.) then
-            ysign = -1.
-            typ = -typ
-          endif
-c         --- If in even quadrant...
-          if (xsign*ysign < 0.) then
-c           --- Switch sign of Bz.
-            zsign = -1.
-c           --- Swap x and y
-            temp = txp
-            txp = typ
-            typ = temp
-          endif
-        endif
 
-c       --- find location of particle in B field grid
-        i =  txp*bgrddxi(ib)
-        j =  typ*bgrddyi(ib)
-        k = (zz - cbgrdzs(iz))*bgrddzi(ib)
-
-c       --- Calculate linear weights
-        u1 = txp*bgrddxi(ib) - i
-        v1 = typ*bgrddyi(ib) - j
-        w1 = (zz - cbgrdzs(iz))*bgrddzi(ib) - k
-        u0 = 1. - u1
-        v0 = 1. - v1
-        w0 = 1. - w1
-
-c       --- Only calculate for particles inside the B field grid
-        if (0 <= i .and. i < bgrdnx .and.
-     &      0 <= j .and. j < bgrdny .and.
-     &      0 <= k .and. k < bgrdnz) then
-
-          bfac = bgrdsc(ii) + bgrdsf(ii)
-
-          tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,ib) +
-     &                      u1*v0*w0*bgrdbx(i+1,j  ,k  ,ib) +
-     &                      u0*v1*w0*bgrdbx(i  ,j+1,k  ,ib) +
-     &                      u1*v1*w0*bgrdbx(i+1,j+1,k  ,ib) +
-     &                      u0*v0*w1*bgrdbx(i  ,j  ,k+1,ib) +
-     &                      u1*v0*w1*bgrdbx(i+1,j  ,k+1,ib) +
-     &                      u0*v1*w1*bgrdbx(i  ,j+1,k+1,ib) +
-     &                      u1*v1*w1*bgrdbx(i+1,j+1,k+1,ib))
-
-          tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,ib) +
-     &                      u1*v0*w0*bgrdby(i+1,j  ,k  ,ib) +
-     &                      u0*v1*w0*bgrdby(i  ,j+1,k  ,ib) +
-     &                      u1*v1*w0*bgrdby(i+1,j+1,k  ,ib) +
-     &                      u0*v0*w1*bgrdby(i  ,j  ,k+1,ib) +
-     &                      u1*v0*w1*bgrdby(i+1,j  ,k+1,ib) +
-     &                      u0*v1*w1*bgrdby(i  ,j+1,k+1,ib) +
-     &                      u1*v1*w1*bgrdby(i+1,j+1,k+1,ib))
-
-          if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
-            temp = tbx 
-            tbx = tby
-            tby = temp
-          endif 
-
-c         --- rotate transverse field componets for correct lab frame 
-c             orientation if the element is rotated.  
+c         --- find transverse particle coordinate in frame of gridded field 
+c         --- transverse offsets
+          txp = xp(ip) - bgrdox(ii)
+          typ = yp(ip) - bgrdoy(ii)
+c         --- transverse rotation to take into account an active rotation 
+c         --- of the field element.  Particles are rotated in that oposite 
+c         --- sense of the element. Later the field components accumulated 
+c         --- must be rotated back. 
           if ( bgrdph(ii) .ne. 0. ) then
-            temp = tbx 
-            tbx = temp*bgrdcp(ii) - tby*bgrdsp(ii) 
-            tby = temp*bgrdsp(ii) + tby*bgrdcp(ii)         
+            temp = txp  
+            txp =  temp*bgrdcp(ii) + typ*bgrdsp(ii) 
+            typ = -temp*bgrdsp(ii) + typ*bgrdcp(ii) 
           endif 
 
-c         --- tranverse field 
-          bx(ip) = bx(ip) + tbx
-          by(ip) = by(ip) + tby
+c         --- Shift coordinates to measure from the edge of the field grid
+          txp = txp - bgrdxs(ii)
+          typ = typ - bgrdys(ii)
 
-          bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,ib) +
-     &                                  u1*v0*w0*bgrdbz(i+1,j  ,k  ,ib) +
-     &                                  u0*v1*w0*bgrdbz(i  ,j+1,k  ,ib) +
-     &                                  u1*v1*w0*bgrdbz(i+1,j+1,k  ,ib) +
-     &                                  u0*v0*w1*bgrdbz(i  ,j  ,k+1,ib) +
-     &                                  u1*v0*w1*bgrdbz(i+1,j  ,k+1,ib) +
-     &                                  u0*v1*w1*bgrdbz(i  ,j+1,k+1,ib) +
-     &                                  u1*v1*w1*bgrdbz(i+1,j+1,k+1,ib))
+c         --- Set default sign of B field
+          xsign = 1.
+          ysign = 1.
+          zsign = 1.
 
-        endif
+c         --- If B is quadrupolar symmetric, make transformations.
+c         --- When the particle is in one of the even quadrants (either
+c         --- x<0 or y<0 but not both), the transformation is done by
+c         --- swapping x and y, and by swapping Bx and By (done at the end
+c         --- of the loop). The sign of Bz is also changed. In the third
+c         --- quadrant, the signs of both Bx and By are changed.
+c                 Quadrupole symmetries on field grid
+c           
+c             Quadrant      B_x            B_y             B_z 
+c             --------------------------------------------------------
+c                I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
+c                II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)  
+c                III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
+c                IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
 
-      enddo
-
-      return
-      end
-c=========================================================================== 
-      subroutine applybgrd2(np,xp,yp,npz,zp,bx,by,bz)
-      use Lattice
-      use LatticeInternal
-      use BGRDdata
-      integer(ISZ):: np,npz
-      real(kind=8):: xp(np),yp(np),zp(npz)
-      real(kind=8):: bx(np),by(np),bz(np)
-
-c  Sets magnetic field for a group of up to NPARPGRP particles from data sets
-c  containing Bx, By, and Bz on 3-D grids.
-c  Calling arguments:
-c     np          number of particles
-c     npz         number of z position data values (must be either 1 or == np)
-c     xp,yp,zp    coordinates of particles
-c  Output:
-c     bx,by,bz    magnetic field
-
-c  The field is:
-c     Bx = u0 * v0 * w0 * bgrdbx(i  ,j  ,k  ,bgrdid)
-c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
-c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
-c        + ...
-
-      integer(ISZ):: ip,i,j,k,iz,ii,ib
-      real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
-      real(kind=8):: tbx,tby
-
-c  Evaluation of B, vectorized over particles
-
-      if (.not. bgrd2s .or. .not. linbgrd2) return
-
-      if (npz == 1) then
-c       --- All particles are in the same z-cell
-        zz = zp(1)
-        iz = 0
-        ii = cbgrd2id(iz)
-        ib = bgrd2id(ii)
-        k = (zz - cbgrd2zs(iz))*bgrddzi(ib)
-c       --- Exit field accumulation if particles are outside of axial grid
-        if (k < 0 .or. k >= bgrdnz) return
-      endif
-
-      do ip = 1, np
-
-        if (npz == np) then
-          zz = zp(ip)
-c         --- find the location of the particle in the internal lattice arrays
-          iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-          ii = cbgrd2id(iz)
-          ib = bgrd2id(ii)
-        endif
-
-c       --- find transverse particle coordinate in frame of gridded field 
-c       --- transverse offsets
-        txp = xp(ip) - bgrd2ox(ii)
-        typ = yp(ip) - bgrd2oy(ii)
-c       --- transverse rotation to take into account an active rotation 
-c       --- of the field element.  Particles are rotated in that oposite 
-c       --- sense of the element. Later the field components accumulated 
-c       --- must be rotated back. 
-        if ( bgrd2ph(ii) .ne. 0. ) then
-          temp = txp  
-          txp =  temp*bgrd2cp(ii) + typ*bgrd2sp(ii) 
-          typ = -temp*bgrd2sp(ii) + typ*bgrd2cp(ii) 
-        endif 
-
-c       --- Shift coordinates to measure from the edge of the field grid
-        txp = txp - bgrd2xs(ii)
-        typ = typ - bgrd2ys(ii)
-
-c       --- Set default sign of B field
-        xsign = 1.
-        ysign = 1.
-        zsign = 1.
-
-c       --- If B is quadrupolar symmetric, make transformations.
-c       --- When the particle is in one of the even quadrants (either
-c       --- x<0 or y<0 but not both), the transformation is done by
-c       --- swapping x and y, and by swapping Bx and By (done at the end
-c       --- of the loop). The sign of Bz is also changed. In the third
-c       --- quadrant, the signs of both Bx and By are changed.
-c               Quadrupole symmetries on field grid
-c         
-c           Quadrant      B_x            B_y             B_z 
-c           --------------------------------------------------------
-c              I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
-c              II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)  
-c              III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
-c              IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
-
-        if (bgrd2sy(ii) == 2) then
-c         --- Get quadrant that the particle is in.
-          if (txp < 0.) then
-            xsign = -1.
-            txp = -txp
+          if (bgrdsy(ii) == 2) then
+c           --- Get quadrant that the particle is in.
+            if (txp < 0.) then
+              xsign = -1.
+              txp = -txp
+            endif
+            if (typ < 0.) then
+              ysign = -1.
+              typ = -typ
+            endif
+c           --- If in even quadrant...
+            if (xsign*ysign < 0.) then
+c             --- Switch sign of Bz.
+              zsign = -1.
+c             --- Swap x and y
+              temp = txp
+              txp = typ
+              typ = temp
+            endif
           endif
-          if (typ < 0.) then
-            ysign = -1.
-            typ = -typ
+
+c         --- find location of particle in B field grid
+          i =  txp*bgrddxi(ib)
+          j =  typ*bgrddyi(ib)
+          k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
+
+c         --- Calculate linear weights
+          u1 = txp*bgrddxi(ib) - i
+          v1 = typ*bgrddyi(ib) - j
+          w1 = (zz - cbgrdzs(iz,io))*bgrddzi(ib) - k
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
+
+c         --- Only calculate for particles inside the B field grid
+          if (0 <= i .and. i < bgrdnx .and.
+     &        0 <= j .and. j < bgrdny .and.
+     &        0 <= k .and. k < bgrdnz) then
+
+            bfac = bgrdsc(ii) + bgrdsf(ii)
+
+            tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,ib) +
+     &                        u1*v0*w0*bgrdbx(i+1,j  ,k  ,ib) +
+     &                        u0*v1*w0*bgrdbx(i  ,j+1,k  ,ib) +
+     &                        u1*v1*w0*bgrdbx(i+1,j+1,k  ,ib) +
+     &                        u0*v0*w1*bgrdbx(i  ,j  ,k+1,ib) +
+     &                        u1*v0*w1*bgrdbx(i+1,j  ,k+1,ib) +
+     &                        u0*v1*w1*bgrdbx(i  ,j+1,k+1,ib) +
+     &                        u1*v1*w1*bgrdbx(i+1,j+1,k+1,ib))
+
+            tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,ib) +
+     &                        u1*v0*w0*bgrdby(i+1,j  ,k  ,ib) +
+     &                        u0*v1*w0*bgrdby(i  ,j+1,k  ,ib) +
+     &                        u1*v1*w0*bgrdby(i+1,j+1,k  ,ib) +
+     &                        u0*v0*w1*bgrdby(i  ,j  ,k+1,ib) +
+     &                        u1*v0*w1*bgrdby(i+1,j  ,k+1,ib) +
+     &                        u0*v1*w1*bgrdby(i  ,j+1,k+1,ib) +
+     &                        u1*v1*w1*bgrdby(i+1,j+1,k+1,ib))
+
+            if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
+              temp = tbx 
+              tbx = tby
+              tby = temp
+            endif 
+
+c           --- rotate transverse field componets for correct lab frame 
+c               orientation if the element is rotated.  
+            if ( bgrdph(ii) .ne. 0. ) then
+              temp = tbx 
+              tbx = temp*bgrdcp(ii) - tby*bgrdsp(ii) 
+              tby = temp*bgrdsp(ii) + tby*bgrdcp(ii)         
+            endif 
+
+c           --- tranverse field 
+            bx(ip) = bx(ip) + tbx
+            by(ip) = by(ip) + tby
+
+            bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,ib) +
+     &                                    u1*v0*w0*bgrdbz(i+1,j  ,k  ,ib) +
+     &                                    u0*v1*w0*bgrdbz(i  ,j+1,k  ,ib) +
+     &                                    u1*v1*w0*bgrdbz(i+1,j+1,k  ,ib) +
+     &                                    u0*v0*w1*bgrdbz(i  ,j  ,k+1,ib) +
+     &                                    u1*v0*w1*bgrdbz(i+1,j  ,k+1,ib) +
+     &                                    u0*v1*w1*bgrdbz(i  ,j+1,k+1,ib) +
+     &                                    u1*v1*w1*bgrdbz(i+1,j+1,k+1,ib))
+
           endif
-c         --- If in even quadrant...
-          if (xsign*ysign < 0.) then
-c           --- Switch sign of Bz.
-            zsign = -1.
-c           --- Swap x and y
-            temp = txp
-            txp = typ
-            typ = temp
-          endif
-        endif
 
-c       --- find location of particle in B field grid
-        i =  txp*bgrddxi(ib)
-        j =  typ*bgrddyi(ib)
-        k = (zz - cbgrd2zs(iz))*bgrddzi(ib)
-
-c       --- Calculate linear weights
-        u1 = txp*bgrddxi(ib) - i
-        v1 = typ*bgrddyi(ib) - j
-        w1 = (zz - cbgrd2zs(iz))*bgrddzi(ib) - k
-        u0 = 1. - u1
-        v0 = 1. - v1
-        w0 = 1. - w1
-
-c       --- Only calculate for particles inside the B field grid
-        if (0 <= i .and. i < bgrdnx .and.
-     &      0 <= j .and. j < bgrdny .and.
-     &      0 <= k .and. k < bgrdnz) then
-
-          bfac = bgrd2sc(ii) + bgrd2sf(ii)
-
-          tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,ib) +
-     &                      u1*v0*w0*bgrdbx(i+1,j  ,k  ,ib) +
-     &                      u0*v1*w0*bgrdbx(i  ,j+1,k  ,ib) +
-     &                      u1*v1*w0*bgrdbx(i+1,j+1,k  ,ib) +
-     &                      u0*v0*w1*bgrdbx(i  ,j  ,k+1,ib) +
-     &                      u1*v0*w1*bgrdbx(i+1,j  ,k+1,ib) +
-     &                      u0*v1*w1*bgrdbx(i  ,j+1,k+1,ib) +
-     &                      u1*v1*w1*bgrdbx(i+1,j+1,k+1,ib))
-
-          tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,ib) +
-     &                      u1*v0*w0*bgrdby(i+1,j  ,k  ,ib) +
-     &                      u0*v1*w0*bgrdby(i  ,j+1,k  ,ib) +
-     &                      u1*v1*w0*bgrdby(i+1,j+1,k  ,ib) +
-     &                      u0*v0*w1*bgrdby(i  ,j  ,k+1,ib) +
-     &                      u1*v0*w1*bgrdby(i+1,j  ,k+1,ib) +
-     &                      u0*v1*w1*bgrdby(i  ,j+1,k+1,ib) +
-     &                      u1*v1*w1*bgrdby(i+1,j+1,k+1,ib))
-
-          if (bgrd2sy(ii) == 2 .and. xsign*ysign < 0.) then
-            temp = tbx 
-            tbx = tby
-            tby = temp
-          endif 
-
-c         --- rotate transverse field componets for correct lab frame 
-c             orientation if the element is rotated.  
-          if ( bgrd2ph(ii) .ne. 0. ) then
-            temp = tbx 
-            tbx = temp*bgrd2cp(ii) - tby*bgrd2sp(ii) 
-            tby = temp*bgrd2sp(ii) + tby*bgrd2cp(ii)         
-          endif 
-
-c         --- tranverse field 
-          bx(ip) = bx(ip) + tbx
-          by(ip) = by(ip) + tby
-
-          bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,ib) +
-     &                                  u1*v0*w0*bgrdbz(i+1,j  ,k  ,ib) +
-     &                                  u0*v1*w0*bgrdbz(i  ,j+1,k  ,ib) +
-     &                                  u1*v1*w0*bgrdbz(i+1,j+1,k  ,ib) +
-     &                                  u0*v0*w1*bgrdbz(i  ,j  ,k+1,ib) +
-     &                                  u1*v0*w1*bgrdbz(i+1,j  ,k+1,ib) +
-     &                                  u0*v1*w1*bgrdbz(i  ,j+1,k+1,ib) +
-     &                                  u1*v1*w1*bgrdbz(i+1,j+1,k+1,ib))
-
-        endif
-
+        enddo
       enddo
 
       return
@@ -2992,111 +2960,115 @@ c  sete3d more complex and possibly slower.  Since the pgrd routine will not
 c  be used very often and sete3d is used always, the author felt it was better
 c  to have a seperate routine for pgrd.
 
-      integer(ISZ):: ip,i,j,k,iz,ii,ib,im1,jm1
+      integer(ISZ):: io,ip,i,j,k,iz,ii,ib,im1,jm1
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,xfac,yfac,zfac,txp,typ,temp
 
 c  Evaluation of E, vectorized over particles
 
-      if (.not. pgrds .or. .not. linpgrd) return
+      if (.not. pgrds .or. .not. linpgrd(0)) return
 
-      if (npz == 1) then
-c       --- find the location of the particle in the internal lattice arrays
-        zz = zp(1)
-        iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-        ii = cpgrdid(iz)
-        ib = pgrdid(ii)
-        k = (zz - cpgrdzs(iz))*pgrddzi(ib)
-        if (k < 0 .or. k >= pgrdnz) return
-      endif
+      do io=1,npgrdol
+        if (.not. linpgrd(io)) cycle
 
-      do ip = 1, np
-
-        if (npz == np) then
+        if (npz == 1) then
 c         --- find the location of the particle in the internal lattice arrays
-          zz = zp(ip)
+          zz = zp(1)
           iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
-          ii = cpgrdid(iz)
+          ii = cpgrdid(iz,io)
           ib = pgrdid(ii)
+          k = (zz - cpgrdzs(iz,io))*pgrddzi(ib)
+          if (k < 0 .or. k >= pgrdnz) return
         endif
 
-c       --- find transverse particle coordinate in frame of gridded field 
-c       --- transverse offsets
-        txp = xp(ip) - pgrdox(ii)
-        typ = yp(ip) - pgrdoy(ii)
+        do ip = 1, np
 
-c       --- transverse rotation to take into account an active rotation 
-c       --- of the field element.  Particles are rotated in that oposite 
-c       --- sense of the element. Later the field components accumulated 
-c       --- must be rotated back. 
-        if ( pgrdph(ii) .ne. 0. ) then
-          temp = txp  
-          txp =  temp*pgrdcp(ii) + typ*pgrdsp(ii) 
-          typ = -temp*pgrdsp(ii) + typ*pgrdcp(ii) 
-        endif 
+          if (npz == np) then
+c           --- find the location of the particle in the internal lattice arrays
+            zz = zp(ip)
+            iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
+            ii = cpgrdid(iz,io)
+            ib = pgrdid(ii)
+          endif
 
-c       --- find location of particle in potential grid
-        i =  abs(txp - pgrdxs(ii))*pgrddxi(ib)
-        j =  abs(typ - pgrdys(ii))*pgrddyi(ib)
-        k = (zz - cpgrdzs(iz))*pgrddzi(ib)
+c         --- find transverse particle coordinate in frame of gridded field 
+c         --- transverse offsets
+          txp = xp(ip) - pgrdox(ii)
+          typ = yp(ip) - pgrdoy(ii)
 
-c       --- Calculate linear weights
-        u1 =  abs(txp - pgrdxs(ii))*pgrddxi(ib) - i
-        v1 =  abs(typ - pgrdys(ii))*pgrddyi(ib) - j
-        w1 = (zz - cpgrdzs(iz))*pgrddzi(ib) - k
-        u0 = 1. - u1
-        v0 = 1. - v1
-        w0 = 1. - w1
+c         --- transverse rotation to take into account an active rotation 
+c         --- of the field element.  Particles are rotated in that oposite 
+c         --- sense of the element. Later the field components accumulated 
+c         --- must be rotated back. 
+          if ( pgrdph(ii) .ne. 0. ) then
+            temp = txp  
+            txp =  temp*pgrdcp(ii) + typ*pgrdsp(ii) 
+            typ = -temp*pgrdsp(ii) + typ*pgrdcp(ii) 
+          endif 
 
-c       --- Only calculate for particles inside the B field grid
-        if (0 <= i .and. i < pgrdnx .and.
-     &      0 <= j .and. j < pgrdny .and.
-     &      0 <= k .and. k < pgrdnz) then
+c         --- find location of particle in potential grid
+          i =  abs(txp - pgrdxs(ii))*pgrddxi(ib)
+          j =  abs(typ - pgrdys(ii))*pgrddyi(ib)
+          k = (zz - cpgrdzs(iz,io))*pgrddzi(ib)
 
-c         --- make sure all indices refer to first quadrant
-          im1 = i - 1
-          jm1 = j - 1
-          if (i == 0) im1 = 1
-          if (j == 0) jm1 = 1
+c         --- Calculate linear weights
+          u1 =  abs(txp - pgrdxs(ii))*pgrddxi(ib) - i
+          v1 =  abs(typ - pgrdys(ii))*pgrddyi(ib) - j
+          w1 = (zz - cpgrdzs(iz,io))*pgrddzi(ib) - k
+          u0 = 1. - u1
+          v0 = 1. - v1
+          w0 = 1. - w1
 
-c         --- adjust sign of E field for approiate quadrant
-          xfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddxi(ib)*0.5
-          yfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddyi(ib)*0.5
-          zfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddzi(ib)*0.5
-          if (xp(ip) < pgrdxs(ii)) xfac = -xfac
-          if (yp(ip) < pgrdys(ii)) yfac = -yfac
+c         --- Only calculate for particles inside the B field grid
+          if (0 <= i .and. i < pgrdnx .and.
+     &        0 <= j .and. j < pgrdny .and.
+     &        0 <= k .and. k < pgrdnz) then
 
-          ex(ip) = ex(ip) + xfac*
-     &          (u0*v0*w0*(pgrd(im1,j  ,k  ,ib) - pgrd(i+1,j  ,k  ,ib))
-     &         + u1*v0*w0*(pgrd(i  ,j  ,k  ,ib) - pgrd(i+2,j  ,k  ,ib))
-     &         + u0*v1*w0*(pgrd(im1,j+1,k  ,ib) - pgrd(i+1,j+1,k  ,ib))
-     &         + u1*v1*w0*(pgrd(i  ,j+1,k  ,ib) - pgrd(i+2,j+1,k  ,ib))
-     &         + u0*v0*w1*(pgrd(im1,j  ,k+1,ib) - pgrd(i+1,j  ,k+1,ib))
-     &         + u1*v0*w1*(pgrd(i  ,j  ,k+1,ib) - pgrd(i+2,j  ,k+1,ib))
-     &         + u0*v1*w1*(pgrd(im1,j+1,k+1,ib) - pgrd(i+1,j+1,k+1,ib))
-     &         + u1*v1*w1*(pgrd(i  ,j+1,k+1,ib) - pgrd(i+2,j+1,k+1,ib)))
+c           --- make sure all indices refer to first quadrant
+            im1 = i - 1
+            jm1 = j - 1
+            if (i == 0) im1 = 1
+            if (j == 0) jm1 = 1
 
-          ey(ip) = ey(ip) + yfac*
-     &          (u0*v0*w0*(pgrd(i  ,jm1,k  ,ib) - pgrd(i  ,j+1,k  ,ib))
-     &         + u1*v0*w0*(pgrd(i+1,jm1,k  ,ib) - pgrd(i+1,j+1,k  ,ib))
-     &         + u0*v1*w0*(pgrd(i  ,j  ,k  ,ib) - pgrd(i  ,j+2,k  ,ib))
-     &         + u1*v1*w0*(pgrd(i+1,j  ,k  ,ib) - pgrd(i+1,j+2,k  ,ib))
-     &         + u0*v0*w1*(pgrd(i  ,jm1,k+1,ib) - pgrd(i  ,j+1,k+1,ib))
-     &         + u1*v0*w1*(pgrd(i+1,jm1,k+1,ib) - pgrd(i+1,j+1,k+1,ib))
-     &         + u0*v1*w1*(pgrd(i  ,j  ,k+1,ib) - pgrd(i  ,j+2,k+1,ib))
-     &         + u1*v1*w1*(pgrd(i+1,j  ,k+1,ib) - pgrd(i+1,j+2,k+1,ib)))
+c           --- adjust sign of E field for approiate quadrant
+            xfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddxi(ib)*0.5
+            yfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddyi(ib)*0.5
+            zfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddzi(ib)*0.5
+            if (xp(ip) < pgrdxs(ii)) xfac = -xfac
+            if (yp(ip) < pgrdys(ii)) yfac = -yfac
 
-          ez(ip) = ez(ip) + zfac*
-     &          (u0*v0*w0*(pgrd(i  ,j  ,k-1,ib) - pgrd(i  ,j  ,k+1,ib))
-     &         + u1*v0*w0*(pgrd(i+1,j  ,k-1,ib) - pgrd(i+1,j  ,k+1,ib))
-     &         + u0*v1*w0*(pgrd(i  ,j+1,k-1,ib) - pgrd(i  ,j+1,k+1,ib))
-     &         + u1*v1*w0*(pgrd(i+1,j+1,k-1,ib) - pgrd(i+1,j+1,k+1,ib))
-     &         + u0*v0*w1*(pgrd(i  ,j  ,k  ,ib) - pgrd(i  ,j  ,k+2,ib))
-     &         + u1*v0*w1*(pgrd(i+1,j  ,k  ,ib) - pgrd(i+1,j  ,k+2,ib))
-     &         + u0*v1*w1*(pgrd(i  ,j+1,k  ,ib) - pgrd(i  ,j+1,k+2,ib))
-     &         + u1*v1*w1*(pgrd(i+1,j+1,k  ,ib) - pgrd(i+1,j+1,k+2,ib)))
+            ex(ip) = ex(ip) + xfac*
+     &            (u0*v0*w0*(pgrd(im1,j  ,k  ,ib) - pgrd(i+1,j  ,k  ,ib))
+     &           + u1*v0*w0*(pgrd(i  ,j  ,k  ,ib) - pgrd(i+2,j  ,k  ,ib))
+     &           + u0*v1*w0*(pgrd(im1,j+1,k  ,ib) - pgrd(i+1,j+1,k  ,ib))
+     &           + u1*v1*w0*(pgrd(i  ,j+1,k  ,ib) - pgrd(i+2,j+1,k  ,ib))
+     &           + u0*v0*w1*(pgrd(im1,j  ,k+1,ib) - pgrd(i+1,j  ,k+1,ib))
+     &           + u1*v0*w1*(pgrd(i  ,j  ,k+1,ib) - pgrd(i+2,j  ,k+1,ib))
+     &           + u0*v1*w1*(pgrd(im1,j+1,k+1,ib) - pgrd(i+1,j+1,k+1,ib))
+     &           + u1*v1*w1*(pgrd(i  ,j+1,k+1,ib) - pgrd(i+2,j+1,k+1,ib)))
 
-        endif
+            ey(ip) = ey(ip) + yfac*
+     &            (u0*v0*w0*(pgrd(i  ,jm1,k  ,ib) - pgrd(i  ,j+1,k  ,ib))
+     &           + u1*v0*w0*(pgrd(i+1,jm1,k  ,ib) - pgrd(i+1,j+1,k  ,ib))
+     &           + u0*v1*w0*(pgrd(i  ,j  ,k  ,ib) - pgrd(i  ,j+2,k  ,ib))
+     &           + u1*v1*w0*(pgrd(i+1,j  ,k  ,ib) - pgrd(i+1,j+2,k  ,ib))
+     &           + u0*v0*w1*(pgrd(i  ,jm1,k+1,ib) - pgrd(i  ,j+1,k+1,ib))
+     &           + u1*v0*w1*(pgrd(i+1,jm1,k+1,ib) - pgrd(i+1,j+1,k+1,ib))
+     &           + u0*v1*w1*(pgrd(i  ,j  ,k+1,ib) - pgrd(i  ,j+2,k+1,ib))
+     &           + u1*v1*w1*(pgrd(i+1,j  ,k+1,ib) - pgrd(i+1,j+2,k+1,ib)))
 
+            ez(ip) = ez(ip) + zfac*
+     &            (u0*v0*w0*(pgrd(i  ,j  ,k-1,ib) - pgrd(i  ,j  ,k+1,ib))
+     &           + u1*v0*w0*(pgrd(i+1,j  ,k-1,ib) - pgrd(i+1,j  ,k+1,ib))
+     &           + u0*v1*w0*(pgrd(i  ,j+1,k-1,ib) - pgrd(i  ,j+1,k+1,ib))
+     &           + u1*v1*w0*(pgrd(i+1,j+1,k-1,ib) - pgrd(i+1,j+1,k+1,ib))
+     &           + u0*v0*w1*(pgrd(i  ,j  ,k  ,ib) - pgrd(i  ,j  ,k+2,ib))
+     &           + u1*v0*w1*(pgrd(i+1,j  ,k  ,ib) - pgrd(i+1,j  ,k+2,ib))
+     &           + u0*v1*w1*(pgrd(i  ,j+1,k  ,ib) - pgrd(i  ,j+1,k+2,ib))
+     &           + u1*v1*w1*(pgrd(i+1,j+1,k  ,ib) - pgrd(i+1,j+1,k+2,ib)))
+
+          endif
+
+        enddo
       enddo
 
       return
@@ -3124,8 +3096,8 @@ c   qoverm   charge over mass
 c Output:
 c   ez       axial electric field
 
-      real(kind=8):: dti,vz,gapez,frac,z1,z2,vn,zl,zr,cacclz
-      integer(ISZ):: ip,j
+      real(kind=8):: dti,vz,gapez,frac,z1,z2,vn,zl,zr,cacclz,caccll
+      integer(ISZ):: io,ip,iz
 
       if (.not. accls) return
 
@@ -3134,69 +3106,78 @@ c   ez       axial electric field
 c     --- Finite length gaps
       if (.not. lacclzl) then
 
-c       --- For velocity correction, first calculate the velocity at
-c       --- time level n.
-        do ip=1,np
-          vz = uzp(ip)*gaminv(ip)
-          if (vz == 0.) vz = LARGEPOS
-c         --- find z-cell in which particle lies
-          j = int(max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5))
-          gapez = cacclez(j) + cacclxw(j)*xp(ip)
-          z1 = zp(ip) + dtl*vz - 0.5*gapez*qoverm*dtl**2
-          z2 = zp(ip) + dtl*vz
-          if (zp(ip) <= cacclzs(j)) then
-            vn = vz
-          elseif (z1 < cacclzs(j)) then
-            vn = sqrt(vz**2 + 2.*gapez*qoverm*(zp(ip) - cacclzs(j)))
-          elseif (zp(ip) <= cacclze(j)) then
-            vn = vz - gapez*qoverm*dtl
-          elseif (z2 < cacclze(j)) then
-            vn = 0.5*(vz + 0.5*gapez*qoverm*dt + sqrt((vz +
-     &           0.5*gapez*qoverm*dt)**2 -
-     &           4.*gapez*qoverm*(zp(ip) - cacclze(j))))
-          else
-            vn = vz
-          endif
-c         --- Calculate the fraction of time in the gap.  Cases inside
-c         --- and outside are included implicitly in the max and min calls.
-c         --- Note that the max's inside the sqrt are for idiot proofing.
-          if (zp(ip) <= cacclzs(j)) then
-            frac = max((dtr + (zp(ip) - cacclzs(j))/vn)*dti , 0.)
-          elseif (zp(ip) <= (cacclzs(j) + cacclze(j))*0.5) then
-            frac = min((dtr + 2.*(zp(ip) - cacclzs(j))/
-     &             (sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
-     &             (zp(ip) - cacclzs(j)))) + vn))*dti, 1.)
-          elseif (zp(ip) <= cacclze(j)) then
-            frac = min((-dtl + 2.*(cacclze(j) - zp(ip))/
-     &             (sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
-     &             (cacclze(j) - zp(ip)))) + vn))*dti, 1.)
-          else
-            frac = max((-dtl - (zp(ip) - cacclze(j))/vn)*dti , 0.)
-          endif
-c         --- add acceleration field to Ez field
-          ez(ip) = ez(ip) + gapez*frac
+        do io=1,nacclol
+          if (.not. linaccl(io)) cycle
+
+c         --- For velocity correction, first calculate the velocity at
+c         --- time level n.
+          do ip=1,np
+            vz = uzp(ip)*gaminv(ip)
+            if (vz == 0.) vz = LARGEPOS
+c           --- find z-cell in which particle lies
+            iz = int(max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5))
+            gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+            z1 = zp(ip) + dtl*vz - 0.5*gapez*qoverm*dtl**2
+            z2 = zp(ip) + dtl*vz
+            if (zp(ip) <= cacclzs(iz,io)) then
+              vn = vz
+            elseif (z1 < cacclzs(iz,io)) then
+              vn = sqrt(vz**2 + 2.*gapez*qoverm*(zp(ip) - cacclzs(iz,io)))
+            elseif (zp(ip) <= cacclze(iz,io)) then
+              vn = vz - gapez*qoverm*dtl
+            elseif (z2 < cacclze(iz,io)) then
+              vn = 0.5*(vz + 0.5*gapez*qoverm*dt + sqrt((vz +
+     &             0.5*gapez*qoverm*dt)**2 -
+     &             4.*gapez*qoverm*(zp(ip) - cacclze(iz,io))))
+            else
+              vn = vz
+            endif
+c           --- Calculate the fraction of time in the gap.  Cases inside
+c           --- and outside are included implicitly in the max and min calls.
+c           --- Note that the max's inside the sqrt are for idiot proofing.
+            if (zp(ip) <= cacclzs(iz,io)) then
+              frac = max((dtr + (zp(ip) - cacclzs(iz,io))/vn)*dti , 0.)
+            elseif (zp(ip) <= (cacclzs(iz,io) + cacclze(iz,io))*0.5) then
+              frac = min((dtr + 2.*(zp(ip) - cacclzs(iz,io))/
+     &               (sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
+     &               (zp(ip) - cacclzs(iz,io)))) + vn))*dti, 1.)
+            elseif (zp(ip) <= cacclze(iz,io)) then
+              frac = min((-dtl + 2.*(cacclze(iz,io) - zp(ip))/
+     &               (sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
+     &               (cacclze(iz,io) - zp(ip)))) + vn))*dti, 1.)
+            else
+              frac = max((-dtl - (zp(ip) - cacclze(iz,io))/vn)*dti , 0.)
+            endif
+c           --- add acceleration field to Ez field
+            ez(ip) = ez(ip) + gapez*frac
+          enddo
         enddo
 
       else
 
-c       --- Zero length gaps
-        do ip = 1, np
-          vz = uzp(ip)*gaminv(ip)
-          j = max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5)
-c         --- "left" end of velocity advance step
-          zl = zp(ip) + vz*dtl
-c         --- "right" end of velocity advance step
-          zr = zp(ip) + vz*dtr
-c         --- Gap center
-          cacclz = 0.5*(cacclzs(j) + cacclze(j))
-c         --- Add acceleration to velocity.
-c         --- Calculate the change in velocity and convert that into
-c         --- and Ez - the expression reduces to q*V/m for small V.
-          if (zl <= cacclz .and. cacclz < zr) then
-            gapez = cacclez(j) + cacclxw(j)*xp(ip)
-            ez(ip) = ez(ip) + (sqrt(vz**2 +
-     &          2.*qoverm*gapez*(cacclze(j)-cacclzs(j))) - vz)/qoverm*dti
-          endif
+        do io=1,nacclol
+          if (.not. linaccl(io)) cycle
+
+c         --- Zero length gaps
+          do ip = 1, np
+            vz = uzp(ip)*gaminv(ip)
+            iz = max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5)
+c           --- "left" end of velocity advance step
+            zl = zp(ip) + vz*dtl
+c           --- "right" end of velocity advance step
+            zr = zp(ip) + vz*dtr
+c           --- Gap center and length
+            cacclz = 0.5*(cacclzs(iz,io) + cacclze(iz,io))
+            caccll = cacclze(iz,io) - cacclzs(iz,io)
+c           --- Add acceleration to velocity.
+c           --- Calculate the change in velocity and convert that into
+c           --- and Ez - the expression reduces to q*V/m for small V.
+            if (zl <= cacclz .and. cacclz < zr) then
+              gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+              ez(ip) = ez(ip) + (sqrt(vz**2 + 2.*qoverm*gapez*caccll)-vz)/
+     &                          qoverm*dti
+            endif
+          enddo
         enddo
 
       endif
@@ -3212,8 +3193,9 @@ c===========================================================================
       real(kind=8):: zp(np),xp(np),uzp(np),gaminv(np)
       real(kind=8):: dtl,dtr,dt,m,q,time
 
-      integer(ISZ):: ip,j
-      real(kind=8):: vz,gapez,zp2,delta,qoverm,vzi,cacclz,deltav,zr
+      integer(ISZ):: io,ip,iz
+      real(kind=8):: gapez,zp2,delta,qoverm,cacclz,caccll,deltav,zr
+      real(kind=8):: vz(np),vzi(np)
 
       qoverm = q/m
 
@@ -3221,64 +3203,69 @@ c     Add residence correction to particle position when acceleration is done
 
       if (accls) then
 
+        vz = uzp*gaminv
+        vzi = 1./dvnz(vz)
+
 c       --- Finite length gap
         if (.not. lacclzl) then
 
-          do ip=1,np
-            vz = uzp(ip)*gaminv(ip)
-            vzi = 1./dvnz(vz)
-c           --- find index of nearest accl element
-            j = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
-            gapez = cacclez(j) + cacclxw(j)*xp(ip)
-c           --- Approximate position of particle on next step
-c           --- with simple residence correction for gaps.
-c           --- Calculate time of entrance or exit, delta.
-c           --- Space charge forces are ignored.
-            zp2 = zp(ip) + vz*dt
-            delta = 0
-            if (zp(ip) <= cacclzs(j) .and. cacclzs(j) <= zp2) then
-              delta = (cacclzs(j) - zp(ip))*vzi
-            elseif (zp(ip) <= cacclze(j) .and.
-     &           cacclze(j) <= zp2 + gapez*qoverm*dt*(dtr-dtl)) then
-              delta = 2.*(cacclze(j) - zp(ip))/
-     &                (sqrt((vz - gapez*qoverm*dtl)**2 +
-     &                2.*(cacclze(j) - zp(ip))*gapez*qoverm) +
-     &                vz - gapez*qoverm*dtl)
-              zp2 = zp2 + gapez*qoverm*dt*(dtr-dtl)
-            endif
-c           --- calculate correction on particle position
-            if (delta > 0.5*dt) delta = dt - delta
-            if (zp(ip) <= cacclzs(j) .and. cacclzs(j) <= zp2) then
-              zp(ip) = zp(ip) + 0.5*gapez*qoverm*delta**2
-            elseif (zp(ip) <= cacclze(j) .and. cacclze(j) <= zp2) then
-              zp(ip) = zp(ip) - 0.5*gapez*qoverm*delta**2
-            endif
+          do io=1,nacclol
+            if (.not. linaccl(io)) cycle
+
+            do ip=1,np
+c             --- find index of nearest accl element
+              iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+              gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+c             --- Approximate position of particle on next step
+c             --- with simple residence correction for gaps.
+c             --- Calculate time of entrance or exit, delta.
+c             --- Space charge forces are ignored.
+              zp2 = zp(ip) + vz(ip)*dt
+              delta = 0
+              if (zp(ip) <= cacclzs(iz,io) .and. cacclzs(iz,io) <= zp2) then
+                delta = (cacclzs(iz,io) - zp(ip))*vzi(ip)
+              elseif (zp(ip) <= cacclze(iz,io) .and.
+     &             cacclze(iz,io) <= zp2 + gapez*qoverm*dt*(dtr-dtl)) then
+                delta = 2.*(cacclze(iz,io) - zp(ip))/
+     &                  (sqrt((vz(ip) - gapez*qoverm*dtl)**2 +
+     &                  2.*(cacclze(iz,io) - zp(ip))*gapez*qoverm) +
+     &                  vz(ip) - gapez*qoverm*dtl)
+                zp2 = zp2 + gapez*qoverm*dt*(dtr-dtl)
+              endif
+c             --- calculate correction on particle position
+              if (delta > 0.5*dt) delta = dt - delta
+              if (zp(ip) <= cacclzs(iz,io) .and. cacclzs(iz,io) <= zp2) then
+                zp(ip) = zp(ip) + 0.5*gapez*qoverm*delta**2
+              elseif (zp(ip) <= cacclze(iz,io) .and. cacclze(iz,io) <= zp2) then
+                zp(ip) = zp(ip) - 0.5*gapez*qoverm*delta**2
+              endif
+            enddo
           enddo
 
         else
 c         --- Zero length gap
 
-          do ip = 1, np
-            vz = uzp(ip)*gaminv(ip)
-            j = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
-            cacclz = 0.5*(cacclzs(j) + cacclze(j))
-c           --- "right" end of velocity advance step
-            zr = zp(ip) + vz*dtr
-c           --- calculate correction on position
-            if (zp(ip) > cacclz .and. cacclz > zr) then
-              vzi = 1./dvnz(vz)
-              gapez = cacclez(j) + cacclxw(j)*xp(ip)
-              deltav = sqrt(vz**2 +
-     &                     2.*qoverm*gapez*(cacclze(j) - cacclzs(j))) - vz
-              zp(ip) = zp(ip) - (cacclz - zp(ip))*vzi*deltav
-            endif
-            if (zr > cacclz .and. cacclz > zp(ip) + vz*dt) then
-              vzi = 1./dvnz(vz)
-              gapez = cacclez(j) + cacclxw(j)*xp(ip)
-              deltav = sqrt(vz**2 +
-     &                     2.*qoverm*gapez*(cacclze(j) - cacclzs(j))) - vz
-              zp(ip) = zp(ip) + (dt - (cacclz - zp(ip))*vzi)*deltav
-            endif
+          do io=1,nacclol
+            if (.not. linaccl(io)) cycle
+
+            do ip = 1, np
+              iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+              cacclz = 0.5*(cacclzs(iz,io) + cacclze(iz,io))
+              caccll = cacclze(iz,io) - cacclzs(iz,io)
+c             --- "right" end of velocity advance step
+              zr = zp(ip) + vz(ip)*dtr
+c             --- calculate correction on position
+              if (zp(ip) > cacclz .and. cacclz > zr) then
+                gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+                deltav = sqrt(vz(ip)**2 + 2.*qoverm*gapez*caccll) - vz(ip)
+                zp(ip) = zp(ip) - (cacclz - zp(ip))*vzi(ip)*deltav
+              endif
+              if (zr > cacclz .and. cacclz > zp(ip) + vz(ip)*dt) then
+                gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+                deltav = sqrt(vz(ip)**2 + 2.*qoverm*gapez*caccll) - vz(ip)
+                zp(ip) = zp(ip) + (dt - (cacclz - zp(ip))*vzi(ip))*deltav
+              endif
+            enddo
           enddo
 
         endif
@@ -3303,9 +3290,10 @@ c changes during the iteration dealing with changing Vz.  It would be much
 c less efficient to put the entire extebxy within that iteration loop so
 c the accl elements was seperated out.
 
-      real(kind=8):: dti,oneodt,qoverm,moverq,gapez,z1,z2,vn,frac,cacclz,zl,zr
+      real(kind=8):: dti,oneodt,qoverm,moverq,gapez,z1,z2,vn,frac
+      real(kind=8):: cacclz,caccll,zl,zr
       real(kind=8):: dtl_a,dtr_a,dti_a,vz_a
-      integer(ISZ):: j,ip
+      integer(ISZ):: io,iz,ip
 
 c  --- Note that the accl elements in the slice code are slightly different
 c  --- than other hard edged elements since the residence correction is
@@ -3319,75 +3307,83 @@ c  --- distance.  So, the particles individual velocity and dt are used.
       qoverm = q/m
 
 c     --- All particles lie at the same z-cell
-      j = 0
+      iz = 0
 
       if (.not. lacclzl) then
 
-c       --- For velocity correction, first calculate the velocity at
-c       --- time level n.
-        do ip=1,np
-          dtl_a = dtl*oneodt*dtp(ip)
-          dtr_a = dtr*oneodt*dtp(ip)
-          dti_a = dti*dt/dtp(ip)
-          vz_a = uzp(ip)*gaminv(ip)
-          if (vz_a == 0.) vz_a = LARGEPOS
-          gapez = cacclez(j) + cacclxw(j)*xp(ip)
-          z1 = zlframe + dtl_a*vz_a - 0.5*gapez*qoverm*dtl_a**2
-          z2 = zlframe + dtl_a*vz_a
-          if (zlframe <= cacclzs(j)) then
-            vn = vz_a
-          elseif (z1 < cacclzs(j)) then
-            vn = sqrt(vz_a**2 + 2.*gapez*qoverm*(zlframe - cacclzs(j)))
-          elseif (zlframe <= cacclze(j)) then
-            vn = vz_a - gapez*qoverm*dtl_a
-          elseif (z2 < cacclze(j)) then
-            vn = 0.5*(vz_a + 0.5*gapez*qoverm*dtp(ip) + sqrt((vz_a +
-     &           0.5*gapez*qoverm*dtp(ip))**2 -
-     &           4.*gapez*qoverm*(zlframe - cacclze(j))))
-          else
-            vn = vz_a
-          endif
-c         --- Calculate the fraction of time in the gap.  Cases inside
-c         --- and outside are included implicitly in the max and min calls.
-c         --- Note that the max's inside the sqrt are for idiot proofing.
-          if (zlframe <= cacclzs(j)) then
-            frac = max((dtr_a + (zlframe - cacclzs(j))/vn)*dti_a , 0.)
-          elseif (zlframe <= (cacclzs(j) + cacclze(j))*0.5) then
-            frac = min((dtr_a + 2.*(zlframe - cacclzs(j))/
-     &             (sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
-     &             (zlframe - cacclzs(j)))) + vn))*dti_a, 1.)
-          elseif (zlframe <= cacclze(j)) then
-            frac = min((-dtl_a + 2.*(cacclze(j) - zlframe)/
-     &             (sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
-     &             (cacclze(j) - zlframe))) + vn))*dti_a, 1.)
-          else
-            frac = max((-dtl_a - (zlframe - cacclze(j))/vn)*dti_a , 0.)
-          endif
-c         --- add acceleration field to Ez field
-          ez(ip) = ez(ip) + gapez*frac
+        do io=1,nacclol
+          if (.not. linaccl(io)) cycle
+
+c         --- For velocity correction, first calculate the velocity at
+c         --- time level n.
+          do ip=1,np
+            dtl_a = dtl*oneodt*dtp(ip)
+            dtr_a = dtr*oneodt*dtp(ip)
+            dti_a = dti*dt/dtp(ip)
+            vz_a = uzp(ip)*gaminv(ip)
+            if (vz_a == 0.) vz_a = LARGEPOS
+            gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+            z1 = zlframe + dtl_a*vz_a - 0.5*gapez*qoverm*dtl_a**2
+            z2 = zlframe + dtl_a*vz_a
+            if (zlframe <= cacclzs(iz,io)) then
+              vn = vz_a
+            elseif (z1 < cacclzs(iz,io)) then
+              vn = sqrt(vz_a**2 + 2.*gapez*qoverm*(zlframe - cacclzs(iz,io)))
+            elseif (zlframe <= cacclze(iz,io)) then
+              vn = vz_a - gapez*qoverm*dtl_a
+            elseif (z2 < cacclze(iz,io)) then
+              vn = 0.5*(vz_a + 0.5*gapez*qoverm*dtp(ip) + sqrt((vz_a +
+     &             0.5*gapez*qoverm*dtp(ip))**2 -
+     &             4.*gapez*qoverm*(zlframe - cacclze(iz,io))))
+            else
+              vn = vz_a
+            endif
+c           --- Calculate the fraction of time in the gap.  Cases inside
+c           --- and outside are included implicitly in the max and min calls.
+c           --- Note that the max's inside the sqrt are for idiot proofing.
+            if (zlframe <= cacclzs(iz,io)) then
+              frac = max((dtr_a + (zlframe - cacclzs(iz,io))/vn)*dti_a , 0.)
+            elseif (zlframe <= (cacclzs(iz,io) + cacclze(iz,io))*0.5) then
+              frac = min((dtr_a + 2.*(zlframe - cacclzs(iz,io))/
+     &               (sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
+     &               (zlframe - cacclzs(iz,io)))) + vn))*dti_a, 1.)
+            elseif (zlframe <= cacclze(iz,io)) then
+              frac = min((-dtl_a + 2.*(cacclze(iz,io) - zlframe)/
+     &               (sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
+     &               (cacclze(iz,io) - zlframe))) + vn))*dti_a, 1.)
+            else
+              frac = max((-dtl_a - (zlframe - cacclze(iz,io))/vn)*dti_a , 0.)
+            endif
+c           --- add acceleration field to Ez field
+            ez(ip) = ez(ip) + gapez*frac
+          enddo
         enddo
 
       else
 
 c       --- Zero-length gaps.
+        do io=1,nacclol
+          if (.not. linaccl(io)) cycle
 
-        moverq = m/q
-        cacclz = 0.5*(cacclzs(j) + cacclze(j))
-c       --- Add acceleration to velocity.
-c       --- Calculate the change in velocity and convert that into
-c       --- and Ez - the expression reduces to q*V/m for small V.
-        do ip = 1, np
-          dtl_a = dtl*oneodt*dtp(ip)
-          dtr_a = dtr*oneodt*dtp(ip)
-          dti_a = dti*dt/dtp(ip)
-          vz_a = uzp(ip)*gaminv(ip)
-          zl = zlframe + dtl_a*vz_a
-          zr = zlframe + dtr_a*vz_a
-          if (zl <= cacclz .and. cacclz < zr) then
-            gapez = cacclez(j) + cacclxw(j)*xp(ip)
-            ez(ip) = ez(ip) + (sqrt(vz_a**2 +
-     &          2.*qoverm*gapez*(cacclze(j)-cacclzs(j))) - vz_a)*moverq*dti_a
-          endif
+          moverq = m/q
+          cacclz = 0.5*(cacclzs(iz,io) + cacclze(iz,io))
+          caccll = cacclze(iz,io) - cacclzs(iz,io)
+c         --- Add acceleration to velocity.
+c         --- Calculate the change in velocity and convert that into
+c         --- and Ez - the expression reduces to q*V/m for small V.
+          do ip = 1, np
+            dtl_a = dtl*oneodt*dtp(ip)
+            dtr_a = dtr*oneodt*dtp(ip)
+            dti_a = dti*dt/dtp(ip)
+            vz_a = uzp(ip)*gaminv(ip)
+            zl = zlframe + dtl_a*vz_a
+            zr = zlframe + dtr_a*vz_a
+            if (zl <= cacclz .and. cacclz < zr) then
+              gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+              ez(ip) = ez(ip) + (sqrt(vz_a**2 + 2.*qoverm*gapez*caccll) - vz_a)
+     &                 *moverq*dti_a
+            endif
+          enddo
         enddo
 
       endif
@@ -3408,77 +3404,81 @@ c===========================================================================
 
 c Add residence correction to particle position when acceleration is done
 
-      integer(ISZ):: ip,j
-      real(kind=8):: gapez,zp2,delta,qoverm,vzi
-      real(kind=8):: vz_a,dtl_a,dtr_a
-      real(kind=8):: cacclz,zr,vz,deltav
+      integer(ISZ):: io,ip,iz
+      real(kind=8):: gapez,zp2,delta,qoverm,vz(np),vzi(np)
+      real(kind=8):: dtl_a,dtr_a
+      real(kind=8):: cacclz,caccll,zr,deltav
 
       if (.not. accls) return
 
       qoverm = q/m
+      vz = uzp*gaminv
+      vzi = 1./dvnz(vz)
 
 c     --- All particles lie at the same z-cell
-      j = 0
+      iz = 0
 
 c     --- Finite length gap
       if (.not. lacclzl) then
 
-        do ip=1,np
-c         --- Scale time step size by particles time step.
-          dtl_a = dtl/dt*dtp(ip)
-          dtr_a = dtr/dt*dtp(ip)
-c         --- Particle axial velocity and inverse
-          vz_a = uzp(ip)*gaminv(ip)
-          vzi = 1./dvnz(vz_a)
-c         --- Fetch accelerating voltage
-          gapez = cacclez(j) + cacclxw(j)*xp(ip)
-c         --- Approximate position of particle on next step
-c         --- with simple residence correction for gaps.
-c         --- Calculate time of entrance or exit, delta.
-c         --- Space charge forces are ignored.
-          zp2 = zlframe + vz_a*dtp(ip)
-          delta = 0
-          if (zlframe <= cacclzs(j) .and. cacclzs(j) <= zp2) then
-            delta = (cacclzs(j) - zlframe)*vzi
-          elseif (zlframe <= cacclze(j) .and.
-     &         cacclze(j) <= zp2 + gapez*qoverm*dtp(ip)*(dtr_a-dtl_a)) then
-            delta = 2.*(cacclze(j) - zlframe)/
-     &              (sqrt((vz_a - gapez*qoverm*dtl_a)**2 +
-     &              2.*(cacclze(j) - zlframe)*gapez*qoverm) +
-     &              vz_a - gapez*qoverm*dtl_a)
-            zp2 = zp2 + gapez*qoverm*dtp(ip)*(dtr_a-dtl_a)
-          endif
-c         --- calculate correction on particle position
-          if (delta > 0.5*dtp(ip)) delta = dtp(ip) - delta
-          if (zlframe <= cacclzs(j) .and. cacclzs(j) <= zp2) then
-            zp(ip) = zp(ip) + 0.5*gapez*qoverm*delta**2
-          elseif (zlframe <= cacclze(j) .and. cacclze(j) <= zp2) then
-            zp(ip) = zp(ip) - 0.5*gapez*qoverm*delta**2
-          endif
+        do io=1,nacclol
+          if (.not. linaccl(io)) cycle
+
+          do ip=1,np
+c           --- Scale time step size by particles time step.
+            dtl_a = dtl/dt*dtp(ip)
+            dtr_a = dtr/dt*dtp(ip)
+c           --- Fetch accelerating voltage
+            gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+c           --- Approximate position of particle on next step
+c           --- with simple residence correction for gaps.
+c           --- Calculate time of entrance or exit, delta.
+c           --- Space charge forces are ignored.
+            zp2 = zlframe + vz(ip)*dtp(ip)
+            delta = 0
+            if (zlframe <= cacclzs(iz,io) .and. cacclzs(iz,io) <= zp2) then
+              delta = (cacclzs(iz,io) - zlframe)*vzi(ip)
+            elseif (zlframe <= cacclze(iz,io) .and.
+     &         cacclze(iz,io) <= zp2 + gapez*qoverm*dtp(ip)*(dtr_a-dtl_a)) then
+              delta = 2.*(cacclze(iz,io) - zlframe)/
+     &                (sqrt((vz(ip) - gapez*qoverm*dtl_a)**2 +
+     &                2.*(cacclze(iz,io) - zlframe)*gapez*qoverm) +
+     &                vz(ip) - gapez*qoverm*dtl_a)
+              zp2 = zp2 + gapez*qoverm*dtp(ip)*(dtr_a-dtl_a)
+            endif
+c           --- calculate correction on particle position
+            if (delta > 0.5*dtp(ip)) delta = dtp(ip) - delta
+            if (zlframe <= cacclzs(iz,io) .and. cacclzs(iz,io) <= zp2) then
+              zp(ip) = zp(ip) + 0.5*gapez*qoverm*delta**2
+            elseif (zlframe <= cacclze(iz,io) .and. cacclze(iz,io) <= zp2) then
+              zp(ip) = zp(ip) - 0.5*gapez*qoverm*delta**2
+            endif
+          enddo
         enddo
 
       else
 
 c       --- Zero length gap
+        do io=1,nacclol
+          if (.not. linaccl(io)) cycle
 
-        cacclz = 0.5*(cacclzs(j) + cacclze(j))
-        do ip = 1, np
-          vz = uzp(ip)*gaminv(ip)
-c         --- "right" end of velocity advance step
-          zr = zlframe + vz*dtr
-c         --- calculate correction on position
-          if (zlframe < cacclz .and. cacclz < zr) then
-            vzi = 1./dvnz(vz)
-            gapez = cacclez(j) + cacclxw(j)*xp(ip)
-            deltav = sqrt(vz**2 + 2.*qoverm*gapez*(cacclze(j)-cacclzs(j))) - vz
-            zp(ip) = zp(ip) - (cacclz - zlframe)*vzi*deltav
-          endif
-          if (zr < cacclz .and. cacclz < zlframe + vz*dtp(ip)) then
-            vzi = 1./dvnz(vz)
-            gapez = cacclez(j) + cacclxw(j)*xp(ip)
-            deltav = sqrt(vz**2 + 2.*qoverm*gapez*(cacclze(j)-cacclzs(j))) - vz
-            zp(ip) = zp(ip) + (dtp(ip) - (cacclz - zlframe)*vzi)*deltav
-          endif
+          cacclz = 0.5*(cacclzs(iz,io) + cacclze(iz,io))
+          caccll = cacclze(iz,io) - cacclzs(iz,io)
+          do ip = 1, np
+c           --- "right" end of velocity advance step
+            zr = zlframe + vz(ip)*dtr
+c           --- calculate correction on position
+            if (zlframe < cacclz .and. cacclz < zr) then
+              gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+              deltav = sqrt(vz(ip)**2 + 2.*qoverm*gapez*caccll) - vz(ip)
+              zp(ip) = zp(ip) - (cacclz - zlframe)*vzi(ip)*deltav
+            endif
+            if (zr < cacclz .and. cacclz < zlframe + vz(ip)*dtp(ip)) then
+              gapez = cacclez(iz,io) + cacclxw(iz,io)*xp(ip)
+              deltav = sqrt(vz(ip)**2 + 2.*qoverm*gapez*caccll) - vz(ip)
+              zp(ip) = zp(ip) + (dtp(ip) - (cacclz - zlframe)*vzi(ip))*deltav
+            endif
+          enddo
         enddo
 
       endif
@@ -3491,6 +3491,7 @@ c=============================================================================
       use InGen
       use InPart
       use Lattice
+      use LatticeInternal
       use Picglb
       use Particles
       real(kind=8):: zcorrection
@@ -3504,109 +3505,135 @@ c since that may force some particles off of the mesh. Instead, the
 c zcorrection is returned so that it can be dealt with in a reasonable way
 c by the calling routine.
 
-      integer(ISZ):: j,id = 0
+      integer(ISZ):: io,id,astat
+      integer(ISZ),allocatable:: aid(:)
       real(kind=8):: offset,zs,ze,zc
       real(kind=8):: gapez,z1,z2,vn,frac,qoverm
       real(kind=8):: zl,zr,vbeamfrmo,deltav
       real(kind=8):: zbeamnew
-      save id
+      save aid
+
+      if (.not. allocated(aid)) then
+        allocate(aid(nacclol),stat=astat)
+        if (astat .ne. 0) then
+          print*,"ERROR: acclbfrm: not enough space to allocate temp"
+          print*,"array. Array size needed is ",nacclol
+          stop
+        endif
+        aid = oaccloi(oacclii)
+      else if (size(aid) < nacclol) then
+        deallocate(aid)
+        allocate(aid(nacclol),stat=astat)
+        if (astat .ne. 0) then
+          print*,"ERROR: acclbfrm: not enough space to allocate temp"
+          print*,"array. Array size needed is ",nacclol
+          stop
+        endif
+        aid = oaccloi(oacclii)
+      endif
 
       qoverm = sq(1)/sm(1)
       zcorrection = 0.
 
       if (accls .and. vbeamfrm .ne. 0.) then
 
-c       --- index of accl element in center of beam frame
-c       --- The id is saved in order to minize the time searching for the
-c       --- next accl element from call to call.
-        call getelemid(zbeam,offset,naccl,acclzs(0),acclze(0),id) 
+        do io=1,nacclol
+          if (.not. linaccl(io)) cycle
 
-c       --- Check if this gap should accelerate the beam frame.
-        if (acclsw(id) .ne. 0) return
+c         --- index of accl element in center of beam frame
+c         --- The id is saved in order to minize the time searching for the
+c         --- next accl element from call to call.
+          call getelemid(zbeam,offset,naccl,acclzs,acclze,oacclnn(io),
+     &                   oaccloi(oacclii(io)),oacclio,aid(io))
+          id = aid(io)
 
-c       --- Set some temporaries
-        gapez = acclez(id)
-        zs = acclzs(id) + offset
-        ze = acclze(id) + offset
+c         --- Check if this gap should accelerate the beam frame.
+          if (acclsw(id) .ne. 0) return
 
-c       --- If not using zero length gaps then do residence corrections
-c       --- across the gap.
-        if (.not. lacclzl) then
+c         --- Set some temporaries
+          gapez = acclez(id)
+          zs = acclzs(id) + offset
+          ze = acclze(id) + offset
 
-c         --- Calculate grid frame velocity at time level n
-          z1 = zbeam - 0.5*dt*vbeamfrm - 0.5*gapez*qoverm*(dt*0.5)**2
-          z2 = zbeam - 0.5*dt*vbeamfrm
-          if (zbeam .le. zs) then
-            vn = vbeamfrm
-          elseif (z1 .lt. zs) then
-            vn = sqrt(vbeamfrm**2 + 2.*gapez*qoverm*(zbeam - zs))
-          elseif (zbeam .le. ze) then
-            vn = vbeamfrm + 0.5*gapez*qoverm*dt
-          elseif (z2 .lt. ze) then
-            vn = 0.5*(vbeamfrm + 0.5*gapez*qoverm*dt + sqrt((vbeamfrm +
-     &           0.5*gapez*qoverm*dt)**2 -
-     &           4.*gapez*qoverm*(zbeam - ze)))
-          else
-            vn = vbeamfrm
-          endif
-c         --- Calculate the fraction of time in the gap.  Cases inside
-c         --- and outside are included implicitly in the max and min calls.
-c         --- Note that the max's inside the sqrt are for idiot proofing.
-          if (zbeam .le. zs) then
-            frac = max(0.5 + (zbeam - zs)/(vn*dt) , 0.)
-          elseif (zbeam .le. (zs + ze)*0.5) then
-            frac = min(0.5 + 2.*(zbeam - zs)/
-     &             (dt*(sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
-     &             (zbeam - zs))) + vn)), 1.)
-          elseif (zbeam .le. ze) then
-            frac = min(0.5 + 2.*(ze - zbeam)/
-     &             (dt*(sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
-     &             (ze - zbeam))) + vn)), 1.)
-          else
-            frac = max(0.5 - (zbeam - ze)/(vn*dt) , 0.)
-          endif
-c         --- do correction on position
-          zbeamnew = zbeam
-          call zgapcorr(1,zbeamnew,0.,vbeamfrm,1.,zbeamnew,-dt*0.5,dt*0.5,dt,
-     &                  sm(1),sq(1),time)
-          zcorrection = zbeamnew - zbeam
-c         --- add acceleration to beam frame velocity
-          vbeamfrm = vbeamfrm + gapez*qoverm*dt*frac
-c         --- also change beam frame velocity
-          vbeam = vbeamfrm
+c         --- If not using zero length gaps then do residence corrections
+c         --- across the gap.
+          if (.not. lacclzl) then
 
-        else
-c         --- Zero-length gap
-
-c         --- location of gap center
-          zc = 0.5*(zs + ze)
-c         --- "left" end of velocity advance step
-          zl = zbeam - 0.5*vbeamfrm*dt
-c         --- "right" end of velocity advance step
-          zr = zbeam + 0.5*vbeamfrm*dt
-c         --- Save current beam velocity
-          vbeamfrmo = vbeamfrm
-c         --- add acceleration to beam velocity
-          if (zl .le. zc .and. zc .lt. zr) then
-            vbeamfrm = sqrt(vbeamfrm**2 + 2.*qoverm*acclez(id)*(ze - zs))
+c           --- Calculate grid frame velocity at time level n
+            z1 = zbeam - 0.5*dt*vbeamfrm - 0.5*gapez*qoverm*(dt*0.5)**2
+            z2 = zbeam - 0.5*dt*vbeamfrm
+            if (zbeam .le. zs) then
+              vn = vbeamfrm
+            elseif (z1 .lt. zs) then
+              vn = sqrt(vbeamfrm**2 + 2.*gapez*qoverm*(zbeam - zs))
+            elseif (zbeam .le. ze) then
+              vn = vbeamfrm + 0.5*gapez*qoverm*dt
+            elseif (z2 .lt. ze) then
+              vn = 0.5*(vbeamfrm + 0.5*gapez*qoverm*dt + sqrt((vbeamfrm +
+     &             0.5*gapez*qoverm*dt)**2 -
+     &             4.*gapez*qoverm*(zbeam - ze)))
+            else
+              vn = vbeamfrm
+            endif
+c           --- Calculate the fraction of time in the gap.  Cases inside
+c           --- and outside are included implicitly in the max and min calls.
+c           --- Note that the max's inside the sqrt are for idiot proofing.
+            if (zbeam .le. zs) then
+              frac = max(0.5 + (zbeam - zs)/(vn*dt) , 0.)
+            elseif (zbeam .le. (zs + ze)*0.5) then
+              frac = min(0.5 + 2.*(zbeam - zs)/
+     &               (dt*(sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
+     &               (zbeam - zs))) + vn)), 1.)
+            elseif (zbeam .le. ze) then
+              frac = min(0.5 + 2.*(ze - zbeam)/
+     &               (dt*(sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
+     &               (ze - zbeam))) + vn)), 1.)
+            else
+              frac = max(0.5 - (zbeam - ze)/(vn*dt) , 0.)
+            endif
+c           --- do correction on position
+            zbeamnew = zbeam
+            call zgapcorr(1,zbeamnew,0.,vbeamfrm,1.,zbeamnew,-dt*0.5,dt*0.5,dt,
+     &                    sm(1),sq(1),time)
+            zcorrection = zcorrection + zbeamnew - zbeam
+c           --- add acceleration to beam frame velocity
+            vbeamfrm = vbeamfrm + gapez*qoverm*dt*frac
+c           --- also change beam frame velocity
             vbeam = vbeamfrm
-          endif
-c         --- calculate correction on position of beam frame
-          frac = 0.
-          deltav = 0.
-          if (zbeam .lt. zc .and. zc .lt. zr) then
-            frac = - (zc - zbeam)/(vbeamfrmo*dt)
-            deltav = vbeamfrm - vbeamfrmo
-          endif
-          if (zr .lt. zc .and. zc .lt. zbeam+vbeamfrmo*dt) then
-            frac = 1. - (zc - zbeam)/(vbeamfrmo*dt)
-            deltav = sqrt(vbeamfrm**2 + 2.*qoverm*acclez(id)*(ze - zs))
-     &               - vbeamfrm
-          endif
-c         --- Set the correction to the beam frame position
-          zcorrection = frac*deltav*dt
 
-        endif
+          else
+c           --- Zero-length gap
+
+c           --- location of gap center
+            zc = 0.5*(zs + ze)
+c           --- "left" end of velocity advance step
+            zl = zbeam - 0.5*vbeamfrm*dt
+c           --- "right" end of velocity advance step
+            zr = zbeam + 0.5*vbeamfrm*dt
+c           --- Save current beam velocity
+            vbeamfrmo = vbeamfrm
+c           --- add acceleration to beam velocity
+            if (zl .le. zc .and. zc .lt. zr) then
+              vbeamfrm = sqrt(vbeamfrm**2 + 2.*qoverm*acclez(id)*(ze - zs))
+              vbeam = vbeamfrm
+            endif
+c           --- calculate correction on position of beam frame
+            frac = 0.
+            deltav = 0.
+            if (zbeam .lt. zc .and. zc .lt. zr) then
+              frac = - (zc - zbeam)/(vbeamfrmo*dt)
+              deltav = vbeamfrm - vbeamfrmo
+            endif
+            if (zr .lt. zc .and. zc .lt. zbeam+vbeamfrmo*dt) then
+              frac = 1. - (zc - zbeam)/(vbeamfrmo*dt)
+              deltav = sqrt(vbeamfrm**2 + 2.*qoverm*acclez(id)*(ze - zs))
+     &                 - vbeamfrm
+            endif
+c           --- Set the correction to the beam frame position
+            zcorrection = zcorrection + frac*deltav*dt
+
+          endif
+        enddo
       endif
 
       return

@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.9 $, $Date: 2001/05/22 20:27:50 $
+#@(#) File TOP.V, version $Revision: 3.10 $, $Date: 2001/05/26 00:48:58 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -158,6 +158,8 @@ runmaker character*(35) /" "/    # Name of person running code / special notes
 # Element 0 is set using periodicity if user doesn't set it.
 zlatperi  real    /0./    [m] # Periodicity length of lattice
 zlatstrt  real    /0./    [m] # Z of lattice start (added to element z's)
+zlatbuffer real   /0./    [m] # Buffer added to element lengths so nearby
+                              # elements are considered overlapping.
 acclzstt  real    /-1.e9/ [m] # Z where accl gaps start
 lacclzl   logical /.false./   # When true, accelerating gaps are zero length
 dipotype character*8 /"Userset"/ # Use "box" to autoset to box dipoles
@@ -179,25 +181,25 @@ naccl     integer /NELEMENT/  # No. of accelerator elements in lattice
 ntaccl    integer /0/   # No. times for which the gap field is stored in acclet
 nemlt     integer /NELEMENT/  # No. of electric multipole elements in lattice
 nmmlt     integer /NELEMENT/  # No. of magnetic multipole elements in lattice
-nmmlt2    integer /NELEMENT/  # 
 neerr     integer /1000/      # No. of electric mult elements for which error
                               # data is stored
 nmerr     integer /1000/      # No. of magnetic mult elements for which error
                               # data is stored
 nbgrd     integer /NELEMENT/  # No. of elements with B field on a 3-D grid
-nbgrd2    integer /NELEMENT/  
 npgrd     integer /NELEMENT/  # No. of elements with potential on a 3-D grid
 drftzs(0:ndrft)   _real [m]   # Z's of drift starts
 drftze(0:ndrft)   _real [m]   # Z's of drift ends
 drftap(0:ndrft)   _real [m]   # Aperture in drifts
 drftox(0:ndrft)   _real [m]   # X-offsets of drifts
 drftoy(0:ndrft)   _real [m]   # Y-offsets of drifts
+drftol(0:ndrft)   _integer    # Overlap level of the element (autoset)
 bendzs(0:nbend)   _real [m]   # Z's of bend starts
 bendze(0:nbend)   _real [m]   # Z's of bend ends
 bendrc(0:nbend)   _real [m]   # Radii of curvature of bends
 bendap(0:nbend)   _real [m]   # Aperture in bends
 bendox(0:nbend)   _real [m]   # X-offsets of bends (for aperture only)
 bendoy(0:nbend)   _real [m]   # Y-offsets of bends (for aperture only)
+bendol(0:ndipo)   _integer    # Overlap level of the element (autoset)
 dipozs(0:ndipo)   _real [m]   # Z's of dipo starts (set from bendzs if =dipoze)
 dipoze(0:ndipo)   _real [m]   # Z's of dipo ends   (set from bendze if =dipozs)
 dipoby(0:ndipo)   _real [T]   # By's of dipos (set from bendrc if 0 & dipoex=0)
@@ -215,6 +217,7 @@ dipol1(0:ndipo)   _real [m]   # Length of first dipole plates
 dipol2(0:ndipo)   _real [m]   # Length of second dipole plates
 dipow1(0:ndipo)   _real [m]   # Width of first dipole plates
 dipow2(0:ndipo)   _real [m]   # Width of second dipole plates
+dipool(0:ndipo)   _integer    # Overlap level of the element (autoset)
 quadzs(0:nquad)   _real [m]   # Z's of quad starts (hard-edge measure) 
 quadze(0:nquad)   _real [m]   # Z's of quad ends   (hard-edge measure)
 quaddb(0:nquad)   _real [T/m] # Magnetic quad strengths (field gradients)
@@ -236,7 +239,8 @@ quadpw(0:nquad)   _real [m]   # End plate width of electrostatic quadrupole
 quadpa(0:nquad)   _real [m]   # End plate aperture of electrostatic quadrupole
 quadpr(0:nquad)   _real [m]   # End plate max radius
 quadsl(0:nquad)   _real [m]   # Slant of rod which makes it a cone
-dodec              real /0./ [1] # relative strength of dodecopole at pole tip
+quadol(0:nquad)   _integer    # Overlap level of the element (autoset)
+dodec              real [1]   # relative strength of dodecopole at pole tip
 qdelglx(0:nquad)  _real [m]   # Change in gap length on x axis
 qdelgly(0:nquad)  _real [m]   # Change in gap length on y axis
 qdelaxp(0:nquad)  _real [m]   # Change in aperture of rod on plus  x axis
@@ -267,8 +271,9 @@ sextzs(0:nsext)   _real [m]   # Z's of sextupole starts
 sextze(0:nsext)   _real [m]   # Z's of sextupole ends
 sextdb(0:nsext)   _real [ ]   # d^2 B/dx^2 field of sextupole (6*V33)
 sextde(0:nsext)   _real [ ]   # d^2 E/dx^2 field of sextupole (6*V33)
-helezs(0:nhele)   _real    [m] # Z's of hard-edge (h.e.) multipole starts
-heleze(0:nhele)   _real    [m] # Z's of hard-edge (h.e.) multipole ends
+sextol(0:nsext)   _integer    # Overlap level of the element (autoset)
+helezs(0:nhele)   _real   [m] # Z's of hard-edge (h.e.) multipole starts
+heleze(0:nhele)   _real   [m] # Z's of hard-edge (h.e.) multipole ends
 heleap(0:nhele)   _real [m]   # Aperture in hard-edge elements
 heleae(1:nhmlt,0:nhele)   _real    [var]
                               # amplitude of h.e. electric multipoles
@@ -298,43 +303,37 @@ helegl(0:nhele)   _real [m]   # Length of electrostatic quadrupole gap
 helegp(0:nhele)   _real [ ]   # Gap position of ESQ, only sign is used
 helepw(0:nhele)   _real [m]   # End plate width of electrostatic quadrupole
 helepa(0:nhele)   _real [m]   # End plate aperture of electrostatic quadrupole
-emltzs(0:nemlt)   _real [m]  # Z's of electric multipole element starts
-emltze(0:nemlt)   _real [m]  # Z's of electric multipole element ends
-emltap(0:nemlt)   _real [m]  # Aperture in electric multipole elements
-emltph(0:nemlt)   _real [rad]# Phase angle of electric multipole element field
+heleol(0:nhele)   _integer    # Overlap level of the element (autoset)
+emltzs(0:nemlt)   _real [m]   # Z's of electric multipole element starts
+emltze(0:nemlt)   _real [m]   # Z's of electric multipole element ends
+emltap(0:nemlt)   _real [m]   # Aperture in electric multipole elements
+emltph(0:nemlt)   _real [rad] # Phase angle of electric multipole element field
 emltsf(0:nemlt)   _real [1] /0./ # Scale factor for electric multipole element
                                  # Field is scaled by (emltsc+emltsf)
 emltsc(0:nemlt)   _real [1] /1./ # Scale factor for electric multipole element
                                  # Field is scaled by (emltsc+emltsf)
-emltid(0:nemlt)   _integer   # Index of electric multipole dataset 
-emltox(0:neerr)   _real [m]  # Offset in x of electric multipole centers
-emltoy(0:neerr)   _real [m]  # Offset in y of electric multipole centers
+emltid(0:nemlt)   _integer    # Index of electric multipole dataset 
+emltox(0:neerr)   _real [m]   # Offset in x of electric multipole centers
+emltoy(0:neerr)   _real [m]   # Offset in y of electric multipole centers
 emltrr(0:nemlt)   _real [m]   # Radius of electrostatic quadrupole rod
 emltrl(0:nemlt)   _real [m]   # Length of electrostatic quadrupole rod
 emltgl(0:nemlt)   _real [m]   # Length of electrostatic quadrupole gap
 emltgp(0:nemlt)   _real [ ]   # Gap position of ESQ, only sign is used
 emltpw(0:nemlt)   _real [m]   # End plate width of electrostatic quadrupole
 emltpa(0:nemlt)   _real [m]   # End plate aperture of electrostatic quadrupole
-mmltzs(0:nmmlt)   _real [m]  # Z's of magnetic multipole element starts
-mmltze(0:nmmlt)   _real [m]  # Z's of magnetic multipole element ends
-mmltap(0:nmmlt)   _real [m]  # Aperture in magnetic multipole elements
-mmltph(0:nmmlt)   _real [rad]# Phase angle of magnetic multipole element field
+emltol(0:nemlt)   _integer    # Overlap level of the element (autoset)
+mmltzs(0:nmmlt)   _real [m]   # Z's of magnetic multipole element starts
+mmltze(0:nmmlt)   _real [m]   # Z's of magnetic multipole element ends
+mmltap(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements
+mmltph(0:nmmlt)   _real [rad] # Phase angle of magnetic multipole element field
 mmltsf(0:nmmlt)   _real [1] /0./ # Scale factor for magnetic multipole element
                                  # Field is scaled by (mmltsc+mmltsf)
 mmltsc(0:nmmlt)   _real [1] /1./ # Scale factor for magnetic multipole element
                                  # Field is scaled by (mmltsc+mmltsf)
-mmltid(0:nmmlt)   _integer   # Index of magnetic multipole dataset
-mmltox(0:nmerr)   _real [m]  # Offset in x of magnetic multipole centers
-mmltoy(0:nmerr)   _real [m]  # Offset in y of magnetic multipole centers
-mmlt2zs(0:nmmlt2) _real [m]  # Repeat of mmlt element for axial overlaps 
-mmlt2ze(0:nmmlt2) _real [m]  
-mmlt2ap(0:nmmlt2) _real [m]  
-mmlt2ph(0:nmmlt2) _real [rad]
-mmlt2sf(0:nmmlt2) _real [1] /0./ 
-mmlt2sc(0:nmmlt2) _real [1] /1./ 
-mmlt2id(0:nmmlt2) _integer   
-mmlt2ox(0:nmerr)  _real [m]  
-mmlt2oy(0:nmerr)  _real [m]  
+mmltid(0:nmmlt)   _integer    # Index of magnetic multipole dataset
+mmltox(0:nmerr)   _real [m]   # Offset in x of magnetic multipole centers
+mmltoy(0:nmerr)   _real [m]   # Offset in y of magnetic multipole centers
+mmltol(0:nmmlt)   _integer    # Overlap level of the element (autoset)
 acclzs(0:naccl)   _real [m]   # Z's of acceleration gap starts
 acclze(0:naccl)   _real [m]   # Z's of acceleration gap ends
 acclez(0:naccl)   _real [V/m] # Ez's of acceleration gaps, constant part
@@ -348,6 +347,7 @@ acclet(0:ntaccl,0:naccl) _real [V/m] # Ez's of acceleration gaps as a function
                                      # of time.
 acclts(0:naccl)   _real [t]   # Time of start of gap field in acclet
 accldt(0:naccl)   _real [t]   # Delta t for gap field data in acclet
+acclol(0:naccl)   _integer    # Overlap level of the element (autoset)
 bgrdzs(0:nbgrd)   _real [m]   # Z starts of 3-D grid of B field data (BGRDdata)
 bgrdze(0:nbgrd)   _real [m]   # Z ends of 3-D grid of B field data (BGRDdata)
 bgrdxs(0:nbgrd)   _real [m]   # X starts of 3-D grid of B field data (BGRDdata)
@@ -366,20 +366,7 @@ bgrdsc(0:nbgrd) _real [1] /1./ # Scale factor to multiply 3-D B field data set
 bgrdsy(0:nbgrd) _integer /0/   # Level of symmetry in the bgrd data.
                                # (0, no symmetry; 2, quadrupole)
                                # Defaul is no symmetry.
-bgrd2zs(0:nbgrd2)  _real [m]   # Repeat of bgrd for axial overlaps of bgrd 
-bgrd2ze(0:nbgrd2)  _real [m]   
-bgrd2xs(0:nbgrd2)  _real [m]   
-bgrd2ys(0:nbgrd2)  _real [m]   
-bgrd2ap(0:nbgrd2)  _real [m]
-bgrd2ox(0:nbgrd2)  _real [m]   
-bgrd2oy(0:nbgrd2)  _real [m]   
-bgrd2ph(0:nbgrd2)  _real [rad] 
-bgrd2sp(0:nbgrd2)  _real [1]   
-bgrd2cp(0:nbgrd2)  _real [1]   
-bgrd2id(0:nbgrd2)  _integer    
-bgrd2sf(0:nbgrd2) _real [1] /0./                                
-bgrd2sc(0:nbgrd2) _real [1] /1./                                
-bgrd2sy(0:nbgrd) _integer /0/
+bgrdol(0:nbgrd)   _integer    # Overlap level of the element (autoset)
 pgrdzs(0:npgrd)   _real [m]   # Z starts of 3-D grid of potential data(PGRDdata)
 pgrdze(0:npgrd)   _real [m]   # Z ends of 3-D grid of potential data(PGRDdata)
 pgrdxs(0:npgrd)   _real [m]   # X starts of 3-D grid of potential data(PGRDdata)
@@ -401,6 +388,7 @@ pgrdgl(0:npgrd)   _real [m]   # Length of electrostatic quadrupole gap
 pgrdgp(0:npgrd)   _real [ ]   # Gap position of ESQ, only sign is used
 pgrdpw(0:npgrd)   _real [m]   # End plate width of electrostatic quadrupole
 pgrdpa(0:npgrd)   _real [m]   # End plate aperture of electrostatic quadrupole
+pgrdol(0:npgrd)   _integer    # Overlap level of the element (autoset)
 drfts     logical             # Flag for existence of drfts (auto set)
 bends     logical             # Flag for existence of bends (auto set)
 dipos     logical             # Flag for existence of dipos (auto set)
@@ -410,9 +398,7 @@ heles     logical             # Flag for exist. of hard-edge mults (auto set)
 accls     logical             # Flag for existence of accel (auto set)
 emlts     logical             # Flag for existence of emlts (auto set)
 mmlts     logical             # Flag for existence of mmlts (auto set)
-mmlt2s    logical  
 bgrds     logical             # Flag for existence of bgrds (auto set)
-bgrd2s    logical 
 pgrds     logical             # Flag for existence of pgrds (auto set)
 diposet   logical  /.true./   # Auto-set dipoles from bend locations and radii 
 
@@ -490,101 +476,148 @@ pgrd(0:pgrdnx,0:pgrdny,-1:pgrdnz+1,pgrdns) _real [V] # Potential
 *********** LatticeInternal dump:
 # Internal lattice arrays, all derived from Lattice data
 # nzl is set to nz by pkg w3d (etc.) at generation
-dzl                     real   [m]     # LatticeInternal mesh grid cell size
-dzli                    real   [m]     # LatticeInternal grid cell size inverse
-zlframe                 real   [m]     # Location of LatticeInternal frame
-zltime                  real   [m]     # Time of LatticeInternal frame
-zlmin                   real   [m] +parallel # LatticeInternal mesh maximum in z
-zlmax                   real   [m] +parallel # LatticeInternal mesh minimum in z
-nzl               integer /0/  [1] +parallel # Number of LatticeInternal points
-nzlmax            integer /0/  [1] +parallel # Length of LatticeInternal arrays
-zlmesh(0:nzlmax)       _real   [m] +parallel # LatticeInternal Z mesh
-cdrftzs(0:nzlmax)      _real   [m]     # by zcells, Z's of drft starts
-cdrftze(0:nzlmax)      _real   [m]     # by zcells, Z's of drft ends
-cdrftid(0:nzlmax)   _integer           # by zcells, Index to drft arrays
-cbendzs(0:nzlmax)      _real   [m]     # by zcells, Z's of bend starts
-cbendze(0:nzlmax)      _real   [m]     # by zcells, Z's of bend ends
-cbendrc(0:nzlmax)      _real   [m]     # by zcells, Radii of curvature of bends
-cbendid(0:nzlmax)   _integer           # by zcells, Index to bend arrays
-cdipozs(0:nzlmax)      _real   [m]     # by zcells, Z's of dipo starts 
-cdipoze(0:nzlmax)      _real   [m]     # by zcells, Z's of dipo ends  
-cdipoby(0:nzlmax)      _real   [T]     # by zcells, By's of dipos
-cdipobx(0:nzlmax)      _real   [T]     # by zcells, Bx's of dipos
-cdipota(0:nzlmax)      _real   [1]     # by zcells, tan's of dipos entry angles
-cdipotb(0:nzlmax)      _real   [1]     # by zcells, tan's of dipos exit angles
-cdipoex(0:nzlmax)      _real   [V/m]   # by zcells, Ex's of dipos
-cdipoey(0:nzlmax)      _real   [V/m]   # by zcells, Ey's of dipos
-cdipoid(0:nzlmax)   _integer           # by zcells, Index to dipo arrays
-cquadzs(0:nzlmax)      _real   [m]     # by zcells, Z's of quad starts
-cquadze(0:nzlmax)      _real   [m]     # by zcells, Z's of quad ends
-cquaddb(0:nzlmax)      _real   [ ]     # by zcells, Magnetic quad fld gradients
-cquadde(0:nzlmax)      _real   [ ]     # by zcells, Electric quad fld gradients
-cquadvx(0:nzlmax)      _real   [V]     # by zcells, Voltage on x axis rods
-cquadvy(0:nzlmax)      _real   [V]     # by zcells, Voltage on y axis rods
-cquadid(0:nzlmax)   _integer           # by zcells, Index to quad arrays
-cqoffx(0:nzlmax)       _real   [m]     # by zcells, quad offset in x
-cqoffy(0:nzlmax)       _real   [m]     # by zcells, quad offset in y
-csextzs(0:nzlmax)      _real   [m]     # by zcells, Z's of sextupole starts
-csextze(0:nzlmax)      _real   [m]     # by zcells, Z's of sextupole ends
-csextdb(0:nzlmax)      _real   [ ]     # by zcells, d^2 B/dx^2 of sext (6*V33)
-csextde(0:nzlmax)      _real   [ ]     # by zcells, d^2 E/dx^2 of sext (6*V33)
-csextid(0:nzlmax)   _integer           # by zcells, Index to sext arrays
-cheleid(0:nzlmax)   _integer           # by zcells, Index to hele arrays
-chelezs(0:nzlmax)      _real   [m]     # by zcells, Z's of h.e. element starts
-cheleze(0:nzlmax)      _real   [m]     # by zcells, Z's of h.e. element ends
-cemltzs(0:nzlmax)      _real   [m]     # by zcells, Z's of electric mult starts
-cemltze(0:nzlmax)      _real   [m]     # by zcells, Z's of electric mult ends
-cemltph(0:nzlmax)      _real   [rad]   # by zcells, Phase of electric mult
-cemltsf(0:nzlmax)      _real   [1]     # by zcells, Scale factor of e.s. mult
-cemltsc(0:nzlmax)      _real   [1]     # by zcells, Scale factor of e.s. mult
-cemltid(0:nzlmax)   _integer           # by zcells, Index of emlt arrays
-cemltim(0:nzlmax)   _integer           # by zcells, Index of multipole dataset
-cemltox(0:nzlmax)      _real   [m]     # by zcells, Offset in x of mult centers
-cemltoy(0:nzlmax)      _real   [m]     # by zcells, Offset in y of mult centers
-cmmltzs(0:nzlmax)      _real   [m]     # by zcells, Z's of magnetic mult starts
-cmmltze(0:nzlmax)      _real   [m]     # by zcells, Z's of magnetic mult ends
-cmmltph(0:nzlmax)      _real   [rad]   # by zcells, Phase of magnetic mult
-cmmltsf(0:nzlmax)      _real   [1]     # by zcells, Scale factor of m.s. mult
-cmmltsc(0:nzlmax)      _real   [1]     # by zcells, Scale factor of m.s. mult
-cmmltid(0:nzlmax)   _integer           # by zcells, Index of mmlt arrays
-cmmltim(0:nzlmax)   _integer           # by zcells, Index of multipole dataset
-cmmltox(0:nzlmax)      _real   [m]     # by zcells, Offset in x of mult centers
-cmmltoy(0:nzlmax)      _real   [m]     # by zcells, Offset in y of mult centers
-cmmlt2zs(0:nzlmax)     _real   [m]     
-cmmlt2ze(0:nzlmax)     _real   [m]     
-cmmlt2ph(0:nzlmax)     _real   [rad]   
-cmmlt2sf(0:nzlmax)     _real   [1]     
-cmmlt2sc(0:nzlmax)     _real   [1]     
-cmmlt2id(0:nzlmax)  _integer           
-cmmlt2im(0:nzlmax)  _integer           
-cmmlt2ox(0:nzlmax)     _real   [m]     
-cmmlt2oy(0:nzlmax)     _real   [m]     
-cacclzs(0:nzlmax)      _real   [m]     # by zcells, Z's of accelerator gap start
-cacclze(0:nzlmax)      _real   [m]     # by zcells, Z's of accelerator gap ends
-cacclez(0:nzlmax)      _real   [V/m]   # by zcells, const Ez's of accl gaps
-cacclxw(0:nzlmax)      _real   [V/m^2] # by zcells, x-weights for accl gap Ez's 
-cacclsw(0:nzlmax)      _real   [1]     # by zcells, switch for grid accel by gap
-cacclid(0:nzlmax)   _integer           # by zcells, Index of accl arrays
-cbgrdzs(0:nzlmax)      _real   [m]     # by zcells, Z's of 3-D B field start
-cbgrdze(0:nzlmax)      _real   [m]     # by zcells, Z's of 3-D B field end
-cbgrdid(0:nzlmax)   _integer   [1]     # by zcells, Index of bgrd arrays
-cbgrd2zs(0:nzlmax)     _real   [m]     
-cbgrd2ze(0:nzlmax)     _real   [m]     
-cbgrd2id(0:nzlmax)  _integer   [1]     
-cpgrdzs(0:nzlmax)      _real   [m]     # by zcells, Z's of 3-D potential start
-cpgrdze(0:nzlmax)      _real   [m]     # by zcells, Z's of 3-D potential end
-cpgrdid(0:nzlmax)   _integer   [1]     # by zcells, Index of pgrd arrays
-linbend              logical           # Flag for when mesh in bend element
-linemlt              logical           # Flag for when mesh in emlt element
-linmmlt              logical           # Flag for when mesh in mmlt element
-linmmlt2             logical 
-linbgrd              logical           # Flag for when mesh in bgrd element
-linbgrd2             logical 
-linpgrd              logical           # Flag for when mesh in pgrd element
+dzl                   real [m]     # LatticeInternal mesh grid cell size
+dzli                  real [m]     # LatticeInternal grid cell size inverse
+zlframe               real [m]     # Location of LatticeInternal frame
+zltime                real [m]     # Time of LatticeInternal frame
+zlmin                 real [m] +parallel # LatticeInternal mesh maximum in z
+zlmax                 real [m] +parallel # LatticeInternal mesh minimum in z
+nzl                integer /0/ [1] +parallel # Number of LatticeInternal points
+nzlmax             integer /0/ [1] +parallel # Length of LatticeInternal arrays
+zlmesh(0:nzlmax)     _real [m] +parallel # LatticeInternal Z mesh
+ndrftol            integer /1/ # Maximum level of overlapping drft elements
+odrftoi(0:ndrft)   _integer     # Overlap indices for drft elements
+odrftio(0:ndrft)   _integer     # Overlap indices for drft elements
+odrftii(ndrftol)   _integer     # Overlap indices for drft elements
+odrftnn(ndrftol)   _integer     # Number of drft elements in overlap levels
+nbendol            integer /1/ # Maximum level of overlapping bend elements
+obendoi(0:nbend)   _integer     # Overlap indices for bend elements
+obendio(0:nbend)   _integer     # Overlap indices for bend elements
+obendii(nbendol)   _integer     # Overlap indices for bend elements
+obendnn(nbendol)   _integer     # Number of bend elements in overlap levels
+ndipool            integer /1/ # Maximum level of overlapping dipo elements
+odipooi(0:ndipo)   _integer     # Overlap indices for dipo elements
+odipoio(0:ndipo)   _integer     # Overlap indices for dipo elements
+odipoii(ndipool)   _integer     # Overlap indices for dipo elements
+odiponn(ndipool)   _integer     # Number of dipo elements in overlap levels
+nquadol            integer /1/ # Maximum level of overlapping quad elements
+oquadoi(0:nquad)   _integer     # Overlap indices for quad elements
+oquadio(0:nquad)   _integer     # Overlap indices for quad elements
+oquadii(nquadol)   _integer     # Overlap indices for quad elements
+oquadnn(nquadol)   _integer     # Number of quad elements in overlap levels
+nsextol            integer /1/ # Maximum level of overlapping sext elements
+osextoi(0:nsext)   _integer     # Overlap indices for sext elements
+osextio(0:nsext)   _integer     # Overlap indices for sext elements
+osextii(nsextol)   _integer     # Overlap indices for sext elements
+osextnn(nsextol)   _integer     # Number of sext elements in overlap levels
+nheleol            integer /1/ # Maximum level of overlapping hele elements
+oheleoi(0:nhele)   _integer     # Overlap indices for hele elements
+oheleio(0:nhele)   _integer     # Overlap indices for hele elements
+oheleii(nheleol)   _integer     # Overlap indices for hele elements
+ohelenn(nheleol)   _integer     # Number of hele elements in overlap levels
+nemltol            integer /1/ # Maximum level of overlapping emlt elements
+oemltoi(0:nemlt)   _integer     # Overlap indices for emlt elements
+oemltio(0:nemlt)   _integer     # Overlap indices for emlt elements
+oemltii(nemltol)   _integer     # Overlap indices for emlt elements
+oemltnn(nemltol)   _integer     # Number of emlt elements in overlap levels
+nmmltol            integer /1/ # Maximum level of overlapping mmlt elements
+ommltoi(0:nmmlt)   _integer     # Overlap indices for mmlt elements
+ommltio(0:nmmlt)   _integer     # Overlap indices for mmlt elements
+ommltii(nmmltol)   _integer     # Overlap indices for mmlt elements
+ommltnn(nmmltol)   _integer     # Number of mmlt elements in overlap levels
+nacclol            integer /1/ # Maximum level of overlapping accl elements
+oaccloi(0:naccl)   _integer     # Overlap indices for accl elements
+oacclio(0:naccl)   _integer     # Overlap indices for accl elements
+oacclii(nacclol)   _integer     # Overlap indices for accl elements
+oacclnn(nacclol)   _integer     # Number of accl elements in overlap levels
+nbgrdol            integer /1/ # Maximum level of overlapping bgrd elements
+obgrdoi(0:nbgrd)   _integer     # Overlap indices for bgrd elements
+obgrdio(0:nbgrd)   _integer     # Overlap indices for bgrd elements
+obgrdii(nbgrdol)   _integer     # Overlap indices for bgrd elements
+obgrdnn(nbgrdol)   _integer     # Number of bgrd elements in overlap levels
+npgrdol            integer /1/ # Maximum level of overlapping pgrd elements
+opgrdoi(0:npgrd)   _integer     # Overlap indices for pgrd elements
+opgrdio(0:npgrd)   _integer     # Overlap indices for pgrd elements
+opgrdii(npgrdol)   _integer     # Overlap indices for pgrd elements
+opgrdnn(npgrdol)   _integer     # Number of pgrd elements in overlap levels
+cdrftzs(0:nzlmax,ndrftol)    _real [m]     # by z, Z's of drft starts
+cdrftze(0:nzlmax,ndrftol)    _real [m]     # by z, Z's of drft ends
+cdrftid(0:nzlmax,ndrftol) _integer         # by z, Index to drft arrays
+cbendzs(0:nzlmax)            _real [m]     # by z, Z's of bend starts
+cbendze(0:nzlmax)            _real [m]     # by z, Z's of bend ends
+cbendrc(0:nzlmax)            _real [m]     # by z, Radii of curvature of bends
+cbendid(0:nzlmax)         _integer         # by z, Index to bend arrays
+cdipozs(0:nzlmax,ndipool)    _real [m]     # by z, Z's of dipo starts 
+cdipoze(0:nzlmax,ndipool)    _real [m]     # by z, Z's of dipo ends  
+cdipoby(0:nzlmax,ndipool)    _real [T]     # by z, By's of dipos
+cdipobx(0:nzlmax,ndipool)    _real [T]     # by z, Bx's of dipos
+cdipota(0:nzlmax,ndipool)    _real [1]     # by z, tan's of dipos entry angles
+cdipotb(0:nzlmax,ndipool)    _real [1]     # by z, tan's of dipos exit angles
+cdipoex(0:nzlmax,ndipool)    _real [V/m]   # by z, Ex's of dipos
+cdipoey(0:nzlmax,ndipool)    _real [V/m]   # by z, Ey's of dipos
+cdipoid(0:nzlmax,ndipool) _integer         # by z, Index to dipo arrays
+cquadzs(0:nzlmax,nquadol)    _real [m]     # by z, Z's of quad starts
+cquadze(0:nzlmax,nquadol)    _real [m]     # by z, Z's of quad ends
+cquaddb(0:nzlmax,nquadol)    _real [ ]     # by z, Magnetic quad fld gradients
+cquadde(0:nzlmax,nquadol)    _real [ ]     # by z, Electric quad fld gradients
+cquadvx(0:nzlmax,nquadol)    _real [V]     # by z, Voltage on x axis rods
+cquadvy(0:nzlmax,nquadol)    _real [V]     # by z, Voltage on y axis rods
+cquadid(0:nzlmax,nquadol) _integer         # by z, Index to quad arrays
+cqoffx(0:nzlmax,nquadol)     _real [m]     # by z, quad offset in x
+cqoffy(0:nzlmax,nquadol)     _real [m]     # by z, quad offset in y
+csextzs(0:nzlmax,nsextol)    _real [m]     # by z, Z's of sextupole starts
+csextze(0:nzlmax,nsextol)    _real [m]     # by z, Z's of sextupole ends
+csextdb(0:nzlmax,nsextol)    _real [ ]     # by z, d^2 B/dx^2 of sext (6*V33)
+csextde(0:nzlmax,nsextol)    _real [ ]     # by z, d^2 E/dx^2 of sext (6*V33)
+csextid(0:nzlmax,nsextol) _integer         # by z, Index to sext arrays
+cheleid(0:nzlmax,nheleol) _integer         # by z, Index to hele arrays
+chelezs(0:nzlmax,nheleol)    _real [m]     # by z, Z's of h.e. element starts
+cheleze(0:nzlmax,nheleol)    _real [m]     # by z, Z's of h.e. element ends
+cemltzs(0:nzlmax,nemltol)    _real [m]     # by z, Z's of electric mult starts
+cemltze(0:nzlmax,nemltol)    _real [m]     # by z, Z's of electric mult ends
+cemltph(0:nzlmax,nemltol)    _real [rad]   # by z, Phase of electric mult
+cemltsf(0:nzlmax,nemltol)    _real [1]     # by z, Scale factor of e.s. mult
+cemltsc(0:nzlmax,nemltol)    _real [1]     # by z, Scale factor of e.s. mult
+cemltid(0:nzlmax,nemltol) _integer         # by z, Index of emlt arrays
+cemltim(0:nzlmax,nemltol) _integer         # by z, Index of multipole dataset
+cemltox(0:nzlmax,nemltol)    _real [m]     # by z, Offset in x of mult centers
+cemltoy(0:nzlmax,nemltol)    _real [m]     # by z, Offset in y of mult centers
+cmmltzs(0:nzlmax,nmmltol)    _real [m]     # by z, Z's of magnetic mult starts
+cmmltze(0:nzlmax,nmmltol)    _real [m]     # by z, Z's of magnetic mult ends
+cmmltph(0:nzlmax,nmmltol)    _real [rad]   # by z, Phase of magnetic mult
+cmmltsf(0:nzlmax,nmmltol)    _real [1]     # by z, Scale factor of m.s. mult
+cmmltsc(0:nzlmax,nmmltol)    _real [1]     # by z, Scale factor of m.s. mult
+cmmltid(0:nzlmax,nmmltol) _integer         # by z, Index of mmlt arrays
+cmmltim(0:nzlmax,nmmltol) _integer         # by z, Index of multipole dataset
+cmmltox(0:nzlmax,nmmltol)    _real [m]     # by z, Offset in x of mult centers
+cmmltoy(0:nzlmax,nmmltol)    _real [m]     # by z, Offset in y of mult centers
+cacclzs(0:nzlmax,nacclol)    _real [m]     # by z, Z's of accelerator gap start
+cacclze(0:nzlmax,nacclol)    _real [m]     # by z, Z's of accelerator gap ends
+cacclez(0:nzlmax,nacclol)    _real [V/m]   # by z, const Ez's of accl gaps
+cacclxw(0:nzlmax,nacclol)    _real [V/m^2] # by z, x-weights for accl gap Ez's 
+cacclsw(0:nzlmax,nacclol)    _real [1]     # by z, switch for grid accel by gap
+cacclid(0:nzlmax,nacclol) _integer         # by z, Index of accl arrays
+cbgrdzs(0:nzlmax,nbgrdol)    _real [m]     # by z, Z's of 3-D B field start
+cbgrdze(0:nzlmax,nbgrdol)    _real [m]     # by z, Z's of 3-D B field end
+cbgrdid(0:nzlmax,nbgrdol) _integer [1]     # by z, Index of bgrd arrays
+cpgrdzs(0:nzlmax,npgrdol)    _real [m]     # by z, Z's of 3-D potential start
+cpgrdze(0:nzlmax,npgrdol)    _real [m]     # by z, Z's of 3-D potential end
+cpgrdid(0:nzlmax,npgrdol) _integer [1]     # by z, Index of pgrd arrays
+lindrft(0:ndrftol)        _logical         # Flag for when drft element in mesh
+linbend                   _logical         # Flag for when bend element in mesh
+lindipo(0:ndipool)        _logical         # Flag for when dipo element in mesh
+linquad(0:nquadol)        _logical         # Flag for when quad element in mesh
+linsext(0:nsextol)        _logical         # Flag for when sext element in mesh
+linhele(0:nheleol)        _logical         # Flag for when hele element in mesh
+linemlt(0:nemltol)        _logical         # Flag for when emlt element in mesh
+linmmlt(0:nmmltol)        _logical         # Flag for when mmlt element in mesh
+linaccl(0:nacclol)        _logical         # Flag for when accl element in mesh
+linbgrd(0:nbgrdol)        _logical         # Flag for when bgrd element in mesh
+linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.9 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.10 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -1596,7 +1629,8 @@ resetlat()  subroutine # Resizes lattice arrays to their true lengths
 setlatt()   subroutine # Sets lattice pointers for the current beam location
 setlattzt(zbeam:real,time:real,fstype:integer)
             subroutine # Sets lattice pointers at zbeam and time
-getelemid(z:real,offset:real,nelem:integer,elemzs:real,elemze:real,id:integer)
+getelemid(z:real,offset:real,nelem:integer,elemzs:real,elemze:real,
+          oelemnn:integer,oelemoi:integer,oelemio:integer,id:integer)
             subroutine # Gets id of element located nearest z
 species()   subroutine # Sets species related arrays.
 stckyz(np,zp:real,zmmax:real,zmmin:real,dz:real,uxp:real,uyp:real,uzp:real,

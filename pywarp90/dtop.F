@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.9 $, $Date: 2001/05/22 20:27:50 $
+c@(#) File DTOP.M, version $Revision: 3.10 $, $Date: 2001/05/26 00:48:58 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -406,7 +406,7 @@ c  Start a new frame since they all don't fit on one
       call remark  (textline)
       write (textline,30) "Number of simulation particles = ",np," "
       call remark  (textline)
-      write (textline,20) "Number of real(kind=8):: particles = ",npreal," "
+      write (textline,20) "Number of real particles = ",npreal," "
       call remark  (textline)
       write (textline,20) "Total mass = ",totmass," kg"
       call remark  (textline)
@@ -627,7 +627,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.9 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.10 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19

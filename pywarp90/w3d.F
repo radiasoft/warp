@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.8 $, $Date: 2001/05/22 20:26:26 $
+c@(#) File W3D.M, version $Revision: 3.9 $, $Date: 2001/05/26 00:48:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -127,9 +127,9 @@ c  Also allocate the dynamic internal lattice arrays.
 
       call remark(" ---  Resetting lattice array sizes")
       call resetlat
-      if (nzlmax <= 2) nzlmax = nz
-      if (nzl    <= 2 .or. nzl > nzlmax) nzl = nzlmax
-      call gallot("LatticeInternal", 0)
+      if (nzlmax == 0) nzlmax = nz
+      if (nzl    == 0 .or. nzl > nzlmax) nzl = nzlmax
+      call gchange("LatticeInternal", 0)
       if (zlmin == 0.) zlmin = zmmin
       if (zlmax == 0.) zlmax = zmmax
       dzl = (zlmax - zlmin)/nzl
@@ -724,11 +724,9 @@ c     --- handle electrostatic multipole components
 
 c     --- handle magnetostatic multipole components
       call applymmlt(np,xp,yp,np,zp,dtl,dtr,dt,bx,by,bz)
-      call applymmlt2(np,xp,yp,np,zp,dtl,dtr,dt,bx,by,bz)
 
 c     --- handle magnetic fields from 3-D grid
       call applybgrd(np,xp,yp,np,zp,bx,by,bz)
-      call applybgrd2(np,xp,yp,np,zp,bx,by,bz)
 
 c     --- handle electrostatic potential from 3-D grid
       call applypgrd(np,xp,yp,np,zp,ex,ey,ez)
@@ -1221,7 +1219,7 @@ c           --- FULLV
                  zpo(i) = zp(ipmin+i-1) 
                enddo 
 c              --- Obtain bend radii and residence factors
-               call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
+               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
      &                       bendradi,-dt*0.5,dt*0.5)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
@@ -1257,7 +1255,7 @@ c              --- Position advance
                call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
 c              --- Bend residence factor over POSITION advance step
-               call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bendres,bendradi,-dt,0.)
 c              --- Correct position advance for warped mesh effect
                call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
@@ -1273,7 +1271,7 @@ c           --- HALFV
                  zpo(i) = zp(ipmin+i-1) 
                enddo 
 c              --- Obtain bend radii and residence factors
-               call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bendres,bendradi,0.,dt*0.5)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
@@ -1306,7 +1304,7 @@ c              --- Position advance
                call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
 c              --- Bend residence factor over POSITION advance step
-               call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bendres,bendradi,-dt,0.)
 c              --- Correct position advance for warped mesh effect
                call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
@@ -1325,7 +1323,7 @@ c              --- Copy 'old' velocity into uxpo, uypo, and uzpo
                   uzpo(i) = uzp(ipmin+i-1)
                enddo
 c              --- Obtain bend radii and residence factors
-               call getbend (ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
+               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
      &                       bendradi,-dt*0.5,0.)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
