@@ -7,7 +7,8 @@ Two functions are available for saving the object in a file.
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.21 2003/09/11 18:25:28 dave Exp $"
+import string
+extpart_version = "$Id: extpart.py,v 1.22 2003/09/16 01:15:51 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -25,9 +26,12 @@ The creator options are:
            otherwise 10000.
  - laccumulate=0: when true, particles are accumulated over multiple steps.
  - name=None: descriptive name for location
- - lautodump=1: when true, after the grid moves beyond the z location,
+ - lautodump=0: when true, after the grid moves beyond the z location,
                 automatically dump the data to a file, clear the arrays and
                 disable itself. Also must have name set.
+ - dumptofile=0: when true, the particle data is always dumped to a file
+                 and not saved in memory. Name must be set. Setting this
+                 to true implies that the data is accumulated.
 
 One of iz or zz must be specified.
 
@@ -52,7 +56,7 @@ routines (such as ppxxp).
   """
 
   def __init__(self,iz=-1,zz=0.,wz=None,nepmax=None,laccumulate=0,
-               name=None,lautodump=1):
+               name=None,lautodump=1,dumptofile=0):
     # --- Save input values, getting default values when needed
     assert iz >= 0 or zz is not None,"Either iz or zz must be specified"
     self.iz = iz
@@ -62,6 +66,8 @@ routines (such as ppxxp).
     self.laccumulate = laccumulate
     self.lautodump = lautodump
     self.name = name
+    self.dumptofile = dumptofile
+    self.isave = 0
     self.dt = top.dt
     if nepmax is None:
       self.nepmax = 10000
@@ -83,7 +89,7 @@ routines (such as ppxxp).
       return int((self.zz - top.zmmntmin)*top.dzmi)
 
   def setuparrays(self):
-    if self.laccumulate:
+    if self.laccumulate and not self.dumptofile:
       self.tep = []
       self.xep = []
       self.yep = []
@@ -107,7 +113,7 @@ routines (such as ppxxp).
       self.uzep = top.ns*[None]
 
   def addspecies(self):
-    if self.laccumulate:
+    if self.laccumulate and not self.dumptofile:
       for js in range(len(self.tep),top.ns):
         bump = self.nepmax
         self.tep.append(AppendableArray(self.nepmax,type='d',autobump=bump))
@@ -177,17 +183,17 @@ routines (such as ppxxp).
 
   def autodump(self):
     if not self.lautodump or self.name is None: return
-    if not self.laccumulate: return
+    if not self.laccumulate and not self.dumptofile: return
     if self.iz >= 0: return
     if self.zz+self.wz > w3d.zmminglobal+top.zbeam: return
     self.disable()
     if me == 0:
       ff = None
       try:
-        ff = PWpyt.PW(self.name+'_ep.pyt')
+        ff = PWpyt.PW(self.name+'_epdump.pyt')
         dumpsmode = 1
       except:
-        ff = PW.PW(self.name+'_ep.pdb')
+        ff = PW.PW(self.name+'_epdump.pdb')
         dumpsmode = 0
       if ff is None:
          print "ExtPart: %s unable to dump data to file."%self.name
@@ -196,6 +202,30 @@ routines (such as ppxxp).
       ff.close()
     self.nepmax = 1
     self.clear()
+
+  def dodumptofile(self):
+    if me != 0: return
+    if max(top.nep) == 0: return
+    ff = None
+    try:
+      ff = PWpyt.PW(self.name+'_ep.pyt','a',verbose=0)
+    except:
+      ff = PW.PW(self.name+'_ep.pdb','a',verbose=0)
+    if ff is None:
+       print "ExtPart: %s unable to dump data to file."%self.name
+       return
+    self.isave = self.isave + 1
+    for js in range(top.ns):
+      suffix = "_%d_%d"%(self.isave,js)
+      if self.getn(js=js) > 0:
+        ff.write('n'+suffix,self.getn(js=js))
+        ff.write('t'+suffix,self.gett(js=js))
+        ff.write('x'+suffix,self.getx(js=js))
+        ff.write('y'+suffix,self.gety(js=js))
+        ff.write('ux'+suffix,self.getux(js=js))
+        ff.write('uy'+suffix,self.getuy(js=js))
+        ff.write('uz'+suffix,self.getuz(js=js))
+    ff.close()
 
   def accumulate(self):
     # --- If top.nepwin is 0 then something is really wrong - this routine
@@ -246,14 +276,13 @@ routines (such as ppxxp).
       ux = gatherarray(top.uxep[:nn,id,js]+0.,othersempty=1)
       uy = gatherarray(top.uyep[:nn,id,js]+0.,othersempty=1)
       uz = gatherarray(top.uzep[:nn,id,js]+0.,othersempty=1)
-      if self.laccumulate:
+      if self.laccumulate and not self.dumptofile:
         self.tep[js].append(t)
         self.xep[js].append(x)
         self.yep[js].append(y)
         self.uxep[js].append(ux)
         self.uyep[js].append(uy)
         self.uzep[js].append(uz)
-        top.nep[id,js] = 0
       else:
         self.tep[js] = t
         self.xep[js] = x
@@ -261,10 +290,57 @@ routines (such as ppxxp).
         self.uxep[js] = ux
         self.uyep[js] = uy
         self.uzep[js] = uz
+    if self.dumptofile: self.dodumptofile()
+    # --- Force nep to zero to ensure that particles are not saved twice.
+    top.nep = 0
 
   def setaccumulate(self,v=1):
     self.laccumulate = v
     if self.laccumulate: self.setuparrays()
+
+  ############################################################################
+  def restoredata(self):
+    if not self.dumptofile: return
+    try:
+      ff = PRpyt.PR(self.name+'_ep.pyt','a',verbose=0)
+    except:
+      ff = PR.PR(self.name+'_ep.pdb','a',verbose=0)
+    # --- Get total number of particles
+    ntot = []
+    iimax = 0
+    jsmax = 0
+    varlist = ff.inquire_ls()
+    varlist.sort()
+    for var in varlist:
+      if var[0] == 'n':
+        name,ii,js = string.split(var,'_')
+        iimax = max(iimax,eval(ii))
+        jsmax = max(jsmax,eval(js))
+        if jsmax > len(ntot): ntot.append(0)
+        ntot[jsmax] = ntot[jsmax] + ff.read(var)
+    self.setuparrays()
+    for js in range(jsmax):
+      self.tep[js] = zeros(ntot[js],'d')
+      self.xep[js] = zeros(ntot[js],'d')
+      self.yep[js] = zeros(ntot[js],'d')
+      self.uxep[js] = zeros(ntot[js],'d')
+      self.uyep[js] = zeros(ntot[js],'d')
+      self.uzep[js] = zeros(ntot[js],'d')
+    ins = jsmax*[0]
+    for var in varlist:
+      if var[0] == 'n':
+        name,iis,jss = string.split(var,'_')
+        nn = ff.read(var)
+        ii = eval(iis)
+        js = eval(jss)
+        self.tep[js][ins[js]:ins[js]+nn] = ff.read('t_%d_%d'%(ii,js))
+        self.xep[js][ins[js]:ins[js]+nn] = ff.read('x_%d_%d'%(ii,js))
+        self.yep[js][ins[js]:ins[js]+nn] = ff.read('y_%d_%d'%(ii,js))
+        self.uxep[js][ins[js]:ins[js]+nn] = ff.read('ux_%d_%d'%(ii,js))
+        self.uyep[js][ins[js]:ins[js]+nn] = ff.read('uy_%d_%d'%(ii,js))
+        self.uzep[js][ins[js]:ins[js]+nn] = ff.read('uz_%d_%d'%(ii,js))
+        ins[js] = ins[js] + nn
+    ff.close()
 
   ############################################################################
   def selectparticles(self,val,js=0,tc=None,wt=None,tp=None):
