@@ -23,7 +23,7 @@ class AMRTree(object,Visualizable):
         w3d.solvergeom = w3d.XYZgeomMR
         self.blocks=MRBlock()     
       else:
-        self.solvergeom = w3d.RZgeom
+        self.solvergeom = w3d.solvergeom
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
       self.conds_installed_onbasegrid = []
@@ -539,7 +539,8 @@ class AMRTree(object,Visualizable):
         except:
           pass    
       if g is not frz.basegrid:
-        del_subgrid(g.gid[0])
+        id = g.gid[0]
+        del_subgrid(id)
       else:
         frz.ngrids=1
         self.nblocks=0
