@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.9 2003/08/12 00:47:50 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.10 2003/08/15 23:05:10 dave Exp $"
 
 class PlaneSave:
   """
@@ -25,11 +25,13 @@ Input:
             Defaults to w3d.dz, must be an integer multiple of w3d.dz. 
   - maxvzdt=w3d.dz: maximum distance particles are expected to travel
                     when passing through zplane
+  - newfile=0: When true, creates a new file to save data into, otherwise
+               append to file if it already exists.
 
   """
 
   def __init__(self,zplane,filename=None,js=None,allways_save=false,
-                    deltaz=None,maxvzdt=None):
+                    deltaz=None,maxvzdt=None,newfile=0):
 
     self.zplane = nint(zplane/w3d.dz)*w3d.dz
 
@@ -77,7 +79,8 @@ Input:
       self.filename = filename
 
     # --- The file is only opened and the data written on processor 0
-    if me == 0:
+    fileexists = os.access(self.filename,os.F_OK)
+    if me == 0 and (newfile or not fileexists):
       self.f = PW.PW(self.filename)
 
       # --- save plane size and location and time step
@@ -132,7 +135,14 @@ Input:
       self.phi_save[:,:,0] = getphi(iz=iz-self.izz)
       self.phi_save[:,:,1] = getphi(iz=iz)
       if me == 0:
-        self.f.write('phiplane%d'%self.it,self.phi_save)
+        try:
+          self.f.write('phiplane%d'%self.it,self.phi_save)
+        except:
+          print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          print "ERROR: There was an error writing out the particle data"
+          print "       This most likely means that an attempt was made"
+          print "       to overwrite an existing file."
+          print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
     if me == 0:
       if(self.save_this_step):
@@ -191,13 +201,20 @@ Input:
 
       if (np_save > 0 and self.save_this_step and me == 0):
         suffix = '%d_%d'%(self.it,js)
-        self.f.write('xp'+suffix,    take(xx,ii))
-        self.f.write('yp'+suffix,    take(yy,ii))
-        self.f.write('zp'+suffix,    take(zz,ii))
-        self.f.write('uxp'+suffix,   take(ux,ii))
-        self.f.write('uyp'+suffix,   take(uy,ii))
-        self.f.write('uzp'+suffix,   take(uz,ii))
-        self.f.write('gaminv'+suffix,take(gi,ii))
-        if top.npid > 0:
-          self.f.write('pid'+suffix,   take(id,ii))
+        try:
+          self.f.write('xp'+suffix,    take(xx,ii))
+          self.f.write('yp'+suffix,    take(yy,ii))
+          self.f.write('zp'+suffix,    take(zz,ii))
+          self.f.write('uxp'+suffix,   take(ux,ii))
+          self.f.write('uyp'+suffix,   take(uy,ii))
+          self.f.write('uzp'+suffix,   take(uz,ii))
+          self.f.write('gaminv'+suffix,take(gi,ii))
+          if top.npid > 0:
+            self.f.write('pid'+suffix,   take(id,ii))
+        except:
+          print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          print "ERROR: There was an error writing out the particle data"
+          print "       This most likely means that an attempt was made"
+          print "       to overwrite an existing file."
+          print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
