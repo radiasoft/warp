@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.106 2005/02/22 19:02:19 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.107 2005/02/23 23:15:44 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1823,7 +1823,7 @@ Plane class
     self.zsign = zsign
     self.theta = theta
     self.phi = phi
-    if self.theta == 0. and self.phi == 0.: z1,z2 = 0.,0.
+    if self.theta == 0. and self.phi == 0.: z1,z2 = z0,z0
     else:                                   z1,z2 = -largepos,+largepos
     self.createextent([-largepos,-largepos,z1],[+largepos,+largepos,z2])
 
@@ -2455,7 +2455,8 @@ Cones
     self.ycent  = self.ycent*ones(self.ncones)
     self.zcent  = self.zcent*ones(self.ncones)
 
-    rmax = sqrt(maximum(self.r_zmin,self.r_zmax)**2 + (self.length/2.)**2)
+    rmax = sqrt(maximum(abs(self.r_zmin),abs(self.r_zmax))**2 +
+                        (self.length/2.)**2)
     xmin = min(self.xcent-rmax)
     ymin = min(self.ycent-rmax)
     zmin = min(self.zcent-rmax)
@@ -3759,7 +3760,8 @@ Or give the quadrupole id to use...
     assert pr is not None,'pr must be specified'
     assert vx is not None,'vx must be specified'
     assert vy is not None,'vy must be specified'
-    if condid is None: condid = 0
+    if zcent is None: zcent = 0.
+    if condid is None: condid = 1
   else:
     if ap is None: ap = getattr(top,elem+'ap')[elemid]
     if rl is None: rl = getattr(top,elem+'rl')[elemid]
@@ -3784,16 +3786,16 @@ Or give the quadrupole id to use...
                    getattr(top,elem+'ze')[elemid])
     if condid is None: condid = elemid
 
-    dels = ['glx','gly','axp','axm','ayp','aym','rxp','rxm','ryp','rym',
-            'vxp','vxm','vyp','vym','oxp','oxm','oyp','oym',
-            'pwl','pwr','pal','par','prl','prr']
-    if elemid is None or elem != 'quad':
-      for d in dels:
-        if locals()[d] is None: exec('%s = 0.'%d)
-    else:
-      edel = 'qdel'
-      for d in dels:
-        if locals()[d] is None: exec('%s = top.qdel%s[elemid]'%(d,d))
+  dels = ['glx','gly','axp','axm','ayp','aym','rxp','rxm','ryp','rym',
+          'vxp','vxm','vyp','vym','oxp','oxm','oyp','oym',
+          'pwl','pwr','pal','par','prl','prr']
+  if elemid is None or elem != 'quad':
+    for d in dels:
+      if locals()[d] is None: exec('%s = 0.'%d)
+  else:
+    edel = 'qdel'
+    for d in dels:
+      if locals()[d] is None: exec('%s = top.qdel%s[elemid]'%(d,d))
 
   if splitrodids:
     xidsign = +1
