@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.5 2003/08/07 19:00:58 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.6 2004/04/16 22:59:29 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -33,7 +33,7 @@ class VisualModel:
     self.title = title
     self.scene = scene
 
-  def Display(self):
+  def Display(self,showgrid=0,showaxes=0):
 
     if self.viewer == 'VPython':
       import visual
@@ -83,17 +83,58 @@ class VisualModel:
       pyOpenDX.DXSetComponentValue(ff,'connections',cc)
       pyOpenDX.DXEndField(ff)
 
-      pyOpenDX.DXReference(ff)
-      minput = {'object':ff}
+      if showgrid:
+
+        # --- Create a field containing two points on opposite side of the
+        # --- mesh and use it to find the boinding box.
+        n = 2
+        p = zeros((n,3),'d')
+        p[:,0] = [w3d.xmmin,w3d.xmmax]
+        p[:,1] = [w3d.xmmin,w3d.xmmax]
+        p[:,2] = [w3d.xmmin,w3d.xmmax]
+        dxp = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
+        pyOpenDX.DXAddArrayData(dxp,0,n,p.astype(Float32))
+        # --- Create a DX array for the data
+        dxd = pyOpenDX.DXNewArray(pyOpenDX.TYPE_DOUBLE,pyOpenDX.CATEGORY_REAL,0)
+        pyOpenDX.DXAddArrayData(dxd,0,n,array([1.,1.]))
+        pyOpenDX.DXSetStringAttribute(dxd,'dep','positions')
+        # --- Create the field
+        dxf = pyOpenDX.DXNewField()
+        pyOpenDX.DXSetComponentValue(dxf,'positions',dxp)
+        pyOpenDX.DXSetComponentValue(dxf,'data',dxd)
+        pyOpenDX.DXEndField(dxf)
+
+        minput = {'input':dxf}
+        moutput = ['box']
+        (box,) = pyOpenDX.DXCallModule('ShowBox',minput,moutput)
+
+        minput = {'object':ff,'object1':box}
+        moutput = ['group']
+        (group,) = pyOpenDX.DXCallModule('Collect',minput,moutput)
+
+      else:
+        group = ff
+
+      pyOpenDX.DXReference(group)
+      minput = {'object':group}
       moutput = ['camera']
       (camera,) = pyOpenDX.DXCallModule('AutoCamera',minput,moutput)
-
       pyOpenDX.DXReference(camera)
-      pyOpenDX.DXImage(ff,camera,self.title)
+
+      if showaxes:
+        labels = pyOpenDX.DXMakeStringList(['x','y','z'])
+        minput = {'input':group,'camera':camera,'labels':labels,
+                  'ticks':3,'colors':'yellow'}
+        moutput = ['axes']
+        (axes,) = pyOpenDX.DXCallModule('AutoAxes',minput,moutput)
+        pyOpenDX.DXReference(axes)
+      else:
+        axes = group
+
+      pyOpenDX.DXImage(axes,camera,self.title)
 
       pyOpenDX.DXDelete(camera)
-      pyOpenDX.DXDelete(ff)
-
+      pyOpenDX.DXDelete(axes)
 
   def FacetedTriangle(self, v1, v2, v3, color=None):
     """Add a triangle to the model, apply faceted shading automatically"""
