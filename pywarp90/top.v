@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.68 $, $Date: 2003/01/30 13:39:46 $
+#@(#) File TOP.V, version $Revision: 3.69 $, $Date: 2003/02/06 13:34:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.68 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.69 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1938,3 +1938,11 @@ ibuffer4(ib4size) _integer
 b2d1 integer /0/
 b2d2 integer /0/
 buffer2d(0:b2d1,0:b2d2,2) _real
+
+******* STdisc dump:
+# semitransparent disc data
+n_STdiscs             integer /0/         # Number of semitransparent discs
+z_STdiscs(n_STdiscs)  _real               # Positions of semitransparent discs
+r_STdiscs(n_STdiscs)  _real               # Radii of semitransparent discs
+t_STdiscs(n_STdiscs)  _real               # Transparency of semitransparent discs
+
