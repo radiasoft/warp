@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.27 $, $Date: 2001/09/21 23:33:50 $
+c@(#) File W3D.M, version $Revision: 3.28 $, $Date: 2001/10/03 23:01:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4168,8 +4168,8 @@ c           --- Set some temporaries.
             binj = binject(ij)
             ainji = 1./ainject(ij)
             binji = 1./binject(ij)
-            ainjmini = 1./ainjmin(ij)
-            binjmini = 1./binjmin(ij)
+            ainjmini = 1./dvnz(ainjmin(ij))
+            binjmini = 1./dvnz(binjmin(ij))
             xinj = xinject(ij)
             yinj = yinject(ij)
             apinj = apinject(ij)
