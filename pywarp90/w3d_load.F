@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.11 $, $Date: 2004/12/17 15:11:07 $
+c@(#) File w3d_load.F, version $Revision: 1.12 $, $Date: 2004/12/21 12:45:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -49,9 +49,11 @@ c     --- waterbag equilibrium
       external wb_constr
       common /wbconstrcom/ sc_param_wb 
 c     --- thermal equilibrium 
-      real(kind=8):: sc_param_te, delta_est, delta_1, delta_2
+      integer(ISZ):: ig 
+      real(kind=8):: sc_param_te, logdelta_est, logdelta_1, logdelta_2
       real(kind=8):: te_delta_est 
-      external te_constr
+      real(kind=8):: rnorm, wl, wr
+      external te_constr_log
       common /teconstrcom/ sc_param_te 
 c     --- distribution loading 
       real(kind=8):: hl_sumrdist
@@ -138,25 +140,28 @@ c     --- thermal equilibrium
 c       --- calculate simentionless space charge parameter 
         sc_param_te = 4.*(k_beta0*emit_b/q_perv)**2 
 
-c       --- calculate needed value of dimensionless equilibrium parameter 
-c       --- delta for a consistent rms equivalent equilbrium 
+c       --- Calculate needed value of dimensionless equilibrium parameter 
+c       --- delta for a consistent rms equivalent equilbrium.  The actual 
+c       --- root find is done in terms of the log(delta) to help mitigate 
+c       --- extreme parametric sensitivity.  
 
-        delta_est = te_delta_est(sc_param_te)
-        delta_1 = delta_est*10.
-        delta_2 = delta_est/10.
+        logdelta_est = log(te_delta_est(sc_param_te))
+        logdelta_1 = logdelta_est - logdeltarad 
+        logdelta_2 = logdelta_est + logdeltarad
 
-c        write(0,*) "sc_param_te =", sc_param_te 
-c        write(0,*) "delta_est = ", delta_est
-c        write(0,*) "delta_1 = ", delta_1 
-c        write(0,*) "delta_2 = ", delta_2  
- 
-        delta = zbrent(te_constr,delta_1,delta_2,1.e-10,1000)
+        delta = exp(zbrent(te_constr_log,logdelta_1,logdelta_2,
+     &                     logdeltatol,1000))
 
 c       --- calculate normalized density profile based on delta 
 
         call te_radial_den(delta)
 
-c       --- calculate paramters based on value of delta calculated 
+c       --- calculate rms equivalent beam paramters based on value of 
+c       --- delta calculated.  
+c       ---    glambdad = gamma_b*lambda_Debye 
+c       ---    tscaled  = T/(m*gamma_b*m*c^2) with T in energy units 
+c       ---    den0     = physical particle number density on-axis (r=0) 
+c       ---                 in particles/meter^3  
         glambdad = sqrt( q_perv*( 1.+delta )*
      &                   ( sqrt(1.+sc_param_te)-1. ) 
      &                 )/(4.*k_beta0) 
@@ -166,15 +171,17 @@ c       --- calculate paramters based on value of delta calculated
 
 c       --- set the hl_rdist variable used to load particles based on 
 c       --- the thermal equilibrium density profile calculated using 
-c       --- interpolation and scaling
-c           *** For now just use same grid ... fix this later.  Will 
-c               presently only work when hl_nrmax = te_nrho or there 
-c               will be a bomb.  Ultimately, it is derireable to use 
-c               two grids to allow a range of numerical approx ****
+c       --- linear interpolation and scaling
 
         hl_rmax = glambdad*te_rhomax
-        do ir = 0,hl_nrdist
-          hl_rdist(ir) = den0*te_den(1,ir)
+        hl_rdist(0)         = den0*te_den(1,0) 
+        hl_rdist(hl_nrdist) = den0*te_den(1,te_nrho) 
+        do ir = 1,hl_nrdist-1
+          rnorm = float(ir*te_nrho)/float(hl_nrdist)
+          ig   = int(rnorm) 
+          wl = rnorm-ig 
+          wr = float(ig+1) - rnorm 
+          hl_rdist(ir) = den0*(wl*te_den(1,ig)+wr*te_den(1,ig+1)) 
         enddo 
 
 c     --- undefined option trap 
@@ -270,6 +277,8 @@ c=============================================================================
 c te_constr_log filters te_constr(delta) to pass the argument in 
 c terms of the log of delta
 
+      real(kind=8):: sc_param_te 
+      common /teconstrcom/ sc_param_te
       real(kind=8):: te_constr
 
       te_constr_log = te_constr(exp(logdelta))
