@@ -21,6 +21,7 @@ WARPOBJECTS = env.o \
               w3d.o \
               dtop.o \
               f3d_mgrid.o \
+              f3d_conductors.o \
               fxy_mgrid.o \
               frz_mgrid.o \
               dw3d.o \
@@ -132,6 +133,8 @@ f3d.o:f3d.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3d.F
 f3d_mgrid.o:f3d_mgrid.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3d_mgrid.F
+f3d_conductors.o:f3d_conductors.F
+	$(F90FIXED) $(OPT) -c f3d_conductors.F
 f3dslave.o:f3dslave.F f3d.p.o top.p.o
 	$(F90FIXED) $(OPT) -c f3dslave.F
 
