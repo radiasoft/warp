@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.3 2001/07/10 22:40:04 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.4 2001/07/19 20:35:23 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -67,6 +67,15 @@ Available methods...
     if resettime: self.resettime(resettime)
     # --- Setup history arrays
     self.setuphistory(maxsteps)
+
+  #----------------------------------------------------------------------
+  def __del__(self):
+    try:
+      # --- If this is happening when python is quitting, WARP packages
+      # --- may not exist anymore and errors would happen.
+      self.disable()
+    except:
+      pass
 
   #----------------------------------------------------------------------
   def spsetup(self,zerophi=1):
@@ -180,8 +189,8 @@ initial data, and redefines the step command
     self.vy = top.uyp[self.ip1:self.ip2]
     self.vz = top.uzp[self.ip1:self.ip2]
     self.gi = top.gaminv[self.ip1:self.ip2]
-    # --- Set uzp to zero, single of dead particles
-    top.uzp[ip1:ip2] = 0.
+    # --- Set uzp to zero, signal of dead particles
+    top.uzp[self.ip1:self.ip2] = 0.
     # --- Remove particles from looping if they are at either end of the
     # --- particle data in the arrays
     if self.ip1 == top.ins[0]:
@@ -273,17 +282,56 @@ initial data, and redefines the step command
   def getgi(self,i=0): return self.spgi[i].data()
 
   #----------------------------------------------------------------------
-  def pxt(self,i=0,**kw): apply(plg,(self.getx(i),self.gett(i)),kw)
-  def pyt(self,i=0,**kw): apply(plg,(self.gety(i),self.gett(i)),kw)
-  def pzt(self,i=0,**kw): apply(plg,(self.getz(i),self.gett(i)),kw)
-  def pvxt(self,i=0,**kw): apply(plg,(self.getvx(i),self.gett(i)),kw)
-  def pvyt(self,i=0,**kw): apply(plg,(self.getvy(i),self.gett(i)),kw)
-  def pvzt(self,i=0,**kw): apply(plg,(self.getvz(i),self.gett(i)),kw)
-  def pgit(self,i=0,**kw): apply(plg,(self.getgi(i),self.gett(i)),kw)
-  def pxy(self,i=0,**kw): apply(plg,(self.gety(i),self.getx(i)),kw)
-  def pzx(self,i=0,**kw): apply(plg,(self.getx(i),self.getz(i)),kw)
-  def pzy(self,i=0,**kw): apply(plg,(self.gety(i),self.getz(i)),kw)
-  def pzvx(self,i=0,**kw): apply(plg,(self.getvx(i),self.getz(i)),kw)
-  def pzvy(self,i=0,**kw): apply(plg,(self.getvy(i),self.getz(i)),kw)
-  def pzvz(self,i=0,**kw): apply(plg,(self.getvz(i),self.getz(i)),kw)
+  def pxt(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","time (s)","x (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getx(i),self.gett(i)),kw)
+  def pyt(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","time (s)","y (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.gety(i),self.gett(i)),kw)
+  def pzt(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","time (s)","z (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getz(i),self.gett(i)),kw)
+  def pvxt(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","time (s)","Vx (m/s)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getvx(i),self.gett(i)),kw)
+  def pvyt(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","time (s)","Vy (m/s)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getvy(i),self.gett(i)),kw)
+  def pvzt(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","time (s)","Vz (m/s)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getvz(i),self.gett(i)),kw)
+  def pgit(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","time (s)","gamma inverse")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getgi(i),self.gett(i)),kw)
+  def pxy(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","x (m)","y (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.gety(i),self.getx(i)),kw)
+  def pzx(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","z (m)","x (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getx(i),self.getz(i)),kw)
+  def pzy(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","z (m)","y (m)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.gety(i),self.getz(i)),kw)
+  def pzvx(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","z (m)","Vx (m/s)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getvx(i),self.getz(i)),kw)
+  def pzvy(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","z (m)","Vy (m/s)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getvy(i),self.getz(i)),kw)
+  def pzvz(self,i=0,**kw):
+    if kw.get("titles",1): ptitles("Single particle","z (m)","Vz (m/s)")
+    if kw.has_key("titles"): del kw["titles"]
+    apply(plg,(self.getvz(i),self.getz(i)),kw)
 
