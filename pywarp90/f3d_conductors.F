@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.16 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -443,6 +443,110 @@ c A positive zsign means that the conductor is the region above zcent.
       return
       end
 c=======================================================================
+      subroutine PlaneConductorF(z0,zsign,theta,phi,xcent,ycent,zcent,
+     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                            fuzz)
+      real(kind=8):: z0,zsign,theta,phi,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a plane
+c The notation is that a negative distance means that the point is inside.
+c A positive zsign means that the conductor is the region above zcent.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: xi,yi,zi,zp,zs
+      real(kind=8):: ctheta,stheta,cphi,sphi,cci,sci,si
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+c     --- These ensure that divisions by zero do not happen.
+      if (ctheta == 0) ctheta = SMALLPOS
+      if (stheta == 0) stheta = SMALLPOS
+      if (cphi == 0) cphi = SMALLPOS
+      if (sphi == 0) sphi = SMALLPOS
+      cci = 1./(ctheta*cphi)
+      sci = 1./(stheta*cphi)
+      si  = 1./(sphi)
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+
+        xi = (z0 - zz*ctheta*cphi - yy*sphi)*sci
+        yi = (z0 - xx*stheta*cphi - zz*ctheta*cphi)*si
+        zi = (z0 - xx*stheta*cphi - yy*sphi)*cci
+        zp = xx*stheta*cphi + yy*sphi + zz*ctheta*cphi
+        if (zp >= z0) then
+          zs = -zsign
+        else
+          zs = +zsign
+        endif
+
+        if (xx <= xi) then
+          delmx(i) = LARGEPOS*zs
+          delpx(i) = abs(xi - xx)*zs
+        else
+          delmx(i) = abs(xi - xx)*zs
+          delpx(i) = LARGEPOS*zs
+        endif
+        if (yy <= yi) then
+          delmy(i) = LARGEPOS*zs
+          delpy(i) = abs(yi - yy)*zs
+        else
+          delmy(i) = abs(yi - yy)*zs
+          delpy(i) = LARGEPOS*zs
+        endif
+        if (zz <= zi) then
+          delmz(i) = LARGEPOS*zs
+          delpz(i) = abs(zi - zz)*zs
+        else
+          delmz(i) = abs(zi - zz)*zs
+          delpz(i) = LARGEPOS*zs
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine PlaneConductorD(z0,zsign,theta,phi,xcent,ycent,zcent,
+     &                           n,x,y,z,distance)
+      real(kind=8):: z0,zsign,theta,phi,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances to surface
+c The notation is that a negative distance means that the point is inside.
+c A positive zsign means that the conductor is the region above zcent.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: zp
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        zp = xx*sin(theta)*cos(phi) + yy*sin(phi) + zz*cos(theta)*cos(phi)
+        distance(i) = (z0 - zp)*zsign
+
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine BoxConductorF(xsize,ysize,zsize,xcent,ycent,zcent,
      &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                            fuzz)
@@ -524,7 +628,7 @@ c The notation is that a negative distance means that the point is inside.
       end
 c=======================================================================
       subroutine BoxConductorD(xsize,ysize,zsize,xcent,ycent,zcent,
-     &                            n,x,y,z,distance)
+     &                         n,x,y,z,distance)
       real(kind=8):: xsize,ysize,zsize,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
@@ -3003,6 +3107,463 @@ c       --- and the surface
         dd = sqrt((xx - x1)**2 + (yy - y1)**2 + (zz - zave)**2)
         distance(i) = dd - thickness/2.
 
+      enddo
+
+      return
+      end
+c=======================================================================
+c=======================================================================
+c=======================================================================
+      subroutine ZSrfrvOutConductorF(rofzfunc,zmin,zmax,rmax,griddz,
+     &                               xcent,ycent,zcent,n,x,y,z,
+     &                               delmx,delpx,delmy,delpy,delmz,delpz,
+     &                               fuzz)
+      character(*):: rofzfunc
+      real(kind=8):: zmin,zmax,rmax,griddz,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+      integer(ISZ):: i,iterrf,ii
+      real(kind=8):: xx,yy,zz,rr,rsrf
+      real(kind=8):: srfrv_f
+      real(kind=8):: zzz,zlower,zhigher,rlower,rhigher,rfuzz
+      real(kind=8):: ddz,znew,rnew,zi(2),ri(2)
+
+c!!!!! This needs to be input somehow!!!
+
+      do i=1,n
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Set temps
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        rr = sqrt(xx**2 + yy**2)
+        zz = z(i) - zcent
+
+
+        if (zmin <= zz .and. zz <= zmax) then
+c         --- Point inside the z-extent
+          rsrf = srfrv_f(zz,rofzfunc,0,0)
+          if (rr <= rsrf) then
+            delmx(i) = sqrt(max(0.,rsrf**2 - yy**2)) + xx
+            delpx(i) = sqrt(max(0.,rsrf**2 - yy**2)) - xx
+            delmy(i) = sqrt(max(0.,rsrf**2 - xx**2)) + yy
+            delpy(i) = sqrt(max(0.,rsrf**2 - xx**2)) - yy
+          else if (rr < rmax) then
+            if (yy > rsrf .or. -rsrf > yy) then
+              delmx(i) = - sqrt(max(0.,rmax - yy**2)) - xx
+              delpx(i) = xx - sqrt(max(0.,rmax - yy**2))
+            else
+              if (xx > 0.) then
+                delmx(i) = sqrt(max(0.,rsrf**2 - yy**2)) + xx
+                delpx(i) = xx - sqrt(max(0.,rmax - yy**2))
+              else
+                delmx(i) = - sqrt(max(0.,rmax - yy**2)) - xx
+                delpx(i) = sqrt(max(0.,rsrf**2 - yy**2)) - xx
+              endif
+            endif
+            if (xx > rsrf .or. -rsrf > xx) then
+              delmy(i) = - sqrt(max(0.,rmax - xx**2)) - yy
+              delpy(i) = yy - sqrt(max(0.,rmax - xx**2))
+            else
+              if (yy > 0.) then
+                delmy(i) = sqrt(max(0.,rsrf**2 - xx**2)) + yy
+                delpy(i) = yy - sqrt(max(0.,rmax - xx**2))
+              else
+                delmy(i) = - sqrt(max(0.,rmax - xx**2)) - yy
+                delpy(i) = sqrt(max(0.,rsrf**2 - xx**2)) - yy
+              endif
+            endif
+          else
+            if (yy <= rmax) then
+              if (xx >= 0.) delmx(i) = xx - sqrt(max(0.,rmax - yy**2))
+              if (xx <= 0.) delpx(i) = sqrt(max(0.,rmax - yy**2)) - xx
+            endif
+            if (xx <= rmax) then
+              if (yy >= 0.) delmy(i) = yy - sqrt(max(0.,rmax - xx**2))
+              if (yy <= 0.) delpy(i) = sqrt(max(0.,rmax - xx**2)) - yy
+            endif
+          endif
+        endif
+
+c Now get delmz delpz
+c use griddz
+
+c       --- Only find deltas if point within griddz of the z-extent of
+c       --- conductor or within the max radius.
+        if (zz >= zmin - griddz .or.
+     &      zz <= zmax + griddz .or.
+     &      rr <= rmax) then
+
+          zzz = min(max(zz,zmin),zmax)
+          zlower = max(zz-griddz,zmin)
+          zhigher = min(zz+griddz,zmax)
+
+          rsrf = srfrv_f(zzz,rofzfunc,0,0)
+          rlower = srfrv_f(zlower,rofzfunc,0,0)
+          rhigher = srfrv_f(zhigher,rofzfunc,0,0)
+          rfuzz = max(rsrf,rlower,rhigher)*1.e-12
+
+          if (zz >= zmax .and. rr >= rsrf) then
+            delmz(i) = zz - zmax
+          elseif (zz < zmin) then
+            delmz(i) = LARGEPOS
+          elseif (rr > max(rlower,rsrf)) then
+            delmz(i) = zmin - zz
+          elseif (min(rlower,rsrf) <= rr .and. rr <= max(rlower,rsrf)) then
+c           --- If grid location is between rsrf and rlower find
+c           --- intersection point.
+c           --- First, try Regula-Falsi (secant method) iteration to
+c           --- find distance in z to the surface. If that doesn't
+c           --- converge rapidly, then go to the brute force binary search.
+c           --- Empirically, it was found that stopping at 12 iterations
+c           --- gives the best performance, with a broad minimum around
+c           --- that point.
+            zi(1) = zzz
+            ri(1) = rsrf - rr
+            zi(2) = zlower
+            ri(2) = rlower - rr
+            iterrf = 0
+            if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+            ii = 1
+            do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+              ii = 1
+              if (abs(ri(2)) > abs(ri(1))) ii = 2
+              if (ri(1) == ri(2)) exit
+              zi(ii) = min((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmax)
+              ri(ii) = srfrv_f(zi(ii),rofzfunc,0,0) - rr
+              iterrf = iterrf + 1
+            end do
+            if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &          zlower <= zi(ii) .and. zi(ii) < zz) then
+              delmz(i) = zz - zi(ii)
+            else
+c             --- A simple binary search is used to find distance in z
+c             --- to the surface. This is used since it is more robust
+c             --- than other root finding methods. The major problem
+c             --- occurs when the radius changes like a step function.
+c             --- The secant method (the original coding) converged
+c             --- very slowly in that case, leaving errors as large as
+c             --- 10% in the delta and slowing down the code.
+              ddz = (min(zz,zmax) - zlower)*0.5
+              znew = zlower
+              do iterrf=1,32
+                znew = znew + ddz
+                rnew = srfrv_f(znew,rofzfunc,0,0)
+                if (rnew > rr) then
+                  ddz = -abs(ddz)*0.5
+                else if (rnew <= rr) then
+                  ddz = +abs(ddz)*0.5
+                endif
+              enddo
+              delmz(i) = zz - znew
+            endif
+            if (rr >= rsrf) delmz(i) = -delmz(i)
+          endif
+
+c         --- Calculate distance to conductor at higher z.
+
+          if (zz <= zmin .and. rr >= rsrf) then
+            delpz(i) = zmin - zz
+          elseif (zz > zmax) then
+            delpz(i) = LARGEPOS
+          elseif (rr > max(rhigher,rsrf)) then
+            delpz(i) = zz - zmax
+c         --- If grid location is between rrr and rhigher.
+          elseif (min(rhigher,rsrf) <= rr .and. rr <= max(rhigher,rsrf)) then
+c           --- First, try Regula-Falsi (secant method) iteration to
+c           --- find distance in z to the surface. If that doesn't
+c           --- converge rapidly, then go to the brute force binary search.
+c           --- Empirically, it was found that stopping at 12 iterations
+c           --- gives the best performance, with a broad minimum around
+c           --- that point.
+            zi(1) = zzz
+            ri(1) = rsrf - rr
+            zi(2) = zhigher
+            ri(2) = rhigher - rr
+            iterrf = 0
+            if (ri(1) == 0. .or. ri(2) == 0.) iterrf = 12
+            ii = 1
+            do while (abs(ri(2))+abs(ri(1)) > rfuzz .and. iterrf < 12)
+              ii = 1
+              if (abs(ri(2)) > abs(ri(1))) ii = 2
+              if (ri(1) == ri(2)) exit
+              zi(ii) = max((zi(1)*ri(2)-zi(2)*ri(1))/(ri(2)-ri(1)),zmin)
+              ri(ii) = srfrv_f(zi(ii),rofzfunc,0,0) - rr
+              iterrf = iterrf + 1
+            end do
+            if (abs(ri(2))+abs(ri(1)) < rfuzz .and.
+     &          zz < zi(ii) .and. zi(ii) <= zhigher) then
+              delpz(i) = zi(ii) - zz
+            else
+c             --- A simple binary search is used to find distance in z
+c             --- to the surface. This is used since it is more robust
+c             --- than other root finding methods. The major problem
+c             --- occurs when the radius changes like a step function.
+c             --- The secant method (the original coding) converged
+c             --- very slowly in that case, leaving errors as large as
+c             --- 10% in the delta and slowing down the code.
+              ddz = (max(zz,zmin) - zhigher)*0.5
+              znew = zhigher
+              do iterrf=1,32
+                znew = znew + ddz
+                rnew = srfrv_f(znew,rofzfunc,0,0)
+                if (rnew <= rr) then
+                  ddz = -abs(ddz)*0.5
+                else if (rnew > rr) then
+                  ddz = +abs(ddz)*0.5
+                endif
+              enddo
+              delpz(i) = znew - zz
+            endif
+            if (rr >= rsrf) delpz(i) = -delpz(i)
+          endif
+
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZSrfrvOutConductorD(rofzfunc,zmin,zmax,rmax,griddz,
+     &                               xcent,ycent,zcent,n,x,y,z,distance)
+      character(*):: rofzfunc
+      real(kind=8):: zmin,zmax,rmax,griddz,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances along the axis of the points from the outside of
+c a surface of revolution.
+c The notation is that a negative distance means that the point is inside.
+c NOTICE: This only computes distances radially and can only reliably used
+c to determine whether a point is inside or not. The true distance calculation
+c would have to account for distances longitudinally.
+c A simple (but expensive) solution would be to generate a table of radii
+c along z, and to find the one closest to each input data point. Since that
+c would be an approximation, care would be needed to ensure that for particles
+c near the surface, the distance has the correct sign.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz,rr,rsrf,zd,rd
+      real(kind=8):: srfrv_f
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        rr = sqrt(xx**2 + yy**2)
+        zz = z(i) - zcent
+
+        if (zmin <= zz .and. zz <= zmax) then
+          rsrf = srfrv_f(zz,rofzfunc,0,0)
+          if (rr <= rsrf) then 
+            distance(i) = rsrf - rr
+          elseif (rr < rmax) then
+            zd = max(zmin-zz,zz-zmax)
+            rd = max(rsrf-rr,rr-rmax)
+            distance(i) = max(rd,zd)
+          else
+            distance(i) = rr - rmax
+          endif
+
+        elseif (zz < zmin) then
+          rsrf = srfrv_f(zmin,rofzfunc,0,0)
+          if (rr >= rsrf) then
+            distance(i) = zmin - zz
+          else
+            distance(i) = sqrt((zmin-zz)**2 + (rr-rsrf)**2)
+          endif
+
+        else
+          rsrf = srfrv_f(zmax,rofzfunc,0,0)
+          if (rr >= rsrf) then
+            distance(i) = zz - zmax
+          else
+            distance(i) = sqrt((zz-zmax)**2 + (rr-rsrf)**2)
+          endif
+
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+c=======================================================================
+      subroutine ZSrfrvInConductorF(rofzfunc,zmin,zmax,rmin,griddz,
+     &                              xcent,ycent,zcent,n,x,y,z,
+     &                              delmx,delpx,delmy,delpy,delmz,delpz,
+     &                              fuzz)
+      character(*):: rofzfunc
+      real(kind=8):: zmin,zmax,rmin,griddz,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+      return
+      end
+c=======================================================================
+      subroutine ZSrfrvInConductorD(rofzfunc,zmin,zmax,rmin,griddz,
+     &                              xcent,ycent,zcent,n,x,y,z,distance)
+      character(*):: rofzfunc
+      real(kind=8):: zmin,zmax,rmin,griddz,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances along the axis of the points from the inside of
+c a surface of revolution.
+c The notation is that a negative distance means that the point is inside.
+c NOTICE: This only computes distances radially and can only reliably used
+c to determine whether a point is inside or not. The true distance calculation
+c would have to account for distances longitudinally.
+c A simple (but expensive) solution would be to generate a table of radii
+c along z, and to find the one closest to each input data point. Since that
+c would be an approximation, care would be needed to ensure that for particles
+c near the surface, the distance has the correct sign.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz,rr,rsrf,zd,rd
+      real(kind=8):: srfrv_f
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        rr = sqrt(xx**2 + yy**2)
+
+        if (zmin <= zz .and. zz <= zmax) then
+          rsrf = srfrv_f(zz,rofzfunc,0,0)
+          if (rr >= rsrf) then 
+            distance(i) = rr - rsrf
+          elseif (rr > rmin) then
+            zd = max(zmin-zz,zz-zmax)
+            rd = max(rr-rsrf,rmin-rr)
+            distance(i) = max(rd,zd)
+          else
+            distance(i) = rmin - rr
+          endif
+
+        elseif (zz < zmin) then
+          rsrf = srfrv_f(zmin,rofzfunc,0,0)
+          if (rr <= rsrf) then
+            distance(i) = zmin - zz
+          else
+            distance(i) = sqrt((zmin-zz)**2 + (rr-rsrf)**2)
+          endif
+
+        else
+          rsrf = srfrv_f(zmax,rofzfunc,0,0)
+          if (rr <= rsrf) then
+            distance(i) = zz - zmax
+          else
+            distance(i) = sqrt((zz-zmax)**2 + (rr-rsrf)**2)
+          endif
+
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+c=======================================================================
+      subroutine ZSrfrvInOutConductorF(rminofz,rmaxofz,zmin,zmax,griddz,
+     &                                xcent,ycent,zcent,n,x,y,z,
+     &                                delmx,delpx,delmy,delpy,delmz,delpz,fuzz)
+      character(*):: rminofz,rmaxofz
+      real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+      return
+      end
+c=======================================================================
+      subroutine ZSrfrvInOutConductorD(rminofz,rmaxofz,zmin,zmax,griddz,
+     &                                 xcent,ycent,zcent,n,x,y,z,distance)
+      character(*):: rminofz,rmaxofz
+      real(kind=8):: zmin,zmax,griddz,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances along the axis of the points from between
+c surfaces of revolution.
+c The notation is that a negative distance means that the point is inside.
+c NOTICE: This only computes distances radially and can only reliably used
+c to determine whether a point is inside or not. The true distance calculation
+c would have to account for distances longitudinally.
+c A simple (but expensive) solution would be to generate a table of radii
+c along z, and to find the one closest to each input data point. Since that
+c would be an approximation, care would be needed to ensure that for particles
+c near the surface, the distance has the correct sign.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz,rr,rmin,rmax,zd,rd
+      real(kind=8):: srfrv_f
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        rr = sqrt(xx**2 + yy**2)
+
+        if (zmin <= zz .and. zz <= zmax) then
+          rmin = srfrv_f(zz,rminofz,0,0)
+          rmax = srfrv_f(zz,rmaxofz,0,0)
+          if (rr >= rmax) then 
+            distance(i) = rr - rmax
+          elseif (rr > rmin) then
+            zd = max(zmin-zz,zz-zmax)
+            rd = max(rr-rmax,rmin-rr)
+            distance(i) = max(rd,zd)
+          else
+            distance(i) = rmin - rr
+          endif
+
+        elseif (zz < zmin) then
+          rmin = srfrv_f(zmin,rminofz,0,0)
+          rmax = srfrv_f(zmin,rmaxofz,0,0)
+          if (rr < rmin) then
+            distance(i) = sqrt((zmin-zz)**2 + (rr-rmin)**2)
+          else if (rr <= rmax) then
+            distance(i) = zmin - zz
+          else
+            distance(i) = sqrt((zmin-zz)**2 + (rr-rmax)**2)
+          endif
+
+        else
+          rmin = srfrv_f(zmax,rminofz,0,0)
+          rmax = srfrv_f(zmax,rmaxofz,0,0)
+          if (rr < rmin) then
+            distance(i) = sqrt((zz-zmax)**2 + (rr-rmin)**2)
+          else if (rr <= rmax) then
+            distance(i) = zz - zmax
+          else
+            distance(i) = sqrt((zz-zmax)**2 + (rr-rmax)**2)
+          endif
+
+        endif
       enddo
 
       return

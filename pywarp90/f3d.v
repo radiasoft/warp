@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.73 $, $Date: 2003/04/22 23:04:05 $
+#@(#) File F3D.V, version $Revision: 3.74 $, $Date: 2003/04/24 16:38:29 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.73 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.74 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -423,6 +423,13 @@ zplaneconductorf(zcent:real,zsign,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
 zplaneconductord(zcent:real,zsign,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+planeconductorf(z0:real,zsign:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+planeconductord(z0:real,zsign:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 boxconductorf(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
@@ -521,6 +528,30 @@ beamletplateconductorf(za:real,zb:real,z0:real,thickness:real,
 beamletplateconductord(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
+zsrfrvoutconductorf(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zsrfrvoutconductord(rofzfunc:string,zmin:real,zmax:real,rmax:real,griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
+zsrfrvinconductorf(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zsrfrvinconductord(rofzfunc:string,zmin:real,zmax:real,rmin:real,griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
+zsrfrvinoutconductorf(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
+        griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
+        delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zsrfrvinoutconductord(rminofz:string,rmaxofz:string,zmin:real,zmax:real,
+        griddz:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
+
 
 ******** ConductorGeometryVisualization:
 maxtriangles integer/0/
