@@ -1,5 +1,5 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.2 2000/11/21 19:56:32 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -179,37 +179,44 @@ Performs steady-state iterations
       nps_save = 0*top.nps
 
       for js in xrange(top.ns):
+
+        # --- Force particles to the beginning of their block.
+        # --- This only needs to be done if there are particles now.
         if (top.nps[js] > 0):
+          copypart(top.npmax_s[js]+1,top.nps[js],0,top.ins[js])
+#         ip1 = top.ins[js]-1
+#         ip2 = top.ins[js]+top.nps[js]-1
+#         ip01 = top.npmax_s[js]
+#         ip02 = top.npmax_s[js]+top.nps[js]
+#         top.xp[ip01:ip02] = top.xp[ip1:ip2]
+#         top.yp[ip01:ip02] = top.yp[ip1:ip2]
+#         top.zp[ip01:ip02] = top.zp[ip1:ip2]
+#         top.uxp[ip01:ip02] = top.uxp[ip1:ip2]
+#         top.uyp[ip01:ip02] = top.uyp[ip1:ip2]
+#         top.uzp[ip01:ip02] = top.uzp[ip1:ip2]
+#         top.gaminv[ip01:ip02] = top.gaminv[ip1:ip2]
 
-          # --- Force particles to the beginning of their block
-          ip1 = top.ins[js]-1
-          ip2 = top.ins[js]+top.nps[js]-1
-          ip01 = top.npmax_s[js]
-          ip02 = top.npmax_s[js]+top.nps[js]
-          top.xp[ip01:ip02] = top.xp[ip1:ip2]
-          top.yp[ip01:ip02] = top.yp[ip1:ip2]
-          top.zp[ip01:ip02] = top.zp[ip1:ip2]
-          top.uxp[ip01:ip02] = top.uxp[ip1:ip2]
-          top.uyp[ip01:ip02] = top.uyp[ip1:ip2]
-          top.uzp[ip01:ip02] = top.uzp[ip1:ip2]
-          top.gaminv[ip01:ip02] = top.gaminv[ip1:ip2]
-          top.ins[js] = top.npmax_s[js]+1
-          ins_save[js] = top.ins[js] + top.nps[js] - 1
-          nps_save[js] = 0
+        # --- Reset particles counters.
+        # --- This always needs to be done since particles may be added
+        # --- later.
+        top.ins[js] = top.npmax_s[js]+1
+        ins_save[js] = top.ins[js] + top.nps[js]
+        nps_save[js] = 0
 
+        if (top.nps[js] > 0):
           # --- get indices of live particles.
           if (_save_same_part):
             ip1 = top.ins[js]
             ip2 = top.ins[js]+top.nps[js]-1
             ip3 = _ipstep
             ii = compress(greater(top.uzp[ip1-1:ip2:ip3],vzfuzz),
-                          iota(ip1-1,ip2,ip3))
+                          iota(ip1,ip2,ip3))
           else:
             ip1 = top.ins[js]
             ip2 = top.ins[js]+top.nps[js]-1
             ip3 = 1
             ii = compress(greater(top.uzp[ip1-1:ip2:ip3],vzfuzz),
-                          iota(ip1-1,ip2,ip3))
+                          iota(ip1,ip2,ip3))
             ii = compress(less(ranf(ii),1./_ipstep),ii)
 
           # --- save data of just injected particles
@@ -218,18 +225,20 @@ Performs steady-state iterations
                      #false)
             chckpart(js+1,0,int(1.5*gun_steps*top.npinje_s[js]/_ipstep)+len(ii),
                      false)
-            ip1 = ins_save[js]+nps_save[js] - 1
-            ip2 = ins_save[js]+nps_save[js]+len(ii) - 1
-            top.xp[ip1:ip2]  = take( top.xp,ii)
-            top.yp[ip1:ip2]  = take( top.yp,ii)
-            top.zp[ip1:ip2]  = take( top.zp,ii)
-            top.uxp[ip1:ip2] = take(top.uxp,ii)
-            top.uyp[ip1:ip2] = take(top.uyp,ii)
-            top.uzp[ip1:ip2] = take(top.uzp,ii)
-            if (top.lrelativ):
-              top.gaminv[ip1:ip2] = take(top.gaminv,ii)
-            else:
-              top.gaminv[ip1:ip2] = 1.
+            copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
+#           ip1 = ins_save[js]+nps_save[js] - 1
+#           ip2 = ins_save[js]+nps_save[js]+len(ii) - 1
+#           top.xp[ip1:ip2]  = take( top.xp,ii)
+#           top.yp[ip1:ip2]  = take( top.yp,ii)
+#           top.zp[ip1:ip2]  = take( top.zp,ii)
+#           top.uxp[ip1:ip2] = take(top.uxp,ii)
+#           top.uyp[ip1:ip2] = take(top.uyp,ii)
+#           top.uzp[ip1:ip2] = take(top.uzp,ii)
+#           if (top.lrelativ):
+#             top.gaminv[ip1:ip2] = take(top.gaminv,ii)
+#           else:
+#             top.gaminv[ip1:ip2] = 1.
+#           print nps_save[js],len(ii)
             nps_save[js] = nps_save[js] + len(ii)
 
     # --- Turn injection off for remaing time steps. inject is set to a value
@@ -258,42 +267,47 @@ Performs steady-state iterations
           # --- Make sure that there are actually particles to save
           if (top.nps[js] > 0):
             if (_save_same_part):
-              ip1 = top.ins[js]-1
+              ip1 = top.ins[js]
               ip2 = top.ins[js]+top.nps[js]-1
               ip3 = _ipstep
-              ii = compress(greater(top.uzp[ip1:ip2:ip3],vzfuzz),iota(ip1,ip2,ip3))
+              ii = compress(greater(top.uzp[ip1-1:ip2:ip3],vzfuzz),
+                            iota(ip1,ip2,ip3))
             else:
-              ip1 = top.ins[js]-1
+              ip1 = top.ins[js]
               ip2 = top.ins[js]+top.nps[js]-1
               ip3 = 1
-              ii = compress(greater(top.uzp[ip1:ip2:ip3],vzfuzz),iota(ip1,ip2,ip3))
+              ii = compress(greater(top.uzp[ip1-1:ip2:ip3],vzfuzz),
+                            iota(ip1,ip2,ip3))
               ii = compress(less(ranf(ii),1./_ipstep),ii)
 
             # --- save data of just injected particles
             if (len(ii) > 0):
               chckpart(js+1,0,nps_save[js]+len(ii),false)
-              ip1 = ins_save[js]+nps_save[js] - 1
-              ip2 = ins_save[js]+nps_save[js]+len(ii) - 1
-              top.xp[ip1:ip2]  = take( top.xp,ii)
-              top.yp[ip1:ip2]  = take( top.yp,ii)
-              top.zp[ip1:ip2]  = take( top.zp,ii)
-              top.uxp[ip1:ip2] = take(top.uxp,ii)
-              top.uyp[ip1:ip2] = take(top.uyp,ii)
-              top.uzp[ip1:ip2] = take(top.uzp,ii)
-              if (top.lrelativ):
-                top.gaminv[ip1:ip2] = take(top.gaminv,ii)
-              else:
-                top.gaminv[ip1:ip2] = 1.
+              copypart(ins_save[js]+nps_save[js],len(ii),ii,-1)
+#             ip1 = ins_save[js]+nps_save[js] - 1
+#             ip2 = ins_save[js]+nps_save[js]+len(ii) - 1
+#             top.xp[ip1:ip2]  = take( top.xp,ii)
+#             top.yp[ip1:ip2]  = take( top.yp,ii)
+#             top.zp[ip1:ip2]  = take( top.zp,ii)
+#             top.uxp[ip1:ip2] = take(top.uxp,ii)
+#             top.uyp[ip1:ip2] = take(top.uyp,ii)
+#             top.uzp[ip1:ip2] = take(top.uzp,ii)
+#             if (top.lrelativ):
+#               top.gaminv[ip1:ip2] = take(top.gaminv,ii)
+#             else:
+#               top.gaminv[ip1:ip2] = 1.
               nps_save[js] = nps_save[js] + len(ii)
 
       if lparallel:
-	npssum = sum(parallelsum(top.nps))
-	maxvz = parallelmax(top.vzmaxp)
+        npssum = sum(parallelsum(top.nps))
+        maxvz = parallelmax(top.vzmaxp)
       else:
-	npssum = sum(top.nps)
-	maxvz = top.vzmaxp
+        npssum = sum(top.nps)
+        maxvz = top.vzmaxp
 
     # --- Do field solve including newly accumulated charge density.
+    # --- The call to perrho3d is primarily needed for the parallel version.
+    perrho3d(w3d.rho,w3d.nx,w3d.ny,w3d.nz,top.periinz)
     top.fstype = _ofstype
     fieldsol(-1)
     top.fstype = -1
