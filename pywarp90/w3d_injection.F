@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.12 $, $Date: 2004/11/30 01:10:35 $
+c@(#) File w3d_injection.F, version $Revision: 1.13 $, $Date: 2004/11/30 19:35:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -2595,8 +2595,9 @@ c is used to flag particles that not have had temperature added yet.
       real(kind=8):: rinj,rinji,rr2,dd,ca,zii
       real(kind=8):: aa,az,atx,aty,tx,ty,tz
       real(kind=8):: dzi,inj_di
+      real(kind=8):: rnorm
+c     real(kind=8):: wrandomgauss
       real(kind=8):: substarttime,wtime
-      real(kind=8):: wrandomgauss
       if (lw3dtimesubs) substarttime = wtime()
 
       dzi = 1./dz
