@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.79 2004/08/31 22:18:44 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.80 2004/09/02 16:30:39 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -86,7 +86,7 @@ def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
                         xmmin=None,xmmax=None,ymmin=None,ymmax=None,
                         zmmin=None,zmmax=None,l2symtry=None,l4symtry=None,
                         installrz=1,gridmode=1,solvergeom=None,
-                        conductors=f3d.conductors,gridrz=None):
+                        conductors=None,gridrz=None):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -103,6 +103,21 @@ Installs the given conductors.
   - l2symtry,l4symtry: assumed transverse symmetries. Defaults to values
                        from w3d
   """
+  if conductors is None:
+    # --- If conductors was not specified, first check if mesh-refinement
+    # --- or other special solver is being used.
+    solver = getregisteredsolver()
+    import __main__
+    if solver is not None:
+      solver.installconductor(a,dfill=dfill)
+      return
+    elif __main__.__dict__.has_key("AMRtree"):
+      __main__.__dict__["AMRtree"].installconductor(a,dfill=dfill)
+      return
+  
+  # --- Use whatever conductors object was specified, or
+  # --- if no special solver is being used, use f3d.conductors.
+  if conductors is None: conductors = f3d.conductors
   # First, create a grid object
   g = Grid(xmin,xmax,ymin,ymax,zmin,zmax,zbeam,nx,ny,nz,nzfull,
            xmmin,xmmax,ymmin,ymmax,zmmin,zmmax,l2symtry,l4symtry,gridrz)
@@ -2584,7 +2599,7 @@ def Quadrupole(ap=None,rl=None,rr=None,gl=None,gp=None,
                vxp=None,vxm=None,vyp=None,vym=None,
                oxp=None,oxm=None,oyp=None,oym=None,
                pwl=None,pwr=None,pal=None,par=None,prl=None,prr=None,
-               xcent=0.,ycent=0.,zcent=0.,condid=None,
+               xcent=0.,ycent=0.,zcent=None,condid=None,
                elemid=None,elem='quad'):
   """
 Creates an interdigited quadrupole structure.
@@ -2623,7 +2638,8 @@ Either specify the quadrupole structure...
   - par: Change on right plate aperture
   - prl: Change on left  plate max radius
   - prr: Change on right plate max radius
-  - xcent=0.,ycent=0.,zcent=0.: center of quadrupole
+  - xcent=0.,ycent=0.: transverse center of quadrupole
+  - zcent: axial center of quadrupole, default taken from element
   - condid=1: conductor id of quadrupole, must be integer
 Or give the quadrupole id to use...
   - elem='quad': element type to get data from
@@ -2680,13 +2696,13 @@ Or give the quadrupole id to use...
   # --- Create x and y rods
   if ap > 0. and rr > 0. and rl > 0.:
     xrod1 = ZCylinder(rr+rxp,rl-glx,vx+vxp,xcent+ap+rr+axp,ycent+oxp,
-                      zcent-gp*gl/2.,condid)
+                      zcent-gp*gl/2.,+condid)
     xrod2 = ZCylinder(rr+rxm,rl-glx,vx+vxm,xcent-ap-rr-axm,ycent+oxm,
-                      zcent-gp*gl/2.,condid)
+                      zcent-gp*gl/2.,+condid)
     yrod1 = ZCylinder(rr+ryp,rl-gly,vy+vyp,xcent+oyp,ycent+ap+rr+ayp,
-                      zcent+gp*gl/2.,condid)
+                      zcent+gp*gl/2.,-condid)
     yrod2 = ZCylinder(rr+rym,rl-gly,vy+vym,xcent+oym,ycent-ap-rr-aym,
-                      zcent+gp*gl/2.,condid)
+                      zcent+gp*gl/2.,-condid)
     quad = xrod1 + xrod2 + yrod1 + yrod2
   else:
     quad = None
@@ -2698,19 +2714,21 @@ Or give the quadrupole id to use...
     if gp > 0.:
       v1 = vx+vxp
       v2 = vy+vyp
+      gp = +1
     else:
       v1 = vy+vyp
       v2 = vx+vxp
+      gp = -1
     if pr < 1.4142*w3d.xmmax:
       plate1 = ZAnnulus(pa+pal,pr+prl,pw+pwl,v1,xcent,ycent,
-                        zcent-0.5*(rl+gl)-pw/2.,condid)
+                        zcent-0.5*(rl+gl)-pw/2.,gp*condid)
       plate2 = ZAnnulus(pa+par,pr+prr,pw+pwr,v2,xcent,ycent,
-                        zcent+0.5*(rl+gl)+pw/2.,condid)
+                        zcent+0.5*(rl+gl)+pw/2.,gp*condid)
     else:
       plate1 = ZCylinderOut(pa+pal,pw+pwl,v1,xcent,ycent,
-                            zcent-0.5*(rl+gl)-pw/2.,condid)
+                            zcent-0.5*(rl+gl)-pw/2.,gp*condid)
       plate2 = ZCylinderOut(pa+par,pw+pwr,v2,xcent,ycent,
-                            zcent+0.5*(rl+gl)+pw/2.,condid)
+                            zcent+0.5*(rl+gl)+pw/2.,gp*condid)
     quad = quad + plate1 + plate2
     
   return quad
