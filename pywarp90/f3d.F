@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.52 $, $Date: 2002/08/27 23:14:49 $
+c@(#) File F3D.M, version $Revision: 3.53 $, $Date: 2002/08/27 23:23:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -7362,6 +7362,7 @@ c========================================================================
      &                    xmesh,ymesh,l2symtry,l4symtry,condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
