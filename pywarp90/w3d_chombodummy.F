@@ -26,6 +26,12 @@ c
       return
       end
 
+      subroutine returnphic(phiout)
+      double precision phiout(*)
+      print*,"***: stopping.  dummy returnphic called"
+      return
+      end
+
       subroutine returnrho(rhoout)
       double precision rhoout(*)
       print*,"***: stopping.  dummy returnrho called"
