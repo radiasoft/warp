@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.32 2003/08/19 16:35:27 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.33 2003/10/08 21:30:36 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -52,13 +52,34 @@ recalculated on a finer mesh to give better balancing.
   def doloadbalance(self,lforce=0,doloadrho=None,dofs=None,reorg=None):
     if not lparallel: return
 
+    # --- Check if there are any particles anywhere
+    if getn(jslist=-1) == 0: return
+
+    if not top.lmoments:
+      # --- If the moments were not calculated, then top.zminp and top.zmaxp
+      # --- are not reliable and so need to be calculated.
+      zz = getz(jslist=-1,gather=0)
+      if len(zz) > 0:
+        zminp = min(zz)
+        zmaxp = max(zz)
+      else:
+        zminp = +largepos
+        zmaxp = -largepos
+      zminp = globalmin(zminp)
+      zmaxp = globalmax(zmaxp)
+    else:
+      # --- Otherwise, use the values already calculated.
+      zz = None
+      zminp = top.zminp
+      zmaxp = top.zmaxp
+
     # --- Check if rightmost particle is close to edge of last processor
     # --- If so, then force a reloadbalance.
     if top.zpslmax[-1] < w3d.zmmaxglobal-w3d.dz:
-      if top.zmaxp > top.zpslmax[-1]-2*w3d.dz + top.zbeam:
+      if zmaxp > top.zpslmax[-1]-2*w3d.dz + top.zbeam:
         lforce = true
         if self.verbose:
-          print "Load balancing since particles near right end of mesh ",top.zpslmax[-1],w3d.zmmaxglobal,top.zmaxp,top.zpslmax[-1]-2*w3d.dz
+          print "Load balancing since particles near right end of mesh ",top.zpslmax[-1],w3d.zmmaxglobal,zmaxp,top.zpslmax[-1]-2*w3d.dz
 
     # --- Find frequency of load balancing
     ii = max(self.when.values())
@@ -79,16 +100,20 @@ recalculated on a finer mesh to give better balancing.
     if doloadrho is None: doloadrho = self.doloadrho
     if dofs is None: dofs = self.dofs
 
-    if (top.zmaxp - top.zminp)/w3d.dz < 10:
+    if (zmaxp - zminp)/w3d.dz < 10 or not top.lmoments:
       # --- If the particles only extend over a few grid cells, recalculate
       # --- the distribution on a finer grid to get better loadbalancing.
-      pnumz = zeros(101,'d')
-      zmin = max(w3d.zmminglobal,top.zminp-w3d.dz)
-      zmax = min(w3d.zmmaxglobal,top.zmaxp+w3d.dz)
-      zz = getz(gather=0) - top.zbeam
-      setgrid1d(len(zz),zz,100,pnumz,zmin,zmax)
+      # --- Also, calculate the distribution if the moments were not
+      # --- calculated on the most recent step.
+      pnumz = zeros(1001,'d')
+      zmin = max(w3d.zmminglobal+top.zbeam,zminp-w3d.dz)
+      zmax = min(w3d.zmmaxglobal+top.zbeam,zmaxp+w3d.dz)
+      if zz is None:
+        # --- If zz was not fetched above, then get it here.
+        zz = getz(jslist=-1,gather=0)
+      setgrid1d(len(zz),zz,1000,pnumz,zmin,zmax)
       pnumz = parallelsum(pnumz)
-      dz = (zmax - zmin)/100.
+      dz = (zmax - zmin)/1000.
     else:
       # --- Otherwise use the already calculated z-moment
       pnumz = top.pnumz
@@ -96,9 +121,13 @@ recalculated on a finer mesh to give better balancing.
 
     # --- Calculate the right hand side padding.
     if self.padright is None:
-      if top.vzmaxp > 0.: padright = top.vzmaxp*top.dt*ii*2
-      else:               padright = ii*w3d.dz
-    else:                 padright = self.padright
+      if not top.lmoments:
+        vzmaxp = globalmax(max(getvz(jslist=-1,gather=0)))
+      else:
+        vzmaxp = top.vzmaxp
+      if vzmaxp > 0.: padright = vzmaxp*top.dt*ii*2
+      else:           padright = ii*w3d.dz
+    else:             padright = self.padright
     padright = max(padright,self.padright)
     if self.verbose:
       print "Load balancing padright = ",padright
