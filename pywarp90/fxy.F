@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FXY.M, version $Revision: 3.4 $, $Date: 2002/10/03 23:09:42 $
+c@(#) File FXY.M, version $Revision: 3.5 $, $Date: 2003/09/16 23:28:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
