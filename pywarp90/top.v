@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.121 $, $Date: 2004/03/03 17:50:24 $
+#@(#) File TOP.V, version $Revision: 3.122 $, $Date: 2004/05/12 22:33:46 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.121 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.122 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -955,6 +955,9 @@ npmax_s(0:ns)  _integer [1]     /0/ +parallel
 np_s(ns)       _integer [1]     /0/
    # Number of particles by species: if zero, set to npmax; if npmax is zero,
    # it is set to sum(np_s).
+idkinterp(ns)  _integer        /0/ 
+   # drift-kinetic interpolation parameter.  0 for full particle
+   # dynamics.  1 for interpolation.  2 for pure drift kinetics
 a0_s(ns)       _real    [m]     /0./
    # Initial beam width in x by species: if zero, set to a0; if a0 is zero,
    # it is set to a0_s(1)
