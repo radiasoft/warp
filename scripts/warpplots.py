@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.18 2001/01/24 02:37:29 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.19 2001/01/30 00:52:38 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2192,6 +2192,7 @@ to all three.
       pe = convertiztope(iz)
       if pe == None: return None
       if me == pe: ppp = ppp[...,iz-top.izslave[me+1]]
+      else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
     if bcast: ppp = mpi.bcast(ppp)
     return ppp
@@ -2288,6 +2289,7 @@ be from none to all three.
       pe = convertiztope(iz)
       if pe == None: return None
       if me == pe: ppp = ppp[...,iz-top.izslave[me+1]]
+      else:        ppp = zeros(shape(ppp[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): ppp = getarray(pe,ppp,0)
     if bcast: ppp = mpi.bcast(ppp)
     return ppp
