@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.67 2004/08/06 23:36:18 dave Exp $"
+warp_version = "$Id: warp.py,v 1.68 2004/08/13 20:02:04 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -475,7 +475,8 @@ Creates a dump file
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
            varsuffix=varsuffix,verbose=verbose,hdf=hdf)
   # --- Remove control names from main dict
-  controllerscleanafterdump()
+  if attr == 'dump' or 'dump' in attr:
+    controllerscleanafterdump()
   # --- Update dump time
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
