@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.46 $, $Date: 2004/07/08 19:20:27 $
+c@(#) File WXY.M, version $Revision: 3.47 $, $Date: 2004/09/13 19:59:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1540,7 +1540,7 @@ c Initializes dtp
       if (lwxytimesubs) substarttime = wtime()
 
 c     --- First check if the allocation size has changed
-      if (npmaxxy /= npmax) then
+      if (npmaxxy /= npmax .or. .not. associated(dtp)) then
         npmaxxy = npmax
         call gchange("Particlesxy",0)
       endif
