@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.19 2001/01/30 00:52:38 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.20 2001/01/30 01:08:33 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -837,6 +837,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':1.,'hcolor':'fg','width':1.0,
                 'contours':None,'filled':0,'ccolor':'fg','view':1,
+                'colbarunitless':0,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -1006,8 +1007,12 @@ Note that either the x and y coordinates or the grid must be passed in.
   if (contours and filled==1) or (color == 'density' and len(x) > 0):
     if (contours and filled==1): nc = contours + 1
     else: nc = ncolor + 1
-    dmax = maxnd(grid1)
-    dmin = minnd(grid1)
+    if colbarunitless:
+      dmax = 1.0
+      dmin = 0.
+    else:
+      dmax = maxnd(grid1)
+      dmin = minnd(grid1)
     color_bar(dmin,dmax,uselog=uselog,ncolor=nc)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
