@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.98 2003/03/25 19:33:04 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.99 2003/04/16 23:30:50 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -519,7 +519,8 @@ def ppgeneric_doc(x,y):
   - color='fg': color of particles, when=='density', color by number density
   - ncolor=None: when plotting particle color by number density, number of
                  colors to use, defaults to top.ncolor
-  - denmin, denmax: set extrema for coloring particles by number density
+  - denmin, denmax: thresholds for removing particles, only particles located
+                    where density is between denmin and denmax are plotted
   - chopped=None: only particles where r < chopped*maxdensity/density
                   are plotted, where r is a random number between 0 and 1
                   and density is the density at the particle location
@@ -612,15 +613,6 @@ Note that either the x and y coordinates or the grid must be passed in.
          "only one of zz and grid can be specified"
   assert (centering == 'node' or centering == 'cell' or centering == 'old'),\
          "centering must take one of the values 'node', 'cell', or 'old'"
-
-  # --- The denmin and denmax arguments are now deprecated,
-  # --- replaced by cmin and cmax.
-  if denmin is not None:
-    cmin = denmin
-    print "Notice: denmin argument is obsolete, please change denmin to cmin"
-  if denmax is not None:
-    cmax = denmax
-    print "Notice: denmax argument is obsolete, please change denmax to cmax"
 
   # --- If there are no particles and no grid to plot, just return
   if type(x) == ArrayType and type(y) == ArrayType: np = globalsum(len(x))
@@ -721,7 +713,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If the grid is needed for the plot and it was not passed in, generate
   # --- it from the inputted particle data (if there was any)
   if type(grid) != ArrayType and \
-     (hash or contours or color=='density' or chopped or surface or cellarray):
+     (hash or contours or color=='density' or chopped or denmin or denmax or surface or cellarray):
     if zz is None:
       densitygrid = 1
 
@@ -775,7 +767,8 @@ Note that either the x and y coordinates or the grid must be passed in.
     # --- If requested, return the grid and extrema, doing no plotting
     if returngrid: return (grid,xmin,xmax,ymin,ymax)
 
-  elif (hash or contours or color=='density' or chopped or surface):
+  elif (hash or contours or color=='density' or chopped or denmin or denmax
+        or surface):
     densitygrid = 0
  
   # --- Scale the grid by its maximum if requested.
@@ -857,12 +850,18 @@ Note that either the x and y coordinates or the grid must be passed in.
     if color == 'density':
       z1 = zeros(len(x),'d')
       getgrid2d(len(x),x,yms,z1,nx,ny,grid1,xmin,xmax,ymin,ymax)
-    if chopped:
+    if chopped or denmin or denmax:
       dd = zeros(len(x),'d')
       getgrid2d(len(x),x,yms,dd,nx,ny,grid,xmin,xmax,ymin,ymax)
       maxdensity = maxnd(grid)
-      npart = len(x)
-      ipick = less(RandomArray.random(shape(x)),maxdensity*chopped/dd)
+      dd = dd/maxdensity
+      ipick = ones(shape(x))
+      if chopped:
+        ipick[:] = ipick*less(RandomArray.random(shape(x)),chopped/dd)
+      if denmin:
+        ipick[:] = ipick*less(denmin,dd)
+      if denmax:
+        ipick[:] = ipick*less(dd,denmax)
       x = compress(ipick,x)
       yms = compress(ipick,yms)
       if color == 'density':
