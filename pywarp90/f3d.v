@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.79 $, $Date: 2003/07/21 21:34:10 $
+#@(#) File F3D.V, version $Revision: 3.80 $, $Date: 2003/08/15 23:07:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.79 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.80 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -129,10 +129,13 @@ zparity   integer /0/ +parallel # iz parity, used in the parallel version so tha
                        # parity of the subgrid conductor points can be
                        # relative to the full grid.
 dxfine    real         # Size of transverse grid cells are finest level
-lplates          logical  # Sets whether or not quadruple endplates are included
+lplates  logical /.true./ # Sets whether or not quadruple endplates are included
 rodfract        real /1./ # Fraction of quadrupole rod which is used
 
 *********** Conductor3d dump parallel:
+laddconductor logical /.false./ # When true, the python function
+                          # calladdconductor is called at the beginning of the 
+                          # field solve.
 lcndbndy logical /.true./ # Turns on sub-grid boundaries
 icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
