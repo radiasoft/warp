@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.4 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.5 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -260,6 +260,131 @@ c       --- The point is on the cylinder exactly.
       return
       end
 c=======================================================================
+      subroutine ZRoundedCylinderConductorF(rad,length,rad2,
+     &                              xcent,ycent,zcent,
+     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                              fuzz)
+      real(kind=8):: rad,length,rad2,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a cylinder aligned with
+c the z-axis. The corners of the cylinder are rounded with radius rad2.
+c The notation is that a negative distance means that the point is inside.
+
+      real(kind=8):: zmin,zmax
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,rsq,rr,r,zround
+
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
+
+      do i=1,n
+
+c       --- Set defaults
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Set temps
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        rsq = (xx**2 + yy**2)
+        rr = sqrt(rsq)
+        if (rad-rad2 <= rr .and. rr <= rad) then
+          zround = sqrt(rad2**2 - (rr-rad+rad2)**2)
+        endif
+
+c       --- If point is not within the z extent of the cylinder
+        if (z(i) < zmin - fuzz) then
+          if (rsq <= (rad-rad2)**2) then
+            delpz(i) = zmin - z(i)
+          else if (rsq <= rad**2) then
+            delpz(i) = zmin + rad2 - z(i) - zround
+          endif
+          cycle
+        endif
+        if (z(i) > zmax + fuzz) then
+          if (rsq <= (rad-rad2)**2) then
+            delmz(i) = z(i) - zmax
+          else if (rsq <= rad**2) then
+            delmz(i) = z(i) - zmax + rad2 - zround
+          endif
+          cycle
+        endif
+
+        if (rsq <= rad**2) then
+          if (rsq > (rad-rad2)**2) then
+            if (z(i) <= zmin + rad2 - zround) then
+              delpz(i) = zmin + rad2 - z(i) - zround
+            else if (z(i) < zmax - rad2 + zround) then
+              delpz(i) = z(i) - zmax + rad2 - zround
+              delmz(i) = zmin + rad2 - zround - z(i)
+            else
+              delmz(i) = z(i) - zmax + rad2 - zround
+            endif
+          else
+            delmz(i) = zmin - z(i)
+            delpz(i) = z(i) - zmax
+          endif
+        endif
+
+c       --- Get radius of conductor.  Care is needed in the if's to avoid
+c       --- sqrt's of negative numbers.
+        if (z(i) <= zmin) then
+          r = rad - rad2
+        else if (z(i) < zmin + rad2) then
+          r = rad - rad2 + sqrt(rad2**2 - (zmin+rad2-z(i))**2)
+        else if (z(i) <= zmax - rad2) then
+          r = rad
+        else if (z(i) < zmax) then
+          r = rad - rad2 + sqrt(rad2**2 - (z(i)-zmax+rad2)**2)
+        else
+          r = rad - rad2
+        endif
+
+c       --- Point inside the cylinder
+        if (rsq < r**2) then
+          delmx(i) = -(sqrt(r**2 - yy*yy) + xx)
+          delpx(i) = -(sqrt(r**2 - yy*yy) - xx)
+          delmy(i) = -(sqrt(r**2 - xx*xx) + yy)
+          delpy(i) = -(sqrt(r**2 - xx*xx) - yy)
+          cycle
+        endif
+
+c       --- Point is outside the cylinder
+        if (rsq > r**2) then
+          if (abs(yy) <= r) then
+            if (xx > 0) delmx(i) = ( xx - sqrt(r**2 - yy*yy))
+            if (xx < 0) delpx(i) = (-xx - sqrt(r**2 - yy*yy))
+          endif
+          if (abs(xx) <= r) then
+            if (yy > 0) delmy(i) = ( yy - sqrt(r**2 - xx*xx))
+            if (yy < 0) delpy(i) = (-yy - sqrt(r**2 - xx*xx))
+          endif
+          cycle
+        endif
+
+c       --- The point is on the cylinder exactly.
+        delmx(i) = 0.
+        delpx(i) = 0.
+        delmy(i) = 0.
+        delpy(i) = 0.
+        delmz(i) = 0.
+        delpz(i) = 0.
+
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine ZCylinderOutConductorF(rad,length,xcent,ycent,zcent,
      &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                              fuzz)
@@ -318,6 +443,10 @@ c       --- Point inside the cylinder
 
 c       --- Point is outside the cylinder
         if (rsq > rad**2) then
+          delmx(i) = -LARGEPOS
+          delpx(i) = -LARGEPOS
+          delmy(i) = -LARGEPOS
+          delpy(i) = -LARGEPOS
           if (abs(yy) <= rad) then
             if (xx > 0) delmx(i) = -( xx - sqrt(rad**2 - yy*yy))
             if (xx < 0) delpx(i) = -(-xx - sqrt(rad**2 - yy*yy))
@@ -328,6 +457,135 @@ c       --- Point is outside the cylinder
           endif
           delmz(i) = zmin - z(i)
           delpz(i) = z(i) - zmax
+          cycle
+        endif
+
+c       --- The point is on the cylinder exactly.
+        delmx(i) = 0.
+        delpx(i) = 0.
+        delmy(i) = 0.
+        delpy(i) = 0.
+        delmz(i) = 0.
+        delpz(i) = 0.
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZRoundedCylinderOutConductorF(rad,length,rad2,
+     &                              xcent,ycent,zcent,
+     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                              fuzz)
+      real(kind=8):: rad,length,rad2,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: delmx(n),delpx(n)
+      real(kind=8):: delmy(n),delpy(n)
+      real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
+
+c Finds distances along the axis of the points from a cylinder aligned with
+c the z-axis. The corners of the cylinder are rounded with radius rad2.
+c The notation is that a negative distance means that the point is inside.
+
+      real(kind=8):: zmin,zmax
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,rsq,rr,r,zround
+
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
+
+      do i=1,n
+
+c       --- Set defaults
+        delmx(i) = LARGEPOS
+        delpx(i) = LARGEPOS
+        delmy(i) = LARGEPOS
+        delpy(i) = LARGEPOS
+        delmz(i) = LARGEPOS
+        delpz(i) = LARGEPOS
+
+c       --- Set temps
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        rsq = (xx**2 + yy**2)
+        rr = sqrt(rsq)
+        if (rad <= rr .and. rr <= rad+rad2) then
+          zround = sqrt(rad2**2 - (rad+rad2-rr)**2)
+        endif
+
+c       --- If point is not within the z extent of the cylinder
+        if (z(i) < zmin - fuzz) then
+          if (rsq >= (rad+rad2)**2) then
+            delpz(i) = zmin - z(i)
+          else if (rsq >= rad**2) then
+            delpz(i) = zmin + rad2 - z(i) - zround
+          endif
+          cycle
+        endif
+        if (z(i) > zmax + fuzz) then
+          if (rsq >= (rad+rad2)**2) then
+            delmz(i) = z(i) - zmax
+          else if (rsq >= rad**2) then
+            delmz(i) = z(i) - zmax + rad2 - zround
+          endif
+          cycle
+        endif
+
+        if (rsq >= rad**2) then
+          if (rsq < (rad+rad2)**2) then
+            if (z(i) <= zmin + rad2 - zround) then
+              delpz(i) = zmin + rad2 - z(i) - zround
+            else if (z(i) < zmax - rad2 + zround) then
+              delpz(i) = z(i) - zmax + rad2 - zround
+              delmz(i) = zmin + rad2 - zround - z(i)
+            else
+              delmz(i) = z(i) - zmax + rad2 - zround
+            endif
+          else
+            delmz(i) = zmin - z(i)
+            delpz(i) = z(i) - zmax
+          endif
+        endif
+
+c       --- Get radius of conductor.  Care is needed in the if's to avoid
+c       --- sqrt's of negative numbers.
+        if (z(i) <= zmin) then
+          r = rad + rad2
+        else if (z(i) < zmin + rad2) then
+          r = rad + rad2 - sqrt(rad2**2 - (zmin+rad2-z(i))**2)
+        else if (z(i) <= zmax - rad2) then
+          r = rad
+        else if (z(i) < zmax) then
+          r = rad + rad2 - sqrt(rad2**2 - (z(i)-zmax+rad2)**2)
+        else
+          r = rad + rad2
+        endif
+
+c       --- Point inside the cylinder
+        if (rsq < r**2) then
+          delmx(i) = (sqrt(r**2 - yy*yy) + xx)
+          delpx(i) = (sqrt(r**2 - yy*yy) - xx)
+          delmy(i) = (sqrt(r**2 - xx*xx) + yy)
+          delpy(i) = (sqrt(r**2 - xx*xx) - yy)
+          cycle
+        endif
+
+c       --- Point is outside the cylinder
+        if (rsq > r**2) then
+          delmx(i) = -LARGEPOS
+          delpx(i) = -LARGEPOS
+          delmy(i) = -LARGEPOS
+          delpy(i) = -LARGEPOS
+          if (abs(yy) <= r) then
+            if (xx > 0) delmx(i) = -( xx - sqrt(r**2 - yy*yy))
+            if (xx < 0) delpx(i) = -(-xx - sqrt(r**2 - yy*yy))
+          endif
+          if (abs(xx) <= r) then
+            if (yy > 0) delmy(i) = -( yy - sqrt(r**2 - xx*xx))
+            if (yy < 0) delpy(i) = -(-yy - sqrt(r**2 - xx*xx))
+          endif
           cycle
         endif
 
@@ -665,6 +923,10 @@ c       --- Point inside the cone
 
 c       --- Point is outside the cone
         else if (r > rcone) then
+          delmx(i) = -LARGEPOS
+          delpx(i) = -LARGEPOS
+          delmy(i) = -LARGEPOS
+          delpy(i) = -LARGEPOS
           if (abs(yy) <= rcone) then
             if (xx > 0) delmx(i) = -( xx - sqrt(rcone**2 - yy*yy))
             if (xx < 0) delpx(i) = -(-xx - sqrt(rcone**2 - yy*yy))
