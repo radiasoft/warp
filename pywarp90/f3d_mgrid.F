@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.69 $, $Date: 2004/07/09 19:20:32 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.70 $, $Date: 2004/07/22 23:19:17 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2959,4 +2959,81 @@ c       --- than the other point. If so, reset data for the other point.
       end
 c=============================================================================
 c=============================================================================
+c=============================================================================
+      subroutine gatherrhofromchild(rho,nx,ny,nz,childrho,cnx,cny,cnz,
+     &                              l,u,fulllower,childlower,childupper,
+     &                              r,weights,owndomain,
+     &                              dobounds,bounds,rootdims)
+      integer(ISZ):: nx,ny,nz,cnx,cny,cnz
+      integer(ISZ):: l(0:2),u(0:2),fulllower(0:2)
+      integer(ISZ):: childlower(0:2),childupper(0:2)
+      integer(ISZ):: r
+      integer(ISZ):: dobounds,bounds(0:5),rootdims(0:2)
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      real(kind=8):: childrho(0:cnx,0:cny,0:cnz)
+      real(kind=8):: weights(-r+1:r-1,-r+1:r-1,-r+1:r-1)
+      integer(ISZ):: owndomain(0:cnx,0:cny,0:cnz)
+
+      integer(ISZ):: ix,iy,iz,icx,icy,icz,iwx,iwy,iwz
+      integer(ISZ):: ix0,ix1,ix2,iy0,iy1,iy2,iz0,iz1,iz2
+      integer(ISZ):: iwx1,iwy1,iwz1,iwx2,iwy2,iwz2
+      real(kind=8):: wrho
+
+      do iz=l(2),u(2)
+        iz0 = iz - fulllower(2)
+        iz1 = max(iz*r - r + 1,childlower(2))
+        iz2 = min(iz*r + r - 1,childupper(2))
+        iwz1 = iz1 - iz*r
+        iwz2 = iz2 - iz*r
+        icz = iz*r - childlower(2)
+        do iy=l(1),u(1)
+          iy0 = iy - fulllower(1)
+          iy1 = max(iy*r - r + 1,childlower(1))
+          iy2 = min(iy*r + r - 1,childupper(1))
+          iwy1 = iy1 - iy*r
+          iwy2 = iy2 - iy*r
+          icy = iy*r - childlower(1)
+          do ix=l(0),u(0)
+            ix0 = ix - fulllower(0)
+            ix1 = max(ix*r - r + 1,childlower(0))
+            ix2 = min(ix*r + r - 1,childupper(0))
+            iwx1 = ix1 - ix*r
+            iwx2 = ix2 - ix*r
+            icx = ix*r - childlower(0)
+
+            do iwz=iwz1,iwz2
+              do iwy=iwy1,iwy2
+                do iwx=iwx1,iwx2
+                  if (owndomain(icx+iwx,icy+iwy,icz+iwz) == 1) then
+                    wrho=weights(iwx,iwy,iwz)*childrho(icx+iwx,icy+iwy,icz+iwz)
+
+c                   --- Adjust for symmetries
+                    if (dobounds == 1) then
+                      if (bounds(0) == 1 .and. ix == 0 .and. iwx > 0)
+     &                  wrho = 2*wrho
+                      if (bounds(1) == 1 .and. ix == rootdims(0) .and. iwx < 0)
+     &                  wrho = 2*wrho
+                      if (bounds(2) == 1 .and. iy == 0 .and. iwy > 0)
+     &                  wrho = 2*wrho
+                      if (bounds(3) == 1 .and. iy == rootdims(1) .and. iwy < 0)
+     &                  wrho = 2*wrho
+                      if (bounds(4) == 1 .and. iz == 0 .and. iwz > 0)
+     &                  wrho = 2*wrho
+                      if (bounds(5) == 1 .and. iz == rootdims(2) .and. iwz < 0)
+     &                  wrho = 2*wrho
+                    endif
+
+                    rho(ix0,iy0,iz0) = rho(ix0,iy0,iz0) + wrho
+
+                  endif
+
+                enddo
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
+
+      return
+      end
 c=============================================================================
