@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.125 $, $Date: 2004/07/22 23:18:40 $
+c@(#) File TOP.F, version $Revision: 3.126 $, $Date: 2004/07/23 22:20:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1746,6 +1746,8 @@ c z start.
       integer(ISZ):: ii,id_temp
       real(kind=8):: offset_temp
 
+      if (ndipo < 0) return
+
       if (io > 0) then
 c       --- Just call getelemid.
         call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),dipool(0),
@@ -1781,6 +1783,8 @@ c z start.
 
       integer(ISZ):: ii,id_temp
       real(kind=8):: offset_temp
+
+      if (nquad < 0) return
 
       if (io > 0) then
 c       --- Just call getelemid.
@@ -1818,6 +1822,8 @@ c z start.
       integer(ISZ):: ii,id_temp
       real(kind=8):: offset_temp
 
+      if (nhele < 0) return
+
       if (io > 0) then
 c       --- Just call getelemid.
         call getelemid(zz,offset,nhele,helezs(0),heleze(0),heleol(0),
@@ -1853,6 +1859,8 @@ c z start.
 
       integer(ISZ):: ii,id_temp
       real(kind=8):: offset_temp
+
+      if (nemlt < 0) return
 
       if (io > 0) then
 c       --- Just call getelemid.
@@ -1890,6 +1898,8 @@ c z start.
       integer(ISZ):: ii,id_temp
       real(kind=8):: offset_temp
 
+      if (nmmlt < 0) return
+
       if (io > 0) then
 c       --- Just call getelemid.
         call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),mmltol(0),
@@ -1925,6 +1935,8 @@ c z start.
 
       integer(ISZ):: ii,id_temp
       real(kind=8):: offset_temp
+
+      if (naccl < 0) return
 
       if (io > 0) then
 c       --- Just call getelemid.

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.111 $, $Date: 2004/06/24 20:51:34 $
+c@(#) File F3D.M, version $Revision: 3.112 $, $Date: 2004/07/23 22:20:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4338,10 +4338,14 @@ c  dependent upon quad variables
       real(kind=8):: offset
       integer(ISZ):: iz,iq,iqprev
 
+      numends = 0
+
+c     --- If there are no quads, then just return
+      if (nquad < 0) return
+
 c  get rest of quads within mesh
       iq = 0
       iqprev = -1
-      numends = 0
       do iz=1,nz-1
         call getquadid(zmmin+iz*dz+zgrid,offset,iq,1)
         if (iq .ne. iqprev .and. numends < nendmax) then
@@ -4392,7 +4396,7 @@ c  find quad starts
 
 c  Allocate local variables
       if (iwhich == 0 .or. iwhich == 1) then
-        if (loadquad) then
+        if (nquad >= 0 .and. loadquad) then
           if (nzpts == 0) nzpts = 16
           if (nendquad == 0) nendquad = 20
           iq = 0
@@ -5567,6 +5571,9 @@ c     --- is counted to be within the conductor
       fuzz = 1.e-5
       zfuzz = dz*fuzz
 
+c     --- Only do the next loop if there are any quads.
+      if (nquad >= 0) then
+
 c     --- loop over z planes to fill islctype array
 c     --- Note that the loop ranges from -1 to nz+1, since any quads just
 c     --- outside of the grid need to be found in order to apply the subgrid
@@ -6209,9 +6216,12 @@ c       --- of the changes can be made at once.
 
       enddo
 
+c     --- End of block setting up quads.
+      endif
+
 c +++++++++++++++++++++++++++
 c     --- add points for electrostatic dipoles
-      if (ndipo > 0) then
+      if (ndipo >= 0) then
 
 c       --- set prevcent (center of previous dipole) to large negative
 c       --- value to ensure that first dipole is included.
