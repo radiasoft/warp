@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.27 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1015,7 +1015,7 @@ c relative to a plane normal to the surface at that point.
 
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
 
@@ -1031,7 +1031,7 @@ c       --- First, check if trajectory hits conductor end.
           ttemp = -(zmin - z(i))/vz(i)
           xx = -vx(i)*ttemp + x(i)
           yy = -vy(i)*ttemp + y(i)
-          rrsq = xx**2 + yy**2
+          rrsq = (xx - xcent)**2 + (yy - ycent)**2
           if (rrsq <= rad**2) then
             if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
      &          (ttemp > tt .and. tt < 0.)) then
@@ -1044,7 +1044,7 @@ c       --- First, check if trajectory hits conductor end.
           ttemp = -(zmax - z(i))/vz(i)
           xx = -vx(i)*ttemp + x(i)
           yy = -vy(i)*ttemp + y(i)
-          rrsq = xx**2 + yy**2
+          rrsq = (xx - xcent)**2 + (yy - ycent)**2
           if (rrsq <= rad**2) then
             if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
      &          (ttemp > tt .and. tt < 0.)) then
@@ -1272,7 +1272,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -1415,7 +1415,7 @@ c relative to a plane normal to the surface at that point.
 
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
 
@@ -1431,7 +1431,7 @@ c       --- First, check if trajectory hits conductor end.
           ttemp = -(zmin - z(i))/vz(i)
           xx = -vx(i)*ttemp + x(i)
           yy = -vy(i)*ttemp + y(i)
-          rrsq = xx**2 + yy**2
+          rrsq = (xx - xcent)**2 + (yy - ycent)**2
           if (rrsq >= rad**2) then
             if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
      &          (ttemp > tt .and. tt < 0.)) then
@@ -1444,7 +1444,7 @@ c       --- First, check if trajectory hits conductor end.
           ttemp = -(zmax - z(i))/vz(i)
           xx = -vx(i)*ttemp + x(i)
           yy = -vy(i)*ttemp + y(i)
-          rrsq = xx**2 + yy**2
+          rrsq = (xx - xcent)**2 + (yy - ycent)**2
           if (rrsq >= rad**2) then
             if ((tt > ttemp .and. ttemp > 0. .and. tt > 0.) .or.
      &          (ttemp > tt .and. tt < 0.)) then
@@ -1677,7 +1677,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -2137,7 +2137,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -2332,7 +2332,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -2480,6 +2480,173 @@ c The notation is that a negative distance means that the point is inside.
       return
       end
 c=======================================================================
+      subroutine ztorus_intercept(r1,r2,xcent,ycent,zcent,
+     &                            n,x,y,z,vx,vy,vz,tt,theta,phi)
+      real(kind=8):: r1,r2,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n),vx(n),vy(n),vz(n)
+      real(kind=8):: tt(n),theta(n),phi(n)
+
+c Finds place where particle inside intercepted the surface and the angle
+c relative to a plane normal to the surface at that point.
+
+      integer(ISZ):: i,nhit,ii
+      real(kind=8):: zmin,zmax
+      real(kind=8):: vv,d1,d2
+      real(kind=8):: xx,yy,zz,rr,dd,rrsq,t0,ttemp(4)
+      real(kind=8):: a,b,c
+      real(kind=8):: v(2),f(2)
+      integer(ISZ):: niter,imin
+
+      zmin = zcent - r2
+      zmax = zcent + r2
+      
+      do i=1,n
+        vv = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+        if (vv == 0.) cycle
+        
+c       --- This check on whether a point is inside may be removed at a
+c       --- future time.
+        rr = sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2)
+        dd = sqrt((z(i)-zcent)**2 + (r1 - rr)**2) - r2
+        if (dd > 0.) cycle
+
+        nhit = 0
+
+c       --- First, check if trajectory hits the planes just outside the torus.
+        if (vz(i) .ne. 0.) then
+          t0 = -(zmin - z(i))/vz(i)
+          xx = -vx(i)*t0 + x(i)
+          yy = -vy(i)*t0 + y(i)
+          rrsq = (xx - xcent)**2 + (yy - ycent)**2
+          if (max(0.,(r1-r2))**2 <= rrsq .and. rrsq <= (r1+r2)**2) then
+            nhit = nhit + 1
+            ttemp(nhit) = t0
+          endif
+
+          t0 = -(zmax - z(i))/vz(i)
+          xx = -vx(i)*t0 + x(i)
+          yy = -vy(i)*t0 + y(i)
+          rrsq = (xx - xcent)**2 + (yy - ycent)**2
+          if (max(0.,(r1-r2))**2 <= rrsq .and. rrsq <= (r1+r2)**2) then
+            nhit = nhit + 1
+            ttemp(nhit) = t0
+          endif
+        endif
+
+c       --- Check if it hits the cylinder just outside the torus.
+        a = vx(i)**2 + vy(i)**2
+        if (a > 0.) then
+          b = -2*(vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+          c = (x(i)-xcent)**2 + (y(i)-ycent)**2 - (r1+r2)**2
+          if ((b**2 - 4*a*c) > 0.) then
+            t0 = (-b-sqrt(b**2 - 4*a*c))/(2*a)
+            zz = -vz(i)*t0 + z(i)
+            if (zmin <= zz .and. zz <= zmax) then
+              nhit = nhit + 1
+              ttemp(nhit) = t0
+            endif
+            t0 = (-b+sqrt(b**2 - 4*a*c))/(2*a)
+            zz = -vz(i)*t0 + z(i)
+            if (zmin <= zz .and. zz <= zmax) then
+              nhit = nhit + 1
+              ttemp(nhit) = t0
+            endif
+          endif
+        endif
+
+c       --- If none of those surfaces is intersected, then no reason to
+c       --- continue (this saves the work below).
+        if (nhit == 0) cycle
+
+c       --- Check if it hits the cylinder just inside the torus.
+        a = vx(i)**2 + vy(i)**2
+        if (a > 0.) then
+          b = -2*(vx(i)*(x(i)-xcent) + vy(i)*(y(i)-ycent))
+          c = (x(i)-xcent)**2 + (y(i)-ycent)**2 - max(0.,(r1-r2))**2
+          if ((b**2 - 4*a*c) > 0.) then
+            t0 = (-b-sqrt(b**2 - 4*a*c))/(2*a)
+            zz = -vz(i)*t0 + z(i)
+            if (zmin <= zz .and. zz <= zmax) then
+              ttemp(nhit+1) = t0
+              nhit = nhit + 1
+            endif
+            t0 = (-b+sqrt(b**2 - 4*a*c))/(2*a)
+            zz = -vz(i)*t0 + z(i)
+            if (zmin <= zz .and. zz <= zmax) then
+              ttemp(nhit+1) = t0
+              nhit = nhit + 1
+            endif
+          endif
+        endif
+
+c       --- Now check each of the hits and refine the ones where ttemp is
+c       --- positive.
+        do ii=1,nhit
+c         --- Note that if the particle is inside, then this check is always
+c         --- correct. If a particle is outside, then it could be between
+c         --- the torus and the annulus, so ttemp on the annulus will have
+c         --- a different sign than ttemp on the torus. This check will fail.
+          if (ttemp(ii) <= 0.) then
+            ttemp(ii) = LARGEPOS
+            cycle
+          endif
+
+c         --- Now do a simple iteration to try to refine the intersection
+c         --- point.
+          v(1) = ttemp(ii)*0.6
+          xx = -vx(i)*v(2) + x(i)
+          yy = -vy(i)*v(2) + y(i)
+          zz = -vz(i)*v(2) + z(i)
+          rr = sqrt((xx - xcent)**2 + (yy - ycent)**2)
+          f(1) = r2**2 - (rr - r1)**2 - (zz - zcent)**2
+          v(2) = ttemp(ii)
+          xx = -vx(i)*v(2) + x(i)
+          yy = -vy(i)*v(2) + y(i)
+          zz = -vz(i)*v(2) + z(i)
+          rr = sqrt((xx - xcent)**2 + (yy - ycent)**2)
+          f(2) = r2**2 - (rr - r1)**2 - (zz - zcent)**2
+          niter = 0
+          if (f(1) == 0. .or. f(2) == 0.) niter = 12
+          imin = 1
+          do while (min(abs(f(2)),abs(f(1))) > 1.e-12 .and. niter < 12)
+            imin = 1
+            if (abs(f(2)) > abs(f(1))) imin = 2
+            if (f(1) == f(2)) exit
+            v(imin) = (v(1)*f(2)-v(2)*f(1))/(f(2)-f(1))
+            xx = -vx(i)*v(imin) + x(i)
+            yy = -vy(i)*v(imin) + y(i)
+            zz = -vz(i)*v(imin) + z(i)
+            rr = sqrt((xx - xcent)**2 + (yy - ycent)**2)
+            f(imin) = r2**2 - (rr - r1)**2 - (zz - zcent)**2
+            niter = niter + 1
+          end do
+          ttemp(ii) = v(imin)
+
+        enddo
+
+c       --- Now find the minimum ttemp.
+        imin = 1
+        do ii=2,nhit
+          if (ttemp(nhit) < ttemp(imin)) imin = ii
+        enddo
+
+        if (ttemp(imin) == LARGEPOS) cycle
+
+        xx = -vx(i)*ttemp(imin) + x(i)
+        yy = -vy(i)*ttemp(imin) + y(i)
+        zz = -vz(i)*ttemp(imin) + z(i)
+        rr = sqrt((xx - xcent)**2 + (yy - ycent)**2)
+        a = atan2(rr-r1,zz-zcent)
+        theta(i) = a*(xx-xcent)/dvnz(rr)
+        phi(i)   = a*(yy-ycent)/dvnz(rr)
+        tt(i) = ttemp(imin)
+
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine ZTorusIntercept(r1,r2,xcent,ycent,zcent,
      &                           n,x,y,z,vx,vy,vz,xi,yi,zi,angle,distance)
       real(kind=8):: r1,r2,xcent,ycent,zcent
@@ -2491,13 +2658,36 @@ c Finds place where particle inside intercepted the surface and the angle
 c relative to a plane normal to the surface at that point.
 
       integer(ISZ):: i
+      real(kind=8):: d1,d2
+      real(kind=8):: tt(n),theta(n),phi(n)
 
+      xi = LARGEPOS
+      yi = LARGEPOS
+      zi = LARGEPOS
+      angle = 0.
+      distance = LARGEPOS
+      tt = LARGEPOS
+      theta = 0.
+      phi = 0.
+
+      call ztorus_intercept(r1,r2,xcent,ycent,zcent,
+     &                      n,x,y,z,vx,vy,vz,tt,theta,phi)
+      
       do i=1,n
-        xi(i) = LARGEPOS
-        yi(i) = LARGEPOS
-        zi(i) = zcent
-        angle(i) = 0.
-        distance(i) = LARGEPOS
+
+        if (tt(i) == LARGEPOS) cycle
+
+        xi(i) = -vx(i)*tt(i) + x(i)
+        yi(i) = -vy(i)*tt(i) + y(i)
+        zi(i) = -vz(i)*tt(i) + z(i)
+
+        d1 = sqrt(vx(i)**2 + vy(i)**2 + vz(i)**2)
+        d2 = vx(i)*sin(theta(i))*cos(phi(i)) + vy(i)*sin(phi(i)) +
+     &       vz(i)*cos(theta(i))*cos(phi(i))
+        angle(i) = acos(abs(d2)/d1)
+        distance(i) = sqrt((x(i) - xi(i))**2 +
+     &                     (y(i) - yi(i))**2 +
+     &                     (z(i) - zi(i))**2)
       enddo
 
       return
@@ -2738,7 +2928,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -2938,7 +3128,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent(1)
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -3306,7 +3496,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -3507,7 +3697,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent(1)
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -3735,7 +3925,7 @@ c relative to a plane normal to the surface at that point.
       do i=1,n
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
       enddo
@@ -4035,7 +4225,7 @@ c near the surface, the distance has the correct sign.
 c=======================================================================
       subroutine zsrfrv_intercept(rofzfunc,zmin,zmax,xcent,ycent,zcent,
      &                            lsrlinr,npnts_sr,z_sr,r_sr,rad_sr,zc_sr,rc_sr,
-     &                              n,x,y,z,vx,vy,vz,tt,theta,phi)
+     &                            n,x,y,z,vx,vy,vz,tt,theta,phi)
       character(*):: rofzfunc
       real(kind=8):: zmin,zmax,xcent,ycent,zcent
       logical(ISZ):: lsrlinr
@@ -4104,7 +4294,32 @@ c                 --- These angles need to be verified.
                   phi(i) = a1*yy/dvnz(rr)
                 endif
               endif
-c           else
+            else
+
+c             --- Use the routine already written for tori.
+              call ztorus_intercept(rc_sr(il),abs(rad_sr(il)),xcent,ycent,
+     &                              zcent+zc_sr(il),
+     &                              1,x(i),y(i),z(i),vx(i),vy(i),vz(i),
+     &                              ttemp,a1,a2)
+
+c             --- Check if the intersection point is within the line segment.
+              xx = -vx(i)*ttemp + x(i) - xcent
+              yy = -vy(i)*ttemp + y(i) - ycent
+              zz = -vz(i)*ttemp + z(i) - ycent
+              rr = sqrt(xx**2 + yy**2)
+              if (z_sr(il) <= zz .and. zz <= z_sr(il+1) .and.
+     &            ((rad_sr(il) > 0. .and. rr > rc_sr(il)) .or.
+     &             (rad_sr(il) < 0. .and. rr < rc_sr(il)))) then
+c               --- If it is, and the point if the best so far, then save
+c               --- the data.
+                if ((tt(i) > ttemp .and. ttemp > 0. .and. tt(i) > 0.) .or.
+     &              (ttemp > tt(i) .and. tt(i) < 0.)) then
+                  tt(i) = ttemp
+                  theta(i) = a1
+                  phi(i) = a2
+                endif
+              endif
+
             endif
           enddo
 
@@ -4208,7 +4423,7 @@ c relative to a plane normal to the surface at that point.
 c       --- Set parameter to LARGEPOS as an initial guess.
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
 
@@ -4614,7 +4829,7 @@ c relative to a plane normal to the surface at that point.
 c       --- Set parameter to LARGEPOS as an initial guess.
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
 
@@ -5249,7 +5464,7 @@ c relative to a plane normal to the surface at that point.
 c       --- Set parameter to LARGEPOS as an initial guess.
         xi(i) = LARGEPOS
         yi(i) = LARGEPOS
-        zi(i) = zcent
+        zi(i) = LARGEPOS
         angle(i) = 0.
         distance(i) = LARGEPOS
 
