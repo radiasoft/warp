@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.15 2001/07/10 21:22:44 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.16 2001/07/10 23:47:58 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -219,8 +219,8 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
         # --- This check is for dynamic arrays - if array is unallocated,
         # --- the getpyobject routine returns None.
         v = pkg.getpyobject(vname)
+        if type(v) == ArrayType and v.typecode() == Complex: continue
         if v is not None:
-          if verbose: print "writing "+p+"."+vname+" as "+pdbname+" -first pass"
           # --- Get attributes of the variable
           a = pkg.getvarattr(vname)
           # --- Set name of variable in pdb file
@@ -228,6 +228,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
             pdbname = vname+'@'+p
           else:
             pdbname = vname+varsuffix
+          if verbose: print "writing "+p+"."+vname+" as "+pdbname+" -first pass"
           # --- Check if variable has the attribute 'parallel'
           parallelvar = re.search('parallel',a)
           # --- Method of writing variables differs between parallel and
