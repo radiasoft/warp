@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.100 $, $Date: 2003/07/22 17:49:07 $
+c@(#) File TOP.M, version $Revision: 3.101 $, $Date: 2003/08/22 22:52:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3807,15 +3807,23 @@ c by the calling routine.
       integer(ISZ):: io,astat,iz
       real(kind=8):: zs,ze,zc
       real(kind=8):: gapez,z1,z2,vn,frac,qoverm
-      real(kind=8):: zl,zr,vbeamfrmo,deltav
-      real(kind=8):: zbeamnew
+      real(kind=8):: zz,zl,zr,vbeamfrmo,deltav
+      real(kind=8):: zznew
 
       qoverm = sq(1)/sm(1)
       zcorrection = 0.
 
       if (accls .and. vbeamfrm .ne. 0.) then
 
-        iz = nzlmax/2
+        if (acclbeamframe .ne. 0.) then
+          zz = acclbeamframe + zlframe
+          iz = nint((acclbeamframe-zlmin)/dzl)
+          iz = max(0,min(nzl,iz))
+        else
+          iz = nzl/2
+          zz = zlmin + iz*dzl + zlframe
+        endif
+
         do io=1,nacclol
 
 c         --- Check if this gap should accelerate the beam frame.
@@ -3831,42 +3839,42 @@ c         --- across the gap.
           if (.not. lacclzl) then
 
 c           --- Calculate grid frame velocity at time level n
-            z1 = zbeam - 0.5*dt*vbeamfrm - 0.5*gapez*qoverm*(dt*0.5)**2
-            z2 = zbeam - 0.5*dt*vbeamfrm
-            if (zbeam .le. zs) then
+            z1 = zz - 0.5*dt*vbeamfrm - 0.5*gapez*qoverm*(dt*0.5)**2
+            z2 = zz - 0.5*dt*vbeamfrm
+            if (zz <= zs) then
               vn = vbeamfrm
-            elseif (z1 .lt. zs) then
-              vn = sqrt(vbeamfrm**2 + 2.*gapez*qoverm*(zbeam - zs))
-            elseif (zbeam .le. ze) then
+            elseif (z1 < zs) then
+              vn = sqrt(vbeamfrm**2 + 2.*gapez*qoverm*(zz - zs))
+            elseif (zz <= ze) then
               vn = vbeamfrm + 0.5*gapez*qoverm*dt
-            elseif (z2 .lt. ze) then
+            elseif (z2 < ze) then
               vn = 0.5*(vbeamfrm + 0.5*gapez*qoverm*dt + sqrt((vbeamfrm +
      &             0.5*gapez*qoverm*dt)**2 -
-     &             4.*gapez*qoverm*(zbeam - ze)))
+     &             4.*gapez*qoverm*(zz - ze)))
             else
               vn = vbeamfrm
             endif
 c           --- Calculate the fraction of time in the gap.  Cases inside
 c           --- and outside are included implicitly in the max and min calls.
 c           --- Note that the max's inside the sqrt are for idiot proofing.
-            if (zbeam .le. zs) then
-              frac = max(0.5 + (zbeam - zs)/(vn*dt) , 0.)
-            elseif (zbeam .le. (zs + ze)*0.5) then
-              frac = min(0.5 + 2.*(zbeam - zs)/
+            if (zz <= zs) then
+              frac = max(0.5 + (zz - zs)/(vn*dt) , 0.)
+            elseif (zz <= (zs + ze)*0.5) then
+              frac = min(0.5 + 2.*(zz - zs)/
      &               (dt*(sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
-     &               (zbeam - zs))) + vn)), 1.)
-            elseif (zbeam .le. ze) then
-              frac = min(0.5 + 2.*(ze - zbeam)/
+     &               (zz - zs))) + vn)), 1.)
+            elseif (zz <= ze) then
+              frac = min(0.5 + 2.*(ze - zz)/
      &               (dt*(sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
-     &               (ze - zbeam))) + vn)), 1.)
+     &               (ze - zz))) + vn)), 1.)
             else
-              frac = max(0.5 - (zbeam - ze)/(vn*dt) , 0.)
+              frac = max(0.5 - (zz - ze)/(vn*dt) , 0.)
             endif
 c           --- do correction on position
-            zbeamnew = zbeam
-            call zgapcorr(1,zbeamnew,0.,vbeamfrm,1.,-dt*0.5,dt*0.5,dt,
+            zznew = zz
+            call zgapcorr(1,zznew,0.,vbeamfrm,1.,-dt*0.5,dt*0.5,dt,
      &                    sm(1),sq(1),time)
-            zcorrection = zcorrection + zbeamnew - zbeam
+            zcorrection = zcorrection + zznew - zz
 c           --- add acceleration to beam frame velocity
             vbeamfrm = vbeamfrm + gapez*qoverm*dt*frac
 c           --- also change beam frame velocity
@@ -3878,9 +3886,9 @@ c           --- Zero-length gap
 c           --- location of gap center
             zc = 0.5*(zs + ze)
 c           --- "left" end of velocity advance step
-            zl = zbeam - 0.5*vbeamfrm*dt
+            zl = zz - 0.5*vbeamfrm*dt
 c           --- "right" end of velocity advance step
-            zr = zbeam + 0.5*vbeamfrm*dt
+            zr = zz + 0.5*vbeamfrm*dt
 c           --- Save current beam velocity
             vbeamfrmo = vbeamfrm
 c           --- add acceleration to beam velocity
@@ -3891,12 +3899,12 @@ c           --- add acceleration to beam velocity
 c           --- calculate correction on position of beam frame
             frac = 0.
             deltav = 0.
-            if (zbeam .lt. zc .and. zc .lt. zr) then
-              frac = - (zc - zbeam)/(vbeamfrmo*dt)
+            if (zz < zc .and. zc < zr) then
+              frac = - (zc - zz)/(vbeamfrmo*dt)
               deltav = vbeamfrm - vbeamfrmo
             endif
-            if (zr .lt. zc .and. zc .lt. zbeam+vbeamfrmo*dt) then
-              frac = 1. - (zc - zbeam)/(vbeamfrmo*dt)
+            if (zr < zc .and. zc < zz+vbeamfrmo*dt) then
+              frac = 1. - (zc - zz)/(vbeamfrmo*dt)
               deltav = sqrt(vbeamfrm**2 + 2.*qoverm*gapez*(ze - zs))
      &                 - vbeamfrm
             endif

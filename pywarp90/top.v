@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.101 $, $Date: 2003/08/13 16:04:46 $
+#@(#) File TOP.V, version $Revision: 3.102 $, $Date: 2003/08/22 22:52:59 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.101 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.102 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -175,6 +175,8 @@ zlatstrt  real    /0./    [m] # Z of lattice start (added to element z's)
 zlatbuffer real   /0./    [m] # Buffer added to element lengths so nearby
                               # elements are considered overlapping.
 acclzstt  real    /-1.e9/ [m] # Z where accl gaps start
+acclbeamframe real /0./   [m] # Location in beam frame where gap accelerates
+                              # the beam frame.
 lacclzl   logical /.false./   # When true, accelerating gaps are zero length
 dipotype character*8 /"Userset"/ # Use "box" to autoset to box dipoles
 iqerr     integer /0/         # index of first quad for which a position error
