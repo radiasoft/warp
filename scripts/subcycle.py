@@ -1,5 +1,5 @@
 from warp import *
-subcycle_version = "$Id: subcycle.py,v 1.2 2001/10/18 23:12:52 dave Exp $"
+subcycle_version = "$Id: subcycle.py,v 1.3 2001/10/25 22:32:24 dave Exp $"
 
 def subcycledoc():
   print """
@@ -42,7 +42,7 @@ on. The enable function is automatically called initially.
   def doafterstep(s):
     """Turns off the field solver for subcycled steps and do a field
 solve when needed"""
-    if top.it < s.nsubcycle:
+    if top.it%s.nsubcycle != 0:
       # --- Done this was so that the correct field solve is done, even in
       # --- cases where the user changes fstype midrun.
       if top.fstype > -1: s.fstypesave = top.fstype
