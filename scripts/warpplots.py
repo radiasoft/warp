@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.151 2005/03/31 19:43:59 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.152 2005/04/01 17:52:09 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -605,7 +605,7 @@ def ppgeneric_doc(x,y):
   - xscale=1.: scaling factor applied to x data
   - yscale=1.: scaling factor applied to y data
   - titles=1: when true, plot the titles
-  - titlet,titleb,titlel,titler=None: If specified, added to plot, overriding
+  - titlet,titleb,titlel,titler='': If specified, added to plot, overriding
                                       other title settings.
   - lframe=0: when true, the plot limits are set to the plmin and plmax input
               arguments, which default to the plmin and plmax variables from
@@ -671,7 +671,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'nx':20,'ny':20,'slope':0.,
                 'xoffset':0.,'yoffset':0.,'offset':0.,
                 'xscale':1.,'yscale':1.,'titles':1,
-                'titlet':None,'titleb':None,'titlel':None,'titler':None,
+                'titlet':'','titleb':'','titlel':'','titler':'',
                 'lframe':0,'xmin':None,'xmax':None,'ymin':None,'ymax':None,
                 'pplimits':('e','e','e','e'),
                 'particles':0,'uselog':0,'color':'fg','ncolor':top.ncolor,
