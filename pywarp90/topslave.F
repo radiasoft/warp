@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.19 $, $Date: 2003/04/09 01:55:59 $
+c TOPSLAVE.M, version $Revision: 1.20 $, $Date: 2003/05/01 00:14:20 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -89,7 +89,7 @@ c         --- in the arrays.
             temp = gaminv(ip)
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
-            if (npmaxi == npmax) then
+            if (npid > 0) then
               pidtemp = pid(ip,:)
               pid(ip,:) = pid(idest,:)
               pid(idest,:) = pidtemp
@@ -123,7 +123,7 @@ c         --- in the arrays.
             temp = gaminv(ip)
             gaminv(ip) = gaminv(idest)
             gaminv(idest) = temp
-            if (npmaxi == npmax) then
+            if (npid > 0) then
               pidtemp = pid(ip,:)
               pid(ip,:) = pid(idest,:)
               pid(idest,:) = pidtemp
@@ -178,9 +178,9 @@ c       --- Make sure these are zero in case they are not set below.
         nsendright = 0
 
 c       --- Number of quantities to be exchanged. Normally it is seven,
-c       --- but when npmaxi==npmax, then it is more since pid is also exchanged.
+c       --- but when npid>0, then it is more since pid is also exchanged.
         nquant = 7
-        if (npmaxi == npmax) nquant = nquant + npid
+        if (npid > 0) nquant = nquant + npid
 
 c       --- Copy particles being sent to the left to buffer1.
         if (pbound0==periodic .or. my_index > 0) then
@@ -197,12 +197,10 @@ c       --- Copy particles being sent to the left to buffer1.
             call copyarry(uyp(ins_init),buffer1(1+4*nsendleft),nsendleft)
             call copyarry(uzp(ins_init),buffer1(1+5*nsendleft),nsendleft)
             call copyarry(gaminv(ins_init),buffer1(1+6*nsendleft),nsendleft)
-            if (npmaxi == npmax) then
-              do ipid=1,npid
-                call copyarry(pid(ins_init,ipid),buffer1(1+(6+ipid)*nsendleft),
-     &                        nsendleft)
-              enddo
-             endif
+            do ipid=1,npid
+              call copyarry(pid(ins_init,ipid),buffer1(1+(6+ipid)*nsendleft),
+     &                      nsendleft)
+            enddo
           endif
         endif
 
@@ -222,12 +220,10 @@ c       --- Copy particles being sent to the right to buffer2.
             call copyarry(uyp(ip),buffer2(1+4*nsendright),nsendright)
             call copyarry(uzp(ip),buffer2(1+5*nsendright),nsendright)
             call copyarry(gaminv(ip),buffer2(1+6*nsendright),nsendright)
-            if (npmaxi == npmax) then
-              do ipid=1,npid
-                call copyarry(pid(ip,ipid),buffer2(1+(6+ipid)*nsendright),
-     &                        nsendright)
-              enddo
-            endif
+            do ipid=1,npid
+              call copyarry(pid(ip,ipid),buffer2(1+(6+ipid)*nsendright),
+     &                      nsendright)
+            enddo
           endif
         endif
 
@@ -269,12 +265,9 @@ c       --- Make sure that there is space for the incoming data.
           call copyarry(buffer3(1+4*nrecvleft),uyp(ip),nrecvleft)
           call copyarry(buffer3(1+5*nrecvleft),uzp(ip),nrecvleft)
           call copyarry(buffer3(1+6*nrecvleft),gaminv(ip),nrecvleft)
-          if (npmaxi == npmax) then
-            do ipid=1,npid
-              call copyarry(buffer3(1+(6+ipid)*nrecvleft),pid(ip,ipid),
-     &                      nrecvleft)
-            enddo
-          endif
+          do ipid=1,npid
+            call copyarry(buffer3(1+(6+ipid)*nrecvleft),pid(ip,ipid),nrecvleft)
+          enddo
           ins(is) = ins(is) - nrecvleft
           nps(is) = nps(is) + nrecvleft
           if (maxval(zp(ip:ip+nrecvleft-1))-zgrid > zpslmax(my_index)) then
@@ -291,12 +284,10 @@ c       --- Make sure that there is space for the incoming data.
           call copyarry(buffer4(1+4*nrecvright),uyp(ip),nrecvright)
           call copyarry(buffer4(1+5*nrecvright),uzp(ip),nrecvright)
           call copyarry(buffer4(1+6*nrecvright),gaminv(ip),nrecvright)
-          if (npmaxi == npmax) then
-            do ipid=1,npid
-              call copyarry(buffer4(1+(6+ipid)*nrecvright),pid(ip,ipid),
-     &                      nrecvright)
-            enddo
-          endif
+          do ipid=1,npid
+            call copyarry(buffer4(1+(6+ipid)*nrecvright),pid(ip,ipid),
+     &                    nrecvright)
+          enddo
           nps(is) = nps(is) + nrecvright
           if (minval(zp(ip:ip+nrecvright-1))-zgrid < zpslmin(my_index)) then
             ldoagain = .true.
@@ -317,11 +308,9 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       if (npmaxi == npmax) then
-c         do ipid=1,npid
-c           call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
-c         enddo
-c       endif
+c       do ipid=1,npid
+c         call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
+c       enddo
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
 c       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
@@ -346,11 +335,9 @@ c       call MPI_ADDRESS(uxp(ip),displacements(4),mpierror)
 c       call MPI_ADDRESS(uyp(ip),displacements(5),mpierror)
 c       call MPI_ADDRESS(uzp(ip),displacements(6),mpierror)
 c       call MPI_ADDRESS(gaminv(ip),displacements(7),mpierror)
-c       if (npmaxi == npmax) then
-c         do ipid=1,npid
-c           call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
-c         enddo
-c       endif
+c       do ipid=1,npid
+c         call MPI_ADDRESS(pid(ip,ipid),displacements(7+ipid),mpierror)
+c       enddo
 c       call MPI_TYPE_HINDEXED(nquant,blocklengths,displacements,
 c    &                         MPI_DOUBLE_PRECISION,mpinewtype,mpierror)
 c       call MPI_TYPE_COMMIT(mpinewtype,mpierror)
