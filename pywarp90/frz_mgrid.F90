@@ -1,4 +1,4 @@
-!     Last change:  JLV  21 Mar 2002    1:54 pm
+!     Last change:  JLV  27 Mar 2002    4:08 pm
 #include "top.h"
 
 module multigrid_common
@@ -2224,7 +2224,8 @@ end subroutine multigridrzf
 
 subroutine testrz()
 USE multigridrz
-INTEGER :: ng = 3, nr(ng),nz(ng),i
+INTEGER, parameter :: ng = 3
+integer :: nr(ng),nz(ng),i
 REAL(8), DIMENSION(ng)  :: dr,dz,rmin,zmin
 
 i=1
@@ -2422,7 +2423,6 @@ do igrid=1,ngrids
 
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
                       xmin,xmax,ymin,ymax,lshell,                      &
-!                      zmmin,zmmax,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
                       zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
@@ -3494,3 +3494,68 @@ INTEGER(ISZ) :: nbbnd,ncond,i,ic,nbc
 
 return
 end subroutine read_bndstructure_rz
+
+subroutine get_cond_rz(igrid,level)
+USE multigridrz
+USE PSOR3d
+implicit none
+INTEGER :: igrid,level
+
+INTEGER :: i,ic,icc,ice,ico
+TYPE(bndptr), pointer :: bnd
+
+ bnd => grids(igrid)%bnd(nlevels-level+1)
+
+ ncond    = 0
+ necndbdy = 0
+ nocndbdy = 0
+ do ic = 1, bnd%nb_conductors
+   IF(ic==1) then
+     bnd%cnd => bnd%first
+   else
+     bnd%cnd => bnd%cnd%next
+   END if
+   ncond    = ncond    + bnd%cnd%ncond
+   necndbdy = necndbdy + bnd%cnd%nbbndred
+   nocndbdy = nocndbdy + bnd%cnd%nbbnd-bnd%cnd%nbbndred
+ END do
+ ncondmax = ncond
+ ncndmax = max(necndbdy,nocndbdy)
+ call gchange("PSOR3d",0)
+
+ icc=1
+ ice=1
+ ico=1
+ do ic = 1, bnd%nb_conductors
+   IF(ic==1) then
+     bnd%cnd => bnd%first
+   else
+     bnd%cnd => bnd%cnd%next
+   END if
+   do i = 1, bnd%cnd%ncond
+     ixcond(icc) = bnd%cnd%jcond(i)-1
+     izcond(icc) = bnd%cnd%kcond(i)-1
+     icc=icc+1
+   end do
+   do i = 1, bnd%cnd%nbbndred
+     iecndx(ice) = bnd%cnd%jj(i)-1
+     iecndz(ice) = bnd%cnd%kk(i)-1
+     ecdelmx(ice) = bnd%cnd%dxm(i)/bnd%dr
+     ecdelpx(ice) = bnd%cnd%dxp(i)/bnd%dr
+     ecdelmz(ice) = bnd%cnd%dzm(i)/bnd%dz
+     ecdelpz(ice) = bnd%cnd%dzp(i)/bnd%dz
+     ice=ice+1
+   end do
+   do i = bnd%cnd%nbbndred+1, bnd%cnd%nbbnd
+     iocndx(ico) = bnd%cnd%jj(i)-1
+     iocndz(ico) = bnd%cnd%kk(i)-1
+     ocdelmx(ico) = bnd%cnd%dxm(i)/bnd%dr
+     ocdelpx(ico) = bnd%cnd%dxp(i)/bnd%dr
+     ocdelmz(ico) = bnd%cnd%dzm(i)/bnd%dz
+     ocdelpz(ico) = bnd%cnd%dzp(i)/bnd%dz
+     ico=ico+1
+   end do
+ END do
+
+return
+end subroutine get_cond_rz
