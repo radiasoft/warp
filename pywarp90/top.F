@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.76 $, $Date: 2003/03/13 17:49:19 $
+c@(#) File TOP.M, version $Revision: 3.77 $, $Date: 2003/03/21 00:19:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3822,7 +3822,7 @@ c         --- Check if this gap should accelerate the beam frame.
           if (acclsw(id) .ne. 0) cycle
 
 c         --- Set some temporaries
-          gapez = acclez(id)
+          gapez = cacclez(nzlmax/2,io)
           zs = acclzs(id) + offset
           ze = acclze(id) + offset
 
