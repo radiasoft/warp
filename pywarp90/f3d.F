@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.5 $, $Date: 2001/06/01 20:21:05 $
+c@(#) File F3D.M, version $Revision: 3.6 $, $Date: 2001/06/01 22:37:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -3509,7 +3509,7 @@ c  get rest of quads within mesh
       iqprev = -1
       numends = 0
       do iz=1,nz-1
-        call getquadid(zmmin+iz*dz+zgrid,offset,iq,0)
+        call getquadid(zmmin+iz*dz+zgrid,offset,iq,1)
         if (iq .ne. iqprev .and. numends < nendmax) then
           numends = numends + 1
           quadend(numends) = (quadzs(iq) + offset - zgrid - zmmin)
@@ -3562,7 +3562,7 @@ c  Allocate local variables
           if (nzpts == 0) nzpts = 16
           if (nendquad == 0) nendquad = 20
           iq = 0
-          call getquadid(zmmin+zgrid,offset,iq,0)
+          call getquadid(zmmin+zgrid,offset,iq,1)
           nzquad =  ((quadze(iq) - quadzs(iq))/dz + 1.5)
           qdslclen = (quadze(iq) - quadzs(iq))/(nzquad-1.)
           ncndpts = nzquad*nzpts + 2*nendquad
@@ -4660,7 +4660,7 @@ c       --- find location in lattice array
         zz = zgrid + zmmin + iz*dz
 
 c       --- Get id of quadrupole element
-        call getquadid(zz,offset,iq,0)
+        call getquadid(zz,offset,iq,1)
 
 c       --- set up temp variables for locating quadrupoles
         qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
@@ -4772,7 +4772,7 @@ c       --- find location in lattice array
         zz = zgrid + zmmin + iz*dz
 
 c       --- Get id of quadrupole element
-        call getquadid(zz,offset,iq,0)
+        call getquadid(zz,offset,iq,1)
 
 c       --- set up temp variables for locating quadrupoles
         qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
@@ -5217,7 +5217,7 @@ c       --- loop over z in the lattice array looking for dipoles
         id = 0
         do iz=0,nz
           zz = zgrid + zmmin + iz*dz
-          call getdipoid(zz,offset,id,0)
+          call getdipoid(zz,offset,id,1)
 
 c         --- calculate center of dipole
           dipocent = .5*(dipozs(id) + dipoze(id)) - zmmin - zgrid
