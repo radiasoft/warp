@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.35 $, $Date: 2001/12/06 18:06:37 $
+c@(#) File W3D.M, version $Revision: 3.36 $, $Date: 2001/12/19 21:13:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -196,23 +196,23 @@ c  Calculate mesh dimensioning quantities
       endif
       dz = (zmmax - zmmin) / nz
       do i = 0, nx
-         xmesh(i) = i * dx + xmmin
+         xmesh(i) = i*dx + xmmin
       enddo
       do j = 0, ny
-         ymesh(j) = j * dy + ymmin
+         ymesh(j) = j*dy + ymmin
       enddo
       do k = 0, nz
-         zmesh(k) = k * dz + zmmin
+         zmesh(k) = k*dz + zmmin
       enddo
 
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
-      ix_axis = int(-xmmin/dx + dx*1.e-5)
+      ix_axis = nint(-xmmin/dx)
       if(solvergeom==XYZgeom) then
-        iy_axis = int(-ymmin/dy + dy*1.e-5)
+        iy_axis = nint(-ymmin/dy)
       elseif(solvergeom==RZgeom) then
         iy_axis = 0
       endif
-      iz_axis = int(-zmmin/dz + dz*1.e-5)
+      iz_axis = nint(-zmmin/dz)
 
 c  Create dynamic arrays for 3D multipole moments of the electrostatic
 c  potential
