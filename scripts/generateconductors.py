@@ -43,7 +43,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.31 2003/08/14 21:15:21 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.32 2003/08/15 23:05:53 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -794,12 +794,13 @@ Assembly on this grid.
     self.generatetime = endtime - starttime
     #print tt2
 
-  def installdata(self,installrz=1):
+  def installdata(self,installrz=1,gridmode=1):
     """
 Installs the conductor data into the fortran database
     """
     self.dall.install(installrz)
-    f3d.gridmode = 1
+    if gridmode is not None:
+      f3d.gridmode = gridmode
 
   def getdistances(self,a,mglevel=0):
     """
