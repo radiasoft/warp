@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.176 $, $Date: 2004/11/18 01:02:17 $
+c@(#) File W3D.F, version $Revision: 3.177 $, $Date: 2004/11/23 20:52:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1815,7 +1815,7 @@ c=============================================================================
       subroutine perrho3d(rho,nx,ny,nz,bound0,boundxy)
       use GlobalVars
       use Subtimers3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,XYgeom,Zgeom,Rgeom
+      use InGen3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: bound0,boundxy
@@ -1828,11 +1828,19 @@ c  and puts the result into both slices.
       if (solvergeom==AMRgeom) return
 
 c  Enforce transverse periodicity if requested.
-      if (solvergeom==XYZgeom .and. boundxy==periodic) then
-        rho(:,0,:) = rho(:,0,:) + rho(:,ny,:)
-        rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
-        rho(:,ny,:) = rho(:,0,:)
-        rho(nx,:,:) = rho(0,:,:)
+      if (solvergeom==XYZgeom) then
+        if (boundxy==periodic) then
+          rho(:,0,:) = rho(:,0,:) + rho(:,ny,:)
+          rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
+          rho(:,ny,:) = rho(:,0,:)
+          rho(nx,:,:) = rho(0,:,:)
+        endif
+        if (boundxy==neumann) then
+          if (.not. (l2symtry .or. l4symtry)) rho(:,0,:) = 2.*rho(:,0,:)
+          if (.not. l4symtry) rho(0,:,:) = 2.*rho(0,:,:)
+          rho(:,ny,:) = 2.*rho(:,ny,:)
+          rho(nx,:,:) = 2.*rho(nx,:,:)
+        endif
       endif
 
 c  Distribute rho for 2d solver
