@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.110 $, $Date: 2004/06/03 21:55:51 $
+c@(#) File F3D.M, version $Revision: 3.111 $, $Date: 2004/06/24 20:51:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5496,7 +5496,7 @@ c===========================================================================
       subroutine setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry)
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeomMR,AMRgeom,XZgeom
       use Conductor3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
@@ -5513,7 +5513,8 @@ c     --- Call the appropriate routine.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call setcndtrrz(xmmin,zmmin,zbeam,zgrid,nx,nz,dx,dz,
      &                  bound0,boundnz,boundxy,l2symtry,l4symtry)
-      else if (fstype == 7 .or. solvergeom==AMRgeom) then
+      else if (fstype == 7 .or.
+     &         solvergeom==XYZgeomMR .or. solvergeom==AMRgeom) then
         call setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    conductors)
@@ -6296,7 +6297,6 @@ c===========================================================================
      &      lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz_in,
      &      quadsl,rodap,fuzz,qzs,dz,iz,voltage)
       use Conductor3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
       real(kind=8):: dx,dy,rodx,rody,rminsq,rodrrsq,rrr,rodmxsq,delz_in,quadsl
       real(kind=8):: rodap,fuzz,qzs,dz,voltage
@@ -6601,7 +6601,6 @@ c===========================================================================
       subroutine platepnt(ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,dx,dy,
      &                    aper,rmax,vvv,xoff,yoff,delz_in,iz,lz_in_plate,fuzz)
       use Conductor3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
       real(kind=8):: dx,dy,aper,rmax,vvv,xoff,yoff,delz_in,fuzz
       logical(ISZ):: lz_in_plate
@@ -6836,7 +6835,6 @@ c     --- Print warning if conductor arrays filled up.
 c===========================================================================
       subroutine dipopnt(iymin,iymax,izmin,izmax,vvv,ix_near,ix,delx)
       use Conductor3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: iymin,iymax,izmin,izmax,ix_near,ix
       real(kind=8):: vvv,delx
 
@@ -6958,7 +6956,6 @@ c===========================================================================
       use Conductor3d
       use InjectVars
       use InjectVars3d
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       real(kind=8):: dx,dy,dz,zmmin
       integer(ISZ):: ix_axis,iy_axis,nx,ny
 
@@ -7130,7 +7127,7 @@ c===========================================================================
      &                     condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom,Rgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeomMR,AMRgeom,XZgeom,Zgeom,Rgeom
       use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
@@ -7194,7 +7191,8 @@ c     --- Call the appropriate version of the routine.
      &                    xmin,xmax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dz,nx,nz,
      &                    ix_axis,xmesh,l2symtry,l4symtry,condid)
-      else if (fstype == 7 .or. solvergeom==AMRgeom) then
+      else if (fstype == 7 .or.
+     &         solvergeom==XYZgeomMR .or. solvergeom==AMRgeom) then
         call srfrvout3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
@@ -7736,7 +7734,7 @@ c========================================================================
      &                    xmesh,ymesh,l2symtry,l4symtry,condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeomMR,AMRgeom
       use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
@@ -7793,7 +7791,8 @@ c     --- Table-ize the data if srfrv_pernz > 0.
         lsrlinr = .true.
       endif
 
-      if (fstype == 7 .or. solvergeom==AMRgeom) then
+      if (fstype == 7 .or.
+     &    solvergeom==XYZgeomMR .or. solvergeom==AMRgeom) then
         call srfrvin3dmg(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
      &                 xmin,xmax,ymin,ymax,lshell,
      &                 zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
@@ -8346,7 +8345,7 @@ c===========================================================================
      &                       condid)
       use Surface_of_Rev
       use InGen, ONLY:fstype
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom,Rgeom
+      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeomMR,AMRgeom,XZgeom,Zgeom,Rgeom
       use Conductor3d
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
@@ -8419,7 +8418,8 @@ c     --- Call the appropriate routine
      &                     lzend,xmin,xmax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dz,nx,nz,
      &                     ix_axis,xmesh,l2symtry,l4symtry,condid)
-      else if (fstype == 7 .or. solvergeom==AMRgeom) then
+      else if (fstype == 7 .or.
+     &         solvergeom==XYZgeomMR .or. solvergeom==AMRgeom) then
         call srfrvinout3dmg(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                     lzend,xmin,xmax,ymin,ymax,lshell,
      &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
