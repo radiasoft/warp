@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.9 2001/03/05 21:18:05 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.10 2001/03/21 00:43:40 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -79,7 +79,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   else:
     if iz < 0 or w3d.nzfull < iz: return
     if lparallel:
-      iz = iz - top.izslave[me+1]
+      iz = iz - top.izslave[me]
   if scale:
     dx = w3d.dx*signx
     dy = w3d.dy*signy
@@ -93,7 +93,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   if plotphi:
     xx=iota(0,w3d.nx)*dx + xmmin
     yy=iota(0,w3d.ny)*dy + ymmin
-    ppp = getphi(iz=iz+top.izslave[me+1])
+    ppp = getphi(iz=iz+top.izslave[me])
     ppp = transpose(ppp)
     plotc(ppp,yy,xx,contours=contours,filled=filled,color=blue)
   ii = compress(equal(f3d.izcond[0:f3d.ncond],iz),arange(f3d.ncond))
@@ -352,7 +352,7 @@ in X-Y plane
     yy=iota(0,w3d.ny)[:,NewAxis]*ones(w3d.nx+1,'d')*dy + ymmin
     xx=iota(0,w3d.nx)*ones(w3d.ny+1,'d')[:,NewAxis]*dx + xmmin
     ireg=ones((w3d.ny+1,w3d.nx+1))
-    ppp = getphi(iz=iz+top.izslave[me+1])
+    ppp = getphi(iz=iz+top.izslave[me])
     ppp = transpose(ppp)
     if filled:
       if contours:
