@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.2 2002/11/26 23:46:20 jlvay Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.3 2003/01/30 17:20:43 jlvay Exp $"
 
 class PlaneSave:
   """
@@ -54,6 +54,10 @@ Input:
     self.f.ny_plane  = self.ny_plane
     self.f.ixa_plane = self.ixa_plane
     self.f.iya_plane = self.iya_plane
+    self.f.xmmin     = w3d.xmmin
+    self.f.xmmax     = w3d.xmmax
+    self.f.ymmin     = w3d.ymmin
+    self.f.ymmax     = w3d.ymmax
     self.f.dt        = top.dt
 
     # set sym_plane and write it out
@@ -103,7 +107,7 @@ Input:
     # get the two planes of phi to be saved
     if(self.np_save_tot>0):
       iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
-      self.f.write('phiplane%08d'%self.it,w3d.phi[self.nx0:self.nxm,self.ny0:self.nym,iz-1:iz])
+      self.f.write('phiplane%08d'%self.it,w3d.phi[self.nx0:self.nxm+1,self.ny0:self.nym+1,iz-1:iz+1])
 
     # close file
     self.f.set_verbosity(0)
@@ -146,5 +150,4 @@ Input:
         self.f.write('uyp%08d_%08d'%(self.it,js),   take(top.uyp,ii))
         self.f.write('uzp%08d_%08d'%(self.it,js),   take(top.uzp,ii))
         self.f.write('gaminv%08d_%08d'%(self.it,js),take(top.gaminv,ii))
-        for id in range(top.npid):
-          self.f.write('pid%08d_%08d_%08d'%(self.it,js,top.npid),take(top.pid,ii))
+        self.f.write('pid%08d_%08d'%(self.it,js),   take(top.pid,ii))
