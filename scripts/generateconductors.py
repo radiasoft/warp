@@ -43,7 +43,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.29 2003/08/05 16:47:47 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.30 2003/08/14 17:30:47 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -662,15 +662,17 @@ Constructor arguments:
     mesh size. These only need to be set for optimization, to avoid looking
     for conductors where there are none. They can also be used to crop a
     conductor.
+  - zbeam=top.zbeam: location of grid frame relative to lab frame
 Call getdata(a,dfill) to generate the conductor data. 'a' is a geometry object.
 Call installdata() to install the data into the WARP database.
   """
 
   def __init__(self,xmin=None,xmax=None,ymin=None,ymax=None,
-                    zmin=None,zmax=None):
+                    zmin=None,zmax=None,zbeam=None):
     """
 Creates a grid object which can generate conductor data.
     """
+    self.zbeam = where(zbeam==None,top.zbeam,zbeam)[0]
     self.xmin = where(xmin==None,w3d.xmmin,xmin)[0]
     self.xmax = where(xmax==None,w3d.xmmax,xmax)[0]
     self.ymin = where(ymin==None,w3d.ymmin,ymin)[0]
@@ -767,7 +769,7 @@ Assembly on this grid.
       if len(x) == 0: continue
       for zz in zmesh:
         tt1 = wtime()
-        z[:] = zz
+        z[:] = zz + self.zbeam
         iz[:] = nint((zz - zmmin)/dz)
         tt2[1] = tt2[1] + wtime() - tt1
         tt1 = wtime()
@@ -822,7 +824,7 @@ grid points.
     if len(x) == 0: return
     for zz in zmesh:
       tt1 = wtime()
-      z[:] = zz
+      z[:] = zz + self.zbeam
       iz[:] = nint((zz - zmmin)/dz)
       tt2[1] = tt2[1] + wtime() - tt1
       tt1 = wtime()
@@ -860,7 +862,7 @@ assembly.
     if len(x) == 0: return
     for zz in zmesh:
       tt1 = wtime()
-      z[:] = zz  #####
+      z[:] = zz + self.zbeam #####
       iz[:] = nint((zz - zmmin)/dz)  #####
       tt2[1] = tt2[1] + wtime() - tt1
       tt1 = wtime()
