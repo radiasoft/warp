@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.53 2003/04/16 22:59:14 dave Exp $"
+warp_version = "$Id: warp.py,v 1.54 2003/08/15 23:04:13 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -124,7 +124,14 @@ except AttrbuteError:
   absorb    = 0
   reflect   = 1
 
+# --- Simple function to calculate Child-Langmuir current density
+def childlangmuir(v,d,q=None,m=None):
+  if q is None: q = top.sq[0]
+  if m is None: m = top.sm[0]
+  return 4./9.*eps0*sqrt(2.*q/m)*v**1.5/d**2
+
 # --- Create 
+
 
 # --- Create python version of dvnz (divisor not zero)
 def dvnz(x):
@@ -190,6 +197,10 @@ installparticlescraper: Installs a function which will be called at the
                         correct time to scrape particles
 uninstallparticlescraper: Uninstalls a function which will be called at the
                           correct time to scrape particles
+installaddconductor: Installs a function which will be called at the beginning
+                    of the field solve so conductors will be added.
+uninstalladdconductor: Uninstalls the function which would be called at the
+                       beginning of the field solve so conductors will be added.
 gethzarrays: Fixes the ordering of hlinechg and hvzofz data from a paralle run
 printtimers: Print timers in a nice annotated format
   """
@@ -203,12 +214,16 @@ derivqty()
 beforefsfuncs = []
 afterfsfuncs = []
 callscraperfuncs = []
+addconductorfuncs = []
 def beforefs():
   for f in beforefsfuncs: f()
 def afterfs():
   for f in afterfsfuncs: f()
 def callscraper():
   for f in callscraperfuncs: f()
+def calladdconductor():
+  for f in addconductorfuncs: f()
+
 def installbeforefs(f):
   "Adds a function to the list of functions called before a field-solve"
   beforefsfuncs.append(f)
@@ -220,6 +235,7 @@ def uninstallbeforefs(f):
   else:
     raise 'Warning: uninstallbeforefs: no such function had been installed'
   if len(beforefsfuncs) == 0: w3d.lbeforefs = false
+
 def installafterfs(f):
   "Adds a function to the list of functions called after a field-solve"
   afterfsfuncs.append(f)
@@ -231,6 +247,7 @@ def uninstallafterfs(f):
   else:
     raise 'Warning: uninstallafterfs: no such function had been installed'
   if len(afterfsfuncs) == 0: w3d.lafterfs = false
+
 def installparticlescraper(f):
   "Adds a function to the list of functions called to scrape particles"
   callscraperfuncs.append(f)
@@ -242,6 +259,19 @@ def uninstallparticlescraper(f):
   else:
     raise 'Warning: uninstallparticlescraper: no such function had been installed'
   if len(callscraperfuncs) == 0: w3d.lcallscraper = false
+
+def installaddconductor(f):
+  "Adds a function to the list of functions called to add conductors"
+  addconductorfuncs.append(f)
+  f3d.laddconductor = true
+def uninstalladdconductor(f):
+  "Removes the function from the list of functions called to add conductors"
+  if f in addconductorfuncs:
+    addconductorfuncs.remove(f)
+  else:
+    raise 'Warning: uninstalladdconductor: no such function had been installed'
+  if len(addconductorfuncs) == 0: f3d.laddconductor = false
+
 def installbeforestep(f):
   "Adds a function to the list of functions called before a step"
   beforestepfuncs.append(f)
@@ -251,6 +281,7 @@ def uninstallbeforestep(f):
     beforestepfuncs.remove(f)
   else:
     raise 'Warning: uninstallbeforestep: no such function had been installed'
+
 def installafterstep(f):
   "Adds a function to the list of functions called after a step"
   afterstepfuncs.append(f)
