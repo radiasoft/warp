@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.3 $, $Date: 2001/04/30 20:08:12 $
+c@(#) File ENV.M, version $Revision: 3.4 $, $Date: 2001/05/15 01:51:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -247,7 +247,7 @@ c  imported as gridded data will be missed.
 
       integer(ISZ):: istep
       real(kind=8):: p,gamma,emitnx_l, emitny_l
-      real(kind=8):: dz,z,vz,ek
+      real(kind=8):: dz,z,vz,ek,time
       real(kind=8):: a,ap,b,bp,fa,fb
       real(kind=8):: x,xp,fx,y,yp,fy
       real(kind=8):: x1,xp1,fx1,x2,xp2,fx2
@@ -280,6 +280,7 @@ c     --- which can be changed
 c     --- step size from database
       dz = dzenv
 c     Initial condtions:
+      time = 0.
 c     --- for envelope
       z    = zl
       a    = a0
@@ -323,7 +324,7 @@ c  Initialize facility and update any variables which are functions of z.
 
 c  Obtain initial force
 
-       call envflatt (z, zion, aion, lrelativ, gamma, vz, ek, dz,
+       call envflatt (z, time, zion, aion, lrelativ, gamma, vz, ek, dz,
      & dedr,dexdx,deydy,dbdr,p, 
      & a, b, x, y, x1, x2, x01, x02, y1, y2, y01, y02, emitnx_l, emitny_l,  
      & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
@@ -498,10 +499,11 @@ c        --- y-orbit, 4
          y02  = y02  + y0p2*dz
 c        --- z coordinate
          z = z + dz
+         time = time + dz/vz
 c        --- Update any variables which are functions of z.
          call envsetfofz(z,p,vz,emitnx_l,emitny_l,gamma)
 c        --- get force at new position
-         call envflatt (z, zion, aion, lrelativ, gamma, vz, ek, dz,
+         call envflatt (z, time, zion, aion, lrelativ, gamma, vz, ek, dz,
      &    dedr,dexdx,deydy,dbdr,p,
      &    a, b, x, y, x1, x2, x01, x02, y1, y2, y01, y02, emitnx_l, emitny_l,
      &    fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
@@ -583,7 +585,7 @@ c       --- compute quantities that serve as measures of "matchedness"
       return
       end
 c=======================================================================
-      subroutine envflatt(z,zion,aion,lrelativ,gamma,vz,ek,dz,
+      subroutine envflatt(z,time,zion,aion,lrelativ,gamma,vz,ek,dz,
      & dedr,dexdx,deydy,dbdr,p,
      & a, b, x, y, x1, x2, x01, x02, y1, y2, y01, y02, emitnx_l, emitny_l,
      & fa, fb, fx, fy, fx1, fx2, fx01, fx02, fy1, fy2, fy01, fy02, faccl,
@@ -592,7 +594,7 @@ c=======================================================================
       use InGen
       use Lattice
       use Mult_data
-      real(kind=8):: z,zion,aion,gamma,vz,ek,dz
+      real(kind=8):: z,time,zion,aion,gamma,vz,ek,dz
       real(kind=8):: dedr,dexdx,deydy,dbdr,p,a,b,x,y,x1,x2,x01,x02,y1,y2,y01,y02
       real(kind=8):: emitnx_l,emitny_l 
       real(kind=8):: fa,fb,fx,fy,fx1,fx2,fx01,fx02,fy1,fy2,fy01,fy02,faccl
