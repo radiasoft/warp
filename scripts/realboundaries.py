@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.34 2004/03/03 16:51:14 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.35 2004/03/04 17:20:35 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -517,7 +517,9 @@ Constructor arguments:
   #----------------------------------------------------------------------------
   def plotcond(s,color='fg',xscale=1.,yscale=1.):
     tt = span(0.,2*pi,101)
-    for sx,sy,da in [(+1,0,0.),(-1,0,pi),(0,+1,+pi/2.),(0,-1,-pi/2.)]:
+    for sx,sy,da,w in [(+1,0,0.,s.withx),(-1,0,pi,s.withx),
+                       (0,+1,+pi/2.,s.withy),(0,-1,-pi/2.,s.withy)]:
+      if not w: cycle
       xx = s.rr*cos(tt+da) + sx*(s.ap + s.rr) + s.ox
       yy = s.rr*sin(tt+da) + sy*(s.ap + s.rr) + s.oy
       ii = s.ingrid(xx,yy)
