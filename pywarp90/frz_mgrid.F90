@@ -1,4 +1,4 @@
-!     Last change:  JLV  27 Mar 2002    4:08 pm
+!     Last change:  JLV  27 Mar 2002    4:26 pm
 #include "top.h"
 
 module multigrid_common
@@ -3495,16 +3495,16 @@ INTEGER(ISZ) :: nbbnd,ncond,i,ic,nbc
 return
 end subroutine read_bndstructure_rz
 
-subroutine get_cond_rz(igrid,level)
+subroutine get_cond_rz(igrid,ilevel)
 USE multigridrz
 USE PSOR3d
 implicit none
-INTEGER :: igrid,level
+INTEGER :: igrid,ilevel
 
 INTEGER :: i,ic,icc,ice,ico
 TYPE(bndptr), pointer :: bnd
 
- bnd => grids(igrid)%bnd(nlevels-level+1)
+ bnd => grids(igrid)%bnd(nlevels-ilevel+1)
 
  ncond    = 0
  necndbdy = 0
