@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.22 $, $Date: 2002/10/26 00:22:31 $
+#@(#) File FRZ.V, version $Revision: 3.23 $, $Date: 2002/11/06 01:08:22 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.22 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.23 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -79,7 +79,9 @@ l_change_loc_part         logical  /.false./
 nz_rmc                    integer
 rmc(nz_rmc+1)             _integer
 l_get_field_from_base     logical  /.false./
+l_get_injphi_from_base    logical  /.false./
 l_dep_rho_on_base         logical  /.false./
+l_distribute              logical  /.true./
 
 *********** InjectVars_eq dump:
 # variables and functions needed for getting voltage risetime from assumption of 
@@ -149,6 +151,8 @@ get_array_subgrid(id:integer,phi:real,nr:integer,nz:integer,which:string) subrou
          # get the potential of grid id
 set_rho_rz(rho:real,nr:integer,nz:integer,id:integer) subroutine
          # set rho of grid id       
+mix_rho_rz(rho:real,nr:integer,nz:integer,id:integer,fmix:real) subroutine
+         # set rho of grid id       
 get_rho_rz(rho:real,nr:integer,nz:integer,id:integer,rhop:integer) subroutine
          # get rho of grid id
 reset_rzmgrid_rho() subroutine
@@ -157,6 +161,8 @@ fieldweightz(zp:real,uzp:real,ez:real,np:integer) subroutine
 dep_rho_rz(is:integer,rho:real,nr:integer,nz:integer,dr:real,dz:real,
            xmin:real,zmin:real) subroutine
          # makes rho deposition on RZ grid
+distribute_rho_rz() subroutine
+         # recursively distributes rho from fine patches to coarse patches
 find_mgparam_rz() subroutine
          # RZ version of find_mgparam. Does the search for each subgrid.
 gchange_rhop_phip_rz() subroutine
