@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.77 2004/11/12 22:52:19 jlvay Exp $"
+warp_version = "$Id: warp.py,v 1.78 2004/11/18 02:00:04 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -385,10 +385,16 @@ package. Only w3d and wxy have field solves defined.
   # --- Now do extra work, updating arrays which depend directly on phi,
   # --- but only when a complete field solve was done.
   if iwhich == -1 or iwhich == 0:
-    if top.efetch == 3:
+    if (top.efetch == 3 and
+        (w3d.solvergeom == w3d.XYZgeom or
+         w3d.solvergeom == w3d.RZgeom or
+         w3d.solvergeom == w3d.XZgeom or
+         w3d.solvergeom == w3d.Rgeom  or
+         w3d.solvergeom == w3d.Zgeom)):
       getselfe3d(w3d.phi,w3d.nx,w3d.ny,w3d.nz,w3d.selfe,
                  w3d.nx_selfe,w3d.ny_selfe,w3d.nz_selfe,
-                 w3d.dx,w3d.dy,w3d.dz,top.pboundxy)
+                 w3d.dx,w3d.dy,w3d.dz,
+                 top.pboundxy,top.pboundxy,top.pboundxy,top.pboundxy)
     if top.inject > 0:
       try:
         # --- This routine is not defined in pywarp77
