@@ -1,4 +1,4 @@
-!     Last change:  JLV  27 Mar 2002    4:26 pm
+!     Last change:  JLV  27 Mar 2002    5:07 pm
 #include "top.h"
 
 module multigrid_common
@@ -2271,7 +2271,7 @@ IF(ncmax==0) return
   IF(iwhich==0.or.iwhich==1) then
     if(.not.bndy_allocated) then
       WRITE(0,*) 'Error RZ multigrid solver (2 grids): the grids have not be initialized.'
-      call abort()
+      stop
     END if
   END if
 
