@@ -28,7 +28,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.9 2002/10/26 00:06:30 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.10 2002/10/31 17:20:46 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -474,7 +474,7 @@ Call installdata() to install the data into the WARP database.
       self.mglevelslx = [1]
       self.mglevelsly = [1]
       self.mglevelslz = [1]
-    else
+    else:
       raise "top.fstype must have one of the following values, 3, 7, 10, or 11"
 
   def getdata(self,a):
