@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.6 2002/03/14 19:39:46 jlvay Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.7 2002/03/19 20:21:46 jlvay Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # Support for RZ multigrid solver added by J.-L. Vay: March 2002
@@ -105,7 +105,7 @@ def field_solve():
   if(w3d.solvergeom == w3d.XYZgeom):
     w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
   else:
-    w3d.phi[ixmin:ixmax+1,:,izmin+1:izmax+1] = 0.
+    w3d.phi = 0.
     frz.mgridrz_npre    = f3d.downpasses
     frz.mgridrz_npost   = f3d.uppasses
     frz.mgridrz_mgparam = f3d.mgparam
