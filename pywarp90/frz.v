@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.9 $, $Date: 2002/03/21 19:50:46 $
+#@(#) File FRZ.V, version $Revision: 3.10 $, $Date: 2002/03/27 21:54:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.9 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.10 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -87,6 +87,8 @@ save_bndstructure_rz(filename:string) subroutine
 read_bndstructure_rz(filename:string) subroutine
          # read internal conductor boundary coefficients for each multigrid
          # level
+get_cond_rz(grid:integer,level:integer) subroutine
+         # get internal conductors locations from RZ multigrid solver
 init_rzgrids(ng:integer,nr:integer,nz:integer,dr:real,dz:real,
              rmin:real,zmin:real) subroutine
          # initializes grids for RZ multigrid solver. It must be called 
