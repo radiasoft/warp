@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.14 2003/03/26 23:37:30 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.15 2004/05/20 16:24:28 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -199,18 +199,18 @@ initial data.
     if not self.enabled: return
     self.enabled = 0
     # --- Save the last value in case the particles are re-enabled
-    self.x = top.xp[self.ip1:self.ip2]
-    self.y = top.yp[self.ip1:self.ip2]
-    self.z = top.zp[self.ip1:self.ip2]
-    self.vx = top.uxp[self.ip1:self.ip2]
-    self.vy = top.uyp[self.ip1:self.ip2]
-    self.vz = top.uzp[self.ip1:self.ip2]
-    self.gi = top.gaminv[self.ip1:self.ip2]
+    self.x = top.xp[self.ip1:self.ip2] + 0.
+    self.y = top.yp[self.ip1:self.ip2] + 0.
+    self.z = top.zp[self.ip1:self.ip2] + 0.
+    self.vx = top.uxp[self.ip1:self.ip2] + 0.
+    self.vy = top.uyp[self.ip1:self.ip2] + 0.
+    self.vz = top.uzp[self.ip1:self.ip2] + 0.
+    self.gi = top.gaminv[self.ip1:self.ip2] + 0.
     # --- Set uzp to zero, signal of dead particles
     top.uzp[self.ip1:self.ip2] = 0.
     # --- Remove particles from looping if they are at either end of the
     # --- particle data in the arrays
-    if self.ip1 == top.ins[self.js]:
+    if self.ip1 == top.ins[self.js]-1:
       top.ins[self.js] = top.ins[self.js] + self.nn
       top.nps[self.js] = top.nps[self.js] - self.nn
     if self.ip2 == top.ins[self.js] + top.nps[self.js] - 1:
