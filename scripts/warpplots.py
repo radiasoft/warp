@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.12 2001/01/17 17:54:40 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.13 2001/01/19 20:25:49 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -964,7 +964,8 @@ Note that either the x and y coordinates or the grid must be passed in.
       if denmin == None: demmin = minnd(grid)
       if denmax == None: demmax = maxnd(grid)
       ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,lframe=0,
-           zmin=denmin,zmax=denmax,ncolor=ncolor,usepalette=usepalette)
+           xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax,zmin=denmin,zmax=denmax,
+           ncolor=ncolor,usepalette=usepalette)
     else:
       # --- Plot particles as a solid color.
       warpplp(yms,x,color=color,marker=marker,msize=msize)
@@ -1501,19 +1502,25 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
   ry = ravel(y)
   rz = ravel(z)
   if not lparallel:
-    if not xmin: xmin = min(rx)
-    if not xmax: xmax = max(rx)
-    if not ymin: ymin = min(ry)
-    if not ymax: ymax = max(ry)
-    if not zmin: zmin = min(rz)
-    if not zmax: zmax = max(rz)
+    if xmin == None and len(rx) > 0: xmin = min(rx)
+    if xmax == None and len(rx) > 0: xmax = max(rx)
+    if ymin == None and len(ry) > 0: ymin = min(ry)
+    if ymax == None and len(ry) > 0: ymax = max(ry)
+    if zmin == None and len(rz) > 0: zmin = min(rz)
+    if zmax == None and len(rz) > 0: zmax = max(rz)
+    if xmin == None: xmin = 0.
+    if xmax == None: xmax = 0.
+    if ymin == None: ymin = 0.
+    if ymax == None: ymax = 0.
+    if zmin == None: zmin = 0.
+    if zmax == None: zmax = 0.
   else:
-    if not xmin: xmin = globalmin(rx)
-    if not xmax: xmax = globalmax(rx)
-    if not ymin: ymin = globalmin(ry)
-    if not ymax: ymax = globalmax(ry)
-    if not zmin: zmin = globalmin(rz)
-    if not zmax: zmax = globalmax(rz)
+    if xmin == None: xmin = globalmin(rx)
+    if xmax == None: xmax = globalmax(rx)
+    if ymin == None: ymin = globalmin(ry)
+    if ymax == None: ymax = globalmax(ry)
+    if zmin == None: zmin = globalmin(rz)
+    if zmax == None: zmax = globalmax(rz)
   if ncolor == None: ncolor = top.ncolor
   dd = (zmax - zmin)/ncolor
   #if (lframadv) nf
