@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.2 2001/02/02 00:15:32 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -22,47 +22,50 @@ def mplot(dumpfile):
 def mountainplot1(qtyname,qty,kwdict={},**kw):
   """
 Mountain-range plots of quantities saved vs. z at every timestep
-  - qtyname String used in axis labels and title
-  - qty Data to be plotted
-  - ifdelta=1 Turns on subtraction from initial value
-  - ifordt=0 Makes ordinate in time (otherwise units of qty)
-  - ifvst=1 Makes abscissa in time (otherwise z)
-  - ifneg=0 Plots negative of data (or delta)
-  - nlines=100 Number of lines to overlay
-  - navg=0 Turns on averaging (over 2*navg+1 points)
-  - offset=0 Ordinate offset of overlaid lines
-  - color='fg' Line color
-  - jhist=shape(qty)[1]-1 Number of history points
-  - nz=shape(qty)[0]-1 Number of z points
-  - dz=w3d.dz Size of z points
-  - hvbeam=top.hvbeam Velocity used for horizontal offsets
-  - titles=1 When 0, no titles are plotted
-  - titlet=None Top title
-  - titleb=None Bottom title
-  - titlel=None Left title
-  - titler=None Right title
+  - qtyname: String used in axis labels and title
+  - qty: Data to be plotted
+  - ifdelta=1: Turns on subtraction from initial value
+  - ifordt=0: Makes ordinate in time (otherwise units of qty)
+  - ifvst=1: Makes abscissa in time (otherwise z)
+  - ifneg=0: Plots negative of data (or delta)
+  - nlines=100: Number of lines to overlay
+  - istep=jhist/nlines: Can be specified instead of nlines
+  - navg=0: Turns on averaging (over 2*navg+1 points)
+  - offset=0: Ordinate offset of overlaid lines
+  - color='fg': Line color
+  - jhist=shape(qty)[1]-1: Number of history points
+  - nz=shape(qty)[0]-1: Number of z points
+  - dz=w3d.dz: Size of z points
+  - zmmin=w3d.zmmin: Start of z points
+  - hvbeam=top.hvbeam: Velocity used for horizontal offsets
+  - titles=1: When 0, no titles are plotted
+  - titlet=None: Top title
+  - titleb=None: Bottom title
+  - titlel=None: Left title
+  - titler=None: Right title
   """
-  kw.update(kwdict)
-  ifdelta = 0
-  ifordt = 0
-  ifvst = 1
-  ifneg = 0
-  nlines = 100
-  navg = 0
-  offset = 0
-  color = 'fg'
-  jhist = shape(qty)[1] - 1
-  nz = shape(qty)[0] - 1
-  dz = w3d.dz
-  hvbeam = top.hvbeam
-  titles = 1
-  titlet = None
-  titleb = None
-  titlel = None
-  titler = None
-  for arg in kw.keys():
-    exec(arg+" = kw['"+arg+"']")
+  kwdefaults = {'ord':None,'ifdelta':0,'ifordt':0,'ifvst':1,'ifneg':0,
+                'nlines':100,'istep':None,'navg':0,'offset':0,'ordoffset':0,
+                'color':'fg','jhist':None,'nz':None,
+                'dz':w3d.dz,'zmmin':w3d.zmmin,'hvbeam':top.hvbeam,'titles':1,
+                'titlet':None,'titleb':None,'titlel':None,'titler':None}
+  kwvalues = kwdefaults.copy()
+  kwvalues.update(kw)
+  kwvalues.update(kwdict)
+  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+  badargs = checkarguments(kwvalues,kwdefaults)
+  if badargs: raise "bad argument ",string.join(badargs.keys())
 
+  # --- Special arguments
+  if jhist == None: jhist = shape(qty)[1] - 1
+  if nz == None: nz = shape(qty)[0] - 1
+
+  if ord == None:
+    if ifvst:
+      ord = dz/hvbeam[0]*(iota(nz+2,2,-1)-2)
+    else:
+      ord = dz*iota(0,nz)+zmmin
+  if istep == None: istep = max(1,jhist/nlines)
   sign = 1
   shift = offset
   titlet = qtyname
@@ -88,40 +91,36 @@ Mountain-range plots of quantities saved vs. z at every timestep
   pltitle(titlet)
   ptitles("",titleb,titlel,titler)
   if navg:
-    hl = qty[:,::jhist/nlines] + 0.
-    hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::jhist/nlines])
+    hl = qty[:,::istep] + 0.
+    hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::istep])
     for j in range(navg+1,nz-navg-1):
-      hl[j,:] = hl[j-1,:] + (qty[j+navg,::jhist/nlines] -
-                             qty[j-navg-1,::jhist/nlines])/(2*navg+1)
+      hl[j,:] = hl[j-1,:] + (qty[j+navg,::istep] -
+                             qty[j-navg-1,::istep])/(2*navg+1)
   else:
-    hl = qty[:,::jhist/nlines]
+    hl = qty[:,::istep]
   if ifdelta:
     hl0 = hl[:,0]
   else:
     hl0 = zeros(shape(hl[:,0]),'d')
   j = -1
-  for i in range(0,jhist+1,jhist/nlines):
+  for i in range(0,jhist+1,istep):
     j = j + 1
-    if ifvst:
-      plg(i*shift+abscissascale*sign*(hl[:,j]-hl0),
-          dz/hvbeam[0]*(iota(nz+2,2,-1)-2),color=color)
-    else:
-      plg(i*shift+abscissascale*sign*(hl[:,j]-hl0),
-          dz*iota(0,nz)+w3d.zmmin,color=color)
+    plg(i*shift+abscissascale*sign*(hl[:,j]-hl0),ord+i*ordoffset,color=color)
 
 
 ############################################################################
 # --- This returns data averaged in the same way as done above in mountain
 # --- plot
-def averagezdata(qty,navg=0,nlines=100,jhist=None,nz=None):
+def averagezdata(qty,navg=0,nlines=100,jhist=None,istep=None,nz=None):
   if navg == 0 or nlines == 0: return qty
   if not nz: nz = shape(qty)[0] - 1
   if not jhist: jhist = shape(qty)[1] - 1
-  hl = qty[:,::jhist/nlines] + 0.
-  hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::jhist/nlines])
+  if istep == None: istep = max(1,jhist/nlines)
+  hl = qty[:,::istep] + 0.
+  hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::istep])
   for j in range(navg+1,nz-navg-1):
-    hl[j,:] = hl[j-1,:] + (qty[j+navg,::jhist/nlines] -
-                           qty[j-navg-1,::jhist/nlines])/(2*navg+1)
+    hl[j,:] = hl[j-1,:] + (qty[j+navg,::istep] -
+                           qty[j-navg-1,::istep])/(2*navg+1)
   return hl
 
 ### PLCHG - plot line charge
