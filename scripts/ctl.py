@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.5 2004/02/10 16:48:01 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.6 2004/02/19 18:25:46 dave Exp $"
 from warp import *
 import signal
 
@@ -36,8 +36,7 @@ def setinterrupt():
 #############################################################################
 def generate():
   "Generates the current package"
-  setinterrupt()
-  _defaultcontrolC = signal.signal(signal.SIGINT,_handlecontrolC)
+  #setinterrupt()
   for p in package():
     try:
       exec 'command = '+p+'gen'
@@ -50,7 +49,7 @@ def generate():
     #pass
   # --- Get generate time
   top.gentime = wtime() - top.starttime
-  ruthere()
+  #ruthere()
 
 beforestepfuncs = []
 afterstepfuncs = []
@@ -67,7 +66,7 @@ def step(n=1,maxcalls=None):
   ncalls = n
   top.ncall = 0
   while top.ncall < ncalls:
-    setinterrupt()
+    #setinterrupt()
     top.ncall = top.ncall + 1
 
     bb = wtime()
@@ -89,14 +88,14 @@ def step(n=1,maxcalls=None):
     # --- Flush the stdout buffer
     sys.stdout.flush()
 
-    ruthere()
+    #ruthere()
 
   # --- Get step time
   a = wtime()
   top.steptime = top.steptime + (a - b)
 
 def finish():
-  setinterrupt()
+  #setinterrupt()
   for p in package():
     try:
       exec 'command = '+p+'fin'
@@ -107,7 +106,7 @@ def finish():
     command(1,1)
   except:
     pass
-  ruthere()
+  #ruthere()
 
 ########################################################################
 def stepz(zstep=0.):
