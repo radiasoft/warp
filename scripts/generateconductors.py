@@ -72,7 +72,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.56 2004/05/03 20:04:38 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.57 2004/05/06 00:26:24 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -938,16 +938,19 @@ Creates a grid object which can generate conductor data.
       self.mglevelly = [1]
       self.mglevellz = [1]
 
+  def getmeshsize(self,mglevel=0):
+    dx = self.dx*self.mglevellx[mglevel]
+    dy = self.dy*self.mglevelly[mglevel]
+    dz = self.dz*self.mglevellz[mglevel]
+    nx = self.nx/self.mglevellx[mglevel]
+    ny = self.ny/self.mglevelly[mglevel]
+    nz = self.nz/self.mglevellz[mglevel]
+    iz = self.mgleveliz[mglevel]
+    return dx,dy,dz,nx,ny,nz,iz
+
   def getmesh(self,mglevel=0):
-    i = mglevel
-    dx = self.dx*self.mglevellx[i]
-    dy = self.dy*self.mglevelly[i]
-    dz = self.dz*self.mglevellz[i]
+    dx,dy,dz,nx,ny,nz,iz = self.getmeshsize(mglevel)
     _griddzkludge[0] = dz
-    nx = self.nx/self.mglevellx[i]
-    ny = self.ny/self.mglevelly[i]
-    nz = self.nz/self.mglevellz[i]
-    iz = self.mgleveliz[i]
 
     zmmin = self.zmmin + iz*dz
 
