@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.7 $, $Date: 2001/07/19 17:21:45 $
+c@(#) File HER.M, version $Revision: 3.8 $, $Date: 2001/07/19 23:10:01 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -658,10 +658,10 @@ c  with the linear space-charge forces.
 
       integer(ISZ):: iz
       real(kind=8):: alfcur
-      real(kind=8):: y1i,y3i,y1py3i,gamma,gambeta
+      real(kind=8):: y1i,y3i,y1py3i,gamma,gambeta,vz
       real(kind=8):: rigidityi,quadfld,perv
       real(kind=8):: xemit,yemit,dsdt,dlnbeta,dbetadt
-      real(kind=8):: bendex,bendey,xbend
+      real(kind=8):: bendfldx,bendfldy,bendex,bendey,xbend
       real(kind=8):: xval,yval,rpipei2
       real(kind=8):: aviscous(niz)
       
@@ -765,8 +765,8 @@ c       --- normalized emittance to unnormalized emittance
         endif
         
 c       --- bend-force terms
-        bendfldx = (ex(iz)/vz - by(ii))*rigidityi
-        bendfldy = (ey(iz)/vz + bx(ii))*rigidityi
+        bendfldx = (ex(iz)/vz - by(iz))*rigidityi
+        bendfldy = (ey(iz)/vz + bx(iz))*rigidityi
 
         bendex = ex(iz)*rigidityi/vz
         bendey = ey(iz)*rigidityi/vz
@@ -1590,7 +1590,7 @@ c It has not been checked yet.
       real(kind=8):: pi2,cosrot,sinrot,cosrot2,sinrot2
       real(kind=8):: xval,yval,xyrpipe,abrpipe,geomfac
       real(kind=8):: f1,f2,g1,g2
-      real(kind=8):: dispx,dispy
+      real(kind=8):: dispx,dispy,displace
       real(kind=8):: c0,c1,c2,d0,d1
       real(kind=8):: arg0,arg1,arg2
 

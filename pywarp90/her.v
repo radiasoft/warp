@@ -1,5 +1,5 @@
 her
-#@(#) File HER.V, version $Revision: 3.7 $, $Date: 2001/07/19 17:21:45 $
+#@(#) File HER.V, version $Revision: 3.8 $, $Date: 2001/07/19 23:10:01 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for HERMES.
@@ -9,7 +9,7 @@ her
 
 *********** HERversion:
 # Version control for her package
-versher       character*19 /"$Revision: 3.7 $"/  # Current code version, set by SCCS
+versher       character*19 /"$Revision: 3.8 $"/  # Current code version, set by SCCS
 
 *********** HERvars dump:
 # Variables needed by the package HER
@@ -48,6 +48,10 @@ iprofile   integer /0/ # line-charge profile flag
                        # 1 uses flat-top profile with linear fall-off
                        # 2 uses flat-top profile with quadratic fall-off
                        # 3 uses flat-top profile with cubic fall-off
+iimage     integer /0/ # image effects on the transverse envelope
+                       # 0: image effects are neglected
+                       # 1: only linear terms are included
+                       # 2: higher-order terms are retained
 lfail      logical /.false./ # Set to true if a time step fails
 
 *********** HERfield:
