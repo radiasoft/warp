@@ -104,8 +104,6 @@ class MRBlock(MultiGrid,Visualizable):
         # --- relative to the root grid, but scaled by the total refinement.
         self.lower = array(lower)
         self.upper = array(upper)
-        self.mins = self.root.mins + self.lower*self.deltas
-        self.maxs = self.root.mins + self.upper*self.deltas
 
       # --- Now, extend the domain by the given number of guard cells. Checks
       # --- are made so that the domain doesn't extend beyond the original grid.
@@ -113,17 +111,32 @@ class MRBlock(MultiGrid,Visualizable):
       self.fullupper = minimum(self.rootdims,
                                self.upper + nguard*self.refinement)
 
-      # --- Recalculate grid quantities, including the guard regions.
+      # --- Get the number of grid points along each dimension
       self.dims = self.fullupper - self.fulllower
 
-      # --- Make sure that the number of grid points in each dimension is even
-      self.fulllower = where(self.dims%2==1,self.fulllower-1,self.fulllower)
+      # --- Make sure that the number of grid points is even.
+      # --- If it is odd, then enough cells are added to extend to the next
+      # --- grid cell of the parent. It is then cutoff at zero.
+      self.fulllower = where(self.dims%2==1,self.fulllower-self.refinement,
+                                            self.fulllower)
       self.fulllower = maximum(0,self.fulllower)
       self.dims = self.fullupper - self.fulllower
-      self.fullupper = where(self.dims%2==1,self.fullupper+1,self.fullupper)
+
+      # --- If it is still odd (which means that the cells added above
+      # --- where cutoff at zero) then add some at the top.
+      self.fullupper = where(self.dims%2==1,self.fullupper+self.refinement,
+                                            self.fullupper)
       self.fullupper = minimum(self.rootdims,self.fullupper)
       self.dims = self.fullupper - self.fulllower
 
+      # --- If it is still odd, then there is some serious problem. The number
+      # --- in the base grid may be odd.
+      assert alltrue(self.dims%2 == 0),\
+             """The number of grid cells in one of the dimensions is odd - they
+             all must be even. Check that the number of cells in the base grid
+             is even."""
+
+      # --- Now calculate the extent of the grid
       self.mins = self.root.mins + self.fulllower*self.deltas
       self.maxs = self.root.mins + self.fullupper*self.deltas
 
