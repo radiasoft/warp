@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.105 $, $Date: 2004/05/06 17:40:56 $
+c@(#) File F3D.M, version $Revision: 3.106 $, $Date: 2004/05/07 18:33:47 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -347,7 +347,8 @@ c-----------------------------------------------------------------------------
       real(kind=8):: klast, kdxb2, kdyb2, kdzb2, kdx, kdy, kdz
       real(kind=8):: dx,dy,dz,pib2,norm
       integer(ISZ):: i,j
-      logical(ISZ):: lattenuate
+      logical(ISZ):: lattenuate,doperiodic,dodirichlet
+      logical(ISZ):: periodicsolve,dirichletsolve
 #ifdef MPIPARALLEL
       integer(ISZ):: nx_tran,ny_tran,ikxm,ikym
       logical(ISZ):: transposed
@@ -407,8 +408,17 @@ c  Set useful constants
       dz = lzfull / nzfull
       pib2 = .5 * pi
 
+c     --- Setup convenient logicals
+      doperiodic = (bound0 == periodic) .or. (boundnz == periodic)
+      dodirichlet = (bound0 == dirichlet) .or. (boundnz == dirichlet)
+
+c     --- These are used to select which type of longitudinal solver to do.
+c     --- Periodic uses FFT's, Dirichlet used tridiagonal
+      periodicsolve = doperiodic .and. (iwhich <= 0)
+      dirichletsolve = dodirichlet .and. (iwhich <= 0)
+
       izmin = 0
-      if (boundnz == dirichlet) then
+      if (dodirichlet) then
 c       --- This only applies to the tridiagonal solver, which is the only
 c       --- solver here which can apply Dirichlet boundary conditions.
 c       --- Sine the tridiag solve is done in k-space, the transforms must
@@ -560,7 +570,7 @@ c ----------------------------------------------------------------------------
 !$OMP PARALLEL PRIVATE(xywork,zwork)
 
 c ----------------------------------------------------------------------------
-c  Do the forward transform
+c  Do the forward transform in x and y
 c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 2 .or. iwhich == 12) then
@@ -570,7 +580,7 @@ c  We should multitask this loop, being careful about scratch
 c  which is (nx+1)*(ny+1) per task.  For now, we use the plane
 c  at nz for the single task's scratch, and so need no other.
 
-        if  (iwhich <= 0 .or. iwhich == 2) then
+        if  (periodicsolve .or. iwhich == 2) then
 c         --- Include normalization factor for the z transform
           norm = .5*dz
         else
@@ -629,15 +639,15 @@ c          --- Invoke the transform routines for the current z-slice
       endif
 
 c ----------------------------------------------------------------------------
-c  Do the forward transform in z only
+c  Do the forward transform in z
 c ----------------------------------------------------------------------------
 
-      if (iwhich <= 0 .or. iwhich == 2 .or. iwhich == 10) then
+      if (periodicsolve .or. iwhich == 2 .or. iwhich == 10) then
 
 c  Here we perform the periodic transforms in z, two y's at a time.
 c  We vectorize over x.  No scratch space is needed.
 
-        if (iwhich <= 0 .or. iwhich == 2) then
+        if (periodicsolve .or. iwhich == 2) then
 c         --- Normalization factor include above in the transver transform
           norm = 0.
         else
@@ -677,7 +687,7 @@ c ----------------------------------------------------------------------------
 c  Apply k-space filter; attenuate mode-by-mode
 c ----------------------------------------------------------------------------
 
-      if (iwhich <= 0 .or. iwhich == 3) then
+      if (periodicsolve .or. iwhich == 3) then
 
 c       --- Check if attenuation is needed
 c       --- This check is done everytime just in case filt is changed by
@@ -730,7 +740,7 @@ c ----------------------------------------------------------------------------
 c  Convert rhok to phik.
 c ----------------------------------------------------------------------------
 
-      if (iwhich <= 0 .or. iwhich == 4) then
+      if (periodicsolve .or. iwhich == 4) then
 
 #ifdef MPIPARALLEL
 c  For parallel code, data may be arranged differently then serial version.
@@ -768,11 +778,11 @@ c ----------------------------------------------------------------------------
 c  Do the inverse transform
 c ----------------------------------------------------------------------------
 
-      if (iwhich <= 0 .or. iwhich == 5 .or. iwhich == 11) then
+      if (periodicsolve .or. iwhich == 5 .or. iwhich == 11) then
 
 c  Inverse transform and shift in z.
 
-        if (iwhich <= 0 .or. iwhich == 5) then
+        if (periodicsolve .or. iwhich == 5) then
 c         --- Normalization factor is include below in the transverse transform
           norm = 0.
         else
@@ -812,7 +822,7 @@ c ----------------------------------------------------------------------------
 c Tridiagonal solve in z, including kxsq and kysq on left hand side
 c ----------------------------------------------------------------------------
 
-      if (iwhich == 14) then
+      if (dirichletsolve .or. iwhich == 14) then
 
         norm = dz**2/eps0
 
@@ -854,7 +864,7 @@ c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 5 .or. iwhich == 13) then
 
-        if (iwhich <= 0 .or. iwhich == 5) then
+        if (periodicsolve .or. iwhich == 5) then
 c         --- Include the normalization term for the z transform
           norm = 1./lzfull
         else
@@ -2888,7 +2898,7 @@ c is calculated using field solves which do not do any filtering.
 c (Experience has shown that when filtering is used, the inverse capacity
 c matrix is very ill-conditioned and so the capacity matrix becomes garbled.)
 
-
+      real(kind=8),allocatable:: zerofilt(:,:)
       real(kind=8):: wx,wy,wz,cx,cy
 c     real(kind=8):: tt1,tt2
       integer(ISZ):: ix,iy,iz,i,j,info
@@ -2924,20 +2934,14 @@ c       --- 2 or 4 at a symmetric boundary)
         phi(ix  ,iy+1,iz+1) = (1.-wx)*    wy *    wz *cx
         phi(ix+1,iy+1,iz+1) =     wx *    wy *    wz 
 
-c       --- Solve for fields, piece-by-piece so that the filtering can be
-c       --- skipped.
-        call vpois3d(2,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &                 filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
-     &                 scrtch,xywork,zwork,0,l2symtry,l4symtry,
-     &                 bound0,boundnz,boundxy)
-        call vpois3d(4,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &                 filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
-     &                 scrtch,xywork,zwork,0,l2symtry,l4symtry,
-     &                 bound0,boundnz,boundxy)
-        call vpois3d(5,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
-     &                 filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
-     &                 scrtch,xywork,zwork,0,l2symtry,l4symtry,
-     &                 bound0,boundnz,boundxy)
+c       --- Solve for fields, with the filtering turned off
+        allocate(zerofilt(size(filt,1),size(filt,2)))
+        zerofilt = 0.
+        call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+     &                  zerofilt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                  scrtch,xywork,zwork,0,l2symtry,l4symtry,
+     &                  bound0,boundnz,boundxy)
+        deallocate(zerofilt)
 
 c       --- fill matrix with phi
         do j=1,nc3d
@@ -3890,6 +3894,7 @@ c  kpvt      on return is the pivot vector created during reduction
 c
 c  rest of variables are input and have the standard meanings.
 
+      real(kind=8),allocatable:: zerofilt(:,:)
       real(kind=8):: xx,yy,zz,dx,dy,dz
       integer(ISZ):: ix,iy,iz,i,j,ic,info
 
@@ -3918,10 +3923,13 @@ c  deposit unit charge on grid
         phi(ix+1,iy  ,iz+1) = (     xx)*(1. - yy)*(     zz)
         phi(ix  ,iy+1,iz+1) = (1. - xx)*(     yy)*(     zz)
         phi(ix+1,iy+1,iz+1) = (     xx)*(     yy)*(     zz)
-c  do 3-d field solve
-        call vpois3d (-1, phi(0,0,0), phi(0,0,0), kxsq, kysq, kzsq,
-     &   attx, atty, attz, filt, xlen, ylen, zlen, nx, ny, nz,nzfull, work,
-     &   xywork,zwork, 0, l2symtry,l4symtry,bound0,boundnz,boundxy)
+c  do 3-d field solve, turning filtering off
+        allocate(zerofilt(size(filt,1),size(filt,2)))
+        zerofilt = 0.
+        call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+     &               zerofilt,xlen,ylen,zlen,nx,ny,nz,nzfull,work,
+     &               xywork,zwork,0,l2symtry,l4symtry,bound0,boundnz,boundxy)
+        deallocate(zerofilt)
 c  fill i'th column of inverse cap matrix
         do ic = 1,4
           do j=1,ncndpts
@@ -4027,7 +4035,7 @@ c  return if only being initialized
       if (iwhich == 1) return
 
 c  do 3-d field solve
-      call vpois3d(0,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
+      call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &             filt,xlen,ylen,zlen,nx,ny,nz,nzfull,work,xywork,zwork,
      &             0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 
@@ -4151,9 +4159,9 @@ c     endif
 
 c  finished with conductors, so...
 c  now do full 3-d field solve, with induced charges
-      call vpois3d (0, phi(0,0,0), phi(0,0,0), kxsq, kysq, kzsq,
-     &              attx, atty, attz, filt, xlen, ylen, zlen,
-     &              nx, ny, nz,nzfull, work, xywork, zwork,
+      call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,
+     &              attx,atty,attz,filt,xlen,ylen,zlen,
+     &              nx,ny,nz,nzfull,work,xywork,zwork,
      &              0,l2symtry,l4symtry,bound0,boundnz,boundxy)
 
       return
@@ -4349,10 +4357,10 @@ c  get rest of quads within mesh
       return
       end
 c=============================================================================
-      subroutine vcap3d (iwhich, rho, phi, kxsq, kysq, kzsq, 
-     &   attx, atty, attz, filt, xlen, ylen, zlen, nx, ny, nz, nzfull,
-     &   scrtch, xywork, zwork, xmmax, zmmin, zgrid, pipeshpe,
-     &   l2symtry,l4symtry,bound0,boundnz,boundxy)
+      subroutine vcap3d(iwhich,rho,phi,kxsq,kysq,kzsq, 
+     &                  attx,atty,attz,filt,xlen,ylen,zlen,nx,ny,nz,nzfull,
+     &                  scrtch,xywork,zwork,xmmax,zmmin,zgrid,pipeshpe,
+     &                  l2symtry,l4symtry,bound0,boundnz,boundxy)
       use Capvars
       use Lattice
       integer(ISZ):: iwhich,nx,ny,nz,nzfull
