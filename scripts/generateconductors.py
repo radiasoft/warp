@@ -71,7 +71,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.52 2004/04/08 19:22:50 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.53 2004/04/14 17:40:22 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -886,37 +886,38 @@ Creates a grid object which can generate conductor data.
 
     if top.fstype in [7,11,10]:
       if top.fstype in [7,11]:
-        setmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz)
+        conductors = ConductorType()
+        getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
+                    conductors)
+        self.mglevels = conductors.levels
+        self.mgleveliz = conductors.leveliz[:self.mglevels]
+        self.mglevellx = conductors.levellx[:self.mglevels]
+        self.mglevelly = conductors.levelly[:self.mglevels]
+        self.mglevellz = conductors.levellz[:self.mglevels]
       if top.fstype == 10:
         setmglevels_rz()
-      self.mglevels = f3d.mglevels
-      self.mglevelsnx = f3d.mglevelsnx[:f3d.mglevels]
-      self.mglevelsny = f3d.mglevelsny[:f3d.mglevels]
-      self.mglevelsiz = f3d.mglevelsiz[:f3d.mglevels]
-      self.mglevelsnz = f3d.mglevelsnz[:f3d.mglevels]
-      self.mglevelslx = f3d.mglevelslx[:f3d.mglevels]
-      self.mglevelsly = f3d.mglevelsly[:f3d.mglevels]
-      self.mglevelslz = f3d.mglevelslz[:f3d.mglevels]
+        self.mglevels = f3d.mglevels
+        self.mgleveliz = f3d.mglevelsiz[:f3d.mglevels]
+        self.mglevellx = f3d.mglevelslx[:f3d.mglevels]
+        self.mglevelly = f3d.mglevelsly[:f3d.mglevels]
+        self.mglevellz = f3d.mglevelslz[:f3d.mglevels]
     else:
       self.mglevels = 1
-      self.mglevelsnx = [self.nx]
-      self.mglevelsny = [self.ny]
-      self.mglevelsiz = [top.izfsslave[me]]
-      self.mglevelsnz = [self.nz]
-      self.mglevelslx = [1]
-      self.mglevelsly = [1]
-      self.mglevelslz = [1]
+      self.mgleveliz = [top.izfsslave[me]]
+      self.mglevellx = [1]
+      self.mglevelly = [1]
+      self.mglevellz = [1]
 
   def getmesh(self,mglevel=0):
     i = mglevel
-    dx = self.dx*self.mglevelslx[i]
-    dy = self.dy*self.mglevelsly[i]
-    dz = self.dz*self.mglevelslz[i]
+    dx = self.dx*self.mglevellx[i]
+    dy = self.dy*self.mglevelly[i]
+    dz = self.dz*self.mglevellz[i]
     _griddzkludge[0] = dz
-    nx = self.mglevelsnx[i]
-    ny = self.mglevelsny[i]
-    iz = self.mglevelsiz[i]
-    nz = self.mglevelsnz[i]
+    nx = self.nx/self.mglevellx[i]
+    ny = self.ny/self.mglevelly[i]
+    nz = self.nz/self.mglevellz[i]
+    iz = self.mgleveliz[i]
 
     zmmin = self.zmmin + iz*dz
 
@@ -986,10 +987,10 @@ Assembly on this grid.
     """
 Installs the conductor data into the fortran database
     """
-    conductors.leveliz[:self.mglevels] = self.mglevelsiz
-    conductors.levellx[:self.mglevels] = self.mglevelslx
-    conductors.levelly[:self.mglevels] = self.mglevelsly
-    conductors.levellz[:self.mglevels] = self.mglevelslz
+    conductors.leveliz[:self.mglevels] = self.mgleveliz
+    conductors.levellx[:self.mglevels] = self.mglevellx
+    conductors.levelly[:self.mglevels] = self.mglevelly
+    conductors.levellz[:self.mglevels] = self.mglevellz
     self.dall.install(installrz,solvergeom,conductors)
     if gridmode is not None:
       f3d.gridmode = gridmode
