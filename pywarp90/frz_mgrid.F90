@@ -1,4 +1,4 @@
-!     Last change:  JLV  23 Jul 2002   10:35 am
+!     Last change:  JLV  26 Jul 2002    2:35 pm
 #include "top.h"
 
 module multigrid_common
@@ -32,10 +32,15 @@ TYPE conductor_type
 ! the voltage of the nearest conductor.
   ! conductor voltage
   REAL(8), POINTER, DIMENSION(:) :: voltage
+  ! conductor ID
+  INTEGER(ISZ), POINTER, DIMENSION(:) :: condid
   ! stencil coefficients for relaxation iteration
   REAL(8), POINTER, DIMENSION(:) :: cf0, cfxp, cfxm, cfyp, cfym, cfzp, cfzm, dt
   REAL(8), POINTER, DIMENSION(:) :: phi0xm, phi0xp, phi0ym, phi0yp, phi0zm, phi0zp
+  ! voltages on conductors near grid
   REAL(8), POINTER, DIMENSION(:) :: volt0xm, volt0xp, volt0ym, volt0yp, volt0zm, volt0zp
+  ! IDs of conductors
+  INTEGER(ISZ), POINTER, DIMENSION(:) :: condidxm, condidxp, condidym, condidyp, condidzm, condidzp
   ! distances from grid node to conductor
   REAL(8), POINTER, DIMENSION(:) :: dxm,dxp,dym,dyp,dzm,dzp
   ! locations of nodes near conductor
@@ -660,13 +665,14 @@ bndl%cnd%ncond = ncond
 IF(nbnd>0) then
   ALLOCATE(bndl%cnd%phi0xm(nbnd),bndl%cnd%phi0xp(nbnd),bndl%cnd%phi0zm(nbnd),bndl%cnd%phi0zp(nbnd),bndl%cnd%dt(nbnd))
   ALLOCATE(bndl%cnd%volt0xm(nbnd),bndl%cnd%volt0xp(nbnd),bndl%cnd%volt0zm(nbnd),bndl%cnd%volt0zp(nbnd))
+  ALLOCATE(bndl%cnd%condidxm(nbnd),bndl%cnd%condidxp(nbnd),bndl%cnd%condidzm(nbnd),bndl%cnd%condidzp(nbnd))
   ALLOCATE(bndl%cnd%cf0(nbnd),bndl%cnd%cfxp(nbnd),bndl%cnd%cfxm(nbnd),bndl%cnd%cfzp(nbnd),bndl%cnd%cfzm(nbnd))
   ALLOCATE(bndl%cnd%dxm(nbnd),bndl%cnd%dxp(nbnd),bndl%cnd%dzm(nbnd),bndl%cnd%dzp(nbnd))
   ALLOCATE(bndl%cnd%jj(nbnd),bndl%cnd%kk(nbnd),bndl%cnd%docalc(nbnd))
   bndl%cnd%docalc=.false.
 END if
 IF(ncond>0) then
-  ALLOCATE(bndl%cnd%jcond(ncond),bndl%cnd%kcond(ncond),bndl%cnd%voltage(ncond))
+  ALLOCATE(bndl%cnd%jcond(ncond),bndl%cnd%kcond(ncond),bndl%cnd%voltage(ncond),bndl%cnd%condid(ncond))
 END if
 
 end subroutine init_bnd_sublevel
@@ -3173,9 +3179,13 @@ do igrid=1,ngrids
                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
-                        ncond, ixcond, izcond, condvolt, &
-                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, ecvolt, &
-                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, ocvolt)
+                        ncond, ixcond, izcond, condvolt, condnumb, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
+                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
+                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
+                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
+                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
 
  end do
 end do
@@ -3235,9 +3245,13 @@ do igrid=1,ngrids
                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,condid)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
-                        ncond, ixcond, izcond, condvolt, &
-                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, ecvolt, &
-                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, ocvolt)
+                        ncond, ixcond, izcond, condvolt, condnumb, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
+                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
+                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
+                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
+                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
 
  end do
 end do
@@ -3283,9 +3297,13 @@ do igrid=1,ngrids
                    l2symtry,l4symtry)
 
   call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
-                        ncond, ixcond, izcond, condvolt, &
-                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, ecvolt, &
-                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, ocvolt)
+                        ncond, ixcond, izcond, condvolt, condnumb, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
+                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
+                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
+                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
+                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
 
  end do
 end do
@@ -3308,9 +3326,17 @@ REAL(8) :: drc, dzc
 
 INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: ixcondtmp, izcondtmp, &
                                            iecndxtmp, iecndztmp, &
-                                           iocndxtmp, iocndztmp
-REAL(8), ALLOCATABLE, DIMENSION(:) :: ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, ecvolttmp, &
-                                      ocdelmxtmp, ocdelpxtmp, ocdelmztmp, ocdelpztmp, ocvolttmp, condvolttmp
+                                           iocndxtmp, iocndztmp, &
+                                           condnumbtmp, &
+                                           ecnumbmxtmp, ecnumbpxtmp, &
+                                           ecnumbmztmp, ecnumbpztmp, &
+                                           ocnumbmxtmp, ocnumbpxtmp, &
+                                           ocnumbmztmp, ocnumbpztmp
+REAL(8), ALLOCATABLE, DIMENSION(:) :: ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, &
+                                      ocdelmxtmp, ocdelpxtmp, ocdelmztmp, ocdelpztmp, &
+                                      ecvoltmxtmp, ecvoltpxtmp, ecvoltmztmp, ecvoltpztmp, &
+                                      ocvoltmxtmp, ocvoltpxtmp, ocvoltmztmp, ocvoltpztmp, &
+                                      condvolttmp
 
 ALLOCATE(mg_ncond(basegrid%nlevels),mg_necndbdy(basegrid%nlevels), mg_nocndbdy(basegrid%nlevels))
 mg_ncond = 0
@@ -3343,12 +3369,15 @@ end do
   nocndbdytmp = mg_nocndbdy(i)
   ncondtmp    = mg_ncond(i)
 
-  ALLOCATE(ixcondtmp(ncondtmp),izcondtmp(ncondtmp),condvolttmp(ncondtmp), &
+  ALLOCATE(ixcondtmp(ncondtmp),izcondtmp(ncondtmp),condvolttmp(ncondtmp),condnumbtmp(ncondtmp), &
            iecndxtmp(necndbdytmp),iecndztmp(necndbdytmp), &
            iocndxtmp(nocndbdytmp),iocndztmp(nocndbdytmp), &
+           ecnumbmxtmp(necndbdytmp),ecnumbpxtmp(necndbdytmp), ecnumbmztmp(necndbdytmp),ecnumbpztmp(necndbdytmp), &
+           ocnumbmxtmp(nocndbdytmp),ocnumbpxtmp(nocndbdytmp), ocnumbmztmp(nocndbdytmp),ocnumbpztmp(nocndbdytmp), &
            ecdelmxtmp(necndbdytmp),ecdelpxtmp(necndbdytmp), ecdelmztmp(necndbdytmp),ecdelpztmp(necndbdytmp), &
            ocdelmxtmp(nocndbdytmp),ocdelpxtmp(nocndbdytmp), ocdelmztmp(nocndbdytmp),ocdelpztmp(nocndbdytmp), &
-           ecvolttmp(necndbdytmp), ocvolttmp(nocndbdytmp))
+           ecvoltmxtmp(necndbdytmp),ecvoltpxtmp(necndbdytmp), ecvoltmztmp(necndbdytmp),ecvoltpztmp(necndbdytmp), &
+           ocvoltmxtmp(nocndbdytmp),ocvoltpxtmp(nocndbdytmp), ocvoltmztmp(nocndbdytmp),ocvoltpztmp(nocndbdytmp))
   itmp = 0
   do ii = 1, ncond
     IF(basegrid%nlevels-icondlevel(ii)==i) then
@@ -3356,6 +3385,7 @@ end do
       ixcondtmp(itmp) = ixcond(ii)
       izcondtmp(itmp) = izcond(ii)
       condvolttmp(itmp) = condvolt(ii)
+      condnumbtmp(itmp) = condnumb(ii)
     END if
   end do
   itmp = 0
@@ -3368,7 +3398,14 @@ end do
       ecdelpxtmp(itmp) = ecdelpx(ii)
       ecdelmztmp(itmp) = ecdelmz(ii)
       ecdelpztmp(itmp) = ecdelpz(ii)
-      ecvolttmp(itmp) = ecvolt(ii)
+      ecvoltmxtmp(itmp) = ecvoltmx(ii)
+      ecvoltpxtmp(itmp) = ecvoltpx(ii)
+      ecvoltmztmp(itmp) = ecvoltmz(ii)
+      ecvoltpztmp(itmp) = ecvoltpz(ii)
+      ecnumbmxtmp(itmp) = ecnumbmx(ii)
+      ecnumbpxtmp(itmp) = ecnumbpx(ii)
+      ecnumbmztmp(itmp) = ecnumbmz(ii)
+      ecnumbpztmp(itmp) = ecnumbpz(ii)
     END if
   end do
   itmp = 0
@@ -3381,20 +3418,34 @@ end do
       ocdelpxtmp(itmp) = ocdelpx(ii)
       ocdelmztmp(itmp) = ocdelmz(ii)
       ocdelpztmp(itmp) = ocdelpz(ii)
-      ocvolttmp(itmp) = ocvolt(ii)
+      ocvoltmxtmp(itmp) = ocvoltmx(ii)
+      ocvoltpxtmp(itmp) = ocvoltpx(ii)
+      ocvoltmztmp(itmp) = ocvoltmz(ii)
+      ocvoltpztmp(itmp) = ocvoltpz(ii)
+      ocnumbmxtmp(itmp) = ocnumbmx(ii)
+      ocnumbpxtmp(itmp) = ocnumbpx(ii)
+      ocnumbmztmp(itmp) = ocnumbmz(ii)
+      ocnumbpztmp(itmp) = ocnumbpz(ii)
     END if
   end do
   call addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
-                        ncondtmp, ixcondtmp, izcondtmp, condvolttmp, &
-                        necndbdytmp, iecndxtmp, iecndztmp, ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, ecvolttmp, &
-                        nocndbdytmp, iocndxtmp, iocndztmp, ocdelmxtmp, ocdelpxtmp, ocdelmztmp, ocdelpztmp, ocvolttmp)
+                        ncondtmp, ixcondtmp, izcondtmp, condvolttmp, condnumbtmp, &
+                        necndbdytmp, iecndxtmp, iecndztmp, ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, &
+                        ecvoltmxtmp,ecvoltpxtmp, ecvoltmztmp,ecvoltpztmp, &
+                        ecnumbmxtmp,ecnumbpxtmp, ecnumbmztmp,ecnumbpztmp, &
+                        nocndbdytmp, iocndxtmp, iocndztmp, ocdelmxtmp, ocdelpxtmp, ocdelmztmp, ocdelpztmp, &
+                        ocvoltmxtmp,ocvoltpxtmp, ocvoltmztmp,ocvoltpztmp, &
+                        ocnumbmxtmp,ocnumbpxtmp, ocnumbmztmp,ocnumbpztmp)
 
-  DEALLOCATE(ixcondtmp,izcondtmp,condvolttmp, &
+  DEALLOCATE(ixcondtmp,izcondtmp,condvolttmp,condnumbtmp, &
              iecndxtmp,iecndztmp, &
              iocndxtmp,iocndztmp, &
+             ecnumbmxtmp,ecnumbpxtmp, ecnumbmztmp,ecnumbpztmp, &
+             ocnumbmxtmp,ocnumbpxtmp, ocnumbmztmp,ocnumbpztmp, &
              ecdelmxtmp,ecdelpxtmp, ecdelmztmp,ecdelpztmp, &
              ocdelmxtmp,ocdelpxtmp, ocdelmztmp,ocdelpztmp, &
-             ecvolttmp, ocvolttmp)
+             ecvoltmxtmp,ecvoltpxtmp, ecvoltmztmp,ecvoltpztmp, &
+             ocvoltmxtmp,ocvoltpxtmp, ocvoltmztmp,ocvoltpztmp)
 
  end do
 
@@ -3411,9 +3462,13 @@ end subroutine install_conductors_rz
 
 
 subroutine addconductors_rz(i,nrc,nzc,drc,dzc,ixrbnd,izlbnd,izrbnd, &
-                            ncond, ixcond, izcond, condvolt, &
-                            necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, ecvolt, &
-                            nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, ocvolt)
+                            ncond, ixcond, izcond, condvolt, condnumb, &
+                            necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
+                            ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
+                            ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
+                            nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz,  &
+                            ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
+                            ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
 !use Conductor3d
 USE multigridrz, ONLY: conductor_type, bndy, dirichlet, v_cond, v_bnd, bnd_method, egun, ecb, init_bnd_sublevel
 implicit none
@@ -3422,10 +3477,15 @@ INTEGER(ISZ), INTENT(IN) :: nrc,nzc,i,ixrbnd,izlbnd,izrbnd,ncond,necndbdy,nocndb
 REAL(8), INTENT(IN) :: drc,dzc
 INTEGER(ISZ), INTENT(IN) :: ixcond(ncond), izcond(ncond), &
                             iecndx(necndbdy), iecndz(necndbdy), &
-                            iocndx(nocndbdy), iocndz(nocndbdy)
-REAL(8), INTENT(IN) :: condvolt(ncond), ecvolt(necndbdy), ocvolt(nocndbdy), &
+                            iocndx(nocndbdy), iocndz(nocndbdy), &
+                            condnumb(ncond), &
+                            ecnumbmx(necndbdy), ecnumbpx(necndbdy), ecnumbmz(necndbdy), ecnumbpz(necndbdy), &
+                            ocnumbmx(nocndbdy), ocnumbpx(nocndbdy), ocnumbmz(nocndbdy), ocnumbpz(nocndbdy)
+REAL(8), INTENT(IN) :: condvolt(ncond), &
                        ecdelmx(necndbdy), ecdelpx(necndbdy), ecdelmz(necndbdy), ecdelpz(necndbdy), &
-                       ocdelmx(nocndbdy), ocdelpx(nocndbdy), ocdelmz(nocndbdy), ocdelpz(nocndbdy)
+                       ocdelmx(nocndbdy), ocdelpx(nocndbdy), ocdelmz(nocndbdy), ocdelpz(nocndbdy), &
+                       ecvoltmx(necndbdy), ecvoltpx(necndbdy), ecvoltmz(necndbdy), ecvoltpz(necndbdy), &
+                       ocvoltmx(nocndbdy), ocvoltpx(nocndbdy), ocvoltmz(nocndbdy), ocvoltpz(nocndbdy)
 
 INTEGER(ISZ) :: ii,iii,iv,iiv,nxbnd,nzbndmin,nzbndmax,iivmin,iivmax
 REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz
@@ -3456,6 +3516,7 @@ TYPE(conductor_type), POINTER :: cndpnt
     END if
     bndy(i)%v(bndy(i)%cnd%jcond(iii),bndy(i)%cnd%kcond(iii)) = v_cond
     bndy(i)%cnd%voltage(iii) = condvolt(ii)
+    bndy(i)%cnd%condid(iii) = condnumb(ii)
   end do
 
   do ii = 1, necndbdy+nocndbdy
@@ -3467,10 +3528,14 @@ TYPE(conductor_type), POINTER :: cndpnt
      dxp = MIN(1._8,ecdelpx(iii))*bndy(i)%dr
      dzm = MIN(1._8,ecdelmz(iii))*bndy(i)%dz
      dzp = MIN(1._8,ecdelpz(iii))*bndy(i)%dz
-     bndy(i)%cnd%volt0xm(ii)=ecvolt(iii)
-     bndy(i)%cnd%volt0xp(ii)=ecvolt(iii)
-     bndy(i)%cnd%volt0zm(ii)=ecvolt(iii)
-     bndy(i)%cnd%volt0zp(ii)=ecvolt(iii)
+     bndy(i)%cnd%volt0xm(ii)=ecvoltmx(iii)
+     bndy(i)%cnd%volt0xp(ii)=ecvoltpx(iii)
+     bndy(i)%cnd%volt0zm(ii)=ecvoltmz(iii)
+     bndy(i)%cnd%volt0zp(ii)=ecvoltpz(iii)
+     bndy(i)%cnd%condidxm(ii)=ecnumbmx(iii)
+     bndy(i)%cnd%condidxp(ii)=ecnumbpx(iii)
+     bndy(i)%cnd%condidzm(ii)=ecnumbmz(iii)
+     bndy(i)%cnd%condidzp(ii)=ecnumbpz(iii)
    else
      iii = ii - necndbdy
      bndy(i)%cnd%jj(ii)  = iocndx(iii)+1
@@ -3479,10 +3544,14 @@ TYPE(conductor_type), POINTER :: cndpnt
      dxp = MIN(1._8,ocdelpx(iii))*bndy(i)%dr
      dzm = MIN(1._8,ocdelmz(iii))*bndy(i)%dz
      dzp = MIN(1._8,ocdelpz(iii))*bndy(i)%dz
-     bndy(i)%cnd%volt0xm(ii)=ocvolt(iii)
-     bndy(i)%cnd%volt0xp(ii)=ocvolt(iii)
-     bndy(i)%cnd%volt0zm(ii)=ocvolt(iii)
-     bndy(i)%cnd%volt0zp(ii)=ocvolt(iii)
+     bndy(i)%cnd%volt0xm(ii)=ocvoltmx(iii)
+     bndy(i)%cnd%volt0xp(ii)=ocvoltpx(iii)
+     bndy(i)%cnd%volt0zm(ii)=ocvoltmz(iii)
+     bndy(i)%cnd%volt0zp(ii)=ocvoltpz(iii)
+     bndy(i)%cnd%condidxm(ii)=ocnumbmx(iii)
+     bndy(i)%cnd%condidxp(ii)=ocnumbpx(iii)
+     bndy(i)%cnd%condidzm(ii)=ocnumbmz(iii)
+     bndy(i)%cnd%condidzp(ii)=ocnumbpz(iii)
    END if
    IF(bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii))==v_cond) cycle
    IF(.not. (bndy(i)%cnd%jj(ii)>=1 .and. bndy(i)%cnd%jj(ii)<=nxbnd+1 .and. &
@@ -3510,18 +3579,22 @@ TYPE(conductor_type), POINTER :: cndpnt
            IF(cndpnt%dxm(iiv)<dxm) then
              dxm = cndpnt%dxm(iiv)
              bndy(i)%cnd%volt0xm(ii) = cndpnt%volt0xm(iiv)
+             bndy(i)%cnd%condidxm(ii) = cndpnt%condidxm(iiv)
            END if
            IF(cndpnt%dxp(iiv)<dxp) then
              dxp = cndpnt%dxp(iiv)
              bndy(i)%cnd%volt0xp(ii) = cndpnt%volt0xp(iiv)
+             bndy(i)%cnd%condidxp(ii) = cndpnt%condidxp(iiv)
            END if
            IF(cndpnt%dzm(iiv)<dzm) then
              dzm = cndpnt%dzm(iiv)
              bndy(i)%cnd%volt0zm(ii) = cndpnt%volt0zm(iiv)
+             bndy(i)%cnd%condidzm(ii) = cndpnt%condidzm(iiv)
            END if
            IF(cndpnt%dzp(iiv)<dzp) then
              dzp = cndpnt%dzp(iiv)
              bndy(i)%cnd%volt0zp(ii) = cndpnt%volt0zp(iiv)
+             bndy(i)%cnd%condidzp(ii) = cndpnt%condidzp(iiv)
            END if
          END if
        end do
@@ -5050,4 +5123,119 @@ do igrid=1,ngrids
 enddo
 return
 end subroutine setconductorvoltagerz
+
+subroutine setconductorvoltagerz_id(id,volt)
+USE multigridrz
+implicit none
+integer(ISZ):: id
+real(kind=8):: volt
+
+INTEGER :: igrid,i,iv,ic,icc,ice,ico
+integer(ISZ):: iz
+real(kind=8):: zz,wz,vv
+TYPE(conductor_type), POINTER :: cndpnt
+real(kind=8):: dxm,dxp,dzm,dzp,dxx,dzz,r,rm,rp
+LOGICAL(ISZ) :: l_change
+
+do igrid=1,ngrids
+  nlevels=grids_ptr(igrid)%grid%nlevels
+  bndy => grids_ptr(igrid)%grid%bnd
+  do i = nlevels,1,-1
+
+   do iv=1, bndy(i)%nb_conductors
+     IF(iv==1) then
+       cndpnt => bndy(i)%first
+     else
+       cndpnt => cndpnt%next
+     END if
+
+    do ic=1,cndpnt%ncond
+      IF(cndpnt%condid(ic)==id) cndpnt%voltage(ic) = volt
+    enddo
+
+    do ic = 1,cndpnt%nbbnd
+     l_change = .false.
+     if (cndpnt%dxm(ic) < bndy(i)%dr .and. cndpnt%condidxm(ic)==id) then
+      l_change = .true.
+      cndpnt%volt0xm(ic) = volt
+     END if
+     if (cndpnt%dxp(ic) < bndy(i)%dr .and. cndpnt%condidxp(ic)==id) then
+      l_change = .true.
+      cndpnt%volt0xp(ic) = volt
+     END if
+     if (cndpnt%dzm(ic) < bndy(i)%dz .and. cndpnt%condidzm(ic)==id) then
+      l_change = .true.
+      cndpnt%volt0zm(ic) = volt
+     END if
+     if (cndpnt%dzp(ic) < bndy(i)%dz .and. cndpnt%condidzp(ic)==id) then
+      l_change = .true.
+      cndpnt%volt0zp(ic) = volt
+     END if
+
+     IF(l_change) then
+      dxm = cndpnt%dxm(ic)
+      dxp = cndpnt%dxp(ic)
+      dzm = cndpnt%dzm(ic)
+      dzp = cndpnt%dzp(ic)
+      select case (bnd_method)
+        case (egun)
+          dxx=bndy(i)%dr
+          dzz=bndy(i)%dz
+        case (ecb)
+          dxx=0.5_8*(dxp+dxm)  !ecb
+          dzz=0.5_8*(dzp+dzm)  !ecb
+        case default
+      end select
+      IF(cndpnt%jj(ic)==1) then
+        cndpnt%cfxp(ic) = 4._8/(dxp*dxx)
+        cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
+        cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
+      else
+        r = (cndpnt%jj(ic)-1)*bndy(i)%dr
+        select case (bnd_method)
+          case (egun)
+            rm = r-0.5_8*bndy(i)%dr
+            rp = r+0.5_8*bndy(i)%dr
+          case (ecb)
+            rm = r-0.5_8*dxm
+            rp = r+0.5_8*dxp
+          case default
+        end select
+        cndpnt%cfxm(ic) = rm/(r*dxm*dxx)
+        cndpnt%cfxp(ic) = rp/(r*dxp*dxx)
+        cndpnt%cfzm(ic) = 1._8/(dzm*dzz)
+        cndpnt%cfzp(ic) = 1._8/(dzp*dzz)
+      END if
+      IF(dxm>=bndy(i)%dr) then
+        cndpnt%phi0xm(ic)=0._8
+      else
+        cndpnt%phi0xm(ic)=cndpnt%cfxm(ic)*cndpnt%volt0xm(ic)
+        cndpnt%cfxm(ic)=0._8
+      END if
+      IF(dxp>=bndy(i)%dr) then
+        cndpnt%phi0xp(ic)=0._8
+      else
+        cndpnt%phi0xp(ic)=cndpnt%cfxp(ic)*cndpnt%volt0xp(ic)
+        cndpnt%cfxp(ic)=0._8
+      END if
+      IF(dzm>=bndy(i)%dz) then
+        cndpnt%phi0zm(ic)=0._8
+      else
+        cndpnt%phi0zm(ic)=cndpnt%cfzm(ic)*cndpnt%volt0zm(ic)
+        cndpnt%cfzm(ic)=0._8
+      END if
+      IF(dzp>=bndy(i)%dz) then
+        cndpnt%phi0zp(ic)=0._8
+      else
+        cndpnt%phi0zp(ic)=cndpnt%cfzp(ic)*cndpnt%volt0zp(ic)
+        cndpnt%cfzp(ic)=0._8
+      END if
+     END if
+
+    enddo
+   enddo
+  enddo
+enddo
+return
+end subroutine setconductorvoltagerz_id
 
