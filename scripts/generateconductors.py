@@ -29,6 +29,16 @@ Note that all take the following additional arguments:
 voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=1
 
 installconductors(a): generates the data needed for the fieldsolve
+
+A set of classes for generating and manipulating surfaces of revolution
+using lines and arcs primitives (SRFRVLA) are available:
+SRFRVLAfromfile(filename,voltages,condids,zshifts=None,rshifts=None,install=1)
+SRFRVLAsystem(SRFRVLAconds,install=1)
+SRFRVLAcond(name,parts,voltage,condid,install=1)
+SRFRVLApart(name,data)
+SRFRVLA_circle(name,c,r)
+SRFRVLA_rectangle(name,c,l,h)
+SRFRVLA_rnd_rectangle(name,c,l,h,r)
 """
 
 # The following classes are also defined but should not be directly used.
@@ -43,8 +53,9 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 import operator
 if not lparallel: import VPythonobjects
+from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.38 2003/11/25 22:03:05 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.39 2003/12/01 22:37:49 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1736,3 +1747,453 @@ Betweem surfaces of revolution
       f3d.lsrmaxlinr = false
 
     return Assembly.getkwlist(self)
+
+class SRFRVLApart:
+  """
+Class for creating a surface of revolution conductor part using lines and arcs as primitives.  
+ - name:   name of conductor part
+ - data:   list of lines and arcs (this must be a continuous curve)
+            o the first element is the starting point
+            o a line is described by the ending point
+            o a circle is described by the ending point and the center
+            o for both, the starting point is the previous ending point
+            o each element is teminated by a letter 't' for top (or out)
+              and 'b' for bottom (or in)
+  """
+  def __init__(self,name,data):
+    self.name    = name
+    self.data   = data
+
+  def draw(self,ncirc=50,scx=1.,scy=1.,colort='blue',colorb='red',
+                 color='none',signx=1.,width=1.):
+    """
+  Draw lines and arcs of SRFRVLA conductor part. Arcs are decomposed
+  into ncirc segments.
+    """
+    if(color <> 'none'):
+      colort=color
+      colorb=color
+      
+    for j,d in enumerate(self.data):
+      if(j==0):
+        s=[d[0]*scx,d[1]*scy]
+      else:
+        if(d[-1]=='t'):
+          colorn=colort
+        else:
+          colorn=colorb
+        n=[d[0]*scx,d[1]*scy]
+        if(len(d)==3):
+          self.draw_line([s[0]],[signx*s[1]],[n[0]],[signx*n[1]],colorn,width)
+        else:
+          c=[d[2]*scx,d[3]*scy]
+          self.draw_arc(s[0],signx*s[1],n[0],signx*n[1],c[0],signx*c[1],ncirc,colorn,width)
+        s=n
+
+  def shift(self,s,dir):
+    """
+  Shift SRFRVLA conductor part by s in the direction dir (0=Z, 1=R).
+    """
+    for d in self.data:
+      d[dir]+=s
+      if(len(d)>3):
+        d[dir+2]+=s
+
+  def draw_line(self,x0,y0,x1,y1,color='black',width=1.):
+    """
+  Draw a line.
+    """
+    pldj(x0,y0,x1,y1,color=color,width=width)
+
+  def draw_arc(self,x0,y0,x1,y1,xc,yc,ncirc=50,color='black',width=1.):
+    """
+  Draw an arc as ncirc segments.
+    """
+    xy = self.get_xy_arc(x0,y0,x1,y1,xc,yc,ncirc)  
+    pldj(xy[0][0:ncirc-1],xy[1][0:ncirc-1],
+         xy[0][1:ncirc],  xy[1][1:ncirc],
+         color=color,width=width)
+
+  def get_xy_arc(self,x0,y0,x1,y1,xc,yc,ncirc):
+    """
+  Retuns list of end points of ncirc segments along an arc of
+  end points (x0,y0) and (x1,y1), and center (xc,yc).
+    """
+    xi=x0-xc
+    yi=y0-yc
+    xf=x1-xc
+    yf=y1-yc
+    r=sqrt(xi**2+yi**2)
+    thetai=arctan2(yi,xi)
+    thetaf=arctan2(yf,xf)
+    if(abs(thetaf-thetai)>pi):
+      if(thetaf-thetai<0.):
+        thetaf=thetaf+2.*pi
+      else:
+        thetaf=thetaf-2.*pi
+    dtheta=(thetaf-thetai)/(ncirc-1)
+    x=zeros(ncirc+1,'d')
+    y=zeros(ncirc+1,'d')
+    x[0]=x0
+    y[0]=y0
+    for i in range(1,ncirc):
+      theta=thetai+i*dtheta
+      x[i]=xc+r*cos(theta)
+      y[i]=yc+r*sin(theta)
+    return [x,y]
+
+class SRFRVLAcond:
+  """
+Class for creating Surface of revolution conductor using lines and arcs as primitives.
+A conductor is a structure containing a list of parts. A part is a structure
+containing a list of primitives.
+ - name: name of conductor
+ - parts: list of conductor parts
+ - voltage: conductor part voltage
+ - condid:  conductor part ID
+ - install=1 (optional): flag for installation of conductors immediately after creation.
+  """
+  def __init__(self,name,parts,voltage,condid,install=1):
+    """
+  Register SRFRVLA conductor parts using ZSrfrvIn, ZSrfrvOut or ZSrfrvInOut.
+    """
+    self.name = name
+    self.parts = parts
+    self.voltage = voltage
+    self.condid = condid
+    for i,part in enumerate(self.parts):
+    # Loop over parts and install them using ZSrfrvIn, ZSrfrvOut or ZSrfrvInOut.
+    # The installed parts are stored in the list 'toinstall' and the corresponding
+    # IDs and names in the lists 'condids' and 'cnames'.
+      data = part.data
+      it=0
+      ib=0
+      nsrmax=0
+      nsrmin=0
+      l_t=0
+      l_b=0
+      # Counts number of 'top' and 'bottom' primitives and allocate temporary arrays.
+      for d in data[1:]:
+        if(d[-1]=='t'):
+            nsrmax += 1
+        elif(d[-1]=='b'):
+            nsrmin += 1
+      if(nsrmax<>0):
+        l_t = 1
+        r_srmax = zeros(nsrmax+1,Float)
+        z_srmax = zeros(nsrmax+1,Float)
+        rc_srmax = zeros(nsrmax,Float)
+        zc_srmax = zeros(nsrmax,Float)
+      if(nsrmin<>0):
+        l_b = 1
+        r_srmin = zeros(nsrmin+1,Float)
+        z_srmin = zeros(nsrmin+1,Float)
+        rc_srmin = zeros(nsrmin,Float)
+        zc_srmin = zeros(nsrmin,Float)
+
+      # Fill arrays with datas from parts.
+      do = data[0] 
+      for d in data[1:]:
+        if(d[-1]=='t'):
+          z_srmax[it]=do[0]
+          r_srmax[it]=do[1]
+          it=it+1
+          z_srmax[it]=d[0]
+          r_srmax[it]=d[1]
+          if(len(d)>3):
+            zc_srmax[it-1]=d[2]
+            rc_srmax[it-1]=d[3]
+          else:
+            zc_srmax[it-1]=largepos
+            rc_srmax[it-1]=largepos
+        elif(d[-1]=='b'):
+          z_srmin[ib]=do[0]
+          r_srmin[ib]=do[1]
+          ib=ib+1
+          z_srmin[ib]=d[0]
+          r_srmin[ib]=d[1]
+          if(len(d)>3):
+            zc_srmin[ib-1]=d[2]
+            rc_srmin[ib-1]=d[3]
+          else:
+            zc_srmin[ib-1]=largepos
+            rc_srmin[ib-1]=largepos
+        do=d
+
+      # Make sure arrays are in Z ascending order.
+      if(z_srmin[0]>z_srmin[nsrmin]):
+        args =argsort(z_srmin)
+        argsc=argsort(z_srmin[1:])
+        z_srmin=take(z_srmin,args)
+        r_srmin=take(r_srmin,args)
+        zc_srmin=take(zc_srmin,argsc)
+        rc_srmin=take(rc_srmin,argsc)
+      if(z_srmax[0]>z_srmax[nsrmax]):
+        args =argsort(z_srmax)
+        argsc=argsort(z_srmax[1:])
+        z_srmax=take(z_srmax,args)
+        r_srmax=take(r_srmax,args)
+        zc_srmax=take(zc_srmax,argsc)
+        rc_srmax=take(rc_srmax,argsc)
+
+      # Register parts.
+      if(l_t==1 and l_b==1):
+        part.installed = ZSrfrvInOut('','',
+                              min(z_srmax),
+                              max(z_srmax),
+                              voltage=voltage,
+                              condid =condid,
+                              rminofzdata=r_srmin,
+                              rmaxofzdata=r_srmax,
+                              zmindata=z_srmin,
+                              zmaxdata=z_srmax,
+                              rcmindata=rc_srmin,
+                              rcmaxdata=rc_srmax,
+                              zcmindata=zc_srmin,
+                              zcmaxdata=zc_srmax,
+                              )
+
+      elif(l_b==1):
+        part.installed = ZSrfrvOut('',
+                            min(z_srmin),
+                            max(z_srmin),
+                            voltage=voltage,
+                            condid =condid,
+                            rofzdata=r_srmin,
+                            zdata=z_srmin)
+
+      elif(l_t==1):
+        part.installed = ZSrfrvIn('',
+                            min(z_srmax),
+                            max(z_srmax),
+                            voltage=voltage,
+                            condid =condid,
+                            rofzdata=r_srmax,
+                            zdata=z_srmax)
+
+      # store installed conductor in a list
+      if i == 0:
+        self.cond = self.parts[i].installed
+      else:    
+        self.cond += self.parts[i].installed
+    if(install):self.install()
+    
+  def install(self):
+    """
+  Install SRFRVLA conductors.
+    """
+    print 'installing',self.name,'( ID=',self.condid,')...'
+    for part in self.parts:
+      installconductors(part.installed)
+    
+  def draw(self,ncirc=50,scx=1.,scy=1.,colort='blue',colorb='red',
+                 color='none',signx=1.,width=1.):
+    """
+  Draws a list of conductor parts.
+    """
+    if(color <> 'none'):
+      colort=color
+      colorb=color
+    for part in self.parts:
+      part.draw(ncirc,scx,scy,colort,colorb,color,signx,width)
+  
+  def shift(self,s,dir):
+    """
+  Shifts conductor parts using a scalar shift of a list of shifts.
+    - s: shift value (scalar or list same length as self.parts)
+    - dir: direction of shift (0=Z, 1=R)
+    """
+    stype = 'list'
+    try:
+      l=len(s)
+    except:
+      stype = 'scalar'
+
+    if(stype=='scalar'):
+      for part in self.parts:
+        part.shift(s,dir)
+    else:
+      assert len(s)==len(self.parts), 'Error in SRFRVLAcond.shift: shift must have same length as part or be a scalar.'
+      for i,part in enumerate(self.parts):
+        part.shift(s[i],dir)
+
+class SRFRVLAsystem:
+  """
+Class for creating a SRFRVLAsystem of conductors (list of conductors).
+A SRFRVLA contains two lists:
+  - SRFRVLAconds which is the list of SRFRVLA conductors (SRFRVLAcond).
+  - conds which is the list of conductors, as defined in generateconductors.py.
+  """
+  def __init__(self,SRFRVLAconds,install=1):
+    self.conds = []
+    self.SRFRVLAconds = SRFRVLAconds
+    for SRFRVLAcond in SRFRVLAconds:
+      self.conds += [SRFRVLAcond.cond]
+
+  def save(self,filename):
+    """
+  Save conductor into external file:
+    - filename: name of external file ('.wob' will be added')
+    """
+    f=open(filename+'.wob','w')
+    f.write("Begin\n")
+
+    for cond in self.SRFRVLAconds:
+      f.write("  Conductor "+cond.name+"\n")
+      for part in cond.parts:
+        f.write("    Part "+part.name+"\n")
+        d = part.data[0]
+        f.write('     s   %13.6E %13.6E \n'%(d[0],d[1]))
+        for d in part.data[1:]:
+          if(len(d)==3): # line
+            f.write('     l   %13.6E %13.6E                             %c \n'%(d[0],d[1],d[2]))
+          else: # arc
+            f.write('     a   %13.6E %13.6E %13.6E %13.6E %c \n'%(d[0],d[1],d[2],d[3],d[4]))
+        f.write("    Endpart "+part.name+"\n")
+      f.write("  End "+cond.name+"\n")
+
+    f.write("End\n")
+    f.close()
+
+  def draw(self,ncirc=50,scx=1.,scy=1.,colort='blue',colorb='red',
+                 color='none',signx=1.,width=1.):
+    """
+  Draws a list of conductors.
+    """
+    if(color <> 'none'):
+      colort=color
+      colorb=color
+    for parts in self.SRFRVLAconds:
+        parts.draw(ncirc,scx,scy,colort,colorb,color,signx,width)
+
+class SRFRVLAfromfile(SRFRVLAsystem):
+  """
+Class for reading SRFRVLA data from file.
+  - filename: name of input file
+  - voltages: list of voltages of conductor parts 
+  - condids: list of IDs of conductor parts 
+  - zshifts=None (optional): list of shifts in Z to apply to conductor parts 
+  - rshifts=None (optional): list of shifts in R to apply to conductor parts 
+  - install=1 (optional): flag for installation of conductors immediately after reading 
+  """
+  def __init__(self,filename,voltages,condids,zshifts=None,rshifts=None,install=1):
+    """
+  Reads SRFRVLA conductors from external file. The series of conductors which is stored in a list.
+    """
+    f=open(filename+'.wob','r')
+    cont=1
+    ic = -1
+    ip = -1
+    # create list conductors
+    conds=[]
+    condnames = []
+    while(cont==1):
+      line=split(f.readline())
+      if(line[0]=='Conductor'):
+        ic += 1
+        condnames += [line[1]]
+        partnames = []
+        parts = []
+        # create list of data
+        data = []
+        ocont = 1
+        while(ocont==1):
+          line=split(f.readline())
+          if(line[0]=='End'):
+            ocont=0
+          elif(line[0]=='Part'):
+            ip += 1
+            partnames += [line[1]]
+          elif(line[0]=='Endpart'):
+            parts += [SRFRVLApart(partnames[-1],data)]
+            if zshifts is not None:parts[-1].shift(zshifts[ip],0)
+            if rshifts is not None:parts[-1].shift(rshifts[ip],1)
+            data = []
+            partnames = []
+          else:
+            # append data to list
+            if(line[0]=='S' or line[0]=='s'): #start
+              data.append([float(line[1]),float(line[2])])
+            if(line[0]=='L' or line[0]=='l'): #line
+              data.append([float(line[1]),float(line[2]),line[3]])
+            if(line[0]=='A' or line[0]=='a'): #arc
+              data.append([float(line[1]),float(line[2]),\
+                           float(line[3]),float(line[4]),line[5]])
+        conds += [parts]
+      elif(line[0]=='End'):
+        cont=0
+    f.close()
+    # create conductors
+    SRFRVLAconds = []
+    for i,parts in enumerate(conds):
+      SRFRVLAconds += [SRFRVLAcond(condnames[i],parts,voltages[i],condids[i],install)]
+    SRFRVLAsystem.__init__(self,SRFRVLAconds)
+
+class SRFRVLA_circle(SRFRVLApart):
+  """
+Creates a circle.
+  - name: name of conductor part
+  - c: center
+  - r: radius
+  """
+  def __init__(self,name,c,r):
+    assert r>0., 'In SRFRVLA_circle, r must be >0.' 
+    x = c[0]
+    y = c[1]
+    data = []
+    data.append([x-r,y])
+    data.append([x+r,y,x,y,'t'])
+    data.append([x,y-r,x,y,'b'])
+    data.append([x-r,y,x,y,'b'])
+    SRFRVLApart.__init__(self,name,data)
+  
+class SRFRVLA_rectangle(SRFRVLApart):
+  """
+Creates a rectangle.
+  - name: name of conductor part
+  - c: center
+  - l: length
+  - h: height
+  """
+  def __init__(self,name,c,l,h):
+    assert l>0. and h>0., 'In SRFRVLA_rectangle, l, h must be >0.' 
+    x1 = c[0]-0.5*l
+    x2 = c[0]+0.5*l
+    y1 = c[1]-0.5*h
+    y2 = c[1]+0.5*h
+    data = []
+    data.append([x1,y1])
+    data.append([x1,y2,'t'])
+    data.append([x2,y2,'t'])
+    data.append([x2,y1,'t'])
+    data.append([x1,y1,'b'])
+    SRFRVLApart.__init__(self,name,data)
+  
+class SRFRVLA_rnd_rectangle(SRFRVLApart):
+  """
+Creates a rectangle with rounded edge.
+  - name: name of conductor part
+  - c: center
+  - l: length
+  - h: height
+  - r: radius of rounded edges
+  """
+  def __init__(self,name,c,l,h,r):
+    assert r>=0. and l>=0. and h>=0., 'In SRFRVLA_rnd_rectangle, r, l, h must be >=0.' 
+    l = max(l,2.*r)
+    h = max(h,2.*r)
+    x1 = c[0]-0.5*l
+    x2 = c[0]+0.5*l
+    y1 = c[1]-0.5*h
+    y2 = c[1]+0.5*h
+    data = []
+    data.append([x1,y1+r])
+    data.append([x1,y2-r,'t'])
+    if(r>0.):data.append([x1+r,y2,x1+r,y2-r,'t'])
+    data.append([x2-r,y2,'t'])
+    if(r>0.):data.append([x2,y2-r,x2-r,y2-r,'t'])
+    data.append([x2,y1+r,'t'])
+    if(r>0.):data.append([x2-r,y1,x2-r,y1+r,'b'])
+    data.append([x1+r,y1,'b'])
+    if(r>0.):data.append([x1,y1+r,x1+r,y1+r,'b'])
+    SRFRVLApart.__init__(self,name,data)
