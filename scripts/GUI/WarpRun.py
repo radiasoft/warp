@@ -12,6 +12,7 @@ import DocGUI
 import MatchingGUI
 import ConsoleClass
 import PzplotsGUI
+import ManualDialog
 import txtEditorDialog
 import newstdout
 import wxDialog_proto
@@ -36,7 +37,7 @@ import pype
 
 # for debugging purpose, output is not redirected in GUI if true
 l_standard_out = 0
-l_PyShell = 1
+l_PyCrust = 1
 
 def create(parent):
     return WarpRun(parent)
@@ -73,33 +74,43 @@ def create(parent):
  wxID_WARPRUNMNUFILESAVEAS, 
 ] = map(lambda _init_coll_mnuFile_Items: wxNewId(), range(6))
 
-[wxID_WARPRUNMNUDUMPDUMP, wxID_WARPRUNMNUDUMPDUMPAS, wxID_WARPRUNMNUDUMPRESTORE, 
- wxID_WARPRUNMNUDUMPRESTART, 
-] = map(lambda _init_coll_mnuFile_Items: wxNewId(), range(4))
-
 [wxID_WARPRUNMNUDUMPDUMP, wxID_WARPRUNMNUDUMPDUMPAS, 
  wxID_WARPRUNMNUDUMPRESTART, wxID_WARPRUNMNUDUMPRESTORE, 
 ] = map(lambda _init_coll_mnuDump_Items: wxNewId(), range(4))
 
-[wxID_WARPRUNMNUHELPABOUT] = map(lambda _init_coll_mnuHelp_Items: wxNewId(), range(1))
+[wxID_WARPRUNMNUHELPMANUAL,wxID_WARPRUNMNUHELPSCRIPTS,wxID_WARPRUNMNUHELPSOURCE,
+wxID_WARPRUNMNUHELPTUTORIAL,wxID_WARPRUNMNUHELPABOUT,
+] = map(lambda _init_coll_mnuHelp_Items: wxNewId(), range(5))
 
 class WarpRun(wxFrame):
-    def _init_coll_mnuHelp_Items(self, parent):
-        # generated method, don't edit
-
-        parent.Append(help='Display info', id=wxID_WARPRUNMNUHELPABOUT,
-              text='About', kind=wxITEM_NORMAL)
-        EVT_MENU(self, wxID_WARPRUNMNUHELPABOUT, self.OnMnuhelpAboutMenu)
-
     def _init_coll_menuBar1_Menus(self, parent):
         # generated method, don't edit
 
         parent.Append(menu=self.mnuFile, title='File')
         parent.Append(menu=self.mnuDump, title='Dump')
-        parent.Append(menu=self.mnuHelp, title='Help')
         parent.Append(menu=self.mnuErrorCheck, title='ErrorCheck')
         parent.Append(menu=self.mnuPackage, title='Package')
         parent.Append(menu=self.mnuPalette, title='Palette')
+        parent.Append(menu=self.mnuHelp, title='Help')
+
+    def _init_coll_mnuHelp_Items(self, parent):
+        # generated method, don't edit
+
+        parent.Append(help='browse manual', id=wxID_WARPRUNMNUHELPMANUAL,
+              text='Manual', kind=wxITEM_NORMAL)
+        EVT_MENU(self, wxID_WARPRUNMNUHELPMANUAL, self.OnMnuhelpManualMenu)
+        parent.Append(help='browse scripts', id=wxID_WARPRUNMNUHELPSCRIPTS,
+              text='Scripts', kind=wxITEM_NORMAL)
+        EVT_MENU(self, wxID_WARPRUNMNUHELPSCRIPTS, self.OnMnuhelpScriptsMenu)
+        parent.Append(help='browse source', id=wxID_WARPRUNMNUHELPSOURCE,
+              text='Source', kind=wxITEM_NORMAL)
+        EVT_MENU(self, wxID_WARPRUNMNUHELPSOURCE, self.OnMnuhelpSourceMenu)
+        parent.Append(help='display tutorials', id=wxID_WARPRUNMNUHELPTUTORIAL,
+              text='Tutorial', kind=wxITEM_NORMAL)
+        EVT_MENU(self, wxID_WARPRUNMNUHELPTUTORIAL, self.OnMnuhelpTutorialMenu)
+        parent.Append(help='Display info', id=wxID_WARPRUNMNUHELPABOUT,
+              text='About', kind=wxITEM_NORMAL)
+        EVT_MENU(self, wxID_WARPRUNMNUHELPABOUT, self.OnMnuhelpAboutMenu)
 
     def _init_coll_mnuErrorCheck_Items(self, parent):
         # generated method, don't edit
@@ -223,6 +234,7 @@ class WarpRun(wxFrame):
         self.SetClientSize(wxSize(620, 646))
         self.SetMenuBar(self.menuBar1)
         self.SetAutoLayout(True)
+        EVT_CLOSE(self,self.OnFrameClose)
 
         self.statusBar1 = wxStatusBar(id=wxID_WARPRUNSTATUSBAR1,
               name='statusBar1', parent=self, style=0)
@@ -352,12 +364,12 @@ class WarpRun(wxFrame):
 
         self.MessageWindow = wxTextCtrl(id=wxID_WARPRUNMESSAGEWINDOW,
               name='MessageWindow', parent=self.splitterWindow1, pos=wxPoint(2,
-              357), size=wxSize(612, 236),
-              style=wxHSCROLL | wxVSCROLL | wxTE_READONLY | wxTE_MULTILINE,
+              357), size=wxSize(580, 310),
+              style=wxVSCROLL | wxTE_READONLY | wxTE_MULTILINE,
               value='')
         self.MessageWindow.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL,
               false, ''))
-        self.MessageWindow.SetBackgroundColour(wxColour(192, 192, 192))
+        self.MessageWindow.SetBackgroundColour('CADET BLUE')
 
         self.notebook1 = wxNotebook(id=wxID_WARPRUNNOTEBOOK1, name='notebook1',
               parent=self.splitterWindow1, pos=wxPoint(2, 2), size=wxSize(612,
@@ -413,11 +425,20 @@ class WarpRun(wxFrame):
         self.linenum = 0
         self.EdPos = 0
         self.startrun = 1
+        self.panels = {}
         # substitute default editor by pype
         self.notebook1.DeletePage(0)
         self.launch_pype()
+        self.prefix = ''
+        self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self)
+        self.panels['Pplots']  = self.show_GUI(self.PplotsPanel,  'notebook','Pplots','frame',True)
+        self.panels['Pzplots']  = self.show_GUI(PzplotsGUI,  'notebook','Pzplots')
+        self.panels['Matching'] = self.show_GUI(MatchingGUI, 'notebook','Matching')
+        self.panels['Gist']     = self.show_GUI(pygistDialog,'notebook','Gist')
+        if l_opendx:
+          self.panels['OpenDX']     = self.show_GUI(pyOpenDXDialog,'notebook','OpenDX')
         # start console
-        if l_PyShell:
+        if l_PyCrust:
 	  def shortcuts(): 
             print """
 * Key bindings:
@@ -445,12 +466,27 @@ Ctrl+=            Default font size.
 """
 
 	  __main__.shortcuts = shortcuts
-	  self.shell = py.shell.Shell(self.splitterWindow1,-1,introText='For help on:\n - WARP      - type "warphelp()",\n - shortcuts - type "shorcuts()".\n\n')
-	  self.shell.SetSize(self.splitterWindow1.GetSize())
+	  self.Crust = py.crust.Crust(self,-1,intro='For help on:\n - WARP      - type "warphelp()",\n - shortcuts - type "shorcuts()".\n\n')
+          self.shell = self.Crust.shell
+          self.crustnotebook = self.Crust.notebook
+          self.panels['Session']  = self.show_GUI(self.crustnotebook,  'notebook','Session','frame',True)
+
+          self.Crust.filling.Destroy() # too CPU intensive, might be replaced with WARP data exploration at sopme point
+          self.Crust.dispatcherlisting.Destroy() # of no interest
+          self.Crust.display.Destroy() # not sure what this window does anyway
+          self.crustnotebook.SetPageText(3,'History')
 	  self.splitterWindow1.ReplaceWindow(self.MessageWindow,self.shell)
+          self.shell.Reparent(self.splitterWindow1)
+          self.Crust.Destroy()
           self.MessageWindow.Destroy()
 	  self.Console = self.shell
           self.inter = self.shell.interp
+          def SetInsertionPointEnd():  
+            self.shell.SetCurrentPos(self.shell.GetTextLength())
+          self.shell.SetInsertionPointEnd=SetInsertionPointEnd
+          __main__.autocomp=self.AutoComp
+          __main__.calltip=self.CallTip
+          self.CallTip() # turns off calltip
 	else:
           self.inter = code.InteractiveConsole(__main__.__dict__)
           self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.splitterWindow1,inter=self.inter)
@@ -458,14 +494,6 @@ Ctrl+=            Default font size.
           self.MessageWindow=self.ConsolePanel.Console
           self.Console = self.ConsolePanel.Console
 # old:         self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.notebook1, inter=self.inter, in_notebook=1)
-        self.prefix = ''
-        self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self.notebook1)
-        self.panels = {}
-        self.panels['Pzplots']  = self.show_GUI(PzplotsGUI,  'notebook','Pzplots')
-        self.panels['Matching'] = self.show_GUI(MatchingGUI, 'notebook','Matching')
-        self.panels['Gist']     = self.show_GUI(pygistDialog,'notebook','Gist')
-        if l_opendx:
-          self.panels['OpenDX']     = self.show_GUI(pyOpenDXDialog,'notebook','OpenDX')
         self.notebook1.SetSelection(0) # open notebook on Editor
         self.FileExecDialog = txtEditorDialog.txtEditorDialog(self)      
         self.FileExec = self.FileExecDialog.txtEditor  
@@ -574,8 +602,10 @@ Ctrl+=            Default font size.
         pype.frame.SetPosition(self.GetPosition()+(10,10))
         if sys.platform <> 'win32':
           pype.frame.Show(0)
-          panel = WarpPanel.panel(self.notebook1)
-          self.notebook1.AddPage(imageId=-1, page=panel, select=True, text='Editor')
+ #         panel = WarpPanel.panel(self.notebook1)
+ #         self.notebook1.AddPage(imageId=-1, page=panel, select=True, text='Editor')
+          self.panels['Editor']  = self.show_GUI(None,'notebook','Editor','frame',True)
+          panel = self.panels['Editor']['panel'].panel
           pype.frame.menubar.Reparent(panel)
           pype.frame.control.Move(wxPoint(0,25))
           pype.frame.control.Reparent(panel)
@@ -670,17 +700,43 @@ Ctrl+=            Default font size.
         self.panels[name] = self.show_GUI(panel,out,name)
         self.OutToMessageWindow()
 
-    def show_GUI(self,gui,winout,title):
+    def show_GUI(self,gui,winout='notebook',title='',type='dialog',newpanel=0):
         if(winout=='notebook'):
           panel = WarpPanel.panel(self.notebook1)
           self.notebook1.AddPage(imageId=-1, page=panel, select=True, text=title)
-          panel.panel = gui.panel(panel)
-          return {'panel':panel,'gui':gui,'winout':winout,'title':title}
+          if not newpanel: # then create
+            panel.panel = gui.panel(panel)
+          else:
+            panel.panel = WarpPanel.panel(panel)
+            if gui is not None:
+              gui.Reparent(panel.panel)
+              ref=panel.panel
+              cs = wxLayoutConstraints()
+              cs.top.SameAs(ref,wxTop)
+              cs.bottom.SameAs(ref,wxBottom)
+              cs.left.SameAs(ref,wxLeft)
+              cs.right.SameAs(ref,wxRight)
+              gui.SetConstraints(cs)
+              gui.SetAutoLayout(True)
+            cs = wxLayoutConstraints()
+            ref=panel
+            cs.top.SameAs(ref,wxTop)
+            cs.bottom.SameAs(ref,wxBottom)
+            cs.left.SameAs(ref,wxLeft)
+            cs.right.SameAs(ref,wxRight)
+            panel.panel.SetConstraints(cs)
+            panel.panel.SetAutoLayout(True)
         else:
-          dialog = wxDialog_proto.wxDialog1(self,gui.panel,title)
-          dialog.Show(1)
-          return {'panel':dialog.panel,'gui':gui,'winout':winout,'title':title}
-        
+          if frame:
+            frame = wxDialog_proto.wxFrame1(self,gui.panel,title)
+            frame.Show(1)
+            panel = frame.panel
+          else:
+            dialog = wxDialog_proto.wxDialog1(self,gui.panel,title)
+            dialog.Show(1)
+            panel = dialog.panel
+        return {'panel':panel,'gui':gui,'winout':winout,'title':title,'type':type}
+         
     def HandleGistEvents(self):
       try:
         v = gist.__version__
@@ -701,6 +757,38 @@ Ctrl+=            Default font size.
             dlg.ShowModal()
         finally:
             dlg.Destroy()
+
+    def OnMnuhelpManualMenu(self, event):
+        try: 
+           self.ManualHtml
+        except:
+           self.panels['Manual']  = self.show_GUI(ManualDialog,  'notebook','Manual','frame') 
+           self.ManualHtml = self.panels['Manual']['panel'].panel.html
+        self.ManualHtml.GoHome('manual/manual')
+
+    def OnMnuhelpScriptsMenu(self, event):
+        try: 
+           self.ScriptsHtml
+        except:
+           self.panels['Scripts']  = self.show_GUI(ManualDialog,  'notebook','Scripts','frame') 
+           self.ScriptsHtml = self.panels['Scripts']['panel'].panel.html
+        self.ScriptsHtml.GoHome('scripts/doc/index')
+
+    def OnMnuhelpSourceMenu(self, event):
+        try: 
+           self.SourceHtml
+        except:
+           self.panels['Source']  = self.show_GUI(ManualDialog,  'notebook','Source','frame') 
+           self.SourceHtml = self.panels['Source']['panel'].panel.html
+        self.SourceHtml.GoHome('source')
+
+    def OnMnuhelpTutorialMenu(self, event):
+        try: 
+           self.TutorialHtml
+        except:
+           self.panels['Tutorial']  = self.show_GUI(ManualDialog,  'notebook','Tutorial','frame') 
+           self.TutorialHtml = self.panels['Tutorial']['panel'].panel.html
+        self.TutorialHtml.GoHome('tutorials')
 
     def OnMnufileOpenExecMenu(self, event):
         self.OnMnuOpenMenu(event)
@@ -778,7 +866,7 @@ Ctrl+=            Default font size.
         if(not l_standard_out): sys.stdout = newstdout.newstdout(self.Console)
         if(not l_standard_out): sys.stderr = newstdout.newstdout(self.Console)
         self.statusBar1.SetStatusText(number=0,text="Executing file %s"%self.FileName)
-	if not l_PyShell:
+	if not l_PyCrust:
           if(self.startrun and self.ConsolePanel.NoEntry):
             self.Console.Clear()
             startrun = 0
@@ -915,7 +1003,7 @@ Ctrl+=            Default font size.
                     if(string.strip(self.line)=='winon()'):
                         self.OnWinonButton()
                     else:
-			if l_PyShell:
+			if l_PyCrust:
 			  self.shell.SetCurrentPos(self.shell.GetTextLength())
 			  self.shell.write(self.line+os.linesep)
 			  more=self.inter.push(self.line)
@@ -941,7 +1029,7 @@ Ctrl+=            Default font size.
         return dorun
 
     def ReturnToPrompt(self,line):
-	if l_PyShell:
+	if l_PyCrust:
 	  self.shell.prompt()
         else:    
 	  self.Console.WriteText('>>> ')
@@ -1083,8 +1171,10 @@ Ctrl+=            Default font size.
         if(not l_standard_out): sys.stderr = newstdout.newstdout(self.Console)
 
     def OutToMessageWindow(self):
-        if(not l_standard_out): sys.stdout = newstdout.newstdout(self.MessageWindow)
-        if(not l_standard_out): sys.stderr = newstdout.newstdout(self.MessageWindow)
+        if(not l_standard_out): sys.stdout = newstdout.newstdout(self.Console)
+        if(not l_standard_out): sys.stderr = newstdout.newstdout(self.Console)
+#        if(not l_standard_out): sys.stdout = newstdout.newstdout(self.MessageWindow)
+#        if(not l_standard_out): sys.stderr = newstdout.newstdout(self.MessageWindow)
 
     def OnNotebook1NotebookPageChanged(self, event):
         if event.GetSelection() == 0:
@@ -1106,7 +1196,10 @@ Ctrl+=            Default font size.
         current = self.notebook1.GetPage(self.notebook1.GetSelection())
         for i in self.panels.keys():
             if self.panels[i]['panel'] == current:
-                dialog = wxDialog_proto.wxDialog1(self,None,self.panels[i]['title'])
+                if self.panels[i]['type'] == 'frame':
+                  dialog = wxDialog_proto.wxFrame1(self,None,self.panels[i]['title'])
+                else:
+                  dialog = wxDialog_proto.wxDialog1(self,None,self.panels[i]['title'])
                 self.panels[i]['panel'].panel.Reparent(dialog)
                 dialog.panel=self.panels[i]['panel'].panel
                 dialog.panel.Move(wxPoint(0,25))
@@ -1121,6 +1214,15 @@ Ctrl+=            Default font size.
                 self.notebook1.Update()
                 size = dialog.panel.GetSize()
                 dialog.SetSize((size[0],size[1]+25))
+                if self.panels[i]['type'] == 'frame':
+                  cs = wxLayoutConstraints()
+                  ref=dialog
+                  cs.top.SameAs(ref,wxTop,25)
+                  cs.bottom.SameAs(ref,wxBottom)
+                  cs.left.SameAs(ref,wxLeft)
+                  cs.right.SameAs(ref,wxRight)
+                  dialog.panel.SetConstraints(cs)
+                  dialog.panel.SetAutoLayout(True)
         event.Skip()
 
     def OnRedrawButton(self, event):
@@ -1145,5 +1247,23 @@ Ctrl+=            Default font size.
     def OnNextbookmarkButton(self, event):
         self.OnNextBookmark(event)
         event.Skip()
-            
-        
+
+    def CallTip(self):
+        self.shell.autoCallTip=1-self.shell.autoCallTip
+        if self.shell.autoCallTip:
+          print 'Auto call-tip turned on.'
+        else:
+          print 'Auto call-tip turned off.'
+
+    def AutoComp(self):
+        self.shell.autoComplete=1-self.shell.autoComplete
+        if self.shell.autoComplete:
+          print 'Auto completion turned on.'
+        else:
+          print 'Auto completion turned off.'
+
+    def OnFrameClose(self,event):
+      self.Hide()
+      __main__.wgui.ExitMainLoop()
+      event.Skip()
+
