@@ -1,5 +1,5 @@
 from warp import *
-setupvalidation_version = "$Id: setupvalidation.py,v 1.1 2001/03/22 20:42:16 dave Exp $"
+setupvalidation_version = "$Id: setupvalidation.py,v 1.2 2001/03/22 23:24:04 dave Exp $"
 
 def setupvalidationdoc():
   print """
@@ -14,13 +14,13 @@ instructions.
 def getvalidationdata():
   """Returns the current values of the quantities to be compared."""
   if lparallel:
-    sumxp = globalsum(sum(getx(gather=0)))
-    sumyp = globalsum(sum(gety(gather=0)))
-    sumzp = globalsum(sum(getz(gather=0)))
-    sumvx = globalsum(sum(getvx(gather=0)))
-    sumvy = globalsum(sum(getvy(gather=0)))
-    sumvz = globalsum(sum(getvz(gather=0)-top.vbeam))
-    sumgi = globalsum(sum(1.-getgaminv(gather=0)))
+    sumxp = globalsum(sum(abs(getx(gather=0))))
+    sumyp = globalsum(sum(abs(gety(gather=0))))
+    sumzp = globalsum(sum(abs(getz(gather=0))))
+    sumvx = globalsum(sum(abs(getvx(gather=0))))
+    sumvy = globalsum(sum(abs(getvy(gather=0))))
+    sumvz = globalsum(sum(abs(getvz(gather=0)-top.vbeam)))
+    sumgi = globalsum(sum(abs(1.-getgaminv(gather=0))))
     # --- Sum only the non overlapping part of the 3-d arrays. Otherwise
     # --- the answers will be different with differing numbers of processors.
     iz1 = top.izfsslave[me] - top.izslave[me]
@@ -31,13 +31,13 @@ def getvalidationdata():
     sumrho = globalsum(sum(sum(sum(w3d.rho[:,:,iz1:iz2]))))
     sumphi = globalsum(sum(sum(sum(w3d.phi[:,:,iz1+1:iz2+1]))))
   else:
-    sumxp = sum(getx())
-    sumyp = sum(gety())
-    sumzp = sum(getz())
-    sumvx = sum(getvx())
-    sumvy = sum(getvy())
-    sumvz = sum(getvz()-top.vbeam)
-    sumgi = sum(1.-getgaminv())
+    sumxp = sum(abs(getx()))
+    sumyp = sum(abs(gety()))
+    sumzp = sum(abs(getz()))
+    sumvx = sum(abs(getvx()))
+    sumvy = sum(abs(getvy()))
+    sumvz = sum(abs(getvz()-top.vbeam))
+    sumgi = sum(abs(1.-getgaminv()))
     sumrho = sum(sum(sum(w3d.rho)))
     sumphi = sum(sum(sum(w3d.phi)))
   return (sumxp,sumyp,sumzp,sumvx,sumvy,sumvz,sumgi,sumrho,sumphi)
