@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.67 $, $Date: 2002/08/23 18:02:20 $
+c@(#) File W3D.M, version $Revision: 3.68 $, $Date: 2002/08/23 23:17:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1004,88 +1004,24 @@ c     conversion factor to go from grid frame to beam frame
 
 c First, sum up the charge density in each axial plane.
 
-c If no symmetries...
-      if (.not. (l2symtry .or. l4symtry)) then
+      do iz=0,nz
 
-c       --- loop over z planes
-        do iz=0,nz
+        if (l2symtry) then
+c         --- 2-fold: account for only one side of rho being stored
+          scrtch(iz,0) = sum(rho(:,0,iz)) + 2.*sum(rho(:,1:,iz))
 
-c         --- start with rho along iy=0 line
-          do ix=0,nx
-            scrtch(iz,ix) = rho(ix,0,iz)
-          enddo
+        elseif (l4symtry) then
+c         --- 4-fold: account for only one quadrant of rho being stored
+          scrtch(iz,0) = rho(0,0,iz) + 4.*sum(rho(1:,1:,iz)) +
+     &                   2.*sum(rho(1:,0,iz)) + 2.*sum(rho(0,1:,iz))
 
-c         --- add rho along lines in y
-          do iy=1,ny
-            do ix=0,nx
-              scrtch(iz,ix) = scrtch(iz,ix) + rho(ix,iy,iz)
-            enddo
-          enddo
+        else
+c         --- no symmetries...
+          scrtch(iz,0) = sum(rho(:,:,iz))
 
-c         --- add up sums from each line in y
-          do ix=1,nx
-            scrtch(iz,0) = scrtch(iz,0) + scrtch(iz,ix)
-          enddo
+        endif
 
-
-        enddo
-
-      elseif (l2symtry) then
-
-c  special loop for 2-fold to account for only one side of rho being stored
-
-c       --- loop over z planes
-        do iz=0,nz
-
-c         --- start with rho along iy=0 line
-          do ix=0,nx
-            scrtch(iz,ix) = rho(ix,0,iz)
-          enddo
-
-c         --- add rho along lines in y
-          do iy=1,ny
-            do ix=0,nx
-              scrtch(iz,ix) = scrtch(iz,ix) + 2.*rho(ix,iy,iz)
-            enddo
-          enddo
-
-c         --- add up sums from each line in y
-          do ix=1,nx
-            scrtch(iz,0) = scrtch(iz,0) + scrtch(iz,ix)
-          enddo
-
-        enddo
-
-      elseif (l4symtry) then
-
-c  special loop for 4-fold to account for only one quadrant of rho being
-c  stored
-
-c       --- loop over z planes
-        do iz=0,nz
-
-c         --- start with rho along iy=0 line
-          scrtch(iz,0) = rho(0,0,iz)
-          do ix=1,nx
-            scrtch(iz,ix) = 2.*rho(ix,0,iz)
-          enddo
-
-c         --- add rho along lines in y
-          do iy=1,ny
-            scrtch(iz,0) = scrtch(iz,0) + 2.*rho(0,iy,iz)
-            do ix=1,nx
-              scrtch(iz,ix) = scrtch(iz,ix) + 4.*rho(ix,iy,iz)
-            enddo
-          enddo
-
-c         --- add up sums from each line in y
-          do ix=1,nx
-            scrtch(iz,0) = scrtch(iz,0) + scrtch(iz,ix)
-          enddo
-
-        enddo
-
-      endif
+      enddo
 
 c Then, linearly interpolate the data into the beam frame array, linechg.
 
