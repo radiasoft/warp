@@ -3,7 +3,7 @@
 from warp import *
 import time
 import string
-runcounter_version = "$Id: runcounter.py,v 1.3 2002/07/17 17:45:53 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.4 2002/10/10 17:31:33 dave Exp $"
 
 def runcounter(init=0,delta=1,suffix=None,sleep=0):
   if not suffix: suffix = arraytostr(top.runid)
@@ -39,10 +39,13 @@ def accumulatedata(filename,datadict,globaldict={}):
     ff = PR.PR(filename)
     for k,v in map(None,datadict.keys(),datadict.values()):
       d = ff.read(k)
-      actualdata[k] = arrayappend(d,eval(v,globals(),globaldict))
+      if type(v) == StringType: data = eval(v,globals(),globaldict)
+      else:                     data = v
+      actualdata[k] = arrayappend(d,data)
   except IOError:
     for k,v in map(None,datadict.keys(),datadict.values()):
-      d = eval(v,globals(),globaldict)
+      if type(v) == StringType: d = eval(v,globals(),globaldict)
+      else:                     d = v
       dshape = shape(array(d))
       newshape = tuple(list(dshape) + [0])
       newarray = zeros(newshape,'d')
