@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.18 2003/04/29 17:31:26 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.19 2003/06/02 20:37:39 jlvay Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -167,7 +167,8 @@ Performs steady-state iterations
 
     # --- set number of particles to zero.
     top.nps = 0
-
+    top.ins[0:]=top.npmax_s[1:]
+        
     # --- turn on injection (type 1 or 2) for one time step.
     if (top.ntinj > 0):
       top.nztinjmn = _onztinjmn
@@ -498,6 +499,11 @@ Performs steady-state iterations in a cascade using different resolutions.
         top.inj_param = 0.9999999
       else:
         top.inj_param = 0.5
+      # reset particle arrays
+      top.np_s = 0
+      top.npmax_s = 0
+      top.npmax = 1
+      alotpart()
       # performs all iterations but the last one
       if(iter>1):
         # first iteration is performed with top.inj_param=1 (except i=0)
