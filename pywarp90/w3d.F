@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.104 $, $Date: 2003/04/30 21:45:00 $
+c@(#) File W3D.M, version $Revision: 3.105 $, $Date: 2003/05/01 00:13:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3966,15 +3966,6 @@ c injection.  The third part is for space-charge limited injection.
       dzi = 1./inj_dz
       if (lrelativ) clightsqi = 1./clight**2
 
-c Make sure that npmaxi is set properly. If npmax is zero when injctint is
-c called, then npmaxi will be set to zero there and the particle allocations
-c will not change npmaxi appropriately. Also, npmax may be zero now, so force
-c npmaxi to at least 2 so that is will be set approriately.
-      if (npmaxi == 0) then
-        npmaxi = max(2,npmax)
-        call gchange("Particles",0)
-      endif
-
 c Print warning if vbeamfrm is not zero
       if (abs(vbeamfrm) > 0.) then
        call remark("WARNING: vbeamfrm is not zero and injection is being used.")
@@ -4198,7 +4189,7 @@ c             --- Only save particle if it is within the injection region.
                   gaminv(ii) = 1.
                 endif
 c               --- Save the ID of the injection source.
-                pid(ii,1) = ij
+                pid(ii,injpid) = ij
 c               --- increment particle counter
                 npinjtmp(is,ij) = npinjtmp(is,ij) + 1
               endif
@@ -4685,7 +4676,7 @@ c                   --- integer.
 c                   --- The fractions are chosen using the digit reversed
 c                   --- number generator and not particle number since they
 c                   --- are correlated with transverse position.
-                    pid(ii,1) = rnrev(injctcnt,dig5)
+                    pid(ii,injpid) = rnrev(injctcnt,dig5)
 
 c                   --- save time of creation if tpid > 0
                     if(tpid>0) pid(ii,tpid) = time + dt
@@ -4697,12 +4688,12 @@ c                   --- save radius of creation if rpid > 0
 c                   --- Get the normal velocity for this particle. This is
 c                   --- based on the Child-Langmuir solution, given a
 c                   --- voltage drop, vnorm, and a time since emission,
-c                   --- pid(ii,1)*dt.
+c                   --- pid(ii,injpid)*dt.
                     vnorm = inj_phi(ixx        ,iyy        ,ij)*(1. - wxx)*(1. - wyy) +
      &                      inj_phi(ixx+spreadx,iyy        ,ij)*      wxx *(1. - wyy) +
      &                      inj_phi(ixx        ,iyy+spready,ij)*(1. - wxx)*      wyy  +
      &                      inj_phi(ixx+spreadx,iyy+spready,ij)*      wxx *      wyy
-                    vznorm = vzconst(is)*abs(vnorm)**1.5*(pid(ii,1)*dt)**2
+                    vznorm = vzconst(is)*abs(vnorm)**1.5*(pid(ii,injpid)*dt)**2
                     if (inj_d(ij) < 0.) vznorm = -vznorm
 
 c                   --- Set transverse coordinates. The emittance term
@@ -4756,7 +4747,7 @@ c                   --- Save the ID of the injection source. Note that pid
 c                   --- is doing double duty, saving the injection source
 c                   --- number and the fraction of the timestep the
 c                   --- particle is advanced.
-                    pid(ii,1) = pid(ii,1) + ij
+                    pid(ii,injpid) = pid(ii,injpid) + ij
 
 c                   --- increment particle counter
                     npinje_s(is) = npinje_s(is) + 1
@@ -4844,7 +4835,7 @@ c           --- (Assumes that injection will never be done inside a bend.)
 
 c           --- Store the fractional timestep in bpt.
             do ip=ins(is),ins(is)+npinje_s(is)-1
-              bpt(ip-ins(is)+1) = (pid(ip,1)-int(pid(ip,1)))*dt
+              bpt(ip-ins(is)+1) = (pid(ip,injpid)-int(pid(ip,injpid)))*dt
             enddo
 
 c           --- do half velocity advance with E fields
@@ -4907,7 +4898,7 @@ c           --- is no bend.
 
 c           --- Store the fractional timestep in bpt.
             do ip=1,npinje_s(is)
-              bpt(ip) = (pid(ip-1+ins(is),1) - int(pid(ip-1+ins(is),1)))*dt
+              bpt(ip) = (pid(ip-1+ins(is),injpid) - int(pid(ip-1+ins(is),injpid)))*dt
             enddo
 
 c           --- complete B advance
@@ -5451,6 +5442,11 @@ c in InjectVars3d may have been allocated by the user for specialized
 c control of injection.
       call gchange("InjectVars3d",0)
       call fill_inj()
+
+c Set pid index for injection information for particles
+      npid = npid + 1
+      injpid = npid
+      npidmax = max(1,npid)
 
 c Allocate the particle index. The index keeps track of which source the
 c particles are injected from.  It is also used to store the fractional
@@ -6204,7 +6200,7 @@ c     --- Transform the particles into the frame of the injection source
       xx = xp(ipmin:ipmin+npart-1)
       yy = yp(ipmin:ipmin+npart-1)
       zz = zp(ipmin:ipmin+npart-1)
-      ijp = int(pid(ipmin:ipmin+npart-1,1))
+      ijp = int(pid(ipmin:ipmin+npart-1,injpid))
       call inj_transform(npart,xx,yy,zz,npart,ijp,-1,.true.)
 
 c     --- Loop over particles
@@ -6349,7 +6345,7 @@ c     --- Transform the particles into the frame of the injection source
       xx = xp(ipmin:ipmin+npart-1)
       yy = yp(ipmin:ipmin+npart-1)
       zz = zp(ipmin:ipmin+npart-1)
-      ijp = int(pid(ipmin:ipmin+npart-1,1))
+      ijp = int(pid(ipmin:ipmin+npart-1,injpid))
       call inj_transform(npart,xx,yy,zz,npart,ijp,-1,.true.)
 
 c     --- Loop over particles
@@ -6473,7 +6469,7 @@ c     --- Loop over species and particles
 
 c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,1))
+          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                       nps(is),ijp(nps(is)),-1,.true.)
         endif
@@ -6485,7 +6481,7 @@ c         --- Get number of injection source of particle.  The particle id
 c         --- has the number of the injection source the particle was
 c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,1))
+          ij = int(pid(ip,injpid))
 
           ix = int(abs(xp(ip) - inj_xmmin(ij))*dxi)
           iy = int(abs(yp(ip) - inj_ymmin(ij))*dyi)
@@ -6618,7 +6614,7 @@ c       --- Transform the particles into the frame of the injection source
 c       --- This is only really here to be consistent with the other routines.
 c       --- All that this should do is add zinject to zp.
         if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,1))
+          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                       nps(is),ijp(nps(is)),-1,.true.)
         endif
@@ -6630,7 +6626,7 @@ c         --- Get number of injection source of particle.  The particle id
 c         --- has the number of the injection source the particle was
 c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,1))
+          ij = int(pid(ip,injpid))
 
 c         --- Calculate distance of particle from the emitting surface
           dd = zp(ip)*dzi
@@ -6728,7 +6724,7 @@ c     --- Loop over species and particles
 
 c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,1))
+          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                       nps(is),ijp(nps(is)),-1,.true.)
         endif
@@ -6739,7 +6735,7 @@ c         --- Get number of injection source of particle.  The particle id
 c         --- has the number of the injection source the particle was
 c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,1))
+          ij = int(pid(ip,injpid))
 
           ix = int(abs(xp(ip) - inj_xmmin(ij))*dxi)
           iy = int(abs(yp(ip) - inj_ymmin(ij))*dyi)
@@ -6952,7 +6948,7 @@ c     --- Loop over species and particles
 
 c       --- Transform the particles into the frame of the injection source
         if (nps(is) > 0) then
-          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,1))
+          ijp(ins(is):ins(is)+nps(is)-1) = int(pid(ins(is):ins(is)+nps(is)-1,injpid))
           call inj_transform(nps(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                       nps(is),ijp(nps(is)),-1,.true.)
         endif
@@ -6969,7 +6965,7 @@ c         --- Get number of injection source of particle.  The particle id
 c         --- has the number of the injection source the particle was
 c         --- emitted from. The int is needed since it is doing double
 c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip,1))
+          ij = int(pid(ip,injpid))
 
           ix = int(abs(xp(ip) - inj_xmmin(ij))*dxi)
           iy = int(abs(yp(ip) - inj_ymmin(ij))*dyi)
@@ -7333,7 +7329,7 @@ c     --- Transform the particles into the frame of the injection source
       xx = xp(ipmin:ipmin+npart-1)
       yy = yp(ipmin:ipmin+npart-1)
       zz = zp(ipmin:ipmin+npart-1)
-      ijp = int(pid(ipmin:ipmin+npart-1,1))
+      ijp = int(pid(ipmin:ipmin+npart-1,injpid))
       call inj_transform(npart,xx,yy,zz,npart,ijp,-1,.true.)
 
 c     --- Loop over particles
@@ -7343,7 +7339,7 @@ c       --- Get number of injection source of particle.  The particle id
 c       --- has the number of the injection source the particle was
 c       --- emitted from. The int is needed since it is doing double
 c       --- duty and has other information stored in the fractional part.
-        ij = int(pid(ip+ipmin-1,1))
+        ij = int(pid(ip+ipmin-1,injpid))
         if(ij==0) cycle
 
 c       --- set temporaries

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.86 $, $Date: 2003/04/29 17:04:45 $
+c@(#) File TOP.M, version $Revision: 3.87 $, $Date: 2003/05/01 00:13:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5762,7 +5762,12 @@ c     --- distribute the particles among the processors.
       np = npmax
 #endif
       npmaxb = npmax
-      if (npmaxi > 1) npmaxi = npmax
+      if (npid > 0) then
+        npmaxi = npmax
+      else
+        npmaxi = 1
+      endif
+      npidmax = max(1,npid)
 
 c     --- Allocate space. A gchange is done primarily so that any data
 c     --- in npmax_s is preserved.
@@ -5815,7 +5820,12 @@ c       --- 10000, add the amount of space needed.
 c       --- change the particle array dimension variables and allot space
         npmax = npmax + nadd
         npmaxb = npmax
-        if (npmaxi > 1) npmaxi = npmax
+        if (npid > 0) then
+          npmaxi = npmax
+        else
+          npmaxi = 1
+        endif
+        npidmax = max(1,npid)
         call gchange("Particles",0)
 
 c       --- Loop over species species above 'is', shifting
@@ -5890,7 +5900,7 @@ c       --- Loop from top of live particles to bottom of species block.
           uyp(ip+ishft) = uyp(ip)
           uzp(ip+ishft) = uzp(ip)
           gaminv(ip+ishft) = gaminv(ip)
-          if (npmaxi == npmax) then
+          if (npid > 0) then
             pid(ip+ishft,:) = pid(ip,:)
             pid(ip,:) = 0
           endif
@@ -5917,7 +5927,7 @@ c       --- (ins(is) - npmax_s(is-1)) < -ishft
           uyp(ip+ishft) = uyp(ip)
           uzp(ip+ishft) = uzp(ip)
           gaminv(ip+ishft) = gaminv(ip)
-          if (npmaxi == npmax) then
+          if (npid > 0) then
             pid(ip+ishft,:) = pid(ip,:)
             pid(ip,:) = 0
           endif
@@ -5960,7 +5970,7 @@ c starting at 'it' to locations starting at 'istart'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
-          if (npmaxi == npmax) then
+          if (npid > 0) then
             pid(in,:) = pid(ij,:)
           endif
         enddo
@@ -5975,7 +5985,7 @@ c starting at 'it' to locations starting at 'istart'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
-          if (npmaxi == npmax) then
+          if (npid > 0) then
             pid(in,:) = pid(ij,:)
           endif
         enddo
@@ -6022,7 +6032,7 @@ c     --- transversely.
               vy(n1) = vy(ip)
               vz(n1) = vz(ip)
               gi(n1) = gi(ip)
-              ppid(n1,:) = ppid(ip,:)
+              if (nnpid > 0) ppid(n1,:) = ppid(ip,:)
             endif
           endif
         enddo
@@ -6053,7 +6063,7 @@ c     --- Now, copy data into arrays
       uyp(i1:i2) = vy(1:n1)
       uzp(i1:i2) = vz(1:n1)
       gaminv(i1:i2) = gi(1:n1)
-      pid(i1:i2,1:nnpid) = ppid(1:n1,:)
+      if (nnpid > 0) pid(i1:i2,1:nnpid) = ppid(1:n1,:)
       nps(is) = nps(is) + n1
 
       return
@@ -6103,7 +6113,7 @@ c       --- to fill in the empty spaces.
                 uyp(ip) = uyp(ips)
                 uzp(ip) = uzp(ips)
                 gaminv(ip) = gaminv(ips)
-                if (npmaxi == npmax) then
+                if (npid > 0) then
                   pid(ip,:) = pid(ips,:)
                   pid(ips,:) = 0
                 endif
@@ -6137,7 +6147,7 @@ c       --- Live particles are shifted downward to fill in the empty spaces
                 uyp(ip) = uyp(ips)
                 uzp(ip) = uzp(ips)
                 gaminv(ip) = gaminv(ips)
-                if (npmaxi == npmax) then
+                if (npid > 0) then
                   pid(ip,:) = pid(ips,:)
                   pid(ips,:) = 0
                 endif
@@ -6217,7 +6227,7 @@ c         --- lost on a previous step but wasn't cleared out of the array.
               gaminvlost(i1) = 1.
             endif
             tplost(i1) = time
-            if (npmaxi == npmax) pidlost(i1,:) = pid(ip,:)
+            if (npid > 0) pidlost(i1,:) = pid(ip,:)
             npslost(is) = npslost(is) + 1
           endif
 

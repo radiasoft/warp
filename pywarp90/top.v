@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.86 $, $Date: 2003/04/29 17:04:45 $
+#@(#) File TOP.V, version $Revision: 3.87 $, $Date: 2003/05/01 00:13:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.86 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.87 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -995,6 +995,7 @@ inject    integer    /0/   # Type of injection, (0: turned off,
 inj_param real       /1./  # Relaxation parameter for inject.  Mainly used
                            # for Egun iterative mode - set to 1 for time
                            # dependent injection, 0 for steady-state injection.
+injpid    integer    /0/   # pid index for injection information for particles
 ninject   integer    /1/   # Number of injection sources
 leninjct  real       /0./  # Length of region into which partcls are injected
 zinject(ninject)  _real /0./  # Z Start of injection in lab frame
@@ -1617,7 +1618,9 @@ nplive integer    /0/  # No. of "live" particles
 npmax  integer    /0/  # Maximum no. of particles
                        # (user input for some loadings)
 npmaxb integer    /0/  # Maximum no. of particles for xp, yp, uxp, uyp
-npid   integer    /1/  # number of columns for pid.
+npidmax integer   /1/  # Maximum number of columns for pid.
+                       # This is used so that the pid array is always allocated
+npid   integer    /0/  # number of columns for pid.
 npmaxi integer    /1/  # Maximum no. of particles for pid.
 wpid   integer    /0/  # position of particle weights in array pid (FORTRAN indexed: based 1)
 tpid   integer    /0/  # position of particle creation time in array pid (FORTRAN indexed: based 1)
@@ -1635,7 +1638,7 @@ zp(npmax)      _real  [m]        # Z-positions of particles
 uxp(npmaxb)    _real  [m/s]      # gamma * X-velocities of particles
 uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
-pid(npmaxi,npid) _real    [1]      # Particle index - user for various purposes
+pid(npmaxi,npidmax) _real [1]    # Particle index - user for various purposes
 
 *********** Scraped_Particles dump parallel:
 # Arrays for scraped particles
@@ -1667,7 +1670,7 @@ uyplost(npmaxlost) _real [m/s]  # gamma * Y-velocities of lost particles
 uzplost(npmaxlost) _real [m/s]  # gamma * Z-velocities of lost particles
 gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
 tplost(npmaxlost)  _real [s]    # time particles were lost
-pidlost(npmaxlost,npid) _real [1] # Particle index of lost particles
+pidlost(npmaxlost,npidmax) _real [1] # Particle index of lost particles
 
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation
