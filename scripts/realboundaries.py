@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.15 2002/04/05 16:31:30 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.16 2002/05/06 18:51:35 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -103,7 +103,7 @@ Constructor arguments
       s.cmatxy = m
     else:
       if s.newmesh:
-        getmesh(s,min(x),max(x),min(y),max(y),max(x),ave(x),ave(y))
+        s.getmesh(s,min(x),max(x),min(y),max(y),max(x),ave(x),ave(y))
       s.getmatrix()
   #----------------------------------------------------------------------------
   def getmatrix(s):
