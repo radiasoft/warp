@@ -1,5 +1,6 @@
 # import all of the neccesary packages
 from Numeric import *
+from types import *
 import RNG
 import RandomArray
 from pybasisC import *
@@ -13,7 +14,8 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.15 2001/09/11 19:44:26 dave Exp $"
+import cPickle
+Basis_version = "$Id: pyBasis.py,v 1.16 2001/11/16 16:17:46 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -254,14 +256,31 @@ Dump data into a pdb file
   # --- If supplied, the varsuffix is append to the names here too.
   if varsuffix is None: varsuffix = ''
   for v in vars:
+    vval = eval(v,__main__.__dict__,locals())
+    # --- Don't try to write out functions or classes. (They don't seem to
+    # --- cause problems but this avoids potential problems. The function
+    # --- or class body wouldn't be written out anyway.)
+    if type(vval) in [FunctionType,ClassType]: continue
+    # --- Zero length arrays cannot by written out.
+    if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
+      continue
+    # --- Try writing as normal variable.
     try:
-      vval = eval(v,__main__.__dict__,locals())
-      if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
-        raise "cannot dump zero length arrays"
-      if verbose: print "write python variable "+v+" as "+v+varsuffix
-      exec('ff.'+v+varsuffix+'='+v,__main__.__dict__,locals())
+      if verbose: print "writing python variable "+v+" as "+v+varsuffix
+      ff.write(v+varsuffix,vval)
+      continue
     except:
-      if verbose: print "cannot write python variable "+v
+      pass
+    # --- If that didn't work, try writing as a pickled object
+    try:
+      if verbose:
+        print "writing python variable "+v+" as "+v+varsuffix+'@pickle'
+      ff.write(v+varsuffix+'@pickle',cPickle.dumps(vval,0))
+      continue
+    except:
+      pass
+    # --- All attempts failed so write warning message
+    if verbose: print "cannot write python variable "+v
   if closefile: ff.close()
 
 # --- Old version which has different naming for variables
@@ -314,11 +333,12 @@ Restores all of the variables in the specified file.
     if len(v) > 4 and v[-4]=='@':
       try:
         # --- get the package that the variable is in
-        pkg = eval(v[-3:],__main__.__dict__)
+        #pkg = eval(v[-3:],__main__.__dict__)
         # --- Array assignment is different than scalar assignment.
         if type(ff.__getattr__(v)) != type(array([])):
           # --- Simple assignment is done for scalars, using the exec command
           if verbose: print "reading in "+v[-3:]+"."+v[:-4]
+          #pkg.__setattr__(v[-3:],ff.__getattr__(v))
           exec(v[-3:]+'.'+v[:-4]+'=ff.__getattr__(v)',
                __main__.__dict__,locals())
       except:
@@ -326,27 +346,33 @@ Restores all of the variables in the specified file.
         # --- actual warp variable, for example if it had been deleted
         # --- after the dump was originally made.
         print "Warning: There was problem restoring %s"% (v[-3:]+'.'+v[:-4])
+    elif v[-7:] == '@pickle':
+      # --- Thses would be interpreter variables written to the file
+      # --- as pickled objects. The data is unpickled and the variable
+      # --- in put in the main dictionary.
+      try:
+        if verbose: print "reading in python variable "+v[:-7]
+        __main__.__dict__[v[:-7]] = cPickle.loads(ff.__getattr__(v))
+      except:
+        if verbose: print "error with variable "+v[:-7]
     elif v[-7:] == '@global':
       # --- These would be interpreter variables written to the file
       # --- from Basis. A simple assignment is done and the variable
       # --- in put in the main dictionary.
       try:
-        #exec('__main__.__dict__[v[:-7]]=ff.read(v)',locals())
         if verbose: print "reading in python variable "+v[:-7]
-        exec('%s=ff.__getattr__("%s");__main__.__dict__["%s"]=%s'%
-             (v[:-7],v,v[:-7],v[:-7]))
+        __main__.__dict__[v[:-7]] = ff.__getattr__(v)
       except:
-        pass
+        if verbose: print "error with variable "+v[:-7]
     else:
       # --- These would be interpreter variables written to the file
       # --- from python (or other sources). A simple assignment is done and
       # --- the variable in put in the main dictionary.
       try:
-        #exec('__main__.__dict__["%s"]=ff.%s'%(v,v)) # This should work
         if verbose: print "reading in python variable "+v
-        exec('%s=ff.%s;__main__.__dict__["%s"]=%s'%(v,v,v,v))
+        __main__.__dict__[v] = ff.__getattr__(v)
       except:
-        pass
+        if verbose: print "error with variable "+v[:-7]
   # --- Now loop again to read in the arrays.
   for v in vlist:
     if len(v) > 4 and v[-4]=='@':
