@@ -1,33 +1,12 @@
 /* Generated automatically from ./config.c.in by makesetup. */
 /* -*- C -*- ***********************************************
-Copyright 1991-1995 by Stichting Mathematisch Centrum, Amsterdam,
-The Netherlands.
+Copyright (c) 2000, BeOpen.com.
+Copyright (c) 1995-2000, Corporation for National Research Initiatives.
+Copyright (c) 1990-1995, Stichting Mathematisch Centrum.
+All rights reserved.
 
-                        All Rights Reserved
-
-Permission to use, copy, modify, and distribute this software and its
-documentation for any purpose and without fee is hereby granted,
-provided that the above copyright notice appear in all copies and that
-both that copyright notice and this permission notice appear in
-supporting documentation, and that the names of Stichting Mathematisch
-Centrum or CWI or Corporation for National Research Initiatives or
-CNRI not be used in advertising or publicity pertaining to
-distribution of the software without specific, written prior
-permission.
-
-While CWI is the initial source for this software, a modified version
-is made available by the Corporation for National Research Initiatives
-(CNRI) at the Internet address ftp://ftp.python.org.
-
-STICHTING MATHEMATISCH CENTRUM AND CNRI DISCLAIM ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL STICHTING MATHEMATISCH
-CENTRUM OR CNRI BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL
-DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
-PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-
+See the file "Misc/COPYRIGHT" for information on usage and
+redistribution of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 ******************************************************************/
 
 /* Module configuration */
@@ -48,7 +27,7 @@ extern void initfftpack();
 extern void initlapack_lite();
 extern void initranlib();
 extern void initgistC();
-extern void initpypdb();
+/* extern void initpypdb(); */
 extern void initRNG();
 extern void initpybasisC();
 extern void inittoppy();
@@ -57,65 +36,84 @@ extern void initf3dpy();
 extern void initw3dpy();
 extern void initfxypy();
 extern void initwxypy();
+extern void initfrzpy();
+extern void initwrzpy();
 extern void initcirpy();
-extern void initherpy();
-extern void initregex();
-extern void initpcre();
-extern void initposix();
-extern void initsignal();
-extern void initarray();
-extern void initcmath();
-extern void initmath();
-extern void initstrop();
-extern void initstruct();
-extern void inittime();
-extern void initoperator();
-extern void initfcntl();
-extern void initpwd();
-extern void initgrp();
-extern void initselect();
-extern void initsocket();
-extern void initerrno();
-extern void initmd5();
-extern void initsha();
-extern void init_tkinter();
-extern void initrotor();
-extern void initnew();
-extern void initbinascii();
-extern void initparser();
-extern void initcStringIO();
-extern void initcPickle();
+extern void initherpy();                                                        
+
+extern void initthread(void);
+extern void initgc(void);
+extern void initbsddb(void);
+extern void initregex(void);
+extern void initpcre(void);
+extern void initposix(void);
+extern void initsignal(void);
+extern void init_sre(void);
+extern void initarray(void);
+extern void initcmath(void);
+extern void initmath(void);
+extern void initstrop(void);
+extern void initstruct(void);
+extern void inittime(void);
+extern void initoperator(void);
+extern void init_codecs(void);
+extern void initunicodedata(void);
+extern void initucnhash(void);
+extern void init_locale(void);
+extern void initfcntl(void);
+extern void initpwd(void);
+extern void initgrp(void);
+extern void initerrno(void);
+extern void initselect(void);
+extern void init_socket(void);
+extern void initmmap(void);
+extern void initmd5(void);
+extern void initsha(void);
+extern void init_tkinter(void);
+extern void initrotor(void);
+extern void initnew(void);
+extern void initbinascii(void);
+extern void initparser(void);
+extern void initcStringIO(void);
+extern void initcPickle(void);
 
 /* -- ADDMODULE MARKER 1 -- */
 
-extern void PyMarshal_Init();
-extern void initimp();
+extern void PyMarshal_Init(void);
+extern void initimp(void);
 
 struct _inittab _PyImport_Inittab[] = {
 
-	{"arrayfns", initarrayfns},
-	{"_numpy", init_numpy},
-	{"multiarray", initmultiarray},
-	{"umath", initumath},
-	{"fftpack", initfftpack},
-	{"lapack_lite", initlapack_lite},
-	{"ranlib", initranlib},
-	{"gistC", initgistC},
-	{"pypdb", initpypdb},
-	{"RNG", initRNG},
-	{"pybasisC", initpybasisC},
-	{"toppy", inittoppy},
-	{"envpy", initenvpy},
-	{"f3dpy", initf3dpy},
-	{"w3dpy", initw3dpy},
-	{"fxypy", initfxypy},
-	{"wxypy", initwxypy},
-	{"cirpy", initcirpy},
-	{"herpy", initherpy},
+        {"arrayfns", initarrayfns},
+        {"_numpy", init_numpy},
+        {"multiarray", initmultiarray},
+        {"umath", initumath},
+        {"fftpack", initfftpack},
+        {"lapack_lite", initlapack_lite},
+        {"ranlib", initranlib},
+        {"gistC", initgistC},
+        /* {"pypdb", initpypdb}, */
+        {"RNG", initRNG},
+        {"pybasisC", initpybasisC},
+        {"toppy", inittoppy},
+        {"envpy", initenvpy},
+        {"f3dpy", initf3dpy},
+        {"w3dpy", initw3dpy},
+        {"fxypy", initfxypy},
+        {"wxypy", initwxypy},
+        {"frzpy", initfrzpy},
+        {"wrzpy", initwrzpy},
+        {"cirpy", initcirpy},
+        {"herpy", initherpy},
+
+	{"thread", initthread},
+	{"gc", initgc},
+	{"bsddb", initbsddb},
 	{"regex", initregex},
 	{"pcre", initpcre},
 	{"posix", initposix},
 	{"signal", initsignal},
+	{"_sre", init_sre},
 	{"array", initarray},
 	{"cmath", initcmath},
 	{"math", initmath},
@@ -123,12 +121,17 @@ struct _inittab _PyImport_Inittab[] = {
 	{"struct", initstruct},
 	{"time", inittime},
 	{"operator", initoperator},
+	{"_codecs", init_codecs},
+	{"unicodedata", initunicodedata},
+	{"ucnhash", initucnhash},
+	{"_locale", init_locale},
 	{"fcntl", initfcntl},
 	{"pwd", initpwd},
 	{"grp", initgrp},
-	{"select", initselect},
-	{"socket", initsocket},
 	{"errno", initerrno},
+	{"select", initselect},
+	{"_socket", init_socket},
+	{"mmap", initmmap},
 	{"md5", initmd5},
 	{"sha", initsha},
 	{"_tkinter", init_tkinter},
@@ -151,6 +154,7 @@ struct _inittab _PyImport_Inittab[] = {
 	{"__main__", NULL},
 	{"__builtin__", NULL},
 	{"sys", NULL},
+	{"exceptions", NULL},
 
 	/* Sentinel */
 	{0, 0}
