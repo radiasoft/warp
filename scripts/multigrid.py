@@ -70,6 +70,9 @@ class MultiGrid:
     # --- Note that at this time, bends are not supported.
     self.linbend = false
 
+    # --- Turn of build quads option
+    self.lbuildquads = false
+
   def copypkgtodict(self,pkg,varlist,dict):
     for name in varlist:
       dict[name] = getattr(pkg,name)
@@ -87,22 +90,26 @@ class MultiGrid:
              self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
 
+  def gete(self,x,y,z,ex,ey,ez):
+    n = len(x)
+    sete3d(self.phi,0.,n,x,y,z,top.zgrid,self.xmmin,self.ymmin,self.zmmin,
+           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,1,ex,ey,ez,
+           self.l2symtry,self.l4symtry)
+
+  def setphi(self,x,y,z,phi):
+    n = len(x)
+    getgrid3d(n,x,y,z,phi,self.nx,self.ny,self.nz,self.phi[:,:,1:-1],
+              self.xmmin,self.xmmax,self.ymmin,self.ymmax,self.zmmin,self.zmmax,
+              self.l2symtry,self.l4symtry)
+
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
     if lzero: self.rho[...] = 0.
     for i,n,q,w in zip(top.ins,top.nps,top.sq,top.sw):
       self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
 
   def fetche(self,ipmin,ip,js,ex,ey,ez):
-    # --- First, save reference to w3d.phi and other fortran variables.
-    w3ddict = ['phi','nx','ny','nz','nzfull','dx','dy','dz',
-               'xmmin','ymmin','zmmin','l4symtry','l2symtry']
-    w3ddict = {}
-    self.copypkgtodict(w3d,w3dvars,w3ddict)
-    self.copydicttopkg(w3d,w3dvars,self.__dict__)
-    # --- Now fetch the E field
-    fetche3d(ipmin,ip,js,ex,ey,ez)
-    # --- Restore w3d variables
-    self.copydicttopkg(w3d,w3dvars,w3ddict)
+    for i,n in zip(top.ins,top.nps):
+      self.gete(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],ex,ey,ez)
 
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
@@ -128,6 +135,7 @@ class MultiGrid:
                      self.mgmaxlevels,self.mgerror,self.mgtol,
                      self.downpasses,self.uppasses,
                      self.lcndbndy,self.laddconductor,self.icndbndy,
+                     self.lbuildquads,
                      self.gridmode,
                      self.conductors)
 
