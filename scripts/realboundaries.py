@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.8 2001/07/17 00:29:46 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.9 2002/01/07 19:23:36 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -18,6 +18,10 @@ with the transverse boundaries. It has two optional arguments:
             case), the mesh size (i.e. xmmin, xmmax etc.) is not changed.
   - rodfract Only applies when newmesh is true, it is the fraction of
              the quadrupole rods which are included. It defaults to 0.5.
+
+After a restart dump is restarted, the following must be called, passing in
+the realboundaries object.
+restartRealBoundary
 
 There are two additional functions, saveRealBoundary and
 restoreRealBoundary. Use as follows...
@@ -894,8 +898,24 @@ Returns the object
   """
   ff = open(filename,'r')
   result = cPickle.load(ff)
-  result.enable()
   ff.close()
+  result.enable()
+  result.setboundary()
   return result
+
+def restartRealBoundary(object):
+  """
+When restarting, this function should be called to restart the realboundaries
+and to do the correct field-solve.
+  - object: is the restored realboundary object
+  """
+  # --- Disable it in case it was enables by some other means
+  object.disable()
+  # --- Enable it
+  object.enable()
+  # --- Set the boundaries for the current location
+  object.setboundary()
+  # --- Do a field solve with the updated boundaries
+  fieldsol(-1)
 
 ##############################################################################
