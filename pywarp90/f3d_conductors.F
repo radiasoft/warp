@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.45 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2490,8 +2490,11 @@ c The notation is that a negative distance means that the point is inside.
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: zz,rmax
       integer(ISZ):: nt,ixmin,ixmax,iymin,iymax,tix,tiy,ii,id
-      real(kind=8):: xt(n),yt(n),zt(n)
-      real(kind=8):: mxt(n),pxt(n),myt(n),pyt(n),mzt(n),pzt(n)
+      real(kind=8),allocatable:: xt(:),yt(:),zt(:)
+      real(kind=8),allocatable:: mxt(:),pxt(:),myt(:),pyt(:),mzt(:),pzt(:)
+
+      allocate(xt(n),yt(n),zt(n))
+      allocate(mxt(n),pxt(n),myt(n),pyt(n),mzt(n),pzt(n))
 
 c     --- Very kludgy code to extract number of grid points and cell
 c     --- sizes from the input coordinates.
@@ -2563,6 +2566,9 @@ c       --- Fold the data into the arrays
         enddo
 
       enddo
+
+      deallocate(xt,yt,zt)
+      deallocate(mxt,pxt,myt,pyt,mzt,pzt)
 
       return
       end
@@ -3103,9 +3109,11 @@ c The notation is that a negative distance means that the point is inside.
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: zz,rmax
       integer(ISZ):: nt,ixmin,ixmax,iymin,iymax,tix,tiy,ii,id
-      real(kind=8):: xt(n),yt(n),zt(n)
-      real(kind=8):: mxt(n),pxt(n),myt(n),pyt(n),mzt(n),pzt(n)
+      real(kind=8),allocatable:: xt(:),yt(:),zt(:)
+      real(kind=8),allocatable:: mxt(:),pxt(:),myt(:),pyt(:),mzt(:),pzt(:)
 
+      allocate(xt(n),yt(n),zt(n))
+      allocate(mxt(n),pxt(n),myt(n),pyt(n),mzt(n),pzt(n))
 
 c     --- Very kludgy code to extract number of grid points and cell
 c     --- sizes from the input coordinates.
@@ -3177,6 +3185,9 @@ c       --- Fold the data into the arrays
         enddo
 
       enddo
+
+      deallocate(xt,yt,zt)
+      deallocate(mxt,pxt,myt,pyt,mzt,pzt)
 
       return
       end
@@ -3455,10 +3466,10 @@ c       --- and the surface
           do ii=1,5
 c           z1 = zb - sqrt((zb-za+sqrt((za-z0)**2-x1**2))**2 - y1**2)
 c           z2 = za - sqrt((za-zb+sqrt((zb-z0)**2-y1**2))**2 - x1**2)
-            aa = (2.*z0*za - z0**2 + x1**2)/(za+sqrt((za-z0)**2-x1**2))
-            z1 = (2.*aa*zb - aa**2 + y1**2)/(zb+sqrt((zb-aa)**2-y1**2))
-            bb = (2.*z0*zb - z0**2 + y1**2)/(zb+sqrt((zb-z0)**2-y1**2))
-            z2 = (2.*bb*za - bb**2 + x1**2)/(za+sqrt((za-bb)**2-x1**2))
+            aa = (2.*z0*za - z0**2 + x1**2)/(za+sqrt(max(0.,(za-z0)**2-x1**2)))
+            z1 = (2.*aa*zb - aa**2 + y1**2)/(zb+sqrt(max(0.,(zb-aa)**2-y1**2)))
+            bb = (2.*z0*zb - z0**2 + y1**2)/(zb+sqrt(max(0.,(zb-z0)**2-y1**2)))
+            z2 = (2.*bb*za - bb**2 + x1**2)/(za+sqrt(max(0.,(za-bb)**2-x1**2)))
             zave = 0.5*(z1 + z2)
             x1 = xx*(za - zave)/(za-zz)
             y1 = yy*(zb - zave)/(zb-zz)
