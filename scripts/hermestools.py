@@ -1,16 +1,16 @@
 from warp import *
-hermestools_version = "$Id: hermestools.py,v 1.2 2001/03/01 23:48:20 dave Exp $"
+hermestools_version = "$Id: hermestools.py,v 1.3 2001/03/02 00:09:05 mdehoon Exp $"
 
 def hermestoolsdoc():
   print """
-Tools for Hermes
-sethermesbeam: 
+Routines needed to initialize a beam in Hermes.
+sethermesbeam: Initializes a beam.
+sethermescurrent: Sets up the charge in the longitudinal slices.
+setenvelope: Matches all slices of the beam.
   """
 
 def sethermesbeam():
-  # Sets initial conditions
-  # Before calling this routine, env.zl and env.zu should be set to
-  # cover exactly one half lattice period. Also env.dzenv should be preset.
+  """Initializes a beam for Hermes. Before calling this routine, env.zl and env.zu should be set to cover exactly one half lattice period. Also env.dzenv should be preset."""
   print "Running sethermesbeam ..."
   delzbeam = top.zimax - top.zimin
   her.var[8,:] = arrayrange (her.niz) * delzbeam / (her.niz - 1)
@@ -22,6 +22,7 @@ def sethermesbeam():
   print "done."
 
 def sethermescurrent():
+  """Sets up the charge in the longitudinal slices, based on top.straight, her.iprofile, top.ibeam and top.vbeam."""
   delzbeam = top.zimax - top.zimin
   currise = (1. - top.straight)/2.
   curfall = (1. - top.straight)/2.
@@ -61,9 +62,11 @@ def sethermescurrent():
     her.var[10:12,:] = (top.emit*gaminv/her.var[9,:]) * her.var[12,:] / top.ibeam
                         
 def sethermesenvelope (niter = 1000, errorlimit = 1.e-9):
-  """
-This does ...
-  - niter=1000: ...
+  """Matches all slices of the beam to a a given lattice half period.
+The envelope parameters env.zl and env.zu should be such that they cover one quadrupole, centered between env.zl and env.zu. Also env.dzenv should be preset.
+  - niter=1000:		Maximum number of iterations allowed to match the beam.
+  - errorlimit-1.e-9:	Once the error in the calculated a0,b0,ap0,bp0 becomes
+			less than errorlimit, the iteration has converged.
   """
   # --- Finds the matched conditions. Assumes a cigar load.
   her.var[4:8,:] = 0.    # Centroid motion not implemented in HERMES
