@@ -1,6 +1,6 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.8 2002/04/12 19:47:04 jlvay Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.9 2002/08/30 22:11:35 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation
@@ -92,7 +92,7 @@ def field_solve():
   beforetime = wtime()
   vp3d(-1)
   aftertime = wtime()
-  return aftertime - beforetime
+  return globalsum(aftertime - beforetime)
 
 def _find_mgparam():
   icount = 0  # iteration count
