@@ -206,16 +206,40 @@ class panel(wxPanel):
         self.element_spin.SetRange(1,max(1,self.nelements))
         if(self.nelements==0): return
         plist = self.list[self.element-1]
-        icolor = int(plist['color'])
-        if icolor>=246:
-          self.Color.SetStringSelection(['bg','fg','black','white','red','green','blue','cyan','magenta','yellow'][255-icolor])
-        self.width_slider.SetValue(int(plist['width']))
-        self.Type.SetStringSelection(plist['type'])  
-        self.Marks.SetValue(int(plist['marks']))
-        self.marker_letter.SetValue(plist['marker'])
-        self.msize.SetValue(int(plist['msize']))
-        self.mspace.SetValue(int(plist['mspace']*100))
-        self.mphase.SetValue(int(plist['mphase']*100))
+        try:
+          icolor = int(plist['color'])
+          if icolor>=246:
+            self.Color.SetStringSelection(['bg','fg','black','white','red','green','blue','cyan','magenta','yellow'][255-icolor])
+        except:
+          pass
+        try:
+          self.width_slider.SetValue(int(plist['width']))
+        except:
+          pass
+        try:
+          self.Type.SetStringSelection(plist['type'])  
+        except:
+          pass
+        try:
+          self.Marks.SetValue(int(plist['marks']))
+        except:
+          pass
+        try:
+          self.marker_letter.SetValue(plist['marker'])
+        except:
+          pass
+        try:
+          self.msize.SetValue(int(plist['msize']))
+        except:
+          pass
+        try:
+          self.mspace.SetValue(int(plist['mspace']*100))
+        except:
+          pass
+        try:
+          self.mphase.SetValue(int(plist['mphase']*100))
+        except:
+          pass
         self.Hide.SetValue(int(plist['hide']))
         isys = plsys(plsys())
         font = get_style()['systems'][isys-1]['ticks']['horizontal']['textStyle']['font']
