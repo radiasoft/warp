@@ -280,6 +280,7 @@ static PyObject *
 pyDXObject_DXObject_fromarray(PyObject *self,PyObject * args)
 {
         PyObject *pyarr,*result;
+        PyObject *originslist=NULL,*deltaslist=NULL;
         PyArrayObject *pyarrcont;
         double *data;
         int dims,*counts;
@@ -287,15 +288,54 @@ pyDXObject_DXObject_fromarray(PyObject *self,PyObject * args)
   Array a=NULL;
   Field f=NULL;
   int numelements, i, j;
-  float deltas[3*3], origins[3];
+  float ff,*deltas, *origins;
 
-  if (!PyArg_ParseTuple(args, "O",&pyarr)) return NULL;
+  if (!PyArg_ParseTuple(args, "O|OO",&pyarr,&originslist,&deltaslist))
+     return NULL;
   pyarrcont = (PyArrayObject *)PyArray_ContiguousFromObject(
                                   (PyObject *)pyarr,PyArray_DOUBLE,0,0);
 
   data = (double *)(pyarrcont->data);
   dims = pyarrcont->nd;
   counts = pyarrcont->dimensions;
+
+  origins = (float *) malloc(dims*sizeof(float));
+  deltas  = (float *) malloc(dims*dims*sizeof(float));
+
+  if (originslist != NULL) {
+    if (PyList_Size(originslist) != dims) {
+      PyErr_SetString(PyExc_AssertionError,"Len of data origins must be the same as the number of dims in the data");
+      goto err;
+      }
+    for (i=0;i<dims;i++)
+      origins[i] = (float) PyFloat_AsDouble(PyList_GetItem(originslist,i));
+    }
+  else {
+    for (i=0;i<dims;i++) origins[i] = 0.;
+    }
+
+  if (deltaslist != NULL) {
+    if (PyList_Size(deltaslist) != dims) {
+      PyErr_SetString(PyExc_AssertionError,"Len of data deltas must be the same as the number of dims in the data");
+      goto err;
+      }
+    for (i=0; i<dims; i++) {
+      ff = (float) PyFloat_AsDouble(PyList_GetItem(deltaslist,i));
+      for (j=0; j<dims; j++) {
+        if (i==j) deltas[i*dims + j] = ff;
+        else      deltas[i*dims + j] = 0.0;
+        }
+      }
+    }
+  else {
+    for (i=0; i<dims; i++) {
+      for (j=0; j<dims; j++) {
+        if (i==j) deltas[i*dims + j] = 1.0;
+        else      deltas[i*dims + j] = 0.0;
+        }
+      }
+    }
+
 
   /* Convert data to DX object */
   /* make a new data array (scalar) */
@@ -326,15 +366,6 @@ pyDXObject_DXObject_fromarray(PyObject *self,PyObject * args)
   DXSetComponentValue(f, "connections", (Object)a);
   a=NULL;
 
-  /* now create the positions array; origin 0 and deltas 1 in each dimension */
-  for (i=0; i<dims; i++) {
-     origins[i] = 0.0;
-     for (j=0; j<dims; j++) {
-       if (i==j) deltas[i*dims + j] = 1.0;
-       else      deltas[i*dims + j] = 0.0;
-     }
-  }
-
   a = DXMakeGridPositionsV(dims, counts, origins, deltas);
   DXSetComponentValue(f, "positions", (Object)a);
   a=NULL; 
@@ -345,6 +376,11 @@ pyDXObject_DXObject_fromarray(PyObject *self,PyObject * args)
 
   result = (PyObject *)newPyDXObject((Object)f);
   return result;
+
+err:
+  free(origins);
+  free(deltas);
+  return NULL;
 }
 
 static char pyDXObject_DXCallModule__doc__[] =
