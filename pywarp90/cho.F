@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.8 $, $Date: 2002/09/19 20:18:05 $
+c@(#) File CHO.F, version $Revision: 1.9 $, $Date: 2002/09/26 20:38:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -511,7 +511,7 @@ c     --- Get coefficients for odd points.
      &                        iocndx,iocndy,iocndz,iocndlevel,
      &                        ocvoltmx,ocvoltpx,ocvoltmy,
      &                        ocvoltpy,ocvoltmz,ocvoltpz,
-     &                        level,il,ecstart)
+     &                        level,il,ocstart)
 
       return
       end
