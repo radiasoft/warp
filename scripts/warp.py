@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.27 2001/07/11 22:54:31 dave Exp $"
+warp_version = "$Id: warp.py,v 1.28 2001/07/19 20:30:14 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -15,20 +15,17 @@ try:
 except ImportError:
   pass
 
-
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
 # --- environment, the parallel module must also be loaded in to check
 # --- whether this is in fact running in parallel.
-try:
-  from parallel import *
-  lparallel = 1
-except ImportError:
-  # --- Create place holding variables. These need to be created so that
-  # --- scripts can tell whether the code is running serially or in parallel.
-  me = 0
-  npes = 0
-  lparallel = 0
+
+# --- This creates a logical lparallel which is true when running in parallel
+# --- and false when running serial.
+# --- This also creates a number of routines which are needed for parallel
+# --- data handling. These routines all have sensible default results when
+# --- not running in parallel.
+from parallel import *
 
 try:
   if me == 0 and sys.platform != 'mac':
