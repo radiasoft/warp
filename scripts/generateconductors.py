@@ -73,7 +73,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.80 2004/09/02 16:30:39 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.81 2004/09/02 16:42:41 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2599,7 +2599,7 @@ def Quadrupole(ap=None,rl=None,rr=None,gl=None,gp=None,
                vxp=None,vxm=None,vyp=None,vym=None,
                oxp=None,oxm=None,oyp=None,oym=None,
                pwl=None,pwr=None,pal=None,par=None,prl=None,prr=None,
-               xcent=0.,ycent=0.,zcent=None,condid=None,
+               xcent=0.,ycent=0.,zcent=None,condid=None,splitrodids=false,
                elemid=None,elem='quad'):
   """
 Creates an interdigited quadrupole structure.
@@ -2641,6 +2641,8 @@ Either specify the quadrupole structure...
   - xcent=0.,ycent=0.: transverse center of quadrupole
   - zcent: axial center of quadrupole, default taken from element
   - condid=1: conductor id of quadrupole, must be integer
+  - splitrodids=false: when true, the condid's of the x and y rods are
+                       different, y is the negative of x (which is condid)
 Or give the quadrupole id to use...
   - elem='quad': element type to get data from
   - elemid: gets data from quad element. The above quantities can be specified
@@ -2693,16 +2695,23 @@ Or give the quadrupole id to use...
       for d in dels:
         if locals()[d] is None: exec('%s = top.qdel%s[elemid]'%(d,d))
 
+  if splitrodids:
+    xidsign = +1
+    yidsign = -1
+  else:
+    xidsign = +1
+    yidsign = +1
+
   # --- Create x and y rods
   if ap > 0. and rr > 0. and rl > 0.:
     xrod1 = ZCylinder(rr+rxp,rl-glx,vx+vxp,xcent+ap+rr+axp,ycent+oxp,
-                      zcent-gp*gl/2.,+condid)
+                      zcent-gp*gl/2.,xidsign*condid)
     xrod2 = ZCylinder(rr+rxm,rl-glx,vx+vxm,xcent-ap-rr-axm,ycent+oxm,
-                      zcent-gp*gl/2.,+condid)
+                      zcent-gp*gl/2.,xidsign*condid)
     yrod1 = ZCylinder(rr+ryp,rl-gly,vy+vyp,xcent+oyp,ycent+ap+rr+ayp,
-                      zcent+gp*gl/2.,-condid)
+                      zcent+gp*gl/2.,yidsign*condid)
     yrod2 = ZCylinder(rr+rym,rl-gly,vy+vym,xcent+oym,ycent-ap-rr-aym,
-                      zcent+gp*gl/2.,-condid)
+                      zcent+gp*gl/2.,yidsign*condid)
     quad = xrod1 + xrod2 + yrod1 + yrod2
   else:
     quad = None
@@ -2719,16 +2728,22 @@ Or give the quadrupole id to use...
       v1 = vy+vyp
       v2 = vx+vxp
       gp = -1
+    if splitrodids:
+      lidsign = +gp
+      ridsign = -gp
+    else:
+      lidsign = +1
+      ridsign = +1
     if pr < 1.4142*w3d.xmmax:
       plate1 = ZAnnulus(pa+pal,pr+prl,pw+pwl,v1,xcent,ycent,
-                        zcent-0.5*(rl+gl)-pw/2.,gp*condid)
+                        zcent-0.5*(rl+gl)-pw/2.,lidsign*condid)
       plate2 = ZAnnulus(pa+par,pr+prr,pw+pwr,v2,xcent,ycent,
-                        zcent+0.5*(rl+gl)+pw/2.,gp*condid)
+                        zcent+0.5*(rl+gl)+pw/2.,ridsign*condid)
     else:
       plate1 = ZCylinderOut(pa+pal,pw+pwl,v1,xcent,ycent,
-                            zcent-0.5*(rl+gl)-pw/2.,gp*condid)
+                            zcent-0.5*(rl+gl)-pw/2.,lidsign*condid)
       plate2 = ZCylinderOut(pa+par,pw+pwr,v2,xcent,ycent,
-                            zcent+0.5*(rl+gl)+pw/2.,gp*condid)
+                            zcent+0.5*(rl+gl)+pw/2.,ridsign*condid)
     quad = quad + plate1 + plate2
     
   return quad
