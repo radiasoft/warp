@@ -1,0 +1,90 @@
+#DEBUG = -g --fargs -C
+FCOMP = -F mpxlf
+SO = so
+PUBLICHOME = $(HOME)/pub
+
+HOME = /usr/common/homes/g/grote
+PYVERS = 2.2
+PYTHON = $(HOME)/Python-$(PYVERS)
+INCLUDE = -I$(PYTHON)/include/python$(PYVERS)
+PYTHONLIB = -L$(PYTHON)/lib/python$(PYVERS)/config -lpython$(PYVERS)
+VAMPIR = #$(VTINC) $(VTLIB) -WF,-DVAMPIR
+XPROF = # -g -pg
+DATASIZE = -bmaxdata:0x70000000 -bmaxstack:0x10000000
+LD = mpxlf_r $(VAMPIR) $(DATASIZE) $(XPROF)
+PYMPI = /usr/common/homes/g/grote/pyMPI
+PYMPIOBJS = $(PYMPI)/driver.o $(PYMPI)/patchedmain.o -L$(PYMPI) -lpympi
+
+static: config.o all
+	$(LD) -g -o pywarp90 $(PYMPIOBJS) build/temp.aix-5.1-2.2/*.o \
+	config.o -bE:$(PYTHON)/lib/python$(PYVERS)/config/python.exp \
+	-lm -lX11 $(PYTHONLIB) -lpthread -lessl \
+	-lld -L/usr/common/homes/g/grote/readline/lib -ldl -lreadline -ltermcap
+	#$(HPMTOOLKIT) $(TRACE_MPIF) $(TRACE_MPI)
+
+config.o:
+	python makeconfig.py
+	mpcc_r -qmaxmem=8192 $(DATASIZE) $(XPROF) -c config.c $(INCLUDE)
+
+
+all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) ranffortran.c
+	rm -f warpC.so
+	python setup.py build --build-platlib .
+	#mv warpC.so /home/dave/scriptsnew
+
+toppy.$(SO): top.F dtop.F top.v topslave.F
+	Forthon -a $(FCOMP) $(DEBUG) top dtop.F topslave.F
+
+envpy.$(SO): toppy.$(SO) env.F env.v
+	Forthon -a $(FCOMP) $(DEBUG) env
+
+w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d.v w3d_interp.F w3d_injection.F w3d_utilities.F w3dslave.F
+	Forthon -a $(FCOMP) $(DEBUG) --macros top.v w3d dw3d.F w3d_interp.F w3d_injection.F w3d_utilities.F w3dslave.F
+
+f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_conductors.F util.F fft.F f3d.v f3dslave.F
+	Forthon -a $(FCOMP) $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_conductors.F util.F fft.F f3dslave.F
+
+wxypy.$(SO): toppy.$(SO) wxy.F wxy.v
+	Forthon -a $(FCOMP) $(DEBUG) wxy
+
+fxypy.$(SO): toppy.$(SO) fxy.F fxy_mgrid.F fxy.v
+	Forthon -a $(FCOMP) $(DEBUG) fxy fxy_mgrid.F
+
+wrzpy.$(SO): toppy.$(SO) wrz.F dwrz.F wrz.v
+	Forthon -a $(FCOMP) $(DEBUG) --macros top.v wrz dwrz.F
+
+frzpy.$(SO): toppy.$(SO) w3dpy.$(SO) frz.F frz_mgrid.F90 frz.v frzslave.F90
+	Forthon -a $(FCOMP) $(DEBUG) --compile_first frzslave frz frz_mgrid.F90
+
+herpy.$(SO): toppy.$(SO) her.F her.v
+	Forthon -a $(FCOMP) $(DEBUG) her
+
+cirpy.$(SO): toppy.$(SO) cir.F cir.v
+	Forthon -a $(FCOMP) $(DEBUG) cir
+
+chopy.$(SO): toppy.$(SO) cho.F cho.v
+	Forthon -a $(FCOMP) $(DEBUG) cho
+
+ranffortran.c: ranffortran.m
+	python -c "from Forthon.preprocess import main;main()" --f90 ranffortran.m ranffortran.c
+
+public: all
+	publishpywarp90.py $(PUBLICHOME)
+
+update:
+	for dir in $(PUBLICHOME); do \
+	  cd $$dir; \
+	  cvs update; \
+	done
+
+clean:
+	rm -rf build *.so
+
+#----------------------------------------------------------------------------
+#--- Build command for opendx wrapper.
+DX: pyDXObject.c
+	python DXsetup.py build --build-platlib .
+	#cp pyDXObject.so /home/dave/scriptsnew
+
+#----------------------------------------------------------------------------
+
