@@ -2,18 +2,21 @@
 This module contains classes for generating the conductor data from a
 combination of simple geometrical elements.
 The following elements are defined:
+(Note that all take the following arguments
+voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0
 
-Box(xsize,ysize,zsize,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-Cylinder(radius,length,theta=0.,phi=0.,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-ZCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-ZCylinderOut(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-ZRoundedCylinderOut(radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-YCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-XCylinder(radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-Sphere(radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-ZCone(r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-ZConeOut(r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
-ZTorus(r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0)
+Box(xsize,ysize,zsize)
+Cylinder(radius,length,theta=0.,phi=0.)
+ZCylinder(radius,length)
+ZCylinderOut(radius,length)
+ZRoundedCylinderOut(radius,length,radius2)
+YCylinder(radius,length)
+XCylinder(radius,length)
+Sphere(radius)
+ZCone(r_zmin,r_zmax,length)
+ZConeOut(r_zmin,r_zmax,length)
+ZTorus(r1,r2)
+Beamletplate(za,zb,z0,thickness)
 
 installconductors(a): generates the data needed for the fieldsolve
 """
@@ -28,8 +31,9 @@ installconductors(a): generates the data needed for the fieldsolve
 # Delta
 
 from warp import *
+if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.13 2002/12/02 19:15:54 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.14 2003/01/16 20:23:36 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -67,6 +71,9 @@ Class to hold assemblies of conductors.  Base class of all conductors.
     d = Delta()
     return d
 
+  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
+    pass  # virtual function
+
   # Operations which return an Assembly expression.
   def __mul__(self,right):
     return AssemblyAnd(self,right)
@@ -87,6 +94,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
     self.left = l
   def distance(self,ix,iy,iz,xx,yy,zz):
     return (-(self.left.distance(ix,iy,iz,xx,yy,zz)))
+  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
+    self.left.visualize(xmin,xmax,ymin,ymax)
 
 
 class AssemblyAnd(Assembly):
@@ -100,6 +109,9 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   def distance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.distance(ix,iy,iz,xx,yy,zz) *
             self.right.distance(ix,iy,iz,xx,yy,zz))
+  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
+    self.left.visualize(xmin,xmax,ymin,ymax)
+    self.right.visualize(xmin,xmax,ymin,ymax)
 
 
 class AssemblyPlus(Assembly):
@@ -113,6 +125,9 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   def distance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.distance(ix,iy,iz,xx,yy,zz) +
             self.right.distance(ix,iy,iz,xx,yy,zz))
+  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
+    self.left.visualize(xmin,xmax,ymin,ymax)
+    self.right.visualize(xmin,xmax,ymin,ymax)
 
 
 class AssemblyMinus(Assembly):
@@ -126,6 +141,9 @@ AssemblyMinus class.
   def distance(self,ix,iy,iz,xx,yy,zz):
     return (self.left.distance(ix,iy,iz,xx,yy,zz) -
             self.right.distance(ix,iy,iz,xx,yy,zz))
+  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
+    self.left.visualize(xmin,xmax,ymin,ymax)
+    self.right.visualize(xmin,xmax,ymin,ymax)
 
 ##############################################################################
 
@@ -213,7 +231,7 @@ grid cell sizes.
     fuzz = 1.e-9
     # --- A compiled routine is called for optimization
     setconductorparity(self.ndata,self.ix,self.iy,self.iz,
-                       self.dels,self.parity,fuzz,dfill)
+                       self.dels,self.parity,fuzz,f3d.fuzzsign,dfill)
 
   def clean(self):
     """
@@ -881,6 +899,111 @@ Torus
                    kwlist=[self.r1,self.r2,
                            self.xcent,self.ycent,self.zcent])
     return result
+
+#============================================================================
+class Beamletplate(Assembly):
+  """
+Plate from beamlet pre-accelerator
+  - za: location of spherical center in the x-plane
+  - zb: location of spherical center in the y-plane
+  - z0: location of the center of the plate on the z-axis
+  - thickness: thickness of the plate
+  - voltage=0: cone voltage
+  - xcent=0.,ycent=0.,zcent=0.: center of cone
+  - condid=0: conductor id of cone
+  """
+
+  def __init__(self,za,zb,z0,thickness,voltage=0.,
+               xcent=0.,ycent=0.,zcent=0.,condid=0):
+    Assembly.__init__(self,voltage,xcent,ycent,zcent)
+    self.za = za
+    self.zb = zb
+    self.z0 = z0
+    self.thickness = thickness
+    self.condid = condid
+
+  def distance(self,ix,iy,iz,xx,yy,zz):
+    result = Delta(ix,iy,iz,xx,yy,zz,voltage=self.voltage,condid=self.condid,
+                   generator=f3d.beamletplateconductorf,
+                   kwlist=[self.za,self.zb,self.z0,self.thickness,
+                           self.xcent,self.ycent,self.zcent])
+    return result
+
+  def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
+
+    xmin = where(xmin==None,w3d.xmmin,xmin)[0]
+    xmax = where(xmax==None,w3d.xmmax,xmax)[0]
+    ymin = where(ymin==None,w3d.ymmin,ymin)[0]
+    ymax = where(ymax==None,w3d.ymmax,ymax)[0]
+    nx = min(w3d.nx,20)
+    ny = min(w3d.ny,20)
+    nz = w3d.nz
+    xmmin = w3d.xmmin
+    ymmin = w3d.ymmin
+    zmmin = w3d.zmmin
+    xmmax = w3d.xmmax
+    ymmax = w3d.ymmax
+    zmmax = w3d.zmmax
+
+    # --- Calculate dx, dy, and dz in case this is called before
+    # --- the generate.
+    dx = (xmmax - xmmin)/nx
+    dy = (ymmax - ymmin)/ny
+    dz = (zmmax - zmmin)/nz
+    if(w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom):
+      dy = dx
+
+    xmesh = xmmin + dx*arange(nx+1)
+    ymesh = ymmin + dy*arange(ny+1)
+    xmesh = compress(logical_and(xmin-dx <= xmesh,xmesh <= xmax+dx),xmesh)
+    ymesh = compress(logical_and(ymin-dy <= ymesh,ymesh <= ymax+dy),ymesh)
+    x = ravel(xmesh[:,NewAxis]*ones(len(ymesh)))
+    y = ravel(ymesh*ones(len(xmesh))[:,NewAxis])
+    ix = nint((x - xmmin)/dx)
+    iy = nint((y - ymmin)/dy)
+    if len(x) == 0: return
+
+    xx = x
+    yy = y
+    xx.shape = (len(xmesh),len(ymesh))
+    yy.shape = (len(xmesh),len(ymesh))
+
+    # --- Outer face
+    z = self.z0*ones(len(xmesh)*len(ymesh),'d') - self.thickness
+    iz = nint((z - zmmin)/dz)
+    d = self.distance(ix,iy,iz,x,y,z)
+    zl = z[0] + d.dels[5,:]
+    zl.shape = (len(xmesh),len(ymesh))
+    ml = VPythonobjects.VisualMesh(xx,yy,zl,twoSided=true)
+
+    # --- Inner face
+    z = self.z0*ones(len(xmesh)*len(ymesh),'d') + 0.5*self.za
+    iz = nint((z - zmmin)/dz)
+    d = self.distance(ix,iy,iz,x,y,z)
+    zr = z[0] - d.dels[4,:]
+    zr.shape = (len(xmesh),len(ymesh))
+    mr = VPythonobjects.VisualMesh(xx,yy,zr,twoSided=true)
+
+    # --- Four sides between faces
+    xside = xx[:,0]*ones(2)[:,NewAxis]
+    yside = yy[:,0]*ones(2)[:,NewAxis]
+    zside = array([zl[:,0],zr[:,0]])
+    ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
+
+    xside = xx[:,-1]*ones(2)[:,NewAxis]
+    yside = yy[:,-1]*ones(2)[:,NewAxis]
+    zside = array([zl[:,-1],zr[:,-1]])
+    ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
+
+    xside = xx[0,:]*ones(2)[:,NewAxis]
+    yside = yy[0,:]*ones(2)[:,NewAxis]
+    zside = array([zl[0,:],zr[0,:]])
+    ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
+
+    xside = xx[-1,:]*ones(2)[:,NewAxis]
+    yside = yy[-1,:]*ones(2)[:,NewAxis]
+    zside = array([zl[-1,:],zr[-1,:]])
+    ms1 = VPythonobjects.VisualMesh(xside,yside,zside,twoSided=true)
 
 #============================================================================
 #############################################################################
