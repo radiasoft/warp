@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.2 2000/11/21 19:54:56 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.3 2000/12/15 17:15:38 dave Exp $"
 
 ######################################################################
 # functions to plot the conductor points and subgrid data            #
@@ -7,10 +7,11 @@ plot_conductor_version = "$Id: plot_conductor.py,v 1.2 2000/11/21 19:54:56 dave 
 ######################################################################
 
 # --- Convenience function to plot the sub-grid data
-def plotsubgrid(izf,nn,ix,iy,iz,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,color):
-  ii = compress(equal(iz[:nn],izf),arange(nn))
-  xx = take(ix,ii)*dx+xmin
-  yy = take(iy,ii)*dy+ymin
+def plotsubgrid(iz,nn,ixc,iyc,izc,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,
+                color):
+  ii = compress(equal(izc[:nn],iz),arange(nn))
+  xx = take(ixc,ii)*dx+xmin
+  yy = take(iyc,ii)*dy+ymin
   delmx = take(delmx,ii)*dx
   delmy = take(delmy,ii)*dy
   delpx = take(delpx,ii)*dx
@@ -33,11 +34,11 @@ def plotsubgrid(izf,nn,ix,iy,iz,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,color):
       plg([xx[i],xx[i]],[yy[i],yy[i]+delpy[i]],color=color)
 
 # x-y plane
-def pfxy(izf=None,contours=None,plotsg=1,scale=1,signx=1,signy=1,
+def pfxy(iz=None,izf=None,contours=None,plotsg=1,scale=1,signx=1,signy=1,
          plotphi=1,filled=0):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
-  - izf=w3d.iz_axis z index of plane
+  - iz=w3d.iz_axis z index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -50,12 +51,13 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   # --- has izslave subtracted from it. If the user passes in a value,
   # --- it must be checked for consistency, otherwise coding below could lead
   # --- to a deadlock in the parallel version
-  if izf == None:
-    izf = w3d.iz_axis
+  if izf != None: iz = izf
+  if iz == None:
+    iz = w3d.iz_axis
   else:
-    if izf < 0 or w3d.nzfull < izf: return
+    if iz < 0 or w3d.nzfull < iz: return
     if lparallel:
-      izf = izf - top.izslave[me+1]
+      iz = iz - top.izslave[me+1]
   if scale:
     dx = w3d.dx*signx
     dy = w3d.dy*signy
@@ -69,10 +71,10 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   if plotphi:
     xx=iota(0,w3d.nx)*dx + xmmin
     yy=iota(0,w3d.ny)*dy + ymmin
-    ppp = getphi(iz=izf+top.izslave[me+1])
+    ppp = getphi(iz=iz+top.izslave[me+1])
     ppp = transpose(ppp)
     plotc(ppp,yy,xx,contours=contours,filled=filled,color=blue)
-  ii = compress(equal(f3d.izcond[0:f3d.ncond],izf),arange(f3d.ncond))
+  ii = compress(equal(f3d.izcond[0:f3d.ncond],iz),arange(f3d.ncond))
   yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
   xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
   if lparallel:
@@ -81,19 +83,19 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   if xx:
     plp(yy,xx,color=cyan)
   if (plotsg):
-    plotsubgrid(izf,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
+    plotsubgrid(iz,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
                 f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
                 ymmin,xmmin,dy,dx,green)
-    plotsubgrid(izf,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
+    plotsubgrid(iz,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
                 f3d.ocdelmy,f3d.ocdelmx,f3d.ocdelpy,f3d.ocdelpx,
                 ymmin,xmmin,dy,dx,red)
 
 # z-x plane
-def pfzx(iyf=None,contours=None,plotsg=1,scale=1,signz=1,signx=1,
+def pfzx(iy=None,iyf=None,contours=None,plotsg=1,scale=1,signz=1,signx=1,
          plotphi=1,filled=0):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
-  - iyf=w3d.iy_axis y index of plane
+  - iy=w3d.iy_axis y index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -102,6 +104,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
+  if iyf != None: iy = iyf
   if scale:
     dx = w3d.dx*signx
     dz = w3d.dz*signz
@@ -112,13 +115,13 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-  if iyf == None: iyf = w3d.iy_axis
+  if iy == None: iy = w3d.iy_axis
   if plotphi:
     xx = iota(0,w3d.nx)*dx + xmmin
     zz = iota(0,w3d.nzfull)*dz + zmmin
-    ppp = getphi(iy=iyf)
+    ppp = getphi(iy=iy)
     plotc(ppp,xx,zz,contours=contours,filled=filled,color=blue)
-  ii = compress(equal(f3d.iycond[0:f3d.ncond],iyf),arange(f3d.ncond))
+  ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
   xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
   zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
   if lparallel:
@@ -127,19 +130,19 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   if xx:
     plp(xx,zz,color=cyan)
   if (plotsg):
-    plotsubgrid(iyf,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
+    plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
                 f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
                 xmmin,zmmin,dx,dz,green)
-    plotsubgrid(iyf,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
+    plotsubgrid(iy,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
                 f3d.ocdelmx,f3d.ocdelmz,f3d.ocdelpx,f3d.ocdelpz,
                 xmmin,zmmin,dx,dz,red)
 
 # z-y plane
-def pfzy(ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=1,
+def pfzy(ix=None,ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=1,
          plotphi=1,filled=0):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
-  - ixf=w3d.ix_axis x index of plane
+  - ix=w3d.ix_axis x index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -148,6 +151,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
+  if ixf != None: ix = ixf
   if scale:
     dy = w3d.dy*signy
     dz = w3d.dz*signz
@@ -158,13 +162,13 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     dz = 1.*signz
     ymmin = 0.
     zmmin = 0.
-  if ixf == None: ixf = w3d.ix_axis
+  if ix == None: ix = w3d.ix_axis
   if plotphi:
     yy = iota(0,w3d.ny)*dy + ymmin
     zz = iota(0,w3d.nzfull)*dz + zmmin
-    ppp = getphi(ix=ixf)
+    ppp = getphi(ix=ix)
     plotc(ppp,yy,zz,contours=contours,filled=filled,color=blue)
-  ii = compress(equal(f3d.ixcond[0:f3d.ncond],ixf),arange(f3d.ncond))
+  ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
   yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
   zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
   if lparallel:
@@ -173,10 +177,10 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   if yy:
     plp(yy,zz,color=cyan)
   if (plotsg):
-    plotsubgrid(ixf,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
+    plotsubgrid(ix,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
                 f3d.ecdelmy,f3d.ecdelmz,f3d.ecdelpy,f3d.ecdelpz,
                 ymmin,zmmin,dy,dz,green)
-    plotsubgrid(ixf,f3d.nocndbdy,f3d.iocndy,f3d.iocndz,f3d.iocndx,
+    plotsubgrid(ix,f3d.nocndbdy,f3d.iocndy,f3d.iocndz,f3d.iocndx,
                 f3d.ocdelmy,f3d.ocdelmz,f3d.ocdelpy,f3d.ocdelpz,
                 ymmin,zmmin,dy,dz,red)
 
@@ -186,11 +190,12 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
 ######################################################################
 
 # x-y plane
-def pfxyg(izf=None,contours=None,plotsg=1,signx=1,signy=1,plotphi=1,filled=0):
+def pfxyg(iz=None,izf=None,contours=None,plotsg=1,signx=1,signy=1,plotphi=1,
+          filled=0):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
-  - izf=w3d.iz_axis z index of plane
+  - iz=w3d.iz_axis z index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - signx=1 sign of x, used for plotting symmetry planes
@@ -198,15 +203,17 @@ frame
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  pfxy(izf=izf,contours=contours,plotsg=plotsg,scale=0,signx=signx,signy=signy,
+  if izf != None: iz = izf
+  pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=0,signx=signx,signy=signy,
        plotphi=plotphi,filled=filled)
 
 # z-x plane
-def pfzxg(iyf=None,contours=None,plotsg=1,signz=1,signx=1,plotphi=1,filled=0):
+def pfzxg(iy=None,iyf=None,contours=None,plotsg=1,signz=1,signx=1,plotphi=1,
+          filled=0):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
 frame
-  - iyf=w3d.iy_axis y index of plane
+  - iy=w3d.iy_axis y index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - signz=1 sign of z, used for plotting symmetry planes
@@ -214,15 +221,17 @@ frame
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  pfzx(iyf=iyf,contours=contours,plotsg=plotsg,scale=0,signz=signz,signx=signx,
+  if iyf != None: iy = iyf
+  pfzx(iy=iy,contours=contours,plotsg=plotsg,scale=0,signz=signz,signx=signx,
        plotphi=plotphi,filled=filled)
 
 # z-y plane
-def pfzyg(ixf=None,contours=None,plotsg=1,signz=1,signy=1,plotphi=1,filled=0):
+def pfzyg(ix=None,ixf=None,contours=None,plotsg=1,signz=1,signy=1,plotphi=1,
+          filled=0):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
 frame
-  - ixf=w3d.ix_axis x index of plane
+  - ix=w3d.ix_axis x index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - signz=1 sign of z, used for plotting symmetry planes
@@ -230,7 +239,8 @@ frame
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  pfzy(ixf=ixf,contours=contours,plotsg=plotsg,scale=0,signz=signz,signy=signy,
+  if ixf != None: ix = ixf
+  pfzy(ix=ix,contours=contours,plotsg=plotsg,scale=0,signz=signz,signy=signy,
        plotphi=plotphi,filled=filled)
 
 ######################################################################
@@ -240,10 +250,11 @@ frame
 ######################################################################
  
 # z-x plane
-def pfzxi(iyf=None,contours=None,plotsg=1,scale=1,signz=1,plotphi=1,filled=0):
+def pfzxi(iy=None,iyf=None,contours=None,plotsg=1,scale=1,signz=1,plotphi=1,
+          filled=0):
   """
 Plots conductors and contours of electrostatic potential in Z-(-X) plane
-  - iyf=w3d.iy_axis y index of plane
+  - iy=w3d.iy_axis y index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -251,14 +262,16 @@ Plots conductors and contours of electrostatic potential in Z-(-X) plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  pfzx(iyf=iyf,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signx=-1,
+  if iyf != None: iy = iyf
+  pfzx(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signx=-1,
        plotphi=plotphi,filled=filled)
 
 # z-y plane
-def pfzyi(ixf=None,contours=None,plotsg=1,scale=1,signz=1,plotphi=1,filled=0):
+def pfzyi(ix=None,ixf=None,contours=None,plotsg=1,scale=1,signz=1,plotphi=1,
+          filled=0):
   """
 Plots conductors and contours of electrostatic potential in Z-(-Y) plane
-  - ixf=w3d.ix_axis x index of plane
+  - ix=w3d.ix_axis x index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -266,30 +279,32 @@ Plots conductors and contours of electrostatic potential in Z-(-Y) plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  pfzy(ixf=ixf,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signy=-1,
+  if ixf != None: ix = ixf
+  pfzy(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signy=-1,
        plotphi=plotphi,filled=filled)
 
 # x-y plane
-def pfxyi(izf=None,contours=None,plotsg=1,scale=1,plotphi=1,filled=0):
+def pfxyi(iz=None,izf=None,contours=None,plotsg=1,scale=1,plotphi=1,filled=0):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane,
 plotting data in all four quadrants
-  - izf=w3d.iz_axis z index of plane
+  - iz=w3d.iz_axis z index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  pfxy(izf=izf,contours=contours,plotsg=plotsg,scale=scale,signx=+1,signy=+1,
+  if izf != None: iz = izf
+  pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=+1,signy=+1,
        plotphi=plotphi,filled=filled)
   if w3d.l2symtry or w3d.l4symtry:
-    pfxy(izf=izf,contours=contours,plotsg=plotsg,scale=scale,signx=+1,signy=-1,
+    pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=+1,signy=-1,
          plotphi=plotphi,filled=filled)
   if w3d.l4symtry:
-    pfxy(izf=izf,contours=contours,plotsg=plotsg,scale=scale,signx=-1,signy=+1,
+    pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=-1,signy=+1,
          plotphi=plotphi,filled=filled)
-    pfxy(izf=izf,contours=contours,plotsg=plotsg,scale=scale,signx=-1,signy=-1,
+    pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=-1,signy=-1,
          plotphi=plotphi,filled=filled)
 
 ############################################################################
@@ -297,12 +312,12 @@ plotting data in all four quadrants
 ############################################################################
 
 # x-y plane
-def pfxybox(izf=None,contours=None,plotsg=1,scale=1,signx=1,signy=1,
+def pfxybox(iz=None,izf=None,contours=None,plotsg=1,scale=1,signx=1,signy=1,
             plotphi=1,filled=0):
   """
 Plots square at conductor points and contours of electrostatic potential
 in X-Y plane
-  - izf=w3d.iz_axis z index of plane
+  - iz=w3d.iz_axis z index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -311,6 +326,7 @@ in X-Y plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
+  if izf != None: iz = izf
   if scale:
     dy = w3d.dy*signy
     dx = w3d.dx*signx
@@ -321,12 +337,12 @@ in X-Y plane
     dx = 1.*signx
     ymmin = 0.
     xmmin = 0.
-  if not izf: izf = w3d.iz_axis
+  if not iz: iz = w3d.iz_axis
   if plotphi:
     yy=iota(0,w3d.ny)[:,NewAxis]*ones(w3d.nx+1,'d')*dy + ymmin
     xx=iota(0,w3d.nx)*ones(w3d.ny+1,'d')[:,NewAxis]*dx + xmmin
     ireg=ones((w3d.ny+1,w3d.nx+1))
-    ppp = getphi(iz=izf+top.izslave[me+1])
+    ppp = getphi(iz=iz+top.izslave[me+1])
     ppp = transpose(ppp)
     if filled:
       if contours:
@@ -339,7 +355,7 @@ in X-Y plane
       else:
         plc(ppp,yy,xx,ireg,color='blue')
   if (f3d.ncond > 0):
-    ii = compress(equal(f3d.izcond[0:f3d.ncond],izf),arange(f3d.ncond))
+    ii = compress(equal(f3d.izcond[0:f3d.ncond],iz),arange(f3d.ncond))
     if ii:
       y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
       x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
@@ -348,12 +364,12 @@ in X-Y plane
           color=cyan)
 
 # z-x plane
-def pfzxbox(iyf=None,contours=None,plotsg=1,scale=1,signz=1,signx=1,
+def pfzxbox(iy=None,iyf=None,contours=None,plotsg=1,scale=1,signz=1,signx=1,
             plotphi=1,filled=0):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-X plane
-  - iyf=w3d.iy_axis y index of plane
+  - iy=w3d.iy_axis y index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -362,6 +378,7 @@ in Z-X plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
+  if iyf != None: iy = iyf
   if scale:
     dx = w3d.dx*signx
     dz = w3d.dz*signz
@@ -372,12 +389,12 @@ in Z-X plane
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-  if not iyf: iyf = w3d.iy_axis
+  if not iy: iy = w3d.iy_axis
   if plotphi:
     xx=iota(0,w3d.nx)[:,NewAxis]*ones(w3d.nz+1,'d')*dx + xmmin
     zz=iota(0,w3d.nz)*ones(w3d.nx+1,'d')[:,NewAxis]*dz + zmmin
     ireg=ones((w3d.nx+1,w3d.nz+1))
-    ppp = getphi(iy=iyf)
+    ppp = getphi(iy=iy)
     if filled:
       if contours:
         plfc(ppp,xx,zz,ireg,contours=contours)
@@ -389,7 +406,7 @@ in Z-X plane
       else:
         plc(ppp,xx,zz,ireg,color='blue')
   if (f3d.ncond > 0):
-    ii = compress(equal(f3d.iycond[0:f3d.ncond],iyf),arange(f3d.ncond))
+    ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
     if ii:
       x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
       z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
@@ -398,12 +415,12 @@ in Z-X plane
           color=cyan)
 
 # z-y plane
-def pfzybox(ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=1,
+def pfzybox(ix=None,ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=1,
             plotphi=1,filled=0):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-Y plane
-  - ixf=w3d.ix_axis x index of plane
+  - ix=w3d.ix_axis x index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -412,6 +429,7 @@ in Z-Y plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
+  if ixf != None: ix = ixf
   if scale:
     dy = w3d.dy*signy
     dz = w3d.dz*signz
@@ -422,12 +440,12 @@ in Z-Y plane
     dz = 1.*signz
     ymmin = 0.
     zmmin = 0.
-  if not ixf: ixf = w3d.ix_axis
+  if not ix: ix = w3d.ix_axis
   if plotphi:
     yy=iota(0,w3d.ny)[:,NewAxis]*ones(w3d.nz+1,'d')*dy + ymmin
     zz=iota(0,w3d.nz)*ones(w3d.ny+1,'d')[:,NewAxis]*dz + zmmin
     ireg=ones((w3d.ny+1,w3d.nz+1))
-    ppp = getphi(ix=ixf)
+    ppp = getphi(ix=ix)
     if filled:
       if contours:
         plfc(ppp,yy,zz,ireg,contours=contours)
@@ -439,7 +457,7 @@ in Z-Y plane
       else:
         plc(ppp,yy,zz,ireg,color='blue')
   if (f3d.ncond > 0):
-    ii = compress(equal(f3d.ixcond[0:f3d.ncond],ixf),arange(f3d.ncond))
+    ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
     if ii:
       y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
       z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
@@ -448,12 +466,12 @@ in Z-Y plane
           color=cyan)
 
 # z-x plane
-def pfzxboxi(izf=None,contours=None,plotsg=1,scale=1,signz=1,
+def pfzxboxi(iy=None,iyf=None,contours=None,plotsg=1,scale=1,signz=1,
              plotphi=1,filled=0):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-X) plane
-  - iyf=w3d.iy_axis y index of plane
+  - iy=w3d.iy_axis y index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
@@ -461,26 +479,26 @@ in Z-(-X) plane
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
   """
-  pfzxbox(iyf=iyf,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
+  if iyf != None: iy = iyf
+  pfzxbox(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
           signx=-1,plotphi=plotphi,filled=filled)
 
 # z-y plane
-def pfzyboxi(ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=-1,
+def pfzyboxi(ix=None,ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=-1,
              plotphi=1,filled=0):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-Y) plane
-  - ixf=w3d.ix_axis x index of plane
+  - ix=w3d.ix_axis x index of plane
   - contours optional number of or list of contours
   - plotsg=1 when true, plots subgrid data
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - signz=1 sign of z, used for plotting symmetry planes
   - filled=0 when true, plots filled contours
   """
-  pfzybox(ixf=ixf,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
+  if ixf != None: ix = ixf
+  pfzybox(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
           signy=-1,plotphi=plotphi,filled=filled)
-
-
 
 
 
@@ -530,11 +548,12 @@ Plots Z-X grid in the lab frame (including bends)
   if plotcond: pfzxlab(zz)
 
 # --- Make pfzx plot in lab frame
-def pfzxlab(zz=None):
+def pfzxlab(zz=None,iy=None):
   """Plots conductors in Z-X lab frame (including bends)
   - zz=top.zbeam is the center position
   """
   if not zz: zz=top.zbeam
+  if iy == None: iy = w3d.iy_axis
   # --- if zz is not equal to zbeam, then calculate conductors for new location
   if (zz != top.zbeam):
     z = top.zbeam
@@ -544,9 +563,9 @@ def pfzxlab(zz=None):
     setlatt()
     fieldsol(1)
   # --- gather conductor data
-  xxxx=compress(equal(f3d.iycond[0:f3d.ncond],iyf),
+  xxxx=compress(equal(f3d.iycond[0:f3d.ncond],iy),
                       f3d.ixcond[0:f3d.ncond])*w3d.dx+w3d.xmmin
-  zzzz=compress(equal(f3d.iycond[0:f3d.ncond],iyf),
+  zzzz=compress(equal(f3d.iycond[0:f3d.ncond],iy),
                       f3d.izcond[0:f3d.ncond])*w3d.dz+w3d.zmmin+zz
   # --- convert to lab frame
   tolabfrm(zz,len(xxxx),xxxx,zzzz)   
