@@ -18,7 +18,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.11 2004/06/02 01:09:03 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.12 2004/06/04 16:26:26 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -96,6 +96,11 @@ def viewisosurface(data,isovalue,name='WARP viz'):
 ###########################################################################
 def viewparticles(x,y,z,v,labels=None,name='WARP viz',
                   display=1):
+  x = gatherarray(x)
+  y = gatherarray(y)
+  z = gatherarray(z)
+  v = gatherarray(v)
+  if me > 0: return
   # --- First combine particle data and create a DX array
   n = len(x)
   p = zeros((n,3),'d')
