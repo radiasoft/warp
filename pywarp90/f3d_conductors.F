@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.38 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -4364,7 +4364,7 @@ c This is only needed to get the correct orientation of the surface normal.
 c         --- Loop over the line segments and calculate the intersection of
 c         --- each with the trajectory. Pick the one where the intersect
 c         --- z value is within the segment.
-          do il=1,npnts_sr
+          do il=1,npnts_sr-1
             if (rad_sr(il) == LARGEPOS) then
               s = (r_sr(il+1) - r_sr(il))/(z_sr(il+1) - z_sr(il))
               p = r_sr(il) - s*z_sr(il)
