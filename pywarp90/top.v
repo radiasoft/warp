@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.131 $, $Date: 2004/11/30 01:10:33 $
+#@(#) File TOP.V, version $Revision: 3.132 $, $Date: 2004/12/17 18:25:47 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.131 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.132 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1748,9 +1748,11 @@ npidmax integer   /1/  # Maximum number of columns for pid.
                        # This is used so that the pid array is always allocated
 npid   integer    /0/  # number of columns for pid.
 npmaxi integer    /1/  # Maximum no. of particles for pid.
+spid   integer    /0/  # position of particles SSNs in array pid (FORTRAN indexed: based 1)
 wpid   integer    /0/  # position of particle weights in array pid (FORTRAN indexed: based 1)
 tpid   integer    /0/  # position of particle creation time in array pid (FORTRAN indexed: based 1)
 rpid   integer    /0/  # position of particle initial radius in array pid (FORTRAN indexed: based 1)
+ssn    integer    /1/  # next particles 'social security number' available
 sm(ns) _real [kg] /0./ -parallel # Species mass
 sq(ns) _real [C]  /0./ -parallel # Species charge
 sw(ns) _real [1]  /0./ -parallel # Species weight
