@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.38 $, $Date: 2002/07/15 22:34:53 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.39 $, $Date: 2002/07/18 01:07:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1630,7 +1630,7 @@ c Makes call to the recursive routine which generates the conductors.
       real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,dx1,dy1,dz1
-      integer(ISZ):: nx1,ny1,nz1,nzfull1
+      integer(ISZ):: nzlocal,nx1,ny1,nz1,nzfull1
       integer(ISZ):: globalb0,globalbnz
       integer(ISZ):: localb0,localbnz
 
@@ -1639,15 +1639,17 @@ c     --- above. But, they can be obtained from local info
 #ifdef MPIPARALLEL
       nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
       zmminglobal = zmslmin(0)
+      nzlocal = nzfsslave(my_index)
 #else
       nzfull = nz
       zmminglobal = zmmin
+      nzlocal = nz
 #endif
       globalb0 = bound0
       globalbnz = boundnz
 
 c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nz,nzfull,dx,dy,dz)
+      call setmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz)
 
       do il=0,mglevels-1
 
@@ -1714,7 +1716,7 @@ c Makes calls to srfrvout3d for each level
       real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,zmmax1,dx1,dy1,dz1
-      integer(ISZ):: nx1,ny1,nz1
+      integer(ISZ):: nzlocal,nx1,ny1,nz1
       integer(ISZ):: ix_axis1,iy_axis1
 
 c     --- nzfull and zmminglobal are needed, but difficult to pass down from
@@ -1722,13 +1724,15 @@ c     --- above. But, they can be obtained from local info
 #ifdef MPIPARALLEL
       nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
       zmminglobal = zmslmin(0)
+      nzlocal = nzfsslave(my_index)
 #else
       nzfull = nz
       zmminglobal = zmmin
+      nzlocal = nz
 #endif
 
 c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nz,nzfull,dx,dy,dz)
+      call setmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz)
 
       do il=0,mglevels-1
 
@@ -1788,7 +1792,7 @@ c Makes call to the recursive routine which generates the conductors.
       real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,zmmax1,dx1,dy1,dz1
-      integer(ISZ):: nx1,ny1,nz1
+      integer(ISZ):: nzlocal,nx1,ny1,nz1
       integer(ISZ):: ix_axis1,iy_axis1
 
 c     --- nzfull and zmminglobal are needed, but difficult to pass down from
@@ -1796,13 +1800,15 @@ c     --- above. But, they can be obtained from local info
 #ifdef MPIPARALLEL
       nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
       zmminglobal = zmslmin(0)
+      nzlocal = nzfsslave(my_index)
 #else
       nzfull = nz
       zmminglobal = zmmin
+      nzlocal = nz
 #endif
 
 c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nz,nzfull,dx,dy,dz)
+      call setmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz)
 
       do il=0,mglevels-1
 
@@ -1862,7 +1868,7 @@ c Makes call to the recursive routine which generates the conductors.
       real(kind=8):: zmminglobal
       integer(ISZ):: il,ic1,ie1,io1,ic2,ie2,io2
       real(kind=8):: zmmin1,zmmax1,dx1,dy1,dz1
-      integer(ISZ):: nx1,ny1,nz1
+      integer(ISZ):: nzlocal,nx1,ny1,nz1
       integer(ISZ):: ix_axis1,iy_axis1
 
 c     --- nzfull and zmminglobal are needed, but difficult to pass down from
@@ -1870,13 +1876,15 @@ c     --- above. But, they can be obtained from local info
 #ifdef MPIPARALLEL
       nzfull = izfsslave(nslaves-1)+nzfsslave(nslaves-1)
       zmminglobal = zmslmin(0)
+      nzlocal = nzfsslave(my_index)
 #else
       nzfull = nz
       zmminglobal = zmmin
+      nzlocal = nz
 #endif
 
 c     --- Calculate levels of coarsening
-      call setmglevels(nx,ny,nz,nzfull,dx,dy,dz)
+      call setmglevels(nx,ny,nzlocal,nzfull,dx,dy,dz)
 
       do il=0,mglevels-1
 
@@ -1909,8 +1917,6 @@ c       --- Get the conductors for this level
         iocndlevel(io1:io2) = il
 
       enddo
-
-
 
       return
       end
