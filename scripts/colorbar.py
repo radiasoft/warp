@@ -14,8 +14,8 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   """
   zmax = max(ravel(z))
   zmin = min(ravel(z))
+  if zmin == zmax: return array([zmin,zmax])
   finest = abs(zmax - zmin)/float (n)
-  if zmin == zmax: raise "The min and max of z cannot be the same"
   # blows up on zmin=zmax
   unit = 10.**floor (log10 (finest))
   finest = finest/unit
@@ -69,7 +69,10 @@ values from zmin to zmax.
     ss = " %.5g"
   for i in xrange(llev):
     scales.append(ss%levs[i])
-  ys = ymin + (ymax - ymin)*(levs - zmin)/(zmax - zmin)
+  if llev==2 and (levs[0] == levs[1]):
+    ys = array([ymin,ymax])
+  else:
+    ys = ymin + (ymax - ymin)*(levs - zmin)/(zmax - zmin)
   for i in xrange(llev):
     plt(scales[i],xmax+0.005,ys[i]-0.005)   # labels
   pldj(llev*[xmin],ys,llev*[xmax+0.005],ys) # ticks
