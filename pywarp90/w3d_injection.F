@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.7 $, $Date: 2004/10/07 20:31:23 $
+c@(#) File w3d_injection.F, version $Revision: 1.8 $, $Date: 2004/10/27 23:39:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -91,7 +91,7 @@ c regions have changed.
 c If itask = 1, zero npinject. This is done here since npinject is used both
 c by normal and transverse space-charge limited injection. Both sections
 c add onto npinject. Only do this if actually injecting particles.
-      if (itask == 1 .and. (inject == 2 .or. inject == 3)) npinject = 0
+      if (itask == 1) npinject = 0
 
 c The check of whether or not there is enough space for the injected particles
 c is now done in each injection method.
@@ -123,6 +123,7 @@ c each particle was advanced from the plane of injection (i.e. all different).
 
 c         --- Zero out temp array.
           npinjtmp = 0
+          npinje_s = 0
 
 c         --- loop over injection sources
           do ij=1,ninject
@@ -139,7 +140,15 @@ c         --- loop over injection sources
 
 c         --- Loop over species.
           do is=1,ns
-            nn = npinje_s(is)*finject(ij,is)
+            rnn = rnpinje_s(is)*finject(ij,is)
+c                 --- Add a random number to the number of particles injected
+c                 --- so that the average number of particles injected is
+c                 --- correct.  For example, if rnn < 1., without the
+c                 --- addition of the random number, no particles would ever
+c                 --- be injected.  With the random number, particles will be
+c                 --- injected and but the average number will be less than 1.
+            rnn = rnn + wranf()
+            nn = int(rnn)
             if(nn==0) cycle
 
 c           --- Check if there is enough room for the new injected particles.
@@ -299,6 +308,10 @@ c               --- increment particle counter
 
 c           --- Get actual number of particles injected and ipmin
             nn = npinjtmp(is,ij)
+
+c           --- Sum npinje_s to get the total number of particles injected.
+            npinje_s(is) = npinje_s(is) + nn
+            npinject     = npinject     + nn
 
 c           --- make injected particles live particles
             ins(is) = ins(is) - nn
@@ -1494,6 +1507,9 @@ c       --- at each time step.
               if (zinject(1) < zp(ip) .and. zp(ip) < zinject(1) + leninjct)
      &          npinje_s(is) = npinje_s(is) + 1
             enddo
+          endif
+          if (rnpinje_s(is) == 0.) then
+            rnpinje_s(is) = npinje_s(is)
           endif
           npinject = npinject + npinje_s(is)
         enddo
