@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.172 $, $Date: 2004/11/18 01:02:17 $
+#@(#) File W3D.V, version $Revision: 3.173 $, $Date: 2004/11/30 01:11:25 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.172 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.173 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -114,11 +114,11 @@ cigarld                   logical      /.false./
    # specifies whether or not to do a cigar load (finite beam)
 xrandom                   character*8 /"pseudo"/
    # random numbers used for x,y, and z. "pseudo","fibonacc","digitrev","grid"
-vtrandom                  character*8
+vtrandom                  character*8 /"digitrev"/
    # random numbers used for vx and vy. "pseudo" or "digitrev"
-vzrandom                  character*8
+vzrandom                  character*8 /"digitrev"/
    # random numbers used for vz. "pseudo" or "digitrev"
-ldprfile                  character*8
+ldprfile                  character*8 /"polar"/
    # load profile "polar", "streamls" or "stripes"
 cylinder                  logical      /.false./
    # specifies whether or not to load a cylinder
