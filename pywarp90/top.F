@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.102 $, $Date: 2003/08/25 23:04:29 $
+c@(#) File TOP.M, version $Revision: 3.103 $, $Date: 2003/08/29 17:28:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5457,13 +5457,10 @@ c Parallel version sums curr over all processors.
 c=============================================================================
       subroutine getvzofz
       use Z_arrays
-      use InDiag3d
 
 c  Computes the mean beam z velocity from the current and line charge density
 
       integer(ISZ):: i
-
-      if(.not. lgetvzofz) return
 
       do i = 0, nzzarr
          vzofz(i) = curr(i) / dvnz(linechg(i))
@@ -6338,9 +6335,6 @@ c the routine which clears out the lost particles is called.
 
       if (lsavelostpart) then
 
-c       --- Make sure the lost particles arrays are allocated.
-        call alotlostpart
-
 c       --- Get the number of lost particles and make sure there is
 c       --- enough space to save them in the LostParticles arrays.
         i1 = ins(is)
@@ -6405,11 +6399,6 @@ c Allocate space for lost particles and set up associated arrays.
 
       integer(ISZ):: is
 
-c     --- If npmaxlost is already set, then this routine does need to do
-c     --- anything.
-      if (npmaxlost > 0) return
-
-      npmaxlost = lostpartchunksize
       call gchange("LostParticles",0)
 
       npmaxlost_s(0) = 0
@@ -7005,14 +6994,10 @@ c          itask=3  divides by number of particles, calculates emittances and rm
       real(kind=8):: delysq,delvysq,delyvy
       real(kind=8):: delzsq,delvzsq,delzvz
       real(kind=8):: timetemp,wtime
-      logical(ISZ):: lxp=.true.,lyp=.true.
 
       timetemp = wtime()
 
       if (.not.l_temp .or. np==0) return
-
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) lyp = .false.
-      if(solvergeom==Zgeom) lxp = .false.
 
       wpp = 1.
 
@@ -7122,7 +7107,7 @@ c           --- node x, y
             vzsqbart(ixt,iyt,izt) = vzsqbart(ixt,iyt,izt) + wt * vzpt**2
 
 c           --- node x+1, y
-            if(lxp) then
+            if(ixt+1 <= nxtslices) then
               wt = ddx*oddy*wpp
               pnumt  (ixt+1,iyt,izt) = pnumt  (ixt+1,iyt,izt) + ddx*oddy
               pnumtw (ixt+1,iyt,izt) = pnumtw (ixt+1,iyt,izt) + wt
@@ -7137,7 +7122,7 @@ c           --- node x+1, y
             end if
 
 c           --- node x, y+1
-            if(lyp) then
+            if(iyt+1 <= nytslices) then
               wt = oddx*ddy*wpp
               pnumt  (ixt,iyt+1,izt) = pnumt  (ixt,iyt+1,izt) + oddx*ddy
               pnumtw (ixt,iyt+1,izt) = pnumtw (ixt,iyt+1,izt) + wt
@@ -7152,7 +7137,7 @@ c           --- node x, y+1
             end if
 
 c           --- node x+1, y+1
-            if(lxp .and. lyp) then
+            if(ixt+1 <= nxtslices .and. iyt+1 <= nytslices) then
               wt = ddx*ddy*wpp
               pnumt  (ixt+1,iyt+1,izt) = pnumt  (ixt+1,iyt+1,izt) + ddx*ddy
               pnumtw (ixt+1,iyt+1,izt) = pnumtw (ixt+1,iyt+1,izt) + wt
@@ -7182,7 +7167,7 @@ c             --- node x, y
               zvzbart (ixt,iyt,izt) = zvzbart (ixt,iyt,izt) + wt * zpt * vzpt
 
 c             --- node x+1, y
-              if(lxp) then
+              if(ixt+1 <= nxtslicesc) then
                 wt = ddx*oddy*wpp
                 xbart   (ixt+1,iyt,izt) = xbart   (ixt+1,iyt,izt) + wt * xpt
                 ybart   (ixt+1,iyt,izt) = ybart   (ixt+1,iyt,izt) + wt * ypt
@@ -7198,7 +7183,7 @@ c             --- node x+1, y
               end if
 
 c             --- node x, y+1
-              if(lyp) then
+              if(iyt+1 <= nytslicesc) then
                 wt = oddx*ddy*wpp
                 xbart   (ixt,iyt+1,izt) = xbart   (ixt,iyt+1,izt) + wt * xpt
                 ybart   (ixt,iyt+1,izt) = ybart   (ixt,iyt+1,izt) + wt * ypt
@@ -7214,7 +7199,7 @@ c             --- node x, y+1
               end if
 
 c             --- node x+1, y+1
-              if(lxp .and. lyp) then
+              if(ixt+1 <= nxtslicesc .and. iyt+1 <= nytslicesc) then
                 wt = ddx*ddy*wpp
                 xbart   (ixt+1,iyt+1,izt) = xbart   (ixt+1,iyt+1,izt) + wt * xpt
                 ybart   (ixt+1,iyt+1,izt) = ybart   (ixt+1,iyt+1,izt) + wt * ypt
