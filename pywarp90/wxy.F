@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.34 $, $Date: 2003/07/16 00:35:29 $
+c@(#) File WXY.M, version $Revision: 3.35 $, $Date: 2003/07/18 22:16:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -1800,14 +1800,6 @@ c       --- Call 3d version.
 
 !$OMP DO
 
-      do ipmin = 1,np,nparpgrp
-        nptmp = min(nparpgrp, np+1-ipmin)
-
-c--------------------------------------
-c  Begin vectorized deposition loop
-c--------------------------------------
-      if (depos == "vector") then
-
 c  Set up offset array for vectorized deposition:
 
       moff(0) = 0
@@ -1820,13 +1812,27 @@ c  Begin main loop over species, groups of nparpgrp particles
       g = wght * q / (dx * dy)
       dxi = 1./dx
       dyi = 1./dy
+      if (l2symtry) then
+c       --- The particle weight is reduced by a factor of 2 except near the
+c       --- transverse boundaries.
+        g = g*0.5
+      elseif (l4symtry) then
+c       --- The particle weight is reduced by a factor of 4 except near the
+c       --- transverse boundaries.
+        g = g*0.25
+      endif
+
+      do ipmin = 1,np,nparpgrp
+        nptmp = min(nparpgrp, np+1-ipmin)
+
+c--------------------------------------
+c  Begin vectorized deposition loop
+c--------------------------------------
+      if (depos == "vector") then
 
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
 c       --- special loop for 2-fold symmetry
-c       --- The particle weight is reduced by a factor of 2 except near the
-c       --- transverse boundaries.
-        g = g*0.5
         do ip = ipmin,ipmin+nptmp-1
            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
            i  = (xp(ip) - xmmin) * dxi
@@ -1850,9 +1856,6 @@ c       --- transverse boundaries.
         enddo
       elseif (l4symtry) then
 c       --- special loop for 4-fold symmetry
-c       --- The particle weight is reduced by a factor of 4 except near the
-c       --- transverse boundaries.
-        g = g*0.25
         do ip = ipmin,ipmin+nptmp-1
            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
            i  = abs(xp(ip))*dxi
@@ -1917,13 +1920,8 @@ c--------------------------------------
 
 c  Begin main loop over species, groups of nparpgrp particles
 
-      g = wght * q / (dx * dy)
-      dxi = 1./dx
-      dyi = 1./dy
-
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
-        g = g*0.5
         do ip = ipmin,ipmin+nptmp-1
           f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
           ir = ip - ipmin
@@ -1941,7 +1939,6 @@ c     --- vectorized loop to compute indices, weights
           s(3,ir) = u1 * v1 * f
         enddo
       elseif (l4symtry) then
-        g = g*0.25
         do ip = ipmin,ipmin+nptmp-1
           f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
           ir = ip - ipmin
