@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.32 $, $Date: 2002/04/22 20:19:10 $
+c@(#) File F3D.M, version $Revision: 3.33 $, $Date: 2002/04/23 13:48:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -6576,19 +6576,6 @@ c     --- Just return if injection is turned off or the source is not to be
 c     --- setup.
       if (inject == 0 .or. .not. lvinject) return
 
-      if(solvergeom==RZgeom) then
-        dx = grids_ptr(mgridrz_inj_id)%grid%dr
-        dy = grids_ptr(mgridrz_inj_id)%grid%dr
-        dz = grids_ptr(mgridrz_inj_id)%grid%dz
-      end if
-c     if(solvergeom==RZgeom) then
-c        call injctpntrz(rinject,ainject,binject,ainjmin,binjmin,
-c     &                    xinject,yinject,
-c     &                    ixmin,ixmax,iymin,iymax,dx,dy,dz,izmin,izmax,vvv,
-c     &                    ix_axis,iy_axis)
-c        return
-c     end if
-
 c     --- Set size of fuzz
       fuzz = 1.e-5
 
@@ -6710,12 +6697,6 @@ c               --- odd
           enddo
         enddo
       enddo
-
-      if(solvergeom==RZgeom) then
-        dx = basegrid%dr
-        dy = basegrid%dr
-        dz = basegrid%dz
-      end if
 
       return
       end
