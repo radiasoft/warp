@@ -838,8 +838,7 @@ class WarpRun(wxFrame):
                 if(len(firstword)>=1):
                     if(firstword[0]=='#'): 
                         docomment=true
-#                if self.prefix is '... ':
-                elif self.prefix is '... ':
+                if not docomment and self.prefix is '... ':
                     if(self.line[0]<>' '):
                         if(len(self.line)>=4):
                             if(self.line[:4]<>'else' and self.line[:4]<>'elif'):
@@ -884,7 +883,6 @@ class WarpRun(wxFrame):
                 redo = false
           else:
             if self.linenum<=self.FileExec.GetNumberOfLines():
-                r=self.inter.push('\n')
                 self.oldline = '#'
                 redo = true
             else:
