@@ -31,9 +31,9 @@ class ConsoleClass(wxPanel):
         EVT_RIGHT_DOWN(self.Console, self.OnConsoleRightDown)
         EVT_LEFT_UP(self.Console, self.OnConsoleLeftUp)
 
-    def __init__(self, parent, inter):
+    def __init__(self, parent, inter, in_notebook=0):
         self._init_ctrls(parent)
-        parent.InsertPage(index=0, imageId=-1, page=self, select=False, text='Console')
+        if in_notebook:parent.InsertPage(index=0, imageId=-1, page=self, select=False, text='Console')
         self.listcommands=[]
         self.numcommand=-1
         self.CursorMin = 0
