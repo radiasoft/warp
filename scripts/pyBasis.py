@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.47 2004/01/16 20:16:53 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.48 2004/01/27 17:25:14 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -736,6 +736,13 @@ def _sortvarsbysuffix(vlist,skip):
 
   return groups
 
+# This is a list of variables that have been renamed at some point. Note that
+# this should be cleaned up periodically.
+renamed = {'f3d.bound0':'w3d.bound0',
+           'f3d.boundnz':'w3d.boundnz',
+           'f3d.boundxy':'w3d.boundxy',
+           'top.prwelips':'top.prwelipz'}
+
 def pyrestorepybssisobject(ff,gname,vlist,fobjdict,varsuffix,verbose,doarrays):
 
   # --- Convert gname in pdb-style name
@@ -785,6 +792,8 @@ def pyrestorepybssisobject(ff,gname,vlist,fobjdict,varsuffix,verbose,doarrays):
     if vname == 'FOBJ' or vname == 'TYPENAME': continue
     fullname = gname + '.' + vname
     vpdbname = vname + '@' + gpdbname
+
+    if fullname in renamed.keys(): fullname = renamed[fullname]
 
     # --- Add suffix to name if given.
     # --- varsuffix is wrapped in str in case a nonstring was passed in.
