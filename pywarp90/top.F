@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.30 $, $Date: 2001/11/15 23:22:21 $
+c@(#) File TOP.M, version $Revision: 3.31 $, $Date: 2001/12/06 18:41:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5095,11 +5095,11 @@ c       --- if within grid, examine the particle, otherwise assume its OK.
 
           if (dd < 0.) then
 c           --- Scrape the particle
+            if (uzp(ip) .ne. 0.) lostpars(iz) = lostpars(iz) + 1
             uxp(ip) = 0.0
             uyp(ip) = 0.0
             uzp(ip) = 0.0
             iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
-            lostpars(iz) = lostpars(iz) + 1
           endif
 
         endif

@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.30 $, $Date: 2001/11/15 23:22:21 $
+#@(#) File TOP.V, version $Revision: 3.31 $, $Date: 2001/12/06 18:41:22 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -130,6 +130,7 @@ euler         real /0.57721566490153386/  # Euler-Masceroni constant
 jperev        real /0.0/    [J/eV]        # Conversion factor, Joules per eV
                                           # Set to echarge in derivqty
 mu0           real /0.0/    [H/m]         # Permeability of free space
+boltzmann     real /1.3806503e-23/ [J/K]  # Boltzmann's constant
 fuz           real /3.e-5/                # for integer-real comparisons
 
 **** Ch_var dump:
@@ -617,7 +618,7 @@ linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.30 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.31 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
