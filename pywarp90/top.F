@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.70 $, $Date: 2003/02/10 17:54:03 $
+c@(#) File TOP.M, version $Revision: 3.71 $, $Date: 2003/02/12 15:26:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5484,16 +5484,19 @@ c --- end of ifelse above for paralle version.
 
       return
       end
-      
-      subroutine semitransparent_disc()
+c=============================================================================
+      subroutine semitransparent_disc(dz)
       use Particles
       use InGen
-      use InMesh3d
+      use Moments
       use InPart
-      use Picglb3d 
       use SemiTransparentDisc
-c randomly absorb particles passing through a semitranparent disc
+c Random absorption of particles passing through a semitranparent disc.
+c This assumes that no particle travels more than dz in one time step.
+c dz is used only for efficiency purpose: only particles within dz 
+c of semi-transparent disc location are checked for disc crossing.
 
+      real(kind=8), intent(in) :: dz 
       integer(ISZ) :: is, ip, izd, idisc
       real(kind=8) :: zpold, dtcross, xpatdisc, ypatdisc, r, wranf
      &              , zmind(n_STdiscs),zmaxd(n_STdiscs)
@@ -5501,9 +5504,8 @@ c randomly absorb particles passing through a semitranparent disc
       if(n_STdiscs==0) return
 
       do idisc = 1, n_STdiscs
-        izd = int((z_STdiscs(idisc)-zmmin)/dz)-1
-        zmind(idisc) = zmmin+izd*dz
-        zmaxd(idisc) = zmind(idisc)+2.*dz
+        zmind(idisc) = z_STdiscs(idisc)-dz
+        zmaxd(idisc) = z_STdiscs(idisc)+dz
       end do
 
 c     --- loop on species
