@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.16 $, $Date: 2003/01/23 21:29:05 $
+c W3DSLAVE.M, version $Revision: 1.17 $, $Date: 2003/03/25 22:53:37 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -15,6 +15,7 @@ c===========================================================================
       use Picglb
       use Picglb3d
       use Fields3d
+      use Fields3dParticles
       use Particles
       use Io
       use Z_arrays
@@ -80,7 +81,7 @@ c     --- Do the domain decomposition for the field solver.
 c     --- The domain decomposition by default is done so that each processor
 c     --- has nearly the same number of z planes. If lautodecomp is false and
 c     --- fstype == 3, then the decomposition is supplied by the user (input
-c     --- through nzslave).
+c     --- through nzfsslave).
       if (lfsautodecomp .or. (fstype /= 3 .and. fstype /= 7)) then
 
 c       --- Calculate average number of z planes per processor, including the
@@ -139,7 +140,7 @@ c       --- to them.
 
       else
 
-c       --- nzfsslaves is assumed to be input by the user and is assumed to
+c       --- nzfsslave is assumed to be input by the user and is assumed to
 c       --- not include the overlap.
 
 c       --- First check to make sure that all values are > 0.
@@ -190,14 +191,17 @@ c       --- Set from field solver decompostion
 
       else
 c       --- It is assumed that the user supplied decomposition is specified
-c       --- in the array zslave, which is an unscaled weighting of the z-ranges
-c       --- of the particles for each processor.
+c       --- in the array zslave, which is the fractional z-ranges
+c       --- of the particles for each processor. It is assumed that zslave
+c       --- has been properly normalized so that if the sum of the z-ranges
+c       --- covers the whole grid, then the sum is one.
 
 c       --- Get sum of zslave to allow proper scaling.
-        sumzslave = zslave(0)
-        do i=1,nslaves-1
-          sumzslave = sumzslave + zslave(i)
-        enddo
+        sumzslave = 1.
+c       sumzslave = zslave(0)
+c       do i=1,nslaves-1
+c         sumzslave = sumzslave + zslave(i)
+c       enddo
 
 c       --- All values of zslave must be > 0.
         do i=0,nslaves-1
@@ -229,7 +233,7 @@ c       --- be aligned with the grid.
 c       --- This is only needed to avoid problems from round off in the
 c       --- accumulation. From the loop above, zpslmax(nslaves-1) will
 c       --- not be exactly the same as zmmax due to roundoff.
-        zpslmax(nslaves-1) = zmmax
+        if (zpslmax(nslaves-1) > zmmax) zpslmax(nslaves-1) = zmmax
 
 c       --- Set iz and nz. This is done so that zmesh(izpslave) < zpslmin, and
 c       --- zmesh(izpslave+nzpslave) > zpslmax.
@@ -240,7 +244,9 @@ c       --- zmesh(izpslave+nzpslave) > zpslmax.
 
 c       --- Make sure that the last processors doesn't have grid cells
 c       --- sticking out the end.
-        nzpslave(nslaves-1) = nz - izpslave(nslaves-1)
+        if (izpslave(nslaves-1)+nzpslave(nslaves-1) > nz) then
+          nzpslave(nslaves-1) = nz - izpslave(nslaves-1)
+        endif
 
       endif
 
@@ -249,19 +255,17 @@ c     --- Now set the axial extent of each slaves domain, which includes
 c     --- both the particle and field solve domain.
       if(solvergeom==XYZgeom) then
        do i=0,nslaves-1
-        izslave(i) = min(izpslave(i),izfsslave(i))
-        nzslave(i) = max(izpslave(i) + nzpslave(i),izfsslave(i) + nzfsslave(i))
-     &               - izslave(i)
-        zmslmin(i) = izslave(i)*dz + zmmin
-        zmslmax(i) = (izslave(i) + nzslave(i))*dz + zmmin
+        izslave(i) = izfsslave(i)
+        nzslave(i) = nzfsslave(i)
+        zmslmin(i) = izfsslave(i)*dz + zmmin
+        zmslmax(i) = (izfsslave(i) + nzfsslave(i))*dz + zmmin
        enddo
       else
        do i=0,nslaves-1
         izslave(i) = izfsslave(i)
-        nzslave(i) = izfsslave(i) + nzfsslave(i)
-     &               - izslave(i)
-        zmslmin(i) = izslave(i)*dz + zmmin
-        zmslmax(i) = (izslave(i) + nzslave(i))*dz + zmmin
+        nzslave(i) = nzfsslave(i)
+        zmslmin(i) = izfsslave(i)*dz + zmmin
+        zmslmax(i) = (izfsslave(i) + nzfsslave(i))*dz + zmmin
        end do
       end if
 
@@ -276,14 +280,18 @@ c     --- Save global array sizes
 c---------------------------------------------------------------------------
 c     --- Reset local values
       npmax = npmax/nslaves*1.1
-      nz = nzslave(my_index)
+      injctspc = injctspc/nslaves*1.1
+      nz = nzfsslave(my_index)
+      nzp = nzpslave(my_index)
+      zmminp = zmminglobal + izpslave(my_index)*dz
+      zmmaxp = zmminp + nzp*dz
       nzmmnt = nzpslave(my_index)
       zpmin = zmmin + izpslave(my_index)*dz
       zpmax = (izpslave(my_index)+nzpslave(my_index))*dz + zmmin
       if (zmmntmin == 0.) zmmntmin = zpmin
       if (zmmntmax == 0.) zmmntmax = zpmax
-      izfsmin = izfsslave(my_index) - izslave(my_index)
-      izfsmax = izfsmin + nzfsslave(my_index)
+      izfsmin = 0
+      izfsmax = nzfsslave(my_index)
       zmmin = zmslmin(my_index)
       zmmax = zmslmax(my_index)
 
@@ -378,18 +386,17 @@ c total number of particles.
       return
       end
 c===========================================================================
-      subroutine perrho3d_slave(rho,nx,ny,nz,bound0)
+      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp)
       use GlobalVars
       use Parallel
       use Databuffers
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
-      integer(ISZ):: bound0
+      integer(ISZ):: nxp,nyp,nzp
+      real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
 
-c This routine sums rho in the overlapping boundaries with the neighboring
-c processors. Note that this does not send the summed rho back to the left
+c This routine sums rhop in the overlapping boundaries with the neighboring
+c processors. Note that this does not send the summed rhop back to the left
 c since that is done in getrhoforfieldsolve.
-c This allows for cases where more than two processors have deposited rho
+c This allows for cases where more than two processors have deposited rhop
 c into the same plane. A check is made if the data being sent to the right
 c overlaps with the data being received from the left. If so, the process
 c waits to receive the data from the left and then adds it to its own data.
@@ -413,9 +420,9 @@ c more robust to future changes.
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpierror,mpirequest
 
 c     --- Allocate some buffer space.
-      if (b2d1 < nx .or. b2d2 < ny) then
-        b2d1 = nx
-        b2d2 = ny
+      if (b2d1 < nxp .or. b2d2 < nyp) then
+        b2d1 = nxp
+        b2d2 = nyp
         call gchange("Databuffers",0)
       endif
 
@@ -424,10 +431,10 @@ c     --- wrapping around at the ends.
       left_pe = mod(nslaves+my_index-1,nslaves)
       right_pe = mod(my_index+1,nslaves)
 
-c     --- Location where rho planes are to be exchanged, and number of
+c     --- Location where rhop planes are to be exchanged, and number of
 c     --- planes to exchange.
       if (my_index > 0) then
-        left_iz = izpslave(my_index) - izslave(my_index)
+        left_iz = 0
         left_nz=izpslave(my_index-1)+nzpslave(my_index-1)-izpslave(my_index)+1
         left_nz = min(left_nz, 2)
       else
@@ -435,60 +442,93 @@ c     --- planes to exchange.
         left_nz = 1
       endif
       if (my_index < nslaves-1) then
-        right_iz = izpslave(my_index+1) - izslave(my_index)
+        right_iz = izpslave(my_index+1) - izpslave(my_index)
         right_nz=izpslave(my_index)+nzpslave(my_index)-izpslave(my_index+1)+1
         right_nz = min(right_nz, 2)
       else
-        right_iz = nz
+        right_iz = nzp
         right_nz = 1
       endif
 
 c     --- Check if data being sent overlaps with data being received.
 c     --- If so, wait for the incoming data first.
       if (my_index > 0 .and. right_iz <= left_iz+left_nz) then
-        call MPI_RECV(buffer2d,left_nz*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+        call MPI_RECV(buffer2d,left_nz*(nxp+1)*(nyp+1),MPI_DOUBLE_PRECISION,
      &                left_pe,50,MPI_COMM_WORLD,mpistatus,mpierror)
 
 c       --- Sum the two planes. The utility call sumarry is used since
 c       --- with the gchange above, the local dimension of buffer2d may not
 c       --- be correct, so explicitly writing out the loops may not work.
-        call sumarry(buffer2d,rho(0,0,left_iz),left_nz*(nx+1)*(ny+1))
+        call sumarry(buffer2d,rhop(0,0,left_iz),left_nz*(nxp+1)*(nyp+1))
 
       endif
 
-c     --- Send rho to the process to the right
-      if (my_index < nslaves-1 .or. bound0==periodic) then
-        call MPI_ISEND(rho(0,0,right_iz),right_nz*(nx+1)*(ny+1),
+c     --- Send rhop to the process to the right
+      if (my_index < nslaves-1) then
+        call MPI_ISEND(rhop(0,0,right_iz),right_nz*(nxp+1)*(nyp+1),
      &                 MPI_DOUBLE_PRECISION,
      &                 right_pe,50,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
 
 c     --- If there is no overlap, wait for the data after sending so
 c     --- that processors to the right do not have to also wait.
-      if ((my_index > 0 .and. right_iz > left_iz+left_nz) .or.
-     &    (my_index == 0 .and. bound0==periodic)) then
-        call MPI_RECV(buffer2d,left_nz*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+      if (my_index > 0 .and. right_iz > left_iz+left_nz) then
+        call MPI_RECV(buffer2d,left_nz*(nxp+1)*(nyp+1),MPI_DOUBLE_PRECISION,
      &                left_pe,50,MPI_COMM_WORLD,mpistatus,mpierror)
 
 c       --- Sum the two planes. The utility call sumarry is used since
 c       --- with the gchange above, the local dimension of buffer2d may not
 c       --- be correct, so explicitly writing out the loops may not work.
-        call sumarry(buffer2d,rho(0,0,left_iz),left_nz*(nx+1)*(ny+1))
+        call sumarry(buffer2d,rhop(0,0,left_iz),left_nz*(nxp+1)*(nyp+1))
 
       endif
 
 c     --- Now, wait just to make sure that the send was recv'ed
-      if (my_index < nslaves-1 .or. bound0==periodic) then
+      if (my_index < nslaves-1) then
         call MPI_WAIT(mpirequest,mpistatus,mpierror)
       endif
 
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve(nx,ny,nz,rho)
+      subroutine perrho3d_slave(rho,nx,ny,nz)
       use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
+c  Sets the slices on the exterior of rho for periodicity
+c  sets slice at -1 equal to the slice at nz-1
+c  sets slice at nz+1 equal to the slice at 1
+c  Only first and last processors do anything.
+      real(kind=8):: rhotemp(0:nx,0:ny)
+      include "mpif.h"
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpirequest,mpierror
+ 
+      if (my_index == nslaves-1) then
+        call MPI_ISEND(rho(0,0,nz),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                 0,70,MPI_COMM_WORLD,mpirequest,mpierror)
+        call MPI_RECV(rho(0,0,nz),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                0,70,MPI_COMM_WORLD,mpistatus,mpierror)
+      else if (my_index == 0) then
+        call MPI_RECV(rhotemp,(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                nslaves-1,70,MPI_COMM_WORLD,mpistatus,mpierror)
+        rho(:,:,0) = rho(:,:,0) + rhotemp
+        call MPI_ISEND(rho(0,0,0),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
+     &                 nslaves-1,70,MPI_COMM_WORLD,mpirequest,mpierror)
+      endif
+ 
+      if (my_index == 0 .or. my_index == nslaves-1) then
+        call MPI_WAIT(mpirequest,mpistatus,mpierror)
+      endif
+ 
+      return
+      end
+c=============================================================================
+      subroutine getrhoforfieldsolve(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
+      use Parallel
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nxp,nyp,nzp
+      real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
 
 c Gather the charge density in the region where the field solve
 c will be done. This assumes that each processor "owns" rho from
@@ -496,28 +536,49 @@ c iz=0 to either iz=nz-1 or nz-2 depending on the overlap. Each is
 c only responsible for sending out the rho is owns.
 
       integer(ISZ):: i,right_nz
-      integer(ISZ):: izsend,nzsend,izrecv,nzrecv
+      integer(ISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(ISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpierror
       integer(ISZ):: mpirequest(nslaves)
       integer(ISZ):: w
 
-c     --- First, send the data out to processors that need it.
+c     --- First, calculate what data needs to be sent and received.
+c     --- Data to be sent
       right_nz = 1
-      w = 0
       if (my_index < nslaves-1)
      &  right_nz=izpslave(my_index)+nzpslave(my_index)-izpslave(my_index+1)+1
       do i=0,nslaves-1
-        if (i /= my_index) then
-          izsend = max(izpslave(my_index),izfsslave(i)) - izslave(my_index)
-          nzsend = min(izpslave(my_index)+nzpslave(my_index)-right_nz,
+        izsend(i) = max(izpslave(my_index),izfsslave(i)) - izpslave(my_index)
+        nzsend(i) = min(izpslave(my_index)+nzpslave(my_index)-right_nz,
      &                 izfsslave(i)+nzfsslave(i))
      &             - max(izpslave(my_index),izfsslave(i)) + 1
-          if (nzsend > 0) then
+      enddo
+
+c     --- Data to be received
+      do i=0,nslaves-1
+        right_nz = 1
+        if (i < nslaves-1)
+     &    right_nz=izpslave(i)+nzpslave(i)-izpslave(i+1)+1
+        izrecv(i) = max(izfsslave(my_index),izpslave(i)) - izfsslave(my_index)
+        nzrecv(i) = min(izfsslave(my_index)+nzfsslave(my_index),
+     &                 izpslave(i)+nzpslave(i)-right_nz)
+     &             - max(izfsslave(my_index),izpslave(i)) + 1
+      enddo
+
+c     --- Send the data out to processors that need it.
+c     --- Copy any data locally as well.
+      w = 0
+      do i=0,nslaves-1
+        if (nzsend(i) > 0) then
+          if (i /= my_index) then
             w = w + 1
-            call MPI_ISEND(rho(0,0,izsend),nzsend*(nx+1)*(ny+1),
+            call MPI_ISEND(rhop(0,0,izsend(i)),nzsend(i)*(nxp+1)*(nyp+1),
      &                     MPI_DOUBLE_PRECISION,
      &                     i,60,MPI_COMM_WORLD,mpirequest(w),mpierror)
+          else
+            rho(:,:,izrecv(i):izrecv(i)+nzrecv(i)-1) =
+     &        rhop(:,:,izsend(i):izsend(i)+nzsend(i)-1)
           endif
         endif
       enddo
@@ -525,15 +586,8 @@ c     --- First, send the data out to processors that need it.
 c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if (i /= my_index) then
-          right_nz = 1
-          if (i < nslaves-1)
-     &      right_nz=izpslave(i)+nzpslave(i)-izpslave(i+1)+1
-          izrecv = max(izfsslave(my_index),izpslave(i)) - izslave(my_index)
-          nzrecv = min(izfsslave(my_index)+nzfsslave(my_index),
-     &                 izpslave(i)+nzpslave(i)-right_nz)
-     &             - max(izfsslave(my_index),izpslave(i)) + 1
-          if (nzrecv > 0) then
-            call MPI_RECV(rho(0,0,izrecv),nzrecv*(nx+1)*(ny+1),
+          if (nzrecv(i) > 0) then
+            call MPI_RECV(rho(0,0,izrecv(i)),nzrecv(i)*(nx+1)*(ny+1),
      &                    MPI_DOUBLE_PRECISION,
      &                    i,60,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
@@ -583,11 +637,13 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine getphiforparticles(nx,ny,nz,phi)
+      subroutine getphiforparticles(nx,ny,nz,phi,nxp,nyp,nzp,phip)
       use Parallel
       use InjectVars3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: nxp,nyp,nzp
+      real(kind=8):: phip(0:nxp,0:nyp,-1:nzp+1)
 
 c Get the phi for the extent where the particles are. This gets phi from
 c neighboring processors, and at the very least gets phi in the guard planes,
@@ -595,33 +651,45 @@ c iz=-1 and +1.
 
       integer(ISZ):: i
       integer(ISZ):: izglobal,izmaxp,izmaxfs
-      integer(ISZ):: izsend,nzsend,izrecv,nzrecv
+      integer(ISZ):: izsend(0:nslaves-1),nzsend(0:nslaves-1)
+      integer(ISZ):: izrecv(0:nslaves-1),nzrecv(0:nslaves-1)
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves),mpirequest(nslaves)
       integer(ISZ):: mpierror,w
 
-c     --- First, send the data out to processors that need it.
+c     --- First, calculate what data needs to be sent and received.
+c     --- Data to be sent
+      do i=0,nslaves-1
+        izglobal = max(izfsslave(my_index),izpslave(i)-1)
+        izmaxp   = izpslave(i)+nzpslave(i)+1
+        izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)-grid_overlap
+
+        izsend(i) = izglobal - izfsslave(my_index)
+        nzsend(i) = min(izmaxp,izmaxfs) - izglobal + 1
+      enddo
+
+c     --- Then, gather up the data sent to this processor.
+      do i=0,nslaves-1
+        izglobal = max(izpslave(my_index)-1,izfsslave(i))
+        izmaxp   = izpslave(my_index)+nzpslave(my_index)+1
+        izmaxfs  = izfsslave(i)+nzfsslave(i)-grid_overlap
+
+        izrecv(i) = izglobal - izpslave(my_index)
+        nzrecv(i) = min(izmaxp,izmaxfs) - izglobal + 1
+      enddo
+ 
+c     --- Send the data out to processors that need it.
       w = 0
       do i=0,nslaves-1
-        if ( i /= my_index) then
-
-c         izsend = max(izfsslave(my_index),izpslave(i)-1) - izslave(my_index)
-c         nzsend = min(izfsslave(my_index)+nzfsslave(my_index)-grid_overlap,
-c    &                 izpslave(i)+nzpslave(i)+1)
-c    &             - max(izfsslave(my_index),izpslave(i)-1) + 1
-
-          izglobal = max(izfsslave(my_index),izpslave(i)-1)
-          izmaxp   = izpslave(i)+nzpslave(i)+1
-          izmaxfs  = izfsslave(my_index)+nzfsslave(my_index)-grid_overlap
-
-          izsend   = izglobal - izslave(my_index)
-          nzsend   = min(izmaxp,izmaxfs) - izglobal + 1
-
-          if (nzsend > 0) then
+        if (nzsend(i) > 0) then
+          if ( i /= my_index) then
             w = w + 1
-            call MPI_ISEND(phi(0,0,izsend),nzsend*(nx+1)*(ny+1),
+            call MPI_ISEND(phi(0,0,izsend(i)),nzsend(i)*(nx+1)*(ny+1),
      &                     MPI_DOUBLE_PRECISION,
      &                     i,80,MPI_COMM_WORLD,mpirequest(w),mpierror)
+          else
+            phip(:,:,izrecv(i):izrecv(i)+nzrecv(i)-1) =
+     &        phi(:,:,izsend(i):izsend(i)+nzsend(i)-1)
           endif
         endif
       enddo
@@ -629,21 +697,8 @@ c    &             - max(izfsslave(my_index),izpslave(i)-1) + 1
 c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
-
-c         izrecv = max(izpslave(my_index)-1,izfsslave(i)) - izslave(my_index)
-c         nzrecv = min(izpslave(my_index)+nzpslave(my_index)+1,
-c    &                 izfsslave(i)+nzfsslave(i)-grid_overlap)
-c    &             - max(izpslave(my_index)-1,izfsslave(i)) + 1
-
-          izglobal = max(izpslave(my_index)-1,izfsslave(i))
-          izmaxp   = izpslave(my_index)+nzpslave(my_index)+1
-          izmaxfs  = izfsslave(i)+nzfsslave(i)-grid_overlap
-
-          izrecv   = izglobal - izslave(my_index)
-          nzrecv   = min(izmaxp,izmaxfs) - izglobal + 1
-
-          if (nzrecv > 0) then
-            call MPI_RECV(phi(0,0,izrecv),nzrecv*(nx+1)*(ny+1),
+          if (nzrecv(i) > 0) then
+            call MPI_RECV(phip(0,0,izrecv(i)),nzrecv(i)*(nxp+1)*(nyp+1),
      &                    MPI_DOUBLE_PRECISION,
      &                    i,80,MPI_COMM_WORLD,mpistatus,mpierror)
           endif
