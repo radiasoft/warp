@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.36 2004/11/12 18:02:05 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.37 2004/11/17 00:56:51 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2484,35 +2484,43 @@ pgrd arrays with the same suffices:
 
 # ----------------------------------------------------------------------------
 # --- Convenient plotting functions
-def plotemlt(ie,m=0,p=0,color='fg'):
+def plotemlt(ie,m=0,p=0,color='fg',scale=1.,zoffset=0.):
   """
 Plots the field of the emlt element
   - ie: the element to plot
   - m=0: the multipole number to plot
   - p=0: when true, plot z-derivative (emltp)
   - color='fg': color of plot
+  - scale=1.: multiplicative factor on the data plotted
+  - zoffset=0.: the shift in the z location of the data plotted
+                Normally it will be top.zlatstrt.
   """
   id = top.emltid[ie] - 1
   dz = top.dzemlt[id]
   nz = top.nzemlt[id]
-  zz = top.emltzs[ie] + iota(0,nz)*dz
+  zz = top.emltzs[ie] + iota(0,nz)*dz + zoffset
   if p == 0:
-    plg(top.esemlt[:nz+1,m,id],zz,color=color)
+    plg(top.esemlt[:nz+1,m,id]*scale,zz,color=color)
   else:
-    plg(top.esemltp[:nz+1,m,id],zz,color=color)
+    plg(top.esemltp[:nz+1,m,id]*scale,zz,color=color)
 
-def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,color='fg',getfield=0):
+def plotmmlt(im,m=0,p=0,r=1.,t=0.,br=0,bt=0,bz=0,color='fg',getfield=0,
+             scale=1.,zoffset=0.):
   """
 Plots the field of the emlt element
   - im: the element to plot
   - m=0: the multipole number to plot
   - p=0: when true, plot z-derivative (mmltp)
   - color='fg': color of plot
+  - getfield=0: when true, the field and zmesh are returned
+  - scale=1.: multiplicative factor on the data plotted
+  - zoffset=0.: the shift in the z location of the data plotted
+                Normally it will be top.zlatstrt.
   """
   id = top.mmltid[im] - 1
   dz = top.dzmmlt[id]
   nz = top.nzmmlt[id]
-  zz = top.mmltzs[im] + iota(0,nz)*dz
+  zz = top.mmltzs[im] + iota(0,nz)*dz + zoffset
   ss = top.mmltsc[im] + top.mmltsf[im]
   nn = top.mmlt_n[m]
   vv = top.mmlt_v[m]
@@ -2544,8 +2552,9 @@ Plots the field of the emlt element
     mm = top.msmmlt[:nz+1,m,id]
   else:
     mm = top.msmmltp[:nz+1,m,id]
-  plg(cc*mm,zz,color=color)
-  if getfield: return cc*mm,zz
+  mm = mm*cc*scale
+  plg(mm,zz,color=color)
+  if getfield: return mm,zz
 
 def plotacclet(ia=None,oscale=1.,ascale=1.,tcentered=0,color='fg'):
   """
