@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.36 2004/03/05 14:43:05 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.37 2004/03/18 15:50:20 lund Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -912,8 +912,9 @@ Constructor arguments:
     # --- boundaries, so turn the capacity matrix field solver off.
     s.nopipe(0,s.nonecm)
   #----------------------------------------------------------------------------
-  def plotcond(s,plotphi=1,filled=0,plotedge=1,plotpoints=0,plotsym=1,
-               ccolor='red',ecolor='green',phicolor='fg'):
+  def plotcond(s,plotphi=1,filled=0,plotedge=1,plotpoints=0,plotsym=1,\
+               ccolor='red',ecolor='green',phicolor='fg',\
+               xscale=None,yscale=None):
     """
 Makes a plot of the conductor.
   - plotphi=1 when true, plots contours of phi
@@ -921,57 +922,58 @@ Makes a plot of the conductor.
   - plotsym=1 when true, plots appropriate reflections when symmeties are used
   - plotedge=1 when true, plots a square around the edge of the mesh (with
                appropriate reflections when plotsym is true)
+  - xscale=scale factor for x-coordinates on plot (default = 1) 
+  - yscale=scale factor for y-coordinates on plot (default = 1)
     """
+    if xscale == None: xscale = 1.
+    if yscale == None: yscale = 1.
+    xmesh = xscale*w3d.xmesh
+    ymesh = yscale*w3d.ymesh
     # --- Plot phi first (so filled contours are on bottom)
     if plotphi:
-      plotc(transpose(getphi(iz=0)),w3d.ymesh,w3d.xmesh,filled=filled,
+      plotc(transpose(getphi(iz=0)),ymesh,xmesh,filled=filled,
             color=phicolor)
     if plotsym:
       # --- Plot negative y
       if w3d.l2symtry or w3d.l4symtry:
         if plotphi:
-          plotc(transpose(getphi(iz=0)),-w3d.ymesh,w3d.xmesh,filled=filled,
+          plotc(transpose(getphi(iz=0)),-ymesh,xmesh,filled=filled,
                 color=phicolor)
       # --- Plot negative x
       if w3d.l4symtry:
         if plotphi:
-          plotc(transpose(getphi(iz=0)),w3d.ymesh,-w3d.xmesh,filled=filled,
+          plotc(transpose(getphi(iz=0)),ymesh,-xmesh,filled=filled,
                 color=phicolor)
         if plotphi:
-          plotc(transpose(getphi(iz=0)),-w3d.ymesh,-w3d.xmesh,filled=filled,
+          plotc(transpose(getphi(iz=0)),-ymesh,-xmesh,filled=filled,
                 color=phicolor)
     # --- Plot conductor points next.
     if top.fstype == 1:
-      s.current.plotcond(ccolor)
+      s.current.plotcond(ccolor,xscale=xscale,yscale=yscale)
       if plotsym:
         if w3d.l2symtry or w3d.l4symtry:
-          s.current.plotcond(color=ccolor,yscale=-1.)
+          s.current.plotcond(color=ccolor,xscale=xscale,yscale=-yscale)
         if w3d.l4symtry:
-          s.current.plotcond(color=ccolor,xscale=-1.,yscale=+1)
-          s.current.plotcond(color=ccolor,xscale=-1.,yscale=-1)
-    if plotpoints and fxy.ncxy > 0 and top.fstype == 1:
-      plp(fxy.ycond[:fxy.ncxy],fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
-      if plotsym:
-        # --- Plot negative y
-        if w3d.l2symtry or w3d.l4symtry:
-          plp(-fxy.ycond[:fxy.ncxy],fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
-        # --- Plot negative x
-        if w3d.l4symtry:
-          plp(fxy.ycond[:fxy.ncxy],-fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
-          plp(-fxy.ycond[:fxy.ncxy],-fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
+          s.current.plotcond(color=ccolor,xscale=-xscale,yscale= yscale)
+          s.current.plotcond(color=ccolor,xscale=-xscale,yscale=-yscale)
+
     # --- Plot the edge of the mesh last
     if plotedge:
+      xmmax = xscale*w3d.xmmax
+      xmmin = xscale*w3d.xmmin
+      ymmax = yscale*w3d.ymmax
+      ymmin = yscale*w3d.ymmin 
       if w3d.l4symtry and plotsym:
-        plg([-w3d.ymmax, w3d.ymmax,w3d.ymmax,-w3d.ymmax,-w3d.ymmax],
-            [-w3d.xmmax,-w3d.xmmax,w3d.xmmax, w3d.xmmax,-w3d.xmmax],
+        plg([-ymmax, ymmax,ymmax,-ymmax,-ymmax],
+            [-xmmax,-xmmax,xmmax, xmmax,-xmmax],
             color=ecolor)
       elif w3d.l2symtry and plotsym:
-        plg([ w3d.ymmin, w3d.ymmax,w3d.ymmax, w3d.ymmin, w3d.ymmin],
-            [-w3d.xmmax,-w3d.xmmax,w3d.xmmax, w3d.xmmax,-w3d.xmmax],
+        plg([ ymmin, ymmax,ymmax, ymmin, ymmin],
+            [-xmmax,-xmmax,xmmax, xmmax,-xmmax],
             color=ecolor)
       else:
-        plg([ w3d.ymmin, w3d.ymmax,w3d.ymmax, w3d.ymmin, w3d.ymmin],
-            [ w3d.xmmin, w3d.xmmin,w3d.xmmax, w3d.xmmax, w3d.xmmin],
+        plg([ ymmin, ymmax,ymmax, ymmin, ymmin],
+            [ xmmin, xmmin,xmmax, xmmax, xmmin],
             color=ecolor)
 
 
