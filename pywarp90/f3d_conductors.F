@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.14 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -389,6 +389,23 @@ c A positive zsign means that the conductor is the region above zcent.
       return
       end
 c=======================================================================
+      subroutine ZPlaneConductorD(zcent,zsign,n,x,y,z,distance)
+      real(kind=8):: zcent,zsign
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances to surface
+c The notation is that a negative distance means that the point is inside.
+c A positive zsign means that the conductor is the region above zcent.
+
+      integer(ISZ):: i
+
+      distance = zsign*(z - zcent)
+
+      return
+      end
+c=======================================================================
       subroutine BoxConductorF(xsize,ysize,zsize,xcent,ycent,zcent,
      &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                            fuzz)
@@ -400,9 +417,8 @@ c=======================================================================
       real(kind=8):: delmz(n),delpz(n)
       real(kind=8):: fuzz
 
-c Finds distances along the axis of the points from a z plane
+c Finds distances along the axis of the points from a box
 c The notation is that a negative distance means that the point is inside.
-c A positive zsign means that the conductor is the region above zcent.
 
       integer(ISZ):: i
       real(kind=8):: xmin,xmax,ymin,ymax,zmin,zmax
@@ -465,6 +481,35 @@ c A positive zsign means that the conductor is the region above zcent.
 
         endif
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine BoxConductorD(xsize,ysize,zsize,xcent,ycent,zcent,
+     &                            n,x,y,z,distance)
+      real(kind=8):: xsize,ysize,zsize,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a box.
+c The notation is that a negative distance means that the point is inside.
+c A positive zsign means that the conductor is the region above zcent.
+
+      integer(ISZ):: i
+      real(kind=8):: xd,yd,zd,dd
+
+      do i=1,n
+        xd = abs(x(i) - xcent) - xsize/2.
+        yd = abs(y(i) - ycent) - ysize/2.
+        zd = abs(z(i) - zcent) - zsize/2.
+
+        dd = sqrt(max(0.,xd)**2 + max(0.,yd)**2 + max(0.,zd)**2)
+
+        if (dd == 0.) dd = max(xd,yd,zd)
+
+        distance(i) = dd
       enddo
 
       return
@@ -549,6 +594,31 @@ c       --- The point is on the cylinder exactly.
         delmz(i) = 0.
         delpz(i) = 0.
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZCylinderConductorD(rad,length,xcent,ycent,zcent,
+     &                               n,x,y,z,distance)
+      real(kind=8):: rad,length,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a cylinder aligned with the z-axis.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: rr,zz,dd
+
+      do i=1,n
+        rr = sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2) - rad
+        zz = abs(z(i) - zcent) - length/2.
+
+        dd = sqrt(max(0.,rr)**2 + max(0.,zz)**2)
+        if (dd == 0.) dd = max(rr,zz)
+        distance(i) = dd
       enddo
 
       return
@@ -679,6 +749,39 @@ c       --- The point is on the cylinder exactly.
       return
       end
 c=======================================================================
+      subroutine ZRoundedCylinderConductorD(rad,length,rad2,xcent,ycent,zcent,
+     &                                      n,x,y,z,distance)
+      real(kind=8):: rad,length,rad2,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a cylinder aligned with
+c the z-axis. The corners of the cylinder are rounded with radius rad2.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: z2,rr,zz
+
+      z2 = max(length/2.-rad2,0.)
+
+      do i=1,n
+
+        rr = sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2)
+        zz = abs(z(i) - zcent)
+        if (zz >= z2 .and. rr <= rad-rad2) then
+          distance(i) = zz - length/2.
+        else if (zz <= z2) then
+          distance(i) = max(rr - rad,zz - length/2.)
+        else
+          distance(i) = sqrt((zz - z2)**2 + (rr - (rad - rad2))**2) - rad2
+        endif
+          
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine ZCylinderOutConductorF(rad,length,xcent,ycent,zcent,
      &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                              fuzz)
@@ -762,6 +865,31 @@ c       --- The point is on the cylinder exactly.
         delmz(i) = 0.
         delpz(i) = 0.
 
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZCylinderOutConductorD(rad,length,xcent,ycent,zcent,
+     &                                  n,x,y,z,distance)
+      real(kind=8):: rad,length,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a cylinder aligned with the z-axis.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: rr,zz,dd
+
+      do i=1,n
+        rr = rad - sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2)
+        zz = abs(z(i) - zcent) - length/2.
+
+        dd = sqrt(max(0.,rr)**2 + max(0.,zz)**2)
+        if (dd == 0.) dd = max(rr,zz)
+        distance(i) = dd
       enddo
 
       return
@@ -896,6 +1024,40 @@ c       --- The point is on the cylinder exactly.
       return
       end
 c=======================================================================
+      subroutine ZRoundedCylinderOutConductorD(rad,length,rad2,
+     &                                         xcent,ycent,zcent,
+     &                                         n,x,y,z,distance)
+      real(kind=8):: rad,length,rad2,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a cylinder aligned with
+c the z-axis. The corners of the cylinder are rounded with radius rad2.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: z2,rr,zz
+
+      z2 = max(length/2.-rad2,0.)
+
+      do i=1,n
+
+        rr = sqrt((x(i) - xcent)**2 + (y(i) - ycent)**2)
+        zz = abs(z(i) - zcent)
+        if (zz >= z2 .and. rr >= rad+rad2) then
+          distance(i) = zz - length/2.
+        else if (zz <= z2) then
+          distance(i) = max(rad - rr,zz - length/2.)
+        else
+          distance(i) = sqrt((zz - z2)**2 + (rr - (rad + rad2))**2) - rad2
+        endif
+          
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine XCylinderConductorF(rad,length,xcent,ycent,zcent,
      &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                              fuzz)
@@ -917,6 +1079,22 @@ c The notation is that a negative distance means that the point is inside.
       return
       end
 c=======================================================================
+      subroutine XCylinderConductorD(rad,length,xcent,ycent,zcent,
+     &                              n,x,y,z,distance)
+      real(kind=8):: rad,length,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a cylinder aligned with the x-axis.
+c The notation is that a negative distance means that the point is inside.
+
+      call ZCylinderConductorD(rad,length,ycent,zcent,xcent,
+     &                         n,y,z,x,distance)
+
+      return
+      end
+c=======================================================================
       subroutine YCylinderConductorF(rad,length,xcent,ycent,zcent,
      &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                              fuzz)
@@ -934,6 +1112,22 @@ c The notation is that a negative distance means that the point is inside.
 
       call ZCylinderConductorF(rad,length,zcent,xcent,ycent,
      &                         n,z,x,y,delmz,delpz,delmx,delpx,delmy,delpy,fuzz)
+
+      return
+      end
+c=======================================================================
+      subroutine YCylinderConductorD(rad,length,xcent,ycent,zcent,
+     &                               n,x,y,z,distance)
+      real(kind=8):: rad,length,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a cylinder aligned with the y-axis.
+c The notation is that a negative distance means that the point is inside.
+
+      call ZCylinderConductorD(rad,length,zcent,xcent,ycent,
+     &                         n,z,x,y,distance)
 
       return
       end
@@ -1006,6 +1200,32 @@ c       --- The point is on the sphere exactly.
           delmz(i) = 0.
           delpz(i) = 0.
         endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine SphereConductorD(rad,xcent,ycent,zcent,n,x,y,z,distance)
+      real(kind=8):: rad,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a sphere.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz,rr
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        rr = sqrt(xx**2 + yy**2 + zz**2)
+        
+        distance(i) = rr - rad
 
       enddo
 
@@ -1120,6 +1340,59 @@ c         --- The point is on the cone exactly.
           delmz(i) = 0.
           delpz(i) = 0.
 
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZConeConductorD(r_zmin,r_zmax,length,xcent,ycent,zcent,
+     &                           n,x,y,z,distance)
+      use Constant
+      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances along the axis of the points from a cone aligned with
+c the z-axis.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz,rr
+      real(kind=8):: d1,ang_zmin,ang_zmax,dd,dz
+
+      do i=1,n
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        rr = sqrt(xx**2 + yy**2)
+
+        d1 = sqrt((rr - r_zmin)**2 + (zz + length/2.)**2)
+        ang_zmin = atan2((rr - r_zmin),(zz + length/2.)) -
+     &         atan2((r_zmax - r_zmin),length)
+        if (ang_zmin > +pi) ang_zmin = ang_zmin - 2*pi
+        if (ang_zmin < -pi) ang_zmin = ang_zmin + 2*pi
+        ang_zmax = atan2((r_zmin - r_zmax),-length) -
+     &          atan2((rr - r_zmax),(zz - length/2.))
+        if (ang_zmax > +pi) ang_zmax = ang_zmax - 2*pi
+        if (ang_zmax < -pi) ang_zmax = ang_zmax + 2*pi
+        dd = d1*sin(ang_zmin)
+        dz = abs(zz) - length/2.
+
+        if (zz <= -length/2. .and. rr <= r_zmin) then
+          distance(i) = dz
+        else if (ang_zmin >= pi/2.) then
+          distance(i) = sqrt((rr - r_zmin)**2 + (zz + length/2.)**2)
+        else if (zz >= length/2. .and. rr <= r_zmax) then
+          distance(i) = dz
+        else if (ang_zmax >= pi/2.) then
+          distance(i) = sqrt((rr - r_zmax)**2 + (zz - length/2.)**2)
+        else if (dd >= 0.) then
+          distance(i) = dd
+        else
+          distance(i) = max(dd,dz)
         endif
 
       enddo
@@ -1246,6 +1519,59 @@ c         --- The point is on the cone exactly.
       return
       end
 c=======================================================================
+      subroutine ZConeOutConductorD(r_zmin,r_zmax,length,xcent,ycent,zcent,
+     &                              n,x,y,z,distance)
+      use Constant
+      real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances along the axis of the points from a cone aligned with
+c the z-axis.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz,rr
+      real(kind=8):: d1,ang_zmin,ang_zmax,dd,dz
+
+      do i=1,n
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        rr = sqrt(xx**2 + yy**2)
+
+        d1 = sqrt((rr - r_zmin)**2 + (zz + length/2.)**2)
+        ang_zmin = atan2((r_zmax - r_zmin),length) -
+     &         atan2((rr - r_zmin),(zz + length/2.))
+        if (ang_zmin > +pi) ang_zmin = ang_zmin - 2*pi
+        if (ang_zmin < -pi) ang_zmin = ang_zmin + 2*pi
+        ang_zmax = atan2((rr - r_zmax),(zz - length/2.)) -
+     &          atan2((r_zmin - r_zmax),-length)
+        if (ang_zmax > +pi) ang_zmax = ang_zmax - 2*pi
+        if (ang_zmax < -pi) ang_zmax = ang_zmax + 2*pi
+        dd = d1*sin(ang_zmin)
+        dz = abs(zz) - length/2.
+
+        if (zz <= -length/2. .and. rr >= r_zmin) then
+          distance(i) = dz
+        else if (ang_zmin >= pi/2.) then
+          distance(i) = sqrt((rr - r_zmin)**2 + (zz + length/2.)**2)
+        else if (zz >= length/2. .and. rr >= r_zmax) then
+          distance(i) = dz
+        else if (ang_zmax >= pi/2.) then
+          distance(i) = sqrt((rr - r_zmax)**2 + (zz - length/2.)**2)
+        else if (dd >= 0.) then
+          distance(i) = dd
+        else
+          distance(i) = max(dd,dz)
+        endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine ZTorusConductorF(r1,r2,xcent,ycent,zcent,
      &                             n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                            fuzz)
@@ -1352,6 +1678,35 @@ c       --- z within zcent+-r2.
           endif
 
         endif
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine ZTorusConductorD(r1,r2,xcent,ycent,zcent,
+     &                            n,x,y,z,distance)
+      real(kind=8):: r1,r2,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a torus aligned with the z-axis.
+c r1 is radius relative to z-axis
+c r2 is radius relative to theta-axis
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: xx,yy,zz,rr
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        rr = sqrt(xx**2 + yy**2)
+
+        distance(i) = sqrt(zz**2 + (r1 - rr)**2) - r2
+
       enddo
 
       return
@@ -1538,6 +1893,45 @@ c         --- Now, get distances to surface
       return
       end
 c=======================================================================
+      subroutine CylinderConductorD(rad,length,theta,phi,xcent,ycent,zcent,
+     &                              n,x,y,z,distance)
+      real(kind=8):: rad,length,theta,phi,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a cylinder at an arbitrary angle.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i
+      real(kind=8):: ctheta,stheta,cphi,sphi
+      real(kind=8):: xx,yy,zz,xp,yp,zp,rr,dd
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        xp = xx*ctheta - zz*stheta
+        yp = yy*cphi - zz*ctheta*sphi - xx*stheta*sphi
+        zp = zz*ctheta*cphi + xx*stheta*cphi + yy*sphi
+
+        rr = sqrt(xp**2 + yp**2) - rad
+        zz = abs(zp) - length/2.
+
+        dd = sqrt(max(0.,rr)**2 + max(0.,zz)**2)
+        if (dd == 0.) dd = max(rr,zz)
+        distance(i) = dd
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine CylindersConductorF(ncylinders,rad,length,theta,phi,
      &                           xcent,ycent,zcent,
      &                           n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
@@ -1676,6 +2070,126 @@ c       --- Fold the data into the arrays
       return
       end
 c=======================================================================
+      subroutine CylindersConductorD(ncylinders,rad,length,theta,phi,
+     &                               xcent,ycent,zcent,n,x,y,z,distance)
+      use Constant
+      integer(ISZ):: ncylinders
+      real(kind=8):: rad(ncylinders),length(ncylinders)
+      real(kind=8):: theta(ncylinders),phi(ncylinders)
+      real(kind=8):: xcent(ncylinders),ycent(ncylinders),zcent(ncylinders)
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a list of cylinders at arbitrary angles.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: nx,ny,ic
+      real(kind=8):: dx,dy
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: xc(1),yc(1),zc(1),zz
+      real(kind=8):: mxc(1),pxc(1),myc(1),pyc(1),mzc(1),pzc(1)
+      integer(ISZ):: nt,ixmin,ixmax,iymin,iymax,tix,tiy,ii,id
+      real(kind=8):: xt(n),yt(n),zt(n)
+      real(kind=8):: ddt(n)
+
+c     --- Very kludgy code to extract number of grid points and cell
+c     --- sizes from the input coordinates.
+      ymin = minval(y)
+      ymax = maxval(y)
+      dy = y(2) - y(1)
+      if (dy /= 0.) then
+        ny = maxval(int((y - ymin)/dy))
+      else
+        dy = 1.
+        ny = 0
+      endif
+      
+      dx = x(ny+2) - x(1)
+      xmin = minval(x)
+      xmax = maxval(x)
+      nx = maxval(int((x - xmin)/dx))
+
+      distance = LARGEPOS
+
+c     --- This code assumes small angles
+      if (maxval(abs(theta)) > pi/4. .or. maxval(abs(phi)) > pi/4.) then
+        print*,"Error: The Cylinders object assumes small angles."
+        print*,"Cylinders with large angles must be treated independently"
+        stop
+      endif
+
+      do ic=1,ncylinders
+
+c       --- First, get extent of cylinder by getting deltas relative to
+c       --- center.
+c       --- Get x and y at center of object at z = z(1)
+        zz = z(1) - zcent(ic)
+        xc(1) = zz*tan(theta(ic)) + xcent(ic)
+        yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
+     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
+     &          ycent(ic)
+        zc(1) = z(1)
+        call CylinderConductorF(rad(ic),length(ic),theta(ic),phi(ic),
+     &                          xcent(ic),ycent(ic),zcent(ic),
+     &                          1,xc,yc,zc,mxc,pxc,myc,pyc,mzc,pzc,0.)
+c       --- Check if point outside of object.
+        if (mxc(1) > 0.) then
+c         --- Check distance in z to object. If the distance to left or right
+c         --- is less than LARGEPOS, then set z to that location and find
+c         --- x and y deltas there. Otherwise this conductor can be skipped.
+          if (mzc(1) < LARGEPOS) then
+            zz = z(1) - mzc(1)*1.000001
+          else if (pzc(1) < LARGEPOS) then
+            zz = z(1) + pzc(1)*1.000001
+          else
+            cycle
+          endif
+          xc(1) = zz*tan(theta(ic)) + xcent(ic)
+          yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
+     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
+     &            ycent(ic)
+          zc(1) = zz
+          call CylinderConductorF(rad(ic),length(ic),theta(ic),phi(ic),
+     &                        xcent(ic),ycent(ic),zcent(ic),
+     &                        1,xc,yc,zc,mxc,pxc,myc,pyc,mzc,pzc,0.)
+        endif
+c       --- Get extent relative to grid
+        ixmin = max(0 ,int((xcent(ic) - (-mxc(1)) - xmin)/dx) - 1)
+        ixmax = min(nx,int((xcent(ic) + (-pxc(1)) - xmin)/dx) + 2)
+        iymin = max(0 ,int((ycent(ic) - (-myc(1)) - ymin)/dy) - 1)
+        iymax = min(ny,int((ycent(ic) + (-pxc(1)) - ymin)/dy) + 2)
+c       --- Generate grid points within the circumscribing rectangle
+        ii = 0
+        do tix = ixmin,ixmax
+          do tiy = iymin,iymax
+            ii = ii + 1
+            xt(ii) = xmin + tix*dx
+            yt(ii) = ymin + tiy*dy
+            zt(ii) = z(1)
+          enddo
+        enddo
+
+c       --- Get deltas for points in that rectangle
+        call CylinderConductorD(rad(ic),length(ic),theta(ic),phi(ic),
+     &                          xcent(ic),ycent(ic),zcent(ic),
+     &                          ii,xt,yt,zt,ddt)
+
+c       --- Fold the data into the arrays
+        ii = 0
+        do tix = ixmin,ixmax
+          do tiy = iymin,iymax
+            ii = ii + 1
+            id = tix*(ny+1) + tiy + 1
+            distance(id) = min(distance(id),ddt(ii))
+          enddo
+        enddo
+
+      enddo
+
+      return
+      end
+c=======================================================================
 c=======================================================================
       subroutine ConeConductorF(r_zmin,r_zmax,length,theta,phi,
      &                          xcent,ycent,zcent,
@@ -1689,7 +2203,7 @@ c=======================================================================
       real(kind=8):: delmz(n),delpz(n)
       real(kind=8):: fuzz
 
-c Finds distances along the axis of the points from a cylinder at an arbitrary
+c Finds distances along the axis of the points from a cone at an arbitrary
 c angle.
 c The notation is that a negative distance means that the point is inside.
 c
@@ -1950,6 +2464,75 @@ c         --- Now, get distances to surface
       return
       end
 c=======================================================================
+      subroutine ConeConductorD(r_zmin,r_zmax,length,theta,phi,
+     &                          xcent,ycent,zcent,n,x,y,z,distance)
+      use Constant
+      real(kind=8):: r_zmin,r_zmax,length,theta,phi,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a cone at an arbitrary angle.
+c The notation is that a negative distance means that the point is inside.
+c
+c Write equation of surface as xx^2 + yy^2 = (r1 + (zz-z1)/(z2-z1)*(r2-r1))^2
+c                              xx^2 + yy^2 = (s1 + s2*zz)^2
+c Here, xx, yy, zz are in frame relative to cone axis. Conversion from
+c frame of mesh, xg, yg, zg
+c       xx = xg*cos(theta) - zg*sin(theta)
+c       yy = yg*cos(phi) - zg*cos(theta)*sin(phi) - xg*sin(theta)*sin(phi)
+c       zz = zg*cos(theta)*cos(phi) + xg*sin(theta)*cos(phi) + yg*sin(phi)
+
+      integer(ISZ):: i
+      real(kind=8):: ctheta,stheta,cphi,sphi
+      real(kind=8):: xx,yy,zz,xp,yp,zp,rp
+      real(kind=8):: d1,ang_zmin,ang_zmax,dd,dz
+
+      ctheta = cos(theta)
+      stheta = sin(theta)
+      cphi = cos(phi)
+      sphi = sin(phi)
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+        xp = xx*ctheta - zz*stheta
+        yp = yy*cphi - zz*ctheta*sphi - xx*stheta*sphi
+        zp = zz*ctheta*cphi + xx*stheta*cphi + yy*sphi
+        rp = sqrt(xp**2 + yp**2)
+
+        d1 = sqrt((rp - r_zmin)**2 + (zp + length/2.)**2)
+        ang_zmin = atan2((rp - r_zmin),(zp + length/2.)) -
+     &         atan2((r_zmax - r_zmin),length)
+        if (ang_zmin > +pi) ang_zmin = ang_zmin - 2*pi
+        if (ang_zmin < -pi) ang_zmin = ang_zmin + 2*pi
+        ang_zmax = atan2((r_zmin - r_zmax),-length) -
+     &          atan2((rp - r_zmax),(zp - length/2.))
+        if (ang_zmax > +pi) ang_zmax = ang_zmax - 2*pi
+        if (ang_zmax < -pi) ang_zmax = ang_zmax + 2*pi
+        dd = d1*sin(ang_zmin)
+        dz = abs(zp) - length/2.
+
+        if (zp <= -length/2. .and. rp <= r_zmin) then
+          distance(i) = dz
+        else if (ang_zmin >= pi/2.) then
+          distance(i) = sqrt((rp - r_zmin)**2 + (zp + length/2.)**2)
+        else if (zp >= length/2. .and. rp <= r_zmax) then
+          distance(i) = dz
+        else if (ang_zmax >= pi/2.) then
+          distance(i) = sqrt((rp - r_zmax)**2 + (zp - length/2.)**2)
+        else if (dd >= 0.) then
+          distance(i) = dd
+        else
+          distance(i) = max(dd,dz)
+        endif
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine ConesConductorF(ncones,r_zmin,r_zmax,length,theta,phi,
      &                           xcent,ycent,zcent,
      &                           n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
@@ -2088,6 +2671,127 @@ c       --- Fold the data into the arrays
       return
       end
 c=======================================================================
+      subroutine ConesConductorD(ncones,r_zmin,r_zmax,length,theta,phi,fuzz,
+     &                           xcent,ycent,zcent,n,x,y,z,distance)
+      use Constant
+      integer(ISZ):: ncones
+      real(kind=8):: r_zmin(ncones),r_zmax(ncones),length(ncones)
+      real(kind=8):: theta(ncones),phi(ncones)
+      real(kind=8):: fuzz
+      real(kind=8):: xcent(ncones),ycent(ncones),zcent(ncones)
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances from a list of cones at arbitrary angles.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: nx,ny,ic
+      real(kind=8):: dx,dy
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: xc(1),yc(1),zc(1),zz
+      real(kind=8):: mxc(1),pxc(1),myc(1),pyc(1),mzc(1),pzc(1)
+      integer(ISZ):: nt,ixmin,ixmax,iymin,iymax,tix,tiy,ii,id
+      real(kind=8):: xt(n),yt(n),zt(n)
+      real(kind=8):: ddt(n)
+
+c     --- Very kludgy code to extract number of grid points and cell
+c     --- sizes from the input coordinates.
+      ymin = minval(y)
+      ymax = maxval(y)
+      dy = y(2) - y(1)
+      if (dy /= 0.) then
+        ny = maxval(int((y - ymin)/dy))
+      else
+        dy = 1.
+        ny = 0
+      endif
+      
+      xmin = minval(x)
+      xmax = maxval(x)
+      dx = x(ny+2) - x(1)
+      nx = maxval(int((x - xmin)/dx))
+
+      distance = LARGEPOS
+
+c     --- This code assumes small angles
+      if (maxval(abs(theta)) > pi/4. .or. maxval(abs(phi)) > pi/4.) then
+        print*,"Error: The Cones object assumes small angles."
+        print*,"Cones with large angles must be treated independently"
+        stop
+      endif
+
+      do ic=1,ncones
+
+c       --- First, get extent of cone by getting deltas relative to
+c       --- center.
+c       --- Get x and y at center of object at z = z(1)
+        zz = z(1) - zcent(ic)
+        xc(1) = zz*tan(theta(ic)) + xcent(ic)
+        yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
+     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
+     &          ycent(ic)
+        zc(1) = z(1)
+        call ConeConductorF(r_zmin(ic),r_zmax(ic),length(ic),theta(ic),phi(ic),
+     &                      xcent(ic),ycent(ic),zcent(ic),
+     &                      1,xc,yc,zc,mxc,pxc,myc,pyc,mzc,pzc,
+     &                      fuzz)
+c       --- Check if point outside of object.
+        if (mxc(1) > 0.) then
+c         --- Check distance in z to object. If the distance to left or right
+c         --- is less than LARGEPOS, then set z to that location and find
+c         --- x and y deltas there. Otherwise this conductor can be skipped.
+          if (mzc(1) < LARGEPOS) then
+            zz = z(1) - mzc(1)*1.000001
+          else if (pzc(1) < LARGEPOS) then
+            zz = z(1) + pzc(1)*1.000001
+          else
+            cycle
+          endif
+          xc(1) = zz*tan(theta(ic)) + xcent(ic)
+          yc(1) = zz*(cos(theta(ic))*sin(phi(ic)) +
+     &              tan(theta(ic))*sin(theta(ic))*sin(phi(ic)))/cos(phi(ic)) +
+     &            ycent(ic)
+          zc(1) = zz
+          call ConeConductorF(r_zmin(ic),r_zmax(ic),length(ic),
+     &                        theta(ic),phi(ic),xcent(ic),ycent(ic),zcent(ic),
+     &                        1,xc,yc,zc,mxc,pxc,myc,pyc,mzc,pzc,fuzz)
+        endif
+c       --- Get extent relative to grid
+        ixmin = max(0 ,int((xcent(ic) - (-mxc(1)) - xmin)/dx) - 1)
+        ixmax = min(nx,int((xcent(ic) + (-pxc(1)) - xmin)/dx) + 2)
+        iymin = max(0 ,int((ycent(ic) - (-myc(1)) - ymin)/dy) - 1)
+        iymax = min(ny,int((ycent(ic) + (-pxc(1)) - ymin)/dy) + 2)
+c       --- Generate grid points within the circumscribing rectangle
+        ii = 0
+        do tix = ixmin,ixmax
+          do tiy = iymin,iymax
+            ii = ii + 1
+            xt(ii) = xmin + tix*dx
+            yt(ii) = ymin + tiy*dy
+            zt(ii) = z(1)
+          enddo
+        enddo
+
+c       --- Get deltas for points in that rectangle
+        call ConeConductorD(r_zmin(ic),r_zmax(ic),length(ic),theta(ic),phi(ic),
+     &                      xcent(ic),ycent(ic),zcent(ic),ii,xt,yt,zt,ddt)
+
+c       --- Fold the data into the arrays
+        ii = 0
+        do tix = ixmin,ixmax
+          do tiy = iymin,iymax
+            ii = ii + 1
+            id = tix*(ny+1) + tiy + 1
+            distance(id) = min(distance(id),ddt(ii))
+          enddo
+        enddo
+
+      enddo
+
+      return
+      end
+c=======================================================================
       subroutine BeamletplateConductorF(za,zb,z0,thickness,xcent,ycent,zcent,
      &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
      &                            fuzz)
@@ -2216,6 +2920,51 @@ c       --- Point to the right of plate
           delmz(i) = zz - zrave
           cycle
         endif
+
+      enddo
+
+      return
+      end
+c=======================================================================
+      subroutine BeamletplateConductorD(za,zb,z0,thickness,xcent,ycent,zcent,
+     &                                  n,x,y,z,distance)
+      real(kind=8):: za,zb,z0,thickness,xcent,ycent,zcent
+      integer(ISZ):: n
+      real(kind=8):: x(n),y(n),z(n)
+      real(kind=8):: distance(n)
+
+c Finds distances along the axis of the points from a plate for the beamlet
+c source pre-accelerator.
+c The notation is that a negative distance means that the point is inside.
+
+      integer(ISZ):: i,ii
+      real(kind=8):: xx,yy,zz
+      real(kind=8):: x1,y1,z1,z2,zave,dd
+
+      do i=1,n
+
+        xx = x(i) - xcent
+        yy = y(i) - ycent
+        zz = z(i) - zcent
+
+c       --- Iterate to find intersection of normal line going through point
+c       --- and the surface
+        x1 = xx
+        y1 = yy
+        if (za < 1.e10 .and. zb < 1.e10) then
+          do ii=1,5
+            z1 = zb - sqrt((zb-za+sqrt((za-z0)**2-x1**2))**2 - y1**2)
+            z2 = za - sqrt((za-zb+sqrt((zb-z0)**2-y1**2))**2 - x1**2)
+            zave = 0.5*(z1 + z2)
+            x1 = xx*(za - zave)/(za-zz)
+            y1 = yy*(zb - zave)/(zb-zz)
+          enddo
+        else
+          zave = z0
+        endif
+
+        dd = sqrt((xx - x1)**2 + (yy - y1)**2 + (zz - zave)**2)
+        distance(i) = dd - thickness/2.
 
       enddo
 
