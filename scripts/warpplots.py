@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.22 2001/01/31 21:31:03 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.23 2001/02/01 00:40:24 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1331,10 +1331,13 @@ if sys.version[:5] != "1.5.1":
   pprvz.__doc__ = pprvz.__doc__ + ppgeneric_doc("r","vz")
 
 ##########################################################################
-def pptrace(iw=0,slope=0.,iz=-1,particles=1,titles=1,**kw):
+def pptrace(iw=0,slope=0.,iz=-1,particles=1,titles=1,pplimits=None,**kw):
   """
 Plots X-Y, X-X', Y-Y', Y'-X' in single page
 If slope='auto', it is calculated from the moments for X-X' and Y-Y' plots.
+pplimits can be a list of up to four tuples, one for each phase space plot.
+If any of the tuples are empty, the limits used will be the usual ones for
+that plot.
   """
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
@@ -1347,26 +1350,40 @@ If slope='auto', it is calculated from the moments for X-X' and Y-Y' plots.
   kw['particles'] = particles
   kw['titles'] = titles
   if titles: ptitles(titler=titler)
+  defaultpplimits = [(top.xplmin,top.xplmax,top.yplmin,top.yplmax),
+                     (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax),
+                     (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax),
+                     (top.ypplmin,top.ypplmax,top.xpplmin,top.xpplmax)]
+  if pplimits == None:
+    pplimits = defaultpplimits
+  else:
+    if type(pplimits[0]) != type(()):
+      pplimits = 4*[pplimits]
+    else:
+      for i in xrange(4):
+        if i == len(pplimits): pplimits.append(defaultpplimits[i])
+        if not pplimits[i]: pplimits[i] = defaultpplimits[i]
+
  
   kw['view'] = 3
-  kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
+  kw['pplimits'] = pplimits[0]
   settitles("Y vs X","X","Y")
   ppgeneric(y,x,kwdict=kw)
  
   kw['view'] = 4
-  kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
+  kw['pplimits'] = pplimits[1]
   if type(slope)==type(''): kw['slope'] = getyypslope(iw=iw,iz=iz)[0]
   settitles("Y' vs Y","Y","Y'")
   ppgeneric(yp,y,kwdict=kw)
  
   kw['view'] = 5
-  kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
+  kw['pplimits'] = pplimits[2]
   if type(slope)==type(''): kw['slope'] = getxxpslope(iw=iw,iz=iz)[0]
   settitles("X' vs X","X","X'")
   ppgeneric(xp,x,kwdict=kw)
  
   kw['view'] = 6
-  kw['pplimits'] = (top.ypplmin,top.ypplmax,top.xpplmin,top.xpplmax)
+  kw['pplimits'] = pplimits[3]
   if type(slope)==type(''): kw['slope'] = 0.
   settitles("X' vs Y'","Y'","X'")
   ppgeneric(xp,yp,kwdict=kw)
