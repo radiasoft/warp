@@ -1,6 +1,6 @@
 from warp import *
 import RandomArray
-optimizer_version = "$Id: optimizer.py,v 1.2 2002/02/19 22:34:38 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.3 2002/02/27 23:26:11 dave Exp $"
 """
 This file contains several optimizers, including:
   Simultaneaous Perturbation Stochastic Approximation
@@ -27,8 +27,10 @@ Creates an instance of the Spsa class.
        is approximately the change in loss when params are changed by c1
        divided by c1)
   - a2=100.: Scale (in iteration numbers) over which c and a are decreased
-  - paramsmin=-1.e+36: Min value of the parameters
-  - paramsmax=+1.e+36: Max value of the parameters
+  - paramsmin=-1.e+36: Min value of the parameters. This can be a function
+                       which takes self as its single argument.
+  - paramsmax=+1.e+36: Max value of the parameters. This can be a function
+                       which takes self as its single argument.
   - verbose=0: when true, print diagnostics
     """
     self.nparams = nparams
@@ -41,11 +43,11 @@ Creates an instance of the Spsa class.
     self.c1 = c1
     self.verbose = verbose
     self.hloss = []
-    if not paramsmin:
+    if paramsmin is None:
       self.paramsmin = -ones(nparams)*1.e+36
     else:
       self.paramsmin = paramsmin
-    if not paramsmax:
+    if paramsmax is None:
       self.paramsmax = +ones(nparams)*1.e+36
     else:
       self.paramsmax = paramsmax
@@ -65,6 +67,14 @@ Creates an instance of the Spsa class.
     print "iterations = %d  error = %e %e" %(self.k,self.loss(),self.loss()/err)
   def printparams(self):
     for i in xrange(self.nparams): print '%15.12e'%self.params[i]
+  def getparamsmin(self):
+    """Returns the min limit of parameters."""
+    if type(self.paramsmin) is FunctionType: return self.paramsmin(self)
+    return self.paramsmin
+  def getparamsmax(self):
+    """Returns the max limit of parameters."""
+    if type(self.paramsmax) is FunctionType: return self.paramsmax(self)
+    return self.paramsmax
 
   def iter(self,err=1.e-9,imax=10000,kprint=10):
     """
@@ -85,7 +95,8 @@ Function to do iterations.
         print "params = " + repr(self.params)
       self.params = self.params - self.ak()*dp
       # --- Makes sure all params are within bounds
-      self.params = minimum(maximum(self.params,self.paramsmin),self.paramsmax)
+      self.params = maximum(self.params,self.getparamsmin())
+      self.params = minimum(self.params,self.getparamsmax())
       if self.verbose:
         print "new params = " + repr(self.params)
       # --- Calculate function with new params
