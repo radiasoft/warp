@@ -25,3 +25,9 @@ c
       print*,"***: stopping.  dummy returnphi called"
       return
       end
+
+      subroutine returnrho(rhoout)
+      double precision rhoout(*)
+      print*,"***: stopping.  dummy returnrho called"
+      return
+      end

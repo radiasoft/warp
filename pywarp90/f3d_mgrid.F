@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.18 $, $Date: 2002/01/31 17:42:35 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.19 $, $Date: 2002/03/06 23:23:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -150,7 +150,7 @@ c       --- Change rstar if using Nuemann boundary conditions
       endif
 
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
-c     --- vary few iterations are done.
+c     --- very few iterations are done.
       mgiters = 0
       maxerr = 2.*mgtol + 1.
       do while (maxerr > mgtol .and. mgiters < mgmaxiters)
@@ -174,6 +174,7 @@ c       --- This line below seems to create a large temporary which can
 c       --- cause problems when memory is close to full. So it was replaced
 c       --- with the explicit loop above.
 c       maxerr = maxval(abs(phi_temp(1+nxy:nxy+nxyz) - phi1d(1+nxy:nxy+nxyz)))
+	print *, 'iteration ', mgiters, ' maxerr=', maxerr
 
 c       --- Save the current phi. The original phi1d array is used as the
 c       --- scratch space to hold the current value of phi which is used
@@ -214,7 +215,8 @@ c=============================================================================
       use Multigrid3d
       integer(ISZ):: levelxy,levelz
       integer(ISZ):: nx,ny,nz
-      real(kind=8):: dxsqi,dysqi,dzsqi
+c     dxsqi=1./dx**2, dysqi=1./dy**2, dzsqi=1./dz**2
+      real(kind=8):: dxsqi,dysqi,dzsqi 
       real(kind=8):: phi(*),rho(*),res(*),rstar(*),scrtch(*)
       logical(ISZ):: linbends
       logical(ISZ):: l2symtry,l4symtry
@@ -226,6 +228,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: i2h,i
       real(kind=8):: ff
 
+      print *, 'vcycle on dimensions ', nx, ny, nz
 c     --- Do initial SOR passes.
       do i=1,downpasses
         call sorpass3d(levelxy,levelz,nx,ny,nz,phi(1),rho(1),phi(1),rho(1),
@@ -235,6 +238,7 @@ c     --- Do initial SOR passes.
 
 c     --- If grid is not at its coarsest level in any of the axis or and
 c     --- all dimensions are even, continue the coarsening.
+c     --- Condition:  all of nx, ny, nz are greater than 2 and divisible by 4
       if (nx > 2 .and. ny > 2 .and. nz > 2 .and.
      &    mod(nx,4) == 0 .and. mod(ny,4) == 0 .and. mod(nz,4) == 0) then
 
@@ -247,6 +251,7 @@ c       --- Get the residual on the current grid.
 
 c       --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
 c       --- all axis.
+c       --- dz > 4/3 dx <=> (9/16) / dx^2 < 1 / dz^2
         if (0.5625*dxsqi > dzsqi) then
 
 c         --- Ratio of old to new constant needed to scale the residual for
@@ -266,7 +271,7 @@ c         --- Add in resulting error.
 
         else
 
-c         --- Restiction - note that scaling factor for residual is always
+c         --- Restriction - note that scaling factor for residual is always
 c         --- 4 for full-coarsening and is compiled into the restriction
 c         --- routine.
           call restrict3d(nx,ny,nz,res(1),rho(i2h),boundxy,bound0,boundnz,
@@ -2297,19 +2302,38 @@ c Fills the array coeffs with the coeeficients of the 7-point finite
 c differenced Poisson's equation, taking into account the changed form of the
 c equation near a boundary using the subgrid-scale technique.
 
-      integer(ISZ):: ix,iy,iz
+      integer(ISZ):: ic,ix,iy,iz
       integer(ISZ):: level
       real(kind=8):: rdx2,coeff0
 
 c     --- First put in the default values
       rdx2 = 1./dx**2
-      coeff0 = 2.*(rdx2 + rdx2 + rdx2)
+      coeff0 = -2.*(rdx2 + rdx2 + rdx2)
       coeffs(:,:,:,0) = coeff0
       coeffs(:,:,:,1:6) = rdx2
       coeffs(:,:,:,7) = 0.
       
 c     --- Get level of coarseness
       level = nint(dx/dxpsor)
+
+c     --- Check for point in conductors.
+      do ic=1,ncond
+c       --- First check if the conductor point is on the grid at this
+c       --- level of refinement.
+        if (icondlxy(ic) >= level .and. icondlz(ic) >= level) then
+          ix = ixcond(ic)/level
+          iy = iycond(ic)/level
+          iz = izcond(ic)/level
+c         --- Then check if the point is within the requested region.
+          if (xlo <= ix .and. ix <= xhi .and.
+     &        ylo <= iy .and. iy <= yhi .and.
+     &        zlo <= iz .and. iz <= zhi) then
+            coeffs(ix,iy,iz,0) = 1.
+            coeffs(ix,iy,iz,1:6) = 0.
+            coeffs(ix,iy,iz,7) = condvolt(ic)
+          endif
+        endif
+      enddo
 
 c     --- Get coefficients for even points.
       call NodalCoefficientswork(coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,
