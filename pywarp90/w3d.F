@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.174 $, $Date: 2004/11/16 01:01:11 $
+c@(#) File W3D.F, version $Revision: 3.175 $, $Date: 2004/11/17 22:48:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6101,7 +6101,7 @@ c===========================================================================
       use Fields3dParticles
 
 c     --- Ensure that the phip array is setup properly
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
         call setupFields3dParticles()
       endif
 
