@@ -1,17 +1,47 @@
 from warp import *
-fixwxy_version = "$Id: fixwxy.py,v 1.2 2001/03/01 22:23:37 dave Exp $"
+fixwxy_version = "$Id: fixwxy.py,v 1.3 2001/04/12 00:51:22 lund Exp $"
 # Fixes beam so that it exactly agress with the specified beam paramters
 
 # --- Fixes 1st and 2nd moments
-def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None):
-  if not a: a = top.a0
-  if not ap: ap = top.ap0
-  if not b: b = top.b0
-  if not bp: bp = top.bp0
-  if not x: x = top.x0
-  if not xp: xp = top.xp0
-  if not y: y = top.y0
-  if not yp: yp = top.yp0
+def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None, 
+            emitx=None,emity=None):
+  if a  == None: a  = top.a0
+  if ap == None: ap = top.ap0
+  if b  == None: b  = top.b0
+  if bp == None: bp = top.bp0
+  if x  == None: x  = top.x0
+  if xp == None: xp = top.xp0
+  if y  == None: y  = top.y0
+  if yp == None: yp = top.yp0
+  # --- x-emittance 
+  if emitx == None: 
+    if top.emitn == 0. and top.emitnx == 0.:
+      # --- set from unnormalized emittance  
+      if top.emitx == 0.: 
+        emitx = top.emit
+      else:
+        emitx = top.emitx 
+    else: 
+      # --- set from normalized emittance 
+      if top.emitnx == 0.: 
+        emitx = top.emitn*top.clight/top.vbeam
+      else: 
+        emitx = top.emitnx*top.clight/top.vbeam
+  # --- y-emittance 
+  if emity == None: 
+    if top.emitn == 0. and top.emitny == 0.:
+      # --- set from unnormalized emittance  
+      if top.emity == 0.: 
+        emity = top.emit
+      else: 
+        emity = top.emity 
+    else: 
+      # --- set from normalized emittance 
+      if top.emitny == 0.: 
+        emity = top.emitn*top.clight/top.vbeam
+      else: 
+        emity = top.emitny*top.clight/top.vbeam
+
   vx = xp*top.vbeam
   vy = yp*top.vbeam
 
@@ -31,12 +61,8 @@ def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None):
   top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - slopex*top.xp,0.)
   top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - slopey*top.yp,0.)
   # --- Scale to get correct thermal spread
-  if top.emitn != 0:
-    emit = top.emitn*top.clight/top.vbeam
-  else:
-    emit = top.emit
-  top.uxp[:] = top.uxp[:]*(emit/top.a0)/(top.epsx[0]/(2.*top.xrms[0]))
-  top.uyp[:] = top.uyp[:]*(emit/top.b0)/(top.epsy[0]/(2.*top.yrms[0]))
+  top.uxp[:] = top.uxp[:]*(emitx/top.a0)/(top.epsx[0]/(2.*top.xrms[0]))
+  top.uyp[:] = top.uyp[:]*(emity/top.b0)/(top.epsy[0]/(2.*top.yrms[0]))
   # --- Added back in specified coherent velocity and average
   slopex = top.ap0/top.a0*top.vbeam
   slopey = top.bp0/top.b0*top.vbeam
@@ -57,10 +83,11 @@ def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None):
 # --- Fixes only 1st moments (beam centroid)
 def fixwxy1(x=None,y=None,xp=None,yp=None,xerr=0.,yerr=0.,xperr=0.,yperr=0.,
             replacehist=1):
-  if not x: x = top.x0
-  if not xp: xp = top.xp0
-  if not y: y = top.y0
-  if not yp: yp = top.yp0
+  if x  == None: x  = top.x0
+  if xp == None: xp = top.xp0
+  if y  == None: y  = top.y0
+  if yp == None: yp = top.yp0
+
   rr = sqrt(ranf())
   tt = ranf()*2.*pi
   xx = x + xerr*rr*cos(tt)
