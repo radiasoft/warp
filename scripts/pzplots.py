@@ -78,7 +78,7 @@ Miscellaneous:
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.14 2003/06/27 23:31:54 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.15 2003/08/22 17:15:32 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -1192,7 +1192,7 @@ def pzepsx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("X-X' emittance versus Z",titleb,"(pi-m-rad)")
+  if titles: ptitles("X-X' emittance versus Z",titleb,"(!p-m-rad)")
 
 ##########################################################################
 def pzepsy(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1222,7 +1222,7 @@ def pzepsy(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Y-Y' emittance versus Z",titleb,"(pi-m-rad)")
+  if titles: ptitles("Y-Y' emittance versus Z",titleb,"(!p-m-rad)")
 
 ##########################################################################
 def pzepsz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1252,7 +1252,7 @@ def pzepsz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epszz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Z-Z' emittance versus Z",titleb,"(pi-m-rad)")
+  if titles: ptitles("Z-Z' emittance versus Z",titleb,"(!p-m-rad)")
 
 ##########################################################################
 def pzepsnx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1282,7 +1282,7 @@ def pzepsnx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsnxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("X-X' normalized emittance versus Z",titleb,"(pi-mm-mrad)")
+  if titles: ptitles("X-X' normalized emittance versus Z",titleb,"(!p-mm-mrad)")
 
 ##########################################################################
 def pzepsny(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1312,7 +1312,7 @@ def pzepsny(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsnyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Y-Y' normalized emittance versus Z",titleb,"(pi-mm-mrad)")
+  if titles: ptitles("Y-Y' normalized emittance versus Z",titleb,"(!p-mm-mrad)")
 
 ##########################################################################
 def pzepsnz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1342,7 +1342,7 @@ def pzepsnz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsnzz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Z-Z' normalized emittance versus Z",titleb,"(pi-mm-mrad)")
+  if titles: ptitles("Z-Z' normalized emittance versus Z",titleb,"(!p-mm-mrad)")
 
 ##########################################################################
 def pzepsg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1372,7 +1372,7 @@ def pzepsg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsgz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Generalized emittance versus Z",titleb,"(pi-m-rad)")
+  if titles: ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)")
 
 ##########################################################################
 def pzepsh(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1402,7 +1402,7 @@ def pzepsh(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epshz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Generalized emittance versus Z",titleb,"(pi-m-rad)")
+  if titles: ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)")
 
 ##########################################################################
 def pzepsng(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1433,7 +1433,7 @@ def pzepsng(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   warpplg(epsngz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles:
-    ptitles("Generalized normalized emittance versus Z",titleb,"(pi-mm-mrad)")
+    ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)")
 
 ##########################################################################
 def pzepsnh(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
@@ -1464,7 +1464,7 @@ def pzepsnh(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   warpplg(epsnhz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles:
-    ptitles("Generalized normalized emittance versus Z",titleb,"(pi-mm-mrad)")
+    ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)")
 
 ##########################################################################
 def pzvxrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
