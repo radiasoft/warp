@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.94 2004/11/12 18:00:53 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.95 2004/11/17 22:41:38 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -418,6 +418,27 @@ Elliptic assembly
       yi[:] = yi*self.ellipticity
       iphi[:] = arctan2(sin(iphi),self.ellipticity*cos(iphi))
 
+  def __getstate__(self):
+    """
+An explicit getstate is needed in order for this to be picklable. The
+generator attributes are functions and cannot be pickled so they must be
+removed from the dictionary when pickling.
+    """
+    dict = self.__dict__.copy()
+    del dict['generatorf']
+    del dict['generatord']
+    del dict['generatori']
+    return dict
+
+  def __setstate__(self,dict):
+    """
+This explicit setstate restores the generator attributes.
+    """
+    self.__dict__.update(dict)
+    self.generatorf = self.ellipseconductorf
+    self.generatord = self.ellipseconductord
+    self.generatori = self.ellipseintercept
+
 #============================================================================
 class XAssembly(Assembly):
   """
@@ -491,6 +512,27 @@ Assembly aligned along X axis
     argtuple[-2][:] = itheta
     argtuple[-1][:] = iphi
 
+  def __getstate__(self):
+    """
+An explicit getstate is needed in order for this to be picklable. The
+generator attributes are functions and cannot be pickled so they must be
+removed from the dictionary when pickling.
+    """
+    dict = self.__dict__.copy()
+    del dict['generatorf']
+    del dict['generatord']
+    del dict['generatori']
+    return dict
+
+  def __setstate__(self,dict):
+    """
+This explicit setstate restores the generator attributes.
+    """
+    self.__dict__.update(dict)
+    self.generatorf = self.xconductorf
+    self.generatord = self.xconductord
+    self.generatori = self.xintercept
+
 #============================================================================
 class YAssembly(Assembly):
   """
@@ -563,6 +605,27 @@ Assembly aligned along Y axis
     iphi = arctan2(cos(ttheta),sin(tphi)*sin(ttheta))
     argtuple[-2][:] = itheta
     argtuple[-1][:] = iphi
+
+  def __getstate__(self):
+    """
+An explicit getstate is needed in order for this to be picklable. The
+generator attributes are functions and cannot be pickled so they must be
+removed from the dictionary when pickling.
+    """
+    dict = self.__dict__.copy()
+    del dict['generatorf']
+    del dict['generatord']
+    del dict['generatori']
+    return dict
+
+  def __setstate__(self,dict):
+    """
+This explicit setstate restores the generator attributes.
+    """
+    self.__dict__.update(dict)
+    self.generatorf = self.yconductorf
+    self.generatord = self.yconductord
+    self.generatori = self.yintercept
 
 ##############################################################################
 class ConductorExtent:
