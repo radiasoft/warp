@@ -11,26 +11,28 @@ OPT = -O3 -xW -tpp7 -ip -unroll -prefetch # for Pentium IV
 #OPT = -g
 POPT = -O0
 PYMODULEOPT = -O1
-F90FREE  = ifc -132 -r8 -DIFC -FR -fpp -implicitnone -C90 -Zp8 $(ARGS)
-F90FIXED = ifc -132 -r8 -DIFC -FI -fpp -implicitnone -C90 -Zp8 $(ARGS)
+WITHCHP = #-DWITHCHP
+F90FREE  = ifc -r8 -DIFC -FR -fpp -implicitnone -C90 -Zp8 $(ARGS) $(WITHCHP)
+F90FIXED = ifc -132 -r8 -DIFC -FI -fpp -implicitnone -C90 -Zp8 $(ARGS) $(WITHCHP)
 CC = cc
 SO = so
 LD = ifc -Bdynamic -132 -r8 -C90 -Zp8 $(ARGS) $(OPT)
 EXPORT = -Qoption,ld,-export-dynamic
 FORTLIB =
 LINKLIB = -ldl -lutil -lpthread
-XLIB = -L/usr/X11R6/lib
-PACTLIB = -L/usr/local/pact/lib -lpdb -lpml -lscore
-YORICKLIB = -L/usr/local/lib/yorick/1.4/lib -lgist
+XLIB = # -L/usr/X11R6/lib
+PACTLIB = # -L/usr/local/pact/lib -lpdb -lpml -lscore
+YORICKLIB = # -L/usr/local/lib/yorick/1.4/lib -lgist
 TCLLIB = 
 LAPACKLIB = -L/home/dave/lapack_ifc/LAPACK -llapackifc -lblasifc
 NUMPYINCLUDE = -I$(PYTHON)/include/python$(PYVERS)/Numeric
 OLD = OLD1
 
+CHPLIBS = #-L/home/dave/Chombo/Chombo/lib -lpic3d.Linux.icc.ifc -lparticletools3d.Linux.icc.ifc -lamrnodeelliptic3d.Linux.icc.ifc -larrayview3d.Linux.icc.ifc -lamrtools3d.Linux.icc.ifc -lboxtools3d.Linux.icc.ifc -lintrins -lhdf5
+
 WARPSCRIPTS = $(HOME)/scripts
-OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB)
-OTHERSOS = $(PYTHON)/lib/python$(PYVERS)/site-packages/*/*.so \
-	  #$(PYTHON)/lib/python$(PYVERS)/site-packages/*/*/*.so
+OTHERLIBS = $(PACTLIB) $(YORICKLIB) $(LAPACKLIB) $(CHPLIBS)
+OTHERSOS = 
 
 warp: warpC.$(SO)
 	#cp warpC.$(SO) $(WARPSCRIPTS)
