@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.24 2003/07/09 22:44:45 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.25 2003/08/11 18:17:03 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -295,7 +295,12 @@ def globalop(a,localop,mpiop,defaultval):
   if type(a) in [FloatType,IntType]:
     local = a
   elif len(a) > 0:
-    local = localop(a)
+    try:
+      # --- Protect application of localop since the data may not be
+      # --- appropriate on all processors, for example it may be an empty array.
+      local = localop(a)
+    except:
+      local = defaultval
   else:
     local = defaultval
   if not lparallel: return local
