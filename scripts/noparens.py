@@ -1,7 +1,7 @@
 # Creates a class representation of functions that allow
 # the function to be called without the added '()' when there are no
 # arguments. Note that in that case, an extra blank line is output.
-noparens_version = "$Id: noparens.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+noparens_version = "$Id: noparens.py,v 1.2 2001/01/11 00:21:48 dave Exp $"
 
 
 class Noparens:
@@ -12,4 +12,4 @@ class Noparens:
     return ''
   __str__ = __repr__
   def __call__(self,*k,**kw):
-    apply(self.func,k,kw)
+    return apply(self.func,k,kw)
