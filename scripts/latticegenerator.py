@@ -1,7 +1,7 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.2 2001/09/21 23:29:01 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.3 2001/11/03 01:18:14 dave Exp $"
 ######################################################################
 # Lattice builder
 # 
@@ -328,8 +328,11 @@ class LatticeGenerator:
       elif min(s.gapez) < 0.:
         gapezmax = min(max(s.gapez)-min(s.gapez),
                         s.maxgapgradient*s.hlp/s.gap_len)
-        s.gapez[:] = (s.gapez-min(s.gapez))/(max(s.gapez)-min(s.gapez))* \
-                      gapezmax
+        if gapezmax != 0.:
+          s.gapez[:] = (s.gapez-min(s.gapez))/(max(s.gapez)-min(s.gapez))* \
+                        gapezmax
+        else:
+          s.gapez[:] = 0.
 
       # --- Generate lattice period
       s.addgap(s.zlast,s.gapez)
@@ -480,7 +483,8 @@ class LatticeGenerator:
       j = 0
       while acclts + j*accldt < s.risetime+s.firetime:
         if (acclts + j*accldt) > s.firetime:
-          gapez[j] = (acclts + j*accldt - s.firetime)/s.risetime*firstgrad
+          t = (acclts + j*accldt - s.firetime)/s.risetime
+          gapez[j] = s.riseprofile(t)*firstgrad
         j = j + 1
       # --- Zero out gap field for times < firetime
       gapez[:] = where(less(actime,s.firetime),0.,gapez[:])
@@ -539,22 +543,24 @@ class LatticeGenerator:
   #-----------------------------------------------------------------------
   #-----------------------------------------------------------------------
   # --- These are the functions that need to be defined by the user
-  def endcondition(s,s):
+  def endcondition(s,s1):
       raise "The function endcondition needs to be defined"
-  def midpulsegapvoltage(s,s):
+  def midpulsegapvoltage(s,s1):
       raise "The function midpulsegapvoltage needs to be defined"
-  def tilt(s,s):
+  def tilt(s,s1):
       raise "The function tilt needs to be defined"
-  def occupancy(s,s):
+  def occupancy(s,s1):
       raise "The function occupancy needs to be defined"
-  def amean(s,s):
+  def amean(s,s1):
       raise "The function amean needs to be defined"
-  def sigma(s,s):
+  def sigma(s,s1):
       raise "The function sigma needs to be defined"
-  def aperture(s,s):
+  def aperture(s,s1):
       raise "The function aperture needs to be defined"
-  def lmagnetic(s,s):
+  def lmagnetic(s,s1):
       raise "The function lmagnetic needs to be defined"
+  def riseprofile(s,t):
+      return t
 
   def __getstate__(s):
     # --- This is needed since the user supplied subroutines cannot be
@@ -594,6 +600,9 @@ class LatticeGenerator:
     s.charge[:] = s.charge*s.chargemid
 
   def geteears(s,accl_ts,accl_dt):
+    if s.icharge == -1:
+      s.eears[:] = 0.
+      return
     # --- Recalculate beamtime and other params to smooth out glitches
     # --- from the load and fire scheme.
     # --- beamtime is replaced by an array that varies linearly from
@@ -631,7 +640,9 @@ class LatticeGenerator:
     s.cirvar[0,:] = s.hlp*sqrt((2.*s.perveance)/(1.-cos(s.sigma(s)*pi/180.)))
     s.cirvar[2,:] = s.cirvar[0,:]
     # --- Now, get the ez
-    getezbeam(s.nn+1,s.cirvar,s.ezbeam,s.aperture(s),s.icharge,true)
+    lfailed = false
+    getezbeam(s.nn+1,s.cirvar,s.ezbeam,s.aperture(s),s.icharge,true,false,true,
+              lfailed)
     # --- Interpolate ezbeam into eears. This can be done easily since
     # --- the beamtime used here is linearly varying.
     tears = accl_ts + iota(0,s.ntaccl)*accl_dt
