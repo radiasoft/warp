@@ -1,4 +1,4 @@
-!     Last change:  JLV   9 Jul 2003    2:31 pm
+!     Last change:  JLV  28 Jul 2003    4:27 pm
 #include "top.h"
 
 module multigrid_common
@@ -212,12 +212,11 @@ TYPE(BNDtype), POINTER :: b
 return
 end subroutine init_basegrid
 
-subroutine add_grid(mothergrid,nr,nz,dri,dzi,rmini,zmini,guard_min_r,guard_max_r,guard_min_z,guard_max_z,l_verbose,lshifts)
+subroutine add_grid(mothergrid,nr,nz,dri,dzi,rmini,zmini,guard_min_r,guard_max_r,guard_min_z,guard_max_z,l_verbose)
 implicit none
 TYPE(GRIDtype), pointer :: mothergrid
 INTEGER(ISZ), INTENT(IN) :: nr, nz, guard_min_r, guard_max_r, guard_min_z, guard_max_z
 REAL(8), INTENT(IN) :: dri,dzi,rmini,zmini
-INTEGER(ISZ), INTENT(IN), OPTIONAL :: lshifts(nr+1)
 LOGICAL(ISZ) :: l_verbose
 
 TYPE(GRIDtype), pointer :: g  ! new grid
@@ -242,21 +241,7 @@ TYPE(BNDtype), POINTER :: b
 ! allocate new grid
 
   g => NewGRIDtype()
-  IF(.not. PRESENT(lshifts)) then
-    nzs = 0
-!    ALLOCATE(g%rho(nr+1,nz+1), &
-!             g%phi(1-nguardx:nr+1+nguardx,1-nguardz:nz+1+nguardz), &
-!             g%loc_part(nr+1,nz+1), &
-!             g%loc_part_fd(nr+1,nz+1), &
-!             g%invvol(nr+1))
-  else
-    nzs = MAXVAL(lshifts)
-!    ALLOCATE(g%rho(nr+1,nz+nzs+1), &
-!             g%phi(1-nguardx:nr+1+nguardx,1-nguardz:nz+nzs+1+nguardz), &
-!             g%loc_part(nr+1,nz+nzs+1), &
-!             g%loc_part_fd(nr+1,nz+nzs+1), &
-!             g%invvol(nr+1))
-  END if
+  nzs = 0
   IF(n_avail_ids==0) then
     g%gid=grids_nids+1
     grids_nids=grids_nids+1
@@ -341,10 +326,6 @@ TYPE(BNDtype), POINTER :: b
   else
     g%izrbnd = dirichlet
   END if
-  IF(PRESENT(lshifts)) then
-    g%izlbnd = dirichlet
-    g%izrbnd = dirichlet
-  END if
 
 ! computes commodity quantities for charge deposition
 
@@ -372,11 +353,7 @@ TYPE(BNDtype), POINTER :: b
   IF(solvergeom==Zgeom) then
     g%nlevels=nlevels
   else
-    IF(PRESENT(lshifts)) then
-      call init_bnd(g,nr,nz,dr,dz,g%zmin,g%zmax,l_verbose,lshifts)
-    else
-      call init_bnd(g,nr,nz,dr,dz,g%zmin,g%zmax,l_verbose)
-    END if
+    call init_bnd(g,nr,nz,dr,dz,g%zmin,g%zmax,l_verbose)
     g%nlevels=nlevels
   END if
   do i = 1,g%nlevels
@@ -403,21 +380,8 @@ TYPE(BNDtype), POINTER :: b
     g%up%loc_part(1,lmin:lmax-1)=g%gid
     g%up%loc_part_fd(1,lmin+guard_min_z:lmax-1-guard_max_z)=g%gid
   else
-    IF(.not. PRESENT(lshifts)) then
-      g%up%loc_part(jmin:jmax-1,lmin:lmax-1)=g%gid
-      g%up%loc_part_fd(jmin+guard_min_r:jmax-1-guard_max_r,lmin+guard_min_z:lmax-1-guard_max_z)=g%gid
-    else
-      ratio_r = NINT(mothergrid%dr/g%dr)
-      ratio_z = NINT(mothergrid%dz/g%dz)
-      do j = jmin, jmax-1
-        ls = INT(lshifts(1+(j-jmin)*ratio_r)/ratio_z)-g%up%bndfirst%lshift(j)
-        g%up%loc_part(j,lmin+ls:lmax-1+ls) = g%gid
-      end do
-      do j = jmin+guard_min_r, jmax-1-guard_max_r
-        ls = INT(lshifts(1+(j-jmin)*ratio_r)/ratio_z)-g%up%bndfirst%lshift(j)
-        g%up%loc_part_fd(j,lmin+ls+guard_min_z:lmax-1+ls-guard_max_z) = g%gid
-      end do
-    END if
+    g%up%loc_part(jmin:jmax-1,lmin:lmax-1)=g%gid
+    g%up%loc_part_fd(jmin+guard_min_r:jmax-1-guard_max_r,lmin+guard_min_z:lmax-1-guard_max_z)=g%gid
   END if
 
 !  call print_structure(grid)
@@ -564,7 +528,7 @@ TYPE(GRIDtype), pointer :: grid
 return
 end subroutine assign_grids_ptr
 
-subroutine init_bnd(g,nr,nz,dr,dz,zmin,zmax,l_verbose,lshifts)
+subroutine init_bnd(g,nr,nz,dr,dz,zmin,zmax,l_verbose)
 ! intializes grid quantities according to the number of multigrid levels and grid sizes nx and nz.
 USE InGen3d, ONLY:l2symtry, l4symtry
 USE Picglb3d, ONLY:dy
@@ -573,7 +537,6 @@ implicit none
 TYPE(GRIDtype), pointer :: g
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr, dz, zmin, zmax
-INTEGER(ISZ),INTENT(IN), OPTIONAL :: lshifts(nr+1)
 LOGICAL(ISZ):: l_verbose
 
 INTEGER(ISZ) :: i, nrp0, nzp0, nrc, nzc, nrc_old, nzc_old, j, jcoarse, lcoarse
@@ -696,36 +659,8 @@ TYPE(BNDtype), pointer :: b
     b%dz = dzc
     b%nvlocs = 0
     b%nb_conductors = 0
-!    ALLOCATE(b%lshift(0:b%nr+2))
 !    ALLOCATE(b%v(b%nr+1,b%nz+1))
     call BNDtypeallot(b)
-    IF(PRESENT(lshifts)) then
-      b%l_lshift = .true.
-      IF(i==1) then
-        b%lshift(1:b%nr+1) = lshifts
-      else
-        b%lshift(1:b%nr+1) = 1000000
-        do j = 1,b%prev%nr
-          jcoarse = 1+INT(j*b%prev%dr/b%dr)
-          lcoarse = 1+INT(b%prev%lshift(j)*b%prev%dz/b%dz)
-          b%lshift(jcoarse) = MIN(b%lshift(jcoarse),lcoarse-1)
-          b%lshift(jcoarse+1) = MIN(b%lshift(jcoarse+1),lcoarse-1)
-          ! check if coarse grid long enough and adjust if necessary
-          lcoarse = 1+INT((b%prev%nz+b%prev%lshift(jcoarse))*b%prev%dz/b%dz)-b%lshift(jcoarse)
-          b%nz = MAX(b%nz,lcoarse)
-          write(o_line,*) 'j=',j,jcoarse,lcoarse,b%lshift(jcoarse),b%nz
-          call remark(trim(o_line))
-        end do
-        write(o_line,*) 'level ',i,' nz = ',b%nz
-        call remark(trim(o_line))
-        b%lshift(b%nr+1) = b%lshift(b%nr)
-      END if
-      b%lshift(0) = b%lshift(1)
-      b%lshift(b%nr+2) = b%lshift(b%nr+1)
-    else
-      b%l_lshift = .false.
-      b%lshift = 0
-    END if
     b%v(:,:)=v_vacuum
     IF(l_verbose) then
      if(my_index==0) then
@@ -1065,6 +1000,8 @@ REAL(8) :: x, z, xx, zz, invdxold, invdzold, dxnew, dznew, delx, delz, odelx, od
 REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+1), oddz(nznew+1)
 INTEGER(ISZ) :: jold(nxnew+1), kold(nznew+1), joldp(nxnew+1), koldp(nznew+1)
 
+t_before = wtime()
+
 IF(l_mgridrz_debug) then
   write(o_line,*) 'enter expand, level = ',level
   call remark(trim(o_line))
@@ -1157,96 +1094,9 @@ IF(l_mgridrz_debug) then
   call remark(trim(o_line))
 END if
 
+t_expand = t_expand + wtime()-t_before
 return
 END subroutine add_and_expand
-
-subroutine add_and_expand_wshift(unew, uold, snew, sold, bnd, nxnew, nznew, nzsnew, nxold, nzold, nzsold, &
-                                 xminnew, zminnew, dxnew, dznew, xminold, zminold, dxold, dzold)
-! expand field from grid to a finer one. Each dimension may have any number of cells.
-implicit none
-TYPE(BNDtype) :: bnd
-INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, nxold, nzold, nzsnew, nzsold
-REAL(8), DIMENSION(0:nxnew+2,0:nznew+nzsnew+2), INTENT(INOUT) :: unew
-REAL(8), DIMENSION(0:nxold+2,0:nzold+nzsold+2), INTENT(IN) :: uold
-INTEGER(ISZ), DIMENSION(0:nxnew+2), INTENT(IN) :: snew
-INTEGER(ISZ), DIMENSION(0:nxold+2), INTENT(IN) :: sold
-REAL(8), INTENT(IN) :: xminold, zminold, dxold, dzold, xminnew, zminnew, dxnew, dznew
-
-INTEGER(ISZ) :: jnew, knew, j, k, jp, kp, ii, ic, knews
-REAL(8) :: x, z, xx, zz, invdxold, invdzold, delx, delz, odelx, odelz
-REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+nzsnew+1), oddz(nznew+nzsnew+1)
-INTEGER(ISZ) :: jold(nxnew+1), kold(nznew+1), joldp(nxnew+nzsnew+1), koldp(nznew+nzsnew+1)
-
-IF(l_mgridrz_debug) then
-  write(o_line,*) 'enter expand, level = ',level
-  call remark(trim(o_line))
-END if
-
-invdxold = 1./dxold
-invdzold = 1./dzold
-
-do knew = 1, nznew+nzsnew+1
-  z = zminnew+(knew-1)*dznew
-  zz = (z-zminold) * invdzold
-  kold(knew) = 1+MIN(nzold,INT(zz))
-  koldp(knew) = kold(knew) + 1
-  ddz(knew) = zz-(kold(knew)-1)
-  oddz(knew) = 1.-ddz(knew)
-END do
-do jnew = 1, nxnew+1
-  x = xminnew+(jnew-1)*dxnew
-  xx = (x-xminold) * invdxold
-  jold(jnew) = 1+MIN(nxold,INT(xx))
-  joldp(jnew) = jold(jnew) + 1
-  ddx(jnew) = xx-(jold(jnew)-1)
-  oddx(jnew) = 1.-ddx(jnew)
-END do
-IF(vlocs) then
-  do ii = 1, bnd%nvlocs
-    jnew = bnd%vlocs_j(ii)
-    knew = bnd%vlocs_k(ii)
-    j = jold(jnew)
-    jp = joldp(jnew)
-    delx = ddx(jnew)
-    odelx = oddx(jnew)
-    knews = knew+snew(jnew)
-    k = kold(knews)
-    kp = koldp(knews)
-    delz = ddz(knews)
-    odelz = oddz(knews)
-    unew(jnew,knew) = unew(jnew,knew) + uold(j, k-sold(j))   * odelx * odelz &
-                                      + uold(jp,k-sold(jp))  * delx  * odelz &
-                                      + uold(j, kp-sold(j))  * odelx * delz &
-                                      + uold(jp,kp-sold(jp)) * delx  * delz
-  END do
-else
-  do knew = 1, nznew+1
-    do jnew = 1, nxnew+1
-      IF(.NOT.bnd%v(jnew,knew)==v_vacuum) cycle
-      j = jold(jnew)
-      jp = joldp(jnew)
-      delx = ddx(jnew)
-      odelx = oddx(jnew)
-      knews = knew+snew(jnew)
-      k = kold(knews)
-      kp = koldp(knews)
-      delz = ddz(knews)
-      odelz = oddz(knews)
-      unew(jnew,knew) = unew(jnew,knew) + uold(j, k-sold(j))   * odelx * odelz &
-                                        + uold(jp,k-sold(jp))  * delx  * odelz &
-                                        + uold(j, kp-sold(j))  * odelx * delz &
-                                        + uold(jp,kp-sold(jp)) * delx  * delz
-    end do
-  END do
-END if
-
-IF(l_mgridrz_debug) then
-  write(o_line,*) 'exit expand, level = ',level
-  call remark(trim(o_line))
-END if
-
-return
-END subroutine add_and_expand_wshift
 
 function expandwguardandbnd_any(uold, bnd, nxnew, nznew, xminnew, xmaxnew, zminnew, zmaxnew, &
                                                          xminold, xmaxold, zminold, zmaxold, &
@@ -1693,73 +1543,6 @@ END if
 return
 END subroutine interpolate_any_1d
 
-subroutine interpolate_any_wshift(unew, uold, snew, sold, bnd, nxnew, nznew, nzsnew, nxold, nzold, nzsold, &
-                                 xminnew, zminnew, dxnew, dznew, xminold, zminold, dxold, dzold)
-! expand field from grid to a finer one. Each dimension may have any number of cells.
-implicit none
-TYPE(BNDtype) :: bnd
-INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, nxold, nzold, nzsnew, nzsold
-REAL(8), DIMENSION(0:nxnew+2,0:nznew+nzsnew+2), INTENT(INOUT) :: unew
-REAL(8), DIMENSION(0:nxold+2,0:nzold+nzsold+2), INTENT(IN) :: uold
-INTEGER(ISZ), DIMENSION(0:nxnew+2), INTENT(IN) :: snew
-INTEGER(ISZ), DIMENSION(0:nxold+2), INTENT(IN) :: sold
-REAL(8), INTENT(IN) :: xminold, zminold, dxold, dzold, xminnew, zminnew, dxnew, dznew
-
-INTEGER(ISZ) :: jnew, knew, j, k, jp, kp, ii, ic, knews
-REAL(8) :: x, z, xx, zz, invdxold, invdzold, delx, delz, odelx, odelz
-REAL(8) :: ddx(nxnew+1), oddx(nxnew+1), ddz(nznew+nzsnew+1), oddz(nznew+nzsnew+1)
-INTEGER(ISZ) :: jold(nxnew+1), kold(nznew+1), joldp(nxnew+nzsnew+1), koldp(nznew+nzsnew+1)
-
-IF(l_mgridrz_debug) then
-  write(o_line,*) 'enter interpolate_any_wshift, level = ',level
-  call remark(trim(o_line))
-END if
-
-  invdxold = 1./dxold
-  invdzold = 1./dzold
-
-  do knew = 1, nznew+nzsnew+1
-    z = zminnew+(knew-1)*dznew
-    zz = (z-zminold) * invdzold
-    kold(knew) = 1+MIN(nzold,INT(zz))
-    koldp(knew) = kold(knew) + 1
-    ddz(knew) = zz-(kold(knew)-1)
-    oddz(knew) = 1.-ddz(knew)
-  END do
-  do jnew = 1, nxnew+1
-    x = xminnew+(jnew-1)*dxnew
-    xx = (x-xminold) * invdxold
-    jold(jnew) = 1+MIN(nxold,INT(xx))
-    joldp(jnew) = jold(jnew) + 1
-    ddx(jnew) = xx-(jold(jnew)-1)
-    oddx(jnew) = 1.-ddx(jnew)
-  END do
-  do knew = 1, nznew+1
-    do jnew = 1, nxnew+1
-      j = jold(jnew)
-      jp = joldp(jnew)
-      delx = ddx(jnew)
-      odelx = oddx(jnew)
-      knews = knew+snew(jnew)
-      k = kold(knews)
-      kp = koldp(knews)
-      delz = ddz(knews)
-      odelz = oddz(knews)
-      unew(jnew,knew) = unew(jnew,knew) + uold(j, k-sold(j))   * odelx * odelz &
-                                        + uold(jp,k-sold(jp))  * delx  * odelz &
-                                        + uold(j, kp-sold(j))  * odelx * delz &
-                                        + uold(jp,kp-sold(jp)) * delx  * delz
-    end do
-  END do
-
-IF(l_mgridrz_debug) then
-  write(o_line,*) 'exit interpolate_any_wshift, level = ',level
-  call remark(trim(o_line))
-END if
-
-return
-END subroutine interpolate_any_wshift
-
 function restrict_pof2(f, ixrbnd, izlbnd, izrbnd)
 ! restrict field from one grid to a coarser one. Each dimension is assumed to be a power of two.
 implicit none
@@ -1770,6 +1553,8 @@ REAL(8), DIMENSION(SIZE(f,1)/2+1, SIZE(f,2)/2+1) :: restrict_pof2
 
 INTEGER(ISZ) :: nx, nz, nxi, nzi, j, l, jj, ll
 REAL(8) :: flz, frz, aflz1, aflz2, afrz1, afrz2
+
+t_before = wtime()
 
 IF(l_mgridrz_debug) then
   write(o_line,*) 'enter restrict_pof2, level = ',level
@@ -1876,6 +1661,7 @@ IF(l_mgridrz_debug) then
   call remark(trim(o_line))
 END if
 
+t_restrict = t_restrict + wtime()-t_before
 return
 end function restrict_pof2
 
@@ -1892,6 +1678,8 @@ INTEGER(ISZ) :: jold, kold, j, k, jp, kp
 REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz
 REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz
 INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp
+
+t_before = wtime()
 
 !IF(bndy(level)%l_powerof2) then
 !  restrict = restrict_pof2(uold, ixrbnd, izlbnd, izrbnd)
@@ -1986,6 +1774,7 @@ IF(l_mgridrz_debug) then
   call remark(trim(o_line))
 END if
 
+t_restrict = t_restrict + wtime()-t_before
 return
 END function restrict
 
@@ -2004,6 +1793,8 @@ INTEGER(ISZ) :: jold, kold, j, k, jp, kp
 REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz
 REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz
 INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp
+
+t_before = wtime()
 
 !IF(bndy(level)%l_powerof2) then
 !  restrict = restrict_pof2(uold, ixrbnd, izlbnd, izrbnd)
@@ -2098,121 +1889,9 @@ IF(l_mgridrz_debug) then
   call remark(trim(o_line))
 END if
 
+t_restrict = t_restrict + wtime()-t_before
 return
 END subroutine subrestrict
-
-subroutine subrestrict_wshift(unew, uold, snew, sold, nxnew, nznew, nzsnew, nxold, nzold, nzsold, &
-                              xminold, zminold, dxold, dzold, xminnew, zminnew, dxnew, dznew)
-! restrict field from one grid to a coarser one. Each dimension may have any number of cells.
-implicit none
-INTEGER(ISZ), INTENT(IN) :: nxnew, nznew, nxold, nzold, nzsnew, nzsold
-REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
-REAL(8), DIMENSION(1:nxnew+1,1:nznew+nzsnew+1), INTENT(OUT) :: unew
-REAL(8), DIMENSION(0:nxnew+2), INTENT(IN) :: snew
-REAL(8), DIMENSION(0:nxold+2), INTENT(IN) :: sold
-REAL(8), INTENT(IN) :: xminold, zminold, dxold, dzold, xminnew, zminnew, dxnew, dznew
-REAL(8) :: rap(1:nxnew+1,1:nznew+1)
-
-INTEGER(ISZ) :: jold, kold, j, k, jp, kp, kolds, ksj, ksjp, kpsj, kpsjp
-REAL(8) :: invdxnew, invdznew, x, z, delx, delz, odelx, odelz
-REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz
-INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp
-
-!IF(bndy(level)%l_powerof2) then
-!  restrict = restrict_pof2(uold, ixrbnd, izlbnd, izrbnd)
-!  return
-!END if
-
-IF(l_mgridrz_debug) then
-  write(o_line,*) 'enter restrict_wshift, level = ',level
-  call remark(trim(o_line))
-END if
-
-ALLOCATE(ddx(nxold+1), ddz(nzold+nzsold+1), oddx(nxold+1), oddz(nzold+nzsold+1), &
-         jnew(nxold+1), knew(nzold+nzsold+1), jnewp(nxold+1), knewp(nzold+nzsold+1))
-
-invdxnew = 1./dxnew
-invdznew = 1./dznew
-
-unew = 0._8
-rap = 0._8
-
-do kold = 1, nzold+nzsold+1
-  z = zminold + (kold-1)*dzold
-  knew(kold) = MIN(1 + INT((z-zminnew) * invdznew), nznew)
-  ddz(kold) = (z-zminnew) * invdznew-real(knew(kold)-1)
-  knewp(kold) = knew(kold)+1
-  oddz(kold) = 1._8-ddz(kold)
-END do
-
-#ifdef MPIPARALLEL
-!    IF(izlbnd<0) then
-!      ddz(1) = 0.5_8*ddz(1)
-!      oddz(1) = 0.5_8*oddz(1)
-!    END if
-!   IF(izrbnd<0) then
-!     ddz(nzold+1) = 0.5_8*ddz(nzold+1)
-!      oddz(nzold+1) = 0.5_8*oddz(nzold+1)
-!    END if
-#endif
-
-do jold = 1, nxold+1
-  x = xminold + (jold-1)*dxold
-  jnew(jold) = MIN(1 + INT((x-xminnew) * invdxnew), nxnew)
-  ddx(jold) = (x-xminnew) * invdxnew-real(jnew(jold)-1)
-  jnewp(jold) = jnew(jold)+1
-  oddx(jold) = 1._8-ddx(jold)
-END do
-
-do kold = 1, nzold+1
-  do jold = 1, nxold+1
-    j = jnew(jold)
-    jp = jnewp(jold)
-    delx  =  ddx(jold)
-    odelx = oddx(jold)
-    kolds = kold+sold(jold)
-    k = knew(kolds)
-    kp = knewp(kolds)
-    delz  =  ddz(kolds)
-    odelz = oddz(kolds)
-    ksj   = k  - snew(j)
-    ksjp  = k  - snew(jp)
-    kpsj  = kp - snew(j)
-    kpsjp = kp - snew(jp)
-    unew(j, ksj)   = unew(j, ksj)   + uold(jold,kold) * odelx * odelz
-    unew(jp,ksjp)  = unew(jp,ksjp)  + uold(jold,kold) * delx  * odelz
-    unew(j, kpsj)  = unew(j, kpsj)  + uold(jold,kold) * odelx * delz
-    unew(jp,kpsjp) = unew(jp,kpsjp) + uold(jold,kold) * delx  * delz
-    rap(j, ksj)   = rap(j, ksj)   + odelx * odelz
-    rap(jp,ksjp)  = rap(jp,ksjp)  + delx  * odelz
-    rap(j, kpsj)  = rap(j, kpsj)  + odelx * delz
-    rap(jp,kpsjp) = rap(jp,kpsjp) + delx  * delz
-  end do
-end do
-
-#ifdef MPIPARALLEL
-!    IF(izlbnd<0) then
-!      rap(:,1) = 2.*rap(:,1)
-!    END if
-!    IF(izrbnd<0) then
-!      rap(:,nznew+1) = 2.*rap(:,nznew+1)
-!    END if
-#endif
-do k = 1, nznew+1
-  do j = 1, nxnew+1
-    IF(rap(j,k)/=0._8) unew(j,k)   = unew(j,k)   / rap(j,k)
-  end do
-end do
-
-DEALLOCATE(ddx, ddz, oddx, oddz, jnew, knew, jnewp, knewp)
-
-IF(l_mgridrz_debug) then
-  write(o_line,*) 'exit restrict_wshift, level = ',level
-  call remark(trim(o_line))
-END if
-
-return
-END subroutine subrestrict_wshift
 
 subroutine restrictlist(unew, uold, rhs, bnd, nxnew, nznew, nxold, nzold, voltfact, dr, dz, &
                         xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
@@ -2232,6 +1911,8 @@ REAL(8) :: dxold, dzold, invdxnew, invdznew, x, z, delx, delz, odelx, odelz
 REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz, res
 INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp, jlocs, klocs
 TYPE(CONDtype), POINTER :: c
+
+t_before = wtime()
 
 IF(l_mgridrz_debug) then
   write(o_line,*) 'enter restrict, level = ',level
@@ -2315,6 +1996,7 @@ IF(l_mgridrz_debug) then
   call remark(trim(o_line))
 END if
 
+t_restrict = t_restrict + wtime()-t_before
 return
 END subroutine restrictlist
 
@@ -2336,6 +2018,8 @@ INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp
 LOGICAL(ISZ) :: l_dxm, l_dxp, l_dzm, l_dzp
 INTEGER(ISZ),allocatable :: cnt(:,:)
 TYPE(CONDtype), POINTER :: c
+
+t_before = wtime()
 
 !IF(bndy(level)%l_powerof2) then
 !  restrict = restrict_pof2(uold)
@@ -2591,6 +2275,7 @@ IF(l_mgridrz_debug) then
   call remark(trim(o_line))
 END if
 
+t_restrict = t_restrict + wtime()-t_before
 return
 END function restrict_wbnd
 
@@ -2713,85 +2398,6 @@ END if
 return
 END subroutine deposit_z
 
-subroutine deposit_wshift(unew, uold, snew, sold, invvolnew, invvolold, xminold, zminold, &
-                          dxold, dzold, xminnew, zminnew, dxnew, dznew)
-! deposit rho from one grid to a coarser one. Each dimension may have any number of cells.
-! to be finished
-implicit none
-REAL(8), DIMENSION(1:,1:), INTENT(IN OUT) :: unew
-REAL(8), DIMENSION(1:,1:), INTENT(IN) :: uold
-REAL(8), DIMENSION(1:), INTENT(IN) :: invvolnew, invvolold
-INTEGER(ISZ), DIMENSION(0:), INTENT(IN) :: sold, snew
-REAL(8), INTENT(IN) :: xminold, zminold, dxold, dzold, xminnew, zminnew, dxnew, dznew
-
-INTEGER(ISZ) :: nxold, nzold, nxnew, nznew, nzsold, nzsnew
-INTEGER(ISZ) :: jold, kold, j, k, jp, kp
-REAL(8) :: invdxnew, invdznew, x, z, delx, delz, odelx, odelz
-REAL(8), ALLOCATABLE, DIMENSION(:) :: ddx, ddz, oddx, oddz, volold
-INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: jnew, knew, jnewp, knewp
-
-IF(l_mgridrz_debug) then
-  write(o_line,*) 'enter deposit'
-  call remark(trim(o_line))
-END if
-
-nxold = SIZE(uold,1) - 1
-nzold = SIZE(uold,2) - 1
-nxnew = SIZE(unew,1) - 1
-nznew = SIZE(unew,2) - 1
-nzsnew = MAXVAL(snew)
-nzsold = MAXVAL(sold)
-
-ALLOCATE(ddx(nxold+1), ddz(nzold+1), oddx(nxold+1), oddz(nzold+1), &
-         jnew(nxold+1), knew(nzold+1), jnewp(nxold+1), knewp(nzold+1), volold(nxold+1))
-
-invdxnew = 1./dxnew
-invdznew = 1./dznew
-
-do kold = 1, nzold+1
-  z = zminold + (kold-1)*dzold
-  knew(kold) = MIN(1 + INT((z-zminnew) * invdznew), nznew)
-  ddz(kold) = (z-zminnew) * invdznew-real(knew(kold)-1)
-  knewp(kold) = knew(kold)+1
-  oddz(kold) = 1._8-ddz(kold)
-END do
-
-do jold = 1, nxold+1
-  x = xminold + (jold-1)*dxold
-  jnew(jold) = MIN(1 + INT((x-xminnew) * invdxnew), nxnew)
-  ddx(jold) = (x-xminnew) * invdxnew-real(jnew(jold)-1)
-  jnewp(jold) = jnew(jold)+1
-  oddx(jold) = 1._8-ddx(jold)
-  volold(jold) = 1._8/invvolold(jold)
-END do
-
-do kold = 1, nzold+1
-  k = knew(kold)
-  kp = knewp(kold)
-  delz  =  ddz(kold)
-  odelz = oddz(kold)
-  do jold = 1, nxold+1
-    j = jnew(jold)
-    jp = jnewp(jold)
-    delx  =  ddx(jold)
-    odelx = oddx(jold)
-    unew(j,k)   = unew(j,k)   + uold(jold,kold) * odelx * odelz * invvolnew(j) *volold(jold)
-    unew(jp,k)  = unew(jp,k)  + uold(jold,kold) * delx  * odelz * invvolnew(jp)*volold(jold)
-    unew(j,kp)  = unew(j,kp)  + uold(jold,kold) * odelx * delz  * invvolnew(j) *volold(jold)
-    unew(jp,kp) = unew(jp,kp) + uold(jold,kold) * delx  * delz  * invvolnew(jp)*volold(jold)
-  end do
-end do
-
-DEALLOCATE(ddx, ddz, oddx, oddz, jnew, knew, jnewp, knewp, volold)
-
-IF(l_mgridrz_debug) then
-  write(o_line,*) 'exit deposit'
-  call remark(trim(o_line))
-END if
-
-return
-END subroutine deposit_wshift
-
 subroutine interp_bndwguard(unew, uold, xminold, xmaxold, zminold, zmaxold, xminnew, xmaxnew, zminnew, zmaxnew)
 ! interpolate boundary values from two conformal grids. Grid is assumed to have guard cells.
 implicit none
@@ -2867,6 +2473,8 @@ INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, redblack, iil, iiu, ic, nrf, nzi, nzf
 REAL(8) :: dt, dt0
 REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz, cfrhs
 TYPE(CONDtype), POINTER :: c
+
+t_before = wtime()
 
 IF(l_mgridrz_debug) then
   write(o_line,*) 'enter relax, level = ',level
@@ -3006,6 +2614,7 @@ IF(l_mgridrz_debug) then
   call remark(trim(o_line))
 END if
 
+t_relax = t_relax + wtime()-t_before
 return
 END subroutine relaxbndrzwguard
 
@@ -3024,6 +2633,8 @@ INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, redblack, iil, iiu, ic, nrf, nzi, nzf, ju
 REAL(8) :: dt, dt0, dtj,drj,dzj
 REAL(8) :: cf0, cfrp(nr+1), cfrm(nr+1), cfz, cfrhs
 TYPE(CONDtype), pointer :: c
+
+t_before = wtime()
 
 IF(l_mgridrz_debug) then
   write(o_line,*) 'enter relax, level = ',level
@@ -3173,6 +2784,7 @@ IF(l_mgridrz_debug) then
   call remark(trim(o_line))
 END if
 
+t_relax = t_relax + wtime()-t_before
 return
 END subroutine relaxbndrzwguard_jump
 
@@ -3190,6 +2802,8 @@ TYPE(BNDtype), INTENT(IN OUT) :: bnd
 INTEGER(ISZ) :: i, j, l, ii, jsw, lsw, redblack, iil, iiu, ic, nxi, nxf, nzi, nzf
 REAL(8) :: dt, cf0, cfx, cfz, cfrhs
 TYPE(CONDtype), pointer :: c
+
+t_before = wtime()
 
 IF(l_mgridrz_debug) then
   write(o_line,*) 'enter relax, level = ',level
@@ -3284,6 +2898,8 @@ IF(l_mgridrz_debug) then
   write(o_line,*) 'exit relax, level = ',level
   call remark(trim(o_line))
 END if
+
+t_relax = t_relax + wtime()-t_before
 
 return
 END subroutine relaxbndxzwguard
@@ -3928,13 +3544,8 @@ else
 END if
 
 IF(j<=npmin .or. relax_only) then
-    t_before = wtime()
   call apply_voltagewguard(u,bnd,voltf)
-    t_apply_voltage = t_apply_voltage + wtime()-t_before
-    t_before = wtime()
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
-    t_updateguard = t_updateguard + wtime()-t_before
-    t_before = wtime()
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
@@ -3942,7 +3553,6 @@ IF(j<=npmin .or. relax_only) then
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
   END if
-    t_relax = t_relax + wtime()-t_before
 else
   nrnext = bnd%next%nr
   nznext = bnd%next%nz
@@ -3951,13 +3561,8 @@ else
     t_before = wtime()
   ALLOCATE(res(nrnext+1,nznext+1),v(0:nrnext+2,0:nznext+2))
     t_allocate = t_allocate + wtime()-t_before
-    t_before = wtime()
   call apply_voltagewguard(u,bnd,voltf)
-    t_apply_voltage = t_apply_voltage + wtime()-t_before
-    t_before = wtime()
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
-    t_updateguard = t_updateguard + wtime()-t_before
-    t_before = wtime()
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
@@ -3965,7 +3570,6 @@ else
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
   END if
-    t_relax = t_relax + wtime()-t_before
   IF(bnd%next%l_merged) then
 #ifdef MPIPARALLEL
     IF(MOD(my_index/bnd%nworkpproc,2)==0) then
@@ -3990,16 +3594,11 @@ else
 !                             ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
 !  else
   IF(bnd%next%l_merged) res=0.
-    t_before = wtime()
   IF(solvergeom==RZgeom) then
     IF(vlocs) then
       call restrictlist(res(1,nzresmin), u, rhs, bnd, nrnext, nzres, nr, nz, voltf,dr,dz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
     else
-!      res(:,nzresmin:nzresmax) = restrict( &
-!                              residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.false., &
-!                              ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd), &
-!                              nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
-    call subrestrict(res(1,nzresmin), &
+      call subrestrict(res(1,nzresmin), &
                              residbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz, &
                              dr=dr,dz=dz,voltfact=voltf,l_zerolastz=.false., &
                              ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd), &
@@ -4011,11 +3610,8 @@ else
                              ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd), &
                              nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8)
   END if
-  t_restrict = t_restrict + wtime()-t_before
 !  END if
-  t_before = wtime()
   call apply_voltage(res,bnd%next,0._8)
-  t_apply_voltage = t_apply_voltage + wtime()-t_before
 #ifdef MPIPARALLEL
   IF(bnd%next%l_merged) call merge_work(res,level,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
   call exchange_resbndz(rho=res,izlbnd=bnd%next%izlbnd,izrbnd=bnd%next%izrbnd)
@@ -4023,45 +3619,22 @@ else
   v = 0.0_8
   IF(.not.sub) inveps0 = 1.
   do i = 1, ncycle  !(1=V cycles, 2=W cycle)
-!    call mgbndrzwguard(j=j-1, u=v(0,0), rhs=res(1,1), bnd=bnd(1:j-1), nr=nrnext, nz=nznext, dr=drnext, dz=dznext, npre=npre, npost=npost, &
     call mgbndrzwguard(j=j-1, u=v(0,0), rhs=res(1,1), bnd=bnd%next,  &
                        nr=nrnext, nz=nznext, dr=drnext, dz=dznext, npre=npre, npost=npost, &
                        ncycle=ncycle, sub=.TRUE., relax_only=.FALSE., npmin=npmin, mgparam=mgparam)
     level = j
   end do
   IF(.not.sub) inveps0 = 1./eps0
-  t_before = wtime()
   call apply_voltagewguard(v,bnd%next,0._8)
-  t_apply_voltage = t_apply_voltage + wtime()-t_before
-  t_before = wtime()
   call updateguardcellsrz(f=v,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%next%izlbnd,izrbnd=bnd%next%izrbnd)
-  t_updateguard = t_updateguard + wtime()-t_before
-!  IF(bnd%l_powerof2) then
-!    u = u + expandwguard(v(:,nzresmin-1:nzresmax+1))
-!  else
-  t_before = wtime()
-! IF(restrictwbnd) then
-!    u = u + expandwguardandbnd_any(v(:,nzresmin-1:nzresmax+1),bnd,nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
-!             ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
-!  else
-!    u = u + expandwguard_any(v(:,nzresmin-1:nzresmax+1),nr,nz,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
-!                                ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
-!  END if
-!  END if
   call add_and_expand(u(0,0),v(0,nzresmin-1),bnd,nr,nz,nrnext,nzres,0._8,1._8,0._8,1._8,0._8,1._8,0._8,1._8, &
                                 ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
 ! expand field from grid to a finer one. Each dimension may have any number of cells.
-  t_expand = t_expand + wtime()-t_before
-  t_before = wtime()
   call apply_voltagewguard(u,bnd,voltf)
-  t_apply_voltage = t_apply_voltage + wtime()-t_before
-  t_before = wtime()
   call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
-  t_updateguard = t_updateguard + wtime()-t_before
 #ifdef MPIPARALLEL
   call exchange_fbndz(u,bnd%izlbnd,bnd%izrbnd)
 #endif
-  t_before = wtime()
   IF(solvergeom==RZgeom) then
     call relaxbndrzwguard(f=u(0,0),rhs=rhs(1,1),bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
@@ -4069,7 +3642,6 @@ else
     call relaxbndxzwguard(f=u,rhs=rhs,bnd=bnd,nx=nr,nz=nz,dx=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                           ixlbnd=ixlbnd, ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
   END if
-  t_relax = t_relax + wtime()-t_before
   t_before = wtime()
   DEALLOCATE(res,v)
   t_allocate = t_allocate + wtime()-t_before
@@ -4119,13 +3691,8 @@ v = 0.
 voltf = 0._8
 inveps0 = 1.
 do j = jmax, 1, -1
-  t_before = wtime()
   call apply_voltagewguard(v,bnd,voltf)
-  t_apply_voltage = t_apply_voltage + wtime()-t_before
-  t_before = wtime()
   call updateguardcellsrz(f=v,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
-  t_updateguard = t_updateguard + wtime()-t_before
-  t_before = wtime()
   IF(j==1) then
     call relaxbndrzwguard(f=v(0,0),rhs=res(1,1), &
                           bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
@@ -4138,17 +3705,12 @@ do j = jmax, 1, -1
                                bnd=bnd,nr=nr,nz=nz,dr=dr,dz=dz,nc=npre,voltfact=voltf,mgparam=mgparam, &
                                ixrbnd=ixrbnd, izlbnd=bnd%izlbnd, izrbnd=bnd%izrbnd)
   END if
-  t_relax = t_relax + wtime()-t_before
 end do
 u = u + v
 voltf = 1._8
 inveps0 = 1./eps0
-t_before = wtime()
 call apply_voltagewguard(u,bnd,voltf)
-t_apply_voltage = t_apply_voltage + wtime()-t_before
-t_before = wtime()
 call updateguardcellsrz(f=u,ixlbnd=ixlbnd,ixrbnd=ixrbnd,izlbnd=bnd%izlbnd,izrbnd=bnd%izrbnd)
-t_updateguard = t_updateguard + wtime()-t_before
 
 IF(l_mgridrz_debug) then
   write(o_line,*) 'exit mg_jump'
@@ -4167,6 +3729,8 @@ INTEGER(ISZ), optional :: ixlbnd
 INTEGER(ISZ) :: ixrbnd, izlbnd, izrbnd
 
 INTEGER(ISZ) :: ixmax, izmax
+
+t_before = wtime()
 
 ixmax=SIZE(f,1)
 izmax=SIZE(f,2)
@@ -4212,6 +3776,7 @@ end select
 
 IF(solvergeom==RZgeom) f(1,:) = f(3,:)
 
+t_updateguard = t_updateguard + wtime()-t_before
 end subroutine updateguardcellsrz
 
 subroutine apply_voltage(f,bnd,coef_voltage)
@@ -4225,6 +3790,7 @@ INTEGER(ISZ) :: ic, i
 TYPE(CONDtype), pointer :: c
 
 return
+t_before = wtime()
 do ic = 1, bnd%nb_conductors
   IF(ic==1) then
     c => bnd%cndfirst
@@ -4240,6 +3806,7 @@ END do
 !  call exchange_fbndz(f,izlbnd,izrbnd)
 #endif
 
+t_apply_voltage = t_apply_voltage + wtime()-t_before
 return
 end subroutine apply_voltage
 
@@ -4253,6 +3820,7 @@ REAL(8), INTENT(IN) :: coef_voltage
 
 INTEGER(ISZ) :: ic, i
 TYPE(CONDtype), pointer :: c
+t_before = wtime()
 
 do ic = 1, bnd%nb_conductors
   IF(ic==1) then
@@ -4265,6 +3833,7 @@ do ic = 1, bnd%nb_conductors
   end do
 END do
 
+t_apply_voltage = t_apply_voltage + wtime()-t_before
 return
 end subroutine apply_voltagewguard
 
@@ -4391,14 +3960,10 @@ has_diverged = .false.
 #ifdef MPIPARALLEL
        IF(my_index==0) then
 #endif
-        write(o_line,*) 'WARNING multigridrz, calculation is diverging:'
-        call remark(trim(o_line))
-        write(o_line,*) '        initial maximum error = ',maxerr_old
-        call remark(trim(o_line))
-        write(o_line,*) '        current maximum error = ',maxerr
-        call remark(trim(o_line))
-        write(o_line,*) '        trying npre and npost = ',grid%npre+1!,' (also reset mgparam to 1.8)'
-        call remark(trim(o_line))
+        write(o_line,*) 'WARNING multigridrz, calculation is diverging:';   call remark(trim(o_line))
+        write(o_line,*) '        initial maximum error = ',maxerr_old;      call remark(trim(o_line))
+        write(o_line,*) '        current maximum error = ',maxerr;          call remark(trim(o_line))
+        write(o_line,*) '        trying npre and npost = ',grid%npre+1;     call remark(trim(o_line))!,' (also reset mgparam to 1.8)'
 #ifdef MPIPARALLEL
       END if
 #endif
@@ -4422,17 +3987,6 @@ has_diverged = .false.
             grid%phi=uold
           END if
         END if
-        GOTO 10
-        IF(grid%npmin<i) then
-          has_diverged = .true.
-          do_calc=.true.
-          grid%npmin=grid%npmin+1
-          write(o_line,*) '        trying npmin = ',grid%npmin
-          call remark(trim(o_line))
-        else
-          do_calc=.false.
-        END if
-        10 continue
         IF(l_for_timing) exit
       END if
     end do
@@ -4442,18 +3996,10 @@ has_diverged = .false.
 t_solve = wtime() - t_solve
 #ifdef MPIPARALLEL
  IF(my_index==0) &
-  write(o_line,'("multigridrz: precision = ",e12.5, " after ",i5," iterations.")') maxerr,j
-  call remark(trim(o_line))
-#else
-  write(o_line,'("multigridrz: precision = ",e12.5, " after ",i5," iterations.")') maxerr,j
-  call remark(trim(o_line))
 #endif
+  write(o_line,'("multigridrz: precision = ",e12.5, " after ",i5," iterations.")') maxerr,j; call remark(trim(o_line))
 nb_iters=j
 IF(j<grid%ncmax.and..not.do_calc.and.maxerr >= accuracy) nb_iters=grid%ncmax
-!IF(levels_min/=npmin) then
-!  write(o_line,'("WARNING multigridrz, levels_min = ",i2,", npmin = ",i2,". Setting levels_min = ",i2,".")') levels_min, npmin, npmin
-!  levels_min = npmin
-!END if
 
 IF(vlocs) then
   DEALLOCATE(uold_vlocs,jlocs,klocs)
@@ -4464,22 +4010,15 @@ else
 END if
 IF(.not.l_for_timing) then
   IF(l_print_timing) then
-    write(o_line,*) 'Time relax    = ',t_relax
-    call remark(trim(o_line))
-    write(o_line,*) 'Time restrict = ',t_restrict
-    call remark(trim(o_line))
-    write(o_line,*) 'Time expand   = ',t_expand
-    call remark(trim(o_line))
-    write(o_line,*) 'Time apply_voltage = ',t_apply_voltage
-    call remark(trim(o_line))
-    write(o_line,*) 'Time updateguard   = ',t_updateguard
-    call remark(trim(o_line))
-    write(o_line,*) 'Time allocate      = ',t_allocate
-    call remark(trim(o_line))
+    write(o_line,*) 'Time relax    = ',t_relax;              call remark(trim(o_line))
+    write(o_line,*) 'Time restrict = ',t_restrict;           call remark(trim(o_line))
+    write(o_line,*) 'Time expand   = ',t_expand;             call remark(trim(o_line))
+    write(o_line,*) 'Time apply_voltage = ',t_apply_voltage; call remark(trim(o_line))
+    write(o_line,*) 'Time updateguard   = ',t_updateguard;   call remark(trim(o_line))
+    write(o_line,*) 'Time allocate      = ',t_allocate;      call remark(trim(o_line))
     write(o_line,*) 'Time total    = ',t_relax+t_restrict+t_expand+t_apply_voltage+t_updateguard+t_allocate
     call remark(trim(o_line))
-    write(o_line,*) 'Time solve    = ',t_solve
-    call remark(trim(o_line))
+    write(o_line,*) 'Time solve    = ',t_solve;              call remark(trim(o_line))
   END if
 END if
 
@@ -4574,14 +4113,11 @@ has_diverged = .false.
 #ifdef MPIPARALLEL
        IF(my_index==0) then
 #endif
-        write(o_line,*) 'WARNING multigridrz, calculation is diverging:'
-        call remark(trim(o_line))
-        write(o_line,*) '        initial maximum error = ',maxerr_old
-        call remark(trim(o_line))
-        write(o_line,*) '        current maximum error = ',maxerr
-        call remark(trim(o_line))
-        write(o_line,*) '        trying npre and npost = ',grid%npre+1!,' (also reset mgparam to 1.8)'
-        call remark(trim(o_line))
+        write(o_line,*) 'WARNING multigridrz, calculation is diverging:'; call remark(trim(o_line))
+        write(o_line,*) '        initial maximum error = ',maxerr_old   ; call remark(trim(o_line))
+        write(o_line,*) '        current maximum error = ',maxerr       ; call remark(trim(o_line))
+        write(o_line,*) '        trying npre and npost = ',grid%npre+1  ; call remark(trim(o_line)) !,' (also reset mgparam to 1.8)'
+
 #ifdef MPIPARALLEL
       END if
 #endif
@@ -5259,78 +4795,33 @@ do igrid=1,ngrids
   else
     b => b%next
   END if
-  IF(.not.b%l_lshift) then
-   nrc = b%nr
-   nzc = b%nz
-   drc = b%dr
-   dzc = b%dz
-   izlbnd = b%izlbnd
-   izrbnd = b%izrbnd
-   zmin_in = b%zmin!-b%dz
-   zmax_in = b%zmax!+b%dz
+  nrc = b%nr
+  nzc = b%nz
+  drc = b%dr
+  dzc = b%dz
+  izlbnd = b%izlbnd
+  izrbnd = b%izrbnd
+  zmin_in = b%zmin!-b%dz
+  zmax_in = b%zmax!+b%dz
 
-   necndbdy=0
-   nocndbdy=0
-   ncond = 0
+  necndbdy=0
+  nocndbdy=0
+  ncond = 0
 
-   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
-                       xmin,xmax,ymin,ymax,lshell,                      &
-                       zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
-                       ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
+  call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
+                   xmin,xmax,ymin,ymax,lshell,                      &
+                   zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
+                   ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
 
-   call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                         ncond, ixcond, izcond, condvolt, condnumb, &
-                         necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                         ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                         ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                         nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                         ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                         ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
+  call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
+                        ncond, ixcond, izcond, condvolt, condnumb, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
+                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
+                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
+                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
+                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
   
-  else
-   jmin = 1
-   jmax = 1
-   doloop = .true.
-   do WHILE(doloop)
-    nrc = 1
-    do WHILE(b%lshift(jmax)==b%lshift(jmax+1) .and. jmax<b%nr)
-     jmax = jmax + 1
-     nrc = nrc+1
-    end do
-    nzc = b%nz
-    drc = b%dr
-    dzc = b%dz
-    izlbnd = b%izlbnd
-    izrbnd = b%izrbnd
-    zmin_in = b%zmin+b%lshift(jmin)*b%dz
-    zmax_in = b%zmax+b%lshift(jmin)*b%dz
-
-    necndbdy=0
-    nocndbdy=0
-    ncond = 0
-
-    call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,  &
-                        xmin,xmax,ymin,ymax,lshell,                      &
-                        zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
-                        ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
-
-    call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                          ncond, ixcond, izcond, condvolt, condnumb, &
-                          necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                          ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                          ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                          nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                          ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                          ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
-
-    IF(jmax==b%nr) then
-     doloop = .false.
-    else
-     jmin = jmax + 1
-     jmax = jmax + 1
-    END if
-   end do
-  END if
  end do
 end do
 necndbdy=0
@@ -5380,78 +4871,33 @@ do igrid=1,ngrids
   else
     b => b%next
   END if
-  IF(.not.b%l_lshift) then
-   nrc = b%nr
-   nzc = b%nz
-   drc = b%dr
-   dzc = b%dz
-   izlbnd = b%izlbnd
-   izrbnd = b%izrbnd
-   zmin_in = b%zmin!-b%dz
-   zmax_in = b%zmax!+b%dz
+  nrc = b%nr
+  nzc = b%nz
+  drc = b%dr
+  dzc = b%dz
+  izlbnd = b%izlbnd
+  izrbnd = b%izrbnd
+  zmin_in = b%zmin!-b%dz
+  zmax_in = b%zmax!+b%dz
 
-   necndbdy=0
-   nocndbdy=0
-   ncond = 0
+  necndbdy=0
+  nocndbdy=0
+  ncond = 0
 
-   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,  &
-                      lzend,xmin,xmax,ymin,ymax,lshell,                &
-                      zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
-                      ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
+  call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,  &
+                     lzend,xmin,xmax,ymin,ymax,lshell,                &
+                     zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
+                     ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
 
-   call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                         ncond, ixcond, izcond, condvolt, condnumb, &
-                         necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                         ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                         ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                         nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                         ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                         ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
+  call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
+                        ncond, ixcond, izcond, condvolt, condnumb, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
+                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
+                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
+                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
+                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
   
-  else
-   jmin = 1
-   jmax = 1
-   doloop = .true.
-   do WHILE(doloop)
-    nrc = 1
-    do WHILE(b%lshift(jmax)==b%lshift(jmax+1) .and. jmax<b%nr)
-     jmax = jmax + 1
-     nrc = nrc+1
-    end do
-    nzc = b%nz
-    drc = b%dr
-    dzc = b%dz
-    izlbnd = b%izlbnd
-    izrbnd = b%izrbnd
-    zmin_in = b%zmin+b%lshift(jmin)*b%dz
-    zmax_in = b%zmax+b%lshift(jmin)*b%dz
-
-    necndbdy=0
-    nocndbdy=0
-    ncond = 0
-
-    call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,  &
-                       lzend,xmin,xmax,ymin,ymax,lshell,                &
-                       zmin_in,zmax_in,zbeam,drc,drc,dzc,nrc,ny,nzc,             &
-                       ix_axis,iy_axis,xmesh,ymesh,l2symtry_in,l4symtry_in,condid)
-
-    call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                          ncond, ixcond, izcond, condvolt, condnumb, &
-                          necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                          ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                          ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                          nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                          ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                          ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
-
-    IF(jmax==b%nr) then
-     doloop = .false.
-    else
-     jmin = jmax + 1
-     jmax = jmax + 1
-    END if
-   end do
-  END if
  end do
 end do
 necndbdy=0
@@ -5487,72 +4933,30 @@ do igrid=1,ngrids
   else
     b => b%next
   END if
-  IF(.not.b%l_lshift) then
-   nrc = b%nr
-   nzc = b%nz
-   drc = b%dr
-   dzc = b%dz
-   izlbnd = b%izlbnd
-   izrbnd = b%izrbnd
-   zmin_in = b%zmin!-b%dz
+  nrc = b%nr
+  nzc = b%nz
+  drc = b%dr
+  dzc = b%dz
+  izlbnd = b%izlbnd
+  izrbnd = b%izrbnd
+  zmin_in = b%zmin!-b%dz
 
-   necndbdy=0
-   nocndbdy=0
-   ncond = 0
+  necndbdy=0
+  nocndbdy=0
+  ncond = 0
 
-   call setcndtr_rz(rmin_in,rmin_in,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
-                    l2symtry_in,l4symtry_in)
+  call setcndtr_rz(rmin_in,rmin_in,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
+                   l2symtry_in,l4symtry_in)
 
-   call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                         ncond, ixcond, izcond, condvolt, condnumb, &
-                         necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                         ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                         ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                         nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                         ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                         ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
+  call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
+                        ncond, ixcond, izcond, condvolt, condnumb, &
+                        necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
+                        ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
+                        ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
+                        nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
+                        ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
+                        ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
   
-  else
-   jmin = 1
-   jmax = 1
-   doloop = .true.
-   do WHILE(doloop)
-    nrc = 1
-    do WHILE(b%lshift(jmax)==b%lshift(jmax+1) .and. jmax<b%nr)
-     jmax = jmax + 1
-     nrc = nrc+1
-    end do
-    nzc = b%nz
-    drc = b%dr
-    dzc = b%dz
-    izlbnd = b%izlbnd
-    izrbnd = b%izrbnd
-    zmin_in = b%zmin+b%lshift(jmin)*b%dz
-
-    necndbdy=0
-    nocndbdy=0
-    ncond = 0
-
-    call setcndtr_rz(rmin_in,rmin_in,zmin_in,zbeam,zgrid,nrc,ny,nzc,drc,drc,dzc, &
-                     l2symtry_in,l4symtry_in)
-
-    call addconductors_rz(b,nrc,nzc,drc,dzc,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                          ncond, ixcond, izcond, condvolt, condnumb, &
-                          necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                          ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                          ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                          nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz, &
-                          ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                          ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
-
-    IF(jmax==b%nr) then
-     doloop = .false.
-    else
-     jmin = jmax + 1
-     jmax = jmax + 1
-    END if
-   end do
-  END if
  end do
 end do
 necndbdy=0
@@ -8019,7 +7423,6 @@ INTEGER(ISZ) :: i, j, l, igrid, nr, nz, l0
 REAL(8) :: rs, rc, r, z, dr, dz, rmin, zmin
 TYPE(GRIDtype), POINTER :: g
 TYPE(BNDtype), POINTER :: b
-INTEGER(ISZ), DIMENSION(:), ALLOCATABLE :: lshifts
 
   nz = nzi
 
@@ -8035,22 +7438,15 @@ INTEGER(ISZ), DIMENSION(:), ALLOCATABLE :: lshifts
   dz = g%dz
 
   do i = 1, np
-    ALLOCATE(lshifts(2*b%nr+1))
-    l0 = 1+INT((zinject(ij)-b%zmin)/b%dz)!-b%lshift(1)
+    l0 = 1+INT((zinject(ij)-b%zmin)/b%dz)
     do j = 1, b%nr+1
       r = (j-1)*b%dr
       IF(r>rs+(2+guard_max_r)*b%dr) exit
       ! we assume source emits forward
       z = zinject(ij) + rc - SQRT(rc**2-r**2)
-      l = 1+INT((z-b%zmin)/b%dz)!-b%lshift(j)
-      lshifts(1+(j-1)*2:2+(j-1)*2) = 2*(l-l0)
-      IF(lshifts(1+(j-1)*2)<0) then
-        write(o_line,*) 'error in set_patches_around_emitter: shifts < 0, shifts = ',lshifts(1+(j-1)*2)
-        call remark(trim(o_line))
-      END if
+      l = 1+INT((z-b%zmin)/b%dz)
     END do
     nr = 2*(j-1)
-    lshifts(nr+1) = lshifts(nr)
     dr = 0.5*dr
     dz = 0.5*dz
     rmin = 0.
@@ -8067,10 +7463,7 @@ INTEGER(ISZ), DIMENSION(:), ALLOCATABLE :: lshifts
     call remark(trim(o_line))
     write(o_line,*) 'zmin = ',zmin
     call remark(trim(o_line))
-    write(o_line,*) 'lshifts = ',lshifts(1:nr+1)
-    call remark(trim(o_line))
-    call add_grid(g,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z,.TRUE.,lshifts(1:nr+1))
-    DEALLOCATE(lshifts)
+    call add_grid(g,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z,.TRUE.)
     g => grids_ptr(ngrids)%grid
   end do
 
