@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.71 $, $Date: 2004/07/29 00:09:19 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.72 $, $Date: 2004/08/05 00:56:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -550,26 +550,26 @@ c         --- Get processor with which to exchange data on coarse grid
 
 c         --- Alloate new work space
           allocate(phi2(0:nx/2,0:ny/2,-1:nznew+1),
-     &             rho2(0:nx/2,0:ny/2,-1:nznew+1))
+     &             rho2(0:nx/2,0:ny/2,0:nznew))
           phi2 = 0.
           rho2 = 0.
 
 c         --- Restriction - note that scaling factor for residual is always
 c         --- 4 for full-coarsening and is compiled into the restriction
 c         --- routine.
-          call restrict3d(nx,ny,nz,nznew,nzfull,res,rho2(:,:,0:nznew),
+          call restrict3d(nx,ny,nz,nznew,nzfull,res,rho2,
      &                    localbounds2,localbounds,lparity,rparity)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx/2,ny/2,nznew,nzfull/2,rho2,
-     &                        localbounds2,0,
+          call mgexchange_rho(nx/2,ny/2,nznew,nzfull/2,rho2,
      &                        my_index,nslaves,izfsslave2,nzfsslave2,
+     &                        lparityall,rparityall,
      &                        whosendingleft2,izsendingleft2,
      &                        whosendingright2,izsendingright2)
 #endif
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
-     &                dx*2,dy*2,dz*2,phi2,rho2(:,:,0:nznew),
+     &                dx*2,dy*2,dz*2,phi2,rho2,
      &                rstar,linbend,bendx,globalbounds,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
