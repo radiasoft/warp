@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.74 2004/10/15 18:11:03 dave Exp $"
+warp_version = "$Id: warp.py,v 1.75 2004/11/10 18:38:40 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -108,6 +108,15 @@ if sys.argv[0]:
     top.runid = t
     del h,t
 runid = arraytostr(top.runid)
+
+# --- Check if the compiler was ifort - if so, set the stacksize unlimited
+# --- The fcompname is not yet be available yet if Forthon is not up to date
+try:
+  if fcompname == 'ifort':
+    import resource
+    resource.setrlimit(resource.RLIMIT_STACK,(-1,-1))
+except:
+  pass
 
 #try:
 #  from psyco.classes import psyobj
