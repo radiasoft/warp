@@ -2,7 +2,13 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.46 2001/07/17 00:19:36 dave Exp $"
+if me == 0:
+  try:
+    import pl3d
+    import plwf
+  except ImportError:
+    pass
+warpplots_version = "$Id: warpplots.py,v 1.47 2001/08/01 23:34:50 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -777,7 +783,8 @@ def pptitleright(iw=0,kwdict={},**kw):
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None,'checkargs':0,'allowbadargs':0}
+                "zl":None,"zu":None,"slope":0,
+                'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
   # --- ignoring keywords not listed in kwdefaults.
@@ -802,15 +809,15 @@ def pptitleright(iw=0,kwdict={},**kw):
     else: prefix = "z "
     if zl is None: zl = -top.largepos
     if zu is None: zu = +top.largepos
-    return prefix+"range (%9.4e, %9.4e)"%(zl,zu)
+    result = prefix+"range (%9.4e, %9.4e)"%(zl,zu)
   elif ix is not None:
     xl = w3d.xmmin + ix*w3d.dx - wx*w3d.dx
     xu = w3d.xmmin + ix*w3d.dx + wx*w3d.dx
-    return "ix = %d, x range (%9.4e, %9.4e)"%(ix,xl,xu)
+    result = "ix = %d, x range (%9.4e, %9.4e)"%(ix,xl,xu)
   elif iy is not None:
     yl = w3d.ymmin + iy*w3d.dy - wy*w3d.dy
     yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
-    return "iy = %d, y range (%9.4e, %9.4e)"%(iy,yl,yu)
+    result = "iy = %d, y range (%9.4e, %9.4e)"%(iy,yl,yu)
   elif iz is not None:
     if lparallel:
       zl = top.zmslmin[0] + iz*w3d.dz - wz*w3d.dz + top.zbeam
@@ -818,10 +825,10 @@ def pptitleright(iw=0,kwdict={},**kw):
     else:
       zl = w3d.zmmin + iz*w3d.dz - wz*w3d.dz + top.zbeam
       zu = w3d.zmmin + iz*w3d.dz + wz*w3d.dz + top.zbeam
-    return "iz = %d, z range (%9.4e, %9.4e)"%(iz,zl,zu)
+    result = "iz = %d, z range (%9.4e, %9.4e)"%(iz,zl,zu)
   elif iw < 0:
     if psubset==[]: setup_subsets()
-    return "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
+    result = "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
   else:
     if win is None:
       win = top.zwindows[:,iw] + top.zbeam
@@ -829,7 +836,15 @@ def pptitleright(iw=0,kwdict={},**kw):
     else:
       prefix = ""
     if len(shape(win)) == 2: win = win[:,iw]
-    return prefix+"window%d = %9.4e, %9.4e"%(iw,win[0],win[1])
+    result = prefix+"window%d = %9.4e, %9.4e"%(iw,win[0],win[1])
+  if slope != 0:
+    result = result + ", slope=%7.4f"%slope
+  return result
+
+#-------------------------------------------------------------------------
+def ppmoments(text):
+  "Plots text in upper right hand corner of the plot"
+  plt(text,0.61,.855,justify="RT",height=12,font="courierB")
 
 #############################################################################
 #############################################################################
@@ -870,6 +885,7 @@ def ppgeneric_doc(x,y):
   - ccolor='fg': contour color (when not filled)
   - view=1: view window to use (experts only)
   - colbarunitless=0: when true, color-bar scale is unitless
+  - surface=0: when true, a 3-d surface plot is made of the gridded data
   """
   return doc%vars()
 #-------------------------------------------------------------------------
@@ -890,7 +906,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':1.,'hcolor':'fg','width':1.0,
                 'contours':None,'filled':0,'ccolor':'fg','view':1,
-                'colbarunitless':0,
+                'colbarunitless':0,'surface':0,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -923,6 +939,14 @@ Note that either the x and y coordinates or the grid must be passed in.
   assert (type(slope) != StringType),"slope must be a number"
   assert (zz is None) or (grid is None),\
          "only one of zz and grid can be specified"
+
+  # --- Make sure that nothing is not plotted over a surface plot
+  if surface:
+    particles = 0
+    contours = 0
+    hash = 0
+    lframe = 0
+    titles = 0
 
   # -- Set the plotting view window
   plsys(view)
@@ -981,7 +1005,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If the grid is needed for the plot and it was not passed in, generate
   # --- it from the inputted particle data (if there was any)
   if type(grid) != ArrayType and \
-     (hash or contours or color=='density' or chopped):
+     (hash or contours or color=='density' or chopped or surface):
     if zz is None:
       densitygrid = 1
 
@@ -1013,7 +1037,7 @@ Note that either the x and y coordinates or the grid must be passed in.
       # --- Divide out the particle counts by hand.
       grid = grid/where(greater(gridcount,0.),gridcount,1.)
 
-  elif (hash or contours or color=='density' or chopped):
+  elif (hash or contours or color=='density' or chopped or surface):
     densitygrid = 0
 
   # --- If using logarithmic number density levels, take the log of the grid
@@ -1040,7 +1064,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     grid1 = grid
 
   # --- Get grid mesh if it is needed
-  if contours or hash:
+  if contours or hash or surface:
     xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d')
     ymesh = ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis]
 
@@ -1103,6 +1127,14 @@ Note that either the x and y coordinates or the grid must be passed in.
       dmax = maxnd(grid1)
       dmin = minnd(grid1)
     colorbar(dmin,dmax,uselog=uselog,ncolor=nc,view=view)
+
+  # --- Make surface plot
+  if surface and me == 0:
+    pl3d.orient3()
+    pl3d.light3()
+    plwf.plwf(grid1,xmesh,ymesh,fill=grid1,edges=0)
+    [xmin,xmax,ymin,ymax] = pl3d.draw3(1)
+    #limits(xmin,xmax,ymin,ymax)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
   if titles: ptitles(v=view)
@@ -1360,7 +1392,7 @@ if sys.version[:5] != "1.5.1":
   ppxy.__doc__ = ppxy.__doc__ + ppgeneric_doc('x','y')
 
 ##########################################################################
-def ppxxp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+def ppxxp(iw=0,iz=None,slope=0.,offset=0.,particles=1,lmoments=0,**kw):
   "Plots X-X'. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
