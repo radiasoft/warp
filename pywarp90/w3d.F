@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.141 $, $Date: 2004/01/24 00:52:55 $
+c@(#) File W3D.F, version $Revision: 3.142 $, $Date: 2004/01/27 22:45:13 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -305,7 +305,7 @@ c  Set the value of prwall, radius at which particles are lost
         prwallz(k) = prwall
         if (prwallxz(k) == 0.) prwallxz(k) = prwallx
         if (prwallyz(k) == 0.) prwallyz(k) = prwally
-        if (prwelipz(k) == 0.) prwelipz(k) = prwelip
+        if (prwelipz(k) == 1.) prwelipz(k) = prwelip
       enddo
 
 c  Re-size the dynamic arrays for the lattice (scan for true length, first).
@@ -4204,8 +4204,8 @@ c Check values of rectangular boundary arrays to see if they will be used.
 !$OMP PARALLEL DO PRIVATE(iz)
       do ip=1,np
         iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
-        if (((xp(ip)-prwallxz(iz))**2 +
-     &       (yp(ip)-prwallyz(iz)*prwelipz(iz))**2) >= prwallz(iz)**2 .or.
+        if ((((xp(ip)-prwallxz(iz))*prwelipz(iz))**2 +
+     &        (yp(ip)-prwallyz(iz))**2) >= (prwallz(iz)*prwelipz(iz))**2 .or.
      &      (xmin > xp(ip) .or. xp(ip) > xmax .or.
      &       ymin > yp(ip) .or. yp(ip) > ymax)) then
           gaminv(ip) = 0.
