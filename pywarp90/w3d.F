@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.94 $, $Date: 2003/03/25 21:49:09 $
+c@(#) File W3D.M, version $Revision: 3.95 $, $Date: 2003/03/25 22:52:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -45,6 +45,7 @@ c=============================================================================
       use InPart3d
       use InMesh3d
       use Fields3d
+      use Fields3dParticles
       use Efields3d
       use PSOR3d
       use Multipole
@@ -233,6 +234,57 @@ c  so that by default izfsmax = nz (for full field solve).
       endif
       if (izfsmax == 0) izfsmax = nz
 
+c  Calculate mesh dimensioning quantities
+
+      dx = (xmmax - xmmin) / nx
+      dy = (ymmax - ymmin) / ny
+      dz = (zmmaxglobal - zmminglobal) / nzfull
+      if(solvergeom==RZgeom) then
+        dy = dx
+      elseif(solvergeom==XZgeom) then
+        dy = 1.
+      elseif(solvergeom==Zgeom) then
+        dx = 1.
+        dy = 1.
+      end if
+      do i = 0, nx
+         xmesh(i) = i*dx + xmmin
+      enddo
+      do j = 0, ny
+         ymesh(j) = j*dy + ymmin
+      enddo
+      do k = 0, nz
+         zmesh(k) = k*dz + zmmin
+      enddo
+
+c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
+      ix_axis = nint(-xmmin/dx)
+      if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
+        iy_axis = nint(-ymmin/dy)
+      elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+        iy_axis = 0
+      endif
+      iz_axis = nint(-zmmin/dz)
+
+c  Setup arrays for potential and charge density for the particles.
+
+      nxp = nx
+      nyp = ny
+#ifdef MPIPARALLEL
+      call gchange("Fields3dParticles",0)
+#else
+      nzp = nz
+      zmminp = zmmin
+      zmmaxp = zmmax
+      phip => phi
+      rhop => rho
+#endif
+
+c  Initialize base grid for RZ solver
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
+        call init_base(nx,nz,dx,dz,xmmin,zmmin,.true.)
+      end if
+
 c  Create the dynamic arrays in Z_arrays; set the z mesh
 
       if (nzzarr == 0) nzzarr = nzfull
@@ -273,50 +325,13 @@ c  Also allocate the dynamic internal lattice arrays.
 c Allocate space for the selfe array, which contains the finite differenced
 c phi (Ex, Ey, Ez) on the mesh.
       if (efetch == 3) then
-        nx_selfe = nx
-        ny_selfe = ny
-        nz_selfe = nz
+        nx_selfe = nxp
+        ny_selfe = nyp
+        nz_selfe = nzp
         if(solvergeom==RZgeom .or. solvergeom==XZgeom) ny_selfe = 0
         if(solvergeom==Zgeom) nx_selfe = 0
         call gallot("Efields3d",0)
       endif
-
-c  Calculate mesh dimensioning quantities
-
-      dx = (xmmax - xmmin) / nx
-      dy = (ymmax - ymmin) / ny
-      dz = (zmmaxglobal - zmminglobal) / nzfull
-      if(solvergeom==RZgeom) then
-        dy = dx
-      elseif(solvergeom==XZgeom) then
-        dy = 1.
-      elseif(solvergeom==Zgeom) then
-        dx = 1.
-        dy = 1.
-      end if
-      do i = 0, nx
-         xmesh(i) = i*dx + xmmin
-      enddo
-      do j = 0, ny
-         ymesh(j) = j*dy + ymmin
-      enddo
-      do k = 0, nz
-         zmesh(k) = k*dz + zmmin
-      enddo
-
-c  Initialize base grid for RZ solver
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom .or. solvergeom==Zgeom) then
-        call init_base(nx,nz,dx,dz,xmmin,zmmin,.true.)
-      end if
-
-c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
-      ix_axis = nint(-xmmin/dx)
-      if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
-        iy_axis = nint(-ymmin/dy)
-      elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        iy_axis = 0
-      endif
-      iz_axis = nint(-zmmin/dz)
 
 c  Create dynamic arrays for 3D multipole moments of the electrostatic
 c  potential
@@ -579,6 +594,7 @@ c  create final printouts
 c  release storage
 
       call gfree ("Fields3d")
+      call gfree ("Fields3dParticles")
       call gfree ("Hist")
       call gfree ("Win_Moments")
       call gfree ("Z_Moments")
@@ -603,6 +619,7 @@ c=============================================================================
       use InPart
       use InMesh3d
       use Fields3d
+      use Fields3dParticles
       use Efields3d
       use Io
       use Particles
@@ -735,7 +752,7 @@ c  Field-solve for potential.
 c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
       if (efetch == 3)
-     &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
+     &  call getselfe3d(phip(0,0,-1),nxp,nyp,nzp,selfe(1,0,0,0),
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy)
 c  Set the potential near the emitting surface.
       if (inject > 0 .and. inject < 4) then
@@ -1209,6 +1226,7 @@ c=============================================================================
       use LatticeInternal
       use Particles
       use Fields3d
+      use Fields3dParticles
       use Efields3d
       use Picglb
       use Picglb3d
@@ -1261,9 +1279,9 @@ c  Loop over particle blocks; move each block separately
 
 c           --- Obtain the self-field from the electrostatic potential
             if(solvergeom==XYZgeom) then
-              call sete3d(phi(0,0,-1),selfe(1,0,0,0),ip,
+              call sete3d(phip(0,0,-1),selfe(1,0,0,0),ip,
      &                    xp(ipmin),yp(ipmin),zp(ipmin),
-     &                    zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                    zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &                    efetch,ex,ey,ez,l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
               if(.not.mgridrz_deform) then
@@ -1291,9 +1309,9 @@ c           --- Get E field for particles near the  injection surface.
             endif
 c           --- Get transverse E field for particles near any defined apertures.
             if (napertures > 0)
-     &        call sete3d_aperture(phi(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                             zgridprv,xmmin,ymmin,zmmin,zmmax,dx,dy,dz,
-     &                             nx,ny,nz,ex,ey,l2symtry,l4symtry)
+     &        call sete3d_aperture(phip(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                             zgridprv,xmmin,ymmin,zmminp,zmmax,dx,dy,dz,
+     &                             nxp,nyp,nzp,ex,ey,l2symtry,l4symtry)
 c           --- Scale the self E-field to get the lowest order relativistic
 c           --- correction.
             if (relativity == 1)
@@ -1595,7 +1613,6 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: bound0,boundxy
-      integer(ISZ):: ix,iy
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1604,6 +1621,15 @@ c  and puts the result into both slices.
 
       if (solvergeom==AMRgeom) return
 
+c  Enforce transverse periodicity if requested.
+      if (solvergeom==XYZgeom .and. boundxy==periodic) then
+        rho(:,0,:) = rho(:,0,:) + rho(:,ny,:)
+        rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
+        rho(:,ny,:) = rho(:,0,:)
+        rho(nx,:,:) = rho(0,:,:)
+      endif
+
+c  Enforce longitudinal periodicity.
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call distribute_rho_rz()
         call rhobndrz()
@@ -1616,43 +1642,13 @@ c  and puts the result into both slices.
         call get_rho_z(rho(0,0,0),nz,1,0)
       end if
 
-c Parallel version makes call to special routine perrho3d_slave
-#ifdef MPIPARALLEL
-
-      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
-        call getrhoforfieldsolverz(nx,nz,rho(0,0,0))
-      else if(solvergeom==Zgeom) then
-        call getrhoforfieldsolvez(nz,rho(0,0,0))
-      elseif (solvergeom==XYZgeom) then
-c This sums rho in the overlapping region of neighboring processes.
-        call perrho3d_slave(rho(0,0,0),nx,ny,nz,bound0)
-
-c  For parallel version, each processor sends rho to neighboring processors
-c  whose field solve region overlap its particle region.
-        call getrhoforfieldsolve(nx,ny,nz,rho(0,0,0))
-
-      end if
-
-#else
-
       if (solvergeom==XYZgeom .and. bound0==periodic) then
-
-        do iy=0,ny
-          do ix=0,nx
-            rho(ix,iy,0)  = rho(ix,iy,0) + rho(ix,iy,nz)
-            rho(ix,iy,nz) = rho(ix,iy,0)
-          enddo
-        enddo
-
-      endif
-
+#ifdef MPIPARALLEL
+        call perrho3d_slave(rho,nx,ny,nz)
+#else
+        rho(:,:,0)  = rho(:,:,0) + rho(:,:,nz)
+        rho(:,:,nz) = rho(:,:,0)
 #endif
-
-      if (solvergeom==XYZgeom .and. boundxy==periodic) then
-        rho(:,0,:) = rho(:,0,:) + rho(:,ny,:)
-        rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
-        rho(:,ny,:) = rho(:,0,:)
-        rho(nx,:,:) = rho(0,:,:)
       endif
 
       if (lw3dtimesubs) timeperrho3d = timeperrho3d + wtime() - substarttime
@@ -3325,11 +3321,11 @@ c     --- if slave, reorganize particles and recalculate sw
       return
       end
 c=============================================================================
-      subroutine setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos)
+      subroutine setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos,
+     &                    nx,ny,nz,xmmin,ymmin,zmmin)
       use GlobalVars
       use Subtimers3d
       use InGen3d
-      use InMesh3d
       use Fields3d
       use Picglb3d
       integer(ISZ):: np
@@ -3337,6 +3333,8 @@ c=============================================================================
       real(kind=8):: rho1d(0:*)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
       character(8):: depos
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: xmmin,ymmin,zmmin
 
 c  Sets charge density
 
@@ -3628,13 +3626,14 @@ c=============================================================================
       use Picglb3d
       use Particles
       use Fields3d
+      use Fields3dParticles
       use PSOR3d
       use FRZmgrid
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
 c --- This routine provides a simple call from the interpreter to load the
-c --- rho array.  The value '-1' is used as a flag in the input to use
+c --- rhop array.  The value '-1' is used as a flag in the input to use
 c --- all of the particles, otherwise the specified particles are loaded.
 
       integer(ISZ):: ins_u,nps_u
@@ -3643,13 +3642,12 @@ c --- all of the particles, otherwise the specified particles are loaded.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-c     --- zero rho if requested
+c     --- zero rhop if requested
       if (lzero) then
-        call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
+        call zeroarry(rhop(0,0,0),(nxp+1)*(nyp+1)*(nzp+1))
         if(solvergeom==RZgeom .or. solvergeom==XZgeom
      &                        .or. solvergeom==Zgeom) call reset_rzmgrid_rho()
       end if
-c     if (lzero) rho = 0.
 
 c     --- change AMR grid if necessary
       if(solvergeom==RZgeom .or. solvergeom==XZgeom
@@ -3686,8 +3684,9 @@ c        --- loop over particle blocks
          do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
             ip = min(nparpgrp, ins_u+nps_u-ipmin)
             if(solvergeom==XYZgeom) then
-              call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
-     &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
+              call setrho3d (rhop(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
+     &                       zgrid, uzp(ipmin), sq(is), sw(is), depos,
+     &                       nxp,nyp,nzp,xmmin,ymmin,zmminp)
             elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
              if(wpid==0) then
               call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),ip,
@@ -3707,9 +3706,29 @@ c        --- loop over particle blocks
 
       endif
 
-c     --- enforce axial periodicity
-      if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0,boundxy)
+c  For parallel version, each processor sends rho to neighboring processors
+c  whose field solve region overlap its particle region.
+#ifdef MPIPARALLEL
 
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
+        call getrhoforfieldsolverz(nx,nz,rho(0,0,0))
+      else if(solvergeom==Zgeom) then
+        call getrhoforfieldsolvez(nz,rho(0,0,0))
+      elseif (solvergeom==XYZgeom) then
+        call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,bound0)
+        call getrhoforfieldsolve(nx,ny,nz,rho(0,0,0),
+     &                           nxp,nyp,nzp,rhop(0,0,0))
+      end if
+
+#endif
+
+c     --- enforce periodicity
+c     --- This is done on the rho array, rather than rhop, since that will
+c     --- be used for the field solve. Also, in some cases, the rhop array
+c     --- will not cover the full axial extent of the system, so 
+c     --- periodicity can over be enforced on rho which does cover the full
+c     --- system.
+      if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0,boundxy)
 
       if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + wtime() - substarttime
       return
@@ -3889,7 +3908,7 @@ c=============================================================================
       use InjectVars3d
       use Picglb3d
       use Setpwork3d
-      use Fields3d
+      use Fields3dParticles
       use FRZmgrid
 #ifdef MPIPARALLEL
       use Parallel
@@ -5016,20 +5035,20 @@ c                 --- emitting surface.
 c                 --- Fetch difference between phi at that point and phi on
 c                 --- the emitting surface.
                   ehalf = xxi*(vtinject(ij) -
-     &                     phi(i2x  ,i2y  ,iz)*(1.-w2x)*(1.-w2y) -
-     &                     phi(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) -
-     &                     phi(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  -
-     &                     phi(i2x+1,i2y+1,iz)*    w2x *    w2y  )
+     &                     phip(i2x  ,i2y  ,iz)*(1.-w2x)*(1.-w2y) -
+     &                     phip(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) -
+     &                     phip(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  -
+     &                     phip(i2x+1,i2y+1,iz)*    w2x *    w2y  )
 
 c                 --- normal velocity
                   vnorm = -dt*qoverm*ehalf
 
 c                 --- Calculate axial E field dx from surface.
                   ez = 0.5*dzi*(
-     &     (phi(i2x  ,i2y  ,iz-1) - phi(i2x  ,i2y  ,iz+1))*(1.-w2x)*(1.-w2y) +
-     &     (phi(i2x+1,i2y  ,iz-1) - phi(i2x+1,i2y  ,iz+1))*    w2x *(1.-w2y) +
-     &     (phi(i2x  ,i2y+1,iz-1) - phi(i2x  ,i2y+1,iz+1))*(1.-w2x)*    w2y  +
-     &     (phi(i2x+1,i2y+1,iz-1) - phi(i2x+1,i2y+1,iz+1))*    w2x *    w2y)
+     &     (phip(i2x  ,i2y  ,iz-1) - phip(i2x  ,i2y  ,iz+1))*(1.-w2x)*(1.-w2y) +
+     &     (phip(i2x+1,i2y  ,iz-1) - phip(i2x+1,i2y  ,iz+1))*    w2x *(1.-w2y) +
+     &     (phip(i2x  ,i2y+1,iz-1) - phip(i2x  ,i2y+1,iz+1))*(1.-w2x)*    w2y  +
+     &     (phip(i2x+1,i2y+1,iz-1) - phip(i2x+1,i2y+1,iz+1))*    w2x *    w2y)
 
 c                 --- Axial velocity
                   vznorm = dt*qoverm*ez
@@ -5053,10 +5072,10 @@ c                 --- number of particles injected in grid cell
                     rnn = tinjprev(ith,ijz,ij)
                   elseif (inject == 3) then
 c                   --- get charge density at injection point
-                    rr = rho(i2x  ,i2y  ,iz)*(1.-w2x)*(1.-w2y) +
-     &                   rho(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  +
-     &                   rho(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) +
-     &                   rho(i2x+1,i2y+1,iz)*    w2x *    w2y
+                    rr = rhop(i2x  ,i2y  ,iz)*(1.-w2x)*(1.-w2y) +
+     &                   rhop(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  +
+     &                   rhop(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) +
+     &                   rhop(i2x+1,i2y+1,iz)*    w2x *    w2y
                     rnn=(eps0*ehalf - rr*inj_dx)*area/sq(is)/sw(is)*ftinject(is,ij)
                   endif
                   rnn = min(rnn,
@@ -5294,6 +5313,8 @@ c     --- Print warning if npinject=0
 c Each species is stored in seperate parts of the particle arrays, the size of
 c which is based off the beam fraction of each species.  Check if there is
 c enough space in each of the species blocks.
+c If there are no particles yet, then reallocate the arrays to the correct
+c size. This is much faster when there are multiple species.
 c Also set particle parameters: charge, mass and weight
       total_frac = sum(sp_fract)
       if (maxval(nps) == 0) then
@@ -5805,6 +5826,7 @@ c=============================================================================
       use InMesh3d
       use Picglb3d
       use Fields3d
+      use Fields3dParticles
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n),p(n)
 
@@ -5821,18 +5843,18 @@ c Fetch phi at points.
       do ii=1,n
         ix = (x(ii) - xmmin)*dxi
         iy = (y(ii) - ymmin)*dyi
-        iz = (z(ii) - zmmin)*dzi
+        iz = (z(ii) - zmminp)*dzi
         wx = (x(ii) - xmmin)*dxi - ix
         wy = (y(ii) - ymmin)*dyi - iy
-        wz = (z(ii) - zmmin)*dzi - iz
-        p(ii) = phi(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
-     &          phi(ix+1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
-     &          phi(ix  ,iy+1,iz  )*(1.-wx)*    wy *(1.-wz) +
-     &          phi(ix+1,iy+1,iz  )*    wx *    wy *(1.-wz) +
-     &          phi(ix  ,iy,  iz+1)*(1.-wx)*(1.-wy)*    wz  +
-     &          phi(ix+1,iy,  iz+1)*    wx *(1.-wy)*    wz  +
-     &          phi(ix  ,iy+1,iz+1)*(1.-wx)*    wy *    wz  +
-     &          phi(ix+1,iy+1,iz+1)*    wx *    wy *    wz
+        wz = (z(ii) - zmminp)*dzi - iz
+        p(ii) = phip(ix  ,iy,  iz  )*(1.-wx)*(1.-wy)*(1.-wz) +
+     &          phip(ix+1,iy,  iz  )*    wx *(1.-wy)*(1.-wz) +
+     &          phip(ix  ,iy+1,iz  )*(1.-wx)*    wy *(1.-wz) +
+     &          phip(ix+1,iy+1,iz  )*    wx *    wy *(1.-wz) +
+     &          phip(ix  ,iy,  iz+1)*(1.-wx)*(1.-wy)*    wz  +
+     &          phip(ix+1,iy,  iz+1)*    wx *(1.-wy)*    wz  +
+     &          phip(ix  ,iy+1,iz+1)*(1.-wx)*    wy *    wz  +
+     &          phip(ix+1,iy+1,iz+1)*    wx *    wy *    wz
       enddo
 
       return
@@ -6703,6 +6725,7 @@ c=============================================================================
       use Particles
       use Constant
       use Fields3d
+      use Fields3dParticles
       use Efields3d
       use Picglb
       use Picglb3d
@@ -7017,9 +7040,9 @@ c            dz1 = 2.*dz1
 c        inj_phi_3d = inj_phi_tmp
 c           --- Obtain the self-field from the electrostatic potential
             if(solvergeom==XYZgeom) then
-              call sete3d(phi(0,0,-1),selfe(1,0,0,0),nn,
+              call sete3d(phip(0,0,-1),selfe(1,0,0,0),nn,
      &                    xxp(1),yyp(1),zzp(1),
-     &                    zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
+     &                    zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nxp,nyp,nzp,
      &                    efetch,
      &                    ex_tmp(1),
      &                    ey_tmp(1),
@@ -7426,6 +7449,7 @@ c===========================================================================
       use Picglb3d
       use InMesh3d
       use Fields3d
+      use Fields3dParticles
       use Apertures
 
 c Explicitly calculate the E field in the plane of the apertures which
@@ -7476,22 +7500,22 @@ c     --- Loop over apertures.
       do ia=1,napertures
         zs = aper_zs(ia)
         ze = aper_ze(ia)
-        izs = nz - int((zmmax - zs + zgrid) * dzi)
-        ize = int((ze - zgrid - zmmin) * dzi)
+        izs = nzp - int((zmmaxp - zs + zgrid) * dzi)
+        ize = int((ze - zgrid - zmminp) * dzi)
 
 c       --- Only do calculation if aperture is within the grid.
         if (0 < ize .and. izs < nz .and. izs <= ize) then
 
-        midx = max(0,min(nx,int((aper_x(ia)                - xmmin)/dx + 0.5)))
-        midy = max(0,min(ny,int((aper_y(ia)                - ymmin)/dy + 0.5)))
-        minx = max(0,min(nx,int((aper_x(ia) - aper_rad(ia) - xmmin)/dx + 1  )))
-        miny = max(0,min(ny,int((aper_y(ia) - aper_rad(ia) - ymmin)/dy + 1  )))
-        maxx = max(0,min(nx,int((aper_x(ia) + aper_rad(ia) - xmmin)/dx      )))
-        maxy = max(0,min(ny,int((aper_y(ia) + aper_rad(ia) - ymmin)/dy      )))
+        midx = max(0,min(nxp,int((aper_x(ia)                - xmmin)/dx + 0.5)))
+        midy = max(0,min(nyp,int((aper_y(ia)                - ymmin)/dy + 0.5)))
+        minx = max(0,min(nxp,int((aper_x(ia) - aper_rad(ia) - xmmin)/dx + 1  )))
+        miny = max(0,min(nyp,int((aper_y(ia) - aper_rad(ia) - ymmin)/dy + 1  )))
+        maxx = max(0,min(nxp,int((aper_x(ia) + aper_rad(ia) - xmmin)/dx      )))
+        maxy = max(0,min(nyp,int((aper_y(ia) + aper_rad(ia) - ymmin)/dy      )))
         minxm1 = max(0,minx-1)
-        maxxp1 = min(nx,maxx+1)
+        maxxp1 = min(nxp,maxx+1)
         minym1 = max(0,miny-1)
-        maxyp1 = min(ny,maxy+1)
+        maxyp1 = min(nyp,maxy+1)
 
 c       -----------------------------------------------------------------------
 c       --- Calculate Ex and Ey for all points using standard finite
@@ -7502,9 +7526,9 @@ c       --- Those points near the conductor will be recalculated below.
           iza = iz - izs
           if (iz == izs-1 .or. iz == ize+1) then
             ixmin = 0
-            ixmax = nx-1
+            ixmax = nxp-1
             iymin = 0
-            iymax = ny-1
+            iymax = nyp-1
           else
             ixmin = minxm1
             ixmax = maxxp1
@@ -7513,8 +7537,8 @@ c       --- Those points near the conductor will be recalculated below.
           endif
           do iy=iymin,iymax
             do ix=ixmin,ixmax
-              aper_ex(ix,iy,iza,ia)=tdxi*(phi(abs(ix-1),iy,iz)-phi(ix+1,iy,iz))
-              aper_ey(ix,iy,iza,ia)=tdyi*(phi(ix,abs(iy-1),iz)-phi(ix,iy+1,iz))
+             aper_ex(ix,iy,iza,ia)=tdxi*(phip(abs(ix-1),iy,iz)-phip(ix+1,iy,iz))
+             aper_ey(ix,iy,iza,ia)=tdyi*(phip(ix,abs(iy-1),iz)-phip(ix,iy+1,iz))
             enddo
           enddo
         enddo
@@ -7535,10 +7559,10 @@ c         --- First quadrant (x > midx, y > midy)
             do ix=ixs,ixmax
               if (ix*dx < xx) then
                 wx = xx/dx - ix
-                aper_ex(ix,iy,iza,ia) = tdxi*(phi(ix-1,iy,iz) - phi(ix,iy,iz) +
-     &                                  (phi(ix  ,iy,iz) - aper_volt(ia))/wx)
+                aper_ex(ix,iy,iza,ia) = tdxi*(phip(ix-1,iy,iz) - phip(ix,iy,iz)+
+     &                                  (phip(ix  ,iy,iz) - aper_volt(ia))/wx)
               elseif (ix*dx == xx) then
-                aper_ex(ix,iy,iza,ia) = tdxi*2.*(phi(ix-1,iy,iz)-aper_volt(ia))
+                aper_ex(ix,iy,iza,ia) = tdxi*2.*(phip(ix-1,iy,iz)-aper_volt(ia))
               else
                 if (iy-midy < 2) then
                   aper_ex(ix,iy,iza,ia) = 2.*aper_ex(ix-1,iy,iza,ia) -
@@ -7560,10 +7584,10 @@ c         --- Second quadrant (x < midx, y > midy)
             do ix=ixs,ixmin,-1
               if (ix*dx > xx) then
                 wx = ix - xx/dx
-                aper_ex(ix,iy,iza,ia) = tdxi*(phi(ix,iy,iz) - phi(ix+1,iy,iz) -
-     &                                  (phi(ix,iy,iz) - aper_volt(ia))/wx)
+                aper_ex(ix,iy,iza,ia) = tdxi*(phip(ix,iy,iz) - phip(ix+1,iy,iz)-
+     &                                  (phip(ix,iy,iz) - aper_volt(ia))/wx)
               elseif (ix*dx == xx) then
-                aper_ex(ix,iy,iza,ia) = tdxi*2.*(aper_volt(ia)-phi(ix+1,iy,iz))
+                aper_ex(ix,iy,iza,ia) = tdxi*2.*(aper_volt(ia)-phip(ix+1,iy,iz))
               else
                 if (iy-midy < 2) then
                   aper_ex(ix,iy,iza,ia) = 2.*aper_ex(ix+1,iy,iza,ia) -
@@ -7585,10 +7609,10 @@ c         --- Third quadrant (x > midx, y < midy)
             do ix=ixs,ixmax
               if (ix*dx < xx) then
                 wx = xx/dx - ix
-                aper_ex(ix,iy,iza,ia) = tdxi*(phi(ix-1,iy,iz) - phi(ix,iy,iz) +
-     &                                  (phi(ix  ,iy,iz) - aper_volt(ia))/wx)
+                aper_ex(ix,iy,iza,ia) = tdxi*(phip(ix-1,iy,iz) - phip(ix,iy,iz)+
+     &                                  (phip(ix  ,iy,iz) - aper_volt(ia))/wx)
               elseif (ix*dx == xx) then
-                aper_ex(ix,iy,iza,ia) = tdxi*2.*(phi(ix-1,iy,iz)-aper_volt(ia))
+                aper_ex(ix,iy,iza,ia) = tdxi*2.*(phip(ix-1,iy,iz)-aper_volt(ia))
               else
                 if (iy-midy > -2) then
                   aper_ex(ix,iy,iza,ia) = 2.*aper_ex(ix-1,iy,iza,ia) -
@@ -7610,10 +7634,10 @@ c         --- Fourth quadrant (x < midx, y < midy)
             do ix=ixs,ixmin,-1
               if (ix*dx > xx) then
                 wx = ix - xx/dx
-                aper_ex(ix,iy,iza,ia) = tdxi*(phi(ix,iy,iz) - phi(ix+1,iy,iz) -
-     &                                  (phi(ix,iy,iz) - aper_volt(ia))/wx)
+                aper_ex(ix,iy,iza,ia) = tdxi*(phip(ix,iy,iz) - phip(ix+1,iy,iz)-
+     &                                  (phip(ix,iy,iz) - aper_volt(ia))/wx)
               elseif (ix*dx == xx) then
-                aper_ex(ix,iy,iza,ia) = tdxi*2.*(aper_volt(ia)-phi(ix+1,iy,iz))
+                aper_ex(ix,iy,iza,ia) = tdxi*2.*(aper_volt(ia)-phip(ix+1,iy,iz))
               else
                 if (iy-midy < 2) then
                   aper_ex(ix,iy,iza,ia) = 2.*aper_ex(ix+1,iy,iza,ia) -
@@ -7689,10 +7713,10 @@ c         --- First quadrant (x > midx, y > midy)
             do iy=iys,iymax
               if (iy*dy < yy) then
                 wy = yy/dy - iy
-                aper_ey(ix,iy,iza,ia) = tdyi*(phi(ix,iy-1,iz) - phi(ix,iy,iz) +
-     &                                  (phi(ix,iy  ,iz) - aper_volt(ia))/wy)
+                aper_ey(ix,iy,iza,ia) = tdyi*(phip(ix,iy-1,iz) - phip(ix,iy,iz)+
+     &                                  (phip(ix,iy  ,iz) - aper_volt(ia))/wy)
               elseif (iy*dy == yy) then
-                aper_ey(ix,iy,iza,ia) = tdyi*2.*(phi(ix,iy-1,iz)-aper_volt(ia))
+                aper_ey(ix,iy,iza,ia) = tdyi*2.*(phip(ix,iy-1,iz)-aper_volt(ia))
               else
                 if (ix-midx < 2) then
                   aper_ey(ix,iy,iza,ia) = 2.*aper_ey(ix,iy-1,iza,ia) -
@@ -7714,10 +7738,10 @@ c         --- Second quadrant (x < midx, y > midy)
             do iy=iys,iymax
               if (iy*dy < yy) then
                 wy = yy/dy - iy
-                aper_ey(ix,iy,iza,ia) = tdyi*(phi(ix,iy-1,iz) - phi(ix,iy,iz) +
-     &                                  (phi(ix,iy  ,iz) - aper_volt(ia))/wy)
+                aper_ey(ix,iy,iza,ia) = tdyi*(phip(ix,iy-1,iz) - phip(ix,iy,iz)+
+     &                                  (phip(ix,iy  ,iz) - aper_volt(ia))/wy)
               elseif (iy*dy == yy) then
-                aper_ey(ix,iy,iza,ia) = tdyi*2.*(phi(ix,iy-1,iz)-aper_volt(ia))
+                aper_ey(ix,iy,iza,ia) = tdyi*2.*(phip(ix,iy-1,iz)-aper_volt(ia))
               else
                 if (ix-midx > -2) then
                   aper_ey(ix,iy,iza,ia) = 2.*aper_ey(ix,iy-1,iza,ia) -
@@ -7739,10 +7763,10 @@ c         --- Third quadrant (x > midx, y < midy)
             do iy=iys,iymin,-1
               if (iy*dy > yy) then
                 wy = iy - yy/dy
-                aper_ey(ix,iy,iza,ia) = tdyi*(phi(ix,iy,iz) - phi(ix,iy+1,iz) -
-     &                                  (phi(ix,iy,iz) - aper_volt(ia))/wy)
+                aper_ey(ix,iy,iza,ia) = tdyi*(phip(ix,iy,iz) - phip(ix,iy+1,iz)-
+     &                                  (phip(ix,iy,iz) - aper_volt(ia))/wy)
               elseif (iy*dy == yy) then
-                aper_ey(ix,iy,iza,ia) = tdyi*2.*(aper_volt(ia)-phi(ix,iy+1,iz))
+                aper_ey(ix,iy,iza,ia) = tdyi*2.*(aper_volt(ia)-phip(ix,iy+1,iz))
               else
                 if (ix-midx < 2) then
                   aper_ey(ix,iy,iza,ia) = 2.*aper_ey(ix,iy+1,iza,ia) -
@@ -7764,10 +7788,10 @@ c         --- Fourth quadrant (x < midx, y < midy)
             do iy=iys,iymin,-1
               if (iy*dy > yy) then
                 wy = iy - yy/dy
-                aper_ey(ix,iy,iza,ia) = tdyi*(phi(ix,iy,iz) - phi(ix,iy+1,iz) -
-     &                                  (phi(ix,iy,iz) - aper_volt(ia))/wy)
+                aper_ey(ix,iy,iza,ia) = tdyi*(phip(ix,iy,iz) - phip(ix,iy+1,iz)-
+     &                                  (phip(ix,iy,iz) - aper_volt(ia))/wy)
               elseif (iy*dy == yy) then
-                aper_ey(ix,iy,iza,ia) = tdyi*2.*(aper_volt(ia)-phi(ix,iy+1,iz))
+                aper_ey(ix,iy,iza,ia) = tdyi*2.*(aper_volt(ia)-phip(ix,iy+1,iz))
               else
                 if (ix-midx < 2) then
                   aper_ey(ix,iy,iza,ia) = 2.*aper_ey(ix,iy+1,iza,ia) -
@@ -7961,6 +7985,7 @@ c===========================================================================
       use InMesh3d
       use Picglb3d
       use Fields3d
+      use Fields3dParticles
       use PSOR3d
       use Efields3d
       use LatticeInternal
@@ -8015,7 +8040,8 @@ c     --- particle domain.
 c      else if(solvergeom==Zgeom) then
 c        call getphiforparticlesz()
       elseif (solvergeom==XYZgeom) then
-        call getphiforparticles(nx,ny,nz,phi(0,0,-1))
+        call getphiforparticles(nx,ny,nz,phi(0,0,-1),
+     &                          nxp,nyp,nzp,phip)
       end if
 #endif
 
@@ -8036,7 +8062,10 @@ c=============================================================================
       use LatticeInternal
       use PSOR3d
       use FRZmgrid
+      use Parallel
       integer(ISZ):: iwhich
+
+      real(kind=8):: xlen,ylen,zlen
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -8057,25 +8086,29 @@ c   4  2d fft in transverse plane, tridiag solve in z
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
 
+      xlen = xmmax - xmmin
+      ylen = ymmax - ymmin
+      zlen = zmmaxglobal - zmminglobal
+
 c     select case (fstype)
 c       case (0)
       if (fstype == 0) then
           call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq(0),kysq(0),kzsq(0),
-     &                 attx(0),atty(0),attz(0),filt(1,1),xmmax-xmmin,ymmax-ymmin,
-     &                 (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
+     &                 attx(0),atty(0),attz(0),filt(1,1),xlen,ylen,zlen,
+     &                 nx,ny,izfsmax-izfsmin,nzfull,
      &                 scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
 c       case (1)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
+     &                xlen,ylen,zlen,
      &                nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),xywork(0,0),
      &                zwork(1,0,0),l2symtry,l4symtry)
 c       case (2)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
+     &                xlen,ylen,zlen,
      &                nx,ny,izfsmax-izfsmin,nzfull,
      &                scrtch(0,0),xywork(0,0),zwork,
      &                xmmax,zmmin+izfsmin*dz,zgrid,pipeshpe,bound0,
@@ -8092,22 +8125,22 @@ c       case (4)
       elseif (fstype == 4) then
           if (iwhich == 1 .or. iwhich == 0) then
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
-     &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
+     &                   attx,atty,attz,filt,xlen,ylen,zlen,
+     &                   nx,ny,izfsmax-izfsmin,nzfull,
      &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
             call vpois3d(12,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
-     &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
+     &                   attx,atty,attz,filt,xlen,ylen,zlen,
+     &                   nx,ny,izfsmax-izfsmin,nzfull,
      &                   scrtch(0,0),xywork(0,0),zwork,izfsmin,l2symtry,l4symtry)
             call vpois3d(14,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
-     &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
+     &                   attx,atty,attz,filt,xlen,ylen,zlen,
+     &                   nx,ny,izfsmax-izfsmin,nzfull,
      &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
             call vpois3d(13,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
-     &                   attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                   (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,nzfull,
+     &                   attx,atty,attz,filt,xlen,ylen,zlen,
+     &                   nx,ny,izfsmax-izfsmin,nzfull,
      &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
           endif
 
@@ -8115,7 +8148,7 @@ c       case (5)
       elseif (fstype == 5) then
 c         --- General capacity matrix solver in kz space
           call capmatkz3d(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
-     &                    filt,xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
+     &                    filt,xlen,ylen,zlen,
      &                    nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                    xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
      &                    xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
@@ -8123,7 +8156,7 @@ c       case (6)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
           call capmat3df(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
-     &                  filt,xmmax-xmmin,ymmax-ymmin,(izfsmax-izfsmin)*dz,
+     &                  filt,xlen,ylen,zlen,
      &                  nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                  xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
      &                  xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
@@ -8142,16 +8175,16 @@ c         --- Experimental parallel solver
 c         --- Combines local tridiag solves with iteration to exchange
 c         --- boundary data.
           call paralleltridiag(phi(0,0,izfsmin-1),kxsq,kysq,kzsq,
-     &                         attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     &                         (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
+     &                         attx,atty,attz,filt,xlen,ylen,zlen,
+     &                         nx,ny,izfsmax-izfsmin,
      &                         scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry)
 c       case (9)
       elseif (fstype == 9) then
 c         --- Experimental parallel solver based on the method
 c         --- put forward by Lantz
           call lantzsolver(iwhich,phi(0,0,izfsmin-1),kxsq,kysq,kzsq,
-     &                     attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
-     $                     (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
+     &                     attx,atty,attz,filt,xlen,ylen,zlen,
+     $                     nx,ny,izfsmax-izfsmin,
      &                     scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry)
 
 #endif

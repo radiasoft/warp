@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.95 $, $Date: 2003/03/25 21:49:09 $
+#@(#) File W3D.V, version $Revision: 3.96 $, $Date: 2003/03/25 22:52:37 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.95 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.96 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -275,6 +275,16 @@ phisav(0:nx,-1:nz)     _real [V]       # Phi at current y slice (scratch)
 xywork(0:nx,0:ny)      _real           # Work space for transverse FFTs
 zwork(2,0:nx,0:nzfull) _real           # Work space used to optimize vsftz
 
+*********** Fields3dParticles:
+nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
+nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
+nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
+zmminp real      # Lower limit of z for grid for particles
+zmmaxp real      # Upper limit of z for grid for particles
+phip(0:nxp,0:nyp,-1:nzp+1) _real +fassign # Potential used by the particles to
+                 # calculated the field from the solution of Poisson's equation.
+rhop(0:nxp,0:nyp,0:nzp)    _real +fassign # Charge density from the particles.
+
 *********** Efields3d:
 nx_selfe integer /0/ +dump           # Same as nx
 ny_selfe integer /0/ +dump           # Same as ny
@@ -460,7 +470,8 @@ getselfe3d(phi:real,nx:integer,ny:integer,nz:integer,
            dx:real,dy:real,dz:real,pboundxy:integer)
              subroutine # Calculates the self-E via finite difference of phi
 setrho3d (rho1d:real,np,xp:real,yp:real,zp:real,zgrid:real,uzp:real,q:real,
-          wght:real,depos:string)
+          wght:real,depos:string,nx:integer,ny:integer,nz:integer,
+          xmmin:real,ymmin:real,zmmin:real)
              subroutine # Computes charge density
 sezax3d()    subroutine # Sets EZAX, Ez on axix
 sphiax3d()   subroutine # Sets PHIAX, E. S. potential on axis
