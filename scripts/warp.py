@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.71 2004/08/30 19:45:19 dave Exp $"
+warp_version = "$Id: warp.py,v 1.72 2004/09/02 22:45:28 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -76,6 +76,7 @@ try:  # chopy hasn't been installed on all machines yet
   from chopy import *
 except ImportError:
   pass
+import controllers
 from controllers import *
 from ctl import *
 
@@ -353,11 +354,11 @@ package. Only w3d and wxy have field solves defined.
  - lbeforefs=false: when true, call functions installed be installbeforefs
  - lafterfs=false:  when true, call functions installed be installafterfs
   """
-  if lbeforefs: beforefs()
+  if lbeforefs: controllers.beforefs()
   currpkg = package()[0]
   if   (currpkg == "w3d"): fieldsol3d(iwhich)
   elif (currpkg == "wxy"): fieldsolxy(iwhich)
-  if lafterfs: afterfs()
+  if lafterfs: controllers.afterfs()
   # --- Now do extra work, updating arrays which depend directly on phi,
   # --- but only when a complete field solve was done.
   if iwhich == -1 or iwhich == 0:
@@ -459,8 +460,6 @@ Creates a dump file
   # --- Make list of all of the new python variables.
   interpreter_variables = []
   if pyvars:
-    if attr == 'dump' or 'dump' in attr:
-      controllerspreparefordump()
     # --- Add to the list all variables which are not in the initial list
     for l in __main__.__dict__.keys():
       if l not in initial_global_dict_keys:
@@ -476,9 +475,6 @@ Creates a dump file
   else:
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
            varsuffix=varsuffix,verbose=verbose,hdf=hdf)
-  # --- Remove control names from main dict
-  if attr == 'dump' or 'dump' in attr:
-    controllerscleanafterdump()
   # --- Update dump time
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
@@ -504,8 +500,6 @@ Reads in data from file, redeposits charge density and does field solve
     parallelrestore(filename,verbose=verbose)
   else:
     pyrestore(filename,verbose=verbose)
-  # --- Recreate control function lists
-  controllersrecreatelists()
   # --- Now that the dump file has been read in, finish up the restart work.
   # --- First set the current packge. Note that currpkg is only ever defined
   # --- in the main dictionary.
@@ -722,6 +716,11 @@ except:
 # --- of global keys.
 initial_global_dict_keys = []
 initial_global_dict_keys = globals().keys()
+
+# --- The controller functions need to be written out since they'll be changed
+# --- by the user.
+for n in controllerfunctionlist:
+  initial_global_dict_keys.remove(n)
 
 # --- Save the versions string here so that it will be dumped into any
 # --- dump file.
