@@ -35,7 +35,8 @@ madtowarp(lattice)
 from warp import *
 import __main__
 import RandomArray
-lattice_version = "$Id: lattice.py,v 1.19 2003/06/12 22:36:18 dave Exp $"
+import copy
+lattice_version = "$Id: lattice.py,v 1.20 2003/08/05 16:46:57 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -85,6 +86,9 @@ elements.
     self.elems = elems
     # --- initialize expanded list as a blank
     self.elemslist = []
+  def derivedquantities(self):
+    self.expand()
+    for e in self.elemslist: e.derivedquantities()
   def expand(self):
     if self.elemslist: return self.elemslist
     for e in self.elems:
@@ -98,6 +102,24 @@ elements.
       else:
         i = i + 1
     return self.elemslist
+  def deepexpand(self):
+    # --- Clear existing elemslist
+    self.elemslist = []
+    for e in self.elems:
+      self.elemslist.append(e.deepexpand())
+    # --- Unravel any imbedded lists.
+    i = 0
+    self.elemslist = list(self.elemslist)
+    while i < len(self.elemslist):
+      if type(self.elemslist[i]) == type([]):
+        self.elemslist[i:i+1] = self.elemslist[i]
+      else:
+        i = i + 1
+    return self.elemslist
+  def setextent(self,zz):
+    self.expand()
+    for e in self.elemslist: zz = e.setextent(zz)
+    return zz
   def install(self,zz):
     self.expand()
     for e in self.elemslist: zz = e.install(zz)
@@ -114,6 +136,15 @@ elements.
   def __radd__(self,other):
     # --- This allows addition of elements
     return LINE(other,self)
+  def __len__(self):
+    self.expand()
+    return len(self.elemslist)
+  def __getitem__(self,key):
+    self.expand()
+    return self.elemslist.__getitem__(key)
+  def __iter__(self):
+    self.expand()
+    return self.elemslist.__iter__()
 
 # --- Create an equivalent class to LINE.
 Line = LINE
@@ -133,7 +164,9 @@ list of the parameters which are changed.
     else:
       self.parent = parent
     self.__dict__.update(changes)
-    self.derivedquantities(self)
+    self.derivedquantities()
+  def deepexpand(self):
+    return copy.deepcopy(self)
   def expand(self):
     return self
   def __getattr__(self,name):
@@ -168,21 +201,31 @@ Base class for the lattice classes. Should never be directly called.
     self.offset_x = offset_x
     self.offset_y = offset_y
     self.error_type = error_type
-    Elem.derivedquantities(self,self)
-  def derivedquantities(_self,self):
-    if self.l or self.length:
+    Elem.derivedquantities(self)
+  def derivedquantities(self):
+    if self.zs or self.ze:
+      self.length = self.ze - self.zs
+    elif self.l or self.length:
       self.length = max(self.l,self.length)
       self.zs = 0.
       self.ze = 0.
-    elif self.zs or self.ze:
-      self.length = self.ze - self.zs
+  def setextent(self,zz):
+    self.zs = zz + self.zshift
+    self.ze = self.zs + self.length
+    return self.ze
   def install(self):
     pass
   def isin(self,z=top.zbeam):
     if self.zs < z and z < self.ze: return 1
     return 0
+  def deepexpand(self):
+    return copy.deepcopy(self)
   def expand(self):
     return self
+  def getattr(self,a):
+    return self.__dict__[a]
+  def setattr(self,a,val):
+    self.__dict__[a] = val
   def __mul__(self,other):
     return LINE(other*[self])
   def __rmul__(self,other):
@@ -450,10 +493,10 @@ Creates an instance of a Hele lattice element.
     self.gp = gp
     self.pw = pw
     self.pa = pa
-    self.derivedquantities(self)
+    self.derivedquantities()
     top.nhmlt = max(len(self.nn),max(max(top.helene),max(top.helenm)))
     gchange("Lattice")
-  def derivedquantities(_self,self):
+  def derivedquantities(self):
     self.nn = array(self.nn)
     self.vv = array(self.vv)
     self.ae = array(self.ae)
@@ -521,11 +564,11 @@ Creates an instance of a Accl lattice element.
     self.et = et
     self.ts = ts
     self.dt = dt
-    self.derivedquantities(self)
+    self.derivedquantities()
     if shape(self.et)[0]-1 > top.ntaccl:
       top.ntaccl = shape(self.et)[0]-1
       gchange("Lattice")
-  def derivedquantities(_self,self):
+  def derivedquantities(self):
     self.et = array(self.et)
   def install(self,zz):
     top.naccl = top.naccl + 1
@@ -603,7 +646,7 @@ Or specify the data set
     self.gp = gp
     self.pw = pw
     self.pa = pa
-    self.derivedquantities(self)
+    self.derivedquantities()
     if id is None: self.id = top.nemltsets + 1
     else:          self.id = id
     dogchange = 0
@@ -634,7 +677,7 @@ Or specify the data set
       top.esemlt[:shape(self.e)[0],:shape(self.e)[1],id-1] = self.e
       top.esemltp[:shape(self.ep)[0],:shape(self.ep)[1],id-1] = self.ep
       top.esemltph[:shape(self.eph)[0],:shape(self.eph)[1],id-1] = self.eph
-  def derivedquantities(_self,self):
+  def derivedquantities(self):
     self.e  = array(self.e)
     self.ep = array(self.ep)
     self.eph = array(self.eph)
@@ -711,7 +754,7 @@ Or specify the data set
     self.ph = ph
     self.sf = sf
     self.sc = sc
-    self.derivedquantities(self)
+    self.derivedquantities()
     if id is None: self.id = top.nmmltsets + 1
     else:          self.id = id
     dogchange = 0
@@ -742,7 +785,7 @@ Or specify the data set
       top.msmmlt[:shape(self.m)[0],:shape(self.m)[1],id-1] = self.m
       top.msmmltp[:shape(self.mp)[0],:shape(self.mp)[1],id-1] = self.mp
       top.msmmltph[:shape(self.mph)[0],:shape(self.mph)[1],id-1] = self.mph
-  def derivedquantities(_self,self):
+  def derivedquantities(self):
     self.m  = array(self.m)
     self.mp = array(self.mp)
     self.mph = array(self.mph)
@@ -811,7 +854,7 @@ Or specify the data set
     self.dx = dx
     self.dy = dy
     self.dz = dz
-    self.derivedquantities(self)
+    self.derivedquantities()
     if id is None: self.id = top.bgrdns + 1
     else:          self.id = id
     top.bgrdns = max(self.id,top.bgrdns)
@@ -835,7 +878,7 @@ Or specify the data set
       top.bgrdbx[:sbx[0],:sbx[1],:sbx[2],id-1] = self.bx
       top.bgrdby[:sby[0],:sby[1],:sby[2],id-1] = self.by
       top.bgrdbz[:sbz[0],:sbz[1],:sbz[2],id-1] = self.bz
-  def derivedquantities(_self,self):
+  def derivedquantities(self):
     self.bx = array(self.bx)
     self.by = array(self.by)
     self.bz = array(self.bz)
@@ -910,7 +953,7 @@ Or specify the data set
     self.gp = gp
     self.pw = pw
     self.pa = pa
-    self.derivedquantities(self)
+    self.derivedquantities()
     if id is None: self.id = top.pgrdns + 1
     else:          self.id = id
     top.pgrdns = max(self.id,top.pgrdns)
@@ -929,7 +972,7 @@ Or specify the data set
       top.pgrd[:sp[0],:sp[1],1:sp[2]+1,id-1] = self.pp
       top.pgrd[:sp[0],:sp[1],0,id-1] = top.pgrd[:sp[0],:sp[1],1,id-1]
       top.pgrd[:sp[0],:sp[1],sp[2]+1,id-1] = top.pgrd[:sp[0],:sp[1],sp[2],id-1]
-  def derivedquantities(_self,self):
+  def derivedquantities(self):
     self.pp = array(self.pp)
   def install(self,zz):
     top.npgrd = top.npgrd + 1
@@ -996,8 +1039,8 @@ class box(Elem):
     self.width_y = width_y
     self.i_cap_pointer = i_cap_pointer
     self.n_cap_nodes = n_cap_nodes
-    self.derivedquantities(self)
-  def derivedquantities(_self,self):
+    self.derivedquantities()
+  def derivedquantities(self):
     if self.ap:
       self.width_x = self.ap
       self.width_y = self.ap
@@ -1032,8 +1075,8 @@ class quad(Elem):
     self.n_cap_nodes = n_cap_nodes
     self.voltage = voltage
     self.gradient = gradient
-    self.derivedquantities(self)
-  def derivedquantities(_self,self):
+    self.derivedquantities()
+  def derivedquantities(self):
     if self.gradient != 0:
       self.voltage = self.gradient*self.ap**2
     else:
