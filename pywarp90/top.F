@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.77 $, $Date: 2003/03/21 00:19:19 $
+c@(#) File TOP.M, version $Revision: 3.78 $, $Date: 2003/03/26 23:15:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3803,8 +3803,8 @@ c since that may force some particles off of the mesh. Instead, the
 c zcorrection is returned so that it can be dealt with in a reasonable way
 c by the calling routine.
 
-      integer(ISZ):: io,id,astat
-      real(kind=8):: offset,zs,ze,zc
+      integer(ISZ):: io,astat,iz
+      real(kind=8):: zs,ze,zc
       real(kind=8):: gapez,z1,z2,vn,frac,qoverm
       real(kind=8):: zl,zr,vbeamfrmo,deltav
       real(kind=8):: zbeamnew
@@ -3814,17 +3814,16 @@ c by the calling routine.
 
       if (accls .and. vbeamfrm .ne. 0.) then
 
+        iz = nzlmax/2
         do io=1,nacclol
 
-          id = cacclid(nzlmax/2,io)
-
 c         --- Check if this gap should accelerate the beam frame.
-          if (acclsw(id) .ne. 0) cycle
+          if (cacclsw(iz,io) .ne. 0) cycle
 
 c         --- Set some temporaries
-          gapez = cacclez(nzlmax/2,io)
-          zs = acclzs(id) + offset
-          ze = acclze(id) + offset
+          gapez = cacclez(iz,io)
+          zs = cacclzs(iz,io)
+          ze = cacclze(iz,io)
 
 c         --- If not using zero length gaps then do residence corrections
 c         --- across the gap.
@@ -3885,7 +3884,7 @@ c           --- Save current beam velocity
             vbeamfrmo = vbeamfrm
 c           --- add acceleration to beam velocity
             if (zl .le. zc .and. zc .lt. zr) then
-              vbeamfrm = sqrt(vbeamfrm**2 + 2.*qoverm*acclez(id)*(ze - zs))
+              vbeamfrm = sqrt(vbeamfrm**2 + 2.*qoverm*gapez*(ze - zs))
               vbeam = vbeamfrm
             endif
 c           --- calculate correction on position of beam frame
@@ -3897,7 +3896,7 @@ c           --- calculate correction on position of beam frame
             endif
             if (zr .lt. zc .and. zc .lt. zbeam+vbeamfrmo*dt) then
               frac = 1. - (zc - zbeam)/(vbeamfrmo*dt)
-              deltav = sqrt(vbeamfrm**2 + 2.*qoverm*acclez(id)*(ze - zs))
+              deltav = sqrt(vbeamfrm**2 + 2.*qoverm*gapez*(ze - zs))
      &                 - vbeamfrm
             endif
 c           --- Set the correction to the beam frame position
