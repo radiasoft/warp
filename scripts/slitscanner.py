@@ -3,7 +3,7 @@ Creates a class which generates slit scanner data.
 SlitScan()
 """
 from warp import *
-slitscanner_version = "$Id: slitscanner.py,v 1.1 2002/06/12 23:36:15 dave Exp $"
+slitscanner_version = "$Id: slitscanner.py,v 1.2 2002/09/27 22:13:51 dave Exp $"
 
 def slitscannerdoc():
   import slitscanner
@@ -127,18 +127,20 @@ class SlitScan:
   """
 Generates slit scan data for slice particles.
   center1: center position of first slit
-  range1: range of movement of first slit
+  range1: range of movement of center of first slit
   n1: number of slit locations for the first slit
   width1: width of slit
   s1: plane of first slit, either 'x' or 'y'
   center2: center position of second slit (see info below)
-  range2: range of movement of second slit (see info below)
+  range2: range of movement of center of second slit (see info below)
   n2: number of slit locations for the second slit
   width2: width of the second slit
   s2: plane of the second slit, either 'x' or 'y'
   slope: slope for second slit (see info below)
   zdist: distance between the two slits
   js=0: particle species to use
+The input quantities are best thought of in terms of where the data should be
+in the phase-space rather than the actual location of the slits in the experiment.
 For the second slit, the center and range are given relative to the quantity
 being measured. So for parallel slits (measuring phase space), the center and
 range are given in units of radians. Center2 gives the location of the
