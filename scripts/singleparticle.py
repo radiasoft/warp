@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.7 2001/09/17 23:03:48 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.8 2001/09/21 23:17:40 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -97,12 +97,16 @@ initial data, and redefines the step command
     top.nhist = top.nt
     top.iflabwn = 0
     w3d.lrhodia3d = false
+    w3d.lgetese3d = false
+    w3d.lgtlchg3d = false
     # --- Turn off the field solver
     top.fstype = -1
     # --- Zero out phi if requested.
     if zerophi: w3d.phi = 0.
-    # --- Turn off charge deposition
+    # --- Turn off charge deposition. The laccumulate_rho is set to true
+    # --- to turn off the zeroing of rho.
     top.depos = 'none'
+    top.laccumulate_rho = true
     # --- Save initial time-step data
     self.itsave = top.it
     self.timesave = top.time
