@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.143 $, $Date: 2005/01/25 19:37:08 $
+c@(#) File TOP.F, version $Revision: 3.144 $, $Date: 2005/02/03 20:38:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5962,19 +5962,18 @@ c       --- If only one species, then don't have separate species data.
       dzzi = 1. / dzz
 c     --- vector loop
       do ip = 1,np
-         kk(ip) = (zp(ip) - zbeam - zzmin) * dzzi
-         w1 =  (zp(ip) - zbeam - zzmin) * dzzi - kk(ip)
-         w0 = 1. - w1
-         s0(ip) = w0 * g * gaminv(ip) * uzp(ip)
-         s1(ip) = w1 * g * gaminv(ip) * uzp(ip)
+        kk(ip) = (zp(ip) - zbeam - zzmin) * dzzi
+        w1 =  (zp(ip) - zbeam - zzmin) * dzzi - kk(ip)
+        w0 = 1. - w1
+        s0(ip) = w0 * g * gaminv(ip) * uzp(ip)
+        s1(ip) = w1 * g * gaminv(ip) * uzp(ip)
       enddo
 c     --- scalar loop
 !$OMP CRITICAL (CRITICAL_SETCURR1)
       do ip = 1,np
-         if (uzp(ip) /= 0) then
-            curr(kk(ip),js) = curr(kk(ip),js) + s0(ip)
-            curr(kk(ip)+1,js) = curr(kk(ip)+1,js) + s1(ip)
-         endif
+        if (uzp(ip) == 0 .or. kk(ip) < 0 .or. kk(ip)+1 > nzzarr) cycle
+        curr(kk(ip),js) = curr(kk(ip),js) + s0(ip)
+        curr(kk(ip)+1,js) = curr(kk(ip)+1,js) + s1(ip)
       enddo
 !$OMP END CRITICAL (CRITICAL_SETCURR1)
 
@@ -6017,19 +6016,18 @@ c       --- If only one species, then don't have separate species data.
       dzzi = 1. / dzz
 c     --- vector loop
       do ip = 1,np
-         kk(ip) = (zp(ip) - zbeam - zzmin) * dzzi
-         w1 =  (zp(ip) - zbeam - zzmin) * dzzi - kk(ip)
-         w0 = 1. - w1
-         s0(ip) = w0 * g * gaminv(ip) * uzp(ip) * w(ip)
-         s1(ip) = w1 * g * gaminv(ip) * uzp(ip) * w(ip)
+        kk(ip) = (zp(ip) - zbeam - zzmin) * dzzi
+        w1 =  (zp(ip) - zbeam - zzmin) * dzzi - kk(ip)
+        w0 = 1. - w1
+        s0(ip) = w0 * g * gaminv(ip) * uzp(ip) * w(ip)
+        s1(ip) = w1 * g * gaminv(ip) * uzp(ip) * w(ip)
       enddo
 c     --- scalar loop
 !$OMP CRITICAL (CRITICAL_SETCURR_WEIGHTS1)
       do ip = 1,np
-         if (uzp(ip) /= 0) then
-            curr(kk(ip),js) = curr(kk(ip),js) + s0(ip)
-            curr(kk(ip)+1,js) = curr(kk(ip)+1,js) + s1(ip)
-         endif
+        if (uzp(ip) == 0 .or. kk(ip) < 0 .or. kk(ip)+1 > nzzarr) cycle
+        curr(kk(ip),js) = curr(kk(ip),js) + s0(ip)
+        curr(kk(ip)+1,js) = curr(kk(ip)+1,js) + s1(ip)
       enddo
 !$OMP END CRITICAL (CRITICAL_SETCURR_WEIGHTS1)
 
@@ -6123,6 +6121,7 @@ c  positions, then uses it to augment the individual particle Ez's.
            kk = (zp(ip) - zbeam - zzmin) * dzzi
            w1 = (zp(ip) - zbeam - zzmin) * dzzi - kk
            w0 = 1. - w1
+           if (kk < 0 .or. kk+1 > nzzarr) cycle
            ez(ip) = ez(ip) + w0*egap(kk) + w1*egap(kk+1)
         enddo
 
