@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.47 2001/08/01 23:34:50 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.48 2001/08/13 23:18:47 jlvay Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -41,7 +41,7 @@ These return or set a slice out of the rho or phi array.
 getrho(), getphi(), setrho(), setphi()
 
 The following plot various particles projections.
-ppzxy(), ppzx(), ppzy(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppxy()
+ppzxy(), ppzx(), ppzy(), ppzr(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppxy()
 ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz(), pprrp()
 pprvz(), pptrace()
 
@@ -304,6 +304,8 @@ Simple interface to contour plotting, same arguments as plc
         levs = iota(0,levs)*(mx-mn)/levs + mn
       plc(zz,xx,yy,color=color,levs=levs,width=width,type=linetype)
     else:
+      print 'type zz,xx,yy',type(zz),type(xx),type(yy)
+      print 'shape zz,xx,yy',shape(zz),shape(xx),shape(yy)
       plc(zz,xx,yy,color=color,width=width,type=linetype)
 def plotfc(zz,xx=None,yy=None,ireg=None,contours=8):
   """
@@ -336,7 +338,7 @@ yellow = 'yellow'
 #
 # Here are the plots available so far
 #
-# ppzx(), ppzy(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz()
+# ppzx(), ppzy(), ppzr(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz()
 # ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy()
 # ppxvz(), ppyvz(), pprvz(), ppzxy(), pptrace()
 # ppco(y,x,z;uz,xmin,xmax,ymin,ymax,zmin,zmax)
@@ -1220,6 +1222,28 @@ values from zmin to zmax.
   # --- Return to plot system 1.
   plsys(view)
 
+#############################################################################
+#############################################################################
+def ppmultispecies(pp,args,kw):
+  """checks if js defined and assign it to a list if plotting multispecies.
+  Also assign colors accordingly
+  """
+  if 'js' in kw.keys():
+    js = kw['js']
+    if js != -1 and type(js) != ListType:
+      return false
+    else:
+      if js == -1: js = range(top.ns)
+      if 'color' in kw.keys(): color = kw['color']
+      else: color = range(0,240,240/len(js))
+      for i in js:
+        kw['js'] = i
+        kw['color'] = color[i]
+        apply(pp,args,kw)
+      return true
+  else:
+    return false
+
 ########################################################################
 ########################################################################
 ########################################################################
@@ -1240,6 +1264,7 @@ functions.
 ########################################################################
 def ppzxy(iw=0,particles=1,**kw):
   "Plots Z-X and Z-Y in single page"
+  if ppmultispecies(ppzxy,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   kw['view'] = 9
@@ -1267,6 +1292,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzx(iw=0,particles=1,**kw):
   "Plots Z-X"
+  if ppmultispecies(ppzx,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
@@ -1283,6 +1309,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzy(iw=0,particles=1,**kw):
   "Plots Z-Y"
+  if ppmultispecies(ppzy,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
@@ -1297,8 +1324,26 @@ if sys.version[:5] != "1.5.1":
   ppzy.__doc__ = ppzy.__doc__ + ppgeneric_doc('z','y')
 
 ##########################################################################
+def ppzr(iw=0,particles=1,**kw):
+  "Plots Z-R"
+  if ppmultispecies(ppzr,(iw,particles),kw): return
+  checkparticleplotarguments(kw)
+  kw['particles'] = particles
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xplmin,top.xplmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("R vs Z","Z","R",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(sqrt(top.xp**2+top.yp**2),ii),take(top.zp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzr.__doc__ = ppzr.__doc__ + ppgeneric_doc('z','r')
+
+##########################################################################
 def ppzxp(iw=0,particles=1,**kw):
   "Plots Z-X'"
+  if ppmultispecies(ppzxp,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
@@ -1315,6 +1360,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzvx(iw=0,particles=1,**kw):
   "Plots Z-Vx"
+  if ppmultispecies(ppzvx,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
@@ -1331,6 +1377,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzyp(iw=0,particles=1,**kw):
   "Plots Z-Y'"
+  if ppmultispecies(ppzyp,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
@@ -1347,6 +1394,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzvy(iw=0,particles=1,**kw):
   "Plots Z-Vy"
+  if ppmultispecies(ppzvy,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
@@ -1363,6 +1411,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppzvz(iw=0,particles=1,**kw):
   "Plots Z-Vz"
+  if ppmultispecies(ppzvz,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   (vzmin,vzmax) = getvzrange()
@@ -1379,6 +1428,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxy(iw=0,particles=1,**kw):
   "Plots X-Y"
+  if ppmultispecies(ppxy,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
@@ -1394,6 +1444,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxxp(iw=0,iz=None,slope=0.,offset=0.,particles=1,lmoments=0,**kw):
   "Plots X-X'. If slope='auto', it is calculated from the moments."
+  if ppmultispecies(ppxxp,(iw,iz,slope,offset,particles,lmoments),kw): return
   checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
   kw['particles'] = particles
@@ -1413,6 +1464,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppyyp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots Y-Y'. If slope='auto', it is calculated from the moments."
+  if ppmultispecies(ppyyp,(iw,iz,slope,offset,particles),kw): return
   checkparticleplotarguments(kw)
   if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
   kw['particles'] = particles
@@ -1432,6 +1484,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxpyp(iw=0,particles=1,**kw):
   "Plots X'-Y'."
+  if ppmultispecies(ppxpyp,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
@@ -1448,6 +1501,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxvx(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots X-Vx. If slope='auto', it is calculated from the moments."
+  if ppmultispecies(ppxvx,(iw,iz,slope,offset,particles),kw): return
   checkparticleplotarguments(kw)
   if type(slope) == type(''):
     (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
@@ -1469,6 +1523,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppyvy(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots Y-Vy. If slope='auto', it is calculated from the moments."
+  if ppmultispecies(ppyvy,(iw,iz,slope,offset,particles),kw): return
   checkparticleplotarguments(kw)
   if type(slope) == type(''):
     (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
@@ -1490,6 +1545,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppxvz(iw=0,particles=1,**kw):
   "Plots X-Vz."
+  if ppmultispecies(ppxvz,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
@@ -1506,6 +1562,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def ppyvz(iw=0,particles=1,**kw):
   "Plots Y-Vz."
+  if ppmultispecies(ppyvz,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
@@ -1523,6 +1580,7 @@ if sys.version[:5] != "1.5.1":
 def pprrp(iw=0,scale=0,slope=0.,particles=1,**kw):
   """Plots R-R', If slope='auto', it is calculated from the moments.
   - scale=0: when true, scale particle by 2*rms"""
+  if ppmultispecies(pprrp,(iw,scale,slope,particles),kw): return
   checkparticleplotarguments(kw)
   xscale = 1.
   yscale = 1.
@@ -1568,6 +1626,7 @@ if sys.version[:5] != "1.5.1":
 ##########################################################################
 def pprvz(iw=0,particles=1,**kw):
   "Plots R-Vz"
+  if ppmultispecies(pprvz,(iw,particles),kw): return
   checkparticleplotarguments(kw)
   (vzmin,vzmax) = getvzrange()
   kw['particles'] = particles
@@ -1592,6 +1651,7 @@ pplimits can be a list of up to four tuples, one for each phase space plot.
 If any of the tuples are empty, the limits used will be the usual ones for
 that plot.
   """
+  if ppmultispecies(pptrace,(iw,slope,iz,particles,titles,pplimits),kw): return
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
   x = take(top.xp,ii)
