@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.81 2002/06/12 23:38:40 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.82 2002/06/21 16:16:41 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2369,7 +2369,7 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.ymmin,w3d.ymmax)
-  settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
+  settitles("Electrostatic potential in z-y plane","Z","Y","ix = "+repr(ix))
   ppp = getphi(ix=ix)
   if me > 0: ppp = zeros((w3d.ny+1,w3d.nzfull+1),'d')
   if fullplane and (w3d.l2symtry or w3d.l4symtry):
@@ -2401,7 +2401,7 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.xmmin,w3d.xmmax)
-  settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
+  settitles("Electrostatic potential in z-x plane","Z","X","iy = "+repr(iy))
   ppp = getphi(iy=iy)
   if me > 0: ppp = zeros((w3d.nx+1,w3d.nzfull+1),'d')
   if fullplane and w3d.l4symtry:
@@ -2430,7 +2430,7 @@ def pcphixy(iz=None,fullplane=1,**kw):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
-  settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
+  settitles("Electrostatic potential in x-y plane","X","Y","iz = "+repr(iz))
   ppp = getphi(iz=iz)
   if me > 0: ppp = zeros((w3d.nx+1,w3d.ny+1),'d')
   if fullplane and w3d.l4symtry:
