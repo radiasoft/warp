@@ -77,7 +77,7 @@ if not lparallel:
     pass
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.63 2004/05/20 20:10:56 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.64 2004/05/20 21:59:35 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1371,7 +1371,7 @@ Cylinder with rounded corners aligned with z-axis
 
   def visualize(self,display=1,**kw):
     rr = [self.radius-self.radius2,self.radius,
-          self.radius,self.radius-self.radius2],
+          self.radius,self.radius-self.radius2]
     zz = [-self.length/2.,-self.length/2.+self.radius2,
           +self.length/2.-self.radius2,+self.length/2.]
     rad = [self.radius2,None,self.radius2]
@@ -1381,7 +1381,7 @@ Cylinder with rounded corners aligned with z-axis
       zz[1] = 0.5*(zz[1] + zz[2])
       zz[2] = zz[1]
       rr[1:3] = sqrt(self.radius2**2 - (self.radius2 - self.length/2.)**2)
-    Srfrv.checkarcs(self,zz,rr,rad,zc,rc)
+    Srfrv.checkarcs(Srfrv(),zz,rr,rad,zc,rc)
     
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
@@ -1453,7 +1453,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
   def visualize(self,rend=1.,display=1,**kw):
 
     rr = [self.radius+self.radius2,self.radius,
-          self.radius,self.radius+self.radius2],
+          self.radius,self.radius+self.radius2]
     zz = [-self.length/2.,-self.length/2.+self.radius2,
           +self.length/2.-self.radius2,+self.length/2.]
     rad = [-self.radius2,None,-self.radius2]
@@ -1462,9 +1462,11 @@ Outside of a cylinder with rounded corners aligned with z-axis
     if zz[1] > zz[2]:
       zz[1] = 0.5*(zz[1] + zz[2])
       zz[2] = zz[1]
-      rr[1:3] = (self.radius + self.radius2 -
+      rfixed = (self.radius + self.radius2 -
                  sqrt(self.radius2**2 - (self.radius2 - self.length/2.)**2))
-    Srfrv.checkarcs(self,zz,rr,rad,zc,rc)
+      rr[1] = rfixed
+      rr[2] = rfixed
+    Srfrv.checkarcs(Srfrv(),zz,rr,rad,zc,rc)
     
     v = VPythonobjects.VisualRevolution(
                        zzmin=-self.length/2.,zzmax=+self.length/2.,
