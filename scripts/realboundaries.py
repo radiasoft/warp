@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.57 2004/10/28 23:26:41 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.58 2004/10/28 23:27:47 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -546,9 +546,10 @@ Constructor arguments:
   - rodfract=0.5: when newmesh is true, this gives the fraction of the rods
                   which are included for electric quads.
   - scrapemethod: Method to use to scrape particles. Only applied to 3d.
-                  1 (default) uses prwall to scrape on cylindrical boundaries
-                  2 uses ParticleScraper module to scrape on actual conductors
-                    The method is precise but very inefficient.
+                  1 uses prwall to scrape on cylindrical boundaries
+                  2 (default) uses ParticleScraper module to scrape on
+                    actual conductors. The method is precise but can be very
+                    inefficient.
                   This input supercedes lscrapeparticles.
   - lscrapeparticles=1: When true, particles are scraped on the conductors.
                         This only applies to the 3d case. (Obsolete)
@@ -568,7 +569,7 @@ Constructor arguments:
   """
   #----------------------------------------------------------------------------
   def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=1,
-                    scrapemethod=1,
+                    scrapemethod=2,
                     dfill=2,lclearconductors=1,pipethickness=largepos):
     global _realboundarycount
     # --- Only allow one instance of this class.
