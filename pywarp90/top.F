@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.85 $, $Date: 2003/04/28 19:17:19 $
+c@(#) File TOP.M, version $Revision: 3.86 $, $Date: 2003/04/29 17:04:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -621,9 +621,9 @@ c     --- components in each element
          do ii = 1, nhmlt 
             if (heleae(ii,ih) .ne. 0. .or. heleep(ii,ih) .ne. 0.) helene(ih)=ii
             if (heleam(ii,ih) .ne. 0. .or. helemp(ii,ih) .ne. 0.) helenm(ih)=ii
+            if (nnhmlt < helene(ih)) nnhmlt = helene(ih)
+            if (nnhmlt < helenm(ih)) nnhmlt = helenm(ih)           
          enddo
-         if (nnhmlt < helene(ih)) nnhmlt = helene(ih)
-         if (nnhmlt < helenm(ih)) nnhmlt = helenm(ih)           
       enddo
 c     --- count acceleration gaps 
       do ia = 0, naccl
@@ -3442,8 +3442,7 @@ c           --- Note that the max's inside the sqrt are for idiot proofing.
               frac = max((dtr + (zp(ip) - cacclzs(iz,io))/vn)*dti , 0.)
             elseif (zp(ip) <= cacclze(iz,io)) then
               frac1 = min((dtr + 2.*(zp(ip) - cacclzs(iz,io))/
-     &                (sqrt(max(0.,vn**2 - 2.*gapez*qoverm*
-     &                (zp(ip) - cacclzs(iz,io)))) + vn))*dti, 1.)
+     &                    (vz + vn))*dti, 1.)
               frac2 = min((-dtl + 2.*(cacclze(iz,io) - zp(ip))/
      &                (sqrt(max(0.,vn**2 + 2.*gapez*qoverm*
      &                (cacclze(iz,io) - zp(ip)))) + vn))*dti, 1.)
