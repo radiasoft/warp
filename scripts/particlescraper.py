@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.7 2003/10/10 00:20:58 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.8 2003/11/24 21:13:50 jlvay Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -98,9 +98,9 @@ Class for creating particle scraper for conductors
     else: sx = 1.
     if w3d.l4symtry or w3d.l2symtry: sy = sign(ones(nn),yy)
     else: sy = 1.
-    xg = int(abs(xx-xmin)/dx)*dx + array(nn/8*[0.,dx,0.,dx,0.,dx,0.,dx])
-    yg = int(abs(yy-ymin)/dy)*dy + array(nn/8*[0.,0.,dy,dy,0.,0.,dy,dy])
-    zg = int(abs(zz-zmin)/dz)*dz + array(nn/8*[0.,0.,0.,0.,dz,dz,dz,dz])
+    xg = xmin+int(abs(xx-xmin)/dx)*dx + array(nn/8*[0.,dx,0.,dx,0.,dx,0.,dx])
+    yg = ymin+int(abs(yy-ymin)/dy)*dy + array(nn/8*[0.,0.,dy,dy,0.,0.,dy,dy])
+    zg = zmin+int(abs(zz-zmin)/dz)*dz + array(nn/8*[0.,0.,0.,0.,dz,dz,dz,dz])
     pp = zeros(nn,'d')
 
     # --- Get conductor id that particles are near
