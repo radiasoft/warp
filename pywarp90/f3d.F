@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.101 $, $Date: 2004/04/13 20:33:04 $
+c@(#) File F3D.M, version $Revision: 3.102 $, $Date: 2004/04/20 20:27:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1133,6 +1133,238 @@ c ----------------------------------------------------------------------------
       return
       end
 c=============================================================================
+
+c++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+c=======================================================================
+c The following two routines use the vcpft routine for the FFT's. That
+c routine runs faster when the data is in transposed order and the following
+c versions were kept.  Original unvectoized routine is in appendix to 
+c  Birdsall/Langdon.
+c The difference in speed is around 15% using the Intel compiler on Linux
+c and about a factor of 2 on the IBM SP.
+c=============================================================================
+      subroutine vpftx(nx,ny,nz,a,norm,esx,esy,nxy,xywork)
+      integer(ISZ):: nx,ny,nz,esx,esy,nxy
+      real(kind=8):: a(0:nx,0:ny,0:nz),norm,xywork(2,0:nx,0:ny)
+
+c Routine does the fft over x for entire array.  Outer loop is in z
+c This is put into a subroutine for the parallel field solver since the
+c grid dimensions passed are not the true grid dimensions.
+c 
+c esx and esy are the amount of extra space at the ends of the dimensions.
+c nxy is the size of the transverse planes.
+
+      integer(ISZ):: ix,iy,iz
+
+!$OMP DO FIRSTPRIVATE(norm)
+      do iz = 0, nz-2, 2
+c       --- shift k-space origin to middle and apply normalization factor
+c       --- if non-zero.
+        if (norm == 0) then
+          do ix = 1, nx-esx, 2
+            do iy = 0, ny-esy
+              xywork(1,iy,ix-1) = +a(ix-1,iy,iz  )
+              xywork(2,iy,ix-1) = +a(ix-1,iy,iz+1)
+              xywork(1,iy,ix  ) = -a(ix  ,iy,iz  )
+              xywork(2,iy,ix  ) = -a(ix  ,iy,iz+1)
+            enddo
+          enddo
+        else
+          do ix = 1, nx-esx, 2
+            do iy = 0, ny-esy
+              xywork(1,iy,ix-1) = +a(ix-1,iy,iz  )*norm
+              xywork(2,iy,ix-1) = +a(ix-1,iy,iz+1)*norm
+              xywork(1,iy,ix  ) = -a(ix,  iy,iz  )*norm
+              xywork(2,iy,ix  ) = -a(ix,  iy,iz+1)*norm
+            enddo
+          enddo
+        endif
+
+c       --- do the transforms
+
+        call vcpft (xywork(1,0,0), xywork(2,0,0), nx, 2*(ny+1),-1,ny+(1-esy),2)
+        call vrpft2(xywork(1,0,0), xywork(2,0,0), nx, 2*(ny+1),   ny+(1-esy),2)
+
+        do ix = 0, nx-1
+          do iy = 0, ny-esy
+            a(ix,iy  ,iz) = xywork(1,iy,ix)
+            a(ix,iy,iz+1) = xywork(2,iy,ix)
+          enddo
+        enddo
+
+      enddo
+!$OMP END DO
+
+      return
+      end
+
+c=============================================================================
+      subroutine vpftxi(nx,ny,nz,a,norm,esx,esy,nxy,xywork)
+      integer(ISZ):: nx,ny,nz,esx,esy,nxy
+      real(kind=8):: a(0:nx,0:ny,0:nz),norm,xywork(2,0:nx,0:ny)
+
+c This is put into a subroutine for the parallel field solver since the
+c grid dimensions passed are not the true grid dimensions.
+c
+c esx and esy are the amount of extra space at the ends of the dimensions.
+c nxy is the size of the transverse planes.
+
+      integer(ISZ):: ix,iy,iz
+
+!$OMP DO FIRSTPRIVATE(norm)
+      do iz = 0, nz-2, 2
+
+        do ix = 0, nx-esx
+          do iy = 0, ny-esy
+            xywork(1,iy,ix) = a(ix,iy,iz)
+            xywork(2,iy,ix) = a(ix,iy,iz+1)
+          enddo
+        enddo
+
+c       --- do the transforms
+
+        call vrpfti2(xywork(1,0,0),xywork(2,0,0),nx, 2*(ny+1),   ny+(1-esy),2)
+        call vcpft  (xywork(1,0,0),xywork(2,0,0),nx, 2*(ny+1),+1,ny+(1-esy),2)
+
+c       --- shift k-space origin back and apply normalization factor
+c       --- if non-zero.
+        if (norm == 0.) then
+          do ix = 1, nx-esx, 2
+            do iy = 0, ny-esy
+              a(ix-1,iy,iz  ) = +xywork(1,iy,ix-1)
+              a(ix-1,iy,iz+1) = +xywork(2,iy,ix-1)
+              a(ix,  iy,iz  ) = -xywork(1,iy,ix  )
+              a(ix,  iy,iz+1) = -xywork(2,iy,ix  )
+            enddo
+          enddo
+        else
+          do ix = 1, nx-esx, 2
+            do iy = 0, ny-esy
+              a(ix-1,iy,iz  ) = +xywork(1,iy,ix-1)*norm
+              a(ix-1,iy,iz+1) = +xywork(2,iy,ix-1)*norm
+              a(ix,  iy,iz  ) = -xywork(1,iy,ix  )*norm
+              a(ix,  iy,iz+1) = -xywork(2,iy,ix  )*norm
+            enddo
+          enddo
+        endif
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
+c Periodic forward and reverse transforms in y
+c=============================================================================
+      subroutine vpfty(nx,ny,nz,a,norm,esx,esy,nxy,xywork)
+      integer(ISZ):: nx,ny,nz,esx,esy,nxy
+      real(kind=8):: a(0:nx,0:ny,0:nz),norm,xywork(2,0:nx,0:nz)
+
+c This is put into a subroutine for the parallel field solver since the
+c grid dimensions passed are not the true grid dimensions.
+c
+c esx and esy are the amount of extra space at the ends of the dimensions.
+c nxy is the size of the transverse planes.
+
+      integer(ISZ):: ix,iy,iz
+
+!$OMP DO FIRSTPRIVATE(norm)
+      do iz = 0, nz-2, 2
+c       --- shift k-space origin to middle and apply normalization factor
+c       --- if non-zero.
+        if (norm == 0) then
+          do iy = 1, ny-esy, 2
+            do ix = 0, nx-esx
+              xywork(1,ix,iy-1) = +a(ix,iy-1,iz  )
+              xywork(2,ix,iy-1) = +a(ix,iy-1,iz+1)
+              xywork(1,ix,iy  ) = -a(ix,iy  ,iz  )
+              xywork(2,ix,iy  ) = -a(ix,iy  ,iz+1)
+            enddo
+          enddo
+        else
+          do iy = 1, ny-esy, 2
+            do ix = 0, nx-esx
+              xywork(1,ix,iy-1) = +a(ix,iy-1,iz  )*norm
+              xywork(2,ix,iy-1) = +a(ix,iy-1,iz+1)*norm
+              xywork(1,ix,iy  ) = -a(ix,iy  ,iz  )*norm
+              xywork(2,ix,iy  ) = -a(ix,iy  ,iz+1)*norm
+            enddo
+          enddo
+        endif
+
+c       --- do the transforms
+
+        call vcpft (xywork(1,0,0),xywork(2,0,0),ny, 2*(nx+1),-1,nx+(1-esx),2)
+        call vrpft2(xywork(1,0,0),xywork(2,0,0),ny, 2*(nx+1),   nx+(1-esx),2)
+
+        do iy = 0, ny-esy
+          do ix = 0, nx-esx
+            a(ix,iy,iz  ) = xywork(1,ix,iy)
+            a(ix,iy,iz+1) = xywork(2,ix,iy)
+          enddo
+        enddo
+
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
+      subroutine vpftyi(nx,ny,nz,a,norm,esx,esy,nxy,xywork)
+      integer(ISZ):: nx,ny,nz,esx,esy,nxy
+      real(kind=8):: a(0:nx,0:ny,0:nz),norm,xywork(2,0:nx,0:nz)
+
+c This is put into a subroutine for the parallel field solver since the
+c grid dimensions passed are not the true grid dimensions.
+c
+c esx and esy are the amount of extra space at the ends of the dimensions.
+c nxy is the size of the transverse planes.
+
+      integer(ISZ):: ix,iy,iz
+
+!$OMP DO FIRSTPRIVATE(norm)
+      do iz = 0, nz-2, 2
+
+        do iy = 0, ny-esy
+          do ix = 0, nx-esx
+            xywork(1,ix,iy) = a(ix,iy,iz  )
+            xywork(2,ix,iy) = a(ix,iy,iz+1)
+          enddo
+        enddo
+
+c       --- do the transforms
+
+        call vrpfti2(xywork(1,0,0),xywork(2,0,0), ny, 2*(nx+1),   nx+(1-esx),2)
+        call vcpft  (xywork(1,0,0),xywork(2,0,0), ny, 2*(nx+1),+1,nx+(1-esx),2)
+
+c       --- shift k-space origin back and apply normalization factor
+c       --- if non-zero.
+        if (norm == 0.) then
+          do iy = 1, ny-esy, 2
+            do ix = 0, nx-esx
+              a(ix,iy-1,iz  ) = +xywork(1,ix,iy-1)
+              a(ix,iy-1,iz+1) = +xywork(2,ix,iy-1)
+              a(ix,iy  ,iz  ) = -xywork(1,ix,iy  )
+              a(ix,iy  ,iz+1) = -xywork(2,ix,iy  )
+            enddo
+          enddo
+        else
+          do iy = 1, ny-esy, 2
+            do ix = 0, nx-esx
+              a(ix,iy-1,iz  ) = +xywork(1,ix,iy-1)*norm
+              a(ix,iy-1,iz+1) = +xywork(2,ix,iy-1)*norm
+              a(ix,iy  ,iz  ) = -xywork(1,ix,iy  )*norm
+              a(ix,iy  ,iz+1) = -xywork(2,ix,iy  )*norm
+            enddo
+          enddo
+        endif
+      enddo
+!$OMP END DO
+
+      return
+      end
+c=============================================================================
+c++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 c=============================================================================
 c=============================================================================
 c=============================================================================
