@@ -44,7 +44,7 @@ from warp import *
 import operator
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.37 2003/11/24 20:59:02 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.38 2003/11/25 22:03:05 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1438,7 +1438,7 @@ data and make sure it is consistent.
             (rc[i] == None or rc[i] == largepos)):
         # --- Given a radius and the two endpoints, the center of the
         # --- circle can be found.
-        assert rad[i]**2 > ((zz[i] - zz[i+1])**2 + (rr[i] - rr[i+1])**2),\
+        assert 4*rad[i]**2 > ((zz[i] - zz[i+1])**2 + (rr[i] - rr[i+1])**2),\
              "Radius of circle must be larger than the distance between points"
         zm = 0.5*(zz[i] + zz[i+1])
         rm = 0.5*(rr[i] + rr[i+1])
@@ -1457,12 +1457,10 @@ data and make sure it is consistent.
         # --- to be sure it is consistent.
         rad[i] = sqrt((zz[i] - zc[i])**2 + (rr[i] - rc[i])**2)
         rad2 = sqrt((zz[i+1] - zc[i])**2 + (rr[i+1] - rc[i])**2)
-        assert abs(rad[i] - rad2)/rad[i] < 1.e-8,\
-               "Points %d and %d are not at the same radius relative to the arc center"%(i,i+1)
+        assert (abs(rad[i] - rad2)/rad[i] < 1.e-2),\
+           "Points %d and %d are not at the same radius relative to the arc center. The radii are %e and %e"%(i,i+1,rad[i],rad2)
         # --- Make sure the radius has the correct sign.
         if rc[i] > rr[i] or rc[i] > rr[i+1]: rad[i] = -rad[i]
-      else:
-        raise "There was some problem with the input data"
 
   def setdatadefaults(self,data,ndata,default):
     if data is None:
