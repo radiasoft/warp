@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.81 $, $Date: 2003/01/23 21:18:31 $
+c@(#) File DW3D.M, version $Revision: 3.83 $, $Date: 2003/02/11 20:39:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -297,10 +297,12 @@ c  Sets 1d array for the space charge E field on the axis
      &    (wx == 0. .and. wy == 0.)) then
         do iz=0,nzzarr
           izg = int((iz*dzz + zz)*dzi)
-          if (0 <= izg .and. izg <= nz) then
+          if (0 <= izg .and. izg <= nz-1) then
             wzg = int((iz*dzz + zz)*dzi) - izg
-            ezax(iz)=((phi(ix,iy,izg-1)-phi(ix,iy,izg+1))*(1.-wzg)+
-     &                (phi(ix,iy,izg  )-phi(ix,iy,izg+2))*    wzg )*0.5*dzi
+            ezax(iz) = ((phi(ix,iy,izg-1) - phi(ix,iy,izg+1))*(1.-wzg) +
+     &                  (phi(ix,iy,izg  ) - phi(ix,iy,izg+2))*    wzg )*0.5*dzi
+          else if (izg == nz) then
+            ezax(iz) = (phi(ix,iy,izg-1) - phi(ix,iy,izg+1))*0.5*dzi
           endif
         enddo
       else
@@ -317,6 +319,12 @@ c  Sets 1d array for the space charge E field on the axis
      &            (phi(ix  ,iy+1,izg  )-phi(ix  ,iy+1,izg+2))*wx1*wy *    wzg +
      &            (phi(ix+1,iy+1,izg  )-phi(ix+1,iy+1,izg+2))*wx *wy *    wzg )
      &            *0.5*dzi
+          else if (izg == nz) then
+            ezax(iz)=((phi(ix  ,iy  ,izg-1)-phi(ix  ,iy  ,izg+1))*wx1*wy1 +
+     &                (phi(ix+1,iy  ,izg-1)-phi(ix+1,iy  ,izg+1))*wx *wy1 +
+     &                (phi(ix  ,iy+1,izg-1)-phi(ix  ,iy+1,izg+1))*wx1*wy  +
+     &                (phi(ix+1,iy+1,izg-1)-phi(ix+1,iy+1,izg+1))*wx *wy)
+     &                *0.5*dzi
           endif
         enddo
       endif
