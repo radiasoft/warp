@@ -7,7 +7,7 @@ PYMAC = $(HOME)/pywrapper/pymac.py --f90 -t $(MACHINE)
 PYCTOF = $(HOME)/pywrapper/pyctof.py
 OPT = -fast -Mcache_align  #-Mcray=pointer
 #OPT = -g
-POPT = 
+POPT =  -Mcache_align
 PYMODULEOPT = -O1
 CHECKS = #-Mbounds -Mchkfpstk
 F90FREE  = pgf90 -Mextend -Mdclchk -r8 -fpic $(CHECKS)
@@ -107,10 +107,10 @@ top.o:top.F top.p.o
 	$(F90FIXED) $(OPT) -c top.F
 dtop.o:dtop.F top.p.o
 	$(F90FIXED) $(OPT) -c dtop.F
-fft.o:fft.f
-	$(F90FIXED) $(OPT) -c fft.f
-util.o:util.f
-	$(F90FIXED) $(OPT) -c util.f
+fft.o:fft.F
+	$(F90FIXED) $(OPT) -c fft.F
+util.o:util.F
+	$(F90FIXED) $(OPT) -c util.F
 
 toppymodule.o:toppymodule.c pybasis.h
 	$(CC) $(PYMODULEOPT) -c toppymodule.c $(INCLUDE) $(NUMPYINCLUDE)
