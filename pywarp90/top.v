@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.99 $, $Date: 2003/07/18 20:50:52 $
+#@(#) File TOP.V, version $Revision: 3.100 $, $Date: 2003/07/22 17:49:07 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.99 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.100 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1277,6 +1277,10 @@ vyrmsz(0:nzmmnt)    _real [m/s]   # True RMS Vy at grid point
 vzrmsz(0:nzmmnt)    _real [m/s]   # True RMS Vz at grid point
 rhomidz(0:nzmmnt)   _real [C/m^3] # Charge dens. on axis at grid point
 rhomaxz(0:nzmmnt)   _real [C/m^3] # Charge dens. max-over-X,Y at grid point
+tempmaxp(6)                    real # Temporary work array
+tempminp(6)                    real # Temporary work array
+tempzmmnts0(NUMZMMNT)          real # Temporary work array
+tempzmmnts(0:nzmmnt,NUMZMMNT) _real # Temporary work array
 
 ********** Lab_Moments dump:
 # Particle moment data as a function of time at locations in the lab frame

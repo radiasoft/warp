@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.121 $, $Date: 2003/07/21 22:45:24 $
+c@(#) File W3D.M, version $Revision: 3.122 $, $Date: 2003/07/22 17:49:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1257,7 +1257,7 @@ c=============================================================================
       use Picglb3d
       use Beam_acc
       use Z_arrays
-      use Z_Moments, only: nzmmnt
+      use Z_Moments, only: nzmmnt, tempmaxp,tempminp,tempzmmnts0,tempzmmnts
       use Damped_eom
       use InjectVars
       use InjectVars3d
@@ -1284,9 +1284,11 @@ c  and also loads RHO at the new time level.
       integer(ISZ):: ithread,omp_get_thread_num
       integer(ISZ):: nthread,omp_get_num_threads
 #endif
-      real(kind=8):: maxp(6),minp(6)
+      real(kind=8):: maxp(6)
+      real(kind=8):: minp(6)
       real(kind=8):: zmmnts0(NUMZMMNT)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
+
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1300,7 +1302,12 @@ c  Zero the moments if center is synchv
       if (center == "synchv" .or. center == "gen" .and. npmax>0) then
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),dt*0.5,1,
-     &                nplive,uxpo,uypo,uzpo,1,ns,maxp,minp,zmmnts0,zmmnts)
+     &                nplive,uxpo,uypo,uzpo,1,ns,
+     &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
+        maxp = tempmaxp
+        minp = tempminp
+        zmmnts0 = tempzmmnts0
+        zmmnts = tempzmmnts
       endif
 
 c  Set the transverse E fields near any defined apertures.
@@ -1500,14 +1507,16 @@ c              --- Calculate moments over particles, now that we're sync'd
                if(wpid==0) then
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                         gaminv(ipmin),sq(is),sm(is),sw(is),dt*0.5,2,nplive,
-     &                         uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
+     &                         gaminv(ipmin),sq(is),sm(is),sw(is),
+     &                         dt*0.5,2,nplive,uxpo,uypo,uzpo,is,ns,
+     &                         maxp,minp,zmmnts0,zmmnts)
                else
                  call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),pid(ipmin,wpid),
      &                         sq(is),sm(is),sw(is),dt*0.5,2,nplive,
-     &                         uxpo,uypo,uzpo,is,ns,maxp,minp,zmmnts0,zmmnts)
+     &                         uxpo,uypo,uzpo,is,ns,
+     &                         maxp,minp,zmmnts0,zmmnts)
                endif
             endif
          enddo
@@ -1532,14 +1541,14 @@ c----------------------------------------------------------------------------
 c     ---  Do final stuff for moments calculation
       if (center == "synchv" .or. center == "gen" .and. npmax>0) then
 #ifdef _OPENMP
-        maxp = maxval(threadmaxp(:,1:nthread),2)
-        minp = minval(threadminp(:,1:nthread),2)
-        zmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
-        zmmnts = sum(threadzmmnts(:,:,1:nthread),3)
+        tempmaxp = maxval(threadmaxp(:,1:nthread),2)
+        tempminp = minval(threadminp(:,1:nthread),2)
+        tempzmmnts0 = sum(threadzmmnts0(:,1:nthread),2)
+        tempzmmnts = sum(threadzmmnts(:,:,1:nthread),3)
 #endif
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
      &                sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,
-     &                1,ns,maxp,minp,zmmnts0,zmmnts)
+     &                1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
         call getlabwn()
 c       --- load rho diagnostic quantities
         call rhodia3d
@@ -3393,7 +3402,6 @@ c          --- increment number of particles by size of current group
 
 c  Set particle number, indices, etc.
 
-!$OMP BARRIER
 !$OMP MASTER
 #ifdef _OPENMP
       ip = iptotal
@@ -3480,7 +3488,7 @@ c=============================================================================
       use Picglb3d
       integer(ISZ):: np
       real(kind=8):: zgrid,q,wght
-      real(kind=8):: rho1d(0:*)
+      real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
       character(8):: depos
       integer(ISZ):: nx,ny,nz
@@ -3545,7 +3553,9 @@ c       --- transverse boundaries.
 ! np was made FIRSTPRIVATE to get around a bug when the expression
 ! np+1-ipmin was evaluating to 1-ipmin (as if np was zero).
 ! I don't know why it works, but it does.
-!$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,gyfact,gxfact,s,m,ii,jj,kk),FIRSTPRIVATE(np)
+!$OMP PARALLEL PRIVATE(ipmin,nptmp,i,j,k,u1,u0,v1,v0,w1,w0,ir,ip,ind0,indx,
+!$OMP&                 gyfact,gxfact,s,m,ii,jj,kk)
+!$OMP&FIRSTPRIVATE(np)
 
 !$OMP DO
       do ipmin = 1,np,nparpgrp
@@ -3772,6 +3782,7 @@ c     --- scalar loop does the actual deposition
 
       enddo
 !$OMP END DO
+
 !$OMP END PARALLEL
 
       if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
