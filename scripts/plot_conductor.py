@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.14 2001/06/01 21:34:07 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.15 2001/06/08 21:11:35 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -31,7 +31,6 @@ plotquadoutline: plots outline of quadrupole structure
 # --- Convenience function to plot the sub-grid data
 def plotsubgrid(iz,nn,ixc,iyc,izc,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,
                 color):
-  if nn == 0: return
   ii = compress(equal(izc[:nn],iz),arange(nn))
   xx = take(ixc,ii)*dx+xmin
   yy = take(iyc,ii)*dy+ymin
@@ -105,15 +104,15 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
     warpplp(yy,xx,color=cyan)
+  else:
+    warpplp([],[],color=cyan)
   if (plotsg):
-    if f3d.necndbdy > 0:
-      plotsubgrid(iz,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
-                  f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
-                  ymmin,xmmin,dy,dx,green)
-    if f3d.nocndbdy > 0:
-      plotsubgrid(iz,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
-                  f3d.ocdelmy,f3d.ocdelmx,f3d.ocdelpy,f3d.ocdelpx,
-                  ymmin,xmmin,dy,dx,red)
+    plotsubgrid(iz,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
+                f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
+                ymmin,xmmin,dy,dx,green)
+    plotsubgrid(iz,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
+                f3d.ocdelmy,f3d.ocdelmx,f3d.ocdelpy,f3d.ocdelpx,
+                ymmin,xmmin,dy,dx,red)
 
 # z-x plane
 def pfzx(iy=None,iyf=None,contours=None,plotsg=1,scale=1,signz=1,signx=1,
@@ -156,15 +155,15 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
     zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
     warpplp(xx,zz,color=cyan)
+  else:
+    warpplp([],[],color=cyan)
   if (plotsg):
-    if f3d.necndbdy > 0:
-      plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
-                  f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
-                  xmmin,zmmin,dx,dz,green)
-    if f3d.nocndbdy > 0:
-      plotsubgrid(iy,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
-                  f3d.ocdelmx,f3d.ocdelmz,f3d.ocdelpx,f3d.ocdelpz,
-                  xmmin,zmmin,dx,dz,red)
+    plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
+                f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
+                xmmin,zmmin,dx,dz,green)
+    plotsubgrid(iy,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
+                f3d.ocdelmx,f3d.ocdelmz,f3d.ocdelpx,f3d.ocdelpz,
+                xmmin,zmmin,dx,dz,red)
 
 # z-y plane
 def pfzy(ix=None,ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=1,
@@ -207,15 +206,15 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
     zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
     warpplp(yy,zz,color=cyan)
+  else:
+    warpplp([],[],color=cyan)
   if (plotsg):
-    if f3d.necndbdy > 0:
-      plotsubgrid(ix,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
-                  f3d.ecdelmy,f3d.ecdelmz,f3d.ecdelpy,f3d.ecdelpz,
-                  ymmin,zmmin,dy,dz,green)
-    if f3d.nocndbdy > 0:
-      plotsubgrid(ix,f3d.nocndbdy,f3d.iocndy,f3d.iocndz,f3d.iocndx,
-                  f3d.ocdelmy,f3d.ocdelmz,f3d.ocdelpy,f3d.ocdelpz,
-                  ymmin,zmmin,dy,dz,red)
+    plotsubgrid(ix,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
+                f3d.ecdelmy,f3d.ecdelmz,f3d.ecdelpy,f3d.ecdelpz,
+                ymmin,zmmin,dy,dz,green)
+    plotsubgrid(ix,f3d.nocndbdy,f3d.iocndy,f3d.iocndz,f3d.iocndx,
+                f3d.ocdelmy,f3d.ocdelmz,f3d.ocdelpy,f3d.ocdelpz,
+                ymmin,zmmin,dy,dz,red)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
@@ -387,14 +386,20 @@ in X-Y plane
         plc(ppp,yy,xx,ireg,color='blue',contours=contours)
       else:
         plc(ppp,yy,xx,ireg,color='blue')
-  if (f3d.ncond > 0):
+  if f3d.ncond > 0:
     ii = compress(equal(f3d.izcond[0:f3d.ncond],iz),arange(f3d.ncond))
-    if ii:
-      y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
-      x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
-      pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
-          array([x-dx/2,x+dx/2,x+dx/2,x-dx/2,x-dx/2]),
-          color=cyan)
+    x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
+    y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
+  else:
+    x = []
+    y = []
+  if lparallel:
+    x = gatherarray(x)
+    y = gatherarray(y)
+  if len(x) > 0:
+    pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
+        array([x-dx/2,x+dx/2,x+dx/2,x-dx/2,x-dx/2]),
+        color=cyan)
 
 # z-x plane
 def pfzxbox(iy=None,iyf=None,contours=None,plotsg=1,scale=1,signz=1,signx=1,
@@ -441,12 +446,18 @@ in Z-X plane
         plc(ppp,xx,zz,ireg,color='blue')
   if (f3d.ncond > 0):
     ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
-    if ii:
-      x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
-      z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
-      pla(array([x-dx/2,x-dx/2,x+dx/2,x+dx/2,x-dx/2]),
-          array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
-          color=cyan)
+    x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
+    z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
+  else:
+    x = []
+    z = []
+  if lparallel:
+    x = gatherarray(x)
+    z = gatherarray(z)
+  if len(x) > 0:
+    pla(array([x-dx/2,x-dx/2,x+dx/2,x+dx/2,x-dx/2]),
+        array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
+        color=cyan)
 
 # z-y plane
 def pfzybox(ix=None,ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=1,
@@ -493,12 +504,18 @@ in Z-Y plane
         plc(ppp,yy,zz,ireg,color='blue')
   if (f3d.ncond > 0):
     ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
-    if ii:
-      y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
-      z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
-      pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
-          array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
-          color=cyan)
+    y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
+    z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
+  else:
+    y = []
+    z = []
+  if lparallel:
+    y = gatherarray(y)
+    z = gatherarray(z)
+  if len(y) > 0:
+    pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
+        array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
+        color=cyan)
 
 # z-x plane
 def pfzxboxi(iy=None,iyf=None,contours=None,plotsg=1,scale=1,signz=1,
