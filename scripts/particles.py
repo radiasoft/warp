@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.23 2005/03/03 00:53:21 dave Exp $"
+particles_version = "$Id: particles.py,v 1.24 2005/03/04 21:45:41 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -203,6 +203,8 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   - zl=None: When specified, lower range of selection region
   - zu=None: When specified, upper range of selection region
   - zc=None: When specified, picks particles within zc+-wz*dz
+  - xc=None: When specified, picks particles within xc+-wx*dx
+  - yc=None: When specified, picks particles within yc+-wy*dy
   - ii=None: If ii is supplied, it is just returned.
   - lost=false: When true, returns indices to the lost particles rather than
                 the live particles
@@ -210,7 +212,7 @@ from window 0, getting all of the live partilces (whose uzp != 0).
   # --- Complete dictionary of possible keywords and their default values
   kwdefaults = {"js":0,"jslist":None,"win":None,"z":None,
                 "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
-                "zl":None,"zu":None,"zc":None,"ii":None,
+                "zl":None,"zu":None,"zc":None,"xc":None,"yc":None,"ii":None,
                 "lost":false,
                 'checkargs':0,'allowbadargs':0}
 
@@ -294,6 +296,18 @@ from window 0, getting all of the live partilces (whose uzp != 0).
     zl = zc - wz*w3d.dz
     zu = zc + wz*w3d.dz
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
+                arrayrange(ir1,ir2))
+  elif xc is not None:
+    x = getattrwithsuffix(top,'xp',suffix)
+    xl = xc - wx*w3d.dx
+    xu = xc + wx*w3d.dx
+    ii=compress(logical_and(less(xl,x[ir1:ir2]),less(x[ir1:ir2],xu)),
+                arrayrange(ir1,ir2))
+  elif yc is not None:
+    y = getattrwithsuffix(top,'yp',suffix)
+    yl = yc - wy*w3d.dy
+    yu = yc + wy*w3d.dy
+    ii=compress(logical_and(less(yl,y[ir1:ir2]),less(y[ir1:ir2],yu)),
                 arrayrange(ir1,ir2))
   elif iw < 0:
     # --- Add some smarts about choosing which method to use.
