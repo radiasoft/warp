@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_utilities.F, version $Revision: 1.3 $, $Date: 2004/08/24 00:08:23 $
+c@(#) File w3d_utilities.F, version $Revision: 1.4 $, $Date: 2004/09/07 15:26:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -53,7 +53,7 @@ c     --- Rearrange the particles
       enddo
 
 !$OMP MASTER
-      if (lw3dtimesubs) timesortparticlesbyindex = timesortparticlesbyindex +
+      if (lw3dtimesubs) timesortpart_byindex = timesortpart_byindex +
      &                                             wtime() - substarttime
 !$OMP END MASTER
 
@@ -98,8 +98,8 @@ c     --- Rearrange the particles
       enddo
 
 !$OMP MASTER
-      if (lw3dtimesubs) timesortparticlesbyindexwithcounts =
-     &                         timesortparticlesbyindexwithcounts +
+      if (lw3dtimesubs) timesortpart_byindexwithcounts =
+     &                         timesortpart_byindexwithcounts +
      &                                             wtime() - substarttime
 !$OMP END MASTER
 
@@ -151,8 +151,8 @@ c     --- Rearrange the particles
       enddo
 
 !$OMP MASTER
-      if (lw3dtimesubs) timesortparticlesbyindexgetisort =
-     &            timesortparticlesbyindexgetisort + wtime() - substarttime
+      if (lw3dtimesubs) timesortpart_byindexgetisort =
+     &            timesortpart_byindexgetisort + wtime() - substarttime
 !$OMP END MASTER
 
       return
