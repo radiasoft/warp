@@ -2415,6 +2415,10 @@ has_diverged = .false.
                          mgparam=grid%mgparam)
       maxerr_old = maxerr
       maxerr = maxval(abs(grid%phi-uold))
+      IF(maxerr <= accuracy) then
+        do_calc=.false.
+        exit
+      END if
       IF(maxerr/maxerr_old>=1..and.j>1) then
         WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
         WRITE(0,*) '        average initial residue = ',maxerr_old
@@ -2439,10 +2443,6 @@ has_diverged = .false.
         END if
         10 continue
         IF(l_for_timing) exit
-      END if
-      IF(maxerr <= accuracy) then
-        do_calc=.false.
-        exit
       END if
     end do
     IF(j>=grid%ncmax) do_calc=.false.
