@@ -18,24 +18,26 @@ class AMRtree(Visualizable):
     """
   Adaptive Mesh Refinement class.
     """
-    def __init__(self):
-      self.baseblock = None
+    def __init__(self,MRfact=2,ntransit=2):
       if w3d.solvergeom==w3d.XYZgeomMR:
         self.blocks = MRBlock()
       else:
-        self.blocks = frz.basegrid
+        self.blocks = [frz.basegrid]
+      self.MRfact  = MRfact
+      self.ntransit = ntransit
+      self.nblocks  = 0
       self.colors=['yellow','red','blue','green','cyan','magenta','white']
-      self.ntransit=2
         
     def getabsgrad(self,f,dx,dy,dz):
       """
     get average of absolute value of grad(f).
+    f is supposed to be in Fortran ordering.
       """
       if rank(f)==2:
         s=shape(f)
         nx = s[0]
         ny = s[1]
-        g = zeros([nx+2,ny+2],Float)
+        g = fzeros([nx+2,ny+2],Float)
         # fill interior
         g[1:-1,1:-1] = f
         # set boundaries
@@ -44,16 +46,16 @@ class AMRtree(Visualizable):
         g[1:-1,0   ] = 2.*f[:, 0]-f[:, 1]
         g[1:-1,-1  ] = 2.*f[:,-1]-f[:,-2]
         # computes average of gradients
-        gr = 0.5*abs((g[1:-1,1:-1]-g[ :-2,1:-1])/dx) \
-           + 0.5*abs((g[2:,  1:-1]-g[1:-1,1:-1])/dx) \
-           + 0.5*abs((g[1:-1,1:-1]-g[1:-1, :-2])/dy) \
-           + 0.5*abs((g[1:-1,2:  ]-g[1:-1,1:-1])/dy)
+        gr = 0.5*abs((g[1:-1,1:-1]-g[ :-2,1:-1])/dy) \
+           + 0.5*abs((g[2:,  1:-1]-g[1:-1,1:-1])/dy) \
+           + 0.5*abs((g[1:-1,1:-1]-g[1:-1, :-2])/dx) \
+           + 0.5*abs((g[1:-1,2:  ]-g[1:-1,1:-1])/dx)
       else:
         s=shape(f)
         nx = s[0]
         ny = s[1]
         nz = s[2]
-        g = zeros([nx+2,ny+2,nz+2],Float)
+        g = fzeros([nx+2,ny+2,nz+2],Float)
         # fill interior
         g[1:-1,1:-1,1:-1] = f
         # set boundaries
@@ -64,66 +66,66 @@ class AMRtree(Visualizable):
         g[1:-1,1:-1,0   ]=2.*f[: ,: ,0 ]-f[: ,: ,1 ]
         g[1:-1,1:-1,-1  ]=2.*f[: ,: ,-1]-f[: ,: ,-2]
         # computes average of gradients
-        gr = 0.5*abs((g[1:-1,1:-1,1:-1]-g[ :-2,1:-1,1:-1])/dx) \
-           + 0.5*abs((g[2:,  1:-1,1:-1]-g[1:-1,1:-1,1:-1])/dx) \
+        gr = 0.5*abs((g[1:-1,1:-1,1:-1]-g[ :-2,1:-1,1:-1])/dz) \
+           + 0.5*abs((g[2:,  1:-1,1:-1]-g[1:-1,1:-1,1:-1])/dz) \
            + 0.5*abs((g[1:-1,1:-1,1:-1]-g[1:-1, :-2,1:-1])/dy) \
            + 0.5*abs((g[1:-1,2:  ,1:-1]-g[1:-1,1:-1,1:-1])/dy) \
-           + 0.5*abs((g[1:-1,1:-1,1:-1]-g[1:-1,1:-1, :-2])/dz) \
-           + 0.5*abs((g[1:-1,1:-1,2:  ]-g[1:-1,1:-1,1:-1])/dz)
+           + 0.5*abs((g[1:-1,1:-1,1:-1]-g[1:-1,1:-1, :-2])/dx) \
+           + 0.5*abs((g[1:-1,1:-1,2:  ]-g[1:-1,1:-1,1:-1])/dx)
       return gr
 
-    def getedges_byslice(self,f,dx,dy,dz,m):
+    def getedges_byslice(self,f,dx,dy,dz,threshold):
       """
     Returns array with non-zero values only at edges.
     For each line (horizontals and verticals), the values which
-    are above m*max(values of f in line) are selected as edges.
+    are above threshold*max(values of f in line) are selected as edges.
       """
       # get average of absolute value of gradient of f
       fg = self.getabsgrad(f,dx,dy,dz)
 
       dim = rank(f)
       # get edges using vertical lines
-      g1 = zeros(shape(fg),Float)
+      g1 = fzeros(shape(fg),Float)
       if dim==2:
         for j in range(shape(fg)[1]):
-          g1[:,j] = where(fg[:,j]>m*max(fg[:,j]),fg[:,j],0.)
+          g1[:,j] = where(fg[:,j]>threshold*max(fg[:,j]),fg[:,j],0.)
       else: #dim=3
         for k in range(shape(fg)[2]):
          for j in range(shape(fg)[1]):
-          g1[:,j,k] = where(fg[:,j,k]>m*max(fg[:,j,k]),fg[:,j,k],0.)
+          g1[:,j,k] = where(fg[:,j,k]>threshold*max(fg[:,j,k]),fg[:,j,k],0.)
         
       # get edges using horizontal lines
-      g2 = zeros(shape(fg),Float)
+      g2 = fzeros(shape(fg),Float)
       if dim==2:
         for i in range(shape(fg)[0]):
-          g2[i,:] = where(fg[i,:]>m*max(fg[i,:]),fg[i,:],0.)
+          g2[i,:] = where(fg[i,:]>threshold*max(fg[i,:]),fg[i,:],0.)
       else: #dim=3
         for k in range(shape(fg)[2]):
          for j in range(shape(fg)[0]):
-          g2[j,:,k] = where(fg[j,:,k]>m*max(fg[j,:,k]),fg[j,:,k],0.)
+          g2[j,:,k] = where(fg[j,:,k]>threshold*max(fg[j,:,k]),fg[j,:,k],0.)
 
       # take max of g1 and g2
       g = where(g1>g2,g1,g2)
 
       if dim==3:
-        g3 = zeros(shape(fg),Float)
+        g3 = fzeros(shape(fg),Float)
         for k in range(shape(fg)[1]):
          for j in range(shape(fg)[0]):
-          g3[j,k,:] = where(fg[j,k,:]>m*max(fg[j,k,:]),fg[j,k,:],0.)
+          g3[j,k,:] = where(fg[j,k,:]>threshold*max(fg[j,k,:]),fg[j,k,:],0.)
         # returns max of g and g3
         g = where(g>g3,g,g3)
       return g
 
-    def getnbcell_edges(self,f,dx,dy,dz,m,RMR):
+    def getnbcell_edges(self,f,dx,dy,dz,threshold,RMR):
       """
     Returns array with non-zero value RMR at edges, zero elsewhere.
     For each line (horizontals and verticals), the values which
-    are above m*max(values of f in line) are selected as edges.
+    are above threshold*max(values of f in line) are selected as edges.
       """
-      fg = self.getedges_byslice(f,dx,dy,dz,m)
-      return where(fg>0.,RMR,0.)
+      fg = self.getedges_byslice(f,dx,dy,dz,threshold)
+      return where(fg>0.,int(RMR),0)
 
-    def getnbcell_rho(self,f,nmax,b=2):
+    def getnbcell_rho(self,f,Rdens,MRfact):
       """
     returns nb cells proportional to density f, with mesh refinement factor of b
     (default=2) and maximum number of refined cells per coarse cell nmax (along
@@ -132,30 +134,29 @@ class AMRtree(Visualizable):
       # get dimension (2-D or 3-D)
       dim = rank(f)
       # get number of refinement levels
-      n = nint(log(nmax)/log(b)) 
+      n = nint(log(Rdens)/log(MRfact)) 
       # get nb cells proportional to f
-      fg=b**(dim*(n+1))*f/maxnd(f)
-      fg=where(fg>1.,fg,1.)
-      return b**int(log(fg)/log(dim**b))
+      fg=MRfact**(dim*(n+1))*f/maxnd(f)
+      fg=where(fg>1,fg,1)
+      return MRfact**int(log(fg)/log(dim**MRfact))
 #      return b**int(log(fg)/log(b**dim))
 
-    def getnbcells(self,f,dx,dy,dz,m,nmax,rmr,b=2,l_removesinglecells=1,lmax=4):
-      self.MRfact=MRfact
-      fg1 = self.getnbcell_edges(f,dx,dy,dz,m,rmr)
-      fg2 = self.getnbcell_rho(f,nmax,b)
+    def getnbcells(self,f,dx,dy,dz,Rdens,threshold,Rgrad,MRfact=2,l_removesinglecells=1,lmax=4):
+      fg1 = self.getnbcell_edges(f,dx,dy,dz,threshold,Rgrad)
+      fg2 = self.getnbcell_rho(f,Rdens,MRfact)
       f = int(where(fg1>fg2,fg1,fg2))
       # next loop removes isolated blocks of lmax cells or less
       # this needs improvements and is only 2-D for now
       if(l_removesinglecells and rank(f)==2):
         nr=shape(f)[0]
         nz=shape(f)[1]
-        t = zeros([nr,nz])
+        t = fzeros([nr,nz])
         r = maxnd(f)
         while r>=1:
           sum_neighbors(where(f==r,0,1),t,nr-1,nz-1)
           fl = where(f==1 and t<=lmax,1,0)
           f = where(fl==1,r,f)
-          r=r/b
+          r=r/MRfact
       return f
 
     def setlist(self,f,rl,b,progressive=true,nooverlap=true):
@@ -172,7 +173,7 @@ class AMRtree(Visualizable):
 
       # loop all refinement levels
       for i in range(nlevels-1,0,-1):
-        r = rl[i]
+        r = rl[min(i-1,len(rl)-1)]
         ib = b**i
         if(progressive and i<nlevels-1):
           f0 = where(self.sumpatch(listpatches,nx,ny,nz,dim)>0,ib,f)
@@ -355,7 +356,7 @@ class AMRtree(Visualizable):
 
     def sumpatch(self,listpatches,nx,ny,nz,dim):
       if dim==2:
-        f = zeros([nx,ny])
+        f = fzeros([nx,ny])
         for patch in listpatches:
           j=patch[0]
           k=patch[1]
@@ -375,57 +376,11 @@ class AMRtree(Visualizable):
       return f
 
 
-    def setblocks2d(self,rmin0, rmax0, zmin0, zmax0, dr, dz, MRfact=2, transit_rmin=2, transit_rmax=2, transit_zmin=2, transit_zmax=2):
-      mothergrid = frz.basegrid
-      for ii,blocks in enumerate(self.listblocks[1:]):
-        i = ii+1
-        if i>1:mothergrid = mothergrid.down  
-        r=MRfact**i
-        for patch in blocks:
-            nr = nint(patch[2]*r)
-            nz = nint(patch[3]*r)
-            drnew = dr/r
-            dznew = dz/r
-            drmother = drnew*MRfact
-            dzmother = dznew*MRfact
-            rmin = rmin0+patch[0]*dr
-            rmax = rmin+nr*drnew
-            zmin = zmin0+patch[1]*dz
-            zmax = zmin+nz*dznew
-            
-            rmin_try = rmin-transit_rmin*drmother
-            t_rmin = min(transit_rmin, max(0,transit_rmin-int((rmin0-rmin_try)/drmother))) 
-            rmin = rmin-t_rmin*drmother
-            nr = nr+MRfact*t_rmin
-            
-            rmax_try = rmax+transit_rmin*drmother
-            t_rmax = min(transit_rmax, max(0,transit_rmax-int((rmax_try-rmax0)/drmother))) 
-            rmax = rmax+t_rmax*drmother
-            nr = nr+MRfact*t_rmax
-            
-            zmin_try = zmin-transit_zmin*dzmother
-            t_zmin = min(transit_zmin, max(0,transit_zmin-int((zmin0-zmin_try)/dzmother))) 
-            zmin = zmin-t_zmin*dzmother
-            nz = nz+MRfact*t_zmin
-            
-            zmax_try = zmax+transit_zmin*dzmother
-            t_zmax = min(transit_zmax, max(0,transit_zmax-nint((zmax_try-zmax0)/dzmother))) 
-            zmax = zmax+t_zmax*dzmother
-            nz = nz+MRfact*t_zmax
-            add_subgrid(mothergrid.gid[0],nr,nz,drnew,dznew,rmin,zmin,t_rmin*MRfact,t_rmax*MRfact,t_zmin*MRfact,t_zmax*MRfact,false)
-      for i in range(frz.ngrids-1):
-        self.blocks += [frz.basegrid]
-      g = frz.basegrid
-      self.blocks[0]=g
-      for i in range(1,frz.ngrids):
-        try:
-          g = g.next
-        except:
-          g=g.down
-        self.blocks[g.gid[0]-1] = g
-
     def setblocks(self):
-      mothergrid = self.blocks
+      if w3d.solvergeom == w3d.XYZgeomMR:
+        mothergrid = self.blocks
+      else:
+        mothergrid = self.blocks[0]
       xmin0 = w3d.xmmin; xmax0 = w3d.xmmax; dx = w3d.dx
       if w3d.solvergeom == w3d.XYZgeomMR:
         ymin0 = w3d.ymmin; ymax0 = w3d.ymmax; dy = w3d.dy
@@ -443,6 +398,7 @@ class AMRtree(Visualizable):
             mothergrid = mothergrid.down
         r=self.MRfact**i
         for patch in blocks:
+          self.nblocks+=1
           if w3d.solvergeom == w3d.XYZgeomMR:
             nx = nint(patch[3]*r)
             ny = nint(patch[4]*r)
@@ -459,26 +415,23 @@ class AMRtree(Visualizable):
             ymax = ymin  + ny*dynew
             zmin = zmin0 + patch[2]*dz
             zmax = zmin  + nz*dznew
-            nx, xmin, xmax = self.add_transit(nx, xmin, xmax, dxmother, xmin0, xmax0)
-            ny, ymin, ymax = self.add_transit(ny, ymin, ymax, dymother, ymin0, ymax0)
-            nz, zmin, zmax = self.add_transit(nz, zmin, zmax, dzmother, zmin0, zmax0)
             mothergrid.addchild(None,None,[xmin,ymin,zmin,],[xmax,ymax,zmax,])
           else:
             nx = nint(patch[2]*r)
             ny = nint(patch[3]*r)
             dxnew = dx/r
             dynew = dy/r
-            dxmother = dxnew*MRfact
-            dymother = dynew*MRfact
+            dxmother = dxnew*self.MRfact
+            dymother = dynew*self.MRfact
             xmin = xmin0 + patch[0]*dx
             xmax = xmin  + nx*dxnew
             ymin = ymin0 + patch[1]*dy
             ymax = ymin  + ny*dynew
-            nx, xmin, xmax = self.add_transit(nx, xmin, xmax, dxmother, xmin0, xmax0)
-            ny, ymin, ymax = self.add_transit(ny, ymin, ymax, dymother, ymin0, ymax0)
+            nx, xmin, xmax, t_xmin, t_xmax = self.add_transit(nx, xmin, xmax, dxmother, xmin0, xmax0)
+            ny, ymin, ymax, t_ymin, t_ymax = self.add_transit(ny, ymin, ymax, dymother, ymin0, ymax0)
             add_subgrid(mothergrid.gid[0],nx,ny,dxnew,dynew,xmin,ymin,
                         t_xmin*self.MRfact,t_xmax*self.MRfact,
-                        t_zmin*self.MRfact,t_zmax*self.MRfact,false)
+                        t_ymin*self.MRfact,t_ymax*self.MRfact)
 
       if w3d.solvergeom == w3d.XYZgeomMR:
         self.blocks.finalize()
@@ -507,7 +460,7 @@ class AMRtree(Visualizable):
       xmax    += t_xmax*dxmother
       nx      += n*(t_xmin+t_xmax)
       
-      return nx, xmin, xmax
+      return nx, xmin, xmax, t_xmin, t_xmax
 
     def del_blocks2d(self,g=None):
       if g==None: g=frz.basegrid
@@ -526,27 +479,34 @@ class AMRtree(Visualizable):
         g[0].loc_part=g[0].gid[0]
         g[0].loc_part_fd=g[0].gid[0]
 
-    def generate(self,MRfact,ref_rho,ref_edge=None,r1=0.8,r2=0.8,ntransit=2,redge=0.5):
-      if w3d.solvergeom==w3d.XYZgeomMR:
-        pass
+    def generate(self,f=None,Rdens=2,Rgrad=None,threshold=0.8,r=[0.8],l_removesinglecells=1,lmax=4):
+      if f is None:
+        if w3d.solvergeom==w3d.XYZgeomMR:
+          f = w3d.rho
+        else:
+          f = frz.basegrid.rho
+      dx = w3d.dx
+      dz = w3d.dz
+      if w3d.solvergeom==w3d.XYZgeomMR or w3d.solvergeom==w3d.XYgeom:
+        dy = w3d.dy
+      if w3d.solvergeom==w3d.XZgeom or w3d.solvergeom==w3d.RZgeom:
+        dy = w3d.dz
+      self.Rdens=Rdens
+      if Rgrad is None:
+        self.Rgrad = Rdens
       else:
-        pass
-      self.base = MRfact
-      self.ref_rho=ref_rho
-      if ref_edge is None:
-        self.ref_edge = ref_rho
-      else:
-        self.ref_edge = ref_edge
-      if(maxnd(abs(frz.basegrid.rho))==0.):return
-      self.nbcells=self.getnbcells(frz.basegrid.rho,w3d.dz,w3d.dx,0.,redge,ref_rho,ref_edge,b=base)
-      self.setlist(self.nbcells[:-1,:-1],[0.,r2,r2,r2,r1],2,true)
-      self.setblocks2d(rmin0=w3d.xmmin, rmax0=w3d.xmmax, 
-                       zmin0=w3d.zmmin, zmax0=w3d.zmmax, dr=w3d.dx, dz=w3d.dz, 
-                       MRfact=MRfact, transit_rmin=ntransit, transit_rmax=ntransit, 
-                       transit_zmin=ntransit, transit_zmax=ntransit)
-      g = frz.basegrid
-      adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
-      loadrho()
+        self.Rgrad = Rgrad
+      self.threshold = threshold
+      if(maxnd(abs(f))==0.):
+        raise('Error in AMRtree.generate: f is null.')
+      self.nbcells=self.getnbcells(f,dx,dy,dz,self.Rdens,self.threshold,self.Rgrad,
+                                   MRfact=self.MRfact,l_removesinglecells=l_removesinglecells,lmax=lmax)
+      self.setlist(self.nbcells[:-1,:-1],r,2,true)
+      self.setblocks()
+      if w3d.solvergeom<>w3d.XYZgeomMR:
+        g = frz.basegrid
+        adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
+#      loadrho()
 
     def draw_blocks2d(self,level=None,color='black',width=1.,allmesh=0,f=1):
       for i,blocks in enumerate(self.listblocks[1:]):
