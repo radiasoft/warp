@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.100 2003/04/17 22:23:30 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.101 2003/05/27 21:57:36 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -951,6 +951,65 @@ Note that either the x and y coordinates or the grid must be passed in.
 if sys.version[:5] != "1.5.1":
   ppgeneric.__doc__ = ppgeneric.__doc__ + ppgeneric_doc('x','y')
 
+
+#############################################################################
+#############################################################################
+def ppvector(gridy=None,gridx=None,kwdict={},**kw):
+  """
+Generic vector plotting routine.
+Note that both the x and y grids must be passed in.
+  - gridy, gridx: x and y vector comnponents
+  """
+  # --- Complete dictionary of possible keywords and their default values
+  kwdefaults = {'titles':1,'lframe':0,
+                'xmin':None,'xmax':None,'ymin':None,'ymax':None,
+                'pplimits':('e','e','e','e'),'scale':1.,
+                'color':'fg',
+                'xbound':dirichlet,'ybound':dirichlet,
+                'xmesh':None,'ymesh':None,
+                'checkargs':0,'allowbadargs':0}
+
+  # --- Create dictionary of local values and copy it into local dictionary,
+  # --- ignoring keywords not listed in kwdefaults.
+  kwvalues = kwdefaults.copy()
+  kwvalues.update(kw)
+  kwvalues.update(kwdict)
+  for arg in kwdefaults.keys(): exec(arg+" = kwvalues['"+arg+"']")
+
+  # --- Check the argument list for bad arguments.
+  # --- 'checkargs' allows this routine to be called only to check the
+  # --- input for bad arguments.
+  # --- 'allowbadargs' allows this routine to be called with bad arguments.
+  # --- These are intentionally undocumented features.
+  badargs = checkarguments(kwvalues,kwdefaults)
+  if checkargs: return badargs
+  assert (not badargs or allowbadargs), \
+         "bad argument: %s"%string.join(badargs.keys())
+
+  # --- Do some error checking on the consistency of the input
+  assert gridx is not None and gridy is not None,"both gridx and gridy must be specified"
+
+  nx = shape(gridx)[0] - 1
+  ny = shape(gridx)[1] - 1
+
+  assert (shape(gridy)[0] - 1) == nx and (shape(gridy)[1] - 1) == ny,"gridx and gridy must be the same shape"
+
+  if xmin is None: xmin = 0
+  if xmax is None: xmax = nx
+  if ymin is None: ymin = 0
+  if ymax is None: ymax = ny
+
+  # --- Get meshes
+  dx = (xmax - xmin)/nx
+  dy = (ymax - ymin)/ny
+  xx,yy = getmesh2d(xmin,dx,nx,ymin,dy,ny)
+
+  # --- Compute scale
+  scale = scale*min(dx,dy)/max(maxnd(abs(gridx)),maxnd(abs(gridy)))
+  print scale
+
+  # --- Make plot
+  plv(gridy,gridx,yy,xx,scale=scale)
 
 #############################################################################
 #############################################################################
@@ -2346,7 +2405,7 @@ be from none to all three.
    #if bcast: ppp = broadcast(ppp)
    #return ppp
 # --------------------------------------------------------------------------
-def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0):
+def getselfe(comp=None,ix=None,iy=None,iz=None,bcast=0,fullplane=0):
   """Returns slices of selfe, the electrostatic field array. The shape of
 the object returned depends on the number of arguments specified, which can
 be from none to all three.
@@ -2374,21 +2433,21 @@ be from none to all three.
   ic = ['x','y','z'].index(comp)
   if not lparallel:
     if ix is None     and iy is None     and iz is None    :
-      return w3d.selfe[ic,:,:,:]
-    if ix is not None and iy is None     and iz is None    :
-      return w3d.selfe[ic,ix,:,:]
-    if ix is None     and iy is not None and iz is None    :
-      return w3d.selfe[ic,:,iy,:]
-    if ix is None     and iy is None     and iz is not None:
-      return w3d.selfe[ic,:,:,iz]
-    if ix is not None and iy is not None and iz is None    :
-      return w3d.selfe[ic,ix,iy,:]
-    if ix is not None and iy is None     and iz is not None:
-      return w3d.selfe[ic,ix,:,iz]
-    if ix is None     and iy is not None and iz is not None:
-      return w3d.selfe[ic,:,iy,iz]
-    if ix is not None and iy is not None and iz is not None:
-      return w3d.selfe[ic,ix,iy,iz]
+      eee = w3d.selfe[ic,:,:,:]
+    elif ix is not None and iy is None     and iz is None    :
+      eee = w3d.selfe[ic,ix,:,:]
+    elif ix is None     and iy is not None and iz is None    :
+      eee = w3d.selfe[ic,:,iy,:]
+    elif ix is None     and iy is None     and iz is not None:
+      eee = w3d.selfe[ic,:,:,iz]
+    elif ix is not None and iy is not None and iz is None    :
+      eee = w3d.selfe[ic,ix,iy,:]
+    elif ix is not None and iy is None     and iz is not None:
+      eee = w3d.selfe[ic,ix,:,iz]
+    elif ix is None     and iy is not None and iz is not None:
+      eee = w3d.selfe[ic,:,iy,iz]
+    elif ix is not None and iy is not None and iz is not None:
+      eee = w3d.selfe[ic,ix,iy,iz]
   else:
     iz1 = top.izfsslave[me] - top.izslave[me]
     if me < npes-1:
@@ -2411,7 +2470,38 @@ be from none to all three.
       else:        eee = zeros(shape(eee[...,0]),'d')
       if (me == pe or me == 0) and (pe != 0): eee = getarray(pe,eee,0)
     if bcast: eee = broadcast(eee)
+
+  if not fullplane:
     return eee
+  else:
+    ii = 0
+    if ix is None and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
+      ss = array(shape(eee))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      ee1 = zeros(tuple(ss),'d')
+      if comp == 'x': fsign = -1
+      else:           fsign = +1
+      ee1[nn:,...] = eee
+      ee1[nn::-1,...] = fsign*eee
+      eee = ee1
+    if ix is None: ii = ii + 1
+    if iy is None and (w3d.l2symtry or w3d.l4symtry):
+      ss = array(shape(eee))
+      nn = ss[ii] - 1
+      ss[ii] = 2*nn + 1
+      ee1 = zeros(tuple(ss),'d')
+      if comp == 'y': fsign = -1
+      else:           fsign = +1
+      if ii == 0:
+        ee1[nn:,...] = eee
+        ee1[nn::-1,...] = fsign*eee
+      else:
+        ee1[:,nn:,...] = eee
+        ee1[:,nn::-1,...] = fsign*eee
+      eee = ee1
+    return eee
+
 ##########################################################################
 ##########################################################################
 def pcrhozy(ix=None,fullplane=1,lbeamframe=1,**kw):
@@ -2618,12 +2708,14 @@ def pcphixy(iz=None,fullplane=1,**kw):
 if sys.version[:5] != "1.5.1":
   pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcselfezy(comp=None,ix=None,fullplane=1,lbeamframe=1,**kw):
+def pcselfezy(comp='',ix=None,fullplane=1,lbeamframe=1,vec=0,sz=1,sy=1,**kw):
   """Plots contours of electrostatic field in the Z-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - ix=w3d.ix_axis X index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sy=1: step size in grid for plotting fewer points
   """
   if ix is None: ix = w3d.ix_axis
   if lbeamframe: zbeam = 0.
@@ -2632,31 +2724,32 @@ def pcselfezy(comp=None,ix=None,fullplane=1,lbeamframe=1,**kw):
   if not kw.has_key('xmax'): kw['xmax'] = top.zplmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
-  if not kw.has_key('cellarray') or not kw['cellarray']:
-    if not kw.has_key('contours'): kw['contours'] = 20
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.ymmin,w3d.ymmax)
   settitles("Electrostatic E%s in z-y plane"%comp,"Z","Y","ix = "+repr(ix))
-  eee = getselfe(comp=comp,ix=ix)
-  if me > 0: eee = zeros((w3d.ny+1,w3d.nzfull+1),'d')
-  if fullplane and (w3d.l2symtry or w3d.l4symtry):
-    ee1 = zeros((2*w3d.ny+1,w3d.nzfull+1),'d')
-    ee1[w3d.ny:,:] = eee
-    ee1[w3d.ny::-1,:] = eee
-    eee = ee1
-    kw['ymin'] = - kw['ymax']
-  ppgeneric(grid=transpose(eee),kwdict=kw)
+  if fullplane and (w3d.l2symtry or w3d.l4symtry): kw['ymin'] = - kw['ymax']
+  if not vec:
+    if not kw.has_key('cellarray') or not kw['cellarray']:
+      if not kw.has_key('contours'): kw['contours'] = 20
+    eee = getselfe(comp=comp,ix=ix,fullplane=fullplane)
+    ppgeneric(grid=transpose(eee),kwdict=kw)
+  else:
+    ey = getselfe(comp='y',ix=ix,fullplane=fullplane)
+    ez = getselfe(comp='z',ix=ix,fullplane=fullplane)
+    ppvector(transpose(ey[::sy,::sz]),transpose(ez[::sy,::sz]),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcselfezy.__doc__ = pcselfezy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcselfezx(comp=None,iy=None,fullplane=1,lbeamframe=1,**kw):
+def pcselfezx(comp=None,iy=None,fullplane=1,lbeamframe=1,vec=0,sz=1,sx=1,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iy=w3d.iy_axis Y index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
   - lbeamframe=1: when true, plot relative to beam frame, otherwise lab frame
+  - vec=0: when true, plots E field vectors
+  - sz,sx=1: step size in grid for plotting fewer points
   """
   if iy is None: iy = w3d.iy_axis
   if lbeamframe: zbeam = 0.
@@ -2665,61 +2758,57 @@ def pcselfezx(comp=None,iy=None,fullplane=1,lbeamframe=1,**kw):
   if not kw.has_key('xmax'): kw['xmax'] = top.zplmax + zbeam
   if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
-  if not kw.has_key('cellarray') or not kw['cellarray']:
-    if not kw.has_key('contours'): kw['contours'] = 20
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+zbeam,top.zplmax+zbeam,w3d.xmmin,w3d.xmmax)
   settitles("Electrostatic E%s in z-x plane"%comp,"Z","X","iy = "+repr(iy))
-  eee = getselfe(comp=comp,iy=iy)
-  if me > 0: eee = zeros((w3d.nx+1,w3d.nzfull+1),'d')
   if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
-    ee1 = zeros((2*w3d.nx+1,w3d.nzfull+1),'d')
-    ee1[w3d.nx:,:] = eee
-    ee1[w3d.nx::-1,:] = eee
-    eee = ee1
     kw['ymin'] = - kw['ymax']
-  ppgeneric(grid=transpose(eee),kwdict=kw)
+  if not vec:
+    if not kw.has_key('cellarray') or not kw['cellarray']:
+      if not kw.has_key('contours'): kw['contours'] = 20
+    eee = getselfe(comp=comp,iy=iy,fullplane=fullplane)
+    ppgeneric(grid=transpose(eee),kwdict=kw)
+  else:
+    ex = getselfe(comp='x',iy=iy,fullplane=fullplane)
+    ez = getselfe(comp='z',iy=iy,fullplane=fullplane)
+    ppvector(transpose(ex[::sx,::sz]),transpose(ez[::sx,::sz]),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcselfezx.__doc__ = pcselfezx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcselfexy(comp=None,iz=None,fullplane=1,**kw):
+def pcselfexy(comp=None,iz=None,fullplane=1,vec=0,sx=1,sy=1,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
   - comp: field component to plot, either 'x', 'y', or 'z'
   - iz=w3d.iz_axis Z index of plane
   - fullplane=1: when true, plots E in the symmetric quadrants
+  - vec=0: when true, plots E field vectors
+  - sx,sy=1: step size in grid for plotting fewer points
   """
   if iz is None: iz = w3d.iz_axis + top.izslave[me]
   if not kw.has_key('xmin'): kw['xmin'] = w3d.xmmin
   if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
   if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
-  if not kw.has_key('cellarray') or not kw['cellarray']:
-    if not kw.has_key('contours'): kw['contours'] = 20
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
   settitles("Electrostatic E%s in x-y plane"%comp,"X","Y","iz = "+repr(iz))
-  eee = getselfe(comp=comp,iz=iz)
-  if me > 0: eee = zeros((w3d.nx+1,w3d.ny+1),'d')
   if fullplane and w3d.l4symtry:
-    ee1 = zeros((2*w3d.nx+1,2*w3d.ny+1),'d')
-    ee1[w3d.nx:,w3d.ny:] = eee
-    ee1[w3d.nx::-1,w3d.ny:] = eee
-    ee1[w3d.nx:,w3d.ny::-1] = eee
-    ee1[w3d.nx::-1,w3d.ny::-1] = eee
-    eee = ee1
     kw['ymin'] = - kw['ymax']
     kw['xmin'] = - kw['xmax']
   elif fullplane and w3d.l2symtry:
-    ee1 = zeros((w3d.nx+1,2*w3d.ny+1),'d')
-    ee1[:,w3d.ny:] = eee
-    ee1[:,w3d.ny::-1] = eee
-    eee = ee1
     kw['ymin'] = - kw['ymax']
-  ppgeneric(grid=eee,kwdict=kw)
+  if not vec:
+    if not kw.has_key('cellarray') or not kw['cellarray']:
+      if not kw.has_key('contours'): kw['contours'] = 20
+    eee = getselfe(comp=comp,iz=iz,fullplane=fullplane)
+    ppgeneric(grid=eee,kwdict=kw)
+  else:
+    ex = getselfe(comp='x',iz=iz,fullplane=fullplane)
+    ey = getselfe(comp='y',iz=iz,fullplane=fullplane)
+    ppvector(ey[::sx,::sy],ex[::sx,::sy],kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pcselfexy.__doc__ = pcselfexy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
