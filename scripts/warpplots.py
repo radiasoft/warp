@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.7 2001/01/11 00:19:15 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.8 2001/01/11 00:51:28 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -846,14 +846,14 @@ Note that either the x and y coordinates or the grid must be passed in.
       if ymin == None: ymin = globalmin(yms)
       if ymax == None: ymax = globalmax(yms)
     else:
-      xmin = 0.
-      xmax = 0.
-      ymin = 0.
-      ymax = 0.
       if xmin == None and len(x) > 0: xmin = min(x)
       if xmax == None and len(x) > 0: xmax = max(x)
       if ymin == None and len(yms) > 0: ymin = min(yms)
       if ymax == None and len(yms) > 0: ymax = max(yms)
+      if xmin == None: xmin = 0.
+      if xmax == None: xmax = 0.
+      if ymin == None: ymin = 0.
+      if ymax == None: ymax = 0.
   else:
     # --- If no particles are inputted and the extrema are not set, then
     # --- can only make a guess.
@@ -915,7 +915,7 @@ Note that either the x and y coordinates or the grid must be passed in.
           color=ccolor,contours=contours,filled=filled)
 
   # --- Plot particles
-  if particles:
+  if particles and len(x) > 0:
     if color == 'density':
       z1 = zeros(len(x),'d')
       getgrid2d(len(x),x,yms,z1,nx,ny,grid1,xmin,xmax,ymin,ymax)
