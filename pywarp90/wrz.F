@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.5 $, $Date: 2002/04/24 21:36:25 $
+c@(#) File WRZ.M, version $Revision: 3.6 $, $Date: 2002/07/17 17:35:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -27,6 +27,7 @@ c  Echoes code version, etc. to output files as they're created
       end
 c=============================================================================
       subroutine wrzgen()
+      use GlobalVars
       use Beam_acc
       use Ch_var
       use Constant
@@ -50,7 +51,7 @@ c=============================================================================
       use FFTDiagrz
       use Sortrz
       use LinearBeam
-      use Pspwork
+c     use Pspwork
  
 c  Invoked by the GENERATE command, it sets up the problem
  
@@ -60,7 +61,7 @@ c  declare scratch space for getzmmnt
        integer(ISZ):: i,k,ia,izb,is,ip,ipmin,iwin,iz,num,nzma
        integer(ISZ):: nzmb,ieearmax,ieearmin,ir
        real(kind=8):: time1,time2,er,et,ez,frext,zm,zs,eearsprs,eearmax,eearmin
-       real(kind=8):: uxpo(NPARPGRP), uypo(NPARPGRP), uzpo(NPARPGRP)
+       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
        real(kind=8):: wtimeoff
 
 c    Heap check on NLTSS       
@@ -169,8 +170,8 @@ c     call zeroarry(curr,nz+1)
 
       call wtimeon 
       do is=1,ns
-         do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             call setrhorz (rho,ip,xp(ipmin),zp(ipmin),zbeam,
      &                     uzp(ipmin),sq(is),sw(is),depos)
             call setcurr(curr,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
@@ -225,8 +226,8 @@ c  Create the dynamic arrays for particle moments; calculate moments
       call gallot ("Moments", 0)
 c     call getemits(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sm(1),sw(1),1,nplive)
 c     do is=1,ns
-c        do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-c           ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+c        do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+c           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 c           nplive = ip
 c           call getemits(ip,xp(ipmin),yp(ipmin),zp(ipmin),
 c    &                    uxp(ipmin),uyp(ipmin),uzp(ipmin),
@@ -248,8 +249,8 @@ c  Create the dynamic arrays for z moments; calculate moments
         call getzmmnt(1,xp,yp,zp,uxp,uyp,uzp,gaminv,sq(1),sm(1),sw(1),dt/2.,1,
      &                nplive,uxpo,uypo,uzpo,1,ns)
         do is=1,ns
-           do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-              num = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+           do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+              num = min(nparpgrp, ins(is)+nps(is)-ipmin)
 c             --- Use t=0 u data also as "old" data for extraps
               call copyarry (uxp(ipmin),uxpo,num)
               call copyarry (uyp(ipmin),uypo,num)
@@ -267,8 +268,8 @@ c             --- Use t=0 u data also as "old" data for extraps
 c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
  
-      npsplt = min(NPARPGRP, npmax)
-      call gallot ("Pspwork", 0)
+c     npsplt = min(nparpgrp, npmax)
+c     call gallot ("Pspwork", 0)
       if (xplmin .eq. 0.) xplmin = rmmin
       if (xplmax .eq. 0.) xplmax = rmmax
       if (yplmin .eq. 0.) yplmin = rmmin
@@ -380,6 +381,7 @@ c  Make the fields outside the same as the maximum value
       end
 c=============================================================================
       subroutine wrzexe()
+      use GlobalVars
       use InGen
       use InPart
       use InGenrz
@@ -407,8 +409,8 @@ c  conditions in basis after we generate.
 c        call zeroarry(rho,nrz)
          rho = 0.
          do is=1,ns
-            do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-               ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+            do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+               ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
                call setrhorz (rho,ip,xp(ipmin),zp(ipmin),zbeam,
      &                        uzp(ipmin),sq(is),sw(is),depos)
             enddo
@@ -499,7 +501,7 @@ c  release storage
       call gfree ("Win_Moments")
       call gfree ("Moments")
       call gfree ("Particles")
-      call gfree ("Pspwork")
+c     call gfree ("Pspwork")
       call gfree ("Z_arrays")
  
       return
@@ -1009,6 +1011,7 @@ c  Calculates the line charge density from rho.
       end
 c=============================================================================
       subroutine padvncrz(center)
+      use GlobalVars
       use Beam_acc
       use InGen
       use InPart
@@ -1028,10 +1031,10 @@ c  and also advances RHO.
  
  
       integer(ISZ):: is,ipmin,ip,i
-      real(kind=8):: er(NPARPGRP), et(NPARPGRP), ez(NPARPGRP)
-      real(kind=8):: br(NPARPGRP), bt(NPARPGRP), bz(NPARPGRP)
-      real(kind=8):: frext(NPARPGRP)
-      real(kind=8):: uxpo(NPARPGRP), uypo(NPARPGRP), uzpo(NPARPGRP)
+      real(kind=8):: er(nparpgrp), et(nparpgrp), ez(nparpgrp)
+      real(kind=8):: br(nparpgrp), bt(nparpgrp), bz(nparpgrp)
+      real(kind=8):: frext(nparpgrp)
+      real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
  
 c  Zero RHO if particles are advanced
       if (center.eq."fullv" .or. center.eq."halfv") then
@@ -1063,8 +1066,8 @@ c  Call seterz to fill E_z and E_r arrays
          call setexte(it,dt,dz,vbeam,nr,nz)
  
 c  Loop over particle block, and move each block seperately
-         do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             call seterz (1,phi,force,ip,xp(ipmin),zp(ipmin),zbeam,
      &                   rmmin,zmmin,zmmax,dr,dz,nr,nz,
      &                   efetch,er,et,ez,frext,erfld,ezfld,eoffrz)
@@ -1178,6 +1181,7 @@ c  Adds the first and last slices of rho for periodicity
 c=============================================================================
       subroutine pushrz (center, np, rp, tp, zp, urp, utp, uzp, gaminv,
      &                 er, et, ez, br, bt, bz, frext, q, m, dt, gamadv)
+      use GlobalVars
       use Constant
       use Beam_acc
       use InMeshrz
@@ -1186,7 +1190,7 @@ c=============================================================================
       real(kind=8):: rp(np),tp(np),zp(np),urp(np),utp(np),uzp(np),gaminv(np)
       real(kind=8):: er(np),et(np),ez(np),br(np),bt(np),bz(np),frext(np)
       real(kind=8):: q,m,dt
-      real(kind=8):: tmp(NPARPGRP)
+      real(kind=8):: tmp(nparpgrp)
  
 c  Advances the particles
  
@@ -1505,6 +1509,7 @@ c  Make the surface charge periodic
  
 c=============================================================================
       subroutine stptclrz
+      use GlobalVars
       use Beam_acc
       use Constant
       use InPart
@@ -1526,13 +1531,13 @@ c  its charge, mass, etc. from global quantities such as aion, zion.
       integer(ISZ):: nfib2,nfib3,nfib4,j,ii,ipart,ipmin,ipt
       real(kind=8):: rnpmi,strgt,zmid,zlen,zleft,vtz,rr,th,r0,rp,rpp,vtx,vty
       real(kind=8):: phi1,phi2,r,vr,vt,gfact,z0
-      real(kind=8):: uxpert(0:NPARPGRP),uzpert(0:NPARPGRP)
+      real(kind=8):: uxpert(0:nparpgrp),uzpert(0:nparpgrp)
       real(kind=8):: wranf,rm,rnrev
  
 c  Set npgrp so Setpworkrz arrays are correct size
-      if (xrandom .eq. "fibonacc") npgrp = NPARPGRP
-      if (xrandom .eq. "digitrev") npgrp = NPARPGRP
-      if (xrandom .eq. "pseudo"  ) npgrp = NPARPGRP
+      if (xrandom .eq. "fibonacc") npgrp = nparpgrp
+      if (xrandom .eq. "digitrev") npgrp = nparpgrp
+      if (xrandom .eq. "pseudo"  ) npgrp = nparpgrp
       if (xrandom .eq. "grid"    ) npgrp = nxstripe*nystripe
       if (npgrp .eq. 0) then
         write (errline,'("ERROR: xrandom has an improper value = ",a8)')
@@ -1933,8 +1938,8 @@ c   Add perturbation in velocity
       if (vzpert .gt. 0.) then
          gfact = log(rmmax/a0)/(2.*pi*eps0)
          vphase = sqrt(gfact*sq(1)*ibeam/(vbeam*sm(1)))
-         do ipmin = 1,np,NPARPGRP
-            ipt = min(NPARPGRP,np - ipmin + 1)
+         do ipmin = 1,np,nparpgrp
+            ipt = min(nparpgrp,np - ipmin + 1)
             do ipart=0,ipt-1
             uxpert(ipart) = 0.5*xp(ipart+ipmin)*vzpert*kzpert*
      &                   sin(kzpert*zp(ipart+ipmin))

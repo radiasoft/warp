@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.61 $, $Date: 2002/07/17 16:09:32 $
+c@(#) File W3D.M, version $Revision: 3.62 $, $Date: 2002/07/17 17:35:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -34,6 +34,7 @@ c  Echoes code version, etc. to output files as they're created
       end
 c=============================================================================
       subroutine w3dgen()
+      use GlobalVars
       use Subtimers
       use Ch_var
       use Constant
@@ -61,7 +62,7 @@ c=============================================================================
       use Moments
       use Damped_eom
       use Hist
-      use Pspwork
+c     use Pspwork
       use InjectVars
       use FRZmgrid
 
@@ -253,8 +254,8 @@ c  Load the particles, calculate the charge density
 c     rho = 0.
 c     curr = 0.
       do is=1,ns
-         do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-           ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+           ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
            if(solvergeom==XYZgeom) then
               call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
      &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
@@ -331,9 +332,9 @@ c       --- made obsolete anyway.
 c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
 
-      call remark(" ---  Allocating scratch space for plots")
-      if (npsplt == 0) npsplt = NPARPGRP-1
-      call gallot("Pspwork", 0)
+c     call remark(" ---  Allocating scratch space for plots")
+c     if (npsplt == 0) npsplt = nparpgrp-1
+c     call gallot("Pspwork", 0)
       if (xplmin == 0.) xplmin = -xmmax
       if (xplmax == 0.) xplmax = xmmax
       if (yplmin == 0.) yplmin = -ymmax
@@ -481,7 +482,7 @@ c=============================================================================
       use Z_Moments
       use Z_arrays
       use Hist
-      use Pspwork
+c     use Pspwork
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -515,7 +516,7 @@ c  release storage
       call gfree ("Lattice")
       call gfree ("LatticeInternal")
       call gfree ("Particles")
-      call gfree ("Pspwork")
+c     call gfree ("Pspwork")
       call gfree ("Z_arrays")
 
       if (lw3dtimesubs) timew3dfin = timew3dfin + wtime() - substarttime
@@ -1190,6 +1191,7 @@ c       --- Add on linear pressure term
       end
 c=============================================================================
       subroutine padvnc3d(center)
+      use GlobalVars
       use Subtimers
       use InMesh3d
       use InGen
@@ -1217,18 +1219,18 @@ c  and also loads RHO at the new time level.
 
       integer(ISZ):: is,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
-      real(kind=8):: zpo(NPARPGRP)
-      real(kind=8):: ex(NPARPGRP), ey(NPARPGRP), ez(NPARPGRP)
-      real(kind=8):: bx(NPARPGRP), by(NPARPGRP), bz(NPARPGRP)
-      real(kind=8):: uxpo(NPARPGRP), uypo(NPARPGRP), uzpo(NPARPGRP)
-      real(kind=8):: bendres(NPARPGRP), bendradi(NPARPGRP)
+      real(kind=8):: zpo(nparpgrp)
+      real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp)
+      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
+      real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
+      real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
 
 c  Zero the bend radius and residence arrays
-c     call zeroarry (bendres,NPARPGRP)
-c     call zeroarry (bendradi,NPARPGRP)
+c     call zeroarry (bendres,nparpgrp)
+c     call zeroarry (bendradi,nparpgrp)
       bendres = 0.
       bendradi = 0.
 
@@ -1258,8 +1260,8 @@ c  Loop over species
       do is=1,ns
 
 c  Loop over particle blocks; move each block separately
-         do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
 c           --- Obtain the self-field from the electrostatic potential
             if(solvergeom==XYZgeom) then
@@ -1466,8 +1468,8 @@ c       --- load rho diagnostic quantities
       if (center == "synchv" .or. center == "gen" .or. ifgap) then
 c       --- Calculate current
         do is=1,ns
-          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             call setcurr(curr(0),ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                   sq(is),sw(is),zbeam,dzz,zzmin)
           enddo
@@ -1496,8 +1498,8 @@ c       --- Apply particle boundary conditions
 
 c       --- Collect charge density (3d) and current (1d)
         do is=1,ns
-          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+          do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             if(solvergeom==XYZgeom) then
               call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
      &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
@@ -2014,6 +2016,7 @@ c  "along the centerline."
 c=========================================================================== 
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry)
+      use GlobalVars
       use Subtimers
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
@@ -2022,7 +2025,7 @@ c===========================================================================
       integer(ISZ):: efetch
       logical(ISZ):: l2symtry,l4symtry
 
-c  Sets self electric field for a group of up to NPARPGRP particles
+c  Sets self electric field for a group of up to nparpgrp particles
 c  Note that the phi1d passed in is assumed to start at phi(0,0,-1).
 c  This is a change is behavior from what is was earlier. This change
 c  was made to avoid problems with bounds checking. phi needs to be accessed
@@ -2049,8 +2052,8 @@ c        + ...
 
 c     --- For second version
 c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
-      integer(ISZ):: indx(33,NPARPGRP)
-      real(kind=8):: p(33,NPARPGRP), u1p(NPARPGRP), v1p(NPARPGRP), w1p(NPARPGRP)
+      integer(ISZ):: indx(33,nparpgrp)
+      real(kind=8):: p(33,nparpgrp), u1p(nparpgrp), v1p(nparpgrp), w1p(nparpgrp)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -2529,6 +2532,7 @@ c     --- of the guard cells.
       end
 c=============================================================================
       subroutine stptcl3d
+      use GlobalVars
       use Subtimers
       use Beam_acc
       use Constant
@@ -2583,7 +2587,7 @@ c  Set npgrp so Setpwork3d arrays are correct size
       if (xrandom == "fibonacc" .or.
      &    xrandom == "digitrev" .or.
      &    xrandom == "pseudo") then
-        npgrp = NPARPGRP
+        npgrp = nparpgrp
       elseif (xrandom == "grid") then
         npgrp = nxstripe*nystripe
       else
@@ -3283,6 +3287,7 @@ c     --- if slave, reorganize particles and recalculate sw
       end
 c=============================================================================
       subroutine setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos)
+      use GlobalVars
       use Subtimers
       use InGen3d
       use InMesh3d
@@ -3311,12 +3316,12 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:7), indx(0:7,NPARPGRP)
+      integer(ISZ):: moff(0:7), indx(0:7,nparpgrp)
       save moff
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:NPARPGRP-1), jj(0:NPARPGRP-1), kk(0:NPARPGRP-1)
+      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1), kk(0:nparpgrp-1)
 c     --- For both algorithms
-      real(kind=8):: s(0:7,NPARPGRP)
+      real(kind=8):: s(0:7,nparpgrp)
 
       integer(ISZ):: ip,i,j,k,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
@@ -3341,7 +3346,7 @@ c  Set up offset array for vectorized deposition:
         moff(7) = (nx+1)*(ny+1)+nx+2
       endif
 
-c  Begin main loop over species, groups of NPARPGRP particles
+c  Begin main loop over species, groups of nparpgrp particles
 
       g = wght * q / (dx * dy * dz)
       dxi = 1./dx
@@ -3466,7 +3471,7 @@ c  Begin scalar deposition loop
 c--------------------------------------
       elseif (depos == "scalar") then
 
-c  Begin main loop over species, groups of NPARPGRP particles
+c  Begin main loop over species, groups of nparpgrp particles
 
       g = wght * q / (dx * dy * dz)
       dxi = 1./dx
@@ -3574,6 +3579,7 @@ c     --- scalar loop does the actual deposition
       end
 c=============================================================================
       subroutine loadrho3d(ins_i,nps_i,is_i,lzero)
+      use GlobalVars
       use Subtimers
       use InGen
       use InGen3d
@@ -3627,8 +3633,8 @@ c        --- get loop limits for particles if needed
          if (nps_i == -1) nps_u = nps(is)
 
 c        --- loop over particle blocks
-         do ipmin = ins_u, ins_u + nps_u - 1, NPARPGRP
-            ip = min(NPARPGRP, ins_u+nps_u-ipmin)
+         do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+            ip = min(nparpgrp, ins_u+nps_u-ipmin)
             if(solvergeom==XYZgeom) then
               call setrho3d (rho(0,0,0), ip, xp(ipmin), yp(ipmin), zp(ipmin),
      &                       zgrid, uzp(ipmin), sq(is), sw(is), depos)
@@ -3758,6 +3764,7 @@ c     --- Also, make sure the rstar is non-zero.
       end
 c=============================================================================
       subroutine inject3d(itask)
+      use GlobalVars
       use Subtimers
       use Constant
       use Beam_acc
@@ -4057,8 +4064,8 @@ c           --- (Assumes that injection will never be done inside a bend.)
               uxt(ip) = 0.
               uyt(ip) = 1.
             enddo
-            do ipmin = ins(is),ins(is)+nn-1,NPARPGRP
-              ip = min(NPARPGRP, ins(is)+nn-ipmin)
+            do ipmin = ins(is),ins(is)+nn-1,nparpgrp
+              ip = min(nparpgrp, ins(is)+nn-ipmin)
               ii = ipmin - ins(is) + 1
               call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
      &                     gaminv(ipmin),0.,dt*0.5,
@@ -4147,8 +4154,8 @@ c           --- get external fields at current positions
               uxt(ip) = 0.
               uyt(ip) = 1.
             enddo
-            do ip = 1,nn,NPARPGRP
-              ii = min(NPARPGRP, nn+1-ip)
+            do ip = 1,nn,nparpgrp
+              ii = min(nparpgrp, nn+1-ip)
               call exteb3d(ii,xp(ip+ipmin-1),yp(ip+ipmin-1),zp(ip+ipmin-1),
      &                     uzp(ip+ipmin-1),gaminv(ip+ipmin-1),
      &                     -dt*0.5,0.,
@@ -4583,8 +4590,8 @@ c           --- (Assumes that injection will never be done inside a bend.)
               uxt(ip) = 0.
               uyt(ip) = 1.
             enddo
-            do ipmin = ins(is),ins(is)+npinje_s(is)-1,NPARPGRP
-              ip = min(NPARPGRP, ins(is)+npinje_s(is)-ipmin)
+            do ipmin = ins(is),ins(is)+npinje_s(is)-1,nparpgrp
+              ip = min(nparpgrp, ins(is)+npinje_s(is)-ipmin)
               ii = ipmin - ins(is) + 1
               call exteb3d(ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
      &                     gaminv(ipmin),0.,dt*0.5,
@@ -4649,8 +4656,8 @@ c           --- is no bend.
               uxt(ip) = 0.
               uyt(ip) = 1.
             enddo
-            do ip = 1,npinje_s(is),NPARPGRP
-              ii = min(NPARPGRP, npinje_s(is)+1-ip)
+            do ip = 1,npinje_s(is),nparpgrp
+              ii = min(nparpgrp, npinje_s(is)+1-ip)
               ipmin = ip+ins(is)-1
               call exteb3d(ii,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
      &                     gaminv(ipmin),-dt*0.5,0.,
@@ -4875,8 +4882,8 @@ c         --- This must be done after all of the particles for this timestep
 c         --- are injected.
           do is=1,ns
             do ipmin=ins(is)-npinje_s(is)-ntinject(is),
-     &               ins(is)-npinje_s(is)-1,NPARPGRP
-              ip = min(NPARPGRP, ins(is) - npinje_s(is) - ipmin)
+     &               ins(is)-npinje_s(is)-1,nparpgrp
+              ip = min(nparpgrp, ins(is) - npinje_s(is) - ipmin)
               if(solvergeom==XYZgeom) then
                 call setrho3d (rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         zgrid, uzp(ipmin), sq(is), sw(is), depos)

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.22 $, $Date: 2002/06/12 23:54:21 $
+c@(#) File WXY.M, version $Revision: 3.23 $, $Date: 2002/07/17 17:35:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -26,6 +26,7 @@ c  Echoes code version, etc. to output files as they're created
       end
 c=============================================================================
       subroutine wxygen()
+      use GlobalVars
       use Ch_var
       use Constant
       use InGen
@@ -53,7 +54,7 @@ c=============================================================================
       use Moments
       use Damped_eom
       use Hist
-      use Pspwork
+c     use Pspwork
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -238,8 +239,8 @@ c     call zeroarry(curr,nzzarr+1)
       curr = 0.
       do is=1,ns
 c        --- Set charge density
-         do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-            ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+         do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+            ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
             call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
      &                    uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
          enddo
@@ -297,10 +298,10 @@ c  Create the dynamic arrays for lab frame moments
 c  Create the scratch arrays for phase space plots (permanent, for now)
 c  and set limits for plots
 
-      call remark(" ---  Allocating scratch space for plots")
-      npsplt = min(NPARPGRP-1, npmax)
-      if (npsplt == 0) npsplt = NPARPGRP-1
-      call gallot("Pspwork", 0)
+c     call remark(" ---  Allocating scratch space for plots")
+c     npsplt = min(nparpgrp-1, npmax)
+c     if (npsplt == 0) npsplt = nparpgrp-1
+c     call gallot("Pspwork", 0)
       if (xplmin == 0.) xplmin = -xmmax
       if (xplmax == 0.) xplmax =  xmmax
       if (yplmin == 0.) yplmin = -ymmax
@@ -519,7 +520,7 @@ c=============================================================================
       use Z_Moments
       use Z_arrays
       use Hist
-      use Pspwork
+c     use Pspwork
 
 c  Finish up at end of RUN, or on receipt of FIN
 c  This routine is never called, at present; history plots are
@@ -551,7 +552,7 @@ c  release storage
       call gfree ("LatticeInternal")
       call gfree ("Particles")
       call gfree ("Particlesxy")
-      call gfree ("Pspwork")
+c     call gfree ("Pspwork")
       call gfree ("Z_arrays")
 
       return
@@ -833,6 +834,7 @@ c     --- azimuthal magnetic field
       end
 c=============================================================================
       subroutine padvncxy(center)
+      use GlobalVars
       use InMesh3d
       use InGen
       use InGen3d
@@ -858,11 +860,11 @@ c  and also loads RHO at the new time level.
 
       integer(ISZ):: is,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
-      real(kind=8):: ex(NPARPGRP), ey(NPARPGRP), ez(NPARPGRP), ezo(NPARPGRP)
-      real(kind=8):: bx(NPARPGRP), by(NPARPGRP), bz(NPARPGRP)
-      real(kind=8):: xpo(NPARPGRP), ypo(NPARPGRP), zpo(NPARPGRP)
-      real(kind=8):: uxpo(NPARPGRP), uypo(NPARPGRP), uzpo(NPARPGRP)
-      real(kind=8):: gaminvo(NPARPGRP)
+      real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp), ezo(nparpgrp)
+      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
+      real(kind=8):: xpo(nparpgrp), ypo(nparpgrp), zpo(nparpgrp)
+      real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
+      real(kind=8):: gaminvo(nparpgrp)
       real(kind=8):: bendres, bendradi
       integer(ISZ):: iter_dt
 
@@ -889,8 +891,8 @@ c  Loop over species
       do is=1,ns
 
 c  Loop over particle blocks; move each block separately
-        do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
-          ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
+        do ipmin = ins(is), ins(is) + nps(is) - 1, nparpgrp
+          ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
 c         --- Obtain the self-field from the electrostatic potential
           call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
@@ -1576,6 +1578,7 @@ c frame (when in a bend).
       end      
 c=========================================================================== 
       subroutine setrhoxy(rho1d,np,xp,yp,zp,zgrid,uzp,gaminv,q,wght)
+      use GlobalVars
       use InGen
       use InGenxy
       use InGen3d
@@ -1609,11 +1612,11 @@ c  RHO must be zeroed in ZERORHO since it is not zeroed here (to allow
 c  handling of blocks of particles at a time)
 
 c     --- For vectorized algorithm
-      integer(ISZ):: moff(0:3), indx(0:3,NPARPGRP)
+      integer(ISZ):: moff(0:3), indx(0:3,nparpgrp)
 c     --- For "scalar" (actually partly vectorized) algorithm
-      integer(ISZ):: ii(0:NPARPGRP-1), jj(0:NPARPGRP-1)
+      integer(ISZ):: ii(0:nparpgrp-1), jj(0:nparpgrp-1)
 c     --- For both algorithms
-      real(kind=8):: s(0:3,NPARPGRP)
+      real(kind=8):: s(0:3,nparpgrp)
 
       integer(ISZ):: ip,i,j,ind0,m,ir
       real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,gxfact,gyfact,f
@@ -1635,7 +1638,7 @@ c  Set up offset array for vectorized deposition:
       moff(2) = nx+1
       moff(3) = nx+2
 
-c  Begin main loop over species, groups of NPARPGRP particles
+c  Begin main loop over species, groups of nparpgrp particles
 
       g = wght * q / (dx * dy)
       dxi = 1./dx
@@ -1730,7 +1733,7 @@ c  Begin scalar deposition loop
 c--------------------------------------
       elseif (depos == "scalar") then
 
-c  Begin main loop over species, groups of NPARPGRP particles
+c  Begin main loop over species, groups of nparpgrp particles
 
       g = wght * q / (dx * dy)
       dxi = 1./dx
@@ -1810,6 +1813,7 @@ c     --- End of slice version
       end
 c=============================================================================
       subroutine loadrhoxy(ins_i,nps_i,is_i,lzero)
+      use GlobalVars
       use InGen
       use InGenxy
       use InPart
@@ -1856,8 +1860,8 @@ c        --- get loop limits for particles if needed
          if (nps_i == -1) nps_u = nps(is)
 
 c        --- loop over particle blocks
-         do ipmin = ins_u, ins_u + nps_u - 1, NPARPGRP
-            ip = min(NPARPGRP, ins_u+nps_u-ipmin)
+         do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
+            ip = min(nparpgrp, ins_u+nps_u-ipmin)
             call setrhoxy(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
      &                    uzp(ipmin),gaminv(ipmin),sq(is),sw(is))
          enddo
