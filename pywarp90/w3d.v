@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.97 $, $Date: 2003/03/26 17:39:01 $
+#@(#) File W3D.V, version $Revision: 3.98 $, $Date: 2003/04/09 01:51:17 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.97 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.98 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -275,7 +275,7 @@ phisav(0:nx,-1:nz)     _real [V]       # Phi at current y slice (scratch)
 xywork(0:nx,0:ny)      _real           # Work space for transverse FFTs
 zwork(2,0:nx,0:nzfull) _real           # Work space used to optimize vsftz
 
-*********** Fields3dParticles:
+*********** Fields3dParticles parallel:
 nxp  integer /0/ # Number of grid cells in x axis for phip and rhop
 nyp  integer /0/ # Number of grid cells in y axis for phip and rhop
 nzp  integer /0/ # Number of grid cells in z axis for phip and rhop
@@ -304,8 +304,12 @@ iy_axis          integer [1]           # y location of axis in mesh
 iz_axis          integer [1] +parallel # z location of axis in mesh
 
 *********** InjectVars3d dump:
-inj_xmmin            real [m] /0./ # Min x extent of injection mesh
-inj_ymmin            real [m] /0./ # Min y extent of injection mesh
+inj_ninj             integer  # Auto set to either 1 or ninject. Set to 1
+                              # when no emitting source are within two grid
+                              # cells of each other.
+inj_ns               integer  # Auto set to either 1 or ns. Set to 1
+                              # when only one species is being injected from
+                              # each source.
 inj_nx               integer  /0/  # size injection arrays in x
 inj_ny               integer  /0/  # size injection arrays in y
 inj_nz               integer  /0/  # size injection arrays in z 
@@ -313,12 +317,6 @@ inj_dx               real [m] /0./ # mesh spacing in x for injection
 inj_dy               real [m] /0./ # mesh spacing in y for injection
 inj_dz               real [m] /0./ # mesh spacing in z for injection
 inj_dz0              real [m] /0./ # mesh spacing in z for injection
-inj_ninj             integer  # Auto set to either 1 or ninject. Set to 1
-                              # when no emitting source are within two grid
-                              # cells of each other.
-inj_ns               integer  # Auto set to either 1 or ns. Set to 1
-                              # when only one species is being injected from
-                              # each source.
 linj_sphere          logical /.true./
 l_inj_rz             logical /.false./ # if true, make RZ injection with variable weights
 l_inj_regular        logical /.false./ # if true, inject one particle at each grid node and adjust weight accordingly
@@ -326,6 +324,10 @@ l_inj_delay_temp     logical /.false./ # if true, add temperature only after par
 l_inj_addtempz_abs   logical /.false./ # if true, longitudinal thermal velocity is positive
 l_inj_rec_inittime   logical /.false./ # if true, time of creation is recorded in pid
 l_inj_rec_initradius logical /.false./ # if true, radius of creation is recorded in pid
+inj_xmmin(inj_ninj)  _real [m] /0./ # Min x extent of injection mesh
+inj_ymmin(inj_ninj)  _real [m] /0./ # Min y extent of injection mesh
+inj_zmmin             real [m] /0./ # Min z extent of injection region
+inj_zmmax             real [m] /0./ # Max z extent of injection region
 inj_grid(0:inj_nx,0:inj_ny,inj_ninj) _real [m]
    # Grid giving axial field grid location of injection sources in the lab frame
 inj_angl(0:inj_nx,0:inj_ny,inj_ninj) _real
@@ -425,8 +427,7 @@ gtlchg3d()   subroutine # Computes line charge density
 inject3d(itask:integer)
              subroutine # Injection routine
 injctint()   subroutine # Initialization for injection
-fill_inj(dx:real,dy:real,dz:real,ix_axis:integer,iy_axis:integer)
-             subroutine # Initializes arrays describing the geometry of the
+fill_inj()   subroutine # Initializes arrays describing the geometry of the
                         # emitting surface. Automatically called.
 inj_sete3d(np:integer,ipmin:integer,xmmin:real,ymmin:real,zmmin:real,
            dx:real,dy:real,dz:real,ex:real,ey:real,ez)
@@ -538,6 +539,8 @@ timesetrstar real /0./
 timeinject3d real /0./
 timeinjctint real /0./
 timefill_inj real /0./
+timeinj_transform real /0./
+timegetinj_phi real /0./
 timeinj_sete3d real /0./
 timeinj_addtemp3d real /0./
 timeinj_setrho3d real /0./
