@@ -1,4 +1,4 @@
-!     Last change:  JLV  23 Jul 2002    9:37 am
+!     Last change:  JLV  23 Jul 2002   10:35 am
 #include "top.h"
 
 module multigrid_common
@@ -3427,7 +3427,7 @@ REAL(8), INTENT(IN) :: condvolt(ncond), ecvolt(necndbdy), ocvolt(nocndbdy), &
                        ecdelmx(necndbdy), ecdelpx(necndbdy), ecdelmz(necndbdy), ecdelpz(necndbdy), &
                        ocdelmx(nocndbdy), ocdelpx(nocndbdy), ocdelmz(nocndbdy), ocdelpz(nocndbdy)
 
-INTEGER(ISZ) :: ii,iii,iv,iiv,nxbnd,nzbndmin,nzbndmax
+INTEGER(ISZ) :: ii,iii,iv,iiv,nxbnd,nzbndmin,nzbndmax,iivmin,iivmax
 REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz
 
 TYPE(conductor_type), POINTER :: cndpnt
@@ -3458,23 +3458,36 @@ TYPE(conductor_type), POINTER :: cndpnt
     bndy(i)%cnd%voltage(iii) = condvolt(ii)
   end do
 
-  do ii = 1, necndbdy
-   bndy(i)%cnd%jj(ii)  = iecndx(ii)+1
-   bndy(i)%cnd%kk(ii)  = iecndz(ii)+1
-   IF(bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii))==v_cond) cycle
-   IF(iecndx(ii)>=0 .and. iecndx(ii)<=nxbnd .and. iecndz(ii)>=nzbndmin .and. iecndz(ii)<=nzbndmax) then
-     bndy(i)%cnd%docalc(ii)=.true.
+  do ii = 1, necndbdy+nocndbdy
+   IF(ii<=necndbdy) then
+     iii = ii
+     bndy(i)%cnd%jj(ii)  = iecndx(iii)+1
+     bndy(i)%cnd%kk(ii)  = iecndz(iii)+1
+     dxm = MIN(1._8,ecdelmx(iii))*bndy(i)%dr
+     dxp = MIN(1._8,ecdelpx(iii))*bndy(i)%dr
+     dzm = MIN(1._8,ecdelmz(iii))*bndy(i)%dz
+     dzp = MIN(1._8,ecdelpz(iii))*bndy(i)%dz
+     bndy(i)%cnd%volt0xm(ii)=ecvolt(iii)
+     bndy(i)%cnd%volt0xp(ii)=ecvolt(iii)
+     bndy(i)%cnd%volt0zm(ii)=ecvolt(iii)
+     bndy(i)%cnd%volt0zp(ii)=ecvolt(iii)
    else
-     cycle
+     iii = ii - necndbdy
+     bndy(i)%cnd%jj(ii)  = iocndx(iii)+1
+     bndy(i)%cnd%kk(ii)  = iocndz(iii)+1
+     dxm = MIN(1._8,ocdelmx(iii))*bndy(i)%dr
+     dxp = MIN(1._8,ocdelpx(iii))*bndy(i)%dr
+     dzm = MIN(1._8,ocdelmz(iii))*bndy(i)%dz
+     dzp = MIN(1._8,ocdelpz(iii))*bndy(i)%dz
+     bndy(i)%cnd%volt0xm(ii)=ocvolt(iii)
+     bndy(i)%cnd%volt0xp(ii)=ocvolt(iii)
+     bndy(i)%cnd%volt0zm(ii)=ocvolt(iii)
+     bndy(i)%cnd%volt0zp(ii)=ocvolt(iii)
    END if
-   dxm = MIN(1._8,ecdelmx(ii))*bndy(i)%dr
-   dxp = MIN(1._8,ecdelpx(ii))*bndy(i)%dr
-   dzm = MIN(1._8,ecdelmz(ii))*bndy(i)%dz
-   dzp = MIN(1._8,ecdelpz(ii))*bndy(i)%dz
-   bndy(i)%cnd%volt0xm(ii)=ecvolt(ii)
-   bndy(i)%cnd%volt0xp(ii)=ecvolt(ii)
-   bndy(i)%cnd%volt0zm(ii)=ecvolt(ii)
-   bndy(i)%cnd%volt0zp(ii)=ecvolt(ii)
+   IF(bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii))==v_cond) cycle
+   IF(.not. (bndy(i)%cnd%jj(ii)>=1 .and. bndy(i)%cnd%jj(ii)<=nxbnd+1 .and. &
+             bndy(i)%cnd%kk(ii)>=nzbndmin+1 .and. bndy(i)%cnd%kk(ii)<=nzbndmax+1)) cycle
+   bndy(i)%cnd%docalc(ii)=.true.
    IF(bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii))/=v_bnd ) then
      bndy(i)%v(bndy(i)%cnd%jj(ii),bndy(i)%cnd%kk(ii)) = v_bnd
    else
@@ -3484,7 +3497,14 @@ TYPE(conductor_type), POINTER :: cndpnt
        else
          cndpnt => cndpnt%next
        END if
-       do iiv=1,cndpnt%nbbndred
+       IF(ii<=necndbdy) then
+         iivmin = 1
+         iivmax = cndpnt%nbbndred
+       else
+         iivmin = cndpnt%nbbndred+1
+         iivmax = cndpnt%nbbnd
+       END if
+       do iiv=iivmin,iivmax
          IF(bndy(i)%cnd%jj(ii)==cndpnt%jj(iiv) .AND. bndy(i)%cnd%kk(ii)==cndpnt%kk(iiv)) then
            cndpnt%docalc(iiv)=.false.
            IF(cndpnt%dxm(iiv)<dxm) then
@@ -3521,7 +3541,6 @@ TYPE(conductor_type), POINTER :: cndpnt
      case default
    end select
    IF(bndy(i)%cnd%jj(ii)==1) then
-     rp = 0.5_8*bndy(i)%dr
      bndy(i)%cnd%dt(ii) = 1._8/(4._8/(dxp*dxx)+(1._8/dzm+1._8/dzp)/dzz)
      bndy(i)%cnd%cfxp(ii) = 4._8/(dxp*dxx)
      bndy(i)%cnd%cfzm(ii) = 1._8/(dzm*dzz)
@@ -3568,121 +3587,6 @@ TYPE(conductor_type), POINTER :: cndpnt
      else
        bndy(i)%cnd%phi0zp(ii)=bndy(i)%cnd%cfzp(ii)*bndy(i)%cnd%volt0zp(ii)
        bndy(i)%cnd%cfzp(ii)=0._8
-     END if
-  end do
-
-
-  do ii = 1, nocndbdy
-   iii=necndbdy+ii
-   bndy(i)%cnd%jj(iii)  = iocndx(ii)+1
-   bndy(i)%cnd%kk(iii)  = iocndz(ii)+1
-   IF(bndy(i)%v(bndy(i)%cnd%jj(iii),bndy(i)%cnd%kk(iii))==v_cond) cycle
-   IF(iocndx(ii)>=0 .and. iocndx(ii)<=nxbnd .and. iocndz(ii)>=nzbndmin .and. iocndz(ii)<=nzbndmax) then
-     bndy(i)%cnd%docalc(iii)=.true.
-   else
-     cycle
-   endif
-   dxm = MIN(1._8,ocdelmx(ii))*bndy(i)%dr
-   dxp = MIN(1._8,ocdelpx(ii))*bndy(i)%dr
-   dzm = MIN(1._8,ocdelmz(ii))*bndy(i)%dz
-   dzp = MIN(1._8,ocdelpz(ii))*bndy(i)%dz
-   bndy(i)%cnd%volt0xm(iii)=ocvolt(ii)
-   bndy(i)%cnd%volt0xp(iii)=ocvolt(ii)
-   bndy(i)%cnd%volt0zm(iii)=ocvolt(ii)
-   bndy(i)%cnd%volt0zp(iii)=ocvolt(ii)
-   IF(bndy(i)%v(bndy(i)%cnd%jj(iii),bndy(i)%cnd%kk(iii))/=v_bnd ) then
-     bndy(i)%v(bndy(i)%cnd%jj(iii),bndy(i)%cnd%kk(iii)) = v_bnd
-   else
-     do iv=1, bndy(i)%nb_conductors-1
-       IF(iv==1) then
-         cndpnt => bndy(i)%first
-       else
-         cndpnt => cndpnt%next
-       END if
-       do iiv=cndpnt%nbbndred+1,cndpnt%nbbnd
-         IF(bndy(i)%cnd%jj(iii)==cndpnt%jj(iiv) .AND. bndy(i)%cnd%kk(iii)==cndpnt%kk(iiv)) then
-           cndpnt%docalc(iiv)=.false.
-           IF(cndpnt%dxm(iiv)<dxm) then
-             dxm = cndpnt%dxm(iiv)
-             bndy(i)%cnd%volt0xm(iii) = cndpnt%volt0xm(iiv)
-           END if
-           IF(cndpnt%dxp(iiv)<dxp) then
-             dxp = cndpnt%dxp(iiv)
-             bndy(i)%cnd%volt0xp(iii) = cndpnt%volt0xp(iiv)
-           END if
-           IF(cndpnt%dzm(iiv)<dzm) then
-             dzm = cndpnt%dzm(iiv)
-             bndy(i)%cnd%volt0zm(iii) = cndpnt%volt0zm(iiv)
-           END if
-           IF(cndpnt%dzp(iiv)<dzp) then
-             dzp = cndpnt%dzp(iiv)
-             bndy(i)%cnd%volt0zp(iii) = cndpnt%volt0zp(iiv)
-           END if
-         END if
-       end do
-     end do
-   endif
-   bndy(i)%cnd%dxm(iii)=dxm
-   bndy(i)%cnd%dxp(iii)=dxp
-   bndy(i)%cnd%dzm(iii)=dzm
-   bndy(i)%cnd%dzp(iii)=dzp
-   select case (bnd_method)
-     case (egun)
-       dxx=bndy(i)%dr
-       dzz=bndy(i)%dz
-     case (ecb)
-       dxx=0.5_8*(dxp+dxm)  !ecb
-       dzz=0.5_8*(dzp+dzm)  !ecb
-     case default
-   end select
-   IF(bndy(i)%cnd%jj(iii)==1) then
-     rp = 0.5_8*bndy(i)%dr
-     bndy(i)%cnd%dt(iii) = 1._8/(4._8/(dxp*dxx)+(1._8/dzm+1._8/dzp)/dzz)
-     bndy(i)%cnd%cfxp(iii) = 4._8/(dxp*dxx)
-     bndy(i)%cnd%cfzm(iii) = 1._8/(dzm*dzz)
-     bndy(i)%cnd%cfzp(iii) = 1._8/(dzp*dzz)
-     bndy(i)%cnd%cf0(iii)  = -bndy(i)%cnd%cfxp(iii)-bndy(i)%cnd%cfzm(iii)-bndy(i)%cnd%cfzp(iii)
-   else
-     r = (bndy(i)%cnd%jj(iii)-1)*bndy(i)%dr
-     select case (bnd_method)
-       case (egun)
-         rm = r-0.5_8*bndy(i)%dr
-         rp = r+0.5_8*bndy(i)%dr
-       case (ecb)
-         rm = r-0.5_8*dxm
-         rp = r+0.5_8*dxp
-       case default
-     end select
-     bndy(i)%cnd%dt(iii) = 1._8/((rm/dxm+rp/dxp)/(r*dxx)+(1._8/dzm+1._8/dzp)/dzz)
-     bndy(i)%cnd%cfxm(iii) = rm/(r*dxm*dxx)
-     bndy(i)%cnd%cfxp(iii) = rp/(r*dxp*dxx)
-     bndy(i)%cnd%cfzm(iii) = 1._8/(dzm*dzz)
-     bndy(i)%cnd%cfzp(iii) = 1._8/(dzp*dzz)
-     bndy(i)%cnd%cf0(iii)  = -bndy(i)%cnd%cfxm(iii)-bndy(i)%cnd%cfxp(iii)-bndy(i)%cnd%cfzm(iii)-bndy(i)%cnd%cfzp(iii)
-   END if
-     IF(dxm>=bndy(i)%dr) then
-       bndy(i)%cnd%phi0xm(iii)=0._8
-     else
-       bndy(i)%cnd%phi0xm(iii)=bndy(i)%cnd%cfxm(iii)*bndy(i)%cnd%volt0xm(iii)
-       bndy(i)%cnd%cfxm(iii)=0._8
-     END if
-     IF(dxp>=bndy(i)%dr) then
-       bndy(i)%cnd%phi0xp(iii)=0._8
-     else
-       bndy(i)%cnd%phi0xp(iii)=bndy(i)%cnd%cfxp(iii)*bndy(i)%cnd%volt0xp(iii)
-       bndy(i)%cnd%cfxp(iii)=0._8
-     END if
-     IF(dzm>=bndy(i)%dz) then
-       bndy(i)%cnd%phi0zm(iii)=0._8
-     else
-       bndy(i)%cnd%phi0zm(iii)=bndy(i)%cnd%cfzm(iii)*bndy(i)%cnd%volt0zm(iii)
-       bndy(i)%cnd%cfzm(iii)=0._8
-     END if
-     IF(dzp>=bndy(i)%dz) then
-       bndy(i)%cnd%phi0zp(iii)=0._8
-     else
-       bndy(i)%cnd%phi0zp(iii)=bndy(i)%cnd%cfzp(iii)*bndy(i)%cnd%volt0zp(iii)
-       bndy(i)%cnd%cfzp(iii)=0._8
      END if
   end do
 
