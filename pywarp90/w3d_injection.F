@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.22 $, $Date: 2005/03/03 21:44:27 $
+c@(#) File w3d_injection.F, version $Revision: 1.23 $, $Date: 2005/03/08 00:50:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1567,8 +1567,13 @@ c       --- at each time step.
       else
 c       --- Calculate number of particles to inject for each species if
 c       --- not set by the user.
+c       --- npinje_s was being multiplied by sp_fract, but it is also being
+c       --- multiplied by finject in inject3d, so the fraction was being
+c       --- applied twice. The one here was removed since the finject is
+c       --- still needed to control npinje_s per injection source.
+c       --- The sp_fract was then also removed from the calculation of sw below.
         do is=1,ns
-          if (npinje_s(is) == 0) npinje_s(is) = npinject*sp_fract(is)
+          if (npinje_s(is) == 0) npinje_s(is) = npinject
           if (rnpinje_s(is) == 0.) rnpinje_s(is) = npinje_s(is)
         enddo
       endif
@@ -1600,7 +1605,7 @@ c Also set particle parameters: charge, mass and weight
         endif
         if (sq(is) == 0.) sq(is) = zion_s(is)*echarge
         if (sw(is) == 0.)
-     &    sw(is)=(ibeam_s(is)*dt*ndts(is)/(echarge*zion_s(is)))/npinje_s(is)*sp_fract(is)
+     &    sw(is)=(ibeam_s(is)*dt*ndts(is)/(echarge*zion_s(is)))/npinje_s(is)
         if (sm(is) == 0.) sm(is) = aion_s(is)*amu
       enddo
 
