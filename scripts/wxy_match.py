@@ -1,7 +1,7 @@
 from warp import *
 import LinearAlgebra
 import singleparticle
-wxy_match_version = "$Id: wxy_match.py,v 1.5 2001/08/09 00:03:13 dave Exp $"
+wxy_match_version = "$Id: wxy_match.py,v 1.6 2005/01/12 17:17:40 dave Exp $"
 
 def wxy_matchdoc():
   print """
@@ -56,12 +56,14 @@ average of the initial and final values
   - s=128 the number of time steps across the region to be matched
   """
   for i in xrange(imtch):
-    top.a0=0.5*(top.a0+2.*top.xrms[0])
-    top.b0=0.5*(top.b0+2.*top.yrms[0])
+    top.a0=0.5*(top.a0+2.*top.xrms[0,-1])
+    top.b0=0.5*(top.b0+2.*top.yrms[0,-1])
     top.ap0=sign(0.5*(abs(top.ap0) +
-             2.*(top.xxpbar[0]-top.xbar[0]*top.xpbar[0])/top.xrms[0]),top.ap0)
+                 2.*(top.xxpbar[0,-1]-top.xbar[0,-1]*top.xpbar[0,-1])/
+                 top.xrms[0,-1]),top.ap0)
     top.bp0=sign(0.5*(abs(top.bp0) +
-             2.*(top.yypbar[0]-top.ybar[0]*top.ypbar[0])/top.yrms[0]),top.bp0)
+                 2.*(top.yypbar[0,-1]-top.ybar[0,-1]*top.ypbar[0,-1])/
+                 top.yrms[0,-1]),top.bp0)
     top.a0_s = top.a0
     top.b0_s = top.b0
     top.ap0_s = top.ap0
@@ -69,9 +71,9 @@ average of the initial and final values
     minit()
     step(s)
     print ("a error = %18.13f a' error = %18.13f"%
-           (2.*top.xrms[0]-top.a0,2.*top.vxrms[0]/top.vzbar[0]-top.ap0))
+         (2.*top.xrms[0,-1]-top.a0,2.*top.vxrms[0,-1]/top.vzbar[0,-1]-top.ap0))
     print ("b error = %18.13f b' error = %18.13f"%
-           (2.*top.yrms[0]-top.b0,2.*top.vyrms[0]/top.vzbar[0]+top.bp0))
+         (2.*top.yrms[0,-1]-top.b0,2.*top.vyrms[0,-1]/top.vzbar[0,-1]+top.bp0))
 
 def match1(imtch=1,s=128):
   """
@@ -81,12 +83,12 @@ average of the initial and final values, then Y is set equal to X
   - s=128 the number of time steps across the region to be matched
   """
   for i in xrange(imtch):
-    top.a0=0.5*(top.a0+2.*top.xrms[0]) #xrms[0]+yrms[0]
+    top.a0=0.5*(top.a0+2.*top.xrms[0,-1]) #xrms[0,-1]+yrms[0,-1]
     top.b0=top.a0
     top.ap0=sign(0.5*(abs(top.ap0) +
-             2.*(top.xxpbar[0]-top.xbar[0]*top.xpbar[0])/top.xrms[0]),top.ap0)
+             2.*(top.xxpbar[0,-1]-top.xbar[0,-1]*top.xpbar[0,-1])/top.xrms[0,-1]),top.ap0)
     top.bp0=sign(0.5*(abs(top.bp0) +
-             2.*(top.yypbar[0]-top.ybar[0]*top.ypbar[0])/top.yrms[0]),top.bp0)
+             2.*(top.yypbar[0,-1]-top.ybar[0,-1]*top.ypbar[0,-1])/top.yrms[0,-1]),top.bp0)
     top.a0_s = top.a0
     top.b0_s = top.b0
     top.ap0_s = top.ap0
@@ -94,9 +96,9 @@ average of the initial and final values, then Y is set equal to X
     minit()
     step(s)
     print ("a error = %18.13f a' error = %18.13f"%
-           (2.*top.xrms[0]-top.a0,2.*top.vxrms[0]/top.vzbar[0]-top.ap0))
+         (2.*top.xrms[0,-1]-top.a0,2.*top.vxrms[0,-1]/top.vzbar[0,-1]-top.ap0))
     print ("b error = %18.13f b' error = %18.13f"%
-           (2.*top.yrms[0]-top.b0,2.*top.vyrms[0]/top.vzbar[0]+top.bp0))
+         (2.*top.yrms[0,-1]-top.b0,2.*top.vyrms[0,-1]/top.vzbar[0,-1]+top.bp0))
 
 
 
@@ -302,10 +304,10 @@ to do, defaulting to 1."""
     s.propagate()
     if top.nplive < top.npmax:
       print "Particles lost, remaining number is", top.nplive
-    s.fvec = array([2*top.xrms[0]-s.af,
-                    2*top.yrms[0]-s.bf,
-                    2*top.xxpbar[0]/top.xrms[0]-s.apf,
-                    2*top.yypbar[0]/top.yrms[0]-s.bpf])
+    s.fvec = array([2*top.xrms[0,-1]-s.af,
+                    2*top.yrms[0,-1]-s.bf,
+                    2*top.xxpbar[0,-1]/top.xrms[0,-1]-s.apf,
+                    2*top.yypbar[0,-1]/top.yrms[0,-1]-s.bpf])
     s.f = 0.5 * sum (s.fvec*s.fvec)
     error = sqrt(2.*s.f)
     s.scaling = array ([1.0, 1.0, 1.0, 1.0])
@@ -337,10 +339,10 @@ to do, defaulting to 1."""
       s.propagate()
       if top.nplive < top.npmax:
         print "Particles lost, remaining number is", top.nplive
-      fnew = array([2*top.xrms[0]-s.af,
-                    2*top.yrms[0]-s.bf,
-                    2*top.xxpbar[0]/top.xrms[0]-s.apf,
-                    2*top.yypbar[0]/top.yrms[0]-s.bpf])
+      fnew = array([2*top.xrms[0,-1]-s.af,
+                    2*top.yrms[0,-1]-s.bf,
+                    2*top.xxpbar[0,-1]/top.xrms[0,-1]-s.apf,
+                    2*top.yypbar[0,-1]/top.yrms[0,-1]-s.bpf])
       s.scaling[i] = temp
       # --- Forward difference formula.
       fjac[:,i] = (fnew[:]-s.fvec[:]) / h
@@ -378,10 +380,10 @@ to do, defaulting to 1."""
       s.propagate()
       if top.nplive < top.npmax:
         print "Particles lost, remaining number is", top.nplive
-      s.fvec = array([2*top.xrms[0]-s.af,
-                      2*top.yrms[0]-s.bf,
-                      2*top.xxpbar[0]/top.xrms[0]-s.apf,
-                      2*top.yypbar[0]/top.yrms[0]-s.bpf])
+      s.fvec = array([2*top.xrms[0,-1]-s.af,
+                      2*top.yrms[0,-1]-s.bf,
+                      2*top.xxpbar[0,-1]/top.xrms[0,-1]-s.apf,
+                      2*top.yypbar[0,-1]/top.yrms[0,-1]-s.bpf])
       total = sum (s.fvec[:]*s.fvec[:])
       s.f = 0.5 * total
       # --- Convergence on delta x.

@@ -1,84 +1,84 @@
 """
 RMS:
-  pzxrms: Plot RMS X versus Z
-  pzyrms: Plot RMS Y versus Z
-  pzzrms: Plot RMS Z versus Z
-  pzrrms: Plot RMS R versus Z
-  pzxprms: Plot RMS X' versus Z
-  pzyprms: Plot RMS Y' versus Z
-  pzvxrms: Plot true RMS Vx versus Z
-  pzvyrms: Plot true RMS Vy versus Z
-  pzvzrms: Plot true RMS Vz versus Z
-  pzepsx: Plot x-X' emittance versus Z
-  pzepsy: Plot y-Y' emittance versus Z
-  pzepsz: Plot z-Z' emittance versus Z
-  pzepsnx: Plot x-X' normalized emittance versus Z
-  pzepsny: Plot y-Y' normalized emittance versus Z
-  pzepsnz: Plot z-Z' normalized emittance versus Z
-  pzepsg: Plot generalized emittance versus Z
-  pzepsh: Plot generalized emittance versus Z
-  pzepsng: Plot generalized normalized emittance versus Z
-  pzepsnh: Plot generalized normalized emittance versus Z
-  pzxxpslope: Plot slope of x-x' phase space versus Z
-  pzyypslope: Plot slope of y-y' phase space versus Z
+  pzxrms: Plots RMS X versus Z
+  pzyrms: Plots RMS Y versus Z
+  pzzrms: Plots RMS Z versus Z
+  pzrrms: Plots RMS R versus Z
+  pzxprms: Plots RMS X' versus Z
+  pzyprms: Plots RMS Y' versus Z
+  pzvxrms: Plots true RMS Vx versus Z
+  pzvyrms: Plots true RMS Vy versus Z
+  pzvzrms: Plots true RMS Vz versus Z
+  pzepsx: Plots x-X' emittance versus Z
+  pzepsy: Plots y-Y' emittance versus Z
+  pzepsz: Plots z-Z' emittance versus Z
+  pzepsnx: Plots x-X' normalized emittance versus Z
+  pzepsny: Plots y-Y' normalized emittance versus Z
+  pzepsnz: Plots z-Z' normalized emittance versus Z
+  pzepsg: Plots generalized emittance versus Z
+  pzepsh: Plots generalized emittance versus Z
+  pzepsng: Plots generalized normalized emittance versus Z
+  pzepsnh: Plots generalized normalized emittance versus Z
+  pzxxpslope: Plots slope of x-x' phase space versus Z
+  pzyypslope: Plots slope of y-y' phase space versus Z
 Envelope:
-  pzenvx: Plot beam X envelope (twice Xrms) versus Z
-  pzenvy: Plot beam Y envelope (twice Yrms) versus Z
-  pzxedge: Plot beam X envelope (twice Xrms) versus Z
-  pzxpedge: Plot beam X' envelope versus Z
-  pzyedge: Plot beam Y envelope (twice Yrms) versus Z
-  pzypedge: Plot beam Y' envelope versus Z
-  pzredge: Plot beam R envelope (root 2 Rrms) versus Z
-  pzxedges: Plot beam X edges (centroid +- twice Xrms) versus Z
-  pzyedges: Plot beam Y edges (centroid +- twice Yrms) versus Z
-  pzredges: Plot beam R edges (+- root 2 Rrms) versus Z
-  pzenvxp: Plot beam X' envelope (2*xxpbar/xrms) versus Z
-  pzenvyp: Plot beam Y' envelope (2*yypbar/yrms) versus Z
+  pzenvx: Plots beam X envelope (twice Xrms) versus Z
+  pzenvy: Plots beam Y envelope (twice Yrms) versus Z
+  pzxedge: Plots beam X envelope (twice Xrms) versus Z
+  pzxpedge: Plots beam X' envelope versus Z
+  pzyedge: Plots beam Y envelope (twice Yrms) versus Z
+  pzypedge: Plots beam Y' envelope versus Z
+  pzredge: Plots beam R envelope (root 2 Rrms) versus Z
+  pzxedges: Plots beam X edges (centroid +- twice Xrms) versus Z
+  pzyedges: Plots beam Y edges (centroid +- twice Yrms) versus Z
+  pzredges: Plots beam R edges (+- root 2 Rrms) versus Z
+  pzenvxp: Plots beam X' envelope (2*xxpbar/xrms) versus Z
+  pzenvyp: Plots beam Y' envelope (2*yypbar/yrms) versus Z
 Means:
-  pzxbar: Plot mean X coordinate versus Z
-  pzybar: Plot mean Y coordinate versus Z
-  pzzbar: Plot mean axial location versus Z
-  pzxpbar: Plot mean X' versus Z
-  pzypbar: Plot mean Y' versus Z
-  pzvxbar: Plot mean Vx versus Z
-  pzvybar: Plot mean Vy versus Z
-  pzvzbar: Plot mean Vz versus Z
-  pzxybar: Plot mean product of X  and Y  versus Z
-  pzxypbar: Plot mean product of X  and Y' versus Z
-  pzyxpbar: Plot mean product of Y  and X' versus Z
-  pzxpypbar: Plot mean product of X' and Y' versus Z
-  pzxsqbar: Plot mean X-squared versus Z
-  pzysqbar: Plot mean Y-squared versus Z
-  pzzsqbar: Plot mean Z-squared versus Z
-  pzxpsqbar: Plot mean X' squared versus Z
-  pzypsqbar: Plot mean Y' squared versus Z
-  pzvxsqbar: Plot mean Vx squared versus Z
-  pzvysqbar: Plot mean Vy squared versus Z
-  pzvzsqbar: Plot mean Vz squared versus Z
-  pzxxpbar: Plot mean product of X and X' versus Z
-  pzyypbar: Plot mean product of Y and Y' versus Z
-  pzzvzbar: Plot mean product of Z and Vz versus Z
-  pzxvzbar: Plot mean product of X and Vz versus Z
-  pzyvzbar: Plot mean product of Y and Vz versus Z
-  pzvxvzbar: Plot mean product of Vx and Vz versus Z
-  pzvyvzbar: Plot mean product of Vy and Vz versus Z
+  pzxbar: Plots mean X coordinate versus Z
+  pzybar: Plots mean Y coordinate versus Z
+  pzzbar: Plots mean axial location versus Z
+  pzxpbar: Plots mean X' versus Z
+  pzypbar: Plots mean Y' versus Z
+  pzvxbar: Plots mean Vx versus Z
+  pzvybar: Plots mean Vy versus Z
+  pzvzbar: Plots mean Vz versus Z
+  pzxybar: Plots mean product of X  and Y  versus Z
+  pzxypbar: Plots mean product of X  and Y' versus Z
+  pzyxpbar: Plots mean product of Y  and X' versus Z
+  pzxpypbar: Plots mean product of X' and Y' versus Z
+  pzxsqbar: Plots mean X-squared versus Z
+  pzysqbar: Plots mean Y-squared versus Z
+  pzzsqbar: Plots mean Z-squared versus Z
+  pzxpsqbar: Plots mean X' squared versus Z
+  pzypsqbar: Plots mean Y' squared versus Z
+  pzvxsqbar: Plots mean Vx squared versus Z
+  pzvysqbar: Plots mean Vy squared versus Z
+  pzvzsqbar: Plots mean Vz squared versus Z
+  pzxxpbar: Plots mean product of X and X' versus Z
+  pzyypbar: Plots mean product of Y and Y' versus Z
+  pzzvzbar: Plots mean product of Z and Vz versus Z
+  pzxvzbar: Plots mean product of X and Vz versus Z
+  pzyvzbar: Plots mean product of Y and Vz versus Z
+  pzvxvzbar: Plots mean product of Vx and Vz versus Z
+  pzvyvzbar: Plots mean product of Vy and Vz versus Z
 Miscellaneous:
-  pzcurr: Plot beam current versus Z
-  pzlchg: Plot line charge versus Z
-  pzvzofz: Plot mean axial velocity versus Z
-  pzrhomid: Plot charge dens. on axis versus Z
-  pzrhomax: Plot charge dens. max-over-X,Y versus Z
-  pzrhoax: Plot charge density on axis versus Z
-  pzphiax: Plot electrostatic potential on axis versus Z
-  pzegap: Plot gap electric field versus Z
-  pzezax: Plot Z electric field on axis versus Z
-  pzpnum: Plot no. of simulation particles versus Z
-  pzppcell: Plot no. of simulation particles per cell versus Z
+  pzcurr: Plots beam current versus Z
+  pzlchg: Plots line charge versus Z
+  pzvzofz: Plots mean axial velocity versus Z
+  pzrhomid: Plots charge dens. on axis versus Z
+  pzrhomax: Plots charge dens. max-over-X,Y versus Z
+  pzrhoax: Plots charge density on axis versus Z
+  pzphiax: Plots electrostatic potential on axis versus Z
+  pzegap: Plots gap electric field versus Z
+  pzezax: Plots Z electric field on axis versus Z
+  pzpnum: Plots no. of simulation particles versus Z
+  pzppcell: Plots no. of simulation particles per cell versus Z
 """
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.15 2003/08/22 17:15:32 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.16 2005/01/12 17:17:40 dave Exp $"
 
 def pzplotsdoc():
   import pzplots
@@ -109,11 +109,17 @@ returned.
 def _extractvarkw(name,kw,pkg='top'):
   return _extractvar(name,kw.get('varsuffix',None),pkg=pkg)
 
+def _gettitler(js):
+  if js == -1: return "All species"
+  else:        return "Species %d"%js
+
 ##########################################################################
-def pzpnum(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzpnum(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots pnumz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -133,17 +139,21 @@ def pzpnum(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  pnumz = _extractvar('pnumz',varsuffix,'top')*scale
+  pnumz = _extractvar('pnumz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(pnumz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("No. of simulation particles versus Z",titleb,"(number)")
+  if titles:
+    ptitles("No. of simulation particles versus Z",titleb,"(number)",
+            _gettitler(js))
 
 ##########################################################################
-def pzppcell(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzppcell(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots number of particles per cell versus z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -163,22 +173,26 @@ def pzppcell(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  pnumz = _extractvar('pnumz',varsuffix,'top')
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')
+  pnumz = _extractvar('pnumz',varsuffix,'top')[...,js]
+  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
+  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
   dx = _extractvar('dx',varsuffix,'w3d')
   dy = _extractvar('dy',varsuffix,'w3d')
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   ppcell = pnumz/(pi*xrmsz*yrmsz/(dx*dy))*scale
   warpplg(ppcell,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("No. of particles per cell versus Z",titleb,"(number)")
+  if titles:
+    ptitles("No. of particles per cell versus Z",titleb,"(number)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots xbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -198,17 +212,21 @@ def pzxbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xbarz = _extractvar('xbarz',varsuffix,'top')*scale
+  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean X coordinate versus Z",titleb,"(m)")
+  if titles:
+    ptitles("Mean X coordinate versus Z",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzybar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots ybarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -228,17 +246,21 @@ def pzybar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ybarz = _extractvar('ybarz',varsuffix,'top')*scale
+  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(ybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Y coordinate versus Z",titleb,"(m)")
+  if titles:
+    ptitles("Mean Y coordinate versus Z",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots zbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -258,17 +280,21 @@ def pzzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  zbarz = _extractvar('zbarz',varsuffix,'top')*scale
+  zbarz = _extractvar('zbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(zbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean axial location versus Z",titleb,"(m)")
+  if titles:
+    ptitles("Mean axial location versus Z",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxpbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots xpbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -288,17 +314,21 @@ def pzxpbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xpbarz = _extractvar('xpbarz',varsuffix,'top')*scale
+  xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean X' versus Z",titleb,"(rad)")
+  if titles:
+    ptitles("Mean X' versus Z",titleb,"(rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzypbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots ypbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -318,17 +348,21 @@ def pzypbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ypbarz = _extractvar('ypbarz',varsuffix,'top')*scale
+  ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(ypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Y' versus Z",titleb,"(rad)")
+  if titles:
+    ptitles("Mean Y' versus Z",titleb,"(rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvxbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvxbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots vxbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -348,17 +382,21 @@ def pzvxbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vxbarz = _extractvar('vxbarz',varsuffix,'top')*scale
+  vxbarz = _extractvar('vxbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vxbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Vx versus Z",titleb,"(m/s)")
+  if titles:
+    ptitles("Mean Vx versus Z",titleb,"(m/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvybar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots vybarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -378,17 +416,21 @@ def pzvybar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vybarz = _extractvar('vybarz',varsuffix,'top')*scale
+  vybarz = _extractvar('vybarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Vy versus Z",titleb,"(m/s)")
+  if titles:
+    ptitles("Mean Vy versus Z",titleb,"(m/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots vzbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -408,17 +450,21 @@ def pzvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vzbarz = _extractvar('vzbarz',varsuffix,'top')*scale
+  vzbarz = _extractvar('vzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Vz versus Z",titleb,"(m/s)")
+  if titles:
+    ptitles("Mean Vz versus Z",titleb,"(m/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxybar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxybar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots xybarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -438,17 +484,21 @@ def pzxybar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xybarz = _extractvar('xybarz',varsuffix,'top')*scale
+  xybarz = _extractvar('xybarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xybarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of X  and Y  versus Z",titleb,"(m^2)")
+  if titles:
+    ptitles("Mean product of X  and Y  versus Z",titleb,"(m^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxypbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots xypbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -468,17 +518,21 @@ def pzxypbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xypbarz = _extractvar('xypbarz',varsuffix,'top')*scale
+  xypbarz = _extractvar('xypbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of X  and Y' versus Z",titleb,"(m-rad)")
+  if titles:
+    ptitles("Mean product of X  and Y' versus Z",titleb,"(m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzyxpbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzyxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots yxpbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -498,17 +552,21 @@ def pzyxpbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yxpbarz = _extractvar('yxpbarz',varsuffix,'top')*scale
+  yxpbarz = _extractvar('yxpbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(yxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of Y  and X' versus Z",titleb,"(m-rad)")
+  if titles:
+    ptitles("Mean product of Y  and X' versus Z",titleb,"(m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxpypbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxpypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None):
   """Plots xpypbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -528,17 +586,21 @@ def pzxpypbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xpypbarz = _extractvar('xpypbarz',varsuffix,'top')*scale
+  xpypbarz = _extractvar('xpypbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xpypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of X' and Y' versus Z",titleb,"(rad^2)")
+  if titles:
+    ptitles("Mean product of X' and Y' versus Z",titleb,"(rad^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots xsqbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -558,17 +620,21 @@ def pzxsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xsqbarz = _extractvar('xsqbarz',varsuffix,'top')*scale
+  xsqbarz = _extractvar('xsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean X-squared versus Z",titleb,"(m^2)")
+  if titles:
+    ptitles("Mean X-squared versus Z",titleb,"(m^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzysqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots ysqbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -588,17 +654,21 @@ def pzysqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ysqbarz = _extractvar('ysqbarz',varsuffix,'top')*scale
+  ysqbarz = _extractvar('ysqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(ysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Y-squared versus Z",titleb,"(m^2)")
+  if titles:
+    ptitles("Mean Y-squared versus Z",titleb,"(m^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzzsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots zsqbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -618,17 +688,21 @@ def pzzsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  zsqbarz = _extractvar('zsqbarz',varsuffix,'top')*scale
+  zsqbarz = _extractvar('zsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(zsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Z-squared versus Z",titleb,"(m^2)")
+  if titles:
+    ptitles("Mean Z-squared versus Z",titleb,"(m^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxpsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxpsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None):
   """Plots xpsqbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -648,17 +722,21 @@ def pzxpsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xpsqbarz = _extractvar('xpsqbarz',varsuffix,'top')*scale
+  xpsqbarz = _extractvar('xpsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xpsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean X' squared versus Z",titleb,"(rad^2)")
+  if titles:
+    ptitles("Mean X' squared versus Z",titleb,"(rad^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzypsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzypsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None):
   """Plots ypsqbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -678,17 +756,21 @@ def pzypsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ypsqbarz = _extractvar('ypsqbarz',varsuffix,'top')*scale
+  ypsqbarz = _extractvar('ypsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(ypsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Y' squared versus Z",titleb,"(rad^2)")
+  if titles:
+    ptitles("Mean Y' squared versus Z",titleb,"(rad^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvxsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvxsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None):
   """Plots vxsqbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -708,17 +790,21 @@ def pzvxsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vxsqbarz = _extractvar('vxsqbarz',varsuffix,'top')*scale
+  vxsqbarz = _extractvar('vxsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vxsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Vx squared versus Z",titleb,"((m/s)^2)")
+  if titles:
+    ptitles("Mean Vx squared versus Z",titleb,"((m/s)^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvysqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvysqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None):
   """Plots vysqbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -738,17 +824,21 @@ def pzvysqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vysqbarz = _extractvar('vysqbarz',varsuffix,'top')*scale
+  vysqbarz = _extractvar('vysqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vysqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Vy squared versus Z",titleb,"((m/s)^2)")
+  if titles:
+    ptitles("Mean Vy squared versus Z",titleb,"((m/s)^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvzsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvzsqbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None):
   """Plots vzsqbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -768,17 +858,21 @@ def pzvzsqbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vzsqbarz = _extractvar('vzsqbarz',varsuffix,'top')*scale
+  vzsqbarz = _extractvar('vzsqbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vzsqbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean Vz squared versus Z",titleb,"((m/s)^2)")
+  if titles:
+    ptitles("Mean Vz squared versus Z",titleb,"((m/s)^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxxpbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxxpbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots xxpbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -798,17 +892,21 @@ def pzxxpbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')*scale
+  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xxpbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of X and X' versus Z",titleb,"(m-rad)")
+  if titles:
+    ptitles("Mean product of X and X' versus Z",titleb,"(m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzyypbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzyypbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots yypbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -828,17 +926,21 @@ def pzyypbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yypbarz = _extractvar('yypbarz',varsuffix,'top')*scale
+  yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(yypbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of Y and Y' versus Z",titleb,"(m-rad)")
+  if titles:
+    ptitles("Mean product of Y and Y' versus Z",titleb,"(m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzzvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzzvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots zvzbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -858,17 +960,21 @@ def pzzvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  zvzbarz = _extractvar('zvzbarz',varsuffix,'top')*scale
+  zvzbarz = _extractvar('zvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(zvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of Z and Vz versus Z",titleb,"(m^2/s)")
+  if titles:
+    ptitles("Mean product of Z and Vz versus Z",titleb,"(m^2/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots xvzbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -888,17 +994,21 @@ def pzxvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xvzbarz = _extractvar('xvzbarz',varsuffix,'top')*scale
+  xvzbarz = _extractvar('xvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of X and Vz versus Z",titleb,"(m^2/s)")
+  if titles:
+    ptitles("Mean product of X and Vz versus Z",titleb,"(m^2/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzyvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots yvzbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -918,17 +1028,21 @@ def pzyvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yvzbarz = _extractvar('yvzbarz',varsuffix,'top')*scale
+  yvzbarz = _extractvar('yvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(yvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of Y and Vz versus Z",titleb,"(m^2/s)")
+  if titles:
+    ptitles("Mean product of Y and Vz versus Z",titleb,"(m^2/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvxvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvxvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None):
   """Plots vxvzbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -948,17 +1062,21 @@ def pzvxvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vxvzbarz = _extractvar('vxvzbarz',varsuffix,'top')*scale
+  vxvzbarz = _extractvar('vxvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vxvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of Vx and Vz versus Z",titleb,"((m/s)^2)")
+  if titles:
+    ptitles("Mean product of Vx and Vz versus Z",titleb,"((m/s)^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvyvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvyvzbar(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+              marks=0,marker=None,msize=1.,width=1.,lframe=0,
+              titleb=None,titles=1,varsuffix=None):
   """Plots vyvzbarz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -978,17 +1096,21 @@ def pzvyvzbar(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vyvzbarz = _extractvar('vyvzbarz',varsuffix,'top')*scale
+  vyvzbarz = _extractvar('vyvzbarz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vyvzbarz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Mean product of Vy and Vz versus Z",titleb,"((m/s)^2)")
+  if titles:
+    ptitles("Mean product of Vy and Vz versus Z",titleb,"((m/s)^2)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots xrmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1008,17 +1130,21 @@ def pzxrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')*scale
+  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("RMS X versus Z",titleb,"(m)")
+  if titles:
+    ptitles("RMS X versus Z",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzyrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots yrmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1038,17 +1164,21 @@ def pzyrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')*scale
+  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("RMS Y versus Z",titleb,"(m)")
+  if titles:
+    ptitles("RMS Y versus Z",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzzrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots zrmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1068,17 +1198,21 @@ def pzzrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  zrmsz = _extractvar('zrmsz',varsuffix,'top')*scale
+  zrmsz = _extractvar('zrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(zrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("RMS Z versus Z",titleb,"(m)")
+  if titles:
+    ptitles("RMS Z versus Z",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzrrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzrrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots rrmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1098,17 +1232,21 @@ def pzrrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rrmsz = _extractvar('rrmsz',varsuffix,'top')*scale
+  rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("RMS R versus Z",titleb,"(m)")
+  if titles:
+    ptitles("RMS R versus Z",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxprms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots xprmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1128,17 +1266,21 @@ def pzxprms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xprmsz = _extractvar('xprmsz',varsuffix,'top')*scale
+  xprmsz = _extractvar('xprmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("RMS X' versus Z",titleb,"(rad)")
+  if titles:
+    ptitles("RMS X' versus Z",titleb,"(rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzyprms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzyprms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots yprmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1158,17 +1300,21 @@ def pzyprms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yprmsz = _extractvar('yprmsz',varsuffix,'top')*scale
+  yprmsz = _extractvar('yprmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(yprmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("RMS Y' versus Z",titleb,"(rad)")
+  if titles:
+    ptitles("RMS Y' versus Z",titleb,"(rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots epsxz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1188,17 +1334,21 @@ def pzepsx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsxz = _extractvar('epsxz',varsuffix,'top')*scale
+  epsxz = _extractvar('epsxz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("X-X' emittance versus Z",titleb,"(!p-m-rad)")
+  if titles:
+    ptitles("X-X' emittance versus Z",titleb,"(!p-m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsy(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots epsyz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1218,17 +1368,21 @@ def pzepsy(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsyz = _extractvar('epsyz',varsuffix,'top')*scale
+  epsyz = _extractvar('epsyz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Y-Y' emittance versus Z",titleb,"(!p-m-rad)")
+  if titles:
+    ptitles("Y-Y' emittance versus Z",titleb,"(!p-m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots epszz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1248,17 +1402,21 @@ def pzepsz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epszz = _extractvar('epszz',varsuffix,'top')*scale
+  epszz = _extractvar('epszz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epszz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Z-Z' emittance versus Z",titleb,"(!p-m-rad)")
+  if titles:
+    ptitles("Z-Z' emittance versus Z",titleb,"(!p-m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsnx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsnx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots epsnxz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1278,17 +1436,21 @@ def pzepsnx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsnxz = _extractvar('epsnxz',varsuffix,'top')*scale
+  epsnxz = _extractvar('epsnxz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsnxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("X-X' normalized emittance versus Z",titleb,"(!p-mm-mrad)")
+  if titles:
+    ptitles("X-X' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsny(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsny(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots epsnyz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1308,17 +1470,21 @@ def pzepsny(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsnyz = _extractvar('epsnyz',varsuffix,'top')*scale
+  epsnyz = _extractvar('epsnyz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsnyz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Y-Y' normalized emittance versus Z",titleb,"(!p-mm-mrad)")
+  if titles:
+    ptitles("Y-Y' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsnz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsnz(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots epsnzz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1338,17 +1504,21 @@ def pzepsnz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsnzz = _extractvar('epsnzz',varsuffix,'top')*scale
+  epsnzz = _extractvar('epsnzz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsnzz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Z-Z' normalized emittance versus Z",titleb,"(!p-mm-mrad)")
+  if titles:
+    ptitles("Z-Z' normalized emittance versus Z",titleb,"(!p-mm-mrad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsg(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots epsgz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1368,17 +1538,21 @@ def pzepsg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsgz = _extractvar('epsgz',varsuffix,'top')*scale
+  epsgz = _extractvar('epsgz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsgz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)")
+  if titles:
+    ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsh(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots epshz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1398,17 +1572,21 @@ def pzepsh(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epshz = _extractvar('epshz',varsuffix,'top')*scale
+  epshz = _extractvar('epshz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epshz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)")
+  if titles:
+    ptitles("Generalized emittance versus Z",titleb,"(!p-m-rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzepsng(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsng(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots epsngz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1428,18 +1606,21 @@ def pzepsng(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsngz = _extractvar('epsngz',varsuffix,'top')*scale
+  epsngz = _extractvar('epsngz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsngz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles:
-    ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)")
+     ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)",
+             _gettitler(js))
 
 ##########################################################################
-def pzepsnh(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzepsnh(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots epsnhz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1459,18 +1640,21 @@ def pzepsnh(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  epsnhz = _extractvar('epsnhz',varsuffix,'top')*scale
+  epsnhz = _extractvar('epsnhz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(epsnhz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles:
-    ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)")
+     ptitles("Generalized normalized emittance versus Z",titleb,"(!p-mm-mrad)",
+             _gettitler(js))
 
 ##########################################################################
-def pzvxrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvxrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots vxrmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1490,17 +1674,21 @@ def pzvxrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vxrmsz = _extractvar('vxrmsz',varsuffix,'top')*scale
+  vxrmsz = _extractvar('vxrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vxrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("True RMS Vx versus Z",titleb,"(m/s)")
+  if titles:
+    ptitles("True RMS Vx versus Z",titleb,"(m/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvyrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvyrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots vyrmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1520,17 +1708,21 @@ def pzvyrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vyrmsz = _extractvar('vyrmsz',varsuffix,'top')*scale
+  vyrmsz = _extractvar('vyrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vyrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("True RMS Vy versus Z",titleb,"(m/s)")
+  if titles:
+    ptitles("True RMS Vy versus Z",titleb,"(m/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzvzrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvzrms(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots vzrmsz along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1550,17 +1742,21 @@ def pzvzrms(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  vzrmsz = _extractvar('vzrmsz',varsuffix,'top')*scale
+  vzrmsz = _extractvar('vzrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(vzrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("True RMS Vz versus Z",titleb,"(m/s)")
+  if titles:
+    ptitles("True RMS Vz versus Z",titleb,"(m/s)",
+            _gettitler(js))
 
 ##########################################################################
-def pzxxpslope(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-               marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
-  """Plot slope of x-x' phase space versus Z
+def pzxxpslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+               marks=0,marker=None,msize=1.,width=1.,lframe=0,
+               titleb=None,titles=1,varsuffix=None):
+  """Plots slope of x-x' phase space versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1580,22 +1776,26 @@ def pzxxpslope(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')
-  xbarz = _extractvar('xbarz',varsuffix,'top')
-  xpbarz = _extractvar('xpbarz',varsuffix,'top')
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')
+  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]
+  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]
+  xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]
+  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
   sxz = (xxpbarz - xbarz*xpbarz)/ \
         where(greater(xrmsz,0.),xrmsz**2,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Slope of x-x' phase space",titleb,"(1)")
+  if titles:
+    ptitles("Slope of x-x' phase space",titleb,"(1)",
+            _gettitler(js))
 
 ##########################################################################
-def pzyypslope(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-               marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
-  """Plot slope of y-y' phase space versus Z
+def pzyypslope(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+               marks=0,marker=None,msize=1.,width=1.,lframe=0,
+               titleb=None,titles=1,varsuffix=None):
+  """Plots slope of y-y' phase space versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1615,21 +1815,23 @@ def pzyypslope(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yypbarz = _extractvar('yypbarz',varsuffix,'top')
-  ybarz = _extractvar('ybarz',varsuffix,'top')
-  ypbarz = _extractvar('ypbarz',varsuffix,'top')
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')
+  yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]
+  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]
+  ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]
+  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
   syz = (yypbarz - ybarz*ypbarz)/ \
         where(greater(yrmsz,0.),yrmsz**2,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Slope of y-y' phase space",titleb,"(1)")
+  if titles:
+    ptitles("Slope of y-y' phase space",titleb,"(1)",
+            _gettitler(js))
 
 ##########################################################################
-def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots rhomidz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1657,9 +1859,9 @@ def pzrhomid(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titles: ptitles("Charge dens. on axis versus Z",titleb,"(C/m^3)")
 
 ##########################################################################
-def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots rhomaxz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1687,10 +1889,12 @@ def pzrhomax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titles: ptitles("Charge dens. max-over-X,Y versus Z",titleb,"(C/m^3)")
 
 ##########################################################################
-def pzcurr(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzcurr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots current along z-axis
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zplmesh/zscale
@@ -1710,17 +1914,19 @@ def pzcurr(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  curr = _extractvar('curr',varsuffix,'top')*scale
+  curr = _extractvar('curr',varsuffix,'top')[...,js]*scale
   zplmesh = _extractvar('zplmesh',varsuffix,'top')
   warpplg(curr,zoffset+zplmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam Current",titleb,"(Amps)")
+  if titles:
+    ptitles("Beam Current",titleb,"(Amps)",
+            _gettitler(js))
 ppcurr = pzcurr
 
 ##########################################################################
-def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots smeared Ez along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1748,9 +1954,9 @@ def pzegap(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titles: ptitles("Gap Electric Field",titleb,"(V/m)")
 
 ##########################################################################
-def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots linecharge along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1779,9 +1985,9 @@ def pzlchg(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
 pplchg = pzlchg
 
 ##########################################################################
-def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots Vz along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1810,9 +2016,9 @@ def pzvzofz(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
 ppvzofz = pzvzofz
 
 ##########################################################################
-def pzezax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzezax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots Self Ez along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1841,9 +2047,9 @@ def pzezax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
 ppezax = pzezax
 
 ##########################################################################
-def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots electrostatic potential along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1883,9 +2089,9 @@ def pzphiax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
 ppphiax = pzphiax
 
 ##########################################################################
-def pzrhoax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzrhoax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
   """Plots space-charge density along the z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
@@ -1914,10 +2120,12 @@ def pzrhoax(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
 pprhoax = pzrhoax
 
 ##########################################################################
-def pzenvx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-           marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzenvx(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots beam X envelope (twice X rms) versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1937,18 +2145,22 @@ def pzenvx(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')*scale
+  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(2.*xrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam X envelope (2*rms)",titleb,"(m)")
+  if titles:
+    ptitles("Beam X envelope (2*rms)",titleb,"(m)",
+            _gettitler(js))
 pzxedge = pzenvx
 
 ##########################################################################
-def pzxpedge(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxpedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots beam X' envelope versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -1968,22 +2180,26 @@ def pzxpedge(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')
-  xbarz = _extractvar('xbarz',varsuffix,'top')
-  xpbarz = _extractvar('xpbarz',varsuffix,'top')
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')
+  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]
+  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]
+  xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]
+  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
   xpedgez = (xxpbarz-xbarz*xpbarz)/ \
             where(greater(xrmsz,0.),xrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xpedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam X' envelope",titleb,"(m)")
+  if titles:
+    ptitles("Beam X' envelope",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzenvy(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-           marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzenvy(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots beam Y envelope (twice Y rms) versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -2003,18 +2219,22 @@ def pzenvy(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')*scale
+  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(2.*yrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam Y envelope (2*rms)",titleb,"(m)")
+  if titles:
+    ptitles("Beam Y envelope (2*rms)",titleb,"(m)",
+            _gettitler(js))
 pzyedge = pzenvy
 
 ##########################################################################
-def pzypedge(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzypedge(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots beam Y' envelope versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -2034,22 +2254,26 @@ def pzypedge(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yypbarz = _extractvar('yypbarz',varsuffix,'top')
-  ybarz = _extractvar('ybarz',varsuffix,'top')
-  ypbarz = _extractvar('ypbarz',varsuffix,'top')
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')
+  yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]
+  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]
+  ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]
+  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
   ypedgez = (yypbarz-ybarz*ypbarz)/ \
             where(greater(yrmsz,0.),yrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(ypedgez,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam Y' envelope",titleb,"(m)")
+  if titles:
+    ptitles("Beam Y' envelope",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzenvr(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-           marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzenvr(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+           marks=0,marker=None,msize=1.,width=1.,lframe=0,
+           titleb=None,titles=1,varsuffix=None):
   """Plots beam R envelope (root 2 R rms) versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -2069,18 +2293,22 @@ def pzenvr(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rrmsz = _extractvar('rrmsz',varsuffix,'top')*scale
+  rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(sqrt(2.)*rrmsz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam R envelope (sqrt(2)*rms)",titleb,"(m)")
+  if titles:
+    ptitles("Beam R envelope (sqrt(2)*rms)",titleb,"(m)",
+            _gettitler(js))
 pzredge = pzenvr
 
 ##########################################################################
-def pzxedges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzxedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots beam X edges (centroid +- twice X rms) versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -2100,20 +2328,24 @@ def pzxedges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xbarz = _extractvar('xbarz',varsuffix,'top')*scale
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')*scale
+  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]*scale
+  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(xbarz+2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   warpplg(xbarz-2.*xrmsz,zoffset+zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam X edges (xbar+-2*rms)",titleb,"(m)")
+  if titles:
+    ptitles("Beam X edges (xbar+-2*rms)",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzyedges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzyedges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots beam Y edges (centroid +- twice Y rms) versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -2133,20 +2365,24 @@ def pzyedges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  ybarz = _extractvar('ybarz',varsuffix,'top')*scale
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')*scale
+  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]*scale
+  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(ybarz+2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   warpplg(ybarz-2.*yrmsz,zoffset+zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam Y edges (ybar+-2*rms)",titleb,"(m)")
+  if titles:
+    ptitles("Beam Y edges (ybar+-2*rms)",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzredges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
+def pzredges(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+             marks=0,marker=None,msize=1.,width=1.,lframe=0,
+             titleb=None,titles=1,varsuffix=None):
   """Plots beam R edges (+- root 2 R rms) versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -2166,19 +2402,23 @@ def pzredges(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  rrmsz = _extractvar('rrmsz',varsuffix,'top')*scale
+  rrmsz = _extractvar('rrmsz',varsuffix,'top')[...,js]*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(+2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   warpplg(-2.*rrmsz,zoffset+zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam R edges (+-sqrt(2)*rms)",titleb,"(m)")
+  if titles:
+    ptitles("Beam R edges (+-sqrt(2)*rms)",titleb,"(m)",
+            _gettitler(js))
 
 ##########################################################################
-def pzenvxp(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
-  """Plot beam X' envelope (2*xxpbar/xrms) versus Z
+def pzenvxp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
+  """Plots beam X' envelope (2*xxpbar/xrms) versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -2198,22 +2438,26 @@ def pzenvxp(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')
-  xbarz = _extractvar('xbarz',varsuffix,'top')
-  xpbarz = _extractvar('xpbarz',varsuffix,'top')
-  xrmsz = _extractvar('xrmsz',varsuffix,'top')
+  xxpbarz = _extractvar('xxpbarz',varsuffix,'top')[...,js]
+  xbarz = _extractvar('xbarz',varsuffix,'top')[...,js]
+  xpbarz = _extractvar('xpbarz',varsuffix,'top')[...,js]
+  xrmsz = _extractvar('xrmsz',varsuffix,'top')[...,js]
   sxz = 2.*(xxpbarz - xbarz*xpbarz)/ \
         where(greater(xrmsz,0.),xrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(sxz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam X' envelope",titleb,"(rad)")
+  if titles:
+    ptitles("Beam X' envelope",titleb,"(rad)",
+            _gettitler(js))
 
 ##########################################################################
-def pzenvyp(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
-            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1,
-            varsuffix=None):
-  """Plot beam Y' envelope (2*yypbar/yrms) versus Z
+def pzenvyp(js=-1,zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",
+            marks=0,marker=None,msize=1.,width=1.,lframe=0,
+            titleb=None,titles=1,varsuffix=None):
+  """Plots beam Y' envelope (2*yypbar/yrms) versus Z
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
     plots versus zoffset + zmntmesh/zscale
@@ -2233,16 +2477,18 @@ def pzenvyp(zoffset=0.,zscale=1.,scale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  yypbarz = _extractvar('yypbarz',varsuffix,'top')
-  ybarz = _extractvar('ybarz',varsuffix,'top')
-  ypbarz = _extractvar('ypbarz',varsuffix,'top')
-  yrmsz = _extractvar('yrmsz',varsuffix,'top')
+  yypbarz = _extractvar('yypbarz',varsuffix,'top')[...,js]
+  ybarz = _extractvar('ybarz',varsuffix,'top')[...,js]
+  ypbarz = _extractvar('ypbarz',varsuffix,'top')[...,js]
+  yrmsz = _extractvar('yrmsz',varsuffix,'top')[...,js]
   syz = 2.*(yypbarz - ybarz*ypbarz)/ \
         where(greater(yrmsz,0.),yrmsz,1.)*scale
   zmntmesh = _extractvar('zmntmesh',varsuffix,'top')
   warpplg(syz,zoffset+zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
-  if titles: ptitles("Beam Y' envelope",titleb,"(rad)")
+  if titles:
+    ptitles("Beam Y' envelope",titleb,"(rad)",
+            _gettitler(js))
 
 
 ##########################################################################

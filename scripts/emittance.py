@@ -1,7 +1,7 @@
 from warp import *
 from grid_1d import *
 from grid_2d import *
-emittance_version = "$Id: emittance.py,v 1.2 2002/04/30 21:36:08 dave Exp $"
+emittance_version = "$Id: emittance.py,v 1.3 2005/01/12 17:17:39 dave Exp $"
 
 def emit1(threshold=0.05,js=0):
   (gg,ggmesh) = gather_1d(top.xp[top.ins[js]-1:top.ins[js]+top.nps[js]-1])
@@ -81,7 +81,7 @@ Output:
   # --- Set grid ranges
   wmin = min(xx)
   wmax = max(xx)
-  slope = (top.xxpbar[iw]-top.xbar[iw]*top.xpbar[iw])/top.xrms[iw]**2
+  slope=(top.xxpbar[iw,js]-top.xbar[iw,js]*top.xpbar[iw,js])/top.xrms[iw,js]**2
   vxms = vx/vz - xx*slope
   hmin = min(vxms)
   hmax = max(vxms)
@@ -108,7 +108,7 @@ Output:
   # --- Repeat for y
   wmin = min(yy)
   wmax = max(yy)
-  slope = (top.yypbar[iw]-top.ybar[iw]*top.ypbar[iw])/top.yrms[iw]**2
+  slope=(top.yypbar[iw,js]-top.ybar[iw,js]*top.ypbar[iw,js])/top.yrms[iw,js]**2
   vyms = vy/vz - yy*slope
   hmin = min(vyms)
   hmax = max(vyms)
@@ -163,8 +163,8 @@ Output:
   # --- Set grid ranges
   wmin = min(xx)
   wmax = max(xx)
-  slope = ((top.xxpbar[iw]-top.xbar[iw]*top.xpbar[iw])*top.vzbar[iw]/
-           top.xrms[iw]**2)
+  slope=((top.xxpbar[iw,js]-top.xbar[iw,js]*top.xpbar[iw,js])*top.vzbar[iw,js]/
+         top.xrms[iw,js]**2)
   vxms = vx - xx*slope
   hmin = min(vxms)
   hmax = max(vxms)
@@ -190,7 +190,7 @@ Output:
   # --- Repeat for y
   wmin = min(yy)
   wmax = max(yy)
-  slope = ((top.yypbar[iw]-top.ybar[iw]*top.ypbar[iw])*top.vzbar[iw]/
+  slope=((top.yypbar[iw,js]-top.ybar[iw,js]*top.ypbar[iw,js])*top.vzbar[iw,js]/
            top.yrms[iw]**2)
   vyms = vy - yy*slope
   hmin = min(vyms)

@@ -67,7 +67,7 @@ import sys, __main__
 from warp import *
 from histplots import *
 
-rami_scripts_version = "$Id: rami_scripts.py,v 1.2 2002/08/14 21:04:00 ramiak Exp $"
+rami_scripts_version = "$Id: rami_scripts.py,v 1.3 2005/01/12 17:17:40 dave Exp $"
 def rami_scriptsdoc():
   import rami_scripts
   print rami_scripts.__doc__
@@ -172,7 +172,7 @@ def make_nice_output(nwin=0, *files):
 	# --- Generate nice ouput to the terminal and any extra files """
 
     oneliner = "it = %5d zbeam = %9.5f 2*xrms = %7.2f xbar = %6.2f emity = %7.2f nplive = %8d\n" %\
-                (top.it,top.zbeam-aper_dist, 2.0*top.xrms[nwin]*1.e3, top.xbar[nwin]*1.e3,
+                (top.it,top.zbeam-aper_dist, 2.0*top.xrms[nwin,-1]*1.e3, top.xbar[nwin]*1.e3,
                  top.epsy[nwin]*1.e6, top.nplive)
     files = (sys.stdout,)+files         # Write to terminal
     for fid in files:

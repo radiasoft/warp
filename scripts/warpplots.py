@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.139 2005/01/03 19:12:23 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.140 2005/01/12 17:17:40 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1495,6 +1495,7 @@ functions.
   badargs = selectparticles(checkargs=1,kwdict=kw)
   badargs = pptitleright(checkargs=1,kwdict=badargs)
   badargs = ppgeneric(checkargs=1,kwdict=badargs)
+  badargs = getxxpslope(checkargs=1,kwdict=badargs)
   kw['allowbadargs'] = 1
   if badargs: raise "bad arguments",string.join(badargs.keys())
 ########################################################################
@@ -1649,7 +1650,7 @@ def ppzvz(iw=0,**kw):
   "Plots Z-Vz"
   checkparticleplotarguments(kw)
   if ppmultispecies(ppzvz,(iw,),kw): return
-  (vzmin,vzmax) = getvzrange()
+  (vzmin,vzmax) = getvzrange(kwdict=kw)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -1813,7 +1814,7 @@ def ppxvz(iw=0,**kw):
   "Plots X-Vz."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppxvz,(iw,),kw): return
-  (vzmin,vzmax) = getvzrange()
+  (vzmin,vzmax) = getvzrange(kwdict=kw)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -1830,7 +1831,7 @@ def ppyvz(iw=0,**kw):
   "Plots Y-Vz."
   checkparticleplotarguments(kw)
   if ppmultispecies(ppyvz,(iw,),kw): return
-  (vzmin,vzmax) = getvzrange()
+  (vzmin,vzmax) = getvzrange(kwdict=kw)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
@@ -1843,9 +1844,12 @@ if sys.version[:5] != "1.5.1":
   ppyvz.__doc__ = ppyvz.__doc__ + ppgeneric_doc("y","Vz")
 
 ##########################################################################
-def pprrp(iw=0,scale=0,**kw):
+def pprrp(iw=0,scale=0,slopejs=-1,**kw):
   """Plots R-R', If slope='auto', it is calculated from the moments.
-  - scale=0: when true, scale particle by 2*rms"""
+  - scale=0: when true, scale particle by 2*rms
+  - slopejs=-1: Species whose moments are used to calculate the slope
+                 -1 means use data combined from all species.
+  """
   checkparticleplotarguments(kw)
   if ppmultispecies(pprrp,(iw,scale),kw): return
   xscale = 1.
@@ -1854,10 +1858,10 @@ def pprrp(iw=0,scale=0,**kw):
   ypscale = 1.
   if scale:
     iiw = max(0,iw)
-    xscale = 2.*top.xrms[iiw]
-    yscale = 2.*top.yrms[iiw]
-    xpscale = 2.*top.vxrms[iiw]/top.vzbar[iiw]
-    ypscale = 2.*top.vyrms[iiw]/top.vzbar[iiw]
+    xscale = 2.*top.xrms[iiw,slopejs]
+    yscale = 2.*top.yrms[iiw,slopejs]
+    xpscale = 2.*top.vxrms[iiw,slopejs]/top.vzbar[iiw,slopejs]
+    ypscale = 2.*top.vyrms[iiw,slopejs]/top.vzbar[iiw,slopejs]
   ii = selectparticles(iw=iw,kwdict=kw)
   xx = getx(ii=ii,gather=0)/xscale
   yy = gety(ii=ii,gather=0)/yscale
@@ -1887,9 +1891,12 @@ if sys.version[:5] != "1.5.1":
   pprrp.__doc__ = pprrp.__doc__ + ppgeneric_doc("r","r'")
 
 ##########################################################################
-def pprtp(iw=0,scale=0,**kw):
+def pprtp(iw=0,scale=0,slopejs=-1,**kw):
   """Plots R-Theta', If slope='auto', it is calculated from the moments.
-  - scale=0: when true, scale particle by 2*rms"""
+  - scale=0: when true, scale particle by 2*rms
+  - slopejs=-1: Species whose moments are used to calculate the slope
+                 -1 means use data combined from all species.
+  """
   checkparticleplotarguments(kw)
   if ppmultispecies(pprtp,(iw,scale),kw): return
   xscale = 1.
@@ -1898,10 +1905,10 @@ def pprtp(iw=0,scale=0,**kw):
   ypscale = 1.
   if scale:
     iiw = max(0,iw)
-    xscale = 2.*top.xrms[iiw]
-    yscale = 2.*top.yrms[iiw]
-    xpscale = 2.*top.vxrms[iiw]/top.vzbar[iiw]
-    ypscale = 2.*top.vyrms[iiw]/top.vzbar[iiw]
+    xscale = 2.*top.xrms[iiw,slopejs]
+    yscale = 2.*top.yrms[iiw,slopejs]
+    xpscale = 2.*top.vxrms[iiw,slopejs]/top.vzbar[iiw,slopejs]
+    ypscale = 2.*top.vyrms[iiw,slopejs]/top.vzbar[iiw,slopejs]
   ii = selectparticles(iw=iw,kwdict=kw)
   xx = getx(ii=ii,gather=0)/xscale
   yy = gety(ii=ii,gather=0)/yscale
@@ -1935,7 +1942,7 @@ def pprvz(iw=0,**kw):
   "Plots R-Vz"
   checkparticleplotarguments(kw)
   if ppmultispecies(pprvz,(iw,),kw): return
-  (vzmin,vzmax) = getvzrange()
+  (vzmin,vzmax) = getvzrange(kwdict=kw)
   if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:

@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.18 2004/09/09 20:48:04 dave Exp $"
+particles_version = "$Id: particles.py,v 1.19 2005/01/12 17:17:40 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -512,7 +512,7 @@ if sys.version[:5] != "1.5.1":
 #-------------------------------------------------------------------------
 
 ##########################################################################
-def getxxpslope(iw=0,iz=-1,kwdict={}):
+def getxxpslope(iw=0,iz=-1,kwdict={},checkargs=0):
   """
 Calculates the x-x' slope from particle moments.
 This returns a tuple containing (slope,xoffset,xpoffset,vz).
@@ -522,10 +522,20 @@ The product slope*vz gives the slope for x-vx.
   - zl=None: When specified, lower range of selection region
   - zu=None: When specified, upper range of selection region
   - zc=None: When specified, center of range of selection region
+  - slopejs=-1: Species whose moments are used to calculate the slope
+                -1 means use data combined from all species.
   """
+  if checkargs:
+    # --- This is only needed since no other routines take the slopejs
+    # --- argument.
+    kwdictcopy = kwdict.copy()
+    if 'slopejs' in kwdictcopy.keys(): del kwdictcopy['slopejs']
+    return kwdictcopy
   zl = kwdict.get('zl')
   zu = kwdict.get('zu')
   zc = kwdict.get('zc')
+  js = kwdict.get('js',-1)
+  slopejs = kwdict.get('slopejs',js)
   if zl is not None and zu is not None: zc = 0.5*(zl + zu)
   if iw > 0: zc = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
   if zc is not None:
@@ -536,20 +546,21 @@ The product slope*vz gives the slope for x-vx.
   if 0 <= iz <= w3d.nz:
     izp1 = iz + 1
     if iz == w3d.nz: izp1 = iz
-    xxpbar = top.xxpbarz[iz]*(1.-wz) + top.xxpbarz[izp1]*wz
-    xbar   = top.xbarz[iz]*(1.-wz)   + top.xbarz[izp1]*wz
-    xpbar  = top.xpbarz[iz]*(1.-wz)  + top.xpbarz[izp1]*wz
-    xrms   = top.xrmsz[iz]*(1.-wz)   + top.xrmsz[izp1]*wz
-    vzbar  = top.vzbarz[iz]*(1.-wz)  + top.vzbarz[izp1]*wz
+    xxpbar = top.xxpbarz[iz,slopejs]*(1.-wz) + top.xxpbarz[izp1,slopejs]*wz
+    xbar   = top.xbarz[iz,slopejs]*(1.-wz)   + top.xbarz[izp1,slopejs]*wz
+    xpbar  = top.xpbarz[iz,slopejs]*(1.-wz)  + top.xpbarz[izp1,slopejs]*wz
+    xrms   = top.xrmsz[iz,slopejs]*(1.-wz)   + top.xrmsz[izp1,slopejs]*wz
+    vzbar  = top.vzbarz[iz,slopejs]*(1.-wz)  + top.vzbarz[izp1,slopejs]*wz
     slope = (xxpbar-xbar*xpbar)/xrms**2
     xoffset = xbar
     xpoffset = xpbar
     vz = vzbar
   elif iw <= 0:
-    slope = (top.xxpbar[0]-top.xbar[0]*top.xpbar[0])/top.xrms[0]**2
-    xoffset = top.xbar[0]
-    xpoffset = top.xpbar[0]
-    vz = top.vzbar[0]
+    slope = ((top.xxpbar[0,slopejs]-top.xbar[0,slopejs]*top.xpbar[0,slopejs])/
+             top.xrms[0,slopejs]**2)
+    xoffset = top.xbar[0,slopejs]
+    xpoffset = top.xpbar[0,slopejs]
+    vz = top.vzbar[0,slopejs]
   else:
     slope = 0.
     xoffset = 0.
@@ -557,7 +568,7 @@ The product slope*vz gives the slope for x-vx.
     vz = 0.
   return (slope,xoffset,xpoffset,vz)
 #-------------------------------------------------------------------------
-def getyypslope(iw=0,iz=-1,kwdict={}):
+def getyypslope(iw=0,iz=-1,kwdict={},checkargs=0):
   """
 Calculates the y-y' slope from particle moments.
 This returns a tuple containing (slope,yoffset,ypoffset,vz).
@@ -567,10 +578,20 @@ The product slope*vz gives the slope for y-vy.
   - zl=None: When specified, lower range of selection region
   - zu=None: When specified, upper range of selection region
   - zc=None: When specified, center of range of selection region
+  - slopejs=-1: Species whose moments are used to calculate the slope
+                -1 means use data combined from all species.
   """
+  if checkargs:
+    # --- This is only needed since no other routines take the slopejs
+    # --- argument.
+    kwdictcopy = kwdict.copy()
+    if 'slopejs' in kwdictcopy.keys(): del kwdictcopy['slopejs']
+    return kwdictcopy
   zl = kwdict.get('zl')
   zu = kwdict.get('zu')
   zc = kwdict.get('zc')
+  js = kwdict.get('js',-1)
+  slopejs = kwdict.get('slopejs',js)
   if zl is not None and zu is not None: zc = 0.5*(zl + zu)
   if iw > 0: zc = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
   if zc is not None:
@@ -581,20 +602,21 @@ The product slope*vz gives the slope for y-vy.
   if 0 <= iz <= w3d.nz:
     izp1 = iz + 1
     if iz == w3d.nz: izp1 = iz
-    yypbar = top.yypbarz[iz]*(1.-wz) + top.yypbarz[izp1]*wz
-    ybar   = top.ybarz[iz]*(1.-wz)   + top.ybarz[izp1]*wz
-    ypbar  = top.ypbarz[iz]*(1.-wz)  + top.ypbarz[izp1]*wz
-    yrms   = top.yrmsz[iz]*(1.-wz)   + top.yrmsz[izp1]*wz
-    vzbar  = top.vzbarz[iz]*(1.-wz)  + top.vzbarz[izp1]*wz
+    yypbar = top.yypbarz[iz,slopejs]*(1.-wz) + top.yypbarz[izp1,slopejs]*wz
+    ybar   = top.ybarz[iz,slopejs]*(1.-wz)   + top.ybarz[izp1,slopejs]*wz
+    ypbar  = top.ypbarz[iz,slopejs]*(1.-wz)  + top.ypbarz[izp1,slopejs]*wz
+    yrms   = top.yrmsz[iz,slopejs]*(1.-wz)   + top.yrmsz[izp1,slopejs]*wz
+    vzbar  = top.vzbarz[iz,slopejs]*(1.-wz)  + top.vzbarz[izp1,slopejs]*wz
     slope = (yypbar-ybar*ypbar)/yrms**2
     yoffset = ybar
     ypoffset = ypbar
     vz = vzbar
   elif iw <= 0:
-    slope = (top.yypbar[0]-top.ybar[0]*top.ypbar[0])/top.yrms[0]**2
-    yoffset = top.ybar[0]
-    ypoffset = top.ypbar[0]
-    vz = top.vzbar[0]
+    slope = ((top.yypbar[0,slopejs]-top.ybar[0,slopejs]*top.ypbar[0,slopejs])/
+             top.yrms[0,slopejs]**2)
+    yoffset = top.ybar[0,slopejs]
+    ypoffset = top.ypbar[0,slopejs]
+    vz = top.vzbar[0,slopejs]
   else:
     slope = 0.
     yoffset = 0.
@@ -602,14 +624,16 @@ The product slope*vz gives the slope for y-vy.
     vz = 0.
   return (slope,yoffset,ypoffset,vz)
 #-------------------------------------------------------------------------
-def getvzrange():
+def getvzrange(kwdict={}):
   "Returns a tuple containg the Vz range for plots"
   if (top.vzrng != 0.):
-     vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
-     vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
+    vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
+    vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
   else:
-     vzmax = top.vzmaxp + 0.1*(top.vzmaxp-top.vzminp)
-     vzmin = top.vzminp - 0.1*(top.vzmaxp-top.vzminp)
+    js = kwdict.get('js',-1)
+    slopejs = kwdict.get('slopejs',js)
+    vzmax = top.vzmaxp[slopejs] + 0.1*(top.vzmaxp[slopejs]-top.vzminp[slopejs])
+    vzmin = top.vzminp[slopejs] - 0.1*(top.vzmaxp[slopejs]-top.vzminp[slopejs])
   return (vzmin,vzmax)
 
 

@@ -1,10 +1,12 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.22 2004/01/22 00:03:57 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.23 2005/01/12 17:17:39 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - xmin, xmax, ymin, ymax: Plot limits, defaults to extrema of data
   - titlet, titleb, titlel, titler: Plot titles, defaults to blank except
     titleb  which is set to name of bottom axis when absc not input
@@ -39,6 +41,8 @@ hpbasicwintext = (
 hpbasicconttext = (
 """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
+  - js=-1: species number, zero based. When -1, plots data combined from all
+           species
   - xmin, xmax, ymin, ymax: Plot limits, defaults to extrema of data
   - titlet, titleb, titlel, titler: Plot titles, defaults to blank except
     titleb  which is set to name of bottom axis when absc not input
@@ -113,7 +117,8 @@ parsing of the arguments is done in one place here and each of the history
 plot functions just passes most of the arguments into this function. The
 only required argument of course is the data to be plotted.
   """
-  kwdefaults = {'absc':None,'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
+  kwdefaults = {'absc':None,'js':-1,'perspecies':1,
+                'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
                 'titlet':'','titleb':'','titlel':'','titler':'',
                 'xscale':1.0,'xoffset':0.0,'yscale':array([1.0]),'yoffset':0.0,
                 'lnormalized':0,'istart':0,'iend':'jhist','istep':1,
@@ -130,6 +135,7 @@ only required argument of course is the data to be plotted.
 
   iend = _extractvar(iend,varsuffix)
   oord = _extractvar(oord,varsuffix)
+  if perspecies: oord = oord[...,js]
 
   # --- Now complete the setup
   if lnormalized:
@@ -157,10 +163,12 @@ only required argument of course is the data to be plotted.
     logxy(1,0)
     oord = log10(maximum(10e-12,
                  oord[...,istart:iend+1:istep]*yscale[...,NewAxis]+yoffset))
-    if not titler:
-      titler = "logarithmic scale"
+    titler = titler + " logarithmic scale"
   else:
     oord = oord[...,istart:iend+1:istep]*yscale[...,NewAxis]+yoffset
+
+  if js == -1: titler = titler + " All species"
+  else:        titler = titler + " Species %d"%js
 
   # --- Now actually make the plot after all of that ado.   
   pla(transpose(oord),absc,color=color,msize=msize,marks=marks,marker=marker,
@@ -184,17 +192,17 @@ def hpbasicwin(oord,iw=0,kwdict={},**kw):
   if lzshift: kw['xoffset'] = 0.5*(zwindows[0,iw]+zwindows[1,iw])
   if iw == 0:
     kw['titlet'] = kw['titlet'] + " for whole beam"
-    hpbasic(oord[iw,:],kw)
+    hpbasic(oord[iw,...],kw)
   elif iw > 0:
     kw['titler']="z%1d = %6.3f"%(iw,.5*(zwindows[0,iw]+zwindows[1,iw]))
-    hpbasic(oord[iw,:],kw)
+    hpbasic(oord[iw,...],kw)
   else:
     nzwind = _extractvarkw('nzwind',kw)
     for i in range(1,nzwind):
       plsys(3+(i-1)%4)
       kw['titler'] = "z%1d = %6.3f"%(i,.5*(zwindows[0,i]+zwindows[1,i]))
       kw['plsysval'] = 3+(i-1)%4
-      hpbasic(oord[i,:],kw)
+      hpbasic(oord[i,...],kw)
       if (i-1)%4 == 3: fma()
     fma()
 
@@ -205,7 +213,8 @@ def hpbasicwin(oord,iw=0,kwdict={},**kw):
 # arguments into this function. The only required argument of course of the
 # data to be plotted.
 def hpbasiccont(oord,oordmesh,kwdict={},**kw):
-  kwdefaults = {'absc':None,'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
+  kwdefaults = {'absc':None,'js':-1,'perspecies':1,
+                'xmin':'e','xmax':'e','ymin':'e','ymax':'e',
                 'titlet':'','titleb':'','titlel':'','titler':'',
                 'xscale':1.0,'xoffset':0.0,'yscale':1.0,'yoffset':0.0,
                 'istart':0,'iend':'jhist','istep':None,'jstart':0,
@@ -223,6 +232,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
   iend = _extractvar(iend,varsuffix)
   jend = _extractvar(jend,varsuffix)
   oord = _extractvar(oord,varsuffix)
+  if perspecies: oord = oord[...,js]
   oordmesh = _extractvar(oordmesh,varsuffix)
 
   # --- Some special arguments
@@ -241,7 +251,6 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
     for arg in kw.keys():
       badkwlist = badkwlist + ' ' + arg
     raise TypeError, badkwlist
-
 
   # --- Now complete the setup
   if not absc:
@@ -265,10 +274,12 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
     oord=log10(maximum(10e-12,
                transpose(oord[jstart:jend+1:jstep,istart:iend+1:istep])*
                yscale+yoffset))
-    if not titler:
-      titler = "logarithmic scale"
+    titler = titler + " logarithmic scale"
   else:
     oord=transpose(oord[jstart:jend+1:jstep,istart:iend+1:istep]*yscale+yoffset)
+
+  if js == -1: titler = titler + " All species"
+  else:        titler = titler + " Species %d"%js
 
   # --- Now actually make the plot after all of that ado.   
   if filled:
@@ -305,7 +316,7 @@ Plots data in various ways. By default, makes a mountain range plot.
     else:
       kw['titlet']=kw['titlet']+" at iz = %d"%iz
     kw['titler'] = 'z = %6.3f'%zmntmesh[iz]
-    hpbasic(hzarray[iz,:],kw)
+    hpbasic(hzarray[iz,...],kw)
     return
   elif contour:
     hpbasiccont(hzarray,zmntmesh,kw)
@@ -314,9 +325,15 @@ Plots data in various ways. By default, makes a mountain range plot.
     kw.setdefault('istep',max(jhist/10,1))
     kw.setdefault('ord',zmesh)
     kw.setdefault('iend',jhist)
+    perspecies = kw.get('perspecies',1)
+    js = kw.get('js',-1)
+    if perspecies: hzarray = hzarray[...,js]
     mountainplot1(kw['titlet'],hzarray,kw)
   else:
     kw.setdefault('iend',jhist)
+    perspecies = kw.get('perspecies',1)
+    js = kw.get('js',-1)
+    if perspecies: hzarray = hzarray[...,js]
     mountainplot1(kw['titlet'],hzarray,kw)
 
 ###########################################################################
@@ -328,6 +345,7 @@ def hpzbeam(kwdict={},**kw):
   kw.update(kwdict)
   kw['titlet']="Beam frame location"
   kw['titlel']="(m)"
+  kw['perspecies'] = 0
   hpbasic('hzbeam',kw)
 if sys.version[:5] != "1.5.1":
   hpzbeam.__doc__ = hpzbeam.__doc__ + hpbasictext
@@ -338,6 +356,7 @@ def hpvbeam(kwdict={},**kw):
   kw.update(kwdict)
   kw['titlet']="Beam frame velocity"
   kw['titlel']="(m/s)"
+  kw['perspecies'] = 0
   hpbasic('hvbeam',kw)
 if sys.version[:5] != "1.5.1":
   hpvbeam.__doc__ = hpvbeam.__doc__ + hpbasictext
@@ -358,6 +377,7 @@ def hpefld(kwdict={},**kw):
   kw.update(kwdict)
   kw['titlet']="Field energy"
   kw['titlel']="(J)"
+  kw['perspecies'] = 0
   hpbasic('hefld',kw)
 if sys.version[:5] != "1.5.1":
   hpefld.__doc__ = hpefld.__doc__ + hpbasictext
@@ -547,6 +567,7 @@ def hprhomid(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['titlet']="Charge density on axis"
   kw['titlel']="(C/m^3)"
+  kw['perspecies'] = 0
   hpbasicwin('hrhomid',iw,kw)
 if sys.version[:5] != "1.5.1":
   hprhomid.__doc__ = hprhomid.__doc__ + hpbasicwintext
@@ -557,6 +578,7 @@ def hprhomax(iw=0,kwdict={},**kw):
   kw.update(kwdict)
   kw['titlet']="Charge density max"
   kw['titlel']="(C/m^3)"
+  kw['perspecies'] = 0
   hpbasicwin('hrhomax',iw,kw)
 if sys.version[:5] != "1.5.1":
   hprhomax.__doc__ = hprhomax.__doc__ + hpbasicwintext
@@ -867,6 +889,7 @@ def hplinechg(contour=0,overlay=0,iz=None,kwdict={},**kw):
   if not lhlinechg: return
   kw.update(kwdict)
   kw['titlet']="Line charge density"
+  kw['perspecies'] = 0
   hpzarray('hlinechg',contour,overlay,iz,kw)
 if sys.version[:5] != "1.5.1":
   hplinechg.__doc__ = hplinechg.__doc__ + hpzarraytext
@@ -878,9 +901,30 @@ def hpvzofz(contour=0,overlay=0,iz=None,kwdict={},**kw):
   if not lhvzofz: return
   kw.update(kwdict)
   kw['titlet']="Vz versus space and time"
+  kw['perspecies'] = 0
   hpzarray('hvzofz',contour,overlay,iz,kw)
 if sys.version[:5] != "1.5.1":
   hpvzofz.__doc__ = hpvzofz.__doc__ + hpzarraytext
+
+
+# --- Plots of current
+def hpcurr(contour=0,overlay=0,iz=None,kwdict={},**kw):
+  "Current."
+  lhcurrz = _extractvarkw('lhcurrz',kw)
+  lhlinechg = _extractvarkw('lhlinechg',kw)
+  lhvzofz = _extractvarkw('lhvzofz',kw)
+  kw.update(kwdict)
+  kw['titlet']="Current"
+  if lhcurrz:
+    hcurrz = _extractvarkw('hcurrz',kw)
+    hpzarray(hcurrz,contour,overlay,iz,kw)
+  elif lhlinechg and lhvzofz:
+    kw['perspecies'] = 0
+    hlinechg = _extractvarkw('hlinechg',kw)
+    hvzofz = _extractvarkw('hvzofz',kw)
+    hpzarray(hlinechg*hvzofz,contour,overlay,iz,kw)
+if sys.version[:5] != "1.5.1":
+  hpcurr.__doc__ = hpcurr.__doc__ + hpzarraytext
 
 
 def hpepsxz(contour=0,overlay=0,iz=None,kwdict={},**kw):
@@ -1484,27 +1528,6 @@ def hpenvy(iw=0,kwdict={},**kw):
   hpbasicwin(2.*hyrms,iw,kw)
 if sys.version[:5] != "1.5.1":
   hpenvy.__doc__ = hpenvy.__doc__ + hpbasicwintext
-
-# --- Plots of current
-def hpcurr(contour=0,overlay=0,iz=None,kwdict={},**kw):
-  "Current."
-  lhcurrz = _extractvarkw('lhcurrz',kw)
-  lhlinechg = _extractvarkw('lhlinechg',kw)
-  lhvzofz = _extractvarkw('lhvzofz',kw)
-  if lhcurrz:
-    kw.update(kwdict)
-    kw['titlet']="Current"
-    hcurrz = _extractvarkw('hcurrz',kw)
-    hpzarray(hcurrz,contour,overlay,iz,kw)
-  elif lhlinechg and lhvzofz:
-    kw.update(kwdict)
-    kw['titlet']="Current"
-    hlinechg = _extractvarkw('hlinechg',kw)
-    hvzofz = _extractvarkw('hvzofz',kw)
-    hpzarray(hlinechg*hvzofz,contour,overlay,iz,kw)
-if sys.version[:5] != "1.5.1":
-  hpcurr.__doc__ = hpcurr.__doc__ + hpzarraytext
-
 
 def hzzbeam(kwdict={},**kw):
   'Same as plot with prefix of hp but lhzbeam defaults to true'

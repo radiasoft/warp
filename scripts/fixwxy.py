@@ -1,7 +1,7 @@
 """Fixes beam so that it exactly agress with the specified beam paramters
 """
 from warp import *
-fixwxy_version = "$Id: fixwxy.py,v 1.6 2004/05/21 23:57:53 dave Exp $"
+fixwxy_version = "$Id: fixwxy.py,v 1.7 2005/01/12 17:17:39 dave Exp $"
 
 # --- Fixes 1st and 2nd moments
 def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None, 
@@ -47,25 +47,25 @@ def fixwxy2(a=None,b=None,ap=None,bp=None,x=None,y=None,xp=None,yp=None,
   vy = yp*top.vbeam
 
   # --- Fix the beam center and size to match exactly to the input
-  top.xp[:] = where(not_equal(top.uzp, 0.),top.xp - top.xbar[0] + x,0.)
-  top.yp[:] = where(not_equal(top.uzp, 0.),top.yp - top.ybar[0] + y,0.)
-  top.xp[:] = top.xp*a/(2.*top.xrms[0])
-  top.yp[:] = top.yp*b/(2.*top.yrms[0])
+  top.xp[:] = where(not_equal(top.uzp, 0.),top.xp - top.xbar[0,-1] + x,0.)
+  top.yp[:] = where(not_equal(top.uzp, 0.),top.yp - top.ybar[0,-1] + y,0.)
+  top.xp[:] = top.xp*a/(2.*top.xrms[0,-1])
+  top.yp[:] = top.yp*b/(2.*top.yrms[0,-1])
 
   # --- Fix velocity to match emittance and envelope angle
   # --- First, remove any average velocity
-  top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - top.vxbar[0],0.)
-  top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - top.vybar[0],0.)
+  top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - top.vxbar[0,-1],0.)
+  top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - top.vybar[0,-1],0.)
   # --- Then remove any coherent velocity
   top.xxpbar[0] = ave(getx()*getxp())
   top.yypbar[0] = ave(gety()*getyp())
-  slopex = top.xxpbar[0]/(a/2.)**2*top.vbeam
-  slopey = top.yypbar[0]/(b/2.)**2*top.vbeam
+  slopex = top.xxpbar[0,-1]/(a/2.)**2*top.vbeam
+  slopey = top.yypbar[0,-1]/(b/2.)**2*top.vbeam
   top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - slopex*top.xp,0.)
   top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - slopey*top.yp,0.)
   # --- Scale to get correct thermal spread
-  top.uxp[:] = top.uxp[:]*(emitx/a)/(top.epsx[0]/(2.*top.xrms[0]))
-  top.uyp[:] = top.uyp[:]*(emity/b)/(top.epsy[0]/(2.*top.yrms[0]))
+  top.uxp[:] = top.uxp[:]*(emitx/a)/(top.epsx[0,-1]/(2.*top.xrms[0,-1]))
+  top.uyp[:] = top.uyp[:]*(emity/b)/(top.epsy[0,-1]/(2.*top.yrms[0,-1]))
   # --- Added back in specified coherent velocity and average
   slopex = ap/a*top.vbeam
   slopey = bp/b*top.vbeam
@@ -101,12 +101,12 @@ def fixwxy1(x=None,y=None,xp=None,yp=None,xerr=0.,yerr=0.,xperr=0.,yperr=0.,
   vy = (yp + yperr*rr*sin(tt))*top.vbeam
 
   # --- Fix the beam center to match exactly to the input
-  top.xp[:] = where(not_equal(top.uzp, 0.),top.xp - top.xbar[0] + xx,0.)
-  top.yp[:] = where(not_equal(top.uzp, 0.),top.yp - top.ybar[0] + yy,0.)
+  top.xp[:] = where(not_equal(top.uzp, 0.),top.xp - top.xbar[0,-1] + xx,0.)
+  top.yp[:] = where(not_equal(top.uzp, 0.),top.yp - top.ybar[0,-1] + yy,0.)
 
   # --- Fix velocity to match envelope angle
-  top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - top.vxbar[0] + vx,0.)
-  top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - top.vybar[0] + vy,0.)
+  top.uxp[:] = where(not_equal(top.uzp, 0.),top.uxp - top.vxbar[0,-1] + vx,0.)
+  top.uyp[:] = where(not_equal(top.uzp, 0.),top.uyp - top.vybar[0,-1] + vy,0.)
 
   # --- Now fix up rho and diagnostics
   w3d.rho = 0.

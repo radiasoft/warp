@@ -4,7 +4,7 @@ import curses.ascii
 import sys
 import adjustmesh3d
 import __main__
-egun_like_version = "$Id: egun_like.py,v 1.34 2005/01/12 01:26:20 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.35 2005/01/12 17:17:39 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -41,6 +41,10 @@ _ipstep = 0
 
 # --- number of particles to save
 _ipsave = 0
+
+def egungetdata():
+  print "_ipstep = ",_ipstep
+  print "_ipsave = ",_ipsave
 
 # --- Sets whether the particles save on each time step are the same particles.
 _save_same_part = false
@@ -133,8 +137,8 @@ Performs steady-state iterations
   if laccumulate_zmoments is None:
     laccumulate_zmoments = top.laccumulate_zmoments
 
-  if ipsave: _ipsave = ipsave
-  if save_same_part: _save_same_part = save_same_part
+  if ipsave is not None: _ipsave = ipsave
+  if save_same_part is not None: _save_same_part = save_same_part
 
   # --- Save current value of top.nhist
   nhist = top.nhist
@@ -310,8 +314,8 @@ Performs steady-state iterations
       # --- Set ins and nps for saved particles
       # --- This only creates the arrays - the actual values don't
       # --- mean anything at this point. They are set later on.
-      ins_save = top.ins + top.nps
-      nps_save = 0*top.nps
+      ins_save = zeros(top.ns)
+      nps_save = zeros(top.ns)
 
       for js in xrange(top.ns):
 
@@ -471,13 +475,13 @@ Performs steady-state iterations
       zz = zd/w3d.dz
       iz = int(zz)
       dz = zz-iz
-      egundata_curr.append((1.-dz)*take(top.curr,iz)+dz*take(top.curr,iz+1))
-      egundata_xrmsz.append((1.-dz)*take(top.xrmsz,iz)+dz*take(top.xrmsz,iz+1))
-      egundata_yrmsz.append((1.-dz)*take(top.yrmsz,iz)+dz*take(top.yrmsz,iz+1))
-      egundata_xprmsz.append((1.-dz)*take(top.xprmsz,iz)+dz*take(top.xprmsz,iz+1))
-      egundata_yprmsz.append((1.-dz)*take(top.yprmsz,iz)+dz*take(top.yprmsz,iz+1))
-      egundata_epsnxz.append((1.-dz)*take(top.epsnxz,iz)+dz*take(top.epsnxz,iz+1))
-      egundata_epsnyz.append((1.-dz)*take(top.epsnyz,iz)+dz*take(top.epsnyz,iz+1))
+      egundata_curr.append((1.-dz)*take(top.curr[...,-1],iz)+dz*take(top.curr[...,-1],iz+1))
+      egundata_xrmsz.append((1.-dz)*take(top.xrmsz[...,-1],iz)+dz*take(top.xrmsz[...,-1],iz+1))
+      egundata_yrmsz.append((1.-dz)*take(top.yrmsz[...,-1],iz)+dz*take(top.yrmsz[...,-1],iz+1))
+      egundata_xprmsz.append((1.-dz)*take(top.xprmsz[...,-1],iz)+dz*take(top.xprmsz[...,-1],iz+1))
+      egundata_yprmsz.append((1.-dz)*take(top.yprmsz[...,-1],iz)+dz*take(top.yprmsz[...,-1],iz+1))
+      egundata_epsnxz.append((1.-dz)*take(top.epsnxz[...,-1],iz)+dz*take(top.epsnxz[...,-1],iz+1))
+      egundata_epsnyz.append((1.-dz)*take(top.epsnyz[...,-1],iz)+dz*take(top.epsnyz[...,-1],iz+1))
       _izdata += 1
   
     # plot egundata 
@@ -515,7 +519,7 @@ Performs steady-state iterations
   stepid(gun_iter,gun_time,top.zbeam)
 
   # --- Set some additional diagnostic data
-  if top.nzzarr == top.nzmmnt: top.vzofz[:] = top.vzbarz
+  if top.nzzarr == top.nzmmnt: top.vzofz[:] = top.vzbarz[:,-1]
 
   # --- Return variables to their original values
   top.fstype = _ofstype
