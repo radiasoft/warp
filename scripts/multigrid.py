@@ -51,6 +51,7 @@ class MultiGrid(object):
 
     # --- bounds is special since it will sometimes be set from the
     # --- variables bound0, boundnz, boundxy, l2symtry, and l4symtry
+    # --- Also, correct xmmin and ymmin in cases of symmetries
     if 'bounds' not in self.__dict__:
       if 'bounds' in kw:
         self.bounds = kw['bounds']
@@ -64,9 +65,12 @@ class MultiGrid(object):
         self.bounds[5] = self.boundnz
         if self.l2symtry:
           self.bounds[2] = 1
+          self.ymmin = 0.
         elif self.l4symtry:
           self.bounds[0] = 1
           self.bounds[2] = 1
+          self.xmmin = 0.
+          self.ymmin = 0.
 
     # --- pbounds is special since it will sometimes be set from the
     # --- variables pbound0, pboundnz, pboundxy, l2symtry, and l4symtry
