@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.12 $, $Date: 2001/11/06 22:24:28 $
+c@(#) File ENV.M, version $Revision: 3.13 $, $Date: 2002/01/30 18:26:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -636,7 +636,7 @@ c than to create new local ones.
       real(kind=8):: zl,fracl,zr,fracr
       real(kind=8):: fuzz
       real(kind=8):: frac,ez,ke,de,db
-      real(kind=8):: dedrr,dbdxq,dedxq,xdbdx,xdedx,ydbdx,ydedx
+      real(kind=8):: dedrr,dbdxq,dedxq,xdbdx,xdedx,ydbdx,ydedx,xex,yey,alpha
       real(kind=8):: fux,fuy,fq,feself,fexself,feyself 
       real(kind=8):: wie,wim
       real(kind=8):: offset
@@ -655,6 +655,8 @@ c     --- Initialize variables to the values from the uniform fields.
       xdedx = (dedr + dexdx)*x
       ydbdx = dbdr*vz*y
       ydedx = (dedr + deydy)*y
+      xex   = 0.
+      yey   = 0.
       ez = 0.
       faccl = 0.
 
@@ -788,6 +790,16 @@ c           --- Lookup field strengths with linear interpolation.
      &                     esemlt(iie+1,ii,iem)*wie)*
      &                    (emltsc(ie) + emltsf(ie))
               endif
+              if ((nint(emlt_n(ii)) == 1) .and.
+     &            (nint(emlt_v(ii)) == 0)) then
+                de = (esemlt(iie  ,ii,iem)*(1.-wie)+ esemlt(iie+1,ii,iem)*wie)*
+     &               (emltsc(ie) + emltsf(ie))
+                alpha = emltph(ie) +
+     &                  esemltph(iie  ,ii,iem)*(1. - wie) +
+     &                  esemltph(iie+1,ii,iem)*      wie
+                xex = xex + de*cos(alpha)
+                yey = yey + de*sin(alpha)
+              endif
             enddo
 
           endif
@@ -894,8 +906,8 @@ c     --- Calculate forces for advancing envelope and test particles
       feself = 2.*p/(a + b)
       fa = ( fq + fux)*a + feself + (emitnx_l*clight/(vz*gamma))**2/a**3
       fb = (-fq + fuy)*b + feself + (emitny_l*clight/(vz*gamma))**2/b**3
-      fx = zion*echarge/(aion*amu*gamma*vz**2)*(xdedx - xdbdx*vz)
-      fy = zion*echarge/(aion*amu*gamma*vz**2)*(ydedx - ydbdx*vz)
+      fx = zion*echarge/(aion*amu*gamma*vz**2)*(xdedx - xdbdx*vz + xex)
+      fy = zion*echarge/(aion*amu*gamma*vz**2)*(ydedx - ydbdx*vz + yey)
 
       fexself = feself/a
       fx1  = (fq + fux + fexself)*x1
