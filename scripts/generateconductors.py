@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.104 2005/01/26 16:55:08 jlvay Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.105 2005/01/26 18:39:02 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -1573,6 +1573,8 @@ Creates a grid object which can generate conductor data.
     xmin,ymin = self.xmin,self.ymin
     xmax,ymax = self.xmax,self.ymax
     if lparallel:
+      if self.zbeam is None: zbeam = top.zbeam
+      else:                  zbeam = self.zbeam
       zmin = max(self.zmin,self.zmmin+iz*dz+zbeam)
       zmax = min(self.zmax,self.zmmin+(iz+nz)*dz+zbeam)
     else:
