@@ -4,10 +4,11 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.10 2004/01/30 22:58:39 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.11 2004/02/11 21:49:01 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
+
 
 class ParticleScraper:
   """
@@ -22,20 +23,33 @@ After an instance is created, additional conductors can be added by calling
 the method registerconductors which takes either a conductor or a list of
 conductors are an argument.
   """
+  _scrapeid = None
   def __init__(self,conductors,lsavecondid=0,install=1): 
     # --- Create grid
     self.grid = Grid()
     # --- register any initial conductors
     self.conductors = []
     self.registerconductors(conductors)
-    # --- Add extra column(s) to top.pid for work space.
-    self.npid = top.npid
-    top.npid = top.npid + 1
-    if w3d.solvergeom != w3d.XYZgeom:
-      self.pwork = top.npid
+    # --- Add extra column(s) to top.pid for work space. Only do this if this
+    # --- is the first time an instance of this class is created or if the
+    # --- the extra column(s) had been removed. Otherwise use the already
+    # --- allocated column(s) in top.pid.
+    if (ParticleScraper._scrapeid is None or
+        top.npid-1 < ParticleScraper._scrapeid or
+        (w3d.solvergeom != w3d.XYZgeom and
+         top.npid-1 < ParticleScraper._scrapeid+1)):
+      ParticleScraper._scrapeid = top.npid
+      self.npid = top.npid
       top.npid = top.npid + 1
-    top.npidmax = max(top.npidmax,top.npid)
-    top.npidlostmax = max(top.npidlostmax,top.npidmax)
+      if w3d.solvergeom != w3d.XYZgeom:
+        self.pwork = top.npid
+        top.npid = top.npid + 1
+      top.npidmax = max(top.npidmax,top.npid)
+      top.npidlostmax = max(top.npidlostmax,top.npidmax)
+    else:
+      self.npid = _scrapeid
+      if w3d.solvergeom != w3d.XYZgeom:
+        self.pwork = _scrapeid + 1
     # --- Make sure that npmaxi is set
     top.npmaxi = max(top.npmax,2)
     gchange("Particles")
