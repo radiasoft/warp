@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.40 2004/05/27 00:00:06 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.41 2004/05/27 22:57:56 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -563,14 +563,14 @@ Constructor arguments:
                   which are included for electric quads.
   - lscrapeparticles=1: When true, particles are scraped on the conductors.
                         This only applies to the 3d case.
-  - scrapermglevel=2: Coarsening level for index grid used to locate which
+  - scrapermglevel=1: Coarsening level for index grid used to locate which
                       conductors particles are near. See doc(ParticleScraper)
                       for more info.
   - dfill=2: parameter passed to installconductors in 3d. sets how much the
              interior of conductors are filled.
   """
   #----------------------------------------------------------------------------
-  def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=2,
+  def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=1,
                     dfill=2):
     global _realboundarycount
     # --- Only allow one instance of this class.
