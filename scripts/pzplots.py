@@ -1,5 +1,5 @@
 from warp import *
-pzplots_version = "$Id:"
+pzplots_version = "$Id: pzplots.py,v 1.2 2001/02/08 00:09:56 dave Exp $"
 
 def pzplotsdoc():
   print """
