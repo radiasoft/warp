@@ -88,7 +88,7 @@ class AMRTree(object,Visualizable):
 
     def getconductors(self):
       if self.solvergeom == w3d.XYZgeomMR:
-        return self.blocks.conductors
+        return self.blocks.getconductors(alllevels=1)
       else:
         return f3d.conductors
 
