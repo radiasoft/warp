@@ -1,7 +1,7 @@
 from warp import *
 import RandomArray
 import Ranf
-optimizer_version = "$Id: optimizer.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 """
 This file contains several optimizers, including:
   Simultaneaous Perturbation Stochastic Approximation

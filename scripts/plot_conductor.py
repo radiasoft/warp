@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 ######################################################################
 # functions to plot the conductor points and subgrid data            #

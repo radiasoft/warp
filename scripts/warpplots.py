@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.

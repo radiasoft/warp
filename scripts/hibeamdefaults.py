@@ -1,7 +1,7 @@
 # --- Returns a value from the requested distribution function.
 from Numeric import *
 import RandomArray
-hibeamdefaults_version = "$Id: hibeamdefaults.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+hibeamdefaults_version = "$Id: hibeamdefaults.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 def errordist(type):
   if type == 'GAUSSIAN':
     s = RandomArray.random(2)

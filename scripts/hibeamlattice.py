@@ -2,7 +2,7 @@
 # DPG 7/22/99
 import re
 import string
-hibeamlattice_version = "$Id: hibeamlattice.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+hibeamlattice_version = "$Id: hibeamlattice.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 class LINE:
   def __init__(self,*elems):

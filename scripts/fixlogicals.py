@@ -1,5 +1,5 @@
 from warp import *
-fixlogicals_version = "$Id: fixlogicals.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+fixlogicals_version = "$Id: fixlogicals.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 def fixlogicals():
   if cir.lcirout: cir.lcirout = true

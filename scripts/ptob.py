@@ -1,5 +1,5 @@
 from Numeric import *
-ptob_version = "$Id: ptob.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+ptob_version = "$Id: ptob.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 
 def writetobasis(f,xname,x):

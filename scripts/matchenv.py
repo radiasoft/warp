@@ -1,6 +1,6 @@
 from warp import *
 from LinearAlgebra import solve_linear_equations
-matchenv_version = "$Id: matchenv.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+matchenv_version = "$Id: matchenv.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 def matchenvdoc():
   print """

@@ -1,7 +1,7 @@
 from warp import *
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 class AppendableArray:
   def __init__(self,initlen,type='i',autobump=100):

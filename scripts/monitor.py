@@ -2,7 +2,7 @@ from warp import *
 import socket
 import time
 import re
-monitor_version = "$Id: monitor.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 # --- Set up send and receive commands which first send the number of
 # --- bytes in the message. The random number 39487 is subtracted

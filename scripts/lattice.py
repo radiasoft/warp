@@ -1,7 +1,7 @@
 from warp import *
 import Ranf
 import __main__
-lattice_version = "$Id: lattice.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP

@@ -1,5 +1,5 @@
 from warp import *
-fixwxy_version = "$Id: fixwxy.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+fixwxy_version = "$Id: fixwxy.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 # Fixes beam so that it exactly agress with the specified beam paramters
 
 # --- Fixes 1st and 2nd moments

@@ -1,5 +1,5 @@
 from histplots import *
-histplot_version = "$Id: histplot.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+histplot_version = "$Id: histplot.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 def histplotdoc():
   print """

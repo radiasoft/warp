@@ -1,5 +1,5 @@
 from warp import *
-interepolate_version = "$Id: interpolate.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+interepolate_version = "$Id: interpolate.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 def interpolate(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,
                 serial=1):

@@ -9,7 +9,7 @@ import PW
 import PR
 import __main__
 import sys
-pyBasis_version = "$Id: pyBasis.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+pyBasis_version = "$Id: pyBasis.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1

@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 def zmmnt(itask=0):
   uxpo = top.uxp

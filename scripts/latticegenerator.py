@@ -1,7 +1,7 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 ######################################################################
 # Lattice builder
 # 

@@ -1,5 +1,5 @@
 from warp import sign
-powell_version = "$Id: powell.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+powell_version = "$Id: powell.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 # This is a conversion of routines from Numerical Recipes
 
 ########################################################################

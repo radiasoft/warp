@@ -1,6 +1,6 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 ###########################################################################
 def hpdoc():

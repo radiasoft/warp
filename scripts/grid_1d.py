@@ -1,5 +1,5 @@
 from warp import *
-grid_1d_version = "$Id: grid_1d.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+grid_1d_version = "$Id: grid_1d.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 ############################################################################
 # This script contains two routines, one to gather particle data onto
 # a 1D grid, and the other to scatter data from a 1D grid to the particles.

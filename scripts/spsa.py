@@ -1,6 +1,6 @@
 from warp import *
 import RandomArray
-spsa_version = "$Id: spsa.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+spsa_version = "$Id: spsa.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 class Spsa:
   """

@@ -1,5 +1,5 @@
 from warp import *
-cirplots_version = "$Id: cirplots.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+cirplots_version = "$Id: cirplots.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 ##############################################################################
 # Handy plots for the circe package

@@ -1,5 +1,5 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #

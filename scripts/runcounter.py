@@ -3,7 +3,7 @@
 import warp
 import time
 import string
-runcounter_version = "$Id: runcounter.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 def runcounter(init=0,delta=1,suffix=None,sleep=0):
   if not suffix: suffix = warp.arraytostr(warp.top.runid)

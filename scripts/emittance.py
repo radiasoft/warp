@@ -1,7 +1,7 @@
 from warp import *
 from grid_1d import *
 from grid_2d import *
-emittance_version = "$Id: emittance.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+emittance_version = "$Id: emittance.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 def emit1(threshold=0.05,js=0):
   (gg,ggmesh) = gather_1d(top.xp[top.ins[js]-1:top.ins[js]+top.nps[js]-1])

@@ -1,4 +1,4 @@
-evolution_version = "$Id: evolution.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+evolution_version = "$Id: evolution.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 ###########################################################################
 # Performs global optimization using genetic evolution algorithms.
 # Algorithm taken from Dr Dobb's Journal, April 1997, K Price, R. Storn

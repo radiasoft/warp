@@ -1,5 +1,5 @@
 from warp import *
-find_sorparam_version = "$Id: find_sorparam.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+find_sorparam_version = "$Id: find_sorparam.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 # FIND_SORPARAM
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999

@@ -1,5 +1,5 @@
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
 # This script optimizes the value of mgparam, the relaxation

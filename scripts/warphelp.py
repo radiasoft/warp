@@ -1,5 +1,5 @@
 from warp import *
-warphelp_version = "$Id: warphelp.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+warphelp_version = "$Id: warphelp.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 def warphelpdoc():
   print """

@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 # Setups and run the code in single particle mode.
 

@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 from warp import *
 
 def generate():

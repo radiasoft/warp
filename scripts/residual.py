@@ -1,6 +1,6 @@
 # Calculate the residual of Poisson's equation.  The residual has the units
 # of Q/M**3 (same units as rho)
-residual_version = "$Id: residual.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+residual_version = "$Id: residual.py,v 1.1.1.1 2000/10/16 18:34:19 dave Exp $"
 
 residual = zeros((w3d.nx+1,w3d.ny+1,w3d.nz+1),"d")
 
