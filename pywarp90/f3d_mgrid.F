@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.53 $, $Date: 2003/08/29 17:33:11 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.54 $, $Date: 2003/09/23 21:12:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -98,6 +98,9 @@ c     --- converted and expanded for the multigrid solver.
         if (laddconductor) call execuser("calladdconductor")
       endif
       call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,l2symtry,l4symtry)
+
+!$OMP PARALLEL
+!$OMP&PRIVATE(ii,i,ix,iy,iz)
 
 c     --- Preset rho to increase performance (reducing the number of
 c     --- multiplies in the main SOR sweep loop).
@@ -293,6 +296,8 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
           rho1d(ii) = rho1d(ii)/rs*reps0c*( r + x*((x/r)-2.)*rdel )
         enddo
       endif
+
+!$OMP END PARALLEL
 
       return
       end
