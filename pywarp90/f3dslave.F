@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.3 $, $Date: 2002/03/27 21:28:29 $
+c F3DSLAVE.M, version $Revision: 1.4 $, $Date: 2002/04/18 21:31:57 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -31,36 +31,36 @@ c     --- phi at the outside of the grid is passed, so phi is put at iz=-1 and
 c     --- iz=nz+1 so delz needs to be -1.
       left_recv = delz
       right_recv = delz
-      if (bound0 .eq. 2) left_recv = -1
-      if (boundnz .eq. 2) right_recv = -1
+      if (bound0 == 2) left_recv = -1
+      if (boundnz == 2) right_recv = -1
 
 c     --- Location from where incoming phi is obtained.  The same cases as
 c     --- above are used.
       left_send = 1 - delz
       right_send = 1 - delz
-      if (bound0 .eq. 2) left_send = 1
-      if (boundnz .eq. 2) right_send = 1
+      if (bound0 == 2) left_send = 1
+      if (boundnz == 2) right_send = 1
 
       waitcount = 4
       waitstart = 1
-      if (my_index .eq. 0 .and. bound0 .ne. 2) then
+      if (my_index == 0 .and. bound0 .ne. 2) then
         waitcount = 2
         waitstart = 3
-      else if (my_index .eq. nslaves-1 .and. boundnz .ne. 2) then
+      else if (my_index == nslaves-1 .and. boundnz .ne. 2) then
         waitcount = 2
         waitstart = 1
       endif
 
 c     --- Sends and receives can all be done synchronously since none
 c     --- of the data overlaps.
-      if (my_index .gt. 0 .or. bound0 .eq. 2) then
+      if (my_index > 0 .or. bound0 == 2) then
         call MPI_ISEND(phi(0,0,left_send),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
      &                 left_pe,0,MPI_COMM_WORLD,mpirequest(1),mpierror)
         call MPI_IRECV(phi(0,0,left_recv),(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
      &                 left_pe,0,MPI_COMM_WORLD,mpirequest(2),mpierror)
       endif
 
-      if (my_index .lt. nslaves-1 .or. boundnz .eq. 2) then
+      if (my_index < nslaves-1 .or. boundnz == 2) then
         call MPI_ISEND(phi(0,0,nz-right_send),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,right_pe,0,
      &                 MPI_COMM_WORLD,mpirequest(3),mpierror)
@@ -413,7 +413,7 @@ c       --- Initialize the k's
      &               l2symtry,l4symtry)
       endif
 
-      if (iwhich .eq. 1) return
+      if (iwhich == 1) return
 
       print*,0,a(4,5,4)
 c     --- Apply FFT's to transverse planes.
@@ -532,12 +532,12 @@ c     --- Find location of transverse data relative to original dimensions.
       jy = int(my_index*ny/real(nslaves))
 c     --- Check if work includes boundary points.  If so, use precalculated
 c     --- min's.
-      if (jx .eq. 0) then
+      if (jx == 0) then
         ikxm = ikxmin
       else
         ikxm = 0
       endif
-      if (jy .eq. 0) then
+      if (jy == 0) then
         ikym = ikymin
       else
         ikym = 0
@@ -764,19 +764,21 @@ c also, subtract 1 from izfsslave.
 
       integer(ISZ):: is,nzmin = 2
 
-c     --- First divide nz by 2.
       do is=0,nslaves-1
+
+c       --- First divide nz by 2. izfsslave is rounded down, and nzfsslave
+c       --- is rounded up.
         izfsslave2(is) = izfsslave(is)/2
-        nzfsslave2(is) = (nzfsslave(is) + 1)/2
-      enddo
-      do is=0,nslaves-1
+        nzfsslave2(is) = (izfsslave(is)+nzfsslave(is) + 1)/2 - izfsslave2(is)
+
+c       --- Then check that no nz are less than nzmin.
         if (nzfsslave2(is) < nzmin) then
-          if (izfsslave2(is)+nzfsslave2(is) == nzfull) then
-            if (izfsslave2(is) > 0) izfsslave2(is) = izfsslave2(is) - 1
-          else
-            nzfsslave2(is) = nzfsslave2(is) + 1
+          nzfsslave2(is) = nzfsslave2(is) + 1
+          if (izfsslave2(is)+nzfsslave2(is) > nzfull/2) then
+            izfsslave2(is) = izfsslave2(is) - 1
           endif
         endif
+
       enddo
 
       return
@@ -784,8 +786,8 @@ c     --- First divide nz by 2.
 c=============================================================================
       subroutine mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                            bound0,boundnz,nzfull,
-     &                            whosendingleft,whosendingright,
-     &                            izsendingleft,izsendingright)
+     &                            whosendingleft,izsendingleft,
+     &                            whosendingright,izsendingright)
       integer(ISZ):: nslaves,my_index
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: bound0,boundnz,nzfull
@@ -796,42 +798,59 @@ c=============================================================================
 
 c Returns list of processors to the left and right to exchange data with.
 c The algorithm tries to share the message passing among the
-c processors holding the same data.
+c processors holding the same data. For each processor, it finds the other
+c processors which have the data it needs. It then picks the one which
+c is sending out the fewest messages so far.
 
       integer(ISZ):: numsendingleft(0:nslaves-1)
       integer(ISZ):: numsendingright(0:nslaves-1)
-      integer(ISZ):: idx,is,ie,mm(1)
+      integer(ISZ):: idx,js,ie,mm(1)
 
-c     --- Loop over all slaves since this most be a global process.
-c     --- By default, no processoers send data
+c     --- By default, no processoers send data (flagged by -1)
       whosendingleft = -1
       numsendingleft = 0
+      izsendingleft = 0
+      whosendingright = -1
+      numsendingright = 0
+      izsendingright = 0
+
+c     --- Loop over all slaves since this must be a global process.
       do idx=0,nslaves-1
+
 c       --- If this process covers the full extent of the mesh, then it
-c       --- doesn't need any data sent to it.
+c       --- doesn't need any data sent to it so skip it.
         if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull)
      &    cycle
-c       --- Skip processors which have the same right mesh extent
-        is = idx + 1
-        do while (is < nslaves .and.
-     &            izfsslave(is)+nzfsslave(is)==izfsslave(idx)+nzfsslave(idx))
-          is = is + 1
+
+c       --- Skip processors which have the same right mesh extent (and
+c       --- therefore don't have the data needed for this processor.
+        js = idx + 1
+        do while (js < nslaves .and.
+     &            izfsslave(js)+nzfsslave(js)==izfsslave(idx)+nzfsslave(idx))
+          js = js + 1
         enddo
-c       --- The bahavior at the end is different than the bulk, so test for it.
-        if (is < nslaves) then
+
+c       --- The right most processor is treated differently (and is only
+c       --- sent data from the left with periodic boundary conditions).
+c       --- Do all but that one first.
+        if (js < nslaves) then
+
 c         --- Find all processors who data extent overlaps the right
 c         --- end of this processor.
-          ie = is
+          ie = js
           do while (ie < nslaves .and. 
      &              izfsslave(ie) < izfsslave(idx)+nzfsslave(idx))
             ie = ie + 1
           enddo
           ie = ie - 1
+
         elseif (boundnz == 2 .or. bound0 == 2) then
+c         --- Now, treat the right most processor.
+
 c         --- Find all processors who data extent overlaps the right
 c         --- end of this processor, wrapping around to the left edge.
-          is = 0
-          ie = is
+          js = 0
+          ie = js
           do while (ie < nslaves .and. izfsslave(ie) == 0)
             ie = ie + 1
           enddo
@@ -840,53 +859,65 @@ c         --- end of this processor, wrapping around to the left edge.
 c         --- This should only be reached at the right hand end when
 c         --- periodic boundaries are turned off. Hence no data is
 c         --- exchanged.
-          ie = is - 1
+          cycle
         endif
-        if (ie >= is) then
-c         --- Get the data from the processor which is doing the least amount
-c         --- of sending so far.
-          mm = minloc(numsendingleft(is:ie))
-          whosendingleft(idx) = is + mm(1) - 1
-          if (is < idx) then
-            izsendingleft(idx) = izfsslave(idx) + nzfsslave(idx) -
-     &                           izfsslave(whosendingleft(idx))
-          else
-            izsendingleft(idx) = 1
-          endif
-c         --- Increment the number of sends that processor makes.
-          numsendingleft(whosendingleft(idx)) = numsendingleft(whosendingleft(idx)) + 1
+
+c       --- Get the data from the processor which is doing the least amount
+c       --- of sending so far. Note that minloc actually returns an array
+c       --- rather than a scalar.
+        mm = minloc(numsendingleft(js:ie))
+        whosendingleft(idx) = js + mm(1) - 1
+        if (js > idx) then
+c         --- Difference between data location to be sent and the
+c         --- starting value of iz for the sending processor.
+          izsendingleft(idx) = izfsslave(idx) + nzfsslave(idx) -
+     &                         izfsslave(whosendingleft(idx))
+        else
+c         --- For periodic boundary conditions, this always has the same value.
+          izsendingleft(idx) = 1
         endif
+
+c       --- Increment the number of sends that processor makes.
+        numsendingleft(whosendingleft(idx)) = numsendingleft(whosendingleft(idx)) + 1
       enddo
 
 c     --- Loop over all slaves since this most be a global process.
-c     --- By default, no processoers send data
-      whosendingright = -1
-      numsendingright = 0
       do idx=0,nslaves-1
+
 c       --- If this process covers the full extent of the mesh, then it
 c       --- doesn't need any data sent to it.
         if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull)
      &    cycle
-c       --- Skip processors which have the same left mesh extent
-        is = idx - 1
-        do while (is >= 0 .and. izfsslave(is) == izfsslave(idx))
-          is = is - 1
+
+c       --- Skip processors which have the same right mesh extent (and
+c       --- therefore don't have the data needed for this processor.
+        js = idx - 1
+        do while (js >= 0 .and. izfsslave(js) == izfsslave(idx))
+          js = js - 1
         enddo
-c       --- The bahavior at the end is different than the bulk, so test for it.
-        if (is > 0) then
+
+
+c       --- The left most processor is treated differently (and is only
+c       --- sent data from the right with periodic boundary conditions).
+c       --- Do all but that one first.
+        if (js >= 0) then
+
 c         --- Find all processors who data extent overlaps the left
 c         --- end of this processor.
-          ie = is
+          ie = js
           do while (ie >= 0 .and.
      &              izfsslave(idx) < izfsslave(ie)+nzfsslave(ie))
             ie = ie - 1
           enddo
           ie = ie + 1
+
         elseif (boundnz == 2 .or. bound0 == 2) then
+c         --- Now, treat the left most processor.
+
 c         --- Find all processors who data extent overlaps the left
 c         --- end of this processor, wrapping around to the left edge.
-          is = nslaves-1
-          ie = is
+          js = nslaves-1
+          ie = js
           do while (ie >= 0 .and. izfsslave(ie)+nzfsslave(ie) == nzfull)
             ie = ie - 1
           enddo
@@ -895,32 +926,39 @@ c         --- end of this processor, wrapping around to the left edge.
 c         --- This should only be reached at the left hand end when
 c         --- periodic boundaries are turned off. Hence no data is
 c         --- exchanged.
-          ie = is - 1
+          cycle
         endif
-        if (ie >= is) then
-c         --- Get the data from the processor which is doing the least amount
-c         --- of sending so far.
-          mm = minloc(numsendingright(is:ie))
-          whosendingright(idx) = is + mm(1) - 1
-          if (is > idx) then
-            izsendingright(idx)=izfsslave(idx)-izfsslave(whosendingright(idx))
-          else
-            izsendingright(idx) = nzfsslave(whosendingright(idx)) - 1
-          endif
-c         --- Increment the number of sends that processor makes.
-          numsendingright(whosendingright(idx)) = numsendingright(whosendingright(idx)) + 1
+
+c       --- Get the data from the processor which is doing the least amount
+c       --- of sending so far. Note that minloc actually returns an array
+c       --- rather than a scalar.
+        mm = minloc(numsendingright(js:ie))
+        whosendingright(idx) = js + mm(1) - 1
+        if (js < idx) then
+c         --- Difference between data location to be sent and the
+c         --- starting value of iz for the sending processor.
+          izsendingright(idx)=izfsslave(idx)-izfsslave(whosendingright(idx))
+
+        else
+c         --- For periodic boundary conditions, this always has the same value.
+          izsendingright(idx) = nzfsslave(whosendingright(idx)) - 1
         endif
+
+c       --- Increment the number of sends that processor makes.
+        numsendingright(whosendingright(idx)) = numsendingright(whosendingright(idx)) + 1
       enddo
 
       return
       end
 c=============================================================================
       subroutine mgexchange_phi(nx,ny,nz,nzfull,phi,bound0,boundnz,delz,
+     &                          my_index,nslaves,izfsslave,nzfsslave,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
-      use Parallel
       integer(ISZ):: nx,ny,nz,nzfull,bound0,boundnz,delz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
 
@@ -928,11 +966,11 @@ c This routine sends out and receives boundary data for the MG field solver.
 
       integer(ISZ):: leftdelta,rightdelta
       integer(ISZ):: lr,rr,ls,rs
-      integer(ISZ):: ip,w=0
+      integer(ISZ):: ip,w
 
       include "mpif.h"
-      integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves)
-      integer(ISZ):: mpirequest(nslaves),mpierror
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
+      integer(ISZ):: mpirequest(2*nslaves+2),mpierror
 
 c     --- Location where incoming phi plane is to be loaded.  Normally, it
 c     --- is put at the edge of the grid, either at iz=0 or iz=nz.  For
@@ -942,10 +980,8 @@ c     --- phi at the outside of the grid is passed, so phi is put at iz=-1 and
 c     --- iz=nz+1 so delz needs to be -1.
       lr = delz
       rr = nz - delz
-      if (bound0 == 2 .or. boundnz == 2) then
-        lr = -1
-        rr = nz + 1
-      endif
+      if (bound0 == 2) lr = -1
+      if (boundnz == 2) rr = nz + 1
 
 c     --- The actual value of delz used depends on the boundary conditions.
 c     --- For periodic boundary conditions, processors which are on the ends
@@ -958,42 +994,41 @@ c     --- of the mess, always send the same data, independent of what delz is.
      &    (bound0 == 2 .or. boundnz == 2))
      &  rightdelta = 0
 
+c     --- Set count to zero
+      w = 0
+
 c     --- Sends and receives can all be done synchronously since none
 c     --- of the data overlaps.
-      if (izfsslave(my_index) > 0 .or. (bound0 == 2 .or. boundnz == 2)) then
-        do ip=0,nslaves-1
-          if (my_index == whosendingleft(ip)) then
-            w = w + 1
-            ls = izsendingleft(ip) - leftdelta
-            call MPI_ISEND(phi(0,0,ls),(nx+1)*(ny+1),
-     &                     MPI_DOUBLE_PRECISION,ip,0,
-     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
-          endif
-        enddo
-        if (whosendingleft(my_index) .ne. -1) then
+      do ip=0,nslaves-1
+        if (my_index == whosendingleft(ip)) then
           w = w + 1
-          call MPI_IRECV(phi(0,0,lr),(nx+1)*(ny+1),
-     &                   MPI_DOUBLE_PRECISION,whosendingleft(my_index),0,
+          ls = izsendingleft(ip) - leftdelta
+          call MPI_ISEND(phi(0,0,ls),(nx+1)*(ny+1),
+     &                   MPI_DOUBLE_PRECISION,ip,nzfull,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
+      enddo
+      if (whosendingright(my_index) .ne. -1) then
+        w = w + 1
+        call MPI_IRECV(phi(0,0,lr),(nx+1)*(ny+1),
+     &                 MPI_DOUBLE_PRECISION,whosendingright(my_index),nzfull,
+     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
 
-      if (izfsslave(my_index)+nz < nzfull .or. (bound0 == 2 .or. boundnz == 2)) then
-        do ip=0,nslaves-1
-          if (my_index == whosendingright(ip)) then
-            w = w + 1
-            rs = izsendingright(ip) + rightdelta
-            call MPI_ISEND(phi(0,0,rs),(nx+1)*(ny+1),
-     &                     MPI_DOUBLE_PRECISION,ip,0,
-     &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
-          endif
-        enddo
-        if (whosendingright(my_index) .ne. -1) then
+      do ip=0,nslaves-1
+        if (my_index == whosendingright(ip)) then
           w = w + 1
-          call MPI_IRECV(phi(0,0,rr),(nx+1)*(ny+1),
-     &                   MPI_DOUBLE_PRECISION,whosendingright(my_index),0,
+          rs = izsendingright(ip) + rightdelta
+          call MPI_ISEND(phi(0,0,rs),(nx+1)*(ny+1),
+     &                   MPI_DOUBLE_PRECISION,ip,nzfull,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
+      enddo
+      if (whosendingleft(my_index) .ne. -1) then
+        w = w + 1
+        call MPI_IRECV(phi(0,0,rr),(nx+1)*(ny+1),
+     &                 MPI_DOUBLE_PRECISION,whosendingleft(my_index),nzfull,
+     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
 
 c     --- Now wait for everything to finish
@@ -1002,17 +1037,19 @@ c     --- Now wait for everything to finish
       return
       end
 c=============================================================================
-      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bound0,boundnz,
+      subroutine mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,bound0,boundnz,delz,
+     &                                  my_index,nslaves,izfsslave,
      &                                  whosendingleft)
-      use Parallel
       integer(ISZ):: nx,ny,nz,nzfull,bound0,boundnz,delz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1)
 
 c This routine sends out and receives boundary data for the MG field solver.
 c This only sends plane iz=0 when there are periodic boundary conditions.
 
-      integer(ISZ):: ip,w=0
+      integer(ISZ):: ip,w
 
       include "mpif.h"
       integer(ISZ):: mpistatus(MPI_STATUS_SIZE,nslaves)
@@ -1021,13 +1058,16 @@ c This only sends plane iz=0 when there are periodic boundary conditions.
 c     --- Does nothing if boundaries are not periodic.
       if (.not. (bound0 == 2 .or. boundnz == 2)) return
 
+c     --- Set count to zero
+      w = 0
+
 c     --- Sends and receives can all be done synchronously since none
 c     --- of the data overlaps.
       if (izfsslave(my_index) == 0) then
         do ip=0,nslaves-1
           if (my_index == whosendingleft(ip)) then
             w = w + 1
-            call MPI_ISEND(phi(0,0,0),(nx+1)*(ny+1),
+            call MPI_ISEND(phi(0,0,delz),(nx+1)*(ny+1),
      &                     MPI_DOUBLE_PRECISION,ip,0,
      &                     MPI_COMM_WORLD,mpirequest(w),mpierror)
           endif
@@ -1037,7 +1077,7 @@ c     --- of the data overlaps.
       if (izfsslave(my_index)+nz == nzfull) then
         if (whosendingleft(my_index) .ne. -1) then
           w = w + 1
-          call MPI_IRECV(phi(0,0,nz),(nx+1)*(ny+1),
+          call MPI_IRECV(phi(0,0,nz+delz),(nx+1)*(ny+1),
      &                   MPI_DOUBLE_PRECISION,whosendingleft(my_index),0,
      &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
         endif
