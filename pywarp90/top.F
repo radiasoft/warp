@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.29 $, $Date: 2001/11/09 23:32:56 $
+c@(#) File TOP.M, version $Revision: 3.30 $, $Date: 2001/11/15 23:22:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2653,13 +2653,16 @@ c  and not once per particle per multipole component.
         if (.not. linemlt(io)) cycle
 
 c       --- Get location of particle relative to moment data.
-        call mltlocat(np,xp,yp,npz,zp,nemltsets,dzemlt,nzemlt,
-     &                nzl,nemltol,io,cemltzs,cemltze,cemltph,cemltsf,cemltsc,
-     &                cemltim,cemltox,cemltoy,
-     &                tex,tey,tez,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
-     &                mltph,mltsf,
-     &                zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc,
-     &                lslice)
+        call mltlocat(np,xp,yp,npz,zp,nemltsets,dzemlt,nzemlt,nzl,
+     &                nemltol,io,cemltzs,cemltze,cemltph,cemltsf,cemltsc,
+     &                cemltim,cemltox,cemltoy,imm,izm,wzm,xxx,yyy,zzz,ttt,
+     &                rr,tt,mltph,mltsf,zlmin,zlframe,dzli,
+     &                bends,linbend,cbendzs,cbendze,cbendrc,lslice)
+
+c       --- zero temporary field arrays
+        tex = 0.
+        tey = 0.
+        tez = 0.
 
 c       --- accumulate the E field of the electrostatic multipoles
         do in=1,nesmult
@@ -2710,22 +2713,23 @@ c           --- Apply the rest of the multipoles.
             enddo
           endif
         enddo
-      enddo
 
-c     --- do coordinate transform on fields back to warped coordinates
-      if (bends .and. linbend) then
-        do ip=1,np
-          ex(ip) = ex(ip) + tex(ip)*cos(ttt(ip)) - tez(ip)*sin(ttt(ip))
-          ey(ip) = ey(ip) + tey(ip)
-          ez(ip) = ez(ip) + tex(ip)*sin(ttt(ip)) + tez(ip)*cos(ttt(ip))
-        enddo
-      else
-        do ip=1,np
-          ex(ip) = ex(ip) + tex(ip)
-          ey(ip) = ey(ip) + tey(ip)
-          ez(ip) = ez(ip) + tez(ip)
-        enddo
-      endif
+c       --- do coordinate transform on fields back to warped coordinates
+        if (bends .and. linbend) then
+          do ip=1,np
+            ex(ip) = ex(ip) + tex(ip)*cos(ttt(ip)) - tez(ip)*sin(ttt(ip))
+            ey(ip) = ey(ip) + tey(ip)
+            ez(ip) = ez(ip) + tex(ip)*sin(ttt(ip)) + tez(ip)*cos(ttt(ip))
+          enddo
+        else
+          do ip=1,np
+            ex(ip) = ex(ip) + tex(ip)
+            ey(ip) = ey(ip) + tey(ip)
+            ez(ip) = ez(ip) + tez(ip)
+          enddo
+        endif
+
+      enddo
 
       return
       end
@@ -2790,13 +2794,16 @@ c  and not once per particle per multipole component.
         if (.not. linmmlt(io)) cycle
 
 c       --- Get location of particle relative to moment data.
-        call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,
-     &                nzl,nmmltol,io,cmmltzs,cmmltze,cmmltph,cmmltsf,cmmltsc,
-     &                cmmltim,cmmltox,cmmltoy,
-     &                tbx,tby,tbz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
-     &                mltph,mltsf,
-     &                zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc,
-     &                lslice)
+        call mltlocat(np,xp,yp,npz,zp,nmmltsets,dzmmlt,nzmmlt,nzl,
+     &                nmmltol,io,cmmltzs,cmmltze,cmmltph,cmmltsf,cmmltsc,
+     &                cmmltim,cmmltox,cmmltoy,imm,izm,wzm,xxx,yyy,zzz,ttt,
+     &                rr,tt,mltph,mltsf,zlmin,zlframe,dzli,
+     &                bends,linbend,cbendzs,cbendze,cbendrc,lslice)
+
+c       --- zero the temporary field arrays
+        tbx = 0.
+        tby = 0.
+        tbz = 0.
 
 c       --- accumulate the B field of the magnetostatic multipoles
         do in=1,nmsmult
@@ -2847,32 +2854,32 @@ c           --- Apply the rest of the multipoles.
             enddo
           endif
         enddo
-      enddo
 
-c     --- do coordinate transform on fields back to warped coordinates
-      if (bends .and. linbend) then
-        do ip=1,np
-          bx(ip) = bx(ip) + tbx(ip)*cos(ttt(ip)) - tbz(ip)*sin(ttt(ip))
-          by(ip) = by(ip) + tby(ip)
-          bz(ip) = bz(ip) + tbx(ip)*sin(ttt(ip)) + tbz(ip)*cos(ttt(ip))
-        enddo
-      else
-        do ip=1,np
-          bx(ip) = bx(ip) + tbx(ip)
-          by(ip) = by(ip) + tby(ip)
-          bz(ip) = bz(ip) + tbz(ip)
-        enddo
-      endif
+c       --- do coordinate transform on fields back to warped coordinates
+        if (bends .and. linbend) then
+          do ip=1,np
+            bx(ip) = bx(ip) + tbx(ip)*cos(ttt(ip)) - tbz(ip)*sin(ttt(ip))
+            by(ip) = by(ip) + tby(ip)
+            bz(ip) = bz(ip) + tbx(ip)*sin(ttt(ip)) + tbz(ip)*cos(ttt(ip))
+          enddo
+        else
+          do ip=1,np
+            bx(ip) = bx(ip) + tbx(ip)
+            by(ip) = by(ip) + tby(ip)
+            bz(ip) = bz(ip) + tbz(ip)
+          enddo
+        endif
+
+      enddo
 
       return
       end
 c=============================================================================
-      subroutine mltlocat(np,xp,yp,npz,zp,nmltsets,dzmlt,nzmlt,
-     &                    nzl,nol,io,cmltzs,cmltze,cmltph,cmltsf,cmltsc,
+      subroutine mltlocat(np,xp,yp,npz,zp,nmltsets,dzmlt,nzmlt,nzl,
+     &                    nol,io,cmltzs,cmltze,cmltph,cmltsf,cmltsc,
      &                    cmltim,cmltox,cmltoy,
-     &                    tx,ty,tz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
-     &                    mltph,mltsf,
-     &                    zlmin,zlframe,dzli,bends,linbend,
+     &                    imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
+     &                    mltph,mltsf,zlmin,zlframe,dzli,bends,linbend,
      &                    cbendzs,cbendze,cbendrc,lslice)
       integer(ISZ):: np,npz,nmltsets,nzl,nol,io
       real(kind=8):: xp(np),yp(np),zp(npz)
@@ -2882,7 +2889,6 @@ c=============================================================================
       real(kind=8):: cmltsf(0:nzl,nol),cmltsc(0:nzl,nol)
       integer(ISZ):: cmltim(0:nzl,nol)
       real(kind=8):: cmltox(0:nzl,nol),cmltoy(0:nzl,nol)
-      real(kind=8):: tx(np),ty(np),tz(np)
       integer(ISZ):: imm(np),izm(np)
       real(kind=8):: wzm(np),xxx(np),yyy(np),zzz(np)
       real(kind=8):: ttt(np),rr(np),tt(np),mltph(np),mltsf(np)
@@ -2915,10 +2921,6 @@ c           --- find z-cell in which particle lies
           dzi = 1./dzmlt(imm(ip))
           mltph(ip) = cmltph(iz,io)
           mltsf(ip) = cmltsc(iz,io) + cmltsf(iz,io)
-c         --- zero temporary field arrays
-          tx(ip) = 0.
-          ty(ip) = 0.
-          tz(ip) = 0.
 c         --- find z location relative to multipole data
           izm(ip) = int((zz-cmltzs(iz,io))*dzi)
           wzm(ip) =     (zz-cmltzs(iz,io))*dzi - izm(ip)
@@ -2954,11 +2956,6 @@ c         --- set temporaries
           cent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
           xxx(ip) = xp(ip)
           zzz(ip) = zz
-c         --- zero temporary field arrays
-          tx(ip) = 0.
-          ty(ip) = 0.
-          tz(ip) = 0.
-          ttt(ip) = 0.
           if (cmltzs(iz,io) <= zz .and. zz <= cmltze(iz,io)) then
             mltph(ip) = cmltph(iz,io)
             mltsf(ip) = cmltsc(iz,io) + cmltsf(iz,io)
