@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.15 $, $Date: 2001/07/10 19:05:36 $
+c@(#) File TOP.M, version $Revision: 3.16 $, $Date: 2001/07/10 20:37:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1645,7 +1645,6 @@ c       celemzs(j-1)  celemze(j-1) celemzs(j)          celemze(j)
 c                                  celemzs(j+1)        celemze(j+1)
 
       integer(ISZ):: ii
-      ii = oelemio(id)
 
 c The Lattice is only needed for zlatstrt and zlatperi.
 
@@ -1666,15 +1665,20 @@ c --- Check if z is somehow greater than the current element (id) location.
 c --- If so, reset it to 0 and start from the beginning. This happens if
 c --- during a periodic repeat of the lattice or if setlatt was called out
 c --- of order. Also, make sure that id is within the proper bounds.
-      if (id > oelemoi(1)) then
+      if (id > oelemoi(oelemnn)) then
+        id = oelemoi(1)
+      else if (id > oelemoi(1)) then
         if (id > oelemoi(oelemnn)) then
           id = oelemoi(1)
-        else if (z < 0.5*(elemze(oelemoi(ii-1)) + elemzs(id)) + offset) then
+        else if (z < .5*(elemze(oelemoi(oelemio(id)-1))+elemzs(id))+offset) then
           id = oelemoi(1)
         endif
       else if (id < oelemoi(1)) then
         id = oelemoi(1)
       endif
+
+c --- Make ii consistent with id
+      ii = oelemio(id)
 
 c --- Scan sequentially through the list until the element is found.
 c --- Note that there is a potential memory access error here when
