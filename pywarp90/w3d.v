@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.151 $, $Date: 2004/05/04 21:44:35 $
+#@(#) File W3D.V, version $Revision: 3.152 $, $Date: 2004/05/07 18:38:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.151 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.152 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -289,7 +289,7 @@ kzsq(0:nzfull)         _real [1/m**2]  # Discrete analog to kz^2/4Pi
 rstar(-1:nz+1)         _real [m] +dump # Radius of curv of refrnce orbit
 phiprv(0:nx,0:nz)      _real [V]       # Prev phi at y_mid, for error test
 phisav(0:nx,-1:nz)     _real [V]       # Phi at current y slice (scratch) 
-xywork(0:nx,0:ny)      _real           # Work space for transverse FFTs
+xywork(2,0:nx,0:ny)    _real           # Work space for transverse FFTs
 zwork(2,0:nx,0:nzfull) _real           # Work space used to optimize vsftz
 
 *********** Fields3dParticles parallel:
