@@ -1,5 +1,5 @@
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.3 2001/04/12 21:50:35 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.4 2001/04/12 21:51:20 dave Exp $"
 
 def adjustmesh3ddoc():
   print "adjustmeshz: Adjust the longitudinal length of the mesh."
@@ -19,7 +19,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
   if not lparallel:
     oldcenter = 0.5*(w3d.zmmin + w3d.zmmax)
   else:
-    oldcenter = 0.5*(w3d.zslmin[0] + w3d.zslmax[-1])
+    oldcenter = 0.5*(w3d.zmslmin[0] + w3d.zmslmax[-1])
   # --- Set new mesh length by first scaling the min and max
   w3d.dz = newlen/w3d.nzfull
   w3d.zmmin = w3d.zmmin*w3d.dz/olddz
@@ -34,7 +34,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
     if not lparallel:
       newcenter = 0.5*(w3d.zmmin + w3d.zmmax)
     else:
-      newcenter = 0.5*(w3d.zslmin[0] + w3d.zslmax[-1])
+      newcenter = 0.5*(w3d.zmslmin[0] + w3d.zmslmax[-1])
     w3d.zmmin = w3d.zmmin + (oldcenter - newcenter)
     w3d.zmmax = w3d.zmmax + (oldcenter - newcenter)
     if lparallel:
