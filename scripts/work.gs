@@ -1,5 +1,5 @@
 # Gist warpstyle.gs drawing style
-# $Id: work.gs,v 1.3 2001/04/23 22:15:25 dave Exp $
+# $Id: work.gs,v 1.4 2001/08/01 23:35:53 dave Exp $
 
 # Multiple viewports
 #  1:  Standard, full page, left axis
@@ -134,6 +134,13 @@ system= {
 system= {
   #legend= "Left Axis (12)",
   ticks= { horiz= { flags= 0x029 }, vert= { flags= 0x029 } }}
+
+# System 13 has no axis and is bigger
+system= {
+  #legend= "No Box",
+  viewport= { 0.127, 0.672, 0.363, 0.908 },
+  ticks= { horiz= { flags= 0x000 }, vert= { flags= 0x000 },
+           frame= 0}}
 
 legends= {
   x= 0.04698,  y= 0.350,  dx= 0.3758,  dy= 0.0,
