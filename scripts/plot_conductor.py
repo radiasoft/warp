@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.40 2002/07/23 21:08:17 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.41 2002/07/30 18:33:41 jlvay Exp $"
 
 def plot_conductordoc():
   print """
@@ -1597,11 +1597,17 @@ Sets the voltage on a conductor, given an id.
  - setvinject=false: when true, sets top.vinject
   """
 
-  print "in setconductorvoltage"
   if w3d.solvergeom == w3d.RZgeom:
-    assert type(voltage) in [ListType,TupleType,ArrayType], \
-           "voltage must be a sequential object, such as a 1-d array"
-    setconductorvoltagerz(voltage,w3d.nzfull,top.zmslmin[0],w3d.dz,discrete)
+    if type(voltage) in [ListType,TupleType,ArrayType]:
+    # --- Voltage is assumed to be the voltages are the z grid cell locations
+    # --- (in the global beam frame).
+      setconductorvoltagerz(voltage,w3d.nzfull,top.zmslmin[0],w3d.dz,discrete)
+    # --- If setvinject is true, set it to the voltage on the left edge
+      if setvinject: top.vinject = voltage[0]
+    else:
+      setconductorvoltagerz_id(condid,voltage)
+    # --- If setvinject is true, set it to the voltage
+      if setvinject: top.vinject = voltage
     return
 
   if f3d.ncond == 0: return
