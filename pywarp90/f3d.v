@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.101 $, $Date: 2004/04/13 20:33:04 $
+#@(#) File F3D.V, version $Revision: 3.102 $, $Date: 2004/04/20 20:28:55 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.101 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.102 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -350,6 +350,18 @@ vsftx    (a:real, work:real, cp:real, cm:real, nx, ny, isetup)
      subroutine #  Vectorized Sine Fourier Transform in X
 vsfty    (a:real, work:real, cp:real, cm:real, nx, ny, isetup)
      subroutine #  Vectorized Sine Fourier Transform in Y
+vpftx    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,xywork:real)
+     subroutine #  Vectorized Real Periodic Fourier Transform in X
+vpfty    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,xywork:real)
+     subroutine #  Vectorized Real Periodic Fourier Transform in Y
+vpftz    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,zwork:real)
+     subroutine #  Vectorized Real Periodic Fourier Transform in Z
+vpftxi    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,xywork:real)
+     subroutine #  Vectorized Real Periodic Fourier Transform in X
+vpftyi    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,xywork:real)
+     subroutine #  Vectorized Real Periodic Fourier Transform in Y
+vpftzi    (nx,ny,nz,a:real,norm:real,esx,esy,nxy,zwork:real)
+     subroutine #  Vectorized Real Periodic Fourier Transform in Z
 cosqx(a:real,w:real,c:real,nx:integer,ny:integer,isign:integer) subroutine
 cosqy(a:real,w:real,c:real,nx:integer,ny:integer,isign:integer) subroutine
 vcpft(r:real,i:real,n:integer,incp:integer,signp:integer,lenv:integer,
