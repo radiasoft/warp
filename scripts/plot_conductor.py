@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.63 2003/08/29 18:10:56 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.64 2003/11/04 22:05:17 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1268,18 +1268,40 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
 
 #####################################################################
 #####################################################################
-def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
+def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
                        ezs,eze,eap,eox,eoy,
                        err=None,erl=None,egl=None,egp=None,
-                       epa=None,epr=None,epw=None,dpal=None,dpar=None):
+                       epa=None,epr=None,epw=None,dpal=None,dpar=None,zoffset=None):
   """Plots the outline of electrostatic elements
   - color: line color
   - gridframe: when true, make plot in grid coordinates
   - axis: selects axis to plot, either 'x' or 'y'
   """
+  if zu is None and zl is None:
+    zl = w3d.zmmin + top.zbeam
+    zu = w3d.zmmax + top.zbeam
+  if zu is not None and zoffset is None and top.zlatperi > 0.:
+    # --- This allows multiple periodic repeats of the lattice to be
+    # --- plotted.
+    if zl is None: zl = top.zlatstrt
+    zoffset = floor((zl-top.zlatstrt)/top.zlatperi)*top.zlatperi
+    while zoffset < zu:
+      z1 = max(zl,zoffset) - zoffset
+      z2 = min(zu,zoffset+top.zlatperi) - zoffset
+      plotelementoutline(color,gridframe,axis,z1,z2,ie,ne,outline,fillcolor,
+                         ezs,eze,eap,eox,eoy,err,erl,egl,egp,
+                         epa,epr,epw,dpal,dpar,zoffset=zoffset)
+      zoffset = zoffset + top.zlatperi
+    return
+  # --- Set defaults for z-range
+  if zl is None: zl = -largepos
+  if zu is None: zu = +largepos
+  if zoffset is None: zoffset = top.zlatstrt
   if axis == 'x': gpsign = 1
   else:           gpsign = -1
   for i in range(ie,ie+ne):
+    # --- Skip if outside the z-range
+    if eze[i] < zl or ezs[i] > zu: continue
     # --- plot rods
     # --- If aperture is zero, then this quad is skipped
     rodap = eap[i]
@@ -1300,7 +1322,7 @@ def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
       zz = gp*(-0.5*(rodlen+gaplen) + rodlen*array([0.,1.,1.,0.,0.]))
       rr1 = offset + rr
       rr2 = offset - rr
-      zz = 0.5*(eze[i] + ezs[i]) + top.zlatstrt + zz
+      zz = 0.5*(eze[i] + ezs[i]) + zoffset + zz
       if gridframe:
         rr1 = rr1/w3d.dx
         rr2 = rr2/w3d.dx
@@ -1329,9 +1351,9 @@ def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
       rrr1 = offset + rrr
       rrr2 = offset - rrr
       zzl = 0.5*(eze[i] + ezs[i]) - 0.5*(rodlen+gaplen) - zz + \
-            top.zlatstrt
+            zoffset
       zzr = 0.5*(eze[i] + ezs[i]) + 0.5*(rodlen+gaplen) + zz + \
-            top.zlatstrt
+            zoffset
       if gridframe:
         rrl1 = rrl1/w3d.dx
         rrl2 = rrl2/w3d.dx
@@ -1353,9 +1375,10 @@ def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
 
 
 #---------------------------------------------------------------------------
-def plotquadoutline(iq=0,nq=None,color='fg',gridframe=0,axis='x',
+def plotquadoutline(zl=None,zu=None,iq=0,nq=None,color='fg',gridframe=0,axis='x',
                     outline=1,fillcolor=None):
   """Plots the outline of quadrupole elements
+ - zl,zu: range in lab frame to plot, defaults to extent of phi field.
  - iq=0: starting quad to plot
  - nq=top.nquad+1: number of quads to plot
  - color='fg': line color
@@ -1365,16 +1388,17 @@ def plotquadoutline(iq=0,nq=None,color='fg',gridframe=0,axis='x',
  - fillcolor=None: optionally sets fill color
   """
   if nq is None: nq = top.nquad + 1
-  plotelementoutline(color,gridframe,axis,iq,nq,outline,fillcolor,
+  plotelementoutline(color,gridframe,axis,zl,zu,iq,nq,outline,fillcolor,
                      top.quadzs,top.quadze,top.quadap,top.qoffx,top.qoffy,
                      top.quadrr,top.quadrl,top.quadgl,top.quadgp,
                      top.quadpa,top.quadpr,top.quadpw,
                      top.qdelpal,top.qdelpar)
 
 #---------------------------------------------------------------------------
-def plotheleoutline(ih=0,nh=None,color='fg',gridframe=0,axis='x',
+def plotheleoutline(zl=None,zu=None,ih=0,nh=None,color='fg',gridframe=0,axis='x',
                     outline=1,fillcolor=None):
   """Plots the outline of hele elements
+ - zl,zu: range in lab frame to plot, defaults to extent of phi field.
  - ih=0: starting hele to plot
  - nh=top.nhele+1: number of heles to plot
  - color='fg': line color
@@ -1384,16 +1408,17 @@ def plotheleoutline(ih=0,nh=None,color='fg',gridframe=0,axis='x',
  - fillcolor=None: optionally sets fill color
   """
   if nh is None: nh = top.nhele + 1
-  plotelementoutline(color,gridframe,axis,ih,nh,outline,fillcolor,
+  plotelementoutline(color,gridframe,axis,zl,zu,ih,nh,outline,fillcolor,
                      top.helezs,top.heleze,top.heleap,top.heleox,top.heleoy,
                      top.helerr,top.helerl,top.helegl,top.helegp,
                      top.helepa,zeros(top.nhele+1,'d'),top.helepw,
                      zeros(top.nhele+1,'d'),zeros(top.nhele+1,'d'))
 
 #---------------------------------------------------------------------------
-def plotemltoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
+def plotemltoutline(zl=None,zu=None,ie=0,ne=None,color='fg',gridframe=0,axis='x',
                     outline=1,fillcolor=None):
   """Plots the outline of emlt elements
+ - zl,zu: range in lab frame to plot, defaults to extent of phi field.
  - ie=0: starting emlt to plot
  - ne=top.nemlt+1: number of emlts to plot
  - color='fg': line color
@@ -1403,18 +1428,19 @@ def plotemltoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
  - fillcolor=None: optionally sets fill color
   """
   if ne is None: ne = top.nemlt + 1
-  plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
+  plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
                      top.emltzs,top.emltze,top.emltap,top.emltox,top.emltoy,
                      top.emltrr,top.emltrl,top.emltgl,top.emltgp,
                      top.emltpa,zeros(top.nemlt+1,'d'),top.emltpw,
                      zeros(top.nemlt+1,'d'),zeros(top.nemlt+1,'d'))
 
 #---------------------------------------------------------------------------
-def plotpgrdoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
+def plotpgrdoutline(zl=None,zu=None,ip=0,np=None,color='fg',gridframe=0,axis='x',
                     outline=1,fillcolor=None):
   """Plots the outline of pgrd elements
- - ie=0: starting pgrd to plot
- - ne=top.npgrd+1: number of pgrds to plot
+ - zl,zu: range in lab frame to plot, defaults to extent of phi field.
+ - ip=0: starting pgrd to plot
+ - np=top.npgrd+1: number of pgrds to plot
  - color='fg': line color
  - gridframe=0: when true, make plot in grid coordinates
  - axis='x': selects axis to plot, either 'x' or 'y'
@@ -1422,18 +1448,19 @@ def plotpgrdoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
  - fillcolor=None: optionally sets fill color
   """
   if ne is None: ne = top.npgrd + 1
-  plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
+  plotelementoutline(color,gridframe,axis,zl,zu,ip,np,outline,fillcolor,
                      top.pgrdzs,top.pgrdze,top.pgrdap,top.pgrdrr,top.pgrdrl,
                      top.pgrdgl,top.pgrdgp,top.pgrdox,top.pgrdoy,
                      top.pgrdpa,zeros(top.npgrd+1,'d'),top.pgrdpw,
                      zeros(top.npgrd+1,'d'),zeros(top.npgrd+1,'d'))
 
 #---------------------------------------------------------------------------
-def plotaccloutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
+def plotaccloutline(zl=None,zu=None,ia=0,na=None,color='fg',gridframe=0,axis='x',
                     outline=1,fillcolor=None):
   """Plots the outline of accl elements
- - ie=0: starting accl to plot
- - ne=top.naccl+1: number of accls to plot
+ - zl,zu: range in lab frame to plot, defaults to extent of phi field.
+ - ia=0: starting accl to plot
+ - na=top.naccl+1: number of accls to plot
  - color='fg': line color
  - gridframe=0: when true, make plot in grid coordinates
  - axis='x': selects axis to plot, either 'x' or 'y'
@@ -1441,16 +1468,17 @@ def plotaccloutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
  - fillcolor=None: optionally sets fill color
   """
   if ne is None: ne = top.naccl + 1
-  plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
+  plotelementoutline(color,gridframe,axis,zl,zu,ia,na,outline,fillcolor,
                      top.acclzs,top.acclze,top.acclap,
                      top.acclox,top.accloy)
 
 #---------------------------------------------------------------------------
-def plotdrftoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
+def plotdrftoutline(zl=None,zu=None,id=0,nd=None,color='fg',gridframe=0,axis='x',
                     outline=1,fillcolor=None):
   """Plots the outline of drft elements
- - ie=0: starting drft to plot
- - ne=top.ndrft+1: number of drfts to plot
+ - zl,zu: range in lab frame to plot, defaults to extent of phi field.
+ - id=0: starting drft to plot
+ - nd=top.ndrft+1: number of drfts to plot
  - color='fg': line color
  - gridframe=0: when true, make plot in grid coordinates
  - axis='x': selects axis to plot, either 'x' or 'y'
@@ -1458,7 +1486,7 @@ def plotdrftoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
  - fillcolor=None: optionally sets fill color
   """
   if ne is None: ne = top.ndrft + 1
-  plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
+  plotelementoutline(color,gridframe,axis,zl,zu,id,nd,outline,fillcolor,
                      top.drftzs,top.drftze,top.drftap,
                      top.drftox,top.drftoy)
 
