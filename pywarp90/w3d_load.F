@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.14 $, $Date: 2004/12/22 18:46:44 $
+c@(#) File w3d_load.F, version $Revision: 1.15 $, $Date: 2004/12/22 22:51:31 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -763,17 +763,18 @@ c     --- parabolic equilibrium
 c     --- thermal equilibrium 
       elseif(distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then 
 
-        do ip = 1,np 
 
 c         --- use Gaussian random number generator to load distribution 
 c         --- of angles.  This is independent of the particle coordinates 
 c         --- loaded for a thermal distribution.  
 
+        do ip = 1,np 
           g_dist = wrandomgauss(xrandom,ip+kioff-1,dig5,dig6,1,1,.true.)
           xp(ip) = 0.5*(emit_b/r_b)*g_dist
+        enddo 
+        do ip = 1,np 
           g_dist = wrandomgauss(xrandom,ip+kioff-1,dig9,dig10,1,1,.true.)
           yp(ip) = 0.5*(emit_b/r_b)*g_dist
-
         enddo 
 
 c       --- undefined option trap 
