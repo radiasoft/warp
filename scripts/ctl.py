@@ -1,6 +1,7 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.9 2004/07/24 00:24:23 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.10 2004/09/02 22:46:11 dave Exp $"
 from warp import *
+import controllers
 import signal
 
 #############################################################################
@@ -67,7 +68,7 @@ def step(n=1,maxcalls=None,command=None):
     top.ncall = top.ncall + 1
 
     bb = wtime()
-    callbeforestepfuncs()
+    controllers.callbeforestepfuncs()
     aa = wtime()
     try: step.beforetime = step.beforetime + (aa - bb)
     except: step.beforetime = 0.
@@ -75,7 +76,7 @@ def step(n=1,maxcalls=None,command=None):
     command()
 
     bb = wtime()
-    callafterstepfuncs()
+    controllers.callafterstepfuncs()
     aa = wtime()
     try: step.aftertime = step.aftertime + (aa - bb)
     except: step.aftertime = 0.
