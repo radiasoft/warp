@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.39 2002/07/22 20:46:46 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.40 2002/07/23 21:08:17 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1587,13 +1587,14 @@ the srfrvout routine. Note that the option lz_in_plate is now ignored.
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
 #---------------------------------------------------------------------------
-def setconductorvoltage(voltage,condid=0,discrete=false):
+def setconductorvoltage(voltage,condid=0,discrete=false,setvinject=true):
   """
 Sets the voltage on a conductor, given an id.
  - voltage: voltage on conductor
  - condid=0: conductor id number
  - discrete=false: when true, z locations for plus/minus z subgrid
                    points are round up/down.
+ - setvinject=false: when true, sets top.vinject
   """
 
   print "in setconductorvoltage"
@@ -1608,6 +1609,9 @@ Sets the voltage on a conductor, given an id.
   if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
     # --- (in the global beam frame).
+
+    # --- If setvinject is true, set it to the voltage on the left edge
+    if setvinject: top.vinject = voltage[0]
 
     # --- Get z location of the conductor points (taking into account
     # --- the differing grid cell sizes for coarse levels). Use that to
@@ -1668,6 +1672,10 @@ Sets the voltage on a conductor, given an id.
   elif type(voltage) == FunctionType:
     # --- Assumes that voltage is a function which takes 3 arguments, the
     # --- coordinates x, y, z, in meters relative to the beam frame.
+
+    # --- If setvinject is true, set it to the voltage at the source center
+    if setvinject: top.vinject = voltage(top.xinject,top.yinject,top.zinject)
+
     if lparallel: zmmin = top.zmslmin[0]
     else:         zmmin = w3d.zmmin
     icx = f3d.ixcond*take(nint(f3d.mglevelslx),f3d.icondlevel)
@@ -1722,6 +1730,9 @@ Sets the voltage on a conductor, given an id.
     ocvpz = voltage(ocx  ,ocy  ,oczpz)
 
   else:
+    # --- If setvinject is true, set it to the voltage
+    if setvinject: top.vinject = voltage
+
     cv = voltage
     ecvmx = ecvpx = ecvmy = ecvpy = ecvmz = ecvpz = voltage
     ocvmx = ocvpx = ocvmy = ocvpy = ocvmz = ocvpz = voltage
