@@ -13,7 +13,7 @@ configlines = ff.readlines()
 ff.close()
 
 addmodule1 = """
-extern void initpybasisC();
+extern void initwarpC();
 extern void inittoppy();
 extern void initenvpy();
 extern void initf3dpy();
@@ -28,7 +28,7 @@ extern void initchopy();
 """
 
 addmodule2 = """
-        {"pybasisC", initpybasisC},
+        {"warpC", initwarpC},
         {"toppy", inittoppy},
         {"envpy", initenvpy},
         {"f3dpy", initf3dpy},
