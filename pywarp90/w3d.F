@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.152 $, $Date: 2004/05/07 18:42:36 $
+c@(#) File W3D.F, version $Revision: 3.153 $, $Date: 2004/05/12 22:29:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -69,6 +69,7 @@ c=============================================================================
       use Hist
       use InjectVars
       use InjectVars3d
+      use DKInterp
 
 c  Invoked by the GENERATE command, it sets up the problem
 c  This routine allots all of the neccesary dynamic arrays, calls the
@@ -1277,16 +1278,19 @@ c=============================================================================
       use InjectVars3d
       use Apertures
       use GridBoundary3d
+      use DKInterp
+      use DKInterptmp
       character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
 
       integer(ISZ):: is,ip,ipmin,i
-      real(kind=8):: uxpadv,uypadv,uzpadv
+      real(kind=8):: uxpadv,uypadv,uzpadv,halfdt,quarterdt
       real(kind=8):: zpo(nparpgrp)
-      real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp)
-      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
+c RHC: moved ex, ey, ez, bx, by, bz to DKInterptmp in w3d.v  3/11/04
+c      real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp)
+c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
 #ifdef _OPENMP
@@ -1304,6 +1308,9 @@ c  and also loads RHO at the new time level.
 
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
+      halfdt = 0.5*dt
+      quarterdt = 0.25*dt
 
 c  Zero the bend radius and residence arrays
 c     call zeroarry (bendres,nparpgrp)
@@ -1331,8 +1338,27 @@ c  Set the transverse E fields near any defined apertures.
 !$OMP&        uxpadv,uypadv,uzpadv)
 !$OMP&FIRSTPRIVATE(maxp,minp,zmmnts0,zmmnts)
 
+c  Set storage for field arrays if not adequate already
+      if (npfield < nparpgrp) then
+         npfield = nparpgrp
+         call gchange("DKInterptmp",0)
+      endif
+
 c  Loop over species
       do is=1,ns
+
+c If this species involves drift-kinetic interpolation, allocate
+c  space for temporary arrays if sufficient space not already allocated
+c Also set m_over_q, q_over_m**2
+         if (interpdk(is) .ne. 0) then
+            if (npint < nparpgrp) then
+               npint = nparpgrp
+               call gchange("DKInterptmp",0)
+            endif
+            notusealphcalc(is) = (1.-usealphacalc(is))*alpha0(is)
+            if (sq(is) .ne. 0.) m_over_q(is)=sm(is)/sq(is)
+            if (sm(is) .ne. 0.) qovermsq(is)= (sq(is)/sm(is))**2
+         endif
 
 c  Loop over particle blocks; move each block separately
 !$OMP DO
@@ -1376,12 +1402,13 @@ c           --- FULLV
                enddo 
 c              --- Obtain bend radii and residence factors
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
-     &                       bendradi,-dt*0.5,dt*0.5,.false.)
+     &                       bendradi,-halfdt,halfdt,.false.)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
 c              --- Add in Ez from axially-smoothed gaps 
                call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap(0),dzz)
+c
 c              --- Add in ears and uniform focusing E field pieces
                call othere3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                        zbeam,zimax,zimin,straight,ifeears,eears,
@@ -1389,27 +1416,38 @@ c              --- Add in ears and uniform focusing E field pieces
      &                        ex,ey,ez,bx,by,bz)
 c              --- Set quad, dipole E and B; All: Bz
                call exteb3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),-dt*0.5,dt*0.5,
+     &                       gaminv(ipmin),-halfdt,halfdt,
      &                       bx,by,bz,ex,ey,ez,sm(is),sq(is),
      &                       bendres,bendradi,gammabar,dt)
 c              --- Correction to z on entry/exit to accelerator gap
                call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       -dt*0.5, dt*0.5, dt, sm(1), sq(1), time)
+     &                       -halfdt, halfdt, dt, sm(1), sq(1), time)
 c              --- First half-electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                       ex, ey, ez, sq(is), sm(is), dt*0.5)
+     &                       ex, ey, ez, sq(is), sm(is), halfdt)
 c              --- Magnetic field increment to momenta
+c              --- If interpolating with drift kinetics, must do half
+c              ---  a mu grad B correction before and half after Bpush
+               if (interpdk(is) .ne. 0) then
+c                  call setptrs(bx,by,bz,ex,ey,ez)
+                  call mugrdbpush(ip,is,ipmin,halfdt,1)
+               endif
                call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), dt, ibpush)
+               if (interpdk(is) .ne. 0) call mugrdbpush(ip,is,ipmin,halfdt,0)
 c              --- Final half-electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                       ex, ey, ez, sq(is), sm(is), dt*0.5)
+     &                       ex, ey, ez, sq(is), sm(is), halfdt)
 c              --- Advance relativistic Gamma factor
                call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                       gamadv,lrelativ)
 c              --- Position advance
-               call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
+               if (interpdk(is) .ne. 0) then
+                 call xpush3dintrp(ip,is,ipmin)
+               else
+                 call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
+               endif
 c              --- Bend residence factor over POSITION advance step
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bendres,bendradi,-dt,0.,.false.)
@@ -1428,7 +1466,7 @@ c           --- HALFV
                enddo 
 c              --- Obtain bend radii and residence factors
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,0.,dt*0.5,.false.)
+     &                       bendres,bendradi,0.,halfdt,.false.)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
@@ -1441,24 +1479,36 @@ c              --- Add in ears and uniform focusing E field pieces
      &                        ex,ey,ez,bx,by,bz)
 c              --- Set quad, dipole E and B;  All: Bz
                call exteb3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),0.,dt*0.5,bx,by,bz,
+     &                       gaminv(ipmin),0.,halfdt,bx,by,bz,
      &                       ex,ey,ez,sm(is),sq(is),bendres,bendradi,
      &                       gammabar,dt)
 c              --- Correction to z on entry/exit to accelerator gap
                call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       0., dt*0.5, dt, sm(1), sq(1), time)
+     &                       0., halfdt, dt, sm(1), sq(1), time)
 c              --- Magnetic field increment to momenta
+c              --- If interpolating with drift kinetics, must do half
+c              ---  a mu grad B correction
+               if (interpdk(is) .ne. 0) 
+     &                       call mugrdbpush(ip,is,ipmin,quarterdt,1)
                call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bx, by, bz, sq(is), sm(is), dt*0.5, ibpush)
+     &                       bx, by, bz, sq(is), sm(is), halfdt, ibpush)
+               if (interpdk(is) .ne. 0) then
+c                  call setptrs(bx,by,bz,ex,ey,ez)
+                  call mugrdbpush(ip,is,ipmin,quarterdt,0)
+               endif
 c              --- Final half-electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                       ex, ey, ez, sq(is), sm(is), dt*0.5)
+     &                       ex, ey, ez, sq(is), sm(is), halfdt)
 c              --- Advance relativistic Gamma factor
                call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                       gamadv,lrelativ)
 c              --- Position advance
-               call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
+               if (interpdk(is) .ne. 0) then
+                 call xpush3dintrp(ip,is,ipmin)
+               else
+                 call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
+               endif
 c              --- Bend residence factor over POSITION advance step
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bendres,bendradi,-dt,0.,.false.)
@@ -1479,7 +1529,7 @@ c              --- Copy 'old' velocity into uxpo, uypo, and uzpo
                enddo
 c              --- Obtain bend radii and residence factors
                call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),bendres,
-     &                       bendradi,-dt*0.5,0.,.false.)
+     &                       bendradi,-halfdt,0.,.false.)
 c              --- Correct Ez_self for warped mesh effect
                call bendez3d (ip,xp(ipmin),zp(ipmin),ez,
      &                        bendres,bendradi,bends,bnezflag,linbend)
@@ -1492,15 +1542,23 @@ c              --- Add in ears and uniform focusing E field pieces
      &                        ex,ey,ez,bx,by,bz)
 c              --- Set quad, dipole E and B; All: Bz
                call exteb3d (ip,xp(ipmin),yp(ipmin),zp(ipmin),uzp(ipmin),
-     &                       gaminv(ipmin),-dt*0.5,0.,
+     &                       gaminv(ipmin),-halfdt,0.,
      &                       bx,by,bz,ex,ey,ez,sm(is),sq(is),
      &                       bendres,bendradi,gammabar,dt)
 c              --- Half electric field increment to momenta
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
-     &                       ex, ey, ez, sq(is), sm(is), dt*0.5)
+     &                       ex, ey, ez, sq(is), sm(is), halfdt)
+c              --- If interpolating with drift kinetics, must do half
+c              ---  a mu grad B correction
+               if (interpdk(is) .ne. 0) then
+c                  call setptrs(bx,by,bz,ex,ey,ez)
+                  call mugrdbpush(ip,is,ipmin,quarterdt,1)
+               endif
 c              --- Half magnetic field increment to momenta
                call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bx, by, bz, sq(is), sm(is), dt*0.5, ibpush)
+     &                       bx, by, bz, sq(is), sm(is), halfdt, ibpush)
+               if (interpdk(is) .ne. 0) 
+     &                       call mugrdbpush(ip,is,ipmin,quarterdt,0)
                if (center == "gen") then
 c                --- Reset uxp to uxpo, set uxpo to half step backward
 c                --- for interpolation in moments calculation
@@ -1521,13 +1579,13 @@ c              --- Calculate moments over particles, now that we're sync'd
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),sq(is),sm(is),sw(is),
-     &                         dt*0.5,2,nplive,uxpo,uypo,uzpo,is,ns,
+     &                         halfdt,2,nplive,uxpo,uypo,uzpo,is,ns,
      &                         maxp,minp,zmmnts0,zmmnts)
                else
                  call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),pid(ipmin,wpid),
-     &                         sq(is),sm(is),sw(is),dt*0.5,2,nplive,
+     &                         sq(is),sm(is),sw(is),halfdt,2,nplive,
      &                         uxpo,uypo,uzpo,is,ns,
      &                         maxp,minp,zmmnts0,zmmnts)
                endif
@@ -1568,7 +1626,7 @@ c     ---  Do final stuff for moments calculation
         tempzmmnts = tempzmmnts + zmmnts
 #endif
         call getzmmnt(1,xp(1),yp(1),zp(1),uxp(1),uyp(1),uzp(1),gaminv(1),
-     &                sq(1),sm(1),sw(1),dt*0.5,3,nplive,uxpo,uypo,uzpo,
+     &                sq(1),sm(1),sw(1),halfdt,3,nplive,uxpo,uypo,uzpo,
      &                1,ns,tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
         call getlabwn()
 c       --- load rho diagnostic quantities
@@ -1804,7 +1862,7 @@ c=============================================================================
 c  Push the particle velocity with B field
 
       integer(ISZ):: ip
-      real(kind=8):: btot,btotinv,tanalpha
+      real(kind=8):: btot,btotinv,tanalphab
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
       real(kind=8):: const
       real(kind=8):: substarttime,wtime
@@ -1833,11 +1891,10 @@ c        --- tan(alpha) / alpha algorithm
          do ip=1,np
             btot = sqrt(bx(ip)**2 + by(ip)**2 + bz(ip)**2)
             if (btot == 0.) cycle
-            btotinv = 1./btot
-            tanalpha = tan(gaminv(ip)*btot*const)
-            tx = bx(ip)*tanalpha*btotinv
-            ty = by(ip)*tanalpha*btotinv
-            tz = bz(ip)*tanalpha*btotinv
+            tanalphab = tan(gaminv(ip)*btot*const)/btot
+            tx = bx(ip)*tanalphab
+            ty = by(ip)*tanalphab
+            tz = bz(ip)*tanalphab
             tsqi = 2./(1. + tx**2 + ty**2 + tz**2)
             sx = tx*tsqi
             sy = ty*tsqi
