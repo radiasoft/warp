@@ -24,11 +24,20 @@ def fieldsolMR():
 def fetcheMR():
   assert MRsolver[0] is not None,"No solver has been registered"
   MRsolver[0].fetche()
+def initfieldsolver():
+    if w3d.AMRlevels>0:
+      import AMR
+      AMRtree=AMR.AMRTree()
+      __main__.__dict__['AMRtree'] = AMRtree
+      gchange('AMR')
+      w3d.AMRcoalescing=0.8
+      if getcurrpkg()=='w3d' and w3d.solvergeom==w3d.XYZgeomMR:
+        registersolver(AMRtree.blocks)
 __main__.__dict__['loadrhoMR'] = loadrhoMR
 __main__.__dict__['fieldsolMR'] = fieldsolMR
 __main__.__dict__['fetcheMR'] = fetcheMR
+__main__.__dict__['initfieldsolver'] = initfieldsolver
 # ---------------------------------------------------------------------------
-
 
 #########################################################################
 class MRBlock(MultiGrid,Visualizable):
