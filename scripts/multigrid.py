@@ -50,6 +50,10 @@ class MultiGrid:
     self.dy = (self.ymmax - self.ymmin)/self.ny
     self.dz = (self.zmmax - self.zmmin)/self.nz
 
+    self.xmesh = self.xmmin + arange(0,self.nx+1)*self.dx
+    self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
+    self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
+
     # --- Create phi and rho arrays and other arrays. These are created
     # --- with fortran ordering so no transpose and copy is needed when
     # --- they are passed to fortran.
