@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.141 $, $Date: 2005/01/21 21:17:23 $
+c@(#) File TOP.F, version $Revision: 3.142 $, $Date: 2005/01/24 14:31:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2954,7 +2954,6 @@ c       --- do coordinate transform on fields back to warped coordinates
             bz(ip) = bz(ip) + tbz(ip)
           enddo
         endif
-
       enddo
       deallocate(izm, imm, xxx, yyy, zzz, ttt, wzm, 
      &           rr, tt, mltph, mltsf, tbx, tby, tbz)
@@ -3472,6 +3471,8 @@ c         --- Only calculate for particles inside the B field grid
      &                 u1*v1*w1*bgrd(:,i+1,j+1,k+1,id))
 
 
+           if(.false.) then
+c --- original
             if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
               do ic=0,bgrdnc/3-1
                 tb(1+ic*3) = xsign*tb(1+ic*3)
@@ -3485,7 +3486,24 @@ c         --- Only calculate for particles inside the B field grid
                   tb(2+ic*3) = temp
                 enddo
               endif 
+            endif
+           else
+c --- modified
+            if (bgrdsy(ii) == 2) then
+              do ic=0,bgrdnc/3-1
+                tb(1+ic*3) = zsign*tb(1+ic*3)
+                tb(2+ic*3) = ysign*tb(2+ic*3)
+                tb(3+ic*3) = xsign*tb(3+ic*3)
+              enddo
+              if (xsign*ysign < 0.) then
+                do ic=0,bgrdnc/3-1
+                  temp = tb(3+ic*3)
+                  tb(3+ic*3) = tb(2+ic*3)
+                  tb(2+ic*3) = temp
+                enddo
+              endif 
             endif 
+           end if
 
 c           --- rotate transverse field componets for correct lab frame 
 c               orientation if the element is rotated.  
@@ -8152,11 +8170,11 @@ c=============================================================================
       use Particles
       USE InPart
       use LostParticles
-      INTEGER, INTENT(IN) :: is1, is2, nbp, condid
-      REAL(8), INTENT(IN) :: wp,shiftx,shifty,shiftz,deltax,deltay,deltaz
+      INTEGER, INTENT(IN) :: is1, is2, condid
+      REAL(8), INTENT(IN) :: nbp,wp,shiftx,shifty,shiftz,deltax,deltay,deltaz
 
 c Create particles of specie is2 created by impact of particles of species is1
-c - nbp: number of new particles are generated for each lost partcle
+c - nbp: number of new particles generated for each lost particle (can be fractional)
 c - wp: energy in volts of new particles
 c - shiftz,y,z: the location where the new particles are created relative
 c               to where the original particles are lost
@@ -8166,7 +8184,7 @@ c               The distribution is uniform between -delta/2 and +delta/2.
 c - condid: id of conductor - only particles that are lost on the specified
 c           conductor generate new particles.
 
-      INTEGER :: ip,i1,i2,ir
+      INTEGER :: ip,i1,i2,ir,nbpt
       REAL(8) :: gamma, uz_tmp
       REAL(8), EXTERNAL :: wranf
 
@@ -8178,12 +8196,13 @@ c           conductor generate new particles.
         else
           uz_tmp = SQRT(2.*wp*echarge/sm(is2))
         END if
-        call chckpart(is2,0,nbp*npslost(is1),.false.)
         do ip = inslost(is1), inslost(is1)+npslost(is1)-1
           if (condid > 0 .and. pidlost(ip,npidlostmax) .ne. condid) cycle
+          nbpt = int(nbp+wranf())
           i1 = ins(is2) + nps(is2)
-          i2 = i1 + nbp - 1
-          do ir = 1, nbp
+          i2 = i1 + nbpt - 1
+          call chckpart(is2,0,nbpt,.false.)
+          do ir = 1, nbpt
             xp(i1+ir-1) = xplost(ip)+shiftx+(wranf()-0.5)*deltax
             yp(i1+ir-1) = yplost(ip)+shifty+(wranf()-0.5)*deltay
             zp(i1+ir-1) = zplost(ip)+shiftz+(wranf()-0.5)*deltaz
@@ -8194,9 +8213,11 @@ c           conductor generate new particles.
           end do
           uxp(i1:i2) = (wranf()-0.5)*uz_tmp
           uyp(i1:i2) = (wranf()-0.5)*uz_tmp
+!          uzp(i1:i2) = (wranf()-0.5)*uz_tmp !old
           uzp(i1:i2) = -abs((wranf()-0.5)*uz_tmp)
           if(wpid>0) pid(i1:i2,wpid) = pidlost(ip,wpid)
-          nps(is2) = nps(is2) + nbp
+          gaminv(i1:i2) = 1./sqrt(1.+(uxp(i1:i2)**2+uyp(i1:i2)**2+uzp(i1:i2)**2)/clight**2)
+          nps(is2) = nps(is2) + nbpt
         end do
 
       return
