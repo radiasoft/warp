@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.40 $, $Date: 2002/08/27 23:15:23 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.41 $, $Date: 2002/09/12 23:28:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1961,7 +1961,7 @@ c     --- Sort the conductor data by level number
 c     --- First, sort conductor points
       if (ncond > 0) then
         allocate(isort(ncond))
-        call isortconductor(ncond,icondlevel,isort,icstart)
+        call isortconductor(ncond,icondlevel,isort,icstart,mglevels)
         nn = ncond
         ncond = maxval(icstart) - 1
         call iswapconductor(ncond,isort,nn,ixcond)
@@ -1976,7 +1976,7 @@ c     --- First, sort conductor points
 c     --- Sort even subgrid points
       if (necndbdy > 0) then
         allocate(isort(necndbdy))
-        call isortconductor(necndbdy,iecndlevel,isort,ecstart)
+        call isortconductor(necndbdy,iecndlevel,isort,ecstart,mglevels)
         nn = necndbdy
         necndbdy = maxval(ecstart) - 1
         call iswapconductor(necndbdy,isort,nn,iecndx)
@@ -2009,7 +2009,7 @@ c     --- Sort even subgrid points
 c     --- Sort odd subgrid points
       if (nocndbdy > 0) then
         allocate(isort(nocndbdy))
-        call isortconductor(nocndbdy,iocndlevel,isort,ocstart)
+        call isortconductor(nocndbdy,iocndlevel,isort,ocstart,mglevels)
         nn = nocndbdy
         nocndbdy = maxval(ocstart) - 1
         call iswapconductor(nocndbdy,isort,nn,iocndx)
@@ -2042,29 +2042,25 @@ c     --- Sort odd subgrid points
       return
       end
 c=============================================================================
-      subroutine isortconductor(nc,condlevel,isort,icstart)
+      subroutine isortconductor(nc,condlevel,isort,icstart,levels)
       integer(ISZ):: nc
       integer(ISZ):: condlevel(nc),isort(nc),icstart(0:100)
+      integer(ISZ):: levels
 
 c     --- Sort the conductor data by level number
       integer(ISZ):: ilevel,nlevel,ii,ic
 
-      icstart = 0
-      ilevel = 0
-      nlevel = 1
-      ii = 0
-      do while (nlevel > 0)
-        icstart(ilevel) = ii + 1
-        nlevel = ii
+      ii = 1
+      do ilevel=0,levels-1
+        icstart(ilevel) = ii
         do ic=1,nc
           if (condlevel(ic) == ilevel) then
-            ii = ii + 1
             isort(ii) = ic
+            ii = ii + 1
           endif
         enddo
-        nlevel = ii - nlevel
-        ilevel = ilevel + 1
       enddo
+      icstart(levels) = ii
 
       return
       end
