@@ -42,7 +42,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.27 2003/04/29 16:17:39 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.28 2003/06/19 20:31:43 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -61,7 +61,8 @@ except:
 
 ##############################################################################
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
-                        zmin=None,zmax=None,dfill=top.largepos):
+                        zmin=None,zmax=None,dfill=top.largepos,
+                        installrz=1):
   """
 Installs the given conductors.
   - a: the assembly of conductors
@@ -77,7 +78,7 @@ Installs the given conductors.
   # Generate the conductor data
   g.getdata(a,dfill)
   # Then install it
-  g.installdata()
+  g.installdata(installrz)
 
 ##############################################################################
 ##############################################################################
@@ -392,7 +393,7 @@ has already been called.
     self.mglevel[n1:n1+n2] = d.mglevel[:n2]
     self.ndata = n1 + n2
 
-  def install(self):
+  def install(self,installrz=1):
     """
 Installs the data into the WARP database
     """
@@ -480,7 +481,7 @@ Installs the data into the WARP database
       f3d.ocvolt[no:no+nn] = take(self.vs[0,:],ii)
       f3d.ocnumb[no:no+nn] = take(self.ns[0,:],ii)
       f3d.iocndlevel[no:no+nn] = take(self.mglevel,ii)
-    if ntot > 0:
+    if ntot > 0 and installrz:
       if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
         frz.install_conductors_rz()
 
@@ -790,11 +791,11 @@ Assembly on this grid.
     self.generatetime = endtime - starttime
     #print tt2
 
-  def installdata(self):
+  def installdata(self,installrz=1):
     """
 Installs the conductor data into the fortran database
     """
-    self.dall.install()
+    self.dall.install(installrz)
     f3d.gridmode = 1
 
   def getdistances(self,a,mglevel=0):
