@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.78 $, $Date: 2003/07/16 17:18:09 $
+c@(#) File F3D.M, version $Revision: 3.79 $, $Date: 2003/07/21 21:34:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
