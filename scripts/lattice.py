@@ -39,7 +39,7 @@ from warp import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.26 2004/01/27 22:42:46 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.27 2004/03/03 16:38:52 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -194,7 +194,7 @@ class Elem:
 Base class for the lattice classes. Should never be directly called.
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,
-               offset_x=0,offset_y=0,error_type=''):
+               offset_x=0,offset_y=0,ol=0,error_type=''):
     self.l = l
     self.length = length
     self.zs = zs
@@ -204,6 +204,7 @@ Base class for the lattice classes. Should never be directly called.
     self.ap = ap
     self.ax = ax
     self.ay = ay
+    self.ol = ol
     self.offset_x = offset_x
     self.offset_y = offset_y
     self.error_type = error_type
@@ -247,8 +248,7 @@ Base class for the lattice classes. Should never be directly called.
 
 class Marker(Elem):
   """
-Creates an instance of a Marker lattice element. It currently takes up no space and has
-no attributes.
+Creates an instance of a Marker lattice element. It currently takes up no space and has no attributes.
   """
   def __init__(self):
     Elem.__init__(self)
@@ -266,14 +266,15 @@ Creates an instance of a Drft lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type=''):
+               ol=0,error_type=''):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Drft'
   def install(self,zz):
     top.ndrft = top.ndrft + 1
@@ -289,6 +290,7 @@ Creates an instance of a Drft lattice element.
     top.drftay[top.ndrft] = self.ay
     top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
     top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    top.drftol[top.ndrft] = self.ol
     return top.drftze[top.ndrft]
 
 class Bend(Elem):
@@ -302,16 +304,17 @@ Creates an instance of a Bend lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - rc=1.e36 radius of curvature of the bend
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                rc=1.e36):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Bend'
     self.rc = rc
   def install(self,zz):
@@ -329,6 +332,7 @@ Creates an instance of a Bend lattice element.
     top.benday[top.nbend] = self.ay
     #top.bendox[top.nbend] = self.offset_x*errordist(self.error_type)
     #top.bendoy[top.nbend] = self.offset_y*errordist(self.error_type)
+    top.bendol[top.nbend] = self.ol
     top.bendrc[top.nbend] = self.rc
     return top.bendze[self.ibend]
 
@@ -343,6 +347,7 @@ Creates an instance of a Dipo lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - ex=0 Ex field (V/m)
@@ -361,12 +366,12 @@ Creates an instance of a Dipo lattice element.
   - w2=0 width of second electric plate
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                ex=0,ey=0,bx=0,by=0,ta=0,tb=0,
                x1=0,x2=0,v1=0,v2=0,l1=0,l2=0,w1=0,w2=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Dipo'
     for xx in ['ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
                'l1','l2','w1','w2']:
@@ -383,6 +388,7 @@ Creates an instance of a Dipo lattice element.
     top.dipoze[top.ndipo] = top.dipozs[top.ndipo] + self.length
     #top.dipoox[top.ndipo] = self.offset_x*errordist(self.error_type)
     #top.dipooy[top.ndipo] = self.offset_y*errordist(self.error_type)
+    top.dipool[top.ndipo] = self.ol
     for xx in ['ap','ax','ay','ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
                'l1','l2','w1','w2']:
       aa = top.getpyobject('dipo'+xx)
@@ -400,6 +406,7 @@ Creates an instance of a Quad lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - de=0 electric field gradient (V/m**2)
@@ -415,11 +422,11 @@ Creates an instance of a Quad lattice element.
   - pr=0 plate outer radius of an electric quad
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                de=0,db=0,vx=0,vy=0,rr=0,rl=0,gl=0,gp=0,pw=0,pa=0,pr=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Quad'
     for xx in ['de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
       self.__dict__[xx] = locals()[xx]
@@ -435,6 +442,7 @@ Creates an instance of a Quad lattice element.
     top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
     top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
     top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
+    top.quadol[top.nquad] = self.ol
     for xx in ['ap','ax','ay','de','db','vx','vy','rr','rl','gl','gp',
                'pw','pa','pr']:
       aa = top.getpyobject('quad'+xx)
@@ -452,17 +460,18 @@ Creates an instance of a Sext lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - de=0 electric field gradient
   - db=0 magnetic field gradient
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                de=0,db=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Sext'
     self.de = de
     self.db = db
@@ -479,6 +488,7 @@ Creates an instance of a Sext lattice element.
    #top.sextap[top.nsext] = self.ap
     top.sextox[top.nsext] = self.offset_x*errordist(self.error_type)
     top.sextoy[top.nsext] = self.offset_y*errordist(self.error_type)
+    top.sextol[top.nsext] = self.ol
     top.sextde[top.nsext] = self.de
     top.sextdb[top.nsext] = self.db
     return top.sextze[top.nsext]
@@ -494,6 +504,7 @@ Creates an instance of a Hele lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - nn=[] list of n indices of multipole components
@@ -512,12 +523,12 @@ Creates an instance of a Hele lattice element.
   - pa=0 plate aperture of an electric quad
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                nn=[],vv=[],ae=[],am=[],ep=[],mp=[],pe=[],pm=[],
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Hele'
     self.nn = nn
     self.vv = vv
@@ -560,6 +571,7 @@ Creates an instance of a Hele lattice element.
     top.heleay[top.nhele] = self.ay
     top.heleox[top.nhele] = self.offset_x*errordist(self.error_type)
     top.heleoy[top.nhele] = self.offset_y*errordist(self.error_type)
+    top.heleol[top.nhele] = self.ol
     top.helerr[top.nhele] = self.rr
     top.helerl[top.nhele] = self.rl
     top.helegl[top.nhele] = self.gl
@@ -587,6 +599,7 @@ Creates an instance of a Accl lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - ez=0 time independent accelerating gradient (V/m)
@@ -597,11 +610,11 @@ Creates an instance of a Accl lattice element.
   - dt=0 time increment in the time dependent accelerating gradient data (s)
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                ez=0,xw=0,sw=0,et=[],ts=0,dt=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Accl'
     self.ez = ez
     self.xw = xw
@@ -630,6 +643,7 @@ Creates an instance of a Accl lattice element.
     top.acclay[top.naccl] = self.ay
     top.acclox[top.naccl] = self.offset_x*errordist(self.error_type)
     top.accloy[top.naccl] = self.offset_y*errordist(self.error_type)
+    top.acclol[top.naccl] = self.ol
     top.acclez[top.naccl] = self.ez
     top.acclxw[top.naccl] = self.xw
     top.acclsw[top.naccl] = self.sw
@@ -650,6 +664,7 @@ Creates an instance of a Emlt lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - ph=0 overal phase angle
@@ -673,13 +688,13 @@ Or specify the data set
   - vv=[] v indices
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                id=None,dz=0,e=[],ep=[],eph=[],nn=[],vv=[],ph=0,sf=0,sc=1,
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     assert (e or ep) or (id is not None),"A data set or id must be given"
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Emlt'
     self.dz = dz
     self.e = e
@@ -752,6 +767,7 @@ Or specify the data set
     top.emltay[top.nemlt] = self.ay
     top.emltox[top.nemlt] = self.offset_x*errordist(self.error_type)
     top.emltoy[top.nemlt] = self.offset_y*errordist(self.error_type)
+    top.emltol[top.nemlt] = self.ol
     top.emltph[top.nemlt] = self.ph
     top.emltsf[top.nemlt] = self.sf
     top.emltsc[top.nemlt] = self.sc
@@ -777,6 +793,7 @@ Creates an instance of a Mmlt lattice element.
   - ae=0 z end of aperture (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - ph=0 overal phase angle
@@ -795,12 +812,12 @@ Or specify the data set
   - vv=[] v indices
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,as=0.,ae=0.,
-               ox=0,oy=0,error_type='',
+               ox=0,oy=0,ol=0,error_type='',
                id=None,dz=0,m=[],mp=[],mph=[],nn=[],vv=[],ph=0,sf=0,sc=1):
     assert (m or mp) or (id is not None),"A data set or id must be given"
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Mmlt'
     self.as = as
     self.ae = ae
@@ -871,6 +888,7 @@ Or specify the data set
     top.mmltae[top.nmmlt] = self.ae
     top.mmltox[top.nmmlt] = self.offset_x*errordist(self.error_type)
     top.mmltoy[top.nmmlt] = self.offset_y*errordist(self.error_type)
+    top.mmltol[top.nmmlt] = self.ol
     top.mmltph[top.nmmlt] = self.ph
     top.mmltsf[top.nmmlt] = self.sf
     top.mmltsc[top.nmmlt] = self.sc
@@ -888,6 +906,7 @@ Creates an instance of a Bgrd lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - sf=0 relative scaling factor
@@ -905,12 +924,12 @@ Or specify the data set
   - dz=0 z increment size (m)
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                id=None,sf=0,sc=1,bx=[],by=[],bz=[],dx=0,dy=0,dz=0):
     assert (bx or by or bz) or (id is not None),"A data set or id must be given"
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Bgrd'
     self.sf = sf
     self.sc = sc
@@ -963,6 +982,7 @@ Or specify the data set
     top.bgrday[top.nbgrd] = self.ay
     top.bgrdox[top.nbgrd] = self.offset_x*errordist(self.error_type)
     top.bgrdoy[top.nbgrd] = self.offset_y*errordist(self.error_type)
+    top.bgrdol[top.nbgrd] = self.ol
     top.bgrdsf[top.nbgrd] = self.sf
     top.bgrdsc[top.nbgrd] = self.sc
     top.bgrdid[top.nbgrd] = self.id
@@ -979,6 +999,7 @@ Creates an instance of a Pgrd lattice element.
   - ay=0 aperture in y (can affect location of transverse boundaries)
   - ox=0 offset in x (can affect location of transverse boundaries)
   - oy=0 offset in y (can affect location of transverse boundaries)
+  - ol=0 when set to -1, overlaps of the element with others is ignored
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - sf=0 relative scaling factor
@@ -1002,13 +1023,13 @@ Or specify the data set
   - dz=0 z increment size (m)
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ax=0,ay=0,ox=0,oy=0,
-               error_type='',
+               ol=0,error_type='',
                id=None,sf=0,sc=1,pp=[],xs=0,ys=0,dx=0,dy=0,dz=0,
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
     assert (pp) or (id is not None),"A data set or id must be given"
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=ap,ax=ax,ay=ay,
-                  offset_x=ox,offset_y=oy,error_type=error_type)
+                  offset_x=ox,offset_y=oy,ol=ol,error_type=error_type)
     self.type = 'Pgrd'
     self.sf = sf
     self.sc = sc
@@ -1062,6 +1083,7 @@ Or specify the data set
     top.pgrdys[top.npgrd] = self.ys
     top.pgrdox[top.npgrd] = self.offset_x*errordist(self.error_type)
     top.pgrdoy[top.npgrd] = self.offset_y*errordist(self.error_type)
+    top.pgrdol[top.npgrd] = self.ol
     top.pgrdsf[top.npgrd] = self.sf
     top.pgrdsc[top.npgrd] = self.sc
     top.pgrdrr[top.npgrd] = self.rr
@@ -1077,11 +1099,11 @@ Or specify the data set
 # HIBEAM elements
 #----------------------------------------------------------------------------
 class drift(Elem):
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,error_type='',
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,ol=0,error_type='',
                offset_x=0,offset_y=0,i_cap_pointer=0,n_cap_nodes=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=aperture,
-                  offset_x=offset_x,offset_y=offset_y,error_type=error_type)
+                  offset_x=offset_x,offset_y=offset_y,ol=ol,error_type=error_type)
     self.type = 'drift'
     self.i_cap_pointer = i_cap_pointer
     self.n_cap_nodes = n_cap_nodes
@@ -1098,15 +1120,16 @@ class drift(Elem):
     top.drftap[top.ndrft] = self.ap
     top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
     top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    top.drftol[top.ndrft] = self.ol
     return top.drftze[top.ndrft]
 
 class box(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,
-               width_x=0,width_y=0,error_type='',
+               width_x=0,width_y=0,ol=0,error_type='',
                offset_x=0,offset_y=0,i_cap_pointer=0,n_cap_nodes=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=aperture,
-                  offset_x=offset_x,offset_y=offset_y,error_type=error_type)
+                  offset_x=offset_x,offset_y=offset_y,ol=ol,error_type=error_type)
     self.type = 'box'
     self.width_x = width_x
     self.width_y = width_y
@@ -1130,16 +1153,17 @@ class box(Elem):
     top.drftap[top.ndrft] = -self.ap
     top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
     top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    top.drftol[top.ndrft] = self.ol
     return top.drftze[top.ndrft]
 
 class quad(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,
                voltage=0,gradient=0,r_elem=0,
-               offset_x=0,offset_y=0,error_type='',
+               offset_x=0,offset_y=0,ol=0,error_type='',
                i_cap_pointer=0,n_cap_nodes=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=aperture,
-                  offset_x=offset_x,offset_y=offset_y,error_type=error_type)
+                  offset_x=offset_x,offset_y=offset_y,ol=ol,error_type=error_type)
     self.type = 'quad'
     self.voltage = voltage
     self.gradient = gradient
@@ -1170,15 +1194,16 @@ class quad(Elem):
     top.quadrr[top.nquad] = self.r_elem
     top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
     top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
+    top.quadol[top.nquad] = self.ol
     return top.quadze[top.nquad]
 
 class hyperb(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,voltage=0,
-               r_elem=0,offset_x=0,offset_y=0,error_type='',
+               r_elem=0,offset_x=0,offset_y=0,ol=0,error_type='',
                i_cap_pointer=0,n_cap_nodes=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=aperture,
-                  offset_x=offset_x,offset_y=offset_y,error_type=error_type)
+                  offset_x=offset_x,offset_y=offset_y,ol=ol,error_type=error_type)
     self.type = 'hyperb'
     self.voltage = voltage
     self.r_elem = r_elem
@@ -1197,16 +1222,17 @@ class hyperb(Elem):
     top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
     top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
     top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
+    top.quadol[top.nquad] = self.ol
     top.quadde[top.nquad] = self.gradient
     top.quadap[top.nquad] = -self.ap
     return top.quadze[top.nquad]
 
 class wire(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,
-               offset_x=0,offset_y=0,error_type=''):
+               offset_x=0,offset_y=0,ol=0,error_type=''):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
                   ap=aperture,
-                  offset_x=offset_x,offset_y=offset_y,error_type=error_type)
+                  offset_x=offset_x,offset_y=offset_y,ol=ol,error_type=error_type)
     self.type = 'wire'
   def install(self,zz):
     top.ndrft = top.ndrft + 1
@@ -1221,6 +1247,7 @@ class wire(Elem):
     top.drftap[top.ndrft] = self.ap
     top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
     top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    top.drftol[top.ndrft] = self.ol
     return top.drftze[top.ndrft]
 
 ############################################################################
