@@ -1,5 +1,5 @@
 from warp import *
-pzplots_version = "$Id: pzplots.py,v 1.6 2001/06/18 20:45:55 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.7 2001/08/28 16:21:10 dave Exp $"
 
 def pzplotsdoc():
   print """
@@ -77,7 +77,7 @@ def pzpnum(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots pnumz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -91,7 +91,7 @@ def pzpnum(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.pnumz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.pnumz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("No. of simulation particles versus Z",titleb,"(number)")
 
@@ -101,7 +101,7 @@ def pzppcell(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots number of particles per cell versus z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -116,7 +116,7 @@ def pzppcell(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
   ppcell = top.pnumz/(pi*top.xrmsz*top.yrmsz/(w3d.dx*w3d.dy))
-  warpplg(ppcell,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(ppcell,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("No. of particles per cell versus Z",titleb,"(number)")
 
@@ -126,7 +126,7 @@ def pzxbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -140,7 +140,7 @@ def pzxbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean X coordinate versus Z",titleb,"(m)")
 
@@ -150,7 +150,7 @@ def pzybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots ybarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -164,7 +164,7 @@ def pzybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.ybarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.ybarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Y coordinate versus Z",titleb,"(m)")
 
@@ -174,7 +174,7 @@ def pzzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots zbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -188,7 +188,7 @@ def pzzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.zbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.zbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean axial location versus Z",titleb,"(m)")
 
@@ -198,7 +198,7 @@ def pzxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xpbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -212,7 +212,7 @@ def pzxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xpbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xpbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean X' versus Z",titleb,"(rad)")
 
@@ -222,7 +222,7 @@ def pzypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots ypbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -236,7 +236,7 @@ def pzypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.ypbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.ypbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Y' versus Z",titleb,"(rad)")
 
@@ -246,7 +246,7 @@ def pzvxbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vxbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -260,7 +260,7 @@ def pzvxbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vxbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vxbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Vx versus Z",titleb,"(m/s)")
 
@@ -270,7 +270,7 @@ def pzvybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vybarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -284,7 +284,7 @@ def pzvybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vybarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vybarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Vy versus Z",titleb,"(m/s)")
 
@@ -294,7 +294,7 @@ def pzvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vzbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -308,7 +308,7 @@ def pzvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vzbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Vz versus Z",titleb,"(m/s)")
 
@@ -318,7 +318,7 @@ def pzxybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xybarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -332,7 +332,7 @@ def pzxybar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xybarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xybarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of X  and Y  versus Z",titleb,"(m^2)")
 
@@ -342,7 +342,7 @@ def pzxypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xypbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -356,7 +356,7 @@ def pzxypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xypbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xypbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of X  and Y' versus Z",titleb,"(m-rad)")
 
@@ -366,7 +366,7 @@ def pzyxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots yxpbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -380,7 +380,7 @@ def pzyxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.yxpbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.yxpbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of Y  and X' versus Z",titleb,"(m-rad)")
 
@@ -390,7 +390,7 @@ def pzxpypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xpypbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -404,7 +404,7 @@ def pzxpypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xpypbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xpypbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of X' and Y' versus Z",titleb,"(rad^2)")
 
@@ -414,7 +414,7 @@ def pzxsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xsqbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -428,7 +428,7 @@ def pzxsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xsqbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean X-squared versus Z",titleb,"(m^2)")
 
@@ -438,7 +438,7 @@ def pzysqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots ysqbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -452,7 +452,7 @@ def pzysqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.ysqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.ysqbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Y-squared versus Z",titleb,"(m^2)")
 
@@ -462,7 +462,7 @@ def pzzsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots zsqbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -476,7 +476,7 @@ def pzzsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.zsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.zsqbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Z-squared versus Z",titleb,"(m^2)")
 
@@ -486,7 +486,7 @@ def pzxpsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xpsqbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -500,7 +500,7 @@ def pzxpsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xpsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xpsqbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean X' squared versus Z",titleb,"(rad^2)")
 
@@ -510,7 +510,7 @@ def pzypsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots ypsqbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -524,7 +524,7 @@ def pzypsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.ypsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.ypsqbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Y' squared versus Z",titleb,"(rad^2)")
 
@@ -534,7 +534,7 @@ def pzvxsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vxsqbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -548,7 +548,7 @@ def pzvxsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vxsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vxsqbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Vx squared versus Z",titleb,"((m/s)^2)")
 
@@ -558,7 +558,7 @@ def pzvysqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vysqbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -572,7 +572,7 @@ def pzvysqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vysqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vysqbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Vy squared versus Z",titleb,"((m/s)^2)")
 
@@ -582,7 +582,7 @@ def pzvzsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vzsqbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -596,7 +596,7 @@ def pzvzsqbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vzsqbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vzsqbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean Vz squared versus Z",titleb,"((m/s)^2)")
 
@@ -606,7 +606,7 @@ def pzxxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xxpbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -620,7 +620,7 @@ def pzxxpbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xxpbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xxpbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of X and X' versus Z",titleb,"(m-rad)")
 
@@ -630,7 +630,7 @@ def pzyypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots yypbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -644,7 +644,7 @@ def pzyypbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.yypbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.yypbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of Y and Y' versus Z",titleb,"(m-rad)")
 
@@ -654,7 +654,7 @@ def pzzvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots zvzbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -668,7 +668,7 @@ def pzzvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.zvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.zvzbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of Z and Vz versus Z",titleb,"(m^2/s)")
 
@@ -678,7 +678,7 @@ def pzxvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xvzbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -692,7 +692,7 @@ def pzxvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xvzbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of X and Vz versus Z",titleb,"(m^2/s)")
 
@@ -702,7 +702,7 @@ def pzyvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots yvzbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -716,7 +716,7 @@ def pzyvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.yvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.yvzbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of Y and Vz versus Z",titleb,"(m^2/s)")
 
@@ -726,7 +726,7 @@ def pzvxvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vxvzbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -740,7 +740,7 @@ def pzvxvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vxvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vxvzbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of Vx and Vz versus Z",titleb,"((m/s)^2)")
 
@@ -750,7 +750,7 @@ def pzvyvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vyvzbarz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -764,7 +764,7 @@ def pzvyvzbar(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vyvzbarz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vyvzbarz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Mean product of Vy and Vz versus Z",titleb,"((m/s)^2)")
 
@@ -774,7 +774,7 @@ def pzxrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xrmsz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -788,7 +788,7 @@ def pzxrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xrmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("RMS X versus Z",titleb,"(m)")
 
@@ -798,7 +798,7 @@ def pzyrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots yrmsz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -812,7 +812,7 @@ def pzyrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.yrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.yrmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("RMS Y versus Z",titleb,"(m)")
 
@@ -822,7 +822,7 @@ def pzzrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots zrmsz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -836,7 +836,7 @@ def pzzrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.zrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.zrmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("RMS Z versus Z",titleb,"(m)")
 
@@ -846,7 +846,7 @@ def pzxprms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots xprmsz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -860,7 +860,7 @@ def pzxprms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xprmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.xprmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("RMS X' versus Z",titleb,"(rad)")
 
@@ -870,7 +870,7 @@ def pzyprms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots yprmsz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -884,7 +884,7 @@ def pzyprms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.yprmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.yprmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("RMS Y' versus Z",titleb,"(rad)")
 
@@ -894,7 +894,7 @@ def pzepsx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epsxz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -908,7 +908,7 @@ def pzepsx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epsxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epsxz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("X-X' emittance versus Z",titleb,"(pi-m-rad)")
 
@@ -918,7 +918,7 @@ def pzepsy(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epsyz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -932,7 +932,7 @@ def pzepsy(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epsyz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epsyz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Y-Y' emittance versus Z",titleb,"(pi-m-rad)")
 
@@ -942,7 +942,7 @@ def pzepsz(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epszz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -956,7 +956,7 @@ def pzepsz(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epszz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epszz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Z-Z' emittance versus Z",titleb,"(pi-m-rad)")
 
@@ -966,7 +966,7 @@ def pzepsnx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epsnxz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -980,7 +980,7 @@ def pzepsnx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epsnxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epsnxz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("X-X' normalized emittance versus Z",titleb,"(pi-mm-mrad)")
 
@@ -990,7 +990,7 @@ def pzepsny(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epsnyz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1004,7 +1004,7 @@ def pzepsny(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epsnyz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epsnyz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Y-Y' normalized emittance versus Z",titleb,"(pi-mm-mrad)")
 
@@ -1014,7 +1014,7 @@ def pzepsnz(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epsnzz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1028,7 +1028,7 @@ def pzepsnz(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epsnzz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epsnzz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Z-Z' normalized emittance versus Z",titleb,"(pi-mm-mrad)")
 
@@ -1038,7 +1038,7 @@ def pzepsg(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epsgz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1052,7 +1052,7 @@ def pzepsg(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epsgz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epsgz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Generalized emittance versus Z",titleb,"(pi-m-rad)")
 
@@ -1062,7 +1062,7 @@ def pzepsh(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epshz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1076,7 +1076,7 @@ def pzepsh(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epshz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epshz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Generalized emittance versus Z",titleb,"(pi-m-rad)")
 
@@ -1086,7 +1086,7 @@ def pzepsng(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epsngz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1100,7 +1100,7 @@ def pzepsng(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epsngz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epsngz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Generalized normalized emittance versus Z",titleb,"(pi-mm-mrad)")
@@ -1111,7 +1111,7 @@ def pzepsnh(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots epsnhz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1125,7 +1125,7 @@ def pzepsnh(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.epsnhz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.epsnhz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles:
     ptitles("Generalized normalized emittance versus Z",titleb,"(pi-mm-mrad)")
@@ -1136,7 +1136,7 @@ def pzvxrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vxrmsz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1150,7 +1150,7 @@ def pzvxrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vxrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vxrmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("True RMS Vx versus Z",titleb,"(m/s)")
 
@@ -1160,7 +1160,7 @@ def pzvyrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vyrmsz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1174,7 +1174,7 @@ def pzvyrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vyrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vyrmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("True RMS Vy versus Z",titleb,"(m/s)")
 
@@ -1184,7 +1184,7 @@ def pzvzrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots vzrmsz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1198,7 +1198,7 @@ def pzvzrms(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.vzrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.vzrmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("True RMS Vz versus Z",titleb,"(m/s)")
 
@@ -1208,7 +1208,7 @@ def pzxxpslope(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plot slope of x-x' phase space versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1224,7 +1224,7 @@ def pzxxpslope(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
     else: titleb = "Z"
   sxz = (top.xxpbarz - top.xbarz*top.xpbarz)/ \
         where(greater(top.xrmsz,0.),top.xrmsz**2,1.)
-  warpplg(sxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(sxz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Slope of x-x' phase space",titleb,"(1)")
 
@@ -1234,7 +1234,7 @@ def pzyypslope(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plot slope of y-y' phase space versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1250,7 +1250,7 @@ def pzyypslope(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
     else: titleb = "Z"
   syz = (top.yypbarz - top.ybarz*top.ypbarz)/ \
         where(greater(top.yrmsz,0.),top.yrmsz**2,1.)
-  warpplg(syz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(syz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Slope of y-y' phase space",titleb,"(1)")
 
@@ -1260,7 +1260,7 @@ def pzrhomid(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots rhomidz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1274,7 +1274,7 @@ def pzrhomid(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.rhomidz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.rhomidz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge dens. on axis versus Z",titleb,"(C/m^3)")
 
@@ -1284,7 +1284,7 @@ def pzrhomax(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots rhomaxz along z-axis
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1298,7 +1298,7 @@ def pzrhomax(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.rhomaxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(top.rhomaxz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Charge dens. max-over-X,Y versus Z",titleb,"(C/m^3)")
 
@@ -1489,7 +1489,7 @@ def pzenvx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots beam X envelope (twice X rms) versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1503,7 +1503,7 @@ def pzenvx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(2.*top.xrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(2.*top.xrmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Beam X envelope (2*rms)",titleb,"(m)")
 pzxedge = pzenvx
@@ -1514,7 +1514,7 @@ def pzenvy(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots beam Y envelope (twice Y rms) versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1528,7 +1528,7 @@ def pzenvy(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(2.*top.yrmsz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(2.*top.yrmsz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Beam Y envelope (2*rms)",titleb,"(m)")
 pzyedge = pzenvy
@@ -1539,7 +1539,7 @@ def pzxedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots beam X edges (centroid +- twice X rms) versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1553,9 +1553,9 @@ def pzxedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.xbarz+2.*top.xrmsz,zoffset+top.zplmesh/zscale,color=color,
+  warpplg(top.xbarz+2.*top.xrmsz,zoffset+top.zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  warpplg(top.xbarz-2.*top.xrmsz,zoffset+top.zplmesh/zscale,color=color,
+  warpplg(top.xbarz-2.*top.xrmsz,zoffset+top.zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Beam X edges (xbar+-2*rms)",titleb,"(m)")
 
@@ -1565,7 +1565,7 @@ def pzyedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plots beam Y edges (centroid +- twice Y rms) versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1579,9 +1579,9 @@ def pzyedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   if titleb is None:
     if zscale == 1.: titleb = "Z (m)"
     else: titleb = "Z"
-  warpplg(top.ybarz+2.*top.yrmsz,zoffset+top.zplmesh/zscale,color=color,
+  warpplg(top.ybarz+2.*top.yrmsz,zoffset+top.zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
-  warpplg(top.ybarz-2.*top.yrmsz,zoffset+top.zplmesh/zscale,color=color,
+  warpplg(top.ybarz-2.*top.yrmsz,zoffset+top.zmntmesh/zscale,color=color,
           linetype=linetype,marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Beam Y edges (ybar+-2*rms)",titleb,"(m)")
 
@@ -1591,7 +1591,7 @@ def pzenvxp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plot beam X' envelope (2*xxpbar/xrms) versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1607,7 +1607,7 @@ def pzenvxp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
     else: titleb = "Z"
   sxz = 2.*(top.xxpbarz - top.xbarz*top.xpbarz)/ \
         where(greater(top.xrmsz,0.),top.xrmsz,1.)
-  warpplg(sxz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(sxz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Beam X' envelope",titleb,"(rad)")
 
@@ -1617,7 +1617,7 @@ def pzenvyp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
   """Plot beam Y' envelope (2*yypbar/yrms) versus Z
   - zoffset=0: offset added to axis
   - zscale=1: scale of axis
-    plots versus zoffset + top.zplmesh/zscale
+    plots versus zoffset + top.zmntmesh/zscale
   - color='fg': curve color
   - linetype='solid': line type
   - marks=0: turns on identifying marks on the curve
@@ -1633,7 +1633,7 @@ def pzenvyp(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
     else: titleb = "Z"
   syz = 2.*(top.yypbarz - top.ybarz*top.ypbarz)/ \
         where(greater(top.yrmsz,0.),top.yrmsz,1.)
-  warpplg(syz,zoffset+top.zplmesh/zscale,color=color,linetype=linetype,
+  warpplg(syz,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Beam Y' envelope",titleb,"(rad)")
 
