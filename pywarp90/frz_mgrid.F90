@@ -5743,7 +5743,7 @@ end subroutine addconductors_rz
 !=============================================================================
 subroutine gtlchgrz
 USE multigridrz
-use Subtimers
+use Subtimers3d
 use Picglb
 use InGen3d
 use Picglb3d
@@ -5850,7 +5850,7 @@ END SUBROUTINE dep_rho_rz
 
 subroutine rhoweightrz(xp,yp,zp,uzp,np,q,nr,nz,dr,dz,xmin,zmin)
 USE multigridrz
-USE Subtimers
+USE Subtimers3d
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nr, nz
@@ -5971,7 +5971,7 @@ END SUBROUTINE RHOWEIGHTRZ
 
 subroutine rhoweightz(zp,uzp,np,q,nz,dz)
 USE multigridrz
-USE Subtimers
+USE Subtimers3d
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np, nz
@@ -6357,7 +6357,7 @@ end subroutine rhobndrz
 
  subroutine perphirz()
  USE multigridrz
- use Subtimers
+ use Subtimers3d
  real(kind=8):: substarttime
  if (lw3dtimesubs) substarttime = wtime()
 
@@ -6705,7 +6705,7 @@ end subroutine fieldweightrzold
 
 subroutine fieldweightrz(xp,yp,zp,uzp,ex,ey,ez,np)
 USE multigridrz
-USE subtimers
+USE subtimers3d
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
@@ -6830,7 +6830,7 @@ end subroutine fieldweightrz
 
 subroutine fieldweightxz(xp,zp,uzp,ex,ez,np)
 USE multigridrz
-USE subtimers
+USE subtimers3d
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
@@ -6963,7 +6963,7 @@ end subroutine fieldweightxz
 
 subroutine fieldweightz(zp,uzp,ez,np)
 USE multigridrz
-USE subtimers
+USE subtimers3d
 implicit none
 
 INTEGER(ISZ), INTENT(IN) :: np
