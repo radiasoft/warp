@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.34 2004/09/28 23:28:17 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.35 2004/10/04 21:45:54 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -2567,12 +2567,14 @@ Plots the time dependent field of the accl element
     if not tcentered: tt = top.acclts[ii] + tt
     plg(top.acclet[:,ii]*ascale,tt*oscale,color=color)
 
-def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,**kw):
+def plotbgrd(ib=0,component=None,ix=None,iy=None,iz=None,withbends=1,**kw):
   """
 Plots the one of the field components in one of the planes
  - component: Component to plot, one of 'x', 'y', or 'z'.
  - ix, iy, iz: When one is set, plots the in the plane a that value.
                Each is an integer between 0 and bgrdnx, bgrdny, or bgrdnz.
+ - withbends=1: When true, account for bends and convert to the lab frame.
+                Only applies with iy specified.
 Accepts any keywords from ppgeneric for controller how the grid is plotted,
 such as contours, and cellarray.
   """
@@ -2611,7 +2613,8 @@ such as contours, and cellarray.
 
   xm,ym = getmesh2d(xs,dx,nx,ys,dy,ny)
 
-  if iy is not None and top.bends: tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
+  if withbends and iy is not None and top.bends:
+    tolabfrm(0.,(1+nx)*(1+ny),ym,xm)
 
   kw['xmesh'] = xm
   kw['ymesh'] = ym
