@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.11 2002/01/29 22:28:47 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.12 2002/11/07 21:26:12 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -17,7 +17,7 @@ done and no diagnostic moments are calculated. Creator arguments...
      is not specified, all the particles will use top.vbeam.
  - maxsteps=1000: an estimate of the number of steps taken. OK if value too
                   small
- - savedata=1: flag to turn on saving of particle trajectories
+ - savedata=1: frequency (in time steps) for saving of particle trajectories
  - zerophi=0: when true, w3d.phi is zero out
  - resettime=0: when true, time and beam frame location reset to initial values
  - js=0: species of particles
@@ -166,8 +166,9 @@ initial data.
     """Load data into fortran arrays"""
     if self.enabled: return
     self.enabled = 1
+    self.startit = top.it
     # --- make sure there is space
-    chckpart(0,0,self.nn,false)
+    chckpart(self.js+1,0,self.nn,false)
     # --- load the data
     ip1 = top.ins[self.js] - 1 + top.nps[self.js]
     top.nps[self.js] = top.nps[self.js] + self.nn
@@ -181,6 +182,15 @@ initial data.
     top.uyp[ip1:ip2] = self.vy
     top.uzp[ip1:ip2] = self.vz
     top.gaminv[ip1:ip2] = self.gi
+    # --- Enforce the particle boundary conditions
+    zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
+    stckxy3d(self.nn,top.xp[ip1:ip2],w3d.xmmax,w3d.xmmin,w3d.dx,
+             top.yp[ip1:ip2],w3d.ymmax,w3d.ymmin,
+             w3d.dy,top.zp[ip1:ip2],w3d.zmmin,w3d.dz,
+             top.uxp[ip1:ip2],top.uyp[ip1:ip2],top.uzp[ip1:ip2],
+             top.gaminv[ip1:ip2],top.zgrid,top.zbeam,top.nzzarr,
+             top.prwallz,top.prwallxz,top.prwallyz,
+             top.prwelips,w3d.l2symtry,w3d.l4symtry,top.zzmin,top.dzzi)
     # --- Add routine after step to save data
     installafterstep(self.spsavedata)
 
@@ -258,6 +268,7 @@ is not alive."""
     """Saves data"""
     self.checklive()
     if not self.savedata: return
+    if (top.it - self.startit) % self.savedata != 0: return
     for i in xrange(self.nn):
       if self.live[i]:
         self.spt[i].append(top.time)
