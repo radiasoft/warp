@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.130 2004/09/10 17:29:52 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.131 2004/09/24 18:29:27 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1178,18 +1178,41 @@ values from zmin to zmax.
 
 #############################################################################
 #############################################################################
-def changepalette(returnpalette=0,help=0,view=1):
+def writepalette(filename,r,g,b,comments=None):
+  """
+Write a palette to the file
+  - filename: the file to write the palette to, note that '.gp' is appended
+  - r,g,b: lists of colors to write out
+           They must be integers between 0 and 255. No checking is done!
+  - comments=None: optional comments to write to the file.
+  """
+  ff = open(filename+'.gp','w')
+  ff.write('# gist palette '+filename+'.gp\n')
+  if comments is not None: ff.write('# '+comments+'\n')
+  ff.write('ncolors = %d\n'%len(r))
+  for ri,gi,bi in zip(r,g,b):
+    ff.write('%8d%8d%8d\n'%(ri,gi,bi))
+  ff.close()
+
+#############################################################################
+def changepalette(returnpalette=0,filename='newpalette',help=0,view=1):
   """
 Dynamically change the color palette.
   - returnpalette=0: when true, returns tuple of (red, green, blue)
+  - filename='newpalette': the palette will be written to the file
+                           when requested
   - help=0: when true, prints this message
+  """
+  print """
 Mouse actions:
   Button 1: shifts a point, compressing and stretching the rest of the colors
   Button 2: reset palette to original
   Button 3: shifts a point, sliding the colors up and down
-  Shift Button 1: reverse the palette
   Control Button 1: add black point
   Control Button 3: add white point
+  Shift Button 1: reverse the palette
+  Shift Button 2: writes the palette to the file, defaults to newpalette.gp
+  Shift Button 3: quits
   """
   # --- Print out help if wanted
   if help: print changepalette.__doc__
@@ -1213,7 +1236,7 @@ Mouse actions:
   whitelist = []
   while 1:
     mm = mouse(0,0,"")
-    if mm == None: break
+    if mm == None or (mm[9] == 3 and mm[10] == 1): break
     # --- Get mouse positions. Skip if outside the colorbar
     (x1, y1, x2, y2) = tuple(mm[:4])
     if x1 < xmin or x1 > xmax or x2 < xmin or x2 > xmax: continue
@@ -1234,14 +1257,14 @@ Mouse actions:
         wold = iold - (199 -    ((199-i)*up))
         newcc[i] = cc[iold]*(1.-wold) + cc[iold-1]*wold
 
-    if mm[9] == 2:
+    if mm[9] == 2 and mm[10] == 0:
       # --- Button 2, no keys
       # --- Restore original palette
       newcc = arange(0,200)*1.
       blacklist = []
       whitelist = []
 
-    if mm[9] == 3:
+    if mm[9] == 3 and mm[10] == 0:
       # --- Button 3, no keys
       # --- slide whole palette
       i1 = nint((y1 - ymin)/(ymax - ymin)*200)
@@ -1256,6 +1279,11 @@ Mouse actions:
       # --- Button 1, shift
       # --- Reverse the palette
       newcc[:] = cc[::-1]
+
+    if mm[9] == 2 and mm[10] == 1:
+      # --- Button 2, shift
+      print 'Writing palette to '+filename+'.gp'
+      writepalette(filename,newrr,newgg,newbb)
 
     if mm[9] == 1 and mm[10] == 4:
       # --- button 1, control
@@ -1282,7 +1310,45 @@ Mouse actions:
     for ii in whitelist: (newrr[ii], newgg[ii], newbb[ii]) = 255,255,255
     cc[:] = newcc
     palette(newrr,newgg,newbb)
+
   if returnpalette: return (newrr,newgg,newbb)
+
+#############################################################################
+def makepalette(filename,points,comments=None,ncolor=240):
+  """
+Creates a palette. A list of rgb points is input and the palette created
+varies between the points.
+  - filename: the file to write the palette to, note that '.gp' is appended
+  - points: list of points, each point must be a list of the rgb values and
+            the number of steps to the next point. An optional 5th number
+            can be provided which is the exponent of the variation to the next
+            point. It defaults to 1, which mean linear.
+  - comments: an optional string of comments that is written to the file.
+An example:
+makepalette('blueorange',[[1,1,1,1],[0,0,.6,79],[0,.6,.6,80],[1,1,0,79],
+                          [1,.5,0]])
+This makes a palette that varies from blue to orange with points at cyan and
+yellow in the middle. Also, note that the vary lowest is point is forced to
+white by the first point, [1,1,1,1].
+  """
+  assert len(points) > 1,'Must specify at least 2 points'
+  icolor = 0
+  r,g,b = [],[],[]
+  for i in range(len(points)-1):
+    if len(points[i]) > 3: nc = points[i][3]
+    else:                  nc = ncolor - icolor
+    if len(points[i]) > 4: power = points[i][4]
+    else:                  power = 1.
+    s = span(0.,1.,nc+1)**power
+    r += list(nint((points[i][0] + (points[i+1][0] - points[i][0])*s[:-1])*255))
+    g += list(nint((points[i][1] + (points[i+1][1] - points[i][1])*s[:-1])*255))
+    b += list(nint((points[i][2] + (points[i+1][2] - points[i][2])*s[:-1])*255))
+    icolor = icolor + nc - 1
+  r += [nint(points[-1][0]*255)]
+  g += [nint(points[-1][1]*255)]
+  b += [nint(points[-1][2]*255)]
+  assert len(r) <= 240,'There can be at most 240 colors'
+  writepalette(filename,r,g,b,comments)
 
 #############################################################################
 #############################################################################
