@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.9 $, $Date: 2002/09/26 20:38:03 $
+c@(#) File CHO.F, version $Revision: 1.10 $, $Date: 2002/10/22 18:09:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -31,6 +31,12 @@ c     --- Warning: the following call will not work in parallel!
 
 #ifndef WITHCHOMBO
       subroutine returnphi(phiout)
+      double precision phiout(*)
+      print*,"no chombo routines"
+      return
+      end
+
+      subroutine returnphic(phiout)
       double precision phiout(*)
       print*,"no chombo routines"
       return

@@ -1,5 +1,5 @@
 cho
-#@(#) File CHO.V, version $Revision: 1.10 $, $Date: 2002/10/09 02:02:57 $
+#@(#) File CHO.V, version $Revision: 1.11 $, $Date: 2002/10/22 18:09:52 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package cho of code WARP6
@@ -9,7 +9,7 @@ cho
 }
 
 *********** CHOversion:
-verscho character*19 /"$Revision: 1.10 $"/#  Code version version is set by CVS
+verscho character*19 /"$Revision: 1.11 $"/#  Code version version is set by CVS
 
 *********** CHOHandle:
 cho_handle integer # Handle to the ChomboPIC package
