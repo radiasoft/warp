@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.60 $, $Date: 2002/10/26 00:24:26 $
+c@(#) File TOP.M, version $Revision: 3.61 $, $Date: 2002/11/05 22:05:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5593,13 +5593,22 @@ c       --- Live particles are shifted downward to fill in the empty spaces
       return
       end
 c=============================================================================
-      subroutine processlostpart(is,clearlostpart)
+      subroutine processlostpart(is,clearlostpart,time,zbeam)
+      use Constant
+      use Beam_acc
       use Particles
       use LostParticles
+      use Z_arrays
       integer(ISZ):: is,clearlostpart
+      real(kind=8):: time,zbeam
+
+c Processes lost particles, which are flagged by having gaminv set to zero.
+c The particle data is optionally saved. The velocities are set to zero and
+c the routine which clears out the lost particles is called.
 
       integer(ISZ):: nlost,i1,i2
-      integer(ISZ):: ip
+      integer(ISZ):: ip,iz
+      real(kind=8):: usq
 
       if (lsavelostpart) then
 
@@ -5620,6 +5629,16 @@ c     --- set to zero, the flag for scraped particles.
       do ip=ins(is),ins(is)+nps(is)-1
         if (gaminv(ip) == 0.) then
 
+c         --- Accumulate the array holding the location where particles
+c         --- are lost.
+          if (uzp(ip) /= 0.) then
+            iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
+            lostpars(iz) = lostpars(iz) + 1
+          endif
+
+c         --- If requested to save lost particles, do it. Particle data is
+c         --- only save if uzp /= 0, since if uzp is 0, the particle was
+c         --- lost on a previous step but wasn't cleared out of the array.
           if (lsavelostpart .and. uzp(ip) /= 0.) then
             i1 = inslost(is) + npslost(is)
             xplost(i1) = xp(ip)
@@ -5628,10 +5647,18 @@ c     --- set to zero, the flag for scraped particles.
             uxplost(i1) = uxp(ip)
             uyplost(i1) = uyp(ip)
             uzplost(i1) = uzp(ip)
+            if (lrelativ) then
+              usq = uxp(ip)**2 + uyp(ip)**2 + uzp(ip)**2
+              gaminvlost(i1) = 1./sqrt(1. + usq/clight**2)
+            else
+              gaminvlost(i1) = 1.
+            endif
+            tplost(i1) = time
             if (npmaxi == npmax) pidlost(i1,:) = pid(ip,:)
             npslost(is) = npslost(is) + 1
           endif
 
+c         --- Zero out the velocity, the flag for a lost particle.
           uxp(ip) = 0.0
           uyp(ip) = 0.0
           uzp(ip) = 0.0

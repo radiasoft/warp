@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.60 $, $Date: 2002/10/26 00:24:51 $
+#@(#) File TOP.V, version $Revision: 3.61 $, $Date: 2002/11/05 22:05:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.60 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.61 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1609,7 +1609,8 @@ uxplost(npmaxlost) _real [m/s]  # gamma * X-velocities of lost particles
 uyplost(npmaxlost) _real [m/s]  # gamma * Y-velocities of lost particles
 uzplost(npmaxlost) _real [m/s]  # gamma * Z-velocities of lost particles
 gaminvlost(npmaxlost) _real [1] # gamma inverse of lost particles
-pidlost(npmaxlost,npid) _integer [1] # Particle index of lost particles
+tplost(npmaxlost)  _real [s]    # time particles were lost
+pidlost(npmaxlost,npid) _real [1] # Particle index of lost particles
 
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation
@@ -1823,6 +1824,9 @@ addpart(nn:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,gi:real,
              subroutine # Adds new particles to the simulation
 clearpart(js:integer,fillmethod:integer)
              subroutine # Clears away lost particles.
+processlostpart(is:integer,clearlostpart:integer,time:real)
+             subroutine # Processes lost particles (particles which have
+                        # gaminv set to zero).
 load2d(np,x:real,y:real,nx,ny,n:real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
 shftpart(is:integer,ishft:integer) subroutine
