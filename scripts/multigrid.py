@@ -60,6 +60,17 @@ class MultiGrid:
     self.mgiters = 0
     self.mgerror = 0.
 
+  def copypkgtodict(self,pkg,varlist,dict):
+    for name in varlist:
+      dict[name] = getattr(pkg,name)
+
+  def copydicttopkg(self,pkg,varlist,dict):
+    for name in varlist:
+      if type(dict[name]) is ArrayType:
+        pkg.forceassign(name,dict[name])
+      else:
+        setattr(pkg,name,dict[name])
+
   def loadrho(self,ins_i=-1,nps_i=-1,is_i=-1,lzero=true):
     # --- First, save reference to w3d.rho and other fortran variables.
     w3dvars = ['rho','nx','ny','nz','nzfull','dx','dy','dz',
