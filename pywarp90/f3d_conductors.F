@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.47 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.48 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2525,8 +2525,9 @@ c     --- sizes from the input coordinates.
 c       --- First, get maximum extent of the cylinder
 c       --- This won't be very efficient for a long skinny cylinder, but it is
 c       --- gauranteed to work.
-        rmax = sqrt(rad(ic) + (length(ic)/2.)**2)
+        rmax = sqrt(rad(ic)**2 + (length(ic)/2.)**2)
         zz = z(1) - zcent(ic)
+        if (abs(zz) > rmax) cycle
         rmax = sqrt(rmax**2 - zz**2)
         ixmin = max(0 ,int((xcent(ic) - rmax - xmin)/dx) - 1)
         ixmax = min(nx,int((xcent(ic) + rmax - xmin)/dx) + 2)
@@ -3144,13 +3145,16 @@ c     --- sizes from the input coordinates.
 c       --- First, get maximum extent of cone
 c       --- This won't be very efficient for a long skinny cone, but it is
 c       --- gauranteed to work.
-        rmax = sqrt(max(r_zmin(ic),r_zmax(ic))**2 + (length(ic)/2.)**2)
+        rmax = sqrt(max(abs(r_zmin(ic)),abs(r_zmax(ic)))**2 +
+     &                  (length(ic)/2.)**2)
         zz = z(1) - zcent(ic)
+        if (abs(zz) > rmax) cycle
         rmax = sqrt(rmax**2 - zz**2)
         ixmin = max(0 ,int((xcent(ic) - rmax - xmin)/dx) - 1)
         ixmax = min(nx,int((xcent(ic) + rmax - xmin)/dx) + 2)
         iymin = max(0 ,int((ycent(ic) - rmax - ymin)/dy) - 1)
         iymax = min(ny,int((ycent(ic) + rmax - ymin)/dy) + 2)
+
 
 c       --- Generate grid points within the circumscribing rectangle
         ii = 0
