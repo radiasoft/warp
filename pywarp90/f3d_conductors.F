@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.28 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -4923,7 +4923,7 @@ c will intersect. From that, the location of the z intersection can be
 c calculated directly.
 
       integer(ISZ):: ii
-      real(kind=8):: r1,r2,zi
+      real(kind=8):: r1,r2,zi,z1
       logical(ISZ):: done
 
 c     --- Find the line segment which covers the range of z where the point is.
@@ -4950,23 +4950,27 @@ c     --- the r of the point.
           endif
         endif
         if (r1 <= rr .and. rr <= r2) then
-          done = .true.
-        else
-          ii = ii - istep
+c     --- Directly calculate the z intersection for this segment.
+          if (rad_sr(ii) == LARGEPOS) then
+            zi = (rr - r_sr(ii))*(z_sr(ii+1) - z_sr(ii))/
+     &           (r_sr(ii+1) - r_sr(ii)) + z_sr(ii)
+          else
+            z1 = sqrt(max(0.,rad_sr(ii)**2 - (rr-rc_sr(ii))**2))
+            zi = zc_sr(ii) + istep*z1
+            if ((zi > zz .and. istep == 1).or.(zi < zz .and. istep == -1)) then
+              zi = zc_sr(ii) - istep*z1
+            endif
+          endif
+c         --- Only accept this segment if the intersection is on the correct
+c         --- side of the point. Otherwise, try the next segment.
+          if ((zz > zi .and. istep == 1) .or. (zz < zi .and. istep == -1)) then
+            done = .true.
+            exit
+          endif
         endif
+        ii = ii - istep
       enddo
 
-c     --- Once the segment if found, the z intersection can be calculated
-c     --- directly.
-      if (rad_sr(ii) == LARGEPOS) then
-        zi = (rr - r_sr(ii))*(z_sr(ii+1) - z_sr(ii))/
-     &       (r_sr(ii+1) - r_sr(ii)) + z_sr(ii)
-      else
-        zi = zc_sr(ii) + sqrt(max(0.,rad_sr(ii)**2 - (rr-rc_sr(ii))**2))
-        if (zi > zz) then
-          zi = zc_sr(ii) - sqrt(max(0.,rad_sr(ii)**2 - (rr-rc_sr(ii))**2))
-        endif
-      endif
 
       linrzintersection = zi
 
