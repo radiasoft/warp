@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.58 $, $Date: 2002/09/14 01:23:33 $
+c@(#) File F3D.M, version $Revision: 3.59 $, $Date: 2002/09/21 00:33:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -8515,13 +8515,13 @@ c             --- Now calculate transverse distances.
 
 c             --- Calculate distances to surface of revolution.
               if (rrrmin+rfuzz < rad .and. rad <= rmin+rfuzz .and.
-     &            zmin <= zz .and. zz <= zmax) then
+     &            zmin-zfuzz <= zz .and. zz <= zmax+zfuzz) then
                 delmx = (sqrt(max(0.,rmin**2 - yy**2)) + xx)*dxi
                 delpx = (sqrt(max(0.,rmin**2 - yy**2)) - xx)*dxi
                 delmy = (sqrt(max(0.,rmin**2 - xx**2)) + yy)*dyi
                 delpy = (sqrt(max(0.,rmin**2 - xx**2)) - yy)*dyi
               elseif (rrrmax-rfuzz > rad .and. rad >= rmax-rfuzz .and.
-     &            zmin <= zz .and. zz <= zmax) then
+     &                zmin-zfuzz <= zz .and. zz <= zmax+zfuzz) then
                 if (yy**2 < rmax**2) then
                   delmx = ( xx - sqrt(max(0.,rmax**2 - yy**2)))*dxi
                   delpx = (-xx - sqrt(max(0.,rmax**2 - yy**2)))*dxi
