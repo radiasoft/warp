@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:09 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.1 $, $Date: 2001/04/19 23:48:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -42,7 +42,6 @@ c All dimensions, nx, ny, and nz, must be powers of 2.
 
 
       integer     :: nxy,nxyz,nxyz3
-c     real(kind=8):: res((nx+1)*(ny+1)*(nz+1)) # Replaced by array in Multigrid3d_res
       integer     :: log2nx,log2ny,log2nz
       real(kind=8):: maxerr
       real(kind=8):: dxsqi,dysqi,dzsqi,reps0c,rdel
@@ -55,10 +54,10 @@ c     --- Make sure that all dimensions are powers of 2.
       log2nx = log(real(nx))/log(2.)+0.5
       log2ny = log(real(ny))/log(2.)+0.5
       log2nz = log(real(nz))/log(2.)+0.5
-      if (2**log2nx .ne. nx .or. 2**log2ny .ne. ny .or. 2**log2nz .ne. nz) then
-        print*,"Multigrid: nx, ny, and nz must be powers of 2"
-        return
-      endif
+c     if (2**log2nx .ne. nx .or. 2**log2ny .ne. ny .or. 2**log2nz .ne. nz) then
+c       print*,"Multigrid: nx, ny, and nz must be powers of 2"
+c       return
+c     endif
 
 c     --- If iwhich equals zero or one, do initialization.
 c     --- psorinit does the same things that mginit would do
@@ -99,7 +98,8 @@ c     --- for rho.
         tdy = dy
         tdz = dz
         tempsize = nxyz3
-        do while (tnx > 2 .and. tny > 2 .and. tnz > 2)
+        do while (tnx > 2 .and. tny > 2 .and. tnz > 2 .and.
+     &            mod(tnx,4) == 0 .and. mod(tny,4) == 0 .and. mod(tnz,4) == 0)
           tnx = tnx/2
           tny = tny/2
           tdx = tdx*2.
@@ -240,9 +240,10 @@ c     --- Do initial SOR passes.
      &                 dxsqi,dysqi,dzsqi,linbends,l2symtry,l4symtry,scrtch)
       enddo
 
-c     --- If grid is not at its coarsest level in any of the axis, continue
-c     --- the coarsening.
-      if (nx > 2 .and. ny > 2 .and. nz > 2) then
+c     --- If grid is not at its coarsest level in any of the axis or and
+c     --- all dimensions are even, continue the coarsening.
+      if (nx > 2 .and. ny > 2 .and. nz > 2 .and.
+     &    mod(nx,4) == 0 .and. mod(ny,4) == 0 .and. mod(nz,4) == 0) then
 
 c       --- Location of the next block of data.
         i2h = (nx+1)*(ny+1)*(nz+3) + 1
@@ -1486,7 +1487,8 @@ c     --- Initialize the temps
       levelz = 1
 
 c     --- Loop until at least one of the axis is at the coarsest level.
-      do while (tnx >= 2 .and. tny >= 2 .and. tnz >= 2)
+      do while (tnx >= 2 .and. tny >= 2 .and. tnz >= 2 .and.
+     &          mod(tnx,4) == 0 .and. mod(tny,4) == 0 .and. mod(tnz,4) == 0)
 
 c       --- Interior points
         do ic=1,ncond
