@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.13 $, $Date: 2001/09/19 22:36:02 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.14 $, $Date: 2001/10/19 22:06:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1163,7 +1163,8 @@ c           --- the point lower in z is inside the conductor
             endif
 c           --- calculate the new phi based on the boundary conditions
             if (dosubgrid) then
-              rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
+c             rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
+              rhovolume = 1.
               phi(icdx,icdy,icdz) = (rho(icdx,icdy,icdz)*rhovolume +
      &          (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
      &          spm1*cndpvph(ic)
@@ -1333,7 +1334,8 @@ c           --- the point lower in z is inside the conductor
             endif
 c           --- calculate the residual based on the boundary conditions
             if (ppp < 1.) then
-              rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
+c             rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
+              rhovolume = 1.
               res(icdx,icdy,icdz) = ppp*(rho(icdx,icdy,icdz)*rhovolume
      &               + (pxm+pxp)*rdx2cs + (pym+pyp)*rdy2cs + (pzm+pzp)*rdz2cs
      &               - phi(icdx,icdy,icdz)*mgparam*denom)

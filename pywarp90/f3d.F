@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.13 $, $Date: 2001/09/19 22:37:21 $
+c@(#) File F3D.M, version $Revision: 3.14 $, $Date: 2001/10/19 22:06:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4426,7 +4426,8 @@ c         --- the point lower in z is inside the conductor
             dzp = cdelpz(ic)
           endif
 c         --- calculate the new phi based on the boundary conditions
-          rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
+c         rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125
+          rhovolume = 1.
           phi(icndx(ic),icndy(ic),icndz(ic)) =
      &        (rho(icndx(ic),icndy(ic),icndz(ic))*rhovolume +
      &         (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
@@ -4519,7 +4520,8 @@ c         --- the point lower in z is inside the conductor
           endif
 c         --- calculate the new phi based on the boundary conditions
           denomi = 1./(2./(dxm*dxp) + 2./(dym*dyp) + 2./(dzm*dzp))
-          rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125*dxyzi
+c         rhovolume = (dxp+dxm)*(dyp+dym)*(dzp+dzm)*0.125*dxyzi
+          rhovolume = 1.
           phi(icndx(ic),icndy(ic),icndz(ic))  =
      &        (rho(icndx(ic),icndy(ic),icndz(ic))*rhofix*rhovolume +
      &         pxm*2./(dxm*(dxm+dxp)) + pxp*2./(dxp*(dxm+dxp)) +
