@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.86 $, $Date: 2003/02/13 17:02:21 $
+c@(#) File W3D.M, version $Revision: 3.87 $, $Date: 2003/02/24 18:44:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -718,7 +718,7 @@ c  Pre-calculate the self-E if it is needed for sete3d. This is done
 c  after the call to afterfs in case some manipulation is done to phi.
       if (efetch == 3)
      &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
-     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz)
+     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz,pboundxy)
 c  Set the potential near the emitting surface.
       if (inject > 0) then
         call getinj_phi()
@@ -1494,13 +1494,15 @@ c       --- absorb particles passing through semitransparent disc
         call reorg_particles()
 #endif
         do is=1,ns
-          if (pboundxy==absorb .and. nps(is) > 0)
+          if (nps(is) > 0)
      &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,yp(ins(is)),ymmax,
      &                     ymmin,dy,zp(ins(is)),zmmin,dz,uxp(ins(is)),
      &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
      &                     zgrid,zbeam,nzzarr,
      &                     prwallz(0),prwallxz(0),prwallyz(0),prwelips(0),
-     &                     l2symtry,l4symtry,zzmin,dzzi)
+     &                     l2symtry,l4symtry,zzmin,dzzi,
+     &                     pboundxy,xmaxz(0),xminz(0),ymaxz(0),yminz(0))
+
         enddo
 
         do is=1,ns
@@ -1562,13 +1564,13 @@ c  sets slice at nz+1 equal to the slice at 1
       return
       end
 c=============================================================================
-      subroutine perrho3d(rho,nx,ny,nz,bound0)
+      subroutine perrho3d(rho,nx,ny,nz,bound0,boundxy)
       use GlobalVars
       use Subtimers3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      integer(ISZ):: bound0
+      integer(ISZ):: bound0,boundxy
       integer(ISZ):: ix,iy
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -1621,6 +1623,13 @@ c  whose field solve region overlap its particle region.
       endif
 
 #endif
+
+      if (solvergeom==XYZgeom .and. boundxy==periodic) then
+        rho(:,0,:) = rho(:,0,:) + rho(:,ny,:)
+        rho(0,:,:) = rho(0,:,:) + rho(nx,:,:)
+        rho(:,ny,:) = rho(:,0,:)
+        rho(nx,:,:) = rho(0,:,:)
+      endif
 
       if (lw3dtimesubs) timeperrho3d = timeperrho3d + wtime() - substarttime
       return
@@ -2467,12 +2476,14 @@ c           --- Adjust sign of E field for appropriate quadrant.
       end
 c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
-     &                      dx,dy,dz)
+     &                      dx,dy,dz,pboundxy)
+      use GlobalVars
       use Subtimers3d
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nx_selfe,ny_selfe,nz_selfe
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),selfe(3,0:nx,0:ny,0:nz)
       real(kind=8):: dx,dy,dz
+      integer(ISZ):: pboundxy
 
 c Calculate the self-E via finite differences of phi.
 
@@ -2507,40 +2518,29 @@ c     --- It is done always anyway since it is little work and also forces the
 c     --- value at the boundaries.
 c     --- Note that the z boundaries at taken care of above, taking advantage
 c     --- of the guard cells.
-      do iz=0,nz
-        do iy=1,ny-1
-          selfe(1, 0,iy,iz) = 0.
-          selfe(2, 0,iy,iz) = tdyi*(phi( 0,iy-1,iz  ) - phi( 0,iy+1,iz  ))
-          selfe(3, 0,iy,iz) = tdzi*(phi( 0,iy  ,iz-1) - phi( 0,iy  ,iz+1))
-          selfe(1,nx,iy,iz) = 0.
-          selfe(2,nx,iy,iz) = tdyi*(phi(nx,iy-1,iz  ) - phi(nx,iy+1,iz  ))
-          selfe(3,nx,iy,iz) = tdzi*(phi(nx,iy  ,iz-1) - phi(nx,iy  ,iz+1))
-        enddo
-      enddo
-      do iz=0,nz
-        do ix=1,nx-1
-          selfe(1,ix, 0,iz) = tdxi*(phi(ix-1, 0,iz  ) - phi(ix+1, 0,iz  ))
-          selfe(2,ix, 0,iz) = 0.
-          selfe(3,ix, 0,iz) = tdzi*(phi(ix  , 0,iz-1) - phi(ix  , 0,iz+1))
-          selfe(1,ix,ny,iz) = tdxi*(phi(ix-1,ny,iz  ) - phi(ix+1,ny,iz  ))
-          selfe(2,ix,ny,iz) = 0.
-          selfe(3,ix,ny,iz) = tdzi*(phi(ix  ,ny,iz-1) - phi(ix  ,ny,iz+1))
-        enddo
-      enddo
-      do iz=0,nz
-          selfe(1, 0, 0,iz) = 0.
-          selfe(2, 0, 0,iz) = 0.
-          selfe(3, 0, 0,iz) = tdzi*(phi( 0, 0,iz-1) - phi( 0, 0,iz+1))
-          selfe(1,nx, 0,iz) = 0.
-          selfe(2,nx, 0,iz) = 0.
-          selfe(3,nx, 0,iz) = tdzi*(phi(nx, 0,iz-1) - phi(nx, 0,iz+1))
-          selfe(1, 0,ny,iz) = 0.
-          selfe(2, 0,ny,iz) = 0.
-          selfe(3, 0,ny,iz) = tdzi*(phi( 0,ny,iz-1) - phi( 0,ny,iz+1))
-          selfe(1,nx,ny,iz) = 0.
-          selfe(2,nx,ny,iz) = 0.
-          selfe(3,nx,ny,iz) = tdzi*(phi(nx,ny,iz-1) - phi(nx,ny,iz+1))
-      enddo
+      selfe(1,1:nx-1, 0,:) = tdxi*(phi(0:nx-2, 0,:) - phi(2:nx, 0,:))
+      selfe(1,1:nx-1,ny,:) = tdxi*(phi(0:nx-2,ny,:) - phi(2:nx,ny,:))
+      selfe(2, 0,1:ny-1,:) = tdyi*(phi( 0,0:ny-2,:) - phi( 0,2:ny,:))
+      selfe(2,nx,1:ny-1,:) = tdyi*(phi(nx,0:ny-2,:) - phi(nx,2:ny,:))
+      if (pboundxy == absorb .or. pboundxy == reflect) then
+        selfe(1, 0, :,:) = 0.
+        selfe(1,nx, :,:) = 0.
+        selfe(2, :, 0,:) = 0.
+        selfe(2, :,ny,:) = 0.
+      else if (pboundxy == periodic) then
+        selfe(1, 0, :,:) = tdxi*(phi(nx-1,:,:) - phi(1,:,:))
+        selfe(1,nx, :,:) = selfe(1, 0,:,:)
+        selfe(2, :, 0,:) = tdyi*(phi(:,ny-1,:) - phi(:,1,:))
+        selfe(2, :,ny,:) = selfe(2,:, 0,:)
+      endif
+
+c     --- Axial self field does not depend on the transverse boundary condition
+      selfe(3, 0,:,0:nz) = tdzi*(phi( 0,:,-1:nz-1) - phi( 0,:,1:nz+1))
+      selfe(3,nx,:,0:nz) = tdzi*(phi(nx,:,-1:nz-1) - phi(nx,:,1:nz+1))
+      selfe(3,1:nx-1, 0,0:nz) = tdzi*(phi(1:nx-1, 0,-1:nz-1) -
+     &                                phi(1:nx-1, 0,1:nz+1))
+      selfe(3,1:nx-1,ny,0:nz) = tdzi*(phi(1:nx-1,ny,-1:nz-1) -
+     &                                phi(1:nx-1,ny,1:nz+1))
 
       if (lw3dtimesubs) timegetselfe3d = timegetselfe3d + wtime() - substarttime
       return
@@ -3684,7 +3684,7 @@ c        --- loop over particle blocks
       endif
 
 c     --- enforce axial periodicity
-      if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0)
+      if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,bound0,boundxy)
 
 
       if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + wtime() - substarttime
@@ -3694,17 +3694,22 @@ c=============================================================================
       subroutine stckxy3d(np,xp,xmmax,xmmin,dx,yp,ymmax,ymmin,dy,
      &                   zp,zmmin,dz,uxp,uyp,uzp,gaminv,zgrid,zbeam,
      &                   nzzarr,prwallz,prwallxz,prwallyz,prwelips,
-     &                   l2symtry,l4symtry,zzmin,dzzi)
+     &                   l2symtry,l4symtry,zzmin,dzzi,
+     &                   pboundxy,xmaxz,xminz,ymaxz,yminz)
       use Subtimers3d
+      use GlobalVars
       use InGen3d, only: solvergeom, RZgeom, XZgeom, Zgeom
-      integer(ISZ):: np,nzzarr
+      integer(ISZ):: np,nzzarr,pboundxy
       real(kind=8):: xmmax,xmmin,dx,ymmax,ymmin,dy,zmmin,dz,zgrid,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: prwallz(0:nzzarr),prwallxz(0:nzzarr),prwallyz(0:nzzarr)
       real(kind=8):: prwelips(0:nzzarr)
-      logical(ISZ):: l2symtry,l4symtry
-      real(kind=8):: zzmin,dzzi
+      logical(ISZ):: l2symtry,l4symtry,lstckxy
+      real(kind=8):: zzmin,dzzi,xper,yper
+      real(kind=8):: xmaxz(0:nzzarr),xminz(0:nzzarr)
+      real(kind=8):: ymaxz(0:nzzarr),yminz(0:nzzarr)
+
 
 c Enforces transverse sticky boundary conditions.
 c Particles are considered stuck when outside a z-dependent aperture of
@@ -3715,8 +3720,13 @@ c the grid longitudinally, as well as having the velocity set to zero. Zero
 c longitudinal velocity is the flag for lost particles. Note that particles
 c previously lost are continually moved to the left end of the grid (which
 c is important with a moving grid).
+c If pboundxy == periodic applies periodic transverse bc.
+c Rectangular boundary capability added, where the values of the xmaxz,xminz,
+c ymaxz,yminz arrays are used as a rectangular sticky boundary when
+c their values(z) are within the grid.
 
-      integer(ISZ):: ip,iz
+
+      integer(ISZ):: ip,iz,izz
       real(kind=8):: xmin,xmax,ymin,ymax
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -3727,16 +3737,65 @@ c is important with a moving grid).
       ymax = ymmax
       if (l2symtry) then
         ymin = -ymmax
+        yminz = -ymaxz
       elseif (l4symtry) then
         xmin = -xmmax
         ymin = -ymmax
+        xminz =-xmaxz
+        yminz =-ymaxz
       endif
       if(solvergeom==RZgeom) then
         xmin = -xmmax
         ymin = -ymmax
+        xminz =-xmaxz
+        yminz =-ymaxz
       else if(solvergeom==XZgeom) then
-        if(l2symtry .or. l4symtry) xmin = -xmmax
+        if(l2symtry .or. l4symtry) then
+          xmin = -xmmax
+          xminz =-xmaxz
+        endif
       endif
+      xper = xmax - xmin
+      yper = ymax - ymin
+
+c Apply periodic boundary condition
+      if(pboundxy == periodic) then
+         do ip=1,np
+            if(xp(ip) > xmax) then
+               xp(ip) = xp(ip) - xper
+            elseif(xp(ip) < xmin) then
+               xp(ip) = xp(ip) + xper
+            endif
+            if(yp(ip) > ymax) then
+               yp(ip) = yp(ip) - yper
+            elseif(yp(ip) < ymin) then
+               yp(ip) = yp(ip) + yper
+            endif
+         enddo
+      endif
+
+c Check values of rectangular boundary arrays to see if they will be used.
+
+      lstckxy = .false.
+      do izz = 0, nzzarr
+        if(xmaxz(izz) <= xmax) lstckxy = .true.
+        if(xminz(izz) >= xmin) lstckxy = .true.
+        if(ymaxz(izz) <= ymax) lstckxy = .true.
+        if(yminz(izz) >= ymin) lstckxy = .true.
+      enddo
+
+      if(lstckxy) then
+         do ip=1,np
+            iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
+            if (  xp(ip) >= xmaxz(iz)
+     &        .or. yp(ip) >= ymaxz(iz)
+     &        .or. xp(ip) <= xminz(iz)
+     &        .or. yp(ip) <= yminz(iz) ) then
+          gaminv(ip) = 0.
+       endif
+      enddo
+      endif
+      
 
       do ip=1,np
         iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
@@ -3838,7 +3897,7 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: ith,nti
       real(kind=8):: cl_const(ns),jton(ns),vzconst(ns)
       real(kind=8):: substarttime,wtime
-      real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp
+      real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
       integer(ISZ):: spreadx, spready
       integer(ISZ), external :: oneiftrue
       if (lw3dtimesubs) substarttime = wtime()
@@ -3955,20 +4014,16 @@ c           --- or xt(ip) used to hold f(r)~(h+(1-h)r^2)
               enddo
             endif
 
-c           --- Convert r**2 in to r
-            do ip = 1,nn
-              xt(ip) = sqrt(xt(ip))
-            enddo
-
-c           --- yt(ip) used to hold f(theta)=constant
+c           --- yt(ip) used to hold f(theta)=constant if injection
+c           --- is over an elliptical surface
             if (xrandom == "pseudo") then
               do ip = 1,nn
-                yt(ip) = 2.*pi*wranf()
+                yt(ip) = wranf()
               enddo
             else
 c             --- Default is to use digitrev
               do ip = 1,nn
-                yt(ip) = 2.*pi*rnrev(injctcnt+ip-1,dig2)
+                yt(ip) = rnrev(injctcnt+ip-1,dig2)
               enddo
             endif
 
@@ -3986,7 +4041,7 @@ c               --- Default is to use digitrev
                 enddo
               endif
               do ip = 1,nn
-                rr = sqrt(1. - xt(ip)*xt(ip))
+                rr = sqrt(1. - xt(ip))
                 uxt(ip) = rr*cos(2.*pi*zt(ip))
                 uyt(ip) = rr*sin(2.*pi*zt(ip))
               enddo
@@ -4023,22 +4078,38 @@ c           --- uses beam envelope of ainject, binject, apinject and bpinject
 c           --- (data is loaded into particle arrays)
             zmid = 0.5*(zimax_s(is) - zimin_s(is)) - vzinj*dt*(it+1)
             zleni = 1./dvnz(zimax_s(is) - zimin_s(is))
+
+c           --- Initialize positions as rectangular or elliptical depending on linj_rectangle
+            if(linj_rectangle) then
+              do ip=1,nn
+                xt(ip) = ainj*(2.*xt(ip)-1.0) + xinj
+                yt(ip) = binj*(2.*yt(ip)-1.0) + yinj
+              enddo
+            else
+              do ip=1,nn
+c               --- Convert r**2 into r and yt into a random angle
+                xt_tmp = sqrt(xt(ip))
+                yt_tmp = 2.*pi*yt(ip)
+                xt(ip) = ainj*xt_tmp*cos(yt_tmp) + xinj
+                yt(ip) = binj*xt_tmp*sin(yt_tmp) + yinj
+              enddo
+            endif
             do ip=1,nn
-              ii = ins(is) - 1 - npinjtmp(is,ij)
-              xp(ii) = ainj*xt(ip)*cos(yt(ip)) + xinj
-              yp(ii) = binj*xt(ip)*sin(yt(ip)) + yinj
 c             --- find injection surface axial location via interpolation
 c             --- The absolute values are needed for the cases of symmetry.
-              ixx = abs(xp(ii) - xmmin)*dxi
-              iyy = abs(yp(ii) - ymmin)*dyi
-              wxx = abs(xp(ii) - xmmin)*dxi - ixx
-              wyy = abs(yp(ii) - ymmin)*dyi - iyy
+              ixx = abs(xt(ip) - xmmin)*dxi
+              iyy = abs(yt(ip) - ymmin)*dyi
+              wxx = abs(xt(ip) - xmmin)*dxi - ixx
+              wyy = abs(yt(ip) - ymmin)*dyi - iyy
               zz = inj_grid(ixx  ,iyy  ,inj_ij)*(1. - wxx)*(1. - wyy) +
      &             inj_grid(ixx+1,iyy  ,inj_ij)*      wxx *(1. - wyy) +
      &             inj_grid(ixx  ,iyy+1,inj_ij)*(1. - wxx)*      wyy  +
      &             inj_grid(ixx+1,iyy+1,inj_ij)*      wxx *      wyy
 c             --- Only save particle if it is within the injection region.
               if (zinjmin <= zz .and. zz < zinjmax) then
+                ii = ins(is) - 1 - npinjtmp(is,ij)
+                xp(ii) = xt(ip)
+                yp(ii) = yt(ip)
                 zp(ii) = zz
                 vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
                 vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
@@ -5468,6 +5539,7 @@ c to get zp.
 
       integer(ISZ):: ij,inj_ij,ix,iy,i2x,i2y,i2z
       real(kind=8):: dxi,dyi,inj_dz_tmp
+      real(kind=8):: xxsq,yysq,r1sq,r2sq
       real(kind=8):: ainj,binj,ainjsqi,binjsqi,xinj,yinj
       real(kind=8):: rrsq,aa,az,p2x,p2y,p2z,w2x,w2y,w2z
       real(kind=8):: xx((1+inj_nx)*(1+inj_ny))
@@ -5514,9 +5586,16 @@ c       --- Set some temporaries.
 
         do iy = 0,inj_ny
           do ix = 0,inj_nx
-            rrsq = (ix*inj_dx + inj_xmmin - xinj)**2*ainjsqi +
-     &             (iy*inj_dy + inj_ymmin - yinj)**2*binjsqi
-            if (rrsq < 1.) then
+            xxsq   = (ix*inj_dx + inj_xmmin - xinj)**2
+            yysq   = (iy*inj_dy + inj_ymmin - yinj)**2
+            if(linj_rectangle) then
+              r1sq    = xxsq*ainjsqi
+              r2sq    = yysq*binjsqi
+            else
+              r1sq   = xxsq*ainjsqi + yysq*binjsqi
+              r2sq   = 0. 
+            endif
+            if (r1sq < 1.0 .and. r2sq < 1.0) then
 
               nn = nn + 1
 

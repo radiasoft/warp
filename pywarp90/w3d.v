@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.83 $, $Date: 2003/02/11 20:39:09 $
+#@(#) File W3D.V, version $Revision: 3.84 $, $Date: 2003/02/24 18:44:44 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.83 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.84 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -419,7 +419,8 @@ padvnc3d(center:string)
              subroutine # Advances particles and rho
 perphi3d(phi:real,nx,ny,nz)
              subroutine # Equates end slices of phi for periodicity
-perrho3d(rho:real,nx,ny,nz,periinz:logical)
+perrho3d(rho:real,nx:integer,ny:integer,nz:integer,
+         bound0:integer,boundxy:integer)
              subroutine # Sums end slices of rho for periodicity
 prntpa3d(lprntpara:logical)
              subroutine # Prints out 3d specific stuff (like prntpara())
@@ -446,7 +447,7 @@ sete3d (phi1d:real,selfe:real,np,xp:real,yp:real,zp:real,zgrid:real,
              subroutine # Sets internal E field
 getselfe3d(phi:real,nx:integer,ny:integer,nz:integer,
            selfe:real,nx_selfe:integer,ny_selfe:integer,nz_selfe:integer,
-           dx:real,dy:real,dz:real)
+           dx:real,dy:real,dz:real,pboundxy:integer)
              subroutine # Calculates the self-E via finite difference of phi
 setrho3d (rho1d:real,np,xp:real,yp:real,zp:real,zgrid:real,uzp:real,q:real,
           wght:real,depos:string)
