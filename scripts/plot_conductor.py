@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.52 2003/01/24 16:47:56 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.53 2003/02/24 16:10:40 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2227,7 +2227,8 @@ Sets the voltage on a conductor, given an id.
 
 #---------------------------------------------------------------------------
 def visualizeconductors(condid=None,color=None,mglevel=0,
-                        scene=None,title="Conductor geometry",vrange=None):
+                        scene=None,title="Conductor geometry",vrange=None,
+                        smooth=0):
   """
 Creates 3-D visualization of the conductors based off of the subgrid data.
 condid=None: optional conductor ID of object to draw
@@ -2246,6 +2247,10 @@ Returns the scene use to draw the image
     import VPythonobjects
   except ImportError:
     return
+
+  # --- Make sure that the conductor data is properly installed.
+  checkconductors(w3d.nx,w3d.ny,w3d.nz,w3d.nzfull,w3d.dx,w3d.dy,w3d.dz,
+                  w3d.l2symtry,w3d.l4symtry)
 
   # --- Save grid size
   nx = w3d.nx
@@ -2300,105 +2305,36 @@ Returns the scene use to draw the image
   no = len(iocndx)
   nn = ne + no
   if nn == 0: return
-  icndx=array(list(iecndx[:ne])+list(iocndx[:no]))
-  icndy=array(list(iecndy[:ne])+list(iocndy[:no]))
-  icndz=array(list(iecndz[:ne])+list(iocndz[:no]))
+  icndx = array(list(iecndx[:ne])+list(iocndx[:no]))
+  icndy = array(list(iecndy[:ne])+list(iocndy[:no]))
+  icndz = array(list(iecndz[:ne])+list(iocndz[:no]))
   delmx = array(list(ecdelmx[:ne]) + list(ocdelmx[:no]))
   delpx = array(list(ecdelpx[:ne]) + list(ocdelpx[:no]))
   delmy = array(list(ecdelmy[:ne]) + list(ocdelmy[:no]))
   delpy = array(list(ecdelpy[:ne]) + list(ocdelpy[:no]))
   delmz = array(list(ecdelmz[:ne]) + list(ocdelmz[:no]))
   delpz = array(list(ecdelpz[:ne]) + list(ocdelpz[:no]))
+  icnd = array([icndx,icndy,icndz])
   dels = array([delmx,delpx,delmy,delpy,delmz,delpz])
-
-  iii = zeros((nx+1,ny+1,nz+1))
-  for ic in xrange(nn):
-    iii[icndx[ic],icndy[ic],icndz[ic]] = ic + 1
 
   model = VPythonobjects.VisualModel(twoSided=true,scene=scene,title=title,
                                      vrange=vrange)
+
   gridmin = array([w3d.xmmin,w3d.ymmin,w3d.zmmin])
   griddd = array([w3d.dx,w3d.dy,w3d.dz])
+  gridnn = array([w3d.nx,w3d.ny,w3d.nz])
+    
+  # --- This fortran routine generates the triangulated surface. It was
+  # --- converted to fortran for speed.
+  f3d.ntriangles = 0
+  getconductorfacets(nn,icnd,dels,gridnn,griddd,gridmin)
+  if smooth: conductorsmoothshading()
 
-  oos = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]]
-  dds = [[+1,0,0],[-1,0,0],[+1,0,0],[-1,0,0],
-         [+1,0,0],[-1,0,0],[+1,0,0],[-1,0,0]]
-  for iz in xrange(nz):
-    for iy in xrange(ny):
-      for ix in xrange(nx):
+  model.triangles = reshape(transpose(f3d.triangles),(3*f3d.ntriangles,3))
+  model.normals = reshape(transpose(f3d.normals),(3*f3d.ntriangles,3))
+  if color is not None:
+    model.colors = (3*f3d.ntriangles)*[color]
 
-        for oo,dd in map(None,oos,dds):
-          if iii[ix+oo[0],iy+oo[1],iz+oo[2]] > 0:
-            pp = newfacet(ix,iy,iz,oo,dd,+1,iii,dels,gridmin,griddd)
-            if len(pp) == 0:
-              pp = newfacet(ix,iy,iz,oo,dd,0,iii,dels,gridmin,griddd)
-            if len(pp) > 0:
-              model.FacetedPolygon(pp,color=color)
-        iii[ix:ix+2,iy:iy+2,iz:iz+2] = abs(iii[ix:ix+2,iy:iy+2,iz:iz+2])
   model.Display()
-  return model.scene
-
-def nextdir(position,direction,parity):
-  parity = (sum(array(position)) + parity + 1) % 2
-  newdirection = [0,0,0]
-  if direction[0] != 0:   newdirection[1+parity] = 1
-  elif direction[1] != 0: newdirection[2-2*parity] = 1
-  elif direction[2] != 0: newdirection[parity] = 1
-  if position[0] == 1: newdirection[0] = -newdirection[0]
-  if position[1] == 1: newdirection[1] = -newdirection[1]
-  if position[2] == 1: newdirection[2] = -newdirection[2]
-  return newdirection
-
-# --- This would be a little less painful is lists were hashable.
-def newfacet(ix,iy,iz,oo,dd,parity,iii,dels,gridmin,griddd,
-# dddict = {211:[+1,0,0],121:[0,+1,0],112:[0,0,+1],
-#            11:[-1,0,0],101:[0,-1,0],110:[0,0,-1]},
-# dirdict = {  0:[{211:0,112:1,121:2},{0:211,1:112,2:121}],
-#            100:[{112:0, 11:1,121:2},{0:112,1: 11,2:121}],
-#             10:[{211:0,101:1,112:2},{0:211,1:101,2:112}],
-#            110:[{ 11:0,112:1,101:2},{0: 11,1:112,2:101}],
-#              1:[{211:0,121:1,110:2},{0:211,1:121,2:110}],
-#            101:[{110:0,121:1, 11:2},{0:110,1:121,2: 11}],
-#             11:[{211:0,110:1,101:2},{0:211,1:110,2:101}],
-#            111:[{ 11:0,101:1,110:2},{0: 11,1:101,2:110}]},
-  delsdict = { 11:0,211:1,101:2,121:3,110:4,112:5},
-  too = lambda oo : 100*oo[0] + 10*oo[1] + oo[2],
-  tdd = lambda dd : 100*(1+dd[0]) + 10*(1+dd[1]) + (1+dd[2])):
-  """
-Work routine used by visualizeconductors.
-  """
-  pp = []
-  done = 0
-  currentoo = oo
-  currentdd = dd
-  ncorners = 1
-  while not done:
-    ic = abs(iii[ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]])
-    iii[ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]] = -ic
-    if ic != 0 and dels[delsdict[tdd(currentdd)],ic-1] <= 1.000001:
-      newpoint = (array([ix+currentoo[0],iy+currentoo[1],iz+currentoo[2]]) +
-                        dels[delsdict[tdd(currentdd)],ic-1]*array(currentdd))
-      pp.append(newpoint*griddd+gridmin)
-      #dirs = dirdict[too(currentoo)]
-      #currentddnum = dirs[0][tdd(currentdd)]
-      #nextddnum = (currentddnum + 2*parity-1) % 3
-      #nextdd = dddict[dirs[1][nextddnum]]
-      nextdd = nextdir(currentoo,currentdd,parity)
-      nextoo = currentoo
-    else:
-      nextoo = list(array(currentoo) + array(currentdd))
-      #nextdirs = dirdict[too(nextoo)]
-      #nextddnum = (nextdirs[0][tdd(list(-array(currentdd)))] + 2*parity-1) % 3
-      #nextdd = dddict[nextdirs[1][nextddnum]]
-      nextdd = nextdir(nextoo,-array(currentdd),parity)
-      ncorners = ncorners + 1
-    currentoo = nextoo
-    currentdd = nextdd
-    if ncorners > 8: done = 1
-    if len(pp) > 6:
-      pp = []
-      done = 1
-    if currentoo == oo and currentdd == dd: done = 1
-  return pp
-
+  return model
 
