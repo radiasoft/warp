@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.128 $, $Date: 2003/08/25 23:04:28 $
+c@(#) File W3D.M, version $Revision: 3.129 $, $Date: 2003/08/29 17:30:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -349,6 +349,7 @@ c  use a user-set npmax directly)
       if (xrandom == "fibonacc") npmax = nfibgrps*fibg1
 
       call alotpart
+      call alotlostpart
 
 c  Load the particles, calculate the charge density
 
@@ -610,6 +611,7 @@ c=============================================================================
       use InGen
       use InGen3d
       use InDiag
+      use InDiag3d
       use InPart
       use InMesh3d
       use Fields3d
@@ -780,7 +782,7 @@ c  electrostatic potential on axis (sphiax3d), and the axial electric
 c  field (sezax3d).  
 
       if (lspecial) then
-        call getvzofz
+        if (lgetvzofz) call getvzofz
         call getese3d 
         call sphiax3d 
         call  sezax3d
@@ -9158,6 +9160,7 @@ c=============================================================================
       use InMesh3d
       use Picglb3d
       use Picglb
+      use GridBoundary3d
       use Fields3d
       use LatticeInternal
       use FRZmgrid
@@ -9214,7 +9217,8 @@ c          --- izfsmin and izfsmax allow field solves on a partial grid.
            call psor3df(iwhich,nx,ny,nz,phi(0,0,-1),rho(0,0,0),
      &                 phi(0,0,-1),rho(0,0,0),rstar, 
      &                 dx,dy,dz,xmmin,ymmin,zmmin,zbeam,zgrid,linbend,
-     &                 l2symtry,l4symtry,scrtch(0,0),izfsmin,izfsmax)
+     &                 bound0,boundnz,boundxy,l2symtry,l4symtry,lzerophiedge,
+     &                 scrtch(0,0),izfsmin,izfsmax)
       elseif (fstype == 4) then
           if (iwhich == 1 .or. iwhich == 0) then
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
@@ -9255,7 +9259,7 @@ c         --- General capacity matrix solver
       elseif (fstype == 7) then
           call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &            phi(0,0,izfsmin-1),rho(0,0,izfsmin),rstar(izfsmin-1),
-     &            linbend,l2symtry,l4symtry,scrtch(0,0),
+     &            linbend,bound0,boundnz,boundxy,l2symtry,l4symtry,scrtch(0,0),
      &            xmmin,ymmin,zmmin,zbeam,zgrid)
 
 #ifdef MPIPARALLEL
