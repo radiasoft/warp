@@ -213,8 +213,8 @@ Given a block instance, installs it as a child.
     self.parents = []
     self.ichild = []
     self.root = self
-    self.totalnumberofblocks = 0
-    self.listofblocks = []
+    self.totalnumberofblocks = 1
+    self.listofblocks = [self]
     self.siblingdomains = None
     self.childdomains = None
     self.children = []
@@ -1147,7 +1147,7 @@ Fetches the potential, given a list of positions
 
     else:
 
-      # --- Get e-field from this domain
+      # --- Get phi from this domain
       MultiGrid.fetchphifrompositions(self,x,y,z,phi)
 
   #--------------------------------------------------------------------------
