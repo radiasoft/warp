@@ -71,7 +71,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.53 2004/04/14 17:40:22 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.54 2004/04/16 21:34:19 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -987,6 +987,7 @@ Assembly on this grid.
     """
 Installs the conductor data into the fortran database
     """
+    conductors.levels = self.mglevels
     conductors.leveliz[:self.mglevels] = self.mgleveliz
     conductors.levellx[:self.mglevels] = self.mglevellx
     conductors.levelly[:self.mglevels] = self.mglevelly
