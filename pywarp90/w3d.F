@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.13 $, $Date: 2001/07/19 19:58:08 $
+c@(#) File W3D.M, version $Revision: 3.14 $, $Date: 2001/07/24 00:48:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -505,9 +505,9 @@ c  a step of zero size, to compute fields, and gather diagnostics at start
 c  of run.
 
 
-      real(kind=8):: zbeaml,zbeamr,timetemp,wtime
+      real(kind=8):: zbeaml,zbeamr
       integer(ISZ):: k
-      real(kind=8):: substarttime
+      real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
 c --- Set the internal lattice variables. This is not generally necessary at
@@ -604,16 +604,14 @@ c  relative to ZBEAM in the same way that self-fields are.
       call setlatt
       if (linbend) call setrstar(rstar(-1),nz,dz,zmmin,zgrid)
 
-c  Field-solve for potential 
+c  Field-solve for potential.
 
-      timetemp = wtime()
       if (lbeforefs) call execuser("beforefs")
       call fieldsol3d(-1)
       if (lafterfs) call execuser("afterfs")
-      fstime = fstime + (wtime() - timetemp)
 
-c  Pre-calculate the self-E if it is needed for sete3d. This is done after
-c  the call to afterfs in case some manipulation is done to phi.
+c  Pre-calculate the self-E if it is needed for sete3d. This is done
+c  after the call to afterfs in case some manipulation is done to phi.
       if (efetch == 3)
      &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
      &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz)
@@ -6063,9 +6061,7 @@ c     --- End of loop over apertures
       return
       end
 c===========================================================================
-      subroutine fieldsol3d(iwhich)
-      use Subtimers
-      use Beam_acc
+      subroutine bendfieldsol3d()
       use Constant
       use InGen
       use InGen3d
@@ -6073,72 +6069,14 @@ c===========================================================================
       use Picglb
       use Fields3d
       use Picglb3d
-      use Lattice
-      use LatticeInternal
-      integer(ISZ):: iwhich
 
-c  Field solver for 3d warped Cartesian geometry. 
-c  Enter with charge density in rho array, old potential in phi array.
-c  Exit with new potential in phi array, and rho unchanged.
-c  
-c  For field solve in a bend there are two possible cases:
-c      1) Call to an SOR field solver.  
-c      2) Iteration loop for a perturbative calculation of fields. 
-
+c Does the FFT field solve in bends.
 
       integer(ISZ):: i,j,k
       real(kind=8):: ccmult,rs,dhdz,cutoff,x,r,phiref,rskm1,rskp1,dxi,dzi
       character(80):: outstr
-      real(kind=8):: substarttime,wtime
-      if (lw3dtimesubs) substarttime = wtime()
-
       dxi = 1./dx
       dzi = 1./dz
-
-c  --------------------------------
-c  If no field solve, return 
-c  --------------------------------
-      if ( fstype == -1) then
-        if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
-        return 
-      endif
-
-c  -------------------------------
-c  SOR and multigrid field solvers - deal with bends directly and set axial
-c  boundary conditions (call to perphi3d is not needed)
-c  -------------------------------
-
-      if (fstype == 3 .or. fstype == 7) then
-         call vp3d (iwhich)
-#ifdef PARALLEL
-         call getphiforparticles(nx,ny,nz,phi(0,0,-1))
-#endif
-         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
-         return
-      endif
-
-c  -------------------------------
-c  If not in bend, call VP3D
-c  -------------------------------
-
-      if (.not. linbend) then
-         if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
-     &       fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
-     &       fstype == 8 .or. fstype == 9) then
-           call copyarry (rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
-         endif
-         call vp3d (iwhich)
-         if (periinz) call perphi3d(phi(0,0,-1),nx,ny,nz)
-#ifdef PARALLEL
-         call getphiforparticles(nx,ny,nz,phi(0,0,-1))
-#endif
-         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
-         return
-      endif
-
-c  ----------------------------------------------------------
-c  Main iteration loop for perturbative bent beam field solve
-c  ----------------------------------------------------------
 
       bndfit = 0
  1000 continue
@@ -6173,7 +6111,7 @@ c        --- loop over mesh points in z
             dhdz = (1./rskp1 - 1./rskm1) *0.5*dzi
 c           --- only modify source if actually in a bend, or at entrance/exit
             cutoff = LARGEPOS*1.e-6
-            if ((abs(rskm1).lt.cutoff).or.(abs(rskp1).lt.cutoff))then
+            if ((abs(rskm1) < cutoff).or.(abs(rskp1) < cutoff))then
                do i = 1, nx-1
                   x = xmmin + i*dx
                   r = 1./(rs + x)
@@ -6205,6 +6143,7 @@ c     --- compute error
             phiref = max( phiref, phi(i,ny/2,k) )
          enddo
       enddo
+
 c     --- For the parallel version, find global max of errors.
 #ifdef PARALLEL
       call parallelmax(phiref,1)
@@ -6222,21 +6161,77 @@ c     --- for debug, print out the error
       endif
 
 c     --- if error too big, repeat main loop - provided iters remain
-      if ( (bndferr .gt. bndftol) .and. (bndfit .lt. bndfitmx) ) go to 1000
+      if ( (bndferr > bndftol) .and. (bndfit < bndfitmx) ) go to 1000
 
 c     --- if failure to converge, report the bad news to user
-      if (bndferr .gt. bndftol) then
+      if (bndferr > bndftol) then
         print*,"*** NONCONVERGENCE in bent field iteration"
         print*,"Relative change = ",bndferr," after ",bndfit," iterations."
       endif
 
-c     --- Enforce axial periodicity if requested.
-      if (periinz) call perphi3d(phi(0,0,-1),nx,ny,nz)
+      return
+      end
+c===========================================================================
+      subroutine fieldsol3d(iwhich)
+      use Subtimers
+      use Timers
+      use InGen
+      use InGen3d
+      use InMesh3d
+      use Picglb3d
+      use Fields3d
+      use Efields3d
+      use LatticeInternal
+      use InjectVars
+      integer(ISZ):: iwhich
+
+c  Field solver for 3d warped Cartesian geometry. 
+c  Enter with charge density in rho array, old potential in phi array.
+c  Exit with new potential in phi array, and rho unchanged.
+c  
+c  For field solve in a bend there are two possible cases:
+c      1) Call to an SOR field solver.  
+c      2) Iteration loop for a perturbative calculation of fields. 
+c         The loop is in bendfieldsol3d
+
+      real(kind=8):: timetemp
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
+      timetemp = wtime()
+
+c     --- If no field solve, return 
+      if ( fstype == -1) return 
+
+      if (fstype == 3 .or. fstype == 7) then
+c       --- SOR and multigrid field solvers - deal with bends directly and set
+c       --- axial boundary conditions (call to perphi3d is not needed)
+        call vp3d (iwhich)
+
+      else if (.not. linbend) then
+c       --- If not in bend, call VP3D
+        if (fstype == 0 .or. fstype == 1 .or. fstype == 2 .or.
+     &      fstype == 4 .or. fstype == 5 .or. fstype == 6 .or.
+     &      fstype == 8 .or. fstype == 9) then
+          call copyarry (rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
+        endif
+        call vp3d (iwhich)
+        if (periinz) call perphi3d(phi(0,0,-1),nx,ny,nz)
+
+      else
+c       --- Call perturbative bent beam field solver
+        call bendfieldsol3d
+        if (periinz) call perphi3d(phi(0,0,-1),nx,ny,nz)
+
+      endif
+
 #ifdef PARALLEL
+c     --- Distribute phi among the processes so each has phi in its
+c     --- particle domain.
       call getphiforparticles(nx,ny,nz,phi(0,0,-1))
 #endif
 
       if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
+      fstime = fstime + (wtime() - timetemp)
       return
       end
 c=============================================================================
