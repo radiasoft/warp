@@ -19,7 +19,7 @@ averagezdata(): Does local averaging over the first dimension of the input
 """
 from warp import *
 
-warputils_version = "$Id: warputils.py,v 1.3 2004/04/16 17:00:43 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.4 2004/04/20 22:16:51 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -188,4 +188,14 @@ def getnextfilename(root,suffix):
     i = i + 1
     name = root+('.%03d.'%i)+suffix
   return name
+
+# --- Example profiler - this prints out the function name when the function
+# --- is called and when it returns. Indentation is used to signify the call
+# --- level. To use, execute the command sys.setprofile(warpprofile).
+def warpprofile(frame,event,arg):
+  try:    warpprofile.level
+  except: warpprofile.level = 0
+  if event == 'return': warpprofile.level = warpprofile.level - 1
+  print "%s %s %s"%(warpprofile.level*'  ',event,frame.f_code.co_name)
+  if event == 'call': warpprofile.level = warpprofile.level + 1
 
