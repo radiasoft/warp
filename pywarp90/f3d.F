@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.25 $, $Date: 2002/03/21 18:52:09 $
+c@(#) File F3D.M, version $Revision: 3.26 $, $Date: 2002/03/27 21:17:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -360,6 +360,23 @@ c  The input data is always assumed to be not transposed
       transposed = .false.
 #endif
 
+#ifdef ESSL
+
+c  The ESSL routines themselves have no limit on the number of points.
+c  Because of the way vsftz works, ny must be even (this is easily fixable).
+c  Because of the way the cosqx and cosqy routines work, nx and ny must
+c  be even (i.e. when symmetry is turned on).
+      if (mod(ny,2) == 1) then
+        call remark("NY must be even")
+        return
+      endif
+      if (l4symtry .and. (mod(nx,2) == 1 .or. mod(ny,2) == 1)) then
+        call remark("NX and NY must be even")
+        return
+      endif
+
+#else
+
 c  Error checking; so far, only possible error is non-power-of-2 nx,ny,nz
 c  Note that nz may be a non-power-of-2 with the options 1, 12, 13, and 14.
 c  This allows a non-power-of-2 for the tridiag in z field solver.
@@ -372,6 +389,7 @@ c  This allows a non-power-of-2 for the tridiag in z field solver.
          call remark("NX and NY must be powers of 2, NZ also unless using tridiag solver")
          return
       endif
+#endif
 
 c  Set pointers into workspace needed by x and y sine transforms
 
@@ -1096,6 +1114,21 @@ c ----------------------------------------------------------------------------
       return
       end
 c=============================================================================
+c=============================================================================
+c=============================================================================
+c=============================================================================
+#ifdef ESSL
+c=======================================================================
+c The following two subroutines use the dcft library routine to do the
+c FFT's. That routine is faster when the data passed into it is in normal
+c order, that is the data to be transformed is the first index, vectorized
+c over the second index. However, when vcpft is used, it is faster when the
+c data is in transposed order, that is the data to be transformed is the
+c second index, vectorized over the first index. Both version were kept.
+c The difference in speed is around 15% using the Intel compiler on Linux
+c and about a factor of 2 on the IBM SP.
+c Using the dcft routines, the code runs about 30-40% faster than with vcpft.
+c=============================================================================
       subroutine vsftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
       integer(ISZ):: nx,ny,nz,esx,esy,nxy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nz,0:nx)
@@ -1107,8 +1140,6 @@ c esx and esy are the amount of extra space at the ends of the dimensions.
 c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
-
-#ifdef ESSL
 
       integer(ISZ):: naux1,naux2
       integer(ISZ):: prevnaux1,prevnaux2
@@ -1143,7 +1174,6 @@ c       --- different from last time (deallocating if needed).
      &            aux1,naux1,aux2,naux2)
 c       return
 c     endif
-#endif
  
       do iy = 0, ny-2+(1-esy), 2
 c       --- shift k-space origin to middle and apply normalization factor
@@ -1170,12 +1200,8 @@ c       --- if non-zero.
 
 c       --- do the transforms
 
-#ifndef ESSL
-        call vcpft (zwork(1,0,0), zwork(2,0,0), nz, 2,-1,nx+(1-esx),2*(nz+1))
-#else
         call dcft(0,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
      &            aux1,naux1,aux2,naux2)
-#endif
         call vrpft2(zwork(1,0,0), zwork(2,0,0), nz, 2,   nx+(1-esx),2*(nz+1))
 
         do iz = 0, nz-1
@@ -1201,8 +1227,6 @@ c esx and esy are the amount of extra space at the ends of the dimensions.
 c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
-
-#ifdef ESSL
 
       integer(ISZ):: naux1,naux2
       integer(ISZ):: prevnaux1,prevnaux2
@@ -1237,7 +1261,6 @@ c       --- different from last time (deallocating if needed).
      &            aux1,naux1,aux2,naux2)
 c       return
 c     endif
-#endif
 
       do iy = 0, ny-2+(1-esy), 2
 
@@ -1251,12 +1274,8 @@ c     endif
 c       --- do the transforms
 
         call vrpfti2(zwork(1,0,0), zwork(2,0,0), nz, 2,   nx+(1-esx),2*(nz+1))
-#ifndef ESSL
-        call vcpft  (zwork(1,0,0), zwork(2,0,0), nz, 2,+1,nx+(1-esx),2*(nz+1))
-#else
         call dcft(0,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
      &            aux1,naux1,aux2,naux2)
-#endif
 
 c       --- shift k-space origin back and apply normalization factor
 c       --- if non-zero.
@@ -1283,6 +1302,122 @@ c       --- if non-zero.
 
       return
       end
+c=============================================================================
+#else
+c=======================================================================
+c The following two routines use the vcpft routine for the FFT's. That
+c routine runs faster when the data is in transposed order and the following
+c versions were kept.
+c The difference in speed is around 15% using the Intel compiler on Linux
+c and about a factor of 2 on the IBM SP.
+c=============================================================================
+      subroutine vsftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
+      integer(ISZ):: nx,ny,nz,esx,esy,nxy
+      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
+
+c This is put into a subroutine for the parallel field solver since the
+c grid dimensions passed are not the true grid dimensions.
+c
+c esx and esy are the amount of extra space at the ends of the dimensions.
+c nxy is the size of the transverse planes.
+
+      integer(ISZ):: ix,iy,iz
+
+      do iy = 0, ny-2+(1-esy), 2
+c       --- shift k-space origin to middle and apply normalization factor
+c       --- if non-zero.
+        if (norm == 0) then
+          do iz = 1, nz-1, 2
+            do ix = 0, nx-esx
+              zwork(1,ix,iz-1) = +a(ix,iy  ,iz-1)
+              zwork(2,ix,iz-1) = +a(ix,iy+1,iz-1)
+              zwork(1,ix,iz  ) = -a(ix,iy  ,iz  )
+              zwork(2,ix,iz  ) = -a(ix,iy+1,iz  )
+            enddo
+          enddo
+        else
+          do iz = 1, nz-1, 2
+            do ix = 0, nx-esx
+              zwork(1,ix,iz-1) = +a(ix,iy  ,iz-1)*norm
+              zwork(2,ix,iz-1) = +a(ix,iy+1,iz-1)*norm
+              zwork(1,ix,iz  ) = -a(ix,iy  ,iz  )*norm
+              zwork(2,ix,iz  ) = -a(ix,iy+1,iz  )*norm
+            enddo
+          enddo
+        endif
+
+c       --- do the transforms
+
+        call vcpft (zwork(1,0,0), zwork(2,0,0), nz, 2*(nx+1),-1,nx+(1-esx),2)
+        call vrpft2(zwork(1,0,0), zwork(2,0,0), nz, 2*(nx+1),   nx+(1-esx),2)
+
+        do iz = 0, nz-1
+          do ix = 0, nx-esx
+            a(ix,iy  ,iz) = zwork(1,ix,iz)
+            a(ix,iy+1,iz) = zwork(2,ix,iz)
+          enddo
+        enddo
+
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine vsftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
+      integer(ISZ):: nx,ny,nz,esx,esy,nxy
+      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
+
+c This is put into a subroutine for the parallel field solver since the
+c grid dimensions passed are not the true grid dimensions.
+c
+c esx and esy are the amount of extra space at the ends of the dimensions.
+c nxy is the size of the transverse planes.
+
+      integer(ISZ):: ix,iy,iz
+
+      do iy = 0, ny-2+(1-esy), 2
+
+        do iz = 0, nz-1
+          do ix = 0, nx-esx
+            zwork(1,ix,iz) = a(ix,iy  ,iz)
+            zwork(2,ix,iz) = a(ix,iy+1,iz)
+          enddo
+        enddo
+
+c       --- do the transforms
+
+        call vrpfti2(zwork(1,0,0), zwork(2,0,0), nz, 2*(nx+1),   nx+(1-esx),2)
+        call vcpft  (zwork(1,0,0), zwork(2,0,0), nz, 2*(nx+1),+1,nx+(1-esx),2)
+
+c       --- shift k-space origin back and apply normalization factor
+c       --- if non-zero.
+        if (norm == 0.) then
+          do iz = 1, nz-1, 2
+            do ix = 0, nx-esx
+              a(ix,iy  ,iz-1) = +zwork(1,ix,iz-1)
+              a(ix,iy+1,iz-1) = +zwork(2,ix,iz-1)
+              a(ix,iy  ,iz  ) = -zwork(1,ix,iz  )
+              a(ix,iy+1,iz  ) = -zwork(2,ix,iz  )
+            enddo
+          enddo
+        else
+          do iz = 1, nz-1, 2
+            do ix = 0, nx-esx
+              a(ix,iy  ,iz-1) = +zwork(1,ix,iz-1)*norm
+              a(ix,iy+1,iz-1) = +zwork(2,ix,iz-1)*norm
+              a(ix,iy  ,iz  ) = -zwork(1,ix,iz  )*norm
+              a(ix,iy+1,iz  ) = -zwork(2,ix,iz  )*norm
+            enddo
+          enddo
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+#endif
+c=============================================================================
+c=============================================================================
 c=============================================================================
       subroutine attenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,esx,esy)
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
@@ -2078,6 +2213,18 @@ c       --- different from last time (deallocating if needed).
       return
       end
 c=======================================================================
+#ifdef ESSL
+c=======================================================================
+c The following two subroutines use the dcft library routine to do the
+c FFT's. That routine is faster when the data passed into it is in normal
+c order, that is the data to be transformed is the first index, vectorized
+c over the second index. However, when vcpft is used, it is faster when the
+c data is in transposed order, that is the data to be transformed is the
+c second index, vectorized over the first index. Both version were kept.
+c The difference in speed is around 15% using the Intel compiler on Linux
+c and about a factor of 2 on the IBM SP.
+c Using the dcft routines, the code runs about 30-40% faster than with vcpft.
+c=======================================================================
       subroutine cosqx(a,w,c,nx,ny,isetup,isign)
       integer(ISZ):: nx,ny,isetup,isign
       real(kind=8):: a(0:nx,0:ny),w(2,0:nx,ny/2),c(nx-1)
@@ -2098,8 +2245,6 @@ c  copy the data back to the original array.
       real(kind=8):: pih,dt,fk
       integer(ISZ):: k,kc,ix,iy,ii,jj
 
-#ifdef ESSL
-
       integer(ISZ):: naux1,naux2
       integer(ISZ):: prevnaux1,prevnaux2
       integer(ISZ):: prevnx,prevny,previsign
@@ -2119,11 +2264,11 @@ c       --- Calculate how much space is needed.
 c       --- Only allocate if it is larger than last time (deallocating
 c       --- if needed).
         if (naux1 > prevnaux1) then
-          if allocated(aux1) deallocate(aux1)
+          if (allocated(aux1)) deallocate(aux1)
           allocate(aux1(naux1))
         endif
         if (naux2 > prevnaux2) then
-          if allocated(aux2) deallocate(aux2)
+          if (allocated(aux2)) deallocate(aux2)
           allocate(aux2(naux2))
         endif
 
@@ -2137,8 +2282,6 @@ c       --- Save the values for this intialization
         prevnaux1 = naux1
         prevnaux2 = naux2
       endif
-
-#endif
 
 c     do setup
       if (isetup == 1) then
@@ -2172,11 +2315,7 @@ c     do forward transform
           w(ii,0   ,jj) = a(0,iy)
           w(ii,nx/2,jj) = c(nx/2)*(a(nx/2,iy) + a(nx/2,iy))
         enddo
-#ifdef ESSL
         call dcft(0,w,1,nx+1,w,1,nx+1,nx,ny/2,+1,1.,aux1,naux1,aux2,naux2)
-#else
-        call vcpft (w(1,0,1), w(2,0,1), nx, 2,-1,ny/2,2*(nx+1))
-#endif
         call vrpft2(w(1,0,1), w(2,0,1), nx, 2,   ny/2,2*(nx+1))
         do iy=0,ny-1
           ii = mod(iy,2) + 1
@@ -2211,11 +2350,7 @@ c     do backward transform
           enddo
         enddo
         call vrpfti2(w(1,0,1), w(2,0,1), nx, 2,   ny/2,2*(nx+1))
-#ifdef ESSL
         call dcft(0,w,1,nx+1,w,1,nx+1,nx,ny/2,-1,1.,aux1,naux1,aux2,naux2)
-#else
-        call vcpft  (w(1,0,1), w(2,0,1), nx, 2,+1,ny/2,2*(nx+1))
-#endif
         do iy=0,ny-1
           ii = mod(iy,2) + 1
           jj = iy/2 + 1
@@ -2257,8 +2392,6 @@ c  copy the data back to the original array.
       real(kind=8):: pih,dt,fk
       integer(ISZ):: k,kc,ix,iy,ii,jj
 
-#ifdef ESSL
-
       integer(ISZ):: naux1,naux2
       integer(ISZ):: prevnaux1,prevnaux2
       integer(ISZ):: prevnx,prevny,previsign
@@ -2280,11 +2413,11 @@ c       --- Calculate how much space is needed.
 c       --- Only allocate if it is larger than last time (deallocating
 c       --- if needed).
         if (naux1 > prevnaux1) then
-          if allocated(aux1) deallocate(aux1)
+          if (allocated(aux1)) deallocate(aux1)
           allocate(aux1(naux1))
         endif
         if (naux2 > prevnaux2) then
-          if allocated(aux2) deallocate(aux2)
+          if (allocated(aux2)) deallocate(aux2)
           allocate(aux2(naux2))
         endif
 
@@ -2298,8 +2431,6 @@ c       --- Save the values for this intialization
         prevnaux1 = naux1
         prevnaux2 = naux2
       endif
-
-#endif
 
 c     do setup
       if (isetup == 1) then
@@ -2333,11 +2464,7 @@ c     do forward transform
           w(ii,0,jj) = a(ix,0)
           w(ii,ny/2,jj) = c(ny/2)*(a(ix,ny/2) + a(ix,ny/2))
         enddo
-#ifdef ESSL
         call dcft(0,w,1,ny+1,w,1,ny+1,ny,nx/2,+1,1.,aux1,naux1,aux2,naux2)
-#else
-        call vcpft (w(1,0,1), w(2,0,1), ny, 2,-1,nx/2,2*(ny+1))
-#endif
         call vrpft2(w(1,0,1), w(2,0,1), ny, 2,   nx/2,2*(ny+1))
         do ix=0,nx-1
           ii = mod(ix,2) + 1
@@ -2372,11 +2499,7 @@ c     do backward transform
           enddo
         enddo
         call vrpfti2(w(1,0,1), w(2,0,1), ny, 2,   nx/2,2*(ny+1))
-#ifdef ESSL
         call dcft(0,w,1,ny+1,w,1,ny+1,ny,nx/2,-1,1.,aux1,naux1,aux2,naux2)
-#else
-        call vcpft  (w(1,0,1), w(2,0,1), ny, 2,+1,nx/2,2*(ny+1))
-#endif
         do ix=0,nx-1
           ii = mod(ix,2) + 1
           jj = ix/2 + 1
@@ -2398,7 +2521,201 @@ c     do backward transform
       return
       end
 c===========================================================================
+#else
+c=======================================================================
+c The following two routines use the vcpft routine for the FFT's. That
+c routine runs faster when the data is in transposed order and the following
+c versions were kept.
+c The difference in speed is around 15% using the Intel compiler on Linux
+c and about a factor of 2 on the IBM SP.
+c=======================================================================
+      subroutine cosqx(a,w,c,nx,ny,isetup,isign)
+      integer(ISZ):: nx,ny,isetup,isign
+      real(kind=8):: a(0:nx,0:ny),w(0:ny-1,0:nx),c(nx-1)
+
+c  This routine does Fourier transforms with only odd cosines.
+
+c  This routine is based off the routines cosqi,cosqf1,cosqb1 fftpack of
+c  the NETLIB collection.  The files were obtained in July of 1994.
+c
+c  Changes were made to the routines to allow vectorization over the
+c  direction perpendicular to the transforms and to use vcpft to transform
+c  two sets of data at once.  Also, the output of vcpft is organized
+c  differently than the FFT routine used by NETLIB.  The loops were all
+c  rearranged for optimization.  The FFT's are actually performed in the
+c  scratch arrays.  This avoids an additional loop over the arrays to
+c  copy the data back to the original array.
+
+      real(kind=8):: pih,dt,fk
+      integer(ISZ):: k,kc,ix,iy
+
+c     do setup
+      if (isetup == 1) then
+        pih = 2.*atan(1.)
+        dt = pih/nx
+        fk = 0.
+        do k=1,nx/2-1
+           fk = fk+1.
+           c(k)    = cos(fk*dt) + cos((nx-fk)*dt)
+           c(nx-k) = cos(fk*dt) - cos((nx-fk)*dt)
+        enddo
+        c(nx/2) = cos(nx*0.5*dt)
+        return
+      endif
+   
+c     do forward transform
+      if (isign == -1) then
+
+        do iy=0,ny-1
+          do k=1,nx/2-1
+            kc = nx-k
+            w(iy,k)  = c(k)*a(k,iy) - c(kc)*a(kc,iy)
+            w(iy,kc) = c(kc)*a(k,iy) + c(k)*a(kc,iy)
+          enddo
+        enddo
+        do iy=0,ny-1
+          w(iy,0) = a(0,iy)
+          w(iy,nx/2) = c(nx/2)*(a(nx/2,iy) + a(nx/2,iy))
+        enddo
+        call vcpft (w(0,0), w(1,0), nx, ny,-1,ny/2,2)
+        call vrpft2(w(0,0), w(1,0), nx, ny,   ny/2,2)
+        do iy=0,ny-1
+          a(0,iy) = w(iy,0)
+          a(nx-1,iy) = w(iy,nx/2)
+        enddo
+        do iy=0,ny-1
+          do ix=1,nx/2-1
+            a(2*ix-1,iy) = w(iy,ix) - w(iy,nx-ix)
+            a(2*ix,iy)   = w(iy,ix) + w(iy,nx-ix)
+          enddo
+        enddo
+
+c     do backward transform
+      elseif (isign == 1) then
+
+        do iy=0,ny-1
+          w(iy,0) = a(0,iy) + a(0,iy)
+          w(iy,nx/2) = a(nx-1,iy) + a(nx-1,iy)
+        enddo
+        do iy=0,ny-1
+          do ix=1,nx/2-1
+            w(iy,ix) = a(2*ix-1,iy) + a(2*ix,iy)
+            w(iy,nx-ix) = a(2*ix,iy) - a(2*ix-1,iy)
+          enddo
+        enddo
+        call vrpfti2(w(0,0), w(1,0), nx, ny,   ny/2,2)
+        call vcpft  (w(0,0), w(1,0), nx, ny,+1,ny/2,2)
+        do iy=0,ny-1
+          a(0,iy) = w(iy,0)+w(iy,0)
+          a(nx/2,iy) = c(nx/2)*(w(iy,nx/2) + w(iy,nx/2))
+        enddo
+        do iy=0,ny-1
+          do k=1,nx/2-1
+            kc = nx-k
+            a(k,iy) = c(kc)*w(iy,kc) + c(k)*w(iy,k)
+            a(kc,iy) = c(k)*w(iy,kc) - c(kc)*w(iy,k)
+          enddo
+        enddo
+
+      endif
+
+      return
+      end
+c=======================================================================
+      subroutine cosqy(a,w,c,nx,ny,isetup,isign)
+      integer(ISZ):: nx,ny,isetup,isign
+      real(kind=8):: a(0:nx,0:ny),w(0:nx-1,0:ny),c(ny-1)
+
+c  This routine does Fourier transforms with only odd cosines.
+
+c  This routine is based off the routines cosqi,cosqf1,cosqb1 fftpack of
+c  the NETLIB collection.  The files were obtained in July of 1994.
+c
+c  Changes were made to the routines to allow vectorization over the
+c  direction perpendicular to the transforms and to use vcpft to transform
+c  two sets of data at once.  Also, the output of vcpft is organized
+c  differently than the FFT routine used by NETLIB.  The loops were all
+c  rearranged for optimization.  The FFT's are actually performed in the
+c  scratch arrays.  This avoids an additional loop over the arrays to
+c  copy the data back to the original array.
+
+      real(kind=8):: pih,dt,fk
+      integer(ISZ):: k,kc,ix,iy
+
+c     do setup
+      if (isetup == 1) then
+        pih = 2.*atan(1.)
+        dt = pih/ny
+        fk = 0.
+        do k=1,ny/2-1
+           fk = fk+1.
+           c(k)    = cos(fk*dt) + cos((ny-fk)*dt)
+           c(ny-k) = cos(fk*dt) - cos((ny-fk)*dt)
+        enddo
+        c(ny/2) = cos(ny*0.5*dt)
+        return
+      endif
+   
+c     do forward transform
+      if (isign == -1) then
+
+        do k=1,ny/2-1
+          kc = ny-k
+          do ix=0,nx-1
+            w(ix,k)  = c(k)*a(ix,k) - c(kc)*a(ix,kc)
+            w(ix,kc) = c(kc)*a(ix,k) + c(k)*a(ix,kc)
+          enddo
+        enddo
+        do ix=0,nx-1
+          w(ix,0) = a(ix,0)
+          w(ix,ny/2) = c(ny/2)*(a(ix,ny/2) + a(ix,ny/2))
+        enddo
+        call vcpft (w(0,0), w(1,0), ny, nx,-1,nx/2,2)
+        call vrpft2(w(0,0), w(1,0), ny, nx,   nx/2,2)
+        do ix=0,nx-1
+          a(ix,0) = w(ix,0)
+          a(ix,ny-1) = w(ix,ny/2)
+        enddo
+        do iy=1,ny/2-1
+          do ix=0,nx-1
+            a(ix,2*iy-1) = w(ix,iy) - w(ix,ny-iy)
+            a(ix,2*iy)   = w(ix,iy) + w(ix,ny-iy)
+          enddo
+        enddo
+
+c     do backward transform
+      elseif (isign == 1) then
+
+        do ix=0,nx-1
+          w(ix,0) = a(ix,0) + a(ix,0)
+          w(ix,ny/2) = a(ix,ny-1) + a(ix,ny-1)
+        enddo
+        do iy=1,ny/2-1
+          do ix=0,nx-1
+            w(ix,iy) = a(ix,2*iy-1) + a(ix,2*iy)
+            w(ix,ny-iy) = a(ix,2*iy) - a(ix,2*iy-1)
+          enddo
+        enddo
+        call vrpfti2(w(0,0), w(1,0), ny, nx,   nx/2,2)
+        call vcpft  (w(0,0), w(1,0), ny, nx,+1,nx/2,2)
+        do ix=0,nx-1
+          a(ix,0) = w(ix,0)+w(ix,0)
+          a(ix,ny/2) = c(ny/2)*(w(ix,ny/2)+w(ix,ny/2))
+        enddo
+        do k=1,ny/2-1
+          kc = ny-k
+          do ix=0,nx-1
+            a(ix,k) = c(kc)*w(ix,kc) + c(k)*w(ix,k)
+            a(ix,kc) = c(k)*w(ix,kc) - c(kc)*w(ix,k)
+          enddo
+        enddo
+
+      endif
+
+      return
+      end
 c===========================================================================
+#endif
 c===========================================================================
 c===========================================================================
 c===========================================================================
@@ -4361,7 +4678,7 @@ c         --- done with real(kind=8):: numbers so that there is not an integer o
 #ifdef MPIPARALLEL
 c*********************Parallel Routine*********************
 c           --- calculate global sorerror
-            call parallelmax(sorerror,1)
+            call parallelmaxrealarray(sorerror,1)
 c           write(STDERR,*) "global error = ",sorerror
 c**********************************************************
 #endif
