@@ -9,12 +9,16 @@ import __main__
 # ---------------------------------------------------------------------------
 MRsolver = [None]
 def registersolver(solver):
+  assert MRsolver[0] is not None,"No solver has been registered"
   MRsolver[0] = solver
 def loadrhoMR():
+  assert MRsolver[0] is not None,"No solver has been registered"
   MRsolver[0].loadrho()
 def fieldsolMR():
+  assert MRsolver[0] is not None,"No solver has been registered"
   MRsolver[0].solve()
 def fetcheMR():
+  assert MRsolver[0] is not None,"No solver has been registered"
   MRsolver[0].fetche()
 __main__.__dict__['loadrhoMR'] = loadrhoMR
 __main__.__dict__['fieldsolMR'] = fieldsolMR
@@ -518,7 +522,9 @@ the top level grid.
     """
     if lzero: self.zerorho()
     for i,n,q,w in zip(top.ins-1,top.nps,top.sq,top.sw):
-      self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],q,w)
+      if n > 0:
+        self.setrho(top.xp[i:i+n],top.yp[i:i+n],top.zp[i:i+n],top.uzp[i:i+n],
+                    q,w)
     self.addmyrhotosiblings()
     self.getrhofromsiblings()
     self.gatherrhofromchildren()
