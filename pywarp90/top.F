@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.132 $, $Date: 2004/10/28 00:22:20 $
+c@(#) File TOP.F, version $Revision: 3.133 $, $Date: 2004/11/04 23:51:14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2994,6 +2994,7 @@ c           --- find z-cell in which particle lies
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
           endif
           imm(ip) = cmltim(iz,io)
+          if (imm(ip) <= 0) cycle
           dzi = 1./dzmlt(imm(ip))
           mltph(ip) = cmltph(iz,io)
           mltsf(ip) = cmltsc(iz,io) + cmltsf(iz,io)
@@ -3028,6 +3029,7 @@ c           --- find z-cell in which particle lies
           endif
 c         --- set temporaries
           imm(ip) = cmltim(iz,io)
+          if (imm(ip) <= 0) cycle
           dzi = 1./dzmlt(imm(ip))
           cent = 0.5*(cmltzs(iz,io) + cmltze(iz,io))
           xxx(ip) = xp(ip)
@@ -3139,7 +3141,7 @@ c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
 c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
 c        + ...
 
-      integer(ISZ):: io,ip,i,j,k,iz,ii,ib
+      integer(ISZ):: io,ip,i,j,k,iz,ii,id
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
       real(kind=8):: tbx,tby
 
@@ -3155,8 +3157,8 @@ c         --- All particles are in the same z-cell
           zz = zp(1)
           iz = 0
           ii = cbgrdid(iz,io)
-          ib = bgrdid(ii)
-          k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
+          id = bgrdid(ii)
+          k = (zz - cbgrdzs(iz,io))*bgrddzi(id)
 c         --- skip field accumulation if particles are outside of axial grid
           if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
         endif
@@ -3168,9 +3170,12 @@ c         --- skip field accumulation if particles are outside of axial grid
 c           --- find the location of the particle in the internal lattice arrays
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
             ii = cbgrdid(iz,io)
-            ib = bgrdid(ii)
+            id = bgrdid(ii)
             if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
           endif
+
+c         --- Cycle if this element is turned off
+          if (id <= 0) cycle
 
 c         --- find transverse particle coordinate in frame of gridded field 
 c         --- transverse offsets
@@ -3232,14 +3237,14 @@ c             --- Swap x and y
           endif
 
 c         --- find location of particle in B field grid
-          i =  txp*bgrddxi(ib)
-          j =  typ*bgrddyi(ib)
-          k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
+          i =  txp*bgrddxi(id)
+          j =  typ*bgrddyi(id)
+          k = (zz - cbgrdzs(iz,io))*bgrddzi(id)
 
 c         --- Calculate linear weights
-          u1 = txp*bgrddxi(ib) - i
-          v1 = typ*bgrddyi(ib) - j
-          w1 = (zz - cbgrdzs(iz,io))*bgrddzi(ib) - k
+          u1 = txp*bgrddxi(id) - i
+          v1 = typ*bgrddyi(id) - j
+          w1 = (zz - cbgrdzs(iz,io))*bgrddzi(id) - k
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -3251,23 +3256,23 @@ c         --- Only calculate for particles inside the B field grid
 
             bfac = bgrdsc(ii) + bgrdsf(ii)
 
-            tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,ib) +
-     &                        u1*v0*w0*bgrdbx(i+1,j  ,k  ,ib) +
-     &                        u0*v1*w0*bgrdbx(i  ,j+1,k  ,ib) +
-     &                        u1*v1*w0*bgrdbx(i+1,j+1,k  ,ib) +
-     &                        u0*v0*w1*bgrdbx(i  ,j  ,k+1,ib) +
-     &                        u1*v0*w1*bgrdbx(i+1,j  ,k+1,ib) +
-     &                        u0*v1*w1*bgrdbx(i  ,j+1,k+1,ib) +
-     &                        u1*v1*w1*bgrdbx(i+1,j+1,k+1,ib))
+            tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,id) +
+     &                        u1*v0*w0*bgrdbx(i+1,j  ,k  ,id) +
+     &                        u0*v1*w0*bgrdbx(i  ,j+1,k  ,id) +
+     &                        u1*v1*w0*bgrdbx(i+1,j+1,k  ,id) +
+     &                        u0*v0*w1*bgrdbx(i  ,j  ,k+1,id) +
+     &                        u1*v0*w1*bgrdbx(i+1,j  ,k+1,id) +
+     &                        u0*v1*w1*bgrdbx(i  ,j+1,k+1,id) +
+     &                        u1*v1*w1*bgrdbx(i+1,j+1,k+1,id))
 
-            tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,ib) +
-     &                        u1*v0*w0*bgrdby(i+1,j  ,k  ,ib) +
-     &                        u0*v1*w0*bgrdby(i  ,j+1,k  ,ib) +
-     &                        u1*v1*w0*bgrdby(i+1,j+1,k  ,ib) +
-     &                        u0*v0*w1*bgrdby(i  ,j  ,k+1,ib) +
-     &                        u1*v0*w1*bgrdby(i+1,j  ,k+1,ib) +
-     &                        u0*v1*w1*bgrdby(i  ,j+1,k+1,ib) +
-     &                        u1*v1*w1*bgrdby(i+1,j+1,k+1,ib))
+            tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,id) +
+     &                        u1*v0*w0*bgrdby(i+1,j  ,k  ,id) +
+     &                        u0*v1*w0*bgrdby(i  ,j+1,k  ,id) +
+     &                        u1*v1*w0*bgrdby(i+1,j+1,k  ,id) +
+     &                        u0*v0*w1*bgrdby(i  ,j  ,k+1,id) +
+     &                        u1*v0*w1*bgrdby(i+1,j  ,k+1,id) +
+     &                        u0*v1*w1*bgrdby(i  ,j+1,k+1,id) +
+     &                        u1*v1*w1*bgrdby(i+1,j+1,k+1,id))
 
             if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
               temp = tbx 
@@ -3287,14 +3292,14 @@ c           --- tranverse field
             bx(ip) = bx(ip) + tbx
             by(ip) = by(ip) + tby
 
-            bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,ib) +
-     &                                    u1*v0*w0*bgrdbz(i+1,j  ,k  ,ib) +
-     &                                    u0*v1*w0*bgrdbz(i  ,j+1,k  ,ib) +
-     &                                    u1*v1*w0*bgrdbz(i+1,j+1,k  ,ib) +
-     &                                    u0*v0*w1*bgrdbz(i  ,j  ,k+1,ib) +
-     &                                    u1*v0*w1*bgrdbz(i+1,j  ,k+1,ib) +
-     &                                    u0*v1*w1*bgrdbz(i  ,j+1,k+1,ib) +
-     &                                    u1*v1*w1*bgrdbz(i+1,j+1,k+1,ib))
+            bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,id) +
+     &                                    u1*v0*w0*bgrdbz(i+1,j  ,k  ,id) +
+     &                                    u0*v1*w0*bgrdbz(i  ,j+1,k  ,id) +
+     &                                    u1*v1*w0*bgrdbz(i+1,j+1,k  ,id) +
+     &                                    u0*v0*w1*bgrdbz(i  ,j  ,k+1,id) +
+     &                                    u1*v0*w1*bgrdbz(i+1,j  ,k+1,id) +
+     &                                    u0*v1*w1*bgrdbz(i  ,j+1,k+1,id) +
+     &                                    u1*v1*w1*bgrdbz(i+1,j+1,k+1,id))
 
           endif
 
@@ -3330,7 +3335,7 @@ c             + u1 * v0 * w0 * bgrd(:,i+1,j  ,k  ,bgrdid)
 c             + u0 * v1 * w0 * bgrd(:,i  ,j+1,k  ,bgrdid)
 c             + ...
 
-      integer(ISZ):: io,ip,i,j,k,iz,ii,ib,ic
+      integer(ISZ):: io,ip,i,j,k,iz,ii,id,ic
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
       real(kind=8):: tb(bgrdnc)
 
@@ -3346,8 +3351,8 @@ c         --- All particles are in the same z-cell
           zz = zp(1)
           iz = 0
           ii = cbgrdid(iz,io)
-          ib = bgrdid(ii)
-          k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
+          id = bgrdid(ii)
+          k = (zz - cbgrdzs(iz,io))*bgrddzi(id)
 c         --- skip field accumulation if particles are outside of axial grid
           if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
         endif
@@ -3359,9 +3364,12 @@ c         --- skip field accumulation if particles are outside of axial grid
 c           --- find the location of the particle in the internal lattice arrays
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
             ii = cbgrdid(iz,io)
-            ib = bgrdid(ii)
+            id = bgrdid(ii)
             if (zz < cbgrdzs(iz,io) .or. cbgrdze(iz,io) < zz) cycle
           endif
+
+c         --- Cycle if this element is turned off
+          if (id <= 0) cycle
 
 c         --- find transverse particle coordinate in frame of gridded field 
 c         --- transverse offsets
@@ -3423,14 +3431,14 @@ c             --- Swap x and y
           endif
 
 c         --- find location of particle in B field grid
-          i =  txp*bgrddxi(ib)
-          j =  typ*bgrddyi(ib)
-          k = (zz - cbgrdzs(iz,io))*bgrddzi(ib)
+          i =  txp*bgrddxi(id)
+          j =  typ*bgrddyi(id)
+          k = (zz - cbgrdzs(iz,io))*bgrddzi(id)
 
 c         --- Calculate linear weights
-          u1 = txp*bgrddxi(ib) - i
-          v1 = typ*bgrddyi(ib) - j
-          w1 = (zz - cbgrdzs(iz,io))*bgrddzi(ib) - k
+          u1 = txp*bgrddxi(id) - i
+          v1 = typ*bgrddyi(id) - j
+          w1 = (zz - cbgrdzs(iz,io))*bgrddzi(id) - k
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -3442,14 +3450,14 @@ c         --- Only calculate for particles inside the B field grid
 
             bfac = bgrdsc(ii) + bgrdsf(ii)
 
-            tb = bfac*(u0*v0*w0*bgrd(:,i  ,j  ,k  ,ib) +
-     &                 u1*v0*w0*bgrd(:,i+1,j  ,k  ,ib) +
-     &                 u0*v1*w0*bgrd(:,i  ,j+1,k  ,ib) +
-     &                 u1*v1*w0*bgrd(:,i+1,j+1,k  ,ib) +
-     &                 u0*v0*w1*bgrd(:,i  ,j  ,k+1,ib) +
-     &                 u1*v0*w1*bgrd(:,i+1,j  ,k+1,ib) +
-     &                 u0*v1*w1*bgrd(:,i  ,j+1,k+1,ib) +
-     &                 u1*v1*w1*bgrd(:,i+1,j+1,k+1,ib))
+            tb = bfac*(u0*v0*w0*bgrd(:,i  ,j  ,k  ,id) +
+     &                 u1*v0*w0*bgrd(:,i+1,j  ,k  ,id) +
+     &                 u0*v1*w0*bgrd(:,i  ,j+1,k  ,id) +
+     &                 u1*v1*w0*bgrd(:,i+1,j+1,k  ,id) +
+     &                 u0*v0*w1*bgrd(:,i  ,j  ,k+1,id) +
+     &                 u1*v0*w1*bgrd(:,i+1,j  ,k+1,id) +
+     &                 u0*v1*w1*bgrd(:,i  ,j+1,k+1,id) +
+     &                 u1*v1*w1*bgrd(:,i+1,j+1,k+1,id))
 
 
             if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
@@ -3518,7 +3526,7 @@ c  sete3d more complex and possibly slower.  Since the pgrd routine will not
 c  be used very often and sete3d is used always, the author felt it was better
 c  to have a seperate routine for pgrd.
 
-      integer(ISZ):: io,ip,i,j,k,iz,ii,ib,im1,jm1
+      integer(ISZ):: io,ip,i,j,k,iz,ii,id,im1,jm1
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,xfac,yfac,zfac,txp,typ,temp
 
 c  Evaluation of E, vectorized over particles
@@ -3533,8 +3541,8 @@ c         --- find the location of the particle in the internal lattice arrays
           zz = zp(1)
           iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
           ii = cpgrdid(iz,io)
-          ib = pgrdid(ii)
-          k = (zz - cpgrdzs(iz,io))*pgrddzi(ib)
+          id = pgrdid(ii)
+          k = (zz - cpgrdzs(iz,io))*pgrddzi(id)
           if (zz < cpgrdzs(iz,io) .or. cpgrdze(iz,io) < zz) cycle
         endif
 
@@ -3545,10 +3553,13 @@ c           --- find the location of the particle in the internal lattice arrays
             zz = zp(ip)
             iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
             ii = cpgrdid(iz,io)
-            ib = pgrdid(ii)
+            id = pgrdid(ii)
 c           --- cycle if lost particle
             if (zz < cpgrdzs(iz,io) .or. cpgrdze(iz,io) < zz) cycle
           endif
+
+c         --- Cycle if this element is turned off
+          if (id <= 0) cycle
 
 c         --- find transverse particle coordinate in frame of gridded field 
 c         --- transverse offsets
@@ -3566,14 +3577,14 @@ c         --- must be rotated back.
           endif 
 
 c         --- find location of particle in potential grid
-          i =  abs(txp - pgrdxs(ii))*pgrddxi(ib)
-          j =  abs(typ - pgrdys(ii))*pgrddyi(ib)
-          k = (zz - cpgrdzs(iz,io))*pgrddzi(ib)
+          i =  abs(txp - pgrdxs(ii))*pgrddxi(id)
+          j =  abs(typ - pgrdys(ii))*pgrddyi(id)
+          k = (zz - cpgrdzs(iz,io))*pgrddzi(id)
 
 c         --- Calculate linear weights
-          u1 =  abs(txp - pgrdxs(ii))*pgrddxi(ib) - i
-          v1 =  abs(typ - pgrdys(ii))*pgrddyi(ib) - j
-          w1 = (zz - cpgrdzs(iz,io))*pgrddzi(ib) - k
+          u1 =  abs(txp - pgrdxs(ii))*pgrddxi(id) - i
+          v1 =  abs(typ - pgrdys(ii))*pgrddyi(id) - j
+          w1 = (zz - cpgrdzs(iz,io))*pgrddzi(id) - k
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -3590,41 +3601,41 @@ c           --- make sure all indices refer to first quadrant
             if (j == 0) jm1 = 1
 
 c           --- adjust sign of E field for approiate quadrant
-            xfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddxi(ib)*0.5
-            yfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddyi(ib)*0.5
-            zfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddzi(ib)*0.5
+            xfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddxi(id)*0.5
+            yfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddyi(id)*0.5
+            zfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddzi(id)*0.5
             if (xp(ip) < pgrdxs(ii)) xfac = -xfac
             if (yp(ip) < pgrdys(ii)) yfac = -yfac
 
             ex(ip) = ex(ip) + xfac*
-     &            (u0*v0*w0*(pgrd(im1,j  ,k  ,ib) - pgrd(i+1,j  ,k  ,ib))
-     &           + u1*v0*w0*(pgrd(i  ,j  ,k  ,ib) - pgrd(i+2,j  ,k  ,ib))
-     &           + u0*v1*w0*(pgrd(im1,j+1,k  ,ib) - pgrd(i+1,j+1,k  ,ib))
-     &           + u1*v1*w0*(pgrd(i  ,j+1,k  ,ib) - pgrd(i+2,j+1,k  ,ib))
-     &           + u0*v0*w1*(pgrd(im1,j  ,k+1,ib) - pgrd(i+1,j  ,k+1,ib))
-     &           + u1*v0*w1*(pgrd(i  ,j  ,k+1,ib) - pgrd(i+2,j  ,k+1,ib))
-     &           + u0*v1*w1*(pgrd(im1,j+1,k+1,ib) - pgrd(i+1,j+1,k+1,ib))
-     &           + u1*v1*w1*(pgrd(i  ,j+1,k+1,ib) - pgrd(i+2,j+1,k+1,ib)))
+     &            (u0*v0*w0*(pgrd(im1,j  ,k  ,id) - pgrd(i+1,j  ,k  ,id))
+     &           + u1*v0*w0*(pgrd(i  ,j  ,k  ,id) - pgrd(i+2,j  ,k  ,id))
+     &           + u0*v1*w0*(pgrd(im1,j+1,k  ,id) - pgrd(i+1,j+1,k  ,id))
+     &           + u1*v1*w0*(pgrd(i  ,j+1,k  ,id) - pgrd(i+2,j+1,k  ,id))
+     &           + u0*v0*w1*(pgrd(im1,j  ,k+1,id) - pgrd(i+1,j  ,k+1,id))
+     &           + u1*v0*w1*(pgrd(i  ,j  ,k+1,id) - pgrd(i+2,j  ,k+1,id))
+     &           + u0*v1*w1*(pgrd(im1,j+1,k+1,id) - pgrd(i+1,j+1,k+1,id))
+     &           + u1*v1*w1*(pgrd(i  ,j+1,k+1,id) - pgrd(i+2,j+1,k+1,id)))
 
             ey(ip) = ey(ip) + yfac*
-     &            (u0*v0*w0*(pgrd(i  ,jm1,k  ,ib) - pgrd(i  ,j+1,k  ,ib))
-     &           + u1*v0*w0*(pgrd(i+1,jm1,k  ,ib) - pgrd(i+1,j+1,k  ,ib))
-     &           + u0*v1*w0*(pgrd(i  ,j  ,k  ,ib) - pgrd(i  ,j+2,k  ,ib))
-     &           + u1*v1*w0*(pgrd(i+1,j  ,k  ,ib) - pgrd(i+1,j+2,k  ,ib))
-     &           + u0*v0*w1*(pgrd(i  ,jm1,k+1,ib) - pgrd(i  ,j+1,k+1,ib))
-     &           + u1*v0*w1*(pgrd(i+1,jm1,k+1,ib) - pgrd(i+1,j+1,k+1,ib))
-     &           + u0*v1*w1*(pgrd(i  ,j  ,k+1,ib) - pgrd(i  ,j+2,k+1,ib))
-     &           + u1*v1*w1*(pgrd(i+1,j  ,k+1,ib) - pgrd(i+1,j+2,k+1,ib)))
+     &            (u0*v0*w0*(pgrd(i  ,jm1,k  ,id) - pgrd(i  ,j+1,k  ,id))
+     &           + u1*v0*w0*(pgrd(i+1,jm1,k  ,id) - pgrd(i+1,j+1,k  ,id))
+     &           + u0*v1*w0*(pgrd(i  ,j  ,k  ,id) - pgrd(i  ,j+2,k  ,id))
+     &           + u1*v1*w0*(pgrd(i+1,j  ,k  ,id) - pgrd(i+1,j+2,k  ,id))
+     &           + u0*v0*w1*(pgrd(i  ,jm1,k+1,id) - pgrd(i  ,j+1,k+1,id))
+     &           + u1*v0*w1*(pgrd(i+1,jm1,k+1,id) - pgrd(i+1,j+1,k+1,id))
+     &           + u0*v1*w1*(pgrd(i  ,j  ,k+1,id) - pgrd(i  ,j+2,k+1,id))
+     &           + u1*v1*w1*(pgrd(i+1,j  ,k+1,id) - pgrd(i+1,j+2,k+1,id)))
 
             ez(ip) = ez(ip) + zfac*
-     &            (u0*v0*w0*(pgrd(i  ,j  ,k-1,ib) - pgrd(i  ,j  ,k+1,ib))
-     &           + u1*v0*w0*(pgrd(i+1,j  ,k-1,ib) - pgrd(i+1,j  ,k+1,ib))
-     &           + u0*v1*w0*(pgrd(i  ,j+1,k-1,ib) - pgrd(i  ,j+1,k+1,ib))
-     &           + u1*v1*w0*(pgrd(i+1,j+1,k-1,ib) - pgrd(i+1,j+1,k+1,ib))
-     &           + u0*v0*w1*(pgrd(i  ,j  ,k  ,ib) - pgrd(i  ,j  ,k+2,ib))
-     &           + u1*v0*w1*(pgrd(i+1,j  ,k  ,ib) - pgrd(i+1,j  ,k+2,ib))
-     &           + u0*v1*w1*(pgrd(i  ,j+1,k  ,ib) - pgrd(i  ,j+1,k+2,ib))
-     &           + u1*v1*w1*(pgrd(i+1,j+1,k  ,ib) - pgrd(i+1,j+1,k+2,ib)))
+     &            (u0*v0*w0*(pgrd(i  ,j  ,k-1,id) - pgrd(i  ,j  ,k+1,id))
+     &           + u1*v0*w0*(pgrd(i+1,j  ,k-1,id) - pgrd(i+1,j  ,k+1,id))
+     &           + u0*v1*w0*(pgrd(i  ,j+1,k-1,id) - pgrd(i  ,j+1,k+1,id))
+     &           + u1*v1*w0*(pgrd(i+1,j+1,k-1,id) - pgrd(i+1,j+1,k+1,id))
+     &           + u0*v0*w1*(pgrd(i  ,j  ,k  ,id) - pgrd(i  ,j  ,k+2,id))
+     &           + u1*v0*w1*(pgrd(i+1,j  ,k  ,id) - pgrd(i+1,j  ,k+2,id))
+     &           + u0*v1*w1*(pgrd(i  ,j+1,k  ,id) - pgrd(i  ,j+1,k+2,id))
+     &           + u1*v1*w1*(pgrd(i+1,j+1,k  ,id) - pgrd(i+1,j+1,k+2,id)))
 
           endif
 
@@ -3643,7 +3654,7 @@ c=============================================================================
 
 c Fetch phi from pgrd at points.
 
-      integer(ISZ):: io,ip,i,j,k,iz,ii,ib
+      integer(ISZ):: io,ip,i,j,k,iz,ii,id
       real(kind=8):: zz,u0,u1,v0,v1,w0,w1,txp,typ,temp
 
       if (.not. pgrds .or. .not. linpgrd(0)) return
@@ -3657,7 +3668,10 @@ c         --- find the location of the particle in the internal lattice arrays
           zz = zp(ip)
           iz = max(0., (zz - zlmin - zlframe)*dzli + 0.5)
           ii = cpgrdid(iz,io)
-          ib = pgrdid(ii)
+          id = pgrdid(ii)
+
+c         --- Cycle if this element is turned off
+          if (id <= 0) cycle
 
 c         --- find transverse particle coordinate in frame of gridded field 
 c         --- transverse offsets
@@ -3675,14 +3689,14 @@ c         --- must be rotated back.
           endif 
 
 c         --- find location of particle in potential grid
-          i =  abs(txp - pgrdxs(ii))*pgrddxi(ib)
-          j =  abs(typ - pgrdys(ii))*pgrddyi(ib)
-          k = (zz - cpgrdzs(iz,io))*pgrddzi(ib)
+          i =  abs(txp - pgrdxs(ii))*pgrddxi(id)
+          j =  abs(typ - pgrdys(ii))*pgrddyi(id)
+          k = (zz - cpgrdzs(iz,io))*pgrddzi(id)
 
 c         --- Calculate linear weights
-          u1 =  abs(txp - pgrdxs(ii))*pgrddxi(ib) - i
-          v1 =  abs(typ - pgrdys(ii))*pgrddyi(ib) - j
-          w1 = (zz - cpgrdzs(iz,io))*pgrddzi(ib) - k
+          u1 =  abs(txp - pgrdxs(ii))*pgrddxi(id) - i
+          v1 =  abs(typ - pgrdys(ii))*pgrddyi(id) - j
+          w1 = (zz - cpgrdzs(iz,io))*pgrddzi(id) - k
           u0 = 1. - u1
           v0 = 1. - v1
           w0 = 1. - w1
@@ -3693,14 +3707,14 @@ c         --- Only calculate for particles inside the field grid
      &        0 <= k .and. k < pgrdnz) then
 
             p(ip) = p(ip) + (pgrdsc(ii)+pgrdsf(ii)) *
-     &            (u0*v0*w0*pgrd(i  ,j  ,k  ,ib)
-     &           + u1*v0*w0*pgrd(i+1,j  ,k  ,ib)
-     &           + u0*v1*w0*pgrd(i  ,j+1,k  ,ib)
-     &           + u1*v1*w0*pgrd(i+1,j+1,k  ,ib)
-     &           + u0*v0*w1*pgrd(i  ,j  ,k+1,ib)
-     &           + u1*v0*w1*pgrd(i+1,j  ,k+1,ib)
-     &           + u0*v1*w1*pgrd(i  ,j+1,k+1,ib)
-     &           + u1*v1*w1*pgrd(i+1,j+1,k+1,ib))
+     &            (u0*v0*w0*pgrd(i  ,j  ,k  ,id)
+     &           + u1*v0*w0*pgrd(i+1,j  ,k  ,id)
+     &           + u0*v1*w0*pgrd(i  ,j+1,k  ,id)
+     &           + u1*v1*w0*pgrd(i+1,j+1,k  ,id)
+     &           + u0*v0*w1*pgrd(i  ,j  ,k+1,id)
+     &           + u1*v0*w1*pgrd(i+1,j  ,k+1,id)
+     &           + u0*v1*w1*pgrd(i  ,j+1,k+1,id)
+     &           + u1*v1*w1*pgrd(i+1,j+1,k+1,id))
 
           endif
 
