@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.150 $, $Date: 2004/04/27 20:12:36 $
+c@(#) File W3D.F, version $Revision: 3.151 $, $Date: 2004/05/04 21:44:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -6865,7 +6865,7 @@ c any conductor surface.
       real(kind=8):: tex(npart),tey(npart),tez(npart)
       integer(ISZ):: ijp(npart)
       integer(ISZ):: ip,ix,iy,iz,ij
-      real(kind=8):: rinj,rinji,rr2,dd,ca,zii
+      real(kind=8):: rinj,rinji,rr2,wr,dd,ca,zii
       real(kind=8):: aa,az,atx,aty,px,py,pz,wx,wy,wz,en,etx,ety
       real(kind=8):: dxi,dyi,dzi,inj_di
       real(kind=8):: sx,sy
@@ -6969,6 +6969,9 @@ c         --- angle relative to z axis
 c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
 c         --- emitting surface.
+          wr = 1./(1. - dz*dd*rinji)
+          px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
+          py = abs(yy(ip)*wr - inj_ymmin(ij))*dyi
           px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
           py = abs(rinj*sin(az)*sin(aa) - inj_ymmin(ij))*dyi
           ix = spreadx*int(px)
@@ -8304,7 +8307,7 @@ c any conductor surface.
       real(kind=8):: tex(npart),tey(npart),tez(npart)
       integer(ISZ):: ijp(npart)
       integer(ISZ):: ip,ix,iy,iz,ij
-      real(kind=8):: rinj,rinji,rr2,dd,ca,dzmin,deltaz(ninject)
+      real(kind=8):: rinj,rinji,rr2,wr,dd,ca,dzmin,deltaz(ninject)
       real(kind=8):: aa,az,atx,aty,px,py,pz,wx,wy,wz,en
       real(kind=8):: dxi,dyi
       real(kind=8):: sx,sy,s0,s1,s2,s3,s4,s5,s6,s7
@@ -8423,12 +8426,16 @@ c         --- angle relative to z axis
 c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
 c         --- emitting surface.
-         if(l_inj_rz) then
+          wr = 1./(1. - deltaz(ij)*dd*rinji)
+          if(l_inj_rz) then
             px = abs(rinj*sin(az) - inj_xmmin(ij))*dxi
+            px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
             py = 0.
-         else
+          else
             px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
             py = abs(rinj*sin(az)*sin(aa) - inj_ymmin(ij))*dyi
+            px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
+            py = abs(yy(ip)*wr - inj_ymmin(ij))*dyi
           end if
           ix = spreadx*int(px)
           iy = spready*int(py)
@@ -9360,21 +9367,21 @@ c fits and so was replaced with if statements.
           call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq(0),kysq(0),kzsq(0),
      &                 attx(0),atty(0),attz(0),filt(1,1),xlen,ylen,zlen,
      &                 nx,ny,izfsmax-izfsmin,nzfull,
-     &                 scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
+     &                 scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                 bound0,boundnz,boundxy)
       elseif (fstype == 1) then
           call pipe3df(iwhich,pipeshpe,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
      &                xlen,ylen,zlen,
      &                nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),xywork(0,0),
-     &                zwork(1,0,0),l2symtry,l4symtry)
+     &                zwork(1,0,0),l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 2) then
           call vcap3d(iwhich,rho(0,0,izfsmin),phi(0,0,izfsmin),
      &                kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                xlen,ylen,zlen,
-     &                nx,ny,izfsmax-izfsmin,nzfull,
+     &                xlen,ylen,zlen,nx,ny,izfsmax-izfsmin,nzfull,
      &                scrtch(0,0),xywork(0,0),zwork,
      &                xmmax,zmmin+izfsmin*dz,zgrid,pipeshpe,
-     &                l2symtry,l4symtry)
+     &                l2symtry,l4symtry,bound0,boundnz,boundxy)
       elseif (fstype == 3) then
 c          --- Note that by default, izfsmax=nz, and izfsmin=0.
 c          --- izfsmin and izfsmax allow field solves on a partial grid.
@@ -9388,21 +9395,25 @@ c          --- izfsmin and izfsmax allow field solves on a partial grid.
             call vpois3d(1,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,scrtch(0,0),
-     &                   xywork(0,0),zwork,0,l2symtry,l4symtry)
+     &                   xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                   bound0,boundnz,boundxy)
           endif
           if (iwhich == -1 .or. iwhich == 0) then
             call vpois3d(12,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,
-     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
+     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                   bound0,boundnz,boundxy)
             call vpois3d(14,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,
-     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
+     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                   bound0,boundnz,boundxy)
             call vpois3d(13,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
      &                   attx,atty,attz,filt,xlen,ylen,zlen,
      &                   nx,ny,izfsmax-izfsmin,nzfull,
-     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
+     &                   scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry,
+     &                   bound0,boundnz,boundxy)
           endif
 
       elseif (fstype == 5) then
@@ -9411,14 +9422,16 @@ c         --- General capacity matrix solver in kz space
      &                    filt,xlen,ylen,zlen,
      &                    nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                    xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
-     &                    xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
+     &                    xywork(0,0),zwork(1,0,0),l2symtry,l4symtry,
+     &                    bound0,boundnz,boundxy)
       elseif (fstype == 6) then
 c         --- General capacity matrix solver
           call capmat3df(iwhich,phi(0,0,0),rho,kxsq,kysq,kzsq,attx,atty,attz,
      &                  filt,xlen,ylen,zlen,
      &                  nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
      &                  xmmin,ymmin,zmmin+izfsmin*dz,scrtch(0,0),
-     &                  xywork(0,0),zwork(1,0,0),l2symtry,l4symtry)
+     &                  xywork(0,0),zwork(1,0,0),l2symtry,l4symtry,
+     &                  bound0,boundnz,boundxy)
 
       elseif (fstype == 7) then
           call multigrid3df(iwhich,nx,ny,izfsmax-izfsmin,nzfull,dx,dy,dz,
@@ -9434,14 +9447,16 @@ c         --- boundary data.
           call paralleltridiag(phi(0,0,izfsmin-1),kxsq,kysq,kzsq,
      &                         attx,atty,attz,filt,xlen,ylen,zlen,
      &                         nx,ny,izfsmax-izfsmin,
-     &                         scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry)
+     &                         scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry,
+     &                         bound0,boundnz,boundxy)
       elseif (fstype == 9) then
 c         --- Experimental parallel solver based on the method
 c         --- put forward by Lantz
           call lantzsolver(iwhich,phi(0,0,izfsmin-1),kxsq,kysq,kzsq,
      &                     attx,atty,attz,filt,xlen,ylen,zlen,
-     $                     nx,ny,izfsmax-izfsmin,
-     &                     scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry)
+     &                     nx,ny,izfsmax-izfsmin,
+     &                     scrtch(0,0),xywork(0,0),zwork,l2symtry,l4symtry,
+     &                     bound0,boundnz,boundxy)
 
 #endif
       elseif (fstype == 10) then
