@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.13 2002/02/19 22:35:28 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.14 2002/02/21 23:08:57 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -71,6 +71,9 @@ Constructor arguments
   - x,y coordinates of conductor points (in meters)
   - v voltage at points, can be a scalar or an array. When it is a scalar, all
       the points have the same voltage (defaults to zero)
+      The voltage can also be input in the call to setmatrix so the same
+      matrix can be used for conductors with the same geometry but different
+      voltages.
   - m optional matrix. When not included, one is automatically calculated.
   - newmesh when true, reset the mesh to be big enough to contain all of the
             conductor points (implies that the matrix will be calculated)
@@ -126,19 +129,21 @@ Constructor arguments
     # --- Calculate matrix
     fieldsol(1)
   #----------------------------------------------------------------------------
-  def setmatrix(s,vlist=None):
+  def setmatrix(s,vcond=None):
     # --- Reset the mesh if requested
     if s.newmesh: s.setmesh()
     # --- Get number of conductor points.
     n = len(s.xcond)
     fxy.ncxy = n
     fxy.ncxymax = n
+    # --- Check for new input voltages, otherwise use s.vcond
+    if vcond is None: vcond = s.vcond
     # --- Point the fortran arrays to the data arrays. Each instance of this
     # --- object contains its own copies of the arrays in the group CapMatxy.
     # --- The pointers are repointed rather than copying the data.
     fxy.forceassign("xcond",s.xcond)
     fxy.forceassign("ycond",s.ycond)
-    fxy.forceassign("vcond",s.vcond)
+    fxy.forceassign("vcond",vcond)
     fxy.forceassign("pcond",s.pcond)
     fxy.forceassign("qcond",s.qcond)
     fxy.forceassign("kpvtxy",s.kpvtxy)
@@ -299,9 +304,9 @@ Constructor arguments:
     # --- and the matrix using those points
     s.getmatrix() 
   #----------------------------------------------------------------------------
-  def setmatrix(s,vlist):
-    s.vcond[:] = vlist[0]
-    CapacityMatrix.setmatrix(s)
+  def setmatrix(s,v=None):
+    if v is not None: s.vcond[:] = v
+    CapacityMatrix.setmatrix(s,s.vcond)
   #----------------------------------------------------------------------------
   def issame(s,ap,ox,oy):
     # --- Checks if the input values would return the same matrix
@@ -414,14 +419,15 @@ Constructor arguments:
     # --- Finally, get the matrix using those points
     s.getmatrix()
   #----------------------------------------------------------------------------
-  def setmatrix(s,vlist):
-    # --- The exception handling is needed in cases when a RoundRod class
-    # --- instance is restore from a run done before vcondunit was added.
-    try:
-      s.vcond[:] = 1.*choose(s.vcondunit,vlist)
-    except AttributeError:
-      pass
-    CapacityMatrix.setmatrix(s)
+  def setmatrix(s,vlist=None):
+    if vlist is not None:
+      # --- The exception handling is needed in cases when a RoundRod class
+      # --- instance is restore from a run done before vcondunit was added.
+      try:
+        s.vcond[:] = 1.*choose(s.vcondunit,vlist)
+      except AttributeError:
+        pass
+    CapacityMatrix.setmatrix(s,s.vcond)
   #----------------------------------------------------------------------------
   def issame(s,ap,rr,withx,withy,ox,oy):
     # --- Checks if the input values would return the same matrix
@@ -515,9 +521,9 @@ Constructor arguments:
     installbeforestep(s.setboundary)
     installbeforefs(s.initialsetboundary)
   #----------------------------------------------------------------------------
-  def setmatrix(s,m,vlist):
+  def setmatrix(s,m,v):
     if s.current == m: return
-    m.setmatrix(vlist)
+    m.setmatrix(v)
     s.current = m
   #----------------------------------------------------------------------------
   def getpipematrix(s,ap,v,ox,oy):
@@ -552,7 +558,7 @@ Constructor arguments:
           cm[id] = s.getpipematrix(ap[id],0.,ox[id],oy[id])
         else:
           return 0
-      s.setmatrix(cm[id],[0.])
+      s.setmatrix(cm[id],0.)
       return 1
     return None
   #----------------------------------------------------------------------------
@@ -612,7 +618,9 @@ Constructor arguments:
         cm[id] = cmlist
       # --- Apply one of the five matrices.
       if zl <= top.zbeam < zl + pw:
-        s.setmatrix(cm[id][0],[v1])
+        if gp > 0.: v1 = vx
+        else:       v1 = vy
+        s.setmatrix(cm[id][0],v1)
       elif zl+pw <= top.zbeam < zl+pw+gl:
         s.setmatrix(cm[id][1],[vx,vy,vx,vy])
       elif zl+pw+gl <= top.zbeam < zr-pw-gl:
@@ -620,7 +628,9 @@ Constructor arguments:
       elif zr-pw-gl <= top.zbeam < zr-pw:
         s.setmatrix(cm[id][3],[vx,vy,vx,vy])
       elif zr-pw <= top.zbeam <= zr:
-        s.setmatrix(cm[id][4],[v2])
+        if gp > 0.: v2 = vy
+        else:       v2 = vx
+        s.setmatrix(cm[id][4],v2)
       return 1
     return 0
   #----------------------------------------------------------------------------
