@@ -1,5 +1,6 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.29 2002/05/02 21:27:54 dave Exp $"
+import __main__
+plot_conductor_version = "$Id: plot_conductor.py,v 1.30 2002/05/03 21:05:45 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1290,6 +1291,9 @@ def pysrfrvout(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
   if l2symtry is None: l2symtry = w3d.l2symtry
   if l4symtry is None: l4symtry = w3d.l4symtry
 
+  # --- Make sure the rofzfunc is in main
+  if not f3d.lsrlinr: __main__.__dict__[rofzfunc] = eval(rofzfunc)
+
   # --- Now call the fortran version
   f3d.srfrvout(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
                xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
@@ -1324,6 +1328,9 @@ def pysrfrvin(rofzfunc=" ",volt=0.,zmin=None,zmax=None,xcent=0.,ycent=0.,
   if l2symtry is None: l2symtry = w3d.l2symtry
   if l4symtry is None: l4symtry = w3d.l4symtry
 
+  # --- Make sure the rofzfunc is in main
+  if not f3d.lsrlinr: __main__.__dict__[rofzfunc] = eval(rofzfunc)
+
   # --- Now call the fortran version
   f3d.srfrvin(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
               xmin,xmax,ymin,ymax,lshell,zmmin,zmmax,zbeam,dx,dy,dz,
@@ -1357,6 +1364,10 @@ def pysrfrvinout(rminofz=" ",rmaxofz=" ",volt=0.,zmin=None,zmax=None,
   if ymesh is None: ymesh = w3d.ymesh
   if l2symtry is None: l2symtry = w3d.l2symtry
   if l4symtry is None: l4symtry = w3d.l4symtry
+
+  # --- Make sure the rofzfunc is in main
+  if not f3d.lsrminlinr: __main__.__dict__[rminofz] = eval(rminofz)
+  if not f3d.lsrmaxlinr: __main__.__dict__[rmaxofz] = eval(rmaxofz)
 
   # --- Now call the fortran version
   f3d.srfrvinout(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,lzend,
