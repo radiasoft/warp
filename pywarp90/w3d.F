@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.26 $, $Date: 2001/09/20 17:14:49 $
+c@(#) File W3D.M, version $Revision: 3.27 $, $Date: 2001/09/21 23:33:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -947,14 +947,15 @@ c=============================================================================
       use InMesh3d
       use Fields3d
       use Z_arrays
+      use InDiag3d
 
 c  Calculates the line charge density from rho.
-
 
       real(kind=8):: zz,wzg,dzi
       integer(ISZ):: ix,iy,iz,izg
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+      if (.not. lgtlchg3d) return
 
       dzi = 1./dz
 

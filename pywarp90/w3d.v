@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.26 $, $Date: 2001/09/20 17:14:49 $
+#@(#) File W3D.V, version $Revision: 3.27 $, $Date: 2001/09/21 23:33:50 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.26 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.27 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -54,6 +54,9 @@ RZgeom     integer    /1/  # axisymmetric RZ geometry will be used if 3Dsolver=R
 *********** InDiag3d dump:
 lgetese3d logical /.true./ # Sets whether electrostatic-energy is calculated,
                            # the product of rho and phi.
+                           # This calculation is expense so this flag was
+                           # added to turn it off if desired.
+lgtlchg3d logical /.true./ # Sets whether the line-charge is gathered.
                            # This calculation is expense so this flag was
                            # added to turn it off if desired.
 lrhodia3d logical /.true./ # Sets whether rho diagnostics are done,

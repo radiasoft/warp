@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.26 $, $Date: 2001/09/20 17:14:49 $
+c@(#) File DW3D.M, version $Revision: 3.27 $, $Date: 2001/09/21 23:33:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
