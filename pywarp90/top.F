@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.134 $, $Date: 2004/11/05 23:12:23 $
+c@(#) File TOP.F, version $Revision: 3.135 $, $Date: 2004/11/16 01:01:12 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6218,13 +6218,11 @@ c  Particles stick at the extreme edges of the grid.
       end
 c=============================================================================
 c=============================================================================
-      subroutine zbeamcom(zbeam)
+      real(kind=8) function getbeamcom()
       use InPart
       use Particles
-      real(kind=8):: zbeam
 
 c Calculate the center of mass of the beam along the z axis from the particles
-
 
       integer(ISZ):: is,ip
       real(kind=8):: totz,totmass
@@ -6240,7 +6238,7 @@ c Calculate the center of mass of the beam along the z axis from the particles
         enddo
       enddo
 
-      zbeam = totz/dvnz(totmass)
+      getbeamcom = totz/dvnz(totmass)
 
       return
       end

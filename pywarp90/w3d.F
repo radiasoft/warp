@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.173 $, $Date: 2004/11/13 01:34:52 $
+c@(#) File W3D.F, version $Revision: 3.174 $, $Date: 2004/11/16 01:01:11 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1311,6 +1311,7 @@ c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8):: minp(6)
       real(kind=8):: zmmnts0(NUMZMMNT)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
+      real(kind=8):: getbeamcom,zbeamcom
       real(kind=8):: substarttime,wtime
 
       if (lw3dtimesubs) substarttime = wtime()
@@ -1741,7 +1742,8 @@ c       --- Collect charge density (3d)
 
         if (lbeamcom) then
 c         --- Set zbeam so that it follows the center of mass of the beam.
-          call zbeamcom(zbeam)
+          zbeam = getbeamcom() - zbeamcomoffset
+
         else
 c         --- Advance beam frame location using the nominal beam frame velocity.
           zbeam = zgrid

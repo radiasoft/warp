@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.129 $, $Date: 2004/11/13 01:33:29 $
+#@(#) File TOP.V, version $Revision: 3.130 $, $Date: 2004/11/16 01:01:12 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.129 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.130 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -937,7 +937,9 @@ lgridqnt                  logical    /.false./
    # zgrid = int(zbeam/dz+.5)*dz, and so zgrid quantized number of dz's.
    # When false, zgrid is always equal to zbeam.
 lbeamcom                  logical    /.false./
-   # When true, zbeam follows the beam center of mass.
+   # When true, zbeam follows the beam center of mass (minus zbeamcomoffset).
+zbeamcomoffset            real /0./
+   # Offset of zbeam relative to the beam center of mass when lbeamcom is true.
 relativity                integer /0/
    # Level of relativitistic corrections.
    #  1: scale transverse self E-field by 1/gamma**2
@@ -1456,6 +1458,8 @@ hvbeam(0:lenhist)             _real [m/s]   limited (0:jhist)
    # Beam frame velocity
 hbmlen(0:lenhist)             _real [m]     limited (0:jhist)
    # RMS beam length
+hzbar(0:lenhist)              _real [m/s]   limited (0:jhist)
+   # History of the average of z over all particles
 hefld(0:lenhist)              _real [J]     limited (0:jhist)
    # Field energy
 hekzmbe(0:lenhist)            _real [J]     limited (0:jhist)
@@ -2103,7 +2107,7 @@ wtimeon()  subroutine # turns timer on
 wtimeoff() real function # returns time since last call to wtimeon or wtimeoff
 wtremain() real function # returns the time remaining for the running job
                          # (T3E only, otherwise returns large number)
-zbeamcom(zbeam:real) subroutine
+getbeamcom() real function
        # Returns the center of mass in z of the beam calculated from the
        # particles.
 zpartbnd(zmmax:real,zmmin:real,dz:real,zgrid:real) subroutine
