@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.16 2003/04/17 22:12:31 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.17 2003/04/25 18:29:01 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -251,14 +251,12 @@ Performs steady-state iterations
             ip1 = top.ins[js]
             ip2 = top.ins[js]+top.nps[js]-1
             ip3 = _ipstep
-            ii = compress(greater(top.uzp[ip1-1:ip2:ip3],_vzfuzz),
-                          iota(ip1,ip2,ip3))
+            ii = iota(ip1,ip2,ip3)
           else:
             ip1 = top.ins[js]
             ip2 = top.ins[js]+top.nps[js]-1
             ip3 = 1
-            ii = compress(greater(top.uzp[ip1-1:ip2:ip3],_vzfuzz),
-                          iota(ip1,ip2,ip3))
+            ii = iota(ip1,ip2,ip3)
             ii = compress(less(ranf(ii),1./_ipstep),ii)
 
           # --- save data of just injected particles
@@ -282,8 +280,7 @@ Performs steady-state iterations
     # --- automatically in the code.  Save particle data each time step on last
     # --- iteration only.
     maxvz = 2.*_vzfuzz+1.
-    while (npssum > 0 and maxvz>_vzfuzz and
-           top.time-gun_time < maxtime):
+    while (npssum > 0 and top.time-gun_time < maxtime):
       step()
       if lstatusline: statusline()
       tmp_gun_steps = tmp_gun_steps + 1
@@ -296,14 +293,12 @@ Performs steady-state iterations
               ip1 = top.ins[js]
               ip2 = top.ins[js]+top.nps[js]-1
               ip3 = _ipstep
-              ii = compress(greater(top.uzp[ip1-1:ip2:ip3],_vzfuzz),
-                            iota(ip1,ip2,ip3))
+              ii = iota(ip1,ip2,ip3)
             else:
               ip1 = top.ins[js]
               ip2 = top.ins[js]+top.nps[js]-1
               ip3 = 1
-              ii = compress(greater(top.uzp[ip1-1:ip2:ip3],_vzfuzz),
-                            iota(ip1,ip2,ip3))
+              ii = iota(ip1,ip2,ip3)
               ii = compress(less(ranf(ii),1./_ipstep),ii)
 
             # --- save data of just injected particles
@@ -540,7 +535,7 @@ Prints a running line showing current status of the step.
   if (top.it % 10) == 0:
     CR = curses.ascii.ctrl('m')
     sys.stdout.write("%5d "%top.it)
-    nplive = top.npinject-sum(top.lostpars)
+    nplive = sum(parallelsum(top.nps))
     sys.stdout.write("nplive = %5d "%nplive)
     zz = top.zp[top.ins[0]-1]
     if zz < w3d.zmminglobal: zz = w3d.zmmaxglobal
