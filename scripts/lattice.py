@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-lattice_version = "$Id: lattice.py,v 1.9 2002/05/31 23:22:25 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.10 2002/08/26 16:57:53 dave Exp $"
 
 # Setup classes for MAD style input
 # This includes both the elements from hibeam and WARP
@@ -67,6 +67,13 @@ elements.
       else:
         i = i + 1
     return self.elemslist
+  def install(self,zz):
+    self.expand()
+    for e in self.elemslist: zz = e.install(zz)
+    return zz
+  def installdata(self):
+    self.expand()
+    for e in self.elemslist: e.installdata()
   def __mul__(self,other):
     # --- This allows multiplication of elements by integers
     return LINE(other*[self])
@@ -121,7 +128,7 @@ class Elem:
   """
 Base class for the lattice classes. Should never be directly called.
   """
-  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,
+  def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,
                offset_x=0,offset_y=0,error_type=''):
     self.l = l
     self.length = length
@@ -129,7 +136,7 @@ Base class for the lattice classes. Should never be directly called.
     self.ze = ze
     self.type = ''
     self.zshift = zshift
-    self.aperture = aperture
+    self.ap = ap
     self.offset_x = offset_x
     self.offset_y = offset_y
     self.error_type = error_type
@@ -141,6 +148,10 @@ Base class for the lattice classes. Should never be directly called.
       self.ze = 0.
     elif self.zs or self.ze:
       self.length = self.ze - self.zs
+  def install(self):
+    pass
+  def installdata(self):
+    pass
   def isin(self,z=top.zbeam):
     if self.zs < z and z < self.ze: return 1
     return 0
@@ -162,30 +173,57 @@ class drift(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,error_type='',
                offset_x=0,offset_y=0,i_cap_pointer=0,n_cap_nodes=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
-                  aperture=aperture,
+                  ap=aperture,
                   offset_x=offset_x,offset_y=offset_y,error_type=error_type)
     self.type = 'drift'
     self.i_cap_pointer = i_cap_pointer
     self.n_cap_nodes = n_cap_nodes
+  def install(self,zz):
+    top.ndrft = top.ndrft + 1
+    self.idrft = top.ndrft
+    if top.ndrft > len(top.drftzs)-1:
+      idrft = top.ndrft
+      top.ndrft = top.ndrft + 100
+      gchange("Lattice")
+      top.ndrft = idrft
+    top.drftzs[top.ndrft] = zz + self.zshift
+    top.drftze[top.ndrft] = top.drftzs[top.ndrft] + self.length
+    top.drftap[top.ndrft] = self.ap
+    top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
+    top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    return top.drftze[top.ndrft]
 
 class box(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,
                width_x=0,width_y=0,error_type='',
                offset_x=0,offset_y=0,i_cap_pointer=0,n_cap_nodes=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
-                  aperture=aperture,
+                  ap=aperture,
                   offset_x=offset_x,offset_y=offset_y,error_type=error_type)
     self.type = 'box'
-    self.aperture = aperture
     self.width_x = width_x
     self.width_y = width_y
     self.i_cap_pointer = i_cap_pointer
     self.n_cap_nodes = n_cap_nodes
     self.derivedquantities(self)
   def derivedquantities(_self,self):
-    if aperture:
-      self.width_x = aperture
-      self.width_y = aperture
+    if self.ap:
+      self.width_x = self.ap
+      self.width_y = self.ap
+  def install(self,zz):
+    top.ndrft = top.ndrft + 1
+    self.idrft = top.ndrft
+    if top.ndrft > len(top.drftzs)-1:
+      idrft = top.ndrft
+      top.ndrft = top.ndrft + 100
+      gchange("Lattice")
+      top.ndrft = idrft
+    top.drftzs[top.ndrft] = zz + self.zshift
+    top.drftze[top.ndrft] = top.drftzs[top.ndrft] + self.length
+    top.drftap[top.ndrft] = -self.ap
+    top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
+    top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    return top.drftze[top.ndrft]
 
 class quad(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,
@@ -193,7 +231,7 @@ class quad(Elem):
                offset_x=0,offset_y=0,error_type='',
                i_cap_pointer=0,n_cap_nodes=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
-                  aperture=aperture,
+                  ap=aperture,
                   offset_x=offset_x,offset_y=offset_y,error_type=error_type)
     self.type = 'quad'
     self.voltage = voltage
@@ -206,30 +244,77 @@ class quad(Elem):
     self.derivedquantities(self)
   def derivedquantities(_self,self):
     if self.gradient != 0:
-      self.voltage = self.gradient*self.aperture**2
+      self.voltage = self.gradient*self.ap**2
     else:
-      self.gradient = self.voltage/self.aperture**2
+      self.gradient = self.voltage/self.ap**2
+  def install(self,zz):
+    top.nquad = top.nquad + 1
+    self.iquad = top.nquad
+    if top.nquad > len(top.quadzs)-1:
+      iquad = top.nquad
+      top.nquad = top.nquad + 100
+      top.nqerr = top.nquad
+      gchange("Lattice")
+      top.nquad = iquad
+    top.quadzs[top.nquad] = zz + self.zshift
+    top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
+    top.quadde[top.nquad] = self.gradient
+    top.quadap[top.nquad] = self.ap
+    top.quadrr[top.nquad] = self.r_elem
+    top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
+    top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
+    return top.quadze[top.nquad]
 
 class hyperb(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,voltage=0,
                r_elem=0,offset_x=0,offset_y=0,error_type='',
                i_cap_pointer=0,n_cap_nodes=0):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
-                  aperture=aperture,
+                  ap=aperture,
                   offset_x=offset_x,offset_y=offset_y,error_type=error_type)
     self.type = 'hyperb'
     self.voltage = voltage
     self.r_elem = r_elem
     self.i_cap_pointer = i_cap_pointer
     self.n_cap_nodes = n_cap_nodes
+  def install(self,zz):
+    top.nquad = top.nquad + 1
+    self.iquad = top.nquad
+    if top.nquad > len(top.quadzs)-1:
+      iquad = top.nquad
+      top.nquad = top.nquad + 100
+      top.nqerr = top.nquad
+      gchange("Lattice")
+      top.nquad = iquad
+    top.quadzs[top.nquad] = zz + self.zshift
+    top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
+    top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
+    top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
+    top.quadde[top.nquad] = self.gradient
+    top.quadap[top.nquad] = -self.ap
+    return top.quadze[top.nquad]
 
 class wire(Elem):
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,aperture=0,
                offset_x=0,offset_y=0,error_type=''):
     Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,
-                  aperture=aperture,
+                  ap=aperture,
                   offset_x=offset_x,offset_y=offset_y,error_type=error_type)
     self.type = 'wire'
+  def install(self,zz):
+    top.ndrft = top.ndrft + 1
+    self.idrft = top.ndrft
+    if top.ndrft > len(top.drftzs)-1:
+      idrft = top.ndrft
+      top.ndrft = top.ndrft + 100
+      gchange("Lattice")
+      top.ndrft = idrft
+    top.drftzs[top.ndrft] = zz + self.zshift
+    top.drftze[top.ndrft] = top.drftzs[top.ndrft] + self.length
+    top.drftap[top.ndrft] = self.ap
+    top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
+    top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    return top.drftze[top.ndrft]
 
 #----------------------------------------------------------------------------
 # WARP elements
@@ -248,9 +333,22 @@ Creates an instance of a Drft lattice element.
   """
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type=''):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Drft'
+  def install(self,zz):
+    top.ndrft = top.ndrft + 1
+    self.idrft = top.ndrft
+    if top.ndrft > len(top.drftzs)-1:
+      top.ndrft = top.ndrft + 100
+      gchange("Lattice")
+      top.ndrft = self.idrft
+    top.drftzs[top.ndrft] = zz + self.zshift
+    top.drftze[top.ndrft] = top.drftzs[top.ndrft] + self.length
+    top.drftap[top.ndrft] = self.ap
+    top.drftox[top.ndrft] = self.offset_x*errordist(self.error_type)
+    top.drftoy[top.ndrft] = self.offset_y*errordist(self.error_type)
+    return top.drftze[top.ndrft]
 
 class Bend(Elem):
   """
@@ -267,10 +365,25 @@ Creates an instance of a Bend lattice element.
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
                rc=1.e36):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Bend'
     self.rc = rc
+  def install(self,zz):
+    top.nbend = top.nbend + 1
+    self.ibend = top.nbend
+    if top.nbend > len(top.bendzs)-1:
+      ibend = top.nbend
+      top.nbend = top.nbend + 100
+      gchange("Lattice")
+      top.nbend = ibend
+    top.bendzs[top.nbend] = zz + self.zshift
+    top.bendze[top.nbend] = top.bendzs[top.nbend] + self.length
+    top.bendap[top.nbend] = self.ap
+    #top.bendox[top.nbend] = self.offset_x*errordist(self.error_type)
+    #top.bendoy[top.nbend] = self.offset_y*errordist(self.error_type)
+    top.bendrc[top.nbend] = self.rc
+    return top.bendze[ibend]
 
 class Dipo(Elem):
   """
@@ -301,23 +414,29 @@ Creates an instance of a Dipo lattice element.
                error_type='',
                ex=0,ey=0,bx=0,by=0,ta=0,tb=0,
                x1=0,x2=0,v1=0,v2=0,l1=0,l2=0,w1=0,w2=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Dipo'
-    self.ex = ex
-    self.ey = ey
-    self.bx = bx
-    self.by = by
-    self.ta = ta
-    self.tb = tb
-    self.x1 = x1
-    self.x2 = x2
-    self.v1 = v1
-    self.v2 = v2
-    self.l1 = l1
-    self.l2 = l2
-    self.w1 = w1
-    self.w2 = w2
+    for xx in ['ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
+               'l1','l2','w1','w2']:
+      self.__dict__[xx] = locals()[xx]
+  def install(self,zz):
+    top.ndipo = top.ndipo + 1
+    self.idipo = top.ndipo
+    if top.ndipo > len(top.dipozs)-1:
+      idipo = top.ndipo
+      top.ndipo = top.ndipo + 100
+      gchange("Lattice")
+      top.ndipo = idipo
+    top.dipozs[top.ndipo] = zz + self.zshift
+    top.dipoze[top.ndipo] = top.dipozs[top.ndipo] + self.length
+    #top.dipoox[top.ndipo] = self.offset_x*errordist(self.error_type)
+    #top.dipooy[top.ndipo] = self.offset_y*errordist(self.error_type)
+    for xx in ['ap','ex','ey','bx','by','ta','tb','x1','x2','v1','v2',
+               'l1','l2','w1','w2']:
+      aa = top.getpyobject('dipo'+xx)
+      aa[top.ndipo] = self.__dict__[xx]
+    return top.dipoze[top.ndipo]
 
 class Quad(Elem):
   """
@@ -344,20 +463,27 @@ Creates an instance of a Quad lattice element.
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
                de=0,db=0,vx=0,vy=0,rr=0,rl=0,gl=0,gp=0,pw=0,pa=0,pr=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Quad'
-    self.de = de
-    self.db = db
-    self.vx = vx
-    self.vy = vy
-    self.rr = rr
-    self.rl = rl
-    self.gl = gl
-    self.gp = gp
-    self.pw = pw
-    self.pa = pa
-    self.pr = pr
+    for xx in ['de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
+      self.__dict__[xx] = locals()[xx]
+  def install(self,zz):
+    top.nquad = top.nquad + 1
+    self.iquad = top.nquad
+    if top.nquad > len(top.quadzs)-1:
+      top.nquad = top.nquad + 100
+      top.nqerr = top.nquad
+      gchange("Lattice")
+      top.nquad = self.iquad
+    top.quadzs[top.nquad] = zz + self.zshift
+    top.quadze[top.nquad] = top.quadzs[top.nquad] + self.length
+    top.qoffx[top.nquad] = self.offset_x*errordist(self.error_type)
+    top.qoffy[top.nquad] = self.offset_y*errordist(self.error_type)
+    for xx in ['ap','de','db','vx','vy','rr','rl','gl','gp','pw','pa','pr']:
+      aa = top.getpyobject('quad'+xx)
+      aa[top.nquad] = self.__dict__[xx]
+    return top.quadze[top.nquad]
 
 class Sext(Elem):
   """
@@ -375,11 +501,27 @@ Creates an instance of a Sext lattice element.
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
                de=0,db=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Sext'
     self.de = de
     self.db = db
+  def install(self,zz):
+    top.nsext = top.nsext + 1
+    self.isext = top.nsext
+    if top.nsext > len(top.sextzs)-1:
+      isext = top.nsext
+      top.nsext = top.nsext + 100
+      gchange("Lattice")
+      top.nsext = isext
+    top.sextzs[top.nsext] = zz + self.zshift
+    top.sextze[top.nsext] = top.sextzs[top.nsext] + self.length
+    top.sextap[top.nsext] = self.ap
+    top.sextox[top.nsext] = self.offset_x*errordist(self.error_type)
+    top.sextoy[top.nsext] = self.offset_y*errordist(self.error_type)
+    top.sextde[top.nsext] = self.de
+    top.sextdb[top.nsext] = self.db
+    return top.sextze[top.nsext]
 
 class Hele(Elem):
   """
@@ -410,7 +552,7 @@ Creates an instance of a Hele lattice element.
                error_type='',
                nn=[],vv=[],ae=[],am=[],ep=[],mp=[],pe=[],pm=[],
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Hele'
     self.nn = nn
@@ -437,6 +579,36 @@ Creates an instance of a Hele lattice element.
     self.mp = array(self.mp)
     self.pe = array(self.pe)
     self.pm = array(self.pm)
+  def install(self,zz):
+    top.nhele = top.nhele + 1
+    self.ihele = top.nhele
+    if top.nhele > len(top.helezs)-1:
+      ihele = top.nhele
+      top.nhele = top.nhele + 100
+      gchange("Lattice")
+      top.nhele = ihele
+    top.helezs[top.nhele] = zz + self.zshift
+    top.heleze[top.nhele] = top.helezs[top.nhele] + self.length
+    top.heleap[top.nhele] = self.ap
+    top.heleox[top.nhele] = self.offset_x*errordist(self.error_type)
+    top.heleoy[top.nhele] = self.offset_y*errordist(self.error_type)
+    top.helerr[top.nhele] = self.rr
+    top.helerl[top.nhele] = self.rl
+    top.helegl[top.nhele] = self.gl
+    top.helegp[top.nhele] = self.gp
+    top.helepw[top.nhele] = self.pw
+    top.helepa[top.nhele] = self.pa
+    top.nhmlt = max(top.nhmlt,len(self.nn))
+    return top.heleze[top.nhele]
+  def installdata(self):
+    top.hele_n[:,self.ihele] = self.nn
+    top.hele_v[:,self.ihele] = self.vv
+    top.heleae[:len(self.ae),self.ihele] = self.ae
+    top.heleam[:len(self.am),self.ihele] = self.am
+    top.heleep[:len(self.ep),self.ihele] = self.ep
+    top.helemp[:len(self.mp),self.ihele] = self.mp
+    top.helepe[:len(self.pe),self.ihele] = self.pe
+    top.helepm[:len(self.pm),self.ihele] = self.pm
 
 class Accl(Elem):
   """
@@ -458,7 +630,7 @@ Creates an instance of a Accl lattice element.
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
                ez=0,xw=0,sw=0,et=[],ts=0,dt=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Accl'
     self.ez = ez
@@ -470,6 +642,29 @@ Creates an instance of a Accl lattice element.
     self.derivedquantities(self)
   def derivedquantities(_self,self):
     self.et = array(self.et)
+  def install(self,zz):
+    top.naccl = top.naccl + 1
+    self.iaccl = top.naccl
+    if top.naccl > len(top.acclzs)-1:
+      iaccl = top.naccl
+      top.naccl = top.naccl + 100
+      gchange("Lattice")
+      top.naccl = iaccl
+    top.acclzs[top.naccl] = zz + self.zshift
+    top.acclze[top.naccl] = top.acclzs[top.naccl] + self.length
+    top.acclap[top.naccl] = self.ap
+    top.acclox[top.naccl] = self.offset_x*errordist(self.error_type)
+    top.accloy[top.naccl] = self.offset_y*errordist(self.error_type)
+    top.acclez[top.naccl] = self.ez
+    top.acclxw[top.naccl] = self.xw
+    top.acclsw[top.naccl] = self.sw
+    top.acclts[top.naccl] = self.ts
+    top.accldt[top.naccl] = self.dt
+    top.ntaccl = max(top.ntaccl,shape(self.et)[0]-1)
+    return top.acclze[top.naccl]
+  def installdata(self):
+    top.acclet[:len(self.et),self.iaccl] = self.et
+
 
 class Emlt(Elem):
   """
@@ -504,7 +699,7 @@ Or specify the data set
                error_type='',
                id=0,dz=0,e=[],ep=[],eph=[],nn=[],vv=[],ph=0,sf=0,sc=1,
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Emlt'
     self.id = id
@@ -533,6 +728,58 @@ Or specify the data set
     if len(shape(self.eph)) == 1: self.eph = self.eph[:,NewAxis]
     self.nn = array(self.nn)
     self.vv = array(self.vv)
+  def install(self,zz):
+    top.nemlt = top.nemlt + 1
+    self.iemlt = top.nemlt
+    if top.nemlt > len(top.emltzs)-1:
+      iemlt = top.nemlt
+      top.nemlt = top.nemlt + 100
+      top.neerr = top.nemlt
+      gchange("Lattice")
+      top.nemlt = iemlt
+    top.emltzs[top.nemlt] = zz + self.zshift
+    top.emltze[top.nemlt] = top.emltzs[top.nemlt] + self.length
+    top.emltap[top.nemlt] = self.ap
+    top.emltox[top.nemlt] = self.offset_x*errordist(self.error_type)
+    top.emltoy[top.nemlt] = self.offset_y*errordist(self.error_type)
+    top.emltph[top.nemlt] = self.ph
+    top.emltsf[top.nemlt] = self.sf
+    top.emltsc[top.nemlt] = self.sc
+    top.emltrr[top.nemlt] = self.rr
+    top.emltrl[top.nemlt] = self.rl
+    top.emltgl[top.nemlt] = self.gl
+    top.emltgp[top.nemlt] = self.gp
+    top.emltpw[top.nemlt] = self.pw
+    top.emltpa[top.nemlt] = self.pa
+    if not self.id:
+      top.emltid[top.nemlt] = top.nemltsets + 1
+    else:
+      top.emltid[top.nemlt] = self.id
+    top.nemltsets = max(top.emltid[top.nemlt],top.nemltsets)
+    if self.e:
+      top.nzemltmax = max(shape(self.e)[0]-1,top.nzemltmax)
+      if len(shape(self.e)) == 2:
+        top.nesmult = max(shape(self.e)[1],top.nesmult)
+    if self.ep:
+      top.nzemltmax = max(shape(self.ep)[0]-1,top.nzemltmax)
+      if len(shape(self.ep)) == 2:
+        top.nesmult = max(shape(self.ep)[1],top.nesmult)
+    return top.emltze[top.nemlt]
+  def installdata(self):
+    id = top.emltid[self.iemlt]
+    # --- Only copy data if this is a new data set
+    if (self.e or self.ep) and top.nzemlt[id-1] == 0:
+      top.nzemlt[id-1] = max(shape(self.e)[0],shape(self.ep)[0]) - 1
+      if not self.dz:
+        top.dzemlt[id-1] = ((top.emltze[self.iemlt] - top.emltzs[self.iemlt])/
+                            top.nzemlt[id-1])
+      else:
+        top.dzemlt[id-1] = self.dz
+      top.emlt_n[:len(self.nn)] = self.nn
+      top.emlt_v[:len(self.vv)] = self.vv
+      top.esemlt[:shape(self.e)[0],:shape(self.e)[1],id-1] = self.e
+      top.esemltp[:shape(self.ep)[0],:shape(self.ep)[1],id-1] = self.ep
+      top.esemltph[:shape(self.eph)[0],:shape(self.eph)[1],id-1] = self.eph
 
 class Mmlt(Elem):
   """
@@ -560,7 +807,7 @@ Or specify the data set
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
                id=0,dz=0,m=[],mp=[],mph=[],nn=[],vv=[],ph=0,sf=0,sc=1):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Mmlt'
     self.id = id
@@ -583,6 +830,53 @@ Or specify the data set
     if len(shape(self.mph)) == 1: self.mph = self.mph[:,NewAxis]
     self.nn = array(self.nn)
     self.vv = array(self.vv)
+  def install(self,zz):
+    top.nmmlt = top.nmmlt + 1
+    self.immlt = top.nmmlt
+    if top.nmmlt > len(top.mmltzs)-1:
+      immlt = top.nmmlt
+      top.nmmlt = top.nmmlt + 100
+      top.nmerr = top.nmmlt
+      gchange("Lattice")
+      top.nmmlt = immlt
+    top.mmltzs[top.nmmlt] = zz + self.zshift
+    top.mmltze[top.nmmlt] = top.mmltzs[top.nmmlt] + self.length
+    top.mmltap[top.nmmlt] = self.ap
+    top.mmltox[top.nmmlt] = self.offset_x*errordist(self.error_type)
+    top.mmltoy[top.nmmlt] = self.offset_y*errordist(self.error_type)
+    top.mmltph[top.nmmlt] = self.ph
+    top.mmltsf[top.nmmlt] = self.sf
+    top.mmltsc[top.nmmlt] = self.sc
+    if not self.id:
+      top.mmltid[top.nmmlt] = top.nmmltsets + 1
+    else:
+      top.mmltid[top.nmmlt] = self.id
+    top.nmmltsets = max(top.mmltid[top.nmmlt],top.nmmltsets)
+    if self.m:
+      top.nzmmltmax = max(shape(self.m)[0]-1,top.nzmmltmax)
+      if len(shape(self.m)) == 2:
+        top.nmsmult = max(shape(self.m)[1],top.nmsmult)
+    if self.mp:
+      top.nzmmltmax = max(shape(self.mp)[0]-1,top.nzmmltmax)
+      if len(shape(self.mp)) == 2:
+        top.nmsmult = max(shape(self.mp)[1],top.nmsmult)
+    return top.mmltze[top.nmmlt]
+  def installdata(self):
+    id = top.mmltid[self.immlt]
+    # --- Only copy data if this is a new data set
+    if (self.m or self.mp) and top.nzmmlt[id-1] == 0:
+      top.nzmmlt[id-1] = max(shape(self.m)[0],shape(self.mp)[0]) - 1
+      if not self.dz:
+        top.dzmmlt[id-1] = ((top.mmltze[self.immlt] - top.mmltzs[self.immlt])/
+                            top.nzmmlt[id-1])
+      else:
+        top.dzmmlt[id-1] = self.dz
+      top.mmlt_n[:len(self.nn)] = self.nn
+      top.mmlt_v[:len(self.vv)] = self.vv
+      top.msmmlt[:shape(self.m)[0],:shape(self.m)[1],id-1] = self.m
+      top.msmmltp[:shape(self.mp)[0],:shape(self.mp)[1],id-1] = self.mp
+      top.msmmltph[:shape(self.mph)[0],:shape(self.mph)[1],id-1] = self.mph
+
 
 class Bgrd(Elem):
   """
@@ -609,7 +903,7 @@ Or specify the data set
   def __init__(self,l=0,length=0,zshift=0,zs=0,ze=0,ap=0,ox=0,oy=0,
                error_type='',
                id=0,sf=0,sc=1,bx=[],by=[],bz=[],dx=0,dy=0,dz=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Bgrd'
     self.id = id
@@ -626,6 +920,46 @@ Or specify the data set
     self.bx = array(self.bx)
     self.by = array(self.by)
     self.bz = array(self.bz)
+  def install(self,zz):
+    top.nbgrd = top.nbgrd + 1
+    self.ibgrd = top.nbgrd
+    if top.nbgrd > len(top.bgrdzs)-1:
+      ibgrd = top.nbgrd
+      top.nbgrd = top.nbgrd + 100
+      gchange("Lattice")
+      top.nbgrd = ibgrd
+    top.bgrdzs[top.nbgrd] = zz + self.zshift
+    top.bgrdze[top.nbgrd] = top.bgrdzs[top.nbgrd] + self.length
+    top.bgrdap[top.nbgrd] = self.ap
+    top.bgrdox[top.nbgrd] = self.offset_x*errordist(self.error_type)
+    top.bgrdoy[top.nbgrd] = self.offset_y*errordist(self.error_type)
+    top.bgrdsf[top.nbgrd] = self.sf
+    top.bgrdsc[top.nbgrd] = self.sc
+    if not self.id:
+      top.bgrdid[top.nbgrd] = top.bgrdns + 1
+    else:
+      top.bgrdid[top.nbgrd] = self.id
+    top.bgrdns = max(top.bgrdid[top.nbgrd],top.bgrdns)
+    if self.bx or self.by or self.bz:
+      sbx = shape(self.bx)
+      sby = shape(self.by)
+      sbz = shape(self.bz)
+      top.bgrdnx=max(sbx[0]-1,sby[0]-1,sbz[0]-1,top.bgrdnx)
+      top.bgrdny=max(sbx[1]-1,sby[1]-1,sbz[1]-1,top.bgrdny)
+      top.bgrdnz=max(sbx[2]-1,sby[2]-1,sbz[2]-1,top.bgrdnz)
+    return top.bgrdze[top.nbgrd]
+  def installdata(self):
+    id = top.bgrdid[self.ibgrd]
+    if (self.bx or self.by or self.bz) and top.bgrddx[id-1] == 0.:
+      top.bgrddx[id-1] = self.dx
+      top.bgrddy[id-1] = self.dy
+      top.bgrddz[id-1] = self.dz
+      sbx = shape(self.bx)
+      sby = shape(self.by)
+      sbz = shape(self.bz)
+      top.bgrdbx[:sbx[0],:sbx[1],:sbx[2],id-1] = self.bx
+      top.bgrdby[:sby[0],:sby[1],:sby[2],id-1] = self.by
+      top.bgrdbz[:sbz[0],:sbz[1],:sbz[2],id-1] = self.bz
 
 class Pgrd(Elem):
   """
@@ -659,7 +993,7 @@ Or specify the data set
                error_type='',
                id=0,sf=0,sc=1,pp=[],xs=0,ys=0,dx=0,dy=0,dz=0,
                rr=0,rl=0,gl=0,gp=0,pw=0,pa=0):
-    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,aperture=ap,
+    Elem.__init__(self,l=l,length=length,zshift=zshift,zs=zs,ze=ze,ap=ap,
                   offset_x=ox,offset_y=oy,error_type=error_type)
     self.type = 'Pgrd'
     self.id = id
@@ -680,351 +1014,103 @@ Or specify the data set
     self.derivedquantities(self)
   def derivedquantities(_self,self):
     self.pp = array(self.pp)
+  def install(self,zz):
+    top.npgrd = top.npgrd + 1
+    self.ipgrd = top.npgrd
+    if top.npgrd > len(top.pgrdzs)-1:
+      ipgrd = top.npgrd
+      top.npgrd = top.npgrd + 100
+      gchange("Lattice")
+      top.npgrd = ipgrd
+    top.pgrdzs[top.npgrd] = zz + self.zshift
+    top.pgrdze[top.npgrd] = top.pgrdzs[top.npgrd] + self.length
+    top.pgrdap[top.npgrd] = self.ap
+    top.pgrdxs[top.npgrd] = self.xs
+    top.pgrdys[top.npgrd] = self.ys
+    top.pgrdox[top.npgrd] = self.offset_x*errordist(self.error_type)
+    top.pgrdoy[top.npgrd] = self.offset_y*errordist(self.error_type)
+    top.pgrdsf[top.npgrd] = self.sf
+    top.pgrdsc[top.npgrd] = self.sc
+    top.pgrdrr[top.npgrd] = self.rr
+    top.pgrdrl[top.npgrd] = self.rl
+    top.pgrdgl[top.npgrd] = self.gl
+    top.pgrdgp[top.npgrd] = self.gp
+    top.pgrdpw[top.npgrd] = self.pw
+    top.pgrdpa[top.npgrd] = self.pa
+    if not self.id:
+      top.pgrdid[top.npgrd] = top.pgrdns + 1
+    else:
+      top.pgrdid[top.npgrd] = self.id
+    top.pgrdns = max(top.pgrdid[top.npgrd],top.pgrdns)
+    if self.pp:
+      top.pgrdnx = max(shape(self.pp)[0]-1,top.pgrdnx)
+      top.pgrdny = max(shape(self.pp)[1]-1,top.pgrdny)
+      top.pgrdnz = max(shape(self.pp)[2]-1,top.pgrdnz)
+    return top.pgrdze[top.npgrd]
+  def installdata(self):
+    id = top.pgrdid[self.ipgrd]
+    if self.pp and top.pgrddx[id-1] == 0.:
+      top.pgrddx[id-1] = self.dx
+      top.pgrddy[id-1] = self.dy
+      top.pgrddz[id-1] = self.dz
+      sp = shape(self.pp)
+      top.pgrd[:sp[0],:sp[1],1:sp[2]+1,id-1] = self.pp
 
 ############################################################################
 ############################################################################
 # --- Convert and copy the input MAD lattice into a WARP lattice.
-def madtowarp(line):
+def madtowarp(line,settunelen=1):
   """
 Takes the inputted line obect and sets up the WARP lattice. Any existing
 information if the WARP lattice arrays is deleted.
   """
-  lattice = line.expand()
-  idrft = -1
-  iquad = -1
-  ibend = -1
-  idipo = -1
-  isext = -1
-  ihele = -1
-  ihmlt = -1
-  iaccl = -1
-  iemlt = -1
-  immlt = -1
-  ibgrd = -1
-  ipgrd = -1
-  top.ndrft = 0
-  top.nbend = 0
-  top.ndipo = 0
-  top.nquad = 0
-  top.nsext = 0
-  top.nhele = 0
+  # --- Clear counts of all lattice elements and data array sizes.
+  top.nquad = -1
+  top.ndrft = -1
+  top.nbend = -1
+  top.ndipo = -1
+  top.nhele = -1
   top.nhmlt = 0
-  top.nqerr = 0
-  top.naccl = 0
+  top.naccl = -1
   top.ntaccl = 0
-  top.nemlt = 0
-  top.nmmlt = 0
-  top.neerr = 0
-  top.nmerr = 0
-  top.nbgrd = 0
-  top.npgrd = 0
+  top.nemlt = -1
   top.nemltsets = 0
   top.nesmult = 0
   top.nzemltmax = 0
+  top.nmmlt = -1
   top.nmmltsets = 0
   top.nmsmult = 0
   top.nzmmltmax = 0
+  top.nbgrd = -1
   top.bgrdnx = 0
   top.bgrdny = 0
   top.bgrdnz = 0
   top.bgrdns = 0
+  top.npgrd = -1
   top.pgrdnx = 0
   top.pgrdny = 0
   top.pgrdnz = 0
   top.pgrdns = 0
+  top.nsext = -1
 
-  # --- Loop through elements and count how many of each type there are.
-  # --- This mush be done so that the arrays can be allocated to the correct
-  # --- size.
-  for e in lattice:
-    if (e.type == 'Drft' or e.type == 'drift' or
-        e.type == 'box' or e.type == 'wire'):
-      top.ndrft = top.ndrft + 1
-    elif e.type == 'quad' or e.type == 'hyperb' or e.type == 'Quad':
-      top.nquad = top.nquad + 1
-      top.nqerr = top.nqerr + 1
-    elif e.type == 'Bend':
-      top.nbend = top.nbend + 1
-    elif e.type == 'Dipo':
-      top.ndipo = top.ndipo + 1
-    elif e.type == 'Sext':
-      top.nsext = top.nsext + 1
-    elif e.type == 'Hele':
-      top.nhele = top.nhele + 1
-    elif e.type == 'Accl':
-      top.naccl = top.naccl + 1
-    elif e.type == 'Emlt':
-      top.nemlt = top.nemlt + 1
-      top.neerr = top.neerr + 1
-    elif e.type == 'Mmlt':
-      top.nmmlt = top.nmmlt + 1
-      top.nmerr = top.nmerr + 1
-    elif e.type == 'Bgrd':
-      top.nbgrd = top.nbgrd + 1
-    elif e.type == 'Pgrd':
-      top.npgrd = top.npgrd + 1
-  
-  # --- Allocate the data space needed.
-  gchange("Lattice")
-
-  # --- Loop through elements and copy data to WARP variables.
-  # --- The zs's and ze's must be calculated on the fly (and not stored
-  # --- in the MAD lattice elements.
-  # --- Note that for elements with seperate data sets, only the number
+  # --- Install the line into fortran.
+  # --- For elements with seperate data sets, only the number
   # --- of data points is checked. Arrays are then later allocated and filled.
-  zz = 0
-  for e in lattice:
-    if e.type == 'quad':
-      iquad = iquad + 1
-      top.quadzs[iquad] = zz + e.zshift
-      top.quadze[iquad] = top.quadzs[iquad] + e.length
-      zz = top.quadze[iquad]
-      top.quadde[iquad] = e.gradient
-      top.quadap[iquad] = e.aperture
-      top.quadrr[iquad] = e.r_elem
-      top.qoffx[iquad] = e.offset_x*errordist(e.error_type)
-      top.qoffy[iquad] = e.offset_y*errordist(e.error_type)
-    elif e.type == 'hyperb':
-      iquad = iquad + 1
-      top.quadzs[iquad] = zz + e.zshift
-      top.quadze[iquad] = top.quadzs[iquad] + e.length
-      zz = top.quadze[iquad]
-      top.qoffx[iquad] = e.offset_x*errordist(e.error_type)
-      top.qoffy[iquad] = e.offset_y*errordist(e.error_type)
-      top.quadde[iquad] = e.gradient
-      top.quadap[iquad] = -e.aperture
-    elif e.type == 'drift':
-      idrft = idrft + 1
-      top.drftzs[idrft] = zz + e.zshift
-      top.drftze[idrft] = top.drftzs[idrft] + e.length
-      zz = top.drftze[idrft]
-      top.drftap[idrft] = e.aperture
-      top.drftox[idrft] = e.offset_x*errordist(e.error_type)
-      top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
-    elif e.type == 'box':
-      idrft = idrft + 1
-      top.drftzs[idrft] = zz + e.zshift
-      top.drftze[idrft] = top.drftzs[idrft] + e.length
-      zz = top.drftze[idrft]
-      top.drftap[idrft] = -e.aperture
-      top.drftox[idrft] = e.offset_x*errordist(e.error_type)
-      top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
-    elif e.type == 'wire':
-      idrft = idrft + 1
-      top.drftzs[idrft] = zz + e.zshift
-      top.drftze[idrft] = top.drftzs[idrft] + e.length
-      zz = top.drftze[idrft]
-      top.drftap[idrft] = e.aperture
-      top.drftox[idrft] = e.offset_x*errordist(e.error_type)
-      top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
-
-    elif e.type == 'Quad':
-      iquad = iquad + 1
-      top.quadzs[iquad] = zz + e.zshift
-      top.quadze[iquad] = top.quadzs[iquad] + e.length
-      zz = top.quadze[iquad]
-      top.quadap[iquad] = e.aperture
-      top.qoffx[iquad] = e.offset_x*errordist(e.error_type)
-      top.qoffy[iquad] = e.offset_y*errordist(e.error_type)
-      top.quadde[iquad] = e.de
-      top.quaddb[iquad] = e.db
-      top.quadvx[iquad] = e.vx
-      top.quadvy[iquad] = e.vy
-      top.quadrr[iquad] = e.rr
-      top.quadrl[iquad] = e.rl
-      top.quadgl[iquad] = e.gl
-      top.quadgp[iquad] = e.gp
-      top.quadpw[iquad] = e.pw
-      top.quadpa[iquad] = e.pa
-      top.quadpr[iquad] = e.pr
-
-    elif e.type == 'Drft':
-      idrft = idrft + 1
-      top.drftzs[idrft] = zz + e.zshift
-      top.drftze[idrft] = top.drftzs[idrft] + e.length
-      zz = top.drftze[idrft]
-      top.drftap[idrft] = e.aperture
-      top.drftox[idrft] = e.offset_x*errordist(e.error_type)
-      top.drftoy[idrft] = e.offset_y*errordist(e.error_type)
-
-    elif e.type == 'Bend':
-      ibend = ibend + 1
-      top.bendzs[ibend] = zz + e.zshift
-      top.bendze[ibend] = top.bendzs[ibend] + e.length
-      zz = top.bendze[ibend]
-      top.bendap[ibend] = e.aperture
-      #top.bendox[ibend] = e.offset_x*errordist(e.error_type)
-      #top.bendoy[ibend] = e.offset_y*errordist(e.error_type)
-      top.bendrc[ibend] = e.rc
-
-    elif e.type == 'Dipo':
-      idipo = idipo + 1
-      top.dipozs[idipo] = zz + e.zshift
-      top.dipoze[idipo] = top.dipozs[idipo] + e.length
-      zz = top.dipoze[idipo]
-      top.dipoap[idipo] = e.aperture
-      #top.dipoox[idipo] = e.offset_x*errordist(e.error_type)
-      #top.dipooy[idipo] = e.offset_y*errordist(e.error_type)
-      top.dipoex[idipo] = e.ex
-      top.dipoey[idipo] = e.ey
-      top.dipobx[idipo] = e.bx
-      top.dipoby[idipo] = e.by
-      top.dipota[idipo] = e.ta
-      top.dipotb[idipo] = e.tb
-      top.dipox1[idipo] = e.x1
-      top.dipox2[idipo] = e.x2
-      top.dipov1[idipo] = e.v1
-      top.dipov2[idipo] = e.v2
-      top.dipol1[idipo] = e.l1
-      top.dipol2[idipo] = e.l2
-      top.dipow1[idipo] = e.w1
-      top.dipow2[idipo] = e.w2
-
-    elif e.type == 'Sext':
-      isext = isext + 1
-      top.sextzs[isext] = zz + e.zshift
-      top.sextze[isext] = top.sextzs[isext] + e.length
-      zz = top.sextze[isext]
-      top.sextap[isext] = e.aperture
-      top.sextox[isext] = e.offset_x*errordist(e.error_type)
-      top.sextoy[isext] = e.offset_y*errordist(e.error_type)
-      top.sextde[isext] = e.de
-      top.sextdb[isext] = e.db
-
-    elif e.type == 'Hele':
-      ihele = ihele + 1
-      top.helezs[ihele] = zz + e.zshift
-      top.heleze[ihele] = top.helezs[ihele] + e.length
-      zz = top.heleze[ihele]
-      top.heleap[ihele] = e.aperture
-      top.heleox[ihele] = e.offset_x*errordist(e.error_type)
-      top.heleoy[ihele] = e.offset_y*errordist(e.error_type)
-      top.helerr[ihele] = e.rr
-      top.helerl[ihele] = e.rl
-      top.helegl[ihele] = e.gl
-      top.helegp[ihele] = e.gp
-      top.helepw[ihele] = e.pw
-      top.helepa[ihele] = e.pa
-      top.nhmlt = max(top.nhmlt,len(e.nn))
-
-    elif e.type == 'Accl':
-      iaccl = iaccl + 1
-      top.acclzs[iaccl] = zz + e.zshift
-      top.acclze[iaccl] = top.acclzs[iaccl] + e.length
-      zz = top.acclze[iaccl]
-      top.acclap[iaccl] = e.aperture
-      top.acclox[iaccl] = e.offset_x*errordist(e.error_type)
-      top.accloy[iaccl] = e.offset_y*errordist(e.error_type)
-      top.acclez[iaccl] = e.ez
-      top.acclxw[iaccl] = e.xw
-      top.acclsw[iaccl] = e.sw
-      top.acclts[iaccl] = e.ts
-      top.accldt[iaccl] = e.dt
-      top.ntaccl = max(top.ntaccl,shape(e.et)[0]-1)
-
-    elif e.type == 'Emlt':
-      iemlt = iemlt + 1
-      top.emltzs[iemlt] = zz + e.zshift
-      top.emltze[iemlt] = top.emltzs[iemlt] + e.length
-      zz = top.emltze[iemlt]
-      top.emltap[iemlt] = e.aperture
-      top.emltox[iemlt] = e.offset_x*errordist(e.error_type)
-      top.emltoy[iemlt] = e.offset_y*errordist(e.error_type)
-      top.emltph[iemlt] = e.ph
-      top.emltsf[iemlt] = e.sf
-      top.emltsc[iemlt] = e.sc
-      top.emltrr[iemlt] = e.rr
-      top.emltrl[iemlt] = e.rl
-      top.emltgl[iemlt] = e.gl
-      top.emltgp[iemlt] = e.gp
-      top.emltpw[iemlt] = e.pw
-      top.emltpa[iemlt] = e.pa
-      if not e.id:
-        top.emltid[iemlt] = top.nemltsets + 1
-      else:
-        top.emltid[iemlt] = e.id
-      top.nemltsets = max(top.emltid[iemlt],top.nemltsets)
-      if e.e:
-        top.nzemltmax = max(shape(e.e)[0]-1,top.nzemltmax)
-        if len(shape(e.e)) == 2: top.nesmult = max(shape(e.e)[1],top.nesmult)
-      if e.ep:
-        top.nzemltmax = max(shape(e.ep)[0]-1,top.nzemltmax)
-        if len(shape(e.ep)) == 2: top.nesmult = max(shape(e.ep)[1],top.nesmult)
-
-    elif e.type == 'Mmlt':
-      immlt = immlt + 1
-      top.mmltzs[immlt] = zz + e.zshift
-      top.mmltze[immlt] = top.mmltzs[immlt] + e.length
-      zz = top.mmltze[immlt]
-      top.mmltap[immlt] = e.aperture
-      top.mmltox[immlt] = e.offset_x*errordist(e.error_type)
-      top.mmltoy[immlt] = e.offset_y*errordist(e.error_type)
-      top.mmltph[immlt] = e.ph
-      top.mmltsf[immlt] = e.sf
-      top.mmltsc[immlt] = e.sc
-      if not e.id:
-        top.mmltid[immlt] = top.nmmltsets + 1
-      else:
-        top.mmltid[immlt] = e.id
-      top.nmmltsets = max(top.mmltid[immlt],top.nmmltsets)
-      if e.m:
-        top.nzmmltmax = max(shape(e.m)[0]-1,top.nzmmltmax)
-        if len(shape(e.m)) == 2: top.nmsmult = max(shape(e.m)[1],top.nmsmult)
-      if e.mp:
-        top.nzmmltmax = max(shape(e.mp)[0]-1,top.nzmmltmax)
-        if len(shape(e.mp)) == 2: top.nmsmult = max(shape(e.mp)[1],top.nmsmult)
-
-    elif e.type == 'Bgrd':
-      ibgrd = ibgrd + 1
-      top.bgrdzs[ibgrd] = zz + e.zshift
-      top.bgrdze[ibgrd] = top.bgrdzs[ibgrd] + e.length
-      zz = top.bgrdze[ibgrd]
-      top.bgrdap[ibgrd] = e.aperture
-      top.bgrdox[ibgrd] = e.offset_x*errordist(e.error_type)
-      top.bgrdoy[ibgrd] = e.offset_y*errordist(e.error_type)
-      top.bgrdsf[ibgrd] = e.sf
-      top.bgrdsc[ibgrd] = e.sc
-      if not e.id:
-        top.bgrdid[ibgrd] = top.bgrdns + 1
-      else:
-        top.bgrdid[ibgrd] = e.id
-      top.bgrdns = max(top.bgrdid[ibgrd],top.bgrdns)
-      if e.bx or e.by or e.bz:
-        sbx = shape(e.bx)
-        sby = shape(e.by)
-        sbz = shape(e.bz)
-        top.bgrdnx=max(sbx[0]-1,sby[0]-1,sbz[0]-1,top.bgrdnx)
-        top.bgrdny=max(sbx[1]-1,sby[1]-1,sbz[1]-1,top.bgrdny)
-        top.bgrdnz=max(sbx[2]-1,sby[2]-1,sbz[2]-1,top.bgrdnz)
-
-    elif e.type == 'Pgrd':
-      ipgrd = ipgrd + 1
-      top.pgrdzs[ipgrd] = zz + e.zshift
-      top.pgrdze[ipgrd] = top.pgrdzs[ipgrd] + e.length
-      zz = top.pgrdze[ipgrd]
-      top.pgrdap[ipgrd] = e.aperture
-      top.pgrdxs[ipgrd] = e.xs
-      top.pgrdys[ipgrd] = e.ys
-      top.pgrdox[ipgrd] = e.offset_x*errordist(e.error_type)
-      top.pgrdoy[ipgrd] = e.offset_y*errordist(e.error_type)
-      top.pgrdsf[ipgrd] = e.sf
-      top.pgrdsc[ipgrd] = e.sc
-      top.pgrdrr[ipgrd] = e.rr
-      top.pgrdrl[ipgrd] = e.rl
-      top.pgrdgl[ipgrd] = e.gl
-      top.pgrdgp[ipgrd] = e.gp
-      top.pgrdpw[ipgrd] = e.pw
-      top.pgrdpa[ipgrd] = e.pa
-      if not e.id:
-        top.pgrdid[ipgrd] = top.pgrdns + 1
-      else:
-        top.pgrdid[ipgrd] = e.id
-      top.pgrdns = max(top.pgrdid[ipgrd],top.pgrdns)
-      if e.pp:
-        top.pgrdnx = max(shape(e.pp)[0]-1,top.pgrdnx)
-        top.pgrdny = max(shape(e.pp)[1]-1,top.pgrdny)
-        top.pgrdnz = max(shape(e.pp)[2]-1,top.pgrdnz)
+  zz = line.install(0.)
   
+  # --- Make sure element counts are at least zero.
+  if top.nquad == -1: top.nquad = 0
+  if top.ndrft == -1: top.ndrft = 0
+  if top.nbend == -1: top.nbend = 0
+  if top.ndipo == -1: top.ndipo = 0
+  if top.nhele == -1: top.nhele = 0
+  if top.naccl == -1: top.naccl = 0
+  if top.nemlt == -1: top.nemlt = 0
+  if top.nmmlt == -1: top.nmmlt = 0
+  if top.nbgrd == -1: top.nbgrd = 0
+  if top.npgrd == -1: top.npgrd = 0
+  if top.nsext == -1: top.nsext = 0
+
   # --- Allocate the data space needed.
   gchange("Lattice")
   gchange("Mult_data")
@@ -1033,95 +1119,22 @@ information if the WARP lattice arrays is deleted.
 
   # --- Now, go back through the latice and fill in the data that needed
   # --- space allocated.
-  iaccl = -1
-  ihele = -1
-  ihmlt = -1
-  iemlt = -1
-  immlt = -1
-  ibgrd = -1
-  ipgrd = -1
-  for e in lattice:
-    if e.type == 'Accl':
-      iaccl = iaccl + 1
-      top.acclet[:len(e.et),iaccl] = e.et
-
-    elif e.type == 'Hele':
-      ihele = ihele + 1
-      top.hele_n[:,ihele] = e.nn
-      top.hele_v[:,ihele] = e.vv
-      top.heleae[:len(e.ae),ihele] = e.ae
-      top.heleam[:len(e.am),ihele] = e.am
-      top.heleep[:len(e.ep),ihele] = e.ep
-      top.helemp[:len(e.mp),ihele] = e.mp
-      top.helepe[:len(e.pe),ihele] = e.pe
-      top.helepm[:len(e.pm),ihele] = e.pm
-
-    elif e.type == 'Emlt':
-      iemlt = iemlt + 1
-      id = top.emltid[iemlt]
-      if (e.e or e.ep) and top.nzemlt[id-1] == 0:
-        # --- Only copy data if this is a new data set
-        top.nzemlt[id-1] = max(shape(e.e)[0],shape(e.ep)[0]) - 1
-        if not e.dz:
-          top.dzemlt[id-1] = ((top.emltze[iemlt] - top.emltzs[iemlt])/
-                              top.nzemlt[id-1])
-        else:
-          top.dzemlt[id-1] = e.dz
-        top.emlt_n[:len(e.nn)] = e.nn
-        top.emlt_v[:len(e.vv)] = e.vv
-        top.esemlt[:shape(e.e)[0],:shape(e.e)[1],id-1] = e.e
-        top.esemltp[:shape(e.ep)[0],:shape(e.ep)[1],id-1] = e.ep
-        top.esemltph[:shape(e.eph)[0],:shape(e.eph)[1],id-1] = e.eph
-
-    elif e.type == 'Mmlt':
-      immlt = immlt + 1
-      id = top.mmltid[immlt]
-      if (e.m or e.mp) and top.nzmmlt[id-1] == 0:
-        # --- Only copy data if this is a new data set
-        top.nzmmlt[id-1] = max(shape(e.m)[0],shape(e.mp)[0]) - 1
-        if not e.dz:
-          top.dzmmlt[id-1] = ((top.mmltze[immlt] - top.mmltzs[immlt])/
-                              top.nzmmlt[id-1])
-        else:
-          top.dzmmlt[id-1] = e.dz
-        top.mmlt_n[:len(e.nn)] = e.nn
-        top.mmlt_v[:len(e.vv)] = e.vv
-        top.msmmlt[:shape(e.m)[0],:shape(e.m)[1],id-1] = e.m
-        top.msmmltp[:shape(e.mp)[0],:shape(e.mp)[1],id-1] = e.mp
-        top.msmmltph[:shape(e.mph)[0],:shape(e.mph)[1],id-1] = e.mph
-
-    elif e.type == 'Bgrd':
-      ibgrd = ibgrd + 1
-      id = top.bgrdid[ibgrd]
-      if (e.bx or e.by or e.bz) and top.bgrddx[id-1] == 0.:
-        top.bgrddx[id-1] = e.dx
-        top.bgrddy[id-1] = e.dy
-        top.bgrddz[id-1] = e.dz
-        sbx = shape(e.bx)
-        sby = shape(e.by)
-        sbz = shape(e.bz)
-        top.bgrdbx[:sbx[0],:sbx[1],:sbx[2],id-1] = e.bx
-        top.bgrdby[:sby[0],:sby[1],:sby[2],id-1] = e.by
-        top.bgrdbz[:sbz[0],:sbz[1],:sbz[2],id-1] = e.bz
-
-    elif e.type == 'Pgrd':
-      ipgrd = ipgrd + 1
-      id = top.pgrdid[ipgrd]
-      if e.pp and top.pgrddx[id-1] == 0.:
-        top.pgrddx[id-1] = e.dx
-        top.pgrddy[id-1] = e.dy
-        top.pgrddz[id-1] = e.dz
-        sp = shape(e.pp)
-        top.pgrd[:sp[0],:sp[1],1:sp[2]+1,id-1] = e.pp
+  line.installdata()
 
   # --- Finish by setting some general parameters.
-  if iquad >= 2:
-    top.tunelen = 0.5*(top.quadzs[2]+top.quadze[2]-top.quadzs[0]-top.quadze[0])
-  if ihele >= 2:
-    top.tunelen = 0.5*(top.helezs[2]+top.heleze[2]-top.helezs[0]-top.heleze[0])
-  if iemlt >= 2:
-    top.tunelen = 0.5*(top.emltzs[2]+top.emltze[2]-top.emltzs[0]-top.emltze[0])
-
+  if settunelen:
+    if top.nquad >= 2:
+      top.tunelen=0.5*(top.quadzs[2]+top.quadze[2]-top.quadzs[0]-top.quadze[0])
+    elif top.nhele >= 2:
+      top.tunelen=0.5*(top.helezs[2]+top.heleze[2]-top.helezs[0]-top.heleze[0])
+    elif top.nemlt >= 2:
+      top.tunelen=0.5*(top.emltzs[2]+top.emltze[2]-top.emltzs[0]-top.emltze[0])
+    elif top.nmmlt >= 2:
+      top.tunelen=0.5*(top.mmltzs[2]+top.mmltze[2]-top.mmltzs[0]-top.mmltze[0])
+    elif top.nbgrd >= 2:
+      top.tunelen=0.5*(top.bgrdzs[2]+top.bgrdze[2]-top.bgrdzs[0]-top.bgrdze[0])
+    elif top.npgrd >= 2:
+      top.tunelen=0.5*(top.pgrdzs[2]+top.pgrdze[2]-top.pgrdzs[0]-top.pgrdze[0])
 
 ###############################################################################
 # --- Now, using above classes, read in and parse a MAD lattice file.
@@ -1212,7 +1225,7 @@ drft arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -1247,7 +1260,7 @@ drft arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
@@ -1270,7 +1283,7 @@ bend arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -1305,7 +1318,7 @@ bend arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
@@ -1328,7 +1341,7 @@ dipo arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -1366,7 +1379,7 @@ dipo arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
@@ -1395,7 +1408,7 @@ quad and qdel arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -1443,7 +1456,7 @@ quad and qdel arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     if len(shape(e)) == 1:
       e[ie] = ldict[xx]
@@ -1469,7 +1482,7 @@ sext arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -1503,7 +1516,7 @@ sext arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
@@ -1526,7 +1539,7 @@ hele arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Get the number of multipole components in this element.
@@ -1580,7 +1593,7 @@ hele arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     if len(shape(e)) == 1:
       e[ie] = ldict[xx]
@@ -1631,7 +1644,7 @@ emlt arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -1669,7 +1682,7 @@ emlt arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
@@ -1789,7 +1802,7 @@ mmlt arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -1825,7 +1838,7 @@ mmlt arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
@@ -1921,7 +1934,7 @@ accl arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -1959,7 +1972,7 @@ accl arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     if len(shape(e)) == 1:
       e[ie] = ldict[xx]
@@ -1995,7 +2008,7 @@ bgrd arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -2032,7 +2045,7 @@ bgrd arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
@@ -2094,7 +2107,7 @@ pgrd arrays with the same suffices:
   assert (ze > 0.),"element end must be greater than zero"
   assert (top.zlatperi == 0.) or (zs < top.zlatperi),"element start must be less than zlatperi"
 
-  # --- Get a dict of the input arguments and there values.
+  # --- Get a dict of the input arguments and their values.
   ldict = locals()
 
   # --- Setup the lattice arrays for the insertion of the new element. If
@@ -2132,7 +2145,7 @@ pgrd arrays with the same suffices:
 
   # --- Insert the new element. Note that edict correlates the lattice array
   # --- with the input arguments and ldict correlate the arguements with
-  # --- there values.
+  # --- their values.
   for (xx,e) in map(None,edict.keys(),edict.values()):
     e[ie] = ldict[xx]
 
