@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.5 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.6 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -9,11 +9,12 @@ c  It contains the routines for calculating the intersection of points
 c  with various geometrical objects.
 c=======================================================================
 c=======================================================================
-      subroutine setconductorparity(nn,ix,iy,iz,dels,parity,fuzz)
+      subroutine setconductorparity(nn,ix,iy,iz,dels,parity,fuzz,dfill)
       integer(ISZ):: nn
       integer(ISZ):: ix(nn),iy(nn),iz(nn),parity(nn)
       real(kind=8):: dels(0:5,nn)
       real(kind=8):: fuzz
+      integer(ISZ):: dfill
 
 c Set parity. For points inside, this is set to -1. For points near the surface,
 c this is set to the parity of ix+iy+iz. Otherwise defaults to large integer.
@@ -28,9 +29,10 @@ c  dels(4,:) -> delmz
 c  dels(5,:) -> delpz
 
       integer(ISZ):: i,iparity
+      integer(ISZ),parameter:: outside = 999
       
       do i=1,nn
-        parity(i) = 999
+        parity(i) = outside
 
         iparity = mod(ix(i)+iy(i)+iz(i),2)
         if (dels(0,i) < 1.-fuzz) parity(i) = iparity
@@ -50,6 +52,14 @@ c       --- will all be positive.
         if (dels(3,i) < 0.+fuzz) parity(i) = -1
         if (dels(4,i) < 0.+fuzz) parity(i) = -1
         if (dels(5,i) < 0.+fuzz) parity(i) = -1
+
+c       --- To minimize the amount of conductor data, points deep inside the
+c       --- conductor can be skipped. The depth is set by the input dfill.
+c       --- The point must be at the depth in all directions to be skipped.
+c       --- dfill is assumed to be passed in as a positive number.
+        if (dels(0,i) <= -dfill .and. dels(1,i) <= -dfill .and.
+     &      dels(2,i) <= -dfill .and. dels(3,i) <= -dfill .and.
+     &      dels(4,i) <= -dfill .and. dels(5,i) <= -dfill) parity(i) = outside
 
       enddo
 
