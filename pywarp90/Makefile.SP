@@ -5,22 +5,27 @@ PYVERS = 2.2
 PYTHON = $(HOME)/Python-$(PYVERS)
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
-#VAMPIR = $(VTINC) $(VTLIB)
-OPT = -O3 -qstrict -qarch=pwr3 -qtune=pwr3
+VAMPIR = #$(VTINC) $(VTLIB) -WF,-DVAMPIR
+XPROF = # -g -pg
+OPT = -O3 -qstrict -qarch=pwr3 -qtune=pwr3 $(XPROF) # -C -qsigtrap
 #OPT = -O4 -qarch=pwr3 -qtune=pwr3 -qunroll
 #OPT = -O3 -qarch=pwr3 -qtune=pwr3 -qhot=vector
 #OPT = -g -C -qsigtrap
-POPT = -O
-PYMODULEOPT = 
-DATASIZE = -bmaxdata:0x80000000 -bmaxstack:0x10000000	
-#DATASIZE = -bmaxdata:0x70000000 -bmaxstack:0x10000000	# for debugging
+#OPT = -g
+#G = g
+POPT = -O $(XPROF) #-C -qsigtrap
+#POPT = -g -C -qsigtrap
+PYMODULEOPT = $(XPROF)
+#PYMODULEOPT = -g -qcheck=all
+#DATASIZE = -bmaxdata:0x80000000 -bmaxstack:0x10000000	
+DATASIZE = -bmaxdata:0x70000000 -bmaxstack:0x10000000	# for debugging
 ESSL = -WF,-DESSL
-F90FREE  = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -qsave=defaultinit -WF,-DMPIPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VAMPIR) $(DATASIZE) $(ESSL)
-F90FIXED = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -qsave=defaultinit -WF,-DMPIPARALLEL -qfixed=132 $(VAMPIR) $(DATASIZE) $(ESSL)
-CC = mpcc_r -qmaxmem=8192 $(DATASIZE)
+F90FREE  = mpxlf95 -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -qsave=defaultinit -WF,-DMPIPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VAMPIR) $(DATASIZE) $(ESSL)
+F90FIXED = mpxlf95 -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -qsave=defaultinit -WF,-DMPIPARALLEL -qfixed=132 $(VAMPIR) $(DATASIZE) $(ESSL)
+CC = mpcc_r -qmaxmem=8192 $(DATASIZE) $(XPROF)
 SO = so
-LD = mpcc_r $(VAMPIR) $(DATASIZE)
-LD = mpxlf_r $(VAMPIR) $(DATASIZE)
+LD = mpcc_r $(VAMPIR) $(DATASIZE) $(XPROF)
+LD = mpxlf_r $(VAMPIR) $(DATASIZE) $(XPROF)
 LDSHARED = $(PYTHON)/lib/python$(PYVERS)/config/ld_so_aix mpcc_r -bI:$(PYTHON)/lib/python$(PYVERS)/config/python.exp
 FINCLUDE = $(HPMTOOLKIT)
 FORTLIB = 
@@ -40,28 +45,30 @@ PYTHONSOS = $(PYTHON)/lib/python$(PYVERS)/site-packages/*/*.so \
 OTHERLIBS = $(PACTLIB) -lpdb -lpml -lscore \
             $(YORICKLIB) -lgist \
             $(LAPACK) -lessl \
-            -lld -lreadline -ltermcap -L/usr/common/homes/g/grote/readline/lib -ldl
+            -lld -L/usr/common/homes/g/grote/readline/lib -ldl -lreadline -ltermcap
 #PYMPI = /usr/common/homes/g/grote/pyMPI
 #PYMPIOBJS = $(PYMPI)/initmpi.o $(PYMPI)/driver.o $(PYMPI)/patched152main.o
-PYMPI = /usr/common/homes/g/grote/pyMPI-1.2a6
+PYMPI = /usr/common/homes/g/grote/pyMPI
 PYMPIOBJS = $(PYMPI)/driver.o $(PYMPI)/patchedmain.o -L$(PYMPI) -lpympi
 
 warp: build_static
+static: build_static
 
 include Makefile.dependencies
 
-build_static: $(WARPOBJECTS) $(WARPSLAVEOBJECTS) $(MODULEOBJECTS) config.o
-	$(LD) -g -o pywarp90 $(PYMPIOBJS) \
+build_static: $(WARPOBJECTS) $(WARPSLAVEOBJECTS) $(MODULEOBJECTS) config.o $(RNGOBJ)
+	$(LD) -g -o pywarp90$(G) $(PYMPIOBJS) \
 	$(WARPOBJECTS) $(WARPSLAVEOBJECTS) $(MODULEOBJECTS) config.o \
-	$(PYTHONSOS) \
-	-bE:$(PYTHON)/lib/python2.2/config/python.exp \
+	$(RNGOBJ) \
+	-bE:$(PYTHON)/lib/python$(PYVERS)/config/python.exp \
 	-lm -lX11 $(PYTHONLIB) $(LINKLIB) $(OTHERLIBS) $(FORTLIB)  \
 	$(SP_TIMER)
 	#$(HPMTOOLKIT) $(TRACE_MPIF) $(TRACE_MPI)
 
-public:
+publicold:
 	adddate.py pywarp90
 	mv pywarp902* $(HOME)/pub
+	cp pywarp90 $(HOME)/pub/pywarp90current
 	chmod go+rx $(HOME)/pub/pywarp90*
 
 build_dynamic: warpC.$(SO)
