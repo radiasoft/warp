@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.196 $, $Date: 2005/03/24 00:32:48 $
+c@(#) File W3D.F, version $Revision: 3.197 $, $Date: 2005/04/05 16:33:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4801,15 +4801,17 @@ c=============================================================================
 
 #ifndef MPIPARALLEL
 
-c     --- If rhop is not associated with rho, then copy the data.
-      if (.not. associated(rho,rhop)) then
-        if (nxp == nx .and. nyp == ny .and. nzp == nz) then
-          rho = rhop
-        else
-          call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-          call remark("ERROR!! rhop and rho are not the same shape!       ")
-          call remark("        The space charge will not be properly used!")
-          call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      if (solvergeom==XYZgeom) then
+c       --- If rhop is not associated with rho, then copy the data.
+        if (.not. associated(rho,rhop)) then
+          if (nxp == nx .and. nyp == ny .and. nzp == nz) then
+            rho = rhop
+          else
+            call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            call remark("ERROR!! rhop and rho are not the same shape!       ")
+            call remark("        The space charge will not be properly used!")
+            call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+          endif
         endif
       endif
 
@@ -6144,15 +6146,17 @@ c       --- setting up rhoptmp.
 
 #ifndef MPIPARALLEL
 
-c     --- If phip is not associated with phi, then copy the data.
-      if (.not. associated(phi,phip)) then
-        if (nxp == nx .and. nyp == ny .and. nzp == nz) then
-          phip = phi
-        else
-          call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-          call remark("ERROR!! phip and phi are not the same shape!        ")
-          call remark("        The self field will not be properly applied!")
-          call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
+c       --- If phip is not associated with phi, then copy the data.
+        if (.not. associated(phi,phip)) then
+          if (nxp == nx .and. nyp == ny .and. nzp == nz) then
+            phip = phi
+          else
+            call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            call remark("ERROR!! phip and phi are not the same shape!        ")
+            call remark("        The self field will not be properly applied!")
+            call remark("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+          endif
         endif
       endif
 
