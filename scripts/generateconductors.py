@@ -26,7 +26,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.2 2002/06/20 20:56:59 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.3 2002/06/26 00:55:57 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -149,8 +149,7 @@ distances to outside the surface are positive, inside negative.
       self.vs = zeros((6,nn),'d')
       self.ns = zeros((6,nn))
       self.parity = zeros(nn)
-      self.levelxy = zeros(nn)
-      self.levelz  = zeros(nn)
+      self.mglevel = zeros(nn)
     elif generator is not None:
       self.ndata = len(ix)
       self.ix = ix
@@ -160,13 +159,14 @@ distances to outside the surface are positive, inside negative.
       self.yy = yy
       self.zz = zz
       self.dels = zeros((6,self.ndata),'d')
+      fuzz = 1.e-13
       apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
                                 self.dels[0,:],self.dels[1,:],
                                 self.dels[2,:],self.dels[3,:],
-                                self.dels[4,:],self.dels[5,:]])
+                                self.dels[4,:],self.dels[5,:]] + [fuzz])
       self.setvoltages(voltage)
       self.setcondids(condid)
-      self.setlevels(1,1)
+      self.setlevels(0)
     else:
       self.ndata = len(ix)
       self.ix = ix
@@ -179,7 +179,7 @@ distances to outside the surface are positive, inside negative.
       self.vs = vs
       self.ns = ns
       self.parity = parity
-      self.setlevels(1,1)
+      self.setlevels(0)
    
   def setvoltages(self,voltage):
     "Routine to set appropriate voltages."
@@ -189,9 +189,8 @@ distances to outside the surface are positive, inside negative.
     "Routine to setcondid condids."
     self.ns = condid + zeros((6,self.ndata))
    
-  def setlevels(self,lxy,lz):
-    self.levelxy = lxy + zeros(self.ndata)
-    self.levelz  = lz  + zeros(self.ndata)
+  def setlevels(self,level):
+    self.mglevel = level + zeros(self.ndata)
 
   def normalize(self,dx,dy,dz):
     """
@@ -211,9 +210,7 @@ grid cell sizes.
     fuzz = 1.e-9
     # --- A compiled routine is called for optimization
     setconductorparity(self.ndata,self.ix,self.iy,self.iz,
-                       self.dels[0,:],self.dels[1,:],
-                       self.dels[2,:],self.dels[3,:],
-                       self.dels[4,:],self.dels[5,:],self.parity,fuzz)
+                       self.dels,self.parity,fuzz)
 
   def clean(self):
     """
@@ -228,8 +225,8 @@ has already been called.
     self.yy    = take(self.yy,ii)
     self.zz    = take(self.zz,ii)
     self.dels  = take(self.dels,ii,1)
-    self.vs  = take(self.vs,ii,1)
-    self.ns  = take(self.ns,ii,1)
+    self.vs    = take(self.vs,ii,1)
+    self.ns    = take(self.ns,ii,1)
     self.parity= take(self.parity,ii)
     self.ndata = len(self.ix)
 
@@ -247,8 +244,7 @@ has already been called.
       vs = self.vs[:,:n1]
       ns = self.ns[:,:n1]
       parity = self.parity[:n1]
-      levelxy = self.levelxy[:n1]
-      levelz = self.levelz[:n1]
+      mglevel = self.mglevel[:n1]
 
       newn = max(int(2*len(self.ix)),n1+n2)
       self.ix = zeros(newn)
@@ -261,8 +257,7 @@ has already been called.
       self.vs = zeros((6,newn),'d')
       self.ns = zeros((6,newn))
       self.parity = zeros(newn)
-      self.levelxy = zeros(newn)
-      self.levelz  = zeros(newn)
+      self.mglevel = zeros(newn)
 
       self.ix[:n1] = ix
       self.iy[:n1] = iy
@@ -274,8 +269,7 @@ has already been called.
       self.vs[:,:n1] = vs
       self.ns[:,:n1] = ns
       self.parity[:n1] = parity
-      self.levelxy[:n1] = levelxy
-      self.levelz[:n1] = levelz
+      self.mglevel[:n1] = mglevel
 
     self.ix[n1:n1+n2] = d.ix[:n2]
     self.iy[n1:n1+n2] = d.iy[:n2]
@@ -287,8 +281,7 @@ has already been called.
     self.vs[:,n1:n1+n2] = d.vs[:,:n2]
     self.ns[:,n1:n1+n2] = d.ns[:,:n2]
     self.parity[n1:n1+n2] = d.parity[:n2]
-    self.levelxy[n1:n1+n2] = d.levelxy[:n2]
-    self.levelz[n1:n1+n2] = d.levelz[:n2]
+    self.mglevel[n1:n1+n2] = d.mglevel[:n2]
     self.ndata = n1 + n2
 
   def install(self):
@@ -308,8 +301,7 @@ Installs the data into the WARP database
       f3d.izcond[nc:nc+nn] = take(self.iz,ii)
       f3d.condvolt[nc:nc+nn] = take(self.vs[0,:],ii)
       f3d.condnumb[nc:nc+nn] = take(self.ns[0,:],ii)
-      f3d.icondlxy[nc:nc+nn] = take(self.levelxy,ii)
-      f3d.icondlz[nc:nc+nn] = take(self.levelz,ii)
+      f3d.icondlevel[nc:nc+nn] = take(self.mglevel,ii)
 
     ne = f3d.necndbdy
     nn = sum(where(self.parity[:self.ndata] == 0,1,0))
@@ -342,8 +334,7 @@ Installs the data into the WARP database
       f3d.ecnumbpz[ne:ne+nn] = take(self.ns[5,:],ii)
       f3d.ecvolt[ne:ne+nn] = take(self.vs[0,:],ii)
       f3d.ecnumb[ne:ne+nn] = take(self.ns[0,:],ii)
-      f3d.iecndlxy[ne:ne+nn] = take(self.levelxy,ii)
-      f3d.iecndlz[ne:ne+nn] = take(self.levelz,ii)
+      f3d.iecndlevel[ne:ne+nn] = take(self.mglevel,ii)
 
     no = f3d.nocndbdy
     nn = sum(where(self.parity[:self.ndata] == 1,1,0))
@@ -376,8 +367,7 @@ Installs the data into the WARP database
       f3d.ocnumbpz[no:no+nn] = take(self.ns[5,:],ii)
       f3d.ocvolt[no:no+nn] = take(self.vs[0,:],ii)
       f3d.ocnumb[no:no+nn] = take(self.ns[0,:],ii)
-      f3d.iocndlxy[no:no+nn] = take(self.levelxy,ii)
-      f3d.iocndlz[no:no+nn] = take(self.levelz,ii)
+      f3d.iocndlevel[no:no+nn] = take(self.mglevel,ii)
 
   def __neg__(self):
     "Delta not operator."
@@ -455,30 +445,25 @@ Call installdata() to install the data into the WARP database.
     self.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
     self.dz = (w3d.zmmax - w3d.zmmin)/w3d.nz
 
-    self.mglevels = zeros(1)
-    self.mglevelsnx = zeros(20)
-    self.mglevelsny = zeros(20)
-    self.mglevelsnzfull = zeros(20)
-    self.mglevelsiz = zeros(20)
-    self.mglevelsnz = zeros(20)
     if top.fstype in [7,11]:
-      getmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz,
-                  f3d.mgminlevelxy,f3d.mgminlevelz,
-                  self.mglevels,self.mglevelsnx,self.mglevelsny,
-                  self.mglevelsnzfull,self.mglevelsiz,self.mglevelsnz)
-      self.mglevels = self.mglevels[0]
-    else:
+      setmglevels(self.nx,self.ny,self.nz,self.nzfull,self.dx,self.dy,self.dz)
+      self.mglevels = f3d.mglevels
+      self.mglevelsnx = f3d.mglevelsnx[:f3d.mglevels]
+      self.mglevelsny = f3d.mglevelsny[:f3d.mglevels]
+      self.mglevelsiz = f3d.mglevelsiz[:f3d.mglevels]
+      self.mglevelsnz = f3d.mglevelsnz[:f3d.mglevels]
+      self.mglevelslx = f3d.mglevelslx[:f3d.mglevels]
+      self.mglevelsly = f3d.mglevelsly[:f3d.mglevels]
+      self.mglevelslz = f3d.mglevelslz[:f3d.mglevels]
+    elif top.fstype == 3:
       self.mglevels = 1
-      self.mglevelsnx[0] = self.nx
-      self.mglevelsny[0] = self.ny
-      self.mglevelsnzfull[0] = self.nzfull
-      self.mglevelsiz[0] = top.izfsslave[me]
-      self.mglevelsnz[0] = self.nz
-    self.mglevelsnx = self.mglevelsnx[:self.mglevels]
-    self.mglevelsny = self.mglevelsny[:self.mglevels]
-    self.mglevelsnzfull = self.mglevelsnzfull[:self.mglevels]
-    self.mglevelsiz = self.mglevelsiz[:self.mglevels]
-    self.mglevelsnz = self.mglevelsnz[:self.mglevels]
+      self.mglevelsnx = [self.nx]
+      self.mglevelsny = [self.ny]
+      self.mglevelsiz = [top.izfsslave[me]]
+      self.mglevelsnz = [self.nz]
+      self.mglevelslx = [1]
+      self.mglevelsly = [1]
+      self.mglevelslz = [1]
 
   def getdata(self,a):
     """
@@ -490,15 +475,13 @@ Assembly on this grid.
     self.dall = Delta()
     for i in range(self.mglevels):
       tt1 = wtime()
+      dx = self.dx*self.mglevelslx[i]
+      dy = self.dy*self.mglevelsly[i]
+      dz = self.dz*self.mglevelslz[i]
       nx = self.mglevelsnx[i]
       ny = self.mglevelsny[i]
-      nzfull = self.mglevelsnzfull[i]
       iz = self.mglevelsiz[i]
       nz = self.mglevelsnz[i]
-
-      dx = self.dx*self.nx/nx
-      dy = self.dy*self.ny/ny
-      dz = self.dz*self.nzfull/nzfull
 
       zmmin = self.zmmin + iz*dz
 
@@ -537,7 +520,7 @@ Assembly on this grid.
         d.clean()
         tt2[5] = tt2[5] + wtime() - tt1
         tt1 = wtime()
-        d.setlevels(self.nx/nx,self.nz/nz)
+        d.setlevels(i)
         tt2[6] = tt2[6] + wtime() - tt1
         tt1 = wtime()
         self.dall.append(d)
