@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.57 $, $Date: 2002/09/14 01:15:50 $
+c@(#) File F3D.M, version $Revision: 3.58 $, $Date: 2002/09/14 01:23:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -7167,7 +7167,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
-		  if (f(1) == f(2)) exit
+                  if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
                   f(i) = srfrv_f(x(i),rofzfunc,0) - rad
                   iterrf = iterrf + 1
@@ -7224,7 +7224,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
-		  if (f(1) == f(2)) exit
+                  if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
                   f(i) = srfrv_f(x(i),rofzfunc,0) - rad
                   iterrf = iterrf + 1
@@ -7765,7 +7765,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
-		  if (f(1) == f(2)) exit
+                  if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
                   f(i) = srfrv_f(x(i),rofzfunc,0) - rad
                   iterrf = iterrf + 1
@@ -7822,7 +7822,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
-		  if (f(1) == f(2)) exit
+                  if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
                   f(i) = srfrv_f(x(i),rofzfunc,0) - rad
                   iterrf = iterrf + 1
@@ -8321,7 +8321,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
-		  if (f(1) == f(2)) exit
+                  if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
                   f(i) = srfrv_f(x(i),rminofz,1) - rad
                   iterrf = iterrf + 1
@@ -8368,7 +8368,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
-		  if (f(1) == f(2)) exit
+                  if (f(1) == f(2)) exit
                   x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
                   f(i) = rad - srfrv_f(x(i),rmaxofz,2)
                   iterrf = iterrf + 1
@@ -8426,7 +8426,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
-		  if (f(1) == f(2)) exit
+                  if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
                   f(i) = srfrv_f(x(i),rminofz,1) - rad
                   iterrf = iterrf + 1
@@ -8473,7 +8473,7 @@ c               --- that point.
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
-		  if (f(1) == f(2)) exit
+                  if (f(1) == f(2)) exit
                   x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
                   f(i) = rad - srfrv_f(x(i),rmaxofz,2)
                   iterrf = iterrf + 1
