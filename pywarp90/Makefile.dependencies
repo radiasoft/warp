@@ -46,6 +46,9 @@ MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
                 cirpymodule.c herpymodule.c chopymodule.c \
                 pybasisC.c
 
+public:
+	publishpywarp90.py
+
 config.o:config.c.$(PYVERS)
 	cp config.c.$(PYVERS) config.c
 	$(CC) -c config.c $(INCLUDE)
