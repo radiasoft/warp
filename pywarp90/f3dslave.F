@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.13 $, $Date: 2002/11/05 21:52:10 $
+c F3DSLAVE.M, version $Revision: 1.14 $, $Date: 2003/05/30 17:41:46 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -739,7 +739,14 @@ c       --- is rounded up.
         nzfsslave2(is) = (izfsslave(is)+nzfsslave(is) + 1)/2 - izfsslave2(is)
 
 c       --- Then check that no nz are less than nzmin.
-        if (nzfsslave2(is) < nzmin) then
+c       --- Note that if nzfsslave is already < nzmin, leave it as is.
+c       --- When nzfsslave < nzmin, in some cases setting nzfsslave2 to nzmin
+c       --- will cause the coarsened grid to extend too far beyond the finer
+c       --- grid's gaurd cell, so it would need data from a neighboring cell,
+c       --- where it would normally be able to use data from the gaurd cells.
+c       --- That is a rare occurance so it is simpler to avoid the problem
+c       --- then to write the code to exchange the data for that case.
+        if (nzfsslave2(is) < nzmin .and. nzfsslave2(is) < nzfsslave(is)) then
           nzfsslave2(is) = nzfsslave2(is) + 1
           if (izfsslave2(is)+nzfsslave2(is) > nzfull/2) then
             izfsslave2(is) = izfsslave2(is) - 1
@@ -774,7 +781,7 @@ c is sending out the fewest messages so far.
       integer(ISZ):: numsendingright(0:nslaves-1)
       integer(ISZ):: idx,js,ie,mm(1)
 
-c     --- By default, no processoers send data (flagged by -1)
+c     --- By default, no processors send data (flagged by -1)
       whosendingleft = -1
       numsendingleft = 0
       izsendingleft = 0
@@ -1060,7 +1067,12 @@ c     --- Set count to zero
 c     --- Sends and receives can all be done synchronously since none
 c     --- of the data overlaps.
       if (izfsslave(my_index) == 0) then
-        do ip=0,nslaves-1
+c       --- The loop only covers processors to the right since any processors
+c       --- to the left would not need phi on the left boundary. In some cases,
+c       --- this processor my be sending other than boundary data to the left.
+c       --- This avoids the send, which would cause this process to lock up
+c       --- on the waitall since that message would never be received.
+        do ip=my_index+1,nslaves-1
           if (my_index == whosendingleft(ip)) then
             w = w + 1
             call MPI_ISEND(phi(0,0,delz),(nx+1)*(ny+1),
@@ -1070,7 +1082,8 @@ c     --- of the data overlaps.
         enddo
       endif
       if (izfsslave(my_index)+nz == nzfull .and. delz /= 0) then
-        do ip=0,nslaves-1
+c       --- See comments on loop above.
+        do ip=0,my_index-1
           if (my_index == whosendingright(ip)) then
             w = w + 1
             call MPI_ISEND(phi(0,0,nz-delz),(nx+1)*(ny+1),
