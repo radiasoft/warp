@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.126 $, $Date: 2003/07/28 22:58:21 $
+c@(#) File W3D.M, version $Revision: 3.127 $, $Date: 2003/08/15 23:06:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3867,9 +3867,11 @@ c        --- get loop limits for particles if needed
 c        --- loop over particle blocks
          if(solvergeom==XYZgeom) then
            ipmin = ins_u
-           call setrho3d(rhop(0,0,0),nps_u,xp(ipmin),yp(ipmin),zp(ipmin),
-     &                   zgrid,uzp(ipmin),sq(is),sw(is),depos,
-     &                   nxp,nyp,nzp,xmmin,ymmin,zmminp)
+           if (nps_u > 0) then
+             call setrho3d(rhop(0,0,0),nps_u,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                     zgrid,uzp(ipmin),sq(is),sw(is),depos,
+     &                     nxp,nyp,nzp,xmmin,ymmin,zmminp)
+           endif
          elseif(solvergeom==RZgeom .or. solvergeom==XZgeom) then
            do ipmin = ins_u, ins_u + nps_u - 1, nparpgrp
              ip = min(nparpgrp, ins_u+nps_u-ipmin)
@@ -5736,6 +5738,8 @@ c Also set particle parameters: charge, mass and weight
       total_frac = sum(sp_fract)
       if (maxval(nps) == 0) then
         npmax = max(injctspc,npmax)
+        np_s = 0
+        npmax_s = 0
         sp_fract = sp_fract/total_frac
         call alotpart()
         sp_fract = sp_fract*total_frac
