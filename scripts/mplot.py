@@ -1,7 +1,7 @@
 # File MPLOT.PY --- standard post-processing for module-impedance runs
 
 from warp import *
-mplot_version = "$Id: mplot.py,v 1.4 2001/06/18 20:45:54 dave Exp $"
+mplot_version = "$Id: mplot.py,v 1.5 2002/08/21 18:12:15 dave Exp $"
 
 ### MPLOT - setup plots
 def mplot(dumpfile):
@@ -29,11 +29,12 @@ Mountain-range plots of quantities saved vs. z at every timestep
   - ifvst=1: Makes abscissa in time (otherwise z)
   - ifneg=0: Plots negative of data (or delta)
   - nlines=100: Number of lines to overlay
+  - istart=0: Time index at which to start the plots
+  - iend=shape(qty)[1]-1: Time index at which to end the plots
   - istep=jhist/nlines: Can be specified instead of nlines
   - navg=0: Turns on averaging (over 2*navg+1 points)
   - offset=0: Ordinate offset of overlaid lines
   - color='fg': Line color
-  - jhist=shape(qty)[1]-1: Number of history points
   - nz=shape(qty)[0]-1: Number of z points
   - dz=w3d.dz: Size of z points
   - zmmin=w3d.zmmin: Start of z points
@@ -45,8 +46,9 @@ Mountain-range plots of quantities saved vs. z at every timestep
   - titler=None: Right title
   """
   kwdefaults = {'ord':None,'ifdelta':0,'ifordt':0,'ifvst':1,'ifneg':0,
-                'nlines':100,'istep':None,'navg':0,'offset':0,'ordoffset':0,
-                'color':'fg','jhist':None,'nz':None,
+                'nlines':100,'istart':0,'iend':None,'istep':None,
+                'navg':0,'offset':0,'ordoffset':0,
+                'color':'fg','nz':None,
                 'dz':w3d.dz,'zmmin':w3d.zmmin,'hvbeam':top.hvbeam,'titles':1,
                 'titlet':None,'titleb':None,'titlel':None,'titler':None}
   kwvalues = kwdefaults.copy()
@@ -57,7 +59,7 @@ Mountain-range plots of quantities saved vs. z at every timestep
   if badargs: raise "bad argument ",string.join(badargs.keys())
 
   # --- Special arguments
-  if jhist is None: jhist = shape(qty)[1] - 1
+  if iend is None: iend = shape(qty)[1] - 1
   if nz is None: nz = shape(qty)[0] - 1
 
   if ord is None:
@@ -65,7 +67,7 @@ Mountain-range plots of quantities saved vs. z at every timestep
       ord = dz/hvbeam[0]*(iota(nz+2,2,-1)-2)
     else:
       ord = dz*iota(0,nz)+zmmin
-  if istep is None: istep = max(1,jhist/nlines)
+  if istep is None: istep = max(1,(iend-istart)/nlines)
   sign = 1
   shift = offset
   titlet = qtyname
@@ -90,19 +92,19 @@ Mountain-range plots of quantities saved vs. z at every timestep
   titler="nlines = %d  navg = %d  offset = %6.2e" % (nlines,navg,offset)
   ptitles(titlet,titleb,titlel,titler)
   if navg:
-    hl = qty[:,::istep] + 0.
+    hl = qty[:,istart:iend+1:istep] + 0.
     hl[navg,:] = ave(qty[navg-navg:navg+navg+1,::istep])
     for j in range(navg+1,nz-navg-1):
       hl[j,:] = hl[j-1,:] + (qty[j+navg,::istep] -
                              qty[j-navg-1,::istep])/(2*navg+1)
   else:
-    hl = qty[:,::istep]
+    hl = qty[:,istart:iend+1:istep]
   if ifdelta:
     hl0 = hl[:,0]
   else:
     hl0 = zeros(shape(hl[:,0]),'d')
   j = -1
-  for i in range(0,jhist+1,istep):
+  for i in range(istart,iend+1,istep):
     j = j + 1
     plg(i*shift+abscissascale*sign*(hl[:,j]-hl0),ord+i*ordoffset,color=color)
 
