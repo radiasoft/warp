@@ -1,4 +1,5 @@
 from warp import *
+import __main__
 
 def printparameters3d():
 
@@ -31,3 +32,7 @@ def printparameters3d():
       f20%("Z at start of first bend = ",xz0bend," m")
   plt(textblock,0.12,0.88,justify="LT")
   fma()
+
+# --- Explicitly add the function to main since it will be called by fortran
+__main__.__dict__['printparameters3d'] = printparameters3d
+
