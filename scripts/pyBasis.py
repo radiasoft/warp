@@ -12,7 +12,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.4 2001/01/11 00:23:01 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.5 2001/01/22 21:57:04 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -238,6 +238,11 @@ Dump data into a pdb file
           a = pkg.getvarattr(vname)
           if re.search('parallel',a):
             writevar = 0
+        # --- Check if variable is a complex array. Currently, these
+        # --- can not be written out.
+        if type(v) == type(array([0.])) and v.typecode() == Complex:
+          writevar = 0
+        # --- Write out the variable.
         if writevar:
           ff.write(vname+pkgsuffix,v)
   # --- Now, write out the python variables (that can be written out).
