@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.47 2002/09/25 00:18:24 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.48 2002/10/26 00:08:07 jlvay Exp $"
 
 def plot_conductordoc():
   print """
@@ -1769,7 +1769,7 @@ Sets the voltage on a conductor, given an id.
  - setvinject=false: when true, sets top.vinject
   """
 
-  if w3d.solvergeom == w3d.RZgeom:
+  if w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom:
     if type(voltage) in [ListType,TupleType,ArrayType]:
     # --- Voltage is assumed to be the voltages are the z grid cell locations
     # --- (in the global beam frame).

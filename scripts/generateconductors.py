@@ -28,7 +28,7 @@ installconductors(a): generates the data needed for the fieldsolve
 
 from warp import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.8 2002/10/24 20:41:36 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.9 2002/10/26 00:06:30 jlvay Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -370,7 +370,7 @@ Installs the data into the WARP database
       f3d.ocvolt[no:no+nn] = take(self.vs[0,:],ii)
       f3d.ocnumb[no:no+nn] = take(self.ns[0,:],ii)
       f3d.iocndlevel[no:no+nn] = take(self.mglevel,ii)
-    if(w3d.solvergeom == w3d.RZgeom):
+    if(w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom):
       frz.install_conductors_rz()  
 
   def __neg__(self):
@@ -446,7 +446,7 @@ Call installdata() to install the data into the WARP database.
     # --- Calculate dx, dy, and dz in case this is called before
     # --- the generate.
     self.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
-    if(w3d.solvergeom==w3d.RZgeom):
+    if(w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom):
       self.dy = self.dx
     else:
       self.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
