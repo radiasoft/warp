@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.41 2002/07/30 18:33:41 jlvay Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.42 2002/08/06 22:25:20 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -801,8 +801,137 @@ def pfzxlab(zz=None,iy=None,condcolor=cyan):
 
 
 #####################################################################
+def plotsrfrvinout(srfrvin,srfrvout,zmin,zmax,n=1000,color='fg',gridframe=0,
+                   rscale=1,zscale=1,
+                   roff=0,zoff=0,rmin=0.,rmax=top.largepos,ir_axis=0,
+                   outline=1,fillcolor=None):
+  """Handy function for plotting the r versus z for a surface of revolution
+ - srfrvin: surface of revolution function to plot
+ - srfrvou: surface of revolution function to plot
+ - zmin,zmax: z range to plot
+ - n=1000: number of points to plot
+ - color='fg': color of line
+ - gridframe=0: when true, plots in grid frame
+ - rscale=1: scaling for radius
+ - zscale=1: scaling for z
+ - roff=0: offset for radius
+ - zoff=0: offset for z
+ - rmin=0: minimum value of r plotted (before applying rscale and roff)
+ - rmax=0: maximum value of r plotted (before applying rscale and roff)
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
+  """
+  zz = iota(0,n)*(zmax - zmin)/n + zmin
+  rrin = ones(n+1,'d')
+  rrout = ones(n+1,'d')
+  for i in range(n+1):
+    f3d.srfrv_z = zz[i]
+    srfrvin()
+    rrin[i] = f3d.srfrv_r
+    srfrvout()
+    rrout[i] = f3d.srfrv_r
+  if gridframe:
+    zz = (zz - w3d.zmmin)/w3d.dz
+    rrin = (rrin)/w3d.dx + ir_axis
+    rrout = (rrout)/w3d.dx + ir_axis
+  rr = array(list(rrin) + list(rrout[::-1]))
+  zz = array(list(zz) + list(zz[::-1]))
+  rr = where(less(rr,rmin),rmin,rr)
+  rr = where(greater(rr,rmax),rmax,rr)
+  if outline:
+    plg(rscale*rr+roff,zscale*zz+zoff,color=color)
+  if fillcolor is not None:
+    cc = array([fillcolor]).astype('b')
+    plfp(cc,rscale*rr+roff,zscale*zz+zoff,[2*n+2])
+
+#####################################################################
+def plotsrfrvin(srfrvin,zmin,zmax,n=1000,color='fg',gridframe=0,
+                rscale=1,zscale=1,
+                roff=0,zoff=0,rmin=0.,rmax=top.largepos,ir_axis=0,
+                outline=1,fillcolor=None):
+  """Handy function for plotting the r versus z for a surface of revolution
+ - srfrvin: surface of revolution function to plot
+ - zmin,zmax: z range to plot
+ - n=1000: number of points to plot
+ - color='fg': color of line
+ - gridframe=0: when true, plots in grid frame
+ - rscale=1: scaling for radius
+ - zscale=1: scaling for z
+ - roff=0: offset for radius
+ - zoff=0: offset for z
+ - rmin=0: minimum value of r plotted (before applying rscale and roff)
+ - rmax=0: maximum value of r plotted (before applying rscale and roff)
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
+  """
+  zz = iota(0,n)*(zmax - zmin)/n + zmin
+  rr = ones(n+1,'d')
+  for i in range(n+1):
+    f3d.srfrv_z = zz[i]
+    srfrvin()
+    rr[i] = f3d.srfrv_r
+  if gridframe:
+    zz = (zz - w3d.zmmin)/w3d.dz
+    rr = (rr)/w3d.dx + ir_axis
+  rr = where(less(rr,rmin),rmin,rr)
+  rr = where(greater(rr,rmax),rmax,rr)
+  rr = rscale*rr+roff
+  zz = zscale*zz+zoff
+  if outline:
+    plg(rr,zz,color=color)
+  if fillcolor is not None:
+    cc = array([fillcolor]).astype('b')
+    rr = array(list(rr) + [rmin,rmin])
+    zz = array(list(zz) + [zmax,zmin])
+    plfp(cc,rr,zz,[n+3])
+
+#####################################################################
+def plotsrfrvout(srfrvin,zmin,zmax,n=1000,color='fg',gridframe=0,
+                 rscale=1,zscale=1,
+                 roff=0,zoff=0,rmin=0.,rmax=top.largepos,ir_axis=0,
+                 outline=1,fillcolor=None):
+  """Handy function for plotting the r versus z for a surface of revolution
+ - srfrvout: surface of revolution function to plot
+ - zmin,zmax: z range to plot
+ - n=1000: number of points to plot
+ - color='fg': color of line
+ - gridframe=0: when true, plots in grid frame
+ - rscale=1: scaling for radius
+ - zscale=1: scaling for z
+ - roff=0: offset for radius
+ - zoff=0: offset for z
+ - rmin=0: minimum value of r plotted (before applying rscale and roff)
+ - rmax=0: maximum value of r plotted (before applying rscale and roff)
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
+  """
+  zz = iota(0,n)*(zmax - zmin)/n + zmin
+  rr = ones(n+1,'d')
+  for i in range(n+1):
+    f3d.srfrv_z = zz[i]
+    srfrvout()
+    rr[i] = f3d.srfrv_r
+  if gridframe:
+    zz = (zz - w3d.zmmin)/w3d.dz
+    rr = (rr)/w3d.dx + ir_axis
+  rr = where(less(rr,rmin),rmin,rr)
+  rr = where(greater(rr,rmax),rmax,rr)
+  rr = rscale*rr+roff
+  zz = zscale*zz+zoff
+  if outline:
+    plg(rr,zz,color=color)
+  if fillcolor is not None:
+    cc = array([fillcolor]).astype('b')
+    rmax = min(rmax,w3d.xmmax)
+    rmax = max(rmax,max(rr))
+    rr = array(list(rr) + [rmax,rmax])
+    zz = array(list(zz) + [zmax,zmin])
+    plfp(cc,rr,zz,[n+3])
+
+#####################################################################
 def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
-              roff=0,zoff=0,rmin=0.,rmax=top.largepos,ir_axis=0):
+              roff=0,zoff=0,rmin=0.,rmax=top.largepos,ir_axis=0,
+              outline=1,fillcolor=None):
   """Handy function for plotting the r versus z for a surface of revolution
  - srfrv: surface of revolution function to plot
  - zmin,zmax: z range to plot
@@ -815,6 +944,8 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
  - zoff=0: offset for z
  - rmin=0: minimum value of r plotted (before applying rscale and roff)
  - rmax=0: maximum value of r plotted (before applying rscale and roff)
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
   """
   zz = iota(0,n)*(zmax - zmin)/n + zmin
   rr = ones(n+1,'d')
@@ -827,12 +958,16 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
     rr = (rr)/w3d.dx + ir_axis
   rr = where(less(rr,rmin),rmin,rr)
   rr = where(greater(rr,rmax),rmax,rr)
-  plg(rscale*rr+roff,zscale*zz+zoff,color=color)
+  if outline:
+    plg(rscale*rr+roff,zscale*zz+zoff,color=color)
+  if fillcolor is not None:
+    cc = array([fillcolor]).astype('b')
+    plfp(cc,rscale*rr+roff,zscale*zz+zoff,[n+1])
 
 
 #####################################################################
 #####################################################################
-def plotelementoutline(color,gridframe,axis,ie,ne,
+def plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
                        ezs,eze,eap,err,erl,egl,egp,eox,eoy,epa,epr,epw,
                        dpal,dpar):
   """Plots the outline of electrostatic elements
@@ -868,8 +1003,13 @@ def plotelementoutline(color,gridframe,axis,ie,ne,
         rr1 = rr1/w3d.dx
         rr2 = rr2/w3d.dx
         zz = (zz - w3d.zmmin)/w3d.dz
-      plg(rr1,zz,color=color)
-      plg(rr2,zz,color=color)
+      if outline:
+        plg(rr1,zz,color=color)
+        plg(rr2,zz,color=color)
+      if fillcolor is not None:
+        cc = array([fillcolor]).astype('b')
+        plfp(cc,rr1,zz,[5])
+        plfp(cc,rr2,zz,[5])
     # --- Plot end plates
     pw = epw[i]
     if pw > 0.:
@@ -897,45 +1037,75 @@ def plotelementoutline(color,gridframe,axis,ie,ne,
         rrr2 = rrr2/w3d.dx
         zzl = (zzl - w3d.zmmin)/w3d.dz
         zzr = (zzr - w3d.zmmin)/w3d.dz
-      plg(rrl1,zzl,color=color)
-      plg(rrl2,zzl,color=color)
-      plg(rrr1,zzr,color=color)
-      plg(rrr2,zzr,color=color)
+      if outline:
+        plg(rrl1,zzl,color=color)
+        plg(rrl2,zzl,color=color)
+        plg(rrr1,zzr,color=color)
+        plg(rrr2,zzr,color=color)
+      if fillcolor is not None:
+        cc = array([fillcolor]).astype('b')
+        plfp(cc,rrl1,zzl,[5])
+        plfp(cc,rrl2,zzl,[5])
+        plfp(cc,rrr1,zzr,[5])
+        plfp(cc,rrr2,zzr,[5])
 
 
 #---------------------------------------------------------------------------
-def plotquadoutline(iq=0,nq=None,color='fg',gridframe=0,axis='x'):
+def plotquadoutline(iq=0,nq=None,color='fg',gridframe=0,axis='x',
+                    outline=1,fillcolor=None):
   """Plots the outline of quadrupole elements
-  - iq=0: starting quad to plot
-  - nq=top.nquad+1: number of quads to plot
-  - color='fg': line color
-  - gridframe=0: when true, make plot in grid coordinates
-  - axis='x': selects axis to plot, either 'x' or 'y'
+ - iq=0: starting quad to plot
+ - nq=top.nquad+1: number of quads to plot
+ - color='fg': line color
+ - gridframe=0: when true, make plot in grid coordinates
+ - axis='x': selects axis to plot, either 'x' or 'y'
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
   """
   if nq is None: nq = top.nquad + 1
-  plotelementoutline(color,gridframe,axis,iq,nq,
+  plotelementoutline(color,gridframe,axis,iq,nq,outline,fillcolor,
                      top.quadzs,top.quadze,top.quadap,top.quadrr,top.quadrl,
                      top.quadgl,top.quadgp,top.qoffx,top.qoffy,
                      top.quadpa,top.quadpr,top.quadpw,
                      top.qdelpal,top.qdelpar)
 
 #---------------------------------------------------------------------------
-def plotemltoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x'):
+def plotemltoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
+                    outline=1,fillcolor=None):
   """Plots the outline of emlt elements
-  - ie=0: starting emlt to plot
-  - ne=top.nemlt+1: number of emlts to plot
-  - color='fg': line color
-  - gridframe=0: when true, make plot in grid coordinates
-  - axis='x': selects axis to plot, either 'x' or 'y'
+ - ie=0: starting emlt to plot
+ - ne=top.nemlt+1: number of emlts to plot
+ - color='fg': line color
+ - gridframe=0: when true, make plot in grid coordinates
+ - axis='x': selects axis to plot, either 'x' or 'y'
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
   """
   if ne is None: ne = top.nemlt + 1
-  plotelementoutline(color,gridframe,axis,ie,ne,
+  plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
                      top.emltzs,top.emltze,top.emltap,top.emltrr,top.emltrl,
                      top.emltgl,top.emltgp,top.emltox,top.emltoy,
                      top.emltpa,zeros(top.nemlt+1,'d'),top.emltpw,
                      zeros(top.nemlt+1,'d'),zeros(top.nemlt+1,'d'))
 
-
+#---------------------------------------------------------------------------
+def plotpgrdoutline(ie=0,ne=None,color='fg',gridframe=0,axis='x',
+                    outline=1,fillcolor=None):
+  """Plots the outline of pgrd elements
+ - ie=0: starting pgrd to plot
+ - ne=top.npgrd+1: number of pgrds to plot
+ - color='fg': line color
+ - gridframe=0: when true, make plot in grid coordinates
+ - axis='x': selects axis to plot, either 'x' or 'y'
+ - outline=1: when true, draw outline
+ - fillcolor=None: optionally sets fill color
+  """
+  if ne is None: ne = top.npgrd + 1
+  plotelementoutline(color,gridframe,axis,ie,ne,outline,fillcolor,
+                     top.pgrdzs,top.pgrdze,top.pgrdap,top.pgrdrr,top.pgrdrl,
+                     top.pgrdgl,top.pgrdgp,top.pgrdox,top.pgrdoy,
+                     top.pgrdpa,zeros(top.npgrd+1,'d'),top.pgrdpw,
+                     zeros(top.npgrd+1,'d'),zeros(top.npgrd+1,'d'))
 
 #########################################################################
 #########################################################################
