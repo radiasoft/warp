@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.73 2002/03/07 20:42:00 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.74 2002/03/22 23:00:44 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -176,14 +176,14 @@ def plotruninfo():
         arraytostr(top.pline2)+'\n'+
         arraytostr(top.pline1))
   ss = re.sub(r'x10\|S2\|','e',ss)
-  plt(ss,0.12,0.32)
+  plt(ss,0.12,0.28)
   runmaker = arraytostr(top.runmaker)
   codeid = arraytostr(top.codeid)
   rundate = arraytostr(top.rundate)
   runtime = arraytostr(top.runtime)
   runid = arraytostr(top.runid)
   ss = '%-28s  %-8s  %-8s  %-9s  %-8s'%(runmaker,codeid,rundate,runtime,runid)
-  plt(ss,0.12,0.28)
+  plt(ss,0.12,0.24)
   if current_window()==0:
     # --- Only increment and print frame number and log if the active
     # --- device is window(0).
@@ -272,8 +272,8 @@ Plots any history versus z
 
 # --- Simple interface to contour plotting. Only requires the 2-D array
 # --- to be plotted.
-def plotc(zz,xx=None,yy=None,ireg=None,color=None,levs=None,contours=8,
-          filled=0,width=1.,linetype='solid'):
+def plotc(zz,xx=None,yy=None,ireg=None,color='fg',levs=None,contours=8,
+          filled=0,width=1.,linetype='solid',cmin=None,cmax=None):
   """
 Simple interface to contour plotting, same arguments as plc
   - zz 2-D array to be plotted
@@ -282,6 +282,7 @@ Simple interface to contour plotting, same arguments as plc
   - color='fg'
   - contours=8 Optional number of levels or list of levels
   - filled=0 When 1, draws filled contours
+  - cmin, cmax: min and max of contours levels
   """
   s = shape(zz)
   if len(s) != 2:
@@ -297,21 +298,17 @@ Simple interface to contour plotting, same arguments as plc
     yy = yy*ones(s[0],'d')[:,NewAxis]
   if not ireg:
     ireg = ones(s)
+  if levs is not None: contours = levs
   if type(contours) == ListType: contours = array(contours)
   if type(contours) == TupleType: contours = array(contours)
+  if type(contours) == type(1):
+    if cmin is None: cmin = minnd(zz)
+    if cmax is None: cmax = maxnd(zz)
+    contours = 1.*iota(0,contours)*(cmax-cmin)/contours + cmin
   if filled:
     plfc(zz,xx,yy,ireg,contours=contours)
   else:
-    if not color: color = 'fg'
-    if contours and not levs: levs=contours
-    if levs:
-      if type(levs) == type(1):
-        mx = maxnd(zz)
-        mn = minnd(zz)
-        levs = iota(0,levs)*(mx-mn)/levs + mn
-      plc(zz,xx,yy,color=color,levs=levs,width=width,type=linetype)
-    else:
-      plc(zz,xx,yy,color=color,width=width,type=linetype)
+    plc(zz,xx,yy,color=color,levs=contours,width=width,type=linetype)
 def plotfc(zz,xx=None,yy=None,ireg=None,contours=8):
   """
 Simple interface to filled contour plotting, same arguments as plfc
@@ -413,16 +410,16 @@ def setup_subsetsold(js=0):
 ########################################################################
 # Note: Subtracted off 0.0337 from X position of titlel (10/21/99)
 ptitle_placement = [
-  [[0.3950, 0.8863], [0.3950, 0.3927], [0.1200, 0.6800], [0.6253, 0.6450]],
-  [[0.3950, 0.8863], [0.3950, 0.3927], [0.1200, 0.6800], [0.6253, 0.6450]],
-  [[0.2634, 0.8863], [0.2634, 0.6559], [0.1200, 0.8006], [0.3600, 0.7766]],
-  [[0.5266, 0.8863], [0.5266, 0.6559], [0.3832, 0.8006], [0.6253, 0.7766]],
-  [[0.2634, 0.6231], [0.2634, 0.3927], [0.1200, 0.5594], [0.3600, 0.5134]],
-  [[0.5266, 0.6231], [0.5266, 0.3927], [0.3832, 0.5594], [0.6253, 0.5134]],
-  [[0.2634, 0.8863], [0.2634, 0.3927], [0.1200, 0.6800], [0.3600, 0.6450]],
-  [[0.5266, 0.8863], [0.5266, 0.3927], [0.3832, 0.6800], [0.6253, 0.6450]],
-  [[0.3950, 0.8863], [0.3950, 0.6559], [0.1200, 0.8006], [0.6253, 0.7766]],
-  [[0.3950, 0.6231], [0.3950, 0.3927], [0.1200, 0.5594], [0.6253, 0.5134]]]
+  [[0.3950, 0.8863], [0.3950, 0.3927], [0.1200, 0.6800], [0.397, 0.37]],
+  [[0.3950, 0.8863], [0.3950, 0.3927], [0.1200, 0.6800], [0.397, 0.37]],
+  [[0.2634, 0.8863], [0.2634, 0.6559], [0.1300, 0.8006], [0.397, 0.37]],
+  [[0.5266, 0.8863], [0.5266, 0.6559], [0.3932, 0.8006], [0.397, 0.37]],
+  [[0.2634, 0.6231], [0.2634, 0.3927], [0.1300, 0.5594], [0.397, 0.37]],
+  [[0.5266, 0.6231], [0.5266, 0.3927], [0.3932, 0.5594], [0.397, 0.37]],
+  [[0.2634, 0.8863], [0.2634, 0.3927], [0.1300, 0.6800], [0.397, 0.37]],
+  [[0.5266, 0.8863], [0.5266, 0.3927], [0.3932, 0.6800], [0.397, 0.37]],
+  [[0.3950, 0.8863], [0.3950, 0.6559], [0.1300, 0.8006], [0.397, 0.37]],
+  [[0.3950, 0.6231], [0.3950, 0.3927], [0.1300, 0.5594], [0.397, 0.37]]]
 default_titlet=""
 default_titleb=""
 default_titlel=""
@@ -456,8 +453,10 @@ def ptitles(titlet="",titleb="",titlel="",titler="",v=1):
         justify="CC",orient=1)
   if titler:
     plt(titler,ptitle_placement[v-1][3][0],ptitle_placement[v-1][3][1],
-        justify="CC",orient=1)
+        justify="CC",orient=0)
   settitles()
+def ptitlebottom(text=""):
+  plt(text,0.3950,0.37,justify="CC")
 
 ##########################################################################
 ##########################   UTILITY ROUTINES  ###########################
@@ -889,11 +888,12 @@ def ppgeneric_doc(x,y):
                    range (used when lframe=1)
   - xmin, xmax, ymin, ymax: extrema of density grid, defaults to particle
                             extrema (x for %(x)s and y for %(y)s)
+  - cmin=min(grid), cmax=max(grid): min and max of data for coloration
   - particles=0: when true, plot particles
   - uselog=0: when true, logarithmic levels of the number density are used
   - color='fg': color of particles, when=='density', color by number density
-  - ncolor=None: when plotting color by number density, number of colors to use,
-                 defaults to top.ncolor
+  - ncolor=None: when plotting particle color by number density, number of
+                 colors to use, defaults to top.ncolor
   - denmin, denmax: set extrema for coloring particles by number density
   - chopped=None: only particles where r < chopped*maxdensity/density
                   are plotted, where r is a random number between 0 and 1
@@ -905,19 +905,22 @@ def ppgeneric_doc(x,y):
   - hcolor='fg': color of hash marks
   - width=1.0: width of hash marks
   - contours=None: number of countours to plot
-  - filled=0: when true, plot filled contours (assumes contours is set)
+  - filled=0: when true, plot filled contours
   - ccolor='fg': contour color (when not filled)
   - cellarray=0: when true, plot grid as cell array
   - centering='node': centering of cells with cellarray, other option are 'cell'                      and 'old' (for old incorrect scaling)
-  - ctop=240, cmin=minnd(grid), cmax=maxnd(grid): control palette of cellarray
+  - ctop=199: max color index for cellarray plot
   - ldensityscale=0: when true, scale the density by its max.
   - view=1: view window to use (experts only)
+  - lcolorbar=1: when plotting colorized data, include a colorbar
   - colbarunitless=0: when true, color-bar scale is unitless
   - colbarlinear=1: when true, the color-bar is laid out linearly in density,
                     otherwise each contour level gets an equal sized area.
                     Only in effect when a list of colorbars is specified.
   - surface=0: when true, a 3-d surface plot is made of the gridded data
                The view can be changed dynamically with the function viewsurface
+  - returngrid=0: when true, and when particle data is passed in, no plotting
+                  is done and the grid and extrema are returned
   """
   return doc%vars()
 #-------------------------------------------------------------------------
@@ -940,8 +943,9 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'contours':None,'filled':0,'ccolor':'fg',
                 'cellarray':0,'centering':'node','ctop':199,
                 'cmin':None,'cmax':None,
-                'ldensityscale':0,
-                'view':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
+                'ldensityscale':0,'view':1,
+                'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
+                'returngrid':0,
                 'checkargs':0,'allowbadargs':0}
 
   # --- Create dictionary of local values and copy it into local dictionary,
@@ -977,15 +981,41 @@ Note that either the x and y coordinates or the grid must be passed in.
   assert (centering == 'node' or centering == 'cell' or centering == 'old'),\
          "centering must take one of the values 'node', 'cell', or 'old'"
 
+  # --- The denmin and denmax arguments are now deprecated,
+  # --- replaced by cmin and cmax.
+  if denmin is not None:
+    cmin = denmin
+    print "Notice: denmin argument is obsolete, please change denmin to cmin"
+  if denmax is not None:
+    cmax = denmax
+    print "Notice: denmax argument is obsolete, please change denmax to cmax"
+
   # --- If there are no particles and no grid to plot, just return
   if type(x) == ArrayType and type(y) == ArrayType: np = globalsum(len(x))
   else: np = 0
   if np == 0 and grid is None: return
 
+  # --- If filled is turned on, but contours is not set, set it to the
+  # --- default value of 8.
+  if filled and contours is None: contours = 8
+
+  # --- If particle data was passed in and no specific plots were requested,
+  # --- just plot the particles.
+  if y is not None and \
+     (not hash and not contours and not surface and not cellarray):
+    particles = 1
+
+  # --- If a grid is passed in and no specific plots were requested,
+  # --- make a cellarray plot.
+  if grid is not None and \
+     (not hash and not contours and not surface and not cellarray):
+    cellarray = 1
+
   # --- Make sure that nothing is not plotted over a surface plot
   if surface:
     particles = 0
     contours = 0
+    cellarray = 0
     hash = 0
     lframe = 0
     titles = 0
@@ -1089,6 +1119,9 @@ Note that either the x and y coordinates or the grid must be passed in.
       # --- Divide out the particle counts by hand.
       grid = grid/where(greater(gridcount,0.),gridcount,1.)
 
+    # --- If requested, return the grid and extrema, doing no plotting
+    if returngrid: return (grid,xmin,xmax,ymin,ymax)
+
   elif (hash or contours or color=='density' or chopped or surface):
     densitygrid = 0
  
@@ -1119,6 +1152,11 @@ Note that either the x and y coordinates or the grid must be passed in.
   else:
     grid1 = grid
 
+  # --- Get grid min and max and generate contour levels if needed.
+  if (hash or contours or color=='density' or chopped or surface or cellarray):
+    if cmin is None: cmin = minnd(grid1)
+    if cmax is None: cmax = maxnd(grid1)
+
   # --- Get grid mesh if it is needed
   if contours or hash or surface or cellarray:
     xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d')
@@ -1127,16 +1165,14 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
   if contours and filled:
-    if maxnd(grid1) != minnd(grid1):
+    if cmax != cmin:
       plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
-            color=ccolor,contours=contours,filled=filled)
+            color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
 
   # --- Make cell-array plot. This also is done early since it covers anything
   # --- done before it. The min and max are adjusted so that the patch for
   # --- each grid cell has the correct centering.
   if cellarray:
-    if cmin is None: cmin = minnd(grid1)
-    if cmax is None: cmax = maxnd(grid1)
     if centering == 'node':
       xminc = xmin
       xmaxc = xmax + dx
@@ -1171,10 +1207,8 @@ Note that either the x and y coordinates or the grid must be passed in.
         z1 = compress(ipick,z1)
     if color == 'density':
       # --- Plot particles with color based on the density from the grid.
-      if denmin is None: demmin = minnd(grid)
-      if denmax is None: demmax = maxnd(grid)
       ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,lframe=0,
-           xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax,zmin=denmin,zmax=denmax,
+           xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax,zmin=cmin,zmax=cmax,
            ncolor=ncolor,usepalette=usepalette)
     else:
       # --- Plot particles as a solid color.
@@ -1183,14 +1217,14 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Now plot unfilled contours, which are easier to see on top of the
   # --- particles
   if contours and not filled:
-    if maxnd(grid1) != minnd(grid1):
+    if cmax != cmin:
       plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
-            color=ccolor,contours=contours,filled=filled)
+            color=ccolor,contours=contours,filled=filled,cmin=cmin,cmax=cmax)
 
   # --- Plot hash last since it easiest seen on top of everything else.
   if hash:
     # --- Set line length
-    sss = line_scale*(xmax-xmin)/nx/maxnd(grid1)
+    sss = line_scale*(xmax-xmin)/nx/(cmax - cmin)
     # --- Make plot of tick marks
     for ix in range(nx+1):
       for iy in range(ny+1):
@@ -1198,30 +1232,31 @@ Note that either the x and y coordinates or the grid must be passed in.
             color=hcolor,width=width)
 
   # --- Add colorbar if needed
-  if (contours and filled==1) or (color == 'density' and len(x) > 0) or \
-     (cellarray):
+  if lcolorbar and \
+     ((contours and filled==1) or (color == 'density' and len(x) > 0) or \
+      (cellarray)):
     if (contours and filled==1):
       try:
         nc = len(contours) + 1
         levs = contours
       except TypeError:
-        nc = contours + 1
+        nc = contours
         levs = None
     elif (color == 'density' and len(x) > 0):
-      nc = ncolor + 1
+      nc = ncolor
       levs = None
     elif (cellarray):
       nc = ctop
       levs = None
     if colbarunitless:
-      dmax = 1.0
       dmin = 0.
+      dmax = 1.0
     elif cellarray:
       dmin = cmin
       dmax = cmax
     else:
-      dmax = maxnd(grid1)
-      dmin = minnd(grid1)
+      dmin = cmin
+      dmax = cmax
     colorbar(dmin,dmax,uselog=uselog,ncolor=nc,view=view,levs=levs,
              colbarlinear=colbarlinear,ctop=ctop)
 
@@ -1275,6 +1310,13 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   return levs
 
 #-----------------------------------------------------------------------
+colorbar_placement = [[0.62,0.64,0.43,0.86],[0.62,0.64,0.43,0.86],
+                      [0.354,0.364,0.692,0.859],[0.617,0.627,0.692,0.859],
+                      [0.354,0.364,0.428,0.596],[0.617,0.627,0.428,0.596],
+                      [0.354,0.364,0.43,0.86],[0.617,0.627,0.43,0.86],
+                      [0.617,0.627,0.692,0.859],[0.617,0.627,0.428,0.596]]
+colorbar_fontsize = [14.,14.,8.,8.,8.,8.,8.,8.,8.,8.]
+
 def colorbar(zmin,zmax,uselog=0,ncolor=100,view=1,levs=None,colbarlinear=1,
              ctop=199):
   """
@@ -1288,10 +1330,8 @@ values from zmin to zmax.
   - ctop=199: number of colors from palette to use
   """
   plsys(0)
-  xmin = 0.66
-  xmax = 0.68
-  ymax = 0.85
-  ymin = 0.44
+  xmin,xmax,ymin,ymax = colorbar_placement[view-1]
+  fontsize = colorbar_fontsize[view-1]
   # --- draw the bar
   if colbarlinear and levs is not None:
     # --- Use the contour plotting routine plfc for this case. The data
@@ -1309,7 +1349,8 @@ values from zmin to zmax.
     # --- matches the uniform spacing of the contours. If levs is specified,
     # --- each equal sized block represents one contour level, independent of
     # --- the range of the level relative to other levels.
-    if type(zmin) == type(zmax) == type(1):
+    if type(zmin) == type(zmax) == type(1) and \
+       zmin >= 0 and zmax <=199:
        plotval = arange(zmin,zmax+1,typecode='b')[:,NewAxis]*ones(2)
     else:
        plotval = (arange(ncolor)/(ncolor-1.))[:,NewAxis]*ones(2)
@@ -1349,7 +1390,7 @@ values from zmin to zmax.
   ylast = 0.
   for i in xrange(llev):
     if ys[i] - ylast > (ymax-ymin)/30:
-      plt(ss%nicelevs[i],xmax+0.005,ys[i]-0.005)
+      plt(ss%nicelevs[i],xmax+0.005,ys[i]-0.005,height=fontsize)
       ylast = ys[i]
   # --- Plot the tick marks
   pldj(llev*[xmax],ys,llev*[xmax+0.005],ys)
@@ -1358,7 +1399,7 @@ values from zmin to zmax.
 
 #############################################################################
 #############################################################################
-def changepalette(returnpalette=0,help=0):
+def changepalette(returnpalette=0,help=0,view=1):
   """
 Dynamically change the color palette.
   - returnpalette=0: when true, returns tuple of (red, green, blue)
@@ -1374,10 +1415,7 @@ Mouse actions:
   # --- Print out help if wanted
   if help: print changepalette.__doc__
   # --- min's and max's are the same as in the colorbar routine
-  xmin = 0.66
-  xmax = 0.68
-  ymax = 0.85
-  ymin = 0.44
+  xmin,xmax,ymin,ymax = colorbar_placement[view-1]
   # --- Create storate arrays
   # --- rr, gg, bb hold the original palette
   rr = zeros(200,'b')
@@ -1540,14 +1578,13 @@ def ppmultispecies(pp,args,kw):
   """checks if js defined and assign it to a list if plotting multispecies.
   Also assign colors accordingly
   """
-  if 'js' in kw.keys():
+  if kw.has_key('js'):
     js = kw['js']
     if js != -1 and type(js) != ListType:
       return false
     else:
       if js == -1: js = range(top.ns)
-      if 'color' in kw.keys(): color = kw['color']
-      else: color = range(0,240,240/len(js))
+      color = kw.get('color',range(0,240,240/len(js)))
       for i in xrange(len(js)):
         kw['js'] = js[i]
         kw['color'] = color[i]
@@ -1574,13 +1611,12 @@ functions.
   kw['allowbadargs'] = 1
   if badargs: raise "bad arguments ",string.join(badargs.keys())
 ########################################################################
-def ppzxy(iw=0,particles=1,**kw):
+def ppzxy(iw=0,**kw):
   "Plots Z-X and Z-Y in single page"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzxy,(iw,particles),kw): return
-  kw['particles'] = particles
+  if ppmultispecies(ppzxy,(iw),kw): return
   kw['view'] = 9
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -1590,7 +1626,7 @@ def ppzxy(iw=0,particles=1,**kw):
   ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
 
   kw['view'] = 10
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
@@ -1602,306 +1638,288 @@ if sys.version[:5] != "1.5.1":
   ppzxy.__doc__ = ppzxy.__doc__ + ppgeneric_doc('z','x')
 
 ##########################################################################
-def ppzx(iw=0,particles=1,**kw):
+def ppzx(iw=0,**kw):
   "Plots Z-X"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzx,(iw,particles),kw): return
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppzx,(iw),kw): return
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzx.__doc__ = ppzx.__doc__ + ppgeneric_doc('z','x')
 
 ##########################################################################
-def ppzy(iw=0,particles=1,**kw):
+def ppzy(iw=0,**kw):
   "Plots Z-Y"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzy,(iw,particles),kw): return
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppzy,(iw),kw): return
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzy.__doc__ = ppzy.__doc__ + ppgeneric_doc('z','y')
 
 ##########################################################################
-def ppzr(iw=0,particles=1,**kw):
+def ppzr(iw=0,**kw):
   "Plots Z-R"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzr,(iw,particles),kw): return
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppzr,(iw),kw): return
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xplmin,top.xplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("R vs Z","Z","R",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(sqrt(top.xp**2+top.yp**2),ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(take(sqrt(top.xp**2+top.yp**2),ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzr.__doc__ = ppzr.__doc__ + ppgeneric_doc('z','r')
 
 ##########################################################################
-def ppzxp(iw=0,particles=1,**kw):
+def ppzxp(iw=0,**kw):
   "Plots Z-X'"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzxp,(iw,particles),kw): return
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppzxp,(iw),kw): return
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin,top.xpplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("X' vs Z","Z","X'",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzxp.__doc__ = ppzxp.__doc__ + ppgeneric_doc('z',"x'")
 
 ##########################################################################
-def ppzvx(iw=0,particles=1,**kw):
+def ppzvx(iw=0,**kw):
   "Plots Z-Vx"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzvx,(iw,particles),kw): return
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppzvx,(iw),kw): return
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vx vs Z","Z","Vx",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uxp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(take(top.uxp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvx.__doc__ = ppzvx.__doc__ + ppgeneric_doc('z',"vx")
 
 ##########################################################################
-def ppzyp(iw=0,particles=1,**kw):
+def ppzyp(iw=0,**kw):
   "Plots Z-Y'"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzyp,(iw,particles),kw): return
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppzyp,(iw),kw): return
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.ypplmin,top.ypplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Y' vs Z","Z","Y'",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzyp.__doc__ = ppzyp.__doc__ + ppgeneric_doc('z',"y'")
 
 ##########################################################################
-def ppzvy(iw=0,particles=1,**kw):
+def ppzvy(iw=0,**kw):
   "Plots Z-Vy"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzvy,(iw,particles),kw): return
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppzvy,(iw),kw): return
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vy vs Z","Z","Vy",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvy.__doc__ = ppzvy.__doc__ + ppgeneric_doc('z',"vy")
 
 ##########################################################################
-def ppzvz(iw=0,particles=1,**kw):
+def ppzvz(iw=0,**kw):
   "Plots Z-Vz"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppzvz,(iw,particles),kw): return
-  kw['particles'] = particles
+  if ppmultispecies(ppzvz,(iw),kw): return
   (vzmin,vzmax) = getvzrange()
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+  return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvz.__doc__ = ppzvz.__doc__ + ppgeneric_doc('z',"vz")
 
 ##########################################################################
-def ppxy(iw=0,particles=1,**kw):
+def ppxy(iw=0,**kw):
   "Plots X-Y"
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppxy,(iw,particles),kw): return
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppxy,(iw),kw): return
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Y vs X","X","Y",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.yp,ii),take(top.xp,ii),kwdict=kw)
+  return ppgeneric(take(top.yp,ii),take(top.xp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxy.__doc__ = ppxy.__doc__ + ppgeneric_doc('x','y')
 
 ##########################################################################
-def ppxxp(iw=0,iz=None,slope=0.,offset=0.,particles=1,lmoments=0,**kw):
+def ppxxp(iw=0,**kw):
   "Plots X-X'. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppxxp,(iw,iz,slope,offset,particles,lmoments),kw): return
-  if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppxxp,(iw),kw): return
+  if type(kw.get('slope',0.)) == type(''):
+    (slope,offset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
+    kw['slope'] = slope
+    kw['offset'] = offset
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
-  kw['iz'] = iz
-  kw['slope'] = slope
-  kw['offset'] = offset
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("X' vs X","X","X'",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.xp,ii),kwdict=kw)
+  return ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.xp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxxp.__doc__ = ppxxp.__doc__ + ppgeneric_doc("x","x'")
 
 ##########################################################################
-def ppyyp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+def ppyyp(iw=0,**kw):
   "Plots Y-Y'. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppyyp,(iw,iz,slope,offset,particles),kw): return
-  if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if ppmultispecies(ppyyp,(iw),kw): return
+  if type(kw.get('slope',0.)) == type(''):
+    (slope,offset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
+    kw['slope'] = slope
+    kw['offset'] = offset
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
-  kw['iz'] = iz
-  kw['slope'] = slope
-  kw['offset'] = offset
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Y' vs Y","Y","Y'",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.yp,ii),kwdict=kw)
+  return ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.yp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppyyp.__doc__ = ppyyp.__doc__ + ppgeneric_doc("y","y'")
 
 ##########################################################################
-def ppxpyp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+def ppxpyp(iw=0,**kw):
   "Plots X'-Y'. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppxpyp,(iw,iz,slope,offset,particles),kw): return
+  if ppmultispecies(ppxpyp,(iw),kw): return
+  slope = kw.get('slope',0.)
   if type(slope) == type(''):
-    (xslope,xoffset,vz) = getxxpslope(iw=iw,iz=iz)
-    (yslope,yoffset,vz) = getyypslope(iw=iw,iz=iz)
+    (xslope,xoffset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
+    (yslope,yoffset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
   else:
     (xslope,xoffset) = (slope,0.)
     (yslope,yoffset) = (slope,0.)
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
-  kw['iz'] = iz
   settitles("Y' vs X'","X'","Y'",pptitleright(iw=iw,kwdict=kw))
   ii = selectparticles(iw=iw,kwdict=kw)
   xp = take(top.uxp,ii)/take(top.uzp,ii) - xslope*take(top.xp,ii) - xoffset
   yp = take(top.uyp,ii)/take(top.uzp,ii) - yslope*take(top.yp,ii) - yoffset
-  ppgeneric(yp,xp,kwdict=kw)
+  return ppgeneric(yp,xp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxpyp.__doc__ = ppxpyp.__doc__ + ppgeneric_doc("x'","y'")
 
 ##########################################################################
-def ppxvx(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+def ppxvx(iw=0,**kw):
   "Plots X-Vx. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppxvx,(iw,iz,slope,offset,particles),kw): return
-  if type(slope) == type(''):
-    (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
+  if ppmultispecies(ppxvx,(iw),kw): return
+  if type(kw.get('slope',0.)) == type(''):
+    (slope,offset,vz) = getxxpslope(iw=iw,iz=kw.get('iz',None))
     kw['slope'] = slope*vz
     kw['offset'] = offset*vz
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
-  kw['iz'] = iz
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uxp,ii),take(top.xp,ii),kwdict=kw)
+  return ppgeneric(take(top.uxp,ii),take(top.xp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxvx.__doc__ = ppxvx.__doc__ + ppgeneric_doc("x","Vx")
 
 ##########################################################################
-def ppyvy(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+def ppyvy(iw=0,**kw):
   "Plots Y-Vy. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppyvy,(iw,iz,slope,offset,particles),kw): return
-  if type(slope) == type(''):
-    (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
+  if ppmultispecies(ppyvy,(iw),kw): return
+  if type(kw.get('slope',0.)) == type(''):
+    (slope,offset,vz) = getyypslope(iw=iw,iz=kw.get('iz',None))
     kw['slope'] = slope*vz
     kw['offset'] = offset*vz
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
-  kw['iz'] = iz
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vy vs Y","Y","Vy",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
+  return ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppyvy.__doc__ = ppyvy.__doc__ + ppgeneric_doc("y","Vy")
 
 ##########################################################################
-def ppxvz(iw=0,particles=1,**kw):
+def ppxvz(iw=0,**kw):
   "Plots X-Vz."
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppxvz,(iw,particles),kw): return
+  if ppmultispecies(ppxvz,(iw),kw): return
   (vzmin,vzmax) = getvzrange()
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vz vs X","X","Vz",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.xp,ii),kwdict=kw)
+  return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.xp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppxvz.__doc__ = ppxvz.__doc__ + ppgeneric_doc("x","Vz")
 
 ##########################################################################
-def ppyvz(iw=0,particles=1,**kw):
+def ppyvz(iw=0,**kw):
   "Plots Y-Vz."
   checkparticleplotarguments(kw)
-  if ppmultispecies(ppyvz,(iw,particles),kw): return
+  if ppmultispecies(ppyvz,(iw),kw): return
   (vzmin,vzmax) = getvzrange()
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vz vs Y","Y","Vz",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
+  return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppyvz.__doc__ = ppyvz.__doc__ + ppgeneric_doc("y","Vz")
 
 ##########################################################################
-def pprrp(iw=0,scale=0,slope=0.,particles=1,**kw):
+def pprrp(iw=0,scale=0,**kw):
   """Plots R-R', If slope='auto', it is calculated from the moments.
   - scale=0: when true, scale particle by 2*rms"""
   checkparticleplotarguments(kw)
-  if ppmultispecies(pprrp,(iw,scale,slope,particles),kw): return
+  if ppmultispecies(pprrp,(iw,scale),kw): return
   xscale = 1.
   yscale = 1.
   xpscale = 1.
@@ -1920,6 +1938,7 @@ def pprrp(iw=0,scale=0,slope=0.,particles=1,**kw):
   rr = sqrt(xx**2 + yy**2)
   tt = arctan2(yy,xx)
   rp = xp*cos(tt) + yp*sin(tt)
+  slope = kw.get('slope',0.)
   if type(slope) == type(''):
     if lparallel:
       aversq = globalave(rr**2)
@@ -1931,26 +1950,24 @@ def pprrp(iw=0,scale=0,slope=0.,particles=1,**kw):
       slope = averrp/aversq
     else:
       slope = 0.
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+    kw['slope'] = slope
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
                       top.xpplmin/xpscale,top.xpplmax/ypscale)
-  kw['slope'] = slope
   settitles("R' vs R","R","R'",pptitleright(iw=iw,kwdict=kw))
-  ppgeneric(rp,rr,kwdict=kw)
+  return ppgeneric(rp,rr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pprrp.__doc__ = pprrp.__doc__ + ppgeneric_doc("r","r'")
 
 ##########################################################################
-def pprvz(iw=0,particles=1,**kw):
+def pprvz(iw=0,**kw):
   "Plots R-Vz"
   checkparticleplotarguments(kw)
-  if ppmultispecies(pprvz,(iw,particles),kw): return
+  if ppmultispecies(pprvz,(iw),kw): return
   (vzmin,vzmax) = getvzrange()
-  kw['particles'] = particles
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
@@ -1958,35 +1975,42 @@ def pprvz(iw=0,particles=1,**kw):
   settitles("Vz vs R","R","Vz",pptitleright(iw=iw,kwdict=kw))
   rr = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
   vz = take(top.uzp,ii)*take(top.gaminv,ii)
-  ppgeneric(vz,rr,kwdict=kw)
+  return ppgeneric(vz,rr,kwdict=kw)
 if sys.version[:5] != "1.5.1":
   pprvz.__doc__ = pprvz.__doc__ + ppgeneric_doc("r","vz")
 
 ##########################################################################
-def pptrace(iw=0,slope=0.,iz=-1,particles=1,titles=1,pplimits=None,**kw):
+def pptrace(iw=0,normalize=0,**kw):
   """
 Plots X-Y, X-X', Y-Y', Y'-X' in single page
-If slope='auto', it is calculated from the moments for X-X' and Y-Y' plots.
+If slope='auto', it is calculated from the moments.
 pplimits can be a list of up to four tuples, one for each phase space plot.
 If any of the tuples are empty, the limits used will be the usual ones for
 that plot.
   """
   checkparticleplotarguments(kw)
-  if ppmultispecies(pptrace,(iw,slope,iz,particles,titles,pplimits),kw): return
+  if ppmultispecies(pptrace,(iw,normalize),kw): return
   ii = selectparticles(iw=iw,kwdict=kw)
   x = take(top.xp,ii)
   y = take(top.yp,ii)
   xp = take(top.uxp,ii)/take(top.uzp,ii)
   yp = take(top.uyp,ii)/take(top.uzp,ii)
-  titler=pptitleright(iw=iw,kwdict=kw)
-  kw['iz'] = iz
-  kw['particles'] = particles
-  kw['titles'] = titles
-  if titles: ptitles(titler=titler)
+  slope = kw.get('slope',0.)
+  if type(slope)==type(''):
+    del kw['slope']
+    iz = kw.get('iz',None)
+    xxpslope = getxxpslope(iw=iw,iz=iz)[0]
+    yypslope = getyypslope(iw=iw,iz=iz)[0]
+    xp = xp - xxpslope*x
+    yp = yp - yypslope*y
+  if kw.get('titles',1):
+    titler=pptitleright(iw=iw,kwdict=kw)
+    ptitles(titler=titler)
   defaultpplimits = [(top.xplmin,top.xplmax,top.yplmin,top.yplmax),
                      (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax),
                      (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax),
                      (top.ypplmin,top.ypplmax,top.xpplmin,top.xpplmax)]
+  pplimits = kw.get('pplimits',None)
   if pplimits is None:
     pplimits = defaultpplimits
   else:
@@ -1998,6 +2022,45 @@ that plot.
         if i == len(pplimits): pplimits.append(defaultpplimits[i])
         if not pplimits[i]: pplimits[i] = defaultpplimits[i]
 
+  # --- First make plot with returngrid set to true. If no grids are used,
+  # --- then ppgeneric returns None (and makes the plot), otherwise it
+  # --- returns the grid. Also, if normalize is false, then set so plots
+  # --- are made (and grid is not returned).
+  if normalize: rg = 1
+  else:         rg = 0
+  kw['view'] = 3
+  kw['pplimits'] = pplimits[0]
+  settitles("Y vs X","X","Y")
+  gxy = ppgeneric(y,x,returngrid=rg,kwdict=kw)
+ 
+  kw['view'] = 4
+  kw['pplimits'] = pplimits[1]
+  settitles("Y' vs Y","Y","Y'")
+  gyyp = ppgeneric(yp,y,returngrid=rg,kwdict=kw)
+ 
+  kw['view'] = 5
+  kw['pplimits'] = pplimits[2]
+  settitles("X' vs X","X","X'")
+  gxxp = ppgeneric(xp,x,returngrid=rg,kwdict=kw)
+ 
+  kw['view'] = 6
+  kw['pplimits'] = pplimits[3]
+  settitles("X' vs Y'","Y'","X'")
+  gxpyp = ppgeneric(xp,yp,returngrid=rg,kwdict=kw)
+
+  # --- If the return value is None, then return since plots have already been
+  # --- made.
+  if gxy is None: return
+
+  # --- If the return value is not None, then call ppgeneric again to 
+  # --- actually make the plots with the appropriate cmin and cmax
+  cmin = kw.get('cmin',None)
+  cmax = kw.get('cmax',None)
+  if kw.get('cmin',None) is None:
+    kw['cmin']=min(minnd(gxy[0]),minnd(gyyp[0]),minnd(gxxp[0]),minnd(gxpyp[0]))
+  if kw.get('cmax',None) is None:
+    kw['cmax']=max(maxnd(gxy[0]),maxnd(gyyp[0]),maxnd(gxxp[0]),maxnd(gxpyp[0]))
+
   kw['view'] = 3
   kw['pplimits'] = pplimits[0]
   settitles("Y vs X","X","Y")
@@ -2005,19 +2068,16 @@ that plot.
  
   kw['view'] = 4
   kw['pplimits'] = pplimits[1]
-  if type(slope)==type(''): kw['slope'] = getyypslope(iw=iw,iz=iz)[0]
   settitles("Y' vs Y","Y","Y'")
   ppgeneric(yp,y,kwdict=kw)
  
   kw['view'] = 5
   kw['pplimits'] = pplimits[2]
-  if type(slope)==type(''): kw['slope'] = getxxpslope(iw=iw,iz=iz)[0]
   settitles("X' vs X","X","X'")
   ppgeneric(xp,x,kwdict=kw)
  
   kw['view'] = 6
   kw['pplimits'] = pplimits[3]
-  if type(slope)==type(''): kw['slope'] = 0.
   settitles("X' vs Y'","Y'","X'")
   ppgeneric(xp,yp,kwdict=kw)
 if sys.version[:5] != "1.5.1":
@@ -2217,12 +2277,11 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
 
   if ncolor is None: ncolor = top.ncolor
   dd = (zmax - zmin)/ncolor
-  #if (lframadv) nf
-  for ic in xrange(1,ncolor+1):
+  for ic in xrange(ncolor):
     ii = compress(logical_and(logical_and(not_equal(uz,0.),
-           less(zmin+(ic-1)*dd,rz)),less(rz,zmin+ic*dd)), iota(0,len(rx)))
+           less(zmin+ic*dd,rz)),less(rz,zmin+(ic+1)*dd)), iota(0,len(rx)))
     if usepalette:
-      c = int(240*ic/ncolor)
+      c = nint(199*ic/(ncolor-1.))
     else:
       c = color[ic%len(color)]
     if alllocal:
@@ -2588,7 +2647,7 @@ def pcrhozy(ix=None,fullplane=1,lbeamframe=1,**kw):
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
     if not kw.has_key('contours'): kw['contours'] = 20
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.ymmin,w3d.ymmax)
@@ -2620,7 +2679,7 @@ def pcrhozx(iy=None,fullplane=1,lbeamframe=1,**kw):
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
     if not kw.has_key('contours'): kw['contours'] = 20
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.xmmin,w3d.xmmax)
@@ -2649,7 +2708,7 @@ def pcrhoxy(iz=None,fullplane=1,**kw):
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
     if not kw.has_key('contours'): kw['contours'] = 20
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
@@ -2690,7 +2749,7 @@ def pcphizy(ix=None,fullplane=1,lbeamframe=1,**kw):
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
     if not kw.has_key('contours'): kw['contours'] = 20
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.ymmin,w3d.ymmax)
@@ -2722,7 +2781,7 @@ def pcphizx(iy=None,fullplane=1,lbeamframe=1,**kw):
   if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
     if not kw.has_key('contours'): kw['contours'] = 20
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (w3d.zmmin+zbeam,w3d.zmmax+zbeam,w3d.xmmin,w3d.xmmax)
@@ -2751,7 +2810,7 @@ def pcphixy(iz=None,fullplane=1,**kw):
   if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
   if not kw.has_key('cellarray') or not kw['cellarray']:
     if not kw.has_key('contours'): kw['contours'] = 20
-  if 'pplimits' in kw.keys():
+  if kw.has_key('pplimits'):
     kw['lframe'] = 1
   else:
     kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
