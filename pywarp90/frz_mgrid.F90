@@ -1,4 +1,4 @@
-!     Last change:  JLV  14 Jan 2002    2:53 pm
+!     Last change:  JLV  14 Mar 2002   10:00 am
 #include "top.h"
 
 module multigrid_common
@@ -58,7 +58,7 @@ end TYPE conductor_type
 
 LOGICAL(ISZ) :: bndy_allocated=.FALSE. ! flag set to true if bndy is allocated
 
-REAL(8), parameter :: coefrelax=1._8, coefrelaxbnd=1._8 ! coefficients for relaxation steps
+REAL(8) :: coefrelax=1.8_8, coefrelaxbnd=1.8_8 ! coefficients for relaxation steps
 
 INTEGER(ISZ), parameter :: dirichlet=0, neumann=1, periodic=2, othertask=-1  ! boundary condition types
 INTEGER(ISZ) :: ixlbnd=dirichlet, ixrbnd=dirichlet, iylbnd=dirichlet, iyrbnd=dirichlet, izlbnd=dirichlet, izrbnd=dirichlet  ! boundary conditions for each side
@@ -69,6 +69,7 @@ INTEGER(ISZ) :: bnd_method=egun
 
 INTEGER(ISZ) :: nlevels ! number of multigrid levels
 INTEGER(ISZ) :: level ! current multigrid level
+INTEGER(ISZ) :: nb_iters ! actual number of iterations used for a solve
 
 #ifdef MPIPARALLEL
   INTEGER(ISZ) :: nzfine, nworkpproc, workfact=3
@@ -107,12 +108,17 @@ contains
 subroutine init_bnd(nr,nz,dr,dz)
 ! intializes grid quantities according to the number of multigrid levels and grid sizes nx and nz.
 USE InGen3d, ONLY:l2symtry, l4symtry
+USE Picglb3d, ONLY:dy
+USE InMesh3d, ONLY:ny
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr, nz
 REAL(8), INTENT(IN) :: dr, dz
 
 INTEGER(ISZ) :: i, nrp0, nzp0, nrc, nzc
 REAL(8) :: drc, dzc
+
+  dy = dr
+  ny = 0
 
 #ifdef MPIPARALLEL
   nzfine = nz
@@ -453,18 +459,18 @@ do knew = 1, nznew+1
     jp = joldp(jnew)
     delx = ddx(jnew)
     odelx = oddx(jnew)
-!    IF(.NOT.bnd%v(jnew,knew)==v_vacuum) cycle
+    IF(.NOT.bnd%v(jnew,knew)==v_vacuum) cycle
     expandwguardandbnd_any(jnew,knew) = uold(j, k)  * odelx * odelz &
-                                + uold(jp,k)  * delx  * odelz &
-                                + uold(j, kp) * odelx * delz &
-                                + uold(jp,kp) * delx  * delz
+                                      + uold(jp,k)  * delx  * odelz &
+                                      + uold(j, kp) * odelx * delz &
+                                      + uold(jp,kp) * delx  * delz
   end do
 END do
 
-expandwguardandbnd_any(0,:) = 0._8
-expandwguardandbnd_any(nxnew+2,:) = 0._8
-expandwguardandbnd_any(:,0) = 0._8
-expandwguardandbnd_any(:,nznew+2) = 0._8
+!expandwguardandbnd_any(0,:) = 0._8
+!expandwguardandbnd_any(nxnew+2,:) = 0._8
+!expandwguardandbnd_any(:,0) = 0._8
+!expandwguardandbnd_any(:,nznew+2) = 0._8
 
 IF(l_mgridrz_debug) WRITE(0,*) 'exit expand, level = ',level
 
@@ -785,7 +791,7 @@ do kold = 1, nzold+1
   end do
 end do
 
-!GO TO 10
+GO TO 10
 do ic = 1, bnd%nb_conductors
   IF(ic==1) then
     bnd%cnd => bnd%first
@@ -822,30 +828,29 @@ do ic = 1, bnd%nb_conductors
     else
       IF(l_dxm) then
 !        u2=u2+u1
-        u1=0
+        u1=0._8
 !        u4=u4+u3
-        u3=0
+        u3=0._8
       END if
       IF(l_dxp) then
 !        u1=u1+u2
-        u2=0
+        u2=0._8
 !        u3=u3+u4
-        u4=0
+        u4=0._8
       END if
       IF(l_dzm) then
 !        u3=u3+u1
-        u1=0
+        u1=0._8
 !        u4=u4+u2
-        u2=0
+        u2=0._8
       END if
       IF(l_dzp) then
 !        u1=u1+u3
-        u3=0
+        u3=0._8
 !        u2=u2+u4
-        u4=0
+        u4=0._8
       END if
     END if
-!10 continue
     q = uold(jold,kold)
     itot = itot + 1
     cnt(jold,kold) = cnt(jold,kold) + 1
@@ -895,7 +900,7 @@ do ic = 1, bnd%nb_conductors
     rap(jp,kp) = rap(jp,kp) + u4 
   end do
 END do
-!10 continue
+10 continue
 
 do k = 1, nznew+1
   do j = 1, nxnew+1
@@ -1689,6 +1694,7 @@ main_loop: do i = 1, nlevels
 end do main_loop
 
 WRITE(0,'("multigridrz: precision = ",e12.5, " after ",i5," iterations...")') average_residue/average_residue_init,j
+nb_iters=j
 u = f
 call updateguardcellsrz(f=u,level=nlevels)
 
@@ -1813,6 +1819,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
   end do
 
 WRITE(0,'("multigridrz: precision = ",e12.5, " after ",i5," iterations...")') average_residue/average_residue_init,j
+nb_iters=j
 !u = f
 call updateguardcellsrz(f=u,level=nlevels)
 
@@ -1832,8 +1839,8 @@ implicit none
 ! input/output variables
 INTEGER(ISZ), INTENT(IN) :: nr0, nz0, &       ! number of meshes in R and Z (excluing guard cells)
                             nc, &             ! maximum number of full-multigrid iterations
-                            npre, npost, &    ! number of relaxations before and after multigrid level coarsening
                             ncycle            ! number of multigrid iterations (1: V-cycle, 2: VV cycle, etc.)
+INTEGER(ISZ), INTENT(IN OUT) :: npre, npost   ! number of relaxations before and after multigrid level coarsening
 INTEGER(ISZ), INTENT(IN OUT) :: nrecurs_min   ! minimum level for recursion
 REAL(8), INTENT(IN OUT) :: u(:,:)             ! u(0:nr0+2,0:nz0+2), potential
 REAL(8), INTENT(IN) :: rhoinit(:,:)           ! rhoinit(nr0+1,nz0+1), charge density
@@ -1898,26 +1905,28 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
 #endif
 !      IF(l_mgridrz_debug) WRITE(0,*) 'evaluate residue, done.'
       IF(maxerr/maxerr_old>=1..and.j>1) then
+
+        WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
+        WRITE(0,*) '        average initial residue = ',maxerr_old
+        WRITE(0,*) '        average current residue = ',maxerr
+!        WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
+        WRITE(0,*) '        trying npre and npost = ',npre+1,' (also reset mgparam to 1.8)'
+        npre=npre+1
+        npost=npost+1
+        call change_coefs(1.8,coefrelax)
+        coefrelax    = 1.8
+        coefrelaxbnd = 1.8
+        u=uold
+        GOTO 10
         IF(npmin<i) then
           has_diverged = .true.
-          WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
-          WRITE(0,*) '        average initial residue = ',maxerr_old
-          WRITE(0,*) '        average current residue = ',maxerr
-          WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
-          u=uold
           do_calc=.true.
           npmin=npmin+1
           WRITE(0,*) '        trying npmin = ',npmin
-          exit
         else
-          WRITE(0,*) 'WARNING multigridrz, calculation is diverging:'
-          WRITE(0,*) '        average initial residue = ',maxerr_old
-          WRITE(0,*) '        average current residue = ',maxerr    
-          WRITE(0,*) '        level = ',i,' on ',nlevels,' levels; npmin = ',npmin
-          u=uold
           do_calc=.false.
-          exit
         END if
+        10 continue
         exit
       END if
       IF(maxerr <= accuracy) then
@@ -1929,6 +1938,8 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
   end do
 
 WRITE(0,'("multigridrz: precision = ",e12.5, " after ",i5," iterations...")') maxerr,j
+nb_iters=j
+IF(j<nc.and..not.do_calc.and.maxerr >= accuracy) nb_iters=nc
 !u = f
 call updateguardcellsrz(f=u,level=nlevels)
 
@@ -1940,15 +1951,33 @@ END if
 return
 end subroutine solve_multigridrz_jlv2
 
+subroutine change_coefs(sorparam_new,sorparam_old)
+REAL(8),INTENT(IN)::sorparam_new,sorparam_old
+
+INTEGER(ISZ) :: i
+
+  do i = 1, nlevels
+    bndy(i)%cnd%cfxm (:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfxm (:)
+    bndy(i)%cnd%cfxp (:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfxp (:)
+    bndy(i)%cnd%cfzm (:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfzm (:)
+    bndy(i)%cnd%cfzp (:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfzp (:)
+    bndy(i)%cnd%cfrhs(:) = sorparam_new/sorparam_old*bndy(i)%cnd%cfrhs(:)
+    bndy(i)%cnd%cf0  (:) = 1._8+sorparam_new/sorparam_old*(bndy(i)%cnd%cf0(:)-1._8)
+  end do
+
+end subroutine change_coefs
+
 END module multigridrz
 
-subroutine multigridrzf(iwhich,u0,rho0,nr0,nz0,dr0,dz0,accuracy,ncmax,npre,npost,ncycle)
+subroutine multigridrzf(iwhich,u0,rho0,nr0,nz0,dr0,dz0,accuracy,ncmax,npre,npost,ncycle,sorparam,mgiters)
 USE multigridrz
 implicit none
-INTEGER(ISZ), INTENT(IN) :: iwhich,nr0, nz0, ncmax,npre,npost,ncycle
+INTEGER(ISZ), INTENT(IN) :: iwhich,nr0, nz0, ncmax,ncycle
+INTEGER(ISZ), INTENT(IN OUT) :: npre,npost
 REAL(8), INTENT(IN OUT) :: u0(1:nr0+1,0:nz0+2)
 REAL(8), INTENT(IN) :: rho0(nr0+1,nz0+1)
 REAL(8), INTENT(IN) :: dr0, dz0, accuracy
+REAL(8), INTENT(IN OUT) :: mgiters, sorparam
 
 real(8) :: u(0:nr0+2,0:nz0+2)
 
@@ -1957,6 +1986,16 @@ IF(ncmax==0) return
   IF(iwhich==0.or.iwhich==1) then
     if(.not.bndy_allocated) call init_bnd(nr0,nz0,dr0,dz0)
   END if
+
+IF(sorparam>=1.95) then
+  WRITE(0,*) 'Error in call of multigrid RZ solver, sorparam > 1.95, resetting sorparam to 1.8'
+  sorparam = 1.8_8
+END if
+IF(sorparam>0.001 .and. coefrelax/=sorparam) then
+  call change_coefs(sorparam,coefrelax)
+  coefrelax    = sorparam
+  coefrelaxbnd = sorparam
+END if
 
   IF(iwhich==1) return
 
@@ -1978,6 +2017,10 @@ IF(ncmax==0) return
                          accuracy=accuracy,sub_accuracy=mgridrz_sub_accuracy, &
                         nc=ncmax,npre=npre,npost=npost,ncycle=ncycle,nrecurs_min=mgridrz_nrecurs_min)
   u0(1:nr0+1,:)=u(1:nr0+1,:)
+
+  mgiters = nb_iters
+
+  sorparam = coefrelax
 
 return
 end subroutine multigridrzf
@@ -4666,6 +4709,7 @@ main_loop: do i = 1, nlevels
 end do main_loop
 
 WRITE(0,'("multigrid3d: precision = ",e12.5, " after ",i5," iterations...")') average_residue/average_residue_init,j
+nb_iters=j
 u = f
 call updateguardcells3d(f=u,level=nlevels)
 
@@ -4787,6 +4831,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
   end do
 
 WRITE(0,'("multigrid3d: precision = ",e12.5, " after ",i5," iterations...")') average_residue/average_residue_init,j
+nb_iters=j
 !u = f
 call updateguardcells3d(f=u,level=nlevels)
 
@@ -4906,6 +4951,7 @@ npmin=MIN(nrecurs_min,MAX(nlevels,1))
   end do
 
 WRITE(0,'("multigrid3d: precision = ",e12.5, " after ",i5," iterations...")') maxerr,j
+nb_iters=j
 !u = f
 call updateguardcells3d(f=u,level=nlevels)
 
@@ -4920,13 +4966,14 @@ end subroutine solve_multigrid3d_jlv2
 END module multigrid3d_jlv
 
 subroutine multigrid3d_jlvf(iwhich,u0,rho0,nx0,ny0,nz0,dx0,dy0,dz0, &
-                            accuracy,ncmax,npre,npost,ncycle)
+                            accuracy,ncmax,npre,npost,ncycle,sorparam,mgiters)
 USE multigrid3d_jlv
 implicit none
 INTEGER(ISZ), INTENT(IN) :: iwhich,nx0, ny0, nz0, ncmax,npre,npost,ncycle
 REAL(8), INTENT(IN OUT) :: u0(1:nx0+1,1:ny0+1,0:nz0+2)
 REAL(8), INTENT(IN) :: rho0(nx0+1,ny0+1,nz0+1)
-REAL(8), INTENT(IN) :: dx0, dy0, dz0, accuracy
+REAL(8), INTENT(IN) :: dx0, dy0, dz0, accuracy, sorparam
+REAL(8), INTENT(IN OUT) :: mgiters
 
 real(8) :: u(0:nx0+2,0:ny0+2,0:nz0+2)
 
@@ -4942,6 +4989,21 @@ IF(ncmax==0) return
 
   IF(iwhich==1) return
 
+
+IF(sorparam>0.001 .and. coefrelax/=sorparam) then
+  do i = 1, nlevels
+    bndy(i)%cnd%cfxm (:) = sorparam/coefrelax*bndy(i)%cnd%cfxm (:)
+    bndy(i)%cnd%cfxp (:) = sorparam/coefrelax*bndy(i)%cnd%cfxp (:)
+    bndy(i)%cnd%cfym (:) = sorparam/coefrelax*bndy(i)%cnd%cfym (:)
+    bndy(i)%cnd%cfyp (:) = sorparam/coefrelax*bndy(i)%cnd%cfyp (:)
+    bndy(i)%cnd%cfzm (:) = sorparam/coefrelax*bndy(i)%cnd%cfzm (:)
+    bndy(i)%cnd%cfzp (:) = sorparam/coefrelax*bndy(i)%cnd%cfzp (:)
+    bndy(i)%cnd%cfrhs(:) = sorparam/coefrelax*bndy(i)%cnd%cfrhs(:)
+    bndy(i)%cnd%cf0  (:) = 1._8+sorparam/coefrelax*(bndy(i)%cnd%cf0(:)-1._8)
+  end do
+  coefrelax    = sorparam
+  coefrelaxbnd = sorparam
+END if
 
 
 GOTO 10
@@ -4991,6 +5053,7 @@ return
 
 
   u0(1:nx0+1,1:ny0+1,:)=u(1:nx0+1,1:ny0+1,:)
+  mgiters = nb_iters
 
   IF(l_mgridrz_debug) WRITE(0,*) 'Exit multigrid3d_jlvf'
 
