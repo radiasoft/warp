@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.38 2004/12/14 18:31:00 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.39 2004/12/14 18:42:26 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -92,12 +92,16 @@ def errordist(etype):
 class LINE(pyOpenDX.Visualizable):
   """
 Creates an instance of the LINE lattice type which contains a list of
-lattice elements. The argument can either be a single element or a list of
-elements.
+lattice elements.
+  - All of the non-keyword arguments must be either primitive elements or a
+    LINE instance. They are included in the order given.
+  - Keyword arguments must be after the non-keyword arguments.
+    Valid arguments:
+     - reverse=0: when true, the order of elements is deeply reversed.
   """
-  def __init__(self,*elems,reversed=0):
+  def __init__(self,*elems,**kw):
     self.type = 'LINE'
-    self.reversed = reversed
+    self.reverse = kw.get('reverse',0)
     # --- Unravel any imbedded lists.
     i = 0
     elems = list(elems)
@@ -116,9 +120,9 @@ elements.
     for e in self.elemslistshallow: e.derivedquantities()
   def reversed(self):
     """
-Returns a new instance with the reversed flag switched.
+Returns a new instance with the reverse flag switched.
     """
-    return LINE(*self.elems,reversed=not self.reversed)
+    return LINE(*self.elems,**{'reverse':(not self.reverse)})
   def expand(self,lredo=0):
     if self.elemslistshallow and not lredo: return self.elemslistshallow
     self.elemslistshallow = []
@@ -133,7 +137,7 @@ Returns a new instance with the reversed flag switched.
       else:
         i = i + 1
       return elems
-    if self.reversed: self.elemslistshallow.reverse()
+    if self.reverse: self.elemslistshallow.reverse()
     return self.elemslistshallow
   def deepexpand(self,lredo=0):
     if self.elemslist and not lredo: return self.elemslist
@@ -149,7 +153,7 @@ Returns a new instance with the reversed flag switched.
         self.elemslist[i:i+1] = self.elemslist[i]
       else:
         i = i + 1
-    if self.reversed: self.elemslist.reverse()
+    if self.reverse: self.elemslist.reverse()
     return self.elemslist
   def walk(self,func):
     for e in self.elems: e.walk(func)
