@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.14 $, $Date: 2002/10/26 00:25:10 $
+c TOPSLAVE.M, version $Revision: 1.15 $, $Date: 2002/10/28 23:13:26 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -516,7 +516,7 @@ c=============================================================================
       use Parallel
       integer(ISZ):: nzzarr
       real(kind=8):: curr(0:nzzarr)
-      logical(ISZ):: bound0
+      integer(ISZ):: bound0
 c Make current periodic and share current at PE boundaries.
 c Assumes a maximum grid overlap of 11.
 
