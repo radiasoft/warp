@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.54 2003/02/24 20:24:56 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.55 2003/04/01 02:01:21 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -2321,8 +2321,12 @@ Returns the scene use to draw the image
                                      vrange=vrange)
 
   gridmin = array([w3d.xmmin,w3d.ymmin,w3d.zmmin])
-  griddd = array([w3d.dx,w3d.dy,w3d.dz])
-  gridnn = array([w3d.nx,w3d.ny,w3d.nz])
+  griddd = array([w3d.dx*f3d.mglevelslx[mglevel],
+                  w3d.dy*f3d.mglevelsly[mglevel],
+                  w3d.dz*f3d.mglevelslz[mglevel]])
+  gridnn = array([f3d.mglevelsnx[mglevel],
+                  f3d.mglevelsny[mglevel],
+                  f3d.mglevelsnz[mglevel]])
     
   # --- This fortran routine generates the triangulated surface. It was
   # --- converted to fortran for speed.
