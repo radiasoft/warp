@@ -25,7 +25,7 @@ import socket
 import time
 import re
 import md5
-monitor_version = "$Id: monitor.py,v 1.4 2003/12/02 02:21:45 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.5 2003/12/02 02:39:57 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -56,6 +56,8 @@ Creates a monitor for a running job.
  - passwd='0': password to provide some security
   """
   def __init__(self,port=50007,passwd='fj39jfgks'):
+    global _ismonitored
+    _ismonitored = true
     self.md5passwd = md5.new(passwd)
     self.hexdigestpasswd = self.md5passwd.hexdigest()
     self.port = port
@@ -230,6 +232,12 @@ Make a connection to a running job with a monitor.
   - auto=1: when 1, go directly into the "+++" prompt
   """
   global _sock
+  try:
+    if _ismonitored:
+      print  "A monitored job cannot connect to another job"
+      return "A monitored job cannot connect to another job"
+  except:
+    pass
   try:
     if _sock.fileno() != -1:
       print "Already connected!"
