@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.70 $, $Date: 2002/08/29 18:16:29 $
+c@(#) File W3D.M, version $Revision: 3.71 $, $Date: 2002/08/29 18:21:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4460,7 +4460,7 @@ c                     --- The fractions are chosen using the digit reversed
 c                     --- number generator and not particle number since they
 c                     --- are correlated with transverse position.
                       pid(ii) = rnrev(injctcnt,dig5)
-                      pid2(ii) = time
+c                      pid2(ii) = time
 
 c                     --- Get the normal velocity for this particle. This is
 c                     --- based on the Child-Langmuir solution, given a
