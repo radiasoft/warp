@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.68 $, $Date: 2003/02/03 16:39:25 $
+c@(#) File F3D.M, version $Revision: 3.69 $, $Date: 2003/02/11 20:37:10 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -7185,6 +7185,7 @@ c               --- that point.
                 f(2) = rrrlower - rad
                 iterrf = 0
                 if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
+                i = 1
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
@@ -7243,6 +7244,7 @@ c               --- that point.
                 f(2) = rrrhigher - rad
                 iterrf = 0
                 if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
+                i = 1
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
@@ -7785,6 +7787,7 @@ c               --- that point.
                 f(2) = rrrlower - rad
                 iterrf = 0
                 if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
+                i = 1
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
@@ -7843,6 +7846,7 @@ c               --- that point.
                 f(2) = rrrhigher - rad
                 iterrf = 0
                 if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
+                i = 1
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
@@ -8352,6 +8356,7 @@ c               --- that point.
                 f(2) = rrrminlower - rad
                 iterrf = 0
                 if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
+                i = 1
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
@@ -8400,6 +8405,7 @@ c               --- that point.
                 f(2) = rad - rrrmaxlower
                 iterrf = 0
                 if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
+                i = 1
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
@@ -8459,6 +8465,7 @@ c               --- that point.
                 f(2) = rrrminhigher - rad
                 iterrf = 0
                 if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
+                i = 1
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2
@@ -8507,6 +8514,7 @@ c               --- that point.
                 f(2) = rad - rrrmaxhigher
                 iterrf = 0
                 if (f(1) == 0. .or. f(2) == 0.) iterrf = 12
+                i = 1
                 do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
                   i = 1
                   if (abs(f(2)) > abs(f(1))) i = 2

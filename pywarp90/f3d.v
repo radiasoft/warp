@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.65 $, $Date: 2003/02/03 16:39:26 $
+#@(#) File F3D.V, version $Revision: 3.66 $, $Date: 2003/02/11 20:37:12 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.65 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.66 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
