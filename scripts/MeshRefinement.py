@@ -208,6 +208,17 @@ Given a block instance, installs it as a child.
     """
     self.children.append(block)
 
+  def resetroot(self):
+    # --- No parents, so just create empty lists
+    self.parents = []
+    self.ichild = []
+    self.root = self
+    self.totalnumberofblocks = 0
+    self.listofblocks = []
+    self.siblingdomains = None
+    self.childdomains = None
+    self.children = []
+
   #--------------------------------------------------------------------------
   # --- The next several methods handle conductors
   #--------------------------------------------------------------------------
