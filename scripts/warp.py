@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.60 2003/09/23 19:35:58 dave Exp $"
+warp_version = "$Id: warp.py,v 1.61 2004/01/28 23:44:33 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -42,7 +42,13 @@ try:
 except ImportError:
   pass
 
-from pyBasis import *
+try:
+  import pybasisC # This will fail in Forthon based Warp.
+  from pyBasis import *
+except ImportError:
+  from Forthon import *
+  from warputils import *
+  import RandomArray
 
 # --- The WARP modules must be imported in the order below because of
 # --- linking dependencies.
