@@ -3,6 +3,7 @@
 from warp import *
 from multigrid import MultiGrid
 from pyOpenDX import Visualizable,DXCollection,viewboundingbox
+import MA
 import __main__
 
 
@@ -25,11 +26,11 @@ __main__.__dict__['fetcheMR'] = fetcheMR
 # ---------------------------------------------------------------------------
 
 class BlockOverlap:
-  def __init__(self,block,fulllower,fullupper,notmine):
+  def __init__(self,block,fulllower,fullupper,otherowns):
     self.block = block
     self.fulllower = fulllower
     self.fullupper = fullupper
-    self.notmine = notmine
+    self.otherowns = otherowns
 
 class MRBlock(MultiGrid,Visualizable):
   """
@@ -281,7 +282,7 @@ efficient timewise, but uses two extra full-size arrays.
     for n in nn:
       result[nint(ichildsorted[n-1])] = n - ss
       ss += result[nint(ichildsorted[n-1])]
-    result[-1] = len(ichildsorted) - sum(result)
+    result[nint(ichildsorted[-1])] = len(ichildsorted) - sum(result)
     return result
 
   def setrho(self,x,y,z,uz,q,w):
@@ -399,7 +400,7 @@ efficient timewise, but uses two extra full-size arrays.
       i4 = sibling.fullupper - sibling.block.fulllower
       myrho = self.rho[i1[0]:i2[0]+1,i1[1]:i2[1]+1,i1[2]:i2[2]+1]
       nrho = sibling.block.rho[i3[0]:i4[0]+1,i3[1]:i4[1]+1,i3[2]:i4[2]+1]
-      add(where(sibling.notmine,myrho,0.),nrho,nrho)
+      add(where(sibling.otherowns,myrho,0.),nrho,nrho)
     for child in self.children:
       child.addmyrhotosiblings()
 
@@ -414,7 +415,7 @@ efficient timewise, but uses two extra full-size arrays.
       i4 = sibling.fullupper - sibling.block.fulllower
       myrho = self.rho[i1[0]:i2[0]+1,i1[1]:i2[1]+1,i1[2]:i2[2]+1]
       nrho = sibling.block.rho[i3[0]:i4[0]+1,i3[1]:i4[1]+1,i3[2]:i4[2]+1]
-      myrho[:,:,:] = where(sibling.notmine,nrho,myrho)
+      myrho[:,:,:] = where(sibling.otherowns,nrho,myrho)
     for child in self.children:
       child.getrhofromsiblings()
 
@@ -438,42 +439,42 @@ efficient timewise, but uses two extra full-size arrays.
     # --- Don't do anything else.
     doesnotoverlap = sometrue(u < l)
     if doesnotoverlap: return
-    # --- Check how much of the overlap region this instance does not own.
-    # --- First, assume that is doesn't own any.
-    notmine = ones(u-l+1)
+    # --- Check how much of the overlap region is owned by the other instance
+    # --- First, assume that it doesn't own any.
+    otherowns = zeros(u-l+1)
     pl = l/self.refinement
     pu = u/self.refinement
     r = self.refinement
-    # --- Check the idomains for each parent to find out the regions
-    # --- owned by this instance.
-    for parent,ichild in zip(self.parents,self.ichild):
+    # --- Check the idomains for each parent of the other to find out the
+    # --- regions owned by that instance.
+    for parent,ichild in zip(other.parents,other.ichild):
       pld = maximum(pl,parent.fulllower)
       pud = minimum(pu,parent.fullupper)
-      ix1,iy1,iz1 = pld*self.refinement - l
-      ix2,iy2,iz2 = pud*self.refinement - l + 1
+      ix1,iy1,iz1 = pld*other.refinement - l
+      ix2,iy2,iz2 = pud*other.refinement - l + 1
       ix3,iy3,iz3 = pld - parent.fulllower
       ix4,iy4,iz4 = pud - parent.fulllower + 1
-      notmineslice = notmine[ix1:ix2,iy1:iy2,iz1:iz2]
+      otherownsslice = otherowns[ix1:ix2,iy1:iy2,iz1:iz2]
       idomainsslice = abs(parent.idomains[ix3:ix4,iy3:iy4,iz3:iz4])
-      # --- For the cells owned by this instance, set notmine to zero.
-      iii = where(idomainsslice==ichild,0,notmineslice[::r,::r,::r])
+      # --- For the cells owned by that instance, set otherowns to one.
+      iii = where(idomainsslice==ichild,1,otherownsslice[::r,::r,::r])
       # --- That array is relative to the parents mesh size. Copy to each
       # --- of the eight nodes in the lower corner of the parent cell.
       # --- The other nodes are part of different cells in the parent.
-      notmineslice[ ::r, ::r, ::r] = iii
-      notmineslice[1::r, ::r, ::r] = iii[:-1,:  ,:  ]
-      notmineslice[ ::r,1::r, ::r] = iii[:  ,:-1,:  ]
-      notmineslice[1::r,1::r, ::r] = iii[:-1,:-1,:  ]
-      notmineslice[ ::r, ::r,1::r] = iii[:  ,:  ,:-1]
-      notmineslice[1::r, ::r,1::r] = iii[:-1,:  ,:-1]
-      notmineslice[ ::r,1::r,1::r] = iii[:  ,:-1,:-1]
-      notmineslice[1::r,1::r,1::r] = iii[:-1,:-1,:-1]
-    # --- Only keep track of overlaps where this instance does not own the
-    # --- whole overlap region. If this instance owns the who overlap
-    # --- region, then nothing special needs to be done so there is no
-    # --- reason to keep track of the overlap.
-    if maxnd(notmine) == 1:
-      self.overlaps.append(BlockOverlap(other,l,u,notmine))
+      otherownsslice[ ::r, ::r, ::r] = iii
+      otherownsslice[1::r, ::r, ::r] = iii[:-1,:  ,:  ]
+      otherownsslice[ ::r,1::r, ::r] = iii[:  ,:-1,:  ]
+      otherownsslice[1::r,1::r, ::r] = iii[:-1,:-1,:  ]
+      otherownsslice[ ::r, ::r,1::r] = iii[:  ,:  ,:-1]
+      otherownsslice[1::r, ::r,1::r] = iii[:-1,:  ,:-1]
+      otherownsslice[ ::r,1::r,1::r] = iii[:  ,:-1,:-1]
+      otherownsslice[1::r,1::r,1::r] = iii[:-1,:-1,:-1]
+    # --- Only keep track of overlaps where the other instance owns some of
+    # --- the overlap region. If the other instance does not own the any of
+    # --- the overlap region, then nothing special needs to be done so there
+    # --- is no reason to keep track of the overlap.
+    if maxnd(otherowns) == 1:
+      self.overlaps.append(BlockOverlap(other,l,u,otherowns))
 
   def findallparents(self,blocklists):
     for block in blocklists[0]:
@@ -527,7 +528,7 @@ the top level grid.
     self.addmyrhotosiblings()
     self.getrhofromsiblings()
     self.gatherrhofromchildren()
-    self.setrhoboundaries()
+    #self.setrhoboundaries()
 
   def gete(self,x,y,z,ex,ey,ez):
     if len(x) == 0: return
@@ -680,6 +681,9 @@ be plotted.
       if ip is None: ip = nint(-self.mins[idim]/self.deltas[idim])
     else:
       ip = ip*self.refinement
+      if idim == 0: kw['ix'] = ip - self.fulllower[0]
+      if idim == 1: kw['iy'] = ip - self.fulllower[1]
+      if idim == 2: kw['iz'] = ip - self.fulllower[2]
       kw['cmin'] = ppgeneric.cmin
       kw['cmax'] = ppgeneric.cmax
     # --- If that plane is not in the domain, then don't do anything
@@ -701,6 +705,7 @@ be plotted.
     if idim != 2: ireg = transpose(ireg)
     kw['ireg'] = ireg
     MultiGrid.genericpf(self,kw,pffunc)
+    kw['titles'] = 0
     for child in self.children:
       child.genericpf(kw,idim,pffunc,ip)
 
@@ -712,43 +717,87 @@ be plotted.
   def pfzyg(self,**kw): self.genericpf(kw,0,pfzyg)
 
 
-  def plphiz(self,ix=None,iy=None):
+  def plphiz(self,ix=None,iy=None,color='fg'):
     if ix < self.fulllower[0]: return
     if iy < self.fulllower[1]: return
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
-    plg(self.phi[ix-self.fulllower[0],iy-self.fulllower[1],1:-1],
-        self.mins[2]+arange(self.dims[2]+1)*self.deltas[2])
+    plg(self.phi[ix-self.fulllower[0],iy-self.fulllower[1],1:-1],self.zmesh,
+        color=color)
     for child in self.children:
-      child.plphiz(ix*child.refinement,iy*child.refinement)
+      child.plphiz(ix*child.refinement,iy*child.refinement,color=color)
 
-  def plphix(self,iy=None,iz=None):
+  def plphix(self,iy=None,iz=None,color='fg'):
     if iy < self.fulllower[1]: return
     if iz < self.fulllower[2]: return
     if iy > self.fullupper[1]: return
     if iz > self.fullupper[2]: return
-    plg(self.phi[:,iy-self.fulllower[1],iz-self.fulllower[2]+1],self.xmesh)
+    plg(self.phi[:,iy-self.fulllower[1],iz-self.fulllower[2]+1],self.xmesh,
+        color=color)
     for child in self.children:
-      child.plphix(iy*child.refinement,iz*child.refinement)
+      child.plphix(iy*child.refinement,iz*child.refinement,color=color)
 
-  def plrhoz(self,ix=None,iy=None):
+  def plphiy(self,ix=None,iz=None,color='fg'):
+    if ix < self.fulllower[0]: return
+    if iz < self.fulllower[2]: return
+    if ix > self.fullupper[0]: return
+    if iz > self.fullupper[2]: return
+    plg(self.phi[ix-self.fulllower[0],:,iz-self.fulllower[2]+1],self.ymesh,
+        color=color)
+    for child in self.children:
+      child.plphiy(ix*child.refinement,iz*child.refinement,color=color)
+
+  def plrhoz(self,ix=None,iy=None,color='fg'):
     if ix < self.fulllower[0]: return
     if iy < self.fulllower[1]: return
     if ix > self.fullupper[0]: return
     if iy > self.fullupper[1]: return
-    plg(self.rho[ix-self.fulllower[0],iy-self.fulllower[1],:],
-        self.mins[2]+arange(self.dims[2]+1)*self.deltas[2])
+    plg(self.rho[ix-self.fulllower[0],iy-self.fulllower[1],:],self.zmesh,
+        color=color)
     for child in self.children:
-      child.plrhoz(ix*child.refinement,iy*child.refinement)
+      child.plrhoz(ix*child.refinement,iy*child.refinement,color=color)
 
-  def plrhox(self,iy=None,iz=None):
+  def plrhox(self,iy=None,iz=None,color='fg'):
     if iy < self.fulllower[1]: return
     if iz < self.fulllower[2]: return
     if iy > self.fullupper[1]: return
     if iz > self.fullupper[2]: return
-    plg(self.rho[:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh)
+    plg(self.rho[:,iy-self.fulllower[1],iz-self.fulllower[2]],self.xmesh,
+        color=color)
     for child in self.children:
-      child.plrhox(iy*child.refinement,iz*child.refinement)
+      child.plrhox(iy*child.refinement,iz*child.refinement,color=color)
+
+  def plrhoy(self,ix=None,iz=None,color='fg'):
+    if ix < self.fulllower[0]: return
+    if iz < self.fulllower[2]: return
+    if ix > self.fullupper[0]: return
+    if iz > self.fullupper[2]: return
+    plg(self.rho[ix-self.fulllower[0],:,iz-self.fulllower[2]],self.ymesh,
+        color=color)
+    for child in self.children:
+      child.plrhoy(ix*child.refinement,iz*child.refinement,color=color)
+
+  def drawbox(self,ip=None,idim=2,withguards=1,color='fg'):
+    if ip is None: ip = self.dims[idim]/2
+    if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return
+    ii = [0,1,2]
+    del ii[idim]
+    i01 = self.mins[ii[0]]
+    i02 = self.maxs[ii[0]]
+    i11 = self.mins[ii[1]]
+    i12 = self.maxs[ii[1]]
+    if not withguards:
+      i01 = i01 + self.dims[ii[0]]*self.nguard*self.refinement
+      i02 = i02 - self.dims[ii[0]]*self.nguard*self.refinement
+      i11 = i11 + self.dims[ii[1]]*self.nguard*self.refinement
+      i12 = i12 - self.dims[ii[1]]*self.nguard*self.refinement
+    xx = [i01,i01,i02,i02,i01]
+    yy = [i11,i12,i12,i11,i11]
+    if idim==2: xx,yy = yy,xx
+    plg(xx,yy,color=color)
+    for child in self.children:
+      child.drawbox(ip=ip*child.refinement,idim=idim,withguards=withguards,
+                    color=color)
 
   def createdxobject(self,kwdict={},**kw):
     """
