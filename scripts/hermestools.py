@@ -1,5 +1,110 @@
 from warp import *
 
+def aher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[0,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[0,:]
+
+def apher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[1,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[1,:]
+
+def bher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[2,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[2,:]
+
+def bpher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[3,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[3,:]
+
+def xher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[4,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[4,:]
+
+def xpher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[5,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[5,:]
+
+def yher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[6,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[6,:]
+
+def ypher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[7,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[7,:]
+
+def sher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[8,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[8,:]
+
+def vzher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[9,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[9,:]
+
+def enxher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[10,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[10,:]
+
+def enyher(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[11,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[11,:]
+
+def cur(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[12,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[12,:]
+
+def dq(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[13,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[13,:]
+
+def den(input=None,var=None):
+  if not var: var = her.var
+  if input:
+    try: var[14,:] = input
+    except: print 'input array not aligned for copy into var'
+  else: return var[14,:]
+
 def sethermesbeam(lsamecharge = false):
   """Initializes a Hermes beam.
 Before calling this routine, env.zl and env.zu should be set to
@@ -71,10 +176,11 @@ def sethermesprofile(lsamecharge):
     her.var[8,:] = delzbeam * her.var[8,:]
   extebher(0.,top.dt,her.var,her.niz) # Needed to set up rpipe and therefore rmmax
   her.var[9,:] = top.vbeam / top.clight
-  her.var[0,:] = wrz.rmmax / 2. # For now
+  her.var[0,:] = top.rwall / 2. # For now
   her.var[1,:] = 0.             # For now
-  her.var[2,:] = wrz.rmmax / 2. # For now
+  her.var[2,:] = top.rwall / 2. # For now
   her.var[3,:] = 0.             # For now
+  getradius(her.var,her.niz,her.rpipe,her.icharge)
   lfail = false
   setrhohr(her.niz,her.var,her.rpipe,her.icharge,lfail)
   if lfail:
