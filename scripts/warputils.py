@@ -19,7 +19,7 @@ averagezdata(): Does local averaging over the first dimension of the input
 """
 from warp import *
 
-warputils_version = "$Id: warputils.py,v 1.2 2004/03/15 17:47:15 dave Exp $"
+warputils_version = "$Id: warputils.py,v 1.3 2004/04/16 17:00:43 dave Exp $"
 
 def warputilsdoc():
   import warputils
@@ -164,8 +164,8 @@ dimension.
   nn = where(nn==0,1,nn)
   hl = where(qty[:,::istep]==0.,0.,hl)
   hl[navg+1:n1-navg-1,:] = hl[navg+1:n1-navg-1,:]/nn[navg+1:n1-navg-1,:]
-  if fixqty: qty.shape = shape(qty)[0]
-  if shape(qty)[1] > 1: return hl
+  if fixqty: qty.shape = (shape(qty)[0],)
+  if n2 > 1: return hl
   else: return hl[:,0]
 
 # --- Returns the max of the multiarray
