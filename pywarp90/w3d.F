@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.31 $, $Date: 2001/10/30 19:53:15 $
+c@(#) File W3D.M, version $Revision: 3.32 $, $Date: 2001/10/31 00:03:22 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5743,8 +5743,8 @@ c         --- angle relative to z axis
 c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
 c         --- emitting surface.
-          px = abs((rinj - dz*inj_d)*sin(az)*cos(aa) + xinj - xmmin)*dxi
-          py = abs((rinj - dz*inj_d)*sin(az)*sin(aa) + yinj - ymmin)*dyi
+          px = abs(rinj*sin(az)*cos(aa) + xinj - xmmin)*dxi
+          py = abs(rinj*sin(az)*sin(aa) + yinj - ymmin)*dyi
           ix = int(px)
           iy = int(py)
           wx = px - ix
