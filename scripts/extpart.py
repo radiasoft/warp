@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.13 2003/08/25 23:07:10 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.14 2003/08/28 22:57:56 dave Exp $"
 
 def extpartdoc():
   print """
@@ -138,6 +138,7 @@ routines (such as ppxxp).
     self.enabled = 0
 
   def accumulate(self):
+    if top.nepwin == 0: return
     if globalmax(maxnd(top.nep)) == top.nepmax:
       print "************* WARNING *************"
       print "**** Not enough space was allocated for the ExtPart arrays."
