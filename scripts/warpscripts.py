@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.4 2001/07/19 20:39:08 dave Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.5 2001/12/05 21:23:49 ramiak Exp $"
 
 def warpscriptsdoc():
   print """
@@ -57,5 +57,14 @@ warpplots.py: various convenient plotting routines such as particle plots
 warpstyle.gs: style file for gist graphics
 warpscripts.py: routine to descrive available scripts
 wxy_match.py: routines for matching beam using the wxy module
+============ UMD SCripts ==================
+ParaKV.py: functions to impose a parabolic temperature distribution
+mphoto.py: generates greyscale "photos" of beam density using 'rho' arra
+photo_processing.py: combines tif photos into a montage or a gif animation
+Fitting.py: a general function to do a least squares fit
+orbitrack.py: suite for self-consistent particle tracking and multispecies work
+postrack.py: suite for postprocessing results where 'orbitrack' is used
+rami_scripts.py: convenience functions and alternate history plotting routines
+rami_match.py: Slice code matching routine w/starting point in between quads
+b_fields.py: Functions to generate and plot 'bgrd' arrays for solenoids
 """
-
