@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.27 2001/02/05 21:02:28 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.28 2001/02/08 00:03:48 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -45,8 +45,7 @@ ppzxco(), ppzyco(), ppzxyco(), ppzvzco()
 Plots arbitrary particle projections using color
 ppco()
 
-Plots various quantities versus z in beam frame
-ppcurr(), ppegap(), pplchg(), ppvzofz(), ppezax(), ppphiax(), pprhoax()
+Plots various quantities versus z in beam frame (see pzplotsdoc())
 
 Run histplotsdoc() for a list of history plots.
 
@@ -333,7 +332,6 @@ yellow = 'yellow'
 # ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy()
 # ppxvz(), ppyvz(), pprvz(), ppzxy(), pptrace()
 # ppco(y,x,z;uz,xmin,xmax,ymin,ymax,zmin,zmax)
-# ppcurr, ppegap, pplchg, ppvzofz, ppezax, ppphiax, pprhoax
 #
 # The following only work properly serially
 #
@@ -1639,98 +1637,8 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
             color=c,linetype="none",marker=marker,msize=msize)
   if (lframe): limits(xmin,xmax,ymin,ymax)
 
-##########################################################################
-def ppcurr(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
-  """Plots current along z-axis
-     - color='fg' particle color
-     - marks=0 turns on identifying marks on the curve
-     - marker=None marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  warpplg(top.curr,top.zplmesh,color=color,
-          marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Beam Current","Z")
-##########################################################################
-def ppegap(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
-  """Plots smeared Ez along z-axis
-     - color='fg' particle color
-     - marks=0 turns on identifying marks on the curve
-     - marker=None marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  warpplg(top.egap,top.zplmesh,color=color,
-          marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Gap Electric Field","Z")
-##########################################################################
-def pplchg(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
-  """Plots linecharge along the z-axis
-     - color='fg' particle color
-     - marks=0 turns on identifying marks on the curve
-     - marker=None marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  warpplg(top.linechg,top.zplmesh,color=color,
-          marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Line Charge","Z")
-##########################################################################
-def ppvzofz(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
-  """Plots Vz along the z-axis
-     - color='fg' particle color
-     - marks=0 turns on identifying marks on the curve
-     - marker=None marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  warpplg(top.vzofz,top.zplmesh,color=color,
-          marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Mean Axial Velocity","Z")
-##########################################################################
-def ppezax(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
-  """Plots Self Ez along the z-axis
-     - color='fg' particle color
-     - marks=0 turns on identifying marks on the curve
-     - marker=None marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  warpplg(top.ezax,top.zplmesh,color=color,
-          marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Z Electric Field on Axis","Z")
-##########################################################################
-def ppphiax(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
-  """Plots electrostatic potential along the z-axis
-     - color='fg' particle color
-     - marks=0 turns on identifying marks on the curve
-     - marker=None marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  warpplg(top.phiax,top.zplmesh,color=color,
-          marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Electrostatic Potential on Axis","Z")
-  if ((top.phiplmin != 0.0)&(top.phiplmax == 0.0)):
-    if (lframe): limits(top.zzmin,top.zzmax,top.phiplmin)
-  elif ((top.phiplmin == 0.0)&(top.phiplmax != 0.0)):
-    if (lframe): limits(top.zzmin,top.zzmax,max(top.phiax),top.phiplmax)
-  elif ((top.phiplmin != 0.0)&(top.phiplmax != 0.0)):
-    if (lframe): limits(top.zzmin,top.zzmax,top.phiplmin,top.phiplmax)
-##########################################################################
-def pprhoax(color="fg",marks=0,marker=None,msize=1.0,lframe=0,titles=1):
-  """Plots space-charge density along the z-axis
-     - color='fg' particle color
-     - marks=0 turns on identifying marks on the curve
-     - marker=None marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  warpplg(top.rhoax,top.zplmesh,color=color,
-          marks=marks,marker=marker,msize=msize)
-  if titles: ptitles("Charge Density on Axis","Z")
-##########################################################################
 
+##########################################################################
 # To be implemented
 #ppzx4
 #ppzy4
@@ -2147,13 +2055,13 @@ def onedplts(freqflag=always):
      - freqflag=always frequency flag, either always, seldom, or never"""
   currentwindow = current_window()
   window(0)
-  if freqflag == top.ipcurr: ppcurr()
-  if freqflag == top.ipegap: ppegap()
-  if freqflag == top.iplchg: pplchg()
-  if freqflag == top.ipvzofz: ppvzofz()
-  if freqflag == top.iprhoax: pprhoax()
-  if freqflag == top.ipphiax: ppphiax()
-  if freqflag == top.ipezax: ppezax()
+  if freqflag == top.ipcurr: pzcurr()
+  if freqflag == top.ipegap: pzegap()
+  if freqflag == top.iplchg: pzlchg()
+  if freqflag == top.ipvzofz: pzvzofz()
+  if freqflag == top.iprhoax: pzrhoax()
+  if freqflag == top.ipphiax: pzphiax()
+  if freqflag == top.ipezax: pzezax()
   oldlimits = limits()
   window(currentwindow)
 
