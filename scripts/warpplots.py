@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.142 2005/01/19 20:40:32 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.143 2005/01/19 21:23:40 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -259,9 +259,9 @@ def pla(y,x=None,linetype="solid",decomposed=0,**kw):
   kw.setdefault('type',linetype)
   if type(y) in [FloatType,IntType]: y = [y]
   if type(x) in [FloatType,IntType]: x = [x]
-  y = array(y)
+  if type(y) is not ArrayType: y = array(y)
   if x is not None:
-    x = array(x)
+    if type(x) is not ArrayType: x = array(x)
     # --- This is the only constraint on the input arrays.
     assert shape(x)[0]==shape(y)[0],\
       'The first dimensions of the two input arrays must be of the same length'
@@ -271,11 +271,7 @@ def pla(y,x=None,linetype="solid",decomposed=0,**kw):
   if len(shape(x)) > 2:
     # --- Reshape the array, putting all but the 1st dimension into the
     # --- 2nd dimension.
-    # --- This check is needed since non-contiguous arrays cannot be reshaped.
-    # --- A copy is made instead.
-    if x.iscontiguous(): xx = x
-    else:                xx = x.copy()
-    xx.shape = (xx.shape[0],product(array(xx.shape[1:])))
+    xx = reshape(x,(x.shape[0],product(array(x.shape[1:]))))
   elif len(shape(x)) == 2:
     # --- The input x is usable as is.
     xx = x
@@ -285,11 +281,7 @@ def pla(y,x=None,linetype="solid",decomposed=0,**kw):
   if len(shape(y)) > 2:
     # --- Reshape the array, putting all but the 1st dimension into the
     # --- 2nd dimension.
-    # --- This check is needed since non-contiguous arrays cannot be reshaped.
-    # --- A copy is made instead.
-    if y.iscontiguous(): yy = y
-    else:                yy = y.copy()
-    yy.shape = (yy.shape[0],product(array(yy.shape[1:])))
+    yy = reshape(y,(y.shape[0],product(array(y.shape[1:]))))
   elif len(shape(y)) == 2:
     # --- The input y is usable as is.
     yy = y
