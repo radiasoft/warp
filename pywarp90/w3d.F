@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.50 $, $Date: 2002/04/18 21:46:46 $
+c@(#) File W3D.M, version $Revision: 3.51 $, $Date: 2002/04/23 13:52:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -64,7 +64,6 @@ c=============================================================================
       use Pspwork
       use InjectVars
       use FRZmgrid
-      use multigridrz
 
 c  Invoked by the GENERATE command, it sets up the problem
 c  This routine allots all of the neccesary dynamic arrays, calls the
@@ -216,7 +215,7 @@ c  Calculate mesh dimensioning quantities
 
 c  Initialize base grid for RZ solver
       if(solvergeom==RZgeom) then
-        call init_basegrid(nx,nz,dx,dz,xmmin,zmmin)
+        call init_base(nx,nz,dx,dz,xmmin,zmmin)
       end if
 
 c Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzz
@@ -267,7 +266,7 @@ c     curr = 0.
       enddo
       call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
       if(solvergeom==RZgeom) then
-        call distribute_rho(basegrid)
+        call distribute_rho_rz()
         call get_rho_rz(rho(0,0,0),nx,nz,1)
       end if
 c  Set up for injection
@@ -1206,14 +1205,13 @@ c=============================================================================
       use Z_arrays
       use Damped_eom
       use InjectVars
+      use InjectVars3d
       use Apertures
       use FRZmgrid
-      use multigridrz
       character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
-
 
       integer(ISZ):: is,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv
@@ -1224,6 +1222,7 @@ c  and also loads RHO at the new time level.
       real(kind=8):: bendres(NPARPGRP), bendradi(NPARPGRP)
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
+
 
 c  Zero the bend radius and residence arrays
 c     call zeroarry (bendres,NPARPGRP)
@@ -1267,19 +1266,11 @@ c           --- Obtain the self-field from the electrostatic potential
      &                    zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
      &                    efetch,ex,ey,ez,l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
-             if(is==1.and.ipmin==ins(is)) then
-               call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ex,ey,ez,
-     &                            ip,phi(0,0,-1),selfe(1,0,0,0),nx,nz,dx,dz,
-     &                            zmmin,.true.)
-             else
-               call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ex,ey,ez,
-     &                            ip,phi(0,0,-1),selfe(1,0,0,0),nx,nz,dx,dz,
-     &                            zmmin,.false.)
-             end if
+               call fieldweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ex,ey,ez,ip)
             endif
 c           --- Get E field for particles near the  injection surface.
             if (inject > 0) then
-              call inj_sete3d(ip,ipmin,xmmin,ymmin,zmmin,dx,dy,dz,ex,ey,ez)
+             call inj_sete3d(ip,ipmin,xmmin,ymmin,zmmin,inj_dx,inj_dy,inj_dz,ex,ey,ez)
             endif
 c           --- Get transverse E field for particles near any defined apertures.
             if (napertures .gt. 0)
@@ -1302,7 +1293,6 @@ c           --- Compute lag average for experimental damping algorithm
      &        call edamp (eomdamp,it,itdamp,center,ip,ex,ey,ez,
      &                    exold(ipmin),eyold(ipmin),ezold(ipmin),
      &                    exlag(ipmin),eylag(ipmin),ezlag(ipmin))
-
 c           --- FULLV
             if (center == "fullv") then
                do i = 1,ip
@@ -1403,7 +1393,6 @@ c              --- Correct position advance for slanted dipole entry/exit
                call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
      &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       sm(is),sq(is),.false.)
-
 c           --- SYNCHV or GEN
             elseif (center == "synchv" .or. center == "gen") then
 c              --- Copy 'old' velocity into uxpo, uypo, and uzpo
@@ -1514,7 +1503,7 @@ c       --- Collect charge density (3d) and current (1d)
           enddo
         enddo
         if(solvergeom==RZgeom) then
-          call distribute_rho(basegrid)
+          call distribute_rho_rz()
           call get_rho_rz(rho(0,0,0),nx,nz,1)
         end if
 
@@ -3585,7 +3574,6 @@ c=============================================================================
       use Particles
       use Fields3d
       use FRZmgrid
-      use multigridrz
       integer(ISZ):: ins_i,nps_i,is_i
       logical(ISZ):: lzero
 
@@ -3641,7 +3629,7 @@ c        --- loop over particle blocks
          enddo
       enddo
       if(solvergeom==RZgeom) then
-        call distribute_rho(basegrid)
+        call distribute_rho_rz()
         call get_rho_rz(rho(0,0,0),nx,nz,1)
       end if
 
@@ -3776,7 +3764,6 @@ c=============================================================================
       use Setpwork3d
       use Fields3d
       use FRZmgrid
-      use multigridrz
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -3810,15 +3797,9 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(solvergeom==RZgeom) then
-        dx = grids_ptr(mgridrz_inj_id)%grid%dr
-        dy = grids_ptr(mgridrz_inj_id)%grid%dr
-        dz = grids_ptr(mgridrz_inj_id)%grid%dz
-      end if
-
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
+      dxi = 1./inj_dx
+      dyi = 1./inj_dy
+      dzi = 1./inj_dz
       if (lrelativ) clightsqi = 1./clight**2
 
 c Print warning if vbeamfrm is not zero
@@ -4012,7 +3993,7 @@ c             --- The absolute values are needed for the cases of symmetry.
               iyy = abs(yp(ii) - ymmin)*dyi
               wxx = abs(xp(ii) - xmmin)*dxi - ixx
               wyy = abs(yp(ii) - ymmin)*dyi - iyy
-              zz = zmmin + dz*(inj_grid(ixx  ,iyy  )*(1. - wxx)*(1. - wyy) +
+              zz = zmmin + inj_dz*(inj_grid(ixx  ,iyy  )*(1. - wxx)*(1. - wyy) +
      &                         inj_grid(ixx+1,iyy  )*      wxx *(1. - wyy) +
      &                         inj_grid(ixx  ,iyy+1)*(1. - wxx)*      wyy  +
      &                         inj_grid(ixx+1,iyy+1)*      wxx *      wyy)
@@ -4051,7 +4032,7 @@ c           --- make injected particles live particles
             nps(is) = nps(is) + nn
 
 c           --- get E self-field at initial positions
-            call inj_sete3d(nn,ins(is),xmmin,ymmin,zmmin,dx,dy,dz,
+            call inj_sete3d(nn,ins(is),xmmin,ymmin,zmmin,inj_dx,inj_dy,inj_dz,
      &                      at(1),bt(1),apt(1))
 
 c           --- get external fields at initial positions
@@ -4142,7 +4123,7 @@ c           --- Make sure there is enough temp space
             endif
 
 c           --- calculate new E self-fields
-            call inj_sete3d(nn,ipmin,xmmin,ymmin,zmmin,dx,dy,dz,
+            call inj_sete3d(nn,ipmin,xmmin,ymmin,zmmin,inj_dx,inj_dy,inj_dz,
      &                      at(1),bt(1),apt(1))
 
 c           --- get external fields at current positions
@@ -4237,10 +4218,10 @@ c         --- Copy inj_np to inj_prev, and zero inj_np
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
             if(solvergeom==XYZgeom) then
-              call inj_setrho3d(rho(0,0,0),xmmin,ymmin,dx,dy,dz,nx,ny,nz,
+              call inj_setrho3d(rho(0,0,0),xmmin,ymmin,inj_dx,inj_dy,inj_dz,nx,ny,nz,
      &                          l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
-              call inj_setrho3d_rz(rho(0,0,0),xmmin,dx,dz,nx,nz)
+              call inj_setrho3d_rz(rho(0,0,0),xmmin,inj_dx,inj_dz,nx,nz)
             endif
           endif
 
@@ -4296,7 +4277,7 @@ c           --- injected at edges of the grid that are not symmetry planes.
 c             --- The factor to convert current density to particle number.
 c             --- The absolute value is taken of sq so the factor is always
 c             --- positive.
-              jton(is) = dx*dy*dt/abs(sq(is))/sw(is)
+              jton(is) = inj_dx*inj_dy*dt/abs(sq(is))/sw(is)
 
 c             --- This constant terms includes corrections for injection off
 c             --- of a concentric spheres.  See I. Langmuir,
@@ -4304,19 +4285,19 @@ c             --- K. Blodgett, "Currents Limited by Space Charge Between
 c             --- Concentric Spheres", PhysRev, 1924.
               if (inject == 2) then
                 if (linj_spherical) then
-                  zz = (dz*inj_d)*rinji
+                  zz = (inj_dz*inj_d)*rinji
                   sphericalcorrection = (1. + 1.6*zz + 2.06*zz**2)
                 else
                   sphericalcorrection = 1.
                 endif
                 cl_const(is) = 4./9.*eps0*(2.*abs(sq(is))/sm(is))**.5/
-     &                        ((dz*inj_d)**2*sphericalcorrection)*jton(is)
+     &                        ((inj_dz*inj_d)**2*sphericalcorrection)*jton(is)
               endif
 
 c             --- The constant terms in the expression for the normal
 c             --- velocity from the Child-Langmuir solution. Note that does
 c             --- is only strictly correct for planar emission.
-              vzconst(is)=2./9.*sqrt(2.)*(abs(sq(is))/sm(is))**1.5/(dz*inj_d)**2
+              vzconst(is)=2./9.*sqrt(2.)*(abs(sq(is))/sm(is))**1.5/(inj_dz*inj_d)**2
 
             enddo
 
@@ -4325,14 +4306,14 @@ c           --- Load particles one grid cell at a time.
               do ix=0,inj_nx
 
 c               --- Mesh location
-                xm = xmmin + ix*dx
-                ym = ymmin + iy*dy
+                xm = xmmin + ix*inj_dx
+                ym = ymmin + iy*inj_dy
 
 c               --- Only inject particles if within 2 grid cells of the source
 c               --- and if the source is within the grid.
-                if (((xm-xinj)*(binj+2.*dy))**2 +
-     &              ((ym-yinj)*(ainj+2.*dx))**2 .gt.
-     &              ((ainj+2.*dx)*(binj+2.*dy))**2 .or.
+                if (((xm-xinj)*(binj+2.*inj_dy))**2 +
+     &              ((ym-yinj)*(ainj+2.*inj_dx))**2 .gt.
+     &              ((ainj+2.*inj_dx)*(binj+2.*inj_dy))**2 .or.
      &              (inj_grid(ix,iy) < -1 .or.
      &               inj_grid(ix,iy) >= nz)) cycle
 
@@ -4353,8 +4334,8 @@ c                   --- Child-Langmuir
                   elseif (inject == 3) then
 c                   --- Gauss's law
                     rnn = (eps0*inj_phi(ix,iy)/
-     &                    (dz*inj_d) - inj_rho(ix,iy,inj_ij)*dz)*
-     &                    dx*dy/sq(is)/sw(is)/cos(inj_angl(ix,iy))
+     &                    (inj_dz*inj_d) - inj_rho(ix,iy,inj_ij)*inj_dz)*
+     &                    inj_dx*inj_dy/sq(is)/sw(is)/cos(inj_angl(ix,iy))
                   endif
 
 c                 --- Make sure that rnn is >= 0.
@@ -4424,8 +4405,8 @@ c                     --- increment random number counter
 
 c                     --- calculate x, y and z of new particle
 c                     --- if within injection source load it, else skip it
-                      xp(ii)=signx(il)*xm+(rnrev(injctcnt,dig1)-.5)*dx*2.
-                      yp(ii)=signy(il)*ym+(rnrev(injctcnt,dig2)-.5)*dy*2.
+                      xp(ii)=signx(il)*xm+(rnrev(injctcnt,dig1)-.5)*inj_dx*2.
+                      yp(ii)=signy(il)*ym+(rnrev(injctcnt,dig2)-.5)*inj_dy*2.
 
 c                     --- Check if particle is within the elliptical annulus
 c                     --- with outer major and minor radii of ainject and
@@ -4442,7 +4423,7 @@ c                     --- find injection surface axial location by interpolation
                       iyy = abs(yp(ii) - ymmin)*dyi
                       wxx = abs(xp(ii) - xmmin)*dxi - ixx
                       wyy = abs(yp(ii) - ymmin)*dyi - iyy
-                      zp(ii)=zmmin+dz*(inj_grid(ixx  ,iyy  )*(1.-wxx)*(1.-wyy)+
+                      zp(ii)=zmmin+inj_dz*(inj_grid(ixx  ,iyy  )*(1.-wxx)*(1.-wyy)+
      &                                 inj_grid(ixx+1,iyy  )*    wxx *(1.-wyy)+
      &                                 inj_grid(ixx  ,iyy+1)*(1.-wxx)*    wyy +
      &                                 inj_grid(ixx+1,iyy+1)*    wxx *    wyy)+
@@ -4568,7 +4549,7 @@ c           --- Make sure that there is enough room in the temporary arrays.
 
 c           --- get E self-field at initial positions
             call inj_sete3d(npinje_s(is),ins(is),xmmin,ymmin,zmmin,
-     &                      dx,dy,dz,at(1),bt(1),apt(1))
+     &                      inj_dx,inj_dy,inj_dz,at(1),bt(1),apt(1))
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -4634,7 +4615,7 @@ c           --- Make sure that there is enough room in the temporary arrays.
 
 c           --- calculate new E self-fields
             call inj_sete3d(npinje_s(is),ins(is),xmmin,ymmin,zmmin,
-     &                      dx,dy,dz,at(1),bt(1),apt(1))
+     &                      inj_dx,inj_dy,inj_dz,at(1),bt(1),apt(1))
 
 c           --- Get external fields at current positions, assuming that there
 c           --- is no bend.
@@ -4718,15 +4699,15 @@ c           --- loop over species
 c             --- Load particles one azimuthal section at a time,
 c             --- only if there is a positive number of injected particles.
               do iz=nztinjmn(ij),nztinjmx(ij)-1
-                zm = zmmin + iz*dz
+                zm = zmmin + iz*inj_dz
                 ijz = iz - nztinjmn(ij)
                 rinj = abs(rtinject(ijz,ij))
                 rinji = 1./abs(rtinject(ijz,ij))
-                xx = sign(dx,rtinject(ijz,ij))
+                xx = sign(inj_dx,rtinject(ijz,ij))
                 xxi = 1./xx
 
 c               --- Area of section of emitting surface.
-                area = dz*rinj*2.*pi/nttinj(ij)
+                area = inj_dz*rinj*2.*pi/nttinj(ij)
 
 c               --- Const for inject = 2.  Denominator includes factor for
 c               --- emitting on concentric cylinders.  See I. Langmuir,
@@ -4743,7 +4724,7 @@ c               --- Concentric Spheres", PhysRev, 1924.
 c                 --- angle of point in transverse plane
                   aa = ith*2.*pi/nttinj(ij)
 
-c                 --- Find coordinates of the point a distance dx from
+c                 --- Find coordinates of the point a distance inj_dx from
 c                 --- the source along a line perpendicular to the
 c                 --- emitting surface.
                   p2x = abs(xtinject(ij) + (rinj - xx)*cos(aa) - xmmin)*dxi
@@ -4788,7 +4769,7 @@ c                 --- number of particles injected in grid cell
      &                    real(nttinj(ij)*(nztinjmx(ij) - nztinjmn(ij)))
                   elseif (inject == 2) then
                     tinjprev(ith,ijz,ij) = ftinject(is,ij)*(
-     &                                    inj_param*const*abs(ehalf*dx)**1.5 +
+     &                                    inj_param*const*abs(ehalf*inj_dx)**1.5 +
      &                                    (1. - inj_param)*tinjprev(ith,ijz,ij))
                     rnn = tinjprev(ith,ijz,ij)
                   elseif (inject == 3) then
@@ -4797,7 +4778,7 @@ c                   --- get charge density at injection point
      &                   rho(i2x  ,i2y+1,iz)*(1.-w2x)*    w2y  +
      &                   rho(i2x+1,i2y  ,iz)*    w2x *(1.-w2y) +
      &                   rho(i2x+1,i2y+1,iz)*    w2x *    w2y
-                    rnn=(eps0*ehalf - rr*dx)*area/sq(is)/sw(is)*ftinject(is,ij)
+                    rnn=(eps0*ehalf - rr*inj_dx)*area/sq(is)/sw(is)*ftinject(is,ij)
                   endif
                   rnn = min(rnn,
      &                 abs(jmaxtinj(ij)*area*dt/sq(is)/sw(is)*ftinject(is,ij)))
@@ -4815,7 +4796,7 @@ c                 --- source.
                     ii = ins(is) - npinje_s(is) - nti - 1
 c                   --- calculate position of new particle
                     wz = rnrev(injctcnt,dig1)
-                    zp(ii) = zm + wz*dz
+                    zp(ii) = zm + wz*inj_dz
                     rr = rnrev(injctcnt,dig2)
                     rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz - rr*xx
                     t = aa + (rnrev(injctcnt,dig3) - .5)*2.*pi/nttinj(ij)
@@ -4878,12 +4859,12 @@ c         --- are injected.
      &                         zgrid, uzp(ipmin), sq(is), sw(is), depos)
               elseif(solvergeom==RZgeom) then
                 call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ip,
-     &                           sq(is)*sw(is),rho(0,0,0),nx,nz,dx,dz,zmmin)
+     &                           sq(is)*sw(is),rho(0,0,0),nx,nz,inj_dx,inj_dz,zmmin)
               end if
             enddo
           enddo
           if(solvergeom==RZgeom) then
-            call distribute_rho(basegrid)
+            call distribute_rho_rz()
             call get_rho_rz(rho(0,0,0),nx,nz,1)
           end if
 
@@ -4904,12 +4885,6 @@ c         --- make injected particles live particles
       endif
 c     --- End of transverse injection
 
-      if(solvergeom==RZgeom) then
-        dx = basegrid%dr
-        dy = basegrid%dr
-        dz = basegrid%dz
-      end if
-
       if (lw3dtimesubs) timeinject3d = timeinject3d + wtime() - substarttime
 
       return
@@ -4929,7 +4904,6 @@ c=============================================================================
       use Setpwork3d
       use Picglb3d
       use FRZmgrid
-      use multigridrz
 
       integer(ISZ):: is,ip,ij,nn,nnmax,ij1,ij2
       real(kind=8):: total_frac,dd,maxdxdy
@@ -4937,10 +4911,14 @@ c=============================================================================
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(solvergeom==RZgeom) then
-        dx = grids_ptr(mgridrz_inj_id)%grid%dr
-        dy = grids_ptr(mgridrz_inj_id)%grid%dr
-        dz = grids_ptr(mgridrz_inj_id)%grid%dz
+      if(solvergeom==XYZgeom) then
+        inj_nx = nx
+        inj_ny = ny
+        inj_dx = dx
+        inj_dy = dy
+        inj_dz = dz
+      elseif(solvergeom==RZgeom) then
+        call assign_injdxdy_rz(inj_nx,inj_ny,inj_dx,inj_dy,inj_dz)
       end if
 
 c Make sure that space has been allocated for the arrays. This is needed
@@ -5052,7 +5030,7 @@ c dimension
 c Also, find maximum length of surfaces, and set maximum current density
 c to large number.
       do ij=1,ntinj
-        nttinj(ij) = int(abs(rtinject(0,ij))*2.*pi/min(dx,dy) + .5)
+        nttinj(ij) = int(abs(rtinject(0,ij))*2.*pi/min(inj_dx,inj_dy) + .5)
         nttinjmax = max(nttinjmax,nttinj(ij))
         nztmax = max(nztmax, nztinjmx(ij) - nztinjmn(ij))
         if (jmaxtinj(ij) == 0.) jmaxtinj(ij) = LARGEPOS
@@ -5094,7 +5072,7 @@ c other.
 c The radius of each source is taken to be the maximum of a and b. This
 c makes the checks much simpler but overly conservative.
       inj_ninj = 1
-      maxdxdy = max(dx,dy)
+      maxdxdy = max(inj_dx,inj_dy)
       do ij1=1,ninject
         maxab1 = max(ainject(ij1),binject(ij1))
         minab1 = min(ainjmin(ij1),binjmin(ij1))
@@ -5121,17 +5099,11 @@ c Note that gchange is called instead of gallot since some the of arrays
 c in InjectVars3d may have been allocated by the user for specialized
 c control of injection.
       if(solvergeom==XYZgeom) then
-        inj_nx = nx
-        inj_ny = ny
         call gchange("InjectVars3d",0)
-        call fill_inj(dx,dy,dz,ix_axis,iy_axis)
+        call fill_inj(inj_dx,inj_dy,inj_dz,ix_axis,iy_axis)
       elseif(solvergeom==RZgeom) then
-        inj_nx = grids_ptr(mgridrz_inj_id)%grid%nr
-        inj_ny = grids_ptr(mgridrz_inj_id)%grid%nr
         call gchange("InjectVars3d",0)
-        call fill_inj_rz(grids_ptr(mgridrz_inj_id)%grid%dr,
-     &                   grids_ptr(mgridrz_inj_id)%grid%dz,
-     &                   ix_axis,iy_axis)
+        call fill_inj_rz(inj_dx,inj_dz,ix_axis,iy_axis)
       endif
 
 c Allocate the particle index. The index keeps track of which source the
@@ -5149,12 +5121,6 @@ c      enddo
 c Set vbeamfrm to zero so that the grid does not move off of the source,
 c causing a code crash.
       vbeamfrm = 0.
-
-      if(solvergeom==RZgeom) then
-        dx = basegrid%dr
-        dy = basegrid%dr
-        dz = basegrid%dz
-      end if
 
       if (lw3dtimesubs) timeinjctint = timeinjctint + wtime() - substarttime
       return
@@ -5563,127 +5529,6 @@ c     --- Calculate the transverse fields
       return
       end
 c=============================================================================
-      subroutine getinj_phi_rz_ng()
-      use InjectVars
-      use InjectVars3d
-      use FRZmgrid
-      use multigridrz
-#ifdef MPIPARALLEL
-      use Parallel
-#endif
-      integer(ISZ):: nx,nz
-c      real(kind=8):: phi(0:nx,0:nz)
-      real(kind=8):: dx,dz,xmmin,ymmin
-
-c Calculate potential drop from emitting surface at distance
-c of dz from the surface.  This is only done for grid cells
-c within two grid cells of the elliptical emitting surface, and
-c within the axial extent of the grid. This is done over the
-c full axial extent since points which are outside of the
-c injection region maybe needed for the interlopation below
-c to get zp.
-
-      integer(ISZ):: ij,ix,iy,i2r,i2z
-      real(kind=8):: dxi,dyi
-      real(kind=8):: ainjsqi,binjsqi,xinj,yinj
-      real(kind=8):: rrsq,aa,p2x,p2y,p2r,p2z,w2r,w2z
-
-#ifdef MPIPARALLEL
-c     --- In the parallel version, only processor 0 calculates inj_phi.
-      if (my_index == 0) then
-#endif
-
-      grids=>grids_ptr(mgridrz_inj_id)%grid
-      dx = grids%dr
-      dz = grids%dz
-      nx = grids%nr
-      nz = grids%nz
-      xmmin = grids%rmin
-      ymmin = grids%rmin
-
-      dxi = 1./dx
-      dyi = 1./dx
-
-c     --- loop over injection sources
-      do ij=1,ninject
-
-c       --- Set some temporaries.
-        ainjsqi = 1./(ainject(ij) + 2.*dx)**2
-        binjsqi = 1./(binject(ij) + 2.*dx)**2
-        xinj = xinject(ij)
-        yinj = yinject(ij)
-
-        do iy = 0,nx
-          do ix = 0,nx
-            rrsq = (ix*dx + xmmin - xinj)**2*ainjsqi +
-     &             (iy*dx + ymmin - yinj)**2*binjsqi
-            if (rrsq < 1. .and.
-     &          (-1 <= inj_grid(ix,iy) .and.
-     &                 inj_grid(ix,iy) < nz)) then
-
-c             --- angle of point in transverse plane
-              aa = atan2(iy*dx+ymmin-yinj,dvnz(ix*dx+xmmin-xinj))
-
-c             --- Find coordinates of the point a distance dz in front
-c             --- of the source along a line perpendicular to the
-c             --- emitting surface.
-              p2x = ix-dz*cos(aa)*sin(inj_angl(ix,iy))*dxi*inj_d
-              p2y = iy-dz*sin(aa)*sin(inj_angl(ix,iy))*dyi*inj_d
-              p2r = sqrt(p2x**2+p2y**2)
-              p2z = inj_grid(ix,iy) + cos(inj_angl(ix,iy))*inj_d
-              i2r = p2r
-              i2z = p2z
-              w2r = p2r - i2r
-              w2z = p2z - i2z
-              i2r = i2r+1
-              i2z = i2z+1
-
-c             --- Fetch difference between phi at that point and phi on
-c             --- the emitting surface.
-              inj_phi(ix,iy) = vinject(ij) -
-     &                 grids%phi(i2r  ,i2z  )*(1.-w2r)*(1.-w2z) -
-     &                 grids%phi(i2r+1,i2z  )*    w2r *(1.-w2z) -
-     &                 grids%phi(i2r  ,i2z+1)*(1.-w2r)*    w2z  -
-     &                 grids%phi(i2r+1,i2z+1)*    w2r *    w2z
-            endif
-          enddo
-        enddo
-
-cc        call getinj_phipgrd_rz(ij,nx,nz,phi,dx,dz,xmmin,ymmin)
-c       --- Smooth out inj_phi for this emitting surface.
-c        if (inj_nsmooth > 0) then
-c          call inj_smoother(nx,ny,inj_phi,dx,dy,xmmin,ymmin,
-c     &                      xinj,yinj,ainj,binj,inj_nsmooth)
-c        endif
-
-      enddo
-
-#ifdef MPIPARALLEL
-      endif
-c     --- The result calculated by processor 0 is broadcast to the rest
-c     --- of the processors.
-      call parallelbroadcast(inj_phi,(nx+1)*(nx+1),0)
-#endif
-
-c     --- Calculate the transverse fields
-      if (linj_eperp) then
-        do iy = 1,nx-1
-          do ix = 1,nx-1
-            inj_ex(ix,iy) = (inj_phi(ix-1,iy  ) - inj_phi(ix+1,iy  ))*dxi*0.5
-            inj_ey(ix,iy) = (inj_phi(ix  ,iy-1) - inj_phi(ix  ,iy+1))*dyi*0.5
-          enddo
-        enddo
-        do ix = 1,nx-1
-          inj_ex(ix,0) = (inj_phi(ix-1,0) - inj_phi(ix+1,0))*dxi*0.5
-        enddo
-        do iy = 1,nx-1
-          inj_ey(0,iy) = (inj_phi(0,iy-1) - inj_phi(0,iy+1))*dyi*0.5
-        enddo
-      endif
-
-      return
-      end
-c=============================================================================
       subroutine inj_smoother(nx,ny,inj_phi,dx,dy,xmmin,ymmin,
      &                        xinj,yinj,ainj,binj,inj_nsmooth)
       integer(ISZ):: nx,ny
@@ -5790,7 +5635,6 @@ c=============================================================================
       use InjectVars3d
       use Particles
       use FRZmgrid
-      use multigridrz
       integer(ISZ):: nx,ny,nz,npart,ipmin
       real(kind=8):: ex(npart),ey(npart),ez(npart)
       real(kind=8):: xmmin,ymmin,zmmin,dx,dy,dz
@@ -5811,12 +5655,6 @@ c any conductor surface.
       real(kind=8):: fourthirds,onethird
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
-
-      if(solvergeom==RZgeom) then
-        dx = grids_ptr(mgridrz_inj_id)%grid%dr
-        dy = grids_ptr(mgridrz_inj_id)%grid%dr
-        dz = grids_ptr(mgridrz_inj_id)%grid%dz
-      end if
 
       dxi = 1./dx
       dyi = 1./dy
@@ -5933,12 +5771,6 @@ c           --- (i.e. zero) and the value on the secondary surface.
 
         endif
       enddo
-
-      if(solvergeom==RZgeom) then
-        dx = basegrid%dr
-        dy = basegrid%dr
-        dz = basegrid%dz
-      end if
 
       if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
       return
@@ -7091,7 +6923,7 @@ c         --- RZ full-multigrid solver
 c       case (11)
       elseif (fstype == 11) then
 c         --- Chombo AMR  full-multigrid solver
-          call amrfieldsolve(iwhich)
+c          call amrfieldsolve(iwhich)
 c     endselect
       endif
 
