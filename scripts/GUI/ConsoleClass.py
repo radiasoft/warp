@@ -26,7 +26,7 @@ class ConsoleClass(wxPanel):
 
     def __init__(self, parent, inter):
         self._init_ctrls(parent)
-        parent.AddPage(imageId=-1, page=self, select=True, text='Console')
+        parent.AddPage(imageId=-1, page=self, select=False, text='Console')
         self.listcommands=[]
         self.numcommand=-1
         self.CursorMin = 0
