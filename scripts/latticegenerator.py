@@ -1,7 +1,7 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.5 2002/11/28 00:18:44 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.6 2003/01/17 19:15:57 dave Exp $"
 ######################################################################
 # Lattice builder
 # 
@@ -34,6 +34,7 @@ class LatticeGenerator:
   luservgap=None:
   straight=0.8: Fraction of the beam which is not ends (used in Eears calc)
   icharge=4: CIRCE charge model to use in calculation of Ez for Eears
+  lfixed=false: CIRCE flag for using newer version of code in getezbeam
   """
   def __init__(s,ion_mass,beam_duration,ekinmid,charge_per_beam,gap_len=.01,
                ngappoints=1000,nendpoints=None,
@@ -43,7 +44,7 @@ class LatticeGenerator:
                accel_gradient=0.,firstquadsign=+1,lattice=None,
                nhist=1,zhist=1,lverbose=1,
                maxgapgradient=1.e6,luservgap=None,
-               straight=0.8,icharge=4):
+               straight=0.8,icharge=4,lfixed=false):
     s.ion_mass = ion_mass
     s.beam_duration = beam_duration
     s.ekinmid = ekinmid
@@ -70,6 +71,7 @@ class LatticeGenerator:
     s.luservgap = None
     s.straight = straight
     s.icharge = icharge
+    s.lfixed = lfixed
     # --- element counters
     s.iquad = 0
     s.iaccl = 0
@@ -121,10 +123,10 @@ class LatticeGenerator:
     s.zlast = 0.
     s.ihlp = 0
 
-    for iq in range(s.nhlpswithoutgaps):
-      s.adddrft((1.-s.occupancy(s))*s.hlp/2.)
-      s.addquad(s.zlast,s.hlp,s.ekinmid)
-      s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
+    #for iq in range(s.nhlpswithoutgaps):
+    s.adddrft((1.-s.occupancy(s))*s.hlp/2.)
+    s.addquad(s.zlast,s.hlp,s.ekinmid)
+    s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
 
     # --- Load and fire risetime default is transit time of one lattice
     # --- period
@@ -137,8 +139,8 @@ class LatticeGenerator:
     s.savehist(linit=1)
 
     # --- Get beam_duration before first gap
-    s.advancebeam(len=1.+s.nhlpswithoutgaps)
-    s.zlast = s.zlast + s.hlp*(1.+s.nhlpswithoutgaps)
+    s.advancebeam(len=1.) #+s.nhlpswithoutgaps)
+    s.zlast = s.zlast + s.hlp*(1.) #+s.nhlpswithoutgaps)
     s.savehist()
 
   #-----------------------------------------------------------------------
@@ -282,7 +284,9 @@ class LatticeGenerator:
       s.ihlp = s.ihlp + 1
   
       # --- parameters just after gap
-      s.ekinmid = s.ekin[s.nno2] + s.midpulsegapvoltage(s)*s.hlp
+      gapvoltage = s.midpulsegapvoltage(s)
+      if gapvoltage is not None:
+        s.ekinmid = s.ekin[s.nno2] + gapvoltage*s.hlp
       s.vzmid = s.ekintov(s.ekinmid)
 
       # --- Calculate hlp length from info at start of hlp
@@ -292,61 +296,81 @@ class LatticeGenerator:
       s.perveancemid = s.linechgmid/(4.*pi*eps0*s.ekinmid)
       s.hlp = s.amean(s)*sqrt((1.-cos(s.sigma(s)*pi/180.))/(2.*s.perveancemid))
 
-      # --- beam length at end of this hlp (tilt and vzmid have changed)
-      oldbeam_duration = s.beam_duration
-      s.beam_duration = s.beam_duration + \
-                        s.hlp/s.vzmid*(1./(1.+s.tilt(s)/2)-1./(1.-s.tilt(s)/2.))
+      if gapvoltage is None:
+        # --- With no accelerator gap...
+        # --- Note that first drift is long enough to cover the missing gap
+        s.adddrft((1.-s.occupancy(s))*s.hlp/2.+s.gap_len/2.)
+        s.addquad(s.zlast,s.hlp,s.ekinmid)
+        s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
 
-      # --- Get time of arrival of beam slices at next gap
-      nextbeamtime = s.beamtime[s.nno2]+s.hlp/s.vzmid+(s.itime-0.5)*s.beam_duration
-      # --- This expression preserves the time dependence.
-      #nextbeamtime = (s.beamtime - s.beamtime[s.nno2])* \
-      #               s.beam_duration/oldbeam_duration + \
-      #               s.beamtime[s.nno2] + s.hlp/s.vzmid
+        # --- Advance the beam
+        s.advancebeam(gapez=None)
 
-      # --- Get velocity needed and convert to energy
-      nextvz = s.hlp/(nextbeamtime-s.beamtime)
-      ekinnext = s.vtoekin(nextvz)
-      vgap = ekinnext - s.ekin
+      else:
+        # --- beam length at end of this hlp (tilt and vzmid have changed)
+        oldbeam_duration = s.beam_duration
+        s.beam_duration = s.beam_duration + \
+                      s.hlp/s.vzmid*(1./(1.+s.tilt(s)/2)-1./(1.-s.tilt(s)/2.))
+        # --- Get time of arrival of beam slices at next gap
+        nextbeamtime = s.beamtime[s.nno2]+s.hlp/s.vzmid+(s.itime-0.5)*s.beam_duration
+        # --- This expression preserves the time dependence.
+        #nextbeamtime = (s.beamtime - s.beamtime[s.nno2])* \
+        #               s.beam_duration/oldbeam_duration + \
+        #               s.beamtime[s.nno2] + s.hlp/s.vzmid
 
-      # --- Check for a user supplied vgap
-      if s.luservgap: vgap = s.getvgap(s)
+        # --- Get velocity needed and convert to energy
+        nextvz = s.hlp/(nextbeamtime-s.beamtime)
+        ekinnext = s.vtoekin(nextvz)
+        vgap = ekinnext - s.ekin
 
-      # --- Find params for next gap
-      s.gapez = zeros(s.ntaccl+1,'d')
-      s.gapez[:s.nendpoints]=vgap[0]-(vgap[1]-vgap[0])*iota(s.nendpoints,1,-1)
-      s.gapez[s.nendpoints:-s.nendpoints] = vgap
-      s.gapez[-s.nendpoints:]=vgap[-1]+(vgap[-1]-vgap[-2])*iota(s.nendpoints)
-      s.gapez[:] = s.gapez/s.gap_len
+        # --- Check for a user supplied vgap
+        if s.luservgap: vgap = s.getvgap(s)
 
-      # --- Scale the accelerating field to both keep it less than the
-      # --- maximum gap gradient and to keep it positive. Scaling it (instead
-      # --- of simply limiting it) preserves the self-similarity of the beam
-      # --- (since otherwise some part of the beam isn't being compressed as
-      # --- much as others if the field is simply pinned to the max value
-      # --- there).
-      # --- This scaling supplies a limit to how fast a tilt can be applied
-      # --- as well as how fast the beam can be accelerated.
-      if max(s.gapez) > s.maxgapgradient*s.hlp/s.gap_len and \
-         min(s.gapez) > 0.:
-        s.gapez[:] = s.gapez/max(s.gapez)*s.maxgapgradient*s.hlp/s.gap_len
-      elif min(s.gapez) < 0.:
-        gapezmax = min(max(s.gapez)-min(s.gapez),
-                        s.maxgapgradient*s.hlp/s.gap_len)
-        if gapezmax != 0.:
-          s.gapez[:] = (s.gapez-min(s.gapez))/(max(s.gapez)-min(s.gapez))* \
-                        gapezmax
-        else:
-          s.gapez[:] = 0.
+        # --- Find params for next gap
+        s.gapez = zeros(s.ntaccl+1,'d')
+        s.gapez[:s.nendpoints]=vgap[0]
+        s.gapez[s.nendpoints:-s.nendpoints] = vgap
+        s.gapez[-s.nendpoints:]=vgap[-1]
+        s.gapez[:] = s.gapez/s.gap_len
 
-      # --- Generate lattice period
-      s.addgap(s.zlast,s.gapez)
-      s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
-      s.addquad(s.zlast,s.hlp,s.ekinmid + s.gapez[s.nno2]*s.gap_len/2.)
-      s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
+        # --- Scale the accelerating field to both keep it less than the
+        # --- maximum gap gradient and to keep it positive. Scaling it (instead
+        # --- of simply limiting it) preserves the self-similarity of the beam
+        # --- (since otherwise some part of the beam isn't being compressed as
+        # --- much as others if the field is simply pinned to the max value
+        # --- there).
+        # --- This scaling supplies a limit to how fast a tilt can be applied
+        # --- as well as how fast the beam can be accelerated.
+        if max(s.gapez) > s.maxgapgradient*s.hlp/s.gap_len and \
+           min(s.gapez) > 0.:
+          s.gapez[:] = s.gapez/max(s.gapez)*s.maxgapgradient*s.hlp/s.gap_len
+        elif min(s.gapez) < 0.:
+          gapezmax = min(max(s.gapez)-min(s.gapez),
+                          s.maxgapgradient*s.hlp/s.gap_len)
+          if gapezmax != 0.:
+            s.gapez[:] = (s.gapez-min(s.gapez))/(max(s.gapez)-min(s.gapez))* \
+                          gapezmax
+          else:
+            s.gapez[:] = 0.
 
-      # --- Advance the beam
-      s.advancebeam(s.gapez)
+        # --- Now add in linear ramp before and after pulse. This is done
+        # --- checking the limits above so that the linear ramp does not
+        # --- effect the scaling.
+        s.gapez[:s.nendpoints] = (s.gapez[0] - (s.gapez[1] - s.gapez[0])*
+                                               iota(s.nendpoints,1,-1))
+        s.gapez[-s.nendpoints:] = (s.gapez[-1] + (s.gapez[-1] - s.gapez[-2])*
+                                                 iota(s.nendpoints))
+
+        # --- Generate lattice period
+        s.addgap(s.zlast,s.gapez)
+        s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
+        s.addquad(s.zlast,s.hlp,s.ekinmid + s.gapez[s.nno2]*s.gap_len/2.)
+        s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
+
+        # --- Advance the beam
+        s.advancebeam(s.gapez)
+
+
       s.zlast = s.zlast + s.hlp
 
       # --- Reset beamtime
@@ -566,6 +590,8 @@ class LatticeGenerator:
       raise "The function lmagnetic needs to be defined"
   def riseprofile(s,t):
       return t
+  def earlength(s,s1):
+      return s.hlp
 
   def __getstate__(s):
     # --- This is needed since the user supplied subroutines cannot be
@@ -646,8 +672,8 @@ class LatticeGenerator:
     s.cirvar[2,:] = s.cirvar[0,:]
     # --- Now, get the ez
     lfailed = false
-    getezbeam(s.nn+1,s.cirvar,s.ezbeam,s.aperture(s),s.icharge,true,false,true,
-              lfailed)
+    getezbeam(s.nn+1,s.cirvar,s.ezbeam,s.aperture(s),s.icharge,true,false,
+              s.lfixed,lfailed)
     # --- Interpolate ezbeam into eears. This can be done easily since
     # --- the beamtime used here is linearly varying.
     tears = accl_ts + iota(0,s.ntaccl)*accl_dt
@@ -667,7 +693,7 @@ class LatticeGenerator:
     jmax = argmin(s.eears)
     s.eears[:jmin] = s.eears[jmin]
     s.eears[jmax:] = s.eears[jmax]
-    s.eears[:] = -s.eears[:]*s.hlp/s.gap_len
+    s.eears[:] = -s.eears[:]*s.earlength(s)/s.gap_len
     # --- Do some smoothing and cleaning of the ears. The linearization and
     # --- assumption of none-changing line-charge profile smooth out most of
     # --- glitches from load and fire, but not all. There is still a jagged
