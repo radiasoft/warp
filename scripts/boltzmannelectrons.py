@@ -33,7 +33,7 @@ class BoltzmanSolver:
       w3d.phi[:,:,0] = w3d.phi[:,:,1]
   
   def solve1(self):
-    f3d.sormaxit = 1
+    f3d.sormaxit = 0
     rdx2 = 1./w3d.dx**2
     rdy2 = 1./w3d.dy**2
     rdz2 = 1./w3d.dz**2
