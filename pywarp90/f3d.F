@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.39 $, $Date: 2002/05/07 17:39:58 $
+c@(#) File F3D.M, version $Revision: 3.40 $, $Date: 2002/05/08 16:01:57 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5432,11 +5432,11 @@ c     --- Change the memory allocated based on the estimates made above.
 
 c Set slicv in planes at ends of quads to allow for sub-grid placement of
 c boundaries. This also takes care of the boundary planes.
-      do iz=0,nz
-        if (islctype(iz)==0 .and. islctype(iz-1).ne.0) then
+      do iz=-1,nz+1
+        if (iz >= 0 .and. islctype(iz)==0 .and. islctype(iz-1).ne.0) then
           slicvx(iz)=slicvx(iz-1)
           slicvy(iz)=slicvy(iz-1)
-        elseif (islctype(iz)==0 .and. islctype(iz+1).ne.0) then
+        elseif (iz <= nz .and. islctype(iz)==0 .and. islctype(iz+1).ne.0) then
           slicvx(iz)=slicvx(iz+1)
           slicvy(iz)=slicvy(iz+1)
         endif
@@ -5801,17 +5801,52 @@ c           --- distance of rod center from centerline
         endif
 
 c +++++++++++++++++++++++++++
-c       --- calculates the points on the endplates including slices before
-c       --- and after for purposes of subgrid placement.  Note that the
-c       --- subgrid placement around the abutting rod electrode is
-c       --- inconsistent with thte calculated interpolation prameters from
-c       --- the rod so that an anamolous "weld-like" structure is created.
-c       --- Since this structure is at the same potential as the rod and
-c       --- the plate it is neglected in this coding.
- 
+c       --- Make arrays bigger if they are about to be filled up.
+c       --- If ncond is within (1+nx)*(1+ny) of ncondmax, increase ncondmax.
+c       --- That is the maximum number of points needed to fill an endplate.
+c       --- If the max of necndbdy and nocndbdy are within 3*max(nx,ny) if
+c       --- ncndmax, increase ncndmax.  That is roughly the number of points
+c       --- needed for one axial slice of a rod.
+c       --- Set flag ichange so that if anything needs to be changed, all
+c       --- of the changes can be made at once.
+        ichange = 0
+        if (ncond + (1+nx)*(1+ny) > ncondmax) then
+          ncondmax = ncond + (1+nx)*(1+ny)
+          ichange = 1
+        endif
+        if (max(necndbdy,nocndbdy) + 3*max(nx,ny) > ncndmax) then
+          ncndmax = max(necndbdy,nocndbdy) + 3*max(nx,ny)
+          ichange = 1
+        endif
+        if (ichange == 1) call gchange("PSOR3d",0)
+
+c     --- end loop over z
+      enddo
+
+c +++++++++++++++++++++++++++
+c     --- calculates the points on the endplates including slices before
+c     --- and after for purposes of subgrid placement.
+c     --- This is done in a seperate loop since the planes iz=-1 and nz+1
+c     --- must also be checked.
+      iq = 0
+      do iz=-1,nz+1
+c       --- find location in lattice array
+        zz = zgrid + zmmin + iz*dz
+
+c       --- Get id of quadrupole element
+        call getquadid(zz,offset,iq,1)
+
+c       --- set up temp variables for locating quadrupoles
+        qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
+
+c       --- calculate (in lab frame) start and end of quad
+        qs = qdcenter - 0.5*(quadrl(iq) + quadgl(iq))
+        qe = qdcenter + 0.5*(quadrl(iq) + quadgl(iq))
 
 c       --- plate on left hand side of quad
-        if (islctype(iz) == 4 .and. islctype(iz-1) /= 4) then
+        if ((islctype(iz) == 4 .and. islctype(iz-1) /= 4) .or.
+     &      (iz == -1 .and. islctype(iz) == 4)) then
+
           if (quadgp(iq) < 0.) then
             vvv = slicvy(iz) + qdelvyp(iq)
           else
@@ -5836,7 +5871,9 @@ c       --- plate on left hand side of quad
         endif
 
 c       --- plate on right hand side of quad
-        if (islctype(iz) == 5 .and. islctype(iz-1) /= 5) then
+        if ((islctype(iz) == 5 .and. islctype(iz-1) /= 5) .or.
+     &      (iz == -1 .and. islctype(iz) == 5)) then
+
           if (quadgp(iq) > 0.) then
             vvv = slicvy(iz) + qdelvyp(iq)
           else
@@ -5878,7 +5915,6 @@ c       --- of the changes can be made at once.
         endif
         if (ichange == 1) call gchange("PSOR3d",0)
 
-c     --- end loop over z
       enddo
 
 c +++++++++++++++++++++++++++
@@ -6904,11 +6940,13 @@ c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
 
 c Set limits for longitudinal loops.  They are set so that the minimum
 c end is rounded up and maximum end is rounded down, ensuring that iz is
-c within the conductor.
+c within the conductor. The addition and subtraction of nz prevents
+c numbers in the range of -1 and 0 from being rounded to zero.
+c Is there no "floor" function in fortran?
       zgmin = zmmin + zbeam
       zgmax = zmmax + zbeam
-      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
-      izmax =    int((zmax-zgmin)*dzi+zfuzz)
+      izmin = int((zmin - zgmin)*dzi - zfuzz + 1 + nz) - nz
+      izmax = int((zmax - zgmin)*dzi + zfuzz     + nz) - nz
 
 c Perform error checking, to make sure that izmin and izmax are within the
 c grid.
@@ -6917,7 +6955,7 @@ c grid.
      
 c If izmin > izbmax or izmax < izbmin then the conductor is completely off
 c of the grid, so return.
-      if (izmin > izbmax .or. izmax < izbmin) then
+      if (izmin > izbmax+1 .or. izmax < izbmin-1) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
@@ -6991,8 +7029,8 @@ c       --- Calculate r at zmin and zmax.
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
-        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
+        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz  +nz)-nz)
+        izmax = min(izbmax,int((zmax-zgmin)*dzi+zfuzz+1+nz)-nz)
 
 c       -- Set all points along and just outside conductor.
         do iz=izmin,izmax
@@ -7477,11 +7515,13 @@ c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
 
 c Set limits for longitudinal loops.  They are set so that the minimum
 c end is rounded up and maximum end is rounded down, ensuring that iz is
-c within the conductor.
+c within the conductor. The addition and subtraction of nz prevents
+c numbers in the range of -1 and 0 from being rounded to zero.
+c Is there no "floor" function in fortran?
       zgmin = zmmin + zbeam
       zgmax = zmmax + zbeam
-      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
-      izmax = int((zmax-zgmin)*dzi+zfuzz)
+      izmin = int((zmin - zgmin)*dzi - zfuzz + 1 + nz) - nz
+      izmax = int((zmax - zgmin)*dzi + zfuzz     + nz) - nz
 
 c Perform error checking, to make sure that izmin and izmax are within the
 c grid.
@@ -7490,7 +7530,7 @@ c grid.
      
 c If izmin > izbmax or izmax < izbmin then the conductor is completely off
 c of the grid, so return.
-      if (izmin > izbmax .or. izmax < izbmin) then
+      if (izmin > izbmax-1 .or. izmax < izbmin-1) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
@@ -7566,8 +7606,8 @@ c       --- Calculate r at zmin and zmax.
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
-        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
+        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz  +nz)-nz)
+        izmax = min(izbmax,int((zmax-zgmin)*dzi+zfuzz+1+nz)-nz)
 
 c       -- Loop over z planes
         do iz=izmin,izmax
@@ -8074,11 +8114,13 @@ c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
 
 c Set limits for longitudinal loops.  They are set so that the minimum
 c end is rounded up and maximum end is rounded down, ensuring that iz is
-c within the conductor.
+c within the conductor. The addition and subtraction of nz prevents
+c numbers in the range of -1 and 0 from being rounded to zero.
+c Is there no "floor" function in fortran?
       zgmin = zmmin + zbeam
       zgmax = zmmax + zbeam
-      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
-      izmax =    int((zmax-zgmin)*dzi+zfuzz)
+      izmin = int((zmin - zgmin)*dzi - zfuzz + 1 + nz) - nz
+      izmax = int((zmax - zgmin)*dzi + zfuzz     + nz) - nz
 
 c Perform error checking, to make sure that izmin and izmax are within the
 c grid.
@@ -8087,7 +8129,7 @@ c grid.
      
 c If izmin > izbmax or izmax < izbmin then the conductor is completely off
 c of the grid, so return.
-      if (izmin > izbmax .or. izmax < izbmin) then
+      if (izmin > izbmax+1 .or. izmax < izbmin-1) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
@@ -8139,8 +8181,8 @@ c       --- Calculate r at zmin and zmax.
 
 c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
 c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
-        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
+        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz  +nz)-nz)
+        izmax = min(izbmax,int((zmax-zgmin)*dzi+zfuzz+1+nz)-nz)
 
 c       -- Set all points along and just outside conductor.
         do iz=izmin,izmax
