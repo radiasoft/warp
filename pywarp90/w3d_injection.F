@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.2 $, $Date: 2004/08/06 23:42:39 $
+c@(#) File w3d_injection.F, version $Revision: 1.3 $, $Date: 2004/09/17 18:06:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -42,7 +42,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: rr,ehalf,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rrr,rri
       real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,vznorm,rp
       real(kind=8):: clightsqi
-      real(kind=8):: xinj,yinj,zinj,ainj,ainji,ainjmini,binj,binji,binjmini
+      real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
       real(kind=8):: apinj,bpinj,rinj,rinji,vzinj
       real(kind=8):: sphericalcorrection
       real(kind=8):: vtx,vty
@@ -130,8 +130,6 @@ c         --- loop over injection sources
             binj = binject(ij)
             ainji = 1./ainject(ij)
             binji = 1./binject(ij)
-            xinj = xinject(ij)
-            yinj = yinject(ij)
             zinj = zinject(ij)
             apinj = apinject(ij)
             bpinj = bpinject(ij)
@@ -241,25 +239,25 @@ c           --- (data is loaded into particle arrays)
 c           --- Initialize positions as rectangular or elliptical depending on linj_rectangle
             if(linj_rectangle) then
               do ip=1,nn
-                xt(ip) = ainj*(2.*xt(ip)-1.0) + xinj
-                yt(ip) = binj*(2.*yt(ip)-1.0) + yinj
+                xt(ip) = ainj*(2.*xt(ip)-1.0)
+                yt(ip) = binj*(2.*yt(ip)-1.0)
               enddo
             else
               do ip=1,nn
 c               --- Convert r**2 into r and yt into a random angle
                 xt_tmp = sqrt(xt(ip))
                 yt_tmp = 2.*pi*yt(ip)
-                xt(ip) = ainj*xt_tmp*cos(yt_tmp) + xinj
-                yt(ip) = binj*xt_tmp*sin(yt_tmp) + yinj
+                xt(ip) = ainj*xt_tmp*cos(yt_tmp)
+                yt(ip) = binj*xt_tmp*sin(yt_tmp)
               enddo
             endif
             do ip=1,nn
 c             --- find injection surface axial location via interpolation
 c             --- The absolute values are needed for the cases of symmetry.
-              ixx = abs(xt(ip) - xmmin)*dxi
-              iyy = abs(yt(ip) - ymmin)*dyi
-              wxx = abs(xt(ip) - xmmin)*dxi - ixx
-              wyy = abs(yt(ip) - ymmin)*dyi - iyy
+              ixx = abs(xt(ip) - inj_xmmin(ij))*dxi
+              iyy = abs(yt(ip) - inj_ymmin(ij))*dyi
+              wxx = abs(xt(ip) - inj_xmmin(ij))*dxi - ixx
+              wyy = abs(yt(ip) - inj_ymmin(ij))*dyi - iyy
               zs = inj_grid(ixx  ,iyy  ,ij)*(1. - wxx)*(1. - wyy) +
      &             inj_grid(ixx+1,iyy  ,ij)*      wxx *(1. - wyy) +
      &             inj_grid(ixx  ,iyy+1,ij)*(1. - wxx)*      wyy  +
@@ -273,10 +271,8 @@ c             --- Only save particle if it is within the injection region.
                 zp(ii) = zs
                 vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
                 vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
-                uxp(ii) = vzinj*(apinj*(xp(ii)-xinj)*ainji) +
-     &                    vtx*uxt(ip)
-                uyp(ii) = vzinj*(bpinj*(yp(ii)-yinj)*binji) +
-     &                    vty*uyt(ip)
+                uxp(ii) = vzinj*apinj*xp(ii)*ainji + vtx*uxt(ip)
+                uyp(ii) = vzinj*bpinj*yp(ii)*binji + vty*uyt(ip)
                 if(l_inj_addtempz_abs) then
                   uzp(ii) = vzinj + abs(0.5*vthz_s(is)*uzt(ip))
                 else
@@ -306,12 +302,23 @@ c           --- make injected particles live particles
             ins(is) = ins(is) - nn
             nps(is) = nps(is) + nn
 
+c           --- Transform particles to lab frame
+            ii = ins(is)
+            if (nn > 0) then
+c             --- The check if nn > 0 is needed since if npmax was zero
+c             --- and no particles were injected then npmax stays zero
+c             --- and the particle arrays are unallocated.
+              call inj_transform(nn,xp(ii),yp(ii),zp(ii),1,ij,1,.true.)
+              call inj_transform(nn,uxp(ii),uyp(ii),uzp(ii),1,ij,1,.false.)
+            endif
+
 c           --- get E self-field at initial positions
             call inj_sete3d(nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                      pid(ins(is),injpid),inj_dz,at,bt,apt)
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
+c           --- The reusing of variable makes for very confusing naming!
             do ip=1,nn
               xt(ip) = 0.
               yt(ip) = 0.
@@ -516,8 +523,6 @@ c           --- Set some temporaries.
             binji = 1./binject(ij)
             ainjmini = 1./dvnz(ainjmin(ij))
             binjmini = 1./dvnz(binjmin(ij))
-            xinj = xinject(ij)
-            yinj = yinject(ij)
             zinj = zinject(ij)
             apinj = apinject(ij)
             bpinj = bpinject(ij)
