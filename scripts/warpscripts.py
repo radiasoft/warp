@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.7 2002/05/31 23:19:38 dave Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.8 2003/01/16 20:19:13 dave Exp $"
 
 def warpscriptsdoc():
   print """
@@ -49,10 +49,12 @@ plarr3d.py: routines to plot 3-D array of points with or without connecting
 ptob.py: routine to save multi-dimensional array in a basis readable pdb file
 pyBasis.py: defines routines to emulate basis functionality
             (automatically imported)
+pyOpenDX.py: defines convenience routines for using the OpenDX wrapper
 realboundaries.py: routines allowing automatic boundaries for wxy
 residual.py: calculates residual of Poisson's equation, del**2 phi - rho
 runcounter.py: implements a counter for series of simulations
 singleparticle.py: sets WARP up for single particle calculations
+VPythonobjects.py: defines convenience functions for using VPython
 warp.py: fundamental warp script (already imported)
 warphelp.py: brief list of some available commands
 warpplots.py: various convenient plotting routines such as particle plots
