@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.29 $, $Date: 2002/04/15 18:33:28 $
+c@(#) File F3D.M, version $Revision: 3.30 $, $Date: 2002/04/18 21:46:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4270,12 +4270,16 @@ c
 c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
 
+      real(kind=8):: boundarrx(0:nx,2,0:nz)
+      real(kind=8):: boundarry(0:ny,2,0:nz)
+      real(kind=8):: phisave(int((nx+1)*(ny+1)*(nz+1)/(.9*nx-1)))
       real(kind=8):: rdx2,rdy2,rdz2,rdel,reps0,const
       real(kind=8):: rdx2c,rdy2c,rdz2c,reps0c,spm1
       real(kind=8):: ecdelmxi(necndbdy),ecdelmyi(necndbdy),ecdelmzi(necndbdy)
       real(kind=8):: ecdelpxi(necndbdy),ecdelpyi(necndbdy),ecdelpzi(necndbdy)
       real(kind=8):: ocdelmxi(nocndbdy),ocdelmyi(nocndbdy),ocdelmzi(nocndbdy)
       real(kind=8):: ocdelpxi(nocndbdy),ocdelpyi(nocndbdy),ocdelpzi(nocndbdy)
+      integer(ISZ):: nsorerr
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,iimz,iipz,izl,izr,parity
       integer(ISZ):: i,k,ii,ie,ix,iy,iz,ic
       real(kind=8):: rs,x,r,nsorerri
@@ -4306,6 +4310,13 @@ c in the lab frame.  Set gridmode to 1 to avoid this call.
      &  call setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                l2symtry,l4symtry)
 
+c Set up for error calculations.  Set nsorerr so the sample points used to
+c check for convergence are spread throughout the grid.  The expression
+c (.9*nx-1) was chosen somewhat randomly. Note that the same expression
+c must be used as the one above for the shape of phisave.
+      nsorerr = (nx+1)*(ny+1)*(nz+1)/(.9*nx-1)
+      nsorerri = 1./nsorerr
+
 c Set temporary variables (these are used to increase performance)
       rdx2 = dx**(-2)
       rdy2 = dy**(-2)
@@ -4318,7 +4329,6 @@ c Set temporary variables (these are used to increase performance)
       rdz2c = rdz2*const
       reps0c = reps0*const
       spm1 = 1. - sorparam
-      nsorerri = 1./nsorerr
 
 c Set indices for 1d arrays used in the seven point finite difference
 c form of Poisson's equation.
@@ -4447,7 +4457,7 @@ c         --- with real(kind=8):: numbers so that there is not an integer overfl
 
           if (ie == isorerr) then
             do i=1,nsorerr
-              sorerrar(i) = phi1d(nxy*izl +
+              phisave(i) = phi1d(nxy*izl +
      &                int(1.*i*nxy*(izr-izl+1)*nsorerri+.5) )
             enddo
           endif
@@ -4456,12 +4466,12 @@ c         --- Save values on the transverse boundaries.
 c         --- Both even and odd points are saved for all transverse boundaries.
           do iz=izl-1,izr-1
             do ix=0,nx
-              boundarr(ix,2,iz) = phi(ix,0,iz)
-              boundarr(ix,4,iz) = phi(ix,ny,iz)
+              boundarrx(ix,1,iz) = phi(ix,0,iz)
+              boundarrx(ix,2,iz) = phi(ix,ny,iz)
             enddo
             do iy=0,ny
-              boundarr(iy,1,iz) = phi(0,iy,iz)
-              boundarr(iy,3,iz) = phi(nx,iy,iz)
+              boundarry(iy,1,iz) = phi(0,iy,iz)
+              boundarry(iy,2,iz) = phi(nx,iy,iz)
             enddo
           enddo
 
@@ -4545,12 +4555,12 @@ c           --- since only want to restore the values changed from the 1d
 c           --- loop.  This automatically takes care of Dirichlet boundaries.
             do iz=izl-1,izr-1
               do ix=mod(iz+parity,2),nx,2
-                phi(ix,0,iz) = boundarr(ix,2,iz)
-                phi(ix,ny,iz) = boundarr(ix,4,iz)
+                phi(ix,0,iz) = boundarrx(ix,1,iz)
+                phi(ix,ny,iz) = boundarrx(ix,2,iz)
               enddo
               do iy=mod(iz+parity,2),ny,2
-                phi(0,iy,iz) = boundarr(iy,1,iz)
-                phi(nx,iy,iz) = boundarr(iy,3,iz)
+                phi(0,iy,iz) = boundarry(iy,1,iz)
+                phi(nx,iy,iz) = boundarry(iy,2,iz)
               enddo
             enddo
 
@@ -4629,7 +4639,7 @@ c           --- surface of the conductor boundaries.
      &                     ecdelmxi(1),ecdelmyi(1),ecdelmzi(1),
      &                     ecdelpxi(1),ecdelpyi(1),ecdelpzi(1),
      &                     iecndx(1),iecndy(1),iecndz(1),ecvolt(1),ecndpvph(1),
-     &                     nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                     bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
               else
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
@@ -4639,7 +4649,7 @@ c           --- surface of the conductor boundaries.
      &                     ocdelmxi(1),ocdelmyi(1),ocdelmzi(1),
      &                     ocdelpxi(1),ocdelpyi(1),ocdelpzi(1),
      &                     iocndx(1),iocndy(1),iocndz(1),ocvolt(1),ocndpvph(1),
-     &                     nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                     bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
               endif
             endif
@@ -4671,9 +4681,9 @@ c         --- done with real(kind=8):: numbers so that there is not an integer o
           if (ie == isorerr) then
             sorerror = 0.
             do i=1,nsorerr
-              sorerrar(i)=abs(phi1d(nxy*izl +
-     &              int(1.*i*nxy*(izr-izl+1)*nsorerri+.5)) - sorerrar(i))
-              if (sorerrar(i) > sorerror) sorerror = sorerrar(i)
+              phisave(i)=abs(phi1d(nxy*izl +
+     &              int(1.*i*nxy*(izr-izl+1)*nsorerri+.5)) - phisave(i))
+              if (phisave(i) > sorerror) sorerror = phisave(i)
             enddo
 #ifdef MPIPARALLEL
 c*********************Parallel Routine*********************
@@ -4953,9 +4963,9 @@ c===========================================================================
      &                    cdelmx,cdelmy,cdelmz,cdelpx,cdelpy,cdelpz,
      &                    cdelmxi,cdelmyi,cdelmzi,cdelpxi,cdelpyi,cdelpzi,
      &                    icndx,icndy,icndz,cvolt,cndpvph,
-     &                    nzpsor,bound0,boundnz,boundxy,l2symtry,l4symtry,
+     &                    bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                    izfsmin,izfsmax,dx,dy,dz,icndbndy)
-      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,nzpsor
+      integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
       real(kind=8):: cdelmx(ncndmax), cdelmy(ncndmax), cdelmz(ncndmax)
@@ -5220,45 +5230,6 @@ c     --- it defaults to 0.
       zparity = mod(izslave(my_index),2)
 #endif
 
-c Set grid cell sizes needed by PSOR
-      nzpsor = nz
-      nxpsor = max(nx,ny)
-
-c     --- This is commented out since it is not really needed (the
-c     --- conductor arrays sizes are increased as needed) and because
-c     --- the estimates can be significantly too high, by a factor
-c     --- of four or more.
-c     --- Estimate max number of points for all rods and allocate space.
-c     --- Only do this if the conductors are not define by the user.
-c     --- As this is only an estimate, the routine that fills the arrays
-c     --- adds space as necessary.
-c     if (ncondmax == 0 .and. nquad > 0) then
-c       nc = 2.*abs(quadrr(1))/min(dx,dy)
-c       if (l2symtry .or. l4symtry) nc = 0.5*nc
-c       ncondmax = 2*nc*8*nz
-c       do iq=2,nquad
-c         nc = 2.*quadrr(iq)/min(dx,dy)*8*nz
-c         if (l2symtry .or. l4symtry) nc = 0.5*nc
-c         if (nc > ncondmax) ncondmax = 2*nc
-c       enddo
-c       --- add more elements for end plates; estimate number of plates
-c       --- by dividing mesh length by length of first quad.
-c       if (lplates) then
-c         if (nquad >= 1) then
-c           ncondmax = ncondmax + 2*nx*ny*(nz*dz/(quadze(1) - quadzs(1)))
-c         else
-c           call remark("Warning: lplates set to true when there are no quadrupoles")
-c         endif
-c       endif
-c       if (ncndmax == 0) ncndmax = 2*max(nx,ny)*nz*1.5
-c     endif
-
-c Set up for error calculations.  Set nsorerr so the sample points used to
-c check for convergence are spread throughout the grid.  The expression
-c (.9*nx-1) was chosen somewhat randomly.
-      if (nsorerr == 0) nsorerr = (nx+1)*(ny+1)*(nz+1)/(.9*nx-1)
-      if (isorerr == 0) isorerr = 5
-
 c Now allocate all of the needed space.
       call gchange("PSOR3d",0)
 
@@ -5268,10 +5239,6 @@ c===========================================================================
 c===========================================================================
       subroutine setcndtr(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                    l2symtry,l4symtry)
-      use PSOR3d
-      use Lattice
-      use InjectVars
-      use InGen
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
@@ -5283,7 +5250,39 @@ c  If quadrr is negative for that electrode a hyperbolic shape is asssumed
 c  rather than a circular cylinder. (modified by I. Haber)
 c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
 
+c     --- Call the appropriate routine.
+      if(solvergeom==RZgeom) then
+        call setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                  l2symtry,l4symtry)
+c     else if(fstype==11) then
+c       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+c    &                    l2symtry,l4symtry)
+      else
+        call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                  l2symtry,l4symtry)
+      end if
 
+      return
+      end
+c===========================================================================
+      subroutine setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                      l2symtry,l4symtry)
+      use PSOR3d
+      use Lattice
+      use InjectVars
+      use InGen
+      integer(ISZ):: nx,ny,nz
+      real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
+      logical(ISZ):: l2symtry,l4symtry
+
+c  Find type of slice, and put quad voltage into slicvx,slicvy.
+c  This routine is dependent upon quad variables.
+c  If quadrr is negative for that electrode a hyperbolic shape is asssumed
+c  rather than a circular cylinder. (modified by I. Haber)
+c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
+
+      integer(ISZ):: islctype(-1:nz+1)
+      real(kind=8):: slicvx(-1:nz+1),slicvy(-1:nz+1)
       integer(ISZ):: ix,iz,iq,ix_axis,iy_axis
       integer(ISZ):: izp1,izm1
       integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax,ichange,id,ij
@@ -5293,20 +5292,6 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
       real(kind=8):: vvv,aper,rmax,prevcent,dipocent,delx
       real(kind=8):: fuzz,zfuzz
       logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
-
-      if(solvergeom==RZgeom) then
-        call setcndtrrz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                    l2symtry,l4symtry)
-        return
-c     else if(fstype==11) then
-c       call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-c    &                    l2symtry,l4symtry)
-c       return
-      end if
-
-      dxpsor = dx
-      nzpsor = nz
-      call gchange("PSOR3d",0)
 
 c     --- fuzz is used to prevent the distance from a point to the surface
 c     --- from being too small or zero.  Any point within fuzz of the surface
@@ -5320,6 +5305,13 @@ c     --- outside of the grid need to be found in order to apply the subgrid
 c     --- scheme near the z edges of the mesh.
 c     --- This refers directly to the quad arrays rather than the cquad arrays
 c     --- since cquad arrays are only intended to be accessed by particles.
+c     --- Key for islctype:
+c     ---   0: drift
+c     ---   1: quads on x axis
+c     ---   2: quads on both
+c     ---   3: quads on y axis
+c     ---   4: plate left of quad
+c     ---   5: plate right of quad
       iq = 0
       lnotice = .false.
       do iz=-1,nz+1
@@ -5855,9 +5847,9 @@ c +++++++++++++++++++++++++++
 c       --- Make arrays bigger if they are about to be filled up.
 c       --- If ncond is within (1+nx)*(1+ny) of ncondmax, increase ncondmax.
 c       --- That is the maximum number of points needed to fill an endplate.
-c       --- If the max of necndbdy and nocndbdy are within 3*nxpsor if ncndmax,
-c       --- increase ncndmax.  That is roughly the number of points needed
-c       --- for one axial slice of a rod.
+c       --- If the max of necndbdy and nocndbdy are within 3*max(nx,ny) if
+c       --- ncndmax, increase ncndmax.  That is roughly the number of points
+c       --- needed for one axial slice of a rod.
 c       --- Set flag ichange so that if anything needs to be changed, all
 c       --- of the changes can be made at once.
         ichange = 0
@@ -5865,8 +5857,8 @@ c       --- of the changes can be made at once.
           ncondmax = ncond + (1+nx)*(1+ny)
           ichange = 1
         endif
-        if (max(necndbdy,nocndbdy) + 3*nxpsor > ncndmax) then
-          ncndmax = max(necndbdy,nocndbdy) + 3*nxpsor
+        if (max(necndbdy,nocndbdy) + 3*max(nx,ny) > ncndmax) then
+          ncndmax = max(necndbdy,nocndbdy) + 3*max(nx,ny)
           ichange = 1
         endif
         if (ichange == 1) call gchange("PSOR3d",0)
@@ -6033,7 +6025,6 @@ c     --- points.
       endif
 
 c     --- set temporaries
-      dxpsor = dx
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
@@ -6271,7 +6262,6 @@ c     &                    aper,rmax,vvv,xoff,yoff,delz_in,iz,lz_in_plate,fuzz)
 c        return
 c      end if
 
-      dxpsor = dx
       dxi = 1./dx
       dyi = 1./dy
       pradsq = rmax**2
@@ -6597,9 +6587,9 @@ c     --- Set size of fuzz
 c     --- calculate points for injection source
       do ij=1,ninject
 c       --- find bounds of loop
-        ixmin = max(1,   int((-ainject(ij)+xinject(ij))/dx+ix_axis-1))
+        ixmin = max(1,       int((-ainject(ij)+xinject(ij))/dx+ix_axis-1))
         ixmax = min(inj_nx-1,int((+ainject(ij)+xinject(ij))/dx+ix_axis+1))
-        iymin = max(1,   int((-binject(ij)+yinject(ij))/dy+iy_axis-1))
+        iymin = max(1,       int((-binject(ij)+yinject(ij))/dy+iy_axis-1))
         iymax = min(inj_ny-1,int((+binject(ij)+yinject(ij))/dy+iy_axis+1))
 
 c       --- Define maximum and minimum transverse extents of source
@@ -6729,9 +6719,8 @@ c===========================================================================
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
       use Surface_of_Rev
-      use InGen
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
-      character(*) rofzfunc
+      character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -6771,6 +6760,88 @@ c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of PSOR3d.
 
+      real(kind=8):: zz
+      integer(ISZ):: i
+      real(kind=8):: srfrv_f
+
+c     --- Table-ize the data if srfrv_pernz > 0.
+      if (srfrv_pernz > 0 .and. .not. lsrlinr) then
+        npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
+        zz = (zmax - zmin)/(npnts_sr - 1)
+        call gchange("Surface_of_Rev",0)
+        do i=1,npnts_sr
+          z_sr(i) = zmin + (i-1)*zz
+          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
+        enddo
+        lsrlinr = .true.
+      endif
+
+c     --- Call the appropriate version of the routine.
+      if(solvergeom==RZgeom) then
+        call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                    xmin,xmax,ymin,ymax,lshell,
+     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      else
+        call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                  xmin,xmax,ymin,ymax,lshell,
+     &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      end if
+
+c     --- Clean up the table-ized data.
+      if (srfrv_pernz > 0) then
+        lsrlinr = .false.
+      endif
+
+
+      return
+      end
+c===========================================================================
+      subroutine srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                      xmin,xmax,ymin,ymax,lshell,
+     &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      use PSOR3d
+      character(*):: rofzfunc
+      real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
+      logical(ISZ):: lfill,lshell
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Sets up a conductor represented by the outside of a surface of revolution.
+c The Basis routine rofzfunc should be of the form
+c    function rofz
+c      $z = srfrv_z
+c      $r = f($z)
+c      srfrv_r = $z
+c    endf
+c where f() is the radius as a function of z and srfrv_z and srfrv_r are
+c compiled variables which pass data into and out of rofz.
+c The begining of the calling sequence would then be
+c call srfrvout("rofz",...)
+c
+c Input:
+c   rofzfunc  is the name of the basis routine which calculates the radius as a
+c             function of z.
+c   volt      is the voltage on the conductor.
+c   zmin      is the minimum z of the conductor.
+c   zmax      is the maximum z of the conductor.
+c   xcent     is the x center of the conductor.
+c   ycent     is the y center of the conductor.
+c   rmax      is the maximum radius of the conductor.
+c   lfill     is the logical requesting that the whole conductor be filled
+c             with points.
+c   lshell    is the logical requesting that the shell be subgrid resolved
+c   xmin,xmax,ymin,ymax
+c             min and max transverse extent of conductor.
+c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+c   xmesh,ymesh,l2symtry,l4symtry
+c            are all variables describing the grid.
+c Output is put directly into the conductor arrays of PSOR3d.
 
       integer(ISZ):: ix,iy,iz,i
       real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
@@ -6786,34 +6857,8 @@ c Output is put directly into the conductor arrays of PSOR3d.
       real(kind=8):: max_dxdy,dxi,dyi,dzi
       real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
+      real(kind=8):: x(2),f(2)
 
-      if(solvergeom==RZgeom) then
-        call srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-     &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-        return
-c     else if(fstype==11) then
-c       call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-c    &                    xmin,xmax,ymin,ymax,lshell,
-c    &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-c    &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-c      return
-      end if
-
-c Table-ize the data if srfrv_pernz > 0.
-      if (srfrv_pernz > 0 .and. .not. lsrlinr) then
-        npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
-        zz = (zmax - zmin)/(npnts_sr - 1)
-        call gchange("Surface_of_Rev",0)
-        do i=1,npnts_sr
-          z_sr(i) = zmin + (i-1)*zz
-          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
-        enddo
-        lsrlinr = .true.
-      endif
-
-      dxpsor = dx
       rmaxsq = rmax*rmax
       max_dxdy = max(dx,dy)
       dxi = 1./dx
@@ -7038,25 +7083,48 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew > rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew <= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                x(1) = min(zz,zmax)
+                f(1) = rrr - rad
+                x(2) = zlower
+                f(2) = rrrlower - rad
+                iterrf = 0
+                do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
+                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  iterrf = iterrf + 1
+                end do
+                if (abs(f(2))+abs(f(1)) < rfuzz .and.
+     &              zlower <= x(i) .and. x(i) < zz) then
+                  delmz = (zz - x(i))*dzi
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (min(zz,zmax) - zlower)*0.5
+                  znew = zlower
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rofzfunc,0)
+                    if (rnew > rad) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew <= rad) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delmz = (zz - znew)*dzi
+                endif
               elseif (rad < rrrlower .or. rad > min(rrr,rmax)-rfuzz) then
                 delmz = 2.
               endif
@@ -7071,25 +7139,48 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew <= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                x(1) = max(zz,zmin)
+                f(1) = rrr - rad
+                x(2) = zhigher
+                f(2) = rrrhigher - rad
+                iterrf = 0
+                do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
+                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  iterrf = iterrf + 1
+                end do
+                if (abs(f(2))+abs(f(1)) < rfuzz .and.
+     &              zz < x(i) .and. x(i) <= zhigher) then
+                  delpz = (x(i) - zz)*dzi
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (max(zz,zmin) - zhigher)*0.5
+                  znew = zhigher
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rofzfunc,0)
+                    if (rnew <= rad) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew > rad) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delpz = (znew - zz)*dzi
+                endif
               elseif (rad < rrrhigher .or. rad > min(rrr,rmax)-rfuzz) then
                 delpz = 2.
               endif
@@ -7186,11 +7277,6 @@ c                 --- odd
         enddo
       endif
 
-c     --- Clean up the table-ized data.
-      if (srfrv_pernz > 0) then
-        lsrlinr = .false.
-      endif
-
       return
       end
 c========================================================================
@@ -7202,7 +7288,84 @@ c========================================================================
      &                   xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
       use Surface_of_Rev
-      character(*) rofzfunc
+      character(*):: rofzfunc
+      real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
+      real(kind=8):: xmin,xmax,ymin,ymax
+      logical(ISZ):: lfill,lshell
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Sets up a conductor represented by the inside of a surface of revolution.
+c The Basis routine rofzfunc should be of the form
+c    function rofz
+c      $z = srfrv_z
+c      $r = f($z)
+c      srfrv_r = $z
+c    endf
+c where f() is the radius as a function of z and srfrv_z and srfrv_r are
+c compiled variables which pass data into and out of rofz.
+c The begining of the calling sequence would then be
+c call srfrvin("rofz",...)
+c
+c Input:
+c   rofzfunc  is the name of the basis routine which calculates the radius as a
+c             function of z.
+c   volt      is the voltage on the conductor.
+c   zmin      is the minimum z of the conductor.
+c   zmax      is the maximum z of the conductor.
+c   xcent     is the x center of the conductor.
+c   ycent     is the y center of the conductor.
+c   rmin      is the minimum radius of the conductor.
+c   lfill     is the logical requesting that the whole conductor be filled
+c             with points.
+c   lshell    is the logical requesting that the shell be subgrid resolved
+c   xmin,xmax,ymin,ymax
+c             min and max transverse extent of conductor.
+c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+c   xmesh,ymesh,l2symtry,l4symtry
+c            are all variables describing the grid.
+c Output is put directly into the conductor arrays of PSOR3d.
+c See comments in srfrvout.
+
+      real(kind=8):: zz,srfrv_f
+      integer(ISZ):: i
+
+c     --- Table-ize the data if srfrv_pernz > 0.
+      if (srfrv_pernz > 0 .and. .not. lsrlinr) then
+        npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
+        zz = (zmax - zmin)/(npnts_sr - 1)
+        call gchange("Surface_of_Rev",0)
+        do i=1,npnts_sr
+          z_sr(i) = zmin + (i-1)*zz
+          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
+        enddo
+        lsrlinr = .true.
+      endif
+
+c     --- Call the appropriate routine
+      call srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+     &               xmin,xmax,ymin,ymax,lshell,
+     &               zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &               ix_axis,iy_axis,
+     &               xmesh,ymesh,l2symtry,l4symtry)
+
+c     --- Clean up the table-ized data.
+      if (srfrv_pernz > 0) then
+        lsrlinr = .false.
+      endif
+
+      return
+      end
+c========================================================================
+      subroutine srfrvin3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmin,lfill,
+     &                     xmin,xmax,ymin,ymax,lshell,
+     &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                     ix_axis,iy_axis,
+     &                     xmesh,ymesh,l2symtry,l4symtry)
+      use PSOR3d
+      character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
       real(kind=8):: xmin,xmax,ymin,ymax
       logical(ISZ):: lfill,lshell
@@ -7258,20 +7421,8 @@ c See comments in srfrvout.
       real(kind=8):: max_dxdy,dxi,dyi,dzi
       real(kind=8):: ddz,znew,rnew
       real(kind=8):: srfrv_f
+      real(kind=8):: x(2),f(2)
 
-c Table-ize the data if srfrv_pernz > 0.
-      if (srfrv_pernz > 0 .and. .not. lsrlinr) then
-        npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
-        zz = (zmax - zmin)/(npnts_sr - 1)
-        call gchange("Surface_of_Rev",0)
-        do i=1,npnts_sr
-          z_sr(i) = zmin + (i-1)*zz
-          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
-        enddo
-        lsrlinr = .true.
-      endif
-
-      dxpsor = dx
       rminsq = rmin*rmin
       max_dxdy = max(dx,dy)
       dxi = 1./dx
@@ -7506,25 +7657,48 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delmz > zfuzz*dzi .and.
      &            xxmin <= xx .and. xx <= xxmax .and.
      &            yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew < rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew >= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                x(1) = min(zz,zmax)
+                f(1) = rrr - rad
+                x(2) = zlower
+                f(2) = rrrlower - rad
+                iterrf = 0
+                do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
+                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  iterrf = iterrf + 1
+                end do
+                if (abs(f(2))+abs(f(1)) < rfuzz .and.
+     &              zlower <= x(i) .and. x(i) < zz) then
+                  delmz = (zz - x(i))*dzi
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (min(zz,zmax) - zlower)*0.5
+                  znew = zlower
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rofzfunc,0)
+                    if (rnew < rad) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew >= rad) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delmz = (zz - znew)*dzi
+                endif
               elseif (rad > rrrlower .or. rad < max(rrr,rmin)+rfuzz) then
                 delmz = 2.
               endif
@@ -7539,18 +7713,48 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delpz > zfuzz*dzi .and.
      &            xxmin <= xx .and. xx <= xxmax .and.
      &            yymin <= yy .and. yy <= yymax) then
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew >= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                x(1) = max(zz,zmin)
+                f(1) = rrr - rad
+                x(2) = zhigher
+                f(2) = rrrhigher - rad
+                iterrf = 0
+                do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
+                  f(i) = srfrv_f(x(i),rofzfunc,0) - rad
+                  iterrf = iterrf + 1
+                end do
+                if (abs(f(2))+abs(f(1)) < rfuzz .and.
+     &              zz < x(i) .and. x(i) <= zhigher) then
+                  delpz = (x(i) - zz)*dzi
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (max(zz,zmin) - zhigher)*0.5
+                  znew = zhigher
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rofzfunc,0)
+                    if (rnew >= rad) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew < rad) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delpz = (znew - zz)*dzi
+                endif
               elseif (rad > rrrhigher .or. rad < max(rrr,rmin)+rfuzz) then
                 delpz = 2.
               endif
@@ -7645,11 +7849,6 @@ c             -- Check if any of the distances are less than 1.
         enddo
       endif
 
-c     --- Clean up the table-ized data.
-      if (srfrv_pernz > 0) then
-        lsrlinr = .false.
-      endif
-
       return
       end
 c===========================================================================
@@ -7659,9 +7858,8 @@ c===========================================================================
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
       use PSOR3d
       use Surface_of_Rev
-      use InGen
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
-      character(*) rminofz,rmaxofz
+      character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -7701,40 +7899,10 @@ c   xmesh,ymesh,l2symtry,l4symtry
 c            are all variables describing the grid.
 c Output is put directly into the conductor arrays of PSOR3d.
 
+      real(kind=8):: zz,srfrv_f
+      integer(ISZ):: i
 
-      integer(ISZ):: ix,iy,iz,i
-      real(kind=8):: rad,rrrmax,rrrmin,rmin,rmax
-      real(kind=8):: zgmin,zgmax
-      real(kind=8):: rmin_zmin,rmin_zmax
-      real(kind=8):: rmax_zmin,rmax_zmax
-      real(kind=8):: rrrminlower,rrrminhigher,rrrmaxlower,rrrmaxhigher
-      real(kind=8):: zlower,zhigher
-      real(kind=8):: xxmin,xxmax,yymin,yymax
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: jxmin,jxmax,jymin,jymax
-      integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
-      real(kind=8):: delmz0,delpz0
-      real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
-      real(kind=8):: max_dxdy,dxi,dyi,dzi
-      real(kind=8):: ddz,znew,rnew
-      real(kind=8):: srfrv_f
-
-      if(solvergeom==RZgeom) then
-         call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-     &                   lzend,xmin,xmax,ymin,ymax,lshell,
-     &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-        return
-c     else if(fstype==11) then
-c        call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
-c    &                   lzend,xmin,xmax,ymin,ymax,lshell,
-c    &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-c    &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-c       return
-      end if
-
-c Table-ize the data if srfrv_pernz > 0.
+c     --- Table-ize the data if srfrv_pernz > 0.
       if (srfrv_pernz > 0 .and. .not. lsrminlinr) then
         npnts_srmin = (zmax - zmin)/dz*srfrv_pernz + 1
         zz = (zmax - zmin)/(npnts_srmin - 1)
@@ -7756,7 +7924,97 @@ c Table-ize the data if srfrv_pernz > 0.
         lsrmaxlinr = .true.
       endif
 
-      dxpsor = dx
+c     --- Call the appropriate routine
+      if(solvergeom==RZgeom) then
+         call srfrvinoutrz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+     &                   lzend,xmin,xmax,ymin,ymax,lshell,
+     &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+c     else if(fstype==11) then
+c        call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+c    &                   lzend,xmin,xmax,ymin,ymax,lshell,
+c    &                   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+c    &                   ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      else
+        call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+     &                  lzend,xmin,xmax,ymin,ymax,lshell,
+     &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      end if
+
+c     --- Clean up the table-ized data.
+      if (srfrv_pernz > 0) then
+        lsrminlinr = .false.
+        lsrmaxlinr = .false.
+      endif
+
+      return 
+      end
+c===========================================================================
+      subroutine srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+     &                        lzend,xmin,xmax,ymin,ymax,lshell,
+     &                        zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      use PSOR3d
+      character(*):: rminofz,rmaxofz
+      real(kind=8):: volt,zmin,zmax,xcent,ycent
+      logical(ISZ):: lzend,lshell
+      real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: zmmin,zmmax,zbeam,dx,dy,dz
+      integer(ISZ):: nx,ny,nz,ix_axis,iy_axis
+      real(kind=8):: xmesh(0:nx),ymesh(0:ny)
+      logical(ISZ):: l2symtry,l4symtry
+
+c Sets up a conductor represented by the outside of a surface of revolution.
+c The Basis routines rminofz and rmaxofz should be of the form
+c    function rofz
+c      $z = srfrv_z
+c      $r = f($z)
+c      srfrv_r = $z
+c    endf
+c where f() is the radius as a function of z and srfrv_z and srfrv_r are
+c compiled variables which pass data into and out of rofz.
+c The begining of the calling sequence would then be
+c call srfrvout("rofz",...)
+c
+c Input:
+c   rminofz   is the name of the basis routine which calculates the radius as a
+c             function of z.
+c   rmaxofz   (same)
+c   volt      is the voltage on the conductor.
+c   zmin      is the minimum z of the conductor.
+c   zmax      is the maximum z of the conductor.
+c   xcent     is the x center of the conductor.
+c   ycent     is the y center of the conductor.
+c   lzend     is the logical requesting that the end of the conductor be
+c             included
+c   lshell    is the logical requesting that the shell be subgrid resolved
+c   xmin,xmax,ymin,ymax
+c             min and max transverse extent of conductor.
+c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
+c   xmesh,ymesh,l2symtry,l4symtry
+c            are all variables describing the grid.
+c Output is put directly into the conductor arrays of PSOR3d.
+
+      integer(ISZ):: ix,iy,iz,i
+      real(kind=8):: rad,rrrmax,rrrmin,rmin,rmax
+      real(kind=8):: zgmin,zgmax
+      real(kind=8):: rmin_zmin,rmin_zmax
+      real(kind=8):: rmax_zmin,rmax_zmax
+      real(kind=8):: rrrminlower,rrrminhigher,rrrmaxlower,rrrmaxhigher
+      real(kind=8):: zlower,zhigher
+      real(kind=8):: xxmin,xxmax,yymin,yymax
+      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
+      integer(ISZ):: jxmin,jxmax,jymin,jymax
+      integer(ISZ):: izbmin,izbmax,iterrf
+      real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
+      real(kind=8):: delmz0,delpz0
+      real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
+      real(kind=8):: max_dxdy,dxi,dyi,dzi
+      real(kind=8):: ddz,znew,rnew
+      real(kind=8):: srfrv_f
+      real(kind=8):: x(2),f(2)
+
       max_dxdy = max(dx,dy)
       dxi = 1./dx
       dyi = 1./dy
@@ -7936,48 +8194,94 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew > rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew <= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                x(1) = min(zz,zmax)
+                f(1) = rmin - rad
+                x(2) = zlower
+                f(2) = rrrminlower - rad
+                iterrf = 0
+                do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
+                  f(i) = srfrv_f(x(i),rminofz,1) - rad
+                  iterrf = iterrf + 1
+                end do
+                if (abs(f(2))+abs(f(1)) < rfuzz .and.
+     &              zlower <= x(i) .and. x(i) < zz) then
+                  delmz = (zz - x(i))*dzi
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (min(zz,zmax) - zlower)*0.5
+                  znew = zlower
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rminofz,1)
+                    if (rnew > rad) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew <= rad) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delmz = (zz - znew)*dzi
+                endif
               elseif (rrrmaxlower >= rad .and. rad > rmax+rfuzz
      &            .and. delmz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew < rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew >= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                x(1) = min(zz,zmax)
+                f(1) = rad - rmax
+                x(2) = zlower
+                f(2) = rad - rrrmaxlower
+                iterrf = 0
+                do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = min((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmax)
+                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
+                  iterrf = iterrf + 1
+                end do
+                if (abs(f(2))+abs(f(1)) < rfuzz .and.
+     &              zlower <= x(i) .and. x(i) < zz) then
+                  delmz = (zz - x(i))*dzi
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (min(zz,zmax) - zlower)*0.5
+                  znew = zlower
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rmaxofz,2)
+                    if (rnew < rad) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew >= rad) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delmz = (zz - znew)*dzi
+                endif
               elseif (rad < rrrminlower .or.
      &                rad > rrrmaxlower) then
                 delmz = 2.
@@ -7993,48 +8297,94 @@ c             --- ensures that a distance of zero is not calculated.
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew <= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                x(1) = max(zz,zmin)
+                f(1) = rmin - rad
+                x(2) = zhigher
+                f(2) = rrrminhigher - rad
+                iterrf = 0
+                do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
+                  f(i) = srfrv_f(x(i),rminofz,1) - rad
+                  iterrf = iterrf + 1
+                end do
+                if (abs(f(2))+abs(f(1)) < rfuzz .and.
+     &              zz < x(i) .and. x(i) <= zhigher) then
+                  delpz = (x(i) - zz)*dzi
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (max(zz,zmin) - zhigher)*0.5
+                  znew = zhigher
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rminofz,1)
+                    if (rnew <= rad) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew > rad) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delpz = (znew - zz)*dzi
+                endif
               elseif (rrrmaxhigher >= rad .and. rad > rmax+rfuzz
      &            .and. delpz > zfuzz*dzi .and.
      &          xxmin <= xx .and. xx <= xxmax .and.
      &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew >= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
+c               --- First, try Regula-Falsi (secant method) iteration to
+c               --- find distance in z to the surface. If that doesn't
+c               --- converge rapidly, then go to the brute force binary search.
+c               --- Empirically, it was found that stopping at 12 iterations
+c               --- gives the best performance, with a broad minimum around
+c               --- that point.
+                x(1) = max(zz,zmin)
+                f(1) = rad - rmax
+                x(2) = zhigher
+                f(2) = rad - rrrmaxhigher
+                iterrf = 0
+                do while (abs(f(2))+abs(f(1)) > rfuzz .and. iterrf < 12)
+                  i = 1
+                  if (abs(f(2)) > abs(f(1))) i = 2
+                  x(i) = max((x(1)*f(2)-x(2)*f(1))/(f(2)-f(1)),zmin)
+                  f(i) = rad - srfrv_f(x(i),rmaxofz,2)
+                  iterrf = iterrf + 1
+                end do
+                if (abs(f(2))+abs(f(1)) < rfuzz .and.
+     &              zz < x(i) .and. x(i) <= zhigher) then
+                  delpz = (x(i) - zz)*dzi
+                else
+c                 --- A simple binary search is used to find distance in z
+c                 --- to the surface. This is used since it is more robust
+c                 --- than other root finding methods. The major problem
+c                 --- occurs when the radius changes like a step function.
+c                 --- The secant method (the original coding) converged
+c                 --- very slowly in that case, leaving errors as large as
+c                 --- 10% in the delta and slowing down the code.
+                  ddz = (max(zz,zmin) - zhigher)*0.5
+                  znew = zhigher
+                  do iterrf=1,32
+                    znew = znew + ddz
+                    rnew = srfrv_f(znew,rmaxofz,2)
+                    if (rnew >= rad) then
+                      ddz = -abs(ddz)*0.5
+                    else if (rnew < rad) then
+                      ddz = +abs(ddz)*0.5
+                    endif
+                  enddo
+                  delpz = (znew - zz)*dzi
+                endif
               elseif (rad < rrrminhigher .or.
      &                rad > rrrmaxhigher) then
                 delpz = 2.
@@ -8129,12 +8479,6 @@ c                 --- odd
         enddo
       endif
 
-c     --- Clean up the table-ized data.
-      if (srfrv_pernz > 0) then
-        lsrminlinr = .false.
-        lsrmaxlinr = .false.
-      endif
-
       return
       end
 c========================================================================
@@ -8143,7 +8487,7 @@ c========================================================================
       use Surface_of_Rev
       real(kind=8):: zz
       integer(ISZ):: icase
-      character(*) rofzfunc
+      character(*):: rofzfunc
 c     This function returns the value of radius as a function of z.
 c     That can be calculated either from a piecewise-linear curve, or from
 c     the basis routine rofzfunc.
@@ -8225,689 +8569,23 @@ c       --- Get r(z) from the basis function.
       end
 c===========================================================================
       subroutine setcndtr_rz(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                    l2symtry,l4symtry)
-      use PSOR3d
-      use Lattice
-      use InPart
-      use InjectVars
+     &                       l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
 
-c  Find type of slice, and put quad voltage into slicvx,slicvy.
-c  This routine is dependent upon quad variables.
-c  If quadrr is negative for that electrode a hyperbolic shape is asssumed
-c  rather than a circular cylinder. (modified by I. Haber)
-c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
-
-
-      integer(ISZ):: ix,iz,iq,ix_axis,iy_axis
-      integer(ISZ):: izp1,izm1
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax,ichange,id,ij
-      integer(ISZ):: ix_near,nxinj,nyinj
-      real(kind=8):: zz,offset,qdcenter,qs,qe,rs,re,xmax0,ymax0
-      real(kind=8):: rodrrsq,rodmxsq,rminsq,rrr,delz,rodx,rody,rodap,delz_p
-      real(kind=8):: vvv,aper,rmax,prevcent,dipocent,delx
-      real(kind=8):: fuzz,zfuzz
-      logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
-
       l4symtry = .true.
-
-      dxpsor = dx
-
-c     --- fuzz is used to prevent the distance from a point to the surface
-c     --- from being too small or zero.  Any point within fuzz of the surface
-c     --- is counted to be within the conductor
-      fuzz = 1.e-5
-      zfuzz = dz*fuzz
-
-c     --- loop over z planes to fill islctype array
-c     --- Note that the loop ranges from -1 to nz+1, since any quads just
-c     --- outside of the grid need to be found in order to apply the subgrid
-c     --- scheme near the z edges of the mesh.
-c     --- This refers directly to the quad arrays rather than the cquad arrays
-c     --- since cquad arrays are only intended to be accessed by particles.
-      iq = 0
-      lnotice = .false.
-      do iz=-1,nz+1
-        islctype(iz) = 0
-
-c       --- find location in lattice array
-        zz = zgrid + zmmin + iz*dz
-
-c       --- Get id of quadrupole element
-        call getquadid(zz,offset,iq,1)
-
-c       --- set up temp variables for locating quadrupoles
-        qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
-        slicvx(iz) = quadvx(iq)
-        slicvy(iz) = quadvy(iq)
-
-c       --- calculate (in lab frame) start and end of quad
-        qs = qdcenter - 0.5*(quadrl(iq) + quadgl(iq))
-        qe = qdcenter + 0.5*(quadrl(iq) + quadgl(iq))
-
-c       --- calculate (in lab frame) start and end rods
-        if (quadgp(iq) < 0.) then
-          rs = qs + quadgl(iq) + qdelglx(iq)
-          re = qe - quadgl(iq) - qdelgly(iq)
-        else
-          rs = qs + quadgl(iq) + qdelgly(iq)
-          re = qe - quadgl(iq) - qdelglx(iq)
-        endif
-
-c       --- Only use this quad is the aperture is > 0, and the rod radius
-c       --- and length are also > 0.
-        if (quadap(iq) > 0 .and. quadrr(iq) > 0. .and. quadrl(iq) > 0.) then
-          if (qs <= zz+zfuzz .and. zz+zfuzz < rs .and. zz < re) then
-c           --- rod on one axis, gap in the other
-            if (quadgp(iq) > 0.) then
-              islctype(iz) = 1
-            else
-              islctype(iz) = 3
-            endif
-          elseif (rs <= zz+zfuzz .and. zz-zfuzz <= re) then
-c           --- rods on both axis
-            islctype(iz) = 2
-          elseif (re < zz-zfuzz .and. zz-zfuzz <= qe .and. zz > rs)then
-c           --- rod on one axis, gap in the other
-            if (quadgp(iq) > 0.) then
-              islctype(iz) = 3
-            else
-              islctype(iz) = 1
-            endif
-          endif
-        endif
-
-c       --- find end plates
-        if (lplates .and. quadpa(iq) > 0. .and.
-     &      quadrr(iq) > 0. .and. quadrl(iq) > 0.) then
-          if (qs-quadpw(iq)-qdelpwl(iq) <= zz+zfuzz .and.
-     &        zz-zfuzz <= qs) then
-            islctype(iz) = 4
-          elseif (qe <= zz+zfuzz .and.
-     &             zz-zfuzz <= qe+quadpw(iq)+qdelpwr(iq)) then
-            islctype(iz) = 5
-          endif
-        endif
-
-c       --- Check for case where both hard edged and self-consistent
-c       --- models are being used for the same quadrupole.  Print notice if
-c       --- this is the case.
-        if (islctype(iz) == 2 .and. quadde(iq) .ne. 0.) lnotice = .true.
-
-c     --- end loop over z which fills islctype
-      enddo
-
-c Set slicv in planes at ends of quads to allow for sub-grid placement of
-c boundaries. This also takes care of the boundary planes.
-      do iz=0,nz
-        if (islctype(iz)==0 .and. islctype(iz-1).ne.0) then
-          slicvx(iz)=slicvx(iz-1)
-          slicvy(iz)=slicvy(iz-1)
-        elseif (islctype(iz)==0 .and. islctype(iz+1).ne.0) then
-          slicvx(iz)=slicvx(iz+1)
-          slicvy(iz)=slicvy(iz+1)
-        endif
-      enddo
-
-c     --- Print notice that both hard edged and self-consistent
-c     --- models are being used for the same quadrupole, if
-c     --- this is the case. This is done outside the loop so it is only done
-c     --- once.
-      if (lnotice) then
-        call remark("Notice: both hard edged and self-consistent models are")
-        call remark("        being used for the same quad.")
-      endif
-
-c +++++++++++++++++++++++++++
-c For each rod, find points that make up the circle of the rods and points
-c that are near the rod surfaces.
-c The subroutine rodpoint is used for all four of the rods.
-c For subgrid scale placement of boundaries,
-c names with 'e' are even in x, y, and z, names with 'o' are odd.
-c With no symmetries, points on and near all four rods are saved.
-
-c     --- zero array counters
-      ncond = 0
-      necndbdy = 0
-      nocndbdy = 0
-
-c     --- find the location of the center of the grid (x=0 and y=0)
-      ix_axis = - xmmin/dx + fuzz
-      iy_axis = - ymmin/dy + fuzz
-
-c     --- set max so rod loops cover one quarter of grid
-      xmax0 = nx - ix_axis
-      ymax0 = ny - iy_axis
-
-c     --- loop over z planes
-      iq = 0
-      do iz=0,nz
-c       --- find location in lattice array
-        zz = zgrid + zmmin + iz*dz
-
-c       --- Get id of quadrupole element
-        call getquadid(zz,offset,iq,1)
-
-c       --- set up temp variables for locating quadrupoles
-        qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
-
-c       --- calculate (in lab frame) start and end of quad
-        qs = qdcenter - 0.5*(quadrl(iq) + quadgl(iq))
-        qe = qdcenter + 0.5*(quadrl(iq) + quadgl(iq))
-
-c       --- set temps ...
-        izp1 = iz + 1
-        izm1 = iz - 1
-c       --- ... to get the boundaries correct
-        if (iz == 0  .and. bound0  == 1) izm1 = 1
-        if (iz == 0  .and. bound0  == 2) izm1 = nz-1
-        if (iz == nz .and. boundnz == 1) izp1 = nz-1
-        if (iz == nz .and. boundnz == 2) izp1 = 1
-
-c       --- Check for presence of rods or ends of rods on x axis.
-c       --- Must be careful with boundaries; if either axial boundary is a
-c       --- conducting wall, don't put conductor there.
-        if (((islctype(iz) == 1 .or. islctype(iz) == 2) .or.
-     &      ((islctype(iz) == 3 .or. islctype(iz) == 0) .and.
-     &       (islctype(izm1) == 2 .or. islctype(izp1) == 2)))) then
-
-c         --- set logical, true when z plane inside rod, false when just
-c         --- outside the end of the rod
-          if (islctype(iz) == 1 .or. islctype(iz) == 2) then
-            lz_in_rod = .true.
-          else
-            lz_in_rod = .false.
-          endif
-
-c         +++ do rod on positive x axis
-c         --- rod radius squared, will be negative if quadrr is negative
-c         --- signifying a hyperbolic electrode.
-          rodrrsq = sign((quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq))**2,
-     &                   quadrr(iq))
-
-c         --- rod radius plus one grid cell squared
-          rodmxsq=(quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq)+max(dx,dy))**2
-
-c         --- inner radius of hollow cylinder (rod is cylinder with walls
-c         --- 2 grid cells thick)
-          rminsq =(quadrr(iq)+qdelrxp(iq)-(zz-qs)*quadsl(iq)-2.*max(dx,dy))**2
-
-c         --- if at end of rod, fill in all of the rod
-          if (islctype(izm1) == 3 .or. islctype(izp1) == 3 .or.
-     &        islctype(izm1) == 0 .or. islctype(izp1) == 0) rminsq = 0.
-
-c         --- Set temp which can be set to zero so all of rod is included.
-c         --- rrr is used as minimum radius to check for points near surface
-          rrr = rodrrsq
-
-c         --- if plane near end of rod, set rrr=0 to get all points in disc
-c         --- and set delz since same for whole plane
-          delz = 2.
-          if (islctype(iz) == 3 .or. islctype(iz) == 0) then
-            rrr = 0.
-            if (islctype(izm1) == 2) delz = (zz-qs-quadrl(iq)+qdelglx(iq))/dz
-            if (islctype(izp1) == 1) delz = (zz-qs)/dz
-            if (islctype(izp1) == 2) delz = (zz-qe+quadrl(iq)-qdelglx(iq))/dz
-            if (islctype(izm1) == 1) delz = (zz-qe)/dz
-          endif
-
-c         --- find rectangle which circumscribes the circle of the rod
-c         --- if hyperbolic electrode go out to wall
-          if (rodrrsq >= 0.) then
-            ixmax = min(xmax0,(rodfract*2.*(quadrr(iq)+qdelrxp(iq)) +
-     &                 quadap(iq) + qdelaxp(iq) + qoffx(iq))/dx + 1.)
-            ixmin = max(-xmax0,(quadap(iq) + qdelaxp(iq) + qoffx(iq) +
-     &                        (zz - qs)*quadsl(iq))/dx - 1.)
-            iymax = min(ymax0,(quadrr(iq) + qdelrxp(iq) + qdeloxp(iq) -
-     &                 (zz - qs)*quadsl(iq) + qoffy(iq))/dy + 1.)
-            iymin = max(-ymax0,(- quadrr(iq) - qdelrxp(iq) +
-     &                 qdeloxp(iq) + (zz - qs)*quadsl(iq) +
-     &                  qoffy(iq))/dy - 1.)
-          else
-            ixmax = xmax0
-            ixmin = max(-xmax0,(quadap(iq) + qdelaxp(iq) + qoffx(iq))/dx - 1.)
-            iymax = min(ymax0, sqrt ((xmax0*dx)**2 - (quadap(iq) +
-     &               qoffx(iq) + qdelaxp(iq))**2)/dy + 1 )
-            iymin = max(-ymax0,-sqrt ((xmax0*dx)**2 - (quadap(iq) +
-     &               qoffx(iq) + qdelaxp(iq))**2)/dy - 1 )
-          endif
-          if (l2symtry .or. l4symtry) iymin = 0
-
-c         --- distance of rod center from centerline or distance from axis of
-c         --- hyperbola intercept
-          if (rodrrsq >= 0. ) then
-            rodx = quadap(iq) +qdelaxp(iq) +quadrr(iq) + qdelrxp(iq)+qoffx(iq)
-            rody = qoffy(iq) + qdeloxp(iq)
-            rodap = quadap(iq) + qdelaxp(iq) + qoffx(iq) + (zz-qs)*quadsl(iq)
-          else
-            rodx = quadap(iq) +qdelaxp(iq) + qoffx(iq)
-            rody = 0.
-          endif
-
-          call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
-     &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
-     &               slicvx(iz)+qdelvxp(iq))
-
-c         +++ do rod on negative x axis
-          if (.not. l4symtry) then
-c           --- rod radius squared
-            rodrrsq = sign((quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq))**2,
-     &                     quadrr(iq))
-
-c           --- rod radius plus one grid cell squared
-            rodmxsq=(quadrr(iq) + qdelrxm(iq)-(zz-qs)*quadsl(iq)+max(dx,dy))**2
-
-c           --- inner radius of hollow cylinder (rod is cylinder with walls
-c           --- 2 grid cells thick)
-            rminsq =(quadrr(iq)+qdelrxm(iq)-(zz-qs)*quadsl(iq)-2.*max(dx,dy))**2
-
-c           --- if at end of rod, fill in all of the rod
-            if (islctype(izm1) == 3 .or. islctype(izp1) == 3 .or.
-     &          islctype(izm1) == 0 .or. islctype(izp1) == 0) rminsq = 0.
-
-c           --- Set temp which can be set to zero so all of rod is included.
-c           --- rrr is used as minimum radius to check for points near surface
-            rrr = rodrrsq
-
-c           --- if plane near end of rod, set rrr=0 to get all points in disc
-c           --- and set delz since same for whole plane
-            delz = 2.
-            if (islctype(iz) == 3 .or. islctype(iz) == 0) then
-              rrr = 0.
-              if (islctype(izm1) == 2) delz=(zz-qs-quadrl(iq)+qdelglx(iq))/dz
-              if (islctype(izp1) == 1) delz=(zz-qs)/dz
-              if (islctype(izp1) == 2) delz=(zz-qe+quadrl(iq)-qdelglx(iq))/dz
-              if (islctype(izm1) == 1) delz=(zz-qe)/dz
-            endif
-
-c           --- find rectangle which circumscribes the circle of the rod
-c           --- if hyperbolic electrode go out to wall
-            if (rodrrsq >= 0.) then
-              ixmax = min(xmax0,(-quadap(iq) - qdelaxm(iq) + qoffx(iq) -
-     &                          (zz - qs)*quadsl(iq))/dx + 1.)
-              ixmin = max(-xmax0,(-rodfract*2.*(quadrr(iq)+qdelrxm(iq)) -
-     &                    quadap(iq) + qoffx(iq))/dx - 1.)
-              iymax = min(ymax0,(quadrr(iq) + qdelrxm(iq) + qdeloxm(iq) -
-     &                    (zz - qs)*quadsl(iq) + qoffy(iq))/dy + 1.)
-              iymin = max(-ymax0,(- quadrr(iq) - qdelrxm(iq) + qdeloxm(iq) +
-     &                    (zz - qs)*quadsl(iq) + qoffy(iq))/dy - 1.)
-            else
-              ixmax = min(xmax0,(-quadap(iq) - qdelaxm(iq) + qoffx(iq))/dx+1.)
-              ixmin = -xmax0
-              iymax = min(ymax0, sqrt ((xmax0*dx)**2 - (quadap(iq) +
-     &                 qoffx(iq) + qdelaxm(iq))**2)/dy + 1 )
-              iymin = max(-ymax0, -sqrt ((xmax0*dx)**2 - (-quadap(iq) +
-     &               qoffx(iq) - qdelaxm(iq))**2)/dy - 1 )
-            endif
-            if (l2symtry) iymin = 0
-
-c           --- distance of rod center from centerline
-            if (rodrrsq >= 0. ) then
-              rodx = -quadap(iq)-qdelaxm(iq)-quadrr(iq)-qdelrxm(iq)+qoffx(iq)
-              rody = qoffy(iq) + qdeloxm(iq)
-              rodap = -quadap(iq) -qdelaxm(iq) +qoffx(iq) - (zz-qs)*quadsl(iq)
-            else
-              rodx = -quadap(iq) -qdelaxm(iq) + qoffx(iq)
-              rody = 0.
-            endif
-
-            call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
-     &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
-     &               slicvx(iz)+qdelvxm(iq))
-
-          endif
-        endif
-
-
-c       --- Check for presence of rods or ends of rods on y axis.
-c       --- Must be careful with boundaries; if either axial boundary is a
-c       --- conducting wall, don't put conductor there.
-        if (((islctype(iz) == 2 .or. islctype(iz) == 3) .or.
-     &      ((islctype(iz) == 1 .or. islctype(iz) == 0) .and.
-     &       (islctype(izm1) == 2 .or. islctype(izp1) == 2)))) then
-
-c         --- set logical, true when z plane inside rod, false when just
-c         --- outside the end of the rod
-          if (islctype(iz) == 2 .or. islctype(iz) == 3) then
-            lz_in_rod = .true.
-          else
-            lz_in_rod = .false.
-          endif
-
-c         +++ do rod on positive y axis
-c         --- rod radius squared
-          rodrrsq = sign((quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq))**2,
-     &                   quadrr(iq))
-
-c         --- rod radius plus one grid cell squared
-          rodmxsq=(quadrr(iq)+qdelryp(iq)-(zz-qs)*quadsl(iq)+max(dx,dy))**2
-
-c         --- inner radius of hollow cylinder (rod is cylinder with walls
-c         --- 2 grid cells thick)
-          rminsq =(quadrr(iq)+qdelryp(iq)-(zz-qs)*quadsl(iq)-2.*max(dx,dy))**2
-
-c         --- if at end of rod, fill in all of the rod
-          if (islctype(izm1) == 1 .or. islctype(izp1) == 1 .or.
-     &        islctype(izm1) == 0 .or. islctype(izp1) == 0) rminsq = 0.
-
-c         --- Set temp which can be set to zero so all of rod is included.
-c         --- rrr is used as minimum radius to check for points near surface
-          rrr = rodrrsq
-
-c         --- if plane near end of rod, set rrr=0 to get all points in disc
-c         --- and set delz since same for whole plane
-          delz = 2.
-          if (islctype(iz) == 1 .or. islctype(iz) == 0) then
-            rrr = 0.
-            if (islctype(izm1) == 2) delz = (zz-qs-quadrl(iq)+qdelgly(iq))/dz
-            if (islctype(izp1) == 3) delz = (zz-qs)/dz
-            if (islctype(izp1) == 2) delz = (zz-qe+quadrl(iq)-qdelgly(iq))/dz
-            if (islctype(izm1) == 3) delz = (zz-qe)/dz
-          endif
-
-c         --- find rectangle which circumscribes the circle of the rod
-          if (rodrrsq >= 0.) then
-           ixmax = min(xmax0,(quadrr(iq) + qdelryp(iq) - (zz - qs)*quadsl(iq) +
-     &                       qoffx(iq) + qdeloyp(iq))/dx + 1.)
-           ixmin = min(-xmax0,(-quadrr(iq) - qdelryp(iq) +
-     &                (zz - qs)*quadsl(iq) + qoffx(iq) + qdeloyp(iq))/dx - 1.)
-           iymax = min(ymax0,(rodfract*2.*(quadrr(iq)+qdelryp(iq)) +quadap(iq)+
-     &                       qdelayp(iq) + qoffy(iq))/dy + 1.)
-           iymin = max(-ymax0,(quadap(iq) + qdelayp(iq) + qoffy(iq) +
-     &                          (zz - qs)*quadsl(iq))/dy - 1.)
-          else
-           ixmax = min(xmax0, sqrt((ymax0*dy)**2 - (quadap(iq) +
-     &                 qoffy(iq) + qdelayp(iq))**2)/dx + 1.)
-           ixmin = max(-xmax0, -sqrt((ymax0*dy)**2 - (quadap(iq) +
-     &                 qoffy(iq) + qdelayp(iq))**2)/dx - 1.)
-           iymax = ymax0
-           iymin = max(-ymax0,(quadap(iq) + qdelayp(iq) + qoffy(iq))/dy - 1.)
-          endif
-          if (l4symtry) ixmin = 0
-
-c         --- distance of rod center from centerline
-          if (rodrrsq >= 0.) then
-            rodx = qoffx(iq) + qdeloyp(iq)
-            rody = quadap(iq) + qdelayp(iq) + quadrr(iq) +qdelryp(iq)+qoffy(iq)
-            rodap = quadap(iq) + qdelayp(iq) + qoffy(iq) + (zz-qs)*quadsl(iq)
-          else
-            rodx = 0.
-            rody = quadap(iq) + qdelayp(iq) + qoffy(iq)
-          endif
-
-          call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
-     &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
-     &               slicvy(iz)+qdelvyp(iq))
-
-c         +++ do rod on negative y axis
-          if (.not. (l2symtry .or. l4symtry)) then
-c           --- rod radius squared
-            rodrrsq = sign((quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq))**2,
-     &                     quadrr(iq))
-
-c           --- rod radius plus one grid cell squared
-            rodmxsq=(quadrr(iq)+qdelrym(iq)-(zz-qs)*quadsl(iq)+max(dx,dy))**2
-
-c           --- inner radius of hollow cylinder (rod is cylinder with walls
-c           --- 2 grid cells thick)
-            rminsq =(quadrr(iq)+qdelrym(iq)-(zz-qs)*quadsl(iq)-2.*max(dx,dy))**2
-
-c           --- if at end of rod, fill in all of the rod
-            if (islctype(izm1) == 1 .or. islctype(izp1) == 1 .or.
-     &          islctype(izm1) == 0 .or. islctype(izp1) == 0) rminsq = 0.
-
-c           --- Set temp which can be set to zero so all of rod is included.
-c           --- rrr is used as minimum radius to check for points near surface
-            rrr = rodrrsq
-
-c           --- if plane near end of rod, set rrr=0 to get all points in disc
-c           --- and set delz since same for whole plane
-            delz = 2.
-            if (islctype(iz) == 1 .or. islctype(iz) == 0) then
-              rrr = 0.
-              if (islctype(izm1) == 2) delz=(zz-qs-quadrl(iq)+qdelgly(iq))/dz
-              if (islctype(izp1) == 3) delz=(zz-qs)/dz
-              if (islctype(izp1) == 2) delz=(zz-qe+quadrl(iq)-qdelgly(iq))/dz
-              if (islctype(izm1) == 3) delz=(zz-qe)/dz
-            endif
-
-c           --- find rectangle which circumscribes the circle of the rod
-            if (rodrrsq >= 0.) then
-              iymax = min(ymax0,(-quadap(iq) - qdelaym(iq) + qoffy(iq) -
-     &                         (zz - qs)*quadsl(iq))/dy + 1.)
-              iymin = max(-ymax0,(-rodfract*2.*(quadrr(iq)+qdelrym(iq)) -
-     &                   quadap(iq) - qdelaym(iq) + qoffy(iq))/dy - 1.)
-              ixmax = min(xmax0,(quadrr(iq) + qdelrym(iq) - (zz-qs)*quadsl(iq)+
-     &                          qoffx(iq) + qdeloym(iq))/dx + 1.)
-              ixmin = min(-xmax0,(-quadrr(iq) - qdelrym(iq) +
-     &                 (zz - qs)*quadsl(iq) + qoffx(iq) + qdeloym(iq))/dx - 1.)
-            else
-              ixmax = min(xmax0, sqrt((ymax0*dy)**2 - (-quadap(iq) -
-     &                   qdelaym(iq) + qoffy(iq))**2)/dx + 1.)
-              ixmin = max(-xmax0, -sqrt((ymax0*dy)**2 - (-quadap(iq) -
-     &                   qdelaym(iq) + qoffy(iq))**2)/dx - 1.) 
-              iymax = min(ymax0, ( -quadap(iq) - qdelaym(iq) +
-     &                    qoffy(iq))/dy + 1.)
-              iymin = -ymax0
-            endif 
-
-c           --- distance of rod center from centerline
-            if (rodrrsq >= 0. ) then
-              rodx = qoffx(iq) + qdeloym(iq)
-              rody = -quadap(iq)-qdelaym(iq)-quadrr(iq)-qdelrym(iq)+qoffy(iq)
-              rodap = -quadap(iq) -qdelaym(iq) +qoffy(iq) - (zz-qs)*quadsl(iq)
-            else
-              rodx = 0.
-              rody = -quadap(iq) -qdelaym(iq) +qoffy(iq)
-            endif
-
-            call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
-     &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
-     &               slicvy(iz)+qdelvym(iq))
-          endif
-        endif
-
-c +++++++++++++++++++++++++++
-c       --- calculates the points on the endplates including slices before
-c       --- and after for purposes of subgrid placement.  Note that the
-c       --- subgrid placement around the abutting rod electrode is
-c       --- inconsistent with thte calculated interpolation prameters from
-c       --- the rod so that an anamolous "weld-like" structure is created.
-c       --- Since this structure is at the same potential as the rod and
-c       --- the plate it is neglected in this coding.
- 
-
-c       --- plate on left hand side of quad
-        if (islctype(iz) == 4 .or.
-     &      islctype(iz + 1) == 4 .or. islctype(iz - 1) == 4 ) then
-          if (quadgp(iq) < 0.) then
-            vvv = slicvy(iz) + qdelvyp(iq)
-          else
-            vvv = slicvx(iz) + qdelvxp(iq)
-          endif
-
-c         --- Test if slice is inside of plate or just outside the plate.
-c         --- Calculate delz_p if just outside.
-          if (islctype(iz) == 4) then
-            delz_p = 2.
-            lz_in_plate = .true.
-          elseif (islctype(iz) .ne. 4 .and. islctype(iz + 1) == 4) then
-            delz_p = (zz - (qs-quadpw(iq)-qdelpwl(iq)))/dz
-            lz_in_plate = .false.
-          elseif (islctype(iz) .ne. 4 .and. islctype(iz - 1) == 4) then
-            delz_p = (zz - qs)/dz
-            lz_in_plate = .false.
-          endif
-
-c         --- find min and max radius of plate
-          aper = (quadpa(iq) + qdelpal(iq))
-          rmax = (quadpr(iq) + qdelprl(iq))
-
-c         --- if this plate surrounded by two plates, don't fill it all in
-          if (0 < iz .and. iz < nz) then
-            if (islctype(iz-1) == 4 .and. islctype(iz+1) == 4)
-     &        rmax = (quadpa(iq) + qdelpal(iq) + 2*max(dx,dy))
-          endif
-
-          call platepnt(0,nx,0,ny,ix_axis,iy_axis,dx,dy,aper,
-     &                  rmax,vvv,qoffx(iq),qoffy(iq),delz_p,iz,lz_in_plate,
-     &                  fuzz)
-        endif
-
-c       --- plate on right hand side of quad
-        if (islctype(iz) == 5 .or.
-     &      islctype(iz + 1) == 5 .or. islctype(iz - 1) == 5 ) then
-          if (quadgp(iq) > 0.) then
-            vvv = slicvy(iz) + qdelvyp(iq)
-          else
-            vvv = slicvx(iz) + qdelvxp(iq)
-          endif
-
-c         --- Test if slice is inside of plate or just outside the plate.
-c         --- Calculate delz_p if just outside.
-          if (islctype(iz) == 5) then
-            delz_p = 2.
-            lz_in_plate = .true.
-          elseif (islctype(iz) .ne. 5 .and. islctype(iz - 1) == 5) then
-            delz_p = (zz - (qe+quadpw(iq)+qdelpwl(iq)))/dz
-            lz_in_plate = .false.
-          elseif (islctype(iz) .ne. 5 .and. islctype(iz + 1) == 5) then
-            delz_p = (zz - qe)/dz
-            lz_in_plate = .false.
-          endif
-
-c         --- find min and max radius of plate
-          aper = (quadpa(iq) + qdelpar(iq))
-          rmax = (quadpr(iq) + qdelprr(iq))
-
-c         --- if this plate surrounded by two plates, don't fill it all in
-          if (0 < iz .and. iz < nz) then
-            if (islctype(iz-1) == 5 .and. islctype(iz+1) == 5)
-     &        rmax = (quadpa(iq) + qdelpar(iq) + 2*max(dx,dy))
-          endif
-
-          call platepnt(0,nx,0,ny,ix_axis,iy_axis,dx,dy,aper,
-     &                  rmax,vvv,qoffx(iq),qoffy(iq),delz_p,iz,lz_in_plate,
-     &                  fuzz)
-        endif
-
-c +++++++++++++++++++++++++++
-c       --- Make arrays bigger if they are about to be filled up.
-c       --- If ncond is within (1+nx)*(1+ny) of ncondmax, increase ncondmax.
-c       --- That is the maximum number of points needed to fill an endplate.
-c       --- If the max of necndbdy and nocndbdy are within 3*nxpsor if ncndmax,
-c       --- increase ncndmax.  That is roughly the number of points needed
-c       --- for one axial slice of a rod.
-c       --- Set flag ichange so that if anything needs to be changed, all
-c       --- of the changes can be made at once.
-        ichange = 0
-        if (ncond + (1+nx)*(1+ny) > ncondmax) then
-          ncondmax = ncond + (1+nx)*(1+ny)
-          ichange = 1
-        endif
-        if (max(necndbdy,nocndbdy) + 3*nxpsor > ncndmax) then
-          ncndmax = max(necndbdy,nocndbdy) + 3*nxpsor
-          ichange = 1
-        endif
-        if (ichange == 1) call gchange("PSOR3d",0)
-
-c     --- end loop over z
-      enddo
-
-c +++++++++++++++++++++++++++
-c     --- add points for electrostatic dipoles
-      if (ndipo > 0) then
-
-c       --- set prevcent (center of previous dipole) to large negative
-c       --- value to ensure that first dipole is included.
-        prevcent = -LARGEPOS
-
-c       --- loop over z in the lattice array looking for dipoles
-        id = 0
-        do iz=0,nz
-          zz = zgrid + zmmin + iz*dz
-          call getdipoid(zz,offset,id,1)
-
-c         --- calculate center of dipole
-          dipocent = .5*(dipozs(id) + dipoze(id)) - zmmin - zgrid
-
-c         --- If the center is greater than center of previous dipole,
-c         --- then at a new dipole, so load in points.
-          if (dipocent > prevcent) then
-            prevcent = dipocent + zfuzz
-
-c           --- calculate x position of first plate and its distance from the
-c           --- grid cell below
-            ix_near = dipox1(id)/dx + ix_axis + 0.5
-            ix = dipox1(id)/dx + ix_axis
-            delx = dipox1(id)/dx+ix_axis - int(dipox1(id)/dx+ix_axis)
-
-c           --- check if plate is within field grid
-            if (0 <= ix .and. ix <= nx) then 
-
-c             --- calculate bounds of first plate (these are bounded to be
-c             --- within the field mesh)
-              iymax = min(ny,int( 0.5*dipow1(id)/dy+0.5+iy_axis))
-              iymin = max(0,int(-0.5*dipow1(id)/dy-0.5+iy_axis))
-              izmax = min(nz,int((dipocent + dipol1(id)*0.5)/dz + zfuzz))
-              izmin = max(0,int((dipocent - dipol1(id)*0.5)/dz + zfuzz))
-
-c             --- add more space to the arrays if necessary
-              if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
-                ncondmax = ncond + (iymax-iymin+1)*(izmax-izmin+1)
-                call gchange("PSOR3d",0)
-              endif
-
-              call dipopnt(iymin,iymax,izmin,izmax,dipov1(id),ix_near,ix,delx)
-
-            endif
-
-c           --- now do the same for the second dipole plate
-            ix_near = dipox2(id)/dx + ix_axis + 0.5
-            ix = dipox2(id)/dx + ix_axis
-            delx = dipox2(id)/dx+ix_axis - int(dipox2(id)/dx+ix_axis)
-            if (0 <= ix .and. ix <= nx) then 
-              iymax = min(ny,int( 0.5*dipow2(id)/dy+0.5+iy_axis))
-              iymin = max(0,int(-0.5*dipow2(id)/dy-0.5+iy_axis))
-              izmax = min(nz,int((dipocent + dipol2(id)*0.5)/dz + 0.5))
-              izmin = max(0,int((dipocent - dipol2(id)*0.5)/dz + 0.5))
-              if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
-                ncondmax = ncond + (iymax-iymin+1)*(izmax-izmin+1)
-                call gchange("PSOR3d",0)
-              endif
-              call dipopnt(iymin,iymax,izmin,izmax,dipov2(id),ix_near,ix,delx)
-            endif
-
-c         --- end of section that fills arrays
-          endif
-
-c       --- end of loop over z
-        enddo
-
-c     --- end of dipoles
-      endif
-
-c +++++++++++++++++++++++++++
-c Include injection source
-      call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
+      call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                l2symtry,l4symtry)
 
       return
       end
 c===========================================================================
       subroutine srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
-     &                    xmin,xmax,ymin,ymax,lshell,
-     &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
-     &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-      use PSOR3d
-      use Surface_of_Rev
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
-      character(*) rofzfunc
+     &                       xmin,xmax,ymin,ymax,lshell,
+     &                       zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                       ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
+      character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -8916,457 +8594,19 @@ c===========================================================================
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
 
-c Sets up a conductor represented by the outside of a surface of revolution.
-c The Basis routine rofzfunc should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
-c where f() is the radius as a function of z and srfrv_z and srfrv_r are
-c compiled variables which pass data into and out of rofz.
-c The begining of the calling sequence would then be
-c call srfrvout("rofz",...)
-c
-c Input:
-c   rofzfunc  is the name of the basis routine which calculates the radius as a
-c             function of z.
-c   volt      is the voltage on the conductor.
-c   zmin      is the minimum z of the conductor.
-c   zmax      is the maximum z of the conductor.
-c   xcent     is the x center of the conductor.
-c   ycent     is the y center of the conductor.
-c   rmax      is the maximum radius of the conductor.
-c   lfill     is the logical requesting that the whole conductor be filled
-c             with points.
-c   lshell    is the logical requesting that the shell be subgrid resolved
-c   xmin,xmax,ymin,ymax
-c             min and max transverse extent of conductor.
-c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
-c   xmesh,ymesh,l2symtry,l4symtry
-c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
-
-
-      integer(ISZ):: ix,iy,iz,i
-      real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
-      real(kind=8):: rmaxsq,zgmin,zgmax,r_zmin,r_zmax
-      real(kind=8):: rrrlower,rrrhigher,zlower,zhigher
-      real(kind=8):: xxmin,xxmax,yymin,yymax
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: jxmin,jxmax,jymin,jymax
-      integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
-      real(kind=8):: delmz0,delpz0
-      real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
-      real(kind=8):: max_dxdy,dxi,dyi,dzi
-      real(kind=8):: ddz,znew,rnew
-      real(kind=8):: srfrv_f
-
-c Table-ize the data if srfrv_pernz > 0.
-      if (srfrv_pernz > 0 .and. .not. lsrlinr) then
-        npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
-        zz = (zmax - zmin)/(npnts_sr - 1)
-        call gchange("Surface_of_Rev",0)
-        do i=1,npnts_sr
-          z_sr(i) = zmin + (i-1)*zz
-          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
-        enddo
-        lsrlinr = .true.
-      endif
-
-      dxpsor = dx
-      rmaxsq = rmax*rmax
-      max_dxdy = max(dx,dy)
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
-
-c Set fuzz which is used to avoid problems with roundoff.
-      fuzz = 1.e-10
-      xfuzz = dx*fuzz
-      yfuzz = dy*fuzz
-      rfuzz = min(xfuzz,yfuzz)
-      zfuzz = dz*fuzz
-
-c Find maximal transverse extent of the conductors with an additional grid
-c cell added to allow subgrid-scale resolution at the edge.
-      jxmin = int(max(xmin*dxi,(-rmax+xcent)*dxi)) + ix_axis - 1
-      jymin = int(max(ymin*dyi,(-rmax+ycent)*dyi)) + iy_axis - 1
-      jxmax = int(min(xmax*dxi,(+rmax+xcent)*dxi)) + ix_axis + 1
-      jymax = int(min(ymax*dyi,(+rmax+ycent)*dyi)) + iy_axis + 1
-
-c Set limits for transverse loops based on the transverse boundary conditions
-c and the symmetry.
-      ixmin = max(0   ,jxmin)
-      iymin = max(0   ,jymin)
-      ixmax = min(nx  ,jxmax)
-      iymax = min(ny  ,jymax)
-
-c Calculate bounding box relative to center of surface of revolution.
-      xxmin = xmin - xcent
-      xxmax = xmax - xcent
-      yymin = ymin - ycent
-      yymax = ymax - ycent
-
-c Set limits for longitudinal loops based on boundary conditions.  If
-c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
-      izbmin = 0
-      izbmax = nz
-
-c Set limits for longitudinal loops.  They are set so that the minimum
-c end is rounded up and maximum end is rounded down, ensuring that iz is
-c within the conductor.
-      zgmin = zmmin + zbeam
-      zgmax = zmmax + zbeam
-      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
-      izmax =    int((zmax-zgmin)*dzi+zfuzz)
-
-c Perform error checking, to make sure that izmin and izmax are within the
-c grid.
-      izmin = max(izbmin,izmin)
-      izmax = min(izbmax,izmax)
-
-c If izmin > izbmax or izmax < izbmin then the conductor is completely off
-c of the grid, so return.
-      if (izmin > izbmax .or. izmax < izbmin) then
-        call remark("WARNING:srfrvout: conductor is completely off the grid.")
-        return
-      endif
-
-c Set conductor points.  If lfill or at end, set all points outside radius.
-      do iz=izmin,izmax
-        zz = iz*dz+zgmin
-        zlower = max(zz-dz,zmin)
-        zhigher = min(zz+dz,zmax)
-c       --- Make sure there is enough room in the arrays.
-        if (ncond + (1+nx)*(1+ny) > ncondmax) then
-          ncondmax = ncond + (1+nx)*(1+ny)
-          call gchange("PSOR3d",0)
-        endif
-c       --- Calculate the surface radius at iz.
-        rrr = srfrv_f(zz,rofzfunc,0)
-        rrrsq = rrr*rrr
-c       --- Calculate the maximum radius to be filled.
-c       --- If not filling the whole conductor, set rrrmax large enough so
-c       --- that enough conductor is filled to match neighboring points in iz.
-        if (lfill .or. (lshell .and. (iz == izmin .or. iz == izmax))) then
-          rrrmax = rmax
-        else
-          rrrmax = max((rrr+max_dxdy),
-     &              (srfrv_f(zlower,rofzfunc,0)+max_dxdy),
-     &              (srfrv_f(zhigher,rofzfunc,0)+max_dxdy))
-        endif
-c       --- Loop over transverse plane.
-        do ix=ixmin,ixmax
-          do iy=iymin,iymax
-            xx = (ix-ix_axis)*dx-xcent
-            yy = (iy-iy_axis)*dy-ycent
-            rad = sqrt(xx**2 + yy**2)
-
-c           --- The points selected must meet a number of conditions.
-c           --- > The radius must be between the surface radius and rmax.
-c           --- > The position must be within the min/max transverse extent
-c           --- > of the conductor.
-c           --- The points selected must also meet one of the following.
-c           --- > A radius less than rrrmax.
-c           --- > A radius within one grid cell of rmax.
-c           --- > A position within a grid cell of the transverse bounds.
-c           --- The last two conditions put an optional shell around an
-c           --- unfilled conductor.
-            if ((rrr-rfuzz <= rad .and. rad <= rmax+rfuzz .and.
-     &           xxmin <= xx .and. xx <= xxmax .and.
-     &           yymin <= yy .and. yy <= yymax) .and.
-     &          (rad <= rrrmax .or.
-     &           (lshell .and. (rmax-rad < max_dxdy .or.
-     &                          xx-xxmin < max_dxdy .or.
-     &                          yy-yymin < max_dxdy .or.
-     &                          xxmax-xx < max_dxdy .or.
-     &                          yymax-yy < max_dxdy      )))) then
-              ncond = ncond + 1
-              ixcond(ncond) = ix
-              iycond(ncond) = iy
-              izcond(ncond) = iz
-              condvolt(ncond) = volt
-            endif
-          enddo
-        enddo
-      enddo
-c End of conductor points section
-
-c Set subgrid scale arrays
-      if (lcndbndy) then
-
-c       --- Calculate r at zmin and zmax.
-        r_zmin = srfrv_f(zmin,rofzfunc,0)
-        r_zmax = srfrv_f(zmax,rofzfunc,0)
-
-c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
-c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
-        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
-
-c       -- Set all points along and just outside conductor.
-        do iz=izmin,izmax
-          zz = iz*dz+zgmin
-          zlower = max(zz-dz,zmin)
-          zhigher = min(zz+dz,zmax)
-
-          if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
-     &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
-            ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
-            call gchange("PSOR3d",0)
-          endif
-
-c         --- Calculate radius of the surface.
-c         --- When zz is outside the conductor, get radius at end of
-c         --- conductor.  rrrsq is used to chose which grid points may
-c         --- be within the subgrid-scale region.  rrrsq1 is used in the
-c         --- calculation of the transverse distances.  When zz is
-c         --- outside the conductor, only points within the radius rmax
-c         --- (when lshell is true) or r_zmin or r_zmax (otherwise) are
-c         --- desired, but the radius used in the calculation is set to
-c         --- be large so that transverse subgrid resolution will not be done.
-          if (zz < zmin-zfuzz) then
-            rrr = r_zmin
-            if (lshell) then
-              rrrsq = rmax*rmax
-            else
-              rrrsq = rrr*rrr
-            endif
-            rrrsq1 = LARGEPOS
-          elseif (zz > zmax+zfuzz) then
-            rrr = r_zmax
-            if (lshell) then
-              rrrsq = rmax*rmax
-            else
-              rrrsq = rrr*rrr
-            endif
-            rrrsq1 = LARGEPOS
-          else
-            rrr = srfrv_f(zz,rofzfunc,0)
-            rrrsq = rrr*rrr
-            rrrsq1 = rrrsq
-          endif
-
-c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
-c         --- in most cases, assuming that the conductor is far away in z.
-c         --- When zz > zmax, the delmz0 is set to the distance
-c         --- between the z plane and the end of the conductor.
-c         --- When zz < zmin, rrrlower is set to rrr so the
-c         --- iteration is not done.
-          rrrlower = srfrv_f(zlower,rofzfunc,0)
-          delmz0 = 2.
-          if (zz < zmin) then
-            rrrlower = rrr
-          elseif (zz > zmax) then
-            delmz0 = (zz - zmax)*dzi
-          endif
-
-c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
-c         --- in most cases, assuming that the conductor is far away in z.
-c         --- When zz < zmin, the delmp0 is set to the distance
-c         --- between the z plane and the end of the conductor.
-c         --- When zz > zmax, rrrhigher is set to rrr so the
-c         --- iteration is not done.
-          rrrhigher = srfrv_f(zhigher,rofzfunc,0)
-          delpz0 = 2.
-          if (zz > zmax) then
-            rrrhigher = rrr
-          elseif (zz < zmin) then
-            delpz0 = (zmin - zz)*dzi
-          endif
-
-c         --- Find minimum of rrr and radius of surface at nearby z points.
-          rrrmin = min(rrr-max_dxdy,rrrlower,rrrhigher)
-
-          do ix=ixmin,ixmax
-            do iy=iymin,iymax
-              xx = (ix-ix_axis)*dx-xcent
-              yy = (iy-iy_axis)*dy-ycent
-              rad = sqrt(xx**2 + yy**2)
-
-c             --- Calculate distances in z first.  Select points which
-c             --- are transversely near the surface of revolution and
-c             --- are within the bounding box.
-
-c             --- Calculate distance to conductor at lower z.
-              delmz = delmz0
-
-c             --- If grid location is between rrr and rrrlower and between
-c             --- rmax and rrrlower, find intersection point.  The zfuzz
-c             --- ensures that a distance of zero is not calculated.
-              if (rrrlower <= rad .and. rad < min(rrr,rmax)-rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew > rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew <= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
-              elseif (rad < rrrlower .or. rad > min(rrr,rmax)-rfuzz) then
-                delmz = 2.
-              endif
-
-c             --- Calculate distance to conductor at higher z.
-              delpz = delpz0
-
-c             --- If grid location is between rrr and rrrhigher and between
-c             --- rmax and rrrhigher, find intersection point.  The zfuzz
-c             --- ensures that a distance of zero is not calculated.
-              if (rrrhigher <= rad .and. rad < min(rrr,rmax)-rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew <= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
-                    ddz = +abs(ddz)*0.5
-                  else
-                    exit
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
-              elseif (rad < rrrhigher .or. rad > min(rrr,rmax)-rfuzz) then
-                delpz = 2.
-              endif
-
-c             --- Now calculate transverse distances.
-              delmx = 2.
-              delpx = 2.
-              delmy = 2.
-              delpy = 2.
-
-c             --- Calculate distances to surface of revolution.
-              if (rrrmin+rfuzz < rad .and. rad <= min(rrr,rmax)+rfuzz) then
-c               --- Note that for z slices outside the conductor, rrrsq1 is a
-c               --- large number, so all transverse distance all also large.
-                delmx = (sqrt(max(0.,rrrsq1 - yy**2)) + xx)*dxi
-                delpx = (sqrt(max(0.,rrrsq1 - yy**2)) - xx)*dxi
-                delmy = (sqrt(max(0.,rrrsq1 - xx**2)) + yy)*dyi
-                delpy = (sqrt(max(0.,rrrsq1 - xx**2)) - yy)*dyi
-              endif
-
-c             --- If requested, select points on shell around rmax and
-c             --- bounding box.
-              if (lshell .and. zmin-zfuzz <= zz .and. zz <= zmax+zfuzz) then
-c               --- Select grid points within 1 grid cell of rmax.
-                if (rmax+rfuzz < rad .and. rad < rmax+max_dxdy-rfuzz) then
-                  if (yy**2 < rmaxsq) then
-                    delmx = ( xx - sqrt(max(0.,rmaxsq - yy**2)))*dxi
-                    delpx = (-xx - sqrt(max(0.,rmaxsq - yy**2)))*dxi
-                  endif
-                  if (xx**2 < rmaxsq) then
-                    delmy = ( yy - sqrt(max(0.,rmaxsq - xx**2)))*dyi
-                    delpy = (-yy - sqrt(max(0.,rmaxsq - xx**2)))*dyi
-                  endif
-                endif
-c               --- Select points within 1 grid cell outside of bounding box
-c               --- which are also within rrr and rmax.
-                if (rrr-rfuzz <= rad .and. rad <= rmax+rfuzz) then
-                  if (xx < xxmin) delpx = (xxmin-xx)*dxi
-                  if (yy < yymin) delpy = (yymin-yy)*dyi
-                  if (xx > xxmax) delmx = (xx-xxmax)*dxi
-                  if (yy > yymax) delmy = (yy-yymax)*dyi
-                endif
-              endif
-
-c             --- Now, ensure that the point on the surface from which the
-c             --- distance was calculated is within the bounding box.
-              if (xx-delmx*dx < xxmin) delmx = 2.
-              if (xx+delpx*dx > xxmax) delpx = 2.
-              if (yy-delmy*dy < yymin) delmy = 2.
-              if (yy+delpy*dy > yymax) delpy = 2.
-
-c             --- Make sure that distances are greater than zero.
-              if (delmx < fuzz) delmx = 2.
-              if (delpx < fuzz) delpx = 2.
-              if (delmy < fuzz) delmy = 2.
-              if (delpy < fuzz) delpy = 2.
-              if (delmz < fuzz) delmz = 2.
-              if (delpz < fuzz) delpz = 2.
-
-c             -- Check if any of the distances are less than 1.
-              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
-     &            delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
-     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
-                if (mod(ix+iy+iz+zparity,2) == 0) then
-c                 --- even
-                  necndbdy = necndbdy + 1
-                  iecndx(necndbdy) = ix
-                  iecndy(necndbdy) = iy
-                  iecndz(necndbdy) = iz
-                  ecdelmx(necndbdy) = delmx
-                  ecdelmy(necndbdy) = delmy
-                  ecdelmz(necndbdy) = delmz
-                  ecdelpx(necndbdy) = delpx
-                  ecdelpy(necndbdy) = delpy
-                  ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = volt
-                else
-c                 --- odd
-                  nocndbdy = nocndbdy + 1
-                  iocndx(nocndbdy) = ix
-                  iocndy(nocndbdy) = iy
-                  iocndz(nocndbdy) = iz
-                  ocdelmx(nocndbdy) = delmx
-                  ocdelmy(nocndbdy) = delmy
-                  ocdelmz(nocndbdy) = delmz
-                  ocdelpx(nocndbdy) = delpx
-                  ocdelpy(nocndbdy) = delpy
-                  ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = volt
-                endif
-              endif
-            enddo
-          enddo
-        enddo
-      endif
-
-c     --- Clean up the table-ized data.
-      if (srfrv_pernz > 0) then
-        lsrlinr = .false.
-      endif
+      call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                xmin,xmax,ymin,ymax,lshell,
+     &                zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
       return
       end
-c========================================================================
 c===========================================================================
       subroutine srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                      lzend,xmin,xmax,ymin,ymax,lshell,
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-      use PSOR3d
-      use Surface_of_Rev
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
-      character(*) rminofz,rmaxofz
+      character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -9375,1132 +8615,23 @@ c===========================================================================
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
 
-c Sets up a conductor represented by the outside of a surface of revolution.
-c The Basis routines rminofz and rmaxofz should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
-c where f() is the radius as a function of z and srfrv_z and srfrv_r are
-c compiled variables which pass data into and out of rofz.
-c The begining of the calling sequence would then be
-c call srfrvout("rofz",...)
-c
-c Input:
-c   rminofz   is the name of the basis routine which calculates the radius as a
-c             function of z.
-c   rmaxofz   (same)
-c   volt      is the voltage on the conductor.
-c   zmin      is the minimum z of the conductor.
-c   zmax      is the maximum z of the conductor.
-c   xcent     is the x center of the conductor.
-c   ycent     is the y center of the conductor.
-c   lzend     is the logical requesting that the end of the conductor be
-c             included
-c   lshell    is the logical requesting that the shell be subgrid resolved
-c   xmin,xmax,ymin,ymax
-c             min and max transverse extent of conductor.
-c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
-c   xmesh,ymesh,l2symtry,l4symtry
-c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
-
-
-      integer(ISZ):: ix,iy,iz,i
-      real(kind=8):: rad,rrrmax,rrrmin,rmin,rmax
-      real(kind=8):: zgmin,zgmax
-      real(kind=8):: rmin_zmin,rmin_zmax
-      real(kind=8):: rmax_zmin,rmax_zmax
-      real(kind=8):: rrrminlower,rrrminhigher,rrrmaxlower,rrrmaxhigher
-      real(kind=8):: zlower,zhigher
-      real(kind=8):: xxmin,xxmax,yymin,yymax
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: jxmin,jxmax,jymin,jymax
-      integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
-      real(kind=8):: delmz0,delpz0
-      real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
-      real(kind=8):: max_dxdy,dxi,dyi,dzi
-      real(kind=8):: ddz,znew,rnew
-      real(kind=8):: srfrv_f
-
-c Table-ize the data if srfrv_pernz > 0.
-      if (srfrv_pernz > 0 .and. .not. lsrminlinr) then
-        npnts_srmin = (zmax - zmin)/dz*srfrv_pernz + 1
-        zz = (zmax - zmin)/(npnts_srmin - 1)
-        call gchange("Surface_of_Rev",0)
-        do i=1,npnts_srmin
-          z_srmin(i) = zmin + (i-1)*zz
-          r_srmin(i) = srfrv_f(z_srmin(i),rminofz,1)
-        enddo
-        lsrminlinr = .true.
-      endif
-      if (srfrv_pernz > 0 .and. .not. lsrmaxlinr) then
-        npnts_srmax = (zmax - zmin)/dz*srfrv_pernz + 1
-        zz = (zmax - zmin)/(npnts_srmax - 1)
-        call gchange("Surface_of_Rev",0)
-        do i=1,npnts_srmax
-          z_srmax(i) = zmin + (i-1)*zz
-          r_srmax(i) = srfrv_f(z_srmax(i),rmaxofz,2)
-        enddo
-        lsrmaxlinr = .true.
-      endif
-
-      dxpsor = dx
-      max_dxdy = max(dx,dy)
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
-
-c Set fuzz which is used to avoid problems with roundoff.
-      fuzz = 1.e-10
-      xfuzz = dx*fuzz
-      yfuzz = dy*fuzz
-      rfuzz = min(xfuzz,yfuzz)
-      zfuzz = dz*fuzz
-
-c Find maximal transverse extent of the conductors with an additional grid
-c cell added to allow subgrid-scale resolution at the edge.
-      jxmin = 0
-      jymin = 0
-      jxmax = nx
-      jymax = ny
-
-c Set limits for transverse loops based on the transverse boundary conditions
-c and the symmetry.
-      ixmin = max(0   ,jxmin)
-      iymin = max(0   ,jymin)
-      ixmax = min(nx  ,jxmax)
-      iymax = min(ny  ,jymax)
-
-c Calculate bounding box relative to center of surface of revolution.
-      xxmin = xmin - xcent
-      xxmax = xmax - xcent
-      yymin = ymin - ycent
-      yymax = ymax - ycent
-
-c Set limits for longitudinal loops based on boundary conditions.  If
-c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
-      izbmin = 0
-      izbmax = nz
-
-c Set limits for longitudinal loops.  They are set so that the minimum
-c end is rounded up and maximum end is rounded down, ensuring that iz is
-c within the conductor.
-      zgmin = zmmin + zbeam
-      zgmax = zmmax + zbeam
-      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
-      izmax =    int((zmax-zgmin)*dzi+zfuzz)
-
-c Perform error checking, to make sure that izmin and izmax are within the
-c grid.
-      izmin = max(izbmin,izmin)
-      izmax = min(izbmax,izmax)
-
-c If izmin > izbmax or izmax < izbmin then the conductor is completely off
-c of the grid, so return.
-      if (izmin > izbmax .or. izmax < izbmin) then
-        call remark("WARNING:srfrvout: conductor is completely off the grid.")
-        return
-      endif
-
-c Set conductor points.
-      do iz=izmin,izmax
-        zz = iz*dz+zgmin
-        zlower = max(zz-dz,zmin)
-        zhigher = min(zz+dz,zmax)
-c       --- Make sure there is enough room in the arrays.
-        if (ncond + (1+nx)*(1+ny) > ncondmax) then
-          ncondmax = ncond + (1+nx)*(1+ny)
-          call gchange("PSOR3d",0)
-        endif
-c       --- Calculate the surface radius at iz.
-        rrrmin = srfrv_f(zz,rminofz,1)
-        rrrmax = srfrv_f(zz,rmaxofz,2)
-c       --- Loop over transverse plane.
-        do ix=ixmin,ixmax
-          do iy=iymin,iymax
-            xx = (ix-ix_axis)*dx-xcent
-            yy = (iy-iy_axis)*dy-ycent
-            rad = sqrt(xx**2 + yy**2)
-
-c           --- The position must be within the min/max transverse extent
-c           --- of the conductor.
-            if ((rrrmin-rfuzz <= rad .and. rad <= rrrmax+rfuzz .and.
-     &           xxmin <= xx .and. xx <= xxmax .and.
-     &           yymin <= yy .and. yy <= yymax)) then
-              ncond = ncond + 1
-              ixcond(ncond) = ix
-              iycond(ncond) = iy
-              izcond(ncond) = iz
-              condvolt(ncond) = volt
-            endif
-          enddo
-        enddo
-      enddo
-c End of conductor points section
-
-c Set subgrid scale arrays
-      if (lcndbndy) then
-
-c       --- Calculate r at zmin and zmax.
-        rmin_zmin = srfrv_f(zmin,rminofz,1)
-        rmin_zmax = srfrv_f(zmax,rminofz,1)
-        rmax_zmin = srfrv_f(zmin,rmaxofz,2)
-        rmax_zmax = srfrv_f(zmax,rmaxofz,2)
-
-c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
-c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
-        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
-
-c       -- Set all points along and just outside conductor.
-        do iz=izmin,izmax
-          zz = iz*dz+zgmin
-          zlower = max(zz-dz,zmin)
-          zhigher = min(zz+dz,zmax)
-
-          if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
-     &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
-            ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
-            call gchange("PSOR3d",0)
-          endif
-
-c         --- Calculate radius of the surface.
-c         --- When zz is outside the conductor, get radius at end of
-c         --- conductor.
-          if (zz < zmin-zfuzz) then
-            rmin = rmin_zmin
-            rmax = rmax_zmin
-          elseif (zz > zmax+zfuzz) then
-            rmin = rmin_zmax
-            rmax = rmax_zmax
-          else
-            rmin = srfrv_f(zz,rminofz,1)
-            rmax = srfrv_f(zz,rmaxofz,2)
-          endif
-
-c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
-c         --- in most cases, assuming that the conductor is far away in z.
-c         --- When zz > zmax, the delmz0 is set to the distance
-c         --- between the z plane and the end of the conductor.
-          rrrminlower = srfrv_f(zlower,rminofz,1)
-          rrrmaxlower = srfrv_f(zlower,rmaxofz,2)
-          delmz0 = 2.
-          if (zz > zmax .and. lzend) then
-            delmz0 = (zz - zmax)*dzi
-          endif
-
-c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
-c         --- in most cases, assuming that the conductor is far away in z.
-c         --- When zz < zmin, the delmp0 is set to the distance
-c         --- between the z plane and the end of the conductor.
-          rrrminhigher = srfrv_f(zhigher,rminofz,1)
-          rrrmaxhigher = srfrv_f(zhigher,rmaxofz,2)
-          delpz0 = 2.
-          if (zz < zmin .and. lzend) then
-            delpz0 = (zmin - zz)*dzi
-          endif
-
-c         --- Find minimum of rrr and radius of surface at nearby z points.
-          rrrmin = min(rmin-max_dxdy,rrrminlower,rrrminhigher)
-          rrrmax = max(rmax+max_dxdy,rrrmaxlower,rrrmaxhigher)
-
-          do ix=ixmin,ixmax
-            do iy=iymin,iymax
-              xx = (ix-ix_axis)*dx-xcent
-              yy = (iy-iy_axis)*dy-ycent
-              rad = sqrt(xx**2 + yy**2)
-
-c             --- Calculate distances in z first.  Select points which
-c             --- are transversely near the surface of revolution and
-c             --- are within the bounding box.
-
-c             --- Calculate distance to conductor at lower z.
-              delmz = delmz0
-
-c             --- If grid location is between rrr and rrrlower and between
-c             --- rmax and rrrlower, find intersection point.  The zfuzz
-c             --- ensures that a distance of zero is not calculated.
-              if (rrrminlower <= rad .and. rad < rmin-rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew > rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew <= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
-              elseif (rrrmaxlower >= rad .and. rad > rmax+rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew < rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew >= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
-              elseif (rad < rrrminlower .or.
-     &                rad > rrrmaxlower) then
-                delmz = 2.
-              endif
-
-c             --- Calculate distance to conductor at higher z.
-              delpz = delpz0
-
-c             --- If grid location is between rrr and rrrhigher and between
-c             --- rmax and rrrhigher, find intersection point.  The zfuzz
-c             --- ensures that a distance of zero is not calculated.
-              if (rrrminhigher <= rad .and. rad < rmin-rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew <= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
-              elseif (rrrmaxhigher >= rad .and. rad > rmax+rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew >= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
-              elseif (rad < rrrminhigher .or.
-     &                rad > rrrmaxhigher) then
-                delpz = 2.
-              endif
-
-c             --- Now calculate transverse distances.
-              delmx = 2.
-              delpx = 2.
-              delmy = 2.
-              delpy = 2.
-
-c             --- Calculate distances to surface of revolution.
-              if (rrrmin+rfuzz < rad .and. rad <= rmin+rfuzz .and.
-     &            zmin <= zz .and. zz <= zmax) then
-                delmx = (sqrt(max(0.,rmin**2 - yy**2)) + xx)*dxi
-                delpx = (sqrt(max(0.,rmin**2 - yy**2)) - xx)*dxi
-                delmy = (sqrt(max(0.,rmin**2 - xx**2)) + yy)*dyi
-                delpy = (sqrt(max(0.,rmin**2 - xx**2)) - yy)*dyi
-              elseif (rrrmax-rfuzz > rad .and. rad >= rmax-rfuzz .and.
-     &            zmin <= zz .and. zz <= zmax) then
-                if (yy**2 < rmax**2) then
-                  delmx = ( xx - sqrt(max(0.,rmax**2 - yy**2)))*dxi
-                  delpx = (-xx - sqrt(max(0.,rmax**2 - yy**2)))*dxi
-                endif
-                if (xx**2 < rmax**2) then
-                  delmy = ( yy - sqrt(max(0.,rmax**2 - xx**2)))*dyi
-                  delpy = (-yy - sqrt(max(0.,rmax**2 - xx**2)))*dyi
-                endif
-              endif
-
-c             --- If requested, select points on shell around bounding box.
-              if (lshell .and. zmin-zfuzz <= zz .and. zz <= zmax+zfuzz) then
-c               --- Select points within 1 grid cell outside of bounding box
-c               --- which are also within rrr and rmax.
-                if (rmin-rfuzz <= rad .and. rad <= rmax+rfuzz) then
-                  if (xx < xxmin) delpx = (xxmin-xx)*dxi
-                  if (yy < yymin) delpy = (yymin-yy)*dyi
-                  if (xx > xxmax) delmx = (xx-xxmax)*dxi
-                  if (yy > yymax) delmy = (yy-yymax)*dyi
-                endif
-              endif
-
-c             --- Now, ensure that the point on the surface from which the
-c             --- distance was calculated is within the bounding box.
-              if (xx-delmx*dx < xxmin) delmx = 2.
-              if (xx+delpx*dx > xxmax) delpx = 2.
-              if (yy-delmy*dy < yymin) delmy = 2.
-              if (yy+delpy*dy > yymax) delpy = 2.
-
-c             --- Make sure that distances are greater than zero.
-              if (delmx < fuzz) delmx = 2.
-              if (delpx < fuzz) delpx = 2.
-              if (delmy < fuzz) delmy = 2.
-              if (delpy < fuzz) delpy = 2.
-              if (delmz < fuzz) delmz = 2.
-              if (delpz < fuzz) delpz = 2.
-
-c             -- Check if any of the distances are less than 1.
-              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
-     &            delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
-     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
-                if (mod(ix+iy+iz+zparity,2) == 0) then
-c                 --- even
-                  necndbdy = necndbdy + 1
-                  iecndx(necndbdy) = ix
-                  iecndy(necndbdy) = iy
-                  iecndz(necndbdy) = iz
-                  ecdelmx(necndbdy) = delmx
-                  ecdelmy(necndbdy) = delmy
-                  ecdelmz(necndbdy) = delmz
-                  ecdelpx(necndbdy) = delpx
-                  ecdelpy(necndbdy) = delpy
-                  ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = volt
-                else
-c                 --- odd
-                  nocndbdy = nocndbdy + 1
-                  iocndx(nocndbdy) = ix
-                  iocndy(nocndbdy) = iy
-                  iocndz(nocndbdy) = iz
-                  ocdelmx(nocndbdy) = delmx
-                  ocdelmy(nocndbdy) = delmy
-                  ocdelmz(nocndbdy) = delmz
-                  ocdelpx(nocndbdy) = delpx
-                  ocdelpy(nocndbdy) = delpy
-                  ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = volt
-                endif
-              endif
-            enddo
-          enddo
-        enddo
-      endif
-
-c     --- Clean up the table-ized data.
-      if (srfrv_pernz > 0) then
-        lsrminlinr = .false.
-        lsrmaxlinr = .false.
-      endif
+      call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+     &                  lzend,xmin,xmax,ymin,ymax,lshell,
+     &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
       return
       end
 c===========================================================================
       subroutine setcndtr_3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
-     &                    l2symtry,l4symtry)
-      use PSOR3d
-      use Lattice
-      use InPart
-      use InjectVars
+     &                       l2symtry,l4symtry)
       integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin,zbeam,zgrid,dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
 
-c  Find type of slice, and put quad voltage into slicvx,slicvy.
-c  This routine is dependent upon quad variables.
-c  If quadrr is negative for that electrode a hyperbolic shape is asssumed
-c  rather than a circular cylinder. (modified by I. Haber)
-c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
-
-
-      integer(ISZ):: ix,iz,iq,ix_axis,iy_axis
-      integer(ISZ):: izp1,izm1
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax,ichange,id,ij
-      integer(ISZ):: ix_near,nxinj,nyinj
-      real(kind=8):: zz,offset,qdcenter,qs,qe,rs,re,xmax0,ymax0
-      real(kind=8):: rodrrsq,rodmxsq,rminsq,rrr,delz,rodx,rody,rodap,delz_p
-      real(kind=8):: vvv,aper,rmax,prevcent,dipocent,delx
-      real(kind=8):: fuzz,zfuzz
-      logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
-
       l4symtry = .true.
-
-      dxpsor = dx
-
-c     --- fuzz is used to prevent the distance from a point to the surface
-c     --- from being too small or zero.  Any point within fuzz of the surface
-c     --- is counted to be within the conductor
-      fuzz = 1.e-5
-      zfuzz = dz*fuzz
-
-c     --- loop over z planes to fill islctype array
-c     --- Note that the loop ranges from -1 to nz+1, since any quads just
-c     --- outside of the grid need to be found in order to apply the subgrid
-c     --- scheme near the z edges of the mesh.
-c     --- This refers directly to the quad arrays rather than the cquad arrays
-c     --- since cquad arrays are only intended to be accessed by particles.
-      iq = 0
-      lnotice = .false.
-      do iz=-1,nz+1
-        islctype(iz) = 0
-
-c       --- find location in lattice array
-        zz = zgrid + zmmin + iz*dz
-
-c       --- Get id of quadrupole element
-        call getquadid(zz,offset,iq,1)
-
-c       --- set up temp variables for locating quadrupoles
-        qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
-        slicvx(iz) = quadvx(iq)
-        slicvy(iz) = quadvy(iq)
-
-c       --- calculate (in lab frame) start and end of quad
-        qs = qdcenter - 0.5*(quadrl(iq) + quadgl(iq))
-        qe = qdcenter + 0.5*(quadrl(iq) + quadgl(iq))
-
-c       --- calculate (in lab frame) start and end rods
-        if (quadgp(iq) < 0.) then
-          rs = qs + quadgl(iq) + qdelglx(iq)
-          re = qe - quadgl(iq) - qdelgly(iq)
-        else
-          rs = qs + quadgl(iq) + qdelgly(iq)
-          re = qe - quadgl(iq) - qdelglx(iq)
-        endif
-
-c       --- Only use this quad is the aperture is > 0, and the rod radius
-c       --- and length are also > 0.
-        if (quadap(iq) > 0 .and. quadrr(iq) > 0. .and. quadrl(iq) > 0.) then
-          if (qs <= zz+zfuzz .and. zz+zfuzz < rs .and. zz < re) then
-c           --- rod on one axis, gap in the other
-            if (quadgp(iq) > 0.) then
-              islctype(iz) = 1
-            else
-              islctype(iz) = 3
-            endif
-          elseif (rs <= zz+zfuzz .and. zz-zfuzz <= re) then
-c           --- rods on both axis
-            islctype(iz) = 2
-          elseif (re < zz-zfuzz .and. zz-zfuzz <= qe .and. zz > rs)then
-c           --- rod on one axis, gap in the other
-            if (quadgp(iq) > 0.) then
-              islctype(iz) = 3
-            else
-              islctype(iz) = 1
-            endif
-          endif
-        endif
-
-c       --- find end plates
-        if (lplates .and. quadpa(iq) > 0. .and.
-     &      quadrr(iq) > 0. .and. quadrl(iq) > 0.) then
-          if (qs-quadpw(iq)-qdelpwl(iq) <= zz+zfuzz .and.
-     &        zz-zfuzz <= qs) then
-            islctype(iz) = 4
-          elseif (qe <= zz+zfuzz .and.
-     &             zz-zfuzz <= qe+quadpw(iq)+qdelpwr(iq)) then
-            islctype(iz) = 5
-          endif
-        endif
-
-c       --- Check for case where both hard edged and self-consistent
-c       --- models are being used for the same quadrupole.  Print notice if
-c       --- this is the case.
-        if (islctype(iz) == 2 .and. quadde(iq) .ne. 0.) lnotice = .true.
-
-c     --- end loop over z which fills islctype
-      enddo
-
-c Set slicv in planes at ends of quads to allow for sub-grid placement of
-c boundaries. This also takes care of the boundary planes.
-      do iz=0,nz
-        if (islctype(iz)==0 .and. islctype(iz-1).ne.0) then
-          slicvx(iz)=slicvx(iz-1)
-          slicvy(iz)=slicvy(iz-1)
-        elseif (islctype(iz)==0 .and. islctype(iz+1).ne.0) then
-          slicvx(iz)=slicvx(iz+1)
-          slicvy(iz)=slicvy(iz+1)
-        endif
-      enddo
-
-c     --- Print notice that both hard edged and self-consistent
-c     --- models are being used for the same quadrupole, if
-c     --- this is the case. This is done outside the loop so it is only done
-c     --- once.
-      if (lnotice) then
-        call remark("Notice: both hard edged and self-consistent models are")
-        call remark("        being used for the same quad.")
-      endif
-
-c +++++++++++++++++++++++++++
-c For each rod, find points that make up the circle of the rods and points
-c that are near the rod surfaces.
-c The subroutine rodpoint is used for all four of the rods.
-c For subgrid scale placement of boundaries,
-c names with 'e' are even in x, y, and z, names with 'o' are odd.
-c With no symmetries, points on and near all four rods are saved.
-
-c     --- zero array counters
-      ncond = 0
-      necndbdy = 0
-      nocndbdy = 0
-
-c     --- find the location of the center of the grid (x=0 and y=0)
-      ix_axis = - xmmin/dx + fuzz
-      iy_axis = - ymmin/dy + fuzz
-
-c     --- set max so rod loops cover one quarter of grid
-      xmax0 = nx - ix_axis
-      ymax0 = ny - iy_axis
-
-c     --- loop over z planes
-      iq = 0
-      do iz=0,nz
-c       --- find location in lattice array
-        zz = zgrid + zmmin + iz*dz
-
-c       --- Get id of quadrupole element
-        call getquadid(zz,offset,iq,1)
-
-c       --- set up temp variables for locating quadrupoles
-        qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
-
-c       --- calculate (in lab frame) start and end of quad
-        qs = qdcenter - 0.5*(quadrl(iq) + quadgl(iq))
-        qe = qdcenter + 0.5*(quadrl(iq) + quadgl(iq))
-
-c       --- set temps ...
-        izp1 = iz + 1
-        izm1 = iz - 1
-c       --- ... to get the boundaries correct
-        if (iz == 0  .and. bound0  == 1) izm1 = 1
-        if (iz == 0  .and. bound0  == 2) izm1 = nz-1
-        if (iz == nz .and. boundnz == 1) izp1 = nz-1
-        if (iz == nz .and. boundnz == 2) izp1 = 1
-
-c       --- Check for presence of rods or ends of rods on x axis.
-c       --- Must be careful with boundaries; if either axial boundary is a
-c       --- conducting wall, don't put conductor there.
-        if (((islctype(iz) == 1 .or. islctype(iz) == 2) .or.
-     &      ((islctype(iz) == 3 .or. islctype(iz) == 0) .and.
-     &       (islctype(izm1) == 2 .or. islctype(izp1) == 2)))) then
-
-c         --- set logical, true when z plane inside rod, false when just
-c         --- outside the end of the rod
-          if (islctype(iz) == 1 .or. islctype(iz) == 2) then
-            lz_in_rod = .true.
-          else
-            lz_in_rod = .false.
-          endif
-
-c         +++ do rod on positive x axis
-c         --- rod radius squared, will be negative if quadrr is negative
-c         --- signifying a hyperbolic electrode.
-          rodrrsq = sign((quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq))**2,
-     &                   quadrr(iq))
-
-c         --- rod radius plus one grid cell squared
-          rodmxsq=(quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq)+max(dx,dy))**2
-
-c         --- inner radius of hollow cylinder (rod is cylinder with walls
-c         --- 2 grid cells thick)
-          rminsq =(quadrr(iq)+qdelrxp(iq)-(zz-qs)*quadsl(iq)-2.*max(dx,dy))**2
-
-c         --- if at end of rod, fill in all of the rod
-          if (islctype(izm1) == 3 .or. islctype(izp1) == 3 .or.
-     &        islctype(izm1) == 0 .or. islctype(izp1) == 0) rminsq = 0.
-
-c         --- Set temp which can be set to zero so all of rod is included.
-c         --- rrr is used as minimum radius to check for points near surface
-          rrr = rodrrsq
-
-c         --- if plane near end of rod, set rrr=0 to get all points in disc
-c         --- and set delz since same for whole plane
-          delz = 2.
-          if (islctype(iz) == 3 .or. islctype(iz) == 0) then
-            rrr = 0.
-            if (islctype(izm1) == 2) delz = (zz-qs-quadrl(iq)+qdelglx(iq))/dz
-            if (islctype(izp1) == 1) delz = (zz-qs)/dz
-            if (islctype(izp1) == 2) delz = (zz-qe+quadrl(iq)-qdelglx(iq))/dz
-            if (islctype(izm1) == 1) delz = (zz-qe)/dz
-          endif
-
-c         --- find rectangle which circumscribes the circle of the rod
-c         --- if hyperbolic electrode go out to wall
-          if (rodrrsq >= 0.) then
-            ixmax = min(xmax0,(rodfract*2.*(quadrr(iq)+qdelrxp(iq)) +
-     &                 quadap(iq) + qdelaxp(iq) + qoffx(iq))/dx + 1.)
-            ixmin = max(-xmax0,(quadap(iq) + qdelaxp(iq) + qoffx(iq) +
-     &                        (zz - qs)*quadsl(iq))/dx - 1.)
-            iymax = min(ymax0,(quadrr(iq) + qdelrxp(iq) + qdeloxp(iq) -
-     &                 (zz - qs)*quadsl(iq) + qoffy(iq))/dy + 1.)
-            iymin = max(-ymax0,(- quadrr(iq) - qdelrxp(iq) +
-     &                 qdeloxp(iq) + (zz - qs)*quadsl(iq) +
-     &                  qoffy(iq))/dy - 1.)
-          else
-            ixmax = xmax0
-            ixmin = max(-xmax0,(quadap(iq) + qdelaxp(iq) + qoffx(iq))/dx - 1.)
-            iymax = min(ymax0, sqrt ((xmax0*dx)**2 - (quadap(iq) +
-     &               qoffx(iq) + qdelaxp(iq))**2)/dy + 1 )
-            iymin = max(-ymax0,-sqrt ((xmax0*dx)**2 - (quadap(iq) +
-     &               qoffx(iq) + qdelaxp(iq))**2)/dy - 1 )
-          endif
-          if (l2symtry .or. l4symtry) iymin = 0
-
-c         --- distance of rod center from centerline or distance from axis of
-c         --- hyperbola intercept
-          if (rodrrsq >= 0. ) then
-            rodx = quadap(iq) +qdelaxp(iq) +quadrr(iq) + qdelrxp(iq)+qoffx(iq)
-            rody = qoffy(iq) + qdeloxp(iq)
-            rodap = quadap(iq) + qdelaxp(iq) + qoffx(iq) + (zz-qs)*quadsl(iq)
-          else
-            rodx = quadap(iq) +qdelaxp(iq) + qoffx(iq)
-            rody = 0.
-          endif
-
-          call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
-     &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
-     &               slicvx(iz)+qdelvxp(iq))
-
-c         +++ do rod on negative x axis
-          if (.not. l4symtry) then
-c           --- rod radius squared
-            rodrrsq = sign((quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq))**2,
-     &                     quadrr(iq))
-
-c           --- rod radius plus one grid cell squared
-            rodmxsq=(quadrr(iq) + qdelrxm(iq)-(zz-qs)*quadsl(iq)+max(dx,dy))**2
-
-c           --- inner radius of hollow cylinder (rod is cylinder with walls
-c           --- 2 grid cells thick)
-            rminsq =(quadrr(iq)+qdelrxm(iq)-(zz-qs)*quadsl(iq)-2.*max(dx,dy))**2
-
-c           --- if at end of rod, fill in all of the rod
-            if (islctype(izm1) == 3 .or. islctype(izp1) == 3 .or.
-     &          islctype(izm1) == 0 .or. islctype(izp1) == 0) rminsq = 0.
-
-c           --- Set temp which can be set to zero so all of rod is included.
-c           --- rrr is used as minimum radius to check for points near surface
-            rrr = rodrrsq
-
-c           --- if plane near end of rod, set rrr=0 to get all points in disc
-c           --- and set delz since same for whole plane
-            delz = 2.
-            if (islctype(iz) == 3 .or. islctype(iz) == 0) then
-              rrr = 0.
-              if (islctype(izm1) == 2) delz=(zz-qs-quadrl(iq)+qdelglx(iq))/dz
-              if (islctype(izp1) == 1) delz=(zz-qs)/dz
-              if (islctype(izp1) == 2) delz=(zz-qe+quadrl(iq)-qdelglx(iq))/dz
-              if (islctype(izm1) == 1) delz=(zz-qe)/dz
-            endif
-
-c           --- find rectangle which circumscribes the circle of the rod
-c           --- if hyperbolic electrode go out to wall
-            if (rodrrsq >= 0.) then
-              ixmax = min(xmax0,(-quadap(iq) - qdelaxm(iq) + qoffx(iq) -
-     &                          (zz - qs)*quadsl(iq))/dx + 1.)
-              ixmin = max(-xmax0,(-rodfract*2.*(quadrr(iq)+qdelrxm(iq)) -
-     &                    quadap(iq) + qoffx(iq))/dx - 1.)
-              iymax = min(ymax0,(quadrr(iq) + qdelrxm(iq) + qdeloxm(iq) -
-     &                    (zz - qs)*quadsl(iq) + qoffy(iq))/dy + 1.)
-              iymin = max(-ymax0,(- quadrr(iq) - qdelrxm(iq) + qdeloxm(iq) +
-     &                    (zz - qs)*quadsl(iq) + qoffy(iq))/dy - 1.)
-            else
-              ixmax = min(xmax0,(-quadap(iq) - qdelaxm(iq) + qoffx(iq))/dx+1.)
-              ixmin = -xmax0
-              iymax = min(ymax0, sqrt ((xmax0*dx)**2 - (quadap(iq) +
-     &                 qoffx(iq) + qdelaxm(iq))**2)/dy + 1 )
-              iymin = max(-ymax0, -sqrt ((xmax0*dx)**2 - (-quadap(iq) +
-     &               qoffx(iq) - qdelaxm(iq))**2)/dy - 1 )
-            endif
-            if (l2symtry) iymin = 0
-
-c           --- distance of rod center from centerline
-            if (rodrrsq >= 0. ) then
-              rodx = -quadap(iq)-qdelaxm(iq)-quadrr(iq)-qdelrxm(iq)+qoffx(iq)
-              rody = qoffy(iq) + qdeloxm(iq)
-              rodap = -quadap(iq) -qdelaxm(iq) +qoffx(iq) - (zz-qs)*quadsl(iq)
-            else
-              rodx = -quadap(iq) -qdelaxm(iq) + qoffx(iq)
-              rody = 0.
-            endif
-
-            call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
-     &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
-     &               slicvx(iz)+qdelvxm(iq))
-
-          endif
-        endif
-
-
-c       --- Check for presence of rods or ends of rods on y axis.
-c       --- Must be careful with boundaries; if either axial boundary is a
-c       --- conducting wall, don't put conductor there.
-        if (((islctype(iz) == 2 .or. islctype(iz) == 3) .or.
-     &      ((islctype(iz) == 1 .or. islctype(iz) == 0) .and.
-     &       (islctype(izm1) == 2 .or. islctype(izp1) == 2)))) then
-
-c         --- set logical, true when z plane inside rod, false when just
-c         --- outside the end of the rod
-          if (islctype(iz) == 2 .or. islctype(iz) == 3) then
-            lz_in_rod = .true.
-          else
-            lz_in_rod = .false.
-          endif
-
-c         +++ do rod on positive y axis
-c         --- rod radius squared
-          rodrrsq = sign((quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq))**2,
-     &                   quadrr(iq))
-
-c         --- rod radius plus one grid cell squared
-          rodmxsq=(quadrr(iq)+qdelryp(iq)-(zz-qs)*quadsl(iq)+max(dx,dy))**2
-
-c         --- inner radius of hollow cylinder (rod is cylinder with walls
-c         --- 2 grid cells thick)
-          rminsq =(quadrr(iq)+qdelryp(iq)-(zz-qs)*quadsl(iq)-2.*max(dx,dy))**2
-
-c         --- if at end of rod, fill in all of the rod
-          if (islctype(izm1) == 1 .or. islctype(izp1) == 1 .or.
-     &        islctype(izm1) == 0 .or. islctype(izp1) == 0) rminsq = 0.
-
-c         --- Set temp which can be set to zero so all of rod is included.
-c         --- rrr is used as minimum radius to check for points near surface
-          rrr = rodrrsq
-
-c         --- if plane near end of rod, set rrr=0 to get all points in disc
-c         --- and set delz since same for whole plane
-          delz = 2.
-          if (islctype(iz) == 1 .or. islctype(iz) == 0) then
-            rrr = 0.
-            if (islctype(izm1) == 2) delz = (zz-qs-quadrl(iq)+qdelgly(iq))/dz
-            if (islctype(izp1) == 3) delz = (zz-qs)/dz
-            if (islctype(izp1) == 2) delz = (zz-qe+quadrl(iq)-qdelgly(iq))/dz
-            if (islctype(izm1) == 3) delz = (zz-qe)/dz
-          endif
-
-c         --- find rectangle which circumscribes the circle of the rod
-          if (rodrrsq >= 0.) then
-           ixmax = min(xmax0,(quadrr(iq) + qdelryp(iq) - (zz - qs)*quadsl(iq) +
-     &                       qoffx(iq) + qdeloyp(iq))/dx + 1.)
-           ixmin = min(-xmax0,(-quadrr(iq) - qdelryp(iq) +
-     &                (zz - qs)*quadsl(iq) + qoffx(iq) + qdeloyp(iq))/dx - 1.)
-           iymax = min(ymax0,(rodfract*2.*(quadrr(iq)+qdelryp(iq)) +quadap(iq)+
-     &                       qdelayp(iq) + qoffy(iq))/dy + 1.)
-           iymin = max(-ymax0,(quadap(iq) + qdelayp(iq) + qoffy(iq) +
-     &                          (zz - qs)*quadsl(iq))/dy - 1.)
-          else
-           ixmax = min(xmax0, sqrt((ymax0*dy)**2 - (quadap(iq) +
-     &                 qoffy(iq) + qdelayp(iq))**2)/dx + 1.)
-           ixmin = max(-xmax0, -sqrt((ymax0*dy)**2 - (quadap(iq) +
-     &                 qoffy(iq) + qdelayp(iq))**2)/dx - 1.)
-           iymax = ymax0
-           iymin = max(-ymax0,(quadap(iq) + qdelayp(iq) + qoffy(iq))/dy - 1.)
-          endif
-          if (l4symtry) ixmin = 0
-
-c         --- distance of rod center from centerline
-          if (rodrrsq >= 0.) then
-            rodx = qoffx(iq) + qdeloyp(iq)
-            rody = quadap(iq) + qdelayp(iq) + quadrr(iq) +qdelryp(iq)+qoffy(iq)
-            rodap = quadap(iq) + qdelayp(iq) + qoffy(iq) + (zz-qs)*quadsl(iq)
-          else
-            rodx = 0.
-            rody = quadap(iq) + qdelayp(iq) + qoffy(iq)
-          endif
-
-          call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
-     &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
-     &               slicvy(iz)+qdelvyp(iq))
-
-c         +++ do rod on negative y axis
-          if (.not. (l2symtry .or. l4symtry)) then
-c           --- rod radius squared
-            rodrrsq = sign((quadrr(iq) + qdelrxp(iq) - (zz-qs)*quadsl(iq))**2,
-     &                     quadrr(iq))
-
-c           --- rod radius plus one grid cell squared
-            rodmxsq=(quadrr(iq)+qdelrym(iq)-(zz-qs)*quadsl(iq)+max(dx,dy))**2
-
-c           --- inner radius of hollow cylinder (rod is cylinder with walls
-c           --- 2 grid cells thick)
-            rminsq =(quadrr(iq)+qdelrym(iq)-(zz-qs)*quadsl(iq)-2.*max(dx,dy))**2
-
-c           --- if at end of rod, fill in all of the rod
-            if (islctype(izm1) == 1 .or. islctype(izp1) == 1 .or.
-     &          islctype(izm1) == 0 .or. islctype(izp1) == 0) rminsq = 0.
-
-c           --- Set temp which can be set to zero so all of rod is included.
-c           --- rrr is used as minimum radius to check for points near surface
-            rrr = rodrrsq
-
-c           --- if plane near end of rod, set rrr=0 to get all points in disc
-c           --- and set delz since same for whole plane
-            delz = 2.
-            if (islctype(iz) == 1 .or. islctype(iz) == 0) then
-              rrr = 0.
-              if (islctype(izm1) == 2) delz=(zz-qs-quadrl(iq)+qdelgly(iq))/dz
-              if (islctype(izp1) == 3) delz=(zz-qs)/dz
-              if (islctype(izp1) == 2) delz=(zz-qe+quadrl(iq)-qdelgly(iq))/dz
-              if (islctype(izm1) == 3) delz=(zz-qe)/dz
-            endif
-
-c           --- find rectangle which circumscribes the circle of the rod
-            if (rodrrsq >= 0.) then
-              iymax = min(ymax0,(-quadap(iq) - qdelaym(iq) + qoffy(iq) -
-     &                         (zz - qs)*quadsl(iq))/dy + 1.)
-              iymin = max(-ymax0,(-rodfract*2.*(quadrr(iq)+qdelrym(iq)) -
-     &                   quadap(iq) - qdelaym(iq) + qoffy(iq))/dy - 1.)
-              ixmax = min(xmax0,(quadrr(iq) + qdelrym(iq) - (zz-qs)*quadsl(iq)+
-     &                          qoffx(iq) + qdeloym(iq))/dx + 1.)
-              ixmin = min(-xmax0,(-quadrr(iq) - qdelrym(iq) +
-     &                 (zz - qs)*quadsl(iq) + qoffx(iq) + qdeloym(iq))/dx - 1.)
-            else
-              ixmax = min(xmax0, sqrt((ymax0*dy)**2 - (-quadap(iq) -
-     &                   qdelaym(iq) + qoffy(iq))**2)/dx + 1.)
-              ixmin = max(-xmax0, -sqrt((ymax0*dy)**2 - (-quadap(iq) -
-     &                   qdelaym(iq) + qoffy(iq))**2)/dx - 1.) 
-              iymax = min(ymax0, ( -quadap(iq) - qdelaym(iq) +
-     &                    qoffy(iq))/dy + 1.)
-              iymin = -ymax0
-            endif 
-
-c           --- distance of rod center from centerline
-            if (rodrrsq >= 0. ) then
-              rodx = qoffx(iq) + qdeloym(iq)
-              rody = -quadap(iq)-qdelaym(iq)-quadrr(iq)-qdelrym(iq)+qoffy(iq)
-              rodap = -quadap(iq) -qdelaym(iq) +qoffy(iq) - (zz-qs)*quadsl(iq)
-            else
-              rodx = 0.
-              rody = -quadap(iq) -qdelaym(iq) +qoffy(iq)
-            endif
-
-            call rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
-     &               lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz,
-     &               quadsl(iq),rodap,fuzz,qs-zgrid-zmmin,dz,iz,
-     &               slicvy(iz)+qdelvym(iq))
-          endif
-        endif
-
-c +++++++++++++++++++++++++++
-c       --- calculates the points on the endplates including slices before
-c       --- and after for purposes of subgrid placement.  Note that the
-c       --- subgrid placement around the abutting rod electrode is
-c       --- inconsistent with thte calculated interpolation prameters from
-c       --- the rod so that an anamolous "weld-like" structure is created.
-c       --- Since this structure is at the same potential as the rod and
-c       --- the plate it is neglected in this coding.
- 
-
-c       --- plate on left hand side of quad
-        if (islctype(iz) == 4 .or.
-     &      islctype(iz + 1) == 4 .or. islctype(iz - 1) == 4 ) then
-          if (quadgp(iq) < 0.) then
-            vvv = slicvy(iz) + qdelvyp(iq)
-          else
-            vvv = slicvx(iz) + qdelvxp(iq)
-          endif
-
-c         --- Test if slice is inside of plate or just outside the plate.
-c         --- Calculate delz_p if just outside.
-          if (islctype(iz) == 4) then
-            delz_p = 2.
-            lz_in_plate = .true.
-          elseif (islctype(iz) .ne. 4 .and. islctype(iz + 1) == 4) then
-            delz_p = (zz - (qs-quadpw(iq)-qdelpwl(iq)))/dz
-            lz_in_plate = .false.
-          elseif (islctype(iz) .ne. 4 .and. islctype(iz - 1) == 4) then
-            delz_p = (zz - qs)/dz
-            lz_in_plate = .false.
-          endif
-
-c         --- find min and max radius of plate
-          aper = (quadpa(iq) + qdelpal(iq))
-          rmax = (quadpr(iq) + qdelprl(iq))
-
-c         --- if this plate surrounded by two plates, don't fill it all in
-          if (0 < iz .and. iz < nz) then
-            if (islctype(iz-1) == 4 .and. islctype(iz+1) == 4)
-     &        rmax = (quadpa(iq) + qdelpal(iq) + 2*max(dx,dy))
-          endif
-
-          call platepnt(0,nx,0,ny,ix_axis,iy_axis,dx,dy,aper,
-     &                  rmax,vvv,qoffx(iq),qoffy(iq),delz_p,iz,lz_in_plate,
-     &                  fuzz)
-        endif
-
-c       --- plate on right hand side of quad
-        if (islctype(iz) == 5 .or.
-     &      islctype(iz + 1) == 5 .or. islctype(iz - 1) == 5 ) then
-          if (quadgp(iq) > 0.) then
-            vvv = slicvy(iz) + qdelvyp(iq)
-          else
-            vvv = slicvx(iz) + qdelvxp(iq)
-          endif
-
-c         --- Test if slice is inside of plate or just outside the plate.
-c         --- Calculate delz_p if just outside.
-          if (islctype(iz) == 5) then
-            delz_p = 2.
-            lz_in_plate = .true.
-          elseif (islctype(iz) .ne. 5 .and. islctype(iz - 1) == 5) then
-            delz_p = (zz - (qe+quadpw(iq)+qdelpwl(iq)))/dz
-            lz_in_plate = .false.
-          elseif (islctype(iz) .ne. 5 .and. islctype(iz + 1) == 5) then
-            delz_p = (zz - qe)/dz
-            lz_in_plate = .false.
-          endif
-
-c         --- find min and max radius of plate
-          aper = (quadpa(iq) + qdelpar(iq))
-          rmax = (quadpr(iq) + qdelprr(iq))
-
-c         --- if this plate surrounded by two plates, don't fill it all in
-          if (0 < iz .and. iz < nz) then
-            if (islctype(iz-1) == 5 .and. islctype(iz+1) == 5)
-     &        rmax = (quadpa(iq) + qdelpar(iq) + 2*max(dx,dy))
-          endif
-
-          call platepnt(0,nx,0,ny,ix_axis,iy_axis,dx,dy,aper,
-     &                  rmax,vvv,qoffx(iq),qoffy(iq),delz_p,iz,lz_in_plate,
-     &                  fuzz)
-        endif
-
-c +++++++++++++++++++++++++++
-c       --- Make arrays bigger if they are about to be filled up.
-c       --- If ncond is within (1+nx)*(1+ny) of ncondmax, increase ncondmax.
-c       --- That is the maximum number of points needed to fill an endplate.
-c       --- If the max of necndbdy and nocndbdy are within 3*nxpsor if ncndmax,
-c       --- increase ncndmax.  That is roughly the number of points needed
-c       --- for one axial slice of a rod.
-c       --- Set flag ichange so that if anything needs to be changed, all
-c       --- of the changes can be made at once.
-        ichange = 0
-        if (ncond + (1+nx)*(1+ny) > ncondmax) then
-          ncondmax = ncond + (1+nx)*(1+ny)
-          ichange = 1
-        endif
-        if (max(necndbdy,nocndbdy) + 3*nxpsor > ncndmax) then
-          ncndmax = max(necndbdy,nocndbdy) + 3*nxpsor
-          ichange = 1
-        endif
-        if (ichange == 1) call gchange("PSOR3d",0)
-
-c     --- end loop over z
-      enddo
-
-c +++++++++++++++++++++++++++
-c     --- add points for electrostatic dipoles
-      if (ndipo > 0) then
-
-c       --- set prevcent (center of previous dipole) to large negative
-c       --- value to ensure that first dipole is included.
-        prevcent = -LARGEPOS
-
-c       --- loop over z in the lattice array looking for dipoles
-        id = 0
-        do iz=0,nz
-          zz = zgrid + zmmin + iz*dz
-          call getdipoid(zz,offset,id,1)
-
-c         --- calculate center of dipole
-          dipocent = .5*(dipozs(id) + dipoze(id)) - zmmin - zgrid
-
-c         --- If the center is greater than center of previous dipole,
-c         --- then at a new dipole, so load in points.
-          if (dipocent > prevcent) then
-            prevcent = dipocent + zfuzz
-
-c           --- calculate x position of first plate and its distance from the
-c           --- grid cell below
-            ix_near = dipox1(id)/dx + ix_axis + 0.5
-            ix = dipox1(id)/dx + ix_axis
-            delx = dipox1(id)/dx+ix_axis - int(dipox1(id)/dx+ix_axis)
-
-c           --- check if plate is within field grid
-            if (0 <= ix .and. ix <= nx) then 
-
-c             --- calculate bounds of first plate (these are bounded to be
-c             --- within the field mesh)
-              iymax = min(ny,int( 0.5*dipow1(id)/dy+0.5+iy_axis))
-              iymin = max(0,int(-0.5*dipow1(id)/dy-0.5+iy_axis))
-              izmax = min(nz,int((dipocent + dipol1(id)*0.5)/dz + zfuzz))
-              izmin = max(0,int((dipocent - dipol1(id)*0.5)/dz + zfuzz))
-
-c             --- add more space to the arrays if necessary
-              if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
-                ncondmax = ncond + (iymax-iymin+1)*(izmax-izmin+1)
-                call gchange("PSOR3d",0)
-              endif
-
-              call dipopnt(iymin,iymax,izmin,izmax,dipov1(id),ix_near,ix,delx)
-
-            endif
-
-c           --- now do the same for the second dipole plate
-            ix_near = dipox2(id)/dx + ix_axis + 0.5
-            ix = dipox2(id)/dx + ix_axis
-            delx = dipox2(id)/dx+ix_axis - int(dipox2(id)/dx+ix_axis)
-            if (0 <= ix .and. ix <= nx) then 
-              iymax = min(ny,int( 0.5*dipow2(id)/dy+0.5+iy_axis))
-              iymin = max(0,int(-0.5*dipow2(id)/dy-0.5+iy_axis))
-              izmax = min(nz,int((dipocent + dipol2(id)*0.5)/dz + 0.5))
-              izmin = max(0,int((dipocent - dipol2(id)*0.5)/dz + 0.5))
-              if (ncond + (iymax-iymin+1)*(izmax-izmin+1) > ncondmax) then
-                ncondmax = ncond + (iymax-iymin+1)*(izmax-izmin+1)
-                call gchange("PSOR3d",0)
-              endif
-              call dipopnt(iymin,iymax,izmin,izmax,dipov2(id),ix_near,ix,delx)
-            endif
-
-c         --- end of section that fills arrays
-          endif
-
-c       --- end of loop over z
-        enddo
-
-c     --- end of dipoles
-      endif
-
-c +++++++++++++++++++++++++++
-c Include injection source
-      call injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
+      call setcndtr3d(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
+     &                l2symtry,l4symtry)
 
       return
       end
@@ -10509,10 +8640,7 @@ c===========================================================================
      &                    xmin,xmax,ymin,ymax,lshell,
      &                    zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                    ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-      use PSOR3d
-      use Surface_of_Rev
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
-      character(*) rofzfunc
+      character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
       logical(ISZ):: lfill,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -10521,455 +8649,19 @@ c===========================================================================
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
 
-c Sets up a conductor represented by the outside of a surface of revolution.
-c The Basis routine rofzfunc should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
-c where f() is the radius as a function of z and srfrv_z and srfrv_r are
-c compiled variables which pass data into and out of rofz.
-c The begining of the calling sequence would then be
-c call srfrvout("rofz",...)
-c
-c Input:
-c   rofzfunc  is the name of the basis routine which calculates the radius as a
-c             function of z.
-c   volt      is the voltage on the conductor.
-c   zmin      is the minimum z of the conductor.
-c   zmax      is the maximum z of the conductor.
-c   xcent     is the x center of the conductor.
-c   ycent     is the y center of the conductor.
-c   rmax      is the maximum radius of the conductor.
-c   lfill     is the logical requesting that the whole conductor be filled
-c             with points.
-c   lshell    is the logical requesting that the shell be subgrid resolved
-c   xmin,xmax,ymin,ymax
-c             min and max transverse extent of conductor.
-c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
-c   xmesh,ymesh,l2symtry,l4symtry
-c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
-
-
-      integer(ISZ):: ix,iy,iz,i
-      real(kind=8):: rrr,rad,rrrsq,rrrsq1,rrrmax,rrrmin
-      real(kind=8):: rmaxsq,zgmin,zgmax,r_zmin,r_zmax
-      real(kind=8):: rrrlower,rrrhigher,zlower,zhigher
-      real(kind=8):: xxmin,xxmax,yymin,yymax
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: jxmin,jxmax,jymin,jymax
-      integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
-      real(kind=8):: delmz0,delpz0
-      real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
-      real(kind=8):: max_dxdy,dxi,dyi,dzi
-      real(kind=8):: ddz,znew,rnew
-      real(kind=8):: srfrv_f
-
-c Table-ize the data if srfrv_pernz > 0.
-      if (srfrv_pernz > 0 .and. .not. lsrlinr) then
-        npnts_sr = (zmax - zmin)/dz*srfrv_pernz + 1
-        zz = (zmax - zmin)/(npnts_sr - 1)
-        call gchange("Surface_of_Rev",0)
-        do i=1,npnts_sr
-          z_sr(i) = zmin + (i-1)*zz
-          r_sr(i) = srfrv_f(z_sr(i),rofzfunc,0)
-        enddo
-        lsrlinr = .true.
-      endif
-
-      dxpsor = dx
-      rmaxsq = rmax*rmax
-      max_dxdy = max(dx,dy)
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
-
-c Set fuzz which is used to avoid problems with roundoff.
-      fuzz = 1.e-10
-      xfuzz = dx*fuzz
-      yfuzz = dy*fuzz
-      rfuzz = min(xfuzz,yfuzz)
-      zfuzz = dz*fuzz
-
-c Find maximal transverse extent of the conductors with an additional grid
-c cell added to allow subgrid-scale resolution at the edge.
-      jxmin = int(max(xmin*dxi,(-rmax+xcent)*dxi)) + ix_axis - 1
-      jymin = int(max(ymin*dyi,(-rmax+ycent)*dyi)) + iy_axis - 1
-      jxmax = int(min(xmax*dxi,(+rmax+xcent)*dxi)) + ix_axis + 1
-      jymax = int(min(ymax*dyi,(+rmax+ycent)*dyi)) + iy_axis + 1
-
-c Set limits for transverse loops based on the transverse boundary conditions
-c and the symmetry.
-      ixmin = max(0   ,jxmin)
-      iymin = max(0   ,jymin)
-      ixmax = min(nx  ,jxmax)
-      iymax = min(ny  ,jymax)
-
-c Calculate bounding box relative to center of surface of revolution.
-      xxmin = xmin - xcent
-      xxmax = xmax - xcent
-      yymin = ymin - ycent
-      yymax = ymax - ycent
-
-c Set limits for longitudinal loops based on boundary conditions.  If
-c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
-      izbmin = 0
-      izbmax = nz
-
-c Set limits for longitudinal loops.  They are set so that the minimum
-c end is rounded up and maximum end is rounded down, ensuring that iz is
-c within the conductor.
-      zgmin = zmmin + zbeam
-      zgmax = zmmax + zbeam
-      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
-      izmax =    int((zmax-zgmin)*dzi+zfuzz)
-
-c Perform error checking, to make sure that izmin and izmax are within the
-c grid. 
-      izmin = max(izbmin,izmin)
-      izmax = min(izbmax,izmax)
-     
-c If izmin > izbmax or izmax < izbmin then the conductor is completely off
-c of the grid, so return.
-      if (izmin > izbmax .or. izmax < izbmin) then
-        call remark("WARNING:srfrvout: conductor is completely off the grid.")
-        return
-      endif
-
-c Set conductor points.  If lfill or at end, set all points outside radius.
-      do iz=izmin,izmax
-        zz = iz*dz+zgmin
-        zlower = max(zz-dz,zmin)
-        zhigher = min(zz+dz,zmax)
-c       --- Make sure there is enough room in the arrays.
-        if (ncond + (1+nx)*(1+ny) > ncondmax) then
-          ncondmax = ncond + (1+nx)*(1+ny)
-          call gchange("PSOR3d",0)
-        endif
-c       --- Calculate the surface radius at iz.
-        rrr = srfrv_f(zz,rofzfunc,0)
-        rrrsq = rrr*rrr
-c       --- Calculate the maximum radius to be filled.
-c       --- If not filling the whole conductor, set rrrmax large enough so
-c       --- that enough conductor is filled to match neighboring points in iz.
-        if (lfill .or. (lshell .and. (iz == izmin .or. iz == izmax))) then
-          rrrmax = rmax
-        else
-          rrrmax = max((rrr+max_dxdy),
-     &              (srfrv_f(zlower,rofzfunc,0)+max_dxdy),
-     &              (srfrv_f(zhigher,rofzfunc,0)+max_dxdy))
-        endif
-c       --- Loop over transverse plane.
-        do ix=ixmin,ixmax
-          do iy=iymin,iymax
-            xx = (ix-ix_axis)*dx-xcent
-            yy = (iy-iy_axis)*dy-ycent
-            rad = sqrt(xx**2 + yy**2)
-
-c           --- The points selected must meet a number of conditions.
-c           --- > The radius must be between the surface radius and rmax.
-c           --- > The position must be within the min/max transverse extent
-c           --- > of the conductor.
-c           --- The points selected must also meet one of the following.
-c           --- > A radius less than rrrmax.
-c           --- > A radius within one grid cell of rmax.
-c           --- > A position within a grid cell of the transverse bounds.
-c           --- The last two conditions put an optional shell around an
-c           --- unfilled conductor.
-            if ((rrr-rfuzz <= rad .and. rad <= rmax+rfuzz .and.
-     &           xxmin <= xx .and. xx <= xxmax .and.
-     &           yymin <= yy .and. yy <= yymax) .and.
-     &          (rad <= rrrmax .or.
-     &           (lshell .and. (rmax-rad < max_dxdy .or.
-     &                          xx-xxmin < max_dxdy .or.
-     &                          yy-yymin < max_dxdy .or.
-     &                          xxmax-xx < max_dxdy .or.
-     &                          yymax-yy < max_dxdy      )))) then
-              ncond = ncond + 1
-              ixcond(ncond) = ix
-              iycond(ncond) = iy
-              izcond(ncond) = iz
-              condvolt(ncond) = volt
-            endif
-          enddo
-        enddo
-      enddo
-c End of conductor points section
-
-c Set subgrid scale arrays
-      if (lcndbndy) then
-
-c       --- Calculate r at zmin and zmax.
-        r_zmin = srfrv_f(zmin,rofzfunc,0)
-        r_zmax = srfrv_f(zmax,rofzfunc,0)
-
-c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
-c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
-        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
-
-c       -- Set all points along and just outside conductor.
-        do iz=izmin,izmax
-          zz = iz*dz+zgmin
-          zlower = max(zz-dz,zmin)
-          zhigher = min(zz+dz,zmax)
-
-          if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
-     &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
-            ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
-            call gchange("PSOR3d",0)
-          endif
-
-c         --- Calculate radius of the surface.
-c         --- When zz is outside the conductor, get radius at end of
-c         --- conductor.  rrrsq is used to chose which grid points may
-c         --- be within the subgrid-scale region.  rrrsq1 is used in the
-c         --- calculation of the transverse distances.  When zz is
-c         --- outside the conductor, only points within the radius rmax
-c         --- (when lshell is true) or r_zmin or r_zmax (otherwise) are
-c         --- desired, but the radius used in the calculation is set to
-c         --- be large so that transverse subgrid resolution will not be done.
-          if (zz < zmin-zfuzz) then
-            rrr = r_zmin
-            if (lshell) then
-              rrrsq = rmax*rmax
-            else
-              rrrsq = rrr*rrr
-            endif
-            rrrsq1 = LARGEPOS
-          elseif (zz > zmax+zfuzz) then
-            rrr = r_zmax
-            if (lshell) then
-              rrrsq = rmax*rmax
-            else
-              rrrsq = rrr*rrr
-            endif
-            rrrsq1 = LARGEPOS
-          else
-            rrr = srfrv_f(zz,rofzfunc,0)
-            rrrsq = rrr*rrr
-            rrrsq1 = rrrsq
-          endif
-
-c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
-c         --- in most cases, assuming that the conductor is far away in z.
-c         --- When zz > zmax, the delmz0 is set to the distance
-c         --- between the z plane and the end of the conductor.
-c         --- When zz < zmin, rrrlower is set to rrr so the
-c         --- iteration is not done.
-          rrrlower = srfrv_f(zlower,rofzfunc,0)
-          delmz0 = 2.
-          if (zz < zmin) then
-            rrrlower = rrr
-          elseif (zz > zmax) then
-            delmz0 = (zz - zmax)*dzi
-          endif
-
-c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
-c         --- in most cases, assuming that the conductor is far away in z.
-c         --- When zz < zmin, the delmp0 is set to the distance
-c         --- between the z plane and the end of the conductor.
-c         --- When zz > zmax, rrrhigher is set to rrr so the
-c         --- iteration is not done.
-          rrrhigher = srfrv_f(zhigher,rofzfunc,0)
-          delpz0 = 2.
-          if (zz > zmax) then
-            rrrhigher = rrr
-          elseif (zz < zmin) then
-            delpz0 = (zmin - zz)*dzi
-          endif
-
-c         --- Find minimum of rrr and radius of surface at nearby z points.
-          rrrmin = min(rrr-max_dxdy,rrrlower,rrrhigher)
-
-          do ix=ixmin,ixmax
-            do iy=iymin,iymax
-              xx = (ix-ix_axis)*dx-xcent
-              yy = (iy-iy_axis)*dy-ycent
-              rad = sqrt(xx**2 + yy**2)
-
-c             --- Calculate distances in z first.  Select points which
-c             --- are transversely near the surface of revolution and
-c             --- are within the bounding box.
-
-c             --- Calculate distance to conductor at lower z.
-              delmz = delmz0
-
-c             --- If grid location is between rrr and rrrlower and between
-c             --- rmax and rrrlower, find intersection point.  The zfuzz
-c             --- ensures that a distance of zero is not calculated.
-              if (rrrlower <= rad .and. rad < min(rrr,rmax)-rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew > rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew <= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
-              elseif (rad < rrrlower .or. rad > min(rrr,rmax)-rfuzz) then
-                delmz = 2.
-              endif
-
-c             --- Calculate distance to conductor at higher z.
-              delpz = delpz0
-
-c             --- If grid location is between rrr and rrrhigher and between
-c             --- rmax and rrrhigher, find intersection point.  The zfuzz
-c             --- ensures that a distance of zero is not calculated.
-              if (rrrhigher <= rad .and. rad < min(rrr,rmax)-rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rofzfunc,0)
-                  if (rnew <= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
-              elseif (rad < rrrhigher .or. rad > min(rrr,rmax)-rfuzz) then
-                delpz = 2.
-              endif
-
-c             --- Now calculate transverse distances.
-              delmx = 2.
-              delpx = 2.
-              delmy = 2.
-              delpy = 2.
-
-c             --- Calculate distances to surface of revolution.
-              if (rrrmin+rfuzz < rad .and. rad <= min(rrr,rmax)+rfuzz) then
-c               --- Note that for z slices outside the conductor, rrrsq1 is a
-c               --- large number, so all transverse distance all also large.
-                delmx = (sqrt(max(0.,rrrsq1 - yy**2)) + xx)*dxi
-                delpx = (sqrt(max(0.,rrrsq1 - yy**2)) - xx)*dxi
-                delmy = (sqrt(max(0.,rrrsq1 - xx**2)) + yy)*dyi
-                delpy = (sqrt(max(0.,rrrsq1 - xx**2)) - yy)*dyi
-              endif
-
-c             --- If requested, select points on shell around rmax and
-c             --- bounding box.
-              if (lshell .and. zmin-zfuzz <= zz .and. zz <= zmax+zfuzz) then
-c               --- Select grid points within 1 grid cell of rmax.
-                if (rmax+rfuzz < rad .and. rad < rmax+max_dxdy-rfuzz) then
-                  if (yy**2 < rmaxsq) then
-                    delmx = ( xx - sqrt(max(0.,rmaxsq - yy**2)))*dxi
-                    delpx = (-xx - sqrt(max(0.,rmaxsq - yy**2)))*dxi
-                  endif
-                  if (xx**2 < rmaxsq) then
-                    delmy = ( yy - sqrt(max(0.,rmaxsq - xx**2)))*dyi
-                    delpy = (-yy - sqrt(max(0.,rmaxsq - xx**2)))*dyi
-                  endif
-                endif
-c               --- Select points within 1 grid cell outside of bounding box
-c               --- which are also within rrr and rmax.
-                if (rrr-rfuzz <= rad .and. rad <= rmax+rfuzz) then
-                  if (xx < xxmin) delpx = (xxmin-xx)*dxi
-                  if (yy < yymin) delpy = (yymin-yy)*dyi
-                  if (xx > xxmax) delmx = (xx-xxmax)*dxi
-                  if (yy > yymax) delmy = (yy-yymax)*dyi
-                endif
-              endif
-
-c             --- Now, ensure that the point on the surface from which the
-c             --- distance was calculated is within the bounding box.
-              if (xx-delmx*dx < xxmin) delmx = 2.
-              if (xx+delpx*dx > xxmax) delpx = 2.
-              if (yy-delmy*dy < yymin) delmy = 2.
-              if (yy+delpy*dy > yymax) delpy = 2.
-
-c             --- Make sure that distances are greater than zero.
-              if (delmx < fuzz) delmx = 2.
-              if (delpx < fuzz) delpx = 2.
-              if (delmy < fuzz) delmy = 2.
-              if (delpy < fuzz) delpy = 2.
-              if (delmz < fuzz) delmz = 2.
-              if (delpz < fuzz) delpz = 2.
-
-c             -- Check if any of the distances are less than 1.
-              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
-     &            delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
-     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
-                if (mod(ix+iy+iz+zparity,2) == 0) then
-c                 --- even
-                  necndbdy = necndbdy + 1
-                  iecndx(necndbdy) = ix
-                  iecndy(necndbdy) = iy
-                  iecndz(necndbdy) = iz
-                  ecdelmx(necndbdy) = delmx
-                  ecdelmy(necndbdy) = delmy
-                  ecdelmz(necndbdy) = delmz
-                  ecdelpx(necndbdy) = delpx
-                  ecdelpy(necndbdy) = delpy
-                  ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = volt
-                else
-c                 --- odd
-                  nocndbdy = nocndbdy + 1
-                  iocndx(nocndbdy) = ix
-                  iocndy(nocndbdy) = iy
-                  iocndz(nocndbdy) = iz
-                  ocdelmx(nocndbdy) = delmx
-                  ocdelmy(nocndbdy) = delmy
-                  ocdelmz(nocndbdy) = delmz
-                  ocdelpx(nocndbdy) = delpx
-                  ocdelpy(nocndbdy) = delpy
-                  ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = volt
-                endif
-              endif
-            enddo
-          enddo
-        enddo
-      endif
-
-c     --- Clean up the table-ized data.
-      if (srfrv_pernz > 0) then
-        lsrlinr = .false.
-      endif
+      call srfrvout3d(rofzfunc,volt,zmin,zmax,xcent,ycent,rmax,lfill,
+     &                xmin,xmax,ymin,ymax,lshell,
+     &                zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
       return
       end
-c========================================================================
 c===========================================================================
       subroutine srfrvinout_3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
      &                      lzend,xmin,xmax,ymin,ymax,lshell,
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
-      use PSOR3d
-      use Surface_of_Rev
-      use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom
-      character(*) rminofz,rmaxofz
+      character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
       logical(ISZ):: lzend,lshell
       real(kind=8):: xmin,xmax,ymin,ymax
@@ -10978,456 +8670,10 @@ c===========================================================================
       real(kind=8):: xmesh(0:nx),ymesh(0:ny)
       logical(ISZ):: l2symtry,l4symtry
 
-c Sets up a conductor represented by the outside of a surface of revolution.
-c The Basis routines rminofz and rmaxofz should be of the form
-c    function rofz
-c      $z = srfrv_z
-c      $r = f($z)
-c      srfrv_r = $z
-c    endf
-c where f() is the radius as a function of z and srfrv_z and srfrv_r are
-c compiled variables which pass data into and out of rofz.
-c The begining of the calling sequence would then be
-c call srfrvout("rofz",...)
-c
-c Input:
-c   rminofz   is the name of the basis routine which calculates the radius as a
-c             function of z.
-c   rmaxofz   (same)
-c   volt      is the voltage on the conductor.
-c   zmin      is the minimum z of the conductor.
-c   zmax      is the maximum z of the conductor.
-c   xcent     is the x center of the conductor.
-c   ycent     is the y center of the conductor.
-c   lzend     is the logical requesting that the end of the conductor be
-c             included
-c   lshell    is the logical requesting that the shell be subgrid resolved
-c   xmin,xmax,ymin,ymax
-c             min and max transverse extent of conductor.
-c   zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,ix_axis,iy_axis,
-c   xmesh,ymesh,l2symtry,l4symtry
-c            are all variables describing the grid.
-c Output is put directly into the conductor arrays of PSOR3d.
-
-
-      integer(ISZ):: ix,iy,iz,i
-      real(kind=8):: rad,rrrmax,rrrmin,rmin,rmax
-      real(kind=8):: zgmin,zgmax
-      real(kind=8):: rmin_zmin,rmin_zmax
-      real(kind=8):: rmax_zmin,rmax_zmax
-      real(kind=8):: rrrminlower,rrrminhigher,rrrmaxlower,rrrmaxhigher
-      real(kind=8):: zlower,zhigher
-      real(kind=8):: xxmin,xxmax,yymin,yymax
-      integer(ISZ):: ixmin,ixmax,iymin,iymax,izmin,izmax
-      integer(ISZ):: jxmin,jxmax,jymin,jymax
-      integer(ISZ):: izbmin,izbmax,iterrf
-      real(kind=8):: fuzz,xfuzz,yfuzz,rfuzz,zfuzz,xx,yy,zz
-      real(kind=8):: delmz0,delpz0
-      real(kind=8):: delmx,delmy,delmz,delpx,delpy,delpz
-      real(kind=8):: max_dxdy,dxi,dyi,dzi
-      real(kind=8):: ddz,znew,rnew
-      real(kind=8):: srfrv_f
-
-c Table-ize the data if srfrv_pernz > 0.
-      if (srfrv_pernz > 0 .and. .not. lsrminlinr) then
-        npnts_srmin = (zmax - zmin)/dz*srfrv_pernz + 1
-        zz = (zmax - zmin)/(npnts_srmin - 1)
-        call gchange("Surface_of_Rev",0)
-        do i=1,npnts_srmin
-          z_srmin(i) = zmin + (i-1)*zz
-          r_srmin(i) = srfrv_f(z_srmin(i),rminofz,1)
-        enddo
-        lsrminlinr = .true.
-      endif
-      if (srfrv_pernz > 0 .and. .not. lsrmaxlinr) then
-        npnts_srmax = (zmax - zmin)/dz*srfrv_pernz + 1
-        zz = (zmax - zmin)/(npnts_srmax - 1)
-        call gchange("Surface_of_Rev",0)
-        do i=1,npnts_srmax
-          z_srmax(i) = zmin + (i-1)*zz
-          r_srmax(i) = srfrv_f(z_srmax(i),rmaxofz,2)
-        enddo
-        lsrmaxlinr = .true.
-      endif
-
-      dxpsor = dx
-      max_dxdy = max(dx,dy)
-      dxi = 1./dx
-      dyi = 1./dy
-      dzi = 1./dz
-
-c Set fuzz which is used to avoid problems with roundoff.
-      fuzz = 1.e-10
-      xfuzz = dx*fuzz
-      yfuzz = dy*fuzz
-      rfuzz = min(xfuzz,yfuzz)
-      zfuzz = dz*fuzz
-
-c Find maximal transverse extent of the conductors with an additional grid
-c cell added to allow subgrid-scale resolution at the edge.
-      jxmin = 0
-      jymin = 0
-      jxmax = nx
-      jymax = ny
-
-c Set limits for transverse loops based on the transverse boundary conditions
-c and the symmetry.
-      ixmin = max(0   ,jxmin)
-      iymin = max(0   ,jymin)
-      ixmax = min(nx  ,jxmax)
-      iymax = min(ny  ,jymax)
-
-c Calculate bounding box relative to center of surface of revolution.
-      xxmin = xmin - xcent
-      xxmax = xmax - xcent
-      yymin = ymin - ycent
-      yymax = ymax - ycent
-
-c Set limits for longitudinal loops based on boundary conditions.  If
-c using Dirichlet boundaries, don't put conductor at planes iz=0 and nz.
-      izbmin = 0
-      izbmax = nz
-
-c Set limits for longitudinal loops.  They are set so that the minimum
-c end is rounded up and maximum end is rounded down, ensuring that iz is
-c within the conductor.
-      zgmin = zmmin + zbeam
-      zgmax = zmmax + zbeam
-      izmin = nz+int((zmin-zgmax)*dzi-zfuzz)
-      izmax =    int((zmax-zgmin)*dzi+zfuzz)
-
-c Perform error checking, to make sure that izmin and izmax are within the
-c grid.
-      izmin = max(izbmin,izmin)
-      izmax = min(izbmax,izmax)
-     
-c If izmin > izbmax or izmax < izbmin then the conductor is completely off
-c of the grid, so return.
-      if (izmin > izbmax .or. izmax < izbmin) then
-        call remark("WARNING:srfrvout: conductor is completely off the grid.")
-        return
-      endif
-
-c Set conductor points.
-      do iz=izmin,izmax
-        zz = iz*dz+zgmin
-        zlower = max(zz-dz,zmin)
-        zhigher = min(zz+dz,zmax)
-c       --- Make sure there is enough room in the arrays.
-        if (ncond + (1+nx)*(1+ny) > ncondmax) then
-          ncondmax = ncond + (1+nx)*(1+ny)
-          call gchange("PSOR3d",0)
-        endif
-c       --- Calculate the surface radius at iz.
-        rrrmin = srfrv_f(zz,rminofz,1)
-        rrrmax = srfrv_f(zz,rmaxofz,2)
-c       --- Loop over transverse plane.
-        do ix=ixmin,ixmax
-          do iy=iymin,iymax
-            xx = (ix-ix_axis)*dx-xcent
-            yy = (iy-iy_axis)*dy-ycent
-            rad = sqrt(xx**2 + yy**2)
-
-c           --- The position must be within the min/max transverse extent
-c           --- of the conductor.
-            if ((rrrmin-rfuzz <= rad .and. rad <= rrrmax+rfuzz .and.
-     &           xxmin <= xx .and. xx <= xxmax .and.
-     &           yymin <= yy .and. yy <= yymax)) then
-              ncond = ncond + 1
-              ixcond(ncond) = ix
-              iycond(ncond) = iy
-              izcond(ncond) = iz
-              condvolt(ncond) = volt
-            endif
-          enddo
-        enddo
-      enddo
-c End of conductor points section
-
-c Set subgrid scale arrays
-      if (lcndbndy) then
-
-c       --- Calculate r at zmin and zmax.
-        rmin_zmin = srfrv_f(zmin,rminofz,1)
-        rmin_zmax = srfrv_f(zmax,rminofz,1)
-        rmax_zmin = srfrv_f(zmin,rmaxofz,2)
-        rmax_zmax = srfrv_f(zmax,rmaxofz,2)
-
-c       --- Recalculate limits for longitudinal loops.  Now, they are rounded
-c       --- to include the plane just outside the conductor.
-        izmin = max(izbmin,int((zmin-zgmin)*dzi-zfuzz))
-        izmax = min(izbmax,nz+int((zmax-zgmax)*dzi+zfuzz))
-
-c       -- Set all points along and just outside conductor.
-        do iz=izmin,izmax
-          zz = iz*dz+zgmin
-          zlower = max(zz-dz,zmin)
-          zhigher = min(zz+dz,zmax)
-
-          if (necndbdy + (1+nx)*(1+ny) > ncndmax .or.
-     &        nocndbdy + (1+nx)*(1+ny) > ncndmax) then
-            ncndmax = max(necndbdy,nocndbdy) + (1+nx)*(1+ny)
-            call gchange("PSOR3d",0)
-          endif
-
-c         --- Calculate radius of the surface.
-c         --- When zz is outside the conductor, get radius at end of
-c         --- conductor.
-          if (zz < zmin-zfuzz) then
-            rmin = rmin_zmin
-            rmax = rmax_zmin
-          elseif (zz > zmax+zfuzz) then
-            rmin = rmin_zmax
-            rmax = rmax_zmax
-          else
-            rmin = srfrv_f(zz,rminofz,1)
-            rmax = srfrv_f(zz,rmaxofz,2)
-          endif
-
-c         --- Find radius one grid cell lower in z.  delmz0 is set to 2
-c         --- in most cases, assuming that the conductor is far away in z.
-c         --- When zz > zmax, the delmz0 is set to the distance
-c         --- between the z plane and the end of the conductor.
-          rrrminlower = srfrv_f(zlower,rminofz,1)
-          rrrmaxlower = srfrv_f(zlower,rmaxofz,2)
-          delmz0 = 2.
-          if (zz > zmax .and. lzend) then
-            delmz0 = (zz - zmax)*dzi
-          endif
-
-c         --- Find radius one grid cell higher in z.  delpz0 is set to 2
-c         --- in most cases, assuming that the conductor is far away in z.
-c         --- When zz < zmin, the delmp0 is set to the distance
-c         --- between the z plane and the end of the conductor.
-          rrrminhigher = srfrv_f(zhigher,rminofz,1)
-          rrrmaxhigher = srfrv_f(zhigher,rmaxofz,2)
-          delpz0 = 2.
-          if (zz < zmin .and. lzend) then
-            delpz0 = (zmin - zz)*dzi
-          endif
-
-c         --- Find minimum of rrr and radius of surface at nearby z points.
-          rrrmin = min(rmin-max_dxdy,rrrminlower,rrrminhigher)
-          rrrmax = max(rmax+max_dxdy,rrrmaxlower,rrrmaxhigher)
-
-          do ix=ixmin,ixmax
-            do iy=iymin,iymax
-              xx = (ix-ix_axis)*dx-xcent
-              yy = (iy-iy_axis)*dy-ycent
-              rad = sqrt(xx**2 + yy**2)
-
-c             --- Calculate distances in z first.  Select points which
-c             --- are transversely near the surface of revolution and
-c             --- are within the bounding box.
-
-c             --- Calculate distance to conductor at lower z.
-              delmz = delmz0
-
-c             --- If grid location is between rrr and rrrlower and between
-c             --- rmax and rrrlower, find intersection point.  The zfuzz
-c             --- ensures that a distance of zero is not calculated.
-              if (rrrminlower <= rad .and. rad < rmin-rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew > rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew <= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
-              elseif (rrrmaxlower >= rad .and. rad > rmax+rfuzz
-     &            .and. delmz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (min(zz,zmax) - zlower)*0.5
-                znew = zlower
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew < rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew >= rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delmz = (zz - znew)*dzi
-              elseif (rad < rrrminlower .or.
-     &                rad > rrrmaxlower) then
-                delmz = 2.
-              endif
-
-c             --- Calculate distance to conductor at higher z.
-              delpz = delpz0
-
-c             --- If grid location is between rrr and rrrhigher and between
-c             --- rmax and rrrhigher, find intersection point.  The zfuzz
-c             --- ensures that a distance of zero is not calculated.
-              if (rrrminhigher <= rad .and. rad < rmin-rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rminofz,1)
-                  if (rnew <= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew > rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
-              elseif (rrrmaxhigher >= rad .and. rad > rmax+rfuzz
-     &            .and. delpz > zfuzz*dzi .and.
-     &          xxmin <= xx .and. xx <= xxmax .and.
-     &          yymin <= yy .and. yy <= yymax) then
-c               --- A simple binary search is used to find distance in z
-c               --- to the surface. This is used since it is more robust
-c               --- than other root finding methods. The major problem
-c               --- occurs when the radius changes like a step function.
-c               --- The secant method (the original coding) converged
-c               --- very slowly in that case, leaving errors as large as
-c               --- 10% in the delta and slowing down the code.
-                ddz = (max(zz,zmin) - zhigher)*0.5
-                znew = zhigher
-                do iterrf=1,32
-                  znew = znew + ddz
-                  rnew = srfrv_f(znew,rmaxofz,2)
-                  if (rnew >= rad) then
-                    ddz = -abs(ddz)*0.5
-                  else if (rnew < rad) then
-                    ddz = +abs(ddz)*0.5
-                  endif
-                enddo
-                delpz = (znew - zz)*dzi
-              elseif (rad < rrrminhigher .or.
-     &                rad > rrrmaxhigher) then
-                delpz = 2.
-              endif
-
-c             --- Now calculate transverse distances.
-              delmx = 2.
-              delpx = 2.
-              delmy = 2.
-              delpy = 2.
-
-c             --- Calculate distances to surface of revolution.
-              if (rrrmin+rfuzz < rad .and. rad <= rmin+rfuzz .and.
-     &            zmin <= zz .and. zz <= zmax) then
-                delmx = (sqrt(max(0.,rmin**2 - yy**2)) + xx)*dxi
-                delpx = (sqrt(max(0.,rmin**2 - yy**2)) - xx)*dxi
-                delmy = (sqrt(max(0.,rmin**2 - xx**2)) + yy)*dyi
-                delpy = (sqrt(max(0.,rmin**2 - xx**2)) - yy)*dyi
-              elseif (rrrmax-rfuzz > rad .and. rad >= rmax-rfuzz .and.
-     &            zmin <= zz .and. zz <= zmax) then
-                if (yy**2 < rmax**2) then
-                  delmx = ( xx - sqrt(max(0.,rmax**2 - yy**2)))*dxi
-                  delpx = (-xx - sqrt(max(0.,rmax**2 - yy**2)))*dxi
-                endif
-                if (xx**2 < rmax**2) then
-                  delmy = ( yy - sqrt(max(0.,rmax**2 - xx**2)))*dyi
-                  delpy = (-yy - sqrt(max(0.,rmax**2 - xx**2)))*dyi
-                endif
-              endif
-
-c             --- If requested, select points on shell around bounding box.
-              if (lshell .and. zmin-zfuzz <= zz .and. zz <= zmax+zfuzz) then
-c               --- Select points within 1 grid cell outside of bounding box
-c               --- which are also within rrr and rmax.
-                if (rmin-rfuzz <= rad .and. rad <= rmax+rfuzz) then
-                  if (xx < xxmin) delpx = (xxmin-xx)*dxi
-                  if (yy < yymin) delpy = (yymin-yy)*dyi
-                  if (xx > xxmax) delmx = (xx-xxmax)*dxi
-                  if (yy > yymax) delmy = (yy-yymax)*dyi
-                endif
-              endif
-
-c             --- Now, ensure that the point on the surface from which the
-c             --- distance was calculated is within the bounding box.
-              if (xx-delmx*dx < xxmin) delmx = 2.
-              if (xx+delpx*dx > xxmax) delpx = 2.
-              if (yy-delmy*dy < yymin) delmy = 2.
-              if (yy+delpy*dy > yymax) delpy = 2.
-
-c             --- Make sure that distances are greater than zero.
-              if (delmx < fuzz) delmx = 2.
-              if (delpx < fuzz) delpx = 2.
-              if (delmy < fuzz) delmy = 2.
-              if (delpy < fuzz) delpy = 2.
-              if (delmz < fuzz) delmz = 2.
-              if (delpz < fuzz) delpz = 2.
-
-c             -- Check if any of the distances are less than 1.
-              if (delmx < 1.-fuzz .or. delpx < 1.-fuzz .or.
-     &            delmy < 1.-fuzz .or. delpy < 1.-fuzz .or.
-     &            delmz < 1.-fuzz .or. delpz < 1.-fuzz) then
-                if (mod(ix+iy+iz+zparity,2) == 0) then
-c                 --- even
-                  necndbdy = necndbdy + 1
-                  iecndx(necndbdy) = ix
-                  iecndy(necndbdy) = iy
-                  iecndz(necndbdy) = iz
-                  ecdelmx(necndbdy) = delmx
-                  ecdelmy(necndbdy) = delmy
-                  ecdelmz(necndbdy) = delmz
-                  ecdelpx(necndbdy) = delpx
-                  ecdelpy(necndbdy) = delpy
-                  ecdelpz(necndbdy) = delpz
-                  ecvolt(necndbdy) = volt
-                else
-c                 --- odd
-                  nocndbdy = nocndbdy + 1
-                  iocndx(nocndbdy) = ix
-                  iocndy(nocndbdy) = iy
-                  iocndz(nocndbdy) = iz
-                  ocdelmx(nocndbdy) = delmx
-                  ocdelmy(nocndbdy) = delmy
-                  ocdelmz(nocndbdy) = delmz
-                  ocdelpx(nocndbdy) = delpx
-                  ocdelpy(nocndbdy) = delpy
-                  ocdelpz(nocndbdy) = delpz
-                  ocvolt(nocndbdy) = volt
-                endif
-              endif
-            enddo
-          enddo
-        enddo
-      endif
-
-c     --- Clean up the table-ized data.
-      if (srfrv_pernz > 0) then
-        lsrminlinr = .false.
-        lsrmaxlinr = .false.
-      endif
+      call srfrvinout3d(rminofz,rmaxofz,volt,zmin,zmax,xcent,ycent,
+     &                  lzend,xmin,xmax,ymin,ymax,lshell,
+     &                  zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
+     &                  ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry)
 
       return
       end

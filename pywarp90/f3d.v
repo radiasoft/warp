@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.28 $, $Date: 2002/04/15 18:33:28 $
+#@(#) File F3D.V, version $Revision: 3.29 $, $Date: 2002/04/18 21:46:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.28 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.29 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -105,8 +105,6 @@ sormaxit  integer /2000/ # Maximum number of iterations allowed.
 sortol    real   /1.e-6/ # Tolerance for convergence
 sorerror  real           # Maximum error after convergence
 isorerr   integer /5/    # Frequency of error calculation
-nsorerr   integer -dump  # number of points used for error calculation
-sorerrar(nsorerr) _real -dump # Error array
 lchebshv  logical /.false./ # Turns on Chebyshev acceleration
 pjacobi   real    /.99/  # spectral radius of Jacobi iteration, used only for
                          # Chebyshev acceleration
@@ -128,11 +126,7 @@ boundxy   integer /0/  # Type of boundary condition at sides
 zparity   integer /0/  # iz parity, used in the parallel version so that the
                        # parity of the subgrid conductor points can be
                        # relative to the full grid.
-dxpsor    real         # Size of transverse grid cells.
-nxpsor    integer /0/  # Maximum number of transverse grid points
-nzpsor    integer      # Number of z grid points
-boundarr(0:nxpsor,4,0:nzpsor) _real -dump # Array used to preserve boundaries
-                                          # during iterations
+dxfine    real         # Size of transverse grid cells are finest level
 ncondmax          integer # Maximum number of points in conductor
 ncond             integer # Number of points within conductors
 ixcond(ncondmax) _integer # X coordinate of points in conductor
@@ -142,12 +136,6 @@ condvolt(ncondmax) _real  # voltage of points in conductor
 condnumb(ncondmax) _integer # Number of the conductor the points are in
 lplates          logical  # Sets whether or not quadruple endplates are included
 rodfract        real /1./ # Fraction of quadrupole rod which is used
-islctype(-1:nzpsor+1) _integer -dump # Type of structure at each z slice,
-                          # 0: drift, 1:quads on x axis, 2: quads on both axis,
-                          # 3: quads on y axis, 4: plate left of quad, 5: plate
-                          # right of quad
-slicvx(-1:nzpsor+1) _real -dump # Voltage of quads on x axis
-slicvy(-1:nzpsor+1) _real -dump # Voltage of quads on y axis
 
 lcndbndy logical /.true./ # Turns on sub-grid boundaries
 icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
@@ -239,11 +227,6 @@ subgrid_sor_to_mg(nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
                   l2symtry:logical,l4symtry:logical) subroutine
   # Converts a set of points generated for the SOR fieldsolver into the set of
   # points needed for the multigrid fieldsolver.
-
-*********** Multigrid3d_res:
-# Work array which holds the residual.
-res_size integer
-res(res_size) _real
 
 *********** Multigrid3d_work:
 # Temporary variables and array used by subgrid_sor_to_mg
