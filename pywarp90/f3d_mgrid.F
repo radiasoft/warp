@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.85 $, $Date: 2004/11/12 17:57:07 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.86 $, $Date: 2004/11/25 19:54:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -120,7 +120,7 @@ c     added by petermc, 26 Sep 2002
 c     --- The following only used when mgform == 2
       real(kind=8),allocatable:: rhosave(:,:,:),res(:,:,:)
       integer(ISZ):: localbounds(0:5)
-      real(kind=8):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
+      integer(ISZ):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
       integer(ISZ):: whosendingleftc(0:nslaves-1), izsendingleftc(0:nslaves-1)
@@ -208,13 +208,13 @@ c     --- If using residual correction form, need to save the original rho.
 c     --- Also setup parallel arrays.
       if (mgform == 2) then
 !$OMP SINGLE
-        allocate(rhosave(0:nx,0:ny,0:nz),res(-1:nx+1,-1:ny+1,-2:nz+2))
+        allocate(rhosave(0:nx,0:ny,0:nz),res(-1:nx+1,-1:ny+1,-3:nz+3))
 !$OMP END SINGLE
         rhosave = rho
         localbounds = bounds
 #ifdef MPIPARALLEL
-        lzoffset = 0.
-        rzoffset = 0.
+        lzoffset = 0
+        rzoffset = 0
         call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                        bounds,nzfull,
      &                        lzoffset,rzoffset,
@@ -248,11 +248,11 @@ c       --- correction form since it is operating on the error.
      &                  0,localbounds,mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,2,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,3,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,2,
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,3,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
@@ -423,6 +423,7 @@ c=============================================================================
 #else
 
       mggetarraysum(1) = sum(sum(sum(a,1),1),1)
+      mggetarraysum(2) = mggetarraysum(1)
 
 #endif
 
@@ -437,7 +438,7 @@ c=============================================================================
      &                            lcndbndy,icndbndy,conductors,
      &                            my_index,nslaves,izfsslave,nzfsslave)
       use ConductorTypemodule
-      use formggetarraysuminterface
+c     use formggetarraysuminterface
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
@@ -460,20 +461,21 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8):: dxsqi,dysqi,dzsqi
       logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       integer(ISZ):: i
       real(kind=8):: ff
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse
       real(kind=8):: dxcoarsesqi,dycoarsesqi,dzcoarsesqi
       integer(ISZ):: localbounds(0:5),localboundsc(0:5)
-      real(kind=8):: lzoffsetall(0:nslaves-1),rzoffsetall(0:nslaves-1)
-      real(kind=8):: lzoffset,rzoffset
+      integer(ISZ):: lzoffsetall(0:nslaves-1),rzoffsetall(0:nslaves-1)
+      integer(ISZ):: lzoffset,rzoffset
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
       integer(ISZ):: whosendingleftc(0:nslaves-1), izsendingleftc(0:nslaves-1)
       integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
+c     real(kind=8):: sss(2)
 
       dxsqi = 1./dx**2
       dysqi = 1./dy**2
@@ -482,8 +484,8 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       localbounds = globalbounds
 
 #ifdef MPIPARALLEL
-      lzoffsetall = 0.
-      rzoffsetall = 0.
+      lzoffsetall = 0
+      rzoffsetall = 0
       call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                      globalbounds,nzfull,
      &                      lzoffsetall,rzoffsetall,
@@ -500,6 +502,13 @@ c     message added by petermc, 1 Oct 2002
       if (.false.) print *, 'DOING ', downpasses,
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
+
+c     sss = mggetarraysum(nx,ny,nz,0,1,phi,
+c    &                    izfsslave,nzfsslave,nslaves,my_index)
+c     if (my_index == 0) print*,"V1 phi",mglevel,sss
+c     sss = mggetarraysum(nx,ny,nz,0,0,rho,
+c    &                    izfsslave,nzfsslave,nslaves,my_index)
+c     if (my_index == 0) print*,"V1 rho",mglevel,sss
 
 c     --- Do initial SOR passes.
 c     print *, 'vcycle on dimensions ', nx, ny, nzfull,my_index
@@ -523,6 +532,13 @@ c     message added by petermc, 1 Oct 2002
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
 
+c     sss = mggetarraysum(nx,ny,nz,0,1,phi,
+c    &                    izfsslave,nzfsslave,nslaves,my_index)
+c     if (my_index == 0) print*,"V2 phi",mglevel,sss
+c     sss = mggetarraysum(nx,ny,nz,0,0,rho,
+c    &                    izfsslave,nzfsslave,nslaves,my_index)
+c     if (my_index == 0) print*,"V2 rho",mglevel,sss
+
 c     --- Check if this is the finest level. If so, then don't do any further
 c     --- coarsening. This is the same check that is done in getmglevels.
       if (nx >= 4 .and. ny >= 4 .and. nzfull >= 4 .and.
@@ -533,18 +549,26 @@ c       --- Get the residual on the current grid.
      &                mglevel,localbounds,mgparam,mgform,.false.,
      &                lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,2,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-1,1,3,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-2,1,2,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-2,1,3,
      &                        my_index,nslaves,izfsslave,nzfsslave,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
-          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,2,
+          call mgexchange_phi(nx,ny,nz,nzfull,res,localbounds,-3,1,3,
+     &                        my_index,nslaves,izfsslave,nzfsslave,
+     &                        whosendingleft,izsendingleft,
+     &                        whosendingright,izsendingright)
+          call mgexchange_phiperiodic(nx,ny,nz,nzfull,res,localbounds,0,1,3,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
+c         sss = mggetarraysum(nx,ny,nz,1,3,res,
+c    &                        izfsslave,nzfsslave,nslaves,my_index)
+c       if (my_index == 0) print*,"V3 res",mglevel,sss
+
 
 c       --- Calculate the size of the next coarsest grid. If the current
 c       --- size is twice and odd integer, the next coarsest size will be
@@ -612,9 +636,9 @@ c         --- Reset value to corrected one
           nzcoarse = nzfsslavec(my_index)
 c         --- Difference between starts and ends of coarse and fine grids.
 c         --- Should only be in the range 0-2.
-          lzoffsetall = (nzfullcoarse*izfsslave-nzfull*izfsslavec)/nzfullcoarse
+          lzoffsetall = (nzfullcoarse*izfsslave-nzfull*izfsslavec)
           rzoffsetall = (nzfull*(izfsslavec + nzfsslavec) -
-     &                   nzfullcoarse*(izfsslave + nzfsslave))/nzfullcoarse
+     &                   nzfullcoarse*(izfsslave + nzfsslave))
 c         --- Note that the lzoffsetall and rzoffsetall can only be used in
 c         --- MPIPARALLEL sections since they will be unallocated in the
 c         --- serial code. So, separate scalars are used in code which is
@@ -630,13 +654,14 @@ c         --- Get processor with which to exchange data on coarse grid
           if (izfsslavec(my_index) > 0) localboundsc(4) = -1
           if (izfsslavec(my_index) + nzcoarse < nzfullcoarse) localboundsc(5) = -1
 #else
-          lzoffset = 0.
-          rzoffset = 0.
+          lzoffset = 0
+          rzoffset = 0
 #endif
 
 c         --- Alloate new work space
           allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1),
      &             rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse))
+          rhocoarse = 0.
           phicoarse = 0.
 
 c         --- Restriction - note that scaling factor for residual is always
@@ -645,7 +670,10 @@ c         --- routine.
           ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzcoarsesqi)
           call restrict3d(nx,ny,nz,nzfull,res,
      &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
-     &                    localbounds,localboundsc,lzoffset,rzoffset)
+     &                    localbounds,localboundsc,lzoffset)
+c         sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,0,rhocoarse,
+c    &                        izfsslavec,nzfsslavec,nslaves,my_index)
+c         if (my_index == 0) print*,"V3 rhocoarse",mglevel,sss
 
 c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
@@ -655,15 +683,22 @@ c         --- Continue at the next coarsest level.
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslavec,nzfsslavec)
 
+c         sss = mggetarraysum(nxcoarse,nycoarse,nzcoarse,0,1,phicoarse,
+c    &                        izfsslavec,nzfsslavec,nslaves,my_index)
+c         if (my_index == 0) print*,"V4 phicoarse",mglevel,sss
+
 c         --- Add in resulting error.
           call expand3d(nx,ny,nz,nzfull,phi,
      &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
-     &                  localbounds,lzoffset,rzoffset)
+     &                  localbounds,lzoffset)
 #ifdef MPIPARALLEL
           call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,1,
      &                                my_index,nslaves,izfsslave,
      &                                whosendingleft,whosendingright)
 #endif
+c         sss = mggetarraysum(nx,ny,nz,0,1,phi,
+c    &                        izfsslave,nzfsslave,nslaves,my_index)
+c         if (my_index == 0) print*,"V5 phi",mglevel,sss
 
           deallocate(phicoarse,rhocoarse)
         endif
@@ -700,7 +735,7 @@ c=============================================================================
      &                      ff,bounds)
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nxcoarse,nycoarse
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nz)
       real(kind=8):: ff
       integer(ISZ):: bounds(0:5)
@@ -788,15 +823,15 @@ c     --- Set appropriate boundary values
 c=============================================================================
       subroutine restrict3d(nx,ny,nz,nzfull,res,
      &                      nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
-     &                      ff,bounds,boundscoarse,lzoffset,rzoffset)
+     &                      ff,bounds,boundscoarse,lzoffset)
       integer(ISZ):: nx,ny,nz,nzfull
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse)
       real(kind=8):: ff
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: boundscoarse(0:5)
-      real(kind=8):: lzoffset,rzoffset
+      integer(ISZ):: lzoffset
       
 c Restrict to a coarser grid.  The factor ff is needed since the
 c residual will be used as the source term in the next coarser grid and
@@ -835,11 +870,11 @@ c     --- Set the loop limits, including edges when appropriate.
 c     --- Do the loops.
 !$OMP DO
       do izcoarse=izcoarsemin,izcoarsemax
-        izmin = int(ceiling((izcoarse-1)*dz - lzoffset + 1.e-10))
-        izmax = int(floor((izcoarse+1)*dz - lzoffset - 1.e-10))
+        izmin = ((izcoarse-1)*nzfull - lzoffset + 4*nzfullcoarse)/nzfullcoarse-3
+        izmax = ((izcoarse+1)*nzfull - lzoffset - 1)/nzfullcoarse
 
         do iz=izmin,izmax
-          wz(iz-izmin) = 1. - abs(izcoarse - (iz + lzoffset)*dzi)
+          wz(iz-izmin) = 1. - abs(izcoarse - (iz + 1.*lzoffset/nzfullcoarse)*dzi)
         enddo
 
         do iycoarse=iycoarsemin,iycoarsemax
@@ -958,12 +993,12 @@ c     --- Set the loop limits, including edges when appropriate.
 c=============================================================================
       subroutine expand3d(nx,ny,nz,nzfull,phi,
      &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
-     &                    bounds,lzoffset,rzoffset)
+     &                    bounds,lzoffset)
       integer(ISZ):: nx,ny,nz,nzfull
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1)
-      real(kind=8):: lzoffset,rzoffset
+      integer(ISZ):: lzoffset
       integer(ISZ):: bounds(0:5)
 
 c Add the error on the coarser grid to the current value on the finer grid.
@@ -985,8 +1020,8 @@ c     --- Set the loop limits, including edges when appropriate.
 
 !$OMP DO
       do iz=izmin,izmax
-        jz = int((iz + lzoffset)*dz)
-        wz =     (iz + lzoffset)*dz - jz
+        jz = int((iz*nzfullcoarse + lzoffset)/nzfull)
+        wz =  1.*(iz*nzfullcoarse + lzoffset)/nzfull - jz
         do iy=0,ny-1
           jy = int(iy*dy)
           wy =     iy*dy - jy
@@ -1009,8 +1044,8 @@ c     --- Set the loop limits, including edges when appropriate.
 
       if (bounds(1) > 0 .or. bounds(3) > 0) then
         do iz=izmin,izmax
-          jz = int((iz + lzoffset)*dz)
-          wz =     (iz + lzoffset)*dz - jz
+          jz = int((iz*nzfullcoarse + lzoffset)/nzfull)
+          wz =  1.*(iz*nzfullcoarse + lzoffset)/nzfull - jz
           phi(nx,ny,iz) = phi(nx,ny,iz) +
      &          (1.-wz)*phicoarse(nxcoarse,nycoarse,jz  ) +
      &              wz *phicoarse(nxcoarse,nycoarse,jz+1)
@@ -1662,7 +1697,7 @@ c=============================================================================
       use ConductorInteriorTypemodule
       type(ConductorInteriorType):: interior
       integer(ISZ):: nx,ny,nz,mglevel,mgform
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       logical(ISZ):: mgform2init
 
 c Set conductor points to the desired potential.
@@ -1958,7 +1993,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       real(kind=8):: rdx2,rdy2,rdz2,mgparam
       integer(ISZ):: bounds(0:5),cstart(0:100),mgform,icndbndy
       logical(ISZ):: mgform2init
@@ -2258,7 +2293,7 @@ c=============================================================================
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-2:nz+2)
+      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
       integer(ISZ):: mglevel,bounds(0:5)
       real(kind=8):: mgparam
       integer(ISZ):: mgform

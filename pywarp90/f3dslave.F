@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.22 $, $Date: 2004/11/13 01:33:07 $
+c F3DSLAVE.M, version $Revision: 1.23 $, $Date: 2004/11/25 19:54:38 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -827,7 +827,7 @@ c=============================================================================
       integer(ISZ):: nslaves,my_index
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: bounds(0:5),nzfull
-      real(kind=8):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
+      integer(ISZ):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1)
       integer(ISZ):: izsendingleft(0:nslaves-1)
@@ -896,7 +896,7 @@ c         --- end of this processor, wrapping around to the left edge.
           js = 0
           ie = js
           do while (ie < nslaves .and. izfsslave(ie) == 0 .and.
-     &              lzoffset(ie) == 0.)
+     &              lzoffset(ie) == 0)
             ie = ie + 1
           enddo
           ie = ie - 1
@@ -947,7 +947,7 @@ c     --- Loop over all slaves since this most be a global process.
 c       --- If this process covers the full extent on this and the
 c       --- next finer mesh, then it doesn't need any data sent to it.
         if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull
-     &      .and. lzoffset(idx) == 0.)
+     &      .and. lzoffset(idx) == 0)
      &    cycle
 
 c       --- Skip processors which have the same left mesh extent (and
@@ -989,10 +989,10 @@ c         --- Some of the processors which extend to the left hand edge will
 c         --- need data there if they did not extend to the left edge
 c         --- at a the next finer level. These processors are known by
 c         --- having lzoffset > 0.
-          if (idx > 0 .and. lzoffset(idx) > 0.) then
+          if (idx > 0 .and. lzoffset(idx) > 0) then
             js = 0
             ie = js + 1
-            do while (ie < idx .and. lzoffset(ie) == 0. .and. izfsslave(ie) == 0)
+            do while (ie < idx .and. lzoffset(ie) == 0 .and. izfsslave(ie) == 0)
               ie = ie + 1
             enddo
             ie = ie - 1
@@ -1214,7 +1214,7 @@ c=============================================================================
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      real(kind=8):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
+      integer(ISZ):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
 
@@ -1262,7 +1262,7 @@ c         --- so override it.
 c     --- Any processor that extends to the left edge of this and the next
 c     --- finer level don't need a rho sent to it.
       if (whosendingright(my_index) /= -1 .and. 
-     &    .not. (izfsslave(my_index)==0 .and. lzoffset(my_index)==0.)) then
+     &    .not. (izfsslave(my_index)==0 .and. lzoffset(my_index)==0)) then
         w = w + 1
         call MPI_IRECV(rho(0,0,0),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,whosendingright(my_index),nzfull,
@@ -1275,7 +1275,7 @@ c     --- on the left end sent to it.
 
 c       --- Also skip processors that extend to the left edge of this and the
 c       --- next finer level.
-        if (izfsslave(ip)==0 .and. lzoffset(ip)==0.) cycle
+        if (izfsslave(ip)==0 .and. lzoffset(ip)==0) cycle
 
         if (my_index == whosendingright(ip)) then
           w = w + 1
