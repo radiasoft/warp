@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.17 2001/09/04 21:23:06 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.18 2001/09/17 17:46:15 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -381,7 +381,8 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
     results = _reorgconductorarrays([f3d.ixcond[:f3d.ncond], \
                                      f3d.iycond[:f3d.ncond], \
                                      f3d.izcond[:f3d.ncond], \
-                                     f3d.condvolt[:f3d.ncond]], \
+                                     f3d.condvolt[:f3d.ncond], \
+                                     f3d.condnumb[:f3d.ncond]], \
                                     f3d.izcond[:f3d.ncond]+0, \
                                     oldiz,oldnz,oldizfs,oldnzfs, \
                                     newiz,newnz,newizfs,newnzfs)
@@ -395,6 +396,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
       f3d.iycond[:] = results[1]
       f3d.izcond[:] = results[2] - newiz[me]
       f3d.condvolt[:] = results[3]
+      f3d.condnumb[:] = results[4]
 
   if globalsum(f3d.necndbdy) > 0:
     # --- Make things easier to deal with by ensuring that all arrays
@@ -415,7 +417,8 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
                                      f3d.ecdelpx[:f3d.necndbdy], \
                                      f3d.ecdelpy[:f3d.necndbdy], \
                                      f3d.ecdelpz[:f3d.necndbdy], \
-                                     f3d.ecvolt[:f3d.necndbdy]], \
+                                     f3d.ecvolt[:f3d.necndbdy], \
+                                     f3d.ecnumb[:f3d.necndbdy]], \
                                     f3d.iecndz[:f3d.necndbdy]+0, \
                                     oldiz,oldnz,oldizfs,oldnzfs, \
                                     newiz,newnz,newizfs,newnzfs)
@@ -436,6 +439,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
       f3d.ecdelpy[:f3d.necndbdy] = results[7]
       f3d.ecdelpz[:f3d.necndbdy] = results[8]
       f3d.ecvolt[:f3d.necndbdy] = results[9]
+      f3d.ecnumb[:f3d.necndbdy] = results[10]
 
   if globalsum(f3d.nocndbdy) > 0:
     # --- Make things easier to deal with by ensuring that all arrays
@@ -456,7 +460,8 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
                                      f3d.ocdelpx[:f3d.nocndbdy], \
                                      f3d.ocdelpy[:f3d.nocndbdy], \
                                      f3d.ocdelpz[:f3d.nocndbdy], \
-                                     f3d.ocvolt[:f3d.nocndbdy]], \
+                                     f3d.ocvolt[:f3d.nocndbdy], \
+                                     f3d.ocnumb[:f3d.nocndbdy]], \
                                     f3d.iocndz[:f3d.nocndbdy]+0, \
                                     oldiz,oldnz,oldizfs,oldnzfs, \
                                     newiz,newnz,newizfs,newnzfs)
@@ -477,6 +482,7 @@ def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
       f3d.ocdelpy[:f3d.nocndbdy] = results[7]
       f3d.ocdelpz[:f3d.nocndbdy] = results[8]
       f3d.ocvolt[:f3d.nocndbdy] = results[9]
+      f3d.ocnumb[:f3d.nocndbdy] = results[10]
 
 #-------------------------------------------------------------------------
 def _reorgconductorarrays(arrays,z,oldiz,oldnz,oldizfs,oldnzfs,
