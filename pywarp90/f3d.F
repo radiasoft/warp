@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.70 $, $Date: 2003/02/24 16:07:58 $
+c@(#) File F3D.M, version $Revision: 3.71 $, $Date: 2003/03/25 22:55:02 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -253,7 +253,7 @@ c=======================================================================
 c=============================================================================
 c=============================================================================
       subroutine vpois3d(iwhich,a,ak,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                   lx,ly,lz,nx,ny,nz,nzfull,w,xywork,zwork,ibc,
+     &                   lx,ly,lzfull,nx,ny,nz,nzfull,w,xywork,zwork,ibc,
      &                   l2symtry,l4symtry)
       use Constant
 #ifdef MPIPARALLEL
@@ -264,7 +264,8 @@ c=============================================================================
       real(kind=8):: ak(0:nx, 0:ny, -nz/2:nz/2)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nzfull)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nzfull), filt(5,3)
-      real(kind=8):: lx, ly, lz, w(*), xywork(0:nx,0:ny), zwork(2,0:nx,0:nzfull)
+      real(kind=8):: lx, ly, lzfull
+      real(kind=8):: w(*), xywork(0:nx,0:ny), zwork(2,0:nx,0:nzfull)
       logical(ISZ):: l2symtry,l4symtry
       
 c-----------------------------------------------------------------------------
@@ -339,7 +340,6 @@ c-----------------------------------------------------------------------------
       integer(ISZ):: ikx,iky,ikz,ix,iy,iz
       real(kind=8):: klast, kdxb2, kdyb2, kdzb2, kdx, kdy, kdz
       real(kind=8):: dx,dy,dz,pib2,norm
-      real(kind=8):: fulllz
       integer(ISZ):: i,j
       logical(ISZ):: lattenuate
 #ifdef MPIPARALLEL
@@ -347,12 +347,7 @@ c-----------------------------------------------------------------------------
       logical(ISZ):: transposed
 #endif
 
-      fulllz = lz
-
 #ifdef MPIPARALLEL
-c  Value of nz and lz for full array across all processors.
-      fulllz = dz*nzfull
-
 c  The input data is always assumed to be not transposed
       transposed = .false.
 #endif
@@ -403,7 +398,7 @@ c  Set useful constants
       nz2 = nzfull / 2
       dx = lx / nx
       dy = ly / ny
-      dz = lz / nz
+      dz = lzfull / nzfull
       pib2 = .5 * pi
 
 c  Minimum index of kxsq and kysq that is used
@@ -845,7 +840,7 @@ c  inverse transform and normalization in xy.  We should multitask this loop.
 
       if (l4symtry) then
 c       factor of .25/lx for cosqx and .25/ly for cosqy
-        norm = .0625/(lx*ly*fulllz)
+        norm = .0625/(lx*ly*lzfull)
         do iz = 0, nz-1
 c          --- Invoke the inverse transform routines for the current z-slice
            call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
@@ -866,7 +861,7 @@ c          --- Normalize the array
         enddo
       else if (l2symtry) then
 c       factor of 2./lx for vsftx and .25/ly for cosqy
-        norm = .5/(lx*ly*fulllz)
+        norm = .5/(lx*ly*lzfull)
         do iz = 0, nz-1
 c          --- Invoke the inverse transform routines for the current z-slice
            call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
@@ -887,7 +882,7 @@ c          --- Normalize the array
            enddo
         enddo
       else
-        norm = 4. / (lx * ly * fulllz)
+        norm = 4. / (lx * ly * lzfull)
         do iz = 0, nz-1
 c          --- Invoke the transform routines
            call vsfty ( a(0,0,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
@@ -996,7 +991,7 @@ c ----------------------------------------------------------------------------
 
 c  Inverse transform and shift in z.
 
-        norm = 1./fulllz
+        norm = 1./lzfull
 
 #ifdef MPIPARALLEL
 c  For parallel code, inverse transpose is used to redistribute phi into its
@@ -1465,7 +1460,7 @@ c=============================================================================
       subroutine rhotophi(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy)
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
       real(kind=8):: a(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
+      real(kind=8):: kxsq(0:nx-esx), kysq(0:ny-esy), kzsq(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
@@ -1488,7 +1483,7 @@ c=============================================================================
       subroutine phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,esx,esy)
       integer(ISZ):: nx,ny,nz,ikxmin,ikymin,esx,esy
       real(kind=8):: a(0:nx,0:ny,0:nz)
-      real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
+      real(kind=8):: kxsq(0:nx-esx), kysq(0:ny-esy), kzsq(0:nz)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
@@ -3725,7 +3720,7 @@ c  rest of variables are input and have the standard meanings.
 
       dx = xlen/nx
       dy = ylen/ny
-      dz = zlen/nz
+      dz = zlen/nzfull
 
 c  calculate inverse cap matrix
 
@@ -3825,7 +3820,7 @@ c  using common block since needs too many arguments to be handled by basis
 
       dx = xlen/nx
       dy = ylen/ny
-      dz = zlen/nz
+      dz = zlen/nzfull
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
@@ -4203,7 +4198,7 @@ c  If iwhich is '0' or '1', also allocates local variables
       real(kind=8):: dz,offset
       integer(ISZ):: iq
 
-      dz = zlen/nz
+      dz = zlen/nzfull
 
 c  find quad starts
       call findqdnd(nquad,quadzs,quadze,quadde,quadvx,quadvy,
@@ -4520,7 +4515,7 @@ c         --- Again, both even and odd points are saved.
 
 c do loop to cover even and odd points
 #ifdef MPIPARALLEL
-          s_parity = mod(izslave(my_index),2)
+          s_parity = mod(izfsslave(my_index),2)
           e_parity = mod(s_parity+1,2)
 #else
           s_parity = 0
@@ -5263,7 +5258,7 @@ c Fix longitudinal boundary conditions for the parallel version.
 c     --- zparity is needed to keep track of even and odd subgrid points.
 c     --- The parity is relative to the full grid. In the serial case,
 c     --- it defaults to 0.
-      zparity = mod(izslave(my_index),2)
+      zparity = mod(izfsslave(my_index),2)
 #endif
 
       return
