@@ -39,7 +39,7 @@ from warp import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.23 2003/09/30 18:38:28 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.24 2003/12/13 01:39:11 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -386,7 +386,7 @@ Creates an instance of a Quad lattice element.
   - error_type='' type of error distribution to apply
                   one of 'GAUSSIAN', 'UNIFORM', or 'ABSOLUTE'
   - de=0 electric field gradient (V/m**2)
-  - db=0 magnetic field gradient (T/m**2)
+  - db=0 magnetic field gradient (T/m)
   - vx=0 voltage on x-rod of an electric quad
   - vy=0 voltage on y-rod of an electric quad
   - rr=0 rod radius of an electric quad
