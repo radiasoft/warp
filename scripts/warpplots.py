@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.5 2000/12/05 20:15:19 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.6 2000/12/15 17:17:03 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -85,6 +85,8 @@ ptitles(): draw plot titles on the current frame
 
 plps[]: list of interpreter defined plots controlled by itplps
 plfreq[]: list of interpreter defined plots controlled by itplfreq
+plseldom[]: list of interpreter defined plots controlled by itplseldom
+plalways[]: list of interpreter defined plots controlled by itplalways
 pltfld3d(): makes fields plots which have been turned on
 onedplts(): makes 1-D plots which have been turned on
 psplots(): makes particle phase space plots which have been turned on
@@ -440,19 +442,46 @@ def ptitles(titlet="",titleb="",titlel="",titler="",v=1):
 
 #-------------------------------------------------------------------------
 # This returns the indices of the particles selected.
-def selectparticles(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None):
+def selectparticles(iw=0,kwdict={},**kw):
   """
 Selects particles based on either subsets or windows. By default it selects
 from window 0, getting all of the live partilces (whose uzp > 0).
-  iw = 0     Window to chose from
-  js = 1     Species to chose from
-  win = top.zwindows+top.zbeam    Windows to use (in lab frame)
-  z = top.zp Coordinate for range selection
-  iz = -1    When 0 <= iz <= nz, picks particles within zmesh[iz]+-wz*dz
-  wz = 1.    Width of window around zmesh[iz]
-  zl = None  When specified, lower range of selection region
-  zu = None  When specified, upper range of selection region
+  - iw=0: Window to chose from
+  - js=1: Species to chose from
+  - win=top.zwindows+top.zbeam: Windows to use (in lab frame)
+  - z=top.zp: Coordinate for range selection
+  - ix=-1: When 0 <= ix <= nx, picks particles within xmesh[ix]+-wx*dx
+  - wx=1.: Width of window around xmesh[ix]
+  - iy=-1: When 0 <= iy <= ny, picks particles within ymesh[iy]+-wy*dy
+  - wy=1.: Width of window around ymesh[iy]
+  - iz=-1: When 0 <= iz <= nz, picks particles within zmesh[iz]+-wz*dz
+  - wz=1.: Width of window around zmesh[iz]
+  - zl=None: When specified, lower range of selection region
+  - zu=None: When specified, upper range of selection region
   """
+  # --- Complete dictionary of possible keywords and their default values
+  kwdefaults = {"js":1,"win":None,"z":None,
+                "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
+                "zl":None,"zu":None}
+
+  # --- Add together dictionaries
+  kw.update(kwdict)
+
+  # --- Check through the possible keyword arguments
+  for arg in kwdefaults.keys():
+    if kw.has_key(arg):
+      exec(arg+" = kw['"+arg+"']")
+      del kw[arg]
+    else:
+      exec(arg+" = kwdefaults['"+arg+"']")
+  # --- Raise an error if there are keywords left over
+# if len(kw) > 0:
+#   badkwlist = 'unexpected keyword argument:'
+#   if len(kw) > 1: badkwlist = badkwlist[:-1] + 's:'
+#   for arg in kw.keys():
+#     badkwlist = badkwlist + ' ' + arg
+#   raise TypeError, badkwlist
+
   ir1 = top.ins[js-1]-1
   ir2 = top.ins[js-1]+top.nps[js-1]-1
   if ir2 <= ir1: return array([])
@@ -463,8 +492,18 @@ from window 0, getting all of the live partilces (whose uzp > 0).
     if zl > zu: print "Warning: zl > zu"
     ii=compress(logical_and(less(zl,z[ir1:ir2]),less(z[ir1:ir2],zu)),
                 arrayrange(ir1,ir2))
+  elif ix!=None:
+    xl = w3d.xmmin + ix*w3d.dx - wx*w3d.dx
+    xu = w3d.xmmin + ix*w3d.dx + wx*w3d.dx
+    ii=compress(logical_and(less(xl,top.xp[ir1:ir2]),less(top.xp[ir1:ir2],xu)),
+                arrayrange(ir1,ir2))
+  elif iy!=None:
+    yl = w3d.ymmin + iy*w3d.dy - wy*w3d.dy
+    yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
+    ii=compress(logical_and(less(yl,top.yp[ir1:ir2]),less(top.yp[ir1:ir2],yu)),
+                arrayrange(ir1,ir2))
   elif iz!=None:
-    if z == None: z = top.zp
+    z = top.zp
     if lparallel:
       zl = top.zmslmin[0] + iz*w3d.dz - wz*w3d.dz + top.zbeam
       zu = top.zmslmin[0] + iz*w3d.dz + wz*w3d.dz + top.zbeam
@@ -489,106 +528,106 @@ from window 0, getting all of the live partilces (whose uzp > 0).
 # The following return a specific coordinate of the selected particles
 # More documetation added after they are declared.
 #-------------------------------------------------------------------------
-def getn(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getn(iw=0,**kw):
   "Returns number of particles in selection."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   if lparallel and gather: return mpi_sum(len(ii))
   else: return len(ii)
 #-------------------------------------------------------------------------
-def getx(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getx(iw=0,**kw):
   "Returns the X positions."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.xp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def gety(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def gety(iw=0,**kw):
   "Returns the Y positions."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.yp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getz(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getz(iw=0,**kw):
   "Returns the Z positions."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.zp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getr(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getr(iw=0,**kw):
   "Returns the R postions."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def gettheta(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def gettheta(iw=0,**kw):
   "Returns the theta postions."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = arctan2(take(top.yp,ii),take(top.xp,ii))
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getvx(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getvx(iw=0,**kw):
   "Returns the X velocity."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp*top.gaminv,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getvy(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getvy(iw=0,**kw):
   "Returns the Y velocity."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp*top.gaminv,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getvz(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getvz(iw=0,**kw):
   "Returns the Z velocity."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uzp*top.gaminv,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getux(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getux(iw=0,**kw):
   "Returns the X momentum over mass."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getuy(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getuy(iw=0,**kw):
   "Returns the Y momentum over mass."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getuz(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getuz(iw=0,**kw):
   "Returns the Z momentum over mass."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uzp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getxp(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getxp(iw=0,**kw):
   "Returns the X velocity over the Z velocity (X')."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uxp,ii)/take(top.uzp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getyp(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getyp(iw=0,**kw):
   "Returns the Y velocity over the Z velocity (Y')."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   result = take(top.uyp,ii)/take(top.uzp,ii)
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getrp(iw=0,js=1,win=None,z=None,iz=None,wz=1.,zl=None,zu=None,gather=1):
+def getrp(iw=0,**kw):
   "Returns the radial velocity over the Z velocity (R')."
-  ii = selectparticles(iw=iw,js=js,win=win,z=z,iz=iz,wz=wz,zl=zl,zu=zu)
+  ii = selectparticles(iw=iw,kwdict=kw)
   tt = arctan2(take(top.yp,ii),take(top.xp,ii))
   result = (take(top.uxp,ii)*cos(tt)+take(top.uyp,ii)*sin(tt))/take(top.uzp,ii)
   if lparallel and gather: return gatherarray(result)
@@ -617,153 +656,122 @@ if sys.version[:5] != "1.5.1":
   getrp.__doc__ = getrp.__doc__ + selectparticles.__doc__ + _gatherdoc
 #-------------------------------------------------------------------------
 
-def fort_setplot(iw,js,ir1,ir2,l,b,w,win,z):
-  # --- Attempt at general version of these routines.
-  # --- Unused now though.
-  if (iw < 0):
-    if psubset==[]: setup_subsets()
-    settitles(l+" vs "+b,b,l,
-              "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles")
-    ii = compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
+##########################################################################
+def getxxpslope(iw=0,iz=-1):
+  """
+Calculates the x-x' slope based on either the window moments in window iw
+or the zmoments at iz. This returns a tuple containing (slope,offset,vz).
+The product slope*vz gives the slope for x-vx.
+  """
+  if 0 <= iz <= w3d.nz:
+    slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
+    offset = top.xpbarz[iz]-slope*top.xbarz[iz]
+    vz = top.vzbarz[iz]
   else:
-    settitles(l+" vs "+b,b,l,w+"window %d = %9.4e, %9.4e" % (iw,win[0],win[1]))
-             #w+" window"+repr(iw)+" ="+repr(win[0])+","+repr(win[1]))
-    ii=compress(logical_and(less(win[0],z[ir1:ir2]),less(z[ir1:ir2],win[1])),
-                arrayrange(ir2-ir1))
-  ii = compress(not_equal(take(top.uzp[ir1:ir2],ii),0.),ii)
-  return ii
+    iiw = max(0,iw)
+    slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
+    offset = top.xpbar[iiw]-slope*top.xbar[iiw]
+    vz = top.vzbar[iiw]
+  return (slope,offset,vz)
+#-------------------------------------------------------------------------
+def getyypslope(iw=0,iz=-1):
+  """
+Calculates the y-y' slope based on either the window moments in window iw
+or the zmoments at iz. This returns a tuple containing (slope,offset,vz).
+The product slope*vz gives the slope for y-vy.
+  """
+  if 0 <= iz <= w3d.nz:
+    slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
+    offset = top.ypbarz[iz]-slope*top.ybarz[iz]
+    vz = top.vzbarz[iz]
+  else:
+    iiw = max(0,iw)
+    slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
+    offset = top.ypbar[iiw]-slope*top.ybar[iiw]
+    vz = top.vzbar[iiw]
+  return (slope,offset,vz)
+#-------------------------------------------------------------------------
+def getvzrange():
+  "Returns a tuple containg the Vz range for plots"
+  if (top.vzrng != 0.):
+     vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
+     vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
+  else:
+     vzmax = top.vzmaxp + 0.1*(top.vzmaxp-top.vzminp)
+     vzmin = top.vzminp - 0.1*(top.vzmaxp-top.vzminp)
+  return (vzmin,vzmax)
 
 ##########################################################################
-def fort_setplotx(iw,ix,wx,js,l,b):
-  ir1 = top.ins[js]-1
-  ir2 = top.ins[js]+top.nps[js]-1
-  if (0 <= ix <= w3d.nx):
-    xl = w3d.xmesh[ix] - wx*w3d.dx
-    xu = w3d.xmesh[ix] + wx*w3d.dx
-    settitles(l+" vs "+b,b,l,"ix = %d, x range (%9.4e, %9.4e)" % (iw,xl,xu))
-    ii=compress(logical_and(less(xl,top.xp[ir1:ir2]),less(top.xp[ir1:ir2],xu)),
-                arrayrange(ir1,ir2))
-  elif (iw < 0):
-    if psubset==[]: setup_subsets()
-    settitles(l+" vs "+b,b,l,
-              "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles")
-    ii = ir1 + compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
-  else:
-    settitles(l+" vs "+b,b,l,
-    "x window%d = %9.4e, %9.4e" % (iw,top.xwindows[0,iw],top.xwindows[1,iw]))
-    ii=compress(logical_and(less(top.xwindows[0,iw],top.xp[ir1:ir2]),
-                            less(top.xp[ir1:ir2],top.xwindows[1,iw])),
-                arrayrange(ir1,ir2))
-  ii = compress(not_equal(take(top.uzp,ii),0.),ii)
-  return ii
-def xwintitle(iw=0,ix=None,wx=None):
-  if (0 <= ix <= w3d.nx):
-    xl = w3d.xmesh[ix] - wx*w3d.dx
-    xu = w3d.xmesh[ix] + wx*w3d.dx
-    return "ix = %d, x range (%9.4e, %9.4e)" % (iw,xl,xu)
-  elif iw == 0:
-    return "All of beam"
-  elif iw < 0:
-    if psubset==[]: setup_subsets()
-    return "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
-  else:
-    return "x window%d = %9.4e, %9.4e"% \
-           (iw,top.xwindows[0,iw],top.xwindows[1,iw])
-
-##########################################################################
-def fort_setploty(iw,iy,wy,js,l,b):
-  ir1 = top.ins[js]-1
-  ir2 = top.ins[js]+top.nps[js]-1
-  if (0 <= iy <= w3d.ny):
-    yl = w3d.ymesh[iy] - wy*w3d.dy
-    yu = w3d.ymesh[iy] + wy*w3d.dy
-    settitles(l+" vs "+b,b,l,"iy = %d, y range (%9.4e, %9.4e)" % (iw,yl,yu))
-    ii=compress(logical_and(less(yl,top.yp[ir1:ir2]),less(top.yp[ir1:ir2],yu)),
-                arrayrange(ir1,ir2))
-  elif (iw < 0):
-    if psubset==[]: setup_subsets()
-    settitles(l+" vs "+b,b,l,
-              "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles")
-    ii = ir1 + compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
-  else:
-    settitles(l+" vs "+b,b,l,
-    "y window%d = %9.4e, %9.4e" % (iw,top.ywindows[0,iw],top.ywindows[1,iw]))
-    ii=compress(logical_and(less(top.ywindows[0,iw],top.yp[ir1:ir2]),
-                            less(top.yp[ir1:ir2],top.ywindows[1,iw])),
-                arrayrange(ir1,ir2))
-  ii = compress(not_equal(take(top.uzp,ii),0.),ii)
-  return ii
-def ywintitle(iw=0,iy=None,wy=None):
-  if (0 <= iy <= w3d.ny):
-    yl = w3d.ymesh[iy] - wy*w3d.dy
-    yu = w3d.ymesh[iy] + wy*w3d.dy
-    return "y = %d, y range (%9.4e, %9.4e)" % (iw,yl,yu)
-  elif iw == 0:
-    return "All of beam"
-  elif (iw < 0):
-    if psubset==[]: setup_subsets()
-    return "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
-  else:
-    return "y window%d = %9.4e, %9.4e"% \
-           (iw,top.ywindows[0,iw],top.ywindows[1,iw])
-
-##########################################################################
-def zwintitle(iw=0,iz=None,wz=1.,zl=None,zu=None):
-  if iz:
-    # --- Assumes that this is done by left most processor
-    zl = w3d.zmmin + iz*w3d.dz - wz*w3d.dz
-    zu = w3d.zmmin + iz*w3d.dz + wz*w3d.dz
+def pptitleright(iw=0,kwdict={},**kw):
+  "Returns right plot title. Takes same arguments as selectparticles"
+  # --- Complete dictionary of possible keywords and their default values
+  kwdefaults = {"js":1,"win":None,"z":None,
+                "ix":None,"wx":1.,"iy":None,"wy":1.,"iz":None,"wz":1.,
+                "zl":None,"zu":None}
+  # --- Add together dictionaries
+  kw.update(kwdict)
+  # --- Check through the possible keyword arguments
+  for arg in kwdefaults.keys():
+    if kw.has_key(arg): exec(arg+" = kw['"+arg+"']")
+    else:               exec(arg+" = kwdefaults['"+arg+"']")
+  # --- Return appropriate right title
+  if zl!=None or zu!=None:
+    if z == None: prefix = ""
+    else: prefix = "z "
+    if zl == None: zl = -top.largepos
+    if zu == None: zu = +top.largepos
+    return prefix+"range (%9.4e, %9.4e)"%(zl,zu)
+  elif ix!=None:
+    xl = w3d.xmmin + ix*w3d.dx - wx*w3d.dx
+    xu = w3d.xmmin + ix*w3d.dx + wx*w3d.dx
+    return "ix = %d, x range (%9.4e, %9.4e)"%(ix,xl,xu)
+  elif iy!=None:
+    yl = w3d.ymmin + iy*w3d.dy - wy*w3d.dy
+    yu = w3d.ymmin + iy*w3d.dy + wy*w3d.dy
+    return "iy = %d, y range (%9.4e, %9.4e)"%(iy,yl,yu)
+  elif iz!=None:
+    if lparallel:
+      zl = top.zmslmin[0] + iz*w3d.dz - wz*w3d.dz + top.zbeam
+      zu = top.zmslmin[0] + iz*w3d.dz + wz*w3d.dz + top.zbeam
+    else:
+      zl = w3d.zmmin + iz*w3d.dz - wz*w3d.dz + top.zbeam
+      zu = w3d.zmmin + iz*w3d.dz + wz*w3d.dz + top.zbeam
     return "iz = %d, z range (%9.4e, %9.4e)"%(iz,zl,zu)
-  elif zl or zl:
-    if not zl: zl = -top.largepos
-    if not zu: zu = +top.largepos
-    return "z range (%9.4e, %9.4e)"%(zl,zu)
-  elif iw == 0:
-    return "All of beam"
   elif iw < 0:
-    return "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
-  elif iw > 0:
-    return "z window%d = %9.4e, %9.4e"% \
-           (iw,top.zwindows[0,iw],top.zwindows[1,iw])
-  else:
-    return ""
-
-##########################################################################
-def fort_setplotr(iw,js,l,b):
-  ir1 = top.ins[js]-1
-  ir2 = top.ins[js]+top.nps[js]-1
-  if (iw < 0):
     if psubset==[]: setup_subsets()
-    settitles(l+" vs "+b,b,l,
-              "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles")
-    ii = ir1 + compress(less(psubset[-iw-1],top.nps[js]),psubset[-iw-1])
+    return "subset "+repr(-iw)+": "+repr(len(psubset[-iw-1]))+" particles"
   else:
-    settitles(l+" vs "+b,b,l,
-    "r window%d = %9.4e, %9.4e" % (iw,top.rwindows[0,iw],top.rwindows[1,iw]))
-    rr2 = (top.xp[ir1:ir2]**2+top.yp[ir1:ir2]**2)
-    ii=compress(logical_and(less(top.rwindows[0,iw]**2,rr2),
-                            less(rr2,top.rwindows[1,iw]**2)),
-                arrayrange(ir1,ir2))
-  ii = compress(not_equal(take(top.uzp,ii),0.),ii)
-  return ii
+    if win == None:
+      win = top.zwindows[:,iw] + top.zbeam
+      prefix = "z "
+    else:
+      prefix = ""
+    if len(shape(win)) == 2: win = win[:,iw]
+    return prefix+"window%d = %9.4e, %9.4e"%(iw,win[0],win[1])
 
 #############################################################################
 #############################################################################
-def generic_particle_plot_doc(x,y):
-  doc = """
+#############################################################################
+def ppgeneric_doc(x,y):
+  doc = selectparticles.__doc__ + """
   - grid: optional grid to plot (instead of deriving grid from particle data)
   - nx, ny: grid size, defaults to 20x20
   - slope=0.: slope to subtract from %(y)s coordinate (%(y)s-slope*%(x)s)
   - offset=0.: %(y)s-offset of particles
   - titles=1: when true, plot the titles
+  - lframe=0: when true, the plot limits are set to the plmin and plmax input
+              arguments, which default to the plmin and plmax variables from
+              the group InDiag
+  - pplimits=None: a tuple of (xplmin, xplmax, yplmin, yplmax), limits of plot
+                   range (used when lframe=1)
   - xmin, xmax, ymin, ymax: extrema of density grid, defaults to particle
-    extrema (x for %(x)s and y for %(y)s)
-  - xplmin, xplmax, yplmin, yplmax: extrema of plot range
+                            extrema (x for %(x)s and y for %(y)s)
   - particles=0: when true, plot particles
-  - color='fg': color of particles, when=='density', color by density
-  - ncolor=None: when plotting color by density, number of colors to use,
+  - uselog=0: when true, logarithmic levels of the number density are used
+  - color='fg': color of particles, when=='density', color by number density
+  - ncolor=None: when plotting color by number density, number of colors to use,
                  defaults to top.ncolor
-  - denmin, denmax: set extrema for coloring particles by density
+  - denmin, denmax: set extrema for coloring particles by number density
   - chopped=None: only particles where r < chopped*maxdensity/density
                   are plotted, where r is a random number between 0 and 1
                   and density is the density at the particle location
@@ -776,25 +784,27 @@ def generic_particle_plot_doc(x,y):
   - contours=None: number of countours to plot
   - filled=0: when true, plot filled contours (assumes contours is set)
   - ccolor='fg': contour color (when not filled)
+  - view=1: view window to use (experts only)
   """
   return doc%vars()
-def generic_particle_plot(kwdict={},**kw):
+#-------------------------------------------------------------------------
+def ppgeneric(y=None,x=None,kwdict={},**kw):
   """
 Generic particle plotting routine. Allows plotting of particle points, density
 contours, and/or density hash marks.
 Note that either the x and y coordinates or the grid must be passed in.
   - y, x: optional particle data (instead of using inputted grid)
   """
-  # --- Complete list of possible keywords and their default values
-  kwdefaults = {'y':None,'x':None,'grid':None,'nx':20,'ny':20,'slope':0.,
+  # --- Complete dictionary of possible keywords and their default values
+  kwdefaults = {'grid':None,'nx':20,'ny':20,'slope':0.,
                 'offset':0.,'titles':1,'lframe':0,
                 'xmin':None,'xmax':None,'ymin':None,'ymax':None,
-                'xplmin':None,'xplmax':None,'yplmin':None,'yplmax':None,
-                'particles':0,'color':'fg','ncolor':None,
-                'marker':'\1','msize':1.0,
+                'pplimits':('e','e','e','e'),
+                'particles':0,'uselog':0,'color':'fg','ncolor':None,
+                'usepalette':1,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
                 'hash':0,'line_scale':1.,'hcolor':'fg','width':1.0,
-                'contours':None,'filled':0,'ccolor':'fg'}
+                'contours':None,'filled':0,'ccolor':'fg','view':1}
 
   # --- Add together dictionaries
   kw.update(kwdict)
@@ -807,12 +817,12 @@ Note that either the x and y coordinates or the grid must be passed in.
     else:
       exec(arg+" = kwdefaults['"+arg+"']")
   # --- Raise an error if there are keywords left over
-  if len(kw) > 0:
-    badkwlist = 'unexpected keyword argument:'
-    if len(kw) > 1: badkwlist = badkwlist[:-1] + 's:'
-    for arg in kw.keys():
-      badkwlist = badkwlist + ' ' + arg
-    raise TypeError, badkwlist
+# if len(kw) > 0:
+#   badkwlist = 'unexpected keyword argument:'
+#   if len(kw) > 1: badkwlist = badkwlist[:-1] + 's:'
+#   for arg in kw.keys():
+#     badkwlist = badkwlist + ' ' + arg
+#   raise TypeError, badkwlist
 
   # --- Do some error checking on the consistency of the input
   if grid == None and (x == None or y == None):
@@ -821,6 +831,9 @@ Note that either the x and y coordinates or the grid must be passed in.
     raise "both x and y must be specified if particles are to be plotted"
   if (x != None and y != None) and len(x) != len(y):
     raise "both x and y must be of the same length"
+
+  # -- Set the plotting view window
+  plsys(view)
 
   # --- Get slope subtracted value of y
   yms = y - x*slope - offset
@@ -873,35 +886,51 @@ Note that either the x and y coordinates or the grid must be passed in.
     nx = shape(grid)[0] - 1
     ny = shape(grid)[1] - 1
 
+  # --- If using logarithmic number density levels, take the log of the grid
+  # --- data. The original grid is left unchanged since that is still needed
+  # --- by some operations below.
+  if uselog:
+    # --- Find the minimum value, excluding zero.
+    dmax = maxnd(grid)
+    dmin = minnd(where(equal(grid,0.),dmax,grid))
+    # --- Now take the log, adding a constant to avoid taking the log of 0.
+    grid1 = (grid + dmin/10.)
+    grid1 = log(grid + dmin/10.)
+  else:
+    grid1 = grid
+
   # --- Get grid mesh if it is needed
   if contours or hash:
     xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d')
-    ymesh = ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis]+slope*xmesh+offset
+    ymesh = ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis]
 
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
   if contours and filled:
-    plotc(transpose(grid),transpose(ymesh),transpose(xmesh),
+    plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
           color=ccolor,contours=contours,filled=filled)
 
   # --- Plot particles
   if particles:
-    if color == 'density' or chopped:
+    if color == 'density':
+      z1 = zeros(len(x),'d')
+      getgrid2d(len(x),x,yms,z1,nx,ny,grid1,xmin,xmax,ymin,ymax)
+    if chopped:
       z = zeros(len(x),'d')
       getgrid2d(len(x),x,yms,z,nx,ny,grid,xmin,xmax,ymin,ymax)
-    if chopped:
       maxdensity = maxnd(grid)
       npart = len(x)
       ipick = less(RandomArray.random(shape(x)),maxdensity*chopped/z)
       x = compress(ipick,x)
       yms = compress(ipick,yms)
-      z = compress(ipick,z)
+      if color == 'density':
+        z1 = compress(ipick,z1)
     if color == 'density':
       # --- Plot particles with color based on the density from the grid.
-      if denmin == None: demmin = min(z)
-      if denmax == None: demmax = max(z)
-      ppco(yms,x,z,uz=1.,marker=marker,msize=msize,lframe=0,
-           zmin=denmin,zmax=denmax,ncolor=ncolor)
+      if denmin == None: demmin = min(z1)
+      if denmax == None: demmax = max(z1)
+      ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,lframe=0,
+           zmin=denmin,zmax=denmax,ncolor=ncolor,usepalette=usepalette)
     else:
       # --- Plot particles as a solid color.
       warpplp(yms,x,color=color,marker=marker,msize=msize)
@@ -909,485 +938,247 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- Now plot unfilled contours, which are easier to see on top of the
   # --- particles
   if contours and not filled:
-    plotc(transpose(grid),transpose(ymesh),transpose(xmesh),
+    plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
           color=ccolor,contours=contours,filled=filled)
 
   # --- Plot hash last since it easiest seen on top of everything else.
   if hash:
     # --- Set line length
-    sss = line_scale*(xmax-xmin)/nx/maxnd(grid)
+    sss = line_scale*(xmax-xmin)/nx/maxnd(grid1)
     # --- Make plot of tick marks
     for ix in range(nx+1):
       for iy in range(ny+1):
-        plg(ymesh[ix,iy]+zeros(2),xmesh[ix,iy]+array([0.,sss*grid[ix,iy]]),
+        plg(ymesh[ix,iy]+zeros(2),xmesh[ix,iy]+array([0.,sss*grid1[ix,iy]]),
             color=hcolor,width=width)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
-  if titles: ptitles()
+  if titles: ptitles(v=view)
   settitles() 
-  if (lframe): limits(xplmin,xplmax,yplmin,yplmax)
+  if (lframe): limits(pplimits[0],pplimits[1],pplimits[2],pplimits[3])
 if sys.version[:5] != "1.5.1":
-  generic_particle_plot.__doc__ = generic_particle_plot.__doc__ + generic_particle_plot_doc('x','y')
+  ppgeneric.__doc__ = ppgeneric.__doc__ + ppgeneric_doc('x','y')
 
 ########################################################################
 ########################################################################
 ########################################################################
 ########################################################################
 ########################################################################
-def ppzxy(iw=0,js=0,color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Z-X and Z-Y in single page
-     - iw=0 spatial window to use
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ytitler = ywintitle(iw)
-  xtitler = xwintitle(iw)
-  if titles and iw <= 0:
-    ptitles(titler=ytitler)
-    ytitler = ""
-    xtitler = ""
-  plsys(9)
-  iiy = selectparticles(iw=iw,js=js,win=top.ywindows,z=top.yp)
-  warpplp(take(top.xp,iiy),take(top.zp,iiy),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles("Y vs Z","Z","Y",ytitler,v=9)
-  if (lframe):
-    limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.xplmin,top.xplmax)
-  plsys(10)
-  iix = selectparticles(iw=iw,js=js,win=top.xwindows,z=top.xp)
-  warpplp(take(top.yp,iix),take(top.zp,iix),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles("Y vs Z","Z","Y",xtitler,v=10)
-  if (lframe):
-    limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.yplmin,top.yplmax)
+def ppzxy(iw=0,particles=1,**kw):
+  "Plots Z-X and Z-Y in single page"
+  kw['particles'] = particles
+  kw['view'] = 9
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                    top.xplmin,top.xplmax)
+  ii = selectparticles(iw=iw,win=top.ywindows,z=top.yp,kwdict=kw)
+  settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
 
-##########################################################################
-def ppzx(iw=0,iy=-1,wy=1,js=0,
-         color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Z-X
-     - iw=0 spatial window to use
-     - iy=-1 optional grid location to use
-     - wy=1 range in dy around iy to get particles to plot
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = fort_setploty(iw,iy,wy,js,"X","Z")
-  warpplp(take(top.xp,ii),take(top.zp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe):
-    limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.xplmin,top.xplmax)
-
-##########################################################################
-def ppzy(iw=0,ix=-1,wx=1,js=0,color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Z-Y
-     - iw=0 spatial window to use
-     - ix=-1 optional grid location to use
-     - wx=1 range in dx around ix to get particles to plot
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = fort_setplotx(iw,ix,wx,js,"Y","Z")
-  warpplp(take(top.yp,ii),take(top.zp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe):
-    limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.yplmin,top.yplmax)
-
-##########################################################################
-def ppzxp(iw=0,iy=-1,wy=1,js=0,
-          color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Z-X'
-     - iw=0 spatial window to use
-     - iy=-1 optional grid location to use
-     - wy=1 range in dy around iy to get particles to plot
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = fort_setploty(iw,iy,wy,js,"X'","Z")
-  warpplp(take(top.uxp,ii)/take(top.uzp,ii),take(top.zp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe):
-    limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.xpplmin,top.xpplmax)
-
-##########################################################################
-def ppzvx(iw=0,iy=-1,wy=1,js=0,
-          color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Z-Vx
-     - iw=0 spatial window to use
-     - iy=-1 optional grid location to use
-     - wy=1 range in dy around iy to get particles to plot
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = fort_setploty(iw,iy,wy,js,"Vx","Z")
-  warpplp(take(top.uxp,ii)*take(top.gaminv,ii),take(top.zp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe): limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam)
-
-##########################################################################
-def ppzyp(iw=0,ix=-1,wx=1,js=0,
-          color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Z-Y'
-     - iw=0 spatial window to use
-     - ix=-1 optional grid location to use
-     - wx=1 range in dx around ix to get particles to plot
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = fort_setplotx(iw,ix,wx,js,"Y'","Z")
-  warpplp(take(top.uyp,ii)/take(top.uzp,ii),take(top.zp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe):
-    limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,top.ypplmin,top.ypplmax)
-
-##########################################################################
-def ppzvy(iw=0,ix=-1,wx=1,js=0,
-          color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Z-Vy
-     - iw=0 spatial window to use
-     - ix=-1 optional grid location to use
-     - wx=1 range in dx around ix to get particles to plot
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = fort_setplotx(iw,ix,wx,js,"Vy","Z")
-  warpplp(take(top.uyp,ii)*take(top.gaminv,ii),take(top.zp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe): limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam)
-
-##########################################################################
-def ppzvz(iw=0,js=0,color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Z-Vz
-     - iw=0 spatial window to use
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = fort_setplotr(iw,js,"Vz","Z")
-  if (top.vzrng != 0.):
-     vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
-     vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
-  else:
-     vzmax = top.vzmaxp + 0.1*(top.vzmaxp-top.vzminp)
-     vzmin = top.vzminp - 0.1*(top.vzmaxp-top.vzminp)
-  warpplp(take(top.uzp,ii)*take(top.gaminv,ii),take(top.zp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe): limits(top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
-
-##########################################################################
-def ppxy(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
-         color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots X-Y
-     - iw=0 spatial window to use
-     - iz=-1 optional grid location to use
-     - wz=1 range in dz around iz to get particles to plot
-     - js=0 species to plot
-     - zl=None when specified, lower range of selection region
-     - zu=None when specified, upper range of selection region
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  titler = zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu)
-  settitles("Y vs X","X","Y",titler)
-  warpplp(take(top.yp,ii),take(top.xp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  if (lframe): limits(top.xplmin,top.xplmax,top.yplmin,top.yplmax)
-
-##########################################################################
-def ppxy(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,particles=1,**kw):
-  """
-Plots X-Y
-  - iw=0 spatial window to use
-  - iz=-1 optional grid location to use
-  - wz=1 range in dz around iz to get particles to plot
-  - js=0 species to plot
-  - zl=None when specified, lower range of selection region
-  - zu=None when specified, upper range of selection region
-  """
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  x = take(top.xp,ii)
-  y = take(top.yp,ii)
-  settitles("Y vs X","X","Y",zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu))
-  generic_particle_plot(y=y,x=x,
-     xplmin=top.xplmin,xplmax=top.xplmax,yplmin=top.yplmin,yplmax=top.yplmax,
-     particles=particles,kwdict=kw)
+  kw['view'] = 10
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                    top.yplmin,top.yplmax)
+  ii = selectparticles(iw=iw,win=top.xwindows,z=top.xp,kwdict=kw)
+  settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
-  ppxy.__doc__ = ppxy.__doc__ + generic_particle_plot_doc('x','y')
+  ppzxy.__doc__ = ppzxy.__doc__ + ppgeneric_doc('z','x')
 
 ##########################################################################
-def ppxxp(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,slope=0.,offset=0.,particles=1,
-          **kw):
-  """
-Plots X-X'. If slope='y', it is calculated from the moments.
-  - iw=0 spatial window to use
-  - iz=-1 optional grid location to use
-  - wz=1 range in dz around iz to get particles to plot
-  - js=0 species to plot
-  - zl=None when specified, lower range of selection region
-  - zu=None when specified, upper range of selection region
-  """
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  x = take(top.xp,ii)
-  xp = take(top.uxp,ii)/take(top.uzp,ii)
-  settitles("X' vs X","X","X'",zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu))
-  if type(slope) == type(''):
-    if 0 <= iz <= w3d.nz:
-      slope = (top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/top.xrmsz[iz]**2
-      offset = top.xpbarz[iz]-slope*top.xbarz[iz]
-    else:
-      iiw = max(0,iw)
-      slope = (top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/top.xrms[iiw]**2
-      offset = top.xpbar[iiw]-slope*top.xbar[iiw]
-  generic_particle_plot(y=xp,x=x,slope=slope,offset=offset,
-     xplmin=top.xplmin,xplmax=top.xplmax,yplmin=top.xpplmin,yplmax=top.xpplmax,
-     particles=particles,kwdict=kw)
+def ppzx(iw=0,particles=1,**kw):
+  "Plots Z-X"
+  kw['particles'] = particles
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                    top.xplmin,top.xplmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("X vs Z","Z","X",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.xp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
-  ppxxp.__doc__ = ppxxp.__doc__ + generic_particle_plot_doc("x","x'")
+  ppzx.__doc__ = ppzx.__doc__ + ppgeneric_doc('z','x')
 
 ##########################################################################
-def ppyyp(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,slope=0.,offset=0.,particles=1,
-          **kw):
-  """
-Plots Y-Y'. If slope='y', it is calculated from the moments.
-  - iw=0 spatial window to use
-  - iz=-1 optional grid location to use
-  - wz=1 range in dz around iz to get particles to plot
-  - js=0 species to plot
-  - zl=None when specified, lower range of selection region
-  - zu=None when specified, upper range of selection region
-  """
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  y = take(top.yp,ii)
-  yp = take(top.uyp,ii)/take(top.uzp,ii)
-  settitles("Y' vs Y","Y","Y'",zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu))
-  if type(slope) == type(''):
-    if 0 <= iz <= w3d.nz:
-      slope = (top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/top.yrmsz[iz]**2
-      offset = top.ypbarz[iz]-slope*top.ybarz[iz]
-    else:
-      iiw = max(0,iw)
-      slope = (top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/top.yrms[iiw]**2
-      offset = top.ypbar[iiw]-slope*top.ybar[iiw]
-  generic_particle_plot(y=yp,x=y,slope=slope,offset=offset,
-     xplmin=top.yplmin,xplmax=top.yplmax,yplmin=top.ypplmin,yplmax=top.ypplmax,
-     particles=particles,kwdict=kw)
+def ppzy(iw=0,particles=1,**kw):
+  "Plots Z-Y"
+  kw['particles'] = particles
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                    top.yplmin,top.yplmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Y vs Z","Z","Y",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.yp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
-  ppyyp.__doc__ = ppyyp.__doc__ + generic_particle_plot_doc("y","y'")
+  ppzy.__doc__ = ppzy.__doc__ + ppgeneric_doc('z','y')
 
 ##########################################################################
-def ppxpyp(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,particles=1,**kw):
-  """
-Plots X'-Y'
-  - iw=0 spatial window to use
-  - iz=-1 optional grid location to use
-  - wz=1 range in dz around iz to get particles to plot
-  - js=0 species to plot
-  - zl=None when specified, lower range of selection region
-  - zu=None when specified, upper range of selection region
-  """
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  xp = take(top.uxp,ii)/take(top.uzp,ii)
-  yp = take(top.uyp,ii)/take(top.uzp,ii)
-  settitles("Y' vs X'","X'","Y'",zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu))
-  generic_particle_plot(y=yp,x=xp,
-   xplmin=top.xpplmin,xplmax=top.xpplmax,yplmin=top.ypplmin,yplmax=top.ypplmax,
-   particles=particles,kwdict=kw)
+def ppzxp(iw=0,particles=1,**kw):
+  "Plots Z-X'"
+  kw['particles'] = particles
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                    top.xpplmin,top.xpplmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("X' vs Z","Z","X'",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
-  ppxpyp.__doc__ = ppxpyp.__doc__ + generic_particle_plot_doc("x'","y'")
+  ppzxp.__doc__ = ppzxp.__doc__ + ppgeneric_doc('z',"x'")
 
 ##########################################################################
-def ppxvx(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
-          color="fg",marker="\1",msize=1.0,lframe=0,slope=0.,titles=1):
-  """Plots X-Vx
-     - iw=0 spatial window to use
-     - iz=-1 optional grid location to use
-     - wz=1 range in dz around iz to get particles to plot
-     - js=0 species to plot
-     - zl=None when specified, lower range of selection region
-     - zu=None when specified, upper range of selection region
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - slope=0 slope to subtract (plots vx-slope*x,x)
-     - titles=1 specifies whether or not to plot titles"""
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  titler = zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu)
-  settitles("Vx vs X","X","Vx",titler)
-  vxo = 0.
-  if type(slope) == type(''):
-    if 0 <= iz <= w3d.nz:
-      slope = ((top.xxpbarz[iz]-top.xbarz[iz]*top.xpbarz[iz])/
-               top.xrmsz[iz]**2*top.vzbarz[iz])
-      vxo = top.vxbarz[iz]-slope*top.xbarz[iz]
-    else:
-      iiw = max(0,iw)
-      slope = ((top.xxpbar[iiw]-top.xbar[iiw]*top.xpbar[iiw])/
-               top.xrms[iiw]**2*top.vzbar[iiw])
-      vxo = top.vxbar[iiw]-slope*top.xbar[iiw]
-  warpplp(take(top.uxp*top.gaminv,ii)-
-               slope*take(top.xp,ii)-vxo,take(top.xp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  #if (lframe): limits(top.xplmin,top.xplmax)
+def ppzvx(iw=0,particles=1,**kw):
+  "Plots Z-Vx"
+  kw['particles'] = particles
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                    top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Vx vs Z","Z","Vx",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uxp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzvx.__doc__ = ppzvx.__doc__ + ppgeneric_doc('z',"vx")
 
 ##########################################################################
-def ppyvy(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
-          color="fg",marker="\1",msize=1.0,lframe=0,slope=0.,titles=1):
-  """Plots Y-Vy
-     - iw=0 spatial window to use
-     - iz=-1 optional grid location to use
-     - wz=1 range in dz around iz to get particles to plot
-     - js=0 species to plot
-     - zl=None when specified, lower range of selection region
-     - zu=None when specified, upper range of selection region
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - slope=0 slope to subtract (plots vy-slope*y,y)
-     - titles=1 specifies whether or not to plot titles"""
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  titler = zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu)
-  settitles("Vy vs Y","Y","Vy",titler)
-  vyo = 0.
-  if type(slope) == type(''):
-    if 0 <= iz <= w3d.nz:
-      slope = ((top.yypbarz[iz]-top.ybarz[iz]*top.ypbarz[iz])/
-               top.yrmsz[iz]**2*top.vzbarz[iz])
-      vyo = top.vybarz[iz]-slope*top.ybarz[iz]
-    else:
-      iiw = max(0,iw)
-      slope = ((top.yypbar[iiw]-top.ybar[iiw]*top.ypbar[iiw])/
-               top.yrms[iiw]**2*top.vzbar[iiw])
-      vyo = top.vybar[iiw]-slope*top.ybar[iiw]
-  warpplp(take(top.uyp*top.gaminv,ii)-
-               slope*take(top.yp,ii)-vyo, take(top.yp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  #if (lframe): limits(top.yplmin,top.yplmax)
+def ppzyp(iw=0,particles=1,**kw):
+  "Plots Z-Y'"
+  kw['particles'] = particles
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                    top.ypplmin,top.ypplmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Y' vs Z","Z","Y'",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.zp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzyp.__doc__ = ppzyp.__doc__ + ppgeneric_doc('z',"y'")
 
 ##########################################################################
-def ppxvz(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
-          color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots X-Vz
-     - iw=0 spatial window to use
-     - iz=-1 optional grid location to use
-     - wz=1 range in dz around iz to get particles to plot
-     - js=0 species to plot
-     - zl=None when specified, lower range of selection region
-     - zu=None when specified, upper range of selection region
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  titler = zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu)
-  settitles("Vz vs X","X","Vz",titler)
-  if (top.vzrng != 0.):
-     vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
-     vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
-  else:
-     vzmax = top.vzmaxp + 0.1*(top.vzmaxp-top.vzminp)
-     vzmin = top.vzminp - 0.1*(top.vzmaxp-top.vzminp)
-  warpplp(take(top.uzp,ii)*take(top.gaminv,ii),take(top.xp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe): limits(top.xplmin,top.xplmax,vzmin,vzmax)
+def ppzvy(iw=0,particles=1,**kw):
+  "Plots Z-Vy"
+  kw['particles'] = particles
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                    top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Vy vs Z","Z","Vy",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzvy.__doc__ = ppzvy.__doc__ + ppgeneric_doc('z',"vy")
 
 ##########################################################################
-def ppyvz(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
-          color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots Y-Vz
-     - iw=0 spatial window to use
-     - iz=-1 optional grid location to use
-     - wz=1 range in dz around iz to get particles to plot
-     - js=0 species to plot
-     - zl=None when specified, lower range of selection region
-     - zu=None when specified, upper range of selection region
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  titler = zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu)
-  settitles("Vz vs Y","Y","Vz",titler)
-  if (top.vzrng != 0.):
-     vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
-     vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
-  else:
-     vzmax = top.vzmaxp + 0.1*(top.vzmaxp-top.vzminp)
-     vzmin = top.vzminp - 0.1*(top.vzmaxp-top.vzminp)
-  warpplp(take(top.uzp,ii)*tak(top.gaminv,ii),take(top.yp,ii),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe): limits(top.yplmin,top.yplmax,vzmin,vzmax)
+def ppzvz(iw=0,particles=1,**kw):
+  "Plots Z-Vz"
+  kw['particles'] = particles
+  (vzmin,vzmax) = getvzrange()
+  kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,vzmin,vzmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Vz vs Z","Z","Vz",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzvz.__doc__ = ppzvz.__doc__ + ppgeneric_doc('z',"vz")
 
 ##########################################################################
-def pprrp(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
-          color="fg",marker="\1",msize=1.0,lframe=0,slope=0.,scale=0,titles=1):
-  """Plots R-R'
-     - iw=0 spatial window to use
-     - iz=-1 optional grid location to use
-     - wz=1 range in dz around iz to get particles to plot
-     - js=0 species to plot
-     - zl=None when specified, lower range of selection region
-     - zu=None when specified, upper range of selection region
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - slope=0 slope to subtract (plots r'-slope*r,r)
-     - titles=1 specifies whether or not to plot titles"""
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  titler = zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu)
-  settitles("R' vs R","R","R'",titler)
+def ppxy(iw=0,particles=1,**kw):
+  "Plots X-Y"
+  kw['particles'] = particles
+  kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Y vs X","X","Y",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.yp,ii),take(top.xp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxy.__doc__ = ppxy.__doc__ + ppgeneric_doc('x','y')
+
+##########################################################################
+def ppxxp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+  "Plots X-X'. If slope='auto', it is calculated from the moments."
+  if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
+  kw['particles'] = particles
+  kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
+  kw['iz'] = iz
+  kw['slope'] = slope
+  kw['offset'] = offset
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("X' vs X","X","X'",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uxp,ii)/take(top.uzp,ii),take(top.xp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxxp.__doc__ = ppxxp.__doc__ + ppgeneric_doc("x","x'")
+
+##########################################################################
+def ppyyp(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+  "Plots Y-Y'. If slope='auto', it is calculated from the moments."
+  if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
+  kw['particles'] = particles
+  kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
+  kw['iz'] = iz
+  kw['slope'] = slope
+  kw['offset'] = offset
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Y' vs Y","Y","Y'",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),take(top.yp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppyyp.__doc__ = ppyyp.__doc__ + ppgeneric_doc("y","y'")
+
+##########################################################################
+def ppxpyp(iw=0,particles=1,**kw):
+  "Plots X'-Y'. If slope='auto', it is calculated from the moments."
+  kw['particles'] = particles
+  kw['pplimits'] = (top.xpplmin,top.xpplmax,top.ypplmin,top.ypplmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Y' vs X'","X'","Y'",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uyp,ii)/take(top.uzp,ii),
+            take(top.uxp,ii)/take(top.uzp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxpyp.__doc__ = ppxpyp.__doc__ + ppgeneric_doc("x'","y'")
+
+##########################################################################
+def ppxvx(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+  "Plots X-Vx. If slope='auto', it is calculated from the moments."
+  if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
+  kw['particles'] = particles
+  kw['pplimits'] = (top.xplmin,top.xplmax,
+                    top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
+  kw['iz'] = iz
+  kw['slope'] = slope*vz
+  kw['offset'] = offset*vz
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uxp,ii),take(top.xp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxvx.__doc__ = ppxvx.__doc__ + ppgeneric_doc("x","Vx")
+
+##########################################################################
+def ppyvy(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
+  "Plots Y-Vy. If slope='auto', it is calculated from the moments."
+  if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
+  kw['particles'] = particles
+  kw['pplimits'] = (top.yplmin,top.yplmax,
+                    top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
+  kw['iz'] = iz
+  kw['slope'] = slope*vz
+  kw['offset'] = offset*vz
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Vy vs Y","Y","Vy",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppyvy.__doc__ = ppyvy.__doc__ + ppgeneric_doc("y","Vy")
+
+##########################################################################
+def ppxvz(iw=0,particles=1,**kw):
+  "Plots X-Vz."
+  (vzmin,vzmax) = getvzrange()
+  kw['particles'] = particles
+  kw['pplimits'] = (top.xplmin,top.xplmax,vzmin,vzmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Vz vs X","X","Vz",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.xp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppxvz.__doc__ = ppxvz.__doc__ + ppgeneric_doc("x","Vz")
+
+##########################################################################
+def ppyvz(iw=0,particles=1,**kw):
+  "Plots Y-Vz."
+  (vzmin,vzmax) = getvzrange()
+  kw['particles'] = particles
+  kw['pplimits'] = (top.yplmin,top.yplmax,vzmin,vzmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Vz vs Y","Y","Vz",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppyvz.__doc__ = ppyvz.__doc__ + ppgeneric_doc("y","Vz")
+
+##########################################################################
+def pprrp(iw=0,scale=0,slope=0.,particles=1,**kw):
+  """Plots R-R', If slope='auto', it is calculated from the moments.
+  - scale=0: when true, scale particle by 2*rms"""
   xscale = 1.
   yscale = 1.
   xpscale = 1.
@@ -1398,95 +1189,91 @@ def pprrp(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
     yscale = 2.*top.yrms[iiw]
     xpscale = 2.*top.vxrms[iiw]/top.vzbar[iiw]
     ypscale = 2.*top.vyrms[iiw]/top.vzbar[iiw]
-  rr = sqrt((take(top.xp,ii)/xscale)**2 + (take(top.yp,ii)/yscale)**2)
-  tt = arctan2(take(top.yp,ii)/ypscale,take(top.xp,ii)/xpscale)
-  rp = ((take(top.uxp,ii)/xpscale*cos(tt)+
-         take(top.uyp,ii)/ypscale*sin(tt))/take(top.uzp,ii))
+  ii = selectparticles(iw=iw,kwdict=kw)
+  xx = take(top.xp,ii)/xscale
+  yy = take(top.yp,ii)/yscale
+  xp = take(top.uxp,ii)/take(top.uzp,ii)/xpscale
+  yp = take(top.uyp,ii)/take(top.uzp,ii)/ypscale
+  rr = sqrt(xx**2 + yy**2)
+  tt = arctan2(yy,xx)
+  rp = xp*cos(tt) + yp*sin(tt)
   if type(slope) == type(''):
     if npes == 0:
       aversq = ave(rr**2)
+      averrp = ave(rr*rp)
     else:
       aversq = globalave(rr**2)
+      averrp = globalave(rr*rp)
     if aversq > 0.:
-      slope = ave(rr*rp)/aversq
+      slope = averrp/aversq
     else:
       slope = 0.
-  warpplp(rp-slope*rr,rr,color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe): limits(top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
+  kw['particles'] = particles
+  kw['pplimits'] = (0.,max(top.xplmax/xscale,top.yplmax/yscale),
+                    top.xpplmin/xpscale,top.xpplmax/ypscale)
+  kw['slope'] = slope
+  settitles("R' vs R","R","R'",pptitleright(iw=iw,kwdict=kw))
+  ppgeneric(rp,rr,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pprrp.__doc__ = pprrp.__doc__ + ppgeneric_doc("r","r'")
 
 ##########################################################################
-def pprvz(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
-          color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots R-Vz
-     - iw=0 spatial window to use
-     - iz=-1 optional grid location to use
-     - wz=1 range in dz around iz to get particles to plot
-     - js=0 species to plot
-     - zl=None when specified, lower range of selection region
-     - zu=None when specified, upper range of selection region
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
-  titler = zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu)
-  settitles("Vz vs R","R","Vz",titler)
-  if (top.vzrng != 0.):
-     vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
-     vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
-  else:
-     vzmax = top.vzmaxp + 0.1*(top.vzmaxp-top.vzminp)
-     vzmin = top.vzminp - 0.1*(top.vzmaxp-top.vzminp)
-  warpplp(take(top.uzp,ii)*take(top.gaminv,ii),
-          sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2),
-          color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles()
-  settitles() 
-  if (lframe): limits(0.,sup(top.xplmax,top.yplmax),vzmin,vzmax)
+def pprvz(iw=0,particles=1,**kw):
+  "Plots R-Vz"
+  (vzmin,vzmax) = getvzrange()
+  kw['particles'] = particles
+  kw['pplimits'] = (0.,max(top.xplmax,top.yplmax),vzmin,vzmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  settitles("Vz vs R","R","Vz",pptitleright(iw=iw,kwdict=kw))
+  rr = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
+  vz = take(top.uzp,ii)*take(top.gaminv,ii)
+  ppgeneric(vz,rr,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pprvz.__doc__ = pprvz.__doc__ + ppgeneric_doc("r","vz")
 
 ##########################################################################
-def pptrace(iw=0,iz=None,wz=1,js=0,zl=None,zu=None,
-            color="fg",marker="\1",msize=1.0,lframe=0,titles=1):
-  """Plots X-Y, X-X', Y'-Y, Y'-X' in single page
-     - iw=0 spatial window to use
-     - iz=-1 optional grid location to use
-     - wz=1 range in dz around iz to get particles to plot
-     - js=0 species to plot
-     - color='fg' particle color
-     - marker='\1' marker type (see gist manual for the list)
-     - msize=1.0 marker size
-     - lframe=0 specifies whether or not to set plot limits
-     - titles=1 specifies whether or not to plot titles"""
-  ii = selectparticles(iw=iw,js=js,iz=iz,wz=wz,zl=zl,zu=zu)
+def pptrace(iw=0,slope=0.,iz=-1,particles=1,titles=1,**kw):
+  """
+Plots X-Y, X-X', Y-Y', Y'-X' in single page
+If slope='auto', it is calculated from the moments for X-X' and Y-Y' plots."""
+  ii = selectparticles(iw=iw,kwdict=kw)
   x = take(top.xp,ii)
   y = take(top.yp,ii)
-  u = take(top.uxp,ii)/take(top.uzp,ii)
-  v = take(top.uyp,ii)/take(top.uzp,ii)
-  if titles: ptitles(titler=zwintitle(iw=iw,iz=iz,wz=wz,zl=zl,zu=zu))
+  xp = take(top.uxp,ii)/take(top.uzp,ii)
+  yp = take(top.uyp,ii)/take(top.uzp,ii)
+  titler=pptitleright(iw=iw,kwdict=kw)
+  kw['iz'] = iz
+  kw['particles'] = particles
+  kw['titles'] = titles
+  if titles: ptitles(titler=titler)
  
-  plsys(3)
-  warpplp(y,x,color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles("Y vs X","X","Y","",3)
-  if (lframe): limits(top.xplmin,top.xplmax,top.yplmin,top.yplmax)
+  kw['view'] = 3
+  kw['pplimits'] = (top.xplmin,top.xplmax,top.yplmin,top.yplmax)
+  settitles("Y vs X","X","Y")
+  ppgeneric(y,x,kwdict=kw)
  
-  plsys(4)
-  warpplp(y,v,color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles("Y vs Y'","Y'","Y","",4)
-  if (lframe): limits(top.ypplmin,top.ypplmax,top.yplmin,top.yplmax)
+  kw['view'] = 4
+  kw['pplimits'] = (top.yplmin,top.yplmax,top.ypplmin,top.ypplmax)
+  if type(slope)==type(''): kw['slope'] = getyypslope(iw=iw,iz=iz)[0]
+  settitles("Y' vs Y","Y","Y'")
+  ppgeneric(yp,y,kwdict=kw)
  
-  plsys(5)
-  warpplp(u,x,color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles("X' vs X","X","X'","",5)
-  if (lframe): limits(top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
+  kw['view'] = 5
+  kw['pplimits'] = (top.xplmin,top.xplmax,top.xpplmin,top.xpplmax)
+  if type(slope)==type(''): kw['slope'] = getxxpslope(iw=iw,iz=iz)[0]
+  settitles("X' vs X","X","X'")
+  ppgeneric(xp,x,kwdict=kw)
  
-  plsys(6)
-  warpplp(u,v,color=color,type="none",marker=marker,msize=msize)
-  if titles: ptitles("X' vs Y'","Y'","X'","",6)
-  if (lframe): limits(top.ypplmin,top.ypplmax,top.xpplmin,top.xpplmax)
+  kw['view'] = 6
+  kw['pplimits'] = (top.ypplmin,top.ypplmax,top.xpplmin,top.xpplmax)
+  if type(slope)==type(''): kw['slope'] = 0.
+  settitles("X' vs Y'","Y'","X'")
+  ppgeneric(xp,yp,kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pptrace.__doc__ = pptrace.__doc__ + ppgeneric_doc("x","x'")
 
+##########################################################################
+##########################################################################
 ##########################################################################
 def ppzxco(js=0,marker="\1",msize=1.0,lframe=0,sys=1,titles=1,
            ncolor=None,nskipcol=None,nstepcol=None):
@@ -1602,12 +1389,7 @@ def ppzvzco(js=0,marker="\1",msize=1.0,lframe=0,titles=1,
   inp=top.nps[js]/ncolor
   istep=nskipcol*nstepcol
   #if (lframadv) nf
-  if (top.vzrng != 0.):
-     vzmax = (1. + top.vtilt)*top.vbeam*(1.+top.vzrng) - top.vzshift
-     vzmin = (1. - top.vtilt)*top.vbeam*(1.-top.vzrng) - top.vzshift
-  else:
-     vzmax = top.vzmaxp + 0.1*(top.vzmaxp-top.vzminp)
-     vzmin = top.vzminp - 0.1*(top.vzmaxp-top.vzminp)
+  (vzmin,vzmax) = getvzrange()
   istart = top.ins[js]-1
   for ij in xrange(1,istep+1,nskipcol*2):
     for ic in xrange(1,ncolor+1):
@@ -1634,13 +1416,16 @@ def ppzvzco(js=0,marker="\1",msize=1.0,lframe=0,titles=1,
 
 ##########################################################################
 def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
-         zmin=None,zmax=None,ncolor=None,
+         zmin=None,zmax=None,ncolor=None,usepalette=1,
          marker="\1",msize=1.0,lframe=0,lparallel=lparallel):
   """Plots y versus x with color based in z
      - y is y coordinate
      - x is x coordinate
      - z is used to calculate the color
      - xmin, xmax, ymin, ymax, zmin, zmax optional bounds
+     - ncolor is number of colors to use, defaults to top.ncolor
+     - usepalette=1 when true, uses palette, otherwise uses colors in array
+                    color
      - msize=1.0 marker size
      - lframe=0 specifies whether or not to set plot limits
      - titles=1 specifies whether or not to plot titles
@@ -1668,8 +1453,12 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
   for ic in xrange(1,ncolor+1):
     ii = compress(logical_and(logical_and(not_equal(uz,0.),
            less(zmin+(ic-1)*dd,rz)),less(rz,zmin+ic*dd)), iota(0,len(rx)))
+    if usepalette:
+      c = int(240*ic/ncolor)
+    else:
+      c = color[ic%len(color)]
     warpplp(take(y,ii),take(x,ii),
-            color=color[ic%len(color)],type="none",marker=marker,msize=msize)
+            color=c,type="none",marker=marker,msize=msize)
   if (lframe): limits(xmin,xmax,ymin,ymax)
 
 ##########################################################################
@@ -2526,6 +2315,8 @@ def pcphixy(iz=None,contours=20,titles=1,filled=1,color=None):
 ##########################################################################
 plps = []
 plfreq = []
+plseldom = []
+plalways = []
 def pltfld3d(fld='phi',freqflag=always):
   """Makes fields plots which have been turned on
      - fld='phi' quantity to plot, either 'phi' or 'rho'
@@ -2549,6 +2340,7 @@ def pltfld3d(fld='phi',freqflag=always):
   oldlimits = limits()
   window(currentwindow)
 
+##########################################################################
 def onedplts(freqflag=always):
   """Makes 1-D plots which have been turned on
      - freqflag=always frequency flag, either always, seldom, or never"""
@@ -2564,6 +2356,7 @@ def onedplts(freqflag=always):
   oldlimits = limits()
   window(currentwindow)
 
+##########################################################################
 def psplots(freqflag=always,js=0):
   """Makes particle phase space plots which have been turned on
      - freqflag=always frequency flag, either always, seldom, or never
@@ -2690,11 +2483,19 @@ def psplots(freqflag=always,js=0):
 # --- Do the user defined plots
   oldlimits = limits()
   if freqflag == always:
+    for p in plalways:
+      p()
+      fma()
+      oldlimits = limits()
     for p in plfreq:
       p()
       fma()
       oldlimits = limits()
   if freqflag == seldom:
+    for p in plseldom:
+      p()
+      fma()
+      oldlimits = limits()
     for p in plps:
       p()
       fma()
