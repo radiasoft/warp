@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.103 $, $Date: 2003/08/29 17:28:25 $
+c@(#) File TOP.M, version $Revision: 3.104 $, $Date: 2003/08/29 23:14:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -4209,6 +4209,7 @@ c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
 c         --- This allows access to the particle data when it is extrapolated
 c         --- to the moments grid cell centers.
           do iw=1,nepwin
+            if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
             do ip=1,np
               if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
      &            pp(0,ip) > 0.) then
@@ -4946,6 +4947,7 @@ c         --- Add particles to ExtPart arrays (skips if nepwin = 0).
 c         --- This allows access to the particle data when it is extrapolated
 c         --- to the moments grid cell centers.
           do iw=1,nepwin
+            if (izepwin(iw) < 0 .or. izepwin(iw) > nzmmnt) cycle
             do ip=1,np
               if (iz(ip) == izepwin(iw) .and. nep(iw,is) < nepmax .and.
      &            wp(ip) > 0.) then
