@@ -15,7 +15,7 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.16 2001/11/16 16:17:46 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.17 2001/11/16 17:40:24 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -265,20 +265,25 @@ Dump data into a pdb file
     if type(vval) == type(array([])) and product(array(shape(vval))) == 0:
       continue
     # --- Try writing as normal variable.
+    # --- The docontinue temporary is needed since python1.5.2 doesn't
+    # --- seem to like continue statements inside of try statements.
+    docontinue = 0
     try:
       if verbose: print "writing python variable "+v+" as "+v+varsuffix
       ff.write(v+varsuffix,vval)
-      continue
+      docontinue = 1
     except:
       pass
+    if docontinue: continue
     # --- If that didn't work, try writing as a pickled object
     try:
       if verbose:
         print "writing python variable "+v+" as "+v+varsuffix+'@pickle'
       ff.write(v+varsuffix+'@pickle',cPickle.dumps(vval,0))
-      continue
+      docontinue = 1
     except:
       pass
+    if docontinue: continue
     # --- All attempts failed so write warning message
     if verbose: print "cannot write python variable "+v
   if closefile: ff.close()
