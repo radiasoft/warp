@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.24 2004/01/24 01:26:07 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.25 2004/03/26 16:04:13 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -66,7 +66,8 @@ import getzmom
 
 def gun(iter=1,ipsave=None,save_same_part=None,maxtime=None,
         laccumulate_zmoments=None,rhoparam=None,
-        lstatusline=true,insertbeforeiter=None,insertafteriter=None):
+        lstatusline=true,insertbeforeiter=None,insertafteriter=None,
+        ipstep=None):
   """
 Performs steady-state iterations
   - iter=1 number of iterations to perform
@@ -170,6 +171,8 @@ Performs steady-state iterations
     if w3d.l_inj_regular and ipsave is None:
       _ipsave = 1
       _ipstep = 1
+
+    if ipstep is not None: _ipstep = ipstep
 
     # --- set number of particles to zero.
     top.nps = 0
