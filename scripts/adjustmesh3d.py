@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.13 2003/08/22 16:18:14 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.14 2004/02/06 21:24:59 dave Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -239,6 +239,8 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
   w3d.dz = newlen/w3d.nzfull
   w3d.zmmin = w3d.zmmin*w3d.dz/olddz
   w3d.zmmax = w3d.zmmax*w3d.dz/olddz
+  w3d.zmminglobal = w3d.zmminglobal*w3d.dz/olddz
+  w3d.zmmaxglobal = w3d.zmmaxglobal*w3d.dz/olddz
   if lparallel:
     top.zmslmin[:] = top.zmslmin*w3d.dz/olddz
     top.zmslmax[:] = top.zmslmax*w3d.dz/olddz
@@ -249,18 +251,13 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
     newcenter = 0.5*(w3d.zmminglobal + w3d.zmmaxglobal)
     w3d.zmmin = w3d.zmmin + (oldcenter - newcenter)
     w3d.zmmax = w3d.zmmax + (oldcenter - newcenter)
+    w3d.zmminglobal = w3d.zmminglobal + (oldcenter - newcenter)
+    w3d.zmmaxglobal = w3d.zmmaxglobal + (oldcenter - newcenter)
     if lparallel:
       top.zmslmin[:] = top.zmslmin + (oldcenter - newcenter)
       top.zmslmax[:] = top.zmslmax + (oldcenter - newcenter)
       top.zpslmin[:] = top.zpslmin + (oldcenter - newcenter)
       top.zpslmax[:] = top.zpslmax + (oldcenter - newcenter)
-  # --- Reset the global values of the mesh extent
-  if lparallel:
-    w3d.zmminglobal = top.zmslmin[0]
-    w3d.zmmaxglobal = top.zmslmax[-1]
-  else:
-    w3d.zmminglobal = w3d.zmmin
-    w3d.zmmaxglobal = w3d.zmmax
   # --- Recalculate zmesh
   w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
   # --- Adjust all of the axial meshes
