@@ -77,7 +77,7 @@ if not lparallel:
     pass
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.65 2004/05/22 01:50:09 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.66 2004/05/24 21:39:57 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -989,7 +989,7 @@ Creates a grid object which can generate conductor data.
     else:           self.dy = self.dx
     # --- z is different since it is not affected by transverse symmetries
     # --- but is affected by parallel decomposition.
-    self.dz = (self.zmmax - self.zmmin)/self.nz
+    self.dz = (self.zmmax - self.zmmin)/self.nzfull
 
     if top.fstype in [7,11,10]:
       if top.fstype in [7,11]:
