@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.4 $, $Date: 2001/04/30 20:06:21 $
+#@(#) File W3D.V, version $Revision: 3.5 $, $Date: 2001/05/15 01:47:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.4 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.5 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -350,9 +350,8 @@ divxy(iz,ndiv,divx:real,divy:real,divvx:real,divvx2:real,divvy:real,
       divvy2:real,wnpx:real,wnpy:real,itask)
              subroutine # calculates RMS vx and vy versus x and y
 exteb3d(np,xp:real,yp:real,zp:real,uzp:real,gaminv:real,dtl:real,dtr:real,
-        dodec:real,bz0:real,bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
-        m:real,q:real,bendres:real,bendradi:real,gammabar:real,zbeam:real,
-        dt:real,time:real)
+        bx:real,by:real,bz:real,ex:real,ey:real,ez:real,
+        m:real,q:real,bendres:real,bendradi:real,gammabar:real,dt:real)
              subroutine # Sets external E and B fields
 othere3d(np,xp:real,yp:real,zp:real,zbeam:real,zimax:real,zimin:real,
          straight:real,ifeears,eears:real,eearsofz:real,dzzi:real,nzzarr,
@@ -454,7 +453,6 @@ timew3dexe real /0./
 timew3dfin real /0./
 timestep3d real /0./
 timeexteb3d real /0./
-timemltlocat real /0./
 timeothere3d real /0./
 timeacclbfrm real /0./
 timegetese3d real /0./
@@ -478,8 +476,6 @@ timezbendcor real /0./
 timezgapcorr real /0./
 timesete3d real /0./
 timegetselfe3d real /0./
-timesetbgrd real /0./
-timesetpgrd real /0./
 timestptcl3d real /0./
 timesetrho3d real /0./
 timeloadrho3d real /0./
