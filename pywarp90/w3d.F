@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.39 $, $Date: 2002/01/15 19:55:25 $
+c@(#) File W3D.M, version $Revision: 3.40 $, $Date: 2002/01/24 17:18:43 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5811,7 +5811,7 @@ c           --- (i.e. zero) and the value on the secondary surface.
 
             ex(ip-ipmin+1) = ex(ip-ipmin+1) + etx*cos(atx)
             ey(ip-ipmin+1) = ey(ip-ipmin+1) + ety*cos(aty)
-            ez(ip-ipmin+1) = ez(ip-ipmin+1) + etx*sin(etx) + ety*sin(ety)
+            ez(ip-ipmin+1) = ez(ip-ipmin+1) + etx*sin(atx) + ety*sin(aty)
           endif
 
         endif
