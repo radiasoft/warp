@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.12 2003/06/18 17:41:41 jlvay Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.13 2003/08/22 16:18:14 dave Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -107,6 +107,103 @@ Warning - this does not yet work in parallel
         top.prwallxz[k] = top.prwallx
         top.prwallyz[k] = top.prwally
         top.prwelips[k] = 1.
+
+  # --- Re-initialize any field solve parameters
+  fieldsol(1)
+
+  # --- Call subroutine for setting objects if provided
+  if setobjects is not None:
+    setobjects()
+
+  # --- If requested, reload rho
+  if lloadrho:
+    w3d.rho = 0
+    loadrho()
+
+  # --- If requested, calculate the new fields
+  if lfieldsol:
+    fieldsol(-1)
+
+# -------------------------------------------------------------------------
+def resizemeshxy(nx=None,ny=None,xmmin=None,xmmax=None,ymmin=None,ymmax=None,
+                 lloadrho=1,lfieldsol=1,setobjects=None):
+  """
+Resizes the transverse size of the mesh
+ - nx, ny: The new values of the number of grid points. If not given, default
+           to current values.
+ - xmmin,xmmax,ymmin,ymmax: The new values of the extent of the mesh. If not
+                            given, default to current values.
+ - lloadrho=1: Flag specifying whether charge density is to be reloaded.
+ - llfieldsol=1: Flag specifying whether the field should be recalculated.
+ - setobjects: Optional function to regenerate data for conductors.
+  """
+  # --- Set defaults to original values
+  if nx is None: nx = w3d.nx
+  if ny is None: ny = w3d.ny
+  if xmmin is None: xmmin = w3d.xmmin
+  if xmmax is None: xmmax = w3d.xmmax
+  if ymmin is None: ymmin = w3d.ymmin
+  if ymmax is None: ymmax = w3d.ymmax
+
+  # --- If nothing changes, then just return
+  if (nx == w3d.nx and ny == w3d.ny and
+      xmmin==w3d.xmmin and xmmax==w3d.xmmax and
+      ymmin==w3d.ymmin and ymmax==w3d.ymmax): return
+
+  # --- Make sure nx and ny are reasonable
+  assert nx>0 and ny>0,"nx and ny must be greater than zero"
+  assert xmmax>xmmin and ymmax>=ymmin,"max's must be greater than min's"
+
+  # --- Set scalars
+  w3d.nx = nx
+  w3d.ny = ny
+  w3d.xmmin = xmmin
+  w3d.xmmax = xmmax
+  w3d.ymmin = ymmin
+  w3d.ymmax = ymmax
+  if w3d.solvergeom==w3d.XYZgeom:
+    if w3d.l2symtry:
+      w3d.ymmin = 0.
+    elif w3d.l4symtry:
+      w3d.xmmin = 0.
+      w3d.ymmin = 0.
+  elif w3d.solvergeom==w3d.XZgeom:
+    w3d.ymmin = 0.
+    if w3d.l2symtry or w3d.l4symtry: w3d.xmmin = 0.
+  elif w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.Zgeom:
+    w3d.xmmin = 0.
+    w3d.ymmin = 0.
+
+  w3d.nmxy  = max(w3d.nx,w3d.ny)
+  w3d.nmxyz = max(w3d.nx,w3d.ny,w3d.nzfull)
+  w3d.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
+  if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
+    w3d.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
+
+  # --- Reallocate the fields
+  gallot("Fields3d")
+  setupfields3dparticles()  
+  if w3d.solvergeom is w3d.RZgeom:
+    frz.del_base()
+    frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin,false)
+
+  # --- Calculate the mesh points
+  w3d.xmesh[:] = w3d.xmmin + arange(w3d.nx+1)*w3d.dx
+  if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
+    w3d.ymesh[:] = w3d.ymmin + arange(w3d.ny+1)*w3d.dy
+
+  # --- Find the grid axis
+  w3d.ix_axis = nint(-w3d.xmmin/w3d.dx)
+  if w3d.solvergeom in [w3d.XYZgeom, w3d.AMRgeom]:
+    w3d.iy_axis = nint(-w3d.ymmin/w3d.dy)
+
+  # --- Fix selfe if needed
+  if top.efetch == 3:
+    w3d.nx_selfe = w3d.nxp
+    w3d.ny_selfe = w3d.nyp
+    gchange('Efields3d')
+    # --- Note that this is not all that is needed - the selfe array should be
+    # --- updated after the call to field sol (it should be part of fieldsol).
 
   # --- Re-initialize any field solve parameters
   fieldsol(1)
