@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.10 $, $Date: 2002/03/27 21:54:06 $
+#@(#) File FRZ.V, version $Revision: 3.11 $, $Date: 2002/04/12 20:25:06 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.10 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.11 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -45,8 +45,7 @@ mgridrz_npost             integer /4/   # number of relaxations steps after
                                         # coarsening, in multigrid solver  
 mgridrz_ncycles           integer /2/   # number of multigrid cycles per level
 mgridrz_nlevels_max       integer /100/ # maximum number of multigrid levels
-mgridrz_nrecurs_min       integer /1/   # minimum level for multigrid recursion
-mgridrz_nmeshmin          integer /8/   # minimum number of meshes in ech direction at coarsest level
+mgridrz_nmeshmin          integer /8/   # minimum number of meshes in each direction at coarsest level
 mgridrz_mgparam           real /1.8/    # SOR parameter
 mgridrz_mgiters           real /0/      # actual number of iterations for a solve
 mgridrz_sub_accuracy      real /1.e-1/  # average accuracy for a sublevel
@@ -55,6 +54,7 @@ mgridrz_nz                integer       #
 mgridrz_xfact(0:mgridrz_nz) _real         # array for deformation factor in X
 mgridrz_yfact(0:mgridrz_nz) _real         # array for deformation factor in Y
 mgridrz_lmr               logical /.false./ # flag for mesh refinement 
+mgridrz_inj_id            integer /1/    # ID of grid to be used for injection
 
 *********** FRZsubs:
 #  Callable subroutines in the FRZ package
@@ -74,9 +74,7 @@ advsc    (schrg:real,eta:real,a:real,kzsq:real,dt:real,dr:real,dz:real,
 advect   (schrg:real, vbeam:real, dt:real, nz, dz, tmp:real)        subroutine
          #  Advects surface charge with the moving window.
 multigridrzf(phi:real,rho:real,nx:integer,nz:integer,dx:real,dz:real,
-             boundxy:integer,bound0:integer,boundnz:integer,
-             mgridrz_accuracy:real,mgridrz_ncmax:integer,mgridrz_npre:integer,
-             mgridrz_npost:integer,mgridrz_ncycles:integer) subroutine
+             mgridrz_accuracy:real) subroutine
          # Multigrid Poisson solver (using "full-multigrid" method, i.e. the 
          # solution is calculatedd at each level using a multigrid procedure 
          # and used as an approximated solution to start the calculation at 
@@ -89,13 +87,18 @@ read_bndstructure_rz(filename:string) subroutine
          # level
 get_cond_rz(grid:integer,level:integer) subroutine
          # get internal conductors locations from RZ multigrid solver
-init_rzgrids(ng:integer,nr:integer,nz:integer,dr:real,dz:real,
-             rmin:real,zmin:real) subroutine
-         # initializes grids for RZ multigrid solver. It must be called 
-         # before any definition of internal boundary. 
 calcfact_deform(dz:real,zmin:real,
                 xfact:real,yfact:real,nz:integer,ns:integer,is:integer,
                 ins:integer,nps:integer,ws:real) subroutine
          # computes factors for elliptical deformation in X and Y planes
-testrz() subroutine
-	# subroutine
+init_base(nr:integer,nz:integer,dr:real,dz:real,rmin:real,zmin:real) subroutine
+         # initializes the base grid
+add_subgrid(id:integer,nr:integer,nz:integer,dr:real,dz:real,
+            rmin:real,zmin:real) subroutine
+         # add a subgrid to the grid id
+get_phi_subgrid(id:integer,phi:real,nr:integer,nz:integer) subroutine
+         # get the potential of grid id
+set_rho_rz(rho:real,nr:integer,nz:integer,id:integer) subroutine
+         # set rho of grid id       
+get_rho_rz(rho:real,nr:integer,nz:integer,id:integer) subroutine
+         # get rho of grid id
