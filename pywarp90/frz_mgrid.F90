@@ -4777,7 +4777,7 @@ TYPE(bndptr), pointer :: bnd
      icc=icc+1
      ixcond(icc) = bnd%cnd%jcond(i)-1
      izcond(icc) = bnd%cnd%kcond(i)-1
-     icondlevel(icc) = ic
+     icondlevel(icc) = ilevel - 1
    end do
    do i = 1, bnd%cnd%nbbndred
     IF(bnd%v(bnd%cnd%jj(i),bnd%cnd%kk(i))==v_bnd) then
@@ -4788,7 +4788,7 @@ TYPE(bndptr), pointer :: bnd
      ecdelpx(ice) = bnd%cnd%dxp(i)/bnd%dr
      ecdelmz(ice) = bnd%cnd%dzm(i)/bnd%dz
      ecdelpz(ice) = bnd%cnd%dzp(i)/bnd%dz
-     iecndlevel(ice) = ic
+     iecndlevel(ice) = ilevel - 1
     END if
    end do
    do i = bnd%cnd%nbbndred+1, bnd%cnd%nbbnd
@@ -4800,7 +4800,7 @@ TYPE(bndptr), pointer :: bnd
      ocdelpx(ico) = bnd%cnd%dxp(i)/bnd%dr
      ocdelmz(ico) = bnd%cnd%dzm(i)/bnd%dz
      ocdelpz(ico) = bnd%cnd%dzp(i)/bnd%dz
-     iocndlevel(ico) = ic
+     iocndlevel(ico) = ilevel - 1
     END if
    end do
  END do
@@ -4809,4 +4809,80 @@ TYPE(bndptr), pointer :: bnd
 
 return
 end subroutine get_cond_rz
+
+subroutine setconductorvoltagerz(volt,nz,zmmin,dz,discrete)
+USE multigridrz
+implicit none
+integer(ISZ):: nz
+real(kind=8):: volt(0:nz)
+real(kind=8):: zmmin,dz
+logical(ISZ):: discrete
+
+INTEGER :: igrid,i,ic,icc,ice,ico
+integer(ISZ):: iz
+real(kind=8):: zz,wz,vv
+
+do igrid=1,ngrids
+  nlevels=grids_ptr(igrid)%grid%nlevels
+  bndy => grids_ptr(igrid)%grid%bnd
+  do i = nlevels,1,-1
+
+    do ic=1,bndy(i)%cnd%ncond
+      zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kcond(ic)-1)
+      if (zmmin <= zz .and. zz < zmmin + nz*dz) then
+        iz = int(zz/dz)
+        wz =     zz/dz - iz
+        bndy(i)%cnd%voltage(ic) = volt(iz)*(1.-wz) + volt(iz+1)*wz
+      else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
+        bndy(i)%cnd%voltage(ic) = volt(nz)
+      endif
+    enddo
+
+    do ic = 1,bndy(i)%cnd%nbbnd
+      zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1)
+      if (zmmin <= zz .and. zz < zmmin + nz*dz) then
+        iz = int(zz/dz)
+        wz =     zz/dz - iz
+        vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
+        bndy(i)%cnd%volt0xm(ic) = vv
+        bndy(i)%cnd%volt0xp(ic) = vv
+      else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
+        vv = volt(nz)
+        bndy(i)%cnd%volt0xm(ic) = vv
+        bndy(i)%cnd%volt0xp(ic) = vv
+      endif
+      if (bndy(i)%cnd%dzm(ic) < bndy(i)%dz) then
+        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1) \
+             - bndy(i)%cnd%dzm(ic)
+        if (zmmin <= zz .and. zz < zmmin + nz*dz) then
+          iz = int(zz/dz)
+          wz =     zz/dz - iz
+          if (discrete) wz = 0.
+          vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
+          bndy(i)%cnd%volt0zm(ic) = vv
+        else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
+          vv = volt(nz)
+          bndy(i)%cnd%volt0zm(ic) = vv
+        endif
+      endif
+      if (bndy(i)%cnd%dzp(ic) < bndy(i)%dz) then
+        zz = grids_ptr(igrid)%grid%zmin + bndy(i)%dz*(bndy(i)%cnd%kk(ic)-1) \
+             + bndy(i)%cnd%dzp(ic)
+        if (zmmin <= zz .and. zz < zmmin + nz*dz) then
+          iz = int(zz/dz)
+          wz =     zz/dz - iz
+          if (discrete) wz = 1.
+          vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
+          bndy(i)%cnd%volt0zp(ic) = vv
+        else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + bndy(i)%dz) then
+          vv = volt(nz)
+          bndy(i)%cnd%volt0zp(ic) = vv
+        endif
+      endif
+    enddo
+
+  enddo
+enddo
+return
+end subroutine setconductorvoltagerz
 
