@@ -69,7 +69,7 @@ class Pzplots(wxPanel):
 
     def __init__(self, parent):
         self._init_ctrls(parent)
-        parent.AddPage(bSelect=true, imageId=-1, pPage=self, strText='Pzplots')
+        parent.AddPage(imageId=-1, page=self, select=True, text='Pzplots')
         import pzplots
         import string
         listpzplots = StringIO(pzplots.__doc__)

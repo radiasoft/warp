@@ -149,8 +149,8 @@ class wxFrame1(wxFrame):
     def _init_coll_notebook1_Pages(self, parent):
         # generated method, don't edit
 
-        parent.AddPage(bSelect=true, imageId=-1, pPage=self.txtEditor,
-              strText='Editor')
+        parent.AddPage(imageId=-1, page=self.txtEditor, select=True,
+              text='Editor')
 
     def _init_coll_statusBar1_Fields(self, parent):
         # generated method, don't edit
@@ -605,8 +605,8 @@ Old version does not have __version__ defined.
 
     def OnWinonButton(self, event):
         if not self.isgistwindowon:
-           #winon()
-            window(0)
+            winon()
+           #window(0)
             self.HandleGistEvents()
             self.isgistwindowon = 1
 
@@ -660,7 +660,7 @@ Old version does not have __version__ defined.
         pattern = string.split(os.path.basename(filename),'.')[0]
         exec('import '+pattern+'gui')
         exec('self.'+pattern+'Panel = '+pattern+'gui.'+pattern+'(self.notebook1)')
-        exec("self.notebook1.AddPage(bSelect=true, imageId=-1, pPage=self."+pattern+"Panel, strText='"+pattern+"')")
+        exec("self.notebook1.AddPage(imageId=-1, page=self."+pattern+"Panel, text='"+pattern+",select=True')")
         self.notebook1.SetSelection(0) # open notebook on Editor
         
     def OutToConsole(self):
