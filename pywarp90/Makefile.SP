@@ -9,7 +9,7 @@ PYWRAPPERARGS =
 OPT = -O3 -qstrict -qarch=pwr3 -qtune=pwr3
 POPT = -O
 PYMODULEOPT = 
-DATASIZE = -bmaxdata:0x20000000
+DATASIZE = -bmaxdata:0x80000000 -bmaxstack:0x10000000	
 F90FREE  = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VAMPIR) $(DATASIZE)
 F90FIXED = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qfixed=132 $(VAMPIR) $(DATASIZE)
 CC = mpcc -qmaxmem=8192 $(DATASIZE)
