@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.75 $, $Date: 2003/04/29 17:05:39 $
+c@(#) File F3D.M, version $Revision: 3.76 $, $Date: 2003/06/24 22:44:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -244,8 +244,8 @@ c  To avoid confusion, it should have a different name, say "vp3"
 
 
       call vpois3d (iwhich,b,b,kxsq,kysq,kzsq,attx,atty,attz,
-     &              filt,lx,ly,lz,nx,ny,nz,nz,work,work2d,zwork,ibc,
-     &              .false.,.false.)
+     &              filt,lx,ly,lz,nx,ny,nz,nz,work,work2d,zwork,
+     &              0,.false.,.false.)
 
       return
       end
@@ -253,9 +253,10 @@ c=======================================================================
 c=============================================================================
 c=============================================================================
       subroutine vpois3d(iwhich,a,ak,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                   lx,ly,lzfull,nx,ny,nz,nzfull,w,xywork,zwork,ibc,
-     &                   l2symtry,l4symtry)
+     &                   lx,ly,lzfull,nx,ny,nz,nzfull,w,xywork,zwork,
+     &                   ibc,l2symtry,l4symtry)
       use Constant
+      use GridBoundary3d
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -318,7 +319,11 @@ c         LX, LY, LZ ... System lengths
 c         NX, NY, NZ ... Number of mesh points (mesh runs from 0 to NX, etc.)
 c                        At present these must be powers of two.
 c                  W ... Workspace, length at least  NX + NY - 4
-c                IBC ... Boundary condition switch, char*8 (for future use)
+c             XYWORK ... Transverse work array, dimensined (0:nx,0:ny)
+c              ZWORK ... Longitudinal work array, dimensioned (2,0:nx,0:nzfull)
+c                IBC ... Unused
+c           L2SYMTRY ... Switch for transverse 2-fold symmetry
+c           L4SYMTRY ... Switch for transverse 4-fold symmetry
 c
 c  Note that for x (y is similar), k dx = pi j/nx, j = 1, ..., nx-1.
 c        The longest wavelength is 2 nx dx.
@@ -334,7 +339,6 @@ c  routine will always take the inverse as well so that the data returned
 c  is never transposed. Also, it is always assumed that the input data
 c  is not transposed.
 c-----------------------------------------------------------------------------
-
 
       integer(ISZ):: icmx,icpx,icmy,icpy,icox,icoy,nz2,ikxmin,ikymin
       integer(ISZ):: ikx,iky,ikz,ix,iy,iz
@@ -355,7 +359,7 @@ c  The input data is always assumed to be not transposed
 #ifdef ESSL
 
 c  The ESSL routines themselves have no limit on the number of points.
-c  Because of the way vsftz works, ny must be even (this is easily fixable).
+c  Because of the way vpftz works, ny must be even (this is easily fixable).
 c  Because of the way the cosqx and cosqy routines work, nx and ny must
 c  be even (i.e. when symmetry is turned on).
       if (mod(ny,2) == 1) then
@@ -604,10 +608,10 @@ c  line is on a single processor.
 c         --- If ny_tran = 1, i.e. there is only one y line, pass nx as
 c         --- zero so that transform done on 2 y lines actually
 c         --- transforms on 2 x's next to each other.
-          call vsftz(0,nx_tran,nzfull,a,0.,0,1,nx_tran+1,zwork)
+          call vpftz(0,nx_tran,nzfull,a,0.,0,1,nx_tran+1,zwork)
         else
-c         --- Otherwise pass normal arguments to vsftz
-          call vsftz(nx_tran,ny_tran-1,nzfull,a,0.,1,0,(nx_tran+1)*ny_tran,
+c         --- Otherwise pass normal arguments to vpftz
+          call vpftz(nx_tran,ny_tran-1,nzfull,a,0.,1,0,(nx_tran+1)*ny_tran,
      &               zwork)
         endif
 c       --- Transpose back if only doing forward transform.
@@ -616,8 +620,8 @@ c       --- Transpose back if only doing forward transform.
           transposed = .false.
         endif
 #else
-c  For the serial code, vsftz is called with normal arguments.
-        call vsftz(nx,ny,nz,a,0.,1,1,(nx+1)*(ny+1),zwork)
+c  For the serial code, vpftz is called with normal arguments.
+        call vpftz(nx,ny,nz,a,0.,1,1,(nx+1)*(ny+1),zwork)
 #endif
 
       endif
@@ -695,17 +699,17 @@ c  line is on a single processor.
 c         --- If there is only one y line, pass nx as zero so that
 c         --- transform done on 2 y lines actually transforms on 2 x's
 c         --- next to each other.
-          call vsftz(0,nx_tran,nzfull,a,norm,0,1,nx_tran+1,zwork)
+          call vpftz(0,nx_tran,nzfull,a,norm,0,1,nx_tran+1,zwork)
         else
 c         --- pass normal arguments
-          call vsftz(nx_tran,ny_tran-1,nzfull,a,norm,1,0,(nx_tran+1)*ny_tran,
+          call vpftz(nx_tran,ny_tran-1,nzfull,a,norm,1,0,(nx_tran+1)*ny_tran,
      &               zwork)
         endif
 
         call transposei(nx,ny,nz,a,nx_tran,ny_tran)
 #else
 c  Make call for serial code.
-        call vsftz(nx,ny,nz,a,norm,1,1,(nx+1)*(ny+1),zwork)
+        call vpftz(nx,ny,nz,a,norm,1,1,(nx+1)*(ny+1),zwork)
 #endif
 
       endif
@@ -820,10 +824,10 @@ c  original format.
 c         --- If there is only one y line, pass nx as zero so that
 c         --- transform done on 2 y lines actually transforms on 2 x's
 c         --- next to each other.
-          call vsftzi(0,nx_tran,nzfull,a,0.,0,1,nx_tran+1,zwork)
+          call vpftzi(0,nx_tran,nzfull,a,0.,0,1,nx_tran+1,zwork)
         else
 c         --- pass normal arguments
-          call vsftzi(nx_tran,ny_tran-1,nzfull,a,0.,1,0,(nx_tran+1)*ny_tran,
+          call vpftzi(nx_tran,ny_tran-1,nzfull,a,0.,1,0,(nx_tran+1)*ny_tran,
      &                zwork)
         endif
 
@@ -833,7 +837,7 @@ c       --- Rearrange phi again back to original arrangement.
 
 #else
 c  Call for serial version
-        call vsftzi(nx,ny,nz,a,0.,1,1,(nx+1)*(ny+1),zwork)
+        call vpftzi(nx,ny,nz,a,0.,1,1,(nx+1)*(ny+1),zwork)
 #endif
 
 c  inverse transform and normalization in xy.  We should multitask this loop.
@@ -1002,10 +1006,10 @@ c  original format.
 c         --- If there is only one y line, pass nx as zero so that
 c         --- transform done on 2 y lines actually transforms on 2 x's
 c         --- next to each other.
-          call vsftzi(0,nx_tran,nzfull,a,norm,0,1,nx_tran+1,zwork)
+          call vpftzi(0,nx_tran,nzfull,a,norm,0,1,nx_tran+1,zwork)
         else
 c         --- pass normal arguments
-          call vsftzi(nx_tran,ny_tran-1,nzfull,a,norm,1,0,(nx_tran+1)*ny_tran,
+          call vpftzi(nx_tran,ny_tran-1,nzfull,a,norm,1,0,(nx_tran+1)*ny_tran,
      &                zwork)
         endif
 
@@ -1014,7 +1018,7 @@ c       --- Rearrange phi again back to original arrangement.
 
 #else
 c  Serial version
-        call vsftzi(nx,ny,nz,a,norm,1,1,(nx+1)*(ny+1),zwork)
+        call vpftzi(nx,ny,nz,a,norm,1,1,(nx+1)*(ny+1),zwork)
 #endif
 
       endif
@@ -1121,7 +1125,7 @@ c The difference in speed is around 15% using the Intel compiler on Linux
 c and about a factor of 2 on the IBM SP.
 c Using the dcft routines, the code runs about 30-40% faster than with vcpft.
 c=============================================================================
-      subroutine vsftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
+      subroutine vpftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
       integer(ISZ):: nx,ny,nz,esx,esy,nxy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nz,0:nx)
 
@@ -1210,7 +1214,7 @@ c       --- do the transforms
       return
       end
 c=============================================================================
-      subroutine vsftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
+      subroutine vpftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
       integer(ISZ):: nx,ny,nz,esx,esy,nxy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nz,0:nx)
 
@@ -1307,7 +1311,7 @@ c versions were kept.
 c The difference in speed is around 15% using the Intel compiler on Linux
 c and about a factor of 2 on the IBM SP.
 c=============================================================================
-      subroutine vsftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
+      subroutine vpftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
       integer(ISZ):: nx,ny,nz,esx,esy,nxy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
 
@@ -1359,7 +1363,7 @@ c       --- do the transforms
       return
       end
 c=============================================================================
-      subroutine vsftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
+      subroutine vpftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
       integer(ISZ):: nx,ny,nz,esx,esy,nxy
       real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
 
@@ -1648,7 +1652,6 @@ c The number of processors in each group is set by the variable
 c xynppgroup (it defaults to 1 which means the no parallelization is done).
 c The variable needs to be optimized through experimentation.
 c-----------------------------------------------------------------------------
-
 
       integer(ISZ):: iwxy,icmx,icpx,icmy,icpy,ikx,iky,ix,iy
       integer(ISZ):: icox,icoy,ikxmin,ikymin
@@ -3795,11 +3798,12 @@ c  now reduce to allow inversion
 c==========================================================================
       subroutine capfs(iwhich,nx,ny,nz,nzfull,phi,rho,
      &                 xlen,ylen,zlen,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                 work,workz,xywork,zwork,xmmax,pipeshpe,bound0,
+     &                 work,workz,xywork,zwork,xmmax,pipeshpe,
      &                 l2symtry,l4symtry)
+      use GridBoundary3d
       use Capvars
       use GlobalVars
-      integer(ISZ):: iwhich,nx,ny,nz,nzfull,bound0
+      integer(ISZ):: iwhich,nx,ny,nz,nzfull
       real(kind=8):: phi(0:nx,0:ny,0:nz), rho(0:nx,0:ny,0:nz)
       real(kind=8):: work(nx+ny-4), workz(*),xywork(*), zwork(2,0:nx,0:nzfull)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nzfull)
@@ -4174,7 +4178,7 @@ c  get rest of quads within mesh
 c=============================================================================
       subroutine vcap3d (iwhich, rho, phi, kxsq, kysq, kzsq, 
      &   attx, atty, attz, filt, xlen, ylen, zlen, nx, ny, nz, nzfull,
-     &   scrtch, xywork, zwork, xmmax, zmmin, zgrid, pipeshpe, bound0,
+     &   scrtch, xywork, zwork, xmmax, zmmin, zgrid, pipeshpe,
      &   l2symtry,l4symtry)
       use Capvars
       use Lattice
@@ -4187,7 +4191,6 @@ c=============================================================================
       real(kind=8):: xlen, ylen, zlen
       real(kind=8):: xmmax,zmmin,zgrid
       character(*):: pipeshpe
-      logical(ISZ):: bound0
       logical(ISZ):: l2symtry,l4symtry
  
 c  External interface to capacity matrix field solver.
@@ -4223,7 +4226,7 @@ c  Allocate local variables
 c  Call field solver, which may also do initialization
       call capfs(iwhich,nx,ny,nz,nzfull,phi,rho,xlen,ylen,zlen,kxsq,kysq,kzsq,
      &           attx,atty,attz,filt,scrtch,scrtch,xywork,zwork,
-     &           xmmax,pipeshpe,bound0,l2symtry,l4symtry)
+     &           xmmax,pipeshpe,l2symtry,l4symtry)
 
       return
       end
@@ -4238,6 +4241,7 @@ c===========================================================================
       subroutine psor3df(iwhich,nx,ny,nz,phi,rho,phi1d,rho1d,rstar,dx,dy,dz,
      &                  xmmin,ymmin,zmmin,zbeam,zgrid,linbends,
      &                  l2symtry,l4symtry,scrtch,izfsmin,izfsmax)
+      use GridBoundary3d
       use PSOR3d
       use Conductor3d
       use Constant
@@ -4658,7 +4662,7 @@ c           --- end of transverse boundaries
 c           --- Apply altered difference equation to the points near the
 c           --- surface of the conductor boundaries.
             if (lcndbndy) then
-              if (parity == s_parity .and. necndbdy > 0) then
+              if (parity == 0 .and. necndbdy > 0) then
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
      &                     ncndmax,necndbdy,
      &                     ecdelmx(1),ecdelmy(1),ecdelmz(1),
@@ -4668,7 +4672,7 @@ c           --- surface of the conductor boundaries.
      &                     iecndx(1),iecndy(1),iecndz(1),ecvolt(1),ecndpvph(1),
      &                     bound0,boundnz,boundxy,l2symtry,l4symtry,
      &                     izfsmin,izfsmax,dx,dy,dz,icndbndy)
-              else if (nocndbdy > 0) then
+              else if (parity == 1 .and. nocndbdy > 0) then
                 call condbndy(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,sorparam,
      &                     ncndmax,nocndbdy,
      &                     ocdelmx(1),ocdelmy(1),ocdelmz(1),
@@ -4974,7 +4978,6 @@ c           --- current z-slice is in a bend only
       end
 c===========================================================================
       subroutine cond_pot(nx,ny,nz,phi)
-      use PSOR3d
       use Conductor3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -5236,9 +5239,7 @@ c -------------------------------------------------------------------------
 c===========================================================================
 c===========================================================================
       subroutine psorinit(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry)
-      use PSOR3d
-      use InGen
-      use Lattice
+      use GridBoundary3d
 #ifdef MPIPARALLEL
       use Parallel
 #endif
@@ -5247,18 +5248,12 @@ c===========================================================================
       logical(ISZ):: l2symtry,l4symtry
 c Allocate various arrays
 
-
       integer(ISZ):: nc,iq
 
 #ifdef MPIPARALLEL
 c Fix longitudinal boundary conditions for the parallel version.
       if (my_index > 0) bound0 = 0
       if (my_index < nslaves-1) boundnz = 0
-
-c     --- zparity is needed to keep track of even and odd subgrid points.
-c     --- The parity is relative to the full grid. In the serial case,
-c     --- it defaults to 0.
-      zparity = mod(izfsslave(my_index),2)
 #endif
 
       return
@@ -5301,6 +5296,7 @@ c===========================================================================
      &                      l2symtry,l4symtry)
       use Constant
       use Surface_of_Rev
+      use GridBoundary3d
       use PSOR3d
       use Conductor3d
       use Lattice
@@ -6025,7 +6021,6 @@ c===========================================================================
       subroutine rodpoint(ixmin,ixmax,iymin,iymax,dx,dy,rodx,rody,
      &      lz_in_rod,rminsq,rodrrsq,ix_axis,iy_axis,rrr,rodmxsq,delz_in,
      &      quadsl,rodap,fuzz,qzs,dz,iz,voltage)
-      use PSOR3d
       use Conductor3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
@@ -6040,8 +6035,7 @@ c rod if sub-gridscale boundary placements are being used.
 c Routine can be used for any general rod.
 c Stores points near all rods, including points within dz of ends of rods.
 c Temporarily stores points in even arrays before checking if even or odd.
-c None of the input variables are affected, only the arrays in PSOR3d are
-c changed.
+c None of the input variables are affected.
 c Note that if rodrrsq is negative, hyperbolic shaped electrodes, going out
 c to the endge of the system is calculated instead of rods.
 c INPUT:
@@ -6242,7 +6236,7 @@ c           --- if within one cell in any direction, save the point
             if (fuzz < abs(delx) .and. abs(delx) < 1.+fuzzsign*fuzz .or.
      &          fuzz < abs(dely) .and. abs(dely) < 1.+fuzzsign*fuzz .or.
      &          fuzz < abs(delz) .and. abs(delz) < 1.+fuzzsign*fuzz) then
-              if (mod(ix_axis + ix + iy_axis + iy + iz + zparity,2) == 0) then
+              if (mod(ix_axis + ix + iy_axis + iy + iz,2) == 0) then
 c               --- even
                 necndbdy = necndbdy + 1
                 ecdelmx(necndbdy) = 2.
@@ -6300,7 +6294,6 @@ c     --- Print warning if conductor arrays filled up.
 c===========================================================================
       subroutine platepnt(ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,dx,dy,
      &                    aper,rmax,vvv,xoff,yoff,delz_in,iz,lz_in_plate,fuzz)
-      use PSOR3d
       use Conductor3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,iz
@@ -6454,7 +6447,7 @@ c         --- if within one cell in any direction, save the point
           if (fuzz < abs(delx) .and. abs(delx) < 1.+fuzzsign*fuzz .or.
      &        fuzz < abs(dely) .and. abs(dely) < 1.+fuzzsign*fuzz .or.
      &        fuzz < abs(delz) .and. abs(delz) < 1.+fuzzsign*fuzz) then
-            if (mod(ix + iy + iz + zparity, 2) == 0) then
+            if (mod(ix + iy + iz, 2) == 0) then
 c             --- even
               necndbdy = necndbdy + 1
               ecdelmx(necndbdy) = 2.
@@ -6512,14 +6505,12 @@ c     --- Print warning if conductor arrays filled up.
       end
 c===========================================================================
       subroutine dipopnt(iymin,iymax,izmin,izmax,vvv,ix_near,ix,delx)
-      use PSOR3d
       use Conductor3d
       use InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,AMRgeom,XZgeom,Zgeom
       integer(ISZ):: iymin,iymax,izmin,izmax,ix_near,ix
       real(kind=8):: vvv,delx
 
-c Set points which are on a dipole plate.  This needs to be in a subroutine
-c since the calling routine changes the PSOR3d arrays.
+c Set points which are on a dipole plate.
 c
 c     iymin  minimum value of iy
 c     iymax  maximum value of iy
@@ -6564,7 +6555,7 @@ c     --- loop over plate to fill in data
             condvolt(ncond) = vvv
           else
 
-            if (mod(ix + iy + iz + zparity,2) == 0) then
+            if (mod(ix + iy + iz,2) == 0) then
 c             --- ix is even
               necndbdy = necndbdy + 1
               ecdelmx(necndbdy) = 2.
@@ -6633,7 +6624,6 @@ c     --- Print warning if conductor arrays filled up.
 c===========================================================================
       subroutine injctpnt(dx,dy,dz,ix_axis,iy_axis,nx,ny,zmmin)
       use Constant
-      use PSOR3d
       use Conductor3d
       use InjectVars
       use InjectVars3d
@@ -6744,7 +6734,7 @@ c             --- a conductor point.
      &               delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
      &               delmz < 1.+fuzzsign*fuzz) then
 c             --- Add subgrid point
-              if (mod(ix+iy+iz+zparity,2) == 0) then
+              if (mod(ix+iy+iz,2) == 0) then
 c               --- even
                 necndbdy = necndbdy + 1
                 iecndx(necndbdy) = ix
@@ -6878,7 +6868,6 @@ c===========================================================================
      &                      zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                      ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                      condid)
-      use PSOR3d
       use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmax
@@ -7335,7 +7324,7 @@ c             -- Check if any of the distances are less than 1.
               if (delmx < 1.+fuzzsign*fuzz .or. delpx < 1.+fuzzsign*fuzz .or.
      &            delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
      &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
-                if (mod(ix+iy+iz+zparity,2) == 0) then
+                if (mod(ix+iy+iz,2) == 0) then
 c                 --- even
                   necndbdy = necndbdy + 1
                   iecndx(necndbdy) = ix
@@ -7469,7 +7458,6 @@ c========================================================================
      &                     zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                     ix_axis,iy_axis,
      &                     xmesh,ymesh,l2symtry,l4symtry,condid)
-      use PSOR3d
       use Conductor3d
       character(*):: rofzfunc
       real(kind=8):: volt,zmin,zmax,xcent,ycent,rmin
@@ -7937,7 +7925,7 @@ c             -- Check if any of the distances are less than 1.
               if (delmx < 1.+fuzzsign*fuzz .or. delpx < 1.+fuzzsign*fuzz .or.
      &            delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
      &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
-                if (mod(ix+iy+iz+zparity,2) == 0) then
+                if (mod(ix+iy+iz,2) == 0) then
                   necndbdy = necndbdy + 1
                   iecndx(necndbdy) = ix
                   iecndy(necndbdy) = iy
@@ -8082,7 +8070,6 @@ c===========================================================================
      &                        zmmin,zmmax,zbeam,dx,dy,dz,nx,ny,nz,
      &                        ix_axis,iy_axis,xmesh,ymesh,l2symtry,l4symtry,
      &                        condid)
-      use PSOR3d
       use Conductor3d
       character(*):: rminofz,rmaxofz
       real(kind=8):: volt,zmin,zmax,xcent,ycent
@@ -8603,7 +8590,7 @@ c             -- Check if any of the distances are less than 1.
               if (delmx < 1.+fuzzsign*fuzz .or. delpx < 1.+fuzzsign*fuzz .or.
      &            delmy < 1.+fuzzsign*fuzz .or. delpy < 1.+fuzzsign*fuzz .or.
      &            delmz < 1.+fuzzsign*fuzz .or. delpz < 1.+fuzzsign*fuzz) then
-                if (mod(ix+iy+iz+zparity,2) == 0) then
+                if (mod(ix+iy+iz,2) == 0) then
 c                 --- even
                   necndbdy = necndbdy + 1
                   iecndx(necndbdy) = ix

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.49 $, $Date: 2003/04/02 18:25:46 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.50 $, $Date: 2003/06/24 22:44:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -13,6 +13,7 @@ c=============================================================================
      &                       rstar,linbend,l2symtry,l4symtry,scrtch,
      &                       xmmin,ymmin,zmmin,zbeam,zgrid)
       use Constant
+      use GridBoundary3d
       use PSOR3d
       use Conductor3d
       use Multigrid3d
@@ -965,7 +966,7 @@ c=============================================================================
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
      &                     whosendingright,izsendingright)
-      use PSOR3d
+      use GridBoundary3d
       use Conductor3d
       use Multigrid3d
       use Constant
@@ -1238,7 +1239,6 @@ c     --- Exchange phi in the z guard planes
 c=============================================================================
       subroutine cond_potmg(nx,ny,nz,phi,mglevel,lresidual,
      &                      mgform,mgform2init)
-      use PSOR3d
       use Conductor3d
       integer(ISZ):: nx,ny,nz,mglevel,mgform
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
@@ -1580,7 +1580,7 @@ c=============================================================================
      &                    my_index,nslaves,izfsslave,nzfsslave,
      &                    whosendingleft,izsendingleft,
      &                    whosendingright,izsendingright)
-      use PSOR3d
+      use GridBoundary3d
       use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny,nz,nzfull
@@ -1713,7 +1713,7 @@ c=============================================================================
 c=============================================================================
       subroutine setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                        l2symtry,l4symtry)
-      use PSOR3d
+      use GridBoundary3d
       use Multigrid3d
       use Conductor3d
       use Parallel
@@ -2188,7 +2188,6 @@ c Utility function for sort conductors
 c=============================================================================
       subroutine checkconductors_work(nx,ny,nz,dx,dy,dz,l2symtry,l4symtry,
      &                                mglevel)
-      use PSOR3d
       use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny,nz,mglevel

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.75 $, $Date: 2003/04/29 17:05:39 $
+#@(#) File F3D.V, version $Revision: 3.76 $, $Date: 2003/06/24 22:44:51 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.75 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.76 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -33,7 +33,21 @@ kzsq(0:nz)                _real        #  Discrete analog to kz^2/4Pi
 work(nx+ny-4)             _real        #  Workspace for sine transforms
 work2d(1:nx+2,1:ny+2)     _real        #  Workspace for 2d fieldsolver
     #  Note: should be ((nx+2)*(ny+2)-7), but MAC produces bad code !
-zwork(2,0:nx,0:nz)        _real        #  Workspace to optimize vsftz
+zwork(2,0:nx,0:nz)        _real        #  Workspace to optimize vpftz
+
+******* GridBoundary3d dump:
+bound0    integer /0/  # Type of boundary condition at plane z=0
+                       # 0 is constant potential, 1 is zero normal derivative,
+                       # and 2 is periodic
+boundnz   integer /0/  # Type of boundary condition at plane z=nz
+                       # 0 is constant potential, 1 is zero normal derivative,
+                       # and 2 is periodic
+boundxy   integer /0/  # Type of boundary condition at sides
+                       # 0 is constant potential, 1 is zero normal derivative,
+                       # and 2 is periodic
+lzerophiedge logical /.true./ # When true and when gridmode == 0, the edge of
+                       # the phi array is zeroed out. This clears phi at any
+                       # conductor points on the edge of the mesh.
 
 ******* Transpose_work_space:
 phi_trnspssize /0/       integer
@@ -111,18 +125,6 @@ pjacobi   real    /.99/  # spectral radius of Jacobi iteration, used only for
 gridmode    integer /0/ # Mode of grid motion, if 0, then normal, if 1, then
                         # grid is assumed not to move.  slice arrays only set
                         # when iwhich is set to -2.
-lzerophiedge logical /.true./ # When true and when gridmode == 0, the edge of
-                       # the phi array is zeroed out. This clears phi at any
-                       # conductor points on the edge of the mesh.
-bound0    integer /0/  # Type of boundary condition at plane z=0
-                       # 0 is constant potential, 1 is zero normal derivative,
-                       # and 2 is periodic
-boundnz   integer /0/  # Type of boundary condition at plane z=nz
-                       # 0 is constant potential, 1 is zero normal derivative,
-                       # and 2 is periodic
-boundxy   integer /0/  # Type of boundary condition at sides
-                       # 0 is constant potential, 1 is zero normal derivative,
-                       # and 2 is periodic
 zparity   integer /0/ +parallel # iz parity, used in the parallel version so that the
                        # parity of the subgrid conductor points can be
                        # relative to the full grid.
@@ -130,12 +132,11 @@ dxfine    real         # Size of transverse grid cells are finest level
 lplates          logical  # Sets whether or not quadruple endplates are included
 rodfract        real /1./ # Fraction of quadrupole rod which is used
 
+*********** Conductor3d dump parallel:
 lcndbndy logical /.true./ # Turns on sub-grid boundaries
 icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
                           # 2 EBC style (non-centered finite-difference)
-
-*********** Conductor3d dump parallel:
 icstart(0:100)  integer -dump # Start of the conductor points for each MG level
 ecstart(0:100)  integer -dump # Start of the even conductor points for each MG level
 ocstart(0:100)  integer -dump # Start of the odd conductor points for each MG level

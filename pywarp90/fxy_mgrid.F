@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.3 $, $Date: 2002/06/26 00:46:01 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.4 $, $Date: 2003/06/24 22:44:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -12,6 +12,7 @@ c=============================================================================
       subroutine multigridxyf(iwhich,nx,ny,dx,dy,phi1d,rho1d,
      &                       l2symtry,l4symtry,xmmin,ymmin)
       use Constant
+      use Boundary3d
       use PSOR3d
       use Multigrid3d
       integer(ISZ):: iwhich
@@ -301,7 +302,7 @@ c=============================================================================
 c=============================================================================
       subroutine sorpassxy(levelxy,nx,ny,phi,rho,phi1d,rho1d,
      &                     rdx2,rdy2,l2symtry,l4symtry)
-      use PSOR3d
+      use Boundary3d
       use Conductor3d
       use Multigrid3d
       use Constant
@@ -519,7 +520,7 @@ c     --- end of loop over even and odd points
 c=============================================================================
 c=============================================================================
       subroutine cond_potmgxy(nx,ny,phi,levelxy,lresidual)
-      use PSOR3d
+      use Boundary3d
       use Conductor3d
       integer(ISZ):: nx,ny,levelxy
       real(kind=8):: phi(0:nx,0:ny)
@@ -829,7 +830,7 @@ c             rhovolume = (dxp+dxm)*(dyp+dym)*0.125
 c=============================================================================
       subroutine residualxy(nx,ny,dxsqi,dysqi,phi,rho,res,levelxy,
      &                      l2symtry,l4symtry)
-      use PSOR3d
+      use Boundary3d
       use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny
@@ -937,7 +938,7 @@ c     --- that level.
       end
 c=============================================================================
       subroutine conductor_data_levelxy(nx,ny,dx,dy)
-      use PSOR3d
+      use Boundary3d
       use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny
@@ -1065,7 +1066,7 @@ c     --- Now, clear out all of the points which were not flagged as usable.
       end
 c=============================================================================
       subroutine subgrid_sor_to_mgxy(nx,ny,dx,dy,l2symtry,l4symtry)
-      use PSOR3d
+      use Boundary3d
       use Conductor3d
       integer(ISZ):: nx,ny
       real(kind=8):: dx,dy
@@ -1101,7 +1102,7 @@ c     --- Now, get the refinement level for all of the points.
       end
 c=============================================================================
       subroutine subgrid_sor_to_mgxy_work(nx,ny,dx,dy,l2symtry,l4symtry)
-      use PSOR3d
+      use Boundary3d
       use Conductor3d
       use Multigrid3d
       integer(ISZ):: nx,ny
