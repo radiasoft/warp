@@ -3,7 +3,7 @@
 from warp import *
 import time
 import string
-runcounter_version = "$Id: runcounter.py,v 1.7 2003/12/10 21:03:42 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.8 2004/01/08 21:09:26 dave Exp $"
 
 def runcounter(init=0,delta=1,suffix=None,sleep=0,ensambles=None):
   if not suffix: suffix = arraytostr(top.runid)
@@ -65,7 +65,7 @@ Accumulates data from multiple runs in a single file.
   # --- If file already exist, then open it.
   if os.access(filename,os.F_OK):
     f_in = PR.PR(filename)
-    varlist = list(f_in.inquire_ls())
+    varlist = list(f_in.inquire_names())
   else:
     f_in = None
     varlist = []
