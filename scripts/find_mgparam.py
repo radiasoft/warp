@@ -1,8 +1,9 @@
 from warp import *
 # FIND_MGPARAM
-find_mgparam_version = "$Id: find_mgparam.py,v 1.5 2001/10/02 00:30:49 dave Exp $"
+find_mgparam_version = "$Id: find_mgparam.py,v 1.6 2002/03/14 19:39:46 jlvay Exp $"
 # Author: D. P. Grote, March 1995
 # Converted to python: April 1999
+# Support for RZ multigrid solver added by J.-L. Vay: March 2002
 # This script optimizes the value of mgparam, the relaxation
 # parameter used in the multigrid field solver.  It begins its search with the
 # current value of mgparam and moves it initially in increments of .01.  The
@@ -34,6 +35,11 @@ time.
   if f3d.downpasses == 0: f3d.downpasses = 1
   if f3d.uppasses == 0: f3d.uppasses = 1
   # --- Get initial field solve time
+  if(w3d.solvergeom == w3d.RZgeom):
+    f3d.downpasses = frz.mgridrz_npre 
+    f3d.uppasses = frz.mgridrz_npost 
+    f3d.mgparam = frz.mgridrz_mgparam 
+    f3d.mgmaxiters = frz.mgridrz_ncmax 
   nexttime = field_solve()
   prevtime = 2*nexttime
   # --- Loop, increasing the number of passes until the time is minimized.
@@ -42,9 +48,15 @@ time.
     prevtime = nexttime
     nexttime = _find_mgparam()
     print "Field solve time = ",nexttime
-    print "f3d.mgparam = ",f3d.mgparam
-    print "f3d.downpasses = ",f3d.downpasses
-    print "f3d.uppasses = ",f3d.uppasses
+    if(w3d.solvergeom == w3d.XYZgeom):
+      print "f3d.mgparam = ",f3d.mgparam
+      print "f3d.downpasses = ",f3d.downpasses
+      print "f3d.uppasses = ",f3d.uppasses
+    else:
+      print "frz.mgridrz_mgparam = ",frz.mgridrz_mgparam
+      print "frz.mgridrz_npre    = ",frz.mgridrz_npre
+      print "frz.mgridrz_npost   = ",frz.mgridrz_npost
+      if f3d.mgiters == f3d.mgmaxiters:prevtime=2*nexttime
     if nexttime < prevtime:
       f3d.downpasses = f3d.downpasses + 1
       f3d.uppasses = f3d.uppasses + 1
@@ -63,13 +75,20 @@ the values above are unlikely to be optimal. Try increasing the
 tolerance, increasing the maximum number of iterations, or making a
 better initial guess of mgparam."""
   else:
+    if(w3d.solvergeom == w3d.RZgeom):prevtime=findnrecursmin(prevtime)
     print "-----------------------------------------"
     print "The optimized values:"
     print "Field solve time = ",prevtime
-    print "f3d.mgparam = ",f3d.mgparam
-    print "f3d.downpasses = ",f3d.downpasses
-    print "f3d.uppasses = ",f3d.uppasses
-
+    if(w3d.solvergeom == w3d.XYZgeom):
+      print "f3d.mgparam = ",f3d.mgparam
+      print "f3d.downpasses = ",f3d.downpasses
+      print "f3d.uppasses = ",f3d.uppasses
+    else:
+      print "frz.mgridrz_mgparam     = ",frz.mgridrz_mgparam
+      print "frz.mgridrz_npre        = ",frz.mgridrz_npre
+      print "frz.mgridrz_npost       = ",frz.mgridrz_npost
+      print "frz.mgridrz_nrecurs_min = ",frz.mgridrz_nrecurs_min
+    
 def field_solve():
   ixmin = 1
   ixmax = w3d.nx-1
@@ -83,10 +102,23 @@ def field_solve():
   if (f3d.boundxy > 0): iymax = w3d.ny
   if (f3d.bound0  > 0): izmin = 0
   if (f3d.boundnz > 0): izmax = w3d.ny
-  w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
+  if(w3d.solvergeom == w3d.XYZgeom):
+    w3d.phi[ixmin:ixmax+1,iymin:iymax+1,izmin+1:izmax+1] = 0.
+  else:
+    w3d.phi[ixmin:ixmax+1,:,izmin+1:izmax+1] = 0.
+    frz.mgridrz_npre    = f3d.downpasses
+    frz.mgridrz_npost   = f3d.uppasses
+    frz.mgridrz_mgparam = f3d.mgparam
+    frz.mgridrz_ncmax   = f3d.mgmaxiters
+    
   beforetime = wtime()
   vp3d(-1)
   aftertime = wtime()
+  if(w3d.solvergeom == w3d.RZgeom):
+    f3d.mgiters = frz.mgridrz_mgiters
+    f3d.downpasses = frz.mgridrz_npre 
+    f3d.uppasses = frz.mgridrz_npost
+    f3d.mgparam = frz.mgridrz_mgparam
   return aftertime - beforetime
 
 def _find_mgparam():
@@ -98,6 +130,8 @@ def _find_mgparam():
   if (f3d.mgparam <= 0.):
     f3d.mgparam = max(1., 2. + f3d.mgparam)
 
+  if(w3d.solvergeom == w3d.RZgeom):f3d.mgparam=1.8
+ 
 # --- If mgparam is greater than two, put it on the other side of two
 # --- and reduce the increment.  This keeps mgparam near two.
   if (f3d.mgparam > 2.):
@@ -128,6 +162,7 @@ def _find_mgparam():
     print "Best parameter so far = %f" % f3d.mgparam
 
 #   --- do field solve (which prints out number of field solve iterations)
+    up_old = f3d.uppasses
     fstime = field_solve()
 
 #   --- If field solve took more iterations than previous field solve, change
@@ -153,13 +188,26 @@ def _find_mgparam():
 #   --- of zero since when mgparam is too close to zero, misleading things
 #   --- happen.
 #   --- If mgparam is outside the range, start the iterations over at a
-#   --- random place near the typical optimum value, 1.9.
+#   --- random place near the typical optimum value, 1.9. (1.8 for RZ solver)
     if (f3d.mgparam <= 0.01 or 2. < f3d.mgparam):
-      f3d.mgparam = 1.9 + ranf()*.05
+      if(w3d.solvergeom == w3d.XYZgeom):
+        f3d.mgparam = 1.9 + ranf()*.05
+      else:
+        f3d.mgparam = 1.8 + ranf()*.05
       sincr = .01
 
 #   --- increment iteration counter
     icount = icount + 1
+
+    if(w3d.solvergeom == w3d.RZgeom and f3d.uppasses <> up_old):
+      print "resetting _find_mgparam"
+      icount=0
+      fstime = field_solve()
+      mgparam_prev = 1.8
+      mgiters_prev = f3d.mgiters
+      sincr = .05
+      f3d.mgiters = 0
+      f3d.mgparam = f3d.mgparam + sincr
 
 
 # --- print message if an optimal value wasn't found
@@ -170,3 +218,25 @@ def _find_mgparam():
 
 
   return fstime
+
+def findnrecursmin(prevtime):
+  """
+Optimize nrecurs_min, minimizing the fieldsolve time.
+  """
+  # --- Get initial field solve time
+  nexttime = prevtime
+  prevtime = 2*nexttime
+  # --- Loop, increasing the number of passes until the time is minimized.
+  while nexttime < prevtime and frz.mgridrz_nrecurs_min < frz.mgridrz_nlevels_max:
+    prevtime = nexttime
+    frz.mgridrz_nrecurs_min = frz.mgridrz_nrecurs_min + 1
+    nexttime = field_solve()
+    print "Field solve time = ",nexttime
+    print "frz.mgridrz_nrecurs_min = ",frz.mgridrz_nrecurs_min
+    if f3d.mgiters == f3d.mgmaxiters:prvtime=2*nexttime
+    if nexttime > prevtime:
+      # --- Reset the values to the previous ones (which were the best)
+      frz.mgridrz_nrecurs_min = frz.mgridrz_nrecurs_min - 1
+      # --- Do some error checking first
+      if frz.mgridrz_nrecurs_min == 0: frz.mgridrz_nrecurs_min = 1
+  return prevtime
