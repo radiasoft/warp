@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.17 2001/02/10 01:38:21 dave Exp $"
+warp_version = "$Id: warp.py,v 1.18 2001/02/13 02:42:15 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -37,10 +37,17 @@ from f3dpy import *
 from w3dpy import *
 from fxypy import *
 from wxypy import *
-#from frzpy import *
-#from wrzpy import *
+try:  # RZ code hasn't been installed on all machines yet
+  from frzpy import *
+  from wrzpy import *
+except ImportError:
+  pass
 try:  # cirpy hasn't been installed on all machines yet
   from cirpy import *
+except ImportError:
+  pass
+try:  # herpy hasn't been installed on all machines yet
+  from herpy import *
 except ImportError:
   pass
 from ctl import *
@@ -95,6 +102,7 @@ def versionstext():
   if 'f3d' in pkg: r=r+fmt%('Fieldsolver F3D',printversion(f3d.versf3d))
   if 'env' in pkg: r=r+fmt%('Envelope solver ENV',printversion(env.versenv))
   if 'cir' in pkg: r=r+fmt%('Envelope solver CIR',printversion(cir.verscir))
+  if 'her' in pkg: r=r+fmt%('Envelope solver HER',printversion(her.versher))
   if 'wxy' in pkg: r=r+fmt%('Particle package WXY',printversion(wxy.verswxy))
   if 'wrz' in pkg: r=r+fmt%('Particle package WRZ',printversion(wrz.verswrz))
   if 'w3d' in pkg: r=r+fmt%('Particle package W3D',printversion(w3d.versw3d))
