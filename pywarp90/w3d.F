@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.43 $, $Date: 2002/03/18 21:36:19 $
+c@(#) File W3D.M, version $Revision: 3.44 $, $Date: 2002/03/20 15:09:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1195,6 +1195,7 @@ c=============================================================================
       use Damped_eom
       use InjectVars
       use Apertures
+      use FRZmgrid
       character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
@@ -4838,8 +4839,13 @@ c         --- are injected.
             do ipmin=ins(is)-npinje_s(is)-ntinject(is),
      &               ins(is)-npinje_s(is)-1,NPARPGRP
               ip = min(NPARPGRP, ins(is) - npinje_s(is) - ipmin)
-              call setrho3d(rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),zgrid,
-     &                      uzp(ipmin),sq(is),sw(is),depos)
+              if(solvergeom==XYZgeom) then
+                call setrho3d (rho(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &                         zgrid, uzp(ipmin), sq(is), sw(is), depos)
+              elseif(solvergeom==RZgeom) then
+                call rhoweightrz(xp(ipmin),yp(ipmin),zp(ipmin),ip,
+     &                           sq(is)*sw(is),rho(0,0,0),nx,nz,dx,dz,zmmin)
+              end if
             enddo
           enddo
 
@@ -6884,6 +6890,8 @@ c   1  3d fft and Kz capacity matrix for variable pipe shape
 c   2  3d fft and 3d capacity matrix for internal quadrupole conductors
 c   3  3d SOR field solve 
 c   4  2d fft in transverse plane, tridiag solve in z
+
+      if(solvergeom==RZgeom) fstype=10
 
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
