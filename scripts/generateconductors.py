@@ -101,7 +101,7 @@ import pyOpenDX
 import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.97 2004/12/11 00:08:53 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.98 2004/12/22 00:38:22 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -2350,9 +2350,14 @@ Plate from beamlet pre-accelerator
     self.z0 = z0
     self.thickness = thickness
 
-    # --- Give a cheap result.
-    self.createextent([-largepos,-largepos,-largepos],
-                      [+largepos,+largepos,+largepos])
+    # --- Give a somewhat thoughtful result.
+    zza = za - sqrt((za-z0)**2 - w3d.xmmax**2 - w3d.ymmax**2)
+    zzb = zb - sqrt((zb-z0)**2 - w3d.xmmax**2 - w3d.ymmax**2)
+    zmin = z0 - thickness
+    zmax = max(zza,zzb) + 5*thickness
+
+    self.createextent([-largepos,-largepos,zmin],
+                      [+largepos,+largepos,zmax])
 
   def createdxobject(self,xmin=None,xmax=None,ymin=None,ymax=None,
                 nx=None,ny=None,nz=None,
