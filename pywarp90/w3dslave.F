@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.15 $, $Date: 2002/11/05 21:54:52 $
+c W3DSLAVE.M, version $Revision: 1.16 $, $Date: 2003/01/23 21:29:05 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -277,15 +277,9 @@ c---------------------------------------------------------------------------
 c     --- Reset local values
       npmax = npmax/nslaves*1.1
       nz = nzslave(my_index)
-      nzzarr = nzpslave(my_index)
-      nzlmax = nzpslave(my_index)
       nzmmnt = nzpslave(my_index)
       zpmin = zmmin + izpslave(my_index)*dz
       zpmax = (izpslave(my_index)+nzpslave(my_index))*dz + zmmin
-      if (zzmin == 0.) zzmin = zpmin
-      if (zzmax == 0.) zzmax = zpmax
-      if (zlmin == 0.) zlmin = zpmin
-      if (zlmax == 0.) zlmax = zpmax
       if (zmmntmin == 0.) zmmntmin = zpmin
       if (zmmntmax == 0.) zmmntmax = zpmax
       izfsmin = izfsslave(my_index) - izslave(my_index)
@@ -664,109 +658,3 @@ c     call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
       return
       end                                                                       
 c===========================================================================
-      subroutine seteears_slave(workspace)
-      use Beam_acc
-      use InGen
-      use InPart
-      use InMesh3d
-      use Picglb3d
-      use Constant
-      use Particles
-      use Z_arrays
-      use Fields3d
-      use Parallel
-      use Databuffers
-      real(kind=8):: workspace(0:*)
-
-c Gather ezax from all slaves into eearsofz array, modify eearsofz
-c as appropriate, and redistribute eearsofz.
-c The first processor does the gathering and redistributing.
-c This assumes that nzzarr = nz
-c
-c Note: this is really not necessary since each processor has enough
-c information to do this calculation on its own. But since it is working
-c and only done at the beginning, there is little incentive to fix this.
-
-      integer(ISZ):: nzla,nzlb,nzma,nzmb,iz
-      real(kind=8):: zm,zs,zl,eearsprs
-      integer(ISZ):: left_pe,right_pe,i
-      include "mpif.h"
-      integer(ISZ):: mpistatus(MPI_STATUS_SIZE),mpierror
-
-c     --- Gather data from all processes
-      if (b1size < 2*nslaves) then
-        b1size = 2*nslaves
-        call gchange("Databuffers",0)
-      endif
-c     --- Get number of data points sent from each processor
-      call MPI_GATHER(nzzarr,1,MPI_INTEGER,buffer1(1),1,MPI_INTEGER,0,
-     &                MPI_COMM_WORLD,mpierror)
-c     --- Accumulate the displacments
-      buffer1(nslaves+1) = 0
-      do i=2,nslaves
-        buffer1(nslaves+i) = buffer1(nslaves+i) + buffer1(i)
-      enddo
-c     --- Gather the data.
-      call MPI_GATHERV(ezax,nzzarr,MPI_DOUBLE_PRECISION,
-     &                 workspace,buffer1(1),buffer1(nslaves+1),
-     &                 MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,mpierror)
-
-c     --- Processor 0 does all of the work
-      if (my_index == 0) then
-
-c       --- Now adjust Eears appropriately. (Any changes made in the
-c       --- seteears subroutine should also be made here and vice versa.)
-        zl = (zimax - zimin)*0.5
-        nzla = nzfull/2-int(zl*dzzi)
-        nzlb = nzfull/2+int(zl*dzzi)
-        zs = (zimax - zimin)*straight*0.5
-        nzma = nzfull/2-int(zs*dzzi)
-        nzmb = nzfull/2+int(zs*dzzi)
-        do iz=0,nzla
-          workspace(iz) = - workspace(nzla)
-        enddo
-        do iz=nzla+1,nzma+5
-          workspace(iz) = - workspace(iz)
-        enddo
-        do iz=nzma+6,nzmb-6
-          workspace(iz) = 0.
-        enddo
-        do iz=nzmb-5,nzlb
-          workspace(iz) = - workspace(iz)
-        enddo
-c       --- Note that workspace(nzlb) has already beed negated.
-        do iz=nzlb+1,nzfull
-          workspace(iz) =   workspace(nzlb)
-        enddo
-c       --- Add on linear pressure term
-        zm = (zimax - zimin)*(1. - straight)*0.5
-        emitlong = zm*2.*vthz/vbeam
-        if (emitlong /= 0.) then
-          eearsprs = - sm(1)*vbeam**2*emitlong**2/(sq(1)*zm**4)
-          do iz=0,nzma
-            workspace(iz) = workspace(iz) + eearsprs*(zzmin + iz*dzz + zs)
-          enddo
-          do iz=nzmb,nzfull
-            workspace(iz) = workspace(iz) + eearsprs*(zzmin + iz*dzz - zs)
-          enddo
-        endif
-
-      endif
-
-c     --- Send data back to the processors
-      call MPI_SCATTERV(workspace,buffer1(1),buffer1(nslaves+1),
-     &                  MPI_DOUBLE_PRECISION,
-     &                  eearsofz,nzzarr,MPI_DOUBLE_PRECISION,
-     &                  0,MPI_COMM_WORLD,mpierror)
-
-
-c     --- Now get overlapped data
-      left_pe = mod(nslaves+my_index-1,nslaves)
-      right_pe = mod(my_index+1,nslaves)
-      call MPI_SENDRECV(eearsofz(0),1,MPI_DOUBLE_PRECISION,left_pe,0,
-     &                  eearsofz(nz),1,MPI_DOUBLE_PRECISION,right_pe,0,
-     &                  MPI_COMM_WORLD,mpistatus,mpierror)
-
-      return
-      end
-c=============================================================================
