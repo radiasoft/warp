@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.116 $, $Date: 2004/01/28 23:35:43 $
+c@(#) File TOP.F, version $Revision: 3.117 $, $Date: 2004/01/29 20:36:18 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6580,6 +6580,7 @@ c         --- Zero out the velocity, the flag for a lost particle.
 c=============================================================================
       subroutine alotlostpart
       use InPart
+      use Particles
       use LostParticles
 
 c Allocate space for lost particles and set up associated arrays.
@@ -7585,16 +7586,24 @@ c there is a problem here with the intel compiler
         return
       end
 c=============================================================================
-      subroutine impact_ion(is1,is2,nbp,wp,shiftx,shifty,shiftz,deltax,deltay,deltaz)
-      ! create particles of specie is2 created by impact of particles of species is1
-      ! particles are created with initial kinetic energy wp
+      subroutine impact_ion(is1,is2,nbp,wp,shiftx,shifty,shiftz,deltax,deltay,deltaz,condid)
       USE Constant
       use Particles
       USE InPart
       use LostParticles
-      implicit none
-      INTEGER, INTENT(IN) :: is1, is2, nbp
+      INTEGER, INTENT(IN) :: is1, is2, nbp, condid
       REAL(8), INTENT(IN) :: wp,shiftx,shifty,shiftz,deltax,deltay,deltaz
+
+c Create particles of specie is2 created by impact of particles of species is1
+c - nbp: number of new particles are generated for each lost partcle
+c - wp: energy in volts of new particles
+c - shiftz,y,z: the location where the new particles are created relative
+c               to where the original particles are lost
+c - deltax,y,z: the length over which the new particles are distributed
+c               relative to the location where the original particles are lost.
+c               The distribution is uniform between -delta/2 and +delta/2.
+c - condid: id of conductor - only particles that are lost on the specified
+c           conductor generate new particles.
 
       INTEGER :: ip,i1,i2,ir
       REAL(8) :: gamma, uz_tmp
@@ -7610,6 +7619,7 @@ c=============================================================================
         END if
         call chckpart(is2,0,nbp*npslost(is1),.false.)
         do ip = inslost(is1), inslost(is1)+npslost(is1)-1
+          if (pidlost(ip,npidlostmax) .ne. condid) cycle
           i1 = ins(is2) + nps(is2)
           i2 = i1 + nbp - 1
           do ir = 1, nbp
