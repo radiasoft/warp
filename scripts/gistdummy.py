@@ -1,6 +1,6 @@
 # Copyright (c) 1996, 1997, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-gistdummy_version = "$Id: gistdummy.py,v 1.11 2004/09/16 21:42:25 jlvay Exp $"
+gistdummy_version = "$Id: gistdummy.py,v 1.12 2005/02/08 17:54:06 dave Exp $"
 from Numeric import *
 import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from gistC import *
@@ -27,7 +27,7 @@ def fma():
 def plt(*x,**xx):
   pass
 def plsys(i=0):
-  pass
+  return 1
 def winkill(*N):
   pass
 def pltitle(title):
