@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.4 $, $Date: 2001/05/03 19:08:47 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.5 $, $Date: 2001/05/29 21:07:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -438,33 +438,20 @@ c     --- Do the loops.
             if (ix == nx .and. boundxy == 2)  ixp1 = 1
 
             p2h(ix/2,iy/2,iz/2) =
-     &        4.0*0.125000*ph(ix  ,iy  ,iz  ) +
-     &        4.0*0.062500*ph(ixm1,iy  ,iz  ) +
-     &        4.0*0.062500*ph(ixp1,iy  ,iz  ) +
-     &        4.0*0.062500*ph(ix  ,iym1,iz  ) +
-     &        4.0*0.062500*ph(ix  ,iyp1,iz  ) +
-     &        4.0*0.062500*ph(ix  ,iy  ,izm1) +
-     &        4.0*0.062500*ph(ix  ,iy  ,izp1) +
-     &        4.0*0.031250*ph(ixm1,iym1,iz  ) +
-     &        4.0*0.031250*ph(ixp1,iym1,iz  ) +
-     &        4.0*0.031250*ph(ixm1,iyp1,iz  ) +
-     &        4.0*0.031250*ph(ixp1,iyp1,iz  ) +
-     &        4.0*0.031250*ph(ixm1,iy  ,izm1) +
-     &        4.0*0.031250*ph(ixp1,iy  ,izm1) +
-     &        4.0*0.031250*ph(ixm1,iy  ,izp1) +
-     &        4.0*0.031250*ph(ixp1,iy  ,izp1) +
-     &        4.0*0.031250*ph(ix  ,iym1,izm1) +
-     &        4.0*0.031250*ph(ix  ,iyp1,izm1) +
-     &        4.0*0.031250*ph(ix  ,iym1,izp1) +
-     &        4.0*0.031250*ph(ix  ,iyp1,izp1) +
-     &        4.0*0.015625*ph(ixm1,iym1,izm1) +
-     &        4.0*0.015625*ph(ixp1,iym1,izm1) +
-     &        4.0*0.015625*ph(ixm1,iyp1,izm1) +
-     &        4.0*0.015625*ph(ixp1,iyp1,izm1) +
-     &        4.0*0.015625*ph(ixm1,iym1,izp1) +
-     &        4.0*0.015625*ph(ixp1,iym1,izp1) +
-     &        4.0*0.015625*ph(ixm1,iyp1,izp1) +
-     &        4.0*0.015625*ph(ixp1,iyp1,izp1)
+     &        4.*0.125000*ph(ix  ,iy  ,iz  ) +
+     &        4.*0.062500*ph(ixm1,iy  ,iz  ) + 4.*0.062500*ph(ixp1,iy  ,iz  ) +
+     &        4.*0.062500*ph(ix  ,iym1,iz  ) + 4.*0.062500*ph(ix  ,iyp1,iz  ) +
+     &        4.*0.062500*ph(ix  ,iy  ,izm1) + 4.*0.062500*ph(ix  ,iy  ,izp1) +
+     &        4.*0.031250*ph(ixm1,iym1,iz  ) + 4.*0.031250*ph(ixp1,iym1,iz  ) +
+     &        4.*0.031250*ph(ixm1,iyp1,iz  ) + 4.*0.031250*ph(ixp1,iyp1,iz  ) +
+     &        4.*0.031250*ph(ixm1,iy  ,izm1) + 4.*0.031250*ph(ixp1,iy  ,izm1) +
+     &        4.*0.031250*ph(ixm1,iy  ,izp1) + 4.*0.031250*ph(ixp1,iy  ,izp1) +
+     &        4.*0.031250*ph(ix  ,iym1,izm1) + 4.*0.031250*ph(ix  ,iyp1,izm1) +
+     &        4.*0.031250*ph(ix  ,iym1,izp1) + 4.*0.031250*ph(ix  ,iyp1,izp1) +
+     &        4.*0.015625*ph(ixm1,iym1,izm1) + 4.*0.015625*ph(ixp1,iym1,izm1) +
+     &        4.*0.015625*ph(ixm1,iyp1,izm1) + 4.*0.015625*ph(ixp1,iyp1,izm1) +
+     &        4.*0.015625*ph(ixm1,iym1,izp1) + 4.*0.015625*ph(ixp1,iym1,izp1) +
+     &        4.*0.015625*ph(ixm1,iyp1,izp1) + 4.*0.015625*ph(ixp1,iyp1,izp1)
 
           enddo
         enddo
