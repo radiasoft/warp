@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.10 $, $Date: 2001/09/07 20:57:10 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.11 $, $Date: 2001/09/13 18:01:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -109,7 +109,7 @@ c     --- for rho.
             tdz = tdz*2.
           endif
           tempsize = tempsize + (tnx+1)*(tny+1)*(tnz+3)
-        end do
+        enddo
         call gallot("Multigrid3d",0)
       endif
 
@@ -189,7 +189,7 @@ c       --- after the iteration to check for convergence.
 c       call copyarry(phi_temp(1+nxy),phi1d(1+nxy),nxyz)
         phi1d(1+nxy:nxy+nxyz) = phi_temp(1+nxy:nxy+nxyz)
 
-      end do
+      enddo
 
 c     --- Set planes iz=-1 and nz+1 according to the axial boundary conditions
       if (bound0 == 0) then
@@ -1596,7 +1596,7 @@ c       --- Go to the next level of coarseness.
           levelz = 2*levelz
         endif
 
-      end do
+      enddo
 
 c     --- Now, clear out all of the points which were not flagged as usable.
       ne = 0
@@ -1829,47 +1829,47 @@ c     --- the appropriate direction.
         cds(1) = iecndx(ic)
         cds(2) = iecndy(ic)
         cds(3) = iecndz(ic)
-        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelmx(1),ocdelmx(1),ecdelmx(ic),iecndx(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ecvoltmx(ic))
-        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelpx(1),ocdelpx(1),ecdelpx(ic),iecndx(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ecvoltpx(ic))
-        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelmy(1),ocdelmy(1),ecdelmy(ic),iecndy(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ecvoltmy(ic))
-        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelpy(1),ocdelpy(1),ecdelpy(ic),iecndy(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ecvoltpy(ic))
-        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelmz(1),ocdelmz(1),ecdelmz(ic),iecndz(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ecvoltmz(ic))
-        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelpz(1),ocdelpz(1),ecdelpz(ic),iecndz(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ecvoltpz(ic))
+        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelmx(1),ocdelmx(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iecndx(ic),ecdelmx(ic),ecvoltmx(ic))
+        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelpx(1),ocdelpx(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iecndx(ic),ecdelpx(ic),ecvoltpx(ic))
+        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelmy(1),ocdelmy(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iecndy(ic),ecdelmy(ic),ecvoltmy(ic))
+        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelpy(1),ocdelpy(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iecndy(ic),ecdelpy(ic),ecvoltpy(ic))
+        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelmz(1),ocdelmz(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iecndz(ic),ecdelmz(ic),ecvoltmz(ic))
+        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelpz(1),ocdelpz(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iecndz(ic),ecdelpz(ic),ecvoltpz(ic))
       enddo
       do ic=1,nocndbdy
         cds(1) = iocndx(ic)
         cds(2) = iocndy(ic)
         cds(3) = iocndz(ic)
-        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelmx(1),ocdelmx(1),ocdelmx(ic),iocndx(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ocvoltmx(ic))
-        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelpx(1),ocdelpx(1),ocdelpx(ic),iocndx(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ocvoltpx(ic))
-        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelmy(1),ocdelmy(1),ocdelmy(ic),iocndy(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ocvoltmy(ic))
-        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelpy(1),ocdelpy(1),ocdelpy(ic),iocndy(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ocvoltpy(ic))
-        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelmz(1),ocdelmz(1),ocdelmz(ic),iocndz(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt,ocvoltmz(ic))
-        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,iii(0,0,0),
-     &                       ecdelpz(1),ocdelpz(1),ocdelpz(ic),iocndz(ic),icond,
-     &                       condvolt(1),ecvolt(1),ocvolt(1),ocvoltpz(ic))
+        call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelmx(1),ocdelmx(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iocndx(ic),ocdelmx(ic),ocvoltmx(ic))
+        call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelpx(1),ocdelpx(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iocndx(ic),ocdelpx(ic),ocvoltpx(ic))
+        call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelmy(1),ocdelmy(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iocndy(ic),ocdelmy(ic),ocvoltmy(ic))
+        call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelpy(1),ocdelpy(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iocndy(ic),ocdelpy(ic),ocvoltpy(ic))
+        call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelmz(1),ocdelmz(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iocndz(ic),ocdelmz(ic),ocvoltmz(ic))
+        call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,icond,nx,ny,nz,iii(0,0,0),
+     &                    ecdelpz(1),ocdelpz(1),condvolt(1),ecvolt(1),ocvolt(1),
+     &                    iocndz(ic),ocdelpz(ic),ocvoltpz(ic))
       enddo
 
 
@@ -1938,32 +1938,38 @@ c       --- points. (Odd points only appear on the finest level grid.)
 c             --- Check if there is already a conductor or subgrid point
 c             --- at this location.
               if (iii(ix,iy,iz) == 0) then
+                ecdelmx(ic) = LARGEPOS
+                ecdelpx(ic) = LARGEPOS
+                ecdelmy(ic) = LARGEPOS
+                ecdelpy(ic) = LARGEPOS
+                ecdelmz(ic) = LARGEPOS
+                ecdelpz(ic) = LARGEPOS
 
 c               --- Scan along the 6 directions.
-                call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,nx,ny,nz,
-     &                         iii(0,0,0),
-     &                         ecdelmx(1),ocdelmx(1),ecdelmx(ic),ix,icond,
-     &                         condvolt(1),ecvoltmx(1),ocvoltmx(1),ecvoltmx(ic))
-                call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,nx,ny,nz,
-     &                         iii(0,0,0),
-     &                         ecdelpx(1),ocdelpx(1),ecdelpx(ic),ix,icond,
-     &                         condvolt(1),ecvoltpx(1),ocvoltpx(1),ecvoltpx(ic))
-                call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,nx,ny,nz,
-     &                         iii(0,0,0),
-     &                         ecdelmy(1),ocdelmy(1),ecdelmy(ic),iy,icond,
-     &                         condvolt(1),ecvoltmy(1),ocvoltmy(1),ecvoltmy(ic))
-                call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,nx,ny,nz,
-     &                         iii(0,0,0),
-     &                         ecdelpy(1),ocdelpy(1),ecdelpy(ic),iy,icond,
-     &                         condvolt(1),ecvoltpy(1),ocvoltpy(1),ecvoltpy(ic))
-                call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,nx,ny,nz,
-     &                         iii(0,0,0),
-     &                         ecdelmz(1),ocdelmz(1),ecdelmz(ic),iz,icond,
-     &                         condvolt(1),ecvoltmz(1),ocvoltmz(1),ecvoltmz(ic))
-                call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,nx,ny,nz,
-     &                         iii(0,0,0),
-     &                         ecdelpz(1),ocdelpz(1),ecdelpz(ic),iz,icond,
-     &                         condvolt(1),ecvoltpz(1),ocvoltpz(1),ecvoltpz(ic))
+                call subgrid_scan_axis(1,-1,cds,  -1,maxcdel,icond,nx,ny,nz,
+     &                                 iii(0,0,0),ecdelmx(1),ocdelmx(1),
+     &                                 condvolt(1),ecvoltmx(1),ocvoltmx(1),
+     &                                 ix,ecdelmx(ic),ecvoltmx(ic))
+                call subgrid_scan_axis(1,+1,cds,nx+1,maxcdel,icond,nx,ny,nz,
+     &                                 iii(0,0,0),ecdelpx(1),ocdelpx(1),
+     &                                 condvolt(1),ecvoltpx(1),ocvoltpx(1),
+     &                                 ix,ecdelpx(ic),ecvoltpx(ic))
+                call subgrid_scan_axis(2,-1,cds,  -1,maxcdel,icond,nx,ny,nz,
+     &                                 iii(0,0,0),ecdelmy(1),ocdelmy(1),
+     &                                 condvolt(1),ecvoltmy(1),ocvoltmy(1),
+     &                                 iy,ecdelmy(ic),ecvoltmy(ic))
+                call subgrid_scan_axis(2,+1,cds,ny+1,maxcdel,icond,nx,ny,nz,
+     &                                 iii(0,0,0),ecdelpy(1),ocdelpy(1),
+     &                                 condvolt(1),ecvoltpy(1),ocvoltpy(1),
+     &                                 iy,ecdelpy(ic),ecvoltpy(ic))
+                call subgrid_scan_axis(3,-1,cds,  -1,maxcdel,icond,nx,ny,nz,
+     &                                 iii(0,0,0),ecdelmz(1),ocdelmz(1),
+     &                                 condvolt(1),ecvoltmz(1),ocvoltmz(1),
+     &                                 iz,ecdelmz(ic),ecvoltmz(ic))
+                call subgrid_scan_axis(3,+1,cds,nz+1,maxcdel,icond,nx,ny,nz,
+     &                                 iii(0,0,0),ecdelpz(1),ocdelpz(1),
+     &                                 condvolt(1),ecvoltpz(1),ocvoltpz(1),
+     &                                 iz,ecdelpz(ic),ecvoltpz(ic))
 
 c               --- If the point is near a conductor, save it.
                 if (ecdelmx(ic)/levelxy < 1. .or.
@@ -1993,7 +1999,7 @@ c                 --- Increase in size is only an estimate.
           enddo
         enddo
 
-      end do
+      enddo
 
 c     --- Reset necndbdy
       necndbdy = ic - 1
@@ -2001,9 +2007,9 @@ c     --- Reset necndbdy
       return
       end
 c=============================================================================
-      subroutine subgrid_scan_axis(ia,sgn,cds,limit,maxcdel,nx,ny,nz,iii,
-     &                             ecdel,ocdel,cdel,cnd,icond,
-     &                             condvolt,ecvolt,ocvolt,volt)
+      subroutine subgrid_scan_axis(ia,sgn,cds,limit,maxcdel,icond,nx,ny,nz,iii,
+     &                             ecdel,ocdel,condvolt,ecvolt,ocvolt,
+     &                             cnd,cdel,volt)
       integer(ISZ):: ia,sgn,cds(3),limit,maxcdel,nx,ny,nz,icond
       integer(ISZ):: iii(0:nx,0:ny,0:nz)
       real(kind=8):: ecdel(*),ocdel(*),condvolt(*),ecvolt(*),ocvolt(*)
@@ -2014,49 +2020,40 @@ c Scan in the specified direction looking for a conductor or grid edge.
 c If a conductor is found, save the distance to and the voltage on the
 c conductor.
 
-      do while (cds(ia) .ne. limit)
+      integer(ISZ):: ic(3),ival
+      ic = cds
 
-        if (iii(cds(1),cds(2),cds(3)) >= icond) then
+      do while (ic(ia) .ne. limit)
+        ival = iii(ic(1),ic(2),ic(3))
+
+        if (ival >= icond) then
 c         --- A point inside a conductor was found. That means that the
 c         --- conductor is aligned with the grid.
-          cdel = sgn*(cds(ia) - cnd)
-          volt = condvolt(iii(cds(1),cds(2),cds(3))-icond)
-          cds(ia) = limit
-        elseif (iii(cds(1),cds(2),cds(3)) > 0) then
+          cdel = sgn*(ic(ia) - cnd)
+          volt = condvolt(ival-icond)
+          return
+        elseif (ival > 0) then
 c         --- An even subgrid point was found. Check if it is near a
 c         --- conductor.
-          if (ecdel(iii(cds(1),cds(2),cds(3))) < maxcdel) then
+          if (ecdel(ival) < maxcdel) then
 c           --- If it is near a conductor, save the info.
-            cdel = ecdel(iii(cds(1),cds(2),cds(3))) + sgn*(cds(ia) - cnd)
-            volt = ecvolt(iii(cds(1),cds(2),cds(3)))
-            cds(ia) = limit
-          else
-c           --- If it is not near a conductor, then keep looking.
-            cds(ia) = cds(ia) + sgn
-            cdel = LARGEPOS
+            cdel = ecdel(ival) + sgn*(ic(ia) - cnd)
+            volt = ecvolt(ival)
+            return
           endif
-        elseif (iii(cds(1),cds(2),cds(3)) < 0) then
+        elseif (ival < 0) then
 c         --- An odd subgrid point was found. Check if it is near a
 c         --- conductor.
-          if (ocdel(-iii(cds(1),cds(2),cds(3))) < maxcdel) then
+          if (ocdel(-ival) < maxcdel) then
 c           --- If it is near a conductor, save the info.
-            cdel = ocdel(-iii(cds(1),cds(2),cds(3))) + sgn*(cds(ia) - cnd)
-            volt = ocvolt(-iii(cds(1),cds(2),cds(3)))
-            cds(ia) = limit
-          else
-c           --- If it is not near a conductor, then keep looking.
-            cds(ia) = cds(ia) + sgn
-            cdel = LARGEPOS
+            cdel = ocdel(-ival) + sgn*(ic(ia) - cnd)
+            volt = ocvolt(-ival)
+            return
           endif
-        else
-c         --- Otherwise, keep looking.
-          cds(ia) = cds(ia) + sgn
-          cdel = LARGEPOS
         endif
-      end do
-
-c     --- Reset the index.
-      cds(ia) = cnd
+c       --- Otherwise, keep looking.
+        ic(ia) = ic(ia) + sgn
+      enddo
 
       return
       end
