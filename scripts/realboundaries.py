@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.2 2000/11/29 03:05:09 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.3 2000/11/30 22:03:16 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -410,6 +410,7 @@ Constructor arguments:
 
 ##############################################################################
 ##############################################################################
+_realboundarycount = 0
 class RealBoundary:
   """
 Applies appropriate boundaries using capacity matrix solver for the slice code.
@@ -421,15 +422,14 @@ Constructor arguments:
   """
   #----------------------------------------------------------------------------
   def __init__(s,newmesh=0,rodfract=0.5):
-    # --- Keep track of the current matrix. Knowing the current matrix, the
-    # --- time wasted reseting the fxy variables to the same values is avoided.
-    s.current = None
-    # --- The routine setboundary will be called at the start of every
-    # --- time step.  It also must be called just be the field solve
-    # --- during the generate.  This is done by the initialsetboundary
-    # --- routine, which then removes itself from that list.
-    installbeforestep(s.setboundary)
-    installbeforefs(s.initialsetboundary)
+    global _realboundarycount
+    # --- Only allow one instance of this class.
+    if _realboundarycount > 0:
+      raise "There can only be one instance of the RealBoundary class"
+    _realboundarycount = 1
+    # --- Save the input arguments
+    s.newmesh = newmesh
+    s.rodfract = rodfract
     # --- Some idiot proofing. Make sure that fstype = 0 at this point. fstype
     # --- is set to the proper value by setboundary. This is done so that in
     # --- case this is called before the generate and a user still is setting
@@ -458,9 +458,40 @@ Constructor arguments:
     s.bendcm  = []
     s.dipocm  = []
     s.sextcm  = []
-    # --- Save the input arguments
-    s.newmesh = newmesh
-    s.rodfract = rodfract
+    # --- Turn on the realboundaries.
+    s.enable()
+  #----------------------------------------------------------------------------
+  def __del__(s):
+    global _realboundarycount
+    # --- Class destructor
+    _realboundarycount = 0
+    s.disable()
+  #----------------------------------------------------------------------------
+  def disable(s):
+    # --- Turns off the realboundaries
+    # --- This must be protected since disable may be called by __del__
+    # --- on exit from python, at which point 'top' may not exist.
+    try:
+      top.fstype = 0
+    except:
+      pass
+    try:
+      uninstallbeforestep(s.setboundary)
+      uninstallbeforefs(s.initialsetboundary)
+    except:
+      pass
+  #----------------------------------------------------------------------------
+  def enable(s):
+    # --- Turns on the realboundaries
+    # --- Keep track of the current matrix. Knowing the current matrix, the
+    # --- time wasted reseting the fxy variables to the same values is avoided.
+    s.current = None
+    # --- The routine setboundary will be called at the start of every
+    # --- time step.  It also must be called just be the field solve
+    # --- during the generate.  This is done by the initialsetboundary
+    # --- routine, which then removes itself from that list.
+    installbeforestep(s.setboundary)
+    installbeforefs(s.initialsetboundary)
   #----------------------------------------------------------------------------
   def setmatrix(s,m):
     if s.current == m: return
@@ -596,7 +627,8 @@ Constructor arguments:
     # --- Make sure that the capacity matrix field solver is turned on. This is
     # --- here so that in the case where an instance of this class is created
     # --- before the generate, the initial call to the fieldsolver will have
-    # --- fstype=0, the default value.
+    # --- fstype=0, the default value. Also, if there is a section without
+    # --- any defined boundaries, fstype was set to 0.
     top.fstype = 1
     # --- Go through each element type and chose the first one covers the
     # --- current location.
@@ -690,6 +722,9 @@ Constructor arguments:
       if s.roundpipe(top.cdrftid[0],top.cdrftzs[0],top.cdrftze[0],top.drftap,
                      top.drftox,top.drftoy,s.drftcm):
         return
+    # --- If this part of the code is reached, then there are no applicable
+    # --- boundaries, so turn the capacity matrix field solver off.
+    top.fstype = 0
   #----------------------------------------------------------------------------
   def plotcond(s,plotphi=1,filled=0,plotedge=1,plotsym=1):
     """
@@ -760,9 +795,7 @@ Returns the object
   """
   ff = open(filename,'r')
   result = cPickle.load(ff)
-  installbeforestep(result.setboundary)
-  installbeforefs(result.initialsetboundary)
-  result.current = None
+  result.enable()
   ff.close()
   return result
 
