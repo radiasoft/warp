@@ -1,5 +1,5 @@
 from warp import *
-egun_like_version = "$Id: egun_like.py,v 1.7 2002/01/08 00:27:21 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.8 2002/07/23 21:07:04 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -160,6 +160,8 @@ Performs steady-state iterations
 
     # --- Zero the charge density array
     w3d.rho = 0.
+    if w3d.solvergeom==w3d.RZgeom: reset_rzmgrid_rho()
+    top.curr = 0.
 
     # --- If this is the final iteration and if zmoments are being calculated,
     # --- make the initial call to zero the arrays.
@@ -372,7 +374,6 @@ Performs steady-state iterations
   stepid(gun_iter,gun_time,top.zbeam)
 
   # --- Set some additional diagnostic data
-  top.curr = top.vzbarz*top.linechg
   top.vzofz = top.vzbarz
 
   # --- Return variables to their original values
