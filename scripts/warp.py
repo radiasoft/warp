@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.75 2004/11/10 18:38:40 dave Exp $"
+warp_version = "$Id: warp.py,v 1.76 2004/11/12 18:04:50 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -411,7 +411,7 @@ def getregisteredsolver():
   return _fieldsolver[0]
 def loadrhoMR():
   assert _fieldsolver[0] is not None,"No solver has been registered"
-  _fieldsolver[0].loadrho()
+  _fieldsolver[0].loadrho(lzero=not top.laccumulate_rho)
 def fieldsolMR():
   assert _fieldsolver[0] is not None,"No solver has been registered"
   _fieldsolver[0].solve()
@@ -625,6 +625,8 @@ Reads in data from file, redeposits charge density and does field solve
   # --- Otherwise is doesn't hurt anything.
   resetlat()
   setlatt()
+  # --- Do some setup for the RZ solver
+  if getcurrpkg() == 'w3d' and w3d.solvergeom==w3d.RZgeom: mk_grids_ptr()
   # --- Load the charge density (since it was not saved)
   loadrho()
   # --- Recalculate the fields (since it was not saved)
