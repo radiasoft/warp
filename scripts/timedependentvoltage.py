@@ -21,6 +21,7 @@ Input for constructor:
  - timedata: times at which the voltages are specified
    Linear interpolation is done between values.
 
+ - setvinject=false: when true, top.vinject is set to the same voltage
  - voltfunc: user supplied function which takes a single argument, the current
              time. It returns the voltage at that time.
   """
@@ -30,6 +31,7 @@ Input for constructor:
                 flattime=top.largepos,falltime=top.largepos,
                 voltdata=None,timedata=None,
                 voltfunc=None,
+                setvinject=false,
                 aftervoltset=None):
     assert ((not tieffenback) or
            (tieffenback and maxvoltage is not None and risetime is not None)),\
@@ -47,6 +49,7 @@ Input for constructor:
     self.timedata = timedata
     self.voltfunc = voltfunc
     self.discrete = discrete
+    self.setvinject = setvinject
     self.aftervoltset = aftervoltset
 
     # --- Select method of calculating the voltage
@@ -69,7 +72,9 @@ Input for constructor:
   def applyvoltage(self):
     time = top.time
     volt = self.getvolt(time)
-    setconductorvoltage(volt,self.condid,discrete=self.discrete)
+    for c in self.condid:
+      setconductorvoltage(volt,c,discrete=self.discrete,
+                          setvinject=self.setvinject)
     self.hvolt.append(volt)
     self.htime.append(time)
     if self.aftervoltset is not None: self.aftervoltset(volt)
