@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.28 $, $Date: 2002/05/03 22:00:21 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.29 $, $Date: 2002/05/06 19:36:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -61,20 +61,6 @@ c     --- The following only used when mgform == 2
       integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
       integer(ISZ):: whosendingright2(0:nslaves-1),izsendingright2(0:nslaves-1)
       integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
-
-c     --- If iwhich equals zero or one, do initialization.
-c     --- psorinit does the same things that mginit would do
-c     --- except that multigrid does not use sorerrar.
-      if (iwhich == 0 .or. iwhich == 1) then
-#ifdef MPIPARALLEL
-c       --- zparity is needed to keep track of even and odd subgrid points.
-c       --- The parity is relative to the full grid. In the serial case,
-c       --- it defaults to 0.
-        zparity = mod(izslave(my_index),2)
-#else
-        zparity = 0
-#endif
-      endif
 
 c     --- Initialize temporaries
       nxy    = (nx+1)*(ny+1)
@@ -316,6 +302,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       localb0 = globalb0
       localbnz = globalbnz
 #endif
+
 
 c     --- Do initial SOR passes.
 c     print *, 'vcycle on dimensions ', nx, ny, nzfull,my_index
@@ -1055,7 +1042,7 @@ c       --- end of transverse boundaries
 c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
-          if (parity == zparity) then
+          if (parity == 0) then
            call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
      &                    ncndmax,necndbdy,ecdelmx,ecdelmy,ecdelmz,
      &                    ecdelpx,ecdelpy,ecdelpz,iecndx,iecndy,iecndz,
@@ -1064,7 +1051,7 @@ c       --- surface of the conductor boundaries.
      &                    ecndpvph,localb0,localbnz,boundxy,l2symtry,l4symtry,
      &                    levelxy,levelz,ecstart,mgform)
           endif
-          if (parity /= zparity) then
+          if (parity == 1) then
            call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
      &                    ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,
      &                    ocdelpx,ocdelpy,ocdelpz,iocndx,iocndy,iocndz,
@@ -1387,8 +1374,8 @@ c         --- set temporaries for boundaries
           if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
           if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
 
-          if (icdz == 0  .and. localb0  < 1) cycle
-          if (icdz == nz .and. localbnz < 1) cycle
+          if (icdz == 0  .and. localb0  == 0) cycle
+          if (icdz == nz .and. localbnz == 0) cycle
 
 c         --- set temporaries with initial values
           pxm = phi(icndxm1,icdy   ,icdz   )
@@ -1566,7 +1553,6 @@ c     --- Calculate the residual near the conductor.
      &                mgform,mgform2init)
 
       endif
-c     print*," V res 12",my_index,nx,nzfull,res(12/(levelxy),0,:)
 
 c     --- Transverse boundaries
       if (boundxy == 2) then
