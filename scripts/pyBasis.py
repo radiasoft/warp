@@ -34,7 +34,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.38 2003/09/10 01:18:38 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.39 2003/09/11 18:20:22 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -417,14 +417,31 @@ Dump data into a pdb file
   # --- Open the file if the file object was not passed in.
   # --- If the file object was passed in, then don't close it.
   if ff is None:
-    if hdf:
-      ff = PWpyt.PW(fname)
-      # --- One advantage of HDF is that the pickle dumps can be done in binary
-      dumpsmode = 1
-    else:
-      ff = PW.PW(fname)
-      # --- With PDB, pickle dumps can only be done in ascii.
-      dumpsmode = 0
+    if not hdf:
+      # --- Try to open file with PDB format as requested.
+      try:
+        ff = PW.PW(fname)
+        # --- With PDB, pickle dumps can only be done in ascii.
+        dumpsmode = 0
+      except:
+        pass
+    if hdf or ff is None:
+      # --- If HDF requested or PDB not available, try HDF.
+      try:
+        ff = PWpyt.PW(fname)
+        # --- An advantage of HDF is that pickle dumps can be done in binary
+        dumpsmode = 1
+      except:
+        pass
+    if hdf and ff is None:
+      # --- If HDF was requested and didn't work, try PDB anyway.
+      try:
+        ff = PW.PW(fname)
+        # --- With PDB, pickle dumps can only be done in ascii.
+        dumpsmode = 0
+      except:
+        pass
+      raise "Dump file cannot be opened, no data formats available"
     closefile = 1
   else:
     closefile = 0
