@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.135 $, $Date: 2004/11/16 01:01:12 $
+c@(#) File TOP.F, version $Revision: 3.136 $, $Date: 2004/11/30 01:10:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -6999,6 +6999,101 @@ c returns a large number.
       end
 c=============================================================================
 c  RANDOM NUMBER , QUIET-START, and RELATED ROUTINES
+c=============================================================================
+      real(kind=8) function wrandom(method,ii,idig,ifib1,ifib2)
+      character(*):: method
+      integer(ISZ):: ii,idig,ifib1,ifib2
+      real(kind=8):: rnrev,wranf
+      character(72):: errline
+
+      if (method == "digitrev") then
+        wrandom = rnrev(ii,idig)
+      elseif (method == "pseudo") then
+        wrandom = wranf()
+      elseif (method == "fibonacc") then
+        wrandom = mod((ifib1*(ii - 1.) + 0.5)/ifib2,1.0)
+      else
+        wrandom = 0.
+        write(errline,'("ERROR: random number generator method ",a8,
+     &                  "not supported")') method
+        call remark (errline)
+        call kaboom (0)
+      endif
+
+      return
+      end
+c=============================================================================
+      real(kind=8) function wrandomgauss(method,ii,idig1,idig2,ifib1,ifib2,
+     &                                   lefficient)
+      use Constant
+      character(*):: method
+      integer(ISZ):: ii,idig1,idig2,ifib1,ifib2
+      logical(ISZ):: lefficient
+
+c  Gaussian random number generator: returns a value drawn from a normal
+c    distribution with mean 0 and variance 1.
+c  Uses Box-Muller-Marsaglia method:
+c  See Knuth, vol. 2, p.104 (first ed.), p.117 (second ed.)
+c  Alex Friedman, July 1989 (after an earlier version).
+
+      real(kind=8):: wrandom
+      real(kind=8):: y,v1,v2,sq,x,wranf
+      integer(ISZ):: parity,i1
+      integer(ISZ):: iflag = -1
+c     --- The save is necessary to preserve state memory
+      save y, iflag
+
+c     --- The algorithm used calculated two random numbers at a time. If it is
+c     --- not needed, there is no reason to repeat the calculation. In this
+c     --- case, the extra number calculated is saved and returned on the next
+c     --- call. This happens when lefficient is true - which requires that
+c     --- this routine be called in the correct order. Otherwise, the work
+c     --- is repeated each time and the appropriate of the two numbers is
+c     --- returned.
+
+      parity = mod(ii,2)
+      if (lefficient) then
+
+c       --- In order to have a consistent stream of random numbers, the x random
+c       --- number is always taken from ii is odd, and the y when ii is even.
+c       --- This is really only needed for the parallel version.
+c       --- If iflag is inconsistent with the parity of ii, then adjust iflag.
+c       --- If odd ii is expected but ii is even, then set calculation to use
+c       --- ii-1 so that number used for v1 below is odd.
+
+        iflag = -iflag
+        i1 = ii
+        if (iflag < 0 .and. parity == 0) then
+          wrandomgauss = y
+          return
+        elseif (iflag < 0 .and. parity == 1) then
+          iflag = -iflag
+        elseif (iflag > 0 .and. parity == 0) then
+          iflag = -iflag
+          i1 = ii - 1
+        endif
+
+      else
+        if (parity == 0) then
+          i1 = ii - 1
+        else
+          i1 = ii
+        endif
+      endif
+
+      v1 = wrandom(method,i1,idig1,ifib1,ifib2)
+      v2 = 2.*pi*wrandom(method,i1+1,idig2,ifib1,ifib2)
+      sq = sqrt(-2.*log(v1))
+      x = sq*cos(v2)
+      y = sq*sin(v2)
+      if (parity == 1) then
+        wrandomgauss = x
+      else
+        wrandomgauss = y
+      endif
+
+      return
+      end
 c=============================================================================
       real(kind=8) function r2rev(xs)
       real(kind=8):: xs

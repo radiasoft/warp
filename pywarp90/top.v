@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.130 $, $Date: 2004/11/16 01:01:12 $
+#@(#) File TOP.V, version $Revision: 3.131 $, $Date: 2004/11/30 01:10:33 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.130 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.131 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1458,7 +1458,7 @@ hvbeam(0:lenhist)             _real [m/s]   limited (0:jhist)
    # Beam frame velocity
 hbmlen(0:lenhist)             _real [m]     limited (0:jhist)
    # RMS beam length
-hzbar(0:lenhist)              _real [m/s]   limited (0:jhist)
+hzbar(0:lenhist)              _real [m]     limited (0:jhist)
    # History of the average of z over all particles
 hefld(0:lenhist)              _real [J]     limited (0:jhist)
    # Field energy
@@ -2059,6 +2059,11 @@ shftpart(is:integer,ishft:integer) subroutine
                         # Moves particle data to end of species block.
 copypart(it:integer,nn:integer,ii:integer;istart:integer) subroutine
                         # Copies particle data from one location to another
+wrandom(method:string,ii:integer,idig:integer,ifib1:integer,ifib2:integer)
+          real function # Returns random number using the given method
+wrandomgauss(method:string,ii:integer,idig1:integer,idig2:integer,
+             ifib1:integer,ifib2:integer,lefficient:logical)
+          real function # Returns Gaussian random number using the given method
 r2rev(lastrev:real)
           real function # bit reversed counter
                         # lastrev is `call by address', e.g. r2rev(&x)

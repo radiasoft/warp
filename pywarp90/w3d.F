@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.177 $, $Date: 2004/11/23 20:52:21 $
+c@(#) File W3D.F, version $Revision: 3.178 $, $Date: 2004/11/30 01:10:34 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3024,7 +3024,7 @@ c  Picglb is included only to use zbeam
       integer(ISZ):: ir,irr
       integer(ISZ):: envxport
       character(72):: errline
-      real(kind=8):: wranf,rnorm,rnrev
+      real(kind=8):: wranf,wrandom,wrandomgauss
 
       logical(ISZ):: firstk
       integer(ISZ):: npgrp,iptotal
@@ -3288,20 +3288,9 @@ c          --- set vtz to vthz*2 since vtz is vz_max - vz_bar for cigar
            vtz = 2.*vthz_s(is)
 c          --- load uzt with linear distribution (-.5 < uzt < .5)
            if (vtz /= 0.) then
-             if (vzrandom == "pseudo") then
-               do i=1,i1-k+1
-                 uzt(i) = wranf() - .5
-               enddo
-             elseif (vzrandom == "digitrev") then
-               do i=1,i1-k+1
-                 uzt(i) = rnrev(i+k-1+ioff,dig7) - .5
-               enddo
-             else
-               write(errline,'("ERROR: vzrandom has an improper value = ",a8)')
-     &               vzrandom
-               call remark (errline)
-               call kaboom (0)
-             endif
+             do i=1,i1-k+1
+               uzt(i) = wrandom(vzrandom,i+k-1+ioff,dig7,fibg1,npm) - .5
+             enddo
            endif
 c          --- use cigar to adjust the z's
 c          --- xt,yt,uxt,uyt passed as scratch arrays
@@ -3310,21 +3299,10 @@ c          --- xt,yt,uxt,uyt passed as scratch arrays
 
 c          --- Loading gaussian longitudinal velocity distribution.
            if (distr_l == "gaussian") then
-             if (vzrandom == "pseudo") then
-               do i=1,i1-k+1
-                 uzt(i) = 0.5*perpscal(i)*rnorm()
-               enddo
-             elseif (vzrandom == "digitrev") then
-               call rnormdig(k+ioff,i1-k+1,dig7,dig8,0.,uzt(1))
-               do i=1,i1-k+1
-                 uzt(i) = 0.5*perpscal(i)*uzt(i)
-               enddo
-             else
-               write(errline,'("ERROR: vzrandom has an improper value = ",a8)')
-     &               vzrandom
-               call remark (errline)
-               call kaboom (0)
-             endif
+             do i=1,i1-k+1
+               uzt(i) = wrandomgauss(vzrandom,i+k-1+ioff,dig7,dig8,1,1,.true.)
+               uzt(i) = 0.5*perpscal(i)*uzt(i)
+             enddo
            endif
 
          else
@@ -3333,31 +3311,16 @@ c          --- set vtz to vthz
            vtz = vthz_s(is)
 c          --- load uzt with gaussian distribution (mean 0, variance 1)
            if (vtz /= 0.) then
-             if (vzrandom == "pseudo") then
-               do i=1,i1-k+1
-                 uzt(i) = rnorm()
-               enddo
-             elseif (vzrandom == "digitrev") then
-               call rnormdig(k+ioff,i1-k+1,dig7,dig8,0.,uzt(1))
-             else
-               write(errline,'("ERROR: vzrandom has an improper value = ",a8)')
-     &               vzrandom
-               call remark (errline)
-               call kaboom (0)
-             endif
-           endif
-c          --- set perpscal to one first time through
-           if (firstk) then
-             do i=1,npgrp
-               perpscal(i) = 1.0
+             do i=1,i1-k+1
+               uzt(i) = wrandomgauss(vzrandom,i+k-1+ioff,dig7,dig8,1,1,.true.)
              enddo
            endif
+c          --- set perpscal to one first time through
+           if (firstk) perpscal = 1.0
          endif
 
 c        --- unormalize z to fetch envelope
-         do i=1,i1-k+1
-           zt(i) = zbeam + zimin_s(is) + zlen*zt(i)
-         enddo
+         zt = zbeam + zimin_s(is) + zlen*zt
 
 c        --- fetch envelope, centroid, and emittance.  Reset values 
 c        --- after initial set if axial varying emittance, axial velocity, 
@@ -3460,22 +3423,12 @@ c  semi-gaussian distribution
      &       distrbtn == "SemiGaussian") then
 
 c          --- load normalized tranverse space variables
-           if (xrandom == "pseudo") then
-             do i=1,i1-k+1
-               xt(i) = 2.*wranf() - 1.
-               yt(i) = 2.*wranf() - 1.
-             enddo
-           elseif (xrandom == "fibonacc") then
+           if (xrandom .ne. "grid") then
              nfib2 = nfibgrps*fibg2
              nfib3 = nfibgrps*fibg3
              do i=1,i1-k+1
-               xt(i) = 2.*mod((nfib2*(i+k-2.0+ioff) + 0.5)*rnpmi,1.0) - 1.
-               yt(i) = 2.*mod((nfib3*(i+k-2.0+ioff) + 0.5)*rnpmi,1.0) - 1.
-             enddo
-           elseif (xrandom == "digitrev") then
-             do i=1,i1-k+1
-               xt(i) = 2.*rnrev(i+k-1+ioff,dig1) - 1.
-               yt(i) = 2.*rnrev(i+k-1+ioff,dig2) - 1.
+               xt(i) = 2.*wrandom(xrandom,i+k-1+ioff,dig1,nfib2,npm) - 1.
+               yt(i) = 2.*wrandom(xrandom,i+k-1+ioff,dig2,nfib3,npm) - 1.
              enddo
            elseif (xrandom == "grid") then
              nxstri_s = nxstripe*sp_fract(is)**(1./3.)
@@ -3588,37 +3541,19 @@ c            --- carve into normalized envelope
 
 c          --- load normalized transverse velocity variables
            if (distr_t == "gaussian") then
-             if (vtrandom == "pseudo") then
-               do i=1,i1-k+1
-                 uxt(i) = rnorm()
-                 uyt(i) = rnorm()
-               enddo
-             elseif (vtrandom == "digitrev") then
-               call rnormdig(k+ioff,i1-k+1,dig3,dig4,0.,uxt(1))
-               call rnormdig(k+ioff,i1-k+1,dig5,dig6,0.,uyt(1))
-             else
-               write (errline,'("ERROR: vtrandom has an improper value = ",a8)')
-     &             vtrandom
-               call remark (errline)
-               call kaboom (0)
-             endif
+c             --- Note that the loops must be broken up in this way since the
+c             --- routine wrandomgauss must be called in the correct order.
+             do i=1,i1-k+1
+               uxt(i) = wrandomgauss(vtrandom,i+k-1+ioff,dig3,dig4,1,1,.true.)
+             enddo
+             do i=1,i1-k+1
+               uyt(i) = wrandomgauss(vtrandom,i+k-1+ioff,dig5,dig6,1,1,.true.)
+             enddo
            else if (distr_t == "uniform") then
-             if (vtrandom == "pseudo") then
-               do i=1,i1-k+1
-                 uxt(i) = 2.*wranf() - 1.
-                 uyt(i) = 2.*wranf() - 1.
-               enddo
-             elseif (vtrandom == "digitrev") then
-               do i=1,i1-k+1
-                 uxt(i) = 2.*rnrev(k+ioff-1+i,dig3) - 1.
-                 uyt(i) = 2.*rnrev(k+ioff-1+i,dig5) - 1.
-               enddo
-             else
-               write (errline,'("ERROR: vtrandom has an improper value = ",a8)')
-     &             vtrandom
-               call remark (errline)
-               call kaboom (0)
-             endif
+             do i=1,i1-k+1
+               uxt(i) = 2.*wrandom(vtrandom,i+k-1+ioff,dig3,fibg1,npm) - 1.
+               uyt(i) = 2.*wrandom(vtrandom,i+k-1+ioff,dig5,fibg1,npm) - 1.
+             enddo
            endif
 
 c          --- Modify radial velocity distribution
@@ -3672,31 +3607,14 @@ c        --- K-V distribution
          elseif (distrbtn == "K-V" .or. distrbtn == "KV") then
 
 c          --- fetch random numbers and put into xt,yt, & uxt  temporarily
-           if (xrandom == "pseudo") then
-             do i=1,i1-k+1
-               xt(i)  = wranf()
-               yt(i)  = wranf()
-               uxt(i) = wranf()
-             enddo
-           elseif (xrandom == "fibonacc") then
-             nfib2 = nfibgrps*fibg2
-             nfib3 = nfibgrps*fibg3
-             nfib4 = nfibgrps*fibg4
-             do i=1,i1-k+1
-               xt(i)  = mod((nfib2*(i+k-2.0+ioff) + 0.5)*rnpmi,1.0)
-               yt(i)  = mod((nfib3*(i+k-2.0+ioff) + 0.5)*rnpmi,1.0)
-               uxt(i) = mod((nfib4*(i+k-2.0+ioff) + 0.5)*rnpmi,1.0)
-             enddo
-           elseif (xrandom == "digitrev") then
-             do i=1,i1-k+1
-               xt(i)  = rnrev(i+k-1+ioff,dig1)
-               yt(i)  = rnrev(i+k-1+ioff,dig2)
-               uxt(i) = rnrev(i+k-1+ioff,dig3)
-             enddo
-           elseif (xrandom == "grid") then 
-             call remark ("ERROR: xrandom cannot be grid for KV load.")
-             call kaboom (0)
-           endif
+           nfib2 = nfibgrps*fibg2
+           nfib3 = nfibgrps*fibg3
+           nfib4 = nfibgrps*fibg4
+           do i=1,i1-k+1
+             xt(i) = wrandom(xrandom,i+k-1+ioff,dig1,nfib2,npm)
+             yt(i) = wrandom(xrandom,i+k-1+ioff,dig2,nfib3,npm)
+             uxt(i) = wrandom(xrandom,i+k-1+ioff,dig3,nfib4,npm)
+           enddo
 
 !$OMP CRITICAL (STPTCL3D2)
 #ifdef _OPENMP
@@ -3840,11 +3758,12 @@ c  Set particle number, indices, etc.
       enddo
 
 c     deallocate scratch space for load
-c      deallocate(indx,xt,yt,zt,rt,tt)
-c      deallocate(uxt,uyt,uzt,perpscal)
-c      deallocate(at,apt,bt,bpt)
-c      deallocate(epsxt,epsyt,vzt,vtzt,ibeamt)
-c      deallocate(xct,xpct,yct,ypct)
+c      --- XXX These were commented out - I'm not sure why.
+       deallocate(indx,xt,yt,zt,rt,tt)
+       deallocate(uxt,uyt,uzt,perpscal)
+       deallocate(at,apt,bt,bpt)
+       deallocate(epsxt,epsyt,vzt,vtzt,ibeamt)
+       deallocate(xct,xpct,yct,ypct)
 
 !$OMP END PARALLEL
 

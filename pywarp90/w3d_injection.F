@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.11 $, $Date: 2004/11/24 18:19:11 $
+c@(#) File w3d_injection.F, version $Revision: 1.12 $, $Date: 2004/11/30 01:10:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -40,7 +40,7 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: inj_is
       real(kind=8):: rnpinjct,rnn,t
       real(kind=8):: rr,ehalf,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rrr,rri
-      real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi
+      real(kind=8):: qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi
       real(kind=8):: clightsqi
       real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
       real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj
@@ -49,7 +49,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: zmid,zleni,ztilt,gamma
       real(kind=8):: p2x,p2y,p2z,w2x,w2y,w2z,area
       integer(ISZ):: i2x,i2y,i2z
-      real(kind=8):: wranf
+      real(kind=8):: rnrev,wranf,wrandom,wrandomgauss
       integer(ISZ):: ith,nti
       real(kind=8):: cl_const(ns),jton(ns),vzconst(ns)
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
@@ -163,18 +163,14 @@ c           --- Make sure there is enough temp space
 
 c           --- set random numbers
 c           --- xt(ip) used to hold f(r**2)=constant
-            if (xrandom == "pseudo") then
-              do ip = 1,nn
-                xt(ip) = wranf()*(1.-(ainjmin(ij)*ainji)**2)+
-     &                               (ainjmin(ij)*ainji)**2
-              enddo
-            else
-c             --- Default is to use digitrev
-              do ip = 1,nn
-                xt(ip) = rnrev(injctcnt+ip-1,dig1)*(1.-(ainjmin(ij)*ainji)**2)+
-     &                                                 (ainjmin(ij)*ainji)**2
-              enddo
-            endif
+c           --- yt(ip) used to hold f(theta)=constant if injection
+c           --- is over an elliptical surface
+            do ip = 1,nn
+              xt(ip) = wrandom(xrandom,injctcnt+ip-1,dig1,1,1)
+              xt(ip) = xt(ip)*(1.-(ainjmin(ij)*ainji)**2) +
+     &                            (ainjmin(ij)*ainji)**2
+              yt(ip) = wrandom(xrandom,injctcnt+ip-1,dig2,1,1)
+            enddo
 
 c           --- or xt(ip) used to hold f(r)~(h+(1-h)r^2)
             if (hollow == 2) then
@@ -184,60 +180,34 @@ c           --- or xt(ip) used to hold f(r)~(h+(1-h)r^2)
               enddo
             endif
 
-c           --- yt(ip) used to hold f(theta)=constant if injection
-c           --- is over an elliptical surface
-            if (xrandom == "pseudo") then
-              do ip = 1,nn
-                yt(ip) = wranf()
-              enddo
-            else
-c             --- Default is to use digitrev
-              do ip = 1,nn
-                yt(ip) = rnrev(injctcnt+ip-1,dig2)
-              enddo
-            endif
-
 c           --- Get velocity distribution.
             if (distrbtn == "K-V") then
 c             --- For the K-V load, need another random number.
-              if (vtrandom == "pseudo") then
-                do ip = 1,nn
-                  zt(ip) = wranf()
-                enddo
-              else
-c               --- Default is to use digitrev
-                do ip = 1,nn
-                  zt(ip) = rnrev(injctcnt+ip-1,dig3)
-                enddo
-              endif
               do ip = 1,nn
+                t = wrandom(vtrandom,injctcnt+ip-1,dig3,1,1)
                 rr = sqrt(1. - xt(ip))
-                uxt(ip) = rr*cos(2.*pi*zt(ip))
-                uyt(ip) = rr*sin(2.*pi*zt(ip))
+                uxt(ip) = rr*cos(2.*pi*t)
+                uyt(ip) = rr*sin(2.*pi*t)
               enddo
             else
 c             --- Default is to use a Semi-Gaussian distribution
-              if (vtrandom == "pseudo") then
-                do ip = 1,nn
-                  uxt(ip) = rnorm()
-                  uyt(ip) = rnorm()
-                enddo
-              else
-c               --- Default is to use digitrev
-                call rnormdig(injctcnt,nn,dig3,dig4,0.,uxt(1))
-                call rnormdig(injctcnt,nn,dig5,dig6,0.,uyt(1))
-              endif
+c             --- Note that the loops must be broken up in this way since the
+c             --- routine wrandomgauss must be called in the correct order.
+              do ip = 1,nn
+                uxt(ip) = wrandomgauss(vtrandom,injctcnt+ip-1,dig3,dig4,
+     &                                 1,1,.true.)
+              enddo
+              do ip = 1,nn
+                uyt(ip) = wrandomgauss(vtrandom,injctcnt+ip-1,dig5,dig6,
+     &                                 1,1,.true.)
+              enddo
             endif
 
 c           --- Axial thermal spread
-            if (vzrandom == "pseudo") then
-              do ip = 1,nn
-                uzt(ip) = rnorm()
-              enddo
-            else
-c             --- Default is to use digitrev
-              call rnormdig(injctcnt,nn,dig7,dig8,0.,uzt(1))
-            endif
+            do ip = 1,nn
+              uzt(ip) = wrandomgauss(vzrandom,injctcnt+ip-1,dig7,dig8,
+     &                                 1,1,.true.)
+            enddo
 
 c           --- Increment the particle counter for the digit reversed seed
             injctcnt = injctcnt + nn
@@ -736,9 +706,11 @@ c                   --- increment random number counter
 c                   --- calculate x, y and z of new particle
 c                   --- if within injection source load it, else skip it
                     if(.not.l_inj_regular) then
-                      xp(ii)=xm+spreadx*(rnrev(injctcnt,dig1)-.5)*inj_dx*inj_xwide
+                      xp(ii) = wrandom(xrandom,injctcnt,dig1,1,1)
+                      xp(ii) = xm + spreadx*(xp(ii) - .5)*inj_dx*inj_xwide
                       if(.not. l_inj_rz) then
-                        yp(ii)=ym+spready*(rnrev(injctcnt,dig2)-.5)*inj_dy*inj_ywide
+                        yp(ii) = wrandom(xrandom,injctcnt,dig2,1,1)
+                        yp(ii) = ym + spready*(yp(ii) - .5)*inj_dy*inj_ywide
                       else
                         yp(ii)=0.
                       endif
@@ -763,7 +735,8 @@ c                   --- ainjmin and binjmin.
                     if(l_inj_regular) then
                       if(l_inj_rz) then
                         r_tmp=abs(xp(ii))
-                        theta_tmp = 2.*pi*wranf()!rnrev(injctcnt,dig2)
+                        theta_tmp = wrandom(xrandom,injctcnt,dig2,1,1)
+                        theta_tmp = 2.*pi*theta_tmp !rnrev(injctcnt,dig2)
                         xp(ii) = r_tmp*cos(theta_tmp)
                         yp(ii) = r_tmp*sin(theta_tmp)
                         if(ix==0) then
@@ -779,7 +752,8 @@ c                   --- ainjmin and binjmin.
 c                     --- if inject only radially, use variable weights and assign pid
                       if(l_inj_rz) then
                         r_tmp=abs(xp(ii))
-                        theta_tmp = 2.*pi*wranf()!rnrev(injctcnt,dig2)
+                        theta_tmp = wrandom(xrandom,injctcnt,dig2,1,1)
+                        theta_tmp = 2.*pi*theta_tmp !rnrev(injctcnt,dig2)
                         xp(ii) = r_tmp*cos(theta_tmp)
                         yp(ii) = r_tmp*sin(theta_tmp)
                         pid(ii,wpid) = 2.*r_tmp*ainji
@@ -875,8 +849,10 @@ c                   --- are probably not correct.
                     if(.not. l_inj_delay_temp) then
                       vtx = vzinj*0.5*emitx_s(is)*ainji + vthperp_s(is)
                       vty = vzinj*0.5*emity_s(is)*binji + vthperp_s(is)
-                      uxp(ii) = uxp(ii) + spreadx*vtx*rnorm()
-                      uyp(ii) = uyp(ii) + spready*vty*rnorm()
+                      uxp(ii) = uxp(ii) + spreadx*vtx*
+     &                    wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
+                      uyp(ii) = uyp(ii) + spready*vty*
+     &                    wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
                     end if
 c                   --- Include the user specified vbeam (assumed to be a
 c                   --- normal), the thermal velocity, and the term from
@@ -887,9 +863,11 @@ c                   --- as lost particles when the other terms are zero.
                     uzp(ii) = vzinj*cos(az) + vznorm*cos(az) + SMALLPOS
                     if(.not. l_inj_delay_temp) then
                       if(l_inj_addtempz_abs) then
-                        uzp(ii) = uzp(ii) + abs(vthz_s(is)*rnorm())
+                        uzp(ii) = uzp(ii) + abs(vthz_s(is)*
+     &                   wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.))
                       else
-                        uzp(ii) = uzp(ii) + vthz_s(is)*rnorm()
+                        uzp(ii) = uzp(ii) + vthz_s(is)*
+     &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
                       end if
                     end if
 
@@ -1285,18 +1263,22 @@ c                 --- source.
                   do ip=1,nn
                     ii = ins(is) - npinje_s(is) - nti - 1
 c                   --- calculate position of new particle
-                    wz = rnrev(injctcnt,dig1)
+                    wz = wrandom(xrandom,injctcnt,dig1,1,1)
                     zp(ii) = zm + wz*inj_dz
-                    rr = rnrev(injctcnt,dig2)
+                    rr = wrandom(xrandom,injctcnt,dig2,1,1)
                     rp = rinj*(1.-wz) + abs(rtinject(ijz+1,ij))*wz - rr*rrr
-                    t = aa + (rnrev(injctcnt,dig3) - .5)*2.*pi/nttinj(ij)
+                    t = wrandom(xrandom,injctcnt,dig3,1,1)
+                    t = aa + (t - .5)*2.*pi/nttinj(ij)
                     xp(ii) = xtinject(ij) + rp*cos(t)
                     yp(ii) = ytinject(ij) + rp*sin(t)
                     vtx = 0.5*vztinject(ij)*emitx_s(is)*rinji + vthperp_s(is)
                     vty = 0.5*vztinject(ij)*emity_s(is)*rinji + vthperp_s(is)
-                    uxp(ii) = vnorm*cos(t) + vtx*rnorm()
-                    uyp(ii) = vnorm*sin(t) + vty*rnorm()
-                    uzp(ii) = vthz_s(is)*rnorm() + vznorm*rr
+                    uxp(ii) = vnorm*cos(t) + vtx*
+     &                    wrandomgauss(vtrandom,injctcnt,dig3,dig4,1,1,.false.)
+                    uyp(ii) = vnorm*sin(t) + vty*
+     &                    wrandomgauss(vtrandom,injctcnt,dig5,dig6,1,1,.false.)
+                    uzp(ii) = vznorm*rr + vthz_s(is)*
+     &                    wrandomgauss(vzrandom,injctcnt,dig7,dig8,1,1,.false.)
                     if (lrelativ) then
                       gaminv(ii) = sqrt(1.-
      &                        (uxp(ii)**2+uyp(ii)**2+uzp(ii)**2)*clightsqi)
@@ -2595,6 +2577,7 @@ c=============================================================================
       use Subtimers3d
       use InGen3d
       use InPart
+      use InPart3d
       use InjectVars
       use InjectVars3d
       use Particles
@@ -2613,7 +2596,7 @@ c is used to flag particles that not have had temperature added yet.
       real(kind=8):: aa,az,atx,aty,tx,ty,tz
       real(kind=8):: dzi,inj_di
       real(kind=8):: substarttime,wtime
-      real(kind=8):: rnorm
+      real(kind=8):: wrandomgauss
       if (lw3dtimesubs) substarttime = wtime()
 
       dzi = 1./dz
@@ -2683,9 +2666,14 @@ c         --- angle relative to z axis
           aty = asin(yy(ip)/sqrt(rinj**2 - xx(ip)**2))
 
 c         --- Add the particle's temperature
-          tx = rnorm()*vthperp_s(ij)
-          ty = rnorm()*vthperp_s(ij)
-          tz = rnorm()*vthz_s(ij)
+c         --- These should be used but the index ii to pass in is not easy
+c         --- to obtain.
+c         wrandomgauss(vtrandom,ii,dig3,dig4,1,1,.false.)
+c         wrandomgauss(vtrandom,ii,dig5,dig6,1,1,.false.)
+c         wrandomgauss(vzrandom,ii,dig7,dig8,1,1,.false.)
+          tx = vthperp_s(ij)*rnorm()
+          ty = vthperp_s(ij)*rnorm()
+          tz = vthz_s(ij)*rnorm()
           if(l_inj_addtempz_abs) tz=abs(tz)
           vx(ip) = - tz*sin(az)*cos(aa) + tx*cos(atx)
           vy(ip) = - tz*sin(az)*sin(aa) + ty*cos(aty)
