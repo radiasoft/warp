@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.12 $, $Date: 2001/09/14 00:16:06 $
+#@(#) File F3D.V, version $Revision: 3.13 $, $Date: 2001/09/19 22:37:23 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.12 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.13 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -17,7 +17,7 @@ lx                        real /0.7/   #  System length in x (arbitrary units)
 ly                        real /1.3/   #  System length in y (arbitrary units)
 lz                        real /1.6/   #  System length in z (arbitrary units)
 filt(5,3)                 real /15*0./ #  Spatial filtering coefficients
-ibc                  character*8 /" "/ #  Boundary conditions-future use
+ibc                       integer      #  Boundary conditions-future use
 nx                        integer /2/  #  Mesh points are 0,...,nx
 ny                        integer /2/  #  Mesh points are 0,...,ny
 nz                        integer /2/  #  Mesh points are 0,...,nz

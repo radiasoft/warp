@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.12 $, $Date: 2001/09/14 00:16:07 $
+c@(#) File F3D.M, version $Revision: 3.13 $, $Date: 2001/09/19 22:37:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -355,7 +355,7 @@ c-----------------------------------------------------------------------------
       integer(ISZ):: icmx,icpx,icmy,icpy,icox,icoy,nz2,ikxmin,ikymin
       integer(ISZ):: ikx,iky,ikz,ix,iy,iz
       real(kind=8):: klast, kdxb2, kdyb2, kdzb2, kdx, kdy, kdz
-      real(kind=8):: dx,dy,dz,pib2,twopi,fourpi,norm
+      real(kind=8):: dx,dy,dz,pib2,norm
       integer(ISZ):: fullnz
       real(kind=8):: fulllz
       integer(ISZ):: i,j
@@ -407,8 +407,6 @@ c  Set useful constants
       dy = ly / ny
       dz = lz / nz
       pib2 = .5 * pi
-      twopi = 2. * pi
-      fourpi = 4. * pi
 
 c  Minimum index of kxsq and kysq that is used
       ikxmin = 1
@@ -1444,7 +1442,7 @@ c-----------------------------------------------------------------------------
       integer(ISZ):: iwxy,icmx,icpx,icmy,icpy,ikx,iky,ix,iy
       integer(ISZ):: icox,icoy,ikxmin,ikymin
       real(kind=8):: klast, kdxb2, kdyb2, kdx, kdy
-      real(kind=8):: dx,dy,pib2,twopi,fourpi,norm
+      real(kind=8):: dx,dy,pib2,norm
 
 c  Error checking; so far, only possible error is non-power-of-2 nx,ny
 
@@ -1469,8 +1467,6 @@ c  Set useful constants
       dx = lx / nx
       dy = ly / ny
       pib2 = .5 * pi
-      twopi = 2. * pi
-      fourpi = 4. * pi
 
 c  Minimum index of kxsq and kysq that is used
       ikxmin = 1
@@ -3644,7 +3640,7 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
 
 c Macro for common arguments to the psor_loop calls
 #define LOOP_ARGS iimz,iipz,phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends, \
-         rstar,xmmin,dx,rdx2,rdy2,rdz2,rdel,const,scrtch
+         rstar,dx,rdx2,rdy2,rdz2,rdel,const,scrtch
 
 c Make sure that the transverse grid dimensions are even.
       if (nx .ne. 2*int(nx/2) .or. ny .ne. 2*int(ny/2)) then
@@ -4136,11 +4132,11 @@ c===========================================================================
       subroutine psor_loop(i_parity,s_parity,izl,izr,izstep,
      &                     ii1,ii2,iistep,iimx,iipx,iimy,iipy,iimz,iipz,
      &                     phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends,
-     &                     rstar,xmmin,dx,rdx2,rdy2,rdz2,rdel,const,xx)
+     &                     rstar,dx,rdx2,rdy2,rdz2,rdel,const,xx)
       real(kind=8):: phi1d(*),rho1d(*),rstar(*),xx(*)
       integer(ISZ):: i_parity,s_parity,izl,izr,izstep,nxy,ii1,ii2,iistep
       integer(ISZ):: iimx,iipx,iimy,iipy,iimz,iipz
-      real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,xmmin,dx,rdx2,rdy2,rdz2,rdel,const
+      real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,dx,rdx2,rdy2,rdz2,rdel,const
       logical(ISZ):: linbends
 
 c This routine provides the loops over the phi array which solves the 
