@@ -5,6 +5,7 @@ from wxPython.lib.anchors import LayoutAnchors
 import matchenv
 import newstdout
 import warp
+import __main__
 
 [wxID_MATCHINGGUI, wxID_MATCHINGGUIENDMATCHOUTPUT, wxID_MATCHINGGUIFINALA, 
  wxID_MATCHINGGUIFINALALABEL, wxID_MATCHINGGUIFINALAP, 
@@ -74,7 +75,7 @@ class MatchingGUI(wxPanel):
         self.Finala = wxTextCtrl(id=wxID_MATCHINGGUIFINALA, name='Finala',
               parent=self.panel2, pos=wxPoint(70, 24), size=wxSize(80, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
-              value='')
+              value='afinal')
         self.Finala.SetToolTipString('Final value of a to match to')
         EVT_TEXT_ENTER(self.Finala, wxID_MATCHINGGUIFINALA,
               self.OnFinalaTextEnter)
@@ -82,7 +83,7 @@ class MatchingGUI(wxPanel):
         self.Finalb = wxTextCtrl(id=wxID_MATCHINGGUIFINALB, name='Finalb',
               parent=self.panel2, pos=wxPoint(70, 54), size=wxSize(80, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
-              value='')
+              value='bfinal')
         self.Finalb.SetToolTipString('Final value of b to match to')
         EVT_TEXT_ENTER(self.Finalb, wxID_MATCHINGGUIFINALB,
               self.OnFinalbTextEnter)
@@ -100,7 +101,7 @@ class MatchingGUI(wxPanel):
         self.Finalap = wxTextCtrl(id=wxID_MATCHINGGUIFINALAP, name='Finalap',
               parent=self.panel2, pos=wxPoint(70, 84), size=wxSize(80, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
-              value='')
+              value='apfinal')
         self.Finalap.SetToolTipString("Final value of a' to match to")
         EVT_TEXT_ENTER(self.Finalap, wxID_MATCHINGGUIFINALAP,
               self.OnFinalapTextEnter)
@@ -108,25 +109,10 @@ class MatchingGUI(wxPanel):
         self.Finalbp = wxTextCtrl(id=wxID_MATCHINGGUIFINALBP, name='Finalbp',
               parent=self.panel2, pos=wxPoint(70, 114), size=wxSize(80, 22),
               style=wxTAB_TRAVERSAL | wxTE_PROCESS_TAB | wxTE_PROCESS_ENTER,
-              value='')
+              value='bpfinal')
         self.Finalbp.SetToolTipString("Final value of b' to match to")
         EVT_TEXT_ENTER(self.Finalbp, wxID_MATCHINGGUIFINALBP,
               self.OnFinalbpTextEnter)
-
-        self.MatchEnd = wxButton(id=wxID_MATCHINGGUIMATCHEND, label='Match',
-              name='MatchEnd', parent=self.panel2, pos=wxPoint(12, 210),
-              size=wxSize(80, 22), style=wxTAB_TRAVERSAL)
-        self.MatchEnd.SetToolTipString('')
-        EVT_BUTTON(self.MatchEnd, wxID_MATCHINGGUIMATCHEND,
-              self.OnMatchendButton)
-
-        self.PlotEndMatch = wxCheckBox(id=wxID_MATCHINGGUIPLOTENDMATCH,
-              label='Plot envelope after match', name='PlotEndMatch',
-              parent=self.panel2, pos=wxPoint(12, 240), size=wxSize(168, 24),
-              style=wxTAB_TRAVERSAL)
-        self.PlotEndMatch.SetValue(True)
-        EVT_CHECKBOX(self.PlotEndMatch, wxID_MATCHINGGUIPLOTENDMATCH,
-              self.OnPlotendmatchCheckbox)
 
         self.VaryQuads = wxStaticText(id=wxID_MATCHINGGUIVARYQUADS,
               label='Quads to vary', name='VaryQuads', parent=self.panel2,
@@ -162,6 +148,21 @@ class MatchingGUI(wxPanel):
         EVT_TEXT_ENTER(self.SetQuad3, wxID_MATCHINGGUISETQUAD3,
               self.OnSetquad3TextEnter)
 
+        self.MatchEnd = wxButton(id=wxID_MATCHINGGUIMATCHEND, label='Match',
+              name='MatchEnd', parent=self.panel2, pos=wxPoint(12, 210),
+              size=wxSize(80, 22), style=wxTAB_TRAVERSAL)
+        self.MatchEnd.SetToolTipString('')
+        EVT_BUTTON(self.MatchEnd, wxID_MATCHINGGUIMATCHEND,
+              self.OnMatchendButton)
+
+        self.PlotEndMatch = wxCheckBox(id=wxID_MATCHINGGUIPLOTENDMATCH,
+              label='Plot envelope after match', name='PlotEndMatch',
+              parent=self.panel2, pos=wxPoint(12, 240), size=wxSize(168, 24),
+              style=wxTAB_TRAVERSAL)
+        self.PlotEndMatch.SetValue(True)
+        EVT_CHECKBOX(self.PlotEndMatch, wxID_MATCHINGGUIPLOTENDMATCH,
+              self.OnPlotendmatchCheckbox)
+
         self.EndMatchOutput = wxTextCtrl(id=wxID_MATCHINGGUIENDMATCHOUTPUT,
               name='EndMatchOutput', parent=self.panel2, pos=wxPoint(180, 24),
               size=wxSize(360, 250), style=wxTE_MULTILINE, value='')
@@ -175,29 +176,33 @@ class MatchingGUI(wxPanel):
         self.plotafterendmatch = self.PlotEndMatch.GetValue()
         self.endmatchquads = [None,None,None,None]
 
-    def OnFinalbTextEnter(self, event):
+    def OnFinalaTextEnter(self, event,defval=''):
         try:
-            self.bfinal = eval(self.Finalb.GetValue())
+            self.afinal = eval(self.Finala.GetValue(),__main__.__dict__)
+            self.Finala.SetValue(str(self.afinal))
         except:
-            self.Finalb.SetValue('')
+            self.Finala.SetValue(defval)
 
-    def OnFinalapTextEnter(self, event):
+    def OnFinalbTextEnter(self, event,defval=''):
         try:
-            self.apfinal = eval(self.Finalap.GetValue())
+            self.bfinal = eval(self.Finalb.GetValue(),__main__.__dict__)
+            self.Finalb.SetValue(str(self.bfinal))
         except:
-            self.Finalap.SetValue('')
+            self.Finalb.SetValue(defval)
 
-    def OnFinalbpTextEnter(self, event):
+    def OnFinalapTextEnter(self, event,defval=''):
         try:
-            self.bpfinal = eval(self.Finalbp.GetValue())
+            self.apfinal = eval(self.Finalap.GetValue(),__main__.__dict__)
+            self.Finalap.SetValue(str(self.apfinal))
         except:
-            self.Finalbp.SetValue('')
+            self.Finalap.SetValue(defval)
 
-    def OnFinalaTextEnter(self, event):
+    def OnFinalbpTextEnter(self, event,defval=''):
         try:
-            self.afinal = eval(self.Finala.GetValue())
+            self.bpfinal = eval(self.Finalbp.GetValue(),__main__.__dict__)
+            self.Finalbp.SetValue(str(self.bpfinal))
         except:
-            self.Finala.SetValue('')
+            self.Finalbp.SetValue(defval)
 
     def OnMatchendButton(self, event):
         savestdout = sys.stdout
@@ -232,3 +237,7 @@ class MatchingGUI(wxPanel):
 
     def OnMatchingguiPaint(self, event):
         warp.package('env')
+        self.OnFinalaTextEnter(None,'afinal')
+        self.OnFinalbTextEnter(None,'bfinal')
+        self.OnFinalapTextEnter(None,'apfinal')
+        self.OnFinalbpTextEnter(None,'bpfinal')
