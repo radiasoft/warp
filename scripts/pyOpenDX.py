@@ -12,7 +12,7 @@ from warp import *
 from pyDXObject import *
 import __main__
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.6 2004/05/20 19:46:55 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.7 2004/05/20 20:09:29 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -127,6 +127,8 @@ class DXCollection:
     self.labels = labels
     self.dxobject = None
     for o in dxobjects: self.addobject(o)
+  def getdxobject(self):
+    return self.dxobject
   def extractdxobject(self,object):
     dxobject = object
     try:
@@ -136,7 +138,7 @@ class DXCollection:
       # --- miserably if an objects dxobject reference is recursive.
       # --- Please, let that never happen!
       while 1:
-        dxobject = dxobject.dxobject
+        dxobject = dxobject.getdxobject()
     except AttributeError:
       pass
     return dxobject
@@ -241,10 +243,23 @@ def DXNewImage():
 __main__.__dict__['DXNewImage'] = DXNewImage
 
 
-def DXWriteImage(filename,object,camera=None,name='WARP viz',labels=None):
+#==========================================================================
+def DXWriteImage(filename='image',object=None,camera=None,labels=None,
+                 format=None):
+  """
+Writes an image of the object to a file.
+ - filename='image': file name. Its suffix can specify the format.
+ - object: the object to image - it must be specified
+ - camera: camera viewing the object, the default to view down the z-axis
+ - labels: list of plot labels for the three axis. If given, axis are plotted.
+ - format: file format, defaults to 'rgb'. Other options include
+           'tiff', 'ps', 'eps'. See OpenDX docs for more format options.
+  """
+
+  assert object is not None,"object must be specified"
 
   group = DXCollection(object)
-  dxobject = group.dxobject
+  dxobject = group.getdxobject()
   if labels is None: labels = group.labels
 
   if camera is None:
@@ -274,7 +289,8 @@ def DXWriteImage(filename,object,camera=None,name='WARP viz',labels=None):
   moutput = ['image']
   (image,) = DXCallModule('Render',minput,moutput)
 
-  minput = {'image':image,'name':filename,'format':'tiff'}
+  minput = {'image':image,'name':filename}
+  if format is not None: minput['format'] = format
   moutput = []
   DXCallModule('WriteImage',minput,moutput)
 
