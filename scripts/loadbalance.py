@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.26 2003/04/17 22:16:22 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.27 2003/05/28 20:24:07 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -54,7 +54,7 @@ that has already been done.
     top.nzpslave[-1] = w3d.nzfull - top.izpslave[-1]
 
   # --- Adjust the Z data
-  _adjustz()
+  #_adjustz()
 
   # --- Reorganize the particles
   reorgparticles()
@@ -75,7 +75,7 @@ that has already been done.
 
 #########################################################################
 def loadbalanceparticles(lloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
-                         pnumz=None):
+                         pnumz=None,zmin=None,dz=None):
   """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -89,6 +89,7 @@ grid points.
  - pnumz=top.pznum: the particle distribution to base the load balancing on
   """
   if not lparallel: return
+  starttime = wtime()
 
   if pnumz is None:
     # --- Gather pnumz. Return if there is no data.
@@ -104,9 +105,15 @@ grid points.
   # --- Convert the number of particles to a decomposition
   zslave = decompose(pnumz,npes,lfullcoverage=0)
 
+  # --- Scale to specified grid if zmin and/or dz input
+  if dz is not None: zslave = zslave*dz/w3d.dz
+  if zmin is not None: zslave = zslave + zmin
+
   # --- Apply the new domain decomposition.
   setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs,
                      padleft=padleft,padright=padright)
+  endtime = wtime()
+  print "Load balance time = ",endtime - starttime
 
 #########################################################################
 def loadbalancesor(sgweight=7.0,condweight=2.0):
