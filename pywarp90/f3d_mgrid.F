@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.37 $, $Date: 2002/06/26 19:42:31 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.38 $, $Date: 2002/07/15 22:34:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -62,6 +62,7 @@ c     --- The following only used when mgform == 2
       integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
       integer(ISZ):: whosendingright2(0:nslaves-1),izsendingright2(0:nslaves-1)
       integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      character(72):: errline
 
 c     --- Initialize temporaries
       nxy    = (nx+1)*(ny+1)
@@ -230,9 +231,11 @@ c     --- the solve are so are already set.
 
 c     --- Make a print out.
       if (maxerr > mgtol) then
-        print*,"Multigrid: Maximum number of iterations reached"
+        call remark("Multigrid: Maximum number of iterations reached")
       endif
-      print*,"Multigrid: Error converged to ",maxerr," in ",mgiters," v-cycles"
+      write(errline,20) maxerr,mgiters
+  20  format("Multigrid: Error converged to ",1pe11.3," in ",i4," v-cycles")
+      call remark(errline)
 
 c     --- If using residual correction form, restore saved rho
       if (mgform == 2) then
