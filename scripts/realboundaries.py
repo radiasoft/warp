@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.16 2002/05/06 18:51:35 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.17 2002/05/15 18:18:04 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -596,8 +596,8 @@ Constructor arguments:
         if gl > 0.:
           withx = 0
           withy = 0
-          if gp > 0.: withy = 1
-          else: withx = 1
+          if gp > 0.: withx = 1
+          else:       withy = 1
           cmlist[1] = s.getrodmatrix(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy)
         # --- Rod overlap
         cmlist[2] = s.getrodmatrix(ap,rr,vx,vy,vx,vy,1,1,ox,oy)
@@ -605,8 +605,8 @@ Constructor arguments:
         if gl > 0.:
           withx = 0
           withy = 0
-          if gp > 0.: withx = 1
-          else: withx = 1
+          if gp > 0.: withy = 1
+          else:       withx = 1
           cmlist[3] = s.getrodmatrix(ap,rr,vx,vy,vx,vy,withx,withy,ox,oy)
         # --- Second end-plate
         if pw > 0.:
