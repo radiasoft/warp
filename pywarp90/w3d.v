@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.2 $, $Date: 2001/04/20 00:22:10 $
+#@(#) File W3D.V, version $Revision: 3.3 $, $Date: 2001/04/26 17:26:08 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.2 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.3 $"/ # Current code version, set by CVS
 
 *********** InPltCtl3d dump:
 # Controls for when the various plots are made
@@ -441,3 +441,56 @@ multpole(lmod:integer,nlmod:integer,irpowmx:integer,
          lcosex:logical,lsinex:logical,aper:real,xcen:real,ycen:real,
          nmult:integer,nres:integer,tol:real) 
             subroutine # calculate the multipole moments of the potential
+
+
+
+
+******** Subtimers:
+lw3dtimesubs logical /.false./
+timew3dinit real /0./
+timew3dvers real /0./
+timew3dgen real /0./
+timew3dexe real /0./
+timew3dfin real /0./
+timestep3d real /0./
+timeexteb3d real /0./
+timemltlocat real /0./
+timeothere3d real /0./
+timeacclbfrm real /0./
+timegetese3d real /0./
+timegtlchg3d real /0./
+timeseteears real /0./
+timepadvnc3d real /0./
+timeperphi3d real /0./
+timeperrho3d real /0./
+timeepush3d real /0./
+timeepusht3d real /0./
+timebpush3d real /0./
+timebpusht3d real /0./
+timexpush3d real /0./
+timexpusht3d real /0./
+timesete3d_relativity real /0./
+timeedamp real /0./
+timegetbend real /0./
+timebendez3d real /0./
+timesledgcor real /0./
+timezbendcor real /0./
+timezgapcorr real /0./
+timesete3d real /0./
+timegetselfe3d real /0./
+timesetbgrd real /0./
+timesetpgrd real /0./
+timestptcl3d real /0./
+timesetrho3d real /0./
+timeloadrho3d real /0./
+timestckxy3d real /0./
+timesetrstar real /0./
+timeinject3d real /0./
+timeinjctint real /0./
+timefill_inj real /0./
+timeinj_sete3d real /0./
+timeinj_setrho3d real /0./
+timesete3d_aperture real /0./
+timeset_aperture_e real /0./
+timefieldsol3d real /0./
+timevp3d real /0./

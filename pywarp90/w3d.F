@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.2 $, $Date: 2001/04/20 00:22:08 $
+c@(#) File W3D.M, version $Revision: 3.3 $, $Date: 2001/04/26 17:26:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -9,23 +9,32 @@ c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
       subroutine w3dinit
+      use Subtimers
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Called at first reference to package (not nec. a "run" etc.).
 
       call w3dvers (STDOUT)
 
+      if (lw3dtimesubs) timew3dinit = timew3dinit + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine w3dvers (iout)
+      use Subtimers
       use W3Dversion
       integer(ISZ):: iout
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 c  Echoes code version, etc. to output files as they're created
       call printpkgversion(iout,"Particle package W3D",versw3d)
+      if (lw3dtimesubs) timew3dvers = timew3dvers + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine w3dgen()
+      use Subtimers
       use Ch_var
       use Constant
       use InGen
@@ -63,6 +72,8 @@ c  does the initial field solve, and sets up other arrays that are needed.
 
 
       integer(ISZ):: i,j,k,is,ipmin,ip,iwin
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Announce that we're starting up
 
@@ -202,10 +213,10 @@ c  Load the particles, calculate the charge density
       call stptcl3d
       call setgamma(lrelativ)
       call remark(" ---  Setting charge density")
-c     call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
-c     call zeroarry(curr,nzzarr+1)
-      rho = 0.
-      curr = 0.
+      call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
+      call zeroarry(curr(0),nzzarr+1)
+c     rho = 0.
+c     curr = 0.
       do is=1,ns
          do ipmin = ins(is), ins(is) + nps(is) - 1, NPARPGRP
             ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
@@ -322,10 +333,12 @@ c  Set up Eears of z
 
       call seteears()
 
+      if (lw3dtimesubs) timew3dgen = timew3dgen + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine w3dexe()
+      use Subtimers
       use Picglb
       use InGen
       use InPart
@@ -340,6 +353,8 @@ c  the routine STEP3D to do the step.
 
 
       real(kind=8):: zcorrection
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c --- Announce that we're running
 
@@ -384,6 +399,7 @@ c  Have we reached the end of the run or run out of particles?
 
       if ( lfinishd ) then
          call remark("w3dexe: problem completed.")
+         if (lw3dtimesubs) timew3dexe = timew3dexe + wtime() - substarttime
          return
       elseif (nplive .le. 0) then
 c Check if there are any live particles left.
@@ -393,15 +409,18 @@ c injection, there may not be any particles yet but still want to run.
            nplive = 1
          else
            print*," *** W3DEXE: stopping, nplive =",nplive
+           if (lw3dtimesubs) timew3dexe = timew3dexe + wtime() - substarttime
            return
          endif
       endif
 
 c  Continue to run.
+      if (lw3dtimesubs) timew3dexe = timew3dexe + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine w3dfin()
+      use Subtimers
       use InGen
       use InGen3d
       use InDiag
@@ -420,6 +439,8 @@ c=============================================================================
       use Z_arrays
       use Hist
       use Pspwork
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Finish up at end of RUN, or on receipt of FIN
 c  This routine is never called, at present; history plots are
@@ -454,10 +475,12 @@ c  release storage
       call gfree ("Pspwork")
       call gfree ("Z_arrays")
 
+      if (lw3dtimesubs) timew3dfin = timew3dfin + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine step3d (caller)
+      use Subtimers
       use Constant
       use InGen
       use InGen3d
@@ -483,6 +506,8 @@ c  of run.
 
 
       real(kind=8):: zbeaml,zbeamr,timetemp,wtime
+      real(kind=8):: substarttime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c --- Set the internal lattice variables. This is not generally necessary at
 c --- this point (it is redundant most of the time, the next call to
@@ -567,7 +592,7 @@ c  Set lattice; this is done just before field solve, and so is
 c  relative to ZBEAM in the same way that self-fields are.
 
       call setlatt
-      if (linbend) call setrstar(rstar,nz,dz,zmmin,zgrid)
+      if (linbend) call setrstar(rstar(-1),nz,dz,zmmin,zgrid)
 
 c  Field-solve for potential 
 
@@ -580,7 +605,8 @@ c  Field-solve for potential
 c  Pre-calculate the self-E if it is needed for sete3d. This is done after
 c  the call to afterfs in case some manipulation is done to phi.
       if (efetch == 3)
-     &  call getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,dx,dy,dz)
+     &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
+     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz)
 
 c  Complete constant current and axially directed space-charge limited
 c  injection with new fields including injected particles.
@@ -635,12 +661,14 @@ c  Finally, moment diagnostic printout and history storage
       if (caller == "w3dgen" .or. lspecial)
      &  call minidiag (it,time,lmoments)
 
+      if (lw3dtimesubs) timestep3d = timestep3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine exteb3d (np,xp,yp,zp,uzp,gaminv,dtl,dtr,
      &           dodec,bz0,bx,by,bz,ex,ey,ez,m,q,bendres,bendradi,
      &           gammabar,zbeam,dt,time)
+      use Subtimers
       use Lattice
       use LatticeInternal
       use Mult_data
@@ -681,6 +709,8 @@ c  B_self more than once.
       real(kind=8):: tfrac(NPARPGRP),txpmqoff(NPARPGRP),typmqoff(NPARPGRP)
       real(kind=8):: trpmqoff(NPARPGRP),ttpmqoff(NPARPGRP)
       real(kind=8):: timetemp,wtime
+      real(kind=8):: substarttime
+      if (lw3dtimesubs) substarttime = wtime()
 
       timetemp = wtime()
 
@@ -1338,6 +1368,7 @@ c  Set E to zero for dead particles
 c  Accumulate time for applying the fields of the lattice
       latticetime = latticetime + (wtime() - timetemp)
 
+      if (lw3dtimesubs) timeexteb3d = timeexteb3d + wtime() - substarttime
       return
       end
 c=============================================================================
@@ -1348,6 +1379,7 @@ c=============================================================================
      &                    mltph,mltsf,
      &                    zlmin,zbeam,dzli,bends,linbend,
      &                    cbendzs,cbendze,cbendrc)
+      use Subtimers
       integer(ISZ):: np,nmltsets,nzl
       real(kind=8):: xp(np),yp(np),zp(np)
       real(kind=8):: dzmlt(nmltsets)
@@ -1372,6 +1404,8 @@ c  Assumes that at most one bend will be between particle and the mult center.
 
       integer(ISZ):: j,ip
       real(kind=8):: cent,dzi,rrr,bzs,bze,bendrci
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       if (.not. bends .or. .not. linbend) then
         do ip=1,np
@@ -1502,12 +1536,14 @@ c         --- Add offset
         enddo
       endif
 
+      if (lw3dtimesubs) timemltlocat = timemltlocat + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine othere3d (np,xp,yp,zp,zbeam,zimax,zimin,straight,
      &                     ifeears,eears,eearsofz,dzzi,nzzarr,zzmin,
      &                     dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
+      use Subtimers
       integer(ISZ):: np,ifeears,nzzarr
       real(kind=8):: zbeam,zimax,zimin,straight,eears,dzzi,zzmin
       real(kind=8):: dedr,dexdx,deydy,dbdr
@@ -1518,6 +1554,8 @@ c=============================================================================
 
       integer(ISZ):: ip,iz
       real(kind=8):: zs,wz
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Set the electric fields from external sources,
 c  inculding axial confining fields, and uniform focusing fields.
@@ -1571,10 +1609,12 @@ c     --- azimuthal magnetic field
         enddo
       endif
 
+      if (lw3dtimesubs) timeothere3d = timeothere3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine acclbfrm(zcorrection)
+      use Subtimers
       use Beam_acc
       use InGen
       use InPart
@@ -1599,6 +1639,8 @@ c by the calling routine.
       real(kind=8):: zl,zr,vbeamfrmo,deltav
       real(kind=8):: zbeamnew
       save id
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       qoverm = sq(1)/sm(1)
       zcorrection = 0.
@@ -1608,10 +1650,13 @@ c by the calling routine.
 c       --- index of accl element in center of beam frame
 c       --- The id is saved in order to minize the time searching for the
 c       --- next accl element from call to call.
-        call getelemid(zbeam,offset,naccl,acclzs,acclze,id) 
+        call getelemid(zbeam,offset,naccl,acclzs(0),acclze(0),id) 
 
 c       --- Check if this gap should accelerate the beam frame.
-        if (acclsw(id) .ne. 0) return
+        if (acclsw(id) .ne. 0) then
+          if (lw3dtimesubs) timeacclbfrm = timeacclbfrm + wtime() - substarttime
+          return
+        endif
 
 c       --- Set some temporaries
         gapez = acclez(id)
@@ -1698,10 +1743,12 @@ c         --- Set the correction to the beam frame position
         endif
       endif
 
+      if (lw3dtimesubs) timeacclbfrm = timeacclbfrm + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine getese3d
+      use Subtimers
       use Beam_acc
       use Picglb
       use Picglb3d
@@ -1721,8 +1768,13 @@ c  This does it in a partially vectorized manner.
 
       integer(ISZ):: ix,iy,iz,izb
       real(kind=8):: zm,zz,phiextun,wzb
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
-      if (.not. lgetese3d) return
+      if (.not. lgetese3d) then
+        if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
+        return
+      endif
 
       ese = 0.
       zm = (zimax - zimin)*(1. - straight)*0.5
@@ -1774,10 +1826,12 @@ c         --- the field solver.
 
       ese = dx*dy*dz*0.5*ese
 
+      if (lw3dtimesubs) timegetese3d = timegetese3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine gtlchg3d
+      use Subtimers
       use Picglb
       use InGen3d
       use Picglb3d
@@ -1790,6 +1844,8 @@ c  Calculates the line charge density from rho.
 
       real(kind=8):: zz,wzg,dzi
       integer(ISZ):: ix,iy,iz,izg
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       dzi = 1./dz
 
@@ -1899,10 +1955,12 @@ c Then, linearly interpolate the data into the beam frame array, linechg.
 
       enddo
 
+      if (lw3dtimesubs) timegtlchg3d = timegtlchg3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine seteears()
+      use Subtimers
       use Beam_acc
       use InGen
       use InPart
@@ -1926,6 +1984,8 @@ c Calculated for first species.
       integer(ISZ):: nzla,nzlb,nzma,nzmb,iz
       real(kind=8):: zs,zl,eearsprs
 #endif
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       zm = (zimax - zimin)*(1. - straight)*0.5
       emitlong = zm*2.*vthz/vbeam
@@ -1976,10 +2036,12 @@ c       --- Add on linear pressure term
 #endif
       endif
 
+      if (lw3dtimesubs) timeseteears = timeseteears + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine padvnc3d(center)
+      use Subtimers
       use InMesh3d
       use InGen
       use InGen3d
@@ -2010,6 +2072,8 @@ c  and also loads RHO at the new time level.
       real(kind=8):: bx(NPARPGRP), by(NPARPGRP), bz(NPARPGRP)
       real(kind=8):: uxpo(NPARPGRP), uypo(NPARPGRP), uzpo(NPARPGRP)
       real(kind=8):: bendres(NPARPGRP), bendradi(NPARPGRP)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Zero the bend radius and residence arrays
 c     call zeroarry (bendres,NPARPGRP)
@@ -2019,13 +2083,13 @@ c     call zeroarry (bendradi,NPARPGRP)
 
 c  Zero rho only if particles are advanced
       if (center == "fullv" .or. center == "halfv" .and. .not. laccumulate_rho)
-     &  rho = 0.
-c    &  call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
+     &  call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
+c    &  rho = 0.
 
 c  Zero curr if center is synchv or if using gaps
       if (center == "synchv" .or. ifgap .and. .not. laccumulate_rho)
-     &  curr = 0.
-c    &  call zeroarry(curr,nzzarr+1)
+     &  call zeroarry(curr(0),nzzarr+1)
+c    &  curr = 0.
 
 c  Zero the moments if center is synchv
       if (center == "synchv" .or. center == "gen") then
@@ -2045,7 +2109,8 @@ c  Loop over particle blocks; move each block separately
             ip = min(NPARPGRP, ins(is)+nps(is)-ipmin)
 
 c           --- Obtain the self-field from the electrostatic potential
-            call sete3d(phi(0,0,-1),selfe,ip,xp(ipmin),yp(ipmin),zp(ipmin),
+            call sete3d(phi(0,0,-1),selfe(1,0,0,0),ip,
+     &                  xp(ipmin),yp(ipmin),zp(ipmin),
      &                  zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,nx,ny,nz,
      &                  efetch,ex,ey,ez,l2symtry,l4symtry)
 c           --- Get E field for particles near the  injection surface.
@@ -2253,7 +2318,7 @@ c       --- Calculate current
      &                   sq(is),sw(is),zbeam,dzz,zzmin)
           enddo
         enddo
-        call percurr(curr,nzzarr,periinz)
+        call percurr(curr(0),nzzarr,periinz)
       endif
 
 c----------------------------------------------------------------------------
@@ -2267,9 +2332,9 @@ c       --- Apply particle boundary conditions
           if (stickyxy .and. nps(is) > 0)
      &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,yp(ins(is)),ymmax,
      &                     ymmin,dy,zp(ins(is)),zmmin,dz,uxp(ins(is)),
-     &                     uyp(ins(is)),uzp(ins(is)),zgrid,zbeam,
-     &                     nzzarr,prwallz,prwallxz,prwallyz,prwelips,
-     &                     l2symtry,l4symtry,lostpars,zzmin,dzzi)
+     &                     uyp(ins(is)),uzp(ins(is)),zgrid,zbeam,nzzarr,
+     &                     prwallz(0),prwallxz(0),prwallyz(0),prwelips(0),
+     &                     l2symtry,l4symtry,lostpars(0),zzmin,dzzi)
         enddo
 
 c       --- Collect charge density (3d) and current (1d)
@@ -2299,22 +2364,25 @@ c       --- Note that zgridprv is also set at the beginning of w3dexe
       endif
 
 
+      if (lw3dtimesubs) timepadvnc3d = timepadvnc3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine perphi3d(phi,nx,ny,nz)
+      use Subtimers
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: ix,iy
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Sets the slices on the exterior of phi for periodicity
 c  sets slice at -1 equal to the slice at nz-1
 c  sets slice at nz+1 equal to the slice at 1
 
 #ifdef PARALLEL
-      call perphi3d_slave(phi,nx,ny,nz)
+      call perphi3d_slave(phi(0,0,-1),nx,ny,nz)
 #else
-      integer(ISZ):: ix,iy
-
       do iy=0,ny
         do ix=0,nx
           phi(ix,iy,-1)   = phi(ix,iy,nz-1)
@@ -2324,13 +2392,18 @@ c  sets slice at nz+1 equal to the slice at 1
       enddo
 #endif
 
+      if (lw3dtimesubs) timeperphi3d = timeperphi3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine perrho3d(rho,nx,ny,nz,periinz)
+      use Subtimers
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       logical(ISZ):: periinz
+      integer(ISZ):: ix,iy
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Sums the first and last slices of rho for periodicity
 c  and puts the result into both slices.
@@ -2340,15 +2413,14 @@ c Parallel version makes call to special routine perrho3d_slave
 #ifdef PARALLEL
 
 c This sums rho in the overlapping region of neighboring processes.
-      call perrho3d_slave(rho,nx,ny,nz,periinz)
+      call perrho3d_slave(rho(0,0,0),nx,ny,nz,periinz)
 
 c  For parallel version, each processor sends rho to neighboring processors
 c  whose field solve region overlap its particle region.
-      call getrhoforfieldsolve(nx,ny,nz,rho)
+      call getrhoforfieldsolve(nx,ny,nz,rho(0,0,0))
 
 #else
 
-      integer(ISZ):: ix,iy
       if (periinz) then
 
         do iy=0,ny
@@ -2362,10 +2434,12 @@ c  whose field solve region overlap its particle region.
 
 #endif
 
+      if (lw3dtimesubs) timeperrho3d = timeperrho3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine epush3d (np, uxp, uyp, uzp, ex, ey, ez, q, m, ddt)
+      use Subtimers
       integer(ISZ):: np
       real(kind=8):: uxp(np), uyp(np), uzp(np)
       real(kind=8):: ex(np), ey(np), ez(np)
@@ -2375,6 +2449,8 @@ c  Push the particle velocity with E field
 
       integer(ISZ):: ip
       real(kind=8):: const
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       const = q*ddt/m
 
       do ip=1,np
@@ -2383,10 +2459,12 @@ c  Push the particle velocity with E field
         uzp(ip) = uzp(ip) + ez(ip)*const
       enddo
 
+      if (lw3dtimesubs) timeepush3d = timeepush3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine epusht3d(np, uxp, uyp, uzp, ex, ey, ez, q, m, dtp, fdt)
+      use Subtimers
       integer(ISZ):: np
       real(kind=8):: uxp(np), uyp(np), uzp(np)
       real(kind=8):: ex(np), ey(np), ez(np)
@@ -2398,6 +2476,8 @@ c each particle.
 
       integer(ISZ):: ip
       real(kind=8):: const
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       const = q*fdt/m
 
       do ip=1,np
@@ -2406,11 +2486,13 @@ c each particle.
         uzp(ip) = uzp(ip) + ez(ip)*const*dtp(ip)
       enddo
 
+      if (lw3dtimesubs) timeepusht3d = timeepusht3d + wtime() - substarttime
       return
       end
 c============================================================================= 
       subroutine bpush3d (np, uxp, uyp, uzp, gaminv, bx, by, bz, q, m, ddt,
      &                    ibpush)
+      use Subtimers
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: bx(np), by(np), bz(np)
@@ -2421,6 +2503,8 @@ c  Push the particle velocity with B field
       integer(ISZ):: ip
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
       real(kind=8):: const
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       const = q*ddt*0.5/m
 
       if (ibpush == 1) then
@@ -2459,11 +2543,13 @@ c        --- tan(alpha) / alpha algorithm
          enddo
       endif
 
+      if (lw3dtimesubs) timebpush3d = timebpush3d + wtime() - substarttime
       return
       end
 c============================================================================= 
       subroutine bpusht3d(np, uxp, uyp, uzp, gaminv, bx, by, bz, q, m,
      &                    dtp, fdt, ibpush)
+      use Subtimers
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: bx(np), by(np), bz(np)
@@ -2476,6 +2562,8 @@ c for each particle.
       integer(ISZ):: ip
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
       real(kind=8):: const
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
       const = q*fdt*0.5/m
 
       if (ibpush == 1) then
@@ -2514,10 +2602,12 @@ c        --- tan(alpha) / alpha algorithm
          enddo
       endif
 
+      if (lw3dtimesubs) timebpusht3d = timebpusht3d + wtime() - substarttime
       return
       end
 c=========================================================================== 
       subroutine xpush3d (np, xp, yp, zp, uxp, uyp, uzp, gaminv, ddt)
+      use Subtimers
       integer(ISZ):: np
       real(kind=8):: ddt
       real(kind=8):: xp(np), yp(np), zp(np), uxp(np), uyp(np), uzp(np), gaminv(np)
@@ -2525,6 +2615,8 @@ c===========================================================================
 c  Advance particle positions
 
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       do ip=1,np
         xp(ip) = xp(ip) + uxp(ip)*ddt*gaminv(ip)
@@ -2532,10 +2624,12 @@ c  Advance particle positions
         zp(ip) = zp(ip) + uzp(ip)*ddt*gaminv(ip)
       enddo
 
+      if (lw3dtimesubs) timexpush3d = timexpush3d + wtime() - substarttime
       return
       end
 c=========================================================================== 
       subroutine xpusht3d(np, xp, yp, zp, uxp, uyp, uzp, gaminv, dtp)
+      use Subtimers
       integer(ISZ):: np
       real(kind=8):: xp(np), yp(np), zp(np), uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: dtp(np)
@@ -2543,6 +2637,8 @@ c===========================================================================
 c  Advance particle positions
 
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       do ip=1,np
         xp(ip) = xp(ip) + uxp(ip)*gaminv(ip)*dtp(ip)
@@ -2550,10 +2646,12 @@ c  Advance particle positions
         zp(ip) = zp(ip) + uzp(ip)*gaminv(ip)*dtp(ip)
       enddo
 
+      if (lw3dtimesubs) timexpusht3d = timexpusht3d + wtime() - substarttime
       return
       end
 c============================================================================ 
       subroutine sete3d_relativity(np,ex,ey,vbeam)
+      use Subtimers
       use Constant
       integer(ISZ):: np
       real(kind=8):: ex(np),ey(np)
@@ -2562,6 +2660,8 @@ c Applies the first order relativistic correction to the self E-field.
 
       real(kind=8):: gammabarisq
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       gammabarisq = 1. -  (vbeam/clight)**2
 
@@ -2570,11 +2670,13 @@ c Applies the first order relativistic correction to the self E-field.
         ey(ip) = ey(ip)*gammabarisq
       enddo
 
+      if (lw3dtimesubs) timesete3d_relativity = timesete3d_relativity + wtime() - substarttime
       return
       end
 c============================================================================ 
       subroutine edamp (eomdamp,it,itdamp,center,np,
      &                  ex,ey,ez,exold,eyold,ezold,exlag,eylag,ezlag)
+      use Subtimers
       integer(ISZ):: eomdamp,it,itdamp,np
       real(kind=8):: ex(np), ey(np), ez(np), exold(np), eyold(np), ezold(np)
       real(kind=8):: exlag(np), eylag(np), ezlag(np)
@@ -2586,8 +2688,13 @@ c    never after "synchv" since they are needed by the "halfv" to come.
 
       integer(ISZ):: ip
       real(kind=8):: exip,eyip,ezip
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
-      if (eomdamp == 0.) return
+      if (eomdamp == 0.) then
+        if (lw3dtimesubs) timeedamp = timeedamp + wtime() - substarttime
+        return
+      endif
 
 c  Protect against doing algebra on garbage; give lag qtys a good start.
 
@@ -2671,10 +2778,12 @@ c        --- don't use modified field if too early in run
          endif
       endif
 
+      if (lw3dtimesubs) timeedamp = timeedamp + wtime() - substarttime
       return
       end
 c============================================================================ 
       subroutine getbend (np,zp,uzp,gaminv,bendres,bendradi,dtl,dtr,zbeam)
+      use Subtimers
       use InGen
       use Lattice
       use LatticeInternal
@@ -2688,8 +2797,13 @@ c  For periodic runs, assumes mesh period length = lattice period length
 
       integer(ISZ):: ip,j
       real(kind=8):: vz,zl,fl,zr,fr,dti,vzi
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
-      if (.not. bends .or. .not. linbend) return
+      if (.not. bends .or. .not. linbend) then
+        if (lw3dtimesubs) timegetbend = timegetbend + wtime() - substarttime
+        return
+      endif
 
       dti = 1./(dtr-dtl)
 
@@ -2723,11 +2837,13 @@ c        --- bend radius
          bendradi(ip) = cbendrc(j)
       enddo
 
+      if (lw3dtimesubs) timegetbend = timegetbend + wtime() - substarttime
       return
       end
 c=========================================================================== 
       subroutine bendez3d (np, xp, zp, ez, bendres, bendradi, bends, bnezflag,
      &                     linbend)
+      use Subtimers
       integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), ez(np), bendres(np), bendradi(np)
       logical(ISZ):: bends, bnezflag, linbend
@@ -2737,19 +2853,26 @@ c  via multiplying by r_star/r = 1 - x/r, in a residence-corrected way;
 c  at smaller radii, zones are closer together, so field is larger.
 
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
-      if (.not. (bends.and.bnezflag) .or. .not. linbend) return
+      if (.not. (bends.and.bnezflag) .or. .not. linbend) then
+        if (lw3dtimesubs) timebendez3d = timebendez3d + wtime() - substarttime
+        return
+      endif
 
       do ip=1,np
          ez(ip) = ez(ip) * ( 1. 
      &    - bendres(ip) * xp(ip) / (bendradi(ip) + xp(ip)) )
       enddo
 
+      if (lw3dtimesubs) timebendez3d = timebendez3d + wtime() - substarttime
       return
       end      
 c=========================================================================== 
       subroutine sledgcor(np,xp,yp,zp,zpo,uxp,uyp,uzp,gaminv,m,q,dt,zbeam,
      &                    dipos) 
+      use Subtimers
       use LatticeInternal
       integer(ISZ):: np
       real(kind=8):: xp(np), yp(np), zp(np), zpo(np) 
@@ -2766,10 +2889,15 @@ c less than the entire andvance step on entry/exit of the dipole.
 
       integer(ISZ):: ip,j
       real(kind=8):: vz,vzi,qoverm
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       qoverm = q/m
 
-      if (.not.dipos) return
+      if (.not.dipos) then
+        if (lw3dtimesubs) timesledgcor = timesledgcor + wtime() - substarttime
+        return
+      endif
       do ip = 1,np
          vz = uzp(ip)*gaminv(ip)
          vzi = 1./dvnz(vz)
@@ -2794,11 +2922,13 @@ c          --- exited dipole
          endif 
       enddo
 
+      if (lw3dtimesubs) timesledgcor = timesledgcor + wtime() - substarttime
       return
       end
 c=========================================================================== 
       subroutine zbendcor (np, xp, zp, uxp, uzp, 
      &                     gaminv, ddt, bendres, bendradi, bends, linbend)
+      use Subtimers
       integer(ISZ):: np
       real(kind=8):: ddt
       real(kind=8):: xp(np), zp(np), uxp(np), uzp(np), gaminv(np)
@@ -2810,8 +2940,13 @@ c  "along the centerline."
 
       integer(ISZ):: ip
       real(kind=8):: xprv,xc
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
-      if (.not. bends .or. .not. linbend) return
+      if (.not. bends .or. .not. linbend) then
+        if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
+        return
+      endif
 
       do ip=1,np
         xprv = xp(ip) - ddt * uxp(ip) * gaminv(ip)
@@ -2820,10 +2955,12 @@ c  "along the centerline."
      &                    * (bendradi(ip)/(bendradi(ip)+xc) - 1.)
       enddo
 
+      if (lw3dtimesubs) timezbendcor = timezbendcor + wtime() - substarttime
       return
       end      
 c=========================================================================== 
       subroutine zgapcorr(np,zp,xp,uzp,gaminv,zbeam,dtl,dtr,dt,m,q,time)
+      use Subtimers
       use Lattice
       use LatticeInternal
       integer(ISZ):: np
@@ -2833,6 +2970,8 @@ c===========================================================================
 
       integer(ISZ):: ip,j
       real(kind=8):: vz,gapez,zp2,delta,qoverm,vzi,cacclz,deltav,zr
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       qoverm = q/m
 
@@ -2903,11 +3042,13 @@ c           --- calculate correction on position
         endif
       endif
 
+      if (lw3dtimesubs) timezgapcorr = timezgapcorr + wtime() - substarttime
       return
       end
 c=========================================================================== 
       subroutine sete3d(phi1d,selfe,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                  dx,dy,dz,nx,ny,nz,efetch,ex,ey,ez,l2symtry,l4symtry)
+      use Subtimers
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,dx,dy,dz
       real(kind=8):: phi1d(0:*),selfe(3,0:nx,0:ny,0:nz),xp(np),yp(np),zp(np)
@@ -2944,6 +3085,8 @@ c     --- For second version
 c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
       integer(ISZ):: indx(33,NPARPGRP)
       real(kind=8):: p(33,NPARPGRP), u1p(NPARPGRP), v1p(NPARPGRP), w1p(NPARPGRP)
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       nnx  = nx + 1
       nnxy = (nx + 1) * (ny + 1)
@@ -3335,11 +3478,13 @@ c           --- Adjust sign of E field for appropriate quadrant.
 
       endif
 
+      if (lw3dtimesubs) timesete3d = timesete3d + wtime() - substarttime
       return
       end
 c=========================================================================== 
       subroutine getselfe3d(phi,nx,ny,nz,selfe,nx_selfe,ny_selfe,nz_selfe,
      &                      dx,dy,dz)
+      use Subtimers
       integer(ISZ):: nx,ny,nz
       integer(ISZ):: nx_selfe,ny_selfe,nz_selfe
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),selfe(3,0:nx,0:ny,0:nz)
@@ -3349,6 +3494,8 @@ c Calculate the self-E via finite differences of phi.
 
       integer(ISZ):: ix,iy,iz
       real(kind=8):: tdxi,tdyi,tdzi
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- Do some checking first.
       if (nx .ne. nx_selfe .or. ny .ne. ny_selfe .or. nz .ne. nz_selfe) then
@@ -3411,6 +3558,7 @@ c     --- of the guard cells.
           selfe(3,nx,ny,iz) = tdzi*(phi(nx,ny,iz-1) - phi(nx,ny,iz+1))
       enddo
 
+      if (lw3dtimesubs) timegetselfe3d = timegetselfe3d + wtime() - substarttime
       return
       end
 c=========================================================================== 
@@ -3419,6 +3567,7 @@ c===========================================================================
      &                   bgrdsy,bgrdox,bgrdoy,bgrdph,bgrdsp,bgrdcp,  
      &                   bgrddxi,bgrddyi,bgrddzi,bgrdnx,bgrdny,bgrdnz,
      &                   bx,by,bz,id,nzl,zlmin,zbeam,dzli)
+      use Subtimers
       integer(ISZ):: nxyz,bgrdns,np,nbgrd,bgrdnx,bgrdny,bgrdnz,nzl
       real(kind=8):: bgrdbx(0:nxyz-1,bgrdns)
       real(kind=8):: bgrdby(0:nxyz-1,bgrdns)
@@ -3483,6 +3632,8 @@ c        + ...
       real(kind=8):: tbx,tby
       integer(ISZ):: noff(8)
       save noff
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       nnx  = bgrdnx + 1
       nnxy = (bgrdnx + 1)*(bgrdny + 1)
@@ -3639,6 +3790,7 @@ c          --- tranverse field
 
       enddo
 
+      if (lw3dtimesubs) timesetbgrd = timesetbgrd + wtime() - substarttime
       return
       end
 c=========================================================================== 
@@ -3647,6 +3799,7 @@ c===========================================================================
      &                   pgrdox,pgrdoy,pgrdph,pgrdsp,pgrdcp, 
      &                   pgrddxi,pgrddyi,pgrddzi,pgrdnx,pgrdny,pgrdnz,ex,ey,ez,
      &                   id,nzl,zlmin,zbeam,dzli)
+      use Subtimers
       integer(ISZ):: nxyz,pgrdns,np,npgrd,pgrdnx,pgrdny,pgrdnz,nzl
       real(kind=8):: pgrdp(0:nxyz-1,pgrdns)
       real(kind=8):: xp(np),yp(np),zp(np)
@@ -3717,6 +3870,8 @@ c  to have a seperate routine for pgrd.
       integer(ISZ):: indx17,indx18,indx19,indx23
       integer(ISZ):: noff(32)
       save noff
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       nnx  = pgrdnx + 1
       nnxy = (pgrdnx + 1)*(pgrdny + 1)
@@ -3863,10 +4018,12 @@ c          --- adjust sign of E field for approiate quadrant
 
       enddo
 
+      if (lw3dtimesubs) timesetpgrd = timesetpgrd + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine stptcl3d
+      use Subtimers
       use Beam_acc
       use Constant
       use InPart
@@ -3907,9 +4064,14 @@ c  Picglb is included only to use zbeam
 #ifdef PARALLEL
       real(kind=8):: zmin,zmax
 #endif
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  If distrbtn is not set by the user, exit
-      if (distrbtn == "none") return
+      if (distrbtn == "none") then
+        if (lw3dtimesubs) timestptcl3d = timestptcl3d + wtime() - substarttime
+        return
+      endif
 
 c  Set npgrp so Setpwork3d arrays are correct size
       if (xrandom == "fibonacc" .or.
@@ -4139,8 +4301,8 @@ c          --- load uzt with linear distribution (-.5 < uzt < .5)
            endif
 c          --- use cigar to adjust the z's
 c          --- xt,yt,uxt,uyt passed as scratch arrays
-           call cigar(i1-k+1,zt,uzt,zt,uzt,perpscal,straight_s(is),
-     &                xt,yt,uxt,uyt)
+           call cigar(i1-k+1,zt(1),uzt(1),zt(1),uzt(1),perpscal(1),
+     &                straight_s(is),xt(1),yt(1),uxt(1),uyt(1))
 
 c          --- Loading gaussian longitudinal velocity distribution.
            if (distr_l == "gaussian") then
@@ -4149,7 +4311,7 @@ c          --- Loading gaussian longitudinal velocity distribution.
                  uzt(i) = 0.5*perpscal(i)*rnorm()
                enddo
              elseif (vzrandom == "digitrev") then
-               call rnormdig(k+ioff,i1-k+1,dig7,dig8,0.,uzt)
+               call rnormdig(k+ioff,i1-k+1,dig7,dig8,0.,uzt(1))
                do i=1,i1-k+1
                  uzt(i) = 0.5*perpscal(i)*uzt(i)
                enddo
@@ -4172,7 +4334,7 @@ c          --- load uzt with gaussian distribution (mean 0, variance 1)
                  uzt(i) = rnorm()
                enddo
              elseif (vzrandom == "digitrev") then
-               call rnormdig(k+ioff,i1-k+1,dig7,dig8,0.,uzt)
+               call rnormdig(k+ioff,i1-k+1,dig7,dig8,0.,uzt(1))
              else
                write(errline,'("ERROR: vzrandom has an improper value = ",a8)')
      &               vzrandom
@@ -4369,8 +4531,8 @@ c          --- load normalized transverse velocity variables
                  uyt(i) = rnorm()
                enddo
              elseif (vtrandom == "digitrev") then
-               call rnormdig(k+ioff,i1-k+1,dig3,dig4,0.,uxt)
-               call rnormdig(k+ioff,i1-k+1,dig5,dig6,0.,uyt)
+               call rnormdig(k+ioff,i1-k+1,dig3,dig4,0.,uxt(1))
+               call rnormdig(k+ioff,i1-k+1,dig5,dig6,0.,uyt(1))
              else
                write (errline,'("ERROR: vtrandom has an improper value = ",a8)')
      &             vtrandom
@@ -4607,13 +4769,15 @@ c       --- distribution.
 c     --- if slave, reorganize particles and recalculate sw
 #ifdef PARALLEL
       call reorg_particles
-      call sw_globalsum(ns,sw)
+      call sw_globalsum(ns,sw(1))
 #endif
 
+      if (lw3dtimesubs) timestptcl3d = timestptcl3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine setrho3d(rho1d,np,xp,yp,zp,zgrid,uzp,q,wght,depos)
+      use Subtimers
       use InGen3d
       use InMesh3d
       use Fields3d
@@ -4650,6 +4814,8 @@ c     --- For both algorithms
 
       integer(ISZ):: ip,i,j,k,ind0,m,ir
       real(kind=8):: g,dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,gxfact,gyfact
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c--------------------------------------
 c  Begin vectorized deposition loop
@@ -4897,10 +5063,12 @@ c     --- scalar loop does the actual deposition
       enddo
 
       endif
+      if (lw3dtimesubs) timesetrho3d = timesetrho3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine loadrho3d(ins_i,nps_i,is_i,lzero)
+      use Subtimers
       use InGen
       use InPart
       use InMesh3d
@@ -4919,10 +5087,12 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2
       integer(ISZ):: ip,ipmin,is
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c     --- zero rho if requested
-c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
-      if (lzero) rho = 0.
+      if (lzero) call zeroarry(rho(0,0,0),(nx+1)*(ny+1)*(nz+1))
+c     if (lzero) rho = 0.
 
 c     --- set limits on loop over species
       if (is_i == -1) then
@@ -4956,6 +5126,7 @@ c        --- loop over particle blocks
 c     --- enforce axial periodicity
       if (lzero) call perrho3d(rho(0,0,0),nx,ny,nz,periinz)
 
+      if (lw3dtimesubs) timeloadrho3d = timeloadrho3d + wtime() - substarttime
       return
       end
 c=============================================================================
@@ -4963,6 +5134,7 @@ c=============================================================================
      &                   zp,zmmin,dz,uxp,uyp,uzp,zgrid,zbeam,
      &                   nzzarr,prwallz,prwallxz,prwallyz,prwelips,
      &                   l2symtry,l4symtry,lostpars,zzmin,dzzi)
+      use Subtimers
       integer(ISZ):: np,nzzarr
       real(kind=8):: xmmax,xmmin,dx,ymmax,ymmin,dy,zmmin,dz,zgrid,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
@@ -4980,6 +5152,8 @@ c  Also ensures that particles are at least on the grid as well.
 
       integer(ISZ):: ip,iz
       real(kind=8):: xmin,xmax,ymin,ymax
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       xmin = xmmin
       xmax = xmmax
@@ -5008,10 +5182,12 @@ c  Also ensures that particles are at least on the grid as well.
         endif
       enddo
 
+      if (lw3dtimesubs) timestckxy3d = timestckxy3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine setrstar(rstar,nz,dz,zmmin,zgrid)
+      use Subtimers
       use Lattice
       integer(ISZ):: nz
       real(kind=8):: rstar(-1:nz+1)
@@ -5024,11 +5200,13 @@ c  r_star is known on mesh points for purposes of field solution.
       integer(ISZ):: k,ib
       real(kind=8):: z,offset,bres,bradi
       real(kind=8):: zl,fl,zr,fr
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       ib = 0
       do k = -1, nz+1
          z = zmmin + k*dz + zgrid
-         call getelemid(z,offset,nbend,bendzs,bendze,ib)
+         call getelemid(z,offset,nbend,bendzs(0),bendze(0),ib)
 c        --- "left" end of velocity advance step
          zl = z - 0.5*dz
          fl = 0.
@@ -5049,10 +5227,12 @@ c        --- residence fraction; set to all-in or all-out, possibly override
          if (bendrc(ib) == 0.) rstar(k) = LARGEPOS
       enddo
 
+      if (lw3dtimesubs) timesetrstar = timesetrstar + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine inject3d(itask)
+      use Subtimers
       use Constant
       use Beam_acc
       use InGen
@@ -5092,6 +5272,8 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: i2x,i2y,i2z
       real(kind=8):: wranf
       integer(ISZ):: ith,nti
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       dxi = 1./dx
       dyi = 1./dy
@@ -5260,8 +5442,8 @@ c             --- Default is to use a Semi-Gaussian distribution
                 enddo
               else
 c               --- Default is to use digitrev
-                call rnormdig(injctcnt,nn,dig3,dig4,0.,uxt)
-                call rnormdig(injctcnt,nn,dig5,dig6,0.,uyt)
+                call rnormdig(injctcnt,nn,dig3,dig4,0.,uxt(1))
+                call rnormdig(injctcnt,nn,dig5,dig6,0.,uyt(1))
               endif
             endif
 
@@ -5272,7 +5454,7 @@ c           --- Axial thermal spread
               enddo
             else
 c             --- Default is to use digitrev
-              call rnormdig(injctcnt,nn,dig7,dig8,0.,uzt)
+              call rnormdig(injctcnt,nn,dig7,dig8,0.,uzt(1))
             endif
 
 c           --- Increment the particle counter for the digit reversed seed
@@ -5333,7 +5515,7 @@ c           --- make injected particles live particles
 c           --- get E self-field at initial positions
             call inj_sete3d(phi(0,0,0),nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                      zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
-     &                      nx,ny,nz,at,bt,apt)
+     &                      nx,ny,nz,at(1),bt(1),apt(1))
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -5369,16 +5551,17 @@ c           --- time step and so must be done here).
 
 c           --- do half velocity advance with E fields
             call epusht3d(nn,uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    at,bt,apt,sq(is),sm(is),bpt,0.5)
+     &                    at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
 
 c           --- do half velocity advance with B fields
             call bpusht3d(nn,uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &              gaminv(ins(is)),xt,yt,zt,sq(is),sm(is),bpt,0.5,ibpush)
+     &                    gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
+     &                    bpt(1),0.5,ibpush)
 
 c           --- do full position advance
             call xpusht3d(nn,xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                    uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    gaminv(ins(is)),bpt)
+     &                    gaminv(ins(is)),bpt(1))
 
 c           --- Calculate Gamma inverse
             if (lrelativ) then
@@ -5425,7 +5608,7 @@ c           --- Make sure there is enough temp space
 c           --- calculate new E self-fields
             call inj_sete3d(phi(0,0,0),nn,xp(ipmin),yp(ipmin),zp(ipmin),
      &                      zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
-     &                      nx,ny,nz,at,bt,apt)
+     &                      nx,ny,nz,at(1),bt(1),apt(1))
 
 c           --- get external fields at current positions
             do ip=1,nn
@@ -5452,20 +5635,22 @@ c           --- Set fractional time to advance particles
 
 c           --- complete B advance
             call bpusht3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &              gaminv(ipmin),xt,yt,zt,sq(is),sm(is),bpt,0.5,ibpush)
+     &                    gaminv(ipmin),xt(1),yt(1),zt(1),sq(is),sm(is),
+     &                    bpt(1),0.5,ibpush)
 
 c           --- complete the E advance
             call epusht3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                    at,bt,apt,sq(is),sm(is),bpt,0.5)
+     &                    at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
 
 c           --- Now, move velocites back one half a step
 c           --- first half of a backward B advance
             call bpush3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &              gaminv(ipmin),xt,yt,zt,sq(is),sm(is),-0.5*dt,ibpush)
+     &                   gaminv(ipmin),xt(1),yt(1),zt(1),sq(is),sm(is),
+     &                   -0.5*dt,ibpush)
 
 c           --- then half of a backward E advance
             call epush3d(nn,uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                   at,bt,apt,sq(is),sm(is),-0.5*dt)
+     &                   at(1),bt(1),apt(1),sq(is),sm(is),-0.5*dt)
 
 c        --- end of loop over species and injection sources
          enddo
@@ -5518,7 +5703,7 @@ c         --- Copy inj_np to inj_prev, and zero inj_np
 
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
-            call inj_setrho3d(rho,zgrid,xmmin,ymmin,dx,dy,dz,nx,ny,nz,
+            call inj_setrho3d(rho(0,0,0),zgrid,xmmin,ymmin,dx,dy,dz,nx,ny,nz,
      &                        l2symtry,l4symtry)
           endif
 
@@ -5813,7 +5998,7 @@ c           --- get E self-field at initial positions
             call inj_sete3d(phi(0,0,0),npinje_s(is),xp(ins(is)),yp(ins(is)),
      &                      zp(ins(is)),
      &                      zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
-     &                      nx,ny,nz,at,bt,apt)
+     &                      nx,ny,nz,at(1),bt(1),apt(1))
 
 c           --- get external fields at initial positions
 c           --- (Assumes that injection will never be done inside a bend.)
@@ -5840,16 +6025,17 @@ c           --- Calculate the timesteps for the particles.
 
 c           --- do half velocity advance with E fields
             call epusht3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    at,bt,apt,sq(is),sm(is),bpt,0.5)
+     &                    at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
 
 c           --- do half velocity advance with B fields
             call bpusht3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &              gaminv(ins(is)),xt,yt,zt,sq(is),sm(is),bpt,0.5,ibpush)
+     &                    gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
+     &                    bpt(1),0.5,ibpush)
 
 c           --- do full position advance
             call xpusht3d(npinje_s(is),xp(ins(is)),yp(ins(is)),zp(ins(is)),
      &                    uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    gaminv(ins(is)),bpt)
+     &                    gaminv(ins(is)),bpt(1))
 
 c           --- setrho is now done by the setrho call in padvnc3d.
 
@@ -5880,7 +6066,7 @@ c           --- calculate new E self-fields
             call inj_sete3d(phi(0,0,0),npinje_s(is),xp(ins(is)),yp(ins(is)),
      &                      zp(ins(is)),
      &                      zgridprv,xmmin,ymmin,zmmin,dx,dy,dz,
-     &                      nx,ny,nz,at,bt,apt)
+     &                      nx,ny,nz,at(1),bt(1),apt(1))
 
 c           --- Get external fields at current positions, assuming that there
 c           --- is no bend.
@@ -5911,20 +6097,22 @@ c           --- from when the timestep size were calculated above.
 
 c           --- complete B advance
             call bpusht3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    gaminv(ins(is)),xt,yt,zt,sq(is),sm(is),bpt,0.5,ibpush)
+     &                    gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
+     &                    bpt(1),0.5,ibpush)
 
 c           --- complete the E advance
             call epusht3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                    at,bt,apt,sq(is),sm(is),bpt,0.5)
+     &                    at(1),bt(1),apt(1),sq(is),sm(is),bpt(1),0.5)
 
 c           --- Now, move velocites back one half a step
 c           --- first half of a backward B advance
             call bpush3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                   gaminv(ins(is)),xt,yt,zt,sq(is),sm(is),-0.5*dt,ibpush)
+     &                   gaminv(ins(is)),xt(1),yt(1),zt(1),sq(is),sm(is),
+     &                   -0.5*dt,ibpush)
 
 c           --- then half of a backward E advance
             call epush3d(npinje_s(is),uxp(ins(is)),uyp(ins(is)),uzp(ins(is)),
-     &                   at,bt,apt,sq(is),sm(is),-0.5*dt)
+     &                   at(1),bt(1),apt(1),sq(is),sm(is),-0.5*dt)
 
 c        --- end of loop over species
          enddo
@@ -6141,10 +6329,12 @@ c         --- make injected particles live particles
       endif
 c     --- End of transverse injection
 
+      if (lw3dtimesubs) timeinject3d = timeinject3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine injctint()
+      use Subtimers
       use Constant
       use Beam_acc
       use InGen
@@ -6158,6 +6348,8 @@ c=============================================================================
 
       integer(ISZ):: is,ip,ij,nn,nnmax
       real(kind=8):: total_frac
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c Make sure that space has been allocated for the arrays. This is needed
 c in case the user changes ninject or ns but doesn't explicitly allocate
@@ -6291,10 +6483,12 @@ c Set vbeamfrm to zero so that the grid does not move off of the source,
 c causing a code crash.
       vbeamfrm = 0.
 
+      if (lw3dtimesubs) timeinjctint = timeinjctint + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine fill_inj(dx,dy,dz,ix_axis,iy_axis)
+      use Subtimers
       use InPart
       use InMesh3d
       use InjectVars
@@ -6314,6 +6508,8 @@ c     --- as a function of the transverse coordinates.
       real(kind=8):: xx,yy,zz,ainj,binj,ai_dx,bi_dy,dxi,dyi,dzi
       real(kind=8):: xl,yl,xu,yu,x1,x2
       real(kind=8):: ainji,binji
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       dxi = 1./dx
       dyi = 1./dy
@@ -6433,11 +6629,13 @@ c             --- over the other.
         enddo
       enddo
 
+      if (lw3dtimesubs) timefill_inj = timefill_inj + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine inj_sete3d(phi,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,dx,dy,dz,
      &                      nx,ny,nz,ex,ey,ez)
+      use Subtimers
       use InPart
       use InjectVars
       use InjectVars3d
@@ -6462,6 +6660,8 @@ c any conductor surface.
       real(kind=8):: aa,az,px,py,pz,wx,wy,wz,en
       real(kind=8):: dxi,dyi,dzi
       real(kind=8):: sx,sy
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       dxi = 1./dx
       dyi = 1./dy
@@ -6604,11 +6804,13 @@ c           --- Do a linear weigthing between the En and sete3d fields.
         endif
       enddo
 
+      if (lw3dtimesubs) timeinj_sete3d = timeinj_sete3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine inj_setrho3d(rho,zgrid,xmmin,ymmin,dx,dy,dz,nx,ny,nz,
      &                        l2symtry,l4symtry)
+      use Subtimers
       use InPart
       use InjectVars
       use InjectVars3d
@@ -6633,14 +6835,16 @@ c the grid cell.
       real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd
       real(kind=8):: aa,az,px,py,wx,wy,ww
       real(kind=8):: dxi,dyi,dzi
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       dxi = 1./dx
       dyi = 1./dy
       dzi = 1./dz
 
 c     --- zero out the array
-c     call zeroarry(inj_rho,(1+nx)*(1+ny))
-      inj_rho = 0.
+      call zeroarry(inj_rho(0,0),(1+nx)*(1+ny))
+c     inj_rho = 0.
 
 c     --- Loop over species and particles
       do is=1,ns
@@ -6744,12 +6948,14 @@ c     --- rho only on the right side of the emitting surface.
         enddo
       enddo
 
+      if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
       return
       end
 c===========================================================================
       subroutine sete3d_aperture(phi1d,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                           zmmax,dx,dy,dz,nx,ny,nz,ex,ey,
      &                           l2symtry,l4symtry)
+      use Subtimers
       use Apertures
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,zmmax,dx,dy,dz
@@ -6766,6 +6972,8 @@ c set_aperture_e being called to fill the aper_ex and aper_ey arrays.
       integer(ISZ):: ip,i,j,k,ia,izs,ize
       real(kind=8):: dxi,dyi,dzi,u0,u1,v0,v1,w0,w1,ysign,xsign
       real(kind=8):: sx,sy
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Evaluation of E, vectorized over particles
 
@@ -6882,10 +7090,12 @@ c       --- End of if checking if aperture is within the grid
 c     --- End of loop over apertures
       enddo
 
+      if (lw3dtimesubs) timesete3d_aperture = timesete3d_aperture + wtime() - substarttime
       return
       end
 c===========================================================================
       subroutine set_aperture_e()
+      use Subtimers
       use InGen3d
       use Picglb
       use Picglb3d
@@ -6924,6 +7134,8 @@ c     E-field.
       integer(ISZ):: ia,ix,iy,iz,ixs,iys,izs,ize,iza
       real(kind=8):: zs,ze,xx,yy,wx,wy
       real(kind=8):: tdxi,tdyi,dzi
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       tdxi = 0.5/dx
       tdyi = 0.5/dy
@@ -7300,10 +7512,12 @@ c       --- End of if checking if aperture is within the grid
 c     --- End of loop over apertures
       enddo
 
+      if (lw3dtimesubs) timeset_aperture_e = timeset_aperture_e + wtime() - substarttime
       return
       end
 c===========================================================================
       subroutine fieldsol3d(iwhich)
+      use Subtimers
       use Beam_acc
       use Constant
       use InGen
@@ -7328,6 +7542,8 @@ c      2) Iteration loop for a perturbative calculation of fields.
       integer(ISZ):: i,j,k
       real(kind=8):: ccmult,rs,dhdz,cutoff,x,r,phiref,rskm1,rskp1,dxi,dzi
       character*(80):: outstr
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
       dxi = 1./dx
       dzi = 1./dz
@@ -7335,7 +7551,10 @@ c      2) Iteration loop for a perturbative calculation of fields.
 c  --------------------------------
 c  If no field solve, return 
 c  --------------------------------
-      if ( fstype == -1) return 
+      if ( fstype == -1) then
+        if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
+        return 
+      endif
 
 c  -------------------------------
 c  SOR and multigrid field solvers - deal with bends directly and set axial
@@ -7345,8 +7564,9 @@ c  -------------------------------
       if (fstype == 3 .or. fstype == 7) then
          call vp3d (iwhich)
 #ifdef PARALLEL
-         call getphiforparticles(nx,ny,nz,phi)
+         call getphiforparticles(nx,ny,nz,phi(0,0,-1))
 #endif
+         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
          return
       endif
 
@@ -7363,8 +7583,9 @@ c  -------------------------------
          call vp3d (iwhich)
          if (periinz) call perphi3d(phi(0,0,-1),nx,ny,nz)
 #ifdef PARALLEL
-         call getphiforparticles(nx,ny,nz,phi)
+         call getphiforparticles(nx,ny,nz,phi(0,0,-1))
 #endif
+         if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
          return
       endif
 
@@ -7465,13 +7686,15 @@ c     --- if failure to converge, report the bad news to user
 c     --- Enforce axial periodicity if requested.
       if (periinz) call perphi3d(phi(0,0,-1),nx,ny,nz)
 #ifdef PARALLEL
-      call getphiforparticles(nx,ny,nz,phi)
+      call getphiforparticles(nx,ny,nz,phi(0,0,-1))
 #endif
 
+      if (lw3dtimesubs) timefieldsol3d = timefieldsol3d + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine vp3d (iwhich)
+      use Subtimers
       use Constant
       use InGen
       use InGen3d
@@ -7481,6 +7704,8 @@ c=============================================================================
       use Fields3d
       use LatticeInternal
       integer(ISZ):: iwhich
+      real(kind=8):: substarttime,wtime
+      if (lw3dtimesubs) substarttime = wtime()
 
 c  Interface to VPOIS3D using variables from database of package 3D
 
@@ -7499,8 +7724,8 @@ c fits and so was replaced with if statements.
 c     select case (fstype)
 c       case (0)
       if (fstype == 0) then
-          call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq,kysq,kzsq,
-     &                 attx,atty,attz,filt,xmmax-xmmin,ymmax-ymmin,
+          call vpois3d(iwhich,phi(0,0,izfsmin),phi(0,0,izfsmin),kxsq(0),kysq(0),kzsq(0),
+     &                 attx(0),atty(0),attz(0),filt(1,1),xmmax-xmmin,ymmax-ymmin,
      &                 (izfsmax-izfsmin)*dz,nx,ny,izfsmax-izfsmin,
      &                 scrtch(0,0),xywork(0,0),zwork,0,l2symtry,l4symtry)
 c       case (1)
@@ -7595,6 +7820,7 @@ c         --- put forward by Lantz
 c     endselect
       endif
 
+      if (lw3dtimesubs) timevp3d = timevp3d + wtime() - substarttime
       return
       end
 c=============================================================================
