@@ -2,7 +2,7 @@ from warp import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.9 2001/01/12 19:02:07 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.10 2001/01/13 03:50:21 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -915,7 +915,6 @@ Note that either the x and y coordinates or the grid must be passed in.
     dmax = maxnd(grid)
     dmin = minnd(where(equal(grid,0.),dmax,grid))
     # --- Now take the log, adding a constant to avoid taking the log of 0.
-    grid1 = (grid + dmin/10.)
     grid1 = log(grid + dmin/10.)
   else:
     grid1 = grid
@@ -932,7 +931,7 @@ Note that either the x and y coordinates or the grid must be passed in.
           color=ccolor,contours=contours,filled=filled)
 
   # --- Plot particles
-  if particles and len(x) > 0:
+  if particles:
     if color == 'density':
       z1 = zeros(len(x),'d')
       getgrid2d(len(x),x,yms,z1,nx,ny,grid1,xmin,xmax,ymin,ymax)
@@ -948,8 +947,8 @@ Note that either the x and y coordinates or the grid must be passed in.
         z1 = compress(ipick,z1)
     if color == 'density':
       # --- Plot particles with color based on the density from the grid.
-      if denmin == None: demmin = min(z1)
-      if denmax == None: demmax = max(z1)
+      if denmin == None: demmin = minnd(grid)
+      if denmax == None: demmax = maxnd(grid)
       ppco(yms,x,z1,uz=1.,marker=marker,msize=msize,lframe=0,
            zmin=denmin,zmax=denmax,ncolor=ncolor,usepalette=usepalette)
     else:
@@ -1287,7 +1286,8 @@ if sys.version[:5] != "1.5.1":
 def pptrace(iw=0,slope=0.,iz=-1,particles=1,titles=1,**kw):
   """
 Plots X-Y, X-X', Y-Y', Y'-X' in single page
-If slope='auto', it is calculated from the moments for X-X' and Y-Y' plots."""
+If slope='auto', it is calculated from the moments for X-X' and Y-Y' plots.
+  """
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
   x = take(top.xp,ii)
