@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.23 2003/07/08 23:55:45 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.24 2003/07/09 22:44:45 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -337,6 +337,7 @@ def parallelmax(a):
 def parallelmin(a):
   return parallelop(a,"MIN")
 def parallelsum(a):
+  if not lparallel: return a
   return mpi.allreduce(a,mpi.SUM)
 
 
