@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.5 2003/03/19 18:04:08 haber Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.6 2003/04/10 21:12:02 dave Exp $"
 
 class PlaneSave:
   """
@@ -37,7 +37,8 @@ Input:
     else:
       self.allways_save = true
     # set distance between saved phi planes
-    if self.deltaz is None: self.deltaz = w3d.dz
+    if deltaz is None: self.deltaz = w3d.dz
+    else:              self.deltaz = deltaz
     self.izz = nint(self.deltaz/w3d.dz)
 
     # --- Arrays to find particles which cross the plane
