@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.156 $, $Date: 2004/06/04 22:55:22 $
+c@(#) File W3D.F, version $Revision: 3.157 $, $Date: 2004/06/24 20:56:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -226,9 +226,9 @@ c  so that by default izfsmax = nz (for full field solve).
       if (nzfull == 0) nzfull = nz
       nmxy  = max(nx,ny)
       nmxyz = max(nx,ny,nzfull)
-      call gallot("Fields3d", 0)
+      call gchange("Fields3d", 0)
       vbeamfrm = vbeam
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
         if (l2symtry) then
           ymmin = 0.
         elseif (l4symtry) then
@@ -274,7 +274,7 @@ c  Calculate mesh dimensioning quantities
 
 c  Calculate location of axis in mesh, the term dx*1.e-5 acts as fuzp
       ix_axis = nint(-xmmin/dx)
-      if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or. solvergeom==AMRgeom) then
         iy_axis = nint(-ymmin/dy)
       else ! RZgeom, XZgeom, Zgeom, Rgeom
         iy_axis = 0
@@ -351,12 +351,12 @@ c phi (Ex, Ey, Ez) on the mesh.
      &     solvergeom==Rgeom  .or.
      &     solvergeom==Zgeom) ny_selfe = 0
         if(solvergeom==Zgeom) nx_selfe = 0
-        call gallot("Efields3d",0)
+        call gchange("Efields3d",0)
       endif
 
 c  Create dynamic arrays for 3D multipole moments of the electrostatic
 c  potential
-      call gallot("Multipole", 0)
+      call gchange("Multipole", 0)
 
 c  Create the dynamic arrays for particles (set npmax to an estimated
 c  length for now, for those loading schemes that don't actually
@@ -386,7 +386,7 @@ c  damped mover.  They are always allocated, but with length 1 if not used.
 
       npdamp = 1
       if (eomdamp /= 0.) npdamp = npmax
-      call gallot("Damped_eom", 0)
+      call gchange("Damped_eom", 0)
 
 c  Create the dynamic arrays for "window" moments
 
@@ -397,13 +397,13 @@ c  Create the dynamic arrays for "window" moments
       do iwin = 1, NWINDOWS
          if (zwindows(1,iwin) /= zwindows(2,iwin)) nzwind = nzwind + 1
       enddo
-      call gallot("Win_Moments", 0)
+      call gchange("Win_Moments", 0)
 
 c  Create the dynamic arrays for z moments
 
       call remark(" ---  Allocating Z_Moments")
       if (nzmmnt == 0) nzmmnt = nzfull
-      call gallot("Z_Moments", 0)
+      call gchange("Z_Moments", 0)
       if (zmmntmax == 0.) zmmntmax = zmmaxglobal
       if (zmmntmin == 0.) zmmntmin = zmminglobal
       dzm = (zmmntmax - zmmntmin)/nzmmnt
@@ -427,7 +427,7 @@ c  and set limits for plots
 
 c     call remark(" ---  Allocating scratch space for plots")
 c     if (npsplt == 0) npsplt = nparpgrp-1
-c     call gallot("Pspwork", 0)
+c     call gchange("Pspwork", 0)
       if (xplmin == 0.) xplmin = -xmmax
       if (xplmax == 0.) xplmax = xmmax
       if (yplmin == 0.) yplmin = -ymmax
@@ -445,7 +445,7 @@ c  Setup history mechanism
 c       --- create the dynamic arrays for history data; set pointer into them
         call remark(" ---  Allocating history arrays")
         if (lenhist == 0) lenhist = min ( nt/nhist + 1, 100)
-        call gallot("Hist", 0)
+        call gchange("Hist", 0)
         jhist = -1
       elseif (nhist < 0) then
 c       --- call interpreter routine to setup hst package
@@ -1381,7 +1381,7 @@ c           --- Get E field for particles near the  injection surface.
             endif
 c           --- Get transverse E field for particles near any defined apertures.
             if (napertures > 0)
-     &        call sete3d_aperture(phip(0,0,0),ip,xp(ipmin),yp(ipmin),zp(ipmin),
+     &        call sete3d_aperture(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                             zgridprv,xmmin,ymmin,zmminp,zmmax,dx,dy,dz,
      &                             nxp,nyp,nzp,ex,ey,l2symtry,l4symtry)
 c           --- Scale the self E-field to get the lowest order relativistic
@@ -2290,7 +2290,7 @@ c  local arrays are SAVE'd. nnxy is added to all offsets to account for
 c  the fact that the phi1d passed begins at phi(0,0,-1), so the location
 c  of phi(0,0,0) is equivalent to phi1d(nnxy).
 
-      if (noff(1) /= -nnxy) then
+c     if (noff(1) /= -nnxy) then
          noff(1)  = nnxy - nnxy
          noff(2)  = nnxy - nnxy   + 1
          noff(3)  = nnxy - nnxy   + nnx
@@ -2323,7 +2323,7 @@ c  of phi(0,0,0) is equivalent to phi1d(nnxy).
          noff(30) = nnxy + 2*nnxy         + 1
          noff(31) = nnxy + 2*nnxy + nnx
          noff(32) = nnxy + 2*nnxy + nnx   + 1
-      endif
+c     endif
 
 c  Evaluation of E, vectorized over particles
 
@@ -3938,7 +3938,9 @@ c     --- Ensure that the rhop array is setup properly
 
 c     --- zero rhop if requested
       if (lzero) then
-        call zeroarry(rhop(0,0,0),(nxp+1)*(nyp+1)*(nzp+1))
+        if (solvergeom == XYZgeom) then
+          call zeroarry(rhop(0,0,0),(nxp+1)*(nyp+1)*(nzp+1))
+        endif
         if(solvergeom==RZgeom .or. solvergeom==XZgeom .or.
      &     solvergeom==Rgeom  .or. solvergeom==Zgeom) call reset_rzmgrid_rho()
       end if
@@ -4018,6 +4020,10 @@ c        --- loop over particle blocks
          end if
       enddo
 
+      if (solvergeom == XYZgeomMR) then
+        call execuser("loadrhoMR")
+      endif
+
       endif
 
 c  For parallel version, each processor sends rho to neighboring processors
@@ -4071,7 +4077,7 @@ c  whose field solve region overlap its particle region.
       elseif (solvergeom==XYZgeom) then
         call sumrhoondomainboundaries(rhop,nxp,nyp,nzp,bound0)
         call getrhoforfieldsolve3d(nx,ny,nz,rho(0,0,0),
-     &                           nxp,nyp,nzp,rhop(0,0,0))
+     &                             nxp,nyp,nzp,rhop(0,0,0))
       end if
 
 #endif
@@ -4138,8 +4144,9 @@ c=============================================================================
       use Fields3d
       use Fields3dParticles
       use EFields3d
+      use EFields3dParticles
       integer(ISZ):: ipmin,ip,is
-      real(kind=8):: ex(ip),ey(ip),ez(ip)
+      real(kind=8),target:: ex(ip),ey(ip),ez(ip)
 
 c     --- Obtain the self-field from the electrostatic potential
 
@@ -4151,6 +4158,20 @@ c     --- Obtain the self-field from the electrostatic potential
      &              xp(ipmin),yp(ipmin),zp(ipmin),
      &              zgridprv,xmmin,ymmin,zmminp,dx,dy,dz,nxp,nyp,nzp,
      &              efetch,ex,ey,ez,l2symtry,l4symtry)
+      elseif(solvergeom==XYZgeomMR) then
+        xefield => xp(ipmin:ipmin+ip-1)
+        yefield => yp(ipmin:ipmin+ip-1)
+        zefield => zp(ipmin:ipmin+ip-1)
+        exefield => ex
+        eyefield => ey
+        ezefield => ez
+        call execuser("fetcheMR")
+        nullify(xefield)
+        nullify(yefield)
+        nullify(zefield)
+        nullify(exefield)
+        nullify(eyefield)
+        nullify(ezefield)
       elseif(solvergeom==RZgeom) then
         call setemgridrz(ipmin,ip,is,ex,ey,ez)
       elseif(solvergeom==XZgeom) then
@@ -4367,7 +4388,7 @@ c      --- Put ny to zero for RZ geometry
       endif
 
 c     --- Put grid min's to zero as appropriate for the symmetry
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
         if (l2symtry) then
           ymmin = 0.
         elseif (l4symtry) then
@@ -4912,7 +4933,8 @@ c         --- Copy inj_np to inj_prev, and zero inj_np
 
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
-            if(solvergeom==XYZgeom .or. solvergeom==AMRgeom) then
+            if (solvergeom==XYZgeom .or. solvergeom==XYZgeomMR .or.
+     &          solvergeom==AMRgeom) then
               call inj_setrho3d(inj_dz,l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
 c             --- When using the RZ solver, inj_rho is forced to be
@@ -4948,7 +4970,7 @@ c           --- Set factor so correct number of particles are loaded when
 c           --- symmetry is used.  With 2-fold, particles need to be loaded
 c           --- on both sides of the symmetry axis.  With 4-fold, particles
 c           --- need to be loaded in each of the four quadrants.
-            if(solvergeom==XYZgeom) then
+            if(solvergeom==XYZgeom .or. solvergeom==XYZgeomMR) then
               spreadx = 1
               spready = 1
             elseif(solvergeom==RZgeom) then
@@ -6940,7 +6962,8 @@ c any conductor surface.
 
       if(inj_nz>1) call inj_sete_3darray(npart,xp,yp,zp,pid,dz,ex,ey,ez)
 
-      if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or.
+     &   solvergeom==RZgeom) then
         if(.not.l_inj_rz) then
           spreadx = 1
           spready = 1
@@ -7501,7 +7524,8 @@ c the grid cell.
 
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(solvergeom==XYZgeom .or. solvergeom==RZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR .or.
+     &   solvergeom==RZgeom) then
         sx = 1
         sy = 1
       elseif(solvergeom==XZgeom) then
@@ -7855,7 +7879,7 @@ c the grid cell.
 
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
         sx = 1
         sy = 1
       elseif(solvergeom==RZgeom) then
@@ -8382,7 +8406,7 @@ c any conductor surface.
       real(kind=8), dimension(0:inj_nz) :: dz_local
       if (lw3dtimesubs) substarttime = wtime()
 
-      if(solvergeom==XYZgeom) then
+      if(solvergeom==XYZgeom .or. solvergeom == XYZgeomMR) then
         spreadx = 1
         spready = 1
       elseif(solvergeom==RZgeom) then
@@ -8588,14 +8612,14 @@ c            wz = dd*2.**(inj_nz-iz)-1.
       return
       end
 c===========================================================================
-      subroutine sete3d_aperture(phi1d,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
+      subroutine sete3d_aperture(np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                           zmmax,dx,dy,dz,nx,ny,nz,ex,ey,
      &                           l2symtry,l4symtry)
       use Subtimers3d
       use Apertures
       integer(ISZ):: np,nx,ny,nz
       real(kind=8):: zgrid,xmmin,ymmin,zmmin,zmmax,dx,dy,dz
-      real(kind=8):: phi1d(0:*), xp(np), yp(np), zp(np)
+      real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: ex(np), ey(np)
       logical(ISZ):: l2symtry,l4symtry
 
@@ -9343,7 +9367,7 @@ c         The loop is in bendfieldsol3d
 c     --- If no field solve, return 
       if ( fstype == -1) return 
 
-      if (fstype == 3 .or. fstype == 7 .or. fstype == 11) then
+      if (fstype == 3 .or. fstype == 7 .or. fstype == 11 .or. fstype == 12) then
 c       --- SOR and multigrid field solvers - deal with bends directly and set
 c       --- axial boundary conditions (call to perphi3d is not needed)
 c       --- Chombo knows nothing of bends and does its own b.c.'s
@@ -9419,6 +9443,7 @@ c   4  2d fft in transverse plane, tridiag solve in z
      &   solvergeom==Rgeom  .or.
      &   solvergeom==Zgeom) fstype=10
       if(solvergeom==AMRgeom) fstype = 11
+      if (solvergeom == XYZgeomMR) fstype = 12
 
 c Note that the select case statement was giving the f90 compiler on HPUX
 c fits and so was replaced with if statements.
@@ -9530,6 +9555,11 @@ c         --- RZ full-multigrid solver
 c         --- Chombo AMR  full-multigrid solver
         call cho_solve3d(iwhich,nx,ny,nz,nzfull,dx,dy,dz,
      &                   l2symtry,l4symtry,xmmin,ymmin,zmmin,zmminglobal)
+      elseif (fstype == 12) then
+        if (iwhich <= 0) then
+          call execuser('fieldsolMR')
+        endif
+
       endif
 
 !$OMP MASTER

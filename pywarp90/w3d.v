@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.154 $, $Date: 2004/05/19 22:27:30 $
+#@(#) File W3D.V, version $Revision: 3.155 $, $Date: 2004/06/24 20:56:07 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.154 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.155 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -59,6 +59,7 @@ XZgeom     integer    /3/  # 2-D sheath geometry
 XYgeom     integer    /4/  # 2-D planar geometry
 Zgeom      integer    /5/  # 1-D planar geometry
 Rgeom      integer    /6/  # 1-D radial geometry
+XYZgeomMR  integer    /7/  # 3D-XYZ geometry with mesh refinement
  
 *********** InDiag3d dump:
 lgetese3d logical /.true./ # Sets whether electrostatic-energy is calculated,
@@ -308,6 +309,14 @@ ny_selfe integer /0/ +dump           # Same as ny
 nz_selfe integer /0/ +dump +parallel # Same as nz
 selfe(3,0:nx_selfe,0:ny_selfe,0:nz_selfe) _real [V/m] # Self E field,
  # calculated from phi via finite difference. Only used when top.efetch = 3
+
+*********** Efields3dParticles:
+exefield(:) _real
+eyefield(:) _real
+ezefield(:) _real
+xefield(:) _real
+yefield(:) _real
+zefield(:) _real
 
 *********** Picglb3d dump:
 # Globally useful quantities for PIC simulation
