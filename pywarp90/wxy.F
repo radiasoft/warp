@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.7 $, $Date: 2001/05/26 00:48:59 $
+c@(#) File WXY.M, version $Revision: 3.8 $, $Date: 2001/06/26 20:51:50 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -925,7 +925,7 @@ c         --- Compute lag average for experimental damping algorithm
 c         --- HALFV
           if (center == "halfv") then
 c           --- Obtain bend radii and residence factors
-	    call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,0.,dt)
+            call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,0.,dt)
 c           --- Correct Ez_self for warped mesh effect
             call bendezxy (ip,xp(ipmin),zp(ipmin),ez,
      &                     bendres,bendradi,bends,bnezflag,linbend)
@@ -1081,7 +1081,7 @@ c            --- Copy 'old' velocity into uxpo, uypo, and uzpo
                 uzpo(i) = uzp(ipmin+i-1)
              enddo
 c            --- Obtain bend radii and residence factors
-	     call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,-dt,0.)
+             call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,-dt,0.)
 c            --- Correct Ez_self for warped mesh effect
              call bendezxy (ip,xp(ipmin),zp(ipmin),ez,
      &                      bendres,bendradi,bends,bnezflag,linbend)
