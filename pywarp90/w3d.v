@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.71 $, $Date: 2002/09/04 18:10:31 $
+#@(#) File W3D.V, version $Revision: 3.72 $, $Date: 2002/09/19 20:25:35 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.71 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.72 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -302,6 +302,7 @@ inj_ninj             integer  # Auto set to either 1 or ninject. Set to 1
 inj_ns               integer  # Auto set to either 1 or ns. Set to 1
                               # when only one species is being injected from
                               # each source.
+linj_sphere          logical /.true./
 inj_grid(0:inj_nx,0:inj_ny,inj_ninj) _real [m]
    # Grid giving axial field grid location of injection sources in the lab frame
 inj_angl(0:inj_nx,0:inj_ny,inj_ninj) _real
@@ -313,6 +314,8 @@ inj_prev(0:inj_nx,0:inj_ny,inj_ninj,inj_ns) _real
 inj_rho(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Surface charge density at the emitting surface.
 inj_phi(0:inj_nx,0:inj_ny,inj_ninj)  _real
+   # Electrostatic potential at the emitting surface.
+inj_phiv(0:inj_nx,0:inj_ny,inj_ninj)  _real
    # Electrostatic potential at the emitting surface.
 inj_ex(0:inj_nx,0:inj_ny,inj_ninj)  _real
 inj_ey(0:inj_nx,0:inj_ny,inj_ninj)  _real
