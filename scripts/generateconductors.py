@@ -71,7 +71,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.50 2004/03/22 14:43:35 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.51 2004/03/31 14:16:59 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -180,7 +180,8 @@ Should never be directly created by the user.
 
   def intercept(self,xx,yy,zz,vx,vy,vz):
     result = Intercept(xx,yy,zz,vx,vy,vz,generator=self.generatori,
-                       condid=self.condid,kwlist=self.getkwlist())
+                       condid=self.condid,conductor=self,
+                       kwlist=self.getkwlist())
     return result
 
   def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
@@ -210,6 +211,8 @@ AssemblyNot class.  Represents 'not' of assemblies.
     return (-(self.left.distance(xx,yy,zz)))
   def isinside(self,xx,yy,zz):
     return (-(self.left.isinside(xx,yy,zz)))
+  def intercept(self,xx,yy,zz,vx,vy,vz):
+    return (-(self.left.intercept(xx,yy,zz,vx,vy,vz)))
   def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
     self.left.visualize(xmin,xmax,ymin,ymax)
 
@@ -231,6 +234,9 @@ AssemblyAnd class.  Represents 'and' of assemblies.
   def isinside(self,xx,yy,zz):
     return (self.left.isinside(xx,yy,zz) *
             self.right.isinside(xx,yy,zz))
+  def intercept(self,xx,yy,zz,vx,vy,vz):
+    return (self.left.intercept(xx,yy,zz,vx,vy,vz) *
+            self.right.intercept(xx,yy,zz,vx,vy,vz))
   def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
     self.left.visualize(xmin,xmax,ymin,ymax)
     self.right.visualize(xmin,xmax,ymin,ymax)
@@ -253,6 +259,9 @@ AssemblyPlus class.  Represents 'or' of assemblies.
   def isinside(self,xx,yy,zz):
     return (self.left.isinside(xx,yy,zz) +
             self.right.isinside(xx,yy,zz))
+  def intercept(self,xx,yy,zz,vx,vy,vz):
+    return (self.left.intercept(xx,yy,zz,vx,vy,vz) +
+            self.right.intercept(xx,yy,zz,vx,vy,vz))
   def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
     self.left.visualize(xmin,xmax,ymin,ymax)
     self.right.visualize(xmin,xmax,ymin,ymax)
@@ -275,6 +284,9 @@ AssemblyMinus class.
   def isinside(self,xx,yy,zz):
     return (self.left.isinside(xx,yy,zz) -
             self.right.isinside(xx,yy,zz))
+  def intercept(self,xx,yy,zz,vx,vy,vz):
+    return (self.left.intercept(xx,yy,zz,vx,vy,vz) -
+            self.right.intercept(xx,yy,zz,vx,vy,vz))
   def visualize(self,xmin=None,xmax=None,ymin=None,ymax=None):
     self.left.visualize(xmin,xmax,ymin,ymax)
     self.right.visualize(xmin,xmax,ymin,ymax)
@@ -600,7 +612,7 @@ The attribute 'distance' holds the calculated distance.
 
   def __mul__(self,right):
     "'and' operator, returns maximum of distances to surfaces."
-    c = less(abs(self.distance),abs(right.distance))
+    c = less(self.distance,right.distance)
     return Distance(self.xx,self.yy,self.zz,
                     choose(c,(self.distance,right.distance)))
 
@@ -703,9 +715,10 @@ at the intersection point.
   """
 
   def __init__(self,xx=None,yy=None,zz=None,vx=None,vy=None,vz=None,
-                    xi=None,yi=None,zi=None,angle=None,distance=None,
-                    generator=None,condid=1,kwlist=[]):
+                    xi=None,yi=None,zi=None,angle=None,
+                    generator=None,condid=1,conductor=None,kwlist=[]):
     self.condid = condid
+    self.conductor = conductor
     self.ndata = len(xx)
     self.xx = xx
     self.yy = yy
@@ -718,56 +731,51 @@ at the intersection point.
       self.yi = zeros(self.ndata,'d')
       self.zi = zeros(self.ndata,'d')
       self.angle = zeros(self.ndata,'d')
-      self.distance = zeros(self.ndata,'d')
       apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
                                 self.vx,self.vy,self.vz,
-                                self.xi,self.yi,self.zi,self.angle,
-                                self.distance])
+                                self.xi,self.yi,self.zi,self.angle])
     else:
       self.xi = xi
       self.yi = yi
       self.zi = zi
       self.angle = angle
-      self.distance = distance
    
   def __neg__(self):
     "Delta not operator."
     return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
-                     self.xi,self.yi,self.zi,self.angle,self.distance,
-                     condid=self.condid)
+                     self.xi,self.yi,self.zi,self.angle,
+                     conductor=self.conductor,condid=self.condid)
+
+  def binaryop(self,right,cond):
+    """All binary operations are the same, and depend only on the conductor
+obtained by applying the same operation on the self and right conductors.
+    """
+    selfdist = cond.distance(self.xi,self.yi,self.zi)
+    rightdist = cond.distance(right.xi,right.yi,right.zi)
+    li = abs(selfdist.distance)
+    ri = abs(rightdist.distance)
+    cc = li < ri
+    xi = where(cc,self.xi,right.xi)
+    yi = where(cc,self.yi,right.yi)
+    zi = where(cc,self.zi,right.zi)
+    angle = where(cc,self.angle,right.angle)
+    return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
+                     xi,yi,zi,angle,conductor=cond,condid=self.condid)
 
   def __mul__(self,right):
     "'and' operator, returns logical and."
-    c = less(self.distance,right.distance)
-    return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
-                     choose(c,(self.xi,right.xi)),
-                     choose(c,(self.yi,right.yi)),
-                     choose(c,(self.zi,right.zi)),
-                     choose(c,(self.angle,right.angle)),
-                     choose(c,(self.distance,right.distance)),
-                     condid=self.condid)
+    cond = self.conductor*right.conductor
+    return self.binaryop(right,cond)
 
   def __add__(self,right):
     "'or' operator, returns logical or."
-    c = greater(self.distance,right.distance)
-    return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
-                     choose(c,(self.xi,right.xi)),
-                     choose(c,(self.yi,right.yi)),
-                     choose(c,(self.zi,right.zi)),
-                     choose(c,(self.angle,right.angle)),
-                     choose(c,(self.distance,right.distance)),
-                     condid=self.condid)
+    cond = self.conductor + right.conductor
+    return self.binaryop(right,cond)
 
   def __sub__(self,right):
     "'or' operator, returns logical or."
-    c = greater(self.distance,right.distance)
-    return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
-                     choose(c,(self.xi,right.xi)),
-                     choose(c,(self.yi,right.yi)),
-                     choose(c,(self.zi,right.zi)),
-                     choose(c,(self.angle,right.angle)),
-                     choose(c,(self.distance,right.distance)),
-                     condid=self.condid)
+    cond = self.conductor - right.conductor
+    return self.binaryop(right,cond)
 
   def __str__(self):
     "Prints out delta"
@@ -1546,7 +1554,7 @@ Plate from beamlet pre-accelerator
     dx = (xmmax - xmmin)/nx
     dy = (ymmax - ymmin)/ny
     dz = (zmmax - zmmin)/nz
-    if dy == 0.: dy = dx
+    if ny == 0: dy = dx
 
     xmesh = xmmin + dx*arange(nx+1)
     ymesh = ymmin + dy*arange(ny+1)
@@ -2053,7 +2061,6 @@ except:
 
 class SRFRVLApart:
   """
-    condid
 Class for creating a surface of revolution conductor part using lines and arcs as primitives.  
  - name:   name of conductor part
  - data:   list of lines and arcs (this must be a continuous curve)
