@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.98 $, $Date: 2003/07/16 18:07:11 $
+#@(#) File TOP.V, version $Revision: 3.99 $, $Date: 2003/07/18 20:50:52 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.98 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.99 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1226,6 +1226,7 @@ zmmntmin             real         # Moments grid minimum in Z
 nzmmnt               integer /0/  # Number of points in z moments grid
 dzm                  real         # Moments grid cell size
 dzmi                 real         # Moments grid cell size inverse
+numzmmnt             integer /NUMZMMNT/ # Number of moments calculated
 zmntmesh(0:nzmmnt)  _real [m]     # Z mesh associated with Z moments
 pnumz(0:nzmmnt)     _real [1]     # No. of (physical) ions at grid point
 xbarz(0:nzmmnt)     _real [m]     # Mean X coordinate at grid point
