@@ -12,29 +12,29 @@ from warp import *
 from pyDXObject import *
 import __main__
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.4 2003/04/16 22:59:47 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.5 2004/05/15 01:16:58 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
 
 ###########################################################################
-def ppxxpy(iw = 0,**kw):
+def ppxxpy(iw = 0,labels=1,display=1,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
-  viewparticles(take(top.xp,ii),(take(top.uxp,ii)/take(top.uzp,ii)),
-                take(top.yp,ii),(take(top.uyp,ii)/take(top.uzp,ii)),
-                l1='X',l2="X'",l3='Y',name='WARP viz')
-  return
+  if labels == 1: labels = ['X',"X'",'Y']
+  return viewparticles(take(top.xp,ii),(take(top.uxp,ii)/take(top.uzp,ii)),
+                       take(top.yp,ii),(take(top.uyp,ii)/take(top.uzp,ii)),
+                       labels,name='WARP viz',display=display)
 
-def ppxyz(iw = 0,**kw):
+def ppxyz(iw = 0,labels=1,display=1,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
-  viewparticles(take(top.xp,ii),take(top.yp,ii),take(top.zp,ii),
-                take(top.uxp,ii),
-                l1='X',l2='Y',l3='Z',name='WARP viz')
-  return
+  if labels == 1: labels = ['X','Y','Z']
+  return viewparticles(take(top.xp,ii),take(top.yp,ii),take(top.zp,ii),
+                       take(top.uxp,ii),
+                       labels,name='WARP viz',display=display)
 
 ###########################################################################
 def viewisosurface1(data,isovalue,origins=None,deltas=None,name='WARP viz'):
@@ -84,7 +84,8 @@ def viewisosurface(data,isovalue,name='WARP viz'):
   DXImage(group,camera,name)
 
 ###########################################################################
-def viewparticles(x,y,z,v,l1=None,l2=None,l3=None,name='WARP particles'):
+def viewparticles(x,y,z,v,labels=None,name='WARP particles',
+                  display=1):
   # --- First combine particle data and create a DX array
   n = len(x)
   p = zeros((n,3),'d')
@@ -110,31 +111,55 @@ def viewparticles(x,y,z,v,l1=None,l2=None,l3=None,name='WARP particles'):
 
   minput = {'data':glyphs,'opacity':.5}
   moutput = ['mapped']
-  (colorglyphs,) = DXCallModule('AutoColor',minput,moutput)
-  DXReference(colorglyphs)
+  (dxobject,) = DXCallModule('AutoColor',minput,moutput)
+  DXReference(dxobject)
 
-  minput = {'object':colorglyphs}
-  moutput = ['camera']
-  (camera,) = DXCallModule('AutoCamera',minput,moutput)
-  DXReference(camera)
-
-  if l1 is not None and l2 is not None and l3 is not None:
-    labelsadded = 1
-    labels = DXMakeStringList([l1,l2,l3])
-    minput = {'input':colorglyphs,'camera':camera,'labels':labels,
-              'ticks':3,'colors':'yellow'}
-    moutput = ['axes']
-    (ob,) = DXCallModule('AutoAxes',minput,moutput)
-    DXReference(ob)
+  if display:
+    DXImage(dxobject,name=name,labels=labels)
+    DXDelete(dxobject)
   else:
-    labelsadded = 0
-    ob = colorglyphs
+    return dxobject
 
-  DXImage(ob,camera,name)
-  DXDelete(ob)
-  DXDelete(camera)
-  if labelsadded:
-    DXDelete(colorglyphs)
+###########################################################################
+class DXCollection:
+  def __init__(self,*dxobjects,**kw):
+    labels = kw.get('labels',None)
+    self.labels = labels
+    self.dxobject = None
+    for o in dxobjects: self.addobject(o)
+  def extractdxobject(self,object):
+    dxobject = object
+    try:
+      # --- This is horribly kludgy, but works. This keeps looking until
+      # --- it finds an object which doesn't have dxobject as an attribute.
+      # --- Assumes that that will be an actual dxobject. This will fail
+      # --- miserably if an objects dxobject reference is recursive.
+      # --- Please, let that never happen!
+      while 1:
+        dxobject = dxobject.dxobject
+    except AttributeError:
+      pass
+    return dxobject
+  def createdxobject(self,object):
+    dxobject = self.extractdxobject(object)
+    minput = {'object':dxobject}
+    moutput = ['group']
+    (self.dxobject,) = DXCallModule('Collect',minput,moutput)
+    DXReference(self.dxobject)
+  def addobject(self,object):
+    if self.dxobject is None:
+      self.createdxobject(object)
+    else:
+      dxobject = self.extractdxobject(object)
+      minput = {'input':self.dxobject,'object':dxobject}
+      moutput = ['group']
+      (g,) = DXCallModule('Append',minput,moutput)
+      DXDelete(self.dxobject)
+      self.dxobject = g
+      DXReference(self.dxobject)
+  def reset(self):
+    DXDelete(self.dxobject)
+    self.dxobject = None
 
 ###########################################################################
 #==========================================================================
@@ -145,23 +170,36 @@ def interactor_handler():
   if len(getchar) > 0: interactor = eval(getchar)
   else:                interactor = -1
 
-_group = [None]
-_groupn = [0]
-def DXImage(object,camera,name='WARP viz'):
+_group = DXCollection()
+def DXImage(object,camera=None,name='WARP viz',labels=None):
   global interactor
 
-  if _group[0] is None:
-    minput = {'object':object}
-    moutput = ['group']
-    (_group[0],) = DXCallModule('Collect',minput,moutput)
-    DXReference(_group[0])
+  _group.addobject(object)
+  dxobject = _group.dxobject
+  if labels is None: labels = _group.labels
+
+  if camera is None:
+    cameraadded = 1
+    DXReference(dxobject)
+    minput = {'object':dxobject}
+    moutput = ['camera']
+    (camera,) = DXCallModule('AutoCamera',minput,moutput)
+    DXReference(camera)
   else:
-    minput = {'input':_group[0],'object':object}
-    moutput = ['group']
-    (g,) = DXCallModule('Append',minput,moutput)
-    DXDelete(_group[0])
-    _group[0] = g
-    DXReference(_group[0])
+    cameraadded = 0
+
+  if labels is not None:
+    assert (len(labels) == 3),"Length of lables list must be three"
+    labelsadded = 1
+    labels = DXMakeStringList(labels)
+    minput = {'input':dxobject,'camera':camera,'labels':labels,
+              'ticks':3,'colors':'yellow'}
+    moutput = ['axes']
+    olddxobject = dxobject
+    (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
+    DXReference(dxobject)
+  else:
+    labelsadded = 0
 
   i = 0
   DXRegisterInputHandler(interactor_handler)
@@ -178,7 +216,7 @@ def DXImage(object,camera,name='WARP viz'):
       DXDelete(wsize)
     else:
       minput = {'where':wwhere,'size':wsize,'events':wevents,
-                'object':_group[0],'mode':interactor,'resetObject':1}
+                'object':dxobject,'mode':interactor,'resetObject':1}
       if i == 1:
         minput['defaultCamera'] = camera
         minput['resetCamera'] = 1
@@ -190,12 +228,12 @@ def DXImage(object,camera,name='WARP viz'):
       (dwhere,) = DXCallModule('Display',minput,moutput)
 
   DXDelete(dwhere)
+  if cameraadded: DXDelete(camera)
+  if labelsadded: DXDelete(olddxobject)
   interactor = 0
 
 def DXNewImage():
-  DXDelete(_group[0])
-  _group[0] = None
-  _groupn[0] = 0
+  _group.reset()
 
 # This may not be the best thing to do, but it works - it gives access to this
 # function without having to explicitly import this module. Note that this
