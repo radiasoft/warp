@@ -1,6 +1,6 @@
 # Copyright (c) 1996, 1997, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
-gistdummy_version = "$Id: gistdummy.py,v 1.5 2001/07/17 00:33:47 dave Exp $"
+gistdummy_version = "$Id: gistdummy.py,v 1.6 2001/10/23 17:08:37 dave Exp $"
 from Numeric import *
 import sys, os	# To be sure expand_path has posixpath and we have sys.path
 #from gistC import *
@@ -63,4 +63,6 @@ def palette(*x,**xx):
 def pli(*x,**xx):
   pass
 def pldj(*x,**xx):
+  pass
+def plfp(*x,**xx):
   pass
