@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.22 2002/01/08 00:07:44 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.23 2002/01/09 17:30:59 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -651,12 +651,22 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
 #    needed in the second step
 #  2 Read the rest of the data in
 #
-def parallelrestore(fname,verbose=false):
+def parallelrestore(fname,verbose=false,skip=[]):
   # --- All PE's open the file for reading.
   ff = PR.PR(fname)
 
   # --- Get list of all of the variables in the restart file
   vlist = ff.inquire_ls()
+
+  # --- Remove skipped variables from vlist
+  vlistcopy = 1*vlist
+  for v in vlistcopy:
+    if v in skip:
+      vlist.remove(v)
+      continue
+    if v[-4] == '@':
+      if v[:-4] in skip or v[-3:]+'.'+v[:-4] in skip: vlist.remove(v)
+  del vlistcopy
 
   # --- First, setup some arrays that need special handling.
   # --- The particles arrays are returned to there original size as in
