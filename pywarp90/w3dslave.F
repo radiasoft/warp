@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.1 $, $Date: 2001/04/30 22:41:32 $
+c W3DSLAVE.M, version $Revision: 1.2 $, $Date: 2001/06/13 20:36:55 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -504,6 +504,7 @@ c  Only first and last processors do anything.
 c=============================================================================
       subroutine getphiforparticles(nx,ny,nz,phi)
       use Parallel
+      use InjectVars3d
       integer(ISZ):: nx,ny,nz
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
 
@@ -520,9 +521,13 @@ c     --- First, send the data out to processors that need it.
       do i=0,nslaves-1
         if ( i /= my_index) then
           izsend = max(izfsslave(my_index),izpslave(i)-1) - izslave(my_index)
+     &             + inj_d-1
+c + inj_d-1: temporaty fix for inj_d>1 
           nzsend = min(izfsslave(my_index)+nzfsslave(my_index)-grid_overlap,
      &                 izpslave(i)+nzpslave(i)+1)
      &             - max(izfsslave(my_index),izpslave(i)-1) + 1
+     &             + inj_d-1
+c + inj_d-1: temporaty fix for inj_d>1
           if (nzsend > 0) then
             call MPI_ISEND(phi(0,0,izsend),nzsend*(nx+1)*(ny+1),
      &                     MPI_DOUBLE_PRECISION,
@@ -535,9 +540,13 @@ c     --- Then, gather up the data sent to this processor.
       do i=0,nslaves-1
         if ( i /= my_index) then
           izrecv = max(izpslave(my_index)-1,izfsslave(i)) - izslave(my_index)
+     &             + inj_d-1
+c + inj_d-1: temporaty fix for inj_d>1
           nzrecv = min(izpslave(my_index)+nzpslave(my_index)+1,
      &                 izfsslave(i)+nzfsslave(i)-grid_overlap)
      &             - max(izpslave(my_index)-1,izfsslave(i)) + 1
+     &             + inj_d-1
+c + inj_d-1: temporaty fix for inj_d>1
           if (nzrecv > 0) then
             call MPI_RECV(phi(0,0,izrecv),nzrecv*(nx+1)*(ny+1),
      &                    MPI_DOUBLE_PRECISION,
