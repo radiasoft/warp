@@ -1,5 +1,5 @@
 wrz
-#@(#) File WRZ.V, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:10 $ 
+#@(#) File WRZ.V, version $Revision: 3.2 $, $Date: 2001/04/30 20:06:21 $ 
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WRZ of code WARP
@@ -10,7 +10,7 @@ wrz
  
 *********** WRZversion dump:
 # Quantities associated with version control 
-verswrz character*19 /"$Revision: 3.1 $"/ # Current code version, set by CVS
+verswrz character*19 /"$Revision: 3.2 $"/ # Current code version, set by CVS
  
 *********** InPltCtlrz dump:
 # Controls for when the various plots are made

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.3 $, $Date: 2001/04/26 17:26:08 $
+c@(#) File DW3D.M, version $Revision: 3.4 $, $Date: 2001/04/30 20:06:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -22,7 +22,7 @@ c=============================================================================
 
 c  Prints out various parameters to a plot frame and an output file or tty
 
-      character*80:: textline
+      character(80):: textline
       real(kind=8):: xrbend,xbbend,xbendlen,xstralen,xz0bend
 
 c Exit now if parameter are not to be printed
@@ -167,7 +167,7 @@ c=============================================================================
       use InDiag3d
       use InPltCtl3d
       use Timers
-      character*3:: fld
+      character(3):: fld
       integer(ISZ):: freqflag
 
 c  Master control for doing field plots

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.4 $, $Date: 2001/04/26 17:31:35 $
+c@(#) File TOP.M, version $Revision: 3.5 $, $Date: 2001/04/30 20:09:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2456,7 +2456,7 @@ c=============================================================================
       use Constant
       integer(ISZ):: np
       real(kind=8):: gaminv(np),uxp(np),uyp(np),uzp(np)
-      character*8 :: gamadv
+      character(8):: gamadv
       logical(ISZ):: lrelativ
 
 c  Advance Gamma Inverse from it-3/2 to it-1/2 using method given by gamadv
@@ -3060,7 +3060,7 @@ c=============================================================================
       subroutine writarry(nn,arry,filename)
       integer(ISZ):: nn
       real(kind=8):: arry(nn)
-      character*(*):: filename
+      character(*):: filename
       integer(ISZ):: ii
 
       open(unit=27,file=filename,status='new')
@@ -3109,7 +3109,7 @@ c     b := partial sum of a
 c=============================================================================
       logical function inlist (list, listlen, text)
       integer(ISZ):: listlen
-      character*8 :: text, list(listlen)
+      character(8):: text, list(listlen)
       integer(ISZ):: i
 
       inlist = .false.

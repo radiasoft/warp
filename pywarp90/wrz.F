@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:09 $
+c@(#) File WRZ.M, version $Revision: 3.2 $, $Date: 2001/04/30 20:06:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -390,11 +390,9 @@ c=============================================================================
       use Picglbrz
       use Fieldsrz
  
-c  Takes a time step, returns status OK, ERR, or DONE
- 
+c  Takes a time step
 
       integer(ISZ):: is,ipmin,ip
- 
  
 c  Announce that we're running
  
@@ -522,7 +520,7 @@ c=============================================================================
       use Moments
       use Z_arrays
       use FFTDiagrz
-      character*(*):: caller
+      character(*):: caller
       logical(ISZ):: thisstep,thiszbeam
  
 c  Advances the system forward in time, when called by WRZEXE
@@ -1023,7 +1021,7 @@ c=============================================================================
       use Fieldsrz
       use Z_arrays
       use LinearBeam
-      character*(*):: center
+      character(*):: center
  
 c  Advances the particles position and velocity according to CENTER,
 c  and also advances RHO.
@@ -1183,10 +1181,10 @@ c=============================================================================
       use Constant
       use Beam_acc
       use InMeshrz
-      character*(*):: center ,gamadv
+      character(*):: center ,gamadv
       integer(ISZ):: np
-      real(kind=8):: rp(np), tp(np), zp(np), urp(np), utp(np), uzp(np), gaminv(np)
-      real(kind=8):: er(np), et(np), ez(np), br(np), bt(np), bz(np), frext(np)
+      real(kind=8):: rp(np),tp(np),zp(np),urp(np),utp(np),uzp(np),gaminv(np)
+      real(kind=8):: er(np),et(np),ez(np),br(np),bt(np),bz(np),frext(np)
       real(kind=8):: q,m,dt
       real(kind=8):: tmp(NPARPGRP)
  
@@ -1518,7 +1516,7 @@ c=============================================================================
       use Particles
       use Setpworkrz
       integer(ISZ):: envxport
-      character*72:: errline
+      character(72):: errline
  
 c  Loads particles; sets npmax, np, etc.
 c  Note that species 1 is the main (beam) ion species, and obtains
@@ -1672,7 +1670,7 @@ c        --- unormalize z to fetch envelope
 c        --- fetch envelope
          if (.not. cylinder) then
            icheck = envxport(i1-k+1,zt,at,apt,bt,bpt,xct,xpct,yct,ypct)
-           if (icheck .eq. ERR) then
+           if (icheck .eq. 1) then
               call remark ("ERROR: out-of-range z sent to ENVXPORT")
               call kaboom (0)
            endif
@@ -2001,7 +1999,7 @@ c=============================================================================
       real(kind=8):: zbeam,q,wght
       real(kind=8):: rho1d (0:*)
       real(kind=8):: rp(np), zp(np), uzp(np)
-      character*(*):: depos
+      character(*):: depos
  
 c  Sets charge density
 

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DWRZ.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:07 $
+c@(#) File DWRZ.M, version $Revision: 3.2 $, $Date: 2001/04/30 20:06:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package WRZ of code WARP
@@ -41,7 +41,7 @@ c  Write to text output file
 c=============================================================================
       subroutine pltfldrz(fld,freqflag)
       use InPltCtlrz
-      character*3:: fld
+      character(3):: fld
       integer(ISZ):: freqflag
  
 c  Master control for doing field plots

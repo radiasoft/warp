@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CIR.M, version $Revision: 3.2 $, $Date: 2001/04/27 21:31:13 $
+c@(#) File CIR.M, version $Revision: 3.3 $, $Date: 2001/04/30 20:09:41 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package CIR of the PIC code WARP,
@@ -2809,7 +2809,7 @@ c===========================================================================
       integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: aion,zion
-      character*(*):: inout
+      character(*):: inout
 
 c     RESETBETA modifies beta for each beam slice to account for the
 c     change of electric potential entering and exiting electric 
@@ -2876,7 +2876,7 @@ c===========================================================================
       use Constant
       use Lattice
       use CIRsetacc
-      character*(*):: schedule
+      character(*):: schedule
       integer(ISZ):: nit
       real(kind=8):: y(16,nit)
       real(kind=8):: ekinstart,ekinend,zlcir,zucir,deltbeam

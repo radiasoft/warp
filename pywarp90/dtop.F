@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.M, version $Revision: 3.4 $, $Date: 2001/04/26 17:31:35 $
+c@(#) File DTOP.M, version $Revision: 3.5 $, $Date: 2001/04/30 20:09:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -269,7 +269,7 @@ c=============================================================================
 c  Calculates various parameters and optionally prints them out to a plot
 c  frame and an output file or tty
 
-      character*80:: textline
+      character(80):: textline
 
 c  Calculate various quantities first
 
@@ -619,15 +619,15 @@ c  OTHER-THAN-PHYSICS-OR-GRAPHICS ROUTINES
 c=============================================================================
       subroutine printpkgversion(iout,package,version)
       integer(ISZ):: iout
-      character*(*):: package
-      character*(19):: version
+      character(*):: package
+      character(19):: version
 c Prints out the package name and version number. This routine is only
 c used for the printing of the version number at the start up of the code.
       integer(ISZ):: i,lenv
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.4 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.5 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19
@@ -644,8 +644,8 @@ c=============================================================================
       use Code_version
       use Ch_var
       integer(ISZ):: iunit
-      character*79:: version
-      character*72:: author
+      character(79):: version
+      character(72):: author
       common /cverpar/ version, author
 
 c  This is where "Basis version ..... <some person>....." gets printed.

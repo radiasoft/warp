@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.2 $, $Date: 2001/04/20 00:22:09 $
+c@(#) File WXY.M, version $Revision: 3.3 $, $Date: 2001/04/30 20:06:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -365,7 +365,7 @@ c=============================================================================
       use Particles
       use Particlesxy
 
-c  Takes a time step, returns status OK, ERR, or DONE
+c  Takes a time step
 c  This routine advances the mesh in the lab frame, sets the logicals
 c  which control how this next step is to be done, and then calls
 c  the routine STEPXY to do the step.
@@ -586,7 +586,7 @@ c=============================================================================
       use Picglb3d
       use LatticeInternal
       use Timers
-      character*(*):: caller
+      character(*):: caller
       logical(ISZ):: thisstep,thiszbeam,dolabwn
 
 c  When called by WXYEXE, stepxy advances the system forward in time one 
@@ -1661,7 +1661,7 @@ c=============================================================================
       use Z_arrays
       use Damped_eom
       use Lattice
-      character*(*):: center
+      character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
@@ -3367,7 +3367,7 @@ c otherwise only does a FFT field solve in 2D.
 
       integer(ISZ):: i,j,iz
       real(kind=8):: r,x,dxi,phiref
-      character*(120):: outstr
+      character(120):: outstr
 
 c     --- Return if not doing any field solves.
       if ( fstype == -1) return

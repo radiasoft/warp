@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.3 $, $Date: 2001/04/26 17:26:08 $
+c@(#) File W3D.M, version $Revision: 3.4 $, $Date: 2001/04/30 20:06:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -496,7 +496,7 @@ c=============================================================================
       use InjectVars
       use LatticeInternal
       use Timers
-      character*(*):: caller
+      character(*):: caller
       logical(ISZ):: thisstep,thiszbeam,dolabwn
 
 c  When called by W3DEXE, step3d advances the system forward in time one 
@@ -2059,7 +2059,7 @@ c=============================================================================
       use Lattice
       use InjectVars
       use Apertures
-      character*(*):: center
+      character(*):: center
 
 c  Advances the particles position and velocity according to CENTER,
 c  and also loads RHO at the new time level.
@@ -2680,7 +2680,7 @@ c============================================================================
       integer(ISZ):: eomdamp,it,itdamp,np
       real(kind=8):: ex(np), ey(np), ez(np), exold(np), eyold(np), ezold(np)
       real(kind=8):: exlag(np), eylag(np), ezlag(np)
-      character*(*):: center
+      character(*):: center
 
 c  Computes modified electric field to apply "adjustably damped" mover.
 c  Updates "old" and "lag" qtys only after "fullv" or "halfv" advance,
@@ -4059,7 +4059,7 @@ c  Picglb is included only to use zbeam
       integer(ISZ):: iz,ipp,izz
       integer(ISZ):: ir,irr
       integer(ISZ):: envxport
-      character*72:: errline
+      character(72):: errline
       real(kind=8):: wranf,rnorm,rnrev
 #ifdef PARALLEL
       real(kind=8):: zmin,zmax
@@ -4371,7 +4371,7 @@ c        --- fetch envelope
            enddo
          elseif (.not. cylinder) then
            icheck = envxport(i1-k+1,zt,at,apt,bt,bpt,xct,xpct,yct,ypct)
-           if (icheck == ERR) then
+           if (icheck == 1) then
               call remark ("ERROR: out-of-range z sent to ENVXPORT")
               call kaboom (0)
            endif
@@ -4786,7 +4786,7 @@ c=============================================================================
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho1d(0:*)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
-      character*8 :: depos
+      character(8):: depos
 
 c  Sets charge density
 
@@ -7541,7 +7541,7 @@ c      2) Iteration loop for a perturbative calculation of fields.
 
       integer(ISZ):: i,j,k
       real(kind=8):: ccmult,rs,dhdz,cutoff,x,r,phiref,rskm1,rskp1,dxi,dzi
-      character*(80):: outstr
+      character(80):: outstr
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
