@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.34 2003/04/17 22:22:35 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.35 2003/05/28 20:26:35 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -10,8 +10,8 @@ top.nslaves = npes
 # --- This reorganizes the particles for the parallel version after the mesh
 # --- has been changed. The compiled routine reorg_particles should probably
 # --- be called instead (but it is not callable from python yet).
-def reorgparticles():
-  zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
+#def reorgparticles():
+#  zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
 
 # ---------------------------------------------------------------------------
 def gatherallzarray(a,zaxis=0):
