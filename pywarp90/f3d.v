@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.71 $, $Date: 2003/04/09 01:57:11 $
+#@(#) File F3D.V, version $Revision: 3.72 $, $Date: 2003/04/16 23:07:18 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.71 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.72 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -234,9 +234,12 @@ mglevelsly(0:100) real /101*1/ # List of coarsening factors in y
 mglevelslz(0:100) real /101*1/ # List of coarsening factors in z
 mglevelspart(0:100) logical    # List of flags for whether full or partial
                                # coarsening is done: 0 is full, 1 is partial
-mggoodnumbers(40) integer /4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,80,96,112,
-                           128,160,192,224,256,320,384,448,512,640,768,896,
-                           1024,1280,1536,1792,2048,2560,3072,3584,5120,7168/
+mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
+                           80,96,112,128,160,192,224,256,320,384,448,512,
+                           640,768,896,1024,1280,1536,1792,2048,2560,3072,
+                           3584,4096,5120,6144,7168,8192,10240,12288,14336,
+                           16384,20480,24576,28672,32768,40960,49152,57344,
+                           65536/
                          # A list of good numbers to use for the grid
                          # dimension. This is an ordered list of powers of two
                          # times 1, 3, 5, and 7.
@@ -418,63 +421,106 @@ setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
 zplaneconductorf(zcent:real,zsign,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zplaneconductord(zcent:real,zsign,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 boxconductorf(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+boxconductord(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 cylinderconductorf(rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+cylinderconductord(rad:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 cylindersconductorf(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+cylindersconductord(ncylinders:integer,rad:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 xcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+xcylinderconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 ycylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+ycylinderconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 zcylinderconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zcylinderconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 zroundedcylinderconductorf(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zroundedcylinderconductord(rad:real,length:real,rad2:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 zcylinderoutconductorf(rad:real,length:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zcylinderoutconductord(rad:real,length:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 zroundedcylinderoutconductorf(rad:real,length:real,rad2:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zroundedcylinderoutconductord(rad:real,length:real,rad2:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 sphereconductorf(rad:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+sphereconductord(rad:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 coneconductorf(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+coneconductord(r_zmin:real,r_zmax:real,length:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 conesconductorf(ncones:integer,r_zmin:real,r_zmax:real,length:real,
         theta:real,phi:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+conesconductord(ncones:integer,r_zmin:real,r_zmax:real,length:real,
+        theta:real,phi:real,fuzz:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 zconeconductorf(r_zmin:real,r_zmax:real,length:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zconeconductord(r_zmin:real,r_zmax:real,length:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 zconeoutconductorf(r_zmin:real,r_zmax:real,length:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+zconeoutconductord(r_zmin:real,r_zmax:real,length:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 ztorusconductorf(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+ztorusconductord(r1:real,r2:real,xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 beamletplateconductorf(za:real,zb:real,z0:real,thickness:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
+beamletplateconductord(za:real,zb:real,z0:real,thickness:real,
+        xcent:real,ycent:real,zcent:real,
+        n:integer,x:real,y:real,z:real,distance:real) subroutine
 
 ******** ConductorGeometryVisualization:
 maxtriangles integer/0/
