@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.13 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.14 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -1757,6 +1757,12 @@ c       --- Coefficients of the quadratic
         c = t1**2 + t2**2 - (s1+s2*t3)**2
 c       --- Check if z-line intersects the cone
         if (b**2 - 4*a*c >= -fuzz) then
+c         --- Get the point where the z-line intersects the end planes
+          z1 = (-lenhalf - xx*stheta*cphi - yy*sphi)*cci
+          z2 = (+lenhalf - xx*stheta*cphi - yy*sphi)*cci
+          zlend = min(z1,z2)
+          zuend = max(z1,z2)
+          zgcross = (zcross - xx*stheta*cphi - yy*sphi)*cci
 c         --- Get the two points of intersection
           if (a == 0) then
             z1 = -c/b
@@ -1765,15 +1771,13 @@ c         --- Get the two points of intersection
             ss = sqrt(max(0.,b**2 - 4*a*c))
             z1 = (-b-ss)/(2*a)
             z2 = (-b+ss)/(2*a)
+            if (ss == 0. .and. abs(z1 - zgcross) < fuzz) then
+              z1 = zgcross
+              z2 = zgcross
+            endif
           endif
           zl = min(z1,z2)
           zu = max(z1,z2)
-c         --- Get the point where the z-line intersects the end planes
-          z1 = (-lenhalf - xx*stheta*cphi - yy*sphi)*cci
-          z2 = (+lenhalf - xx*stheta*cphi - yy*sphi)*cci
-          zlend = min(z1,z2)
-          zuend = max(z1,z2)
-          zgcross = (zcross - xx*stheta*cphi - yy*sphi)*cci
 c         --- Now, get distances to surface
           zi1 = +LARGEPOS
           zi2 = -LARGEPOS
@@ -1801,7 +1805,7 @@ c         --- Now, get distances to surface
             zi1 = max(zl,zlend)
             zi2 = min(zu,zuend)
           endif
-            
+
           if (zz <= zi1) delpz(i) = zi1 - zz
           if (zi1 <= zz .and. zz <= zi2) then
             delmz(i) = zi1 - zz
@@ -1819,6 +1823,13 @@ c       --- delta x
         b = -2*t1*ctheta - 2*t2*stheta*sphi - 2*(s1+s2*t3)*s2*stheta*cphi
         c = t1**2 + t2**2 - (s1 + s2*t3)**2
         if (b**2 - 4*a*c >= 0) then
+c         --- Get the point where the x-line intersects the end planes
+          x1 = (-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          x2 = (+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
+          xlend = min(x1,x2)
+          xuend = max(x1,x2)
+          xgcross = (zcross - zz*ctheta*cphi - yy*sphi)*sci
+c         --- Get the two points of intersection
           if (a == 0) then
             x1 = -c/b
             x2 = x1
@@ -1826,15 +1837,13 @@ c       --- delta x
             ss = sqrt(b**2 - 4*a*c)
             x1 = (-b-ss)/(2*a)
             x2 = (-b+ss)/(2*a)
+            if (ss == 0. .and. abs(x1 - xgcross) < fuzz) then
+              x1 = xgcross
+              x2 = xgcross
+            endif
           endif
           xl = min(x1,x2)
           xu = max(x1,x2)
-c         --- Get the point where the x-line intersects the end planes
-          x1 = (-lenhalf - zz*ctheta*cphi - yy*sphi)*sci
-          x2 = (+lenhalf - zz*ctheta*cphi - yy*sphi)*sci
-          xlend = min(x1,x2)
-          xuend = max(x1,x2)
-          xgcross = (zcross - zz*ctheta*cphi - yy*sphi)*sci
 c         --- Now, get distances to surface
           xi1 = +LARGEPOS
           xi2 = -LARGEPOS
@@ -1862,7 +1871,7 @@ c         --- Now, get distances to surface
             xi1 = max(xl,xlend)
             xi2 = min(xu,xuend)
           endif
-            
+
           if (xx <= xi1) delpx(i) = xi1 - xx
           if (xi1 <= xx .and. xx <= xi2) then
             delmx(i) = xi1 - xx
@@ -1879,6 +1888,13 @@ c       --- delta y
         b = -2*t2*cphi - 2*(s1+s2*t3)*s2*sphi
         c = t1**2 + t2**2 - (s1+s2*t3)**2
         if (b**2 - 4*a*c >= 0) then
+c         --- Get the point where the z-line intersects the end planes
+          y1 = (-lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+          y2 = (+lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
+          ylend = min(y1,y2)
+          yuend = max(y1,y2)
+          ygcross = (zcross - zz*ctheta*cphi - xx*stheta*cphi)*si
+c         --- Get the two points of intersection
           if (a == 0) then
             y1 = -c/b
             y2 = y1
@@ -1886,15 +1902,13 @@ c       --- delta y
             ss = sqrt(b**2 - 4*a*c)
             y1 = (-b-ss)/(2*a)
             y2 = (-b+ss)/(2*a)
+            if (ss == 0. .and. abs(y1 - ygcross) < fuzz) then
+              y1 = ygcross
+              y2 = ygcross
+            endif
           endif
           yl = min(y1,y2)
           yu = max(y1,y2)
-c         --- Get the point where the z-line intersects the end planes
-          y1 = (-lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
-          y2 = (+lenhalf - zz*ctheta*cphi - xx*stheta*cphi)*si
-          ylend = min(y1,y2)
-          yuend = max(y1,y2)
-          ygcross = (zcross - zz*ctheta*cphi - xx*stheta*cphi)*si
 c         --- Now, get distances to surface
           yi1 = +LARGEPOS
           yi2 = -LARGEPOS
@@ -1922,7 +1936,7 @@ c         --- Now, get distances to surface
             yi1 = max(yl,ylend)
             yi2 = min(yu,yuend)
           endif
-            
+
           if (yy <= yi1) delpy(i) = yi1 - yy
           if (yi1 <= yy .and. yy <= yi2) then
             delmy(i) = yi1 - yy
