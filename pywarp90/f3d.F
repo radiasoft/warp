@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.4 $, $Date: 2001/04/30 20:04:39 $
+c@(#) File F3D.M, version $Revision: 3.5 $, $Date: 2001/06/01 20:21:05 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -3509,7 +3509,7 @@ c  get rest of quads within mesh
       iqprev = -1
       numends = 0
       do iz=1,nz-1
-        call getelemid(zmmin+iz*dz+zgrid,offset,nquad,quadzs,quadze,iq)
+        call getquadid(zmmin+iz*dz+zgrid,offset,iq,0)
         if (iq .ne. iqprev .and. numends < nendmax) then
           numends = numends + 1
           quadend(numends) = (quadzs(iq) + offset - zgrid - zmmin)
@@ -3562,7 +3562,7 @@ c  Allocate local variables
           if (nzpts == 0) nzpts = 16
           if (nendquad == 0) nendquad = 20
           iq = 0
-          call getelemid(zmmin+zgrid,offset,nquad,quadzs,quadze,iq)
+          call getquadid(zmmin+zgrid,offset,iq,0)
           nzquad =  ((quadze(iq) - quadzs(iq))/dz + 1.5)
           qdslclen = (quadze(iq) - quadzs(iq))/(nzquad-1.)
           ncndpts = nzquad*nzpts + 2*nendquad
@@ -4614,7 +4614,6 @@ c===========================================================================
      &                    l2symtry,l4symtry)
       use PSOR3d
       use Lattice
-      use LatticeInternal
       use InPart
       use InjectVars
       integer(ISZ):: nx,ny,nz
@@ -4659,10 +4658,9 @@ c     --- since cquad arrays are only intended to be accessed by particles.
 
 c       --- find location in lattice array
         zz = zgrid + zmmin + iz*dz
-        if (zz-zlmin-zbeam < 0.) zz = zz + zlmax - zlmin
 
 c       --- Get id of quadrupole element
-        call getelemid(zz,offset,nquad,quadzs,quadze,iq)
+        call getquadid(zz,offset,iq,0)
 
 c       --- set up temp variables for locating quadrupoles
         qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
@@ -4772,10 +4770,9 @@ c     --- loop over z planes
       do iz=0,nz
 c       --- find location in lattice array
         zz = zgrid + zmmin + iz*dz
-        if (zz-zlmin-zbeam < 0.) zz = zz + zlmax - zlmin
 
 c       --- Get id of quadrupole element
-        call getelemid(zz,offset,nquad,quadzs,quadze,iq)
+        call getquadid(zz,offset,iq,0)
 
 c       --- set up temp variables for locating quadrupoles
         qdcenter = 0.5*(quadzs(iq) + quadze(iq)) + offset
@@ -5220,8 +5217,7 @@ c       --- loop over z in the lattice array looking for dipoles
         id = 0
         do iz=0,nz
           zz = zgrid + zmmin + iz*dz
-          if (zz-zlmin-zbeam < 0.) zz = zz + zlmax - zlmin
-          call getelemid(zz,offset,ndipo,dipozs,dipoze,id)
+          call getdipoid(zz,offset,id,0)
 
 c         --- calculate center of dipole
           dipocent = .5*(dipozs(id) + dipoze(id)) - zmmin - zgrid
