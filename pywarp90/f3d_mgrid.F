@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.16 $, $Date: 2001/12/05 17:48:01 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.17 $, $Date: 2002/01/23 20:19:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1086,17 +1086,20 @@ c           --- set temporaries for boundaries
      &         (boundxy == 1 .or. l2symtry .or. l4symtry)) icndxm1 = 1
             if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
             if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
+            if (icndxm1 == -1 .or. icndxp1 == nx+1) cycle
 
             if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
             if (icndym1 == -1 .and.
      &         (boundxy == 1 .or. l4symtry)) icndym1 = 1
             if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
             if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
+            if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
 
             if (icndzm1 == -1 .and. bound0 == 1) icndzm1 = +1
             if (icndzm1 == -1 .and. bound0 == 2) icndzm1 = nz-1
             if (icndzp1 == nz+1 .and. boundnz == 1) icndzp1 = nz-1
             if (icndzp1 == nz+1 .and. boundnz == 2) icndzp1 = +1
+            if (icndzm1 == -1 .or. icndzp1 == nz+1) cycle
 
 c           --- Set temporaries with initial values.
             pxm = phi(icndxm1,icdy   ,icdz   )
@@ -1257,17 +1260,20 @@ c           --- set temporaries for boundaries
      &         (boundxy == 1 .or. l2symtry .or. l4symtry)) icndxm1 = 1
             if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
             if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
+            if (icndxm1 == -1 .or. icndxp1 == nx+1) cycle
 
             if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
             if (icndym1 == -1 .and.
      &         (boundxy == 1 .or. l4symtry)) icndym1 = 1
             if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
             if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
+            if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
 
             if (icndzm1 == -1 .and. bound0 == 1) icndzm1 = +1
             if (icndzm1 == -1 .and. bound0 == 2) icndzm1 = nz-1
             if (icndzp1 == nz+1 .and. boundnz == 1) icndzp1 = nz-1
             if (icndzp1 == nz+1 .and. boundnz == 2) icndzp1 = +1
+            if (icndzm1 == -1 .or. icndzp1 == nz+1) cycle
 
 c           --- set temporaries with initial values
             pxm = phi(icndxm1,icdy   ,icdz   )
