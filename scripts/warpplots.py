@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.57 2001/12/06 23:36:39 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.58 2001/12/13 22:27:57 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -896,12 +896,14 @@ def ppgeneric_doc(x,y):
   - marker=dot: particle marker to plot
   - msize=1.: scaled size of marker
   - hash=0: flag to turn on or off the hash plot
-  - line_scale=1.: scaling factor on line length
+  - line_scale=.9: scaling factor on line length
   - hcolor='fg': color of hash marks
   - width=1.0: width of hash marks
   - contours=None: number of countours to plot
   - filled=0: when true, plot filled contours (assumes contours is set)
   - ccolor='fg': contour color (when not filled)
+  - cellarray=0: when true, plot grid as cell array
+  - ctop=240, cmin=minnd(grid), cmax=maxnd(grid): control palette of cellarray
   - ldensityscale=0: when true, scale the density by its max.
   - view=1: view window to use (experts only)
   - colbarunitless=0: when true, color-bar scale is unitless
@@ -927,8 +929,11 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'particles':0,'uselog':0,'color':'fg','ncolor':top.ncolor,
                 'usepalette':1,'marker':'\1','msize':1.0,
                 'denmin':None,'denmax':None,'chopped':None,
-                'hash':0,'line_scale':1.,'hcolor':'fg','width':1.0,
-                'contours':None,'filled':0,'ccolor':'fg','ldensityscale':0,
+                'hash':0,'line_scale':.9,'hcolor':'fg','width':1.0,
+                'contours':None,'filled':0,'ccolor':'fg',
+                'cellarray':0,'ctop':199,
+                'cmin':-top.largepos,'cmax':top.largepos,
+                'ldensityscale':0,
                 'view':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'checkargs':0,'allowbadargs':0}
 
@@ -1033,7 +1038,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   # --- If the grid is needed for the plot and it was not passed in, generate
   # --- it from the inputted particle data (if there was any)
   if type(grid) != ArrayType and \
-     (hash or contours or color=='density' or chopped or surface):
+     (hash or contours or color=='density' or chopped or surface or cellarray):
     if zz is None:
       densitygrid = 1
 
@@ -1096,7 +1101,7 @@ Note that either the x and y coordinates or the grid must be passed in.
     grid1 = grid
 
   # --- Get grid mesh if it is needed
-  if contours or hash or surface:
+  if contours or hash or surface or cellarray:
     xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d')
     ymesh = ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis]
 
@@ -1106,6 +1111,13 @@ Note that either the x and y coordinates or the grid must be passed in.
     if maxnd(grid1) != minnd(grid1):
       plotc(transpose(grid1),transpose(ymesh),transpose(xmesh),
             color=ccolor,contours=contours,filled=filled)
+
+  # --- Make cell-array plot. This also is done early since it covers anything
+  # --- done before it.
+  if cellarray:
+    cmin = max(cmin,minnd(grid1))
+    cmax = min(cmax,maxnd(grid1))
+    pli(transpose(grid1),xmin,ymin,xmax,ymax,top=ctop,cmin=cmin,cmax=cmax)
 
   # --- Plot particles
   if particles:
@@ -1151,7 +1163,8 @@ Note that either the x and y coordinates or the grid must be passed in.
             color=hcolor,width=width)
 
   # --- Add colorbar if needed
-  if (contours and filled==1) or (color == 'density' and len(x) > 0):
+  if (contours and filled==1) or (color == 'density' and len(x) > 0) or \
+     (cellarray):
     if (contours and filled==1):
       try:
         nc = len(contours) + 1
@@ -1159,17 +1172,23 @@ Note that either the x and y coordinates or the grid must be passed in.
       except TypeError:
         nc = contours + 1
         levs = None
-    else:
+    elif (color == 'density' and len(x) > 0):
       nc = ncolor + 1
+      levs = None
+    elif (cellarray):
+      nc = ctop
       levs = None
     if colbarunitless:
       dmax = 1.0
       dmin = 0.
+    elif cellarray:
+      dmin = cmin
+      dmax = cmax
     else:
       dmax = maxnd(grid1)
       dmin = minnd(grid1)
     colorbar(dmin,dmax,uselog=uselog,ncolor=nc,view=view,levs=levs,
-             colbarlinear=colbarlinear)
+             colbarlinear=colbarlinear,ctop=ctop)
 
   # --- Make surface plot
   if surface and me == 0:
@@ -1220,7 +1239,8 @@ between min(z) and max(z) for axis labels. n defaults to eight.
   return levs
 
 #-----------------------------------------------------------------------
-def colorbar(zmin,zmax,uselog=0,ncolor=100,view=1,levs=None,colbarlinear=1):
+def colorbar(zmin,zmax,uselog=0,ncolor=100,view=1,levs=None,colbarlinear=1,
+             ctop=199):
   """
 Plots a color bar to the right of the plot square labelled by the z
 values from zmin to zmax.
@@ -1229,6 +1249,7 @@ values from zmin to zmax.
   - ncolor=100: default number of colors to include
   - view=1: specifies the view that is associated with the color bar
   - levs: an optional list of color levels
+  - ctop=199: number of colors from palette to use
   """
   plsys(0)
   xmin = 0.66
@@ -1256,7 +1277,7 @@ values from zmin to zmax.
        plotval = arange(zmin,zmax+1,typecode='b')[:,NewAxis]*ones(2)
     else:
        plotval = (arange(ncolor)/(ncolor-1.))[:,NewAxis]*ones(2)
-    pli(plotval,xmin,ymin,xmax,ymax)
+    pli(plotval,xmin,ymin,xmax,ymax,top=ctop)
   # --- Draw a black box around it
   pldj([xmin,xmin,xmin,xmax],[ymin,ymax,ymin,ymin],
        [xmax,xmax,xmin,xmax],[ymin,ymax,ymax,ymax])
