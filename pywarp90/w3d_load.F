@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.7 $, $Date: 2004/12/08 15:49:36 $
+c@(#) File w3d_load.F, version $Revision: 1.8 $, $Date: 2004/12/10 23:18:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -96,7 +96,7 @@ c             f_2 = distribution normalization coefficient
 
         r_e = r_b*( bessi0(k1re)/bessi(2,k1re) - 
      &              4./(k1re**2)*( 2. + k1re*bessi(3,k1re)/bessi(2,k1re) ) 
-     &            )**(-2) 
+     &            )**(-0.5) 
 
         f_2 = aion*amu*eps0*vbeam**2*gammabar**3/
      &        (2.*Pi*(zion*echarge)**2)*(k1re/r_e)**2 
@@ -228,10 +228,9 @@ c            = "TE" or "ThermalEquilibrium": Thermal Equilibrium form
 c
       integer(ISZ):: ip, irr
       real(kind=8):: wrandom, wrandomgauss
-      real(kind=8):: wranf
-      real(kind=8):: u_max, u, p  
+      real(kind=8):: u_max, ang_mag, ang_phase  
       real(kind=8):: bessi0
-
+ 
 c     Load axisymmetric particle coordinates x,y based on the equivalent 
 c     continuous focused equilibrium profile calculated in 
 c     perp_cfe_den() and returned via the hl_rdist(0:hl_nrdist) and 
@@ -243,10 +242,8 @@ c     under the semiGaussian load option.
 
 c       --- radius = r in [0,1) and theta = t in [-Pi,Pi) variables 
 c       --- used to construct needed probability transforms
-        r(ip) = wranf()
-        t(ip) = Pi*( 2.*wranf() - 1. ) 
-c        r(ip) = wrandom(xrandom,ip+kioff-1,dig1,1,1)
-c        t(ip) = Pi*( 2.*wrandom(xrandom,ip+kioff-1,dig2,1,1) - 1. )
+        r(ip) = wrandom(xrandom,ip+kioff-1,dig1,1,1)
+        t(ip) = Pi*( 2.*wrandom(xrandom,ip+kioff-1,dig2,1,1) - 1. )
 
 c       --- Transform the radial positions to match the specified
 c       --- distribution.
@@ -297,10 +294,11 @@ c         --- acceptable at the particle radius r = r(ip)
 
 c         --- set particle x' and y' to be uniformly distributed within 
 c         --- a unit disk of radius u_max 
-          u = u_max*wranf() 
-          p = Pi*( 2.*wranf() - 1. ) 
-          xp(ip) = u*cos(p)  
-          yp(ip) = u*sin(p) 
+          ang_mag   = sqrt(abs(2.*u_max))*
+     &                  wrandom(xrandom,ip+kioff-1,dig3,1,1) 
+          ang_phase = Pi*( 2.*wrandom(xrandom,ip+kioff-1,dig4,1,1) - 1. ) 
+          xp(ip) = ang_mag*cos(ang_phase)  
+          yp(ip) = ang_mag*sin(ang_phase) 
           
         enddo  
 
@@ -327,19 +325,19 @@ c       --- undefined option trap
 c     Transform the axisymmetric particle coordinates for elliptical rms 
 c     equivalency.   
 
-c      do ip = 1,np 
+      do ip = 1,np 
  
 c       --- tranform particle coordinates x,y 
-c        x(ip) = rx(ip)/r_b * x(ip) 
-c        y(ip) = ry(ip)/r_b * y(ip) 
+        x(ip) = rx(ip)/r_b * x(ip) 
+        y(ip) = ry(ip)/r_b * y(ip) 
  
-cc       --- tranform particle angles x',y'
-c        xp(ip) = rxp(ip)/rx(ip) * x(ip) + 
-c     &             2.*(epsx(ip)/rx(ip))*(r_b/emit_b)**2 
-c        yp(ip) = ryp(ip)/ry(ip) * y(ip) + 
-c     &             2.*(epsy(ip)/ry(ip))*(r_b/emit_b)**2
+c       --- tranform particle angles x',y'
+        xp(ip) = (r_b/rx(ip))*(epsx(ip)/emit_b)*xp(ip) 
+     &            + (rxp(ip)/rx(ip))*x(ip)  
+        yp(ip) = (r_b/ry(ip))*(epsy(ip)/emit_b)*yp(ip)
+     &            + (ryp(ip)/ry(ip))*y(ip)  
 
-c      enddo 
+      enddo 
 
       return 
       end 
