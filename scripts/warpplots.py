@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.110 2003/09/23 19:35:27 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.111 2003/10/07 21:53:26 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1533,6 +1533,23 @@ def ppzvz(iw=0,**kw):
   return ppgeneric(take(top.uzp,ii)*take(top.gaminv,ii),take(top.zp,ii),kwdict=kw)
 if sys.version[:5] != "1.5.1":
   ppzvz.__doc__ = ppzvz.__doc__ + ppgeneric_doc('z',"vz")
+
+##########################################################################
+def ppzrp(iw=0,**kw):
+  "Plots Z-R'"
+  checkparticleplotarguments(kw)
+  if ppmultispecies(ppzrp,(iw,),kw): return
+  if kw.has_key('pplimits'):
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (top.zplmin+top.zbeam,top.zplmax+top.zbeam,
+                      top.xpplmin,top.xpplmax)
+  ii = selectparticles(iw=iw,kwdict=kw)
+  if(top.wpid!=0):kw['weights']=getpid(id=top.wpid-1,ii=ii,gather=0)
+  settitles("R' vs Z","Z","R'",pptitleright(iw=iw,kwdict=kw))
+  return ppgeneric(getrp(ii=ii,gather=0),getz(ii=ii,gather=0),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  ppzr.__doc__ = ppzr.__doc__ + ppgeneric_doc('z','r')
 
 ##########################################################################
 def ppxy(iw=0,**kw):
