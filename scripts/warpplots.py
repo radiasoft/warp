@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.113 2004/03/16 17:17:35 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.114 2004/03/26 16:08:14 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -499,6 +499,8 @@ def ppgeneric_doc(x,y):
   - zz: optional third particle data quantity - when supplied, it is deposited
        on a grid and that is used for contour levels.
   - grid: optional grid to plot (instead of deriving grid from particle data)
+  - gridt: optional grid to plot (instead of deriving grid from particle data)
+           The transpose is the grid is plotted.
   - nx, ny: grid size, defaults to 20x20
   - slope=0.: slope to subtract from %(y)s coordinate (%(y)s-slope*%(x)s)
   - xoffset=0.: average %(x)s of particles
@@ -563,7 +565,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   - y, x: optional particle data (instead of using inputted grid)
   """
   # --- Complete dictionary of possible keywords and their default values
-  kwdefaults = {'zz':None,'weights':None,'grid':None,
+  kwdefaults = {'zz':None,'weights':None,'grid':None,'gridt':None,
                 'nx':20,'ny':20,'slope':0.,
                 'xoffset':0.,'yoffset':0.,'offset':0.,
                 'xscale':1.,'yscale':1.,'titles':1,'lframe':0,
@@ -599,6 +601,12 @@ Note that either the x and y coordinates or the grid must be passed in.
   if checkargs: return badargs
   assert (not badargs or allowbadargs), \
          "bad argument: %s"%string.join(badargs.keys())
+
+  # --- If gridt is given, take the transpose and put it in grid. Note that
+  # --- this will overwrite a grid argument. This is done here to reduce
+  # --- the code complexity below. If gridt is specified, it is equivalent
+  # --- to specifying grid (except for the transpose).
+  if gridt is not None: grid = transpose(gridt)
 
   # --- Do some error checking on the consistency of the input
   assert (type(grid) == ArrayType or \
