@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.10 $, $Date: 2001/07/18 23:55:30 $
+c@(#) File WXY.M, version $Revision: 3.11 $, $Date: 2001/07/24 00:53:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -677,16 +677,15 @@ c  relative to ZBEAM in the same way that self-fields are.
 
 c  Field-solve for potential 
 
-      timetemp = wtime()
       if (lbeforefs) call execuser("beforefs")
       call fieldsolxy(-1)
       if (lafterfs) call execuser("afterfs")
-      fstime = fstime + (wtime() - timetemp)
 
-c  Pre-calculate the self-E if it is needed for sete3d. This is done after
-c  the call to afterfs in case some manipulation is done to phi.
+c  Pre-calculate the self-E if it is needed for sete3d. This is done
+c  after the call to afterfs in case some manipulation is done to phi.
       if (efetch == 3)
-     &  call getselfe3d(phi,selfe,nx,ny,nz,dx,dy,dz)
+     &  call getselfe3d(phi(0,0,-1),nx,ny,nz,selfe(1,0,0,0),
+     &                  nx_selfe,ny_selfe,nz_selfe,dx,dy,dz)
 
 c  If a flag was set making this a "special" step,
 c  do a half-advance to bring v to t.l. it 
@@ -1885,25 +1884,94 @@ c       --- Sum the charge times velocity over all particles.
       return
       end
 c=============================================================================
-      subroutine fieldsolxy(iwhich)
+      subroutine bendfieldsolxy()
       use Constant
-      use InGen
-      use InGenxy
       use InGen3d
       use Picglb
       use Picglb3d
       use InMesh3d
       use Fields3d
+c     use LatticeInternal
+
+c FFT/bend iterative field solver.
+
+      integer(ISZ):: i,j
+      real(kind=8):: r,x,dxi,phiref
+      character(120):: outstr
+
+      dxi = 1./dx
+      bndfit = 0
+      bndferr = 2.*bndftol
+      do while ((bndferr > bndftol) .and. (bndfit < bndfitmx))
+        bndfit = bndfit + 1
+
+c       --- save phi for error measure, can save it into scrtch
+c       --- since that isn't used for much
+        call copyarry(phi(0,0,0),scrtch(0,0),(nx+1)*(ny+1))
+
+c       --- add curvature terms to the source (rho) as a correction
+c       --- (remember that the previous phi is stored in scrtch)
+        do i = 1, nx-1
+          x = xmmin + i*dx
+          r = 1./(rstar(0) + x)
+          do j = 0, ny
+            phi(i,j,0) = rho(i,j,0)*rstar(0)*r
+     &               + eps0*(scrtch(i+1,j) - scrtch(i-1,j))*0.5*dxi*r
+          enddo
+        enddo
+
+c       --- call Cartesian field solver
+        call vpxy (-1)
+
+c       --- compute error
+        bndferr = 0.
+        phiref = 0.
+        do i = 0, nx
+           do j = 0, ny
+              bndferr = max( bndferr, abs(phi(i,j,0)-scrtch(i,j)) )
+              phiref = max( phiref, phi(i,j,0) )
+           enddo
+        enddo
+
+c       --- for debug, print out the error
+        if (bnprflag) then
+          write (outstr,9985) it, bndfit, bndferr
+ 9985     format ("It =",i7," Bent field iteration",i3," Rel Change = ",
+     &            1pe12.4)
+          call remark(outstr)
+        endif
+
+      end do
+
+c     --- if failure to converge, report the bad news to user
+      if (bndferr > bndftol) then
+        write (outstr,9995) bndferr, bndfit
+ 9995   format ("*** NONCONVERGENCE in bent field iteration",
+     &          /,"Relative change = ",1pe12.4," after ",i3," iterations.")
+        call remark(outstr)
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine fieldsolxy(iwhich)
+      use Timers
+      use InGen
+      use InGenxy
+      use InGen3d
+      use InMesh3d
+      use Picglb3d
+      use Fields3d
+      use Efields3d
       use LatticeInternal
       integer(ISZ):: iwhich
 
 c If using the 3D field solver, calls the fieldsol routine in package w3d,
 c otherwise only does a FFT field solve in 2D.
 
-
-      integer(ISZ):: i,j,iz
-      real(kind=8):: r,x,dxi,phiref
-      character(120):: outstr
+      integer(ISZ):: iz
+      real(kind=8):: timetemp,wtime
+      timetemp = wtime()
 
 c     --- Return if not doing any field solves.
       if ( fstype == -1) return
@@ -1917,70 +1985,17 @@ c       --- 3D field solver
 c       --- 2D fieldsolver
 
         if (.not. linbend .or. iwhich > 0) then
-
 c         --- if not in a bend, then make direct call to vpxy
           call copyarry(rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
           call vpxy(iwhich)
 
         else
-
 c         --- otherwise, include bend correction terms
-
-          dxi = 1./dx
-          bndfit = 0
-          bndferr = 2.*bndftol
-          do while ((bndferr > bndftol) .and. (bndfit < bndfitmx))
-            bndfit = bndfit + 1
-
-c           --- save phi for error measure, can save it into scrtch
-c           --- since that isn't used for much
-            call copyarry(phi(0,0,0),scrtch(0,0),(nx+1)*(ny+1))
-
-c           --- add curvature terms to the source (rho) as a correction
-c           --- (remember that the previous phi is stored in scrtch)
-            do i = 1, nx-1
-              x = xmmin + i*dx
-              r = 1./(rstar(0) + x)
-              do j = 0, ny
-                phi(i,j,0) = rho(i,j,0)*rstar(0)*r
-     &                   + eps0*(scrtch(i+1,j) - scrtch(i-1,j))*0.5*dxi*r
-              enddo
-            enddo
-
-c           --- call Cartesian field solver
-            call vpxy (-1)
-
-c           --- compute error
-            bndferr = 0.
-            phiref = 0.
-            do i = 0, nx
-               do j = 0, ny
-                  bndferr = max( bndferr, abs(phi(i,j,0)-scrtch(i,j)) )
-                  phiref = max( phiref, phi(i,j,0) )
-               enddo
-            enddo
-
-c           --- for debug, print out the error
-            if (bnprflag) then
-              write (outstr,9985) it, bndfit, bndferr
- 9985         format ("It =",i7," Bent field iteration",i3," Rel Change = ",
-     &                1pe12.4)
-              call remark(outstr)
-            endif
-
-          end do
-
-c         --- if failure to converge, report the bad news to user
-          if (bndferr > bndftol) then
-            write (outstr,9995) bndferr, bndfit
- 9995       format ("*** NONCONVERGENCE in bent field iteration",
-     &              /,"Relative change = ",1pe12.4," after ",i3," iterations.")
-            call remark(outstr)
-          endif
+          call bendfieldsolxy()
 
         endif
-        
-c       --- and fill rest of phi array
+
+c       --- fill rest of phi array
         call copyarry(phi(0,0,0),phi(0,0,-1),(nx+1)*(ny+1))
         do iz=1,nz+1
           call copyarry(phi(0,0,0),phi(0,0,iz),(nx+1)*(ny+1))
@@ -1988,6 +2003,7 @@ c       --- and fill rest of phi array
 
       endif
 
+      fstime = fstime + (wtime() - timetemp)
       return
       end
 c=============================================================================
