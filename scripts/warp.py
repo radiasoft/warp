@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.11 2001/01/19 01:24:05 dave Exp $"
+warp_version = "$Id: warp.py,v 1.12 2001/01/22 22:00:10 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -37,6 +37,8 @@ from f3dpy import *
 from w3dpy import *
 from fxypy import *
 from wxypy import *
+#from frzpy import *
+#from wrzpy import *
 try:  # cirpy hasn't been installed on all machines yet
   from cirpy import *
 except ImportError:
@@ -121,7 +123,10 @@ def printversion(v):
 
 print 'Python WARP'
 print '******  Fieldsolver FXY version %s' % printversion(fxy.versfxy)
-#print '******  Fieldsolver FRZ version %s' % printversion(frz.versfrz)
+try:
+  print '******  Fieldsolver FRZ version %s' % printversion(frz.versfrz)
+except:
+  pass
 print '******  Fieldsolver F3D version %s' % printversion(f3d.versf3d)
 print '******  Envelope solver ENV version %s' % printversion(env.versenv)
 try:
@@ -129,7 +134,10 @@ try:
 except:
   pass
 print '******  Particle package WXY version %s' % printversion(wxy.verswxy)
-#print '******  Particle package WRZ version %s' % printversion(wrz.verswrz)
+try:
+  print '******  Particle package WRZ version %s' % printversion(wrz.verswrz)
+except:
+  pass
 print '******  Particle package W3D version %s' % printversion(w3d.versw3d)
 print '******  Main package TOP version %s' % printversion(top.verstop)
 print 'For more help, type warphelp()'
