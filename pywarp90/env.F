@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.20 $, $Date: 2003/03/04 03:04:59 $
+c@(#) File ENV.M, version $Revision: 3.21 $, $Date: 2003/04/10 16:21:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1250,6 +1250,7 @@ c=========================================================================
       subroutine envtypetest(n1,n2)
       use TTester
       integer(ISZ):: n1,n2
+      real(kind=8),pointer:: bp(:)
       TYPE(ENVtype),POINTER:: newe
       e1%oo = 1
       e2%oo = 1
@@ -1258,6 +1259,9 @@ c=========================================================================
       call gallot("TTester",0)
       e1%aa(1:3) = 2.
       e2%ee(2:4) = 1.
+      allocate(bp(0:e1%nn))
+      bp = 3.1416
+      e1%bp => bp
       newe => NewENVType()
       newe%oo = 1
       newe%nn = 21
@@ -1273,4 +1277,28 @@ c=========================================================================
       print*,"xxx%ee = ",xxx%ee
       return
       end
-
+      subroutine setzzz()
+      use TTester
+      real(kind=8),allocatable,target:: newzzz(:)
+      allocate(newzzz(10))
+      newzzz(3:5) = 18.
+      zzz => newzzz
+      return
+      end
+      subroutine printzzz()
+      use TTester
+      print*,"zzz = ",zzz
+      NULLIFY(zzz)
+      return
+      end
+      subroutine iqtest(iq)
+      use ATester
+      integer(ISZ):: iq
+      real(kind=8),pointer:: nn(:)
+      iqiq = iq
+      call gsetdims("ATester")
+      allocate(nn(iq))
+      nn(iq) = 12345.
+      xqxq => nn
+      return
+      end
