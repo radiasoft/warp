@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.17 $, $Date: 2001/11/06 22:17:00 $
+c@(#) File F3D.M, version $Revision: 3.18 $, $Date: 2002/01/14 20:46:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -8343,8 +8343,8 @@ c grid.  If after the check, izmax < izmin, the conductor is completely off
 c of the grid, so return.
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin) then
-        call remark("WARNING:srfrvout: conductor is completely off the grid.")
+      if (izmax < izmin .and. (izmax >=nz .or. izmin <= 0) ) then
+        call remark("WARNING:srfrvout_rz: conductor is completely off the grid.")
         return
       endif
 
@@ -8816,7 +8816,7 @@ c grid.  If after the check, izmax < izmin, the conductor is completely off
 c of the grid, so return.
       izmin = max(izbmin,izmin)
       izmax = min(izbmax,izmax)
-      if (izmax < izmin) then
+      if (izmax < izmin .and. (izmax >=nz .or. izmin <= 0) ) then
         call remark("WARNING:srfrvout: conductor is completely off the grid.")
         return
       endif
