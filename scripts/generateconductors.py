@@ -77,7 +77,7 @@ if not lparallel:
     pass
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.62 2004/05/20 15:53:33 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.63 2004/05/20 20:10:56 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -186,7 +186,14 @@ Should never be directly created by the user.
     return result
 
   def visualize(self,display=1,**kw):
-    pass  # virtual function
+    raise  # virtual function
+
+  def getdxobject(self):
+    try:
+      return self.dxobject
+    except AttributeError:
+      self.visualize(display=0)
+      return self.dxobject
 
   # Operations which return an Assembly expression.
   def __mul__(self,right):
