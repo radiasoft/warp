@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.116 $, $Date: 2004/09/08 22:52:41 $
+#@(#) File F3D.V, version $Revision: 3.117 $, $Date: 2004/09/18 07:04:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.116 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.117 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -464,12 +464,12 @@ vcap3d(iwhich,rho:real,phi:real,kxsq:real,kysq:real,kzsq:real,attx:real,
 setconductorparity(nn:integer,ix:integer,iy:integer,iz:integer,
                    dels:real,parity:integer,fuzz:real,fuzzsign:integer,
                    dfill:real) subroutine
-zplaneconductorf(zcent:real,zsign,
+zplaneconductorf(zcent:real,zsign:real,
         n:integer,x:real,y:real,z:real,delmx:real,delpx:real,
         delmy:real,delpy:real,delmz:real,delpz:real,fuzz:real) subroutine
-zplaneconductord(zcent:real,zsign,
+zplaneconductord(zcent:real,zsign:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
-zplaneintercept(zcent:real,zsign,
+zplaneintercept(zcent:real,zsign:real,
         n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 planeconductorf(z0:real,zsign:real,theta:real,phi:real,
@@ -480,6 +480,7 @@ planeconductord(z0:real,zsign:real,theta:real,phi:real,
         xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,distance:real) subroutine
 planeintercept(z0:real,zsign:real,theta:real,phi:real,
+        xcent:real,ycent:real,zcent:real,
         n:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,
         xi:real,yi:real,zi:real,itheta:real,iphi:real) subroutine
 boxconductorf(xsize:real,ysize:real,zsize:real,xcent:real,ycent:real,zcent:real,
