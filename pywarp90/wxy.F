@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.37 $, $Date: 2003/07/21 22:45:24 $
+c@(#) File WXY.M, version $Revision: 3.38 $, $Date: 2003/08/22 22:48:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -93,7 +93,7 @@ c  derivqty and an internal call to species).
 
 c  Calculate step size if not set by the user.
       if (ds == 0.) ds = vbeam*dt
-      if (dt == 0.) dt = ds/vbeam
+      if (dt == 0. .and. vbeam .ne. 0.) dt = ds/vbeam
 
 c  Set default values for the axial grid if using thin slice model.
 c  Zmmin and zmmax are chosen so that dz = 1.
@@ -409,7 +409,9 @@ c  Note that dt is only changed if the grid frame velocity was changed.
         zbeam = zbeam0
         vbeamfrm = vbeamfrm0
         call acclbfrm(zcorrection)
-        dt = dt*ds/(zbeam + vbeamfrm*dt + zcorrection - zbeam0)
+        if ((zbeam + vbeamfrm*dt + zcorrection - zbeam0) .ne. 0) then
+          dt = dt*ds/(zbeam + vbeamfrm*dt + zcorrection - zbeam0)
+        endif
       enddo
       zbeam = zbeam0
 
@@ -1516,7 +1518,7 @@ c     --- if any values are zero.
         i1 = ins(is)
         i2 = ins(is) + nps(is) - 1
         if (minval(abs(dtp(i1:i2))) == 0.) then
-          if (lthick) then
+          if (lthick .or. vbeam == 0.) then
             dtp(i1:i2) = dt
           else
             where (uzp(i1:i2) .ne. 0.)
@@ -1572,7 +1574,7 @@ c       --- and 1 - this avoids potential problems with roundoff errors.
 
 c         --- with no bends...
           do ip=1,np
-            if (uzp(ip) /= 0.) then
+            if (uzp(ip) /= 0. .and. ds .ne. 0.) then
               dtp(ip) = dtp(ip)*ds/(zp(ip) - zpo(ip))
             endif
           enddo
@@ -1840,7 +1842,11 @@ c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
 c       --- special loop for 2-fold symmetry
         do ip = ipmin,ipmin+nptmp-1
-           f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          if (vbeamfrm .ne. 0.) then
+             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+           else
+             f = 1.
+           endif
            i  = (xp(ip) - xmmin) * dxi
            u1 = (xp(ip) - xmmin) * dxi - i
            u0 = 1. - u1
@@ -1863,7 +1869,11 @@ c       --- special loop for 2-fold symmetry
       elseif (l4symtry) then
 c       --- special loop for 4-fold symmetry
         do ip = ipmin,ipmin+nptmp-1
-           f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          if (vbeamfrm .ne. 0.) then
+             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+           else
+             f = 1.
+           endif
            i  = abs(xp(ip))*dxi
            u1 = abs(xp(ip))*dxi - i
            u0 = 1. - u1
@@ -1888,7 +1898,11 @@ c       --- special loop for 4-fold symmetry
       else
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
-           f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          if (vbeamfrm .ne. 0.) then
+             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+           else
+             f = 1.
+           endif
            i  = (xp(ip) - xmmin) * dxi
            u1 = (xp(ip) - xmmin) * dxi - i
            u0 = 1. - u1
@@ -1929,7 +1943,11 @@ c  Begin main loop over species, groups of nparpgrp particles
 c     --- vectorized loop to compute indices, weights
       if (l2symtry) then
         do ip = ipmin,ipmin+nptmp-1
-          f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
           ir = ip - ipmin
           ii(ir) = (xp(ip) - xmmin) * dxi
           u1     = (xp(ip) - xmmin) * dxi - ii(ir)
@@ -1946,7 +1964,11 @@ c     --- vectorized loop to compute indices, weights
         enddo
       elseif (l4symtry) then
         do ip = ipmin,ipmin+nptmp-1
-          f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          if (vbeamfrm .ne. 0.) then
+            f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          else
+            f = 1.
+          endif
           ir = ip - ipmin
           ii(ir) = abs(xp(ip))*dxi
           u1     = abs(xp(ip))*dxi - ii(ir)
@@ -1966,7 +1988,11 @@ c     --- vectorized loop to compute indices, weights
       else
 c       --- normal loop
         do ip = ipmin,ipmin+nptmp-1
-          f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+          if (vbeamfrm .ne. 0.) then
+             f = g*vbeamfrm/dvnz(uzp(ip)*gaminv(ip))
+           else
+             f = 1.
+           endif
           ir = ip - ipmin
           ii(ir) = (xp(ip) - xmmin) * dxi
           u1     = (xp(ip) - xmmin) * dxi - ii(ir)
