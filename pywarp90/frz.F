@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File FRZ.M, version $Revision: 3.8 $, $Date: 2002/03/18 22:22:06 $
+c@(#) File FRZ.M, version $Revision: 3.9 $, $Date: 2002/04/23 14:14:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Written by Debbie Callahan
