@@ -9207,7 +9207,7 @@ USE multigridrz
 end subroutine nullify_basegrid
 
 subroutine del_base()
-USE Multigridrz
+USE multigridrz
 implicit none
 
   IF(.NOT.associated(basegrid)) return

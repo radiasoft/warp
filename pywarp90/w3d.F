@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.180 $, $Date: 2004/12/03 01:08:12 $
+c@(#) File W3D.F, version $Revision: 3.181 $, $Date: 2004/12/03 21:11:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4947,7 +4947,7 @@ c=============================================================================
       use Particles
       use Fields3d
       use Fields3dParticles
-      use EFields3d
+      use Efields3d
       use FieldSolveAPI
       use DKInterptmp
       integer(ISZ):: ipmin,ip,is

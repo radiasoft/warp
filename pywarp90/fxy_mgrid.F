@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.11 $, $Date: 2004/05/12 22:08:04 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.12 $, $Date: 2004/12/03 21:11:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -545,7 +545,7 @@ c=============================================================================
       subroutine condbndymgxy(subgrid,nx,ny,phi,rho,rdx2c,rdy2c,spm1,srp,
      &                        boundxy,l2symtry,l4symtry,mglevel)
       use ConductorSubGridTypemodule
-      type(ConductorSubgridType):: subgrid
+      type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,mglevel,parity
       real(kind=8):: phi(0:nx,0:ny), rho(0:nx,0:ny)
       real(kind=8):: rdx2c,rdy2c,spm1,srp
@@ -666,7 +666,7 @@ c=============================================================================
       subroutine condbndyresxy(subgrid,nx,ny,phi,rho,res,rdx2,rdy2,mgparam,
      &                         boundxy,l2symtry,l4symtry,mglevel)
       use ConductorSubGridTypemodule
-      type(ConductorSubgridType):: subgrid
+      type(ConductorSubGridType):: subgrid
       integer(ISZ):: nx,ny,mglevel
       real(kind=8):: phi(0:nx,0:ny)
       real(kind=8):: rho(0:nx,0:ny), res(0:nx,0:ny)
