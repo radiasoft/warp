@@ -3,7 +3,7 @@ import string
 import curses.ascii
 import sys
 import adjustmesh3d
-egun_like_version = "$Id: egun_like.py,v 1.21 2003/10/07 21:50:55 dave Exp $"
+egun_like_version = "$Id: egun_like.py,v 1.22 2003/12/16 01:19:11 dave Exp $"
 ############################################################################
 # EGUN_LIKE algorithm for calculating steady-state behavior in a ion source.
 #
@@ -310,6 +310,10 @@ Performs steady-state iterations
 
             # --- save data of just injected particles
             if (len(ii) > 0):
+              if w3d.l_inj_rec_inittime:
+                ip1 = top.ins[js]-1
+                ip2 = top.ins[js]+top.nps[js]-1
+                top.pid[ip1:ip2,top.tpid-1]=top.pid[ip1:ip2,top.tpid-1]-top.dt
               npguess = nps_save[js] + len(ii)
               nplost = ins_save[js] - top.ins[js] - top.nps[js]
               chckpart(js+1,0,npguess + nplost,false)
