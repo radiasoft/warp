@@ -257,6 +257,8 @@ DXPYTHONLIB = -L$(PYTHON)/lib/python$(PYVERS)/config -lpython$(PYVERS) -ldl -lut
 LDLIBFLAGS = -shared
 SYSLIBS  = -lm -lc
 
+DX: pyDXObject.so
+
 pyDXObject.so: pyDXObject.o
 	$(CC) -shared -o pyDXObject.so pyDXObject.o $(DXLIBS) $(DXPYTHONLIB) -lm -lc
 	cp pyDXObject.so $(WARPSCRIPTS)
