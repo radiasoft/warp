@@ -1,8 +1,8 @@
 ARCH = LINUX
 MACHINE = LINUX
 HOME = /home/dave
-PYVERS = 2.1
-PYTHON = /home/dave/Python-$(PYVERS)
+PYVERS = 2.2
+PYTHON = /usr/local
 PYWRAPPERHOME = $(HOME)/pywrapper
 PYWRAPPERARGS =
 MPIHOME = /usr/local/mpich_ifc
@@ -36,7 +36,9 @@ warp: warpC.$(SO)
 
 
 include Makefile.dependencies
-PYTHONOBJ = /home/dave/pyMPI-1.0/*.o
+PYMPI = /home/dave/pyMPI-1.2a6
+PYTHONOBJ = $(PYMPI)/driver.o $(PYMPI)/patchedmain.o -L$(PYMPI)/lib -lpympi
+#PYTHONOBJ = /home/dave/pyMPI-1.0/*.o
 
 warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPSLAVEOBJECTS) $(WARPOBJECTS) $(RNGOBJ)
 	cc -c warpC.c $(INCLUDE) $(NUMPYINCLUDE)
@@ -46,6 +48,7 @@ warpC.$(SO): warpC.c $(MODULEOBJECTS) $(WARPSLAVEOBJECTS) $(WARPOBJECTS) $(RNGOB
 build_static: $(MODULEOBJECTS) $(WARPSLAVEOBJECTS) $(WARPOBJECTS) $(RNGOBJ) config.o
 	$(LD) -o pywarp90 $(PYTHONOBJ) $(WARPSLAVEOBJECTS) $(WARPOBJECTS) \
 	$(MODULEOBJECTS) config.o $(RNGOBJ) \
-	$(PYTHON)/lib/python2.1/site-packages/*/*.so \
+	$(PYTHON)/lib/python$(PYVERS)/site-packages/*/*.so \
+	$(PYTHON)/lib/python$(PYVERS)/site-packages/*/*/*.so \
 	$(LINKLIB) $(PYTHONLIB) $(OTHERLIBS) $(EXPORT)
 
