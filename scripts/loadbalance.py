@@ -1,20 +1,19 @@
-from warp import *
-
-#!#!#!#!#!#!#!#!#!#!#!#!#!#
-##!#!#  TODO   #!#!#!#!#!#!
-#!#!#!#!#!#!#!#!#!#!#!#!#!#
-# realign the z-moments histories data
-
-loadbalance_version = "$Id: loadbalance.py,v 1.29 2003/07/08 22:28:17 dave Exp $"
-
-def loadbalancedoc():
-  print """
+"""
 Various routines for doing loading balancing for the parallel version
+LoadBalancer: class wrapping particle load balancing. Sets up automatic
+              periodic load balancing of particles.
 setparticledomains: Applies decomposition given a list of domain sizes
 loadbalanceparticles: Load balances the particles based on pnumz
 loadbalancesor: Load balances the SOR solver, balancing the total work in
                 the solver including the work specifying the conductors.
-  """
+"""
+from warp import *
+
+loadbalance_version = "$Id: loadbalance.py,v 1.30 2003/08/12 17:44:10 dave Exp $"
+
+def loadbalancedoc():
+  import loadbalance
+  print loadbalance.__doc__
 
 #########################################################################
 #########################################################################
@@ -24,41 +23,89 @@ Installs load balancer.
 Creation arguments:
  - when: dictionary of when to do the load balancing. Keys are time step
          numbers, values are frequency of loadbalancing when top.it is less
-         than key.
+         than key. Default is {10:1,100:10,1000000:20}
  - padright: Amount of space added to right end of grid. When not specified,
-             it is product of w3d.dz and the number of steps between
+             it is product of max(vz)*top.dt*2 and the number of steps between
              load balances.
+ - padleft=0: Amount of space added to left end of grid.
+ - doloadrho=0: Specifies whether the charge density is recalculated
+ - dofs=0: Specifies whether the fields are recalculated
+Note, if particles on cover a few grid cells, then distribution is
+recalculated on a finer mesh to give better balancing.
   """
-  def __init__(self,padright=None,when=None):
+  def __init__(self,padright=None,padleft=0.,when=None,doitnow=0,
+               doloadrho=0,dofs=0):
     if not lparallel: return
     if when is None:
       self.when = {10:1,100:10,1000000:20}
     else:
       self.when = when
     self.padright = padright
+    self.padleft = padleft
+    self.doloadrho = doloadrho
+    self.dofs = dofs
+    if doitnow: self.doloadbalance()
     installafterstep(self.doloadbalance)
 
-  def doloadbalance(self,lforce=0,lloadrho=0,dofs=0,reorg=None):
+  def doloadbalance(self,lforce=0,doloadrho=None,dofs=None,reorg=None):
     if not lparallel: return
-    if reorg is None: reorg = (top.it==1)
+
+    # --- Check if rightmost particle is close to edge of last processor
+    # --- If so, then force a reloadbalance.
+    if top.zpslmax[-1] < w3d.zmmaxglobal-w3d.dz:
+      if top.zmaxp > top.zpslmax[-1]-2*w3d.dz: lforce = true
+
+    # --- Find frequency of load balancing
+    ii = max(self.when.values())
     for key,value in self.when.items():
-      if top.it < key: ii = value
-    if self.padright is None: padright = ii*w3d.dz
-    else:                     padright = self.padright
-    if ((top.it%ii) == 0) or lforce:
-      loadbalanceparticles(lloadrho=loadrho,dofs=dofs,padright=padright,
-                           reorg=reorg)
-      getphiforparticles()
+      if top.it < key: ii = min(ii,value)
+
+    # --- Just return is load balancing not done now.
+    if not lforce and (top.it%ii) != 0: return
+
+    # --- On step zero, a complete reorganization is done so the reorg flag
+    # --- is set to true to use the particle sorter which is more efficient
+    # --- in that case.
+    if reorg is None: reorg = (top.it==1)
+
+    if doloadrho is None: doloadrho = self.doloadrho
+    if dofs is None: dofs = self.dofs
+
+    if (top.zmaxp - top.zminp)/w3d.dz < 10:
+      # --- If the particles only extend over a few grid cells, recalculate
+      # --- the distribution on a finer grid to get better loadbalancing.
+      pnumz = zeros(101,'d')
+      zmin = max(w3d.zmminglobal,top.zminp-w3d.dz)
+      zmax = min(w3d.zmmaxglobal,top.zmaxp+w3d.dz)
+      zz = getz(gather=0)
+      setgrid1d(len(zz),zz,100,pnumz,zmin,zmax)
+      pnumz = parallelsum(pnumz)
+      dz = (zmax - zmin)/100.
+    else:
+      # --- Otherwise use the already calculated z-moment
+      pnumz = top.pnumz
+      dz = w3d.dz
+
+    # --- Calculate the right hand side padding.
+    if self.padright is None:
+      if top.vzmaxp > 0.: padright = top.vzmaxp*top.dt*ii*2
+      else:               padright = ii*w3d.dz
+    else:                 padright = self.padright
+
+    loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
+                         padright=padright,padleft=self.padleft,
+                         reorg=reorg,pnumz=pnumz,zmin=w3d.zmminglobal,dz=dz)
+    getphiforparticles()
 
 #########################################################################
 #########################################################################
-def setparticledomains(zslave,lloadrho=1,dofs=1,padleft=0.,padright=0.,reorg=0):
+def setparticledomains(zslave,doloadrho=1,dofs=1,padleft=0.,padright=0.,reorg=0):
   """
 Sets the particles domains from the input, zslave, in the same way as done
 with top.zslave during the generate. This is only meant to be used after
 that has already been done.
  - zslave: list of starting locations of the domains in grid cell units
- - lloadrho=1: when true, the charge density is redeposited
+ - doloadrho=1: when true, the charge density is redeposited
  - dofs=1: when true, the fields are recalculated
  - padleft=0, padright=0: extra space added on to leftmost and rightmost
                           domains (up to edge of system) in units of meters
@@ -111,19 +158,19 @@ that has already been done.
     gchange_rhop_phip_rz()
 
   # --- Do some additional work if requested
-  if lloadrho: loadrho()
+  if doloadrho: loadrho()
   if dofs: fieldsol(0)
 
 
 #########################################################################
-def loadbalanceparticles(lloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
+def loadbalanceparticles(doloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
                          reorg=0,pnumz=None,zmin=None,dz=None):
   """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
 been calculated. The number density is assumed to vary linearly between
 grid points.
- - lloadrho=1: when true, the charge density is redoposited
+ - doloadrho=1: when true, the charge density is redoposited
  - dofs=1: when true, the fields are recalculated
  - spread=1.: fraction of processors to spread the work among
  - padleft=0, padright=0: extra space added on to leftmost and rightmost
@@ -156,7 +203,7 @@ grid points.
   if zmin is not None: zslave = zslave + zmin
 
   # --- Apply the new domain decomposition.
-  setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs,
+  setparticledomains(zslave,doloadrho=doloadrho,dofs=dofs,
                      padleft=padleft,padright=padright,reorg=reorg)
   endtime = wtime()
   print "Load balance time = ",endtime - starttime
