@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.19 2001/07/25 00:46:29 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.20 2001/08/01 23:40:59 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -297,7 +297,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None,
         if verbose: print "writing python variable "+v+" as "+v+suffix
         exec('ff.'+v+suffix+'='+v,__main__.__dict__,locals())
       except:
-        pass
+        if verbose: print "cannot write python variable "+v
 
     # --- Loop through all variables, getting the ones with attribute attr
     packagelist = package()

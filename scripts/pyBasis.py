@@ -13,7 +13,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.12 2001/07/02 20:17:09 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.13 2001/08/01 23:40:59 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -261,7 +261,7 @@ Dump data into a pdb file
       if verbose: print "write python variable "+v+" as "+v+varsuffix
       exec('ff.'+v+varsuffix+'='+v,__main__.__dict__,locals())
     except:
-      pass
+      if verbose: print "cannot write python variable "+v
   if closefile: ff.close()
 
 # --- Old version which has different naming for variables
