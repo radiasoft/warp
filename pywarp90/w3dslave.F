@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.13 $, $Date: 2002/08/29 18:23:46 $
+c W3DSLAVE.M, version $Revision: 1.14 $, $Date: 2002/10/26 00:27:15 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -384,12 +384,13 @@ c total number of particles.
       return
       end
 c===========================================================================
-      subroutine perrho3d_slave(rho,nx,ny,nz,periinz)
+      subroutine perrho3d_slave(rho,nx,ny,nz,bound0)
+      use GlobalVars
       use Parallel
       use Databuffers
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
-      logical(ISZ):: periinz
+      integer(ISZ):: bound0
 
 c This routine sums rho in the overlapping boundaries with the neighboring
 c processors. Note that this does not send the summed rho back to the left
@@ -462,7 +463,7 @@ c       --- be correct, so explicitly writing out the loops may not work.
       endif
 
 c     --- Send rho to the process to the right
-      if (my_index < nslaves-1 .or. periinz) then
+      if (my_index < nslaves-1 .or. bound0==periodic) then
         call MPI_ISEND(rho(0,0,right_iz),right_nz*(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,
      &                 right_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
@@ -471,7 +472,7 @@ c     --- Send rho to the process to the right
 c     --- If there is no overlap, wait for the data after sending so
 c     --- that processors to the right do not have to also wait.
       if ((my_index > 0 .and. right_iz > left_iz+left_nz) .or.
-     &    (my_index == 0 .and. periinz)) then
+     &    (my_index == 0 .and. bound0==periodic)) then
         call MPI_RECV(buffer2d,left_nz*(nx+1)*(ny+1),MPI_DOUBLE_PRECISION,
      &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
 

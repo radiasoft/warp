@@ -1,11 +1,12 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.13 $, $Date: 2002/10/25 00:00:28 $
+c TOPSLAVE.M, version $Revision: 1.14 $, $Date: 2002/10/26 00:25:10 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
 c===========================================================================
       subroutine zpartbnd_slave(zmmax,zmmin,dz,zgrid)
+      use GlobalVars
       use InGen
       use InPart
       use Particles
@@ -126,12 +127,12 @@ c       --- ends of the full mesh.
 
 c       --- Periodic boundary conditions: all particles picked out have
 c       --- their z adjusted.
-        if (my_index == 0 .and. periinz) then
+        if (my_index == 0 .and. pbound0==periodic) then
           syslen = zpslmax(nslaves-1) - zpslmin(0)
           do ip=ins_init,ins(is)-1
             zp(ip) = zp(ip) + syslen
           enddo
-        elseif (my_index == nslaves-1 .and. periinz) then
+        elseif (my_index == nslaves-1 .and. pboundnz==periodic) then
           syslen = zpslmax(nslaves-1) - zpslmin(0)
           do ip=ins(is)+nps(is),ins_init+nps_init-1
             zp(ip) = zp(ip) - syslen
@@ -139,11 +140,11 @@ c       --- their z adjusted.
 c       --- Sticky boundary condition: particles picked out are not passed.
 c       --- Instead, they are marked as lost particles and ins and nps are
 c       --- reset to include them.
-        elseif (my_index == 0 .and. stickyz) then
+        elseif (my_index == 0 .and. pbound0==absorb) then
           gaminv(ins_init:ins(is)-1) = 0.
           nps(is) = nps(is) + (ins(is) - ins_init)
           ins(is) = ins_init
-        elseif (my_index == nslaves-1 .and. stickyz) then
+        elseif (my_index == nslaves-1 .and. pboundnz==absorb) then
           gaminv(ins(is)+nps(is):ins_init+nps_init-1) = 0.
           nps(is) = ins_init + nps_init - ins(is)
         endif
@@ -169,7 +170,7 @@ c       --- but when npmaxi > 0, then it is 8 since pid is also exchanged.
         if (npmaxi > 0) nquant = 8
 
 c       --- Copy particles being sent to the left to buffer1.
-        if (periinz .or. my_index > 0) then
+        if (pbound0==periodic .or. my_index > 0) then
           nsendleft = ins(is) - ins_init
           if (nquant*nsendleft > b1size) then
             b1size = nquant*nsendleft
@@ -189,7 +190,7 @@ c       --- Copy particles being sent to the left to buffer1.
         endif
 
 c       --- Copy particles being sent to the right to buffer2.
-        if (periinz .or. my_index < nslaves-1) then
+        if (pboundnz==periodic .or. my_index < nslaves-1) then
           nsendright = ins_init + nps_init - ins(is) - nps(is)
           if (nquant*nsendright > b2size) then
             b2size = nquant*nsendright
@@ -510,11 +511,12 @@ c     --- This is done minimizing the amount of interprocessor communication
       return
       end
 c=============================================================================
-      subroutine percurr_slave(curr,nzzarr,periinz)
+      subroutine percurr_slave(curr,nzzarr,bound0)
+      use GlobalVars
       use Parallel
       integer(ISZ):: nzzarr
       real(kind=8):: curr(0:nzzarr)
-      logical(ISZ):: periinz
+      logical(ISZ):: bound0
 c Make current periodic and share current at PE boundaries.
 c Assumes a maximum grid overlap of 11.
 
@@ -556,11 +558,11 @@ c     --- elements of data are to be exchanged.
       endif
 
 c     --- Send the data to the right.
-      if (my_index < nslaves-1 .or. periinz) then
+      if (my_index < nslaves-1 .or. bound0==periodic) then
         call MPI_ISEND(curr(right_iz),right_nz+1,MPI_DOUBLE_PRECISION,
      &                 right_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
-      if (my_index > 0 .or. periinz) then
+      if (my_index > 0 .or. bound0==periodic) then
         call MPI_RECV(temp,left_nz+1,MPI_DOUBLE_PRECISION,
      &                left_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
         do iz=left_iz,left_iz+left_nz
@@ -569,7 +571,7 @@ c     --- Send the data to the right.
         call MPI_ISEND(curr(left_iz),left_nz+1,MPI_DOUBLE_PRECISION,
      &                 left_pe,0,MPI_COMM_WORLD,mpirequest,mpierror)
       endif
-      if (my_index < nslaves-1 .or. periinz) then
+      if (my_index < nslaves-1 .or. bound0==periodic) then
         call MPI_RECV(curr(right_iz),right_nz+1,MPI_DOUBLE_PRECISION,
      &                right_pe,0,MPI_COMM_WORLD,mpistatus,mpierror)
       endif

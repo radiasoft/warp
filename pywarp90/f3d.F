@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.61 $, $Date: 2002/10/04 00:53:12 $
+c@(#) File F3D.M, version $Revision: 3.62 $, $Date: 2002/10/26 00:21:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -3797,17 +3797,17 @@ c  now reduce to allow inversion
 c==========================================================================
       subroutine capfs(iwhich,nx,ny,nz,phi,rho,
      &                 xlen,ylen,zlen,kxsq,kysq,kzsq,attx,atty,attz,filt,
-     &                 work,workz,xywork,zwork,xmmax,pipeshpe,periinz,
+     &                 work,workz,xywork,zwork,xmmax,pipeshpe,bound0,
      &                 l2symtry,l4symtry)
       use Capvars
-      integer(ISZ):: iwhich,nx,ny,nz
+      use GlobalVars
+      integer(ISZ):: iwhich,nx,ny,nz,bound0
       real(kind=8):: phi(0:nx,0:ny,0:nz), rho(0:nx,0:ny,0:nz)
       real(kind=8):: work(nx+ny-4), workz(*),xywork(*), zwork(2,0:nx,0:nz)
       real(kind=8):: kxsq(0:nx-1), kysq(0:ny-1), kzsq(0:nz)
       real(kind=8):: attx(0:nx-1), atty(0:ny-1), attz(0:nz)
       real(kind=8):: xlen, ylen, zlen, filt(5,3), xmmax
       character(*):: pipeshpe
-      logical(ISZ):: periinz
       logical(ISZ):: l2symtry,l4symtry
 
 c  Capacity matrix field solve routine
@@ -3904,7 +3904,7 @@ c  reload rho back into phi
 
 c  if periodic in z, zero out iz=nz plane so that plane will only have
 c  image charges (plane 0 will have both image charges and beam charge)
-      if (periinz) then
+      if (bound0==periodic) then
         do ix=0,nx
           do iy=0,ny
             phi(ix,iy,nz) = 0.
@@ -3966,7 +3966,7 @@ c    load charge onto each of the four conductors in this lens
 c Make phi periodic by adding planes iz=0 and nz and placing result back into
 c both planes.  (Note that plane 0 has beam charge and additional image charge 
 c while plane nz has only image charge.)
-      if (periinz) then
+      if (bound0==periodic) then
         do ix=0,nx
           do iy=0,ny
             phi(ix,iy,0) = phi(ix,iy,0) + phi(ix,iy,nz)
@@ -4176,7 +4176,7 @@ c  get rest of quads within mesh
 c=============================================================================
       subroutine vcap3d (iwhich, rho, phi, kxsq, kysq, kzsq, 
      &   attx, atty, attz, filt, xlen, ylen, zlen, nx, ny, nz, 
-     &   scrtch, xywork, zwork, xmmax, zmmin, zgrid, pipeshpe, periinz,
+     &   scrtch, xywork, zwork, xmmax, zmmin, zgrid, pipeshpe, bound0,
      &   l2symtry,l4symtry)
       use Capvars
       use Lattice
@@ -4189,7 +4189,7 @@ c=============================================================================
       real(kind=8):: xlen, ylen, zlen
       real(kind=8):: xmmax,zmmin,zgrid
       character(*):: pipeshpe
-      logical(ISZ):: periinz
+      logical(ISZ):: bound0
       logical(ISZ):: l2symtry,l4symtry
  
 c  External interface to capacity matrix field solver.
@@ -4225,7 +4225,7 @@ c  Allocate local variables
 c  Call field solver, which may also do initialization
       call capfs(iwhich,nx,ny,nz,phi,rho,xlen,ylen,zlen,kxsq,kysq,kzsq,
      &           attx,atty,attz,filt,scrtch,scrtch,xywork,zwork,
-     &           xmmax,pipeshpe,periinz,l2symtry,l4symtry)
+     &           xmmax,pipeshpe,bound0,l2symtry,l4symtry)
 
       return
       end
