@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.38 $, $Date: 2002/01/08 00:10:22 $
+c@(#) File W3D.M, version $Revision: 3.39 $, $Date: 2002/01/15 19:55:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -5977,7 +5977,7 @@ c=============================================================================
       use InjectVars
       use InjectVars3d
       use Particles
-      use constant
+      use Constant
       integer(ISZ):: nx,nz
       real(kind=8):: rho(0:nx,0:nz)
       real(kind=8):: xmmin,dx,dz
@@ -6842,7 +6842,7 @@ c=============================================================================
       use Fields3d
       use LatticeInternal
       use PSOR3d
-      use frzmgrid
+      use FRZmgrid
       integer(ISZ):: iwhich
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
