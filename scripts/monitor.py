@@ -23,7 +23,7 @@ from warp import *
 import socket
 import time
 import re
-monitor_version = "$Id: monitor.py,v 1.2 2003/04/08 00:31:53 dave Exp $"
+monitor_version = "$Id: monitor.py,v 1.3 2003/05/30 17:03:12 dave Exp $"
 
 def socketsend(sock,s):
   """
@@ -103,6 +103,7 @@ Get commands from a remote job. Checks if a client socket has been created,
 and if so, get commands from it.
     """
     if self.gettingcommands: return
+    import __main__
     if self.client:
       print "Ready for input."
       socketsend(self.client,"Ready for input.")
@@ -125,14 +126,14 @@ and if so, get commands from it.
           except:
             break
           try:
-            exec(comm)
+            exec(comm,__main__.__dict__)
             socketsend(self.client,"OK")
           except:
             socketsend(self.client,"Error")
         else:
           try:
             print 'eval('+comm+')'
-            rrr = eval(comm)
+            rrr = eval(comm,__main__.__dict__)
             print rrr
             socketsend(self.client,repr(rrr))
           except:
