@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.74 $, $Date: 2002/09/19 20:25:15 $
+c@(#) File W3D.M, version $Revision: 3.75 $, $Date: 2002/10/24 21:29:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1423,9 +1423,14 @@ c       --- Apply particle boundary conditions
           if (stickyxy .and. nps(is) > 0)
      &       call stckxy3d(nps(is),xp(ins(is)),xmmax,xmmin,dx,yp(ins(is)),ymmax,
      &                     ymmin,dy,zp(ins(is)),zmmin,dz,uxp(ins(is)),
-     &                     uyp(ins(is)),uzp(ins(is)),zgrid,zbeam,nzzarr,
+     &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
+     &                     zgrid,zbeam,nzzarr,
      &                     prwallz(0),prwallxz(0),prwallyz(0),prwelips(0),
      &                     l2symtry,l4symtry,lostpars(0),zzmin,dzzi)
+        enddo
+
+        do is=1,ns
+          call processdeadpart(is,cleardeadpart)
         enddo
 
 c       --- Collect charge density (3d)
@@ -3555,7 +3560,7 @@ c     --- loop over species
 
 c        --- For the AMR/Chombo version, all of the dead particles must be
 c        --- cleared out.
-         if (solvergeom == AMRgeom) call cleardeadpart(is,0)
+         if (solvergeom == AMRgeom) call clearpart(is,1)
 
 c        --- get loop limits for particles if needed
          if (ins_i == -1) ins_u = ins(is)
@@ -3587,7 +3592,7 @@ c     --- enforce axial periodicity
       end
 c=============================================================================
       subroutine stckxy3d(np,xp,xmmax,xmmin,dx,yp,ymmax,ymmin,dy,
-     &                   zp,zmmin,dz,uxp,uyp,uzp,zgrid,zbeam,
+     &                   zp,zmmin,dz,uxp,uyp,uzp,gaminv,zgrid,zbeam,
      &                   nzzarr,prwallz,prwallxz,prwallyz,prwelips,
      &                   l2symtry,l4symtry,lostpars,zzmin,dzzi)
       use Subtimers
@@ -3595,7 +3600,7 @@ c=============================================================================
       integer(ISZ):: np,nzzarr
       real(kind=8):: xmmax,xmmin,dx,ymmax,ymmin,dy,zmmin,dz,zgrid,zbeam
       real(kind=8):: xp(np), yp(np), zp(np)
-      real(kind=8):: uxp(np), uyp(np), uzp(np)
+      real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np)
       real(kind=8):: prwallz(0:nzzarr),prwallxz(0:nzzarr),prwallyz(0:nzzarr)
       real(kind=8):: prwelips(0:nzzarr)
       logical(ISZ):: l2symtry,l4symtry
@@ -3644,12 +3649,7 @@ c lostpars.
      &      (xmin > xp(ip) .or. xp(ip) > xmax .or.
      &       ymin > yp(ip) .or. yp(ip) > ymax)) then
           if (uzp(ip)  /=  0.) lostpars(iz) = lostpars(iz) + 1
-          xp(ip) = xmmax - .1*dx
-          yp(ip) = ymmax - .1*dy
-          zp(ip) = zmmin - .9999*dz + zgrid
-          uxp(ip) = 0.0
-          uyp(ip) = 0.0
-          uzp(ip) = 0.0
+          gaminv(ip) = 0.
         endif
       enddo
 
@@ -3759,7 +3759,7 @@ c Print warning if vbeamfrm is not zero
       endif
 
 c Clear out the dead particles.
-      if (itask == 1) call cleardeadpart(-1,1)
+      if (itask == 1) call clearpart(-1,2)
 
 c Set inject z min and max. This is only really needed for
 c the parallel version, but is useful for the serial version to
