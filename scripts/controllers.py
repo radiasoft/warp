@@ -5,6 +5,11 @@ install___: Installs a function to be called at that specified time
 uninstall___: Uninstalls the function (so it won't be called anymore)
 isinstalled___: Checks if the function is installed
 
+The functions all take a function or instance method as an argument. Note that
+if an instance method is used, a reference to the instace must be kept,
+otherwise the method will not be called. If the instance is deleted, the
+method will no longer be called.
+
 Functions can be called at the following times:
 beforefs: before the field solve
 afterfs: after the field solve
@@ -41,7 +46,7 @@ installplseldom, uninstallplseldom, isinstalledplseldom
 installplalways, uninstallplalways, isinstalledplalways
 
 """
-controllers_version = "$Id: controllers.py,v 1.1 2004/07/24 00:23:20 dave Exp $"
+controllers_version = "$Id: controllers.py,v 1.2 2004/07/24 00:46:08 dave Exp $"
 def controllersdoc():
   import controllers
   print controllers.__doc__
