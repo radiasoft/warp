@@ -77,8 +77,8 @@ class WarpRun(wxFrame):
     def _init_coll_mnuHelp_Items(self, parent):
         # generated method, don't edit
 
-        parent.Append(helpString='Display info', id=wxID_WARPRUNMNUHELPABOUT,
-              item='About', kind=wxITEM_NORMAL)
+        parent.Append(help='Display info', id=wxID_WARPRUNMNUHELPABOUT,
+              text='About', kind=wxITEM_NORMAL)
         EVT_MENU(self, wxID_WARPRUNMNUHELPABOUT, self.OnMnuhelpAboutMenu)
 
     def _init_coll_menuBar1_Menus(self, parent):
@@ -94,16 +94,16 @@ class WarpRun(wxFrame):
     def _init_coll_mnuErrorCheck_Items(self, parent):
         # generated method, don't edit
 
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKSYMMETRY,
-              item='Symmetry', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
-              item='ParticleLoad', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKENVELOPE,
-              item='Envelope', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKIBPUSH,
-              item='Ibpush', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUERRORCHECKCHECKALL,
-              item='CheckAll', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUERRORCHECKSYMMETRY,
+              text='Symmetry', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
+              text='ParticleLoad', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUERRORCHECKENVELOPE,
+              text='Envelope', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUERRORCHECKIBPUSH,
+              text='Ibpush', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUERRORCHECKCHECKALL,
+              text='CheckAll', kind=wxITEM_NORMAL)
         EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKSYMMETRY,
               self.OnMnuerrorchecksymmetryMenu)
         EVT_MENU(self, wxID_WARPRUNMNUERRORCHECKPARTICLELOAD,
@@ -118,18 +118,18 @@ class WarpRun(wxFrame):
     def _init_coll_mnuFile_Items(self, parent):
         # generated method, don't edit
 
-        parent.Append(helpString='', id=wxID_WARPRUNMNUFILEOPEN, item='Open',
+        parent.Append(help='', id=wxID_WARPRUNMNUFILEOPEN, text='Open',
               kind=wxITEM_NORMAL)
-        parent.Append(helpString='Opens and Executes file',
-              id=wxID_WARPRUNMNUFILEOPENEXEC, item='Open/Execfile',
+        parent.Append(help='Opens and Executes file',
+              id=wxID_WARPRUNMNUFILEOPENEXEC, text='Open/Execfile',
               kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUFILESAVE, item='Save',
+        parent.Append(help='', id=wxID_WARPRUNMNUFILESAVE, text='Save',
               kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUFILESAVEAS,
-              item='Save As', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUFILEEXEC,
-              item='ExecFile', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUFILEEXIT, item='Exit',
+        parent.Append(help='', id=wxID_WARPRUNMNUFILESAVEAS,
+              text='Save As', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUFILEEXEC,
+              text='ExecFile', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUFILEEXIT, text='Exit',
               kind=wxITEM_NORMAL)
         EVT_MENU(self, wxID_WARPRUNMNUFILEOPEN, self.OnMnuOpenMenu)
         EVT_MENU(self, wxID_WARPRUNMNUFILESAVE, self.OnMnufileSaveMenu)
@@ -141,12 +141,12 @@ class WarpRun(wxFrame):
     def _init_coll_mnuPackage_Items(self, parent):
         # generated method, don't edit
 
-        parent.Append(helpString='Select 3-D code', id=wxID_WARPRUNMNUPACKAGE3D,
-              item='3-D', kind=wxITEM_CHECK)
-        parent.Append(helpString='Select slice code',
-              id=wxID_WARPRUNMNUPACKAGEXY, item='X-Y', kind=wxITEM_CHECK)
-        parent.Append(helpString='Select envelope code',
-              id=wxID_WARPRUNMNUPACKAGEENV, item='Envelope', kind=wxITEM_CHECK)
+        parent.Append(help='Select 3-D code', id=wxID_WARPRUNMNUPACKAGE3D,
+              text='3-D', kind=wxITEM_CHECK)
+        parent.Append(help='Select slice code',
+              id=wxID_WARPRUNMNUPACKAGEXY, text='X-Y', kind=wxITEM_CHECK)
+        parent.Append(help='Select envelope code',
+              id=wxID_WARPRUNMNUPACKAGEENV, text='Envelope', kind=wxITEM_CHECK)
         EVT_MENU(self, wxID_WARPRUNMNUPACKAGE3D, self.OnMnupackage3dMenu)
         EVT_MENU(self, wxID_WARPRUNMNUPACKAGEXY, self.OnMnupackageXYMenu)
         EVT_MENU(self, wxID_WARPRUNMNUPACKAGEENV, self.OnMnupackageEnvMenu)
@@ -154,14 +154,14 @@ class WarpRun(wxFrame):
     def _init_coll_mnuDump_Items(self, parent):
         # generated method, don't edit
 
-        parent.Append(helpString='', id=wxID_WARPRUNMNUDUMPRESTORE,
-              item='Restore', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUDUMPRESTART,
-              item='Restart', kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUDUMPDUMP, item='Dump',
+        parent.Append(help='', id=wxID_WARPRUNMNUDUMPRESTORE,
+              text='Restore', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUDUMPRESTART,
+              text='Restart', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUDUMPDUMP, text='Dump',
               kind=wxITEM_NORMAL)
-        parent.Append(helpString='', id=wxID_WARPRUNMNUDUMPDUMPAS,
-              item='Dump As', kind=wxITEM_NORMAL)
+        parent.Append(help='', id=wxID_WARPRUNMNUDUMPDUMPAS,
+              text='Dump As', kind=wxITEM_NORMAL)
         EVT_MENU(self, wxID_WARPRUNMNUDUMPRESTORE, self.OnMnudumpRestore)
         EVT_MENU(self, wxID_WARPRUNMNUDUMPRESTART, self.OnMnudumpRestart)
         EVT_MENU(self, wxID_WARPRUNMNUDUMPDUMP, self.OnMnudumpDump)
@@ -177,7 +177,7 @@ class WarpRun(wxFrame):
         # generated method, don't edit
         parent.SetFieldsCount(1)
 
-        parent.SetStatusText(i=0, text='Status')
+        parent.SetStatusText(number=0, text='Status')
 
         parent.SetStatusWidths([-1])
 
@@ -646,7 +646,7 @@ class WarpRun(wxFrame):
 
     def AddPalette(self,name):
         exec("[wxID_WARPRUNMNUPALLETTE"+name+"] = map(lambda _init_coll_mnuPalette_Items: wxNewId(), range(1))")
-        exec("self.mnuPalette.Append(helpString='', id=wxID_WARPRUNMNUPALLETTE"+name+", item='"+name+"',kind=wxITEM_NORMAL)")
+        exec("self.mnuPalette.Append(help='', id=wxID_WARPRUNMNUPALLETTE"+name+", text='"+name+"',kind=wxITEM_NORMAL)")
         exec("def OnMnuPalette"+name+"(event):palette('"+name+".gp')")
         exec("EVT_MENU(self, wxID_WARPRUNMNUPALLETTE"+name+", OnMnuPalette"+name+")")
 
@@ -719,9 +719,9 @@ class WarpRun(wxFrame):
     def OnMnufileexecfileMenu1(self, event):
         if self.FileName is None:
             OnMnufileSaveAsMenu(event)
-        self.statusBar1.SetStatusText(i=0,text="Executing file %s"%self.FileName)
+        self.statusBar1.SetStatusText(number=0,text="Executing file %s"%self.FileName)
         execfile(self.FileName)
-        self.statusBar1.SetStatusText(i=0,text="Finished executing file %s"%self.FileName)
+        self.statusBar1.SetStatusText(number=0,text="Finished executing file %s"%self.FileName)
 
     def OnMnufileexecfileMenu(self, event):
         if self.FileName is None:
@@ -732,7 +732,7 @@ class WarpRun(wxFrame):
         self.notebook1.SetSelection(0) # open notebook on Editor
         if(not l_standard_out): sys.stdout = newstdout.newstdout(self.Console)
         if(not l_standard_out): sys.stderr = newstdout.newstdout(self.Console)
-        self.statusBar1.SetStatusText(i=0,text="Executing file %s"%self.FileName)
+        self.statusBar1.SetStatusText(number=0,text="Executing file %s"%self.FileName)
         if(self.startrun and self.ConsolePanel.NoEntry):
             self.Console.Clear()
             startrun = 0
@@ -893,7 +893,7 @@ class WarpRun(wxFrame):
         self.Console.WriteText('>>> ')
         self.ConsolePanel.CursorMin = self.Console.GetLastPosition()
         self.FileExec.ShowPosition(self.EdPos-len(line)-1) 
-        self.statusBar1.SetStatusText(i=0,text="Ready")
+        self.statusBar1.SetStatusText(number=0,text="Ready")
 
     def OnMnudumpDump(self,event):
         dump()
@@ -1032,7 +1032,10 @@ class WarpRun(wxFrame):
 
     def OnNotebook1NotebookPageChanged(self, event):
         if event.GetSelection() == 0:
+	  try:
             self.OutToConsole()
+	  except:
+	    pass
         else:
             self.OutToMessageWindow()
         if sys.platform == 'win32':event.Skip()
