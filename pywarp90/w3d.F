@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.183 $, $Date: 2005/01/12 17:04:58 $
+c@(#) File W3D.F, version $Revision: 3.184 $, $Date: 2005/01/21 15:05:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4906,24 +4906,48 @@ c lost particles.
       xper = xmax - xmin
       yper = ymax - ymin
 
-c Apply periodic boundary condition
+c     --- Apply periodic boundary condition
       if(pboundxy == periodic) then
-         do ip=1,np
-            if(xp(ip) > xmax) then
-               xp(ip) = xp(ip) - xper
-            elseif(xp(ip) < xmin) then
-               xp(ip) = xp(ip) + xper
-            endif
-            if(yp(ip) > ymax) then
-               yp(ip) = yp(ip) - yper
-            elseif(yp(ip) < ymin) then
-               yp(ip) = yp(ip) + yper
-            endif
-         enddo
+!$OMP PARALLEL DO
+        do ip=1,np
+          if(xp(ip) > xmax) then
+            xp(ip) = xp(ip) - xper
+          elseif(xp(ip) < xmin) then
+            xp(ip) = xp(ip) + xper
+          endif
+          if(yp(ip) > ymax) then
+            yp(ip) = yp(ip) - yper
+          elseif(yp(ip) < ymin) then
+            yp(ip) = yp(ip) + yper
+          endif
+        enddo
+!$OMP END PARALLEL DO
       endif
 
-c Check values of rectangular boundary arrays to see if they will be used.
+c     --- Apply reflection boundary condition
+      if(pboundxy == reflect) then
+!$OMP PARALLEL DO
+        do ip=1,np
+          if(xp(ip) > xmax) then
+            xp(ip) = xmax - (xp(ip) - xmax)
+            uxp(ip) = -uxp(ip)
+          elseif(xp(ip) < xmin) then
+            xp(ip) = xmin + (xmin - xp(ip))
+            uxp(ip) = -uxp(ip)
+          endif
+          if(yp(ip) > ymax) then
+            yp(ip) = ymax - (yp(ip) - ymax)
+            uyp(ip) = -uyp(ip)
+          elseif(yp(ip) < ymin) then
+            yp(ip) = ymin + (ymin - yp(ip))
+            uyp(ip) = -uyp(ip)
+          endif
+        enddo
+!$OMP END PARALLEL DO
+      endif
 
+c     --- Check values of rectangular boundary arrays to see if they will
+c     --- be used.
       lstckxy = .false.
       do izz = 0, nzzarr
         if(xmaxz(izz) <= xmax) lstckxy = .true.
@@ -4933,19 +4957,20 @@ c Check values of rectangular boundary arrays to see if they will be used.
       enddo
 
       if(lstckxy) then
-         do ip=1,np
-            iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
-            if (  xp(ip) >= xmaxz(iz)
+!$OMP PARALLEL DO PRIVATE(iz)
+        do ip=1,np
+          iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
+          if (  xp(ip) >= xmaxz(iz)
      &        .or. yp(ip) >= ymaxz(iz)
      &        .or. xp(ip) <= xminz(iz)
      &        .or. yp(ip) <= yminz(iz) ) then
-          gaminv(ip) = 0.
-          if (.not. lcountaslost) uzp(ip) = 0.
-       endif
-      enddo
+            gaminv(ip) = 0.
+            if (.not. lcountaslost) uzp(ip) = 0.
+          endif
+        enddo
+!$OMP END PARALLEL DO
       endif
       
-
 !$OMP PARALLEL DO PRIVATE(iz)
       do ip=1,np
         iz = max(0,min(nzzarr,int((zp(ip) - zzmin - zbeam)*dzzi)))
