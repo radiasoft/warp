@@ -9,7 +9,9 @@ viewparticles: views particles
 DXImage: views a OpenDX object using a nice interactor handler
 """
 from warp import *
+from wxPython.wx import *
 import __main__
+selectbox = 1
 
 try:
   # --- Try importing. If not found, still define the functions and classes.
@@ -18,7 +20,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.15 2004/09/28 00:21:14 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.16 2004/11/24 22:52:31 jlvay Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -33,7 +35,7 @@ def ppxxpy(iw = 0,labels=1,display=1,**kw):
                        take(top.yp,ii),(take(top.uyp,ii)/take(top.uzp,ii)),
                        labels,name='WARP viz',display=display)
 
-def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,**kw):
+def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,scale=1.,ratio=1.,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
@@ -49,7 +51,7 @@ def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,**kw):
   if zscale is not None:
     zz = zz*zscale
   return viewparticles(xx,yy,zz,cc,
-                       labels,name='WARP viz',display=display)
+                       labels,name='WARP viz',display=display,scale=scale,ratio=ratio)
 
 ###########################################################################
 def viewisosurface1(data,isovalue,origins=None,deltas=None,name='WARP viz'):
@@ -97,7 +99,7 @@ def viewisosurface(data,isovalue,name='WARP viz'):
 
 ###########################################################################
 def viewparticles(x,y,z,v,labels=None,name='WARP viz',
-                  display=1):
+                  display=1,scale=1.,ratio=1.):
   x = gatherarray(x)
   y = gatherarray(y)
   z = gatherarray(z)
@@ -122,7 +124,7 @@ def viewparticles(x,y,z,v,labels=None,name='WARP viz',
   DXEndField(dxf)
 
   # --- Create glyphs to render data
-  minput = {'data':dxf,'type':'speedy','ratio':1.0}
+  minput = {'data':dxf,'type':'speedy','ratio':ratio,'scale':scale}
   moutput = ['glyphs']
   (glyphs,) = DXCallModule('AutoGlyph',minput,moutput)
 
@@ -204,11 +206,18 @@ Displays the dxobject, creating it if necessary.
 
 ###########################################################################
 class DXCollection(Visualizable):
+  global selectbox
   def __init__(self,*dxobjects,**kw):
     self.labels = kw.get('labels',None)
     self.preserve = kw.get('preserve',0)
     self.collection = None
-    for o in dxobjects: self.addobject(o)
+    for o in dxobjects:
+      if __main__.selectbox:
+        try:
+          o.SelectBox()
+        except:
+          pass
+      self.addobject(o)
   def createdxobject(self,kwdict={},**kw):
     assert self.collection is not None,"Empty collection can not be visualized"
     self.dxobject = self.collection
@@ -304,17 +313,19 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
     moutput = ['axes']
     (dxobject,) = DXCallModule('AutoAxes',minput,moutput)
 
-  i = 0
   DXRegisterInputHandler(interactor_handler)
-  while interactor >= 0:
-    i = i + 1
+
+  def dxinter(l_init=0,name=None,dxobject=None):
+    if dxobject is None: dxobject = __main__.wgui.dxobject
+    if name is None: name = __main__.wgui.dxname
+
     DXCheckRIH(0)
 
     minput = {'name':name}
     moutput = ['where','size','events']
     (wwhere,wsize,wevents,) = DXCallModule('SuperviseWindow',minput,moutput)
 
-    if wevents.isnull() and i != 1:
+    if wevents.isnull() and not l_init:
       DXDelete(wwhere)
       DXDelete(wsize)
     else:
@@ -322,7 +333,7 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
       DXReference(dxobject)
       minput = {'where':wwhere,'size':wsize,'events':wevents,
                 'object':dxobject,'mode':interactor,'resetObject':1}
-      if i == 1:
+      if l_init:
         minput['defaultCamera'] = camera
         minput['resetCamera'] = 1
       moutput = ['object','camera','where']
@@ -332,8 +343,19 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
       moutput = []
       DXCallModule('Display',minput,moutput)
 
-  DXDelete(dxobject)
-  interactor = 0
+  try:
+    __main__.wgui.dxinter = dxinter
+    __main__.wgui.dxname  = name
+    __main__.wgui.dxobject = dxobject
+    dxinter(1)
+    __main__.wgui.dx_timer = wxPyTimer(__main__.wgui.dxinter)
+    __main__.wgui.dx_timer.Start(100)
+  except:
+    dxinter(1,name,dxobject)
+    while interactor >=0:
+      dxinter(0,name,dxobject)
+    DXDelete(dxobject)
+    interactor = 0
 
 def DXNewImage():
   _group.reset()
