@@ -18,7 +18,7 @@ try:
 except:
   pass
 
-pyOpenDX_version = "$Id: pyOpenDX.py,v 1.12 2004/06/04 16:26:26 dave Exp $"
+pyOpenDX_version = "$Id: pyOpenDX.py,v 1.13 2004/06/24 20:37:31 dave Exp $"
 def pyOpenDXdoc():
   import pyOpenDX
   print pyOpenDX.__doc__
@@ -33,7 +33,7 @@ def ppxxpy(iw = 0,labels=1,display=1,**kw):
                        take(top.yp,ii),(take(top.uyp,ii)/take(top.uzp,ii)),
                        labels,name='WARP viz',display=display)
 
-def ppxyz(iw = 0,labels=1,display=1,rscale=None,zscale=None,**kw):
+def ppxyz(iw = 0,cc=None,labels=1,display=1,rscale=None,zscale=None,**kw):
   """Plots X-Y-Z"""
   checkparticleplotarguments(kw)
   ii = selectparticles(iw=iw,kwdict=kw)
@@ -41,12 +41,14 @@ def ppxyz(iw = 0,labels=1,display=1,rscale=None,zscale=None,**kw):
   xx = take(top.xp,ii)
   yy = take(top.yp,ii)
   zz = take(top.zp,ii)
+  if cc is None: cc = top.uxp
+  cc = take(cc,ii)
   if rscale is not None:
     xx = xx*rscale
     yy = yy*rscale
   if zscale is not None:
     zz = zz*zscale
-  return viewparticles(xx,yy,zz,take(top.uxp,ii),
+  return viewparticles(xx,yy,zz,cc,
                        labels,name='WARP viz',display=display)
 
 ###########################################################################
@@ -132,6 +134,36 @@ def viewparticles(x,y,z,v,labels=None,name='WARP viz',
     DXImage(dxobject,name=name,labels=labels)
   else:
     return dxobject
+
+###########################################################################
+def viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax):
+  """
+Create a box
+  - xmin,xmax,ymin,ymax,zmin,zmax: extent of the box
+  """
+  # --- Create a field containing two points on opposite side of the
+  # --- mesh and use it to find the boinding box.
+  n = 2
+  p = zeros((n,3),'d')
+  p[:,0] = [xmin,xmax]
+  p[:,1] = [ymin,ymax]
+  p[:,2] = [zmin,zmax]
+  dxp = DXNewArray(TYPE_FLOAT,CATEGORY_REAL,1,3)
+  DXAddArrayData(dxp,0,n,p.astype(Float32))
+  # --- Create a DX array for the data
+  dxd = DXNewArray(TYPE_DOUBLE,CATEGORY_REAL,0)
+  DXAddArrayData(dxd,0,n,array([1.,1.]))
+  DXSetStringAttribute(dxd,'dep','positions')
+  # --- Create the field
+  dxf = DXNewField()
+  DXSetComponentValue(dxf,'positions',dxp)
+  DXSetComponentValue(dxf,'data',dxd)
+  DXEndField(dxf)
+
+  minput = {'input':dxf}
+  moutput = ['box']
+  (box,) = DXCallModule('ShowBox',minput,moutput)
+  return box
 
 ###########################################################################
 class Visualizable:
@@ -281,6 +313,8 @@ image. Default mode is rotation. Press 1 for panning, 2 for zooming.
       DXDelete(wwhere)
       DXDelete(wsize)
     else:
+      # --- This is needed and sometimes not.
+      DXReference(dxobject)
       minput = {'where':wwhere,'size':wsize,'events':wevents,
                 'object':dxobject,'mode':interactor,'resetObject':1}
       if i == 1:
