@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.140 2005/01/12 17:17:40 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.141 2005/01/19 20:27:34 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -24,7 +24,7 @@ Basic graphics commands
 winon(): creates X graphic windows
 hcp(): send current plot to hard-copy file
 fma(): do a frame advance
-plg(): basic plotting routine
+plg(): basic plotting routine, can plot multi-dimensional arrays
 plp(): plots markers (dots) instead of lines
 pla(): plots multi-dimensional array as a series of lines
 plotc(): contour plots 2-D data
@@ -38,8 +38,8 @@ These return or set a slice out of the rho or phi array.
 getrho(), getphi(), setrho(), setphi()
 
 The following plot various particles projections.
-ppzxy(), ppzx(), ppzy(), ppzr(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz(), ppxy()
-ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
+ppzxy(), ppzx(), ppzy(), ppzr(), ppzxp(), ppzvx(), ppzyp(), ppzvy(), ppzvz()
+ppxy(), ppxxp(), ppyyp(), ppxpyp(), ppxvx(), ppyvy(), ppxvz(), ppyvz()
 pptrace()
 pprrp(), pprtp(), pprvz()
 
@@ -100,19 +100,23 @@ def warpplotsdoc():
 ##########################################################################
 
 ##########################################################################
-# The setup routine does the work needed to start writing plots to a file
-# automatically.
 top.lpsplots = true
 always = top.always
 seldom = top.seldom
 never = top.never
 cgmlogfile = None
 numframes = 0
+
 if me == 0: pldefault(marks=0) # --- Set plot defaults, no line marks
+
+# --- Set GISTPATH environment variable appropriately if it is not already
+# --- set.
 if "GISTPATH" not in os.environ:
-  # --- Set GISTPATH environment variable appropriately
   import warp
   os.environ["GISTPATH"] = os.path.dirname(warp.__file__)
+
+# The setup routine does the work needed to start writing plots to a file
+# automatically.
 def setup(makepsfile=0,prefix=None,cgmlog=1,runcomments='',
           cgmfilesize=100000):
   """
@@ -249,16 +253,16 @@ sf = redraw
 # Create the plotting routines. It is different in the serial and parallel
 # versions.
 if not lparallel:
-  def warpplp(y,x,color="fg",linetype="none",marker="\1",msize=1.0):
+  def warpplp(y,x,linetype="none",marker="\1",msize=1.0,**kw):
     "Plots particles, same as plg but with different defaults"
-    if len(y) > 0:
-      plg(y,x,color=color,type=linetype,marker=marker,msize=msize)
-  def warpplg(y,x,color="fg",linetype="solid",marks=0,marker=None,msize=1.0,
-              width=1.0):
+    kw.setdefault('type',linetype)
+    kw['marker'] = marker
+    kw['msize'] = msize
+    if len(y) > 0: plg(y,x,**kw)
+  def warpplg(y,x,linetype="solid",**kw):
     "Same as plg but with different defaults"
-    if len(y) > 0:
-      plg(y,x,color=color,type=linetype,marks=marks,marker=marker,msize=msize,
-          width=width)
+    kw.setdefault('type',linetype)
+    if len(y) > 0: plg(y,x,**kw)
 else:
   warpplp = plotpart
   warpplg = plotarray
@@ -268,14 +272,74 @@ circle = '\4'
 star = '\3'
 plus = '\2'
 point = '\1'
-def plp(y,x=None,color="fg",marker="\1",msize=1.0):
+def plp(y,x=None,linetype='none',marker="\1",msize=1.0,**kw):
   """Plots particles, same as plg but with different defaults so it plots
 markers instead of lines"""
   if len(y) == 0: return
+  kw.setdefault('type',linetype)
+  kw['marker'] = marker
+  kw['msize'] = msize
   if x is not None:
-    plg(y,x,type="none",marker=marker,color=color,msize=msize)
+    plg(y,x,**kw)
   else:
-    plg(y,type="none",marker=marker,color=color,msize=msize)
+    plg(y,**kw)
+
+##########################################################################
+# This routine allows plotting of multi-dimensioned arrays.
+# It replaces the plg from gist, which can only plot 1-d arrays.
+gistplg = plg
+def pla(y,x=None,linetype="solid",decomposed=0,**kw):
+  """This comment is replaced with gistplg.__doc__. The linetype argument is
+  only needed for backward compatibility."""
+  kw.setdefault('type',linetype)
+  if x is not None:
+    # --- This is the only constraint on the input arrays.
+    assert shape(x)[0]==shape(y)[0],\
+      'The first dimensions of the two input arrays must be of the same length'
+  else:
+    # --- If x is not supplied, it is just the integers starting at 1.
+    x = arange(1,y.shape[0]+1,1,'d')
+  if len(shape(x)) > 2:
+    # --- Reshape the array, putting all but the 1st dimension into the
+    # --- 2nd dimension.
+    # --- This check is needed since non-contiguous arrays cannot be reshaped.
+    # --- A copy is made instead.
+    if x.iscontiguous(): xx = x
+    else:                xx = x.copy()
+    xx.shape = (xx.shape[0],product(array(xx.shape[1:])))
+  elif len(shape(x)) == 2:
+    # --- The input x is usable as is.
+    xx = x
+  else:
+    # --- Extend xx into a 2-D array, with a second dimension of length 1.
+    xx = x[:,NewAxis]
+  if len(shape(y)) > 2:
+    # --- Reshape the array, putting all but the 1st dimension into the
+    # --- 2nd dimension.
+    # --- This check is needed since non-contiguous arrays cannot be reshaped.
+    # --- A copy is made instead.
+    if y.iscontiguous(): yy = y
+    else:                yy = y.copy()
+    yy.shape = (yy.shape[0],product(array(yy.shape[1:])))
+  elif len(shape(y)) == 2:
+    # --- The input y is usable as is.
+    yy = y
+  else:
+    # --- Extend yy into a 2-D array, with a second dimension of length 1.
+    yy = y[:,NewAxis]
+  # --- The i%n is used in case the 2nd dimensions are not equal. This
+  # --- is most useful if the 2nd dimension of xx is 1, in which case
+  # --- all of the plots use that as the abscissa.
+  n = shape(xx)[1]
+  for i in xrange(yy.shape[1]):
+    if decomposed:
+      warpplg(yy[:,i],xx[:,i%n],**kw)
+    else:
+      if len(yy[:,i]) > 0:
+        gistplg(yy[:,i],xx[:,i%n],**kw)
+
+pla.__doc__ = gistplg.__doc__
+plg = pla
 
 # --- Plot history data. Convenience function that is only needed until
 # --- the 'limited' capability is implemented.
@@ -555,6 +619,7 @@ def ppgeneric_doc(x,y):
   - ldensityscale=0: when true, scale the density by its max.
   - flipxaxis=0: when true, flips gridded data about the x-axis
   - flipyaxis=0: when true, flips gridded data about the y-axis
+  - xcoffset,ycoffset=0: offsets of coordinates in grid plots
   - view=1: view window to use (experts only)
   - lcolorbar=1: when plotting colorized data, include a colorbar
   - colbarunitless=0: when true, color-bar scale is unitless
@@ -594,6 +659,7 @@ Note that either the x and y coordinates or the grid must be passed in.
                 'cmin':None,'cmax':None,'ireg':None,
                 'xbound':dirichlet,'ybound':dirichlet,
                 'ldensityscale':0,'flipxaxis':0,'flipyaxis':0,
+                'xcoffset':0.,'ycoffset':0.,
                 'view':1,
                 'lcolorbar':1,'colbarunitless':0,'colbarlinear':1,'surface':0,
                 'xmesh':None,'ymesh':None,
@@ -872,8 +938,13 @@ Note that either the x and y coordinates or the grid must be passed in.
   if contours or hash or surface or cellarray:
     if xmesh is not None or ymesh is not None: usermesh = 1
     else:                                      usermesh = 0
-    if xmesh is None: xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d')
-    if ymesh is None: ymesh = ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis]
+    # --- The offsets are added in the way they are incase they are arrays.
+    # --- Though of course they must be the correct length.
+    if xmesh is None:
+      xmesh = xmin + dx*arange(nx+1)[:,NewAxis]*ones(ny+1,'d') + xcoffset
+    if ymesh is None:
+      ymesh = (ymin + dy*arange(ny+1)*ones(nx+1,'d')[:,NewAxis] +
+               transpose([ycoffset]))
 
   # --- Make filled contour plot of grid first since it covers everything
   # --- plotted before it.
@@ -2282,56 +2353,6 @@ def ppco(y,x,z,uz=1.,xmin=None,xmax=None,ymin=None,ymax=None,
 #ppxxpco
 #ppyypco
 
-
-##########################################################################
-# This routine allows plotting of multi-dimensioned arrays.
-def pla(y,x=None,color="fg",linetype="solid",marks=0,marker=None,msize=1.0,
-        width=1.,decomposed=0):
-  "Same as plg but can plot multidimensional array"
-  if x:
-    if shape(x)!=shape(y) and (len(shape(x))==1 and shape(x)[0]!=shape(y)[0]):
-      raise TypeError,"pla: x must either be the same shape as y, or it must be 1-D with the same len as the 1st dimension of y."
-  else:
-    x = arange(0,y.shape[0],1,'d')
-  if len(shape(x)) > 2:
-    # This next 'if' is needed since non-contiguous arrays cannot be reshaped.
-    if x.iscontiguous():
-      xx = x
-    else:
-      xx = x + 0.
-    # Change xx into a 2-D array, with all of the upper dims lumped into
-    # the second dimension.
-    xx.shape = (xx.shape[0],product(array(xx.shape[1:])))
-  elif len(shape(x)) == 2:
-    # The input x is usable as is.
-    xx = x
-  else:
-    # Extend xx into a 2-D array, with a second dimension of length 1.
-    xx=x[:,NewAxis]
-  if len(shape(y)) > 2:
-    # This next 'if' is needed since non-contiguous arrays cannot be reshaped.
-    if y.iscontiguous():
-      yy = y
-    else:
-      yy = y + 0.
-    # Change yy into a 2-D array, with all of the upper dims lumped into
-    # the second dimension.
-    yy.shape = (yy.shape[0],product(array(yy.shape[1:])))
-  elif len(shape(y)) == 2:
-    # The input y is usable as is.
-    yy = y
-  else:
-    # Extend yy into a 2-D array, with a second dimension of length 1.
-    yy=y[:,NewAxis]
-  n = shape(xx)[1]
-  for i in xrange(yy.shape[1]):
-    if decomposed:
-      warpplg(yy[:,i],xx[:,i%n],color=color,linetype=linetype,
-              marks=marks,marker=marker,msize=msize,width=width)
-    else:
-      if len(yy[:,i]) > 0:
-        plg(yy[:,i],xx[:,i%n],color=color,type=linetype,
-            marks=marks,marker=marker,msize=msize,width=width)
 
 ##########################################################################
 ##########################################################################
