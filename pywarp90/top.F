@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.131 $, $Date: 2004/10/27 23:41:56 $
+c@(#) File TOP.F, version $Revision: 3.132 $, $Date: 2004/10/28 00:22:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2234,9 +2234,10 @@ c   bx, by   dipole magnetic field
 
       integer(ISZ):: io,ip,iz
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
-      real(kind=8):: vz(npz),dzi(npz)
+      real(kind=8), allocatable:: vz(:),dzi(:)
 
       if (.not. dipos .or. .not. lindipo(0)) return
+      allocate(vz(npz),dzi(npz))
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2303,6 +2304,7 @@ c         --- set the field
           endif
         enddo
       enddo
+      deallocate(vz,dzi)
 
       return
       end
@@ -2401,9 +2403,10 @@ c   bx, by   sextupole magnetic field
       integer(ISZ):: io,ip,iz
       real(kind=8):: xpmqoff,ypmqoff
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
-      real(kind=8):: vz(npz),dzi(npz)
+      real(kind=8), allocatable:: vz(:),dzi(:)
 
       if (.not. sexts .or. .not. linsext(0)) return
+      allocate(vz(npz),dzi(npz))
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2472,6 +2475,7 @@ c         --- set the field
           endif
         enddo
       enddo
+      deallocate(vz,dzi)
 
       return
       end
@@ -2504,14 +2508,15 @@ c   bx, by, bz   magnetic field
 
       integer(ISZ):: io,ip,iz,iele,ii
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
-      real(kind=8):: vz(npz),dzi(npz)
       real(kind=8):: n,v,f,rpow,cosnt,sinnt
       real(kind=8):: xpmqoff,ypmqoff
-      integer(ISZ):: tiele(np)
-      real(kind=8):: tfrac(np),txpmqoff(np),typmqoff(np)
-      real(kind=8):: trpmqoff(np),ttpmqoff(np)
+      integer(ISZ), allocatable:: tiele(:)
+      real(kind=8), allocatable, dimension(:):: vz,dzi,tfrac,txpmqoff,typmqoff,
+     &                                          trpmqoff,ttpmqoff
 
       if (.not. heles .or. .not. linhele(0)) return
+      allocate(tiele(np),vz(npz),dzi(npz),tfrac(np),txpmqoff(np),typmqoff(np),
+     &         trpmqoff(np),ttpmqoff(np))
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2651,6 +2656,7 @@ c               --- rest of components
           enddo
         enddo
       enddo
+      deallocate(tiele,vz,dzi,tfrac,txpmqoff,typmqoff,trpmqoff,ttpmqoff)
 
       return
       end
