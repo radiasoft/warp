@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.137 $, $Date: 2003/10/30 19:23:22 $
+#@(#) File W3D.V, version $Revision: 3.138 $, $Date: 2003/12/13 19:22:30 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.137 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.138 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -469,7 +469,7 @@ epush3d(np,uxp:real,uyp:real,uzp:real,ex:real,ey:real,ez:real,q:real,m:real,
         dt:real)
              subroutine # Particle velocity advance from E field
 bpush3d (np,uxp:real,uyp:real,uzp:real,gaminv:real,bx:real,by:real,bz:real,
-         q:real,m:real,dt:real,bpush:real)
+         q:real,m:real,dt:real,ibpush:integer)
              subroutine # Particle velocity advance from B field
 xpush3d (np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
          dt:real)
