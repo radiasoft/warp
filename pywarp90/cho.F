@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File CHO.F, version $Revision: 1.14 $, $Date: 2004/03/31 15:06:11 $
+c@(#) File CHO.F, version $Revision: 1.15 $, $Date: 2004/04/08 19:42:51 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the interface to the Chombo/AMR fieldsolver.
@@ -377,10 +377,10 @@ c     --- If all nodes are reachable, then just return.
       if (lcho_allnodesreachable) return
 
 c     --- Check for point in conductors.
-      do ic=interior%istart(il),interior%istart(il+1)-1
-        ix = interior%indx(1,ic)
-        iy = interior%indx(2,ic)
-        iz = interior%indx(3,ic)
+      do ic=conductors%interior%istart(il),conductors%interior%istart(il+1)-1
+        ix = conductors%interior%indx(0,ic)
+        iy = conductors%interior%indx(1,ic)
+        iz = conductors%interior%indx(2,ic)
 c       --- Then check if the point is within the requested region.
 c       --- If so, set mask to 0.
         if (xlo <= ix .and. ix <= xhi .and.
@@ -408,18 +408,18 @@ c       --- Set mask to 0 for neighboring points
       enddo
 
 c     --- Check points near boundary.
-      call ReachableNodeswork(evensubgrid,mask,xlo,ylo,zlo,xhi,yhi,zhi,
-     &                        level,il)
-      call ReachableNodeswork(oddsubgrid,mask,xlo,ylo,zlo,xhi,yhi,zhi,
-     &                        level,il)
+      call ReachableNodeswork(conductors%evensubgrid,
+     &                        mask,xlo,ylo,zlo,xhi,yhi,zhi,level,il)
+      call ReachableNodeswork(conductors%oddsubgrid,
+     &                        mask,xlo,ylo,zlo,xhi,yhi,zhi,level,il)
 
       return
       end
 c=============================================================================
       subroutine ReachableNodeswork(subgrid,mask,xlo,ylo,zlo,xhi,yhi,zhi,
      &                              level,il)
-      use ConductorSubGridmodule
-      type(ConductorSubGrid):: subgrid
+      use ConductorSubGridTypemodule
+      type(ConductorSubGridType):: subgrid
       integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi,il,level
       integer(ISZ):: mask(xlo:xhi, ylo:yhi, zlo:zhi, 0:6)
 
@@ -432,31 +432,31 @@ c into this routine.
 c     --- loop over points near surface of conductors
       do ic = subgrid%istart(il),subgrid%istart(il+1)-1
  
-        ix = subgrid%indx(1,ic)
-        iy = subgrid%indx(2,ic)
-        iz = subgrid%indx(3,ic)
+        ix = subgrid%indx(0,ic)
+        iy = subgrid%indx(1,ic)
+        iz = subgrid%indx(2,ic)
  
         if (xlo <= ix .and. ix <= xhi .and.
      &      ylo <= iy .and. iy <= yhi .and.
      &      zlo <= iz .and. iz <= zhi) then
 
 c         --- the point lower in x is inside the conductor
-          if (subgrid%dels(1,ic) < 1.) mask(ix,iy,iz,2) = 0
+          if (subgrid%dels(0,ic) < 1.) mask(ix,iy,iz,2) = 0
 
 c         --- the point higher in x is inside the conductor
-          if (subgrid%dels(2,ic) < 1.) mask(ix,iy,iz,1) = 0
+          if (subgrid%dels(1,ic) < 1.) mask(ix,iy,iz,1) = 0
 
 c         --- the point lower in y is inside the conductor
-          if (subgrid%dels(3,ic) < 1.) mask(ix,iy,iz,4) = 0
+          if (subgrid%dels(2,ic) < 1.) mask(ix,iy,iz,4) = 0
 
 c         --- the point higher in y is inside the conductor
-          if (subgrid%dels(4,ic) < 1.) mask(ix,iy,iz,3) = 0
+          if (subgrid%dels(3,ic) < 1.) mask(ix,iy,iz,3) = 0
 
 c         --- the point lower in z is inside the conductor
-          if (subgrid%dels(5,ic) < 1.) mask(ix,iy,iz,6) = 0
+          if (subgrid%dels(4,ic) < 1.) mask(ix,iy,iz,6) = 0
 
 c         --- the point higher in z is inside the conductor
-          if (subgrid%dels(6,ic) < 1.) mask(ix,iy,iz,5) = 0
+          if (subgrid%dels(5,ic) < 1.) mask(ix,iy,iz,5) = 0
 
         endif
       enddo
@@ -484,10 +484,10 @@ c     --- Get the level of coarseness above the finest level.
 c     --- Zero out the mask
       mask = 0
 
-      do ic=interior%istart(il),interior%istart(il+1)-1
-        ix = interior%indx(1,ic)
-        iy = interior%indx(2,ic)
-        iz = interior%indx(3,ic)
+      do ic=conductors%interior%istart(il),conductors%interior%istart(il+1)-1
+        ix = conductors%interior%indx(0,ic)
+        iy = conductors%interior%indx(1,ic)
+        iz = conductors%interior%indx(2,ic)
 c       --- Then check if the point is within the requested region.
         if (xlo <= ix .and. ix <= xhi .and.
      &      ylo <= iy .and. iy <= yhi .and.
@@ -526,35 +526,35 @@ c     --- Get level of coarseness
       il = int(log(1.*level)/log(2.) + 0.5)
 
 c     --- Check for point in conductors.
-      do ic=interior%istart(il),interior%istart(il+1)-1
-        ix = interior%indx(1,ic)
-        iy = interior%indx(2,ic)
-        iz = interior%indx(3,ic)
+      do ic=conductors%interior%istart(il),conductors%interior%istart(il+1)-1
+        ix = conductors%interior%indx(0,ic)
+        iy = conductors%interior%indx(1,ic)
+        iz = conductors%interior%indx(2,ic)
 c       --- Then check if the point is within the requested region.
         if (xlo <= ix .and. ix <= xhi .and.
      &      ylo <= iy .and. iy <= yhi .and.
      &      zlo <= iz .and. iz <= zhi) then
           coeffs(ix,iy,iz,0) = 1.
           coeffs(ix,iy,iz,1:6) = 0.
-          coeffs(ix,iy,iz,7) = interior%volt(ic)
+          coeffs(ix,iy,iz,7) = conductors%interior%volt(ic)
         endif
       enddo
 
 c     --- Get coefficients for even points.
-      call NodalCoefficientswork(evensubgrid,coeffs,xlo,ylo,zlo,xhi,yhi,zhi,
-     &                           rdx2,level,il)
+      call NodalCoefficientswork(conductors%evensubgrid,
+     &                           coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,level,il)
 
 c     --- Get coefficients for odd points.
-      call NodalCoefficientswork(oddsubgrid,coeffs,xlo,ylo,zlo,xhi,yhi,zhi,
-     &                           rdx2,level,il)
+      call NodalCoefficientswork(conductors%oddsubgrid,
+     &                           coeffs,xlo,ylo,zlo,xhi,yhi,zhi,rdx2,level,il)
 
       return
       end
 c=============================================================================
       subroutine NodalCoefficientswork(subgrid,coeffs,xlo,ylo,zlo,xhi,yhi,zhi,
      &                                 rdx2,level,il)
-      use ConductorSubGridmodule
-      type(ConductorSubGrid):: subgrid
+      use ConductorSubGridTypemodule
+      type(ConductorSubGridType):: subgrid
       integer(ISZ):: xlo,ylo,zlo,xhi,yhi,zhi
       real(kind=8):: coeffs(xlo:xhi,ylo:yhi,zlo:zhi,0:7)
       real(kind=8):: rdx2
@@ -582,9 +582,9 @@ c     endif
 c     --- loop over points near surface of conductors
       do ic = subgrid%istart(il),subgrid%istart(il+1)-1
  
-        ix = subgrid%indx(1,ic)
-        iy = subgrid%indx(2,ic)
-        iz = subgrid%indx(3,ic)
+        ix = subgrid%indx(0,ic)
+        iy = subgrid%indx(1,ic)
+        iz = subgrid%indx(2,ic)
  
         if (xlo <= ix .and. ix <= xhi .and.
      &      ylo <= iy .and. iy <= yhi .and.
@@ -594,40 +594,40 @@ c         --- Contributions of terms with no conductor boundary nearby.
           coeff0 = -rdx2
 
 c         --- the point higher in x is inside the conductor
-          if (dels(2,ic) < 1.) then
-            coeff0(1) = -1./dels(2,ic)*rdx2
-            coeffs(ix,iy,iz,1) = 0.
-            coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(2,ic)/dels(2,ic)*rdx2*voltswitch
-          endif
-c         --- the point lower in x is inside the conductor
           if (dels(1,ic) < 1.) then
-            coeff0(2) = -1./dels(1,ic)*rdx2
-            coeffs(ix,iy,iz,2) = 0.
+            coeff0(1) = -1./dels(1,ic)*rdx2
+            coeffs(ix,iy,iz,1) = 0.
             coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(1,ic)/dels(1,ic)*rdx2*voltswitch
           endif
-c         --- the point higher in y is inside the conductor
-          if (dels(4,ic) < 1.) then
-            coeff0(3) = -1./dels(4,ic)*rdx2
-            coeffs(ix,iy,iz,3) = 0.
-            coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(4,ic)/dels(4,ic)*rdx2*voltswitch
+c         --- the point lower in x is inside the conductor
+          if (dels(0,ic) < 1.) then
+            coeff0(2) = -1./dels(0,ic)*rdx2
+            coeffs(ix,iy,iz,2) = 0.
+            coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(0,ic)/dels(0,ic)*rdx2*voltswitch
           endif
-c         --- the point lower in y is inside the conductor
+c         --- the point higher in y is inside the conductor
           if (dels(3,ic) < 1.) then
-            coeff0(4) = -1./dels(3,ic)*rdx2
-            coeffs(ix,iy,iz,4) = 0.
+            coeff0(3) = -1./dels(3,ic)*rdx2
+            coeffs(ix,iy,iz,3) = 0.
             coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(3,ic)/dels(3,ic)*rdx2*voltswitch
           endif
+c         --- the point lower in y is inside the conductor
+          if (dels(2,ic) < 1.) then
+            coeff0(4) = -1./dels(2,ic)*rdx2
+            coeffs(ix,iy,iz,4) = 0.
+            coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(2,ic)/dels(2,ic)*rdx2*voltswitch
+          endif
 c         --- the point higher in z is inside the conductor
-          if (dels(6,ic) < 1.) then
-            coeff0(5) = -1./dels(6,ic)*rdx2
+          if (dels(5,ic) < 1.) then
+            coeff0(5) = -1./dels(5,ic)*rdx2
             coeffs(ix,iy,iz,5) = 0.
-            coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(6,ic)/dels(6,ic)*rdx2*voltswitch
+            coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(5,ic)/dels(5,ic)*rdx2*voltswitch
           endif
 c         --- the point lower in z is inside the conductor
-          if (dels(5,ic) < 1.) then
-            coeff0(6) = -1./dels(5,ic)*rdx2
+          if (dels(4,ic) < 1.) then
+            coeff0(6) = -1./dels(4,ic)*rdx2
             coeffs(ix,iy,iz,6) = 0.
-            coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(5,ic)/dels(5,ic)*rdx2*voltswitch
+            coeffs(ix,iy,iz,7)=coeffs(ix,iy,iz,7) - volt(4,ic)/dels(4,ic)*rdx2*voltswitch
           endif
 
 c         --- Sum contributions to center term.
