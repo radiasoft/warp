@@ -9,7 +9,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.85 2002/08/08 18:12:32 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.86 2002/09/25 00:22:23 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -430,7 +430,7 @@ def pptitleright(iw=0,kwdict={},**kw):
   badargs = checkarguments(kwvalues,kwdefaults)
   if checkargs: return badargs
   if badargs and not allowbadargs:
-    raise "bad argument ",string.join(badargs.keys())
+    raise "bad argument",string.join(badargs.keys())
 
   # --- Return appropriate right title
   if zl is not None or zu is not None:
@@ -572,7 +572,7 @@ Note that either the x and y coordinates or the grid must be passed in.
   badargs = checkarguments(kwvalues,kwdefaults)
   if checkargs: return badargs
   assert (not badargs or allowbadargs), \
-         "bad argument %s"%string.join(badargs.keys())
+         "bad argument: %s"%string.join(badargs.keys())
 
   # --- Do some error checking on the consistency of the input
   assert (type(grid) == ArrayType or \
@@ -1232,7 +1232,7 @@ functions.
   badargs = pptitleright(checkargs=1,kwdict=badargs)
   badargs = ppgeneric(checkargs=1,kwdict=badargs)
   kw['allowbadargs'] = 1
-  if badargs: raise "bad arguments ",string.join(badargs.keys())
+  if badargs: raise "bad arguments",string.join(badargs.keys())
 ########################################################################
 def ppzxy(iw=0,**kw):
   "Plots Z-X and Z-Y in single page"
