@@ -57,7 +57,10 @@ extern void initf3dpy();
 extern void initw3dpy();
 extern void initfxypy();
 extern void initwxypy();
+extern void initfrzpy();
+extern void initwrzpy();
 extern void initcirpy();
+extern void initherpy();
 /* extern void initvlspy(); */
 extern void initregex();
 extern void initpcre();
@@ -107,7 +110,10 @@ struct _inittab _PyImport_Inittab[] = {
         {"w3dpy", initw3dpy},
         {"fxypy", initfxypy},
         {"wxypy", initwxypy},
+        {"frzpy", initfrzpy},
+        {"wrzpy", initwrzpy},
         {"cirpy", initcirpy},
+        {"herpy", initherpy},
 	/* {"vlspy", initvlspy}, */
 	{"regex", initregex},
 	{"pcre", initpcre},
