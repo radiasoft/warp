@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.0 $, $Date: 2001/04/11 17:32:10 $
+c@(#) File TOP.M, version $Revision: 3.1 $, $Date: 2001/04/12 23:19:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3265,7 +3265,7 @@ c  See Knuth, vol. 2, p.104 (first ed.), p.117 (second ed.)
 c  Alex Friedman, July 1989 (after an earlier version).
 
 c     --- This common block necessary to preserve state memory:
-      real(kind=8):: y,v1,v2,sq,x,ranf
+      real(kind=8):: y,v1,v2,sq,x,wranf
 c     real(kind=8):: s
       integer     :: iflag = -1
       save y, iflag
@@ -3276,8 +3276,8 @@ c     real(kind=8):: s
          return
       endif
 
-c 100 v1 = 2. * ranf() - 1.
-c     v2 = 2. * ranf() - 1.
+c 100 v1 = 2. * wranf() - 1.
+c     v2 = 2. * wranf() - 1.
 c     s = v1**2 + v2**2 + SMALLPOS
 c     if (s .gt. 1.) go to 100
 c     sq = sqrt(-2. * log(s) / s)
@@ -3285,8 +3285,8 @@ c     x = v1 * sq
 c     y = v2 * sq
 c     rnorm = x
 
-      v1 = ranf()
-      v2 = 2.*pi*ranf()
+      v1 = wranf()
+      v2 = 2.*pi*wranf()
       sq = sqrt(-2.*log(v1))
       x = sq*cos(v2)
       y = sq*sin(v2)
@@ -3336,9 +3336,9 @@ c  Crude approximation to a Gaussian with mean 0, standard deviation 1
 c  Advantage is, it cuts off smoothly at 3 root 2. 
 c  A similar one (used in some older AF codes) adds 12 variates, subtracts 6.
 
-      real(kind=8):: ranf
+      real(kind=8):: wranf
       real(kind=8):: root2 = 1.41421356237
-      rm = root2*(ranf()+ranf()+ranf()+ranf()+ranf()+ranf()-3.)
+      rm = root2*(wranf()+wranf()+wranf()+wranf()+wranf()+wranf()-3.)
       return
       end
 c=============================================================================
@@ -3385,7 +3385,7 @@ c ifelse(COMPILER,PGF77,[
 
 c     --- Initialize xp and yp
       do i=1,np
-c       x(i) = .5/np + ranf()*(np-1.)/np
+c       x(i) = .5/np + wranf()*(np-1.)/np
         x(i) = rnrev(i,2)
         y(i) = .5/np + (i-1.)/np
       enddo
