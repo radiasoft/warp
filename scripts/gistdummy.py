@@ -58,3 +58,5 @@ def current_window():
   pass
 def pldefault(*x,**x):
   pass
+def palette(*x,**x):
+  pass
