@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.3 2003/01/30 17:20:43 jlvay Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.4 2003/03/13 17:10:40 jlvay Exp $"
 
 class PlaneSave:
   """
@@ -17,11 +17,22 @@ Input:
   - filename=runid.plane: filename where data is stored
   - js: species which are saved. Defaults to all species. Can be single
         integer or a list of integers.
+  - allways_save=false: if set to true, particles and potential are saved
+                        at all time step. Default is false: saving starts
+                        when first particle cross zplane.
   """
 
-  def __init__(self,zplane,filename=None,js=None):
+  def __init__(self,zplane,filename=None,js=None,allways_save=None):
 
     self.zplane = nint(zplane/w3d.dz)*w3d.dz
+
+    # save only if between grid bounds
+    if(self.zplane<w3d.zmmin or self.zplane>=w3d.zmmax): return
+
+    if allways_save is None:
+      self.allways_save = false
+    else:
+      self.allways_save = true
 
     # --- Arrays to find particles which cross the plane
     self.old_zp = zeros(top.zp.shape[0],'d')
@@ -100,12 +111,16 @@ Input:
 
     # save for each species
     for js in self.jslist:
-      self.saveplanespecies(js)
+        self.saveplanespecies(js)
 
     # phi is saved every time step whether or not there are particles saved
-    # only save anything if there are particles to the right of zplane
-    # get the two planes of phi to be saved
-    if(self.np_save_tot>0):
+    # only save anything if there are particles to the right of zplane unless allways_save=true
+    if(self.np_save_tot>0 or self.allways_save is true):
+      # save tmin and tmax
+      if(self.it==1): self.f.tmin = top.time
+      self.f.tmax = top.time
+
+      # get the two planes of phi to be saved
       iz = nint((self.zplane - top.zbeam - w3d.zmmin)/w3d.dz)
       self.f.write('phiplane%08d'%self.it,w3d.phi[self.nx0:self.nxm+1,self.ny0:self.nym+1,iz-1:iz+1])
 
@@ -114,9 +129,6 @@ Input:
     self.f.close()
 
   def saveplanespecies(self,js):
-
-    # only save any data if there are particles
-    if (top.nps[js] == 0):return
 
     # set range for particle arrays
     ipl = top.ins[js]-1
@@ -132,15 +144,15 @@ Input:
     np_save = shape(ii)[0]
     self.np_save_tot = self.np_save_tot + np_save
 
-    # only save anything if there are particles to the right of zplane
-    if(self.np_save_tot>0):
-
+    if(self.np_save_tot>0 or self.allways_save is true):
       # increment saving counter
-      self.it = self.it + 1
+      if(js==0):
+        self.it = self.it + 1
 
       # save number of particles
-      self.f.write('np%08d'%self.it,np_save)
+      self.f.write('np%08d_%08d'%(self.it,js),np_save)
 
+    if(self.np_save_tot>0):
       # if there are particles that crossed the plane, save the data
       if (np_save > 0):
         self.f.write('xp%08d_%08d'%(self.it,js),    take(top.xp,ii))
