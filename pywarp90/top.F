@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.53 $, $Date: 2002/09/14 01:11:44 $
+c@(#) File TOP.M, version $Revision: 3.54 $, $Date: 2002/09/25 21:12:06 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5714,10 +5714,12 @@ c=============================================================================
 c=======================================================================
       real(kind=8) function wtime()
       real(kind=8):: cpu,io,sys,mem
+c     real(kind=8):: walltime
 
 c     --- Get current time
       call ostime(cpu, io, sys, mem)
       wtime = cpu
+c     wtime = walltime()
 
       return
       end
@@ -5904,10 +5906,22 @@ c  Uses Box-Muller-Marsaglia method:
 c  See Knuth, vol. 2, p.104 (first ed.), p.117 (second ed.)
 c  Alex Friedman, July 1989 (after an earlier version).
 c  David P. Grote, Febuary 1990 (added digit reversed stuff)
-      integer(ISZ):: i
+      integer(ISZ):: i,iparity
       real(kind=8):: s,phi,sq,rnrev
 
-      do i=i1,i1+n-2,2
+c     --- Get first number separately if parity of i1 is even. Since i1
+c     --- always starts with 1, the first number is always odd to keep
+c     --- consistency. This primarily effects the parallel version.
+c     --- The parity of i1+1 is used for convenience.
+      iparity = mod(i1+1,2)
+      if (iparity == 1) then
+        s = rnrev(i1-1,nbase1) + dx
+        phi = 2.*pi*rnrev(i1,nbase2)
+        sq = sqrt(-2.*log(s))
+        x(1) = sq*sin(phi)
+      endif
+
+      do i=i1+iparity,i1+n-2,2
         s = rnrev(i,nbase1) + dx
         phi = 2.*pi*rnrev(i+1,nbase2)
         sq = sqrt(-2.*log(s))
@@ -5915,8 +5929,8 @@ c  David P. Grote, Febuary 1990 (added digit reversed stuff)
         x(i-i1+2) = sq*sin(phi)
       enddo
 
-c     --- Get last number if n is odd.
-      if (mod(n,2) == 1) then
+c     --- Get last number if (n-iparity) is odd.
+      if (mod(n-iparity,2) == 1) then
         s = rnrev(i1+n-1,nbase1) + dx
         phi = 2.*pi*rnrev(i1+n,nbase2)
         sq = sqrt(-2.*log(s))
