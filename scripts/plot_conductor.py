@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.27 2002/05/02 15:47:39 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.28 2002/05/02 17:57:08 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1074,6 +1074,9 @@ grid that data is to be used for.
   ecnumbpz = f3d.ecnumbpz[0:f3d.necndbdy] + 0.
   iecndlxy = f3d.iecndlxy[0:f3d.necndbdy] + 0.
   iecndlz = f3d.iecndlz[0:f3d.necndbdy] + 0.
+  iocndx = f3d.iocndx[0:f3d.nocndbdy] + 0.
+  iocndy = f3d.iocndy[0:f3d.nocndbdy] + 0.
+  iocndz = f3d.iocndz[0:f3d.nocndbdy] + 0.
   ocdelmx = f3d.ocdelmx[0:f3d.nocndbdy] + 0.
   ocdelpx = f3d.ocdelpx[0:f3d.nocndbdy] + 0.
   ocdelmy = f3d.ocdelmy[0:f3d.nocndbdy] + 0.
