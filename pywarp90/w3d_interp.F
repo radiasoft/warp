@@ -130,7 +130,7 @@ c     the result of the final push will be identical to
 c     a full conventional push.
         
 c     print*,"xpush2",dt,alpha(1)
-      print*,npd,xp(1),yp(1),zp(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
+c      print*,npd,xp(1),yp(1),zp(1),uxeff(1),uyeff(1),uzeff(1),gaminv(1)
       call xpush3d (npd,xp(ipmin),yp(ipmin),zp(ipmin),uxeff,
      &               uyeff,uzeff,gaminv(ipmin),dt)
 
