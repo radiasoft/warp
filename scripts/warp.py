@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.9 2001/01/18 00:10:48 dave Exp $"
+warp_version = "$Id: warp.py,v 1.10 2001/01/18 21:51:25 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -408,8 +408,8 @@ def printtimers(file=None):
   """Print timers in a nice annotated format
   - file Optional input file. If it is not include, stdout is used. It can
          either be a file name, or a file object. If a file name, a file
-	 with that name is created. If a file object, the data is written
-	 to that file (the file remains open).
+         with that name is created. If a file object, the data is written
+         to that file (the file remains open).
   """
   if file == None:
     ff = sys.stdout
@@ -422,35 +422,39 @@ def printtimers(file=None):
     closeit = 0
   if not lparallel:
     ff.write('                 Total time')
-    if top.it > 0: ff.write('        Time per step')
+    if top.it > 0: ff.write('          Time per step')
     ff.write('\n')
-    ff.write('                        (s)')
+    ff.write('                          (s)')
     if top.it > 0: ff.write('                  (s)')
     ff.write('\n')
-    ff.write('Generate time    %10.4f'%top.gentime)
+    ff.write('Generate time      %10.4f'%top.gentime)
     ff.write('\n')
-    ff.write('Step time        %10.4f'%top.steptime)
+    ff.write('Step time          %10.4f'%top.steptime)
     if top.it > 0: ff.write('           %10.4f'%(top.steptime/top.it))
     ff.write('\n')
-    ff.write('Plot time        %10.4f'%top.plottime)
-    if top.it > 0: ff.write('           %10.4f'%(top.plottime/top.it))
+    ff.write('Plot time          %10.4f'%top.plottime)
+    if top.it > 0: ff.write('           %10.4f'%(top.plottime/(top.it+1)))
     ff.write('\n')
-    ff.write('Moments time     %10.4f'%top.momentstime)
-    if top.it > 0: ff.write('           %10.4f'%(top.momentstime/top.it))
+    ff.write('Moments time       %10.4f'%top.momentstime)
+    if top.it > 0: ff.write('           %10.4f'%(top.momentstime/(top.it+1)))
     ff.write('\n')
-    ff.write('Field Solve time %10.4f'%top.fstime)
-    if top.it > 0: ff.write('           %10.4f'%(top.fstime/top.it))
+    ff.write('Field Solve time   %10.4f'%top.fstime)
+    if top.it > 0: ff.write('           %10.4f'%(top.fstime/(top.it+1)))
     ff.write('\n')
-    ff.write('Dump time        %10.4f'%top.dumptime)
+    ff.write('Applied field time %10.4f'%top.latticetime)
+    if top.it > 0: ff.write('           %10.4f'%(top.latticetime/(top.it+1)))
+    ff.write('\n')
+    ff.write('Dump time          %10.4f'%top.dumptime)
     if top.it > 0: ff.write('           %10.4f'%(top.dumptime/top.it))
     ff.write('\n')
   else:
-    timers = [['Generate time',    top.gentime],
-              ['Step time',        top.steptime],
-              ['Plot time',        top.plottime],
-              ['Moments time',     top.momentstime],
-              ['Field Solve time', top.fstime],
-              ['Dump time',        top.dumptime]]
+    timers = [['Generate time',      top.gentime              ],
+              ['Step time',          top.steptime,    top.it  ],
+              ['Plot time',          top.plottime,    top.it+1],
+              ['Moments time',       top.momentstime, top.it+1],
+              ['Field Solve time',   top.fstime,      top.it+1],
+              ['Applied field time', top.latticetime, top.it+1],
+              ['Dump time',          top.dumptime             ]]
     timelists = []
     totaltimes = []
     timedevs = []
@@ -458,13 +462,13 @@ def printtimers(file=None):
     if me > 0: return
     for t in timelists: totaltimes.append(sum(t))
     for t in timelists: timedevs.append(sqrt(ave(t**2) - ave(t)**2))
-    h1a = '                        Total time         Deviation'
-    h2a = '                  (all CPUs)   (per CPU)            '
-    h3a = '                      (s)         (s)         (s)   '
+    h1a = '                          Total time         Deviation'
+    h2a = '                    (all CPUs)   (per CPU)            '
+    h3a = '                        (s)         (s)         (s)   '
     h1b = '  Time per step'
     h2b = '    (per CPU)'
     h3b = '       (s)'
-    f1a = '%16s  %10.4f  %10.4f  %10.4f'
+    f1a = '%18s  %10.4f  %10.4f  %10.4f'
     f1b = '   %10.4f'
     if top.it > 0:
        h1 = h1a + h1b + '\n'
@@ -474,12 +478,15 @@ def printtimers(file=None):
        f2 = f1a + f1b + '\n'
        tt = []
        format = []
-       tt.append((timers[0][0],totaltimes[0],totaltimes[0]/npes,timedevs[0]))
-       format.append(f1)
-       for i in range(1,len(timelists)):
-         tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,timedevs[i],
-                    totaltimes[i]/npes/top.it))
-         format.append(f2)
+       for i in range(len(timelists)):
+         if len(timers[i]) == 3:
+           tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,
+                      timedevs[i],totaltimes[i]/npes/timers[i][2]))
+           format.append(f2)
+         else:
+           tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,
+                      timedevs[i]))
+           format.append(f1)
     else:
        h1 = h1a + '\n'
        h2 = h2a + '\n'
@@ -488,7 +495,7 @@ def printtimers(file=None):
        f2 = f1a + '\n'
        tt = []
        format = []
-       for i in range(0,len(timelists)):
+       for i in range(len(timelists)):
          tt.append((timers[i][0],totaltimes[i],totaltimes[i]/npes,timedevs[i]))
          format.append(f1)
     ff.write(h1)
