@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.20 $, $Date: 2001/08/10 18:51:56 $
+#@(#) File TOP.V, version $Revision: 3.21 $, $Date: 2001/09/12 21:46:49 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -617,7 +617,7 @@ linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.20 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.21 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -1001,6 +1001,14 @@ jmininj   real /0/         # Minimum current density emited from the source.
 jmaxinj   real /LARGEPOS/  # Maximum current density emittable from the source.
 inj_nsmooth integer /0/    # Number of smoothing iterations to do on the
                            # E field in front of the emitting surface.
+linj_spherical logical /.true./ # Flags whether or not to include the
+                           # spherical correction term in the Child-Langmuir
+                           #current.
+linj_enormcl logical /.true./ # Flags whether or not the normal E field
+                           # near the emitting surface is varies as z**(1/3)
+                           # as in the Child-Langmuir solution or is uniform.
+linj_eperp logical /.false./ # Flags whether or not to include the tangential
+                           # electric field near the emitting surface.
 
 ntinj          integer /0/ # Number of transverse emitting surfaces.
 nztinjmn(ntinj)   _integer # Minimum z extent of transverse injection.
@@ -1549,7 +1557,7 @@ zp(npmax)      _real  [m]        # Z-positions of particles
 uxp(npmaxb)    _real  [m/s]      # gamma * X-velocities of particles
 uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
-pid(npmaxi)    _integer [1]      # Particle index - user for various purposes
+pid(npmaxi)    _real    [1]      # Particle index - user for various purposes
 
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation
