@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.134 $, $Date: 2005/01/21 21:17:23 $
+#@(#) File TOP.V, version $Revision: 3.135 $, $Date: 2005/01/24 14:29:42 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.134 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.135 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1996,7 +1996,8 @@ getzmmnt(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
             subroutine # Sets moments as a function of z for species 1
 getzmmnt_weights(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
          wp:real,q:real,m:real,w:real,dt:real,itask,nplive,
-         uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer)
+         uxpo:real,uypo:real,uzpo:real,is:integer,ns:integer,
+         maxp:real,minp:real,zmmnts0:real,zmmnts:real)
             subroutine # Sets moments as a function of z for species 1 with variables weights
 periz(np,zp:real,zgrid:real,zmmax:real,zmmin:real)
             subroutine # Imposes periodicity on z
@@ -2371,7 +2372,7 @@ setregulartgrid(nx:integer,ny:integer,nz:integer,
                 lcorrel:logical) subroutine           # Set slices regularly in z in a box delimited by (xmin,xmax,ymin,ymax,zmin,zmax).
                                                       # nzloc refers to the number of nodes of a lookup table for fast 
                                                       # localization of temperature slices. In general, set nzloc=w3d.nz.
-impact_ion(is1:integer,is2:integer,nbp:integer,w:real,
+impact_ion(is1:integer,is2:integer,nbp:real,w:real,
            shiftx:real,shifty:real,shiftz:real,
            deltax:real,deltay:real,deltaz:real,condid:integer)
            subroutine # create particles of species is2 from impact of particles if species is1 
