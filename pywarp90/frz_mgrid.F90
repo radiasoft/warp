@@ -1,4 +1,4 @@
-!     Last change:  JLV  22 Aug 2001    3:46 pm
+!     Last change:  JLV  23 Aug 2001    5:38 pm
 #include "top.h"
 module multigridrz
 ! module containing RZ multigrid solver
@@ -88,7 +88,7 @@ REAL(8) :: drc, dzc
   drc = dr
   dzc = dz
   nlevels=1
-  do WHILE(nrc>nmeshmin.and.nzc>nmeshmin)
+  do WHILE(nrc>nmeshmin.or.nzc>nmeshmin)
     call evalnewgrid(nrc,nzc,drc,dzc)
     nlevels = nlevels + 1
   end do
@@ -114,12 +114,15 @@ REAL(8) :: drc, dzc
     bndy(i)%v(:,:)=.true.
     nrp0 = INT(LOG(REAL(bndy(i)%nr+1))/LOG(2.))
     nzp0 = INT(LOG(REAL(bndy(i)%nz+1))/LOG(2.))
-    IF(2**nrp0/=bndy(i)%nr.or.2**nzp0/=bndy(i)%nr) THEN
+  end do
+  do i = nlevels, 2, -1
+    IF(2**nrp0/=bndy(i)%nr.or.2**nzp0/=bndy(i)%nr.or.bndy(i-1)%nr==bndy(i)%nr.or.bndy(i-1)%nz==bndy(i)%nz) THEN
       bndy(i)%l_powerof2=.false.
     else
       bndy(i)%l_powerof2=.true.
     END if
   end do
+  bndy(1)%l_powerof2=.false.
 
 end subroutine init_bnd
 
@@ -132,18 +135,18 @@ REAL(8) :: rap
 INTEGER :: nrnew, nznew
 
   rap = dr/dz
-  IF(rap>1.5_8) then
-    nznew = nz/2
+  IF(rap>4._8/3._8.or.nr<=2) then
+    nznew = MAX(2,nz/2)
     dz = dz * REAL(nz,8)/REAL(nznew,8)
     nz=nznew
-  ELSE IF(rap<0.3333333_8) then
-    nrnew = nr/2
+  ELSE IF(rap<2._8/3._8.or.nz<=2) then
+    nrnew = MAX(2,nr/2)
     dr = dr * REAL(nr,8)/REAL(nrnew,8)
     nr=nrnew
   ELSE
-    nrnew = nr/2
+    nrnew = MAX(2,nr/2)
     dr = dr * REAL(nr,8)/REAL(nrnew,8)
-    nznew = nz/2
+    nznew = MAX(2,nz/2)
     dz = dz * REAL(nz,8)/REAL(nznew,8)
     nr=nrnew
     nz=nznew
