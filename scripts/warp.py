@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.80 2005/01/12 17:09:03 dave Exp $"
+warp_version = "$Id: warp.py,v 1.81 2005/01/12 23:11:04 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -518,6 +518,94 @@ It returns the tuple (ex,ey,ez,bx,by,bz)
   return ex,ey,ez,bx,by,bz
 
 
+##############################################################################
+##############################################################################
+##############################################################################
+def fixrestoreswithmomentswithoutspecies(filename):
+  """This is called automatically by restart to fix the arrays which have
+  changed shape. It needs to be called by hand after restore.
+  """
+  # --- Open the file
+  ff = PR.PR(filename)
+  # --- First, check if the file has the old moments in it.
+  ek = ff.read('ek@top')
+  if type(ek) == ArrayType:
+    # --- If it has the new ones, do nothing.
+    ff.close()
+    return
+  # --- These variables went from scalars to 1-D arrays
+  varlist1 = [ 'ek', 'ekzmbe', 'ekzbeam', 'ekperp', 'pz', 'xmaxp', 'xminp',
+               'ymaxp', 'yminp', 'zmaxp', 'zminp', 'vxmaxp', 'vxminp',
+               'vymaxp', 'vyminp', 'vzmaxp', 'vzminp']
+  # --- These arrays changed shape. There's probably a better way of doing
+  # --- this without just explictly listing everything.
+  varlist = ['curr','lostpars', 'pnum', 'xbar', 'ybar', 'zbar', 'xpbar',
+             'ypbar', 'vxbar', 'vybar', 'vzbar', 'xybar', 'xypbar', 'yxpbar',
+             'xpypbar', 'xsqbar', 'ysqbar', 'zsqbar', 'xpsqbar', 'ypsqbar',
+             'vxsqbar', 'vysqbar', 'vzsqbar', 'xxpbar', 'yypbar', 'zvzbar',
+             'xvzbar', 'yvzbar', 'vxvzbar', 'vyvzbar', 'xrms', 'yrms', 'zrms',
+             'rrms', 'xprms', 'yprms', 'epsx', 'epsy', 'epsz', 'epsnx',
+             'epsny', 'epsnz', 'epsg', 'epsh', 'epsng', 'epsnh', 'vxrms',
+             'vyrms', 'vzrms', 'pnumz', 'xbarz', 'ybarz', 'zbarz', 'xpbarz',
+             'ypbarz', 'vxbarz', 'vybarz', 'vzbarz', 'xybarz', 'xypbarz',
+             'yxpbarz', 'xpypbarz', 'xsqbarz', 'ysqbarz', 'zsqbarz',
+             'xpsqbarz', 'ypsqbarz', 'vxsqbarz', 'vysqbarz', 'vzsqbarz',
+             'xxpbarz', 'yypbarz', 'zvzbarz', 'xvzbarz', 'yvzbarz',
+             'vxvzbarz', 'vyvzbarz', 'xrmsz', 'yrmsz', 'zrmsz', 'rrmsz',
+             'xprmsz', 'yprmsz', 'epsxz', 'epsyz', 'epszz', 'epsnxz',
+             'epsnyz', 'epsnzz', 'epsgz', 'epshz', 'epsngz', 'epsnhz',
+             'vxrmsz', 'vyrmsz', 'vzrmsz', 'pnumlw', 'xbarlw', 'ybarlw',
+             'vzbarlw', 'epsxlw', 'epsylw', 'epszlw', 'vxrmslw', 'vyrmslw',
+             'vzrmslw', 'xrmslw', 'yrmslw', 'rrmslw', 'xxpbarlw', 'yypbarlw',
+             'currlw', 'lostparslw', 'hbmlen', 'hzbar', 'hekzmbe', 'hekzbeam',
+             'hekperp', 'hxmaxp', 'hxminp', 'hymaxp', 'hyminp', 'hzmaxp',
+             'hzminp', 'hvxmaxp', 'hvxminp', 'hvymaxp', 'hvyminp', 'hvzmaxp',
+             'hvzminp', 'hepsx', 'hepsy', 'hepsz', 'hepsnx', 'hepsny',
+             'hepsnz', 'hepsg', 'hepsh', 'hepsng', 'hepsnh', 'hpnum', 'hxbar',
+             'hybar', 'hxybar', 'hxrms', 'hyrms', 'hrrms', 'hxprms', 'hyprms',
+             'hxsqbar', 'hysqbar', 'hvxbar', 'hvybar', 'hvzbar', 'hxpbar',
+             'hypbar', 'hvxrms', 'hvyrms', 'hvzrms', 'hxpsqbar', 'hypsqbar',
+             'hxxpbar', 'hyypbar', 'hxypbar', 'hyxpbar', 'hxpypbar',
+             'hxvzbar', 'hyvzbar', 'hvxvzbar', 'hvyvzbar', 'hcurrz', 'hepsxz',
+             'hepsyz', 'hepsnxz', 'hepsnyz', 'hepsgz', 'hepshz', 'hepsngz',
+             'hepsnhz', 'hxbarz', 'hybarz', 'hxybarz', 'hxrmsz', 'hyrmsz',
+             'hrrmsz', 'hxprmsz', 'hyprmsz', 'hxsqbarz', 'hysqbarz',
+             'hvxbarz', 'hvybarz', 'hvzbarz', 'hxpbarz', 'hypbarz', 'hvxrmsz',
+             'hvyrmsz', 'hvzrmsz', 'hxpsqbarz', 'hypsqbarz', 'hxxpbarz',
+             'hyypbarz', 'hxypbarz', 'hyxpbarz', 'hxpypbarz', 'hxvzbarz',
+             'hyvzbarz', 'hvxvzbarz', 'hvyvzbarz']
+  # --- Setup the arrays
+  if top.lspeciesmoments and top.ns > 1:
+    top.nszmmnt = top.ns
+  else:
+    top.nszmmnt = 0
+  top.nszarr = top.nszmmnt
+  top.nswind = top.nszmmnt
+  top.nslabwn = top.nszmmnt
+  top.nsmmnt = top.nszmmnt
+  top.nshist = top.nszmmnt
+  gchange('Z_arrays')
+  gchange('Win_Moments')
+  gchange('Z_Moments')
+  gchange('Lab_Moments')
+  gchange('Moments')
+  gchange('Hist')
+  # --- Get list of variables in the file.
+  fflist = ff.inquire_names()
+  # --- For each one in the file, put the data in the last element.
+  for v in varlist1:
+    if v+'@top' in fflist:
+      d = ff.read(v+'@top')
+      a = getattr(top,v)
+      a[-1] = d
+  for v in varlist:
+    if v+'@top' in fflist:
+      d = ff.read(v+'@top')
+      a = getattr(top,v)
+      a[...,-1] = d
+
+def restoreolddump(filename):
+  fixrestoreswithmomentswithoutspecies(filename)
 
 ##############################################################################
 ##############################################################################
@@ -608,6 +696,8 @@ Reads in data from file, redeposits charge density and does field solve
     parallelrestore(filename,verbose=verbose)
   else:
     pyrestore(filename,verbose=verbose)
+  # --- Fix old dump files.
+  restoreolddump(filename)
   # --- Now that the dump file has been read in, finish up the restart work.
   # --- First set the current packge. Note that currpkg is only ever defined
   # --- in the main dictionary.
