@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.5 $, $Date: 2001/04/30 20:09:09 $
+c@(#) File TOP.M, version $Revision: 3.6 $, $Date: 2001/04/30 21:03:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -3121,7 +3121,7 @@ c=============================================================================
       end
 c=======================================================================
       real(kind=8) function wtime()
-      real(kind=4):: cpu,io,sys,mem
+      real(kind=8):: cpu,io,sys,mem
 
 c     --- Get current time
       call ostime(cpu, io, sys, mem)
@@ -3131,7 +3131,7 @@ c     --- Get current time
       end
 c=======================================================================
       subroutine wtimeon()
-      real(kind=4):: cpu,io,sys,mem
+      real(kind=8):: cpu,io,sys,mem
       common /wtimer/cpu,io,sys,mem
 
 c     --- turns timer on
@@ -3141,8 +3141,8 @@ c     --- turns timer on
       end
 c=======================================================================
       real(kind=8) function wtimeoff()
-      real(kind=4):: cpu,io,sys,mem
-      real(kind=4):: fcpu,fio,fsys,fmem
+      real(kind=8):: cpu,io,sys,mem
+      real(kind=8):: fcpu,fio,fsys,fmem
       common /wtimer/cpu,io,sys,mem
 
 c     --- returns elapsed time in milliseconds since last wtimeon call
