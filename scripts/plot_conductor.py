@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.74 2004/04/08 19:22:50 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.75 2004/04/08 21:28:04 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -173,7 +173,7 @@ def plotsubgrid(iy,ix,iz,pp,izp,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     pp = array(pp)
     pldj(pp[:,2],pp[:,0],pp[:,3],pp[:,1],color=color)
 
-def plotcondfill(yy,xx,zz,iz,ymin,xmin,dy,dx,mglevel,signy,signx,
+def plotcondfill(iy,ix,iz,izp,ymin,xmin,dy,dx,mglevel,signy,signx,
                  conductors):
   """
 Plots conductors, filling them in with a solid color. The color is given
@@ -200,7 +200,7 @@ by the conductor number.
     if ix == 2: ixc = ixc + conductors.leveliz[mglevel]
     if iy == 2: iyc = iyc + conductors.leveliz[mglevel]
     if iz == 2: izc = izc + conductors.leveliz[mglevel]
-    levelc = equal(mglevel,interior.ilevel)
+    levelc = equal(mglevel,interior.ilevel[:nc])
   else:
     ixc = array([])
     iyc = array([])
@@ -219,7 +219,7 @@ by the conductor number.
     enumbpx = evensubgrid.numb[2*ix+1,:ne]
     enumbmy = evensubgrid.numb[2*iy  ,:ne]
     enumbpy = evensubgrid.numb[2*iy+1,:ne]
-    elevels = equal(mglevel,evensubgrid.ilevel)
+    elevels = equal(mglevel,evensubgrid.ilevel[:ne])
   else:
     iexs = array([])
     ieys = array([])
@@ -245,7 +245,7 @@ by the conductor number.
     onumbpx = oddsubgrid.numb[2*ix+1,:no]
     onumbmy = oddsubgrid.numb[2*iy  ,:no]
     onumbpy = oddsubgrid.numb[2*iy+1,:no]
-    olevels = equal(mglevel,oddsubgrid.ilevel)
+    olevels = equal(mglevel,oddsubgrid.ilevel[:no])
   else:
     ioxs = array([])
     ioys = array([])
@@ -260,29 +260,35 @@ by the conductor number.
     onumbpy = array([])
     olevels = array([])
 
+  def arrayjoin(a,b):
+    r = zeros(len(a)+len(b),a.typecode())
+    r[:len(a)] = a
+    r[len(a):] = b
+    return r
+
   # --- The even and odd data are merged into the same list.
-  ixs = array(list(iexs) + list(ioxs))
-  iys = array(list(ieys) + list(ioys))
-  izs = array(list(iezs) + list(iozs))*lz
+  ixs = arrayjoin(iexs,ioxs)
+  iys = arrayjoin(ieys,ioys)
+  izs = arrayjoin(iezs,iozs)*lz
   # --- Add z offset of data. This only applies for the parallel version
   if ix == 2: ixs = ixs + conductors.leveliz[mglevel]
   if iy == 2: iys = iys + conductors.leveliz[mglevel]
   if iz == 2: izs = izs + conductors.leveliz[mglevel]
 
-  delmx = array(list(ecdelmx) + list(ocdelmx))
-  delpx = array(list(ecdelpx) + list(ocdelpx))
-  delmy = array(list(ecdelmy) + list(ocdelmy))
-  delpy = array(list(ecdelpy) + list(ocdelpy))
-  numbmx = array(list(enumbmx) + list(onumbmx))
-  numbpx = array(list(enumbpx) + list(onumbpx))
-  numbmy = array(list(enumbmy) + list(onumbmy))
-  numbpy = array(list(enumbpy) + list(onumbpy))
-  levels = array(list(elevels) + list(olevels))
+  delmx = arrayjoin(ecdelmx,ocdelmx)
+  delpx = arrayjoin(ecdelpx,ocdelpx)
+  delmy = arrayjoin(ecdelmy,ocdelmy)
+  delpy = arrayjoin(ecdelpy,ocdelpy)
+  numbmx = arrayjoin(enumbmx,onumbmx)
+  numbpx = arrayjoin(enumbpx,onumbpx)
+  numbmy = arrayjoin(enumbmy,onumbmy)
+  numbpy = arrayjoin(enumbpy,onumbpy)
+  levels = arrayjoin(elevels,olevels)
 
   # --- Select out the conductor points in the appropriate slice and in
   # --- the appropriate refinement level.
-  iic = compress(logical_and(equal(izc,iz),equal(levelc,1)),arange(nc))
-  iis = compress(logical_and(equal(izs,iz),equal(level,1)),arange(ns))
+  iic = compress(logical_and(equal(izc,izp),equal(levelc,1)),arange(nc))
+  iis = compress(logical_and(equal(izs,izp),equal(levels,1)),arange(ns))
   dx = dx*lx*signx
   dy = dy*ly*signy
   ixc = take(ixc,iic)
@@ -1874,7 +1880,7 @@ def plotdrftoutline(zl=None,zu=None,id=0,nd=None,color='fg',gridframe=0,axis='x'
   """
   if nd is None: nd = top.ndrft + 1
   plotelementoutline(color,gridframe,axis,zl,zu,id,nd,outline,fillcolor,
-                     top.drftzs,top.drftze,top.drftap,
+                     top.drftzs,top.drftze,top.drftap,top.drftax,top.drftay,
                      top.drftox,top.drftoy)
 
 #########################################################################
@@ -1902,16 +1908,16 @@ before the conductor data was put into derived types.
     f3d.interior.numb[:] = ff.read('condnumb@f3d')
     f3d.interior.ilevel[:] = ff.read('icondlevel@f3d')
 
+  f3d.evensubgrid.n = ff.read('necndbdy@f3d')
   if f3d.evensubgrid.n > 0:
-    f3d.evensubgrid.n = ff.read('necndbdy@f3d')
     f3d.evensubgrid.indx[0,:] = ff.read('iecndx@f3d')
     f3d.evensubgrid.indx[1,:] = ff.read('iecndy@f3d')
     f3d.evensubgrid.indx[2,:] = ff.read('iecndz@f3d')
     f3d.evensubgrid.dels[0,:] = ff.read('ecdelmx@f3d')
-    f3d.evensubgrid.dels[1,:] = ff.read('ecdelmy@f3d')
-    f3d.evensubgrid.dels[2,:] = ff.read('ecdelmz@f3d')
-    f3d.evensubgrid.dels[3,:] = ff.read('ecdelpx@f3d')
-    f3d.evensubgrid.dels[4,:] = ff.read('ecdelpy@f3d')
+    f3d.evensubgrid.dels[1,:] = ff.read('ecdelpx@f3d')
+    f3d.evensubgrid.dels[2,:] = ff.read('ecdelmy@f3d')
+    f3d.evensubgrid.dels[3,:] = ff.read('ecdelpy@f3d')
+    f3d.evensubgrid.dels[4,:] = ff.read('ecdelmz@f3d')
     f3d.evensubgrid.dels[5,:] = ff.read('ecdelpz@f3d')
     f3d.evensubgrid.volt[0,:] = ff.read('ecvoltmx@f3d')
     f3d.evensubgrid.volt[1,:] = ff.read('ecvoltpx@f3d')
@@ -1927,16 +1933,16 @@ before the conductor data was put into derived types.
     f3d.evensubgrid.numb[5,:] = ff.read('ecnumbpz@f3d')
     f3d.evensubgrid.ilevel[:] = ff.read('iecndlevel@f3d')
 
+  f3d.oddsubgrid.n = ff.read('nocndbdy@f3d')
   if f3d.oddsubgrid.n > 0:
-    f3d.oddsubgrid.n = ff.read('nocndbdy@f3d')
     f3d.oddsubgrid.indx[0,:] = ff.read('iocndx@f3d')
     f3d.oddsubgrid.indx[1,:] = ff.read('iocndy@f3d')
     f3d.oddsubgrid.indx[2,:] = ff.read('iocndz@f3d')
     f3d.oddsubgrid.dels[0,:] = ff.read('ocdelmx@f3d')
-    f3d.oddsubgrid.dels[1,:] = ff.read('ocdelmy@f3d')
-    f3d.oddsubgrid.dels[2,:] = ff.read('ocdelmz@f3d')
-    f3d.oddsubgrid.dels[3,:] = ff.read('ocdelpx@f3d')
-    f3d.oddsubgrid.dels[4,:] = ff.read('ocdelpy@f3d')
+    f3d.oddsubgrid.dels[1,:] = ff.read('ocdelpx@f3d')
+    f3d.oddsubgrid.dels[2,:] = ff.read('ocdelmy@f3d')
+    f3d.oddsubgrid.dels[3,:] = ff.read('ocdelpy@f3d')
+    f3d.oddsubgrid.dels[4,:] = ff.read('ocdelmz@f3d')
     f3d.oddsubgrid.dels[5,:] = ff.read('ocdelpz@f3d')
     f3d.oddsubgrid.volt[0,:] = ff.read('ocvoltmx@f3d')
     f3d.oddsubgrid.volt[1,:] = ff.read('ocvoltpx@f3d')
