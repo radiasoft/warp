@@ -1,8 +1,6 @@
 """Class for doing complete multigrid field solve"""
 # ToDo:
 #  - modify setrho to check if particles are within grid
-#  - allow exchanging data with other instances, giving Dirichlet boundaries
-#    on common boundaries
 #  - incorporate instances into the particle mover, so charge is deposited and
 #    the E fields gather appropriately.
 from warp import *
@@ -72,17 +70,6 @@ class MultiGrid:
 
     # --- Turn of build quads option
     self.lbuildquads = false
-
-  def copypkgtodict(self,pkg,varlist,dict):
-    for name in varlist:
-      dict[name] = getattr(pkg,name)
-
-  def copydicttopkg(self,pkg,varlist,dict):
-    for name in varlist:
-      if type(dict[name]) is ArrayType:
-        pkg.forceassign(name,dict[name])
-      else:
-        setattr(pkg,name,dict[name])
 
   def setrho(self,x,y,z,uz,q,w):
     n = len(x)
