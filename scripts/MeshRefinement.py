@@ -413,9 +413,20 @@ not be fetched from there (it is set negative).
       # --- to be negative.
       ii = self.getchilddomains(cl,cu,1)
       nbc = self.getlocalarray(nbcells,cl,cu,fulllower=l)
-      ii[...] = where(nbc<level*r,-abs(ii),ii)
+      # --- Note that if the upper edge of the child does not extend to the
+      # --- upper edge of self, then the childdomains at cu will have the
+      # --- blocknumber of self, and so should  not be reset. The check
+      # --- for (ii == child.blocknumber) prevents this. The check also
+      # --- prevents one child from clearing out the domain of another, though
+      # --- that wouldn't break anything since that other child would be
+      # --- clearing out the same region itself. Also, with the check,
+      # --- the second argument of the where can just be -ii instead
+      # --- of -abs(ii) since only positive values of ii will have the sign
+      # --- changed.
+      ii[...] = where((nbc<level*r) & (ii == child.blocknumber),-ii,ii)
 
       # --- Stretch out the array so it has the refined cell size of the child
+      # --- XXX This assumes a refinement factor of 2 XXX
       nbcstretched = zeros(1+(cu-cl)*2)
       nbcstretched[ ::r, ::r, ::r] = nbc[:  ,:  ,:  ]
       nbcstretched[1::r, ::r, ::r] = nbc[:-1,:  ,:  ]
@@ -1125,9 +1136,12 @@ Fetches the potential, given a list of positions
     if len(self.children) > 0:
 
       # --- Find out whether the particles are in the local domain or one of
-      # --- the children's.
+      # --- the children's. It is assumed at first to be from the local
+      # --- domain, and is only set to one of the childs domains where
+      # --- childdomains is positive (which does not include any guard cells).
       ichild = zeros(len(x))
-      getichildpositiveonly(0,len(x),x,y,z,ichild,
+      add(ichild,self.blocknumber,ichild)
+      getichildpositiveonly(self.blocknumber,len(x),x,y,z,ichild,
                             self.nx,self.ny,self.nz,self.childdomains,
                             self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                             self.zmmin,self.zmmax,
@@ -1229,10 +1243,10 @@ Fetches the potential, given a list of positions
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
     return self.siblingdomains[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
-  def getlocalarray(self,array,lower,upper,r=1,fulllower=None):
+  def getlocalarray(self,array,lower,upper,r=1,fulllower=None,upperedge=1):
     if fulllower is None: fulllower = self.fulllower
     ix1,iy1,iz1 = lower - fulllower
-    ix2,iy2,iz2 = upper - fulllower + 1
+    ix2,iy2,iz2 = upper - fulllower + upperedge
     return array[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
 
   #--------------------------------------------------------------------------
