@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.8 $, $Date: 2001/06/26 20:51:50 $
+c@(#) File WXY.M, version $Revision: 3.9 $, $Date: 2001/07/10 20:35:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -757,35 +757,37 @@ c  B_self more than once.
       dti = 1./(dtr-dtl)
 
 c     --- handle quads
-      call applyquad(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,ex,ey,bx,by)            
+      call applyquad(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,.true.,ex,ey,bx,by)
+
 c     --- handle dipos 
-      call applydipo(np,1,zbeam,vbeam,1.,dtl,dtr,dt,ex,ey,bx,by)
+      call applydipo(np,1,zbeam,vbeam,1.,dtl,dtr,dt,.true.,ex,ey,bx,by)
 
 c     --- handle sexts
-      call applysext(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,ex,ey,bx,by)
+      call applysext(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,.true.,ex,ey,bx,by)
 
 c     --- handle hard-edge electric and magnetic multipoles
-      call applyhele(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,ex,ey,ez,bx,by,bz)
+      call applyhele(np,xp,yp,1,zbeam,vbeam,1.,dtl,dtr,dt,.true.,
+     &               ex,ey,ez,bx,by,bz)
 
 c     --- fold in coordinate transformation associated with bends
       if (.not. lexbend) then
-        call applybend(np,xp,uzp,1,bendres,bendradi,m,q,by)
+        call applybend(np,xp,uzp,1,bendres,bendradi,m,q,.true.,by)
       endif
 
 c     --- uniform fields
       call applyuniformfields(np,ez,bz)
 
 c     --- electrostatic multipole components
-      call applyemlt(np,xp,yp,1,zbeam,dtl,dtr,dt,ex,ey,ez)
+      call applyemlt(np,xp,yp,1,zbeam,dtl,dtr,dt,.true.,ex,ey,ez)
 
 c     --- magnetostatic multipole components
-      call applymmlt(np,xp,yp,1,zbeam,dtl,dtr,dt,bx,by,bz)
+      call applymmlt(np,xp,yp,1,zbeam,dtl,dtr,dt,.true.,bx,by,bz)
 
 c     --- handle magnetic fields from 3-D grid
-      call applybgrd(np,xp,yp,1,zbeam,bx,by,bz)
+      call applybgrd(np,xp,yp,1,zbeam,.true.,bx,by,bz)
 
 c     --- handle electrostatic potential from 3-D grid
-      call applypgrd(np,xp,yp,1,zbeam,ex,ey,ez)
+      call applypgrd(np,xp,yp,1,zbeam,.true.,ex,ey,ez)
 
 c     --- Set E to zero for dead particles
       do ip=1,np
@@ -925,7 +927,7 @@ c         --- Compute lag average for experimental damping algorithm
 c         --- HALFV
           if (center == "halfv") then
 c           --- Obtain bend radii and residence factors
-            call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,0.,dt)
+            call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,0.,dt,.true.)
 c           --- Correct Ez_self for warped mesh effect
             call bendezxy (ip,xp(ipmin),zp(ipmin),ez,
      &                     bendres,bendradi,bends,bnezflag,linbend)
@@ -959,7 +961,8 @@ c           --- (Only done when lvzchang is true.)
             do iter_dt=1,niter_dt
 c             --- Get field from accelerating elements (depends on dtp)
               call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                         dtp(ipmin),0.,dt*0.5,ez,sm(is),sq(is),zbeam,dt)
+     &                         dtp(ipmin),0.,dt*0.5,sm(is),sq(is),zbeam,dt,
+     &                         .true.,ez)
 c             --- Correction to z on entry/exit to accelerator gap
               call zgapcorrxy(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                        dtp(ipmin),zbeam,0., dt*0.5, dt,
@@ -1005,7 +1008,7 @@ c           --- mesh effect
      &                       zpo,ds,bendres,bendradi,lexbend)
 c           --- Correct position advance for slanted dipole entry/exit
             call sledgcor(ip,xp(ipmin),yp(ipmin),1,zbeam+vbeam*dt,zbeam,
-     &                    uxp(ipmin),uyp(ipmin),vbeam,1.,sm(is),sq(is))
+     &                    uxp(ipmin),uyp(ipmin),vbeam,1.,sm(is),sq(is),.true.)
 c         --- PUSHV
           elseif (center == "pushv") then
 c           --- Add in ears and uniform focusing E field pieces
@@ -1081,7 +1084,7 @@ c            --- Copy 'old' velocity into uxpo, uypo, and uzpo
                 uzpo(i) = uzp(ipmin+i-1)
              enddo
 c            --- Obtain bend radii and residence factors
-             call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,-dt,0.)
+             call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,-dt,0.,.true.)
 c            --- Correct Ez_self for warped mesh effect
              call bendezxy (ip,xp(ipmin),zp(ipmin),ez,
      &                      bendres,bendradi,bends,bnezflag,linbend)
@@ -1098,7 +1101,8 @@ c            --- Set quad, dipole E and B; All: Bz
      &                     gammabar,zbeam,vbeam,dt,time)
 c            --- Get field from accelerating elements (depends on dtp)
              call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                        dtp(ipmin),-dt*0.5,0.,ez,sm(is),sq(is),zbeam,dt)
+     &                        dtp(ipmin),-dt*0.5,0.,sm(is),sq(is),zbeam,dt,
+     &                        .true.,ez)
 c            --- Half electric field increment to momenta
              call epushxy (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                     ex, ey, ez, sq(is), sm(is), dtp(ipmin), 0.5)
