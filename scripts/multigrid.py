@@ -5,6 +5,7 @@
 #    the E fields gather appropriately.
 from warp import *
 from generateconductors import installconductors
+from find_mgparam import find_mgparam
 import MA
 
 
@@ -102,6 +103,13 @@ class MultiGrid:
              self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
              self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
 
+  def setrhoselect(self,x,y,z,uz,q,w):
+    n = len(x)
+    if n == 0: return
+    setrho3dselect(self.rho,self.rho,n,x,y,z,top.zgrid,uz,q,w,top.depos,
+             self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
+             self.xmmin,self.ymmin,self.zmmin,self.l2symtry,self.l4symtry)
+
   def fetchefrompositions(self,x,y,z,ex,ey,ez):
     n = len(x)
     sete3d(self.phi,0.,n,x,y,z,top.zgridprv,self.xmmin,self.ymmin,self.zmmin,
@@ -155,6 +163,9 @@ class MultiGrid:
     self.conductors.interior.n = 0
     self.conductors.evensubgrid.n = 0
     self.conductors.oddsubgrid.n = 0
+
+  def optimizeconvergence(self,resetpasses=1):
+    find_mgparam(resetpasses=resetpasses,solver=self)
 
   def solve(self,iwhich=0):
     multigrid3dsolve(iwhich,self.nx,self.ny,self.nz,self.nzfull,
