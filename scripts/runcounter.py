@@ -3,9 +3,9 @@
 from warp import *
 import time
 import string
-runcounter_version = "$Id: runcounter.py,v 1.4 2002/10/10 17:31:33 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.5 2002/10/10 17:52:56 dave Exp $"
 
-def runcounter(init=0,delta=1,suffix=None,sleep=0):
+def runcounter(init=0,delta=1,suffix=None,sleep=0,ensambles=None):
   if not suffix: suffix = arraytostr(top.runid)
   
   try:
@@ -31,7 +31,15 @@ def runcounter(init=0,delta=1,suffix=None,sleep=0):
   # --- This is an attempt to prevent simultaneaous writes to a data file.
   if sleep > 0: time.sleep((runnumber-init)*sleep)
 
-  return runnumber
+  if ensambles is None:
+    return runnumber
+  else:
+    r = []
+    for e in ensambles:
+      r.append(runnumber % e)
+      runnumber = int(runnumber/e)
+    r.append(runnumber)
+    return r
 
 def accumulatedata(filename,datadict,globaldict={}):
   actualdata = {}
