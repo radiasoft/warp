@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.87 $, $Date: 2003/02/24 18:44:43 $
+c@(#) File W3D.M, version $Revision: 3.88 $, $Date: 2003/02/26 20:44:00 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4603,7 +4603,9 @@ c                     --- first quadrant.
                       xx = xp(ii)*signx(il)-xinj
                       yy = yp(ii)*signy(il)-yinj
                       if (((xx*ainji)**2 + (yy*binji)**2 > 1. .or.
-     &                     (xx*ainjmini)**2 + (yy*binjmini)**2 < 1.) .and.
+     &                     (xx*ainjmini)**2 + (yy*binjmini)**2 < 1. .or.
+     &                     xp(ii)*signx(il) < xmmin .or. xmmax < xp(ii) .or.
+     &                     yp(ii)*signy(il) < ymmin .or. ymmax < yp(ii)) .and.
      &                     solvergeom/=Zgeom) cycle
 c                     --- find injection surface axial location by interpolation
                       ixx = spreadx*(abs(xp(ii) - xmmin)*dxi)
