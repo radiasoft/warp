@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.21 $, $Date: 2004/11/12 17:57:29 $
+c W3DSLAVE.M, version $Revision: 1.22 $, $Date: 2004/11/13 01:35:54 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -366,13 +366,15 @@ c total number of particles.
       return
       end
 c===========================================================================
-      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp)
+      subroutine sumrhoondomainboundaries(rhop,nxp,nyp,nzp,
+     &                                    my_index,nslaves,izpslave,nzpslave)
       use Subtimers3d
       use GlobalVars
-      use Parallel
       use Databuffers
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
 c This routine sums rhop in the overlapping boundaries with the neighboring
 c processors. Note that this does not send the summed rhop back to the left
@@ -517,13 +519,18 @@ c  Only first and last processors do anything.
       return
       end
 c=============================================================================
-      subroutine getrhoforfieldsolve3d(nx,ny,nz,rho,nxp,nyp,nzp,rhop)
+      subroutine getrhoforfieldsolve3d_parallel(nx,ny,nz,rho,nxp,nyp,nzp,rhop,
+     &                                          my_index,nslaves,
+     &                                          izfsslave,nzfsslave,
+     &                                          izpslave,nzpslave)
       use Subtimers3d
-      use Parallel
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: nxp,nyp,nzp
       real(kind=8):: rhop(0:nxp,0:nyp,0:nzp)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: izpslave(0:nslaves-1),nzpslave(0:nslaves-1)
 
 c Gather the charge density in the region where the field solve
 c will be done. This assumes that each processor "owns" rho from
