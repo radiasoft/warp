@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.50 $, $Date: 2002/07/16 19:55:06 $
+#@(#) File F3D.V, version $Revision: 3.51 $, $Date: 2002/07/17 16:36:03 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.50 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.51 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -136,9 +136,9 @@ icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 2 EBC style (non-centered finite-difference)
 
 *********** Conductor3d dump parallel:
-icstart(0:100)  integer # Start of the conductor points for each MG level
-ecstart(0:100)  integer # Start of the even conductor points for each MG level
-ocstart(0:100)  integer # Start of the odd conductor points for each MG level
+icstart(0:100)  integer -dump # Start of the conductor points for each MG level
+ecstart(0:100)  integer -dump # Start of the even conductor points for each MG level
+ocstart(0:100)  integer -dump # Start of the odd conductor points for each MG level
 ncondmax          integer # Maximum number of points in conductor
 ncond             integer # Number of points within conductors
 ixcond(ncondmax) _integer # X coordinate of points in conductor
