@@ -15,7 +15,17 @@ except ImportError:
 import __main__
 import sys
 import cPickle
-Basis_version = "$Id: pyBasis.py,v 1.25 2002/09/09 16:40:19 dave Exp $"
+import inspect
+# --- Add line completion capability
+try:
+  import readline
+except ImportError:
+  pass
+else:
+  import rlcompleter
+  readline.parse_and_bind("tab: complete")
+
+Basis_version = "$Id: pyBasis.py,v 1.26 2002/10/25 20:22:25 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -38,18 +48,17 @@ def iota(low,high=None,step=1):
       return arange(low,high-1,step)
 
 # --- Converts an array of characters into a string.
-def arraytostr(a):
+def arraytostr(a,strip=true):
+  a = array(a)
   if len(shape(a)) == 1:
     result = ''
     for c in a:
       result = result + c
+    if strip: result = string.strip(result)
   elif len(shape(a)) == 2:
     result = []
     for i in xrange(shape(a)[1]):
-      s = ''
-      for c in a[:,i]:
-        s = s + c
-      result.append(s)
+      result.append(arraytostr(a[:,i]))
   return result
 
 # --- Convenience function to do printing
@@ -305,10 +314,22 @@ Dump data into a pdb file
         continue
     # --- Get the value of the variable.
     vval = __main__.__dict__[v]
-    # --- Don't try to write out functions or classes. (They don't seem to
-    # --- cause problems but this avoids potential problems. The function
-    # --- or class body wouldn't be written out anyway.)
-    if type(vval) in [FunctionType,ClassType]: continue
+    # --- Don't try to write out classes. (They don't seem to
+    # --- cause problems but this avoids potential problems. The
+    # --- class body wouldn't be written out anyway.)
+    if type(vval) in [ClassType]: continue
+    # --- Write out the source of functions. Note that the source of functions
+    # --- typed in interatively is not retrieveable - inspect.getsource
+    # --- returns an IOError.
+    if type(vval) in [FunctionType]:
+      try:
+        source = inspect.getsource(vval)
+        #if verbose:
+        print "writing python function "+v+" as "+v+varsuffix+'@function'
+        ff.write(v+varsuffix+'@function',source)
+      except IOError:
+        if verbose: print "could not write python function "+v
+      continue
     # --- Zero length arrays cannot by written out.
     if type(vval) == ArrayType and product(array(shape(vval))) == 0:
       continue
@@ -360,7 +381,7 @@ def pydumpold(fname,attr="dump",vars=[]):
 # in of python variables is put in a 'try' command to make it idiot proof.
 # More fancy foot work is done to get new variables read in into the
 # global dictionary.
-def pyrestore(filename=None,fname=None,verbose=0,skip=[],varsuffix=None):
+def pyrestore(filename=None,fname=None,verbose=0,skip=[],varsuffix=None,ls=0):
   """
 Restores all of the variables in the specified file.
   - filename: file to read in from (assumes PDB format)
@@ -368,6 +389,9 @@ Restores all of the variables in the specified file.
   - skip=[]: list of variables to skip
   - varsuffix: when set, all variables read in will be given the suffix
                Note that fortran variables are then read into python vars
+  - ls=0: when true, prints a list of the variables in the file
+          when 1 prints as tuple
+          when 2 prints in a column
   """
   # --- The original had fname, but changed to filename to be consistent
   # --- with restart and dump.
@@ -378,6 +402,11 @@ Restores all of the variables in the specified file.
   ff = PR.PR(filename)
   # --- Get a list of all of the variables in the file, loop over that list
   vlist = ff.inquire_ls()
+  # --- Print list of variables
+  if ls:
+    if ls == 1: print vlist
+    else:
+      for l in vlist: print l
 
   # --- vlist is looped over twice. The first time reads in all of the scalar
   # --- variables and the python variables. The second reads in the arrays.
@@ -391,6 +420,7 @@ Restores all of the variables in the specified file.
     if len(v) > 4 and v[-4]  == '@': vname = v[:-4]
     elif v[-7:] == '@pickle':        vname = v[:-7]
     elif v[-7:] == '@global':        vname = v[:-7]
+    elif v[-9:] == '@function':      vname = v[:-9]
     else:                            vname = v
 
     # --- If variable in the skip list, then skip
@@ -437,6 +467,19 @@ Restores all of the variables in the specified file.
         __main__.__dict__[vname] = ff.__getattr__(v)
       except:
         if verbose: print "error with variable "+v[:-7]
+    elif v[-9:] == '@function':
+      # --- Skip functions which have already been defined in case the user
+      # --- has made source updates since the dump was made.
+      if __main__.__dict__.has_key(vname): 
+        if verbose:
+          print "skipping python function %s since it already is defined"%v[:-9]
+      else:
+        try:
+          if verbose: print "reading in python function"+v[:-7]
+          source = ff.__getattr__(v)
+          exec(source,__main__.__dict__)
+        except:
+          if verbose: print "error with function "+v[:-7]
     elif v[-9:] == '@parallel':
       # --- Ignore variables with suffix @parallel
       pass
