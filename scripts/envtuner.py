@@ -1,5 +1,5 @@
 from warp import *
-envtuner_version = "$Id: envtuner.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+envtuner_version = "$Id: envtuner.py,v 1.2 2003/08/18 17:40:56 dave Exp $"
 
 def makeenvtuneplot(zl,zu,qz):
   # --- Make the envelope plot, setting plot limits.
@@ -24,8 +24,10 @@ def envtuner(zl=env.zl,zu=env.zu,scale=1.,mindelta=1.e-3):
   # --- Find the quads within the range.
   iquads = 0
   iquade = 0
-  while top.quadze[iquads]+top.zlatstrt < zl: iquads = iquads + 1
-  while top.quadzs[iquade]+top.zlatstrt < zu: iquade = iquade + 1
+  while iquads < top.nquad and top.quadze[iquads]+top.zlatstrt < zl:
+    iquads = iquads + 1
+  while iquade < top.nquad and top.quadzs[iquade]+top.zlatstrt < zu:
+    iquade = iquade + 1
   qz = zeros(iquade - iquads + 1,'d')
   qz[1:] = (top.zlatstrt + 
             0.5*(top.quadze[iquads:iquade] + top.quadzs[iquads+1:iquade+1]))
