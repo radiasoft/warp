@@ -121,6 +121,11 @@ class MultiGrid(object):
     self.ymesh = self.ymmin + arange(0,self.ny+1)*self.dy
     self.zmesh = self.zmmin + arange(0,self.nz+1)*self.dz
 
+    # --- Create extra variables which are used in various places
+    self.nxp = self.nx
+    self.nyp = self.ny
+    self.nzp = self.nz
+
     # --- Create phi and rho arrays and other arrays. These are created
     # --- with fortran ordering so no transpose and copy is needed when
     # --- they are passed to fortran.
@@ -129,8 +134,16 @@ class MultiGrid(object):
     self.rstar = fzeros(3+self.nz,'d')
     if self.efetch == 3:
       self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
+      self.nx_selfe = self.nx
+      self.ny_selfe = self.ny
+      self.nz_selfe = self.nz
     else:
       self.selfe = 0.
+      self.nx_selfe = 0
+      self.ny_selfe = 0
+      self.nz_selfe = 0
+    self.rhop = self.rho
+    self.phip = self.phi
 
     # --- Create a conductor object, which by default is empty.
     self.conductors = ConductorType()
@@ -166,8 +179,8 @@ class MultiGrid(object):
     if n == 0: return
     sete3d(self.phi,self.selfe,n,x,y,z,top.zgridprv,
            self.xmmin,self.ymmin,self.zmmin,
-           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,1,ex,ey,ez,
-           self.l2symtry,self.l4symtry)
+           self.dx,self.dy,self.dz,self.nx,self.ny,self.nz,self.efetch,
+           ex,ey,ez,self.l2symtry,self.l4symtry)
 
   def fetchphifrompositions(self,x,y,z,phi):
     n = len(x)
@@ -222,6 +235,15 @@ class MultiGrid(object):
   def fetchphi(self):
     self.fetchphifrompositions(w3d.xfsapi,w3d.yfsapi,w3d.zfsapi,w3d.phifsapi)
 
+  def getselfe(self,recalculate=0):
+    if type(self.selfe) != ArrayType:
+      self.selfe = fzeros((3,1+self.nx,1+self.ny,1+self.nz),'d')
+    if recalculate:
+      getselfe3d(self.phi,self.nx,self.ny,self.nz,
+                 self.selfe,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
+                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
+    return self.selfe
+
   def installconductor(self,conductor,
                             xmin=None,xmax=None,
                             ymin=None,ymax=None,
@@ -267,9 +289,7 @@ class MultiGrid(object):
                      self.conductors,
                      top.my_index,top.nslaves,top.izfsslave,top.nzfsslave)
     if self.efetch == 3:
-      getselfe3d(self.phi,self.nx,self.ny,self.nz,
-                 self.selfe,self.nx,self.ny,self.nz,self.dx,self.dy,self.dz,
-                 self.bounds[0],self.bounds[1],self.bounds[2],self.bounds[3])
+      MultiGrid.getselfe(self,recalculate=1)
 
   ##########################################################################
   # Define the basic plot commands
