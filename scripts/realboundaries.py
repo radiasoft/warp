@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.31 2004/02/24 22:37:47 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.32 2004/02/25 01:49:07 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -102,7 +102,7 @@ Constructor arguments
     if m:
       s.cmatxy = m
     else:
-      if s.newmesh:
+      if s.newmesh and len(x) > 0:
         s.getmesh(s,min(x),max(x),min(y),max(y),ave(x),ave(y))
       s.getmatrix()
   #----------------------------------------------------------------------------
@@ -134,20 +134,26 @@ Constructor arguments
     if s.newmesh: s.setmesh()
     # --- Get number of conductor points.
     n = len(s.xcond)
-    fxy.ncxy = n
-    fxy.ncxymax = n
-    # --- Check for new input voltages, otherwise use s.vcond
-    if vcond is None: vcond = s.vcond
-    # --- Point the fortran arrays to the data arrays. Each instance of this
-    # --- object contains its own copies of the arrays in the group CapMatxy.
-    # --- The pointers are repointed rather than copying the data.
-    fxy.forceassign("xcond",s.xcond)
-    fxy.forceassign("ycond",s.ycond)
-    fxy.forceassign("vcond",vcond)
-    fxy.forceassign("pcond",s.pcond)
-    fxy.forceassign("qcond",s.qcond)
-    fxy.forceassign("kpvtxy",s.kpvtxy)
-    fxy.forceassign("cmatxy",s.cmatxy)
+    if n > 0:
+      fxy.ncxy = n
+      fxy.ncxymax = n
+      # --- Check for new input voltages, otherwise use s.vcond
+      if vcond is None: vcond = s.vcond
+      # --- Point the fortran arrays to the data arrays. Each instance of this
+      # --- object contains its own copies of the arrays in the group CapMatxy.
+      # --- The pointers are repointed rather than copying the data.
+      fxy.forceassign("xcond",s.xcond)
+      fxy.forceassign("ycond",s.ycond)
+      fxy.forceassign("vcond",vcond)
+      fxy.forceassign("pcond",s.pcond)
+      fxy.forceassign("qcond",s.qcond)
+      fxy.forceassign("kpvtxy",s.kpvtxy)
+      fxy.forceassign("cmatxy",s.cmatxy)
+      # --- Turn on capacity matrix field solver
+      top.fstype = 1
+    else:
+      # --- If no points, turn off capacity matrix field solver
+      top.fstype = 0
     # --- Recalculate the fields
     fieldsol(-1)
   #----------------------------------------------------------------------------
@@ -209,11 +215,10 @@ Sets particle scraping boundaries.
     w3d.ymesh = iota(0,w3d.ny)*w3d.dy + w3d.ymmin
     # --- Recalculate ksqx and ksqy (notice that for this part, the capacity
     # --- matrix is turned off since the matrix does not need to be calculated)
-    if top.fstype >= 0:
-      ff = top.fstype
-      top.fstype = 0
-      fieldsol(1)
-      top.fstype = ff
+    ff = top.fstype
+    top.fstype = 0
+    fieldsol(1)
+    top.fstype = ff
     # --- Now, save all of the pertinent mesh data
     s.nx = w3d.nx
     s.ny = w3d.ny
@@ -253,6 +258,35 @@ Sets particle scraping boundaries.
     if max(abs(s.ycond - y)) > 0.: return 0
     return 1
 
+
+##############################################################################
+_initialmeshparams = None
+class NoPipe(CapacityMatrix):
+  """
+No boundary condition.
+  - newmesh when true, reset the mesh to be the original values
+  """
+  #----------------------------------------------------------------------------
+  def __init__(s,newmesh=0):
+    s.xcond = []
+    s.ycond = []
+    s.vcond = []
+    s.newmesh = newmesh
+    if s.newmesh:
+      # --- Use initial value of the mesh params
+      s.getmesh(_initialmeshparams[0],_initialmeshparams[1],
+                _initialmeshparams[2],_initialmeshparams[3],
+                _initialmeshparams[4],_initialmeshparams[5])
+  #----------------------------------------------------------------------------
+  def setmatrix(s,v=None):
+    CapacityMatrix.setmatrix(s)
+    s.setparticleboundary(largepos,largepos,0.,0.)
+  #----------------------------------------------------------------------------
+  def issame(s,ap,ax,ay,ox,oy):
+    return 1
+  #----------------------------------------------------------------------------
+  def plotcond(s,color='fg',xscale=1.,yscale=1.):
+    pass
 
 ##############################################################################
 class RoundPipe(CapacityMatrix):
@@ -510,6 +544,7 @@ Constructor arguments:
     # --- Keep a global lists of all matrices. With a global lists of matrices,
     # --- recalculation of a matrix can be avoided if one with the same values
     # --- have already been calculated.
+    s.nomatrixlist = []
     s.pipematrixlist = []
     s.rodmatrixlist = []
     # --- For each element type, create a list of capacity matrices, which are
@@ -528,6 +563,7 @@ Constructor arguments:
     s.bendcm  = []
     s.dipocm  = []
     s.sextcm  = []
+    s.nonecm  = []
     # --- Turn on the realboundaries.
     s.enable()
   #----------------------------------------------------------------------------
@@ -568,6 +604,16 @@ Constructor arguments:
     if m is not None: m.setmatrix(v)
     s.current = m
   #----------------------------------------------------------------------------
+  def getnomatrix(s):
+    # --- This searches through the list of matrices checking if one with the
+    # --- same parameters has already be created. If so, just return that one.
+    for m in s.nomatrixlist:
+      if m.issame(): return m
+    # --- None was found, so create a new one, adding it to the list.
+    m = NoPipe(s.newmesh)
+    s.nomatrixlist.append(m)
+    return m
+  #----------------------------------------------------------------------------
   def getpipematrix(s,ap,ax,ay,v,ox,oy):
     # --- This searches through the list of matrices checking if one with the
     # --- same parameters has already be created. If so, just return that one.
@@ -588,11 +634,21 @@ Constructor arguments:
     s.rodmatrixlist.append(m)
     return m
   #----------------------------------------------------------------------------
+  def nopipe(s,id,cm):
+    # --- Check if there is a matrix for this element
+    if (len(cm) > id and cm[id] is None) or len(cm) < id+1:
+      # --- If the list is too short, add some None's in.
+      while len(cm) < id+1: cm.append(None)
+      # --- Now, add the capacity matrix.
+      cm[id] = s.getnomatrix()
+    s.setmatrix(cm[id],0.)
+    return 1
+  #----------------------------------------------------------------------------
   def roundpipe(s,id,zs,ze,ap,ax,ay,ox,oy,cm):
     # --- Only apply matrix is the z location is within the current element
     if zs <= top.zbeam < ze:
       # --- Check if there is a matrix for this element
-      if (len(cm) > id+1 and cm[id] is None) or len(cm) < id+1:
+      if (len(cm) > id and cm[id] is None) or len(cm) < id+1:
         # --- If the list is too short, add some None's in.
         while len(cm) < id+1: cm.append(None)
         # --- Now, add the capacity matrix.
@@ -618,7 +674,7 @@ Constructor arguments:
     # --- Only apply matrix if the z location is within the current element
     if zl <= top.zbeam < zr and ap > 0.:
       # --- Check if the matrix has already been calculated.
-      if (len(cm) > id+1 and cm[id] is None) or len(cm) < id+1:
+      if (len(cm) > id and cm[id] is None) or len(cm) < id+1:
         # --- If the list is too short, add some None's in.
         while len(cm) < id+1: cm.append(None)
         # --- Generate the matrix
@@ -677,6 +733,7 @@ Constructor arguments:
     return 0
   #----------------------------------------------------------------------------
   def initialsetboundary(s):
+    global _initialmeshparams
     # --- This does an initial call to setboundary during the generate. It is
     # --- called just before the field solve.
     # --- This is only needed for the case where an instance of this class is
@@ -689,6 +746,10 @@ Constructor arguments:
     # --- This routine removes itself from the beforefs list since during
     # --- the run, the capacity matrices are reset at the start of the step.
     uninstallbeforefs(s.initialsetboundary)
+    # --- Fetch the initial values of the mesh parameters. This can only be
+    # --- done here since they must have been set by the user at this point.
+    _initialmeshparams = [w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax,
+                          0.5*(w3d.xmmax+w3d.xmmin),0.5*(w3d.ymmax+w3d.ymmin)]
     # --- If the generate has already be done (i.e. top.it > 0) then return
     # --- since setboundary doesn't need to be called.
     if top.it > 0: return
@@ -698,12 +759,6 @@ Constructor arguments:
   def setboundary(s):
     # --- This routine should only be called by the wxy package
     if package()[0] != 'wxy': return
-    # --- Make sure that the capacity matrix field solver is turned on. This is
-    # --- here so that in the case where an instance of this class is created
-    # --- before the generate, the initial call to the fieldsolver will have
-    # --- fstype=0, the default value. Also, if there is a section without
-    # --- any defined boundaries, fstype was set to 0.
-    top.fstype = 1
     # --- Go through each element type and chose the first one covers the
     # --- current location.
     #--------------------------------------------------------------------------
@@ -840,8 +895,7 @@ Constructor arguments:
           return
     # --- If this part of the code is reached, then there are no applicable
     # --- boundaries, so turn the capacity matrix field solver off.
-    top.fstype = 0
-    CapacityMatrix.setparticleboundary(None,largepos,largepos,0.,0.)
+    s.nopipe(0,s.nonecm)
   #----------------------------------------------------------------------------
   def plotcond(s,plotphi=1,filled=0,plotedge=1,plotpoints=0,plotsym=1,
                ccolor='red',ecolor='green',phicolor='fg'):
