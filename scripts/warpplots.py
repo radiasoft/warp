@@ -11,7 +11,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.121 2004/07/14 21:32:02 jlvay Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.122 2004/07/16 21:27:38 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -168,7 +168,12 @@ Opens up an X window
   - winnum=0 is the window number
   - dpi=100 is the dots per inch (either 100 or 75)
   """
-  window(winnum,dpi=dpi)
+  if winnum==0 and sys.platform != 'win32' and sys.platform != 'darwin':
+    # --- If display isn't set, no X plot window will appear since window0
+    # --- is already attached to a device (the plot file).
+    window(winnum,dpi=dpi,display=os.environ['DISPLAY'])
+  else:
+    window(winnum,dpi=dpi)
 
 ##########################################################################
 # Plot run info to the current plot and plot info to the log file.
