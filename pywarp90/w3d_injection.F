@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.1 $, $Date: 2004/07/22 23:10:10 $
+c@(#) File w3d_injection.F, version $Revision: 1.2 $, $Date: 2004/08/06 23:42:39 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1402,7 +1402,7 @@ c     --- Setup grids covering injection surfaces.
 
       if(inj_dx==0.) inj_dx = dx
       if(inj_dy==0.) inj_dy = dy
-      inj_dz = dz
+      if(inj_dz==0.) inj_dz = dz
       if(l_inj_rz) then
         if(.not. l_inj_area) then
           inj_dx = ainject(1)/(real(nint(ainject(1)/inj_dx))+0.5)
