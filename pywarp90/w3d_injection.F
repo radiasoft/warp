@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.15 $, $Date: 2004/12/17 19:05:13 $
+c@(#) File w3d_injection.F, version $Revision: 1.16 $, $Date: 2004/12/22 22:13:33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -775,9 +775,11 @@ c                   --- for vnorm below.
 
                     if(l_inj_exact .or. l_inj_rz) then
 c                     --- calculate injection surface axial location exactly
-                      zm = (xp(ii)**2+yp(ii)**2)/
-     &                  (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
+                      zm = (xp(ii)**2+yp(ii)**2)/(abs(rinject(ij)) +
+     &                   sqrt(max(0.,rinject(ij)**2 - xp(ii)**2 - yp(ii)**2)))
                       if (rinject(ij) < 0.) zm = -zm
+                      if ((xp(ii)**2+yp(ii)**2) > rinject(ij)**2)
+     &                  zm = rinject(ij)
                       zp(ii) = zm + inj_addfdz*inj_dz
                       az = asin(sqrt(xp(ii)**2 + yp(ii)**2)/rinject(ij))
                     else
@@ -1741,7 +1743,7 @@ c     --- as a function of the transverse coordinates.
 
 
       integer(ISZ):: ij,ix,iy
-      real(kind=8):: xx,yy,ainj,binj,ai_dx,bi_dy,dxi,dyi
+      real(kind=8):: xx,yy,rrsq,ainj,binj,ai_dx,bi_dy,dxi,dyi
       real(kind=8):: xl,yl,xu,yu,x1,x2,txl,tyl,txu,tyu
       real(kind=8):: ainji,binji
       real(kind=8):: area
@@ -1784,10 +1786,13 @@ c             --- Write the expression for inj_grid so as to avoid
 c             --- subtraction of large, similar numbers when rinject is large.
 c             inj_grid(ix,iy,ij) = (rinject(ij) -
 c    &               sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
-              inj_grid(ix,iy,ij) = (xx**2 +  yy**2)/
-     &         (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - xx**2 - yy**2)))
+              rrsq = xx**2 +  yy**2
+              inj_grid(ix,iy,ij) = rrsq/
+     &             (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - rrsq)))
               if (rinject(ij) < 0.) inj_grid(ix,iy,ij) = -inj_grid(ix,iy,ij)
-              inj_angl(ix,iy,ij) = asin(sqrt(xx**2 + yy**2)/rinject(ij))
+              if (rrsq > rinject(ij)**2) inj_grid(ix,iy,ij) = rinject(ij)
+
+              inj_angl(ix,iy,ij) = asin(max(-1.,min(1.,sqrt(rrsq)/rinject(ij))))
 
 c             --- Calculate fraction of grid cell which is within the emitting
 c             --- surface.  Used to scale the charge density on the emitting
@@ -1931,7 +1936,9 @@ c    &               sqrt(max(0.,rinject(ij)**2 - xx**2)))
               inj_grid(ix,0,ij) = xx**2 /
      &         (abs(rinject(ij)) + sqrt(max(0.,rinject(ij)**2 - xx**2)))
               if (rinject(ij) < 0.) inj_grid(ix,0,ij) = -inj_grid(ix,0,ij)
-              inj_angl(ix,0,ij) = asin(abs(xx)/rinject(ij))
+              if (xx**2 > rinject(ij)**2) inj_grid(ix,0,ij) = rinject(ij)
+
+              inj_angl(ix,0,ij) = asin(max(-1.,min(1.,abs(xx)/rinject(ij))))
 
 c             --- Calculate fraction of grid cell which is within the emitting
 c             --- surface.  Used to scale the charge density on the emitting
@@ -2031,7 +2038,7 @@ c     --- If transforming to coordinates of source, subtract source center
         endif
       endif
 
-      if (maxval(abs(xpinject)) > 0. .or. maxval(abs(ypinject)) > 0.) then
+      if (maxval(abs(thetainject)) > 0. .or. maxval(abs(phiinject)) > 0.) then
         if (maxval(ijp) == minval(ijp)) then
           ij = ijp(1)
 c         --- Convert xpinject and ypinject into the theta and phi angles.
@@ -2204,9 +2211,9 @@ c             --- emitting surface.
 
         call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,ij,1,1)
 
-#ifdef MPIPARALLEL
-c       --- Select only those data points which are within the domain
-c       --- for this processor.
+c       --- Select only those data points which are within the grid.
+c       --- This also removes particles not within the domain of this
+c       --- process.
         nn = i1
         do ii=i1,i2
           if (inj_zmmin <= zz(ii) .and. zz(ii) < inj_zmmax .and. nn < ii) then
@@ -2220,7 +2227,6 @@ c       --- for this processor.
           endif
         enddo
         i2 = nn - 1
-#endif
 
         i1 = i2 + 1
 
@@ -2469,7 +2475,8 @@ c       --- set temporaries
 
 c       --- Calculate distance of particle from the emitting surface
         rr2 = xx(ip)**2 + yy(ip)**2
-        if (abs(zz(ip)) < abs(rinj)) then
+c       if (abs(zz(ip)) < abs(rinj)) then
+        if (-abs(rinj) < zz(ip) .and. zz(ip) < abs(rinj)) then
 c         --- The expression below for zz<rinj is mathematically identical
 c         --- to the commented out expression below.  That form is
 c         --- used so that for large values of rinj, i.e. a flat emitting
@@ -2478,7 +2485,6 @@ c         --- namely zz.
 c         dd = rinj - sqrt(rr2 + (rinj - zz(ip))**2)
           dd = (2.*zz(ip) - (zz(ip)**2 + rr2)*rinji)/
      &         (1. + sqrt(rr2*rinji**2 + (1. - zz(ip)*rinji)**2))
-          if (rinj < 0.) dd = -dd
         else
 c         --- When zz>rinj, a seperate equation is needed.
           dd = abs(rinj) + sqrt(rr2 + (zz(ip) - rinj)**2)
@@ -2505,7 +2511,7 @@ c         --- angle of point in transverse plane
           end if
 
 c         --- angle relative to z axis
-          az = asin(sqrt(rr2)*rinji)
+          az = atan2(sqrt(rr2)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
 
 c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
@@ -2513,8 +2519,6 @@ c         --- emitting surface.
           wr = 1./(1. - dz*dd*rinji)
           px = abs(xx(ip)*wr - inj_xmmin(ij))*dxi
           py = abs(yy(ip)*wr - inj_ymmin(ij))*dyi
-          px = abs(rinj*sin(az)*cos(aa) - inj_xmmin(ij))*dxi
-          py = abs(rinj*sin(az)*sin(aa) - inj_ymmin(ij))*dyi
           ix = spreadx*int(px)
           iy = spready*int(py)
           wx = spreadx*(px - ix)
@@ -2550,8 +2554,8 @@ c           --- Add in the tangential fields if requested.
 c           --- Fetch the transverse field components. The field is linearly
 c           --- interpolated between the value of the emitting surface
 c           --- (i.e. zero) and the value on the secondary surface.
-            atx = asin(xx(ip)/sqrt(rinj**2 - yy(ip)**2))
-            aty = asin(yy(ip)/sqrt(rinj**2 - xx(ip)**2))
+            atx = atan2(xx(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
+            aty = atan2(yy(ip)*sign(1.,rinj),(rinj - zz(ip))*sign(1.,rinj))
             sx = 1.
             sy = 1.
             if (xx(ip) < inj_xmmin(ij)) sx = -1.
@@ -2678,6 +2682,7 @@ c         --- angle of point in transverse plane
 
 c         --- angle relative to z axis
           az = asin(sqrt(rr2)*rinji)
+c         az = atan2(sqrt(rr2),(rinj - zz(ip))*sign(1.,rinj)) XXX
 
           atx = asin(xx(ip)/sqrt(rinj**2 - yy(ip)**2))
           aty = asin(yy(ip)/sqrt(rinj**2 - xx(ip)**2))
@@ -3033,9 +3038,9 @@ c              endif
 
         call inj_transform(i2-i1+1,xx(i1),yy(i1),zz(i1),1,ij,1,1)
 
-#ifdef MPIPARALLEL
-c       --- Select only those data points which are within the domain
-c       --- for this processor.
+c       --- Select only those data points which are within the grid.
+c       --- This also removes particles not within the domain of this
+c       --- process.
         nn = i1
         do ii=i1,i2
           if (inj_zmmin <= zz(ii) .and. zz(ii) < inj_zmmax .and. nn < ii) then
@@ -3050,7 +3055,6 @@ c       --- for this processor.
           endif
         enddo
         i2 = nn - 1
-#endif
 
         i1 = i2 + 1
 
@@ -3325,7 +3329,6 @@ c           --- namely zp(ip).
 c           dd = rinj - sqrt(rr2 + (rinj - zp(ip))**2)
             dd = (2.*zp(ip) - (zp(ip)**2 + rr2)*rinji)/
      &           (1. + sqrt(rr2*rinji**2 + (1. - zp(ip)*rinji)**2))
-            if (rinj < 0.) dd = -dd
           else
 c           --- When zp(ip)>rinj, a seperate equation is needed.
             dd = abs(rinj) + sqrt(rr2 + (zp(ip) - rinj)**2)
@@ -3493,6 +3496,7 @@ c           --- angle of point in transverse plane
 c           --- angle relative to z axis
             rr2 = xxp(irhs)**2 + yyp(irhs)**2
             az = asin(sqrt(rr2)*rinji)
+c         az = atan2(sqrt(rr2),(rinj - zz(ip))*sign(1.,rinj)) XXX
 
             atx = asin(xxp(irhs)/sqrt(rinj**2 - yyp(irhs)**2))
             aty = asin(yyp(irhs)/sqrt(rinj**2 - xxp(irhs)**2))
@@ -3680,7 +3684,6 @@ c         --- namely zz.
 c         dd = rinj - sqrt(rr2 + (rinj - zz(ip))**2)
           dd = (2.*zz(ip) - (zz(ip)**2 + rr2)*rinji)/
      &         (1. + sqrt(rr2*rinji**2 + (1. - zz(ip)*rinji)**2))
-          if (rinj < 0.) dd = -dd
         else
 c         --- When zz>rinj, a seperate equation is needed.
           dd = abs(rinj) + sqrt(rr2 + (zz(ip) - rinj)**2)
@@ -3705,6 +3708,7 @@ c         --- angle of point in transverse plane
 
 c         --- angle relative to z axis
           az = asin(sqrt(rr2)*rinji)
+c         az = atan2(sqrt(rr2),(rinj - zz(ip))*sign(1.,rinj)) XXX
 
 c         --- Find coordinates of the point on the secondary surface in front
 c         --- of the emitting surface along a line perpendicular to the
