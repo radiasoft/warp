@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.153 $, $Date: 2004/05/12 22:29:49 $
+c@(#) File W3D.F, version $Revision: 3.154 $, $Date: 2004/05/17 15:48:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -70,6 +70,7 @@ c=============================================================================
       use InjectVars
       use InjectVars3d
       use DKInterp
+      use InDiag3d
 
 c  Invoked by the GENERATE command, it sets up the problem
 c  This routine allots all of the neccesary dynamic arrays, calls the
@@ -86,11 +87,15 @@ c  Announce that we're starting up
 
       call remark(" ***  particle simulation package W3D generating")
 
-c  Put ny to zero for RZ geometry
+c  Put ny to zero for RZ geometry and setup a few flags
 
       if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         ny = 0
         fstype = 10
+        lsezax3d = .false.
+        lsrhoax3d = .false.
+        lsphiax3d = .false.
+        lrhodia3d = .false.
       elseif(solvergeom==Zgeom) then
         nx = 0
         ny = 0
@@ -1117,7 +1122,7 @@ c  Calculates the line charge density from rho.
       if (lw3dtimesubs) substarttime = wtime()
       if (.not. lgtlchg3d) return
 
-      if(solvergeom==RZgeom) then
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call gtlchgrz
         return
       end if
@@ -1719,7 +1724,7 @@ c  Sets the slices on the exterior of phi for periodicity
 c  sets slice at -1 equal to the slice at nz-1
 c  sets slice at nz+1 equal to the slice at 1
 
-      if(solvergeom==RZgeom) then
+      if(solvergeom==RZgeom .or. solvergeom==XZgeom) then
         call perphirz()
         return
       end if
