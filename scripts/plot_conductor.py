@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.68 2004/02/09 16:23:41 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.69 2004/02/17 22:23:35 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1724,9 +1724,9 @@ def plotelementoutline(color,gridframe,axis,zl,zu,ie,ne,outline,fillcolor,
       rrr1 = offset + rrr
       rrr2 = offset - rrr
       zzl = (0.5*(eze[i] + ezs[i]) - 0.5*(rodlen+gaplen) - zz +
-            top.zlatstart + zoffset)
+            top.zlatstrt + zoffset)
       zzr = (0.5*(eze[i] + ezs[i]) + 0.5*(rodlen+gaplen) + zz +
-            top.zlatstart + zoffset)
+            top.zlatstrt + zoffset)
       if gridframe:
         rrl1 = rrl1/w3d.dx
         rrl2 = rrl2/w3d.dx
