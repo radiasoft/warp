@@ -8,11 +8,19 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.26 2003/10/03 16:44:35 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.27 2003/10/03 17:44:14 dave Exp $"
 
 def extpartdoc():
   import extpart
   print extpart.__doc__
+
+__extforcenorestore = 0
+def extforcenorestore():
+  global __extforcenorestore
+  __extforcenorestore = 1
+def extnoforcenorestore():
+  global __extforcenorestore
+  __extforcenorestore = 0
 
 ############################################################################
 class ExtPart:
@@ -186,7 +194,6 @@ routines (such as ppxxp).
     if not self.laccumulate and not self.dumptofile: return
     if self.iz >= 0: return
     if self.zz+self.wz > w3d.zmminglobal+top.zbeam: return
-    self.disable()
     if me == 0:
       ff = None
       try:
@@ -202,6 +209,16 @@ routines (such as ppxxp).
       ff.close()
     self.nepmax = 1
     self.clear()
+    # --- Disable is done last so that the object written out to the
+    # --- file is still enabled. That flag is used in restoredata to
+    # --- determine whether or not to restore the data. The logic is set
+    # --- so that the object in an autodump file will restore the data
+    # --- but one is a generic dump file won't (unless it was not auto
+    # --- dumped, in which case the object in the generic dump is the only
+    # --- copy). There will of course be exceptions, so restoredata takes
+    # --- and option argument to force restoration of data, and the
+    # --- extforcenorestore function turns any restores off.
+    self.disable()
 
   def dodumptofile(self):
     if me != 0: return
@@ -301,12 +318,14 @@ routines (such as ppxxp).
     if self.laccumulate: self.setuparrays(top.ns)
 
   ############################################################################
-  def restoredata(self):
+  def restoredata(self,lforce=0):
     """
 Restores data dumped to a file. Note that this turns off the dumptofile
 feature.
+  - lforce=0: if true, force a restore, despite the value of enabled.
     """
     if not self.dumptofile: return
+    if not lforce and (not self.enabled or __extforcenorestore): return
     self.dumptofile = 0
     self.laccumulate = 1
     try:
