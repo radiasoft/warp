@@ -2,13 +2,14 @@ from warp import *
 import RandomArray
 import re
 import os
+import __main__
 if me == 0:
   try:
     import pl3d
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.77 2002/04/30 21:32:24 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.78 2002/05/06 13:41:17 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2609,6 +2610,17 @@ def onedplts(freqflag=always):
   oldlimits = limits()
   window(currentwindow)
 
+# --- Thses are defined for the fortran interface. If WARP is not imported
+# --- main, then the functions and the always and seldom parameters will
+# --- not be accessible from the fortran call. This way avoids that by
+# --- declaring parameterless functions and explicitly adding them to main.
+def onedpltsalways():
+  onedplts(always)
+def onedpltsseldom():
+  onedplts(seldom)
+__main__.__dict__['onedpltsalways'] = onedpltsalways
+__main__.__dict__['onedpltsseldom'] = onedpltsseldom
+
 ##########################################################################
 def psplots(freqflag=always,js=0):
   """Makes particle phase space plots which have been turned on
@@ -2757,3 +2769,15 @@ def psplots(freqflag=always,js=0):
 # --- Reset the current window to it previous value.
   oldlimits = limits()
   window(currentwindow)
+
+# --- Thses are defined for the fortran interface. If WARP is not imported
+# --- main, then the functions and the always and seldom parameters will
+# --- not be accessible from the fortran call. This way avoids that by
+# --- declaring parameterless functions and explicitly adding them to main.
+def psplotsalways():
+  psplots(always)
+def psplotsseldom():
+  psplots(seldom)
+__main__.__dict__['psplotsalways'] = psplotsalways
+__main__.__dict__['psplotsseldom'] = psplotsseldom
+
