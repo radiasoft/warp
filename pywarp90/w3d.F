@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.147 $, $Date: 2004/03/16 17:24:46 $
+c@(#) File W3D.F, version $Revision: 3.148 $, $Date: 2004/03/17 16:58:16 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1317,8 +1317,8 @@ c  Zero the moments if center is synchv
      &                sq(1),sm(1),sw(1),dt*0.5,1,
      &                nplive,uxpo,uypo,uzpo,1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
-        maxp = 0.
-        minp = 0.
+        maxp = -LARGEPOS
+        minp = +LARGEPOS
         zmmnts0 = 0.
         zmmnts = 0.
       endif
