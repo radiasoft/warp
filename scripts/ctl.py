@@ -1,5 +1,5 @@
 # Control module
-ctl_version = "$Id: ctl.py,v 1.3 2002/11/27 01:17:54 dave Exp $"
+ctl_version = "$Id: ctl.py,v 1.4 2003/09/23 19:38:42 dave Exp $"
 from warp import *
 
 def generate():
@@ -20,6 +20,7 @@ def generate():
 beforestepfuncs = []
 afterstepfuncs = []
 def step(n=1,maxcalls=None):
+  b = wtime()
   for p in package():
     try:
       exec 'command = '+p+'exe'
@@ -33,16 +34,31 @@ def step(n=1,maxcalls=None):
   top.ncall = 0
   while top.ncall < ncalls:
     top.ncall = top.ncall + 1
+
+    bb = wtime()
     for f in beforestepfuncs: f()
+    aa = wtime()
+    try: step.beforetime = step.beforetime + (aa - bb)
+    except: step.beforetime = 0.
+
     command(1,1)
     ruthere()
+
+    bb = wtime()
     for f in afterstepfuncs: f()
+    aa = wtime()
+    try: step.aftertime = step.aftertime + (aa - bb)
+    except: step.aftertime = 0.
+
     # --- Get step time
-    top.steptime = wtime() - top.starttime - top.gentime
+    #top.steptime = wtime() - top.starttime - top.gentime
     # --- Flush the stdout buffer
     sys.stdout.flush()
   #except:
     #pass
+  # --- Get step time
+  a = wtime()
+  top.steptime = top.steptime + (a - b)
 
 def finish():
   for p in package():
