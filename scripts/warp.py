@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.13 2001/01/31 21:28:11 dave Exp $"
+warp_version = "$Id: warp.py,v 1.14 2001/01/31 21:45:02 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -534,3 +534,7 @@ initial_global_dict_keys = globals().keys()
 
 # --- Get start CPU time
 top.starttime = wtime()
+
+# --- Save the versions string here so that it will be dumped into any
+# --- dump file.
+warpversions = versionstext()
