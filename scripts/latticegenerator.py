@@ -1,7 +1,7 @@
 from warp import *
 from lattice import *
 import cPickle
-latticegenerator_version = "$Id: latticegenerator.py,v 1.4 2002/11/27 00:31:34 dave Exp $"
+latticegenerator_version = "$Id: latticegenerator.py,v 1.5 2002/11/28 00:18:44 dave Exp $"
 ######################################################################
 # Lattice builder
 # 
@@ -17,6 +17,7 @@ class LatticeGenerator:
   gap_len=.01:
   ngappoints=1000: Number of slices in the beam
   nendpoints=ngappoints/10: Additional points added to end of acclet array
+  nhlpswithoutgaps=0:
   loadandfire=1:
   firetime=0.:
   risetime=None:
@@ -36,6 +37,7 @@ class LatticeGenerator:
   """
   def __init__(s,ion_mass,beam_duration,ekinmid,charge_per_beam,gap_len=.01,
                ngappoints=1000,nendpoints=None,
+               nhlpswithoutgaps=0,
                loadandfire=1,firetime=0.,risetime=None,
                unfireandunload=1,stoptime=1.e36,falltime=None,
                accel_gradient=0.,firstquadsign=+1,lattice=None,
@@ -51,6 +53,7 @@ class LatticeGenerator:
     if nendpoints is None: s.nendpoints = ngappoints/10
     else: s.nendpoints = nendpoints
     s.ntaccl = s.nendpoints + s.ngappoints + s.nendpoints
+    s.nhlpswithoutgaps = nhlpswithoutgaps
     s.loadandfire = loadandfire
     s.firetime = firetime
     s.risetime = risetime
@@ -117,9 +120,11 @@ class LatticeGenerator:
     s.hlp = s.amean(s)*sqrt((1.-cos(s.sigma(s)*pi/180.))/(2.*s.perveancemid))
     s.zlast = 0.
     s.ihlp = 0
-    s.adddrft((1.-s.occupancy(s))*s.hlp/2.)
-    s.addquad(s.zlast,s.hlp,s.ekinmid)
-    s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
+
+    for iq in range(s.nhlpswithoutgaps):
+      s.adddrft((1.-s.occupancy(s))*s.hlp/2.)
+      s.addquad(s.zlast,s.hlp,s.ekinmid)
+      s.adddrft((1.-s.occupancy(s))*s.hlp/2.-s.gap_len/2.)
 
     # --- Load and fire risetime default is transit time of one lattice
     # --- period
@@ -131,9 +136,9 @@ class LatticeGenerator:
     # --- Setup history arrays
     s.savehist(linit=1)
 
-    # --- Get beam_duration at end of first hlp (before first gap)
-    s.advancebeam()
-    s.zlast = s.zlast + s.hlp
+    # --- Get beam_duration before first gap
+    s.advancebeam(len=1.+s.nhlpswithoutgaps)
+    s.zlast = s.zlast + s.hlp*(1.+s.nhlpswithoutgaps)
     s.savehist()
 
   #-----------------------------------------------------------------------
