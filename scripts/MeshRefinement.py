@@ -285,7 +285,7 @@ efficient timewise, but uses two extra full-size arrays.
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       ichild = zeros(len(x),'d')
-      getgridngp3d(len(x),x,y,z,ichild,
+      getgridngp3d(len(x),x,y,z-top.zgrid,ichild,
                    self.nx,self.ny,self.nz,self.idomains,
                    self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                    self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
@@ -529,36 +529,62 @@ the top level grid.
       # --- Find out whether the particles are in the local domain or one of
       # --- the children's.
       ichild = zeros(len(x),'d')
-      getgridngp3d(len(x),x,y,z,ichild,
+      getgridngp3d(len(x),x,y,z-top.zgrid,ichild,
                    self.nx,self.ny,self.nz,self.idomains,
                    self.xmmin,self.xmmax,self.ymmin,self.ymmax,
                    self.zmmin,self.zmmax,self.l2symtry,self.l4symtry)
       # --- Zero out places where idomains < 0
       ichild = where(ichild < 0.,0.,ichild)
-      # --- Sort the list of which domain the particles are in.
-      ichildsorter = argsort(ichild)
-      ichildsorted = take(ichild,ichildsorter)
-      nperchild = self.getnperchild(ichildsorted)
-      # --- Now use the same sorting on the particle quantities.
-      x = take(x,ichildsorter)
-      y = take(y,ichildsorter)
-      z = take(z,ichildsorter)
-      # --- Create temporary arrays to hold the E field
-      tex,tey,tez = zeros(len(x),'d'),zeros(len(x),'d'),zeros(len(x),'d')
-      # --- For each child, pass to it the particles in it's domain.
-      i = nperchild[0]
-      for child,n in zip(self.children,nperchild[1:]):
-        if n > 0:
-          child.gete(x[i:i+n],y[i:i+n],z[i:i+n],
-                     tex[i:i+n],tey[i:i+n],tez[i:i+n])
-        i = i + n
-      # --- Get e-field from this domain
-      n = nperchild[0]
-      MultiGrid.gete(self,x[:n],y[:n],z[:n],tex[:n],tey[:n],tez[:n])
-      # --- Put the E field into the passed in arrays
-      put(ex,ichildsorter,tex)
-      put(ey,ichildsorter,tey)
-      put(ez,ichildsorter,tez)
+      
+      for i in range(len(self.children)+1):
+        # --- Get list of particles within the ith domain
+        # --- Note that when i==0, the particles selected are the ones from
+        # --- this instances domain.
+        ii = compress(ichild == i,arange(len(x)))
+        if len(ii) == 0: continue
+        # --- Get positions of those particles.
+        xc = take(x,ii)
+        yc = take(y,ii)
+        zc = take(z,ii)
+        # --- Create temporary arrays to hold the E field
+        n = len(xc)
+        tex,tey,tez = zeros(n,'d'),zeros(n,'d'),zeros(n,'d')
+        # --- Now get the field
+        if i == 0:
+          MultiGrid.gete(self,xc,yc,zc,tex,tey,tez)
+        else:
+          self.children[i-1].gete(xc,yc,zc,tex,tey,tez)
+        # --- Put the E field into the passed in arrays
+        put(ex,ii,tex)
+        put(ey,ii,tey)
+        put(ez,ii,tez)
+
+# --- This is the old way with sorting - there's a bug somewhere!!
+#     # --- Sort the list of which domain the particles are in.
+#     ichildsorter = argsort(ichild)
+#     ichildsorted = take(ichild,ichildsorter)
+#     nperchild = self.getnperchild(ichildsorted)
+#     # --- Now use the same sorting on the particle quantities.
+#     x = take(x,ichildsorter)
+#     y = take(y,ichildsorter)
+#     z = take(z,ichildsorter)
+#     # --- Create temporary arrays to hold the E field
+#     tex,tey,tez = zeros(len(x),'d'),zeros(len(x),'d'),zeros(len(x),'d')
+#     # --- For each child, pass to it the particles in it's domain.
+#     i = nperchild[0]
+#     for child,n in zip(self.children,nperchild[1:]):
+#       if n > 0:
+#         child.gete(x[i:i+n],y[i:i+n],z[i:i+n],
+#                    tex[i:i+n],tey[i:i+n],tez[i:i+n])
+#       i = i + n
+#     # --- Get e-field from this domain
+#     n = nperchild[0]
+#     MultiGrid.gete(self,x[:n],y[:n],z[:n],tex[:n],tey[:n],tez[:n])
+#     # --- Put the E field into the passed in arrays
+#     put(ex,ichildsorter,tex)
+#     put(ey,ichildsorter,tey)
+#     put(ez,ichildsorter,tez)
+
     else:
       # --- Get e-field from this domain
       MultiGrid.gete(self,x,y,z,ex,ey,ez)
