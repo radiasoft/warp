@@ -70,6 +70,16 @@ PyDXObject_isnull(PyDXObject *self)
   else                     return Py_BuildValue("i",0);
 }
 
+static char PyDXObject_isDXObject__doc__[] = "Checks whether the input is a DXObject";
+
+static PyObject *
+PyDXObject_isDXObject(PyObject *self,PyObject *args)
+{
+  PyObject *obj;
+  if (!PyArg_ParseTuple(args,"O",&obj)) return NULL;
+  return Py_BuildValue("i",PyDXObject_Check(obj));
+}
+
 /* ---------------------------------------------------------------- */
 
 static struct PyMethodDef PyDXObject_methods[] = {
@@ -154,6 +164,8 @@ pyDXObject_DXAddArrayData(PyObject *self,PyObject *args)
                                 ((PyArrayObject *)data)->descr->type_num,0,0);
   e = DXAddArrayData((Array)((PyDXObject *)a)->dxobj,start,n,
                      (Pointer)(pyarr->data));
+  Py_XDECREF(pyarr);
+  
   if (e != NULL) {
     Py_INCREF(Py_None);
     return Py_None;
@@ -348,7 +360,7 @@ pyDXObject_DXObject_fromarray(PyObject *self,PyObject * args)
   DXAddArrayData(a, 0, numelements, data);
 
   /* get a pointer to the data array */
-  data = (double *)DXGetArrayData(a);
+  /* data = (double *)DXGetArrayData(a); */
 
   /* create a new field */
   f = DXNewField();
@@ -374,12 +386,18 @@ pyDXObject_DXObject_fromarray(PyObject *self,PyObject * args)
   /* attribute to be "ref" positions), and creates the bounding box.  */
   DXEndField(f);
 
+  /* Free the work space */
+  free(origins);
+  free(deltas);
+  Py_XDECREF(pyarrcont);
+
   result = (PyObject *)newPyDXObject((Object)f);
   return result;
 
 err:
   free(origins);
   free(deltas);
+  Py_XDECREF(pyarrcont);
   return NULL;
 }
 
@@ -462,7 +480,7 @@ pyDXObject_DXCallModule(PyObject *self,PyObject * args)
 }
 
 static char pyDXObject_DXReference__doc__[] =
-""
+"Increments the reference counter for the DXObject."
 ;
 
 static PyObject *
@@ -558,6 +576,8 @@ pyDXObject_DXRegisterInputHandler(PyObject *self,PyObject * args)
 /* List of methods defined in the module */
 
 static struct PyMethodDef pyDXObject_methods[] = {
+ {"isDXObject",(PyCFunction)PyDXObject_isDXObject,
+         METH_VARARGS,PyDXObject_isDXObject__doc__},
  {"DXObject_fromarray",(PyCFunction)pyDXObject_DXObject_fromarray,
          METH_VARARGS,pyDXObject_DXObject_fromarray__doc__},
  {"DXCallModule",(PyCFunction)pyDXObject_DXCallModule,
