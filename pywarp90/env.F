@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.15 $, $Date: 2002/04/09 18:52:45 $
+c@(#) File ENV.M, version $Revision: 3.16 $, $Date: 2003/02/05 18:49:32 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -48,13 +48,16 @@ c  Calculate derived quantities
 
       call derivqty
 
-      nenv = (zu - zl) / dzenv +0.5
+      nenv = (zu - zl)/dzenv + 0.5
+
 c     --- allocate dynamic arrays ("group allot")
       call gallot("ENVvars",0)
 
 c     --- reset Lattice arrays to final size
 c     --- This is not really needed since it is also done in envexe below.
-      zlatbuffer = dzenv
+c     --- The absolute value is taken since dzenv may be negative (when
+c     --- the envelope is running backward).
+      zlatbuffer = abs(dzenv)
       call resetlat
       nzl = 0
       zlmin = 0.
@@ -93,7 +96,9 @@ c  Send a startup message to the standard output
       endif
 
 c     --- reset Lattice arrays to final size
-      zlatbuffer = dzenv
+c     --- The absolute value is taken since dzenv may be negative (when
+c     --- the envelope is running backward).
+      zlatbuffer = abs(dzenv)
       if (nzl .ne. 0) then
         call resetlat
         nzl = 0
@@ -369,6 +374,7 @@ c        --- store data for this step
          fuyenv(istep) = fuyplot 
 c        --- Check if just before starting point of region over which the tune
 c        --- is to be calculated.
+c        --- NOTE: this calculation is not correct when dzenv < 0.
          if (tunezs-dz < z .and. z <= tunezs) then
            astart    = a
            apstart   = ap
@@ -396,6 +402,7 @@ c
 c        --- Check if just after starting point of region over which the tune
 c        --- is to be calculated.  Linear interpolate to find values at the
 c        --- starting point.
+c        --- NOTE: this calculation is not correct when dzenv < 0.
          if (tunezs < z .and. z < tunezs+dz) then
            wz = 1. - (z - tunezs)/dz
            astart    = astart   *(1. - wz) + a   *wz
@@ -423,6 +430,7 @@ c
          endif
 c        --- Check if just before ending point of region over which the tune
 c        --- is to be calculated.
+c        --- NOTE: this calculation is not correct when dzenv < 0.
          if (tuneze-dz < z .and. z <= tuneze) then
            aend    = a
            apend   = ap
@@ -450,6 +458,7 @@ c
 c        --- Check if just after ending point of region over which the tune
 c        --- is to be calculated.  Linear interpolate to find values at the
 c        --- ending point.
+c        --- NOTE: this calculation is not correct when dzenv < 0.
          if (tuneze < z .and. z < tuneze+dz) then
            wz = 1. - (z - tuneze)/dz
            aend    = aend   *(1. - wz) + a   *wz
@@ -635,7 +644,7 @@ c LatticeInternal since the id's must be saved and they must be known for
 c each level of overlap. It is easier to use those existing arrays rather
 c than to create new local ones.
 
-      real(kind=8):: zl,fracl,zr,fracr
+      real(kind=8):: z1,z2,zl,fracl,zr,fracr
       real(kind=8):: fuzz
       real(kind=8):: frac,ez,ke,de,db
       real(kind=8):: dedrr,dbdxq,dedxq,xdbdx,xdedx,ydbdx,ydedx,xex,yey,alpha
@@ -646,8 +655,10 @@ c than to create new local ones.
       integer(ISZ):: ii,iie,iim,iem,imm
       integer(ISZ):: iq,ih,ie,im,ia
 
-      zl = z - 0.5 * dz
-      zr = z + 0.5 * dz
+      z1 = z - 0.5 * dz
+      z2 = z + 0.5 * dz
+      zl = min(z1,z2)
+      zr = max(z1,z2)
 
 c     --- Initialize variables to the values from the uniform fields.
       dedrr = dedr
