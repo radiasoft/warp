@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.14 $, $Date: 2002/02/23 00:59:05 $
+c@(#) File ENV.M, version $Revision: 3.15 $, $Date: 2002/04/09 18:52:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -970,7 +970,7 @@ c       --- Make sure that the arrays have been allocated.  If not,
 c       --- print warning and turn variation off.
 
         if (libeame_z) then
-          if (ASSOCIATED(ibeame_z)) then
+          if (.not. ASSOCIATED(ibeame_z)) then
             call remark("ENV warning: ibeame_z has not been allocated")
             call remark("             current will not be varied")
             libeame_z = .false.
@@ -978,8 +978,7 @@ c       --- print warning and turn variation off.
         endif
 
         if (lemitne_z) then
-          if ((ASSOCIATED(emitnxe_z)) .or. 
-     &        (ASSOCIATED(emitnye_z))) then
+          if (.not. (ASSOCIATED(emitnxe_z) .or. ASSOCIATED(emitnye_z))) then
             call remark("ENV warning: emitnxe_z or emitnye_z not allocated")
             call remark("             normalized emittance will not be varied")
             lemitne_z = .false.
