@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.14 $, $Date: 2004/09/25 00:37:54 $
+c@(#) File WRZ.M, version $Revision: 3.15 $, $Date: 2005/01/19 20:51:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -2969,13 +2969,13 @@ c---------------------------------------------------------------
 
       if (it .eq. 0) then
          do iz = 0,nz
-         curr0(iz) = curr(iz)
+         curr0(iz) = curr(iz,nszarr)
          ezext(iz) = eta*curr0(iz)
          enddo
 c  Also set up the integral of the current for phi on axis plots
          phiresist(0) = 0.
          do iz = 1,nz
-           phiresist(iz) = phiresist(iz-1) + curr(iz)*dz*eta
+           phiresist(iz) = phiresist(iz-1) + curr(iz,nszarr)*dz*eta
          enddo
 
       elseif (taurc .ne. 0.) then
