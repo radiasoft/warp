@@ -1,5 +1,5 @@
 from warp import *
-pzplots_version = "$Id: pzplots.py,v 1.7 2001/08/28 16:21:10 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.8 2002/01/24 23:07:30 dave Exp $"
 
 def pzplotsdoc():
   print """
@@ -64,7 +64,9 @@ pzrhoax: Plot charge density on axis versus Z
 pzenvx: Plot beam X envelope (twice Xrms) versus Z
 pzenvy: Plot beam Y envelope (twice Yrms) versus Z
 pzxedge: Plot beam X envelope (twice Xrms) versus Z
+pzxpedge: Plot beam X' envelope versus Z
 pzyedge: Plot beam Y envelope (twice Yrms) versus Z
+pzypedge: Plot beam Y' envelope versus Z
 pzxedges: Plot beam X edges (centroid +- twice Xrms) versus Z
 pzyedges: Plot beam Y edges (centroid +- twice Yrms) versus Z
 pzenvxp: Plot beam X' envelope (2*xxpbar/xrms) versus Z
@@ -1509,6 +1511,32 @@ def pzenvx(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
 pzxedge = pzenvx
 
 ##########################################################################
+def pzxpedge(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
+             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
+  """Plots beam X' envelope versus Z
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + top.zmntmesh/zscale
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  xpedgez = (top.xxpbarz-top.xbarz*top.xpbarz)/ \
+            where(greater(top.xrmsz,0.),top.xrmsz,1.)
+  warpplg(xpedgez,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("Beam X' envelope",titleb,"(m)")
+
+##########################################################################
 def pzenvy(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
            marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
   """Plots beam Y envelope (twice Y rms) versus Z
@@ -1532,6 +1560,32 @@ def pzenvy(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
           marks=marks,marker=marker,msize=msize,width=width)
   if titles: ptitles("Beam Y envelope (2*rms)",titleb,"(m)")
 pzyedge = pzenvy
+
+##########################################################################
+def pzypedge(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
+             marker=None,msize=1.,width=1.,lframe=0,titleb=None,titles=1):
+  """Plots beam Y' envelope versus Z
+  - zoffset=0: offset added to axis
+  - zscale=1: scale of axis
+    plots versus zoffset + top.zmntmesh/zscale
+  - color='fg': curve color
+  - linetype='solid': line type
+  - marks=0: turns on identifying marks on the curve
+  - marker=None: marker type (see gist manual for the list)
+  - msize=1: marker size
+  - width=1: line width
+  - lframe=0: specifies whether or not to set plot limits
+  - titleb="Z": bottom title
+  - titles=1: specifies whether or not to plot titles"""
+  if zscale == 0.: raise "zscale must be nonzero"
+  if titleb is None:
+    if zscale == 1.: titleb = "Z (m)"
+    else: titleb = "Z"
+  ypedgez = (top.yypbarz-top.ybarz*top.ypbarz)/ \
+            where(greater(top.yrmsz,0.),top.yrmsz,1.)
+  warpplg(ypedgez,zoffset+top.zmntmesh/zscale,color=color,linetype=linetype,
+          marks=marks,marker=marker,msize=msize,width=width)
+  if titles: ptitles("Beam Y' envelope",titleb,"(m)")
 
 ##########################################################################
 def pzxedges(zoffset=0.,zscale=1.,color="fg",linetype="solid",marks=0,
