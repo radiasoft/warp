@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.125 $, $Date: 2003/07/25 18:35:19 $
+c@(#) File W3D.M, version $Revision: 3.126 $, $Date: 2003/07/28 22:58:21 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -3492,11 +3492,11 @@ c=============================================================================
       use Fields3d
       use Picglb3d
       integer(ISZ):: np
+      integer(ISZ):: nx,ny,nz
       real(kind=8):: zgrid,q,wght
       real(kind=8):: rho1d(0:(1+nx)*(1+ny)*(1+nz)-1)
       real(kind=8):: xp(np), yp(np), zp(np), uzp(np)
       character(8):: depos
-      integer(ISZ):: nx,ny,nz
       real(kind=8):: xmmin,ymmin,zmmin
 
 c  Sets charge density
