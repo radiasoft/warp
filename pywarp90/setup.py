@@ -65,10 +65,12 @@ if parallel:
 
 warpobjects = map(lambda p:os.path.join(builddir,p),warpobjects)
 
+library_dirs = fcompiler.libdirs
+libraries = fcompiler.libs
 if parallel:
-  library_dirs = fcompiler.libdirs + ['/usr/lib/mpi/lib']
-  libraries = fcompiler.libs + ['mpifarg','mpi','elan','elan3','rmscall','elf']
-  warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
+  library_dirs = fcompiler.libdirs + ['/usr/lpp/ppe.poe/lib']
+  libraries = fcompiler.libs + ['mpi']
+  #warpobjects = warpobjects + ['/usr/local/mpi/ifc_farg.o']
 
 setup (name = "warpC",
        version = '3.0',
@@ -81,8 +83,8 @@ setup (name = "warpC",
                                  os.path.join(builddir,'Forthon.c'),
                                  'pmath_rng.c','ranf.c','ranffortran.c'],
                                 include_dirs=[builddir],
-                                library_dirs=fcompiler.libdirs,
-                                libraries=fcompiler.libs,
+                                library_dirs=library_dirs,
+                                libraries=libraries,
                                 extra_objects=warpobjects,
                                 extra_link_args=['-g']+
                                              fcompiler.extra_link_args)]
