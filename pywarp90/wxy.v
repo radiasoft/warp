@@ -1,5 +1,5 @@
 wxy
-#@(#) File WXY.V, version $Revision: 3.26 $, $Date: 2002/10/25 00:00:01 $
+#@(#) File WXY.V, version $Revision: 3.27 $, $Date: 2002/11/05 23:23:24 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package WXY of code WARP
@@ -9,7 +9,7 @@ wxy
 
 *********** WXYversion:
 # Quantities associated with version control 
-verswxy character*19 /"$Revision: 3.26 $"/ # Current code version, set by CVS
+verswxy character*19 /"$Revision: 3.27 $"/ # Current code version, set by CVS
 
 *********** Particlesxy dump parallel:
 npmaxxy    integer # Number of particles - same as npmax from TOP
@@ -19,7 +19,9 @@ dtp(npmaxxy) _real # Time step size for each particle.
 
 *********** InGenxy dump:
 ds       real              # Axial step size, defaults to vbeam*dt
-lvzchang logical /.true./  # When true, fancy algorithm is used to estimate dt.
+lvzchang logical /.true./  # When true, iterative algorithm is used to
+                           # estimate dt.
+lexactds logical /.false./
 niter_dt integer /4/       # Number of iterations in the calculation of dt
 lthick   logical /.false./ # Sets whether to do thick slice model.
                            # When false, does thin slice model.
@@ -72,3 +74,32 @@ loadrhoxy(ins,nps,is,lzero:logical)
              subroutine # Simple interface to setrhoxy
 
 
+*********** Subtimersxy:
+lwxytimesubs logical /.false./
+timewxyinit real /0./
+timewxyvers real /0./
+timewxygen real /0./
+timewxyexe real /0./
+timewxyfin real /0./
+timestepxy real /0./
+timeextebxy real /0./
+timeotherexy real /0./
+timepadvncxy real /0./
+timefixrhoxy real /0./
+timefixcurrxy real /0./
+timeepushxy real /0./
+timebpushxy real /0./
+timexpushxy real /0./
+timeinitdtp real /0./
+timesetdtp real /0./
+timegetnewdtpwithe real /0./
+timenextbend real /0./
+timebendezxy real /0./
+timeexbendcorxy real /0./
+timebendcorxy real /0./
+timesetrhoxy real /0./
+timeloadrhoxy real /0./
+timesetcurrxy real /0./
+timebendfieldsolxy real /0./
+timefieldsolxy real /0./
+timevpxy real /0./

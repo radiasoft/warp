@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.26 $, $Date: 2002/10/25 00:00:01 $
+c@(#) File WXY.M, version $Revision: 3.27 $, $Date: 2002/11/05 23:23:23 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -9,23 +9,32 @@ c  Alex Friedman, LLNL, (510)422-0827
 c  David P. Grote, LLNL, (510)423-7194
 c=============================================================================
       subroutine wxyinit
+      use Subtimersxy
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c  Called at first reference to package (not nec. a "run" etc.).
 
       call wxyvers (STDOUT)
 
+      if (lwxytimesubs) timewxyinit = timewxyinit + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine wxyvers (iout)
+      use Subtimersxy
       use WXYversion
       integer(ISZ):: iout
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 c  Echoes code version, etc. to output files as they're created
       call printpkgversion(iout,"Particle package WXY",verswxy)
+      if (lwxytimesubs) timewxyvers = timewxyvers + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine wxygen()
+      use Subtimersxy
       use GlobalVars
       use Ch_var
       use Constant
@@ -66,6 +75,8 @@ c  mesh, initializes arrays for the field solver and sets the mesh arrays,
 c  does the initial field solve, and sets up other arrays that are needed.
 
       integer(ISZ):: i,j,k,is,ipmin,ip,iwin
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c  Announce that we're starting up
 
@@ -340,10 +351,12 @@ c  Initial fieldsolve, diagnostics
 
       call stepxy ("wxygen")
 
+      if (lwxytimesubs) timewxygen = timewxygen + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine wxyexe()
+      use Subtimersxy
       use Picglb
       use InPart
       use InGen
@@ -362,6 +375,8 @@ c  the routine STEPXY to do the step.
       real(kind=8):: ds0,zz,zcorrection
       integer(ISZ):: is,ip,i
       logical(ISZ):: lbendend
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c  Announce that we're running
 
@@ -491,17 +506,21 @@ c  Have we reached the end of the run ?
 
       if ( lfinishd ) then
          call remark("wxyexe: problem completed.")
+         if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
          return
       elseif (nplive <= 0) then
            call remark(" *** WXYEXE: stopping, nplive = 0")
+         if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
            return
       else
+         if (lwxytimesubs) timewxyexe = timewxyexe + wtime() - substarttime
          return
       endif
 
       end
 c=============================================================================
       subroutine wxyfin()
+      use Subtimersxy
       use InGen
       use InGen3d
       use InDiag
@@ -530,6 +549,8 @@ c  might be plotted vs a parameter, this routine might be useful.
 c  It would be needed for a non-BASIS version of WARP.
 c  For now it serves as a place-holder.
 
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 c  print final edits
 
 c  perform diagnostics (unless we just did)
@@ -555,10 +576,12 @@ c  release storage
 c     call gfree ("Pspwork")
       call gfree ("Z_arrays")
 
+      if (lwxytimesubs) timewxyfin = timewxyfin + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine stepxy (caller)
+      use Subtimersxy
       use Constant
       use InGen
       use InGen3d
@@ -572,6 +595,7 @@ c=============================================================================
       use Particles
       use Picglb
       use Picglb3d
+      use Lattice
       use LatticeInternal
       use Timers
       character(*):: caller
@@ -584,6 +608,8 @@ c  of run.
 
 
       real(kind=8):: zbeaml,zbeamr,timetemp,wtime
+      real(kind=8):: substarttime
+      if (lwxytimesubs) substarttime = wtime()
 
 c --- Set the internal lattice variables. This is not generally necessary at
 c --- this point (it is redundant most of the time, the next call to
@@ -599,6 +625,7 @@ c --- erroneaous results.
       nzl = 0
       zlmin = 0.
       zlmax = 0.
+      zlatbuffer = ds
       call setlatt
 
 c  Main particle advance: x to t.l. it; v to t.l. it-1/2
@@ -663,7 +690,6 @@ c  Set lattice; this is done just before field solve, and so is
 c  relative to ZBEAM in the same way that self-fields are.
 
       call setlatt
-      call setrstar(rstar,nz,dz,zmmin,zgrid)
 
 c  Field-solve for potential 
 
@@ -714,12 +740,14 @@ c  Finally, moment diagnostic printout and history storage
       if (ldiag .and. (caller == "wxygen" .or. lspecial))
      &  call minidiag (it,time,lmoments)
 
+      if (lwxytimesubs) timestepxy = timestepxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine extebxy(np,xp,yp,zp,uzp,gaminv,dtl,dtr,
      &                   bx,by,bz,ex,ey,ez,m,q,bendres,bendradi,lexbend,
      &                   gammabar,zbeam,vbeam,dt,time)
+      use Subtimersxy
       use Timers
       integer(ISZ):: np
       real(kind=8):: dtl,dtr,m,q,gammabar,zbeam,vbeam,dt,time
@@ -743,6 +771,8 @@ c  B_self more than once.
 
       integer(ISZ):: j,ip,in,iele,ii 
       real(kind=8):: timetemp,wtime
+      real(kind=8):: substarttime
+      if (lwxytimesubs) substarttime = wtime()
 
       timetemp = wtime()
 
@@ -791,10 +821,12 @@ c     --- Set E to zero for lost particles
 c     --- Accumulate time for applying fields from the lattice
       latticetime = latticetime + (wtime() - timetemp)
 
+      if (lwxytimesubs) timeextebxy = timeextebxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine otherexy (np,xp,yp,dedr,dexdx,deydy,dbdr,ex,ey,ez,bx,by,bz)
+      use Subtimersxy
       integer(ISZ):: np
       real(kind=8):: dedr,dexdx,deydy,dbdr
       real(kind=8):: xp(np), yp(np)
@@ -802,6 +834,8 @@ c=============================================================================
       real(kind=8):: bx(np), by(np), bz(np)
 
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c  Set the electric fields from external sources,
 c  inculding uniform focusing fields.
@@ -830,10 +864,12 @@ c     --- azimuthal magnetic field
         enddo
       endif
 
+      if (lwxytimesubs) timeotherexy = timeotherexy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine padvncxy(center)
+      use Subtimersxy
       use GlobalVars
       use InMesh3d
       use InGen
@@ -866,7 +902,9 @@ c  and also loads RHO at the new time level.
       real(kind=8):: uxpo(nparpgrp), uypo(nparpgrp), uzpo(nparpgrp)
       real(kind=8):: gaminvo(nparpgrp)
       real(kind=8):: bendres, bendradi
-      integer(ISZ):: iter_dt
+      integer(ISZ):: iter_dt,niter_dt_tmp
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c  Zero the bend radius and residence fraction
       bendradi = 0.
@@ -921,7 +959,7 @@ c           --- Obtain bend radii and residence factors
             call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,0.,dt,.true.)
 c           --- Correct Ez_self for warped mesh effect
             call bendezxy (ip,xp(ipmin),zp(ipmin),ez,
-     &                     bendres,bendradi,bends,bnezflag,linbend)
+     &                     bendres,bendradi,bends,bnezflag)
 c           --- Add in Ez from axially-smoothed gaps 
             call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap,dzz)
 c           --- Add in ears and uniform focusing E field pieces
@@ -933,23 +971,35 @@ c           --- Set quad, dipole E and B;  All: Bz
      &                    ex,ey,ez,sm(is),sq(is),bendres,bendradi,lexbend,
      &                    gammabar,zbeam,vbeam,dt,time)
 
-c           --- Save current position and velocity and ez
             if (lvzchang) then
-              do i=1,ip
-                xpo(i) = xp(ipmin+i-1)
-                ypo(i) = yp(ipmin+i-1)
-                zpo(i) = zp(ipmin+i-1)
-                uxpo(i) = uxp(ipmin+i-1)
-                uypo(i) = uyp(ipmin+i-1)
-                uzpo(i) = uzp(ipmin+i-1)
-                gaminvo(i) = gaminv(ipmin+i-1)
-                ezo(i) = ez(i)
-              enddo
+              if (lexactds .and. .not. linbend .and. .not. linaccl(0) .and.
+     &            (ibpush == 0 .or.
+     &             (maxval(abs(bx(1:ip))) == 0. .and.
+     &              maxval(abs(by(1:ip))) == 0.))) then
+                niter_dt_tmp = 1
+c               --- Calculate new step size directly.
+                call getnewdtpwithe(ip,dtp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                              ez,sq(is),sm(is),ds)
+              else
+                niter_dt_tmp = niter_dt
+c               --- Save current position and velocity and ez
+                do i=1,ip
+                  xpo(i) = xp(ipmin+i-1)
+                  ypo(i) = yp(ipmin+i-1)
+                  zpo(i) = zp(ipmin+i-1)
+                  uxpo(i) = uxp(ipmin+i-1)
+                  uypo(i) = uyp(ipmin+i-1)
+                  uzpo(i) = uzp(ipmin+i-1)
+                  gaminvo(i) = gaminv(ipmin+i-1)
+                  ezo(i) = ez(i)
+                enddo
+              endif
             endif
+
 
 c           --- Iterate over advance to calculate dt
 c           --- (Only done when lvzchang is true.)
-            do iter_dt=1,niter_dt
+            do iter_dt=1,niter_dt_tmp
 c             --- Get field from accelerating elements (depends on dtp)
               call applyacclxy(ip,xp(ipmin),zp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                         dtp(ipmin),0.,dt*0.5,sm(is),sq(is),dt,
@@ -974,11 +1024,11 @@ c             --- Simplified translation of position for warped mesh effect
      &                       gaminv(ipmin),dtp(ipmin),zpo,ds,bendres,bendradi,
      &                       lexbend)
 
-c             --- Calculate dt for particles.
-              call setdtp(ip,dtp(ipmin),xp(ipmin),zp(ipmin),zpo,uzp(ipmin),
-     &                    bendres,bendradi)
-c             --- Restore position and velocity if not finished with iteration
-              if (lvzchang .and. iter_dt < niter_dt) then
+              if (lvzchang .and. iter_dt < niter_dt_tmp) then
+c               --- Calculate dt for particles.
+                call setdtp(ip,dtp(ipmin),xp(ipmin),zp(ipmin),zpo,uzp(ipmin),
+     &                      bendres,bendradi)
+c               --- Restore position and velocity if not finished with iteration
                 do i=1,ip
                   xp(ipmin+i-1) = xpo(i)
                   yp(ipmin+i-1) = ypo(i)
@@ -1077,7 +1127,7 @@ c            --- Obtain bend radii and residence factors
              call getbend(1,1,zbeam,vbeam,1.,bendres,bendradi,-dt,0.,.true.)
 c            --- Correct Ez_self for warped mesh effect
              call bendezxy (ip,xp(ipmin),zp(ipmin),ez,
-     &                      bendres,bendradi,bends,bnezflag,linbend)
+     &                      bendres,bendradi,bends,bnezflag)
 c            --- Add in Ez from axially-smoothed gaps 
              call gapfield (ip,zp(ipmin),ez,zbeam,zzmin,egap,dzz)
 c            --- Add in ears and uniform focusing E field pieces
@@ -1144,8 +1194,8 @@ c         --- Apply particle boundary conditions
      &                     uyp(ins(is)),uzp(ins(is)),gaminv(ins(is)),
      &                     zgrid,zbeam,
      &                     nzzarr,prwallz,prwallxz,prwallyz,prwelips,
-     &                     l2symtry,l4symtry,lostpars,zzmin,dzzi)
-          call processlostpart(is,clearlostpart)
+     &                     l2symtry,l4symtry,zzmin,dzzi)
+          call processlostpart(is,clearlostpart,time,zbeam)
         enddo
 
 c       --- Collect charge density (xy) and current (1d)
@@ -1194,10 +1244,12 @@ c       --- Fix the current
 
       endif
 
+      if (lwxytimesubs) timepadvncxy = timepadvncxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine fixrhoxy(rho,nx,ny,nz,periinz,lthick)
+      use Subtimersxy
       integer(ISZ):: nx,ny,nz
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       logical(ISZ):: periinz,lthick
@@ -1208,6 +1260,8 @@ c  For thin slice model, average out rho along the axis.
 
       integer(ISZ):: ix,iy,iz
       real(kind=8):: nzi
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
       if (periinz) then
 
@@ -1250,10 +1304,12 @@ c       --- Distribute rho to all z planes.
 
       endif
 
+      if (lwxytimesubs) timefixrhoxy = timefixrhoxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine fixcurrxy(curr,nzzarr,periinz,lthick)
+      use Subtimersxy
       integer(ISZ):: nzzarr
       real(kind=8):: curr(0:nzzarr)
       logical(ISZ):: periinz,lthick
@@ -1263,6 +1319,8 @@ c  and puts the result into both slices.
 c  For thin slice model, distribute the current along the axis.
 
       integer(ISZ):: iz
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
       if (periinz) then
 
@@ -1281,10 +1339,12 @@ c       --- Distribute the current.
 
       endif
 
+      if (lwxytimesubs) timefixcurrxy = timefixcurrxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine epushxy(np,uxp,uyp,uzp,ex,ey,ez,q,m,dtp,fdt)
+      use Subtimersxy
       integer(ISZ):: np
       real(kind=8):: uxp(np),uyp(np),uzp(np)
       real(kind=8):: ex(np),ey(np),ez(np)
@@ -1294,6 +1354,8 @@ c  Push the particle velocity with E field
 
       integer(ISZ):: ip
       real(kind=8):: const
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
       const = q*fdt/m
 
       do ip=1,np
@@ -1302,10 +1364,12 @@ c  Push the particle velocity with E field
         uzp(ip) = uzp(ip) + ez(ip)*const*dtp(ip)
       enddo
 
+      if (lwxytimesubs) timeepushxy = timeepushxy + wtime() - substarttime
       return
       end
 c============================================================================= 
       subroutine bpushxy(np,uxp,uyp,uzp,gaminv,bx,by,bz,q,m,dtp,fdt,ibpush)
+      use Subtimersxy
       integer(ISZ):: np,ibpush
       real(kind=8):: uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: bx(np),by(np),bz(np)
@@ -1316,6 +1380,8 @@ c  Push the particle velocity with B field
       integer(ISZ):: ip
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
       real(kind=8):: const
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
       const = q*fdt*0.5/m
 
       if (ibpush == 1) then
@@ -1354,10 +1420,12 @@ c        --- tan(alpha) / alpha algorithm
          enddo
       endif
 
+      if (lwxytimesubs) timebpushxy = timebpushxy + wtime() - substarttime
       return
       end
 c=========================================================================== 
       subroutine xpushxy(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
+      use Subtimersxy
       integer(ISZ):: np
       real(kind=8):: dtp(np)
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
@@ -1365,6 +1433,8 @@ c===========================================================================
 c  Advance particle positions
 
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
       do ip=1,np
         xp(ip) = xp(ip) + uxp(ip)*dtp(ip)*gaminv(ip)
@@ -1372,10 +1442,12 @@ c  Advance particle positions
         zp(ip) = zp(ip) + uzp(ip)*dtp(ip)*gaminv(ip)
       enddo
 
+      if (lwxytimesubs) timexpushxy = timexpushxy + wtime() - substarttime
       return
       end      
 c============================================================================ 
       subroutine initdtp()
+      use Subtimersxy
       use Beam_acc
       use InPart
       use InGen
@@ -1384,6 +1456,8 @@ c============================================================================
       use Particlesxy
 c Initializes dtp
       integer(ISZ):: is,i1,i2
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c     --- First check if the allocation size has changed
       if (npmaxxy /= npmax) then
@@ -1400,15 +1474,17 @@ c     --- if any values are zero.
           if (lthick) then
             dtp(i1:i2) = dt
           else
-            dtp(i1:i2) = dt*vbeam/uzp(i1:i2)
+            dtp(i1:i2) = dt*vbeam/(uzp(i1:i2)*gaminv(i1:i2))
           endif
         endif
       enddo
 
+      if (lwxytimesubs) timeinitdtp = timeinitdtp + wtime() - substarttime
       return
       end
 c============================================================================ 
       subroutine setdtp(np,dtp,xp,zp,zpo,uzp,bendres,bendradi)
+      use Subtimersxy
       use InGenxy
       integer(ISZ):: np
       real(kind=8):: dtp(np),xp(np),zp(np),zpo(np),uzp(np)
@@ -1419,6 +1495,8 @@ c recalculated for each particle each timestep.
 
       integer(ISZ):: ip
       real(kind=8):: dtheta0,dtheta,rr
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
       if (lvzchang) then
 
@@ -1453,10 +1531,26 @@ c         --- with no bends...
 
       endif
 
+      if (lwxytimesubs) timesetdtp = timesetdtp + wtime() - substarttime
       return
       end      
 c============================================================================ 
+      subroutine getnewdtpwithe(np,dtp,uzp,gaminv,ez,q,m,ds)
+      use Subtimersxy
+      integer(ISZ):: np
+      real(kind=8):: dtp(np),uzp(np),gaminv(np),ez(np)
+      real(kind=8):: q,m,ds
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
+
+      dtp = 2.*ds/(sqrt((uzp*gaminv)**2 + 2.*ez*q/m*ds*gaminv) + uzp*gaminv)
+
+      if (lwxytimesubs) timegetnewdtpwithe = timegetnewdtpwithe + wtime() - substarttime
+      return
+      end
+c============================================================================ 
       subroutine nextbend(zbeam,zz)
+      use Subtimersxy
       use InGen
       use Lattice
       use LatticeInternal
@@ -1465,6 +1559,8 @@ c============================================================================
 c Get distance to get to start or end of bend, which ever is closer.
 
       integer(ISZ):: j
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
       if (bends) then
 
@@ -1489,30 +1585,36 @@ c       --- If no bends, return a big number.
 
       endif
 
+      if (lwxytimesubs) timenextbend = timenextbend + wtime() - substarttime
       return
       end
 c============================================================================ 
-      subroutine bendezxy(np,xp,zp,ez,bendres,bendradi,bends,bnezflag,linbend)
+      subroutine bendezxy(np,xp,zp,ez,bendres,bendradi,bends,bnezflag)
+      use Subtimersxy
       integer(ISZ):: np
       real(kind=8):: xp(np),zp(np),ez(np),bendres,bendradi
-      logical(ISZ):: bends,bnezflag,linbend
+      logical(ISZ):: bends,bnezflag
 
 c  Corrects axial electric field at particle position for warped geometry
 c  via multiplying by r_star/r = 1 - x/r, in a residence-corrected way;
 c  at smaller radii, zones are closer together, so field is larger.
 
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
-      if (.not. (bends.and.bnezflag) .or. .not. linbend) return
+      if (.not. (bends.and.bnezflag) .or. bendres < 0.5) return
 
       do ip=1,np
          ez(ip) = ez(ip)*( 1. - bendres*xp(ip)/(bendradi + xp(ip)))
       enddo
 
+      if (lwxytimesubs) timebendezxy = timebendezxy + wtime() - substarttime
       return
       end      
 c=========================================================================== 
       subroutine exbendcorxy(np,xp,zp,uxp,uzp,zpo,ds,bendres,bendradi,lexbend)
+      use Subtimersxy
       integer(ISZ):: np
       real(kind=8):: xp(np), zp(np), zpo(np), uxp(np), uzp(np)
       real(kind=8):: ds,bendres,bendradi
@@ -1527,6 +1629,8 @@ c for either sign of bendradi.
       integer(ISZ):: ip
       real(kind=8):: rr
       real(kind=8):: dtheta0,ty,sy,uxppr,uzppr
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c       --- bendres is compared to 0.5 since the only possible values are 0
 c       --- and 1 - this avoids potential problems with roundoff errors.
@@ -1554,11 +1658,13 @@ c         --- translate velocity
 
       endif
 
+      if (lwxytimesubs) timeexbendcorxy = timeexbendcorxy + wtime() - substarttime
       return
       end
 c=========================================================================== 
       subroutine bendcorxy(np,xp,zp,uxp,uzp,gaminv,dtp,zpo,ds,
      &                     bendres,bendradi,lexbend)
+      use Subtimersxy
       integer(ISZ):: np
       real(kind=8):: xp(np),zp(np),zpo(np),uxp(np),uzp(np),gaminv(np),dtp(np)
       real(kind=8):: ds,bendres,bendradi
@@ -1570,6 +1676,8 @@ c frame (when in a bend).
 
       integer(ISZ):: ip
       real(kind=8):: xprv,xc
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c       --- bendres is compared to 0.5 since the only possible values are 0
 c       --- and 1 - this avoids potential problems with roundoff errors.
@@ -1584,10 +1692,12 @@ c       --- and 1 - this avoids potential problems with roundoff errors.
 
       endif
 
+      if (lwxytimesubs) timebendcorxy = timebendcorxy + wtime() - substarttime
       return
       end      
 c=========================================================================== 
       subroutine setrhoxy(rho1d,np,xp,yp,zp,zgrid,uzp,gaminv,q,wght)
+      use Subtimersxy
       use GlobalVars
       use InGen
       use InGenxy
@@ -1630,6 +1740,8 @@ c     --- For both algorithms
 
       integer(ISZ):: ip,i,j,ind0,m,ir
       real(kind=8):: g,dxi,dyi,u0,u1,v0,v1,gxfact,gyfact,f
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
       if (lthick) then
 c       --- Call 3d version.
@@ -1819,10 +1931,12 @@ c     --- scalar loop does the actual deposition
 
 c     --- End of slice version
       endif
+      if (lwxytimesubs) timesetrhoxy = timesetrhoxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine loadrhoxy(ins_i,nps_i,is_i,lzero)
+      use Subtimersxy
       use GlobalVars
       use InGen
       use InGenxy
@@ -1843,6 +1957,8 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ins_u,nps_u
       integer(ISZ):: is1,is2
       integer(ISZ):: ip,ipmin,is
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c     --- zero rho if requested
 c     if (lzero) call zeroarry(rho,(nx+1)*(ny+1)*(nz+1))
@@ -1880,11 +1996,13 @@ c        --- loop over particle blocks
 c     --- enforce axial periodicity if rho was zeroed
       if (lzero) call fixrhoxy(rho(0,0,0),nx,ny,nz,periinz,lthick)
 
+      if (lwxytimesubs) timeloadrhoxy = timeloadrhoxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine setcurrxy(curr,np,zp,uzp,gaminv,q,wght,zbeam,dzz,zzmin,dz,
      &                     lthick)
+      use Subtimersxy
       integer(ISZ):: np
       real(kind=8):: q,wght,zbeam,dzz,zzmin,dz
       real(kind=8):: curr(0:*), zp(np), uzp(np), gaminv(np)
@@ -1896,6 +2014,8 @@ c  slice version, makes a call to the 3d version of setcurr.
 
       real(kind=8):: csum,g
       integer(ISZ):: ip
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
       if (lthick) then
 c       --- Call 3d version.
@@ -1913,17 +2033,18 @@ c       --- Sum the charge times velocity over all particles.
 
       endif
 
+      if (lwxytimesubs) timesetcurrxy = timesetcurrxy + wtime() - substarttime
       return
       end
 c=============================================================================
-      subroutine bendfieldsolxy()
+      subroutine bendfieldsolxy(bendradi)
+      use Subtimersxy
       use Constant
       use InGen3d
-      use Picglb
       use Picglb3d
       use InMesh3d
       use Fields3d
-c     use LatticeInternal
+      real(kind=8):: bendradi
 
 c FFT/bend iterative field solver.
 
@@ -1931,6 +2052,8 @@ c FFT/bend iterative field solver.
       real(kind=8):: r,x,dxi,phiref
       real(kind=8):: phisave(0:nx,0:ny)
       character(120):: outstr
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
       dxi = 1./dx
       bndfit = 0
@@ -1944,9 +2067,9 @@ c       --- save phi for error measure
 c       --- add curvature terms to the source (rho) as a correction
         do i = 1, nx-1
           x = xmmin + i*dx
-          r = 1./(rstar(0) + x)
+          r = 1./(bendradi + x)
           do j = 0, ny
-            phi(i,j,0) = rho(i,j,0)*rstar(0)*r
+            phi(i,j,0) = rho(i,j,0)*bendradi*r
      &               + eps0*(phisave(i+1,j) - phisave(i-1,j))*0.5*dxi*r
           enddo
         enddo
@@ -1966,9 +2089,8 @@ c       --- compute error
 
 c       --- for debug, print out the error
         if (bnprflag) then
-          write (outstr,9985) it, bndfit, bndferr
- 9985     format ("It =",i7," Bent field iteration",i3," Rel Change = ",
-     &            1pe12.4)
+          write (outstr,9985) bndfit, bndferr
+ 9985     format ("Bent field iteration",i3," Rel Change = ",1pe12.4)
           call remark(outstr)
         endif
 
@@ -1982,15 +2104,18 @@ c     --- if failure to converge, report the bad news to user
         call remark(outstr)
       endif
 
+      if (lwxytimesubs) timebendfieldsolxy = timebendfieldsolxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine fieldsolxy(iwhich)
+      use Subtimersxy
       use Timers
       use InGen
       use InGenxy
       use InGen3d
       use InMesh3d
+      use Picglb
       use Picglb3d
       use Fields3d
       use Efields3d
@@ -2001,7 +2126,10 @@ c If using the 3D field solver, calls the fieldsol routine in package w3d,
 c otherwise only does a FFT field solve in 2D.
 
       integer(ISZ):: iz
+      real(kind=8):: bendres,bendradi
       real(kind=8):: timetemp,wtime
+      real(kind=8):: substarttime
+      if (lwxytimesubs) substarttime = wtime()
       timetemp = wtime()
 
 c     --- Return if not doing any field solves.
@@ -2015,7 +2143,10 @@ c       --- 3D field solver
 
 c       --- 2D fieldsolver
 
-        if (.not. linbend .or. iwhich > 0) then
+c       --- Get information about the closest bend.
+        call getbend(1,1,zbeam,0.,1.,bendres,bendradi,0.,0.,.true.)
+
+        if (bendres < 0.5 .or. iwhich > 0) then
 c         --- if not in a bend, then make direct call to vpxy
           if (fstype == 0 .or. fstype == 1 .or. fstype == 2) then
             call copyarry(rho(0,0,0), phi(0,0,0), (nx+1)*(ny+1)*(nz+1))
@@ -2024,7 +2155,7 @@ c         --- if not in a bend, then make direct call to vpxy
 
         else
 c         --- otherwise, include bend correction terms
-          call bendfieldsolxy()
+          call bendfieldsolxy(bendradi)
 
         endif
 
@@ -2037,10 +2168,12 @@ c       --- fill rest of phi array
       endif
 
       fstime = fstime + (wtime() - timetemp)
+      if (lwxytimesubs) timefieldsolxy = timefieldsolxy + wtime() - substarttime
       return
       end
 c=============================================================================
       subroutine vpxy(iwhich)
+      use Subtimersxy
       use Constant
       use InGen
       use InGenxy
@@ -2051,6 +2184,8 @@ c=============================================================================
       use Fields3d
 
       integer(ISZ):: iwhich
+      real(kind=8):: substarttime,wtime
+      if (lwxytimesubs) substarttime = wtime()
 
 c  Interface to VPOIS2D and VPOIS3D using variables from database of package 3D
 
@@ -2080,6 +2215,7 @@ c         --- Multigrid solver
 
       endif
 
+      if (lwxytimesubs) timevpxy = timevpxy + wtime() - substarttime
       return
       end
 c=============================================================================
