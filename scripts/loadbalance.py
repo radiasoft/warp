@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.9 2001/08/11 23:44:02 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.10 2001/08/13 17:25:33 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -166,6 +166,11 @@ needed since some processors may have more conductor points than others.
   oldphi = w3d.phi + 0.
   oldrho = w3d.rho + 0.
 
+  # --- Make sure that the conductor arrays are allocated.
+  if f3d.ncondmax == 0: f3d.ncondmax = 1
+  if f3d.ncndmax == 0: f3d.ncndmax = 1
+  gchange("PSOR3d")
+    
   # --- Gather the field solve weights. For each z plane, sum the number of
   # --- grid cells, subgrid points, and conductor points, appropriately
   # --- weighted.
@@ -189,7 +194,8 @@ needed since some processors may have more conductor points than others.
   # --- greater than 2, the last processor will likely end up with too few
   # --- cells because of the accumulation of rounding up. Find the processors
   # --- which have the largest amount of roundup and take away one of their
-  # --- grid cells until the last processor has enough.
+  # --- grid cells until the last processor has enough. Do the same for the
+  # --- case where the last processor has too many.
   zlast = 0
   for i in range(npes):
     top.izfsslave[i] = zlast
@@ -202,6 +208,11 @@ needed since some processors may have more conductor points than others.
                      top.nzfsslave[:-1]-zslave[:-1],-10000.))
     top.nzfsslave[i] = top.nzfsslave[i] - 1
     top.izfsslave[i+1:] = top.izfsslave[i+1:] - 1
+    top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
+  while (top.nzfsslave[-1]-zslave[-1]) > max(top.nzfsslave[:-1]-zslave[:-1]):
+    i = argmax(zslave[:-1]-top.nzfsslave[:-1])
+    top.nzfsslave[i] = top.nzfsslave[i] + 1
+    top.izfsslave[i+1:] = top.izfsslave[i+1:] + 1
     top.nzfsslave[-1] = w3d.nzfull - top.izfsslave[-1]
 
   # --- Adjust the Z data
