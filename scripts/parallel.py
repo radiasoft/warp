@@ -1,9 +1,10 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.13 2002/07/25 21:59:22 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.14 2002/08/30 20:52:30 dave Exp $"
 
 from Numeric import *
+from types import *
 # --- Try import mpi - if not found, then run in serial mode
 try:
   import mpi
@@ -17,20 +18,27 @@ if npes > 0: lparallel = 1
 else:        lparallel = 0
 
 # --- The interface has changed some in the newest version of pyMPI.
-try:
-  mpiallreduce = mpi.allreduce
-  def mpirecv(pe=0,ms=0):
-    return mpi.recv(pe,ms)
-except (AttributeError,NameError):
-  pass
+# --- Check the interface to the mpi.recv command. The newer versions
+# --- return a tuple instead of just the data itself.
+# --- There must be a better way of doing this!
+if lparallel:
+  if me == 1: mpi.send(1,0)
+  if me == 0:
+    _i = mpi.recv(1)
+    if type(_i) == TupleType: _newpympi = mpi.bcast(1,0)
+    else:                     _newpympi = mpi.bcast(0,0)
+  else:
+     _newpympi = mpi.bcast(0,0)
+else:
+  _newpympi = 1
 
-try:
-  mpiallreduce = mpi.nativeAllreduce
+if _newpympi:
   def mpirecv(pe=0,ms=0):
     result,stat = mpi.recv(pe,ms)
     return result
-except (AttributeError,NameError):
-  pass
+else:
+  def mpirecv(pe=0,ms=0):
+    return mpi.recv(pe,ms)
 
 # ---------------------------------------------------------------------------
 # --- By default, set so that only PE0 sends output to the terminal.
@@ -263,7 +271,7 @@ def globalop(a,localop,mpiop,defaultval):
   else:
     local = defaultval
   if not lparallel: return local
-  return mpiallreduce(local,eval("mpi."+mpiop))
+  return mpi.allreduce(local,eval("mpi."+mpiop))
 
 # ---------------------------------------------------------------------------
 # Specific operations on a distributed array.
@@ -289,11 +297,11 @@ def parallelop(a,mpiop):
   if type(a) == type(array([])):
     a1d = ravel(a) + 0
     for i in range(len(a1d)):
-      a1d[i] = mpiallreduce(a1d[i],eval("mpi."+mpiop))
+      a1d[i] = mpi.allreduce(a1d[i],eval("mpi."+mpiop))
     a1d.shape = shape(a)
     return a1d
   else:
-    return mpiallreduce(a,eval("mpi."+mpiop))
+    return mpi.allreduce(a,eval("mpi."+mpiop))
 
 # ---------------------------------------------------------------------------
 # Specific parallel element-by-element operations on a distributed array.
