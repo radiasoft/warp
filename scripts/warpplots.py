@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.56 2001/11/28 23:46:24 ramiak Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.57 2001/12/06 23:36:39 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -2280,81 +2280,113 @@ be from none to all three.
    #return ppp
 ##########################################################################
 ##########################################################################
-def pcrhozy(ix=None,contours=20,titles=1,filled=1,color=None):
-  """
-Plots contours of charge density in the Z-Y plane
-  - ix=w3d.ix_axis X index of plane
-  - contours=20 number or list of contours
-  - titles=1 specifies whether or not to plot titles"""
-  if not ix: ix = w3d.ix_axis
-  plotc(getrho(ix=ix),w3d.ymesh,w3d.zmesh,
-        contours=contours,filled=filled,color=color)
-  if titles: ptitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
+def pcrhozy(ix=None,**kw):
+  """Plots contours of charge density in the Z-Y plane
+     - ix=w3d.ix_axis X index of plane"""
+  if ix is None: ix = w3d.ix_axis
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
+  if not kw.has_key('contours'): kw['contours'] = 20
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
+  settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
+  ppgeneric(grid=transpose(getrho(ix=ix)),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcrhozy.__doc__ = pcrhozy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcrhozx(iy=None,contours=20,titles=1,filled=1,color=None):
+def pcrhozx(iy=None,**kw):
   """Plots contours of charge density in the Z-X plane
-     - iy=w3d.iy_axis Y index of plane
-     - contours=20 number or list of contours
-     - titles=1 specifies whether or not to plot titles"""
-  if not iy: iy = w3d.iy_axis
-  zz=w3d.zmesh*ones(w3d.nz+1,'d')[:,NewAxis]
-  xx=w3d.xmesh[:,NewAxis]*ones(w3d.nx+1,'d')
-  ireg=ones((w3d.nz+1,w3d.nx+1))
-  plotc(getrho(iy=iy),w3d.xmesh,w3d.zmesh,
-        contours=contours,filled=filled,color=color)
-  if titles: ptitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
+     - iy=w3d.iy_axis Y index of plane"""
+  if iy is None: iy = w3d.iy_axis
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
+  if not kw.has_key('contours'): kw['contours'] = 20
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
+  settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
+  ppgeneric(grid=transpose(getrho(iy=iy)),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcrhozx.__doc__ = pcrhozx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcrhoxy(iz=None,contours=20,titles=1,filled=1,color=None):
+def pcrhoxy(iz=None,**kw):
   """Plots contours of charge density in the X-Y plane
-     - iz=w3d.iz_axis Z index of plane
-     - contours=20 number or list of contours
-     - titles=1 specifies whether or not to plot titles"""
-  if not iz: iz = w3d.iz_axis
-  xx=w3d.xmesh*ones(w3d.nx+1,'d')[:,NewAxis]
-  yy=w3d.ymesh[:,NewAxis]*ones(w3d.ny+1,'d')
-  ireg=ones((w3d.nx+1,w3d.ny+1))
-  plotc(transpose(getrho(iz=iz)),w3d.ymesh,w3d.xmesh,
-        contours=contours,filled=filled,color=color)
-  if titles: ptitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
+     - iz=w3d.iz_axis Z index of plane"""
+  if iz is None: iz = w3d.iz_axis
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.xmmin
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
+  if not kw.has_key('contours'): kw['contours'] = 20
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (w3d.xmmin,w3d.xmmax,w3d.ymmin,w3d.ymmax)
+  settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
+  ppgeneric(grid=getrho(iz=iz),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcrhoxy.__doc__ = pcrhoxy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
-def pcphizy(ix=None,contours=20,titles=1,filled=1,color=None):
+def pcphizy(ix=None,**kw):
   """Plots contours of electrostatic potential in the Z-Y plane
-     - ix=w3d.ix_axis X index of plane
-     - contours=20 number or list of contours
-     - titles=1 specifies whether or not to plot titles"""
-  if not ix: ix = w3d.ix_axis
-  zz=w3d.zmesh*ones(w3d.nz+1,'d')[:,NewAxis]
-  yy=w3d.ymesh[:,NewAxis]*ones(w3d.ny+1,'d')
-  ireg=ones((w3d.nz+1,w3d.ny+1))
-  plotc(getphi(ix=ix),w3d.ymesh,w3d.zmesh,
-        contours=contours,filled=filled,color=color)
-  if titles: ptitles("Potential in z-y plane","Z","Y","ix = "+repr(ix))
+     - ix=w3d.ix_axis X index of plane"""
+  if ix is None: ix = w3d.ix_axis
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
+  if not kw.has_key('contours'): kw['contours'] = 20
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.ymmin,w3d.ymmax)
+  settitles("Charge density in z-y plane","Z","Y","ix = "+repr(ix))
+  ppgeneric(grid=transpose(getphi(ix=ix)),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcphizy.__doc__ = pcphizy.__doc__ + ppgeneric_doc("z","y")
 ##########################################################################
-def pcphizx(iy=None,contours=20,titles=1,filled=1,color=None):
+def pcphizx(iy=None,**kw):
   """Plots contours of electrostatic potential in the Z-X plane
-     - iy=w3d.iy_axis Y index of plane
-     - contours=20 number or list of contours
-     - titles=1 specifies whether or not to plot titles"""
-  if not iy: iy = w3d.iy_axis
-  zz=w3d.zmesh*ones(w3d.nz+1,'d')[:,NewAxis]
-  xx=w3d.xmesh[:,NewAxis]*ones(w3d.nx+1,'d')
-  ireg=ones((w3d.nz+1,w3d.nx+1))
-  plotc(getphi(iy=iy),w3d.xmesh,w3d.zmesh,
-        contours=contours,filled=filled,color=color)
-  if titles: ptitles("Potential in z-x plane","Z","X","iy = "+repr(iy))
+     - iy=w3d.iy_axis Y index of plane"""
+  if iy is None: iy = w3d.iy_axis
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.zmmin
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.zmmax
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.xmmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.xmmax
+  if not kw.has_key('contours'): kw['contours'] = 20
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
+  settitles("Charge density in z-x plane","Z","X","iy = "+repr(iy))
+  ppgeneric(grid=transpose(getphi(iy=iy)),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcphizx.__doc__ = pcphizx.__doc__ + ppgeneric_doc("z","x")
 ##########################################################################
-def pcphixy(iz=None,contours=20,titles=1,filled=1,color=None):
+def pcphixy(iz=None,**kw):
   """Plots contours of electrostatic potential in the X-Y plane
-     - iz=w3d.iz_axis Z index of plane
-     - contours=20 number or list of contours
-     - titles=1 specifies whether or not to plot titles"""
-  if not iz: iz = w3d.iz_axis
-  xx=w3d.xmesh*ones(w3d.nx+1,'d')[:,NewAxis]
-  yy=w3d.ymesh[:,NewAxis]*ones(w3d.ny+1,'d')
-  ireg=ones((w3d.nx+1,w3d.ny+1))
-  plotc(transpose(getphi(iz=iz)),w3d.ymesh,w3d.xmesh,
-        contours=contours,filled=filled,color=color)
-  if titles: ptitles("Potential in x-y plane","X","Y","iz = "+repr(iz))
+     - iz=w3d.iz_axis Z index of plane"""
+  if iz is None: iz = w3d.iz_axis
+  if not kw.has_key('xmin'): kw['xmin'] = w3d.xmmin
+  if not kw.has_key('xmax'): kw['xmax'] = w3d.xmmax
+  if not kw.has_key('ymin'): kw['ymin'] = w3d.ymmin
+  if not kw.has_key('ymax'): kw['ymax'] = w3d.ymmax
+  if not kw.has_key('contours'): kw['contours'] = 20
+  if 'pplimits' in kw.keys():
+    kw['lframe'] = 1
+  else:
+    kw['pplimits'] = (w3d.zmmin,w3d.zmmax,w3d.xmmin,w3d.xmmax)
+  settitles("Charge density in x-y plane","X","Y","iz = "+repr(iz))
+  ppgeneric(grid=getphi(iz=iz),kwdict=kw)
+if sys.version[:5] != "1.5.1":
+  pcphixy.__doc__ = pcphixy.__doc__ + ppgeneric_doc("x","y")
 ##########################################################################
 ##########################################################################
 def ppdecomposition(scale=1.,minscale=0.,gap=0.2):
