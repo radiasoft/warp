@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.107 $, $Date: 2004/05/10 21:27:35 $
+c@(#) File F3D.M, version $Revision: 3.108 $, $Date: 2004/05/13 18:00:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5326,31 +5326,31 @@ c         --- the point lower in x is inside the conductor
 c         --- the point higher in x is inside the conductor
           if (dels(1,ic) < 1.) then
             pxp = volt(1,ic)/dels(1,ic)
-            denom = denom + (2.-dels(1,ic))/dels(1,ic)*rdx2cos
+            denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2cos
             dxp = dels(1,ic)
           endif
 c         --- the point lower in y is inside the conductor
           if (dels(2,ic) < 1.) then
             pym = volt(2,ic)/dels(2,ic)
-            denom = denom + (3.-dels(2,ic))/dels(2,ic)*rdy2cos
+            denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdy2cos
             dym = dels(2,ic)
           endif
 c         --- the point higher in y is inside the conductor
           if (dels(3,ic) < 1.) then
             pyp = volt(3,ic)/dels(3,ic)
-            denom = denom + (4.-dels(3,ic))/dels(3,ic)*rdy2cos
+            denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2cos
             dyp = dels(3,ic)
           endif
 c         --- the point lower in z is inside the conductor
           if (dels(4,ic) < 1.) then
             pzm = volt(4,ic)/dels(4,ic)
-            denom = denom + (5.-dels(4,ic))/dels(4,ic)*rdz2cos
+            denom = denom + (1.-dels(4,ic))/dels(4,ic)*rdz2cos
             dzm = dels(4,ic)
           endif
 c         --- the point lower in z is inside the conductor
           if (dels(5,ic) < 1.) then
             pzp = volt(5,ic)/dels(5,ic)
-            denom = denom + (6.-dels(5,ic))/dels(5,ic)*rdz2cos
+            denom = denom + (1.-dels(5,ic))/dels(5,ic)*rdz2cos
             dzp = dels(5,ic)
           endif
 c         --- calculate the new phi based on the boundary conditions
