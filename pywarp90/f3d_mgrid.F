@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.55 $, $Date: 2003/09/23 22:41:58 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.56 $, $Date: 2004/02/03 18:42:40 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -1242,7 +1242,7 @@ c       --- surface of the conductor boundaries.
      &                    iecndlevel,
      &                    ecvoltmx,ecvoltpx,ecvoltmy,ecvoltpy,ecvoltmz,ecvoltpz,
      &                    ecndpvph,localb0,localbnz,boundxy,l2symtry,l4symtry,
-     &                    mglevel,ecstart,mgform)
+     &                    mglevel,ecstart,mgform,icndbndy)
           endif
           if (parity == 1) then
            call condbndymg(nx,ny,nz,phi,rho,rdx2c,rdy2c,rdz2c,spm1,mgparam,
@@ -1251,7 +1251,7 @@ c       --- surface of the conductor boundaries.
      &                    iocndlevel,
      &                    ocvoltmx,ocvoltpx,ocvoltmy,ocvoltpy,ocvoltmz,ocvoltpz,
      &                    ocndpvph,localb0,localbnz,boundxy,l2symtry,l4symtry,
-     &                    mglevel,ocstart,mgform)
+     &                    mglevel,ocstart,mgform,icndbndy)
           endif
         endif
 
@@ -1330,7 +1330,7 @@ c=============================================================================
      &                      cdelpz,icndx,icndy,icndz,icndlevel,
      &                      cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                      cndpvph,localb0,localbnz,boundxy,
-     &                      l2symtry,l4symtry,mglevel,cstart,mgform)
+     &                      l2symtry,l4symtry,mglevel,cstart,mgform,icndbndy)
       integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1), rho(0:nx,0:ny,0:nz)
       real(kind=8):: rdx2c,rdy2c,rdz2c,spm1,srp
@@ -1341,7 +1341,7 @@ c=============================================================================
       real(kind=8):: cvoltmx(ncndmax),cvoltmy(ncndmax),cvoltmz(ncndmax)
       real(kind=8):: cvoltpx(ncndmax),cvoltpy(ncndmax),cvoltpz(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
-      integer(ISZ):: localb0,localbnz,boundxy,cstart(0:100),mgform
+      integer(ISZ):: localb0,localbnz,boundxy,cstart(0:100),mgform,icndbndy
       logical(ISZ):: l2symtry,l4symtry
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -1366,6 +1366,9 @@ c points on the boundary.
       rdx2cos = rdx2c/srp
       rdy2cos = rdy2c/srp
       rdz2cos = rdz2c/srp
+
+      if (icndbndy == 1) then
+c     --- Linear interpolation
 
 c     --- loop over points near surface of conductors
 !$OMP DO
@@ -1465,6 +1468,144 @@ c       --- calculate the new phi based on the boundary conditions
       enddo
 !$OMP END DO
 
+      elseif (icndbndy == 2) then
+c     --- Quadratic interpolation
+
+c     --- loop over points near surface of conductors
+!$OMP DO
+      do ic = cstart(mglevel),cstart(mglevel+1)-1
+
+        icdx = icndx(ic)
+        icdy = icndy(ic)
+        icdz = icndz(ic)
+
+c       if (mod(icdx+icdy+icdz,2) /= parity) cycle
+
+c       --- set temporaries for boundaries
+        icndxp1 = icdx + 1
+        icndxm1 = icdx - 1
+        icndyp1 = icdy + 1
+        icndym1 = icdy - 1
+        icndzp1 = icdz + 1
+        icndzm1 = icdz - 1
+
+        if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
+        if (icndxm1 == -1 .and.
+     &     (boundxy == 1 .or. l2symtry .or. l4symtry)) icndxm1 = 1
+        if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
+        if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
+        if (icndxm1 == -1 .or. icndxp1 == nx+1) cycle
+
+        if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
+        if (icndym1 == -1 .and.
+     &     (boundxy == 1 .or. l4symtry)) icndym1 = 1
+        if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
+        if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
+        if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
+
+        if (icdz == 0  .and. localb0  < 1) cycle
+        if (icdz == nz .and. localbnz < 1) cycle
+
+c       --- Set temporaries with initial values.
+        pxm = phi(icndxm1,icdy   ,icdz   )
+        pxp = phi(icndxp1,icdy   ,icdz   )
+        pym = phi(icdx   ,icndym1,icdz   )
+        pyp = phi(icdx   ,icndyp1,icdz   )
+        pzm = phi(icdx   ,icdy   ,icndzm1)
+        pzp = phi(icdx   ,icdy   ,icndzp1)
+        denom = 1.
+        dosubgrid = .false.
+
+c       --- Only use actual voltage on finest level. Set to zero for
+c       --- coarser levels since solver for the residuals.
+        if (mglevel == 0 .and. mgform == 1) then
+          voltfac = 1.
+        else
+          voltfac = 0.
+        endif
+
+c       --- If both points in x are inside the conductor, revert to linear
+        if (cdelmx(ic) < 1. .and. cdelpx(ic) < 1.) then
+          pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
+          pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
+          denom = denom + (1.-cdelpx(ic))/cdelpx(ic)*rdx2cos
+     &                  + (1.-cdelmx(ic))/cdelmx(ic)*rdx2cos
+          dosubgrid = .true.
+        else
+c         --- the point lower in x is inside the conductor
+          if (cdelmx(ic) < 1.) then
+            pxm = voltfac*cvoltmx(ic)*2./(cdelmx(ic)*(1.+cdelmx(ic)))
+            pxp = pxp*(1.+(1.-cdelmx(ic))/(1.+cdelmx(ic)))
+            denom = denom + 2.*(1.-cdelmx(ic))/cdelmx(ic)*rdx2cos
+            dosubgrid = .true.
+          endif
+c         --- the point higher in x is inside the conductor
+          if (cdelpx(ic) < 1.) then
+            pxp = voltfac*cvoltpx(ic)*2./(cdelpx(ic)*(1.+cdelpx(ic)))
+            pxm = pxm*(1.+(1.-cdelpx(ic))/(1.+cdelpx(ic)))
+            denom = denom + 2.*(1.-cdelpx(ic))/cdelpx(ic)*rdx2cos
+            dosubgrid = .true.
+          endif
+        endif
+c       --- If both points in y are inside the conductor, revert to linear
+        if (cdelmy(ic) < 1. .and. cdelpy(ic) < 1.) then
+          pym = voltfac*cvoltmy(ic)/cdelmy(ic)
+          pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
+          denom = denom + (1.-cdelpy(ic))/cdelpy(ic)*rdy2cos
+     &                  + (1.-cdelmy(ic))/cdelmy(ic)*rdy2cos
+          dosubgrid = .true.
+        else
+c         --- the point lower in y is inside the conductor
+          if (cdelmy(ic) < 1.) then
+            pym = voltfac*cvoltmy(ic)*2./(cdelmy(ic)*(1.+cdelmy(ic)))
+            pyp = pyp*(1.+(1.-cdelmy(ic))/(1.+cdelmy(ic)))
+            denom = denom + 2.*(1.-cdelmy(ic))/cdelmy(ic)*rdy2cos
+            dosubgrid = .true.
+          endif
+c         --- the point higher in y is inside the conductor
+          if (cdelpy(ic) < 1.) then
+            pyp = voltfac*cvoltpy(ic)*2./(cdelpy(ic)*(1.+cdelpy(ic)))
+            pym = pym*(1.+(1.-cdelpy(ic))/(1.+cdelpy(ic)))
+            denom = denom + 2.*(1.-cdelpy(ic))/cdelpy(ic)*rdy2cos
+            dosubgrid = .true.
+          endif
+        endif
+c       --- If both points in z are inside the conductor, revert to linear
+        if (cdelmz(ic) < 1. .and. cdelpz(ic) < 1.) then
+          pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
+          pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
+          denom = denom + (1.-cdelpz(ic))/cdelpz(ic)*rdz2cos
+     &                  + (1.-cdelmz(ic))/cdelmz(ic)*rdz2cos
+          dosubgrid = .true.
+        else
+c         --- the point lower in z is inside the conductor
+          if (cdelmz(ic) < 1.) then
+            pzm = voltfac*cvoltmz(ic)*2./(cdelmz(ic)*(1.+cdelmz(ic)))
+            pzp = pzp*(1.+(1.-cdelmz(ic))/(1.+cdelmz(ic)))
+            denom = denom + 2.*(1.-cdelmz(ic))/cdelmz(ic)*rdz2cos
+            dosubgrid = .true.
+          endif
+c         --- the point higher in z is inside the conductor
+          if (cdelpz(ic) < 1.) then
+            pzp = voltfac*cvoltpz(ic)*2./(cdelpz(ic)*(1.+cdelpz(ic)))
+            pzm = pzm*(1.+(1.-cdelpz(ic))/(1.+cdelpz(ic)))
+            denom = denom + 2.*(1.-cdelpz(ic))/cdelpz(ic)*rdz2cos
+            dosubgrid = .true.
+          endif
+        endif
+
+c       --- calculate the new phi based on the boundary conditions
+        if (dosubgrid) then
+          phi(icdx,icdy,icdz) = (rho(icdx,icdy,icdz) +
+     &      (pxm+pxp)*rdx2c + (pym+pyp)*rdy2c + (pzm+pzp)*rdz2c)/denom +
+     &      spm1*cndpvph(ic)
+        endif
+
+      enddo
+!$OMP END DO
+
+      endif
+
       return
       end
 c=============================================================================
@@ -1474,7 +1615,7 @@ c=============================================================================
      &                       cvoltmx,cvoltpx,cvoltmy,cvoltpy,cvoltmz,cvoltpz,
      &                       cndpvph,localb0,localbnz,boundxy,
      &                       l2symtry,l4symtry,mglevel,cstart,
-     &                       mgform,mgform2init)
+     &                       mgform,mgform2init,icndbndy)
       integer(ISZ):: nx,ny,nz,ncndmax,ncndbdy,mglevel
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: rho(0:nx,0:ny,0:nz), res(0:nx,0:ny,-1:nz+1)
@@ -1486,7 +1627,7 @@ c=============================================================================
       real(kind=8):: cvoltmx(ncndmax),cvoltmy(ncndmax),cvoltmz(ncndmax)
       real(kind=8):: cvoltpx(ncndmax),cvoltpy(ncndmax),cvoltpz(ncndmax)
       real(kind=8):: cndpvph(ncndmax)
-      integer(ISZ):: localb0,localbnz,boundxy,cstart(0:100),mgform
+      integer(ISZ):: localb0,localbnz,boundxy,cstart(0:100),mgform,icndbndy
       logical(ISZ):: l2symtry,l4symtry,mgform2init
 
 c Uses adjusted difference equation to enforce sub-grid level placement of 
@@ -1529,6 +1670,9 @@ c points on the boundary.
       rdx2cs = mgparam*rdx2*const
       rdy2cs = mgparam*rdy2*const
       rdz2cs = mgparam*rdz2*const
+
+      if (icndbndy == 1) then
+c     --- Linear interpolation
 
 c     --- loop over points near surface of conductors
 !$OMP DO
@@ -1629,6 +1773,148 @@ c       --- calculate the residual based on the boundary conditions
         endif
       enddo
 !$OMP END DO
+
+      else if (icndbndy == 2) then
+c     --- Quadratic interpolation
+
+c     --- loop over points near surface of conductors
+!$OMP DO
+      do ic = cstart(mglevel),cstart(mglevel+1)-1
+
+        icdx = icndx(ic)
+        icdy = icndy(ic)
+        icdz = icndz(ic)
+
+c       --- set temporaries for boundaries
+        icndxp1 = icdx + 1
+        icndxm1 = icdx - 1
+        icndyp1 = icdy + 1
+        icndym1 = icdy - 1
+        icndzp1 = icdz + 1
+        icndzm1 = icdz - 1
+
+        if (icndxm1 == -1 .and. boundxy == 2) icndxm1 = nx-1
+        if (icndxm1 == -1 .and.
+     &     (boundxy == 1 .or. l2symtry .or. l4symtry)) icndxm1 = 1
+        if (icndxp1 == nx+1 .and. boundxy == 1) icndxp1 = nx-1
+        if (icndxp1 == nx+1 .and. boundxy == 2) icndxp1 = 1
+        if (icndxm1 == -1 .or. icndxp1 == nx+1) cycle
+
+        if (icndym1 == -1 .and. boundxy == 2) icndym1 = ny-1
+        if (icndym1 == -1 .and.
+     &     (boundxy == 1 .or. l4symtry)) icndym1 = 1
+        if (icndyp1 == ny+1 .and. boundxy == 1) icndyp1 = ny-1
+        if (icndyp1 == ny+1 .and. boundxy == 2) icndyp1 = 1
+        if (icndym1 == -1 .or. icndyp1 == ny+1) cycle
+
+        if (icdz == 0  .and. localb0  == 0) cycle
+        if (icdz == nz .and. localbnz == 0) cycle
+
+c       --- set temporaries with initial values
+        pxm = phi(icndxm1,icdy   ,icdz   )
+        pxp = phi(icndxp1,icdy   ,icdz   )
+        pym = phi(icdx   ,icndym1,icdz   )
+        pyp = phi(icdx   ,icndyp1,icdz   )
+        pzm = phi(icdx   ,icdy   ,icndzm1)
+        pzp = phi(icdx   ,icdy   ,icndzp1)
+        denom = 1.
+        ppp = 1.
+
+c       --- Only use actual voltage on finest level. Set to zero for
+c       --- coarser levels since solver for the residuals.
+        if (mglevel == 0 .and. (mgform == 1 .or. mgform2init)) then
+          voltfac = 1.
+        else
+          voltfac = 0.
+        endif
+
+c       --- If both points in x are inside the conductor, revert to linear
+        if (cdelmx(ic) < 1. .and. cdelpx(ic) < 1.) then
+          pxm = voltfac*cvoltmx(ic)/cdelmx(ic)
+          pxp = voltfac*cvoltpx(ic)/cdelpx(ic)
+          denom = denom + (1.-cdelpx(ic))/cdelpx(ic)*rdx2c
+     &                  + (1.-cdelmx(ic))/cdelmx(ic)*rdx2c
+          ppp = min(ppp,cdelmx(ic))
+          ppp = min(ppp,cdelpx(ic))
+        else
+c         --- the point lower in x is inside the conductor
+          if (cdelmx(ic) < 1.) then
+            pxm = voltfac*cvoltmx(ic)*2./(cdelmx(ic)*(1.+cdelmx(ic)))
+            pxp = pxp*(1.+(1.-cdelmx(ic))/(1.+cdelmx(ic)))
+            denom = denom + 2.*(1.-cdelmx(ic))/cdelmx(ic)*rdx2c
+            ppp = min(ppp,cdelmx(ic))
+          endif
+c         --- the point higher in x is inside the conductor
+          if (cdelpx(ic) < 1.) then
+            pxp = voltfac*cvoltpx(ic)*2./(cdelpx(ic)*(1.+cdelpx(ic)))
+            pxm = pxm*(1.+(1.-cdelpx(ic))/(1.+cdelpx(ic)))
+            denom = denom + 2.*(1.-cdelpx(ic))/cdelpx(ic)*rdx2c
+            ppp = min(ppp,cdelpx(ic))
+          endif
+        endif
+c       --- If both points in y are inside the conductor, revert to linear
+        if (cdelmy(ic) < 1. .and. cdelpy(ic) < 1.) then
+          pym = voltfac*cvoltmy(ic)/cdelmy(ic)
+          pyp = voltfac*cvoltpy(ic)/cdelpy(ic)
+          denom = denom + (1.-cdelpy(ic))/cdelpy(ic)*rdy2c
+     &                  + (1.-cdelmy(ic))/cdelmy(ic)*rdy2c
+          ppp = min(ppp,cdelmy(ic))
+          ppp = min(ppp,cdelpy(ic))
+        else
+c         --- the point lower in y is inside the conductor
+          if (cdelmy(ic) < 1.) then
+            pym = voltfac*cvoltmy(ic)*2./(cdelmy(ic)*(1.+cdelmy(ic)))
+            pyp = pyp*(1.+(1.-cdelmy(ic))/(1.+cdelmy(ic)))
+            denom = denom + 2.*(1.-cdelmy(ic))/cdelmy(ic)*rdy2c
+            ppp = min(ppp,cdelmy(ic))
+          endif
+c         --- the point higher in y is inside the conductor
+          if (cdelpy(ic) < 1.) then
+            pyp = voltfac*cvoltpy(ic)*2./(cdelpy(ic)*(1.+cdelpy(ic)))
+            pym = pym*(1.+(1.-cdelpy(ic))/(1.+cdelpy(ic)))
+            denom = denom + 2.*(1.-cdelpy(ic))/cdelpy(ic)*rdy2c
+            ppp = min(ppp,cdelpy(ic))
+          endif
+        endif
+c       --- If both points in z are inside the conductor, revert to linear
+        if (cdelmz(ic) < 1. .and. cdelpz(ic) < 1.) then
+          pzm = voltfac*cvoltmz(ic)/cdelmz(ic)
+          pzp = voltfac*cvoltpz(ic)/cdelpz(ic)
+          denom = denom + (1.-cdelpz(ic))/cdelpz(ic)*rdz2c
+     &                  + (1.-cdelmz(ic))/cdelmz(ic)*rdz2c
+          ppp = min(ppp,cdelmz(ic))
+          ppp = min(ppp,cdelpz(ic))
+        else
+c         --- the point lower in z is inside the conductor
+          if (cdelmz(ic) < 1.) then
+            pzm = voltfac*cvoltmz(ic)*2./(cdelmz(ic)*(1.+cdelmz(ic)))
+            pzp = pzp*(1.+(1.-cdelmz(ic))/(1.+cdelmz(ic)))
+            denom = denom + 2.*(1.-cdelmz(ic))/cdelmz(ic)*rdz2c
+            ppp = min(ppp,cdelmz(ic))
+          endif
+c         --- the point higher in z is inside the conductor
+          if (cdelpz(ic) < 1.) then
+            pzp = voltfac*cvoltpz(ic)*2./(cdelpz(ic)*(1.+cdelpz(ic)))
+            pzm = pzm*(1.+(1.-cdelpz(ic))/(1.+cdelpz(ic)))
+            denom = denom + 2.*(1.-cdelpz(ic))/cdelpz(ic)*rdz2c
+            ppp = min(ppp,cdelpz(ic))
+          endif
+        endif
+
+c       --- calculate the residual based on the boundary conditions
+        if (ppp < 1.) then
+          if (mgform2init) ppp = 1.
+#ifdef WITHCHOMBO
+          ppp = 1.
+#endif
+          res(icdx,icdy,icdz) = ppp*(rho(icdx,icdy,icdz)
+     &           + (pxm+pxp)*rdx2cs + (pym+pyp)*rdy2cs + (pzm+pzp)*rdz2cs
+     &           - phi(icdx,icdy,icdz)*mgparam*denom)
+        endif
+      enddo
+!$OMP END DO
+
+      endif
 
       return
       end
@@ -1731,14 +2017,14 @@ c     --- Calculate the residual near the conductor.
      &                ecvoltmx,ecvoltpx,ecvoltmy,ecvoltpy,ecvoltmz,ecvoltpz,
      &                ecndpvph,localb0,localbnz,boundxy,
      &                l2symtry,l4symtry,mglevel,ecstart,
-     &                mgform,mgform2init)
+     &                mgform,mgform2init,icndbndy)
       call condbndyres(nx,ny,nz,phi,rho,res,dxsqi,dysqi,dzsqi,mgparam,
      &                ncndmax,nocndbdy,ocdelmx,ocdelmy,ocdelmz,ocdelpx,ocdelpy,
      &                ocdelpz,iocndx,iocndy,iocndz,iocndlevel,
      &                ocvoltmx,ocvoltpx,ocvoltmy,ocvoltpy,ocvoltmz,ocvoltpz,
      &                ocndpvph,localb0,localbnz,boundxy,
      &                l2symtry,l4symtry,mglevel,ocstart,
-     &                mgform,mgform2init)
+     &                mgform,mgform2init,icndbndy)
 
       endif
 
