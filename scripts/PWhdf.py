@@ -5,7 +5,7 @@
 HDF basic writer class PW by David Grote, LLNL
 Modified from PW.py originally written by Paul Dubois, LLNL, to use
 PDB files.
-$Id: PWhdf.py,v 1.1 2002/03/14 21:59:48 dave Exp $
+$Id: PWhdf.py,v 1.2 2003/08/05 16:47:24 dave Exp $
 """
 import _pyhl
 from Numeric import *
@@ -27,7 +27,6 @@ class PW:
 
     def __init__ (self, filename='', mode="w", verbose = 1, compression = 6):
         "PW(filename='', verbose=1, compression=6) creates filename if given" 
-
         self.__dict__['_nodelist'] = None
         self.set_verbosity (verbose)
         self.set_compression (compression)
@@ -39,7 +38,7 @@ class PW:
 
     def __repr__ (self):
         if self.is_open ():
-            current_mode = 'opened for writeing'
+            current_mode = 'opened for writing'
             return 'HDF file %s %s.' % \
                (self.inquire_filename(), current_mode)
         else:
