@@ -1,6 +1,6 @@
 from warp import *
 import LinearAlgebra
-env_match_version = "$Id: env_match.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+env_match_version = "$Id: env_match.py,v 1.2 2002/04/09 20:41:58 dave Exp $"
 
 print 'Envelope matching routines'
 print 'match() matches the beam giving the desired value of sigma, varying'
@@ -148,13 +148,14 @@ def matchenv(quads,af,bf,apf,bpf,zz=None,maxiter=100,tol=1.e-10):
      - zz=env.zu z location of final values (must be env.zl < zz < env.zu)
      - maxiter=100 maximum number of iterations to perform
      - tol=1.e-10 tolerance to match final values to"""
-  if len(quads) != 4:
-    print 'Error: exactly four quads for varying must be specified'
-    return
-  if zz:
-    if zz < env.zl or env.zu < zz:
-      print 'Error: the z location speficied must be within zl and zu'
-      return
+
+  assert len(quads) == 4,"exactly four quads for varying must be specified"
+  assert top.quads,"quad elements must be defined"
+  assert max(abs(top.quadde)) > 0. or max(abs(top.quaddb)) > 0., \
+         "quad fields must be non-zero"
+  assert zz is None or (env.zl < zz and zz < env.zu), \
+         "The z location speficied must be within zl and zu"
+
   mat = zeros((4,4),'d')
   denv = zeros(4,'d')
   vvary = 0.01
@@ -257,10 +258,10 @@ def matchxenv(xf=0.,xpf=0.,yf=0.,ypf=0.,zz=None,maxiter=100,tol=1.e-10):
      - zz=env.zu z location of final values (must be env.zl < zz < env.zu)
      - maxiter=100 maximum number of iterations to perform
      - tol=1.e-10 tolerance to match final values to"""
-  if zz:
-    if zz < env.zl or env.zu < zz:
-      print 'Error: the z location speficied must be within zl and zu'
-      return
+
+  assert zz is None or (env.zl < zz and zz < env.zu), \
+         "The z location speficied must be within zl and zu"
+
   matx = zeros((2,2),'d')
   denvx = zeros(2,'d')
   xvary = 0.01
