@@ -1,7 +1,7 @@
 from warp import *
 from mplot import *
 import __main__
-histplots_version = "$Id: histplots.py,v 1.15 2002/08/23 17:23:49 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.16 2002/08/27 21:54:24 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -137,15 +137,7 @@ only required argument of course is the data to be plotted.
     if not titlel: titlel = titlet + " over initial value"
   if type(yscale) != type(array([])): yscale = array([yscale])
   if not absc:
-    if (not lhzbeam or not lvsz):
-      thist = _extractvar("thist",varsuffix)
-      absc = thist[istart:iend+1:istep]*xscale + xoffset
-      if not titleb:
-        if (xscale == 1.):
-          titleb = "time (s)"
-        else:
-          titleb = "time"
-    else:
+    if lhzbeam or lvsz:
       hzbeam = _extractvar("hzbeam",varsuffix)
       absc = hzbeam[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
@@ -153,6 +145,14 @@ only required argument of course is the data to be plotted.
           titleb = "Z (m)"
         else:
           titleb = "Z"
+    else:
+      thist = _extractvar("thist",varsuffix)
+      absc = thist[istart:iend+1:istep]*xscale + xoffset
+      if not titleb:
+        if (xscale == 1.):
+          titleb = "time (s)"
+        else:
+          titleb = "time"
   if logplot:
     logxy(1,0)
     oord = log10(maximum(10e-12,
@@ -245,7 +245,7 @@ def hpbasiccont(oord,oordmesh,kwdict={},**kw):
 
   # --- Now complete the setup
   if not absc:
-    if (lhzbeam):
+    if lhzbeam:
       hzbeam = _extractvar('hzbeam',varsuffix)
       absc = hzbeam[istart:iend+1:istep]*xscale + xoffset
       if not titleb:
