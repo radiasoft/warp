@@ -4,7 +4,7 @@ ParticleScraper: class for creating particle scraping
 from warp import *
 from generateconductors import *
 
-particlescraper_version = "$Id: particlescraper.py,v 1.4 2003/07/18 00:18:13 dave Exp $"
+particlescraper_version = "$Id: particlescraper.py,v 1.5 2003/08/29 23:11:27 dave Exp $"
 def particlescraperdoc():
   import particlescraper
   print particlescraper.__doc__
@@ -32,6 +32,7 @@ Class for creating particle scraper for conductors
     # --- Make sure that npmaxi is set
     top.npmaxi = max(top.npmax,2)
     gchange("Particles")
+    gchange("LostParticles")
     # --- Install the call to scrape particles if requested
     if install: self.installscraper()
 
