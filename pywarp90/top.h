@@ -29,8 +29,15 @@
 #define dvnz(X) sign(abs(X)+SMALLPOS,X)
 
 ! Define size of integers. Must be the same as the size of a long int in C.
-#ifdef ALPHA
+#if defined ALPHA || defined T3E
 #define ISZ 8
 #else
 #define ISZ 4
+#endif
+
+! Define size of word.
+#if defined T3E || defined J90
+#define WORDSIZE 64
+#else
+#define WORDSIZE 32
 #endif
