@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.24 $, $Date: 2002/02/22 17:36:20 $
+c@(#) File F3D.M, version $Revision: 3.25 $, $Date: 2002/03/21 18:52:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -516,11 +516,11 @@ c ----------------------------------------------------------------------------
      &    iwhich == 12 .or. iwhich == 13) then
 
         if (l4symtry) then
-          call cosqx (a(0,0,0), xywork, w(icox), nx, ny, 0)
-          call cosqy (a(0,0,0), xywork, w(icoy), nx, ny, 0)
+          call cosqx (a(0,0,0), xywork, w(icox), nx, ny, 1,-1)
+          call cosqy (a(0,0,0), xywork, w(icoy), nx, ny, 1,-1)
         elseif (l2symtry) then
           call vsftx (a(0,0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
-          call cosqy (a(0,0,0), xywork, w(icoy), nx, ny, 0)
+          call cosqy (a(0,0,0), xywork, w(icoy), nx, ny, 1,-1)
         else
           call vsftx (a(0,0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
           call vsfty (a(0,0,0), xywork, w(icpy), w(icmy), nx, ny, 1)
@@ -550,8 +550,8 @@ c          --- Normalize the array
              enddo
            enddo
 c          --- Invoke the transform routines for the current z-slice
-           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,-1)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,-1)
+           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,-1)
+           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
       else if (l2symtry) then
 c       factor of .5*dy for cosqy
@@ -565,7 +565,7 @@ c          --- Normalize the array
            enddo
 c          --- Invoke the transform routines for the current z-slice
            call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,-1)
+           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
       else
         norm = .5 * dx * dy * dz
@@ -634,8 +634,8 @@ c          --- Normalize the array
              enddo
            enddo
 c          --- Invoke the transform routines for the current z-slice
-           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,-1)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,-1)
+           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,-1)
+           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
       else if (l2symtry) then
 c       factor of .5*dy for cosqy
@@ -649,7 +649,7 @@ c          --- Normalize the array
            enddo
 c          --- Invoke the transform routines for the current z-slice
            call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,-1)
+           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
         enddo
       else
         norm = dx * dy
@@ -833,8 +833,8 @@ c       factor of .25/lx for cosqx and .25/ly for cosqy
         norm = .0625/(lx*ly*fulllz)
         do iz = 0, nz-1
 c          --- Invoke the inverse transform routines for the current z-slice
-           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,1)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,1)
+           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
+           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
 c          --- set boundary elements to zero
            do iy = 0, ny
              a(nx,iy,iz) = 0.
@@ -855,7 +855,7 @@ c       factor of 2./lx for vsftx and .25/ly for cosqy
         do iz = 0, nz-1
 c          --- Invoke the inverse transform routines for the current z-slice
            call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,1)
+           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
 c          --- set boundary elements to zero
            do iy = 0, ny
              a(0 ,iy,iz) = 0.
@@ -909,8 +909,8 @@ c         factor of .25/lx for cosqx and .25/ly for cosqy
           norm = .0625/(lx*ly)
           do iz = 0, nz-1
 c            --- Invoke the inverse transform routines for the current z-slice
-             call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,1)
-             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,1)
+             call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
+             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
 c            --- set boundary elements to zero
              do iy = 0, ny
                a(nx,iy,iz) = 0.
@@ -931,7 +931,7 @@ c         factor of .25/ly for cosqy
           do iz = 0, nz-1
 c            --- Invoke the inverse transform routines for the current z-slice
              call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
-             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,1)
+             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
 c            --- set boundary elements to zero
              do iy = 0, ny
                a(0 ,iy,iz) = 0.
@@ -1098,7 +1098,7 @@ c ----------------------------------------------------------------------------
 c=============================================================================
       subroutine vsftz(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
       integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
+      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nz,0:nx)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
@@ -1108,40 +1108,80 @@ c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
+#ifdef ESSL
+
+      integer(ISZ):: naux1,naux2
+      integer(ISZ):: prevnaux1,prevnaux2
+      real(kind=8),allocatable:: aux1(:),aux2(:)
+      data naux1/0/,naux2/0/
+      save naux1,naux2,aux1,aux2
+ 
+c Setup and make call to the ESSL routine for sine-transforms
+
+c     if (isetup == 1) then
+c       --- Calculate how much space is needed. Only allocate if it is
+c       --- different from last time (deallocating if needed).
+        prevnaux1 = naux1
+        prevnaux2 = naux2
+        if (nz <= 2048) then
+          naux1 = 20000
+        else
+          naux1 = 20000+2.28*nz
+        endif
+        if (nz <= 2048) then
+          naux2 = 20000
+        else
+          naux2 = 20000+2.28*nz
+        endif
+        if (nz >= 252) naux2 = naux2 + (2*nz+256)*(min(64, nx+(1-esx)))
+
+        if (prevnaux1 > 0 .and. prevnaux1 .ne. naux1) deallocate(aux1)
+        if (prevnaux2 > 0 .and. prevnaux2 .ne. naux2) deallocate(aux2)
+        if (prevnaux1 .ne. naux1) allocate(aux1(naux1))
+        if (prevnaux2 .ne. naux2) allocate(aux2(naux2))
+        call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
+     &            aux1,naux1,aux2,naux2)
+c       return
+c     endif
+#endif
+ 
       do iy = 0, ny-2+(1-esy), 2
 c       --- shift k-space origin to middle and apply normalization factor
 c       --- if non-zero.
         if (norm == 0) then
           do iz = 1, nz-1, 2
             do ix = 0, nx-esx
-              zwork(1,ix,iz-1) = +a(ix,iy  ,iz-1)
-              zwork(2,ix,iz-1) = +a(ix,iy+1,iz-1)
-              zwork(1,ix,iz  ) = -a(ix,iy  ,iz  )
-              zwork(2,ix,iz  ) = -a(ix,iy+1,iz  )
+              zwork(1,iz-1,ix) = +a(ix,iy  ,iz-1)
+              zwork(2,iz-1,ix) = +a(ix,iy+1,iz-1)
+              zwork(1,iz  ,ix) = -a(ix,iy  ,iz  )
+              zwork(2,iz  ,ix) = -a(ix,iy+1,iz  )
             enddo
           enddo
         else
           do iz = 1, nz-1, 2
             do ix = 0, nx-esx
-              zwork(1,ix,iz-1) = +a(ix,iy  ,iz-1)*norm
-              zwork(2,ix,iz-1) = +a(ix,iy+1,iz-1)*norm
-              zwork(1,ix,iz  ) = -a(ix,iy  ,iz  )*norm
-              zwork(2,ix,iz  ) = -a(ix,iy+1,iz  )*norm
+              zwork(1,iz-1,ix) = +a(ix,iy  ,iz-1)*norm
+              zwork(2,iz-1,ix) = +a(ix,iy+1,iz-1)*norm
+              zwork(1,iz  ,ix) = -a(ix,iy  ,iz  )*norm
+              zwork(2,iz  ,ix) = -a(ix,iy+1,iz  )*norm
             enddo
           enddo
         endif
 
 c       --- do the transforms
-c       call vcpft (a(0,iy,0), a(0,iy+1,0), nz, nxy,-1,nx+(1-esx),1)
-c       call vrpft2(a(0,iy,0), a(0,iy+1,0), nz, nxy,   nx+(1-esx),1)
 
-        call vcpft (zwork(1,0,0), zwork(2,0,0), nz, 2*(nx+1),-1,nx+(1-esx),2)
-        call vrpft2(zwork(1,0,0), zwork(2,0,0), nz, 2*(nx+1),   nx+(1-esx),2)
+#ifndef ESSL
+        call vcpft (zwork(1,0,0), zwork(2,0,0), nz, 2,-1,nx+(1-esx),2*(nz+1))
+#else
+        call dcft(0,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
+     &            aux1,naux1,aux2,naux2)
+#endif
+        call vrpft2(zwork(1,0,0), zwork(2,0,0), nz, 2,   nx+(1-esx),2*(nz+1))
 
         do iz = 0, nz-1
           do ix = 0, nx-esx
-            a(ix,iy  ,iz) = zwork(1,ix,iz)
-            a(ix,iy+1,iz) = zwork(2,ix,iz)
+            a(ix,iy  ,iz) = zwork(1,iz,ix)
+            a(ix,iy+1,iz) = zwork(2,iz,ix)
           enddo
         enddo
 
@@ -1152,7 +1192,7 @@ c       call vrpft2(a(0,iy,0), a(0,iy+1,0), nz, nxy,   nx+(1-esx),1)
 c=============================================================================
       subroutine vsftzi(nx,ny,nz,a,norm,esx,esy,nxy,zwork)
       integer(ISZ):: nx,ny,nz,esx,esy,nxy
-      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nx,0:nz)
+      real(kind=8):: a(0:nx,0:ny,0:nz),norm,zwork(2,0:nz,0:nx)
 
 c This is put into a subroutine for the parallel field solver since the
 c grid dimensions passed are not the true grid dimensions.
@@ -1162,40 +1202,80 @@ c nxy is the size of the transverse planes.
 
       integer(ISZ):: ix,iy,iz
 
+#ifdef ESSL
+
+      integer(ISZ):: naux1,naux2
+      integer(ISZ):: prevnaux1,prevnaux2
+      real(kind=8),allocatable:: aux1(:),aux2(:)
+      data naux1/0/,naux2/0/
+      save naux1,naux2,aux1,aux2
+ 
+c Setup and make call to the ESSL routine for sine-transforms
+
+c     if (isetup == 1) then
+c       --- Calculate how much space is needed. Only allocate if it is
+c       --- different from last time (deallocating if needed).
+        prevnaux1 = naux1
+        prevnaux2 = naux2
+        if (nz <= 2048) then
+          naux1 = 20000
+        else
+          naux1 = 20000+2.28*nz
+        endif
+        if (nz <= 2048) then
+          naux2 = 20000
+        else
+          naux2 = 20000+2.28*nz
+        endif
+        if (nz >= 252) naux2 = naux2 + (2*nz+256)*(min(64, nx+(1-esx)))
+
+        if (prevnaux1 > 0 .and. prevnaux1 .ne. naux1) deallocate(aux1)
+        if (prevnaux2 > 0 .and. prevnaux2 .ne. naux2) deallocate(aux2)
+        if (prevnaux1 .ne. naux1) allocate(aux1(naux1))
+        if (prevnaux2 .ne. naux2) allocate(aux2(naux2))
+        call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
+     &            aux1,naux1,aux2,naux2)
+c       return
+c     endif
+#endif
+
       do iy = 0, ny-2+(1-esy), 2
 
         do iz = 0, nz-1
           do ix = 0, nx-esx
-            zwork(1,ix,iz) = a(ix,iy  ,iz)
-            zwork(2,ix,iz) = a(ix,iy+1,iz)
+            zwork(1,iz,ix) = a(ix,iy  ,iz)
+            zwork(2,iz,ix) = a(ix,iy+1,iz)
           enddo
         enddo
 
 c       --- do the transforms
-c       call vrpfti2(a(0,iy,0), a(0,iy+1,0), nz, nxy,   nx+(1-esx),1)
-c       call vcpft  (a(0,iy,0), a(0,iy+1,0), nz, nxy,+1,nx+(1-esx),1)
 
-        call vrpfti2(zwork(1,0,0), zwork(2,0,0), nz, 2*(nx+1),   nx+(1-esx),2)
-        call vcpft  (zwork(1,0,0), zwork(2,0,0), nz, 2*(nx+1),+1,nx+(1-esx),2)
+        call vrpfti2(zwork(1,0,0), zwork(2,0,0), nz, 2,   nx+(1-esx),2*(nz+1))
+#ifndef ESSL
+        call vcpft  (zwork(1,0,0), zwork(2,0,0), nz, 2,+1,nx+(1-esx),2*(nz+1))
+#else
+        call dcft(0,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
+     &            aux1,naux1,aux2,naux2)
+#endif
 
 c       --- shift k-space origin back and apply normalization factor
 c       --- if non-zero.
         if (norm == 0.) then
           do iz = 1, nz-1, 2
             do ix = 0, nx-esx
-              a(ix,iy  ,iz-1) = +zwork(1,ix,iz-1)
-              a(ix,iy+1,iz-1) = +zwork(2,ix,iz-1)
-              a(ix,iy  ,iz  ) = -zwork(1,ix,iz  )
-              a(ix,iy+1,iz  ) = -zwork(2,ix,iz  )
+              a(ix,iy  ,iz-1) = +zwork(1,iz-1,ix)
+              a(ix,iy+1,iz-1) = +zwork(2,iz-1,ix)
+              a(ix,iy  ,iz  ) = -zwork(1,iz  ,ix)
+              a(ix,iy+1,iz  ) = -zwork(2,iz  ,ix)
             enddo
           enddo
         else
           do iz = 1, nz-1, 2
             do ix = 0, nx-esx
-              a(ix,iy  ,iz-1) = +zwork(1,ix,iz-1)*norm
-              a(ix,iy+1,iz-1) = +zwork(2,ix,iz-1)*norm
-              a(ix,iy  ,iz  ) = -zwork(1,ix,iz  )*norm
-              a(ix,iy+1,iz  ) = -zwork(2,ix,iz  )*norm
+              a(ix,iy  ,iz-1) = +zwork(1,iz-1,ix)*norm
+              a(ix,iy+1,iz-1) = +zwork(2,iz-1,ix)*norm
+              a(ix,iy  ,iz  ) = -zwork(1,iz  ,ix)*norm
+              a(ix,iy+1,iz  ) = -zwork(2,iz  ,ix)*norm
             enddo
           enddo
         endif
@@ -1581,11 +1661,11 @@ c ----------------------------------------------------------------------------
       if (iwhich <= 0 .or. iwhich == 2 .or. iwhich == 5) then
 
         if (l4symtry) then
-          call cosqx (a(0,0), xywork, w(icox), nx, ny, 0)
-          call cosqy (a(0,0), xywork, w(icoy), nx, ny, 0)
+          call cosqx (a(0,0), xywork, w(icox), nx, ny, 1,-1)
+          call cosqy (a(0,0), xywork, w(icoy), nx, ny, 1,-1)
         elseif (l2symtry) then
           call vsftx (a(0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
-          call cosqy (a(0,0), xywork, w(icoy), nx, ny, 0)
+          call cosqy (a(0,0), xywork, w(icoy), nx, ny, 1,-1)
         else
           call vsftx (a(0,0), xywork, w(icpx), w(icmx), nx, ny, 1)
           call vsfty (a(0,0), xywork, w(icpy), w(icmy), nx, ny, 1)
@@ -1617,7 +1697,7 @@ c       --- Normalize the array
 c       --- Invoke the transform routines for the current z-slice
         if (l4symtry) then
           do iy = iystart,iyend,2
-            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,-1)
+            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,0,-1)
           enddo
         else
           do iy = iystart,iyend,2
@@ -1632,7 +1712,7 @@ c       --- Invoke the transform routines for the current z-slice
 
         if (l4symtry .or. l2symtry) then
           do ix = ixstart,ixend,2
-            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,-1)
+            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,0,-1)
           enddo
         else
           do ix = ixstart,ixend,2
@@ -1676,11 +1756,10 @@ c ----------------------------------------------------------------------------
 
       if (iwhich <= 0 .or. iwhich == 5) then
 
-
         if (l4symtry .or. l2symtry) then
 c         --- Invoke the inverse transform routines for the current z-slice
           do ix = ixstart,ixend,2
-            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,1)
+            call cosqy(a(ix:ix+2,0:ny),xywork(ix:ix+2,0:ny),w(icoy),2,ny,0,1)
           enddo
         else
           do ix = ixstart,ixend,2
@@ -1698,7 +1777,7 @@ c         --- Invoke the inverse transform routines for the current z-slice
 
         if (l4symtry) then
           do iy = iystart,iyend,2
-            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,1)
+            call cosqx(a(0,iy),xywork(0,iy),w(icox),nx,2,0,1)
           enddo
         else
           do iy = iystart,iyend,2
@@ -1789,6 +1868,8 @@ c This routine is its own inverse, except for a factor of 2/nx
 c In comparison with Langdon's routine MSTX,
 c    r is stored in w( ,iy+1);    i is stored in w( ,iy).
 
+c -----------------------------------------------------------------
+#ifndef ESSL
 c Written by Alex Friedman, LLNL, April 1989.
 
 
@@ -1843,6 +1924,44 @@ c Separate sine coefficients
          a(nx2,iy) = .25 * w(nx2,iy)
       enddo
 
+#else
+c -----------------------------------------------------------------
+
+      integer(ISZ):: naux1,naux2
+      integer(ISZ):: prevnaux1,prevnaux2
+      real(kind=8),allocatable:: aux1(:),aux2(:)
+      data naux1/0/,naux2/0/
+      save naux1,naux2,aux1,aux2
+
+c Setup and make call to the ESSL routine for sine-transforms
+
+      if (isetup == 1) then
+c       --- Calculate how much space is needed. Only allocate if it is
+c       --- different from last time (deallocating if needed).
+        prevnaux1 = naux1
+        prevnaux2 = naux2
+        if (2*nx <= 16384) then
+          naux1 = 50000
+        else
+          naux1 = 20000+.60*nx*2
+        endif
+        if (2*nx <= 16384) then
+          naux2 = 20000
+        else
+          naux2 = 20000+.64*nx*2
+        endif
+        if (prevnaux1 > 0 .and. prevnaux1 .ne. naux1) deallocate(aux1)
+        if (prevnaux2 > 0 .and. prevnaux2 .ne. naux2) deallocate(aux2)
+        if (prevnaux1 .ne. naux1) allocate(aux1(naux1))
+        if (prevnaux2 .ne. naux2) allocate(aux2(naux2))
+        call dsinf(1,a,1,1+nx,a,1,1+nx,2*nx,ny,1.,aux1,naux1,aux2,naux2)
+        return
+      endif
+ 
+      call dsinf(0,a,1,1+nx,a,1,1+nx,2*nx,ny,1.,aux1,naux1,aux2,naux2)
+
+#endif
+
       return
       end
 c======================================================================
@@ -1858,6 +1977,9 @@ c If ISETUP = 1, does only a setup and returns
 c This routine is its own inverse, except for a factor of 2/nx
 c In comparison with Langdon's routine MSTX,
 c    r is stored in w(ix+1, );    i is stored in w(ix, ).
+
+c -----------------------------------------------------------------
+#ifndef ESSL
 
 c Written by Alex Friedman, LLNL, April 1989.
 
@@ -1913,14 +2035,55 @@ c Separate sine coefficients
          a(ix,ny2) = .25 * w(ix,ny2)
       enddo
 
+#else
+c -----------------------------------------------------------------
+
+      integer(ISZ):: naux1,naux2
+      integer(ISZ):: prevnaux1,prevnaux2
+      real(kind=8),allocatable:: aux1(:),aux2(:)
+      data naux1/0/,naux2/0/
+      save naux1,naux2,aux1,aux2
+
+c Setup and make call to the ESSL routine for sine-transforms
+ 
+      if (isetup == 1) then
+c       --- Calculate how much space is needed. Only allocate if it is
+c       --- different from last time (deallocating if needed).
+        prevnaux1 = naux1
+        prevnaux2 = naux2
+        if (2*ny <= 16384) then
+          naux1 = 50000
+        else
+          naux1 = 20000+.60*ny*2
+        endif
+        if (2*ny <= 16384) then
+          naux2 = 20000
+        else
+          naux2 = 20000+.64*ny*2
+        endif
+        if (ny >= 252) naux2 = naux2 + (ny+257)*(min(128, nx))
+        if (prevnaux1 > 0 .and. prevnaux1 .ne. naux1) deallocate(aux1)
+        if (prevnaux2 > 0 .and. prevnaux2 .ne. naux2) deallocate(aux2)
+        if (prevnaux1 .ne. naux1) allocate(aux1(naux1))
+        if (prevnaux2 .ne. naux2) allocate(aux2(naux2))
+
+        call dsinf(1,a,1+nx,1,a,1+nx,1,2*ny,nx,1.,aux1,naux1,aux2,naux2)
+        return
+      endif
+ 
+      call dsinf(0,a,1+nx,1,a,1+nx,1,2*ny,nx,1.,aux1,naux1,aux2,naux2)
+
+#endif
+
       return
       end
 c=======================================================================
-      subroutine cosqx(a,w,c,nx,ny,isign)
-      integer(ISZ):: nx,ny,isign
-      real(kind=8):: a(0:nx,0:ny),w(0:nx,0:ny),c(nx-1)
+      subroutine cosqx(a,w,c,nx,ny,isetup,isign)
+      integer(ISZ):: nx,ny,isetup,isign
+      real(kind=8):: a(0:nx,0:ny),w(2,0:nx,ny/2),c(nx-1)
 
 c  This routine does Fourier transforms with only odd cosines.
+
 c  This routine is based off the routines cosqi,cosqf1,cosqb1 fftpack of
 c  the NETLIB collection.  The files were obtained in July of 1994.
 c
@@ -1933,10 +2096,52 @@ c  scratch arrays.  This avoids an additional loop over the arrays to
 c  copy the data back to the original array.
 
       real(kind=8):: pih,dt,fk
-      integer(ISZ):: k,kc,ix,iy
+      integer(ISZ):: k,kc,ix,iy,ii,jj
+
+#ifdef ESSL
+
+      integer(ISZ):: naux1,naux2
+      integer(ISZ):: prevnaux1,prevnaux2
+      integer(ISZ):: prevnx,prevny,previsign
+      real(kind=8),allocatable:: aux1(:),aux2(:)
+      data naux1/0/,naux2/0/
+      data prevnx/0/,prevny/0/,previsign/0/
+      save naux1,naux2,aux1,aux2,prevnx,prevny,previsign
+ 
+c     --- If needed, allocate and initialize auxiliary arrays.
+      if (nx .ne. prevnx .or. ny .ne. prevny .or. isign .ne. previsign) then
+c       --- Calculate how much space is needed.
+        naux1 = 20000
+        if (nx > 2048) naux1 = naux1 + 2.28*nx
+        naux2 = 20000
+        if (nx > 2048) naux2 = naux2 + 2.28*nx
+
+c       --- Only allocate if it is larger than last time (deallocating
+c       --- if needed).
+        if (naux1 > prevnaux1) then
+          if allocated(aux1) deallocate(aux1)
+          allocate(aux1(naux1))
+        endif
+        if (naux2 > prevnaux2) then
+          if allocated(aux2) deallocate(aux2)
+          allocate(aux2(naux2))
+        endif
+
+c       --- Initialize the auxiliary arrays
+        call dcft(1,w,1,nx+1,w,1,nx+1,nx,ny/2,-isign,1.,aux1,naux1,aux2,naux2)
+
+c       --- Save the values for this intialization
+        prevnx = nx
+        prevny = ny
+        previsign = isign
+        prevnaux1 = naux1
+        prevnaux2 = naux2
+      endif
+
+#endif
 
 c     do setup
-      if (isign == 0) then
+      if (isetup == 1) then
         pih = 2.*atan(1.)
         dt = pih/nx
         fk = 0.
@@ -1947,31 +2152,44 @@ c     do setup
         enddo
         c(nx/2) = cos(nx*0.5*dt)
         return
+      endif
    
 c     do forward transform
-      elseif (isign == -1) then
+      if (isign == -1) then
 
         do iy=0,ny-1
+          ii = mod(iy,2) + 1
+          jj = iy/2 + 1
           do k=1,nx/2-1
             kc = nx-k
-            w(k,iy)  = c(k)*a(k,iy) - c(kc)*a(kc,iy)
-            w(kc,iy) = c(kc)*a(k,iy) + c(k)*a(kc,iy)
+            w(ii,k ,jj)  = c(k)*a(k,iy) - c(kc)*a(kc,iy)
+            w(ii,kc,jj) = c(kc)*a(k,iy) + c(k)*a(kc,iy)
           enddo
         enddo
         do iy=0,ny-1
-          w(0,iy) = a(0,iy)
-          w(nx/2,iy) = c(nx/2)*(a(nx/2,iy) + a(nx/2,iy))
+          ii = mod(iy,2) + 1
+          jj = iy/2 + 1
+          w(ii,0   ,jj) = a(0,iy)
+          w(ii,nx/2,jj) = c(nx/2)*(a(nx/2,iy) + a(nx/2,iy))
         enddo
-        call vcpft (w(0,0), w(0,1), nx, 1,-1,ny/2,2*(nx+1))
-        call vrpft2(w(0,0), w(0,1), nx, 1,   ny/2,2*(nx+1))
+#ifdef ESSL
+        call dcft(0,w,1,nx+1,w,1,nx+1,nx,ny/2,+1,1.,aux1,naux1,aux2,naux2)
+#else
+        call vcpft (w(1,0,1), w(2,0,1), nx, 2,-1,ny/2,2*(nx+1))
+#endif
+        call vrpft2(w(1,0,1), w(2,0,1), nx, 2,   ny/2,2*(nx+1))
         do iy=0,ny-1
-          a(0,iy) = w(0,iy)
-          a(nx-1,iy) = w(nx/2,iy)
+          ii = mod(iy,2) + 1
+          jj = iy/2 + 1
+          a(0,iy) = w(ii,0,jj)
+          a(nx-1,iy) = w(ii,nx/2,jj)
         enddo
         do iy=0,ny-1
+          ii = mod(iy,2) + 1
+          jj = iy/2 + 1
           do ix=1,nx/2-1
-            a(2*ix-1,iy) = w(ix,iy) - w(nx-ix,iy)
-            a(2*ix,iy)   = w(ix,iy) + w(nx-ix,iy)
+            a(2*ix-1,iy) = w(ii,ix,jj) - w(ii,nx-ix,jj)
+            a(2*ix,iy)   = w(ii,ix,jj) + w(ii,nx-ix,jj)
           enddo
         enddo
 
@@ -1979,26 +2197,38 @@ c     do backward transform
       elseif (isign == 1) then
 
         do iy=0,ny-1
-          w(0,iy) = a(0,iy) + a(0,iy)
-          w(nx/2,iy) = a(nx-1,iy) + a(nx-1,iy)
+          ii = mod(iy,2) + 1
+          jj = iy/2 + 1
+          w(ii,0   ,jj) = a(0,iy) + a(0,iy)
+          w(ii,nx/2,jj) = a(nx-1,iy) + a(nx-1,iy)
         enddo
         do iy=0,ny-1
+          ii = mod(iy,2) + 1
+          jj = iy/2 + 1
           do ix=1,nx/2-1
-            w(ix,iy) = a(2*ix-1,iy) + a(2*ix,iy)
-            w(nx-ix,iy) = a(2*ix,iy) - a(2*ix-1,iy)
+            w(ii,ix   ,jj) = a(2*ix-1,iy) + a(2*ix,iy)
+            w(ii,nx-ix,jj) = a(2*ix,iy) - a(2*ix-1,iy)
           enddo
         enddo
-        call vrpfti2(w(0,0), w(0,1), nx, 1,   ny/2,2*(nx+1))
-        call vcpft  (w(0,0), w(0,1), nx, 1,+1,ny/2,2*(nx+1))
+        call vrpfti2(w(1,0,1), w(2,0,1), nx, 2,   ny/2,2*(nx+1))
+#ifdef ESSL
+        call dcft(0,w,1,nx+1,w,1,nx+1,nx,ny/2,-1,1.,aux1,naux1,aux2,naux2)
+#else
+        call vcpft  (w(1,0,1), w(2,0,1), nx, 2,+1,ny/2,2*(nx+1))
+#endif
         do iy=0,ny-1
-          a(0,iy) = w(0,iy)+w(0,iy)
-          a(nx/2,iy) = c(nx/2)*(w(nx/2,iy) + w(nx/2,iy))
+          ii = mod(iy,2) + 1
+          jj = iy/2 + 1
+          a(0,iy) = w(ii,0,jj)+w(ii,0,jj)
+          a(nx/2,iy) = c(nx/2)*(w(ii,nx/2,jj) + w(ii,nx/2,jj))
         enddo
         do iy=0,ny-1
+          ii = mod(iy,2) + 1
+          jj = iy/2 + 1
           do k=1,nx/2-1
             kc = nx-k
-            a(k,iy) = c(kc)*w(kc,iy) + c(k)*w(k,iy)
-            a(kc,iy) = c(k)*w(kc,iy) - c(kc)*w(k,iy)
+            a(k,iy) = c(kc)*w(ii,kc,jj) + c(k)*w(ii,k,jj)
+            a(kc,iy) = c(k)*w(ii,kc,jj) - c(kc)*w(ii,k,jj)
           enddo
         enddo
 
@@ -2007,11 +2237,12 @@ c     do backward transform
       return
       end
 c=======================================================================
-      subroutine cosqy(a,w,c,nx,ny,isign)
-      integer(ISZ):: nx,ny,isign
-      real(kind=8):: a(0:nx,0:ny),w(0:nx,0:ny),c(ny-1)
+      subroutine cosqy(a,w,c,nx,ny,isetup,isign)
+      integer(ISZ):: nx,ny,isetup,isign
+      real(kind=8):: a(0:nx,0:ny),w(2,0:ny,nx/2),c(ny-1)
 
 c  This routine does Fourier transforms with only odd cosines.
+
 c  This routine is based off the routines cosqi,cosqf1,cosqb1 fftpack of
 c  the NETLIB collection.  The files were obtained in July of 1994.
 c
@@ -2024,10 +2255,54 @@ c  scratch arrays.  This avoids an additional loop over the arrays to
 c  copy the data back to the original array.
 
       real(kind=8):: pih,dt,fk
-      integer(ISZ):: k,kc,ix,iy
+      integer(ISZ):: k,kc,ix,iy,ii,jj
+
+#ifdef ESSL
+
+      integer(ISZ):: naux1,naux2
+      integer(ISZ):: prevnaux1,prevnaux2
+      integer(ISZ):: prevnx,prevny,previsign
+      real(kind=8),allocatable:: aux1(:),aux2(:)
+      data naux1/0/,naux2/0/
+      data prevnx/0/,prevny/0/,previsign/0/
+      save naux1,naux2,aux1,aux2,prevnx,prevny,previsign
+ 
+c Setup and make call to the ESSL routine for Fourier-transforms
+
+c     --- If needed, allocate and initialize auxiliary arrays.
+      if (nx .ne. prevnx .or. ny .ne. prevny .or. isign .ne. previsign) then
+c       --- Calculate how much space is needed.
+        naux1 = 20000
+        if (ny > 2048) naux1 = naux1 + 2.28*ny
+        naux2 = 20000
+        if (ny > 2048) naux2 = naux2 + 2.28*ny
+
+c       --- Only allocate if it is larger than last time (deallocating
+c       --- if needed).
+        if (naux1 > prevnaux1) then
+          if allocated(aux1) deallocate(aux1)
+          allocate(aux1(naux1))
+        endif
+        if (naux2 > prevnaux2) then
+          if allocated(aux2) deallocate(aux2)
+          allocate(aux2(naux2))
+        endif
+
+c       --- Initialize the auxiliary arrays
+        call dcft(1,w,1,ny+1,w,1,ny+1,ny,nx/2,-isign,1.,aux1,naux1,aux2,naux2)
+
+c       --- Save the values for this intialization
+        prevnx = nx
+        prevny = ny
+        previsign = isign
+        prevnaux1 = naux1
+        prevnaux2 = naux2
+      endif
+
+#endif
 
 c     do setup
-      if (isign == 0) then
+      if (isetup == 1) then
         pih = 2.*atan(1.)
         dt = pih/ny
         fk = 0.
@@ -2038,31 +2313,44 @@ c     do setup
         enddo
         c(ny/2) = cos(ny*0.5*dt)
         return
+      endif
    
 c     do forward transform
-      elseif (isign == -1) then
+      if (isign == -1) then
 
         do k=1,ny/2-1
           kc = ny-k
           do ix=0,nx-1
-            w(ix,k)  = c(k)*a(ix,k) - c(kc)*a(ix,kc)
-            w(ix,kc) = c(kc)*a(ix,k) + c(k)*a(ix,kc)
+            ii = mod(ix,2) + 1
+            jj = ix/2 + 1
+            w(ii,k ,jj) = c(k)*a(ix,k) - c(kc)*a(ix,kc)
+            w(ii,kc,jj) = c(kc)*a(ix,k) + c(k)*a(ix,kc)
           enddo
         enddo
         do ix=0,nx-1
-          w(ix,0) = a(ix,0)
-          w(ix,ny/2) = c(ny/2)*(a(ix,ny/2) + a(ix,ny/2))
+          ii = mod(ix,2) + 1
+          jj = ix/2 + 1
+          w(ii,0,jj) = a(ix,0)
+          w(ii,ny/2,jj) = c(ny/2)*(a(ix,ny/2) + a(ix,ny/2))
         enddo
-        call vcpft (w(0,0), w(1,0), ny, (nx+1),-1,nx/2,2)
-        call vrpft2(w(0,0), w(1,0), ny, (nx+1),   nx/2,2)
+#ifdef ESSL
+        call dcft(0,w,1,ny+1,w,1,ny+1,ny,nx/2,+1,1.,aux1,naux1,aux2,naux2)
+#else
+        call vcpft (w(1,0,1), w(2,0,1), ny, 2,-1,nx/2,2*(ny+1))
+#endif
+        call vrpft2(w(1,0,1), w(2,0,1), ny, 2,   nx/2,2*(ny+1))
         do ix=0,nx-1
-          a(ix,0) = w(ix,0)
-          a(ix,ny-1) = w(ix,ny/2)
+          ii = mod(ix,2) + 1
+          jj = ix/2 + 1
+          a(ix,0) = w(ii,0,jj)
+          a(ix,ny-1) = w(ii,ny/2,jj)
         enddo
         do iy=1,ny/2-1
           do ix=0,nx-1
-            a(ix,2*iy-1) = w(ix,iy) - w(ix,ny-iy)
-            a(ix,2*iy)   = w(ix,iy) + w(ix,ny-iy)
+            ii = mod(ix,2) + 1
+            jj = ix/2 + 1
+            a(ix,2*iy-1) = w(ii,iy,jj) - w(ii,ny-iy,jj)
+            a(ix,2*iy)   = w(ii,iy,jj) + w(ii,ny-iy,jj)
           enddo
         enddo
 
@@ -2070,26 +2358,38 @@ c     do backward transform
       elseif (isign == 1) then
 
         do ix=0,nx-1
-          w(ix,0) = a(ix,0) + a(ix,0)
-          w(ix,ny/2) = a(ix,ny-1) + a(ix,ny-1)
+          ii = mod(ix,2) + 1
+          jj = ix/2 + 1
+          w(ii,0,jj) = a(ix,0) + a(ix,0)
+          w(ii,ny/2,jj) = a(ix,ny-1) + a(ix,ny-1)
         enddo
         do iy=1,ny/2-1
           do ix=0,nx-1
-            w(ix,iy) = a(ix,2*iy-1) + a(ix,2*iy)
-            w(ix,ny-iy) = a(ix,2*iy) - a(ix,2*iy-1)
+            ii = mod(ix,2) + 1
+            jj = ix/2 + 1
+            w(ii,iy,jj) = a(ix,2*iy-1) + a(ix,2*iy)
+            w(ii,ny-iy,jj) = a(ix,2*iy) - a(ix,2*iy-1)
           enddo
         enddo
-        call vrpfti2(w(0,0), w(1,0), ny, (nx+1),   nx/2,2)
-        call vcpft  (w(0,0), w(1,0), ny, (nx+1),+1,nx/2,2)
+        call vrpfti2(w(1,0,1), w(2,0,1), ny, 2,   nx/2,2*(ny+1))
+#ifdef ESSL
+        call dcft(0,w,1,ny+1,w,1,ny+1,ny,nx/2,-1,1.,aux1,naux1,aux2,naux2)
+#else
+        call vcpft  (w(1,0,1), w(2,0,1), ny, 2,+1,nx/2,2*(ny+1))
+#endif
         do ix=0,nx-1
-          a(ix,0) = w(ix,0)+w(ix,0)
-          a(ix,ny/2) = c(ny/2)*(w(ix,ny/2)+w(ix,ny/2))
+          ii = mod(ix,2) + 1
+          jj = ix/2 + 1
+          a(ix,0) = w(ii,0,jj)+w(ii,0,jj)
+          a(ix,ny/2) = c(ny/2)*(w(ii,ny/2,jj)+w(ii,ny/2,jj))
         enddo
         do k=1,ny/2-1
           kc = ny-k
           do ix=0,nx-1
-            a(ix,k) = c(kc)*w(ix,kc) + c(k)*w(ix,k)
-            a(ix,kc) = c(k)*w(ix,kc) - c(kc)*w(ix,k)
+            ii = mod(ix,2) + 1
+            jj = ix/2 + 1
+            a(ix,k) = c(kc)*w(ii,kc,jj) + c(k)*w(ii,k,jj)
+            a(ix,kc) = c(k)*w(ii,kc,jj) - c(kc)*w(ii,k,jj)
           enddo
         enddo
 

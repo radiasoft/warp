@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.24 $, $Date: 2002/03/07 21:28:24 $
+#@(#) File F3D.V, version $Revision: 3.25 $, $Date: 2002/03/21 18:52:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.24 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.25 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -336,9 +336,10 @@ srfrvinout(rminofz:string,rmaxofz:string,volt:real,zmin:real,zmax:real,
 
 *********** F3Dsubs:
 #  Callable subroutines in the F3D package
-vpois3d  (iwhich,a:real,ak:real,kxsq:real,kysq:real,kzsq:real,
+vpois3d  (iwhich:integer,a:real,ak:real,kxsq:real,kysq:real,kzsq:real,
          attx:real,atty:real,attz:real,filt:real,
-         lx:real,ly:real,lz:real,nx,ny,nz,work:real,ibc,
+         lx:real,ly:real,lz:real,nx:integer,ny:integer,nz:integer,
+         w:real,xywork:real,zwork:real,ibc:integer,
          l2symtry:logical,l4symtry:logical)
      subroutine #  The 3d Poisson solver
 vp3x(iwhich) subroutine
@@ -352,6 +353,10 @@ vsftx    (a:real, work:real, cp:real, cm:real, nx, ny, isetup)
      subroutine #  Vectorized Sine Fourier Transform in X
 vsfty    (a:real, work:real, cp:real, cm:real, nx, ny, isetup)
      subroutine #  Vectorized Sine Fourier Transform in Y
+cosqx(a:real,w:real,c:real,nx:integer,ny:integer,isign:integer) subroutine
+cosqy(a:real,w:real,c:real,nx:integer,ny:integer,isign:integer) subroutine
+vcpft(r:real,i:real,n:integer,incp:integer,signp:integer,lenv:integer,
+      lfd:integer) subroutine
 pipe3df  (iwhich, pipeshpe:real, rho:real, phi:real, kxsq:real, kysq:real,
           kzsq:real, attx:real, atty:real, attz:real, filt:real,
           xlen:real, ylen:real, zlen:real, nx, ny, nz, scrtch:real,
