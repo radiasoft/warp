@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.168 $, $Date: 2004/09/15 17:19:51 $
+c@(#) File W3D.F, version $Revision: 3.169 $, $Date: 2004/09/15 21:34:59 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4936,11 +4936,13 @@ c     --- but this passes in the pair 1 and dz which is equivalent.
         gi(iz) = 1.
       enddo
 
-c     --- Kludgy fix for the point nz+1. The getbend routine relies on the
-c     --- internal lattice arrays which only extend up to nz. The point nz+1
-c     --- is outside that range. The fix is to replace nz+1 with nz. Note
-c     --- that this may give incorrect results, but less so than using nz+1
-c     --- which will access garbage out of the array bounds.
+c     --- Kludgy fix for the end point. The getbend routine relies on the
+c     --- internal lattice arrays which only range from 0 to nz. The points
+c     --- 0 and nz+1 are outside that range. The fix is to replace then with
+c     --- the neighboring point inside the internal lattice range. Note
+c     --- that this may give incorrect results, but less so than using
+c     --- garbage out of the array bounds.
+      zz(-1) = zz(0)
       zz(nz+1) = zz(nz)
 
 c     --- Get the bend radius of curvature and residence fraction at the
