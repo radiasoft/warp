@@ -655,9 +655,12 @@ def parallelrestore(fname):
           elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                         'condvolt','icondlxy','icondlz']:
             # --- The conductor data was gathered into one place
-            imin = sum(ncond_p0[:me+1])
-            itriple = array([imin,imin+ncond_p[me]-1,1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+	    if ncond_p[me] > 0:
+              imin = sum(ncond_p0[:me+1])
+              itriple = array([imin,imin+ncond_p[me]-1,1])
+              s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+	    else:
+              s = 'pass'
           elif p == 'f3d' and \
                vname in ['ecndpvph','iecndx','iecndy','iecndz',
                          'ecdelmx','ecdelmy','ecdelmz','ecdelpx',
@@ -665,9 +668,12 @@ def parallelrestore(fname):
                          'ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz',
                          'ecvoltpz','iecndlxy','iecndlz']:
             # --- The conductor data was gathered into one place
-            imin = sum(necndbdy_p0[:me+1])
-            itriple = array([imin,imin+necndbdy_p[me]-1,1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+	    if necndbdy_p[me] > 0:
+              imin = sum(necndbdy_p0[:me+1])
+              itriple = array([imin,imin+necndbdy_p[me]-1,1])
+              s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+	    else:
+              s = 'pass'
           elif p == 'f3d' and \
                vname in ['ocndpvph','iocndx','iocndy','iocndz',
                          'ocdelmx','ocdelmy','ocdelmz','ocdelpx',
@@ -675,9 +681,12 @@ def parallelrestore(fname):
                          'ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz',
                          'ocvoltpz','iocndlxy','iocndlz']:
             # --- The conductor data was gathered into one place
-            imin = sum(nocndbdy_p0[:me+1])
-            itriple = array([imin,imin+nocndbdy_p[me]-1,1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+	    if nocndbdy_p[me] > 0:
+              imin = sum(nocndbdy_p0[:me+1])
+              itriple = array([imin,imin+nocndbdy_p[me]-1,1])
+              s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+	    else:
+              s = 'pass'
           elif p == 'w3d' and vname in ['rho']:
             imin = top.izslave[1+me]
             itriple = array([0,w3d.nx,1,0,w3d.ny,1,imin,imin+w3d.nz,1])
