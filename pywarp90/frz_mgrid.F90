@@ -1,4 +1,4 @@
-!     Last change:  JLV   6 Aug 2003    3:37 pm
+!     Last change:  JLV  18 Aug 2003    4:09 pm
 #include "top.h"
 
 module multigrid_common
@@ -57,10 +57,9 @@ TYPE(BNDtype), POINTER :: b
     WRITE(0,*) 'enter init_basegrid'
   endif
 
-  IF(associated(basegrid)) return
-
-  basegrid => NewGRIDType()
+  IF(.not. associated(basegrid)) call set_basegrid()
   bg => basegrid
+
   inveps0 = 1./eps0
 
   IF(solvergeom==Zgeom) then
@@ -491,31 +490,6 @@ TYPE(GRIDtype), pointer :: gup
 
   return
 end subroutine del_grid
-
-subroutine mk_grids_ptr()
-implicit none
-INTEGER :: i
-
-  IF(ALLOCATED(grids_ptr)) DEALLOCATE(grids_ptr)
-  ALLOCATE(grids_ptr(ngrids))
-  do i = 1, ngrids
-    NULLIFY(grids_ptr(i)%grid)
-  end do
-  call assign_grids_ptr(basegrid)
-!  write(o_line,*) 'call gchange ', ngrids
-!  call remark(trim(o_line))
-  call gchange("FRZmgrid",0)
-!  write(o_line,*) 'done.'
-!  call remark(trim(o_line))
-  do i = 1, ngrids
-    nrg(i) = grids_ptr(i)%grid%nr
-    nzg(i) = SIZE(grids_ptr(i)%grid%loc_part,2)-1
-    drg(i) = grids_ptr(i)%grid%dr
-    dzg(i) = grids_ptr(i)%grid%dz
-  END do
-
-  return
-end subroutine mk_grids_ptr
 
 RECURSIVE subroutine assign_grids_ptr(grid)
 implicit none
@@ -7601,6 +7575,47 @@ USE multigridrz
 
  return
 END subroutine del_base
+
+subroutine set_basegrid()
+USE multigridrz
+  IF(associated(basegrid)) return
+
+  basegrid => NewGRIDType()
+
+  return
+end subroutine set_basegrid
+
+subroutine nullify_basegrid()
+USE multigridrz
+  NULLIFY(basegrid)
+  return
+end subroutine nullify_basegrid
+
+subroutine mk_grids_ptr()
+USE multigridrz
+implicit none
+INTEGER :: i
+
+  IF(ALLOCATED(grids_ptr)) DEALLOCATE(grids_ptr)
+  ALLOCATE(grids_ptr(ngrids))
+  do i = 1, ngrids
+    NULLIFY(grids_ptr(i)%grid)
+  end do
+  call assign_grids_ptr(basegrid)
+!  write(o_line,*) 'call gchange ', ngrids
+!  call remark(trim(o_line))
+  call gchange("FRZmgrid",0)
+!  write(o_line,*) 'done.'
+!  call remark(trim(o_line))
+  do i = 1, ngrids
+    nrg(i) = grids_ptr(i)%grid%nr
+    nzg(i) = SIZE(grids_ptr(i)%grid%loc_part,2)-1
+    drg(i) = grids_ptr(i)%grid%dr
+    dzg(i) = grids_ptr(i)%grid%dz
+  END do
+
+  return
+end subroutine mk_grids_ptr
 
 subroutine add_subgrid(id,nr,nz,dr,dz,rmin,zmin,guard_min_r,guard_max_r,guard_min_z,guard_max_z,l_verbose)
 USE multigridrz
