@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.32 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.33 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -2971,7 +2971,7 @@ c     --- sizes from the input coordinates.
       ymax = maxval(y)
       dy = y(2) - y(1)
       if (dy /= 0.) then
-        ny = maxval(int((y - ymin)/dy))
+        ny = maxval(nint((y - ymin)/dy))
       else
         dy = 1.
         ny = 0
@@ -2980,7 +2980,7 @@ c     --- sizes from the input coordinates.
       dx = x(ny+2) - x(1)
       xmin = minval(x)
       xmax = maxval(x)
-      nx = maxval(int((x - xmin)/dx))
+      nx = maxval(nint((x - xmin)/dx))
 
       delmx = LARGEPOS
       delpx = LARGEPOS
@@ -3533,13 +3533,14 @@ c The notation is that a negative distance means that the point is inside.
       real(kind=8):: xt(n),yt(n),zt(n)
       real(kind=8):: mxt(n),pxt(n),myt(n),pyt(n),mzt(n),pzt(n)
 
+
 c     --- Very kludgy code to extract number of grid points and cell
 c     --- sizes from the input coordinates.
       ymin = minval(y)
       ymax = maxval(y)
       dy = y(2) - y(1)
       if (dy /= 0.) then
-        ny = maxval(int((y - ymin)/dy))
+        ny = maxval(nint((y - ymin)/dy))
       else
         dy = 1.
         ny = 0
@@ -3548,7 +3549,7 @@ c     --- sizes from the input coordinates.
       xmin = minval(x)
       xmax = maxval(x)
       dx = x(ny+2) - x(1)
-      nx = maxval(int((x - xmin)/dx))
+      nx = maxval(nint((x - xmin)/dx))
 
       delmx = LARGEPOS
       delpx = LARGEPOS
