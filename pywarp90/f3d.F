@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.104 $, $Date: 2004/05/04 21:47:58 $
+c@(#) File F3D.M, version $Revision: 3.105 $, $Date: 2004/05/06 17:40:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -563,106 +563,23 @@ c ----------------------------------------------------------------------------
 c  Do the forward transform
 c ----------------------------------------------------------------------------
 
-      if (iwhich <= 0 .or. iwhich == 2) then
+      if (iwhich <= 0 .or. iwhich == 2 .or. iwhich == 12) then
 
 c  take z-sequence of sine-sine transforms in the x-y plane.
 c  We should multitask this loop, being careful about scratch
 c  which is (nx+1)*(ny+1) per task.  For now, we use the plane
 c  at nz for the single task's scratch, and so need no other.
+
+        if  (iwhich <= 0 .or. iwhich == 2) then
+c         --- Include normalization factor for the z transform
+          norm = .5*dz
+        else
+          norm = 1.
+        endif
 
       if (l4symtry) then
 c       factor of .5dx for cosqx and .5*dy for cosqy
-        norm = .125*dx*dy*dz
-!$OMP DO
-        do iz = 0, nz-1
-c          --- Normalize the array
-           do iy = 0, ny-1
-             do ix = 0, nx-1
-               a(ix,iy,iz) = a(ix,iy,iz) * norm
-             enddo
-           enddo
-c          --- Invoke the transform routines for the current z-slice
-           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,-1)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
-        enddo
-!$OMP END DO
-      else if (l2symtry) then
-c       factor of .5*dy for cosqy
-        norm = .25*dx*dy*dz
-!$OMP DO
-        do iz = 0, nz-1
-c          --- Normalize the array
-           do iy = 0, ny-1
-             do ix = 0, nx-1
-               a(ix,iy,iz) = a(ix,iy,iz) * norm
-             enddo
-           enddo
-c          --- Invoke the transform routines for the current z-slice
-           call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,-1)
-        enddo
-!$OMP END DO
-      else
-        norm = .5 * dx * dy * dz
-!$OMP DO
-        do iz = 0, nz-1
-c          --- Normalize the array
-           do iy = 0, ny-1
-             do ix = 0, nx-1
-               a(ix,iy,iz) = a(ix,iy,iz) * norm
-             enddo
-           enddo
-c          --- Invoke the transform routines for the current z-slice
-           call vsftx(a(0,0,iz),xywork,w(icpx),w(icmx),nx,ny,0)
-           call vsfty(a(0,0,iz),xywork,w(icpy),w(icmy),nx,ny,0)
-        enddo
-!$OMP END DO
-      endif
-
-c  Here we perform the periodic transforms in z, two y's at a time.
-c  We vectorize over x.  No scratch space is needed.
-
-#ifdef MPIPARALLEL
-c  For parallel code, transpose is used to redistribute phi so each axial
-c  line is on a single processor.
-        call transpose(nx,ny,nz,a,nx_tran,ny_tran)
-        transposed = .true.
-        if (ny_tran == 1) then
-c         --- If ny_tran = 1, i.e. there is only one y line, pass nx as
-c         --- zero so that transform done on 2 y lines actually
-c         --- transforms on 2 x's next to each other.
-          call vpftz(0,nx_tran,nzfull,a,0.,0,1,nx_tran+1,zwork)
-        else
-c         --- Otherwise pass normal arguments to vpftz
-          call vpftz(nx_tran,ny_tran-1,nzfull,a,0.,1,0,(nx_tran+1)*ny_tran,
-     &               zwork)
-        endif
-c       --- Transpose back if only doing forward transform.
-        if (iwhich == 2) then
-          call transposei(nx,ny,nz,a,nx_tran,ny_tran)
-          transposed = .false.
-        endif
-#else
-c  For the serial code, vpftz is called with normal arguments.
-        call vpftz(nx,ny,nz,a,0.,1,1,(nx+1)*(ny+1),zwork)
-#endif
-
-      endif
-
-c ----------------------------------------------------------------------------
-c  Do the forward transform in x and y only
-c ----------------------------------------------------------------------------
-
-      if (iwhich == 12) then
-
-c  take z-sequence of sine-sine transforms in the x-y plane.
-c  We should multitask this loop, being careful about scratch
-c  which is (nx+1)*(ny+1) per task.  For now, we use the plane
-c  at nz for the single task's scratch, and so need no other.
-
-      if (l4symtry) then
-c       factor of .5*dx for cosqx and .5*dy for cosqy
-        norm = .25*dx*dy
+        norm = .25*dx*dy*norm
 !$OMP DO
         do iz = izmin,izmax
 c          --- Normalize the array
@@ -678,7 +595,7 @@ c          --- Invoke the transform routines for the current z-slice
 !$OMP END DO
       else if (l2symtry) then
 c       factor of .5*dy for cosqy
-        norm = .5*dx*dy
+        norm = .5*dx*dy*norm
 !$OMP DO
         do iz = izmin,izmax
 c          --- Normalize the array
@@ -693,7 +610,7 @@ c          --- Invoke the transform routines for the current z-slice
         enddo
 !$OMP END DO
       else
-        norm = dx * dy
+        norm = dx*dy*norm
 !$OMP DO
         do iz = izmin,izmax
 c          --- Normalize the array
@@ -715,14 +632,23 @@ c ----------------------------------------------------------------------------
 c  Do the forward transform in z only
 c ----------------------------------------------------------------------------
 
-      if (iwhich == 10) then
+      if (iwhich <= 0 .or. iwhich == 2 .or. iwhich == 10) then
 
-        norm = .5 * dz
+c  Here we perform the periodic transforms in z, two y's at a time.
+c  We vectorize over x.  No scratch space is needed.
+
+        if (iwhich <= 0 .or. iwhich == 2) then
+c         --- Normalization factor include above in the transver transform
+          norm = 0.
+        else
+          norm = .5*dz
+        endif
 
 #ifdef MPIPARALLEL
 c  For parallel code, transpose is used to redistribute phi so each axial
 c  line is on a single processor.
         call transpose(nx,ny,nz,a,nx_tran,ny_tran)
+        transposed = .true.
 
         if (ny_tran == 1) then
 c         --- If there is only one y line, pass nx as zero so that
@@ -735,7 +661,11 @@ c         --- pass normal arguments
      &               zwork)
         endif
 
-        call transposei(nx,ny,nz,a,nx_tran,ny_tran)
+        if (iwhich == 2 .or. iwhich == 10) then
+c         --- Transpose back if not doing the full field solve
+          call transposei(nx,ny,nz,a,nx_tran,ny_tran)
+          transposed = .false.
+        endif
 #else
 c  Make call for serial code.
         call vpftz(nx,ny,nz,a,norm,1,1,(nx+1)*(ny+1),zwork)
@@ -838,9 +768,16 @@ c ----------------------------------------------------------------------------
 c  Do the inverse transform
 c ----------------------------------------------------------------------------
 
-      if (iwhich <= 0 .or. iwhich == 5) then
+      if (iwhich <= 0 .or. iwhich == 5 .or. iwhich == 11) then
 
 c  Inverse transform and shift in z.
+
+        if (iwhich <= 0 .or. iwhich == 5) then
+c         --- Normalization factor is include below in the transverse transform
+          norm = 0.
+        else
+          norm = 1./lzfull
+        endif
 
 #ifdef MPIPARALLEL
 c  For parallel code, inverse transpose is used to redistribute phi into its
@@ -849,200 +786,6 @@ c  original format.
           call transpose(nx,ny,nz,a,nx_tran,ny_tran)
           transposed = .true.
         endif
-        if (ny_tran == 1) then
-c         --- If there is only one y line, pass nx as zero so that
-c         --- transform done on 2 y lines actually transforms on 2 x's
-c         --- next to each other.
-          call vpftzi(0,nx_tran,nzfull,a,0.,0,1,nx_tran+1,zwork)
-        else
-c         --- pass normal arguments
-          call vpftzi(nx_tran,ny_tran-1,nzfull,a,0.,1,0,(nx_tran+1)*ny_tran,
-     &                zwork)
-        endif
-
-c       --- Rearrange phi again back to original arrangement.
-        call transposei(nx,ny,nz,a,nx_tran,ny_tran)
-        transposed = .false.
-
-#else
-c  Call for serial version
-        call vpftzi(nx,ny,nz,a,0.,1,1,(nx+1)*(ny+1),zwork)
-#endif
-
-c  inverse transform and normalization in xy.  We should multitask this loop.
-
-      if (l4symtry) then
-c       factor of .25/lx for cosqx and .25/ly for cosqy
-        norm = .0625/(lx*ly*lzfull)
-!$OMP DO
-        do iz = 0, nz-1
-c          --- Invoke the inverse transform routines for the current z-slice
-           call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
-c          --- set boundary elements to zero
-           do iy = 0, ny
-             a(nx,iy,iz) = 0.
-           enddo
-           do ix = 0, nx-1
-             a(ix,ny,iz) = 0.
-           enddo
-c          --- Normalize the array
-           do iy = 0, ny-1
-             do ix = 0, nx-1
-               a(ix,iy,iz) = a(ix,iy,iz) * norm
-             enddo
-           enddo
-        enddo
-!$OMP END DO
-      else if (l2symtry) then
-c       factor of 2./lx for vsftx and .25/ly for cosqy
-        norm = .5/(lx*ly*lzfull)
-!$OMP DO
-        do iz = 0, nz-1
-c          --- Invoke the inverse transform routines for the current z-slice
-           call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
-           call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
-c          --- set boundary elements to zero
-           do iy = 0, ny
-             a(0 ,iy,iz) = 0.
-             a(nx,iy,iz) = 0.
-           enddo
-           do ix = 1, nx-1
-             a(ix,ny,iz) = 0.
-           enddo
-c          --- Normalize the array
-           do iy = 0, ny-1
-             do ix = 0, nx-1
-               a(ix,iy,iz) = a(ix,iy,iz) * norm
-             enddo
-           enddo
-        enddo
-!$OMP END DO
-      else
-        norm = 4. / (lx * ly * lzfull)
-!$OMP DO
-        do iz = 0, nz-1
-c          --- Invoke the transform routines
-           call vsfty ( a(0,0,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
-           call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
-c          --- Normalize the array, and set boundary elements to zero
-           do ix = 0, nx-1
-             a(ix,0 ,iz) = 0.
-             a(ix,ny,iz) = 0.
-           enddo
-           do iy = 1, ny-1
-             a(0 ,iy,iz) = 0.
-             a(nx,iy,iz) = 0.
-             do ix = 1, nx-1
-               a(ix,iy,iz) = a(ix,iy,iz) * norm
-             enddo
-           enddo
-         enddo
-!$OMP END DO
-      endif
-
-c  Enforce periodic bc's in z (now done in w3d)
-
-      endif
-
-c ----------------------------------------------------------------------------
-c  Do the inverse transform in x and y only
-c ----------------------------------------------------------------------------
-
-      if (iwhich == 13) then
-
-c  inverse transform and normalization in xy.  We should multitask this loop.
-
-        if (l4symtry) then
-c         factor of .25/lx for cosqx and .25/ly for cosqy
-          norm = .0625/(lx*ly)
-!$OMP DO
-          do iz = izmin,izmax
-c            --- Invoke the inverse transform routines for the current z-slice
-             call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
-             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
-c            --- set boundary elements to zero
-             do iy = 0, ny
-               a(nx,iy,iz) = 0.
-             enddo
-             do ix = 0, nx-1
-               a(ix,ny,iz) = 0.
-             enddo
-c            --- Normalize the array
-             do iy = 0, ny-1
-               do ix = 0, nx-1
-                 a(ix,iy,iz) = a(ix,iy,iz) * norm
-               enddo
-             enddo
-          enddo
-!$OMP END DO
-        else if (l2symtry) then
-c         factor of .25/ly for cosqy
-          norm = .5/(lx*ly)
-!$OMP DO
-          do iz = izmin,izmax
-c            --- Invoke the inverse transform routines for the current z-slice
-             call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
-             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
-c            --- set boundary elements to zero
-             do iy = 0, ny
-               a(0 ,iy,iz) = 0.
-               a(nx,iy,iz) = 0.
-             enddo
-             do ix = 1, nx-1
-               a(ix,ny,iz) = 0.
-             enddo
-c            --- Normalize the array
-             do iy = 0, ny-1
-               do ix = 0, nx-1
-                 a(ix,iy,iz) = a(ix,iy,iz) * norm
-               enddo
-             enddo
-          enddo
-!$OMP END DO
-        else
-          norm = 4. / (lx * ly)
-!$OMP DO
-          do iz = izmin,izmax
-c            --- Invoke the transform routines
-             call vsfty ( a(0,0,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
-             call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
-c            --- Normalize the array, and set boundary elements to zero
-             do ix = 0, nx-1
-               a(ix,0 ,iz) = 0.
-               a(ix,ny,iz) = 0.
-             enddo
-             do iy = 1, ny-1
-               a(0 ,iy,iz) = 0.
-               a(nx,iy,iz) = 0.
-               do ix = 1, nx-1
-                 a(ix,iy,iz) = a(ix,iy,iz) * norm
-               enddo
-             enddo
-           enddo
-!$OMP END DO
-
-        endif
-
-c  Enforce periodic bc's in z (resets nz plane to clear out garbage left over
-c  from that plane being used as scratch space) (now done in w3d)
-
-      endif
-c ----------------------------------------------------------------------------
-c  Do the inverse transform only in z
-c ----------------------------------------------------------------------------
-
-      if (iwhich == 11) then
-
-c  Inverse transform and shift in z.
-
-        norm = 1./lzfull
-
-#ifdef MPIPARALLEL
-c  For parallel code, inverse transpose is used to redistribute phi into its
-c  original format.
-        call transpose(nx,ny,nz,a,nx_tran,ny_tran)
-
         if (ny_tran == 1) then
 c         --- If there is only one y line, pass nx as zero so that
 c         --- transform done on 2 y lines actually transforms on 2 x's
@@ -1056,50 +799,12 @@ c         --- pass normal arguments
 
 c       --- Rearrange phi again back to original arrangement.
         call transposei(nx,ny,nz,a,nx_tran,ny_tran)
+        transposed = .false.
 
 #else
-c  Serial version
+c  Call for serial version
         call vpftzi(nx,ny,nz,a,norm,1,1,(nx+1)*(ny+1),zwork)
 #endif
-
-      endif
-
-c ----------------------------------------------------------------------------
-c  The usual fieldsolve has been completed.  Utility operations follow.
-c ----------------------------------------------------------------------------
-
-c ----------------------------------------------------------------------------
-c  Un-filter in k space
-c ----------------------------------------------------------------------------
-
-      if (iwhich == 8) then
-
-#ifdef MPIPARALLEL
-c  For parallel code, at this point, the data will never be transposed.
-        iz = my_index*nz
-        call unattenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1)
-#else
-c  Call for Serial version
-        call unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,1,1)
-#endif
-
-      endif
-
-c ----------------------------------------------------------------------------
-c  Multiply by k^2 factor, in contrast to the usual division.
-c  This is useful if one wants to recreate rho from phi.
-c ----------------------------------------------------------------------------
-
-      if (iwhich == 9) then
-
-#ifdef MPIPARALLEL
-c  For parallel code, at this point, the data will never be transposed.
-        iz = my_index*nz
-        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1)
-#else
-c  Call for Serial version
-#endif
-        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1)
 
       endif
 
@@ -1143,6 +848,132 @@ c  Serial version
 #endif
 
       endif
+c ----------------------------------------------------------------------------
+c  Do the inverse transform in x and y only
+c ----------------------------------------------------------------------------
+
+      if (iwhich <= 0 .or. iwhich == 5 .or. iwhich == 13) then
+
+        if (iwhich <= 0 .or. iwhich == 5) then
+c         --- Include the normalization term for the z transform
+          norm = 1./lzfull
+        else
+          norm = 1.
+        endif
+
+        if (l4symtry) then
+c         factor of .25/lx for cosqx and .25/ly for cosqy
+          norm = .0625/(lx*ly)*norm
+!$OMP DO
+          do iz = izmin,izmax
+c            --- Invoke the inverse transform routines for the current z-slice
+             call cosqx(a(0,0,iz),xywork,w(icox),nx,ny,0,1)
+             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
+c            --- set boundary elements to zero
+             do iy = 0, ny
+               a(nx,iy,iz) = 0.
+             enddo
+             do ix = 0, nx-1
+               a(ix,ny,iz) = 0.
+             enddo
+c            --- Normalize the array
+             do iy = 0, ny-1
+               do ix = 0, nx-1
+                 a(ix,iy,iz) = a(ix,iy,iz) * norm
+               enddo
+             enddo
+          enddo
+!$OMP END DO
+        else if (l2symtry) then
+c         factor of 2./lx for vsftx and .25/ly for cosqy
+          norm = .5/(lx*ly)*norm
+!$OMP DO
+          do iz = izmin,izmax
+c            --- Invoke the inverse transform routines for the current z-slice
+             call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
+             call cosqy(a(0,0,iz),xywork,w(icoy),nx,ny,0,1)
+c            --- set boundary elements to zero
+             do iy = 0, ny
+               a(0 ,iy,iz) = 0.
+               a(nx,iy,iz) = 0.
+             enddo
+             do ix = 1, nx-1
+               a(ix,ny,iz) = 0.
+             enddo
+c            --- Normalize the array
+             do iy = 0, ny-1
+               do ix = 0, nx-1
+                 a(ix,iy,iz) = a(ix,iy,iz) * norm
+               enddo
+             enddo
+          enddo
+!$OMP END DO
+        else
+          norm = 4. / (lx * ly)*norm
+!$OMP DO
+          do iz = izmin,izmax
+c            --- Invoke the transform routines
+             call vsfty ( a(0,0,iz), xywork, w(icpy), w(icmy), nx, ny, 0)
+             call vsftx ( a(0,0,iz), xywork, w(icpx), w(icmx), nx, ny, 0)
+c            --- Normalize the array, and set boundary elements to zero
+             do ix = 0, nx-1
+               a(ix,0 ,iz) = 0.
+               a(ix,ny,iz) = 0.
+             enddo
+             do iy = 1, ny-1
+               a(0 ,iy,iz) = 0.
+               a(nx,iy,iz) = 0.
+               do ix = 1, nx-1
+                 a(ix,iy,iz) = a(ix,iy,iz) * norm
+               enddo
+             enddo
+           enddo
+!$OMP END DO
+        endif
+
+c  Enforce periodic bc's in z (now done in w3d)
+
+      endif
+
+c ----------------------------------------------------------------------------
+c  The usual fieldsolve has been completed.  Utility operations follow.
+c ----------------------------------------------------------------------------
+
+c ----------------------------------------------------------------------------
+c  Un-filter in k space
+c ----------------------------------------------------------------------------
+
+      if (iwhich == 8) then
+
+#ifdef MPIPARALLEL
+c  For parallel code, at this point, the data will never be transposed.
+        iz = my_index*nz
+        call unattenuate(nx,ny,nz,a,attx,atty,attz(iz),ikxmin,ikymin,1,1)
+#else
+c  Call for Serial version
+        call unattenuate(nx,ny,nz,a,attx,atty,attz,ikxmin,ikymin,1,1)
+#endif
+
+      endif
+
+c ----------------------------------------------------------------------------
+c  Multiply by k^2 factor, in contrast to the usual division.
+c  This is useful if one wants to recreate rho from phi.
+c ----------------------------------------------------------------------------
+
+      if (iwhich == 9) then
+
+#ifdef MPIPARALLEL
+c  For parallel code, at this point, the data will never be transposed.
+        iz = my_index*nz
+        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq(iz),ikxmin,ikymin,1,1)
+#else
+c  Call for Serial version
+#endif
+        call phitorho(nx,ny,nz,a,kxsq,kysq,kzsq,ikxmin,ikymin,1,1)
+
+      endif
+
 
 !$OMP END PARALLEL
 
