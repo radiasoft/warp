@@ -12,7 +12,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.147 2005/02/26 01:33:53 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.148 2005/03/08 18:27:31 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1415,7 +1415,7 @@ Mouse actions:
   if returnpalette: return (newrr,newgg,newbb)
 
 #############################################################################
-def makepalette(filename,points,comments=None,ncolor=240):
+def makepalette(filename,points,comments=None,ncolor=200):
   """
 Creates a palette. A list of rgb points is input and the palette created
 varies between the points.
@@ -1448,7 +1448,7 @@ white by the first point, [1,1,1,1].
   r += [nint(points[-1][0]*255)]
   g += [nint(points[-1][1]*255)]
   b += [nint(points[-1][2]*255)]
-  assert len(r) <= 240,'There can be at most 240 colors'
+  assert len(r) <= 200,'There can be at most 200 colors'
   writepalette(filename,r,g,b,comments)
 
 #############################################################################
@@ -1546,7 +1546,7 @@ def ppmultispecies(pp,args,kw):
       return false
     else:
       if js == -1: js = range(top.ns)
-      color = kw.get('color',range(0,240,240/len(js)))
+      color = kw.get('color',range(0,200,200/len(js)))
       for i in xrange(len(js)):
         kw['js'] = js[i]
         kw['color'] = color[i]
