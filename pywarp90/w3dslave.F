@@ -1,6 +1,6 @@
 #include "top.h"
 c===========================================================================
-c W3DSLAVE.M, version $Revision: 1.19 $, $Date: 2003/05/29 17:02:42 $
+c W3DSLAVE.M, version $Revision: 1.20 $, $Date: 2003/06/20 00:16:04 $
 c Slave routines associated with the W3D package.
 c===========================================================================
 c===========================================================================
@@ -281,7 +281,9 @@ c     --- Save global array sizes
 c---------------------------------------------------------------------------
 c     --- Reset local values
       npmax = npmax/nslaves*1.1
-      injctspc = injctspc/nslaves*1.1
+      if (injctspc > 0) then
+        injctspc = max(1,int(injctspc/nslaves*1.1))
+      endif
       nz = nzfsslave(my_index)
       nzp = nzpslave(my_index)
       zmminp = zmminglobal + izpslave(my_index)*dz
