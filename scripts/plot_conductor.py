@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.33 2002/06/26 00:53:59 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.34 2002/07/10 21:50:22 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -90,9 +90,9 @@ def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     except:
       level = ones(f3d.ncndmax)
   else:
-    lx = array([])
-    ly = array([])
-    lz = array([])
+    lx = array([1])
+    ly = array([1])
+    lz = array([1])
     ixc = array([])
     iyc = array([])
     izc = array([])
