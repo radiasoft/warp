@@ -4,132 +4,190 @@ Modified by DPG
 
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.2 2003/01/16 20:21:00 dave Exp $"
+from warp import *
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.3 2003/01/22 17:14:11 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
   print VPythonobjects.__doc__
 
 ##########################################################################
-from visual import *
-import warp
 
 class VisualModel:
-    def __init__(self,twoSided=true,scene=None,title='VPython',vrange=None):
-        self.triangles = []
-        self.colors = []
-        self.normals = []
-        self.twoSided = twoSided  # add every face twice with opposite normals
-        if vrange is not None:
-          autoscale = 0
-          uniform = 1
-        else:
-          vrange = [10.,10.,10.]
-          autoscale = 1
-          uniform = 1
-        if scene is None:
-          self.scene = display(exit=0,width=500,height=500,
-                               uniform=uniform,title=title,
-                               autoscale=autoscale,range=vrange)
-        else:
-          self.scene = scene
+  def __init__(self,twoSided=1,scene=None,title='Visualization',vrange=None,
+                    viewer='OpenDX'):
+    self.viewer = viewer
+    self.triangles = []
+    self.colors = []
+    self.normals = []
+    self.twoSided = twoSided  # add every face twice with opposite normals
+    if vrange is not None:
+      autoscale = 0
+      uniform = 1
+    else:
+      vrange = [10.,10.,10.]
+      autoscale = 1
+      uniform = 1
+    self.title = title
+    self.scene = scene
 
-    def Display(self):
-        self.frame = frame(display=self.scene)
-        if not self.colors: self.colors=None
-        self.model = faces(frame=self.frame,pos=self.triangles,
-                           normal=self.normals,color=self.colors,
-                           display=self.scene)
+  def Display(self):
 
-    def FacetedTriangle(self, v1, v2, v3, color=None):
-        """Add a triangle to the model, apply faceted shading automatically"""
-        try:
-            normal = norm( cross(v2-v1, v3-v1) )
-        except:
-            normal = vector(0,0,0)
-        for v in (v1,v2,v3):
-            self.triangles.append(v)
-            if color is not None: self.colors.append(color)
-            self.normals.append(normal)
-            #self.model.append( pos=v, color=color, normal=normal )
-        if self.twoSided:
-            for v in (v1,v3,v2):
-                #self.model.append( pos=v, color=color, normal=-normal )
-                self.triangles.append(v)
-                if color is not None: self.colors.append(color)
-                self.normals.append(-normal)
+    if self.viewer == 'VPython':
+      import visual
 
-    def FacetedPolygon(self, v, color=None):
-        """Appends a planar polygon of any number of vertices to the model,
-           applying faceted shading automatically."""
-        for t in range(len(v)-2):
-            self.FacetedTriangle( v[0], v[t+1], v[t+2] ,color=color)
+      if self.scene is None:
+        self.scene = visual.display(exit=0,width=500,height=500,
+                                    uniform=uniform,title=self.title,
+                                    autoscale=autoscale,range=vrange)
 
-    def DoSmoothShading(self):
-        """Change a faceted model to smooth shaded, by averaging normals at
-        coinciding vertices.
-        
-        This is a very slow and simple smooth shading
-        implementation which has to figure out the connectivity of the
-        model and does not attempt to detect sharp edges.
+      self.frame = visual.frame(display=self.scene)
+      if not self.colors: self.colors=None
+      self.model = visual.faces(frame=self.frame,pos=self.triangles,
+                                normal=self.normals,color=self.colors,
+                                display=self.scene)
+    else:
+      import pyOpenDX
 
-        It attempts to work even in two-sided mode where there are two
-        opposite normals at each vertex.  It may fail somehow in pathological
-        cases. """
+      n = len(self.triangles)
+      p = array(self.triangles).astype(Float32)
+      ss = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
+      pyOpenDX.DXAddArrayData(ss,0,n,p)
 
-        pos = self.model.pos
-        normal = self.model.normal
+      normals = array(self.normals)
+      nn = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
+      pyOpenDX.DXAddArrayData(nn,0,n,normals.astype(Float32))
+      pyOpenDX.DXSetStringAttribute(nn,'dep','positions')
 
-        vertex_map = {}  # vertex position -> vertex normal
-        vertex_map_backface = {}
-        for i in range( len(pos) ):
-            tp = tuple(pos[i])
-            old_normal = vertex_map.get( tp, (0,0,0) )
-            if dot(old_normal, normal[i]) >= 0:
-                vertex_map[tp] = normal[i] + old_normal
-            else:
-                vertex_map_backface[tp] = normal[i] + vertex_map_backface.get(tp, (0,0,0))
+      if not self.colors: colors = array(n*[[0.5,0.7,1.0]])
+      else:               colors = array(self.colors)
+      co = pyOpenDX.DXNewArray(pyOpenDX.TYPE_FLOAT,pyOpenDX.CATEGORY_REAL,1,3)
+      pyOpenDX.DXAddArrayData(co,0,n,colors.astype(Float32))
+      pyOpenDX.DXSetStringAttribute(co,'dep','positions')
 
-        for i in range( len(pos) ):
-            tp = tuple(pos[i])
-            if dot(vertex_map[tp], normal[i]) >= 0:
-                normal[i] = vertex_map[tp] and norm( vertex_map[ tp ] )
-            else:
-                normal[i] = vertex_map_backface[tp] and norm(vertex_map_backface[tp] )
+      connections = arange(n)
+      connections.shape = (nint(n/3),3)
+      cc = pyOpenDX.DXNewArray(pyOpenDX.TYPE_INT,pyOpenDX.CATEGORY_REAL,1,3)
+      pyOpenDX.DXAddArrayData(cc,0,nint(n/3),connections.astype(Int))
+      pyOpenDX.DXSetStringAttribute(cc,'ref','positions')
+      pyOpenDX.DXSetStringAttribute(cc,'element type','triangles')
+      pyOpenDX.DXSetStringAttribute(cc,'dep','connections')
 
-    def DrawNormal(self, scale):
-        pos = self.model.pos
-        normal = self.model.normal
-        for i in range(len(pos)):
-            arrow(pos=pos[i], axis=normal[i]*scale)
+      ff = pyOpenDX.DXNewField()
+      pyOpenDX.DXSetComponentValue(ff,'positions',ss)
+      pyOpenDX.DXSetComponentValue(ff,'colors',co)
+      pyOpenDX.DXSetComponentValue(ff,'normals',nn)
+      pyOpenDX.DXSetComponentValue(ff,'connections',cc)
+      #pyOpenDX.DXSetComponentValue(ff,'box',bo)
+      pyOpenDX.DXEndField(ff)
+
+      pyOpenDX.DXReference(ff)
+      minput = {'object':ff}
+      moutput = ['camera']
+      (camera,) = pyOpenDX.DXCallModule('AutoCamera',minput,moutput)
+
+      pyOpenDX.DXReference(camera)
+      pyOpenDX.DXImage(ff,camera,self.title)
+
+      pyOpenDX.DXDelete(camera)
+      pyOpenDX.DXDelete(ff)
+
+
+  def FacetedTriangle(self, v1, v2, v3, color=None):
+    """Add a triangle to the model, apply faceted shading automatically"""
+    normal = self.Norm( self.Cross(v2-v1, v3-v1) )
+    for v in (v1,v2,v3):
+      self.triangles.append(v)
+      if color is not None: self.colors.append(color)
+      self.normals.append(normal)
+      #self.model.append( pos=v, color=color, normal=normal )
+    if self.twoSided:
+      for v in (v1,v3,v2):
+        #self.model.append( pos=v, color=color, normal=-normal )
+        self.triangles.append(v)
+        if color is not None: self.colors.append(color)
+        self.normals.append(-normal)
+
+  def FacetedPolygon(self, v, color=None):
+    """Appends a planar polygon of any number of vertices to the model,
+       applying faceted shading automatically."""
+    for t in range(len(v)-2):
+      self.FacetedTriangle( v[0], v[t+1], v[t+2] ,color=color)
+
+  def DoSmoothShading(self):
+    """Change a faceted model to smooth shaded, by averaging normals at
+    coinciding vertices.
+    
+    This is a very slow and simple smooth shading
+    implementation which has to figure out the connectivity of the
+    model and does not attempt to detect sharp edges.
+
+    It attempts to work even in two-sided mode where there are two
+    opposite normals at each vertex.  It may fail somehow in pathological
+    cases. """
+
+    pos = self.model.pos
+    normal = self.model.normal
+
+    vertex_map = {}  # vertex position -> vertex normal
+    vertex_map_backface = {}
+    for i in range( len(pos) ):
+      tp = tuple(pos[i])
+      old_normal = vertex_map.get( tp, (0,0,0) )
+      if dot(old_normal, normal[i]) >= 0:
+        vertex_map[tp] = normal[i] + old_normal
+      else:
+        vertex_map_backface[tp] = normal[i] + vertex_map_backface.get(tp, (0,0,0))
+
+    for i in range( len(pos) ):
+      tp = tuple(pos[i])
+      if dot(vertex_map[tp], normal[i]) >= 0:
+        normal[i] = vertex_map[tp] and self.Norm( vertex_map[ tp ] )
+      else:
+        normal[i] = vertex_map_backface[tp] and self.Norm(vertex_map_backface[tp] )
+
+  def DrawNormal(self, scale):
+    pos = self.model.pos
+    normal = self.model.normal
+    for i in range(len(pos)):
+      arrow(pos=pos[i], axis=normal[i]*scale)
+
+  def Cross(self,v1,v2):
+    return array([v1[1]*v2[2] - v1[2]*v2[1],
+                  v1[2]*v2[0] - v1[0]*v2[2],
+                  v1[0]*v2[1] - v1[1]*v2[0]])
+
+  def Norm(self,v):
+    magv = sqrt(sum(v**2))
+    return v/magv
 
 ########################################################################
 class VisualMesh (VisualModel):
-    """
+  """
 xvalues, yvalues, zvalues: 2-D arrays containing the coordinates and data
-twoSided=true: when true, surface is two sided
+twoSided=1: when true, surface is two sided
 color=None: can be specified as an [r,g,b] list
 scene=None: an already existing display scene. When None, create a new one.
 title='Mesh': Display title - only used when new scene created.
-    """
-    def __init__(self, xvalues, yvalues, zvalues,
-                 twoSided=true,color=None,
-                 scene=None,title=None,vrange=None):
-        if not title: title = 'Mesh'
-        VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
-                                  vrange=vrange)
+  """
+  def __init__(self, xvalues, yvalues, zvalues,
+               twoSided=1,color=None,
+               scene=None,title=None,vrange=None):
+    if not title: title = 'Mesh'
+    VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
+                              vrange=vrange)
 
-        points = zeros( xvalues.shape + (3,), Float )
-        points[...,0] = xvalues
-        points[...,1] = yvalues
-        points[...,2] = zvalues
+    points = zeros( xvalues.shape + (3,), Float )
+    points[...,0] = xvalues
+    points[...,1] = yvalues
+    points[...,2] = zvalues
 
-        for i in range(zvalues.shape[0]-1):
-            for j in range(zvalues.shape[1]-1):
-                self.FacetedPolygon([points[i,j], points[i,j+1],
-                                     points[i+1,j+1], points[i+1,j]],
-                                    color=color)
-        self.Display()
+    for i in range(zvalues.shape[0]-1):
+      for j in range(zvalues.shape[1]-1):
+        self.FacetedPolygon([points[i,j], points[i,j+1],
+                             points[i+1,j+1], points[i+1,j]],
+                            color=color)
+    self.Display()
 
 ########################################################################
 class VisualRevolution(VisualModel):
@@ -137,7 +195,7 @@ class VisualRevolution(VisualModel):
 Visualize surface of revolution
   """
   def __init__(self,srfrv,zzmin,zzmax,nz=20,nth=20,xoff=0,yoff=0,zoff=0,
-                    twoSided=true,color=None,
+                    twoSided=1,color=None,
                     scene=None,title=None,vrange=None):
     if not title: title = 'Surface of revolution'
     VisualModel.__init__(self,twoSided=twoSided,scene=scene,title=title,
