@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.39 2002/07/09 16:17:26 dave Exp $"
+warp_version = "$Id: warp.py,v 1.40 2002/09/20 22:08:04 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -62,6 +62,10 @@ except ImportError:
   pass
 try:  # herpy hasn't been installed on all machines yet
   from herpy import *
+except ImportError:
+  pass
+try:  # chopy hasn't been installed on all machines yet
+  from chopy import *
 except ImportError:
   pass
 from ctl import *
