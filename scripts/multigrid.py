@@ -69,11 +69,14 @@ class MultiGrid(object):
         self.bounds[4] = self.bound0
         self.bounds[5] = self.boundnz
         if self.l2symtry:
-          self.bounds[2] = 1
+          self.bounds[2] = neumann
+          if self.boundxy == periodic: self.bounds[3] = neumann
           if self.forcesymmetries: self.ymmin = 0.
         elif self.l4symtry:
-          self.bounds[0] = 1
-          self.bounds[2] = 1
+          self.bounds[0] = neumann
+          self.bounds[2] = neumann
+          if self.boundxy == periodic: self.bounds[1] = neumann
+          if self.boundxy == periodic: self.bounds[3] = neumann
           if self.forcesymmetries: self.xmmin = 0.
           if self.forcesymmetries: self.ymmin = 0.
 
@@ -91,10 +94,13 @@ class MultiGrid(object):
         self.pbounds[4] = self.pbound0
         self.pbounds[5] = self.pboundnz
         if self.l2symtry:
-          self.pbounds[2] = 1
+          self.pbounds[2] = reflect
+          if self.pboundxy == periodic: self.pbounds[3] = reflect
         elif self.l4symtry:
-          self.pbounds[0] = 1
-          self.pbounds[2] = 1
+          self.pbounds[0] = reflect
+          self.pbounds[2] = reflect
+          if self.pboundxy == periodic: self.pbounds[1] = reflect
+          if self.pboundxy == periodic: self.pbounds[3] = reflect
 
     # --- If there are any remaning keyword arguments, raise an error.
     assert len(kw.keys()) == 0,"Bad keyword arguemnts %s"%kw.keys()
