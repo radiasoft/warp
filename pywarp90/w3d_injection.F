@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.9 $, $Date: 2004/11/05 18:55:50 $
+c@(#) File w3d_injection.F, version $Revision: 1.10 $, $Date: 2004/11/23 19:15:15 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -40,7 +40,7 @@ c injection.  The third part is for space-charge limited injection.
       integer(ISZ):: inj_is
       real(kind=8):: rnpinjct,rnn,t
       real(kind=8):: rr,ehalf,vnorm,zs,wxx,wyy,aa,az,wz,xm,ym,zm,rrr,rri
-      real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,vznorm,rp
+      real(kind=8):: rnorm,rnrev,qoverm,const,dxi,dyi,dzi,vznorm,rp,ai,bi
       real(kind=8):: clightsqi
       real(kind=8):: zinj,ainj,ainji,ainjmini,binj,binji,binjmini
       real(kind=8):: apinj,bpinj,rinj,rinji,xpinj,ypinj,vzinj
@@ -55,6 +55,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8):: zmin_tmp, zmax_tmp, r_tmp, theta_tmp, xt_tmp, yt_tmp
       integer(ISZ):: spreadx, spready
       integer(ISZ):: ixmin,ixmax,iymin,iymax
+      logical(ISZ):: linj_cell
       real(kind=8),pointer:: xx(:),yy(:),zz(:),ux(:),uy(:),uz(:),id(:),gg(:)
       real(kind=8),pointer:: ex(:),ey(:),ez(:),bx(:),by(:),bz(:)
       real(kind=8),pointer:: bendres(:),bendradi(:),mask(:)
@@ -617,10 +618,19 @@ c               --- Mesh location relative to source center
                 xm = inj_xmmin(ij) + ix*inj_dx
                 ym = inj_ymmin(ij) + iy*inj_dy
 
-c               --- Only inject particles if within 2 grid cells of the source
-                if ((xm*(binj+2.*inj_dy))**2 +
-     &              (ym*(ainj+2.*inj_dx))**2 >
-     &              ((ainj+2.*inj_dx)*(binj+2.*inj_dy))**2) cycle
+c               --- Check whether the cell is within the injection area.
+c               --- This depends on whether the source is elliptical or
+c               --- rectangular.
+                ai = (ainj+2.*inj_dx)
+                bi = (binj+2.*inj_dy)
+                if(linj_rectangle) then
+                  linj_cell = (abs(xm) <= ai) .and. (abs(ym) <= bi)
+                else
+                  linj_cell = ((xm*bi)**2 + (ym*ai)**2) <= (ai*bi)**2
+                endif
+
+                if (.not. linj_cell) cycle
+
                 zmin_tmp = minval(inj_grid(max(0,ix-1):min(inj_nx,ix+1),
      &                                     max(0,iy-1):min(inj_ny,iy+1),ij)
      &                                     + zinj)
@@ -736,15 +746,20 @@ c                   --- if within injection source load it, else skip it
                       xp(ii)=xm
                       yp(ii)=ym
                     end if
-c                   --- Check if particle is within the elliptical annulus
-c                   --- with outer major and minor radii of ainject and
-c                   --- binject and inner radii of ainjmin and binjmin.
-c                   --- The signs of x and y are adjusted to be in the
-c                   --- first quadrant.
-                    if ((xp(ii)*ainji)**2 + (yp(ii)*binji)**2 > 1.) cycle
-                    if(solvergeom/=Zgeom .and. ainjmin(ij)>0.  .and. binjmin(ij)>0.) then
-                       if((xp(ii)*ainjmini)**2 + (yp(ii)*binjmini)**2 < 1.) cycle
-                    end if
+c                   --- Check if particle is within the rectangular or
+c                   --- elliptical annulus with outer major and minor
+c                   --- size of ainject and binject and inner size of
+c                   --- ainjmin and binjmin.
+                    if(linj_rectangle) then
+                      if (abs(xp(ii)) > ainji .or. abs(yp(ii) > binji)) cycle
+                      if (abs(xp(ii)) < ainjmin(ij) .or.
+     &                    abs(yp(ii)) < binjmin(ij)) cycle
+                    else
+                      if ((xp(ii)*ainji)**2 + (yp(ii)*binji)**2 > 1.) cycle
+                      if ((xp(ii)*binjmin(ij))**2 + (yp(ii)*ainjmin(ij))**2 <
+     &                    ainjmin(ij)*binjmin(ij)) cycle
+                    endif
+
                     if(l_inj_regular) then
                       if(l_inj_rz) then
                         r_tmp=abs(xp(ii))
@@ -1732,6 +1747,7 @@ c     --- as a function of the transverse coordinates.
       real(kind=8):: xl,yl,xu,yu,x1,x2,txl,tyl,txu,tyu
       real(kind=8):: ainji,binji
       real(kind=8):: area
+      logical(ISZ):: linj_cell
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1753,9 +1769,19 @@ c       --- Loop over transverse plane.
 c           --- transverse coordinate relative to center of source
             xx = ix*inj_dx + inj_xmmin(ij)
             yy = iy*inj_dy + inj_ymmin(ij)
+            
+c           --- Check whether the cell is within the injection area.
+c           --- This depends on whether the source is elliptical or
+c           --- rectangular.
+            if(linj_rectangle) then
+              linj_cell = (abs(xx) <= ai_dx) .and. (abs(yy) <= bi_dy)
+            else
+              linj_cell = ((xx*bi_dy)**2 + (yy*ai_dx)**2) <= (ai_dx*bi_dy)**2
+            endif
+
 c           --- If the point is within source or guard cells, calculate both
 c           --- axial distance and angle of curvature.
-            if ((xx*bi_dy)**2 + (yy*ai_dx)**2 - (ai_dx*bi_dy)**2 <= 0.) then
+            if (linj_cell) then
 c             --- Write the expression for inj_grid so as to avoid
 c             --- subtraction of large, similar numbers when rinject is large.
 c             inj_grid(ix,iy,ij) = (rinject(ij) -
