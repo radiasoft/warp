@@ -1258,6 +1258,15 @@ Fetches the potential, given a list of positions
     ix1,iy1,iz1 = lower - self.fulllower
     ix2,iy2,iz2 = upper - self.fulllower + 1
     return self.rho[ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
+  def getselfe(self,lower=None,upper=None,comp=slice(None),r=1):
+    if lower is None: lower = self.lower
+    if upper is None: upper = self.upper
+    if type(comp) == StringType:
+      comp = ['x','y','z'].index(comp)
+    ix1,iy1,iz1 = lower - self.fulllower
+    ix2,iy2,iz2 = upper - self.fulllower + 1
+    selfe = MultiGrid.getselfe(self,recalculate=0)
+    return selfe[comp,ix1:ix2:r,iy1:iy2:r,iz1:iz2:r]
   def getchilddomains(self,lower,upper,upperedge=0):
     if self.childdomains is None:
       #self.childdomains = fzeros(1+self.dims)  + self.blocknumber
@@ -1299,62 +1308,80 @@ not given, it uses f3d.mgmaxiters.
     for child in self.children:
       child.setmgmaxiters(mgmaxiters)
 
-  def getphislicemax(self,ip,idim):
+  def arraysliceoperation(self,ip,idim,arraystring,op,opnd,null,comp=None):
+    """
+Applies the operator to the array at the specified plane. The blocks only
+contribute within their domains of ownership.
+    """
+    # --- Each block only needs to check once
+    if not self.islastcall(): return
+    # --- Don't do anything if the ip is outside the block
+    if ip < self.fulllower[idim] or ip > self.fullupper[idim]: return null
+    # --- Get the appropriate slice of phi and the childdomains array
+    ii = [slice(None),slice(None),slice(None)]
+    ii[idim] = ip - self.fulllower[idim]
+    ix,iy,iz = ii
+    if arraystring == 'phi': getarray = self.getphi
+    elif arraystring == 'rho': getarray = self.getrho
+    elif arraystring == 'selfe': getarray = self.getselfe
+    if comp is None: array = getarray(self.fulllower,self.fullupper)
+    else:            array = getarray(self.fulllower,self.fullupper,comp)
+    c = self.getchilddomains(self.fulllower,self.fullupper,1)
+    # --- Skip points that don't self doesn't own
+    if c is not None:
+      array = where(c[ix,iy,iz]==self.blocknumber,array[ix,iy,iz],null)
+    # --- Find the max of self's and the children's phi
+    result = opnd(array)
+    for child in self.children:
+      ipc = ip*child.refinement
+      cresult = child.arraysliceoperation(ipc,idim,arraystring,op,opnd,null,
+                                          comp)
+      result = op(result,cresult)
+    return result
+
+  def getphislicemin(self,ip,idim):
     """
 Finds the minimum value of phi at the specified plane. The blocks only
 contribute within their domains of ownership.
     """
-    # --- Each block only needs to check once
-    if not self.islastcall(): return
-    # --- Don't do anything if the ip is outside the block
-    # --- Note that lower and upper are used instead of fulllower and
-    # --- fullupper since only the same phi that would be applied to the 
-    # --- particles is considered.
-    if ip < self.lower[idim] or ip > self.upper[idim]: return -largepos
-    # --- Get the appropriate slice of phi and the childdomains array
-    ii = [slice(None),slice(None),slice(None)]
-    ii[idim] = ip - self.fulllower[idim]
-    ix,iy,iz = ii
-    ppp = self.getphi(self.lower,self.upper)
-    c = self.getchilddomains(self.lower,self.upper,1)
-    # --- Skip points that don't self doesn't own
-    if c is not None:
-      ppp = where(c[ix,iy,iz]==self.blocknumber,ppp[ix,iy,iz],-largepos)
-    # --- Find the max of self's and the children's phi
-    phimax = maxnd(ppp)
-    for child in self.children:
-      ipc = ip*child.refinement
-      phimax = max(phimax,child.getphislicemax(ipc,idim))
-    return phimax
+    return self.arraysliceoperation(ip,idim,'phi',min,minnd,+largepos)
 
-  def getphislicemin(self,ip,idim):
+  def getphislicemax(self,ip,idim):
     """
 Finds the maximum value of phi at the specified plane. The blocks only
 contribute within their domains of ownership.
     """
-    # --- Each block only needs to check once
-    if not self.islastcall(): return
-    # --- Don't do anything if the ip is outside the block
-    # --- Note that lower and upper are used instead of fulllower and
-    # --- fullupper since only the same phi that would be applied to the 
-    # --- particles is considered.
-    if ip < self.lower[idim] or ip > self.upper[idim]: return +largepos
-    # --- Get the appropriate slice of phi and the childdomains array
-    ii = [slice(None),slice(None),slice(None)]
-    ii[idim] = ip - self.fulllower[idim]
-    ix,iy,iz = ii
-    ppp = self.getphi(self.lower,self.upper)
-    c = self.getchilddomains(self.lower,self.upper,1)
-    # --- Skip points that don't self doesn't own
-    if c is not None:
-      ppp = where(c[ix,iy,iz]==self.blocknumber,ppp[ix,iy,iz],+largepos)
-    phimin = minnd(ppp)
-    # --- Find the min of self's and the children's phi
-    for child in self.children:
-      ipc = ip*child.refinement
-      phimin = min(phimin,child.getphislicemin(ipc,idim))
-    return phimin
+    return self.arraysliceoperation(ip,idim,'phi',max,maxnd,-largepos)
 
+  def getrhoslicemin(self,ip,idim):
+    """
+Finds the minimum value of rho at the specified plane. The blocks only
+contribute within their domains of ownership.
+    """
+    return self.arraysliceoperation(ip,idim,'rho',min,minnd,+largepos)
+
+  def getrhoslicemax(self,ip,idim):
+    """
+Finds the maximum value of rho at the specified plane. The blocks only
+contribute within their domains of ownership.
+    """
+    return self.arraysliceoperation(ip,idim,'rho',max,maxnd,-largepos)
+
+  def getselfeslicemin(self,ip,idim,comp):
+    """
+Finds the minimum value of selfe at the specified plane. The blocks only
+contribute within their domains of ownership.
+    """
+    return self.arraysliceoperation(ip,idim,'selfe',min,minnd,
+                                    +largepos,comp)
+
+  def getselfeslicemax(self,ip,idim,comp):
+    """
+Finds the maximum value of selfe at the specified plane. The blocks only
+contribute within their domains of ownership.
+    """
+    return self.arraysliceoperation(ip,idim,'selfe',max,maxnd,
+                                    -largepos,comp)
 
   #--------------------------------------------------------------------------
   # --- The following are used for plotting.
@@ -1384,8 +1411,18 @@ be plotted.
     if self is self.root:
       cmin = kw.get('cmin',None)
       cmax = kw.get('cmax',None)
-      if cmin is None: cmin = self.getphislicemin(ip,idim)
-      if cmax is None: cmax = self.getphislicemax(ip,idim)
+
+      if kw.get('plotselfe',0):
+        comp = kw.get('comp',2)
+        if cmin is None: cmin = self.getselfeslicemin(ip,idim,comp)
+        if cmax is None: cmax = self.getselfeslicemax(ip,idim,comp)
+      elif kw.get('plotrho',0):
+        if cmin is None: cmin = self.getrhoslicemin(ip,idim)
+        if cmax is None: cmax = self.getrhoslicemax(ip,idim)
+      else:
+        if cmin is None: cmin = self.getphislicemin(ip,idim)
+        if cmax is None: cmax = self.getphislicemax(ip,idim)
+
       kw['cmin'] = cmin
       kw['cmax'] = cmax
 
@@ -1507,6 +1544,63 @@ be plotted.
     if not selfonly:
       for child in self.children:
         child.plrhoy(ix*child.refinement,iz*child.refinement,color=color)
+
+  def plselfez(self,comp=2,ix=None,iy=None,color='fg',selfonly=0,withguard=1):
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      iz = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      iz = slice(self.lower[2] - self.fulllower[2],
+                 self.upper[2] - self.fulllower[2] + 1)
+    if ix < lower[0]: return
+    if iy < lower[1]: return
+    if ix > upper[0]: return
+    if iy > upper[1]: return
+    plg(self.selfe[comp,ix-self.fulllower[0],iy-self.fulllower[1],iz],
+        self.zmesh[iz],color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plselfez(comp,ix*child.refinement,iy*child.refinement,
+                       color=color,withguard=withguard)
+
+  def plselfex(self,comp=2,iy=None,iz=None,color='fg',selfonly=0,withguard=1):
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      ix = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      ix = slice(self.lower[0] - self.fulllower[0],
+                 self.upper[0] - self.fulllower[0] + 1)
+    if iy < lower[1]: return
+    if iz < lower[2]: return
+    if iy > upper[1]: return
+    if iz > upper[2]: return
+    plg(self.selfe[comp,ix,iy-self.fulllower[1],iz-self.fulllower[2]],
+                   self.xmesh[ix],color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plselfex(comp,iy*child.refinement,iz*child.refinement,
+                       color=color,withguard=withguard)
+
+  def plselfey(self,comp=2,ix=None,iz=None,color='fg',selfonly=0,withguard=1):
+    if withguard:
+      lower,upper = self.fulllower,self.fullupper
+      iy = slice(None)
+    else:
+      lower,upper = self.lower,self.upper
+      iy = slice(self.lower[1] - self.fulllower[1],
+                 self.upper[1] - self.fulllower[1] + 1)
+    if ix < lower[0]: return
+    if iz < lower[2]: return
+    if ix > upper[0]: return
+    if iz > upper[2]: return
+    plg(self.selfe[comp,ix-self.fulllower[0],iy,iz-self.fulllower[2]],
+        self.ymesh[iy],color=color)
+    if not selfonly:
+      for child in self.children:
+        child.plselfey(comp,ix*child.refinement,iz*child.refinement,
+                       color=color,withguard=withguard)
 
   def drawbox(self,ip=None,idim=2,withguards=1,color=[],selfonly=0):
     if len(color)==0: color=['red', 'green', 'blue', 'cyan', 'magenta','yellow']
