@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.80 $, $Date: 2002/11/06 01:46:58 $
+c@(#) File W3D.M, version $Revision: 3.81 $, $Date: 2002/11/06 17:15:04 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1792,7 +1792,7 @@ c        --- tan(alpha) / alpha algorithm
       end
 c=========================================================================== 
       subroutine xpush3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,ddt)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np
       real(kind=8):: ddt
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
@@ -1814,7 +1814,7 @@ c  Advance particle positions
       end
 c===========================================================================
       subroutine xpusht3d(np,xp,yp,zp,uxp,uyp,uzp,gaminv,dtp)
-      use Subtimers
+      use Subtimers3d
       integer(ISZ):: np
       real(kind=8):: xp(np),yp(np),zp(np),uxp(np),uyp(np),uzp(np),gaminv(np)
       real(kind=8):: dtp(np)
@@ -5047,8 +5047,8 @@ c          inj_dy = 1.
       inj_dz0 = inj_dz
 c      if(inj_nz>1) inj_dz = inj_d(1)*inj_dz/(2.**(inj_nz-1))
       if(inj_nz>1) inj_dz = inj_d(1)*inj_dz/(real(inj_nz-1)*2.**(1./3.)+real(2-inj_nz))**3
-      if(ninject>1) then
-        write(0,*) 'inj_nz>1 not yet supported for ninject>1'
+      if(inj_nz > 1 .and. ninject > 1) then
+        write(0,*) 'inj_nz > 1 not yet supported for ninject > 1'
         write(0,*) 'stop'
         stop
       end if
