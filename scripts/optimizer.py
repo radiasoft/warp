@@ -1,6 +1,6 @@
 from warp import *
 import RandomArray
-optimizer_version = "$Id: optimizer.py,v 1.7 2002/09/04 21:06:46 dave Exp $"
+optimizer_version = "$Id: optimizer.py,v 1.8 2003/02/24 16:15:47 dave Exp $"
 """
 This file contains several optimizers, including:
   Spsa: Simultaneaous Perturbation Stochastic Approximation
@@ -37,6 +37,10 @@ Constructor arguments:
   - paramsmax=+1.e+36: Max value of the parameters. This can be a function
                        which takes the params as its single argument and returns
                        the parameter maxes.
+  - paramsave=None: average value of each parameter, used to scale params
+                    internally to improve performance
+  - paramsrms=None: RMS values of each parameter, used to scale params
+                    internally to improve performance
   - verbose=0: when true, print diagnostics
   - errmax=+1.e36: Maximum acceptable value of the error. If the error
                    is greater, the iteration is skipped.
@@ -46,7 +50,8 @@ Constructor arguments:
   """
 
   def __init__(self,nparams,params,func,lossfunc,c1,a1,a2=100.,
-               paramsmin=None,paramsmax=None,verbose=0,errmax=top.largepos,
+               paramsmin=None,paramsmax=None,paramsave=None,paramsrms=None,
+               verbose=0,errmax=top.largepos,
                saveparamhist=false):
     """
 Creates an instance of the Spsa class.
@@ -67,38 +72,60 @@ Creates an instance of the Spsa class.
     else:                 self.paramsmin = paramsmin
     if paramsmax is None: self.paramsmax = +ones(nparams)*1.e+36
     else:                 self.paramsmax = paramsmax
+    self.paramsave = paramsave
+    self.paramsrms = paramsrms
+    self.params = self.scaledparams(self.params)
     if self.saveparamhist: self.hparam = []
   def ak(self):
     return self.a1/(self.k+self.a2)**0.602
   def ck(self):
     return self.c1/self.k**.101
+  def scaledparams(self,params=None):
+    if params is None: params = self.params
+    if self.paramsave is not None: params = params - self.paramsave
+    if self.paramsrms is not None: params = params/self.paramsrms
+    return params
+  def unscaledparams(self,params=None):
+    if params is None: params = self.params
+    if self.paramsrms is not None: params = params*self.paramsrms
+    if self.paramsave is not None: params = params + self.paramsave
+    return params
   def gradloss(self):
   # --- Calculated the approximated gradient of the loss function.
     deltak = (2*RandomArray.random(self.nparams)).astype(Int) - .5
-    self.func(self.constrainparams(self.params + self.ck()*deltak))
+    nextparams = self.constrainparams(self.params + self.ck()*deltak)
+    nextparams = self.unscaledparams(nextparams)
+    self.func(nextparams)
     lplus = self.loss()
-    self.func(self.constrainparams(self.params - self.ck()*deltak))
+    nextparams = self.constrainparams(self.params - self.ck()*deltak)
+    nextparams = self.unscaledparams(nextparams)
+    self.func(nextparams)
     lminus = self.loss()
     return (lplus - lminus)/(2.*self.ck()*deltak)
   def printerror(self,err):
     print "iterations = %d  error = %e %e" %(self.k,self.loss(),self.loss()/err)
   def printparams(self):
-    for i in xrange(self.nparams): print '%15.12e'%self.params[i]
+    pp = self.unscaledparams(self.params)
+    for i in xrange(self.nparams): print '%15.12e'%pp[i]
   def getparamsmin(self,params):
     """Returns the min limit of parameters."""
-    if type(self.paramsmin) is FunctionType: return self.paramsmin(params)
+    if type(self.paramsmin) is FunctionType:
+      return self.paramsmin(self.unscaledparams(params))
     return self.paramsmin
   def getparamsmax(self,params):
     """Returns the max limit of parameters."""
-    if type(self.paramsmax) is FunctionType: return self.paramsmax(params)
+    if type(self.paramsmax) is FunctionType:
+      return self.paramsmax(self.unscaledparams(params))
     return self.paramsmax
   def constrainparams(self,params):
     "Makes sure all params are within bounds"
+    params = self.unscaledparams(params)
     params = maximum(params,self.getparamsmin(params))
     params = minimum(params,self.getparamsmax(params))
+    params = self.scaledparams(params)
     return params
 
-  def iter(self,err=1.e-9,imax=10000,verbose=None,kprint=10,kprintlogmax=3):
+  def iter(self,err=1.e-9,imax=100,verbose=None,kprint=10,kprintlogmax=3):
     """
 Function to do iterations.
   - err=err=1.e-9: Convergence criteria
@@ -117,13 +144,14 @@ Function to do iterations.
       if verbose:
         print "ak = %f" % self.ak()
         print "gradloss = " + repr(dp)
-        print "params = " + repr(self.params)
+        print "params = " + repr(self.unscaledparams(self.params))
       oldparams = self.params + 0.
       self.params = self.constrainparams(self.params - self.ak()*dp)
-      if verbose: print "new params = " + repr(self.params)
+      if verbose: print "new params = " + repr(self.unscaledparams(self.params))
       # --- Calculate function with new params
-      if self.saveparamhist: self.hparam.append(self.params)
-      self.func(self.params)
+      if self.saveparamhist:
+        self.hparam.append(self.unscaledparams(self.params))
+      self.func(self.unscaledparams(self.params))
       # --- Check if loss it too great.
       if self.loss() > self.errmax:
         self.params = oldparams
