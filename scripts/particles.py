@@ -21,7 +21,7 @@ numbers)
 """
 from warp import *
 import random
-particles_version = "$Id: particles.py,v 1.17 2004/05/26 17:18:14 dave Exp $"
+particles_version = "$Id: particles.py,v 1.18 2004/09/09 20:48:04 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -275,6 +275,8 @@ from window 0, getting all of the live partilces (whose uzp != 0).
 #-------------------------------------------------------------------------
 # The following return a specific coordinate of the selected particles
 # More documetation added after they are declared.
+# --- The checks of the len of ii are there in case the particle arrays
+# --- are unallocated.
 #-------------------------------------------------------------------------
 def getn(iw=0,gather=1,bcast=0,**kw):
   "Returns number of particles in selection."
@@ -285,130 +287,186 @@ def getn(iw=0,gather=1,bcast=0,**kw):
 def getx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X positions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.xp,ii)
+  if len(ii) > 0:
+    result = take(top.xp,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def gety(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y positions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.yp,ii)
+  if len(ii) > 0:
+    result = take(top.yp,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z positions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.zp,ii)
+  if len(ii) > 0:
+    result = take(top.zp,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getr(iw=0,gather=1,bcast=0,**kw):
   "Returns the R postions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
+  if len(ii) > 0:
+    result = sqrt(take(top.xp,ii)**2 + take(top.yp,ii)**2)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def gettheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the theta postions."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = arctan2(take(top.yp,ii),take(top.xp,ii))
+  if len(ii) > 0:
+    result = arctan2(take(top.yp,ii),take(top.xp,ii))
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getvx(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uxp*top.gaminv,ii)
+  if len(ii) > 0:
+    result = take(top.uxp,ii)*take(top.gaminv,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getvy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uyp*top.gaminv,ii)
+  if len(ii) > 0:
+    result = take(top.uyp,ii)*take(top.gaminv,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getvz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uzp*top.gaminv,ii)
+  if len(ii) > 0:
+    result = take(top.uzp,ii)*take(top.gaminv,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getvr(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-  result = take(top.uxp,ii)*cos(tt) + take(top.uyp,ii)*sin(tt)
+  if len(ii) > 0:
+    tt = arctan2(take(top.yp,ii),take(top.xp,ii))
+    result = take(top.uxp,ii)*cos(tt) + take(top.uyp,ii)*sin(tt)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getvtheta(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity."
   ii = selectparticles(iw=iw,kwdict=kw)
-  tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-  result = -take(top.uxp,ii)*sin(tt) + take(top.uyp,ii)*cos(tt)
+  if len(ii) > 0:
+    tt = arctan2(take(top.yp,ii),take(top.xp,ii))
+    result = -take(top.uxp,ii)*sin(tt) + take(top.uyp,ii)*cos(tt)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getux(iw=0,gather=1,bcast=0,**kw):
   "Returns the X momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uxp,ii)
+  if len(ii) > 0:
+    result = take(top.uxp,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getuy(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uyp,ii)
+  if len(ii) > 0:
+    result = take(top.uyp,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getuz(iw=0,gather=1,bcast=0,**kw):
   "Returns the Z momentum over mass."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uzp,ii)
+  if len(ii) > 0:
+    result = take(top.uzp,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getxp(iw=0,gather=1,bcast=0,**kw):
   "Returns the X velocity over the Z velocity (X')."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uxp,ii)/take(top.uzp,ii)
+  if len(ii) > 0:
+    result = take(top.uxp,ii)/take(top.uzp,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getyp(iw=0,gather=1,bcast=0,**kw):
   "Returns the Y velocity over the Z velocity (Y')."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.uyp,ii)/take(top.uzp,ii)
+  if len(ii) > 0:
+    result = take(top.uyp,ii)/take(top.uzp,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getrp(iw=0,gather=1,bcast=0,**kw):
   "Returns the radial velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
-  tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-  result = (take(top.uxp,ii)*cos(tt)+take(top.uyp,ii)*sin(tt))/take(top.uzp,ii)
+  if len(ii) > 0:
+    tt = arctan2(take(top.yp,ii),take(top.xp,ii))
+    result = ((take(top.uxp,ii)*cos(tt)+take(top.uyp,ii)*sin(tt))/
+              take(top.uzp,ii))
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def gettp(iw=0,gather=1,bcast=0,**kw):
   "Returns the azimuthal velocity over the Z velocity (R')."
   ii = selectparticles(iw=iw,kwdict=kw)
-  tt = arctan2(take(top.yp,ii),take(top.xp,ii))
-  result = (-take(top.uxp,ii)*sin(tt)+take(top.uyp,ii)*cos(tt))/take(top.uzp,ii)
+  if len(ii) > 0:
+    tt = arctan2(take(top.yp,ii),take(top.xp,ii))
+    result = ((-take(top.uxp,ii)*sin(tt)+take(top.uyp,ii)*cos(tt))/
+              take(top.uzp,ii))
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
 def getgaminv(iw=0,gather=1,bcast=0,**kw):
   "Returns the gamma inverse."
   ii = selectparticles(iw=iw,kwdict=kw)
-  result = take(top.gaminv,ii)
+  if len(ii) > 0:
+    result = take(top.gaminv,ii)
+  else:
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
@@ -418,9 +476,12 @@ def getpid(iw=0,id=0,gather=1,bcast=0,**kw):
   """
   if top.npmaxi == top.npmax:
     ii = selectparticles(iw=iw,kwdict=kw)
-    result = take(top.pid[:,id],ii)
+    if len(ii) > 0:
+      result = take(top.pid[:,id],ii)
+    else:
+      result = array([],'d')
   else:
-    result = array([])
+    result = array([],'d')
   if lparallel and gather: return gatherarray(result,bcast=bcast)
   else: return result
 #-------------------------------------------------------------------------
