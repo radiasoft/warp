@@ -1,5 +1,5 @@
 from warp import *
-errorcheck_version = "$Id: errorcheck.py,v 1.4 2001/02/08 00:11:27 dave Exp $"
+errorcheck_version = "$Id: errorcheck.py,v 1.5 2001/02/13 02:42:38 dave Exp $"
 
 def errorcheckdoc():
   print "errorcheck: runs all checks described below"
@@ -15,6 +15,7 @@ It is not quaranteed to find all mistakes.
   checksymmetry()
   checkparticleload()
   checkibpush()
+  checkenv()
 
 ############################################################################
 ############################################################################
@@ -114,4 +115,13 @@ def checkibpush():
       raise "ERROR: mmlt elements are defined but top.ibpush is zero"
     if max(top.bgrdzs) > 0. or max(top.bgrdze) > 0.:
       raise "ERROR: bgrd elements are defined but top.ibpush is zero"
+
+############################################################################
+def checkenv():
+  """Make some checks on the input for the envelope code"""
+  # --- If tunezs and ze are set, make sure that they are between zl and zu.
+  if env.tunezs != env.tuneze:
+    if (env.tunezs <  env.zl or env.zu <= env.tunezs or
+        env.tuneze <= env.zl or env.zu <  env.tuneze):
+      raise "ERROR: tunezs and tuneze must be with the zl and zu"
 
