@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.1 $, $Date: 2001/04/20 00:22:07 $
+c@(#) File ENV.M, version $Revision: 3.2 $, $Date: 2001/04/24 21:10:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -1177,7 +1177,7 @@ c=========================================================================
       use ENVvars
       use Match
 c Initialize the envelope match search
-      integer(ISZ):: i,ienv,envexe
+      integer(ISZ):: i
 
 c set up match arrays with initial deltas
       do i=1,7
@@ -1204,7 +1204,7 @@ c (uses same error expression as in the function mtchfunc)
         bp0   = mtch(i,4)
         ibeam = mtch(i,5)
         emit  = mtch(i,6)
-        ienv = envexe()
+        call envexe()
         mtcherrs(i) = abs(deltaa)*wdeltaa + abs(deltaap)*wdeltaap +
      &                abs(deltab)*wdeltab + abs(deltabp)*wdeltabp +
      &                abs(sigx - sig_desr)*wsig
@@ -1227,7 +1227,6 @@ c=========================================================================
 c function that is called by the minimization routine, ameoba, to find
 c a matched envelope solution
       real(kind=8):: xx(6)
-      integer(ISZ):: ienv,envexe
 
 c set envelope values and print them
       a0    = xx(1)
@@ -1241,7 +1240,7 @@ c set envelope values and print them
       print*, 'ibeam = ', ibeam, ' emit = ', emit
 
 c do envelope calculation
-      ienv = envexe()
+      call envexe()
 
 c calculate error
       mtchfunc = abs(deltaa)*wdeltaa + abs(deltaap)*wdeltaap +
