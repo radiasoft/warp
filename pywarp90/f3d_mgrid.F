@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.76 $, $Date: 2004/09/18 04:09:46 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.77 $, $Date: 2004/09/21 21:28:54 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -151,6 +151,7 @@ c     --- converted and expanded for the multigrid solver.
         if (laddconductor) call execuser("calladdconductor")
       endif
       call checkconductors(nx,ny,nz,nzfull,dx,dy,dz,conductors)
+
 
 !$OMP PARALLEL
 !$OMP&PRIVATE(ii,i,k,rs,x,r,ix,iy,iz)
@@ -407,7 +408,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
       real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
-      integer(ISZ):: i,nznew
+      integer(ISZ):: i
       real(kind=8):: ff
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: dxcoarse,dycoarse,dzcoarse
@@ -550,8 +551,8 @@ c         --- Add in resulting error.
 c         --- Find domains in coarser grid
           call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
      &                    nzfull)
-c         --- Set new value of nz
-          nznew = nzfsslave2(my_index)
+c         --- Reset value to corrected one
+          nzcoarse = nzfsslave2(my_index)
 c         --- Difference between starts and ends of coarse and fine grids.
 c         --- Should only be in the range 0-2.
           lparityall = izfsslave - 2*izfsslave2
@@ -569,7 +570,7 @@ c         --- Get processor with which to exchange data on coarse grid
      &                          whosendingleft2,izsendingleft2,
      &                          whosendingright2,izsendingright2)
           if (izfsslave2(my_index) > 0) localbounds2(4) = -1
-          if (izfsslave2(my_index) + nznew < nzfullcoarse) localbounds2(5) = -1
+          if (izfsslave2(my_index) + nzcoarse < nzfullcoarse) localbounds2(5) = -1
 #else
           lparity = 0
           rparity = 0
@@ -2435,6 +2436,29 @@ c       --- Set new value of nz
       end
 c=============================================================================
 c=============================================================================
+c     --- These were only needed to get around a compiler bug that appears
+c     --- to be fixed. They are left in incase they are in fact still needed.
+c=============================================================================
+      integer(ISZ) function getthestupidnumber(conductors)
+      use ConductorTypemodule
+      type(ConductorType):: conductors
+      getthestupidnumber = conductors%interior%n
+      return
+      end
+c=============================================================================
+      integer(ISZ) function getthestupidevennumber(conductors)
+      use ConductorTypemodule
+      type(ConductorType):: conductors
+      getthestupidevennumber = conductors%evensubgrid%n
+      return
+      end
+c=============================================================================
+      integer(ISZ) function getthestupidoddnumber(conductors)
+      use ConductorTypemodule
+      type(ConductorType):: conductors
+      getthestupidoddnumber = conductors%oddsubgrid%n
+      return
+      end
 c=============================================================================
       subroutine setcndtr3dmg(xmmin,ymmin,zmmin,zbeam,zgrid,nx,ny,nz,dx,dy,dz,
      &                        bound0,boundnz,boundxy,l2symtry,l4symtry,
@@ -2456,6 +2480,9 @@ c Makes call to the recursive routine which generates the conductors.
       integer(ISZ):: nzlocal,nx1,ny1,nz1,nzfull1
       integer(ISZ):: globalb0,globalbnz
       integer(ISZ):: localb0,localbnz
+      integer(ISZ):: iiii
+c     integer(ISZ):: getthestupidnumber
+c     integer(ISZ):: getthestupidevennumber,getthestupidoddnumber
 
 c     --- nzfull and zmminglobal are needed, but difficult to pass down from
 c     --- above. But, they can be obtained from local info
@@ -2493,9 +2520,16 @@ c       --- Set the grid parameters for this level
 #endif
 
 c       --- Get the conductors for this level
+c       --- The stupidnumber things help get around a compiler bug.
         ic1 = conductors%interior%n + 1
+c       iiii = getthestupidnumber(conductors)
+        iiii = conductors%interior%n
         ie1 = conductors%evensubgrid%n + 1
+c       iiii = getthestupidevennumber(conductors)
+        iiii = conductors%evensubgrid%n
         io1 = conductors%oddsubgrid%n + 1
+c       iiii = getthestupidoddnumber(conductors)
+        iiii = conductors%oddsubgrid%n
         bound0 = localb0
         boundnz = localbnz
         call setcndtr3d(xmmin,ymmin,zmmin1,zbeam,zgrid,nx1,ny1,nz1,dx1,dy1,dz1,
