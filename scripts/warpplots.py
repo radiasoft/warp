@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.25 2001/02/02 18:02:49 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.26 2001/02/02 19:25:24 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1251,7 +1251,10 @@ if sys.version[:5] != "1.5.1":
 def ppxvx(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots X-Vx. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
-  if type(slope) == type(''): (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
+  if type(slope) == type(''):
+    (slope,offset,vz) = getxxpslope(iw=iw,iz=iz)
+    kw['slope'] = slope*vz
+    kw['offset'] = offset*vz
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
@@ -1259,8 +1262,6 @@ def ppxvx(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
     kw['pplimits'] = (top.xplmin,top.xplmax,
                       top.xpplmin*top.vbeam,top.xpplmax*top.vbeam)
   kw['iz'] = iz
-  kw['slope'] = slope*vz
-  kw['offset'] = offset*vz
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vx vs X","X","Vx",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uxp,ii),take(top.xp,ii),kwdict=kw)
@@ -1271,7 +1272,10 @@ if sys.version[:5] != "1.5.1":
 def ppyvy(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
   "Plots Y-Vy. If slope='auto', it is calculated from the moments."
   checkparticleplotarguments(kw)
-  if type(slope) == type(''): (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
+  if type(slope) == type(''):
+    (slope,offset,vz) = getyypslope(iw=iw,iz=iz)
+    kw['slope'] = slope*vz
+    kw['offset'] = offset*vz
   kw['particles'] = particles
   if 'pplimits' in kw.keys():
     kw['lframe'] = 1
@@ -1279,8 +1283,6 @@ def ppyvy(iw=0,iz=None,slope=0.,offset=0.,particles=1,**kw):
     kw['pplimits'] = (top.yplmin,top.yplmax,
                       top.ypplmin*top.vbeam,top.ypplmax*top.vbeam)
   kw['iz'] = iz
-  kw['slope'] = slope*vz
-  kw['offset'] = offset*vz
   ii = selectparticles(iw=iw,kwdict=kw)
   settitles("Vy vs Y","Y","Vy",pptitleright(iw=iw,kwdict=kw))
   ppgeneric(take(top.uyp,ii)*take(top.gaminv,ii),take(top.yp,ii),kwdict=kw)
