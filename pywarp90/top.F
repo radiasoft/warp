@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.87 $, $Date: 2003/05/01 00:13:19 $
+c@(#) File TOP.M, version $Revision: 3.88 $, $Date: 2003/05/29 16:55:55 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5479,6 +5479,13 @@ c                 (only need if moving backward in time).
 #endif
 c --- end of ifelse above for paralle version.
 
+      return
+      end
+c=============================================================================
+      subroutine reorgparticles()
+#ifdef MPIPARALLEL
+      call reorgparticles_parallel()
+#endif
       return
       end
 c=============================================================================
