@@ -358,7 +358,7 @@ c       Must zero the array first, as applybgrd2 accumulates
         call applybgrd2(np,x,y,np,z,.false.,grdbsq)
       elseif (igradb == 2) then
         do i=1,np
-          twobbrsqi = 2.*bsq(i)/(x(i)**2+y(i)**2)
+          twobbrsqi = 2.*bsq(i)/(x(i)**2+y(i)**2+dksmall)
 c          dbsqdx(i) = twobbrsqi*x(i)
 c          dbsqdy(i) = twobbrsqi*y(i)
 c          dbsqdz(i) = 0.
@@ -374,7 +374,7 @@ c       Warning if bgrdnc isn't 1 or 3, dbsq/dz undefined.
         call applybgrd2(np,x,y,np,z,.false.,grdbsq)
         do i=1,np
 c         Note grdbsq(1,:) directly set by applybgrd2
-          twobbrsqi = 2.*bsq(i)/(x(i)**2+y(i)**2)
+          twobbrsqi = 2.*bsq(i)/(x(i)**2+y(i)**2+dksmall)
           grdbsq(2,i)=twobbrsqi*x(i)
           grdbsq(3,i)=twobbrsqi*y(i)
         enddo
