@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.117 $, $Date: 2004/01/29 20:36:18 $
+c@(#) File TOP.F, version $Revision: 3.118 $, $Date: 2004/02/06 21:37:03 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7619,7 +7619,7 @@ c           conductor generate new particles.
         END if
         call chckpart(is2,0,nbp*npslost(is1),.false.)
         do ip = inslost(is1), inslost(is1)+npslost(is1)-1
-          if (pidlost(ip,npidlostmax) .ne. condid) cycle
+          if (condid > 0 .and. pidlost(ip,npidlostmax) .ne. condid) cycle
           i1 = ins(is2) + nps(is2)
           i2 = i1 + nbp - 1
           do ir = 1, nbp
