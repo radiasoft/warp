@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.6 $, $Date: 2001/04/30 21:03:00 $
+c@(#) File TOP.M, version $Revision: 3.7 $, $Date: 2001/05/15 01:44:19 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -580,7 +580,8 @@ c  Sets dipole field, lattice element 0, flags for bends, etc.
 
       integer(ISZ):: idrft,ib,id,iq,is,ih,ii,ia,im,ip
       integer(ISZ):: nndrft,nnbend,nndipo,nnquad,nnsext 
-      integer(ISZ):: nnhele,nnhmlt,nnaccl,nnemlt,nnmmlt,nnmmlt2,nnbgrd,nnbgrd2,nnpgrd
+      integer(ISZ):: nnhele,nnhmlt,nnaccl,nnemlt,nnmmlt,nnmmlt2
+      integer(ISZ):: nnbgrd,nnbgrd2,nnpgrd
 
 c     Find size of lattice element arrays for resizing 
 c     --- initialize counting variables  
@@ -1532,6 +1533,19 @@ c --- id=nelem, but the loop will exit anyway.
       return
       end
 c=============================================================================
+      subroutine applyuniformfields(np,ez,bz)
+      use InGen
+      integer(ISZ):: np
+      real(kind=8):: ez(np),bz(np)
+
+c Apply uniform fields.
+
+      ez = ez + ez0
+      bz = bz + bz0
+
+      return
+      end
+c=============================================================================
       subroutine applyaccl(np,xp,zp,uzp,gaminv,dtl,dtr,dt,qoverm,ez)
       use Lattice
       use LatticeInternal
@@ -1631,6 +1645,1412 @@ c         --- and Ez - the expression reduces to q*V/m for small V.
         enddo
 
       endif
+
+      return
+      end
+c=============================================================================
+      subroutine applybend(np,xp,uzp,m,q,bendres,bendradi,by)
+      use Lattice
+      use LatticeInternal
+      integer(ISZ):: np
+      real(kind=8):: xp(np),uzp(np),bendres(np),bendradi(np)
+      real(kind=8):: m,q
+      real(kind=8):: by(np)
+
+c Apply transformation for bending field.
+
+      integer(ISZ):: ip
+      real(kind=8):: qi
+
+      if (.not. bends .or. .not. linbend) return
+
+      qi = 1./q
+      do ip = 1,np
+        if (bendres(ip) > 0.) then
+          by(ip) = by(ip) - bendres(ip)*(m*qi)*uzp(ip)/(bendradi(ip) + xp(ip))
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine applydipo(np,zp,uzp,gaminv,dtl,dtr,dt,
+     &                     ex,ey,bx,by)
+      use Lattice
+      use LatticeInternal
+      integer(ISZ):: np
+      real(kind=8):: zp(np),uzp(np),gaminv(np)
+      real(kind=8):: dtl,dtr,dt
+      real(kind=8):: ex(np),ey(np),bx(np),by(np)
+
+c Apply the transverse bending element dipo.
+c Input:
+c   np       number of particles
+c   zp       z position of the particles
+c   uzp      massless momentum of the particles
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+c Output:
+c   ex, ey   dipole electric field
+c   bx, by   dipole magnetic field
+
+      integer(ISZ):: ip,j
+      real(kind=8):: dti,vz,vzi,zl,fl,zr,fr,frac
+
+      if (.not. dipos) return
+
+      dti = 1./(dtr-dtl)
+
+      do ip = 1, np
+        vz = uzp(ip)*gaminv(ip)
+        vzi = 1./dvnz(vz)
+c       --- find z-cell in which particle lies
+        j = max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5)
+c       --- "left" end of velocity advance step
+        zl = zp(ip) + vz * dtl
+        fl = 0.
+        if (zl >= cdipozs(j) .and. zl < cdipoze(j)) fl = 1.
+c       --- "right" end of velocity advance step
+        zr = zp(ip) + vz * dtr
+        fr = 0.
+        if (zr >= cdipozs(j) .and. zr < cdipoze(j)) fr = 1.
+c       --- residence fraction
+        frac = fl
+        if (fl > fr) frac = (cdipoze(j)-zl)*vzi*dti
+        if (fr > fl) frac = (zr-cdipozs(j))*vzi*dti
+c       --- set the field
+        if (frac > 0.) then
+          by(ip) = by(ip) + cdipoby(j) * frac
+          bx(ip) = bx(ip) + cdipobx(j) * frac
+          ex(ip) = ex(ip) + cdipoex(j) * frac
+          ey(ip) = ey(ip) + cdipoey(j) * frac
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine applyemlt(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,
+     &                     ex,ey,ez)
+      use Lattice
+      use LatticeInternal
+      use Mult_data
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np),uzp(np),gaminv(np)
+      real(kind=8):: dtl,dtr,dt
+      real(kind=8):: ex(np),ey(np),ez(np)
+
+c Apply the element emlt.
+c Input:
+c   np       number of particles
+c   xp       x position of the particles
+c   yp       y position of the particles
+c   zp       z position of the particles
+c   uzp      massless momentum of the particles
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+c Output:
+c   ex, ey, ez   electric field
+
+c  See HIF-note 96-10, equation D17, with E replacing B and
+c  -n*psi replacing psi.
+c  Field is of the following form, where n and v are integers, n>0, v>=0
+c    Er = - sum_v  [ E'0v/(2*v+2)*r**(2*v+1) ] +
+c         sum_nv [ Env*(1+2*v/n)*r**(n-1+2*v)*cos(n*(theta-psi)) ]
+c    Et = - sum_nv [ Env*r**(n-1+2*v)*sin(n*(theta-psi)) ]
+c    Ez = sum_v  [ E0v*r**(2*v) ] +
+c         sum_nv [ E'nv/n*r**(2*v+n)*cos(n*(theta-psi)) ]
+c
+c    Ex = Er*cos(theta) - Et*sin(theta)
+c    Ey = Er*sin(theta) + Et*cos(theta)
+c
+c  Note that the total phase angle has two parts, one associated with the
+c  multipole data, and one associated with the lattice element.  This allows
+c  an element with multipoles with different phases to be physically rotated
+c  by changing only one variable, the phase associated with the element.
+c  This allows the same set of data to be used by lattice elements with
+c  different errors in the angle.
+c  Additional scale factors are included in the field, allowing different
+c  elements to use the same data set scaled to different values.  The scale
+c  factors are added together (in mltlocat) and multiply the applied field.
+c  The addition is done in mltlocat so that it is only done once per particle
+c  and not once per particle per multipole component.
+
+      integer(ISZ):: in,ip
+      real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
+      integer(ISZ):: izm(NPARPGRP),imm(NPARPGRP)
+      real(kind=8):: xxx(NPARPGRP),yyy(NPARPGRP),zzz(NPARPGRP),ttt(NPARPGRP)
+      real(kind=8):: wzm(NPARPGRP),rr(NPARPGRP),tt(NPARPGRP)
+      real(kind=8):: mltph(NPARPGRP),mltsf(NPARPGRP)
+      real(kind=8):: tex(NPARPGRP),tey(NPARPGRP),tez(NPARPGRP)
+
+      if (.not. emlts .or. .not. linemlt) return
+
+c     --- Get location of particle relative to moment data.
+      call mltlocat(np,xp,yp,zp,nemltsets,dzemlt,nzemlt,
+     &              nzl,cemltzs,cemltze,cemltph,cemltsf,cemltsc,
+     &              cemltim,cemltox,cemltoy,
+     &              tex,tey,tez,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
+     &              mltph,mltsf,
+     &              zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
+
+c     --- accumulate the E field of the electrostatic multipoles
+      do in=1,nesmult
+        n = emlt_n(in)
+        v = emlt_v(in)
+        if (n == 0) then
+c         --- Apply accelerating field and it's pseudomultipoles.
+          f = 1./(2.*v+2.)
+          do ip=1,np
+            if (imm(ip) > 0) then
+              coeffp = mltsf(ip)*
+     &                   (esemltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                    esemltp(izm(ip)+1,in,imm(ip))*wzm(ip))
+              coeff = mltsf(ip)*
+     &                   (esemlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                    esemlt(izm(ip)+1,in,imm(ip))*wzm(ip))
+              rpow = dvnz(rr(ip))**(2*v)
+              tex(ip) = tex(ip) - coeffp*rpow*f*xxx(ip)
+              tey(ip) = tey(ip) - coeffp*rpow*f*yyy(ip)
+              tez(ip) = tez(ip) + coeff*rpow
+            endif
+          enddo
+        else
+c         --- Apply the rest of the multipoles.
+          f = 1. + 2.*v/n
+          fz = 1./n
+          do ip=1,np
+            if (imm(ip) > 0) then
+              alpha = tt(ip) - mltph(ip) -
+     &                    esemltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                    esemltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
+              alphap =   (esemltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                    esemltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
+              coeff = mltsf(ip)*
+     &                   (esemlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                    esemlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
+              coeffp = mltsf(ip)*
+     &                   (esemltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                    esemltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+              cosnt = cos(n*alpha)
+              sinnt = sin(n*alpha)
+              rpow = dvnz(rr(ip))**(n-2+2*v)
+              tex(ip)=tex(ip) + coeff*rpow*(f*xxx(ip)*cosnt + yyy(ip)*sinnt)
+              tey(ip)=tey(ip) + coeff*rpow*(f*yyy(ip)*cosnt - xxx(ip)*sinnt)
+              tez(ip)=tez(ip) + fz*dvnz(rr(ip))**(n+2*v)*
+     &                          (coeffp*cosnt - alphap*coeff*sinnt)
+            endif
+          enddo
+        endif
+      enddo
+
+c     --- do coordinate transform on fields back to warped coordinates
+      if (bends .and. linbend) then
+        do ip=1,np
+          ex(ip) = ex(ip) + tex(ip)*cos(ttt(ip)) - tez(ip)*sin(ttt(ip))
+          ey(ip) = ey(ip) + tey(ip)
+          ez(ip) = ez(ip) + tex(ip)*sin(ttt(ip)) + tez(ip)*cos(ttt(ip))
+        enddo
+      else
+        do ip=1,np
+          ex(ip) = ex(ip) + tex(ip)
+          ey(ip) = ey(ip) + tey(ip)
+          ez(ip) = ez(ip) + tez(ip)
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine applymmlt(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,
+     &                     bx,by,bz)
+      use Lattice
+      use LatticeInternal
+      use Mult_data
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np),uzp(np),gaminv(np)
+      real(kind=8):: dtl,dtr,dt
+      real(kind=8):: bx(np),by(np),bz(np)
+
+c Apply the element mmlt.
+c Input:
+c   np       number of particles
+c   xp       x position of the particles
+c   yp       y position of the particles
+c   zp       z position of the particles
+c   uzp      massless momentum of the particles
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+c Output:
+c   bx, by, bz   magnetic field
+
+c  See HIF-note 96-10, equation D17, with -n*psi-pi/2 replacing psi.
+c  Field is of the following form, where n and v are integers, n>0, v>=0
+c    Br = - sum_v  [ B'0v/(2*v+2)*r**(2*v+1) ] +
+c         sum_nv [ Bnv*(1+2*v/n)*r**(n-1+2*v)*sin(n*(theta-psi)) ]
+c    Bt = sum_nv [ Bnv*r**(n-1+2*v)*cos(n*(theta-psi)) ]
+c    Bz = sum_v  [ B0v*r**(2*v) ] +
+c         sum_nv [ B'nv/n*r**(2*v)*sin(n*(theta-psi)) ]
+c
+c    Bx = Br*cos(theta) - Bt*sin(theta)
+c    By = Br*sin(theta) + Bt*cos(theta)
+c
+c  Note that the total phase angle has two parts, one associated with the
+c  multipole data, and one associated with the lattice element.  This allows
+c  an element with multipoles with different phases to be physically rotated
+c  by changing only one variable, the phase associated with the element.
+c  This allows the same set of data to be used by lattice elements with
+c  different errors in the angle.
+c  Additional scale factors are included in the field, allowing different
+c  elements to use the same data set scaled to different values.  The scale
+c  factors are added together (in mltlocat) and multiply the applied field.
+c  The addition is done in mltlocat so that it is only done once per particle
+c  and not once per particle per multipole component.
+
+      integer(ISZ):: in,ip
+      real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
+      integer(ISZ):: izm(NPARPGRP),imm(NPARPGRP)
+      real(kind=8):: xxx(NPARPGRP),yyy(NPARPGRP),zzz(NPARPGRP),ttt(NPARPGRP)
+      real(kind=8):: wzm(NPARPGRP),rr(NPARPGRP),tt(NPARPGRP)
+      real(kind=8):: mltph(NPARPGRP),mltsf(NPARPGRP)
+      real(kind=8):: tbx(NPARPGRP),tby(NPARPGRP),tbz(NPARPGRP)
+
+      if (.not. mmlts .or. .not. linmmlt) return
+
+c     --- Get location of particle relative to moment data.
+      call mltlocat(np,xp,yp,zp,nmmltsets,dzmmlt,nzmmlt,
+     &              nzl,cmmltzs,cmmltze,cmmltph,cmmltsf,cmmltsc,
+     &              cmmltim,cmmltox,cmmltoy,
+     &              tbx,tby,tbz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
+     &              mltph,mltsf,
+     &              zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
+
+c     --- accumulate the B field of the magnetostatic multipoles
+      do in=1,nmsmult
+        n = mmlt_n(in)
+        v = mmlt_v(in)
+        if (n == 0) then
+c         --- Apply solenoidal field component and it's pseudomultipoles.
+          f = 1./(2.*v+2.)
+          do ip=1,np
+            if (imm(ip) > 0) then
+              coeffp = mltsf(ip)*
+     &                  (msmmltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                   msmmltp(izm(ip)+1,in,imm(ip))*wzm(ip))
+              coeff = mltsf(ip)*
+     &                  (msmmlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                   msmmlt(izm(ip)+1,in,imm(ip))*wzm(ip))
+              rpow = dvnz(rr(ip))**(2*v)
+              tbx(ip) = tbx(ip) - coeffp*rpow*f*xxx(ip)
+              tby(ip) = tby(ip) - coeffp*rpow*f*yyy(ip)
+              tbz(ip) = tbz(ip) + coeff*rpow
+            endif
+          enddo
+        else
+c         --- Apply the rest of the multipoles.
+          f = 1. + 2.*v/n
+          fz = 1./n
+          do ip=1,np
+            if (imm(ip) > 0) then
+              alpha = tt(ip) - mltph(ip) -
+     &                    msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                    msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
+              alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                    msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
+              coeff = mltsf(ip)*
+     &                   (msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                    msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
+              coeffp = mltsf(ip)*
+     &                   (msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                    msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+              cosnt = cos(n*alpha)
+              sinnt = sin(n*alpha)
+              rpow = dvnz(rr(ip))**(n-2+2*v)
+              tbx(ip)=tbx(ip) + coeff*rpow*(f*xxx(ip)*sinnt - yyy(ip)*cosnt)
+              tby(ip)=tby(ip) + coeff*rpow*(f*yyy(ip)*sinnt + xxx(ip)*cosnt)
+              tbz(ip)=tbz(ip) + fz*dvnz(rr(ip))**(n+2*v)*
+     &                          (coeffp*sinnt + alphap*coeff*cosnt)
+            endif
+          enddo
+        endif
+      enddo
+
+c     --- do coordinate transform on fields back to warped coordinates
+      if (bends .and. linbend) then
+        do ip=1,np
+          bx(ip) = bx(ip) + tbx(ip)*cos(ttt(ip)) - tbz(ip)*sin(ttt(ip))
+          by(ip) = by(ip) + tby(ip)
+          bz(ip) = bz(ip) + tbx(ip)*sin(ttt(ip)) + tbz(ip)*cos(ttt(ip))
+        enddo
+      else
+        do ip=1,np
+          bx(ip) = bx(ip) + tbx(ip)
+          by(ip) = by(ip) + tby(ip)
+          bz(ip) = bz(ip) + tbz(ip)
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine applymmlt2(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,
+     &                     bx,by,bz)
+      use Lattice
+      use LatticeInternal
+      use Mult_data
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np),uzp(np),gaminv(np)
+      real(kind=8):: dtl,dtr,dt
+      real(kind=8):: bx(np),by(np),bz(np)
+
+c Apply the element mmlt2.
+c Input:
+c   np       number of particles
+c   xp       x position of the particles
+c   yp       y position of the particles
+c   zp       z position of the particles
+c   uzp      massless momentum of the particles
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+c Output:
+c   bx, by, bz   magnetic field
+
+c  See HIF-note 96-10, equation D17, with -n*psi-pi/2 replacing psi.
+c  Field is of the following form, where n and v are integers, n>0, v>=0
+c    Br = - sum_v  [ B'0v/(2*v+2)*r**(2*v+1) ] +
+c         sum_nv [ Bnv*(1+2*v/n)*r**(n-1+2*v)*sin(n*(theta-psi)) ]
+c    Bt = sum_nv [ Bnv*r**(n-1+2*v)*cos(n*(theta-psi)) ]
+c    Bz = sum_v  [ B0v*r**(2*v) ] +
+c         sum_nv [ B'nv/n*r**(2*v)*sin(n*(theta-psi)) ]
+c
+c    Bx = Br*cos(theta) - Bt*sin(theta)
+c    By = Br*sin(theta) + Bt*cos(theta)
+c
+c  Note that the total phase angle has two parts, one associated with the
+c  multipole data, and one associated with the lattice element.  This allows
+c  an element with multipoles with different phases to be physically rotated
+c  by changing only one variable, the phase associated with the element.
+c  This allows the same set of data to be used by lattice elements with
+c  different errors in the angle.
+c  Additional scale factors are included in the field, allowing different
+c  elements to use the same data set scaled to different values.  The scale
+c  factors are added together (in mltlocat) and multiply the applied field.
+c  The addition is done in mltlocat so that it is only done once per particle
+c  and not once per particle per multipole component.
+
+      integer(ISZ):: in,ip
+      real(kind=8):: n,v,f,fz,coeffp,coeff,rpow,alpha,alphap,cosnt,sinnt
+      integer(ISZ):: izm(NPARPGRP),imm(NPARPGRP)
+      real(kind=8):: xxx(NPARPGRP),yyy(NPARPGRP),zzz(NPARPGRP),ttt(NPARPGRP)
+      real(kind=8):: wzm(NPARPGRP),rr(NPARPGRP),tt(NPARPGRP)
+      real(kind=8):: mltph(NPARPGRP),mltsf(NPARPGRP)
+      real(kind=8):: tbx(NPARPGRP),tby(NPARPGRP),tbz(NPARPGRP)
+
+      if (.not. mmlt2s .or. .not. linmmlt2) return
+
+c     --- Get location of particle relative to moment data.
+      call mltlocat(np,xp,yp,zp,nmmltsets,dzmmlt,nzmmlt,
+     &              nzl,cmmlt2zs,cmmlt2ze,cmmlt2ph,cmmlt2sf,cmmlt2sc,
+     &              cmmlt2im,cmmlt2ox,cmmlt2oy,
+     &              tbx,tby,tbz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
+     &              mltph,mltsf,
+     &              zlmin,zlframe,dzli,bends,linbend,cbendzs,cbendze,cbendrc)
+
+c     --- accumulate the B field of the magnetostatic multipoles
+      do in=1,nmsmult
+        n = mmlt_n(in)
+        v = mmlt_v(in)
+        if (n == 0) then
+c         --- Apply solenoidal field component and it's pseudomultipoles.
+          f = 1./(2.*v+2.)
+          do ip=1,np
+            if (imm(ip) > 0) then
+              coeffp = mltsf(ip)*
+     &                  (msmmltp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                   msmmltp(izm(ip)+1,in,imm(ip))*wzm(ip))
+              coeff = mltsf(ip)*
+     &                  (msmmlt(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                   msmmlt(izm(ip)+1,in,imm(ip))*wzm(ip))
+              rpow = dvnz(rr(ip))**(2*v)
+              tbx(ip) = tbx(ip) - coeffp*rpow*f*xxx(ip)
+              tby(ip) = tby(ip) - coeffp*rpow*f*yyy(ip)
+              tbz(ip) = tbz(ip) + coeff*rpow
+            endif
+          enddo
+        else
+c         --- Apply the rest of the multipoles.
+          f = 1. + 2.*v/n
+          fz = 1./n
+          do ip=1,np
+            if (imm(ip) > 0) then
+              alpha = tt(ip) - mltph(ip) -
+     &                    msmmltph (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) -
+     &                    msmmltph (izm(ip)+1,in,imm(ip))*      wzm(ip)
+              alphap =   (msmmltphp(izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                    msmmltphp(izm(ip)+1,in,imm(ip))*      wzm(ip))
+              coeff = mltsf(ip)*
+     &                   (msmmlt   (izm(ip)  ,in,imm(ip))*(1. - wzm(ip)) +
+     &                    msmmlt   (izm(ip)+1,in,imm(ip))*      wzm(ip))
+              coeffp = mltsf(ip)*
+     &                   (msmmltp  (izm(ip)  ,in,imm(ip))*(1. - wzm(ip))+
+     &                    msmmltp  (izm(ip)+1,in,imm(ip))*      wzm(ip))
+              cosnt = cos(n*alpha)
+              sinnt = sin(n*alpha)
+              rpow = dvnz(rr(ip))**(n-2+2*v)
+              tbx(ip)=tbx(ip) + coeff*rpow*(f*xxx(ip)*sinnt - yyy(ip)*cosnt)
+              tby(ip)=tby(ip) + coeff*rpow*(f*yyy(ip)*sinnt + xxx(ip)*cosnt)
+              tbz(ip)=tbz(ip) + fz*dvnz(rr(ip))**(n+2*v)*
+     &                          (coeffp*sinnt + alphap*coeff*cosnt)
+            endif
+          enddo
+        endif
+      enddo
+
+c     --- do coordinate transform on fields back to warped coordinates
+      if (bends .and. linbend) then
+        do ip=1,np
+          bx(ip) = bx(ip) + tbx(ip)*cos(ttt(ip)) - tbz(ip)*sin(ttt(ip))
+          by(ip) = by(ip) + tby(ip)
+          bz(ip) = bz(ip) + tbx(ip)*sin(ttt(ip)) + tbz(ip)*cos(ttt(ip))
+        enddo
+      else
+        do ip=1,np
+          bx(ip) = bx(ip) + tbx(ip)
+          by(ip) = by(ip) + tby(ip)
+          bz(ip) = bz(ip) + tbz(ip)
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine mltlocat(np,xp,yp,zp,nmltsets,dzmlt,nzmlt,
+     &                    nzl,cmltzs,cmltze,cmltph,cmltsf,cmltsc,
+     &                    cmltim,cmltox,cmltoy,
+     &                    tx,ty,tz,imm,izm,wzm,xxx,yyy,zzz,ttt,rr,tt,
+     &                    mltph,mltsf,
+     &                    zlmin,zbeam,dzli,bends,linbend,
+     &                    cbendzs,cbendze,cbendrc)
+      integer(ISZ):: np,nmltsets,nzl
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: dzmlt(nmltsets)
+      integer(ISZ):: nzmlt(nmltsets)
+      real(kind=8):: cmltzs(0:nzl),cmltze(0:nzl),cmltph(0:nzl)
+      real(kind=8):: cmltsf(0:nzl),cmltsc(0:nzl)
+      integer(ISZ):: cmltim(0:nzl)
+      real(kind=8):: cmltox(0:nzl),cmltoy(0:nzl)
+      real(kind=8):: tx(np),ty(np),tz(np)
+      integer(ISZ):: imm(np),izm(np)
+      real(kind=8):: wzm(np),xxx(np),yyy(np),zzz(np)
+      real(kind=8):: ttt(np),rr(np),tt(np),mltph(np),mltsf(np)
+      logical(ISZ):: bends,linbend
+      real(kind=8):: cbendzs(0:nzl),cbendze(0:nzl),cbendrc(0:nzl)
+      real(kind=8):: zlmin,zbeam,dzli
+
+c     --- Calculate grid location and polar coordinates of particles
+c     --- for mlt elements.  Includes change of coordinates out of
+c     --- warped coordinates (when a bend is between the
+c     --- particle and the nearest mult).
+c  Assumes that at most one bend will be between particle and the mult center.
+
+      integer(ISZ):: j,ip
+      real(kind=8):: cent,dzi,rrr,bzs,bze,bendrci
+
+      if (.not. bends .or. .not. linbend) then
+        do ip=1,np
+c         --- find z-cell in which particle lies
+          j = max(0., (zp(ip) - zlmin - zbeam)*dzli + 0.5)
+          imm(ip) = cmltim(j)
+          dzi = 1./dzmlt(imm(ip))
+          mltph(ip) = cmltph(j)
+          mltsf(ip) = cmltsc(j) + cmltsf(j)
+c         --- zero temporary field arrays
+          tx(ip) = 0.
+          ty(ip) = 0.
+          tz(ip) = 0.
+c         --- find z location relative to multipole data
+          izm(ip) = int((zp(ip)-cmltzs(j))*dzi)
+          wzm(ip) =     (zp(ip)-cmltzs(j))*dzi - izm(ip)
+          if (izm(ip) .lt. 1) then
+            izm(ip) = 1
+            wzm(ip) = 0
+            imm(ip) = 0
+          elseif (izm(ip) .gt. nzmlt(imm(ip))-1) then
+            izm(ip) = nzmlt(imm(ip))-1
+            wzm(ip) = 0
+            imm(ip) = 0
+          endif
+c         --- Set temporary coordinates and add offset if particle within
+c         --- an element.
+          if (imm(ip) .gt. 0) then
+            xxx(ip) = xp(ip) - cmltox(j)
+            yyy(ip) = yp(ip) - cmltoy(j)
+            zzz(ip) = zp(ip)
+            rr(ip) = sqrt(xxx(ip)**2 + yyy(ip)**2)
+            tt(ip) = atan2(yyy(ip),dvnz(xxx(ip)))
+          endif
+        enddo
+      else
+        do ip=1,np
+c         --- find z-cell in which particle lies
+          j = max(0., (zp(ip) - zlmin - zbeam)*dzli)
+c         --- set temporaries
+          imm(ip) = cmltim(j)
+          dzi = 1./dzmlt(imm(ip))
+          cent = 0.5*(cmltzs(j) + cmltze(j))
+          xxx(ip) = xp(ip)
+          zzz(ip) = zp(ip)
+c         --- zero temporary field arrays
+          tx(ip) = 0.
+          ty(ip) = 0.
+          tz(ip) = 0.
+          ttt(ip) = 0.
+          if (cmltzs(j) .le. zp(ip) .and. zp(ip) .le. cmltze(j)) then
+            mltph(ip) = cmltph(j)
+            mltsf(ip) = cmltsc(j) + cmltsf(j)
+c           --- apply coordinate change left of mult, using index of (j)
+            if (zp(ip) .le. cent) then
+              bendrci = 1./cbendrc(j)
+c             --- find end of bend: if bend extends beyond center of mult, use
+c             --- that as the end of the bend since moments are in coordinate
+c             --- system at the center of the mult
+              if (cbendze(j) .lt. cent) then
+                bze = cbendze(j)
+              else
+                bze = cent
+              endif
+c             --- if particle is not in bend and full bend is between particle
+c             --- and mult
+              rrr = xp(ip) + cbendrc(j)
+              if (zp(ip) .lt. cbendzs(j) .and. cbendzs(j) .lt. cent) then
+                ttt(ip) = (bze - cbendzs(j))*bendrci
+                zzz(ip) = bze - rrr*sin(ttt(ip)) -
+     &                    (cbendzs(j) - zp(ip))*cos(ttt(ip))
+                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(j) -
+     &                    (cbendzs(j) - zp(ip))*sin(ttt(ip))
+c             --- if particle is in bend
+              elseif (zp(ip) .lt. bze .and. cbendzs(j) .lt. cent) then
+                ttt(ip) = (bze - zp(ip))*bendrci
+                zzz(ip) = bze - rrr*sin(ttt(ip))
+                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(j)
+              endif
+c           --- apply coordinate change right of mult, using index of (j+1)
+            elseif (zp(ip) .ge. cent) then
+              bendrci = 1./cbendrc(j+1)
+c             --- find start of bend: if bend extends beyond center of mult, use
+c             --- that as the start of the bend since moments are in coordinate
+c             --- system at the center of the mult
+              if (cbendzs(j+1) .lt. cent) then
+                bzs = cent
+              else
+                bzs = cbendzs(j+1)
+              endif
+c             --- if particle is not in bend and full bend is between particle
+c             --- and mult
+              rrr = xp(ip) + cbendrc(j+1)
+              if (zp(ip) .gt. cbendze(j+1) .and. cbendze(j+1) .gt. cent) then
+                ttt(ip) =  - (cbendze(j+1) - bzs)*bendrci
+                zzz(ip) = bzs - rrr*sin(ttt(ip)) +
+     &                    (zp(ip) - cbendze(j+1))*cos(ttt(ip))
+                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(j+1) +
+     &                    (zp(ip) - cbendze(j+1))*sin(ttt(ip))
+c             --- if particle is in bend
+              elseif (zp(ip) .gt. bzs .and. cbendze(j+1) .gt. cent) then
+                ttt(ip) = - (zp(ip) - bzs)*bendrci
+                zzz(ip) = bzs - rrr*sin(ttt(ip))
+                xxx(ip) = rrr*cos(ttt(ip)) - cbendrc(j+1)
+              endif
+            endif
+          endif
+c         --- end of coordinate transformation
+
+          izm(ip) = int((zzz(ip)-cmltzs(j))*dzi)
+          wzm(ip) =     (zzz(ip)-cmltzs(j))*dzi - izm(ip)
+          if (izm(ip) .lt. 1) then
+            izm(ip) = 1
+            wzm(ip) = 0
+            imm(ip) = 0
+          elseif (izm(ip) .gt. nzmlt(imm(ip))-1) then
+            izm(ip) = nzmlt(imm(ip))-1
+            wzm(ip) = 0
+            imm(ip) = 0
+          endif
+c         --- Add offset
+          if (imm(ip) .gt. 0) then
+            xxx(ip) = xxx(ip) - cmltox(j)
+            yyy(ip) = yp(ip) -  cmltoy(j)
+            rr(ip) = sqrt(xxx(ip)**2 + yyy(ip)**2)
+            tt(ip) = atan2(yyy(ip),dvnz(xxx(ip)))
+          endif
+        enddo
+      endif
+
+      return
+      end
+c=============================================================================
+      subroutine applyhele(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,
+     &                     ex,ey,ez,bx,by,bz)
+      use Lattice
+      use LatticeInternal
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np),uzp(np),gaminv(np)
+      real(kind=8):: dtl,dtr,dt
+      real(kind=8):: ex(np),ey(np),ez(np),bx(np),by(np),bz(np)
+
+c Apply the transverse element hele.
+c Input:
+c   np       number of particles
+c   xp       x position of the particles
+c   yp       y position of the particles
+c   zp       z position of the particles
+c   uzp      massless momentum of the particles
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+c Output:
+c   ex, ey, ez   electric field
+c   bx, by, bz   magnetic field
+
+      integer(ISZ):: ip,j,iele,ii
+      real(kind=8):: dti,vz,vzi,zl,fl,zr,fr,frac,n,v,f,rpow,cosnt,sinnt
+      real(kind=8):: xpmqoff,ypmqoff
+      integer(ISZ):: tiele(NPARPGRP)
+      real(kind=8):: tfrac(NPARPGRP),txpmqoff(NPARPGRP),typmqoff(NPARPGRP)
+      real(kind=8):: trpmqoff(NPARPGRP),ttpmqoff(NPARPGRP)
+
+      if (.not. heles) return
+
+      dti = 1./(dtr-dtl)
+
+c     --- calculate coordinates, element indices, and residence
+c     --- fractions over particle block and store in temp arrays
+c     --- These factors will be used repeatedly when the fields
+c     --- are accumulated at each particle resulting from
+      do ip = 1, np
+        vz = uzp(ip)*gaminv(ip)
+        vzi = 1./dvnz(vz)
+c       --- find z-cell in which particle lies
+        j = max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5)
+c       --- find element index
+        iele = cheleid(j)
+        tiele(ip) = iele
+c       --- "left" end of velocity advance step
+        zl = zp(ip) + vz * dtl
+        fl = 0.
+        if (zl >= chelezs(j) .and. zl < cheleze(j)) fl = 1.
+c       --- "right" end of velocity advance step
+        zr = zp(ip) + vz * dtr
+        fr = 0.
+        if (zr >= chelezs(j) .and. zr < cheleze(j)) fr = 1.
+c       --- residence fraction
+        tfrac(ip) = fl
+        if (fl > fr) tfrac(ip) = (cheleze(j)-zl) * vzi*dti
+        if (fr > fl) tfrac(ip) = (zr-chelezs(j)) * vzi*dti
+        if (tfrac(ip) > 0.) then
+c         --- x,y coordinates about multipole center
+          xpmqoff = xp(ip) - heleox(iele)
+          ypmqoff = yp(ip) - heleoy(iele)
+          txpmqoff(ip) = xpmqoff
+          typmqoff(ip) = ypmqoff
+c         --- r,theta coordinates about multipole center
+          trpmqoff(ip) = sqrt(xpmqoff**2 + ypmqoff**2)
+          ttpmqoff(ip) = atan2(ypmqoff,dvnz(xpmqoff))
+        endif
+      enddo
+c     --- accumulate field contributions at each particle in
+c     --- block looping (outermost) over each multipole component
+c     --- for vectorization
+      do ii = 1, nhmlt
+c       --- loop over particle block using stored coordinates, element
+c       --- indices, and residence fractions
+        do ip = 1,np
+          if (tfrac(ip) > 0.) then
+            iele = tiele(ip)
+            n = hele_n(ii,iele)
+            v = hele_v(ii,iele)
+c           --- electric multipoles
+            if (ii <= helene(iele)) then
+              if (n == 0) then
+c               --- accelerating field
+c               --- Note that this really should not be used since the
+c               --- accl element does a better job.  The transverse
+c               --- fields should only be kicks at the entrance and exit.
+                f = 1./(2.*v+2.)
+                rpow = dvnz(trpmqoff(ip))**(2*v)
+                ex(ip) = ex(ip)-tfrac(ip)*heleep(ii,iele)*rpow*f*txpmqoff(ip)
+                ey(ip) = ey(ip)-tfrac(ip)*heleep(ii,iele)*rpow*f*typmqoff(ip)
+                ez(ip) = ez(ip)+tfrac(ip)*heleae(ii,iele)*rpow
+              else
+c               --- rest of components
+                f = 1. + 2.*v/n
+                cosnt = cos(n*(ttpmqoff(ip)-helepe(ii,iele)))
+                sinnt = sin(n*(ttpmqoff(ip)-helepe(ii,iele)))
+                rpow = dvnz(trpmqoff(ip))**(n-2+2*v)
+                ex(ip) = ex(ip) + tfrac(ip)*heleae(ii,iele)*rpow*
+     &                         (f*txpmqoff(ip)*cosnt + typmqoff(ip)*sinnt)
+                ey(ip) = ey(ip) + tfrac(ip)*heleae(ii,iele)*rpow*
+     &                         (f*typmqoff(ip)*cosnt - txpmqoff(ip)*sinnt)
+              endif
+            endif
+c           --- magnetic multipoles
+            if (ii <= helenm(iele)) then
+              if (n == 0) then
+c               --- Solenoid field
+c               --- The transverse fields should only be kicks at the entrance
+c               --- and exit.
+                f = 1./(2.*v+2.)
+                rpow = dvnz(trpmqoff(ip))**(2*v)
+                bx(ip) = bx(ip)-tfrac(ip)*helemp(ii,iele)*rpow*f*txpmqoff(ip)
+                by(ip) = by(ip)-tfrac(ip)*helemp(ii,iele)*rpow*f*typmqoff(ip)
+                bz(ip) = bz(ip)+tfrac(ip)*heleam(ii,iele)*rpow
+              else
+c               --- rest of components
+                f = 1. + 2.*v/n
+                cosnt = cos(n*(ttpmqoff(ip)-helepm(ii,iele)))
+                sinnt = sin(n*(ttpmqoff(ip)-helepm(ii,iele)))
+                rpow = dvnz(trpmqoff(ip))**(n-2+2*v)
+                bx(ip) = bx(ip) + tfrac(ip)*heleam(ii,iele)*rpow*
+     &                         (f*txpmqoff(ip)*sinnt - typmqoff(ip)*cosnt)
+                by(ip) = by(ip) + tfrac(ip)*heleam(ii,iele)*rpow*
+     &                         (f*typmqoff(ip)*sinnt + txpmqoff(ip)*cosnt)
+              endif
+            endif
+          endif
+        enddo
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine applysext(np,xp,yp,zp,uzp,gaminv,dtl,dtr,dt,
+     &                     ex,ey,bx,by)
+      use Lattice
+      use LatticeInternal
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np),uzp(np),gaminv(np)
+      real(kind=8):: dtl,dtr,dt
+      real(kind=8):: ex(np),ey(np),bx(np),by(np)
+
+c Apply the transverse element sext.
+c Input:
+c   np       number of particles
+c   xp       x position of the particles
+c   yp       y position of the particles
+c   zp       z position of the particles
+c   uzp      massless momentum of the particles
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+c Output:
+c   ex, ey   sextupole electric field
+c   bx, by   sextupole magnetic field
+
+      integer(ISZ):: ip,j
+      real(kind=8):: dti,vz,vzi,zl,fl,zr,fr,frac,xpmqoff,ypmqoff
+
+      if (.not. sexts) return
+
+      dti = 1./(dtr-dtl)
+
+      do ip = 1, np
+        vz = uzp(ip)*gaminv(ip)
+        vzi = 1./dvnz(vz)
+c       --- find z-cell in which particle lies
+        j = max(0., (zp(ip) - zlmin - zlframe) * dzli + 0.5)
+c       --- "left" end of velocity advance step
+        zl = zp(ip) + vz * dtl
+        fl = 0.
+        if (zl >= csextzs(j) .and. zl < csextze(j)) fl = 1.
+c       --- "right" end of velocity advance step
+        zr = zp(ip) + vz * dtr
+        fr = 0.
+        if (zr >= csextzs(j) .and. zr < csextze(j)) fr = 1.
+c       --- residence fraction
+        frac = fl
+        if (fl > fr) frac = (csextze(j)-zl)*vzi*dti
+        if (fr > fl) frac = (zr-csextzs(j))*vzi*dti
+c       --- set the field
+        if (frac > 0.) then
+          xpmqoff = xp(ip)
+          ypmqoff = yp(ip)
+          bx(ip) = bx(ip) + csextdb(j)*frac*3.*(xpmqoff**2 - ypmqoff**2)
+          by(ip) = by(ip) + csextdb(j)*frac*(-6.)*xpmqoff*ypmqoff
+          ex(ip) = ex(ip) + csextde(j)*frac*3.*(xpmqoff**2 - ypmqoff**2)
+          ey(ip) = ey(ip) + csextde(j)*frac*(-6.)*xpmqoff*ypmqoff
+        endif
+      enddo
+
+      return
+      end
+c=============================================================================
+      subroutine getresidence(z,vzg,gaminv,dtl,dtr,dti,
+     &                        nzl,celemzs,celemze,celemid,zlmin,zlframe,dzli,
+     &                        frac,iele)
+      real(kind=8):: z,vzg,gaminv,dtl,dtr,dti
+      integer(ISZ):: nzl
+      real(kind=8):: celemzs(0:nzl),celemze(0:nzl)
+      integer(ISZ):: celemid(0:nzl)
+      real(kind=8):: zlmin,zlframe,dzli
+      real(kind=8):: frac
+      integer(ISZ):: iele
+
+      real(kind=8):: vz,vzi,zl,zr,fl,fr
+      integer(ISZ):: j
+
+      vz = vzg*gaminv
+      vzi = 1./dvnz(vz)
+c     --- find z-cell in which particle lies
+      j = max(0., (z - zlmin - zlframe)*dzli + 0.5)
+      iele = celemid(j)
+c     --- "left" end of velocity advance step
+      zl = z + vz*dtl
+      fl = 0.
+      if (zl >= celemzs(j) .and. zl < celemze(j)) fl = 1.
+c     --- "right" end of velocity advance step
+      zr = z + vz*dtr
+      fr = 0.
+      if (zr >= celemzs(j) .and. zr < celemze(j)) fr = 1.
+c     --- residence fraction
+      frac = fl
+      if (fl > fr) frac = (celemze(j)-zl)*vzi*dti
+      if (fr > fl) frac = (zr-celemzs(j))*vzi*dti
+
+      return
+      end
+c=============================================================================
+      subroutine applyquad(np,xp,yp,npz,zp,uzp,gaminv,dtl,dtr,dt,
+     &                     ex,ey,bx,by)
+      use Lattice
+      use LatticeInternal
+      integer(ISZ):: np,npz
+      real(kind=8):: xp(np),yp(np),zp(npz),uzp(npz),gaminv(npz)
+      real(kind=8):: dtl,dtr,dt
+      real(kind=8):: ex(np),ey(np),bx(np),by(np)
+
+c Apply the transverse focusing element quad.
+c Input:
+c   np       number of particles
+c   xp       x position of the particles
+c   yp       y position of the particles
+c   zp       z position of the particles
+c   uzp      massless momentum of the particles
+c   gaminv   one over gamma of the particles
+c   dtl      size of left half of time step
+c   dtr      size of right half of time step
+c   dt       full step size
+c Output:
+c   ex, ey   quadrupole electric field
+c   bx, by   quadrupole magnetic field
+
+      integer(ISZ):: ip,j,iele
+      real(kind=8):: dti,vz,vzi,zl,fl,zr,fr,frac,xpmqoff,ypmqoff
+
+      if (.not. quads) return
+
+      dti = 1./(dtr-dtl)
+
+      if (npz == 1) then
+        call getresidence(zp(1),uzp(1),gaminv(1),dtl,dtr,dti,
+     &                    nzl,cquadzs,cquadze,cquadid,0.,zlframe,dzli,
+     &                    frac,iele)
+c       --- if frac is zero, just return since no field will be applied
+        if (frac == 0.) return
+      endif
+      do ip = 1, np
+        if (npz > 1) then
+          call getresidence(zp(ip),uzp(ip),gaminv(ip),dtl,dtr,dti,
+     &                      nzl,cquadzs,cquadze,cquadid,zlmin,zlframe,dzli,
+     &                      frac,iele)
+        endif
+c       --- set the field
+        if (frac > 0.) then
+          xpmqoff = xp(ip) - cqoffx(j)
+          ypmqoff = yp(ip) - cqoffy(j)
+          bx(ip) = bx(ip) + cquaddb(j)*frac*ypmqoff
+          by(ip) = by(ip) + cquaddb(j)*frac*xpmqoff
+          ex(ip) = ex(ip) + cquadde(j)*frac*xpmqoff
+          ey(ip) = ey(ip) - cquadde(j)*frac*ypmqoff
+          if (dodec .ne. 0.) then
+            ex(ip) = ex(ip) + dodec*cquadde(j)*frac*
+     &               (6.*xpmqoff**5 - 60.*xpmqoff**3*ypmqoff**2 +
+     &               30.*xpmqoff*ypmqoff**4)
+            ey(ip) = ey(ip) - dodec*cquadde(j)*frac*
+     &               (6.*ypmqoff**5 - 60.*ypmqoff**3*xpmqoff**2 +
+     &               30.*ypmqoff*xpmqoff**4)
+          endif
+        endif
+      enddo
+
+      return
+      end
+c=========================================================================== 
+      subroutine applybgrd(np,xp,yp,zp,bx,by,bz)
+      use Lattice
+      use LatticeInternal
+      use BGRDdata
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: bx(np),by(np),bz(np)
+
+c  Sets magnetic field for a group of up to NPARPGRP particles from data sets
+c  containing Bx, By, and Bz on 3-D grids.
+c  Calling arguments:
+c     np             number of particles
+c     xp,yp,zp       coordinates of particles
+c  Output:
+c     bx,by,bz       magnetic field
+
+c  The field is:
+c     Bx = u0 * v0 * w0 * bgrdbx(i  ,j  ,k  ,bgrdid)
+c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
+c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
+c        + ...
+
+      integer(ISZ):: ip,i,j,k,iz,ii,ib
+      real(kind=8):: u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
+      real(kind=8):: tbx,tby
+
+c  Evaluation of B, vectorized over particles
+
+      if (.not. bgrds .or. .not. linbgrd) return
+
+      do ip = 1, np
+
+c        --- find the location of the particle in the internal lattice arrays
+         iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+         ii = cbgrdid(iz)
+         ib = bgrdid(ii)
+
+c        --- find transverse particle coordinate in frame of gridded field 
+c        --- transverse offsets
+         txp = xp(ip) - bgrdox(ii)
+         typ = yp(ip) - bgrdoy(ii)
+c        --- transverse rotation to take into account an active rotation 
+c        --- of the field element.  Particles are rotated in that oposite 
+c        --- sense of the element. Later the field components accumulated 
+c        --- must be rotated back. 
+         if ( bgrdph(ii) .ne. 0. ) then
+           temp = txp  
+           txp =  temp*bgrdcp(ii) + typ*bgrdsp(ii) 
+           typ = -temp*bgrdsp(ii) + typ*bgrdcp(ii) 
+         endif 
+
+c        --- Shift coordinates to measure from the edge of the field grid
+         txp = txp - bgrdxs(ii)
+         typ = typ - bgrdys(ii)
+
+c        --- Set default sign of B field
+         xsign = 1.
+         ysign = 1.
+         zsign = 1.
+
+c        --- If B is quadrupolar symmetric, make transformations.
+c        --- When the particle is in one of the even quadrants (either
+c        --- x<0 or y<0 but not both), the transformation is done by
+c        --- swapping x and y, and by swapping Bx and By (done at the end
+c        --- of the loop). The sign of Bz is also changed. In the third
+c        --- quadrant, the signs of both Bx and By are changed.
+c                Quadrupole symmetries on field grid
+c          
+c            Quadrant      B_x            B_y             B_z 
+c            --------------------------------------------------------
+c               I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
+c               II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)  
+c               III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
+c               IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
+c
+         if (bgrdsy(ii) == 2) then
+c          --- Get quadrant that the particle is in.
+           if (txp < 0.) then
+             xsign = -1.
+             txp = -txp
+           endif
+           if (typ < 0.) then
+             ysign = -1.
+             typ = -typ
+           endif
+c          --- If in even quadrant...
+           if (xsign*ysign < 0.) then
+c            --- Switch sign of Bz.
+             zsign = -1.
+c            --- Swap x and y
+             temp = txp
+             txp = typ
+             typ = temp
+           endif
+         endif
+
+c        --- find location of particle in B field grid
+         i =  txp*bgrddxi(ib)
+         j =  typ*bgrddyi(ib)
+         k = (zp(ip) - cbgrdzs(iz))*bgrddzi(ib)
+
+c        --- Calculate linear weights
+         u1 = txp*bgrddxi(ib) - i
+         v1 = typ*bgrddyi(ib) - j
+         w1 = (zp(ip) - cbgrdzs(iz))*bgrddzi(ib) - k
+         u0 = 1. - u1
+         v0 = 1. - v1
+         w0 = 1. - w1
+
+c        --- Only calculate for particles inside the B field grid
+         if (0 <= i .and. i < bgrdnx .and.
+     &       0 <= j .and. j < bgrdny .and.
+     &       0 <= k .and. k < bgrdnz) then
+
+           bfac = bgrdsc(ii) + bgrdsf(ii)
+
+           tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,ib) +
+     &                       u1*v0*w0*bgrdbx(i+1,j  ,k  ,ib) +
+     &                       u0*v1*w0*bgrdbx(i  ,j+1,k  ,ib) +
+     &                       u1*v1*w0*bgrdbx(i+1,j+1,k  ,ib) +
+     &                       u0*v0*w1*bgrdbx(i  ,j  ,k+1,ib) +
+     &                       u1*v0*w1*bgrdbx(i+1,j  ,k+1,ib) +
+     &                       u0*v1*w1*bgrdbx(i  ,j+1,k+1,ib) +
+     &                       u1*v1*w1*bgrdbx(i+1,j+1,k+1,ib))
+
+           tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,ib) +
+     &                       u1*v0*w0*bgrdby(i+1,j  ,k  ,ib) +
+     &                       u0*v1*w0*bgrdby(i  ,j+1,k  ,ib) +
+     &                       u1*v1*w0*bgrdby(i+1,j+1,k  ,ib) +
+     &                       u0*v0*w1*bgrdby(i  ,j  ,k+1,ib) +
+     &                       u1*v0*w1*bgrdby(i+1,j  ,k+1,ib) +
+     &                       u0*v1*w1*bgrdby(i  ,j+1,k+1,ib) +
+     &                       u1*v1*w1*bgrdby(i+1,j+1,k+1,ib))
+
+           if (bgrdsy(ii) == 2 .and. xsign*ysign < 0.) then
+             temp = tbx 
+             tbx = tby
+             tby = temp
+           endif 
+
+c          --- rotate transverse field componets for correct lab frame 
+c              orientation if the element is rotated.  
+           if ( bgrdph(ii) .ne. 0. ) then
+             temp = tbx 
+             tbx = temp*bgrdcp(ii) - tby*bgrdsp(ii) 
+             tby = temp*bgrdsp(ii) + tby*bgrdcp(ii)         
+           endif 
+
+c          --- tranverse field 
+           bx(ip) = bx(ip) + tbx
+           by(ip) = by(ip) + tby
+
+           bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,ib) +
+     &                                   u1*v0*w0*bgrdbz(i+1,j  ,k  ,ib) +
+     &                                   u0*v1*w0*bgrdbz(i  ,j+1,k  ,ib) +
+     &                                   u1*v1*w0*bgrdbz(i+1,j+1,k  ,ib) +
+     &                                   u0*v0*w1*bgrdbz(i  ,j  ,k+1,ib) +
+     &                                   u1*v0*w1*bgrdbz(i+1,j  ,k+1,ib) +
+     &                                   u0*v1*w1*bgrdbz(i  ,j+1,k+1,ib) +
+     &                                   u1*v1*w1*bgrdbz(i+1,j+1,k+1,ib))
+
+         endif
+
+      enddo
+
+      return
+      end
+c=========================================================================== 
+      subroutine applybgrd2(np,xp,yp,zp,bx,by,bz)
+      use Lattice
+      use LatticeInternal
+      use BGRDdata
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: bx(np),by(np),bz(np)
+
+c  Sets magnetic field for a group of up to NPARPGRP particles from data sets
+c  containing Bx, By, and Bz on 3-D grids.
+c  Calling arguments:
+c     np             number of particles
+c     xp,yp,zp       coordinates of particles
+c  Output:
+c     bx,by,bz       magnetic field
+
+c  The field is:
+c     Bx = u0 * v0 * w0 * bgrdbx(i  ,j  ,k  ,bgrdid)
+c        + u1 * v0 * w0 * bgrdbx(i+1,j  ,k  ,bgrdid)
+c        + u0 * v1 * w0 * bgrdbx(i  ,j+1,k  ,bgrdid)
+c        + ...
+
+      integer(ISZ):: ip,i,j,k,iz,ii,ib
+      real(kind=8):: u0,u1,v0,v1,w0,w1,bfac,xsign,ysign,zsign,txp,typ,temp
+      real(kind=8):: tbx,tby
+
+c  Evaluation of B, vectorized over particles
+
+      if (.not. bgrd2s .or. .not. linbgrd2) return
+
+      do ip = 1, np
+
+c        --- find the location of the particle in the internal lattice arrays
+         iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+         ii = cbgrd2id(iz)
+         ib = bgrdid(ii)
+
+c        --- find transverse particle coordinate in frame of gridded field 
+c        --- transverse offsets
+         txp = xp(ip) - bgrd2ox(ii)
+         typ = yp(ip) - bgrd2oy(ii)
+c        --- transverse rotation to take into account an active rotation 
+c        --- of the field element.  Particles are rotated in that oposite 
+c        --- sense of the element. Later the field components accumulated 
+c        --- must be rotated back. 
+         if ( bgrd2ph(ii) .ne. 0. ) then
+           temp = txp  
+           txp =  temp*bgrd2cp(ii) + typ*bgrd2sp(ii) 
+           typ = -temp*bgrd2sp(ii) + typ*bgrd2cp(ii) 
+         endif 
+
+c        --- Shift coordinates to measure from the edge of the field grid
+         txp = txp - bgrd2xs(ii)
+         typ = typ - bgrd2ys(ii)
+
+c        --- Set default sign of B field
+         xsign = 1.
+         ysign = 1.
+         zsign = 1.
+
+c        --- If B is quadrupolar symmetric, make transformations.
+c        --- When the particle is in one of the even quadrants (either
+c        --- x<0 or y<0 but not both), the transformation is done by
+c        --- swapping x and y, and by swapping Bx and By (done at the end
+c        --- of the loop). The sign of Bz is also changed. In the third
+c        --- quadrant, the signs of both Bx and By are changed.
+c                Quadrupole symmetries on field grid
+c          
+c            Quadrant      B_x            B_y             B_z 
+c            --------------------------------------------------------
+c               I          B_x( x, y,z)   B_y( x, y,z)    B_z( x, y,z) 
+c               II         B_y( y,-x,z)  -B_x( y,-x,z)   -B_z( y,-x,z)  
+c               III       -B_x(-x,-y,z)  -B_y(-x,-y,z)    B_z(-x,-y,z) 
+c               IV        -B_y(-y, x,z)   B_x(-y, x,z)   -B_z(-y, x,z) 
+c
+         if (bgrd2sy(ii) == 2) then
+c          --- Get quadrant that the particle is in.
+           if (txp < 0.) then
+             xsign = -1.
+             txp = -txp
+           endif
+           if (typ < 0.) then
+             ysign = -1.
+             typ = -typ
+           endif
+c          --- If in even quadrant...
+           if (xsign*ysign < 0.) then
+c            --- Switch sign of Bz.
+             zsign = -1.
+c            --- Swap x and y
+             temp = txp
+             txp = typ
+             typ = temp
+           endif
+         endif
+
+c        --- find location of particle in B field grid
+         i =  txp*bgrddxi(ib)
+         j =  typ*bgrddyi(ib)
+         k = (zp(ip) - cbgrd2zs(iz))*bgrddzi(ib)
+
+c        --- Calculate linear weights
+         u1 = txp*bgrddxi(ib) - i
+         v1 = typ*bgrddyi(ib) - j
+         w1 = (zp(ip) - cbgrd2zs(iz))*bgrddzi(ib) - k
+         u0 = 1. - u1
+         v0 = 1. - v1
+         w0 = 1. - w1
+
+c        --- Only calculate for particles inside the B field grid
+         if (0 <= i .and. i < bgrdnx .and.
+     &       0 <= j .and. j < bgrdny .and.
+     &       0 <= k .and. k < bgrdnz) then
+
+           bfac = bgrd2sc(ii) + bgrd2sf(ii)
+
+           tbx = xsign*bfac*(u0*v0*w0*bgrdbx(i  ,j  ,k  ,ib) +
+     &                       u1*v0*w0*bgrdbx(i+1,j  ,k  ,ib) +
+     &                       u0*v1*w0*bgrdbx(i  ,j+1,k  ,ib) +
+     &                       u1*v1*w0*bgrdbx(i+1,j+1,k  ,ib) +
+     &                       u0*v0*w1*bgrdbx(i  ,j  ,k+1,ib) +
+     &                       u1*v0*w1*bgrdbx(i+1,j  ,k+1,ib) +
+     &                       u0*v1*w1*bgrdbx(i  ,j+1,k+1,ib) +
+     &                       u1*v1*w1*bgrdbx(i+1,j+1,k+1,ib))
+
+           tby = ysign*bfac*(u0*v0*w0*bgrdby(i  ,j  ,k  ,ib) +
+     &                       u1*v0*w0*bgrdby(i+1,j  ,k  ,ib) +
+     &                       u0*v1*w0*bgrdby(i  ,j+1,k  ,ib) +
+     &                       u1*v1*w0*bgrdby(i+1,j+1,k  ,ib) +
+     &                       u0*v0*w1*bgrdby(i  ,j  ,k+1,ib) +
+     &                       u1*v0*w1*bgrdby(i+1,j  ,k+1,ib) +
+     &                       u0*v1*w1*bgrdby(i  ,j+1,k+1,ib) +
+     &                       u1*v1*w1*bgrdby(i+1,j+1,k+1,ib))
+
+           if (bgrd2sy(ii) == 2 .and. xsign*ysign < 0.) then
+             temp = tbx 
+             tbx = tby
+             tby = temp
+           endif 
+
+c          --- rotate transverse field componets for correct lab frame 
+c              orientation if the element is rotated.  
+           if ( bgrd2ph(ii) .ne. 0. ) then
+             temp = tbx 
+             tbx = temp*bgrd2cp(ii) - tby*bgrd2sp(ii) 
+             tby = temp*bgrd2sp(ii) + tby*bgrd2cp(ii)         
+           endif 
+
+c          --- tranverse field 
+           bx(ip) = bx(ip) + tbx
+           by(ip) = by(ip) + tby
+
+           bz(ip) = bz(ip) + zsign*bfac*(u0*v0*w0*bgrdbz(i  ,j  ,k  ,ib) +
+     &                                   u1*v0*w0*bgrdbz(i+1,j  ,k  ,ib) +
+     &                                   u0*v1*w0*bgrdbz(i  ,j+1,k  ,ib) +
+     &                                   u1*v1*w0*bgrdbz(i+1,j+1,k  ,ib) +
+     &                                   u0*v0*w1*bgrdbz(i  ,j  ,k+1,ib) +
+     &                                   u1*v0*w1*bgrdbz(i+1,j  ,k+1,ib) +
+     &                                   u0*v1*w1*bgrdbz(i  ,j+1,k+1,ib) +
+     &                                   u1*v1*w1*bgrdbz(i+1,j+1,k+1,ib))
+
+         endif
+
+      enddo
+
+      return
+      end
+c=========================================================================== 
+      subroutine applypgrd(np,xp,yp,zp,ex,ey,ez)
+      use Lattice
+      use LatticeInternal
+      use PGRDdata
+      integer(ISZ):: np
+      real(kind=8):: xp(np),yp(np),zp(np)
+      real(kind=8):: ex(np),ey(np),ez(np)
+
+c  Sets electric field for a group of up to NPARPGRP particles from data
+c  sets containing the potential on a 3-D grid.
+c  Calling arguments:
+c     np           number of particles
+c     xp,yp,zp     coordinates of particles
+c  Output:
+c     ex,ey,ez       electric field
+
+c  The field is:
+c     Ex = u0 * v0 * w0 * ex(i  ,j  ,k  ,pgrdid)
+c        + u1 * v0 * w0 * ex(i+1,j  ,k  ,pgrdid)
+c        + u0 * v1 * w0 * ex(i  ,j+1,k  ,pgrdid)
+c        + ...
+c
+c  Note that this routine is very similar to sete3d routine.  It might be
+c  a good idea to combine them to reduce code complexity, but that would make
+c  sete3d more complex and possibly slower.  Since the pgrd routine will not
+c  be used very often and sete3d is used always, the author felt it was better
+c  to have a seperate routine for pgrd.
+
+      integer(ISZ):: ip,i,j,k,iz,ii,ib,im1,jm1
+      real(kind=8):: u0,u1,v0,v1,w0,w1,xfac,yfac,zfac,txp,typ,temp
+
+c  Evaluation of E, vectorized over particles
+
+      if (.not. pgrds .or. .not. linpgrd) return
+
+      do ip = 1, np
+
+c        --- find the location of the particle in the internal lattice arrays
+         iz = max(0., (zp(ip) - zlmin - zlframe)*dzli + 0.5)
+         ii = cpgrdid(iz)
+         ib = pgrdid(ii)
+
+c        --- find transverse particle coordinate in frame of gridded field 
+c        --- transverse offsets
+         txp = xp(ip) - pgrdox(ii)
+         typ = yp(ip) - pgrdoy(ii)
+
+c        --- transverse rotation to take into account an active rotation 
+c        --- of the field element.  Particles are rotated in that oposite 
+c        --- sense of the element. Later the field components accumulated 
+c        --- must be rotated back. 
+         if ( pgrdph(ii) .ne. 0. ) then
+           temp = txp  
+           txp =  temp*pgrdcp(ii) + typ*pgrdsp(ii) 
+           typ = -temp*pgrdsp(ii) + typ*pgrdcp(ii) 
+         endif 
+
+c        --- find location of particle in potential grid
+         i =  abs(txp - pgrdxs(ii))*pgrddxi(ib)
+         j =  abs(typ - pgrdys(ii))*pgrddyi(ib)
+         k = (zp(ip) - cpgrdzs(iz))*pgrddzi(ib)
+
+c        --- Calculate linear weights
+         u1 =  abs(txp - pgrdxs(ii))*pgrddxi(ib) - i
+         v1 =  abs(typ - pgrdys(ii))*pgrddyi(ib) - j
+         w1 = (zp(ip) - cpgrdzs(iz))*pgrddzi(ib) - k
+         u0 = 1. - u1
+         v0 = 1. - v1
+         w0 = 1. - w1
+
+c        --- Only calculate for particles inside the B field grid
+         if (0 <= i .and. i < pgrdnx .and.
+     &       0 <= j .and. j < pgrdny .and.
+     &       0 <= k .and. k < pgrdnz) then
+
+c          --- make sure all indices refer to first quadrant
+           im1 = i - 1
+           jm1 = j - 1
+           if (i == 0) im1 = 1
+           if (j == 0) jm1 = 1
+
+c          --- adjust sign of E field for approiate quadrant
+           xfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddxi(ib)*0.5
+           yfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddyi(ib)*0.5
+           zfac = (pgrdsc(ii) + pgrdsf(ii))*pgrddzi(ib)*0.5
+           if (xp(ip) < pgrdxs(ii)) xfac = -xfac
+           if (yp(ip) < pgrdys(ii)) yfac = -yfac
+
+           ex(ip) = ex(ip) + xfac*
+     &           (u0*v0*w0*(pgrd(im1,j  ,k  ,ib) - pgrd(i+1,j  ,k  ,ib))
+     &          + u1*v0*w0*(pgrd(i  ,j  ,k  ,ib) - pgrd(i+2,j  ,k  ,ib))
+     &          + u0*v1*w0*(pgrd(im1,j+1,k  ,ib) - pgrd(i+1,j+1,k  ,ib))
+     &          + u1*v1*w0*(pgrd(i  ,j+1,k  ,ib) - pgrd(i+2,j+1,k  ,ib))
+     &          + u0*v0*w1*(pgrd(im1,j  ,k+1,ib) - pgrd(i+1,j  ,k+1,ib))
+     &          + u1*v0*w1*(pgrd(i  ,j  ,k+1,ib) - pgrd(i+2,j  ,k+1,ib))
+     &          + u0*v1*w1*(pgrd(im1,j+1,k+1,ib) - pgrd(i+1,j+1,k+1,ib))
+     &          + u1*v1*w1*(pgrd(i  ,j+1,k+1,ib) - pgrd(i+2,j+1,k+1,ib)))
+
+           ey(ip) = ey(ip) + yfac*
+     &           (u0*v0*w0*(pgrd(i  ,jm1,k  ,ib) - pgrd(i  ,j+1,k  ,ib))
+     &          + u1*v0*w0*(pgrd(i+1,jm1,k  ,ib) - pgrd(i+1,j+1,k  ,ib))
+     &          + u0*v1*w0*(pgrd(i  ,j  ,k  ,ib) - pgrd(i  ,j+2,k  ,ib))
+     &          + u1*v1*w0*(pgrd(i+1,j  ,k  ,ib) - pgrd(i+1,j+2,k  ,ib))
+     &          + u0*v0*w1*(pgrd(i  ,jm1,k+1,ib) - pgrd(i  ,j+1,k+1,ib))
+     &          + u1*v0*w1*(pgrd(i+1,jm1,k+1,ib) - pgrd(i+1,j+1,k+1,ib))
+     &          + u0*v1*w1*(pgrd(i  ,j  ,k+1,ib) - pgrd(i  ,j+2,k+1,ib))
+     &          + u1*v1*w1*(pgrd(i+1,j  ,k+1,ib) - pgrd(i+1,j+2,k+1,ib)))
+
+           ez(ip) = ez(ip) + zfac*
+     &           (u0*v0*w0*(pgrd(i  ,j  ,k-1,ib) - pgrd(i  ,j  ,k+1,ib))
+     &          + u1*v0*w0*(pgrd(i+1,j  ,k-1,ib) - pgrd(i+1,j  ,k+1,ib))
+     &          + u0*v1*w0*(pgrd(i  ,j+1,k-1,ib) - pgrd(i  ,j+1,k+1,ib))
+     &          + u1*v1*w0*(pgrd(i+1,j+1,k-1,ib) - pgrd(i+1,j+1,k+1,ib))
+     &          + u0*v0*w1*(pgrd(i  ,j  ,k  ,ib) - pgrd(i  ,j  ,k+2,ib))
+     &          + u1*v0*w1*(pgrd(i+1,j  ,k  ,ib) - pgrd(i+1,j  ,k+2,ib))
+     &          + u0*v1*w1*(pgrd(i  ,j+1,k  ,ib) - pgrd(i  ,j+1,k+2,ib))
+     &          + u1*v1*w1*(pgrd(i+1,j+1,k  ,ib) - pgrd(i+1,j+1,k+2,ib)))
+
+         endif
+
+      enddo
 
       return
       end

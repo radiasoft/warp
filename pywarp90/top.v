@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.6 $, $Date: 2001/04/30 21:03:01 $
+#@(#) File TOP.V, version $Revision: 3.7 $, $Date: 2001/05/15 01:44:20 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -95,8 +95,6 @@ dexdx         real /0./             [E/m] # Uniform focusing X-Electric field
 deydy         real /0./             [E/m] # Unifrom focusing Y-Electric field 
                                           #   gradient (dE_y/dy) 
 dbdr          real /0./             [T/m] # Uniform focusing B-field gradient
-dodec         real /0./               [1] # relative strength of dodecopole
-                                          #   at pole tip
 ekin          real /0./              [eV] # Input beam kinetic energy
 emit          real /0./           [m-rad] # Perp Emittance of beam (rms-edge)
 emitx         real /0./           [m-rad] #    X-Emittance of beam (rms-edge)
@@ -238,6 +236,7 @@ quadpw(0:nquad)   _real [m]   # End plate width of electrostatic quadrupole
 quadpa(0:nquad)   _real [m]   # End plate aperture of electrostatic quadrupole
 quadpr(0:nquad)   _real [m]   # End plate max radius
 quadsl(0:nquad)   _real [m]   # Slant of rod which makes it a cone
+dodec              real /0./ [1] # relative strength of dodecopole at pole tip
 qdelglx(0:nquad)  _real [m]   # Change in gap length on x axis
 qdelgly(0:nquad)  _real [m]   # Change in gap length on y axis
 qdelaxp(0:nquad)  _real [m]   # Change in aperture of rod on plus  x axis
@@ -585,7 +584,7 @@ linpgrd              logical           # Flag for when mesh in pgrd element
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.6 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.7 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
