@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.3 2000/11/21 19:58:25 dave Exp $"
+warp_version = "$Id: warp.py,v 1.4 2000/11/30 22:01:59 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -144,10 +144,10 @@ def installbeforefs(f):
   w3d.lbeforefs = true
 def uninstallbeforefs(f):
   "Removes the function from the list of functions called before a field-solve"
-  try:
+  if f in beforefsfuncs:
     beforefsfuncs.remove(f)
-  except ValueError:
-    print 'Warning: uninstallbeforefs: function was not installed'
+  else:
+    raise 'Warning: uninstallbeforefs: no such function had been installed'
   if len(beforefsfuncs) == 0: w3d.lbeforefs = false
 def installafterfs(f):
   "Adds a function to the list of functions called after a field-solve"
@@ -155,29 +155,29 @@ def installafterfs(f):
   w3d.lafterfs = true
 def uninstallafterfs(f):
   "Removes the function from the list of functions called after a field-solve"
-  try:
+  if f in afterfsfuncs:
     afterfsfuncs.remove(f)
-  except ValueError:
-    print 'Warning: uninstallafterfs: function was not installed'
+  else:
+    raise 'Warning: uninstallafterfs: no such function had been installed'
   if len(afterfsfuncs) == 0: w3d.lafterfs = false
 def installbeforestep(f):
   "Adds a function to the list of functions called before a step"
   beforestepfuncs.append(f)
 def uninstallbeforestep(f):
   "Removes the function from the list of functions called before a step"
-  try:
+  if f in beforestepfuncs:
     beforestepfuncs.remove(f)
-  except ValueError:
-    print 'Warning: uninstallbeforestep: function was not installed'
+  else:
+    raise 'Warning: uninstallbeforestep: no such function had been installed'
 def installafterstep(f):
   "Adds a function to the list of functions called after a step"
   afterstepfuncs.append(f)
 def uninstallafterstep(f):
   "Removes the function from the list of functions called after a step"
-  try:
+  if f in afterstepfuncs:
     afterstepfuncs.remove(f)
-  except ValueError:
-    print 'Warning: uninstallafterstep: function was not installed'
+  else:
+    raise 'Warning: uninstallafterstep: no such function had been installed'
 
 # --- Convenience function for random numbers.
 def setseed(x=0,y=0):
