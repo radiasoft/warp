@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.3 $, $Date: 2001/09/19 22:30:51 $
+c@(#) File WRZ.M, version $Revision: 3.4 $, $Date: 2001/10/25 18:22:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
