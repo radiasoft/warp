@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.M, version $Revision: 3.66 $, $Date: 2002/08/06 23:26:41 $
+c@(#) File W3D.M, version $Revision: 3.67 $, $Date: 2002/08/23 18:02:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -4239,10 +4239,13 @@ c         --- Copy inj_np to inj_prev, and zero inj_np
 c         --- Calculate the charge density on the surface of the emitter.
           if (inject == 3) then
             if(solvergeom==XYZgeom) then
-              call inj_setrho3d(rho(0,0,0),xmmin,ymmin,inj_dx,inj_dy,inj_dz,nx,ny,nz,
+              call inj_setrho3d(xmmin,ymmin,inj_dx,inj_dy,inj_dz,inj_nx,inj_ny,
      &                          l2symtry,l4symtry)
             elseif(solvergeom==RZgeom) then
-              call inj_setrho3d_rz(rho(0,0,0),xmmin,inj_dx,inj_dz,nx,nz)
+c             --- When using the RZ solver, inj_rho is forced to be
+c             --- four-fold symmetric.
+              call inj_setrho3d(xmmin,ymmin,inj_dx,inj_dy,inj_dz,inj_nx,inj_ny,
+     &                          .false.,.true.)
             endif
           endif
 
@@ -4364,7 +4367,7 @@ c                   --- Child-Langmuir
                   elseif (inject == 3) then
 c                   --- Gauss's law
                     rnn = (eps0*inj_phi(ix,iy,inj_ij)/
-     &                    (inj_dz*abs(inj_d(ij)))-inj_rho(ix,iy,inj_ij)*inj_dz)*
+     &                    (inj_dz*abs(inj_d(ij)))-0.5*inj_rho(ix,iy,inj_ij)*inj_dz)*
      &                  inj_dx*inj_dy/sq(is)/sw(is)/cos(inj_angl(ix,iy,inj_ij))
                   endif
 
@@ -5808,15 +5811,13 @@ c           --- (i.e. zero) and the value on the secondary surface.
       return
       end
 c=============================================================================
-      subroutine inj_setrho3d(rho,xmmin,ymmin,dx,dy,dz,nx,ny,nz,
-     &                        l2symtry,l4symtry)
+      subroutine inj_setrho3d(xmmin,ymmin,dx,dy,dz,nx,ny,l2symtry,l4symtry)
       use Subtimers
       use InPart
       use InjectVars
       use InjectVars3d
       use Particles
-      integer(ISZ):: nx,ny,nz
-      real(kind=8):: rho(0:nx,0:ny,0:nz)
+      integer(ISZ):: nx,ny
       real(kind=8):: xmmin,ymmin,dx,dy,dz
       logical(ISZ):: l2symtry,l4symtry
 
@@ -5916,7 +5917,7 @@ c           --- Deposit the particle's charge onto the emitting surface.
 c     --- Loop over unique injection sources
       do ij1 = 1,min(ij,inj_ninj)
 
-c     --- If two-fold symmetry, divide inj_rho by two except on x axis.
+c       --- If two-fold symmetry, divide inj_rho by two except on x axis.
         if (l2symtry) then
           do iy=1,ny
             do ix=0,nx
@@ -5925,8 +5926,8 @@ c     --- If two-fold symmetry, divide inj_rho by two except on x axis.
           enddo
         endif
 
-c     --- If four-fold symmetry, divide inj_rho by four, except on both axis
-c     --- divide by two, except the origin.
+c       --- If four-fold symmetry, divide inj_rho by four, except on both axis
+c       --- divide by two, except the origin.
         if (l4symtry) then
           do iy=1,ny
             do ix=1,nx
@@ -5941,10 +5942,10 @@ c     --- divide by two, except the origin.
           enddo
         endif
 
-c     --- Scale the charge density by the inverse of the fraction of the
-c     --- contributing area which is within the emitting surface.
-c     --- The factor of two is needed since particles are contributing to
-c     --- rho only on the right side of the emitting surface.
+c       --- Scale the charge density by the inverse of the fraction of the
+c       --- contributing area which is within the emitting surface.
+c       --- The factor of two is needed since particles are contributing to
+c       --- rho only on the right side of the emitting surface.
         do iy=0,ny
           do ix=0,nx
             if (inj_area(ix,iy,ij1) > 0.)
@@ -5958,125 +5959,6 @@ c     --- rho only on the right side of the emitting surface.
       return
       end
 c=============================================================================
-      subroutine inj_setrho3d_rz(rho,xmmin,dx,dz,nx,nz)
-      use Subtimers
-      use InPart
-      use InjectVars
-      use InjectVars3d
-      use Particles
-      use Constant
-      integer(ISZ):: nx,nz
-      real(kind=8):: rho(0:nx,0:nz)
-      real(kind=8):: xmmin,dx,dz
-
-c Calculate the charge density on the emitting surface.  The particles are
-c mapped onto the surface assuming a spherical emitter.  The charge density
-c scale to account for symmetries and to account for the fraction of the
-c grid cell within emitting surface.
-c The scaling is done so that the charge density accurately represents
-c the charge divided by the volume filled by that charge.  This only
-c affects the edge of the emitting surface where only part of a grid cell
-c will have charge in it, but the charge is divided by the area of all of
-c the grid cell.
-
-      integer(ISZ):: is,ip,ix,iy,ij,j,ij1
-      real(kind=8):: xinj,yinj,zinj,rinj,rinji,zz,rr2,dd
-      real(kind=8):: az,px,py,wx1,wx0,ww
-      real(kind=8):: dxi,dyi,dzi
-      real(kind=8):: substarttime,wtime
-      real(kind=8):: invvol(0:nx)
-      if (lw3dtimesubs) substarttime = wtime()
-
-      dxi = 1./dx
-      dzi = 1./dz
-      j = 0
-      invvol(j) = 1._8 / (pi * (0.5_8*0.5_8*dx*dx)*dz)
-      do j = 1, nx
-        invvol(j) = 1._8 / (2._8 * pi * real(j,8) * dx * dx * dz)
-      enddo
-
-      iy = 0
-
-c     --- zero out the array
-      call zeroarry(inj_rho(0,0,1),(1+nx)*inj_ninj)
-c      inj_rho = 0.
-
-c     --- Loop over species and particles
-      do is=1,ns
-        ww = sq(is)*sw(is)*dxi*dzi
-        do ip=ins(is),ins(is)+nps(is)-1
-          ix = int(abs(sqrt(xp(ip)**2+yp(ip)**2) - xmmin)*dxi)
-
-c         --- Get number of injection source of particle.  The particle id
-c         --- has the number of the injection source the particle was
-c         --- emitted from. The int is needed since it is doing double
-c         --- duty and has other information stored in the fractional part.
-          ij = int(pid(ip))
-
-c         --- set temporaries
-          rinji = 1./rinject(ij)
-          rinj = rinject(ij)
-          xinj = xinject(ij)
-          yinj = yinject(ij)
-          zinj = zinject(ij)
-
-c         --- Calculate distance of particle from the emitting surface
-          zz = zp(ip) - zinj
-          rr2 = (xp(ip) - xinj)**2 + (yp(ip) - yinj)**2
-          if (abs(zz) < abs(rinj)) then
-c           --- The expression below for zz<rinj is mathematically identical
-c           --- to the commented out expression below.  That form is
-c           --- used so that for large values of rinj, i.e. a flat emitting
-c           --- surface, the correct value of the distance is calculated,
-c           --- namely zz.
-c           dd = rinj - sqrt(rr2 + (rinj - zz)**2)
-            dd = (2.*zz - (zz**2 + rr2)*rinji)/
-     &           (1. + sqrt(rr2*rinji**2 + (1. - zz*rinji)**2))
-          else
-c           --- When zz>rinj, a seperate equation is needed.
-            dd = rinj + sqrt(rr2 + (zz - rinj)**2)
-          endif
-          dd = dd*dzi
-
-c         --- Only deposit charge of particles close to emitting surface.
-          if (dd < 1. .and. uzp(ip) /= 0.) then
-
-c           --- angle relative to z axis
-            az = atan2(sqrt(rr2),rinj-zz)
-
-c           --- Map the particle position onto the emitting surface.
-            px = abs(rinj*sin(az) + xinj - xmmin)*dxi
-            ix = int(px)
-            wx1 = px - ix
-            wx0 = 1. - wx1
-
-c           --- Deposit the particle's charge onto the emitting surface.
-            ij1 = min(ij,inj_ninj)
-            inj_rho(ix  ,iy,ij1)=inj_rho(ix  ,iy,ij1)+ww*wx0*(1.-dd)*invvol(ix)
-            inj_rho(ix+1,iy,ij1)=inj_rho(ix+1,iy,ij1)+ww*wx1*(1.-dd)*invvol(ix+1)
-
-          endif
-        enddo
-      enddo
-
-c     --- Loop over unique injection sources
-      do ij1 = 1,min(ij,inj_ninj)
-c       --- Scale the charge density by the inverse of the fraction of the
-c       --- contributing area which is within the emitting surface.
-c       --- The factor of two is needed since particles are contributing to
-c       --- rho only on the right side of the emitting surface.
-        iy = 0
-        do ix=0,nx
-          if (inj_area(ix,iy,ij1) > 0.)
-     &      inj_rho(ix,iy,ij1) = 2.*inj_rho(ix,iy,ij1)/inj_area(ix,iy,ij1)
-        enddo
-
-      enddo
-
-      if (lw3dtimesubs) timeinj_setrho3d = timeinj_setrho3d + wtime() - substarttime
-      return
-      end
-c===========================================================================
       subroutine sete3d_aperture(phi1d,np,xp,yp,zp,zgrid,xmmin,ymmin,zmmin,
      &                           zmmax,dx,dy,dz,nx,ny,nz,ex,ey,
      &                           l2symtry,l4symtry)
