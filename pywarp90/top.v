@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.135 $, $Date: 2005/01/24 14:29:42 $
+#@(#) File TOP.V, version $Revision: 3.136 $, $Date: 2005/02/04 23:40:18 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.135 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.136 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1155,8 +1155,13 @@ linj_enormcl logical /.true./ # Flags whether or not the normal E field
                            # as in the Child-Langmuir solution or is uniform.
 linj_eperp logical /.false./ # Flags whether or not to include the tangential
                            # electric field near the emitting surface.
-linj_rectangle logical /.false./ # Flags whether injection is over a rectangular region and not 
-# elliptical  
+linj_efromgrid logical /.false./ # When true, the special calculation of the
+                                 # E field from the virtual surface is skipped
+                                 # and the field from the full field grid is
+                                 # used. It is not recommended that this flag
+                                 # be set.
+linj_rectangle logical /.false./ # Flags whether injection is over a
+                                 # rectangular region and not elliptical  
 
 ntinj          integer /0/ # Number of transverse emitting surfaces.
 nztinjmn(ntinj)   _integer # Minimum z extent of transverse injection.
