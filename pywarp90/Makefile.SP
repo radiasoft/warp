@@ -201,7 +201,7 @@ wxypy.$(SO):wxypymodule.o wxy.p.o wxy.o
 wxy.p.o:wxy.p.F90
 	$(F90FREE) $(POPT) -c wxy.p.F90
 wxy.o:wxy.F wxy.p.o top.p.o w3d.p.o
-	$(F90FIXED) -c wxy.F
+	$(F90FIXED) $(OPT) -c wxy.F
 
 wxypymodule.o:wxypymodule.c pybasis.h
 	$(CC) $(PYMODULEOPT) -c wxypymodule.c $(INCLUDE) $(NUMPYINCLUDE)
