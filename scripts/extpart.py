@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.42 2005/03/31 19:42:51 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.43 2005/04/06 00:56:30 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -81,7 +81,10 @@ routines (such as ppxxp).
       self.nepmax = 10000
       if top.allocated("pnumz") and 0 <= self.getiz() <= top.nzmmnt:
         if top.pnumz[self.getiz()] > 0:
-          self.nepmax = nint(top.pnumz[self.getiz(),-1]*3)
+          if top.nszmmnt > 1:
+            self.nepmax = nint(max(top.pnumz[self.getiz(),:-1])*3)
+          else:
+            self.nepmax = nint(top.pnumz[self.getiz(),-1]*3)
     else:
       self.nepmax = nepmax
     # --- Add this new window to the ExtPart group in top
@@ -99,7 +102,7 @@ routines (such as ppxxp).
 
   def setuparrays(self,ns,bump=None):
     if self.laccumulate and not self.dumptofile:
-      if bump is None: bump = self.nepmax/ns
+      if bump is None: bump = self.nepmax
       self.tep = []
       self.xep = []
       self.yep = []
@@ -135,7 +138,7 @@ routines (such as ppxxp).
   def addspecies(self):
     if self.laccumulate and not self.dumptofile:
       for js in range(len(self.tep),top.ns):
-        bump = self.nepmax/top.ns
+        bump = self.nepmax
         self.tep.append(AppendableArray(self.nepmax,typecode='d',
                                         autobump=bump))
         self.xep.append(AppendableArray(self.nepmax,typecode='d',
