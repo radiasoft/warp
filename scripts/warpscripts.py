@@ -1,4 +1,4 @@
-warpscripts_version = "$Id: warpscripts.py,v 1.2 2000/11/30 22:03:39 dave Exp $"
+warpscripts_version = "$Id: warpscripts.py,v 1.3 2001/01/11 22:51:46 dave Exp $"
 
 def warpscriptsdoc():
   print """
@@ -19,6 +19,7 @@ drifts.py: routine to create drift elements in blank spots in the lattice
 egun_like.py: routine for steady-state calculations (like diode problems)
 env_match.py: routines for matching beam using the env module
 envtuner.py: experimental script for mouse driven tuning of the beam envelope
+errorcheck.py: makes numerous consistency and error checks
 expt_diagnostic.py: emulates experimental slit scanner plots of phase space
 find_mgparam.py: routine for finding optimal multigrid relaxation parameter
 find_sorparam.py: routine for finding optimal sor relaxation parameter
