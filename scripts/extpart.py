@@ -8,7 +8,7 @@ from warp import *
 from appendablearray import *
 import cPickle
 import string
-extpart_version = "$Id: extpart.py,v 1.34 2004/09/24 22:37:59 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.35 2005/01/21 21:23:09 dave Exp $"
 
 def extpartdoc():
   import extpart
@@ -269,26 +269,28 @@ routines (such as ppxxp).
          self.zz-self.wz > w3d.zmmaxglobal+top.zbeam)):
       self.autodump()
       return
-    # --- Make sure the arrays didn't overflow. Note that this is not an
-    # --- issue for lab frame windows.
-    if globalmax(maxnd(top.nep)) == top.nepmax:
-      print "************* WARNING *************"
-      print "**** Not enough space was allocated for the ExtPart arrays."
-      print "**** The data will not be correct and will not be saved."
-      print "**** A guess will be made as to how much to increase the size"
-      print "**** of the arrays. Please run another timestep to accumulate new"
-      print "**** data"
-      if top.allocated("pnumz") and 0 <= self.iz <= top.nzmmnt:
-        guess = 3*top.pnumz[self.iz]
-      else:
-        guess = 0
-      # --- Only do this on if the relation is true. This avoids unnecessarily
-      # --- increasing the size of the arrays on processors where no data
-      # --- is gathered.
-      if maxnd(top.nep) == top.nepmax:
-        top.nepmax = max(2*top.nepmax,guess)
-        err = gchange("ExtPart")
-      return
+# --- This check is no longer needed since getzmmnt ensures that the ExtPart
+# --- arrays are big enough.
+#   # --- Make sure the arrays didn't overflow. Note that this is not an
+#   # --- issue for lab frame windows.
+#   if globalmax(maxnd(top.nep)) == top.nepmax:
+#     print "************* WARNING *************"
+#     print "**** Not enough space was allocated for the ExtPart arrays."
+#     print "**** The data will not be correct and will not be saved."
+#     print "**** A guess will be made as to how much to increase the size"
+#     print "**** of the arrays. Please run another timestep to accumulate new"
+#     print "**** data"
+#     if top.allocated("pnumz") and 0 <= self.iz <= top.nzmmnt:
+#       guess = 3*top.pnumz[self.iz]
+#     else:
+#       guess = 0
+#     # --- Only do this on if the relation is true. This avoids unnecessarily
+#     # --- increasing the size of the arrays on processors where no data
+#     # --- is gathered.
+#     if maxnd(top.nep) == top.nepmax:
+#       top.nepmax = max(2*top.nepmax,guess)
+#       err = gchange("ExtPart")
+#     return
     id = self.getid()
     # --- Loop over species, collecting only ones where some particles
     # --- were saved.
