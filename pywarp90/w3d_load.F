@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.13 $, $Date: 2004/12/22 18:38:42 $
+c@(#) File w3d_load.F, version $Revision: 1.14 $, $Date: 2004/12/22 18:46:44 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -83,7 +83,7 @@ c     and check that the density grid has been defined.
       endif 
       if (distrbtn == "TE"  .or. distrbtn == "ThermalEquilibrium") then
 c       --- work variables for calculation of TE density 
-        call gchange("W3DloadTE",0)  
+        call gchange("W3DloadTE",0)
         if (te_nrho .lt. 2) then
           call remark("routine perp_cf_eq: te_nrho >= 2 must be set") 
           call kaboom(0)  
@@ -246,7 +246,7 @@ c
 c=============================================================================
       real(kind=8) function te_constr(delta)
 
-      use W3DloadTE  
+      use W3DloadTE
       real(kind=8):: delta
 
 c te_constr returns a scaled constraint equation assoicated with 
@@ -1330,7 +1330,7 @@ c
 c=============================================================================
       real(kind=8) function te_constr_test(sc_param,delta)
 
-      use W3DloadTE  
+      use W3DloadTE
       real(kind=8):: sc_param, delta
 
 c Test interface to te_constr to verify that it is ok
@@ -1352,7 +1352,7 @@ c     of delta occurs when te_constr = 0.
 c=============================================================================
       real(kind=8) function te_delta_root_test(sc_param,delta_1,delta_2,tol)
 
-      use W3DloadTE  
+      use W3DloadTE
       real(kind=8):: sc_param, delta_1, delta_2, tol 
       real(kind=8):: zbrent
       external te_constr
