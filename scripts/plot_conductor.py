@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.69 2004/02/17 22:23:35 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.70 2004/02/25 23:36:37 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -1823,7 +1823,7 @@ def plotpgrdoutline(zl=None,zu=None,ip=0,np=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
-  if ne is None: ne = top.npgrd + 1
+  if np is None: np = top.npgrd + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ip,np,outline,fillcolor,
                      top.pgrdzs,top.pgrdze,top.pgrdap,top.pgrdax,top.pgrday,
                      top.pgrdox,top.pgrdoy,
@@ -1844,7 +1844,7 @@ def plotaccloutline(zl=None,zu=None,ia=0,na=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
-  if ne is None: ne = top.naccl + 1
+  if na is None: na = top.naccl + 1
   plotelementoutline(color,gridframe,axis,zl,zu,ia,na,outline,fillcolor,
                      top.acclzs,top.acclze,top.acclap,top.acclax,top.acclay,
                      top.acclox,top.accloy)
@@ -1862,7 +1862,7 @@ def plotdrftoutline(zl=None,zu=None,id=0,nd=None,color='fg',gridframe=0,axis='x'
  - outline=1: when true, draw outline
  - fillcolor=None: optionally sets fill color
   """
-  if ne is None: ne = top.ndrft + 1
+  if nd is None: nd = top.ndrft + 1
   plotelementoutline(color,gridframe,axis,zl,zu,id,nd,outline,fillcolor,
                      top.drftzs,top.drftze,top.drftap,
                      top.drftox,top.drftoy)
