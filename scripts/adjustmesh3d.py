@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.18 2004/09/22 15:34:37 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.19 2004/10/28 23:28:53 dave Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -123,7 +123,7 @@ Warning - this does not yet work in parallel
 
   # --- If requested, calculate the new fields
   if lfieldsol:
-    fieldsol(-1)
+    fieldsol(-1,lbeforefs=1,lafterfs=1)
 
 # -------------------------------------------------------------------------
 def resizemeshxy(nx=None,ny=None,xmmin=None,xmmax=None,ymmin=None,ymmax=None,
@@ -220,7 +220,7 @@ Resizes the transverse size of the mesh
 
   # --- If requested, calculate the new fields
   if lfieldsol:
-    fieldsol(-1)
+    fieldsol(-1,lbeforefs=1,lafterfs=1)
 
 
 # -------------------------------------------------------------------------
@@ -300,7 +300,7 @@ def adjustmeshz(newlen,dorho=1,dofs=0,keepcentered=0):
     loadrho()
   # --- Now ready for next field solve
   if dofs:
-    fieldsol(-1)
+    fieldsol(-1,lbeforefs=1,lafterfs=1)
 
 # -------------------------------------------------------------------------
 def adjustmeshxy(newsize,dorho=1,dofs=0,keepcentered=0):
@@ -349,5 +349,5 @@ def adjustmeshxy(newsize,dorho=1,dofs=0,keepcentered=0):
     loadrho()
   # --- Now ready for next field solve
   if dofs:
-    fieldsol(-1)
+    fieldsol(-1,lbeforefs=1,lafterfs=1)
 
