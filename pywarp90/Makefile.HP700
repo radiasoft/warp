@@ -1,0 +1,240 @@
+ARCH = HP700
+MACHINE = HP700
+HOME = /home/ife1/dave
+PYVERS = 1.5
+PYTHON = /usr/local/python$(PYVERS)
+PYMAC = $(HOME)/pywrapper/pymac.py --f90 -t $(MACHINE)
+PYCTOF = $(HOME)/pywrapper/pyctof.py
+BASIS = /usr/local/basis
+PACTLIB = -L/usr/local/pact/lib
+XLIB = -L/usr/X11R6/lib
+YORICKLIB = -L/usr/local/Yorick/yorick-1.4/lib
+TCLLIB = -L/usr/local/tcl/lib
+LAPACKLIB = -L/home/ife1/dave/mathlibs/lapack
+OPT = -O
+PYMODULEOPT = +O1
+FORT = f90 +extend_source +pic=long +real_constant=double +implicit_none
+LD = ld -b
+FORTLIB = -lcl -lc
+LINKLIB = -lcl -lc -L/opt/fortran90/lib -lF90 -lm
+DLLIB =
+CC = cc +z -Ae
+SO = sl
+REALSIZE = 8
+OLD = OLD1
+
+NUMPYINCLUDE = 
+
+WARPSCRIPTS = $(HOME)/scriptsnew
+INCLUDE = -I$(PYTHON)/include/python$(PYVERS) -I$(HOME)/python
+PYTHONLIB = -L$(PYTHON)/lib/python$(PYVERS)/config -lpython$(PYVERS)
+PYTHONOBJ = $(PYTHON)/lib/python$(PYVERS)/config/python.o
+OTHERLIBS = $(PACTLIB) -lpdb -lpml -lscore \
+            $(YORICKLIB) -lgist \
+            $(LAPACKLIB) -llapack -lblas \
+            $(TCLLIB) -ltcl8.0 -ltk8.0
+RANFOBJS = $(PYTHON)/Modules/ranf.o $(PYTHON)/Modules/pmath_rng.o
+
+SHAREDOBJECTS = envpy.$(SO) frzpy.$(SO) wxypy.$(SO) f3dpy.$(SO) fxypy.$(SO) \
+                w3dpy.$(SO) toppy.$(SO) wrzpy.$(SO) cirpy.$(SO) herpy.$(SO) \
+		pybasisC.$(SO)
+
+WARPOBJECTS = env.o \
+              frz.o \
+              wxy.o \
+              f3d.o \
+              fxy.o \
+              util.o \
+              w3d.o \
+              dtop.o \
+              f3d_mgrid.o \
+              dw3d.o \
+              dwrz.o \
+              fft.o \
+              top.o \
+              wrz.o \
+              cir.o \
+              her.o
+
+MODULEOBJECTS = toppymodule.o envpymodule.o w3dpymodule.o f3dpymodule.o \
+                wxypymodule.o fxypymodule.o wrzpymodule.o frzpymodule.o \
+		cirpymodule.o herpymodule.o \
+                top.p.o env.p.o w3d.p.o f3d.p.o wxy.p.o fxy.p.o \
+		wrz.p.o frz.p.o \
+		cir.p.o her.p.o pybasisC.o
+MODULESOURCES = toppymodule.c envpymodule.c w3dpymodule.c f3dpymodule.c \
+                wxypymodule.c fxypymodule.c wrzpymodule.c frzpymodule.c \
+		cirpymodule.c herpymodule.c \
+		pybasisC.c
+
+static: $(WARPOBJECTS) $(MODULEOBJECTS) config.o
+	cc -o pywarp $(PYTHONOBJ) $(WARPOBJECTS) $(MODULEOBJECTS) config.o \
+	-lm -lX11 $(PYTHONLIB) $(LINKLIB) $(OTHERLIBS)
+
+warp: $(SHAREDOBJECTS)
+	#cp *.$(SO) $(WARPSCRIPTS)
+	#tar czf linuxpywarpso.tgz *.so
+	#scp linuxpywarpso.tgz ife1:pub
+
+config.o:config.c
+	cc -Ae +z -c config.c $(INCLUDE)
+
+pybasisC.$(SO):pybasisC.o 
+	#$(LD) -o pybasisC.$(SO) pybasisC.o $(RANFOBJS) $(INCLUDE) $(OTHERLIBS)
+	$(LD) -o pybasisC.$(SO) pybasisC.o $(FORTLIB)
+pybasisC.o:pybasisC.c
+	$(CC) -g -c pybasisC.c $(INCLUDE) $(NUMPYINCLUDE)
+pybasisC.c:$(HOME)/pywrapper/pybasisC.m $(HOME)/pywrapper/pybasis.h
+	cp $(HOME)/pywrapper/pybasisC.m $(HOME)/pywrapper/pybasis.h .
+	$(PYCTOF) --f90 -t$(ARCH) pybasisC
+
+toppy.$(SO):toppymodule.o top.p.o top.o dtop.o fft.o util.o
+	$(LD) -o toppy.$(SO) toppymodule.o top.p.o top.o dtop.o fft.o util.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+top.p.o:top.p.f90
+	$(FORT) -c top.p.f90
+top.o:top.F
+	$(FORT) $(OPT) -c top.F
+dtop.o:dtop.F
+	$(FORT) $(OPT) -c dtop.F
+fft.o:fft.f
+	$(FORT) $(OPT) -c fft.f
+util.o:util.f
+	$(FORT) $(OPT) -c util.f
+
+toppymodule.o:toppymodule.c
+	$(CC) $(PYMODULEOPT) -c toppymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+toppymodule.c top.p.f90:top.v
+	$(PYMAC) -a top.v
+
+envpy.$(SO):envpymodule.o env.p.o env.o
+	$(LD) -o envpy.$(SO) envpymodule.o env.p.o env.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+env.p.o:env.p.f90
+	$(FORT) -c env.p.f90
+env.o:env.F top.p.o
+	$(FORT) $(OPT) -c env.F
+
+envpymodule.o:envpymodule.c
+	$(CC) $(PYMODULEOPT) -c envpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+envpymodule.c env.p.f90:env.v
+	$(PYMAC) -a env.v top.v
+
+
+w3dpy.$(SO):w3dpymodule.o w3d.p.o w3d.o dw3d.o
+	$(LD) -o w3dpy.$(SO) w3dpymodule.o w3d.p.o w3d.o dw3d.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+w3d.p.o:w3d.p.f90
+	$(FORT) -c w3d.p.f90
+w3d.o:w3d.F top.p.o
+	$(FORT) $(OPT) -c w3d.F
+dw3d.o:dw3d.F top.p.o
+	$(FORT) $(OPT) -c dw3d.F
+
+w3dpymodule.o:w3dpymodule.c
+	$(CC) $(PYMODULEOPT) -c w3dpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+w3dpymodule.c w3d.p.f90:w3d.v
+	$(PYMAC) -a w3d.v top.v
+
+
+f3dpy.$(SO):f3dpymodule.o f3d.p.o f3d.o f3d_mgrid.o
+	$(LD) -o f3dpy.$(SO) f3dpymodule.o f3d.p.o f3d.o f3d_mgrid.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+f3d.p.o:f3d.p.f90
+	$(FORT) -c f3d.p.f90
+f3d.o:f3d.F top.p.o
+	$(FORT) $(OPT) -c f3d.F
+f3d_mgrid.o:f3d_mgrid.F
+	$(FORT) $(OPT) -c f3d_mgrid.F
+
+f3dpymodule.o:f3dpymodule.c
+	$(CC) $(PYMODULEOPT) -c f3dpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+f3dpymodule.c f3d.p.f90:f3d.v
+	$(PYMAC) -a f3d.v top.v
+
+wrzpy.$(SO):wrzpymodule.o wrz.p.o wrz.o dwrz.o
+	$(LD) -o wrzpy.$(SO) wrzpymodule.o wrz.p.o wrz.o dwrz.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+wrz.p.o:wrz.p.f90
+	$(FORT) -c wrz.p.f90
+wrz.o:wrz.F top.p.o
+	$(FORT) $(OPT) -c wrz.F
+dwrz.o:dwrz.F top.p.o
+	$(FORT) $(OPT) -c dwrz.F
+
+wrzpymodule.o:wrzpymodule.c
+	$(CC) $(PYMODULEOPT) -c wrzpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+wrzpymodule.c wrz.p.f90:wrz.v
+	$(PYMAC) -a wrz.v top.v
+
+
+frzpy.$(SO):frzpymodule.o frz.p.o frz.o
+	$(LD) -o frzpy.$(SO) frzpymodule.o frz.p.o frz.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+frz.p.o:frz.p.f90
+	$(FORT) -c frz.p.f90
+frz.o:frz.F top.p.o
+	$(FORT) $(OPT) -c frz.F
+
+frzpymodule.o:frzpymodule.c
+	$(CC) $(PYMODULEOPT) -c frzpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+frzpymodule.c frz.p.f90:frz.v
+	$(PYMAC) -a frz.v top.v
+
+
+wxypy.$(SO):wxypymodule.o wxy.p.o wxy.o
+	$(LD) -o wxypy.$(SO) wxypymodule.o wxy.p.o wxy.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+wxy.p.o:wxy.p.f90
+	$(FORT) -c wxy.p.f90
+wxy.o:wxy.F top.p.o w3d.p.o
+	$(FORT) -c wxy.F
+
+wxypymodule.o:wxypymodule.c
+	$(CC) $(PYMODULEOPT) -c wxypymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+wxypymodule.c wxy.p.f90:wxy.v
+	$(PYMAC) -a wxy.v top.v
+
+
+fxypy.$(SO):fxypymodule.o fxy.p.o fxy.o
+	$(LD) -o fxypy.$(SO) fxypymodule.o fxy.p.o fxy.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+fxy.p.o:fxy.p.f90
+	$(FORT) -c fxy.p.f90
+fxy.o:fxy.F top.p.o
+	$(FORT) $(OPT) -c fxy.F
+
+fxypymodule.o:fxypymodule.c
+	$(CC) $(PYMODULEOPT) -c fxypymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+fxypymodule.c fxy.p.f90:fxy.v
+	$(PYMAC) -a fxy.v top.v
+
+
+cirpy.$(SO):cirpymodule.o cir.p.o cir.o
+	$(LD) -o cirpy.$(SO) cirpymodule.o cir.p.o cir.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+cir.p.o:cir.p.f90
+	$(FORT) -c cir.p.f90
+cir.o:cir.F top.p.o
+	$(FORT) $(OPT) -c cir.F
+
+cirpymodule.o:cirpymodule.c
+	$(CC) $(PYMODULEOPT) -c cirpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+cirpymodule.c cir.p.f90:cir.v
+	$(PYMAC) -a cir.v top.v
+
+
+herpy.$(SO):herpymodule.o her.p.o her.o
+	$(LD) -o herpy.$(SO) herpymodule.o her.p.o her.o -lm $(XLIB) -lX11 $(INCLUDE) $(OTHERLIBS) $(DLLIB) $(FORTLIB)
+
+her.p.o:her.p.f90
+	$(FORT) -c her.p.f90
+her.o:her.F top.p.o
+	$(FORT) $(OPT) -c her.F
+
+herpymodule.o:herpymodule.c
+	$(CC) $(PYMODULEOPT) -c herpymodule.c $(INCLUDE) $(NUMPYINCLUDE)
+herpymodule.c her.p.f90:her.v
+	$(PYMAC) -a her.v top.v
+
+
