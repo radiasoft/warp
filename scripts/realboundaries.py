@@ -3,7 +3,7 @@ from warp import *
 from generateconductors import *
 from particlescraper import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.56 2004/10/28 23:12:54 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.57 2004/10/28 23:26:41 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -204,19 +204,6 @@ Constructor arguments
                                logical_and(greater(y,w3d.ymmin+yfuzz),
                                            greater(w3d.ymmax-yfuzz,y))),1,0)
   #----------------------------------------------------------------------------
-  def setparticleboundary(s,ax,ay,xcent,ycent):
-    """
-Sets particle scraping boundaries.
-    """
-    top.prwall = ax
-    top.prwelip = ay/ax
-    top.prwallx = xcent
-    top.prwally = ycent
-    top.prwallz = top.prwall
-    top.prwallxz = top.prwallx
-    top.prwallyz = top.prwally
-    top.prwelipz = top.prwelip
-  #----------------------------------------------------------------------------
   def getmesh(s,xmin,xmax,ymin,ymax,xcent,ycent):
     # --- This routine redefines the mesh to match the size of the element.
     # --- Extend far enough to cover the conductor plus a little extra space to
@@ -307,7 +294,6 @@ No boundary condition.
   #----------------------------------------------------------------------------
   def setmatrix(s,v=None):
     CapacityMatrix.setmatrix(s)
-    s.setparticleboundary(largepos,largepos,0.,0.)
   #----------------------------------------------------------------------------
   def issame(s,ap,ax,ay,ox,oy):
     return 1
@@ -375,7 +361,6 @@ Constructor arguments:
   def setmatrix(s,v=None):
     if v is not None: s.vcond[:] = v
     CapacityMatrix.setmatrix(s,s.vcond)
-    s.setparticleboundary(s.ax,s.ay,s.ox,s.oy)
   #----------------------------------------------------------------------------
   def issame(s,ap,ax,ay,ox,oy):
     ap,ax,ay = s.setaperture(ap,ax,ay)
@@ -529,7 +514,6 @@ Constructor arguments:
       except AttributeError:
         pass
     CapacityMatrix.setmatrix(s,s.vcond)
-    s.setparticleboundary(s.ap,s.ap,s.ox,s.oy)
   #----------------------------------------------------------------------------
   def issame(s,ap,rr,withx,withy,ox,oy):
     # --- Checks if the input values would return the same matrix
@@ -561,8 +545,13 @@ Constructor arguments:
                boundaries are included within the grid
   - rodfract=0.5: when newmesh is true, this gives the fraction of the rods
                   which are included for electric quads.
+  - scrapemethod: Method to use to scrape particles. Only applied to 3d.
+                  1 (default) uses prwall to scrape on cylindrical boundaries
+                  2 uses ParticleScraper module to scrape on actual conductors
+                    The method is precise but very inefficient.
+                  This input supercedes lscrapeparticles.
   - lscrapeparticles=1: When true, particles are scraped on the conductors.
-                        This only applies to the 3d case.
+                        This only applies to the 3d case. (Obsolete)
   - scrapermglevel=1: Coarsening level for index grid used to locate which
                       conductors particles are near. See doc(ParticleScraper)
                       for more info.
@@ -579,6 +568,7 @@ Constructor arguments:
   """
   #----------------------------------------------------------------------------
   def __init__(self,newmesh=0,rodfract=0.5,lscrapeparticles=1,scrapermglevel=1,
+                    scrapemethod=1,
                     dfill=2,lclearconductors=1,pipethickness=largepos):
     global _realboundarycount
     # --- Only allow one instance of this class.
@@ -589,6 +579,7 @@ Constructor arguments:
     # --- Save the input arguments
     self.newmesh = newmesh
     self.rodfract = rodfract
+    self.scrapemethod = scrapemethod
     self.lscrapeparticles = lscrapeparticles
     self.scrapermglevel = scrapermglevel
     self.dfill = dfill
@@ -713,6 +704,21 @@ Constructor arguments:
       _realboundarycount = 1
 
   #----------------------------------------------------------------------------
+  def setscraper(self,zl,zr,ap,ax,ay,ox,oy):
+    if self.scrapemethod != 1: return
+    izl = int(ceil((zl - top.zbeam - top.zzmin)/top.dzz))
+    izr = int(floor((zr - top.zbeam - top.zzmin)/top.dzz))
+    izl = max(0,min(top.nzzarr,izl))
+    izr = max(0,min(top.nzzarr,izr)) + 1
+    if ax == 0.: ax = ap
+    if ay == 0.: ay = ap
+    top.prwallz[izl:izr] = ap
+    top.prwallxz[izl:izr] = ox
+    top.prwallyz[izl:izr] = oy
+    top.prwelipz[izl:izr] = ay/ax
+    top.prwall = max(top.prwallz)
+
+  #----------------------------------------------------------------------------
   def setmatrix(self,m,v):
     if self.current == m: return
     if m is not None: m.setmatrix(v)
@@ -784,11 +790,13 @@ Constructor arguments:
     else:
       pipe = ZCylinderEllipticOut(ay/ax,ax,ze-zs,0.,ox[id],oy[id],0.5*(zs+ze))
     self.conductors += pipe
+    self.setscraper(zs,ze,ap,ax,ay,ox[id],oy[id])
     return 0
   #----------------------------------------------------------------------------
   def roundpipexy(self,id,zs,ze,ap,ax,ay,ox,oy,cm):
     # --- Only apply matrix is the z location is within the current element
     if zs <= top.zbeam < ze:
+      self.setscraper(zs,ze,ap,ax,ay,ox,oy)
       # --- Check if there is a matrix for this element
       if (len(cm) > id and cm[id] is None) or len(cm) < id+1:
         # --- If the list is too short, add some None's in.
@@ -814,16 +822,30 @@ Constructor arguments:
     gl = getattr(top,elem+'gl')[elemid]
     pw = getattr(top,elem+'pw')[elemid]
     zc = 0.5*(zs+ze)
-    if (zc+0.5*(rl+gl)+pw < w3d.zmmin+top.zbeam or
-        zc-0.5*(rl+gl)-pw > w3d.zmmax+top.zbeam): return 0
+    zl = zc-0.5*(rl+gl)-pw
+    zr = zc+0.5*(rl+gl)+pw
+    if (zr < w3d.zmmin+top.zbeam or
+        zl > w3d.zmmax+top.zbeam): return 0
     quad = Quadrupole(zcent=zc,condid=100+elemid,elem=elem,elemid=elemid,
                       splitrodids=1)
+    ap = getattr(top,elem+'ap')[elemid]
+    ax = getattr(top,elem+'ax')[elemid]
+    ay = getattr(top,elem+'ay')[elemid]
+    if elem == 'quad':
+      ox = top.qoffx[elemid]
+      oy = top.qoffy[elemid]
+    else:
+      ox = getattr(top,elem+'ox')[elemid]
+      oy = getattr(top,elem+'oy')[elemid]
+    self.setscraper(zl,zr,ap,ax,ay,ox,oy)
     if quad is not None:
       self.conductors += quad
     return 0
   #----------------------------------------------------------------------------
   def quadrodsxy(self,elem,elemid,zs,ze,cm):
     ap = getattr(top,elem+'ap')[elemid]
+    ax = getattr(top,elem+'ax')[elemid]
+    ay = getattr(top,elem+'ay')[elemid]
     rl = getattr(top,elem+'rl')[elemid]
     rr = getattr(top,elem+'rr')[elemid]
     gl = getattr(top,elem+'gl')[elemid]
@@ -853,6 +875,7 @@ Constructor arguments:
       zr = ze
     # --- Only apply matrix if the z location is within the current element
     if zl <= top.zbeam < zr and ap > 0.:
+      self.setscraper(zl,zr,ap,ax,ay,ox,oy)
       # --- Check if the matrix has already been calculated.
       if (len(cm) > elemid and cm[elemid] is None) or len(cm) < elemid+1:
         # --- If the list is too short, add some None's in.
@@ -943,8 +966,8 @@ in the celemid array. It returns each element only once.
     if solver is None: solver = w3d
     solverparams = [solver.nx,solver.ny,solver.nz,
                     solver.dx,solver.dy,solver.dz,
-                    solver.xmmin,solver.ymmin,solve.zmmin,
-                    solver.xmmax,solver.ymmax,solve.zmmax]
+                    solver.xmmin,solver.ymmin,solver.zmmin,
+                    solver.xmmax,solver.ymmax,solver.zmmax]
     if (not lforce and
         self.lastzbeam == top.zbeam and
         self.lastsolverid == id(solver) and
@@ -957,6 +980,9 @@ in the celemid array. It returns each element only once.
     self.conductors = None
 
     if w3d.solvergeom==w3d.XYgeom: del_conductors()
+
+    # --- Clear out the particle scraping radius of using method 1.
+    self.setscraper(top.zzmin,top.zzmax,largepos,largepos,largepos,0.,0.)
 
     # --- Go through each element type and chose the first one covers the
     # --- current location.
@@ -1065,19 +1091,19 @@ in the celemid array. It returns each element only once.
     self.nopipe(0,self.nonecm)
     # --- This place is always reached in the 3d case.
     if self.lclearconductors:
-      if solver is None:
+      if solver is w3d:
         f3d.conductors.interior.n = 0
         f3d.conductors.evensubgrid.n = 0
         f3d.conductors.oddsubgrid.n = 0
       else:
         solver.clearconductors()
     if self.conductors is not None:
-      if solver is None:
+      if solver is w3d:
         installconductors(self.conductors,dfill=self.dfill,gridmode=1)
       else:
         print "installing conductor"
         solver.installconductor(self.conductors,dfill=self.dfill)
-      if self.lscrapeparticles:
+      if self.scrapemethod == 2 and self.lscrapeparticles:
         try:
           self.scraper.disable()
         except:
