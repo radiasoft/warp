@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.56 2003/08/30 00:11:24 dave Exp $"
+warp_version = "$Id: warp.py,v 1.57 2003/09/03 17:55:15 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -187,23 +187,33 @@ loadrho: Load the particles onto the charge density mesh
 fieldsol: Solve for the self-fields
 installbeforefs: Install a function which will be called before a field-solve
 uninstallbeforefs: Uninstall the function called before a field-solve
+isinstalledbeforefs: Checks if a function is installed to be called before a
+                     field-solve
 installafterfs: Install a function which will be called after a field-solve
 isinstalledafterfs: Checks if a function is installed to be called after a
                     field-solve
 uninstallafterfs: Uninstall the function called after a field-solve
 installbeforestep: Install a function which will be called before a step
-isinstalledbeforestep: Install a function which will be called before a step
 uninstallbeforestep: Uninstall the function called before a step
+isinstalledbeforefs: Checks if a function is installed to be called before a
+                     step
 installafterstep: Install a function which will be called after a step
 uninstallafterstep: Uninstall the function called after a step
+isinstalledafterfs: Checks if a function is installed to be called after a
+                    step
 installparticlescraper: Installs a function which will be called at the
                         correct time to scrape particles
 uninstallparticlescraper: Uninstalls a function which will be called at the
                           correct time to scrape particles
+isinstalledparticlescraper: Checks if a function is installed to be called at
+                            the correct time to scrape particles
 installaddconductor: Installs a function which will be called at the beginning
                     of the field solve so conductors will be added.
 uninstalladdconductor: Uninstalls the function which would be called at the
                        beginning of the field solve so conductors will be added.
+isinstalledaddconductor: Checks if a function is installed to be called at
+                         the beginning of the field solve so conductors will
+                         be added.
 gethzarrays: Fixes the ordering of hlinechg and hvzofz data from a paralle run
 printtimers: Print timers in a nice annotated format
   """
@@ -218,6 +228,12 @@ beforefsfuncs = []
 afterfsfuncs = []
 callscraperfuncs = []
 addconductorfuncs = []
+__controlfuncs = {'beforefs':beforefsfuncs,
+                  'afterfs':afterfsfuncs,
+                  'callscraper':callscraperfuncs,
+                  'addconductor':addconductorfuncs,
+                  'beforestep':beforestepfuncs,
+                  'afterstep':afterstepfuncs}
 def beforefs():
   for f in beforefsfuncs: f()
 def afterfs():
@@ -266,6 +282,8 @@ def uninstallparticlescraper(f):
   else:
     raise 'Warning: uninstallparticlescraper: no such function had been installed'
   if len(callscraperfuncs) == 0: w3d.lcallscraper = false
+def isinstalledparticlescraper(f):
+  return f in callscraperfuncs
 
 def installaddconductor(f):
   "Adds a function to the list of functions called to add conductors"
@@ -278,6 +296,8 @@ def uninstalladdconductor(f):
   else:
     raise 'Warning: uninstalladdconductor: no such function had been installed'
   if len(addconductorfuncs) == 0: f3d.laddconductor = false
+def isinstalledaddconductor(f):
+  return f in addconductorfuncs
 
 def installbeforestep(f):
   "Adds a function to the list of functions called before a step"
@@ -288,6 +308,8 @@ def uninstallbeforestep(f):
     beforestepfuncs.remove(f)
   else:
     raise 'Warning: uninstallbeforestep: no such function had been installed'
+def isinstalledbeforestep(f):
+  return f in beforestepfuncs
 
 def installafterstep(f):
   "Adds a function to the list of functions called after a step"
@@ -298,6 +320,8 @@ def uninstallafterstep(f):
     afterstepfuncs.remove(f)
   else:
     raise 'Warning: uninstallafterstep: no such function had been installed'
+def isinstalledafterstep(f):
+  return f in afterstepfuncs
 
 #=============================================================================
 # --- Convenience function for random numbers.
@@ -479,6 +503,17 @@ Creates a dump file
   # --- Make list of all of the new python variables.
   interpreter_variables = []
   if pyvars:
+    if attr == 'dump' or 'dump' in attr:
+      # --- Convert control functions to their names so they can be written
+      # --- Note, only functions are converted, not methods of class
+      # --- instances. Also, note that functions defined interactively will
+      # --- not be restored properly since the source is not available.
+      for n,l in __controlfuncs.iteritems():
+        __main__.__dict__['control'+n] = []
+        for f in l:
+          if type(f) is FunctionType:
+            __main__.__dict__['control'+n].append(f.__name__)
+    # --- Add to the list all variables which are not in the initial list
     for l in __main__.__dict__.keys():
       if l not in initial_global_dict_keys:
         interpreter_variables.append(l)
@@ -493,6 +528,11 @@ Creates a dump file
   else:
     pydump(filename,attr,interpreter_variables,serial=serial,ff=ff,
            varsuffix=varsuffix,verbose=verbose)
+  # --- Remove control names from main dict
+  for n in __controlfuncs.iterkeys():
+    if 'control'+n in __main__.__dict__:
+      del __main__.__dict__['control'+n]
+  # --- Update dump time
   top.dumptime = top.dumptime + (wtime() - timetemp)
 
 # --- Restart command
@@ -517,6 +557,16 @@ Reads in data from file, redeposits charge density and does field solve
     parallelrestore(filename,verbose=verbose)
   else:
     pyrestore(filename,verbose=verbose)
+  # --- Recreate control function lists
+  for n,l in __controlfuncs.iteritems():
+    if 'control'+n not in __main__.__dict__: continue
+    # --- Add items that are defined to the list if not already there.
+    for fname in __main__.__dict__['control'+n]:
+      if fname in __main__.__dict__:
+        if not __main__.__dict__['isinstalled'+n](__main__.__dict__[fname]):
+          __main__.__dict__['install'+n](__main__.__dict__[fname])
+    # --- Delete the temporary variable
+    del __main__.__dict__['control'+n]
   # --- Now that the dump file has been read in, finish up the restart work.
   # --- First set the current packge. Note that currpkg is only ever defined
   # --- in the main dictionary.

@@ -29,7 +29,7 @@ else:
   import rlcompleter
   readline.parse_and_bind("tab: complete")
 
-Basis_version = "$Id: pyBasis.py,v 1.35 2003/08/25 23:08:13 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.36 2003/09/03 17:50:52 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386']:
   true = -1
@@ -448,7 +448,7 @@ Dump data into a pdb file
     # --- Don't try to write out classes. (They don't seem to
     # --- cause problems but this avoids potential problems. The
     # --- class body wouldn't be written out anyway.)
-    if type(vval) in [ClassType]: continue
+    #if type(vval) in [ClassType]: continue
     # --- Write out the source of functions. Note that the source of functions
     # --- typed in interatively is not retrieveable - inspect.getsource
     # --- returns an IOError.
