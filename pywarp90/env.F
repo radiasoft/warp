@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File ENV.M, version $Revision: 3.21 $, $Date: 2003/04/10 16:21:55 $
+c@(#) File ENV.M, version $Revision: 3.22 $, $Date: 2003/06/02 17:43:26 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package ENV of the PIC code WARP,
@@ -169,6 +169,12 @@ c           x(1:np), xp(1:np), y(1:np), yp(1:np)
 
       integer(ISZ):: i,ip
       real(kind=8):: zpmin,zpmax,w0,w1
+
+c  Check if there is any envelope data
+      if (.not. ASSOCIATED(aenv)) then
+        call remark("Error: envelope code has not been intialized")
+        stop
+      endif
 
 c  Validity check on input
 
