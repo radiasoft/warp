@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.18 2001/06/18 20:45:54 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.19 2001/07/03 18:41:43 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -30,7 +30,7 @@ plotquadoutline: plots outline of quadrupole structure
 
 # --- Convenience function to plot the sub-grid data
 def plotsubgrid(iz,nn,ixc,iyc,izc,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,
-                color):
+                color,subgridlen):
   ii = compress(equal(izc[:nn],iz),arange(nn))
   xx = take(ixc,ii)*dx+xmin
   yy = take(iyc,ii)*dy+ymin
@@ -46,18 +46,19 @@ def plotsubgrid(iz,nn,ixc,iyc,izc,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,
     delpx = gatherarray(delpx)
     delpy = gatherarray(delpy)
   for i in xrange(len(xx)):
-    if (abs(delmx[i]) < abs(dx)):
+    if (abs(delmx[i]) < abs(dx)*subgridlen):
       plg([xx[i],xx[i]-delmx[i]],[yy[i],yy[i]],color=color)
-    if (abs(delmy[i]) < abs(dy)):
+    if (abs(delmy[i]) < abs(dy)*subgridlen):
       plg([xx[i],xx[i]],[yy[i],yy[i]-delmy[i]],color=color)
-    if (abs(delpx[i]) < abs(dx)):
+    if (abs(delpx[i]) < abs(dx)*subgridlen):
       plg([xx[i],xx[i]+delpx[i]],[yy[i],yy[i]],color=color)
-    if (abs(delpy[i]) < abs(dy)):
+    if (abs(delpy[i]) < abs(dy)*subgridlen):
       plg([xx[i],xx[i]],[yy[i],yy[i]+delpy[i]],color=color)
 
 # x-y plane
 def pfxy(iz=None,izf=None,contours=8,plotsg=1,scale=1,signx=1,signy=1,
-         plotphi=1,filled=0):
+         plotphi=1,filled=0,subgridlen=1.,phicolor=blue,condcolor=cyan,
+         oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
   - iz=w3d.iz_axis z index of plane
@@ -68,6 +69,10 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - signy=1 sign of y, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   # --- This logic is needed since in the parallel version, iz_axis already
   # --- has izslave subtracted from it. If the user passes in a value,
@@ -92,28 +97,29 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     #yy=iota(0,w3d.ny)*dy + ymmin
     ppp = getphi(iz=iz)
     #ppp = transpose(ppp)
-    #plotc(ppp,yy,xx,contours=contours,filled=filled,color=blue)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+    #plotc(ppp,yy,xx,contours=contours,filled=filled,color=phicolor)
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
               xmin=xmmin,xmax=xmmin+w3d.nx*dx,
               ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.izcond[0:f3d.ncond],izlocal),arange(f3d.ncond))
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
-    warpplp(yy,xx,color=cyan)
+    warpplp(yy,xx,color=condcolor)
   else:
-    warpplp([],[],color=cyan)
+    warpplp([],[],color=condcolor)
   if (plotsg):
     plotsubgrid(izlocal,f3d.necndbdy,f3d.iecndy,f3d.iecndx,f3d.iecndz,
                 f3d.ecdelmy,f3d.ecdelmx,f3d.ecdelpy,f3d.ecdelpx,
-                ymmin,xmmin,dy,dx,green)
+                ymmin,xmmin,dy,dx,evencolor,subgridlen)
     plotsubgrid(izlocal,f3d.nocndbdy,f3d.iocndy,f3d.iocndx,f3d.iocndz,
                 f3d.ocdelmy,f3d.ocdelmx,f3d.ocdelpy,f3d.ocdelpx,
-                ymmin,xmmin,dy,dx,red)
+                ymmin,xmmin,dy,dx,oddcolor,subgridlen)
 
 # z-x plane
 def pfzx(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
-         plotphi=1,filled=0):
+         plotphi=1,filled=0,subgridlen=1.,phicolor=blue,condcolor=cyan,
+         oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
   - iy=w3d.iy_axis y index of plane
@@ -124,6 +130,10 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - signx=1 sign of x, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   if iyf is not None: iy = iyf
   if iy is None: iy = w3d.iy_axis
@@ -143,29 +153,30 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     #xx = iota(0,w3d.nx)*dx + xmmin
     #zz = iota(0,w3d.nzfull)*dz + zmmin
     ppp = getphi(iy=iy)
-    #plotc(ppp,xx,zz,contours=contours,filled=filled,color=blue)
+    #plotc(ppp,xx,zz,contours=contours,filled=filled,color=phicolor)
     ppp = transpose(ppp)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
               xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
               ymin=xmmin,ymax=xmmin+w3d.nx*dx)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.iycond[0:f3d.ncond],iy),arange(f3d.ncond))
     xx = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
     zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
-    warpplp(xx,zz,color=cyan)
+    warpplp(xx,zz,color=condcolor)
   else:
-    warpplp([],[],color=cyan)
+    warpplp([],[],color=condcolor)
   if (plotsg):
     plotsubgrid(iy,f3d.necndbdy,f3d.iecndx,f3d.iecndz,f3d.iecndy,
                 f3d.ecdelmx,f3d.ecdelmz,f3d.ecdelpx,f3d.ecdelpz,
-                xmmin,zmmin,dx,dz,green)
+                xmmin,zmmin,dx,dz,evencolor,subgridlen)
     plotsubgrid(iy,f3d.nocndbdy,f3d.iocndx,f3d.iocndz,f3d.iocndy,
                 f3d.ocdelmx,f3d.ocdelmz,f3d.ocdelpx,f3d.ocdelpz,
-                xmmin,zmmin,dx,dz,red)
+                xmmin,zmmin,dx,dz,oddcolor,subgridlen)
 
 # z-y plane
 def pfzy(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
-         plotphi=1,filled=0):
+         plotphi=1,filled=0,subgridlen=1.,phicolor=blue,condcolor=cyan,
+         oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
   - ix=w3d.ix_axis x index of plane
@@ -176,6 +187,10 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - signy=1 sign of y, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   if ixf is not None: ix = ixf
   if ix is None: ix = w3d.ix_axis
@@ -195,25 +210,25 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     #yy = iota(0,w3d.ny)*dy + ymmin
     #zz = iota(0,w3d.nzfull)*dz + zmmin
     ppp = getphi(ix=ix)
-    #plotc(ppp,yy,zz,contours=contours,filled=filled,color=blue)
+    #plotc(ppp,yy,zz,contours=contours,filled=filled,color=phicolor)
     ppp = transpose(ppp)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
               xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
               ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if f3d.ncond > 0:
     ii = compress(equal(f3d.ixcond[0:f3d.ncond],ix),arange(f3d.ncond))
     yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
     zz = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
-    warpplp(yy,zz,color=cyan)
+    warpplp(yy,zz,color=condcolor)
   else:
-    warpplp([],[],color=cyan)
+    warpplp([],[],color=condcolor)
   if (plotsg):
     plotsubgrid(ix,f3d.necndbdy,f3d.iecndy,f3d.iecndz,f3d.iecndx,
                 f3d.ecdelmy,f3d.ecdelmz,f3d.ecdelpy,f3d.ecdelpz,
-                ymmin,zmmin,dy,dz,green)
+                ymmin,zmmin,dy,dz,evencolor,subgridlen)
     plotsubgrid(ix,f3d.nocndbdy,f3d.iocndy,f3d.iocndz,f3d.iocndx,
                 f3d.ocdelmy,f3d.ocdelmz,f3d.ocdelpy,f3d.ocdelpz,
-                ymmin,zmmin,dy,dz,red)
+                ymmin,zmmin,dy,dz,oddcolor,subgridlen)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
@@ -222,7 +237,8 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
 
 # x-y plane
 def pfxyg(iz=None,izf=None,contours=8,plotsg=1,signx=1,signy=1,plotphi=1,
-          filled=0):
+          filled=0,subgridlen=1.,phicolor=blue,condcolor=cyan,
+          oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
@@ -233,14 +249,21 @@ frame
   - signy=1 sign of y, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   if izf is not None: iz = izf
   pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=0,signx=signx,signy=signy,
-       plotphi=plotphi,filled=filled)
+       plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+       phicolor=phicolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor)
 
 # z-x plane
 def pfzxg(iy=None,iyf=None,contours=8,plotsg=1,signz=1,signx=1,plotphi=1,
-          filled=0):
+          filled=0,subgridlen=1.,phicolor=blue,condcolor=cyan,
+          oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
 frame
@@ -251,14 +274,21 @@ frame
   - signx=1 sign of x, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   if iyf is not None: iy = iyf
   pfzx(iy=iy,contours=contours,plotsg=plotsg,scale=0,signz=signz,signx=signx,
-       plotphi=plotphi,filled=filled)
+       plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+       phicolor=phicolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor)
 
 # z-y plane
 def pfzyg(ix=None,ixf=None,contours=8,plotsg=1,signz=1,signy=1,plotphi=1,
-          filled=0):
+          filled=0,subgridlen=1.,phicolor=blue,condcolor=cyan,
+          oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
 frame
@@ -269,10 +299,16 @@ frame
   - signy=1 sign of y, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   if ixf is not None: ix = ixf
   pfzy(ix=ix,contours=contours,plotsg=plotsg,scale=0,signz=signz,signy=signy,
-       plotphi=plotphi,filled=filled)
+       plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+       phicolor=phicolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor)
 
 ######################################################################
 # handy functions to plot the conductor points and subgrid data      #
@@ -282,7 +318,8 @@ frame
  
 # z-x plane
 def pfzxi(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,plotphi=1,
-          filled=0):
+          filled=0,subgridlen=1.,phicolor=blue,condcolor=cyan,
+          oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in Z-(-X) plane
   - iy=w3d.iy_axis y index of plane
@@ -292,14 +329,21 @@ Plots conductors and contours of electrostatic potential in Z-(-X) plane
   - signz=1 sign of z, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   if iyf is not None: iy = iyf
   pfzx(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signx=-1,
-       plotphi=plotphi,filled=filled)
+       plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+       phicolor=phicolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor)
 
 # z-y plane
 def pfzyi(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,plotphi=1,
-          filled=0):
+          filled=0,subgridlen=1.,phicolor=blue,condcolor=cyan,
+          oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in Z-(-Y) plane
   - ix=w3d.ix_axis x index of plane
@@ -309,13 +353,21 @@ Plots conductors and contours of electrostatic potential in Z-(-Y) plane
   - signz=1 sign of z, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   if ixf is not None: ix = ixf
   pfzy(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,signy=-1,
-       plotphi=plotphi,filled=filled)
+       plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+       phicolor=phicolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor)
 
 # x-y plane
-def pfxyi(iz=None,izf=None,contours=8,plotsg=1,scale=1,plotphi=1,filled=0):
+def pfxyi(iz=None,izf=None,contours=8,plotsg=1,scale=1,plotphi=1,filled=0,
+          subgridlen=1.,phicolor=blue,condcolor=cyan,
+          oddcolor=red,evencolor=green):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane,
 plotting data in all four quadrants
@@ -325,18 +377,30 @@ plotting data in all four quadrants
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
+  - oddcolor=red color of odd subgrid points
+  - evencolor=green color of even subgrid points
   """
   if izf is not None: iz = izf
   pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=+1,signy=+1,
-       plotphi=plotphi,filled=filled)
+       plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+       phicolor=phicolor,condcolor=condcolor,
+       oddcolor=oddcolor,evencolor=evencolor)
   if w3d.l2symtry or w3d.l4symtry:
     pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=+1,signy=-1,
-         plotphi=plotphi,filled=filled)
+         plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+         phicolor=phicolor,condcolor=condcolor,
+         oddcolor=oddcolor,evencolor=evencolor)
   if w3d.l4symtry:
     pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=-1,signy=+1,
-         plotphi=plotphi,filled=filled)
+         plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+         phicolor=phicolor,condcolor=condcolor,
+         oddcolor=oddcolor,evencolor=evencolor)
     pfxy(iz=iz,contours=contours,plotsg=plotsg,scale=scale,signx=-1,signy=-1,
-         plotphi=plotphi,filled=filled)
+         plotphi=plotphi,filled=filled,subgridlen=subgridlen,
+         phicolor=phicolor,condcolor=condcolor,
+         oddcolor=oddcolor,evencolor=evencolor)
 
 ############################################################################
 # These plot abox at each conductor point
@@ -344,7 +408,7 @@ plotting data in all four quadrants
 
 # x-y plane
 def pfxybox(iz=None,izf=None,contours=8,plotsg=1,scale=1,signx=1,signy=1,
-            plotphi=1,filled=0):
+            plotphi=1,filled=0,phicolor=blue,condcolor=cyan):
   """
 Plots square at conductor points and contours of electrostatic potential
 in X-Y plane
@@ -356,6 +420,8 @@ in X-Y plane
   - signy=1 sign of y, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
   """
   if izf is not None: iz = izf
   if not iz: iz = w3d.iz_axis
@@ -373,7 +439,7 @@ in X-Y plane
     xmmin = 0.
   if plotphi:
     ppp = getphi(iz=iz)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
               xmin=xmmin,xmax=xmmin+w3d.nx*dx,
               ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if f3d.ncond > 0:
@@ -389,11 +455,11 @@ in X-Y plane
   if len(x) > 0:
     pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
         array([x-dx/2,x+dx/2,x+dx/2,x-dx/2,x-dx/2]),
-        color=cyan)
+        color=condcolor)
 
 # z-x plane
 def pfzxbox(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
-            plotphi=1,filled=0):
+            plotphi=1,filled=0,phicolor=blue,condcolor=cyan):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-X plane
@@ -405,6 +471,8 @@ in Z-X plane
   - signx=1 sign of x, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
   """
   if iyf is not None: iy = iyf
   if not iy: iy = w3d.iy_axis
@@ -423,7 +491,7 @@ in Z-X plane
   if plotphi:
     ppp = getphi(iy=iy)
     ppp = transpose(ppp)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
               xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
               ymin=xmmin,ymax=xmmin+w3d.nx*dx)
   if (f3d.ncond > 0):
@@ -439,11 +507,11 @@ in Z-X plane
   if len(x) > 0:
     pla(array([x-dx/2,x-dx/2,x+dx/2,x+dx/2,x-dx/2]),
         array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
-        color=cyan)
+        color=condcolor)
 
 # z-y plane
 def pfzybox(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
-            plotphi=1,filled=0):
+            plotphi=1,filled=0,phicolor=blue,condcolor=cyan):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-Y plane
@@ -455,6 +523,8 @@ in Z-Y plane
   - signy=1 sign of y, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
   """
   if ixf is not None: ix = ixf
   if not ix: ix = w3d.ix_axis
@@ -473,7 +543,7 @@ in Z-Y plane
   if plotphi:
     ppp = getphi(ix=ix)
     ppp = transpose(ppp)
-    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=blue,
+    ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
               xmin=zmmin,xmax=zmmin+w3d.nzfull*dz,
               ymin=ymmin,ymax=ymmin+w3d.ny*dy)
   if (f3d.ncond > 0):
@@ -489,11 +559,11 @@ in Z-Y plane
   if len(y) > 0:
     pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
         array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
-        color=cyan)
+        color=condcolor)
 
 # z-x plane
 def pfzxboxi(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,
-             plotphi=1,filled=0):
+             plotphi=1,filled=0,phicolor=blue,condcolor=cyan):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-X) plane
@@ -504,14 +574,17 @@ in Z-(-X) plane
   - signz=1 sign of z, used for plotting symmetry planes
   - plotphi=1 when true, plot contours of potential
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
   """
   if iyf is not None: iy = iyf
   pfzxbox(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
-          signx=-1,plotphi=plotphi,filled=filled)
+          signx=-1,plotphi=plotphi,filled=filled,
+          phicolor=phicolor,condcolor=condcolor)
 
 # z-y plane
 def pfzyboxi(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=-1,
-             plotphi=1,filled=0):
+             plotphi=1,filled=0,phicolor=blue,condcolor=cyan):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-Y) plane
@@ -521,10 +594,13 @@ in Z-(-Y) plane
   - scale=1 when true, plots data in lab frame, otherwise grid frame
   - signz=1 sign of z, used for plotting symmetry planes
   - filled=0 when true, plots filled contours
+  - phicolor=blue color of phi contours
+  - condcolor=cyan color of conductor points inside conductors
   """
   if ixf is not None: ix = ixf
   pfzybox(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
-          signy=-1,plotphi=plotphi,filled=filled)
+          signy=-1,plotphi=plotphi,filled=filled,
+          phicolor=phicolor,condcolor=condcolor)
 
 
 
@@ -574,9 +650,10 @@ Plots Z-X grid in the lab frame (including bends)
   if plotcond: pfzxlab(zz)
 
 # --- Make pfzx plot in lab frame
-def pfzxlab(zz=None,iy=None):
+def pfzxlab(zz=None,iy=None,condcolor=cyan):
   """Plots conductors in Z-X lab frame (including bends)
   - zz=top.zbeam is the center position
+  - condcolor=cyan color of conductor points inside conductors
   """
   if not zz: zz=top.zbeam
   if iy is None: iy = w3d.iy_axis
@@ -597,7 +674,7 @@ def pfzxlab(zz=None,iy=None):
     # --- convert to lab frame
     tolabfrm(zz,len(xxxx),xxxx,zzzz)   
     # --- make plot
-    plg(xxxx,zzzz,marker='\2',color=cyan)
+    plg(xxxx,zzzz,marker='\2',color=condcolor)
   # --- restore original conductor data at zbeam
   if (zz != top.zbeam):
     top.zbeam = z
