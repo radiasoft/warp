@@ -10,8 +10,9 @@ OPT = -O3 -qstrict -qarch=pwr3 -qtune=pwr3
 POPT = -O
 PYMODULEOPT = 
 DATASIZE = -bmaxdata:0x80000000 -bmaxstack:0x10000000	
-F90FREE  = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VAMPIR) $(DATASIZE)
-F90FIXED = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qfixed=132 $(VAMPIR) $(DATASIZE)
+ESSL = -WF,-DESSL
+F90FREE  = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qsuffix=f=f90:cpp=F90 -qfree=f90 $(VAMPIR) $(DATASIZE) $(ESSL)
+F90FIXED = mpxlf -c -qmaxmem=8192 -u -qdpc=e -qintsize=4 -WF,-DMPIPARALLEL -qfixed=132 $(VAMPIR) $(DATASIZE) $(ESSL)
 CC = mpcc -qmaxmem=8192 $(DATASIZE)
 SO = so
 LD = mpcc $(VAMPIR) $(DATASIZE)
@@ -31,7 +32,8 @@ WARPSCRIPTS = $(HOME)/scriptsnew
 PYTHONSOS = $(PYTHON)/lib/python$(PYVERS)/site-packages/*/*.so
 OTHERLIBS = $(PACTLIB) -lpdb -lpml -lscore \
             $(YORICKLIB) -lgist \
-            $(LAPACK) -lessl
+            $(LAPACK) -lessl \
+             -L/usr/common/usg/gnu/lib -lreadline -ltermcap
 PYMPI = /usr/common/homes/g/grote/pyMPI
 PYMPIOBJS = $(PYMPI)/initmpi.o $(PYMPI)/driver.o $(PYMPI)/patched152main.o
 
