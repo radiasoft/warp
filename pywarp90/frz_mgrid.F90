@@ -9501,7 +9501,7 @@ TYPE(CONDtype), pointer :: c
  conductors%interior%n = 0
  conductors%evensubgrid%n = 0
  conductors%oddsubgrid%n = 0
- do il = 1, nlevels
+ do il = 1, grids_ptr(igrid)%grid%nlevels
    IF(il == 1) then
      bnd => grids_ptr(igrid)%grid%bndfirst
    else
@@ -9529,7 +9529,7 @@ TYPE(CONDtype), pointer :: c
  icc=0
  ice=0
  ico=0
- do il = 1, nlevels
+ do il = 1, grids_ptr(igrid)%grid%nlevels
    IF(il == 1) then
      bnd => grids_ptr(igrid)%grid%bndfirst
    else
