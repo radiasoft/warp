@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_load.F, version $Revision: 1.2 $, $Date: 2004/12/02 21:16:50 $
+c@(#) File w3d_load.F, version $Revision: 1.3 $, $Date: 2004/12/02 23:55:28 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is a source code file of package W3D of the WARP 
@@ -459,7 +459,7 @@ c     take nstep 4th order Runge-Kutta steps using rk4
         call rk4(y_work,dy_work,nvar,XX,H,y_work,DERIVS)
         if(XX+H .eq. XX) then
           call remark('Stepsize not significant in rkdumb') 
-          call kabboom(1) 
+          call kaboom(1) 
         endif 
 c       store intermediate steps 
         XX=XX+H
