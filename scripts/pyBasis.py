@@ -13,7 +13,7 @@ except ImportError:
   pass
 import __main__
 import sys
-Basis_version = "$Id: pyBasis.py,v 1.14 2001/08/29 00:05:23 dave Exp $"
+Basis_version = "$Id: pyBasis.py,v 1.15 2001/09/11 19:44:26 dave Exp $"
 
 if sys.platform in ['sn960510','linux-i386','linux2']:
   true = -1
@@ -291,7 +291,7 @@ def pydumpold(fname,attr="dump",vars=[]):
 def pyrestore(filename=None,fname=None,verbose=0):
   """
 Restores all of the variables in the specified file.
-  - fname file to read in from (assumes PDB format)
+  - filename file to read in from (assumes PDB format)
   - verbose=0 When true, prints out the names of variables which are read in
   """
   # --- The original had fname, but changed to filename to be consistent
@@ -300,7 +300,7 @@ Restores all of the variables in the specified file.
   # --- Make sure a filename was inputted.
   assert filename is not None,"A filename must be specified"
   # --- open pdb file
-  ff = PR.PR(fname)
+  ff = PR.PR(filename)
   # --- Get a list of all of the variables in the file, loop over that list
   vlist = ff.inquire_ls()
   # --- vlist is looped over twice. The first time reads in all of the scalar
