@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.4 $, $Date: 2002/04/18 21:31:57 $
+c F3DSLAVE.M, version $Revision: 1.5 $, $Date: 2002/04/30 14:01:36 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -844,7 +844,7 @@ c         --- end of this processor.
           enddo
           ie = ie - 1
 
-        elseif (boundnz == 2 .or. bound0 == 2) then
+        elseif (boundnz == 2) then
 c         --- Now, treat the right most processor.
 
 c         --- Find all processors who data extent overlaps the right
@@ -911,7 +911,7 @@ c         --- end of this processor.
           enddo
           ie = ie + 1
 
-        elseif (boundnz == 2 .or. bound0 == 2) then
+        elseif (bound0 == 2) then
 c         --- Now, treat the left most processor.
 
 c         --- Find all processors who data extent overlaps the left
@@ -988,10 +988,8 @@ c     --- For periodic boundary conditions, processors which are on the ends
 c     --- of the mess, always send the same data, independent of what delz is.
       leftdelta = delz
       rightdelta = delz
-      if (izfsslave(my_index) == 0 .and. (bound0 == 2 .or. boundnz == 2))
-     &  leftdelta = 0
-      if (izfsslave(my_index)+nzfsslave(my_index) == nzfull .and.
-     &    (bound0 == 2 .or. boundnz == 2))
+      if (izfsslave(my_index) == 0 .and. bound0 == 2) leftdelta = 0
+      if (izfsslave(my_index)+nzfsslave(my_index) == nzfull .and. boundnz == 2)
      &  rightdelta = 0
 
 c     --- Set count to zero
@@ -1028,6 +1026,73 @@ c     --- of the data overlaps.
         w = w + 1
         call MPI_IRECV(phi(0,0,rr),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,whosendingleft(my_index),nzfull,
+     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
+      endif
+
+c     --- Now wait for everything to finish
+      if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+
+      return
+      end
+c=============================================================================
+      subroutine mgexchange_res(nx,ny,nz,nzfull,res,my_index,nslaves,
+     &                          izfsslave,nzfsslave,izfsslave2,nzfsslave2)
+      integer(ISZ):: nx,ny,nz,nzfull
+      real(kind=8):: res(0:nx,0:ny,-1:nz+1)
+      integer(ISZ):: my_index,nslaves
+      integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
+      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+
+c This routine sends out and receives boundary data for the MG field solver.
+
+      integer(ISZ):: lparity,rparity,ls,rs,w
+
+      include "mpif.h"
+      integer(ISZ):: mpistatus(MPI_STATUS_SIZE,2*nslaves+2)
+      integer(ISZ):: mpirequest(2*nslaves+2),mpierror
+
+c     --- Set count to zero
+      w = 0
+
+c     --- Sends and receives can all be done synchronously since none
+c     --- of the data overlaps.
+      if (my_index > 0) then
+        rparity = 2*(izfsslave2(my_index-1)+nzfsslave2(my_index-1)) -
+     &              (izfsslave(my_index-1) +nzfsslave(my_index-1))
+        if (rparity == 1) then
+          w = w + 1
+          ls = izfsslave2(my_index-1)+nzfsslave2(my_index-1)-izfsslave2(my_index)
+          call MPI_ISEND(res(0,0,ls),(nx+1)*(ny+1),
+     &                   MPI_DOUBLE_PRECISION,my_index-1,nzfull,
+     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
+        endif
+      endif
+
+      if (my_index < nslaves-1) then
+        lparity = izfsslave(my_index+1) - 2*izfsslave2(my_index+1)
+        if (lparity == 1) then
+          w = w + 1
+          rs = izfsslave2(my_index+1) - izfsslave2(my_index)
+          call MPI_ISEND(res(0,0,rs),(nx+1)*(ny+1),
+     &                   MPI_DOUBLE_PRECISION,my_index+1,nzfull,
+     &                   MPI_COMM_WORLD,mpirequest(w),mpierror)
+        endif
+      endif
+
+      lparity = izfsslave(my_index) - 2*izfsslave2(my_index)
+      if (lparity == 1) then
+        w = w + 1
+        call MPI_IRECV(res(0,0,0),(nx+1)*(ny+1),
+     &                 MPI_DOUBLE_PRECISION,my_index-1,nzfull,
+     &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
+      endif
+
+      rparity = 2*(izfsslave2(my_index)+nzfsslave2(my_index)) -
+     &            (izfsslave(my_index) +nzfsslave(my_index))
+      if (rparity == 1) then
+        w = w + 1
+        call MPI_IRECV(res(0,0,nz),(nx+1)*(ny+1),
+     &                 MPI_DOUBLE_PRECISION,my_index+1,nzfull,
      &                 MPI_COMM_WORLD,mpirequest(w),mpierror)
       endif
 
