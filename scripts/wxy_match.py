@@ -1,7 +1,7 @@
 from warp import *
 import LinearAlgebra
 import singleparticle
-wxy_match_version = "$Id: wxy_match.py,v 1.2 2001/04/04 17:38:38 dave Exp $"
+wxy_match_version = "$Id: wxy_match.py,v 1.3 2001/06/14 01:14:29 dave Exp $"
 ##############################################################################
 # Iterate toward a matched beam using the slice code (instead of the env     #
 # package).  It is currently setup to match a beam starting from the center  #
@@ -16,9 +16,11 @@ wxy_match_version = "$Id: wxy_match.py,v 1.2 2001/04/04 17:38:38 dave Exp $"
 zbeam_start = top.zbeam
 time_start = top.time
 it_start = top.it
-np_s_start = top.np_s + 0 # Assumes a generage has already been done
+np_s_start = None
 def minit():
   """Re-inits the slice package"""
+  global np_s_start
+  if type(np_s_start) == type(None): np_s_start = top.np_s + 0
   top.lprntpara = false
   top.verbosity = 0
   top.zbeam = zbeam_start
