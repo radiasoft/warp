@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.37 2002/07/18 00:52:31 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.38 2002/07/18 00:53:59 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -40,6 +40,9 @@ def plotcond(yy,xx,zz,iz,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx):
     ixc = eval('f3d.i'+xx+'cond')*signx*lx
     iyc = eval('f3d.i'+yy+'cond')*signy*ly
     izc = eval('f3d.i'+zz+'cond')      *lz
+    if xx == 'z': ixc[:] = ixc + f3d.mglevelsiz[mglevel]
+    if yy == 'z': iyc[:] = iyc + f3d.mglevelsiz[mglevel]
+    if zz == 'z': izc[:] = izc + f3d.mglevelsiz[mglevel]
     cnumb = f3d.condnumb
     try:
       level = equal(mglevel,f3d.icondlevel)
@@ -70,6 +73,9 @@ def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     ixc = eval('f3d.i'+pp+'cnd'+xx)*signx
     iyc = eval('f3d.i'+pp+'cnd'+yy)*signy
     izc = eval('f3d.i'+pp+'cnd'+zz)*lz
+    if xx == 'z': ixc[:] = ixc + f3d.mglevelsiz[mglevel]
+    if yy == 'z': iyc[:] = iyc + f3d.mglevelsiz[mglevel]
+    if zz == 'z': izc[:] = izc + f3d.mglevelsiz[mglevel]
     delmx = eval('f3d.'+pp+'cdelm'+xx)*signx
     delpx = eval('f3d.'+pp+'cdelp'+xx)*signx
     delmy = eval('f3d.'+pp+'cdelm'+yy)*signy
@@ -169,7 +175,6 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   if izf is not None: iz = izf
   if iz is None: iz = w3d.iz_axis + top.izslave[me]
   if iz < 0 or w3d.nzfull < iz: return
-  izlocal = iz - top.izslave[me]
   if scale:
     dx = w3d.dx
     dy = w3d.dy
@@ -192,31 +197,30 @@ Plots conductors and contours of electrostatic potential in X-Y plane
       kw['ymax'] = w3d.ny
     if not kw.has_key('ccolor'): kw['ccolor'] = phicolor
     apply(pcphixy,(iz,fullplane),kw)
-  izl = izlocal
-  plotcond('y','x','z',izl,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,1)
+  plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,1)
   if fullplane and (w3d.l2symtry or w3d.l4symtry):
-    plotcond('y','x','z',izl,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,1)
+    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,1)
   if fullplane and w3d.l4symtry:
-    plotcond('y','x','z',izl,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1)
-    plotcond('y','x','z',izl,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1)
+    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1)
+    plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1)
   if (plotsg):
-    plotsubgrid('y','x','z','e',izlocal,numb,ymmin,xmmin,dy,dx,evencolor,
+    plotsubgrid('y','x','z','e',iz,numb,ymmin,xmmin,dy,dx,evencolor,
                 subgridlen,mglevel,1,1)
-    plotsubgrid('y','x','z','o',izlocal,numb,ymmin,xmmin,dy,dx,oddcolor,
+    plotsubgrid('y','x','z','o',iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                 subgridlen,mglevel,1,1)
     if fullplane and (w3d.l2symtry or w3d.l4symtry):
-      plotsubgrid('y','x','z','e',izlocal,numb,ymmin,xmmin,dy,dx,evencolor,
+      plotsubgrid('y','x','z','e',iz,numb,ymmin,xmmin,dy,dx,evencolor,
                   subgridlen,mglevel,1,-1)
-      plotsubgrid('y','x','z','o',izlocal,numb,ymmin,xmmin,dy,dx,oddcolor,
+      plotsubgrid('y','x','z','o',iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                   subgridlen,mglevel,1,-1)
     if fullplane and w3d.l4symtry:
-      plotsubgrid('y','x','z','e',izlocal,numb,ymmin,xmmin,dy,dx,evencolor,
+      plotsubgrid('y','x','z','e',iz,numb,ymmin,xmmin,dy,dx,evencolor,
                   subgridlen,mglevel,-1,1)
-      plotsubgrid('y','x','z','o',izlocal,numb,ymmin,xmmin,dy,dx,oddcolor,
+      plotsubgrid('y','x','z','o',iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                   subgridlen,mglevel,-1,1)
-      plotsubgrid('y','x','z','e',izlocal,numb,ymmin,xmmin,dy,dx,evencolor,
+      plotsubgrid('y','x','z','e',iz,numb,ymmin,xmmin,dy,dx,evencolor,
                   subgridlen,mglevel,-1,-1)
-      plotsubgrid('y','x','z','o',izlocal,numb,ymmin,xmmin,dy,dx,oddcolor,
+      plotsubgrid('y','x','z','o',iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                   subgridlen,mglevel,-1,-1)
 
 # z-x plane
@@ -250,16 +254,12 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     dz = w3d.dz
     xmmin = w3d.xmmin
     zmmin = w3d.zmmin + zbeam
-    xmmax = w3d.xmmax
-    zmmax = w3d.zmmax + zbeam
+    if lparallel: zmmin = top.zmslmin[0]
   else:
     dx = 1.
     dz = 1.
     xmmin = 0.
     zmmin = 0.
-    if lparallel: zmmin = top.izslave[me]
-    xmmax = w3d.nx
-    zmmax = w3d.nz
   if plotphi:
     if not scale:
       kw['xmin'] = 0
@@ -313,16 +313,12 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     dz = w3d.dz
     ymmin = w3d.ymmin
     zmmin = w3d.zmmin + zbeam
-    ymmax = w3d.ymmax
-    zmmax = w3d.zmmax + zbeam
+    if lparallel: zmmin = top.zmslmin[0]
   else:
     dy = 1.
     dz = 1.
     ymmin = 0.
     zmmin = 0.
-    if lparallel: zmmin = top.izslave[me]
-    ymmax = w3d.ny
-    zmmax = w3d.nz
   if plotphi:
     if not scale:
       kw['xmin'] = 0
@@ -477,7 +473,6 @@ in X-Y plane
   if izf is not None: iz = izf
   if not iz: iz = w3d.iz_axis
   if iz < 0 or w3d.nzfull < iz: return
-  izlocal = iz - top.izslave[me]
   if scale:
     dy = w3d.dy*signy
     dx = w3d.dx*signx
@@ -496,7 +491,8 @@ in X-Y plane
                 xmin=xmmin,xmax=xmmin+w3d.nx*dx,
                 ymin=ymmin,ymax=ymmin+w3d.ny*dy,kwdict=kw)
   if f3d.ncond > 0:
-    ii = compress(equal(f3d.izcond[0:f3d.ncond],izlocal),arange(f3d.ncond))
+    izc = f3d.izcond[0:f3d.ncond]+f3d.mglevelsiz[0]
+    ii = compress(equal(izc,iz),arange(f3d.ncond))
     x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
     y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
   else:
@@ -535,13 +531,13 @@ in Z-X plane
     dx = w3d.dx*signx
     dz = w3d.dz*signz
     xmmin = w3d.xmmin
-    zmmin = top.zplmin
+    zmmin = w3d.zmmin
   else:
     dx = 1.*signx
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-    if lparallel: zmmin = top.izslave[me]
+    if lparallel: zmmin = f3d.mglevelsiz[0]
   if plotphi:
     ppp = getphi(iy=iy)
     ppp = transpose(ppp)
@@ -590,13 +586,13 @@ in Z-Y plane
     dy = w3d.dy*signy
     dz = w3d.dz*signz
     ymmin = w3d.ymmin
-    zmmin = top.zplmin
+    zmmin = w3d.zmmin
   else:
     dy = 1.*signy
     dz = 1.*signz
     ymmin = 0.
     zmmin = 0.
-    if lparallel: zmmin = top.izslave[me]
+    if lparallel: zmmin = f3d.mglevelsiz[0]
   if plotphi:
     ppp = getphi(ix=ix)
     ppp = transpose(ppp)
@@ -694,13 +690,13 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
     dx = w3d.dx*signx
     dz = w3d.dz*signz
     xmmin = w3d.xmmin
-    zmmin = top.zplmin
+    zmmin = w3d.zmmin
   else:
     dx = 1.*signx
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
-    if lparallel: zmmin = top.izslave[me]
+    if lparallel: zmmin = f3d.mglevelsiz[0]
   plotcondn('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,1,1)
   if fullplane and w3d.l4symtry:
     plotcondn('x','z','y',iy,xmmin,zmmin,dx,dz,mglevel,-1,1)
@@ -748,7 +744,7 @@ Plots Z-X grid in the lab frame (including bends)
   for iz in xrange(w3d.nz/ii+1):
     xxx[:,iz] = w3d.xmesh[::ii]
   for ix in xrange(w3d.nx/ii+1):
-    zzz[ix,:] = top.zplmin + iota(0,w3d.nz,ii)*w3d.dz + w3d.zz
+    zzz[ix,:] = w3d.zmmin + iota(0,w3d.nz,ii)*w3d.dz + w3d.zz
 
   # --- If in a bend, convert the grid data to the lab frame
   if top.linbend:
@@ -791,7 +787,7 @@ def pfzxlab(zz=None,iy=None,condcolor=cyan):
     xxxx=compress(equal(f3d.iycond[0:f3d.ncond],iy),
                         f3d.ixcond[0:f3d.ncond])*w3d.dx+w3d.xmmin
     zzzz=compress(equal(f3d.iycond[0:f3d.ncond],iy),
-                        f3d.izcond[0:f3d.ncond])*w3d.dz+top.zplmin+zz
+                        f3d.izcond[0:f3d.ncond])*w3d.dz+w3d.zmmin+zz
     # --- convert to lab frame
     tolabfrm(zz,len(xxxx),xxxx,zzzz)   
     # --- make plot
@@ -827,7 +823,7 @@ def plotsrfrv(srfrv,zmin,zmax,n=1000,color='fg',gridframe=0,rscale=1,zscale=1,
     srfrv()
     rr[i] = f3d.srfrv_r
   if gridframe:
-    zz = (zz - top.zplmin)/w3d.dz
+    zz = (zz - w3d.zmmin)/w3d.dz
     rr = (rr)/w3d.dx + ir_axis
   rr = where(less(rr,rmin),rmin,rr)
   rr = where(greater(rr,rmax),rmax,rr)
@@ -871,7 +867,7 @@ def plotelementoutline(color,gridframe,axis,ie,ne,
       if gridframe:
         rr1 = rr1/w3d.dx
         rr2 = rr2/w3d.dx
-        zz = (zz - top.zplmin)/w3d.dz
+        zz = (zz - w3d.zmmin)/w3d.dz
       plg(rr1,zz,color=color)
       plg(rr2,zz,color=color)
     # --- Plot end plates
@@ -899,8 +895,8 @@ def plotelementoutline(color,gridframe,axis,ie,ne,
         rrl2 = rrl2/w3d.dx
         rrr1 = rrr1/w3d.dx
         rrr2 = rrr2/w3d.dx
-        zzl = (zzl - top.zplmin)/w3d.dz
-        zzr = (zzr - top.zplmin)/w3d.dz
+        zzl = (zzl - w3d.zmmin)/w3d.dz
+        zzr = (zzr - w3d.zmmin)/w3d.dz
       plg(rrl1,zzl,color=color)
       plg(rrl2,zzl,color=color)
       plg(rrr1,zzr,color=color)
