@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.106 $, $Date: 2004/05/07 18:33:47 $
+c@(#) File F3D.M, version $Revision: 3.107 $, $Date: 2004/05/10 21:27:35 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -4633,7 +4633,7 @@ c special cases.
       endif
 
 c Put desired potential onto conductors in phi array.
-      call cond_pot(nx,ny,nz,phi)
+      call cond_pot(conductors%interior,nx,ny,nz,phi)
 
 c main loop for sor iterations,  Errors are checked every isorerr iterations.
 
@@ -4865,7 +4865,7 @@ c           --- surface of the conductor boundaries.
             endif
 
 c           --- Put desired potential onto conductors in phi array.
-            call cond_pot(nx,ny,nz,phi)
+            call cond_pot(conductors%interior,nx,ny,nz,phi)
 
 c           --- do Chebyshev acceleration
             if (lchebshv) then
