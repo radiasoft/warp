@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.5 2002/11/07 00:08:02 dave Exp $"
+particles_version = "$Id: particles.py,v 1.6 2003/01/24 18:06:26 dave Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -303,11 +303,11 @@ def getgaminv(iw=0,gather=1,**kw):
   if lparallel and gather: return gatherarray(result)
   else: return result
 #-------------------------------------------------------------------------
-def getpid(iw=0,gather=1,**kw):
+def getpid(iw=0,id=0,gather=1,**kw):
   "Returns particle id number."
-  if top.npmaxi != 0:
+  if top.npmaxi == top.npmax:
     ii = selectparticles(iw=iw,kwdict=kw)
-    result = take(top.pid,ii)
+    result = take(top.pid[:,id],ii)
   else:
     result = array([])
   if lparallel and gather: return gatherarray(result)
