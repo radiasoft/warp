@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.55 $, $Date: 2002/04/26 16:11:38 $
+#@(#) File W3D.V, version $Revision: 3.56 $, $Date: 2002/04/30 21:56:19 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.55 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.56 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -287,8 +287,8 @@ iz_axis          integer [1] +parallel # z location of axis in mesh
 *********** InjectVars3d dump:
 inj_xmmin            real [m] /0./ # Min x extent of injection mesh
 inj_ymmin            real [m] /0./ # Min y extent of injection mesh
-inj_nx               integer  # size injection arrays in x
-inj_ny               integer  # size injection arrays in y
+inj_nx               integer  /0/  # size injection arrays in x
+inj_ny               integer  /0/  # size injection arrays in y
 inj_dx               real [m] /0./ # mesh spacing in x for injection
 inj_dy               real [m] /0./ # mesh spacing in y for injection
 inj_dz               real [m] /0./ # mesh spacing in z for injection
