@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.81 2004/07/22 23:43:09 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.82 2004/08/06 23:40:01 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -783,8 +783,8 @@ def pfxy(iz=None,izf=None,fullplane=1,
          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
          oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=f3d.conductors,
-         w3dgrid=w3d,kwdict={},**kw):
+         conductors=None,solver=None,
+         kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane
   - iz=nint(-zmmin/dz): z index of plane
@@ -803,55 +803,75 @@ Plots conductors and contours of electrostatic potential in X-Y plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
+  - Arguments to the pcphi and pcrho routine are also valid
   """
-  kw.update(kwdict)
+  if kwdict is None: kwdict = {}
+  kwdict.update(kw)
+
+  if solver is None:
+    # --- Check is a solver is registered, and if so, call the appropriate
+    # --- method of that instance.
+    solver = getregisteredsolver()
+    if solver is not None:
+      # --- Note that kw is not a valid keyword and so must be removed. Its
+      # --- contents have been put into kwdict.
+      kw = locals()
+      del kw['kw']
+      solver.pfxy(**kw)
+      return
+    else:
+      solver = w3d
+  if conductors is None:
+    if solver is w3d: conductors = f3d.conductors
+    else:             conductors = solver.conductors
+
   # --- This logic is needed since in the parallel version, zmmin is local.
   # --- If the user passes in a value, it must be checked for consistency,
   # --- otherwise coding below could lead to a deadlock in the parallel version
   if izf is not None: iz = izf
-  if iz is None: iz = nint(-w3dgrid.zmmin/w3dgrid.dz) + top.izslave[me]
+  if iz is None: iz = nint(-solver.zmmin/solver.dz) + top.izslave[me]
   if w3d.solvergeom<>w3d.XYgeom:
-    if iz < 0 or w3dgrid.nzfull < iz: return
+    if iz < 0 or solver.nzfull < iz: return
   if scale:
-    dx = w3dgrid.dx
-    dy = w3dgrid.dy
-    xmmin = w3dgrid.xmmin
-    ymmin = w3dgrid.ymmin
-    xmmax = w3dgrid.xmmax
-    ymmax = w3dgrid.ymmax
+    dx = solver.dx
+    dy = solver.dy
+    xmmin = solver.xmmin
+    ymmin = solver.ymmin
+    xmmax = solver.xmmax
+    ymmax = solver.ymmax
   else:
     dx = 1.
     dy = 1.
     xmmin = 0.
     ymmin = 0.
-    xmmax = w3dgrid.nx
-    ymmax = w3dgrid.ny
+    xmmax = solver.nx
+    ymmax = solver.ny
   if plotphi or plotrho:
     if not scale:
-      kw['xmin'] = 0
-      kw['xmax'] = w3dgrid.nx
-      kw['ymin'] = 0
-      kw['ymax'] = w3dgrid.ny
+      kwdict['xmin'] = 0
+      kwdict['xmax'] = solver.nx
+      kwdict['ymin'] = 0
+      kwdict['ymax'] = solver.ny
     if plotphi:
-      kw['ccolor'] = phicolor
-      pcphixy(*(iz,fullplane,w3dgrid),**kw)
+      kwdict['ccolor'] = phicolor
+      pcphixy(*(iz,fullplane,solver),**kwdict)
     if plotrho:
-      kw['ccolor'] = rhocolor
-      pcrhoxy(*(iz,fullplane,w3dgrid),**kw)
+      kwdict['ccolor'] = rhocolor
+      pcrhoxy(*(iz,fullplane,solver),**kwdict)
   if fill:
     plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,1,1,conductors)
-    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+    if fullplane and (solver.l2symtry or solver.l4symtry):
       plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,1,-1,conductors)
-    if fullplane and w3dgrid.l4symtry:
+    if fullplane and solver.l4symtry:
       plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-1,1,conductors)
       plotcondfill(1,0,2,iz,ymmin,xmmin,dy,dx,mglevel,-1,-1,conductors)
   if cond:
     plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,1,
              conductors)
-    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+    if fullplane and (solver.l2symtry or solver.l4symtry):
       plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,1,
                conductors)
-    if fullplane and w3dgrid.l4symtry:
+    if fullplane and solver.l4symtry:
       plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1,
                conductors)
       plotcond(1,0,2,iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1,
@@ -861,12 +881,12 @@ Plots conductors and contours of electrostatic potential in X-Y plane
                 subgridlen,mglevel,1,1,conductors)
     plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                 subgridlen,mglevel,1,1,conductors)
-    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+    if fullplane and (solver.l2symtry or solver.l4symtry):
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
                   subgridlen,mglevel,1,-1,conductors)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                   subgridlen,mglevel,1,-1,conductors)
-    if fullplane and w3dgrid.l4symtry:
+    if fullplane and solver.l4symtry:
       plotsubgrid(1,0,2,0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
                   subgridlen,mglevel,-1,1,conductors)
       plotsubgrid(1,0,2,1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
@@ -881,8 +901,8 @@ def pfzx(iy=None,iyf=None,fullplane=1,lbeamframe=1,
          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
          oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=f3d.conductors,
-         w3dgrid=w3d,kwdict={},**kw):
+         conductors=None,solver=None,
+         kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane
   - iy=nint(-ymmin/dy): y index of plane
@@ -902,18 +922,38 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
+  - Arguments to the pcphi and pcrho routine are also valid
   """
-  kw.update(kwdict)
+  if kwdict is None: kwdict = {}
+  kwdict.update(kw)
+
+  if solver is None:
+    # --- Check is a solver is registered, and if so, call the appropriate
+    # --- method of that instance.
+    solver = getregisteredsolver()
+    if solver is not None:
+      # --- Note that kw is not a valid keyword and so must be removed. Its
+      # --- contents have been put into kwdict.
+      kw = locals()
+      del kw['kw']
+      solver.pfzx(**kw)
+      return
+    else:
+      solver = w3d
+  if conductors is None:
+    if solver is w3d: conductors = f3d.conductors
+    else:             conductors = solver.conductors
+
   if iyf is not None: iy = iyf
-  if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
-  if iy < 0 or w3dgrid.ny < iy: return
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
+  if iy < 0 or solver.ny < iy: return
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
   if scale:
-    dx = w3dgrid.dx
-    dz = w3dgrid.dz
-    xmmin = w3dgrid.xmmin
-    zmmin = w3dgrid.zmminglobal + zbeam
+    dx = solver.dx
+    dz = solver.dz
+    xmmin = solver.xmmin
+    zmmin = solver.zmminglobal + zbeam
   else:
     dx = 1.
     dz = 1.
@@ -921,26 +961,26 @@ Plots conductors and contours of electrostatic potential in Z-X plane
     zmmin = 0.
   if plotphi or plotrho:
     if not scale:
-      kw['xmin'] = 0
-      kw['xmax'] = w3dgrid.nzfull
-      kw['ymin'] = 0.
-      kw['ymax'] = w3dgrid.nx
+      kwdict['xmin'] = 0
+      kwdict['xmax'] = solver.nzfull
+      kwdict['ymin'] = 0.
+      kwdict['ymax'] = solver.nx
     if plotphi:
-      kw['ccolor'] = phicolor
-      pcphizx(*(iy,fullplane,lbeamframe,w3dgrid),**kw)
+      kwdict['ccolor'] = phicolor
+      pcphizx(*(iy,fullplane,lbeamframe,solver),**kwdict)
     if plotrho:
-      kw['ccolor'] = rhocolor
-      pcrhozx(*(iy,fullplane,lbeamframe,w3dgrid),**kw)
+      kwdict['ccolor'] = rhocolor
+      pcrhozx(*(iy,fullplane,lbeamframe,solver),**kwdict)
   if fill:
     plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,1,1,conductors)
-    if fullplane and (w3dgrid.l4symtry or w3dgrid.solvergeom == w3d.RZgeom):
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       plotcondfill(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,-1,1,conductors)
   if plotsg:
     plotsubgrid(0,2,1,0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
                 subgridlen,mglevel,1,1,conductors)
     plotsubgrid(0,2,1,1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
                 subgridlen,mglevel,1,1,conductors)
-    if fullplane and (w3dgrid.l4symtry or w3dgrid.solvergeom == w3d.RZgeom):
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       plotsubgrid(0,2,1,0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
                   subgridlen,mglevel,-1,1,conductors)
       plotsubgrid(0,2,1,1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
@@ -948,7 +988,7 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   if cond:
     plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,1,1,
              conductors)
-    if fullplane and (w3dgrid.l4symtry or w3dgrid.solvergeom == w3d.RZgeom):
+    if fullplane and (solver.l4symtry or solver.solvergeom == w3d.RZgeom):
       plotcond(0,2,1,iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1,
                conductors)
 
@@ -960,8 +1000,8 @@ def pfzy(ix=None,ixf=None,fullplane=1,lbeamframe=1,
          cond=1,plotsg=1,fill=0,scale=1,plotphi=1,plotrho=0,
          subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
          oddcolor=red,evencolor=green,numb=None,mglevel=0,
-         conductors=f3d.conductors,
-         w3dgrid=w3d,kwdict={},**kw):
+         conductors=None,solver=None,
+         kwdict=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane
   - ix=nint(-xmmin/dx): x index of plane
@@ -981,18 +1021,38 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   - subgridlen=1 maximum length of subgrid line which are plotted
   - numb: specify which conductors to plot based on the conductor number
   - mglevel=0: level of multigrid to plot data for
+  - Arguments to the pcphi and pcrho routine are also valid
   """
-  kw.update(kwdict)
+  if kwdict is None: kwdict = {}
+  kwdict.update(kw)
+
+  if solver is None:
+    # --- Check is a solver is registered, and if so, call the appropriate
+    # --- method of that instance.
+    solver = getregisteredsolver()
+    if solver is not None:
+      # --- Note that kw is not a valid keyword and so must be removed. Its
+      # --- contents have been put into kwdict.
+      kw = locals()
+      del kw['kw']
+      solver.pfzy(**kw)
+      return
+    else:
+      solver = w3d
+  if conductors is None:
+    if solver is w3d: conductors = f3d.conductors
+    else:             conductors = solver.conductors
+
   if ixf is not None: ix = ixf
-  if ix is None: ix = nint(-w3dgrid.xmmin/w3dgrid.dx)
-  if ix < 0 or w3dgrid.nx < ix: return
+  if ix is None: ix = nint(-solver.xmmin/solver.dx)
+  if ix < 0 or solver.nx < ix: return
   if lbeamframe: zbeam = 0.
   else:          zbeam = top.zbeam
   if scale:
-    dy = w3dgrid.dy
-    dz = w3dgrid.dz
-    ymmin = w3dgrid.ymmin
-    zmmin = w3dgrid.zmminglobal + zbeam
+    dy = solver.dy
+    dz = solver.dz
+    ymmin = solver.ymmin
+    zmmin = solver.zmminglobal + zbeam
   else:
     dy = 1.
     dz = 1.
@@ -1000,24 +1060,24 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
     zmmin = 0.
   if plotphi or plotrho:
     if not scale:
-      kw['xmin'] = 0
-      kw['xmax'] = w3dgrid.nzfull
-      kw['ymin'] = 0
-      kw['ymax'] = w3dgrid.ny
+      kwdict['xmin'] = 0
+      kwdict['xmax'] = solver.nzfull
+      kwdict['ymin'] = 0
+      kwdict['ymax'] = solver.ny
     if plotphi:
-      kw['ccolor'] = phicolor
-      pcphizy(*(ix,fullplane,lbeamframe,w3dgrid),**kw)
+      kwdict['ccolor'] = phicolor
+      pcphizy(*(ix,fullplane,lbeamframe,solver),**kwdict)
     if plotrho:
-      kw['ccolor'] = rhocolor
-      pcrhozy(*(ix,fullplane,lbeamframe,w3dgrid),**kw)
+      kwdict['ccolor'] = rhocolor
+      pcrhozy(*(ix,fullplane,lbeamframe,solver),**kwdict)
   if fill:
     plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,1,1,conductors)
-    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+    if fullplane and (solver.l2symtry or solver.l4symtry):
       plotcondfill(1,2,0,ix,ymmin,zmmin,dy,dz,mglevel,-1,1,conductors)
   if cond:
     plotcond(1,2,0,ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,1,1,
              conductors)
-    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+    if fullplane and (solver.l2symtry or solver.l4symtry):
       plotcond(1,2,0,ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-1,1,
                conductors)
   if plotsg:
@@ -1025,7 +1085,7 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
                 subgridlen,mglevel,1,1,conductors)
     plotsubgrid(1,2,0,1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
                 subgridlen,mglevel,1,1,conductors)
-    if fullplane and (w3dgrid.l2symtry or w3dgrid.l4symtry):
+    if fullplane and (solver.l2symtry or solver.l4symtry):
       plotsubgrid(1,2,0,0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
                   subgridlen,mglevel,-1,1,conductors)
       plotsubgrid(1,2,0,1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
@@ -1041,8 +1101,7 @@ def pfxyg(iz=None,izf=None,fullplane=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
           phicolor=blue,rhocolor=red,subgridlen=1.,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,mglevel=0,
-          conductors=f3d.conductors,
-          w3dgrid=w3d,**kw):
+          conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in X-Y plane in grid
 frame
@@ -1054,16 +1113,14 @@ Same arguments as pfxy
        subgridlen=subgridlen,
        phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
-       conductors=conductors,
-       w3dgrid=w3d,kwdict=kw)
+       conductors=conductors,solver=w3d,kwdict=kw)
 
 # z-x plane
 def pfzxg(iy=None,iyf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
           subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,mglevel=0,
-          conductors=f3d.conductors,
-          w3dgrid=w3d,**kw):
+          conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-X plane in grid
 frame
@@ -1075,8 +1132,7 @@ Same arguments as pfzx
        subgridlen=subgridlen,
        phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
-       conductors=conductors,
-       w3dgrid=w3d,kwdict=kw)
+       conductors=conductors,solver=w3d,kwdict=kw)
 
 # z-r plane
 pfzrg = pfzxg
@@ -1086,8 +1142,7 @@ def pfzyg(ix=None,ixf=None,fullplane=1,lbeamframe=1,
           cond=1,plotsg=1,fill=0,plotphi=1,plotrho=0,
           subgridlen=1.,phicolor=blue,rhocolor=red,condcolor='fg',
           oddcolor=red,evencolor=green,numb=None,mglevel=0,
-          conductors=f3d.conductors,
-          w3dgrid=w3d,**kw):
+          conductors=None,solver=None,**kw):
   """
 Plots conductors and contours of electrostatic potential in Z-Y plane in grid
 frame
@@ -1099,8 +1154,7 @@ Same arguments as pfzy
        subgridlen=subgridlen,
        phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
        oddcolor=oddcolor,evencolor=evencolor,numb=numb,mglevel=mglevel,
-       conductors=conductors,
-       w3dgrid=w3d,kwdict=kw)
+       conductors=conductors,solver=w3d,kwdict=kw)
 
 ######################################################################
 
@@ -1111,8 +1165,8 @@ Same arguments as pfzy
 # x-y plane
 def pfxybox(iz=None,izf=None,contours=8,plotsg=1,scale=1,signx=1,signy=1,
             plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
-            condcolor='fg',conductors=f3d.conductors,w3dgrid=w3d,
-            kwdict={},**kw):
+            condcolor='fg',conductors=None,solver=None,
+            kwdict=None,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in X-Y plane
@@ -1130,15 +1184,16 @@ in X-Y plane
   - condcolor='fg' color of conductor points inside conductors
   - subgridlen=1 maximum length of subgrid line which are plotted
   """
-  kw.update(kwdict)
+  if kwdict is None: kwdict = {}
+  kwdict.update(kw)
   if izf is not None: iz = izf
-  if not iz: iz = nint(-w3dgrid.zmmin/w3dgrid.dz)
-  if iz < 0 or w3dgrid.nzfull < iz: return
+  if not iz: iz = nint(-solver.zmmin/solver.dz)
+  if iz < 0 or solver.nzfull < iz: return
   if scale:
-    dy = w3dgrid.dy*signy
-    dx = w3dgrid.dx*signx
-    ymmin = w3dgrid.ymmin
-    xmmin = w3dgrid.xmmin
+    dy = solver.dy*signy
+    dx = solver.dx*signx
+    ymmin = solver.ymmin
+    xmmin = solver.xmmin
   else:
     dy = 1.*signy
     dx = 1.*signx
@@ -1147,10 +1202,10 @@ in X-Y plane
   if plotphi or plotrho:
     ppp = getphi(iz=iz)
     if me == 0:
-      if kw.has_key('cellarray') and kw['cellarray']: contours=None
+      if kwdict.has_key('cellarray') and kwdict['cellarray']: contours=None
       ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=xmmin,xmax=xmmin+w3dgrid.nx*dx,
-                ymin=ymmin,ymax=ymmin+w3dgrid.ny*dy,kwdict=kw)
+                xmin=xmmin,xmax=xmmin+solver.nx*dx,
+                ymin=ymmin,ymax=ymmin+solver.ny*dy,kwdict=kwdict)
   if conductors.interior.n > 0:
     n = conductors.interior.n
     izc = conductors.indx[2,0:n]+conductors.leveliz[0]
@@ -1171,8 +1226,8 @@ in X-Y plane
 # z-x plane
 def pfzxbox(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,signx=1,
             plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
-            condcolor='fg',conductors=f3d.conductors,w3dgrid=w3d,
-            kwdict={},**kw):
+            condcolor='fg',conductors=f3d.conductors,solver=w3d,
+            kwdict=None,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-X plane
@@ -1189,15 +1244,16 @@ in Z-X plane
   - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   """
-  kw.update(kwdict)
+  if kwdict is None: kwdict = {}
+  kwdict.update(kw)
   if iyf is not None: iy = iyf
-  if not iy: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
-  if iy < 0 or w3dgrid.ny < iy: return
+  if not iy: iy = nint(-solver.ymmin/solver.dy)
+  if iy < 0 or solver.ny < iy: return
   if scale:
-    dx = w3dgrid.dx*signx
-    dz = w3dgrid.dz*signz
-    xmmin = w3dgrid.xmmin
-    zmmin = w3dgrid.zmmin
+    dx = solver.dx*signx
+    dz = solver.dz*signz
+    xmmin = solver.xmmin
+    zmmin = solver.zmmin
   else:
     dx = 1.*signx
     dz = 1.*signz
@@ -1207,10 +1263,10 @@ in Z-X plane
     ppp = getphi(iy=iy)
     ppp = transpose(ppp)
     if me == 0:
-      if kw.has_key('cellarray') and kw['cellarray']: contours=None
+      if kwdict.has_key('cellarray') and kwdict['cellarray']: contours=None
       ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=zmmin,xmax=zmmin+w3dgrid.nzfull*dz,
-                ymin=xmmin,ymax=xmmin+w3dgrid.nx*dx,kwdict=kw)
+                xmin=zmmin,xmax=zmmin+solver.nzfull*dz,
+                ymin=xmmin,ymax=xmmin+solver.nx*dx,kwdict=kwdict)
   n = conductors.interior.n
   if (n > 0):
     ii = compress(equal(conductors.interior.indx[1,0:n],iy),arange(n))
@@ -1230,8 +1286,8 @@ in Z-X plane
 # z-y plane
 def pfzybox(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=1,
             plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
-            condcolor='fg',conductors=f3d.conductors,w3dgrid=w3d,
-            kwdict={},**kw):
+            condcolor='fg',conductors=f3d.conductors,solver=w3d,
+            kwdict=None,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-Y plane
@@ -1248,15 +1304,16 @@ in Z-Y plane
   - rhocolor=red: color of rho contours
   - condcolor='fg' color of conductor points inside conductors
   """
-  kw.update(kwdict)
+  if kwdict is None: kwdict = {}
+  kwdict.update(kw)
   if ixf is not None: ix = ixf
-  if not ix: ix = nint(-w3dgrid.xmmin/w3dgrid.dx)
-  if ix < 0 or w3dgrid.nx < ix: return
+  if not ix: ix = nint(-solver.xmmin/solver.dx)
+  if ix < 0 or solver.nx < ix: return
   if scale:
-    dy = w3dgrid.dy*signy
-    dz = w3dgrid.dz*signz
-    ymmin = w3dgrid.ymmin
-    zmmin = w3dgrid.zmmin
+    dy = solver.dy*signy
+    dz = solver.dz*signz
+    ymmin = solver.ymmin
+    zmmin = solver.zmmin
   else:
     dy = 1.*signy
     dz = 1.*signz
@@ -1266,10 +1323,10 @@ in Z-Y plane
     ppp = getphi(ix=ix)
     ppp = transpose(ppp)
     if me == 0:
-      if kw.has_key('cellarray') and kw['cellarray']: contours=None
+      if kwdict.has_key('cellarray') and kwdict['cellarray']: contours=None
       ppgeneric(grid=ppp,contours=contours,filled=filled,ccolor=phicolor,
-                xmin=zmmin,xmax=zmmin+w3dgrid.nzfull*dz,
-                ymin=ymmin,ymax=ymmin+w3dgrid.ny*dy,kwdict=kw)
+                xmin=zmmin,xmax=zmmin+solver.nzfull*dz,
+                ymin=ymmin,ymax=ymmin+solver.ny*dy,kwdict=kwdict)
   n = conductors.interior.n
   if (n > 0):
     ii = compress(equal(conductors.interior.indx[0,0:n],ix),arange(n))
@@ -1289,7 +1346,7 @@ in Z-Y plane
 # z-x plane
 def pfzxboxi(iy=None,iyf=None,contours=8,plotsg=1,scale=1,signz=1,
              plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
-             condcolor='fg',conductors=f3d.conductors,w3dgrid=w3d,**kw):
+             condcolor='fg',conductors=f3d.conductors,solver=w3d,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-X) plane
@@ -1309,12 +1366,12 @@ in Z-(-X) plane
   pfzxbox(iy=iy,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
           signx=-1,plotphi=plotphi,plotrho=plotrho,filled=filled,
           phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
-          conductors=conductors,w3dgrid=w3d,kwdict=kw)
+          conductors=conductors,solver=w3d,kwdict=kw)
 
 # z-y plane
 def pfzyboxi(ix=None,ixf=None,contours=8,plotsg=1,scale=1,signz=1,signy=-1,
              plotphi=1,plotrho=0,filled=0,phicolor=blue,rhocolor=red,
-             condcolor='fg',conductors=f3d.conductors,w3dgrid=w3d,**kw):
+             condcolor='fg',conductors=f3d.conductors,solver=w3d,**kw):
   """
 Plots square at conductor points and contours of electrostatic potential
 in Z-(-Y) plane
@@ -1334,7 +1391,7 @@ in Z-(-Y) plane
   pfzybox(ix=ix,contours=contours,plotsg=plotsg,scale=scale,signz=signz,
           signy=-1,plotphi=plotphi,plotrho=plotrho,filled=filled,
           phicolor=phicolor,rhocolor=rhocolor,condcolor=condcolor,
-          conductors=conductors,w3dgrid=w3d,kwdict=kw)
+          conductors=conductors,solver=w3d,kwdict=kw)
 
 
 
@@ -1362,22 +1419,22 @@ def plotcondn(yy,xx,zz,iz,ymmin,xmmin,dy,dx,mglevel,signy,signx,conductors):
 
 def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
           scale=1,signz=1,signx=1,subgridlen=1.,fullplane=1,mglevel=0,
-          conductors=f3d.conductors,w3dgrid=w3d):
-  if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
-  if iy < 0 or w3dgrid.ny < iy: return
+          conductors=f3d.conductors,solver=w3d):
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
+  if iy < 0 or solver.ny < iy: return
   if colors is None: colors = color
   if scale:
-    dx = w3dgrid.dx*signx
-    dz = w3dgrid.dz*signz
-    xmmin = w3dgrid.xmmin
-    zmmin = w3dgrid.zmmin
+    dx = solver.dx*signx
+    dz = solver.dz*signz
+    xmmin = solver.xmmin
+    zmmin = solver.zmmin
   else:
     dx = 1.*signx
     dz = 1.*signz
     xmmin = 0.
     zmmin = 0.
   plotcondn(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,1,1,conductors)
-  if fullplane and w3dgrid.l4symtry:
+  if fullplane and solver.l4symtry:
     plotcondn(0,2,1,iy,xmmin,zmmin,dx,dz,mglevel,-1,1,conductors)
   ncolor = len(colors)
   nlist = gatherarray(conductors.evensubgrid.numb[0,:conductors.evensubgrid.n])
@@ -1387,7 +1444,7 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
   for i in nlist:
     plotsubgrid(0,2,1,0,iy,i,xmmin,zmmin,dx,dz,
                 colors[i%ncolor],subgridlen,mglevel,1,1,conductors)
-    if fullplane and w3dgrid.l4symtry:
+    if fullplane and solver.l4symtry:
       plotsubgrid(0,2,1,0,iy,i,xmmin,zmmin,dx,dz,
                   colors[i%ncolor],subgridlen,mglevel,-1,1,conductors)
   nlist = gatherarray(conductors.oddsubgrid.numb[0,:conductors.oddsubgrid.n])
@@ -1396,7 +1453,7 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
   for i in nlist:
     plotsubgrid(0,2,1,1,iy,i,xmmin,zmmin,dx,dz,
                 colors[i%ncolor],subgridlen,mglevel,1,1,conductors)
-    if fullplane and w3dgrid.l4symtry:
+    if fullplane and solver.l4symtry:
       plotsubgrid(0,2,1,1,iy,i,xmmin,zmmin,dx,dz,
                   colors[i%ncolor],subgridlen,mglevel,-1,1,conductors)
 
@@ -1408,7 +1465,7 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
 ############################################################################
 
 # --- plot grid in lab frame (including bends)
-def plotgrid(zz=None,ii=2,plotcond=1,w3dgrid=w3d):
+def plotgrid(zz=None,ii=2,plotcond=1,solver=w3d):
   """
 Plots Z-X grid in the lab frame (including bends)
   - zz=top.zbeam is the center position
@@ -1418,17 +1475,17 @@ Plots Z-X grid in the lab frame (including bends)
   """
   if not zz: zz=top.zbeam
   # --- declare temporary data space, 2 2-D arrays to hold grid coordinates
-  xg = zeros((w3dgrid.nx/ii+1,w3dgrid.nz/ii+1),'d')
-  zg = zeros((w3dgrid.nx/ii+1,w3dgrid.nz/ii+1),'d')
-  for iz in xrange(w3dgrid.nz/ii+1):
-    xg[:,iz] = w3dgrid.xmesh[::ii]
-  for ix in xrange(w3dgrid.nx/ii+1):
-    zg[ix,:] = w3dgrid.zmmin + iota(0,w3dgrid.nz,ii)*w3dgrid.dz + zz
+  xg = zeros((solver.nx/ii+1,solver.nz/ii+1),'d')
+  zg = zeros((solver.nx/ii+1,solver.nz/ii+1),'d')
+  for iz in xrange(solver.nz/ii+1):
+    xg[:,iz] = solver.xmesh[::ii]
+  for ix in xrange(solver.nx/ii+1):
+    zg[ix,:] = solver.zmmin + iota(0,solver.nz,ii)*solver.dz + zz
 
   # --- If in a bend, convert the grid data to the lab frame
   if top.linbend:
     # --- reshape arrays to make 1-D arrays to pass to tolabfrm
-    nn = int((w3dgrid.nx/ii+1)*(w3dgrid.nz/ii+1))
+    nn = int((solver.nx/ii+1)*(solver.nz/ii+1))
     xg.shape = (nn)
     zg.shape = (nn)
 
@@ -1436,8 +1493,8 @@ Plots Z-X grid in the lab frame (including bends)
     tolabfrm(zz,nn,xg,zg)
 
     # --- Reshape back into 2-D arrays
-    xg.shape = (w3dgrid.nx/ii+1,w3dgrid.nz/ii+1)
-    zg.shape = (w3dgrid.nx/ii+1,w3dgrid.nz/ii+1)
+    xg.shape = (solver.nx/ii+1,solver.nz/ii+1)
+    zg.shape = (solver.nx/ii+1,solver.nz/ii+1)
 
   # --- Make plots
   pla(xg,zg,marks=0)
@@ -1446,13 +1503,13 @@ Plots Z-X grid in the lab frame (including bends)
   if plotcond: pfzxlab(zz)
 
 # --- Make pfzx plot in lab frame
-def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,w3dgrid=w3d):
+def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,solver=w3d):
   """Plots conductors in Z-X lab frame (including bends)
   - zz=top.zbeam is the center position
   - condcolor='fg' color of conductor points inside conductors
   """
   if not zz: zz=top.zbeam
-  if iy is None: iy = nint(-w3dgrid.ymmin/w3dgrid.dy)
+  if iy is None: iy = nint(-solver.ymmin/solver.dy)
   # --- if zz is not equal to zbeam, then calculate conductors for new location
   if (zz != top.zbeam):
     z = top.zbeam
@@ -1475,8 +1532,8 @@ def pfzxlab(zz=None,iy=None,condcolor='fg',conductors=f3d.conductors,w3dgrid=w3d
       level = equal(mglevel,interior.ilevel)
     ii = compress(logical_and(equal(iyc[:nn],iy),level[:nn]),arange(nn))
 
-    xl=take(conductors.interior.indx[0,:],ii)*w3dgrid.dx+w3dgrid.xmmin
-    zl=take(conductors.interior.indx[2,:],ii)*w3dgrid.dz+w3dgrid.zmmin+zz
+    xl=take(conductors.interior.indx[0,:],ii)*solver.dx+solver.xmmin
+    zl=take(conductors.interior.indx[2,:],ii)*solver.dz+solver.zmmin+zz
     # --- convert to lab frame
     tolabfrm(zz,len(xl),xl,zl)   
     # --- make plot
