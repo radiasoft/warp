@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.31 2002/09/24 22:12:02 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.32 2003/01/24 13:56:49 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -366,15 +366,10 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- dump.
             if type(v) != type(array([])):
               # --- First, deal with exceptions
-              if (p == 'top' and vname in ['zlmax','zzmax','zmmntmax']) or \
+              if (p == 'top' and vname in ['zmmntmax']) or \
                  (p == 'w3d' and vname in ['zmmax']):
                 ff.write(pdbname,top.zmslmax[-1])
-              elif (p == 'top' and vname in ['nzl','nzlmax']):
-                if v == 0:
-                  ff.write(pdbname,0)
-                else:
-                  ff.write(pdbname,w3d.nzfull)
-              elif (p == 'top' and vname in ['nzzarr','nzmmnt']) or \
+              elif (p == 'top' and vname in ['nzmmnt']) or \
                    (p == 'w3d' and vname in ['nz','izfsmax','nz_selfe']):
                 ff.write(pdbname,w3d.nzfull)
               elif (p=='top' and vname in ['np','nplive','npmax','npmaxb']) or\
@@ -408,12 +403,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
               if p == 'top' and vname in ['sm','sw','sq']:
                 # --- These arrays are not actually parallel
                 ff.write(pdbname,v)
-              elif (p == 'top' and vname == 'zwindows'):
-                # --- Window 0 needs to set to cover the full system
-                zwin = top.zwindows + 0.
-                zwin[1,0] = top.zmslmax[-1]
-                ff.write(pdbname,zwin)
-                ff.defent(vname+'@parallel',v,(top.nslaves,2,10))
               elif (p == 'top' and vname in ['zmmnts0','zmmnts']) or \
                    (p == 'f3d' and vname in ['sorerrar','boundarr']):
                 # --- These arrays don't need to be saved.
@@ -550,8 +539,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                (p == 'f3d' and vname in ['sorerrar','boundarr']):
               # --- Nothing need be done for these.
               pass
-            elif (p == 'top' and vname == 'zwindows'):
-              ff.write(vname+'@parallel',array([v]),indx=(me,0,0))
             elif p == 'top' and vname in ['npmax_s','ins','nps']:
               # --- Write out to parallel space
               ff.write(vname+'@parallel',array([v]),indx=(me,0))
@@ -819,14 +806,6 @@ def parallelrestore(fname,verbose=false,skip=[]):
         elif (p == 'top' and vname in ['zmmnts0','zmmnts']) or \
              (p == 'f3d' and vname in ['sorerrar','boundarr']):
           # --- These arrays don't need to be restored.
-          s = 'pass'
-        elif vname == 'zwindows' and p == 'top':
-          # --- This doesn't want to work
-          #itriple = array([me,me,1,0,1,1,0,9,1])
-          #s = p+'.forceassign(vname,\
-          #       ff.read_part(vname+"@parallel",itriple)[0,...])'
-          zwin = ff.read(vname+"@parallel")
-          top.zwindows[:,:] = zwin[me,...]
           s = 'pass'
         elif vname == 'npmax_s' and p == 'top':
           itriple = array([me,me,1,0,top.ns,1])
