@@ -2,21 +2,22 @@
 This module contains classes for generating the conductor data from a
 combination of simple geometrical elements.
 The following elements are defined:
-(Note that all take the following arguments
-voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0
 
-Box(xsize,ysize,zsize)
-Cylinder(radius,length,theta=0.,phi=0.)
-ZCylinder(radius,length)
-ZCylinderOut(radius,length)
-ZRoundedCylinderOut(radius,length,radius2)
-YCylinder(radius,length)
-XCylinder(radius,length)
-Sphere(radius)
-ZCone(r_zmin,r_zmax,length)
-ZConeOut(r_zmin,r_zmax,length)
-ZTorus(r1,r2)
-Beamletplate(za,zb,z0,thickness)
+Box(xsize,ysize,zsize,...)
+Cylinder(radius,length,theta=0.,phi=0.,...)
+ZCylinder(radius,length,...)
+ZCylinderOut(radius,length,...)
+ZRoundedCylinderOut(radius,length,radius2,...)
+YCylinder(radius,length,...)
+XCylinder(radius,length,...)
+Sphere(radius,...)
+ZCone(r_zmin,r_zmax,length,...)
+ZConeOut(r_zmin,r_zmax,length,...)
+ZTorus(r1,r2,...)
+Beamletplate(za,zb,z0,thickness,...)
+
+Note that all take the following additional arguments:
+voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0
 
 installconductors(a): generates the data needed for the fieldsolve
 """
@@ -33,7 +34,7 @@ installconductors(a): generates the data needed for the fieldsolve
 from warp import *
 if not lparallel: import VPythonobjects
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.17 2003/03/25 22:08:22 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.18 2003/04/07 23:52:20 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -198,7 +199,7 @@ distances to outside the surface are positive, inside negative.
       self.zz = zz
       self.dels = dels
       self.vs = vs
-      self.ns = ns
+      self.ns = int(ns)
       self.parity = parity
       self.setlevels(0)
    
@@ -208,7 +209,7 @@ distances to outside the surface are positive, inside negative.
    
   def setcondids(self,condid):
     "Routine to setcondid condids."
-    self.ns = condid + zeros((6,self.ndata))
+    self.ns = int(condid) + zeros((6,self.ndata))
    
   def setlevels(self,level):
     self.mglevel = level + zeros(self.ndata)
@@ -584,7 +585,7 @@ Box class
   - xsize,ysize,zsize: box size
   - voltage=0: box voltage
   - xcent=0.,ycent=0.,zcent=0.: center of box
-  - condid=0: conductor id of box
+  - condid=0: conductor id of box, must be integer
   """
 
   xsize = 0.
@@ -616,7 +617,7 @@ Cylinder class
     phi is angle in z-y plane
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=0: conductor id of cylinder
+  - condid=0: conductor id of cylinder, must be integer
   """
 
   def __init__(self,radius,length,theta=0.,phi=0.,
@@ -645,7 +646,7 @@ Cylinders class for a list of cylinders
     phi is angle in z-y plane
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=0: conductor id of cylinder
+  - condid=0: conductor id of cylinder, must be integer
   """
 
   def __init__(self,radius,length,theta=0.,phi=0.,
@@ -673,7 +674,7 @@ Cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=0: conductor id of cylinder
+  - condid=0: conductor id of cylinder, must be integer
   """
 
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -698,7 +699,7 @@ Cylinder with rounded corners aligned with z-axis
   - radius2: radius of rounded corners
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=0: conductor id of cylinder
+  - condid=0: conductor id of cylinder, must be integer
   """
 
   def __init__(self,radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -723,7 +724,7 @@ Outside of a cylinder aligned with z-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=0: conductor id of cylinder
+  - condid=0: conductor id of cylinder, must be integer
   """
 
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -748,7 +749,7 @@ Outside of a cylinder with rounded corners aligned with z-axis
   - radius2: radius of rounded corners
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=0: conductor id of cylinder
+  - condid=0: conductor id of cylinder, must be integer
   """
 
   def __init__(self,radius,length,radius2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -773,7 +774,7 @@ Cylinder aligned with y-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=0: conductor id of cylinder
+  - condid=0: conductor id of cylinder, must be integer
   """
 
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -797,7 +798,7 @@ Cylinder aligned with x-axis
   - radius,length: cylinder size
   - voltage=0: cylinder voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cylinder
-  - condid=0: conductor id of cylinder
+  - condid=0: conductor id of cylinder, must be integer
   """
 
   def __init__(self,radius,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -821,7 +822,7 @@ Spheroid class
   - xradius,yradius,zradius: radii
   - voltage=0: spheroid voltage
   - xcent=0.,ycent=0.,zcent=0.: center of spheroid
-  - condid=0: conductor id of spheroid
+  - condid=0: conductor id of spheroid, must be integer
   """
 
   def __init__(self,xradius,yradius,zradius,
@@ -841,7 +842,7 @@ Sphere
   - radius: radius
   - voltage=0: sphere voltage
   - xcent=0.,ycent=0.,zcent=0.: center of sphere
-  - condid=0: conductor id of sphere
+  - condid=0: conductor id of sphere, must be integer
   """
 
   def __init__(self,radius,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -867,7 +868,7 @@ Cone
     phi is angle in z-y plane
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=0: conductor id of cone
+  - condid=0: conductor id of cone, must be integer
   """
 
   def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
@@ -900,7 +901,7 @@ Cones
     phi is angle in z-y plane
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=0: conductor id of cone
+  - condid=0: conductor id of cone, must be integer
   """
 
   def __init__(self,r_zmin,r_zmax,length,theta,phi,voltage=0.,
@@ -931,7 +932,7 @@ Cone
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=0: conductor id of cone
+  - condid=0: conductor id of cone, must be integer
   """
 
   def __init__(self,r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -958,7 +959,7 @@ Cone outside
   - length: length
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=0: conductor id of cone
+  - condid=0: conductor id of cone, must be integer
   """
 
   def __init__(self,r_zmin,r_zmax,length,voltage=0.,xcent=0.,ycent=0.,zcent=0.,
@@ -984,7 +985,7 @@ Torus
   - r2: poloidal radius
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=0: conductor id of cone
+  - condid=0: conductor id of cone, must be integer
   """
 
   def __init__(self,r1,r2,voltage=0.,xcent=0.,ycent=0.,zcent=0.,condid=0):
@@ -1010,7 +1011,7 @@ Plate from beamlet pre-accelerator
   - thickness: thickness of the plate
   - voltage=0: cone voltage
   - xcent=0.,ycent=0.,zcent=0.: center of cone
-  - condid=0: conductor id of cone
+  - condid=0: conductor id of cone, must be integer
   """
 
   def __init__(self,za,zb,z0,thickness,voltage=0.,
