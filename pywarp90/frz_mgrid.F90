@@ -9580,13 +9580,17 @@ TYPE(CONDtype), pointer :: c
 return
 end subroutine get_cond_rz
 
-subroutine setconductorvoltagerz(volt,nz,zmmin,dz,discrete)
+subroutine setconductorvoltagerz(volt,nz,zmmin,dz,discrete,id)
 USE multigridrz
 implicit none
 integer(ISZ):: nz
 real(kind=8):: volt(0:nz)
 real(kind=8):: rmmin,zmmin,dz
 logical(ISZ):: discrete
+integer(ISZ):: id
+
+! If the id is zero, then the voltage is applied to all conductors.
+! Otherwise, it is applied only to the one specified.
 
 INTEGER :: igrid,i,iv,ic,icc,ice,ico
 integer(ISZ):: iz
@@ -9594,6 +9598,7 @@ real(kind=8):: zz,wz,vv
 TYPE(CONDtype), POINTER :: c
 real(kind=8):: dxm,dxp,dzm,dzp,dxx,dzz,r,rm,rp
 TYPE(BNDtype), POINTER :: b
+LOGICAL(ISZ) :: l_change
 
 do igrid=1,ngrids
   nlevels=grids_ptr(igrid)%grid%nlevels
@@ -9612,6 +9617,7 @@ do igrid=1,ngrids
      END if
 
     do ic=1,c%ncond
+      IF(c%condid(ic) /= id .and. id /= 0) cycle
       zz = grids_ptr(igrid)%grid%zmin + b%dz*(c%kcond(ic)-1)
       if (zmmin <= zz .and. zz < zmmin + nz*dz) then
         iz = int(zz/dz)
@@ -9623,42 +9629,62 @@ do igrid=1,ngrids
     enddo
 
     do ic = 1,c%nbbnd
+
+      l_change = .false.
       zz = grids_ptr(igrid)%grid%zmin + b%dz*(c%kk(ic)-1)
       if (zmmin <= zz .and. zz < zmmin + nz*dz) then
         iz = int(zz/dz)
         wz =     zz/dz - iz
         vv = volt(iz)*(1.-wz) + volt(iz+1)*wz
-        if (c%dxm(ic) < b%dr) c%volt0xm(ic) = vv
-        if (c%dxp(ic) < b%dr) c%volt0xp(ic) = vv
+        if (c%dxm(ic) < b%dr .and. (c%condidxm(ic)==id .or. id == 0)) then
+          l_change = .true.
+          c%volt0xm(ic) = vv
+        endif
+        if (c%dxp(ic) < b%dr .and. (c%condidxp(ic)==id .or. id == 0)) then
+          l_change = .true.
+          c%volt0xp(ic) = vv
+        endif
       else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + b%dz) then
         vv = volt(nz)
-        if (c%dxm(ic) < b%dr) c%volt0xm(ic) = vv
-        if (c%dxp(ic) < b%dr) c%volt0xp(ic) = vv
+        if (c%dxm(ic) < b%dr .and. (c%condidxm(ic)==id .or. id == 0)) then
+          l_change = .true.
+          c%volt0xm(ic) = vv
+        endif
+        if (c%dxp(ic) < b%dr .and. (c%condidxp(ic)==id .or. id == 0)) then
+          l_change = .true.
+          c%volt0xp(ic) = vv
+        endif
       endif
-      if (c%dzm(ic) < b%dz) then
+      if (c%dzm(ic) < b%dz .and. (c%condidzm(ic)==id .or. id == 0)) then
         zz = grids_ptr(igrid)%grid%zmin + b%dz*(c%kk(ic)-1) &
              - c%dzm(ic)
         if (zmmin <= zz .and. zz < zmmin + nz*dz) then
           iz = int(zz/dz)
           wz =     zz/dz - iz
           if (discrete) wz = 0.
+          l_change = .true.
           c%volt0zm(ic) = volt(iz)*(1.-wz) + volt(iz+1)*wz
         else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + b%dz) then
+          l_change = .true.
           c%volt0zm(ic) = volt(nz)
         endif
       endif
-      if (c%dzp(ic) < b%dz) then
+      if (c%dzp(ic) < b%dz .and. (c%condidzp(ic)==id .or. id == 0)) then
         zz = grids_ptr(igrid)%grid%zmin + b%dz*(c%kk(ic)-1) &
              + c%dzp(ic)
         if (zmmin <= zz .and. zz < zmmin + nz*dz) then
           iz = int(zz/dz)
           wz =     zz/dz - iz
           if (discrete) wz = 1.
+          l_change = .true.
           c%volt0zp(ic) = volt(iz)*(1.-wz) + volt(iz+1)*wz
         else if (zmmin + nz*dz <= zz .and. zz < zmmin + nz*dz + b%dz) then
+          l_change = .true.
           c%volt0zp(ic) = volt(nz)
         endif
       endif
+
+      if (.not. l_change) cycle
 
       dxm = MIN(b%dr,c%dxm(ic))
       dxp = MIN(b%dr,c%dxp(ic))
