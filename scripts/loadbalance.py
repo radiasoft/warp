@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.2 2001/07/17 17:26:41 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.3 2001/07/18 17:12:44 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -38,6 +38,8 @@ that has already been done.
   prwallyz = _gatherallzarray(top.prwallyz)
   prwelips = _gatherallzarray(top.prwelips)
   lostpars = _gatherallzarray(top.lostpars,'i')
+  phi = w3d.phi + 0.
+  rho = w3d.rho + 0.
 
   # --- Broadcast the window moments to all processors and gather lab window
   # --- data onto PE0. This is needed since the processors which own the
@@ -49,6 +51,7 @@ that has already been done.
   # --- Save the current extent of the grid. This is used to correct the
   # --- z location of any conductor points for the field-solver.
   oldiz = top.izslave[me]
+  oldnz = top.nzslave[me]
 
   # --- Get sum of zslave to allow proper scaling.
   sumzslave = sum(zslave)
@@ -130,9 +133,15 @@ that has already been done.
   # --- Reorganize the particles
   reorgparticles()
 
-  # --- Do some additional work if requested
-  if lloadrho: loadrho()
-  if dofs: fieldsol(0)
+  # --- Shift the existing charge density and phi
+  izstart = max(oldiz,top.izslave[me])
+  izend = min(oldiz+oldnz,top.izslave[me]+top.nzslave[me])
+  newiz1 = izstart - top.izslave[me]
+  newiz2 = izend - top.izslave[me] + 1
+  oldiz1 = izstart - oldiz
+  oldiz2 = izend - oldiz + 1
+  w3d.phi[:,:,newiz1+1:newiz2+1] = phi[:,:,oldiz1+1:oldiz2+1]
+  w3d.rho[:,:,newiz1:newiz2] = rho[:,:,oldiz1:oldiz2]
 
   # --- Restore some data which needed to be redistributed
   top.eearsofz[:] = _scatterallzarray(eearsofz)
@@ -151,6 +160,10 @@ that has already been done.
   if f3d.nocndbdy > 0:
     f3d.iocndz[:f3d.nocndbdy] = f3d.iocndz[:f3d.nocndbdy] + oldiz - newiz
   cleanconductors()
+
+  # --- Do some additional work if requested
+  if lloadrho: loadrho()
+  if dofs: fieldsol(0)
 
 
 #########################################################################
@@ -180,7 +193,7 @@ grid points.
   zslave = zeros(npes,'d')
   iz = 0
   delta = 0.
-  for ip in range(npes):
+  for ip in range(npes-1):
     npint = 0.
     npnext = pnumz[iz  ]*((1.-delta)+0.5*(delta**2-1.)) + \
              pnumz[iz+1]*0.5*(1. - delta**2)
@@ -199,18 +212,18 @@ grid points.
       if iz == w3d.nzfull: break
     if iz == w3d.nzfull: break
     # --- Add the last little bit to get to exactly npperpe.
-    if pnumz[iz] != pnumz[iz+1]:
-      a = 0.5*pnumz[iz] - 0.5*pnumz[iz+1]
-      b = -pnumz[iz]
-      c = pnumz[iz]*(delta - 0.5*delta**2) + 0.5*pnumz[iz+1]*delta**2 + \
-          npperpe - npint
-      delta = 2.*a*c/(a*(sqrt(b**2 - 4.*a*c) - b))
+    a = 0.5*pnumz[iz] - 0.5*pnumz[iz+1]
+    b = pnumz[iz]
+    c = pnumz[iz]*(delta - 0.5*delta**2) + 0.5*pnumz[iz+1]*delta**2 + \
+        npperpe - npint
+    if b != 0.:
+      delta = 2.*c/(sqrt(b**2 - 4.*a*c) + b)
     else:
-      b = -pnumz[iz]
-      c = pnumz[iz]*(delta - 0.5*delta**2) + 0.5*pnumz[iz+1]*delta**2 + \
-          npperpe - npint
-      delta = -c/b
+      delta = sqrt(-c/a)
     zslave[ip] = zslave[ip] + delta
+
+  # --- The last processor gets everything left over
+  zslave[-1] = w3d.nzfull - sum(zslave)
 
   # --- Apply the new domain decomposition.
   setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs)
@@ -357,7 +370,6 @@ def _scatterallzarray(a):
 #
 # # --- Loop over global extent of grid, gathering data from other processors
 # for iz in range(0,w3d.nzfull+1):
-#   #print me,iz
 #   # --- Get the processor which "owns" the data, relative to the old
 #   # --- grid extents.
 #   pe = compress(logical_and(less_equal(oldizfs,iz),
@@ -365,7 +377,6 @@ def _scatterallzarray(a):
 #   # --- Check if data at this iz is needed locally
 #   if not (oldiz[me] <= iz <= oldiz[me]+oldnz[me]) and \
 #          (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
-#     #print "Receiving ",me," from ",pe
 #     for i in range(len(arrays)):
 #       results[i] = results[i] + list(getarray(pe,0,me))
 #   elif me == pe:
@@ -373,7 +384,6 @@ def _scatterallzarray(a):
 #     for ip in range(npes):
 #       if not (oldiz[ip] <= iz <= oldiz[ip]+oldnz[ip]) and \
 #              (newizfs[ip] <= iz <= newizfs[ip]+newnzfs[ip]):
-#        #print "sending ",me," to ",ip
 #         ii = compress(equal(iz,z),arange(len(arrays[0])))
 #         for i in range(len(arrays)):
 #           temp = getarray(me,take(arrays[i],ii),ip)
