@@ -1,5 +1,5 @@
 cho
-#@(#) File CHO.V, version $Revision: 1.5 $, $Date: 2002/08/27 23:13:33 $
+#@(#) File CHO.V, version $Revision: 1.6 $, $Date: 2002/08/28 16:15:48 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package cho of code WARP6
@@ -9,7 +9,7 @@ cho
 }
 
 *********** CHOversion:
-verscho character*19 /"$Revision: 1.5 $"/#  Code version version is set by CVS
+verscho character*19 /"$Revision: 1.6 $"/#  Code version version is set by CVS
 
 *********** CHOHandle:
 cho_handle integer # Handle to the ChomboPIC package
@@ -43,3 +43,9 @@ cho_getphi3d(np:integer,xp:real,yp:real,zp:real,zgrid:real,p:real,
 cho_getrho3d(np:integer,xp:real,yp:real,zp:real,zgrid:real,r:real,
              js:integer,ip:integer) subroutine
 
+reachablenodes(dx:real,mask:integer,xlo:integer,ylo:integer,zlo:integer,
+               xhi:integer,yhi:integer,zhi:integer,ncomp:integer) subroutine
+coverednodes(dx:real,mask:integer,xlo:integer,ylo:integer,zlo:integer,
+             xhi:integer,yhi:integer,zhi:integer) subroutine
+nodalcoefficients(dx:real,coeffs:real,xlo:integer,ylo:integer,zlo:integer,
+                  xhi:integer,yhi:integer,zhi:integer,ncomp:integer) subroutine
