@@ -1,6 +1,6 @@
 #DEBUG = -g
 SO = so
-PUBLICHOME = 
+PUBLICHOME = $(HOME)/scripts
 
 all: toppy.$(SO) envpy.$(SO) w3dpy.$(SO) f3dpy.$(SO) wxypy.$(SO) fxypy.$(SO) wrzpy.$(SO) frzpy.$(SO) herpy.$(SO) cirpy.$(SO) chopy.$(SO) ranffortran.c
 	rm -f warpC.so
@@ -45,6 +45,12 @@ ranffortran.c: ranffortran.m
 
 public: all
 	publishpywarp90.py $(PUBLICHOME)
+
+update:
+	for dir in $(PUBLICHOME); do \
+	  cd $$dir; \
+	  cvs update; \
+	done
 
 clean:
 	rm -rf build *.so
