@@ -8,7 +8,7 @@ if me == 0:
     import plwf
   except ImportError:
     pass
-warpplots_version = "$Id: warpplots.py,v 1.52 2001/09/06 21:24:51 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.53 2001/09/22 00:10:55 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -250,7 +250,7 @@ plus = '\2'
 point = '\1'
 def plp(y,x=None,color="fg",marker="\1",msize=1.0):
   "Plots particles, same as plg but with different defaults"
-  if x:
+  if x is not None:
     plg(y,x,type="none",marker=marker,color=color,msize=msize)
   else:
     plg(y,type="none",marker=marker,color=color,msize=msize)
@@ -1159,8 +1159,8 @@ Note that either the x and y coordinates or the grid must be passed in.
     pl3d.orient3()
     pl3d.light3()
     plwf.plwf(grid1,xmesh,ymesh,fill=grid1,edges=0)
-    [xmin,xmax,ymin,ymax] = pl3d.draw3(1)
-    #limits(xmin,xmax,ymin,ymax)
+    [xmin3,xmax3,ymin3,ymax3] = pl3d.draw3(1)
+    #limits(xmin3,xmax3,ymin3,ymax3)
 
   # --- Finish off the plot, adding titles and setting the frame limits.
   if titles: ptitles(v=view)
