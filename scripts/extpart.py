@@ -1,7 +1,7 @@
 from warp import *
 from appendablearray import *
 import cPickle
-extpart_version = "$Id: extpart.py,v 1.7 2001/10/01 18:48:17 dave Exp $"
+extpart_version = "$Id: extpart.py,v 1.8 2001/11/08 20:33:45 dave Exp $"
 
 def extpartdoc():
   print """
@@ -177,22 +177,26 @@ routines (such as ppxxp).
   def getvx(self,js=0): return self.uxep[js][:]
   def getvy(self,js=0): return self.uyep[js][:]
   def getvz(self,js=0): return self.uzep[js][:]
-  def getxp(self,js=0): return self.ux(js)/self.uz(js)
-  def getyp(self,js=0): return self.uy(js)/self.uz(js)
-  def getr(self,js=0): return sqrt(self.x(js)**2 + self.y(js)**2)
-  def gettheta(self,js=0): return arctan2(self.y(js),self.x(js))
-  def getrp(self,js=0): return self.xp(js)*cos(self.theta(js)) + \
-                            self.yp(js)*sin(self.theta(js))
+  def getxp(self,js=0): return self.getux(js)/self.getuz(js)
+  def getyp(self,js=0): return self.getuy(js)/self.getuz(js)
+  def getr(self,js=0): return sqrt(self.getx(js)**2 + self.gety(js)**2)
+  def gettheta(self,js=0): return arctan2(self.gety(js),self.getx(js))
+  def getrp(self,js=0): return self.getxp(js)*cos(self.gettheta(js)) + \
+                            self.getyp(js)*sin(self.gettheta(js))
   def getn(self,js=0): return len(self.tep[js][:])
 
   def xxpslope(self,js=0):
-    return (ave(self.x(js)*self.xp(js)) - ave(self.x(js))*ave(self.xp(js)))/ \
-           (ave(self.x(js)*self.x(js)) - ave(self.x(js))*ave(self.x(js)))
+    return (ave(self.getx(js)*self.getxp(js)) - \
+            ave(self.getx(js))*ave(self.getxp(js)))/ \
+           (ave(self.getx(js)*self.getx(js)) - \
+            ave(self.getx(js))*ave(self.getx(js)))
   def yypslope(self,js=0):
-    return (ave(self.y(js)*self.yp(js)) - ave(self.y(js))*ave(self.yp(js)))/ \
-           (ave(self.y(js)*self.y(js)) - ave(self.y(js))*ave(self.y(js)))
+    return (ave(self.gety(js)*self.getyp(js)) - \
+            ave(self.gety(js))*ave(self.getyp(js)))/ \
+           (ave(self.gety(js)*self.gety(js)) - \
+            ave(self.gety(js))*ave(self.gety(js)))
   def rrpslope(self,js=0):
-    return ave(self.r(js)*self.rp(js))/ave(self.r(js)**2)
+    return ave(self.getr(js)*self.getrp(js))/ave(self.getr(js)**2)
 
   ############################################################################
   ############################################################################
@@ -220,8 +224,8 @@ functions.
   def pxy(self,js=0,particles=1,**kw):
     """Plots X-Y for extraploated particles"""
     self.checkplotargs(kw)
-    x = self.x(js)
-    y = self.y(js)
+    x = self.getx(js)
+    y = self.gety(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -234,8 +238,8 @@ functions.
   def pxxp(self,js=0,slope=0.,offset=0.,particles=1,**kw):
     """Plots X-X' for extraploated particles"""
     self.checkplotargs(kw)
-    x = self.x(js)
-    xp = self.xp(js)
+    x = self.getx(js)
+    xp = self.getxp(js)
     if type(slope) == type(''):
       slope = (ave(x*xp)-ave(x)*ave(xp))/(ave(x*x) - ave(x)**2)
       offset = ave(xp)-slope*ave(x)
@@ -253,8 +257,8 @@ functions.
   def pyyp(self,js=0,slope=0.,offset=0.,particles=1,**kw):
     """Plots Y-Y' for extraploated particles"""
     self.checkplotargs(kw)
-    y = self.y(js)
-    yp = self.yp(js)
+    y = self.gety(js)
+    yp = self.getyp(js)
     if type(slope) == type(''):
       slope = (ave(y*yp)-ave(y)*ave(yp))/(ave(y*y) - ave(y)**2)
       offset = ave(yp)-slope*ave(y)
@@ -272,8 +276,8 @@ functions.
   def pxpyp(self,js=0,particles=1,**kw):
     """Plots X'-Y' for extraploated particles"""
     self.checkplotargs(kw)
-    xp = self.xp(js)
-    yp = self.yp(js)
+    xp = self.getxp(js)
+    yp = self.getyp(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -286,10 +290,10 @@ functions.
   def prrp(self,js=0,scale=0.,slope=0.,offset=0.,particles=1,**kw):
     """Plots R-R' for extraploated particles"""
     self.checkplotargs(kw)
-    x = self.x(js)
-    y = self.y(js)
-    xp = self.xp(js)
-    yp = self.yp(js)
+    x = self.getx(js)
+    y = self.gety(js)
+    xp = self.getxp(js)
+    yp = self.getyp(js)
     xscale = 1.
     yscale = 1.
     xpscale = 1.
@@ -321,8 +325,8 @@ functions.
   def ptx(self,js=0,particles=1,**kw):
     """Plots time-X for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    x = self.x(js)
+    t = self.gett(js)
+    x = self.getx(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -335,8 +339,8 @@ functions.
   def pty(self,js=0,particles=1,**kw):
     """Plots time-Y for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    y = self.y(js)
+    t = self.gett(js)
+    y = self.gety(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -349,8 +353,8 @@ functions.
   def ptxp(self,js=0,particles=1,**kw):
     """Plots time-X' for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    xp = self.xp(js)
+    t = self.gett(js)
+    xp = self.getxp(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -363,8 +367,8 @@ functions.
   def ptyp(self,js=0,particles=1,**kw):
     """Plots time-Y' for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    yp = self.yp(js)
+    t = self.gett(js)
+    yp = self.getyp(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -377,8 +381,8 @@ functions.
   def ptux(self,js=0,particles=1,**kw):
     """Plots time-ux for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    ux = self.ux(js)
+    t = self.gett(js)
+    ux = self.getux(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -389,8 +393,8 @@ functions.
   def ptuy(self,js=0,particles=1,**kw):
     """Plots time-uy for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    uy = self.uy(js)
+    t = self.gett(js)
+    uy = self.getuy(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -401,8 +405,8 @@ functions.
   def ptuz(self,js=0,particles=1,**kw):
     """Plots time-uz for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    uz = self.uz(js)
+    t = self.gett(js)
+    uz = self.getuz(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -413,8 +417,8 @@ functions.
   def ptvx(self,js=0,particles=1,**kw):
     """Plots time-Vx for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    vx = self.vx(js)
+    t = self.gett(js)
+    vx = self.getvx(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -425,8 +429,8 @@ functions.
   def ptvy(self,js=0,particles=1,**kw):
     """Plots time-Vy for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    vy = self.vy(js)
+    t = self.gett(js)
+    vy = self.getvy(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -437,8 +441,8 @@ functions.
   def ptvz(self,js=0,particles=1,**kw):
     """Plots time-Vz for extraploated particles"""
     self.checkplotargs(kw)
-    t = self.t(js)
-    vz = self.vz(js)
+    t = self.gett(js)
+    vz = self.getvz(js)
     kw['particles'] = particles
     if 'pplimits' in kw.keys():
       kw['lframe'] = 1
@@ -455,10 +459,10 @@ If any of the tuples are empty, the limits used will be the usual ones for
 that plot.
     """
     self.checkplotargs(kw)
-    x = self.x(js)
-    y = self.y(js)
-    xp = self.xp(js)
-    yp = self.yp(js)
+    x = self.getx(js)
+    y = self.gety(js)
+    xp = self.getxp(js)
+    yp = self.getyp(js)
     titler = self.titleright()
     kw['particles'] = particles
     defaultpplimits = [(top.xplmin,top.xplmax,top.yplmin,top.yplmax),
