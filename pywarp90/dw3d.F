@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File DW3D.M, version $Revision: 3.29 $, $Date: 2001/10/18 00:16:47 $
+c@(#) File DW3D.M, version $Revision: 3.30 $, $Date: 2001/10/25 18:21:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the package W3D of the code WARP
@@ -31,8 +31,8 @@ c Exit now if parameter are not to be printed
 c     --- Call script version of this routine.
       call execuser("printparameters3d")
 
-   20 format(x,a,1pe11.4,a)
-   30 format(x,a,i8,a)
+   20 format(1x,a,1pe11.4,a)
+   30 format(1x,a,i8,a)
 
 c  Gather up various lattice qtys for printout
 
