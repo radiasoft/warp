@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.33 2003/01/24 18:02:45 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.34 2003/04/17 22:22:35 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -11,33 +11,13 @@ top.nslaves = npes
 # --- has been changed. The compiled routine reorg_particles should probably
 # --- be called instead (but it is not callable from python yet).
 def reorgparticles():
-  lout = 1
-  while lout:
-    zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
-    lout = 0
-    for js in range(top.ns):
-      i1 = top.ins[js]-1
-      i2 = top.ins[js]+top.nps[js]-1
-      ii=compress(not_equal(top.uzp[i1:i2],0.),iota(i1,i2-1))
-      if len(ii) > 0:
-        if (min(take(top.zp,ii))-top.zgrid <  top.zpslmin[me] or
-            max(take(top.zp,ii))-top.zgrid >= top.zpslmax[me]):
-          lout = 1
- 
-     #ip1 = top.ins[js]-1
-     #ip2 = top.ins[js]+top.nps[js]-1
-     #if ip2 > ip1:
-     #  if logical_and(not_equal(top.uzp[ip1:ip1],0.),
-     #       logical_or(less(top.zp[ip1:ip1],top.zpslmin[me]+top.zgrid),
-     #         greater_equal(top.zp[ip1:ip1],top.zpslmax[me]+top.zgrid))):
-     #   lout = 1
-
-    lout = globalmax(lout)
+  zpartbnd(w3d.zmmax,w3d.zmmin,w3d.dz,top.zgrid)
 
 # ---------------------------------------------------------------------------
 def gatherallzarray(a,zaxis=0):
-  """Gathers and broadcasts the data in a z-array. Each processor contributes
-the data from within the particle decomposition region it owns. This works
+  """Gathers and broadcasts the data in a z-array which is decomposed
+the same way as the particle domains. Each processor contributes the
+data from within the particle decomposition region it owns. This works
 with any array from the groups Z_arrays and Z_Moments.
  - first argument is the z-array
  - zaxis: axis which is decomposed in z
@@ -58,6 +38,13 @@ with any array from the groups Z_arrays and Z_Moments.
  
 # ---------------------------------------------------------------------------
 def scatterallzarray(a,zaxis=0):
+  """Scatters the data in a z-array which is decomposed the same way as
+the particle domains. Each processor contributes the data from within
+the particle decomposition region it owns. This works with any array
+from the groups Z_arrays and Z_Moments.
+ - first argument is the z-array
+ - zaxis: axis which is decomposed in z
+  """
   if not lparallel: return a
   # --- Rearrange array to put the decomposed axis first
   if zaxis != 0: a = swapaxes(a,0,zaxis)
@@ -69,9 +56,9 @@ def scatterallzarray(a,zaxis=0):
 
 # ---------------------------------------------------------------------------
 def gatherallzfsarray(a,zaxis=0):
-  """Gathers and broadcasts the data in a field-solve array. Each
-processor contributes the data from within the field-solve decomposition
-region it owns.
+  """Gathers and broadcasts the data in a z-array decomposed in the same
+way as the field grid. Each processor contributes the data from within
+the field-solve decomposition region it owns.
  - first argument is the z-array
  - zaxis: axis which is decomposed in z
   """
@@ -91,43 +78,17 @@ region it owns.
  
 # ---------------------------------------------------------------------------
 def scatterallzfsarray(a,zaxis=0):
+  """Scatters the data in a z-array decomposed in the same way as the
+field grid. Each processor contributes the data from within the
+field-solve decomposition region it owns.
+ - first argument is the z-array
+ - zaxis: axis which is decomposed in z
+  """
   if not lparallel: return a
   # --- Rearrange array to put the decomposed axis first
   if zaxis != 0: a = swapaxes(a,0,zaxis)
   # --- Get the appropriate subsection
   result = a[top.izfsslave[me]:top.izfsslave[me]+top.nzfsslave[me] + 1,...]
-  # --- Rearrange array to put the decomposed axis back where it started
-  if zaxis != 0: result = swapaxes(result,0,zaxis)
-  return result
-
-# ---------------------------------------------------------------------------
-def gatherallzmarray(a,zaxis=0):
-  """Gathers and broadcasts the data in a z-array. Each processor contributes
-the data from within the field decomposition region it owns.
- - first argument is the z-array
- - zaxis: axis which is decomposed in z
-  """
-  if not lparallel: return a
-  # --- Get start and end of particle decomposition region
-  iz1 = 0
-  if me < npes-1: iz2 = top.izslave[me+1] - 1 - top.izslave[me]
-  else:           iz2 = w3d.nzfull - top.izslave[me]
-  # --- Rearrange array to put the decomposed axis first
-  if zaxis != 0: a = swapaxes(a,0,zaxis)
-  # --- Gather and broadcast it
-  result = gatherarray(a[iz1:iz2+1,...])
-  result = broadcast(result)
-  # --- Rearrange array to put the decomposed axis back where it started
-  if zaxis != 0: result = swapaxes(result,0,zaxis)
-  return result
- 
-# ---------------------------------------------------------------------------
-def scatterallzmarray(a,zaxis=0):
-  if not lparallel: return a
-  # --- Rearrange array to put the decomposed axis first
-  if zaxis != 0: a = swapaxes(a,0,zaxis)
-  # --- Get the appropriate subsection
-  result = a[top.izslave[me]:top.izslave[me]+top.nzslave[me] + 1,...]
   # --- Rearrange array to put the decomposed axis back where it started
   if zaxis != 0: result = swapaxes(result,0,zaxis)
   return result
@@ -148,6 +109,7 @@ contains that value."""
     pe = None
   return pe
 convertizptope = convertiztope
+
 def convertizfstope(iz):
   """Given an iz value, returns the processor number whose field solve region
 contains that value."""
@@ -162,94 +124,6 @@ contains that value."""
   else:
     pe = None
   return pe
-
-def convertiwtope(iw):
-  """Given an z window number, returns the processor number whose region
-contains that range (actually the center of the window)."""
-  if 0 <= iw <= top.nzwind:
-    zz = 0.5*(top.zwindows[0,iw]+top.zwindows[1,iw])
-    pe = compress(logical_and(less_equal(top.zpslmin,zz),
-                                    less(zz,top.zpslmax)),arange(npes))
-    if len(pe) > 0:
-      return pe[-1]
-    else:
-      # --- The zwindow is outside of the grid boundary.
-      return None
-  else:
-    # --- The input iw is not a proper value.
-    return None
-
-# --- Gathers windows data onto PE0.
-def getwin_moments():
-  """Broadcasts the window moments data to all processors."""
-  # --- First, get a list of all arrays in the group Win_Moments
-  vlistall = top.varlist('Win_Moments')
-  vlist = []
-  for v in vlistall:
-    if eval('type(top.'+v+')==type(array([]))'): vlist.append(v)
-  # --- Loop over the number of windows and get the pe that owns it.
-  # --- The processor is then the root for the broadcast call.
-  # --- All of the moment data for each window is sent as a single array.
-  for iw in range(1,top.nzwind+1):
-    pe = convertiwtope(iw)
-    if pe is not None:
-      vdata = []
-      for v in vlist:
-        h = eval('top.'+v)
-        vdata.append(h[iw])
-      vdata = mpi.bcast(array(vdata),pe)
-      i = 0
-      for v in vlist:
-        h = eval('top.'+v)
-        h[iw] = vdata[i]
-        i = i + 1
-
-# --- Gathers windows history data onto PE0.
-# --- Still need to deal with linechg and hvzofz and other zmoments histories.
-def gethist():
-  # --- Do nothing if there is no history data
-  if top.jhist < 0: return
-  # --- All zwindow histories have the attribute winhist.
-  vlist = top.varlist('winhist')
-  # --- Loop over the number of windows and get the pe that owns it.
-  # --- The processor is then the root for the broadcast call.
-  # --- All of the history data for each window is sent as a single array.
-  for iw in range(1,top.nzwind+1):
-    pe = convertiwtope(iw)
-    if pe is not None:
-      vdata = []
-      for v in vlist:
-        h = eval('top.'+v)
-        vdata.append(h[iw,:top.jhist+1])
-      vdata = mpi.bcast(array(vdata),pe)
-      for i in range(len(vlist)):
-        h = eval('top.'+vlist[i])
-        h[iw,:top.jhist+1] = vdata[i]
-
-# --- Gather lab moments onto PE0. Note that after the moments are gathered,
-# --- more data can still be calculated if the run continues.
-def getlabmoments():
-  if not top.iflabwn or top.nlabwn == 0: return
-  # --- First, get total number of data points saved.
-  i = parallelsum(top.ilabwn)
-  # --- Make sure there is space on processor 0
-  if me == 0:
-    if top.ntlabwn < max(i):
-      top.ntlabwn = max(i)
-      gchange('Lab_Moments')
-  # --- Now gather the data
-  varlist = top.varlist('Lab_Moments')
-  for v in varlist:
-    h = eval('top.'+v)
-    if type(h) == type(array([])) and len(shape(h)) == 2:
-      for il in range(top.nlabwn):
-        gatherh = gatherarray(h[:top.ilabwn[il],il])
-        if me == 0:
-          h[:i[il],il] = gatherh
-  if me == 0:
-    top.ilabwn[:] = i
-  else:
-    top.ilabwn = 0
 
 ###########################################################################
 ###########################################################################
@@ -270,9 +144,6 @@ def getlabmoments():
 # written out in the same format as serial dump.
 def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                  verbose=false):
-  getwin_moments()
-  gethist()
-  getlabmoments()
 
   # --- Convert attr into a list if needed
   if not (type(attr) == type([])): attr = [attr]
@@ -366,17 +237,16 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- dump.
             if type(v) != type(array([])):
               # --- First, deal with exceptions
-              if (p == 'top' and vname in ['zmmntmax']) or \
-                 (p == 'w3d' and vname in ['zmmax']):
-                ff.write(pdbname,top.zmslmax[-1])
-              elif (p == 'top' and vname in ['nzmmnt']) or \
-                   (p == 'w3d' and vname in ['nz','izfsmax','nz_selfe']):
+              if (p == 'w3d' and vname in ['zmmax','zmmaxp']):
+                ff.write(pdbname,w3d.zmmaxglobal)
+              elif (p == 'w3d' and vname in ['zmminp']):
+                ff.write(pdbname,w3d.zmminglobal)
+              elif (p == 'w3d' and vname in ['nz','izfsmax','nz_selfe','nzp']):
                 ff.write(pdbname,w3d.nzfull)
-              elif (p=='top' and vname in ['np','nplive','npmax','npmaxb']) or\
+              elif (p=='top' and vname in ['np','nplive','npmax','npmaxb',
+                                           'npmaxi']) or\
                    (p=='wxy' and vname in ['npmaxxy']):
                 ff.write(pdbname,sum(nps_p)[0])
-              elif (p=='f3d' and vname in ['boundnz']):
-                ff.write(pdbname,boundnz_p[-1])
               elif (p=='f3d' and vname in ['ncond','ncondmax']):
                 ff.write(pdbname,sum(ncond_p))
               elif (p=='f3d' and vname in ['necndbdy']):
@@ -403,10 +273,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
               if p == 'top' and vname in ['sm','sw','sq']:
                 # --- These arrays are not actually parallel
                 ff.write(pdbname,v)
-              elif (p == 'top' and vname in ['zmmnts0','zmmnts']) or \
-                   (p == 'f3d' and vname in ['sorerrar','boundarr']):
-                # --- These arrays don't need to be saved.
-                pass
               elif vname == 'npmax_s' and p == 'top':
                 # --- This is set to be correct globally
                 ff.write(pdbname,array([0]+list(cumsum(sum(nps_p[:,:])))))
@@ -437,25 +303,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                 # --- A WARPxy particle array
                 if wxy.npmaxxy > 0 and sum(sum(nps_p)) > 0:
                   ff.defent(pdbname,v,(sum(sum(nps_p)),))
-              elif re.search('zhist',a):
-                # --- z moments histories
-                ff.write('histz@parallel',histz)
-                if not histz:
-                  # --- This is a temporary solution.
-                  # --- This method can lead to erroneaously large
-                  # --- dump files if the decomposition is not nearly
-                  # --- uniform.
-                  ff.defent(vname+'@parallel',v,
-                            (top.nslaves,max(1+top.nzpslave),top.lenhist+1))
-                elif histz == 1:
-                # --- This would be the proper way, but writing out the
-                # --- would be expensive since it would have to be done
-                # --- in small chunks.
-                  ff.defent(pdbname,v,(w3d.nzfull+1,top.lenhist+1))
-                elif histz == 2:
-                # --- The tranpose of the array is written out. It is written
-                # --- out as one chunk but is in the wrong order.
-                  ff.defent(vname+'@parallel',v,(top.lenhist+1,w3d.nzfull+1))
               elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                            'condvolt','condnumb','icondlevel']:
                 # --- The conductor data is gathered into one place
@@ -540,8 +387,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- The data is now written into the space which was set aside
             # --- above by PE0.
             # --- First the exceptions
-            if (p == 'top' and vname in ['sm','sw','sq','zmmnts0','zmmnts']) or\
-               (p == 'f3d' and vname in ['sorerrar','boundarr']):
+            if (p == 'top' and vname in ['sm','sw','sq']):
               # --- Nothing need be done for these.
               pass
             elif p == 'top' and vname in ['npmax_s','ins','nps']:
@@ -564,23 +410,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                     ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
                     ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:],
                              indx=(ipmin,0))
-            elif re.search('zhist',a):
-              # --- z moments histories
-              if not histz:
-                # --- Write out the data as one chunk.
-                ff.write(vname+'@parallel',array([v]),indx=(me,0,0))
-              elif histz == 1:
-                # --- Write out the data in proper order. The loop
-                # --- over the second dimension of the arrays
-                # --- writes out the data for each time step seperately.
-                # --- This is VERY slow.
-                for ih in xrange(top.jhist+1):
-                  ff.write(pdbname,transpose(array([v[:,ih]])),
-                           indx=(top.izpslave[me],ih))
-              elif histz == 2:
-                # --- Write out the transpose of the array.
-                ff.write(vname+'@parallel',transpose(v),
-                         indx=(0,top.izpslave[me]))
             elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                           'condvolt','condnumb','icondlevel']:
               # --- Write out conductor data.
@@ -818,10 +647,6 @@ def parallelrestore(fname,verbose=false,skip=[]):
           # --- These arrays are not actually parallel and so can just
           # --- be read in.
           s = p+'.forceassign(vname,ff.__getattr__(v))'
-        elif (p == 'top' and vname in ['zmmnts0','zmmnts']) or \
-             (p == 'f3d' and vname in ['sorerrar','boundarr']):
-          # --- These arrays don't need to be restored.
-          s = 'pass'
         elif vname == 'npmax_s' and p == 'top':
           itriple = array([me,me,1,0,top.ns,1])
           s = p+'.forceassign(vname,\
@@ -859,33 +684,6 @@ def parallelrestore(fname,verbose=false,skip=[]):
                 ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:]'
                 exec(pname+ip+' = ff.read_part(v,itriple)',
                      __main__.__dict__,locals())
-        elif re.search('zhist',a):
-          # --- z moments histories
-          try:
-            histz = ff.read("histz@parallel")
-          except:
-            histz = 2
-          if histz == 0:
-            # --- This is a temporary but fast solution.
-            itriple = array([me,me,1,0,top.nzpslave[me],1,0,top.lenhist,1])
-            s = p+'.forceassign(vname,\
-                  ff.read_part(vname+"@parallel",itriple)[0,...])'
-          elif histz == 1:
-            # --- The proper solution would have to read the data in
-            # --- in chunks for each time step.
-            itriple = array([top.izpslave[me],
-                             top.izpslave[me]+top.nzpslave[me],1,0,0,0])
-            tmp = zeros((1+top.nzpslave[me],1+top.lenhist),'d')
-            for ih in xrange(top.jhist+1):
-              itriple[3:] = [ih,ih,1]
-              tmp[:,ih] = ff.read_part(vname+"@parallel",itriple)
-            s = p+'.forceassign(vname,tmp)'
-          elif histz == 2:
-            # --- Read in data and untranspose it.
-            itriple = array([0,top.lenhist,1,
-                        top.izpslave[me],top.izpslave[me]+top.nzpslave[me],1])
-            tmp = ff.read_part(vname+"@parallel",itriple)
-            s = p+'.forceassign(vname,transpose(tmp))'
         elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                       'condvolt','condnumb','icondlevel']:
           # --- The conductor data was gathered into one place
