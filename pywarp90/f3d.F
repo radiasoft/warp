@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.23 $, $Date: 2002/01/24 21:11:58 $
+c@(#) File F3D.M, version $Revision: 3.24 $, $Date: 2002/02/22 17:36:20 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5655,6 +5655,7 @@ c              to prevent precision problems
       real(kind=8):: rad,pradsq,prmxsq,paprsq,papmsq,delx,dely,delz,dxi,dyi
       real(kind=8):: r2fuzz
       integer(ISZ):: npoints,nsgpoints
+      logical(ISZ):: lout
 
 c      if(solvergeom==RZgeom) then
 c        call platepntrz(ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,dx,dy,
@@ -5666,10 +5667,18 @@ c      end if
       dxi = 1./dx
       dyi = 1./dy
       pradsq = rmax**2
-      prmxsq = (rmax + max(dx,dy))**2
+      prmxsq = (abs(rmax) + max(dx,dy))**2
       paprsq = aper**2
       papmsq = (aper - max(dx,dy))**2
       r2fuzz = min(dx,dy)**2*fuzz
+
+c     --- The sign of rmax is used to flag whether or not the include subgrid
+c     --- data at the outer edge of the aperture, at rmax.
+      if (rmax < 0.) then
+        lout = .false.
+      else
+        lout = .true.
+      endif
 
 c     --- Make sure there is enough space. npoints is the maximum
 c     --- number of points that could be needed. nsgpoints is 
@@ -5712,7 +5721,7 @@ c         --- set to default values
 c         --- if point within one grid cell outside of the plate
 c         --- and arrays not full, select point.
           if ((pradsq < rad-r2fuzz .and. rad+r2fuzz < prmxsq) .and.
-     &        lz_in_plate .and.
+     &        lz_in_plate .and. lout .and.
      &        necndbdy < ncndmax .and.
      &        nocndbdy < ncndmax) then
 
