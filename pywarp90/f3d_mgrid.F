@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.48 $, $Date: 2003/03/13 17:24:53 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.49 $, $Date: 2003/04/02 18:25:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -46,7 +46,6 @@ c convergence. The second form, residual correction form, was put in to be
 c consistent with the Chombo AMR/MG field solver.
 
       integer(ISZ):: nxy,nxyz
-      real(kind=8):: maxerr
 c     added by petermc, 26 Sep 2002
 #ifdef WITHCHOMBO
       real(kind=8):: maxres
@@ -156,8 +155,8 @@ c     --- Also setup parallel arrays.
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
 c     --- very few iterations are done.
       mgiters = 0
-      maxerr = 2.*mgtol + 1.
-      do while (maxerr > mgtol .and. mgiters < mgmaxiters)
+      mgerror = 2.*mgtol + 1.
+      do while (mgerror > mgtol .and. mgiters < mgmaxiters)
         mgiters = mgiters + 1
 
 c       --- Save current value of phi
@@ -210,11 +209,11 @@ c       --- those planes are only set with the error of phi.
       endif
 
 c       --- Calculate the change in phi.
-        maxerr = 0.
+        mgerror = 0.
         do iz=0,nz
           do iy=0,ny
             do ix=0,nx
-              maxerr = max(maxerr,abs(phisave(ix,iy,iz) - phi(ix,iy,iz)))
+              mgerror = max(mgerror,abs(phisave(ix,iy,iz) - phi(ix,iy,iz)))
             enddo
           enddo
         enddo
@@ -231,7 +230,7 @@ c     added by petermc, 26 Sep 2002
 
 #ifdef MPIPARALLEL
 c           --- calculate global sorerror
-        call parallelmaxrealarray(maxerr,1)
+        call parallelmaxrealarray(mgerror,1)
 c     added by petermc, 26 Sep 2002
 #ifdef WITHCHOMBO
         if (mgform == 2) then
@@ -239,16 +238,16 @@ c     added by petermc, 26 Sep 2002
         endif
 #endif
 #endif
-c       print*,mgiters,maxerr
+c       print*,mgiters,mgerror
 
 c       --- This line below seems to create a large temporary which can
 c       --- cause problems when memory is close to full. So it was replaced
 c       --- with the explicit loop above.
-c       maxerr = maxval(abs(phisave - phi))
+c       mgerror = maxval(abs(phisave - phi))
 
 c     added by petermc, 26 Sep 2002
 #ifdef WITHCHOMBO
-      print *, 'iteration ', mgiters, ' maxerr=', maxerr
+      print *, 'iteration ', mgiters, ' mgerror=', mgerror
 c     unscaled residual
       print *, 'max(residual)=', maxres*2.0*(dxsqi+dysqi+dzsqi)
 #endif
@@ -262,10 +261,10 @@ c     --- the solve are so are already set.
       if (boundnz == 0) phi(:,:,nz+1) = phi(:,:,nz)
 
 c     --- Make a print out.
-      if (maxerr > mgtol) then
+      if (mgerror > mgtol) then
         call remark("Multigrid: Maximum number of iterations reached")
       endif
-      write(errline,20) maxerr,mgiters
+      write(errline,20) mgerror,mgiters
   20  format("Multigrid: Error converged to ",1pe11.3," in ",i4," v-cycles")
       call remark(errline)
 
