@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.56 2003/04/05 01:07:55 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.57 2003/04/05 01:58:07 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -43,9 +43,9 @@ def plotcond(yy,xx,zz,iz,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx):
     ixc = eval('f3d.i'+xx+'cond')*signx*lx
     iyc = eval('f3d.i'+yy+'cond')*signy*ly
     izc = eval('f3d.i'+zz+'cond')      *lz
-    if xx == 'z': ixc[:] = ixc + f3d.mglevelsiz[mglevel]*lx
-    if yy == 'z': iyc[:] = iyc + f3d.mglevelsiz[mglevel]*ly
-    if zz == 'z': izc[:] = izc + f3d.mglevelsiz[mglevel]*lz
+    if xx == 'z': ixc = ixc + f3d.mglevelsiz[mglevel]*lx
+    if yy == 'z': iyc = iyc + f3d.mglevelsiz[mglevel]*ly
+    if zz == 'z': izc = izc + f3d.mglevelsiz[mglevel]*lz
     cnumb = f3d.condnumb
     try:
       level = equal(mglevel,f3d.icondlevel)
@@ -78,9 +78,9 @@ def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
     ixc = eval('f3d.i'+pp+'cnd'+xx)*signx
     iyc = eval('f3d.i'+pp+'cnd'+yy)*signy
     izc = eval('f3d.i'+pp+'cnd'+zz)*lz
-    if xx == 'z': ixc[:] = ixc + f3d.mglevelsiz[mglevel]
-    if yy == 'z': iyc[:] = iyc + f3d.mglevelsiz[mglevel]
-    if zz == 'z': izc[:] = izc + f3d.mglevelsiz[mglevel]
+    if xx == 'z': ixc = ixc + f3d.mglevelsiz[mglevel]
+    if yy == 'z': iyc = iyc + f3d.mglevelsiz[mglevel]
+    if zz == 'z': izc = izc + f3d.mglevelsiz[mglevel]
     delmx = eval('f3d.'+pp+'cdelm'+xx)*signx
     delpx = eval('f3d.'+pp+'cdelp'+xx)*signx
     delmy = eval('f3d.'+pp+'cdelm'+yy)*signy
@@ -163,73 +163,109 @@ by the conductor number.
   ne = f3d.necndbdy
   no = f3d.nocndbdy
   ns = ne + no
-  if ns+nc > 0:
-    lx = eval('f3d.mglevelsl'+xx)[mglevel]
-    ly = eval('f3d.mglevelsl'+yy)[mglevel]
-    lz = eval('f3d.mglevelsl'+zz)[mglevel]
+  lx = eval('f3d.mglevelsl'+xx)[mglevel]
+  ly = eval('f3d.mglevelsl'+yy)[mglevel]
+  lz = eval('f3d.mglevelsl'+zz)[mglevel]
+  if nc > 0:
     ixc = eval('f3d.i'+xx+'cond')[:nc]
     iyc = eval('f3d.i'+yy+'cond')[:nc]
     izc = eval('f3d.i'+zz+'cond')[:nc]
     numb = f3d.condnumb[:nc]
-    # --- The even and odd data are merged into the same list.
-    ixs = array(list(eval('f3d.iecnd'+xx)[:ne]) +
-                list(eval('f3d.iocnd'+xx)[:no]))
-    iys = array(list(eval('f3d.iecnd'+yy)[:ne]) +
-                list(eval('f3d.iocnd'+yy)[:no]))
-    izs = array(list(eval('f3d.iecnd'+zz)[:ne]) +
-                list(eval('f3d.iocnd'+zz)[:no]))*lz
     # --- Add z offset of data. This only applies for the parallel version
-    if xx == 'z':
-      ixc[:] = ixc + f3d.mglevelsiz[mglevel]
-      ixs[:] = ixs + f3d.mglevelsiz[mglevel]
-    if yy == 'z':
-      iyc[:] = iyc + f3d.mglevelsiz[mglevel]
-      iys[:] = iys + f3d.mglevelsiz[mglevel]
-    if zz == 'z':
-      izc[:] = izc + f3d.mglevelsiz[mglevel]
-      izs[:] = izs + f3d.mglevelsiz[mglevel]
-    delmx = array(list(eval('f3d.ecdelm'+xx)[:ne]) +
-                  list(eval('f3d.ocdelm'+xx)[:no]))
-    delpx = array(list(eval('f3d.ecdelp'+xx)[:ne]) +
-                  list(eval('f3d.ocdelp'+xx)[:no]))
-    delmy = array(list(eval('f3d.ecdelm'+yy)[:ne]) +
-                  list(eval('f3d.ocdelm'+yy)[:no]))
-    delpy = array(list(eval('f3d.ecdelp'+yy)[:ne]) +
-                  list(eval('f3d.ocdelp'+yy)[:no]))
-    numbmx = array(list(eval('f3d.ecnumbm'+xx)[:ne]) +
-                   list(eval('f3d.ocnumbm'+xx)[:no]))
-    numbpx = array(list(eval('f3d.ecnumbp'+xx)[:ne]) +
-                   list(eval('f3d.ocnumbp'+xx)[:no]))
-    numbmy = array(list(eval('f3d.ecnumbm'+yy)[:ne]) +
-                   list(eval('f3d.ocnumbm'+yy)[:no]))
-    numbpy = array(list(eval('f3d.ecnumbp'+yy)[:ne]) +
-                   list(eval('f3d.ocnumbp'+yy)[:no]))
+    if xx == 'z': ixc = ixc + f3d.mglevelsiz[mglevel]
+    if yy == 'z': iyc = iyc + f3d.mglevelsiz[mglevel]
+    if zz == 'z': izc = izc + f3d.mglevelsiz[mglevel]
     try:
       levc = f3d.icondlevel[:nc]
       levelc = equal(mglevel,levc)
-      levs = array(list(f3d.iecndlevel[:ne]) + list(f3d.iocndlevel[:no]))
-      levels = equal(mglevel,levs)
     except:
       levelc = ones(nc)
-      levels = ones(ns)
   else:
-    # --- This code block is needed for the parallel version since not all
-    # --- processors may have conductors and global communication is needed.
-    lx = array([1])
-    ly = array([1])
-    lz = array([1])
     ixc = array([])
     iyc = array([])
     izc = array([])
-    ixs = array([])
-    iys = array([])
-    izs = array([])
-    delmx = array([])
-    delpx = array([])
-    delmy = array([])
-    delpy = array([])
+    numb = array([])
     levelc = array([])
-    levels = array([])
+  if ne > 0:
+    iexs = eval('f3d.iecnd'+xx)[:ne]
+    ieys = eval('f3d.iecnd'+yy)[:ne]
+    iezs = eval('f3d.iecnd'+zz)[:ne] 
+    ecdelmx = eval('f3d.ecdelm'+xx)[:ne]
+    ecdelpx = eval('f3d.ecdelp'+xx)[:ne]
+    ecdelmy = eval('f3d.ecdelm'+yy)[:ne]
+    ecdelpy = eval('f3d.ecdelp'+yy)[:ne]
+    enumbmx = eval('f3d.ecnumbm'+xx)[:ne]
+    enumbpx = eval('f3d.ecnumbp'+xx)[:ne]
+    enumbmy = eval('f3d.ecnumbm'+yy)[:ne]
+    enumbpy = eval('f3d.ecnumbp'+yy)[:ne]
+    try:
+      elevs = f3d.iecndlevel[:ne]
+      elevels = equal(mglevel,elevs)
+    except:
+      elevels = ones(ne)
+  else:
+    iexs = array([])
+    ieys = array([])
+    iezs = array([])
+    ecdelmx = array([])
+    ecdelpx = array([])
+    ecdelmy = array([])
+    ecdelpy = array([])
+    enumbmx = array([])
+    enumbpx = array([])
+    enumbmy = array([])
+    enumbpy = array([])
+    elevels = array([])
+  if no > 0:
+    ioxs = eval('f3d.iocnd'+xx)[:no]
+    ioys = eval('f3d.iocnd'+yy)[:no]
+    iozs = eval('f3d.iocnd'+zz)[:no] 
+    ocdelmx = eval('f3d.ocdelm'+xx)[:no]
+    ocdelpx = eval('f3d.ocdelp'+xx)[:no]
+    ocdelmy = eval('f3d.ocdelm'+yy)[:no]
+    ocdelpy = eval('f3d.ocdelp'+yy)[:no]
+    onumbmx = eval('f3d.ocnumbm'+xx)[:no]
+    onumbpx = eval('f3d.ocnumbp'+xx)[:no]
+    onumbmy = eval('f3d.ocnumbm'+yy)[:no]
+    onumbpy = eval('f3d.ocnumbp'+yy)[:no]
+    try:
+      olevs = f3d.iocndlevel[:no]
+      olevels = equal(mglevel,olevs)
+    except:
+      olevels = ones(no)
+  else:
+    ioxs = array([])
+    ioys = array([])
+    iozs = array([])
+    ocdelmx = array([])
+    ocdelpx = array([])
+    ocdelmy = array([])
+    ocdelpy = array([])
+    onumbmx = array([])
+    onumbpx = array([])
+    onumbmy = array([])
+    onumbpy = array([])
+    olevels = array([])
+
+  # --- The even and odd data are merged into the same list.
+  ixs = array(list(iexs) + list(ioxs))
+  iys = array(list(ieys) + list(ioys))
+  izs = array(list(iezs) + list(iozs))*lz
+  # --- Add z offset of data. This only applies for the parallel version
+  if xx == 'z': ixs = ixs + f3d.mglevelsiz[mglevel]
+  if yy == 'z': iys = iys + f3d.mglevelsiz[mglevel]
+  if zz == 'z': izs = izs + f3d.mglevelsiz[mglevel]
+
+  delmx = array(list(ecdelmx) + list(ocdelmx))
+  delpx = array(list(ecdelpx) + list(ocdelpx))
+  delmy = array(list(ecdelmy) + list(ocdelmy))
+  delpy = array(list(ecdelpy) + list(ocdelpy))
+  numbmx = array(list(enumbmx) + list(onumbmx))
+  numbpx = array(list(enumbpx) + list(onumbpx))
+  numbmy = array(list(enumbmy) + list(onumbmy))
+  numbpy = array(list(enumbpy) + list(onumbpy))
+  levels = array(list(elevels) + list(olevels))
+
   # --- Select out the conductor points in the appropriate slice and in
   # --- the appropriate refinement level.
   iic = compress(logical_and(equal(izc,iz),equal(levelc,1)),arange(nc))
