@@ -6,15 +6,11 @@ import time
 import MLab
 
 try:
-  enumerate
-except:
-  def enumerate(ll):
-    tt = []
-    for i in range(len(ll)):
-      tt.append((i,ll[i]))
-    return tt
+  import psyco
+except ImportError:
+  pass
 
-class AMRTree(Visualizable):
+class AMRTree(object,Visualizable):
     """
   Adaptive Mesh Refinement class.
     """
@@ -23,8 +19,11 @@ class AMRTree(Visualizable):
       self.f            = None
       self.nbcells_user = None
       if getcurrpkg()=='w3d' and (w3d.solvergeom==w3d.XYZgeom or w3d.solvergeom==w3d.XYZgeomMR):
+        self.solvergeom = w3d.XYZgeomMR
         w3d.solvergeom = w3d.XYZgeomMR
         self.blocks=MRBlock()     
+      else:
+        self.solvergeom = w3d.RZgeom
       self.colors       = ['red','blue','yellow','green','cyan','magenta','white']
       self.conductors   = []
       self.conds_installed_onbasegrid = []
@@ -32,11 +31,68 @@ class AMRTree(Visualizable):
       self.enable()
 
     def enable(self):
-      installbeforefs(self.generate)
+      if self.solvergeom == w3d.XYZgeomMR:
+        registersolver(self)
+      else:
+        installbeforefs(self.generate)
         
     def __setstate__(self,dict):
+      # --- This is called when the instance is unpickled.
       self.__dict__.update(dict)
       self.enable()
+
+
+    # --------------------------------------------------------------------
+    # --- Field solver API routines.
+    # --- Currently, these only support the 3d version.
+    def loadrho(self):
+      # --- If the mesh refinement is going to be recalculated this step,
+      # --- then rho is only needed on the root block. Skip loading rho
+      # --- on the mesh refined blocks to save time.
+      if (top.it%w3d.AMRgenerate_periodicity<>0): lrootonly = 0
+      else:                                       lrootonly = 1
+      if self.solvergeom == w3d.XYZgeomMR:
+        self.blocks.loadrho(lrootonly=lrootonly)
+      else:
+        raise "Only 3d supported as registered solver."
+        
+    def solve(self):
+      if self.solvergeom == w3d.XYZgeomMR:
+        self.generate()
+        self.blocks.solve()
+      else:
+        raise "Only 3d supported as registered solver."
+
+    def fetche(self):
+      if self.solvergeom == w3d.XYZgeomMR:
+        self.blocks.fetche()
+      else:
+        raise "Only 3d supported as registered solver."
+
+    def fetchphi(self):
+      if self.solvergeom == w3d.XYZgeomMR:
+        self.blocks.fetchphi()
+      else:
+        raise "Only 3d supported as registered solver."
+
+    def installconductor(self,conductor,dfill=2):
+      self.addconductor(conductor)
+
+    def hasconductors(self):
+      if self.solvergeom == w3d.XYZgeomMR:
+        return self.blocks.hasconductors()
+      else:
+        return f3d.conductors.interior.n > 0
+      
+    def pfxy(self,**kw): self.blocks.pfxy(kwdict=kw)
+    def pfzx(self,**kw): self.blocks.pfzx(kwdict=kw)
+    def pfzy(self,**kw): self.blocks.pfzy(kwdict=kw)
+    def pfxyg(self,**kw): self.blocks.pfxyg(kwdict=kw)
+    def pfzxg(self,**kw): self.blocks.pfzxg(kwdict=kw)
+    def pfzyg(self,**kw): self.blocks.pfzyg(kwdict=kw)
+
+    # --------------------------------------------------------------------
+
 
     def addconductor(self,conductor):
       self.conductors.append(conductor)
@@ -64,26 +120,40 @@ class AMRTree(Visualizable):
            + 0.5*abs((g[1:-1,1:-1]-g[1:-1, :-2])/dx) \
            + 0.5*abs((g[1:-1,2:  ]-g[1:-1,1:-1])/dx)
       else:
-        s=shape(f)
-        g = fzeros(array(s)+2,Float)
-        # fill interior
-        g[1:-1,1:-1,1:-1] = f
-        # set boundaries
-        g[0   ,1:-1,1:-1] = f[1 ,: ,: ]
-        g[-1  ,1:-1,1:-1] = f[-2,: ,: ]
-        g[1:-1,0   ,1:-1] = f[: ,1 ,: ]
-        g[1:-1,-1  ,1:-1] = f[: ,-2,: ]
-        g[1:-1,1:-1,0   ] = f[: ,: ,1 ]
-        g[1:-1,1:-1,-1  ] = f[: ,: ,-2]
-        # computes average of gradients
-        # --- The factor of 0.5 does affect anything since the gradient
-        # --- is scaled by its maximum.
-        gr = abs((g[1:-1,1:-1,1:-1] - g[ :-2,1:-1,1:-1])/dx) \
-           + abs((g[2:,  1:-1,1:-1] - g[1:-1,1:-1,1:-1])/dx) \
-           + abs((g[1:-1,1:-1,1:-1] - g[1:-1, :-2,1:-1])/dy) \
-           + abs((g[1:-1,2:  ,1:-1] - g[1:-1,1:-1,1:-1])/dy) \
-           + abs((g[1:-1,1:-1,1:-1] - g[1:-1,1:-1, :-2])/dz) \
-           + abs((g[1:-1,1:-1,2:  ] - g[1:-1,1:-1,1:-1])/dz)
+       #s=shape(f)
+       #g = fzeros(array(s)+2,Float)
+       ## fill interior
+       #g[1:-1,1:-1,1:-1] = f
+       ## set boundaries
+       #g[0   ,1:-1,1:-1] = f[1 ,: ,: ]
+       #g[-1  ,1:-1,1:-1] = f[-2,: ,: ]
+       #g[1:-1,0   ,1:-1] = f[: ,1 ,: ]
+       #g[1:-1,-1  ,1:-1] = f[: ,-2,: ]
+       #g[1:-1,1:-1,0   ] = f[: ,: ,1 ]
+       #g[1:-1,1:-1,-1  ] = f[: ,: ,-2]
+       ## computes average of gradients
+       ## --- The factor of 0.5 does affect anything since the gradient
+       ## --- is scaled by its maximum.
+       #gr = abs((g[1:-1,1:-1,1:-1] - g[ :-2,1:-1,1:-1])/dx) \
+       #   + abs((g[2:,  1:-1,1:-1] - g[1:-1,1:-1,1:-1])/dx) \
+       #   + abs((g[1:-1,1:-1,1:-1] - g[1:-1, :-2,1:-1])/dy) \
+       #   + abs((g[1:-1,2:  ,1:-1] - g[1:-1,1:-1,1:-1])/dy) \
+       #   + abs((g[1:-1,1:-1,1:-1] - g[1:-1,1:-1, :-2])/dz) \
+       #   + abs((g[1:-1,1:-1,2:  ] - g[1:-1,1:-1,1:-1])/dz)
+       #gx = abs((g[1:-1,1:-1,1:-1] - g[ :-2,1:-1,1:-1]))
+       #add(gx,abs((g[2:,  1:-1,1:-1] - g[1:-1,1:-1,1:-1])),gx)
+       #divide(gx,dx,gx)
+       #gy = abs((g[1:-1,1:-1,1:-1] - g[1:-1, :-2,1:-1]))
+       #add(gy,abs((g[1:-1,2:  ,1:-1] - g[1:-1,1:-1,1:-1])),gy)
+       #divide(gy,dy,gy)
+       #gz = abs((g[1:-1,1:-1,1:-1] - g[1:-1,1:-1, :-2]))
+       #add(gz,abs((g[1:-1,1:-1,2:  ] - g[1:-1,1:-1,1:-1])),gz)
+       #divide(gz,dz,gz)
+       #add(gx,gy,gx)
+       #add(gx,gz,gx)
+       gr = zeros(shape(f),'d')
+       nx,ny,nz = array(shape(f)) - 1
+       getabsgrad3d(nx,ny,nz,f,gr,dx,dy,dz)
       return gr
 
     def getedges_byslice(self,f,dx,dy,dz,threshold):
@@ -96,27 +166,12 @@ class AMRTree(Visualizable):
       fg = self.getabsgrad(f,dx,dy,dz)
 
       dim = rank(f)
+
       # get edges using vertical lines
-      #g1 = fzeros(shape(fg),Float)
-      #if dim==2:
-      #  for j in range(shape(fg)[1]):
-      #    g1[:,j] = where(fg[:,j]>threshold*max(fg[:,j]),fg[:,j],0.)
-      #else: #dim=3
-      #  for k in range(shape(fg)[2]):
-      #   for j in range(shape(fg)[1]):
-      #    g1[:,j,k] = where(fg[:,j,k]>threshold*max(fg[:,j,k]),fg[:,j,k],0.)
       maxfg = MLab.max(fg,0)
       g1 = where(fg>threshold*maxfg[NewAxis,...],fg,0.)
         
       # get edges using horizontal lines
-      #g2 = fzeros(shape(fg),Float)
-      #if dim==2:
-      #  for i in range(shape(fg)[0]):
-      #    g2[i,:] = where(fg[i,:]>threshold*max(fg[i,:]),fg[i,:],0.)
-      #else: #dim=3
-      #  for k in range(shape(fg)[2]):
-      #   for j in range(shape(fg)[0]):
-      #    g2[j,:,k] = where(fg[j,:,k]>threshold*max(fg[j,:,k]),fg[j,:,k],0.)
       maxfg = MLab.max(fg,1)
       if dim==2:
         g2 = where(fg>threshold*maxfg[:,NewAxis],fg,0.)
@@ -127,14 +182,11 @@ class AMRTree(Visualizable):
       g = where(g1>g2,g1,g2)
 
       if dim==3:
-        #g3 = fzeros(shape(fg),Float)
-        #for k in range(shape(fg)[1]):
-        # for j in range(shape(fg)[0]):
-        #  g3[j,k,:] = where(fg[j,k,:]>threshold*max(fg[j,k,:]),fg[j,k,:],0.)
         maxfg = MLab.max(fg,2)
         g3 = where(fg>threshold*maxfg[...,NewAxis],fg,0.)
         # returns max of g and g3
         g = where(g>g3,g,g3)
+
       return g
 
     def getnbcell_edges(self,f,dx,dy,dz,threshold,Rgrad):
@@ -403,7 +455,7 @@ class AMRTree(Visualizable):
 
     def setblocks(self):
       self.nblocks=0
-      if w3d.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeomMR:
         self.blocks = MRBlock()
         mothergrid = self.blocks
       else:
@@ -411,24 +463,24 @@ class AMRTree(Visualizable):
         mothergrid = self.blocks[0]
         self.del_blocks2d()
       xmin0 = w3d.xmmin; xmax0 = w3d.xmmax; dx = w3d.dx
-      if w3d.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeomMR:
         ymin0 = w3d.ymmin; ymax0 = w3d.ymmax; dy = w3d.dy
         zmin0 = w3d.zmmin; zmax0 = w3d.zmmax; dz = w3d.dz
-      if w3d.solvergeom == w3d.RZgeom or w3d.solvergeom == w3d.XZgeom:
+      if self.solvergeom == w3d.RZgeom or self.solvergeom == w3d.XZgeom:
         ymin0 = w3d.zmmin; ymax0 = w3d.zmmax; dy = w3d.dz
-      if w3d.solvergeom == w3d.XYgeom:
+      if self.solvergeom == w3d.XYgeom:
         ymin0 = w3d.ymmin; ymax0 = w3d.ymmax; dy = w3d.dy
       for ii,blocks in enumerate(self.listblocks[1:]):
         i = ii+1
         if i>1:
-          if w3d.solvergeom == w3d.XYZgeomMR:
+          if self.solvergeom == w3d.XYZgeomMR:
             mothergrid = mothergrid.children[0]
           else:
             mothergrid = mothergrid.down
         r=self.MRfact**i
         for patch in blocks:
           self.nblocks+=1
-          if w3d.solvergeom == w3d.XYZgeomMR:
+          if self.solvergeom == w3d.XYZgeomMR:
             lower = nint(array(patch[:3])*r)
             upper = lower + nint(array(patch[3:])*r)
             mothergrid.addchild(lower,upper)
@@ -449,9 +501,8 @@ class AMRTree(Visualizable):
                         t_xmin*self.MRfact,t_xmax*self.MRfact,
                         t_ymin*self.MRfact,t_ymax*self.MRfact)
 
-      if w3d.solvergeom == w3d.XYZgeomMR:
+      if self.solvergeom == w3d.XYZgeomMR:
         self.blocks.finalize()
-        registersolver(self.blocks)
       else:
         for i in range(frz.ngrids-1):
           self.blocks += [frz.basegrid]
@@ -514,7 +565,7 @@ class AMRTree(Visualizable):
         l_nbcellsnone=1
         # set self.f to the charge density array by default
         if self.f is None:
-          if w3d.solvergeom==w3d.XYZgeomMR:
+          if self.solvergeom==w3d.XYZgeomMR:
             self.f = self.blocks.rho
           else:
             self.f = frz.basegrid.rho
@@ -522,9 +573,9 @@ class AMRTree(Visualizable):
         # set cell dimensions of mother grid according to geometry
         dx = w3d.dx
         dz = w3d.dz
-        if w3d.solvergeom==w3d.XYZgeomMR or w3d.solvergeom==w3d.XYgeom:
+        if self.solvergeom==w3d.XYZgeomMR or self.solvergeom==w3d.XYgeom:
           dy = w3d.dy
-        if w3d.solvergeom==w3d.XZgeom or w3d.solvergeom==w3d.RZgeom:
+        if self.solvergeom==w3d.XZgeom or self.solvergeom==w3d.RZgeom:
           dy = w3d.dz
         
         # set parameters controlling the automatic generation of blocks        
@@ -533,7 +584,7 @@ class AMRTree(Visualizable):
         self.Rdens = w3d.AMRrefinement**w3d.AMRmaxlevel_density
         self.Rgrad = w3d.AMRrefinement**w3d.AMRmaxlevel_gradient
         self.threshold = w3d.AMRthreshold_gradient
-        if w3d.solvergeom==w3d.XYZgeomMR:
+        if self.solvergeom==w3d.XYZgeomMR:
           self.maxcells_isolated_blocks = w3d.AMRmaxsize_isolated_blocks**3
         else:
           self.maxcells_isolated_blocks = w3d.AMRmaxsize_isolated_blocks**2
@@ -552,14 +603,14 @@ class AMRTree(Visualizable):
         self.setblocks()
       
         # clear inactive regions in each blocks
-        if w3d.solvergeom==w3d.XYZgeomMR:
+        if self.solvergeom==w3d.XYZgeomMR:
           self.blocks.clearinactiveregions(self.nbcells)
         else:
           g = frz.basegrid
           adjust_lpfd(self.nbcells,g.nr,g.nz,g.rmin,g.rmax,g.zmin,g.zmax)
       
       # set conductor data
-      if w3d.solvergeom==w3d.XYZgeomMR:
+      if self.solvergeom==w3d.XYZgeomMR:
         for cond in self.conductors:
           self.blocks.installconductor(cond,dfill=self.dfill)
       else:
@@ -590,7 +641,12 @@ class AMRTree(Visualizable):
         get_cond_rz(1)
       
       # load charge density on new set of blocks
-      loadrho()
+      if self.solvergeom == w3d.XYZgeomMR:
+        # --- Call the solvers loadrho routine directly since AMR instance
+        # --- is already the registered solver.
+        self.blocks.loadrho(lrootonly=0)
+      else:
+        loadrho()
 
     def draw_blocks2d(self,level=None,color='black',width=1.,allmesh=0,f=1):
       for i,blocks in enumerate(self.listblocks[1:]):
@@ -603,7 +659,7 @@ class AMRTree(Visualizable):
             r=(float(self.MRfact)**i)/f
             nx = nint(l*r)
             ny = nint(h*r)
-            if w3d.solvergeom<>w3d.RZgeom:
+            if self.solvergeom<>w3d.RZgeom:
               xmin=w3d.xmmin
               ymin=w3d.ymmin
               dx=w3d.dx
@@ -659,7 +715,7 @@ class AMRTree(Visualizable):
             dxlist.append(viewboundingbox(xmin,xmax,ymin,ymax,zmin,zmax,self.colors[i]))
       self.dxobject = DXCollection(*dxlist)
     def draw(self,level=None):
-        if w3d.solvergeom==w3d.XYZgeomMR:
+        if self.solvergeom==w3d.XYZgeomMR:
           self.createdxobject(level=level)
           DXImage(self)
         else:
@@ -800,4 +856,12 @@ def draw_box(rmin, rmax, zmin, zmax, color='blue',width=1):
              [rmin,rmax,rmin,rmin],
              [zmax,zmax,zmin,zmax],
              [rmin,rmax,rmax,rmax],color=color,width=width)
- 
+
+
+
+# --- This can only be done after AMRTree is defined.
+try:
+  psyco.bind(AMRTree)
+except NameError:
+  pass
+
