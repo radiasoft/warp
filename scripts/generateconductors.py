@@ -44,7 +44,8 @@ All of the conductor objects have the following methods:
                                 the given velocities most recently intersected
                                 a conductor. It returns an instance of an
                                 Intercept object whichs contains the data in
-                                the attributes xi, yi, zi, and angle.
+                                the attributes xi, yi, zi, and angles itheta
+                                and iphi of the surface normal.
 
 A set of classes for generating and manipulating surfaces of revolution
 using lines and arcs primitives (SRFRVLA) are available:
@@ -71,22 +72,11 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.54 2004/04/16 21:34:19 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.55 2004/04/23 00:05:30 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
 
-
-# --- Temporary hack to allow use with older versions of source
-try:
-  ycylinderconductord
-except:
-  def ycylinderconductord(rad,length,xcent,ycent,zcent,
-                          n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,fuzz):
-    pass
-  def xcylinderconductord(rad,length,xcent,ycent,zcent,
-                          n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,fuzz):
-    pass
 
 ##############################################################################
 def installconductors(a,xmin=None,xmax=None,ymin=None,ymax=None,
@@ -622,12 +612,12 @@ The attribute 'distance' holds the calculated distance.
 
   def __add__(self,right):
     "'or' operator, returns minimum of distances to surfaces."
-    c = greater(abs(self.distance),abs(right.distance))
+    c = greater(self.distance,right.distance)
     dd = Distance(self.xx,self.yy,self.zz,
                   choose(c,(self.distance,right.distance)))
-    dd.distance = where((self.distance < 0.) & (right.distance > 0.),
+    dd.distance = where((self.distance < 0.) & (right.distance >= 0.),
                         self.distance,dd.distance)
-    dd.distance = where((self.distance > 0.) & (right.distance < 0.),
+    dd.distance = where((self.distance >= 0.) & (right.distance < 0.),
                         right.distance,dd.distance)
     return dd
 
@@ -734,7 +724,7 @@ at the intersection point.
   """
 
   def __init__(self,xx=None,yy=None,zz=None,vx=None,vy=None,vz=None,
-                    xi=None,yi=None,zi=None,angle=None,
+                    xi=None,yi=None,zi=None,itheta=None,iphi=None,
                     generator=None,condid=1,conductor=None,kwlist=[]):
     self.condid = condid
     self.conductor = conductor
@@ -749,57 +739,85 @@ at the intersection point.
       self.xi = zeros(self.ndata,'d')
       self.yi = zeros(self.ndata,'d')
       self.zi = zeros(self.ndata,'d')
-      self.angle = zeros(self.ndata,'d')
+      self.itheta = zeros(self.ndata,'d')
+      self.iphi = zeros(self.ndata,'d')
       apply(generator,kwlist + [self.ndata,self.xx,self.yy,self.zz,
                                 self.vx,self.vy,self.vz,
-                                self.xi,self.yi,self.zi,self.angle])
+                                self.xi,self.yi,self.zi,self.itheta,self.iphi])
     else:
       self.xi = xi
       self.yi = yi
       self.zi = zi
-      self.angle = angle
+      self.itheta = itheta
+      self.iphi = iphi
    
   def __neg__(self):
     "Delta not operator."
     return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
-                     self.xi,self.yi,self.zi,self.angle,
+                     self.xi,self.yi,self.zi,self.itheta+pi,self.iphi,
                      conductor=self.conductor,condid=self.condid)
 
-  def binaryop(self,right,cond):
+  def magsq(self):
+    return (self.xx-self.xi)**2 + (self.yy-self.yi)**2 + (self.zz-self.zi)**2
+
+  def binaryop(self,right,cond,addpi):
     """All binary operations are the same, and depend only on the conductor
 obtained by applying the same operation on the self and right conductors.
     """
+    # --- Fuzz value - points less than this from the surface are
+    # --- considered to be on the surface.
+    surffuzz = 1.e-9
+    # --- Get distances from combined conductor to the intercept points
+    # --- of each part. Extract absolute value of the distance.
     selfdist = cond.distance(self.xi,self.yi,self.zi)
     rightdist = cond.distance(right.xi,right.yi,right.zi)
-    li = abs(selfdist.distance)
+    si = abs(selfdist.distance)
     ri = abs(rightdist.distance)
-    cc = li < ri
+    # --- Get distances between original point and intercept points.
+    ds = self.magsq()
+    dr = right.magsq()
+    # --- Choose intercept points whose distance to the combined conductor
+    # --- is the smallest (i.e. get points that lie on its surface).
+    cc = si < ri
+    # --- If the intercepts points from both conductors lie on the surface,
+    # --- Choose the one closest to the original point.
+    cc = where((si < surffuzz) & (ri < surffuzz),ds < dr,cc)
+    # --- Pick the intercept point which satisfies the above criteria.
     xi = where(cc,self.xi,right.xi)
     yi = where(cc,self.yi,right.yi)
     zi = where(cc,self.zi,right.zi)
-    angle = where(cc,self.angle,right.angle)
+    itheta = where(cc,self.itheta,right.itheta+addpi)
+    iphi = where(cc,self.iphi,right.iphi)
+    # --- Check for cases where neither point lies on the surface. This is
+    # --- when the distances to the surface are greater than the fuzz value.
+    dd = (minimum(si,ri) < surffuzz)
+    xi = where(dd,xi,largepos)
+    yi = where(dd,yi,largepos)
+    zi = where(dd,zi,largepos)
+    itheta = where(dd,itheta,0.)
+    iphi = where(dd,iphi,0.)
     return Intercept(self.xx,self.yy,self.zz,self.vx,self.vy,self.vz,
-                     xi,yi,zi,angle,conductor=cond,condid=self.condid)
+                     xi,yi,zi,itheta,iphi,conductor=cond,condid=self.condid)
 
   def __mul__(self,right):
     "'and' operator, returns logical and."
     cond = self.conductor*right.conductor
-    return self.binaryop(right,cond)
+    return self.binaryop(right,cond,0.)
 
   def __add__(self,right):
     "'or' operator, returns logical or."
     cond = self.conductor + right.conductor
-    return self.binaryop(right,cond)
+    return self.binaryop(right,cond,0.)
 
   def __sub__(self,right):
     "'or' operator, returns logical or."
     cond = self.conductor - right.conductor
-    return self.binaryop(right,cond)
+    return self.binaryop(right,cond,pi)
 
   def __str__(self):
     "Prints out delta"
     return (repr(self.xi)+' '+repr(self.yi)+' '+repr(self.zi)+' '+
-            repr(self.angle)+' '+repr(self.distance))
+            repr(self.itheta)+' '+repr(self.iphi))
 
 ##############################################################################
 ##############################################################################
