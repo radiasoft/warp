@@ -1,7 +1,7 @@
 from warp import *
 # Class which allows an appendable array.
 # DPG 8/19/99
-appendablearray_version = "$Id: appendablearray.py,v 1.4 2002/01/29 22:29:38 dave Exp $"
+appendablearray_version = "$Id: appendablearray.py,v 1.5 2002/01/30 18:37:06 dave Exp $"
 
 class AppendableArray:
   def __init__(self,initlen,shape=None,type='i',autobump=100):
@@ -15,7 +15,7 @@ class AppendableArray:
     if self._shape is None:
       try:
         lendata = shape(data)[0]
-      except TypeError:
+      except (TypeError,IndexError):
         lendata = 1
     else:
       if len(shape(data)) == len(self._shape): lendata = 1
