@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D_CONDUCTORS.F, $Revision: 1.1 $
+c@(#) File F3D_CONDUCTORS.F, $Revision: 1.2 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by David P. Grote
@@ -9,19 +9,23 @@ c  It contains the routines for calculating the intersection of points
 c  with various geometrical objects.
 c=======================================================================
 c=======================================================================
-      subroutine setconductorparity(nn,ix,iy,iz,delmx,delpx,delmy,delpy,
-     &                              delmz,delpz,parity,fuzz)
+      subroutine setconductorparity(nn,ix,iy,iz,dels,parity,fuzz)
       integer(ISZ):: nn
       integer(ISZ):: ix(nn),iy(nn),iz(nn),parity(nn)
-      real(kind=8):: delmx(nn),delpx(nn)
-      real(kind=8):: delmy(nn),delpy(nn)
-      real(kind=8):: delmz(nn),delpz(nn)
+      real(kind=8):: dels(0:5,nn)
       real(kind=8):: fuzz
 
 c Set parity. For points inside, this is set to -1. For points near the surface,
 c this is set to the parity of ix+iy+iz. Otherwise defaults to large integer.
 c This assumes that the data has already been normalized with respect to the
 c grid cell sizes.
+c Format of dels array:
+c  dels(0,:) -> delmx
+c  dels(1,:) -> delpx
+c  dels(2,:) -> delmy
+c  dels(3,:) -> delpy
+c  dels(4,:) -> delmz
+c  dels(5,:) -> delpz
 
       integer(ISZ):: i,iparity
       
@@ -29,23 +33,23 @@ c grid cell sizes.
         parity(i) = 999
 
         iparity = mod(ix(i)+iy(i)+iz(i),2)
-        if (delmx(i) < 1.-fuzz) parity(i) = iparity
-        if (delpx(i) < 1.-fuzz) parity(i) = iparity
-        if (delmy(i) < 1.-fuzz) parity(i) = iparity
-        if (delpy(i) < 1.-fuzz) parity(i) = iparity
-        if (delmz(i) < 1.-fuzz) parity(i) = iparity
-        if (delpz(i) < 1.-fuzz) parity(i) = iparity
+        if (dels(0,i) < 1.-fuzz) parity(i) = iparity
+        if (dels(1,i) < 1.-fuzz) parity(i) = iparity
+        if (dels(2,i) < 1.-fuzz) parity(i) = iparity
+        if (dels(3,i) < 1.-fuzz) parity(i) = iparity
+        if (dels(4,i) < 1.-fuzz) parity(i) = iparity
+        if (dels(5,i) < 1.-fuzz) parity(i) = iparity
 
 c       --- If one direction is negative, all are negative. However,
 c       --- because of the fuzz factor, each direction must be checked
 c       --- since if one direction is between 0 and fuzz, the others
 c       --- will all be positive.
-        if (delmx(i) < 0.+fuzz) parity(i) = -1
-        if (delpx(i) < 0.+fuzz) parity(i) = -1
-        if (delmy(i) < 0.+fuzz) parity(i) = -1
-        if (delpy(i) < 0.+fuzz) parity(i) = -1
-        if (delmz(i) < 0.+fuzz) parity(i) = -1
-        if (delpz(i) < 0.+fuzz) parity(i) = -1
+        if (dels(0,i) < 0.+fuzz) parity(i) = -1
+        if (dels(1,i) < 0.+fuzz) parity(i) = -1
+        if (dels(2,i) < 0.+fuzz) parity(i) = -1
+        if (dels(3,i) < 0.+fuzz) parity(i) = -1
+        if (dels(4,i) < 0.+fuzz) parity(i) = -1
+        if (dels(5,i) < 0.+fuzz) parity(i) = -1
 
       enddo
 
@@ -53,13 +57,15 @@ c       --- will all be positive.
       end
 c=======================================================================
       subroutine ZPlaneConductorF(zcent,zsign,
-     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                            fuzz)
       real(kind=8):: zcent,zsign
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a z plane
 c The notation is that a negative distance means that the point is inside.
@@ -90,13 +96,15 @@ c A positive zsign means that the conductor is the region above zcent.
       end
 c=======================================================================
       subroutine BoxConductorF(xsize,ysize,zsize,xcent,ycent,zcent,
-     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                            fuzz)
       real(kind=8):: xsize,ysize,zsize,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a z plane
 c The notation is that a negative distance means that the point is inside.
@@ -121,8 +129,8 @@ c A positive zsign means that the conductor is the region above zcent.
         delmz(i) = LARGEPOS
         delpz(i) = LARGEPOS
 
-        if (xmin <= x(i) .and. x(i) <= xmax .and.
-     &      ymin <= y(i) .and. y(i) <= ymax) then
+        if (xmin - fuzz <= x(i) .and. x(i) <= xmax + fuzz .and.
+     &      ymin - fuzz <= y(i) .and. y(i) <= ymax + fuzz) then
 
           if (z(i) < zmin) then
             delpz(i) = zmin - z(i)
@@ -135,8 +143,8 @@ c A positive zsign means that the conductor is the region above zcent.
 
         endif
 
-        if (ymin <= y(i) .and. y(i) <= ymax .and.
-     &      zmin <= z(i) .and. z(i) <= zmax) then
+        if (ymin - fuzz <= y(i) .and. y(i) <= ymax + fuzz .and.
+     &      zmin - fuzz <= z(i) .and. z(i) <= zmax + fuzz) then
 
           if (x(i) < xmin) then
             delpx(i) = xmin - x(i)
@@ -149,8 +157,8 @@ c A positive zsign means that the conductor is the region above zcent.
 
         endif
 
-        if (zmin <= z(i) .and. z(i) <= zmax .and.
-     &      xmin <= x(i) .and. x(i) <= xmax) then
+        if (zmin - fuzz <= z(i) .and. z(i) <= zmax + fuzz .and.
+     &      xmin - fuzz <= x(i) .and. x(i) <= xmax + fuzz) then
 
           if (y(i) < ymin) then
             delpy(i) = ymin - y(i)
@@ -169,20 +177,26 @@ c A positive zsign means that the conductor is the region above zcent.
       end
 c=======================================================================
       subroutine ZCylinderConductorF(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                              fuzz)
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a cylinder aligned with
 c the z-axis.
 c The notation is that a negative distance means that the point is inside.
 
+      real(kind=8):: zmin,zmax
       integer(ISZ):: i
       real(kind=8):: xx,yy,rsq
+
+      zmin = zcent - length/2.
+      zmax = zcent + length/2.
 
       do i=1,n
 
@@ -200,12 +214,12 @@ c       --- Set temps
         rsq = (xx**2 + yy**2)
 
 c       --- If point is not within the z extent of the cylinder
-        if (z(i) < zcent - length/2.) then
-          if (rsq <= rad**2) delpz(i) = zcent - length/2. - z(i)
+        if (z(i) < zmin - fuzz) then
+          if (rsq <= rad**2) delpz(i) = zmin - z(i)
           cycle
         endif
-        if (z(i) > zcent + length/2.) then
-          if (rsq <= rad**2) delmz(i) = z(i) - zcent - length/2.
+        if (z(i) > zmax + fuzz) then
+          if (rsq <= rad**2) delmz(i) = z(i) - zmax
           cycle
         endif
 
@@ -215,8 +229,8 @@ c       --- Point inside the cylinder
           delpx(i) = -(sqrt(rad**2 - yy*yy) - xx)
           delmy(i) = -(sqrt(rad**2 - xx*xx) + yy)
           delpy(i) = -(sqrt(rad**2 - xx*xx) - yy)
-          delmz(i) = zcent - length/2. - z(i)
-          delpz(i) = z(i) - zcent - length/2.
+          delmz(i) = zmin - z(i)
+          delpz(i) = z(i) - zmax
           cycle
         endif
 
@@ -247,51 +261,57 @@ c       --- The point is on the cylinder exactly.
       end
 c=======================================================================
       subroutine XCylinderConductorF(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                              fuzz)
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a cylinder aligned with
 c the x-axis.
 c The notation is that a negative distance means that the point is inside.
 
       call ZCylinderConductorF(rad,length,ycent,zcent,xcent,
-     &                         n,y,z,x,delmy,delpy,delmz,delpz,delmx,delpx)
+     &                         n,y,z,x,delmy,delpy,delmz,delpz,delmx,delpx,fuzz)
 
       return
       end
 c=======================================================================
       subroutine YCylinderConductorF(rad,length,xcent,ycent,zcent,
-     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                              fuzz)
       real(kind=8):: rad,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a cylinder aligned with
 c the y-axis.
 c The notation is that a negative distance means that the point is inside.
 
       call ZCylinderConductorF(rad,length,zcent,xcent,ycent,
-     &                         n,z,x,y,delmz,delpz,delmx,delpx,delmy,delpy)
+     &                         n,z,x,y,delmz,delpz,delmx,delpx,delmy,delpy,fuzz)
 
       return
       end
 c=======================================================================
       subroutine SphereConductorF(rad,xcent,ycent,zcent,
-     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                            n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                            fuzz)
       real(kind=8):: rad,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a sphere.
 c The notation is that a negative distance means that the point is inside.
@@ -357,13 +377,15 @@ c       --- The point is on the sphere exactly.
       end
 c=======================================================================
       subroutine ZConeConductorF(r_zmin,r_zmax,length,xcent,ycent,zcent,
-     &                           n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                           n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                           fuzz)
       real(kind=8):: r_zmin,r_zmax,length,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a cone aligned with
 c the z-axis.
@@ -427,7 +449,7 @@ c         --- point is inside of larger radius
 
 c       --- If point outside the z-extent of the cone, then skip the next
 c       --- part.
-        if (z(i) < zmin .or. zmax < z(i)) cycle
+        if (z(i) < zmin - fuzz .or. zmax + fuzz < z(i)) cycle
 
 c       --- Calculate the radius of the cone at the z-location of the point
         rcone = r_zmin + (r_zmax - r_zmin)*(z(i) - zmin)/(zmax - zmin)
@@ -470,13 +492,15 @@ c         --- The point is on the cone exactly.
       end
 c=======================================================================
       subroutine ZTorusConductorF(r1,r2,xcent,ycent,zcent,
-     &                             n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                             n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                            fuzz)
       real(kind=8):: r1,r2,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a torus aligned with
 c the z-axis.
@@ -580,13 +604,15 @@ c       --- z within zcent+-r2.
 c=======================================================================
 c=======================================================================
       subroutine CylinderConductorF(rad,length,theta,phi,xcent,ycent,zcent,
-     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz)
+     &                              n,x,y,z,delmx,delpx,delmy,delpy,delmz,delpz,
+     &                              fuzz)
       real(kind=8):: rad,length,theta,phi,xcent,ycent,zcent
       integer(ISZ):: n
       real(kind=8):: x(n),y(n),z(n)
       real(kind=8):: delmx(n),delpx(n)
       real(kind=8):: delmy(n),delpy(n)
       real(kind=8):: delmz(n),delpz(n)
+      real(kind=8):: fuzz
 
 c Finds distances along the axis of the points from a cylinder at an arbitrary
 c angle.
