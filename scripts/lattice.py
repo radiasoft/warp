@@ -59,7 +59,7 @@ from generateconductors import *
 import __main__
 import RandomArray
 import copy
-lattice_version = "$Id: lattice.py,v 1.37 2004/11/17 00:56:51 dave Exp $"
+lattice_version = "$Id: lattice.py,v 1.38 2004/12/14 18:31:00 dave Exp $"
 
 def latticedoc():
   import lattice
@@ -95,8 +95,9 @@ Creates an instance of the LINE lattice type which contains a list of
 lattice elements. The argument can either be a single element or a list of
 elements.
   """
-  def __init__(self,*elems):
+  def __init__(self,*elems,reversed=0):
     self.type = 'LINE'
+    self.reversed = reversed
     # --- Unravel any imbedded lists.
     i = 0
     elems = list(elems)
@@ -113,6 +114,11 @@ elements.
   def derivedquantities(self):
     self.expand()
     for e in self.elemslistshallow: e.derivedquantities()
+  def reversed(self):
+    """
+Returns a new instance with the reversed flag switched.
+    """
+    return LINE(*self.elems,reversed=not self.reversed)
   def expand(self,lredo=0):
     if self.elemslistshallow and not lredo: return self.elemslistshallow
     self.elemslistshallow = []
@@ -126,6 +132,8 @@ elements.
         self.elemslistshallow[i:i+1] = self.elemslistshallow[i]
       else:
         i = i + 1
+      return elems
+    if self.reversed: self.elemslistshallow.reverse()
     return self.elemslistshallow
   def deepexpand(self,lredo=0):
     if self.elemslist and not lredo: return self.elemslist
@@ -141,6 +149,7 @@ elements.
         self.elemslist[i:i+1] = self.elemslist[i]
       else:
         i = i + 1
+    if self.reversed: self.elemslist.reverse()
     return self.elemslist
   def walk(self,func):
     for e in self.elems: e.walk(func)
@@ -167,6 +176,12 @@ elements.
   def __radd__(self,other):
     # --- This allows addition of elements
     return LINE(other,self)
+  def __sub__(self,other):
+    return self + other.reversed()
+  def __rsub__(self,other):
+    return other + self.reversed()
+  def __neg__(self):
+    return self.reversed()
   def __len__(self):
     self.deepexpand()
     return len(self.elemslist)
@@ -203,6 +218,8 @@ list of the parameters which are changed.
       self.parent = parent
     self.__dict__.update(changes)
     self.derivedquantities()
+  def reversed(self):
+    return self
   def deepexpand(self):
     return copy.deepcopy(self)
   def walk(self,func):
@@ -219,6 +236,12 @@ list of the parameters which are changed.
     return LINE(self,other)
   def __radd__(self,other):
     return LINE(other,self)
+  def __sub__(self,other):
+    return self + other.reversed()
+  def __rsub__(self,other):
+    return other + self.reversed()
+  def __neg__(self):
+    return self.reversed()
 
 # --- Create an equivalent class to child
 Child = child
@@ -252,6 +275,8 @@ Base class for the lattice classes. Should never be directly called.
       self.length = max(self.l,self.length)
       self.zs = 0.
       self.ze = 0.
+  def reversed(self):
+    return self
   def setextent(self,zz):
     self.zs = zz + self.zshift
     self.ze = self.zs + self.length
@@ -279,6 +304,12 @@ Base class for the lattice classes. Should never be directly called.
     return LINE(self,other)
   def __radd__(self,other):
     return LINE(other,self)
+  def __sub__(self,other):
+    return self + other.reversed()
+  def __rsub__(self,other):
+    return other + self.reversed()
+  def __neg__(self):
+    return self.reversed()
   def createdxobject(self,kwdict={},**kw):
     kw.update(kwdict)
     object = self.getobject()
