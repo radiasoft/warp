@@ -1,7 +1,7 @@
 from warp import *
 import LinearAlgebra
 import singleparticle
-wxy_match_version = "$Id: wxy_match.py,v 1.4 2001/08/08 18:21:26 dave Exp $"
+wxy_match_version = "$Id: wxy_match.py,v 1.5 2001/08/09 00:03:13 dave Exp $"
 
 def wxy_matchdoc():
   print """
@@ -251,21 +251,19 @@ Available data:
 
   def iterate(s,n=1):
     """Perform the iterations. Optional argument is the number of iterations
-    to do"""
+to do, defaulting to 1."""
     # --- Do initial iteration if it hasn't been done yet.
     if not s.firststepcomplete:
       error = s.firststep()
-      n = n - 1
-      s.niterations = s.niterations + 1
-      s.firststepcomplete = 1
       s.herror.append(error)
+      s.firststepcomplete = 1
       print 'Initial error is %f'%(error)
     # --- Do more iterations
     for i in xrange(n):
       error = s.nextstep()
-      s.niterations = s.niterations + 1
       s.herror.append(error)
-      print 'After %d iterations, error = %f'%(s.niterations,errro)
+      s.niterations = s.niterations + 1
+      print 'After %d iterations, error = %f'%(s.niterations,error)
 
   def reset(s,initialaperture,initialxmmax):
     # --- Re-initialize the slice package
@@ -300,7 +298,7 @@ Available data:
   def firststep(s):
     # --- Calculate the initial error
     print '### Calculating the initial error...'
-    reset(s.initialaperture,s.initialxmmax)
+    s.reset(s.initialaperture,s.initialxmmax)
     s.propagate()
     if top.nplive < top.npmax:
       print "Particles lost, remaining number is", top.nplive
@@ -335,7 +333,7 @@ Available data:
         iq = s.iquads[j]
         top.quadde[iq] = s.savedquadde[j] * s.scaling[j]
         top.quaddb[iq] = s.savedquaddb[j] * s.scaling[j]
-      reset(s.initialaperture,s.initialxmmax)
+      s.reset(s.initialaperture,s.initialxmmax)
       s.propagate()
       if top.nplive < top.npmax:
         print "Particles lost, remaining number is", top.nplive
@@ -376,7 +374,7 @@ Available data:
         top.quadde[iq] = s.savedquadde[i] * s.scaling[i]
         top.quaddb[iq] = s.savedquaddb[i] * s.scaling[i]
       print '### Running with new quad settings'
-      reset(s.initialaperture,s.initialxmmax)
+      s.reset(s.initialaperture,s.initialxmmax)
       s.propagate()
       if top.nplive < top.npmax:
         print "Particles lost, remaining number is", top.nplive
