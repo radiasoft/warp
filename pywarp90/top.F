@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.51 $, $Date: 2002/07/25 21:21:57 $
+c@(#) File TOP.M, version $Revision: 3.52 $, $Date: 2002/09/04 18:07:27 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -5350,7 +5350,11 @@ c       --- Loop from top of live particles to bottom of species block.
           uyp(ip+ishft) = uyp(ip)
           uzp(ip+ishft) = uzp(ip)
           gaminv(ip+ishft) = gaminv(ip)
-          if (npmaxi > 0) pid(ip+ishft) = pid(ip)
+          if (npmaxi > 0) then
+            pid(ip+ishft) = pid(ip)
+            pid(ip) = 0
+          endif
+          uzp(ip) = 0.
         enddo
 
 c       --- change lower bound of live particles
@@ -5373,7 +5377,11 @@ c       --- (ins(is) - npmax_s(is-1)) < -ishft
           uyp(ip+ishft) = uyp(ip)
           uzp(ip+ishft) = uzp(ip)
           gaminv(ip+ishft) = gaminv(ip)
-          if (npmaxi > 0) pid(ip+ishft) = pid(ip)
+          if (npmaxi > 0) then
+            pid(ip+ishft) = pid(ip)
+            pid(ip) = 0
+          endif
+          uzp(ip) = 0.
         enddo
 
 c       --- change number of particles if data is lost
@@ -5412,7 +5420,11 @@ c starting at 'it' to locations starting at 'istart'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
-          if (npmaxi > 0) pid(in) = pid(ij)
+          if (npmaxi > 0) then
+            pid(in) = pid(ij)
+            pid(ij) = 0
+          endif
+          uzp(ij) = 0.
         enddo
       else
         do i=0,nn-1
@@ -5425,7 +5437,11 @@ c starting at 'it' to locations starting at 'istart'.
           uyp(in) = uyp(ij)
           uzp(in) = uzp(ij)
           gaminv(in) = gaminv(ij)
-          if (npmaxi > 0) pid(in) = pid(ij)
+          if (npmaxi > 0) then
+            pid(in) = pid(ij)
+            pid(ij) = 0
+          endif
+          uzp(ij) = 0.
         enddo
       endif
       return
@@ -5501,6 +5517,95 @@ c     --- Now, copy data into arrays
       uzp(i1:i2) = vz(1:n1)
       gaminv(i1:i2) = gi(1:n1)
       nps(is) = nps(is) + n1
+
+      return
+      end
+c=============================================================================
+      subroutine cleardeadpart(js,fillmethod)
+      use InPart
+      use Particles
+      integer(ISZ):: js,fillmethod
+
+c Clears out all of the dead particles. If js < 0, the clears out all
+c species, otherwise only species requested.
+c The empty spaces can be fill in multiple ways, based on value of fillmethod
+c   0 (default): fill spaces with particles from the end of the list
+c   1          : shift particles above down (they keep the same order)
+
+      integer(ISZ):: js1,js2,j,ip
+      integer(ISZ):: ips,ds,ipslimit
+
+      if (js < 0) then
+        js1 = 1
+        js2 = ns
+      else
+        js1 = js
+        js2 = js
+      endif
+
+      if (fillmethod == 1) then
+c       --- Live particles are shifted downward to fill in the empty spaces
+        do j=js1,js2
+          ipslimit = ins(j)+nps(j)-1
+          nps(j) = 0
+          ip = ins(j)
+          do ips=ip,ipslimit
+            if (uzp(ips) /= 0.) then
+              if (ips > ip) then
+                xp(ip) = xp(ips)
+                yp(ip) = yp(ips)
+                zp(ip) = zp(ips)
+                uxp(ip) = uxp(ips)
+                uyp(ip) = uyp(ips)
+                uzp(ip) = uzp(ips)
+                gaminv(ip) = gaminv(ips)
+                if (npmaxi > 0) then
+                  pid(ip) = pid(ips)
+                  pid(ips) = 0
+                endif
+                uzp(ips) = 0.
+              endif
+              ip = ip + 1
+              nps(j) = nps(j) + 1
+            endif
+          enddo
+        enddo
+
+      else
+
+c       --- Live particles from the end of the species block are moved
+c       --- to fill in the empty spaces.
+        do j=js1,js2
+          ips = ins(j) + nps(j) - 1
+          ip = ins(j)
+          do while (ip < ins(j)+nps(j))
+            if (uzp(ip) == 0.) then
+              nps(j) = nps(j) - 1
+              do while (uzp(ips) == 0. .and. ips > ip)
+                ips = ips - 1
+                nps(j) = nps(j) - 1
+              enddo
+              if (ips > ip) then
+                xp(ip) = xp(ips)
+                yp(ip) = yp(ips)
+                zp(ip) = zp(ips)
+                uxp(ip) = uxp(ips)
+                uyp(ip) = uyp(ips)
+                uzp(ip) = uzp(ips)
+                gaminv(ip) = gaminv(ips)
+                if (npmaxi > 0) then
+                  pid(ip) = pid(ips)
+                  pid(ips) = 0
+                endif
+                uzp(ips) = 0.
+                ips = ips - 1
+              endif
+            endif
+            ip = ip + 1
+          enddo
+        enddo
+
+      endif
 
       return
       end

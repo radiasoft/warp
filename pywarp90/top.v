@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.51 $, $Date: 2002/07/25 21:21:58 $
+#@(#) File TOP.V, version $Revision: 3.52 $, $Date: 2002/09/04 18:07:26 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.51 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.52 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -1786,6 +1786,8 @@ addpart(nn:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,gi:real,
         is:integer,lallindomain:logical,zmmin:real,zmmax:real,
         lmomentum:logical)
              subroutine # Adds new particles to the simulation
+cleardeadpart(js:integer,fillmethod:integer)
+             subroutine # Clears away dead particles.
 load2d(np,x:real,y:real,nx,ny,n:real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
 shftpart(is:integer,ishft:integer) subroutine
