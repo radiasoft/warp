@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.54 2003/08/15 23:04:13 dave Exp $"
+warp_version = "$Id: warp.py,v 1.55 2003/08/25 23:27:15 jlvay Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -705,6 +705,14 @@ from printparameters import *
 from printparameters3d import *
 from printparametersrz import *
 
+# --- Try to import the GUI
+try:
+  import os
+  import warp
+  sys.path=sys.path+[os.path.dirname(warp.__file__)+'/GUI']
+  from WarpGUI import *
+except:
+  pass
 
 ##############################################################################
 ######  Don't put anything below this line!!! ################################
