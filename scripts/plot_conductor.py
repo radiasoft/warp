@@ -1,5 +1,5 @@
 from warp import *
-plot_conductor_version = "$Id: plot_conductor.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.2 2000/11/21 19:54:56 dave Exp $"
 
 ######################################################################
 # functions to plot the conductor points and subgrid data            #
@@ -23,10 +23,14 @@ def plotsubgrid(izf,nn,ix,iy,iz,delmx,delmy,delpx,delpy,xmin,ymin,dx,dy,color):
     delpx = gatherarray(delpx)
     delpy = gatherarray(delpy)
   for i in xrange(len(xx)):
-    if (delmx[i] < dx): plg([xx[i],xx[i]-delmx[i]],[yy[i],yy[i]],color=color)
-    if (delmy[i] < dy): plg([xx[i],xx[i]],[yy[i],yy[i]-delmy[i]],color=color)
-    if (delpx[i] < dx): plg([xx[i],xx[i]+delpx[i]],[yy[i],yy[i]],color=color)
-    if (delpy[i] < dy): plg([xx[i],xx[i]],[yy[i],yy[i]+delpy[i]],color=color)
+    if (abs(delmx[i]) < abs(dx)):
+      plg([xx[i],xx[i]-delmx[i]],[yy[i],yy[i]],color=color)
+    if (abs(delmy[i]) < abs(dy)):
+      plg([xx[i],xx[i]],[yy[i],yy[i]-delmy[i]],color=color)
+    if (abs(delpx[i]) < abs(dx)):
+      plg([xx[i],xx[i]+delpx[i]],[yy[i],yy[i]],color=color)
+    if (abs(delpy[i]) < abs(dy)):
+      plg([xx[i],xx[i]],[yy[i],yy[i]+delpy[i]],color=color)
 
 # x-y plane
 def pfxy(izf=None,contours=None,plotsg=1,scale=1,signx=1,signy=1,
@@ -66,6 +70,7 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     xx=iota(0,w3d.nx)*dx + xmmin
     yy=iota(0,w3d.ny)*dy + ymmin
     ppp = getphi(iz=izf+top.izslave[me+1])
+    ppp = transpose(ppp)
     plotc(ppp,yy,xx,contours=contours,filled=filled,color=blue)
   ii = compress(equal(f3d.izcond[0:f3d.ncond],izf),arange(f3d.ncond))
   yy = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
@@ -321,23 +326,25 @@ in X-Y plane
     yy=iota(0,w3d.ny)[:,NewAxis]*ones(w3d.nx+1,'d')*dy + ymmin
     xx=iota(0,w3d.nx)*ones(w3d.ny+1,'d')[:,NewAxis]*dx + xmmin
     ireg=ones((w3d.ny+1,w3d.nx+1))
+    ppp = getphi(iz=izf+top.izslave[me+1])
+    ppp = transpose(ppp)
     if filled:
       if contours:
-        plfc(w3d.phi[:,:,izf+1],yy,xx,ireg,contours=contours)
+        plfc(ppp,yy,xx,ireg,contours=contours)
       else:
-        plfc(w3d.phi[:,:,izf+1],yy,xx,ireg)
+        plfc(ppp,yy,xx,ireg)
     else:
       if contours:
-        plc(w3d.phi[:,:,izf+1],yy,xx,ireg,color='blue',contours=contours)
+        plc(ppp,yy,xx,ireg,color='blue',contours=contours)
       else:
-        plc(w3d.phi[:,:,izf+1],yy,xx,ireg,color='blue')
+        plc(ppp,yy,xx,ireg,color='blue')
   if (f3d.ncond > 0):
     ii = compress(equal(f3d.izcond[0:f3d.ncond],izf),arange(f3d.ncond))
     if ii:
       y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
       x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
-      pla(transpose(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2])),
-          transpose(array([x-dx/2,x+dx/2,x+dx/2,x-dx/2,x-dx/2])),
+      pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
+          array([x-dx/2,x+dx/2,x+dx/2,x-dx/2,x-dx/2]),
           color=cyan)
 
 # z-x plane
@@ -370,23 +377,24 @@ in Z-X plane
     xx=iota(0,w3d.nx)[:,NewAxis]*ones(w3d.nz+1,'d')*dx + xmmin
     zz=iota(0,w3d.nz)*ones(w3d.nx+1,'d')[:,NewAxis]*dz + zmmin
     ireg=ones((w3d.nx+1,w3d.nz+1))
+    ppp = getphi(iy=iyf)
     if filled:
       if contours:
-        plfc(w3d.phi[:,iyf,1:w3d.nz+2],xx,zz,ireg,contours=contours)
+        plfc(ppp,xx,zz,ireg,contours=contours)
       else:
-        plfc(w3d.phi[:,iyf,1:w3d.nz+2],xx,zz,ireg)
+        plfc(ppp,xx,zz,ireg)
     else:
       if contours:
-        plc(w3d.phi[:,iyf,1:w3d.nz+2],xx,zz,ireg,color='blue',contours=contours)
+        plc(ppp,xx,zz,ireg,color='blue',contours=contours)
       else:
-        plc(w3d.phi[:,iyf,1:w3d.nz+2],xx,zz,ireg,color='blue')
+        plc(ppp,xx,zz,ireg,color='blue')
   if (f3d.ncond > 0):
     ii = compress(equal(f3d.iycond[0:f3d.ncond],iyf),arange(f3d.ncond))
     if ii:
       x = take(f3d.ixcond[0:f3d.ncond],ii)*dx+xmmin
       z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
-      pla(transpose(array([x-dx/2,x-dx/2,x+dx/2,x+dx/2,x-dx/2])),
-          transpose(array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2])),
+      pla(array([x-dx/2,x-dx/2,x+dx/2,x+dx/2,x-dx/2]),
+          array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
           color=cyan)
 
 # z-y plane
@@ -419,27 +427,28 @@ in Z-Y plane
     yy=iota(0,w3d.ny)[:,NewAxis]*ones(w3d.nz+1,'d')*dy + ymmin
     zz=iota(0,w3d.nz)*ones(w3d.ny+1,'d')[:,NewAxis]*dz + zmmin
     ireg=ones((w3d.ny+1,w3d.nz+1))
+    ppp = getphi(ix=ixf)
     if filled:
       if contours:
-        plfc(w3d.phi[ixf,:,1:w3d.nz+2],yy,zz,ireg,contours=contours)
+        plfc(ppp,yy,zz,ireg,contours=contours)
       else:
-        plfc(w3d.phi[ixf,:,1:w3d.nz+2],yy,zz,ireg)
+        plfc(ppp,yy,zz,ireg)
     else:
       if contours:
-        plc(w3d.phi[ixf,:,1:w3d.nz+2],yy,zz,ireg,color='blue',contours=contours)
+        plc(ppp,yy,zz,ireg,color='blue',contours=contours)
       else:
-        plc(w3d.phi[ixf,:,1:w3d.nz+2],yy,zz,ireg,color='blue')
+        plc(ppp,yy,zz,ireg,color='blue')
   if (f3d.ncond > 0):
     ii = compress(equal(f3d.ixcond[0:f3d.ncond],ixf),arange(f3d.ncond))
     if ii:
       y = take(f3d.iycond[0:f3d.ncond],ii)*dy+ymmin
       z = take(f3d.izcond[0:f3d.ncond],ii)*dz+zmmin
-      pla(transpose(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2])),
-          transpose(array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2])),
+      pla(array([y-dy/2,y-dy/2,y+dy/2,y+dy/2,y-dy/2]),
+          array([z-dz/2,z+dz/2,z+dz/2,z-dz/2,z-dz/2]),
           color=cyan)
 
 # z-x plane
-def pfzxboxi(izf=None,contours=None,plotsg=1,scale=0,signz=1,
+def pfzxboxi(izf=None,contours=None,plotsg=1,scale=1,signz=1,
              plotphi=1,filled=0):
   """
 Plots square at conductor points and contours of electrostatic potential
@@ -456,7 +465,7 @@ in Z-(-X) plane
           signx=-1,plotphi=plotphi,filled=filled)
 
 # z-y plane
-def pfzyboxi(ixf=None,contours=None,plotsg=1,scale=0,signz=1,signy=-1,
+def pfzyboxi(ixf=None,contours=None,plotsg=1,scale=1,signz=1,signy=-1,
              plotphi=1,filled=0):
   """
 Plots square at conductor points and contours of electrostatic potential
