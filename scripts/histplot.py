@@ -1,5 +1,5 @@
 from histplots import *
-histplot_version = "$Id: histplot.py,v 1.1 2000/10/16 18:34:19 dave Exp $"
+histplot_version = "$Id: histplot.py,v 1.2 2001/02/06 23:22:23 dave Exp $"
 
 def histplotdoc():
   print """
@@ -26,31 +26,31 @@ def histplot(**kw):
   hpepsz(kwdict=kw);fma()
   hpeps6d(kwdict=kw);fma()
   for n in range(top.nzwind):
-    hpepsx(iw=n,lims=1,kwdict=kw);fma()
-    hpepsx(iw=n,lims=0,kwdict=kw);fma()
+    #hpepsx(iw=n,lims=1,kwdict=kw);fma()
+    hpepsx(iw=n,kwdict=kw);fma()
   for n in range(top.nzwind):
-    hpepsy(iw=n,lims=1,kwdict=kw);fma()
-    hpepsy(iw=n,lims=0,kwdict=kw);fma()
+    #hpepsy(iw=n,lims=1,kwdict=kw);fma()
+    hpepsy(iw=n,kwdict=kw);fma()
   for n in range(top.nzwind):
-    hpepst(iw=n,lims=1,kwdict=kw);fma()
-    hpepst(iw=n,lims=0,kwdict=kw);fma()
-  hpepsx(iw=-1,lims=0,kwdict=kw)
-  hpepsy(iw=-1,lims=0,kwdict=kw)
-  hpepst(iw=-1,lims=0,kwdict=kw)
+    #hpepst(iw=n,lims=1,kwdict=kw);fma()
+    hpepst(iw=n,kwdict=kw);fma()
+  hpepsx(iw=-1,kwdict=kw)
+  hpepsy(iw=-1,kwdict=kw)
+  hpepst(iw=-1,kwdict=kw)
   for n in range(top.nzwind):
-    hpepsnx(iw=n,lims=1,kwdict=kw);fma()
-    hpepsnx(iw=n,lims=0,kwdict=kw);fma()
+    #hpepsnx(iw=n,lims=1,kwdict=kw);fma()
+    hpepsnx(iw=n,kwdict=kw);fma()
   for n in range(top.nzwind):
-    hpepsny(iw=n,lims=1,kwdict=kw);fma()
-    hpepsny(iw=n,lims=0,kwdict=kw);fma()
+    #hpepsny(iw=n,lims=1,kwdict=kw);fma()
+    hpepsny(iw=n,kwdict=kw);fma()
   for n in range(top.nzwind):
-    hpepsnt(iw=n,lims=1,kwdict=kw);fma()
-    hpepsnt(iw=n,lims=0,kwdict=kw);fma()
-  hpepsnx(iw=-1,lims=0,kwdict=kw)
-  hpepsny(iw=-1,lims=0,kwdict=kw)
-  hpepsnt(iw=-1,lims=0,kwdict=kw)
+    #hpepsnt(iw=n,lims=1,kwdict=kw);fma()
+    hpepsnt(iw=n,kwdict=kw);fma()
+  hpepsnx(iw=-1,kwdict=kw)
+  hpepsny(iw=-1,kwdict=kw)
+  hpepsnt(iw=-1,kwdict=kw)
   hpxbar(iw=0,kwdict=kw);fma()
-  hpxbar(iw=-1,kwdict=kw);fma()
+  hpxbar(iw=-1,kwdict=kw)
   hpybar(iw=0,kwdict=kw);fma()
   hpybar(iw=-1,kwdict=kw)
   hpxedge(iw=0 ,kwdict=kw);fma()
