@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.26 2004/01/27 22:41:54 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.27 2004/01/28 23:13:23 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -337,6 +337,15 @@ Constructor arguments:
       if s.ox == ox and s.oy == oy:
         return 1
     return 0
+  #----------------------------------------------------------------------------
+  def plotcond(s,color='fg',xscale=1.,yscale=1.):
+    tt = span(0.,2*pi,101)
+    xx = s.ax*cos(tt-pi*0.75) + s.ox
+    yy = s.ay*sin(tt-pi*0.75) + s.oy
+    ii = s.ingrid(xx,yy)
+    xx = compress(ii,xx)
+    yy = compress(ii,yy)
+    plg(yy*yscale,xx*xscale,color=color)
 
 
 ##############################################################################
@@ -458,6 +467,16 @@ Constructor arguments:
       if s.withx == withx and s.withy == withy and s.ox == ox and s.oy == oy:
         return 1
     return 0
+  #----------------------------------------------------------------------------
+  def plotcond(s,color='fg',xscale=1.,yscale=1.):
+    tt = span(0.,2*pi,101)
+    for sx,sy,da in [(+1,0,0.),(-1,0,pi),(0,+1,+pi/2.),(0,-1,-pi/2.)]:
+      xx = s.rr*cos(tt+da) + sx*(s.ap + s.rr) + s.ox
+      yy = s.rr*sin(tt+da) + sy*(s.ap + s.rr) + s.oy
+      ii = s.ingrid(xx,yy)
+      x = compress(ii,xx)
+      y = compress(ii,yy)
+      plg(y*yscale,x*xscale,color=color)
 
 ##############################################################################
 ##############################################################################
@@ -823,8 +842,8 @@ Constructor arguments:
     # --- boundaries, so turn the capacity matrix field solver off.
     top.fstype = 0
   #----------------------------------------------------------------------------
-  def plotcond(s,plotphi=1,filled=0,plotedge=1,plotsym=1,ccolor='red',
-               ecolor='green',phicolor='fg'):
+  def plotcond(s,plotphi=1,filled=0,plotedge=1,plotpoints=0,plotsym=1,
+               ccolor='red',ecolor='green',phicolor='fg'):
     """
 Makes a plot of the conductor.
   - plotphi=1 when true, plots contours of phi
@@ -852,7 +871,15 @@ Makes a plot of the conductor.
           plotc(transpose(getphi(iz=0)),-w3d.ymesh,-w3d.xmesh,filled=filled,
                 color=phicolor)
     # --- Plot conductor points next.
-    if fxy.ncxy > 0 and top.fstype == 1:
+    if top.fstype == 1:
+      s.current.plotcond(ccolor)
+      if plotsym:
+        if w3d.l2symtry or w3d.l4symtry:
+          s.current.plotcond(color=ccolor,yscale=-1.)
+        if w3d.l4symtry:
+          s.current.plotcond(color=ccolor,xscale=-1.,yscale=+1)
+          s.current.plotcond(color=ccolor,xscale=-1.,yscale=-1)
+    if plotpoints and fxy.ncxy > 0 and top.fstype == 1:
       plp(fxy.ycond[:fxy.ncxy],fxy.xcond[:fxy.ncxy],color=ccolor,msize=2.)
       if plotsym:
         # --- Plot negative y
