@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.3 2001/04/04 17:38:37 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.4 2001/05/29 20:34:44 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -7,7 +7,7 @@ zmmnt  makes appropriate calls to compiled code to calculate the
        particle moments
   """
 
-def zmmnt(itask=0):
+def zmmnt(itask=0,js=None):
   """
 zmmnt(itask=0)
   makes appropriate calls to compiled code to calculate the
@@ -40,8 +40,14 @@ zmmnt(itask=0)
              top.nplive,uxpo,uypo,uzpo,1,top.ns)
 
   # Calculate the moments
+  if js == None:
+    jsmin = 0
+    jsmax = top.ns
+  else:
+    jsmin = js
+    jsmax = js
   if (itask == 0 or itask == 2):
-    for js in xrange(top.ns):
+    for js in xrange(jsmin,jsmax):
       for ipmin in xrange(top.ins[js]-1,top.ins[js]+top.nps[js]-1,256):
          ip = min(256, top.ins[js]+top.nps[js]-ipmin-1)
          getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
