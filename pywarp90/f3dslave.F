@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.9 $, $Date: 2002/09/04 16:42:23 $
+c F3DSLAVE.M, version $Revision: 1.10 $, $Date: 2002/09/12 23:29:25 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -1135,6 +1135,60 @@ c     --- of the data overlaps.
 
 c     --- Now wait for everything to finish
       if (w > 0) call MPI_WAITALL(w,mpirequest,mpistatus,mpierror)
+
+      return
+      end
+c=============================================================================
+      subroutine printarray3d(nx,ny,nz,izs,a,my_index,nslaves,text,mglevel)
+      integer(ISZ):: nx,ny,nz,izs,my_index,nslaves,mglevel
+      real(kind=8):: a(0:nx,0:ny,-1:nz)
+      character(*):: text
+
+c Specialized routine for printing out an array in parallel, keeping the same
+c ordering as would be in serial. Primarily used for debugging purposes.
+c It is maintained in case it is needed for future use since there is some subtlty
+c to getting it correct.
+
+      integer(ISZ):: ix,iy,iz,lastz,firstz
+      include "mpif.h"
+      integer(ISZ):: mpierror,mpistatus(MPI_STATUS_SIZE)
+
+      call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
+
+c The value of lastz sets which processor's data is printed out in
+c overlapping regions.
+c   when lastz == nz, the lower number processor's data is printed
+c   when lastz == nz-1 (or -2), the higher number processor's data is printed
+      lastz = nz
+      lastz = nz - 2
+      if (my_index == nslaves-1) lastz = nz
+
+c Each processor prints out its data and then sends a message to the next so it
+c can print its data.
+      if (my_index > 0) then
+        call MPI_RECV(firstz,1,MPI_INTEGER,my_index-1,999,MPI_COMM_WORLD,mpistatus,mpierror)
+        firstz = firstz - izs
+      else
+        firstz = 0
+      endif
+
+c The file needs to be reopened each time since there is no coordination in how
+c the processors deal with files.
+      open(22,action="write",access="append",file="out4")
+      do iz=firstz,lastz
+        do iy=0,ny
+          do ix=0,nx
+            write(22,'(I3,x,I3,x,I3,F10.1,x,A,I3,I3)') ix,iy,izs+iz,a(ix,iy,iz),text,mglevel
+          enddo
+        enddo
+      enddo
+      close(22)
+
+      if (my_index < nslaves - 1) then
+        call MPI_SEND(izs+lastz+1,1,MPI_INTEGER,my_index+1,999,MPI_COMM_WORLD,mpierror)
+      endif
+
+      call MPI_BARRIER(MPI_COMM_WORLD,mpierror)
 
       return
       end
