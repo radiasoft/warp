@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.20 $, $Date: 2002/03/12 22:29:10 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.21 $, $Date: 2002/03/28 20:55:49 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -174,7 +174,7 @@ c       --- This line below seems to create a large temporary which can
 c       --- cause problems when memory is close to full. So it was replaced
 c       --- with the explicit loop above.
 c       maxerr = maxval(abs(phi_temp(1+nxy:nxy+nxyz) - phi1d(1+nxy:nxy+nxyz)))
-	print *, 'iteration ', mgiters, ' maxerr=', maxerr
+        print *, 'iteration ', mgiters, ' maxerr=', maxerr
 
 c       --- Save the current phi. The original phi1d array is used as the
 c       --- scratch space to hold the current value of phi which is used
@@ -2172,12 +2172,29 @@ c       --- level of refinement.
           iy = iycond(ic)/level
           iz = izcond(ic)/level
 c         --- Then check if the point is within the requested region.
+c         --- If so, set mask to 0.
           if (xlo <= ix .and. ix <= xhi .and.
      &        ylo <= iy .and. iy <= yhi .and.
-     &        zlo <= iz .and. iz <= zhi) then
-c           --- If so, set mask to 0.
-            mask(ix,iy,iz,0) = 0
-          endif
+     &        zlo <= iz .and. iz <= zhi) mask(ix,iy,iz,0:6) = 0
+c         --- Set mask to 0 for neighboring points
+          if (xlo <= ix-1 .and. ix-1 <= xhi .and.
+     &        ylo <= iy   .and. iy   <= yhi .and.
+     &        zlo <= iz   .and. iz   <= zhi)  mask(ix-1,iy  ,iz  ,1) = 0
+          if (xlo <= ix+1 .and. ix+1 <= xhi .and.
+     &        ylo <= iy   .and. iy   <= yhi .and.
+     &        zlo <= iz   .and. iz   <= zhi)  mask(ix+1,iy  ,iz  ,2) = 0
+          if (xlo <= ix   .and. ix   <= xhi .and.
+     &        ylo <= iy-1 .and. iy-1 <= yhi .and.
+     &        zlo <= iz   .and. iz   <= zhi)  mask(ix  ,iy-1,iz  ,3) = 0
+          if (xlo <= ix   .and. ix   <= xhi .and.
+     &        ylo <= iy+1 .and. iy+1 <= yhi .and.
+     &        zlo <= iz   .and. iz   <= zhi)  mask(ix  ,iy+1,iz  ,4) = 0
+          if (xlo <= ix   .and. ix   <= xhi .and.
+     &        ylo <= iy   .and. iy   <= yhi .and.
+     &        zlo <= iz-1 .and. iz-1 <= zhi)  mask(ix  ,iy  ,iz-1,5) = 0
+          if (xlo <= ix   .and. ix   <= xhi .and.
+     &        ylo <= iy   .and. iy   <= yhi .and.
+     &        zlo <= iz+1 .and. iz+1 <= zhi)  mask(ix  ,iy  ,iz+1,6) = 0
         endif
       enddo
 
