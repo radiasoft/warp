@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.61 $, $Date: 2004/04/08 20:04:14 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.62 $, $Date: 2004/04/08 20:15:24 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -2494,7 +2494,7 @@ c=============================================================================
 c Recursively calls the routine to generate the conductor data at the
 c various mesh resolutions needed by the MG solver.
 
-      integer(ISZ):: ic,ix,iy,iz,ii,nn
+      integer(ISZ):: ic,ix,iy,iz,ii,nn,na
       integer(ISZ),allocatable:: isort(:)
 
       real(kind=8):: zmminglobal
@@ -2528,11 +2528,11 @@ c     --- First, sort conductor points
         call isortconductor(nn,conductors%interior%ilevel,isort,
      &                      conductors%interior%istart,mglevels)
         conductors%interior%n = conductors%interior%istart(mglevels) - 1
-        nn = conductors%interior%n
-        call iswapconductor(nn,isort,nn,3,conductors%interior%indx)
-        call iswapconductor(nn,isort,nn,1,conductors%interior%numb)
-        call rswapconductor(nn,isort,nn,1,conductors%interior%volt)
-        call iswapconductor(nn,isort,nn,1,conductors%interior%ilevel)
+        na = conductors%interior%n
+        call iswapconductor(na,isort,nn,3,conductors%interior%indx)
+        call iswapconductor(na,isort,nn,1,conductors%interior%numb)
+        call rswapconductor(na,isort,nn,1,conductors%interior%volt)
+        call iswapconductor(na,isort,nn,1,conductors%interior%ilevel)
         deallocate(isort)
       endif
 
@@ -2543,12 +2543,12 @@ c     --- Sort even subgrid points
         call isortconductor(nn,conductors%evensubgrid%ilevel,isort,
      &                      conductors%evensubgrid%istart,mglevels)
         conductors%evensubgrid%n = conductors%evensubgrid%istart(mglevels) - 1
-        nn = conductors%evensubgrid%n
-        call iswapconductor(nn,isort,nn,3,conductors%evensubgrid%indx)
-        call rswapconductor(nn,isort,nn,6,conductors%evensubgrid%dels)
-        call rswapconductor(nn,isort,nn,6,conductors%evensubgrid%volt)
-        call iswapconductor(nn,isort,nn,6,conductors%evensubgrid%numb)
-        call iswapconductor(nn,isort,nn,1,conductors%evensubgrid%ilevel)
+        na = conductors%evensubgrid%n
+        call iswapconductor(na,isort,nn,3,conductors%evensubgrid%indx)
+        call rswapconductor(na,isort,nn,6,conductors%evensubgrid%dels)
+        call rswapconductor(na,isort,nn,6,conductors%evensubgrid%volt)
+        call iswapconductor(na,isort,nn,6,conductors%evensubgrid%numb)
+        call iswapconductor(na,isort,nn,1,conductors%evensubgrid%ilevel)
         deallocate(isort)
       endif
     
@@ -2559,12 +2559,12 @@ c     --- Sort odd subgrid points
         call isortconductor(nn,conductors%oddsubgrid%ilevel,isort,
      &                      conductors%oddsubgrid%istart,mglevels)
         conductors%oddsubgrid%n = conductors%oddsubgrid%istart(mglevels) - 1
-        nn = conductors%oddsubgrid%n
-        call iswapconductor(nn,isort,nn,3,conductors%oddsubgrid%indx)
-        call rswapconductor(nn,isort,nn,6,conductors%oddsubgrid%dels)
-        call rswapconductor(nn,isort,nn,6,conductors%oddsubgrid%volt)
-        call iswapconductor(nn,isort,nn,6,conductors%oddsubgrid%numb)
-        call iswapconductor(nn,isort,nn,1,conductors%oddsubgrid%ilevel)
+        na = conductors%oddsubgrid%n
+        call iswapconductor(na,isort,nn,3,conductors%oddsubgrid%indx)
+        call rswapconductor(na,isort,nn,6,conductors%oddsubgrid%dels)
+        call rswapconductor(na,isort,nn,6,conductors%oddsubgrid%volt)
+        call iswapconductor(na,isort,nn,6,conductors%oddsubgrid%numb)
+        call iswapconductor(na,isort,nn,1,conductors%oddsubgrid%ilevel)
         deallocate(isort)
       endif
 
