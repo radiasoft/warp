@@ -62,8 +62,10 @@ class MultiGrid:
     # --- Create a conductor object, which by default is empty.
     self.conductors = ConductorType()
 
-    self.mgiters = 0
-    self.mgerror = 0.
+    # --- These must be arrays since they are modified in the call to the
+    # --- MG solver.
+    self.mgiters = zeros(1)
+    self.mgerror = zeros(1,'d')
 
     # --- Note that at this time, bends are not supported.
     self.linbend = false
@@ -201,10 +203,10 @@ class MultiGrid:
 
     #   --- Main multigrid v-cycle loop. Calculate error each iteration since
     #   --- very few iterations are done.
-    self.mgiters = 0
-    self.mgerror = 2.*self.mgtol + 1.
-    while (self.mgerror > self.mgtol and self.mgiters < self.mgmaxiters):
-      self.mgiters = self.mgiters + 1
+    self.mgiters[0] = 0
+    self.mgerror[0] = 2.*self.mgtol + 1.
+    while (self.mgerror[0] > self.mgtol and self.mgiters[0] < self.mgmaxiters):
+      self.mgiters[0] = self.mgiters[0] + 1
 
       # --- Save current value of phi
       phisave[:,:,:] = self.phi + 0.
@@ -271,11 +273,11 @@ class MultiGrid:
       # --- Calculate the change in phi.
       subtract(phisave,self.phi,phisave)
       absolute(phisave,phisave)
-      self.mgerror = MA.maximum(phisave)
+      self.mgerror[0] = MA.maximum(phisave)
 
     #ifdef MPIPARALLEL
     #     --- calculate global sorerror
-    #     call parallelmaxrealarray(self.mgerror,1)
+    #     call parallelmaxrealarray(self.mgerror[0],1)
 
     # --- For Dirichlet boundary conditions, copy data into guard planes
     # --- For other boundary conditions, the guard planes are used during
@@ -284,10 +286,10 @@ class MultiGrid:
     if (self.boundnz == 0): self.phi[:,:,-1] = self.phi[:,:,-2]
 
     # --- Make a print out.
-    if (self.mgerror > self.mgtol):
+    if (self.mgerror[0] > self.mgtol):
       print "Multigrid: Maximum number of iterations reached"
     print ("Multigrid: Error converged to %11.3e in %4d v-cycles"%
-           (self.mgerror,self.mgiters))
+           (self.mgerror[0],self.mgiters[0]))
 
     # --- If using residual correction form, restore saved rho
     if self.mgform == 2: self.rho[:,:,:] = rhosave
