@@ -1,7 +1,7 @@
 #
 # Python file with some parallel operations
 #
-parallel_version = "$Id: parallel.py,v 1.20 2003/07/04 00:07:17 dave Exp $"
+parallel_version = "$Id: parallel.py,v 1.21 2003/07/08 22:31:29 dave Exp $"
 
 from Numeric import *
 from types import *
@@ -231,7 +231,18 @@ def gatherarray(a,root=0,othersempty=0,bcast=0):
     print "Object could not be converted to an array"
     return None
   # --- Now, actually gather the array.
-  result = gather(a,root)
+  # --- The check of whether the result is ok may not be needed.
+  try:
+    result = gather(a,root)
+    isinputok = 1
+  except:
+    isinputok = 0
+  # --- Make sure again that the input is ok on all of the processors
+  isinputok = globalmin(isinputok)
+  if not isinputok:
+    print "Error in gather object"
+    if type(a) == ArrayType: print "Object has shape ",shape(a)
+    return None
   # --- All processors but root simply return either the input argument
   # --- or an empty array unless the result is to be broadcast
   if me != root and not bcast:
