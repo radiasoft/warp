@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.46 2004/06/03 22:08:08 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.47 2004/06/03 22:49:12 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -416,11 +416,9 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
   if max(map(lambda a:re.search(a,cattr),attr)):
     if me > 0: mpirecv(me-1)
     ff = PW.PW(fname,'a')
-    print 'dumping to file ',me
     pydumpforthonobject(ff,[''],'conductors',f3d.conductors,
                         '@conductors%d@parallel'%me,[],[],0,
                         verbose=verbose,lonlymakespace=1)
-    print 'done dumping to file ',me
     ff.close()
     if me < npes-1: mpi.send(1,me+1)
     mpi.barrier()
