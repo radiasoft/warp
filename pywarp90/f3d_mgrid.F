@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.63 $, $Date: 2004/04/13 20:31:53 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.64 $, $Date: 2004/04/24 01:21:52 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -223,7 +223,8 @@ c       --- correction form since it is operating on the error.
           call cond_potmg(conductors%interior,
      &                    nx,ny,nz,phisave,0,.false.,mgform,.true.)
           call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phisave,rhosave,res,
-     &                  0,localb0,localbnz,boundxy,l2symtry,l4symtry,.true.,
+     &                  0,localb0,localbnz,boundxy,l2symtry,l4symtry,
+     &                  mgparam,mgform,.true.,
      &                  lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
           call mgexchange_phi(nx,ny,nz,nzfull,res,localb0,localbnz,-1,
@@ -241,7 +242,7 @@ c       --- correction form since it is operating on the error.
 c       --- Do one vcycle.
         call vcycle(0,nx,ny,nz,nzfull,dx,dy,dz,phi,rho,
      &              rstar,linbend,l2symtry,l4symtry,bendx,
-     &              boundxy,bound0,boundnz,mgform,mgmaxlevels,
+     &              boundxy,bound0,boundnz,mgparam,mgform,mgmaxlevels,
      &              downpasses,uppasses,lcndbndy,icndbndy,conductors,
      &              my_index,nslaves,izfsslave,nzfsslave)
 
@@ -363,7 +364,8 @@ c       --- show that the use of 1d array is slightly faster than a 3d array.
 c=============================================================================
       RECURSIVE subroutine vcycle(mglevel,nx,ny,nz,nzfull,dx,dy,dz,
      &                            phi,rho,rstar,linbend,l2symtry,l4symtry,
-     &                            bendx,boundxy,globalb0,globalbnz,mgform,
+     &                            bendx,boundxy,globalb0,globalbnz,
+     &                            mgparam,mgform,
      &                            mgmaxlevels,downpasses,uppasses,
      &                            lcndbndy,icndbndy,conductors,
      &                            my_index,nslaves,izfsslave,nzfsslave)
@@ -376,7 +378,9 @@ c=============================================================================
       real(kind=8):: bendx((nx+1)*(ny+1))
       logical(ISZ):: linbend
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: boundxy,globalb0,globalbnz,mgform
+      integer(ISZ):: boundxy,globalb0,globalbnz
+      real(kind=8):: mgparam
+      integer(ISZ):: mgform
       integer(ISZ):: mgmaxlevels,downpasses,uppasses
       type(ConductorType):: conductors
       logical(ISZ):: lcndbndy
@@ -441,7 +445,7 @@ c    &                  "RHO",mglevel)
       do i=1,downpasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,bendx,
-     &                 localb0,localbnz,boundxy,mgform,
+     &                 localb0,localbnz,boundxy,mgparam,mgform,
      &                 lcndbndy,icndbndy,conductors,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
@@ -463,8 +467,9 @@ c     --- all dimensions are even, continue the coarsening.
 
 c       --- Get the residual on the current grid.
         call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
-     &              mglevel,localb0,localbnz,boundxy,l2symtry,l4symtry,.false.,
-     &              lcndbndy,icndbndy,conductors)
+     &                mglevel,localb0,localbnz,boundxy,l2symtry,l4symtry,
+     &                mgparam,mgform,.false.,
+     &                lcndbndy,icndbndy,conductors)
 #ifdef MPIPARALLEL
           call mgexchange_phi(nx,ny,nz,nzfull,res,localb0,localbnz,-1,
      &                        my_index,nslaves,izfsslave,nzfsslave,
@@ -501,7 +506,7 @@ c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nz,nzfull,
      &                dx*2,dy*2,dz,phi2,rho2(0,0,0),
      &                rstar,linbend,l2symtry,l4symtry,bendx,
-     &                boundxy,globalb0,globalbnz,mgform,
+     &                boundxy,globalb0,globalbnz,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslave,nzfsslave)
@@ -570,7 +575,7 @@ c         --- Continue at the next coarsest level.
           call vcycle(mglevel+1,nx/2,ny/2,nznew,nzfull/2,
      &                dx*2,dy*2,dz*2,phi2,rho2(0,0,0),
      &                rstar,linbend,l2symtry,l4symtry,bendx,
-     &                boundxy,globalb0,globalbnz,mgform,
+     &                boundxy,globalb0,globalbnz,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
      &                my_index,nslaves,izfsslave2,nzfsslave2)
@@ -600,7 +605,7 @@ c     message added by petermc, 1 Oct 2002
       do i=1,uppasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                 dxsqi,dysqi,dzsqi,linbend,l2symtry,l4symtry,bendx,
-     &                 localb0,localbnz,boundxy,mgform,
+     &                 localb0,localbnz,boundxy,mgparam,mgform,
      &                 lcndbndy,icndbndy,conductors,
      &                 my_index,nslaves,izfsslave,nzfsslave,
      &                 whosendingleft,izsendingleft,
@@ -978,7 +983,7 @@ c         --- Expand iy=ny plane.
 c=============================================================================
       subroutine sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                     rdx2,rdy2,rdz2,linbend,l2symtry,l4symtry,bendx,
-     &                     localb0,localbnz,boundxy,mgform,
+     &                     localb0,localbnz,boundxy,mgparam,mgform,
      &                     lcndbndy,icndbndy,conductors,
      &                     my_index,nslaves,izfsslave,nzfsslave,
      &                     whosendingleft,izsendingleft,
@@ -991,7 +996,9 @@ c=============================================================================
       real(kind=8):: rdx2,rdy2,rdz2
       logical(ISZ):: linbend
       logical(ISZ):: l2symtry,l4symtry
-      integer(ISZ):: localb0,localbnz,boundxy,mgform
+      integer(ISZ):: localb0,localbnz,boundxy
+      real(kind=8):: mgparam
+      integer(ISZ):: mgform
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
@@ -1042,7 +1049,7 @@ c     --- do loop to cover even and odd points
 
         call sorhalfpass3d(parity,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                     rdx2,rdy2,rdz2,linbend,l2symtry,l4symtry,bendx,
-     &                     localb0,localbnz,boundxy,
+     &                     localb0,localbnz,boundxy,mgparam,mgform,
      &                     lcndbndy,icndbndy,conductors)
 
 #ifndef MPIPARALLEL
@@ -1074,9 +1081,8 @@ c         --- Exchange phi in the z guard planes
 c=============================================================================
       subroutine sorhalfpass3d(parity,mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
      &                     rdx2,rdy2,rdz2,linbend,l2symtry,l4symtry,bendx,
-     &                     localb0,localbnz,boundxy,
+     &                     localb0,localbnz,boundxy,mgparam,mgform,
      &                     lcndbndy,icndbndy,conductors)
-      use Multigrid3d
       use Constant
       use ConductorTypemodule
       integer(ISZ):: parity,mglevel,nx,ny,nz,nzfull
@@ -1086,6 +1092,8 @@ c=============================================================================
       logical(ISZ):: linbend
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: localb0,localbnz,boundxy
+      real(kind=8):: mgparam
+      integer(ISZ):: mgform
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
@@ -1937,16 +1945,18 @@ c       --- calculate the residual based on the boundary conditions
 c=============================================================================
       subroutine residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
      &                    mglevel,localb0,localbnz,boundxy,l2symtry,l4symtry,
-     &                    mgform2init,
+     &                    mgparam,mgform,mgform2init,
      &                    lcndbndy,icndbndy,conductors)
-      use Multigrid3d
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(0:nx,0:ny,-1:nz+1)
       integer(ISZ):: mglevel,localb0,localbnz,boundxy
-      logical(ISZ):: l2symtry,l4symtry,mgform2init
+      logical(ISZ):: l2symtry,l4symtry
+      real(kind=8):: mgparam
+      integer(ISZ):: mgform
+      logical(ISZ):: mgform2init
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       type(ConductorType):: conductors
@@ -2481,6 +2491,9 @@ c various mesh resolutions needed by the MG solver.
       integer(ISZ):: nx1,ny1,nz1,levels
       integer(ISZ):: ix_axis1,iy_axis1
 
+c     --- Make sure the coarsening levels are setup.
+      call getmglevels(nx,ny,nz,nzfull,dx,dy,dz,conductors)
+
 c     --- Call the work routine for each level
       do il=0,conductors%levels-1
         dx1 = dx*conductors%levellx(il)
@@ -2600,7 +2613,6 @@ c=============================================================================
       subroutine checkconductors_work(interior,evensubgrid,oddsubgrid,
      &                                nx,ny,nz,dx,dy,dz,l2symtry,l4symtry,
      &                                mglevel)
-      use Multigrid3d
       use ConductorInteriorTypemodule
       use ConductorSubGridTypemodule
       type(ConductorInteriorType):: interior
