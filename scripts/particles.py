@@ -20,7 +20,7 @@ clear_subsets(): Clears the subsets for particle plots (negative window
 numbers)
 """
 from warp import *
-particles_version = "$Id: particles.py,v 1.6 2003/01/24 18:06:26 dave Exp $"
+particles_version = "$Id: particles.py,v 1.7 2003/02/24 18:04:04 jlvay Exp $"
 
 #-------------------------------------------------------------------------
 def particlesdoc():
@@ -438,7 +438,7 @@ def getvzrange():
 
 #-------------------------------------------------------------------------
 #-------------------------------------------------------------------------
-def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,js=0,
+def addparticles(x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=0.,gi=1.,pid=1.,js=0,
                  lallindomain=false,zmmin=None,zmmax=None,lmomentum=false,
                  resetrho=false,dofieldsol=false,resetmoments=false):
   """
@@ -472,9 +472,11 @@ Adds particles to the simulation
   except TypeError: lenvz = 1
   try:              lengi = len(gi)
   except TypeError: lengi = 1
+  try:              lenpid = len(pid)
+  except TypeError: lenpid = 1
 
   # --- Max length of input arrays
-  maxlen = max(lenx,leny,lenz,lenvx,lenvy,lenvz,lengi)
+  maxlen = max(lenx,leny,lenz,lenvx,lenvy,lenvz,lengi,lenpid)
   assert lenx==maxlen or lenx==1,"Length of x doesn't match len of others"
   assert leny==maxlen or leny==1,"Length of y doesn't match len of others"
   assert lenz==maxlen or lenz==1,"Length of z doesn't match len of others"
@@ -482,6 +484,7 @@ Adds particles to the simulation
   assert lenvy==maxlen or lenvy==1,"Length of vy doesn't match len of others"
   assert lenvz==maxlen or lenvz==1,"Length of vz doesn't match len of others"
   assert lengi==maxlen or lengi==1,"Length of gi doesn't match len of others"
+  assert lenpid==maxlen or lenpid==1,"Length of pid doesn't match len of others"
 
   # --- Convert all to arrays of length maxlen, broadcasting scalars
   x = array(x)*ones(maxlen,'d')
@@ -491,6 +494,7 @@ Adds particles to the simulation
   vy = array(vy)*ones(maxlen,'d')
   vz = array(vz)*ones(maxlen,'d')
   gi = array(gi)*ones(maxlen,'d')
+  pid = array(pid)*ones([maxlen,top.npid],'d')
 
   # --- Set extent of domain
   if not lparallel:
@@ -501,8 +505,8 @@ Adds particles to the simulation
     if zmmax is None: zmmax = top.zpslmax[me]
 
   # --- Now data can be passed into the fortran addparticles routine.
-  addpart(js+1,maxlen,x,y,z,vx,vy,vz,gi,lallindomain,zmmin,zmmax,lmomentum)
-
+  addpart(maxlen,top.npid,x,y,z,vx,vy,vz,gi,pid,js+1,lallindomain,zmmin,zmmax,lmomentum)
+ 
   # --- If the slice code is active, then call initdtp
   if package()[0] == 'wxy': initdtp()
 
