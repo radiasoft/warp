@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WRZ.M, version $Revision: 3.4 $, $Date: 2001/10/25 18:22:36 $
+c@(#) File WRZ.M, version $Revision: 3.5 $, $Date: 2002/04/24 21:36:25 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WRZ of code WARP
@@ -703,7 +703,7 @@ c  Also zeros the electric field if particle is dead (uzp(ip)=0).
           er(ip) = er(ip) + dedr*rp(ip)
         endif
 
-        if (uzp(ip).eq.0) then
+        if (uzp(ip) == 0) then
           er(ip) = 0.
           et(ip) = 0.
           ez(ip) = 0.
@@ -2072,7 +2072,7 @@ c  The case of i=0 has been handled by setting rmesh(0) such that it
 c  comes out right.  Otherwise this loop won't vectorize.
 
 c  Set the weight ne to zero if the particle isn't "dead"
-        if (uzp(ip) .ne. 0.0) then
+        if (uzp(ip) /= 0.0) then
          s(0,ir) = g * r2 * w2 / (2.*rmesh(i))
          s(2,ir) = g * r2 * w1 / (2.*rmesh(i))
          s(1,ir) = g * r1 * w2 / (2.*rmesh(i+1))
@@ -2118,7 +2118,7 @@ c     --- vectorized loop to compute indices, weights
       enddo
 c     --- scalar loop does the actual deposition
       do ir = 0, np-1
-       if (uzp(ir+1).gt. 0) then
+       if (uzp(ir+1) /= 0) then
          rho(ii(ir)  ,kk(ir)  )
      &  =rho(ii(ir)  ,kk(ir)  ) + s(0,ir)
          rho(ii(ir)+1,kk(ir)  )
@@ -2368,7 +2368,7 @@ c     --- vectorized loop to compute indices, weights
        enddo
 
        do m = 1,npart
-         if (uzp(ipgrp(m+ioffset)) .gt. 0.) then
+         if (uzp(ipgrp(m+ioffset)) /= 0.) then
          curr(index(0,m))  =curr(index(0,m))   + s(0,m)
          curr(index(0,m)+1)=curr(index(0,m)+1) + s(1,m)
          endif
@@ -2433,7 +2433,7 @@ c     --- vectorized loop to compute indices, weights
        enddo
          
        do m = 1,npart
-         if (uzp(ipgrp(m+ioffset)) .gt. 0.) then
+         if (uzp(ipgrp(m+ioffset)) /= 0.) then
          rho1d(index(0,m))=rho1d(index(0,m)) + s(0,m)
          rho1d(index(1,m))=rho1d(index(1,m)) + s(1,m)
          rho1d(index(2,m))=rho1d(index(2,m)) + s(2,m)
