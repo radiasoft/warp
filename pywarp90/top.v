@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.56 $, $Date: 2002/10/22 17:28:47 $
+#@(#) File TOP.V, version $Revision: 3.57 $, $Date: 2002/10/24 21:28:21 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -61,7 +61,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.56 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.57 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -833,6 +833,10 @@ lbeamcom                  logical    /.false./
 relativity                integer /0/
    # Level of relativitistic corrections.
    #  1: scale transverse self E-field by 1/gamma**2
+cleardeadpart             integer /0/
+   # When 0, do not clear dead particles, when 1, swap dead particles with
+   # ones at the end of the array (much faster), when 2, shift particles to
+   # fill in the gaps (much slower)
 
 *********** InPart dump:
 # Particle input quantities (input qtys)
@@ -1576,6 +1580,22 @@ uyp(npmaxb)    _real  [m/s]      # gamma * Y-velocities of particles
 uzp(npmax)     _real  [m/s]      # gamma * Z-velocities of particles
 pid(npmaxi)    _real    [1]      # Particle index - user for various purposes
 
+*********** DeadParticles dump parallel:
+lsavedeadpart logical /.false./ # Flag setting whether dead particles are saved
+npmaxdead           integer /0/ # Size of dead particle arrays
+deadpartchunksize   integer /1000/
+insdead(ns)        _integer /0/ # Index of first dead particles of species
+npsdead(ns)        _integer /0/ # Number of dead particles in species
+npmaxdead_s(0:ns)  _integer /0/ # Max index of dead particles for species
+xpdead(npmaxdead)  _real [m]    # X-positions of dead particles
+ypdead(npmaxdead)  _real [m]    # Y-positions of dead particles
+zpdead(npmaxdead)  _real [m]    # Z-positions of dead particles
+uxpdead(npmaxdead) _real [m/s]  # gamma * X-velocities of dead particles
+uypdead(npmaxdead) _real [m/s]  # gamma * Y-velocities of dead particles
+uzpdead(npmaxdead) _real [m/s]  # gamma * Z-velocities of dead particles
+gaminvdead(npmaxdead) _real [1] # gamma inverse of dead particles
+piddead(npmaxdead) _integer [1] # Particle index of dead particles
+
 *********** Picglb dump:
 # Globally useful quantities for PIC simulation
 time                      real  /0./
@@ -1786,7 +1806,7 @@ addpart(nn:integer,x:real,y:real,z:real,vx:real,vy:real,vz:real,gi:real,
         is:integer,lallindomain:logical,zmmin:real,zmmax:real,
         lmomentum:logical)
              subroutine # Adds new particles to the simulation
-cleardeadpart(js:integer,fillmethod:integer)
+clearpart(js:integer,fillmethod:integer)
              subroutine # Clears away dead particles.
 load2d(np,x:real,y:real,nx,ny,n:real,dx:real,dy:real)
              subroutine # Loads particles approximately into a 2-D distribution
