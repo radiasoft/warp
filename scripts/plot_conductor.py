@@ -1,6 +1,6 @@
 from warp import *
 import __main__
-plot_conductor_version = "$Id: plot_conductor.py,v 1.45 2002/09/09 21:49:46 dave Exp $"
+plot_conductor_version = "$Id: plot_conductor.py,v 1.46 2002/09/12 23:34:14 dave Exp $"
 
 def plot_conductordoc():
   print """
@@ -64,7 +64,9 @@ def plotcond(yy,xx,zz,iz,numb,ymin,xmin,dy,dx,color,mglevel,signy,signx):
 
 def plotsubgrid(yy,xx,zz,pp,iz,numb,ymin,xmin,dy,dx,color,subgridlen,mglevel,
                 signy,signx):
-  assert (pp == 'e' or pp == 'o'),"pp has invalid data"
+  assert (pp in [0,1]),"pp has invalid data"
+  pp = ((pp + f3d.mglevelsiz[mglevel]) % 2)
+  pp = ['e','o'][pp]
   nn = eval('f3d.n'+pp+'cndbdy')
   if nn > 0:
     lx = eval('f3d.mglevelsl'+xx)[mglevel]
@@ -204,23 +206,23 @@ Plots conductors and contours of electrostatic potential in X-Y plane
     plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,1,-1)
     plotcond('y','x','z',iz,numb,ymmin,xmmin,dy,dx,condcolor,mglevel,-1,-1)
   if (plotsg):
-    plotsubgrid('y','x','z','e',iz,numb,ymmin,xmmin,dy,dx,evencolor,
+    plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
                 subgridlen,mglevel,1,1)
-    plotsubgrid('y','x','z','o',iz,numb,ymmin,xmmin,dy,dx,oddcolor,
+    plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                 subgridlen,mglevel,1,1)
     if fullplane and (w3d.l2symtry or w3d.l4symtry):
-      plotsubgrid('y','x','z','e',iz,numb,ymmin,xmmin,dy,dx,evencolor,
+      plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
                   subgridlen,mglevel,1,-1)
-      plotsubgrid('y','x','z','o',iz,numb,ymmin,xmmin,dy,dx,oddcolor,
+      plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                   subgridlen,mglevel,1,-1)
     if fullplane and w3d.l4symtry:
-      plotsubgrid('y','x','z','e',iz,numb,ymmin,xmmin,dy,dx,evencolor,
+      plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
                   subgridlen,mglevel,-1,1)
-      plotsubgrid('y','x','z','o',iz,numb,ymmin,xmmin,dy,dx,oddcolor,
+      plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                   subgridlen,mglevel,-1,1)
-      plotsubgrid('y','x','z','e',iz,numb,ymmin,xmmin,dy,dx,evencolor,
+      plotsubgrid('y','x','z',0,iz,numb,ymmin,xmmin,dy,dx,evencolor,
                   subgridlen,mglevel,-1,-1)
-      plotsubgrid('y','x','z','o',iz,numb,ymmin,xmmin,dy,dx,oddcolor,
+      plotsubgrid('y','x','z',1,iz,numb,ymmin,xmmin,dy,dx,oddcolor,
                   subgridlen,mglevel,-1,-1)
 
 # z-x plane
@@ -272,14 +274,14 @@ Plots conductors and contours of electrostatic potential in Z-X plane
   if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
     plotcond('x','z','y',iy,numb,xmmin,zmmin,dx,dz,condcolor,mglevel,-1,1)
   if (plotsg):
-    plotsubgrid('x','z','y','e',iy,numb,xmmin,zmmin,dx,dz,evencolor,
+    plotsubgrid('x','z','y',0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
                 subgridlen,mglevel,1,1)
-    plotsubgrid('x','z','y','o',iy,numb,xmmin,zmmin,dx,dz,oddcolor,
+    plotsubgrid('x','z','y',1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
                 subgridlen,mglevel,1,1)
     if fullplane and (w3d.l4symtry or w3d.solvergeom == w3d.RZgeom):
-      plotsubgrid('x','z','y','e',iy,numb,xmmin,zmmin,dx,dz,evencolor,
+      plotsubgrid('x','z','y',0,iy,numb,xmmin,zmmin,dx,dz,evencolor,
                   subgridlen,mglevel,-1,1)
-      plotsubgrid('x','z','y','o',iy,numb,xmmin,zmmin,dx,dz,oddcolor,
+      plotsubgrid('x','z','y',1,iy,numb,xmmin,zmmin,dx,dz,oddcolor,
                   subgridlen,mglevel,-1,1)
 
 # z-y plane
@@ -331,14 +333,14 @@ Plots conductors and contours of electrostatic potential in Z-Y plane
   if fullplane and (w3d.l2symtry or w3d.l4symtry):
     plotcond('y','z','x',ix,numb,ymmin,zmmin,dy,dz,condcolor,mglevel,-1,1)
   if (plotsg):
-    plotsubgrid('y','z','x','e',ix,numb,ymmin,zmmin,dy,dz,evencolor,
+    plotsubgrid('y','z','x',0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
                 subgridlen,mglevel,1,1)
-    plotsubgrid('y','z','x','o',ix,numb,ymmin,zmmin,dy,dz,oddcolor,
+    plotsubgrid('y','z','x',1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
                 subgridlen,mglevel,1,1)
     if fullplane and w3d.l4symtry:
-      plotsubgrid('y','z','x','e',ix,numb,ymmin,zmmin,dy,dz,evencolor,
+      plotsubgrid('y','z','x',0,ix,numb,ymmin,zmmin,dy,dz,evencolor,
                   subgridlen,mglevel,-1,1)
-      plotsubgrid('y','z','x','o',ix,numb,ymmin,zmmin,dy,dz,oddcolor,
+      plotsubgrid('y','z','x',1,ix,numb,ymmin,zmmin,dy,dz,oddcolor,
                   subgridlen,mglevel,-1,1)
 
 ######################################################################
@@ -706,19 +708,19 @@ def pfzxn(iy=None,numbs=None,colors=None,cmarker=point,smarker=circle,
   #nlist.remove(0)
   nlist = broadcast(nlist)
   for i in range(len(nlist)):
-    plotsubgrid('x','z','y','e',iy,nlist[i],xmmin,zmmin,dx,dz,
+    plotsubgrid('x','z','y',0,iy,nlist[i],xmmin,zmmin,dx,dz,
                 colors[i%ncolor],subgridlen,mglevel,1,1)
     if fullplane and w3d.l4symtry:
-      plotsubgrid('x','z','y','e',iy,nlist[i],xmmin,zmmin,dx,dz,
+      plotsubgrid('x','z','y',0,iy,nlist[i],xmmin,zmmin,dx,dz,
                   colors[i%ncolor],subgridlen,mglevel,-1,1)
   nlist = gatherarray(f3d.ocnumb[:f3d.nocndbdy])
   nlist = findunique(nlist)
   nlist = broadcast(nlist)
   for i in range(len(nlist)):
-    plotsubgrid('x','z','y','o',iy,nlist[i],xmmin,zmmin,dx,dz,
+    plotsubgrid('x','z','y',1,iy,nlist[i],xmmin,zmmin,dx,dz,
                 colors[i%ncolor],subgridlen,mglevel,1,1)
     if fullplane and w3d.l4symtry:
-      plotsubgrid('x','z','y','o',iy,nlist[i],xmmin,zmmin,dx,dz,
+      plotsubgrid('x','z','y',1,iy,nlist[i],xmmin,zmmin,dx,dz,
                   colors[i%ncolor],subgridlen,mglevel,-1,1)
 
 
