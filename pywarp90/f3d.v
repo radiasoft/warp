@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.46 $, $Date: 2002/06/26 00:37:42 $
+#@(#) File F3D.V, version $Revision: 3.47 $, $Date: 2002/06/26 18:15:57 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -9,7 +9,7 @@ f3d
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.46 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.47 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -225,9 +225,9 @@ mglevelsny(0:100) integer     # List of ny for the levels of coarsening
 mglevelsnzfull(0:100) integer # List of nzfull for the levels of coarsening
 mglevelsiz(0:100) integer     # List of iz for the levels of coarsening
 mglevelsnz(0:100) integer     # List of nz for the levels of coarsening
-mglevelslx(0:100) integer /1/ # List of coarsening factors in x
-mglevelsly(0:100) integer /1/ # List of coarsening factors in y
-mglevelslz(0:100) integer /1/ # List of coarsening factors in z
+mglevelslx(0:100) integer /101*1/ # List of coarsening factors in x
+mglevelsly(0:100) integer /101*1/ # List of coarsening factors in y
+mglevelslz(0:100) integer /101*1/ # List of coarsening factors in z
 mggoodnumbers(40) integer /4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,80,96,112,
                            128,160,192,224,256,320,384,448,512,640,768,896,
                            1024,1280,1536,1792,2048,2560,3072,3584,5120,7168/

@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.47 $, $Date: 2002/06/26 00:37:41 $
+c@(#) File F3D.M, version $Revision: 3.48 $, $Date: 2002/06/26 18:15:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -5311,9 +5311,9 @@ c  Fuzz is used to ensure proper evaluation of numeric comparisons in if's.
       logical(ISZ):: lnotice,lz_in_rod,lz_in_plate
 
 c     --- Save starting value of ncond, necndbdy, and nocndbdy
-      istart = ncond
-      iestart = necndbdy
-      iostart = nocndbdy
+      istart = ncond + 1
+      iestart = necndbdy + 1
+      iostart = nocndbdy + 1
 
 c     --- fuzz is used to prevent the distance from a point to the surface
 c     --- from being too small or zero.  Any point within fuzz of the surface
@@ -6315,8 +6315,8 @@ c              to prevent precision problems
       integer(ISZ):: npoints,nsgpoints
       logical(ISZ):: lout
 
-      iestart = necndbdy
-      iostart = nocndbdy
+      iestart = necndbdy + 1
+      iostart = nocndbdy + 1
 
 c      if(solvergeom==RZgeom) then
 c        call platepntrz(ixmin,ixmax,iymin,iymax,ix_axis,iy_axis,dx,dy,
@@ -6919,8 +6919,8 @@ c Output is put directly into the conductor arrays of Conductor3d.
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
 
-      iestart = necndbdy
-      iostart = nocndbdy
+      iestart = necndbdy + 1
+      iostart = nocndbdy + 1
 
       rmaxsq = rmax*rmax
       max_dxdy = max(dx,dy)
@@ -7504,8 +7504,8 @@ c See comments in srfrvout.
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
 
-      iestart = necndbdy
-      iostart = nocndbdy
+      iestart = necndbdy + 1
+      iostart = nocndbdy + 1
 
       rminsq = rmin*rmin
       max_dxdy = max(dx,dy)
@@ -8112,8 +8112,8 @@ c Output is put directly into the conductor arrays of Conductor3d.
       real(kind=8):: srfrv_f
       real(kind=8):: x(2),f(2)
 
-      iestart = necndbdy
-      iostart = nocndbdy
+      iestart = necndbdy + 1
+      iostart = nocndbdy + 1
 
       max_dxdy = max(dx,dy)
       dxi = 1./dx
