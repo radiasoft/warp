@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.193 $, $Date: 2005/03/17 18:07:28 $
+c@(#) File W3D.F, version $Revision: 3.194 $, $Date: 2005/03/17 18:43:09 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1850,7 +1850,7 @@ c=============================================================================
       subroutine getextpart()
       use GlobalVars
       use InGen
-      use Inpart
+      use InPart
       use Particles
       use Picglb
 
