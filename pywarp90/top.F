@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.122 $, $Date: 2004/05/12 22:51:15 $
+c@(#) File TOP.F, version $Revision: 3.123 $, $Date: 2004/05/13 17:14:46 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -7201,7 +7201,7 @@ c=============================================================================
 c=============================================================================
 
       subroutine accumulate_temperature(np,xp,yp,zp,uxp,uyp,uzp,gaminv,w,dt,
-     &                          uxpo,uypo,uzpo,is,wp,lw,lrtheta)
+     &                          uxpo,uypo,uzpo,is,wp,lw,lrtheta,l2symtry,l4symtry)
 c     Compute temperature in Z-slices for species 'is' on a 3-D grid:
 c       - the slices can have any position and thickness but cannot overlap,
 c       - the min and max of each slice in x, y and z are given respectively in the arrays
@@ -7218,7 +7218,9 @@ c         o finalize_temperature: compute final quantities
 c       - l_temp_collapseinz=.true.: collapse slices in z, i.e. align Z-locations
 c                                    of particles using current velocity (uxp,uyp,yzp) and
 c                                    velocity from previous time step (uxpo,uypo,uzpo)
-c       - lrtheta=.true.: radial and azimuthal are computed in place of X and Y.
+c       - lrtheta=.true.: radial and azimuthal are computed in place of X and Y,
+c       - the default temperature unit is in electron-volt. To select the units,
+c         set the variable t_unit to the default integers evolt, joule or kelvin.
 
       use Beam_acc
       use InDiag
@@ -7232,7 +7234,7 @@ c       - lrtheta=.true.: radial and azimuthal are computed in place of X and Y.
       real(kind=8):: xp(np), yp(np), zp(np)
       real(kind=8):: uxp(np), uyp(np), uzp(np), gaminv(np), wp(np)
       real(kind=8):: uxpo(np), uypo(np), uzpo(np) ! uxp, uyp anx uzp of previous time step
-      logical(ISZ):: lw,lrtheta
+      logical(ISZ):: lw,lrtheta,l2symtry,l4symtry
 
       integer(ISZ):: ip,its,izl,ixt,iyt,izt
       real(kind=8):: dti,wt,ddx,ddy,oddx,oddy,xt,yt,wpp,z_local
@@ -7299,11 +7301,17 @@ c           --- current velocity and from previous time step
             end if
             xpt = rpt
             ypt = 0.
+          else
+            if(l2symtry) ypt = abs(ypt)
+            if(l4symtry) then
+              xpt=abs(xpt)
+              ypt=abs(ypt)
+            end if
           end if
 
 c         --- compute coefficients for transverse linear deposition
-          xt = (xp(ip)-tslicexmin(izt))*dxti(izt)
-          yt = (yp(ip)-tsliceymin(izt))*dyti(izt)
+          xt = (xpt-tslicexmin(izt))*dxti(izt)
+          yt = (ypt-tsliceymin(izt))*dyti(izt)
           ixt = max(0,min(nxtslices-1,int(xt)))
           iyt = max(0,min(nytslices-1,int(yt)))
           ddx = xt-ixt
@@ -7443,12 +7451,12 @@ c           --- node x+1, y+1
       return
       end
 c===========================================================================
-      subroutine finalize_temperature(is)
+      subroutine finalize_temperature(is,m)
       use Constant
       use Temperatures
       use Timers
       integer(ISZ):: is, ixt, iyt, izt
-      real(kind=8):: timetemp,wtime
+      real(kind=8):: m,timetemp,wtime
       real(kind=8):: pnumi,tfact,tottmp
       real(kind=8):: delxsq,delvxsq,delxvx
       real(kind=8):: delysq,delvysq,delyvy
@@ -7462,8 +7470,12 @@ c     call sum_mmnts
       stop
 #endif
 
+c     --- set multiplying factor for proper units
+      if(t_units==evolt)  tfact = 0.5*m/echarge
+      if(t_units==joule)  tfact = 0.5*m
+      if(t_units==kelvin) tfact = 0.5*m/boltzmann
+
 c     --- Complete the calculation of temperatures: divide by particle number
-      tfact = 1.!/echarge
       do izt = 1, nztslices
         do iyt = 0, nytslices
           do ixt = 0, nxtslices
@@ -7530,7 +7542,7 @@ c           --- Compute temperatures
       return
       end
 c=============================================================================
-      subroutine gett(is,lrtheta)
+      subroutine gett(is,lrtheta,l2symtry,l4symtry)
 c     Compute temperature in Z-slices for species 'is' on a 3-D grid:
 c       - the slices can have any position and thickness but cannot overlap,
 c       - the min and max of each slice in x, y and z are given respectively in the arrays
@@ -7548,27 +7560,29 @@ c       - l_temp_collapseinz=.true.: collapse slices in z, i.e. align Z-location
 c                                    of particles using current velocity (uxp,uyp,yzp) and
 c                                    velocity from previous time step (uxpo,uypo,uzpo)
 c       - lrtheta=.true.: radial and azimuthal are computed in place of X and Y.
+c       - the default temperature unit is in electron-volt. To select the units,
+c         set the variable t_unit to the default integers evolt, joule or kelvin.
         use InGen
         use Particles
         integer(ISZ):: is, ipmin, itask
-        logical(ISZ):: lrtheta
+        logical(ISZ):: lrtheta,l2symtry,l4symtry
 
         ipmin = ins(is)
         call reset_temperature()
         if(wpid>0) then
           call accumulate_temperature(nps(is),xp(ipmin),yp(ipmin),zp(ipmin),
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                           gaminv(ipmin),sq(is),sm(is),sw(is),dt,
+     &                           gaminv(ipmin),sw(is),dt,
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),is,
-     7                           pid(ipmin,wpid),.true.,lrtheta)
+     7                           pid(ipmin,wpid),.true.,lrtheta,l2symtry,l4symtry)
         else
           call accumulate_temperature(nps(is),xp(ipmin),yp(ipmin),zp(ipmin),
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),
-     &                           gaminv(ipmin),sq(is),sm(is),sw(is),dt,
+     &                           gaminv(ipmin),sw(is),dt,
      &                           uxp(ipmin),uyp(ipmin),uzp(ipmin),is,
-     7                           pid(ipmin,1),.false.,lrtheta)
+     7                           pid(ipmin,1),.false.,lrtheta,l2symtry,l4symtry)
         end if
-        call finalize_temperature(is)
+        call finalize_temperature(is,sm(is))
         return
       end
 c=============================================================================
