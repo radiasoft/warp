@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.5 2001/02/09 18:41:01 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.6 2001/02/10 02:48:57 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -134,6 +134,9 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
   nps_p0 = zeros((top.nslaves+1,top.ns+1))
   nps_p0[1:,1:] = nps_p
 
+  # --- Need boundnz from the right most processor.
+  boundnz_p = gatherarray(f3d.boundnz)
+
   # --- Gather conductor information from all processors
   # --- Also setup temp arrays which have gaurd cells at the lower end.
   # --- These are used to calculate partial sums.
@@ -228,17 +231,21 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
                 else:
                   ff.write(pdbname,w3d.nzfull)
               elif (p == 'top' and vname in ['nzzarr','nzmmnt']) or \
-                   (p == 'w3d' and vname in ['nz']):
+                   (p == 'w3d' and vname in ['nz','izfsmax']):
                 ff.write(pdbname,w3d.nzfull)
               elif (p=='top' and vname in ['np','nplive','npmax','npmaxb']) or\
                    (p=='wxy' and vname in ['npmaxxy']):
                 ff.write(pdbname,sum(nps_p)[0])
-              elif (p=='f3d' and vname in ['ncond']):
+              elif (p=='f3d' and vname in ['boundnz']):
+                ff.write(pdbname,boundnz_p[-1])
+              elif (p=='f3d' and vname in ['ncond','ncondmax']):
                 ff.write(pdbname,sum(ncond_p))
               elif (p=='f3d' and vname in ['necndbdy']):
                 ff.write(pdbname,sum(necndbdy_p))
               elif (p=='f3d' and vname in ['nocndbdy']):
                 ff.write(pdbname,sum(nocndbdy_p))
+              elif (p=='f3d' and vname in ['ncndmax']):
+                ff.write(pdbname,max(sum(necndbdy_p),sum(nocndbdy_p)))
               else:
                 # --- Otherwise, write out value as is on PE0
                 ff.write(pdbname,v)
@@ -437,8 +444,11 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
             elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
                                           'condvolt','icondlxy','icondlz']:
               # --- Write out conductor data.
+              offset = 0
+              if vname=='izcond': offset = top.izslave[me+1]
               if f3d.ncond > 0:
-                ff.write(pdbname,v[:f3d.ncond],indx=(sum(ncond_p0[:me+1]),))
+                ff.write(pdbname,v[:f3d.ncond]+offset,
+                         indx=(sum(ncond_p0[:me+1]),))
             elif p == 'f3d' and \
                  vname in ['ecndpvph','iecndx','iecndy','iecndz',
                            'ecdelmx','ecdelmy','ecdelmz','ecdelpx',
@@ -446,8 +456,10 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
                            'ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz',
                            'ecvoltpz','iecndlxy','iecndlz']:
               # --- Write out conductor data.
+              offset = 0
+              if vname=='iecndz': offset = top.izslave[me+1]
               if f3d.necndbdy > 0:
-                ff.write(pdbname,v[:f3d.necndbdy],
+                ff.write(pdbname,v[:f3d.necndbdy]+offset,
                          indx=(sum(necndbdy_p0[:me+1]),))
             elif p == 'f3d' and \
                  vname in ['ocndpvph','iocndx','iocndy','iocndz',
@@ -456,8 +468,10 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=0,varsuffix=None):
                            'ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz',
                            'ocvoltpz','iocndlxy','iocndlz']:
               # --- Write out conductor data.
+              offset = 0
+              if vname=='iocndz': offset = top.izslave[me+1]
               if f3d.nocndbdy > 0:
-                ff.write(pdbname,v[:f3d.nocndbdy],
+                ff.write(pdbname,v[:f3d.nocndbdy]+offset,
                          indx=(sum(nocndbdy_p0[:me+1]),))
             elif p == 'w3d' and vname in ['rho']:
               if me < npes-1: ppp = v[:,:,:-top.grid_overlap]
@@ -669,6 +683,8 @@ def parallelrestore(fname):
               imin = sum(ncond_p0[:me+1])
               itriple = array([imin,imin+ncond_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+              if vname == 'izcond':
+                s = s + ';f3d.izcond[:]=f3d.izcond[:]-top.izslave[me+1]'
             else:
               s = 'pass'
           elif p == 'f3d' and \
@@ -682,6 +698,8 @@ def parallelrestore(fname):
               imin = sum(necndbdy_p0[:me+1])
               itriple = array([imin,imin+necndbdy_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+              if vname == 'iecndz':
+                s = s + ';f3d.iecndz[:]=f3d.iecndz[:]-top.izslave[me+1]'
             else:
               s = 'pass'
           elif p == 'f3d' and \
@@ -695,6 +713,8 @@ def parallelrestore(fname):
               imin = sum(nocndbdy_p0[:me+1])
               itriple = array([imin,imin+nocndbdy_p[me]-1,1])
               s = p+'.forceassign(vname,ff.read_part(v,itriple))'
+              if vname == 'iocndz':
+                s = s + ';f3d.iocndz[:]=f3d.iocndz[:]-top.izslave[me+1]'
             else:
               s = 'pass'
           elif p == 'w3d' and vname in ['rho']:
