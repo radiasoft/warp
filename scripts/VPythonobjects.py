@@ -5,7 +5,7 @@ Modified by DPG
 VisualMesh: can plot 3-D surfaces corresponding to meshed data.
 """
 from warp import *
-VPythonobjects_version = "$Id: VPythonobjects.py,v 1.10 2004/05/20 20:11:40 dave Exp $"
+VPythonobjects_version = "$Id: VPythonobjects.py,v 1.11 2004/05/20 22:00:10 dave Exp $"
 
 def VPythonobjectsdoc():
   import VPythonobjects
@@ -363,6 +363,7 @@ Visualize surface of revolution
   def __init__(self,srfrv=None,zzmin=None,zzmax=None,
                     rendzmin=None,rendzmax=None,
                     nz=20,nth=20,phimin=None,phimax=None,fillinends=0,
+                    close=0,
                     xoff=0,yoff=0,zoff=0,
                     rofzdata=None,zdata=None,raddata=None,
                     zcdata=None,rcdata=None,ntpts=5,
@@ -455,6 +456,15 @@ Visualize surface of revolution
       rrrght[-1] = rendzmax
       ttleft[-1] = 0. + pi*(normalsign < 0.)
       ttrght[-1] = 0. + pi*(normalsign < 0.)
+
+    # --- Close the loop if requested.
+    if close:
+      zzleft += [zzrght[-1]]
+      zzrght += [zzleft[0]]
+      rrleft += [rrrght[-1]]
+      rrrght += [rrleft[0]]
+      ttleft += [-pi/2.]
+      ttrght += [-pi/2.]
 
     phi = phimin + (phimax - phimin)*arange(0,nth+1)/nth
     xx = cos(phi)
