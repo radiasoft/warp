@@ -1,4 +1,4 @@
-!     Last change:  JLV  21 Aug 2001    3:28 pm
+!     Last change:  JLV  21 Aug 2001    3:56 pm
 #include "top.h"
 module multigridrz
 ! module containing RZ multigrid solver
@@ -692,7 +692,7 @@ END do
 return
 end subroutine apply_voltagewguard
 
-subroutine slvfldrz_bnd(u,rhoinit,bnd,nr0,nz0,length_r,length_z,accuracy,nc,npre,npost,ncycle)
+subroutine solve_multigridrz(u,rhoinit,bnd,nr0,nz0,length_r,length_z,accuracy,nc,npre,npost,ncycle)
 ! solve field for u with density rhoinit.
 implicit none
 
@@ -839,11 +839,11 @@ end do
 DEALLOCATE(f, rho, nr, nz)
 
 return
-end subroutine slvfldrz_bnd
+end subroutine solve_multigridrz
 
 END module multigridrz
 
-subroutine slvfld1gridrz_bnd(u0,rho0,nr0,nz0,dr0,dz0,rxbnd,lzbnd,rzbnd,accuracy,ncmax,npre,npost,ncycle)
+subroutine multigridrzf(u0,rho0,nr0,nz0,dr0,dz0,rxbnd,lzbnd,rzbnd,accuracy,ncmax,npre,npost,ncycle)
 USE multigridrz
 implicit none
 INTEGER(ISZ), INTENT(IN) :: nr0, nz0, rxbnd, lzbnd, rzbnd,ncmax,npre,npost,ncycle
@@ -882,13 +882,13 @@ izrbnd = rzbnd
 u(1:nr0+1,:)=u0(1:nr0+1,:)
 u(0,:) = 0._8
 u(nr0+2,:)=0._8
-  call slvfldrz_bnd(u=u,rhoinit=-rho0/eps0,bnd=bndy,nr0=nr0,nz0=nz0, &
-                  length_r=nr0*dr0,length_z=nz0*dz0, &
-                  accuracy=accuracy,nc=ncmax,npre=npre,npost=npost,ncycle=ncycle)
+  call solve_multigridrz(u=u,rhoinit=-rho0/eps0,bnd=bndy,nr0=nr0,nz0=nz0, &
+                         length_r=nr0*dr0,length_z=nz0*dz0, &
+                         accuracy=accuracy,nc=ncmax,npre=npre,npost=npost,ncycle=ncycle)
 u0(1:nr0+1,:)=u(1:nr0+1,:)
 
 return
-end subroutine slvfld1gridrz_bnd
+end subroutine multigridrzf
 
 subroutine srfrvoutrz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill, &
                        xmin,xmax,lshell, &
