@@ -5415,9 +5415,9 @@ do igrid=1,ngrids
   zmin_in = b%zmin!-b%dz
   zmax_in = b%zmax!+b%dz
 
-  interior%n = 0
-  evensubgrid%n = 0
-  oddsubgrid%n = 0
+  conductors%interior%n = 0
+  conductors%evensubgrid%n = 0
+  conductors%oddsubgrid%n = 0
 
   call srfrvout_rz(rofzfunc,volt,zmin,zmax,xcent,rmax,lfill,  &
                    grids_ptr(igrid)%grid%rmin,grids_ptr(igrid)%grid%rmax,lshell,                      &
@@ -5426,29 +5426,13 @@ do igrid=1,ngrids
                    xmesh,l2symtry_in,l4symtry_in,condid)
 
   call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
-                 ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                 interior%n, interior%indx(1,:), interior%indx(3,:), &
-                 interior%volt, interior%numb, &
-                 evensubgrid%n, evensubgrid%indx(1,:), evensubgrid%indx(3,:), &
-                 evensubgrid%dels(1,:), evensubgrid%dels(2,:), &
-                 evensubgrid%dels(5,:), evensubgrid%dels(6,:), &
-                 evensubgrid%volt(1,:),evensubgrid%volt(2,:), &
-                 evensubgrid%volt(5,:),evensubgrid%volt(6,:), &
-                 evensubgrid%numb(1,:),evensubgrid%numb(2,:), &
-                 evensubgrid%numb(5,:),evensubgrid%numb(6,:), &
-                 oddsubgrid%n, oddsubgrid%indx(1,:), oddsubgrid%indx(3,:), &
-                 oddsubgrid%dels(1,:), oddsubgrid%dels(2,:), &
-                 oddsubgrid%dels(5,:), oddsubgrid%dels(6,:), &
-                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
-                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:), &
-                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
-                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:))
+                        ixlbnd,ixrbnd,izlbnd,izrbnd,conductors)
   
  end do
 end do
-interior%n = 0
-evensubgrid%n = 0
-oddsubgrid%n = 0
+conductors%interior%n = 0
+conductors%evensubgrid%n = 0
+conductors%oddsubgrid%n = 0
 
 return
 end subroutine srfrvoutrz
@@ -5502,9 +5486,9 @@ do igrid=1,ngrids
   zmin_in = b%zmin!-b%dz
   zmax_in = b%zmax!+b%dz
 
-  interior%n = 0
-  evensubgrid%n = 0
-  oddsubgrid%n = 0
+  conductors%interior%n = 0
+  conductors%evensubgrid%n = 0
+  conductors%oddsubgrid%n = 0
 
   call srfrvinout_rz(rminofz,rmaxofz,volt,zmin,zmax,xcent,  &
                      lzend,grids_ptr(igrid)%grid%rmin,grids_ptr(igrid)%grid%rmax,lshell,                &
@@ -5513,29 +5497,13 @@ do igrid=1,ngrids
                      xmesh,l2symtry_in,l4symtry_in,condid)
 
   call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
-                 ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                 interior%n, interior%indx(1,:), interior%indx(3,:), &
-                 interior%volt, interior%numb, &
-                 evensubgrid%n, evensubgrid%indx(1,:), evensubgrid%indx(3,:), &
-                 evensubgrid%dels(1,:), evensubgrid%dels(2,:), &
-                 evensubgrid%dels(5,:), evensubgrid%dels(6,:), &
-                 evensubgrid%volt(1,:),evensubgrid%volt(2,:), &
-                 evensubgrid%volt(5,:),evensubgrid%volt(6,:), &
-                 evensubgrid%numb(1,:),evensubgrid%numb(2,:), &
-                 evensubgrid%numb(5,:),evensubgrid%numb(6,:), &
-                 oddsubgrid%n, oddsubgrid%indx(1,:), oddsubgrid%indx(3,:), &
-                 oddsubgrid%dels(1,:), oddsubgrid%dels(2,:), &
-                 oddsubgrid%dels(5,:), oddsubgrid%dels(6,:), &
-                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
-                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:), &
-                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
-                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:))
+                        ixlbnd,ixrbnd,izlbnd,izrbnd,conductors)
   
  end do
 end do
-interior%n = 0
-evensubgrid%n = 0
-oddsubgrid%n = 0
+conductors%interior%n = 0
+conductors%evensubgrid%n = 0
+conductors%oddsubgrid%n = 0
 return
 end subroutine srfrvinoutrz
 
@@ -5576,64 +5544,38 @@ do igrid=1,ngrids
   izrbnd = b%izrbnd
   zmin_in = b%zmin!-b%dz
 
-  interior%n = 0
-  evensubgrid%n = 0
-  oddsubgrid%n = 0
+  conductors%interior%n = 0
+  conductors%evensubgrid%n = 0
+  conductors%oddsubgrid%n = 0
 
   call setcndtr_rz(rmin_in,zmin_in,zbeam,zgrid,nrc,nzc,drc,dzc, &
                    bound0_in,boundnz_in,boundxy_in,l2symtry_in,l4symtry_in)
 
   call addconductors_rz(b,nrc,nzc,drc,dzc,grids_ptr(igrid)%grid%rmin, &
-                 ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                 interior%n, interior%indx(1,:), interior%indx(3,:), &
-                 interior%volt, interior%numb, &
-                 evensubgrid%n, evensubgrid%indx(1,:), evensubgrid%indx(3,:), &
-                 evensubgrid%dels(1,:), evensubgrid%dels(2,:), &
-                 evensubgrid%dels(5,:), evensubgrid%dels(6,:), &
-                 evensubgrid%volt(1,:),evensubgrid%volt(2,:), &
-                 evensubgrid%volt(5,:),evensubgrid%volt(6,:), &
-                 evensubgrid%numb(1,:),evensubgrid%numb(2,:), &
-                 evensubgrid%numb(5,:),evensubgrid%numb(6,:), &
-                 oddsubgrid%n, oddsubgrid%indx(1,:), oddsubgrid%indx(3,:), &
-                 oddsubgrid%dels(1,:), oddsubgrid%dels(2,:), &
-                 oddsubgrid%dels(5,:), oddsubgrid%dels(6,:), &
-                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
-                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:), &
-                 oddsubgrid%volt(1,:),oddsubgrid%volt(2,:), &
-                 oddsubgrid%volt(5,:),oddsubgrid%volt(6,:))
+                        ixlbnd,ixrbnd,izlbnd,izrbnd,conductors)
   
  end do
 end do
-interior%n = 0
-evensubgrid%n = 0
-oddsubgrid%n = 0
+conductors%interior%n = 0
+conductors%evensubgrid%n = 0
+conductors%oddsubgrid%n = 0
 
 END subroutine setcndtrrz
 
-subroutine install_conductors_rz()
-USE Conductor3d
+subroutine install_conductors_rz(conductors)
 USE Multigrid3d
 USE multigridrz
+use ConductorTypemodule
 implicit none
+type(ConductorType):: conductors
 
 INTEGER(ISZ), DIMENSION(:), allocatable :: mg_ncond,mg_necndbdy, mg_nocndbdy
 INTEGER(ISZ) :: i, ii, nrc, nzc, itmp
 INTEGER(ISZ) :: ncondtmp, necndbdytmp, nocndbdytmp
 REAL(8) :: drc, dzc
 
-INTEGER(ISZ), ALLOCATABLE, DIMENSION(:) :: ixcondtmp, izcondtmp, &
-                                           iecndxtmp, iecndztmp, &
-                                           iocndxtmp, iocndztmp, &
-                                           condnumbtmp, &
-                                           ecnumbmxtmp, ecnumbpxtmp, &
-                                           ecnumbmztmp, ecnumbpztmp, &
-                                           ocnumbmxtmp, ocnumbpxtmp, &
-                                           ocnumbmztmp, ocnumbpztmp
-REAL(8), ALLOCATABLE, DIMENSION(:) :: ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, &
-                                      ocdelmxtmp, ocdelpxtmp, ocdelmztmp, ocdelpztmp, &
-                                      ecvoltmxtmp, ecvoltpxtmp, ecvoltmztmp, ecvoltpztmp, &
-                                      ocvoltmxtmp, ocvoltpxtmp, ocvoltmztmp, ocvoltpztmp, &
-                                      condvolttmp
+type(ConductorType):: conductorstmp
+
 TYPE(BNDtype), POINTER :: b
 
 IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
@@ -5645,16 +5587,16 @@ mg_nocndbdy = 0
 
 ixlbnd = basegrid%ixlbnd
 ixrbnd = basegrid%ixrbnd
-do i = 1, interior%n
-  ii = interior%ilevel(i) + 1
+do i = 1, conductors%interior%n
+  ii = conductors%interior%ilevel(i) + 1
   mg_ncond(ii) = mg_ncond(ii) + 1
 end do
-do i = 1, evensubgrid%n
-  ii = evensubgrid%ilevel(i) + 1
+do i = 1, conductors%evensubgrid%n
+  ii = conductors%evensubgrid%ilevel(i) + 1
   mg_necndbdy(ii) = mg_necndbdy(ii) + 1
 end do
-do i = 1, oddsubgrid%n
-  ii = oddsubgrid%ilevel(i) + 1
+do i = 1, conductors%oddsubgrid%n
+  ii = conductors%oddsubgrid%ilevel(i) + 1
   mg_nocndbdy(ii) = mg_nocndbdy(ii) + 1
 end do
 
@@ -5672,95 +5614,56 @@ end do
   izlbnd = b%izlbnd
   izrbnd = b%izrbnd
 
-  necndbdytmp = mg_necndbdy(i)
-  nocndbdytmp = mg_nocndbdy(i)
-  ncondtmp    = mg_ncond(i)
+  conductorstmp%interior%nmax    = mg_ncond(i)
+  conductorstmp%evensubgrid%nmax = mg_necndbdy(i)
+  conductorstmp%oddsubgrid%nmax  = mg_nocndbdy(i)
+  call ConductorTypeallot(conductorstmp)
 
-  ALLOCATE(ixcondtmp(ncondtmp),izcondtmp(ncondtmp),condvolttmp(ncondtmp),condnumbtmp(ncondtmp), &
-           iecndxtmp(necndbdytmp),iecndztmp(necndbdytmp), &
-           iocndxtmp(nocndbdytmp),iocndztmp(nocndbdytmp), &
-           ecnumbmxtmp(necndbdytmp),ecnumbpxtmp(necndbdytmp), ecnumbmztmp(necndbdytmp),ecnumbpztmp(necndbdytmp), &
-           ocnumbmxtmp(nocndbdytmp),ocnumbpxtmp(nocndbdytmp), ocnumbmztmp(nocndbdytmp),ocnumbpztmp(nocndbdytmp), &
-           ecdelmxtmp(necndbdytmp),ecdelpxtmp(necndbdytmp), ecdelmztmp(necndbdytmp),ecdelpztmp(necndbdytmp), &
-           ocdelmxtmp(nocndbdytmp),ocdelpxtmp(nocndbdytmp), ocdelmztmp(nocndbdytmp),ocdelpztmp(nocndbdytmp), &
-           ecvoltmxtmp(necndbdytmp),ecvoltpxtmp(necndbdytmp), ecvoltmztmp(necndbdytmp),ecvoltpztmp(necndbdytmp), &
-           ocvoltmxtmp(nocndbdytmp),ocvoltpxtmp(nocndbdytmp), ocvoltmztmp(nocndbdytmp),ocvoltpztmp(nocndbdytmp))
+  conductorstmp%interior%n    = mg_ncond(i)
+  conductorstmp%evensubgrid%n = mg_necndbdy(i)
+  conductorstmp%oddsubgrid%n  = mg_nocndbdy(i)
+
   itmp = 0
-  do ii = 1, interior%n
-    IF(interior%ilevel(ii)+1==i) then
+  do ii = 1, conductors%interior%n
+    IF(conductors%interior%ilevel(ii)+1==i) then
       itmp = itmp + 1
-      ixcondtmp(itmp) = interior%indx(1,ii)
-      izcondtmp(itmp) = interior%indx(3,ii)
-      condvolttmp(itmp) = interior%volt(ii)
-      condnumbtmp(itmp) = interior%numb(ii)
+      conductorstmp%interior%indx(:,itmp) = conductors%interior%indx(:,ii)
+      conductorstmp%interior%volt(itmp) = conductors%interior%volt(ii)
+      conductorstmp%interior%numb(itmp) = conductors%interior%numb(ii)
     END if
   end do
   itmp = 0
-  do ii = 1, evensubgrid%n
-    IF(evensubgrid%ilevel(ii)+1==i) then
+  do ii = 1, conductors%evensubgrid%n
+    IF(conductors%evensubgrid%ilevel(ii)+1==i) then
       itmp = itmp + 1
-      iecndxtmp(itmp) = evensubgrid%indx(1,ii)
-      iecndztmp(itmp) = evensubgrid%indx(3,ii)
-      ecdelmxtmp(itmp) = evensubgrid%dels(1,ii)
-      ecdelpxtmp(itmp) = evensubgrid%dels(2,ii)
-      ecdelmztmp(itmp) = evensubgrid%dels(5,ii)
-      ecdelpztmp(itmp) = evensubgrid%dels(6,ii)
-      ecvoltmxtmp(itmp) = evensubgrid%volt(1,ii)
-      ecvoltpxtmp(itmp) = evensubgrid%volt(2,ii)
-      ecvoltmztmp(itmp) = evensubgrid%volt(5,ii)
-      ecvoltpztmp(itmp) = evensubgrid%volt(6,ii)
-      ecnumbmxtmp(itmp) = evensubgrid%numb(1,ii)
-      ecnumbpxtmp(itmp) = evensubgrid%numb(2,ii)
-      ecnumbmztmp(itmp) = evensubgrid%numb(5,ii)
-      ecnumbpztmp(itmp) = evensubgrid%numb(6,ii)
+      conductorstmp%evensubgrid%indx(:,itmp) = conductors%evensubgrid%indx(:,ii)
+      conductorstmp%evensubgrid%dels(:,itmp) = conductors%evensubgrid%dels(:,ii)
+      conductorstmp%evensubgrid%volt(:,itmp) = conductors%evensubgrid%volt(:,ii)
+      conductorstmp%evensubgrid%numb(:,itmp) = conductors%evensubgrid%numb(:,ii)
     END if
   end do
   itmp = 0
-  do ii = 1, oddsubgrid%n
-    IF(oddsubgrid%ilevel(ii)+1==i) then
+  do ii = 1, conductors%oddsubgrid%n
+    IF(conductors%oddsubgrid%ilevel(ii)+1==i) then
       itmp = itmp + 1
-      iocndxtmp(itmp) = oddsubgrid%indx(1,ii)
-      iocndztmp(itmp) = oddsubgrid%indx(3,ii)
-      ocdelmxtmp(itmp) = oddsubgrid%dels(1,ii)
-      ocdelpxtmp(itmp) = oddsubgrid%dels(2,ii)
-      ocdelmztmp(itmp) = oddsubgrid%dels(5,ii)
-      ocdelpztmp(itmp) = oddsubgrid%dels(6,ii)
-      ocvoltmxtmp(itmp) = oddsubgrid%volt(1,ii)
-      ocvoltpxtmp(itmp) = oddsubgrid%volt(2,ii)
-      ocvoltmztmp(itmp) = oddsubgrid%volt(5,ii)
-      ocvoltpztmp(itmp) = oddsubgrid%volt(6,ii)
-      ocnumbmxtmp(itmp) = oddsubgrid%numb(1,ii)
-      ocnumbpxtmp(itmp) = oddsubgrid%numb(2,ii)
-      ocnumbmztmp(itmp) = oddsubgrid%numb(5,ii)
-      ocnumbpztmp(itmp) = oddsubgrid%numb(6,ii)
+      conductorstmp%oddsubgrid%indx(:,itmp) = conductors%oddsubgrid%indx(:,ii)
+      conductorstmp%oddsubgrid%dels(:,itmp) = conductors%oddsubgrid%dels(:,ii)
+      conductorstmp%oddsubgrid%volt(:,itmp) = conductors%oddsubgrid%volt(:,ii)
+      conductorstmp%oddsubgrid%numb(:,itmp) = conductors%oddsubgrid%numb(:,ii)
     END if
   end do
   call addconductors_rz(b,nrc,nzc,drc,dzc,basegrid%rmin,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                        ncondtmp, ixcondtmp, izcondtmp, condvolttmp, condnumbtmp, &
-                        necndbdytmp, iecndxtmp, iecndztmp, ecdelmxtmp, ecdelpxtmp, ecdelmztmp, ecdelpztmp, &
-                        ecvoltmxtmp,ecvoltpxtmp, ecvoltmztmp,ecvoltpztmp, &
-                        ecnumbmxtmp,ecnumbpxtmp, ecnumbmztmp,ecnumbpztmp, &
-                        nocndbdytmp, iocndxtmp, iocndztmp, ocdelmxtmp, ocdelpxtmp, ocdelmztmp, ocdelpztmp, &
-                        ocvoltmxtmp,ocvoltpxtmp, ocvoltmztmp,ocvoltpztmp, &
-                        ocnumbmxtmp,ocnumbpxtmp, ocnumbmztmp,ocnumbpztmp)
+                        conductorstmp)
 
-  DEALLOCATE(ixcondtmp,izcondtmp,condvolttmp,condnumbtmp, &
-             iecndxtmp,iecndztmp, &
-             iocndxtmp,iocndztmp, &
-             ecnumbmxtmp,ecnumbpxtmp, ecnumbmztmp,ecnumbpztmp, &
-             ocnumbmxtmp,ocnumbpxtmp, ocnumbmztmp,ocnumbpztmp, &
-             ecdelmxtmp,ecdelpxtmp, ecdelmztmp,ecdelpztmp, &
-             ocdelmxtmp,ocdelpxtmp, ocdelmztmp,ocdelpztmp, &
-             ecvoltmxtmp,ecvoltpxtmp, ecvoltmztmp,ecvoltpztmp, &
-             ocvoltmxtmp,ocvoltpxtmp, ocvoltmztmp,ocvoltpztmp)
 
  end do
 
+call ConductorTypefree(conductorstmp)
 DEALLOCATE(mg_ncond,mg_necndbdy, mg_nocndbdy)
 
-interior%n = 0
-evensubgrid%n = 0
-oddsubgrid%n = 0
+conductors%interior%n = 0
+conductors%evensubgrid%n = 0
+conductors%oddsubgrid%n = 0
 
 call get_cond_rz(1)
 
@@ -5769,33 +5672,17 @@ end subroutine install_conductors_rz
 
 
 subroutine addconductors_rz(b,nrc,nzc,drc,dzc,rmin,ixlbnd,ixrbnd,izlbnd,izrbnd, &
-                            ncond, ixcond, izcond, condvolt, condnumb, &
-                            necndbdy, iecndx, iecndz, ecdelmx, ecdelpx, ecdelmz, ecdelpz, &
-                            ecvoltmx, ecvoltpx, ecvoltmz, ecvoltpz, &
-                            ecnumbmx, ecnumbpx, ecnumbmz, ecnumbpz, &
-                            nocndbdy, iocndx, iocndz, ocdelmx, ocdelpx, ocdelmz, ocdelpz,  &
-                            ocvoltmx, ocvoltpx, ocvoltmz, ocvoltpz, &
-                            ocnumbmx, ocnumbpx, ocnumbmz, ocnumbpz)
-!use Conductor3d
+                            conductors)
 USE InGen3d, ONLY:solvergeom,RZgeom,XYZgeom,XZgeom
 USE multigridrz, ONLY: CONDtype, dirichlet, v_cond, v_bnd, v_dirichlet, bnd_method, egun, ecb, init_bnd_sublevel
 USE BNDtypemodule
+use ConductorTypemodule
 implicit none
 
 TYPE(BNDtype) :: b
-INTEGER(ISZ), INTENT(IN) :: nrc,nzc,ixlbnd,ixrbnd,izlbnd,izrbnd,ncond,necndbdy,nocndbdy
+INTEGER(ISZ), INTENT(IN) :: nrc,nzc,ixlbnd,ixrbnd,izlbnd,izrbnd
 REAL(8), INTENT(IN) :: drc,dzc,rmin
-INTEGER(ISZ), INTENT(IN) :: ixcond(ncond), izcond(ncond), &
-                            iecndx(necndbdy), iecndz(necndbdy), &
-                            iocndx(nocndbdy), iocndz(nocndbdy), &
-                            condnumb(ncond), &
-                            ecnumbmx(necndbdy), ecnumbpx(necndbdy), ecnumbmz(necndbdy), ecnumbpz(necndbdy), &
-                            ocnumbmx(nocndbdy), ocnumbpx(nocndbdy), ocnumbmz(nocndbdy), ocnumbpz(nocndbdy)
-REAL(8), INTENT(IN) :: condvolt(ncond), &
-                       ecdelmx(necndbdy), ecdelpx(necndbdy), ecdelmz(necndbdy), ecdelpz(necndbdy), &
-                       ocdelmx(nocndbdy), ocdelpx(nocndbdy), ocdelmz(nocndbdy), ocdelpz(nocndbdy), &
-                       ecvoltmx(necndbdy), ecvoltpx(necndbdy), ecvoltmz(necndbdy), ecvoltpz(necndbdy), &
-                       ocvoltmx(nocndbdy), ocvoltpx(nocndbdy), ocvoltmz(nocndbdy), ocvoltpz(nocndbdy)
+type(ConductorType),intent(in):: conductors
 
 INTEGER(ISZ) :: ii,iii,iv,iiv,nxbndmin,nxbndmax,nzbndmin,nzbndmax,iivmin,iivmax,ibnd,ne,no
 REAL(8) :: dt,dxm,dxp,dzm,dzp,r,rp,rm,dxx,dzz
@@ -5811,39 +5698,40 @@ TYPE(CONDtype), POINTER :: c
   IF(izlbnd==dirichlet) nzbndmin=nzbndmin+1
   IF(izrbnd==dirichlet) nzbndmax=nzbndmax-1
 
-  call init_bnd_sublevel(b,necndbdy+nocndbdy,ncond)
+  call init_bnd_sublevel(b,conductors%evensubgrid%n+conductors%oddsubgrid%n, &
+                         conductors%interior%n)
 
-  b%cndlast%nbbndred = necndbdy
-  b%cndlast%nbbnd = necndbdy + nocndbdy
-  b%cndlast%ncond = ncond
+  b%cndlast%nbbndred = conductors%evensubgrid%n
+  b%cndlast%nbbnd = conductors%evensubgrid%n + conductors%oddsubgrid%n
+  b%cndlast%ncond = conductors%interior%n
   iii=0
-  do ii=1,ncond
+  do ii=1,conductors%interior%n
     iii = iii + 1
-    b%cndlast%jcond(iii) = ixcond(ii)+1
-    b%cndlast%kcond(iii) = izcond(ii)+1
+    b%cndlast%jcond(iii) = conductors%interior%indx(0,ii)+1
+    b%cndlast%kcond(iii) = conductors%interior%indx(2,ii)+1
     IF(b%v(b%cndlast%jcond(iii),b%cndlast%kcond(iii))==v_cond) then
       iii = iii-1
       b%cndlast%ncond = b%cndlast%ncond-1
       cycle
     END if
     b%v(b%cndlast%jcond(iii),b%cndlast%kcond(iii)) = v_cond
-    b%cndlast%voltage(iii) = condvolt(ii)
-    b%cndlast%condid(iii) = condnumb(ii)
+    b%cndlast%voltage(iii) = conductors%interior%volt(ii)
+    b%cndlast%condid(iii) = conductors%interior%numb(ii)
   end do
 
   ii = 0
   ne = 0
   no = 0
-  do ibnd = 1, necndbdy+nocndbdy
+  do ibnd = 1, conductors%evensubgrid%n+conductors%oddsubgrid%n
    ii = ii + 1
-   IF(ibnd<=necndbdy) then
+   IF(ibnd<=conductors%evensubgrid%n) then
      iii = ibnd
-     b%cndlast%jj(ii)  = iecndx(iii)+1
-     b%cndlast%kk(ii)  = iecndz(iii)+1
+     b%cndlast%jj(ii)  = conductors%evensubgrid%indx(0,iii)+1
+     b%cndlast%kk(ii)  = conductors%evensubgrid%indx(2,iii)+1
    else
-     iii = ibnd - necndbdy
-     b%cndlast%jj(ii)  = iocndx(iii)+1
-     b%cndlast%kk(ii)  = iocndz(iii)+1
+     iii = ibnd - conductors%evensubgrid%n
+     b%cndlast%jj(ii)  = conductors%oddsubgrid%indx(0,iii)+1
+     b%cndlast%kk(ii)  = conductors%oddsubgrid%indx(2,iii)+1
    END if
    IF( (b%v(b%cndlast%jj(ii),b%cndlast%kk(ii))==v_cond) .or.                 &
      (b%v(b%cndlast%jj(ii),b%cndlast%kk(ii))==v_dirichlet) .or.              &
@@ -5852,34 +5740,34 @@ TYPE(CONDtype), POINTER :: c
       ii = ii - 1
       cycle
    END if
-   IF(ibnd<=necndbdy) then
+   IF(ibnd<=conductors%evensubgrid%n) then
      ne = ne + 1
-     dxm = ecdelmx(iii)*b%dr
-     dxp = ecdelpx(iii)*b%dr
-     dzm = ecdelmz(iii)*b%dz
-     dzp = ecdelpz(iii)*b%dz
-     b%cndlast%volt0xm(ii)=ecvoltmx(iii)
-     b%cndlast%volt0xp(ii)=ecvoltpx(iii)
-     b%cndlast%volt0zm(ii)=ecvoltmz(iii)
-     b%cndlast%volt0zp(ii)=ecvoltpz(iii)
-     b%cndlast%condidxm(ii)=ecnumbmx(iii)
-     b%cndlast%condidxp(ii)=ecnumbpx(iii)
-     b%cndlast%condidzm(ii)=ecnumbmz(iii)
-     b%cndlast%condidzp(ii)=ecnumbpz(iii)
+     dxm = conductors%evensubgrid%dels(0,iii)*b%dr
+     dxp = conductors%evensubgrid%dels(1,iii)*b%dr
+     dzm = conductors%evensubgrid%dels(4,iii)*b%dz
+     dzp = conductors%evensubgrid%dels(5,iii)*b%dz
+     b%cndlast%volt0xm(ii)=conductors%evensubgrid%volt(0,iii)
+     b%cndlast%volt0xp(ii)=conductors%evensubgrid%volt(1,iii)
+     b%cndlast%volt0zm(ii)=conductors%evensubgrid%volt(4,iii)
+     b%cndlast%volt0zp(ii)=conductors%evensubgrid%volt(5,iii)
+     b%cndlast%condidxm(ii)=conductors%evensubgrid%numb(0,iii)
+     b%cndlast%condidxp(ii)=conductors%evensubgrid%numb(1,iii)
+     b%cndlast%condidzm(ii)=conductors%evensubgrid%numb(4,iii)
+     b%cndlast%condidzp(ii)=conductors%evensubgrid%numb(5,iii)
    else
      no = no + 1
-     dxm = ocdelmx(iii)*b%dr
-     dxp = ocdelpx(iii)*b%dr
-     dzm = ocdelmz(iii)*b%dz
-     dzp = ocdelpz(iii)*b%dz
-     b%cndlast%volt0xm(ii)=ocvoltmx(iii)
-     b%cndlast%volt0xp(ii)=ocvoltpx(iii)
-     b%cndlast%volt0zm(ii)=ocvoltmz(iii)
-     b%cndlast%volt0zp(ii)=ocvoltpz(iii)
-     b%cndlast%condidxm(ii)=ocnumbmx(iii)
-     b%cndlast%condidxp(ii)=ocnumbpx(iii)
-     b%cndlast%condidzm(ii)=ocnumbmz(iii)
-     b%cndlast%condidzp(ii)=ocnumbpz(iii)
+     dxm = conductors%oddsubgrid%dels(0,iii)*b%dr
+     dxp = conductors%oddsubgrid%dels(1,iii)*b%dr
+     dzm = conductors%oddsubgrid%dels(4,iii)*b%dz
+     dzp = conductors%oddsubgrid%dels(5,iii)*b%dz
+     b%cndlast%volt0xm(ii)=conductors%oddsubgrid%volt(0,iii)
+     b%cndlast%volt0xp(ii)=conductors%oddsubgrid%volt(1,iii)
+     b%cndlast%volt0zm(ii)=conductors%oddsubgrid%volt(4,iii)
+     b%cndlast%volt0zp(ii)=conductors%oddsubgrid%volt(5,iii)
+     b%cndlast%condidxm(ii)=conductors%oddsubgrid%numb(0,iii)
+     b%cndlast%condidxp(ii)=conductors%oddsubgrid%numb(1,iii)
+     b%cndlast%condidzm(ii)=conductors%oddsubgrid%numb(4,iii)
+     b%cndlast%condidzp(ii)=conductors%oddsubgrid%numb(5,iii)
    END if
    b%cndlast%docalc(ii)=.true.
    IF(b%v(b%cndlast%jj(ii),b%cndlast%kk(ii))/=v_bnd ) then
@@ -5891,7 +5779,7 @@ TYPE(CONDtype), POINTER :: c
        else
          c => c%next
        END if
-       IF(ibnd<=necndbdy) then
+       IF(ibnd<=conductors%evensubgrid%n) then
          iivmin = 1
          iivmax = c%nbbndred
        else
@@ -8795,7 +8683,7 @@ END subroutine set_basegrid_phi
 
 subroutine setmglevels_rz()
 USE multigridrz
-USE Multigrid3d
+USE MGLevels3d
 implicit none
 INTEGER :: i,mglevel
 TYPE(GRIDtype), POINTER :: bg
@@ -8857,22 +8745,25 @@ TYPE(CONDtype), pointer :: c
    bnd => bnd%next
  end do
  
- interior%n = 0
- evensubgrid%n = 0
- oddsubgrid%n = 0
+ conductors%interior%n = 0
+ conductors%evensubgrid%n = 0
+ conductors%oddsubgrid%n = 0
  do ic = 1, bnd%nb_conductors
    IF(ic==1) then
      c => bnd%cndfirst
    else
      c => c%next
    END if
-   interior%n    = interior%n    + c%ncond
-   evensubgrid%n = evensubgrid%n + c%nbbndred
-   oddsubgrid%n  = oddsubgrid%n  + c%nbbnd-c%nbbndred
+   conductors%interior%n    = conductors%interior%n    + c%ncond
+   conductors%evensubgrid%n = conductors%evensubgrid%n + c%nbbndred
+   conductors%oddsubgrid%n  = conductors%oddsubgrid%n  + c%nbbnd-c%nbbndred
  END do
- if (interior%nmax < interior%n) interior%nmax = interior%n
- if (evensubgrid%nmax < evensubgrid%n) evensubgrid%nmax = evensubgrid%n
- if (oddsubgrid%nmax < oddsubgrid%n) oddsubgrid%nmax = oddsubgrid%n
+ if (conductors%interior%nmax < conductors%interior%n) &
+     conductors%interior%nmax = conductors%interior%n
+ if (conductors%evensubgrid%nmax < conductors%evensubgrid%n) &
+     conductors%evensubgrid%nmax = conductors%evensubgrid%n
+ if (conductors%oddsubgrid%nmax < conductors%oddsubgrid%n) &
+     conductors%oddsubgrid%nmax = conductors%oddsubgrid%n
  call gchange("Conductor3d",0)
 
  icc=0
@@ -8886,48 +8777,46 @@ TYPE(CONDtype), pointer :: c
    END if
    do i = 1, c%ncond
      icc=icc+1
-     interior%indx(1,icc) = c%jcond(i)-1
-     interior%indx(3,icc) = c%kcond(i)-1
-     interior%ilevel(icc) = ilevel - 1
-     interior%volt(icc) = c%voltage(i)
+     conductors%interior%indx(0,icc) = c%jcond(i)-1
+     conductors%interior%indx(2,icc) = c%kcond(i)-1
+     conductors%interior%ilevel(icc) = ilevel - 1
+     conductors%interior%volt(icc) = c%voltage(i)
    end do
    do i = 1, c%nbbndred
     IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
      ice=ice+1
-     evensubgrid%indx(1,ice) = c%jj(i)-1
-     evensubgrid%indx(3,ice) = c%kk(i)-1
-     evensubgrid%dels(1,ice) = c%dxm(i)/bnd%dr
-     evensubgrid%dels(2,ice) = c%dxp(i)/bnd%dr
-     evensubgrid%dels(5,ice) = c%dzm(i)/bnd%dz
-     evensubgrid%dels(6,ice) = c%dzp(i)/bnd%dz
-     evensubgrid%ilevel(ice) = ilevel - 1
-     evensubgrid%volt(0,ice) = c%volt0xm(i)
-     evensubgrid%volt(1,ice) = c%volt0xm(i)
-     evensubgrid%volt(2,ice) = c%volt0xp(i)
-     evensubgrid%volt(5,ice) = c%volt0zm(i)
-     evensubgrid%volt(6,ice) = c%volt0zp(i)
+     conductors%evensubgrid%indx(0,ice) = c%jj(i)-1
+     conductors%evensubgrid%indx(2,ice) = c%kk(i)-1
+     conductors%evensubgrid%dels(0,ice) = c%dxm(i)/bnd%dr
+     conductors%evensubgrid%dels(1,ice) = c%dxp(i)/bnd%dr
+     conductors%evensubgrid%dels(4,ice) = c%dzm(i)/bnd%dz
+     conductors%evensubgrid%dels(5,ice) = c%dzp(i)/bnd%dz
+     conductors%evensubgrid%ilevel(ice) = ilevel - 1
+     conductors%evensubgrid%volt(0,ice) = c%volt0xm(i)
+     conductors%evensubgrid%volt(1,ice) = c%volt0xp(i)
+     conductors%evensubgrid%volt(4,ice) = c%volt0zm(i)
+     conductors%evensubgrid%volt(5,ice) = c%volt0zp(i)
     END if
    end do
    do i = c%nbbndred+1, c%nbbnd
     IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
      ico=ico+1
-     oddsubgrid%indx(1,ico) = c%jj(i)-1
-     oddsubgrid%indx(3,ico) = c%kk(i)-1
-     oddsubgrid%dels(1,ico) = c%dxm(i)/bnd%dr
-     oddsubgrid%dels(2,ico) = c%dxp(i)/bnd%dr
-     oddsubgrid%dels(5,ico) = c%dzm(i)/bnd%dz
-     oddsubgrid%dels(6,ico) = c%dzp(i)/bnd%dz
-     oddsubgrid%ilevel(ico) = ilevel - 1
-     oddsubgrid%volt(0,ico) = c%volt0xm(i)
-     oddsubgrid%volt(1,ico) = c%volt0xm(i)
-     oddsubgrid%volt(2,ico) = c%volt0xp(i)
-     oddsubgrid%volt(5,ico) = c%volt0zm(i)
-     oddsubgrid%volt(6,ico) = c%volt0zp(i)
+     conductors%oddsubgrid%indx(0,ico) = c%jj(i)-1
+     conductors%oddsubgrid%indx(2,ico) = c%kk(i)-1
+     conductors%oddsubgrid%dels(0,ico) = c%dxm(i)/bnd%dr
+     conductors%oddsubgrid%dels(1,ico) = c%dxp(i)/bnd%dr
+     conductors%oddsubgrid%dels(4,ico) = c%dzm(i)/bnd%dz
+     conductors%oddsubgrid%dels(5,ico) = c%dzp(i)/bnd%dz
+     conductors%oddsubgrid%ilevel(ico) = ilevel - 1
+     conductors%oddsubgrid%volt(0,ico) = c%volt0xm(i)
+     conductors%oddsubgrid%volt(1,ico) = c%volt0xp(i)
+     conductors%oddsubgrid%volt(4,ico) = c%volt0zm(i)
+     conductors%oddsubgrid%volt(5,ico) = c%volt0zp(i)
     END if
    end do
  END do
- evensubgrid%n = ice
- oddsubgrid%n = ico
+ conductors%evensubgrid%n = ice
+ conductors%oddsubgrid%n = ico
 
 return
 end subroutine get_cond_rz_level
@@ -8944,9 +8833,9 @@ TYPE(CONDtype), pointer :: c
 
  IF(solvergeom==Zgeom .or. solvergeom==Rgeom) return
 
- interior%n = 0
- evensubgrid%n = 0
- oddsubgrid%n = 0
+ conductors%interior%n = 0
+ conductors%evensubgrid%n = 0
+ conductors%oddsubgrid%n = 0
  do il = 1, nlevels
    IF(il == 1) then
      bnd => grids_ptr(igrid)%grid%bndfirst
@@ -8959,14 +8848,17 @@ TYPE(CONDtype), pointer :: c
      else
        c => c%next
      END if
-     interior%n    = interior%n    + c%ncond
-     evensubgrid%n = evensubgrid%n + c%nbbndred
-     oddsubgrid%n  = oddsubgrid%n  + c%nbbnd-c%nbbndred
+     conductors%interior%n    = conductors%interior%n    + c%ncond
+     conductors%evensubgrid%n = conductors%evensubgrid%n + c%nbbndred
+     conductors%oddsubgrid%n  = conductors%oddsubgrid%n  + c%nbbnd-c%nbbndred
    END do
  END do
- if (interior%nmax < interior%n) interior%nmax = interior%n
- if (evensubgrid%nmax < evensubgrid%n) evensubgrid%nmax = evensubgrid%n
- if (oddsubgrid%nmax < oddsubgrid%n) oddsubgrid%nmax = oddsubgrid%n
+ if (conductors%interior%nmax < conductors%interior%n) &
+     conductors%interior%nmax = conductors%interior%n
+ if (conductors%evensubgrid%nmax < conductors%evensubgrid%n) &
+     conductors%evensubgrid%nmax = conductors%evensubgrid%n
+ if (conductors%oddsubgrid%nmax < conductors%oddsubgrid%n) &
+     conductors%oddsubgrid%nmax = conductors%oddsubgrid%n
  call gchange("Conductor3d",0)
 
  icc=0
@@ -8986,49 +8878,47 @@ TYPE(CONDtype), pointer :: c
      END if
      do i = 1, c%ncond
        icc=icc+1
-       interior%indx(1,icc) = c%jcond(i)-1
-       interior%indx(3,icc) = c%kcond(i)-1
-       interior%ilevel(icc) = il - 1
-       interior%volt(icc) = c%voltage(i)
+       conductors%interior%indx(0,icc) = c%jcond(i)-1
+       conductors%interior%indx(2,icc) = c%kcond(i)-1
+       conductors%interior%ilevel(icc) = il - 1
+       conductors%interior%volt(icc) = c%voltage(i)
      end do
      do i = 1, c%nbbndred
       IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
        ice=ice+1
-       evensubgrid%indx(1,ice) = c%jj(i)-1
-       evensubgrid%indx(3,ice) = c%kk(i)-1
-       evensubgrid%dels(1,ice) = c%dxm(i)/bnd%dr
-       evensubgrid%dels(2,ice) = c%dxp(i)/bnd%dr
-       evensubgrid%dels(5,ice) = c%dzm(i)/bnd%dz
-       evensubgrid%dels(6,ice) = c%dzp(i)/bnd%dz
-       evensubgrid%ilevel(ice) = il - 1
-       evensubgrid%volt(0,ice) = c%volt0xm(i)
-       evensubgrid%volt(1,ice) = c%volt0xm(i)
-       evensubgrid%volt(2,ice) = c%volt0xp(i)
-       evensubgrid%volt(5,ice) = c%volt0zm(i)
-       evensubgrid%volt(6,ice) = c%volt0zp(i)
+       conductors%evensubgrid%indx(0,ice) = c%jj(i)-1
+       conductors%evensubgrid%indx(2,ice) = c%kk(i)-1
+       conductors%evensubgrid%dels(0,ice) = c%dxm(i)/bnd%dr
+       conductors%evensubgrid%dels(1,ice) = c%dxp(i)/bnd%dr
+       conductors%evensubgrid%dels(4,ice) = c%dzm(i)/bnd%dz
+       conductors%evensubgrid%dels(5,ice) = c%dzp(i)/bnd%dz
+       conductors%evensubgrid%ilevel(ice) = il - 1
+       conductors%evensubgrid%volt(0,ice) = c%volt0xm(i)
+       conductors%evensubgrid%volt(1,ice) = c%volt0xp(i)
+       conductors%evensubgrid%volt(4,ice) = c%volt0zm(i)
+       conductors%evensubgrid%volt(5,ice) = c%volt0zp(i)
       END if
      end do
      do i = c%nbbndred+1, c%nbbnd
       IF(bnd%v(c%jj(i),c%kk(i))==v_bnd) then
        ico=ico+1
-       oddsubgrid%indx(1,ico) = c%jj(i)-1
-       oddsubgrid%indx(3,ico) = c%kk(i)-1
-       oddsubgrid%dels(1,ico) = c%dxm(i)/bnd%dr
-       oddsubgrid%dels(2,ico) = c%dxp(i)/bnd%dr
-       oddsubgrid%dels(5,ico) = c%dzm(i)/bnd%dz
-       oddsubgrid%dels(6,ico) = c%dzp(i)/bnd%dz
-       oddsubgrid%ilevel(ico) = il - 1
-       oddsubgrid%volt(0,ico) = c%volt0xm(i)
-       oddsubgrid%volt(1,ico) = c%volt0xm(i)
-       oddsubgrid%volt(2,ico) = c%volt0xp(i)
-       oddsubgrid%volt(5,ico) = c%volt0zm(i)
-       oddsubgrid%volt(6,ico) = c%volt0zp(i)
+       conductors%oddsubgrid%indx(0,ico) = c%jj(i)-1
+       conductors%oddsubgrid%indx(2,ico) = c%kk(i)-1
+       conductors%oddsubgrid%dels(0,ico) = c%dxm(i)/bnd%dr
+       conductors%oddsubgrid%dels(1,ico) = c%dxp(i)/bnd%dr
+       conductors%oddsubgrid%dels(4,ico) = c%dzm(i)/bnd%dz
+       conductors%oddsubgrid%dels(5,ico) = c%dzp(i)/bnd%dz
+       conductors%oddsubgrid%ilevel(ico) = il - 1
+       conductors%oddsubgrid%volt(0,ico) = c%volt0xm(i)
+       conductors%oddsubgrid%volt(1,ico) = c%volt0xp(i)
+       conductors%oddsubgrid%volt(4,ico) = c%volt0zm(i)
+       conductors%oddsubgrid%volt(5,ico) = c%volt0zp(i)
       END if
      end do
    END do
  END do
- evensubgrid%n = ice
- oddsubgrid%n = ico
+ conductors%evensubgrid%n = ice
+ conductors%oddsubgrid%n = ico
 
 return
 end subroutine get_cond_rz

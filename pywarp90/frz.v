@@ -1,5 +1,5 @@
 frz
-#@(#) File FRZ.V, version $Revision: 3.34 $, $Date: 2004/02/18 16:18:34 $
+#@(#) File FRZ.V, version $Revision: 3.35 $, $Date: 2004/04/08 19:20:28 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package FRZ of code WARP6
@@ -10,7 +10,7 @@ frz
 }
 
 *********** FRZversion:
-versfrz character*19 /"$Revision: 3.34 $"/#  Code version set by CVS
+versfrz character*19 /"$Revision: 3.35 $"/#  Code version set by CVS
 
 *********** FRZvars:
 # Variables needed by the test driver of package FRZ
@@ -210,7 +210,7 @@ find_mgparam_rz(lsavephi:logical) subroutine
          # RZ version of find_mgparam. Does the search for each subgrid.
 gchange_rhop_phip_rz() subroutine
          # reallocate rhop and phip arrays
-install_conductors_rz() subroutine
+install_conductors_rz(conductors:ConductorType) subroutine
          # install conductors data into RZ arrays
 set_basegrid_phi() subroutine
 	 # set phi on basegrid using w3d.phi 

@@ -1,5 +1,5 @@
 f3d
-#@(#) File F3D.V, version $Revision: 3.99 $, $Date: 2004/03/31 15:06:12 $
+#@(#) File F3D.V, version $Revision: 3.100 $, $Date: 2004/04/08 19:20:27 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package F3D of code WARP6
@@ -10,7 +10,7 @@ LARGEPOS = 1.0e+36 # This must be the same as in top.v
 }
 
 *********** F3Dversion:
-versf3d character*19 /"$Revision: 3.99 $"/#  Code version version is set by CVS
+versf3d character*19 /"$Revision: 3.100 $"/#  Code version version is set by CVS
 
 *********** F3Dvars:
 # Variables needed by the test driver of package F3D
@@ -119,65 +119,74 @@ dxfine    real         # Size of transverse grid cells are finest level
 lplates  logical /.true./ # Sets whether or not quadruple endplates are included
 rodfract        real /1./ # Fraction of quadrupole rod which is used
 
-%%%%%%%%%% ConductorInterior:
-nmax          integer /0/ # Maximum number of points in conductor
-n             integer /0/ # Number of points within conductors
-indx(3,nmax) _integer # Coordinates of points in conductor
-volt(nmax)   _real    # voltage of points in conductor
-numb(nmax)   _integer # Number of the conductor the points are in
-ilevel(nmax) _integer /-1/ # Coarseness level at which the point is on grid
-istart(0:100) integer # Start of the conductor points for each MG level
+%%%%%%%%%% ConductorInteriorType:
+nmax           integer /0/ # Maximum number of points in conductor
+n              integer /0/ # Number of points within conductors
+indx(0:2,nmax)  _integer # Coordinates of points in conductor
+volt(nmax)    _real    # Voltage of points in conductor
+numb(nmax)    _integer # Number of the conductor the points are in
+ilevel(nmax)  _integer /-1/ # Coarseness level at which the point is on grid
+istart(0:100)  integer # Start of the conductor points for each MG level
 
-%%%%%%%%%% ConductorSubGrid:
+%%%%%%%%%% ConductorSubGridType:
 nmax            integer /0/ # Maximum number of points for sub-grid boundaries
 n               integer /0/ # Number of points for sub-grid boundaries
 prevphi(nmax)  _real    # Saves phi for sub-grid boundaries
-indx(3,nmax)   _integer # location of points for sub-grid boundaries
-dels(6,nmax)   _real    # distance to the surface
-volt(0:6,nmax) _real    # voltage of points for sub-grid boundaries
-numb(0:6,nmax) _integer # ID of the conductor the points are in
+indx(0:2,nmax)   _integer # Location of points for sub-grid boundaries
+dels(0:5,nmax)   _real    # Distances to the surface - stored in the order
+                          # mx, px, my, py, mz, pz
+volt(0:5,nmax) _real    # Voltage of points for sub-grid boundaries
+numb(0:5,nmax) _integer # ID of the conductor the points are in
 ilevel(nmax)   _integer /-1/ # Coarseness level at which the point is on grid
 istart(0:100)   integer # Start of the conductor data for each MG level
 
+%%%%%%%%%% ConductorType:
+interior ConductorInteriorType   # Interior of the conductors
+evensubgrid ConductorSubGridType # Even subgrid data for conductors
+oddsubgrid ConductorSubGridType  # Odd subgrid data for conductors
+leveliz(0:100)  integer  # List of iz for the levels of coarsening
+levellx(0:100)  real /1/ # List of coarsening factors in x
+levelly(0:100)  real /1/ # List of coarsening factors in y
+levellz(0:100)  real /1/ # List of coarsening factors in z
+fuzzsign integer /-1/    # When -1, subgrid points with distances == 1 are
+                         # skipped, when +1 not skipped.
+
 *********** Conductor3d dump parallel:
-laddconductor logical /.false./ # When true, the python function
-                          # calladdconductor is called at the beginning of the 
-                          # field solve.
+conductors ConductorType # Default data structure for conductor data
 lcndbndy logical /.true./ # Turns on sub-grid boundaries
 icndbndy integer /1/      # Type of interpolant to use for sub-grid boundaries
                           # 1 egun style
                           # 2 EBC style (non-centered finite-difference)
-fuzzsign     integer /-1/ # When -1, subgrid points with distances == 1 are
-                          # skipped, when +1 not skipped.
-interior ConductorInterior   # Interior of the conductors
-evensubgrid ConductorSubGrid # Even subgrid data for conductors
-oddsubgrid ConductorSubGrid  # Odd subgrid data for conductors
+laddconductor logical /.false./ # When true, the python function
+                          # calladdconductor is called at the beginning of the 
+                          # field solve.
 checkconductors(nx:integer,ny:integer,nz:integer,nzfull:integer,
-                dx:real,dy:real,dz:real,
-                l2symtry:logical,l4symtry:logical) subroutine
+                dx:real,dy:real,dz:real,l2symtry:logical,l4symtry:logical,
+                conductors:ConductorType) subroutine
 
+*********** MGLevels3d:
+mgmaxlevels           integer /101/ # Minimum grid size in x-y to coarsen to
+mglevels              integer /0/  # Number of coarsening levels
+mglevelsnx(0:100)     integer      # List of nx for the levels of coarsening
+mglevelsny(0:100)     integer      # List of ny for the levels of coarsening
+mglevelsnzfull(0:100) integer      # List of nzfull for the levels of coarsening
+mglevelsiz(0:100)     integer      # List of iz for the levels of coarsening
+mglevelsnz(0:100)     integer      # List of nz for the levels of coarsening
+mglevelslx(0:100)     real /101*1/ # List of coarsening factors in x
+mglevelsly(0:100)     real /101*1/ # List of coarsening factors in y
+mglevelslz(0:100)     real /101*1/ # List of coarsening factors in z
+mglevelspart(0:100)   logical      # List of flags for whether full or partial
+                                   # coarsening is done: 0 is full, 1 is partial
 *********** Multigrid3d dump:
 mgparam    real    /1.2/ # Acceleration parameter for multigrid fieldsolver
 mgmaxiters integer /100/ # Maximum number of iterations
 mgiters    integer       # Actual number of iterations
 mgtol      real  /1.e-6/ # Absolute tolerance in change in last iteration
 mgerror    real          # Maximum error after convergence
-mgmaxlevels integer /101/   # Minimum grid size in x-y to coarsen to
 mgform     integer /1/   # When 1, MG operates on phi (and rho),
                          # when 2, MG operates on error (and residual)
 downpasses integer /1/   # Number of downpasses
 uppasses   integer /1/   # Number of uppasses
-mglevels   integer /0/      # Number of coarsening levels
-mglevelsnx(0:100) integer     # List of nx for the levels of coarsening
-mglevelsny(0:100) integer     # List of ny for the levels of coarsening
-mglevelsnzfull(0:100) integer # List of nzfull for the levels of coarsening
-mglevelsiz(0:100) integer +parallel # List of iz for the levels of coarsening
-mglevelsnz(0:100) integer +parallel # List of nz for the levels of coarsening
-mglevelslx(0:100) real /101*1/ # List of coarsening factors in x
-mglevelsly(0:100) real /101*1/ # List of coarsening factors in y
-mglevelslz(0:100) real /101*1/ # List of coarsening factors in z
-mglevelspart(0:100) logical    # List of flags for whether full or partial
-                               # coarsening is done: 0 is full, 1 is partial
 mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                            80,96,112,128,160,192,224,256,320,384,448,512,
                            640,768,896,1024,1280,1536,1792,2048,2560,3072,
@@ -187,22 +196,34 @@ mggoodnumbers(56) integer /2,4,6,8,10,12,14,16,20,24,28,32,40,48,56,64,
                          # A list of good numbers to use for the grid
                          # dimension. This is an ordered list of powers of two
                          # times 1, 3, 5, and 7.
-subgrid_sor_to_mg(nx:integer,ny:integer,nz:integer,dx:real,dy:real,dz:real,
-                  l2symtry:logical,l4symtry:logical) subroutine
-  # Converts a set of points generated for the SOR fieldsolver into the set of
-  # points needed for the multigrid fieldsolver.
 setmglevels(nx:integer,ny:integer,nz:integer,nzfull:integer,
             dx:real,dy:real,dz:real)
-            subroutine   # Calculates levels of coarsening. Note that mglevels
-                         # must be zero when calling this routine.
+   subroutine
+   # Calculates levels of coarsening. Note that mglevels
+   # must be zero when calling this routine.
 multigrid3df(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
              dx:real,dy:real,dz:real,phi:real,rho:real,
              rstar:real,linbend:logical,
              bound0:integer,boundnz:integer,boundxy:integer,
              l2symtry:logical,l4symtry:logical,
              xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real)
-             subroutine # Solves Poisson's equation using the multigrid method.
-
+   subroutine
+   # Solves Poisson's equation using the multigrid method. This uses variables
+   # from the f3d package to control the iterations and conductors.
+multigrid3dsolve(iwhich:integer,nx:integer,ny:integer,nz:integer,nzfull:integer,
+                 dx:real,dy:real,dz:real,phi:real,rho:real,
+                 rstar:real,linbend:logical,
+                 bound0:integer,boundnz:integer,boundxy:integer,
+                 l2symtry:logical,l4symtry:logical,
+                 xmmin:real,ymmin:real,zmmin:real,zbeam:real,zgrid:real,
+                 mgparam:integer,mgform:integer,mgiters:integer,
+                 mgmaxiters:integer,mgerror:real,mgtol:real,
+                 downpasses:integer,uppasses:integer,
+                 lcndbndy:logical,laddconductor:logical,icndbndy:integer,
+                 gridmode:integer,conductors:ConductorType)
+   subroutine
+   # Solves Poisson's equation using the multigrid method. All input is
+   # through the argument list.
 
 *********** Multigrid3d_work:
 # Temporary variables and array used by subgrid_sor_to_mg

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File FXY_MGRID.M, version $Revision: 1.7 $, $Date: 2004/03/31 15:06:13 $
+c@(#) File FXY_MGRID.M, version $Revision: 1.8 $, $Date: 2004/04/08 19:20:29 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 2D multigrid field sovler which is part of the FXY
@@ -71,7 +71,7 @@ c       --- Save current value of phi
 c       --- Do one vcycle.
         call vcyclexy(0,nx,ny,dxsqi,dysqi,phi,rho,
      &                l2symtry,l4symtry,boundxy,
-     &                lcndbndy,icndbndy,interior,evensubgrid,oddsubgrid)
+     &                lcndbndy,icndbndy,conductors)
 
         maxerr = maxval(abs(phisave - phi))
 
@@ -100,7 +100,7 @@ c=============================================================================
       end
 c=============================================================================
       RECURSIVE subroutine setmglevelsrecurxy(nx,ny,dx,dy,mglevel,lx,ly)
-      use Multigrid3d
+      use MGLevels3d
       integer(ISZ):: nx,ny
       real(kind=8):: dx,dy
       integer(ISZ):: mglevel,lx,ly
@@ -126,18 +126,17 @@ c Calculate the levels of coarsening, saving the nx, and ny for each level.
 c=============================================================================
       RECURSIVE subroutine vcyclexy(mglevel,nx,ny,dxsqi,dysqi,
      &                              phi,rho,l2symtry,l4symtry,boundxy,
-     &                      lcndbndy,icndbndy,interior,evensubgrid,oddsubgrid)
+     &                              lcndbndy,icndbndy,conductors)
       use Multigrid3d
-      use ConductorInteriormodule
-      use ConductorSubGridmodule
+      use MGLevels3d
+      use ConductorTypemodule
       integer(ISZ):: mglevel
       integer(ISZ):: nx,ny
       real(kind=8):: dxsqi,dysqi
       real(kind=8):: phi(0:nx,0:ny),rho(0:nx,0:ny)
       logical(ISZ):: l2symtry,l4symtry
       integer(ISZ):: boundxy
-      type(ConductorInterior):: interior
-      type(ConductorSubGrid):: evensubgrid,oddsubgrid
+      type(ConductorType):: conductors
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
 
@@ -151,7 +150,7 @@ c     --- Do initial SOR passes.
       do i=1,downpasses
         call sorpassxy(mglevel,nx,ny,phi,rho,phi,rho,
      &                 dxsqi,dysqi,l2symtry,l4symtry,
-     &                 lcndbndy,icndbndy,interior,evensubgrid,oddsubgrid)
+     &                 lcndbndy,icndbndy,conductors)
       enddo
 
       if (mglevel < mglevels-1) then
@@ -159,7 +158,7 @@ c     --- Do initial SOR passes.
 c       --- Get the residual on the current grid.
         call residualxy(nx,ny,dxsqi,dysqi,phi,rho,res,
      &                  mglevel,l2symtry,l4symtry,
-     &                  lcndbndy,icndbndy,interior,evensubgrid,oddsubgrid)
+     &                  lcndbndy,icndbndy,conductors)
 
         allocate(phi2(0:nx/2,0:ny/2),
      &           rho2(0:nx/2,0:ny/2))
@@ -171,7 +170,7 @@ c       --- Get the residual on the current grid.
 c         --- Continue at the next coarsest level.
           call vcyclexy(mglevel+1,nx/2,ny/2,dxsqi*0.25,dysqi*0.25,phi2,rho2,
      &                  l2symtry,l4symtry,boundxy,
-     &                  lcndbndy,icndbndy,interior,evensubgrid,oddsubgrid)
+     &                  lcndbndy,icndbndy,conductors)
 
 c         --- Add in resulting error.
           call expandxy(nx/2,ny/2,phi2,phi,boundxy)
@@ -183,7 +182,7 @@ c     --- Do final SOR passes.
       do i=1,uppasses
         call sorpassxy(mglevel,nx,ny,phi,rho,phi,rho,
      &                 dxsqi,dysqi,l2symtry,l4symtry,
-     &                 lcndbndy,icndbndy,interior,evensubgrid,oddsubgrid)
+     &                 lcndbndy,icndbndy,conductors)
       enddo
 
       return
@@ -302,12 +301,11 @@ c=============================================================================
 c=============================================================================
       subroutine sorpassxy(mglevel,nx,ny,phi,rho,phi1d,rho1d,
      &                     rdx2,rdy2,l2symtry,l4symtry,
-     &                     lcndbndy,icndbndy,interior,evensubgrid,oddsubgrid)
+     &                     lcndbndy,icndbndy,conductors)
       use GridBoundary3d
       use Multigrid3d
       use Constant
-      use ConductorInteriormodule
-      use ConductorSubGridmodule
+      use ConductorTypemodule
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
       integer(ISZ):: mglevel,nx,ny
@@ -315,8 +313,7 @@ c=============================================================================
       real(kind=8):: phi1d(*),rho1d(*)
       real(kind=8):: rdx2,rdy2
       logical(ISZ):: l2symtry,l4symtry
-      type(ConductorInterior):: interior
-      type(ConductorSubGrid):: evensubgrid,oddsubgrid
+      type(ConductorType):: conductors
 
 c This routine does one pass of point SOR with even-odd (red-black)
 c ordering.  It makes calls to the routines which specify internal
@@ -335,7 +332,7 @@ c The boundaries are then reset, the previous value was destroyed.
 
       real(kind=8):: const,rdx2c,rdy2c,spm1,dx
       integer(ISZ):: nxy,iimx,iipx,iimy,iipy,parity
-      integer(ISZ):: ii,ix,iy,ic
+      integer(ISZ):: ii,ix,iy,ic,i1,i2
       integer(ISZ):: s_parity,e_parity
       real(kind=8):: boundarrx(0:nx,2),boundarry(0:ny,2)
 
@@ -355,7 +352,7 @@ c     --- form of Poisson's equation.
       iipy = +nx+1
 
 c     --- Put desired potential onto conductors in phi array.
-      call cond_potmgxy(interior,nx,ny,phi(0,0),mglevel,.false.)
+      call cond_potmgxy(conductors%interior,nx,ny,phi(0,0),mglevel,.false.)
 
 c     --- Save values on the transverse boundaries.
 c     --- Both even and odd points are saved for all transverse boundaries.
@@ -372,13 +369,19 @@ c     --- Save values just outside conductor surfaces. Only save phi at the
 c     --- subgrid points which are to be used at the current level of
 c     --- grid refinement.
       if (lcndbndy) then
-        do ic = evensubgrid%istart(mglevel),evensubgrid%istart(mglevel+1)-1
-          evensubgrid%prevphi(ic) = phi(evensubgrid%indx(1,ic),
-     &                                  evensubgrid%indx(2,ic))
+        i1 = conductors%evensubgrid%istart(mglevel)
+        i2 = conductors%evensubgrid%istart(mglevel+1)-1
+        do ic = i1,i2
+          ix = conductors%evensubgrid%indx(0,ic)
+          iy = conductors%evensubgrid%indx(1,ic)
+          conductors%evensubgrid%prevphi(ic) = phi(ix,iy)
         enddo
-        do ic = oddsubgrid%istart(mglevel),oddsubgrid%istart(mglevel+1)-1
-          oddsubgrid%prevphi(ic) = phi(oddsubgrid%indx(1,ic),
-     &                                 oddsubgrid%indx(2,ic))
+        i1 = conductors%oddsubgrid%istart(mglevel)
+        i2 = conductors%oddsubgrid%istart(mglevel+1)-1
+        do ic = i1,i2
+          ix = conductors%oddsubgrid%indx(0,ic)
+          iy = conductors%oddsubgrid%indx(1,ic)
+          conductors%oddsubgrid%prevphi(ic) = phi(ix,iy)
         enddo
       endif
 
@@ -490,17 +493,17 @@ c       --- Apply altered difference equation to the points near the
 c       --- surface of the conductor boundaries.
         if (lcndbndy) then
           if (parity == 0) then
-            call condbndymgxy(evensubgrid,nx,ny,phi,rho,rdx2c,rdy2c,
+            call condbndymgxy(conductors%evensubgrid,nx,ny,phi,rho,rdx2c,rdy2c,
      &                        spm1,mgparam,boundxy,l2symtry,l4symtry,mglevel)
           endif
           if (parity == 1) then
-            call condbndymgxy(oddsubgrid,nx,ny,phi,rho,rdx2c,rdy2c,
+            call condbndymgxy(conductors%oddsubgrid,nx,ny,phi,rho,rdx2c,rdy2c,
      &                        spm1,mgparam,boundxy,l2symtry,l4symtry,mglevel)
           endif
         endif
 
 c       --- Put desired potential onto conductors in phi array.
-        call cond_potmgxy(interior,nx,ny,phi(0,0),mglevel,.false.)
+        call cond_potmgxy(conductors%interior,nx,ny,phi(0,0),mglevel,.false.)
 
 c     --- end of loop over even and odd points
       enddo
@@ -525,14 +528,14 @@ c     --- When at the finest level and not calculating the residual, set
 c     --- phi to the voltage of the conductor, otherwise, set it to zero.
       if (mglevel == 0 .and. .not. lresidual) then
         do ic = 1,interior%n
-          ix = interior%indx(1,ic)
-          iy = interior%indx(2,ic)
+          ix = interior%indx(0,ic)
+          iy = interior%indx(1,ic)
           phi(ix,iy) = interior%volt(ic)
         enddo
       else
         do ic = interior%istart(mglevel),interior%istart(mglevel+1)-1
-          ix = interior%indx(1,ic)
-          iy = interior%indx(2,ic)
+          ix = interior%indx(0,ic)
+          iy = interior%indx(1,ic)
           phi(ix,iy) = 0.
         enddo
       endif
@@ -579,8 +582,8 @@ c points on the boundary.
 c     --- loop over points near surface of conductors
       do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
 
-        ix = subgrid%indx(1,ic)
-        iy = subgrid%indx(2,ic)
+        ix = subgrid%indx(0,ic)
+        iy = subgrid%indx(1,ic)
 
 c       --- set temporaries for boundaries
         ixp1 = ix + 1
@@ -621,31 +624,31 @@ c       --- coarser levels since solver for the residuals.
         endif
 
 c       --- the point lower in x is inside the conductor
-        if (dels(1,ic) < 1.) then
-          pxm = voltfac*volt(1,ic)/dels(1,ic)
-          denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2cos
-          dxm = dels(1,ic)
+        if (dels(0,ic) < 1.) then
+          pxm = voltfac*volt(0,ic)/dels(0,ic)
+          denom = denom + (1.-dels(0,ic))/dels(0,ic)*rdx2cos
+          dxm = dels(0,ic)
           dosubgrid = .true.
         endif
 c       --- the point higher in x is inside the conductor
-        if (dels(2,ic) < 1.) then
-          pxp = voltfac*volt(2,ic)/dels(2,ic)
-          denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdx2cos
-          dxp = dels(2,ic)
+        if (dels(1,ic) < 1.) then
+          pxp = voltfac*volt(1,ic)/dels(1,ic)
+          denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2cos
+          dxp = dels(1,ic)
           dosubgrid = .true.
         endif
 c       --- the point lower in y is inside the conductor
-        if (dels(3,ic) < 1.) then
-          pym = voltfac*volt(3,ic)/dels(3,ic)
-          denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2cos
-          dym = dels(3,ic)
+        if (dels(2,ic) < 1.) then
+          pym = voltfac*volt(2,ic)/dels(2,ic)
+          denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdy2cos
+          dym = dels(2,ic)
           dosubgrid = .true.
         endif
 c       --- the point higher in y is inside the conductor
-        if (dels(4,ic) < 1.) then
-          pyp = voltfac*volt(4,ic)/dels(4,ic)
-          denom = denom + (1.-dels(4,ic))/dels(4,ic)*rdy2cos
-          dyp = dels(4,ic)
+        if (dels(3,ic) < 1.) then
+          pyp = voltfac*volt(3,ic)/dels(3,ic)
+          denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2cos
+          dyp = dels(3,ic)
           dosubgrid = .true.
         endif
 c       --- calculate the new phi based on the boundary conditions
@@ -705,8 +708,8 @@ c points on the boundary.
 c     --- loop over points near surface of conductors
       do ic = subgrid%istart(mglevel),subgrid%istart(mglevel+1)-1
 
-        ix = subgrid%indx(1,ic)
-        iy = subgrid%indx(2,ic)
+        ix = subgrid%indx(0,ic)
+        iy = subgrid%indx(1,ic)
 
 c       --- set temporaries for boundaries
         ixp1 = ix + 1
@@ -747,32 +750,32 @@ c       --- coarser levels since solver for the residuals.
         endif
 
 c       --- the point lower in x is inside the conductor
-        if (dels(1,ic) < 1.) then
-          pxm = voltfac*volt(1,ic)/dels(1,ic)
-          denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2c
-          dxm = dels(1,ic)
-          ppp = min(ppp,dels(1,ic))
+        if (dels(0,ic) < 1.) then
+          pxm = voltfac*volt(0,ic)/dels(0,ic)
+          denom = denom + (1.-dels(0,ic))/dels(0,ic)*rdx2c
+          dxm = dels(0,ic)
+          ppp = min(ppp,dels(0,ic))
         endif
 c       --- the point higher in x is inside the conductor
-        if (dels(2,ic) < 1.) then
-          pxp = voltfac*volt(2,ic)/dels(2,ic)
-          denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdx2c
-          dxp = dels(2,ic)
-          ppp = min(ppp,dels(2,ic))
+        if (dels(1,ic) < 1.) then
+          pxp = voltfac*volt(1,ic)/dels(1,ic)
+          denom = denom + (1.-dels(1,ic))/dels(1,ic)*rdx2c
+          dxp = dels(1,ic)
+          ppp = min(ppp,dels(1,ic))
         endif
 c       --- the point lower in y is inside the conductor
-        if (dels(3,ic) < 1.) then
-          pym = voltfac*volt(3,ic)/dels(3,ic)
-          denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2c
-          dym = dels(3,ic)
-          ppp = min(ppp,dels(3,ic))
+        if (dels(2,ic) < 1.) then
+          pym = voltfac*volt(2,ic)/dels(2,ic)
+          denom = denom + (1.-dels(2,ic))/dels(2,ic)*rdy2c
+          dym = dels(2,ic)
+          ppp = min(ppp,dels(2,ic))
         endif
 c       --- the point higher in y is inside the conductor
-        if (dels(4,ic) < 1.) then
-          pyp = voltfac*volt(4,ic)/dels(4,ic)
-          denom = denom + (1.-dels(4,ic))/dels(4,ic)*rdy2c
-          dyp = dels(4,ic)
-          ppp = min(ppp,dels(4,ic))
+        if (dels(3,ic) < 1.) then
+          pyp = voltfac*volt(3,ic)/dels(3,ic)
+          denom = denom + (1.-dels(3,ic))/dels(3,ic)*rdy2c
+          dyp = dels(3,ic)
+          ppp = min(ppp,dels(3,ic))
         endif
 c       --- calculate the residual based on the boundary conditions
         if (ppp < 1.) then
@@ -789,21 +792,19 @@ c         rhovolume = (dxp+dxm)*(dyp+dym)*0.125
 c=============================================================================
       subroutine residualxy(nx,ny,dxsqi,dysqi,phi,rho,res,mglevel,
      &                      l2symtry,l4symtry,
-     &                      lcndbndy,icndbndy,interior,evensubgrid,oddsubgrid)
+     &                      lcndbndy,icndbndy,conductors)
       use GridBoundary3d
       use Multigrid3d
-      use ConductorInteriormodule
-      use ConductorSubGridmodule
+      use ConductorTypemodule
       integer(ISZ):: nx,ny
       real(kind=8):: dxsqi,dysqi
       real(kind=8):: phi(0:nx,0:ny),rho(0:nx,0:ny)
       real(kind=8):: res(0:nx,0:ny)
       integer(ISZ):: mglevel
       logical(ISZ):: l2symtry,l4symtry
-      type(ConductorInterior):: interior
-      type(ConductorSubGrid):: evensubgrid,oddsubgrid
       logical(ISZ):: lcndbndy
       integer(ISZ):: icndbndy
+      type(ConductorType):: conductors
 
 c Calculate the residual on the grid. Residual = r.h.s. - l.h.s.
 c taking into account the premultiplication of rho by
@@ -867,12 +868,12 @@ c     --- Make copies for the periodic boundaries.
       endif
 
 c     --- Zero the residual inside conductors.
-      call cond_potmgxy(interior,nx,ny,res,mglevel,.true.)
+      call cond_potmgxy(conductors%interior,nx,ny,res,mglevel,.true.)
 
 c     --- Calculate the residual near the conductor.
-      call condbndyresxy(evensubgrid,nx,ny,phi,rho,res,
+      call condbndyresxy(conductors%evensubgrid,nx,ny,phi,rho,res,
      &                   dxsqi,dysqi,mgparam,boundxy,l2symtry,l4symtry,mglevel)
-      call condbndyresxy(oddsubgrid,nx,ny,phi,rho,res,
+      call condbndyresxy(conductors%oddsubgrid,nx,ny,phi,rho,res,
      &                   dxsqi,dysqi,mgparam,boundxy,l2symtry,l4symtry,mglevel)
 
       return
@@ -880,7 +881,7 @@ c     --- Calculate the residual near the conductor.
 c=============================================================================
 c=============================================================================
       RECURSIVE subroutine checkconductorsxy(nx,ny,dx,dy,l2symtry,l4symtry)
-      use Multigrid3d
+      use MGLevels3d
       use Conductor3d
       use Parallel
       integer(ISZ):: nx,ny
@@ -904,56 +905,57 @@ c     --- Call the work routine for each level
         dy1 = dy*mglevelsly(il)
         nx1 = mglevelsnx(il)
         ny1 = mglevelsny(il)
-        call checkconductors_workxy(interior,evensubgrid,oddsubgrid,
-     &                              nx1,ny1,dx1,dy1,l2symtry,l4symtry,il)
+        call checkconductors_workxy(conductors%interior,
+     &                            conductors%evensubgrid,conductors%oddsubgrid,
+     &                            nx1,ny1,dx1,dy1,l2symtry,l4symtry,il)
       enddo
 
-      interior%istart = 1
-      evensubgrid%istart = 1
-      oddsubgrid%istart = 1
+      conductors%interior%istart = 1
+      conductors%evensubgrid%istart = 1
+      conductors%oddsubgrid%istart = 1
 
 c     --- Sort the conductor data by level number
 c     --- First, sort conductor points
-      if (interior%n > 0) then
-        allocate(isort(interior%n))
-        call isortconductor(interior%n,interior%ilevel,isort,interior%istart,
+      if (conductors%interior%n > 0) then
+        allocate(isort(conductors%interior%n))
+        call isortconductor(conductors%interior%n,conductors%interior%ilevel,isort,conductors%interior%istart,
      &                      mglevels)
-        nn = interior%n
-        interior%n = interior%istart(mglevels) - 1
-        call iswapconductor(interior%n,isort,nn,2,interior%indx)
-        call iswapconductor(interior%n,isort,nn,1,interior%numb)
-        call rswapconductor(interior%n,isort,nn,1,interior%volt)
-        call iswapconductor(interior%n,isort,nn,1,interior%ilevel)
+        nn = conductors%interior%n
+        conductors%interior%n = conductors%interior%istart(mglevels) - 1
+        call iswapconductor(conductors%interior%n,isort,nn,2,conductors%interior%indx)
+        call iswapconductor(conductors%interior%n,isort,nn,1,conductors%interior%numb)
+        call rswapconductor(conductors%interior%n,isort,nn,1,conductors%interior%volt)
+        call iswapconductor(conductors%interior%n,isort,nn,1,conductors%interior%ilevel)
         deallocate(isort)
       endif
 
 c     --- Sort even subgrid points
-      if (evensubgrid%n > 0) then
-        allocate(isort(evensubgrid%n))
-        call isortconductor(evensubgrid%n,evensubgrid%ilevel,isort,
-     &                      evensubgrid%istart,mglevels)
-        nn = evensubgrid%n
-        evensubgrid%n = evensubgrid%istart(mglevels) - 1
-        call iswapconductor(evensubgrid%n,isort,nn,2,evensubgrid%indx)
-        call rswapconductor(evensubgrid%n,isort,nn,4,evensubgrid%dels)
-        call rswapconductor(evensubgrid%n,isort,nn,5,evensubgrid%volt)
-        call iswapconductor(evensubgrid%n,isort,nn,5,evensubgrid%numb)
-        call iswapconductor(evensubgrid%n,isort,nn,1,evensubgrid%ilevel)
+      if (conductors%evensubgrid%n > 0) then
+        allocate(isort(conductors%evensubgrid%n))
+        call isortconductor(conductors%evensubgrid%n,conductors%evensubgrid%ilevel,isort,
+     &                      conductors%evensubgrid%istart,mglevels)
+        nn = conductors%evensubgrid%n
+        conductors%evensubgrid%n = conductors%evensubgrid%istart(mglevels) - 1
+        call iswapconductor(conductors%evensubgrid%n,isort,nn,2,conductors%evensubgrid%indx)
+        call rswapconductor(conductors%evensubgrid%n,isort,nn,4,conductors%evensubgrid%dels)
+        call rswapconductor(conductors%evensubgrid%n,isort,nn,5,conductors%evensubgrid%volt)
+        call iswapconductor(conductors%evensubgrid%n,isort,nn,5,conductors%evensubgrid%numb)
+        call iswapconductor(conductors%evensubgrid%n,isort,nn,1,conductors%evensubgrid%ilevel)
         deallocate(isort)
       endif
     
 c     --- Sort odd subgrid points
-      if (oddsubgrid%n > 0) then
-        allocate(isort(oddsubgrid%n))
-        call isortconductor(oddsubgrid%n,oddsubgrid%ilevel,isort,
-     &                      oddsubgrid%istart,mglevels)
-        nn = oddsubgrid%n
-        oddsubgrid%n = oddsubgrid%istart(mglevels) - 1
-        call iswapconductor(oddsubgrid%n,isort,nn,2,oddsubgrid%indx)
-        call rswapconductor(oddsubgrid%n,isort,nn,4,oddsubgrid%dels)
-        call rswapconductor(oddsubgrid%n,isort,nn,5,oddsubgrid%volt)
-        call iswapconductor(oddsubgrid%n,isort,nn,5,oddsubgrid%numb)
-        call iswapconductor(oddsubgrid%n,isort,nn,1,oddsubgrid%ilevel)
+      if (conductors%oddsubgrid%n > 0) then
+        allocate(isort(conductors%oddsubgrid%n))
+        call isortconductor(conductors%oddsubgrid%n,conductors%oddsubgrid%ilevel,isort,
+     &                      conductors%oddsubgrid%istart,mglevels)
+        nn = conductors%oddsubgrid%n
+        conductors%oddsubgrid%n = conductors%oddsubgrid%istart(mglevels) - 1
+        call iswapconductor(conductors%oddsubgrid%n,isort,nn,2,conductors%oddsubgrid%indx)
+        call rswapconductor(conductors%oddsubgrid%n,isort,nn,4,conductors%oddsubgrid%dels)
+        call rswapconductor(conductors%oddsubgrid%n,isort,nn,5,conductors%oddsubgrid%volt)
+        call iswapconductor(conductors%oddsubgrid%n,isort,nn,5,conductors%oddsubgrid%numb)
+        call iswapconductor(conductors%oddsubgrid%n,isort,nn,1,conductors%oddsubgrid%ilevel)
         deallocate(isort)
       endif
 
@@ -993,8 +995,8 @@ c     --- Set the conductor points.
       iii = 0
       do ic=1,interior%n
         if (interior%ilevel(ic) /= mglevel) cycle
-        ix = interior%indx(1,ic)
-        iy = interior%indx(2,ic)
+        ix = interior%indx(0,ic)
+        iy = interior%indx(1,ic)
         if (ix < 0 .or. nx < ix .or.
      &      iy < 0 .or. ny < iy) then
           interior%ilevel(ic) = -1
@@ -1011,8 +1013,8 @@ c     ---   check for redundant point (multiple points at grid location)
 
         if (evensubgrid%ilevel(ic) /= mglevel) cycle
 
-        ix = evensubgrid%indx(1,ic)
-        iy = evensubgrid%indx(2,ic)
+        ix = evensubgrid%indx(0,ic)
+        iy = evensubgrid%indx(1,ic)
 
         if (ix < 0 .or. nx < ix .or.
      &      iy < 0 .or. ny < iy) then
@@ -1052,7 +1054,7 @@ c       --- There is another subgrid point here. Combine the data
 c       --- of the two points.
 c       --- For each direction, check if a conductor is nearer to this point
 c       --- than the other point. If so, reset data for the other point.
-        do id=1,4
+        do id=0,3
           if (evensubgrid%dels(id,ic) < 1. .and.
      &        evensubgrid%dels(id,ic) < evensubgrid%dels(id,i)) then
             evensubgrid%dels(id,i)  = evensubgrid%dels(id,ic)
@@ -1073,8 +1075,8 @@ c     ---   check for redundant point (multiple points at grid location)
 
         if (oddsubgrid%ilevel(ic) /= mglevel) cycle
 
-        ix = oddsubgrid%indx(1,ic)
-        iy = oddsubgrid%indx(2,ic)
+        ix = oddsubgrid%indx(0,ic)
+        iy = oddsubgrid%indx(1,ic)
 
         if (ix < 0 .or. nx < ix .or.
      &      iy < 0 .or. ny < iy) then
@@ -1114,7 +1116,7 @@ c       --- There is another subgrid point here. Combine the data
 c       --- of the two points.
 c       --- For each direction, check if a conductor is nearer to this point
 c       --- than the other point. If so, reset data for the other point.
-        do id=1,4
+        do id=0,3
           if (oddsubgrid%dels(id,ic) < 1. .and.
      &        oddsubgrid%dels(id,ic) < oddsubgrid%dels(id,i)) then
             oddsubgrid%dels(id,i)  = oddsubgrid%dels(id,ic)
