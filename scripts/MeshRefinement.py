@@ -465,6 +465,7 @@ the top level grid.
         #self.gatherrhofromchildren_python()
         self.gatherrhofromchildren_fortran()
     self.makerhoperiodic()
+    self.getrhoforfieldsolve()
 
   def zerorho(self,lrootonly=0):
     if not self.isfirstcall(): return
