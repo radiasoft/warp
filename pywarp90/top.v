@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.19 $, $Date: 2001/08/08 19:58:13 $
+#@(#) File TOP.V, version $Revision: 3.20 $, $Date: 2001/08/10 18:51:56 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -617,7 +617,7 @@ linpgrd(0:npgrdol)        _logical         # Flag for when pgrd element in mesh
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.19 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.20 $"/ # Global common version, set by CVS
 
 *********** Ctl_to_pic:
 # Communication between CTL and pic packages.  In TOP since it's "global"
@@ -1625,6 +1625,12 @@ getzmmnt(np,xp:real,yp:real,zp:real,uxp:real,uyp:real,uzp:real,gaminv:real,
             subroutine # Sets moments as a function of z for species 1
 periz(np,zp:real,zgrid:real,zmmax:real,zmmin:real)
             subroutine # Imposes periodicity on z
+griddedparticlescraper(is:integer,isinside:integer,volumeinside:real,
+                       nx:integer,ny:integer,nz:integer,
+                       dx:real,dy:real,dz:real,xmin:real,ymin:real,zmin:real,
+                       l2symtry:logical,l4symtry:logical) subroutine
+                       # General particle scraper which allows scraping
+                       # in complex geometries.
 setgamma(lrelativ)
             subroutine # Converts v to u, sets gammainv for all ptcls
 gammaadv(np,gaminv:real,uxp:real,uyp:real,uzp:real,gamadv:real,lrelativ)
@@ -1653,6 +1659,11 @@ deposgrid2d(itask:integer,np:integer,x:real,y:real,z:real,nx:integer,ny:integer,
 getgrid2d(np:integer,x:real,y:real,z:real,nx:integer,ny:integer,grid:real,
           xmin:real,xmax:real,ymin:real,ymax:real) subroutine
         # Gathers data from a 2-D grid.
+getgrid3d(np:integer,x:real,y:real,z:real,f:real,
+          nx:integer,ny:integer,nz:integer,grid:real,
+          xmin:real,xmax:real,ymin:real,ymax:real,zmin:real,zmax:real,
+          l2symtry:logical,l4symtry:logical) subroutine
+        # Gathers data from a 3-D grid.
 getpsgrd(np,xp:real,uxp:real,nw,nh,psgrd:real,wmin:real,wmax:real,hmin:real,
          hmax:real,zl:real,zr:real,zp:real,uzp:real,slope:real)
               subroutine # lays particles onto slanted mesh in phase space

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.M, version $Revision: 3.19 $, $Date: 2001/08/08 19:58:13 $
+c@(#) File TOP.M, version $Revision: 3.20 $, $Date: 2001/08/10 18:51:56 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -1315,7 +1315,7 @@ c        --- find the elements at each of the grid points.
 c        --- find index of nearest drft element
          if (drfts) then
            do io=1,ndrftol
-             call getelemid(zz,offset,ndrft,drftzs,drftze,odrftnn(io),
+             call getelemid(zz,offset,ndrft,drftzs(0),drftze(0),odrftnn(io),
      &                      odrftoi(odrftii(io)),odrftio,cdrftid(iz,io))
 c            --- load lattice info into comoving 1d array
              cdrftzs(iz,io) = drftzs(cdrftid(iz,io)) + offset
@@ -1332,7 +1332,7 @@ c        --- are actually not supported since the idea of overlapping bends
 c        --- doesn't make much sense. The extra indexing is done so that the
 c        --- getelemid routine can still be used.
          if (bends) then
-           call getelemid(zz,offset,nbend,bendzs,bendze,obendnn(1),
+           call getelemid(zz,offset,nbend,bendzs(0),bendze(0),obendnn(1),
      &                    obendoi(obendii(1)),obendio,cbendid(iz))
 c          --- load lattice info into comoving 1d array
            cbendzs(iz) = bendzs(cbendid(iz)) + offset
@@ -1351,7 +1351,7 @@ c        --- corrections (when dipos is true), and internal conductors (when
 c        --- fstype is 3).
          if (dipos .or. fstype == 3) then
            do io=1,ndipool
-             call getelemid(zz,offset,ndipo,dipozs,dipoze,odiponn(io),
+             call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),odiponn(io),
      &                      odipooi(odipoii(io)),odipoio,cdipoid(iz,io))
 c            --- load lattice info into comoving 1d array
              cdipozs(iz,io) = dipozs(cdipoid(iz,io)) + offset
@@ -1374,8 +1374,8 @@ c        --- corrections (when quads is true) and the internal conductors (when
 c        --- fstype is either 2 or 3).
          if (quads .or. fstype == 2 .or. fstype == 3) then
            do io=1,nquadol
-             call getelemid(zz,offset,nquad,quadzs,quadze,oquadnn(io),
-     &                      oquadoi(oquadii(io)),oquadio,cquadid(iz,io))
+             call getelemid(zz,offset,nquad,quadzs(0),quadze(0),oquadnn(io),
+     &                      oquadoi(oquadii(io)),oquadio(0),cquadid(iz,io))
              id = cquadid(iz,io)
 c            --- load lattice info into comoving 1d array
              cquadzs(iz,io) = quadzs(id) + offset
@@ -1384,7 +1384,8 @@ c            --- load lattice info into comoving 1d array
              cquadde(iz,io) = quadde(id)
              cquadvx(iz,io) = quadvx(id)
              cquadvy(iz,io) = quadvy(id)
-             if (quadts(id)<=time .and. time<quadts(id)+ntquad*quaddt(id)) then
+             if (ntquad > 0 .and. 
+     &           quadts(id)<=time .and. time<quadts(id)+ntquad*quaddt(id)) then
                ii = int((time - quadts(id))/quaddt(id))
                wi = (time - quadts(id))/quaddt(id) - ii
                cquadde(iz,io) = cquadde(iz,io) + quadet(ii  ,id)*(1. - wi) +
@@ -1417,8 +1418,8 @@ c        --- The csext arrays calculated here are needed for residence
 c        --- corrections (when sexts is true).
          if (sexts) then
            do io=1,nsextol
-             call getelemid(zz,offset,nsext,sextzs,sextze,osextnn(io),
-     &                      osextoi(osextii(io)),osextio,csextid(iz,io))
+             call getelemid(zz,offset,nsext,sextzs(0),sextze(0),osextnn(io),
+     &                      osextoi(osextii(io)),osextio(0),csextid(iz,io))
 c            --- load lattice info into comoving 1d array
              csextzs(iz,io) = sextzs(csextid(iz,io)) + offset
              csextze(iz,io) = sextze(csextid(iz,io)) + offset
@@ -1433,8 +1434,8 @@ c            --- load lattice info into comoving 1d array
 c        --- find index of nearest hard-edge multipole element
          if (heles) then
            do io=1,nheleol
-             call getelemid(zz,offset,nhele,helezs,heleze,ohelenn(io),
-     &                      oheleoi(oheleii(io)),oheleio,cheleid(iz,io))
+             call getelemid(zz,offset,nhele,helezs(0),heleze(0),ohelenn(io),
+     &                      oheleoi(oheleii(io)),oheleio(0),cheleid(iz,io))
 c            --- load lattice info into comoving 1d array
              chelezs(iz,io) = helezs(cheleid(iz,io)) + offset
              cheleze(iz,io) = heleze(cheleid(iz,io)) + offset
@@ -1447,8 +1448,8 @@ c            --- load lattice info into comoving 1d array
 c        --- find index of nearest acceleration element
          if (accls) then
            do io=1,nacclol
-             call getelemid(zz,offset,naccl,acclzs,acclze,oacclnn(io),
-     &                      oaccloi(oacclii(io)),oacclio,cacclid(iz,io))
+             call getelemid(zz,offset,naccl,acclzs(0),acclze(0),oacclnn(io),
+     &                      oaccloi(oacclii(io)),oacclio(0),cacclid(iz,io))
              id = cacclid(iz,io)
              if (acclze(id) + offset > acclzstt) then
                cacclzs(iz,io) = acclzs(id) + offset
@@ -1481,8 +1482,8 @@ c        --- The cemlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          if (emlts) then
            do io=1,nemltol
-             call getelemid(zz,offset,nemlt,emltzs,emltze,oemltnn(io),
-     &                      oemltoi(oemltii(io)),oemltio,cemltid(iz,io))
+             call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),oemltnn(io),
+     &                      oemltoi(oemltii(io)),oemltio(0),cemltid(iz,io))
 c            --- load lattice info into comoving 1d array
              id = cemltid(iz,io)
              cemltzs(iz,io) = emltzs(id) + offset
@@ -1518,8 +1519,8 @@ c        --- The cmmlt arrays calculated here are needed for the elements
 c        --- described in terms of their multipole components.
          if (mmlts) then
            do io=1,nmmltol
-             call getelemid(zz,offset,nmmlt,mmltzs,mmltze,ommltnn(io),
-     &                      ommltoi(ommltii(io)),ommltio,cmmltid(iz,io))
+             call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),ommltnn(io),
+     &                      ommltoi(ommltii(io)),ommltio(0),cmmltid(iz,io))
 c            --- load lattice info into comoving 1d array
              id = cmmltid(iz,io)
              cmmltzs(iz,io) = mmltzs(id) + offset
@@ -1555,8 +1556,8 @@ c        --- The cbgrdid array calculated here is needed for the magnetic
 c        --- elements described by B field data on a 3-D grid.
          if (bgrds) then
            do io=1,nbgrdol
-             call getelemid(zz,offset,nbgrd,bgrdzs,bgrdze,obgrdnn(io),
-     &                      obgrdoi(obgrdii(io)),obgrdio,cbgrdid(iz,io))
+             call getelemid(zz,offset,nbgrd,bgrdzs(0),bgrdze(0),obgrdnn(io),
+     &                      obgrdoi(obgrdii(io)),obgrdio(0),cbgrdid(iz,io))
 c            --- load lattice info into comoving 1d array
              cbgrdzs(iz,io) = bgrdzs(cbgrdid(iz,io)) + offset
              cbgrdze(iz,io) = bgrdze(cbgrdid(iz,io)) + offset
@@ -1573,8 +1574,8 @@ c        --- The cpgrdid array calculated here is needed for the electrostatic
 c        --- elements described by potential data on a 3-D grid.
          if (pgrds) then
            do io=1,npgrdol
-             call getelemid(zz,offset,npgrd,pgrdzs,pgrdze,opgrdnn(io),
-     &                      opgrdoi(opgrdii(io)),opgrdio,cpgrdid(iz,io))
+             call getelemid(zz,offset,npgrd,pgrdzs(0),pgrdze(0),opgrdnn(io),
+     &                      opgrdoi(opgrdii(io)),opgrdio(0),cpgrdid(iz,io))
 c            --- load lattice info into comoving 1d array
              cpgrdzs(iz,io) = pgrdzs(cpgrdid(iz,io)) + offset
              cpgrdze(iz,io) = pgrdze(cpgrdid(iz,io)) + offset
@@ -1707,18 +1708,18 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,ndipo,dipozs,dipoze,odiponn(io),
-     &                 odipooi(odipoii(io)),odipoio,id)
+        call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),odiponn(io),
+     &                 odipooi(odipoii(io)),odipoio(0),id)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,ndipo,dipozs,dipoze,odiponn(1),
-     &                 odipooi(odipoii(1)),odipoio,id)
+        call getelemid(zz,offset,ndipo,dipozs(0),dipoze(0),odiponn(1),
+     &                 odipooi(odipoii(1)),odipoio(0),id)
 c       --- Loop over rest of overlap levels looking for a dipo with lower
 c       --- z start.
         id_temp = id
         do ii=2,ndipool
-          call getelemid(zz,offset_temp,ndipo,dipozs,dipoze,odiponn(ii),
-     &                   odipooi(odipoii(ii)),odipoio,id_temp)
+          call getelemid(zz,offset_temp,ndipo,dipozs(0),dipoze(0),odiponn(ii),
+     &                   odipooi(odipoii(ii)),odipoio(0),id_temp)
           if (dipozs(id_temp)+offset_temp < dipozs(id)+offset) then
             id = id_temp
             offset = offset_temp
@@ -1743,19 +1744,163 @@ c z start.
 
       if (io > 0) then
 c       --- Just call getelemid.
-        call getelemid(zz,offset,nquad,quadzs,quadze,oquadnn(io),
-     &                 oquadoi(oquadii(io)),oquadio,id)
+        call getelemid(zz,offset,nquad,quadzs(0),quadze(0),oquadnn(io),
+     &                 oquadoi(oquadii(io)),oquadio(0),id)
       else
 c       --- Call getelemid for overlap level 1 to get first guess.
-        call getelemid(zz,offset,nquad,quadzs,quadze,oquadnn(1),
-     &                 oquadoi(oquadii(1)),oquadio,id)
+        call getelemid(zz,offset,nquad,quadzs(0),quadze(0),oquadnn(1),
+     &                 oquadoi(oquadii(1)),oquadio(0),id)
 c       --- Loop over rest of overlap levels looking for a quad with lower
 c       --- z start.
         id_temp = id
         do ii=2,nquadol
-          call getelemid(zz,offset_temp,nquad,quadzs,quadze,oquadnn(ii),
-     &                   oquadoi(oquadii(ii)),oquadio,id_temp)
+          call getelemid(zz,offset_temp,nquad,quadzs(0),quadze(0),oquadnn(ii),
+     &                   oquadoi(oquadii(ii)),oquadio(0),id_temp)
           if (quadzs(id_temp)+offset_temp < quadzs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
+      return
+      end
+c=============================================================================
+      subroutine getheleid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the hele at the z location zz and overlap
+c level io. If the overlap level is 0, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (io > 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,nhele,helezs(0),heleze(0),ohelenn(io),
+     &                 oheleoi(oheleii(io)),oheleio(0),id)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,nhele,helezs(0),heleze(0),ohelenn(1),
+     &                 oheleoi(oheleii(1)),oheleio(0),id)
+c       --- Loop over rest of overlap levels looking for a hele with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,nheleol
+          call getelemid(zz,offset_temp,nhele,helezs(0),heleze(0),ohelenn(ii),
+     &                   oheleoi(oheleii(ii)),oheleio(0),id_temp)
+          if (helezs(id_temp)+offset_temp < helezs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
+      return
+      end
+c=============================================================================
+      subroutine getemltid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the emlt at the z location zz and overlap
+c level io. If the overlap level is 0, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (io > 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),oemltnn(io),
+     &                 oemltoi(oemltii(io)),oemltio(0),id)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,nemlt,emltzs(0),emltze(0),oemltnn(1),
+     &                 oemltoi(oemltii(1)),oemltio(0),id)
+c       --- Loop over rest of overlap levels looking for a emlt with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,nemltol
+          call getelemid(zz,offset_temp,nemlt,emltzs(0),emltze(0),oemltnn(ii),
+     &                   oemltoi(oemltii(ii)),oemltio(0),id_temp)
+          if (emltzs(id_temp)+offset_temp < emltzs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
+      return
+      end
+c=============================================================================
+      subroutine getmmltid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the mmlt at the z location zz and overlap
+c level io. If the overlap level is 0, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (io > 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),ommltnn(io),
+     &                 ommltoi(ommltii(io)),ommltio(0),id)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,nmmlt,mmltzs(0),mmltze(0),ommltnn(1),
+     &                 ommltoi(ommltii(1)),ommltio(0),id)
+c       --- Loop over rest of overlap levels looking for a mmlt with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,nmmltol
+          call getelemid(zz,offset_temp,nmmlt,mmltzs(0),mmltze(0),ommltnn(ii),
+     &                   ommltoi(ommltii(ii)),ommltio(0),id_temp)
+          if (mmltzs(id_temp)+offset_temp < mmltzs(id)+offset) then
+            id = id_temp
+            offset = offset_temp
+          endif
+        enddo
+      endif
+      return
+      end
+c=============================================================================
+      subroutine getacclid(zz,offset,id,io)
+      use Lattice
+      use LatticeInternal
+      real(kind=8):: zz,offset
+      integer(ISZ):: id,io
+
+c Gets the id and offset for the accl at the z location zz and overlap
+c level io. If the overlap level is 0, finds the element with the lowest
+c z start.
+
+      integer(ISZ):: ii,id_temp
+      real(kind=8):: offset_temp
+
+      if (io > 0) then
+c       --- Just call getelemid.
+        call getelemid(zz,offset,naccl,acclzs(0),acclze(0),oacclnn(io),
+     &                 oaccloi(oacclii(io)),oacclio(0),id)
+      else
+c       --- Call getelemid for overlap level 1 to get first guess.
+        call getelemid(zz,offset,naccl,acclzs(0),acclze(0),oacclnn(1),
+     &                 oaccloi(oacclii(1)),oacclio(0),id)
+c       --- Loop over rest of overlap levels looking for a accl with lower
+c       --- z start.
+        id_temp = id
+        do ii=2,nacclol
+          call getelemid(zz,offset_temp,naccl,acclzs(0),acclze(0),oacclnn(ii),
+     &                   oaccloi(oacclii(ii)),oacclio(0),id_temp)
+          if (acclzs(id_temp)+offset_temp < acclzs(id)+offset) then
             id = id_temp
             offset = offset_temp
           endif
@@ -4804,6 +4949,98 @@ c                 (only need if moving backward in time).
 
 #endif
 c --- end of ifelse above for paralle version.
+
+      return
+      end
+c=============================================================================
+c A general particle scraping routine, which allows particles to be scraped
+c efficiently using complex geometries.
+c=============================================================================
+      subroutine griddedparticlescraper(is,isinside,volumeinside,nx,ny,nz,
+     &                                  dx,dy,dz,xmin,ymin,zmin,
+     &                                  l2symtry,l4symtry)
+      use Particles
+      integer(ISZ):: is,nx,ny,nz
+      real(kind=8):: dx,dy,dz,xmin,ymin,zmin
+      logical(ISZ):: l2symtry,l4symtry
+      integer(ISZ):: isinside(0:nx,0:ny,0:nz)
+      real(kind=8):: volumeinside(0:nx-1,0:ny-1,0:nz-1)
+
+c This provides a method of scraping particles in a complex geometry.  It
+c takes two arrays: a node-centered array which has a value of 1 for each
+c point inside a conductor and 0 otherwise; and a cell-centered array
+c which has the fraction of each cell inside of the conductor. To make the
+c check, the node-centered array is area weighted onto the partice
+c position, giving effectively the fraction of the particle inside the
+c conductor. If that fraction is greater than the fraction of the grid
+c cell outside the conductor, then the particle is scraped. Note that this
+c only approximates the conductor as a piece-wise continuous plane.
+
+c Input:
+c   is: species number of particles to process
+c   isinside(0:nx,0:ny,0:nz): node-centered grid
+c   volumeinside(0:nx-1,0:ny-1,0:nz-1): cell-centered grid
+c   nx,ny,nz: grid dimensions
+c   dx,dy,dz: grid cell sizes
+c   xmin,ymin,zmin: coordinates of lower left hand corner of grid
+c   l2symtry,l4symtry: level of symmetry to use
+
+      integer(ISZ):: ip,ix,iy,iz
+      real(kind=8):: dxi,dyi,dzi,wx,wy,wz
+      real(kind=8):: fraction_inside
+ 
+c     --- set grid cell inverse sizes
+      dxi = 1./dx
+      dyi = 1./dy
+      dzi = 1./dz
+ 
+c     --- loop over particles
+      do ip=1,np
+ 
+c       --- find location on grid
+        if (l4symtry) then
+          ix = abs((xp(ip) - xmin)*dxi)
+          iy = abs((yp(ip) - ymin)*dyi)
+          iz =     (zp(ip) - zmin)*dzi
+        else if (l2symtry) then
+          ix =     (xp(ip) - xmin)*dxi
+          iy = abs((yp(ip) - ymin)*dyi)
+          iz =     (zp(ip) - zmin)*dzi
+        else
+          ix =     (xp(ip) - xmin)*dxi
+          iy =     (yp(ip) - ymin)*dyi
+          iz =     (zp(ip) - zmin)*dzi
+        endif
+ 
+c       --- if within grid, examine the particle, otherwise assume its OK.
+        if (ix >= 0 .and. ix < nx .and.
+     &      iy >= 0 .and. iy < ny .and.
+     &      iz >= 0 .and. iz < nz) then
+
+          wx = (xp(ip) - xmin)*dxi - ix
+          wy = (yp(ip) - ymin)*dyi - iy
+          wz = (zp(ip) - zmin)*dzi - iz
+
+          fraction_inside =
+     &        isinside(ix  ,iy  ,iz  )*(1. - wx)*(1. - wy)*(1. - wz) +
+     &        isinside(ix+1,iy  ,iz  )*      wx *(1. - wy)*(1. - wz) +
+     &        isinside(ix  ,iy+1,iz  )*(1. - wx)*      wy *(1. - wz) +
+     &        isinside(ix+1,iy+1,iz  )*      wx *      wy *(1. - wz) +
+     &        isinside(ix  ,iy  ,iz+1)*(1. - wx)*(1. - wy)*      wz  +
+     &        isinside(ix+1,iy  ,iz+1)*      wx *(1. - wy)*      wz  +
+     &        isinside(ix  ,iy+1,iz+1)*(1. - wx)*      wy *      wz  +
+     &        isinside(ix+1,iy+1,iz+1)*      wx *      wy *      wz
+
+          if (fraction_inside > (1. - volumeinside(ix,iy,iz))) then
+c           --- Scrape the particle
+            uxp(ip) = 0.0
+            uyp(ip) = 0.0
+            uzp(ip) = 0.0
+          endif
+
+        endif
+ 
+      enddo
 
       return
       end
