@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.21 $, $Date: 2003/05/29 17:00:26 $
+c TOPSLAVE.M, version $Revision: 1.22 $, $Date: 2003/06/25 00:40:51 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -457,7 +457,7 @@ c at once.
       integer(ISZ):: recvcounts(0:nslaves-1),rdispls(0:nslaves-1)
       include "mpif.h"
 
-c     --- First, create z-array which species which processors owns which
+c     --- First, create z-array that specifies which processors owns which
 c     --- location. This is used to make the sorting of particles to
 c     --- processors efficient. Using this array avoids having to loop
 c     --- over every processor to find which one the particle is in.
@@ -472,6 +472,8 @@ c     --- over every processor to find which one the particle is in.
         izp2 = int((zpslmax(ip) - zpmin)/dzp)
         zprocs(izp1:izp2) = ip
       enddo
+      zprocs(0) = 0
+      zprocs(nzp) = nslaves-1
 
 c     --- Next, create temporary arrays to hold the sorted particles.
       pnp = sum(nps)
