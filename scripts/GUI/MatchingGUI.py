@@ -282,6 +282,7 @@ class MatchingGUI(wxPanel):
         self.OnFinalbTextEnter(None,'bfinal')
         self.OnFinalapTextEnter(None,'apfinal')
         self.OnFinalbpTextEnter(None,'bpfinal')
+        event.Skip()
 
     def OnUseheleRadiobutton(self, event):
         self.usehele = self.UseHele.GetValue()
