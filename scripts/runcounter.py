@@ -3,7 +3,7 @@
 from warp import *
 import time
 import string
-runcounter_version = "$Id: runcounter.py,v 1.5 2002/10/10 17:52:56 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.6 2003/04/17 22:19:58 dave Exp $"
 
 def runcounter(init=0,delta=1,suffix=None,sleep=0,ensambles=None):
   if not suffix: suffix = arraytostr(top.runid)
@@ -39,9 +39,10 @@ def runcounter(init=0,delta=1,suffix=None,sleep=0,ensambles=None):
       r.append(runnumber % e)
       runnumber = int(runnumber/e)
     r.append(runnumber)
-    return r
+    return tuple(r)
 
-def accumulatedata(filename,datadict,globaldict={}):
+def accumulatedata(filename,datadict,scalardict={},globaldict={},pe0only=1):
+  if pe0only and me > 0: return
   actualdata = {}
   try:
     ff = PR.PR(filename)
@@ -60,6 +61,8 @@ def accumulatedata(filename,datadict,globaldict={}):
       actualdata[k] = arrayappend(newarray,d)
   ff = PW.PW(filename)
   for k,v in map(None,actualdata.keys(),actualdata.values()):
+    ff.write(k,v)
+  for k,v in map(None,scalardict.keys(),scalardict.values()):
     ff.write(k,v)
   ff.close()
 
