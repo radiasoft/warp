@@ -4,7 +4,7 @@ specified z plane. The data is used by PlaneRestore to continue the
 simulation. The two simulations are linked together.
 """
 from warp import *
-plane_save_version = "$Id: plane_save.py,v 1.10 2003/08/15 23:05:10 dave Exp $"
+plane_save_version = "$Id: plane_save.py,v 1.11 2003/10/07 21:54:30 dave Exp $"
 
 class PlaneSave:
   """
@@ -23,15 +23,17 @@ Input:
                         when first particle cross zplane.
   - deltaz: z grid cell size of simulation where the data will be restored.
             Defaults to w3d.dz, must be an integer multiple of w3d.dz. 
-  - maxvzdt=w3d.dz: maximum distance particles are expected to travel
-                    when passing through zplane
+  - deltat: time step size of simulation where the data will be restored.
+            Defaults to top.dt. top.dt must be an integer multiple of deltat.
+  - maxvzdt=deltaz*deltat/dt: maximum distance particles are expected to travel
+                              when passing through zplane
   - newfile=0: When true, creates a new file to save data into, otherwise
                append to file if it already exists.
 
   """
 
   def __init__(self,zplane,filename=None,js=None,allways_save=false,
-                    deltaz=None,maxvzdt=None,newfile=0):
+                    deltaz=None,deltat=None,maxvzdt=None,newfile=0):
 
     self.zplane = nint(zplane/w3d.dz)*w3d.dz
 
@@ -44,19 +46,21 @@ Input:
     else:
       self.save_this_step = false
 
-    # --- set distance between saved phi planes
+    # --- Set distance between saved phi planes
     if deltaz is None: self.deltaz = w3d.dz
     else:              self.deltaz = deltaz
-    self.izz = nint(self.deltaz/w3d.dz)
+    self.izz = max(1,nint(self.deltaz/w3d.dz))
+
+    # --- Set frequency that data is saved.
+    if deltat is None: self.deltat = top.dt
+    else:              self.deltat = deltat
+    self.itt = max(1,nint(self.deltat/top.dt))
 
     # --- Maximum distance particles are expected to travel when passing
     # --- through zplane. This is the initial value taken and will be updated
     # --- if faster particles are found.
-    if maxvzdt is None: self.maxvzdt = w3d.dz
+    if maxvzdt is None: self.maxvzdt = w3d.dz*self.izz*self.itt
     else:               self.maxvzdt = maxvzdt
-
-    # --- Create space to copy phi into
-    self.phi_save = zeros([w3d.nx+1,w3d.ny+1,2],'d')
 
     # --- initializes list of species
     if type(js) == IntType:
@@ -95,6 +99,7 @@ Input:
       self.f.ymmax     = w3d.ymmax
       self.f.dt        = top.dt
       self.f.deltaz    = self.deltaz
+      self.f.deltat    = self.deltat
       self.f.npid      = top.npid
      
       # --- set sym_plane and write it out
@@ -119,6 +124,9 @@ Input:
       self.f.close()
 
   def saveplane(self):
+    # --- Only save data at specified frequency
+    if (top.it % self.itt) > 0: return
+
     if me == 0:
       # --- open file in append mode
       self.f = PW.PW(self.filename,'a')
@@ -132,8 +140,10 @@ Input:
     if(self.save_this_step):
       # --- get the two planes of phi to be saved
       iz = nint((self.zplane - top.zbeam - w3d.zmminglobal)/w3d.dz)
-      self.phi_save[:,:,0] = getphi(iz=iz-self.izz)
-      self.phi_save[:,:,1] = getphi(iz=iz)
+      #self.phi_save[:,...,0] = getphi(iz=iz-self.izz)
+      #self.phi_save[:,...,1] = getphi(iz=iz)
+      self.phi_save = transpose(array([transpose(getphi(iz=iz-self.izz)),
+                                       transpose(getphi(iz=iz))]))
       if me == 0:
         try:
           self.f.write('phiplane%d'%self.it,self.phi_save)
@@ -163,10 +173,10 @@ Input:
       # --- Make sure that the region is large enough to capture all particles
       # --- that may have crossed zplane.
       # --- If there are faster particles, increase maxvzdt appropriately and
-      # --- reget vz. Do this until maxvzdt > max(vz)*dt
+      # --- reget vz. Do this until maxvzdt > max(vz)*dt*itt
       maxvz = globalmax(vz)
-      while maxvz*top.dt > self.maxvzdt:
-        self.maxvzdt = maxvz*top.dt*1.1
+      while maxvz*top.dt*self.itt > self.maxvzdt:
+        self.maxvzdt = maxvz*top.dt*self.itt*1.1
         vz = getvz(js=js,zl=self.zplane,zu=self.zplane+self.maxvzdt)
         maxvz = globalmax(vz)
 
@@ -186,7 +196,7 @@ Input:
 
       # --- Recalculate the previous axial location of the particles to check
       # --- if the particles crossed the saving plane.
-      old_zz = zz - vz*top.dt
+      old_zz = zz - vz*top.dt*self.itt
 
       # --- find indices of particles which crossed the plane in the
       # --- last time step
