@@ -1,5 +1,5 @@
 from warp import *
-getzmom_version = "$Id: getzmom.py,v 1.15 2003/07/18 22:04:50 dave Exp $"
+getzmom_version = "$Id: getzmom.py,v 1.16 2003/07/22 19:42:44 dave Exp $"
 
 def getzmomdoc():
   print """
@@ -32,15 +32,6 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
   # If changed, fix Win_Moments arrays
   if (len(top.pnumz) != top.nzmmnt+1): gchange ("Z_Moments")
   
-  try:
-    numzmmnt = top.numzmmnt
-  except:
-    numzmmnt = 28
-  maxp = zeros(6,'d')
-  minp = zeros(6,'d')
-  zmmnts0 = zeros(numzmmnt,'d')
-  zmmnts = zeros((1+top.nzmmnt,numzmmnt),'d')
-
   # --- This is bad idea and so is commented out.
   # If itask is greater than zero, assume that the intent was to do the
   # calculation regardless of the value of laccumulate_zmoments.  Save
@@ -55,7 +46,7 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
       getzmmnt(1,top.xp,top.yp,top.zp,top.uxp,top.uyp,top.uzp,top.gaminv,
                top.sq,top.sm,top.sw,top.dt/2.,1,
                top.nplive,uxpo,uypo,uzpo,1,top.ns,
-               maxp,minp,zmmnts0,zmmnts)
+               top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
     except:
       getzmmnt(1,top.xp,top.yp,top.zp,top.uxp,top.uyp,top.uzp,top.gaminv,
                top.sq,top.sm,top.sw,top.dt/2.,1,
@@ -82,7 +73,7 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
                       top.gaminv[ipmin:],top.sq[js],top.sm[js],top.sw[js],
                       top.dt,2,top.nplive,
                       uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,top.ns,
-                      maxp,minp,zmmnts0,zmmnts)
+                      top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
            except:
              getzmmnt(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
                       top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
@@ -97,7 +88,7 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
                       top.sq[js],top.sm[js],top.sw[js],
                       top.dt,2,top.nplive,
                       uxpo[ipmin:],uypo[ipmin:],uzpo[ipmin:],js+1,top.ns,
-                      maxp,minp,zmmnts0,zmmnts)
+                      top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
            except:
              getzmmnt_weights(ip,top.xp[ipmin:],top.yp[ipmin:],top.zp[ipmin:],
                       top.uxp[ipmin:],top.uyp[ipmin:],top.uzp[ipmin:],
@@ -112,7 +103,7 @@ zmmnt(itask=0,js=None, jslist=xrange(0,top.ns))
       getzmmnt(1,top.xp,top.yp,top.zp,top.uxp,top.uyp,top.uzp,top.gaminv,
                top.sq,top.sm,top.sw,top.dt/2.,3,
                top.nplive,uxpo,uypo,uzpo,1,top.ns,
-               maxp,minp,zmmnts0,zmmnts)
+               top.tempmaxp,top.tempminp,top.tempzmmnts0,top.tempzmmnts)
     except:
       getzmmnt(1,top.xp,top.yp,top.zp,top.uxp,top.uyp,top.uzp,top.gaminv,
                top.sq,top.sm,top.sw,top.dt/2.,3,
