@@ -1,6 +1,6 @@
 from warp import *
 import cPickle
-realboundaries_version = "$Id: realboundaries.py,v 1.23 2003/02/27 19:37:20 dave Exp $"
+realboundaries_version = "$Id: realboundaries.py,v 1.24 2003/05/06 01:05:24 dave Exp $"
 
 ##############################################################################
 def realboundariesdoc():
@@ -749,8 +749,8 @@ Constructor arguments:
         hzs = top.chelezs[0,io]
         hze = top.cheleze[0,io]
         if (max(abs(top.heleae[:,hid])) > 0. or
-            top.helerr[qid] > 0. or top.helerl[qid] > 0. or
-            top.helegl[qid] > 0.):
+            top.helerr[hid] > 0. or top.helerl[hid] > 0. or
+            top.helegl[hid] > 0.):
           if s.quadrods(hid,hzs,hze,top.heleap[hid],
                         top.helerr[hid],top.helerl[hid],top.helegl[hid],
                         top.helegp[hid],0.,0.,top.helepa[hid],top.helepw[hid],
