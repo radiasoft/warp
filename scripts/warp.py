@@ -1,4 +1,4 @@
-warp_version = "$Id: warp.py,v 1.45 2003/01/31 14:37:56 dave Exp $"
+warp_version = "$Id: warp.py,v 1.46 2003/02/04 18:04:34 dave Exp $"
 # import all of the neccesary packages
 import __main__
 from Numeric import *
@@ -368,7 +368,7 @@ package. Only w3d and wxy have field solves defined.
 
 # --- Dump command
 def dump(filename=None,suffix='',attr='dump',serial=0,onefile=1,pyvars=1,
-         ff=None,varsuffix=None,histz=0,resizeHist=1,verbose=false):
+         ff=None,varsuffix=None,histz=2,resizeHist=1,verbose=false):
   """
 Creates a dump file
   - filename=(runid+'%06d'%top.it+suffix+'.dump')
