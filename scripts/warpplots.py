@@ -3,7 +3,7 @@ from colorbar import *
 import RandomArray
 import re
 import os
-warpplots_version = "$Id: warpplots.py,v 1.43 2001/06/18 20:45:55 dave Exp $"
+warpplots_version = "$Id: warpplots.py,v 1.44 2001/06/20 23:46:40 dave Exp $"
 
 ##########################################################################
 # This setups the plot handling for warp.
@@ -1503,6 +1503,7 @@ that plot.
   if pplimits is None:
     pplimits = defaultpplimits
   else:
+    kw['lframe'] = 1
     if type(pplimits[0]) != type(()):
       pplimits = 4*[pplimits]
     else:
