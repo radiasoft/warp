@@ -1,6 +1,6 @@
 from warp import *
 from appendablearray import *
-singleparticle_version = "$Id: singleparticle.py,v 1.8 2001/09/21 23:17:40 dave Exp $"
+singleparticle_version = "$Id: singleparticle.py,v 1.9 2001/09/28 18:13:55 dave Exp $"
 
 # --- Special code is needed here to make sure that top.ins and top.nps
 # --- are set properly the first time an instance is created
@@ -18,9 +18,9 @@ done and no diagnostic moments are calculated. Creator arguments...
  - maxsteps=1000: an estimate of the number of steps taken. OK if value too
                   small
  - savedata=1: flag to turn on saving of particle trajectories
- - zerophi=1: when true, w3d.phi is zero out
+ - zerophi=0: when true, w3d.phi is zero out
  - resettime=0: when true, time and beam frame location reset to initial values
- -js=0: species of particles
+ - js=0: species of particles
 
 Available methods...
  - gett(i=0):  returns history of time for i'th particle
@@ -45,7 +45,7 @@ Available methods...
 
   #----------------------------------------------------------------------
   def __init__(self,x=0.,y=0.,z=0.,vx=0.,vy=0.,vz=None,
-                    maxsteps=1000,savedata=1,zerophi=1,resettime=0,js=0):
+                    maxsteps=1000,savedata=1,zerophi=0,resettime=0,js=0):
     global _first_instance
     # --- Do some global initialization
     top.allspecl = true
@@ -67,7 +67,7 @@ Available methods...
     resetlat()
     setlatt()
     # --- Reset time if requested
-    if resettime: self.resettime(resettime)
+    if resettime: self.resettime()
     # --- Setup history arrays
     self.setuphistory(maxsteps)
 
@@ -81,10 +81,10 @@ Available methods...
       pass
 
   #----------------------------------------------------------------------
-  def spsetup(self,zerophi=1):
-    """Sets up for a single particle run: turns diagnostics off, saves some
-initial data, and redefines the step command
-  - zerophi=1: when true, zeros out the w3d.phi array"""
+  def spsetup(self,zerophi=0):
+    """Sets up for a single particle run: turns diagnostics off and saves some
+initial data.
+  - zerophi=0: when true, zeros out the w3d.phi array"""
     # --- Turn off all of the diagnostics
     wxy.ldiag = 0
     top.ifzmmnt = 0
@@ -117,8 +117,6 @@ initial data, and redefines the step command
     self.vbeamfrmsave = top.vbeamfrm
     self.dtsave = top.dt
     self.dssave = wxy.ds
-    # --- Add routine after step to save data
-    installafterstep(self.spsavedata)
 
   #----------------------------------------------------------------------
   # --- Initialize the single particle.
@@ -182,6 +180,8 @@ initial data, and redefines the step command
     top.uyp[ip1:ip2] = self.vy
     top.uzp[ip1:ip2] = self.vz
     top.gaminv[ip1:ip2] = self.gi
+    # --- Add routine after step to save data
+    installafterstep(self.spsavedata)
 
   #----------------------------------------------------------------------
   def disable(self):
@@ -211,16 +211,15 @@ initial data, and redefines the step command
   #----------------------------------------------------------------------
   def resettime(self):
     # --- Initialize time stepping
-    if 0:
-      top.it = self.itsave
-      top.time = self.timesave
-      top.zbeam = self.zbeamsave
-      top.zgrid = self.zgridsave
-      top.zgridprv = self.zgridprvsave
-      top.vbeam = self.vbeamsave
-      top.vbeamfrm = self.vbeamfrmsave
-      top.dt = self.dtsave
-      wxy.ds = self.dssave
+    top.it = self.itsave
+    top.time = self.timesave
+    top.zbeam = self.zbeamsave
+    top.zgrid = self.zgridsave
+    top.zgridprv = self.zgridprvsave
+    top.vbeam = self.vbeamsave
+    top.vbeamfrm = self.vbeamfrmsave
+    top.dt = self.dtsave
+    wxy.ds = self.dssave
 
   #----------------------------------------------------------------------
   def setuphistory(self,maxsteps=1000):
