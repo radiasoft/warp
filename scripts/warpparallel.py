@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.32 2003/01/24 13:56:49 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.33 2003/01/24 18:02:45 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -428,6 +428,11 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                 # --- all of the data is created.
                 if sum(sum(nps_p)) > 0:
                   ff.defent(pdbname,v,(sum(sum(nps_p)),))
+              elif p == 'top' and vname == 'pid':
+                # --- For the particle data, a space big enough to hold
+                # --- all of the data is created.
+                if top.npmaxi == top.npmax and sum(sum(nps_p)) > 0:
+                  ff.defent(pdbname,v,(sum(sum(nps_p)),top.npid))
               elif p == 'wxy' and vname in ['dtp']:
                 # --- A WARPxy particle array
                 if wxy.npmaxxy > 0 and sum(sum(nps_p)) > 0:
@@ -551,6 +556,14 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                   ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
                   ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1],
                            indx=(ipmin,))
+            elif p == 'top' and vname == 'pid':
+              if top.npmaxi == top.npmax:
+                # --- Write out each species seperately.
+                for js in xrange(top.ns):
+                  if top.nps[js] > 0:
+                    ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
+                    ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:],
+                             indx=(ipmin,0))
             elif re.search('zhist',a):
               # --- z moments histories
               if not histz:
@@ -669,6 +682,8 @@ def parallelrestore(fname,verbose=false,skip=[]):
     top.npmax = ff.read_part('npmax@parallel',itriple)[0]
   if 'npmaxb@parallel' in vlist:
     top.npmaxb = ff.read_part('npmaxb@parallel',itriple)[0]
+  if 'npmaxi@parallel' in vlist:
+    top.npmaxi = ff.read_part('npmaxi@parallel',itriple)[0]
   if 'np@parallel' in vlist:
     top.np = ff.read_part('np@parallel',itriple)[0]
   if 'npmaxxy@parallel' in vlist:
@@ -831,6 +846,19 @@ def parallelrestore(fname,verbose=false,skip=[]):
               ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1]'
               exec(pname+ip+' = ff.read_part(v,itriple)',
                    __main__.__dict__,locals())
+        elif p == 'top' and vname == 'pid':
+          # --- Read in each species seperately.
+          # --- The command is exec'ed here since a different command
+          # --- is needed for each species.  Errors are not caught.
+          s = 'pass'
+          if top.npmaxi == top.npmax:
+            for js in xrange(top.ns):
+              if top.nps[js] > 0:
+                ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
+                itriple = array([ipmin,ipmin+top.nps[js]-1,1,0,top.npid-1,1])
+                ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:]'
+                exec(pname+ip+' = ff.read_part(v,itriple)',
+                     __main__.__dict__,locals())
         elif re.search('zhist',a):
           # --- z moments histories
           try:
