@@ -1,5 +1,5 @@
 top
-#@(#) File TOP.V, version $Revision: 3.114 $, $Date: 2004/01/24 00:44:42 $
+#@(#) File TOP.V, version $Revision: 3.115 $, $Date: 2004/01/27 22:44:47 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package TOP of code WARP
@@ -60,7 +60,7 @@ codeid   character*8  /"warp r2"/     # Name of code, and major version
 
 *********** TOPversion:
 # Version control for global commons
-verstop character*19 /"$Revision: 3.114 $"/ # Global common version, set by CVS
+verstop character*19 /"$Revision: 3.115 $"/ # Global common version, set by CVS
 
 *********** Machine_param:
 wordsize integer /64/ # Wordsize on current machine--used in bas.wrp
@@ -355,6 +355,8 @@ mmltze(0:nmmlt)   _real [m]   # Z's of magnetic multipole element ends
 mmltap(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements
 mmltax(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements in x
 mmltay(0:nmmlt)   _real [m]   # Aperture in magnetic multipole elements in y
+mmltas(0:nmmlt)   _real [m]   # Z start's of aperture in mag multipole elements
+mmltae(0:nmmlt)   _real [m]   # Z end's of aperture in mag multipole elements
 mmltph(0:nmmlt)   _real [rad] # Phase angle of magnetic multipole element field
 mmltsf(0:nmmlt)   _real [1] /0./ # Scale factor for magnetic multipole element
                                  # Field is scaled by (mmltsc+mmltsf)
@@ -1194,28 +1196,28 @@ lambdab0y         real [m]         # Undepressed Y-betatron wavelength
 *********** Z_arrays dump:
 # 1d arrays used by >1 pkg
 # nzzarr is usually set to nz by pkg w3d (etc.) at generation
-dzz                     real   [m]     # Z_arrays mesh grid cell size
-dzzi                    real   [m]     # Z_arrays mesh grid cell size inverse
-zzmin                   real   [m]     # Z_arrays mesh maximum in z
-zzmax                   real   [m]     # Z_arrays mesh minimum in z
-nzzarr            integer /0/  [1]     # Length of arrays in group Z_arrays
-zplmesh(0:nzzarr)      _real   [m]     # Z mesh used for qtys in group Z_arrays
-curr(0:nzzarr)         _real   [A]     # Beam current
-egap(0:nzzarr)         _real   [V/m]   # Gap electric field (smeared in z)
-linechg(0:nzzarr)      _real   [C/m]   # Line charge density
-vzofz(0:nzzarr)        _real   [m/s]   # Mean axial speed vs z
-rhoax(0:nzzarr)        _real   [C/m^3] # charge density on axis
-phiax(0:nzzarr)        _real   [V]     # potential on axis
-ezax(0:nzzarr)         _real   [V/m]   # space charge E field on axis
-eearsofz(0:nzzarr)     _real   [V/m]   # confining Eears, as a function of z
-prwallz(0:nzzarr)      _real   [m]     # Radius at which particles are absorbed
-prwallxz(0:nzzarr)     _real   [m]     # X of center of cylindrical wall
-prwallyz(0:nzzarr)     _real   [m]     # Y of center of cylindrical wall
-prwelipz(0:nzzarr)     _real   [1]     # Ellipticity of cylindrical wall
+dzz                     real  [m]      # Z_arrays mesh grid cell size
+dzzi                    real  [m]      # Z_arrays mesh grid cell size inverse
+zzmin                   real  [m]      # Z_arrays mesh maximum in z
+zzmax                   real  [m]      # Z_arrays mesh minimum in z
+nzzarr            integer /0/ [1]      # Length of arrays in group Z_arrays
+zplmesh(0:nzzarr)      _real  [m]      # Z mesh used for qtys in group Z_arrays
+curr(0:nzzarr)         _real  [A]      # Beam current
+egap(0:nzzarr)         _real  [V/m]    # Gap electric field (smeared in z)
+linechg(0:nzzarr)      _real  [C/m]    # Line charge density
+vzofz(0:nzzarr)        _real  [m/s]    # Mean axial speed vs z
+rhoax(0:nzzarr)        _real  [C/m^3]  # charge density on axis
+phiax(0:nzzarr)        _real  [V]      # potential on axis
+ezax(0:nzzarr)         _real  [V/m]    # space charge E field on axis
+eearsofz(0:nzzarr)     _real  [V/m]    # confining Eears, as a function of z
+prwallz(0:nzzarr)      _real  [m]      # Radius at which particles are absorbed
+prwallxz(0:nzzarr)     _real  [m]      # X of center of cylindrical wall
+prwallyz(0:nzzarr)     _real  [m]      # Y of center of cylindrical wall
+prwelipz(0:nzzarr)     _real  [1] /1./ # Ellipticity of cylindrical wall
                                        # (ay = prwelipz*ax)
 lostpars(0:nzzarr)  _integer           # number of lost particles by zcells
-lamkreal(0:nzzarr)     _real   [C/m]   # Real part of FFT of lambda
-lamkimag(0:nzzarr)     _real   [C/m]   # Imaginary part of FFT of lambda
+lamkreal(0:nzzarr)     _real  [C/m]    # Real part of FFT of lambda
+lamkimag(0:nzzarr)     _real  [C/m]    # Imaginary part of FFT of lambda
 
 
 xmaxz(0:nzzarr)        _real   [m]   /+LARGEPOS/ # z-dependent locations used 
