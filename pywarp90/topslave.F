@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c TOPSLAVE.M, version $Revision: 1.28 $, $Date: 2005/01/12 17:04:58 $
+c TOPSLAVE.M, version $Revision: 1.29 $, $Date: 2005/02/25 22:08:37 $
 c Slave routines related to top package.
 c D. P. Grote
 c=============================================================================
@@ -468,6 +468,7 @@ c at once.
       integer(ISZ):: mpierror
       integer(ISZ):: sendcounts(0:nslaves-1),sdispls(0:nslaves-1)
       integer(ISZ):: recvcounts(0:nslaves-1),rdispls(0:nslaves-1)
+      integer(ISZ):: allocerror
       include "mpif.h"
       real(kind=8):: substarttime,wtime
       if (ltoptimesubs) substarttime = wtime()
@@ -481,7 +482,12 @@ c     --- over every processor to find which one the particle is in.
       dzp = minval(zpslmax-zpslmin)/10.
       nzp = min(100000,int((zpmax-zpmin)/dzp))
       dzp = (zpmax - zpmin)/nzp
-      allocate(zprocs(0:nzp))
+      allocate(zprocs(0:nzp),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"reorgparticles_parallel: allocation error ",allocerror,
+     &         ": could not allocate zprocs to shape ",nzp
+        stop
+      endif
       do ip=0,nslaves-1
         izp1 = nzp - int((zpmax - zpslmin(ip))/dzp)
         izp2 = int((zpslmax(ip) - zpmin)/dzp)
@@ -494,7 +500,12 @@ c     --- Next, create temporary arrays to hold the sorted particles.
       pnp = sum(nps)
       ncoords = 7 + npid
       pnpmax = max(1,pnp)
-      allocate(ptemp(0:ncoords-1,pnpmax),pprocs(pnpmax))
+      allocate(ptemp(0:ncoords-1,pnpmax),pprocs(pnpmax),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"reorgparticles_parallel: allocation error ",allocerror,
+     &         ": could not allocate ptemp and pprocs to shape ",ncoords,pnpmax
+        stop
+      endif
 
 c     --- Loop through the particles, finding to which processor each particle
 c     --- belongs.
@@ -588,7 +599,12 @@ c     --- done.
       
 c     --- Create space for incoming data
       pnpmax = max(1,pnp)
-      allocate(precv(0:ncoords-1,pnpmax))
+      allocate(precv(0:ncoords-1,pnpmax),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"reorgparticles_parallel: allocation error ",allocerror,
+     &         ": could not allocate precv to shape ",ncoords,pnpmax
+        stop
+      endif
 
 c     --- Do the communication
       sendcounts = sum(pnps,1)*ncoords

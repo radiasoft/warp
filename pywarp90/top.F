@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File TOP.F, version $Revision: 3.147 $, $Date: 2005/02/16 00:16:53 $
+c@(#) File TOP.F, version $Revision: 3.148 $, $Date: 2005/02/25 22:08:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  Main source file for the package TOP of the PIC code WARP.
@@ -2200,9 +2200,15 @@ c   bx, by   quadrupole magnetic field
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac,xpmqoff,ypmqoff
       real(kind=8):: dodec
       real(kind=8), allocatable:: vz(:),dzi(:)
+      integer(ISZ):: allocerror
 
       if (.not. quads .or. .not. linquad(0)) return
-      allocate(vz(npz),dzi(npz))
+      allocate(vz(npz),dzi(npz),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applyquad: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",npz
+        stop
+      endif
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2312,9 +2318,15 @@ c   bx, by   dipole magnetic field
       integer(ISZ):: io,ip,iz
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8), allocatable:: vz(:),dzi(:)
+      integer(ISZ):: allocerror
 
       if (.not. dipos .or. .not. lindipo(0)) return
-      allocate(vz(npz),dzi(npz))
+      allocate(vz(npz),dzi(npz),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applydipo: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",npz
+        stop
+      endif
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2481,9 +2493,15 @@ c   bx, by   sextupole magnetic field
       real(kind=8):: xpmqoff,ypmqoff
       real(kind=8):: z1,z2,zl,fl,zr,fr,frac
       real(kind=8), allocatable:: vz(:),dzi(:)
+      integer(ISZ):: allocerror
 
       if (.not. sexts .or. .not. linsext(0)) return
-      allocate(vz(npz),dzi(npz))
+      allocate(vz(npz),dzi(npz),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applysext: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",npz
+        stop
+      endif
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2590,10 +2608,17 @@ c   bx, by, bz   magnetic field
       integer(ISZ), allocatable:: tiele(:)
       real(kind=8), allocatable, dimension(:):: vz,dzi,tfrac,txpmqoff,typmqoff,
      &                                          trpmqoff,ttpmqoff
+      integer(ISZ):: allocerror
 
       if (.not. heles .or. .not. linhele(0)) return
+
       allocate(tiele(np),vz(npz),dzi(npz),tfrac(np),txpmqoff(np),typmqoff(np),
-     &         trpmqoff(np),ttpmqoff(np))
+     &         trpmqoff(np),ttpmqoff(np),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applyhele: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",np," and ",npz
+        stop
+      endif
 
       vz  = uzp*gaminv
 c     --- Note that the absolute value is taken since dzi is used to scale
@@ -2790,11 +2815,18 @@ c  and not once per particle per multipole component.
       integer(ISZ), allocatable:: izm(:), imm(:)
       real(kind=8), allocatable, dimension(:):: xxx, yyy, zzz, ttt, wzm, rr, tt,
      &                                          mltph, mltsf, tex, tey, tez
+      integer(ISZ):: allocerror
 
       if (.not. emlts .or. .not. linemlt(0)) return
 
       allocate(izm(np), imm(np), xxx(np), yyy(np), zzz(np), ttt(np), wzm(np), 
-     &         rr(np), tt(np), mltph(np), mltsf(np), tex(np), tey(np), tez(np))
+     &         rr(np), tt(np), mltph(np), mltsf(np), tex(np), tey(np), tez(np),
+     &         stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applyemlt: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",np
+        stop
+      endif
 
       do io=1,nemltol
         if (.not. linemlt(io)) cycle
@@ -2934,11 +2966,18 @@ c  and not once per particle per multipole component.
       integer(ISZ), allocatable:: izm(:), imm(:)
       real(kind=8), allocatable, dimension(:):: xxx, yyy, zzz, ttt, wzm, rr, tt,
      &                                          mltph, mltsf, tbx, tby, tbz
+      integer(ISZ):: allocerror
 
       if (.not. mmlts .or. .not. linmmlt(0)) return
 
       allocate(izm(np), imm(np), xxx(np), yyy(np), zzz(np), ttt(np), wzm(np), 
-     &         rr(np), tt(np), mltph(np), mltsf(np), tbx(np), tby(np), tbz(np))
+     &         rr(np), tt(np), mltph(np), mltsf(np), tbx(np), tby(np), tbz(np),
+     &         stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"applymmlt: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",np
+        stop
+      endif
 
       do io=1,nmmltol
         if (.not. linmmlt(io)) cycle
@@ -8257,8 +8296,14 @@ c=============================================================================
         integer(ISZ) :: i, ii, izmin, izmax
 
         integer(ISZ), allocatable :: ntsloc(:,:)
+        integer(ISZ):: allocerror
 
-        allocate(ntsloc(nztlocator,nztslices))
+        allocate(ntsloc(nztlocator,nztslices),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"set_tslice_locator: allocation error ",allocerror,
+     &           ": could not allocate ntsloc to shape ",nztlocator,nztslices
+          stop
+        endif
 
         ntsloc = 0
         ntl = 0

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File w3d_injection.F, version $Revision: 1.20 $, $Date: 2005/02/16 00:20:45 $
+c@(#) File w3d_injection.F, version $Revision: 1.21 $, $Date: 2005/02/25 22:08:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -60,6 +60,7 @@ c injection.  The third part is for space-charge limited injection.
       real(kind=8),pointer:: xx(:),yy(:),zz(:),ux(:),uy(:),uz(:),id(:),gg(:)
       real(kind=8),pointer:: ex(:),ey(:),ez(:),bx(:),by(:),bz(:)
       real(kind=8),pointer:: bendres(:),bendradi(:),mask(:)
+      integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -1055,7 +1056,13 @@ c           --- Skip this if no particles of this species were injected.
 #else
 c           --- Find particles that were freshly injected. These
 c           --- are particles which still have noninteger pid(:,injpid).
-            allocate(mask(nps(is)))
+            allocate(mask(nps(is)),stat=allocerror)
+            if (allocerror /= 0) then
+              print*,"inject3d: allocation error ",allocerror,
+     &               ": could not allocate mask to shape ",nps(is)
+              stop
+            endif
+
             mask = ((pid(ins(is):ins(is)+nps(is)-1,injpid) -
      &           int(pid(ins(is):ins(is)+nps(is)-1,injpid))))
             nn = COUNT(mask > 0.)
@@ -3148,6 +3155,7 @@ c the grid cell.
       real(kind=8), dimension(0:inj_nz) :: dz_local
       real(kind=8), dimension(0:inj_nx,0:inj_ny,0:inj_nz,inj_ninj) :: xinj3d,yinj3d,zinj3d
       integer(ISZ):: sx,sy
+      integer(ISZ):: allocerror
 
       real(8) :: inj_phi_tmp(0:inj_nx,0:inj_ny,0:inj_nz,1)
 
@@ -3425,7 +3433,12 @@ c     --- assign charge deposited on emitter surface (slice 0) to slice 1
       end if
       do ij = 1, inj_ninj
         nrhs = nn
-        allocate(rhs(1:inj_nz-1,nrhs),ab(2,1:inj_nz-1))
+        allocate(rhs(1:inj_nz-1,nrhs),ab(2,1:inj_nz-1),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"inj_setq_3darray_and_solvephi: allocation error ",allocerror,
+     &           ": could not allocate rhs and ab to shape ",inj_nz,nrhs
+          stop
+        endif
 c       --- set temporaries
         rinji = 1./rinject(ij)
         rinj = rinject(ij)

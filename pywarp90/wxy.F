@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File WXY.M, version $Revision: 3.50 $, $Date: 2005/01/21 19:26:11 $
+c@(#) File WXY.M, version $Revision: 3.51 $, $Date: 2005/02/25 22:08:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package WXY of code WARP
@@ -902,6 +902,7 @@ c  and also loads RHO at the new time level.
       real(kind=8),allocatable:: threadzmmnts0(:,:,:),threadzmmnts(:,:,:,:)
       integer(ISZ):: ithread,omp_get_thread_num
       integer(ISZ):: nthread,omp_get_num_threads
+      integer(ISZ):: allocerror
 #endif
       real(kind=8),pointer:: maxp(:,:),minp(:,:)
       real(kind=8),pointer:: zmmnts0(:,:),zmmnts(:,:,:)
@@ -920,9 +921,14 @@ c  Zero the moments if center is synchv
      &                nplive,uxpo,uypo,uzpo,1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 #ifdef _OPENMP
-        allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt))
-        allocate(zmmnts0(NUMZMMNT,0:nszmmnt))
-        allocate(zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt))
+        allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
+     &           zmmnts0(NUMZMMNT,0:nszmmnt),
+     &           zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"padvncxy: allocation error ",allocerror,
+     &           ": could not allocate temp arrays to shape ",nszmmnt
+          stop
+        endif
         maxp = -LARGEPOS
         minp = +LARGEPOS
         zmmnts0 = 0.
@@ -1243,10 +1249,16 @@ c     --- End loop over species
         ithread = omp_get_thread_num() + 1
         nthread = omp_get_num_threads()
 !$OMP SINGLE
-        allocate(threadmaxp(6,0:nszmmnt,nthread))
-        allocate(threadminp(6,0:nszmmnt,nthread))
-        allocate(threadzmmnts0(NUMZMMNT,0:nszmmnt,nthread))
-        allocate(threadzmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt,nthread))
+        allocate(threadmaxp(6,0:nszmmnt,nthread),
+     &           threadminp(6,0:nszmmnt,nthread),
+     &           threadzmmnts0(NUMZMMNT,0:nszmmnt,nthread),
+     &           threadzmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt,nthread),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"padvncxy: allocation error ",allocerror,
+     &           ": could not allocate temp arrays to shape ",nszmmnt,nthread
+          stop
+        endif
 !$OMP END SINGLE
         threadmaxp(:,:,ithread) = maxp
         threadminp(:,:,ithread) = minp

@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.189 $, $Date: 2005/02/24 21:29:50 $
+c@(#) File W3D.F, version $Revision: 3.190 $, $Date: 2005/02/25 22:08:38 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -1335,6 +1335,7 @@ c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8),allocatable:: threadzmmnts0(:,:,:),threadzmmnts(:,:,:,:)
       integer(ISZ):: ithread,omp_get_thread_num
       integer(ISZ):: nthread,omp_get_num_threads
+      integer(ISZ):: allocerror
 #endif
       real(kind=8),pointer:: maxp(:,:),minp(:,:)
       real(kind=8),pointer:: zmmnts0(:,:),zmmnts(:,:,:)
@@ -1359,9 +1360,14 @@ c  Zero the moments if center is synchv
      &                nplive,uxpo,uypo,uzpo,1,ns,
      &                tempmaxp,tempminp,tempzmmnts0,tempzmmnts)
 #ifdef _OPENMP
-        allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt))
-        allocate(zmmnts0(NUMZMMNT,0:nszmmnt))
-        allocate(zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt))
+        allocate(maxp(6,0:nszmmnt),minp(6,0:nszmmnt),
+     &           zmmnts0(NUMZMMNT,0:nszmmnt),
+     &           zmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"padvnc3d: allocation error ",allocerror,
+     &           ": could not allocate temp arrays to shape ",nszmmnt
+          stop
+        endif
         maxp = -LARGEPOS
         minp = +LARGEPOS
         zmmnts0 = 0.
@@ -1724,10 +1730,16 @@ c             --- THIS IS NOT DONE FOR center = hbor1.
         ithread = omp_get_thread_num() + 1
         nthread = omp_get_num_threads()
 !$OMP SINGLE
-        allocate(threadmaxp(6,0:nszmmnt,nthread))
-        allocate(threadminp(6,0:nszmmnt,nthread))
-        allocate(threadzmmnts0(NUMZMMNT,0:nszmmnt,nthread))
-        allocate(threadzmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt,nthread))
+        allocate(threadmaxp(6,0:nszmmnt,nthread),
+     &           threadminp(6,0:nszmmnt,nthread),
+     &           threadzmmnts0(NUMZMMNT,0:nszmmnt,nthread),
+     &           threadzmmnts(0:nzmmnt,NUMZMMNT,0:nszmmnt,nthread),
+     &           stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"padvnc3d: allocation error ",allocerror,
+     &           ": could not allocate temp arrays to shape ",nszmmnt,nthread
+          stop
+        endif
 !$OMP END SINGLE
         threadmaxp(:,:,ithread) = maxp
         threadminp(:,:,ithread) = minp
@@ -2465,6 +2477,7 @@ c     --- For second version
 c     --- Use a first dimension of 33 not 32 to avoid bank conflicts
       integer(ISZ),allocatable:: indx(:,:)
       real(kind=8),allocatable:: p(:,:), u1p(:), v1p(:), w1p(:)
+      integer(ISZ):: allocerror
 
       real(kind=8):: substarttime,wtime
       if (lw3dtimesubs) substarttime = wtime()
@@ -2645,8 +2658,13 @@ c          --- Adjust sign of E field for appropriate quadrant.
 c     --- Allocate the temporary arrays
 c     --- The arrays are made allocatable so that memory is only created for them when
 c     --- efetch is 2.
-        allocate(indx(33,np))
-        allocate(p(33,np), u1p(np), v1p(np), w1p(np))
+        allocate(indx(33,np),p(33,np),u1p(np),v1p(np),w1p(np),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"sete3d: allocation error ",allocerror,
+     &           ": could not allocate temp arrays to shape ",np
+          stop
+      endif
+
 
 C  WARNING: This coding does not include symmetries!
 c  NOTE: This section can probably be deleted since it is not really neccesary.
@@ -3113,6 +3131,7 @@ c  Picglb is included only to use zbeam
       real(kind=8),allocatable,dimension(:):: perpscal,at,apt,bt,bpt
       real(kind=8),allocatable,dimension(:):: epsxt,epsyt,vzt,vtzt,ibeamt
       real(kind=8),allocatable,dimension(:):: xct,xpct,yct,ypct
+      integer(ISZ):: allocerror
 
 #ifdef MPIPARALLEL
       real(kind=8):: zmin,zmax
@@ -3252,11 +3271,16 @@ c----------------------------------
 !$OMP+SHARED(iptotal)
 
 c  Allocate scratch space for load. Must be done in the parallel block
-      allocate(indx(npgrp),xt(npgrp),yt(npgrp),zt(npgrp),rt(npgrp),tt(npgrp))
-      allocate(uxt(npgrp),uyt(npgrp),uzt(npgrp),perpscal(npgrp))
-      allocate(at(npgrp),apt(npgrp),bt(npgrp),bpt(npgrp))
-      allocate(epsxt(npgrp),epsyt(npgrp),vzt(npgrp),vtzt(npgrp),ibeamt(npgrp))
-      allocate(xct(npgrp),xpct(npgrp),yct(npgrp),ypct(npgrp))
+      allocate(indx(npgrp),xt(npgrp),yt(npgrp),zt(npgrp),rt(npgrp),tt(npgrp),
+     &         uxt(npgrp),uyt(npgrp),uzt(npgrp),perpscal(npgrp),
+     &         at(npgrp),apt(npgrp),bt(npgrp),bpt(npgrp),
+     &         epsxt(npgrp),epsyt(npgrp),vzt(npgrp),vtzt(npgrp),ibeamt(npgrp),
+     &         xct(npgrp),xpct(npgrp),yct(npgrp),ypct(npgrp),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"stptcl3d: allocation error ",allocerror,
+     &         ": could not allocate temp arrays to shape ",npgrp
+        stop
+      endif
 
       do is = 1, ns
 
@@ -4595,6 +4619,7 @@ c --- all of the particles, otherwise the specified particles are loaded.
       integer(ISZ):: ip,ipmin,is
       real(kind=8):: substarttime,wtime
       real(kind=8),dimension(:,:,:),allocatable::rhopcopy
+      integer(ISZ):: allocerror
 
       if (lw3dtimesubs) substarttime = wtime()
 
@@ -4638,7 +4663,12 @@ c     --- loop over species
 c        --- deposit species according to subcycling rule governed by ndts.
          if (ndts(is)>1) then
            if (mod(it+1,ndts(is))==0) then
-              allocate(rhopcopy(0:nxp,0:nyp,0:nzp))
+              allocate(rhopcopy(0:nxp,0:nyp,0:nzp),stat=allocerror)
+              if (allocerror /= 0) then
+                print*,"loadrho3d: allocation error ",allocerror,
+     &                 ": could not allocate temp arrays to shape ",nxp,nyp,nzp
+                stop
+              endif
               rhopcopy=rhop
               rhop=0.
            else

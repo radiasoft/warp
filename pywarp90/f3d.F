@@ -1,6 +1,6 @@
 #include "top.h"
 c=======================================================================
-c@(#) File F3D.M, version $Revision: 3.112 $, $Date: 2004/07/23 22:20:18 $
+c@(#) File F3D.M, version $Revision: 3.113 $, $Date: 2005/02/25 22:08:36 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  written by Alex Friedman and David P. Grote
@@ -1256,6 +1256,7 @@ c nxy is the size of the transverse planes.
       integer(ISZ):: naux1,naux2
       integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
+      integer(ISZ):: allocerror
       data maxnaux1/0/,maxnaux2/0/
       save maxnaux1,maxnaux2,aux1,aux2
  
@@ -1278,12 +1279,22 @@ c     --- different from last time (deallocating if needed).
       if (naux1 > maxnaux1) then
         maxnaux1 = naux1
         if (allocated(aux1)) deallocate(aux1)
-        allocate(aux1(maxnaux1))
+        allocate(aux1(maxnaux1),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vpftz: allocation error ",allocerror,
+     &           ": could not allocate aux1 to shape ",maxnaux1
+          stop
+        endif
       endif
       if (naux2 > maxnaux2) then
         maxnaux2 = naux2
         if (allocated(aux2)) deallocate(aux2)
-        allocate(aux2(maxnaux2))
+        allocate(aux2(maxnaux2),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vpftz: allocation error ",allocerror,
+     &           ": could not allocate aux2 to shape ",maxnaux2
+          stop
+        endif
       endif
 
       call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),+1,1.,
@@ -1347,6 +1358,7 @@ c nxy is the size of the transverse planes.
       integer(ISZ):: naux1,naux2
       integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
+      integer(ISZ):: allocerror
       data maxnaux1/0/,maxnaux2/0/
       save maxnaux1,maxnaux2,aux1,aux2
  
@@ -1369,12 +1381,22 @@ c     --- different from last time (deallocating if needed).
       if (naux1 > maxnaux1) then
         maxnaux1 = naux1
         if (allocated(aux1)) deallocate(aux1)
-        allocate(aux1(maxnaux1))
+        allocate(aux1(maxnaux1),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vpftzi: allocation error ",allocerror,
+     &           ": could not allocate aux1 to shape ",maxnaux1
+          stop
+        endif
       endif
       if (naux2 > maxnaux2) then
         maxnaux2 = naux2
         if (allocated(aux2)) deallocate(aux2)
-        allocate(aux2(maxnaux2))
+        allocate(aux2(maxnaux2),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vpftzi: allocation error ",allocerror,
+     &           ": could not allocate aux2 to shape ",maxnaux2
+          stop
+        endif
       endif
 
       call dcft(1,zwork,1,nz+1,zwork,1,nz+1,nz,nx+(1-esx),-1,1.,
@@ -2243,6 +2265,7 @@ c -----------------------------------------------------------------
       integer(ISZ):: naux1,naux2
       integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
+      integer(ISZ):: allocerror
       data naux1/0/,naux2/0/
       data maxnaux1/0/,maxnaux2/0/
       save aux1,aux2,maxnaux1,maxnaux2
@@ -2265,12 +2288,22 @@ c     --- different from last time (deallocating if needed).
       if (naux1 > maxnaux1) then
         maxnaux1 = naux1
         if (allocated(aux1)) deallocate(aux1)
-        allocate(aux1(maxnaux1))
+        allocate(aux1(maxnaux1),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vsftx: allocation error ",allocerror,
+     &           ": could not allocate aux1 to shape ",maxnaux1
+          stop
+        endif
       endif
       if (naux2 > maxnaux2) then
         maxnaux2 = naux2
         if (allocated(aux2)) deallocate(aux2)
-        allocate(aux2(maxnaux2))
+        allocate(aux2(maxnaux2),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vsftx: allocation error ",allocerror,
+     &           ": could not allocate aux2 to shape ",maxnaux2
+          stop
+        endif
       endif
 
       call dsinf(1,a,1,1+nx,a,1,1+nx,2*nx,ny,1.,aux1,naux1,aux2,naux2)
@@ -2360,6 +2393,7 @@ c -----------------------------------------------------------------
       integer(ISZ):: naux1,naux2
       integer(ISZ):: maxnaux1,maxnaux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
+      integer(ISZ):: allocerror
       data naux1/0/,naux2/0/
       data maxnaux1/0/,maxnaux2/0/
       save aux1,aux2,maxnaux1,maxnaux2
@@ -2383,12 +2417,22 @@ c     --- different from last time (deallocating if needed).
       if (naux1 > maxnaux1) then
         maxnaux1 = naux1
         if (allocated(aux1)) deallocate(aux1)
-        allocate(aux1(maxnaux1))
+        allocate(aux1(maxnaux1),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vsfty: allocation error ",allocerror,
+     &           ": could not allocate aux1 to shape ",maxnaux1
+          stop
+        endif
       endif
       if (naux2 > maxnaux2) then
         maxnaux2 = naux2
         if (allocated(aux2)) deallocate(aux2)
-        allocate(aux2(maxnaux2))
+        allocate(aux2(maxnaux2),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vsfty: allocation error ",allocerror,
+     &           ": could not allocate aux2 to shape ",maxnaux2
+          stop
+        endif
       endif
 
       call dsinf(1,a,1+nx,1,a,1+nx,1,2*ny,nx,1.,aux1,naux1,aux2,naux2)
@@ -2436,6 +2480,7 @@ c  copy the data back to the original array.
 
       integer(ISZ):: naux1,naux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
+      integer(ISZ):: allocerror
  
 c     --- Calculate how much space is needed.
       naux1 = 20000
@@ -2446,8 +2491,18 @@ c     --- Calculate how much space is needed.
 c     --- Allocate the work space needed by dcft
 c     --- Note that since this happens inside a OpenMP parallel construct, each thread
 c     --- must allocate the work space each time.
-      allocate(aux1(naux1))
-      allocate(aux2(naux2))
+      allocate(aux1(naux1),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"cosqx: allocation error ",allocerror,
+     &         ": could not allocate aux1 to shape ",naux1
+        stop
+      endif
+      allocate(aux2(naux2),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"cosqx: allocation error ",allocerror,
+     &         ": could not allocate aux2 to shape ",naux2
+        stop
+      endif
 
 c     --- Initialize the auxiliary arrays
       call dcft(1,w,1,nx+1,w,1,nx+1,nx,ny/2,-isign,1.,aux1,naux1,aux2,naux2)
@@ -2566,6 +2621,7 @@ c  copy the data back to the original array.
 
       integer(ISZ):: naux1,naux2
       real(kind=8),allocatable:: aux1(:),aux2(:)
+      integer(ISZ):: allocerror
  
 c Setup and make call to the ESSL routine for Fourier-transforms
 
@@ -2576,8 +2632,18 @@ c     --- Calculate how much space is needed.
       if (ny > 2048) naux2 = naux2 + 2.28*ny
 
 c     --- Allocate the work space needed by dcft
-      allocate(aux1(naux1))
-      allocate(aux2(naux2))
+      allocate(aux1(naux1),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"cosqy: allocation error ",allocerror,
+     &         ": could not allocate aux1 to shape ",naux1
+        stop
+      endif
+      allocate(aux2(naux2),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"cosqy: allocation error ",allocerror,
+     &         ": could not allocate aux2 to shape ",naux2
+        stop
+      endif
 
 c     --- Initialize the auxiliary arrays
       call dcft(1,w,1,ny+1,w,1,ny+1,ny,nx/2,-isign,1.,aux1,naux1,aux2,naux2)
@@ -2899,6 +2965,7 @@ c (Experience has shown that when filtering is used, the inverse capacity
 c matrix is very ill-conditioned and so the capacity matrix becomes garbled.)
 
       real(kind=8),allocatable:: zerofilt(:,:)
+      integer(ISZ):: allocerror
       real(kind=8):: wx,wy,wz,cx,cy
 c     real(kind=8):: tt1,tt2
       integer(ISZ):: ix,iy,iz,i,j,info
@@ -2935,7 +3002,13 @@ c       --- 2 or 4 at a symmetric boundary)
         phi(ix+1,iy+1,iz+1) =     wx *    wy *    wz 
 
 c       --- Solve for fields, with the filtering turned off
-        allocate(zerofilt(size(filt,1),size(filt,2)))
+        allocate(zerofilt(size(filt,1),size(filt,2)),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"cmset3d: allocation error ",allocerror,
+     &           ": could not allocate zerofilt to shape ",
+     &           size(filt,1),size(filt,2)
+          stop
+        endif
         zerofilt = 0.
         call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &                  zerofilt,xlen,ylen,zlen,nx,ny,nz,nzfull,
@@ -3895,6 +3968,7 @@ c
 c  rest of variables are input and have the standard meanings.
 
       real(kind=8),allocatable:: zerofilt(:,:)
+      integer(ISZ):: allocerror
       real(kind=8):: xx,yy,zz,dx,dy,dz
       integer(ISZ):: ix,iy,iz,i,j,ic,info
 
@@ -3924,7 +3998,13 @@ c  deposit unit charge on grid
         phi(ix  ,iy+1,iz+1) = (1. - xx)*(     yy)*(     zz)
         phi(ix+1,iy+1,iz+1) = (     xx)*(     yy)*(     zz)
 c  do 3-d field solve, turning filtering off
-        allocate(zerofilt(size(filt,1),size(filt,2)))
+        allocate(zerofilt(size(filt,1),size(filt,2)),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"setcap3d: allocation error ",allocerror,
+     &           ": could not allocate zerofilt to shape ",
+     &           size(filt,1),size(filt,2)
+          stop
+        endif
         zerofilt = 0.
         call vpois3d(-1,phi(0,0,0),phi(0,0,0),kxsq,kysq,kzsq,attx,atty,attz,
      &               zerofilt,xlen,ylen,zlen,nx,ny,nz,nzfull,work,
@@ -4486,6 +4566,7 @@ c rstar(-1) and rstar(nz+1) are set based on the axial boundary conditions.
       integer(ISZ):: s_parity,e_parity
       character(72):: errline
       real(kind=8),allocatable:: phisave(:)
+      integer(ISZ):: allocerror
 
 c Macro for common arguments to the psor_loop calls
 #define LOOP_ARGS iimz,iipz,phi1d,rho1d,nxy,rdx2c,rdy2c,rdz2c,spm1,linbends, \
@@ -4524,7 +4605,12 @@ c (.9*nx-1) was chosen somewhat randomly. Note that the same expression
 c must be used as the one above for the shape of phisave.
       nsorerr = (nx+1)*(ny+1)*(nz+1)/(.9*nx-1)
       nsorerri = 1./nsorerr
-      allocate(phisave(nsorerr))
+      allocate(phisave(nsorerr),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"psor3df: allocation error ",allocerror,
+     &         ": could not allocate phisave to shape ",nsorerr
+        stop
+      endif
 
 c Set temporary variables (these are used to increase performance)
       rdx2 = dx**(-2)

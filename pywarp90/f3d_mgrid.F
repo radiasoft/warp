@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.89 $, $Date: 2005/01/25 21:46:41 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.90 $, $Date: 2005/02/25 22:08:37 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -115,7 +115,7 @@ c     added by petermc, 26 Sep 2002
       real(kind=8):: dxsqi,dysqi,dzsqi,reps0c,rdel
       integer(ISZ):: i,ii,k,ix,iy,iz
       real(kind=8):: rs,x,r
-      real(kind=8):: phisave(0:nx,0:ny,-1:nz+1)
+      real(kind=8),allocatable:: phisave(:,:,:)
       real(kind=8):: bendx((nx+1)*(ny+1))
 c     --- The following only used when mgform == 2
       real(kind=8),allocatable:: rhosave(:,:,:),res(:,:,:)
@@ -127,6 +127,7 @@ c     --- The following only used when mgform == 2
       integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       character(72):: errline
+      integer(ISZ):: allocerror
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
 
@@ -208,7 +209,18 @@ c     --- If using residual correction form, need to save the original rho.
 c     --- Also setup parallel arrays.
       if (mgform == 2) then
 !$OMP SINGLE
-        allocate(rhosave(0:nx,0:ny,0:nz),res(-1:nx+1,-1:ny+1,-3:nz+3))
+        allocate(rhosave(0:nx,0:ny,0:nz),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"multigrid3dsolve: allocation error ",allocerror,
+     &           ": could not allocate rhosave to shape ",nx,ny,nz
+          stop
+        endif
+        allocate(res(-1:nx+1,-1:ny+1,-3:nz+3),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"multigrid3dsolve: allocation error ",allocerror,
+     &           ": could not allocate res to shape ",nx,ny,nz
+          stop
+        endif
 !$OMP END SINGLE
         rhosave = rho
         localbounds = bounds
@@ -223,6 +235,13 @@ c     --- Also setup parallel arrays.
         if (izfsslave(my_index) > 0) localbounds(4) = -1
         if (izfsslave(my_index)+nz < nzfull) localbounds(5) = -1
 #endif
+      endif
+
+      allocate(phisave(0:nx,0:ny,-1:nz+1),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"multigrid3dsolve: allocation error ",allocerror,
+     &         ": could not allocate phisave to shape ",nx,ny,nz
+        stop
       endif
 
 c     --- Main multigrid v-cycle loop. Calculate error each iteration since
@@ -361,6 +380,8 @@ c     --- If using residual correction form, restore saved rho
         deallocate(rhosave,res)
       endif
 
+      deallocate(phisave)
+
 c     --- Restore rho
       reps0c = 1./reps0c
       if (.not. linbend) then
@@ -461,7 +482,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8):: dxsqi,dysqi,dzsqi
       logical(ISZ):: partialcoarsening
       real(kind=8),allocatable:: phicoarse(:,:,:),rhocoarse(:,:,:)
-      real(kind=8):: res(-1:nx+1,-1:ny+1,-3:nz+3)
+      real(kind=8),allocatable:: res(:,:,:)
       integer(ISZ):: i
       real(kind=8):: ff
       integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
@@ -475,6 +496,7 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       integer(ISZ):: whosendingleftc(0:nslaves-1), izsendingleftc(0:nslaves-1)
       integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
       integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
+      integer(ISZ):: allocerror
 c     real(kind=8):: sss(2)
 
       dxsqi = 1./dx**2
@@ -544,6 +566,13 @@ c     --- coarsening. This is the same check that is done in getmglevels.
       if (nx >= 4 .and. ny >= 4 .and. nzfull >= 4 .and.
      &    mglevel < mgmaxlevels) then
 
+        allocate(res(-1:nx+1,-1:ny+1,-3:nz+3),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"vcycle: allocation error ",allocerror,
+     &           ": could not allocate res to shape ",nx,ny,nz
+          stop
+        endif
+
 c       --- Get the residual on the current grid.
         call residual(nx,ny,nz,nzfull,dxsqi,dysqi,dzsqi,phi,rho,res,
      &                mglevel,localbounds,mgparam,mgform,.false.,
@@ -602,8 +631,21 @@ c       call parallellor(partialcoarsening)
         if (partialcoarsening) then
 
 c         --- Alloate new work space
-          allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nz+1),
-     &             rhocoarse(0:nxcoarse,0:nycoarse,0:nz))
+          allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nz+1),stat=allocerror)
+          if (allocerror /= 0) then
+            print*,"vcycle: allocation error ",allocerror,
+     &             ": could not allocate phicoarse to shape ",
+     &             nxcoarse,nycoarse,nz
+            stop
+          endif
+          allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nz),stat=allocerror)
+          if (allocerror /= 0) then
+            print*,"vcycle: allocation error ",allocerror,
+     &             ": could not allocate rhocoarse to shape ",
+     &             nxcoarse,nycoarse,nz
+            stop
+          endif
+
           phicoarse = 0.
 
 c         --- Ratio of old to new constant needed to scale the residual for
@@ -660,7 +702,21 @@ c         --- Get processor with which to exchange data on coarse grid
 
 c         --- Alloate new work space
           allocate(phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1),
-     &             rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse))
+     &             stat=allocerror)
+          if (allocerror /= 0) then
+            print*,"vcycle: allocation error ",allocerror,
+     &             ": could not allocate phicoarse to shape ",
+     &             nxcoarse,nycoarse,nzcoarse
+            stop
+          endif
+          allocate(rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse),stat=allocerror)
+          if (allocerror /= 0) then
+            print*,"vcycle: allocation error ",allocerror,
+     &             ": could not allocate rhocoarse to shape ",
+     &             nxcoarse,nycoarse,nzcoarse
+            stop
+          endif
+
           rhocoarse = 0.
           phicoarse = 0.
 
@@ -702,6 +758,8 @@ c         if (my_index == 0) print*,"V5 phi",mglevel,sss
 
           deallocate(phicoarse,rhocoarse)
         endif
+
+        deallocate(res)
 
       endif
 
@@ -2898,6 +2956,7 @@ c various mesh resolutions needed by the MG solver.
       real(kind=8):: dx1,dy1,dz1
       integer(ISZ):: nx1,ny1,nz1,levels
       integer(ISZ):: ix_axis1,iy_axis1
+      integer(ISZ):: allocerror
 
 c     --- Make sure the coarsening levels are setup.
       call getmglevels(nx,ny,nz,nzfull,dx,dy,dz,conductors,
@@ -2924,7 +2983,12 @@ c     --- Call the work routine for each level
 c     --- Sort the conductor data by level number
 c     --- First, sort conductor points
       if (conductors%interior%n > 0) then
-        allocate(isort(conductors%interior%n))
+        allocate(isort(conductors%interior%n),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"checkconductors: allocation error ",allocerror,
+     &           ": could not allocate isort to shape ",conductors%interior%n
+          stop
+        endif
         nn = conductors%interior%n
         call isortconductor(nn,conductors%interior%ilevel,isort,
      &                      conductors%interior%istart,levels)
@@ -2939,7 +3003,12 @@ c     --- First, sort conductor points
 
 c     --- Sort even subgrid points
       if (conductors%evensubgrid%n > 0) then
-        allocate(isort(conductors%evensubgrid%n))
+        allocate(isort(conductors%evensubgrid%n),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"checkconductors: allocation error ",allocerror,
+     &           ": could not allocate isort to shape ",conductors%evensubgrid%n
+          stop
+        endif
         nn = conductors%evensubgrid%n
         call isortconductor(nn,conductors%evensubgrid%ilevel,isort,
      &                      conductors%evensubgrid%istart,levels)
@@ -2955,7 +3024,12 @@ c     --- Sort even subgrid points
     
 c     --- Sort odd subgrid points
       if (conductors%oddsubgrid%n > 0) then
-        allocate(isort(conductors%oddsubgrid%n))
+        allocate(isort(conductors%oddsubgrid%n),stat=allocerror)
+        if (allocerror /= 0) then
+          print*,"checkconductors: allocation error ",allocerror,
+     &           ": could not allocate isort to shape ",conductors%oddsubgrid%n
+          stop
+        endif
         nn = conductors%oddsubgrid%n
         call isortconductor(nn,conductors%oddsubgrid%ilevel,isort,
      &                      conductors%oddsubgrid%istart,levels)
@@ -3000,7 +3074,13 @@ c=============================================================================
 c Utility function for sort conductors
       integer(ISZ):: ic
       integer(ISZ),allocatable:: itemp(:,:)
-      allocate(itemp(ni,nn))
+      integer(ISZ):: allocerror
+      allocate(itemp(ni,nn),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"iswapconductor: allocation error ",allocerror,
+     &         ": could not allocate itemp to shape ",ni,nn
+        stop
+      endif
       itemp = icond
       do ic=1,nc
         icond(:,ic) = itemp(:,isort(ic))
@@ -3015,7 +3095,13 @@ c=============================================================================
 c Utility function for sort conductors
       real(kind=8),allocatable:: rtemp(:,:)
       integer(ISZ):: ic
-      allocate(rtemp(ni,nn))
+      integer(ISZ):: allocerror
+      allocate(rtemp(ni,nn),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"rswapconductor: allocation error ",allocerror,
+     &         ": could not allocate rtemp to shape ",ni,nn
+        stop
+      endif
       rtemp = rcond
       do ic=1,nc
         rcond(:,ic) = rtemp(:,isort(ic))
@@ -3050,9 +3136,15 @@ c     is will not be the same as a subgrid point
 
       integer(ISZ),allocatable:: iii(:,:,:)
       integer(ISZ):: ic,i,ix,iy,iz,id
+      integer(ISZ):: allocerror
 
 c     --- Set the conductor points.
-      allocate(iii(0:nx,0:ny,0:nz))
+      allocate(iii(0:nx,0:ny,0:nz),stat=allocerror)
+      if (allocerror /= 0) then
+        print*,"checkconductors_work: allocation error ",allocerror,
+     &         ": could not allocate iii to shape ",nx,ny,nz
+        stop
+      endif
       iii = 0
       do ic=1,interior%n
         if (interior%ilevel(ic) /= mglevel) cycle
