@@ -1,19 +1,30 @@
 #
 # Python file with some parallel operations
 #
+parallel_version = "$Id: parallel.py,v 1.7 2001/07/19 20:31:26 dave Exp $"
 
 from Numeric import *
-import mpi
-parallel_version = "$Id: parallel.py,v 1.6 2001/05/03 22:40:06 dave Exp $"
-me = mpi.rank
-npes = mpi.procs
+# --- Try import mpi - if not found, then run in serial mode
+try:
+  import mpi
+  me = mpi.rank
+  npes = mpi.procs
+except ImportError:
+  me = 0
+  npes = 0
+
+if npes > 0: lparallel = 1
+else:        lparallel = 0
 
 # --- By default, set so that only PE0 sends output to the terminal.
-mpi.synchronizeQueuedOutput('/dev/null')
+if lparallel:
+  mpi.synchronizeQueuedOutput('/dev/null')
 
 def number_of_PE():
+  if not lparallel: return 0
   return mpi.procs
 def get_rank():
+  if not lparallel: return 0
   return mpi.rank
 
 if me == 0:
@@ -23,27 +34,37 @@ else:
 
 # Enable output from all processors
 def EnableAll():
+  if not lparallel: return
   mpi.synchronizeQueuedOutput(None)
 
 # Disable output from all but processor 0
 def DisableAll():
+  if not lparallel: return
   mpi.synchronizeQueuedOutput('/dev/null')
 
 # Print object on all processors
 def pprint(obj):
+  if not lparallel:
+    print str(obj)
+    return
   mpi.synchronizedWrite(str(obj)+'\n')
   if mpi.rank == 0: print
 
 # Print array (or list) from all processors
 def aprint(obj):
+  if not lparallel:
+    print str(obj)
+    return
   mpi.synchronizedWrite(str(obj))
 
 # Get address of processor
 def self_address():
+  if not lparallel: return 0
   return mpi.rank
 
 # Copy an array from processor i to processor 0
 def getarray(src,v,dest=0):
+  if not lparallel: return v
   if mpi.rank == src:
     mpi.send(v,dest)
   elif mpi.rank == dest:
@@ -85,28 +106,36 @@ def plotarray(f,z,color="fg",linetype="solid",marks=0,marker="none",msize=1.0,
 #   mpi.send(z,0,2)
     
 # Plot particles that are distributed on all processors
-def plotpart(f,z,color="fg",linetype="none",marker="\1",msize=1.0):
+def plotpart(f,z,color="fg",linetype="none",marker="\1",msize=1.0,**kw):
 # ff = gatherarray(f)
 # zz = gatherarray(z)
 # if len(ff) > 0 and len(zz) == len(ff):
 #   plg(ff,zz,color=color,type=linetype,marker=marker,msize=msize)
+  kw['color'] = color
+  kw['type'] = linetype
+  kw['marker'] = marker
+  kw['msize'] = msize
+  if not lparallel:
+    apply(plg,(f,z),kw)
+    return
   # --- This way is preferred since for large data sets, it reduces the
   # --- risk of running out of memory since only part of the data is stored
   # --- on PE0 at a time.
   if mpi.rank == 0:
     if len(f) > 0 and len(f)==len(z):
-      plg(f,z,color=color,type=linetype,marker=marker,msize=msize)
+      apply(plg,(f,z),kw)
     for i in range(1,mpi.procs):
       x = mpi.recv(i,3)
       y = mpi.recv(i,3)
       if len(x) > 0 and len(y)==len(x):
-        plg(x,y,color=color,type=linetype,marker=marker,msize=msize)
+        apply(plg,(x,y),kw)
   else:
     mpi.send(f,0,3)
     mpi.send(z,0,3)
 
 # Gather an object from all processors into a list
 def gather(obj,dest=0):
+  if not lparallel: return obj
   if mpi.rank == dest:
     result = []
     for i in range(mpi.procs):
@@ -118,15 +147,22 @@ def gather(obj,dest=0):
   else:
     mpi.send(obj,dest)
     return obj
-    
+
+# Broadcast an object to all procerssors
+def broadcast(obj,root=0):
+  if not lparallel: return obj
+  return mpi.bcast(obj,root)
+
 # Gather an object from all processors into a list and scatter back to all
 def gatherall(obj):
+  if not lparallel: return obj
   obj = gather(obj)
   return mpi.bcast(obj)
     
 # General gatherarray which returns an array object combining the
 # first dimension.
-def gatherarray(a,root=0):
+def gatherarray(a,root=0,othersempty=0):
+  if not lparallel: return a
   # --- First check if input can be converted to an array
   isinputok = 1
   try:
@@ -144,8 +180,11 @@ def gatherarray(a,root=0):
     return None
   # --- Now, actually gather the array.
   result = gather(a,root)
-  # --- All processors but root simply return the input argument
-  if me != root: return a
+  # --- All processors but root simply return either the input argument
+  # --- or an empty array
+  if me != root:
+    if othersempty: return zeros(len(shape(a))*[0],a.typecode())
+    else: return a
   # --- Processor 1 reshapes the data, removing the first dimension
   # --- Do it bit by bit since the data passed by the other processors may
   # --- not be all the same size.
@@ -174,25 +213,25 @@ def gatherarray(a,root=0):
 
 # Generic global operation on a distributed array.
 def globalop(a,localop,mpiop,defaultval):
-  if npes == 0: return localop(a)
-  if type(a) in [type(0.),type(0)]:
+  if type(a) in [FloatType,IntType]:
     local = a
   elif len(a) > 0:
     local = localop(a)
   else:
     local = defaultval
-  return mpi.allreduce(local,mpiop)
+  if not lparallel: return local
+  return mpi.allreduce(local,eval("mpi."+mpiop))
 
 # Specific operations on a distributed array.
 def globalmax(a):
-  return globalop(a,max,mpi.MAX,-1.e36)
+  return globalop(a,max,"MAX",-1.e36)
 def globalmin(a):
-  return globalop(a,min,mpi.MIN,+1.e36)
+  return globalop(a,min,"MIN",+1.e36)
 def globalsum(a):
-  return globalop(a,sum,mpi.SUM,0.)
+  return globalop(a,sum,"SUM",0.)
 def globalave(a):
-  s = globalop(a,sum,mpi.SUM,0.)
-  if type(a) in [type(0.),type(0)]: a = [a]
+  s = globalop(a,sum,"SUM",0.)
+  if type(a) in [FloatType,IntType]: a = [a]
   n = globalsum(len(a))
   if n > 0: return s/n
   else:     return 0.
@@ -201,22 +240,22 @@ def globalave(a):
 # Note that this would be rather slow on large array. The mpi.allreduce
 # routine needs to be fixed to accept arrays.
 def parallelop(a,mpiop):
-  if npes == 0: return a
+  if not lparallel: return a
   if type(a) == type(array([])):
     a1d = ravel(a) + 0
     for i in range(len(a1d)):
-      a1d[i] = mpi.allreduce(a1d[i],mpiop)
+      a1d[i] = mpi.allreduce(a1d[i],eval("mpi."+mpiop))
     a1d.shape = shape(a)
     return a1d
   else:
-    return mpi.allreduce(a,mpiop)
+    return mpi.allreduce(a,eval("mpi."+mpiop))
 
 # Specific parallel element-by-element operations on a distributed array.
 def parallelmax(a):
-  return parallelop(a,mpi.MAX)
+  return parallelop(a,"MAX")
 def parallelmin(a):
-  return parallelop(a,mpi.MIN)
+  return parallelop(a,"MIN")
 def parallelsum(a):
-  return parallelop(a,mpi.SUM)
+  return parallelop(a,"SUM")
 
 
