@@ -1,6 +1,6 @@
 from warp import *
 from mplot import *
-histplots_version = "$Id: histplots.py,v 1.10 2001/10/24 20:28:39 dave Exp $"
+histplots_version = "$Id: histplots.py,v 1.11 2002/01/24 23:08:01 dave Exp $"
 
 hpbasictext = """
   - absc: Data for the abscissa. Defaults to either thist or hzbeam
@@ -1235,6 +1235,18 @@ if sys.version[:5] != "1.5.1":
   hpxedge.__doc__ = hpxedge.__doc__ + hpbasicwintext
 
 
+def hpxpedge(iw=0,kwdict={},**kw):
+  "X' at Beam Edge."
+  kw.update(kwdict)
+  kw['titlet']="X' at Beam Edge"
+  kw['titlel']="(m)"
+  xpedge = (top.hxxpbar-top.hxbar*top.hxpbar)/ \
+           where(greater(top.hxrms,0.),top.hxrms,1.)
+  hpbasicwin(xpedge,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpxpedge.__doc__ = hpxpedge.__doc__ + hpbasicwintext
+
+
 def hpyedge(iw=0,kwdict={},**kw):
   "Y Beam Edge."
   kw.update(kwdict)
@@ -1243,6 +1255,18 @@ def hpyedge(iw=0,kwdict={},**kw):
   hpbasicwin(2.*top.hyrms,iw,kw)
 if sys.version[:5] != "1.5.1":
   hpyedge.__doc__ = hpyedge.__doc__ + hpbasicwintext
+
+
+def hpypedge(iw=0,kwdict={},**kw):
+  "Y' at Beam Edge."
+  kw.update(kwdict)
+  kw['titlet']="Y' at Beam Edge"
+  kw['titlel']="(m)"
+  ypedge = (top.hyypbar-top.hybar*top.hypbar)/ \
+           where(greater(top.hyrms,0.),top.hyrms,1.)
+  hpbasicwin(ypedge,iw,kw)
+if sys.version[:5] != "1.5.1":
+  hpypedge.__doc__ = hpypedge.__doc__ + hpbasicwintext
 
 
 def hpxedges(iw=0,kwdict={},**kw):
@@ -1310,7 +1334,9 @@ hpeps6d(): 6-D Emittance
 hpepst(): Transverse Emittance
 hpepsnt(): Normalized Transverse Emittance
 hpxedge(): X Beam Edge (twice rms)
+hpxpedge(): X' Beam Edge
 hpyedge(): Y Beam Edge (twice rms)
+hpypedge(): Y' Beam Edge
 hpxedges(): X Beam Edges plus centroid
 hpyedges(): Y Beam Edges plus centroid
 hpenvx = hpxedge
