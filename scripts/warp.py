@@ -3,7 +3,7 @@ import __main__
 from Numeric import *
 import ranlib
 import sys
-warp_version = "$Id: warp.py,v 1.14 2001/01/31 21:45:02 dave Exp $"
+warp_version = "$Id: warp.py,v 1.15 2001/02/02 00:20:00 dave Exp $"
 
 # --- Gist needs to be imported before pyBasis since pyBasis calls a function
 # --- from gist. Also, since gist is only loaded on PE0 in the parallel
@@ -105,8 +105,9 @@ print 'For more help, type warphelp()'
 
 #=============================================================================
 # --- Import the convenience routines for plotting various slices and
-# --- projections of particles as well as some line plots.
+# --- projections of particles, histories, as well as some line plots.
 from warpplots import *
+from histplots import *
 
 # --- Import some online documentation modules.
 from warphelp import *
