@@ -50,7 +50,7 @@ for pkg in warppkgs:
   warpobjects = warpobjects + makeobjects(pkg)
 
 warpobjects = warpobjects + ['dtop.o',
-                             'dw3d.o',
+                             'dw3d.o','w3d_interp.o',
                              'f3d_mgrid.o','f3d_conductors.o','fft.o','util.o',
                              'fxy_mgrid.o',
                              'dwrz.o',

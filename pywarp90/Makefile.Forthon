@@ -13,8 +13,8 @@ toppy.$(SO): top.F dtop.F top.v
 envpy.$(SO): toppy.$(SO) env.F env.v
 	Forthon -a $(DEBUG) env
 
-w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d.v
-	Forthon -a $(DEBUG) --macros top.v w3d dw3d.F
+w3dpy.$(SO): toppy.$(SO) w3d.F dw3d.F w3d_interp.F w3d.v
+	Forthon -a $(DEBUG) --macros top.v w3d dw3d.F w3d_interp.F
 
 f3dpy.$(SO): toppy.$(SO) w3dpy.$(SO) f3d.F f3d_mgrid.F f3d_conductors.F util.F fft.F f3d.v
 	Forthon -a $(DEBUG) --macros top.v f3d f3d_mgrid.F f3d_conductors.F util.F fft.F
