@@ -5,7 +5,7 @@ adjustmeshz: Adjust the longitudinal length of the mesh.
 adjustmeshxy: Adjust the longitudinal length of the mesh.
 """
 from warp import *
-adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.11 2003/04/17 22:11:25 dave Exp $"
+adjustmesh3d_version = "$Id: adjustmesh3d.py,v 1.12 2003/06/18 17:41:41 jlvay Exp $"
 
 def adjustmesh3ddoc():
   import adjustmesh3d
@@ -59,6 +59,7 @@ Warning - this does not yet work in parallel
     gallot("SelfFieldGrid3d")
   except:
     gallot("Fields3d")
+  setupfields3dparticles()  
   if w3d.solvergeom is w3d.RZgeom:
     frz.del_base()
     frz.init_base(w3d.nx,w3d.nz,w3d.dx,w3d.dz,w3d.xmmin,w3d.zmmin,false)
