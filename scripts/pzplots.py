@@ -1,77 +1,81 @@
 """
-pzpnum: Plot no. of simulation particles versus Z
-pzppcell: Plot no. of simulation particles per cell versus Z
-pzxbar: Plot mean X coordinate versus Z
-pzybar: Plot mean Y coordinate versus Z
-pzzbar: Plot mean axial location versus Z
-pzxpbar: Plot mean X' versus Z
-pzypbar: Plot mean Y' versus Z
-pzvxbar: Plot mean Vx versus Z
-pzvybar: Plot mean Vy versus Z
-pzvzbar: Plot mean Vz versus Z
-pzxybar: Plot mean product of X  and Y  versus Z
-pzxypbar: Plot mean product of X  and Y' versus Z
-pzyxpbar: Plot mean product of Y  and X' versus Z
-pzxpypbar: Plot mean product of X' and Y' versus Z
-pzxsqbar: Plot mean X-squared versus Z
-pzysqbar: Plot mean Y-squared versus Z
-pzzsqbar: Plot mean Z-squared versus Z
-pzxpsqbar: Plot mean X' squared versus Z
-pzypsqbar: Plot mean Y' squared versus Z
-pzvxsqbar: Plot mean Vx squared versus Z
-pzvysqbar: Plot mean Vy squared versus Z
-pzvzsqbar: Plot mean Vz squared versus Z
-pzxxpbar: Plot mean product of X and X' versus Z
-pzyypbar: Plot mean product of Y and Y' versus Z
-pzzvzbar: Plot mean product of Z and Vz versus Z
-pzxvzbar: Plot mean product of X and Vz versus Z
-pzyvzbar: Plot mean product of Y and Vz versus Z
-pzvxvzbar: Plot mean product of Vx and Vz versus Z
-pzvyvzbar: Plot mean product of Vy and Vz versus Z
-pzxrms: Plot rMS X versus Z
-pzyrms: Plot rMS Y versus Z
-pzzrms: Plot rMS Z versus Z
-pzxprms: Plot rMS X' versus Z
-pzyprms: Plot rMS Y' versus Z
-pzepsx: Plot x-X' emittance versus Z
-pzepsy: Plot y-Y' emittance versus Z
-pzepsz: Plot z-Z' emittance versus Z
-pzepsnx: Plot x-X' normalized emittance versus Z
-pzepsny: Plot y-Y' normalized emittance versus Z
-pzepsnz: Plot z-Z' normalized emittance versus Z
-pzepsg: Plot generalized emittance versus Z
-pzepsh: Plot generalized emittance versus Z
-pzepsng: Plot generalized normalized emittance versus Z
-pzepsnh: Plot generalized normalized emittance versus Z
-pzvxrms: Plot true RMS Vx versus Z
-pzvyrms: Plot true RMS Vy versus Z
-pzvzrms: Plot true RMS Vz versus Z
-pzxxpslope: Plot slope of x-x' phase space versus Z
-pzyypslope: Plot slope of y-y' phase space versus Z
-pzrhomid: Plot charge dens. on axis versus Z
-pzrhomax: Plot charge dens. max-over-X,Y versus Z
-pzcurr: Plot beam current versus Z
-pzegap: Plot gap electric field versus Z
-pzlchg: Plot line charge versus Z
-pzvzofz: Plot mean axial velocity versus Z
-pzezax: Plot Z electric field on axis versus Z
-pzphiax: Plot electrostatic potential on axis versus Z
-pzrhoax: Plot charge density on axis versus Z
-pzenvx: Plot beam X envelope (twice Xrms) versus Z
-pzenvy: Plot beam Y envelope (twice Yrms) versus Z
-pzxedge: Plot beam X envelope (twice Xrms) versus Z
-pzxpedge: Plot beam X' envelope versus Z
-pzyedge: Plot beam Y envelope (twice Yrms) versus Z
-pzypedge: Plot beam Y' envelope versus Z
-pzxedges: Plot beam X edges (centroid +- twice Xrms) versus Z
-pzyedges: Plot beam Y edges (centroid +- twice Yrms) versus Z
-pzenvxp: Plot beam X' envelope (2*xxpbar/xrms) versus Z
-pzenvyp: Plot beam Y' envelope (2*yypbar/yrms) versus Z
+RMS:
+  pzxrms: Plot RMS X versus Z
+  pzyrms: Plot RMS Y versus Z
+  pzzrms: Plot RMS Z versus Z
+  pzxprms: Plot RMS X' versus Z
+  pzyprms: Plot RMS Y' versus Z
+  pzvxrms: Plot true RMS Vx versus Z
+  pzvyrms: Plot true RMS Vy versus Z
+  pzvzrms: Plot true RMS Vz versus Z
+  pzepsx: Plot x-X' emittance versus Z
+  pzepsy: Plot y-Y' emittance versus Z
+  pzepsz: Plot z-Z' emittance versus Z
+  pzepsnx: Plot x-X' normalized emittance versus Z
+  pzepsny: Plot y-Y' normalized emittance versus Z
+  pzepsnz: Plot z-Z' normalized emittance versus Z
+  pzepsg: Plot generalized emittance versus Z
+  pzepsh: Plot generalized emittance versus Z
+  pzepsng: Plot generalized normalized emittance versus Z
+  pzepsnh: Plot generalized normalized emittance versus Z
+  pzxxpslope: Plot slope of x-x' phase space versus Z
+  pzyypslope: Plot slope of y-y' phase space versus Z
+Envelope:
+  pzenvx: Plot beam X envelope (twice Xrms) versus Z
+  pzenvy: Plot beam Y envelope (twice Yrms) versus Z
+  pzxedge: Plot beam X envelope (twice Xrms) versus Z
+  pzxpedge: Plot beam X' envelope versus Z
+  pzyedge: Plot beam Y envelope (twice Yrms) versus Z
+  pzypedge: Plot beam Y' envelope versus Z
+  pzxedges: Plot beam X edges (centroid +- twice Xrms) versus Z
+  pzyedges: Plot beam Y edges (centroid +- twice Yrms) versus Z
+  pzenvxp: Plot beam X' envelope (2*xxpbar/xrms) versus Z
+  pzenvyp: Plot beam Y' envelope (2*yypbar/yrms) versus Z
+Means:
+  pzxbar: Plot mean X coordinate versus Z
+  pzybar: Plot mean Y coordinate versus Z
+  pzzbar: Plot mean axial location versus Z
+  pzxpbar: Plot mean X' versus Z
+  pzypbar: Plot mean Y' versus Z
+  pzvxbar: Plot mean Vx versus Z
+  pzvybar: Plot mean Vy versus Z
+  pzvzbar: Plot mean Vz versus Z
+  pzxybar: Plot mean product of X  and Y  versus Z
+  pzxypbar: Plot mean product of X  and Y' versus Z
+  pzyxpbar: Plot mean product of Y  and X' versus Z
+  pzxpypbar: Plot mean product of X' and Y' versus Z
+  pzxsqbar: Plot mean X-squared versus Z
+  pzysqbar: Plot mean Y-squared versus Z
+  pzzsqbar: Plot mean Z-squared versus Z
+  pzxpsqbar: Plot mean X' squared versus Z
+  pzypsqbar: Plot mean Y' squared versus Z
+  pzvxsqbar: Plot mean Vx squared versus Z
+  pzvysqbar: Plot mean Vy squared versus Z
+  pzvzsqbar: Plot mean Vz squared versus Z
+  pzxxpbar: Plot mean product of X and X' versus Z
+  pzyypbar: Plot mean product of Y and Y' versus Z
+  pzzvzbar: Plot mean product of Z and Vz versus Z
+  pzxvzbar: Plot mean product of X and Vz versus Z
+  pzyvzbar: Plot mean product of Y and Vz versus Z
+  pzvxvzbar: Plot mean product of Vx and Vz versus Z
+  pzvyvzbar: Plot mean product of Vy and Vz versus Z
+Miscellaneous:
+  pzcurr: Plot beam current versus Z
+  pzlchg: Plot line charge versus Z
+  pzvzofz: Plot mean axial velocity versus Z
+  pzrhomid: Plot charge dens. on axis versus Z
+  pzrhomax: Plot charge dens. max-over-X,Y versus Z
+  pzrhoax: Plot charge density on axis versus Z
+  pzphiax: Plot electrostatic potential on axis versus Z
+  pzegap: Plot gap electric field versus Z
+  pzezax: Plot Z electric field on axis versus Z
+  pzpnum: Plot no. of simulation particles versus Z
+  pzppcell: Plot no. of simulation particles per cell versus Z
 """
 
 from warp import *
 import __main__
-pzplots_version = "$Id: pzplots.py,v 1.11 2003/01/13 16:00:02 dave Exp $"
+pzplots_version = "$Id: pzplots.py,v 1.12 2003/02/24 18:00:04 jlvay Exp $"
 
 def pzplotsdoc():
   import pzplots
