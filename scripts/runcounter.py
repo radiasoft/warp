@@ -3,7 +3,7 @@
 from warp import *
 import time
 import string
-runcounter_version = "$Id: runcounter.py,v 1.2 2002/07/17 16:54:51 dave Exp $"
+runcounter_version = "$Id: runcounter.py,v 1.3 2002/07/17 17:45:53 dave Exp $"
 
 def runcounter(init=0,delta=1,suffix=None,sleep=0):
   if not suffix: suffix = arraytostr(top.runid)
@@ -33,17 +33,24 @@ def runcounter(init=0,delta=1,suffix=None,sleep=0):
 
   return runnumber
 
-def accumulatedata(filename,datadict):
+def accumulatedata(filename,datadict,globaldict={}):
   actualdata = {}
   try:
     ff = PR.PR(filename)
-    for k,v in map(None,datadict.keys(),datadict.values())
+    for k,v in map(None,datadict.keys(),datadict.values()):
       d = ff.read(k)
-      actualdata[k] = arrayappend(d,eval(v,globals()))
+      actualdata[k] = arrayappend(d,eval(v,globals(),globaldict))
   except IOError:
-    for k,v in map(None,datadict.keys(),datadict.values())
-      actualdata[k] = eval(v,globals())
+    for k,v in map(None,datadict.keys(),datadict.values()):
+      d = eval(v,globals(),globaldict)
+      dshape = shape(array(d))
+      newshape = tuple(list(dshape) + [0])
+      newarray = zeros(newshape,'d')
+      actualdata[k] = arrayappend(newarray,d)
   ff = PW.PW(filename)
-  for k,v in map(None,actualdata.keys(),actualdata.values())
+  for k,v in map(None,actualdata.keys(),actualdata.values()):
     ff.write(k,v)
   ff.close()
+
+
+
