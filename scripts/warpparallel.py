@@ -1,7 +1,7 @@
 from warp import *
 import mpi
 import __main__
-warpparallel_version = "$Id: warpparallel.py,v 1.30 2002/07/10 17:42:27 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.31 2002/09/24 22:12:02 dave Exp $"
 
 top.my_index = me
 top.nslaves = npes
@@ -463,28 +463,32 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                 # --- out as one chunk but is in the wrong order.
                   ff.defent(vname+'@parallel',v,(top.lenhist+1,w3d.nzfull+1))
               elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
-                                            'condvolt','icondlxy','icondlz']:
+                                           'condvolt','condnumb','icondlevel']:
                 # --- The conductor data is gathered into one place
                 if sum(ncond_p) > 0:
                   ff.defent(pdbname,v,(sum(ncond_p),))
+                  # --- Create extra storage for izcond to save data
+                  # --- relative to local processor.
+                  if vname == 'izcond':
+                    ff.defent(vname+'@parallel',v,(sum(ncond_p),))
               elif p == 'f3d' and \
-                   vname in ['ecndpvph','iecndx','iecndy','iecndz',
-                             'ecdelmx','ecdelmy','ecdelmz','ecdelpx',
-                             'ecdelpy','ecdelpz','ecvolt','ecvoltmx',
-                             'ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz',
-                             'ecvoltpz','iecndlxy','iecndlz']:
+                   vname[:5] in ['iecnd','ecdel','ecvol','ecnum']:
                 # --- The conductor data is gathered into one place
                 if sum(necndbdy_p) > 0:
                   ff.defent(pdbname,v,(sum(necndbdy_p),))
+                  # --- Create extra storage for iecndz to save data
+                  # --- relative to local processor.
+                  if vname == 'iecndz':
+                    ff.defent(vname+'@parallel',v,(sum(necndbdy_p),))
               elif p == 'f3d' and \
-                   vname in ['ocndpvph','iocndx','iocndy','iocndz',
-                             'ocdelmx','ocdelmy','ocdelmz','ocdelpx',
-                             'ocdelpy','ocdelpz','ocvolt','ocvoltmx',
-                             'ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz',
-                             'ocvoltpz','iocndlxy','iocndlz']:
+                   vname[:5] in ['iocnd','ocdel','ocvol','ocnum']:
                 # --- The conductor data is gathered into one place
                 if sum(nocndbdy_p) > 0:
                   ff.defent(pdbname,v,(sum(nocndbdy_p),))
+                  # --- Create extra storage for iocndz to save data
+                  # --- relative to local processor.
+                  if vname == 'iocndz':
+                    ff.defent(vname+'@parallel',v,(sum(nocndbdy_p),))
               elif p == 'w3d' and vname in ['rho']:
                 # --- Be prepared to dump out rho in case it is needed.
                 # --- For example the egun script wants rho saved.
@@ -523,12 +527,12 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
     for vname in vlist:
       v = pkg.getpyobject(vname)
       if v is not None:
-        if verbose: print "writing "+p+"."+vname+" as "+pdbname+" -second pass"
         a = pkg.getvarattr(vname)
         if varsuffix is None:
           pdbname = vname+'@'+p
         else:
           pdbname = vname+varsuffix
+        if verbose: print "writing "+p+"."+vname+" as "+pdbname+" -second pass"
         parallelvar = re.search('parallel',a)
         if parallelvar:
           # --- First, deal with scalars. Each processor writes out it's
@@ -578,35 +582,36 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                 ff.write(vname+'@parallel',transpose(v),
                          indx=(0,top.izpslave[me]))
             elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
-                                          'condvolt','icondlxy','icondlz']:
+                                          'condvolt','condnumb','icondlevel']:
               # --- Write out conductor data.
-              offset = 0
-              if vname=='izcond': offset = top.izslave[me]
               if f3d.ncond > 0:
+                offset = 0
+                if vname=='izcond':
+                  ff.write(vname+'@parallel',v[:f3d.ncond],
+                           indx=(sum(ncond_p0[:me+1]),))
+                  offset = take(f3d.mglevelsiz,f3d.icondlevel[:f3d.ncond])
                 ff.write(pdbname,v[:f3d.ncond]+offset,
                          indx=(sum(ncond_p0[:me+1]),))
             elif p == 'f3d' and \
-                 vname in ['ecndpvph','iecndx','iecndy','iecndz',
-                           'ecdelmx','ecdelmy','ecdelmz','ecdelpx',
-                           'ecdelpy','ecdelpz','ecvolt','ecvoltmx',
-                           'ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz',
-                           'ecvoltpz','iecndlxy','iecndlz']:
+                 vname[:5] in ['iecnd','ecdel','ecvol','ecnum']:
               # --- Write out conductor data.
-              offset = 0
-              if vname=='iecndz': offset = top.izslave[me]
               if f3d.necndbdy > 0:
+                offset = 0
+                if vname=='iecndz':
+                  ff.write(vname+'@parallel',v[:f3d.necndbdy],
+                           indx=(sum(necndbdy_p0[:me+1]),))
+                  offset = take(f3d.mglevelsiz,f3d.iecndlevel[:f3d.necndbdy])
                 ff.write(pdbname,v[:f3d.necndbdy]+offset,
                          indx=(sum(necndbdy_p0[:me+1]),))
             elif p == 'f3d' and \
-                 vname in ['ocndpvph','iocndx','iocndy','iocndz',
-                           'ocdelmx','ocdelmy','ocdelmz','ocdelpx',
-                           'ocdelpy','ocdelpz','ocvolt','ocvoltmx',
-                           'ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz',
-                           'ocvoltpz','iocndlxy','iocndlz']:
+                 vname[:5] in ['iocnd','ocdel','ocvol','ocnum']:
               # --- Write out conductor data.
-              offset = 0
-              if vname=='iocndz': offset = top.izslave[me]
               if f3d.nocndbdy > 0:
+                offset = 0
+                if vname=='iocndz':
+                  ff.write(vname+'@parallel',v[:f3d.nocndbdy],
+                           indx=(sum(nocndbdy_p0[:me+1]),))
+                  offset = take(f3d.mglevelsiz,f3d.iocndlevel[:f3d.nocndbdy])
                 ff.write(pdbname,v[:f3d.nocndbdy]+offset,
                          indx=(sum(nocndbdy_p0[:me+1]),))
             elif p == 'w3d' and vname in ['rho']:
@@ -688,6 +693,17 @@ def parallelrestore(fname,verbose=false,skip=[]):
     top.ins[:] = ff.read_part('ins@parallel',itriple)[0,...]
   if 'nps@parallel' in vlist:
     top.nps[:] = ff.read_part('nps@parallel',itriple)[0,...]
+
+  # --- The conductor arrays, if they are being read in, need to be
+  # --- pre-allocated.
+  allotConductor3d = 0
+  if 'ncondmax@parallel' in vlist:
+    f3d.ncondmax = ff.read_part('ncondmax@parallel',array([me,me,1]))[0]
+    allotConductor3d = 1
+  if 'ncndmax@parallel' in vlist:
+    f3d.ncndmax = ff.read_part('ncndmax@parallel',array([me,me,1]))[0]
+    allotConductor3d = 1
+  if allotConductor3d: gchange("Conductor3d")
 
   # --- These arrays need to be read in to get the indices for the
   # --- correct data for each processor.
@@ -864,44 +880,42 @@ def parallelrestore(fname,verbose=false,skip=[]):
             tmp = ff.read_part(vname+"@parallel",itriple)
             s = p+'.forceassign(vname,transpose(tmp))'
         elif p == 'f3d' and vname in ['ixcond','iycond','izcond', \
-                                      'condvolt','icondlxy','icondlz']:
+                                      'condvolt','condnumb','icondlevel']:
           # --- The conductor data was gathered into one place
           if ncond_p[me] > 0:
             imin = sum(ncond_p0[:me+1])
             itriple = array([imin,imin+ncond_p[me]-1,1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-            if vname == 'izcond':
-              s = s + ';f3d.izcond[:]=f3d.izcond[:]-top.izslave[me]'
+            if vname == 'izcond': vv = vname+'@parallel'
+            else:                 vv = v
+            s = p+'.'+vname+'[:f3d.ncond]=ff.read_part(vv,itriple)'
           else:
             s = 'pass'
         elif p == 'f3d' and \
-             vname in ['ecndpvph','iecndx','iecndy','iecndz',
-                       'ecdelmx','ecdelmy','ecdelmz','ecdelpx',
-                       'ecdelpy','ecdelpz','ecvolt','ecvoltmx',
-                       'ecvoltpx','ecvoltmy','ecvoltpy','ecvoltmz',
-                       'ecvoltpz','iecndlxy','iecndlz']:
+             vname[:5] in ['iecnd','ecdel','ecvol','ecnum']:
           # --- The conductor data was gathered into one place
+          # --- Note, forceassign is not used since the arrays must be
+          # --- pre-allocated since the data from the file does not
+          # --- completely fill the array.
           if necndbdy_p[me] > 0:
             imin = sum(necndbdy_p0[:me+1])
             itriple = array([imin,imin+necndbdy_p[me]-1,1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-            if vname == 'iecndz':
-              s = s + ';f3d.iecndz[:]=f3d.iecndz[:]-top.izslave[me]'
+            if vname == 'iecndz': vv = vname+'@parallel'
+            else:                 vv = v
+            s = p+'.'+vname+'[:f3d.necndbdy]=ff.read_part(vv,itriple)'
           else:
             s = 'pass'
         elif p == 'f3d' and \
-             vname in ['ocndpvph','iocndx','iocndy','iocndz',
-                       'ocdelmx','ocdelmy','ocdelmz','ocdelpx',
-                       'ocdelpy','ocdelpz','ocvolt','ocvoltmx',
-                       'ocvoltpx','ocvoltmy','ocvoltpy','ocvoltmz',
-                       'ocvoltpz','iocndlxy','iocndlz']:
+             vname[:5] in ['iocnd','ocdel','ocvol','ocnum']:
           # --- The conductor data was gathered into one place
+          # --- Note, forceassign is not used since the arrays must be
+          # --- pre-allocated since the data from the file does not
+          # --- completely fill the array.
           if nocndbdy_p[me] > 0:
             imin = sum(nocndbdy_p0[:me+1])
             itriple = array([imin,imin+nocndbdy_p[me]-1,1])
-            s = p+'.forceassign(vname,ff.read_part(v,itriple))'
-            if vname == 'iocndz':
-              s = s + ';f3d.iocndz[:]=f3d.iocndz[:]-top.izslave[me]'
+            if vname == 'iocndz': vv = vname+'@parallel'
+            else:                 vv = v
+            s = p+'.'+vname+'[:f3d.nocndbdy]=ff.read_part(vv,itriple)'
           else:
             s = 'pass'
         elif p == 'w3d' and vname in ['rho']:
