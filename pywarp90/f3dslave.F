@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c F3DSLAVE.M, version $Revision: 1.19 $, $Date: 2004/09/18 05:37:32 $
+c F3DSLAVE.M, version $Revision: 1.20 $, $Date: 2004/10/21 01:08:53 $
 c Slave routines related to F3D package.
 c=============================================================================
 c=============================================================================
@@ -721,11 +721,12 @@ c=============================================================================
 c=============================================================================
 c==== Parallel routines for the multigrid fieldsolver
 c=============================================================================
-      subroutine mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
-     &                      nzfull)
-      integer(ISZ):: nslaves,nzfull
+      subroutine mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
+     &                      nzfull,nzfullcoarse,czfactor)
+      integer(ISZ):: nslaves,nzfull,nzfullcoarse
+      real(kind=8):: czfactor
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
 
 c Divides nz for each processor by two. For odd numbers, the starting end
 c is rounded down, and the upper end up. For each processor, if nz ends up
@@ -738,21 +739,23 @@ c also, subtract 1 from izfsslave.
 
 c       --- First divide nz by 2. izfsslave is rounded down, and nzfsslave
 c       --- is rounded up.
-        izfsslave2(is) = izfsslave(is)/2
-        nzfsslave2(is) = (izfsslave(is)+nzfsslave(is) + 1)/2 - izfsslave2(is)
+        izfsslavec(is) = int(floor(izfsslave(is)*czfactor))
+        nzfsslavec(is) = int(ceiling((izfsslave(is)+nzfsslave(is))*czfactor -
+     &                   izfsslavec(is)))
 
 c       --- Then check that no nz are less than nzmin.
 c       --- Note that if nzfsslave is already < nzmin, leave it as is.
-c       --- When nzfsslave < nzmin, in some cases setting nzfsslave2 to nzmin
+c       --- When nzfsslave < nzmin, in some cases setting nzfsslavec to nzmin
 c       --- will cause the coarsened grid to extend too far beyond the finer
 c       --- grid's gaurd cell, so it would need data from a neighboring cell,
 c       --- where it would normally be able to use data from the gaurd cells.
 c       --- That is a rare occurance so it is simpler to avoid the problem
 c       --- then to write the code to exchange the data for that case.
-        if (nzfsslave2(is) < nzmin .and. nzfsslave2(is) < nzfsslave(is)) then
-          nzfsslave2(is) = nzfsslave2(is) + 1
-          if (izfsslave2(is)+nzfsslave2(is) > nzfull/2) then
-            izfsslave2(is) = izfsslave2(is) - 1
+        if (nzfsslavec(is) < nzmin .and. nzfsslavec(is) < nzfsslave(is)) then
+          nzfsslavec(is) = nzfsslavec(is) + 1
+          if (izfsslavec(is)+nzfsslavec(is) > nzfullcoarse) then
+            izfsslavec(is) = izfsslavec(is) - 1
+            nzfsslavec(is) = nzfullcoarse - izfsslavec(is)
           endif
         endif
 
@@ -762,13 +765,13 @@ c       --- then to write the code to exchange the data for that case.
       end
 c=============================================================================
       subroutine mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
-     &                            bounds,nzfull,lparity,rparity,
+     &                            bounds,nzfull,lzoffset,rzoffset,
      &                            whosendingleft,izsendingleft,
      &                            whosendingright,izsendingright)
       integer(ISZ):: nslaves,my_index
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
       integer(ISZ):: bounds(0:5),nzfull
-      integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
+      real(kind=8):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1)
       integer(ISZ):: izsendingleft(0:nslaves-1)
@@ -800,7 +803,7 @@ c     --- Loop over all slaves since this must be a global process.
 c       --- If this process covers the full extent of the mesh on this and the
 c       --- next finer mesh, then it doesn't need any data sent to it.
         if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull
-     &      .and. rparity(idx) == 0)
+     &      .and. rzoffset(idx) == 0.)
      &    cycle
 
 c       --- Skip processors which have the same right mesh extent (and
@@ -835,7 +838,7 @@ c         --- end of this processor, wrapping around to the left edge.
           js = 0
           ie = js
           do while (ie < nslaves .and. izfsslave(ie) == 0 .and.
-     &              lparity(ie) == 0)
+     &              lzoffset(ie) == 0.)
             ie = ie + 1
           enddo
           ie = ie - 1
@@ -844,11 +847,11 @@ c         --- end of this processor, wrapping around to the left edge.
 c         --- Some of the processors which extend to the right hand edge will
 c         --- need data there if they did not extend to the right edge
 c         --- at a the next finer level. These processors are known by
-c         --- having rparity > 0.
-          if (idx < nslaves-1 .and. rparity(idx) > 0) then
+c         --- having rzoffset > 0.
+          if (idx < nslaves-1 .and. rzoffset(idx) > 0.) then
             ie = nslaves - 1
             js = ie - 1
-            do while (js > idx .and. rparity(js) == 0 .and.
+            do while (js > idx .and. rzoffset(js) == 0. .and.
      &            izfsslave(js)+nzfsslave(js)==izfsslave(idx)+nzfsslave(idx))
               js = js - 1
             enddo
@@ -886,7 +889,7 @@ c     --- Loop over all slaves since this most be a global process.
 c       --- If this process covers the full extent on this and the
 c       --- next finer mesh, then it doesn't need any data sent to it.
         if (izfsslave(idx) == 0 .and. izfsslave(idx)+nzfsslave(idx) == nzfull
-     &      .and. lparity(idx) == 0)
+     &      .and. lzoffset(idx) == 0.)
      &    cycle
 
 c       --- Skip processors which have the same left mesh extent (and
@@ -918,7 +921,7 @@ c         --- end of this processor, wrapping around to the left edge.
           ie = nslaves-1
           js = ie
           do while (js >= 0 .and. izfsslave(js)+nzfsslave(js) == nzfull .and.
-     &              rparity(js) == 0)
+     &              rzoffset(js) == 0.)
             js = js - 1
           enddo
           js = js + 1
@@ -927,11 +930,11 @@ c         --- end of this processor, wrapping around to the left edge.
 c         --- Some of the processors which extend to the left hand edge will
 c         --- need data there if they did not extend to the left edge
 c         --- at a the next finer level. These processors are known by
-c         --- having lparity > 0.
-          if (idx > 0 .and. lparity(idx) > 0) then
+c         --- having lzoffset > 0.
+          if (idx > 0 .and. lzoffset(idx) > 0.) then
             js = 0
             ie = js + 1
-            do while (ie < idx .and. lparity(ie) == 0 .and. izfsslave(ie) == 0)
+            do while (ie < idx .and. lzoffset(ie) == 0. .and. izfsslave(ie) == 0)
               ie = ie + 1
             enddo
             ie = ie - 1
@@ -1127,14 +1130,14 @@ c     --- Now wait for everything to finish
 c=============================================================================
       subroutine mgexchange_rho(nx,ny,nz,nzfull,rho,
      &                          my_index,nslaves,izfsslave,nzfsslave,
-     &                          lparity,rparity,
+     &                          lzoffset,rzoffset,
      &                          whosendingleft,izsendingleft,
      &                          whosendingright,izsendingright)
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: rho(0:nx,0:ny,0:nz)
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves-1),nzfsslave(0:nslaves-1)
-      integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
+      real(kind=8):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
 
@@ -1159,7 +1162,7 @@ c     --- on the right end sent to it.
 
 c       --- Also skip processors that extend to the right edge of this and the
 c       --- next finer level.
-        if (izfsslave(ip)+nzfsslave(ip)==nzfull .and. rparity(ip)==0) cycle
+        if (izfsslave(ip)+nzfsslave(ip)==nzfull .and. rzoffset(ip)==0.) cycle
 
         if (my_index == whosendingleft(ip)) then
           w = w + 1
@@ -1180,7 +1183,7 @@ c         --- so override it.
 c     --- Any processor that extends to the left edge of this and the next
 c     --- finer level don't need a rho sent to it.
       if (whosendingright(my_index) /= -1 .and. 
-     &    .not. (izfsslave(my_index)==0 .and. lparity(my_index)==0)) then
+     &    .not. (izfsslave(my_index)==0 .and. lzoffset(my_index)==0.)) then
         w = w + 1
         call MPI_IRECV(rho(0,0,0),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,whosendingright(my_index),nzfull,
@@ -1193,7 +1196,7 @@ c     --- on the left end sent to it.
 
 c       --- Also skip processors that extend to the left edge of this and the
 c       --- next finer level.
-        if (izfsslave(ip)==0 .and. lparity(ip)==0) cycle
+        if (izfsslave(ip)==0 .and. lzoffset(ip)==0.) cycle
 
         if (my_index == whosendingright(ip)) then
           w = w + 1
@@ -1215,7 +1218,7 @@ c     --- Any processor that extends to the right edge of this and the next
 c     --- finer level don't need a rho sent to it.
       if (whosendingleft(my_index) /= -1 .and.
      &    .not. (izfsslave(my_index)+nzfsslave(my_index)==nzfull .and.
-     &           rparity(my_index)==0)) then
+     &           rzoffset(my_index)==0.)) then
         w = w + 1
         call MPI_IRECV(rho(0,0,nz),(nx+1)*(ny+1),
      &                 MPI_DOUBLE_PRECISION,whosendingleft(my_index),nzfull,

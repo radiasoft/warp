@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File F3D_MGRID.M, version $Revision: 3.77 $, $Date: 2004/09/21 21:28:54 $
+c@(#) File F3D_MGRID.M, version $Revision: 3.78 $, $Date: 2004/10/21 01:08:53 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is the 3D multigrid field sovler which is part of the F3D
@@ -112,12 +112,12 @@ c     added by petermc, 26 Sep 2002
 c     --- The following only used when mgform == 2
       real(kind=8),allocatable:: rhosave(:,:,:),res(:,:,:)
       integer(ISZ):: localbounds(0:5)
-      integer(ISZ):: lparity(0:nslaves-1),rparity(0:nslaves-1)
+      real(kind=8):: lzoffset(0:nslaves-1),rzoffset(0:nslaves-1)
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
-      integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
-      integer(ISZ):: whosendingright2(0:nslaves-1),izsendingright2(0:nslaves-1)
-      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      integer(ISZ):: whosendingleftc(0:nslaves-1), izsendingleftc(0:nslaves-1)
+      integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
+      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
       character(72):: errline
       real(kind=8):: substarttime,wtime
       if (lf3dtimesubs) substarttime = wtime()
@@ -203,11 +203,11 @@ c     --- Also setup parallel arrays.
 !$OMP END SINGLE
         rhosave = rho
 #ifdef MPIPARALLEL
-        lparity = 0
-        rparity = 0
+        lzoffset = 0.
+        rzoffset = 0.
         call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                        bounds,nzfull,
-     &                        lparity,rparity,
+     &                        lzoffset,rzoffset,
      &                        whosendingleft,izsendingleft,
      &                        whosendingright,izsendingright)
         localbounds = bounds
@@ -414,13 +414,13 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       real(kind=8):: dxcoarse,dycoarse,dzcoarse
       real(kind=8):: dxcoarsesqi,dycoarsesqi,dzcoarsesqi
       integer(ISZ):: localbounds(0:5),localbounds2(0:5)
-      integer(ISZ):: lparityall(0:nslaves-1),rparityall(0:nslaves-1)
-      integer(ISZ):: lparity,rparity
+      real(kind=8):: lzoffsetall(0:nslaves-1),rzoffsetall(0:nslaves-1)
+      real(kind=8):: lzoffset,rzoffset
       integer(ISZ):: whosendingleft(0:nslaves-1), izsendingleft(0:nslaves-1)
       integer(ISZ):: whosendingright(0:nslaves-1),izsendingright(0:nslaves-1)
-      integer(ISZ):: whosendingleft2(0:nslaves-1), izsendingleft2(0:nslaves-1)
-      integer(ISZ):: whosendingright2(0:nslaves-1),izsendingright2(0:nslaves-1)
-      integer(ISZ):: izfsslave2(0:nslaves-1),nzfsslave2(0:nslaves-1)
+      integer(ISZ):: whosendingleftc(0:nslaves-1), izsendingleftc(0:nslaves-1)
+      integer(ISZ):: whosendingrightc(0:nslaves-1),izsendingrightc(0:nslaves-1)
+      integer(ISZ):: izfsslavec(0:nslaves-1),nzfsslavec(0:nslaves-1)
 
       dxsqi = 1./dx**2
       dysqi = 1./dy**2
@@ -429,11 +429,11 @@ c Routine that does the v-cycle for multigrid. Note that it is recursive.
       localbounds = globalbounds
 
 #ifdef MPIPARALLEL
-      lparityall = 0
-      rparityall = 0
+      lzoffsetall = 0.
+      rzoffsetall = 0.
       call mggetexchangepes(nslaves,izfsslave,nzfsslave,my_index,
      &                      globalbounds,nzfull,
-     &                      lparityall,rparityall,
+     &                      lzoffsetall,rzoffsetall,
      &                      whosendingleft,izsendingleft,
      &                      whosendingright,izsendingright)
       if (izfsslave(my_index) > 0) localbounds(4) = -1
@@ -549,31 +549,32 @@ c         --- Add in resulting error.
 
 #ifdef MPIPARALLEL
 c         --- Find domains in coarser grid
-          call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
-     &                    nzfull)
+          call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
+     &                    nzfull,nzfullcoarse,dz/dzcoarse)
 c         --- Reset value to corrected one
-          nzcoarse = nzfsslave2(my_index)
+          nzcoarse = nzfsslavec(my_index)
 c         --- Difference between starts and ends of coarse and fine grids.
 c         --- Should only be in the range 0-2.
-          lparityall = izfsslave - 2*izfsslave2
-          rparityall = 2*(izfsslave2 + nzfsslave2) - (izfsslave + nzfsslave)
-c         --- Note that the lparityall and rparityall can only be used in
+          lzoffsetall = (nzfullcoarse*izfsslave-nzfull*izfsslavec)/nzfullcoarse
+          rzoffsetall = (nzfull*(izfsslavec + nzfsslavec) -
+     &                   nzfullcoarse*(izfsslave + nzfsslave))/nzfullcoarse
+c         --- Note that the lzoffsetall and rzoffsetall can only be used in
 c         --- MPIPARALLEL sections since they will be unallocated in the
 c         --- serial code. So, separate scalars are used in code which is
 c         --- used in the serial version.
-          lparity = lparityall(my_index)
-          rparity = rparityall(my_index)
+          lzoffset = lzoffsetall(my_index)
+          rzoffset = rzoffsetall(my_index)
 c         --- Get processor with which to exchange data on coarse grid
-          call mggetexchangepes(nslaves,izfsslave2,nzfsslave2,my_index,
+          call mggetexchangepes(nslaves,izfsslavec,nzfsslavec,my_index,
      &                          globalbounds,nzfullcoarse,
-     &                          lparityall,rparityall,
-     &                          whosendingleft2,izsendingleft2,
-     &                          whosendingright2,izsendingright2)
-          if (izfsslave2(my_index) > 0) localbounds2(4) = -1
-          if (izfsslave2(my_index) + nzcoarse < nzfullcoarse) localbounds2(5) = -1
+     &                          lzoffsetall,rzoffsetall,
+     &                          whosendingleftc,izsendingleftc,
+     &                          whosendingrightc,izsendingrightc)
+          if (izfsslavec(my_index) > 0) localbounds2(4) = -1
+          if (izfsslavec(my_index) + nzcoarse < nzfullcoarse) localbounds2(5) = -1
 #else
-          lparity = 0
-          rparity = 0
+          lzoffset = 0.
+          rzoffset = 0.
 #endif
 
 c         --- Alloate new work space
@@ -585,15 +586,15 @@ c         --- Restriction - note that scaling factor for residual is always
 c         --- 4 for full-coarsening and is compiled into the restriction
 c         --- routine.
           ff = (dxsqi+dysqi+dzsqi)/(dxcoarsesqi + dycoarsesqi + dzcoarsesqi)
-          call restrict3d(nx,ny,nz,res,
-     &                    nxcoarse,nycoarse,nzcoarse,rhocoarse,ff,
-     &                    localbounds2,localbounds,lparity,rparity)
+          call restrict3d(nx,ny,nz,nzfull,res,
+     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,ff,
+     &                    localbounds2,localbounds,lzoffset,rzoffset)
 #ifdef MPIPARALLEL
           call mgexchange_rho(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
-     &                        my_index,nslaves,izfsslave2,nzfsslave2,
-     &                        lparityall,rparityall,
-     &                        whosendingleft2,izsendingleft2,
-     &                        whosendingright2,izsendingright2)
+     &                        my_index,nslaves,izfsslavec,nzfsslavec,
+     &                        lzoffsetall,rzoffsetall,
+     &                        whosendingleftc,izsendingleftc,
+     &                        whosendingrightc,izsendingrightc)
 #endif
 
 c         --- Continue at the next coarsest level.
@@ -602,12 +603,12 @@ c         --- Continue at the next coarsest level.
      &                rstar,linbend,bendx,globalbounds,mgparam,mgform,
      &                mgmaxlevels,downpasses,uppasses,
      &                lcndbndy,icndbndy,conductors,
-     &                my_index,nslaves,izfsslave2,nzfsslave2)
+     &                my_index,nslaves,izfsslavec,nzfsslavec)
 
 c         --- Add in resulting error.
-          call expand3d(nx,ny,nz,phi,
-     &                  nxcoarse,nycoarse,nzcoarse,phicoarse,localbounds,
-     &                  lparity,rparity)
+          call expand3d(nx,ny,nz,nzfull,phi,
+     &                  nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
+     &                  localbounds,lzoffset,rzoffset)
 #ifdef MPIPARALLEL
           call mgexchange_phiperiodic(nx,ny,nz,nzfull,phi,localbounds,1,0,
      &                                my_index,nslaves,izfsslave,
@@ -625,6 +626,7 @@ c     message added by petermc, 1 Oct 2002
       if (.false.) print *, 'DOING ', uppasses,
      &     ' SORPASS3D CALLS ON ', nx, ny, nz, ' Warp'
 #endif
+
 
       do i=1,uppasses
         call sorpass3d(mglevel,nx,ny,nz,nzfull,phi,rho,rstar,
@@ -735,18 +737,17 @@ c     --- Set appropriate boundary values
       return
       end
 c=============================================================================
-      subroutine restrict3d(nx,ny,nz,res,
-     &                      nxcoarse,nycoarse,nzcoarse,rhocoarse,ff,
-     &                      bounds,boundscoarse,
-     &                      lparity,rparity)
-      integer(ISZ):: nx,ny,nz
-      integer(ISZ):: nxcoarse,nycoarse,nzcoarse
+      subroutine restrict3d(nx,ny,nz,nzfull,res,
+     &                      nxcoarse,nycoarse,nzcoarse,nzfullcoarse,rhocoarse,
+     &                      ff,bounds,boundscoarse,lzoffset,rzoffset)
+      integer(ISZ):: nx,ny,nz,nzfull
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
       real(kind=8):: rhocoarse(0:nxcoarse,0:nycoarse,0:nzcoarse)
       real(kind=8):: ff
       integer(ISZ):: bounds(0:5)
       integer(ISZ):: boundscoarse(0:5)
-      integer(ISZ):: lparity,rparity
+      real(kind=8):: lzoffset,rzoffset
       
 c Restrict to a coarser grid.  The factor ff is needed since the
 c residual will be used as the source term in the next coarser grid and
@@ -771,31 +772,25 @@ c     --- Set the loop limits, including edges when appropriate.
       if (bounds(1) == 1) ixcoarsemax = nxcoarse
       if (bounds(2) >  0) iycoarsemin = 0
       if (bounds(3) == 1) iycoarsemax = nycoarse
-      if (bounds(4) == 0 .or. lparity >= 1) izcoarsemin = 1
-      if (bounds(5) == 0 .or. rparity >= 1) izcoarsemax = nzcoarse - 1
+      if (bounds(4) == 0 .or. lzoffset > 0.) izcoarsemin = 1
+      if (bounds(5) == 0 .or. rzoffset > 0.) izcoarsemax = nzcoarse - 1
 
       dx = 1.*nx/nxcoarse
       dy = 1.*ny/nycoarse
-      dz = 1.*nz/nzcoarse
+      dz = 1.*nzfull/nzfullcoarse
       dxi = 1.*nxcoarse/nx
       dyi = 1.*nycoarse/ny
-      dzi = 1.*nzcoarse/nz
+      dzi = 1.*nzfullcoarse/nzfull
       w = ff*dxi*dyi*dzi
 
 c     --- Do the loops.
 !$OMP DO
       do izcoarse=izcoarsemin,izcoarsemax
-        izmin = int(ceiling((izcoarse-1)*dz + 1.e-10))
-        izmax = int(floor((izcoarse+1)*dz - 1.e-10))
-
-c XXX lparity and rparity need to be accounted for yet. This does not work
-c in parallel yet!!!!!!
-c       izm1 = 2*iz - 1 - lparity
-c       izp1 = 2*iz + 1 - lparity
-c       iz00 = 2*iz     - lparity
+        izmin = int(ceiling((izcoarse-1)*dz - lzoffset + 1.e-10))
+        izmax = int(floor((izcoarse+1)*dz - lzoffset - 1.e-10))
 
         do iz=izmin,izmax
-          wz(iz-izmin) = 1. - abs(izcoarse - iz*dzi)
+          wz(iz-izmin) = 1. - abs(izcoarse - (iz + lzoffset)*dzi)
         enddo
 
         do iycoarse=iycoarsemin,iycoarsemax
@@ -837,8 +832,8 @@ c     --- Set appropriate boundary values
       if (bounds(3) == 0) rhocoarse(:,nycoarse,:) = 0.
       if (bounds(3) == 2) rhocoarse(:,nycoarse,:) = rhocoarse(:,0,:)
 
-      if (boundscoarse(4) == 0 .or. lparity >= 1) rhocoarse(:,:,0) = 0.
-      if (boundscoarse(5) == 0 .or. rparity >= 1) rhocoarse(:,:,nzcoarse) = 0.
+      if (boundscoarse(4) == 0 .or. lzoffset > 0.) rhocoarse(:,:,0) = 0.
+      if (boundscoarse(5) == 0 .or. rzoffset > 0.) rhocoarse(:,:,nzcoarse) = 0.
 
       return
       end
@@ -912,20 +907,18 @@ c     --- Set the loop limits, including edges when appropriate.
       return
       end
 c=============================================================================
-      subroutine expand3d(nx,ny,nz,phi,
-     &                    nxcoarse,nycoarse,nzcoarse,phicoarse,bounds,
-     &                    lparity,rparity)
-      integer(ISZ):: nx,ny,nz
-      integer(ISZ):: nxcoarse,nycoarse,nzcoarse
+      subroutine expand3d(nx,ny,nz,nzfull,phi,
+     &                    nxcoarse,nycoarse,nzcoarse,nzfullcoarse,phicoarse,
+     &                    bounds,lzoffset,rzoffset)
+      integer(ISZ):: nx,ny,nz,nzfull
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1)
       real(kind=8):: phicoarse(0:nxcoarse,0:nycoarse,-1:nzcoarse+1)
-      integer(ISZ):: bounds(0:5),lparity,rparity
+      real(kind=8):: lzoffset,rzoffset
+      integer(ISZ):: bounds(0:5)
 
 c Add the error on the coarser grid to the current value on the finer grid.
 c The expansion is only transverse.
-
-c XXX XXX Note, that lparity and rparity have not yet been accounted for.
-c         This will not work in parallel!!!!
 
       integer(ISZ):: izmin,izmax
       integer(ISZ):: ix,iy,iz
@@ -939,12 +932,12 @@ c     --- Set the loop limits, including edges when appropriate.
 
       dx = 1.*nxcoarse/nx
       dy = 1.*nycoarse/ny
-      dz = 1.*nzcoarse/nz
+      dz = 1.*nzfullcoarse/nzfull
 
 !$OMP DO
       do iz=izmin,izmax
-        jz = int(iz*dz)
-        wz =     iz*dz - jz
+        jz = int((iz + lzoffset)*dz)
+        wz =     (iz + lzoffset)*dz - jz
         do iy=0,ny-1
           jy = int(iy*dy)
           wy =     iy*dy - jy
@@ -967,8 +960,8 @@ c     --- Set the loop limits, including edges when appropriate.
 
       if (bounds(1) > 0 .or. bounds(3) > 0) then
         do iz=izmin,izmax
-          jz = int(iz*dz)
-          wz =     iz*dz - jz
+          jz = int((iz + lzoffset)*dz)
+          wz =     (iz + lzoffset)*dz - jz
           phi(nx,ny,iz) = phi(nx,ny,iz) +
      &          (1.-wz)*phicoarse(nxcoarse,nycoarse,jz  ) +
      &              wz *phicoarse(nxcoarse,nycoarse,jz+1)
@@ -2001,8 +1994,8 @@ c       --- set temporaries for boundaries
         if (iyp1 == ny+1 .and. bounds(3) == 2) iyp1 = 1
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nz .and. bounds(5) < 1) cycle
+        if (iz == 0  .and. bounds(4) == 0) cycle
+        if (iz == nz .and. bounds(5) == 0) cycle
 
 c       --- set temporaries with initial values
         pxm = phi(ixm1,iy   ,iz   )
@@ -2102,8 +2095,8 @@ c       --- set temporaries for boundaries
         if (iyp1 == ny+1 .and. bounds(3) == 2) iyp1 = 1
         if (iym1 == -1 .or. iyp1 == ny+1) cycle
 
-        if (iz == 0  .and. bounds(4) < 1) cycle
-        if (iz == nz .and. bounds(5) < 1) cycle
+        if (iz == 0  .and. bounds(4) == 0) cycle
+        if (iz == nz .and. bounds(5) == 0) cycle
 
 c       --- set temporaries with initial values
         pxm = phi(ixm1,iy   ,iz   )
@@ -2218,7 +2211,7 @@ c=============================================================================
      &                    mglevel,bounds,mgparam,mgform,mgform2init,
      &                    lcndbndy,icndbndy,conductors)
       use ConductorTypemodule
-      integer(ISZ):: nx,ny,nz,nzfull
+      integer(ISZ):: nx,ny,nz,nzfull,my_index
       real(kind=8):: dxsqi,dysqi,dzsqi
       real(kind=8):: phi(0:nx,0:ny,-1:nz+1),rho(0:nx,0:ny,0:nz)
       real(kind=8):: res(-1:nx+1,-1:ny+1,-1:nz+1)
@@ -2360,7 +2353,7 @@ c     --- skip it.
      &    maxval(conductors%levelly) > 1 .or.
      &    maxval(conductors%levellz) > 1) return
 
-      call getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,0,1,1,1,
+      call getmglevelsrecur(nx,ny,nz,nzfull,dx,dy,dz,0,1.,1.,1.,
      &                      conductors,
      &                      my_index,nslaves,izfsslave,nzfsslave)
 
@@ -2374,15 +2367,17 @@ c=============================================================================
       use ConductorTypemodule
       integer(ISZ):: nx,ny,nz,nzfull
       real(kind=8):: dx,dy,dz
-      integer(ISZ):: mglevel,lx,ly,lz
+      integer(ISZ):: mglevel
+      real(kind=8):: lx,ly,lz
       type(ConductorType):: conductors
       integer(ISZ):: my_index,nslaves
       integer(ISZ):: izfsslave(0:nslaves),nzfsslave(0:nslaves)
 
 c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
 
-      integer(ISZ):: izfsslave2(0:nslaves),nzfsslave2(0:nslaves)
-      integer(ISZ):: nznew
+      integer(ISZ):: izfsslavec(0:nslaves),nzfsslavec(0:nslaves)
+      integer(ISZ):: nxcoarse,nycoarse,nzcoarse,nzfullcoarse
+      real(kind=8):: dxcoarse,dycoarse,dzcoarse,cxf,cyf,czf
       logical(ISZ):: partialcoarsening
 
 #ifdef MPIPARALLEL
@@ -2399,6 +2394,26 @@ c Calculate the levels of coarsening, saving the nx, ny, and nz for each level.
 
       if (nx < 4 .or. ny < 4 .or. nzfull < 4 .or. mglevel == 100) return
 
+c     --- Calculate the size of the next coarsest grid. If the current
+c     --- size is twice and odd integer, the next coarsest size will be
+c     --- n/2+1, gauranteeing that it is even.
+c     --- Note that nzcoarse is only used if full-coarsening is done.
+      nxcoarse = nx/2
+      if (mod(nxcoarse,2) == 1) nxcoarse = nxcoarse + 1
+      nycoarse = ny/2
+      if (mod(nycoarse,2) == 1) nycoarse = nycoarse + 1
+      nzcoarse = nz/2
+      if (mod(nzcoarse,2) == 1) nzcoarse = nzcoarse + 1
+      nzfullcoarse = nzfull/2
+      if (mod(nzfullcoarse,2) == 1) nzfullcoarse = nzfullcoarse + 1
+
+      dxcoarse = dx*nx/nxcoarse
+      dycoarse = dy*ny/nycoarse
+      dzcoarse = dz*nzfull/nzfullcoarse
+      cxf = dxcoarse/dx
+      cyf = dycoarse/dy
+      czf = dzcoarse/dz
+
 c     --- If dz > 4/3 dx then only coarsen transversely, otherwise coarsen
 c     --- all axis.
       partialcoarsening = (dz > 4./3.*dx)
@@ -2410,25 +2425,25 @@ c     --- processor can get a different value if dz == 4./3.*dx.
 #endif
 
       if (partialcoarsening) then
-        call getmglevelsrecur(nx/2,ny/2,nz,nzfull,dx*2,dy*2,dz,
-     &                        mglevel+1,lx*2,ly*2,lz,conductors,
+        call getmglevelsrecur(nxcoarse,nycoarse,nz,nzfull,dxcoarse,dycoarse,dz,
+     &                        mglevel+1,lx*cxf,ly*cyf,lz,conductors,
      &                        my_index,nslaves,izfsslave,nzfsslave)
       else
 
 #ifdef MPIPARALLEL
 c       --- Find domains in coarser grid
-        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslave2,nzfsslave2,
-     &                  nzfull)
+        call mgdividenz(nslaves,izfsslave,nzfsslave,izfsslavec,nzfsslavec,
+     &                  nzfull,nzfullcoarse,dz/dzcoarse)
 c       --- Set new value of nz
-        nznew = nzfsslave2(my_index)
+        nzcoarse = nzfsslavec(my_index)
 #else
-        izfsslave2 = 0
-        nznew = nz/2
+        izfsslavec = 0
 #endif
 
-        call getmglevelsrecur(nx/2,ny/2,nznew,nzfull/2,dx*2,dy*2,dz*2,
-     &                        mglevel+1,lx*2,ly*2,lz*2,conductors,
-     &                        my_index,nslaves,izfsslave2,nzfsslave2)
+        call getmglevelsrecur(nxcoarse,nycoarse,nzcoarse,nzfullcoarse,
+     &                        dxcoarse,dycoarse,dzcoarse,
+     &                        mglevel+1,lx*cxf,ly*cyf,lz*czf,conductors,
+     &                        my_index,nslaves,izfsslavec,nzfsslavec)
 
       endif
 
