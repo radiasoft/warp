@@ -14,6 +14,7 @@ It is not quaranteed to find all mistakes.
   """
   checksymmetry()
   checkparticleload()
+  checkibpush()
 
 ############################################################################
 ############################################################################
@@ -97,4 +98,20 @@ def checkparticleload():
       raise "ERROR: grid size extends beyond the field grid"
 
 
+############################################################################
+def checkibpush():
+  """Makes sure that if ibpush is zero, there are no B-field elements"""
+  if top.ibpush == 0:
+    if max(top.quaddb) > 0. or maxnd(top.quadbt) > 0.:
+      raise "ERROR: magnetic quad elements are defined but top.ibpush is zero"
+    if maxnd(top.heleam) > 0.:
+      raise "ERROR: magnetic hele elements are defined but top.ibpush is zero"
+    if max(top.dipobx) > 0. or max(top.dipoby) > 0.:
+      raise "ERROR: magnetic dipo elements are defined but top.ibpush is zero"
+    if max(top.sextdb) > 0.:
+      raise "ERROR: magnetic sext elements are defined but top.ibpush is zero"
+    if max(top.mmltzs) > 0. or max(top.mmltze) > 0.:
+      raise "ERROR: mmlt elements are defined but top.ibpush is zero"
+    if max(top.bgrdzs) > 0. or max(top.bgrdze) > 0.:
+      raise "ERROR: bgrd elements are defined but top.ibpush is zero"
 
