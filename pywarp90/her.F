@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File HER.M, version $Revision: 3.6 $, $Date: 2001/07/13 00:37:34 $
+c@(#) File HER.M, version $Revision: 3.7 $, $Date: 2001/07/19 17:21:45 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  It is the source file for the package HER of the PIC code WARP,
@@ -166,39 +166,12 @@ c     --- Advance the envelope and orbits (one step)
      &              icharge,iimage,lezbeam,lperveance,lemittance,lallez,lezcenter,
      &              lviscous,lcurgrid,lfail)
       if (lfail) return
-      call copyhermesvars()
+
       call savehermesvars(time,var,niz,it,lsavehist)
 
       return
       end
 
-c=============================================================================
-      subroutine copyhermesvars()
-      use HERvars
-
-      integer(ISZ):: ii
-     
-c     --- Copy the data into separated arrays.
-      do ii=1,niz
-        aher(ii)   = var( 1,ii)
-        apher(ii)  = var( 2,ii)
-        bher(ii)   = var( 3,ii)
-        bpher(ii)  = var( 4,ii)
-        xher(ii)   = var( 5,ii)
-        xpher(ii)  = var( 6,ii)
-        yher(ii)   = var( 7,ii)
-        ypher(ii)  = var( 8,ii)
-        sher(ii)   = var( 9,ii)
-        vzher(ii)  = var(10,ii)
-        enxher(ii) = var(11,ii)
-        enyher(ii) = var(12,ii)
-        cur(ii)    = var(13,ii)
-        dq(ii)     = var(14,ii)
-        den(ii)    = var(15,ii)
-      enddo
-
-      return
-      end
 c=============================================================================
       subroutine herfin()
 
@@ -229,18 +202,15 @@ c=============================================================================
 c  Computes the forces needed for the general-lattice envelope calculation.
 c  Includes both hard edged quadrupole elements
 c  and hard-edge multipole elements, and elements defined by their
-c  multipoles.  Only linear forces consistent with a truncated second-order
-c  envelope formulation are calculated.  These include electric and magnetic
-c  quadrupole fields, and a radial electric and magnetic field proportional
-c  to the radial coordinate r, as well as a longitudinal electric and magnetic
-c  field.
+c  multipoles.  Only dipole and quadrupolar fields are included. Uniform 
+c  focusing fields are ignored for now, but can be implemented easily.
 c  Input:
 c     t    is the starting time of the current time step
 c     dt   is the size of the current time step
 c     y    is the array hold the envelope information
 c     niz  is the number of slices
 
-      real(kind=8):: vz,vzi,zl,zr,fl,fr,frac,dta,dzi,mltsf,angle,rotfuzz
+      real(kind=8):: vz,vzi,zl,zr,fl,fr,frac,dta,dzi,mltsf,angle,rotfuzz,term
       integer(ISZ):: io,iele,iz,ii,izm,j
       
       dta = abs(dt)
@@ -267,6 +237,12 @@ c         --- Default value of rpipe
 
       do iz=1,niz
 c       --- Zero out the fields
+        ex(iz) = 0.
+        ey(iz) = 0.
+        ez(iz) = 0.
+        bx(iz) = 0.
+        by(iz) = 0.
+        bz(iz) = 0.
         dedx(iz) = 0.
         dbdx(iz) = 0.
       enddo
@@ -300,17 +276,17 @@ c            --- residence fraction
             if (fr .gt. fl) frac = (zr-cquadzs(j,io))*vzi/dta
 c           --- set the field
             if (frac .gt. 0.) then
-              dbdx(iz) = dbdx(iz) + cquaddb(j,io) * frac
               dedx(iz) = dedx(iz) + cquadde(j,io) * frac
+              dbdx(iz) = dbdx(iz) + cquaddb(j,io) * frac
             endif
             if (ntquad > 0) then
               ii = int((t - quadts(iele))/quaddt(iele))
               if (0 <= ii .and. ii < ntquad) then
                 fr = (t - quadts(iele))/quaddt(iele) - ii
-                dedx(iz) = dedx(iz) + quadet(ii  ,iele)*frac*(1.-fr) +
-     &                                quadet(ii+1,iele)*frac*    fr
-                dbdx(iz) = dbdx(iz) + quadbt(ii  ,iele)*frac*(1.-fr) +
-     &                                quadbt(ii+1,iele)*frac*    fr
+                term = quadet(ii,iele)*frac*(1.-fr) + quadet(ii+1,iele)*frac*fr
+                dedx(iz) = dedx(iz) + term
+                term = quadbt(ii,iele)*frac*(1.-fr) + quadbt(ii+1,iele)*frac*fr
+                dbdx(iz) = dbdx(iz) + term
               endif
             endif
 c           --- use current position to find the aperture, offset and rotation angle
@@ -355,7 +331,20 @@ c            --- residence fraction
 c           --- set the field
             if (frac .gt. 0.) then
               do ii = 1, max(helenm(iele),helene(iele)) 
-                if ((nint(hele_n(ii,iele)) == 2) .and. 
+                if ((nint(hele_n(ii,iele)) == 0) .and.
+     &                   (nint(hele_v(ii,iele)) == 0)) then
+c                 --- longitudinal field
+c                 --- radial field is ignored for now
+                  ez(iz) = ez(iz) + heleae(ii,iele)
+                  bz(iz) = bz(iz) + heleam(ii,iele)
+                else if ((nint(hele_n(ii,iele)) == 1) .and. 
+     &              (nint(hele_v(ii,iele)) == 0)) then
+c                 --- dipole field
+                  ex(iz) =   heleae(ii,iele) * cos(helepe(ii,iele))
+                  ey(iz) = - heleae(ii,iele) * sin(helepe(ii,iele))
+                  bx(iz) =   heleam(ii,iele) * sin(helepm(ii,iele))
+                  by(iz) =   heleam(ii,iele) * cos(helepm(ii,iele))
+                else if ((nint(hele_n(ii,iele)) == 2) .and. 
      &              (nint(hele_v(ii,iele)) == 0)) then
 c                 --- quadrupole field  
                   rotfuzz = 1.e-3
@@ -363,18 +352,13 @@ c                 --- quadrupole field
      &              call remark("Warning: magnetic multipole structure incompatible")
                   if ( abs(cos(helepe(ii,iele))*sin(helepe(ii,iele))) > rotfuzz )
      &              call remark("Warning: electric multipole structure incompatible")
-                  dbdx(iz) = dbdx(iz) + heleam(ii,iele)*cos(helepm(ii,iele)) * frac
-                  dedx(iz) = dedx(iz) + heleae(ii,iele)*cos(helepe(ii,iele)) * frac
+                  term = heleae(ii,iele)*cos(helepe(ii,iele)) * frac
+                  dedx(iz) = dedx(iz) + term
+                  term = heleam(ii,iele)*cos(helepm(ii,iele)) * frac
+                  dbdx(iz) = dbdx(iz) + term
 c                 --- using the rotation of the electrostatic multipole for the pipe rotation
                   angle = helepe(ii,iele)
-                else if ((nint(hele_n(ii,iele)) == 0) .and.
-     &                   (nint(hele_v(ii,iele)) == 0)) then
-c                 --- radial field
-                  er(iz) = er(iz) - 0.5*heleep(ii,iele)
-                  br(iz) = br(iz) - 0.5*helemp(ii,iele)
-c                 --- longitudinal field
-                  ez(iz) = ez(iz) + heleae(ii,iele)
-                  bz(iz) = bz(iz) + heleam(ii,iele)
+                
                 endif
               enddo
             endif           
@@ -419,11 +403,15 @@ c           --- find z location relative to multipole data
             do ii=1,nesmult
               if (iele .gt. 0) then
                 if (emlt_n(ii) == 0 .and. emlt_v(ii) == 0) then
-c                 --- Apply accelerating field and its pseudomultipoles.
-                  er(iz) = er(iz)
-     &                   - 0.5*mltsf*(esemltp(izm,ii,iele)*fl + esemltp(izm+1,ii,iele)*fr)
+c                 --- longitudinal field
+c                 --- radial field ignored for now
                   ez(iz) = ez(iz)
-     &                   +     mltsf*(esemlt (izm,ii,iele)*fl + esemlt (izm+1,ii,iele)*fr)
+     &                   + mltsf*(esemlt (izm,ii,iele)*fl + esemlt (izm+1,ii,iele)*fr)
+                elseif (emlt_n(ii) == 1 .and. emlt_v(ii) == 0) then
+                  ex(iz) = ex(iz) + mltsf*esemlt(izm  ,ii,iele)*fl*cos(emltph(iele)+esemltph(izm  ,ii,iele))
+                  ex(iz) = ex(iz) + mltsf*esemlt(izm+1,ii,iele)*fl*cos(emltph(iele)+esemltph(izm+1,ii,iele))
+                  ey(iz) = ey(iz) - mltsf*esemlt(izm  ,ii,iele)*fl*sin(emltph(iele)+esemltph(izm  ,ii,iele))
+                  ey(iz) = ey(iz) - mltsf*esemlt(izm+1,ii,iele)*fl*sin(emltph(iele)+esemltph(izm+1,ii,iele))
                 elseif (emlt_n(ii) == 2 .and. emlt_v(ii) == 0) then
 c                 --- Apply the rest of the multipoles.
                   dedx(iz) = dedx(iz)
@@ -469,15 +457,19 @@ c           --- find z location relative to multipole data
             do ii=1,nmsmult
               if (iele .gt. 0) then
                 if (mmlt_n(ii) == 0 .and. mmlt_v(ii) == 0) then
-c                 --- Apply accelerating field and its pseudomultipoles.
-                  br(iz) = br(iz)
-     &                   - 0.5*mltsf*(msmmltp(izm,ii,iele)*fl + msmmltp(izm+1,ii,iele)*fr)
+c                 --- Apply accelerating field
+c                 --- Radial field is ignored for now
                   bz(iz) = bz(iz)
      &                   +     mltsf*(msmmlt (izm,ii,iele)*fl + msmmlt (izm+1,ii,iele)*fr)
-                elseif (mmlt_n(ii) == 2 .and. emlt_v(ii) == 0) then
+                elseif (mmlt_n(ii) == 1 .and. mmlt_v(ii) == 0) then
+                  bx(iz) = bx(iz) + mltsf*msmmlt(izm  ,ii,iele)*fl*sin(mmltph(iele)+msmmltph(izm  ,ii,iele))
+                  bx(iz) = bx(iz) + mltsf*msmmlt(izm+1,ii,iele)*fl*sin(mmltph(iele)+msmmltph(izm+1,ii,iele))
+                  by(iz) = by(iz) + mltsf*msmmlt(izm  ,ii,iele)*fl*cos(mmltph(iele)+msmmltph(izm  ,ii,iele))
+                  by(iz) = by(iz) + mltsf*msmmlt(izm+1,ii,iele)*fl*cos(mmltph(iele)+msmmltph(izm+1,ii,iele))
+               elseif (mmlt_n(ii) == 2 .and. mmlt_v(ii) == 0) then
 c                 --- Apply the rest of the multipoles.
-                  dbdx(iz) = dbdx(iz)
-     &                     + mltsf*(msmmlt(izm,ii,iele)*fl + msmmlt(izm+1,ii,iele)*fr)
+                  term = mltsf*(msmmlt(izm,ii,iele)*fl + msmmlt(izm+1,ii,iele)*fr)
+                  dbdx(iz) = dbdx(iz) + term
                 endif
               endif
             enddo
@@ -498,7 +490,7 @@ c     --- Get accelerating gradient from accl gaps.
       if (accls) then
 c       --- If in a quad, get field and pipe.
 
-        do io=1,nquadol
+        do io=1,nacclol
           do iz=1,niz
             vz = y(10,iz)*clight
             vzi = 1./dvnz(vz)
@@ -544,7 +536,73 @@ c           --- use current position to find the aperture, offset and rotation a
         enddo
       endif
 c---------------------------------------------------------------------------
+c     --- Get inverse radius of curvature from bend elements
+      if (bends) then
 
+        do iz=1,niz
+c         --- find z-cell in which particle lies
+          j = max(0., (y(9,iz) - zlmin) * dzli + 0.5)
+c         --- use current position to find the inverse radius of curvature, aperture, and offset
+          if (y(9,iz).ge.cbendzs(j) .and. y(9,iz).lt.cbendze(j)) then
+            iele = cbendid(0)
+            bendcurv(iz) = 1./bendrc(iele)
+            if (bendap(iele) > 0.) then
+              rpipe(iz) = bendap(iele)
+              pipeox(iz) = bendox(iele)
+              pipeoy(iz) = bendoy(iele)
+              pipeph(iz) = 0.
+            endif
+          endif
+        enddo
+      endif
+
+c---------------------------------------------------------------------------
+
+c     --- Get bending field from dipole elements
+      if (dipos) then
+
+        do io=1,ndipool
+          do iz=1,niz
+c           --- find z-cell in which particle lies
+            j = max(0., (y(9,iz) - zlmin) * dzli + 0.5)
+c           --- "left" end of velocity advance step
+            zl = y(9,iz) - vz * dta / 2.
+            fl = 0.
+            if (zl.ge.cdipozs(j,io) .and. zl.lt.cdipoze(j,io)) then
+              fl = 1.
+              iele = cdipoid(j,io)
+            endif
+c           --- "right" end of velocity advance step
+            zr = y(9,iz) + vz * dta / 2.
+            fr = 0.
+            if (zr.ge.cdipozs(j,io) .and. zr.lt.cdipoze(j,io)) fr = 1.
+c            --- residence fraction
+            frac = fl
+            if (fl .gt. fr) frac = (cdipoze(j,io)-zl)*vzi/dta
+            if (fr .gt. fl) frac = (zr-cdipozs(j,io))*vzi/dta
+c           --- set the field
+            if (frac .gt. 0.) then
+              ex(iz) = ex(iz) + cdipoex(j,io) * frac
+              ey(iz) = ey(iz) + cdipoey(j,io) * frac
+              bx(iz) = bx(iz) + cdipobx(j,io) * frac
+              by(iz) = by(iz) + cdipoby(j,io) * frac
+            endif
+
+c            --- use current position to find the aperture, offset and rotation angle
+            if (y(9,iz).ge.cdipozs(j,io) .and. y(9,iz).lt.cdipoze(j,io)) then
+              if (dipoap(iele) > 0.) then
+                rpipe(iz) = dipoap(iele)
+                pipeox(iz) = 0.
+                pipeoy(iz) = 0.
+                pipeph(iz) = 0.
+              endif
+            endif
+          enddo
+        enddo
+
+      endif
+
+c---------------------------------------------------------------------------
 c       --- Get aperture from drift elements
       if (drfts) then
         
@@ -594,17 +652,16 @@ c=============================================================================
 c  Computes the forces needed for the general-lattice envelope calculation.
 c  Includes both residence corrected hard edged quadrupole elements
 c  and hard-edge multipole elements, and elements defined by their
-c  multipoles.  Only linear forces consistent with a truncated second-order
-c  envelope formulation are calculated.  These include a linear applied
-c  forces  (electric and magnetic quadrupole fields, and a radial electric and
-c  and magnetic field proportional to the radial coordinate r, as well as a
-c  longitudinal electric and magnetic field), and linear space-charge forces.
+c  multipoles.  Only electric and magnetic quadrupole fields, dipoles, as well as
+c  longitudinal electric and magnetic fields are taken into account, together
+c  with the linear space-charge forces.
 
-      integer(ISZ):: ii
+      integer(ISZ):: iz
       real(kind=8):: alfcur
       real(kind=8):: y1i,y3i,y1py3i,gamma,gambeta
       real(kind=8):: rigidityi,quadfld,perv
       real(kind=8):: xemit,yemit,dsdt,dlnbeta,dbetadt
+      real(kind=8):: bendex,bendey,xbend
       real(kind=8):: xval,yval,rpipei2
       real(kind=8):: aviscous(niz)
       
@@ -645,108 +702,124 @@ c     --- Set some temporaries.
       
 c---------------------------------------------------------------------------
 c     --- Loop over time slices of beam
-      do ii=1,niz
+      do iz=1,niz
 
-        xval = y(5,ii) - pipeox(ii)
-        yval = y(7,ii) - pipeoy(ii)
-        rpipei2 = 1./rpipe(ii)**2
+c       --- centroid coordinates in displaced elements
+        xval = y(5,iz) - pipeox(iz)
+        yval = y(7,iz) - pipeoy(iz)
+        rpipei2 = 1./rpipe(iz)**2
       
 c       --- Beam size reciprocals
-        if (y(1,ii) == 0. .or. y(3,ii) == 0.) then
+        if (y(1,iz) == 0. .or. y(3,iz) == 0.) then
           y1i = 0.
           y3i = 0.
           y1py3i = 0.
         else
-          y1i = 1./y(1,ii)
-          y3i = 1./y(3,ii)
-          y1py3i = 1./(y(1,ii) + y(3,ii))
+          y1i = 1./y(1,iz)
+          y3i = 1./y(3,iz)
+          y1py3i = 1./(y(1,iz) + y(3,iz))
         endif
 
+c       --- pathlength correction
+        xbend = bendcurv(iz)*y(5,iz)
+
 c       --- longitudinal velocity
-        dsdt = clight*y(10,ii)
+        vz = clight*y(10,iz)
+        dsdt = vz/(1.+xbend)
 
 c       --- relativistic factor gamma and gambeta = gamma*beta
-        gamma = 1/sqrt(1.0 - y(10,ii)**2)
-        gambeta = y(10,ii)*gamma
+        gamma = 1/sqrt(1.0 - y(10,iz)**2)
+        gambeta = y(10,iz)*gamma
 
 c       --- magnetic rigidity reciprocal
         rigidityi = zion*echarge/(aion*amu*clight*gambeta)
 
 c       --- quadrupole-force coefficient
-        quadfld = ( - dedx(ii)/dsdt + dbdx(ii))*rigidityi
-c       --- er,br,bz ignored for now
+        quadfld = (dedx(iz) - dbdx(iz) * vz)*rigidityi
+c       --- bz ignored for now
 
 c       --- perveance perv (labeled K in the envelope equation)
         if (lperveance) then
-          perv = 2.0*y(13,ii)/(alfcur*gambeta**3)
+          perv = 2.0*y(13,iz)/(alfcur*gambeta**3)
         else
           perv = 0.
         endif
 
 c       --- normalized emittance to unnormalized emittance
         if (lemittance) then
-          xemit = y(11,ii)/gambeta
-          yemit = y(12,ii)/gambeta
+          xemit = y(11,iz)/gambeta
+          yemit = y(12,iz)/gambeta
         else
           xemit = 0.
           yemit = 0.
         endif
 
         if (lallez) then
-          dbetadt = (ezbeam(ii)+ez(ii))*zion*echarge/(aion*amu*clight*gamma**3)
+          dbetadt = (ezbeam(iz)+ez(iz))*zion*echarge/(aion*amu*clight*gamma**3)
         else
           dbetadt = 0.
         endif
 
         if (lviscous .and. lallez) then
-          dbetadt = dbetadt + aviscous(ii)
+          dbetadt = dbetadt + aviscous(iz)
         endif
         
-        dlnbeta = (dbetadt/y(10,ii))*gamma**2
-        
+c       --- bend-force terms
+        bendfldx = (ex(iz)/vz - by(ii))*rigidityi
+        bendfldy = (ey(iz)/vz + bx(ii))*rigidityi
+
+        bendex = ex(iz)*rigidityi/vz
+        bendey = ey(iz)*rigidityi/vz
+
+        dlnbeta = (dbetadt/y(10,iz))*gamma**2
 
 c       --- Now, set derivatives
 c       --- da/dt
-        dy(1,ii) = y(2,ii)*dsdt
+        dy(1,iz) = y(2,iz)*dsdt
 
 c       --- d(da/ds)/dt
-        dy(2,ii) = (- quadfld*y(1,ii)
-     &              + 2.0*perv*y1py3i
-     &              + xemit**2*y1i**3
-     &              + fx(ii)*perv*y(1,ii)*rpipei2) * dsdt
-     &              - dlnbeta*y(2,ii)
+        dy(2,iz) = quadfld*y(1,iz)
+     &           + ( 2.0*perv*y1py3i
+     &           +   xemit**2*y1i**3
+     &           +   fx(iz)*perv*y(1,iz)*rpipei2
+     &           +   bendcurv(iz)*y(1,iz)*(bendcurv(iz) + 2.0*bendfldx)) * dsdt
+     &           - dlnbeta*y(2,iz)
 
 c       --- db/dt
-        dy(3,ii) = y(4,ii)*dsdt
+        dy(3,iz) = y(4,iz)*dsdt
 
 c       --- d(db/ds)/dt
-        dy(4,ii) = (quadfld*y(3,ii)
-     &              + 2.0*perv*y1py3i
-     &              + yemit**2*y3i**3
-     &              + fy(ii)*perv*y(3,ii)*rpipei2) * dsdt
-     &              - dlnbeta*y(4,ii)
+        dy(4,iz) = -quadfld*y(3,iz)
+     &           + ( 2.0*perv*y1py3i
+     &           +   yemit**2*y3i**3
+     &           +   fy(iz)*perv*y(3,iz)*rpipei2) * dsdt
+     &           - dlnbeta*y(4,iz)
 
 c       --- dx/ds
-        dy(5,ii) = y(6,ii)*dsdt
+        dy(5,iz) = y(6,iz)*dsdt
 
 c       --- d(dx/ds)/dt
-        dy(6,ii) = (- quadfld*xval
-     &              + perv*(gxx(ii)*xval + gxy(ii)*yval)*rpipei2) * dsdt
-     &                 - dlnbeta*y(6,ii)
+        dy(6,iz) = quadfld*xval
+     &           + ( perv*(gxx(iz)*xval + gxy(iz)*yval)*rpipei2
+     &             + (1.0 + xbend)*(bendcurv(iz) + bendex)
+     &             - (1.0 + 2.0*xbend)*by(iz)*rigidityi) * dsdt
+     &           - dlnbeta*y(6,iz)
 
 c       --- dy/dt
-        dy(7,ii) = y(8,ii)*dsdt
+        dy(7,iz) = y(8,iz)*dsdt
 
 c       --- d(dy/ds)/ds
-        dy(8,ii) = (+ quadfld*yval
-     &              + perv*(gyx(ii)*xval + gyy(ii)*yval)*rpipei2) * dsdt
-     &                 - dlnbeta*y(8,ii)
+        dy(8,iz) = -quadfld*yval
+     &           + ( perv*(gyx(iz)*xval + gyy(iz)*yval)*rpipei2
+     &             + (1.0 + xbend)*bendey
+     &             + (1.0 + 2.0*xbend)*bx(iz)*rigidityi) * dsdt
+     &           - dlnbeta*y(8,iz)
 
 c       --- ds/dt
-        dy(9,ii) = dsdt
+        dy(9,iz) = dsdt
 
 c       --- dbeta/dt
-        dy(10,ii) = dbetadt
+        dy(10,iz) = dbetadt
 
       enddo
       
@@ -999,7 +1072,7 @@ c       general g-factor model
         do ii=1,niz
           eval(ii) = (- gtemp(ii)*dden(ii) + y(15,ii)*denv(ii)) / frpieps
         enddo
-
+      
       elseif(icharge == 5)then
 c       Bessel series expansion with a flat line charge density within each slice
 
@@ -1372,7 +1445,7 @@ c=============================================================================
 
 c add artificial viscosity to the Ez field
 
-      integer(ISZ):: ii
+      integer(ISZ):: iz
       real(kind=8):: del1, del2, fact
       real(kind=8):: dzviscous
       real(kind=8):: dbetadz(niz)
@@ -1383,30 +1456,30 @@ c add artificial viscosity to the Ez field
       del2 = y(9,niz) - y(9,niz-1)
       dbetadz(1)   = (y(10,2)  -y(10,1))    /del1
       dbetadz(niz) = (y(10,niz)-y(10,niz-1))/del2
-      do ii=2,niz-1
-        del1 = y(9,ii) - y(9,ii-1)
-        del2 = y(9,ii+1) - y(9,ii)
-        dbetadz(ii) = ((del1/del2)*y(10,ii+1)-(del2/del1)*y(10,ii-1))/(del1+del2)
-     &              + (1/del1-1/del2)*y(10,ii)
+      do iz=2,niz-1
+        del1 = y(9,iz) - y(9,iz-1)
+        del2 = y(9,iz+1) - y(9,iz)
+        dbetadz(iz) = ((del1/del2)*y(10,iz+1)-(del2/del1)*y(10,iz-1))/(del1+del2)
+     &              + (1/del1-1/del2)*y(10,iz)
       enddo
       temp(1)   = 0.
       temp(niz) = 0.
-      do ii=2,niz-1
-        temp(ii) = (dbetadz(ii)**2)*y(1,ii)*y(3,ii)/y(15,ii)
+      do iz=2,niz-1
+        temp(iz) = (dbetadz(iz)**2)*y(1,iz)*y(3,iz)/y(15,iz)
 c       because this is what we actually need
       enddo
       fact = - clight*(dzviscous*y(15,niz/2)/(y(1,niz/2)*y(3,niz/2)))**2
       aviscous(1)   = 0.
       aviscous(niz) = 0.
-      do ii=2,niz-1
-        del1 = y(9,ii) - y(9,ii-1)
-        del2 = y(9,ii+1) - y(9,ii)
-        if (dbetadz(ii)*y(10,ii) < 0.) then
-          aviscous(ii) = (((del1/del2)*temp(ii+1)
-     &                 - (del2/del1)*temp(ii-1))/(del1+del2)
-     &                + (1/del1-1/del2)*temp(ii)) * fact * y(1,ii) * y(3,ii) / y(15,ii)
+      do iz=2,niz-1
+        del1 = y(9,iz) - y(9,iz-1)
+        del2 = y(9,iz+1) - y(9,iz)
+        if (dbetadz(iz)*y(10,iz) < 0.) then
+          aviscous(iz) = (((del1/del2)*temp(iz+1)
+     &                 - (del2/del1)*temp(iz-1))/(del1+del2)
+     &                + (1/del1-1/del2)*temp(iz)) * fact * y(1,iz) * y(3,iz) / y(15,iz)
         else
-          aviscous(ii) = 0.
+          aviscous(iz) = 0.
         endif
       enddo
       
@@ -1419,7 +1492,7 @@ c=============================================================================
       real(kind=8):: t,y(16,niz)
       logical(ISZ):: lsavehist
 
-      integer(ISZ):: ii
+      integer(ISZ):: iz
 
 c     --- Check if saving history
       if (lsavehist) then
@@ -1431,22 +1504,22 @@ c       --- Check if saving history this step. Requires (nhher > 0).
           endif
           jhher = jhher + 1
           hther(jhher) = t
-          do ii=1,niz
-            haher(ii,jhher)   = y( 1,ii)
-            hapher(ii,jhher)  = y( 2,ii)
-            hbher(ii,jhher)   = y( 3,ii)
-            hbpher(ii,jhher)  = y( 4,ii)
-            hxher(ii,jhher)   = y( 5,ii)
-            hxpher(ii,jhher)  = y( 6,ii)
-            hyher(ii,jhher)   = y( 7,ii)
-            hypher(ii,jhher)  = y( 8,ii)
-            hsher(ii,jhher)   = y( 9,ii)
-            hvzher(ii,jhher)  = y(10,ii)
-            henxher(ii,jhher) = y(11,ii)
-            henyher(ii,jhher) = y(12,ii)
-            hcur(ii,jhher)    = y(13,ii)
-            hdq(ii,jhher)     = y(14,ii)
-            hden(ii,jhher)    = y(15,ii)
+          do iz=1,niz
+            haher(iz,jhher)   = y( 1,iz)
+            hapher(iz,jhher)  = y( 2,iz)
+            hbher(iz,jhher)   = y( 3,iz)
+            hbpher(iz,jhher)  = y( 4,iz)
+            hxher(iz,jhher)   = y( 5,iz)
+            hxpher(iz,jhher)  = y( 6,iz)
+            hyher(iz,jhher)   = y( 7,iz)
+            hypher(iz,jhher)  = y( 8,iz)
+            hsher(iz,jhher)   = y( 9,iz)
+            hvzher(iz,jhher)  = y(10,iz)
+            henxher(iz,jhher) = y(11,iz)
+            henyher(iz,jhher) = y(12,iz)
+            hcur(iz,jhher)    = y(13,iz)
+            hdq(iz,jhher)     = y(14,iz)
+            hden(iz,jhher)    = y(15,iz)
           enddo
         endif
       endif

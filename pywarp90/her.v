@@ -1,5 +1,5 @@
 her
-#@(#) File HER.V, version $Revision: 3.6 $, $Date: 2001/07/13 00:37:34 $
+#@(#) File HER.V, version $Revision: 3.7 $, $Date: 2001/07/19 17:21:45 $
 # Copyright (c) 1999, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for HERMES.
@@ -9,26 +9,11 @@ her
 
 *********** HERversion:
 # Version control for her package
-versher       character*19 /"$Revision: 3.6 $"/  # Current code version, set by SCCS
+versher       character*19 /"$Revision: 3.7 $"/  # Current code version, set by SCCS
 
 *********** HERvars dump:
 # Variables needed by the package HER
 niz       integer [1]    # Number of point along beam
-aher(niz)   _real [m]    # Width in x (1)[0]
-apher(niz)  _real [1]    # Slope in x (2)[1]
-bher(niz)   _real [m]    # Width in y (3)[2]
-bpher(niz)  _real [1]    # Slope in y (4)[3]
-xher(niz)   _real [m]    # Centroid in x (5)[4]
-xpher(niz)  _real [m]    # Centroid slope in x (6)[5]
-yher(niz)   _real [m]    # Centroid in y (7)[6]
-ypher(niz)  _real [m]    # Centroid slope in y (8)[7]
-sher(niz)   _real [m]    # Position (9)[8]
-vzher(niz)  _real [1]    # Axial velocity over clight (10)[9]
-enxher(niz) _real [pi-m-rad] # Normalized X emittance (11)[10]
-enyher(niz) _real [pi-m-rad] # Normalized Y emittance (12)[11]
-cur(niz)    _real [Amps] # Current (13)[12]
-dq(niz)     _real [?]    # Charge per slice (14)[13]
-den(niz)    _real        # Line-charge density times clight (15)[14]
 var(16,niz) _real        # Copy of envelope data, all in one place.
 fviscous   real  /0.0/ [1]    # Typical shock width as a fraction of the beam length
 
@@ -68,14 +53,17 @@ lfail      logical /.false./ # Set to true if a time step fails
 *********** HERfield:
 # Fields and forces at the current time step, for the different slices
 nizfield             integer # Size of arrays
-dedx(nizfield)       _real # From quadrupole
-dbdx(nizfield)       _real # From quadrupole
-er(nizfield)         _real # Radial electric field (n = 0, v = 0)
-ez(nizfield)         _real # Longitudinal electric field (n = 0, v = 0)
-br(nizfield)         _real # Radial magnetic field (n = 0, v = 0)
-bz(nizfield)         _real # Longitudinal magnetic field (n = 0, v = 0)
-# Note: er,bz,br are ignored for now
+ex(nizfield)         _real # Electrostatic dipole field in x-direction
+ey(nizfield)         _real # Electrostatic dipole field in y-direction
+ez(nizfield)         _real # Longitudinal electric field
+bx(nizfield)         _real # Magnetic dipole field in x-direction
+by(nizfield)         _real # Magnetic dipole field in y-direction
+bz(nizfield)         _real # Longitudinal magnetic field
+# Note: bz is ignored for now
+dedx(nizfield)       _real # Electric quadrupole
+dbdx(nizfield)       _real # Magnetic quadrupole
 ezbeam(nizfield)     _real [V/m] # Self axial electric field
+bendcurv(nizfield)   _real [1/m] # Inverse radius of curvature of a bend
 fx(nizfield)         _real # From image
 fy(nizfield)         _real # From image
 gxx(nizfield)        _real # From image
@@ -170,7 +158,5 @@ savehermesvars(t:real,y:real,niz:integer,it:integer,lsavehist:logical)
   # Checks if history needs to be saved and saves it
 getimage(y:real,niz:integer,iimage:integer,lfail:logical) subroutine
   # Calculates the image effects on the transverse envelope
-copyhermesvars() subroutine
-   # Copies the her.var variables into the separated arrays
 resizehermeshist() subroutine
    # Resizes the history arrays to only those entries that are used.
