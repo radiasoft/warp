@@ -1,6 +1,7 @@
 #Boa:Frame:WarpRun
 
 from wxPython.wx import *
+from wxPython.stc import *
 from wxPython.lib.anchors import LayoutAnchors
 import WarpGUIInfo
 import ParticlePlotsGUI
@@ -14,24 +15,30 @@ import txtEditorDialog
 import newstdout
 import wxDialog_proto
 import pygistDialog
+import WarpPanel
 import gist
 import sys
 import code
 import __main__
-
 from warp import *
 from errorcheck import *
+sys.path=sys.path+[os.path.dirname(warp.__file__)+'/GUI/pype']
+import pype
+
+# for debugging purpose, output is not redirected in GUI if true
+l_standard_out = 0
 
 def create(parent):
     return WarpRun(parent)
 
-[wxID_WARPRUN, wxID_WARPRUNCONT, wxID_WARPRUNDOC, wxID_WARPRUNENV, 
- wxID_WARPRUNFMA, wxID_WARPRUNHCP, wxID_WARPRUNLAT, wxID_WARPRUNMESSAGEWINDOW, 
- wxID_WARPRUNNEXT, wxID_WARPRUNNOTEBOOK1, wxID_WARPRUNPANEL1, 
- wxID_WARPRUNREDRAW, wxID_WARPRUNSEPARATE, wxID_WARPRUNSTART, 
- wxID_WARPRUNSTATUSBAR1, wxID_WARPRUNSTEP, wxID_WARPRUNTXTEDITOR, 
- wxID_WARPRUNWINON, 
-] = map(lambda _init_ctrls: wxNewId(), range(18))
+[wxID_WARPRUN, wxID_WARPRUNBOOKMARK, wxID_WARPRUNCONT, wxID_WARPRUNDOC, 
+ wxID_WARPRUNENV, wxID_WARPRUNFMA, wxID_WARPRUNHCP, wxID_WARPRUNLAT, 
+ wxID_WARPRUNMESSAGEWINDOW, wxID_WARPRUNNEXT, wxID_WARPRUNNEXTBOOKMARK, 
+ wxID_WARPRUNNOTEBOOK1, wxID_WARPRUNPANEL1, wxID_WARPRUNPREVBOOKMARK, 
+ wxID_WARPRUNREDRAW, wxID_WARPRUNSEPARATE, wxID_WARPRUNSPLITTERWINDOW1, 
+ wxID_WARPRUNSTART, wxID_WARPRUNSTATUSBAR1, wxID_WARPRUNSTEP, 
+ wxID_WARPRUNTXTEDITOR, wxID_WARPRUNWINON, 
+] = map(lambda _init_ctrls: wxNewId(), range(22))
 
 [wxID_WARPRUNTOOLBAR2TOOLS0, wxID_WARPRUNTOOLBAR2TOOLS1, wxID_WARPRUNTOOLBAR2TOOLS2,
  wxID_WARPRUNTOOLBAR2TOOLS3] = map(lambda _init_coll_toolBar2_Tools: wxNewId(), range(4))
@@ -200,22 +207,23 @@ class WarpRun(wxFrame):
     def _init_ctrls(self, prnt):
         # generated method, don't edit
         wxFrame.__init__(self, id=wxID_WARPRUN, name='WarpRun', parent=prnt,
-              pos=wxPoint(544, 141), size=wxSize(610, 655),
-              style=wxDEFAULT_FRAME_STYLE, title='WARP')
+              pos=wxPoint(522, 101), size=wxSize(628, 670),
+              style=wxCLIP_CHILDREN | wxDEFAULT_FRAME_STYLE, title='WARP')
         self._init_utils()
-        self.SetClientSize(wxSize(602, 631))
+        self.SetClientSize(wxSize(620, 646))
         self.SetMenuBar(self.menuBar1)
+        self.SetAutoLayout(True)
         EVT_IDLE(self, self.OnWxframe1Idle)
 
         self.statusBar1 = wxStatusBar(id=wxID_WARPRUNSTATUSBAR1,
               name='statusBar1', parent=self, style=0)
-        self.statusBar1.SetSize(wxSize(550, 25))
-        self.statusBar1.SetPosition(wxPoint(0, 596))
+        self.statusBar1.SetSize(wxSize(620, 19))
+        self.statusBar1.SetPosition(wxPoint(0, 0))
         self._init_coll_statusBar1_Fields(self.statusBar1)
         self.SetStatusBar(self.statusBar1)
 
         self.panel1 = wxPanel(id=wxID_WARPRUNPANEL1, name='panel1', parent=self,
-              pos=wxPoint(0, 0), size=wxSize(600, 24), style=wxTAB_TRAVERSAL)
+              pos=wxPoint(0, 0), size=wxSize(616, 24), style=wxTAB_TRAVERSAL)
 
         self.winon = wxButton(id=wxID_WARPRUNWINON, label='win', name='winon',
               parent=self.panel1, pos=wxPoint(0, 0), size=wxSize(40, 22),
@@ -263,32 +271,13 @@ class WarpRun(wxFrame):
         EVT_BUTTON(self.lat, wxID_WARPRUNLAT, self.OnLatButton)
 
         self.doc = wxButton(id=wxID_WARPRUNDOC, label='doc', name='doc',
-              parent=self.panel1, pos=wxPoint(456, 0), size=wxSize(40, 22),
+              parent=self.panel1, pos=wxPoint(504, 0), size=wxSize(40, 22),
               style=0)
         self.doc.SetForegroundColour(wxColour(0, 0, 0))
         self.doc.SetFont(wxFont(10, wxSWISS, wxNORMAL, wxBOLD, False,
               'MS Sans Serif'))
         self.doc.SetBackgroundColour(wxColour(255, 255, 128))
         EVT_BUTTON(self.doc, wxID_WARPRUNDOC, self.OnDocButton)
-
-        self.notebook1 = wxNotebook(id=wxID_WARPRUNNOTEBOOK1, name='notebook1',
-              parent=self, pos=wxPoint(0, 24), size=wxSize(600, 350), style=0)
-        EVT_NOTEBOOK_PAGE_CHANGED(self.notebook1, wxID_WARPRUNNOTEBOOK1,
-              self.OnNotebook1NotebookPageChanged)
-
-        self.txtEditor = wxTextCtrl(id=wxID_WARPRUNTXTEDITOR, name='txtEditor',
-              parent=self.notebook1, pos=wxPoint(0, 0), size=wxSize(592, 324),
-              style=wxTE_MULTILINE, value='')
-        self.txtEditor.SetToolTipString('Text Editor')
-
-        self.MessageWindow = wxTextCtrl(id=wxID_WARPRUNMESSAGEWINDOW,
-              name='MessageWindow', parent=self, pos=wxPoint(2, 376),
-              size=wxSize(596, 208),
-              style=wxHSCROLL | wxVSCROLL | wxTE_READONLY | wxTE_MULTILINE,
-              value='')
-        self.MessageWindow.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL,
-              false, ''))
-        self.MessageWindow.SetBackgroundColour(wxColour(192, 192, 192))
 
         self.Step = wxButton(id=wxID_WARPRUNSTEP, label='Step', name='Step',
               parent=self.panel1, pos=wxPoint(296, 0), size=wxSize(40, 22),
@@ -327,10 +316,12 @@ class WarpRun(wxFrame):
         EVT_BUTTON(self.Cont, wxID_WARPRUNCONT, self.OnContButton)
 
         self.separate = wxButton(id=wxID_WARPRUNSEPARATE, label='separate',
-              name='separate', parent=self.panel1, pos=wxPoint(544, 0),
-              size=wxSize(56, 23), style=0)
+              name='separate', parent=self.panel1, pos=wxPoint(560, 0),
+              size=wxSize(56, 22), style=0)
         self.separate.SetBackgroundColour(wxColour(128, 128, 128))
         self.separate.SetForegroundColour(wxColour(255, 255, 255))
+        self.separate.SetConstraints(LayoutAnchors(self.separate, True, True,
+              True, False))
         EVT_BUTTON(self.separate, wxID_WARPRUNSEPARATE, self.OnSeparateButton)
 
         self.redraw = wxButton(id=wxID_WARPRUNREDRAW, label='rdw',
@@ -341,6 +332,63 @@ class WarpRun(wxFrame):
               'MS Sans Serif'))
         self.redraw.SetForegroundColour(wxColour(255, 255, 255))
         EVT_BUTTON(self.redraw, wxID_WARPRUNREDRAW, self.OnRedrawButton)
+
+        self.splitterWindow1 = wxSplitterWindow(id=wxID_WARPRUNSPLITTERWINDOW1,
+              name='splitterWindow1', parent=self, point=wxPoint(0, 24),
+              size=wxSize(616, 576), style=wxSP_3D)
+        self.splitterWindow1.SetConstraints(LayoutAnchors(self.splitterWindow1,
+              True, True, True, True))
+        self.splitterWindow1.SetAutoLayout(True)
+        self.splitterWindow1.SetMinimumPaneSize(30)
+
+        self.MessageWindow = wxTextCtrl(id=wxID_WARPRUNMESSAGEWINDOW,
+              name='MessageWindow', parent=self.splitterWindow1, pos=wxPoint(2,
+              357), size=wxSize(612, 201),
+              style=wxHSCROLL | wxVSCROLL | wxTE_READONLY | wxTE_MULTILINE,
+              value='')
+        self.MessageWindow.SetFont(wxFont(12, wxMODERN, wxNORMAL, wxNORMAL,
+              false, ''))
+        self.MessageWindow.SetBackgroundColour(wxColour(192, 192, 192))
+
+        self.notebook1 = wxNotebook(id=wxID_WARPRUNNOTEBOOK1, name='notebook1',
+              parent=self.splitterWindow1, pos=wxPoint(2, 2), size=wxSize(612,
+              348), style=0)
+        EVT_NOTEBOOK_PAGE_CHANGED(self.notebook1, wxID_WARPRUNNOTEBOOK1,
+              self.OnNotebook1NotebookPageChanged)
+        EVT_SIZE(self.notebook1, self.OnNotebook1Size)
+        self.splitterWindow1.SplitHorizontally(self.notebook1,
+              self.MessageWindow, 350)
+
+        self.txtEditor = wxTextCtrl(id=wxID_WARPRUNTXTEDITOR, name='txtEditor',
+              parent=self.notebook1, pos=wxPoint(0, 0), size=wxSize(604, 322),
+              style=wxTE_MULTILINE, value='')
+        self.txtEditor.SetToolTipString('Text Editor')
+
+        self.BookMark = wxButton(id=wxID_WARPRUNBOOKMARK, label='->',
+              name='BookMark', parent=self.panel1, pos=wxPoint(424, 0),
+              size=wxSize(22, 22), style=0)
+        self.BookMark.SetBackgroundColour(wxColour(155, 202, 230))
+        self.BookMark.SetFont(wxFont(8, wxSWISS, wxNORMAL, wxBOLD, False,
+              'MS Sans Serif'))
+        EVT_BUTTON(self.BookMark, wxID_WARPRUNBOOKMARK, self.OnBookmarkButton)
+
+        self.PrevBookMark = wxButton(id=wxID_WARPRUNPREVBOOKMARK, label='<<',
+              name='PrevBookMark', parent=self.panel1, pos=wxPoint(446, 0),
+              size=wxSize(22, 22), style=0)
+        self.PrevBookMark.SetBackgroundColour(wxColour(155, 202, 230))
+        self.PrevBookMark.SetFont(wxFont(8, wxSWISS, wxNORMAL, wxBOLD, False,
+              'MS Sans Serif'))
+        EVT_BUTTON(self.PrevBookMark, wxID_WARPRUNPREVBOOKMARK,
+              self.OnPrevbookmarkButton)
+
+        self.NextBookMark = wxButton(id=wxID_WARPRUNNEXTBOOKMARK, label='>>',
+              name='NextBookMark', parent=self.panel1, pos=wxPoint(468, 0),
+              size=wxSize(22, 22), style=0)
+        self.NextBookMark.SetBackgroundColour(wxColour(155, 202, 230))
+        self.NextBookMark.SetFont(wxFont(8, wxSWISS, wxNORMAL, wxBOLD, False,
+              'MS Sans Serif'))
+        EVT_BUTTON(self.NextBookMark, wxID_WARPRUNNEXTBOOKMARK,
+              self.OnNextbookmarkButton)
 
         self._init_coll_notebook1_Pages(self.notebook1)
 
@@ -355,14 +403,18 @@ class WarpRun(wxFrame):
         self.EdPos = 0
         self.startrun = 1
         self.inter = code.InteractiveConsole(__main__.__dict__)
+        # substitute default editor by pype
+        self.notebook1.DeletePage(0)
+        self.launch_pype()
+        # start console
         self.ConsolePanel = ConsoleClass.ConsoleClass(parent=self.notebook1, inter=self.inter)
         self.Console = self.ConsolePanel.Console
         self.prefix = ''
         self.PplotsPanel = ParticlePlotsGUI.ParticlePlotsGUI(self.notebook1)
         self.panels = {}
-        self.panels['Pzplots'] = self.show_GUI(PzplotsGUI,'notebook','Pzplots')
-        self.panels['Matching'] = self.show_GUI(MatchingGUI,'notebook','Matching')
-        self.panels['Gist'] = self.show_GUI(pygistDialog,'notebook','Gist')
+        self.panels['Pzplots']  = self.show_GUI(PzplotsGUI,  'notebook','Pzplots')
+        self.panels['Matching'] = self.show_GUI(MatchingGUI, 'notebook','Matching')
+        self.panels['Gist']     = self.show_GUI(pygistDialog,'notebook','Gist')
         self.notebook1.SetSelection(0) # open notebook on Editor
         self.FileExecDialog = txtEditorDialog.txtEditorDialog(self)      
         self.FileExec = self.FileExecDialog.txtEditor  
@@ -371,17 +423,202 @@ class WarpRun(wxFrame):
         for i in range(0,len(Palettes)):
             self.AddPalette(Palettes[i])
 
-    def add_panel(self,panel,name):
-        self.panels[name] = self.show_GUI(panel,'notebook',name)
+    def launch_pype(self):
+        def GetKeyPress(evt):
+            keycode = evt.GetKeyCode()
+            keyname = pype.keyMap.get(keycode, None)
+            modifiers = ""
+            for mod, ch in [(evt.ControlDown(), 'Ctrl+'),
+                            (evt.AltDown(),     'Alt+'),
+                            (evt.ShiftDown(),   'Shift+')]:
+                if mod:
+                    modifiers += ch
+            if keyname is None:
+                if 27 < keycode < 256:
+                    keyname = chr(keycode)
+                else:
+                    keyname = "(%s)unknown" % keycode
+            return modifiers + keyname
+        pype.GetKeyPress = GetKeyPress
+        def menuAdd(root, menu, name, desc, funct, id, kind=wxITEM_NORMAL):
+            a = wxMenuItem(menu, id, 'TEMPORARYNAME', desc, kind)
+            menu.AppendItem(a)
+            EVT_MENU(root.GetParent(), id, funct)
+
+            ns, oacc = pype._spl(name)
+            heir = pype.recmenu(pype.menuBar, id)[:-13] + ns
+            if heir in pype.MENUPREF:
+                name, acc = pype.MENUPREF[heir]
+            else:
+                if heir in pype.OLD_MENUPREF:
+                    name, acc = pype.MENUPREF[heir] = pype.OLD_MENUPREF[heir]
+                else:
+                    name, acc = Mpype.ENUPREF[heir] = (ns, oacc)
+                pype.MENULIST.append((heir, name, oacc, acc, kind in [wxITEM_NORMAL, wxITEM_CHECK]))
+
+            if acc:
+                pype.HOTKEY_TO_ID[acc] = id
+
+            pype.menuBar.SetLabel(id, '%s\t%s'%(name, acc))
+#        pype.menuAdd=menuAdd 
+
+        if sys.executable[:6].lower() != 'python':
+         import encodings.cp037
+         import encodings.cp1006
+         import encodings.cp1026
+         import encodings.cp1140
+         import encodings.cp1250
+         import encodings.cp1251
+         import encodings.cp1252
+         import encodings.cp1253
+         import encodings.cp1254
+         import encodings.cp1255
+         import encodings.cp1256
+         import encodings.cp1257
+         import encodings.cp1258
+         import encodings.cp424
+         import encodings.cp437
+         import encodings.cp500
+         import encodings.cp737
+         import encodings.cp775
+         import encodings.cp850
+         import encodings.cp852
+         import encodings.cp855
+         import encodings.cp856
+         import encodings.cp857
+         import encodings.cp860
+         import encodings.cp861
+         import encodings.cp862
+         import encodings.cp863
+         import encodings.cp864
+         import encodings.cp865
+         import encodings.cp866
+         import encodings.cp869
+         import encodings.cp874
+         import encodings.cp875
+        if pype.VS[-1] == 'u':
+         import encodings.ascii
+         import encodings.utf_7
+         import encodings.utf_8
+         import encodings.utf_16
+         import encodings.utf_16_be
+         import encodings.utf_16_le
+        opn=0
+        if len(sys.argv)>1 and (sys.argv[1] == '--last'):opn=1
+        pype.frame = pype.MainWindow(self, wxNewId(), "PyPE %s"%pype.VERSION, sys.argv[1+opn:])
+        if self.FileName is not None:
+            pype.frame.OnDrop([self.FileName])
+        self.pype = pype
+        self.menuBar1.Remove(0)
+        pype.frame.SetSize(self.GetSize())
+        self.SetPosition((0,0))
+        pype.frame.SetPosition(self.GetPosition()+(10,10))
+        if sys.platform <> 'win32':
+          pype.frame.Show(0)
+          panel = WarpPanel.panel(self.notebook1)
+          self.notebook1.AddPage(imageId=-1, page=panel, select=True, text='Editor')
+          pype.frame.menubar.Reparent(panel)
+          pype.frame.control.Move(wxPoint(0,25))
+          pype.frame.control.Reparent(panel)
+          self.SetStatusBar(pype.frame.sb)
+          pype.frame.sb.Reparent(self)
+          self.statusBar1=pype.frame.sb
+          def OnCpSize(evt,win=pype.frame.control):
+             size = evt.GetSize()
+             size.SetHeight(size.GetHeight()-25)
+             win.SetSize(size)
+          EVT_SIZE(panel,OnCpSize)
+       
+        def testfollowpanel():
+         panel = WarpPanel.panel(self.notebook1)
+         self.notebook1.AddPage(imageId=-1, page=panel, select=True, text='Editor')
+         def OnCpSize(evt,win=pype.frame):
+            size = evt.GetSize()
+            win.SetSize(size)
+            pype.frame.Raise()
+            pype.frame.SetFocus()
+         EVT_SIZE(panel,OnCpSize)
+         def getabspos(win):
+            pos = win.GetPosition()
+            try:
+                pos+=getabspos(win.GetParent())
+            except:
+                pass
+            return pos
+         def OnCpMove(evt,win=pype.frame,panel=panel):
+            pos = getabspos(panel)
+            win.Move(pos+(2,40))
+            pype.frame.Raise()
+            pype.frame.SetFocus()
+         EVT_MOVE(self,OnCpMove)
+         # also need to add this into OnNotebook1NotebookPageChanged
+#        if event.GetSelection() == 0:
+#            self.pype.frame.Raise()
+#            self.pype.frame.SetFocus()
+
+        #bookmark support
+        self.BOOKMARKNUMBER = pype.BOOKMARKNUMBER+1
+        self.BOOKMARKSYMBOL = wxSTC_MARK_ARROW
+        self.BOOKMARKMASK = 2**self.BOOKMARKNUMBER
+        pype.frame.Old_newTab = pype.frame.newTab
+        def newTab(d, fn, switch=0):
+            pype.frame.Old_newTab(d, fn, switch)
+            wnum, win = self.pype.frame.getNumWin()
+            win.MarkerDefine(self.BOOKMARKNUMBER, self.BOOKMARKSYMBOL, 'red', 'red')
+            win.SetFocus()
+        pype.frame.newTab=newTab
+        self.win = None
+        
+    def OnToggleBookmark (self, e):
+            wnum, win = self.pype.frame.getNumWin(e)
+            lineNo = win.GetCurrentLine()
+            if win.MarkerGet(lineNo) & self.BOOKMARKMASK:
+                win.MarkerDelete(lineNo, self.BOOKMARKNUMBER)
+            else:
+                win.MarkerAdd(lineNo, self.BOOKMARKNUMBER)
+      
+    def OnNextBookmark  (self, e):
+            wnum, win = self.pype.frame.getNumWin(e)
+            lineNo = win.GetCurrentLine()
+            newLineNo = win.MarkerNext(lineNo + 1, self.BOOKMARKMASK)
+            if newLineNo != -1:
+                win.GotoLine(newLineNo)
+            else:
+                lineNo = win.GetLineCount()
+                newLineNo = win.MarkerNext(0, self.BOOKMARKMASK)
+                if newLineNo != -1:
+                    win.GotoLine(newLineNo)
+            win.EnsureVisible(win.GetCurrentLine())
+            win.EnsureCaretVisible()
+    
+    def OnPreviousBookmark (self, e):
+            wnum, win = self.pype.frame.getNumWin(e)
+            lineNo = win.GetCurrentLine()
+            newLineNo = win.MarkerPrevious(lineNo - 1, self.BOOKMARKMASK)
+            if newLineNo != -1:
+                win.GotoLine(newLineNo)
+            else:
+                lineNo = win.GetLineCount()
+                newLineNo = win.MarkerPrevious(lineNo, self.BOOKMARKMASK)
+                if newLineNo != -1:
+                    win.GotoLine(newLineNo)
+            win.EnsureVisible(win.GetCurrentLine())
+            win.EnsureCaretVisible()
+
+    def add_panel(self,panel,name,out='notebook'):
+        if(self.panels.has_key(name)):return
+        self.panels[name] = self.show_GUI(panel,out,name)
 
     def show_GUI(self,gui,winout,title):
         if(winout=='notebook'):
-          panel = gui.panel(self.notebook1)
+          panel = WarpPanel.panel(self.notebook1)
           self.notebook1.AddPage(imageId=-1, page=panel, select=True, text=title)
+          panel.panel = gui.panel(panel)
+          return {'panel':panel,'gui':gui,'winout':winout,'title':title}
         else:
-          panel = wxDialog_proto.wxDialog1(self,gui.panel,title)
-          panel.Show(1)
-        return {'panel':panel,'gui':gui,'winout':winout,'title':title}
+          dialog = wxDialog_proto.wxDialog1(self,gui.panel,title)
+          dialog.Show(1)
+          return {'panel':dialog.panel,'gui':gui,'winout':winout,'title':title}
         
     def HandleGistEvents(self):
       try:
@@ -471,29 +708,59 @@ class WarpRun(wxFrame):
         self.statusBar1.SetStatusText(i=0,text="Finished executing file %s"%self.FileName)
 
     def OnMnufileexecfileMenu(self, event):
-        self.notebook1.SetSelection(1) # open notebook on Editor
-        sys.stdout = newstdout.newstdout(self.Console)
-        sys.stderr = newstdout.newstdout(self.Console)
         if self.FileName is None:
             return
+        self.Run()
+        
+    def Run(self):
+        self.notebook1.SetSelection(0) # open notebook on Editor
+        if(not l_standard_out): sys.stdout = newstdout.newstdout(self.Console)
+        if(not l_standard_out): sys.stderr = newstdout.newstdout(self.Console)
         self.statusBar1.SetStatusText(i=0,text="Executing file %s"%self.FileName)
         if(self.startrun and self.ConsolePanel.NoEntry):
             self.Console.Clear()
             startrun = 0
-        self.OnContButton(event)
+        self.OnContButton()
+
+    def GetText(self):
+        try:
+          text = self.txtEditor.GetValue()
+        except:
+          if self.win is None:
+            wnum, win = self.pype.frame.getNumWin()
+            self.wnum = wnum
+            self.win = win
+            self.LineNo = 0
+            self.lastline = self.win.LineFromPosition(self.win.GetLength())
+          if self.LineNo>self.lastline:
+              print '<End of file>'
+              return ''
+          newLineNo = self.win.MarkerNext(self.LineNo + 1, self.BOOKMARKMASK)
+          if newLineNo==-1:
+             newLineNo = self.lastline
+          startpos = self.win.PositionFromLine(self.LineNo)
+          endpos   = self.win.PositionFromLine(newLineNo+1)
+          self.LineNo = newLineNo+1
+          text = self.win.GetTextRange(startpos,endpos)
+          self.win.GotoLine(newLineNo)
+          self.win.EnsureVisible(self.win.GetCurrentLine())
+          self.win.EnsureCaretVisible()
+        return text
 
     def OnStartButton(self, event):
-        self.FileExec.SetValue(self.txtEditor.GetValue())
+        self.FileExec.SetValue(self.GetText())
         self.SetInputsLimits()
-        self.OnMnufileexecfileMenu(event)
+        self.Run()
 
-    def OnContButton(self, event):
-        self.notebook1.SetSelection(1) # open notebook on Editor
-        sys.stdout = newstdout.newstdout(self.Console)
-        sys.stderr = newstdout.newstdout(self.Console)
+    def OnContButton(self, event=None):
+        if(not l_standard_out): sys.stdout = newstdout.newstdout(self.Console)
+        if(not l_standard_out): sys.stderr = newstdout.newstdout(self.Console)
         self.SetStatusText('Running')
         dorun = true
-        self.notebook1.SetSelection(1) # open notebook on Console
+        self.notebook1.SetSelection(0) # open notebook on Console
+        if(self.linenum>self.FileExec.GetNumberOfLines()):
+          self.FileExec.SetValue(self.GetText())
+          self.linenum=0
         while(dorun and self.linenum<=self.FileExec.GetNumberOfLines()):
             dorun = self.AnalyzeNextLine(action='next')
             self.prefix='>>> '
@@ -501,17 +768,23 @@ class WarpRun(wxFrame):
         self.prefix=''
 
     def OnNextButton(self, event):
+        if(self.linenum>self.FileExec.GetNumberOfLines()):
+          self.FileExec.SetValue(self.GetText())
+          self.linenum=0
         if self.linenum<=self.FileExec.GetNumberOfLines() and self.FileExec.GetNumberOfLines()>0:
             self.SetStatusText('Running')
-            self.notebook1.SetSelection(1) # open notebook on Console
+            self.notebook1.SetSelection(0) # open notebook on Console
             dorun = self.AnalyzeNextLine(action='next')
             self.ReturnToPrompt(self.line)
 
     def OnStepButton(self, event):
 #        self.Console.SetInsertionPoint(self.Console.GetLastPosition())
+        if(self.linenum>self.FileExec.GetNumberOfLines()):
+          self.FileExec.SetValue(self.GetText())
+          self.linenum=0
         if self.linenum<=self.FileExec.GetNumberOfLines() and self.FileExec.GetNumberOfLines()>0:
             self.SetStatusText('Running')
-            self.notebook1.SetSelection(1) # open notebook on Console
+            self.notebook1.SetSelection(0) # open notebook on Console
             dorun = self.AnalyzeNextLine(action='step')
             self.ReturnToPrompt(self.line)
 
@@ -675,14 +948,13 @@ class WarpRun(wxFrame):
         self.mnuPackageUpdate()
 
     def OnWxframe1Idle(self, event):
-        # What should it be on Mac?
-        if sys.platform == 'win32':
-            if self.isgistwindowon:
-                self.HandleGistEvents()
-                event.RequestMore(1)
-        else:
-            self.HandleGistEvents()
-            event.RequestMore(1)
+      if current_window()>-1:
+        self.gist_timer = wxPyTimer(self.HandleGistEvents)
+        self.gist_timer.Start(100)
+        event.Skip()
+#       self.HandleGistEvents()
+#       time.sleep(0.1)
+#       event.RequestMore(1)
 
     def OnWinonButton(self, event):
         if not self.isgistwindowon:
@@ -745,15 +1017,15 @@ class WarpRun(wxFrame):
         self.notebook1.SetSelection(0) # open notebook on Editor
         
     def OutToConsole(self):
-        sys.stdout = newstdout.newstdout(self.Console)
-        sys.stderr = newstdout.newstdout(self.Console)
+        if(not l_standard_out): sys.stdout = newstdout.newstdout(self.Console)
+        if(not l_standard_out): sys.stderr = newstdout.newstdout(self.Console)
 
     def OutToMessageWindow(self):
-        sys.stdout = newstdout.newstdout(self.MessageWindow)
-        sys.stderr = newstdout.newstdout(self.MessageWindow)
+        if(not l_standard_out): sys.stdout = newstdout.newstdout(self.MessageWindow)
+        if(not l_standard_out): sys.stderr = newstdout.newstdout(self.MessageWindow)
 
     def OnNotebook1NotebookPageChanged(self, event):
-        if event.GetSelection() is 1:
+        if event.GetSelection() == 1:
             self.OutToConsole()
         else:
             self.OutToMessageWindow()
@@ -769,15 +1041,44 @@ class WarpRun(wxFrame):
         current = self.notebook1.GetPage(self.notebook1.GetSelection())
         for i in self.panels.keys():
             if self.panels[i]['panel'] == current:
-                self.notebook1.DeletePage(self.notebook1.GetSelection())
-                self.panels[i]=self.show_GUI(self.panels[i]['gui'],
-                                             'dialog',
-                                             self.panels[i]['title'])
-                exit
+                dialog = wxDialog_proto.wxDialog1(self,None,self.panels[i]['title'])
+                self.panels[i]['panel'].panel.Reparent(dialog)
+                dialog.panel=self.panels[i]['panel'].panel
+                dialog.panel.Move(wxPoint(0,25))
+                size = self.panels[i]['panel'].panel.GetSize()
+                dialog.SetSize((size.GetWidth(),size.GetHeight()+25))
+                dialog.Show(1)
+                dialog.nbselection = self.notebook1.GetSelection()
+                self.notebook1.GetPage(self.notebook1.GetSelection()).Hide()
+                # the next 3 lines are needed on Windows
+                dialog.Update()
+                dialog.panel.Refresh()
+                self.notebook1.Update()
+                size = dialog.panel.GetSize()
+                dialog.SetSize((size[0],size[1]+25))
         event.Skip()
 
     def OnRedrawButton(self, event):
         redraw()
+        event.Skip()
+
+    def OnNotebook1Size(self, event):
+        try:
+          self.pype.frame.OnResize(event)
+        except:
+          pass
+        event.Skip()
+
+    def OnBookmarkButton(self, event):
+        self.OnToggleBookmark(event)
+        event.Skip()
+
+    def OnPrevbookmarkButton(self, event):
+        self.OnPreviousBookmark(event)
+        event.Skip()
+
+    def OnNextbookmarkButton(self, event):
+        self.OnNextBookmark(event)
         event.Skip()
             
         
