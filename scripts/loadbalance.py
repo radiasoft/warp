@@ -9,7 +9,7 @@ loadbalancesor: Load balances the SOR solver, balancing the total work in
 """
 from warp import *
 
-loadbalance_version = "$Id: loadbalance.py,v 1.36 2004/09/19 05:38:37 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.37 2005/03/17 21:40:29 dave Exp $"
 
 def loadbalancedoc():
   import loadbalance
@@ -55,7 +55,7 @@ recalculated on a finer mesh to give better balancing.
     # --- Check if there are any particles anywhere
     if getn(jslist=-1) == 0: return
 
-    if not top.lmoments:
+    if not top.lmoments or top.laccumulate_zmoments:
       # --- If the moments were not calculated, then top.zminp and top.zmaxp
       # --- are not reliable and so need to be calculated.
       zz = getz(jslist=-1,gather=0)
@@ -70,8 +70,8 @@ recalculated on a finer mesh to give better balancing.
     else:
       # --- Otherwise, use the values already calculated.
       zz = None
-      zminp = top.zminp
-      zmaxp = top.zmaxp
+      zminp = top.zminp[-1]
+      zmaxp = top.zmaxp[-1]
 
     # --- Special check when injection is turned on
     if top.inject:
@@ -112,7 +112,8 @@ recalculated on a finer mesh to give better balancing.
     if doloadrho is None: doloadrho = self.doloadrho
     if dofs is None: dofs = self.dofs
 
-    if (zmaxp - zminp)/w3d.dz < 10 or not top.lmoments:
+    if ((zmaxp - zminp)/w3d.dz < 10 or not top.lmoments or
+        top.laccumulate_zmoments):
       # --- If the particles only extend over a few grid cells, recalculate
       # --- the distribution on a finer grid to get better loadbalancing.
       # --- Also, calculate the distribution if the moments were not
@@ -128,7 +129,7 @@ recalculated on a finer mesh to give better balancing.
       dz = (zmax - zmin)/1000.
     else:
       # --- Otherwise use the already calculated z-moment
-      pnumz = top.pnumz
+      pnumz = top.pnumz[:,-1]
       dz = w3d.dz
 
     # --- Calculate the right hand side padding.
@@ -151,7 +152,7 @@ recalculated on a finer mesh to give better balancing.
     loadbalanceparticles(doloadrho=doloadrho,dofs=dofs,
                          padright=padright,padleft=self.padleft,
                          reorg=reorg,pnumz=pnumz,zmin=w3d.zmminglobal,dz=dz,
-                         zminp=zminp,zmaxp=zmaxp)
+                         zminp=zminp,zmaxp=zmaxp,verbose=self.verbose)
     getphiforparticles()
 
 #########################################################################
@@ -222,7 +223,7 @@ that has already been done.
 #########################################################################
 def loadbalanceparticles(doloadrho=1,dofs=1,spread=1.,padleft=0.,padright=0.,
                          reorg=0,pnumz=None,zmin=None,dz=None,
-                         zminp=None,zmaxp=None):
+                         zminp=None,zmaxp=None,verbose=0):
   """
 Load balances the particles as evenly as possible. The load balancing is
 based off of the data in top.pnumz which of course must already have
@@ -242,13 +243,14 @@ grid points.
  - dz=None: optional grid cell size
  - zminp,zmaxp=None: optional min and max of the region that must be included
                      in the decomposition
+ - verbose=0: when true, prints out timing information
   """
   if not lparallel: return
   starttime = wtime()
 
   if pnumz is None:
     # --- Gather pnumz. Return if there is no data.
-    pnumz = top.pnumz
+    pnumz = top.pnumz[:,-1]
     if max(pnumz) == 0.: return
 
   # --- Add fictitious data so that actual work is spread only to the
@@ -270,7 +272,7 @@ grid points.
   setparticledomains(zslave,doloadrho=doloadrho,dofs=dofs,
                      padleft=padleft,padright=padright,reorg=reorg)
   endtime = wtime()
-  print "Load balance time = ",endtime - starttime
+  if verbose: print "Load balance time = ",endtime - starttime
 
 #########################################################################
 def loadbalancesor(sgweight=7.0,condweight=2.0):
