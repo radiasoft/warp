@@ -1,4 +1,4 @@
-!     Last change:  JLV  23 Aug 2001    5:38 pm
+!     Last change:  JLV  29 Aug 2001    3:35 pm
 #include "top.h"
 module multigridrz
 ! module containing RZ multigrid solver
@@ -1735,18 +1735,17 @@ CHARACTER(*) :: filename
 INTEGER(ISZ) :: i,ic
 
   OPEN(10,FILE=filename,STATUS='unknown')
-    WRITE(10,*) SIZE(bndy)
-    do i = 1, SIZE(bndy)
-      WRITE(10,*) SIZE(bndy(i)%v,1),SIZE(bndy(i)%v,2)
+    WRITE(10,*) nlevels
+    do i = 1, nlevels
+      WRITE(10,*) bndy(i)%dr, bndy(i)%dz, bndy(i)%nb_conductors, bndy(i)%nr, bndy(i)%nz, bndy(i)%l_powerof2
       WRITE(10,*) bndy(i)%v
-      WRITE(10,*) bndy(i)%dr, bndy(i)%dz, bndy(i)%nb_conductors
       do ic = 1, bndy(i)%nb_conductors
         IF(ic==1) then
           bndy(i)%cnd => bndy(i)%first
         else
           bndy(i)%cnd => bndy(i)%cnd%next
         END if
-          WRITE(0,*) i,ic,SIZE(bndy),bndy(i)%cnd%nbbnd,bndy(i)%cnd%ncond, bndy(i)%cnd%nbbndred
+          WRITE(0,*) i,ic,nlevels,bndy(i)%cnd%nbbnd,bndy(i)%cnd%ncond, bndy(i)%cnd%nbbndred
           WRITE(10,*) bndy(i)%cnd%nbbnd,bndy(i)%cnd%ncond
           WRITE(10,*) bndy(i)%cnd%nbbndred
           WRITE(10,*) bndy(i)%cnd%voltage
@@ -1774,23 +1773,24 @@ subroutine read_bndstructure_rz(filename)
 use multigridrz
 implicit none
 CHARACTER(*), INTENT(IN) :: filename
-INTEGER(ISZ) :: nbndy,nx,nz,nbbnd,ncond,i,ic
+INTEGER(ISZ) :: nbbnd,ncond,i,ic,nbc
 
   OPEN(10,FILE=filename,STATUS='unknown')
-    read(10,*) nbndy
-    ALLOCATE(bndy(nbndy))
-    do i = 1, nbndy
-      read(10,*) nx,nz
+    read(10,*) nlevels
+    ALLOCATE(bndy(nlevels))
+    bndy_allocated=.true.
+    do i = 1, nlevels
       NULLIFY(bndy(i)%first)
-      ALLOCATE(bndy(i)%v(nx,nz))
+      read(10,*) bndy(i)%dr, bndy(i)%dz, bndy(i)%nb_conductors, bndy(i)%nr, bndy(i)%nz, bndy(i)%l_powerof2
+      ALLOCATE(bndy(i)%v(bndy(i)%nr+1,bndy(i)%nz+1))
       read(10,*) bndy(i)%v
-      read(10,*) bndy(i)%dr, bndy(i)%dz, bndy(i)%nb_conductors
-      do ic = 1, bndy(i)%nb_conductors
+      nbc = bndy(i)%nb_conductors
+      do ic = 1, nbc
         read(10,*) nbbnd,ncond
         call init_bnd_sublevel(bndy(i),nbbnd,ncond)
         read(10,*) bndy(i)%cnd%nbbndred
         read(10,*) bndy(i)%cnd%voltage
-        WRITE(0,*) i,ic,nbndy,nbbnd,ncond,bndy(i)%cnd%nbbndred
+        WRITE(0,*) i,ic,nlevels,nbbnd,ncond,bndy(i)%cnd%nbbndred
         IF(bndy(i)%cnd%nbbnd>0) then
           read(10,*) bndy(i)%cnd%phi0xm,bndy(i)%cnd%phi0xp,bndy(i)%cnd%phi0zm,bndy(i)%cnd%phi0zp
           read(10,*) bndy(i)%cnd%cf0, bndy(i)%cnd%cfxp, bndy(i)%cnd%cfxm, bndy(i)%cnd%cfzp, bndy(i)%cnd%cfzm, bndy(i)%cnd%cfrhs
