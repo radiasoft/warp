@@ -70,7 +70,7 @@ import operator
 if not lparallel: import VPythonobjects
 from string import *
 
-generateconductorsversion = "$Id: generateconductors.py,v 1.42 2003/12/10 01:43:10 dave Exp $"
+generateconductorsversion = "$Id: generateconductors.py,v 1.43 2003/12/10 21:32:13 dave Exp $"
 def generateconductors_doc():
   import generateconductors
   print generateconductors.__doc__
@@ -805,6 +805,9 @@ Creates a grid object which can generate conductor data.
     self.xmmin = w3d.xmmin
     self.ymmin = w3d.ymmin
     self.zmmin = w3d.zmminglobal
+    self.xmmax = w3d.xmmax
+    self.ymmax = w3d.ymmax
+    self.zmmax = w3d.zmmaxglobal
 
     # --- Check for symmetries
     if w3d.l2symtry:
@@ -816,13 +819,19 @@ Creates a grid object which can generate conductor data.
       self.ymin = 0.
       self.ymmin = 0.
 
+    # --- Note that for the parallel version, the values of zmmin and zmmax
+    # --- will be wrong if this is done before the generate, during which time
+    # --- the decomposition is done.
+
     # --- Calculate dx, dy, and dz in case this is called before
     # --- the generate.
-    self.dx = (w3d.xmmax - w3d.xmmin)/w3d.nx
+    self.dx = (self.xmmax - self.xmmin)/self.nx
     if(w3d.solvergeom==w3d.RZgeom or w3d.solvergeom==w3d.XZgeom):
       self.dy = self.dx
     else:
-      self.dy = (w3d.ymmax - w3d.ymmin)/w3d.ny
+      self.dy = (self.ymmax - self.ymmin)/self.ny
+    # --- z is different since it is not affected by transverse symmetries
+    # --- but is affected by parallel decomposition.
     self.dz = (w3d.zmmax - w3d.zmmin)/w3d.nz
 
     if top.fstype in [7,11,10]:
