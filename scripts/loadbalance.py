@@ -5,7 +5,7 @@ from warp import *
 #!#!#!#!#!#!#!#!#!#!#!#!#!#
 # realign the z-moments histories data
 
-loadbalance_version = "$Id: loadbalance.py,v 1.4 2001/07/23 19:36:11 dave Exp $"
+loadbalance_version = "$Id: loadbalance.py,v 1.5 2001/08/09 22:07:40 dave Exp $"
 
 def loadbalancedoc():
   print """
@@ -182,16 +182,114 @@ grid points.
   """
   # --- Gather pnumz. The commented out line does not work since there
   # --- maybe a complicated series of overlap among the processors.
-  #pnumz = gatherarray(top.pnumz
-  pnumz = zeros(w3d.nzfull+1,'d')
-  for iz in range(0,w3d.nzfull+1):
-    pe = convertiztope(iz)
-    if me == pe: nn = top.pnumz[iz-top.izpslave[me]]
-    else:        nn = 0
-    pnumz[iz] = mpi.bcast(nn,pe)
+  pnumz = gatherallzarray(top.pnumz)
+# pnumz = zeros(w3d.nzfull+1,'d')
+# for iz in range(0,w3d.nzfull+1):
+#   pe = convertiztope(iz)
+#   if me == pe: nn = top.pnumz[iz-top.izpslave[me]]
+#   else:        nn = 0
+#   pnumz[iz] = mpi.bcast(nn,pe)
 
-  # --- Integrate pnumz, assuming linear variation between grid points
-  np = 0.5*pnumz[0] + sum(pnumz[1:-1]) + 0.5*pnumz[-1]
+  # --- Convert the number of particles to a decomposition
+  zslave = decompose(pnumz,npes)
+
+  # --- Apply the new domain decomposition.
+  setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs)
+
+#########################################################################
+def loadbalancesor():
+  """
+Load balance the SOR field solver based off of the current timings. This is
+needed since some processors may have more conductor points than others.
+  """
+  # --- Gather the field solve timings
+  weight = gatherarray(top.fstime)
+  weight = broadcast(weight)
+
+  # --- Divide by nzfsslave to get the relative timings per nz
+  weight = weight/(top.nzfsslave-1)
+
+  # --- Convert to a decomposition and scale to w3d.nzfull
+  zslave = decompose(weight,npes)
+  zslave = zslave/max(zslave)*w3d.nzfull
+
+  # --- Save the old values
+  oldiz = top.izslave + 0
+  oldnz = top.nzslave + 0
+  oldizfs = top.izfsslave + 0
+  oldnzfs = top.nzfsslave + 0
+
+  # --- Set domain of each processor.
+  zlast = 0
+  for i in range(npes):
+    top.izfsslave[i] = zlast
+    top.nzfsslave[i] = nint(zslave[i]) + 1
+    zlast = top.izfsslave[i] + top.nzfsslave[i] - 1
+  top.nzfsslave[-1] = w3d.nzfull - w3d.izfsslave[i]
+
+  #---------------------------------------------------------------------------
+  # --- Now set the axial extent of each slaves domain to include
+  # --- both the particle and field solve domain.
+  for i in range(npes):
+    top.izslave[i] = min(top.izpslave[i],top.izfsslave[i])
+    top.nzslave[i] = max(top.izpslave[i] + top.nzpslave[i], \
+                         top.izfsslave[i] + top.nzfsslave[i]) - top.izslave[i]
+    top.zmslmin[i] = top.izslave[i]*w3d.dz + top.zmslmin[0]
+    top.zmslmax[i] = (top.izslave[i] + top.nzslave[i])*w3d.dz + top.zmslmin[0]
+
+  #---------------------------------------------------------------------------
+  # --- Reset local values
+  w3d.nz     = top.nzslave[me]
+  w3d.izfsmin = top.izfsslave[me] - top.izslave[me]
+  w3d.izfsmax = w3d.izfsmin + top.nzfsslave[me]
+  w3d.zmmin = top.zmslmin[me]
+  w3d.zmmax = top.zmslmax[me]
+  if top.fstype in [3,7] or f3d.nsorerr > 0:
+    # --- The additional check of nsorerr>0 is done since in some cases,
+    # --- the field solver may be turned off when the load balancing is done
+    # --- but used otherwise.
+    f3d.nzpsor = w3d.nz
+    f3d.nsorerr = (w3d.nx+1)*(w3d.ny+1)*(w3d.nz+1)/(.9*w3d.nx-1)
+
+  # --- Change the alocation of everything effected are reset the meshes.
+  gchange("Fields3d")
+  if top.fstype in [3,7] or f3d.nsorerr > 0: gchange("PSOR3d")
+  w3d.zmesh[:] = w3d.zmmin + iota(0,w3d.nz)*w3d.dz
+  
+  # --- Shift the existing charge density and phi
+  izstart = max(oldiz,top.izslave[me])
+  izend = min(oldiz+oldnz,top.izslave[me]+top.nzslave[me])
+  newiz1 = izstart - top.izslave[me]
+  newiz2 = izend - top.izslave[me] + 1
+  oldiz1 = izstart - oldiz
+  oldiz2 = izend - oldiz + 1
+  w3d.phi[:,:,newiz1+1:newiz2+1] = phi[:,:,oldiz1+1:oldiz2+1]
+  w3d.rho[:,:,newiz1:newiz2] = rho[:,:,oldiz1:oldiz2]
+
+  # --- Correct the locations of conductor points for the field-solver.
+  newiz = top.izslave
+  newnz = top.nzslave
+  newizfs = top.izfsslave
+  newnzfs = top.nzfsslave
+  reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
+                  newiz,newnz,newizfs,newnzfs)
+
+  # --- Correct location of injection source.
+  if top.inject > 0:
+    w3d.inj_grid[:,:] = w3d.inj_grid + oldiz - newiz
+
+#########################################################################
+def decompose(weight,npes):
+  """
+Converts a weight into the size of the domains.
+ - weight: array of relative weights of the work done by each processor
+ - npes: number of processors
+Returns an array of the same length which is which the relative length of each
+of the domains.
+  """
+  # --- Integrate weight, assuming linear variation between grid points
+  nz = len(weight)
+  np = 0.5*weight[0] + sum(weight[1:-1]) + 0.5*weight[-1]
   npperpe = 1.*np/npes
 
   zslave = zeros(npes,'d')
@@ -199,8 +297,8 @@ grid points.
   delta = 0.
   for ip in range(npes-1):
     npint = 0.
-    npnext = pnumz[iz  ]*((1.-delta)+0.5*(delta**2-1.)) + \
-             pnumz[iz+1]*0.5*(1. - delta**2)
+    npnext = weight[iz  ]*((1.-delta)+0.5*(delta**2-1.)) + \
+             weight[iz+1]*0.5*(1. - delta**2)
     # --- Get the remaining bit from the last cell if it is not too much.
     if npnext < npperpe:
       zslave[ip] = 1. - delta
@@ -208,17 +306,17 @@ grid points.
       delta = 0.
       npint = npnext
     # --- Keep adding cells until the number per processor is reached.
-    while npint + 0.5*(pnumz[iz]+pnumz[iz+1]) < npperpe:
+    while npint + 0.5*(weight[iz]+weight[iz+1]) < npperpe:
       zslave[ip] = zslave[ip] + 1.
       delta = 0.
-      npint = npint + 0.5*(pnumz[iz]+pnumz[iz+1])
+      npint = npint + 0.5*(weight[iz]+weight[iz+1])
       iz = iz + 1
-      if iz == w3d.nzfull: break
-    if iz == w3d.nzfull: break
+      if iz == nz: break
+    if iz == nz: break
     # --- Add the last little bit to get to exactly npperpe.
-    a = 0.5*pnumz[iz] - 0.5*pnumz[iz+1]
-    b = pnumz[iz]
-    c = pnumz[iz]*(delta - 0.5*delta**2) + 0.5*pnumz[iz+1]*delta**2 + \
+    a = 0.5*weight[iz] - 0.5*weight[iz+1]
+    b = weight[iz]
+    c = weight[iz]*(delta - 0.5*delta**2) + 0.5*weight[iz+1]*delta**2 + \
         npperpe - npint
     if b != 0.:
       delta = 2.*c/(sqrt(b**2 - 4.*a*c) + b)
@@ -227,182 +325,162 @@ grid points.
     zslave[ip] = zslave[ip] + delta
 
   # --- The last processor gets everything left over
-  zslave[-1] = w3d.nzfull - sum(zslave)
+  zslave[-1] = nz - sum(zslave)
 
-  # --- Apply the new domain decomposition.
-  setparticledomains(zslave,lloadrho=lloadrho,dofs=dofs)
-
-#########################################################################
-# --- Utility routines for dealing with rearranging some z arrays
-def _gatherallzarray(a,type='d'):
-  result = zeros(w3d.nzfull+1,type)
-  for iz in range(0,w3d.nzfull+1):
-    pe = convertiztope(iz)
-    if me == pe: nn = a[iz-top.izpslave[me]]
-    else:        nn = 0
-    result[iz] = mpi.bcast(nn,pe)
-  return result
-
-def _scatterallzarray(a):
-  return a[top.izpslave[me]:top.izpslave[me]+top.nzpslave[me] + 1]
-
+  return zslave
 
 #########################################################################
 #########################################################################
 # --- These are the messy routines for reorganizing the conductor data
-#def _reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
-#                     newiz,newnz,newizfs,newnzfs):
-# if globalsum(f3d.ncond) == 0 and \
-#    globalsum(f3d.necndbdy) == 0 and \
-#    globalsum(f3d.nocndbdy) == 0:
-#    return
-#  if globalsum(f3d.ncond) > 0:
-#    # --- Make things easier to deal with by ensuring that all arrays
-#    # --- are allocated.
-#    f3d.ncondmax = f3d.ncond + 1
-#    gchange("PSOR3d")
-#
-#    # --- Shift the data to be relative to the global system
-#    f3d.izcond[:] = f3d.izcond[:] + oldiz[me]
-#
-#    # --- Do the work
-#    results = _reorgconductorarrays([f3d.ixcond[:f3d.ncond], \
-#                                     f3d.iycond[:f3d.ncond], \
-#                                     f3d.izcond[:f3d.ncond], \
-#                                     f3d.condvolt[:f3d.ncond]], \
-#                                    f3d.izcond[:f3d.ncond]+0, \
-#                                    oldiz,oldnz,oldizfs,oldnzfs, \
-#                                    newiz,newnz,newizfs,newnzfs)
-#
-#    # --- Change array sizes and copy the data, localizing it.
-#    f3d.ncond = len(results[0])
-#    f3d.ncondmax = f3d.ncond
-#    gchange("PSOR3d")
-#    if f3d.ncond > 0:
-#      f3d.ixcond[:] = results[0]
-#      f3d.iycond[:] = results[1]
-#      f3d.izcond[:] = results[2] - newiz[me]
-#      f3d.condvolt[:] = results[3]
-#
-#  if globalsum(f3d.necndbdy) > 0:
-#    # --- Make things easier to deal with by ensuring that all arrays
-#    # --- are allocated.
-#    f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy) + 1
-#    gchange("PSOR3d")
-#
-#    # --- Shift the data to be relative to the global system
-#    f3d.iecndz[:] = f3d.iecndz[:] + oldiz[me]
-#
-#    # --- Do the work
-#    results = _reorgconductorarrays([f3d.iecndx[:f3d.necndbdy], \
-#                                     f3d.iecndy[:f3d.necndbdy], \
-#                                     f3d.iecndz[:f3d.necndbdy], \
-#                                     f3d.ecdelmx[:f3d.necndbdy], \
-#                                     f3d.ecdelmy[:f3d.necndbdy], \
-#                                     f3d.ecdelmz[:f3d.necndbdy], \
-#                                     f3d.ecdelpx[:f3d.necndbdy], \
-#                                     f3d.ecdelpy[:f3d.necndbdy], \
-#                                     f3d.ecdelpz[:f3d.necndbdy], \
-#                                     f3d.ecvolt[:f3d.necndbdy]], \
-#                                    f3d.iecndz[:f3d.necndbdy]+0, \
-#                                    oldiz,oldnz,oldizfs,oldnzfs, \
-#                                    newiz,newnz,newizfs,newnzfs)
-#
-#    # --- Change array sizes and copy the data, localizing it.
-#    f3d.necndbdy = len(results[0])
-#    if f3d.necndbdy > f3d.ncndmax:
-#      f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy)
-#      gchange("PSOR3d")
-#    if f3d.necndbdy > 0:
-#      f3d.iecndx[:f3d.necndbdy] = results[0]
-#      f3d.iecndy[:f3d.necndbdy] = results[1]
-#      f3d.iecndz[:f3d.necndbdy] = results[2] - newiz[me]
-#      f3d.ecdelmx[:f3d.necndbdy] = results[3]
-#      f3d.ecdelmy[:f3d.necndbdy] = results[4]
-#      f3d.ecdelmz[:f3d.necndbdy] = results[5]
-#      f3d.ecdelpx[:f3d.necndbdy] = results[6]
-#      f3d.ecdelpy[:f3d.necndbdy] = results[7]
-#      f3d.ecdelpz[:f3d.necndbdy] = results[8]
-#      f3d.ecvolt[:f3d.necndbdy] = results[9]
-#
-#  if globalsum(f3d.nocndbdy) > 0:
-#    # --- Make things easier to deal with by ensuring that all arrays
-#    # --- are allocated.
-#    f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy) + 1
-#    gchange("PSOR3d")
-#
-#    # --- Shift the data to be relative to the global system
-#    f3d.iocndz[:] = f3d.iocndz[:] + oldiz[me]
-#
-#    # --- Do the work
-#    results = _reorgconductorarrays([f3d.iocndx[:f3d.nocndbdy], \
-#                                     f3d.iocndy[:f3d.nocndbdy], \
-#                                     f3d.iocndz[:f3d.nocndbdy], \
-#                                     f3d.ocdelmx[:f3d.nocndbdy], \
-#                                     f3d.ocdelmy[:f3d.nocndbdy], \
-#                                     f3d.ocdelmz[:f3d.nocndbdy], \
-#                                     f3d.ocdelpx[:f3d.nocndbdy], \
-#                                     f3d.ocdelpy[:f3d.nocndbdy], \
-#                                     f3d.ocdelpz[:f3d.nocndbdy], \
-#                                     f3d.ocvolt[:f3d.nocndbdy]], \
-#                                    f3d.iocndz[:f3d.nocndbdy]+0, \
-#                                    oldiz,oldnz,oldizfs,oldnzfs, \
-#                                    newiz,newnz,newizfs,newnzfs)
-#
-#    # --- Change array sizes and copy the data, localizing it.
-#    f3d.nocndbdy = len(results[0])
-#    if f3d.nocndbdy > f3d.ncndmax:
-#      f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy)
-#      gchange("PSOR3d")
-#    if f3d.nocndbdy > 0:
-#      f3d.iocndx[:f3d.nocndbdy] = results[0]
-#      f3d.iocndy[:f3d.nocndbdy] = results[1]
-#      f3d.iocndz[:f3d.nocndbdy] = results[2] - newiz[me]
-#      f3d.ocdelmx[:f3d.nocndbdy] = results[3]
-#      f3d.ocdelmy[:f3d.nocndbdy] = results[4]
-#      f3d.ocdelmz[:f3d.nocndbdy] = results[5]
-#      f3d.ocdelpx[:f3d.nocndbdy] = results[6]
-#      f3d.ocdelpy[:f3d.nocndbdy] = results[7]
-#      f3d.ocdelpz[:f3d.nocndbdy] = results[8]
-#      f3d.ocvolt[:f3d.nocndbdy] = results[9]
-#
+def reorgconductors(oldiz,oldnz,oldizfs,oldnzfs,
+                    newiz,newnz,newizfs,newnzfs):
+  if globalsum(f3d.ncond) > 0:
+    # --- Make things easier to deal with by ensuring that all arrays
+    # --- are allocated.
+    f3d.ncondmax = f3d.ncond + 1
+    gchange("PSOR3d")
+
+    # --- Shift the data to be relative to the global system
+    f3d.izcond[:] = f3d.izcond[:] + oldiz[me]
+
+    # --- Do the work
+    results = _reorgconductorarrays([f3d.ixcond[:f3d.ncond], \
+                                     f3d.iycond[:f3d.ncond], \
+                                     f3d.izcond[:f3d.ncond], \
+                                     f3d.condvolt[:f3d.ncond]], \
+                                    f3d.izcond[:f3d.ncond]+0, \
+                                    oldiz,oldnz,oldizfs,oldnzfs, \
+                                    newiz,newnz,newizfs,newnzfs)
+
+    # --- Change array sizes and copy the data, localizing it.
+    f3d.ncond = len(results[0])
+    f3d.ncondmax = f3d.ncond
+    gchange("PSOR3d")
+    if f3d.ncond > 0:
+      f3d.ixcond[:] = results[0]
+      f3d.iycond[:] = results[1]
+      f3d.izcond[:] = results[2] - newiz[me]
+      f3d.condvolt[:] = results[3]
+
+  if globalsum(f3d.necndbdy) > 0:
+    # --- Make things easier to deal with by ensuring that all arrays
+    # --- are allocated.
+    f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy) + 1
+    gchange("PSOR3d")
+
+    # --- Shift the data to be relative to the global system
+    f3d.iecndz[:] = f3d.iecndz[:] + oldiz[me]
+
+    # --- Do the work
+    results = _reorgconductorarrays([f3d.iecndx[:f3d.necndbdy], \
+                                     f3d.iecndy[:f3d.necndbdy], \
+                                     f3d.iecndz[:f3d.necndbdy], \
+                                     f3d.ecdelmx[:f3d.necndbdy], \
+                                     f3d.ecdelmy[:f3d.necndbdy], \
+                                     f3d.ecdelmz[:f3d.necndbdy], \
+                                     f3d.ecdelpx[:f3d.necndbdy], \
+                                     f3d.ecdelpy[:f3d.necndbdy], \
+                                     f3d.ecdelpz[:f3d.necndbdy], \
+                                     f3d.ecvolt[:f3d.necndbdy]], \
+                                    f3d.iecndz[:f3d.necndbdy]+0, \
+                                    oldiz,oldnz,oldizfs,oldnzfs, \
+                                    newiz,newnz,newizfs,newnzfs)
+
+    # --- Change array sizes and copy the data, localizing it.
+    f3d.necndbdy = len(results[0])
+    if f3d.necndbdy > f3d.ncndmax:
+      f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy)
+      gchange("PSOR3d")
+    if f3d.necndbdy > 0:
+      f3d.iecndx[:f3d.necndbdy] = results[0]
+      f3d.iecndy[:f3d.necndbdy] = results[1]
+      f3d.iecndz[:f3d.necndbdy] = results[2] - newiz[me]
+      f3d.ecdelmx[:f3d.necndbdy] = results[3]
+      f3d.ecdelmy[:f3d.necndbdy] = results[4]
+      f3d.ecdelmz[:f3d.necndbdy] = results[5]
+      f3d.ecdelpx[:f3d.necndbdy] = results[6]
+      f3d.ecdelpy[:f3d.necndbdy] = results[7]
+      f3d.ecdelpz[:f3d.necndbdy] = results[8]
+      f3d.ecvolt[:f3d.necndbdy] = results[9]
+
+  if globalsum(f3d.nocndbdy) > 0:
+    # --- Make things easier to deal with by ensuring that all arrays
+    # --- are allocated.
+    f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy) + 1
+    gchange("PSOR3d")
+
+    # --- Shift the data to be relative to the global system
+    f3d.iocndz[:] = f3d.iocndz[:] + oldiz[me]
+
+    # --- Do the work
+    results = _reorgconductorarrays([f3d.iocndx[:f3d.nocndbdy], \
+                                     f3d.iocndy[:f3d.nocndbdy], \
+                                     f3d.iocndz[:f3d.nocndbdy], \
+                                     f3d.ocdelmx[:f3d.nocndbdy], \
+                                     f3d.ocdelmy[:f3d.nocndbdy], \
+                                     f3d.ocdelmz[:f3d.nocndbdy], \
+                                     f3d.ocdelpx[:f3d.nocndbdy], \
+                                     f3d.ocdelpy[:f3d.nocndbdy], \
+                                     f3d.ocdelpz[:f3d.nocndbdy], \
+                                     f3d.ocvolt[:f3d.nocndbdy]], \
+                                    f3d.iocndz[:f3d.nocndbdy]+0, \
+                                    oldiz,oldnz,oldizfs,oldnzfs, \
+                                    newiz,newnz,newizfs,newnzfs)
+
+    # --- Change array sizes and copy the data, localizing it.
+    f3d.nocndbdy = len(results[0])
+    if f3d.nocndbdy > f3d.ncndmax:
+      f3d.ncndmax = max(f3d.necndbdy,f3d.nocndbdy)
+      gchange("PSOR3d")
+    if f3d.nocndbdy > 0:
+      f3d.iocndx[:f3d.nocndbdy] = results[0]
+      f3d.iocndy[:f3d.nocndbdy] = results[1]
+      f3d.iocndz[:f3d.nocndbdy] = results[2] - newiz[me]
+      f3d.ocdelmx[:f3d.nocndbdy] = results[3]
+      f3d.ocdelmy[:f3d.nocndbdy] = results[4]
+      f3d.ocdelmz[:f3d.nocndbdy] = results[5]
+      f3d.ocdelpx[:f3d.nocndbdy] = results[6]
+      f3d.ocdelpy[:f3d.nocndbdy] = results[7]
+      f3d.ocdelpz[:f3d.nocndbdy] = results[8]
+      f3d.ocvolt[:f3d.nocndbdy] = results[9]
+
 #-------------------------------------------------------------------------
-#def _reorgconductorarrays(arrays,z,oldiz,oldnz,oldizfs,oldnzfs,
-#                                   newiz,newnz,newizfs,newnzfs):
-#  # --- Create list to save the incoming data in.
-#  results = len(arrays)*[[]]
-#
-# # --- Loop over global extent of grid, gathering data from other processors
-# for iz in range(0,w3d.nzfull+1):
-#   # --- Get the processor which "owns" the data, relative to the old
-#   # --- grid extents.
-#   pe = compress(logical_and(less_equal(oldizfs,iz),
-#                 less_equal(iz,oldizfs+oldnzfs)),arange(npes))[-1]
-#   # --- Check if data at this iz is needed locally
-#   if not (oldiz[me] <= iz <= oldiz[me]+oldnz[me]) and \
-#          (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
-#     for i in range(len(arrays)):
-#       results[i] = results[i] + list(getarray(pe,0,me))
-#   elif me == pe:
-#     # --- Loop over processors to check which ones need data
-#     for ip in range(npes):
-#       if not (oldiz[ip] <= iz <= oldiz[ip]+oldnz[ip]) and \
-#              (newizfs[ip] <= iz <= newizfs[ip]+newnzfs[ip]):
-#         ii = compress(equal(iz,z),arange(len(arrays[0])))
-#         for i in range(len(arrays)):
-#           temp = getarray(me,take(arrays[i],ii),ip)
-#
-# # --- Make sure all processors are done before continuing
-# mpi.barrier()
-#
-#  # --- Gather any data that is still local
-#  for iz in range(newizfs[me],newizfs[me]+newnzfs[me]+1):
-#    ii = compress(equal(iz,z),arange(len(arrays[0])))
-#    for i in range(len(arrays)):
-#      results[i] = results[i] + list(take(arrays[i],ii))
-#
-#  for i in range(len(results)): results[i] = array(results[i])
-#  return results
+def _reorgconductorarrays(arrays,z,oldiz,oldnz,oldizfs,oldnzfs,
+                                   newiz,newnz,newizfs,newnzfs):
+  # --- Create list to save the incoming data in.
+  results = len(arrays)*[[]]
+
+ # --- Loop over global extent of grid, gathering data from other processors
+ for iz in range(0,w3d.nzfull+1):
+   # --- Get the processor which "owns" the data, relative to the old
+   # --- grid extents.
+   pe = compress(logical_and(less_equal(oldizfs,iz),
+                 less_equal(iz,oldizfs+oldnzfs)),arange(npes))[-1]
+   # --- Check if data at this iz is needed locally
+   if not (oldiz[me] <= iz <= oldiz[me]+oldnz[me]) and \
+          (newizfs[me] <= iz <= newizfs[me]+newnzfs[me]):
+     for i in range(len(arrays)):
+       results[i] = results[i] + list(getarray(pe,0,me))
+   elif me == pe:
+     # --- Loop over processors to check which ones need data
+     for ip in range(npes):
+       if not (oldiz[ip] <= iz <= oldiz[ip]+oldnz[ip]) and \
+              (newizfs[ip] <= iz <= newizfs[ip]+newnzfs[ip]):
+         ii = compress(equal(iz,z),arange(len(arrays[0])))
+         for i in range(len(arrays)):
+           temp = getarray(me,take(arrays[i],ii),ip)
+
+  # --- Make sure all processors are done before continuing
+  barrier()
+
+  # --- Gather any data that is still local
+  for iz in range(newizfs[me],newizfs[me]+newnzfs[me]+1):
+    ii = compress(equal(iz,z),arange(len(arrays[0])))
+    for i in range(len(arrays)):
+      results[i] = results[i] + list(take(arrays[i],ii))
+
+  for i in range(len(results)): results[i] = array(results[i])
+  return results
 
 
 
