@@ -5,7 +5,7 @@ from warp import *
 import mpi
 import __main__
 import copy
-warpparallel_version = "$Id: warpparallel.py,v 1.47 2004/06/03 22:49:12 dave Exp $"
+warpparallel_version = "$Id: warpparallel.py,v 1.48 2004/08/31 17:25:14 dave Exp $"
 
 def warpparalleldoc():
   import warpparallel
@@ -320,7 +320,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- For the particle data, a space big enough to hold
             # --- all of the data is created.
             if top.npmaxi == top.npmax and sum(sum(nps_p)) > 0:
-              ff.defent(pdbname,v,(sum(sum(nps_p)),top.npid))
+              ff.defent(pdbname,v,(sum(sum(nps_p)),top.npidmax))
           elif p == 'wxy' and vname in ['dtp']:
             # --- A WARPxy particle array
             if wxy.npmaxxy > 0 and sum(sum(nps_p)) > 0:
@@ -347,7 +347,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
             # --- For the particle data, a space big enough to hold
             # --- all of the data is created.
             if sum(sum(npslost_p)) > 0:
-              ff.defent(pdbname,v,(sum(sum(npslost_p)),top.npid))
+              ff.defent(pdbname,v,(sum(sum(npslost_p)),top.npidlostmax))
 #         elif p == 'f3d' and vname == 'mglevelsiz':
 #           ff.defent(vname+'@'+p+'@parallel',v,(top.nslaves,len(v)))
 #           ff.write(pdbname,zeros(len(v)))
@@ -457,7 +457,7 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
         # --- The data is now written into the space which was set aside
         # --- above by PE0.
         # --- First the exceptions
-        if p == 'top' and vname in ['npmax_s','ins','nps']:
+        if p == 'top' and vname in ['npmax_s','ins','nps','inslost','npslost']:
           # --- Write out to parallel space
           ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,0))
         elif (p == 'top' and vname in ['xp','yp','zp','uxp','uyp','uzp', \
@@ -477,9 +477,6 @@ def paralleldump(fname,attr='dump',vars=[],serial=0,histz=2,varsuffix=None,
                 ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
                 ff.write(pdbname,v[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:],
                          indx=(ipmin,0))
-        elif p == 'top' and vname in ['inslost','npslost']:
-          # --- Write out to parallel space
-          ff.write(vname+'@'+p+'@parallel',array([v]),indx=(me,0))
         elif p == 'top' and vname in ['xplost','yplost','zplost',
                                       'uxplost','uyplost','uzplost',
                                       'gaminvlost','tplost']:
@@ -615,20 +612,20 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
     nps_p0 = zeros((top.nslaves+1,top.ns+1))
     nps_p0[1:,1:] = nps_p
   itriple = array([me,me,1,0,top.ns-1,1])
-  if 'ins' in vlistparallel:
-    top.ins[:] = ff.read_part('ins@parallel',itriple)[0,...]
-  if 'nps' in vlistparallel:
-    top.nps[:] = ff.read_part('nps@parallel',itriple)[0,...]
+  if 'ins@top' in vlistparallel:
+    top.ins[:] = ff.read_part('ins@top@parallel',itriple)[0,...]
+  if 'nps@top' in vlistparallel:
+    top.nps[:] = ff.read_part('nps@top@parallel',itriple)[0,...]
 
   if 'npslost_p' in vlistparallel:
     npslost_p = ff.read('npslost_p@parallel')
     npslost_p0 = zeros((top.nslaves+1,top.ns+1))
     npslost_p0[1:,1:] = npslost_p
   itriple = array([me,me,1,0,top.ns-1,1])
-  if 'inslost' in vlistparallel:
-    top.inslost[:] = ff.read_part('inslost@parallel',itriple)[0,...]
-  if 'npslost' in vlistparallel:
-    top.npslost[:] = ff.read_part('npslost@parallel',itriple)[0,...]
+  if 'inslost@top' in vlistparallel:
+    top.inslost[:] = ff.read_part('inslost@top@parallel',itriple)[0,...]
+  if 'npslost@top' in vlistparallel:
+    top.npslost[:] = ff.read_part('npslost@top@parallel',itriple)[0,...]
 
   # --- Loop over the list of all of the variables in the restart file.
   # --- Read in all of the scalars first - this ensures that all of the
@@ -746,7 +743,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
           for js in range(top.ns):
             if top.nps[js] > 0:
               ipmin = sum(sum(nps_p0[:,0:js+1])) + sum(nps_p0[:me+1,js+1])
-              itriple = array([ipmin,ipmin+top.nps[js]-1,1,0,top.npid-1,1])
+              itriple = array([ipmin,ipmin+top.nps[js]-1,1,0,top.npidmax-1,1])
               ip = '[top.ins[js]-1:top.ins[js]+top.nps[js]-1,:]'
               exec(pname+ip+' = ff.read_part(v,itriple)',
                    __main__.__dict__,locals())
@@ -778,7 +775,7 @@ def parallelrestore(fname,verbose=false,skip=[],varsuffix=None,ls=0):
         for js in range(top.ns):
           if top.npslost[js] > 0:
             ipmin = sum(sum(npslost_p0[:,0:js+1])) + sum(npslost_p0[:me+1,js+1])
-            itriple = array([ipmin,ipmin+top.npslost[js]-1,1,0,top.npid-1,1])
+            itriple = array([ipmin,ipmin+top.npslost[js]-1,1,0,top.npidlostmax-1,1])
             ip = '[top.inslost[js]-1:top.inslost[js]+top.npslost[js]-1,:]'
             exec(pname+ip+' = ff.read_part(v,itriple)',
                  __main__.__dict__,locals())
