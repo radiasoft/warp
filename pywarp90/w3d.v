@@ -1,5 +1,5 @@
 w3d
-#@(#) File W3D.V, version $Revision: 3.166 $, $Date: 2004/09/10 18:31:18 $
+#@(#) File W3D.V, version $Revision: 3.167 $, $Date: 2004/09/14 02:29:09 $
 # Copyright (c) 1990-1998, The Regents of the University of California.
 # All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 # This is the parameter and variable database for package W3D of code WARP
@@ -9,7 +9,7 @@ w3d
 
 *********** W3Dversion:
 # Quantities associated with version control 
-versw3d character*19 /"$Revision: 3.166 $"/ # Current code version, set by CVS
+versw3d character*19 /"$Revision: 3.167 $"/ # Current code version, set by CVS
 
 *********** Obsolete3d:
 inj_d                real /0/ # Obsolete, now see inj_d in top
@@ -657,7 +657,7 @@ inj_smoother(nx:integer,ny:integer,inj_phi:real,dx:real,dy:real,
              inj_nsmooth:integer) subroutine
 getinj_phi() subroutine
 getinj_phi_3d() subroutine
-fetche3d(ipmin:integer,ip:integer,is:integer,ex:real,ey:real,ez:real) subroutine
+fetche3d(ipmin:integer,ip:integer,is:integer) subroutine
 particleboundaries3d() subroutine
 
 *********** W3Dutilities:

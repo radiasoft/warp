@@ -290,7 +290,7 @@ c     sets ej and bj.
       real(kind=8):: dtr
       real(kind=8):: bendres(nparpgrp), bendradi(nparpgrp)
 c     print*,"*****SETTING FIELDS"
-      call fetche3d(ipmin,npd,is,ex,ey,ez)
+      call fetche3d(ipmin,npd,is)
 c     add in ears and uniform focusing E field pieces
       call othere3d(npd,x,y,z,zbeam,zimax,zimin,straight,ifeears,eears,
      &                     eearsofz,dzzi,nzzarr,zzmin,dedr,dexdx,deydy,dbdr,

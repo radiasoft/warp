@@ -1,6 +1,6 @@
 #include "top.h"
 c============================================================================
-c@(#) File DTOP.F, version $Revision: 3.125 $, $Date: 2004/09/07 15:24:00 $
+c@(#) File DTOP.F, version $Revision: 3.126 $, $Date: 2004/09/14 02:29:07 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is part of the main package TOP of code WARP
@@ -299,7 +299,7 @@ c  Charge density at the center of the beam
 c  Number density
       numbdens = chrgdens/dvnz(sq(1))
 c  Plasma frequency
-      omegap = sqrt(numbdens*sq(1)**2/dvnz(eps0)/dvnz(sm(1)))
+      omegap = sqrt(abs(numbdens*sq(1)**2/dvnz(eps0)/dvnz(sm(1))))
       omegapdt = omegap*dt
       omegaptq = omegap*(tunelen/dvnz(vbeam))
       taup = 2.*Pi/dvnz(omegap)
@@ -646,7 +646,7 @@ c used for the printing of the version number at the start up of the code.
 
 c     --- Get length of version string. This is very specific to the cvs
 c     --- versioning system. It assumes that the version string passed
-c     --- in is of the format "$Revision: 3.125 $" where 'r' and 'v' are
+c     --- in is of the format "$Revision: 3.126 $" where 'r' and 'v' are
 c     --- the revision number of current version number.
       lenv = 12
       do i=12,19

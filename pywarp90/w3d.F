@@ -1,6 +1,6 @@
 #include "top.h"
 c=============================================================================
-c@(#) File W3D.F, version $Revision: 3.166 $, $Date: 2004/09/03 21:54:52 $
+c@(#) File W3D.F, version $Revision: 3.167 $, $Date: 2004/09/14 02:29:08 $
 c# Copyright (c) 1990-1998, The Regents of the University of California.
 c# All rights reserved.  See LEGAL.LLNL for full text and disclaimer.
 c  This is main file of package W3D of code WARP
@@ -507,7 +507,7 @@ c --- zgridprv is set here (as well as in padvnc3d) in case the
 c --- user has changed zbeam.
 
       it = it + 1
-c     time = time + dt ! Moved to end of padvanc3d
+c     time = time + dt ! Moved to end of padvnc3d
       if (lgridqnt) then
 c       --- zgrid is integer number of dz's
         zgridprv = int((zbeam)/dz + .5)*dz
@@ -1211,7 +1211,7 @@ c Calculated for first species.
       if (lw3dtimesubs) substarttime = wtime()
 
       zm = (zimax - zimin)*(1. - straight)*0.5
-      emitlong = zm*2.*vthz/vbeam
+      emitlong = zm*2.*vthz/dvnz(vbeam)
 
 c     set to be linear in z (eears is actually slope of Eears)
       if (ifeears == 1) then
@@ -1292,6 +1292,7 @@ c  and also loads RHO at the new time level.
 
       integer(ISZ):: is,ip,ipmin,i
       real(kind=8):: uxpadv,uypadv,uzpadv,halfdt,quarterdt
+      real(kind=8):: halfdtuse,quartdtuse,dtuse
       real(kind=8):: zpo(nparpgrp)
 c RHC: moved ex, ey, ez, bx, by, bz to DKInterptmp in w3d.v  3/11/04
 c      real(kind=8):: ex(nparpgrp), ey(nparpgrp), ez(nparpgrp)
@@ -1310,8 +1311,8 @@ c      real(kind=8):: bx(nparpgrp), by(nparpgrp), bz(nparpgrp)
       real(kind=8):: minp(6)
       real(kind=8):: zmmnts0(NUMZMMNT)
       real(kind=8):: zmmnts(0:nzmmnt,NUMZMMNT)
-
       real(kind=8):: substarttime,wtime
+
       if (lw3dtimesubs) substarttime = wtime()
 
       halfdt = 0.5*dt
@@ -1371,7 +1372,7 @@ c  Loop over particle blocks; move each block separately
             ip = min(nparpgrp, ins(is)+nps(is)-ipmin)
 
 c           --- Obtain the self-field from the electrostatic potential
-            call fetche3d(ipmin,ip,is,ex,ey,ez)
+            call fetche3d(ipmin,ip,is)
 
 c           --- Get E field for particles near the  injection surface.
             if (inject > 0) then
@@ -1389,19 +1390,32 @@ c           --- correction.
             if (relativity == 1)
      &        call sete3d_relativity(ip,ex,ey,vbeam)
 
-c           --- Zero out B field arrays
-            do i = 1,ip
-               bx(i) = 0.
-               by(i) = 0.
-               bz(i) = 0.
-            enddo
+c           --- Zero out B field arrays, but only if B is going
+c             to be recomputed; B doesn't get recomputed if 
+c             center is "synchv" and interpdk is nonzero and allspecl
+c             is 0
+            if (center .ne. "synchv" .and. interpdk(is) .ne. 0 
+     &       .and. .not. allspecl) then
+               do i = 1,ip
+                  bx(i) = 0.
+                  by(i) = 0.
+                  bz(i) = 0.
+               enddo
+            endif
 c           --- Compute lag average for experimental damping algorithm
             if (eomdamp /= 0.)
      &        call edamp (eomdamp,it,itdamp,center,ip,ex,ey,ez,
      &                    exold(ipmin),eyold(ipmin),ezold(ipmin),
      &                    exlag(ipmin),eylag(ipmin),ezlag(ipmin))
 c           --- FULLV
-            if (center == "fullv") then
+c           Note if this is a species with interpolation between
+c           drift kinetics and full PIC, and allspecl
+c           is not 1, then ALWAYS do full-v steps.
+c           That is, v is always interpreted as at a half step.
+c           In this case fullv and halfv do the same thing and
+c           synchv does nothing
+            if (center == "fullv" .or. (center == "halfv" .and.
+     &             interpdk(is) == 1 .and. .not. allspecl)) then
                do i = 1,ip
                  zpo(i) = zp(ipmin+i-1) 
                enddo 
@@ -1465,7 +1479,14 @@ c              --- Correct position advance for slanted dipole entry/exit
      &                       sm(is),sq(is),.false.)
 
 c           --- HALFV
-            elseif (center == "halfv") then
+            elseif ((center == "halfv" .and. (interpdk(is) .ne. 1 .or.
+     &               allspecl)) .or. (center == "hbor2" .and.
+     &               interpdk(is) .ne. 0)) then
+c           --- drift-kinetic-interpolated species are always treated
+c               with full-v steps except when initalizing, which is
+c               optionally taken care of by "hbor2" option
+c               The hbor1 option does 1st half of a Boris step,
+c               hbor2 does 2nd half.
                do i = 1,ip
                  zpo(i) = zp(ipmin+i-1) 
                enddo 
@@ -1491,41 +1512,62 @@ c              --- Correction to z on entry/exit to accelerator gap
                call zgapcorr(ip,zp(ipmin),xp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       0., halfdt, dt, sm(1), sq(1), time)
 c              --- Magnetic field increment to momenta
-c              --- If interpolating with drift kinetics, must do half
-c              ---  a mu grad B correction
-               if (interpdk(is) .ne. 0) 
-     &                       call mugrdbpush(ip,is,ipmin,quarterdt,1)
-               call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bx, by, bz, sq(is), sm(is), halfdt, ibpush)
                if (interpdk(is) .ne. 0) then
-c                  call setptrs(bx,by,bz,ex,ey,ez)
-                  call mugrdbpush(ip,is,ipmin,quarterdt,0)
-               endif
+                  call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                       bx, by, bz, sq(is), sm(is), dt, -1)
+c              --- If interpolating with drift kinetics, must do 
+c              ---  a mu grad B correction.  Since may be calling
+c              ---  this on first timestep, must make sure grad B's are
+c              ---  calculated, so last arg = 1.
+                  call mugrdbpush(ip,is,ipmin,halfdt,1)
+               else
+                  call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                       bx, by, bz, sq(is), sm(is), halfdt, ibpush)
 c              --- Final half-electric field increment to momenta
+               endif
                call epush3d (ip, uxp(ipmin), uyp(ipmin), uzp(ipmin),
      &                       ex, ey, ez, sq(is), sm(is), halfdt)
 c              --- Advance relativistic Gamma factor
                call gammaadv(ip,gaminv(ipmin),uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                       gamadv,lrelativ)
 c              --- Position advance
-               if (interpdk(is) .ne. 0) then
-                 call xpush3dintrp(ip,is,ipmin)
-               else
-                 call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
+               if (center .ne. "hbor2") then
+c              hbor2 just does a v advance, no x push
+                 if (interpdk(is) .ne. 0) then
+                   call xpush3dintrp(ip,is,ipmin)
+                 else
+                   call xpush3d (ip, xp(ipmin), yp(ipmin), zp(ipmin), uxp(ipmin),
      &                       uyp(ipmin),uzp(ipmin),gaminv(ipmin),dt)
-               endif
-c              --- Bend residence factor over POSITION advance step
-               call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
-     &                       bendres,bendradi,-dt,0.,.false.)
-c              --- Correct position advance for warped mesh effect
-               call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
+                 endif
+c                --- Bend residence factor over POSITION advance step
+                 call getbend (ip,ip,zp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                         bendres,bendradi,-dt,0.,.false.)
+c                --- Correct position advance for warped mesh effect
+                 call zbendcor(ip,xp(ipmin),zp(ipmin),uxp(ipmin),uzp(ipmin),
      &                       gaminv(ipmin),dt,bendres,bendradi,bends,linbend)
-c              --- Correct position advance for slanted dipole entry/exit
-               call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
+c                --- Correct position advance for slanted dipole entry/exit
+                 call sledgcor(ip,xp(ipmin),yp(ipmin),ip,zp(ipmin),zpo,
      &                       uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       sm(is),sq(is),.false.)
+               endif
 c           --- SYNCHV or GEN
-            elseif (center == "synchv" .or. center == "gen") then
+c           Double "if" follows so that moments are calculated
+c           for center = "synchv" or "gen" regardless of interpdk,
+c           but the vpush is only done for interpdk=1 if allspecl=1.
+            elseif (center == "synchv" .or. center == "gen"
+     &        .or. center == "hbor1") then
+              if ((center == "synchv" .and. (interpdk(is) == 0
+     &          .or. allspecl)) 
+     &         .or. center == "gen" .or. (center == "hbor1"
+     &          .and. interpdk(is) .ne. 0)) then
+c           --- drift-kinetic-interpolated species are always treated
+c               with full-v steps except in initial setup, when we want
+c               a half-v step packwards.  center = "hbor2" provides
+c               the latter capability with dt set to be negative.
+c               Exception, if allspecl = 1, then we synchronize every
+c               step, using half Boris if interpdk = 1.
+c               More generally hbor1 provides 1st half of a Boris
+c               step, hbor2 provides 2nd half.
 c              --- Copy 'old' velocity into uxpo, uypo, and uzpo
                do i=1,ip
                   uxpo(i) = uxp(ipmin+i-1)
@@ -1555,18 +1597,20 @@ c              --- Half electric field increment to momenta
      &                       ex, ey, ez, sq(is), sm(is), halfdt)
 c              --- If interpolating with drift kinetics, must do half
 c              ---  a mu grad B correction
-               if (interpdk(is) .ne. 0) then
-c                  call setptrs(bx,by,bz,ex,ey,ez)
-                  call mugrdbpush(ip,is,ipmin,quarterdt,1)
-               endif
 c              --- Half magnetic field increment to momenta
-               call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+               if (interpdk(is) .ne. 0) then
+                  call mugrdbpush(ip,is,ipmin,halfdt,1)
+                  call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
+     &                       bx, by, bz, sq(is), sm(is), dt, -1)
+c                 Half a Boris push
+               else
+                  call bpush3d (ip,uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                       bx, by, bz, sq(is), sm(is), halfdt, ibpush)
-               if (interpdk(is) .ne. 0) 
-     &                       call mugrdbpush(ip,is,ipmin,quarterdt,0)
+               endif
                if (center == "gen") then
 c                --- Reset uxp to uxpo, set uxpo to half step backward
 c                --- for interpolation in moments calculation
+c                --- Don't do this if we're doing drift-kinetic interp
                  do i=1,ip
                    uxpadv = uxp(ipmin+i-1)
                    uxp(ipmin+i-1) = uxpo(i)
@@ -1579,24 +1623,28 @@ c                --- for interpolation in moments calculation
                    uzpo(i) = uzp(ipmin+i-1) - (uzpadv - uzp(ipmin+i-1))
                  enddo
                endif
+              endif
 c              --- Calculate moments over particles, now that we're sync'd
-               if(wpid==0) then
+c              --- THIS IS NOT DONE FOR center = hbor1.
+               if (center == "gen" .or. center == "synchv") then
+                if(wpid==0) then
                  call getzmmnt(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),sq(is),sm(is),sw(is),
      &                         halfdt,2,nplive,uxpo,uypo,uzpo,is,ns,
      &                         maxp,minp,zmmnts0,zmmnts)
-               else
+                else
                  call getzmmnt_weights(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),
      &                         gaminv(ipmin),pid(ipmin,wpid),
      &                         sq(is),sm(is),sw(is),halfdt,2,nplive,
      &                         uxpo,uypo,uzpo,is,ns,
      &                         maxp,minp,zmmnts0,zmmnts)
-               endif
-               call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),zp(ipmin),
+                endif
+                call getextrapolatedparticles(ip,xp(ipmin),yp(ipmin),zp(ipmin),
      &                         uxp(ipmin),uyp(ipmin),uzp(ipmin),gaminv(ipmin),
      &                         dt/2.,uxpo,uypo,uzpo,is,time,zbeam)
+               endif
             endif
          enddo
 !$OMP END DO
@@ -1664,6 +1712,7 @@ c       --- Calculate current
 c----------------------------------------------------------------------------
       if (center == "fullv" .or. center == "halfv") then
 c       --- Inject more particles. This adds particles and alters ins and nps.
+
         if (inject > 0) call inject3d(1)
 
 c       --- Apply particle boundary conditions
@@ -1878,8 +1927,9 @@ c  Push the particle velocity with B field
       integer(ISZ):: ip
       real(kind=8):: btot,btotinv,tanalphab
       real(kind=8):: tx,ty,tz,tsqi,sx,sy,sz,uxppr,uyppr,uzppr
-      real(kind=8):: const
+      real(kind=8):: const,t,tiny,const1
       real(kind=8):: substarttime,wtime
+
       if (lw3dtimesubs) substarttime = wtime()
       const = q*ddt*0.5/m
 
@@ -1909,6 +1959,29 @@ c        --- tan(alpha) / alpha algorithm
             tx = bx(ip)*tanalphab
             ty = by(ip)*tanalphab
             tz = bz(ip)*tanalphab
+            tsqi = 2./(1. + tx**2 + ty**2 + tz**2)
+            sx = tx*tsqi
+            sy = ty*tsqi
+            sz = tz*tsqi
+            uxppr = uxp(ip) + uyp(ip)*tz - uzp(ip)*ty
+            uyppr = uyp(ip) + uzp(ip)*tx - uxp(ip)*tz
+            uzppr = uzp(ip) + uxp(ip)*ty - uyp(ip)*tx
+            uxp(ip) = uxp(ip) + uyppr*sz - uzppr*sy
+            uyp(ip) = uyp(ip) + uzppr*sx - uxppr*sz
+            uzp(ip) = uzp(ip) + uxppr*sy - uyppr*sx
+         enddo
+      elseif (ibpush == -1) then
+c        --- fast b-field rotation algorithm with half Boris angle
+         tiny = 1.e-20
+         do ip=1,np
+            btot = sqrt(bx(ip)**2 + by(ip)**2 + bz(ip)**2)
+            t=gaminv(ip)*btot*const
+            if (btot == 0 .or. t == 0.) cycle
+            btot=max(btot,tiny)
+            const1=(sqrt(1.+t*t)-1.)/(t*btot)
+            tx = bx(ip)*const1
+            ty = by(ip)*const1
+            tz = bz(ip)*const1
             tsqi = 2./(1. + tx**2 + ty**2 + tz**2)
             sx = tx*tsqi
             sy = ty*tsqi
@@ -4564,7 +4637,7 @@ c         --- If the sizes are not the same, then allocate the group
       return
       end
 c=============================================================================
-      subroutine fetche3d(ipmin,ip,is,ex,ey,ez)
+      subroutine fetche3d(ipmin,ip,is)
       use GlobalVars
       use Subtimers3d
       use Picglb
@@ -4577,8 +4650,8 @@ c=============================================================================
       use Fields3dParticles
       use EFields3d
       use FieldSolveAPI
+      use DKInterptmp
       integer(ISZ):: ipmin,ip,is
-      real(kind=8),target:: ex(ip),ey(ip),ez(ip)
 
 c     --- Obtain the self-field from the electrostatic potential
 
